@@ -1,5 +1,8 @@
 import { describe, expect, test } from 'bun:test'
-import { getPubOnboardingReview } from './pub-onboarding-review'
+import {
+  getPubOnboardingReview,
+  resumoDoHorario
+} from './pub-onboarding-review'
 
 describe('revisão do cadastro de bar (WEB-238)', () => {
   test('e-mail confirmado: o bar entra no ar ao continuar, e depois vêm os planos', () => {
@@ -45,5 +48,39 @@ describe('revisão do cadastro de bar (WEB-238)', () => {
       'Revise os dados do bar. Ao continuar, salvamos o cadastro, seu bar entra no ar e você ganha o plano Elite grátis por 120 dias, sem cartão.'
     )
     expect(review.botao).toBe('Colocar meu bar no ar')
+  })
+})
+
+describe('linha do horário na revisão (WEB-448)', () => {
+  test('agrupa os dias como o design: "Seg a qui 17–00 · Sex e sáb 17–02 · Dom 12–22"', () => {
+    const semana = { opens: '17:00', closes: '00:00' }
+    const fds = { opens: '17:00', closes: '02:00' }
+    expect(
+      resumoDoHorario([
+        { opens: '12:00', closes: '22:00' },
+        semana,
+        semana,
+        semana,
+        semana,
+        fds,
+        fds
+      ])
+    ).toBe('Seg a qui 17–00 · Sex e sáb 17–02 · Dom 12–22')
+  })
+
+  test('minuto que não é redondo fica; dia fechado sai; sem horário é nulo', () => {
+    expect(
+      resumoDoHorario([
+        null,
+        null,
+        { opens: '18:30', closes: '23:00' },
+        null,
+        null,
+        null,
+        null
+      ])
+    ).toBe('Ter 18:30–23')
+    expect(resumoDoHorario(null)).toBeNull()
+    expect(resumoDoHorario(Array(7).fill(null))).toBeNull()
   })
 })
