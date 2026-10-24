@@ -36,6 +36,7 @@ import {
 import { getCurrentPlan } from './current-plan'
 import { participantNames } from './game-participants'
 import { getLateEntryWindow } from './reservation-validation'
+import { visit } from './visits'
 
 /**
  * Presença confirmada (WEB-127, ADR 0003). Os números daqui só saem do
@@ -339,20 +340,19 @@ export async function readMyGames(
 }
 
 /**
- * "Já fui" e "Bares" de Seus bares (17b, 17e do design): cada jogo em que o torcedor teve o
- * código validado no balcão, do mais recente ao mais antigo. É a mesma visita
- * das conquistas (`achievements-read.ts`); o check-in do WEB-408 entra nas
- * duas. Bar fora do ar segue na lista, sem perfil para abrir.
+ * "Já fui" e "Bares" de Seus bares (17b, 17e do design): cada visita
+ * (`visits.ts`), do jogo mais recente ao mais antigo. Bar fora do ar segue na
+ * lista, sem perfil para abrir.
  */
 export async function readVisitedGames(userId: string) {
   return db
-    .selectDistinctOn([event.id], {
+    .select({
       eventId: event.id,
       championship: event.championship,
       participantFreeText: event.participantFreeText,
       participants: participantNames(sql`${event.id}`),
       startsAt: event.startsAt,
-      validatedAt: reservationCodeUse.usedAt,
+      validatedAt: visit.visitedAt,
       barId: bar.id,
       barName: bar.name,
       neighborhood: bar.neighborhood,
@@ -362,21 +362,11 @@ export async function readVisitedGames(userId: string) {
       longitude: bar.longitude,
       barActive: bar.isActive
     })
-    .from(reservationCodeUse)
-    .innerJoin(
-      reservationCode,
-      eq(reservationCode.id, reservationCodeUse.codeId)
-    )
-    .innerJoin(reservation, eq(reservation.id, reservationCode.reservationId))
-    .innerJoin(event, eq(event.id, reservation.eventId))
-    .innerJoin(bar, eq(bar.id, event.barId))
-    .where(
-      and(eq(reservation.userId, userId), isNull(reservationCodeUse.undoneAt))
-    )
-    .orderBy(event.id, reservationCodeUse.usedAt)
-    .then((rows) =>
-      rows.sort((a, b) => b.startsAt.getTime() - a.startsAt.getTime())
-    )
+    .from(visit)
+    .innerJoin(event, eq(event.id, visit.eventId))
+    .innerJoin(bar, eq(bar.id, visit.barId))
+    .where(eq(visit.userId, userId))
+    .orderBy(sql`${event.startsAt} desc`, event.id)
 }
 
 export type InterestSignal =

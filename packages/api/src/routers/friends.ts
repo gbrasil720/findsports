@@ -21,6 +21,7 @@ import {
   relationsWith,
   USERNAME_PATTERN
 } from '../lib/friends'
+import { visit } from '../lib/visits'
 import { attendanceRouter } from './attendance'
 
 /*
@@ -164,12 +165,10 @@ export const friendsRouter = router({
         SELECT u.id, u.name, u.username, u.search_city_name AS city, u.image,
           f.accepted_at AS since,
           CASE WHEN u.activity_visibility = 'nobody' THEN NULL ELSE (
-            SELECT count(DISTINCT e.bar_id)
-            FROM reservation_code_use cu
-            JOIN reservation_code c ON c.id = cu.code_id
-            JOIN reservation r ON r.id = c.reservation_id
-            JOIN event e ON e.id = r.event_id
-            WHERE r.user_id = u.id AND cu.undone_at IS NULL
+            SELECT count(DISTINCT ${visit.barId})
+            FROM ${visit}
+            JOIN event e ON e.id = ${visit.eventId}
+            WHERE ${visit.userId} = u.id
               AND e.starts_at >= (${start.toISOString()}::timestamptz AT TIME ZONE 'UTC')
           ) END AS bars
         FROM friendship f
