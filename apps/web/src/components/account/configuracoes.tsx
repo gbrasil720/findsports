@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { type CSSProperties, type ReactNode, useId, useState } from 'react'
 import { toast } from 'sonner'
 import { useMyBar } from '@/components/admin/admin-queries'
@@ -450,23 +450,72 @@ function Seguranca({ enabled }: { enabled: boolean }) {
 
 const AVISOS = [
   {
+    campo: 'weeklySummary',
+    coluna: 'noticeWeeklySummary',
     titulo: 'Resumo semanal por e-mail',
     sub: 'Toda segunda: quem foi, códigos validados e jogos da semana.'
   },
   {
+    campo: 'gameFilling',
+    coluna: 'noticeGameFilling',
     titulo: 'Jogo lotando',
     sub: 'Avisa quando mais de 20 pessoas marcarem que vão a um jogo.'
   },
   {
+    campo: 'emptySchedule',
+    coluna: 'noticeEmptySchedule',
     titulo: 'Grade vazia',
     sub: 'Lembra de cadastrar jogos quando a semana estiver sem nenhum.'
   }
 ] as const
 
-/** Os avisos por e-mail ainda não existem: a tela mostra o que vem. */
+/**
+ * Avisos por e-mail (WEB-441): cada interruptor grava na hora. A tela troca
+ * antes da resposta e volta se o servidor recusar. O celular segue "em breve":
+ * o app ainda não abre por link do site.
+ */
 function Avisos() {
+  const trpc = useTRPC()
+  const queryClient = useQueryClient()
+  const { data: bar } = useMyBar()
+  const barKey = trpc.pub.getMe.queryKey()
+  const salvar = useMutation(
+    trpc.pub.updateNotices.mutationOptions({
+      onMutate: async (input) => {
+        await queryClient.cancelQueries({ queryKey: barKey })
+        const antes = queryClient.getQueryData(barKey)
+        queryClient.setQueryData(barKey, (old) => {
+          if (!old) return old
+          const novo = { ...old }
+          for (const aviso of AVISOS) {
+            const valor = input[aviso.campo]
+            if (valor !== undefined) novo[aviso.coluna] = valor
+          }
+          return novo
+        })
+        return { antes }
+      },
+      onError: (err, _input, context) => {
+        queryClient.setQueryData(barKey, context?.antes)
+        toast.error(
+          getUserFacingMessage(
+            err,
+            'Não foi possível salvar o aviso. Tente de novo.'
+          )
+        )
+      },
+      onSuccess: (salvo) =>
+        queryClient.setQueryData(barKey, (old) => old && { ...old, ...salvo })
+    })
+  )
+
   return (
-    <Secao id="avisos" titulo="Avisos" icone="bell" selo={<EmBreve />}>
+    <Secao
+      id="avisos"
+      titulo="Avisos"
+      icone="bell"
+      selo={<Badge tipo="acid">Novo</Badge>}
+    >
       {AVISOS.map((aviso, index) => (
         <Linha
           key={aviso.titulo}
@@ -475,10 +524,10 @@ function Avisos() {
           sub={aviso.sub}
           acao={
             <Toggle
-              ligado={false}
-              onChange={() => {}}
-              disabled
-              rotulo={`${aviso.titulo} (em breve)`}
+              ligado={bar?.[aviso.coluna] ?? false}
+              onChange={(ligado) => salvar.mutate({ [aviso.campo]: ligado })}
+              disabled={!bar}
+              rotulo={aviso.titulo}
             />
           }
         />
