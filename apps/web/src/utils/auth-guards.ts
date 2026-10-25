@@ -1,3 +1,4 @@
+import { isTransientError } from '@findsports_oficial/api/lib/transient-error'
 import type { auth } from '@findsports_oficial/auth'
 import { impersonationModeFrom } from '@findsports_oficial/auth/impersonation-mode'
 import { redirect } from '@tanstack/react-router'
@@ -142,6 +143,22 @@ export function isHashOnlyChange(
     previous.searchStr === next.searchStr &&
     previous.hash !== next.hash
   )
+}
+
+/**
+ * A sessão da navegação quando `getSession` falhou (WEB-470). Falha
+ * passageira (sem rede, 5xx) fica com a última sessão conferida nesta aba,
+ * em vez de levar a troca de tela para a página de erro. Ela só decide a
+ * rota: os dados continuam pedindo o cookie ao servidor. Sem sessão
+ * conferida (aba nova, depois de sair) ou com recusa do servidor, o erro
+ * segue.
+ */
+export function sessionAfterFailure(
+  error: unknown,
+  last: { session: AuthSession } | undefined
+): AuthSession {
+  if (!last || !isTransientError(error)) throw error
+  return last.session
 }
 
 /**

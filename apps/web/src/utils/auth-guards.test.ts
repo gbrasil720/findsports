@@ -6,6 +6,7 @@ import {
   isHashOnlyChange,
   PUB_LIVE_PATH,
   requiresAuthentication,
+  sessionAfterFailure,
   toClientSession
 } from './auth-guards'
 
@@ -277,6 +278,25 @@ describe('isHashOnlyChange', () => {
     expect(isHashOnlyChange(admin, { ...admin, searchStr: '?public=1' })).toBe(
       false
     )
+  })
+})
+
+describe('sessionAfterFailure', () => {
+  const last = { session: session('pub') }
+  const semRede = new TypeError('Failed to fetch')
+
+  test('sem rede, a troca de tela fica com a última sessão conferida', () => {
+    expect(sessionAfterFailure(semRede, last)).toBe(last.session)
+    expect(sessionAfterFailure({ status: 503 }, last)).toBe(last.session)
+  })
+
+  test('saiu da conta ou foi a primeira conferência: o erro segue', () => {
+    expect(() => sessionAfterFailure(semRede, undefined)).toThrow(semRede)
+  })
+
+  test('recusa do servidor não usa a sessão guardada', () => {
+    const recusa = { status: 401, message: 'Unauthorized' }
+    expect(() => sessionAfterFailure(recusa, last)).toThrow()
   })
 })
 
