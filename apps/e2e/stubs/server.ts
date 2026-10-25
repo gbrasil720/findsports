@@ -23,7 +23,9 @@ import { SAO_PAULO, STUB_PORT, STUB_URL } from '../env'
  * - `GET` e `POST /v1/customers/{id}`: cliente sem endereço — o checkout
  *   manda o do cadastro do bar, e os nomes (WEB-328);
  * - `GET`, `POST` e `DELETE /v1/customers/{id}/tax_ids[/{txi}]`: os
- *   documentos do cliente, guardados aqui (o CNPJ dos dados da nota, WEB-444);
+ *   documentos do cliente, guardados aqui (o CNPJ dos dados da nota, WEB-444).
+ *   `99.999.999/0001-91` (dígito certo) é recusado com 400, como o Stripe
+ *   recusa o documento que não aceita;
  * - `GET /v1/prices?lookup_keys[]=`: um preço mensal com a lookup key pedida;
  * - `GET /v1/subscriptions?customer=`: as assinaturas semeadas daquele
  *   cliente — vazia para quem ainda não passou pelo checkout;
@@ -228,6 +230,9 @@ async function stripe(request: Request, url: URL) {
     const current = stripeTaxIds.get(owner) ?? []
     if (request.method === 'GET') return list(current)
     if (request.method === 'POST') {
+      if (body.value === '99.999.999/0001-91') {
+        return stripeError(400, 'Invalid value for br_cnpj.')
+      }
       const created = {
         id: `txi_e2e_${crypto.randomUUID()}`,
         object: 'tax_id' as const,
