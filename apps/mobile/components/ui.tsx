@@ -16,13 +16,10 @@ import {
   Linking,
   Platform,
   Pressable,
-  Text as RNText,
   ScrollView,
   type StyleProp,
   StyleSheet,
-  TextInput,
   type TextInputProps,
-  type TextProps,
   useColorScheme,
   View,
   type ViewStyle
@@ -43,6 +40,12 @@ import {
   SWAP,
   usePress
 } from '@/components/motion'
+import {
+  DISPLAY_FONT_SCALE,
+  MAX_FONT_SCALE,
+  Text,
+  TextInput
+} from '@/components/text'
 import {
   ACID,
   INK,
@@ -104,19 +107,9 @@ const PLACEHOLDER = themed('rgba(85,85,79,.6)', 'rgba(170,169,164,.6)')
 /** A sombra dura dos cards ("4px 4px 0"). */
 export const DROP = fromTable('drop')
 
+export { DISPLAY_FONT_SCALE, MAX_FONT_SCALE, Text, TextInput }
+
 /** Texto em Archivo com a altura de linha 1,4 do design. */
-/**
- * O maior aumento de fonte que o texto acompanha: 1,35× é o maior "Texto
- * maior" do iOS fora dos tamanhos de acessibilidade. Nestes a letra chega a
- * 3,1×, e rótulos em chips, botões e cards de altura fixa saíam cortados.
- */
-export const MAX_FONT_SCALE = 1.35
-
-/** O `Text` do app, com o teto de `MAX_FONT_SCALE` (um prop próprio vence). */
-export function Text(props: TextProps) {
-  return <RNText maxFontSizeMultiplier={MAX_FONT_SCALE} {...props} />
-}
-
 export const text = (
   fontSize: number,
   weight: 'Regular' | 'SemiBold' | 'Bold' = 'Regular',
@@ -879,7 +872,14 @@ export function BlockButton({
             {leading ? (
               <Icon name={leading} size={17} color={INK} accent={ACID} />
             ) : null}
-            <Text style={[text(15, 'Bold'), { color: INK }]}>{label}</Text>
+            <Text
+              style={[text(15, 'Bold'), { color: INK, flexShrink: 1 }]}
+              maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
+              {label}
+            </Text>
             {trailing ? (
               <Icon name="next" size={16} color={INK} accent={LIVE} />
             ) : null}
@@ -939,7 +939,14 @@ export function PillButton({
             {leading ? (
               <Icon name={leading} size={17} color={INK} accent={INK} />
             ) : null}
-            <Text style={[text(15, 'Bold'), { color: INK }]}>{label}</Text>
+            <Text
+              style={[text(15, 'Bold'), { color: INK, flexShrink: 1 }]}
+              maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
+              {label}
+            </Text>
             {trailing ? (
               <Icon name="next" size={17} color={INK} accent={LIVE} />
             ) : null}
@@ -1258,6 +1265,7 @@ const styles = StyleSheet.create({
   pill: {
     height: 56,
     borderRadius: 28,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1294,7 +1302,9 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: FG
   },
+  // Encolhe com o rótulo no tamanho de fonte máximo, para ele caber na pílula.
   row: {
+    flexShrink: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
