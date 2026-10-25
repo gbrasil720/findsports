@@ -6,6 +6,7 @@ import { ErrorText, Float, haptic } from '@/components/motion'
 import { useTurnstile } from '@/components/turnstile'
 import {
   ACID,
+  authErrorMessage,
   BackButton,
   Icon,
   INK,
@@ -20,6 +21,7 @@ import {
   text,
   useCountdown
 } from '@/components/ui'
+import { settleAuth } from '@/lib/auth-attempt'
 import { authClient } from '@/lib/auth-client'
 
 /*
@@ -40,14 +42,22 @@ export default function ResetSent() {
 
   const resend = async () => {
     setNotice(null)
-    const result = await authClient.requestPasswordReset({
-      email,
-      redirectTo: Linking.createURL('/reset-password'),
-      fetchOptions: turnstile.fetchOptions
-    })
+    const result = await settleAuth(
+      authClient.requestPasswordReset({
+        email,
+        redirectTo: Linking.createURL('/reset-password'),
+        fetchOptions: turnstile.fetchOptions
+      })
+    )
     turnstile.reset()
     if (result.error) {
-      setNotice('Não foi possível reenviar agora. Tente daqui a pouco.')
+      // Sem rede, a frase de conexão; o "Reenviar" já é a nova tentativa.
+      setNotice(
+        authErrorMessage(
+          result.error,
+          'Não foi possível reenviar agora. Tente daqui a pouco.'
+        )
+      )
       return
     }
     haptic.success()
