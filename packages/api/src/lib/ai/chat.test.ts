@@ -334,6 +334,101 @@ describe('eventos da conversa (R24)', () => {
     ])
   })
 
+  it('características novas do catálogo, do jeito que o torcedor escreve', async () => {
+    const events: ChatEvent[] = []
+    const searched: unknown[] = []
+    const state = stateWith()
+    const replies = [
+      toolCall(
+        'buscar_bares',
+        {
+          // O modelo às vezes repassa o pedido cru, em vez do nome da lista.
+          caracteristicas: ['aceita pix', 'VR', 'tem couvert', 'drink']
+        },
+        'c1'
+      ),
+      toolCall('responder', { texto: 'O **Bar do Zé** [[1]].', bares: [ZE.id] })
+    ]
+    const toolCtx = {
+      caller: {
+        ...caller,
+        search: async (args: unknown) => {
+          searched.push(args)
+          return { bars: [found(ZE.id, 'Bar do Zé', 0.8)] }
+        }
+      } as unknown as Caller,
+      message: 'bar que aceita pix e VR, com couvert e drink',
+      origin: { lat: -23.56, lng: -46.69 },
+      radiusKm: 3,
+      now: NOW,
+      userId: 'torcedor',
+      day: null,
+      placeLabel: 'Pinheiros',
+      emit: (e: ChatEvent) => events.push(e)
+    }
+    const result = await converse(toolCtx.message, [], {
+      call: async () => replies.shift(),
+      models: ['modelo-a', 'modelo-b'],
+      runTool: (name, args, id) => runTool(name, args, toolCtx, state, id),
+      state,
+      now: NOW,
+      hasOrigin: true,
+      emit: toolCtx.emit
+    })
+
+    expect(searched).toMatchObject([{ amenities: [16, 18, 19, 21] }])
+    expect(events[0]).toMatchObject({
+      tags: ['Pix', 'Vale-refeição', 'Couvert', 'Drinks']
+    })
+    expect(result.reply.search?.chips).toEqual([
+      { key: 'amenities:16', label: 'Pix', icon: 'pin' },
+      { key: 'amenities:18', label: 'Vale-refeição', icon: 'pin' },
+      { key: 'amenities:19', label: 'Couvert', icon: 'pin' },
+      { key: 'amenities:21', label: 'Drinks', icon: 'beer' },
+      { key: 'radiusKm:3', label: 'até 3 km', icon: 'pin' }
+    ])
+  })
+
+  it('sinônimos e nomes da lista viram o mesmo id; o que não existe sai', async () => {
+    const searched: { amenities?: number[] }[] = []
+    const ctx = {
+      caller: {
+        ...caller,
+        search: async (args: { amenities?: number[] }) => {
+          searched.push(args)
+          return { bars: [] }
+        }
+      } as unknown as Caller,
+      message: 'bar',
+      origin: { lat: -23.56, lng: -46.69 },
+      radiusKm: 3,
+      now: NOW,
+      userId: 'torcedor',
+      day: null,
+      placeLabel: null,
+      emit: () => {}
+    }
+    const ask = async (caracteristicas: string[]) => {
+      await runTool('buscar_bares', { caracteristicas }, ctx, stateWith(), 'c')
+      return searched.at(-1)?.amenities
+    }
+    expect(
+      await ask([
+        'Vale refeição',
+        'vegetariano',
+        'metrô',
+        'bicicleta',
+        'cartao'
+      ])
+    ).toEqual([18, 20, 22, 23, 17])
+    expect(
+      await ask(['vale_refeicao', 'Perto do metrô', 'bike', 'Drinks'])
+    ).toEqual([18, 22, 23, 21])
+    // Repetido conta uma vez; o que não é característica não filtra.
+    expect(await ask(['pix', 'aceita pix', 'piscina'])).toEqual([16])
+    expect(await ask(['piscina'])).toBeUndefined()
+  })
+
   it('resposta com outra ordem: os cards saem de novo antes do texto', async () => {
     const events: ChatEvent[] = []
     const state = stateWith()
