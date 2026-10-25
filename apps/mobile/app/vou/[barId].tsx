@@ -1,3 +1,4 @@
+import { actionPhase } from '@findsports_oficial/api/lib/transient-error'
 import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocalSearchParams, useRouter } from 'expo-router'
@@ -19,6 +20,8 @@ import {
   LIVE,
   PAPER,
   PillButton,
+  phaseBusy,
+  phaseLabel,
   Text,
   TextLink,
   text
@@ -108,17 +111,20 @@ export default function GoingSheet() {
           attending: true,
           recommendationRunId: runId
         })
-  const label = set.isPending
-    ? data.issuesCode
-      ? 'Gerando código…'
-      : 'Confirmando…'
-    : mine.attending
+  // O botão conta a ação (WEB-460): "Confirmando…", "Esperando a rede…",
+  // "Tentando de novo…" (a presença é segura de repetir) e, se as
+  // tentativas acabarem, "Tentar de novo" com o motivo acima.
+  const phase = actionPhase([set])
+  const label = phaseLabel(phase, {
+    idle: mine.attending
       ? mine.code
         ? 'Ver código'
         : 'Você vai'
       : data.issuesCode
         ? 'Confirmar e gerar código'
-        : 'Confirmar'
+        : 'Confirmar',
+    sending: data.issuesCode ? 'Gerando código…' : 'Confirmando…'
+  })
 
   // O ScrollView é filho direto da tela: é o único jeito de o
   // react-native-screens o medir pelo tamanho da folha. Dentro de uma View
@@ -242,8 +248,14 @@ export default function GoingSheet() {
             <PillButton
               label={label}
               height={52}
-              onPress={confirm}
-              disabled={set.isPending || (mine.attending && !mine.code)}
+              // "Tentar de novo" repete o que falhou (marcar ou desmarcar).
+              onPress={() =>
+                phase === 'failed' && set.variables
+                  ? set.mutate(set.variables)
+                  : confirm()
+              }
+              busy={phaseBusy(phase)}
+              disabled={phase === 'idle' && mine.attending && !mine.code}
             />
           </View>
         </Glass>

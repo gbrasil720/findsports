@@ -1,4 +1,7 @@
-import { isTransientError } from '@findsports_oficial/api/lib/transient-error'
+import {
+  type ActionPhase,
+  isTransientError
+} from '@findsports_oficial/api/lib/transient-error'
 import { onlineManager } from '@tanstack/react-query'
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router'
 import { setStatusBarStyle } from 'expo-status-bar'
@@ -38,6 +41,7 @@ import {
   EASE,
   enterAt,
   haptic,
+  LABEL_IN,
   POP_FAST,
   SWAP,
   usePress
@@ -845,11 +849,14 @@ export function BlockButton({
   leading,
   leadingAccent = ACID,
   shadow = EDGE,
-  style
+  style,
+  busy
 }: {
   label: string
   onPress: () => void
   disabled?: boolean
+  /** A ação está no ar: não aceita toque, mas não esmaece (o rótulo conta). */
+  busy?: boolean
   trailing?: boolean
   /** Ícone antes do rótulo ("Ampliar para 10 km", com o pino, 23i). */
   leading?: keyof typeof ICONS
@@ -862,8 +869,8 @@ export function BlockButton({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ disabled }}
-      disabled={disabled}
+      accessibilityState={{ disabled, busy }}
+      disabled={disabled || busy}
       onPress={onPress}
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
@@ -873,7 +880,7 @@ export function BlockButton({
       <View style={disabled && { opacity: 0.45 }}>
         <HardShadow color={shadow} x={3} y={3} radius={4} />
         <Animated.View style={[styles.block, press.style]}>
-          <Animated.View key={label} entering={SWAP} style={styles.row}>
+          <Animated.View key={label} entering={LABEL_IN} style={styles.row}>
             {leading ? (
               <Icon
                 name={leading}
@@ -908,8 +915,11 @@ export function PillButton({
   leading,
   edge = EDGE,
   disabled,
+  busy,
   height = 56
 }: {
+  /** A ação está no ar: não aceita toque, mas não esmaece (o rótulo conta). */
+  busy?: boolean
   label: string
   onPress: () => void
   trailing?: boolean
@@ -931,8 +941,8 @@ export function PillButton({
     >
       <Pressable
         accessibilityRole="button"
-        accessibilityState={{ disabled }}
-        disabled={disabled}
+        accessibilityState={{ disabled, busy }}
+        disabled={disabled || busy}
         onPress={onPress}
         onPressIn={press.onPressIn}
         onPressOut={press.onPressOut}
@@ -945,7 +955,7 @@ export function PillButton({
           ]}
         >
           {/* O rótulo que muda ("Continuar" e "Começar") troca suave. */}
-          <Animated.View key={label} entering={SWAP} style={styles.row}>
+          <Animated.View key={label} entering={LABEL_IN} style={styles.row}>
             {leading ? (
               <Icon name={leading} size={17} color={INK} accent={INK} />
             ) : null}
@@ -984,6 +994,29 @@ export function errorMessage(error: unknown, fallback: string) {
   return own?.data?.httpStatus && own.message ? own.message : fallback
 }
 
+const PHASE_LABELS = {
+  waiting: 'Esperando a rede…',
+  retrying: 'Tentando de novo…',
+  failed: 'Tentar de novo'
+}
+
+/**
+ * O rótulo do botão em cada fase da ação (`actionPhase`, a regra do web):
+ * "Confirmar" → "Confirmando…" → "Tentando de novo…" → "Tentar de novo".
+ */
+export function phaseLabel(
+  phase: ActionPhase,
+  labels: { idle: string; sending: string; done?: string } & Partial<
+    Record<ActionPhase, string>
+  >
+) {
+  return { ...PHASE_LABELS, done: labels.idle, ...labels }[phase] ?? labels.idle
+}
+
+/** Ocupado: a ação está no ar (o botão não aceita toque). */
+export const phaseBusy = (phase: ActionPhase) =>
+  phase === 'sending' || phase === 'waiting' || phase === 'retrying'
+
 /**
  * O bloco que não carregou, no lugar do que sumiria: o que houve, o que
  * fazer e "Tentar de novo" na falha passageira. Recusa do servidor mostra o
@@ -1021,7 +1054,7 @@ export function ErrorState({
       {transient ? (
         <PillButton
           label={retrying ? 'Tentando de novo…' : 'Tentar de novo'}
-          disabled={retrying}
+          busy={retrying}
           onPress={() => void onRetry()}
         />
       ) : null}

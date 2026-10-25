@@ -85,6 +85,14 @@ export const POP = popFrom(0.6)
 export const POP_FAST = popFrom(0.8)
 export const POP_LATE = popFrom(0.6, 650)
 export const SWAP = FadeIn.duration(150)
+/**
+ * O rótulo novo de um botão ("Confirmar" → "Confirmando…" → "Tentando de
+ * novo…"): sobe 4 pt e aparece. O antigo sai na hora, sem animação de saída,
+ * senão os dois dividiriam a linha e o botão mudaria de largura.
+ */
+export const LABEL_IN = FadeInDown.duration(180)
+  .easing(EASE)
+  .withInitialValues({ opacity: 0, transform: [{ translateY: 4 }] })
 
 /**
  * A entrada do elemento `index` de uma tela: sobe e aparece, um depois do

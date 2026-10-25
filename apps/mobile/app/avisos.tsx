@@ -1,3 +1,7 @@
+import {
+  type ActionPhase,
+  actionPhase
+} from '@findsports_oficial/api/lib/transient-error'
 import { brasiliaDay } from '@findsports_oficial/db/event-window'
 import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -28,6 +32,7 @@ import {
 import { MedalImage } from '@/components/medal'
 import {
   haptic,
+  LABEL_IN,
   ScalePress,
   SWAP,
   usePress,
@@ -37,6 +42,7 @@ import { useSoon } from '@/components/soon'
 import { usePalette } from '@/components/theme'
 import {
   ACID,
+  DISPLAY_FONT_SCALE,
   ErrorState,
   errorMessage,
   GlassRound,
@@ -47,6 +53,7 @@ import {
   MAX_FONT_SCALE,
   MUTED,
   PAPER,
+  phaseLabel,
   SPARK,
   Text,
   text,
@@ -192,6 +199,9 @@ export default function Notices() {
     now
   )
   const shown = notices.filter((n) => inTab(n, tab))
+  // O que cada botão de resposta conta enquanto tenta (WEB-460).
+  const callPhase = actionPhase([answerCall])
+  const respondPhase = actionPhase([actions.respond])
   const sources = [mine, medals, friendNotices, asked]
   const failed = sources.find((q) => q.isError)
   const unread = notices.filter((n) => !read.includes(n.id))
@@ -385,6 +395,12 @@ export default function Notices() {
                         null
                       }
                       busy={answerCall.isPending}
+                      phase={
+                        answerCall.variables?.callId === notice.call.id
+                          ? callPhase
+                          : 'idle'
+                      }
+                      sent={answerCall.variables?.answer}
                       onOpen={() => open(notice)}
                       onAnswer={(answer) =>
                         answerCall.mutate({ callId: notice.call.id, answer })
@@ -405,6 +421,13 @@ export default function Notices() {
                         <RequestAnswer
                           answered={answered[notice.person.id]}
                           busy={actions.busy}
+                          phase={
+                            actions.respond.variables?.userId ===
+                            notice.person.id
+                              ? respondPhase
+                              : 'idle'
+                          }
+                          sent={actions.respond.variables?.accept}
                           onAnswer={(accept) => respond(notice.person, accept)}
                         />
                       }
@@ -784,12 +807,19 @@ function NoticeCard({
 function RequestAnswer({
   answered,
   busy,
+  phase,
+  sent,
   onAnswer
 }: {
   answered?: Answered
   busy: boolean
+  phase: ActionPhase
+  /** A resposta que está no ar: aceitar (`true`) ou recusar. */
+  sent?: boolean
   onAnswer: (accept: boolean) => void
 }) {
+  const label = (accept: boolean, idle: string) =>
+    phaseLabel(sent === accept ? phase : 'idle', { idle, sending: idle })
   const palette = usePalette()
   const accept = usePress(3, 3)
   const decline = usePressScale(0.97)
@@ -820,7 +850,7 @@ function RequestAnswer({
         <Animated.View
           style={[styles.answer, { backgroundColor: ACID }, accept.style]}
         >
-          <Text style={[text(13.5, 'Bold'), { color: INK }]}>Aceitar</Text>
+          <ButtonLabel color={INK}>{label(true, 'Aceitar')}</ButtonLabel>
         </Animated.View>
       </Pressable>
       <Animated.View style={[{ flex: 1 }, decline.style]}>
@@ -840,9 +870,9 @@ function RequestAnswer({
             }
           ]}
         >
-          <Text style={[text(13.5, 'Bold'), { color: palette.ink }]}>
-            Recusar
-          </Text>
+          <ButtonLabel color={palette.ink}>
+            {label(false, 'Recusar')}
+          </ButtonLabel>
         </Pressable>
       </Animated.View>
     </View>
@@ -860,6 +890,8 @@ function CallCard({
   now,
   code,
   busy,
+  phase,
+  sent,
   onOpen,
   onAnswer,
   onCode
@@ -870,6 +902,9 @@ function CallCard({
   /** O código do balcão de quem disse "Vou também", se o bar emite. */
   code: string | null
   busy: boolean
+  phase: ActionPhase
+  /** A resposta que está no ar ou falhou. */
+  sent?: 'going' | 'not_now'
   onOpen: () => void
   onAnswer: (answer: 'going' | 'not_now') => void
   onCode: () => void
@@ -929,6 +964,8 @@ function CallCard({
             call={call}
             code={code}
             busy={busy}
+            phase={phase}
+            sent={sent}
             onAnswer={onAnswer}
             onCode={onCode}
           />
@@ -947,12 +984,16 @@ function CallAnswer({
   call,
   code,
   busy,
+  phase,
+  sent,
   onAnswer,
   onCode
 }: {
   call: CallNotice
   code: string | null
   busy: boolean
+  phase: ActionPhase
+  sent?: 'going' | 'not_now'
   onAnswer: (answer: 'going' | 'not_now') => void
   onCode: () => void
 }) {
@@ -961,6 +1002,9 @@ function CallAnswer({
   const later = usePressScale(0.97)
   const strip = usePressScale(0.98)
   const first = firstName(call.person.name)
+  // Só o botão tocado conta a nova tentativa; o rótulo troca no lugar.
+  const label = (answer: 'going' | 'not_now', idle: string) =>
+    phaseLabel(sent === answer ? phase : 'idle', { idle, sending: idle })
   if (call.status === 'going')
     return (
       <Animated.View entering={SWAP} style={strip.style}>
@@ -1021,7 +1065,7 @@ function CallAnswer({
         <HardShadow color={palette.dark ? '#000' : INK} offset={3} radius={4} />
         <Animated.View style={[styles.answer, styles.goingButton, going.style]}>
           <Icon name="ticket" size={15} color={INK} accent={INK} />
-          <Text style={[text(13.5, 'Bold'), { color: INK }]}>Vou também</Text>
+          <ButtonLabel color={INK}>{label('going', 'Vou também')}</ButtonLabel>
         </Animated.View>
       </Pressable>
       <Animated.View style={[{ flex: 1 }, later.style]}>
@@ -1041,9 +1085,9 @@ function CallAnswer({
             }
           ]}
         >
-          <Text style={[text(13.5, 'Bold'), { color: palette.ink }]}>
-            Agora não
-          </Text>
+          <ButtonLabel color={palette.ink}>
+            {label('not_now', 'Agora não')}
+          </ButtonLabel>
         </Pressable>
       </Animated.View>
     </View>
@@ -1280,3 +1324,22 @@ const styles = StyleSheet.create({
   fill: { height: 5, borderRadius: 3 },
   foot: { textAlign: 'center', marginTop: 8 }
 })
+
+/**
+ * O rótulo dos botões de resposta: troca no lugar, subindo um pouco
+ * ("Aceitar" → "Tentando de novo…"), e encolhe a fonte antes de cortar.
+ */
+function ButtonLabel({ color, children }: { color: string; children: string }) {
+  return (
+    <Animated.Text
+      key={children}
+      entering={LABEL_IN}
+      maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
+      numberOfLines={1}
+      adjustsFontSizeToFit
+      style={[text(13.5, 'Bold'), { color, flexShrink: 1 }]}
+    >
+      {children}
+    </Animated.Text>
+  )
+}

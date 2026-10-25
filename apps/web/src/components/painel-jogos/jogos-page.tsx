@@ -1,4 +1,5 @@
 import { resolveEventScreen } from '@findsports_oficial/api/lib/event-screen'
+import { actionPhase } from '@findsports_oficial/api/lib/transient-error'
 import { brasiliaDay } from '@findsports_oficial/db/event-window'
 import { gameTitle } from '@findsports_oficial/db/game-title'
 import {
@@ -549,7 +550,10 @@ export function JogosPage({
     duplicarBloqueado: blockReason,
     onExcluir: () => pedirExclusao(evento.id),
     onPublicar: () => publicar(evento.id),
-    publicando: publicando === evento.id
+    fasePublicar:
+      publishMutation.variables?.eventId === evento.id
+        ? actionPhase([publishMutation])
+        : 'idle'
   })
 
   const planLine =

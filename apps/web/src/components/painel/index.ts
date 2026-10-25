@@ -21,7 +21,9 @@
  * - `CabecalhoCard` (título + meta; `hd`)
  * - `Medalha` do plano (chevrons e estrela; `sobreTinta` no card escuro)
  * - `FaixaSemConexao` (já no shell) e `useOnline`; `ErroBloco`, o bloco que
- *   não carregou, com "Tentar de novo" na falha passageira (WEB-460)
+ *   não carregou, com "Tentar de novo" na falha passageira; `BotaoAcao` (o
+ *   botão que conta "Salvando…", "Tentando de novo…", "Salvo") e `useFeito`
+ *   (WEB-460)
  * - `PainelShell` (barra lateral + conteúdo; já montado por `routes/admin.tsx`)
  *
  * Conteúdo antigo (só claro) dentro do shell vai num `<div className="painel-legado">`,
@@ -30,5 +32,11 @@
 export { Icone, type IconeNome } from './icone'
 export { Medalha } from './medalha'
 export * from './pecas'
-export { ErroBloco, FaixaSemConexao, useOnline } from './rede'
+export {
+  BotaoAcao,
+  ErroBloco,
+  FaixaSemConexao,
+  useFeito,
+  useOnline
+} from './rede'
 export { PainelShell } from './shell'

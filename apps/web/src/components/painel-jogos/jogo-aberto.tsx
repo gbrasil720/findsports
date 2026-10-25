@@ -1,3 +1,4 @@
+import type { ActionPhase } from '@findsports_oficial/api/lib/transient-error'
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import { gameTitle } from '@findsports_oficial/db/game-title'
 import { Link } from '@tanstack/react-router'
@@ -12,6 +13,7 @@ import {
   Avatar,
   Badge,
   Botao,
+  BotaoAcao,
   BotaoIcone,
   CabecalhoCard,
   Card,
@@ -143,7 +145,7 @@ export function JogoAberto({
   duplicarBloqueado,
   onExcluir,
   onPublicar,
-  publicando,
+  fasePublicar = 'idle',
   semMoldura
 }: {
   evento: AdminEvent
@@ -160,7 +162,8 @@ export function JogoAberto({
   onExcluir: () => void
   /** Só no rascunho (WEB-436). */
   onPublicar: () => void
-  publicando?: boolean
+  /** O que o "Publicar" conta: "Publicando…", "Tentando de novo…". */
+  fasePublicar?: ActionPhase
   /** Dentro da folha lateral (celular), sem o card. */
   semMoldura?: boolean
 }) {
@@ -288,9 +291,16 @@ export function JogoAberto({
 
       <div className="jogos-acoes">
         {rascunho ? (
-          <Botao variante="acid" onClick={onPublicar} disabled={publicando}>
-            {publicando ? 'Publicando…' : 'Publicar'}
-          </Botao>
+          <BotaoAcao
+            variante="acid"
+            onClick={onPublicar}
+            fase={fasePublicar}
+            rotulos={{
+              idle: 'Publicar',
+              sending: 'Publicando…',
+              done: 'Publicado'
+            }}
+          />
         ) : null}
         <Botao onClick={onEditar}>Editar</Botao>
         <Botao
