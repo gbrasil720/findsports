@@ -232,6 +232,13 @@ const SECTIONS: { title: string; items: Item[] }[] = [
     ]
   },
   {
+    title: '13 Ranking',
+    items: [
+      // Com a turma de `scripts/ranking.sql`; sem amigos, o vazio (11e).
+      { code: '10d', label: 'Ranking · amigos', href: '/voce/ranking' }
+    ]
+  },
+  {
     title: '09 Conquistas',
     items: [
       // Com as medalhas de `scripts/conquistas.sql` para o torcedor logado.
