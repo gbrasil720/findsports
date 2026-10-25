@@ -6,7 +6,6 @@ import {
   Pressable,
   Share,
   StyleSheet,
-  Text,
   View
 } from 'react-native'
 import Animated, {
@@ -27,11 +26,13 @@ import { EASE, haptic, popFrom, SWAP, usePressScale } from '@/components/motion'
 import {
   ACID,
   BackButton,
+  DISPLAY_FONT_SCALE,
   GlassRound,
   Icon,
   LIVE,
   PAPER,
   PillButton,
+  Text,
   Title,
   text,
   useStatusBar
@@ -541,7 +542,14 @@ function GlassPill({ label, onPress }: { label: string; onPress: () => void }) {
           style={styles.glassPill}
         >
           <Icon name="share" size={17} color={P.ink} />
-          <Text style={[text(15, 'Bold'), { color: P.ink }]}>{label}</Text>
+          <Text
+            style={[text(15, 'Bold'), { color: P.ink, flexShrink: 1 }]}
+            maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
+            {label}
+          </Text>
         </Glass>
       </Animated.View>
     </Pressable>
@@ -599,6 +607,7 @@ const styles = StyleSheet.create({
   glassPill: {
     height: 52,
     borderRadius: 26,
+    paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
