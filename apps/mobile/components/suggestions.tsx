@@ -7,7 +7,7 @@ import {
   useImperativeHandle,
   useLayoutEffect
 } from 'react'
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Image, Pressable, StyleSheet, View } from 'react-native'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import Animated, {
   Extrapolation,
@@ -26,7 +26,7 @@ import Svg, { Defs, Ellipse, RadialGradient, Stop } from 'react-native-svg'
 import { scheduleOnRN } from 'react-native-worklets'
 import { Glass } from '@/components/glass'
 import { EASE, haptic, SWAP, usePressScale } from '@/components/motion'
-import { ACID, Icon, INK, LIVE, PAPER, text } from '@/components/ui'
+import { ACID, Icon, INK, LIVE, PAPER, Text, text } from '@/components/ui'
 import {
   chips,
   distanceText,

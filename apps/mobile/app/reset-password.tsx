@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
 import { useState } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 import Animated, { FadeOut } from 'react-native-reanimated'
 import { ErrorText, haptic, POP } from '@/components/motion'
 import { useTurnstile } from '@/components/turnstile'
@@ -26,6 +26,7 @@ import {
   STRENGTH,
   StrengthBars,
   SUB,
+  Text,
   Title,
   text,
   themed

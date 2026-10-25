@@ -6,7 +6,6 @@ import {
   Image,
   Pressable,
   StyleSheet,
-  Text,
   useColorScheme,
   View
 } from 'react-native'
@@ -33,9 +32,11 @@ import {
   INK,
   LINE,
   LINE_STRONG,
+  MAX_FONT_SCALE,
   PillButton,
   Screen,
   SUB,
+  Text,
   Title,
   text,
   themed
@@ -188,6 +189,7 @@ export default function Distance() {
             <View style={styles.count}>
               <Glass tone={dark ? 'dark' : 'light'} style={styles.countGlass}>
                 <Animated.Text
+                  maxFontSizeMultiplier={MAX_FONT_SCALE}
                   key={count.data.bars}
                   entering={SWAP}
                   style={[text(13.5, 'SemiBold'), { color: FG }]}

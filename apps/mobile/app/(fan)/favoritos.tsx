@@ -10,8 +10,6 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
-  Text,
-  TextInput,
   View
 } from 'react-native'
 import Animated, { FadeOut, LinearTransition } from 'react-native-reanimated'
@@ -38,6 +36,8 @@ import {
   INK,
   LIVE,
   PillButton,
+  Text,
+  TextInput,
   Title,
   text,
   usePullRefresh,

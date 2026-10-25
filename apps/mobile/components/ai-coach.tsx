@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import {
   Pressable,
   StyleSheet,
-  Text,
   useColorScheme,
   useWindowDimensions,
   View
@@ -30,7 +29,7 @@ import Svg, {
 } from 'react-native-svg'
 import { Glass } from '@/components/glass'
 import { EASE, haptic, ScalePress } from '@/components/motion'
-import { ACID, INK, PAPER, text } from '@/components/ui'
+import { ACID, INK, PAPER, Text, text } from '@/components/ui'
 
 /*
  * Primeiro acesso (4o do design, `fCoach` da Rodada 4): o Explorar escurece

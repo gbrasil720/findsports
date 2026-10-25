@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { ErrorText, haptic, POP_LATE } from '@/components/motion'
 import { OnboardingTop, useOnboarding } from '@/components/onboarding'
@@ -17,6 +17,7 @@ import {
   PillButton,
   Screen,
   SUB,
+  Text,
   Title,
   text
 } from '@/components/ui'

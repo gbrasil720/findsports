@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 import { OnboardingTop } from '@/components/onboarding'
 import {
   CARD,
@@ -11,6 +11,7 @@ import {
   PillButton,
   Screen,
   SUB,
+  Text,
   Title,
   text,
   themed

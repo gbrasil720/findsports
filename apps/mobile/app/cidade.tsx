@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { haptic, SWAP } from '@/components/motion'
 import {
@@ -13,6 +13,7 @@ import {
   LIVE,
   Screen,
   SUB,
+  Text,
   Title,
   text,
   themed

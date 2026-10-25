@@ -2,7 +2,6 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { createContext, useEffect, useState } from 'react'
 import {
   StyleSheet,
-  Text,
   useColorScheme,
   useWindowDimensions,
   View
@@ -16,6 +15,7 @@ import Animated, {
   withTiming
 } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
+import { Text } from '@/components/ui'
 import { SPLASH_ON, SPLASH_SIDE } from './splash-letters'
 
 /**

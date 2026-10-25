@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
 import Animated, {
   interpolateColor,
   useAnimatedStyle,
@@ -18,6 +18,8 @@ import {
   LIVE,
   PAPER,
   Screen,
+  Text,
+  TextInput,
   Title,
   text
 } from '@/components/ui'

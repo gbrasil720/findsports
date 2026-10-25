@@ -9,7 +9,6 @@ import {
   Pressable,
   Share,
   StyleSheet,
-  Text,
   View
 } from 'react-native'
 import Animated from 'react-native-reanimated'
@@ -28,6 +27,7 @@ import {
   MUTED,
   PAPER,
   PillButton,
+  Text,
   Title,
   text,
   useStatusBar

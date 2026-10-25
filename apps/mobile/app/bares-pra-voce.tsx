@@ -11,8 +11,6 @@ import {
   ScrollView,
   Share,
   StyleSheet,
-  Text,
-  TextInput,
   useColorScheme,
   View
 } from 'react-native'
@@ -68,8 +66,11 @@ import {
   Icon,
   INK,
   LIVE,
+  MAX_FONT_SCALE,
   PAPER,
   PillButton,
+  Text,
+  TextInput,
   Title,
   text,
   useStatusBar
@@ -511,6 +512,7 @@ function Header({
           Bares pra você
         </Text>
         <Animated.Text
+          maxFontSizeMultiplier={MAX_FONT_SCALE}
           key={subtitle}
           entering={SWAP}
           style={[text(12.5, 'Regular', 1.3), { color: palette.muted }]}

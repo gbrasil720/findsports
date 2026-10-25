@@ -7,8 +7,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
-  TextInput,
   useWindowDimensions,
   View
 } from 'react-native'
@@ -32,6 +30,8 @@ import {
   INK,
   LIVE,
   PAPER,
+  Text,
+  TextInput,
   text,
   useStatusBar
 } from '@/components/ui'

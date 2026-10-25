@@ -1,14 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
-import {
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View
-} from 'react-native'
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import MapView from 'react-native-maps'
 import Animated, {
@@ -38,6 +31,7 @@ import {
   INK,
   LIVE,
   PAPER,
+  Text,
   text,
   useStatusBar
 } from '@/components/ui'

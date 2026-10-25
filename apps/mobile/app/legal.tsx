@@ -14,7 +14,6 @@ import {
   ScrollView,
   Share,
   StyleSheet,
-  Text,
   useColorScheme,
   View
 } from 'react-native'
@@ -40,6 +39,7 @@ import {
   LIVE,
   PAPER,
   SUB,
+  Text,
   Title,
   text,
   themed,

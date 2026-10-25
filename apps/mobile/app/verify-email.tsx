@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { ErrorText, Float, haptic, POP_LATE } from '@/components/motion'
 import { useTurnstile } from '@/components/turnstile'
@@ -21,6 +21,7 @@ import {
   PAPER,
   Screen,
   SUB,
+  Text,
   TextLink,
   Title,
   text,

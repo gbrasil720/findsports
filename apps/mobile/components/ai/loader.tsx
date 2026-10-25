@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from 'react'
-import { StyleSheet, Text, type TextStyle, View } from 'react-native'
+import { StyleSheet, type TextStyle, View } from 'react-native'
 import Animated, {
   Easing,
   ReduceMotion,
@@ -19,7 +19,7 @@ import Svg, {
   Stop,
   Text as SvgText
 } from 'react-native-svg'
-import { text } from '@/components/ui'
+import { Text, text } from '@/components/ui'
 import type { AiPalette } from './theme'
 
 /*

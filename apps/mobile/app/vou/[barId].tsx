@@ -2,7 +2,7 @@ import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card, OfferCard } from '@/components/card'
@@ -17,6 +17,7 @@ import {
   LIVE,
   PAPER,
   PillButton,
+  Text,
   TextLink,
   text
 } from '@/components/ui'

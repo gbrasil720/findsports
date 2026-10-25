@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, Redirect } from 'expo-router'
-import { Pressable, Text, View } from 'react-native'
+import { Pressable, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useStatusBar } from '@/components/ui'
+import { Text, useStatusBar } from '@/components/ui'
 import { authClient } from '@/lib/auth-client'
 import { trpc } from '@/lib/trpc'
 

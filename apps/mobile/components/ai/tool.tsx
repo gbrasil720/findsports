@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 import Animated, {
   FadeIn,
   FadeOut,
@@ -7,7 +7,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import Svg, { Line } from 'react-native-svg'
 import { EASE } from '@/components/motion'
-import { ACID, Icon, INK, LIVE, PAPER, text } from '@/components/ui'
+import { ACID, Icon, INK, LIVE, PAPER, Text, text } from '@/components/ui'
 import type { Tool } from '@/lib/ai-chat'
 import { Shimmer, Spinner } from './loader'
 import type { AiPalette } from './theme'

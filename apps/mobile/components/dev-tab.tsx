@@ -4,7 +4,8 @@ import {
   usePathname,
   useRouter
 } from 'expo-router'
-import { Pressable, StyleSheet, Text } from 'react-native'
+import { Pressable, StyleSheet } from 'react-native'
+import { Text } from '@/components/ui'
 
 /*
  * A aba "DEV" na borda direita, só em desenvolvimento. Tocar abre o

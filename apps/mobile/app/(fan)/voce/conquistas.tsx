@@ -8,7 +8,6 @@ import {
   ScrollView,
   Share,
   StyleSheet,
-  Text,
   useWindowDimensions,
   View
 } from 'react-native'
@@ -22,6 +21,7 @@ import {
   GlassRound,
   Icon,
   PillButton,
+  Text,
   Title,
   text,
   usePullRefresh,

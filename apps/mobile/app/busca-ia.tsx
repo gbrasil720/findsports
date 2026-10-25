@@ -11,7 +11,6 @@ import {
   ScrollView,
   Share,
   StyleSheet,
-  Text,
   type TextInput,
   View
 } from 'react-native'
@@ -45,7 +44,7 @@ import { DoneLine, ToolCard } from '@/components/ai/tool'
 import { Chip, dayLabel } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { EASE, haptic, popFrom, SWAP } from '@/components/motion'
-import { text, useStatusBar } from '@/components/ui'
+import { Text, text, useStatusBar } from '@/components/ui'
 import {
   applyEvent,
   barsFound,
