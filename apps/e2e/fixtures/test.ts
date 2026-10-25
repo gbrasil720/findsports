@@ -16,6 +16,10 @@ export async function answerCookieConsent(context: BrowserContext) {
   })
 }
 
+// "Hydration failed…" quando o React refaz a árvore; "…didn't match the
+// client properties" quando só um atributo difere e o HTML fica como veio.
+const HYDRATION_MISMATCH = /Hydration failed|didn't match the client properties/
+
 type Options = {
   /** `pending`: o teste é sobre o aviso e quer vê-lo. */
   cookieConsent: 'answered' | 'pending'
@@ -49,7 +53,9 @@ export const test = base.extend<Options>({
    * e clicar faz submit nativo (POST, WEB-189) em vez do envio do app.
    *
    * E falha o teste se o React acusar "Hydration failed" na página (WEB-196):
-   * HTML do servidor diferente do primeiro render do cliente.
+   * HTML do servidor diferente do primeiro render do cliente. Atributo
+   * diferente (um `href`, uma classe) não derruba a hidratação, e o React só
+   * avisa no console sem corrigir o HTML: conta também (WEB-472).
    */
   page: async ({ page }, use) => {
     const goto = page.goto.bind(page)
@@ -60,7 +66,7 @@ export const test = base.extend<Options>({
     }
     const hydrationErrors: string[] = []
     const record = (text: string) => {
-      if (text.includes('Hydration failed')) hydrationErrors.push(text)
+      if (HYDRATION_MISMATCH.test(text)) hydrationErrors.push(text)
     }
     page.on('console', (msg) => record(msg.text()))
     page.on('pageerror', (error) => record(error.message))
