@@ -1,3 +1,4 @@
+import { onlineManager } from '@tanstack/react-query'
 import { type Href, useLocalSearchParams, useRouter } from 'expo-router'
 import { DevSettings, Pressable, StyleSheet, Text, View } from 'react-native'
 import { BackButton, INK, MUTED, Screen, Title, text } from '@/components/ui'
@@ -304,6 +305,13 @@ export default function Dev() {
           onPress={() => open(current)}
         />
       ) : null}
+      {/* Sem rede de mentira (WEB-460): o React Query pausa consultas e
+          mutations e a pílula aparece; tocar de novo volta. Para a rede
+          que falha de verdade, derrube o servidor do web. */}
+      <Row
+        item={{ code: '⌁', label: 'Simular sem rede (liga e desliga)' }}
+        onPress={() => onlineManager.setOnline(!onlineManager.isOnline())}
+      />
       {SECTIONS.map((section) => (
         <View key={section.title} style={{ gap: 8 }}>
           <Text style={[text(12, 'Bold'), { color: MUTED }]}>
