@@ -23,6 +23,16 @@ const ICONS = {
   check: (c: string) => (
     <path d="m4.2 12.4 1.8-1.8 4 4 8-8 1.8 1.8-9.8 9.8z" style={{ fill: c }} />
   ),
+  people: (c: string) => (
+    <>
+      <g style={{ fill: c }} opacity={0.3}>
+        <circle cx={16.5} cy={8} r={3.4} />
+        <path d="M12.5 20a5 5 0 0 1 9.5-1.8V20z" />
+      </g>
+      <circle cx={9} cy={8} r={4} style={{ fill: c }} />
+      <path d="M2 20.5a7 7 0 0 1 14 0z" style={{ fill: c }} />
+    </>
+  ),
   share: (c: string) => (
     <>
       <path

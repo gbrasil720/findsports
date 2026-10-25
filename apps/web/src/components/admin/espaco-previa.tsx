@@ -1,4 +1,5 @@
 import { AMENITIES } from '@findsports_oficial/api/lib/amenities'
+import { ATTENDANCE_DISPLAY_FLOOR } from '@findsports_oficial/api/lib/attendance-floor'
 import { resolveEventScreen } from '@findsports_oficial/api/lib/event-screen'
 import {
   groupOpeningHours,
@@ -60,6 +61,11 @@ type Props = {
   gastoCents: number | null
   /** O bar tem coordenadas: "Onde fica" aparece. */
   localizado: boolean
+  /**
+   * Quantos marcaram "Vou assistir aqui" em cada jogo (`barReservations.going`).
+   * Só o Elite recebe a contagem; `null` nos outros planos ou carregando.
+   */
+  presencas: Record<string, number> | null
   now: Date
 }
 
@@ -86,8 +92,9 @@ const LARGURA = 390
  * "Como o torcedor vê": a página do bar no app (`app/bar/[id].tsx`), o card
  * da lista do Explorar e a gota do mapa, montados do rascunho com as medidas,
  * cores e ícones do app, e no tema do sistema, como ele. Não agem: são só
- * desenho. Fica de fora o que o painel não tem como saber: a distância, quem
- * vai ("34 vão") e se o torcedor já marcou ("Vou", "Você vai").
+ * desenho. Fica de fora o que o painel não tem como saber: a distância, as
+ * iniciais e os amigos de quem vai, e se o torcedor já marcou ("Vou", "Você
+ * vai"). "N vão" só no Elite, a partir do piso, como o torcedor vê.
  */
 export function EspacoPrevia(props: Props) {
   const [aba, setAba] = useState<Aba>('pagina')
@@ -472,12 +479,16 @@ function Ingresso({
   photoUrl,
   elite,
   nota,
+  presencas,
   now,
   nome,
   jogos,
   aoVivo
 }: Visto) {
   const jogo = jogos[0]
+  // "34 vão" (`Going` do app), do piso para cima; sem as iniciais, que no app
+  // são de quem marcou por último, e o ícone toma o lugar delas.
+  const vao = jogo ? (presencas?.[jogo.id] ?? 0) : 0
   const [sombra, desvio] = aoVivo
     ? ['var(--a-live-shadow)', 5]
     : elite
@@ -583,6 +594,14 @@ function Ingresso({
               ) : null}
             </div>
           </div>
+          {vao >= ATTENDANCE_DISPLAY_FLOOR ? (
+            <span className="flex flex-none items-center gap-[5px]">
+              <IconeDoApp nome="people" tamanho={17} cor="var(--a-ink)" />
+              <span style={texto(12.5, 600, 1.2)}>
+                {vao.toLocaleString('pt-BR')} vão
+              </span>
+            </span>
+          ) : null}
         </div>
       </div>
     </div>
