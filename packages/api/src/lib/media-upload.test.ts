@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import { PHOTO_MAX_BYTES, photoPathname } from './blob-photo'
 import {
   deleteAvatar,
+  deleteBarGalleryPhoto,
   deleteBarPhoto,
   MediaUploadError,
   signMediaUpload
@@ -192,5 +193,58 @@ describe('remoção de foto no R2 (WEB-320)', () => {
       )
     ).toBe(503)
     expect(pedidos).toHaveLength(0)
+  })
+
+  describe('foto da galeria (WEB-439)', () => {
+    const FOTO =
+      'https://media.onside.sh/bars/bar-123/gallery/0b8e1c52-3f4a-4c1e-9d2b-7a6f5e4d3c2b?v=1'
+    const COM_FOTO = { ...BAR, galleryPhotos: [FOTO] }
+    const statusDaGaleria = (
+      ...args: Parameters<typeof deleteBarGalleryPhoto>
+    ) => statusDe(deleteBarGalleryPhoto(...args))
+
+    it('apaga a chave da foto que está na galeria do bar da sessão', async () => {
+      expect(await statusDaGaleria(DONO, COM_FOTO, FOTO, CONFIG)).toBe(204)
+      const [pedido] = pedidos as [Request]
+      expect(pedido.method).toBe('DELETE')
+      expect(pedido.url).toBe(
+        'https://conta123.r2.cloudflarestorage.com/onside-media/bars/bar-123/gallery/0b8e1c52-3f4a-4c1e-9d2b-7a6f5e4d3c2b'
+      )
+    })
+
+    it('foto fora da galeria, bar de outro dono ou sem sessão não tocam no bucket', async () => {
+      const capa = 'https://media.onside.sh/bars/bar-123/photo'
+      expect(
+        await statusDaGaleria(
+          DONO,
+          { ...BAR, galleryPhotos: [capa] },
+          capa,
+          CONFIG
+        )
+      ).toBe(404)
+      expect(
+        await statusDaGaleria(DONO, { ...BAR, galleryPhotos: [] }, FOTO, CONFIG)
+      ).toBe(404)
+      expect(
+        await statusDaGaleria(
+          DONO,
+          { ...COM_FOTO, userId: 'outro-dono' },
+          FOTO,
+          CONFIG
+        )
+      ).toBe(403)
+      expect(await statusDaGaleria(null, COM_FOTO, FOTO, CONFIG)).toBe(401)
+      expect(pedidos).toHaveLength(0)
+    })
+
+    it('sem as variáveis do R2 responde 503, como a capa', async () => {
+      expect(
+        await statusDaGaleria(DONO, COM_FOTO, FOTO, {
+          ...CONFIG,
+          CF_ACCOUNT_ID: undefined
+        })
+      ).toBe(503)
+      expect(pedidos).toHaveLength(0)
+    })
   })
 })
