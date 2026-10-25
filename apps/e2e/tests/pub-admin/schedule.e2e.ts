@@ -2,7 +2,11 @@ import type { Page } from '@playwright/test'
 import { signIn } from '../../fixtures/auth'
 import { insert, query } from '../../fixtures/db'
 import { createEvent, createTicket, soccerSportId } from '../../fixtures/going'
-import { painelLink } from '../../fixtures/painel'
+import {
+  LARGURAS_CELULAR,
+  painelLink,
+  vazamentoLateral
+} from '../../fixtures/painel'
 import { createPub, type PubOptions } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
@@ -500,4 +504,39 @@ test('salva um jogo em rascunho, fora do perfil, e publica depois', async ({
 
   await page.goto(`/pub/${barId}`)
   await expect(page.getByText('Rascunho E2E').first()).toBeVisible()
+})
+
+test('no celular a linha do jogo não espreme o nome, e nada rola de lado', async ({
+  page
+}) => {
+  const pub = await openSchedule(page)
+  const { eventId } = await createEvent(pub.barId, {
+    startsAt: new Date(Date.now() + 3 * 3_600_000),
+    championship: 'Copa Libertadores da América'
+  })
+  await query('UPDATE event SET participant_free_text = $2 WHERE id = $1', [
+    eventId,
+    'São Paulo × Red Bull Bragantino'
+  ])
+  await gotoSchedule(page)
+  const linha = page
+    .getByRole('listitem')
+    .filter({ hasText: 'Red Bull Bragantino' })
+    .getByRole('button')
+
+  for (const largura of [...LARGURAS_CELULAR, 360]) {
+    await page.setViewportSize({ width: largura, height: 800 })
+    expect(await vazamentoLateral(page), `${largura} px`).toEqual([])
+    const [caixaLinha, caixaNome, caixaHora] = await Promise.all([
+      linha.boundingBox(),
+      linha.locator('b').boundingBox(),
+      linha.getByText(/^\d\d:\d\d$/).boundingBox()
+    ])
+    // O nome ocupa quase a linha toda, embaixo da hora; antes cabia uma
+    // palavra por linha numa coluna de ~100 px.
+    expect(caixaNome?.width ?? 0).toBeGreaterThan(
+      (caixaLinha?.width ?? 0) * 0.6
+    )
+    expect(caixaNome?.y ?? 0).toBeGreaterThan(caixaHora?.y ?? 0)
+  }
 })

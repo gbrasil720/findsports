@@ -521,6 +521,8 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
+  /* Sem isto a caixa fica do tamanho da maior ação e passa da tela estreita. */
+  min-width: 0;
 }
 
 .painel .painel-hd {
