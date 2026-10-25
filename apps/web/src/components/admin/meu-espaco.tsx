@@ -781,7 +781,7 @@ function Fotos({
                   aria-label={`Mover a foto ${i + 1} para antes`}
                   onClick={() => mover(i, i - 1)}
                   disabled={ocupado || i === 0}
-                  className={BOTAO_NA_FOTO}
+                  className={`min-w-8 ${BOTAO_NA_FOTO}`}
                 >
                   ‹
                 </button>
@@ -790,7 +790,7 @@ function Fotos({
                   aria-label={`Mover a foto ${i + 1} para depois`}
                   onClick={() => mover(i, i + 1)}
                   disabled={ocupado || i === fotos.length - 1}
-                  className={BOTAO_NA_FOTO}
+                  className={`min-w-8 ${BOTAO_NA_FOTO}`}
                 >
                   ›
                 </button>
