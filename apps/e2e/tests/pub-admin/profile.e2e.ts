@@ -99,7 +99,7 @@ test('Descartar volta ao que está gravado, sem salvar', async ({ page }) => {
   await nome.fill('Outro nome')
   // A prévia mostra o rascunho antes de salvar.
   await expect(
-    page.getByRole('img', { name: /Prévia da página de Outro nome/ })
+    page.getByRole('region', { name: /Prévia da página de Outro nome/ })
   ).toBeVisible()
   await page.getByRole('button', { name: 'Descartar' }).click()
 
@@ -447,7 +447,7 @@ test('edita nome, telefone, características e telas, e confirma o WhatsApp', as
   expect((await save(page)).ok()).toBe(true)
 
   await expect(
-    page.getByRole('img', { name: /Prévia da página de Bar Renomeado E2E/ })
+    page.getByRole('region', { name: /Prévia da página de Bar Renomeado E2E/ })
   ).toBeVisible()
   const [bar] = await query(
     `SELECT name, phone, amenities, screen_count, phone_accepts_whatsapp
@@ -623,9 +623,9 @@ test('Elite salva cardápio, preço médio e oferta num "Salvar" só', async ({
   const offer = page.getByRole('region', { name: 'Oferta da casa' })
   await offer.getByLabel('Oferta da casa').fill('Chope em dobro no intervalo')
   // A prévia do app mostra a oferta antes de salvar.
-  await expect(page.getByRole('img', { name: /Prévia/ })).toContainText(
-    'Chope em dobro no intervalo'
-  )
+  await expect(
+    page.getByRole('region', { name: /Prévia da página/ })
+  ).toContainText('Chope em dobro no intervalo')
   expect((await save(page, /pub\.updateHouseOffer/)).ok()).toBe(true)
   await expect(page.getByText('Alterações salvas.')).toBeVisible()
 
@@ -669,9 +669,11 @@ test('avaliações e prévia de como o torcedor vê', async ({ page }) => {
   await expect(ratings).toContainText('Telão')
   await expect(ratings).toContainText('Som do jogo')
 
-  const preview = page.getByRole('img', { name: /Prévia da página/ })
+  const preview = page.getByRole('region', { name: /Prévia da página/ })
   await expect(preview).toContainText(`Bar E2E ${pub.barId.slice(0, 8)}`)
-  await expect(preview).toContainText('Vou assistir aqui')
+  // Só jogo passado: como no app, sem "Vou assistir aqui".
+  await expect(preview).toContainText('Nenhum jogo marcado por enquanto.')
+  await expect(preview).not.toContainText('Vou assistir aqui')
   // Elite em dia: o selo aparece como para o torcedor.
   await expect(preview).toContainText('Elite')
 })
@@ -724,6 +726,6 @@ test('prévia em Card e Mapa: o card da lista e a gota do app (WEB-440)', async 
 
   await abas.getByRole('button', { name: 'Página' }).click()
   await expect(
-    page.getByRole('img', { name: /Prévia da página de Bar do Rascunho/ })
+    page.getByRole('region', { name: /Prévia da página de Bar do Rascunho/ })
   ).not.toContainText('km')
 })
