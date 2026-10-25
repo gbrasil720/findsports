@@ -147,6 +147,32 @@ test.describe('callbackUrl do login', () => {
     })
   }
 
+  // WEB-472: o link "Cadastrar meu bar" leva o destino adiante igual no HTML
+  // do servidor e depois da hidratação. Com o absoluto, o servidor comparava
+  // com uma origem fictícia e mandava `/signup` puro; o `page` da suíte
+  // também falha se o React avisar de atributo diferente.
+  for (const callback of ['/admin/jogos', 'BASE/admin/jogos']) {
+    test(`"Cadastrar meu bar" leva o callbackUrl no SSR e no navegador: ${callback}`, async ({
+      page,
+      request,
+      baseURL
+    }) => {
+      const login = `/login?callbackUrl=${encodeURIComponent(
+        callback.replace('BASE', baseURL ?? '')
+      )}`
+      const esperado = '/signup?callbackUrl=%2Fadmin%2Fjogos'
+
+      const html = await (await request.get(login)).text()
+      const ssr = html.match(/<a [^>]*href="([^"]*)"[^>]*>Cadastrar meu bar</)
+      expect(ssr?.[1]).toBe(esperado)
+
+      await page.goto(login)
+      await expect(
+        page.getByRole('link', { name: 'Cadastrar meu bar' })
+      ).toHaveAttribute('href', esperado)
+    })
+  }
+
   test('torcedor que entra pela tela vai à página do app', async ({ page }) => {
     await loginWithForm(page, await createUser())
     await expect(page).toHaveURL(/\/torcedor$/)
