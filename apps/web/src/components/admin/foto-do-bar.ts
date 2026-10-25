@@ -12,6 +12,11 @@ type Options = {
   onUploadSuccess: (url: string) => Promise<void>
   /** Depois que o servidor apagou a foto: recarrega o bar. */
   onRemoveSuccess: () => Promise<unknown>
+  /**
+   * Foto da galeria do ambiente (WEB-439), não a capa: a mesma rota com
+   * `?galeria`, e `remover` recebe a URL da foto.
+   */
+  galeria?: boolean
 }
 
 /**
@@ -20,7 +25,11 @@ type Options = {
  *
  * `inputProps` vai num `<input type="file">` escondido; `escolher` o abre.
  */
-export function useFotoDoBar({ onUploadSuccess, onRemoveSuccess }: Options) {
+export function useFotoDoBar({
+  onUploadSuccess,
+  onRemoveSuccess,
+  galeria = false
+}: Options) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
@@ -52,7 +61,12 @@ export function useFotoDoBar({ onUploadSuccess, onRemoveSuccess }: Options) {
 
     setEnviando(true)
     try {
-      await onUploadSuccess(await uploadMedia('/api/bar/photo', file))
+      await onUploadSuccess(
+        await uploadMedia(
+          galeria ? '/api/bar/photo?galeria' : '/api/bar/photo',
+          file
+        )
+      )
     } catch (error) {
       setErro('Erro ao fazer upload. Tente novamente.')
       console.error(error)
@@ -62,13 +76,24 @@ export function useFotoDoBar({ onUploadSuccess, onRemoveSuccess }: Options) {
     }
   }
 
-  const remover = async () => {
-    if (!window.confirm('Remover a foto do bar?')) return
+  const remover = async (url = '') => {
+    if (
+      !window.confirm(
+        galeria ? 'Apagar esta foto da galeria?' : 'Remover a foto do bar?'
+      )
+    ) {
+      return
+    }
     setErro(null)
     setEnviando(true)
     try {
       // A rota apaga o arquivo e zera a referência do bar da sessão.
-      const removed = await fetch('/api/bar/photo', { method: 'DELETE' })
+      const removed = await fetch(
+        galeria
+          ? `/api/bar/photo?galeria=${encodeURIComponent(url)}`
+          : '/api/bar/photo',
+        { method: 'DELETE' }
+      )
       if (!removed.ok) throw new Error(`remoção ${removed.status}`)
       await onRemoveSuccess()
     } catch (error) {

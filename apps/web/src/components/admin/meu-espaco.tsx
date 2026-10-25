@@ -11,6 +11,7 @@ import {
 } from '@findsports_oficial/api/lib/bar-profile-validation'
 import { reasonLabel } from '@findsports_oficial/api/lib/rating-reasons'
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
+import { GALLERY_MAX_PHOTOS } from '@findsports_oficial/db/bar-gallery'
 import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
@@ -152,6 +153,20 @@ export function MeuEspaco() {
     },
     onRemoveSuccess: invalidateBar
   })
+  // Galeria do ambiente (WEB-439): mesmo upload da capa, gravada na hora.
+  const addGalleryPhoto = useMutation(
+    trpc.pub.addGalleryPhoto.mutationOptions({ onSuccess: invalidateBar })
+  )
+  const reorderGallery = useMutation(
+    trpc.pub.reorderGallery.mutationOptions({ onSuccess: invalidateBar })
+  )
+  const fotoGaleria = useFotoDoBar({
+    galeria: true,
+    onUploadSuccess: async (url) => {
+      await addGalleryPhoto.mutateAsync({ url })
+    },
+    onRemoveSuccess: invalidateBar
+  })
   // O CEP só preenche o rascunho, como no cadastro: não vai ao servidor.
   const cep = useCep((achado) =>
     setRascunho((prev) => {
@@ -184,6 +199,12 @@ export function MeuEspaco() {
         : { status: 'loading' }
   const cardapio = recursoPago(plan, 'pro')
   const oferta = recursoPago(plan, 'elite')
+  // A galeria é do Pro, como o cardápio. Enquanto a ordem nova grava, ela
+  // já aparece.
+  const galeria = cardapio
+  const fotosDaGaleria = reorderGallery.isPending
+    ? reorderGallery.variables.photos
+    : bar.galleryPhotos
 
   const base = rascunhoDoBar(bar)
   const r = rascunho ?? base
@@ -399,7 +420,24 @@ export function MeuEspaco() {
           </Secao>
 
           <Secao id={SECAO.fotos} titulo="Fotos" icone="photo">
-            <Fotos photoUrl={bar.photoUrl} nome={bar.name} foto={foto} />
+            <Fotos
+              photoUrl={bar.photoUrl}
+              nome={bar.name}
+              foto={foto}
+              galeria={{
+                fotos: fotosDaGaleria,
+                recurso: galeria,
+                foto: fotoGaleria,
+                ordenando: reorderGallery.isPending,
+                ordenar: (photos) => reorderGallery.mutate({ photos }),
+                erroAoOrdenar: reorderGallery.error
+                  ? getUserFacingMessage(
+                      reorderGallery.error,
+                      'Não foi possível mudar a ordem. Tente novamente.'
+                    )
+                  : null
+              }}
+            />
           </Secao>
 
           <Secao id={SECAO.info} titulo="Informações" icone="pin">
@@ -543,6 +581,7 @@ export function MeuEspaco() {
           <EspacoPrevia
             rascunho={r}
             photoUrl={bar.photoUrl}
+            galeria={galeria.status === 'liberado' ? fotosDaGaleria : []}
             elite={oferta.status === 'liberado'}
             events={events.data ? eventList : null}
             nota={profile.data?.rating ?? null}
@@ -655,15 +694,40 @@ function ItemChecklist({ item, acao }: { item: ItemPerfil; acao: ReactNode }) {
   )
 }
 
+type Galeria = {
+  fotos: string[]
+  recurso: RecursoPago
+  foto: ReturnType<typeof useFotoDoBar>
+  ordenando: boolean
+  ordenar: (photos: string[]) => void
+  erroAoOrdenar: string | null
+}
+
+/** O botão claro sobre a foto ("Trocar", setas, "Apagar"). */
+const BOTAO_NA_FOTO =
+  'rounded-[5px] bg-[rgb(250_248_243/92%)] px-2.5 py-[7px] font-bold text-[#12120f] text-[12.5px] disabled:opacity-60'
+
 function Fotos({
   photoUrl,
   nome,
-  foto
+  foto,
+  galeria
 }: {
   photoUrl: string | null
   nome: string
   foto: ReturnType<typeof useFotoDoBar>
+  galeria: Galeria
 }) {
+  const { fotos, recurso } = galeria
+  const ocupado = galeria.foto.enviando || galeria.ordenando
+  const mover = (de: number, para: number) => {
+    const ordem = [...fotos]
+    const [movida] = ordem.splice(de, 1)
+    if (movida === undefined) return
+    ordem.splice(para, 0, movida)
+    galeria.ordenar(ordem)
+  }
+  const erro = foto.erro ?? galeria.foto.erro ?? galeria.erroAoOrdenar
   return (
     <>
       <div className="grid gap-3 sm:grid-cols-[1.6fr_1fr_1fr]">
@@ -686,28 +750,71 @@ function Fotos({
             type="button"
             onClick={foto.escolher}
             disabled={foto.enviando}
-            className="absolute right-2.5 bottom-2.5 rounded-[5px] bg-[rgb(250_248_243/92%)] px-2.5 py-[7px] font-bold text-[#12120f] text-[12.5px] disabled:opacity-60"
+            className={`absolute right-2.5 bottom-2.5 ${BOTAO_NA_FOTO}`}
           >
             {foto.enviando ? 'Enviando…' : photoUrl ? 'Trocar' : 'Adicionar'}
           </button>
         </div>
-        <div
-          aria-hidden="true"
-          className="hidden h-[170px] place-items-center rounded-[6px] bg-[repeating-linear-gradient(135deg,var(--painel-sub)_0_10px,transparent_10px_20px)] sm:grid"
-        >
-          <span className="painel-mono rounded-[3px] bg-[var(--painel-card)] px-2 py-1 font-normal text-[11px] text-[var(--painel-muted)]">
-            foto do ambiente
-          </span>
-        </div>
-        <div
-          aria-disabled="true"
-          className="flex h-[170px] flex-col items-center justify-center gap-1.5 rounded-[6px] border-[1.5px] border-[var(--painel-line2)] border-dashed text-[13px] text-[var(--painel-muted)]"
-        >
-          <Icone nome="photo" tamanho={24} acento="var(--painel-muted)" />
-          Adicionar foto
-          <span className="text-[11.5px]">Galeria · em breve no Pro</span>
-        </div>
+        {fotos.length === 0 ? (
+          <div
+            aria-hidden="true"
+            className="hidden h-[170px] place-items-center rounded-[6px] bg-[repeating-linear-gradient(135deg,var(--painel-sub)_0_10px,transparent_10px_20px)] sm:grid"
+          >
+            <span className="painel-mono rounded-[3px] bg-[var(--painel-card)] px-2 py-1 font-normal text-[11px] text-[var(--painel-muted)]">
+              foto do ambiente
+            </span>
+          </div>
+        ) : (
+          fotos.map((url, i) => (
+            <div
+              key={url}
+              className="relative h-[170px] overflow-hidden rounded-[6px] bg-[var(--painel-sub)]"
+            >
+              <img
+                src={url}
+                alt={`Foto ${i + 1} de ${fotos.length} do ambiente de ${nome}`}
+                className="absolute inset-0 size-full object-cover"
+              />
+              <div className="absolute inset-x-2.5 bottom-2.5 flex gap-1.5">
+                <button
+                  type="button"
+                  aria-label={`Mover a foto ${i + 1} para antes`}
+                  onClick={() => mover(i, i - 1)}
+                  disabled={ocupado || i === 0}
+                  className={BOTAO_NA_FOTO}
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Mover a foto ${i + 1} para depois`}
+                  onClick={() => mover(i, i + 1)}
+                  disabled={ocupado || i === fotos.length - 1}
+                  className={BOTAO_NA_FOTO}
+                >
+                  ›
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Apagar a foto ${i + 1}`}
+                  onClick={() => void galeria.foto.remover(url)}
+                  disabled={ocupado}
+                  className={`ml-auto ${BOTAO_NA_FOTO}`}
+                >
+                  Apagar
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+        <AdicionarNaGaleria galeria={galeria} />
       </div>
+      {recurso.status === 'bloqueado' && fotos.length > 0 ? (
+        <p className="mt-2.5 text-[12.5px] text-[var(--painel-muted)]">
+          As fotos da galeria continuam guardadas, mas não aparecem no perfil
+          até o plano voltar.
+        </p>
+      ) : null}
       {photoUrl ? (
         <button
           type="button"
@@ -718,13 +825,66 @@ function Fotos({
           Remover a capa
         </button>
       ) : null}
-      {foto.erro ? (
+      {erro ? (
         <p role="alert" className="mt-2 text-[13px] text-[var(--painel-live)]">
-          {foto.erro}
+          {erro}
         </p>
       ) : null}
       <input {...foto.inputProps} aria-label="Foto de capa" />
+      <input {...galeria.foto.inputProps} aria-label="Foto da galeria" />
     </>
+  )
+}
+
+/**
+ * O último quadro da galeria: "Adicionar foto" no Pro e no Elite, o caminho
+ * para o plano fora deles, e nada com a galeria cheia.
+ */
+function AdicionarNaGaleria({ galeria }: { galeria: Galeria }) {
+  const { recurso, fotos, foto } = galeria
+  const quadro =
+    'flex h-[170px] flex-col items-center justify-center gap-1.5 rounded-[6px] border-[1.5px] border-[var(--painel-line2)] border-dashed text-[13px] text-[var(--painel-muted)]'
+  const conteudo = (linha: string) => (
+    <>
+      <Icone nome="photo" tamanho={24} acento="var(--painel-muted)" />
+      Adicionar foto
+      <span className="text-[11.5px]">{linha}</span>
+    </>
+  )
+  if (recurso.status === 'bloqueado') {
+    return (
+      <Link
+        to={recurso.link.to}
+        search={recurso.link.to === '/plan' ? { origin: 'admin' } : undefined}
+        className={`${quadro} hover:border-[var(--painel-fg)]`}
+      >
+        {conteudo(
+          recurso.link.to === '/plan'
+            ? 'Galeria · nos planos Pro e Elite'
+            : 'Galeria · regularize a assinatura'
+        )}
+      </Link>
+    )
+  }
+  if (recurso.status !== 'liberado') {
+    return (
+      <div aria-disabled="true" className={quadro}>
+        {conteudo('Galeria')}
+      </div>
+    )
+  }
+  if (fotos.length >= GALLERY_MAX_PHOTOS) return null
+  return (
+    <button
+      type="button"
+      onClick={foto.escolher}
+      disabled={foto.enviando || galeria.ordenando}
+      className={`${quadro} hover:border-[var(--painel-fg)] disabled:opacity-60`}
+    >
+      {foto.enviando
+        ? 'Enviando…'
+        : conteudo(`Galeria · ${fotos.length} de ${GALLERY_MAX_PHOTOS}`)}
+    </button>
   )
 }
 
