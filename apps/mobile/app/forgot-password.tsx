@@ -36,11 +36,14 @@ export default function ForgotPassword() {
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const [failed, setFailed] = useState(false)
+  // Cada falha passageira treme a frase de novo, mesmo igual à anterior.
+  const [tries, setTries] = useState(0)
   const turnstile = useTurnstile()
 
   const submit = async () => {
     if (pending) return
-    setError(null)
+    // Sem rede, a frase fica enquanto tenta de novo: o botão não pula.
+    if (!failed) setError(null)
     if (!email.includes('@')) return setError('Confira o e-mail.')
     setPending(true)
     const result = await settleAuth(
@@ -52,7 +55,9 @@ export default function ForgotPassword() {
     )
     turnstile.reset()
     setPending(false)
-    setFailed(retryable(result.error))
+    const transient = retryable(result.error)
+    setFailed(transient)
+    if (transient) setTries((n) => n + 1)
     if (result.error) {
       setError(
         authErrorMessage(
@@ -91,7 +96,9 @@ export default function ForgotPassword() {
         onSubmitEditing={submit}
       />
       {error ? (
-        <ErrorText style={[text(13.5), { color: LIVE }]}>{error}</ErrorText>
+        <ErrorText key={tries} style={[text(13.5), { color: LIVE }]}>
+          {error}
+        </ErrorText>
       ) : null}
       <BlockButton
         label={phaseLabel(phase, { idle: 'Enviar link', sending: 'Enviando…' })}

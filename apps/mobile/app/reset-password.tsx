@@ -60,12 +60,15 @@ export default function ResetPassword() {
   )
   const [pending, setPending] = useState(false)
   const [failed, setFailed] = useState(false)
+  // Cada falha passageira treme a frase de novo, mesmo igual à anterior.
+  const [tries, setTries] = useState(0)
   const turnstile = useTurnstile()
   const score = passwordScore(password)
 
   const submit = async () => {
     if (pending) return
-    setError(null)
+    // Sem rede, a frase fica enquanto tenta de novo: o botão não pula.
+    if (!failed) setError(null)
     if (!token) return
     if (password.length < MIN_PASSWORD)
       return setError(`A senha precisa de ${MIN_PASSWORD} caracteres ou mais.`)
@@ -74,7 +77,9 @@ export default function ResetPassword() {
     const reset = await settleAuth(
       authClient.resetPassword({ newPassword: password, token })
     )
-    setFailed(retryable(reset.error))
+    const transient = retryable(reset.error)
+    setFailed(transient)
+    if (transient) setTries((n) => n + 1)
     if (reset.error) {
       setPending(false)
       setError(
@@ -174,7 +179,9 @@ export default function ResetPassword() {
         onSubmitEditing={submit}
       />
       {error ? (
-        <ErrorText style={[text(13.5), { color: LIVE }]}>{error}</ErrorText>
+        <ErrorText key={tries} style={[text(13.5), { color: LIVE }]}>
+          {error}
+        </ErrorText>
       ) : null}
       <BlockButton
         label={phaseLabel(phase, {

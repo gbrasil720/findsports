@@ -70,11 +70,14 @@ export default function TwoFactor() {
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const [failed, setFailed] = useState(false)
+  // Cada falha passageira treme a frase de novo, mesmo igual à anterior.
+  const [tries, setTries] = useState(0)
   const boxes = useShake()
 
   const verify = async (value = code) => {
     if (pending) return
-    setError(null)
+    // Sem rede, a frase fica enquanto tenta de novo: o botão não pula.
+    if (!failed) setError(null)
     setPending(true)
     const result = await settleAuth(
       backup
@@ -90,6 +93,7 @@ export default function TwoFactor() {
     setPending(false)
     const transient = retryable(result.error)
     setFailed(transient)
+    if (transient) setTries((n) => n + 1)
     if (result.error) {
       // Código recusado: as caixas tremem e esvaziam para o próximo. Sem
       // rede o código fica, para "Tentar de novo" mandar o mesmo.
@@ -186,7 +190,9 @@ export default function TwoFactor() {
       </Pressable>
 
       {error ? (
-        <ErrorText style={[text(13.5), { color: LIVE }]}>{error}</ErrorText>
+        <ErrorText key={tries} style={[text(13.5), { color: LIVE }]}>
+          {error}
+        </ErrorText>
       ) : null}
       <BlockButton
         label={phaseLabel(phase, {
