@@ -1,6 +1,7 @@
 import { db } from '@findsports_oficial/db'
 import { jobRun } from '@findsports_oficial/db/schema/houdini'
 
+import { sendWeeklyBarNotices } from './bar-notices'
 import { reconcileBarPlans } from './bar-plan-sync'
 import { runScheduledAnalyticsRetention } from './commercial-analytics/retention'
 
@@ -8,7 +9,11 @@ import { runScheduledAnalyticsRetention } from './commercial-analytics/retention
  * As rotinas do cron diário (WEB-389). O Bastidores do Houdini lê o rastro
  * delas em `job_run` e roda qualquer uma na hora pelo mesmo caminho.
  */
-export const JOB_NAMES = ['bar_plans', 'analytics_retention'] as const
+export const JOB_NAMES = [
+  'bar_plans',
+  'analytics_retention',
+  'bar_notices'
+] as const
 export type JobName = (typeof JOB_NAMES)[number]
 export type JobTrigger = 'cron' | 'houdini'
 
@@ -17,7 +22,10 @@ const JOBS: Record<JobName, (trigger: JobTrigger) => Promise<unknown>> = {
   // `analytics_retention_run` tem o próprio registro, que chama de `admin`
   // quem não é o cron.
   analytics_retention: (trigger) =>
-    runScheduledAnalyticsRetention(trigger === 'cron' ? 'cron' : 'admin')
+    runScheduledAnalyticsRetention(trigger === 'cron' ? 'cron' : 'admin'),
+  // Resumo da semana e grade vazia por e-mail (WEB-441). Roda todo dia e só
+  // manda às segundas, depois dos planos: o resumo lê `bar.plan` em dia.
+  bar_notices: () => sendWeeklyBarNotices()
 }
 
 /**
@@ -64,14 +72,18 @@ export function runJob(job: JobName, trigger: JobTrigger) {
 }
 
 /**
- * O que o `scheduled()` do Worker roda. O `finally` garante que uma falha nos
- * planos não pule a retenção, e a falha ainda marca a invocação.
+ * O que o `scheduled()` do Worker roda. Os `finally` garantem que uma falha
+ * numa rotina não pule as seguintes, e a falha ainda marca a invocação.
  */
 export async function runScheduledJobs() {
   try {
     await runJob('bar_plans', 'cron')
   } finally {
-    await runJob('analytics_retention', 'cron')
+    try {
+      await runJob('analytics_retention', 'cron')
+    } finally {
+      await runJob('bar_notices', 'cron')
+    }
   }
 }
 
