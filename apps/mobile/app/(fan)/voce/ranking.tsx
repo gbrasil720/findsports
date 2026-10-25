@@ -190,6 +190,7 @@ export default function Ranking() {
             <BlockButton
               label="Adicionar amigos"
               leading="userplus"
+              leadingAccent={INK}
               onPress={() => router.push('/amigos')}
             />
             <OutlineButton
