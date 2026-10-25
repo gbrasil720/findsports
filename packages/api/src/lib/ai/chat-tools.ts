@@ -9,7 +9,7 @@ import { gameTitle, type TitledGame } from '@findsports_oficial/db/game-title'
 
 import type { Context } from '../../context'
 import { pubsRouter } from '../../routers/pubs'
-import { AMENITIES } from '../amenities'
+import { AMENITIES, MAX_AMENITY_FILTER } from '../amenities'
 import { friendIdsOf } from '../friends'
 import type { ChatBar, ChatEvent, Emit, FilterChip } from './events'
 
@@ -109,6 +109,28 @@ function amenityTerm(text: string): AmenityTerm | undefined {
 const amenityTerms = (v: unknown): AmenityTerm[] => [
   ...new Set(strs(v).flatMap((t) => amenityTerm(t) ?? []))
 ]
+
+/**
+ * A busca aceita até `MAX_AMENITY_FILTER` características. Pedido com mais não
+ * é recusado (WEB-458): ficam as de "Para ver o jogo" (telão, som, canais) e
+ * depois as outras na ordem em que o modelo as mandou, que é a do pedido. As
+ * que sobram vão em `left`, e a resposta avisa.
+ */
+export function searchAmenities(v: unknown) {
+  const terms = amenityTerms(v)
+  const watch = (t: AmenityTerm) =>
+    AMENITIES.find((a) => a.id === AMENITY_TERMS[t][0])?.group === 'watch'
+  const kept = new Set(
+    [...terms.filter(watch), ...terms.filter((t) => !watch(t))].slice(
+      0,
+      MAX_AMENITY_FILTER
+    )
+  )
+  return {
+    used: terms.filter((t) => kept.has(t)),
+    left: terms.filter((t) => !kept.has(t))
+  }
+}
 
 /** Ícone do chip: tela e som, céu aberto, bebida e comida; o resto, lugar. */
 const amenityIcon = (id: number): FilterChip['icon'] => {
@@ -336,6 +358,8 @@ export type ChatSearch = {
   args: Omit<SearchArgs, 'cursor' | 'sort'>
   neighborhood: string | null
   chips: FilterChip[]
+  /** Características pedidas que não couberam na busca (WEB-458). */
+  leftOut: string[]
 }
 
 /** Proposta montada nesta mensagem; vira `ai_proposal` depois do `ai_run`. */
@@ -459,7 +483,7 @@ function searchParams(
   hood: string | null
 ): [string, string][] {
   const place = city ?? ctx.placeLabel
-  const terms = amenityTerms(args.caracteristicas)
+  const terms = searchAmenities(args.caracteristicas).used
   const params: [string, string][] = []
   const teams = strs(args.times)
   if (teams.length) params.push(['time', teams.join(', ')])
@@ -559,7 +583,7 @@ async function searchBars(
     }
   }
   const teams = await resolveTeams(ctx.caller, strs(args.times))
-  const terms = amenityTerms(args.caracteristicas)
+  const { used: terms, left } = searchAmenities(args.caracteristicas)
   const championship = str(args.campeonato)
   const searchArgs = {
     lat: origin.lat,
@@ -623,6 +647,7 @@ async function searchBars(
   state.lastSearch = {
     args: searchArgs,
     neighborhood,
+    leftOut: left.map((t) => AMENITY_TERMS[t][1]),
     chips: [
       ...teams.map(
         (t): FilterChip => ({
@@ -677,6 +702,13 @@ async function searchBars(
   return data({
     times_entendidos: teams.map((t) => t.name),
     times_nao_achados: strs(args.times).length > teams.length,
+    // Não filtrou por estas: nenhum bar da lista é garantido com elas. O
+    // aviso ao torcedor sai junto da resposta, sem o modelo repetir.
+    ...(left.length
+      ? {
+          caracteristicas_fora_da_busca: left.map((t) => AMENITY_TERMS[t][1])
+        }
+      : {}),
     bares: bars.map((b) => ({
       id: b.id,
       nome: quoted(b.name),
