@@ -21,6 +21,8 @@ import {
   MIN_PASSWORD,
   PASSWORD_RULES,
   passwordScore,
+  phaseBusy,
+  phaseLabel,
   Screen,
   STONE,
   STRENGTH,
@@ -31,6 +33,7 @@ import {
   text,
   themed
 } from '@/components/ui'
+import { attemptPhase, retryable, settleAuth } from '@/lib/auth-attempt'
 import { authClient, RESET_EMAIL_KEY } from '@/lib/auth-client'
 import { queryClient } from '@/lib/trpc'
 
@@ -56,20 +59,22 @@ export default function ResetPassword() {
       : null
   )
   const [pending, setPending] = useState(false)
+  const [failed, setFailed] = useState(false)
   const turnstile = useTurnstile()
   const score = passwordScore(password)
 
   const submit = async () => {
+    if (pending) return
     setError(null)
     if (!token) return
     if (password.length < MIN_PASSWORD)
       return setError(`A senha precisa de ${MIN_PASSWORD} caracteres ou mais.`)
     if (password !== confirm) return setError('As senhas não são iguais.')
     setPending(true)
-    const reset = await authClient.resetPassword({
-      newPassword: password,
-      token
-    })
+    const reset = await settleAuth(
+      authClient.resetPassword({ newPassword: password, token })
+    )
+    setFailed(retryable(reset.error))
     if (reset.error) {
       setPending(false)
       setError(
@@ -84,11 +89,15 @@ export default function ResetPassword() {
       router.replace({ pathname: '/sign-in', params: { notice: 'reset' } })
       return
     }
-    const signIn = await authClient.signIn.email({
-      email,
-      password,
-      fetchOptions: turnstile.fetchOptions
-    })
+    // A senha já mudou: se a entrada falhar (até sem rede), o login pede de
+    // novo com o aviso.
+    const signIn = await settleAuth(
+      authClient.signIn.email({
+        email,
+        password,
+        fetchOptions: turnstile.fetchOptions
+      })
+    )
     turnstile.reset()
     setPending(false)
     if (signIn.error) {
@@ -105,6 +114,8 @@ export default function ResetPassword() {
     await queryClient.invalidateQueries()
     router.replace('/')
   }
+
+  const phase = attemptPhase(pending, failed)
 
   return (
     <Screen gap={16} top={6}>
@@ -166,8 +177,12 @@ export default function ResetPassword() {
         <ErrorText style={[text(13.5), { color: LIVE }]}>{error}</ErrorText>
       ) : null}
       <BlockButton
-        label={pending ? 'Salvando…' : 'Salvar e entrar'}
-        disabled={pending || !token}
+        label={phaseLabel(phase, {
+          idle: 'Salvar e entrar',
+          sending: 'Salvando…'
+        })}
+        busy={phaseBusy(phase)}
+        disabled={!token}
         onPress={submit}
       />
       {turnstile.widget}
