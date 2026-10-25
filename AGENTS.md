@@ -250,6 +250,12 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
 - **Excluir a conta encerra a assinatura no Stripe** (WEB-336): assinatura viva não
   bloqueia mais a exclusão; o servidor cancela no Stripe e só então apaga a conta, e se
   o Stripe falhar nada é excluído (`packages/auth/src/account-deletion.ts`).
+- **Motivo do cancelamento** (WEB-445): "Por que está cancelando?" grava em
+  `subscription_cancel_reason` ao abrir o portal (intenção). Só quando o webhook vê a
+  assinatura agendada para acabar ou encerrada o último motivo do dia antes do pedido
+  (`canceled_at`) vai a `cancellation_details` no Stripe (`stripe-sync.ts`), sem
+  sobrescrever o que o portal trouxe. Lista e feedback do Stripe em
+  `packages/db/src/cancel-reasons.ts`.
 - **Nome e empresa da assinatura vêm do cadastro, não do checkout** (WEB-328): o
   checkout não pede nenhum dos dois. Antes de a sessão abrir, o cliente do Stripe
   recebe `user.name`, `bar.name` e, se ainda não tiver endereço, o do bar
