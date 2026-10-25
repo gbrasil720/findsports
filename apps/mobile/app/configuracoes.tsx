@@ -4,9 +4,7 @@ import {
   useQuery,
   useQueryClient
 } from '@tanstack/react-query'
-import { File, Paths } from 'expo-file-system'
 import { type Href, useLocalSearchParams, useRouter } from 'expo-router'
-import * as Sharing from 'expo-sharing'
 import { type ReactNode, useState } from 'react'
 import {
   ActivityIndicator,
@@ -48,7 +46,7 @@ import {
 import { searchCenter, teamMark } from '@/lib/explore'
 import { MAP_STYLE } from '@/lib/map-style'
 import { deviceLabel, lastSeen, preferenceSummary } from '@/lib/settings'
-import { queryClient as appQueryClient, trpc } from '@/lib/trpc'
+import { trpc } from '@/lib/trpc'
 
 /*
  * Configurações (11f–11i do design, escolhidas pelo dono em 20/10/2026):
@@ -57,8 +55,8 @@ import { queryClient as appQueryClient, trpc } from '@/lib/trpc'
  * do perfil e da conta no web), com a foto e a verificação em duas etapas
  * (WEB-419). Avisos segue o desenho com os controles desligados e o aviso de
  * "em breve" (o app não manda notificação); em Privacidade, ranking e
- * comunidades ainda não existem, e "Baixar meus dados" entrega o arquivo
- * pelo share sheet.
+ * comunidades ainda não existem, e "Baixar meus dados" manda o arquivo
+ * para o e-mail da conta (WEB-418).
  */
 
 type Tab = 'preferencias' | 'avisos' | 'conta' | 'privacidade'
@@ -911,33 +909,27 @@ function Privacy() {
       }
     })
   )
-  const [exporting, setExporting] = useState(false)
-  const exportData = async () => {
-    if (exporting) return
-    setExporting(true)
-    try {
-      const data = await appQueryClient.fetchQuery({
-        ...trpc.account.exportData.queryOptions(),
-        staleTime: 0
-      })
-      const day = data.exportedAt.slice(0, 10)
-      const file = new File(Paths.cache, `onside-meus-dados-${day}.json`)
-      if (file.exists) file.delete()
-      file.create()
-      file.write(JSON.stringify(data, null, 2))
-      haptic.select()
-      await Sharing.shareAsync(file.uri, {
-        mimeType: 'application/json',
-        UTI: 'public.json',
-        dialogTitle: 'Seus dados da Onside'
-      })
-    } catch {
-      haptic.error()
-      Alert.alert('Não foi possível gerar o arquivo', 'Tente de novo.')
-    } finally {
-      setExporting(false)
-    }
-  }
+  const exportData = useMutation(
+    trpc.account.requestExport.mutationOptions({
+      onSuccess: ({ email }) => {
+        haptic.success()
+        Alert.alert(
+          'Arquivo enviado',
+          `Mandamos seus dados para ${email}. Pode levar alguns minutos para chegar.`
+        )
+      },
+      // A recusa do limite diário já chega escrita para quem usa.
+      onError: (error) => {
+        haptic.error()
+        Alert.alert(
+          'Não foi possível enviar',
+          error.data?.code === 'TOO_MANY_REQUESTS'
+            ? error.message
+            : 'Tente de novo em instantes.'
+        )
+      }
+    })
+  )
   return (
     <>
       <Section icon="pin" title="Onde você foi">
@@ -986,12 +978,14 @@ function Privacy() {
         <Row
           title="Baixar meus dados"
           sub={
-            exporting
-              ? 'Preparando o arquivo…'
-              : 'Arquivo para salvar ou enviar'
+            exportData.isPending
+              ? 'Enviando o arquivo…'
+              : 'Arquivo enviado por e-mail'
           }
           chevron
-          onPress={exportData}
+          onPress={() => {
+            if (!exportData.isPending) exportData.mutate()
+          }}
         />
         <View style={[styles.divider, { backgroundColor: palette.line }]} />
         <ResetSuggestions />
