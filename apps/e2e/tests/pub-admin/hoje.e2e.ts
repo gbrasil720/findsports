@@ -224,3 +224,29 @@ test('A noite arrasta para ver amanhã, com o mouse e pelas setas', async ({
   await linha.press('End')
   await expect(amanha).toBeInViewport()
 })
+
+test('a noite: o AGORA fica abaixo da hora, sem cobrir o rótulo (1j)', async ({
+  page
+}) => {
+  const pub = await createPub()
+  await createEvent(pub.barId, { startsAt: noite('20:45') })
+  await page.clock.setFixedTime(noite('21:52'))
+  await signIn(page, pub.user)
+  await page.goto('/admin')
+
+  const agora = page.getByText('AGORA 21:52')
+  // A primeira: a de amanhã também diz "21h".
+  const hora = page.locator('.hoje-horas span', { hasText: /^21h$/ }).first()
+  for (const largura of [1280, 390]) {
+    await page.setViewportSize({ width: largura, height: 900 })
+    await agora.scrollIntoViewIfNeeded()
+    const [a, h] = await Promise.all([agora.boundingBox(), hora.boundingBox()])
+    if (!a || !h) throw new Error('AGORA ou a hora não apareceu')
+    const cruza =
+      a.x < h.x + h.width &&
+      h.x < a.x + a.width &&
+      a.y < h.y + h.height &&
+      h.y < a.y + a.height
+    expect(cruza, `${largura} px`).toBe(false)
+  }
+})
