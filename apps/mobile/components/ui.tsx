@@ -1335,6 +1335,9 @@ export function authErrorMessage(
       return 'Código de recuperação incorreto.'
   }
   if (error.status === 429) return 'Muitas tentativas. Espere um pouco.'
+  // `status: 0`: o pedido nem chegou ao servidor (`settleAuth`, WEB-469).
+  if (error.status === 0)
+    return 'Não deu para conectar. Confira a internet e tente de novo.'
   return fallback
 }
 
