@@ -17,7 +17,9 @@ import { useTRPC } from '@/utils/trpc'
 import { Badge, Botao, Campo, Chip, EmBreve, Icone, Toggle } from '../painel'
 import {
   DateTimeInput,
+  dateTimeByName,
   formatDateTime,
+  horaDoTermino,
   parseDateTime,
   timeOf
 } from './date-time-input'
@@ -463,7 +465,7 @@ export function EventFormComponent({
           <DateTimeInput
             label="Começa"
             icone
-            porExtenso
+            mostrar={dateTimeByName}
             value={startsText}
             onChange={setStartsText}
             required
@@ -476,6 +478,10 @@ export function EventFormComponent({
           <DateTimeInput
             label="Termina"
             hint="Opcional"
+            mostrar={(fim) =>
+              (starts.value && horaDoTermino(starts.value, fim)) ||
+              dateTimeByName(fim)
+            }
             value={endsText}
             onChange={setEndsText}
             error={

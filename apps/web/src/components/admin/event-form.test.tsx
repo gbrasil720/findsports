@@ -119,13 +119,17 @@ test('campeonato e texto livre acima do limite avisam e travam o salvar', () => 
 })
 
 // WEB-306: o formato não depende mais do idioma do navegador.
-test('data e hora sem campo nativo: "Começa" por extenso, "Termina" com máscara', () => {
+test('data e hora sem campo nativo: "Começa" por extenso, "Termina" só a hora', () => {
   const form = render({ endsAt: '2026-10-10T23:30' })
-  // Fora do foco o "Começa" mostra o dia por extenso (1p); no foco, a máscara.
+  // Fora do foco o "Começa" mostra o dia por extenso e o "Termina" do mesmo
+  // dia só a hora (1p); no foco, a máscara.
   expect(form.fields.map((field) => field.getAttribute('value'))).toEqual([
     'Sáb, 10 out · 21:00',
-    '10/10/2026 23:30'
+    '23:30'
   ])
+  // Em outro dia, que não a madrugada seguinte, o dia aparece.
+  const longe = render({ endsAt: '2026-10-12T23:30' })
+  expect(longe.fields[1]?.getAttribute('value')).toBe('Seg, 12 out · 23:30')
   for (const field of form.fields) {
     expect(field.getAttribute('type')).toBe('text')
     expect(field.getAttribute('inputmode')).toBe('numeric')

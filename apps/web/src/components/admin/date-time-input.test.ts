@@ -3,6 +3,7 @@ import { expect, test } from 'bun:test'
 import {
   dateTimeByName,
   formatDateTime,
+  horaDoTermino,
   maskDateTime,
   parseDateTime
 } from './date-time-input'
@@ -143,4 +144,18 @@ test('incompleto', () => {
 test('por extenso, como o "Começa" do design', () => {
   expect(dateTimeByName('2026-10-17T16:00')).toBe('Sáb, 17 out · 16:00')
   expect(dateTimeByName('2027-01-03T09:05')).toBe('Dom, 3 jan · 09:05')
+})
+
+test('"Termina" só com a hora no mesmo dia ou na madrugada seguinte (1p)', () => {
+  expect(horaDoTermino('2026-10-17T16:00', '2026-10-17T18:00')).toBe('18:00')
+  // Começa 21h, termina 02h: a madrugada do dia seguinte, inclusive na
+  // virada de mês e de ano.
+  expect(horaDoTermino('2026-10-17T21:00', '2026-10-18T02:00')).toBe('02:00')
+  expect(horaDoTermino('2026-10-31T23:00', '2026-11-01T01:30')).toBe('01:30')
+  expect(horaDoTermino('2026-12-31T23:00', '2027-01-01T00:30')).toBe('00:30')
+  // 24 h ou mais, ou outro dia: o dia precisa aparecer.
+  expect(horaDoTermino('2026-10-17T21:00', '2026-10-18T21:00')).toBeNull()
+  expect(horaDoTermino('2026-10-17T21:00', '2026-10-18T23:00')).toBeNull()
+  expect(horaDoTermino('2026-10-17T21:00', '2026-10-20T02:00')).toBeNull()
+  expect(horaDoTermino('', '2026-10-17T18:00')).toBeNull()
 })
