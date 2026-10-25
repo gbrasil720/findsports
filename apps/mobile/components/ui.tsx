@@ -16,12 +16,13 @@ import {
   Linking,
   Platform,
   Pressable,
+  Text as RNText,
   ScrollView,
   type StyleProp,
   StyleSheet,
-  Text,
   TextInput,
   type TextInputProps,
+  type TextProps,
   useColorScheme,
   View,
   type ViewStyle
@@ -104,6 +105,18 @@ const PLACEHOLDER = themed('rgba(85,85,79,.6)', 'rgba(170,169,164,.6)')
 export const DROP = fromTable('drop')
 
 /** Texto em Archivo com a altura de linha 1,4 do design. */
+/**
+ * O maior aumento de fonte que o texto acompanha: 1,35× é o maior "Texto
+ * maior" do iOS fora dos tamanhos de acessibilidade. Nestes a letra chega a
+ * 3,1×, e rótulos em chips, botões e cards de altura fixa saíam cortados.
+ */
+export const MAX_FONT_SCALE = 1.35
+
+/** O `Text` do app, com o teto de `MAX_FONT_SCALE` (um prop próprio vence). */
+export function Text(props: TextProps) {
+  return <RNText maxFontSizeMultiplier={MAX_FONT_SCALE} {...props} />
+}
+
 export const text = (
   fontSize: number,
   weight: 'Regular' | 'SemiBold' | 'Bold' = 'Regular',

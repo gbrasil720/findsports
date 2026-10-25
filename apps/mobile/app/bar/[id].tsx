@@ -15,7 +15,6 @@ import {
   Pressable,
   Share,
   StyleSheet,
-  Text,
   View
 } from 'react-native'
 import MapView from 'react-native-maps'
@@ -54,7 +53,9 @@ import {
   BackButton,
   Icon,
   INK,
+  MAX_FONT_SCALE,
   PAPER,
+  Text,
   text,
   useStatusBar
 } from '@/components/ui'
@@ -422,6 +423,7 @@ export default function BarPage() {
               entering={SWAP}
               style={[text(14, 'Regular', 1.4), styles.info]}
               numberOfLines={2}
+              maxFontSizeMultiplier={MAX_FONT_SCALE}
             >
               {info.join(' · ') || ' '}
             </Animated.Text>

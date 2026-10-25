@@ -9,7 +9,6 @@ import {
   Image,
   Pressable,
   StyleSheet,
-  Text,
   View,
   type ViewStyle
 } from 'react-native'
@@ -23,7 +22,7 @@ import Svg, { Line } from 'react-native-svg'
 import { Glass } from '@/components/glass'
 import { haptic, popFrom, usePressScale } from '@/components/motion'
 import { usePalette } from '@/components/theme'
-import { ACID, Icon, INK, LIVE, PAPER, text } from '@/components/ui'
+import { ACID, Icon, INK, LIVE, PAPER, Text, text } from '@/components/ui'
 import { formatKm, formatTime, isLive, teamMark } from '@/lib/explore'
 
 /*
