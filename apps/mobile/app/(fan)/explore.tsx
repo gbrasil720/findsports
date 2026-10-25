@@ -9,7 +9,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   useWindowDimensions,
   View
 } from 'react-native'
@@ -54,6 +53,7 @@ import {
   INK,
   LIVE,
   PAPER,
+  Text,
   text,
   useStatusBar
 } from '@/components/ui'
@@ -99,6 +99,13 @@ const today = () => brasiliaDay(Date.now())
  * `capture`: esta é a tela que a aba "Você" fotografa para pôr sob o menu.
  * A cópia de reserva da "Você" (antes da primeira foto) não se fotografa.
  */
+/**
+ * Saudação e lugar cabem nos 40 pt do avatar até 1,1×: o cabeçalho tem medida
+ * fixa sobre o mapa (atalhos, folha e câmera contam a partir dele), e acima
+ * disso a segunda linha empurraria o título para cima dos atalhos.
+ */
+const HEAD_FONT_SCALE = 1.1
+
 export default function Explore({ capture = true }: { capture?: boolean }) {
   const router = useRouter()
   const insets = useSafeAreaInsets()
@@ -718,6 +725,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
               <Text
                 style={[text(15, 'SemiBold', 1.3), { color: palette.ink }]}
                 numberOfLines={1}
+                maxFontSizeMultiplier={HEAD_FONT_SCALE}
               >
                 {greeting()}
                 {firstName ? `, ${firstName}` : ''}
@@ -730,6 +738,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
                     { color: palette.muted, flexShrink: 1 }
                   ]}
                   numberOfLines={1}
+                  maxFontSizeMultiplier={HEAD_FONT_SCALE}
                 >
                   {place}
                 </Text>
@@ -766,7 +775,8 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
         </View>
         <Text
           style={[styles.title, { color: palette.ink }]}
-          maxFontSizeMultiplier={1.2}
+          numberOfLines={1}
+          adjustsFontSizeToFit
         >
           ONDE VAI SER <Text style={{ color: palette.live }}>O JOGO?</Text>
         </Text>
