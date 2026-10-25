@@ -2,6 +2,7 @@ import {
   BRASILIA_TIME_ZONE,
   brasiliaDay
 } from '@findsports_oficial/db/event-window'
+import { MAX_AMENITY_FILTER } from '../amenities'
 import {
   type ChatSearch,
   PROPOSAL_TOOLS,
@@ -35,6 +36,20 @@ export const MAX_HISTORY = 6
 export const MAX_MESSAGE_CHARS = 300
 const MAX_REPLY_CHARS = 600
 const CALL_TIMEOUT_MS = 12_000
+
+/**
+ * O aviso das características que a busca deixou de fora (WEB-458), escrito
+ * pelo app a partir do que a ferramenta cortou: o modelo não inventa nem
+ * esquece.
+ */
+export function withLeftOut(text: string, leftOut: string[]) {
+  if (!leftOut.length) return text
+  const list = new Intl.ListFormat('pt-BR').format(
+    leftOut.map((l) => l.toLocaleLowerCase('pt-BR'))
+  )
+  const verb = leftOut.length === 1 ? 'ficou' : 'ficaram'
+  return `${text} A busca filtra até ${MAX_AMENITY_FILTER} características de uma vez: ${verb} de fora ${list}.`
+}
 
 export type ChatTurn = { role: 'user' | 'assistant'; content: string }
 
@@ -278,10 +293,11 @@ export async function converse(
         type: 'bars',
         bars: bars.map((b) => toChatBar(b, deps.now))
       })
-    emit({ type: 'text', text: clean })
+    const final = withLeftOut(clean, deps.state.lastSearch?.leftOut ?? [])
+    emit({ type: 'text', text: final })
     return {
       reply: {
-        text: clean,
+        text: final,
         bars,
         search: deps.state.lastSearch,
         invented,
