@@ -1134,19 +1134,25 @@ html[data-consent] .painel .painel-lateral {
 }
 
 /* ─── Rede (WEB-460) ───
- * A faixa de "sem conexão": pílula de tinta presa no topo, por cima do
- * conteúdo. Entra descendo um pouco e sai mais rápido do que entrou. */
+ * A faixa de "sem conexão": pílula de tinta presa embaixo, por cima do
+ * conteúdo (no topo cobria o título da página). Entra subindo um pouco e
+ * sai mais rápido do que entrou. */
 .painel .painel-faixa-rede {
   position: fixed;
-  top: 14px;
-  left: 50%;
+  bottom: 20px;
+  /* Centrada sem `left: 50%`, que limitava a largura à metade da tela e
+   * quebrava o texto em quatro linhas no celular. */
+  left: 0;
+  right: 0;
   z-index: 60;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 8px;
+  width: max-content;
   max-width: calc(100vw - 32px);
+  margin-inline: auto;
   padding: 9px 16px;
-  border-radius: 999px;
+  border-radius: 20px;
   background: var(--painel-btn-ink-bg);
   color: var(--painel-btn-ink-fg);
   font: 600 13.5px / 1.3 var(--onside-body);
@@ -1154,7 +1160,7 @@ html[data-consent] .painel .painel-lateral {
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
-  transform: translate(-50%, -8px);
+  transform: translateY(8px);
   transition:
     opacity 150ms var(--onside-ease-out),
     transform 150ms var(--onside-ease-out),
@@ -1163,7 +1169,7 @@ html[data-consent] .painel .painel-lateral {
 .painel .painel-faixa-rede[data-visivel="true"] {
   opacity: 1;
   visibility: visible;
-  transform: translate(-50%, 0);
+  transform: none;
   transition:
     opacity 220ms var(--onside-ease-out),
     transform 220ms var(--onside-ease-out);
@@ -1176,9 +1182,8 @@ html[data-consent] .painel .painel-lateral {
   background: var(--painel-live-fill);
 }
 @media (prefers-reduced-motion: reduce) {
-  .painel .painel-faixa-rede,
-  .painel .painel-faixa-rede[data-visivel="true"] {
-    transform: translate(-50%, 0);
+  .painel .painel-faixa-rede {
+    transform: none;
   }
 }
 
