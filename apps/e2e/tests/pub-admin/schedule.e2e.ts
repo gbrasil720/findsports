@@ -312,6 +312,8 @@ test('desliga a lista de quem vai num jogo, avisando quem já marcou', async ({
   expect(
     await query('SELECT 1 FROM attendance WHERE event_id = $1', [eventId])
   ).toHaveLength(1)
+  // A contagem do menu sai junto, sem esperar a próxima consulta.
+  await expect(painelLink(page, 'Quem vai')).not.toContainText('1')
   const fechado = await openGame(page, 'Lista E2E')
   await expect(fechado).toContainText('lista de quem vai desligada')
   await expect(fechado).not.toContainText(ticket.guestName)
