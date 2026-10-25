@@ -212,6 +212,12 @@ test('Dados da nota: razão social, CNPJ e e-mail vão para o bar e para o Strip
   await expect(nota.getByRole('alert')).toHaveText(
     'CNPJ inválido. Confira os números.'
   )
+  // Dígito certo, mas o Stripe recusa (o dublê recusa este): nada é gravado.
+  await cnpj.fill('99.999.999/0001-91')
+  await nota.getByRole('button', { name: 'Salvar' }).click()
+  await expect(nota.getByRole('alert')).toHaveText(
+    'O Stripe não aceitou estes dados. Confira e tente de novo.'
+  )
   await cnpj.fill('11222333000181')
   await nota.getByRole('button', { name: 'Salvar' }).click()
   await expect(nota.getByText('11.222.333/0001-81')).toBeVisible()
@@ -265,7 +271,10 @@ test('Dados da nota: razão social, CNPJ e e-mail vão para o bar e para o Strip
         (call) => call.method === 'POST' && call.path.endsWith('/tax_ids')
       )
       .map((call) => call.body)
-  ).toEqual([{ type: 'br_cnpj', value: '11.222.333/0001-81' }])
+  ).toEqual([
+    { type: 'br_cnpj', value: '99.999.999/0001-91' },
+    { type: 'br_cnpj', value: '11.222.333/0001-81' }
+  ])
 })
 
 // WEB-339: o atalho abre o portal já no cancelamento, em português, pela
