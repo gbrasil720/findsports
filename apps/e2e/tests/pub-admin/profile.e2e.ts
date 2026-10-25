@@ -729,3 +729,28 @@ test('prévia em Card e Mapa: o card da lista e a gota do app (WEB-440)', async 
     page.getByRole('region', { name: /Prévia da página de Bar do Rascunho/ })
   ).not.toContainText('km')
 })
+
+for (const [plano, marcaram, mostra] of [
+  ['elite', 15, true],
+  ['elite', 14, false],
+  ['pro', 15, false]
+] as const) {
+  test(`prévia: "N vão" no ${plano} com ${marcaram} presenças ${mostra ? 'aparece' : 'não aparece'}`, async ({
+    page
+  }) => {
+    const pub = await createPub({ subscription: { plan: plano } })
+    const { eventId } = await createEvent(pub.barId)
+    for (let i = 0; i < marcaram; i++) {
+      const fan = await createUser()
+      await insert('attendance', { user_id: fan.id, event_id: eventId })
+    }
+    await signIn(page, pub.user)
+    await page.goto('/admin/meu-espaco')
+
+    const preview = page.getByRole('region', { name: /Prévia da página/ })
+    await expect(preview).toContainText('Vou assistir aqui')
+    // Só o número: sem as iniciais nem os nomes de quem vai.
+    if (mostra) await expect(preview).toContainText(`${marcaram} vão`)
+    else await expect(preview).not.toContainText('vão')
+  })
+}
