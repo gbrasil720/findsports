@@ -1,3 +1,4 @@
+import { runInBackground } from '@findsports_oficial/auth/background'
 import {
   and,
   db,
@@ -42,6 +43,7 @@ import {
   retireTicket,
   type Tx
 } from './attendance-ticket'
+import { gameFillingDue, notifyGameFilling } from './bar-notices'
 import { issuesCounterCode } from './current-plan'
 import { participantNames } from './game-participants'
 import { getLateEntryWindow } from './reservation-validation'
@@ -158,6 +160,11 @@ export async function setAttendance(
     if (issuesCounterCode(game.bar.subscription ?? null, now)) {
       await issueTicket(tx, userId, eventId, game.bar.houseOffer)
       ticket = await readTicket(tx, userId, eventId)
+    }
+    // "Jogo lotando" (WEB-441): a conta é feita aqui, que já vê esta
+    // marcação; o e-mail sai depois da resposta e grava que saiu.
+    if (await gameFillingDue(eventId, tx)) {
+      runInBackground(notifyGameFilling(eventId))
     }
   } else {
     // O ingresso sai antes da presença: código validado recusa tudo.
