@@ -9,6 +9,7 @@ import { gameTitle, type TitledGame } from '@findsports_oficial/db/game-title'
 
 import type { Context } from '../../context'
 import { pubsRouter } from '../../routers/pubs'
+import { AMENITIES } from '../amenities'
 import { friendIdsOf } from '../friends'
 import type { ChatBar, ChatEvent, Emit, FilterChip } from './events'
 
@@ -44,15 +45,68 @@ export const AMENITY_TERMS = {
   oferta_da_casa: [10, 'Oferta da casa'],
   cozinha_ate_tarde: [11, 'Cozinha até tarde'],
   petiscos: [12, 'Petiscos'],
-  chopp: [13, 'Chopp']
+  chopp: [13, 'Chopp'],
+  pix: [16, 'Pix'],
+  cartao: [17, 'Cartão'],
+  vale_refeicao: [18, 'Vale-refeição'],
+  couvert: [19, 'Couvert'],
+  vegetariano: [20, 'Opção vegetariana'],
+  drinks: [21, 'Drinks'],
+  metro: [22, 'Perto do metrô'],
+  bicicletario: [23, 'Bicicletário']
 } as const satisfies Record<string, readonly [number, string]>
 type AmenityTerm = keyof typeof AMENITY_TERMS
 const AMENITY_LABEL = new Map<number, string>(
   Object.values(AMENITY_TERMS).map(([id, label]) => [id, label])
 )
+
+/**
+ * Do jeito que o torcedor escreve, sem acento nem caixa: o modelo às vezes
+ * repassa o pedido cru ("aceita pix", "VR") em vez do nome da lista.
+ */
+const AMENITY_SYNONYMS: Record<string, AmenityTerm> = {
+  'aceita pix': 'pix',
+  'aceita cartao': 'cartao',
+  'cartao de credito': 'cartao',
+  'cartao de debito': 'cartao',
+  credito: 'cartao',
+  debito: 'cartao',
+  'vale refeicao': 'vale_refeicao',
+  'aceita vale refeicao': 'vale_refeicao',
+  vr: 'vale_refeicao',
+  'aceita vr': 'vale_refeicao',
+  'tem couvert': 'couvert',
+  'cobra couvert': 'couvert',
+  drink: 'drinks',
+  coquetel: 'drinks',
+  coqueteis: 'drinks',
+  vegetariana: 'vegetariano',
+  'opcao vegetariana': 'vegetariano',
+  'perto do metro': 'metro',
+  'estacao de metro': 'metro',
+  bicicleta: 'bicicletario',
+  bike: 'bicicletario',
+  chope: 'chopp'
+}
+
+/** O termo da lista que o texto quer dizer, ou nada. */
+function amenityTerm(text: string): AmenityTerm | undefined {
+  const key = fold(text).replace(/[_-]/g, ' ')
+  const term = key.replace(/ /g, '_')
+  return term in AMENITY_TERMS ? (term as AmenityTerm) : AMENITY_SYNONYMS[key]
+}
+
+/** As características pedidas, já como termos da lista, sem repetir. */
+const amenityTerms = (v: unknown): AmenityTerm[] => [
+  ...new Set(strs(v).flatMap((t) => amenityTerm(t) ?? []))
+]
+
 /** Ícone do chip: tela e som, céu aberto, bebida e comida; o resto, lugar. */
-const amenityIcon = (id: number): FilterChip['icon'] =>
-  id <= 3 ? 'tv' : id <= 5 ? 'sun' : id >= 10 ? 'beer' : 'pin'
+const amenityIcon = (id: number): FilterChip['icon'] => {
+  if (id <= 3) return 'tv'
+  if (id <= 5) return 'sun'
+  return AMENITIES.find((a) => a.id === id)?.group === 'food' ? 'beer' : 'pin'
+}
 
 const fn = (
   name: string,
@@ -106,7 +160,9 @@ export const READ_TOOLS = [
       data: { type: 'string', description: 'AAAA-MM-DD, dia do jogo.' },
       caracteristicas: {
         type: 'array',
-        items: { type: 'string', enum: Object.keys(AMENITY_TERMS) }
+        items: { type: 'string', enum: Object.keys(AMENITY_TERMS) },
+        description:
+          'Do que o torcedor pedir: "aceita pix" = pix; cartão de crédito ou débito = cartao; "VR", "vale refeição" = vale_refeicao; "tem couvert", "cobra couvert" = couvert (nunca para "sem couvert"); "drink", coquetel = drinks; vegetariano = vegetariano; metrô = metro; bicicleta, bike = bicicletario.'
       },
       raio_km: { type: 'integer', minimum: 1, maximum: 50 },
       cidade: {
@@ -394,9 +450,7 @@ function searchParams(
   hood: string | null
 ): [string, string][] {
   const place = city ?? ctx.placeLabel
-  const terms = strs(args.caracteristicas).filter(
-    (t): t is AmenityTerm => t in AMENITY_TERMS
-  )
+  const terms = amenityTerms(args.caracteristicas)
   const params: [string, string][] = []
   const teams = strs(args.times)
   if (teams.length) params.push(['time', teams.join(', ')])
@@ -424,9 +478,7 @@ export function requestTags(name: string, args: Args, now: Date): string[] {
         ...(date && /^\d{4}-\d{2}-\d{2}$/.test(date)
           ? [dayChip(date, now)]
           : []),
-        ...strs(args.caracteristicas).flatMap((t) =>
-          t in AMENITY_TERMS ? [AMENITY_TERMS[t as AmenityTerm][1]] : []
-        ),
+        ...amenityTerms(args.caracteristicas).map((t) => AMENITY_TERMS[t][1]),
         ...(str(args.bairro) ? [str(args.bairro) as string] : []),
         ...(str(args.cidade) ? [str(args.cidade) as string] : [])
       ]
@@ -498,9 +550,7 @@ async function searchBars(
     }
   }
   const teams = await resolveTeams(ctx.caller, strs(args.times))
-  const terms = strs(args.caracteristicas).filter(
-    (t): t is AmenityTerm => t in AMENITY_TERMS
-  )
+  const terms = amenityTerms(args.caracteristicas)
   const championship = str(args.campeonato)
   const searchArgs = {
     lat: origin.lat,
