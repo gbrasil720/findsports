@@ -252,6 +252,11 @@ não exercitar o cache em si — isso fica com o teste unitário
   `localhost` do Vite pode abrir só em `::1`.
 - **Hidratação.** Clique logo depois de um `goto` cru (fora do `test` da suíte)
   pode cair no HTML antes do React.
+- **Componente `lazy`.** `html[data-hydrated]` marca a raiz hidratada, não o
+  que está dentro de um `lazy` (hoje, a faixa da pele no `__root.tsx`): o HTML
+  do servidor fica lá sem handler até o módulo chegar, e o React descarta o
+  clique nesse intervalo. Espere um sinal do próprio componente (a faixa: o
+  relógio sair de "--:--", em `houdini/pessoas.e2e.ts`).
 - **Devtools.** Em `vite dev` o app mostra os botões do TanStack Router e do
   React Query nos cantos de baixo. Se um clique no mobile cair em cima deles,
   role o alvo para a vista antes.
