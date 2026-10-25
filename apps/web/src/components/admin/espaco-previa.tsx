@@ -46,6 +46,8 @@ const LIVE = '#e8320c'
 type Props = {
   rascunho: Rascunho
   photoUrl: string | null
+  /** Galeria do ambiente (WEB-439), já com o plano que a mostra (Pro ou Elite). */
+  galeria: string[]
   /** Elite em dia: selo e oferta da casa, como o torcedor vê. */
   elite: boolean
   /** Jogos do bar; `null` enquanto carregam. */
@@ -737,6 +739,7 @@ function TelaDoApp(visto: Visto) {
   const {
     rascunho,
     photoUrl,
+    galeria,
     elite,
     nota,
     motivos,
@@ -866,6 +869,20 @@ function TelaDoApp(visto: Visto) {
       </div>
 
       <div className="flex flex-col gap-3.5 p-4 pb-[170px]">
+        {galeria.length ? (
+          // A galeria (WEB-439) logo depois da capa, rolando de lado.
+          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none]">
+            {galeria.map((url, i) => (
+              <div
+                key={url}
+                role="img"
+                aria-label={`Foto ${i + 1} de ${galeria.length} do ambiente`}
+                className="h-[112px] w-[150px] flex-none rounded-[6px] border border-[var(--a-ring)] bg-[#2a2a25] bg-center bg-cover"
+                style={{ backgroundImage: `url("${url}")` }}
+              />
+            ))}
+          </div>
+        ) : null}
         {proximo ? (
           <>
             <b style={texto(16, 700)}>
