@@ -290,6 +290,33 @@ test('término antes do início não deixa salvar', async ({ page }) => {
   ).toBeDisabled()
 })
 
+test('"Termina" mostra só a hora na mesma noite e a data inteira para editar (1p)', async ({
+  page
+}) => {
+  await openSchedule(page)
+  await gotoSchedule(page)
+
+  await page.getByRole('button', { name: 'Novo jogo' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Novo jogo' })
+  const termina = dialog.getByLabel('Termina')
+  await dialog.getByLabel('Começa').fill(tomorrowAt(21))
+  await termina.fill(tomorrowAt(23))
+  await termina.blur()
+  await expect(termina).toHaveValue('23:00')
+  // No foco volta a data inteira, que é o que se edita.
+  await termina.focus()
+  await expect(termina).toHaveValue(tomorrowAt(23))
+
+  // A madrugada seguinte também é "a mesma noite".
+  const depois = new Date(Date.now() + 2 * 86_400_000).toLocaleDateString(
+    'pt-BR',
+    { timeZone: 'America/Sao_Paulo' }
+  )
+  await termina.fill(`${depois} 01:30`)
+  await termina.blur()
+  await expect(termina).toHaveValue('01:30')
+})
+
 test('Starter cria até o limite do mês e depois é mandado para os planos', async ({
   page
 }) => {

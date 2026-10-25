@@ -110,6 +110,24 @@ export function dateTimeByName(datetimeLocal: string): string {
   return `${dataCurta(date)} · ${time}`
 }
 
+/**
+ * Só a hora do término ("18:00", como o "Termina" do 1p) quando ele cai no
+ * mesmo dia do início ou na madrugada seguinte (dia seguinte, hora antes da
+ * do início: menos de 24 h de jogo). Fora disso, `null`: o dia precisa
+ * aparecer. Os dois valores são `aaaa-mm-ddThh:mm`.
+ */
+export function horaDoTermino(inicio: string, fim: string): string | null {
+  const [diaInicio = '', horaInicio = ''] = inicio.split('T')
+  const [diaFim = '', horaFim = ''] = fim.split('T')
+  if (!diaInicio || !horaFim) return null
+  if (diaFim === diaInicio) return horaFim
+  const seguinte = new Date(`${diaInicio}T12:00:00Z`)
+  seguinte.setUTCDate(seguinte.getUTCDate() + 1)
+  return diaFim === seguinte.toISOString().slice(0, 10) && horaFim < horaInicio
+    ? horaFim
+    : null
+}
+
 type Props = {
   label: string
   /** Texto com máscara, como está no campo — não o valor convertido. */
@@ -123,10 +141,11 @@ type Props = {
   /** Ícone de calendário à esquerda, como o "Começa" do design. */
   icone?: boolean
   /**
-   * Fora do foco, a data completa aparece por extenso ("Sáb, 17 out ·
-   * 16:00"); no foco, volta a máscara para editar.
+   * Como o valor completo aparece fora do foco ("Sáb, 17 out · 16:00", ou só
+   * "18:00"); no foco volta a máscara inteira, que é o que se edita e o que
+   * o leitor de tela lê ao entrar no campo.
    */
-  porExtenso?: boolean
+  mostrar?: (valor: string) => string
 }
 
 export function DateTimeInput({
@@ -137,7 +156,7 @@ export function DateTimeInput({
   error,
   hint = `Dia, mês, ano e horário de 24 h: ${DATE_TIME_PLACEHOLDER}.`,
   icone = false,
-  porExtenso = false
+  mostrar
 }: Props) {
   const ids = useId()
   const inputId = `${ids}-input`
@@ -148,8 +167,7 @@ export function DateTimeInput({
   const [focused, setFocused] = useState(false)
 
   const { problem, value: parsed } = parseDateTime(value)
-  const shown =
-    porExtenso && !focused && parsed ? dateTimeByName(parsed) : value
+  const shown = mostrar && !focused && parsed ? mostrar(parsed) : value
   const message =
     problem && (problem !== 'incomplete' || left)
       ? PROBLEM_MESSAGE[problem]
