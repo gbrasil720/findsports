@@ -1,14 +1,17 @@
 import * as Location from 'expo-location'
 import { useRouter } from 'expo-router'
 import {
-  Image,
+  Platform,
   Pressable,
   StyleSheet,
   useColorScheme,
+  useWindowDimensions,
   View
 } from 'react-native'
+import MapView from 'react-native-maps'
 import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { MeDot, RadiusCircle } from '@/components/explore'
 import { EASE, haptic } from '@/components/motion'
 import { useOnboarding } from '@/components/onboarding'
 import {
@@ -27,6 +30,8 @@ import {
   themed,
   useStatusBar
 } from '@/components/ui'
+import { SAO_PAULO } from '@/lib/explore'
+import { MAP_STYLE } from '@/lib/map-style'
 
 /*
  * 4m, "Localização": o pedido do sistema, explicado antes. Só aparece se o
@@ -37,6 +42,10 @@ import {
 // A folha sobe como as do iOS; o mapa atrás só escurece.
 const SHEET_IN = SlideInDown.duration(380).easing(EASE)
 const DIM_IN = FadeIn.duration(260)
+// O raio em volta de você, acima da folha: centro a 300 do topo, 230 de
+// diâmetro, como no design.
+const RING_Y = 300
+const RING = 230
 
 export default function LocationAsk() {
   const router = useRouter()
@@ -44,7 +53,15 @@ export default function LocationAsk() {
   const { choices } = useOnboarding()
   useStatusBar('auto')
   const dark = useColorScheme() === 'dark'
+  const { width, height: screen } = useWindowDimensions()
   const center = choices.city ? `de ${choices.city.name}` : 'da sua cidade'
+  const { lat, lng } = choices.city ?? SAO_PAULO
+  // O Apple Maps encaixa a região na área segura, não na tela toda: a conta
+  // usa a altura e o meio dela. Graus de latitude nessa altura para o raio
+  // sair com `RING`; o centro do mapa desce para a cidade ficar em `RING_Y`.
+  const height = screen - insets.top - insets.bottom
+  const middle = insets.top + height / 2
+  const span = ((choices.radius * 2) / 111) * (height / RING)
 
   const proceed = () => router.replace('/onboarding/review')
   const allow = async () => {
@@ -55,20 +72,36 @@ export default function LocationAsk() {
 
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
-      <Image
-        source={
-          dark
-            ? require('../../assets/images/intro/map-dark.jpg')
-            : require('../../assets/images/intro/map.jpg')
-        }
-        style={{ width: '100%', height: '100%', position: 'absolute' }}
-        resizeMode="cover"
-      />
+      {/* O mapa do Explorar, parado, com o raio escolhido na distância. */}
+      <MapView
+        style={StyleSheet.absoluteFill}
+        initialRegion={{
+          latitude: lat - ((middle - RING_Y) / height) * span,
+          longitude: lng,
+          latitudeDelta: span,
+          longitudeDelta: (span * width) / height
+        }}
+        mapType={Platform.OS === 'ios' ? 'mutedStandard' : 'standard'}
+        customMapStyle={dark ? MAP_STYLE.dark : MAP_STYLE.light}
+        userInterfaceStyle={dark ? 'dark' : 'light'}
+        showsPointsOfInterests={false}
+        showsCompass={false}
+        scrollEnabled={false}
+        zoomEnabled={false}
+        rotateEnabled={false}
+        pitchEnabled={false}
+        toolbarEnabled={false}
+        pointerEvents="none"
+      >
+        <RadiusCircle
+          center={{ latitude: lat, longitude: lng }}
+          km={choices.radius}
+          dark={dark}
+        />
+      </MapView>
       <Animated.View entering={DIM_IN} style={styles.dim} />
-      <View style={styles.area}>
-        <View style={styles.ring} />
-        <View style={styles.halo} />
-        <View style={styles.you} />
+      <View style={styles.area} pointerEvents="none">
+        <MeDot />
       </View>
       <Animated.View
         entering={SHEET_IN}
@@ -127,37 +160,12 @@ const styles = StyleSheet.create({
   dim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(18,18,15,.28)' },
   area: {
     position: 'absolute',
-    top: 185,
+    top: RING_Y - RING / 2,
     alignSelf: 'center',
-    width: 230,
-    height: 230,
+    width: RING,
+    height: RING,
     alignItems: 'center',
     justifyContent: 'center'
-  },
-  ring: {
-    position: 'absolute',
-    width: 230,
-    height: 230,
-    borderRadius: 115,
-    borderWidth: 2,
-    borderColor: themed('rgba(18,18,15,.6)', 'rgba(241,238,230,.6)'),
-    backgroundColor: 'rgba(201,241,53,.12)'
-  },
-  // Os dois anéis acid em volta do ponto, como no design.
-  halo: {
-    position: 'absolute',
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(201,241,53,.18)'
-  },
-  you: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 3,
-    borderColor: INK,
-    backgroundColor: ACID
   },
   sheet: {
     position: 'absolute',
