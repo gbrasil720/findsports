@@ -248,9 +248,7 @@ export const barNotice = pgTable(
       enum: ['weekly_summary', 'empty_schedule', 'game_filling']
     }).notNull(),
     ref: text('ref').notNull(),
-    sentAt: timestamp('sent_at', { withTimezone: true })
-      .defaultNow()
-      .notNull()
+    sentAt: timestamp('sent_at', { withTimezone: true }).defaultNow().notNull()
   },
   (table) => [primaryKey({ columns: [table.barId, table.kind, table.ref] })]
 )
