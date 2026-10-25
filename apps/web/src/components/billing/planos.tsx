@@ -15,7 +15,7 @@ import { BotaoIcone } from '@/components/painel'
 
 /*
  * Os estilos estão em `planos.css`, ligado no `head` de cada rota que usa estas
- * peças (`/plan`, `/plan/confirmed`, `/admin/billing`): importado aqui, ele só
+ * peças (`/plan`, `/plan/confirmed` e o painel, `/admin`): importado aqui, ele só
  * chegava depois da hidratação, e no celular a tabela sem estilo alargava a
  * página antes de ganhar a rolagem própria.
  */

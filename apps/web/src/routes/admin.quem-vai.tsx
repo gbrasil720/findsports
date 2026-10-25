@@ -1,12 +1,10 @@
 import { createFileRoute, Navigate } from '@tanstack/react-router'
 import { useShowsGoing } from '@/components/admin/admin-queries'
-import jogosCss from '@/components/painel-jogos/jogos.css?url'
 import { QuemVaiPage } from '@/components/painel-jogos/quem-vai-page'
 
 export const Route = createFileRoute('/admin/quem-vai')({
   head: () => ({
-    meta: [{ title: 'Quem vai — Painel do Bar — Onside' }],
-    links: [{ rel: 'stylesheet', href: jogosCss }]
+    meta: [{ title: 'Quem vai — Painel do Bar — Onside' }]
   }),
   component: QuemVaiRoute
 })
