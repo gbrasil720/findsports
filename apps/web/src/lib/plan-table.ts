@@ -67,7 +67,7 @@ export const PLAN_TABLE: readonly {
       },
       {
         label: 'Galeria de fotos do ambiente',
-        values: ['nao', 'breve', 'breve']
+        values: ['nao', 'sim', 'sim']
       },
       { label: 'Promoções no perfil', values: ['nao', 'breve', 'breve'] }
     ]

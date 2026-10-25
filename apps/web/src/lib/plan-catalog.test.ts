@@ -418,7 +418,7 @@ describe('profilePerks', () => {
     const roadmap = PLAN_CATALOG.flatMap((plan) =>
       plan.profilePerks.filter((perk) => perk.status === 'soon')
     )
-    // Galeria e promoções dependem de schema que ainda não existe.
+    // Promoções dependem de schema que ainda não existe.
     expect(roadmap.length).toBeGreaterThan(0)
     expect(roadmap.every((perk) => perk.label.length > 0)).toBe(true)
   })
