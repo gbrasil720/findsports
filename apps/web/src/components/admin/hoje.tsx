@@ -121,15 +121,18 @@ export function Hoje() {
   if (!bar) return null
 
   const idsDaNoite = new Set(noite.blocos.map((b) => b.jogo.id))
-  // undefined: carregando; null: o plano não mostra.
+  // Jogos que não carregaram não são "nenhum jogo": sem eles, nenhum número
+  // de hoje sai (o traço fica no lugar, WEB-471).
+  const jogosLidos = events.isSuccess
+  // undefined: carregando ou sem os jogos; null: o plano não mostra.
   const hoje =
-    !semana.data || !entitlements.data
+    !semana.data || !entitlements.data || !jogosLidos
       ? undefined
       : lista
         ? somaDosJogos(semana.data.events, idsDaNoite)
         : null
   const contagem = (de: (h: NonNullable<typeof hoje>) => number) =>
-    semana.isPending || entitlements.isPending ? (
+    semana.isPending || entitlements.isPending || events.isPending ? (
       <Carregando />
     ) : hoje ? (
       de(hoje)
@@ -178,7 +181,11 @@ export function Hoje() {
         {fora ? (
           'Fora das buscas e do mapa'
         ) : (
-          <b>{countLabel(noite.blocos.length, 'jogo', 'jogos')}</b>
+          <b>
+            {jogosLidos
+              ? countLabel(noite.blocos.length, 'jogo', 'jogos')
+              : '— jogos'}
+          </b>
         )}
         {hoje && !fora ? (
           <>
@@ -197,7 +204,15 @@ export function Hoje() {
 
       <section className="hoje-kpis hoje-apaga" aria-label="Números de hoje">
         <Kpi
-          valor={events.isPending ? <Carregando /> : noite.blocos.length}
+          valor={
+            events.isPending ? (
+              <Carregando />
+            ) : jogosLidos ? (
+              noite.blocos.length
+            ) : (
+              '—'
+            )
+          }
           rotulo="jogos hoje"
         />
         <Kpi
