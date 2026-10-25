@@ -185,26 +185,31 @@ function Moldura({
         className="previa-app overflow-hidden rounded-[26px]"
         style={altura ? { aspectRatio: `${LARGURA} / ${altura}` } : undefined}
       >
-        <div
-          className="previa-tela relative"
-          style={{ zoom, width: LARGURA, height: altura }}
-        >
-          {rola ? (
-            <>
-              <section
-                // biome-ignore lint/a11y/noNoninteractiveTabindex: a prévia rola pelo teclado
-                tabIndex={0}
-                aria-label={rotulo}
-                className="previa-rola absolute inset-0 overflow-y-auto outline-none"
-              >
-                {children}
-              </section>
-              {fixos}
-            </>
-          ) : (
-            children
-          )}
-        </div>
+        {rola ? (
+          // A região é a tela inteira: a página que rola e o que fica fixo
+          // sobre ela ("Vou assistir aqui").
+          <section
+            aria-label={rotulo}
+            className="previa-tela relative"
+            style={{ zoom, width: LARGURA, height: altura }}
+          >
+            <div
+              // biome-ignore lint/a11y/noNoninteractiveTabindex: a prévia rola pelo teclado
+              tabIndex={0}
+              className="previa-rola absolute inset-0 overflow-y-auto outline-none"
+            >
+              {children}
+            </div>
+            {fixos}
+          </section>
+        ) : (
+          <div
+            className="previa-tela relative"
+            style={{ zoom, width: LARGURA, height: altura }}
+          >
+            {children}
+          </div>
+        )}
       </div>
     </div>
   )
