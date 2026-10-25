@@ -546,11 +546,14 @@ invente layout que o projeto não tem.
   do design. Quem abre sem sessão cai nela (`app/index.tsx`). O mapa da primeira tela (4b) é o do Explorar de hoje, parado: o
   `MapView` nativo, as gotas da Rodada 21 (`MapDrop`), o raio tracejado e o seu ponto
   (`MeDot`), por cima em posições fixas para a entrada animar. A distância e a
-  localização do onboarding ainda usam a imagem antiga (`assets/images/intro/map.jpg`,
-  dos tiles da Onside, com "© OpenStreetMap").
+  localização do onboarding usam o mesmo mapa (WEB-420), centrado na cidade escolhida
+  (senão São Paulo), com `RadiusCircle` no raio escolhido: na distância o zoom sai do
+  raio para o círculo crescer na tela. O Apple Maps encaixa a região na área segura, não
+  na tela toda (conta em `onboarding/location.tsx`). A imagem antiga
+  (`assets/images/intro/map.jpg` e `map-dark.jpg`, dos tiles da Onside) só resta no
+  "Nada no raio" de Bares pra você.
   O design só desenha o claro; a apresentação segue o tema do sistema com tinta e papel
-  trocados e o acid no lugar do vermelho (a regra da tab bar do design), e o mapa tem
-  versão escura (`map-dark.jpg`, mesma vista com a paleta escurecida).
+  trocados e o acid no lugar do vermelho (a regra da tab bar do design).
 - **Conta ("04 Conta"):** `profile` (torcedor ou bar, vira `role` no cadastro), `sign-up`,
   `verify-email`, `sign-in`, `forgot-password`, `reset-sent`, `reset-password`, `two-factor`;
   peças em `components/ui.tsx`. O link de confirmação abre no navegador; o servidor entra e
