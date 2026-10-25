@@ -25,12 +25,15 @@ import {
   INK,
   LIVE,
   PAPER,
+  phaseBusy,
+  phaseLabel,
   Screen,
   SUB,
   Text,
   Title,
   text
 } from '@/components/ui'
+import { attemptPhase, retryable, settleAuth } from '@/lib/auth-attempt'
 import { authClient } from '@/lib/auth-client'
 import { queryClient } from '@/lib/trpc'
 
@@ -53,6 +56,9 @@ export default function SignIn() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  // A última tentativa falhou de forma passageira: o botão vira "Tentar de
+  // novo" (WEB-460).
+  const [failed, setFailed] = useState(false)
   const turnstile = useTurnstile()
   const notice = params.notice ? NOTICES[params.notice] : undefined
   // A foto assenta de um zoom leve quando a tela abre.
@@ -65,21 +71,25 @@ export default function SignIn() {
   }))
 
   const submit = async () => {
+    if (pending) return
     setError(null)
     setPending(true)
-    const result = await authClient.signIn.email({
-      email: email.trim(),
-      password,
-      // Sem `callbackURL`: com ele o servidor responde "redirecionar" e o
-      // plugin do Expo abre a janela de login social do iOS ("deseja usar
-      // ... para iniciar sessão"). O e-mail de confirmação que o login
-      // reenvia a quem não confirmou leva ao site; o "Reenviar" da tela de
-      // confirmação manda o que volta para o app.
-      fetchOptions: turnstile.fetchOptions
-    })
+    const result = await settleAuth(
+      authClient.signIn.email({
+        email: email.trim(),
+        password,
+        // Sem `callbackURL`: com ele o servidor responde "redirecionar" e o
+        // plugin do Expo abre a janela de login social do iOS ("deseja usar
+        // ... para iniciar sessão"). O e-mail de confirmação que o login
+        // reenvia a quem não confirmou leva ao site; o "Reenviar" da tela de
+        // confirmação manda o que volta para o app.
+        fetchOptions: turnstile.fetchOptions
+      })
+    )
     // O token do Turnstile vale uma vez: com erro ou não, pede outro.
     turnstile.reset()
     setPending(false)
+    setFailed(retryable(result.error))
     if (result.error) {
       if (result.error.code === 'EMAIL_NOT_VERIFIED') {
         router.push({
@@ -105,6 +115,8 @@ export default function SignIn() {
     await queryClient.invalidateQueries()
     router.replace('/')
   }
+
+  const phase = attemptPhase(pending, failed)
 
   return (
     <Screen
@@ -205,9 +217,12 @@ export default function SignIn() {
           <ErrorText style={[text(13.5), { color: LIVE }]}>{error}</ErrorText>
         ) : null}
         <BlockButton
-          label={pending ? 'Entrando…' : 'Acessar minha conta'}
+          label={phaseLabel(phase, {
+            idle: 'Acessar minha conta',
+            sending: 'Entrando…'
+          })}
           trailing={!pending}
-          disabled={pending}
+          busy={phaseBusy(phase)}
           onPress={submit}
           style={{ marginTop: 6 }}
         />
