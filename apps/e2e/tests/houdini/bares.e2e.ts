@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { storageState } from '../../fixtures/auth'
+import { query } from '../../fixtures/db'
+import { createEvent, days } from '../../fixtures/fan'
 import { createPub, inDays } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
 
@@ -57,4 +59,34 @@ test('admin busca um bar e vê plano, situação e o link do Stripe', async ({
   await expect(
     panel.getByRole('link', { name: 'Abrir no Stripe' })
   ).toHaveCount(0)
+})
+
+test('ficha: rascunho aparece marcado em Jogos e fica fora das contagens', async ({
+  page
+}) => {
+  const pub = await createPub()
+  await createEvent({
+    barId: pub.barId,
+    startsAt: days(2),
+    freeText: 'Publicado E2E x Rival'
+  })
+  const draft = await createEvent({
+    barId: pub.barId,
+    startsAt: days(1),
+    freeText: 'Rascunho E2E x Rival'
+  })
+  await query('UPDATE event SET published_at = NULL WHERE id = $1', [draft])
+
+  await page.goto(`/houdini/bares/${pub.barId}`)
+  await expect(page.getByRole('tab', { name: 'Jogos' })).toHaveText('Jogos1')
+  const proximos = page.locator('section', {
+    has: page.getByRole('heading', { name: 'Próximos jogos' })
+  })
+  await expect(proximos).toContainText('Publicado E2E x Rival')
+  await expect(proximos).not.toContainText('Rascunho E2E x Rival')
+
+  await page.getByRole('tab', { name: 'Jogos' }).click()
+  const panel = page.getByRole('tabpanel')
+  await expect(panel).toContainText('Publicado E2E x Rival')
+  await expect(panel).toContainText('Rascunho E2E x RivalRascunho')
 })
