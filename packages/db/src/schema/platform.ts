@@ -133,6 +133,17 @@ export const bar = pgTable(
     // `event.reservation_cap` sobrescreve por jogo; a regra vive em
     // `packages/api/src/lib/reservation-intake.ts`.
     reservationCap: smallint('reservation_cap'),
+    // Avisos por e-mail ao dono (WEB-441), ligados e desligados em
+    // Configurações → Avisos. Os padrões são os do design (2b): resumo da
+    // semana e jogo lotando ligados, grade vazia desligada. Regras e envio em
+    // `packages/api/src/lib/bar-notices.ts`.
+    noticeWeeklySummary: boolean('notice_weekly_summary')
+      .default(true)
+      .notNull(),
+    noticeGameFilling: boolean('notice_game_filling').default(true).notNull(),
+    noticeEmptySchedule: boolean('notice_empty_schedule')
+      .default(false)
+      .notNull(),
     // Horário de funcionamento (WEB-397): sete faixas, a 0 no domingo, no
     // relógio de Brasília; dia nulo é fechado e a coluna nula é "não
     // informado". Validação e "aberto agora" em
@@ -218,6 +229,30 @@ export const bar = pgTable(
       reservationCapRange(table.reservationCap)
     )
   ]
+)
+
+/**
+ * Aviso por e-mail já mandado ao bar (WEB-441): uma linha por bar, tipo e
+ * referência, que é a semana (a segunda-feira, "2026-10-26") no resumo e na
+ * grade vazia e o id do jogo no jogo lotando. Quem envia grava a linha antes
+ * e só manda se ela entrou: cron repetido ou duas marcações ao mesmo tempo não
+ * mandam duas vezes. Envio que falha apaga a linha.
+ */
+export const barNotice = pgTable(
+  'bar_notice',
+  {
+    barId: text('bar_id')
+      .notNull()
+      .references(() => bar.id, { onDelete: 'cascade' }),
+    kind: text('kind', {
+      enum: ['weekly_summary', 'empty_schedule', 'game_filling']
+    }).notNull(),
+    ref: text('ref').notNull(),
+    sentAt: timestamp('sent_at', { withTimezone: true })
+      .defaultNow()
+      .notNull()
+  },
+  (table) => [primaryKey({ columns: [table.barId, table.kind, table.ref] })]
 )
 
 export const sport = pgTable('sport', {
