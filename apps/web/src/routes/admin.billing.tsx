@@ -10,7 +10,6 @@ import {
   type PerdaCancelamento
 } from '@/components/billing/cancel-plan-dialog'
 import { PlanChangedNotice } from '@/components/billing/plan-change'
-import planosCss from '@/components/billing/planos.css?url'
 import { ReactivateSubscriptionButton } from '@/components/billing/reactivate-subscription-button'
 import {
   Badge,
@@ -52,8 +51,7 @@ export const Route = createFileRoute('/admin/billing')({
     meta: [
       { title: 'Plano e cobrança — Onside' },
       { name: 'robots', content: 'noindex' }
-    ],
-    links: [{ rel: 'stylesheet', href: planosCss }]
+    ]
   }),
   component: BillingPage
 })

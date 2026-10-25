@@ -1,7 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useCallback } from 'react'
-import desempenhoCss from '@/components/admin/desempenho.css?url'
-import jogosCss from '@/components/painel-jogos/jogos.css?url'
 import { JogosPage } from '@/components/painel-jogos/jogos-page'
 
 export const Route = createFileRoute('/admin/jogos')({
@@ -16,11 +14,7 @@ export const Route = createFileRoute('/admin/jogos')({
     ...(String(search.passados) === '1' ? { passados: 1 as const } : {})
   }),
   head: () => ({
-    meta: [{ title: 'Jogos — Painel do Bar — Onside' }],
-    links: [
-      { rel: 'stylesheet', href: jogosCss },
-      { rel: 'stylesheet', href: desempenhoCss }
-    ]
+    meta: [{ title: 'Jogos — Painel do Bar — Onside' }]
   }),
   component: JogosRoute
 })

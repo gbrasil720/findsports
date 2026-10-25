@@ -9,9 +9,12 @@ import {
 import { useEffect } from 'react'
 import { useMyBar } from '@/components/admin/admin-queries'
 import { getAdminRouteFromHash } from '@/components/admin/admin-tabs'
+import desempenhoCss from '@/components/admin/desempenho.css?url'
 import { InstallAppCard } from '@/components/app/install-app-card'
+import planosCss from '@/components/billing/planos.css?url'
 import { ErroBloco, PainelShell } from '@/components/painel'
 import painelCss from '@/components/painel/painel.css?url'
+import jogosCss from '@/components/painel-jogos/jogos.css?url'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 
 /**
@@ -32,7 +35,16 @@ export const Route = createFileRoute('/admin')({
       { name: 'robots', content: 'noindex' },
       ...PWA_META
     ],
-    links: [{ rel: 'stylesheet', href: painelCss }, ...PWA_LINKS]
+    // O CSS das telas filhas vem com o shell (WEB-470): sem rede, a troca de
+    // tela não teria como baixar o da próxima, e ela abriria sem estilo. Cada
+    // arquivo só pega dentro das classes da própria tela.
+    links: [
+      { rel: 'stylesheet', href: painelCss },
+      { rel: 'stylesheet', href: jogosCss },
+      { rel: 'stylesheet', href: desempenhoCss },
+      { rel: 'stylesheet', href: planosCss },
+      ...PWA_LINKS
+    ]
   }),
   component: AdminLayout
 })
