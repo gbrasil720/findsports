@@ -607,13 +607,28 @@ export async function getMyEventAnalytics(
  * Os brutos de analytics ficam 395 dias, então o mês corrente nunca depende
  * dos rollups.
  */
-export async function getMonthNumbers(
-  barId: string,
-  now = new Date()
-): Promise<{ going: number; validatedCodes: number; classicsOnTop: number }> {
+export async function getMonthNumbers(barId: string, now = new Date()) {
   const { monthStart, nextMonth } = brasiliaWindows(now)
-  const from = sql`${monthStart.toISOString()}::timestamptz`
-  const to = sql`${nextMonth.toISOString()}::timestamptz`
+  return getBarNumbers(barId, monthStart, nextMonth)
+}
+
+/**
+ * Os números de `getMonthNumbers` num período qualquer, `[start, end)`, mais
+ * as aberturas do perfil (`profileViews`, a "Aberturas" do Desempenho). O
+ * resumo da semana por e-mail (WEB-441) lê a semana passada por aqui.
+ */
+export async function getBarNumbers(
+  barId: string,
+  start: Date,
+  end: Date
+): Promise<{
+  going: number
+  validatedCodes: number
+  classicsOnTop: number
+  profileViews: number
+}> {
+  const from = sql`${start.toISOString()}::timestamptz`
+  const to = sql`${end.toISOString()}::timestamptz`
   // `starts_at` é `timestamp` guardando UTC: vira instante antes de comparar.
   const startsAt = sql`(e.starts_at AT TIME ZONE 'UTC')`
 
@@ -643,12 +658,20 @@ export async function getMonthNumbers(
         WHERE bar_id = ${barId}
           AND type = 'classic_exposure'
           AND occurred_at >= ${from} AND occurred_at < ${to}
-      ) AS classics_on_top
+      ) AS classics_on_top,
+      (
+        SELECT COUNT(*)
+        FROM bar_commercial_event
+        WHERE bar_id = ${barId}
+          AND type = 'profile_view'
+          AND occurred_at >= ${from} AND occurred_at < ${to}
+      ) AS profile_views
   `)
   const row = result.rows[0] as Record<string, string | number>
   return {
     going: Number(row.going),
     validatedCodes: Number(row.validated_codes),
-    classicsOnTop: Number(row.classics_on_top)
+    classicsOnTop: Number(row.classics_on_top),
+    profileViews: Number(row.profile_views)
   }
 }

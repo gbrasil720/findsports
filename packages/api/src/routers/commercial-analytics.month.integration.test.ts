@@ -148,12 +148,14 @@ integrationTest(
           expect(await getMonthNumbers(barId, OUTUBRO)).toEqual({
             going: 2,
             validatedCodes: 2,
-            classicsOnTop: 2
+            classicsOnTop: 2,
+            profileViews: 0
           })
           expect(await getMonthNumbers(barId, NOVEMBRO)).toEqual({
             going: 1,
             validatedCodes: 1,
-            classicsOnTop: 1
+            classicsOnTop: 1,
+            profileViews: 0
           })
         })
       }
