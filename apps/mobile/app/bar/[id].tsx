@@ -390,8 +390,10 @@ export default function BarPage() {
           </Animated.View>
           <View style={styles.heroText}>
             {/* O topo cresce para cima (`flex-end`): as etiquetas chegam
-                acima do nome sem empurrá-lo. */}
-            <Animated.View entering={SWAP} style={styles.heroPills}>
+                acima do nome sem empurrá-lo. São vidro: entram só pela
+                posição, como o corpo (com `FadeIn` o vidro não desenhava e o
+                "Elite" ficava quase invisível sobre a foto). */}
+            <Animated.View entering={BODY_IN} style={styles.heroPills}>
               {data?.plan === 'elite' ? (
                 <PhotoPill kind="acid" height={28}>
                   <Icon name="medal" size={15} color={INK} />
