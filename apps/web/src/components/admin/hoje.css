@@ -91,7 +91,13 @@
 .painel .hoje-horas > div[data-amanha] {
   border-left: 2px solid var(--painel-fg);
 }
+/*
+ * Bloco com a altura da letra: inline, a linha do bloco descia o rótulo da
+ * hora até a faixa do "AGORA", que o cobria (1j: a hora em cima, o AGORA
+ * logo abaixo).
+ */
 .painel .hoje-horas span {
+  display: block;
   white-space: nowrap;
   font: 600 11px / 1 var(--onside-mono);
   color: var(--painel-muted);
