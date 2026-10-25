@@ -11,6 +11,8 @@ import {
   BlockButton,
   Field,
   LIVE,
+  phaseBusy,
+  phaseLabel,
   Screen,
   SUB,
   Text,
@@ -18,6 +20,7 @@ import {
   Title,
   text
 } from '@/components/ui'
+import { attemptPhase, retryable, settleAuth } from '@/lib/auth-attempt'
 import { authClient, RESET_EMAIL_KEY } from '@/lib/auth-client'
 
 /*
@@ -32,19 +35,24 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState(params.email ?? '')
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  const [failed, setFailed] = useState(false)
   const turnstile = useTurnstile()
 
   const submit = async () => {
+    if (pending) return
     setError(null)
     if (!email.includes('@')) return setError('Confira o e-mail.')
     setPending(true)
-    const result = await authClient.requestPasswordReset({
-      email: email.trim(),
-      redirectTo: Linking.createURL('/reset-password'),
-      fetchOptions: turnstile.fetchOptions
-    })
+    const result = await settleAuth(
+      authClient.requestPasswordReset({
+        email: email.trim(),
+        redirectTo: Linking.createURL('/reset-password'),
+        fetchOptions: turnstile.fetchOptions
+      })
+    )
     turnstile.reset()
     setPending(false)
+    setFailed(retryable(result.error))
     if (result.error) {
       setError(
         authErrorMessage(
@@ -58,6 +66,8 @@ export default function ForgotPassword() {
     await SecureStore.setItemAsync(RESET_EMAIL_KEY, email.trim())
     router.push({ pathname: '/reset-sent', params: { email: email.trim() } })
   }
+
+  const phase = attemptPhase(pending, failed)
 
   return (
     <Screen gap={18} top={6}>
@@ -84,8 +94,8 @@ export default function ForgotPassword() {
         <ErrorText style={[text(13.5), { color: LIVE }]}>{error}</ErrorText>
       ) : null}
       <BlockButton
-        label={pending ? 'Enviando…' : 'Enviar link'}
-        disabled={pending}
+        label={phaseLabel(phase, { idle: 'Enviar link', sending: 'Enviando…' })}
+        busy={phaseBusy(phase)}
         onPress={submit}
       />
       <TextLink
