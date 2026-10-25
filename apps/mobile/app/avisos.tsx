@@ -11,7 +11,6 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
-  Text,
   View
 } from 'react-native'
 import Animated from 'react-native-reanimated'
@@ -43,9 +42,11 @@ import {
   Icon,
   INK,
   LIVE,
+  MAX_FONT_SCALE,
   MUTED,
   PAPER,
   SPARK,
+  Text,
   text,
   usePullRefresh,
   useStatusBar
@@ -977,6 +978,7 @@ function CallAnswer({
   if (call.status === 'not_now')
     return (
       <Animated.Text
+        maxFontSizeMultiplier={MAX_FONT_SCALE}
         entering={SWAP}
         style={[
           text(12.5, 'Regular', 1.4),

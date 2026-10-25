@@ -1,8 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { HardShadow } from '@/components/explore'
 import { enterAt, ScalePress, usePress } from '@/components/motion'
-import { Icon, Title, text } from '@/components/ui'
+import { Icon, Text, Title, text } from '@/components/ui'
 import { type Recent, recentMeta } from '@/lib/ai-chat'
 import type { AiPalette } from './theme'
 

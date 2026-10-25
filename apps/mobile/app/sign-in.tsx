@@ -5,7 +5,6 @@ import {
   Image,
   Pressable,
   StyleSheet,
-  Text,
   useColorScheme,
   View
 } from 'react-native'
@@ -28,6 +27,7 @@ import {
   PAPER,
   Screen,
   SUB,
+  Text,
   Title,
   text
 } from '@/components/ui'

@@ -1,14 +1,7 @@
 import * as Clipboard from 'expo-clipboard'
 import { useRouter } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
-import {
-  Linking,
-  Share,
-  StyleSheet,
-  Text,
-  type TextInput,
-  View
-} from 'react-native'
+import { Linking, Share, StyleSheet, type TextInput, View } from 'react-native'
 import QRCode from 'react-qr-code'
 import { CodeBoxes, DIGITS } from '@/components/code-boxes'
 import { ErrorText, haptic, useShake } from '@/components/motion'
@@ -26,6 +19,7 @@ import {
   LIVE,
   Screen,
   SUB,
+  Text,
   TextLink,
   Title,
   text

@@ -7,7 +7,7 @@ import {
   useEffect,
   useState
 } from 'react'
-import { Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native'
+import { Pressable, StyleSheet, useColorScheme, View } from 'react-native'
 import Animated, {
   interpolateColor,
   type SharedValue,
@@ -20,6 +20,7 @@ import {
   ACID,
   BackButton,
   BG,
+  DISPLAY_FONT_SCALE,
   DROP,
   EDGE,
   FG,
@@ -28,8 +29,10 @@ import {
   INK,
   LINE,
   LINE_STRONG,
+  MAX_FONT_SCALE,
   PAPER,
   SUB,
+  Text,
   text
 } from '@/components/ui'
 import { trpc } from '@/lib/trpc'
@@ -274,12 +277,18 @@ export function SportTile({
       <Animated.View style={[styles.tileShadow, shadow]} />
       <Animated.View style={[styles.tile, card]}>
         <Animated.Text
+          maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
           style={[styles.tileMark, { opacity: selected ? 0.16 : 0.08 }, label]}
           numberOfLines={1}
         >
           {sportMark(name)}
         </Animated.Text>
-        <Animated.Text style={[text(16, 'Bold'), label]}>{name}</Animated.Text>
+        <Animated.Text
+          maxFontSizeMultiplier={MAX_FONT_SCALE}
+          style={[text(16, 'Bold'), label]}
+        >
+          {name}
+        </Animated.Text>
         {selected ? (
           <Animated.View entering={POP} style={styles.tileCheck}>
             <Icon name="check" size={13} color={ACID} />
@@ -326,7 +335,10 @@ export function TeamChip({
             <Icon name="check" size={14} color={dark ? INK : ACID} />
           </Animated.View>
         ) : null}
-        <Animated.Text style={[text(14, 'SemiBold'), label]}>
+        <Animated.Text
+          maxFontSizeMultiplier={MAX_FONT_SCALE}
+          style={[text(14, 'SemiBold'), label]}
+        >
           {name}
         </Animated.Text>
       </Animated.View>
@@ -382,8 +394,16 @@ export function RadiusTile({
       <View style={styles.tileIdleShadow} />
       <Animated.View style={[styles.tileShadow, shadow]} />
       <Animated.View style={[styles.radius, tile]}>
-        <Animated.Text style={[styles.radiusKm, kmColor]}>{km}</Animated.Text>
-        <Animated.Text style={[text(11.5, 'SemiBold', 1.25), labelColor]}>
+        <Animated.Text
+          maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
+          style={[styles.radiusKm, kmColor]}
+        >
+          {km}
+        </Animated.Text>
+        <Animated.Text
+          maxFontSizeMultiplier={MAX_FONT_SCALE}
+          style={[text(11.5, 'SemiBold', 1.25), labelColor]}
+        >
           km · {RADIUS_LABEL[km]}
         </Animated.Text>
       </Animated.View>

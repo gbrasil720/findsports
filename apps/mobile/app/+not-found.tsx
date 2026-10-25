@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
 import { EASE } from '@/components/motion'
@@ -10,6 +10,7 @@ import {
   LIVE,
   Screen,
   SUB,
+  Text,
   Title,
   text,
   themed

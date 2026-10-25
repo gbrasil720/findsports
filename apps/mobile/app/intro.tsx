@@ -12,7 +12,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   useWindowDimensions,
   View
 } from 'react-native'
@@ -28,7 +27,7 @@ import {
 import { Enter, type Frame, useEntrance } from '@/components/intro-motion'
 import { SplashDone } from '@/components/splash'
 import { usePalette } from '@/components/theme'
-import { PillButton, useStatusBar } from '@/components/ui'
+import { PillButton, Text, useStatusBar } from '@/components/ui'
 
 /*
  * "03 Apresentação" do design: quatro telas, uma ideia de produto em cada,

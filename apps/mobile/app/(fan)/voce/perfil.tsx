@@ -10,7 +10,6 @@ import {
   ScrollView,
   Share,
   StyleSheet,
-  Text,
   View
 } from 'react-native'
 import Animated from 'react-native-reanimated'
@@ -29,6 +28,7 @@ import {
   INK,
   PAPER,
   PillButton,
+  Text,
   text,
   usePullRefresh,
   useStatusBar

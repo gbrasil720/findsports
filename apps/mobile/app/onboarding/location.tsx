@@ -4,7 +4,6 @@ import {
   Image,
   Pressable,
   StyleSheet,
-  Text,
   useColorScheme,
   View
 } from 'react-native'
@@ -22,6 +21,7 @@ import {
   LIVE,
   PillButton,
   SUB,
+  Text,
   Title,
   text,
   themed,

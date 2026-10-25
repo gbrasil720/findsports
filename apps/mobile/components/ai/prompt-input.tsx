@@ -1,5 +1,5 @@
 import { type RefObject, useEffect } from 'react'
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
 import Animated, {
   type EntryExitAnimationFunction,
   interpolateColor,
@@ -9,7 +9,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { Glass } from '@/components/glass'
 import { EASE, haptic, ScalePress } from '@/components/motion'
-import { ACID, Icon, INK, text } from '@/components/ui'
+import { ACID, Icon, INK, Text, TextInput, text } from '@/components/ui'
 import { AiIcon } from './icons'
 import { XChip } from './response'
 import type { AiPalette } from './theme'

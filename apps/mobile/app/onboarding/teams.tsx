@@ -1,7 +1,7 @@
 import { useMutation, useQueries, useQuery } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
-import { Pressable, Text, View } from 'react-native'
+import { Pressable, View } from 'react-native'
 import {
   OnboardingTop,
   SportBadge,
@@ -17,6 +17,7 @@ import {
   PillButton,
   Screen,
   SUB,
+  Text,
   Title,
   text
 } from '@/components/ui'

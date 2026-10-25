@@ -1,4 +1,4 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import Animated, {
   type EntryExitAnimationFunction,
   withDelay,
@@ -6,7 +6,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { Chip } from '@/components/explore'
 import { EASE, haptic, ScalePress } from '@/components/motion'
-import { Icon } from '@/components/ui'
+import { Icon, Text } from '@/components/ui'
 import type { followUps } from '@/lib/ai-chat'
 import { type AiGlyph, AiIcon } from './icons'
 import type { AiPalette } from './theme'

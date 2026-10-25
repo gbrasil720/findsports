@@ -8,7 +8,6 @@ import {
   Pressable,
   Share,
   StyleSheet,
-  Text,
   View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -24,6 +23,7 @@ import {
   LIVE,
   MUTED,
   PAPER,
+  Text,
   text,
   useStatusBar
 } from '@/components/ui'

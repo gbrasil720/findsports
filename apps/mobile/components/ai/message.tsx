@@ -1,5 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native'
-import { ACID, text } from '@/components/ui'
+import { StyleSheet, View } from 'react-native'
+import { ACID, Text, text } from '@/components/ui'
 import type { AiPalette } from './theme'
 
 /*

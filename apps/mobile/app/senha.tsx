@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router'
 import { useState } from 'react'
-import { Text, View } from 'react-native'
+import { View } from 'react-native'
 import { ErrorText, haptic } from '@/components/motion'
 import {
   authErrorMessage,
@@ -16,6 +16,7 @@ import {
   STRENGTH,
   StrengthBars,
   SUB,
+  Text,
   Title,
   text
 } from '@/components/ui'

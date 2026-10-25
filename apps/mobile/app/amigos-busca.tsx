@@ -7,8 +7,6 @@ import {
   ScrollView,
   Share,
   StyleSheet,
-  Text,
-  TextInput,
   View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -23,7 +21,16 @@ import {
 import { Glass } from '@/components/glass'
 import { haptic } from '@/components/motion'
 import { usePalette } from '@/components/theme'
-import { HOT, Icon, INK, LIVE, text, useStatusBar } from '@/components/ui'
+import {
+  HOT,
+  Icon,
+  INK,
+  LIVE,
+  Text,
+  TextInput,
+  text,
+  useStatusBar
+} from '@/components/ui'
 import { inviteMessage } from '@/lib/invite'
 import { trpc } from '@/lib/trpc'
 

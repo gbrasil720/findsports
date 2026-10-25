@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Image, Pressable, StyleSheet, View } from 'react-native'
 import Animated, {
   interpolateColor,
   useAnimatedStyle,
@@ -10,7 +10,7 @@ import QRCode from 'react-qr-code'
 import { HardShadow, Perforation } from '@/components/explore'
 import { haptic, usePress, usePressScale } from '@/components/motion'
 import { PALETTE, PaletteProvider } from '@/components/theme'
-import { ACID, Icon, INK, PAPER, text } from '@/components/ui'
+import { ACID, Icon, INK, PAPER, Text, text } from '@/components/ui'
 import type { Proposal, ProposalAction } from '@/lib/ai-events'
 import { env } from '@/lib/env'
 import { formatCode } from '@/lib/my-games'

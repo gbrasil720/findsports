@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { Glass } from '@/components/glass'
 import { SWAP } from '@/components/motion'
-import { ACID, Icon, text } from '@/components/ui'
+import { ACID, Icon, MAX_FONT_SCALE, Text, text } from '@/components/ui'
 import { AiIcon } from './icons'
 import { Spinner } from './loader'
 import type { AiPalette } from './theme'
@@ -66,6 +66,7 @@ export function AiHeader({
           )}
           {/* A frase troca com um esmaecer curto. */}
           <Animated.Text
+            maxFontSizeMultiplier={MAX_FONT_SCALE}
             key={status}
             entering={SWAP}
             style={[

@@ -10,7 +10,6 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
-  Text,
   View
 } from 'react-native'
 import Animated from 'react-native-reanimated'
@@ -30,6 +29,7 @@ import {
   LIVE,
   PAPER,
   PillButton,
+  Text,
   Title,
   text,
   usePullRefresh,

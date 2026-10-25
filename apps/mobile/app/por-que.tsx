@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocalSearchParams } from 'expo-router'
 import { useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { Card } from '@/components/card'
 import { haptic, SWAP, usePressScale } from '@/components/motion'
@@ -14,6 +14,7 @@ import {
   INK,
   LIVE,
   PAPER,
+  Text,
   Title,
   text
 } from '@/components/ui'

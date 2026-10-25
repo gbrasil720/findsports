@@ -2,7 +2,7 @@ import * as Linking from 'expo-linking'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
 import { useState } from 'react'
-import { Text, View } from 'react-native'
+import { View } from 'react-native'
 import { ErrorText, haptic } from '@/components/motion'
 import { useTurnstile } from '@/components/turnstile'
 import {
@@ -13,6 +13,7 @@ import {
   LIVE,
   Screen,
   SUB,
+  Text,
   TextLink,
   Title,
   text

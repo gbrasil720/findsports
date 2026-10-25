@@ -1,4 +1,4 @@
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Image, Pressable, StyleSheet, View } from 'react-native'
 import Animated, {
   type EntryExitAnimationFunction,
   FadeIn,
@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Glass } from '@/components/glass'
 import { EASE } from '@/components/motion'
 import { usePalette } from '@/components/theme'
-import { ACID, Icon, INK, text } from '@/components/ui'
+import { ACID, Icon, INK, Text, text } from '@/components/ui'
 
 /*
  * O menu "Você" (2c do design): vidro acima da barra de abas, com o

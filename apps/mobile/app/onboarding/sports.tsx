@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
-import { Text, View } from 'react-native'
+import { View } from 'react-native'
 import { ErrorText } from '@/components/motion'
 import {
   OnboardingTop,
@@ -8,7 +8,15 @@ import {
   useEditing,
   useOnboarding
 } from '@/components/onboarding'
-import { LIVE, PillButton, Screen, SUB, Title, text } from '@/components/ui'
+import {
+  LIVE,
+  PillButton,
+  Screen,
+  SUB,
+  Text,
+  Title,
+  text
+} from '@/components/ui'
 import { trpc } from '@/lib/trpc'
 
 /*

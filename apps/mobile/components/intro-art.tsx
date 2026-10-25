@@ -1,13 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient'
 import type { ReactNode } from 'react'
-import {
-  Image,
-  Platform,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View
-} from 'react-native'
+import { Image, Platform, StyleSheet, useColorScheme, View } from 'react-native'
 import MapView from 'react-native-maps'
 import type { SharedValue } from 'react-native-reanimated'
 import Svg, {
@@ -23,6 +16,7 @@ import Svg, {
 import { dropBox, MapDrop, MeDot } from '@/components/explore'
 import { Glass } from '@/components/glass'
 import { Enter, type Frame } from '@/components/intro-motion'
+import { Text } from '@/components/ui'
 import { MAP_STYLE } from '@/lib/map-style'
 
 /*

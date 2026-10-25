@@ -1,7 +1,7 @@
 import * as Linking from 'expo-linking'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Platform, Pressable, StyleSheet, View } from 'react-native'
 import { ErrorText, Float, haptic } from '@/components/motion'
 import { useTurnstile } from '@/components/turnstile'
 import {
@@ -15,6 +15,7 @@ import {
   PAPER,
   PillButton,
   Screen,
+  Text,
   Title,
   text,
   useCountdown

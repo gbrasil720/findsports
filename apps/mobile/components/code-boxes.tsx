@@ -1,8 +1,17 @@
 import { forwardRef, useState } from 'react'
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { useBlink, type useShake } from '@/components/motion'
-import { ACID, FG, FIELD, LINE_STRONG, PAPER, themed } from '@/components/ui'
+import {
+  ACID,
+  FG,
+  FIELD,
+  LINE_STRONG,
+  PAPER,
+  Text,
+  TextInput,
+  themed
+} from '@/components/ui'
 
 /*
  * As seis caixas do código do autenticador (11s do design). O login (11s) é

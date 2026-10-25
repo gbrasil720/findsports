@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useState } from 'react'
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Image, Pressable, StyleSheet, View } from 'react-native'
 import Animated, {
   type EntryExitAnimationFunction,
   FadeIn,
@@ -14,7 +14,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { dayLabel, HardShadow, Photo, Tag } from '@/components/explore'
 import { EASE, haptic, ScalePress, usePressScale } from '@/components/motion'
-import { ACID, Icon, INK, text } from '@/components/ui'
+import { ACID, Icon, INK, Text, text } from '@/components/ui'
 import { citationPieces } from '@/lib/ai-chat'
 import type { ChatBar, FilterChip, Source } from '@/lib/ai-events'
 import { formatKm, formatTime } from '@/lib/explore'

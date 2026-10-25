@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
 import Animated, {
   type EntryExitAnimationFunction,
   FadeIn,
@@ -9,7 +9,7 @@ import Animated, {
   withTiming
 } from 'react-native-reanimated'
 import { EASE, haptic } from '@/components/motion'
-import { Icon, INK, text } from '@/components/ui'
+import { Icon, INK, Text, text } from '@/components/ui'
 import type { Step, Tool } from '@/lib/ai-chat'
 import { AiIcon } from './icons'
 import { Shimmer, Spinner } from './loader'
