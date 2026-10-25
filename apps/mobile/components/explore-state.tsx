@@ -12,6 +12,7 @@ import {
 } from 'react'
 import type { View } from 'react-native'
 import { captureRef, releaseCapture } from 'react-native-view-shot'
+import type { ChatBar } from '@/lib/ai-events'
 import type { Coordinates } from '@/lib/explore'
 import { type Filters, NO_FILTERS, type Shortcut } from '@/lib/filters'
 import type { MapFrame } from '@/lib/map-layers'
@@ -41,11 +42,20 @@ type ExploreState = {
   shortcuts: Shortcut[] | null
   setShortcuts: (list: Shortcut[]) => void
   /**
-   * "Ver no mapa" da busca (19b): o Explorar leva o mapa até lá e limpa.
-   * `km` é o tamanho da área a mostrar.
+   * "Ver no mapa" da busca (19b) e da busca com IA: o Explorar leva o mapa
+   * até o quadro e limpa. Um quadro novo troca os bares da resposta pelos de
+   * `answer` (só a busca com IA manda; a outra busca os tira).
    */
   focus: MapFrame | null
-  setFocus: (focus: MapFrame | null) => void
+  setFocus: (focus: MapFrame | null, answer?: ChatBar[]) => void
+  /**
+   * Os bares da resposta da busca com IA que o "Ver no mapa" levou: o
+   * Explorar os desenha como gotas junto com os da busca dele, até a pessoa
+   * mexer na busca (filtros, atalhos, "Ao vivo", "Ampliar"), pedir outro
+   * "Ver no mapa" ou voltar ao raio (`clearAnswer`).
+   */
+  answer: ChatBar[] | null
+  clearAnswer: () => void
   /** Onde a folha parou (distância do topo); `null` até a primeira vez. */
   resting: number | null
   setResting: (top: number) => void
@@ -58,10 +68,26 @@ const Context = createContext<ExploreState | null>(null)
 export function ExploreStateProvider({ children }: { children: ReactNode }) {
   const [device, setDevice] = useState<Coordinates | null>(null)
   const [district, setDistrict] = useState<string | null>(null)
-  const [liveOnly, setLiveOnly] = useState(false)
-  const [filters, setFilters] = useState<Filters>(NO_FILTERS)
+  const [liveOnly, saveLiveOnly] = useState(false)
+  const [filters, saveFilters] = useState<Filters>(NO_FILTERS)
   const [shortcuts, saveShortcuts] = useState<Shortcut[] | null>(null)
-  const [focus, setFocus] = useState<ExploreState['focus']>(null)
+  const [focus, saveFocus] = useState<ExploreState['focus']>(null)
+  const [answer, setAnswer] = useState<ChatBar[] | null>(null)
+  const clearAnswer = () => setAnswer(null)
+  // Mexer na busca solta os bares da resposta: os pinos voltam a ser só os
+  // da busca à vista.
+  const setLiveOnly = (on: boolean) => {
+    saveLiveOnly(on)
+    clearAnswer()
+  }
+  const setFilters = (next: Filters) => {
+    saveFilters(next)
+    clearAnswer()
+  }
+  const setFocus: ExploreState['setFocus'] = (next, bars) => {
+    saveFocus(next)
+    if (next) setAnswer(bars ?? null)
+  }
   useEffect(() => {
     SecureStore.getItemAsync(SHORTCUTS_KEY)
       .then((raw) => {
@@ -115,6 +141,8 @@ export function ExploreStateProvider({ children }: { children: ReactNode }) {
         setShortcuts,
         focus,
         setFocus,
+        answer,
+        clearAnswer,
         resting,
         setResting
       }}

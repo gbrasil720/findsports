@@ -474,12 +474,12 @@ export default function AiSearch() {
   }
 
   // "Ver no mapa": o Explorar enquadra os bares da resposta à vista e o
-  // ponto da busca (WEB-432).
+  // ponto da busca (WEB-432), e os desenha como gotas junto com os dele.
   const showOnMap = () => {
     const shown = last ? barsOf(last, shownReply(last)) : []
     const focus = mapFocus(shown, chips, fieldOrigin, radiusKm)
     if (!focus) return
-    explore.setFocus(focus)
+    explore.setFocus(focus, shown)
     router.back()
     router.navigate('/explore')
   }

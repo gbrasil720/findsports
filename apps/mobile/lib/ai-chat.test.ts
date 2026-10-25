@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 
 import {
+  answerPins,
   applyEvent,
   barsFound,
   boldSegments,
@@ -305,6 +306,57 @@ describe('busca com IA (Rodada 24)', () => {
       lng: -46.6,
       kmTall: 1.6,
       kmWide: 1.6
+    })
+  })
+
+  it('bares da resposta viram gotas no Explorar, sem repetir os dele', () => {
+    const chat = (id: string, extra: Partial<ChatBar> = {}) =>
+      ({
+        id,
+        name: id,
+        latitude: -23.55,
+        longitude: -46.69,
+        distanceKm: null,
+        plan: null,
+        game: null,
+        ...extra
+      }) as ChatBar
+    const pins = answerPins(
+      [
+        chat('a'),
+        chat('b', {
+          plan: 'elite',
+          distanceKm: 1.2,
+          game: {
+            id: 'e',
+            title: 'Corinthians × Palmeiras',
+            startsAt: '2026-10-24T21:30:00.000Z',
+            live: true
+          }
+        }),
+        chat('c', { latitude: Number.NaN })
+      ],
+      new Set(['a'])
+    )
+    expect(pins).toEqual([
+      {
+        id: 'b',
+        name: 'b',
+        lat: -23.55,
+        lng: -46.69,
+        live: true,
+        elite: true,
+        distanceKm: 1.2,
+        next: Date.parse('2026-10-24T21:30:00.000Z'),
+        label: 'b'
+      }
+    ])
+    // Sem jogo nem distância: fica atrás no desempate dos rótulos.
+    expect(answerPins([chat('d')], new Set())[0]).toMatchObject({
+      live: false,
+      elite: false,
+      distanceKm: Number.POSITIVE_INFINITY,
+      next: Number.POSITIVE_INFINITY
     })
   })
 

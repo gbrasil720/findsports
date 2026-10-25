@@ -858,7 +858,11 @@ invente layout que o projeto não tem.
   `neighborhood:` e `origin:`), e `chipSearch` monta a busca com os que sobram. "Ver no
   mapa" enquadra no Explorar os bares da resposta e o ponto da busca (`mapFocus`, WEB-432;
   o `ChatBar` traz `latitude` e `longitude`), na faixa livre entre os chips e a folha
-  (`frameRegion`, a mesma conta do raio). Chips de local
+  (`frameRegion`, a mesma conta do raio), e os desenha como gotas junto com os da busca
+  do Explorar (`answer` em `explore-state`, `answerPins`), sem repetir os que ela já tem;
+  tocar numa delas abre a página do bar. Ficam até a pessoa mexer na busca (filtros,
+  atalhos, "Ao vivo", "Ampliar"), pedir outro "Ver no mapa" ou tocar no "voltar ao raio";
+  arrastar o mapa ou tocar num bar não os solta. Chips de local
   e dia só no campo do início (24a); "+" troca o contexto depois. Recentes (até 20, com a
   conversa inteira) ficam no aparelho, em `busca-ia-recentes.json` (`Paths.document`): o
   servidor não guarda texto. Depois do "Confirmar" (24e) a frase é do app (`confirmText`) e
