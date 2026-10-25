@@ -48,7 +48,8 @@
     "AI_GATEWAY_ID": "onside-prod"
   },
   // WEB-203: retenção diária de analytics (scheduled() em src/worker.ts).
-  // 04:00 UTC = 01:00 em São Paulo. É o único agendador. Para desligar,
+  // 04:00 UTC = 01:00 em São Paulo. É o único agendador: os avisos da semana
+  // dos bares (WEB-441) rodam nele e só enviam às segundas. Para desligar,
   // volte para [] e faça deploy —
   // apagar a chave não remove o agendamento já publicado.
   "triggers": { "crons": ["0 4 * * *"] },

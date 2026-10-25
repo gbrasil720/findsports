@@ -42,6 +42,9 @@ export default {
   //
   // WEB-389: cada rotina deixa uma linha em `job_run`, que o Bastidores do
   // Houdini mostra.
+  //
+  // WEB-441: por último, os avisos da semana por e-mail aos bares, que só
+  // enviam às segundas.
   async scheduled(_controller, env) {
     await runWithDb(env.HYPERDRIVE.connectionString, runScheduledJobs)
   }
