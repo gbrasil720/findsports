@@ -360,6 +360,7 @@ export function JogosPage({
           participantFreeText: form.participantFreeText || undefined,
           onBigScreen: form.onBigScreen,
           withSound: form.withSound,
+          attendanceEnabled: form.attendanceEnabled,
           ...(publicarJogo ? {} : { draft: true })
         },
         {
@@ -384,6 +385,7 @@ export function JogosPage({
         participantFreeText: form.participantFreeText,
         onBigScreen: form.onBigScreen,
         withSound: form.withSound,
+        attendanceEnabled: form.attendanceEnabled,
         ...(publicarJogo && eventoFolha && ehRascunho(eventoFolha)
           ? { publish: true as const }
           : {})
@@ -444,6 +446,7 @@ export function JogosPage({
       endsAt: evento.endsAt ? toDatetimeLocal(evento.endsAt) : '',
       participantIds: evento.participants?.map((item) => item.team.id) ?? [],
       participantFreeText: evento.participantFreeText ?? '',
+      attendanceEnabled: evento.attendanceEnabled,
       ...resolveEventScreen(evento, amenities)
     }
   }
@@ -454,6 +457,7 @@ export function JogosPage({
     endsAt: '',
     participantIds: [],
     participantFreeText: '',
+    attendanceEnabled: true,
     ...resolveEventScreen({ onBigScreen: null, withSound: null }, amenities)
   }
 
@@ -506,7 +510,7 @@ export function JogosPage({
     const passado =
       getEventTemporalState(evento.startsAt, evento.endsAt, now) === 'past'
     const ratio = interestByEvent.get(evento.id)
-    if (showsGoing && going.isSuccess && !passado) {
+    if (showsGoing && going.isSuccess && !passado && evento.attendanceEnabled) {
       const pessoas = goingById.get(evento.id)?.people.length ?? 0
       partes.push(
         pessoas
@@ -530,7 +534,11 @@ export function JogosPage({
     evento,
     barId: bar?.id ?? '',
     oferta: bar?.houseOffer ?? null,
-    quemVai: showsGoing ? (goingById.get(evento.id) ?? null) : undefined,
+    // Lista desligada no jogo (WEB-437): como o bar que não vê quem vai.
+    quemVai:
+      showsGoing && evento.attendanceEnabled
+        ? (goingById.get(evento.id) ?? null)
+        : undefined,
     viramOJogo,
     onEditar: () => abrirFolha({ tipo: 'editar', id: evento.id }),
     onDuplicar: () => duplicar(evento),
@@ -923,6 +931,11 @@ export function JogosPage({
               barName={bar?.name}
               houseOffer={bar?.houseOffer ?? null}
               showsGoing={showsGoing}
+              goingCount={
+                eventoFolha
+                  ? (goingById.get(eventoFolha.id)?.people.length ?? 0)
+                  : 0
+              }
               error={
                 createMutation.error
                   ? getUserFacingMessage(

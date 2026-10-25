@@ -207,7 +207,11 @@ export function JogoAberto({
         </h2>
         <p className="jogos-aberto-linha">
           {evento.championship} · {quando(evento)}
-          {rascunho ? ' · rascunho, ainda não aparece no app' : ''}
+          {rascunho
+            ? ' · rascunho, ainda não aparece no app'
+            : evento.attendanceEnabled
+              ? ''
+              : ' · lista de quem vai desligada'}
         </p>
       </div>
 
