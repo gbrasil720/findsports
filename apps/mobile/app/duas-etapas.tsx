@@ -17,6 +17,8 @@ import {
   INK,
   LINE,
   LIVE,
+  phaseBusy,
+  phaseLabel,
   Screen,
   SUB,
   Text,
@@ -24,6 +26,7 @@ import {
   Title,
   text
 } from '@/components/ui'
+import { attemptPhase, retryable, settleAuth } from '@/lib/auth-attempt'
 import { authClient, refreshSession } from '@/lib/auth-client'
 import { totpSecret } from '@/lib/settings'
 import { queryClient } from '@/lib/trpc'
@@ -55,6 +58,16 @@ export default function TwoFactorSetup() {
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  // Falha passageira: o botão vira "Tentar de novo" (WEB-460) e a frase treme
+  // de novo a cada falha, mesmo igual à anterior.
+  const [failed, setFailed] = useState(false)
+  const [tries, setTries] = useState(0)
+  const phase = attemptPhase(pending, failed)
+  const errorText = error ? (
+    <ErrorText key={`erro-${tries}`} style={[text(13.5), { color: LIVE }]}>
+      {error}
+    </ErrorText>
+  ) : null
   const input = useRef<TextInput>(null)
   const boxes = useShake()
   // "Copiado" no lugar do link por um instante: o háptico sozinho não basta.
@@ -69,14 +82,25 @@ export default function TwoFactorSetup() {
   }
   useEffect(() => () => clearTimeout(copiedTimer.current), [])
 
+  /** O fim de cada envio: a falha passageira deixa "Tentar de novo". */
+  const afterAttempt = (result: { error: unknown }) => {
+    setPending(false)
+    const transient = retryable(result.error)
+    setFailed(transient)
+    if (transient) setTries((n) => n + 1)
+    return transient
+  }
+
   const begin = async () => {
-    setError(null)
+    if (pending) return
+    // Sem rede, a frase fica enquanto tenta de novo: o botão não pula.
+    if (!failed) setError(null)
     if (!password) return setError('Digite sua senha.')
     setPending(true)
     const result = enabled
-      ? await authClient.twoFactor.disable({ password })
-      : await authClient.twoFactor.enable({ password })
-    setPending(false)
+      ? await settleAuth(authClient.twoFactor.disable({ password }))
+      : await settleAuth(authClient.twoFactor.enable({ password }))
+    afterAttempt(result)
     if (result.error || !result.data)
       return setError(
         result.error?.code === 'INVALID_PASSWORD'
@@ -96,16 +120,20 @@ export default function TwoFactorSetup() {
   }
 
   const verify = async (value: string) => {
-    setError(null)
+    if (pending) return
+    if (!failed) setError(null)
     setPending(true)
-    const result = await authClient.twoFactor.verifyTotp({
-      code: value,
-      trustDevice: true
-    })
-    setPending(false)
+    const result = await settleAuth(
+      authClient.twoFactor.verifyTotp({ code: value, trustDevice: true })
+    )
+    const transient = afterAttempt(result)
     if (result.error) {
-      boxes.shake()
-      setCode('')
+      // Código recusado: as caixas tremem e esvaziam. Sem rede o código
+      // fica, para "Tentar de novo" mandar o mesmo.
+      if (!transient) {
+        boxes.shake()
+        setCode('')
+      }
       return setError(
         authErrorMessage(result.error, 'Código inválido. Use o código atual.')
       )
@@ -148,12 +176,13 @@ export default function TwoFactorSetup() {
           onChangeText={setPassword}
           onSubmitEditing={begin}
         />
-        {error ? (
-          <ErrorText style={[text(13.5), { color: LIVE }]}>{error}</ErrorText>
-        ) : null}
+        {errorText}
         <BlockButton
-          label={pending ? 'Desligando…' : 'Desligar a verificação'}
-          disabled={pending}
+          label={phaseLabel(phase, {
+            idle: 'Desligar a verificação',
+            sending: 'Desligando…'
+          })}
+          busy={phaseBusy(phase)}
           onPress={begin}
         />
       </Screen>
@@ -182,13 +211,14 @@ export default function TwoFactorSetup() {
           onChangeText={setPassword}
           onSubmitEditing={begin}
         />
-        {error ? (
-          <ErrorText style={[text(13.5), { color: LIVE }]}>{error}</ErrorText>
-        ) : null}
+        {errorText}
         <BlockButton
-          label={pending ? 'Conferindo…' : 'Continuar'}
+          label={phaseLabel(phase, {
+            idle: 'Continuar',
+            sending: 'Conferindo…'
+          })}
           trailing={!pending}
-          disabled={pending}
+          busy={phaseBusy(phase)}
           onPress={begin}
         />
       </Screen>
@@ -246,12 +276,13 @@ export default function TwoFactorSetup() {
           shake={boxes}
           autoFocus={false}
         />
-        {error ? (
-          <ErrorText style={[text(13.5), { color: LIVE }]}>{error}</ErrorText>
-        ) : null}
+        {errorText}
         <BlockButton
-          label={pending ? 'Verificando…' : 'Ligar a verificação'}
-          disabled={pending}
+          label={phaseLabel(phase, {
+            idle: 'Ligar a verificação',
+            sending: 'Verificando…'
+          })}
+          busy={phaseBusy(phase)}
           onPress={() =>
             code.length === DIGITS ? verify(code) : input.current?.focus()
           }
