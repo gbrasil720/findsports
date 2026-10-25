@@ -1,4 +1,8 @@
-import { retryDelay } from '@findsports_oficial/api/lib/transient-error'
+import {
+  idempotentMutationKeys,
+  retryDelay,
+  retryTransient
+} from '@findsports_oficial/api/lib/transient-error'
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import { QueryCache, QueryClient } from '@tanstack/react-query'
 
@@ -63,6 +67,14 @@ export const getRouter = () => {
       queries: { staleTime: 60 * 1000, retry: shouldRetryQuery, retryDelay }
     }
   })
+
+  // Mutation só repete sozinha quando mandar duas vezes dá no mesmo
+  // (WEB-460); as outras voltam ao botão "Tentar de novo".
+  for (const mutationKey of idempotentMutationKeys())
+    queryClient.setMutationDefaults(mutationKey, {
+      retry: retryTransient,
+      retryDelay
+    })
 
   const linkOptions = {
     url: '/api/trpc',

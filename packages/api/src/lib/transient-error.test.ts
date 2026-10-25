@@ -1,6 +1,11 @@
 import { expect, test } from 'bun:test'
 import { TRPCClientError } from '@trpc/client'
-import { isTransientError, retryDelay, retryTransient } from './transient-error'
+import {
+  IDEMPOTENT_MUTATIONS,
+  isTransientError,
+  retryDelay,
+  retryTransient
+} from './transient-error'
 
 /** O erro como o cliente do tRPC entrega a recusa do servidor. */
 const trpcError = (code: string, httpStatus: number) =>
@@ -72,4 +77,14 @@ test('nova tentativa: só a passageira, até três, com espera crescente', () =>
   expect([0, 1, 2, 3, 4].map(retryDelay)).toEqual([
     1000, 2000, 4000, 8000, 8000
   ])
+})
+
+test('a lista de mutations seguras só tem mutation que existe', async () => {
+  const { appRouter } = await import('../routers/index')
+  const procedures = appRouter._def.procedures as Record<
+    string,
+    { _def: { type: string } }
+  >
+  for (const path of IDEMPOTENT_MUTATIONS)
+    expect([path, procedures[path]?._def.type]).toEqual([path, 'mutation'])
 })
