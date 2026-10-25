@@ -24,7 +24,7 @@ export type AuthFailure = {
  * `{ error }`; a sem resposta sai com `status: 0`, que `isTransientError` lê
  * como passageira.
  */
-export async function settle<T>(
+export async function settleAuth<T>(
   call: Promise<T>
 ): Promise<T | { data: null; error: AuthFailure }> {
   try {
@@ -40,9 +40,6 @@ export async function settle<T>(
     }
   }
 }
-
-/** A requisição não chegou ao servidor. */
-export const unreachable = (error: unknown) => getErrorStatus(error) === 0
 
 /**
  * Vale o botão "Tentar de novo": a falha é passageira e repetir agora pode dar
