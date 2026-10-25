@@ -31,7 +31,7 @@ async function seedFans(
       name: `Torcedor ${id.slice(0, 4)}`,
       email: `${id}@integration.invalid`,
       emailVerified: true,
-      role: 'fan',
+      role: 'fan' as const,
       onboardingCompleted: true
     }))
   )
