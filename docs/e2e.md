@@ -75,6 +75,13 @@ chave que o `apps/web/.env` de quem roda local pode trazer com valor real
 (Resend, LocationIQ, Stripe, Redis, PostHog) é sobrescrita ali, nem que seja com
 vazio.
 
+Com `E2E_DATABASE_URL`, o `vite dev` segura conexão ociosa por 70 s
+(`e2eKeepAlive` em `apps/web/vite.config.ts`), mais que um teste dura. Com os 5 s do
+Node, o `page.request` (e o `request`) que volta a falar depois de uns segundos de
+tela pegava a conexão no instante em que o servidor a fechava: "socket hang up" ou
+"read ECONNRESET", só na suíte carregada. O navegador repete o pedido sozinho; o
+agente do Node, não.
+
 ## Estrutura
 
 ```
