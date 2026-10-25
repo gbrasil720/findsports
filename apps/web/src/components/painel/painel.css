@@ -596,9 +596,9 @@
   }
 }
 
-/* Avisos antigos fora do `painel-legado` (o erro de carregar do
- * `admin/query-error`, que o layout e as telas usam): no escuro, papel e
- * tinta viram os do painel, e o botão tinta inverte junto. */
+/* Avisos antigos fora do `painel-legado` (validar código, configurações):
+ * no escuro, papel e tinta viram os do painel, e o botão tinta inverte
+ * junto. */
 @media (prefers-color-scheme: dark) {
   .painel .onside-callout:not(.painel-legado *) {
     --onside-paper: var(--painel-card);
@@ -1179,5 +1179,65 @@ html[data-consent] .painel .painel-lateral {
   .painel .painel-faixa-rede,
   .painel .painel-faixa-rede[data-visivel="true"] {
     transform: translate(-50%, 0);
+  }
+}
+
+/* O bloco que não carregou (`ErroBloco`): contorno vermelho, como o erro de
+ * salvar do Meu espaço; o compacto é só a linha, no tom do vazio. */
+.painel .painel-erro {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px 12px;
+  padding: 14px 16px;
+  border-radius: 7px;
+  color: var(--painel-live);
+  box-shadow: inset 0 0 0 1.5px rgb(201 43 12 / 45%);
+  animation: painel-erro-entra 150ms var(--onside-ease-out);
+}
+.painel .painel-erro-texto {
+  display: flex;
+  flex: 1 1 220px;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.painel .painel-erro-texto b {
+  color: var(--painel-fg);
+}
+.painel .painel-erro-texto span {
+  color: var(--painel-muted);
+}
+.painel .painel-erro[data-compacto] {
+  display: block;
+  margin: 12px 0 10px;
+  padding: 0;
+  box-shadow: none;
+  font-size: 13.5px;
+  color: var(--painel-muted);
+}
+.painel .painel-erro-tentar {
+  align-self: center;
+  font-weight: 700;
+  color: var(--painel-fg);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.painel .painel-erro-tentar:disabled {
+  cursor: progress;
+  text-decoration: none;
+  color: var(--painel-muted);
+}
+@keyframes painel-erro-entra {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .painel .painel-erro {
+    animation: none;
   }
 }

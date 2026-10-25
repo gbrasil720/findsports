@@ -25,11 +25,10 @@ import {
   rotuloPeriodo
 } from '@/components/admin/desempenho-contas'
 import { MetricHint } from '@/components/admin/metric-hint'
-import { QueryError } from '@/components/admin/query-error'
 import { countLabel } from '@/lib/plural'
-import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
+import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
-import { Badge, Card, Chip, Icone } from '../painel'
+import { Badge, Card, Chip, ErroBloco, Icone } from '../painel'
 
 const ROTULO_METRICA: Record<ComparisonMetric, string> = {
   uniqueVisitors: 'Visitantes',
@@ -479,13 +478,11 @@ export function ComoCadaJogoFoi({
   }
   if (consulta.isError) {
     return (
-      <QueryError
-        message={getUserFacingMessage(
-          consulta.error,
-          'Não foi possível carregar o desempenho dos jogos. Tente novamente.'
-        )}
-        retryable={isRetryableError(consulta.error)}
-        onRetry={() => void consulta.refetch()}
+      <ErroBloco
+        titulo="Não foi possível carregar o desempenho dos jogos."
+        erro={consulta.error}
+        tentar={consulta.refetch}
+        tentando={consulta.isFetching}
       />
     )
   }

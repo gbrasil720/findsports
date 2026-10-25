@@ -26,12 +26,12 @@ import { usePalette } from '@/components/theme'
 import {
   ACID,
   BackButton,
+  ErrorState,
   GlassRound,
   Icon,
   INK,
   LIVE,
   PAPER,
-  PillButton,
   Text,
   text,
   useStatusBar
@@ -125,15 +125,13 @@ export default function FriendProfile() {
         {profile.isPending ? (
           <ActivityIndicator color={palette.ink} style={{ marginTop: 40 }} />
         ) : profile.isError || !person ? (
-          <View style={styles.empty}>
-            <Text style={[text(15, 'SemiBold'), { color: palette.ink }]}>
-              Não deu para abrir esse perfil.
-            </Text>
-            <PillButton
-              label="Tentar de novo"
-              onPress={() => profile.refetch()}
-            />
-          </View>
+          <ErrorState
+            style={styles.empty}
+            title="Não deu para abrir esse perfil."
+            error={profile.error}
+            onRetry={profile.refetch}
+            retrying={profile.isFetching}
+          />
         ) : (
           <>
             <View style={styles.who}>

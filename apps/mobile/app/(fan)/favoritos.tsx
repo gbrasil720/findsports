@@ -31,6 +31,7 @@ import { type Palette, usePalette } from '@/components/theme'
 import {
   ACCENT,
   ACID,
+  ErrorState,
   GlassRound,
   Icon,
   INK,
@@ -206,15 +207,13 @@ export default function YourBars() {
         {query.isPending ? (
           <ActivityIndicator color={palette.ink} style={{ marginTop: 40 }} />
         ) : query.isError ? (
-          <View style={styles.empty}>
-            <Text style={[text(15, 'SemiBold'), { color: palette.ink }]}>
-              Não deu para abrir seus bares.
-            </Text>
-            <PillButton
-              label="Tentar de novo"
-              onPress={() => query.refetch()}
-            />
-          </View>
+          <ErrorState
+            style={styles.empty}
+            title="Não deu para abrir seus bares."
+            error={query.error}
+            onRetry={query.refetch}
+            retrying={query.isFetching}
+          />
         ) : (
           // Trocar de aba troca o conteúdo em fade curto, sem salto.
           <Animated.View key={tab} entering={SWAP} style={styles.stack}>

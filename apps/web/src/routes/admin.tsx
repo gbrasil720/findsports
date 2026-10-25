@@ -8,12 +8,10 @@ import {
 import { useEffect } from 'react'
 import { useMyBar } from '@/components/admin/admin-queries'
 import { getAdminRouteFromHash } from '@/components/admin/admin-tabs'
-import { QueryError } from '@/components/admin/query-error'
 import { InstallAppCard } from '@/components/app/install-app-card'
-import { PainelShell } from '@/components/painel'
+import { ErroBloco, PainelShell } from '@/components/painel'
 import painelCss from '@/components/painel/painel.css?url'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
-import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 
 /**
  * Painel do bar: o shell (barra lateral) e, dentro dele, a rota filha —
@@ -56,7 +54,14 @@ function useLegacyTabRedirect() {
 function AdminLayout() {
   const session = Route.useRouteContext({ select: (ctx) => ctx.session })
   useLegacyTabRedirect()
-  const { isLoading, isError, error, data: bar, refetch } = useMyBar()
+  const {
+    isLoading,
+    isError,
+    isFetching,
+    error,
+    data: bar,
+    refetch
+  } = useMyBar()
 
   return (
     <PainelShell>
@@ -68,15 +73,11 @@ function AdminLayout() {
           <Skeleton className="h-64 w-full bg-[var(--painel-sub)]" />
         </div>
       ) : isError || !bar ? (
-        <QueryError
-          message={getUserFacingMessage(
-            error,
-            'Não foi possível carregar os dados do bar.'
-          )}
-          retryable={isRetryableError(error)}
-          onRetry={() => {
-            void refetch()
-          }}
+        <ErroBloco
+          titulo="Não foi possível carregar os dados do bar."
+          erro={error}
+          tentar={refetch}
+          tentando={isFetching}
         />
       ) : (
         <>

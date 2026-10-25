@@ -37,6 +37,8 @@ import { useSoon } from '@/components/soon'
 import { usePalette } from '@/components/theme'
 import {
   ACID,
+  ErrorState,
+  errorMessage,
   GlassRound,
   HOT,
   Icon,
@@ -147,7 +149,10 @@ export default function Notices() {
       },
       onError: (error) => {
         haptic.error()
-        Alert.alert('Não deu certo', error.message)
+        Alert.alert(
+          'Não deu certo',
+          errorMessage(error, 'Tente de novo em instantes.')
+        )
       }
     })
   )
@@ -187,6 +192,8 @@ export default function Notices() {
     now
   )
   const shown = notices.filter((n) => inTab(n, tab))
+  const sources = [mine, medals, friendNotices, asked]
+  const failed = sources.find((q) => q.isError)
   const unread = notices.filter((n) => !read.includes(n.id))
   const markAll = () => {
     haptic.select()
@@ -331,6 +338,18 @@ export default function Notices() {
           ) : null}
         </View>
 
+        {/* O que não abriu não vira "nada por aqui" (WEB-460). */}
+        {failed && !mine.isPending && !medals.isPending ? (
+          <ErrorState
+            style={{ gap: 14 }}
+            title="Não deu para abrir todos os avisos."
+            error={failed.error}
+            onRetry={() => {
+              for (const q of sources) if (q.isError) q.refetch()
+            }}
+            retrying={sources.some((q) => q.isFetching)}
+          />
+        ) : null}
         {mine.isPending || medals.isPending ? (
           <ActivityIndicator color={palette.ink} style={{ marginTop: 24 }} />
         ) : shown.length ? (
@@ -409,7 +428,7 @@ export default function Notices() {
               </View>
             )
           })
-        ) : (
+        ) : failed ? null : (
           <Text style={[text(14, 'Regular', 1.45), { color: palette.muted }]}>
             {tab === 'friends'
               ? 'Nada dos amigos por aqui. Pedidos de amizade, pedidos aceitos e chamados para jogos aparecem aqui.'
