@@ -82,7 +82,7 @@ test('nova tentativa: só a passageira, até três, com espera crescente', () =>
 
 test('a lista de mutations seguras só tem mutation que existe', async () => {
   const { appRouter } = await import('../routers/index')
-  const procedures = appRouter._def.procedures as Record<
+  const procedures = appRouter._def.procedures as unknown as Record<
     string,
     { _def: { type: string } }
   >
