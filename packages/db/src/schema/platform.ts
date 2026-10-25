@@ -144,6 +144,15 @@ export const bar = pgTable(
     noticeEmptySchedule: boolean('notice_empty_schedule')
       .default(false)
       .notNull(),
+    // Dados da nota (WEB-444), editados em Plano e cobrança e enviados ao
+    // cliente do Stripe: razão social como empresa, CNPJ como `br_cnpj` e o
+    // e-mail como o das faturas (`packages/auth/src/stripe-sync.ts`). Nulos
+    // até o dono preencher. CNPJ só com letras e números, maiúsculas,
+    // conferido pela API (`@findsports_oficial/db/cnpj`). Fora de
+    // `PUBLIC_BAR_COLUMNS`.
+    legalName: text('legal_name'),
+    cnpj: text('cnpj'),
+    invoiceEmail: text('invoice_email'),
     // Horário de funcionamento (WEB-397): sete faixas, a 0 no domingo, no
     // relógio de Brasília; dia nulo é fechado e a coluna nula é "não
     // informado". Validação e "aberto agora" em
