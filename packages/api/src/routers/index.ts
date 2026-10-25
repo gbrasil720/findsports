@@ -18,6 +18,7 @@ import { onboardingRouter } from './onboarding'
 import { postGameRouter } from './post-game'
 import { pubRouter } from './pub'
 import { pubsRouter } from './pubs'
+import { rankingRouter } from './ranking'
 import { ratingsRouter } from './ratings'
 import { recommendationsRouter } from './recommendations'
 import { reservationValidationRouter } from './reservation-validation'
@@ -51,6 +52,7 @@ export const appRouter = router({
   achievements: achievementsRouter,
   account: accountRouter,
   friends: friendsRouter,
+  ranking: rankingRouter,
   feedback: feedbackRouter,
   grimorio: grimorioRouter,
   houdini: houdiniRouter
