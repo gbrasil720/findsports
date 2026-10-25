@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import Svg, { Line } from 'react-native-svg'
 import { haptic, usePressScale } from '@/components/motion'
 import { usePalette } from '@/components/theme'
-import { ACID, Icon, INK, text } from '@/components/ui'
+import { ACID, Icon, INK, Text, text } from '@/components/ui'
 
 /*
  * Peças da página do bar que as telas de "Vou assistir" (08) também usam:

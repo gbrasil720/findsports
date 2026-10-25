@@ -821,6 +821,11 @@ invente layout que o projeto não tem.
   cores só delas. Texto sem `color` sai preto: passe `FG`. `INK`/`PAPER` são as cores
   fixas (texto e ícone sobre acid ficam `INK`, com `accent={LIVE}`). No Android as
   constantes dinâmicas ficam no claro.
+- **Fonte grande do iOS:** o `Text` de `components/ui.tsx` acompanha o "Texto maior" até
+  `MAX_FONT_SCALE` (1,35×, o maior tamanho fora dos de acessibilidade); acima disso,
+  chips, botões e cards de altura fixa cortavam o rótulo (nos de acessibilidade a letra
+  chega a 3,1×). Já usam: filtros, página do bar e as peças de `ui`, `card` e `explore`;
+  o resto ainda importa o `Text` do `react-native`. Um `maxFontSizeMultiplier` próprio vence.
 - **Barra de status:** `useStatusBar` (`components/ui.tsx`), no foco e no `transitionEnd`.
   Não use `<StatusBar>` (com telas empilhadas, a de baixo ganha) nem a opção
   `statusBarStyle` da pilha (o Expo Go não liga `UIViewControllerBasedStatusBarAppearance`

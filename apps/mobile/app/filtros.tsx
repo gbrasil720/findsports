@@ -6,7 +6,6 @@ import {
   ScrollView,
   StyleSheet,
   Switch,
-  Text,
   useWindowDimensions,
   View
 } from 'react-native'
@@ -18,7 +17,7 @@ import { useExploreState } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
 import { haptic, ScalePress } from '@/components/motion'
 import { usePalette } from '@/components/theme'
-import { ACID, Icon, INK, PAPER, PillButton, text } from '@/components/ui'
+import { ACID, Icon, INK, PAPER, PillButton, Text, text } from '@/components/ui'
 import { authClient } from '@/lib/auth-client'
 import { searchCenter } from '@/lib/explore'
 import {
