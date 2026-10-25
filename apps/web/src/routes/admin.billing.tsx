@@ -866,7 +866,7 @@ function EditarNota({
     <form
       method="post"
       noValidate
-      className={`flex flex-wrap items-end gap-3 py-3 ${primeira ? '' : 'border-[var(--painel-line)] border-t'}`}
+      className={`flex flex-col gap-3 py-3 ${primeira ? '' : 'border-[var(--painel-line)] border-t'}`}
       onSubmit={(e) => {
         e.preventDefault()
         const normalizado = normalizeInvoiceField(campo, valor)
@@ -877,7 +877,7 @@ function EditarNota({
     >
       <Campo
         {...input}
-        className="min-w-0 flex-1 basis-60"
+        className="w-full"
         rotulo={titulo}
         autoFocus
         value={valor}
@@ -897,7 +897,8 @@ function EditarNota({
           )
         }
       />
-      <div className="flex gap-2 pb-0.5">
+      {/* No celular estreito o "Salvar" desce para baixo do "Cancelar". */}
+      <div className="flex flex-wrap gap-2">
         <Botao altura={38} disabled={salvar.isPending} onClick={onFechar}>
           Cancelar
         </Botao>
@@ -965,7 +966,7 @@ function Linha({
           {selo ? <EmBreve /> : null}
         </b>
         {sub ? (
-          <span className="text-[13px] text-[var(--painel-muted)] leading-snug [overflow-wrap:anywhere]">
+          <span className="block text-[13px] text-[var(--painel-muted)] leading-snug [overflow-wrap:anywhere]">
             {sub}
           </span>
         ) : null}
