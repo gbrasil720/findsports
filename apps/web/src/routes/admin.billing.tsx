@@ -873,8 +873,14 @@ function EditarNota({
         // O "Salvo" fica à vista um instante antes de a linha voltar.
         setTimeout(onFechar, 900)
       },
+      // Recusa da API (CNPJ que o Stripe não aceitou) vem com a frase dela;
+      // o resto, passageiro, fica com o "Tentar de novo" do botão.
       onError: (error) =>
-        setErro(getUserFacingMessage(error, 'Não foi possível salvar.'))
+        setErro(
+          error.data?.httpStatus === 400
+            ? error.message
+            : getUserFacingMessage(error, 'Não foi possível salvar.')
+        )
     })
   )
   const { titulo, campo: props } = NOTA[campo]
