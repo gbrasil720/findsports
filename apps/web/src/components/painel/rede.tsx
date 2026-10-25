@@ -3,6 +3,7 @@ import { onlineManager } from '@tanstack/react-query'
 import {
   type ComponentProps,
   useEffect,
+  useRef,
   useState,
   useSyncExternalStore
 } from 'react'
@@ -29,13 +30,31 @@ export function useOnline() {
 
 /**
  * A faixa de "sem conexão": uma só, presa embaixo, no meio da tela, por cima
- * do conteúdo (não empurra nada). Some sozinha quando a rede volta.
+ * do conteúdo. Some sozinha quando a rede volta. A altura dela vai para
+ * `--painel-faixa-h` no shell, que dá esse espaço ao fim da página enquanto
+ * ela está à vista (WEB-470): no celular ela quebra em duas ou três linhas.
  */
 export function FaixaSemConexao() {
   const online = useOnline()
+  const faixa = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = faixa.current
+    const painel = el?.closest<HTMLElement>('.painel')
+    if (!el || !painel) return
+    const medir = new ResizeObserver(() =>
+      painel.style.setProperty('--painel-faixa-h', `${el.offsetHeight}px`)
+    )
+    medir.observe(el)
+    return () => medir.disconnect()
+  }, [])
   return (
     <>
-      <div className="painel-faixa-rede" data-visivel={!online} aria-hidden>
+      <div
+        ref={faixa}
+        className="painel-faixa-rede"
+        data-visivel={!online}
+        aria-hidden
+      >
         <span className="painel-faixa-rede-ponto" />
         Sem conexão. O painel se atualiza quando a rede voltar.
       </div>

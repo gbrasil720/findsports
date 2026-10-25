@@ -26,7 +26,7 @@ import { BAR_RESERVATIONS_QUERY } from '@/lib/query-cache'
 import { useTRPC } from '@/utils/trpc'
 import { Icone, type IconeNome } from './icone'
 import { Avatar, Badge, IconeBotao, propsBotao } from './pecas'
-import { FaixaSemConexao } from './rede'
+import { FaixaSemConexao, useOnline } from './rede'
 
 type ItemNav = {
   to:
@@ -76,6 +76,7 @@ export function PainelShell({ children }: { children: ReactNode }) {
   const showsGoing = useShowsGoing() === true
   const contadores = useContadores(showsGoing)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const online = useOnline()
   const donoBotao = useRef<HTMLButtonElement>(null)
 
   const nomeBar = bar?.name ?? ''
@@ -120,7 +121,11 @@ export function PainelShell({ children }: { children: ReactNode }) {
 
   return (
     <PortalProvider container={portal}>
-      <div ref={portal} className="onside-app painel">
+      <div
+        ref={portal}
+        className="onside-app painel"
+        data-sem-rede={online ? undefined : ''}
+      >
         <a className="onside-skip-link" href="#main-content">
           Ir para o conteúdo
         </a>

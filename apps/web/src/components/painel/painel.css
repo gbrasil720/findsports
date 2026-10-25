@@ -1144,7 +1144,8 @@ html[data-consent] .painel .painel-lateral {
    * quebrava o texto em quatro linhas no celular. */
   left: 0;
   right: 0;
-  z-index: 60;
+  /* Abaixo de menus e diálogos (z 50): eles cobrem a faixa, não o contrário. */
+  z-index: 40;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1184,6 +1185,25 @@ html[data-consent] .painel .painel-lateral {
 @media (prefers-reduced-motion: reduce) {
   .painel .painel-faixa-rede {
     transform: none;
+  }
+}
+/* Com a faixa à vista, o fim da página ganha a altura dela (WEB-470): o
+ * último botão rola para cima dela em vez de ficar por baixo. */
+.painel[data-sem-rede] .painel-main {
+  padding-bottom: calc(var(--painel-faixa-h, 40px) + 20px + 16px);
+}
+/* Com o trilho de ícones, a faixa centra na coluna do conteúdo: no meio da
+ * tela ela passava por cima de "Validar código" e do menu da conta. */
+@media (max-width: 1180px) {
+  .painel .painel-faixa-rede {
+    left: 76px;
+    max-width: calc(100vw - 76px - 32px);
+  }
+}
+@media (max-width: 640px) {
+  .painel .painel-faixa-rede {
+    left: 60px;
+    max-width: calc(100vw - 60px - 32px);
   }
 }
 
