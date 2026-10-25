@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Image,
   Linking,
+  Platform,
   Pressable,
   ScrollView,
   Share,
@@ -14,6 +15,7 @@ import {
   useColorScheme,
   View
 } from 'react-native'
+import MapView from 'react-native-maps'
 import Animated, {
   FadeInDown,
   FadeOut,
@@ -23,16 +25,9 @@ import Animated, {
   withTiming
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import Svg, {
-  Circle,
-  Defs,
-  Line,
-  RadialGradient,
-  Rect,
-  Stop
-} from 'react-native-svg'
+import Svg, { Defs, Line, RadialGradient, Rect, Stop } from 'react-native-svg'
 import { Card } from '@/components/card'
-import { initials } from '@/components/explore'
+import { initials, MeDot, RadiusCircle } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
 import {
@@ -77,8 +72,9 @@ import {
 } from '@/components/ui'
 import { authClient } from '@/lib/auth-client'
 import { env } from '@/lib/env'
-import { type Coordinates, searchCenter } from '@/lib/explore'
+import { type Coordinates, SAO_PAULO, searchCenter } from '@/lib/explore'
 import { dayKey } from '@/lib/filters'
+import { MAP_STYLE } from '@/lib/map-style'
 import { todayGoing } from '@/lib/notices'
 import {
   isToday,
@@ -1306,6 +1302,9 @@ function Empty({
   const dark = palette.dark
   const expansion = useExpansion(where, true)
   const refill = useRefill(onFilled)
+  const center = where ?? SAO_PAULO
+  // Graus de latitude nos 250 do mapa para o raio sair com 168 de diâmetro.
+  const span = ((radiusKm * 2) / 111) * (250 / 168)
   const invite = () =>
     Share.share({
       message: `Conhece um bar que passa jogo aqui perto? Ele pode entrar na Onside de graça e aparecer para quem procura onde assistir: ${env.EXPO_PUBLIC_SERVER_URL}/signup?role=pub`
@@ -1314,35 +1313,37 @@ function Empty({
     <ScrollView contentContainerStyle={styles.endBody}>
       <Card shadow={ACID} offset={6}>
         <View style={styles.mapBox}>
-          <Image
-            source={
-              dark
-                ? require('../assets/images/intro/map-dark.jpg')
-                : require('../assets/images/intro/map.jpg')
-            }
-            style={{ width: '100%', height: 250 }}
-            resizeMode="cover"
-          />
-          <Svg style={StyleSheet.absoluteFill} viewBox="0 0 358 250">
-            <Circle
-              cx={179}
-              cy={128}
-              r={84}
-              fill="none"
-              stroke={palette.ink}
-              strokeWidth={2.5}
+          {/* O mapa do Explorar, parado, no raio de busca em volta de você. */}
+          <MapView
+            style={StyleSheet.absoluteFill}
+            region={{
+              latitude: center.lat,
+              longitude: center.lng,
+              latitudeDelta: span,
+              longitudeDelta: span
+            }}
+            mapType={Platform.OS === 'ios' ? 'mutedStandard' : 'standard'}
+            customMapStyle={dark ? MAP_STYLE.dark : MAP_STYLE.light}
+            userInterfaceStyle={dark ? 'dark' : 'light'}
+            showsPointsOfInterests={false}
+            showsCompass={false}
+            scrollEnabled={false}
+            zoomEnabled={false}
+            rotateEnabled={false}
+            pitchEnabled={false}
+            toolbarEnabled={false}
+            pointerEvents="none"
+          >
+            <RadiusCircle
+              center={{ latitude: center.lat, longitude: center.lng }}
+              km={radiusKm}
+              dark={dark}
+              strong
             />
-            <Circle cx={179} cy={128} r={40} fill={ACID} opacity={0.18} />
-            <Circle cx={179} cy={128} r={21} fill={ACID} opacity={0.35} />
-            <Circle
-              cx={179}
-              cy={128}
-              r={11}
-              fill={ACID}
-              stroke={INK}
-              strokeWidth={3}
-            />
-          </Svg>
+          </MapView>
+          <View style={styles.mapMe} pointerEvents="none">
+            <MeDot />
+          </View>
           <View style={[styles.mapTag, { backgroundColor: palette.card }]}>
             <Text style={[styles.mono, { color: palette.ink }]}>
               {radiusKm} km
@@ -1807,6 +1808,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1
   },
   mapBox: { height: 250, overflow: 'hidden', borderRadius: 6 },
+  mapMe: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
   mapTag: {
     position: 'absolute',
     top: 16,
