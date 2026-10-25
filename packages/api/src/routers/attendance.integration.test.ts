@@ -619,3 +619,73 @@ integrationTest(
     }
   }
 )
+
+integrationTest(
+  'lista de quem vai desligada no jogo: recusa marcação nova e some do painel, quem já marcou fica',
+  async () => {
+    const ctx = await seed({ elite: true })
+    const [future] = ctx.gameIds as [string]
+    const attendanceOf = async (index: number) =>
+      (await ctx.fan(index).pubs.getById({ id: ctx.barId })).events.find(
+        ({ id }) => id === future
+      )?.attendance
+    try {
+      const before = await ctx.fan(0).attendance.set({
+        eventId: future,
+        attending: true
+      })
+      await ctx.owner.pub.updateEvent({
+        eventId: future,
+        attendanceEnabled: false
+      })
+
+      // Marcação nova: recusada, como a de jogo começado, e sem botão no app.
+      const refused = await refusal(
+        ctx.fan(1).attendance.set({ eventId: future, attending: true })
+      )
+      expect(refused.code).toBe('PRECONDITION_FAILED')
+      expect(refused.message).toBe(
+        'O bar não abriu a lista de quem vai neste jogo.'
+      )
+      expect(await ctx.presences(future)).toHaveLength(1)
+      expect(await attendanceOf(1)).toBeNull()
+
+      // Quem já marcou segue com o "Você vai" e o mesmo código.
+      expect(await attendanceOf(0)).toMatchObject({
+        attending: true,
+        code: before.code
+      })
+      expect(
+        await ctx.fan(0).attendance.set({ eventId: future, attending: true })
+      ).toEqual(before)
+
+      // O painel não lista quem vai neste jogo.
+      expect(
+        (await ctx.owner.barReservations.going()).map(({ id }) => id)
+      ).not.toContain(future)
+
+      // Desmarcar continua valendo; marcar de novo, não.
+      await ctx.fan(0).attendance.set({ eventId: future, attending: false })
+      expect(await ctx.presences(future)).toHaveLength(0)
+      expect(
+        (
+          await refusal(
+            ctx.fan(0).attendance.set({ eventId: future, attending: true })
+          )
+        ).code
+      ).toBe('PRECONDITION_FAILED')
+
+      // Religada, volta tudo.
+      await ctx.owner.pub.updateEvent({
+        eventId: future,
+        attendanceEnabled: true
+      })
+      await ctx.fan(1).attendance.set({ eventId: future, attending: true })
+      expect(
+        (await ctx.owner.barReservations.going()).map(({ id }) => id)
+      ).toContain(future)
+    } finally {
+      await ctx.cleanup()
+    }
+  }
+)
