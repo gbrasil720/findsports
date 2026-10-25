@@ -59,6 +59,8 @@ export default function SignIn() {
   // A última tentativa falhou de forma passageira: o botão vira "Tentar de
   // novo" (WEB-460).
   const [failed, setFailed] = useState(false)
+  // Cada falha passageira treme a frase de novo, mesmo igual à anterior.
+  const [tries, setTries] = useState(0)
   const turnstile = useTurnstile()
   const notice = params.notice ? NOTICES[params.notice] : undefined
   // A foto assenta de um zoom leve quando a tela abre.
@@ -72,7 +74,8 @@ export default function SignIn() {
 
   const submit = async () => {
     if (pending) return
-    setError(null)
+    // Sem rede, a frase fica enquanto tenta de novo: o botão não pula.
+    if (!failed) setError(null)
     setPending(true)
     const result = await settleAuth(
       authClient.signIn.email({
@@ -89,7 +92,9 @@ export default function SignIn() {
     // O token do Turnstile vale uma vez: com erro ou não, pede outro.
     turnstile.reset()
     setPending(false)
-    setFailed(retryable(result.error))
+    const transient = retryable(result.error)
+    setFailed(transient)
+    if (transient) setTries((n) => n + 1)
     if (result.error) {
       if (result.error.code === 'EMAIL_NOT_VERIFIED') {
         router.push({
@@ -214,7 +219,9 @@ export default function SignIn() {
           onSubmitEditing={submit}
         />
         {error ? (
-          <ErrorText style={[text(13.5), { color: LIVE }]}>{error}</ErrorText>
+          <ErrorText key={tries} style={[text(13.5), { color: LIVE }]}>
+            {error}
+          </ErrorText>
         ) : null}
         <BlockButton
           label={phaseLabel(phase, {
