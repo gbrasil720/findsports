@@ -22,6 +22,7 @@ import { NotFoundPage } from './components/not-found/not-found-page'
 import { RouteErrorPage } from './components/route-error-page'
 import { houdiniRewriteInput, houdiniRewriteOutput } from './lib/houdini-host'
 import { getUserFacingError, shouldRetryQuery } from './lib/user-facing-error'
+import type { RouterAppContext } from './routes/__root'
 import { routeTree } from './routeTree.gen'
 import { TRPCProvider } from './utils/trpc'
 
@@ -41,6 +42,7 @@ declare module '@tanstack/react-query' {
 
 export const getRouter = () => {
   let cachedUserId: string | null = null
+  const lastSessionCheck: RouterAppContext['lastSessionCheck'] = {}
   const queryClient = new QueryClient({
     queryCache: new QueryCache({
       onError: (error, query) => {
@@ -127,7 +129,7 @@ export const getRouter = () => {
     context: {
       trpc,
       queryClient,
-      lastSessionCheck: {},
+      lastSessionCheck,
       syncSession(userId: string | null) {
         if (cachedUserId === userId) return
         // clear also cancels pending queries so an old response cannot refill
@@ -140,9 +142,25 @@ export const getRouter = () => {
     // conta junto, o cliente começa em `null` — a hidratação não roda
     // `beforeLoad` — e a primeira navegação limpava o cache inteiro,
     // remontando a página e apagando o que estava digitado (WEB-140).
-    dehydrate: () => ({ cachedUserId }),
+    // A sessão que o SSR conferiu vai junto (WEB-470): sem ela, a primeira
+    // troca de tela sem rede não teria sessão anterior em que se apoiar.
+    dehydrate: () => {
+      const last = lastSessionCheck.current
+      return {
+        cachedUserId,
+        lastSessionCheck: last && {
+          location: {
+            pathname: last.location.pathname,
+            searchStr: last.location.searchStr,
+            hash: last.location.hash
+          },
+          session: last.session
+        }
+      }
+    },
     hydrate: (dehydrated) => {
       cachedUserId = dehydrated.cachedUserId
+      lastSessionCheck.current = dehydrated.lastSessionCheck
     },
     defaultPendingComponent: () => <Loader />,
     defaultNotFoundComponent: NotFoundPage,

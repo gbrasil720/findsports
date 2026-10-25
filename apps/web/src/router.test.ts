@@ -99,13 +99,37 @@ describe('router SSR', () => {
     const router = getRouter()
     const { queryClient, syncSession } = router.options.context
 
-    await router.options.hydrate?.({ cachedUserId: 'A' })
+    await router.options.hydrate?.({
+      cachedUserId: 'A',
+      lastSessionCheck: undefined
+    })
     queryClient.setQueryData(['bar'], 'hidratado-do-ssr')
     syncSession('A')
     expect(queryClient.getQueryData<string>(['bar'])).toBe('hidratado-do-ssr')
 
     syncSession('B')
     expect(queryClient.getQueryData(['bar'])).toBeUndefined()
+  })
+
+  test('a sessão conferida no SSR chega ao cliente para a navegação sem rede (WEB-470)', async () => {
+    const { getRouter } = await import('./router')
+    const server = getRouter()
+    const location = { pathname: '/admin', searchStr: '', hash: '' }
+    server.options.context.lastSessionCheck.current = {
+      location: { ...location, href: '/admin' } as typeof location,
+      session: null
+    }
+    // O integrador do React Query embrulha o `dehydrate` e espera o fim do SSR.
+    Object.assign(server, { serverSsr: { onRenderFinished: () => {} } })
+    const dehydrated = await server.options.dehydrate?.()
+    expect(dehydrated?.lastSessionCheck).toEqual({ location, session: null })
+
+    const client = getRouter()
+    if (dehydrated) await client.options.hydrate?.(dehydrated)
+    expect(client.options.context.lastSessionCheck.current).toEqual({
+      location,
+      session: null
+    })
   })
 
   test('isola o cache entre instâncias de requisição', async () => {
