@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import { converse, trimHistory, verifyCitations } from './chat'
+import { converse, trimHistory, verifyCitations, withLeftOut } from './chat'
 import {
   type Caller,
   nearOnly,
@@ -387,6 +387,90 @@ describe('eventos da conversa (R24)', () => {
       { key: 'amenities:21', label: 'Drinks', icon: 'beer' },
       { key: 'radiusKm:3', label: 'até 3 km', icon: 'pin' }
     ])
+  })
+
+  it('mais características do que a busca aceita: busca com as 6 e avisa as de fora (WEB-458)', async () => {
+    const events: ChatEvent[] = []
+    const searched: { amenities?: number[] }[] = []
+    const results: unknown[] = []
+    const state = stateWith()
+    const replies = [
+      toolCall(
+        'buscar_bares',
+        {
+          // Sete, com as de ver o jogo no fim: elas passam na frente.
+          caracteristicas: [
+            'pix',
+            'cartao',
+            'chopp',
+            'drinks',
+            'area_externa',
+            'telao',
+            'som_do_jogo'
+          ]
+        },
+        'c1'
+      ),
+      toolCall('responder', { texto: 'O **Bar do Zé** [[1]].', bares: [ZE.id] })
+    ]
+    const toolCtx = {
+      caller: {
+        ...caller,
+        search: async (args: { amenities?: number[] }) => {
+          searched.push(args)
+          return { bars: [found(ZE.id, 'Bar do Zé', 0.8)] }
+        }
+      } as unknown as Caller,
+      message: 'telão, som, pix, cartão, chopp, drinks, área externa',
+      origin: { lat: -23.56, lng: -46.69 },
+      radiusKm: 3,
+      now: NOW,
+      userId: 'torcedor',
+      day: null,
+      placeLabel: null,
+      emit: (e: ChatEvent) => events.push(e)
+    }
+    const result = await converse(toolCtx.message, [], {
+      call: async () => replies.shift(),
+      models: ['modelo-a', 'modelo-b'],
+      runTool: async (name, args, id) => {
+        const out = await runTool(name, args, toolCtx, state, id)
+        results.push(out)
+        return out
+      },
+      state,
+      now: NOW,
+      hasOrigin: true,
+      emit: toolCtx.emit
+    })
+
+    // Na ordem do pedido, sem a área externa.
+    expect(searched).toMatchObject([{ amenities: [16, 17, 13, 21, 1, 2] }])
+    expect(JSON.stringify(results[0])).toContain(
+      '"caracteristicas_fora_da_busca":["Área externa"]'
+    )
+    expect(
+      events.find((e) => e.type === 'tool' && e.state === 'done')
+    ).toMatchObject({
+      params: [
+        ['raio', '3 km'],
+        ['tem', 'pix, cartão, chopp, drinks, telão, som do jogo']
+      ]
+    })
+    expect(result.reply.search?.chips.map((c) => c.key)).not.toContain(
+      'amenities:4'
+    )
+    const text =
+      'O **Bar do Zé** [[1]]. A busca filtra até 6 características de uma vez: ficou de fora área externa.'
+    expect(result.reply.text).toBe(text)
+    expect(events.at(-1)).toEqual({ type: 'text', text })
+  })
+
+  it('aviso das de fora: nada quando cabe, plural quando sobram duas', () => {
+    expect(withLeftOut('Oi.', [])).toBe('Oi.')
+    expect(withLeftOut('Oi.', ['Wi-fi', 'Perto do metrô'])).toBe(
+      'Oi. A busca filtra até 6 características de uma vez: ficaram de fora wi-fi e perto do metrô.'
+    )
   })
 
   it('sinônimos e nomes da lista viram o mesmo id; o que não existe sai', async () => {
