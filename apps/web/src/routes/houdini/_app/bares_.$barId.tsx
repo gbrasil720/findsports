@@ -44,6 +44,9 @@ type Tab = (typeof TABS)[number]['id']
 
 const DAY = 24 * 3_600_000
 
+/** Rascunho (WEB-436) só na aba Jogos, marcado: as contagens são do que está publicado. */
+const publishedGames = (ficha: Ficha) => ficha.games.filter((g) => !g.draft)
+
 function FichaPage() {
   const { env, admin } = Route.useRouteContext()
   const { barId } = Route.useParams()
@@ -84,7 +87,7 @@ function FichaPage() {
 function FichaBody({ ficha }: { ficha: Ficha }) {
   const [tab, setTab] = useState<Tab>('resumo')
   const counts: Partial<Record<Tab, number>> = {
-    jogos: ficha.games.length,
+    jogos: publishedGames(ficha).length,
     reservas: ficha.reservations.length,
     avaliacoes: ficha.ratingCount,
     grimorio: ficha.grimorio.length
@@ -232,6 +235,7 @@ function FichaBody({ ficha }: { ficha: Ficha }) {
             rows={ficha.games.map((g) => ({
               id: g.id,
               main: g.title,
+              tag: g.draft ? 'Rascunho' : undefined,
               sub: g.championship,
               right: `${formatDateTime(g.startsAt)} · ${countLabel(g.reservations, 'código', 'códigos')}`
             }))}
@@ -306,7 +310,8 @@ function Card({
 
 function Resumo({ ficha }: { ficha: Ficha }) {
   const sub = ficha.subscription
-  const next = ficha.games[0]
+  const games = publishedGames(ficha)
+  const next = games[0]
   const daysToNext = next
     ? Math.max(
         0,
@@ -316,7 +321,7 @@ function Resumo({ ficha }: { ficha: Ficha }) {
   const stats = [
     {
       label: 'Jogos futuros',
-      value: String(ficha.games.length),
+      value: String(games.length),
       sub:
         daysToNext === null
           ? 'nenhum marcado'
@@ -472,8 +477,8 @@ function Resumo({ ficha }: { ficha: Ficha }) {
         </Card>
 
         <Card title="Próximos jogos" gap={8}>
-          {ficha.games.length ? (
-            ficha.games.slice(0, 3).map((g) => (
+          {games.length ? (
+            games.slice(0, 3).map((g) => (
               <div
                 key={g.id}
                 className="hd-row"
@@ -575,7 +580,13 @@ function Rows({
   rows,
   empty
 }: {
-  rows: Array<{ id: string; main: string; sub: string; right: string }>
+  rows: Array<{
+    id: string
+    main: string
+    sub: string
+    right: string
+    tag?: string
+  }>
   empty: string
 }) {
   if (!rows.length) return <p className="hd-empty">{empty}</p>
@@ -606,7 +617,14 @@ function Rows({
               gap: 2
             }}
           >
-            <span style={{ fontSize: 14, fontWeight: 600 }}>{r.main}</span>
+            <span style={{ fontSize: 14, fontWeight: 600 }}>
+              {r.main}
+              {r.tag ? (
+                <span className="hd-pill" style={{ marginLeft: 8 }}>
+                  {r.tag}
+                </span>
+              ) : null}
+            </span>
             <span style={{ fontSize: 12, color: 'var(--hd-muted)' }}>
               {r.sub}
             </span>
