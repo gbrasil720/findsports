@@ -22,6 +22,8 @@ import { SAO_PAULO, STUB_PORT, STUB_URL } from '../env'
  *   cliente em `POST /v1/customers` (`cus_e2e_` + hash do e-mail);
  * - `GET` e `POST /v1/customers/{id}`: cliente sem endereço — o checkout
  *   manda o do cadastro do bar, e os nomes (WEB-328);
+ * - `GET`, `POST` e `DELETE /v1/customers/{id}/tax_ids[/{txi}]`: os
+ *   documentos do cliente, guardados aqui (o CNPJ dos dados da nota, WEB-444);
  * - `GET /v1/prices?lookup_keys[]=`: um preço mensal com a lookup key pedida;
  * - `GET /v1/subscriptions?customer=`: as assinaturas semeadas daquele
  *   cliente — vazia para quem ainda não passou pelo checkout;
@@ -82,6 +84,12 @@ const stripeBalances = new Map<
 /** Faturas semeadas, por assinatura, e cobranças, por cliente (WEB-443). */
 const stripeInvoices = new Map<string, unknown[]>()
 const stripeCharges = new Map<string, unknown[]>()
+
+/** Documentos (`tax_ids`) de cada cliente (WEB-444). */
+const stripeTaxIds = new Map<
+  string,
+  { id: string; object: 'tax_id'; type: string; value: string }[]
+>()
 
 /** O que o "Stripe" diz do cupom de fundador. Global: só teste serial troca. */
 let couponState: 'valid' | 'exhausted' | 'missing' = 'valid'
@@ -212,6 +220,28 @@ async function stripe(request: Request, url: URL) {
       name: body.name ?? null,
       metadata: { userId: body['metadata[userId]'] ?? '' }
     })
+  }
+
+  const taxIds = /^\/customers\/(cus_[^/]+)\/tax_ids(?:\/([^/]+))?$/.exec(path)
+  if (taxIds) {
+    const [, owner = '', taxId] = taxIds
+    const current = stripeTaxIds.get(owner) ?? []
+    if (request.method === 'GET') return list(current)
+    if (request.method === 'POST') {
+      const created = {
+        id: `txi_e2e_${crypto.randomUUID()}`,
+        object: 'tax_id' as const,
+        type: body.type ?? '',
+        value: body.value ?? ''
+      }
+      stripeTaxIds.set(owner, [...current, created])
+      return Response.json(created)
+    }
+    stripeTaxIds.set(
+      owner,
+      current.filter((item) => item.id !== taxId)
+    )
+    return Response.json({ id: taxId, object: 'tax_id', deleted: true })
   }
 
   // Cliente lido e atualizado com os dados do cadastro: sempre "sem
