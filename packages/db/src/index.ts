@@ -65,6 +65,7 @@ export const db = new Proxy({} as Db, {
 })
 export {
   and,
+  arrayContains,
   asc,
   count,
   desc,

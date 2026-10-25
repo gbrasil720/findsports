@@ -1,0 +1,2 @@
+ALTER TABLE "bar" ADD COLUMN "gallery_photos" text[] DEFAULT '{}' NOT NULL;--> statement-breakpoint
+ALTER TABLE "bar" ADD CONSTRAINT "bar_gallery_photos_max" CHECK (cardinality("bar"."gallery_photos") <= 8);
