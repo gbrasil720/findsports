@@ -23,6 +23,7 @@ import {
   ATTENDANCE_REPORT_WINDOW_DAYS,
   UNREGISTERED_ALERT_MIN_GAMES
 } from '../lib/attendance'
+import { monthStart } from '../lib/friends'
 import { contextFor, load, type Role, refusal } from './integration-seed'
 
 /**
@@ -104,6 +105,7 @@ async function seed(
   return {
     db,
     barId,
+    sportId,
     gameIds: games.map(({ id }) => id),
     fanIds,
     fan: (index = 0) => caller(fanIds[index] as string, 'fan'),
@@ -685,6 +687,116 @@ integrationTest(
         (await ctx.owner.barReservations.going()).map(({ id }) => id)
       ).toContain(future)
     } finally {
+      await ctx.cleanup()
+    }
+  }
+)
+
+integrationTest(
+  '"Chegaram agora" conta as visitas a este bar no mês do jogo, a comanda na data do jogo, e a oferta do código',
+  async () => {
+    const ctx = await seed({ elite: true, fans: 4, offsets: [DAY] })
+    const [tonight] = ctx.gameIds as [string]
+    const [ana, bia, caio, davi] = ctx.fanIds as [
+      string,
+      string,
+      string,
+      string
+    ]
+    const otherOwner = crypto.randomUUID()
+    try {
+      for (const [id, name] of [
+        [ana, 'Ana'],
+        [bia, 'Bia'],
+        [caio, 'Caio'],
+        [davi, 'Davi']
+      ] as const) {
+        await ctx.db.update(user).set({ name }).where(eq(user.id, id))
+      }
+      const [game] = await ctx.db
+        .select({ startsAt: event.startsAt })
+        .from(event)
+        .where(eq(event.id, tonight))
+      // O primeiro instante do mês de Brasília do jogo, e o último do anterior.
+      const month = monthStart(game?.startsAt)
+      const [thisMonth, lastMonth] = await ctx.db
+        .insert(event)
+        .values(
+          [month, new Date(month.getTime() - 60_000)].map((startsAt) => ({
+            barId: ctx.barId,
+            sportId: ctx.sportId,
+            championship: 'Campeonato de integração',
+            startsAt
+          }))
+        )
+        .returning({ id: event.id })
+        .then((rows) => rows.map(({ id }) => id))
+      await ctx.db.insert(user).values({
+        id: otherOwner,
+        role: 'pub',
+        name: 'Outro dono',
+        email: `${otherOwner}@integration.invalid`,
+        emailVerified: true
+      })
+      const [otherBar] = await ctx.db
+        .insert(bar)
+        .values({
+          userId: otherOwner,
+          name: 'Outro bar',
+          address: 'Rua descartável, 2',
+          neighborhood: 'Teste',
+          city: 'Teste',
+          latitude: '-23.55052000',
+          longitude: '-46.63330800',
+          isActive: true
+        })
+        .returning({ id: bar.id })
+      const [elsewhere] = await ctx.db
+        .insert(event)
+        .values({
+          barId: otherBar?.id as string,
+          sportId: ctx.sportId,
+          championship: 'Campeonato de integração',
+          startsAt: month
+        })
+        .returning({ id: event.id })
+
+      // Ana: o jogo do mês passado lançado pela comanda já neste mês (conta
+      // no mês do jogo), um no começo deste mês e o de hoje, com oferta.
+      const lastMonthCode = await ctx.reserve(lastMonth as string, ana)
+      await ctx.db.insert(reservationCodeUse).values({
+        codeId: lastMonthCode,
+        usedAt: new Date(month.getTime() + HOUR),
+        late: true
+      })
+      await ctx.reserve(thisMonth as string, ana, { registered: true })
+      await ctx.reserve(tonight, ana, {
+        offer: 'Chopp em dobro',
+        registered: true
+      })
+      // Bia: só foi a outro bar; aqui é a primeira vez, sem oferta no código.
+      await ctx.reserve(elsewhere?.id as string, bia, { registered: true })
+      await ctx.reserve(tonight, bia, { registered: true })
+      // Caio: veio no mês passado e volta agora.
+      await ctx.reserve(lastMonth as string, caio, { registered: true })
+      await ctx.reserve(tonight, caio, { registered: true })
+      // Davi marcou e não validou: o bar não vê histórico dele.
+      await ctx.reserve(tonight, davi, { offer: 'Chopp em dobro' })
+
+      const [going] = await ctx.owner.barReservations.going()
+      expect(going?.id).toBe(tonight)
+      expect(
+        Object.fromEntries(
+          (going?.people ?? []).map(({ name, arrival }) => [name, arrival])
+        )
+      ).toEqual({
+        Ana: { offer: true, firstVisit: false, visitsThisMonth: 2 },
+        Bia: { offer: false, firstVisit: true, visitsThisMonth: 1 },
+        Caio: { offer: false, firstVisit: false, visitsThisMonth: 1 },
+        Davi: null
+      })
+    } finally {
+      await ctx.db.delete(user).where(eq(user.id, otherOwner))
       await ctx.cleanup()
     }
   }
