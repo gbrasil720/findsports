@@ -24,6 +24,19 @@ async function openHoje(page: Page, options: PubOptions = {}) {
   return pub
 }
 
+/** O balcão validou o código da reserva em `usedAt`. */
+async function validate(reservationId: string, usedAt: Date) {
+  const [code] = await query<{ id: string }>(
+    'SELECT id FROM reservation_code WHERE reservation_id = $1',
+    [reservationId]
+  )
+  await insert('reservation_code_use', {
+    id: randomUUID(),
+    code_id: code?.id,
+    used_at: usedAt
+  })
+}
+
 const kpi = (page: Page, rotulo: string) =>
   page
     .getByRole('region', { name: 'Números de hoje' })
@@ -45,18 +58,12 @@ test('Elite: a noite, quem vai, quem chegou e a oferta da casa', async ({
     live.eventId,
     noite('23:59')
   ])
-  const arrived = await createTicket(live.eventId)
+  const arrived = await createTicket(live.eventId, {
+    offerSnapshot: 'Chopp em dobro'
+  })
   await createTicket(live.eventId)
   await createTicket(later.eventId)
-  const [code] = await query<{ id: string }>(
-    'SELECT id FROM reservation_code WHERE reservation_id = $1',
-    [arrived.reservationId]
-  )
-  await insert('reservation_code_use', {
-    id: randomUUID(),
-    code_id: code?.id,
-    used_at: noite('20:50')
-  })
+  await validate(arrived.reservationId, noite('20:50'))
 
   await page.goto('/admin')
   await expect(
@@ -122,6 +129,44 @@ test('Elite: a noite, quem vai, quem chegou e a oferta da casa', async ({
       return bar?.house_offer
     })
     .toBe('Chopp em dobro')
+})
+
+test('Elite: quem chegou é a primeira vez no bar ou a Nª no mês, e a oferta é a do código', async ({
+  page
+}) => {
+  const pub = await openHoje(page, { bar: { house_offer: 'Chopp em dobro' } })
+  const live = await createEvent(pub.barId, { startsAt: noite('20:45') })
+  await query('UPDATE event SET ends_at = $2 WHERE id = $1', [
+    live.eventId,
+    noite('23:59')
+  ])
+  // Antes das 6h é a noite anterior da casa, mas o mesmo mês de Brasília.
+  const earlier = await createEvent(pub.barId, {
+    startsAt: new Date(`${DIA}T05:00:00-03:00`)
+  })
+  const first = await createTicket(live.eventId, {
+    offerSnapshot: 'Chopp em dobro'
+  })
+  await validate(first.reservationId, noite('20:50'))
+  const before = await createTicket(earlier.eventId, {
+    offerSnapshot: 'Chopp em dobro'
+  })
+  await validate(before.reservationId, new Date(`${DIA}T05:30:00-03:00`))
+  // Volta hoje com código sem oferta: o bar ter oferta agora não a libera.
+  const again = await createTicket(live.eventId, { fan: before.fan })
+  await validate(again.reservationId, noite('20:55'))
+
+  await page.goto('/admin')
+  const chegadas = page
+    .getByRole('region', { name: 'Chegaram agora' })
+    .getByRole('listitem')
+  await expect(chegadas).toHaveCount(2)
+  await expect(chegadas.nth(0)).toContainText(before.guestName)
+  await expect(chegadas.nth(0)).toContainText('20:55 · 2ª vez no mês')
+  await expect(chegadas.nth(0)).toContainText('✓ Validado')
+  await expect(chegadas.nth(1)).toContainText(first.guestName)
+  await expect(chegadas.nth(1)).toContainText('20:50 · primeira vez no bar')
+  await expect(chegadas.nth(1)).toContainText('✓ Oferta liberada')
 })
 
 test('Pro: sem a lista do Elite, nada de contagem de quem vai', async ({
