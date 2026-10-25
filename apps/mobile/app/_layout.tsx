@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { DevTab } from '@/components/dev-tab'
 import { ExploreStateProvider } from '@/components/explore-state'
+import { OfflineBanner } from '@/components/offline-banner'
 import { Splash, SplashDone } from '@/components/splash'
 import { PaletteProvider } from '@/components/theme'
 import { queryClient, trpc } from '@/lib/trpc'
@@ -188,6 +189,7 @@ export default function Layout() {
               </Stack>
             </ExploreStateProvider>
           </SplashDone>
+          <OfflineBanner />
           <DevTab />
           {splashDone ? null : (
             <Splash agenda={agenda ?? undefined} onDone={endSplash} />

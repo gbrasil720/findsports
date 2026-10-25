@@ -56,3 +56,8 @@ onlineManager.setEventListener((setOnline) => {
   )
   return () => sub.remove()
 })
+// A rede voltou (WEB-460): a tela à vista é relida inteira, e a pílula de
+// "Sem conexão" (`components/offline-banner.tsx`) some.
+onlineManager.subscribe((online) => {
+  if (online) queryClient.invalidateQueries()
+})

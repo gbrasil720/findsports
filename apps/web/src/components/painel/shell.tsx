@@ -26,6 +26,7 @@ import { BAR_RESERVATIONS_QUERY } from '@/lib/query-cache'
 import { useTRPC } from '@/utils/trpc'
 import { Icone, type IconeNome } from './icone'
 import { Avatar, Badge, IconeBotao, propsBotao } from './pecas'
+import { FaixaSemConexao } from './rede'
 
 type ItemNav = {
   to:
@@ -249,6 +250,7 @@ export function PainelShell({ children }: { children: ReactNode }) {
         </aside>
 
         <main id="main-content" className="painel-main">
+          <FaixaSemConexao />
           {children}
         </main>
 

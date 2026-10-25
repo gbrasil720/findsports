@@ -4,7 +4,7 @@ import {
   retryTransient
 } from '@findsports_oficial/api/lib/transient-error'
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
-import { QueryCache, QueryClient } from '@tanstack/react-query'
+import { onlineManager, QueryCache, QueryClient } from '@tanstack/react-query'
 
 import { createRouter as createTanStackRouter } from '@tanstack/react-router'
 import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
@@ -74,6 +74,13 @@ export const getRouter = () => {
     queryClient.setMutationDefaults(mutationKey, {
       retry: retryTransient,
       retryDelay
+    })
+
+  // A rede voltou (WEB-460): a tela à vista é relida inteira, não só o que
+  // passou do `staleTime`; o que ficou em erro enquanto caía volta sozinho.
+  if (typeof window !== 'undefined')
+    onlineManager.subscribe((online) => {
+      if (online) void queryClient.invalidateQueries()
     })
 
   const linkOptions = {
