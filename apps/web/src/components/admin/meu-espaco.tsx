@@ -353,7 +353,7 @@ export function MeuEspaco() {
         </p>
       ) : null}
 
-      <div className="grid items-start gap-7 min-[1100px]:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-7 min-[1100px]:grid-cols-[minmax(0,1fr)_380px]">
         <div className="flex min-w-0 flex-col gap-5">
           <Secao
             titulo={`Perfil ${feitos} de ${checklist.length}`}
@@ -591,7 +591,9 @@ function Secao({
 
 function ItemChecklist({ item, acao }: { item: ItemPerfil; acao: ReactNode }) {
   return (
-    <li className="flex items-center gap-3 border-[var(--painel-line)] border-t py-2.5">
+    // Tela estreita: a ação desce para a linha de baixo em vez de espremer o
+    // texto numa palavra por linha.
+    <li className="flex flex-wrap items-center gap-3 border-[var(--painel-line)] border-t py-2.5">
       <span
         aria-hidden="true"
         className={`grid size-[26px] flex-none place-items-center rounded-[6px] ${
@@ -604,7 +606,7 @@ function ItemChecklist({ item, acao }: { item: ItemPerfil; acao: ReactNode }) {
           <Icone nome="check" tamanho={15} acento="var(--painel-ink)" />
         ) : null}
       </span>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 basis-32">
         <b
           className={`text-[14px] ${
             item.done
@@ -621,7 +623,7 @@ function ItemChecklist({ item, acao }: { item: ItemPerfil; acao: ReactNode }) {
           </p>
         )}
       </div>
-      {acao}
+      {acao ? <div className="ml-auto">{acao}</div> : null}
     </li>
   )
 }
