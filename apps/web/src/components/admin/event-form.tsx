@@ -12,6 +12,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useEffect, useId, useState } from 'react'
 import { groupTeamsByKind, TeamGroup } from '@/components/sports/team-groups'
 import { useTeamSearch } from '@/components/sports/team-picker'
+import { countLabel } from '@/lib/plural'
 import { CATALOG_QUERY } from '@/lib/query-cache'
 import { useTRPC } from '@/utils/trpc'
 import { Badge, Botao, Campo, Chip, EmBreve, Icone, Toggle } from '../painel'
@@ -56,6 +57,8 @@ type EventForm = {
   /** WEB-399: nasce das características do bar; o dono desmarca por jogo. */
   onBigScreen: boolean
   withSound: boolean
+  /** WEB-437: "Lista de quem vai" deste jogo; nasce ligada. */
+  attendanceEnabled: boolean
 }
 
 type Sport = { id: string; name: string; slug: string }
@@ -82,8 +85,13 @@ type Props = {
   /** Para a prévia "Assim aparece no app". */
   barName?: string
   houseOffer?: string | null
-  /** O bar emite código para quem marca "Vou assistir aqui" (Elite). */
+  /**
+   * O bar vê quem vai (Elite): só ele tem o interruptor da lista. Fora
+   * dele a lista não existe no painel e o jogo segue com o que já tinha.
+   */
   showsGoing?: boolean
+  /** Quantos já marcaram neste jogo, para o aviso ao desligar a lista. */
+  goingCount?: number
   error?: string
 }
 
@@ -97,8 +105,8 @@ function limitError(subject: string, length: number, max: number) {
 
 /**
  * Formulário do jogo (telas 1p/1q): esporte, campeonato, times, horário, o que
- * o jogo tem e a prévia do app. Lista de quem vai e oferta por jogo ainda não
- * existem no servidor: aparecem com "em breve".
+ * o jogo tem, a lista de quem vai (WEB-437) e a prévia do app. Oferta por
+ * jogo ainda não existe no servidor: aparece com "em breve".
  */
 export function EventFormComponent({
   initial,
@@ -113,6 +121,7 @@ export function EventFormComponent({
   barName,
   houseOffer = null,
   showsGoing = false,
+  goingCount = 0,
   error
 }: Props) {
   const trpc = useTRPC()
@@ -518,22 +527,29 @@ export function EventFormComponent({
         </fieldset>
 
         <div className="jogos-sub jogos-sub-lista">
-          <div className="jogos-sub-linha">
-            <div>
-              <b>
-                Lista de quem vai <EmBreve />
-              </b>
-              <span>
-                Torcedores marcam “Vou assistir aqui” e recebem um código.
-              </span>
+          {showsGoing ? (
+            <div className="jogos-sub-linha">
+              <div>
+                <b>Lista de quem vai</b>
+                {/* Desligar não apaga quem já marcou: o código continua
+                    valendo no balcão, só não entra ninguém novo. */}
+                <span aria-live="polite">
+                  {form.attendanceEnabled
+                    ? 'Torcedores marcam “Vou assistir aqui” e recebem um código.'
+                    : goingCount > 0
+                      ? `${countLabel(goingCount, 'pessoa já marcou', 'pessoas já marcaram')}: o código continua valendo. Ninguém novo entra.`
+                      : 'O app não mostra “Vou assistir aqui” neste jogo.'}
+                </span>
+              </div>
+              <Toggle
+                ligado={form.attendanceEnabled}
+                onChange={(ligado) =>
+                  setForm((prev) => ({ ...prev, attendanceEnabled: ligado }))
+                }
+                rotulo="Lista de quem vai neste jogo"
+              />
             </div>
-            <Toggle
-              ligado={showsGoing}
-              onChange={() => {}}
-              disabled
-              rotulo="Lista de quem vai neste jogo"
-            />
-          </div>
+          ) : null}
           <div className="jogos-sub-linha">
             <div>
               <b>
