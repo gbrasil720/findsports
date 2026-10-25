@@ -11,6 +11,8 @@ import {
   LIVE,
   MIN_PASSWORD,
   passwordScore,
+  phaseBusy,
+  phaseLabel,
   Screen,
   STONE,
   STRENGTH,
@@ -20,6 +22,7 @@ import {
   Title,
   text
 } from '@/components/ui'
+import { attemptPhase, retryable, settleAuth } from '@/lib/auth-attempt'
 import { authClient } from '@/lib/auth-client'
 
 /*
@@ -34,20 +37,31 @@ export default function ChangePassword() {
   const [visible, setVisible] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  // Falha passageira: o botão vira "Tentar de novo" (WEB-460) e a frase treme
+  // de novo a cada falha, mesmo igual à anterior.
+  const [failed, setFailed] = useState(false)
+  const [tries, setTries] = useState(0)
   const score = passwordScore(password)
 
   const submit = async () => {
-    setError(null)
+    if (pending) return
+    // Sem rede, a frase fica enquanto tenta de novo: o botão não pula.
+    if (!failed) setError(null)
     if (!current) return setError('Digite a senha atual.')
     if (password.length < MIN_PASSWORD)
       return setError(`A senha precisa de ${MIN_PASSWORD} caracteres ou mais.`)
     setPending(true)
-    const result = await authClient.changePassword({
-      currentPassword: current,
-      newPassword: password,
-      revokeOtherSessions: true
-    })
+    const result = await settleAuth(
+      authClient.changePassword({
+        currentPassword: current,
+        newPassword: password,
+        revokeOtherSessions: true
+      })
+    )
     setPending(false)
+    const transient = retryable(result.error)
+    setFailed(transient)
+    if (transient) setTries((n) => n + 1)
     if (result.error)
       return setError(
         result.error.code === 'INVALID_PASSWORD'
@@ -60,6 +74,8 @@ export default function ChangePassword() {
     haptic.success()
     router.back()
   }
+
+  const phase = attemptPhase(pending, failed)
 
   return (
     <Screen gap={16} top={6}>
@@ -98,11 +114,16 @@ export default function ChangePassword() {
         Os outros aparelhos saem da conta e entram de novo com a senha nova.
       </Text>
       {error ? (
-        <ErrorText style={[text(13.5), { color: LIVE }]}>{error}</ErrorText>
+        <ErrorText key={`erro-${tries}`} style={[text(13.5), { color: LIVE }]}>
+          {error}
+        </ErrorText>
       ) : null}
       <BlockButton
-        label={pending ? 'Salvando…' : 'Salvar senha'}
-        disabled={pending}
+        label={phaseLabel(phase, {
+          idle: 'Salvar senha',
+          sending: 'Salvando…'
+        })}
+        busy={phaseBusy(phase)}
         onPress={submit}
       />
     </Screen>
