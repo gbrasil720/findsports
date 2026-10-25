@@ -14,6 +14,8 @@ import {
   LIVE,
   MIN_PASSWORD,
   passwordScore,
+  phaseBusy,
+  phaseLabel,
   Screen,
   STONE,
   StrengthBars,
@@ -23,6 +25,7 @@ import {
   Title,
   text
 } from '@/components/ui'
+import { attemptPhase, retryable, settleAuth } from '@/lib/auth-attempt'
 import { authClient } from '@/lib/auth-client'
 
 /*
@@ -41,6 +44,7 @@ export default function SignUp() {
   const [accepted, setAccepted] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  const [failed, setFailed] = useState(false)
   const turnstile = useTurnstile()
 
   const submit = async () => {
@@ -50,17 +54,20 @@ export default function SignUp() {
     if (password.length < MIN_PASSWORD)
       return setError(`A senha precisa de ${MIN_PASSWORD} caracteres ou mais.`)
     setPending(true)
-    const result = await authClient.signUp.email({
-      name: name.trim(),
-      email: email.trim(),
-      password,
-      role,
-      callbackURL: '/verified',
-      fetchOptions: turnstile.fetchOptions
-    })
+    const result = await settleAuth(
+      authClient.signUp.email({
+        name: name.trim(),
+        email: email.trim(),
+        password,
+        role,
+        callbackURL: '/verified',
+        fetchOptions: turnstile.fetchOptions
+      })
+    )
     // O token do Turnstile vale uma vez: com erro ou não, pede outro.
     turnstile.reset()
     setPending(false)
+    setFailed(retryable(result.error))
     if (result.error) {
       setError(
         authErrorMessage(
@@ -73,6 +80,8 @@ export default function SignUp() {
     haptic.success()
     router.push({ pathname: '/verify-email', params: { email: email.trim() } })
   }
+
+  const phase = attemptPhase(pending, failed)
 
   return (
     <Screen gap={15}>
@@ -151,8 +160,12 @@ export default function SignUp() {
         <ErrorText style={[text(13.5), { color: LIVE }]}>{error}</ErrorText>
       ) : null}
       <BlockButton
-        label={pending ? 'Criando…' : 'Criar conta grátis'}
-        disabled={pending || !accepted}
+        label={phaseLabel(phase, {
+          idle: 'Criar conta grátis',
+          sending: 'Criando…'
+        })}
+        busy={phaseBusy(phase)}
+        disabled={!accepted}
         onPress={submit}
       />
       {turnstile.widget}
