@@ -12,7 +12,7 @@ import type {
   Proposal,
   Source
 } from './ai-events'
-import type { MapFrame } from './map-layers'
+import type { MapBar, MapFrame } from './map-layers'
 
 /*
  * Contas da busca com IA (Rodada 24, WEB-400) sem tela: os eventos de
@@ -466,6 +466,32 @@ export function mapFocus(
       (east - west) * 111.32 * cosLat * FRAME_MARGIN
     )
   }
+}
+
+/**
+ * Os bares da resposta que o "Ver no mapa" leva ao Explorar, como os bares do
+ * mapa dele: viram gotas (Rodada 21) junto com os da busca. Os que a busca do
+ * Explorar já tem (`listed`) ficam de fora, para não sair gota repetida.
+ */
+export function answerPins(answer: ChatBar[], listed: Set<string>): MapBar[] {
+  return answer
+    .filter(
+      (bar) =>
+        !listed.has(bar.id) &&
+        Number.isFinite(bar.latitude) &&
+        Number.isFinite(bar.longitude)
+    )
+    .map((bar) => ({
+      id: bar.id,
+      name: bar.name,
+      lat: bar.latitude,
+      lng: bar.longitude,
+      live: bar.game?.live ?? false,
+      elite: bar.plan === 'elite',
+      distanceKm: bar.distanceKm ?? Number.POSITIVE_INFINITY,
+      next: bar.game ? Date.parse(bar.game.startsAt) : Number.POSITIVE_INFINITY,
+      label: bar.name
+    }))
 }
 
 // --- Rodapé, fontes e confirmação ---------------------------------------------

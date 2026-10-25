@@ -57,6 +57,8 @@ import {
   text,
   useStatusBar
 } from '@/components/ui'
+import { answerPins } from '@/lib/ai-chat'
+import type { ChatBar } from '@/lib/ai-events'
 import { authClient } from '@/lib/auth-client'
 import { formatTime, greeting, isLive, searchCenter } from '@/lib/explore'
 import { useFavorites } from '@/lib/favorites'
@@ -190,6 +192,19 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
         walk: device ? '1' : undefined
       }
     })
+  // Bar da resposta da busca com IA que a busca daqui não tem: sem o card da
+  // folha (ele é da busca), o toque na gota abre a página dele direto.
+  const openAnswer = (bar: ChatBar) =>
+    router.push({
+      pathname: '/bar/[id]',
+      params: {
+        id: bar.id,
+        km: bar.distanceKm === null ? undefined : String(bar.distanceKm),
+        name: bar.name,
+        photo: bar.photoUrl ?? undefined,
+        walk: device ? '1' : undefined
+      }
+    })
 
   // A folha: alta (lista inteira), no meio (como abre: só o título e um
   // card, para sobrar mapa, 20d) e baixa (só o título).
@@ -250,7 +265,12 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
       label: bar.name
     }
   }
-  const mapBars = bars.map(toMapBar)
+  // Os bares da resposta do "Ver no mapa" da busca com IA entram como gotas
+  // até a pessoa mexer na busca ou voltar ao raio (`answer`).
+  const mapBars = [
+    ...bars.map(toMapBar),
+    ...answerPins(state.answer ?? [], new Set(listed.map((bar) => bar.id)))
+  ]
   const quietBars = quiet.map(toMapBar)
   // O índice dos grupos sem o bar tocado: ele nunca entra em grupo.
   const index = indexOf(mapBars.filter((b) => b.id !== selected))
@@ -309,7 +329,11 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
       )
     }
     const bar = listed.find((b) => b.id === layer.id)
-    if (!bar) return
+    if (!bar) {
+      const answered = state.answer?.find((b) => b.id === layer.id)
+      if (answered) openAnswer(answered)
+      return
+    }
     if (layer.kind === 'selected') return open(bar)
     setSelected(bar.id)
     // A folha sobe 40 pt com o card (20c): bar perto da borda dela, ou do
@@ -836,6 +860,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
             containerStyle={styles.recenter}
             onPress={() => {
               setSelected(null)
+              state.clearAnswer()
               frameRadius()
             }}
           >
