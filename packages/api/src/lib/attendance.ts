@@ -77,7 +77,7 @@ export async function attendableGame(
   const game = await tx.query.event.findFirst({
     // Rascunho (WEB-436) é como jogo que não existe para o torcedor.
     where: and(eq(event.id, eventId), isNotNull(event.publishedAt)),
-    columns: { startsAt: true, barId: true },
+    columns: { startsAt: true, barId: true, attendanceEnabled: true },
     with: {
       bar: {
         columns: { isActive: true, houseOffer: true, confirmsCodesLater: true },
@@ -93,6 +93,13 @@ export async function attendableGame(
   if (game.startsAt <= now) return { ok: false as const, reason: 'started' }
   return { ok: true as const, game }
 }
+
+/** O bar desligou a lista de quem vai deste jogo (WEB-437). */
+export const closedListError = () =>
+  new TRPCError({
+    code: 'PRECONDITION_FAILED',
+    message: 'O bar não abriu a lista de quem vai neste jogo.'
+  })
 
 /**
  * Marca ou desmarca "Vou assistir aqui" (WEB-127) de `userId`, que quem chama
@@ -127,6 +134,18 @@ export async function setAttendance(
         })
   }
   const { game } = found
+  // Lista desligada neste jogo (WEB-437): quem já marcou fica e pode
+  // desmarcar; marcação nova é recusada, como a de jogo começado.
+  if (attending && !game.attendanceEnabled) {
+    const already = await tx.query.attendance.findFirst({
+      where: and(
+        eq(attendance.userId, userId),
+        eq(attendance.eventId, eventId)
+      ),
+      columns: { userId: true }
+    })
+    if (!already) throw closedListError()
+  }
   let ticket: { code: string; offer: string | null } | null = null
   if (attending) {
     await tx
@@ -272,12 +291,13 @@ type FanAttendance = {
 
 /**
  * Estado de "Vou assistir aqui" por jogo, só onde o botão cabe: conta de
- * torcedor e jogo que não começou. Nos demais jogos, e para qualquer outra
+ * torcedor, jogo que não começou e lista de quem vai aberta (ou o torcedor já
+ * marcou). Nos demais jogos, e para qualquer outra
  * conta, não há entrada: nem a prévia do dono recebe a contagem.
  */
 export async function readFanAttendance(
   viewer: { id: string; role: string },
-  games: { id: string; startsAt: Date }[],
+  games: { id: string; startsAt: Date; attendanceEnabled: boolean }[],
   now = new Date()
 ): Promise<Map<string, FanAttendance>> {
   const eventIds = games
@@ -318,21 +338,28 @@ export async function readFanAttendance(
   ])
   const byEvent = new Map(counts.map((row) => [row.eventId, row]))
   const byTicket = new Map(tickets.map((row) => [row.eventId, row]))
+  // Lista desligada (WEB-437): o botão só fica para quem já marcou, que vê o
+  // "Você vai" e o código e ainda pode desmarcar.
+  const closed = new Set(
+    games.filter((game) => !game.attendanceEnabled).map((game) => game.id)
+  )
   return new Map(
-    eventIds.map((id) => {
-      const row = byEvent.get(id)
-      const ticket = byTicket.get(id)
-      const count = row?.count ?? 0
-      return [
-        id,
-        {
-          attending: row?.attending ?? false,
-          count: count >= ATTENDANCE_DISPLAY_FLOOR ? count : null,
-          code: ticket?.code ?? null,
-          validated: (ticket?.usedCount ?? 0) > 0
-        }
-      ]
-    })
+    eventIds
+      .filter((id) => !closed.has(id) || byEvent.get(id)?.attending)
+      .map((id) => {
+        const row = byEvent.get(id)
+        const ticket = byTicket.get(id)
+        const count = row?.count ?? 0
+        return [
+          id,
+          {
+            attending: row?.attending ?? false,
+            count: count >= ATTENDANCE_DISPLAY_FLOOR ? count : null,
+            code: ticket?.code ?? null,
+            validated: (ticket?.usedCount ?? 0) > 0
+          }
+        ]
+      })
   )
 }
 
