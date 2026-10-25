@@ -617,13 +617,20 @@ function Rows({
               gap: 2
             }}
           >
-            <span style={{ fontSize: 14, fontWeight: 600 }}>
-              {r.main}
-              {r.tag ? (
-                <span className="hd-pill" style={{ marginLeft: 8 }}>
-                  {r.tag}
-                </span>
-              ) : null}
+            {/* Flex com gap, e não margem: quando a etiqueta desce de linha,
+                ela começa rente ao título, sem recuo. */}
+            <span
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: '4px 8px',
+                fontSize: 14,
+                fontWeight: 600
+              }}
+            >
+              <span style={{ minWidth: 0 }}>{r.main}</span>
+              {r.tag ? <span className="hd-pill">{r.tag}</span> : null}
             </span>
             <span style={{ fontSize: 12, color: 'var(--hd-muted)' }}>
               {r.sub}
