@@ -493,7 +493,7 @@ export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
         {
           type: 'p',
           content:
-            'O estabelecimento vê métricas agregadas do próprio perfil — visualizações, check-ins, avaliações. Quando houver benefício ativo, ele recebe o mínimo necessário para identificar no balcão quem fez check-in de presença e validar a entrega da cortesia.'
+            'O estabelecimento vê métricas agregadas do próprio perfil — visualizações, check-ins, avaliações. Quando houver benefício ativo, ele recebe o mínimo necessário para identificar no balcão quem fez check-in de presença e validar a entrega da cortesia. Quando você valida o código no balcão, o estabelecimento também vê se é a sua primeira vez lá ou quantas vezes você validou código naquele mesmo bar no mês. Ele nunca vê as suas idas a outros bares.'
         },
         {
           type: 'attention',
