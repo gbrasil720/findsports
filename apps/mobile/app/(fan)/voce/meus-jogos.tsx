@@ -248,8 +248,6 @@ export default function MyGames() {
                 </Card>
               </View>
             ) : null}
-            {/* O design diz "e para o ranking do mês": o ranking ainda não
-                existe (WEB-403, seção 13). */}
             <Text
               style={[
                 text(12.5, 'Regular', 1.45),
@@ -257,7 +255,15 @@ export default function MyGames() {
                 { color: palette.muted }
               ]}
             >
-              Cada código validado conta para as conquistas.
+              Cada código validado conta para as conquistas e para o{' '}
+              <Text
+                accessibilityRole="link"
+                onPress={() => router.navigate('/voce/ranking')}
+                style={[text(12.5, 'Bold', 1.45), { color: palette.ink }]}
+              >
+                ranking do mês
+              </Text>
+              .
             </Text>
           </>
         )}
