@@ -569,7 +569,7 @@ test('no celular nada rola de lado: formulário, horário, checklist e prévia',
     .click()
   for (const largura of LARGURAS_CELULAR) {
     await page.setViewportSize({ width: largura, height: 800 })
-    expect(await vazamentoLateral(page), `${largura} px`).toBe(0)
+    expect(await vazamentoLateral(page), `${largura} px`).toEqual([])
     // A última aba da prévia era a que ficava fora da tela.
     const mapa = page
       .getByRole('group', { name: 'Prévia' })

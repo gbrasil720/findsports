@@ -11,12 +11,24 @@ export function painelLink(page: Page, name: string) {
 export const LARGURAS_CELULAR = [320, 375, 390] as const
 
 /**
- * Quanto o conteúdo do painel passa da largura do `main`, em px (0 = cabe).
- * Rolagem de propósito (a linha do tempo de Hoje) não conta: ela não
- * transborda para o `main`.
+ * O que passa da borda direita do `main` (a página corta com `overflow-x:
+ * clip`, então não rola: some). Vazio = cabe. Rolagem de propósito, como a
+ * linha do tempo de Hoje, não conta.
  */
 export function vazamentoLateral(page: Page) {
-  return page
-    .getByRole('main')
-    .evaluate((main) => main.scrollWidth - main.clientWidth)
+  return page.getByRole('main').evaluate((main) => {
+    const borda = main.getBoundingClientRect().right + 0.5
+    const fora: string[] = []
+    for (const el of main.querySelectorAll('*')) {
+      let rola = false
+      for (let a = el.parentElement; a && a !== main; a = a.parentElement) {
+        if (getComputedStyle(a).overflowX !== 'visible') rola = true
+      }
+      const caixa = el.getBoundingClientRect()
+      if (!rola && caixa.width > 0 && caixa.right > borda) {
+        fora.push(`${el.tagName} "${el.textContent?.slice(0, 30)}"`)
+      }
+    }
+    return fora
+  })
 }
