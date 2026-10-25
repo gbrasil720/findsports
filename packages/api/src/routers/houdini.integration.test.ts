@@ -166,6 +166,8 @@ integrationTest(
     const seeds = [inTwo, overdue, later, stripeTrial, gone, longGone, takenOff]
     try {
       await inTwo.seedGame()
+      // Rascunho (WEB-436) não é jogo marcado.
+      await inTwo.seedGame({ publishedAt: null })
       await stripeTrial.db
         .update(subscription)
         .set({ externalSubscriptionId: `sub_${crypto.randomUUID()}` })

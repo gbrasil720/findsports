@@ -169,6 +169,7 @@ export const adminBarsRouter = router({
             upcomingGames: sql<number>`(
               SELECT count(*)::int FROM ${event}
               WHERE ${event.barId} = ${bar.id} AND ${event.startsAt} > now()
+                AND ${event.publishedAt} IS NOT NULL
             )`
           })
           .from(bar)
@@ -419,6 +420,9 @@ export const adminBarsRouter = router({
             title,
             championship: event.championship,
             startsAt: event.startsAt,
+            // Rascunho (WEB-436) aparece na aba Jogos, marcado, para o
+            // suporte achar o "publiquei e não aparece"; fora das contagens.
+            draft: sql<boolean>`${event.publishedAt} IS NULL`,
             reservations: sql<number>`(
               SELECT count(*)::int FROM ${reservation}
               WHERE ${reservation.eventId} = ${event.id} AND ${seated}

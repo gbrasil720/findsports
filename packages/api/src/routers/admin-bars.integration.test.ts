@@ -134,13 +134,15 @@ integrationTest(
         name: `Esporte ${sportId}`,
         slug: `integration-${sportId}`
       })
-      // Dois por vir e um que já começou: só os dois primeiros contam.
+      // Dois por vir, um que já começou e um rascunho por vir (WEB-436): só
+      // os dois primeiros contam.
       await db.insert(event).values(
-        [DAY, 2 * DAY, -DAY].map((offset) => ({
+        [DAY, 2 * DAY, -DAY, 3 * DAY].map((offset) => ({
           barId: seeded.barId,
           sportId,
           championship: 'Campeonato de integração',
-          startsAt: new Date(Date.now() + offset)
+          startsAt: new Date(Date.now() + offset),
+          ...(offset === 3 * DAY && { publishedAt: null })
         }))
       )
 
@@ -157,6 +159,11 @@ integrationTest(
         cancelAt,
         upcomingGames: 2
       })
+      // A ficha mostra o rascunho, marcado, depois dos publicados.
+      const ficha = await (await admin()).adminBars.ficha({
+        barId: seeded.barId
+      })
+      expect(ficha.games.map((g) => g.draft)).toEqual([false, false, true])
     } finally {
       await seeded.cleanup()
       await db
