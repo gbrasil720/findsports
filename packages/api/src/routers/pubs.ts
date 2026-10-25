@@ -46,6 +46,7 @@ import {
 } from '../lib/amenities'
 import { getAppConfig } from '../lib/app-config'
 import { type Going, readFanAttendance, readGoing } from '../lib/attendance'
+import { resolvePublicGallery } from '../lib/bar-gallery'
 import { canShowBarMenu, resolvePublicBarMenu } from '../lib/bar-menu'
 import {
   getSubscriptionStanding,
@@ -497,6 +498,7 @@ export const pubsRouter = router({
           houseOffer: true,
           menuUrl: true,
           averageSpendCents: true,
+          galleryPhotos: true,
           confirmsCodesLater: true,
           openingHours: true
         },
@@ -552,6 +554,7 @@ export const pubsRouter = router({
         houseOffer,
         menuUrl,
         averageSpendCents,
+        galleryPhotos,
         confirmsCodesLater,
         openingHours,
         subscription,
@@ -617,6 +620,12 @@ export const pubsRouter = router({
         confirmsCodesLater: elite && confirmsCodesLater,
         ...resolvePublicBarMenu(
           { menuUrl, averageSpendCents },
+          subscription ?? null,
+          now
+        ),
+        // Galeria do ambiente (WEB-439), na ordem do dono; vazia sem Pro/Elite.
+        galleryPhotos: resolvePublicGallery(
+          galleryPhotos,
           subscription ?? null,
           now
         ),

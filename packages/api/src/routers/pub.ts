@@ -1,7 +1,15 @@
 import { liveStripeSubscriptionId } from '@findsports_oficial/auth/account-deletion-policy'
 import { founderCouponUsable } from '@findsports_oficial/auth/stripe-checkout'
 import { stripeClient } from '@findsports_oficial/auth/stripe-client'
-import { and, db, eq, inArray, isNull, sql } from '@findsports_oficial/db'
+import {
+  and,
+  arrayContains,
+  db,
+  eq,
+  inArray,
+  isNull,
+  sql
+} from '@findsports_oficial/db'
 import { MENU_URL_MAX_LENGTH } from '@findsports_oficial/db/bar-menu'
 import { cancelReasonSchema } from '@findsports_oficial/db/cancel-reasons'
 import {
@@ -33,6 +41,11 @@ import {
   writableAmenityIds
 } from '../lib/amenities'
 import { readInterestSignal } from '../lib/attendance'
+import {
+  assertCanUseGallery,
+  GALLERY_MAX_PHOTOS,
+  isOwnGalleryPhotoUrl
+} from '../lib/bar-gallery'
 import {
   assertCanConfigureBarMenu,
   parseAverageSpendCentsInput,
@@ -587,6 +600,85 @@ export const pubRouter = router({
         menuUrl: updated?.menuUrl ?? null,
         averageSpendCents: updated?.averageSpendCents ?? null
       }
+    }),
+
+  /**
+   * Põe na galeria (WEB-439) a foto que acabou de subir pela rota
+   * `/api/bar/photo?galeria`. O teto e a repetição são conferidos no próprio
+   * `UPDATE`: dois envios ao mesmo tempo não passam de `GALLERY_MAX_PHOTOS`.
+   */
+  addGalleryPhoto: pubProcedure
+    .input(z.object({ url: z.string().max(2048) }))
+    .mutation(async ({ ctx, input }) => {
+      const existingBar = await getOwnBar(ctx.session.user.id)
+      assertCanUseGallery(existingBar.subscription ?? null)
+      if (!isOwnGalleryPhotoUrl(input.url, existingBar.id, env)) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'URL de foto inválida.'
+        })
+      }
+
+      const [updated] = await db
+        .update(bar)
+        .set({
+          galleryPhotos: sql`array_append(${bar.galleryPhotos}, ${input.url})`
+        })
+        .where(
+          and(
+            eq(bar.id, existingBar.id),
+            sql`cardinality(${bar.galleryPhotos}) < ${GALLERY_MAX_PHOTOS}`,
+            sql`NOT (${input.url} = ANY(${bar.galleryPhotos}))`
+          )
+        )
+        .returning({ galleryPhotos: bar.galleryPhotos })
+      if (!updated) {
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: `A galeria já tem ${GALLERY_MAX_PHOTOS} fotos. Apague uma para pôr outra.`
+        })
+      }
+      return updated
+    }),
+
+  /**
+   * Nova ordem da galeria: as mesmas fotos, cada uma uma vez. Não pede plano,
+   * como apagar: o dono arruma o que tem guardado. A conferência vai no
+   * `WHERE`, então uma foto que entrou ou saiu no meio recusa a ordem velha.
+   */
+  reorderGallery: pubProcedure
+    .input(
+      z.object({
+        photos: z
+          .array(z.string().max(2048))
+          .min(1)
+          .max(GALLERY_MAX_PHOTOS)
+          .refine((photos) => new Set(photos).size === photos.length, {
+            message: 'Foto repetida na ordem.'
+          })
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const existingBar = await getOwnBar(ctx.session.user.id)
+      // Sem repetição, mesmo tamanho e contendo todas: as mesmas fotos.
+      const [updated] = await db
+        .update(bar)
+        .set({ galleryPhotos: input.photos })
+        .where(
+          and(
+            eq(bar.id, existingBar.id),
+            sql`cardinality(${bar.galleryPhotos}) = ${input.photos.length}`,
+            arrayContains(bar.galleryPhotos, input.photos)
+          )
+        )
+        .returning({ galleryPhotos: bar.galleryPhotos })
+      if (!updated) {
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: 'A galeria mudou. Recarregue a página e tente de novo.'
+        })
+      }
+      return updated
     }),
 
   /**
