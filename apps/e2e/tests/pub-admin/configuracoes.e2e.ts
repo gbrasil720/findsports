@@ -1,8 +1,8 @@
-import { readFile } from 'node:fs/promises'
 import type { Page } from '@playwright/test'
 import { BASE_URL } from '../../env'
 import { signIn } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
+import { lastEmailTo } from '../../fixtures/email'
 import { createPub } from '../../fixtures/pubs'
 import { answerCookieConsent, expect, test } from '../../fixtures/test'
 import { base32Decode, totp } from '../../fixtures/two-factor'
@@ -136,18 +136,35 @@ test('avisos por e-mail ainda não existem: em breve, desligados', async ({
   }
 })
 
-test('baixa um arquivo com os dados da conta e do bar', async ({ page }) => {
-  const { user, barId } = await open(page)
+test('pede o arquivo e ele chega por e-mail, um por dia', async ({ page }) => {
+  const { user } = await open(page)
+  const privacidade = secao(page, 'Privacidade')
+  await expect(privacidade).toContainText(
+    'Um arquivo com os dados da conta e do bar, enviado por e-mail.'
+  )
 
-  const download = page.waitForEvent('download')
-  await secao(page, 'Privacidade')
-    .getByRole('button', { name: 'Baixar arquivo' })
-    .click()
-  const file = await (await download).path()
-  const data = JSON.parse(await readFile(file, 'utf8'))
-  expect(data.profile.email).toBe(user.email)
-  expect(data.bar.name).toBe(`Bar E2E ${barId.slice(0, 8)}`)
-  expect(data.subscription.plan).toBe('elite')
+  await privacidade.getByRole('button', { name: 'Pedir arquivo' }).click()
+  await expect(
+    page.getByText(`Arquivo enviado para ${user.email}.`, { exact: false })
+  ).toBeVisible()
+  const email = await lastEmailTo(user.email, {
+    subject: 'Seus dados da Onside'
+  })
+  expect(email.attachments).toEqual([
+    expect.objectContaining({
+      filename: expect.stringMatching(/^onside-meus-dados-.+\.json$/),
+      contentType: 'application/json'
+    })
+  ])
+  expect(email.text).toContain('Ele traz a conta, o bar, o plano e os jogos')
+
+  // O segundo pedido no mesmo dia é recusado com a frase do servidor.
+  await privacidade.getByRole('button', { name: 'Pedir arquivo' }).click()
+  await expect(
+    page.getByText('Você já pediu seus dados nas últimas 24 horas', {
+      exact: false
+    })
+  ).toBeVisible()
 })
 
 test('excluir conta e bar pede senha e a frase', async ({ page }) => {
