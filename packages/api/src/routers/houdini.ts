@@ -64,6 +64,7 @@ const spDaysUntilEnd = sql<number>`(${brasiliaDaySql(subscription.currentPeriodE
 const upcomingGames = sql<number>`(
   SELECT count(*)::int FROM ${event}
   WHERE ${event.barId} = ${bar.id} AND ${event.startsAt} > ${utcNowSql()}
+    AND ${event.publishedAt} IS NOT NULL
 )`
 
 // ponytail: teto fixo nas listas da Ampulheta; paginar se passar disso.
