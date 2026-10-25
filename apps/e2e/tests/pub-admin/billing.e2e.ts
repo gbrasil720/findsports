@@ -160,10 +160,7 @@ test('Elite ativo: plano, faturas e portal do Stripe', async ({
   await expect(rows.nth(1)).toContainText('Teste')
   await expect(rows.nth(1).getByRole('link')).toHaveCount(0)
   await expect(faturas(page).getByText('em breve')).toHaveCount(0)
-  // Dados da nota e PIX ainda não existem: aparecem "em breve".
-  await expect(
-    page.getByRole('region', { name: 'Dados da nota' }).getByText('em breve')
-  ).toBeVisible()
+  // PIX ainda não existe: aparece "em breve".
   await expect(page.getByRole('button', { name: 'Usar PIX' })).toBeDisabled()
 
   const navigations: string[] = []
@@ -179,6 +176,83 @@ test('Elite ativo: plano, faturas e portal do Stripe', async ({
   await expect(page).toHaveURL(`${STUB_URL}/stripe/portal/${customerId}`)
   // WEB-241: uma navegação só; a segunda abortava a primeira.
   expect(navigations).toHaveLength(1)
+})
+
+// WEB-444: "Dados da nota" (3o) grava no bar e no cliente do Stripe, que põe
+// a razão social, o CNPJ e o e-mail nas faturas.
+test('Dados da nota: razão social, CNPJ e e-mail vão para o bar e para o Stripe (WEB-444)', async ({
+  page
+}) => {
+  const pub = await createPub()
+  const customerId = `cus_e2e_${randomUUID()}`
+  await query('UPDATE "user" SET stripe_customer_id = $1 WHERE id = $2', [
+    customerId,
+    pub.user.id
+  ])
+  await signIn(page, pub.user)
+  await page.goto('/admin/billing')
+
+  const nota = page.getByRole('region', { name: 'Dados da nota' })
+  await expect(nota.getByText('em breve')).toHaveCount(0)
+  await expect(nota.getByText('Não informado')).toHaveCount(3)
+
+  await nota.getByRole('button', { name: 'Editar Razão social' }).click()
+  await nota
+    .getByLabel('Razão social')
+    .fill('Bar do Zé Comércio de Bebidas Ltda.')
+  await nota.getByRole('button', { name: 'Salvar' }).click()
+  await expect(
+    nota.getByText('Bar do Zé Comércio de Bebidas Ltda.')
+  ).toBeVisible()
+
+  await nota.getByRole('button', { name: 'Editar CNPJ' }).click()
+  const cnpj = nota.getByLabel('CNPJ', { exact: true })
+  await cnpj.fill('11.222.333/0001-82')
+  await nota.getByRole('button', { name: 'Salvar' }).click()
+  await expect(nota.getByRole('alert')).toHaveText(
+    'CNPJ inválido. Confira os números.'
+  )
+  await cnpj.fill('11222333000181')
+  await nota.getByRole('button', { name: 'Salvar' }).click()
+  await expect(nota.getByText('11.222.333/0001-81')).toBeVisible()
+
+  await nota.getByRole('button', { name: 'Editar E-mail para notas' }).click()
+  await nota.getByLabel('E-mail para notas').fill('financeiro@bardoze.com.br')
+  await nota.getByRole('button', { name: 'Salvar' }).click()
+  await expect(nota.getByText('financeiro@bardoze.com.br')).toBeVisible()
+  await expect(nota.getByText('Não informado')).toHaveCount(0)
+
+  const [row] = await query(
+    'SELECT legal_name, cnpj, invoice_email FROM bar WHERE id = $1',
+    [pub.barId]
+  )
+  expect(row).toEqual({
+    legal_name: 'Bar do Zé Comércio de Bebidas Ltda.',
+    cnpj: '11222333000181',
+    invoice_email: 'financeiro@bardoze.com.br'
+  })
+
+  const calls = (
+    (await (await page.request.get(`${STUB_URL}/stripe/calls`)).json()) as {
+      method: string
+      path: string
+      body: Record<string, string>
+    }[]
+  ).filter((call) => call.path.startsWith(`/customers/${customerId}`))
+  const updates = calls.filter(
+    (call) => call.method === 'POST' && call.path === `/customers/${customerId}`
+  )
+  expect(updates.at(-1)?.body).toMatchObject({
+    business_name: 'Bar do Zé Comércio de Bebidas Ltda.',
+    email: 'financeiro@bardoze.com.br'
+  })
+  expect(
+    calls
+      .filter(
+        (call) => call.method === 'POST' && call.path.endsWith('/tax_ids')
+      )
+      .map((call) => call.body)
+  ).toEqual([{ type: 'br_cnpj', value: '11.222.333/0001-81' }])
 })
 
 // WEB-339: o atalho abre o portal já no cancelamento, em português, pela
