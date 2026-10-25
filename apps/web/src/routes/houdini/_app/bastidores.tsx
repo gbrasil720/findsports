@@ -88,10 +88,12 @@ function counts(job: Job | undefined) {
 function buildChecks(status: Status): Check[] {
   const plans = status.jobs.find((j) => j.job === 'bar_plans')
   const retention = status.jobs.find((j) => j.job === 'analytics_retention')
+  const notices = status.jobs.find((j) => j.job === 'bar_notices')
   const next = plans ? formatDateTime(plans.nextRunAt) : '—'
   const { migrations, database, tiles, deploy } = status
   const p = counts(plans)
   const r = counts(retention)
+  const n = counts(notices)
 
   return [
     {
@@ -207,6 +209,23 @@ function buildChecks(status: Status): Check[] {
         { k: 'Esperado', v: 'todo dia 01:00' },
         { k: 'Dias consolidados', v: String(r.diasFinalizados ?? '—') },
         { k: 'Eventos apagados', v: String(r.eventosApagados ?? '—') }
+      ]
+    },
+    {
+      key: 'bar_notices',
+      title: 'Avisos da semana dos bares',
+      where: 'mesmo cron · sendWeeklyBarNotices',
+      state: notices?.state ?? 'warn',
+      job: 'bar_notices',
+      error: notices?.lastRun?.ok === false ? notices.lastRun.error : null,
+      facts: [
+        ...lastRunFacts(notices),
+        { k: 'Esperado', v: 'todo dia 01:00, envia às segundas' },
+        {
+          k: 'Resumos',
+          v: String(n.weeklySummaries ?? '—')
+        },
+        { k: 'Grade vazia', v: String(n.emptySchedules ?? '—') }
       ]
     },
     {
