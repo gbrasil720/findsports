@@ -81,7 +81,7 @@ test('mudar só a descrição salva sem chamar o geocoding', async ({ page }) =>
     .fill('Telão de 100 polegadas e chope gelado.')
   expect((await save(page)).ok()).toBe(true)
 
-  await expect(page.getByText('Alterações salvas.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Salvo' })).toBeVisible()
   await expect(saveButton(page)).toBeDisabled()
   await expect(info(page).getByLabel('Descrição')).toHaveValue(
     'Telão de 100 polegadas e chope gelado.'
@@ -633,7 +633,7 @@ test('Elite salva cardápio, preço médio e oferta num "Salvar" só', async ({
     page.getByRole('region', { name: /Prévia da página/ })
   ).toContainText('Chope em dobro no intervalo')
   expect((await save(page, /pub\.updateHouseOffer/)).ok()).toBe(true)
-  await expect(page.getByText('Alterações salvas.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Salvo' })).toBeVisible()
 
   const [saved] = await query(
     'SELECT menu_url, average_spend_cents, house_offer FROM bar WHERE id = $1',
