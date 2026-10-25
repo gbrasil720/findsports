@@ -3,12 +3,15 @@ import { BASE_URL } from '../../env'
 import { signIn } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
 import { lastEmailTo } from '../../fixtures/email'
+import { trpc } from '../../fixtures/fan'
+import { createEvent } from '../../fixtures/going'
 import { createPub } from '../../fixtures/pubs'
 import { answerCookieConsent, expect, test } from '../../fixtures/test'
 import { base32Decode, totp } from '../../fixtures/two-factor'
+import { createUser } from '../../fixtures/users'
 
-// Configurações do painel do bar (2e/2f): conta, segurança, avisos (em
-// breve), privacidade e exclusão. A exclusão com assinatura está em
+// Configurações do painel do bar (2e/2f): conta, segurança, avisos por
+// e-mail, privacidade e exclusão. A exclusão com assinatura está em
 // `tests/auth/account.e2e.ts`.
 
 async function open(page: Page) {
@@ -123,17 +126,68 @@ test('encerra a outra sessão, e ela perde o acesso', async ({
   }
 })
 
-test('avisos por e-mail ainda não existem: em breve, desligados', async ({
+test('avisos por e-mail: cada interruptor grava na hora', async ({ page }) => {
+  const { barId } = await open(page)
+  const avisos = secao(page, 'Avisos')
+  const chave = (name: string) => avisos.getByRole('switch', { name })
+  const gravado = async () =>
+    (
+      await query(
+        'SELECT notice_weekly_summary, notice_game_filling, notice_empty_schedule FROM bar WHERE id = $1',
+        [barId]
+      )
+    )[0]
+
+  // Os padrões do design (2b): resumo e jogo lotando ligados.
+  await expect(avisos).toContainText('Novo')
+  await expect(chave('Resumo semanal por e-mail')).toBeChecked()
+  await expect(chave('Jogo lotando')).toBeChecked()
+  await expect(chave('Grade vazia')).not.toBeChecked()
+  // O celular segue para depois: o app ainda não abre por link.
+  await expect(avisos).toContainText('em breve')
+
+  await chave('Grade vazia').click()
+  await chave('Resumo semanal por e-mail').click()
+  await expect(chave('Grade vazia')).toBeChecked()
+  await expect(chave('Resumo semanal por e-mail')).not.toBeChecked()
+  await expect.poll(gravado).toEqual({
+    notice_weekly_summary: false,
+    notice_game_filling: true,
+    notice_empty_schedule: true
+  })
+
+  await page.reload()
+  await expect(chave('Grade vazia')).toBeChecked()
+  await expect(chave('Resumo semanal por e-mail')).not.toBeChecked()
+})
+
+test('jogo lotando: quem passa de 20 manda o e-mail ao dono', async ({
   page
 }) => {
-  await open(page)
-  const avisos = secao(page, 'Avisos')
-  await expect(avisos).toContainText('em breve')
-  for (const name of ['Resumo semanal', 'Jogo lotando', 'Grade vazia']) {
-    await expect(
-      avisos.getByRole('switch', { name: new RegExp(name) })
-    ).toBeDisabled()
+  const { user, barId } = await createPub()
+  const { eventId } = await createEvent(barId, {
+    startsAt: new Date(Date.now() + 2 * 86_400_000),
+    championship: 'Final E2E'
+  })
+  // Vinte já marcaram, direto no banco.
+  for (let i = 0; i < 20; i++) {
+    const fan = await createUser({ role: 'fan' })
+    await query('INSERT INTO attendance (user_id, event_id) VALUES ($1, $2)', [
+      fan.id,
+      eventId
+    ])
   }
+  const fan = await createUser({ role: 'fan' })
+  await signIn(page, fan)
+  await trpc(page.request, 'attendance.set', { eventId, attending: true })
+
+  const email = await lastEmailTo(user.email, {
+    subject: 'Jogo lotando: Final E2E'
+  })
+  expect(email.text).toContain(
+    'Mais de 20 pessoas marcaram na Onside que vão assistir a Final E2E no seu bar'
+  )
+  expect(email.link).toContain(`/admin/jogos?jogo=${eventId}`)
 })
 
 test('pede o arquivo e ele chega por e-mail, um por dia', async ({ page }) => {
