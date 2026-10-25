@@ -362,6 +362,13 @@
   transform: translateX(18px);
   background: var(--painel-toggle-knob-on);
 }
+/* Movimento reduzido: o botão troca de lado na hora; a cor ainda transiciona. */
+@media (prefers-reduced-motion: reduce) {
+  .painel .painel-toggle > span {
+    transition: background-color var(--onside-motion-base)
+      var(--onside-ease-out);
+  }
+}
 .painel .painel-toggle:disabled {
   opacity: 0.5;
   cursor: not-allowed;
