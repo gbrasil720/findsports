@@ -621,8 +621,7 @@ invente layout que o projeto não tem.
   seis etiquetas de `RATING_REASONS` (`packages/api/src/lib/rating-reasons.ts`, id nunca
   reusado), opcionais, gravadas com o "voltaria" em `bar_rating.reasons`; o card de
   avaliação do dashboard web usa as mesmas. Não há avaliação "verificada": todas entram
-  no resumo. O que o design da 08 mostra e ainda não existe, cada um com ticket e
-  comentário no lugar onde entra: o ranking no rodapé de Meus jogos (WEB-403). "34
+  no resumo. O rodapé de Meus jogos abre o ranking do mês (WEB-409). "34
   pessoas vão, entre elas Marina e Rafael" (WEB-404) sai de `readGoing(eventIds,
   viewerId)` (`packages/api/src/lib/attendance.ts`): só nomeia amigo aceito com
   `activity_visibility` "todos" ou "amigos", mesmo abaixo do piso (aí sem contagem); quem
@@ -679,8 +678,8 @@ invente layout que o projeto não tem.
   senha). Ligar troca a sessão: a lista de aparelhos é relida. O `@usuário`
   dos amigos se troca na Conta. Avisos segue o desenho com os controles desligados e o
   aviso de "em breve" (não há notificação); em Privacidade, "Onde você foi" funciona
-  (quem vê os bares e jogos, quem pode te adicionar), Ranking e comunidades seguem "em
-  breve", e "Baixar meus dados" gera um JSON (`account.exportData`: perfil,
+  (quem vê os bares e jogos, quem pode te adicionar), "Aparecer no ranking global" e
+  comunidades seguem "em breve" (o controle pede coluna nova), e "Baixar meus dados" gera um JSON (`account.exportData`: perfil,
   preferências, favoritos, jogos, avaliações, amigos e conquistas; de outra pessoa, só
   nome e `@` de amigo) e entrega pelo share sheet (`expo-file-system` + `expo-sharing`).
   O design diz "Arquivo enviado por e-mail"; o app diz "Arquivo para salvar ou enviar". "Reservas" do 11g virou "Vou assistir", porque
@@ -701,10 +700,22 @@ invente layout que o projeto não tem.
   convite é `/convite/<código>` no web (página `noindex` que abre `onside://convite/…`):
   conta criada há menos de um dia já entra como amiga; sem conta, o app guarda o código
   (`savePendingInvite`) e as abas do torcedor aceitam depois (`usePendingInvite`).
-  "Convidar" (comunidades) e o Ranking avisam "em breve". Pedido respondido e
+  "Convidar" (comunidades) avisa "em breve". Pedido respondido e
   sugestão adicionada ficam na tela com o botão trocado até ela abrir de novo
   (`useKept`): tirar a linha fazia o card pular, e `LinearTransition` não anima a
   altura do `Card`. Dados de teste: `apps/mobile/scripts/amigos.sql`.
+- **Ranking do mês (13 do design, 10d e 11e; WEB-409):** `app/(fan)/voce/ranking.tsx`, pelo
+  item "Ranking" do menu "Você" e pelo rodapé de Meus jogos. Nada é gravado: `ranking.friends`
+  (`packages/api/src/lib/ranking.ts` e `ranking-read.ts`) conta das visitas (`visits.ts`) você
+  e os amigos aceitos que deixam os amigos ver a atividade (`canSeeActivity`, como o perfil de
+  amigo; "Ninguém" não entra). Métricas do design: bares diferentes (padrão), jogos, bairros e
+  conquistas desbloqueadas no mês. O mês é o de Brasília pela data do jogo e vira à 0h do dia
+  1º; empate vai para quem chegou primeiro ao número, e com zero pelo nome. As setas comparam
+  com a posição de uma semana atrás (no começo do mês, sem setas). `ranking.city` dá só a
+  posição em bares no mês entre os torcedores com a mesma cidade no perfil ("3º em São
+  Paulo"), sem lista: a lista da cidade e a aba Comunidades avisam "em breve". Sozinho (sem
+  amigo visível), a tela é o 11e. Dados de teste: `apps/mobile/scripts/ranking.sql`, depois de
+  `conquistas.sql`.
 - **Chamado de amigo ("Chamar Marina", Rodada 24):** tabela `friend_call` (um por de, para e
   jogo; pending, going, not_now). Quem cria é `createFriendCall`
   (`packages/api/src/lib/friend-calls.ts`; só amigo aceito, jogo começado recusa pela mesma
