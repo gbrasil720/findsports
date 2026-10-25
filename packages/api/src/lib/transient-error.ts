@@ -124,6 +124,7 @@ export const IDEMPOTENT_MUTATIONS = [
   'pub.updateMenuInfo',
   'pub.updateEvent',
   'pub.changeTrialPlan',
+  'pub.updateInvoiceDetails',
   'attendance.set',
   'attendance.report',
   'attendance.removeReport',

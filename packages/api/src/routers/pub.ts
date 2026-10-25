@@ -1,6 +1,10 @@
 import { liveStripeSubscriptionId } from '@findsports_oficial/auth/account-deletion-policy'
-import { founderCouponUsable } from '@findsports_oficial/auth/stripe-checkout'
+import {
+  founderCouponUsable,
+  pushInvoiceDetails
+} from '@findsports_oficial/auth/stripe-checkout'
 import { stripeClient } from '@findsports_oficial/auth/stripe-client'
+import { logBillingError } from '@findsports_oficial/auth/stripe-sync'
 import {
   and,
   arrayContains,
@@ -22,6 +26,7 @@ import {
   getEventStartProblem
 } from '@findsports_oficial/db/event-window'
 import { HOUSE_OFFER_MAX_LENGTH } from '@findsports_oficial/db/house-offer'
+import { user } from '@findsports_oficial/db/schema/auth'
 import {
   bar,
   event,
@@ -75,6 +80,12 @@ import {
   assertCanConfigureHouseOffer,
   parseHouseOfferInput
 } from '../lib/house-offer'
+import {
+  INVOICE_FIELDS,
+  type InvoiceField,
+  invoiceFieldProblem,
+  normalizeInvoiceField
+} from '../lib/invoice-details'
 import { normalizeOpeningHours, openingHoursSchema } from '../lib/opening-hours'
 import { PLAN_NAMES, STARTER_EVENT_LIMIT } from '../lib/plan-limits'
 import {
@@ -1114,6 +1125,91 @@ export const pubRouter = router({
       existingBar.subscription?.externalSubscriptionId
     )
   }),
+
+  // "Dados da nota" de `/admin/billing` (WEB-444). Cada "Editar" manda o seu
+  // campo; vazio apaga. Com cliente no Stripe, ele recebe os três antes do
+  // banco: se o Stripe recusar ou não responder, nada muda aqui, e a tela não
+  // mostra o que as faturas não têm. Repetir grava o mesmo estado.
+  updateInvoiceDetails: pubProcedure
+    .input(
+      z.object({
+        legalName: z.string().max(300).nullable().optional(),
+        cnpj: z.string().max(40).nullable().optional(),
+        invoiceEmail: z.string().max(300).nullable().optional()
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const changes: Partial<Record<InvoiceField, string | null>> = {}
+      for (const field of INVOICE_FIELDS) {
+        if (input[field] === undefined) continue
+        const value = normalizeInvoiceField(field, input[field])
+        const problem = invoiceFieldProblem(field, value)
+        if (problem)
+          throw new TRPCError({ code: 'BAD_REQUEST', message: problem })
+        changes[field] = value
+      }
+
+      const userId = ctx.session.user.id
+      const current = ownBarOrThrow(
+        await db.query.bar.findFirst({
+          where: eq(bar.userId, userId),
+          columns: {
+            id: true,
+            name: true,
+            legalName: true,
+            cnpj: true,
+            invoiceEmail: true
+          }
+        })
+      )
+      const next = { ...current, ...changes }
+      const owner = await db.query.user.findFirst({
+        where: eq(user.id, userId),
+        columns: { name: true, email: true, stripeCustomerId: true }
+      })
+      if (owner?.stripeCustomerId) {
+        try {
+          await pushInvoiceDetails(
+            stripeClient,
+            owner.stripeCustomerId,
+            owner,
+            next
+          )
+        } catch (error) {
+          const stripeError = error as { type?: string; code?: string }
+          logBillingError('stripe_invoice_details_failed', {
+            customerId: owner.stripeCustomerId,
+            code: stripeError.code ?? null,
+            message: error instanceof Error ? error.message : String(error)
+          })
+          // Cliente apagado no Stripe: não há onde gravar, e o painel não
+          // pode ficar travado por isso. O próximo checkout cria outro.
+          if (stripeError.code !== 'resource_missing') {
+            throw new TRPCError(
+              stripeError.type === 'StripeInvalidRequestError'
+                ? {
+                    code: 'BAD_REQUEST',
+                    message:
+                      'O Stripe não aceitou estes dados. Confira e tente de novo.'
+                  }
+                : {
+                    code: 'SERVICE_UNAVAILABLE',
+                    message:
+                      'Não foi possível falar com o Stripe agora. Tente de novo.'
+                  }
+            )
+          }
+        }
+      }
+      if (Object.keys(changes).length) {
+        await db.update(bar).set(changes).where(eq(bar.id, current.id))
+      }
+      return {
+        legalName: next.legalName,
+        cnpj: next.cnpj,
+        invoiceEmail: next.invoiceEmail
+      }
+    }),
 
   // "Cancelar assinatura" de `/admin/billing` (WEB-339): a URL do portal. A
   // assinatura não muda aqui; o único registro é o motivo, quando o dono
