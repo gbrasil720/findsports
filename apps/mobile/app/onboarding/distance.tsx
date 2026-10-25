@@ -3,18 +3,15 @@ import * as Location from 'expo-location'
 import { useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
 import {
-  Image,
+  Platform,
   Pressable,
   StyleSheet,
   useColorScheme,
   View
 } from 'react-native'
-import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming
-} from 'react-native-reanimated'
+import MapView from 'react-native-maps'
+import Animated from 'react-native-reanimated'
+import { MeDot, RadiusCircle } from '@/components/explore'
 import { Glass } from '@/components/glass'
 import { SWAP } from '@/components/motion'
 import {
@@ -24,12 +21,10 @@ import {
   useOnboarding
 } from '@/components/onboarding'
 import {
-  ACID,
   DROP,
   FG,
   FIELD,
   Field,
-  INK,
   LINE,
   LINE_STRONG,
   MAX_FONT_SCALE,
@@ -41,19 +36,24 @@ import {
   text,
   themed
 } from '@/components/ui'
+import { SAO_PAULO } from '@/lib/explore'
+import { MAP_STYLE } from '@/lib/map-style'
 import { trpc } from '@/lib/trpc'
 
 /*
- * 4l, "Distância": cidade (opcional, da lista) e raio. O círculo no mapa
- * cresce com o raio, e a contagem é real: bares no ar com jogo hoje no raio
- * em volta do centro da cidade (`pubs.countTodayNear`).
+ * 4l, "Distância": cidade (opcional, da lista) e raio. O mapa é o do
+ * Explorar, parado e centrado na cidade (senão São Paulo), com o raio
+ * tracejado e o seu ponto. O círculo cresce com o raio, e a contagem é real:
+ * bares no ar com jogo hoje no raio em volta do centro da cidade
+ * (`pubs.countTodayNear`).
  */
 
 const RADII: Radius[] = [1, 3, 5, 10]
-// Diâmetro do círculo no mapa de 170 de altura; 10 km passa da borda.
-const CIRCLE: Record<Radius, number> = { 1: 64, 3: 150, 5: 210, 10: 330 }
-// Mudar de tamanho na tela é movimento sobre a tela: ease-in-out.
-const MORPH = Easing.bezier(0.77, 0, 0.175, 1)
+const MAP_HEIGHT = 170
+// Diâmetro do círculo na tela; 10 km passa da borda. O mapa se afasta junto
+// (o zoom sai do diâmetro), então o círculo é o raio de verdade. O de 1 km
+// fica fora do halo do seu ponto (74).
+const CIRCLE: Record<Radius, number> = { 1: 100, 3: 150, 5: 210, 10: 330 }
 
 /** O texto digitado, só depois de 200 ms parado. */
 function useDebounced(value: string) {
@@ -88,21 +88,10 @@ export default function Distance() {
     enabled: !!choices.city
   })
 
-  // Tamanho, e não escala: a escala engrossaria a borda junto. O círculo é
-  // absoluto e sem filhos, então mudar o tamanho não refaz o layout de mais
-  // ninguém.
-  const size = useSharedValue(CIRCLE[choices.radius])
-  useEffect(() => {
-    size.value = withTiming(CIRCLE[choices.radius], {
-      duration: 320,
-      easing: MORPH
-    })
-  }, [choices.radius, size])
-  const circle = useAnimatedStyle(() => ({
-    width: size.value,
-    height: size.value,
-    borderRadius: size.value / 2
-  }))
+  const center = choices.city ?? SAO_PAULO
+  // Graus de latitude na altura do mapa para o círculo sair com `CIRCLE`.
+  const span =
+    ((choices.radius * 2) / 111) * (MAP_HEIGHT / CIRCLE[choices.radius])
 
   // Texto que não é uma cidade da lista não vale: segue sem cidade.
   const pending = typed.trim().length > 0 && picking
@@ -174,17 +163,37 @@ export default function Distance() {
       <View style={styles.mapWrap}>
         <View style={styles.mapShadow} />
         <View style={styles.map}>
-          <Image
-            source={
-              dark
-                ? require('../../assets/images/intro/map-dark.jpg')
-                : require('../../assets/images/intro/map.jpg')
-            }
-            style={{ width: '100%', height: '100%' }}
-            resizeMode="cover"
-          />
-          <Animated.View style={[styles.circle, circle]} />
-          <View style={styles.you} />
+          {/* O mapa do Explorar, parado: muda de lugar e de zoom sem animar,
+              junto com o círculo. */}
+          <MapView
+            style={StyleSheet.absoluteFill}
+            region={{
+              latitude: center.lat,
+              longitude: center.lng,
+              latitudeDelta: span,
+              longitudeDelta: span
+            }}
+            mapType={Platform.OS === 'ios' ? 'mutedStandard' : 'standard'}
+            customMapStyle={dark ? MAP_STYLE.dark : MAP_STYLE.light}
+            userInterfaceStyle={dark ? 'dark' : 'light'}
+            showsPointsOfInterests={false}
+            showsCompass={false}
+            scrollEnabled={false}
+            zoomEnabled={false}
+            rotateEnabled={false}
+            pitchEnabled={false}
+            toolbarEnabled={false}
+            pointerEvents="none"
+          >
+            <RadiusCircle
+              center={{ latitude: center.lat, longitude: center.lng }}
+              km={choices.radius}
+              dark={dark}
+            />
+          </MapView>
+          <View pointerEvents="none">
+            <MeDot />
+          </View>
           {choices.city && count.data ? (
             <View style={styles.count}>
               <Glass tone={dark ? 'dark' : 'light'} style={styles.countGlass}>
@@ -235,7 +244,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12
   },
-  mapWrap: { height: 170 },
+  mapWrap: { height: MAP_HEIGHT },
   mapShadow: {
     position: 'absolute',
     top: 4,
@@ -253,21 +262,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: LINE
-  },
-  circle: {
-    position: 'absolute',
-    backgroundColor: 'rgba(201,241,53,.22)',
-    borderWidth: 2,
-    borderColor: FG
-  },
-  you: {
-    position: 'absolute',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 3,
-    borderColor: INK,
-    backgroundColor: ACID
   },
   count: { position: 'absolute', right: 10, bottom: 10 },
   countGlass: {
