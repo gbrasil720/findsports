@@ -526,6 +526,13 @@
       "when": 1792883704536,
       "tag": "0075_pix_e_cartao_separados",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1792893310131,
+      "tag": "0076_event_attendance_enabled",
+      "breakpoints": true
     }
   ]
 }

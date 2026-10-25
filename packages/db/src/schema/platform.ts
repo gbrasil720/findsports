@@ -286,6 +286,11 @@ export const event = pgTable(
     // analytics. O limite do Starter conta por esta data, não pela criação.
     // O padrão `now()` mantém publicado o jogo que o código anterior cria.
     publishedAt: timestamp('published_at').defaultNow(),
+    // "Lista de quem vai" deste jogo (WEB-437, design 1p). Desligada, o app
+    // não mostra "Vou assistir aqui" a quem ainda não marcou, o servidor
+    // recusa marcação nova e o painel não lista quem vai. Quem já marcou
+    // continua marcado, com o código valendo. Regra em `lib/attendance.ts`.
+    attendanceEnabled: boolean('attendance_enabled').default(true).notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull()
   },
   (table) => [
