@@ -8,7 +8,7 @@ import {
 import { Input } from '@findsports_oficial/ui/components/input'
 import { Spinner } from '@findsports_oficial/ui/components/spinner'
 import { useQuery } from '@tanstack/react-query'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useRouter } from '@tanstack/react-router'
 import { useState } from 'react'
 import Trash from 'reicon-react/icons/Trash'
 import { toast } from 'sonner'
@@ -63,6 +63,7 @@ export function DeleteAccountDialog({
   onFailed?: () => void
 }) {
   const navigate = useNavigate()
+  const router = useRouter()
   const [password, setPassword] = useState('')
   const [confirmation, setConfirmation] = useState('')
   const [deleting, setDeleting] = useState(false)
@@ -113,6 +114,8 @@ export function DeleteAccountDialog({
     // (WEB-348). É a única confirmação de algo sem volta, e a tela troca por
     // baixo dela: fica mais tempo que o toast padrão.
     toast.success('Sua conta foi excluída.', { duration: 10_000 })
+    // A conta excluída não serve de reserva sem rede (WEB-470, `useSignOut`).
+    router.options.context.lastSessionCheck.current = undefined
     navigate({ to: '/' })
   }
 

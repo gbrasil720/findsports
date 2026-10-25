@@ -1,4 +1,4 @@
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useRouter } from '@tanstack/react-router'
 import { useCallback, useRef } from 'react'
 import { toast } from 'sonner'
 
@@ -6,6 +6,7 @@ import { authClient } from '@/lib/auth-client'
 
 export function useSignOut(destination: '/' | '/login' = '/') {
   const navigate = useNavigate()
+  const router = useRouter()
   const leaving = useRef(false)
 
   return useCallback(async () => {
@@ -25,6 +26,9 @@ export function useSignOut(destination: '/' | '/login' = '/') {
       return
     }
     toast.dismiss(id)
+    // WEB-470: a sessão que saiu não serve de reserva para a próxima tela sem
+    // rede; sem sessão conferida, a navegação volta a perguntar ao servidor.
+    router.options.context.lastSessionCheck.current = undefined
     await navigate({ to: destination })
-  }, [destination, navigate])
+  }, [destination, navigate, router])
 }
