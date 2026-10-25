@@ -5,7 +5,6 @@ import {
   type Uf
 } from '@findsports_oficial/api/lib/bar-profile-validation'
 import {
-  isOpenNow,
   normalizeOpeningHours,
   type OpeningHours
 } from '@findsports_oficial/api/lib/opening-hours'
@@ -392,46 +391,34 @@ export function recursoPago(plan: PlanState, tier: Tier): RecursoPago {
   }
 }
 
-/* ─── Prévia ─── */
+/* ─── Prévia: as contas da página do bar no app (`app/bar/[id].tsx`) ─── */
 
-const minutos = (hora: string) =>
-  Number(hora.slice(0, 2)) * 60 + Number(hora.slice(3, 5))
-
-/** "00:00" vira "00h"; "02:30", "02h30". */
-const horaCurta = (hora: string) =>
-  hora.endsWith(':00') ? `${hora.slice(0, 2)}h` : hora.replace(':', 'h')
+/** O gasto médio digitado, em centavos; `null` vazio ou inválido. */
+export function gastoDoRascunho(digitado: string): number | null {
+  const gasto = parseAverageSpendInput(digitado)
+  return gasto.ok ? gasto.cents : null
+}
 
 /**
- * "aberto até 00h" da página do bar no app, no relógio de Brasília. `null`
- * sem horário informado. Aberto depois da meia-noite é a faixa de ontem.
+ * A coluna grande de "Próximos jogos aqui": a hora hoje, o dia da semana
+ * ("DOM") nos próximos seis dias, depois "25/10". O `gameDay` do app.
  */
-export function abertoAte(
-  hours: OpeningHours | null,
-  now: Date
-): string | null {
-  const aberto = isOpenNow(hours, now)
-  if (aberto === null || !hours) return null
-  if (!aberto) return 'fechado agora'
-  const partes = new Intl.DateTimeFormat('en-US', {
-    timeZone: BRASILIA_TIME_ZONE,
-    weekday: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23'
-  }).formatToParts(now)
-  const parte = (tipo: string) => partes.find((p) => p.type === tipo)?.value
-  const dia = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(
-    parte('weekday') ?? ''
-  )
-  const agora = Number(parte('hour')) * 60 + Number(parte('minute'))
-  const hoje = hours[dia]
-  const desdeHoje =
-    hoje &&
-    agora >= minutos(hoje.opens) &&
-    (minutos(hoje.closes) <= minutos(hoje.opens) ||
-      agora < minutos(hoje.closes))
-  const faixa = desdeHoje ? hoje : hours[(dia + 6) % 7]
-  return faixa ? `aberto até ${horaCurta(faixa.closes)}` : 'aberto agora'
+export function diaNaLista(startsAt: string | Date, now: Date): string {
+  if (diaDoJogo(startsAt, now) === 'Hoje') return horaDoJogo(startsAt)
+  const data = new Date(startsAt)
+  if (data.getTime() - now.getTime() < 6 * DIA_MS)
+    return data
+      .toLocaleDateString('pt-BR', {
+        weekday: 'short',
+        timeZone: BRASILIA_TIME_ZONE
+      })
+      .replace('.', '')
+      .toUpperCase()
+  return data.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    timeZone: BRASILIA_TIME_ZONE
+  })
 }
 
 /* ─── Card e Mapa: as contas do app (`apps/mobile`), para a prévia bater ─── */

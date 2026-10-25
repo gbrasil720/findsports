@@ -1,10 +1,10 @@
 import { describe, expect, test } from 'bun:test'
 import type { AdminBar } from './admin-model'
 import {
-  abertoAte,
   alteracoes,
   checklistDoPerfil,
   diaDoJogo,
+  diaNaLista,
   iniciaisDoApp,
   quandoNaGota,
   rascunhoDoBar,
@@ -187,28 +187,13 @@ describe('recursoPago', () => {
   })
 })
 
-describe('abertoAte', () => {
-  const sexta = [
-    null,
-    null,
-    null,
-    null,
-    null,
-    { opens: '17:00', closes: '02:00' },
-    null
-  ]
-  test('aberto pela faixa de hoje e, depois da meia-noite, pela de ontem', () => {
-    // Sexta, 20:00 e sábado, 01:00 em Brasília (UTC-3).
-    expect(abertoAte(sexta, new Date('2026-10-23T23:00:00Z'))).toBe(
-      'aberto até 02h'
-    )
-    expect(abertoAte(sexta, new Date('2026-10-24T04:00:00Z'))).toBe(
-      'aberto até 02h'
-    )
-    expect(abertoAte(sexta, new Date('2026-10-24T12:00:00Z'))).toBe(
-      'fechado agora'
-    )
-    expect(abertoAte(null, new Date())).toBeNull()
+describe('Página da prévia', () => {
+  // Sábado, 24/10/2026, 15:00 em Brasília.
+  const agora = new Date('2026-10-24T18:00:00Z')
+  test('a coluna da lista: hora hoje, dia da semana, depois a data', () => {
+    expect(diaNaLista('2026-10-25T01:00:00Z', agora)).toBe('22:00')
+    expect(diaNaLista('2026-10-25T19:00:00Z', agora)).toBe('DOM')
+    expect(diaNaLista('2026-11-02T19:00:00Z', agora)).toBe('02/11')
   })
 })
 
