@@ -3,6 +3,7 @@ import { founderCouponUsable } from '@findsports_oficial/auth/stripe-checkout'
 import { stripeClient } from '@findsports_oficial/auth/stripe-client'
 import { and, db, eq, inArray, isNull, sql } from '@findsports_oficial/db'
 import { MENU_URL_MAX_LENGTH } from '@findsports_oficial/db/bar-menu'
+import { cancelReasonSchema } from '@findsports_oficial/db/cancel-reasons'
 import {
   EVENT_CHAMPIONSHIP_MAX_LENGTH,
   EVENT_CHAMPIONSHIP_MIN_LENGTH,
@@ -44,7 +45,6 @@ import {
 import { readBillingBalance } from '../lib/billing-balance'
 import { readInvoices } from '../lib/billing-invoices'
 import { isOwnPhotoUrl } from '../lib/blob-photo'
-import { cancelReasonSchema } from '../lib/cancel-reasons'
 import {
   canCancelSubscription,
   getCurrentPlan,

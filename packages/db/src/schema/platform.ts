@@ -433,7 +433,7 @@ export const subscription = pgTable('subscription', {
  * "Por que está cancelando?" (WEB-445, 3q): o motivo que o dono escolhe ao
  * confirmar "Cancelar mesmo assim", antes de o portal do Stripe abrir. É
  * intenção, não cancelamento feito: quem desiste no portal fica registrado
- * igual. O id vem de `CANCEL_REASONS` (`packages/api/src/lib/cancel-reasons.ts`)
+ * igual. O id vem de `CANCEL_REASONS` (`packages/db/src/cancel-reasons.ts`)
  * e nunca é reusado.
  */
 export const subscriptionCancelReason = pgTable(

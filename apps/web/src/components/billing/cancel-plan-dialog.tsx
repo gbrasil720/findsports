@@ -1,8 +1,8 @@
+import type { SubscriptionPlan } from '@findsports_oficial/db'
 import {
   CANCEL_REASONS,
   type CancelReasonId
-} from '@findsports_oficial/api/lib/cancel-reasons'
-import type { SubscriptionPlan } from '@findsports_oficial/db'
+} from '@findsports_oficial/db/cancel-reasons'
 import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { Botao, Card, Chip, propsBotao } from '@/components/painel'

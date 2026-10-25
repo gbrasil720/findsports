@@ -1,6 +1,6 @@
-import { cancelReasonLabel } from '@findsports_oficial/api/lib/cancel-reasons'
 import { PLAN_NAMES } from '@findsports_oficial/api/lib/plan-limits'
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
+import { cancelReasonLabel } from '@findsports_oficial/db/cancel-reasons'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import type { inferRouterOutputs } from '@trpc/server'
