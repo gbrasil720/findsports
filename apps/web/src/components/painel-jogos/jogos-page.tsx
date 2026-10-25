@@ -472,8 +472,12 @@ export function JogosPage({
     evento.championship,
     evento.sport?.name ?? ''
   ]
+  // Grade que não carregou não tem "0 jogos": o traço fica no lugar (WEB-471).
+  const quantos = (filtro: FiltroJogos) =>
+    eventsState.status === 'ready'
+      ? filtrarJogos(events, filtro, now).length
+      : '—'
   const visiveis = events.filter((evento) => casaBusca(busca, textos(evento)))
-  const proximos = filtrarJogos(events, 'proximos', now)
   const naLista = filtrarJogos(visiveis, filtro, now)
   const abertoId =
     !larga || vista === 'semana' || filtro === 'passados'
@@ -663,7 +667,7 @@ export function JogosPage({
               setAberto(undefined)
             }}
           >
-            Próximos · {proximos.length}
+            Próximos · {quantos('proximos')}
           </Chip>
           <Chip
             check={false}
@@ -674,7 +678,7 @@ export function JogosPage({
               setAberto(undefined)
             }}
           >
-            Rascunhos · {filtrarJogos(events, 'rascunhos', now).length}
+            Rascunhos · {quantos('rascunhos')}
           </Chip>
           <Chip
             check={false}
@@ -685,7 +689,7 @@ export function JogosPage({
               setAberto(undefined)
             }}
           >
-            Passados · {filtrarJogos(events, 'passados', now).length}
+            Passados · {quantos('passados')}
           </Chip>
         </fieldset>
         {filtro === 'passados' ? (
