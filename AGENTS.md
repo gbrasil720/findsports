@@ -549,9 +549,8 @@ invente layout que o projeto não tem.
   localização do onboarding usam o mesmo mapa (WEB-420), centrado na cidade escolhida
   (senão São Paulo), com `RadiusCircle` no raio escolhido: na distância o zoom sai do
   raio para o círculo crescer na tela. O Apple Maps encaixa a região na área segura, não
-  na tela toda (conta em `onboarding/location.tsx`). A imagem antiga
-  (`assets/images/intro/map.jpg` e `map-dark.jpg`, dos tiles da Onside) só resta no
-  "Nada no raio" de Bares pra você.
+  na tela toda (conta em `onboarding/location.tsx`). O "Nada no raio" (23i) de Bares pra
+  você usa o mesmo mapa; a imagem antiga (`intro/map.jpg`) saiu do repositório.
   O design só desenha o claro; a apresentação segue o tema do sistema com tinta e papel
   trocados e o acid no lugar do vermelho (a regra da tab bar do design).
 - **Conta ("04 Conta"):** `profile` (torcedor ou bar, vira `role` no cadastro), `sign-up`,
