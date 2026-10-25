@@ -173,6 +173,79 @@ integrationTest(
   }
 )
 
+/**
+ * WEB-459: as ações recusam rascunho, como a lista. O jogo fica como estava
+ * e o Grimório não ganha linha.
+ */
+async function expectDraftRefused(
+  act: (
+    ctx: Awaited<ReturnType<typeof seed>>,
+    eventId: string
+  ) => Promise<unknown>
+) {
+  const ctx = await seed()
+  try {
+    // Duplicado do publicado e com texto livre que casa: sem a recusa, o
+    // conserto e a exclusão passariam.
+    const text = 'Flamengo x Vasco da Gama'
+    await ctx.addGame({ participantFreeText: text })
+    const draft = await ctx.addGame({
+      publishedAt: null,
+      participantFreeText: text
+    })
+    const [before] = await ctx.db
+      .select()
+      .from(event)
+      .where(eq(event.id, draft))
+
+    expect(await refusal(act(ctx, draft))).toEqual({
+      code: 'PRECONDITION_FAILED',
+      message: 'Jogo em rascunho: só o bar publica ou apaga.'
+    })
+    expect(
+      await ctx.db.select().from(event).where(eq(event.id, draft))
+    ).toEqual([before])
+    expect(
+      await ctx.db
+        .select()
+        .from(eventParticipants)
+        .where(eq(eventParticipants.eventId, draft))
+    ).toEqual([])
+    expect(await ctx.grimorio(draft)).toEqual([])
+  } finally {
+    await ctx.cleanup()
+  }
+}
+
+integrationTest('editar recusa rascunho', () =>
+  expectDraftRefused((ctx, eventId) =>
+    ctx.admin.adminEvents.update({
+      eventId,
+      startsAt: new Date(ctx.startsAt.getTime() + 3_600_000).toISOString(),
+      endsAt: null,
+      championship: 'Outro campeonato'
+    })
+  )
+)
+
+integrationTest('apagar recusa rascunho', () =>
+  expectDraftRefused((ctx, eventId) =>
+    ctx.admin.adminEvents.delete({ eventId })
+  )
+)
+
+integrationTest('apagar duplicado recusa rascunho', () =>
+  expectDraftRefused((ctx, eventId) =>
+    ctx.admin.adminEvents.fix({ eventId, warning: 'duplicate' })
+  )
+)
+
+integrationTest('ligar times recusa rascunho', () =>
+  expectDraftRefused((ctx, eventId) =>
+    ctx.admin.adminEvents.fix({ eventId, warning: 'free_text' })
+  )
+)
+
 integrationTest(
   'conserto: o duplicado sem reserva sai, o com reserva fica',
   async () => {
