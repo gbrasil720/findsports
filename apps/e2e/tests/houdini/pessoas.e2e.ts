@@ -36,15 +36,18 @@ async function hold(page: Page, button: Locator, ms = 1_400) {
   await page.keyboard.up('Enter')
 }
 
-// Entrar na pele troca de página por `window.location`, fora do `page.goto`
-// que espera a hidratação. A faixa vem no HTML do servidor (WEB-196), então
-// sem esperar o clique em "Tirar a pele" pode cair antes do handler.
-async function waitForHydration(page: Page) {
-  await page.locator('html[data-hydrated]').waitFor({ state: 'attached' })
-}
-
 function peleBanner(page: Page) {
   return page.getByRole('status').filter({ hasText: 'Você está na pele de' })
+}
+
+// A faixa vem no HTML do servidor (WEB-196), mas o componente é `lazy` no
+// `__root.tsx`: o `html[data-hydrated]` sai quando a raiz hidrata, e a faixa
+// segue HTML morto até o módulo dela chegar. Clique nesse intervalo o React
+// descarta (WEB-402). O relógio só sai de "--:--" no efeito da própria faixa.
+async function waitForBanner(page: Page) {
+  await expect(
+    peleBanner(page).getByRole('timer', { name: 'Tempo na pele' })
+  ).not.toHaveText('--:--')
 }
 
 let admin: TestUser
@@ -152,7 +155,7 @@ test('entrar na pele de torcedor mostra a faixa; tirar a pele volta a Pessoas', 
 
   // O web não tem tela de torcedor: a pele dele cai na página do app.
   await expect(page).toHaveURL(/\/torcedor$/)
-  await waitForHydration(page)
+  await waitForBanner(page)
   const banner = peleBanner(page)
   await expect(banner).toContainText(target.name)
   await expect(banner).toContainText(target.email)
@@ -176,7 +179,7 @@ test('entrar na pele de dono de bar abre o painel do bar', async ({ page }) => {
   await dossie.getByRole('button', { name: 'Entrar na pele' }).click()
 
   await expect(page).toHaveURL(/\/admin$/)
-  await waitForHydration(page)
+  await waitForBanner(page)
   const banner = peleBanner(page)
   await expect(banner).toContainText(owner.name)
 
@@ -193,7 +196,7 @@ test('na pele em Só olhar a escrita é recusada; em Pode agir passa', async ({
   const { dossie } = await openPerson(page, target)
   await dossie.getByRole('button', { name: 'Entrar na pele' }).click()
   await expect(page).toHaveURL(/\/torcedor$/)
-  await waitForHydration(page)
+  await waitForBanner(page)
 
   const banner = peleBanner(page)
   const mode = banner.getByRole('group', { name: 'Modo' })
