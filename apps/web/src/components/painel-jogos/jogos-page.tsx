@@ -579,7 +579,12 @@ export function JogosPage({
                 />
               }
             />
-            <Botao icone="spark" disabled title="Em breve">
+            <Botao
+              icone="spark"
+              disabled
+              title="Em breve"
+              className="jogos-importar"
+            >
               Importar da rodada <EmBreve />
             </Botao>
             {travadoPeloPlano ? (

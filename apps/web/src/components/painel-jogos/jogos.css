@@ -192,11 +192,12 @@
 /* Celular: a linha não tem largura para os dois; o "Publicar" desce. */
 @media (max-width: 640px) {
   .painel .jogos-linha[data-rascunho] {
-    padding-right: 18px;
+    padding-right: 14px;
     padding-bottom: 62px;
   }
   .painel .jogos-linha-publicar {
     top: auto;
+    right: 14px;
     bottom: 14px;
     margin: 0;
   }
@@ -221,6 +222,51 @@
 .painel .jogos-linha-texto span {
   font-size: 12.5px;
   color: var(--painel-muted);
+}
+/* A 320 px o "Importar da rodada" com o selo passava da tela: quebra a linha. */
+@media (max-width: 640px) {
+  .painel .jogos-importar {
+    max-width: 100%;
+    height: auto;
+    min-height: var(--painel-btn-h, 44px);
+    padding-block: 8px;
+    white-space: normal;
+  }
+}
+/*
+ * Celular: numa linha só, hora, selo e seta deixavam ao jogo uma coluna de
+ * uma palavra. A hora e o selo ficam em cima; o jogo ganha a largura toda
+ * embaixo e quebra linha em vez de cortar o nome.
+ */
+@media (max-width: 640px) {
+  .painel .jogos-linha {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "hora selo seta"
+      "texto texto seta";
+    align-items: center;
+    gap: 6px 12px;
+    padding: 12px 14px;
+  }
+  .painel .jogos-hora {
+    grid-area: hora;
+    width: auto;
+  }
+  .painel .jogos-linha > .painel-badge {
+    grid-area: selo;
+    justify-self: start;
+  }
+  .painel .jogos-linha > .painel-icone {
+    grid-area: seta;
+  }
+  .painel .jogos-linha-texto {
+    grid-area: texto;
+  }
+  .painel .jogos-linha-texto b {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
 }
 
 .painel .jogos-vazio {
