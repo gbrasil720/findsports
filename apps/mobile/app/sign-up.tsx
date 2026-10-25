@@ -162,7 +162,7 @@ export default function SignUp() {
         </Text>
       </Checkbox>
       {error ? (
-        <ErrorText key={tries} style={[text(13.5), { color: LIVE }]}>
+        <ErrorText key={`erro-${tries}`} style={[text(13.5), { color: LIVE }]}>
           {error}
         </ErrorText>
       ) : null}
