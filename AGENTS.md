@@ -310,7 +310,10 @@ B − A sai com intervalo de 95% só com 100 conversas por braço e 5 com e 5 se
 
 O chat (`routers/ai.ts`, `lib/ai/chat.ts`) só consulta a Onside pelas ferramentas de
 `lib/ai/chat-tools.ts`, que chamam `pubs.*` com a sessão do torcedor (máximo 3 por mensagem,
-termina em `responder`); bar citado que nenhuma ferramenta devolveu sai da resposta. Falha:
+termina em `responder`); bar citado que nenhuma ferramenta devolveu sai da resposta.
+Característica acima das 6 que a busca aceita não recusa o pedido (WEB-458): ficam as de
+"Para ver o jogo", depois as outras na ordem do modelo, e o app acrescenta à resposta
+quais ficaram de fora (`searchAmenities`, `withLeftOut`). Falha:
 nova tentativa no mesmo modelo, depois o outro braço. Limite do chat: 10 por dia e 100 por
 mês (Brasília), contando só resposta útil (`ai_run.useful`). Modelos e preços em
 `lib/ai/models.ts`, com o raciocínio de cada um (`reasoningEffort`: o Gemini recusa `none`
