@@ -169,6 +169,41 @@ test('Elite: quem chegou é a primeira vez no bar ou a Nª no mês, e a oferta �
   await expect(chegadas.nth(1)).toContainText('✓ Oferta liberada')
 })
 
+test('Chegaram agora a 320 px: nome numa linha e o selo embaixo do texto', async ({
+  page
+}) => {
+  await page.setViewportSize({ width: 320, height: 900 })
+  const pub = await openHoje(page)
+  const live = await createEvent(pub.barId, { startsAt: noite('20:45') })
+  await query('UPDATE event SET ends_at = $2 WHERE id = $1', [
+    live.eventId,
+    noite('23:59')
+  ])
+  const fan = await createUser({
+    name: 'Aleksandra Wiśniewska-Kowalczyk de Albuquerque'
+  })
+  const ticket = await createTicket(live.eventId, {
+    fan,
+    offerSnapshot: 'Chopp em dobro'
+  })
+  await validate(ticket.reservationId, noite('20:50'))
+
+  await page.goto('/admin')
+  const chegada = page
+    .getByRole('region', { name: 'Chegaram agora' })
+    .getByRole('listitem')
+  const nome = chegada.locator('b')
+  const linha = chegada.getByText('20:50 · primeira vez no bar')
+  const selo = chegada.getByText('✓ Oferta liberada')
+  await expect(linha).toBeVisible()
+  const [n, l, s] = await Promise.all(
+    [nome, linha, selo].map(async (el) => await el.boundingBox())
+  )
+  // Uma linha de nome (14,5 px), e o selo começa abaixo de "hora · vez".
+  expect(n?.height).toBeLessThan(25)
+  expect(s?.y ?? 0).toBeGreaterThanOrEqual((l?.y ?? 0) + (l?.height ?? 0))
+})
+
 test('Pro: sem a lista do Elite, nada de contagem de quem vai', async ({
   page
 }) => {
