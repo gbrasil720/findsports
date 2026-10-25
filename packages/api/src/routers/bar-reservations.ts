@@ -115,7 +115,15 @@ export const barReservationsRouter = router({
           isNull(reservationCodeUse.undoneAt)
         )
       )
-      .where(and(eq(event.barId, ctx.barId), validationOpen))
+      // Lista desligada no jogo (WEB-437): o painel não lista quem vai nele;
+      // os códigos já emitidos continuam valendo no "Validar código".
+      .where(
+        and(
+          eq(event.barId, ctx.barId),
+          eq(event.attendanceEnabled, true),
+          validationOpen
+        )
+      )
       .groupBy(event.id, user.id, attendance.createdAt)
       .orderBy(event.startsAt, event.id)
 
