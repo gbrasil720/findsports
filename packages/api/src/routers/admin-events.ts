@@ -4,6 +4,7 @@ import {
   db,
   eq,
   inArray,
+  isNotNull,
   type SQL,
   sql
 } from '@findsports_oficial/db'
@@ -89,6 +90,7 @@ const isDuplicate = sql<boolean>`EXISTS (
   WHERE o.bar_id = ${event.barId}
     AND o.starts_at = ${event.startsAt}
     AND o.id <> ${event.id}
+    AND o.published_at IS NOT NULL
     AND (
       ${teamKey(sql`o.id`)} = ${teamKey(event.id)}
       OR lower(trim(o.participant_free_text)) = lower(trim(nullif(${event.participantFreeText}, '')))
@@ -105,6 +107,14 @@ const hasWarning = sql`(${isDuplicate} OR ${isFreeText})`
 
 /** O jogo que ainda não acabou, pelo fim derivado da ADR 0003. */
 const notEnded = eventNotEndedSql()
+
+/**
+ * Rascunho (`published_at` nulo, WEB-436) fica fora de Jogos: a tela conserta
+ * o que o torcedor vê, e o rascunho ninguém vê. Pelo mesmo motivo ele não é
+ * duplicado de ninguém (`isDuplicate`): "apagar duplicado" no publicado
+ * deixaria só o rascunho. A ficha do bar mostra o rascunho, marcado.
+ */
+const published = isNotNull(event.publishedAt)
 
 // "Hoje" é o dia em Brasília.
 const PERIOD: Record<'today' | 'week' | 'all', SQL | undefined> = {
@@ -190,6 +200,7 @@ export const adminEventsRouter = router({
     .query(async ({ input }) => {
       const pattern = input.search ? `%${escapeLike(input.search)}%` : null
       const base = and(
+        published,
         notEnded,
         PERIOD[input.period],
         pattern
