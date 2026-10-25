@@ -1,6 +1,7 @@
 import { avatarPathname } from '@findsports_oficial/auth/session-image'
 import { env } from '@findsports_oficial/env/server'
 import { AwsClient } from 'aws4fetch'
+import { galleryPhotoKey, isOwnGalleryPhotoUrl } from './bar-gallery'
 import {
   PHOTO_CONTENT_TYPES,
   PHOTO_MAX_BYTES,
@@ -149,6 +150,38 @@ export async function deleteBarPhoto(
   await deleteMediaObject(
     photoPathname(bar.id),
     'bar_photo_delete_failed',
+    config
+  )
+}
+
+/**
+ * Apaga do bucket uma foto da galeria do bar da sessão (WEB-439). Só apaga o
+ * que está na galeria deste bar: a URL do pedido escolhe qual foto, mas a
+ * chave sai dela depois de conferida contra `bar.galleryPhotos`.
+ */
+export async function deleteBarGalleryPhoto(
+  session: { user: { id: string } } | null,
+  bar:
+    | { id: string; userId: string; galleryPhotos: string[] }
+    | null
+    | undefined,
+  url: string,
+  config: MediaConfig = env
+): Promise<void> {
+  if (!session) throw new MediaUploadError(401, 'Não autorizado.')
+  if (!bar) throw new MediaUploadError(404, 'Bar não encontrado.')
+  if (bar.userId !== session.user.id) {
+    throw new MediaUploadError(403, 'Este bar não pertence à sua conta.')
+  }
+  if (
+    !bar.galleryPhotos.includes(url) ||
+    !isOwnGalleryPhotoUrl(url, bar.id, config)
+  ) {
+    throw new MediaUploadError(404, 'Foto não encontrada.')
+  }
+  await deleteMediaObject(
+    galleryPhotoKey(url),
+    'bar_gallery_photo_delete_failed',
     config
   )
 }
