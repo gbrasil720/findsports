@@ -221,6 +221,19 @@ test('Dados da nota: razão social, CNPJ e e-mail vão para o bar e para o Strip
   await nota.getByRole('button', { name: 'Salvar' }).click()
   await expect(nota.getByText('financeiro@bardoze.com.br')).toBeVisible()
   await expect(nota.getByText('Não informado')).toHaveCount(0)
+  // O foco volta ao "Editar" da linha; Esc fecha o campo sem salvar.
+  const editarEmail = nota.getByRole('button', {
+    name: 'Editar E-mail para notas'
+  })
+  await expect(editarEmail).toBeFocused()
+  await editarEmail.click()
+  await nota.getByLabel('E-mail para notas').fill('outro@bardoze.com.br')
+  await page.keyboard.press('Escape')
+  await expect(
+    nota.getByLabel('E-mail para notas', { exact: true })
+  ).toHaveCount(0)
+  await expect(editarEmail).toBeFocused()
+  await expect(nota.getByText('financeiro@bardoze.com.br')).toBeVisible()
 
   const [row] = await query(
     'SELECT legal_name, cnpj, invoice_email FROM bar WHERE id = $1',
