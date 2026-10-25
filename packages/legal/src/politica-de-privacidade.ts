@@ -5,7 +5,7 @@ import type { LegalDocument } from './legal-types'
 export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
   kicker: 'Legal · Política de Privacidade',
   title: 'Política de privacidade',
-  updated: '21 de outubro de 2026',
+  updated: '25 de outubro de 2026',
   reading: '17 seções · ~18 min',
   intro: [
     'Privacidade não é página de rodapé para a gente. Esta Política explica, em português claro, quais dados a plataforma Onside coleta, por que coleta, com quem compartilha, por quanto tempo guarda e o que você pode exigir de nós a qualquer momento. Ela integra os nossos Termos de Uso e segue a Lei Geral de Proteção de Dados (Lei nº 13.709/2018).',
@@ -764,6 +764,15 @@ export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
             'revogar o consentimento a qualquer momento;',
             'opor-se a tratamento feito com base no legítimo interesse.'
           ]
+        },
+        {
+          type: 'h3',
+          text: 'Uma cópia dos seus dados'
+        },
+        {
+          type: 'p',
+          content:
+            'Para acessar seus dados ou levá-los a outro serviço, você pode pedir o arquivo pela própria conta, sem escrever para a gente: no aplicativo, em Configurações › Privacidade › Baixar meus dados; no painel do estabelecimento, em Configurações › Privacidade › Baixar meus dados. O arquivo, em formato JSON, vai por e-mail para o endereço cadastrado na conta. Ele traz o seu perfil, as suas preferências e o que você fez na plataforma; no caso do estabelecimento, também o bar, o plano e os jogos cadastrados. De outras pessoas, traz no máximo o nome e o nome de usuário de quem é seu amigo na Onside. Dá para pedir um arquivo a cada 24 horas.'
         },
         {
           type: 'h3',
