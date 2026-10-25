@@ -80,7 +80,7 @@ export function Horario({
                 {nome}
               </label>
               {d.open ? (
-                <div className="flex items-center gap-2">
+                <div className="flex min-w-0 items-center gap-2">
                   <HoraCampo
                     rotulo={`${nome}, abre`}
                     valor={d.opens}
@@ -125,14 +125,17 @@ function HoraCampo({
   mudar: (valor: string) => void
 }) {
   return (
-    <div className="painel-campo-caixa w-[140px] [--painel-campo-h:40px]">
+    // Encolhe até a hora caber: a 320 px duas caixas de 140 passavam da tela.
+    <div className="painel-campo-caixa w-[140px] min-w-0 px-2.5 [--painel-campo-h:40px]">
       <input
         type="time"
         aria-label={rotulo}
         value={valor}
         aria-invalid={invalido || undefined}
         onChange={(e) => e.target.value && mudar(e.target.value)}
-        className="painel-mono"
+        // No celular o seletor abre ao tocar; o relógio do Chrome só tomava a
+        // largura da hora.
+        className="painel-mono max-sm:[&::-webkit-calendar-picker-indicator]:hidden"
       />
     </div>
   )

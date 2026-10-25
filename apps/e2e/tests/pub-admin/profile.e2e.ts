@@ -6,6 +6,7 @@ import { insert, query } from '../../fixtures/db'
 import { team } from '../../fixtures/fan'
 import { createEvent } from '../../fixtures/going'
 import { interceptMediaUploads } from '../../fixtures/media'
+import { LARGURAS_CELULAR, vazamentoLateral } from '../../fixtures/painel'
 import { createPub } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
@@ -556,6 +557,26 @@ test('horário: informar, salvar e tirar da página', async ({ page }) => {
     barId
   ])
   expect(after?.opening_hours).toBeNull()
+})
+
+test('no celular nada rola de lado: formulário, horário, checklist e prévia', async ({
+  page
+}) => {
+  await openProfile(page)
+  await page
+    .getByRole('region', { name: 'Horário de funcionamento' })
+    .getByRole('button', { name: 'Informar horário' })
+    .click()
+  for (const largura of LARGURAS_CELULAR) {
+    await page.setViewportSize({ width: largura, height: 800 })
+    expect(await vazamentoLateral(page), `${largura} px`).toBe(0)
+    // A última aba da prévia era a que ficava fora da tela.
+    const mapa = page
+      .getByRole('group', { name: 'Prévia' })
+      .getByRole('button', { name: 'Mapa' })
+    const caixa = await mapa.boundingBox()
+    expect((caixa?.x ?? 0) + (caixa?.width ?? 0)).toBeLessThanOrEqual(largura)
+  }
 })
 
 test('Elite salva cardápio, preço médio e oferta num "Salvar" só', async ({
