@@ -17,12 +17,15 @@ import {
   Icon,
   LIVE,
   PAPER,
+  phaseBusy,
+  phaseLabel,
   Screen,
   Text,
   TextInput,
   Title,
   text
 } from '@/components/ui'
+import { attemptPhase, retryable, settleAuth } from '@/lib/auth-attempt'
 import { authClient } from '@/lib/auth-client'
 import { queryClient } from '@/lib/trpc'
 
@@ -66,25 +69,34 @@ export default function TwoFactor() {
   const [trust, setTrust] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  const [failed, setFailed] = useState(false)
   const boxes = useShake()
 
   const verify = async (value = code) => {
+    if (pending) return
     setError(null)
     setPending(true)
-    const result = backup
-      ? await authClient.twoFactor.verifyBackupCode({
-          code: value.trim(),
-          trustDevice: trust
-        })
-      : await authClient.twoFactor.verifyTotp({
-          code: value,
-          trustDevice: trust
-        })
+    const result = await settleAuth(
+      backup
+        ? authClient.twoFactor.verifyBackupCode({
+            code: value.trim(),
+            trustDevice: trust
+          })
+        : authClient.twoFactor.verifyTotp({
+            code: value,
+            trustDevice: trust
+          })
+    )
     setPending(false)
+    const transient = retryable(result.error)
+    setFailed(transient)
     if (result.error) {
-      // As caixas tremem e esvaziam para o próximo código.
-      boxes.shake()
-      if (!backup) setCode('')
+      // Código recusado: as caixas tremem e esvaziam para o próximo. Sem
+      // rede o código fica, para "Tentar de novo" mandar o mesmo.
+      if (!transient) {
+        boxes.shake()
+        if (!backup) setCode('')
+      }
       setError(
         authErrorMessage(
           result.error,
@@ -102,6 +114,8 @@ export default function TwoFactor() {
     setCode(digits)
     if (digits.length === DIGITS && !pending) verify(digits)
   }
+
+  const phase = attemptPhase(pending, failed)
 
   return (
     <Screen dark gap={18} top={2}>
@@ -175,9 +189,12 @@ export default function TwoFactor() {
         <ErrorText style={[text(13.5), { color: LIVE }]}>{error}</ErrorText>
       ) : null}
       <BlockButton
-        label={pending ? 'Verificando…' : 'Verificar'}
+        label={phaseLabel(phase, {
+          idle: 'Verificar',
+          sending: 'Verificando…'
+        })}
         shadow="#000"
-        disabled={pending}
+        busy={phaseBusy(phase)}
         onPress={() => (code ? verify() : input.current?.focus())}
       />
       <Text
@@ -186,6 +203,7 @@ export default function TwoFactor() {
           setBackup(!backup)
           setCode('')
           setError(null)
+          setFailed(false)
         }}
         suppressHighlighting
         style={[text(14, 'Bold'), styles.switch]}
