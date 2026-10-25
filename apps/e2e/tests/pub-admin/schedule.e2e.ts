@@ -272,6 +272,66 @@ test('jogo com código de quem vai não é excluído, e o desmarcado vai junto',
     .toEqual([blocked.eventId])
 })
 
+// WEB-437: o Elite desliga a lista de quem vai num jogo. Quem já marcou fica
+// com o código; o painel deixa de listar o jogo em Quem vai.
+test('desliga a lista de quem vai num jogo, avisando quem já marcou', async ({
+  page
+}) => {
+  const { barId } = await openSchedule(page)
+  const { eventId } = await createEvent(barId, { championship: 'Lista E2E' })
+  const ticket = await createTicket(eventId)
+  await gotoSchedule(page)
+
+  const aberto = await openGame(page, 'Lista E2E')
+  await expect(aberto).toContainText(ticket.guestName)
+  await aberto.getByRole('button', { name: 'Editar' }).click()
+  const edit = page.getByRole('dialog', { name: 'Editar jogo' })
+  const lista = edit.getByRole('switch', {
+    name: 'Lista de quem vai neste jogo'
+  })
+  await expect(lista).toHaveAttribute('aria-checked', 'true')
+  await lista.click()
+  await expect(lista).toHaveAttribute('aria-checked', 'false')
+  await expect(edit).toContainText(
+    '1 pessoa já marcou: o código continua valendo. Ninguém novo entra.'
+  )
+  await edit.getByRole('button', { name: 'Salvar', exact: true }).click()
+  await expect(edit).toBeHidden()
+
+  await expect
+    .poll(async () =>
+      (
+        await query<{ attendance_enabled: boolean }>(
+          'SELECT attendance_enabled FROM event WHERE id = $1',
+          [eventId]
+        )
+      ).map((row) => row.attendance_enabled)
+    )
+    .toEqual([false])
+  // A presença e o código continuam; só a lista some do painel.
+  expect(
+    await query('SELECT 1 FROM attendance WHERE event_id = $1', [eventId])
+  ).toHaveLength(1)
+  const fechado = await openGame(page, 'Lista E2E')
+  await expect(fechado).toContainText('lista de quem vai desligada')
+  await expect(fechado).not.toContainText(ticket.guestName)
+
+  await page.goto('/admin/quem-vai')
+  await expect(page.getByText('Ninguém marcou ainda.')).toBeVisible()
+  await expect(page.getByText(ticket.guestName)).toHaveCount(0)
+})
+
+test('Starter não tem o interruptor da lista de quem vai', async ({ page }) => {
+  await openSchedule(page, { subscription: { plan: 'starter' } })
+  await gotoSchedule(page)
+  await page.getByRole('button', { name: 'Novo jogo' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Novo jogo' })
+  await expect(dialog.getByText('Oferta da casa neste jogo')).toBeVisible()
+  await expect(
+    dialog.getByRole('switch', { name: 'Lista de quem vai neste jogo' })
+  ).toHaveCount(0)
+})
+
 test('término antes do início não deixa salvar', async ({ page }) => {
   await openSchedule(page)
   await gotoSchedule(page)
