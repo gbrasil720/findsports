@@ -17,6 +17,7 @@ import {
   text,
   timestamp
 } from 'drizzle-orm/pg-core'
+import { GALLERY_MAX_PHOTOS } from '../bar-gallery'
 import { AVERAGE_SPEND_MAX_CENTS, MENU_URL_MAX_LENGTH } from '../bar-menu'
 import { HOUSE_OFFER_MAX_LENGTH } from '../house-offer'
 import { RESERVATION_CAP_MAX } from '../reservation-limits'
@@ -94,6 +95,12 @@ export const bar = pgTable(
       sql`ST_SetSRID(ST_MakePoint(longitude::double precision, latitude::double precision), 4326)::geography`
     ),
     photoUrl: text('photo_url'),
+    // Galeria do ambiente (WEB-439), na ordem em que a página mostra. Array e
+    // não tabela: lida inteira com o bar, ordenada pelo dono e com teto
+    // pequeno, que o `UPDATE ... WHERE cardinality(...) <` segura numa
+    // instrução só. Mesma regra do cardápio: sem Pro/Elite vigente some do
+    // perfil e fica guardada (`packages/api/src/lib/bar-gallery.ts`).
+    galleryPhotos: text('gallery_photos').array().default(sql`'{}'`).notNull(),
     // Ids do vocabulário de `packages/api/src/lib/amenities.ts`. Array em vez
     // de tabela de junção porque o filtro da busca é `@>` — contém todos, que
     // é exatamente o AND que a tela oferece — e o índice GIN entra no mesmo
@@ -197,6 +204,10 @@ export const bar = pgTable(
     check(
       'bar_menu_url_valid',
       sql`${table.menuUrl} IS NULL OR (${table.menuUrl} ~ '^https?://' AND char_length(${table.menuUrl}) <= ${sql.raw(String(MENU_URL_MAX_LENGTH))})` // sql-raw-permitido: constante de limite em CHECK
+    ),
+    check(
+      'bar_gallery_photos_max',
+      sql`cardinality(${table.galleryPhotos}) <= ${sql.raw(String(GALLERY_MAX_PHOTOS))}` // sql-raw-permitido: constante de limite em CHECK
     ),
     check(
       'bar_average_spend_cents_range',
