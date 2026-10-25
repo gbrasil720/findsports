@@ -841,6 +841,7 @@ export function BlockButton({
   disabled,
   trailing,
   leading,
+  leadingAccent = ACID,
   shadow = EDGE,
   style
 }: {
@@ -850,6 +851,8 @@ export function BlockButton({
   trailing?: boolean
   /** Ícone antes do rótulo ("Ampliar para 10 km", com o pino, 23i). */
   leading?: keyof typeof ICONS
+  /** O detalhe do ícone: acid por padrão; tinta quando o acid sumiria no botão. */
+  leadingAccent?: string
   shadow?: string
   style?: StyleProp<ViewStyle>
 }) {
@@ -870,7 +873,12 @@ export function BlockButton({
         <Animated.View style={[styles.block, press.style]}>
           <Animated.View key={label} entering={SWAP} style={styles.row}>
             {leading ? (
-              <Icon name={leading} size={17} color={INK} accent={ACID} />
+              <Icon
+                name={leading}
+                size={17}
+                color={INK}
+                accent={leadingAccent}
+              />
             ) : null}
             <Text
               style={[text(15, 'Bold'), { color: INK, flexShrink: 1 }]}
