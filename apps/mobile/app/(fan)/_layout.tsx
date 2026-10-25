@@ -69,7 +69,8 @@ const TAB_ICONS = {
 const MENU_SCREENS: Record<string, string> = {
   '/voce/perfil': 'perfil',
   '/voce/conquistas': 'conquistas',
-  '/voce/meus-jogos': 'jogos'
+  '/voce/meus-jogos': 'jogos',
+  '/voce/ranking': 'ranking'
 }
 
 // O estado do Explorar (`ExploreStateProvider`) mora em `app/_layout.tsx`:
@@ -170,7 +171,8 @@ export default function FanTabs() {
       key: 'ranking',
       icon: 'ranking',
       label: 'Ranking',
-      soon: 'O ranking chega em breve'
+      soon: 'O ranking chega em breve',
+      open: () => router.navigate('/voce/ranking')
     },
     {
       key: 'avaliacoes',
