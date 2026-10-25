@@ -151,7 +151,8 @@ export default function Ranking() {
               data={city.data}
               pending={city.isPending}
               lead="Você está em"
-              onPress={() => router.push('/cidade')}
+              // Sem cidade no perfil, o toque leva a escolher uma.
+              onPress={city.data ? undefined : () => router.push('/cidade')}
             />
             <Text style={[text(13, 'Regular', 1.4), { color: palette.muted }]}>
               {RULES.bars} A lista da cidade chega em breve.
@@ -650,14 +651,15 @@ function CityRow({
   data: City | undefined
   pending: boolean
   lead: string
-  onPress: () => void
+  onPress?: () => void
 }) {
   const palette = usePalette()
   if (pending) return null
   return (
     <Card soft>
       <Pressable
-        accessibilityRole="button"
+        accessibilityRole={onPress ? 'button' : 'text'}
+        disabled={!onPress}
         onPress={onPress}
         style={({ pressed }) => [styles.rule, pressed && { opacity: 0.7 }]}
       >
@@ -677,7 +679,7 @@ function CityRow({
             'Escolha sua cidade para ver sua posição nela.'
           )}
         </Text>
-        <Icon name="next" size={12} color={palette.muted} />
+        {onPress ? <Icon name="next" size={12} color={palette.muted} /> : null}
       </Pressable>
     </Card>
   )
