@@ -1,8 +1,16 @@
+import {
+  INVOICE_FIELDS,
+  type InvoiceField,
+  invoiceFieldProblem,
+  normalizeInvoiceField
+} from '@findsports_oficial/api/lib/invoice-details'
+import { actionPhase } from '@findsports_oficial/api/lib/transient-error'
+import { formatCnpj, isValidCnpj } from '@findsports_oficial/db/cnpj'
 import { brasiliaDay } from '@findsports_oficial/db/event-window'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { type ReactNode, useId, useState } from 'react'
+import { type ComponentProps, type ReactNode, useId, useState } from 'react'
 import { useMyBar, useMyEvents } from '@/components/admin/admin-queries'
 import { AvisoVisual } from '@/components/admin/avisos'
 import {
@@ -15,7 +23,9 @@ import {
   Badge,
   type BadgeTipo,
   Botao,
+  BotaoAcao,
   CabecalhoPagina,
+  Campo,
   Card,
   EmBreve,
   Icone,
@@ -42,7 +52,10 @@ import {
 } from '@/lib/plan-catalog'
 import { plural } from '@/lib/plural'
 import { canCancelSubscription, getCancelNotice } from '@/lib/scheduled-cancel'
-import { getUserFacingError } from '@/lib/user-facing-error'
+import {
+  getUserFacingError,
+  getUserFacingMessage
+} from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/admin/billing')({
@@ -623,26 +636,7 @@ function BillingPage() {
             />
           </Secao>
 
-          <Secao titulo="Dados da nota" icone="doc" aside={<EmBreve />}>
-            {['Razão social', 'CNPJ', 'E-mail para notas'].map(
-              (titulo, index) => (
-                <Linha
-                  key={titulo}
-                  titulo={titulo}
-                  primeira={index === 0}
-                  acao={
-                    <button
-                      type="button"
-                      disabled
-                      className="font-bold text-[13.5px] opacity-50"
-                    >
-                      Editar
-                    </button>
-                  }
-                />
-              )
-            )}
-          </Secao>
+          <DadosDaNota />
 
           <Secao titulo="Ajuda" icone="chat">
             <Linha
@@ -752,6 +746,173 @@ function comPlural(
   )
 }
 
+/** Cada linha de "Dados da nota" (3o) e o campo que o "Editar" abre. */
+const NOTA = {
+  legalName: {
+    titulo: 'Razão social',
+    campo: { autoComplete: 'organization', maxLength: 150 }
+  },
+  cnpj: {
+    titulo: 'CNPJ',
+    campo: {
+      autoComplete: 'off',
+      autoCapitalize: 'characters',
+      spellCheck: false,
+      maxLength: 18,
+      placeholder: '00.000.000/0000-00'
+    }
+  },
+  invoiceEmail: {
+    titulo: 'E-mail para notas',
+    campo: {
+      type: 'email',
+      autoComplete: 'email',
+      spellCheck: false,
+      maxLength: 254,
+      dica: 'Sem ele, as faturas vão para o e-mail de acesso.'
+    }
+  }
+} satisfies Record<
+  InvoiceField,
+  { titulo: string; campo: ComponentProps<typeof Campo> }
+>
+
+const notaVisivel = (campo: InvoiceField, valor: string) =>
+  campo === 'cnpj' ? formatCnpj(valor) : valor
+
+/**
+ * Dados da nota (3o, WEB-444): razão social, CNPJ e e-mail para notas, cada
+ * um com o seu "Editar", que troca a linha pelo campo, como em Configurações.
+ * O servidor manda os três ao cliente do Stripe antes de gravar.
+ */
+function DadosDaNota() {
+  const bar = useMyBar().data
+  const [editando, setEditando] = useState<InvoiceField | null>(null)
+  return (
+    <Secao titulo="Dados da nota" icone="doc">
+      {INVOICE_FIELDS.map((campo, index) => {
+        const { titulo } = NOTA[campo]
+        const valor = bar?.[campo] ?? null
+        return editando === campo ? (
+          <EditarNota
+            key={campo}
+            campo={campo}
+            inicial={valor ? notaVisivel(campo, valor) : ''}
+            primeira={index === 0}
+            onFechar={() => setEditando(null)}
+          />
+        ) : (
+          <Linha
+            key={campo}
+            titulo={titulo}
+            sub={
+              bar
+                ? valor
+                  ? notaVisivel(campo, valor)
+                  : 'Não informado'
+                : undefined
+            }
+            primeira={index === 0}
+            acao={
+              <button
+                type="button"
+                disabled={!bar}
+                aria-label={`Editar ${titulo}`}
+                onClick={() => setEditando(campo)}
+                className="font-bold text-[13.5px] disabled:opacity-50"
+              >
+                Editar
+              </button>
+            }
+          />
+        )
+      })}
+    </Secao>
+  )
+}
+
+function EditarNota({
+  campo,
+  inicial,
+  primeira,
+  onFechar
+}: {
+  campo: InvoiceField
+  inicial: string
+  primeira: boolean
+  onFechar: () => void
+}) {
+  const trpc = useTRPC()
+  const queryClient = useQueryClient()
+  const [valor, setValor] = useState(inicial)
+  const [erro, setErro] = useState<string | null>(null)
+  const salvar = useMutation(
+    trpc.pub.updateInvoiceDetails.mutationOptions({
+      onSuccess: (dados) => {
+        queryClient.setQueryData(trpc.pub.getMe.queryKey(), (bar) =>
+          bar ? { ...bar, ...dados } : bar
+        )
+        // O "Salvo" fica à vista um instante antes de a linha voltar.
+        setTimeout(onFechar, 900)
+      },
+      onError: (error) =>
+        setErro(getUserFacingMessage(error, 'Não foi possível salvar.'))
+    })
+  )
+  const { titulo, campo: props } = NOTA[campo]
+  const { dica, ...input } = props as ComponentProps<typeof Campo>
+
+  return (
+    <form
+      method="post"
+      noValidate
+      className={`flex flex-wrap items-end gap-3 py-3 ${primeira ? '' : 'border-[var(--painel-line)] border-t'}`}
+      onSubmit={(e) => {
+        e.preventDefault()
+        const normalizado = normalizeInvoiceField(campo, valor)
+        const problema = invoiceFieldProblem(campo, normalizado)
+        setErro(problema)
+        if (!problema) salvar.mutate({ [campo]: normalizado })
+      }}
+    >
+      <Campo
+        {...input}
+        className="min-w-0 flex-1 basis-60"
+        rotulo={titulo}
+        autoFocus
+        value={valor}
+        onChange={(e) => setValor(e.target.value)}
+        onBlur={() => {
+          if (campo === 'cnpj' && isValidCnpj(valor))
+            setValor(formatCnpj(valor))
+        }}
+        aria-invalid={erro ? true : undefined}
+        dica={
+          erro ? (
+            <span role="alert" className="text-[var(--painel-live)]">
+              {erro}
+            </span>
+          ) : (
+            dica
+          )
+        }
+      />
+      <div className="flex gap-2 pb-0.5">
+        <Botao altura={38} disabled={salvar.isPending} onClick={onFechar}>
+          Cancelar
+        </Botao>
+        <BotaoAcao
+          type="submit"
+          variante="ink"
+          altura={38}
+          fase={actionPhase([salvar], { done: salvar.isSuccess })}
+          rotulos={{ idle: 'Salvar', sending: 'Salvando…', done: 'Salvo' }}
+        />
+      </div>
+    </form>
+  )
+}
+
 /** Card de seção (`sec` do design): ícone, título e, à direita, um selo. */
 function Secao({
   titulo,
@@ -804,7 +965,7 @@ function Linha({
           {selo ? <EmBreve /> : null}
         </b>
         {sub ? (
-          <span className="text-[13px] text-[var(--painel-muted)] leading-snug">
+          <span className="text-[13px] text-[var(--painel-muted)] leading-snug [overflow-wrap:anywhere]">
             {sub}
           </span>
         ) : null}
