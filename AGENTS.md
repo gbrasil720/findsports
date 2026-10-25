@@ -917,6 +917,12 @@ invente layout que o projeto não tem.
   e `xcrun simctl io booted screenshot <arquivo>.png` tira o print, para comparar lado a lado
   com o design renderizado a 3x. O botão flutuante do Expo Go some com
   `EXDevMenuShowFloatingActionButton = false` no plist de preferências do Expo Go no simulador.
+- **Texto grande do iOS (WEB-410):** `Text` e `TextInput` vêm de `@/components/ui`, nunca do
+  `react-native` (`components/text.tsx`). O `Text` para de crescer em 1,35× (`MAX_FONT_SCALE`),
+  e em 1,2× (`DISPLAY_FONT_SCALE`) quando a fonte é Anton; um `Text` dentro de outro herda o
+  teto de fora. Rótulo de botão em pílula leva `DISPLAY_FONT_SCALE`, uma linha e
+  `adjustsFontSizeToFit`. `Animated.Text` não passa pelo `Text`: dê o teto à mão. Confira no
+  simulador com `xcrun simctl ui <udid> content_size accessibility-extra-extra-extra-large`.
 - `Image` com só `StyleSheet.absoluteFill` sai no tamanho original da imagem neste app: passe
   `width` e `height` explícitos.
 
