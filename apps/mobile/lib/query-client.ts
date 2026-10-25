@@ -1,4 +1,8 @@
 import {
+  retryDelay,
+  retryTransient
+} from '@findsports_oficial/api/lib/transient-error'
+import {
   focusManager,
   MutationCache,
   onlineManager,
@@ -10,10 +14,14 @@ import { AppState } from 'react-native'
 /**
  * Por 30 s a resposta vale como está: trocar de tela não repete a mesma
  * consulta (`pubs.getMyCity` aparece em uma dúzia de telas). Os dados que
- * quase não mudam ganham mais tempo em `lib/trpc.ts`.
+ * quase não mudam ganham mais tempo em `lib/trpc.ts`. Só a falha passageira
+ * (rede, timeout, 5xx) tenta de novo, com espera crescente: recusa do
+ * servidor aparece na hora (WEB-460, a mesma regra do web).
  */
 export const queryClient = new QueryClient({
-  defaultOptions: { queries: { staleTime: 30_000 } },
+  defaultOptions: {
+    queries: { staleTime: 30_000, retry: retryTransient, retryDelay }
+  },
   mutationCache: new MutationCache({
     // Toda mutation que dá certo vence o cache inteiro, sem buscar nada na
     // hora: a próxima tela que abrir busca de novo, como antes do

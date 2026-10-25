@@ -1,3 +1,4 @@
+import { retryDelay } from '@findsports_oficial/api/lib/transient-error'
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import { QueryCache, QueryClient } from '@tanstack/react-query'
 
@@ -58,7 +59,8 @@ export const getRouter = () => {
       }
     }),
     defaultOptions: {
-      queries: { staleTime: 60 * 1000, retry: shouldRetryQuery }
+      // Só a falha passageira tenta de novo, com espera crescente (WEB-460).
+      queries: { staleTime: 60 * 1000, retry: shouldRetryQuery, retryDelay }
     }
   })
 
