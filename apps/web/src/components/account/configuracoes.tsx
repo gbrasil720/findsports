@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { type CSSProperties, type ReactNode, useId, useState } from 'react'
 import { toast } from 'sonner'
 import { useMyBar } from '@/components/admin/admin-queries'
@@ -18,7 +18,7 @@ import { useSession } from '@/hooks/use-session'
 import { useSignOut } from '@/hooks/use-sign-out'
 import { authClient } from '@/lib/auth-client'
 import { describeDevice } from '@/lib/describe-device'
-import { getUserFacingMessage } from '@/lib/user-facing-error'
+import { getErrorCode, getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import { PasswordDialog } from './account-settings'
 import {
@@ -498,46 +498,37 @@ function Avisos() {
 
 function Privacidade() {
   const trpc = useTRPC()
-  const queryClient = useQueryClient()
-  const baixar = useMutation({
-    mutationFn: () =>
-      queryClient.fetchQuery({
-        ...trpc.account.exportBarData.queryOptions(),
-        staleTime: 0
-      }),
-    onSuccess: (data) => {
-      const url = URL.createObjectURL(
-        new Blob([JSON.stringify(data, null, 2)], {
-          type: 'application/json'
-        })
-      )
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `onside-meus-dados-${data.exportedAt.slice(0, 10)}.json`
-      link.click()
-      URL.revokeObjectURL(url)
-    },
-    onError: (err) =>
-      toast.error(
-        getUserFacingMessage(
-          err,
-          'Não foi possível gerar o arquivo. Tente novamente.'
+  const pedir = useMutation(
+    trpc.account.requestExport.mutationOptions({
+      onSuccess: ({ email }) =>
+        toast.success(
+          `Arquivo enviado para ${email}. Pode levar alguns minutos para chegar.`
+        ),
+      // A recusa do limite diário já chega escrita para quem usa.
+      onError: (err) =>
+        toast.error(
+          getErrorCode(err) === 'TOO_MANY_REQUESTS'
+            ? err.message
+            : getUserFacingMessage(
+                err,
+                'Não conseguimos enviar o arquivo agora. Tente de novo em instantes.'
+              )
         )
-      )
-  })
+    })
+  )
   return (
     <Secao id="privacidade" titulo="Privacidade" icone="doc">
       <Linha
         primeira
         titulo="Baixar meus dados"
-        sub="Um arquivo com os dados da conta e do bar, baixado neste navegador."
+        sub="Um arquivo com os dados da conta e do bar, enviado por e-mail."
         acao={
           <Botao
             altura={38}
-            disabled={baixar.isPending}
-            onClick={() => baixar.mutate()}
+            disabled={pedir.isPending}
+            onClick={() => pedir.mutate()}
           >
-            {baixar.isPending ? 'Gerando…' : 'Baixar arquivo'}
+            {pedir.isPending ? 'Enviando…' : 'Pedir arquivo'}
           </Botao>
         }
       />
