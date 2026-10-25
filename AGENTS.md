@@ -458,8 +458,13 @@ Design "Bar Web" (Rodada 2) no Claude Design. O painel **segue o tema do sistema
   `updateOpeningHours`) só se ela mudou; cardápio (Pro) e oferta (Elite) só entram com o
   plano em dia (`recursoPago`). Foto e "como o código é conferido" (WEB-412) gravam na
   hora. A prévia ao lado (`espaco-previa.tsx`) é a página do bar no app, desenhada do
-  rascunho; Card e Mapa são "em breve". CEP e galeria também: o bar guarda rua e número
-  num campo só.
+  rascunho; Card e Mapa são "em breve". CEP também: o bar guarda rua e número
+  num campo só. Galeria do ambiente (WEB-439, Pro e Elite): até 8 fotos além da capa
+  (`GALLERY_MAX_PHOTOS`), em `bar.gallery_photos` na ordem da página; sobe pela rota da
+  capa com `?galeria` (chave `bars/<id>/gallery/<uuid>`), entra por `pub.addGalleryPhoto`,
+  ordena por `pub.reorderGallery` e apaga por `DELETE /api/bar/photo?galeria=<url>`. Sem o
+  plano some do perfil e fica guardada (`lib/bar-gallery.ts`). No app vai num carrossel logo
+  depois da capa: o design não desenha fotos do bar.
 - **Configurações** (`/admin/configuracoes`, `components/account/configuracoes.tsx`): os
   diálogos de senha, 2FA e exclusão são os de `components/account/*`. "Baixar meus dados"
   baixa o JSON de `account.exportBarData` (conta, bar, plano e jogos; nada de torcedor).
