@@ -40,8 +40,14 @@ async function fillAddress(page: Page, rua: string, numero: string) {
   await info(page).getByLabel('Número', { exact: true }).fill(numero)
 }
 
-const pickPhoto = (page: Page, file: Parameters<Locator['setInputFiles']>[0]) =>
-  page.locator('input[type="file"]').setInputFiles(file)
+type Arquivo = Parameters<Locator['setInputFiles']>[0]
+
+const pickPhoto = (page: Page, file: Arquivo) =>
+  page.getByLabel('Foto de capa').setInputFiles(file)
+
+/** Foto da galeria do ambiente (WEB-439): o outro `input` da seção Fotos. */
+const pickGalleryPhoto = (page: Page, file: Arquivo) =>
+  page.getByLabel('Foto da galeria').setInputFiles(file)
 
 /**
  * Erros não tratados da página, inclusive promessa rejeitada sem `catch`
@@ -754,3 +760,107 @@ for (const [plano, marcaram, mostra] of [
     else await expect(preview).not.toContainText('vão')
   })
 }
+
+/* ─── Galeria do ambiente (WEB-439) ─── */
+
+const PNG = {
+  name: 'ambiente.png',
+  mimeType: 'image/png',
+  buffer: Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+    'base64'
+  )
+}
+
+async function galleryOf(barId: string): Promise<string[]> {
+  const [bar] = await query('SELECT gallery_photos FROM bar WHERE id = $1', [
+    barId
+  ])
+  return bar?.gallery_photos as string[]
+}
+
+test('galeria: põe duas fotos pelo R2, troca a ordem e a prévia mostra', async ({
+  page
+}) => {
+  const uploads = await interceptMediaUploads(page)
+  const { barId } = await openProfile(page)
+  const adicionar = fotos(page).getByRole('button', { name: /Adicionar foto/ })
+  await expect(adicionar).toContainText('Galeria · 0 de 8')
+
+  for (const total of [1, 2]) {
+    const saved = page.waitForResponse(/pub\.addGalleryPhoto/)
+    await pickGalleryPhoto(page, PNG)
+    expect((await saved).ok()).toBe(true)
+    await expect(adicionar).toContainText(`Galeria · ${total} de 8`)
+  }
+
+  // Cada foto numa chave nova, sorteada no servidor.
+  expect(uploads).toHaveLength(2)
+  for (const upload of uploads) {
+    expect(upload.pathname).toMatch(
+      new RegExp(`^bars/${barId}/gallery/[0-9a-f-]{36}$`)
+    )
+  }
+  const [primeira, segunda] = await galleryOf(barId)
+  expect(primeira).toContain(uploads[0]?.pathname)
+  expect(segunda).toContain(uploads[1]?.pathname)
+
+  const reordered = page.waitForResponse(/pub\.reorderGallery/)
+  await fotos(page)
+    .getByRole('button', { name: 'Mover a foto 2 para antes' })
+    .click()
+  expect((await reordered).ok()).toBe(true)
+  expect(await galleryOf(barId)).toEqual([segunda, primeira])
+  await expect(
+    fotos(page).getByRole('button', { name: 'Mover a foto 1 para antes' })
+  ).toBeDisabled()
+
+  // A prévia é a página do app: as duas fotos depois da capa.
+  await expect(
+    page
+      .getByRole('region', { name: /Prévia da página de/ })
+      .getByRole('img', { name: /do ambiente$/ })
+  ).toHaveCount(2)
+})
+
+const galeriaDe = (n: number) =>
+  Array.from(
+    { length: n },
+    () => `${MEDIA_PUBLIC_ORIGIN}/bars/x/gallery/${randomUUID()}`
+  )
+
+test('galeria cheia: as 8 fotos e nada de "Adicionar foto"', async ({
+  page
+}) => {
+  const pub = await createPub({ bar: { gallery_photos: galeriaDe(8) } })
+  await interceptMediaUploads(page)
+  await signIn(page, pub.user)
+  await page.goto('/admin/meu-espaco')
+  await expect(
+    fotos(page).getByRole('img', { name: /do ambiente de/ })
+  ).toHaveCount(8)
+  await expect(fotos(page).getByText('Adicionar foto')).toHaveCount(0)
+})
+
+test('Starter: "Adicionar foto" leva aos planos e a galeria guardada não vai à prévia', async ({
+  page
+}) => {
+  const pub = await createPub({
+    subscription: { plan: 'starter' },
+    bar: { gallery_photos: galeriaDe(1) }
+  })
+  await interceptMediaUploads(page)
+  await signIn(page, pub.user)
+  await page.goto('/admin/meu-espaco')
+  await expect(
+    fotos(page).getByRole('link', { name: /Adicionar foto/ })
+  ).toHaveAttribute('href', '/plan?origin=admin')
+  await expect(fotos(page)).toContainText(
+    'As fotos da galeria continuam guardadas, mas não aparecem no perfil até o plano voltar.'
+  )
+  await expect(
+    page
+      .getByRole('region', { name: /Prévia da página de/ })
+      .getByRole('img', { name: /do ambiente$/ })
+  ).toHaveCount(0)
+})
