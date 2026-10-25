@@ -958,8 +958,9 @@ servidor. O resto volta ao botão como "Tentar de novo", com o que a pessoa digi
 conta a fase (`actionPhase`): no painel, `BotaoAcao` (rótulos na mesma célula, largura
 fixa); no app, `phaseLabel` com `busy` no `PillButton`. Bloco que não carregou é
 `ErroBloco` (painel) ou `ErrorState` (app), nunca some. A faixa de "sem conexão" está no
-`PainelShell` e no `_layout.tsx` do app (por cima de folhas e modais); ao reconectar, a tela
-é relida. No app, "Simular sem rede" no navegador DEV liga e desliga o `onlineManager`.
+`PainelShell` e no `_layout.tsx` do app: no app é a 14j do design ("Sem internet · mostrando
+o que estava salvo", vidro escuro, "Tentar"), por cima de folhas e modais
+(`components/offline-banner.tsx`); ao reconectar, a tela é relida. No app, "Simular sem rede" no navegador DEV liga e desliga o `onlineManager`.
 
 ### Routing
 
