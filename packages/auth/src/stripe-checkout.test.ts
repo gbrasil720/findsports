@@ -4,6 +4,7 @@ import {
   customerPrefillFor,
   founderCouponUsable,
   prefillCustomer,
+  pushInvoiceDetails,
   trialEndForCheckout,
   usableFounderCoupon
 } from './stripe-checkout'
@@ -219,5 +220,110 @@ describe('dados do cadastro no cliente com teto de tempo', () => {
     })
     const quick = { timeout: 5000, maxNetworkRetries: 0 }
     expect(requests).toEqual([quick, quick])
+  })
+})
+
+/** Cliente do Stripe dublado: guarda as chamadas e os `br_cnpj` que tem. */
+function customerWith(taxIds: { id: string; type: string; value: string }[]) {
+  const calls: unknown[][] = []
+  const client = {
+    customers: {
+      retrieve: async () => ({ id: 'cus_1', address: { line1: 'x' } }),
+      update: async (...args: unknown[]) => {
+        calls.push(['update', args[0], args[1]])
+      },
+      listTaxIds: async () => ({ data: taxIds }),
+      deleteTaxId: async (_c: string, id: string) => {
+        calls.push(['deleteTaxId', id])
+      },
+      createTaxId: async (_c: string, params: unknown) => {
+        calls.push(['createTaxId', params])
+      }
+    }
+  } as unknown as Stripe
+  return { client, calls }
+}
+
+describe('dados da nota no cliente do Stripe (WEB-444)', () => {
+  const ownerBar = {
+    name: 'Bar do Zé',
+    address: 'Rua Augusta, 100',
+    neighborhood: 'Consolação',
+    city: 'São Paulo',
+    uf: 'SP'
+  }
+  const owner = { name: 'Zé Dono', email: 'ze@bar.com' }
+
+  it('razão social vira a empresa e o e-mail para notas, o do cliente', () => {
+    expect(
+      customerPrefillFor({ address: { line1: 'x' } }, 'Zé Dono', {
+        ...ownerBar,
+        legalName: 'Bar do Zé Comércio de Bebidas Ltda.',
+        invoiceEmail: 'financeiro@bar.com'
+      })
+    ).toEqual({
+      name: 'Zé Dono',
+      individual_name: 'Zé Dono',
+      business_name: 'Bar do Zé Comércio de Bebidas Ltda.',
+      email: 'financeiro@bar.com'
+    })
+  })
+
+  it('salvar no painel: troca o CNPJ antigo pelo novo e manda os nomes e o e-mail', async () => {
+    const { client, calls } = customerWith([
+      { id: 'txi_velho', type: 'br_cnpj', value: '11.444.777/0001-61' },
+      { id: 'txi_cpf', type: 'br_cpf', value: '123.456.789-09' }
+    ])
+    await pushInvoiceDetails(client, 'cus_1', owner, {
+      name: 'Bar do Zé',
+      legalName: 'Zé Ltda.',
+      cnpj: '11222333000181',
+      invoiceEmail: null
+    })
+    expect(calls).toEqual([
+      [
+        'update',
+        'cus_1',
+        {
+          name: 'Zé Dono',
+          individual_name: 'Zé Dono',
+          business_name: 'Zé Ltda.',
+          email: 'ze@bar.com'
+        }
+      ],
+      ['deleteTaxId', 'txi_velho'],
+      ['createTaxId', { type: 'br_cnpj', value: '11.222.333/0001-81' }]
+    ])
+  })
+
+  it('o mesmo CNPJ de novo não muda nada; CNPJ apagado sai do Stripe', async () => {
+    const same = customerWith([
+      { id: 'txi_1', type: 'br_cnpj', value: '11.222.333/0001-81' }
+    ])
+    const details = {
+      name: 'Bar do Zé',
+      legalName: null,
+      cnpj: '11222333000181',
+      invoiceEmail: 'nf@bar.com'
+    }
+    await pushInvoiceDetails(same.client, 'cus_1', owner, details)
+    expect(same.calls.map(([kind]) => kind)).toEqual(['update'])
+
+    const cleared = customerWith([
+      { id: 'txi_1', type: 'br_cnpj', value: '11.222.333/0001-81' }
+    ])
+    await pushInvoiceDetails(cleared.client, 'cus_1', owner, {
+      ...details,
+      cnpj: null
+    })
+    expect(cleared.calls.slice(1)).toEqual([['deleteTaxId', 'txi_1']])
+  })
+
+  it('checkout sem CNPJ no painel não mexe no CNPJ do cliente', async () => {
+    const { client, calls } = customerWith([
+      { id: 'txi_1', type: 'br_cnpj', value: '11.222.333/0001-81' }
+    ])
+    await prefillCustomer(client, 'cus_1', 'Zé Dono', ownerBar)
+    expect(calls.map(([kind]) => kind)).toEqual(['update'])
   })
 })
