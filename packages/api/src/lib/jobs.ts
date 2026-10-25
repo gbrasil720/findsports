@@ -1,7 +1,6 @@
 import { db } from '@findsports_oficial/db'
 import { jobRun } from '@findsports_oficial/db/schema/houdini'
 
-import { sendWeeklyBarNotices } from './bar-notices'
 import { reconcileBarPlans } from './bar-plan-sync'
 import { runScheduledAnalyticsRetention } from './commercial-analytics/retention'
 
@@ -25,7 +24,11 @@ const JOBS: Record<JobName, (trigger: JobTrigger) => Promise<unknown>> = {
     runScheduledAnalyticsRetention(trigger === 'cron' ? 'cron' : 'admin'),
   // Resumo da semana e grade vazia por e-mail (WEB-441). Roda todo dia e só
   // manda às segundas, depois dos planos: o resumo lê `bar.plan` em dia.
-  bar_notices: () => sendWeeklyBarNotices()
+  // Importado aqui dentro: o `worker.ts` carrega este arquivo na subida, e
+  // `bar-notices` puxa `env/server`, que valida as variáveis ao ser
+  // importado. No Worker elas não existem nesse momento, e ele não sobe.
+  bar_notices: async () =>
+    (await import('./bar-notices')).sendWeeklyBarNotices()
 }
 
 /**
