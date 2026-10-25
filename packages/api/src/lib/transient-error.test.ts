@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test'
 import { TRPCClientError } from '@trpc/client'
 import {
+  actionPhase,
   IDEMPOTENT_MUTATIONS,
   isTransientError,
   retryDelay,
@@ -87,4 +88,31 @@ test('a lista de mutations seguras só tem mutation que existe', async () => {
   >
   for (const path of IDEMPOTENT_MUTATIONS)
     expect([path, procedures[path]?._def.type]).toEqual([path, 'mutation'])
+})
+
+test('o botão conta o que acontece com a ação', () => {
+  const m = (state: Partial<Parameters<typeof actionPhase>[0][number]>) => ({
+    isPending: false,
+    isPaused: false,
+    isError: false,
+    failureCount: 0,
+    error: null,
+    ...state
+  })
+  expect(actionPhase([m({})])).toBe('idle')
+  expect(actionPhase([m({ isPending: true })])).toBe('sending')
+  expect(actionPhase([m({ isPending: true, isPaused: true })])).toBe('waiting')
+  expect(actionPhase([m({ isPending: true, failureCount: 1 })])).toBe(
+    'retrying'
+  )
+  expect(
+    actionPhase([m({ isError: true, error: new TypeError('Failed to fetch') })])
+  ).toBe('failed')
+  // Recusa do servidor: o botão volta ao normal, a mensagem explica.
+  expect(
+    actionPhase([m({ isError: true, error: trpcError('FORBIDDEN', 403) })])
+  ).toBe('idle')
+  expect(actionPhase([m({})], { busy: true })).toBe('sending')
+  expect(actionPhase([m({})], { done: true })).toBe('done')
+  expect(actionPhase([m({})], { failed: true })).toBe('failed')
 })

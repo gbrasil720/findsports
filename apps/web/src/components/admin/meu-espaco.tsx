@@ -10,6 +10,7 @@ import {
   UFS
 } from '@findsports_oficial/api/lib/bar-profile-validation'
 import { reasonLabel } from '@findsports_oficial/api/lib/rating-reasons'
+import { actionPhase } from '@findsports_oficial/api/lib/transient-error'
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import { GALLERY_MAX_PHOTOS } from '@findsports_oficial/db/bar-gallery'
 import { gameTitle } from '@findsports_oficial/db/game-title'
@@ -22,6 +23,7 @@ import { useMinuteNow } from '@/components/app/minute-tick'
 import {
   Badge,
   Botao,
+  BotaoAcao,
   CabecalhoPagina,
   Campo,
   CampoTexto,
@@ -31,7 +33,8 @@ import {
   Icone,
   type IconeNome,
   Progresso,
-  propsBotao
+  propsBotao,
+  useFeito
 } from '@/components/painel'
 import { conciliarUfComCidade } from '@/components/uf-select'
 import { getEventTemporalState } from '@/domain/events'
@@ -113,7 +116,12 @@ export function MeuEspaco() {
   const [rascunho, setRascunho] = useState<Rascunho | null>(null)
   const [tentou, setTentou] = useState(false)
   const [salvando, setSalvando] = useState(false)
-  const [erroSalvar, setErroSalvar] = useState<string | null>(null)
+  const [erroSalvar, setErroSalvar] = useState<{
+    texto: string
+    /** Só falha passageira: o botão vira "Tentar de novo". */
+    passageira: boolean
+  } | null>(null)
+  const [salvo, marcarSalvo] = useFeito()
 
   const invalidateBar = () =>
     Promise.all([
@@ -238,11 +246,14 @@ export function MeuEspaco() {
     setSalvando(true)
     setErroSalvar(null)
     const falhas: string[] = []
+    let passageira = false
     const tentar = async (fn: () => Promise<unknown>, falha: string) => {
       try {
         await fn()
       } catch (err) {
         falhas.push(falha === '' ? String(err) : falha)
+        // `pub.updateMe` joga a frase pronta e já anotou a causa.
+        if (typeof err !== 'string') passageira ||= isRetryableError(err)
       }
     }
     if (pendente.perfil) {
@@ -252,6 +263,7 @@ export function MeuEspaco() {
           await updateMe.mutateAsync(perfil)
         } catch (err) {
           const code = (err as { data?: { code?: string } }).data?.code
+          passageira ||= isRetryableError(err)
           // Recusa do endereço (WEB-115) ou geocoding fora do ar (WEB-191).
           throw code === 'UNPROCESSABLE_CONTENT'
             ? mensagemEnderecoNaoEncontrado(
@@ -298,11 +310,11 @@ export function MeuEspaco() {
     ])
     setSalvando(false)
     if (falhas.length) {
-      setErroSalvar(falhas.join(' '))
+      setErroSalvar({ texto: falhas.join(' '), passageira })
       return
     }
     descartar()
-    toast.success('Alterações salvas.')
+    marcarSalvo()
   }
 
   const acaoDoItem = (item: ItemPerfil): ReactNode => {
@@ -366,17 +378,24 @@ export function MeuEspaco() {
             >
               Descartar
             </Botao>
-            <Botao
+            <BotaoAcao
               variante="acid"
-              disabled={!sujo || salvando}
+              disabled={!sujo}
+              fase={actionPhase(
+                [updateMe, updateMenu, updateOffer, updateHours],
+                {
+                  busy: salvando,
+                  done: salvo,
+                  failed: erroSalvar?.passageira ?? false
+                }
+              )}
+              rotulos={{
+                idle: 'Salvar alterações',
+                sending: 'Salvando…',
+                done: 'Salvo'
+              }}
               onClick={() => void salvar()}
-            >
-              {salvando
-                ? 'Salvando…'
-                : erroSalvar
-                  ? 'Tentar de novo'
-                  : 'Salvar alterações'}
-            </Botao>
+            />
           </>
         }
       />
@@ -385,7 +404,7 @@ export function MeuEspaco() {
           role="alert"
           className="rounded-[7px] px-4 py-3 text-[14px] text-[var(--painel-live)] shadow-[inset_0_0_0_1.5px_rgb(201_43_12/45%)]"
         >
-          {erroSalvar}
+          {erroSalvar.texto}
         </p>
       ) : null}
 

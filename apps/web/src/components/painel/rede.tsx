@@ -1,5 +1,11 @@
+import type { ActionPhase } from '@findsports_oficial/api/lib/transient-error'
 import { onlineManager } from '@tanstack/react-query'
-import { useSyncExternalStore } from 'react'
+import {
+  type ComponentProps,
+  useEffect,
+  useState,
+  useSyncExternalStore
+} from 'react'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { Icone } from './icone'
 import { Botao } from './pecas'
@@ -99,15 +105,95 @@ export function ErroBloco({
         </span>
       </div>
       {passageira ? (
-        <Botao
+        <BotaoAcao
           variante="ink"
           altura={40}
-          disabled={tentando}
+          fase={tentando ? 'sending' : 'idle'}
+          rotulos={{
+            idle: 'Tentar de novo',
+            sending: 'Tentando de novo…',
+            done: 'Tentar de novo'
+          }}
           onClick={tentarAgora}
-        >
-          {rotulo}
-        </Botao>
+        />
       ) : null}
     </div>
+  )
+}
+
+/** `true` por um instante depois de `marcar()`: o "Salvo" do botão. */
+export function useFeito(ms = 1600) {
+  const [feito, setFeito] = useState(0)
+  useEffect(() => {
+    if (!feito) return
+    const timer = setTimeout(() => setFeito(0), ms)
+    return () => clearTimeout(timer)
+  }, [feito, ms])
+  return [feito > 0, () => setFeito(Date.now())] as const
+}
+
+/** A ordem das fases: a que vem depois entra por baixo; a de antes, por cima. */
+const FASES: ActionPhase[] = [
+  'idle',
+  'sending',
+  'waiting',
+  'retrying',
+  'failed',
+  'done'
+]
+const ROTULOS_PADRAO = {
+  waiting: 'Esperando a rede…',
+  retrying: 'Tentando de novo…',
+  failed: 'Tentar de novo'
+}
+
+/**
+ * O botão que conta o que está acontecendo (WEB-460): "Salvar alterações" →
+ * "Salvando…" → "Tentando de novo…" → "Salvo", trocando o texto no lugar.
+ * Todos os rótulos ocupam a mesma célula, então a largura é a do maior e o
+ * botão não muda de tamanho nem empurra o vizinho. Ocupado, não aceita
+ * clique, mas não esmaece: quem conta é o texto.
+ */
+export function BotaoAcao({
+  fase,
+  rotulos,
+  disabled,
+  ...rest
+}: Omit<ComponentProps<typeof Botao>, 'children'> & {
+  fase: ActionPhase
+  rotulos: { idle: string; sending: string; done: string } & Partial<
+    Record<ActionPhase, string>
+  >
+}) {
+  const textos = { ...ROTULOS_PADRAO, ...rotulos }
+  const ativa = FASES.indexOf(fase)
+  const ocupado = fase !== 'idle' && fase !== 'failed'
+  return (
+    <>
+      <Botao
+        {...rest}
+        data-fase={fase}
+        aria-busy={ocupado && fase !== 'done'}
+        disabled={disabled || ocupado}
+      >
+        <span className="painel-btn-rotulos">
+          {FASES.map((f, i) => (
+            <span
+              key={f}
+              aria-hidden={f !== fase}
+              data-lado={i < ativa ? 'antes' : i > ativa ? 'depois' : undefined}
+            >
+              {f === 'done' ? (
+                <Icone nome="check" tamanho={16} acento="currentColor" />
+              ) : null}
+              {textos[f]}
+            </span>
+          ))}
+        </span>
+      </Botao>
+      <span role="status" className="sr-only">
+        {fase === 'idle' ? '' : textos[fase]}
+      </span>
+    </>
   )
 }

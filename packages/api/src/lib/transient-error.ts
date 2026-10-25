@@ -162,3 +162,50 @@ export const IDEMPOTENT_MUTATIONS = [
  */
 export const idempotentMutationKeys = () =>
   IDEMPOTENT_MUTATIONS.map((path) => [path.split('.')])
+
+/**
+ * O que o botão de uma ação conta (WEB-460): "Salvando…", "Esperando a
+ * rede…" (mutation parada sem rede), "Tentando de novo…" (a nova tentativa
+ * sozinha), "Tentar de novo" (as tentativas acabaram numa falha passageira) e
+ * "Salvo" por um instante. Recusa do servidor não muda o botão: a mensagem
+ * dela diz o que fazer.
+ */
+export type ActionPhase =
+  | 'idle'
+  | 'sending'
+  | 'waiting'
+  | 'retrying'
+  | 'failed'
+  | 'done'
+
+type MutationState = {
+  isPending: boolean
+  isPaused: boolean
+  isError: boolean
+  failureCount: number
+  error: unknown
+}
+
+export function actionPhase(
+  mutations: MutationState[],
+  {
+    busy = false,
+    done = false,
+    failed
+  }: {
+    /** A ação está no ar entre uma mutation e outra (várias em sequência). */
+    busy?: boolean
+    /** Acabou de dar certo. */
+    done?: boolean
+    /** A última tentativa falhou de forma passageira (quando a tela guarda). */
+    failed?: boolean
+  } = {}
+): ActionPhase {
+  const live = mutations.filter((m) => m.isPending)
+  if (live.some((m) => m.isPaused)) return 'waiting'
+  if (live.some((m) => m.failureCount > 0)) return 'retrying'
+  if (busy || live.length) return 'sending'
+  if (failed ?? mutations.some((m) => m.isError && isTransientError(m.error)))
+    return 'failed'
+  return done ? 'done' : 'idle'
+}

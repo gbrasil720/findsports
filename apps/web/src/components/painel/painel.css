@@ -1241,3 +1241,50 @@ html[data-consent] .painel .painel-lateral {
     animation: none;
   }
 }
+
+/* `BotaoAcao`: os rótulos empilhados na mesma célula (a largura é a do maior).
+ * O que entra vem do lado da fase seguinte; o que sai vai para o da anterior,
+ * com um desfoque curto que costura as duas palavras. */
+.painel .painel-btn-rotulos {
+  display: inline-grid;
+}
+.painel .painel-btn-rotulos > span {
+  grid-area: 1 / 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition:
+    opacity 180ms var(--onside-ease-out),
+    transform 180ms var(--onside-ease-out),
+    filter 180ms var(--onside-ease-out);
+}
+.painel .painel-btn-rotulos > span[data-lado] {
+  opacity: 0;
+  filter: blur(2px);
+  visibility: hidden;
+  transition:
+    opacity 120ms var(--onside-ease-out),
+    transform 120ms var(--onside-ease-out),
+    filter 120ms var(--onside-ease-out),
+    visibility 0s 120ms;
+}
+.painel .painel-btn-rotulos > span[data-lado="antes"] {
+  transform: translateY(-0.6em);
+}
+.painel .painel-btn-rotulos > span[data-lado="depois"] {
+  transform: translateY(0.6em);
+}
+.painel .painel-btn[data-fase]:not([data-fase="idle"]):disabled {
+  opacity: 1;
+  cursor: progress;
+}
+.painel .painel-btn[data-fase="done"]:disabled {
+  cursor: default;
+}
+@media (prefers-reduced-motion: reduce) {
+  .painel .painel-btn-rotulos > span[data-lado] {
+    filter: none;
+    transform: none;
+  }
+}
