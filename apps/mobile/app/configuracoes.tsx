@@ -16,7 +16,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View
 } from 'react-native'
 import MapView from 'react-native-maps'
@@ -35,6 +34,7 @@ import {
   INK,
   LIVE,
   PAPER,
+  Text,
   text,
   useStatusBar
 } from '@/components/ui'
@@ -1232,6 +1232,10 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: 'rgba(241,238,230,.14)',
     flexDirection: 'row',
+    // Na fonte grande o botão desce para a linha de baixo.
+    flexWrap: 'wrap',
+    rowGap: 6,
+    columnGap: 12,
     justifyContent: 'space-between',
     alignItems: 'center'
   },
