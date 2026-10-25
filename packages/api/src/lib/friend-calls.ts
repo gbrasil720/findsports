@@ -2,7 +2,7 @@ import { and, db, eq, or, sql } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { friendCall } from '@findsports_oficial/db/schema/social'
 import { TRPCError } from '@trpc/server'
-import { attendableGame } from './attendance'
+import { attendableGame, closedListError } from './attendance'
 import { readFriendship } from './friends'
 import { participantNames } from './game-participants'
 import { utcIso } from './utc-timestamp'
@@ -37,6 +37,8 @@ export async function createFriendCall(input: {
   if (found.ok ? found.game.barId !== barId : found.reason === 'not_found')
     throw new TRPCError({ code: 'NOT_FOUND', message: 'Jogo não encontrado.' })
   if (!found.ok) return { ok: false, reason: 'past_game' }
+  // Lista desligada (WEB-437): o "Vou também" não teria como marcar.
+  if (!found.game.attendanceEnabled) throw closedListError()
   const [created] = await db
     .insert(friendCall)
     .values({ fromUserId, toUserId, eventId, barId })
