@@ -49,6 +49,7 @@ import {
   checklistDoPerfil,
   DESCRICAO_MAX,
   type Erros,
+  gastoDoRascunho,
   type ItemPerfil,
   NOME_E_LUGAR_MAX,
   type Rascunho,
@@ -535,7 +536,16 @@ export function MeuEspaco() {
             photoUrl={bar.photoUrl}
             elite={oferta.status === 'liberado'}
             events={events.data ? eventList : null}
-            nota={profile.data?.rating?.percentage ?? null}
+            nota={profile.data?.rating ?? null}
+            motivos={profile.data?.ratingReasons ?? null}
+            gastoCents={
+              cardapio.status === 'liberado'
+                ? gastoDoRascunho(r.averageSpend)
+                : null
+            }
+            localizado={Boolean(
+              profile.data?.latitude && profile.data.longitude
+            )}
             now={new Date(now)}
           />
         </div>

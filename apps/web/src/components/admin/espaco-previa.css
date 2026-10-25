@@ -1,0 +1,118 @@
+/*
+ * "Como o torcedor vê" (Meu espaço): a paleta do app (`PALETTE` em
+ * `apps/mobile/components/theme.tsx`), clara e escura pelo tema do sistema,
+ * como o app e o painel. A página é desenhada a 390 pt e o `zoom` a encaixa
+ * na moldura.
+ */
+
+.previa-app {
+  --a-paper: #f1eee6;
+  --a-sheet: #f1eee6;
+  --a-card: #faf8f3;
+  --a-ink: #12120f;
+  --a-muted: #55554f;
+  --a-line: rgb(18 18 15 / 12%);
+  --a-ring: rgb(18 18 15 / 8%);
+  --a-mark: #e7e3db;
+  --a-mark-ring: rgb(18 18 15 / 8%);
+  --a-dash: rgb(18 18 15 / 16%);
+  --a-live: #c92b0c;
+  --a-accent: #e8320c;
+  --a-shadow: rgb(18 18 15 / 9%);
+  --a-live-shadow: rgb(232 50 12 / 28%);
+  --a-score-shadow: #12120f;
+  --a-drop-ring: #f1eee6;
+  /* O vidro do sistema (`Glass`): o tom claro e o escuro. */
+  --a-glass: rgb(255 255 255 / 34%);
+  --a-glass-ring: rgb(255 255 255 / 75%);
+  /* O mapa: o Apple Maps apagado vira listras no tom dele. */
+  --a-map-1: #ebe7de;
+  --a-map-2: #e3dfd5;
+
+  background: var(--a-sheet);
+  color: var(--a-ink);
+  font-family: var(--onside-body);
+}
+
+@media (prefers-color-scheme: dark) {
+  .previa-app {
+    --a-paper: #12120f;
+    --a-sheet: #161613;
+    --a-card: #1c1c18;
+    --a-ink: #f1eee6;
+    --a-muted: #aaa9a4;
+    --a-line: rgb(241 238 230 / 10%);
+    --a-ring: rgb(241 238 230 / 9%);
+    --a-mark: #2a2a25;
+    --a-mark-ring: rgb(241 238 230 / 12%);
+    --a-dash: rgb(241 238 230 / 16%);
+    --a-live: #f3421d;
+    --a-accent: #c9f135;
+    --a-shadow: rgb(0 0 0 / 35%);
+    --a-live-shadow: rgb(232 50 12 / 30%);
+    --a-score-shadow: #000;
+    --a-drop-ring: #1c1c18;
+    --a-glass: rgb(36 36 32 / 40%);
+    --a-glass-ring: rgb(255 255 255 / 24%);
+    --a-map-1: #22221e;
+    --a-map-2: #1c1c18;
+  }
+}
+
+/* Anton sem corte: a altura natural (1,505) com a margem negativa do app. */
+.previa-app .previa-anton {
+  font-family: var(--onside-display);
+  font-weight: 400;
+  line-height: 1.505;
+}
+
+.previa-app .previa-mono {
+  font-family: var(--onside-mono);
+  font-weight: 600;
+}
+
+/* Vidro: desfoque do que está atrás, com a cor do design por cima. */
+.previa-app .previa-vidro {
+  backdrop-filter: blur(14px) saturate(1.6);
+  -webkit-backdrop-filter: blur(14px) saturate(1.6);
+  box-shadow: inset 0 0 0 0.5px var(--a-glass-ring);
+}
+
+.previa-app .previa-rola {
+  scrollbar-width: none;
+}
+
+.previa-app .previa-rola::-webkit-scrollbar {
+  display: none;
+}
+
+/*
+ * O véu do topo (o "scroll edge" do iOS): aparece quando a foto sai de baixo
+ * da barra de status, entre 250 e 290 pt de rolagem. Sem `animation-timeline`
+ * fica sem véu, em vez de aparecer de cara.
+ */
+.previa-app .previa-veu {
+  opacity: 0;
+}
+
+@supports (animation-timeline: scroll()) {
+  .previa-app .previa-tela {
+    timeline-scope: --previa-pagina;
+  }
+
+  .previa-app .previa-rola {
+    scroll-timeline: --previa-pagina block;
+  }
+
+  .previa-app .previa-veu {
+    animation: previa-veu linear both;
+    animation-timeline: --previa-pagina;
+    animation-range: 250px 290px;
+  }
+}
+
+@keyframes previa-veu {
+  to {
+    opacity: 1;
+  }
+}
