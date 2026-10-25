@@ -28,8 +28,8 @@ export function useOnline() {
 }
 
 /**
- * A faixa de "sem conexão": uma só, presa no topo da tela, por cima do
- * conteúdo (não empurra nada). Some sozinha quando a rede volta.
+ * A faixa de "sem conexão": uma só, presa embaixo, no meio da tela, por cima
+ * do conteúdo (não empurra nada). Some sozinha quando a rede volta.
  */
 export function FaixaSemConexao() {
   const online = useOnline()
