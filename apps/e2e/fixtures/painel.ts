@@ -22,7 +22,8 @@ export function vazamentoLateral(page: Page) {
     for (const el of main.querySelectorAll('*')) {
       let rola = false
       for (let a = el.parentElement; a && a !== main; a = a.parentElement) {
-        if (getComputedStyle(a).overflowX !== 'visible') rola = true
+        const estilo = a.ownerDocument.defaultView?.getComputedStyle(a)
+        if (estilo && estilo.overflowX !== 'visible') rola = true
       }
       const caixa = el.getBoundingClientRect()
       if (!rola && caixa.width > 0 && caixa.right > borda) {
