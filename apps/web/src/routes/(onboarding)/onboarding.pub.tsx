@@ -18,11 +18,7 @@ import {
 } from '@findsports_oficial/api/lib/plan-limits'
 import { normalizeHouseOffer } from '@findsports_oficial/db/house-offer'
 import { useMutation } from '@tanstack/react-query'
-import {
-  createFileRoute,
-  useLocation,
-  useNavigate
-} from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import {
   Fragment,
   type ReactNode,
@@ -75,7 +71,7 @@ import {
   resumoDoHorario
 } from '@/lib/pub-onboarding-review'
 import { PUB_LIVE_PATH } from '@/utils/auth-guards'
-import { getCallbackUrl } from '@/utils/callback-url'
+import { useCallbackUrl } from '@/utils/callback-url'
 import { formatPhone, formatStoredPhone } from '@/utils/format-phone'
 import { useTRPC } from '@/utils/trpc'
 
@@ -143,7 +139,7 @@ function Titulo({
 
 function PubOnboarding() {
   const navigate = useNavigate()
-  const callbackUrl = getCallbackUrl(useLocation().href)
+  const callbackUrl = useCallbackUrl()
   const trpc = useTRPC()
   const sair = useSignOut('/')
   const headingRef = useRef<HTMLHeadingElement>(null)

@@ -25,7 +25,7 @@ import {
   TWO_FACTOR_CHALLENGE_KEY
 } from '@/lib/two-factor-challenge'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
-import { getCallbackUrl, withCallbackUrl } from '@/utils/callback-url'
+import { useCallbackUrl, withCallbackUrl } from '@/utils/callback-url'
 
 export const Route = createFileRoute('/(auth)/login')({
   head: () =>
@@ -59,7 +59,7 @@ function LoginPage() {
   const formRef = useRef<HTMLFormElement>(null)
   const captcha = useTurnstile()
 
-  const callbackUrl = getCallbackUrl(href)
+  const callbackUrl = useCallbackUrl()
 
   const form = useForm({
     // `/verify-email` manda o e-mail do cadastro: quem confirmou por outro

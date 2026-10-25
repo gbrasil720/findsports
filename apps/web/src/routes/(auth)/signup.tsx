@@ -3,12 +3,7 @@ import {
   PLAN_NAMES
 } from '@findsports_oficial/api/lib/plan-limits'
 import { useForm } from '@tanstack/react-form'
-import {
-  createFileRoute,
-  Link,
-  useLocation,
-  useNavigate
-} from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -28,7 +23,7 @@ import { analytics } from '@/lib/analytics'
 import { authClient } from '@/lib/auth-client'
 import { PENDING_VERIFICATION_KEY } from '@/lib/pending-verification'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
-import { getCallbackUrl, withCallbackUrl } from '@/utils/callback-url'
+import { useCallbackUrl, withCallbackUrl } from '@/utils/callback-url'
 
 const ITENS_FOTO = [
   ['cal', 'Divulgue sua programação de jogos'],
@@ -85,13 +80,12 @@ function validatePassword({ value }: { value: string }) {
 
 function SignupPage() {
   const navigate = useNavigate()
-  const { href } = useLocation()
   const [isLoading, setIsLoading] = useState(false)
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
   const captcha = useTurnstile()
 
-  const callbackUrl = getCallbackUrl(href)
+  const callbackUrl = useCallbackUrl()
 
   const form = useForm({
     defaultValues: { name: '', email: '', password: '' },
