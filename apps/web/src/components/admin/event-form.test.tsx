@@ -36,10 +36,14 @@ const FILLED: EventForm = {
   participantIds: [],
   participantFreeText: '',
   onBigScreen: true,
-  withSound: false
+  withSound: false,
+  attendanceEnabled: true
 }
 
-function render(form: Partial<EventForm>) {
+function render(
+  form: Partial<EventForm>,
+  props: { showsGoing?: boolean; goingCount?: number } = {}
+) {
   const markup = renderToStaticMarkup(
     <QueryClientProvider client={new QueryClient()}>
       <EventFormComponent
@@ -48,6 +52,7 @@ function render(form: Partial<EventForm>) {
         onSave={() => {}}
         isSaving={false}
         loadingSports={false}
+        {...props}
       />
     </QueryClientProvider>
   )
@@ -62,7 +67,8 @@ function render(form: Partial<EventForm>) {
       (alert) => alert.textContent
     ),
     saveDisabled: save?.hasAttribute('disabled'),
-    checkbox: doc.querySelector('[data-slot="checkbox"]')
+    checkbox: doc.querySelector('[data-slot="checkbox"]'),
+    lista: doc.querySelector('[aria-label="Lista de quem vai neste jogo"]')
   }
 }
 
@@ -179,4 +185,28 @@ test('telão e som do jogo saem marcados como vieram das características', () =
       ?.getAttribute('aria-pressed')
   expect(pressed('Telão')).toBe('true')
   expect(pressed('Som do jogo ligado')).toBe('false')
+})
+
+// WEB-437: o interruptor da lista é do Elite, e desligar avisa quem já marcou.
+test('lista de quem vai: só com o plano que a tem, e o aviso ao desligar', () => {
+  expect(render({}).lista).toBeNull()
+
+  const ligada = render({}, { showsGoing: true, goingCount: 3 })
+  expect(ligada.lista?.getAttribute('aria-checked')).toBe('true')
+  expect(ligada.lista?.hasAttribute('disabled')).toBe(false)
+  expect(ligada.text).toContain(
+    'Torcedores marcam “Vou assistir aqui” e recebem um código.'
+  )
+
+  const desligada = render(
+    { attendanceEnabled: false },
+    { showsGoing: true, goingCount: 3 }
+  )
+  expect(desligada.lista?.getAttribute('aria-checked')).toBe('false')
+  expect(desligada.text).toContain(
+    '3 pessoas já marcaram: o código continua valendo. Ninguém novo entra.'
+  )
+  expect(
+    render({ attendanceEnabled: false }, { showsGoing: true }).text
+  ).toContain('O app não mostra “Vou assistir aqui” neste jogo.')
 })
