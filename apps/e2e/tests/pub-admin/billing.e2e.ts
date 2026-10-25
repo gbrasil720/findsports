@@ -5,9 +5,11 @@ import { signIn } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
 import { createEvent, createTicket } from '../../fixtures/going'
 import { painelLink } from '../../fixtures/painel'
-import { createPub, type PubOptions } from '../../fixtures/pubs'
+import { createPub, inDays, type PubOptions } from '../../fixtures/pubs'
 import {
+  deliverSubscription,
   seedStripeInvoices,
+  sendStripeWebhook,
   stripeInvoice,
   stripeSubscription
 } from '../../fixtures/stripe'
@@ -280,6 +282,55 @@ test('assinatura ativa: "Cancelar assinatura" abre o portal no fluxo de cancelam
     locale: 'pt-BR',
     return_url: `${BASE_URL}/admin/billing`
   })
+
+  // O motivo só vai ao Stripe com o cancelamento feito no portal (WEB-445):
+  // o webhook do agendamento o grava em `cancellation_details`, uma vez.
+  const reasonUpdates = async () =>
+    (
+      (await (await request.get(`${STUB_URL}/stripe/calls`)).json()) as {
+        method: string
+        path: string
+        body: Record<string, string>
+      }[]
+    ).filter(
+      (call) =>
+        call.method === 'POST' &&
+        call.path === `/subscriptions/${subscriptionId}`
+    )
+  expect(await reasonUpdates()).toHaveLength(0)
+  const scheduled = stripeSubscription({
+    id: subscriptionId,
+    status: 'active',
+    plan: 'pro',
+    userId: pub.user.id,
+    customerId,
+    cancelAt: inDays(20)
+  })
+  const event = {
+    id: `evt_e2e_${randomUUID()}`,
+    object: 'event',
+    type: 'customer.subscription.updated',
+    data: { object: scheduled }
+  }
+  expect(
+    (
+      await deliverSubscription(
+        request,
+        'customer.subscription.updated',
+        scheduled
+      )
+    ).ok()
+  ).toBe(true)
+  // Repetido, sem semear de novo: o Stripe já tem o motivo, nada muda.
+  expect((await sendStripeWebhook(request, event)).ok()).toBe(true)
+  const updates = await reasonUpdates()
+  expect(updates.map((call) => call.body)).toEqual([
+    {
+      'cancellation_details[feedback]': 'other',
+      'cancellation_details[comment]':
+        'Motivo escolhido no app: Pouco movimento'
+    }
+  ])
 })
 
 test('Elite ativo sem desconto gravado: mostra só a tabela cheia', async ({
