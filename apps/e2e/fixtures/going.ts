@@ -51,17 +51,22 @@ export type TestTicket = {
  * janela ou já encerrado.
  *
  * `unmarked` é quem desmarcou: sem presença, linha `cancelled` e código
- * aposentado.
+ * aposentado. `fan` é quem já tem conta (a segunda visita da mesma pessoa).
  */
 export async function createTicket(
   eventId: string,
   {
     unmarked = false,
-    offerSnapshot = null
-  }: { unmarked?: boolean; offerSnapshot?: string | null } = {}
-): Promise<TestTicket> {
-  const guestName = `Torcedor ${randomUUID().slice(0, 6)}`
-  const fan = await createUser({ name: guestName })
+    offerSnapshot = null,
+    fan: existing
+  }: {
+    unmarked?: boolean
+    offerSnapshot?: string | null
+    fan?: { id: string; name: string }
+  } = {}
+): Promise<TestTicket & { fan: { id: string; name: string } }> {
+  const guestName = existing?.name ?? `Torcedor ${randomUUID().slice(0, 6)}`
+  const fan = existing ?? (await createUser({ name: guestName }))
   if (!unmarked) {
     await insert('attendance', { user_id: fan.id, event_id: eventId })
   }
@@ -85,5 +90,5 @@ export async function createTicket(
     max_uses: 1,
     retired_at: unmarked ? new Date() : null
   })
-  return { reservationId, code, guestName }
+  return { reservationId, code, guestName, fan }
 }
