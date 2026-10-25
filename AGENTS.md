@@ -599,6 +599,10 @@ invente layout que o projeto não tem.
   (`packages/api/src/lib/attendance-ticket.ts`; quem emite é `issuesCounterCode`, em
   `lib/current-plan.ts`, a mesma regra da oferta, de quem vai e da validação). Toda marcação passa por `setAttendance`
   (`packages/api/src/lib/attendance.ts`): `attendance.set`, `ai.confirm` e o "Vou também".
+  O Elite desliga a lista de quem vai jogo a jogo no formulário do painel (WEB-437,
+  `event.attendance_enabled`): o botão some para quem não marcou, marcação nova e
+  chamado de amigo são recusados e Quem vai do painel deixa o jogo de fora; quem já
+  marcou fica, com o código valendo.
 - **Vou assistir ("08"):** o botão da página do bar abre a folha `app/vou/[barId].tsx`
   (`formSheet` nativo com o vidro do iOS 26: fundo transparente em `contentStyle` e na
   tela; o `ScrollView` é filho direto da tela, com `flex: 1`, senão o
