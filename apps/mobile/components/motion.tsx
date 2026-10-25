@@ -4,7 +4,6 @@ import {
   Pressable,
   type PressableProps,
   type StyleProp,
-  Text,
   type TextStyle,
   type ViewStyle
 } from 'react-native'
@@ -22,6 +21,7 @@ import Animated, {
   withSpring,
   withTiming
 } from 'react-native-reanimated'
+import { Text } from '@/components/text'
 
 /*
  * Movimento das telas de conta: entrada em sequência, pressão dos botões,
