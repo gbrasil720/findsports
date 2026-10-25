@@ -547,6 +547,13 @@
       "when": 1792942574482,
       "tag": "0078_bar_email_notices",
       "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1792944965834,
+      "tag": "0079_bar_invoice_details",
+      "breakpoints": true
     }
   ]
 }
