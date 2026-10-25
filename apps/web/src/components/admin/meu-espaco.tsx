@@ -371,7 +371,11 @@ export function MeuEspaco() {
               disabled={!sujo || salvando}
               onClick={() => void salvar()}
             >
-              {salvando ? 'Salvando…' : 'Salvar alterações'}
+              {salvando
+                ? 'Salvando…'
+                : erroSalvar
+                  ? 'Tentar de novo'
+                  : 'Salvar alterações'}
             </Botao>
           </>
         }

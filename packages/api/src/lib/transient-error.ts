@@ -99,3 +99,66 @@ export function retryTransient(failures: number, error: unknown): boolean {
 export function retryDelay(attempt: number): number {
   return Math.min(1000 * 2 ** attempt, 8000)
 }
+
+/**
+ * Mutations que o cliente pode repetir sozinho depois de uma falha
+ * passageira: mandar a mesma entrada duas vezes deixa o mesmo estado que uma
+ * vez só, sem recusa nem efeito em dobro (levantamento do WEB-460: upsert,
+ * insert que ignora o repetido, delete, `SET` simples). As outras ficam de
+ * fora e voltam ao botão "Tentar de novo", com o que a pessoa digitou:
+ *
+ * - `pub.updateMe`: telefone trocado com "aceita WhatsApp" marcado grava
+ *   `false` na primeira vez e `true` na segunda.
+ * - `pub.createEvent` cria outro jogo; `pub.deleteEvent` responde
+ *   `NOT_FOUND`; `pub.openSubscriptionCancel` abre outra sessão no Stripe.
+ * - `friends.respondCall` e `ai.confirm` recusam a segunda resposta;
+ *   `onboarding.*` responde `CONFLICT`.
+ * - `reservationValidation.lookup` e `logLate` contam no limite de tentativas
+ *   (e `logLate` grava outro uso); `feedback.send` manda outro e-mail;
+ *   `ai.action` e `recommendations.reset` gravam outra linha.
+ */
+export const IDEMPOTENT_MUTATIONS = [
+  'pub.updateHouseOffer',
+  'pub.updateCodeConfirmation',
+  'pub.updateOpeningHours',
+  'pub.updateMenuInfo',
+  'pub.updateEvent',
+  'pub.changeTrialPlan',
+  'attendance.set',
+  'attendance.report',
+  'attendance.removeReport',
+  'ratings.submit',
+  'ratings.remove',
+  'postGame.answer',
+  'postGame.undo',
+  'friends.request',
+  'friends.respond',
+  'friends.remove',
+  'friends.joinByInvite',
+  'friends.updateUsername',
+  'friends.updatePrivacy',
+  'friends.matchContacts',
+  'pubs.favorite',
+  'pubs.unfavorite',
+  'pubs.updateMyPreferences',
+  'pubs.updateMyTeams',
+  'pubs.updateMyCity',
+  'recommendations.recordImpressions',
+  'recommendations.recordOpen',
+  'recommendations.dismiss',
+  'recommendations.refill',
+  'recommendations.like',
+  'recommendations.undo',
+  'recommendations.setAlert',
+  'recommendations.remind',
+  'reservationValidation.registerArrival',
+  'reservationValidation.undoArrival',
+  'ai.feedback'
+] as const
+
+/**
+ * As chaves das mutations seguras como o tRPC as monta (`[['pub',
+ * 'updateMenuInfo']]`), para `queryClient.setMutationDefaults`.
+ */
+export const idempotentMutationKeys = () =>
+  IDEMPOTENT_MUTATIONS.map((path) => [path.split('.')])

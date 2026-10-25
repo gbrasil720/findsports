@@ -1,4 +1,5 @@
 import {
+  idempotentMutationKeys,
   retryDelay,
   retryTransient
 } from '@findsports_oficial/api/lib/transient-error'
@@ -32,6 +33,14 @@ export const queryClient = new QueryClient({
     }
   })
 })
+
+// Mutation só repete sozinha quando mandar duas vezes dá no mesmo
+// (WEB-460); as outras voltam ao botão, com o que a pessoa escolheu.
+for (const mutationKey of idempotentMutationKeys())
+  queryClient.setMutationDefaults(mutationKey, {
+    retry: retryTransient,
+    retryDelay
+  })
 
 // Voltar do segundo plano conta como foco: o que passou do `staleTime` e está
 // na tela é buscado de novo. Sem rede, as consultas esperam ela voltar.
