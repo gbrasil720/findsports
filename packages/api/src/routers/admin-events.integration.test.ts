@@ -193,18 +193,14 @@ async function expectDraftRefused(
       publishedAt: null,
       participantFreeText: text
     })
-    const [before] = await ctx.db
-      .select()
-      .from(event)
-      .where(eq(event.id, draft))
+    const read = () => ctx.db.select().from(event).where(eq(event.id, draft))
+    const before = await read()
 
     expect(await refusal(act(ctx, draft))).toEqual({
       code: 'PRECONDITION_FAILED',
       message: 'Jogo em rascunho: só o bar publica ou apaga.'
     })
-    expect(
-      await ctx.db.select().from(event).where(eq(event.id, draft))
-    ).toEqual([before])
+    expect(await read()).toEqual(before)
     expect(
       await ctx.db
         .select()
