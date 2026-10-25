@@ -263,6 +263,13 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   (`stripe-sync.ts`). O checkout hospedado não mostra esses dados preenchidos: o
   endereço de cobrança é digitado na primeira compra. `/plan` avisa em nome de quem
   a assinatura sai. Cobrança sempre em BRL (Adaptive Pricing desligado na sessão).
+- **Dados da nota** (WEB-444): razão social, CNPJ e e-mail para notas em
+  `/admin/billing`, nas colunas `bar.legal_name`, `cnpj` e `invoice_email`, por
+  `pub.updateInvoiceDetails`. Com cliente no Stripe, ele recebe os três antes do banco
+  (recusa ou Stripe fora do ar não grava nada): a razão social vira a empresa no lugar
+  do nome do bar, o CNPJ o único `br_cnpj` e o e-mail o do cliente (vazio volta ao de
+  acesso). O checkout e o fim dele mandam o que estiver preenchido. CNPJ conferido pelo
+  dígito, com letras ou só números (`@findsports_oficial/db/cnpj`).
 - **Cobrança não tem chave em `app_config`** (WEB-233): a contratação está sempre
   aberta, o teste do cadastro é a constante acima e o cupom de fundador é
   `FOUNDER_COUPON_ID` (`stripe-checkout.ts`), o mesmo id no sandbox e em produção.
