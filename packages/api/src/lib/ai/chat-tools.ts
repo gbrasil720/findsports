@@ -41,7 +41,8 @@ export const AMENITY_TERMS = {
   area_coberta: [5, 'Área coberta'],
   acessivel: [6, 'Acessível'],
   pet_friendly: [7, 'Pet friendly'],
-  estacionamento: [8, 'Estacionamento'],
+  estacionamento: [8, 'Estacionamento no local'],
+  estacionamento_proximo: [9, 'Estacionamento próximo'],
   oferta_da_casa: [10, 'Oferta da casa'],
   cozinha_ate_tarde: [11, 'Cozinha até tarde'],
   petiscos: [12, 'Petiscos'],
@@ -53,7 +54,8 @@ export const AMENITY_TERMS = {
   vegetariano: [20, 'Opção vegetariana'],
   drinks: [21, 'Drinks'],
   metro: [22, 'Perto do metrô'],
-  bicicletario: [23, 'Bicicletário']
+  bicicletario: [23, 'Bicicletário'],
+  wifi: [15, 'Wi-fi']
 } as const satisfies Record<string, readonly [number, string]>
 type AmenityTerm = keyof typeof AMENITY_TERMS
 const AMENITY_LABEL = new Map<number, string>(
@@ -86,7 +88,14 @@ const AMENITY_SYNONYMS: Record<string, AmenityTerm> = {
   'estacao de metro': 'metro',
   bicicleta: 'bicicletario',
   bike: 'bicicletario',
-  chope: 'chopp'
+  chope: 'chopp',
+  'wi fi': 'wifi',
+  internet: 'wifi',
+  'estacionamento no local': 'estacionamento',
+  'onde parar o carro': 'estacionamento',
+  'lugar para parar o carro': 'estacionamento',
+  'estacionamento perto': 'estacionamento_proximo',
+  'estacionamento por perto': 'estacionamento_proximo'
 }
 
 /** O termo da lista que o texto quer dizer, ou nada. */
@@ -162,7 +171,7 @@ export const READ_TOOLS = [
         type: 'array',
         items: { type: 'string', enum: Object.keys(AMENITY_TERMS) },
         description:
-          'Do que o torcedor pedir: "aceita pix" = pix; cartão de crédito ou débito = cartao; "VR", "vale refeição" = vale_refeicao; "tem couvert", "cobra couvert" = couvert (nunca para "sem couvert"); "drink", coquetel = drinks; vegetariano = vegetariano; metrô = metro; bicicleta, bike = bicicletario.'
+          'Do que o torcedor pedir: "aceita pix" = pix; cartão de crédito ou débito = cartao; "VR", "vale refeição" = vale_refeicao; "tem couvert", "cobra couvert" = couvert (nunca para "sem couvert"); "drink", coquetel = drinks; vegetariano = vegetariano; metrô = metro; bicicleta, bike = bicicletario; wifi, "wi-fi", internet = wifi; estacionamento, "onde parar o carro" = estacionamento (no próprio bar); "estacionamento perto" = estacionamento_proximo.'
       },
       raio_km: { type: 'integer', minimum: 1, maximum: 50 },
       cidade: {

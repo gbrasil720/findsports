@@ -424,6 +424,16 @@ describe('eventos da conversa (R24)', () => {
     expect(
       await ask(['vale_refeicao', 'Perto do metrô', 'bike', 'Drinks'])
     ).toEqual([18, 22, 23, 21])
+    expect(await ask(['wifi', 'Wi-Fi', 'internet', 'estacionamento'])).toEqual([
+      15, 8
+    ])
+    expect(
+      await ask([
+        'onde parar o carro',
+        'Estacionamento próximo',
+        'estacionamento perto'
+      ])
+    ).toEqual([8, 9])
     // Repetido conta uma vez; o que não é característica não filtra.
     expect(await ask(['pix', 'aceita pix', 'piscina'])).toEqual([16])
     expect(await ask(['piscina'])).toBeUndefined()
