@@ -34,6 +34,9 @@ import type { AdminBar, PlanState } from './admin-model'
 /** Teto da descrição, o mesmo do `pub.updateMe`. */
 export const DESCRICAO_MAX = 500
 
+/** Teto de nome, bairro e cidade: o `.max(100)` do `pub.updateMe` e do cadastro. */
+export const NOME_E_LUGAR_MAX = 100
+
 export type DiaRascunho = { open: boolean; opens: string; closes: string }
 
 export type Rascunho = {
@@ -183,16 +186,19 @@ export function alteracoes(
   const erros: Erros = {}
   const perfil: PerfilAlterado = {}
 
-  // Nome e endereço são obrigatórios: o servidor recusa curto demais.
-  for (const [campo, min, msg] of [
-    ['name', 2, 'Informe o nome do bar.'],
-    ['neighborhood', 2, 'Informe o bairro.'],
-    ['city', 2, 'Informe a cidade.']
+  // Nome e endereço são obrigatórios: o servidor recusa curto ou longo
+  // demais. O campo já corta no teto; o CEP preenche por fora dele.
+  for (const [campo, min, msg, rotulo] of [
+    ['name', 2, 'Informe o nome do bar.', 'O nome'],
+    ['neighborhood', 2, 'Informe o bairro.', 'O bairro'],
+    ['city', 2, 'Informe a cidade.', 'A cidade']
   ] as const) {
     const valor = r[campo].trim()
     if (valor === base[campo].trim()) continue
     if (valor.length < min) erros[campo] = msg
-    else perfil[campo] = valor
+    else if (valor.length > NOME_E_LUGAR_MAX) {
+      erros[campo] = `${rotulo} aceita até ${NOME_E_LUGAR_MAX} caracteres.`
+    } else perfil[campo] = valor
   }
   // Rua e número vão juntos em `address`, só quando um dos dois mudou: o bar
   // gravado sem vírgula abre com tudo na rua e não muda ao salvar outra coisa.

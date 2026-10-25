@@ -50,6 +50,7 @@ import {
   DESCRICAO_MAX,
   type Erros,
   type ItemPerfil,
+  NOME_E_LUGAR_MAX,
   type Rascunho,
   type RecursoPago,
   rascunhoDoBar,
@@ -726,6 +727,7 @@ function Informacoes({
       <Campo
         className="col-span-6 sm:col-span-3"
         rotulo="Nome do estabelecimento"
+        maxLength={NOME_E_LUGAR_MAX}
         autoComplete="organization"
         value={r.name}
         onChange={(e) => mudar({ name: e.target.value })}
@@ -795,6 +797,7 @@ function Informacoes({
       <Campo
         className="col-span-6 sm:col-span-3"
         rotulo="Bairro"
+        maxLength={NOME_E_LUGAR_MAX}
         autoComplete="address-level3"
         value={r.neighborhood}
         onChange={(e) => mudar({ neighborhood: e.target.value })}
@@ -804,6 +807,7 @@ function Informacoes({
       <Campo
         className="col-span-4 sm:col-span-2"
         rotulo="Cidade"
+        maxLength={NOME_E_LUGAR_MAX}
         autoComplete="address-level2"
         value={r.city}
         onChange={(e) => mudar({ city: e.target.value })}

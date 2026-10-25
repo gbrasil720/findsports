@@ -89,6 +89,30 @@ describe('alteracoes', () => {
     expect(a.oferta).toBeUndefined()
   })
 
+  test('nome, bairro e cidade até 100 caracteres, como no cadastro', () => {
+    const longo = 'a'.repeat(101)
+    const a = alteracoes(
+      bar,
+      { ...rascunhoDoBar(bar), name: longo, neighborhood: longo, city: longo },
+      ambos
+    )
+    expect(a.erros).toEqual({
+      name: 'O nome aceita até 100 caracteres.',
+      neighborhood: 'O bairro aceita até 100 caracteres.',
+      city: 'A cidade aceita até 100 caracteres.'
+    })
+    expect(a.perfil).toBeNull()
+
+    const cem = 'b'.repeat(100)
+    const b = alteracoes(
+      bar,
+      { ...rascunhoDoBar(bar), neighborhood: cem, city: cem },
+      ambos
+    )
+    expect(b.erros).toEqual({})
+    expect(b.perfil).toEqual({ neighborhood: cem, city: cem })
+  })
+
   test('rua e número abrem separados e vão juntos em `address`', () => {
     const base = rascunhoDoBar(bar)
     expect([base.rua, base.numero]).toEqual(['Rua das Flores', '123'])

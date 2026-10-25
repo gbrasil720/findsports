@@ -579,6 +579,31 @@ test('no celular nada rola de lado: formulário, horário, checklist e prévia',
   }
 })
 
+test('bairro e cidade param em 100 caracteres, e o servidor recusa mais', async ({
+  page
+}) => {
+  const { barId } = await openProfile(page)
+  const longo = 'Vila '.repeat(30)
+  for (const rotulo of ['Bairro', 'Cidade']) {
+    const campo = info(page).getByLabel(rotulo, { exact: true })
+    await campo.fill(longo)
+    await expect(campo).toHaveValue(longo.slice(0, 100))
+  }
+
+  // Sem a tela, o `pub.updateMe` recusa o mesmo teto do cadastro.
+  for (const campo of ['neighborhood', 'city']) {
+    const resposta = await page.request.post('/api/trpc/pub.updateMe', {
+      data: { [campo]: 'a'.repeat(101) }
+    })
+    expect(resposta.status(), campo).toBe(400)
+  }
+  const [bar] = await query(
+    'SELECT neighborhood, city FROM bar WHERE id = $1',
+    [barId]
+  )
+  expect(bar).toEqual({ neighborhood: 'Consolação', city: 'São Paulo' })
+})
+
 test('Elite salva cardápio, preço médio e oferta num "Salvar" só', async ({
   page
 }) => {
