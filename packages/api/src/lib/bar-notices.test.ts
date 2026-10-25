@@ -111,7 +111,9 @@ describe('resumo da semana', () => {
     expect(email.text).toContain(
       'Nenhum jogo na agenda desta semana, de 26/10 a 01/11.'
     )
-    expect(email.text).toMatch(/Cadastrar jogos:\nhttps?:\/\/\S+\/admin\/jogos\?novo=1/)
+    expect(email.text).toMatch(
+      /Cadastrar jogos:\nhttps?:\/\/\S+\/admin\/jogos\?novo=1/
+    )
   })
 
   test('mais de quatro jogos: quatro por extenso e o resto contado', () => {
@@ -142,7 +144,9 @@ test('grade vazia', () => {
   expect(email.text).toContain(
     'Olá. Seu bar não tem nenhum jogo na agenda desta semana, de 26/10 a 01/11.'
   )
-  expect(email.text).toMatch(/Cadastrar jogos:\nhttps?:\/\/\S+\/admin\/jogos\?novo=1/)
+  expect(email.text).toMatch(
+    /Cadastrar jogos:\nhttps?:\/\/\S+\/admin\/jogos\?novo=1/
+  )
 })
 
 test('jogo lotando', () => {
