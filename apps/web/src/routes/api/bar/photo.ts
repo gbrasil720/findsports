@@ -1,5 +1,11 @@
+import {
+  canUseGallery,
+  GALLERY_MAX_PHOTOS,
+  galleryPhotoPathname
+} from '@findsports_oficial/api/lib/bar-gallery'
 import { photoPathname } from '@findsports_oficial/api/lib/blob-photo'
 import {
+  deleteBarGalleryPhoto,
   deleteBarPhoto,
   MediaUploadError,
   signMediaUpload
@@ -9,7 +15,7 @@ import {
   isReadOnlyImpersonation,
   READ_ONLY_IMPERSONATION_MESSAGE
 } from '@findsports_oficial/auth/impersonation-mode'
-import { db, eq } from '@findsports_oficial/db'
+import { db, eq, sql } from '@findsports_oficial/db'
 import { bar } from '@findsports_oficial/db/schema/platform'
 import { createFileRoute } from '@tanstack/react-router'
 
@@ -20,6 +26,10 @@ import { createFileRoute } from '@tanstack/react-router'
  *
  * A chave é escolhida aqui, a partir do bar da sessão: o cliente manda só
  * formato e tamanho, então não há caminho vindo dele para validar.
+ *
+ * `?galeria` é uma foto da galeria do ambiente (WEB-439): chave nova a cada
+ * foto, só com Pro/Elite e espaço na galeria. A URL entra no bar depois do
+ * upload, por `pub.addGalleryPhoto`, que confere tudo de novo.
  */
 export const Route = createFileRoute('/api/bar/photo')({
   server: {
@@ -55,14 +65,39 @@ export const Route = createFileRoute('/api/bar/photo')({
 
           const existingBar = await db.query.bar.findFirst({
             where: eq(bar.userId, session.user.id),
-            columns: { id: true }
+            columns: { id: true, galleryPhotos: true },
+            with: {
+              subscription: {
+                columns: { plan: true, status: true, currentPeriodEnd: true }
+              }
+            }
           })
           if (!existingBar) {
             throw new MediaUploadError(404, 'Bar não encontrado.')
           }
 
+          if (!new URL(request.url).searchParams.has('galeria')) {
+            return Response.json(
+              await signMediaUpload(photoPathname(existingBar.id), body)
+            )
+          }
+          if (!canUseGallery(existingBar.subscription ?? null)) {
+            throw new MediaUploadError(
+              403,
+              'A galeria de fotos é dos planos Pro e Elite.'
+            )
+          }
+          if (existingBar.galleryPhotos.length >= GALLERY_MAX_PHOTOS) {
+            throw new MediaUploadError(
+              409,
+              `A galeria já tem ${GALLERY_MAX_PHOTOS} fotos. Apague uma para pôr outra.`
+            )
+          }
           return Response.json(
-            await signMediaUpload(photoPathname(existingBar.id), body)
+            await signMediaUpload(
+              galleryPhotoPathname(existingBar.id, crypto.randomUUID()),
+              body
+            )
           )
         } catch (err) {
           if (err instanceof MediaUploadError) {
@@ -82,6 +117,9 @@ export const Route = createFileRoute('/api/bar/photo')({
       //
       // A referência é zerada aqui, e não por `pub.updateMe` como na troca de
       // foto: aquele procedimento não aceita `photoUrl` nulo.
+      //
+      // `?galeria=<url>` apaga uma foto da galeria (WEB-439), na mesma ordem.
+      // Não pede plano: o dono arruma o que ficou guardado.
       DELETE: async ({ request }) => {
         try {
           const session = await auth.api.getSession({
@@ -93,9 +131,22 @@ export const Route = createFileRoute('/api/bar/photo')({
           const ownBar = session
             ? await db.query.bar.findFirst({
                 where: eq(bar.userId, session.user.id),
-                columns: { id: true, userId: true }
+                columns: { id: true, userId: true, galleryPhotos: true }
               })
             : null
+          const galeria = new URL(request.url).searchParams.get('galeria')
+          if (galeria !== null) {
+            await deleteBarGalleryPhoto(session, ownBar, galeria)
+            if (ownBar) {
+              await db
+                .update(bar)
+                .set({
+                  galleryPhotos: sql`array_remove(${bar.galleryPhotos}, ${galeria})`
+                })
+                .where(eq(bar.id, ownBar.id))
+            }
+            return new Response(null, { status: 204 })
+          }
           await deleteBarPhoto(session, ownBar)
           if (ownBar) {
             await db
