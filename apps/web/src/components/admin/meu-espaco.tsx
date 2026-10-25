@@ -99,6 +99,15 @@ export function MeuEspaco() {
     ...trpc.pub.getMyRatings.queryOptions(),
     meta: { errorToast: false }
   })
+  // "N vão" da prévia: a contagem por jogo, que só o Elite em dia recebe
+  // (a mesma regra da oferta, `recursoPago(plan, 'elite')`).
+  const presencas = useQuery({
+    ...trpc.barReservations.going.queryOptions(),
+    enabled:
+      subscription.data?.plan === 'elite' &&
+      subscription.data.standing === 'current',
+    meta: { errorToast: false }
+  })
 
   const [rascunho, setRascunho] = useState<Rascunho | null>(null)
   const [tentou, setTentou] = useState(false)
@@ -541,6 +550,13 @@ export function MeuEspaco() {
             gastoCents={
               cardapio.status === 'liberado'
                 ? gastoDoRascunho(r.averageSpend)
+                : null
+            }
+            presencas={
+              oferta.status === 'liberado' && presencas.data
+                ? Object.fromEntries(
+                    presencas.data.map((jogo) => [jogo.id, jogo.people.length])
+                  )
                 : null
             }
             localizado={Boolean(
