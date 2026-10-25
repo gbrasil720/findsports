@@ -5,12 +5,17 @@ import { z } from 'zod'
  * livre ("Outro" não abre campo, o design não tem). O id fica gravado em
  * `subscription_cancel_reason.reason`, então nunca é reusado; a posição na
  * lista é a ordem da tela.
+ *
+ * `stripeFeedback` é o `cancellation_details.feedback` que o webhook grava na
+ * assinatura do Stripe quando o cancelamento se confirma (`stripe-sync.ts`):
+ * o mais perto da lista fechada do Stripe; o texto exato vai no comentário.
+ * Mora em `db` porque o `auth` (webhook) e o `api` (tela) leem a mesma lista.
  */
 export const CANCEL_REASONS = [
-  { id: 'low_traffic', label: 'Pouco movimento' },
-  { id: 'too_expensive', label: 'Muito caro' },
-  { id: 'paused', label: 'Fechei por um tempo' },
-  { id: 'other', label: 'Outro' }
+  { id: 'low_traffic', label: 'Pouco movimento', stripeFeedback: 'other' },
+  { id: 'too_expensive', label: 'Muito caro', stripeFeedback: 'too_expensive' },
+  { id: 'paused', label: 'Fechei por um tempo', stripeFeedback: 'unused' },
+  { id: 'other', label: 'Outro', stripeFeedback: 'other' }
 ] as const
 
 export type CancelReasonId = (typeof CANCEL_REASONS)[number]['id']
