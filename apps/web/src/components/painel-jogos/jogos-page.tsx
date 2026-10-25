@@ -284,7 +284,11 @@ export function JogosPage({
     Promise.all([
       invalidateMyEvents(),
       queryClient.invalidateQueries({ queryKey: trpc.pub.getMe.queryKey() }),
-      queryClient.invalidateQueries({ queryKey: trpc.pubs.getById.pathKey() })
+      queryClient.invalidateQueries({ queryKey: trpc.pubs.getById.pathKey() }),
+      // Desligar a lista de quem vai tira o jogo de Quem vai (WEB-437).
+      queryClient.invalidateQueries({
+        queryKey: trpc.barReservations.going.queryKey()
+      })
     ])
   const invalidateEventsAndPolicy = () =>
     Promise.all([
