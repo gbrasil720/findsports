@@ -947,6 +947,20 @@ invente layout que o projeto não tem.
 - `Image` com só `StyleSheet.absoluteFill` sai no tamanho original da imagem neste app: passe
   `width` e `height` explícitos.
 
+### Falha de rede (WEB-460)
+
+Uma regra só para o painel e o app, em `packages/api/src/lib/transient-error.ts`: falha
+passageira (sem rede, timeout, 5xx, 429, página de gateway que não é JSON) tenta de novo
+com espera crescente (1 s, 2 s, 4 s); recusa da regra não repete. Mutation só repete
+sozinha se estiver em `IDEMPOTENT_MUTATIONS` (mandar duas vezes dá no mesmo; o porquê das
+que ficaram de fora está no comentário): mutation nova entra lá só depois de conferir no
+servidor. O resto volta ao botão como "Tentar de novo", com o que a pessoa digitou. O botão
+conta a fase (`actionPhase`): no painel, `BotaoAcao` (rótulos na mesma célula, largura
+fixa); no app, `phaseLabel` com `busy` no `PillButton`. Bloco que não carregou é
+`ErroBloco` (painel) ou `ErrorState` (app), nunca some. A faixa de "sem conexão" está no
+`PainelShell` e no `_layout.tsx` do app (por cima de folhas e modais); ao reconectar, a tela
+é relida. No app, "Simular sem rede" no navegador DEV liga e desliga o `onlineManager`.
+
 ### Routing
 
 TanStack Router file-based routing — `routeTree.gen.ts` is auto-generated, never edit manually. Route context carries `trpc` (TRPCOptionsProxy) and `queryClient`.
