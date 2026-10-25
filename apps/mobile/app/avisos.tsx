@@ -57,6 +57,7 @@ import {
   SPARK,
   Text,
   text,
+  useFitLabel,
   usePullRefresh,
   useStatusBar
 } from '@/components/ui'
@@ -1330,13 +1331,14 @@ const styles = StyleSheet.create({
  * ("Aceitar" → "Tentando de novo…"), e encolhe a fonte antes de cortar.
  */
 function ButtonLabel({ color, children }: { color: string; children: string }) {
+  const fit = useFitLabel()
   return (
     <Animated.Text
       key={children}
       entering={LABEL_IN}
       maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
       numberOfLines={1}
-      adjustsFontSizeToFit
+      adjustsFontSizeToFit={fit}
       style={[text(13.5, 'Bold'), { color, flexShrink: 1 }]}
     >
       {children}

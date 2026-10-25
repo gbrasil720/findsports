@@ -26,6 +26,7 @@ import {
   StyleSheet,
   type TextInputProps,
   useColorScheme,
+  useWindowDimensions,
   View,
   type ViewStyle
 } from 'react-native'
@@ -840,6 +841,14 @@ function HardShadow({
   )
 }
 
+/**
+ * Encolher o rótulo só no "Texto maior" do iOS, onde ele não cabe. No
+ * tamanho padrão o `adjustsFontSizeToFit` media a linha antes de o botão
+ * ter largura (a raiz de uma aba nativa, como Seus bares) e deixava o
+ * "Tentar de novo" com uns 6 pt.
+ */
+export const useFitLabel = () => useWindowDimensions().fontScale > 1
+
 /** O botão retangular acid dos formulários ("Criar conta grátis"...). */
 export function BlockButton({
   label,
@@ -866,6 +875,7 @@ export function BlockButton({
   style?: StyleProp<ViewStyle>
 }) {
   const press = usePress(3, 3)
+  const fit = useFitLabel()
   return (
     <Pressable
       accessibilityRole="button"
@@ -893,7 +903,7 @@ export function BlockButton({
               style={[text(15, 'Bold'), { color: INK, flexShrink: 1 }]}
               maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
               numberOfLines={1}
-              adjustsFontSizeToFit
+              adjustsFontSizeToFit={fit}
             >
               {label}
             </Text>
@@ -931,6 +941,7 @@ export function PillButton({
   height?: number
 }) {
   const press = usePress(0, 3)
+  const fit = useFitLabel()
   return (
     <View
       style={[
@@ -963,7 +974,7 @@ export function PillButton({
               style={[text(15, 'Bold'), { color: INK, flexShrink: 1 }]}
               maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
               numberOfLines={1}
-              adjustsFontSizeToFit
+              adjustsFontSizeToFit={fit}
             >
               {label}
             </Text>
