@@ -8,7 +8,8 @@ import {
   posicao,
   rotuloHora,
   semanaDe,
-  somaDosJogos
+  somaDosJogos,
+  vezNoBar
 } from './hoje-model'
 
 // Brasília é UTC-3: 21:30 em Brasília é 00:30Z do dia seguinte.
@@ -146,18 +147,33 @@ describe('contagens', () => {
 
 describe('chegadasDoDia', () => {
   test('só quem validou hoje, do mais recente ao mais antigo', () => {
+    const visita = { offer: true, firstVisit: true, visitsThisMonth: 1 }
     const jogos = [
       {
         id: 'a',
         people: [
-          { name: 'Pedro', validatedAt: br('2026-10-12', '20:30') },
-          { name: 'Marina', validatedAt: br('2026-10-12', '21:12') },
-          { name: 'Rafa', validatedAt: null }
+          {
+            name: 'Pedro',
+            validatedAt: br('2026-10-12', '20:30'),
+            arrival: visita
+          },
+          {
+            name: 'Marina',
+            validatedAt: br('2026-10-12', '21:12'),
+            arrival: visita
+          },
+          { name: 'Rafa', validatedAt: null, arrival: null }
         ]
       },
       {
         id: 'b',
-        people: [{ name: 'Ontem', validatedAt: br('2026-10-11', '22:00') }]
+        people: [
+          {
+            name: 'Ontem',
+            validatedAt: br('2026-10-11', '22:00'),
+            arrival: visita
+          }
+        ]
       }
     ]
     expect(
@@ -166,5 +182,17 @@ describe('chegadasDoDia', () => {
       ['Marina', 'a'],
       ['Pedro', 'a']
     ])
+  })
+})
+
+describe('vezNoBar', () => {
+  test('primeira visita a este bar, senão a conta do mês', () => {
+    const v = { offer: false, visitsThisMonth: 1 }
+    expect(vezNoBar({ ...v, firstVisit: true })).toBe('primeira vez no bar')
+    // Já veio em outro mês: a primeira deste mês não é a primeira no bar.
+    expect(vezNoBar({ ...v, firstVisit: false })).toBe('1ª vez no mês')
+    expect(vezNoBar({ ...v, firstVisit: false, visitsThisMonth: 4 })).toBe(
+      '4ª vez no mês'
+    )
   })
 })

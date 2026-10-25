@@ -216,23 +216,41 @@ export function somaDosJogos(
 
 /* ─── Chegaram agora ─── */
 
+type Visita = {
+  offer: boolean
+  firstVisit: boolean
+  visitsThisMonth: number
+}
+
 type JogoQuemVai = {
   id: string
-  people: { name: string; validatedAt: Instante | null }[]
+  people: {
+    name: string
+    validatedAt: Instante | null
+    arrival: Visita | null
+  }[]
 }
 
 /** Quem validou o código no dia da casa, do mais recente ao mais antigo. */
 export function chegadasDoDia<T extends JogoQuemVai>(
   jogos: readonly T[],
   dia: string
-): { nome: string; em: Date; jogo: T }[] {
+): { nome: string; em: Date; jogo: T; visita: Visita }[] {
   return jogos
     .flatMap((jogo) =>
-      jogo.people.flatMap(({ name, validatedAt }) =>
-        validatedAt && diaDaCasa(validatedAt) === dia
-          ? [{ nome: name, em: new Date(validatedAt), jogo }]
+      jogo.people.flatMap(({ name, validatedAt, arrival }) =>
+        validatedAt && arrival && diaDaCasa(validatedAt) === dia
+          ? [{ nome: name, em: new Date(validatedAt), jogo, visita: arrival }]
           : []
       )
     )
     .sort((a, b) => b.em.getTime() - a.em.getTime())
 }
+
+/**
+ * "primeira vez no bar" ou "4ª vez no mês" (1j): as visitas da pessoa a este
+ * bar, nunca a outros. Quem já veio em outro mês e volta agora é "1ª vez no
+ * mês".
+ */
+export const vezNoBar = (v: Visita) =>
+  v.firstVisit ? 'primeira vez no bar' : `${v.visitsThisMonth}ª vez no mês`
