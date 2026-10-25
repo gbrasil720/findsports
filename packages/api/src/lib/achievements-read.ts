@@ -1,4 +1,4 @@
-import { db, eq, sql } from '@findsports_oficial/db'
+import { db, eq, inArray, sql } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { bar, event, sport } from '@findsports_oficial/db/schema/platform'
 import { barRating } from '@findsports_oficial/db/schema/rating'
@@ -17,8 +17,14 @@ import { visit } from './visits'
  * com o bar e o esporte.
  */
 export async function readVisits(userId: string) {
+  return readVisitsOf([userId])
+}
+
+/** As visitas de várias pessoas numa consulta (o ranking dos amigos). */
+export async function readVisitsOf(userIds: string[]) {
   return db
     .select({
+      userId: visit.userId,
       // A visita é do dia do jogo, não do lançamento: o bar que confirma pela
       // comanda lança até 48 h depois (WEB-412).
       at: event.startsAt,
@@ -38,15 +44,19 @@ export async function readVisits(userId: string) {
     .innerJoin(event, eq(event.id, visit.eventId))
     .innerJoin(bar, eq(bar.id, visit.barId))
     .innerJoin(sport, eq(sport.id, event.sportId))
-    .where(eq(visit.userId, userId))
+    .where(inArray(visit.userId, userIds))
 }
 
-async function readReviews(userId: string) {
+export async function readReviewsOf(userIds: string[]) {
   return db
-    .select({ at: barRating.createdAt, barName: bar.name })
+    .select({
+      userId: barRating.actorUserId,
+      at: barRating.createdAt,
+      barName: bar.name
+    })
     .from(barRating)
     .innerJoin(bar, eq(bar.id, barRating.barId))
-    .where(eq(barRating.actorUserId, userId))
+    .where(inArray(barRating.actorUserId, userIds))
 }
 
 /**
@@ -125,7 +135,7 @@ export async function readAchievements(
 ) {
   const [visitRows, reviews, shares] = await Promise.all([
     visits,
-    readReviews(userId),
+    readReviewsOf([userId]),
     shareCache.get('all', readShares)
   ])
   const achievements = computeAchievements(visitRows, reviews).map((a) => ({
