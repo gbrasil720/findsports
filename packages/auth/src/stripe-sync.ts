@@ -1,6 +1,11 @@
-import { db, eq } from '@findsports_oficial/db'
+import { and, db, desc, eq, gte, lte } from '@findsports_oficial/db'
+import { CANCEL_REASONS } from '@findsports_oficial/db/cancel-reasons'
 import { user } from '@findsports_oficial/db/schema/auth'
-import { bar, subscription } from '@findsports_oficial/db/schema/platform'
+import {
+  bar,
+  subscription,
+  subscriptionCancelReason
+} from '@findsports_oficial/db/schema/platform'
 import type Stripe from 'stripe'
 import { monthlyDiscountReaisFromStripe } from './stripe-discount'
 import { planForLookupKey } from './stripe-plan'
@@ -132,9 +137,9 @@ function scheduledCancelOf(
  */
 export async function applyStripeSubscription(
   stripeSubscription: Stripe.Subscription
-) {
+): Promise<string | null> {
   const status = localStatusFor(stripeSubscription.status)
-  if (!status) return
+  if (!status) return null
 
   const item = stripeSubscription.items.data[0]
   const plan = planForLookupKey(item?.price.lookup_key)
@@ -144,7 +149,7 @@ export async function applyStripeSubscription(
       priceId: item?.price.id ?? null,
       lookupKey: item?.price.lookup_key ?? null
     })
-    return
+    return null
   }
 
   const foundBar = await findBarOf(stripeSubscription)
@@ -153,7 +158,7 @@ export async function applyStripeSubscription(
       subscriptionId: stripeSubscription.id,
       plan
     })
-    return
+    return null
   }
 
   const existing = await db.query.subscription.findFirst({
@@ -168,7 +173,7 @@ export async function applyStripeSubscription(
     existing?.externalSubscriptionId &&
     existing.externalSubscriptionId !== stripeSubscription.id
   ) {
-    return
+    return null
   }
 
   const values = {
@@ -185,6 +190,74 @@ export async function applyStripeSubscription(
     .values({ barId: foundBar.id, ...values })
     .onConflictDoUpdate({ target: subscription.barId, set: values })
   await db.update(bar).set({ isActive: !offAir }).where(eq(bar.id, foundBar.id))
+  return foundBar.id
+}
+
+/** O motivo vale para o cancelamento pedido até um dia depois de escolhido. */
+const CANCEL_REASON_WINDOW_MS = 24 * 3_600_000
+/** Folga para o relógio do Stripe e o do banco. */
+const CLOCK_SLACK_MS = 60_000
+
+/**
+ * "Por que está cancelando?" (WEB-445) chega ao Stripe só quando o
+ * cancelamento se confirma: o motivo é gravado ao abrir o portal, e quem
+ * desiste lá não cancelou. Com a assinatura agendada para acabar (ou
+ * encerrada), o último motivo do bar escolhido no dia que antecede o pedido
+ * (`canceled_at`) vai para `cancellation_details`.
+ *
+ * Não sobrescreve: se o portal já trouxe motivo ou comentário (ou se já
+ * mandamos), não faz nada, e por isso evento repetido não muda nada. Recusa
+ * do Stripe só vai para o log, como os nomes do cliente.
+ */
+async function sendCancelReason(
+  stripeSubscription: Stripe.Subscription,
+  barId: string,
+  client: Stripe
+) {
+  const cancelling =
+    stripeSubscription.status === 'canceled' ||
+    stripeSubscription.cancel_at !== null ||
+    stripeSubscription.cancel_at_period_end
+  const details = stripeSubscription.cancellation_details
+  if (!cancelling || details?.feedback || details?.comment) return
+
+  const requestedAt = stripeSubscription.canceled_at
+    ? stripeSubscription.canceled_at * 1000
+    : Date.now()
+  const [chosen] = await db
+    .select({ reason: subscriptionCancelReason.reason })
+    .from(subscriptionCancelReason)
+    .where(
+      and(
+        eq(subscriptionCancelReason.barId, barId),
+        gte(
+          subscriptionCancelReason.createdAt,
+          new Date(requestedAt - CANCEL_REASON_WINDOW_MS)
+        ),
+        lte(
+          subscriptionCancelReason.createdAt,
+          new Date(requestedAt + CLOCK_SLACK_MS)
+        )
+      )
+    )
+    .orderBy(desc(subscriptionCancelReason.createdAt))
+    .limit(1)
+  if (!chosen) return
+
+  const reason = CANCEL_REASONS.find((r) => r.id === chosen.reason)
+  await client.subscriptions
+    .update(stripeSubscription.id, {
+      cancellation_details: {
+        feedback: reason?.stripeFeedback ?? 'other',
+        comment: `Motivo escolhido no app: ${reason?.label ?? chosen.reason}`
+      }
+    })
+    .catch((error: unknown) =>
+      logBillingError('stripe_cancel_reason_failed', {
+        subscriptionId: stripeSubscription.id,
+        message: error instanceof Error ? error.message : String(error)
+      })
+    )
 }
 
 /**
@@ -240,11 +313,11 @@ async function restoreCustomerNames(
 export async function syncStripeEvent(event: Stripe.Event, client: Stripe) {
   const subscriptionId = subscriptionIdOf(event)
   if (!subscriptionId) return
-  await applyStripeSubscription(
-    await client.subscriptions.retrieve(subscriptionId, {
-      expand: ['discounts.source.coupon']
-    })
-  )
+  const current = await client.subscriptions.retrieve(subscriptionId, {
+    expand: ['discounts.source.coupon']
+  })
+  const barId = await applyStripeSubscription(current)
+  if (barId) await sendCancelReason(current, barId, client)
   if (event.type === 'checkout.session.completed') {
     await restoreCustomerNames(event.data.object, client)
   }
