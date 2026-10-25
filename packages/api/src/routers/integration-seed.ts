@@ -1,4 +1,4 @@
-import { expect } from 'bun:test'
+import { expect, spyOn } from 'bun:test'
 import { eq, inArray } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
 import {
@@ -7,6 +7,7 @@ import {
   sport,
   subscription
 } from '@findsports_oficial/db/schema/platform'
+import { env } from '@findsports_oficial/env/server'
 import { TRPCError } from '@trpc/server'
 import type { AppRouter } from './index'
 
@@ -80,6 +81,7 @@ export async function seedBar(
   db: Awaited<ReturnType<typeof load>>['db']
   barId: string
   owner: Caller
+  ownerId: string
   fan: Caller
   fanId: string
   /**
@@ -133,6 +135,7 @@ export async function seedBar(
     db,
     barId,
     owner: appRouter.createCaller(contextFor(ownerId, 'pub')),
+    ownerId,
     fan: appRouter.createCaller(contextFor(fanId, 'fan')),
     fanId,
     seedGame: async (fields = {}) => {
@@ -212,4 +215,39 @@ export async function withClock<T>(
     if (previous === undefined) delete process.env.TZ
     else process.env.TZ = previous
   }
+}
+
+export type ResendBody = {
+  to: string[]
+  reply_to: string
+  subject: string
+  text: string
+  attachments?: { filename: string; content_type: string; content: string }[]
+}
+
+/**
+ * A Resend como dublê: guarda o corpo de cada envio. As chaves somem do
+ * `.env.test` de propósito, então entram aqui e saem no fim do teste.
+ */
+export function fakeResend(cleanups: (() => unknown)[], status = 200) {
+  const real = globalThis.fetch
+  const sent: ResendBody[] = []
+  const keys = env as { RESEND_API_KEY?: string; RESEND_FROM_EMAIL?: string }
+  keys.RESEND_API_KEY = 're_teste'
+  keys.RESEND_FROM_EMAIL = 'nao-responda@mail.onside.sh'
+  const spy = spyOn(globalThis, 'fetch').mockImplementation(((
+    input: Parameters<typeof fetch>[0],
+    init?: Parameters<typeof fetch>[1]
+  ) => {
+    const url = String(input instanceof Request ? input.url : input)
+    if (url !== 'https://api.resend.com/emails') return real(input, init)
+    sent.push(JSON.parse(String(init?.body)))
+    return Promise.resolve(new Response('{}', { status }))
+  }) as typeof fetch)
+  cleanups.push(() => {
+    spy.mockRestore()
+    keys.RESEND_API_KEY = undefined
+    keys.RESEND_FROM_EMAIL = undefined
+  })
+  return sent
 }

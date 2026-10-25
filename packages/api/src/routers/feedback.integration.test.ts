@@ -2,10 +2,10 @@ import { afterEach, expect, spyOn, test } from 'bun:test'
 import { eq } from '@findsports_oficial/db'
 import { rateLimit } from '@findsports_oficial/db/schema/auth'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
-import { env } from '@findsports_oficial/env/server'
 import { FEEDBACK_LIMIT, FEEDBACK_TO, feedbackLimitKey } from './feedback'
 import {
   contextFor,
+  fakeResend,
   inAMonth,
   load,
   refusal,
@@ -23,45 +23,10 @@ const integrationTest = isDisposableTestDatabase() ? test : test.skip
 const message = 'O mapa não carregou no meu celular.'
 const pageUrl = 'https://www.onside.sh/dashboard'
 
-type ResendBody = {
-  to: string[]
-  reply_to: string
-  subject: string
-  text: string
-  attachments?: { filename: string; content_type: string; content: string }[]
-}
-
 const cleanups: (() => Promise<unknown> | unknown)[] = []
 afterEach(async () => {
   for (const cleanup of cleanups.splice(0)) await cleanup()
 })
-
-/**
- * A Resend como dublê: guarda o corpo de cada envio. As chaves somem do
- * `.env.test` de propósito, então entram aqui e saem no fim do teste.
- */
-function fakeResend(status = 200) {
-  const real = globalThis.fetch
-  const sent: ResendBody[] = []
-  const keys = env as { RESEND_API_KEY?: string; RESEND_FROM_EMAIL?: string }
-  keys.RESEND_API_KEY = 're_teste'
-  keys.RESEND_FROM_EMAIL = 'nao-responda@mail.onside.sh'
-  const spy = spyOn(globalThis, 'fetch').mockImplementation(((
-    input: Parameters<typeof fetch>[0],
-    init?: Parameters<typeof fetch>[1]
-  ) => {
-    const url = String(input instanceof Request ? input.url : input)
-    if (url !== 'https://api.resend.com/emails') return real(input, init)
-    sent.push(JSON.parse(String(init?.body)))
-    return Promise.resolve(new Response('{}', { status }))
-  }) as typeof fetch)
-  cleanups.push(() => {
-    spy.mockRestore()
-    keys.RESEND_API_KEY = undefined
-    keys.RESEND_FROM_EMAIL = undefined
-  })
-  return sent
-}
 
 /** Torcedor só de sessão: `feedback.send` não lê a linha do usuário. */
 async function fanCaller() {
@@ -101,7 +66,7 @@ const WEBP = image([...Buffer.from('RIFF'), 0, 0, 0, 0, ...Buffer.from('WEBP')])
 integrationTest(
   'torcedor: um e-mail para a caixa da Onside, com Reply-To de quem escreveu',
   async () => {
-    const sent = fakeResend()
+    const sent = fakeResend(cleanups)
     const { fan, email } = await fanCaller()
 
     await fan.feedback.send({
@@ -125,7 +90,7 @@ integrationTest(
 )
 
 integrationTest('bar: o assunto e o corpo levam o nome do bar', async () => {
-  const sent = fakeResend()
+  const sent = fakeResend(cleanups)
   const seeded = await seedBar('pro', 'active', inAMonth())
   cleanups.push(seeded.cleanup)
 
@@ -138,7 +103,7 @@ integrationTest('bar: o assunto e o corpo levam o nome do bar', async () => {
 })
 
 integrationTest('uma imagem vai como anexo do mesmo e-mail', async () => {
-  const sent = fakeResend()
+  const sent = fakeResend(cleanups)
   const { fan } = await fanCaller()
 
   await fan.feedback.send({ message, pageUrl, images: [PNG] })
@@ -151,7 +116,7 @@ integrationTest('uma imagem vai como anexo do mesmo e-mail', async () => {
 })
 
 integrationTest('três imagens vão como três anexos, na ordem', async () => {
-  const sent = fakeResend()
+  const sent = fakeResend(cleanups)
   const { fan } = await fanCaller()
 
   await fan.feedback.send({ message, pageUrl, images: [JPEG, PNG, WEBP] })
@@ -166,7 +131,7 @@ integrationTest('três imagens vão como três anexos, na ordem', async () => {
 integrationTest(
   'limite por usuário: o sexto envio da hora é recusado e não vira e-mail',
   async () => {
-    const sent = fakeResend()
+    const sent = fakeResend(cleanups)
     const { fan } = await fanCaller()
     const other = await fanCaller()
 
@@ -204,7 +169,7 @@ integrationTest(
     )
     expect(await attemptsOf(db, id)).toBeUndefined()
 
-    fakeResend(500)
+    fakeResend(cleanups, 500)
     const { code, message: reason } = await refusal(
       fan.feedback.send({ message, pageUrl })
     )
