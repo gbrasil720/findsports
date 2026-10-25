@@ -252,6 +252,11 @@ não exercitar o cache em si — isso fica com o teste unitário
   `localhost` do Vite pode abrir só em `::1`.
 - **Hidratação.** Clique logo depois de um `goto` cru (fora do `test` da suíte)
   pode cair no HTML antes do React.
+- **Server function no SSR, servidor frio.** No `vite dev`, duas primeiras
+  chamadas ao mesmo tempo da mesma server function quebram a segunda ("(intermediate
+  value) is not a function": o módulo dela chega pela metade). O `setup` chama
+  cada uma em série antes dos workers ("server functions do SSR aquecidas");
+  server function nova que o SSR chama entra na lista de lá.
 - **Componente `lazy`.** `html[data-hydrated]` marca a raiz hidratada, não o
   que está dentro de um `lazy` (hoje, a faixa da pele no `__root.tsx`): o HTML
   do servidor fica lá sem handler até o módulo chegar, e o React descarta o
