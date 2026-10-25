@@ -531,6 +531,43 @@ export const pubRouter = router({
     }),
 
   /**
+   * Avisos por e-mail ao dono (WEB-441): resumo da semana, jogo lotando e
+   * grade vazia. Cada interruptor grava sozinho, sem "Salvar". Recurso de
+   * todo plano; quem decide o conteúdo de cada e-mail é `lib/bar-notices.ts`.
+   */
+  updateNotices: pubProcedure
+    .input(
+      z
+        .object({
+          weeklySummary: z.boolean(),
+          gameFilling: z.boolean(),
+          emptySchedule: z.boolean()
+        })
+        .partial()
+        .refine((notices) =>
+          Object.values(notices).some((v) => v !== undefined)
+        )
+    )
+    .mutation(async ({ ctx, input }) => {
+      const existingBar = await getOwnBar(ctx.session.user.id)
+      const [updated] = await db
+        .update(bar)
+        .set({
+          noticeWeeklySummary: input.weeklySummary,
+          noticeGameFilling: input.gameFilling,
+          noticeEmptySchedule: input.emptySchedule
+        })
+        .where(eq(bar.id, existingBar.id))
+        .returning({
+          noticeWeeklySummary: bar.noticeWeeklySummary,
+          noticeGameFilling: bar.noticeGameFilling,
+          noticeEmptySchedule: bar.noticeEmptySchedule
+        })
+      if (!updated) throw new TRPCError({ code: 'NOT_FOUND' })
+      return updated
+    }),
+
+  /**
    * Horário de funcionamento (WEB-397): a semana inteira de uma vez, ou
    * `null` para tirar a seção da página. Recurso de todo plano.
    */
