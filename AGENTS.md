@@ -484,7 +484,8 @@ próprio o `rewrite` do router tira o prefixo (`apps/web/src/lib/houdini-host.ts
 `lib/houdini-gate.ts`: só admin com 2FA ligado; o resto recebe o 404 de verdade (a
 "Cortina"). Telas novas entram em `routes/houdini/_app/` e no `HOUDINI_NAV` de
 `components/houdini/shell.tsx`; o visual é o de `components/houdini/houdini.css`
-(proposta 3 do canvas https://claude.ai/artifact/YbJ76gkJaTKaqTtuRLQmNt). A seção IA está em "IA (Workers AI…)".
+(proposta 3 do canvas https://claude.ai/artifact/YbJ76gkJaTKaqTtuRLQmNt). Jogo em rascunho (WEB-436) fica fora de
+Jogos e de toda contagem do Houdini; só a aba Jogos da ficha do bar o mostra, marcado "Rascunho". A seção IA está em "IA (Workers AI…)".
 
 ### App mobile
 
