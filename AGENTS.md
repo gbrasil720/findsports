@@ -467,7 +467,8 @@ Design "Bar Web" (Rodada 2) no Claude Design. O painel **segue o tema do sistema
   depois da capa: o design não desenha fotos do bar.
 - **Configurações** (`/admin/configuracoes`, `components/account/configuracoes.tsx`): os
   diálogos de senha, 2FA e exclusão são os de `components/account/*`. "Baixar meus dados"
-  baixa o JSON de `account.exportBarData` (conta, bar, plano e jogos; nada de torcedor).
+  ("Pedir arquivo") manda o JSON por e-mail pelo `account.requestExport` (conta, bar, plano
+  e jogos; nada de torcedor), o mesmo do app: ver Configurações do app.
   Avisos por e-mail são "em breve".
 - **Web só para bares (decisão do dono, 24/10/2026).** Não há mais tela de torcedor no
   web: quem não é bar e entra cai em `/torcedor` (`FAN_HOME`, `utils/auth-guards.ts`),
@@ -686,10 +687,12 @@ invente layout que o projeto não tem.
   dos amigos se troca na Conta. Avisos segue o desenho com os controles desligados e o
   aviso de "em breve" (não há notificação); em Privacidade, "Onde você foi" funciona
   (quem vê os bares e jogos, quem pode te adicionar), "Aparecer no ranking global" e
-  comunidades seguem "em breve" (o controle pede coluna nova), e "Baixar meus dados" gera um JSON (`account.exportData`: perfil,
-  preferências, favoritos, jogos, avaliações, amigos e conquistas; de outra pessoa, só
-  nome e `@` de amigo) e entrega pelo share sheet (`expo-file-system` + `expo-sharing`).
-  O design diz "Arquivo enviado por e-mail"; o app diz "Arquivo para salvar ou enviar". "Reservas" do 11g virou "Vou assistir", porque
+  comunidades seguem "em breve" (o controle pede coluna nova), e "Baixar meus dados" pede o arquivo (`account.requestExport`, WEB-418): o
+  servidor monta o JSON (perfil, preferências, favoritos, jogos, avaliações, amigos e
+  conquistas; de outra pessoa, só nome e `@` de amigo; para bar, `barData`) e o manda de
+  anexo para o e-mail da sessão, um pedido a cada 24 h por conta (`rate_limit`, chave
+  `data-export:user:<id>`; o segundo volta `TOO_MANY_REQUESTS` com a frase para a tela, e
+  envio que falha devolve o pedido). A política de privacidade (seção 13) cita o caminho. "Reservas" do 11g virou "Vou assistir", porque
   não existe reserva de mesa.
 - **Amigos (S1 do design, 11a–11d, decisões do dono em 21/10/2026):** só na API e no
   app; o web não tem tela (por isso o branch só vai para master com o app pronto). Banco:
