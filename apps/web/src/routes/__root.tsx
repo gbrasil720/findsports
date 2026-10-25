@@ -42,7 +42,8 @@ import {
   type AuthSession,
   applyAuthGuards,
   isHashOnlyChange,
-  type SessionLocation
+  type SessionLocation,
+  sessionAfterFailure
 } from '../utils/auth-guards'
 
 export interface RouterAppContext {
@@ -96,7 +97,9 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
     const session =
       last && isHashOnlyChange(last.location, location)
         ? last.session
-        : await getSession()
+        : await getSession().catch((error: unknown) =>
+            sessionAfterFailure(error, last)
+          )
     context.lastSessionCheck.current = { location, session }
     context.syncSession(session?.user.id ?? null)
     applyAuthGuards(
