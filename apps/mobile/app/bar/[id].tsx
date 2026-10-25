@@ -51,6 +51,7 @@ import { usePalette } from '@/components/theme'
 import {
   ACID,
   BackButton,
+  DISPLAY_FONT_SCALE,
   Icon,
   INK,
   MAX_FONT_SCALE,
@@ -415,7 +416,6 @@ export default function BarPage() {
               numberOfLines={2}
               adjustsFontSizeToFit
               minimumFontScale={0.6}
-              maxFontSizeMultiplier={1.1}
             >
               {(data?.name ?? name ?? '').toUpperCase()}
             </Text>
@@ -483,7 +483,6 @@ export default function BarPage() {
                         { color: palette.ink, textAlign: 'center' }
                       ]}
                       numberOfLines={2}
-                      maxFontSizeMultiplier={1.3}
                     >
                       {tile.label}
                     </Text>
@@ -513,10 +512,7 @@ export default function BarPage() {
                           }
                         ]}
                       >
-                        <Text
-                          style={[styles.when, { color: palette.ink }]}
-                          maxFontSizeMultiplier={1.25}
-                        >
+                        <Text style={[styles.when, { color: palette.ink }]}>
                           {gameDay(game.startsAt, now)}
                         </Text>
                         <View style={{ flex: 1, minWidth: 0 }}>
@@ -731,7 +727,6 @@ export default function BarPage() {
                             styles.mono,
                             { color: row.hours ? palette.ink : palette.muted }
                           ]}
-                          maxFontSizeMultiplier={1.3}
                         >
                           {row.hours ?? 'Fechado'}
                         </Text>
@@ -756,10 +751,7 @@ export default function BarPage() {
                     ]}
                   />
                   <View style={styles.score}>
-                    <Text
-                      style={styles.scoreNumber}
-                      maxFontSizeMultiplier={1.3}
-                    >
+                    <Text style={styles.scoreNumber}>
                       {data.rating.percentage}%
                     </Text>
                     <Text
@@ -940,7 +932,7 @@ export default function BarPage() {
                 entering={SWAP}
                 style={[text(15, 'Bold', 1.2), { color: INK, flexShrink: 1 }]}
                 numberOfLines={1}
-                maxFontSizeMultiplier={1.3}
+                maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
               >
                 {mine.attending ? 'Você vai' : 'Vou assistir aqui'}
               </Animated.Text>
