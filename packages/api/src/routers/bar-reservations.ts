@@ -1,4 +1,13 @@
-import { and, db, eq, inArray, isNull, sql } from '@findsports_oficial/db'
+import {
+  and,
+  db,
+  eq,
+  inArray,
+  isNull,
+  type SQL,
+  sql
+} from '@findsports_oficial/db'
+import { brasiliaDaySql } from '@findsports_oficial/db/event-window-sql'
 import { attendance } from '@findsports_oficial/db/schema/attendance'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { bar, event } from '@findsports_oficial/db/schema/platform'
@@ -18,6 +27,32 @@ import {
   hasOpenReservations,
   validationOpen
 } from '../lib/reservation-intake'
+import { visit } from '../lib/visits'
+
+/**
+ * Visitas da pessoa a ESTE bar (`visits.ts`) até o jogo da linha, contando
+ * ele, e só os jogos que passam em `extra`. Conta pela data do jogo, não pela
+ * do lançamento: o bar que confirma pela comanda lança até 48 h depois
+ * (WEB-412). Visita a outro bar nunca entra.
+ */
+const visitsHere = (extra: SQL) =>
+  sql<number>`(
+    SELECT count(*)::int FROM ${visit}
+    JOIN event ve ON ve.id = ${visit.eventId}
+    WHERE ${visit.userId} = ${user.id}
+      AND ${visit.barId} = ${event.barId}
+      AND ve.starts_at <= ${event.startsAt}
+      AND ${extra}
+  )`
+
+/** O mesmo mês de Brasília do jogo da linha. */
+const sameMonth = sql`date_trunc('month', ${brasiliaDaySql(sql`ve.starts_at`)}) = date_trunc('month', ${brasiliaDaySql(event.startsAt)})`
+
+/**
+ * A chegada no "Chegaram agora" (1j): se o código levava oferta, se é a
+ * primeira visita da pessoa a este bar e a quantas ela chegou no mês.
+ */
+type Arrival = { offer: boolean; firstVisit: boolean; visitsThisMonth: number }
 
 /**
  * "Quem vai" do bar (seção 17 do design): por jogo, quem marcou "Vou assistir
@@ -26,7 +61,8 @@ import {
  * marca já recebe o código: o bar não aprova ninguém.
  *
  * Nenhuma entrada carrega `barId`: o bar sai da sessão. Do torcedor, só o
- * nome; telefone e e-mail não saem daqui. É recurso do Elite, e continua
+ * nome e, de quem validou, as visitas a este bar (WEB-450); telefone e
+ * e-mail não saem daqui. É recurso do Elite, e continua
  * para quem perdeu o plano com código em aberto, que precisa honrar a oferta
  * (WEB-341).
  */
@@ -88,7 +124,11 @@ export const barReservationsRouter = router({
         startsAt: event.startsAt,
         name: user.name,
         markedAt: attendance.createdAt,
-        validatedAt: sql<Date | null>`max(${reservationCodeUse.usedAt})`
+        validatedAt: sql<Date | null>`max(${reservationCodeUse.usedAt})`,
+        // O código levava oferta (copiada na emissão), não a oferta de agora.
+        offer: sql<boolean>`coalesce(bool_or(${reservation.offerSnapshot} IS NOT NULL), false)`,
+        visits: visitsHere(sql`true`),
+        visitsThisMonth: visitsHere(sameMonth)
       })
       .from(attendance)
       .innerJoin(event, eq(event.id, attendance.eventId))
@@ -135,15 +175,33 @@ export const barReservationsRouter = router({
         participantFreeText: string | null
         participants: string[]
         startsAt: Date
-        people: { name: string; markedAt: Date; validatedAt: Date | null }[]
+        people: {
+          name: string
+          markedAt: Date
+          validatedAt: Date | null
+          arrival: Arrival | null
+        }[]
       }
     >()
-    for (const { eventId, name, markedAt, validatedAt, ...game } of rows) {
+    for (const {
+      eventId,
+      name,
+      markedAt,
+      validatedAt,
+      offer,
+      visits,
+      visitsThisMonth,
+      ...game
+    } of rows) {
       const entry = games.get(eventId) ?? { id: eventId, ...game, people: [] }
       entry.people.push({
         name,
         markedAt,
-        validatedAt: validatedAt ? new Date(validatedAt) : null
+        validatedAt: validatedAt ? new Date(validatedAt) : null,
+        // Só de quem validou: de quem só marcou, o bar não vê histórico.
+        arrival: validatedAt
+          ? { offer, firstVisit: visits === 1, visitsThisMonth }
+          : null
       })
       games.set(eventId, entry)
     }
