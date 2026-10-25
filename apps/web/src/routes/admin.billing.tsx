@@ -10,7 +10,13 @@ import { brasiliaDay } from '@findsports_oficial/db/event-window'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { type ComponentProps, type ReactNode, useId, useState } from 'react'
+import {
+  type ComponentProps,
+  type ReactNode,
+  useId,
+  useRef,
+  useState
+} from 'react'
 import { useMyBar, useMyEvents } from '@/components/admin/admin-queries'
 import { AvisoVisual } from '@/components/admin/avisos'
 import {
@@ -788,6 +794,12 @@ const notaVisivel = (campo: InvoiceField, valor: string) =>
 function DadosDaNota() {
   const bar = useMyBar().data
   const [editando, setEditando] = useState<InvoiceField | null>(null)
+  // Fechado o campo, o foco volta ao "Editar" da mesma linha.
+  const voltarFoco = useRef<InvoiceField | null>(null)
+  const fechar = () => {
+    voltarFoco.current = editando
+    setEditando(null)
+  }
   return (
     <Secao titulo="Dados da nota" icone="doc">
       {INVOICE_FIELDS.map((campo, index) => {
@@ -799,7 +811,7 @@ function DadosDaNota() {
             campo={campo}
             inicial={valor ? notaVisivel(campo, valor) : ''}
             primeira={index === 0}
-            onFechar={() => setEditando(null)}
+            onFechar={fechar}
           />
         ) : (
           <Linha
@@ -816,10 +828,16 @@ function DadosDaNota() {
             acao={
               <button
                 type="button"
+                ref={(el) => {
+                  if (el && voltarFoco.current === campo) {
+                    voltarFoco.current = null
+                    el.focus()
+                  }
+                }}
                 disabled={!bar}
                 aria-label={`Editar ${titulo}`}
                 onClick={() => setEditando(campo)}
-                className="font-bold text-[13.5px] disabled:opacity-50"
+                className="font-bold text-[13.5px] underline-offset-2 hover:underline disabled:opacity-50"
               >
                 Editar
               </button>
@@ -866,6 +884,9 @@ function EditarNota({
     <form
       method="post"
       noValidate
+      onKeyDown={(e) => {
+        if (e.key === 'Escape' && !salvar.isPending) onFechar()
+      }}
       className={`flex flex-col gap-3 py-3 ${primeira ? '' : 'border-[var(--painel-line)] border-t'}`}
       onSubmit={(e) => {
         e.preventDefault()
