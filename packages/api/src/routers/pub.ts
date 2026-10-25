@@ -712,6 +712,8 @@ export const pubRouter = router({
         // WEB-399: omitido herda das características do bar.
         onBigScreen: z.boolean().optional(),
         withSound: z.boolean().optional(),
+        // WEB-437: "Lista de quem vai" do jogo; omitido fica como está.
+        attendanceEnabled: z.boolean().optional(),
         // WEB-436: salva sem publicar; fica fora do app e do limite.
         draft: z.boolean().optional()
       })
@@ -748,6 +750,7 @@ export const pubRouter = router({
             }),
             onBigScreen: input.onBigScreen,
             withSound: input.withSound,
+            attendanceEnabled: input.attendanceEnabled,
             ...(input.draft && { publishedAt: null })
           })
           .returning({ id: event.id })
@@ -798,6 +801,8 @@ export const pubRouter = router({
         // WEB-399: omitido herda das características do bar.
         onBigScreen: z.boolean().optional(),
         withSound: z.boolean().optional(),
+        // WEB-437: "Lista de quem vai" do jogo; omitido fica como está.
+        attendanceEnabled: z.boolean().optional(),
         // WEB-436: põe o rascunho no ar. Não existe o caminho de volta.
         publish: z.literal(true).optional()
       })
@@ -861,6 +866,9 @@ export const pubRouter = router({
             onBigScreen: input.onBigScreen
           }),
           ...(input.withSound !== undefined && { withSound: input.withSound }),
+          ...(input.attendanceEnabled !== undefined && {
+            attendanceEnabled: input.attendanceEnabled
+          }),
           ...(publishing && { publishedAt: new Date() })
         }
         // Só os times mudaram: o Drizzle recusa `set({})` com erro 500.
