@@ -18,9 +18,9 @@ import { MedalImage, useMedalPalette } from '@/components/medal'
 import { SWAP, usePressScale } from '@/components/motion'
 import { useTabBarSpace } from '@/components/tab-bar'
 import {
+  ErrorState,
   GlassRound,
   Icon,
-  PillButton,
   Text,
   Title,
   text,
@@ -94,12 +94,13 @@ export default function Shelf() {
         {mine.isPending ? (
           <ActivityIndicator color={P.ink} style={{ marginTop: 40 }} />
         ) : mine.isError || !mine.data ? (
-          <View style={styles.empty}>
-            <Text style={[text(15, 'SemiBold'), { color: P.ink }]}>
-              Não deu para abrir suas conquistas.
-            </Text>
-            <PillButton label="Tentar de novo" onPress={() => mine.refetch()} />
-          </View>
+          <ErrorState
+            style={styles.empty}
+            title="Não deu para abrir suas conquistas."
+            error={mine.error}
+            onRetry={mine.refetch}
+            retrying={mine.isFetching}
+          />
         ) : (
           <>
             <Level data={mine.data} star={star} />

@@ -6,16 +6,15 @@ import { Link } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { useMyBar, useMySubscription } from '@/components/admin/admin-queries'
 import { LateCodeEntry } from '@/components/admin/late-code-entry'
-import { QueryError } from '@/components/admin/query-error'
 import { getEventTemporalState } from '@/domain/events'
 import { rotuloDia } from '@/domain/painel-jogos'
 import { formatEventTime } from '@/domain/pub-profile'
 import { BAR_RESERVATIONS_QUERY } from '@/lib/query-cache'
-import { isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC, useTRPCClient } from '@/utils/trpc'
 import {
   CabecalhoPagina,
   Card,
+  ErroBloco,
   IconeBotao,
   Progresso,
   propsBotao
@@ -105,10 +104,11 @@ export function QuemVaiPage() {
           <Skeleton className="h-40 w-full bg-[var(--painel-sub)]" />
         </div>
       ) : query.isError || !query.data ? (
-        <QueryError
-          message="Não foi possível carregar quem vai."
-          retryable={isRetryableError(query.error)}
-          onRetry={() => void query.refetch()}
+        <ErroBloco
+          titulo="Não foi possível carregar quem vai."
+          erro={query.error}
+          tentar={query.refetch}
+          tentando={query.isFetching}
         />
       ) : query.data.length ? (
         <ul className="qv-jogos">

@@ -23,6 +23,7 @@ import { useTabBarSpace } from '@/components/tab-bar'
 import { PaletteProvider, usePalette } from '@/components/theme'
 import {
   ACID,
+  ErrorState,
   GlassRound,
   Icon,
   INK,
@@ -152,12 +153,13 @@ export default function MyGames() {
         {mine.isPending ? (
           <ActivityIndicator color={palette.ink} style={{ marginTop: 40 }} />
         ) : mine.isError ? (
-          <View style={styles.empty}>
-            <Text style={[text(15, 'SemiBold'), { color: palette.ink }]}>
-              Não deu para abrir seus jogos.
-            </Text>
-            <PillButton label="Tentar de novo" onPress={() => mine.refetch()} />
-          </View>
+          <ErrorState
+            style={styles.empty}
+            title="Não deu para abrir seus jogos."
+            error={mine.error}
+            onRetry={mine.refetch}
+            retrying={mine.isFetching}
+          />
         ) : !games.length ? (
           <View style={styles.empty}>
             <Text style={[text(16, 'Bold'), { color: palette.ink }]}>

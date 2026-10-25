@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useRef } from 'react'
 import {
   Badge,
   Card,
+  ErroBloco,
   Icone,
   Medalha,
   Progresso,
@@ -128,8 +129,21 @@ function usePrecoDoPlano(assinatura: Situacao['assinatura']): number | null {
 /** O card do plano (1t, seis estados): coluna da direita de Hoje e de Jogos. */
 export function CardDoPlano() {
   const situacao = useSituacao()
+  const assinatura = useMySubscription()
   const card = cardDoPlano(situacao, usePrecoDoPlano(situacao.assinatura))
-  return card ? <CardDoPlanoVisual card={card} /> : null
+  if (card) return <CardDoPlanoVisual card={card} />
+  // O plano não chegou: o card diz isso em vez de sumir (WEB-460).
+  return assinatura.isError ? (
+    <Card className="painel-plano">
+      <ErroBloco
+        compacto
+        titulo="Não foi possível carregar o seu plano."
+        erro={assinatura.error}
+        tentar={assinatura.refetch}
+        tentando={assinatura.isFetching}
+      />
+    </Card>
+  ) : null
 }
 
 export function CardDoPlanoVisual({ card }: { card: CardPlano }) {

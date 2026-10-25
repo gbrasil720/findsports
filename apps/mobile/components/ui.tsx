@@ -1,3 +1,5 @@
+import { isTransientError } from '@findsports_oficial/api/lib/transient-error'
+import { onlineManager } from '@tanstack/react-query'
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router'
 import { setStatusBarStyle } from 'expo-status-bar'
 import {
@@ -962,6 +964,68 @@ export function PillButton({
         </Animated.View>
       </Pressable>
     </View>
+  )
+}
+
+// --- Erro (WEB-460) ----------------------------------------------------------
+
+const OFFLINE_LINE = 'Sem conexão. Tentamos de novo quando a rede voltar.'
+
+/**
+ * A frase de uma falha, para alerta e linha de erro: sem rede, a da rede; na
+ * falha passageira, `fallback`; na recusa do servidor, o texto dele (a API
+ * escreve em português para quem usa). O "Network request failed" do React
+ * Native não chega à pessoa.
+ */
+export function errorMessage(error: unknown, fallback: string) {
+  if (!onlineManager.isOnline()) return OFFLINE_LINE
+  if (isTransientError(error)) return fallback
+  const own = error as { message?: string; data?: { httpStatus?: number } }
+  return own?.data?.httpStatus && own.message ? own.message : fallback
+}
+
+/**
+ * O bloco que não carregou, no lugar do que sumiria: o que houve, o que
+ * fazer e "Tentar de novo" na falha passageira. Recusa do servidor mostra o
+ * texto dele, sem botão (repetir só repetiria a recusa).
+ */
+export function ErrorState({
+  title,
+  error,
+  onRetry,
+  retrying,
+  style
+}: {
+  /** "Não deu para abrir seus bares." */
+  title: string
+  error: unknown
+  onRetry: () => unknown
+  /** A nova tentativa está no ar (`isFetching` da consulta). */
+  retrying?: boolean
+  style?: StyleProp<ViewStyle>
+}) {
+  const transient = isTransientError(error)
+  const line = !onlineManager.isOnline()
+    ? OFFLINE_LINE
+    : transient
+      ? 'Tente de novo. Se continuar, volte mais tarde.'
+      : errorMessage(error, 'Verifique a sua conta ou volte mais tarde.')
+  return (
+    <Animated.View entering={SWAP} accessibilityRole="alert" style={style}>
+      <View style={{ gap: 4 }}>
+        <Text style={[text(15, 'SemiBold', 1.35), { color: FG }]}>{title}</Text>
+        <Text style={[text(13.5, 'Regular', 1.45), { color: SUB }]}>
+          {line}
+        </Text>
+      </View>
+      {transient ? (
+        <PillButton
+          label={retrying ? 'Tentando de novo…' : 'Tentar de novo'}
+          disabled={retrying}
+          onPress={() => void onRetry()}
+        />
+      ) : null}
+    </Animated.View>
   )
 }
 

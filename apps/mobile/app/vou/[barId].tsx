@@ -13,6 +13,8 @@ import { usePalette } from '@/components/theme'
 import {
   ACID,
   BackButton,
+  ErrorState,
+  errorMessage,
   INK,
   LIVE,
   PAPER,
@@ -79,6 +81,21 @@ export default function GoingSheet() {
     })
   )
 
+  // O bar não abriu: a folha diz o que houve em vez de ficar em branco.
+  if (!data && bar.isError) {
+    return (
+      <View style={[styles.sheet, styles.body, styles.head]}>
+        <ErrorState
+          style={{ flex: 1, gap: 16 }}
+          title="Não deu para abrir os jogos deste bar."
+          error={bar.error}
+          onRetry={bar.refetch}
+          retrying={bar.isFetching}
+        />
+        <BackButton icon="close" />
+      </View>
+    )
+  }
   if (!data || !game || !mine) {
     return <View style={[styles.sheet]} />
   }
@@ -193,7 +210,9 @@ export default function GoingSheet() {
         </Text>
 
         <ErrorText style={[text(13.5, 'SemiBold'), { color: LIVE }]}>
-          {set.error?.message ?? null}
+          {set.error
+            ? errorMessage(set.error, 'Não deu para confirmar. Tente de novo.')
+            : null}
         </ErrorText>
 
         {/* Código validado não volta atrás: o servidor recusa. */}

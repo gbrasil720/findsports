@@ -35,10 +35,10 @@ import { usePalette } from '@/components/theme'
 import {
   ACID,
   BackButton,
+  ErrorState,
   Icon,
   INK,
   LIVE,
-  PillButton,
   Text,
   Title,
   text,
@@ -131,15 +131,13 @@ export default function Friends() {
         {overview.isPending ? (
           <ActivityIndicator color={palette.ink} style={{ marginTop: 24 }} />
         ) : overview.isError || !data ? (
-          <View style={styles.empty}>
-            <Text style={[text(15, 'SemiBold'), { color: palette.ink }]}>
-              Não deu para abrir seus amigos.
-            </Text>
-            <PillButton
-              label="Tentar de novo"
-              onPress={() => overview.refetch()}
-            />
-          </View>
+          <ErrorState
+            style={styles.empty}
+            title="Não deu para abrir seus amigos."
+            error={overview.error}
+            onRetry={overview.refetch}
+            retrying={overview.isFetching}
+          />
         ) : (
           <>
             {requests.length ? (

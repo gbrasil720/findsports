@@ -14,6 +14,7 @@ import {
   CabecalhoPagina,
   Card,
   EmBreve,
+  ErroBloco,
   Icone,
   IconeBotao,
   Kpi,
@@ -24,7 +25,7 @@ import {
 import { ehRascunho } from '@/domain/painel-jogos'
 import { countLabel, plural } from '@/lib/plural'
 import { BAR_RESERVATIONS_QUERY } from '@/lib/query-cache'
-import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
+import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import {
   useMyAnalyticsEntitlements,
@@ -54,7 +55,6 @@ import {
   semanaDe,
   somaDosJogos
 } from './hoje-model'
-import { QueryError } from './query-error'
 import './hoje.css'
 
 type RouterOutputs = inferRouterOutputs<AppRouter>
@@ -234,13 +234,11 @@ export function Hoje() {
       >
         {events.isError ? (
           <div className="hoje-espaco">
-            <QueryError
-              message={getUserFacingMessage(
-                events.error,
-                'Não foi possível carregar os jogos.'
-              )}
-              retryable={isRetryableError(events.error)}
-              onRetry={() => void events.refetch()}
+            <ErroBloco
+              titulo="Não foi possível carregar os jogos."
+              erro={events.error}
+              tentar={events.refetch}
+              tentando={events.isFetching}
             />
           </div>
         ) : (
@@ -268,7 +266,7 @@ export function Hoje() {
                 }
                 validados={hoje?.chegaram}
                 comOferta={bar.houseOffer !== null}
-                erro={going.isError ? () => void going.refetch() : null}
+                erro={going.isError ? going : null}
               />
             ) : null}
           </div>
@@ -288,7 +286,7 @@ export function Hoje() {
             }
           >
             {ratings.isError ? (
-              <Falha tentar={() => void ratings.refetch()} />
+              <Falha consulta={ratings} />
             ) : !ratings.data ? (
               <Carregando linhas={2} />
             ) : ratings.data.recent.length === 0 ? (
@@ -539,14 +537,22 @@ function Carregando({ linhas }: { linhas?: number }) {
   )
 }
 
-function Falha({ tentar }: { tentar: () => void }) {
+type Consulta = {
+  error: unknown
+  refetch: () => unknown
+  isFetching: boolean
+}
+
+/** O card pequeno que não carregou: a linha só (WEB-460). */
+function Falha({ consulta }: { consulta: Consulta }) {
   return (
-    <p className="hoje-vazio" role="alert">
-      Não foi possível carregar.{' '}
-      <button type="button" onClick={tentar} className="hoje-tentar">
-        Tentar de novo
-      </button>
-    </p>
+    <ErroBloco
+      compacto
+      titulo="Não foi possível carregar."
+      erro={consulta.error}
+      tentar={consulta.refetch}
+      tentando={consulta.isFetching}
+    />
   )
 }
 
@@ -640,7 +646,7 @@ function ChegaramAgora({
   /** Códigos validados hoje (analytics); sem ele, conta a lista. */
   validados: number | undefined
   comOferta: boolean
-  erro: (() => void) | null
+  erro: Consulta | null
 }) {
   const total = validados ?? chegadas?.length
   return (
@@ -654,7 +660,7 @@ function ChegaramAgora({
       }
     >
       {erro ? (
-        <Falha tentar={erro} />
+        <Falha consulta={erro} />
       ) : !chegadas ? (
         <Carregando linhas={3} />
       ) : chegadas.length === 0 ? (
@@ -695,7 +701,7 @@ function DesempenhoMini() {
       meta="últimos 30 dias"
     >
       {desempenho.isError ? (
-        <Falha tentar={() => void desempenho.refetch()} />
+        <Falha consulta={desempenho} />
       ) : !desempenho.data ? (
         <Carregando linhas={3} />
       ) : (

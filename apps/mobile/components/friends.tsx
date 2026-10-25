@@ -6,7 +6,17 @@ import Animated from 'react-native-reanimated'
 import { HardShadow, initials } from '@/components/explore'
 import { haptic, usePress } from '@/components/motion'
 import { type Palette, usePalette } from '@/components/theme'
-import { ACID, HOT, Icon, INK, LIVE, PAPER, Text, text } from '@/components/ui'
+import {
+  ACID,
+  errorMessage,
+  HOT,
+  Icon,
+  INK,
+  LIVE,
+  PAPER,
+  Text,
+  text
+} from '@/components/ui'
 import { takePendingInvite } from '@/lib/invite'
 import { trpc } from '@/lib/trpc'
 
@@ -276,9 +286,12 @@ export function useFriendActions() {
   const queryClient = useQueryClient()
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: trpc.friends.pathKey() })
-  const onError = (error: { message: string }) => {
+  const onError = (error: unknown) => {
     haptic.error()
-    Alert.alert('Não deu certo', error.message)
+    Alert.alert(
+      'Não deu certo',
+      errorMessage(error, 'Tente de novo em instantes.')
+    )
   }
   const request = useMutation(
     trpc.friends.request.mutationOptions({

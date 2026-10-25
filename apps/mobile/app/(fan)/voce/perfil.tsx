@@ -23,11 +23,11 @@ import { useTabBarSpace } from '@/components/tab-bar'
 import { usePalette } from '@/components/theme'
 import {
   ACID,
+  ErrorState,
   GlassRound,
   Icon,
   INK,
   PAPER,
-  PillButton,
   Text,
   text,
   usePullRefresh,
@@ -212,17 +212,15 @@ export default function Profile() {
         {queries.some((q) => q.isPending) ? (
           <ActivityIndicator color={palette.ink} style={{ marginTop: 40 }} />
         ) : queries.some((q) => q.isError) ? (
-          <View style={styles.empty}>
-            <Text style={[text(15, 'SemiBold'), { color: palette.ink }]}>
-              Não deu para abrir seu perfil.
-            </Text>
-            <PillButton
-              label="Tentar de novo"
-              onPress={() => {
-                for (const q of queries) if (q.isError) q.refetch()
-              }}
-            />
-          </View>
+          <ErrorState
+            style={styles.empty}
+            title="Não deu para abrir seu perfil."
+            error={queries.find((q) => q.isError)?.error}
+            onRetry={() => {
+              for (const q of queries) if (q.isError) q.refetch()
+            }}
+            retrying={queries.some((q) => q.isFetching)}
+          />
         ) : (
           <>
             <Tap onPress={() => router.navigate('/voce/conquistas')}>

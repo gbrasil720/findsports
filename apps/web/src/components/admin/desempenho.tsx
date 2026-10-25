@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { type KeyboardEvent, type PointerEvent, useState } from 'react'
 import { getPlan } from '@/lib/plan-catalog'
-import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import {
   Badge,
@@ -11,6 +10,7 @@ import {
   CabecalhoPagina,
   Campo,
   Card,
+  ErroBloco,
   Icone,
   Progresso,
   Seg
@@ -54,7 +54,6 @@ import {
 import type { MetricId } from './metric-glossary'
 import { getMetric } from './metric-glossary'
 import { MetricHint } from './metric-hint'
-import { QueryError } from './query-error'
 
 /* ─── Peças ─── */
 
@@ -839,13 +838,11 @@ export function Desempenho() {
       {overview.isPending ? (
         <Carregando />
       ) : overview.isError || !data ? (
-        <QueryError
-          message={getUserFacingMessage(
-            overview.error,
-            'Não foi possível carregar as métricas. Tente novamente.'
-          )}
-          retryable={isRetryableError(overview.error)}
-          onRetry={() => void overview.refetch()}
+        <ErroBloco
+          titulo="Não foi possível carregar as métricas."
+          erro={overview.error}
+          tentar={overview.refetch}
+          tentando={overview.isFetching}
         />
       ) : (
         <>
@@ -874,13 +871,11 @@ export function Desempenho() {
             ) : null}
           </div>
           {jogos.isError ? (
-            <QueryError
-              message={getUserFacingMessage(
-                jogos.error,
-                'Não foi possível carregar o desempenho dos jogos. Tente novamente.'
-              )}
-              retryable={isRetryableError(jogos.error)}
-              onRetry={() => void jogos.refetch()}
+            <ErroBloco
+              titulo="Não foi possível carregar o desempenho dos jogos."
+              erro={jogos.error}
+              tentar={jogos.refetch}
+              tentando={jogos.isFetching}
             />
           ) : (
             <ResumoDosJogos jogos={jogos.data?.events} />
