@@ -53,7 +53,8 @@ import {
   posicao,
   rotuloHora,
   semanaDe,
-  somaDosJogos
+  somaDosJogos,
+  vezNoBar
 } from './hoje-model'
 import './hoje.css'
 
@@ -265,7 +266,6 @@ export function Hoje() {
                   going.data ? chegadasDoDia(going.data, noite.dia) : undefined
                 }
                 validados={hoje?.chegaram}
-                comOferta={bar.houseOffer !== null}
                 erro={going.isError ? going : null}
               />
             ) : null}
@@ -639,13 +639,11 @@ function OfertaDaCasa({ oferta }: { oferta: string | null }) {
 function ChegaramAgora({
   chegadas,
   validados,
-  comOferta,
   erro
 }: {
   chegadas: Chegada[] | undefined
   /** Códigos validados hoje (analytics); sem ele, conta a lista. */
   validados: number | undefined
-  comOferta: boolean
   erro: Consulta | null
 }) {
   const total = validados ?? chegadas?.length
@@ -673,11 +671,11 @@ function ChegaramAgora({
               <div>
                 <b>{c.nome}</b>
                 <span>
-                  {hora(c.em)} · {gameTitle(c.jogo)}
+                  {hora(c.em)} · {vezNoBar(c.visita)}
                 </span>
               </div>
               <Badge tipo="acid">
-                ✓ {comOferta ? 'Oferta liberada' : 'Validado'}
+                ✓ {c.visita.offer ? 'Oferta liberada' : 'Validado'}
               </Badge>
             </li>
           ))}
