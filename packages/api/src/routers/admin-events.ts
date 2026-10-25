@@ -131,7 +131,10 @@ const title = gameTitle({
 
 type Executor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0]
 
-/** Trava o jogo e devolve o que o Grimório e as regras precisam dele. */
+/**
+ * Trava o jogo e devolve o que o Grimório e as regras precisam dele. Rascunho
+ * é recusado (WEB-459): fica fora da lista, e quem publica ou apaga é o bar.
+ */
 async function lockEvent(tx: Executor, eventId: string) {
   const [row] = await tx
     .select({
@@ -144,6 +147,7 @@ async function lockEvent(tx: Executor, eventId: string) {
       startsAt: event.startsAt,
       endsAt: event.endsAt,
       participantFreeText: event.participantFreeText,
+      publishedAt: event.publishedAt,
       duplicate: isDuplicate,
       freeText: isFreeText
     })
@@ -153,6 +157,12 @@ async function lockEvent(tx: Executor, eventId: string) {
     .for('update', { of: event })
   if (!row) {
     throw new TRPCError({ code: 'NOT_FOUND', message: 'Jogo não encontrado.' })
+  }
+  if (!row.publishedAt) {
+    throw new TRPCError({
+      code: 'PRECONDITION_FAILED',
+      message: 'Jogo em rascunho: só o bar publica ou apaga.'
+    })
   }
   return row
 }
