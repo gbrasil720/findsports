@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import * as Location from 'expo-location'
 import { useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
@@ -85,7 +85,9 @@ export default function Distance() {
       lng: choices.city?.lng ?? 0,
       radiusKm: choices.radius
     }),
-    enabled: !!choices.city
+    enabled: !!choices.city,
+    // Trocar o raio não apaga a pílula enquanto a contagem nova chega.
+    placeholderData: keepPreviousData
   })
 
   const center = choices.city ?? SAO_PAULO
