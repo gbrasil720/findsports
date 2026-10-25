@@ -6,6 +6,7 @@ import { ErrorText, Float, haptic, POP_LATE } from '@/components/motion'
 import { useTurnstile } from '@/components/turnstile'
 import {
   ACID,
+  authErrorMessage,
   BackButton,
   BG,
   CARD,
@@ -27,6 +28,7 @@ import {
   text,
   useCountdown
 } from '@/components/ui'
+import { settleAuth } from '@/lib/auth-attempt'
 import { authClient } from '@/lib/auth-client'
 
 /*
@@ -43,14 +45,22 @@ export default function VerifyEmail() {
 
   const resend = async () => {
     setNotice(null)
-    const result = await authClient.sendVerificationEmail({
-      email,
-      callbackURL: '/verified',
-      fetchOptions: turnstile.fetchOptions
-    })
+    const result = await settleAuth(
+      authClient.sendVerificationEmail({
+        email,
+        callbackURL: '/verified',
+        fetchOptions: turnstile.fetchOptions
+      })
+    )
     turnstile.reset()
     if (result.error) {
-      setNotice('Não foi possível reenviar agora. Tente daqui a pouco.')
+      // Sem rede, a frase de conexão; o "Reenviar" já é a nova tentativa.
+      setNotice(
+        authErrorMessage(
+          result.error,
+          'Não foi possível reenviar agora. Tente daqui a pouco.'
+        )
+      )
       return
     }
     haptic.success()
