@@ -35,6 +35,7 @@ import {
   reservationCodeUse
 } from '@findsports_oficial/db/schema/reservation'
 import { TRPCError } from '@trpc/server'
+import { ATTENDANCE_DISPLAY_FLOOR } from './attendance-floor'
 import {
   issueTicket,
   readTicket,
@@ -55,8 +56,7 @@ import { visit } from './visits'
 
 const eventEnd = eventEndSql()
 
-/** Piso de exibição (WEB-123). Abaixo dele, só o botão. */
-export const ATTENDANCE_DISPLAY_FLOOR = 15
+export { ATTENDANCE_DISPLAY_FLOOR }
 
 /**
  * Histórico suficiente para o sinal (WEB-122): jogos encerrados do bar com
