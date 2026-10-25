@@ -270,6 +270,22 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   expirado ou inexistente na conta, o checkout segue a preço de tabela
   (`usableFounderCoupon`). A oferta acaba no painel do Stripe, não no app.
 
+### Avisos por e-mail do bar (WEB-441)
+
+Em `/admin/configuracoes` → Avisos o dono liga e desliga três e-mails (`bar.notice_*`,
+`pub.updateNotices`; padrões do design 2b: resumo e jogo lotando ligados, grade vazia
+desligada). Regras, textos e envio em `packages/api/src/lib/bar-notices.ts`:
+- **Resumo da semana** e **grade vazia** saem às segundas pelo cron diário (rotina
+  `bar_notices` em `lib/jobs.ts`, 01:00 de Brasília; nos outros dias ela não faz nada).
+  Só bar no ar. Presenças e códigos só no resumo do Elite (`bar.plan`), como no painel.
+  Com os dois ligados e a semana vazia vai só o resumo, que já leva a "Cadastrar jogos".
+- **Jogo lotando** sai na marcação (`setAttendance`) que passa de 20, uma vez por jogo,
+  depois da resposta (`runInBackground`). O e-mail não diz o número exato.
+- `bar_notice` (bar, tipo, semana ou jogo) garante uma vez só; envio recusado apaga a
+  linha e a falha sobe para o `job_run` (Bastidores). Rodar a rotina de novo na mesma
+  segunda pelo Houdini só manda o que faltou.
+- "Notificações no celular" segue "em breve" até o app abrir por link universal.
+
 ### Código do balcão pela comanda (WEB-412)
 
 Opção do bar Elite, **desligada por padrão** (`bar.confirms_codes_later`), escolhida
