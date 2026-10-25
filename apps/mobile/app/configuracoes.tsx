@@ -921,12 +921,11 @@ function Privacy() {
       // A recusa do limite diário já chega escrita para quem usa.
       onError: (error) => {
         haptic.error()
-        Alert.alert(
-          'Não foi possível enviar',
-          error.data?.code === 'TOO_MANY_REQUESTS'
-            ? error.message
-            : 'Tente de novo em instantes.'
-        )
+        if (error.data?.code === 'TOO_MANY_REQUESTS') {
+          Alert.alert('Arquivo já pedido', error.message)
+        } else {
+          Alert.alert('Não foi possível enviar', 'Tente de novo em instantes.')
+        }
       }
     })
   )
