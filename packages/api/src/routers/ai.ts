@@ -32,7 +32,14 @@ import {
 } from '../lib/ai/events'
 import { assignVariant, chatAllowance } from '../lib/ai/limits'
 import { CHAT_MODELS, type ChatVariant } from '../lib/ai/models'
-import { aiGate, runAi } from '../lib/ai/run'
+import {
+  type AiCall,
+  AiStoppedError,
+  aiGate,
+  runAi,
+  stopRun,
+  wasStopped
+} from '../lib/ai/run'
 import { getAppConfig } from '../lib/app-config'
 import { setAttendance } from '../lib/attendance'
 import { createFriendCall } from '../lib/friend-calls'
@@ -249,9 +256,16 @@ async function talk(
   const outcome = await runAi(
     { userId, feature: 'chat', variant, assignedModel: models[0] },
     result.gate.deps,
-    async (call) => {
+    async (call, runId) => {
+      emit({ type: 'run', runId })
+      // Parar (`ai.stop`) corta a próxima chamada ao modelo; a que já saiu é
+      // cobrada e entra no gasto do `ai_run`.
+      const stoppable: AiCall = async (...args) => {
+        if (await wasStopped(runId)) throw new AiStoppedError()
+        return call(...args)
+      }
       const turnResult = await converse(input.message, input.history, {
-        call,
+        call: stoppable,
         models,
         runTool: (name, args, callId) =>
           runTool(name, args, toolCtx, state, callId),
@@ -270,6 +284,8 @@ async function talk(
       }
     }
   )
+  // Parada depois da última chamada: ninguém lê, nada de proposta nem `done`.
+  if (outcome.status === 'stopped') return
   const reply = outcome.value
   if (reply.invented.length)
     console.warn(
@@ -414,6 +430,8 @@ export const aiRouter = router({
     const queue = eventQueue<ChatEvent>()
     const work = talk(ctx, input, queue.push)
       .catch((error) => {
+        // Parada pelo torcedor: o app já não lê, não há o que avisar.
+        if (error instanceof AiStoppedError) return
         console.error(
           JSON.stringify({
             msg: 'ai.converse.failed',
@@ -423,13 +441,26 @@ export const aiRouter = router({
         queue.push({ type: 'blocked', reason: 'unavailable' })
       })
       .finally(queue.close)
-    // O app pode desconectar no meio (parar, sair da tela). No Worker, o que
-    // fica fora do `waitUntil` é cancelado junto, e o modelo já cobrou: o
-    // trabalho vai até o fim e grava o `ai_run`, só não tem mais quem leia.
+    // O app pode desconectar no meio (sair da tela, perder a rede). No
+    // Worker, o que fica fora do `waitUntil` é cancelado junto, e o modelo já
+    // cobrou: o trabalho vai até o fim e grava o `ai_run`, só não tem mais
+    // quem leia. Desconectar não é parar: parar é o `ai.stop`, explícito.
     runInBackground(work)
     yield* queue.drain()
     await work
   }),
+
+  /**
+   * O "parar" da 24b (WEB-430): a próxima chamada ao modelo não sai, e a
+   * mensagem não desconta do limite. A chamada já feita é cobrada da Onside
+   * (o gasto fica no `ai_run`). Resposta já pronta não é parada: `stopped`
+   * diz se parou.
+   */
+  stop: fanProcedure
+    .input(z.object({ runId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => ({
+      stopped: await stopRun(input.runId, ctx.session.user.id)
+    })),
 
   /**
    * "Confirmar" de uma proposta (24d → 24e). Vale uma vez e só para quem a
