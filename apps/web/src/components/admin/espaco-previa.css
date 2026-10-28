@@ -25,9 +25,12 @@
   /* O vidro do sistema (`Glass`): o tom claro e o escuro. */
   --a-glass: rgb(255 255 255 / 34%);
   --a-glass-ring: rgb(255 255 255 / 75%);
-  /* O mapa: o Apple Maps apagado vira listras no tom dele. */
+  /* O mapa (WEB-456): o chão dele enquanto carrega, e listras sem endereço. */
+  --a-map: #ece9e1;
   --a-map-1: #ebe7de;
   --a-map-2: #e3dfd5;
+  /* O raio de busca (`RadiusCircle`): tinta no claro, acid no escuro. */
+  --a-radius: #12120f;
 
   background: var(--a-sheet);
   color: var(--a-ink);
@@ -54,8 +57,10 @@
     --a-drop-ring: #1c1c18;
     --a-glass: rgb(36 36 32 / 40%);
     --a-glass-ring: rgb(255 255 255 / 24%);
+    --a-map: #1a1a17;
     --a-map-1: #22221e;
     --a-map-2: #1c1c18;
+    --a-radius: #c9f135;
   }
 }
 

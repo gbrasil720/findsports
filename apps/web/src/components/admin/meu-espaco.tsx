@@ -621,9 +621,14 @@ export function MeuEspaco() {
                   )
                 : null
             }
-            localizado={Boolean(
+            local={
               profile.data?.latitude && profile.data.longitude
-            )}
+                ? {
+                    lat: Number(profile.data.latitude),
+                    lng: Number(profile.data.longitude)
+                  }
+                : null
+            }
             now={new Date(now)}
           />
         </div>
