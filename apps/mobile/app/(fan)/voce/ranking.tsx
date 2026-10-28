@@ -1,7 +1,7 @@
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import type { inferRouterOutputs } from '@trpc/server'
-import { type Href, useRouter } from 'expo-router'
+import { type Href, useLocalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
 import {
   ActivityIndicator,
@@ -15,6 +15,13 @@ import {
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card, FilterChip } from '@/components/card'
+import {
+  type CityBoard,
+  OffGlobal,
+  PlaceRow,
+  placeWidth,
+  useCityBoard
+} from '@/components/city-ranking'
 import { Avatar, personLine } from '@/components/friends'
 import { Glass } from '@/components/glass'
 import { haptic, SWAP, usePressScale } from '@/components/motion'
@@ -53,16 +60,17 @@ import { trpc } from '@/lib/trpc'
  * Ranking do mês (13 do design: 10d com amigos, 11e sem). Você e os amigos
  * aceitos que deixam os amigos ver a atividade, pela métrica escolhida; a
  * conta, o empate e a virada no dia 1º são do servidor (`ranking.friends`).
- * A posição na cidade (`ranking.city`) só aparece como número: a lista da
- * cidade e as comunidades ainda não existem e avisam "em breve".
+ * A aba Global (10e, 27c; WEB-465) é a cidade do perfil (`ranking.city`): a
+ * sua posição, o top e o "Ver todos" da lista inteira, ou o 27c para quem
+ * não ligou "Aparecer no ranking global". As comunidades avisam "em breve".
  */
 
 type Board = inferRouterOutputs<AppRouter>['ranking']['friends']
 type Row = Board['rows'][number]
-type City = inferRouterOutputs<AppRouter>['ranking']['city']
 type Tab = 'friends' | 'global'
 
 const PROFILE = '/voce/perfil' as Href
+const CITY = '/voce/ranking-cidade' as Href
 
 export default function Ranking() {
   const router = useRouter()
@@ -71,17 +79,24 @@ export default function Ranking() {
   const palette = usePalette()
   const soon = useSoon()
   useStatusBar('auto')
-  const [tab, setTab] = useState<Tab>('friends')
+  // `?aba=global` abre direto na cidade (navegador DEV, 27c).
+  const { aba } = useLocalSearchParams<{ aba?: string }>()
+  const [tab, setTab] = useState<Tab>(aba === 'global' ? 'global' : 'friends')
   const [metric, setMetric] = useState<Metric>('bars')
   const board = useQuery({
     ...trpc.ranking.friends.queryOptions({ metric }),
     placeholderData: keepPreviousData
   })
   const alone = board.data ? board.data.rows.length < 2 : false
-  const city = useQuery({
-    ...trpc.ranking.city.queryOptions(),
-    enabled: tab === 'global' || alone
-  })
+  const city = useCityBoard('bars', tab === 'global' || alone)
+  const head = city.data?.pages[0]
+  // Fora do ranking global você não vê a sua posição (27c).
+  const where =
+    head === null
+      ? null
+      : head?.listed && head.position
+        ? { city: head.city, position: head.position }
+        : undefined
   const pull = usePullRefresh(() =>
     Promise.all([board.refetch(), city.isFetched ? city.refetch() : null])
   )
@@ -147,16 +162,42 @@ export default function Ranking() {
 
         {tab === 'global' ? (
           <Animated.View entering={SWAP} style={styles.stack}>
-            <CityRow
-              data={city.data}
-              pending={city.isPending}
-              lead="Você está em"
-              // Sem cidade no perfil, o toque leva a escolher uma.
-              onPress={city.data ? undefined : () => router.push('/cidade')}
-            />
-            <Text style={[text(13, 'Regular', 1.4), { color: palette.muted }]}>
-              {RULES.bars} A lista da cidade chega em breve.
-            </Text>
+            {city.isPending ? (
+              <ActivityIndicator
+                color={palette.ink}
+                style={{ marginTop: 40 }}
+              />
+            ) : city.isError ? (
+              <View style={styles.stack}>
+                <Text style={[text(15, 'SemiBold'), { color: palette.ink }]}>
+                  Não deu para abrir o ranking.
+                </Text>
+                <PillButton
+                  label="Tentar de novo"
+                  onPress={() => city.refetch()}
+                />
+              </View>
+            ) : head && !head.listed ? (
+              <OffGlobal data={head} />
+            ) : (
+              <>
+                <CityRow
+                  data={where}
+                  pending={false}
+                  lead="Você está em"
+                  // Sem cidade no perfil, o toque leva a escolher uma.
+                  onPress={() => router.push(where ? CITY : '/cidade')}
+                />
+                {head?.listed && head.rows.length ? (
+                  <CityTop data={head} onAll={() => router.push(CITY)} />
+                ) : null}
+                <Text
+                  style={[text(13, 'Regular', 1.4), { color: palette.muted }]}
+                >
+                  {RULES.bars} {TIE_RULE}
+                </Text>
+              </>
+            )}
           </Animated.View>
         ) : board.isPending ? (
           <ActivityIndicator color={palette.ink} style={{ marginTop: 40 }} />
@@ -197,12 +238,14 @@ export default function Ranking() {
               label="Tenho um código de comunidade"
               onPress={() => soon.show('As comunidades chegam em breve')}
             />
-            <CityRow
-              data={city.data}
-              pending={city.isPending}
-              lead="Enquanto isso, você está em"
-              onPress={() => setTab('global')}
-            />
+            {where !== undefined || city.isPending ? (
+              <CityRow
+                data={where}
+                pending={city.isPending}
+                lead="Enquanto isso, você está em"
+                onPress={() => setTab('global')}
+              />
+            ) : null}
           </Animated.View>
         ) : (
           <FriendsBoard
@@ -649,7 +692,7 @@ function CityRow({
   lead,
   onPress
 }: {
-  data: City | undefined
+  data: { city: string; position: number } | null | undefined
   pending: boolean
   lead: string
   onPress?: () => void
@@ -683,6 +726,47 @@ function CityRow({
         {onPress ? <Icon name="next" size={12} color={palette.muted} /> : null}
       </Pressable>
     </Card>
+  )
+}
+
+/** "Top de outubro · bares diferentes" e o "Ver todos" da lista (10e). */
+function CityTop({ data, onAll }: { data: CityBoard; onAll: () => void }) {
+  const palette = usePalette()
+  const top = data.rows.slice(0, 5)
+  return (
+    <View style={{ gap: 8 }}>
+      <View style={styles.meta}>
+        <Text style={[text(13.5), { color: palette.muted }]}>
+          Top de {monthLabel(data.month).toLocaleLowerCase('pt-BR')} ·{' '}
+          {data.metric === 'bars' ? 'bares diferentes' : 'jogos'}
+        </Text>
+        <Pressable
+          accessibilityRole="link"
+          hitSlop={10}
+          onPress={() => {
+            haptic.select()
+            onAll()
+          }}
+          style={({ pressed }) => [styles.newBars, pressed && { opacity: 0.6 }]}
+        >
+          <Text style={[text(13.5, 'Bold'), { color: palette.ink }]}>
+            Ver todos
+          </Text>
+          <Icon name="next" size={12} color={palette.ink} />
+        </Pressable>
+      </View>
+      <Card soft>
+        {top.map((row, index) => (
+          <PlaceRow
+            key={row.id}
+            row={row}
+            metric={data.metric}
+            width={placeWidth(top)}
+            first={index === 0}
+          />
+        ))}
+      </Card>
+    </View>
   )
 }
 
