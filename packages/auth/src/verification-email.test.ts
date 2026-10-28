@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'bun:test'
+import { env } from '@findsports_oficial/env/server'
 import {
   createVerificationEmail,
   publicEmailUrl,
-  sendEmailWithResend,
-  sendVerificationEmailWithResend
+  sendEmail,
+  sendVerificationEmail
 } from './verification-email'
 
 describe('e-mail de verificação Onside', () => {
@@ -69,9 +70,9 @@ describe('e-mail de verificação Onside', () => {
     }
   })
 
-  it('envia HTML e texto pela API do Resend sem expor a chave no corpo', async () => {
+  it('envia HTML e texto pela API de e-mail sem expor a chave no corpo', async () => {
     let request: Request | undefined
-    await sendVerificationEmailWithResend({
+    await sendVerificationEmail({
       apiKey: 're_test',
       fromEmail: 'contato@onside.app',
       to: 'ana@example.com',
@@ -97,9 +98,9 @@ describe('e-mail de verificação Onside', () => {
     expect(JSON.stringify(body)).not.toContain('re_test')
   })
 
-  it('marca o envio como delivered quando o Resend aceita', async () => {
+  it('marca o envio como delivered quando a API de e-mail aceita', async () => {
     expect(
-      await sendEmailWithResend({
+      await sendEmail({
         apiKey: 're_test',
         fromEmail: 'contato@onside.app',
         to: 'ana@example.com',
@@ -111,9 +112,33 @@ describe('e-mail de verificação Onside', () => {
     ).toEqual({ delivered: true })
   })
 
+  it('envia para a base de EMAIL_API_URL (MillionSend, WEB-476)', async () => {
+    const keys = env as { EMAIL_API_URL: string }
+    const previous = keys.EMAIL_API_URL
+    keys.EMAIL_API_URL = 'https://api.millionsend.com/'
+    let url: string | undefined
+    try {
+      await sendEmail({
+        apiKey: 'ms_test',
+        fromEmail: 'contato@onside.app',
+        to: 'ana@example.com',
+        subject: 'ok',
+        html: '<p>ok</p>',
+        text: 'ok',
+        fetcher: async (input) => {
+          url = String(input)
+          return new Response('{}', { status: 200 })
+        }
+      })
+    } finally {
+      keys.EMAIL_API_URL = previous
+    }
+    expect(url).toBe('https://api.millionsend.com/emails')
+  })
+
   it('manda Reply-To próprio e anexos em base64 quando quem chama pede', async () => {
     let body: Record<string, unknown> | undefined
-    await sendEmailWithResend({
+    await sendEmail({
       apiKey: 're_test',
       fromEmail: 'contato@onside.app',
       to: 'contato@onside.sh',
@@ -149,7 +174,7 @@ describe('e-mail de verificação Onside', () => {
       'base64'
     )
     try {
-      await sendEmailWithResend({
+      await sendEmail({
         apiKey: 're_real',
         fromEmail: 'contato@onside.app',
         to: 'contato@onside.sh',
@@ -171,7 +196,7 @@ describe('e-mail de verificação Onside', () => {
     }
   })
 
-  it('em desenvolvimento, ausência de Resend não quebra o envio', async () => {
+  it('em desenvolvimento, sem chave de e-mail não quebra o envio', async () => {
     const previous = process.env.NODE_ENV
     process.env.NODE_ENV = 'development'
     const warn = console.warn
@@ -180,7 +205,7 @@ describe('e-mail de verificação Onside', () => {
       warnings.push(args)
     }
     try {
-      const result = await sendEmailWithResend({
+      const result = await sendEmail({
         apiKey: undefined,
         fromEmail: undefined,
         to: 'ana@example.com',
@@ -188,7 +213,7 @@ describe('e-mail de verificação Onside', () => {
         html: '<p>Olá</p>',
         text: 'Olá\n\nhttps://onside.app/verify-email?token=abc',
         fetcher: async () => {
-          throw new Error('não deveria chamar o Resend')
+          throw new Error('não deveria chamar a API de e-mail')
         }
       })
       expect(result).toEqual({ delivered: false })
@@ -201,12 +226,12 @@ describe('e-mail de verificação Onside', () => {
     }
   })
 
-  it('em produção, ausência de Resend continua sendo erro', async () => {
+  it('em produção, sem chave de e-mail continua sendo erro', async () => {
     const previous = process.env.NODE_ENV
     process.env.NODE_ENV = 'production'
     try {
       await expect(
-        sendEmailWithResend({
+        sendEmail({
           apiKey: undefined,
           fromEmail: undefined,
           to: 'ana@example.com',
@@ -214,10 +239,10 @@ describe('e-mail de verificação Onside', () => {
           html: '<p>Olá</p>',
           text: 'Olá',
           fetcher: async () => {
-            throw new Error('não deveria chamar o Resend')
+            throw new Error('não deveria chamar a API de e-mail')
           }
         })
-      ).rejects.toThrow('Resend não configurado para envio de e-mail.')
+      ).rejects.toThrow('Envio de e-mail não configurado.')
     } finally {
       process.env.NODE_ENV = previous
     }
@@ -233,7 +258,7 @@ describe('e-mail de verificação Onside', () => {
       lines.push(args)
     }
     try {
-      const result = await sendEmailWithResend({
+      const result = await sendEmail({
         apiKey: 're_real',
         fromEmail: 'contato@onside.app',
         to: 'ana@example.com',
@@ -241,7 +266,7 @@ describe('e-mail de verificação Onside', () => {
         html: '<p>Olá</p>',
         text: 'Olá\n\nhttps://preview.example/verify?token=abc',
         fetcher: async () => {
-          throw new Error('não deveria chamar o Resend')
+          throw new Error('não deveria chamar a API de e-mail')
         }
       })
       expect(result).toEqual({ delivered: true })

@@ -1,5 +1,5 @@
 import { createOnsideEmailTemplate } from './email-layout'
-import { sendEmailWithResend } from './verification-email'
+import { sendEmail } from './verification-email'
 
 type ResetPasswordEmailInput = {
   name: string
@@ -41,7 +41,7 @@ export function createResetPasswordEmail({
   }
 }
 
-export async function sendResetPasswordEmailWithResend(input: {
+export async function sendResetPasswordEmail(input: {
   apiKey: string | undefined
   fromEmail: string | undefined
   to: string
@@ -50,5 +50,5 @@ export async function sendResetPasswordEmailWithResend(input: {
   fetcher?: EmailFetcher
 }): Promise<void> {
   const email = createResetPasswordEmail(input)
-  await sendEmailWithResend({ ...input, ...email })
+  await sendEmail({ ...input, ...email })
 }
