@@ -18,6 +18,15 @@ async function openProfile(page: Page) {
 
 const button = (page: Page, name: string) =>
   page.getByRole('button', { name, exact: true })
+/** O que o "Salvar" grava da descrição: o texto mandado, em revisão. */
+async function descricaoGravada(barId: string) {
+  const [bar] = await query(
+    'SELECT description_pending, description_review FROM bar WHERE id = $1',
+    [barId]
+  )
+  return bar
+}
+
 const description = (page: Page) =>
   page
     .getByRole('region', { name: 'Informações', exact: true })
@@ -46,10 +55,11 @@ test('rede cai no meio de "Salvar alterações": o rascunho fica e "Tentar de no
   await expect(button(page, 'Salvo')).toBeVisible()
   await expect(button(page, 'Salvar alterações')).toBeDisabled()
 
-  const [bar] = await query('SELECT description FROM bar WHERE id = $1', [
-    barId
-  ])
-  expect(bar?.description).toBe('Telão novo e chope gelado.')
+  // A descrição salva espera a revisão da Onside (WEB-478).
+  expect(await descricaoGravada(barId)).toEqual({
+    description_pending: 'Telão novo e chope gelado.',
+    description_review: 'pending'
+  })
 })
 
 test('a mutation segura tenta de novo sozinha e o botão conta: "Tentando de novo…", depois "Salvo"', async ({
@@ -104,8 +114,9 @@ test('sem conexão: a faixa aparece, "Salvar" espera a rede, e ao voltar salva e
   await expect(button(page, 'Salvo')).toBeVisible()
   await expect(faixa.first()).toBeHidden()
 
-  const [bar] = await query('SELECT description FROM bar WHERE id = $1', [
-    barId
-  ])
-  expect(bar?.description).toBe('Salvo depois da queda.')
+  // A descrição salva espera a revisão da Onside (WEB-478).
+  expect(await descricaoGravada(barId)).toEqual({
+    description_pending: 'Salvo depois da queda.',
+    description_review: 'pending'
+  })
 })
