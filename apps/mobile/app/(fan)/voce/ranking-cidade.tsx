@@ -144,7 +144,7 @@ function Board({
         ))}
       </View>
       <View style={styles.meta}>
-        <Text style={[text(13), { color: palette.muted }]}>
+        <Text style={[text(13), { color: palette.muted, flexShrink: 1 }]}>
           <Text style={[text(13, 'Bold'), { color: palette.ink }]}>
             {first.total.toLocaleString('pt-BR')}
           </Text>{' '}

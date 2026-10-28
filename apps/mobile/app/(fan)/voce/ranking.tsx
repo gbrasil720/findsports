@@ -161,7 +161,12 @@ export default function Ranking() {
         />
 
         {tab === 'global' ? (
-          <Animated.View entering={SWAP} style={styles.stack}>
+          // Ligar o ranking global troca o 27c pela cidade no mesmo fade curto.
+          <Animated.View
+            key={head?.listed ? 'dentro' : 'fora'}
+            entering={SWAP}
+            style={styles.stack}
+          >
             {city.isPending ? (
               <ActivityIndicator
                 color={palette.ink}
