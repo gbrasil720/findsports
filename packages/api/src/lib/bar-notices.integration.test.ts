@@ -5,9 +5,9 @@ import { user } from '@findsports_oficial/db/schema/auth'
 import { bar, barNotice } from '@findsports_oficial/db/schema/platform'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 import {
-  fakeResend,
+  type EmailApiBody,
+  fakeEmailApi,
   inAMonth,
-  type ResendBody,
   seedBar
 } from '../routers/integration-seed'
 import { GAME_FILLING_THRESHOLD, sendWeeklyBarNotices } from './bar-notices'
@@ -38,7 +38,7 @@ async function seedFans(
   return ids
 }
 
-const to = (sent: ResendBody[], email: string) =>
+const to = (sent: EmailApiBody[], email: string) =>
   sent.filter((body) => body.to.includes(email))
 
 async function until(check: () => boolean) {
@@ -76,7 +76,7 @@ integrationTest(
   `jogo lotando: a marcação que passa de ${GAME_FILLING_THRESHOLD} avisa uma vez`,
   async () => {
     const cleanups: (() => unknown)[] = []
-    const sent = fakeResend(cleanups)
+    const sent = fakeEmailApi(cleanups)
     const ctx = await seedBar('starter', 'active', inAMonth())
     const ownerEmail = `${ctx.ownerId}@integration.invalid`
     const fans = await seedFans(ctx.db, GAME_FILLING_THRESHOLD + 1)
@@ -125,7 +125,7 @@ integrationTest(
 
 integrationTest('jogo lotando desligado: nada sai', async () => {
   const cleanups: (() => unknown)[] = []
-  const sent = fakeResend(cleanups)
+  const sent = fakeEmailApi(cleanups)
   const ctx = await seedBar('elite', 'active', inAMonth(), {
     noticeGameFilling: false
   })
@@ -154,7 +154,7 @@ integrationTest(
   'segunda: resumo para quem liga, grade vazia sem resumo, uma vez por semana',
   async () => {
     const cleanups: (() => unknown)[] = []
-    const sent = fakeResend(cleanups)
+    const sent = fakeEmailApi(cleanups)
     const elite = await seedBar('elite', 'active', inAMonth())
     const quiet = await seedBar('starter', 'active', inAMonth(), {
       noticeWeeklySummary: false,
@@ -219,7 +219,7 @@ integrationTest(
   'envio recusado: a falha sobe e o aviso fica para a próxima rodada',
   async () => {
     const cleanups: (() => unknown)[] = []
-    fakeResend(cleanups, 500)
+    fakeEmailApi(cleanups, 500)
     // Os outros bares do banco também recebem e também falham: o que importa
     // aqui é o deste.
     const ctx = await seedBar('starter', 'active', inAMonth())
@@ -245,7 +245,7 @@ integrationTest(
 // O bar desligado do ar não recebe nada.
 integrationTest('bar fora do ar fica de fora', async () => {
   const cleanups: (() => unknown)[] = []
-  const sent = fakeResend(cleanups)
+  const sent = fakeEmailApi(cleanups)
   const ctx = await seedBar('starter', 'active', inAMonth(), {
     isActive: false
   })

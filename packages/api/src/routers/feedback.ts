@@ -1,7 +1,7 @@
 import {
   type EmailAttachment,
   escapeHtml,
-  sendEmailWithResend
+  sendEmail
 } from '@findsports_oficial/auth/verification-email'
 import { db, eq } from '@findsports_oficial/db'
 import { bar } from '@findsports_oficial/db/schema/platform'
@@ -136,7 +136,7 @@ export function feedbackAttachments(images: string[]): EmailAttachment[] {
       expected.every((byte, at) => byte === -1 || bytes[at] === byte)
     )
     // O comprimento confere que o texto é só base64: o `Buffer` pula o que
-    // não reconhece, e o anexo vai para a Resend como chegou.
+    // não reconhece, e o anexo vai para a API de e-mail como chegou.
     if (!signature || content.length !== Math.ceil(bytes.length / 3) * 4) {
       throw new TRPCError({
         code: 'UNSUPPORTED_MEDIA_TYPE',
@@ -188,9 +188,9 @@ export const feedbackRouter = router({
                 .from(bar)
                 .where(eq(bar.userId, user.id))
             : []
-        await sendEmailWithResend({
-          apiKey: env.RESEND_API_KEY,
-          fromEmail: env.RESEND_FROM_EMAIL,
+        await sendEmail({
+          apiKey: env.EMAIL_API_KEY,
+          fromEmail: env.EMAIL_FROM,
           to: FEEDBACK_TO,
           replyTo: user.email,
           attachments,

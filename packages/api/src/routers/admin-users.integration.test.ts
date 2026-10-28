@@ -8,7 +8,7 @@ import { contextFor, inAMonth, load, seedBar } from './integration-seed'
 /**
  * WEB-392: ficha da pessoa e os e-mails que o admin manda por ela. O envio é
  * conferido no `sendVerificationEmail`/`sendResetPassword` da config do
- * better-auth, que é por onde todo e-mail dele sai (outbox, console ou Resend
+ * better-auth, que é por onde todo e-mail dele sai (outbox, console ou API de e-mail
  * depois disso é escolha do ambiente).
  */
 
@@ -121,7 +121,7 @@ integrationTest(
     const send = spyOn(
       auth.options.emailVerification,
       'sendVerificationEmail'
-    ).mockRejectedValue(new Error('Resend fora do ar'))
+    ).mockRejectedValue(new Error('API de e-mail fora do ar'))
     try {
       await expect(
         admin.adminUsers.resendVerification({ userId: person.id })
