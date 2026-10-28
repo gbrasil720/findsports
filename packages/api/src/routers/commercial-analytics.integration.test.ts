@@ -1,6 +1,9 @@
 import { expect, test } from 'bun:test'
 import { and, eq, gte, inArray, sql } from '@findsports_oficial/db'
-import { brasiliaDay } from '@findsports_oficial/db/event-window'
+import {
+  brasiliaDay,
+  brasiliaDayStart
+} from '@findsports_oficial/db/event-window'
 import {
   analyticsRetentionRun,
   barCommercialDailyRollup,
@@ -18,7 +21,13 @@ import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolv
 import { TRPCError } from '@trpc/server'
 import { recordCommercialEvent } from '../lib/commercial-analytics/recorder'
 import type { CommercialEventType } from '../lib/commercial-analytics/types'
-import { contextFor, inAMonth, load, seedBar } from './integration-seed'
+import {
+  contextFor,
+  inAMonth,
+  load,
+  refusal,
+  seedBar
+} from './integration-seed'
 
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
 
@@ -1053,6 +1062,132 @@ integrationTest(
     } finally {
       if (tz === undefined) delete process.env.TZ
       else process.env.TZ = tz
+      await seed.cleanup()
+    }
+  }
+)
+
+// WEB-449: a série diária é de todos os planos. O Starter não vê os canais um
+// a um, então os contatos chegam somados, como o `highIntentActions`.
+integrationTest(
+  'WEB-449: Starter recebe a série diária com os contatos somados',
+  async () => {
+    const seed = await seedBar('starter', 'active', inAMonth())
+    const at = new Date(Date.now() - 60_000)
+    try {
+      await seed.db.insert(barCommercialEvent).values(
+        (['profile_view', 'whatsapp_opened', 'directions_opened'] as const).map(
+          (type) => ({
+            barId: seed.barId,
+            actorUserId: seed.fanId,
+            type,
+            occurredAt: at,
+            commercialDay: brasiliaDay(at)
+          })
+        )
+      )
+      const hoje = brasiliaDay(at)
+      const overview =
+        await seed.owner.commercialAnalytics.getMyAnalyticsOverview({
+          from: brasiliaDay(at, -29),
+          to: hoje
+        })
+      expect(overview.whatsappOpened).toBeNull()
+      expect(overview.dailyProfileViews).toHaveLength(30)
+      expect(
+        overview.dailyProfileViews.find((p) => p.date === hoje)?.value
+      ).toBe(1)
+      expect(
+        overview.dailyHighIntentActions.find((p) => p.date === hoje)?.value
+      ).toBe(2)
+    } finally {
+      await seed.cleanup()
+    }
+  }
+)
+
+integrationTest(
+  'WEB-449: interesse de hoje contra o normal do mesmo dia da semana',
+  async () => {
+    const now = new Date()
+    const seed = await seedBar('starter', 'active', inAMonth(), {
+      createdAt: new Date(now.getTime() - 60 * 24 * 3_600_000)
+    })
+    const fans = Array.from({ length: 3 }, () => crypto.randomUUID())
+    await seed.db.insert(user).values(
+      fans.map((id) => ({
+        id,
+        name: 'Torcedor de integração',
+        email: `${id}@integration.invalid`,
+        emailVerified: true,
+        role: 'fan' as const,
+        onboardingCompleted: true
+      }))
+    )
+    const hoje = brasiliaDay(now)
+    const inicio = brasiliaDayStart(hoje).getTime()
+    const passo = Math.min(1000, (now.getTime() - inicio) / 2)
+    const semana = (k: number) => inicio - k * 7 * 24 * 3_600_000 + passo
+    const [a, b, c] = fans as [string, string, string]
+    // Hoje 3 pessoas; nas quatro semanas antes, 2, 2, 1 e 1 (normal 1,5).
+    const interesse: [number, string][] = [
+      [semana(0), a],
+      [semana(0), b],
+      [semana(0), c],
+      [semana(1), a],
+      [semana(1), b],
+      [semana(2), a],
+      [semana(2), c],
+      [semana(3), b],
+      [semana(4), c],
+      // Fora da janela: a véspera da semana passada não conta.
+      [semana(1) - 2 * passo, c]
+    ]
+    try {
+      await seed.db.insert(barCommercialEvent).values([
+        ...interesse.map(([ms, actor]) => ({
+          barId: seed.barId,
+          actorUserId: actor,
+          type: 'whatsapp_opened' as const,
+          occurredAt: new Date(ms),
+          commercialDay: brasiliaDay(ms)
+        })),
+        // Abrir o perfil não é interesse.
+        {
+          barId: seed.barId,
+          actorUserId: seed.fanId,
+          type: 'profile_view' as const,
+          occurredAt: new Date(semana(1)),
+          commercialDay: brasiliaDay(semana(1))
+        }
+      ])
+
+      expect(
+        await seed.owner.commercialAnalytics.getMyWeekdayInterest({
+          day: hoje
+        })
+      ).toEqual({
+        day: hoje,
+        interestedPeople: 3,
+        normal: 1.5,
+        changePercent: 100,
+        weeks: 4
+      })
+      const amanha = refusal(
+        seed.owner.commercialAnalytics.getMyWeekdayInterest({
+          day: brasiliaDay(now, 1)
+        })
+      )
+      expect((await amanha).code).toBe('BAD_REQUEST')
+      // Quatro semanas antes de três dias atrás passam dos 30 do Starter.
+      const antigo = refusal(
+        seed.owner.commercialAnalytics.getMyWeekdayInterest({
+          day: brasiliaDay(now, -3)
+        })
+      )
+      expect((await antigo).code).toBe('FORBIDDEN')
+    } finally {
+      await seed.db.delete(user).where(inArray(user.id, fans))
       await seed.cleanup()
     }
   }
