@@ -35,7 +35,9 @@ const FILTERS = [
       'bar.sync_search',
       'bar.extend_trial',
       'bar.take_off_air',
-      'bar.put_on_air'
+      'bar.put_on_air',
+      'bar.photo_approve',
+      'bar.photo_reject'
     ]
   },
   { label: 'Jogos', kinds: ['event.update', 'event.delete', 'event.fix'] }

@@ -57,6 +57,7 @@ import { Route as HoudiniAppGrimorioRouteImport } from './routes/houdini/_app/gr
 import { Route as HoudiniAppIaRouteImport } from './routes/houdini/_app/ia'
 import { Route as HoudiniAppJogosRouteImport } from './routes/houdini/_app/jogos'
 import { Route as HoudiniAppPessoasRouteImport } from './routes/houdini/_app/pessoas'
+import { Route as HoudiniAppRevisaoRouteImport } from './routes/houdini/_app/revisao'
 import { Route as onboardingOnboardingPubNoArRouteImport } from './routes/(onboarding)/onboarding.pub_.no-ar'
 import { Route as HoudiniAppBaresBarIdRouteImport } from './routes/houdini/_app/bares_.$barId'
 import { Route as HoudiniAppPessoasUserIdRouteImport } from './routes/houdini/_app/pessoas_.$userId'
@@ -300,6 +301,11 @@ const HoudiniAppPessoasRoute = HoudiniAppPessoasRouteImport.update({
   path: '/pessoas',
   getParentRoute: () => HoudiniAppRoute,
 } as any)
+const HoudiniAppRevisaoRoute = HoudiniAppRevisaoRouteImport.update({
+  id: '/revisao',
+  path: '/revisao',
+  getParentRoute: () => HoudiniAppRoute,
+} as any)
 const onboardingOnboardingPubNoArRoute =
   onboardingOnboardingPubNoArRouteImport.update({
     id: '/(onboarding)/onboarding/pub_/no-ar',
@@ -364,6 +370,7 @@ export interface FileRoutesByFullPath {
   '/houdini/ia': typeof HoudiniAppIaRoute
   '/houdini/jogos': typeof HoudiniAppJogosRoute
   '/houdini/pessoas': typeof HoudiniAppPessoasRoute
+  '/houdini/revisao': typeof HoudiniAppRevisaoRoute
   '/houdini/': typeof HoudiniAppIndexRoute
   '/onboarding/pub/no-ar': typeof onboardingOnboardingPubNoArRoute
   '/houdini/bares/$barId': typeof HoudiniAppBaresBarIdRoute
@@ -415,6 +422,7 @@ export interface FileRoutesByTo {
   '/houdini/ia': typeof HoudiniAppIaRoute
   '/houdini/jogos': typeof HoudiniAppJogosRoute
   '/houdini/pessoas': typeof HoudiniAppPessoasRoute
+  '/houdini/revisao': typeof HoudiniAppRevisaoRoute
   '/onboarding/pub/no-ar': typeof onboardingOnboardingPubNoArRoute
   '/houdini/bares/$barId': typeof HoudiniAppBaresBarIdRoute
   '/houdini/pessoas/$userId': typeof HoudiniAppPessoasUserIdRoute
@@ -468,6 +476,7 @@ export interface FileRoutesById {
   '/houdini/_app/ia': typeof HoudiniAppIaRoute
   '/houdini/_app/jogos': typeof HoudiniAppJogosRoute
   '/houdini/_app/pessoas': typeof HoudiniAppPessoasRoute
+  '/houdini/_app/revisao': typeof HoudiniAppRevisaoRoute
   '/houdini/_app/': typeof HoudiniAppIndexRoute
   '/(onboarding)/onboarding/pub_/no-ar': typeof onboardingOnboardingPubNoArRoute
   '/houdini/_app/bares_/$barId': typeof HoudiniAppBaresBarIdRoute
@@ -522,6 +531,7 @@ export interface FileRouteTypes {
     | '/houdini/ia'
     | '/houdini/jogos'
     | '/houdini/pessoas'
+    | '/houdini/revisao'
     | '/houdini/'
     | '/onboarding/pub/no-ar'
     | '/houdini/bares/$barId'
@@ -573,6 +583,7 @@ export interface FileRouteTypes {
     | '/houdini/ia'
     | '/houdini/jogos'
     | '/houdini/pessoas'
+    | '/houdini/revisao'
     | '/onboarding/pub/no-ar'
     | '/houdini/bares/$barId'
     | '/houdini/pessoas/$userId'
@@ -625,6 +636,7 @@ export interface FileRouteTypes {
     | '/houdini/_app/ia'
     | '/houdini/_app/jogos'
     | '/houdini/_app/pessoas'
+    | '/houdini/_app/revisao'
     | '/houdini/_app/'
     | '/(onboarding)/onboarding/pub_/no-ar'
     | '/houdini/_app/bares_/$barId'
@@ -1001,6 +1013,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HoudiniAppPessoasRouteImport
       parentRoute: typeof HoudiniAppRoute
     }
+    '/houdini/_app/revisao': {
+      id: '/houdini/_app/revisao'
+      path: '/revisao'
+      fullPath: '/houdini/revisao'
+      preLoaderRoute: typeof HoudiniAppRevisaoRouteImport
+      parentRoute: typeof HoudiniAppRoute
+    }
     '/(onboarding)/onboarding/pub_/no-ar': {
       id: '/(onboarding)/onboarding/pub_/no-ar'
       path: '/onboarding/pub/no-ar'
@@ -1059,6 +1078,7 @@ interface HoudiniAppRouteChildren {
   HoudiniAppIaRoute: typeof HoudiniAppIaRoute
   HoudiniAppJogosRoute: typeof HoudiniAppJogosRoute
   HoudiniAppPessoasRoute: typeof HoudiniAppPessoasRoute
+  HoudiniAppRevisaoRoute: typeof HoudiniAppRevisaoRoute
   HoudiniAppIndexRoute: typeof HoudiniAppIndexRoute
   HoudiniAppBaresBarIdRoute: typeof HoudiniAppBaresBarIdRoute
   HoudiniAppPessoasUserIdRoute: typeof HoudiniAppPessoasUserIdRoute
@@ -1074,6 +1094,7 @@ const HoudiniAppRouteChildren: HoudiniAppRouteChildren = {
   HoudiniAppIaRoute: HoudiniAppIaRoute,
   HoudiniAppJogosRoute: HoudiniAppJogosRoute,
   HoudiniAppPessoasRoute: HoudiniAppPessoasRoute,
+  HoudiniAppRevisaoRoute: HoudiniAppRevisaoRoute,
   HoudiniAppIndexRoute: HoudiniAppIndexRoute,
   HoudiniAppBaresBarIdRoute: HoudiniAppBaresBarIdRoute,
   HoudiniAppPessoasUserIdRoute: HoudiniAppPessoasUserIdRoute,

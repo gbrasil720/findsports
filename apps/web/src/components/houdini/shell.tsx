@@ -16,6 +16,7 @@ export const HOUDINI_NAV = [
   { to: '/houdini/fantasmas', label: 'Fantasmas', icon: 'ghost' },
   { to: '/houdini/bares', label: 'Bares', icon: 'store' },
   { to: '/houdini/jogos', label: 'Jogos', icon: 'cal' },
+  { to: '/houdini/revisao', label: 'Revisão', icon: 'check' },
   { to: '/houdini/ampulheta', label: 'Ampulheta', icon: 'hourglass' },
   { to: '/houdini/bastidores', label: 'Bastidores', icon: 'pulse' },
   { to: '/houdini/ia', label: 'IA', icon: 'spark' },
