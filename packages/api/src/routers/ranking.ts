@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { fanProcedure, router } from '../index'
-import { RANKING_METRICS } from '../lib/ranking'
-import { readCityPosition, readFriendsRanking } from '../lib/ranking-read'
+import { CITY_METRICS, RANKING_METRICS } from '../lib/ranking'
+import { readCityBoard, readFriendsRanking } from '../lib/ranking-read'
 
 /** Ranking do mês (WEB-409, seção 13 do design do app). Só torcedor. */
 export const rankingRouter = router({
@@ -11,6 +11,18 @@ export const rankingRouter = router({
     .query(({ ctx, input }) =>
       readFriendsRanking(ctx.session.user.id, input.metric)
     ),
-  /** A sua posição na cidade do perfil, em bares no mês (11e). */
-  city: fanProcedure.query(({ ctx }) => readCityPosition(ctx.session.user.id))
+  /**
+   * A cidade do perfil (10e, 27a–27c; WEB-465): o top, a sua posição e a
+   * vizinhança, página por posição. Fora do ranking global, só o porquê.
+   */
+  city: fanProcedure
+    .input(
+      z.object({
+        metric: z.enum(CITY_METRICS).default('bars'),
+        cursor: z.number().int().min(0).default(0)
+      })
+    )
+    .query(({ ctx, input }) =>
+      readCityBoard(ctx.session.user.id, input.metric, input.cursor)
+    )
 })

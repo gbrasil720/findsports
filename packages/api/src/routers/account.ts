@@ -118,6 +118,7 @@ export async function fanData(me: string) {
         searchRadiusKm: user.searchRadiusKm,
         activityVisibility: user.activityVisibility,
         friendRequestsFrom: user.friendRequestsFrom,
+        rankingGlobal: user.rankingGlobal,
         twoFactorEnabled: user.twoFactorEnabled,
         createdAt: user.createdAt
       })

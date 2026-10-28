@@ -123,3 +123,25 @@ export function monthOf(now: Date) {
 
 /** A semana de comparação das setas (subiu, desceu), dentro do mês. */
 export const MOVE_WINDOW_MS = 7 * 24 * 3_600_000
+
+/**
+ * A lista da cidade (27a, WEB-465). Só "Bares no mês" e "Jogos" (decisão do
+ * dono, 28/10/2026); bairro, setas e a medalha Cidade ficaram para depois.
+ */
+export const CITY_METRICS = ['bars', 'games'] as const
+export type CityMetric = (typeof CITY_METRICS)[number]
+/** O top da primeira página e o tamanho de cada "ver mais". */
+export const CITY_TOP = 8
+export const CITY_PAGE = 30
+/** Quantos acima e abaixo de você a vizinhança mostra. */
+export const CITY_AROUND = 2
+
+/**
+ * Quem entra na lista da cidade: ligou "Aparecer no ranking global" (nasce
+ * desligado) e não escolheu "Ninguém" em "Quem vê os bares que você validou".
+ * Quem está fora não aparece para ninguém, nem vê a própria posição (27c).
+ */
+export const listedInCity = (
+  rankingGlobal: boolean,
+  visibility: 'everyone' | 'friends' | 'nobody'
+) => rankingGlobal && visibility !== 'nobody'
