@@ -20,8 +20,17 @@ export function createResetPasswordEmail({
   resetUrl
 }: ResetPasswordEmailInput) {
   const template = createOnsideEmailTemplate({
-    heading: 'Defina uma nova senha',
+    tag: 'SEGURANÇA',
+    heading: 'Defina uma',
+    headingAccent: 'nova senha',
+    shadow: 'ink',
     intro: `Olá, ${name.trim() || 'torcedor'}. Recebemos um pedido para redefinir a senha da sua conta Onside. Use o link abaixo para escolher uma nova.`,
+    blocks: [
+      {
+        kind: 'chips',
+        items: [{ label: 'USO ÚNICO', strong: true }, { label: '30 MINUTOS' }]
+      }
+    ],
     steps: [
       'O link é de uso único: depois que a senha for definida, ele deixa de valer.',
       'Por segurança, este link expira em 30 minutos.',

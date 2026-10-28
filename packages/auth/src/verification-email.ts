@@ -28,14 +28,22 @@ export function createVerificationEmail({
   verificationUrl
 }: VerificationEmailInput) {
   const template = createOnsideEmailTemplate({
-    heading: 'Confirme seu e-mail',
+    tag: 'CONTA',
+    heading: 'Confirme seu',
+    headingAccent: 'e-mail',
     intro: `Olá, ${name.trim() || 'torcedor'}. Falta um passo para entrar em campo: confirme que este endereço é seu para ativar sua conta na Onside.`,
-    steps: [
-      // Vale para os dois: pelo app o link volta para o app; pelo site, o
-      // rascunho do cadastro de bar fica no navegador em que foi começado.
-      'Abra o link no aparelho em que começou o cadastro: pelo app, ele volta para o app; pelo site, use o mesmo navegador.',
-      'Depois da confirmação, você entra automaticamente e continua de onde parou.',
-      'Por segurança, este link expira em 1 hora.'
+    blocks: [
+      {
+        kind: 'steps',
+        items: [
+          // Vale para os dois: pelo app o link volta para o app; pelo site, o
+          // rascunho do cadastro de bar fica no navegador em que foi começado.
+          'Abra o link no aparelho em que começou o cadastro: pelo app, ele volta para o app; pelo site, use o mesmo navegador.',
+          'Depois da confirmação, você entra automaticamente e continua de onde parou.',
+          'Por segurança, este link expira em 1 hora.'
+        ]
+      },
+      { kind: 'chips', items: [{ label: 'EXPIRA EM 1 HORA', strong: true }] }
     ],
     action: 'Confirmar meu e-mail',
     actionUrl: verificationUrl,
