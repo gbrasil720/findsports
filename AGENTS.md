@@ -439,6 +439,11 @@ Design "Bar Web" (Rodada 2) no Claude Design. O painel **segue o tema do sistema
   `/admin/jogos?novo=1` (o `validateSearch` da rota), que abre o formulário; sem poder
   criar (limite, fora do ar), vira "Ver grade". No meio, o "Desempenho do bar" dos
   últimos 30 dias; à direita, o card do plano. Fora do ar, o resto da tela fica apagado.
+  O KPI "interesse acima do seu normal de <dia>" é `commercialAnalytics.getMyWeekdayInterest`
+  (WEB-449, `lib/commercial-analytics/weekday-interest.ts`): pessoas interessadas no dia da
+  casa, da meia-noite até agora, contra a média da mesma janela nas quatro semanas antes
+  (cabem nos 30 dias do Starter; semana de antes de o bar existir não entra; com menos de
+  duas, "—"). Todos os planos.
 - **Avisos do painel e card do plano** (Rodada 3, `components/admin/avisos.tsx`, regras
   puras em `avisos-model.ts`): no máximo um aviso por tela, na prioridade fora do ar,
   trial, Starter (dentro do limite, último jogo, limite), pagamento pendente, trial
@@ -468,8 +473,9 @@ Design "Bar Web" (Rodada 2) no Claude Design. O painel **segue o tema do sistema
   diária são de `desempenho-dados.ts`, que o "Desempenho do bar" de Hoje também lê; o
   período, a ordem dos jogos e os códigos, de `desempenho-contas.ts`. O período
   escolhido vale também em Jogos · Passados até recarregar a página. O que o plano não
-  vê vem nulo do servidor: atividade diária, entrega nos clássicos e "Quem foi pela
-  Onside" só no Elite; os canais a partir do Pro. A semana do painel (Jogos e a
+  vê vem nulo do servidor: entrega nos clássicos e "Quem foi pela Onside" só no Elite;
+  os canais a partir do Pro. A atividade diária é de todos os planos (WEB-449), com
+  WhatsApp, rota e telefone já somados por dia (`dailyHighIntentActions`). A semana do painel (Jogos e a
   contagem de Hoje) vai de domingo a sábado; comparação de período não é semana.
 - **Quem vai** (`components/painel-jogos/quem-vai-page.tsx`): um card por jogo com a
   validação aberta, com as peças do jogo aberto (`PessoaQuemVai`); `#jogo-<id>` rola até
