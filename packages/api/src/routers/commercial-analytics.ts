@@ -1,5 +1,8 @@
 import { recordAdminActionSafely } from '@findsports_oficial/db/admin-action'
-import { brasiliaDayStart } from '@findsports_oficial/db/event-window'
+import {
+  brasiliaDay,
+  brasiliaDayStart
+} from '@findsports_oficial/db/event-window'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 import { adminProcedure, pubProcedure, router } from '../index'
@@ -12,8 +15,10 @@ import {
   getMonthNumbers,
   getMyAnalyticsOverview,
   getMyEventAnalytics,
+  getWeekdayInterest,
   resolveBarAndPlan,
-  runAndRecordAnalyticsRetention
+  runAndRecordAnalyticsRetention,
+  WEEKDAY_INTEREST_WEEKS
 } from '../lib/commercial-analytics'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -178,6 +183,33 @@ export const commercialAnalyticsRouter = router({
         : null
     }
   }),
+
+  /**
+   * Interesse do dia contra o normal do mesmo dia da semana (Hoje, 1r;
+   * WEB-449). `day` é o dia da casa que a tela mostra; a janela vai da
+   * meia-noite dele até agora, e as quatro semanas de antes cabem no
+   * histórico de todos os planos.
+   */
+  getMyWeekdayInterest: pubProcedure
+    .input(z.object({ day: z.string().date() }))
+    .query(async ({ ctx, input }) => {
+      const now = new Date()
+      if (input.day > brasiliaDay(now)) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'O dia ainda não começou.'
+        })
+      }
+      const { barId, plan } = await resolveBarAndPlan(ctx.session.user.id)
+      const desde =
+        brasiliaDayStart(input.day).getTime() -
+        WEEKDAY_INTEREST_WEEKS * 7 * DAY_MS
+      assertAnalyticsPeriodAllowed(
+        plan,
+        Math.ceil((now.getTime() - desde) / DAY_MS)
+      )
+      return getWeekdayInterest(barId, input.day, now)
+    }),
 
   /**
    * Get entitlements for the authenticated pub's plan.
