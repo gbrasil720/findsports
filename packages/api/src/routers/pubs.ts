@@ -498,7 +498,6 @@ export const pubsRouter = router({
           houseOffer: true,
           menuUrl: true,
           averageSpendCents: true,
-          galleryPhotos: true,
           confirmsCodesLater: true,
           openingHours: true
         },
@@ -509,6 +508,19 @@ export const pubsRouter = router({
           // atraso no fim do trial.
           subscription: {
             columns: { plan: true, status: true, currentPeriodEnd: true }
+          },
+          // Fotos do bar (WEB-462): só as que a Onside aprovou.
+          photos: {
+            where: (photo, { eq }) => eq(photo.status, 'approved'),
+            columns: {
+              id: true,
+              url: true,
+              category: true,
+              caption: true,
+              position: true,
+              status: true,
+              createdAt: true
+            }
           },
           events: {
             // Jogo ao vivo continua na página até o fim derivado.
@@ -554,7 +566,7 @@ export const pubsRouter = router({
         houseOffer,
         menuUrl,
         averageSpendCents,
-        galleryPhotos,
+        photos,
         confirmsCodesLater,
         openingHours,
         subscription,
@@ -623,11 +635,11 @@ export const pubsRouter = router({
           subscription ?? null,
           now
         ),
-        // Galeria do ambiente (WEB-439), na ordem do dono; vazia sem Pro/Elite.
-        galleryPhotos: resolvePublicGallery(
-          galleryPhotos,
-          subscription ?? null,
-          now
+        // Galeria do ambiente (WEB-439, WEB-462): só as aprovadas, por
+        // categoria e na ordem do dono; vazia sem Pro/Elite. A capa é
+        // `photoUrl`, de todos os planos.
+        photos: resolvePublicGallery(photos, subscription ?? null, now).map(
+          ({ position: _p, status: _s, ...photo }) => photo
         ),
         // Horário (WEB-397): `null` sem horário informado, e a página esconde
         // a seção. "Aberto agora" é decidido aqui, no relógio de Brasília.
