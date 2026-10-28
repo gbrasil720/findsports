@@ -17,7 +17,7 @@ const uniqueName = (prefix: string) =>
 /** Busca a pessoa pelo e-mail e abre o dossiê dela. */
 async function openPerson(page: Page, user: TestUser) {
   await page.goto('/houdini/pessoas')
-  await page.getByPlaceholder('Buscar por nome ou e-mail...').fill(user.email)
+  await page.getByPlaceholder('Nome, e-mail ou id').fill(user.email)
   const row = page.getByRole('row').filter({ hasText: user.email })
   await expect(row).toHaveCount(1)
   await row.getByRole('button', { name: user.name }).click()
@@ -68,7 +68,7 @@ test('sumir com motivo bloqueia o login, vai ao Grimório; trazer de volta liber
   const { row, dossie } = await openPerson(page, target)
   await expect(row).toContainText('presente')
 
-  await dossie.getByLabel('Motivo para sumir').fill('Spam em reservas')
+  await dossie.getByLabel('Motivo, até 500 caracteres').fill('Spam em reservas')
   await hold(page, dossie.getByRole('button', { name: 'Segure para sumir' }))
 
   await expect(page.getByText(`${target.name} sumiu.`)).toBeVisible()
@@ -119,13 +119,18 @@ test('soltar antes do tempo não some com ninguém', async ({ page }) => {
 test('trocar a role de torcedor para bar', async ({ page }) => {
   const target = await createUser({ name: uniqueName('Muda role') })
   const { row, dossie } = await openPerson(page, target)
-  await expect(row).toContainText('fan')
+  await expect(row.getByRole('cell', { name: 'Torcedor' })).toBeVisible()
 
-  await dossie.getByLabel('Trocar role').selectOption('pub')
+  await dossie
+    .getByRole('group', { name: 'Novo papel' })
+    .getByRole('button', { name: 'Bar', exact: true })
+    .click()
   await dossie.getByRole('button', { name: 'Salvar' }).click()
 
   await expect(page.getByText(`${target.name} agora é Bar.`)).toBeVisible()
-  await expect(row).toContainText('pub')
+  await expect(
+    row.getByRole('cell', { name: 'Bar', exact: true })
+  ).toBeVisible()
   const [user] = await query('SELECT role FROM "user" WHERE id = $1', [
     target.id
   ])
@@ -249,7 +254,7 @@ test('a busca acha usuário mais antigo que os 200 mais novos (WEB-193)', async 
   // Parte do nome, em caixa diferente: a busca é no servidor e sem caixa.
   await page.goto('/houdini/pessoas')
   await page
-    .getByPlaceholder('Buscar por nome ou e-mail...')
+    .getByPlaceholder('Nome, e-mail ou id')
     .fill(target.name.toUpperCase())
   await expect(
     page.getByRole('row').filter({ hasText: target.email })
