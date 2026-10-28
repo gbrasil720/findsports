@@ -349,7 +349,8 @@ offline (só roda com autorização e teto de custo): `packages/api/scripts/ai-c
 inventados, tempo e custo).
 
 **Chat em eventos (Rodada 24):** `ai.converse` é uma mutation que devolve um async iterable
-(`ChatEvent`, `lib/ai/events.ts`, que o app importa como tipo): `step` ("Entendi o pedido",
+(`ChatEvent`, `lib/ai/events.ts`, que o app importa como tipo): `run` primeiro (o `run_id`),
+`step` ("Entendi o pedido",
 "Achei o jogo", "Procurando bares que vão passar", "Comparar e ordenar", só os que o pedido
 usa; numa busca, "Comparar e ordenar" chega já como `todo` e o app o mantém vazio no fim),
 `tool` (`run` → `done`, ou `wait` na proposta), `bars` assim que a busca devolve (sai de
@@ -365,7 +366,10 @@ com push (WEB-416), avisa nessa hora; sem `beforeMinutes`, o "Lembrar" de Bares 
 cada ação grava `ai_action`; falha volta com `code` estável, `ConfirmFailure`). Só propõe
 quando a mensagem pede (marcar, chamar, lembrar), e "Chamar" só com o nome escrito nela;
 amigo é achado só entre os aceitos. O trabalho vai pelo `waitUntil` (`runInBackground`):
-o app desconectar não perde o `ai_run`. A resposta sai com `Cache-Control: no-transform`,
+o app desconectar não perde o `ai_run` nem para a mensagem. Parar é explícito (WEB-430):
+`ai.stop` com o `run_id` marca a linha `stopped` (ela nasce `running` no `runAi`), a próxima
+chamada ao modelo não sai, a já feita fica no custo e a mensagem não desconta (não é útil).
+Resposta pronta não para. A resposta sai com `Cache-Control: no-transform`,
 para a compressão da borda não juntar os eventos. O app fala com
 `ai.converse` pelo `httpBatchStreamLink` com o `fetch` de `expo/fetch` (`splitLink` em
 `apps/mobile/lib/trpc.ts`). Fumaça contra um web rodando:
@@ -929,8 +933,8 @@ invente layout que o projeto não tem.
   e dia só no campo do início (24a); "+" troca o contexto depois. Recentes (até 20, com a
   conversa inteira) ficam no aparelho, em `busca-ia-recentes.json` (`Paths.document`): o
   servidor não guarda texto. Depois do "Confirmar" (24e) a frase é do app (`confirmText`) e
-  o cartão do código abre `app/codigo/[eventId]`. Parar só deixa de mostrar: o servidor
-  termina a mensagem e desconta. Abrir um bar fecha a folha antes e leva `?ai=<run_id>`.
+  o cartão do código abre `app/codigo/[eventId]`. Parar manda `ai.stop` (o servidor
+  não chama o modelo de novo e a pergunta não desconta) e deixa de mostrar. Abrir um bar fecha a folha antes e leva `?ai=<run_id>`.
   Limite, IA fora do ar e busca refeita sem bares não estão no design: frase no lugar da
   resposta e "Abrir a busca". O microfone só abre o teclado (ditado do sistema). **Dublê**
   (só em desenvolvimento): `?dubla=1` troca o servidor por `lib/ai-dubla.ts`, e `estado=
