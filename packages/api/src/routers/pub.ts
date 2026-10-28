@@ -43,6 +43,7 @@ import {
   writableAmenityIds
 } from '../lib/amenities'
 import { readInterestSignal } from '../lib/attendance'
+import { descriptionSubmission } from '../lib/bar-description'
 import {
   assertCanAddPhoto,
   GALLERY_FULL_MESSAGE,
@@ -453,9 +454,9 @@ export const pubRouter = router({
         .update(bar)
         .set({
           ...(input.name && { name: input.name }),
-          ...(input.description !== undefined && {
-            description: input.description
-          }),
+          // A descrição espera a revisão da Onside (WEB-478).
+          ...(input.description !== undefined &&
+            descriptionSubmission(existingBar.description, input.description)),
           ...(input.phone !== undefined && { phone: input.phone }),
           ...(input.address && { address: input.address }),
           ...(input.neighborhood && { neighborhood: input.neighborhood }),
