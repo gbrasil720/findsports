@@ -122,6 +122,8 @@ function chunks(text: string, size = 4) {
   )
 }
 
+const DUBLA_RUN_ID = '00000000-0000-4000-8000-00000000d0b1'
+
 type Options = { mode: Dubla; hold?: boolean }
 
 export async function* dublaConverse(
@@ -147,6 +149,7 @@ export async function* dublaConverse(
     yield { type: 'blocked', reason: 'unavailable' }
     return
   }
+  yield { type: 'run', runId: DUBLA_RUN_ID }
 
   if (mode === 'pior') {
     yield* worst(signal)
@@ -220,7 +223,7 @@ export async function* dublaConverse(
   const today = new Date(now - 3 * HOUR).toISOString().slice(0, 10)
   yield {
     type: 'done',
-    runId: '00000000-0000-4000-8000-00000000d0b1',
+    runId: DUBLA_RUN_ID,
     status: 'ok',
     thoughtMs: 4000,
     searches: 2,

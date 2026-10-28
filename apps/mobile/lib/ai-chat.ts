@@ -87,6 +87,9 @@ const upsertStep = (list: Step[], step: Step) => {
 export function applyEvent(reply: Reply, event: ChatEvent, now: number): Reply {
   const thought = reply.thoughtAt ?? now
   switch (event.type) {
+    // O `run_id` serve ao "parar" (`ai.stop`), que a tela guarda à parte.
+    case 'run':
+      return reply
     case 'blocked':
       return event.reason === 'limit'
         ? {

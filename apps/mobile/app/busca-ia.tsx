@@ -75,7 +75,7 @@ import {
 } from '@/lib/ai-chat'
 import type { Dubla } from '@/lib/ai-dubla'
 import type { ChatBar, ConfirmResult } from '@/lib/ai-events'
-import { confirm, converse } from '@/lib/ai-stream'
+import { confirm, converse, stop as stopRun } from '@/lib/ai-stream'
 import { authClient } from '@/lib/auth-client'
 import { formatTime, isLive } from '@/lib/explore'
 import { trpc } from '@/lib/trpc'
@@ -196,6 +196,8 @@ export default function AiSearch() {
   const content = useRef<View>(null)
   const cards = useRef(new Map<string, View>())
   const running = useRef<AbortController | null>(null)
+  // O `run_id` da mensagem em andamento, para o "parar" chegar ao servidor.
+  const runId = useRef<string | null>(null)
   const stick = useRef(true)
   const now = Date.now()
 
@@ -279,6 +281,7 @@ export default function AiSearch() {
     running.current?.abort()
     const controller = new AbortController()
     running.current = controller
+    runId.current = null
     const run = async () => {
       try {
         const stream = converse(
@@ -298,6 +301,7 @@ export default function AiSearch() {
         )
         for await (const event of stream) {
           if (controller.signal.aborted) return
+          if (event.type === 'run') runId.current = event.runId
           if (event.type === 'done') haptic.success()
           patch((reply) => applyEvent(reply, event, Date.now()))
         }
@@ -319,8 +323,11 @@ export default function AiSearch() {
     run()
   }
 
+  // Parar é explícito: sair da tela ou perder a rede não para no servidor.
   const stop = () => {
     haptic.select()
+    if (runId.current) stopRun(runId.current, !!dubla)
+    runId.current = null
     running.current?.abort()
   }
 
