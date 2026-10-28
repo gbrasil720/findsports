@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { refusalMessage } from '@/components/houdini/errors'
 import { formatDateTime } from '@/components/houdini/format'
 import { Icon } from '@/components/houdini/icons'
-import { HoudiniShell } from '@/components/houdini/shell'
+import { HoudiniShell, PageHead } from '@/components/houdini/shell'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
@@ -20,28 +20,49 @@ type Status = inferRouterOutputs<AppRouter>['bastidores']['status']
 type Job = Status['jobs'][number]
 type State = 'ok' | 'warn' | 'bad' | 'link'
 
-const STATES: Record<State, { color: string; tint: string; label: string }> = {
-  ok: { color: 'var(--hd-ok)', tint: 'var(--hd-ok-tint)', label: 'em ordem' },
-  warn: {
-    color: 'var(--hd-warn)',
-    tint: 'rgb(242 196 109 / 0.14)',
-    label: 'atenção'
-  },
-  bad: { color: 'var(--hd-bad)', tint: 'var(--hd-bad-tint)', label: 'falhou' },
+/** Selo e ponto de cada situação, nas cores do design. */
+const STATES: Record<
+  State,
+  { tone?: 'live' | 'sand' | 'draft'; dot: string; label: string }
+> = {
+  ok: { dot: 'acid', label: 'em ordem' },
+  warn: { tone: 'sand', dot: 'sand', label: 'atenção' },
+  bad: { tone: 'live', dot: 'live', label: 'falhou' },
   // Serviço de fora: o Houdini só aponta para o painel dele.
-  link: {
-    color: 'var(--hd-faint)',
-    tint: 'rgb(255 255 255 / 0.06)',
-    label: 'no painel'
-  }
+  link: { tone: 'draft', dot: 'muted', label: 'no painel' }
 }
 
-const BORDERS: Record<State, string> = {
-  ok: 'var(--hd-line)',
-  link: 'var(--hd-line)',
-  warn: 'rgb(242 196 109 / 0.35)',
-  bad: 'rgb(255 92 122 / 0.4)'
-}
+const GLOSSARY = [
+  [
+    'Reconciliação diária',
+    'Toda madrugada confere o plano de cada bar com a assinatura: corrige a busca e tira do ar quem ficou sem teste e sem assinatura.'
+  ],
+  [
+    'Cron',
+    'Tarefa que roda sozinha num horário fixo, como a reconciliação à 01:00.'
+  ],
+  [
+    'Migrations',
+    'As mudanças na estrutura do banco. "Atenção" quer dizer que o código já espera uma mudança que o banco ainda não recebeu.'
+  ],
+  [
+    'Deploy',
+    'A versão do site que está no ar agora e quando ela foi publicada.'
+  ],
+  [
+    'Webhook do Stripe',
+    'O aviso que o Stripe manda quando alguém paga, cancela ou atrasa. Se ele falhar, o plano do bar não atualiza.'
+  ],
+  ['Latência', 'Quanto o banco demora para responder. Até uns 50 ms é normal.'],
+  [
+    'Tiles do mapa',
+    'Os pedaços de mapa que o app baixa. Resposta lenta aqui deixa o mapa em branco.'
+  ],
+  [
+    'No painel',
+    'Serviço que o Houdini não mede sozinho: o botão abre o painel do fornecedor.'
+  ]
+] as const
 
 function ago(date: Date | string, now = Date.now()) {
   const minutes = Math.round((now - new Date(date).getTime()) / 60_000)
@@ -231,44 +252,28 @@ function buildChecks(status: Status): Check[] {
   ]
 }
 
+/** Quantos falharam, pedem atenção e estão em ordem, para os selos do topo. */
 function summarize(checks: Check[]) {
-  const bad = checks.filter((c) => c.state === 'bad').length
-  const warn = checks.filter((c) => c.state === 'warn').length
-  const worst: State = bad ? 'bad' : warn ? 'warn' : 'ok'
-  const text =
-    worst === 'ok'
-      ? 'Tudo em ordem'
-      : [
-          bad ? `${bad} ${bad === 1 ? 'falhou' : 'falharam'}` : '',
-          warn ? `${warn} ${warn === 1 ? 'pede' : 'pedem'} atenção` : ''
-        ]
-          .filter(Boolean)
-          .join(' · ')
-  return { worst, text }
+  const n = (state: State) => checks.filter((c) => c.state === state).length
+  const bad = n('bad')
+  const warn = n('warn')
+  const ok = n('ok')
+  return [
+    bad
+      ? {
+          tone: 'live' as const,
+          text: `${bad} ${bad === 1 ? 'falhou' : 'falharam'}`
+        }
+      : null,
+    warn
+      ? {
+          tone: 'sand' as const,
+          text: `${warn} ${warn === 1 ? 'pede' : 'pedem'} atenção`
+        }
+      : null,
+    ok ? { tone: undefined, text: `${ok} em ordem` } : null
+  ].filter((badge) => badge !== null)
 }
-
-function Dot({ state, size = 10 }: { state: State; size?: number }) {
-  const { color } = STATES[state]
-  return (
-    <span
-      aria-hidden="true"
-      style={{
-        flex: '0 0 auto',
-        width: size,
-        height: size,
-        borderRadius: '50%',
-        background: color,
-        boxShadow: state === 'link' ? 'none' : `0 0 10px ${color}`
-      }}
-    />
-  )
-}
-
-const badge = (state: State): CSSProperties => ({
-  background: STATES[state].tint,
-  color: STATES[state].color,
-  fontWeight: 700
-})
 
 function BastidoresPage() {
   const { env, admin } = Route.useRouteContext()
@@ -304,34 +309,36 @@ function BastidoresPage() {
   const summary = summarize(checks)
 
   return (
-    <HoudiniShell title="Bastidores" env={env} user={admin}>
-      <div className="hd-page" style={{ maxWidth: 1240 }}>
-        <div className="hd-head">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <h1 className="hd-h1">Bastidores</h1>
-            <p className="hd-lead">
-              O que roda sem ninguém ver. Se algo aqui falha, alguém lá fora
-              sente.
-            </p>
-          </div>
-          {status.data ? (
-            <span
-              className="hd-pill"
-              role="status"
-              style={{
-                ...badge(summary.worst),
-                gap: 8,
-                minHeight: 32,
-                padding: '0 12px',
-                borderRadius: 10,
-                fontSize: 13
-              }}
-            >
-              <Dot state={summary.worst} size={8} />
-              {summary.text}
-            </span>
-          ) : null}
-        </div>
+    <HoudiniShell env={env} user={admin}>
+      <div className="hd-page">
+        <PageHead
+          overline="Máquina"
+          title="Bastidores"
+          summary="O que roda sem ninguém ver. Se algo aqui falha, alguém lá fora sente."
+          actions={
+            status.data ? (
+              <span
+                role="status"
+                style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}
+              >
+                {summary.map((badge) => (
+                  <span
+                    key={badge.text}
+                    className="hd-pill is-lg"
+                    data-tone={badge.tone}
+                  >
+                    {badge.text}
+                  </span>
+                ))}
+              </span>
+            ) : null
+          }
+        >
+          <a className="hd-help" href="#legenda">
+            <Icon name="help" size={16} />
+            Como ler esta página
+          </a>
+        </PageHead>
 
         {status.isError ? (
           <div className="hd-card" role="alert">
@@ -353,85 +360,83 @@ function BastidoresPage() {
         ) : status.isLoading ? (
           <div className="hd-skeleton" style={{ height: 320 }} />
         ) : (
-          <div
+          <section
             className="hd-grid"
-            style={{ '--hd-min': 'min(340px, 100%)' } as CSSProperties}
+            aria-label="Serviços"
+            style={
+              {
+                '--hd-min': 'min(320px, 100%)',
+                alignItems: 'start'
+              } as CSSProperties
+            }
           >
             {checks.map((check) => (
               <article
                 key={check.key}
-                className="hd-card"
+                className={`hd-card${check.state === 'bad' ? ' is-live' : ''}`}
                 aria-labelledby={`bs-${check.key}`}
-                style={{
-                  gap: 12,
-                  padding: 18,
-                  borderColor: BORDERS[check.state]
-                }}
+                style={{ gap: 14 }}
               >
-                <div
-                  style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}
-                >
-                  <span style={{ marginTop: 4, display: 'flex' }}>
-                    <Dot state={check.state} />
-                  </span>
-                  <div
-                    style={{
-                      flexGrow: 1,
-                      minWidth: 0,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 2
-                    }}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span
+                    className="hd-dot"
+                    data-tone={STATES[check.state].dot}
+                  />
+                  <h2
+                    id={`bs-${check.key}`}
+                    className="hd-h2"
+                    style={{ flex: '1 1 auto', minWidth: 0 }}
                   >
-                    <h2
-                      id={`bs-${check.key}`}
-                      className="hd-h2"
-                      style={{ fontSize: 14, fontWeight: 700 }}
-                    >
-                      {check.title}
-                    </h2>
-                    <span
-                      className="hd-mono"
-                      style={{
-                        fontSize: 11,
-                        color: 'var(--hd-faint)',
-                        overflowWrap: 'anywhere'
-                      }}
-                    >
-                      {check.where}
-                    </span>
-                  </div>
-                  <span className="hd-pill" style={badge(check.state)}>
+                    {check.title}
+                  </h2>
+                  <span
+                    className="hd-pill"
+                    data-tone={STATES[check.state].tone}
+                  >
                     {STATES[check.state].label}
                   </span>
                 </div>
+                <span
+                  className="hd-mono hd-small"
+                  style={{ overflowWrap: 'anywhere' }}
+                >
+                  {check.where}
+                </span>
                 {check.facts.length ? (
-                  <dl className="hd-dl" style={{ gap: '8px 14px' }}>
+                  <dl className="hd-dl">
                     {check.facts.map((fact) => (
                       <div key={fact.k}>
-                        <dt style={{ fontSize: 11 }}>{fact.k}</dt>
+                        <dt>{fact.k}</dt>
                         <dd>{fact.v}</dd>
                       </div>
                     ))}
                   </dl>
                 ) : null}
                 {check.error ? (
-                  <p
+                  <pre
                     className="hd-mono"
                     style={{
                       margin: 0,
+                      padding: '10px 12px',
+                      borderRadius: 5,
+                      background: 'var(--hd-live-tint)',
+                      color: 'var(--hd-live-text)',
                       fontSize: 12,
-                      color: 'var(--hd-bad)',
+                      whiteSpace: 'pre-wrap',
                       overflowWrap: 'anywhere'
                     }}
                   >
                     {check.error}
-                  </p>
+                  </pre>
                 ) : null}
                 {check.job ? (
                   <button
                     type="button"
-                    className="hd-btn hd-btn-soft"
+                    className={
+                      check.state === 'bad'
+                        ? 'hd-btn hd-btn-primary is-sm'
+                        : 'hd-btn is-sm'
+                    }
                     style={{ alignSelf: 'flex-start' }}
                     disabled={run.isPending}
                     onClick={() => check.job && run.mutate({ job: check.job })}
@@ -445,21 +450,43 @@ function BastidoresPage() {
                     href={check.href.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="hd-btn hd-btn-soft"
+                    className="hd-btn is-sm"
                     style={{ alignSelf: 'flex-start' }}
                   >
                     {check.href.label}
-                    <Icon name="external" size={14} strokeWidth={1.8} />
+                    <Icon name="external" size={14} />
                   </a>
                 ) : null}
               </article>
             ))}
-          </div>
+          </section>
         )}
 
-        <p className="hd-small" style={{ margin: 0 }}>
-          Rodar agora faz o mesmo que o cron faria e fica no Grimório. Rollback
-          de deploy continua pelo{' '}
+        <section
+          id="legenda"
+          className="hd-card"
+          aria-labelledby="legenda-h"
+          style={{ gap: 14 }}
+        >
+          <div className="hd-card-hd">
+            <h2 id="legenda-h" className="hd-h2">
+              Como ler esta página
+            </h2>
+            <span className="meta">o que cada peça faz</span>
+          </div>
+          <dl className="hd-gloss">
+            {GLOSSARY.map(([term, text]) => (
+              <div key={term}>
+                <dt>{term}</dt>
+                <dd>{text}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+
+        <p className="hd-note">
+          “Rodar agora” faz o mesmo que o cron faria e fica no Grimório.
+          Rollback de deploy continua pelo{' '}
           <code className="hd-mono">wrangler rollback</code>: o Houdini só
           mostra.
         </p>

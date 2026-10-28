@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 
 import { formatDateTime } from '@/components/houdini/format'
 import { Icon } from '@/components/houdini/icons'
-import { HoudiniShell } from '@/components/houdini/shell'
+import { HoudiniShell, PageHead } from '@/components/houdini/shell'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
@@ -35,6 +35,33 @@ function remaining(expiresAt: string, now = Date.now()) {
   const hours = Math.floor(minutes / 60)
   return minutes % 60 ? `${hours} h ${minutes % 60} min` : `${hours} h`
 }
+
+const GLOSSARY = [
+  [
+    'Feitiço',
+    'Um botão de configuração do app que muda o comportamento sem precisar publicar código novo. Cada um tem um nome técnico, como ai.enabled.'
+  ],
+  [
+    'Lançado · no padrão',
+    'Lançado: alguém mudou o valor e ele está valendo agora. No padrão: está no valor original que vem do código.'
+  ],
+  [
+    'Volta em…',
+    'Quanto falta para o feitiço se desfazer sozinho. "Lançar por" escolhe esse prazo antes de você mexer.'
+  ],
+  [
+    'Público · só servidor',
+    'Público: o valor pode ser lido pelo app do torcedor. Só servidor: fica só do nosso lado, ninguém de fora vê.'
+  ],
+  [
+    'JSON',
+    'O formato dos feitiços que guardam mais de um número, como os pesos e limites da IA.'
+  ],
+  [
+    'Instâncias',
+    'As cópias do app que estão rodando nos servidores. Elas percebem a mudança em até 60 segundos.'
+  ]
+] as const
 
 function asJson(value: unknown) {
   return JSON.stringify(value, null, 2)
@@ -92,54 +119,48 @@ function FeiticosPage() {
   )
 
   const spells = list.data ?? []
-  const cast = spells.filter((s) => s.sobrescrito).length
 
   return (
-    <HoudiniShell title="Feitiços" env={env} user={admin}>
-      <div className="hd-page" style={{ maxWidth: 980 }}>
-        <div className="hd-head">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <h1 className="hd-h1">Feitiços</h1>
-            <p className="hd-lead">
-              Mudam o app sem deploy. Gravam na hora, e as instâncias em
-              execução sentem em até 60 segundos. Banco fora do ar, tudo volta
-              ao padrão.
-            </p>
-          </div>
-          {list.data ? (
-            <span className="hd-mono hd-small">
-              {spells.length} feitiços · {cast} lançado{cast === 1 ? '' : 's'}
-            </span>
-          ) : null}
-        </div>
-
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            gap: 10
-          }}
+    <HoudiniShell env={env} user={admin}>
+      <div className="hd-page">
+        <PageHead
+          overline="Máquina"
+          title="Feitiços"
+          summary={
+            <>
+              Mudam o app sem publicar código novo. Valem em até <b>1 minuto</b>
+              ; se o banco cair, tudo volta ao padrão.
+            </>
+          }
+          actions={
+            <div
+              className="hd-label"
+              style={{ alignItems: 'flex-end', fontWeight: 400 }}
+            >
+              <span className="hd-eyebrow">Lançar por</span>
+              <fieldset className="hd-seg" aria-label="Prazo do feitiço">
+                {PRAZOS.map((p, index) => (
+                  <button
+                    key={p.label}
+                    type="button"
+                    aria-pressed={prazo === index}
+                    onClick={() => setPrazo(index)}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </fieldset>
+              <small className="hd-small">
+                Acabou o prazo, o feitiço se desfaz sozinho e o Grimório anota.
+              </small>
+            </div>
+          }
         >
-          <span style={{ fontSize: 12, color: 'var(--hd-muted)' }}>
-            Lançar por
-          </span>
-          <fieldset className="hd-seg" aria-label="Prazo do feitiço">
-            {PRAZOS.map((p, index) => (
-              <button
-                key={p.label}
-                type="button"
-                aria-pressed={prazo === index}
-                onClick={() => setPrazo(index)}
-              >
-                {p.label}
-              </button>
-            ))}
-          </fieldset>
-          <span className="hd-small">
-            Acabou o prazo, o feitiço se desfaz sozinho e o Grimório anota.
-          </span>
-        </div>
+          <a className="hd-help" href="#legenda">
+            <Icon name="help" size={16} />
+            Como ler esta página
+          </a>
+        </PageHead>
 
         {list.isError ? (
           <div className="hd-card" role="alert">
@@ -161,9 +182,10 @@ function FeiticosPage() {
         ) : list.isLoading ? (
           <div className="hd-skeleton" style={{ height: 180 }} />
         ) : (
-          <div
+          <section
             className="hd-card"
-            style={{ padding: 0, overflow: 'hidden', gap: 0 }}
+            aria-label="Feitiços"
+            style={{ padding: '6px 20px', gap: 0 }}
           >
             {spells.map((spell, index) => (
               <SpellRow
@@ -185,8 +207,30 @@ function FeiticosPage() {
                 onReset={() => reset.mutate({ key: spell.key })}
               />
             ))}
-          </div>
+          </section>
         )}
+
+        <section
+          id="legenda"
+          className="hd-card"
+          aria-labelledby="legenda-h"
+          style={{ gap: 14 }}
+        >
+          <div className="hd-card-hd">
+            <h2 id="legenda-h" className="hd-h2">
+              Como ler esta página
+            </h2>
+            <span className="meta">os termos que aparecem aqui</span>
+          </div>
+          <dl className="hd-gloss">
+            {GLOSSARY.map(([term, text]) => (
+              <div key={term}>
+                <dt>{term}</dt>
+                <dd>{text}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
       </div>
     </HoudiniShell>
   )
@@ -232,16 +276,18 @@ function SpellRow({
   return (
     <article
       style={{
-        borderTop: first ? undefined : '1px solid rgb(255 255 255 / 0.06)',
-        background: open ? '#18161f' : undefined
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+        padding: '16px 0',
+        borderTop: first ? undefined : '1px solid var(--hd-line)'
       }}
     >
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 16,
-          padding: '14px 18px',
+          gap: 12,
           flexWrap: 'wrap'
         }}
       >
@@ -249,17 +295,18 @@ function SpellRow({
           type="button"
           onClick={onToggleOpen}
           aria-expanded={open}
+          aria-label={spell.key}
           style={{
-            flex: '1 1 260px',
+            flex: '1 1 300px',
             minWidth: 0,
             display: 'flex',
             alignItems: 'center',
-            gap: 14,
+            gap: 12,
             minHeight: 44,
             padding: 0,
             border: 0,
             background: 'transparent',
-            color: 'var(--hd-text)',
+            color: 'var(--hd-fg)',
             textAlign: 'left',
             cursor: 'pointer'
           }}
@@ -269,39 +316,54 @@ function SpellRow({
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: 36,
-              height: 36,
-              borderRadius: 10,
+              width: 34,
+              height: 34,
+              borderRadius: 6,
               flex: '0 0 auto',
               background: spell.sobrescrito
-                ? 'var(--hd-roxo-tint)'
-                : 'var(--hd-raise)',
-              color: spell.sobrescrito ? 'var(--hd-roxo)' : 'var(--hd-muted)'
+                ? 'var(--hd-acid)'
+                : 'var(--hd-sub)',
+              color: spell.sobrescrito ? '#12120f' : 'var(--hd-muted)'
             }}
           >
-            <Icon name="wand" size={18} strokeWidth={1.8} />
+            <Icon name="wand" size={18} />
           </span>
-          <code
-            className="hd-mono"
-            style={{ fontSize: 13, overflowWrap: 'anywhere' }}
+          <span
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+              minWidth: 0
+            }}
           >
-            {spell.key}
-          </code>
-        </button>
-        <span
-          className="hd-pill"
-          data-tone={spell.sobrescrito ? 'roxo' : undefined}
-        >
-          {spell.sobrescrito ? 'lançado' : 'no padrão'}
-        </span>
-        {spell.expiresAt ? (
-          <span className="hd-pill" data-tone="warn">
-            volta em {remaining(spell.expiresAt)}
+            <code
+              className="hd-mono"
+              style={{
+                fontSize: 15,
+                fontWeight: 600,
+                overflowWrap: 'anywhere'
+              }}
+            >
+              {spell.key}
+            </code>
+            <span style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              <span
+                className="hd-pill"
+                data-tone={spell.sobrescrito ? 'acid' : 'draft'}
+              >
+                {spell.sobrescrito ? 'lançado' : 'no padrão'}
+              </span>
+              {spell.expiresAt ? (
+                <span className="hd-pill" data-tone="sand">
+                  volta em {remaining(spell.expiresAt)}
+                </span>
+              ) : null}
+              <span className="hd-pill">
+                {spell.publico ? 'público' : 'só servidor'}
+              </span>
+            </span>
           </span>
-        ) : null}
-        <span className="hd-pill">
-          {spell.publico ? 'público' : 'só servidor'}
-        </span>
+        </button>
         {isBool ? (
           <button
             type="button"
@@ -313,7 +375,22 @@ function SpellRow({
             onClick={() => onSet(!spell.valor)}
           />
         ) : (
-          <code className="hd-mono hd-small">{serverValue}</code>
+          <code
+            className="hd-mono"
+            style={{
+              maxWidth: 360,
+              padding: '6px 10px',
+              borderRadius: 5,
+              background: 'var(--hd-sub)',
+              color: 'var(--hd-body)',
+              fontSize: 12.5,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {serverValue}
+          </code>
         )}
       </div>
 
@@ -322,11 +399,15 @@ function SpellRow({
           style={{
             display: 'flex',
             flexDirection: 'column',
-            gap: 14,
-            padding: '0 18px 20px 68px'
+            gap: 12,
+            marginLeft: 46,
+            padding: '14px 16px',
+            borderRadius: 6,
+            background: 'var(--hd-card-2)',
+            boxShadow: 'inset 0 0 0 1px var(--hd-line)'
           }}
         >
-          <p className="hd-lead" style={{ color: 'var(--hd-soft)' }}>
+          <p style={{ margin: 0, fontSize: 14, color: 'var(--hd-body)' }}>
             {spell.descricao}
           </p>
           <span className="hd-mono hd-small">
@@ -338,7 +419,10 @@ function SpellRow({
               : ' · nunca lançado'}
           </span>
           <details>
-            <summary className="hd-small" style={{ cursor: 'pointer' }}>
+            <summary
+              className="hd-small"
+              style={{ cursor: 'pointer', fontWeight: 600 }}
+            >
               Editar como JSON
             </summary>
             <div
@@ -360,13 +444,16 @@ function SpellRow({
                 aria-invalid={error ? true : undefined}
               />
               {error ? (
-                <p role="alert" style={{ margin: 0, color: 'var(--hd-bad)' }}>
+                <p
+                  role="alert"
+                  style={{ margin: 0, color: 'var(--hd-live-text)' }}
+                >
                   {error}
                 </p>
               ) : null}
               <button
                 type="button"
-                className="hd-btn"
+                className="hd-btn is-sm"
                 style={{ alignSelf: 'flex-start' }}
                 disabled={busy || draft === serverValue}
                 onClick={saveDraft}
@@ -378,7 +465,7 @@ function SpellRow({
           {spell.sobrescrito ? (
             <button
               type="button"
-              className="hd-btn"
+              className="hd-btn is-sm"
               style={{ alignSelf: 'flex-start' }}
               disabled={busy}
               onClick={onReset}
