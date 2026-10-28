@@ -55,7 +55,7 @@ export const jobRun = pgTable(
     id: text('id')
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
-    /** `bar_plans`, `analytics_retention`, `bar_notices`. */
+    /** `bar_plans`, `analytics_retention`, `ai_stale_runs`, `bar_notices`. */
     job: text('job').notNull(),
     trigger: text('trigger', { enum: ['cron', 'houdini'] }).notNull(),
     startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
