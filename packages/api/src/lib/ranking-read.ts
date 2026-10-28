@@ -3,7 +3,12 @@ import { user } from '@findsports_oficial/db/schema/auth'
 import { readReviewsOf, readVisitsOf } from './achievements-read'
 import { canSeeActivity, friendIdsOf, monthStart } from './friends'
 import {
+  CITY_AROUND,
+  CITY_PAGE,
+  CITY_TOP,
+  type CityMetric,
   chaseOf,
+  listedInCity,
   MOVE_WINDOW_MS,
   monthOf,
   type RankingMetric,
@@ -81,49 +86,111 @@ export async function readFriendsRanking(
 }
 
 /**
- * "Você está em 1.284º em São Paulo": a sua posição em bares diferentes no
- * mês entre os torcedores com a mesma cidade no perfil. Só o número; a lista
- * da cidade não sai (o "Aparecer no ranking global" das Configurações ainda
- * não existe). Sem cidade no perfil, nulo.
+ * O ranking da cidade (10e, 27a–27c; WEB-465): os torcedores com a mesma
+ * cidade no perfil que estão na lista (`listedInCity`), na métrica do mês. A
+ * posição sai de `row_number` no banco (mais alto; empate, quem chegou antes;
+ * com zero, pelo nome), então a página de "ver mais" e a sua posição são da
+ * mesma conta.
  *
- * ponytail: agrega as visitas do mês de todo mundo a cada leitura; com muito
- * volume, vira tabela do mês fechada por job ou cache curto por cidade.
+ * Página por posição: `cursor` 0 traz o top (`CITY_TOP`), os seguintes
+ * `CITY_PAGE` cada. Toda página traz também a sua vizinhança (`around`, você
+ * e `CITY_AROUND` de cada lado), que o app mantém fixa abaixo do corte.
+ *
+ * Sem cidade no perfil, nulo. Fora da lista, só a cidade e por que está fora:
+ * nem a própria posição sai (27c).
+ *
+ * ponytail: agrega as visitas do mês da cidade a cada leitura (medido em
+ * `ranking.integration.test.ts` com 5 mil torcedores); com muito volume, vira
+ * tabela do mês fechada por job ou cache curto por cidade.
  */
-export async function readCityPosition(me: string, now = new Date()) {
+export async function readCityBoard(
+  me: string,
+  metric: CityMetric,
+  cursor = 0,
+  now = new Date()
+) {
   const [mine] = await db
-    .select({ city: user.searchCityName, uf: user.searchCityUf })
+    .select({
+      city: user.searchCityName,
+      uf: user.searchCityUf,
+      rankingGlobal: user.rankingGlobal,
+      visibility: user.activityVisibility
+    })
     .from(user)
     .where(eq(user.id, me))
   if (!mine?.city) return null
+  if (!listedInCity(mine.rankingGlobal, mine.visibility))
+    return {
+      listed: false as const,
+      city: mine.city,
+      rankingGlobal: mine.rankingGlobal,
+      // Ligou, mas "Ninguém" em "Onde você foi" a deixa de fora.
+      nobody: mine.visibility === 'nobody'
+    }
+  const size = cursor === 0 ? CITY_TOP : CITY_PAGE
   const start = monthStart(now)
-  const result = await db.execute<{ total: number; position: number }>(sql`
-    WITH firsts AS (
-      SELECT ${visit.userId} AS user_id, ${visit.barId} AS bar_id, min(e.starts_at) AS at
+  const key = metric === 'bars' ? visit.barId : visit.eventId
+  const result = await db.execute<{
+    id: string
+    name: string
+    username: string | null
+    value: number
+    position: number
+    total: number
+  }>(sql`
+    WITH people AS (
+      SELECT u.id, u.name, u.username
+      FROM "user" u
+      WHERE u.role = 'fan' AND u.banned IS NOT TRUE
+        AND u.ranking_global AND u.activity_visibility <> 'nobody'
+        AND u.search_city_name = ${mine.city}
+        AND u.search_city_uf IS NOT DISTINCT FROM ${mine.uf}
+    ), firsts AS (
+      SELECT ${visit.userId} AS user_id, ${key} AS k, min(e.starts_at) AS at
       FROM ${visit}
       JOIN event e ON e.id = ${visit.eventId}
       WHERE e.starts_at >= (${start.toISOString()}::timestamptz AT TIME ZONE 'UTC')
         AND e.starts_at < (${now.toISOString()}::timestamptz AT TIME ZONE 'UTC')
+        AND ${visit.userId} IN (SELECT id FROM people)
       GROUP BY 1, 2
     ), scores AS (
       SELECT user_id, count(*) AS value, max(at) AS reached
       FROM firsts GROUP BY user_id
-    ), people AS (
-      SELECT u.id, coalesce(s.value, 0) AS value, s.reached
-      FROM "user" u
-      LEFT JOIN scores s ON s.user_id = u.id
-      WHERE u.role = 'fan' AND u.banned IS NOT TRUE
-        AND u.search_city_name = ${mine.city}
-        AND u.search_city_uf IS NOT DISTINCT FROM ${mine.uf}
+    ), ranked AS (
+      SELECT p.id, p.name, p.username,
+        coalesce(s.value, 0)::int AS value,
+        (row_number() OVER (
+          ORDER BY coalesce(s.value, 0) DESC, s.reached ASC NULLS LAST, p.name, p.id
+        ))::int AS position,
+        (count(*) OVER ())::int AS total
+      FROM people p
+      LEFT JOIN scores s ON s.user_id = p.id
     )
-    SELECT
-      (SELECT count(*) FROM people)::int AS total,
-      (SELECT 1 + count(*) FROM people p, people m
-        WHERE m.id = ${me} AND p.id <> m.id
-          AND (p.value > m.value
-            OR (p.value = m.value AND p.value > 0 AND p.reached < m.reached))
-      )::int AS position
+    SELECT r.id, r.name, r.username, r.value, r.position, r.total
+    FROM ranked r, (SELECT position FROM ranked WHERE id = ${me}) m
+    WHERE (r.position > ${cursor} AND r.position <= ${cursor + size})
+      OR abs(r.position - m.position) <= ${CITY_AROUND}
+    ORDER BY r.position
   `)
-  const row = result.rows[0]
-  if (!row) return null
-  return { city: mine.city, position: row.position, total: row.total }
+  const rows = result.rows.map(({ total, ...row }) => ({
+    ...row,
+    me: row.id === me
+  }))
+  const total = result.rows[0]?.total ?? 0
+  const position = rows.find((row) => row.me)?.position ?? null
+  return {
+    listed: true as const,
+    city: mine.city,
+    ...monthOf(now),
+    metric,
+    total,
+    position,
+    rows: rows.filter(
+      (r) => r.position > cursor && r.position <= cursor + size
+    ),
+    around: position
+      ? rows.filter((r) => Math.abs(r.position - position) <= CITY_AROUND)
+      : [],
+    nextCursor: cursor + size < total ? cursor + size : null
+  }
 }

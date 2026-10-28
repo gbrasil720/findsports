@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'bun:test'
-import { chaseOf, monthOf, type RankVisit, rank, scoreOf } from './ranking'
+import {
+  chaseOf,
+  listedInCity,
+  monthOf,
+  type RankVisit,
+  rank,
+  scoreOf
+} from './ranking'
 
 const at = (iso: string) => new Date(iso)
 const v = (
@@ -131,5 +138,14 @@ describe('monthOf', () => {
       month: '2026-11',
       closesInDays: 29
     })
+  })
+})
+
+describe('listedInCity', () => {
+  it('só quem ligou o ranking global e não escolheu "Ninguém"', () => {
+    expect(listedInCity(false, 'everyone')).toBe(false)
+    expect(listedInCity(true, 'everyone')).toBe(true)
+    expect(listedInCity(true, 'friends')).toBe(true)
+    expect(listedInCity(true, 'nobody')).toBe(false)
   })
 })

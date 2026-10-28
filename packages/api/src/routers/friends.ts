@@ -132,6 +132,7 @@ export const friendsRouter = router({
       .select({
         activityVisibility: user.activityVisibility,
         friendRequestsFrom: user.friendRequestsFrom,
+        rankingGlobal: user.rankingGlobal,
         city: user.searchCityName
       })
       .from(user)
@@ -577,12 +578,21 @@ export const friendsRouter = router({
           .optional(),
         friendRequestsFrom: z
           .enum(['everyone', 'friends_of_friends', 'nobody'])
-          .optional()
+          .optional(),
+        /** "Aparecer no ranking global" (27c, WEB-465). */
+        rankingGlobal: z.boolean().optional()
       })
     )
     .mutation(async ({ ctx, input }) => {
-      if (input.activityVisibility || input.friendRequestsFrom)
-        await db.update(user).set(input).where(eq(user.id, ctx.session.user.id))
+      const me = ctx.session.user.id
+      // A lista da cidade mostra o `@`: quem entra nela já sai com um.
+      if (input.rankingGlobal) await ensureSocialIdentity(me)
+      if (
+        input.activityVisibility ||
+        input.friendRequestsFrom ||
+        input.rankingGlobal !== undefined
+      )
+        await db.update(user).set(input).where(eq(user.id, me))
       return input
     }),
 

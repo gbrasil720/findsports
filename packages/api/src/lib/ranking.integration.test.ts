@@ -21,9 +21,7 @@ const integrationTest = isDisposableTestDatabase() ? test : test.skip
 
 integrationTest('ranking dos amigos e posição na cidade', async () => {
   const { db, appRouter } = await load()
-  const { readCityPosition, readFriendsRanking } = await import(
-    './ranking-read'
-  )
+  const { readCityBoard, readFriendsRanking } = await import('./ranking-read')
   const tag = crypto.randomUUID().slice(0, 8)
   const city = `Cidade ${tag}`
   // Um bar por dono.
@@ -180,14 +178,69 @@ integrationTest('ranking dos amigos e posição na cidade', async () => {
     expect(withCaio.rows[0]?.name).toBe(caio.name)
     expect(withCaio.rows[0]?.value).toBe(5)
 
-    // Na cidade (todo mundo do perfil, privacidade à parte: só o número):
-    // Caio 5, Beto e Dora 2 antes da Ana, Eva 1.
-    expect(await readCityPosition(ana.id, now)).toEqual({
+    // Na cidade (27a–27c, WEB-465): o ranking global nasce desligado, e
+    // quem está fora não vê nem a própria posição.
+    expect(await readCityBoard(ana.id, 'bars', 0, now)).toEqual({
+      listed: false,
       city,
-      position: 4,
-      total: 5
+      rankingGlobal: false,
+      nobody: false
     })
-    expect((await readCityPosition(eva.id, now))?.position).toBe(5)
+    for (const p of people)
+      await appRouter
+        .createCaller(contextFor(p.id, 'fan'))
+        .friends.updatePrivacy({ rankingGlobal: true })
+    // Ligar dá o `@` que a lista mostra.
+    const [named] = await db
+      .select({ username: user.username, on: user.rankingGlobal })
+      .from(user)
+      .where(eq(user.id, ana.id))
+    expect(named?.on).toBe(true)
+    expect(named?.username).toBeTruthy()
+    // Eva liga, mas escolhe "Ninguém" em "Onde você foi": fica de fora.
+    await db
+      .update(user)
+      .set({ activityVisibility: 'nobody' })
+      .where(eq(user.id, eva.id))
+    expect(await readCityBoard(eva.id, 'bars', 0, now)).toMatchObject({
+      listed: false,
+      rankingGlobal: true,
+      nobody: true
+    })
+    // Caio 5, Beto e Dora 2 antes da Ana (chegaram antes ao segundo bar).
+    const board = await readCityBoard(ana.id, 'bars', 0, now)
+    if (!board?.listed) throw new Error('Ana devia estar na lista')
+    expect(board.total).toBe(4)
+    expect(board.position).toBe(4)
+    expect(board.nextCursor).toBeNull()
+    expect(board.rows.map((r) => [r.position, r.name, r.value, r.me])).toEqual([
+      [1, caio.name, 5, false],
+      [2, beto.name, 2, false],
+      [3, dora.name, 2, false],
+      [4, ana.name, 2, true]
+    ])
+    expect(board.rows[0]?.username).toBeTruthy()
+    expect(board.around.map((r) => r.position)).toEqual([2, 3, 4])
+    // Jogos: um por jogo validado; Dora tem dois em outubro, como a Ana.
+    const games = await readCityBoard(ana.id, 'games', 0, now)
+    if (!games?.listed) throw new Error('Ana devia estar na lista')
+    expect(games.rows.map((r) => [r.name, r.value])).toEqual([
+      [caio.name, 5],
+      [beto.name, 2],
+      [dora.name, 2],
+      [ana.name, 2]
+    ])
+    // Desligar tira da lista dos outros também.
+    await appRouter
+      .createCaller(contextFor(caio.id, 'fan'))
+      .friends.updatePrivacy({ rankingGlobal: false })
+    const withoutCaio = await readCityBoard(beto.id, 'bars', 0, now)
+    if (!withoutCaio?.listed) throw new Error('Beto devia estar na lista')
+    expect(withoutCaio.rows.map((r) => r.name)).toEqual([
+      beto.name,
+      dora.name,
+      ana.name
+    ])
 
     // Pela API, com o relógio de verdade: só torcedor.
     const caller = appRouter.createCaller(contextFor(ana.id, 'fan'))
@@ -197,6 +250,8 @@ integrationTest('ranking dos amigos e posição na cidade', async () => {
     )
     const asPub = appRouter.createCaller(contextFor(ownerId, 'pub'))
     await expect(asPub.ranking.friends({ metric: 'bars' })).rejects.toThrow()
+    await expect(asPub.ranking.city({})).rejects.toThrow()
+    expect((await caller.ranking.city({ metric: 'games' }))?.listed).toBe(true)
   } finally {
     await db
       .delete(user)
@@ -204,3 +259,125 @@ integrationTest('ranking dos amigos e posição na cidade', async () => {
     await db.delete(sport).where(eq(sport.id, sportId))
   }
 })
+
+integrationTest(
+  'ranking da cidade com 5 mil torcedores: páginas por posição e tempo',
+  async () => {
+    const { db } = await load()
+    const { sql } = await import('@findsports_oficial/db')
+    const { readCityBoard } = await import('./ranking-read')
+    const tag = crypto.randomUUID().slice(0, 8)
+    const city = `Massa ${tag}`
+    // Um bar por dono.
+    const owners = [1, 2, 3, 4, 5].map(() => crypto.randomUUID())
+    const sportId = crypto.randomUUID()
+    const fans = 5000
+    await db.insert(user).values(
+      owners.map((id) => ({
+        id,
+        name: 'Dono',
+        email: `${id}@integration.invalid`,
+        emailVerified: true,
+        role: 'pub' as const
+      }))
+    )
+    try {
+      await db
+        .insert(sport)
+        .values({ id: sportId, name: sportId, slug: `massa-${sportId}` })
+      await db.insert(bar).values(
+        owners.map((id, n) => ({
+          userId: id,
+          name: `Bar ${n + 1} ${tag}`,
+          address: 'Rua descartável, 1',
+          neighborhood: `Bairro ${n + 1}`,
+          city,
+          latitude: '-23.55052000',
+          longitude: '-46.63330800',
+          isActive: true
+        }))
+      )
+      // 15 jogos em outubro, nos 5 bares; o torcedor n foi aos n % 12
+      // primeiros. Todos ligaram o ranking global.
+      await db.execute(sql`
+        INSERT INTO "user" (id, name, email, email_verified, role,
+          onboarding_completed, search_city_name, search_city_uf,
+          ranking_global, activity_visibility)
+        SELECT ${tag} || '-' || n, 'Torcedor ' || n,
+          ${tag} || '-' || n || '@integration.invalid', true, 'fan', true,
+          ${city}, 'ZZ', true, 'friends'
+        FROM generate_series(1, ${fans}) n
+      `)
+      await db.execute(sql`
+        INSERT INTO event (id, bar_id, sport_id, championship, starts_at)
+        SELECT ${tag} || '-ev-' || e,
+          (SELECT id FROM bar WHERE city = ${city} ORDER BY name OFFSET e % 5 LIMIT 1),
+          ${sportId}, 'Massa', timestamp '2026-10-01 22:00' + e * interval '1 day'
+        FROM generate_series(1, 15) e
+      `)
+      await db.execute(sql`
+        INSERT INTO reservation (id, event_id, user_id, party_size, status)
+        SELECT ${tag} || '-r-' || n || '-' || e, ${tag} || '-ev-' || e,
+          ${tag} || '-' || n, 1, 'confirmed'
+        FROM generate_series(1, ${fans}) n, generate_series(1, 15) e
+        WHERE e <= n % 12
+      `)
+      await db.execute(sql`
+        INSERT INTO reservation_code (id, code, reservation_id, max_uses)
+        SELECT id, upper(left(md5(id), 10)), id, 1 FROM reservation
+        WHERE id LIKE ${`${tag}-r-%`}
+      `)
+      await db.execute(sql`
+        INSERT INTO reservation_code_use (id, code_id, used_at)
+        SELECT c.id, c.id, e.starts_at + interval '20 minutes'
+        FROM reservation_code c
+        JOIN reservation r ON r.id = c.reservation_id
+        JOIN event e ON e.id = r.event_id
+        WHERE c.id LIKE ${`${tag}-r-%`}
+      `)
+      // Estatísticas em dia, como em produção: sem elas o planejador acha as
+      // tabelas vazias e faz laço aninhado sobre as visitas (passa de 60 s).
+      await db.execute(
+        sql`ANALYZE "user", event, reservation, reservation_code, reservation_code_use`
+      )
+      const now = new Date('2026-10-20T15:00:00Z')
+      const me = `${tag}-2500`
+      const started = performance.now()
+      const first = await readCityBoard(me, 'bars', 0, now)
+      const ms = performance.now() - started
+      console.info(
+        `[ranking] cidade com ${fans} torcedores: ${ms.toFixed(0)} ms`
+      )
+      if (!first?.listed) throw new Error('devia estar na lista')
+      expect(first.total).toBe(fans)
+      expect(first.rows.map((r) => r.position)).toEqual([
+        1, 2, 3, 4, 5, 6, 7, 8
+      ])
+      expect(first.nextCursor).toBe(8)
+      const mine = first.position as number
+      expect(first.around.map((r) => r.position)).toEqual([
+        mine - 2,
+        mine - 1,
+        mine,
+        mine + 1,
+        mine + 2
+      ])
+      expect(first.around[2]?.me).toBe(true)
+      // A próxima página continua de onde a primeira parou, sem buraco.
+      const second = await readCityBoard(me, 'bars', 8, now)
+      if (!second?.listed) throw new Error('devia estar na lista')
+      expect(second.rows.map((r) => r.position)).toEqual(
+        Array.from({ length: 30 }, (_, i) => 9 + i)
+      )
+      expect(second.position).toBe(mine)
+      // Mais alto primeiro: 5 bares é o máximo.
+      expect(first.rows[0]?.value).toBe(5)
+      expect(ms).toBeLessThan(3000)
+    } finally {
+      await db.execute(sql`DELETE FROM "user" WHERE id LIKE ${`${tag}-%`}`)
+      await db.delete(user).where(inArray(user.id, owners))
+      await db.delete(sport).where(eq(sport.id, sportId))
+    }
+  },
+  60_000
+)
