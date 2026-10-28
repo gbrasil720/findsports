@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { entradaHead } from '@/components/entrada/auth'
-import { NoApp } from '@/components/entrada/no-app'
+import { NoApp, SEM_BAR_HEAD } from '@/components/entrada/no-app'
 
 /**
  * Onde o torcedor cai no web (`FAN_HOME`, em `utils/auth-guards.ts`): o web é
@@ -12,9 +12,7 @@ export const Route = createFileRoute('/torcedor')({
   head: () =>
     entradaHead({
       path: '/torcedor',
-      title: 'A Onside de torcedor está no app — Onside',
-      description:
-        'Ache o bar que vai passar o seu jogo, marque que vai assistir e ganhe a oferta da casa no app Onside.',
+      ...SEM_BAR_HEAD,
       indexable: false
     }),
   component: () => <NoApp bar={null} />
