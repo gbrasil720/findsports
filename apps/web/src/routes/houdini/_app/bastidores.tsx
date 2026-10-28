@@ -88,11 +88,13 @@ function buildChecks(status: Status): Check[] {
   const plans = status.jobs.find((j) => j.job === 'bar_plans')
   const retention = status.jobs.find((j) => j.job === 'analytics_retention')
   const notices = status.jobs.find((j) => j.job === 'bar_notices')
+  const aiRuns = status.jobs.find((j) => j.job === 'ai_stale_runs')
   const next = plans ? formatDateTime(plans.nextRunAt) : '—'
   const { migrations, database, tiles, deploy } = status
   const p = counts(plans)
   const r = counts(retention)
   const n = counts(notices)
+  const a = counts(aiRuns)
 
   return [
     {
@@ -208,6 +210,19 @@ function buildChecks(status: Status): Check[] {
         { k: 'Esperado', v: 'todo dia 01:00' },
         { k: 'Dias consolidados', v: String(r.diasFinalizados ?? '—') },
         { k: 'Eventos apagados', v: String(r.eventosApagados ?? '—') }
+      ]
+    },
+    {
+      key: 'ai_stale_runs',
+      title: 'Execuções presas da IA',
+      where: 'mesmo cron · closeStaleRuns',
+      state: aiRuns?.state ?? 'warn',
+      job: 'ai_stale_runs',
+      error: aiRuns?.lastRun?.ok === false ? aiRuns.lastRun.error : null,
+      facts: [
+        ...lastRunFacts(aiRuns),
+        { k: 'Esperado', v: 'todo dia 01:00' },
+        { k: 'Encerradas', v: String(a.closed ?? '—') }
       ]
     },
     {

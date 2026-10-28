@@ -46,6 +46,7 @@ function duration(seconds: unknown) {
 const JOB_LABELS: Record<string, string> = {
   bar_plans: 'a reconciliação dos planos',
   analytics_retention: 'a limpeza dos analytics',
+  ai_stale_runs: 'o encerramento das execuções presas da IA',
   bar_notices: 'os avisos da semana dos bares'
 }
 
