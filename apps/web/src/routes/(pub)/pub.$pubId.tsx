@@ -1,6 +1,6 @@
 import { createFileRoute, notFound } from '@tanstack/react-router'
 import { entradaHead } from '@/components/entrada/auth'
-import { NoApp } from '@/components/entrada/no-app'
+import { NoApp, SEM_BAR_HEAD } from '@/components/entrada/no-app'
 import { getBarTeaser } from '@/functions/get-bar-teaser'
 
 /**
@@ -11,7 +11,9 @@ import { getBarTeaser } from '@/functions/get-bar-teaser'
  * Sem sessão, como sempre foi a prévia de link (WEB-312): o nome sai no HTML
  * do servidor para o título. Continua `noindex` e fora do sitemap
  * (`docs/seo.md`): é uma página de passagem para o app. Id que não existe é
- * 404 de verdade; bar fora do ar mostra a página sem o cartão.
+ * 404 de verdade; bar fora do ar mostra a página sem o cartão (WEB-468), com
+ * o título e o "Abrir no app" da página sem bar, e segue 200: o bar volta ao
+ * ar quando contrata, e o link compartilhado continua levando ao app.
  */
 export const Route = createFileRoute('/(pub)/pub/$pubId')({
   loader: async ({ params }) => {
@@ -20,11 +22,15 @@ export const Route = createFileRoute('/(pub)/pub/$pubId')({
     return teaser?.bar ?? null
   },
   head: ({ loaderData, params }) => {
-    const name = loaderData?.name ?? 'Bar'
+    const name = loaderData?.name
     return entradaHead({
       path: `/pub/${params.pubId}`,
-      title: `${name} — Onside`,
-      description: `${name}: jogos, estrutura e preço médio na Onside.`,
+      ...(name
+        ? {
+            title: `${name} — Onside`,
+            description: `${name}: jogos, estrutura e preço médio na Onside.`
+          }
+        : SEM_BAR_HEAD),
       indexable: false
     })
   },
