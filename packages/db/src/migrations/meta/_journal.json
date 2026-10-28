@@ -561,6 +561,13 @@
       "when": 1793220114576,
       "tag": "0080_bar_photo_review",
       "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1793223830199,
+      "tag": "0081_user_ranking_global",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "user" ADD COLUMN "ranking_global" boolean DEFAULT false NOT NULL;
