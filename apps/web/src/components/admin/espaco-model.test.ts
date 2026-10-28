@@ -3,15 +3,22 @@ import type { AdminBar } from './admin-model'
 import {
   alteracoes,
   checklistDoPerfil,
+  deslocamento,
   diaDoJogo,
   diaNaLista,
+  formatKm,
   iniciaisDoApp,
+  KM_DE_EXEMPLO,
+  metrosPorPonto,
+  minutosAPe,
   quandoNaGota,
   rascunhoDoBar,
   recursoPago,
   SEMANA_PADRAO,
   siglaDoTime,
-  temAlteracao
+  temAlteracao,
+  torcedorDeExemplo,
+  zoomPara
 } from './espaco-model'
 
 const bar = {
@@ -223,5 +230,35 @@ describe('Card e Mapa da prévia', () => {
     expect(siglaDoTime('Red Bull Racing')).toBe('RED')
     expect(iniciaisDoApp('Bar do Zé')).toBe('BD')
     expect(iniciaisDoApp('7 Mares Bar')).toBe('MB')
+  })
+})
+
+describe('distância e mapa da prévia (WEB-456)', () => {
+  const vila = { lat: -23.5568, lng: -46.6912 }
+
+  test('o torcedor de exemplo fica a 0,8 km ao sul: "0,8 km · 11 min a pé"', () => {
+    const voce = torcedorDeExemplo(vila)
+    expect(voce.lng).toBe(vila.lng)
+    const zoom = 15
+    const { x, y } = deslocamento(voce, vila, zoom)
+    expect(x).toBe(0)
+    // O bar fica acima (y negativo), a 0,8 km medidos no mapa.
+    expect(y).toBeLessThan(0)
+    expect((-y * metrosPorPonto(vila.lat, zoom)) / 1000).toBeCloseTo(
+      KM_DE_EXEMPLO,
+      1
+    )
+    expect(formatKm(KM_DE_EXEMPLO)).toBe('0,8 km')
+    expect(minutosAPe(KM_DE_EXEMPLO)).toBe(11)
+  })
+
+  test('formatKm escreve como o app', () => {
+    expect(formatKm(12)).toBe('12 km')
+    expect(formatKm(2)).toBe('2,0 km')
+  })
+
+  test('zoomPara põe os km pedidos na largura pedida', () => {
+    const zoom = zoomPara(vila.lat, 6, 360)
+    expect(metrosPorPonto(vila.lat, zoom) * 360).toBeCloseTo(6000, 3)
   })
 })
