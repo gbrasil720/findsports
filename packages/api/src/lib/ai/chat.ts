@@ -15,7 +15,7 @@ import {
 } from './chat-tools'
 import { cleanSuggestions, type Emit, renumberCitations } from './events'
 import { reasoningEffort } from './models'
-import type { AiCall, AiStatus } from './run'
+import { type AiCall, type AiStatus, AiStoppedError } from './run'
 
 /**
  * Uma mensagem do chat da busca com IA (WEB-400): o modelo conversa e
@@ -259,6 +259,8 @@ export async function converse(
         model = candidate
         return out
       } catch (error) {
+        // Parada pelo torcedor: sem nova tentativa nem outro modelo.
+        if (error instanceof AiStoppedError) throw error
         last = error
       }
     }

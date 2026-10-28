@@ -51,12 +51,15 @@ export const aiRun = pgTable(
     })
       .notNull()
       .default(0),
+    // `running` enquanto a execução corre (a linha nasce no começo);
+    // `stopped` quando o torcedor parou a resposta (`ai.stop`, WEB-430).
     status: text('status', {
-      enum: ['ok', 'timeout', 'error', 'fallback']
+      enum: ['ok', 'timeout', 'error', 'fallback', 'stopped', 'running']
     }).notNull(),
     cacheHit: boolean('cache_hit').notNull().default(false),
     // Mensagem do chat que gerou resposta útil: só ela desconta do limite
-    // (10 por dia, 100 por mês). Erro, demora e tentativa interna não contam.
+    // (10 por dia, 100 por mês). Erro, demora, resposta parada e tentativa
+    // interna não contam.
     useful: boolean('useful').notNull().default(false),
     // Polegar da resposta (1 ou -1), a métrica secundária do teste.
     feedback: smallint('feedback'),

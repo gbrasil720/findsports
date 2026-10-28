@@ -1,4 +1,4 @@
-import { db, sql } from '@findsports_oficial/db'
+import { and, db, eq, sql } from '@findsports_oficial/db'
 import { aiRun } from '@findsports_oficial/db/schema/ai'
 
 import { getAppConfig } from '../app-config'
@@ -36,7 +36,7 @@ export type AiCall = (
   opts?: { timeoutMs?: number }
 ) => Promise<unknown>
 
-export type AiStatus = 'ok' | 'fallback' | 'error' | 'timeout'
+export type AiStatus = 'ok' | 'fallback' | 'error' | 'timeout' | 'stopped'
 
 export type AiOutcome<T> = {
   value: T
@@ -54,7 +54,45 @@ export class AiTimeoutError extends Error {
   }
 }
 
+/** O torcedor parou a resposta (`ai.stop`): nenhuma chamada a mais ao modelo. */
+export class AiStoppedError extends Error {
+  constructor() {
+    super('Resposta parada pelo torcedor.')
+    this.name = 'AiStoppedError'
+  }
+}
+
 const DEFAULT_TIMEOUT_MS = 15_000
+
+/**
+ * Para a execução em andamento de uma mensagem do chat (WEB-430). Só a da
+ * própria pessoa e só enquanto roda: resposta pronta já descontou e não volta
+ * atrás. A linha fica `stopped` e não útil; o gasto até aqui entra no fim.
+ */
+export async function stopRun(runId: string, userId: string) {
+  const rows = await db
+    .update(aiRun)
+    .set({ status: 'stopped', useful: false })
+    .where(
+      and(
+        eq(aiRun.runId, runId),
+        eq(aiRun.userId, userId),
+        eq(aiRun.feature, 'chat'),
+        eq(aiRun.status, 'running')
+      )
+    )
+    .returning({ runId: aiRun.runId })
+  return rows.length > 0
+}
+
+/** Se o torcedor parou esta execução (`stopRun`). */
+export async function wasStopped(runId: string) {
+  const [row] = await db
+    .select({ status: aiRun.status })
+    .from(aiRun)
+    .where(eq(aiRun.runId, runId))
+  return row?.status === 'stopped'
+}
 
 /** O que a pessoa e todo mundo já usaram, no dia e no mês de Brasília. */
 export async function readUserUsage(
@@ -149,17 +187,28 @@ export function readUsage(raw: Raw) {
 
 /**
  * Executa `fn` como uma execução de IA e grava a linha em `ai_run`. `fn`
- * recebe `call`, que fala com o modelo; ela decide o desfecho (status, quem
- * respondeu, se foi útil). Se `fn` lançar, a linha sai com `error` (ou
- * `timeout`) e o erro sobe.
+ * recebe `call`, que fala com o modelo, e o `runId`; ela decide o desfecho
+ * (status, quem respondeu, se foi útil). Se `fn` lançar, a linha sai com
+ * `error` (ou `timeout`) e o erro sobe.
+ *
+ * A linha nasce `running` no começo, para o `ai.stop` ter o que parar, e é
+ * completada no fim. Parada no meio, fica `stopped` e não útil, com o gasto.
  */
 export async function runAi<T>(
   meta: AiRunMeta,
   deps: AiDeps,
-  fn: (call: AiCall) => Promise<AiOutcome<T>>
+  fn: (call: AiCall, runId: string) => Promise<AiOutcome<T>>
 ): Promise<AiOutcome<T> & { runId: string }> {
   const runId = crypto.randomUUID()
   const started = performance.now()
+  await db.insert(aiRun).values({
+    runId,
+    userId: meta.userId,
+    feature: meta.feature,
+    variant: meta.variant,
+    assignedModel: meta.assignedModel,
+    status: 'running'
+  })
   let tokensIn = 0
   let tokensOut = 0
   let cost = 0
@@ -194,26 +243,31 @@ export async function runAi<T>(
     }
   }
 
-  const write = (outcome: Omit<AiOutcome<unknown>, 'value'>) =>
-    db.insert(aiRun).values({
-      runId,
-      userId: meta.userId,
-      feature: meta.feature,
-      variant: meta.variant,
-      assignedModel: meta.assignedModel,
-      servedModel: outcome.servedModel,
-      latencyMs: Math.round(performance.now() - started),
-      tokensIn,
-      tokensOut,
-      costUsd: cost,
-      status: outcome.status,
-      useful: outcome.useful
-    })
+  // O `stopped` do `ai.stop` ganha do desfecho, na mesma escrita: parar
+  // depois da última chamada ao modelo também não desconta.
+  const write = async (outcome: Omit<AiOutcome<unknown>, 'value'>) => {
+    const [row] = await db
+      .update(aiRun)
+      .set({
+        servedModel: outcome.servedModel,
+        latencyMs: Math.round(performance.now() - started),
+        tokensIn,
+        tokensOut,
+        costUsd: cost,
+        status: sql`CASE WHEN ${aiRun.status} = 'stopped' THEN 'stopped' ELSE ${outcome.status} END`,
+        useful: sql`${outcome.useful} AND ${aiRun.status} <> 'stopped'`
+      })
+      .where(eq(aiRun.runId, runId))
+      .returning({ status: aiRun.status, useful: aiRun.useful })
+    return row
+  }
 
   try {
-    const outcome = await fn(call)
-    await write(outcome)
-    return { ...outcome, runId }
+    const outcome = await fn(call, runId)
+    const row = await write(outcome)
+    return row?.status === 'stopped'
+      ? { ...outcome, status: 'stopped', useful: false, runId }
+      : { ...outcome, runId }
   } catch (error) {
     await write({
       status: error instanceof AiTimeoutError ? 'timeout' : 'error',
