@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { DevTab } from '@/components/dev-tab'
 import { ExploreStateProvider } from '@/components/explore-state'
+import { MaintenanceGate } from '@/components/maintenance'
 import { OfflineBanner } from '@/components/offline-banner'
 import { Splash, SplashDone } from '@/components/splash'
 import { PaletteProvider } from '@/components/theme'
@@ -189,6 +190,9 @@ export default function Layout() {
               </Stack>
             </ExploreStateProvider>
           </SplashDone>
+          {/* A manutenção (26d, 26e) cobre as telas; o código de hoje, em tela
+          cheia nativa, abre por cima dela. */}
+          <MaintenanceGate />
           <OfflineBanner />
           <DevTab />
           {splashDone ? null : (
