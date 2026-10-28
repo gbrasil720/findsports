@@ -126,6 +126,14 @@
   }
 }
 
+/* O `overflow-x: hidden` de html e body (globals.css) faz do body um contêiner
+   de rolagem que nunca rola: a faixa do ambiente e o trilho grudavam nele e
+   subiam com a página. `clip` corta igual sem criar contêiner, e o sticky
+   volta a valer contra a janela. */
+:is(html, body):has(.houdini) {
+  overflow-x: clip;
+}
+
 .houdini *,
 .houdini *::before,
 .houdini *::after {
