@@ -386,12 +386,12 @@ Import shared components: `import { Button } from "@findsports_oficial/ui/compon
 
 ### Mapa
 
-O web não tem mais mapa (painel do bar, Rodada 3, 24/10/2026): o mapa MapLibre do
-torcedor saiu com o painel do torcedor, e o app usa o mapa nativo
-(`react-native-maps`, ver "App mobile"). O Worker `apps/tiles` (`tiles.onside.sh`),
-o archive `.pmtiles` no R2 e `apps/web/scripts/build-map-tiles.ts` continuam como
-estão, sem quem os use: são infra de produção e só saem por decisão do dono. O
-runbook segue em `docs/map-tiles.md`; o código do mapa está no histórico do git.
+O único mapa do web é o da prévia "Como o torcedor vê" em `/admin/meu-espaco` (WEB-456):
+MapLibre com os tiles da Onside (Worker `apps/tiles`, `tiles.onside.sh`), carregado por
+`import()` só ali (`components/admin/mapa-da-previa.tsx` e `mapa-maplibre.ts`, glyphs em
+`apps/web/public/map/fonts`); nada de MapLibre no bundle de entrada. A distância da prévia
+é de um torcedor de exemplo a 0,8 km do bar, e a legenda diz isso. O app usa o mapa nativo
+(`react-native-maps`, ver "App mobile"). Runbook dos tiles em `docs/map-tiles.md`.
 
 ### SEO
 

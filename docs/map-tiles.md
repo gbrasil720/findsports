@@ -1,13 +1,14 @@
 # Basemap próprio — MapLibre + Protomaps (WEB-73, WEB-218)
 
-> **Sem uso desde 24/10/2026.** O web passou a ser só do bar, e o mapa do
-> torcedor saiu com o resto: componente (`onside-map.tsx`), estilo
-> (`map-style.ts`), glyphs e sprite (`apps/web/public/map/`) e as dependências
-> `maplibre-gl`/`pmtiles` foram apagados do web. O app usa o mapa nativo. O
-> Worker `onside-tiles`, o archive no R2 e o script de build continuam no ar,
-> sem quem os chame: são infra de produção e não se apagam sem o dono. Para
-> reviver o mapa no web, o código está no histórico do git; o runbook abaixo
-> descreve como era.
+> **Só na prévia do painel (WEB-456, 28/10/2026).** O mapa do torcedor saiu do
+> web em 24/10; o MapLibre voltou apenas para a prévia "Como o torcedor vê" de
+> `/admin/meu-espaco`, carregado por `import()` (`components/admin/mapa-maplibre.ts`).
+> A URL do TileJSON é a constante `TILES_URL` desse arquivo (não há mais
+> `VITE_MAP_TILES_URL`): rebuild do archive = trocar a constante. Só o
+> TileJSON do Worker; o `pmtiles://` legado e o sprite não voltaram (as camadas
+> que só são ícone saem do estilo). Glyphs em `apps/web/public/map/fonts`. O
+> `ALLOWED_ORIGINS` do Worker só tem `localhost:3001`: em outra porta o
+> navegador recusa os tiles (o E2E usa o dublê `fixtures/tiles.ts`).
 
 O mapa não depende mais de fornecedor com faturamento. O basemap inteiro é **um
 arquivo** `.pmtiles` no R2; o navegador **não** lê esse arquivo direto — um
