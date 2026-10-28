@@ -1287,20 +1287,10 @@ a.hd-row + a.hd-row {
   overflow: hidden;
 }
 
-.hd-palette[open] {
-  animation: hd-palette-in 180ms var(--hd-ease);
-}
-
+/* Sem animação ao abrir: é atalho de teclado, usado dezenas de vezes por
+   dia, e tem de estar pronto para digitar no mesmo quadro. */
 .hd-palette::backdrop {
   background: var(--hd-scrim);
-  animation: hd-fade-in 180ms ease-out;
-}
-
-@keyframes hd-palette-in {
-  from {
-    opacity: 0;
-    transform: translateY(-6px) scale(0.98);
-  }
 }
 
 @keyframes hd-fade-in {
@@ -1598,7 +1588,7 @@ a.hd-row + a.hd-row {
     flex-direction: column;
     align-items: center;
     gap: 3px;
-    min-width: 56px;
+    min-width: 52px;
     min-height: 48px;
     justify-content: center;
     padding: 0;
@@ -1649,11 +1639,7 @@ a.hd-row + a.hd-row {
   }
 
   .houdini *,
-  .houdini *::backdrop,
-  .hd-palette,
-  .hd-palette::backdrop,
-  .hd-more,
-  .hd-more::backdrop {
+  .houdini *::backdrop {
     transition: none;
     animation: none;
   }
