@@ -56,6 +56,10 @@ export const user = pgTable(
     })
       .default('everyone')
       .notNull(),
+    // "Aparecer no ranking global" (Privacidade, 27c; WEB-465): nome, `@` e
+    // número na lista da cidade. Nasce desligado; quem tem "Ninguém" em
+    // `activityVisibility` fica de fora mesmo ligado.
+    rankingGlobal: boolean('ranking_global').default(false).notNull(),
     // better-auth admin plugin fields
     banned: boolean('banned').default(false),
     banReason: text('ban_reason'),
