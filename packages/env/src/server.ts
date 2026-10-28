@@ -11,13 +11,24 @@ const rawEnv = createEnv({
     BETTER_AUTH_URL: z.url(),
     PUBLIC_APP_URL: z.url().optional(),
     AUTH_DEV_TRUSTED_ORIGIN: z.url().optional(),
-    RESEND_API_KEY: z.string().min(1).optional(),
-    RESEND_FROM_EMAIL: z.email().optional(),
+    /**
+     * Envio de e-mail (WEB-476): qualquer API no formato da Resend
+     * (`POST <EMAIL_API_URL>/emails`, Bearer). A Resend é o padrão; a
+     * MillionSend é a mesma API em `https://api.millionsend.com`. Os nomes
+     * antigos (`RESEND_API_KEY`, `RESEND_FROM_EMAIL`) valem enquanto os
+     * segredos não forem trocados: ver `runtimeEnv` abaixo.
+     */
+    EMAIL_API_KEY: z.string().min(1).optional(),
+    EMAIL_FROM: z.email().optional(),
+    // https: a chave vai no cabeçalho de cada envio.
+    EMAIL_API_URL: z
+      .url({ protocol: /^https$/ })
+      .default('https://api.resend.com'),
     /**
      * `console`: o e-mail vai para o log (com o link, que é como se testa)
-     * e conta como entregue, mesmo com `RESEND_API_KEY`. Só para o Worker de
+     * e conta como entregue, mesmo com `EMAIL_API_KEY`. Só para o Worker de
      * preview, cujo banco é cópia de produção com e-mails reais. Sem ela,
-     * produção sem Resend continua falhando alto.
+     * produção sem chave de e-mail continua falhando alto.
      */
     EMAIL_DELIVERY: z.literal('console').optional(),
     /**
@@ -84,7 +95,7 @@ const rawEnv = createEnv({
      * abaixo: qualquer uma delas troca um serviço real por um dublê.
      *
      * `E2E_EMAIL_OUTBOX`: arquivo JSONL onde os e-mails são gravados em vez
-     * de ir para a Resend. `E2E_DISABLE_CACHES=1`: zera os caches de servidor
+     * de ir para a API de e-mail. `E2E_DISABLE_CACHES=1`: zera os caches de servidor
      * (TTL e cookie de sessão). `LOCATIONIQ_BASE_URL`: stub do geocoding.
      * `STRIPE_API_BASE_URL`: stub da API do Stripe.
      */
@@ -96,7 +107,12 @@ const rawEnv = createEnv({
       .enum(['development', 'production', 'test'])
       .default('development')
   },
-  runtimeEnv: process.env,
+  runtimeEnv: {
+    ...process.env,
+    // Nomes antigos, de antes do WEB-476: o novo vence, vazio cai no antigo.
+    EMAIL_API_KEY: process.env.EMAIL_API_KEY || process.env.RESEND_API_KEY,
+    EMAIL_FROM: process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL
+  },
   emptyStringAsUndefined: true
 })
 

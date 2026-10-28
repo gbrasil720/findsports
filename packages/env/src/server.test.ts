@@ -94,3 +94,43 @@ describe('preview switches', () => {
     expect(result.exitCode).not.toBe(0)
   })
 })
+
+describe('envio de e-mail (WEB-476)', () => {
+  function emailEnv(extra: Record<string, string>) {
+    const result = Bun.spawnSync(
+      [
+        'bun',
+        '-e',
+        `const { env } = await import(${JSON.stringify(`${import.meta.dir}/server.ts`)}); console.log(JSON.stringify([env.EMAIL_API_KEY, env.EMAIL_FROM, env.EMAIL_API_URL]))`
+      ],
+      { env: { ...productionEnv, ...extra }, cwd: import.meta.dir }
+    )
+    return { ...result, values: result.stdout.toString().trim() }
+  }
+
+  it('aceita os nomes antigos enquanto os segredos não são trocados', () => {
+    expect(
+      emailEnv({
+        RESEND_API_KEY: 're_antiga',
+        RESEND_FROM_EMAIL: 'contato@mail.onside.sh'
+      }).values
+    ).toBe('["re_antiga","contato@mail.onside.sh","https://api.resend.com"]')
+  })
+
+  it('o nome novo vence o antigo', () => {
+    expect(
+      emailEnv({
+        RESEND_API_KEY: 're_antiga',
+        EMAIL_API_KEY: 'ms_nova',
+        EMAIL_FROM: 'contato@mail.onside.sh',
+        EMAIL_API_URL: 'https://api.millionsend.com'
+      }).values
+    ).toBe('["ms_nova","contato@mail.onside.sh","https://api.millionsend.com"]')
+  })
+
+  it('recusa EMAIL_API_URL sem https: a chave iria em texto aberto', () => {
+    const result = emailEnv({ EMAIL_API_URL: 'http://api.millionsend.com' })
+    expect(result.exitCode).not.toBe(0)
+    expect(result.stderr.toString()).toContain('EMAIL_API_URL')
+  })
+})
