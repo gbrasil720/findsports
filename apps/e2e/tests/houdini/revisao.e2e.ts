@@ -85,11 +85,15 @@ test('aprova a capa, recusa uma foto e a descrição com motivo', async ({
   })
   await expect(description).toContainText('Chope gelado e telão de 120".')
   await expect(description).toContainText('No ar hoje: “Chope gelado.”')
-  await description.getByRole('button', { name: 'Recusar' }).click()
+  // No celular os avisos de sucesso ficam por cima do pé da página: o
+  // teclado chega ao botão sem depender de onde eles estão.
+  await description.getByRole('button', { name: 'Recusar' }).press('Enter')
   await description
     .getByLabel(/Motivo da recusa/)
     .fill('Não dá para confirmar o tamanho do telão.')
-  await description.getByRole('button', { name: 'Confirmar recusa' }).click()
+  await description
+    .getByRole('button', { name: 'Confirmar recusa' })
+    .press('Enter')
   await expect(description).toHaveCount(0)
 
   const [photo] = await query(
