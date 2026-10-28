@@ -99,6 +99,19 @@ const SECTIONS: { title: string; items: Item[] }[] = [
     ]
   },
   {
+    // Claro (26d) ou escuro (26e) pelo tema do sistema. A de verdade cobre o
+    // app quando o Houdini liga `app.maintenance`.
+    title: '26 Erro e manutenção',
+    items: [
+      {
+        code: '26d/26e',
+        label: 'Manutenção (volta em 40 min)',
+        href: { pathname: '/manutencao', params: { volta: '40' } }
+      },
+      { code: '26d/26e', label: 'Manutenção sem previsão', href: '/manutencao' }
+    ]
+  },
+  {
     title: '06 Avulsas',
     items: [
       { code: '11w', label: '404', href: '/pagina-que-nao-existe' as Href },
