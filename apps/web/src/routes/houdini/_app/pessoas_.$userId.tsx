@@ -12,7 +12,7 @@ import {
   initials
 } from '@/components/houdini/format'
 import { GrimorioRow } from '@/components/houdini/grimorio'
-import { HatIcon, Icon } from '@/components/houdini/icons'
+import { Icon } from '@/components/houdini/icons'
 import { HoudiniShell } from '@/components/houdini/shell'
 import { authClient } from '@/lib/auth-client'
 import { appHref } from '@/lib/houdini-host'
@@ -27,8 +27,6 @@ export const Route = createFileRoute('/houdini/_app/pessoas_/$userId')({
 
 type Ficha = inferRouterOutputs<AppRouter>['adminUsers']['ficha']
 
-const CRUMBS = [{ label: 'Pessoas', to: '/houdini/pessoas' }] as const
-
 function FichaPage() {
   const { env, admin } = Route.useRouteContext()
   const { userId } = Route.useParams()
@@ -40,7 +38,7 @@ function FichaPage() {
 
   if (!query.data) {
     return (
-      <HoudiniShell title="Ficha" crumbs={CRUMBS} env={env} user={admin}>
+      <HoudiniShell env={env} user={admin}>
         <div className="hd-page">
           {query.isError ? (
             <div className="hd-card" role="alert" style={{ gap: 12 }}>
@@ -69,12 +67,7 @@ function FichaPage() {
   }
 
   return (
-    <HoudiniShell
-      title={query.data.account.name}
-      crumbs={CRUMBS}
-      env={env}
-      user={admin}
-    >
+    <HoudiniShell env={env} user={admin}>
       <FichaBody ficha={query.data} isSelf={userId === admin.id} />
     </HoudiniShell>
   )
@@ -111,13 +104,18 @@ function FichaBody({ ficha, isSelf }: { ficha: Ficha; isSelf: boolean }) {
   }
 
   return (
-    <div className="hd-page" style={{ gap: 24 }}>
+    <div className="hd-page">
+      <nav className="hd-crumbs" aria-label="Caminho">
+        <Link to="/houdini/pessoas">Pessoas</Link>
+        <span className="hd-sep">/</span>
+        <span>{account.name}</span>
+      </nav>
       <section
         style={{
           display: 'flex',
           flexWrap: 'wrap',
           gap: 20,
-          alignItems: 'flex-start',
+          alignItems: 'flex-end',
           justifyContent: 'space-between'
         }}
       >
@@ -129,18 +127,7 @@ function FichaBody({ ficha, isSelf }: { ficha: Ficha; isSelf: boolean }) {
             minWidth: 0
           }}
         >
-          <span
-            className="hd-avatar"
-            style={{
-              width: 64,
-              height: 64,
-              borderRadius: 18,
-              fontSize: 22,
-              background: 'var(--hd-roxo-tint)'
-            }}
-          >
-            {initials(account.name)}
-          </span>
+          <span className="hd-avatar is-lg">{initials(account.name)}</span>
           <div
             style={{
               minWidth: 0,
@@ -149,9 +136,7 @@ function FichaBody({ ficha, isSelf }: { ficha: Ficha; isSelf: boolean }) {
               gap: 6
             }}
           >
-            <h1 className="hd-h1" style={{ fontSize: 28 }}>
-              {account.name}
-            </h1>
+            <h1 className="hd-h1 is-md">{account.name}</h1>
             <div
               style={{
                 display: 'flex',
@@ -161,19 +146,19 @@ function FichaBody({ ficha, isSelf }: { ficha: Ficha; isSelf: boolean }) {
               }}
             >
               {account.banned ? (
-                <span className="hd-pill" data-tone="bad">
+                <span className="hd-pill" data-tone="live">
                   sumiu
                 </span>
               ) : (
-                <span className="hd-pill" data-tone="ok">
+                <span className="hd-pill" data-tone="acid">
                   presente
                 </span>
               )}
-              <span className="hd-pill" data-tone="roxo">
+              <span className="hd-pill" data-tone="stone">
                 {roleLabel(account.role as AppRole)}
               </span>
               {account.emailVerified ? null : (
-                <span className="hd-pill" data-tone="warn">
+                <span className="hd-pill" data-tone="sand">
                   e-mail não verificado
                 </span>
               )}
@@ -196,11 +181,11 @@ function FichaBody({ ficha, isSelf }: { ficha: Ficha; isSelf: boolean }) {
         ) : (
           <button
             type="button"
-            className="hd-btn hd-btn-primary"
+            className="hd-btn hd-btn-ink"
             onClick={entrarNaPele}
             disabled={entering || account.banned === true}
           >
-            <HatIcon size={16} sparkle={false} />
+            <Icon name="mask" size={18} />
             {entering ? 'Entrando…' : 'Entrar na pele'}
           </button>
         )}
@@ -302,7 +287,7 @@ function FichaBody({ ficha, isSelf }: { ficha: Ficha; isSelf: boolean }) {
                   style={{
                     fontSize: 12,
                     fontWeight: 600,
-                    color: 'var(--hd-roxo-soft)',
+                    color: 'var(--hd-tint)',
                     textDecoration: 'none'
                   }}
                 >
@@ -404,7 +389,7 @@ function FichaBody({ ficha, isSelf }: { ficha: Ficha; isSelf: boolean }) {
                 style={{
                   fontSize: 12,
                   fontWeight: 600,
-                  color: 'var(--hd-roxo-soft)',
+                  color: 'var(--hd-tint)',
                   textDecoration: 'none'
                 }}
               >
@@ -493,7 +478,7 @@ function Emails({ account }: { account: Ficha['account'] }) {
       <p
         role="status"
         className="hd-small"
-        style={{ margin: 0, color: 'var(--hd-ok)' }}
+        style={{ margin: 0, color: 'var(--hd-fg)' }}
       >
         {sent}
       </p>
