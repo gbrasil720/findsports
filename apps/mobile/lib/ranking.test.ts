@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'bun:test'
-import { chaseLabel, closesLabel, monthLabel, ordinal } from './ranking'
+import {
+  chaseLabel,
+  cityLayout,
+  closesLabel,
+  fansLabel,
+  monthLabel,
+  ordinal
+} from './ranking'
 
 describe('frases do ranking', () => {
   it('mês, fechamento e a distância para quem está acima', () => {
@@ -14,5 +21,41 @@ describe('frases do ranking', () => {
       'Falta 1 bairro para passar Rafael'
     )
     expect(ordinal(1284)).toBe('1.284º')
+  })
+})
+
+describe('lista da cidade', () => {
+  const rows = (from: number, to: number) =>
+    Array.from({ length: to - from + 1 }, (_, i) => ({ position: from + i }))
+  const positions = (list: { position: number }[]) =>
+    list.map((row) => row.position)
+
+  it('top, corte com quantos ficam no meio e a vizinhança', () => {
+    const layout = cityLayout(rows(1, 8), rows(1282, 1286), 38420)
+    expect(positions(layout.top)).toEqual(positions(rows(1, 8)))
+    expect(layout.gap).toBe(1273)
+    expect(fansLabel(layout.gap)).toBe('1.273 TORCEDORES')
+    expect(positions(layout.around)).toEqual([1282, 1283, 1284, 1285, 1286])
+    expect(layout.rest).toBe(0)
+  })
+
+  it('o topo alcança a vizinhança: uma lista só, sem repetir', () => {
+    const layout = cityLayout(rows(1, 38), rows(37, 41), 100)
+    expect(positions(layout.top)).toEqual(positions(rows(1, 41)))
+    expect(layout.gap).toBe(0)
+    expect(layout.around).toEqual([])
+    expect(layout.rest).toBe(59)
+    // Encostados (8 e 9): também junta.
+    expect(cityLayout(rows(1, 8), rows(9, 13), 13).gap).toBe(0)
+  })
+
+  it('você no top e cidade pequena', () => {
+    expect(cityLayout(rows(1, 3), rows(1, 3), 3)).toEqual({
+      top: rows(1, 3),
+      gap: 0,
+      around: [],
+      rest: 0
+    })
+    expect(fansLabel(1)).toBe('1 TORCEDOR')
   })
 })
