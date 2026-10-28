@@ -4,7 +4,9 @@
 # Os `vars` não secretos estão em wrangler.jsonc; o banco vem do binding
 # HYPERDRIVE (localConnectionString), não de DATABASE_URL.
 BETTER_AUTH_SECRET=
-RESEND_API_KEY=
+# E-mail (WEB-476): chave da API em EMAIL_API_URL (wrangler.jsonc). O nome
+# antigo, RESEND_API_KEY, ainda vale enquanto este não estiver posto.
+EMAIL_API_KEY=
 LOCATIONIQ_API_KEY=
 # Stripe (WEB-31): `sk_test_...` fora de produção — a chave viva é recusada
 # fora do domínio onside.sh. O segredo do webhook sai do endpoint cadastrado
