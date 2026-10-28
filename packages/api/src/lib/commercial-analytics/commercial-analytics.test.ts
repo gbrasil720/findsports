@@ -101,7 +101,6 @@ describe('commercial-analytics entitlements', () => {
     expect(e.canViewClassicPlacement).toBe(false)
     expect(e.canViewComparison).toBe(true)
     expect(e.comparison).toBe('previous_period')
-    expect(e.canViewDailyBreakdown).toBe(false)
     expect(e.eventBreakdown).toBe('basic')
     expect(e.maxDaysRetention).toBe(30)
   })
@@ -115,7 +114,6 @@ describe('commercial-analytics entitlements', () => {
     expect(e.canViewClassicPlacement).toBe(false)
     expect(e.canViewComparison).toBe(true)
     expect(e.comparison).toBe('cross_game')
-    expect(e.canViewDailyBreakdown).toBe(false)
     expect(e.eventBreakdown).toBe('complete')
     expect(e.maxDaysRetention).toBe(365)
   })
@@ -129,7 +127,6 @@ describe('commercial-analytics entitlements', () => {
     expect(e.canViewClassicPlacement).toBe(true)
     expect(e.canViewComparison).toBe(true)
     expect(e.comparison).toBe('advanced')
-    expect(e.canViewDailyBreakdown).toBe(true)
     expect(e.eventBreakdown).toBe('complete')
     expect(e.maxDaysRetention).toBe(null)
   })
@@ -429,9 +426,7 @@ const OVERVIEW_RAW: AnalyticsOverview = {
   classicClicksChange: 150,
 
   dailyProfileViews: [DAY(10)],
-  dailyDirectionsOpened: [DAY(1)],
-  dailyPhoneClicked: [DAY(1)],
-  dailyWhatsappOpened: [DAY(1)],
+  dailyHighIntentActions: [DAY(3)],
 
   from: '2026-09-01',
   to: '2026-09-30',
@@ -474,10 +469,9 @@ describe('applyOverviewEntitlements — objeto completo por plano', () => {
       classicExposuresChange: null,
       classicClicksChange: null,
 
-      dailyProfileViews: null,
-      dailyDirectionsOpened: null,
-      dailyPhoneClicked: null,
-      dailyWhatsappOpened: null,
+      // WEB-449: a série diária é de todos os planos, com os canais somados.
+      dailyProfileViews: [DAY(10)],
+      dailyHighIntentActions: [DAY(3)],
 
       from: '2026-09-01',
       to: '2026-09-30',
@@ -517,10 +511,9 @@ describe('applyOverviewEntitlements — objeto completo por plano', () => {
       classicExposuresChange: null,
       classicClicksChange: null,
 
-      dailyProfileViews: null,
-      dailyDirectionsOpened: null,
-      dailyPhoneClicked: null,
-      dailyWhatsappOpened: null,
+      // WEB-449: a série diária é de todos os planos, com os canais somados.
+      dailyProfileViews: [DAY(10)],
+      dailyHighIntentActions: [DAY(3)],
 
       from: '2026-09-01',
       to: '2026-09-30',
@@ -561,9 +554,7 @@ describe('applyOverviewEntitlements — objeto completo por plano', () => {
       classicClicksChange: 150,
 
       dailyProfileViews: [DAY(10)],
-      dailyDirectionsOpened: [DAY(1)],
-      dailyPhoneClicked: [DAY(1)],
-      dailyWhatsappOpened: [DAY(1)],
+      dailyHighIntentActions: [DAY(3)],
 
       from: '2026-09-01',
       to: '2026-09-30',
