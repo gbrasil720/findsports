@@ -1,6 +1,7 @@
 import { db } from '@findsports_oficial/db'
 import { jobRun } from '@findsports_oficial/db/schema/houdini'
 
+import { closeStaleRuns } from './ai/stale-runs'
 import { reconcileBarPlans } from './bar-plan-sync'
 import { runScheduledAnalyticsRetention } from './commercial-analytics/retention'
 
@@ -28,9 +29,8 @@ const JOBS: Record<JobName, (trigger: JobTrigger) => Promise<unknown>> = {
   // Importado aqui dentro: o `worker.ts` carrega este arquivo na subida, e
   // `bar-notices` puxa `env/server`, que valida as variáveis ao ser
   // importado. No Worker elas não existem nesse momento, e ele não sobe.
-  // Execução da IA presa em `running` (WEB-430). Importado aqui dentro pelo
-  // mesmo motivo do `bar_notices`: `ai/run` puxa a configuração da IA.
-  ai_stale_runs: async () => (await import('./ai/run')).closeStaleRuns(),
+  // Execução da IA presa em `running` (WEB-430).
+  ai_stale_runs: () => closeStaleRuns(),
   bar_notices: async () =>
     (await import('./bar-notices')).sendWeeklyBarNotices()
 }

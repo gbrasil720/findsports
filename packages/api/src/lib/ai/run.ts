@@ -1,4 +1,4 @@
-import { and, db, eq, lte, sql } from '@findsports_oficial/db'
+import { and, db, eq, sql } from '@findsports_oficial/db'
 import { aiRun } from '@findsports_oficial/db/schema/ai'
 
 import { getAppConfig } from '../app-config'
@@ -83,26 +83,6 @@ export async function stopRun(runId: string, userId: string) {
     )
     .returning({ runId: aiRun.runId })
   return rows.length > 0
-}
-
-/**
- * Linha `running` de mais de uma hora não termina mais: o Worker morreu no
- * meio da resposta e o `write` do fim não rodou. A rotina diária a fecha como
- * `error`, não útil (não desconta do limite), com o gasto que ficou: zero, já
- * que o custo só é gravado no fim. Uma resposta leva segundos; a hora é folga.
- */
-export async function closeStaleRuns() {
-  const rows = await db
-    .update(aiRun)
-    .set({ status: 'error', useful: false })
-    .where(
-      and(
-        eq(aiRun.status, 'running'),
-        lte(aiRun.createdAt, sql`now() - interval '1 hour'`)
-      )
-    )
-    .returning({ runId: aiRun.runId })
-  return { closed: rows.length }
 }
 
 /** Se o torcedor parou esta execução (`stopRun`). */
