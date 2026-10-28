@@ -306,7 +306,7 @@ export function FotosDoBar({
                     data-sobre={
                       (sobre === f.id && arrastando !== f.id) || undefined
                     }
-                    className="group/foto relative transition-[opacity,transform] duration-150 ease-out data-arrastando:scale-[0.97] data-arrastando:opacity-40 motion-reduce:transition-none [&[data-sobre]>button]:shadow-[0_0_0_2px_var(--painel-fg)]"
+                    className="group/foto relative transition-[opacity,transform] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] data-arrastando:scale-[0.97] data-arrastando:opacity-40 motion-reduce:transition-none [&[data-sobre]>button]:shadow-[0_0_0_2px_var(--painel-fg)]"
                   >
                     <Quadro
                       foto={f}
@@ -317,7 +317,7 @@ export function FotosDoBar({
                     {grupo.photos.length > 1 ? (
                       // Com mouse, as setas aparecem no hover e no foco; no
                       // toque ficam à vista (não há hover).
-                      <div className="absolute right-1.5 bottom-1.5 flex gap-1 transition-opacity duration-150 group-focus-within/foto:opacity-100 group-hover/foto:opacity-100 motion-reduce:transition-none [@media(hover:hover)]:opacity-0">
+                      <div className="absolute right-1.5 bottom-1.5 flex gap-1 transition-opacity duration-150 group-focus-within/foto:opacity-100 group-hover/foto:opacity-100 motion-reduce:transition-none [@media(hover:hover)_and_(pointer:fine)]:opacity-0">
                         <SetaNaFoto
                           rotulo={`Mover a foto ${i + 1} de ${grupo.label} para antes`}
                           disabled={reorder.isPending || i === 0}
