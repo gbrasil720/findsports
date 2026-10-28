@@ -175,6 +175,7 @@ export function Decision({
   }
   return (
     <form
+      method="post"
       style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
       onSubmit={(event) => {
         event.preventDefault()
