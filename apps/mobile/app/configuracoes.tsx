@@ -32,6 +32,7 @@ import {
   INK,
   LIVE,
   PAPER,
+  Toggle as Switch,
   Text,
   text,
   useStatusBar
@@ -54,9 +55,9 @@ import { trpc } from '@/lib/trpc'
  * "Você" e do Perfil. Preferências e Conta são de verdade (o mesmo servidor
  * do perfil e da conta no web), com a foto e a verificação em duas etapas
  * (WEB-419). Avisos segue o desenho com os controles desligados e o aviso de
- * "em breve" (o app não manda notificação); em Privacidade, ranking e
- * comunidades ainda não existem, e "Baixar meus dados" manda o arquivo
- * para o e-mail da conta (WEB-418).
+ * "em breve" (o app não manda notificação); em Privacidade, "Aparecer no
+ * ranking global" funciona (WEB-465), comunidades ainda não existem, e
+ * "Baixar meus dados" manda o arquivo para o e-mail da conta (WEB-418).
  */
 
 type Tab = 'preferencias' | 'avisos' | 'conta' | 'privacidade'
@@ -906,7 +907,12 @@ function Privacy() {
         if (context?.before)
           queryClient.setQueryData(trpc.friends.me.queryKey(), context.before)
         Alert.alert('Não foi possível salvar', 'Tente de novo.')
-      }
+      },
+      // O ranking global e "Onde você foi" decidem quem entra na lista da cidade.
+      onSettled: () =>
+        queryClient.invalidateQueries({
+          queryKey: trpc.ranking.city.pathKey()
+        })
     })
   )
   const exportData = useMutation(
@@ -959,20 +965,30 @@ function Privacy() {
           }
         />
       </Section>
-      <SoonNote icon="eye" sentence="Ranking e comunidades chegam em breve." />
-      <Off>
-        <Section icon="ranking" title="Ranking">
-          <Row
-            title="Aparecer no ranking global"
-            right={<Toggle on={false} />}
-          />
+      <SoonNote icon="eye" sentence="Comunidades chegam em breve." />
+      <Section icon="ranking" title="Ranking">
+        <Row
+          title="Aparecer no ranking global"
+          sub="Só nome, @usuário e número"
+          right={<Toggle on={!!me.data?.rankingGlobal} />}
+          checked={!!me.data?.rankingGlobal}
+          onPress={
+            me.data
+              ? () => {
+                  haptic.select()
+                  save.mutate({ rankingGlobal: !me.data.rankingGlobal })
+                }
+              : undefined
+          }
+        />
+        <Off>
           <Row
             title="Mostrar comunidades no perfil"
             right={<Toggle on={false} />}
             divided
           />
-        </Section>
-      </Off>
+        </Off>
+      </Section>
       <Section icon="doc" title="Seus dados">
         <Row
           title="Baixar meus dados"
@@ -1064,6 +1080,7 @@ function Row({
   extra,
   chevron,
   divided,
+  checked,
   onPress
 }: {
   icon?: 'tv' | 'you'
@@ -1074,6 +1091,8 @@ function Row({
   extra?: ReactNode
   chevron?: boolean
   divided?: boolean
+  /** Linha de interruptor: o leitor de tela ouve "ligado" ou "desligado". */
+  checked?: boolean
   onPress?: () => void
 }) {
   const palette = usePalette()
@@ -1114,7 +1133,12 @@ function Row({
   )
   if (!onPress) return body
   return (
-    <ScalePress accessibilityRole="button" to={0.985} onPress={onPress}>
+    <ScalePress
+      accessibilityRole={checked === undefined ? 'button' : 'switch'}
+      accessibilityState={checked === undefined ? undefined : { checked }}
+      to={0.985}
+      onPress={onPress}
+    >
       {body}
     </ScalePress>
   )
@@ -1122,18 +1146,7 @@ function Row({
 
 function Toggle({ on }: { on: boolean }) {
   const palette = usePalette()
-  return (
-    <View
-      style={[
-        styles.toggle,
-        on
-          ? { backgroundColor: INK, justifyContent: 'flex-end' }
-          : { backgroundColor: palette.mark }
-      ]}
-    >
-      <View style={[styles.knob, { backgroundColor: on ? ACID : '#fff' }]} />
-    </View>
-  )
+  return <Switch on={on} off={palette.mark} />
 }
 
 function Choice({

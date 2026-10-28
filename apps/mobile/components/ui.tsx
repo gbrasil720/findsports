@@ -31,6 +31,7 @@ import {
   type ViewStyle
 } from 'react-native'
 import Animated, {
+  interpolateColor,
   useAnimatedStyle,
   useSharedValue,
   withTiming
@@ -1274,6 +1275,41 @@ export function Checkbox({
   )
 }
 
+/**
+ * O interruptor das Configurações (50 x 30, bolinha de 24). Só desenha: o
+ * toque é da linha. Ao trocar, a bolinha anda e as cores mudam no mesmo
+ * passo (180 ms), em vez de a cor pular no primeiro quadro.
+ */
+export function Toggle({
+  on,
+  off,
+  track = INK,
+  knob = ACID
+}: {
+  on: boolean
+  /** O trilho desligado (a bolinha desligada é branca). */
+  off: string
+  track?: string
+  knob?: string
+}) {
+  const x = useSharedValue(on ? 20 : 0)
+  useEffect(() => {
+    x.set(withTiming(on ? 20 : 0, { duration: 180, easing: EASE }))
+  }, [on, x])
+  const trackStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(x.get(), [0, 20], [off, track])
+  }))
+  const knobStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(x.get(), [0, 20], ['#ffffff', knob]),
+    transform: [{ translateX: x.get() }]
+  }))
+  return (
+    <Animated.View style={[styles.toggle, trackStyle]}>
+      <Animated.View style={[styles.knob, knobStyle]} />
+    </Animated.View>
+  )
+}
+
 // --- Contagem para reenviar -------------------------------------------------
 
 /** Segundos até poder reenviar; `restart` recomeça. */
@@ -1342,6 +1378,8 @@ export function authErrorMessage(
 }
 
 const styles = StyleSheet.create({
+  toggle: { width: 50, height: 30, borderRadius: 15, padding: 3 },
+  knob: { width: 24, height: 24, borderRadius: 12 },
   // No escuro a base branca deixava o vidro leitoso, mais claro que o topo.
   // A borda fina e clara do vidro do design (inset 0 0 0 .5px).
   roundBase: {
