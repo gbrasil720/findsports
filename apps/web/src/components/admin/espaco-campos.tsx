@@ -36,9 +36,6 @@ const DIAS = [
   [0, 'Domingo']
 ] as const
 
-const semMovimento = () =>
-  window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
 /**
  * Editor do horário (28a; os atalhos e o aviso são da folha 28e, WEB-463).
  * `agora` liga a linha "Aberto agora · fecha às 01:00"; `aviso` é o que o
@@ -74,16 +71,17 @@ export function Horario({
   const atualizar = (dia: number, patch: Partial<DiaRascunho>) =>
     mudar(hours.map((d, i) => (i === dia ? { ...d, ...patch } : d)))
   // O atalho acende de leve as linhas que mudou, para o dono ver o que ele fez.
+  // Só opacidade, então vale também com movimento reduzido. 450 ms (acima dos
+  // 300 da regra): o brilho que some mais rápido não chega a ser visto.
   const aplicar = (resultado: DiaRascunho[]) => {
     mudar(resultado)
-    if (semMovimento()) return
     for (const [dia] of DIAS) {
       if (JSON.stringify(resultado[dia]) === JSON.stringify(hours[dia]))
         continue
       lista.current
         ?.querySelector(`[data-dia="${dia}"]`)
         ?.animate([{ opacity: 1 }, { opacity: 0 }], {
-          duration: 700,
+          duration: 450,
           easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
           pseudoElement: '::before'
         })
@@ -163,7 +161,6 @@ export function Horario({
       <div role="status" className="contents">
         {aviso ? (
           <p
-            key={aviso.texto}
             className="painel-horario-aviso"
             data-fora={aviso.fora || undefined}
           >
