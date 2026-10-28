@@ -26,16 +26,24 @@ import {
 import { juntarEndereco } from '@/lib/cep'
 import type { AdminEvent } from './admin-model'
 import {
+  deslocamento,
   diaDoJogo,
   diaNaLista,
+  formatKm,
   horaDoJogo,
   horarioDoRascunho,
   iniciaisDoApp,
+  KM_DE_EXEMPLO,
+  minutosAPe,
   quandoNaGota,
+  RAIO_PADRAO_KM,
   type Rascunho,
-  siglaDoTime
+  siglaDoTime,
+  torcedorDeExemplo,
+  zoomPara
 } from './espaco-model'
 import { IconeDoApp, type IconeDoAppNome } from './icone-do-app'
+import { MapaDaPrevia } from './mapa-da-previa'
 import './espaco-previa.css'
 
 const PAPER = '#f1eee6'
@@ -61,8 +69,8 @@ type Props = {
   } | null
   /** Gasto médio, já com o plano que o mostra (Pro ou Elite). */
   gastoCents: number | null
-  /** O bar tem coordenadas: "Onde fica" aparece. */
-  localizado: boolean
+  /** As coordenadas do bar: com elas, "Onde fica", o mapa e a distância. */
+  local: { lat: number; lng: number } | null
   /**
    * Quantos marcaram "Vou assistir aqui" em cada jogo (`barReservations.going`).
    * Só o Elite recebe a contagem; `null` nos outros planos ou carregando.
@@ -94,8 +102,8 @@ const LARGURA = 390
  * "Como o torcedor vê": a página do bar no app (`app/bar/[id].tsx`), o card
  * da lista do Explorar e a gota do mapa, montados do rascunho com as medidas,
  * cores e ícones do app, e no tema do sistema, como ele. Não agem: são só
- * desenho. Fica de fora o que o painel não tem como saber: a distância, as
- * iniciais e os amigos de quem vai, e se o torcedor já marcou ("Vou", "Você
+ * desenho. A distância é a de um torcedor de exemplo (WEB-456), e a legenda
+ * avisa. Fica de fora o que o painel não tem como saber: as iniciais e os amigos de quem vai, e se o torcedor já marcou ("Vou", "Você
  * vai"). "N vão" só no Elite, a partir do piso, como o torcedor vê.
  */
 export function EspacoPrevia(props: Props) {
@@ -146,6 +154,9 @@ export function EspacoPrevia(props: Props) {
       )}
       <p className="max-w-[300px] text-center text-[12.5px] text-[var(--painel-muted)]">
         Atualiza enquanto você edita. O que não estiver salvo aparece só aqui.
+        {props.local
+          ? ` A distância é de exemplo, de um torcedor a ${formatKm(KM_DE_EXEMPLO)} do bar.`
+          : null}
       </p>
     </div>
   )
@@ -482,6 +493,7 @@ function Ingresso({
   elite,
   nota,
   presencas,
+  local,
   now,
   nome,
   jogos,
@@ -543,6 +555,16 @@ function Ingresso({
               </Pilula>
             ) : null}
           </div>
+          {local ? (
+            <span className="absolute bottom-2.5 left-2.5">
+              <Pilula tom="dark" altura={28}>
+                <IconeDoApp nome="pin" tamanho={13} cor={PAPER} />
+                <b className="text-[#f1eee6]" style={texto(12.5, 700, 1.2)}>
+                  {formatKm(KM_DE_EXEMPLO)}
+                </b>
+              </Pilula>
+            </span>
+          ) : null}
           <span className="absolute top-2 right-2">
             <Redondo tamanho={36}>
               <IconeDoApp nome="fan" tamanho={18} cor={PAPER} />
@@ -666,27 +688,100 @@ function Gota({
   )
 }
 
-/** O fundo do mapa: o painel não desenha o mapa de verdade. */
+/** O fundo de quando o bar ainda não tem coordenadas: não há mapa. */
 const LISTRAS: CSSProperties = {
   background:
     'repeating-linear-gradient(135deg, var(--a-map-1) 0 8px, var(--a-map-2) 8px 16px)'
 }
 
-/** A gota tocada sobre o mapa do Explorar. */
-function MapaDoApp({ nome, elite, now, jogos, aoVivo }: Visto) {
+/** Você no mapa (`MeDot`): o ponto acid com dois halos. */
+function Voce() {
+  return (
+    <span className="grid size-[74px] place-items-center rounded-full bg-[rgb(201_241_53/10%)]">
+      <span className="grid size-[38px] place-items-center rounded-full bg-[rgb(201_241_53/25%)]">
+        <span className="size-[22px] rounded-full border-[3px] border-[#12120f] bg-[#c9f135]" />
+      </span>
+    </span>
+  )
+}
+
+/** O mapa do Explorar: 390 x 512, o raio quase de borda a borda, como o app. */
+const MAPA_ALTURA = 512
+const RAIO_PT = 180
+
+/**
+ * A gota tocada sobre o mapa do Explorar (WEB-456): o torcedor de exemplo
+ * no centro, com o raio de busca padrão (`RadiusCircle`) em volta.
+ */
+function MapaDoApp({ nome, elite, now, jogos, aoVivo, local }: Visto) {
+  const gota = (
+    <Gota
+      nome={nome}
+      quando={quandoNaGota(jogos[0] ?? null, aoVivo, now)}
+      aoVivo={aoVivo}
+      elite={elite}
+    />
+  )
+  if (!local) {
+    return (
+      <Moldura rotulo={`Prévia do pino de ${nome} no mapa do app`}>
+        <div
+          className="grid place-items-center px-4"
+          style={{ ...LISTRAS, height: MAPA_ALTURA }}
+        >
+          {gota}
+        </div>
+      </Moldura>
+    )
+  }
+  const voce = torcedorDeExemplo(local)
+  const zoom = zoomPara(voce.lat, 2 * RAIO_PADRAO_KM, 2 * RAIO_PT)
+  const bar = deslocamento(voce, local, zoom)
+  const meio = { x: LARGURA / 2, y: MAPA_ALTURA / 2 }
   return (
     <Moldura rotulo={`Prévia do pino de ${nome} no mapa do app`}>
-      <div className="grid h-[512px] place-items-center px-4" style={LISTRAS}>
-        <Gota
-          nome={nome}
-          quando={quandoNaGota(jogos[0] ?? null, aoVivo, now)}
-          aoVivo={aoVivo}
-          elite={elite}
-        />
-      </div>
+      <MapaDaPrevia
+        enquadramento={{ centro: voce, zoom }}
+        className="h-[512px]"
+      >
+        <svg
+          className="pointer-events-none absolute inset-0 size-full"
+          aria-hidden="true"
+        >
+          <circle
+            cx={meio.x}
+            cy={meio.y}
+            r={RAIO_PT}
+            fill="rgb(201 241 53 / 10%)"
+            style={{ stroke: 'var(--a-radius)' }}
+            strokeWidth={1.5}
+            strokeDasharray="6 6"
+          />
+        </svg>
+        <span
+          className="absolute -translate-x-1/2 -translate-y-1/2"
+          style={{ left: meio.x, top: meio.y }}
+        >
+          <Voce />
+        </span>
+        {/* A ponta da gota no bar: o fim da caixa, centrado. */}
+        <span
+          className="absolute flex w-[300px] -translate-x-1/2 -translate-y-full justify-center"
+          style={{ left: meio.x + bar.x, top: meio.y + bar.y }}
+        >
+          {gota}
+        </span>
+      </MapaDaPrevia>
     </Moldura>
   )
 }
+
+/**
+ * "Onde fica": 130 pt de mapa com o bar a 112 (o app reserva 94 no topo para
+ * o balão), no zoom do `latitudeDelta`/`longitudeDelta` do app (0,012° de
+ * largura em 358 pt).
+ */
+const ONDE_FICA_ZOOM = Math.log2(((360 / 0.012) * 358) / 512)
 
 /* ─── A página do bar ─── */
 
@@ -744,7 +839,7 @@ function TelaDoApp(visto: Visto) {
     nota,
     motivos,
     gastoCents,
-    localizado,
+    local,
     now,
     nome,
     jogos,
@@ -752,8 +847,10 @@ function TelaDoApp(visto: Visto) {
   } = visto
   const agora = now.getTime()
   const proximo = jogos[0]
+  const km = local ? formatKm(KM_DE_EXEMPLO) : null
   const info = [
     rascunho.neighborhood.trim(),
+    km,
     gastoCents
       ? `R$ ${Math.round(gastoCents / 100)} por pessoa, informado pelo bar`
       : null
@@ -1043,21 +1140,27 @@ function TelaDoApp(visto: Visto) {
           </>
         ) : null}
 
-        {localizado ? (
+        {local ? (
           <>
             <Titulo titulo="Onde fica" />
             <Cartao soft>
-              <div
-                className="flex h-[130px] items-end justify-center pb-[18px]"
-                style={LISTRAS}
+              <MapaDaPrevia
+                enquadramento={{
+                  centro: local,
+                  zoom: ONDE_FICA_ZOOM,
+                  topo: 94
+                }}
+                className="h-[130px]"
               >
-                <Gota
-                  nome={nome}
-                  quando={quandoNaGota(proximo ?? null, aoVivo, now)}
-                  aoVivo={aoVivo}
-                  elite={elite}
-                />
-              </div>
+                <div className="absolute inset-0 flex items-end justify-center pb-[18px]">
+                  <Gota
+                    nome={nome}
+                    quando={quandoNaGota(proximo ?? null, aoVivo, now)}
+                    aoVivo={aoVivo}
+                    elite={elite}
+                  />
+                </div>
+              </MapaDaPrevia>
               <div className="flex items-center gap-2.5 px-3.5 py-3">
                 <div className="min-w-0 flex-1">
                   <b className="block truncate" style={texto(14.5, 700)}>
@@ -1067,7 +1170,13 @@ function TelaDoApp(visto: Visto) {
                     className="block truncate text-[var(--a-muted)]"
                     style={texto(12.5)}
                   >
-                    {rascunho.neighborhood.trim()}
+                    {[
+                      rascunho.neighborhood.trim(),
+                      km,
+                      `${minutosAPe(KM_DE_EXEMPLO)} min a pé`
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
                   </span>
                 </div>
                 <span
