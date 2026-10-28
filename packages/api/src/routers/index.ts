@@ -3,6 +3,7 @@ import { accountRouter } from './account'
 import { achievementsRouter } from './achievements'
 import { adminBarsRouter } from './admin-bars'
 import { adminEventsRouter } from './admin-events'
+import { adminReviewRouter } from './admin-review'
 import { adminUsersRouter } from './admin-users'
 import { aiRouter } from './ai'
 import { appConfigRouter } from './app-config'
@@ -36,6 +37,7 @@ export const appRouter = router({
   adminBars: adminBarsRouter,
   ai: aiRouter,
   adminEvents: adminEventsRouter,
+  adminReview: adminReviewRouter,
   adminUsers: adminUsersRouter,
   appConfig: appConfigRouter,
   bastidores: bastidoresRouter,
