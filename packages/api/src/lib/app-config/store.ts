@@ -70,6 +70,12 @@ export type AppConfigEntrada<K extends AppConfigKey = AppConfigKey> = {
 
 export type AppConfigStore = {
   get<K extends AppConfigKey>(key: K): Promise<AppConfigValue<K>>
+  /**
+   * WEB-466: como `get`, mas o banco fora do ar é erro, não o padrão. Para
+   * quem precisa distinguir "desligado" de "não deu para ler": a manutenção
+   * do app cairia no padrão (fora de manutenção) justo quando o banco cai.
+   */
+  getOrThrow<K extends AppConfigKey>(key: K): Promise<AppConfigValue<K>>
   getPublic(): Promise<AppConfigPublico>
   /** Descarta o cache da instância. Chamado depois de gravar. */
   invalidate(): Promise<void>
@@ -131,6 +137,11 @@ export function createAppConfigStore(deps: {
   return {
     async get(key) {
       return resolverAppConfig(await registro(), key).valor
+    },
+
+    async getOrThrow(key) {
+      const bruto = await deps.cache.get(CHAVE_REGISTRO, deps.carregar)
+      return resolverAppConfig(bruto, key).valor
     },
 
     async getPublic() {
