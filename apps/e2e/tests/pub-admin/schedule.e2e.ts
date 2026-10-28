@@ -71,6 +71,49 @@ async function participantsOf(barId: string): Promise<string[]> {
   return rows.map((row) => row.name)
 }
 
+test('jogo fora do horário do bar avisa e publica mesmo assim (WEB-463)', async ({
+  page
+}) => {
+  const { barId } = await openSchedule(page, {
+    bar: {
+      opening_hours: JSON.stringify(
+        Array.from({ length: 7 }, () => ({ opens: '17:00', closes: '00:00' }))
+      )
+    }
+  })
+  await gotoSchedule(page)
+  await page.getByRole('button', { name: 'Novo jogo' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Novo jogo' })
+  await dialog.getByRole('button', { name: 'Futebol', exact: true }).click()
+  await dialog
+    .getByLabel('Campeonato', { exact: true })
+    .fill('Fora de hora E2E')
+  const aviso = dialog.getByRole('status').filter({ hasText: 'horário' })
+
+  await dialog.getByLabel('Começa').fill(tomorrowAt(21))
+  await expect(dialog.getByText(/Fora do horário/)).toHaveCount(0)
+
+  await dialog.getByLabel('Começa').fill(tomorrowAt(15))
+  const amanha = new Date(Date.now() + 86_400_000)
+    .toLocaleDateString('pt-BR', {
+      weekday: 'long',
+      timeZone: 'America/Sao_Paulo'
+    })
+    .replace('-feira', '')
+  await expect(aviso).toHaveText(
+    `Fora do horário de funcionamento (${amanha}, 17:00 – 00:00). Dá para publicar mesmo assim.`
+  )
+
+  // Só avisa: publicar segue liberado.
+  await dialog.getByRole('button', { name: 'Publicar jogo' }).click()
+  await expect(dialog).toBeHidden()
+  const [row] = await query<{ published_at: Date | null }>(
+    `SELECT published_at FROM event WHERE bar_id = $1`,
+    [barId]
+  )
+  expect(row?.published_at).not.toBeNull()
+})
+
 test('cria, edita e exclui um jogo da grade com o seletor de times', async ({
   page
 }) => {

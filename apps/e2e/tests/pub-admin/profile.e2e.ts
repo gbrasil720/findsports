@@ -545,7 +545,7 @@ test('horário: informar, salvar e tirar da página', async ({ page }) => {
   })
 
   await horario.getByRole('button', { name: 'Informar horário' }).click()
-  await horario.getByLabel('Domingo', { exact: true }).uncheck()
+  await horario.getByRole('switch', { name: 'Domingo' }).click()
   await horario.getByLabel('Sexta, fecha').fill('02:00')
   expect((await save(page, /pub\.updateOpeningHours/)).ok()).toBe(true)
   await expect(saveButton(page)).toBeDisabled()
@@ -564,6 +564,96 @@ test('horário: informar, salvar e tirar da página', async ({ page }) => {
     barId
   ])
   expect(after?.opening_hours).toBeNull()
+})
+
+/** O dia de amanhã em Brasília: 0 = domingo, e o nome do campo ("Sexta"). */
+function amanha() {
+  const dia = new Date(
+    `${new Date(Date.now() + 86_400_000).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })}T12:00:00Z`
+  ).getUTCDay()
+  const nome = [
+    'Domingo',
+    'Segunda',
+    'Terça',
+    'Quarta',
+    'Quinta',
+    'Sexta',
+    'Sábado'
+  ][dia]
+  return { dia, nome: nome ?? '' }
+}
+
+/** Amanhã às `hora`h em Brasília. */
+const amanhaAs = (hora: number) =>
+  new Date(
+    `${new Date(Date.now() + 86_400_000).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })}T${String(hora).padStart(2, '0')}:00:00-03:00`
+  )
+
+test('horário: atalhos da 28e e o aviso do jogo no novo horário', async ({
+  page
+}) => {
+  const pub = await createPub({
+    bar: {
+      // Segunda abre mais tarde: é o dia que os atalhos copiam.
+      opening_hours: JSON.stringify(
+        Array.from({ length: 7 }, (_, dia) => ({
+          opens: dia === 1 ? '18:00' : '17:00',
+          closes: '00:00'
+        }))
+      )
+    }
+  })
+  await createEvent(pub.barId, { startsAt: amanhaAs(15) })
+  await signIn(page, pub.user)
+  await page.goto('/admin/meu-espaco')
+  const horario = page.getByRole('region', {
+    name: 'Horário de funcionamento'
+  })
+  await expect(horario.getByText(/^(Aberto|Fechado) agora$/)).toBeVisible()
+
+  // O jogo de amanhã às 15:00 está fora do horário salvo (17:00 ou 18:00).
+  const { dia, nome } = amanha()
+  const aviso = horario.getByRole('status')
+  await expect(horario.getByText(/novo horário/)).toHaveCount(0)
+  await horario.getByLabel(`${nome}, abre`).fill('14:00')
+  await expect(aviso).toHaveText(
+    'O jogo de amanhã às 15:00 fica dentro do novo horário.'
+  )
+  await horario.getByLabel(`${nome}, abre`).fill('16:00')
+  await expect(aviso).toHaveText(
+    'O jogo de amanhã às 15:00 fica fora do novo horário.'
+  )
+
+  // Todo dia igual: os sete na faixa do primeiro dia aberto, a segunda.
+  const modelo = dia === 1 ? '16:00' : '18:00'
+  await horario.getByRole('button', { name: 'Todo dia igual' }).click()
+  for (const outro of ['Segunda', 'Quarta', 'Domingo']) {
+    await expect(horario.getByLabel(`${outro}, abre`)).toHaveValue(modelo)
+  }
+  await expect(
+    horario.getByRole('button', { name: 'Todo dia igual' })
+  ).toBeDisabled()
+  await expect(
+    horario.getByRole('button', { name: 'Copiar segunda para a semana' })
+  ).toBeDisabled()
+
+  // Fim de semana igual: o domingo fechado volta como o sábado.
+  await horario.getByRole('switch', { name: 'Domingo' }).click()
+  await expect(horario.getByLabel('Domingo, abre')).toHaveCount(0)
+  await horario.getByRole('button', { name: 'Fim de semana igual' }).click()
+  await expect(
+    horario.getByRole('switch', { name: 'Domingo' })
+  ).toHaveAttribute('aria-checked', 'true')
+
+  expect((await save(page, /pub\.updateOpeningHours/)).ok()).toBe(true)
+  const [bar] = await query('SELECT opening_hours FROM bar WHERE id = $1', [
+    pub.barId
+  ])
+  expect(bar?.opening_hours).toEqual(
+    Array.from({ length: 7 }, () => ({ opens: modelo, closes: '00:00' }))
+  )
+  // Salvo, o horário novo é o de antes: o aviso some.
+  await expect(horario.getByText(/novo horário/)).toHaveCount(0)
 })
 
 test('no celular nada rola de lado: formulário, horário, checklist e prévia', async ({
