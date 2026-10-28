@@ -283,12 +283,12 @@ function BarPanel({ bar }: { bar: Bar }) {
         </div>
       </dl>
 
-      <SearchDriftAlert key={bar.id} bar={bar} />
+      <SearchDriftAlert key={`drift:${bar.id}`} bar={bar} />
 
-      <BarLinks key={bar.id} bar={bar} showFicha stacked />
+      <BarLinks key={`links:${bar.id}`} bar={bar} showFicha stacked />
       <hr className="hd-rule" />
       <span className="hd-h2">Truques</span>
-      <BarTricks key={bar.id} bar={bar} />
+      <BarTricks key={`tricks:${bar.id}`} bar={bar} />
       <p className="hd-note">
         <Icon name="book" size={16} />
         Tudo o que se faz aqui vai para o Grimório.
