@@ -8,40 +8,189 @@ import { useTRPC } from '@/utils/trpc'
 import { initials } from './format'
 import { HatIcon, Icon, type IconName } from './icons'
 
-/** As seções do trilho. Ticket novo do Houdini acrescenta a sua aqui. */
-export const HOUDINI_NAV = [
-  { to: '/houdini', label: 'Início', icon: 'home', exact: true },
-  { to: '/houdini/pessoas', label: 'Pessoas', icon: 'users' },
-  { to: '/houdini/feiticos', label: 'Feitiços', icon: 'wand' },
-  { to: '/houdini/fantasmas', label: 'Fantasmas', icon: 'ghost' },
-  { to: '/houdini/bares', label: 'Bares', icon: 'store' },
-  { to: '/houdini/jogos', label: 'Jogos', icon: 'cal' },
-  { to: '/houdini/ampulheta', label: 'Ampulheta', icon: 'hourglass' },
-  { to: '/houdini/bastidores', label: 'Bastidores', icon: 'pulse' },
-  { to: '/houdini/grimorio', label: 'Grimório', icon: 'book' }
+/** O trilho, em grupos. Ticket novo do Houdini acrescenta a sua seção aqui. */
+export const HOUDINI_NAV_GROUPS = [
+  {
+    label: 'Hoje',
+    items: [{ to: '/houdini', label: 'Início', icon: 'home', exact: true }]
+  },
+  {
+    label: 'Gente e bares',
+    items: [
+      { to: '/houdini/pessoas', label: 'Pessoas', icon: 'users' },
+      { to: '/houdini/bares', label: 'Bares', icon: 'store' },
+      { to: '/houdini/jogos', label: 'Jogos', icon: 'cal' }
+    ]
+  },
+  {
+    label: 'Pede atenção',
+    items: [
+      {
+        to: '/houdini/ampulheta',
+        label: 'Ampulheta',
+        icon: 'hourglass',
+        hint: 'testes acabando'
+      },
+      { to: '/houdini/fantasmas', label: 'Fantasmas', icon: 'ghost' }
+    ]
+  },
+  {
+    label: 'Máquina',
+    items: [
+      { to: '/houdini/feiticos', label: 'Feitiços', icon: 'wand' },
+      { to: '/houdini/bastidores', label: 'Bastidores', icon: 'pulse' }
+    ]
+  },
+  {
+    label: 'Registro',
+    items: [
+      {
+        to: '/houdini/grimorio',
+        label: 'Grimório',
+        icon: 'book',
+        hint: 'registro dos truques'
+      }
+    ]
+  }
 ] as const satisfies ReadonlyArray<{
-  to: string
   label: string
-  icon: IconName
-  exact?: boolean
+  items: ReadonlyArray<{
+    to: string
+    label: string
+    icon: IconName
+    exact?: boolean
+    hint?: string
+  }>
 }>
 
+type NavItem = (typeof HOUDINI_NAV_GROUPS)[number]['items'][number]
+
+export const HOUDINI_NAV = HOUDINI_NAV_GROUPS.flatMap(
+  (group): ReadonlyArray<NavItem> => group.items
+)
+
 type NavTo = (typeof HOUDINI_NAV)[number]['to']
+type Count = { text: string; tone?: 'live' | 'acid' }
+
+const ENVS: Record<HoudiniEnv, { name: string; host: string; note: string }> = {
+  produção: {
+    name: 'Produção',
+    host: 'houdini.onside.sh',
+    note: 'O que você faz aqui vale de verdade e vai para o Grimório'
+  },
+  preview: {
+    name: 'Preview',
+    host: 'onside-web-preview/houdini',
+    note: 'Banco é cópia de produção · nenhum e-mail sai daqui'
+  },
+  local: {
+    name: 'Local',
+    host: 'localhost',
+    note: 'Banco de desenvolvimento'
+  }
+}
+
+/** Os números ao lado de cada seção, do mesmo `houdini.overview` do Início. */
+function useNavCounts(): Partial<Record<NavTo, Count>> {
+  const trpc = useTRPC()
+  const { data: o } = useQuery({
+    ...trpc.houdini.overview.queryOptions(),
+    staleTime: 30_000,
+    meta: { errorToast: false }
+  })
+  if (!o) return {}
+  const alert = (n: number, tone: Count['tone']): Count | undefined =>
+    n > 0 ? { text: String(n), tone } : undefined
+  return {
+    '/houdini/pessoas': { text: String(o.people.total) },
+    '/houdini/bares': { text: String(o.bars.noAr) },
+    '/houdini/jogos': { text: String(o.jogosFuturos) },
+    '/houdini/ampulheta': alert(o.testesAcabando, 'acid'),
+    '/houdini/fantasmas': alert(o.fantasmas, 'live'),
+    '/houdini/feiticos': o.feiticosLancados
+      ? { text: `${o.feiticosLancados} no ar` }
+      : undefined,
+    '/houdini/bastidores': alert(o.rotinasFalhando, 'live')
+  }
+}
+
+function NavGroups({
+  label,
+  counts,
+  onNavigate
+}: {
+  label: string
+  counts: Partial<Record<NavTo, Count>>
+  onNavigate?: () => void
+}) {
+  return (
+    <nav aria-label={label} className="hd-nav">
+      {HOUDINI_NAV_GROUPS.map((group) => (
+        <div key={group.label} style={{ display: 'contents' }}>
+          <span className="hd-nav-label">{group.label}</span>
+          {group.items.map((item) => {
+            const count = counts[item.to]
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                activeOptions={{ exact: 'exact' in item && item.exact }}
+                activeProps={{ 'aria-current': 'page' }}
+                onClick={onNavigate}
+              >
+                <Icon name={item.icon} />
+                {item.label}
+                {count ? (
+                  <span className="hd-count" data-tone={count.tone}>
+                    {count.text}
+                  </span>
+                ) : null}
+              </Link>
+            )
+          })}
+        </div>
+      ))}
+    </nav>
+  )
+}
+
+function Brand({ size = 34 }: { size?: number }) {
+  return (
+    <Link to="/houdini" aria-label="Houdini, início" className="hd-brand">
+      <HatIcon size={size} />
+      <span>
+        <span className="hd-brand-word">Houdini</span>
+        <span className="hd-brand-sub">Onside · interno</span>
+      </span>
+    </Link>
+  )
+}
+
+function Me({ name }: { name: string }) {
+  return (
+    <div className="hd-me">
+      <span className="hd-avatar">{initials(name)}</span>
+      <span style={{ minWidth: 0 }}>
+        <b>{name}</b>
+        <span>admin · 2FA ligado</span>
+      </span>
+    </div>
+  )
+}
 
 export function HoudiniShell({
-  title,
-  crumbs = [],
   env,
   user,
   children
 }: {
-  title: string
-  crumbs?: ReadonlyArray<{ label: string; to: NavTo }>
   env: HoudiniEnv
   user: { name: string }
   children: ReactNode
 }) {
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
+  const counts = useNavCounts()
+  const e = ENVS[env]
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -55,65 +204,173 @@ export function HoudiniShell({
   }, [])
 
   return (
-    <div className="hd-app">
-      <nav aria-label="Seções do Houdini" className="hd-rail">
-        <Link to="/houdini" aria-label="Houdini, início" className="hd-logo">
-          <HatIcon size={26} />
-        </Link>
-        {HOUDINI_NAV.map((item) => (
-          <Link
-            key={item.to}
-            to={item.to}
-            activeOptions={{ exact: 'exact' in item && item.exact }}
-            className="hd-rail-item"
-            aria-label={item.label}
-          >
-            <Icon name={item.icon} />
-            <span className="hd-tip" aria-hidden="true">
-              {item.label}
+    <>
+      <div className="hd-env" data-env={env}>
+        <span className="hd-env-dot" />
+        {e.name}
+        <span className="hd-env-host">{e.host}</span>
+        <span className="hd-env-note">{e.note}</span>
+      </div>
+      <div className="hd-app">
+        <aside className="hd-side">
+          <Brand />
+          <NavGroups label="Seções do Houdini" counts={counts} />
+          <div className="hd-side-foot">
+            <button
+              type="button"
+              className="hd-btn hd-btn-primary is-lg is-block"
+              onClick={() => setPaletteOpen(true)}
+            >
+              <Icon name="wand" size={18} />
+              Abracadabra
+              <kbd className="hd-kbd">⌘K</kbd>
+            </button>
+            <Me name={user.name} />
+          </div>
+        </aside>
+
+        <div className="hd-main">
+          <div className="hd-mtop">
+            <Brand size={30} />
+            <span className="hd-avatar" role="img" aria-label={user.name}>
+              {initials(user.name)}
             </span>
-          </Link>
-        ))}
+          </div>
+          {children}
+        </div>
+      </div>
+
+      <nav aria-label="Seções do Houdini" className="hd-dock">
+        <Link
+          to="/houdini"
+          activeOptions={{ exact: true }}
+          activeProps={{ 'aria-current': 'page' }}
+        >
+          <Icon name="home" />
+          Início
+        </Link>
+        <Link to="/houdini/pessoas" activeProps={{ 'aria-current': 'page' }}>
+          <Icon name="users" />
+          Pessoas
+        </Link>
+        <button
+          type="button"
+          className="hd-dock-abra"
+          aria-label="Abracadabra"
+          onClick={() => setPaletteOpen(true)}
+        >
+          <Icon name="wand" size={24} />
+        </button>
+        <Link to="/houdini/bares" activeProps={{ 'aria-current': 'page' }}>
+          <Icon name="store" />
+          Bares
+        </Link>
+        <button
+          type="button"
+          aria-haspopup="dialog"
+          onClick={() => setMoreOpen(true)}
+        >
+          <Icon name="menu" />
+          Mais
+        </button>
       </nav>
 
-      <div className="hd-main">
-        <header className="hd-top">
-          <span className="hd-crumbs">
-            Houdini
-            {crumbs.map((crumb) => (
-              <span key={crumb.to}>
-                <span className="hd-sep">/</span>
-                <Link to={crumb.to} style={{ textDecoration: 'none' }}>
-                  {crumb.label}
-                </Link>
-              </span>
-            ))}
-            <span className="hd-sep">/</span>
-            <strong>{title}</strong>
-          </span>
-          <button
-            type="button"
-            className="hd-search"
-            onClick={() => setPaletteOpen(true)}
-          >
-            <Icon name="wand" size={16} strokeWidth={1.8} />
-            <span style={{ flexGrow: 1 }}>Abracadabra… pessoa, bar, seção</span>
-            <kbd className="hd-kbd">⌘K</kbd>
-          </button>
-          <span className="hd-env" data-env={env}>
-            {env}
-          </span>
-          <span className="hd-avatar" role="img" aria-label={user.name}>
-            {initials(user.name)}
-          </span>
-        </header>
-        {children}
-      </div>
+      {moreOpen ? (
+        <Sheet label="Mais seções" onClose={() => setMoreOpen(false)}>
+          <NavGroups
+            label="Todas as seções"
+            counts={counts}
+            onNavigate={() => setMoreOpen(false)}
+          />
+          <Me name={user.name} />
+        </Sheet>
+      ) : null}
 
       {paletteOpen ? (
         <Abracadabra onClose={() => setPaletteOpen(false)} />
       ) : null}
-    </div>
+    </>
+  )
+}
+
+/** Folha que sobe do pé da tela no celular: o "Mais" da barra. */
+function Sheet({
+  label,
+  onClose,
+  children
+}: {
+  label: string
+  onClose: () => void
+  children: ReactNode
+}) {
+  const ref = useRef<HTMLDialogElement>(null)
+  useEffect(() => {
+    ref.current?.showModal()
+  }, [])
+  return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: o clique é no fundo, fora da folha; pelo teclado, o Esc do <dialog> fecha.
+    <dialog
+      ref={ref}
+      aria-label={label}
+      className="hd-more"
+      onClose={onClose}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+    >
+      {children}
+    </dialog>
+  )
+}
+
+/**
+ * Cabeçalho de cada tela: a linha de cima (o grupo do trilho, ou o caminho
+ * numa ficha), o título em Anton, o resumo e as ações à direita.
+ */
+export function PageHead({
+  overline,
+  crumbs,
+  title,
+  titleId,
+  size,
+  summary,
+  actions,
+  children
+}: {
+  overline?: ReactNode
+  crumbs?: ReadonlyArray<{ label: string; to: NavTo }>
+  title: ReactNode
+  titleId?: string
+  size?: 'md' | 'sm'
+  summary?: ReactNode
+  actions?: ReactNode
+  /** O que vai debaixo do resumo, dentro da coluna do título. */
+  children?: ReactNode
+}) {
+  return (
+    <header className="hd-head">
+      <div className="hd-head-text">
+        {crumbs ? (
+          <nav className="hd-crumbs" aria-label="Caminho">
+            {crumbs.map((crumb) => (
+              <span key={crumb.to} style={{ display: 'contents' }}>
+                <Link to={crumb.to}>{crumb.label}</Link>
+                <span className="hd-sep">/</span>
+              </span>
+            ))}
+            <span>{title}</span>
+          </nav>
+        ) : overline ? (
+          <span className="hd-overline">{overline}</span>
+        ) : null}
+        <h1 id={titleId} className={size ? `hd-h1 is-${size}` : 'hd-h1'}>
+          {title}
+        </h1>
+        {summary ? <p className="hd-lead">{summary}</p> : null}
+        {children}
+      </div>
+      {actions ? <div className="hd-actions">{actions}</div> : null}
+    </header>
   )
 }
 
@@ -137,8 +394,8 @@ type PaletteItem = {
 const SEARCH_DEBOUNCE_MS = 200
 
 /**
- * ⌘K: seções pelo nome e, do servidor (`houdini.search`), pessoa por nome,
- * e-mail, id ou `cus_…` e bar por nome ou id. O resultado abre a ficha.
+ * ⌘K: do servidor (`houdini.search`), pessoa por nome, e-mail, id ou `cus_…`
+ * e bar por nome ou id; depois as seções pelo nome. O resultado abre a ficha.
  */
 function Abracadabra({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate()
@@ -166,15 +423,6 @@ function Abracadabra({ onClose }: { onClose: () => void }) {
 
   const items = useMemo<PaletteItem[]>(() => {
     const q = normalize(query.trim())
-    const sections = HOUDINI_NAV.filter(
-      (item) => !q || normalize(item.label).includes(q)
-    ).map((item) => ({
-      key: item.to,
-      group: 'Seções' as const,
-      icon: item.icon,
-      label: item.label,
-      go: () => void navigate({ to: item.to })
-    }))
     const people = (found?.people ?? []).map((person) => ({
       key: `p:${person.id}`,
       group: 'Pessoas' as const,
@@ -195,7 +443,17 @@ function Abracadabra({ onClose }: { onClose: () => void }) {
       hint: `${bar.neighborhood}, ${bar.city}`,
       go: () => void navigate({ to: '/houdini/bares', search: { bar: bar.id } })
     }))
-    return [...sections, ...people, ...bars]
+    const sections = HOUDINI_NAV.filter(
+      (item) => !q || normalize(item.label).includes(q)
+    ).map((item) => ({
+      key: item.to,
+      group: 'Seções' as const,
+      icon: item.icon,
+      label: item.label,
+      hint: 'hint' in item ? item.hint : undefined,
+      go: () => void navigate({ to: item.to })
+    }))
+    return [...people, ...bars, ...sections]
   }, [query, found, navigate])
 
   useEffect(() => {
@@ -241,11 +499,12 @@ function Abracadabra({ onClose }: { onClose: () => void }) {
           alignItems: 'center',
           gap: 12,
           padding: '16px 18px',
-          borderBottom: '1px solid var(--hd-line)',
-          color: 'var(--hd-roxo)'
+          borderBottom: '1px solid var(--hd-line)'
         }}
       >
-        <Icon name="wand" size={18} strokeWidth={1.8} />
+        <span className="hd-spark" style={{ display: 'inline-flex' }}>
+          <Icon name="wand" />
+        </span>
         <label htmlFor="hd-abra" className="hd-sr">
           Abracadabra
         </label>
@@ -260,6 +519,7 @@ function Abracadabra({ onClose }: { onClose: () => void }) {
             setActive(0)
           }}
         />
+        <kbd className="hd-kbd is-line">esc</kbd>
       </div>
       <div
         role="listbox"
@@ -267,13 +527,14 @@ function Abracadabra({ onClose }: { onClose: () => void }) {
         style={{
           display: 'flex',
           flexDirection: 'column',
-          maxHeight: 'min(60vh, 440px)',
+          maxHeight: 'min(60dvh, 460px)',
           overflowY: 'auto',
+          overscrollBehavior: 'contain',
           padding: 6
         }}
       >
         {items.length === 0 ? (
-          <p className="hd-empty">
+          <p className="hd-empty" style={{ margin: 8 }}>
             {search.isFetching
               ? 'Procurando na cartola…'
               : 'Nada sai da cartola com esse nome.'}
@@ -287,12 +548,8 @@ function Abracadabra({ onClose }: { onClose: () => void }) {
             >
               {item.group !== items[index - 1]?.group ? (
                 <span
-                  className="hd-mono"
-                  style={{
-                    padding: '10px 12px 4px',
-                    fontSize: 11,
-                    color: 'var(--hd-faint)'
-                  }}
+                  className="hd-eyebrow"
+                  style={{ padding: '12px 12px 6px' }}
                 >
                   {item.group}
                 </span>
@@ -309,8 +566,14 @@ function Abracadabra({ onClose }: { onClose: () => void }) {
                 onMouseEnter={() => setActive(index)}
                 onClick={() => go(index)}
               >
-                <span style={{ display: 'inline-flex', flexShrink: 0 }}>
-                  <Icon name={item.icon} size={16} />
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    flexShrink: 0,
+                    color: 'var(--hd-muted)'
+                  }}
+                >
+                  <Icon name={item.icon} size={18} />
                 </span>
                 <span
                   style={{
@@ -333,8 +596,9 @@ function Abracadabra({ onClose }: { onClose: () => void }) {
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap',
-                      fontSize: 11,
-                      color: 'var(--hd-faint)'
+                      fontSize: 12,
+                      fontWeight: 400,
+                      color: 'var(--hd-muted)'
                     }}
                   >
                     {item.hint}
@@ -349,14 +613,17 @@ function Abracadabra({ onClose }: { onClose: () => void }) {
         className="hd-mono"
         style={{
           display: 'flex',
-          justifyContent: 'space-between',
-          padding: '8px 18px',
+          flexWrap: 'wrap',
+          gap: 18,
+          padding: '10px 18px',
           borderTop: '1px solid var(--hd-line)',
-          fontSize: 11,
-          color: 'var(--hd-faint)'
+          fontSize: 11.5,
+          color: 'var(--hd-muted)'
         }}
       >
-        <span>↑↓ escolher · ↵ ir · esc some</span>
+        <span>↑↓ escolher</span>
+        <span>↵ abrir</span>
+        <span style={{ marginLeft: 'auto' }}>esc some</span>
       </div>
     </dialog>
   )
