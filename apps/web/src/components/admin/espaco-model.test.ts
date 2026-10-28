@@ -438,7 +438,11 @@ describe('descrição em revisão (WEB-478)', () => {
         description: 'X',
         descriptionReview: null,
         descriptionRejectionReason: null
-      }).recusada
-    ).toBe(false)
+      })
+    ).toEqual({
+      texto:
+        'A Onside revisa a descrição em até 24 h antes de ela aparecer para o torcedor.',
+      recusada: false
+    })
   })
 })
