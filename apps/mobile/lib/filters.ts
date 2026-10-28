@@ -6,8 +6,6 @@ import { SEARCH_RADIUS_MAX_KM } from '@findsports_oficial/db/search-radius'
  * Contas puras; o estado mora em `components/explore-state.tsx`.
  */
 
-const DAY = 86_400_000
-
 /** O que a busca recebe além do centro. `null` é "qualquer". */
 export type Filters = {
   /** Dia de Brasília, "2026-10-20". */
