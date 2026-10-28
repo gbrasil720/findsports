@@ -615,7 +615,7 @@ test('Elite salva cardápio, preço médio e oferta num "Salvar" só', async ({
   await spend.fill('85,50')
 
   const offer = page.getByRole('region', { name: 'Oferta da casa' })
-  await offer.getByLabel('Oferta da casa').fill('Chope em dobro no intervalo')
+  await offer.getByLabel('A oferta').fill('Chope em dobro no intervalo')
   // A prévia do app mostra a oferta antes de salvar.
   await expect(
     page.getByRole('region', { name: /Prévia da página/ })

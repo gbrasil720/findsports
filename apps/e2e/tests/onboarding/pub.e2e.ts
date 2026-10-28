@@ -189,10 +189,17 @@ test('com sessão verificada: passos, completePub e "no ar", bar nasce no ar', a
   await expect(button(page, 'Editar horário')).toBeFocused()
 
   await button(page, 'Editar oferta da casa').click()
-  await page
-    .getByRole('region', { name: 'Oferta da casa' })
-    .getByLabel('Oferta da casa')
-    .fill('Chopp em dobro até o intervalo')
+  const oferta = page.getByRole('region', { name: 'Oferta da casa' })
+  // 28f (WEB-464): a sugestão pronta preenche e a prévia mostra o canhoto.
+  await oferta.getByRole('button', { name: 'Caipirinha pela metade' }).click()
+  await expect(oferta.getByLabel('A oferta')).toHaveValue(
+    'Caipirinha pela metade'
+  )
+  await expect(oferta).toContainText('Prévia · o que o torcedor vê')
+  await expect(
+    oferta.getByRole('button', { name: 'Caipirinha pela metade' })
+  ).toHaveCount(0)
+  await oferta.getByLabel('A oferta').fill('Chopp em dobro até o intervalo')
   // A prévia mostra a oferta como o torcedor vê.
   await expect(page.locator('aside')).toContainText(
     'Chopp em dobro até o intervalo'

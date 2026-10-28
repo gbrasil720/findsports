@@ -214,6 +214,22 @@ function HoraCampo({
   )
 }
 
+/**
+ * Sugestões prontas da folha 28f (WEB-464, decisão do dono em 28/10/2026).
+ * Tocar troca o texto; o dono edita à vontade.
+ */
+export const SUGESTOES_DE_OFERTA = [
+  'Chopp em dobro',
+  '10% no primeiro pedido',
+  'Porção de batata grátis',
+  'Caipirinha pela metade'
+] as const
+
+/**
+ * Editor da oferta da casa padrão (28f, sem o "Até quando": a oferta não tem
+ * prazo). A prévia é o canhoto que o torcedor vê; a troca por jogo fica no
+ * formulário do jogo (WEB-422).
+ */
 export function OfertaDaCasa({
   valor,
   erro,
@@ -223,37 +239,63 @@ export function OfertaDaCasa({
   erro?: string
   mudar: (valor: string) => void
 }) {
-  const tamanho = houseOfferLength(normalizeHouseOffer(valor))
+  const texto = normalizeHouseOffer(valor)
+  const tamanho = houseOfferLength(texto)
   const passou = tamanho > HOUSE_OFFER_MAX_LENGTH
   return (
-    <div>
-      <CampoTexto
-        aria-label="Oferta da casa"
-        altura={84}
-        rows={2}
-        value={valor}
-        onChange={(e) => mudar(e.target.value)}
-        aria-invalid={erro || passou ? true : undefined}
-      />
-      <div className="mt-1.5 flex justify-between gap-3 text-[12.5px] text-[var(--painel-muted)]">
-        <span>Vale para quem validar o código no balcão.</span>
-        <span
-          className={`painel-mono text-[12px] ${passou ? 'text-[var(--painel-live)]' : ''}`}
-        >
-          {tamanho}/{HOUSE_OFFER_MAX_LENGTH}
-        </span>
-      </div>
-      {erro ? (
-        <p
-          role="alert"
-          className="mt-1.5 text-[12.5px] text-[var(--painel-live)]"
-        >
-          {erro}
-        </p>
+    <div className="flex flex-col gap-3">
+      {texto ? (
+        <div className="painel-oferta-previa">
+          <div className="painel-oferta-canhoto" aria-hidden="true">
+            <Icone nome="ticket" tamanho={26} />
+          </div>
+          <div>
+            <span className="painel-mono">Prévia · o que o torcedor vê</span>
+            <b>{texto}</b>
+            <span>Vale com o código da Onside</span>
+          </div>
+        </div>
       ) : null}
-      <p className="mt-3 text-[12.5px] text-[var(--painel-muted)] leading-[1.45]">
-        A promessa é sua com o cliente: a Onside não define nem confere o
-        conteúdo. Em branco, o perfil não mostra oferta.
+      <div>
+        <CampoTexto
+          rotulo="A oferta"
+          altura={84}
+          rows={2}
+          value={valor}
+          onChange={(e) => mudar(e.target.value)}
+          aria-invalid={erro || passou ? true : undefined}
+        />
+        <div className="mt-1.5 flex justify-between gap-3 text-[12.5px] text-[var(--painel-muted)]">
+          <span>Vale para quem validar o código no balcão.</span>
+          <span
+            className={`painel-mono text-[12px] ${passou ? 'text-[var(--painel-live)]' : ''}`}
+          >
+            {tamanho}/{HOUSE_OFFER_MAX_LENGTH}
+          </span>
+        </div>
+        {erro ? (
+          <p
+            role="alert"
+            className="mt-1.5 text-[12.5px] text-[var(--painel-live)]"
+          >
+            {erro}
+          </p>
+        ) : null}
+      </div>
+      <fieldset className="flex flex-wrap gap-2">
+        <legend className="sr-only">Sugestões</legend>
+        {SUGESTOES_DE_OFERTA.filter((sugestao) => sugestao !== texto).map(
+          (sugestao) => (
+            <Chip key={sugestao} check={false} onClick={() => mudar(sugestao)}>
+              {sugestao}
+            </Chip>
+          )
+        )}
+      </fieldset>
+      <p className="text-[12.5px] text-[var(--painel-muted)] leading-[1.45]">
+        Vale para todos os jogos. Em Jogos, você troca ou tira a oferta de um
+        jogo. A promessa é sua com o cliente: a Onside não confere o conteúdo.
+        Em branco, o perfil não mostra oferta.
       </p>
     </div>
   )

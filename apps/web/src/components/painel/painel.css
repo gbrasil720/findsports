@@ -1068,6 +1068,49 @@ html[data-consent] .painel .painel-lateral {
   }
 }
 
+/* ─── Oferta da casa: prévia e sugestões (28f, WEB-464) ─── */
+
+/* O canhoto do ingresso, como o torcedor vê no app: papel nos dois temas. */
+.painel .painel-oferta-previa {
+  display: flex;
+  overflow: hidden;
+  border-radius: 7px;
+  background: var(--painel-paper);
+  color: var(--painel-ink);
+  box-shadow: 5px 5px 0 rgb(201 241 53 / 85%);
+}
+.painel .painel-oferta-canhoto {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 62px;
+  border-right: 1.5px dashed rgb(18 18 15 / 25%);
+  background: var(--painel-acid);
+  --painel-acc: var(--painel-ink);
+}
+.painel .painel-oferta-previa > div:last-child {
+  min-width: 0;
+  padding: 12px 14px;
+}
+.painel .painel-oferta-previa .painel-mono {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #55554f;
+}
+.painel .painel-oferta-previa b {
+  display: block;
+  font-size: 15px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.painel .painel-oferta-previa span:last-child {
+  font-size: 13px;
+  color: #55554f;
+}
+
 /* ─── Avisos do painel e card do plano (1t/1u, Rodada 3) ─── */
 
 .painel .painel-aviso {
