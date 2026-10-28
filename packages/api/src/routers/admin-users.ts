@@ -57,7 +57,7 @@ async function findTarget(userId: string) {
  * WEB-392: e-mail que o admin manda em nome da pessoa. Pelo `auth.api`, que
  * não passa pelo Turnstile nem pelo rate limit do HTTP. O registro e o pedido
  * ficam na mesma transação: se o better-auth recusar o pedido, nada é escrito.
- * O envio em si sai em segundo plano (`backgroundTasks`), e a falha do Resend
+ * O envio em si sai em segundo plano (`backgroundTasks`), e a falha da API de e-mail
  * fica só no log — por isso o Grimório e a tela dizem "pediu", não "enviou".
  */
 async function sendOnBehalf(
