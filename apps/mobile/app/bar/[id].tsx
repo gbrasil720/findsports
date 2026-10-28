@@ -496,7 +496,9 @@ export default function BarPage() {
               </View>
             ) : null}
 
-            {data.houseOffer ? <OfferCard offer={data.houseOffer} /> : null}
+            {/* A oferta do jogo em destaque (WEB-422): cada jogo tem a
+                sua, e "Vou assistir aqui" mostra a do jogo escolhido. */}
+            {next?.houseOffer ? <OfferCard offer={next.houseOffer} /> : null}
 
             {games.length > 1 ? (
               <>

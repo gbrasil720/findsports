@@ -201,12 +201,16 @@ export default function GoingSheet() {
           </Card>
         ) : null}
 
-        {data.houseOffer ? (
-          <OfferCard
-            offer={data.houseOffer}
-            note="Vale com o seu código."
-            compact
-          />
+        {/* A oferta deste jogo (WEB-422): a dele, a padrão do bar ou
+            nenhuma. Troca com o jogo escolhido: texto novo entra de novo. */}
+        {game.houseOffer ? (
+          <Animated.View key={game.houseOffer} entering={SWAP}>
+            <OfferCard
+              offer={game.houseOffer}
+              note="Vale com o seu código."
+              compact
+            />
+          </Animated.View>
         ) : null}
 
         <Text style={[text(12.5, 'Regular', 1.45), { color: palette.muted }]}>
