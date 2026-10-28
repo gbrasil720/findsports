@@ -14,7 +14,12 @@ export function getPageSurface(pathname: string): PageSurface {
   if (pathname.startsWith('/onboarding') || pathname.startsWith('/plan')) {
     return 'activation'
   }
-  if (pathname.startsWith('/torcedor') || pathname.startsWith('/pub')) {
+  // A página "está no app" (WEB-447), com bar, sem bar e no convite (WEB-468).
+  if (
+    pathname.startsWith('/torcedor') ||
+    pathname.startsWith('/pub') ||
+    pathname.startsWith('/convite')
+  ) {
     return 'fan'
   }
   if (pathname.startsWith('/admin')) return 'pub'
