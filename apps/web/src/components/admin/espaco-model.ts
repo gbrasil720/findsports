@@ -5,15 +5,22 @@ import {
   type Uf
 } from '@findsports_oficial/api/lib/bar-profile-validation'
 import {
+  isGameWithinHours,
   normalizeOpeningHours,
-  type OpeningHours
+  type OpeningHours,
+  openingStatus,
+  weekdayName
 } from '@findsports_oficial/api/lib/opening-hours'
 import {
   averageSpendInputValue,
   parseAverageSpendInput,
   parseMenuUrl
 } from '@findsports_oficial/db/bar-menu'
-import { BRASILIA_TIME_ZONE } from '@findsports_oficial/db/event-window'
+import {
+  BRASILIA_TIME_ZONE,
+  brasiliaDay,
+  brasiliaDayStart
+} from '@findsports_oficial/db/event-window'
 import {
   HOUSE_OFFER_MAX_LENGTH,
   houseOfferLength,
@@ -120,6 +127,113 @@ export function horarioDoRascunho(
       day.open ? { opens: day.opens, closes: day.closes } : null
     ) ?? null
   )
+}
+
+/* ─── Editor de horário (28a, 28e; WEB-463) ─── */
+
+/** Segunda primeiro, como o editor lista. */
+const SEMANA_DO_EDITOR = [1, 2, 3, 4, 5, 6, 0]
+
+const faixa = (dia: DiaRascunho) => ({ opens: dia.opens, closes: dia.closes })
+
+/**
+ * Os atalhos da folha 28e. O dia copiado é o primeiro aberto a partir de
+ * segunda (a terça do design, com a segunda fechada). "Para a semana" é de
+ * segunda a sexta e respeita os dias fechados; "Todo dia igual" abre os sete.
+ * Atalho que não mudaria nada vem com `resultado` nulo (botão desligado).
+ */
+export function atalhosDoHorario(hours: DiaRascunho[]) {
+  const origem = SEMANA_DO_EDITOR.find((dia) => hours[dia]?.open)
+  const modelo = origem === undefined ? undefined : hours[origem]
+  const atalhos: { rotulo: string; resultado: DiaRascunho[] }[] = []
+  if (origem !== undefined && modelo) {
+    atalhos.push({
+      rotulo: `Copiar ${weekdayName(origem)} para a semana`,
+      resultado: hours.map((dia, i) =>
+        i >= 1 && i <= 5 && dia.open ? { ...dia, ...faixa(modelo) } : dia
+      )
+    })
+  }
+  const sabado = hours[6]
+  if (sabado) {
+    atalhos.push({
+      rotulo: 'Fim de semana igual',
+      resultado: hours.map((dia, i) => (i === 0 ? { ...sabado } : dia))
+    })
+  }
+  if (modelo) {
+    atalhos.push({
+      rotulo: 'Todo dia igual',
+      resultado: hours.map(() => ({ open: true, ...faixa(modelo) }))
+    })
+  }
+  return atalhos.map(({ rotulo, resultado }) => ({
+    rotulo,
+    resultado:
+      JSON.stringify(resultado) === JSON.stringify(hours) ? null : resultado
+  }))
+}
+
+/**
+ * "Aberto agora · fecha às 01:00" (28a), lido do horário do rascunho: o que
+ * o torcedor vai ver quando salvar. `null` sem horário.
+ */
+export function situacaoDoHorario(
+  hours: DiaRascunho[] | null,
+  now: Date
+): { aberto: boolean; texto: string } | null {
+  const status = openingStatus(horarioDoRascunho(hours), now)
+  if (!status) return null
+  if (status.open) return { aberto: true, texto: `fecha às ${status.closes}` }
+  const quando =
+    status.inDays === 0
+      ? ''
+      : status.inDays === 1
+        ? 'amanhã '
+        : `${weekdayName(status.day)} `
+  return { aberto: false, texto: `abre ${quando}às ${status.opens}` }
+}
+
+/** "hoje", "amanhã" ou "sexta", no relógio de Brasília. */
+function diaNaFrase(startsAt: string | Date, now: Date) {
+  const dia = diaDoJogo(startsAt, now)
+  if (dia === 'Hoje' || dia === 'Amanhã') return dia.toLowerCase()
+  return weekdayName(new Date(`${brasiliaDay(startsAt)}T12:00:00Z`).getUTCDay())
+}
+
+/**
+ * O aviso da 28e: o que o horário novo faz com os jogos publicados dos
+ * próximos sete dias (um de cada dia da semana, para "sexta" não ser
+ * ambíguo). Jogo que fica fora tem a vez; sem nenhum fora, avisa o que estava
+ * fora e passa a caber. Horário igual ao salvo, ou nada a dizer: `null`.
+ */
+export function avisoDosJogos(
+  jogos: { startsAt: string | Date }[],
+  antes: OpeningHours | null,
+  depois: OpeningHours | null,
+  now: Date
+): { fora: boolean; texto: string } | null {
+  if (JSON.stringify(antes) === JSON.stringify(depois)) return null
+  const fim = brasiliaDayStart(brasiliaDay(now, 7)).getTime()
+  const proximos = jogos
+    .map((jogo) => new Date(jogo.startsAt))
+    .filter((inicio) => inicio >= now && inicio.getTime() < fim)
+    .sort((a, b) => a.getTime() - b.getTime())
+  const fora = proximos.filter((s) => isGameWithinHours(depois, s) === false)
+  const lista = fora.length
+    ? fora
+    : proximos.filter(
+        (s) =>
+          isGameWithinHours(antes, s) === false &&
+          isGameWithinHours(depois, s) === true
+      )
+  const [primeiro] = lista
+  if (!primeiro) return null
+  const verbo = lista.length > 1 ? `e mais ${lista.length - 1} ficam` : 'fica'
+  return {
+    fora: fora.length > 0,
+    texto: `O jogo de ${diaNaFrase(primeiro, now)} às ${horaDoJogo(primeiro)} ${verbo} ${fora.length ? 'fora' : 'dentro'} do novo horário.`
+  }
 }
 
 const mesmaLista = (a: number[], b: number[]) =>
