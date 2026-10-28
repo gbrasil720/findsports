@@ -6,7 +6,6 @@ import {
 } from '@tanstack/react-query'
 import type { inferRouterOutputs } from '@trpc/server'
 import { type Href, useRouter } from 'expo-router'
-import { useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -219,8 +218,6 @@ export function OffGlobal({ data }: { data: CityOff }) {
   const palette = usePalette()
   const router = useRouter()
   const queryClient = useQueryClient()
-  // O interruptor anda no toque; volta se o servidor recusar.
-  const [on, setOn] = useState(data.rankingGlobal)
   const save = useMutation(
     trpc.friends.updatePrivacy.mutationOptions({
       onSuccess: () => {
@@ -232,15 +229,18 @@ export function OffGlobal({ data }: { data: CityOff }) {
       },
       onError: () => {
         haptic.error()
-        setOn(data.rankingGlobal)
         Alert.alert('Não foi possível salvar', 'Tente de novo.')
       }
     })
   )
+  // O interruptor anda no toque e fica até a aba reler (o `onSuccess` espera
+  // a releitura); se o servidor recusar, volta ao que o servidor diz.
+  const on = save.isPending
+    ? !!save.variables?.rankingGlobal
+    : data.rankingGlobal
   const flip = () => {
     if (save.isPending) return
     haptic.select()
-    setOn(!on)
     save.mutate({ rankingGlobal: !on })
   }
   return (
@@ -249,13 +249,11 @@ export function OffGlobal({ data }: { data: CityOff }) {
         <View style={styles.off}>
           <Text style={styles.kicker}>PRIVACIDADE</Text>
           <Title
-            lines={[
-              [
-                data.nobody
-                  ? 'Você está fora do ranking global.'
-                  : 'Você escolheu não aparecer no ranking global.'
-              ]
-            ]}
+            lines={
+              data.nobody
+                ? [['Você está fora'], ['do ranking global.']]
+                : [['Você escolheu não'], ['aparecer no ranking'], ['global.']]
+            }
             size={30}
             color={PAPER}
           />
@@ -339,7 +337,12 @@ export function OffGlobal({ data }: { data: CityOff }) {
             </View>
           ))}
           <View style={styles.pillWrap} pointerEvents="none">
-            <View style={[styles.pill, { backgroundColor: palette.card }]}>
+            <View
+              style={[
+                styles.pill,
+                { backgroundColor: palette.card, borderColor: palette.ring }
+              ]}
+            >
               <Icon name="eye" size={18} color={palette.ink} />
               <Text style={[text(15, 'Bold'), { color: palette.ink }]}>
                 Você está fora do global
@@ -376,7 +379,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingVertical: 11,
+    paddingVertical: 10,
     paddingHorizontal: 14
   },
   meRow: { backgroundColor: ACID, borderRadius: 4 },
@@ -391,7 +394,8 @@ const styles = StyleSheet.create({
   },
   place: { fontFamily: 'Anton', fontSize: 22 },
   score: { alignItems: 'center', minWidth: 36 },
-  value: { fontFamily: 'Anton', fontSize: 22 },
+  // Sem `lineHeight` (o iOS corta o Anton); a margem negativa cola o "bares".
+  value: { fontFamily: 'Anton', fontSize: 22, marginVertical: -5 },
   cut: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -433,7 +437,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 14,
     paddingVertical: 16,
-    opacity: 0.22
+    opacity: 0.34
   },
   ghostPlace: { width: 12, height: 22, borderRadius: 3 },
   ghostFace: { width: 38, height: 38, borderRadius: 6 },
@@ -455,6 +459,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     height: 44,
     borderRadius: 22,
+    borderWidth: 1,
     shadowColor: '#000',
     shadowOpacity: 0.12,
     shadowRadius: 14,
