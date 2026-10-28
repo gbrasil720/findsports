@@ -1,20 +1,26 @@
 import { PLAN_NAMES } from '@findsports_oficial/api/lib/plan-limits'
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import { useQuery } from '@tanstack/react-query'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import type { inferRouterOutputs } from '@trpc/server'
 import { type ReactNode, useState } from 'react'
 
 import {
+  BarLinks,
   BarTricks,
   SearchDriftAlert,
   STANDING_LABELS,
   searchDrift
 } from '@/components/houdini/bar-tricks'
-import { formatDate, formatDateTime } from '@/components/houdini/format'
+import {
+  formatDate,
+  formatDateTime,
+  formatTime,
+  initials
+} from '@/components/houdini/format'
 import { GrimorioRow } from '@/components/houdini/grimorio'
 import { Icon } from '@/components/houdini/icons'
-import { HoudiniShell } from '@/components/houdini/shell'
+import { HoudiniShell, PageHead } from '@/components/houdini/shell'
 import { appHref } from '@/lib/houdini-host'
 import { countLabel } from '@/lib/plural'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
@@ -54,13 +60,8 @@ function FichaPage() {
   const ficha = query.data
 
   return (
-    <HoudiniShell
-      title={ficha?.name ?? 'Ficha'}
-      crumbs={[{ label: 'Bares', to: '/houdini/bares' }]}
-      env={env}
-      user={admin}
-    >
-      <div className="hd-page" style={{ gap: 24 }}>
+    <HoudiniShell env={env} user={admin}>
+      <div className="hd-page">
         {query.isError ? (
           <div className="hd-card" role="alert">
             <p style={{ margin: 0 }}>
@@ -95,102 +96,49 @@ function FichaBody({ ficha }: { ficha: Ficha }) {
 
   return (
     <>
-      <section
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 20,
-          alignItems: 'flex-start',
-          justifyContent: 'space-between'
-        }}
+      <PageHead
+        crumbs={[{ label: 'Bares', to: '/houdini/bares' }]}
+        title={ficha.name}
+        actions={<BarLinks bar={ficha} publicHref={publicHref} />}
       >
         <div
           style={{
             display: 'flex',
-            gap: 16,
-            alignItems: 'center',
-            minWidth: 0
+            flexWrap: 'wrap',
+            gap: 8,
+            alignItems: 'center'
           }}
         >
           <span
-            style={{
-              flex: '0 0 auto',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 64,
-              height: 64,
-              borderRadius: 18,
-              background: 'var(--hd-raise)',
-              color: 'var(--hd-soft)'
-            }}
+            className="hd-pill"
+            data-tone={ficha.isActive ? 'acid' : undefined}
           >
-            <Icon name="store" size={28} strokeWidth={1.6} />
+            {ficha.isActive ? 'no ar' : 'fora do ar'}
           </span>
-          <div
-            style={{
-              minWidth: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 6
-            }}
+          <span
+            className="hd-pill"
+            data-tone={ficha.standing === 'current' ? 'stone' : 'live'}
           >
-            <h1 className="hd-h1" style={{ fontSize: 28 }}>
-              {ficha.name}
-            </h1>
-            <div
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: 6,
-                alignItems: 'center'
-              }}
-            >
-              <span
-                className="hd-pill"
-                data-tone={ficha.isActive ? 'ok' : undefined}
-              >
-                {ficha.isActive ? 'no ar' : 'fora do ar'}
-              </span>
-              <span className="hd-pill" data-tone="roxo">
-                {ficha.currentPlan
-                  ? PLAN_NAMES[ficha.currentPlan]
-                  : 'Sem plano'}{' '}
-                ·{' '}
-                {ficha.standing
-                  ? STANDING_LABELS[ficha.standing]
-                  : 'sem assinatura'}
-              </span>
-              <span style={{ fontSize: 13, color: 'var(--hd-muted)' }}>
-                {ficha.neighborhood}, {ficha.city}
-                {ficha.uf ? `/${ficha.uf}` : ''} · desde{' '}
-                {formatDate(ficha.createdAt)}
-              </span>
-            </div>
-            <span
-              className="hd-mono hd-small"
-              style={{ overflowWrap: 'anywhere' }}
-            >
-              id {ficha.id}
-              {ficha.owner.stripeCustomerId
-                ? ` · cliente Stripe ${ficha.owner.stripeCustomerId}`
-                : ''}
-            </span>
-          </div>
+            {ficha.currentPlan ? PLAN_NAMES[ficha.currentPlan] : 'Sem plano'} ·{' '}
+            {ficha.standing
+              ? STANDING_LABELS[ficha.standing]
+              : 'sem assinatura'}
+          </span>
+          <span className="hd-lead" style={{ fontSize: 14 }}>
+            {ficha.neighborhood}, {ficha.city}
+            {ficha.uf ? `/${ficha.uf}` : ''} · desde{' '}
+            {formatDate(ficha.createdAt)}
+          </span>
         </div>
-        <BarTricks key={ficha.id} bar={ficha} inline publicHref={publicHref} />
-      </section>
+        <span className="hd-mono hd-small" style={{ overflowWrap: 'anywhere' }}>
+          id {ficha.id}
+          {ficha.owner.stripeCustomerId
+            ? ` · cliente Stripe ${ficha.owner.stripeCustomerId}`
+            : ''}
+        </span>
+      </PageHead>
 
-      <div
-        role="tablist"
-        aria-label="Seções da ficha"
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 4,
-          borderBottom: '1px solid var(--hd-line)'
-        }}
-      >
+      <div role="tablist" aria-label="Seções da ficha" className="hd-tabs">
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -198,26 +146,10 @@ function FichaBody({ ficha }: { ficha: Ficha }) {
             role="tab"
             aria-selected={tab === t.id}
             onClick={() => setTab(t.id)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              minHeight: 44,
-              padding: '0 14px',
-              border: 0,
-              background: 'transparent',
-              font: '600 13px var(--hd-sans)',
-              cursor: 'pointer',
-              marginBottom: -1,
-              color: tab === t.id ? 'var(--hd-text)' : 'var(--hd-muted)',
-              borderBottom: `2px solid ${tab === t.id ? 'var(--hd-roxo)' : 'transparent'}`
-            }}
           >
             {t.label}
             {counts[t.id] !== undefined ? (
-              <span className="hd-mono" style={{ fontSize: 11 }}>
-                {counts[t.id]}
-              </span>
+              <span className="n">{counts[t.id]}</span>
             ) : null}
           </button>
         ))}
@@ -260,9 +192,9 @@ function FichaBody({ ficha }: { ficha: Ficha }) {
         ) : null}
         {tab === 'grimorio' ? (
           ficha.grimorio.length ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div className="hd-card" style={{ padding: '4px 20px', gap: 0 }}>
               {ficha.grimorio.map((entry) => (
-                <GrimorioRow key={entry.id} entry={entry} />
+                <GrimorioRow key={entry.id} entry={entry} compact />
               ))}
             </div>
           ) : (
@@ -288,16 +220,21 @@ const CODE_STATUS: Record<Ficha['reservations'][number]['status'], string> = {
 
 function Card({
   title,
+  meta,
   children,
   gap = 14
 }: {
   title: string
+  meta?: ReactNode
   children: ReactNode
   gap?: number
 }) {
   return (
     <section className="hd-card" style={{ gap }}>
-      <h2 className="hd-h2">{title}</h2>
+      <div className="hd-card-hd">
+        <h2 className="hd-h2">{title}</h2>
+        {meta ? <span className="meta">{meta}</span> : null}
+      </div>
       {children}
     </section>
   )
@@ -339,217 +276,191 @@ function Resumo({ ficha }: { ficha: Ficha }) {
   const signupTrial = sub?.status === 'trialing' && !sub.externalSubscriptionId
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: 12,
-        alignItems: 'flex-start'
-      }}
-    >
-      <div
-        style={{
-          flex: '3 1 480px',
-          minWidth: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 12
-        }}
-      >
-        <div className="hd-grid" style={{ ['--hd-min' as string]: '150px' }}>
-          {stats.map((s) => (
-            <div
-              key={s.label}
-              className="hd-card"
-              style={{ padding: 16, gap: 6 }}
-            >
-              <span style={{ fontSize: 12, color: 'var(--hd-muted)' }}>
-                {s.label}
-              </span>
-              <span
-                style={{
-                  fontWeight: 700,
-                  fontSize: 24,
-                  letterSpacing: '-0.03em'
-                }}
-              >
-                {s.value}
-              </span>
-              <span className="hd-mono hd-small" style={{ fontSize: 11 }}>
-                {s.sub}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        <Card title="Assinatura">
-          <dl
-            className="hd-dl"
-            style={{
-              gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))'
-            }}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <section className="hd-grid" aria-label="Números do bar">
+        {stats.map((s, i) => (
+          <div
+            key={s.label}
+            className={`hd-card hd-kpi${i === stats.length - 1 ? ' is-hero' : ''}`}
           >
-            <div>
-              <dt>Plano efetivo</dt>
-              <dd>
-                {ficha.currentPlan
-                  ? PLAN_NAMES[ficha.currentPlan]
-                  : 'Sem plano'}
-              </dd>
-            </div>
-            <div>
-              <dt>Situação</dt>
-              <dd className="hd-mono" style={{ fontSize: 12 }}>
-                {sub
-                  ? `${PLAN_NAMES[sub.plan]} · ${sub.status}`
-                  : 'sem assinatura'}
-              </dd>
-            </div>
-            <div>
-              <dt>Fim do período</dt>
-              <dd>
-                {sub?.currentPeriodEnd
-                  ? formatDateTime(sub.currentPeriodEnd)
-                  : '—'}
-              </dd>
-            </div>
-            <div>
-              <dt>Teste do cadastro</dt>
-              <dd>
-                {signupTrial
-                  ? ficha.standing === 'current'
-                    ? 'em andamento'
-                    : 'vencido'
-                  : sub?.externalSubscriptionId
-                    ? 'assina pelo Stripe'
-                    : '—'}
-              </dd>
-            </div>
-            {sub?.cancelAt ? (
-              <div>
-                <dt>Cancela em</dt>
-                <dd>{formatDateTime(sub.cancelAt)}</dd>
-              </div>
-            ) : null}
-          </dl>
-          {searchDrift(ficha) ? (
-            <SearchDriftAlert key={ficha.id} bar={ficha} />
-          ) : (
-            <div
+            <span className="lbl">{s.label}</span>
+            <span className="num">{s.value}</span>
+            <span className="sub">{s.sub}</span>
+          </div>
+        ))}
+      </section>
+
+      <div className="hd-cols">
+        <div className="grow">
+          <Card
+            title="Assinatura"
+            gap={16}
+            meta={
+              ficha.stripeUrl ? (
+                <a href={ficha.stripeUrl} target="_blank" rel="noreferrer">
+                  abrir no Stripe
+                </a>
+              ) : null
+            }
+          >
+            <dl
+              className="hd-dl"
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '12px 14px',
-                borderRadius: 10,
-                background: 'rgb(64 214 150 / 0.08)',
-                border: '1px solid rgb(64 214 150 / 0.25)',
-                color: 'var(--hd-ok)',
-                fontSize: 13,
-                fontWeight: 600
+                gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))'
               }}
             >
-              <Icon name="check" size={16} strokeWidth={2} />
-              Busca e plano batem: {PLAN_NAMES[ficha.barPlan]} na busca.
-            </div>
-          )}
-        </Card>
-
-        <Card title="Próximos jogos" gap={8}>
-          {ficha.games.length ? (
-            ficha.games.slice(0, 3).map((g) => (
-              <div
-                key={g.id}
-                className="hd-row"
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '120px minmax(0, 1fr) auto',
-                  minHeight: 48
-                }}
-              >
-                <span className="hd-mono hd-small">
-                  {formatDateTime(g.startsAt)}
-                </span>
-                <span
+              <div>
+                <dt>Plano efetivo</dt>
+                <dd>
+                  {ficha.currentPlan
+                    ? PLAN_NAMES[ficha.currentPlan]
+                    : 'Sem plano'}
+                </dd>
+              </div>
+              <div>
+                <dt>Situação</dt>
+                <dd
+                  className="hd-mono"
                   style={{
-                    fontWeight: 600,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap'
+                    fontSize: 13,
+                    color:
+                      ficha.standing && ficha.standing !== 'current'
+                        ? 'var(--hd-live-text)'
+                        : undefined
                   }}
                 >
-                  {g.title}
-                </span>
-                <span
-                  className="hd-mono"
-                  style={{ fontSize: 12, color: 'var(--hd-soft)' }}
-                >
-                  {countLabel(g.reservations, 'código', 'códigos')}
-                </span>
+                  {sub
+                    ? `${PLAN_NAMES[sub.plan]} · ${sub.status}`
+                    : 'sem assinatura'}
+                </dd>
               </div>
-            ))
-          ) : (
-            <p className="hd-small" style={{ margin: 0 }}>
-              Nenhum jogo por vir.
-            </p>
-          )}
-        </Card>
-      </div>
+              <div>
+                <dt>Fim do período</dt>
+                <dd>
+                  {sub?.currentPeriodEnd
+                    ? formatDateTime(sub.currentPeriodEnd)
+                    : '—'}
+                </dd>
+              </div>
+              <div>
+                <dt>Teste do cadastro</dt>
+                <dd>
+                  {signupTrial
+                    ? ficha.standing === 'current'
+                      ? 'em andamento'
+                      : 'vencido'
+                    : sub?.externalSubscriptionId
+                      ? 'assina pelo Stripe'
+                      : '—'}
+                </dd>
+              </div>
+              {sub?.cancelAt ? (
+                <div>
+                  <dt>Cancela em</dt>
+                  <dd>{formatDateTime(sub.cancelAt)}</dd>
+                </div>
+              ) : null}
+            </dl>
+            {searchDrift(ficha) ? (
+              <SearchDriftAlert key={ficha.id} bar={ficha} />
+            ) : (
+              <div className="hd-done">
+                <Icon name="check" size={16} />
+                Busca e plano batem: {PLAN_NAMES[ficha.barPlan]} na busca.
+              </div>
+            )}
+          </Card>
 
-      <div
-        style={{
-          flex: '2 1 320px',
-          minWidth: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 12
-        }}
-      >
-        <Card title="Dono" gap={12}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span
-              className="hd-avatar"
-              style={{
-                width: 40,
-                height: 40,
-                background: 'var(--hd-roxo-tint)'
-              }}
-            >
-              {ficha.owner.name.slice(0, 1).toUpperCase() || '?'}
-            </span>
-            <span
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 1,
-                minWidth: 0
-              }}
-            >
-              <span style={{ fontWeight: 600, fontSize: 14 }}>
-                {ficha.owner.name}
-              </span>
-              <span
-                className="hd-mono hd-small"
-                style={{ overflowWrap: 'anywhere' }}
+          <Card title="Próximos jogos" gap={4}>
+            {ficha.games.length ? (
+              <div>
+                {ficha.games.slice(0, 3).map((g) => (
+                  <div
+                    key={g.id}
+                    className="hd-row"
+                    style={{ gap: 16, padding: '12px 0', flexWrap: 'wrap' }}
+                  >
+                    <span
+                      style={{
+                        flex: '0 0 70px',
+                        font: '400 28px/1 var(--hd-display)'
+                      }}
+                    >
+                      {formatTime(g.startsAt)}
+                    </span>
+                    <span style={{ flex: '1 1 160px', minWidth: 0 }}>
+                      <b style={{ display: 'block', fontSize: 15 }}>
+                        {g.title}
+                      </b>
+                      <span className="hd-small">
+                        {[g.championship, formatDate(g.startsAt)]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </span>
+                    </span>
+                    <span
+                      className="hd-mono"
+                      style={{ marginLeft: 'auto', fontWeight: 600 }}
+                    >
+                      {countLabel(g.reservations, 'código', 'códigos')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="hd-small" style={{ margin: 0 }}>
+                Nenhum jogo por vir.
+              </p>
+            )}
+          </Card>
+        </div>
+
+        <div className="side">
+          <Card
+            title="Dono"
+            meta={
+              <Link
+                to="/houdini/pessoas/$userId"
+                params={{ userId: ficha.owner.id }}
               >
-                {ficha.owner.email} ·{' '}
-                {ficha.owner.emailVerified
-                  ? 'e-mail verificado'
-                  : 'e-mail não verificado'}
+                abrir a ficha
+              </Link>
+            }
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span className="hd-avatar">{initials(ficha.owner.name)}</span>
+              <span style={{ minWidth: 0 }}>
+                <b style={{ display: 'block' }}>{ficha.owner.name}</b>
+                <span
+                  className="hd-mono hd-small"
+                  style={{ overflowWrap: 'anywhere' }}
+                >
+                  {ficha.owner.email}
+                </span>
               </span>
-            </span>
-          </div>
-          <dl className="hd-dl">
-            <div>
-              <dt>Telefone do bar</dt>
-              <dd>{ficha.phone ?? '—'}</dd>
             </div>
-            <div>
-              <dt>Conta</dt>
-              <dd>{ficha.owner.banned ? 'sumida' : 'ativa'}</dd>
-            </div>
-          </dl>
-        </Card>
+            <dl className="hd-dl">
+              <div>
+                <dt>E-mail</dt>
+                <dd>
+                  {ficha.owner.emailVerified ? 'verificado' : 'não verificado'}
+                </dd>
+              </div>
+              <div>
+                <dt>Conta</dt>
+                <dd>{ficha.owner.banned ? 'sumida' : 'ativa'}</dd>
+              </div>
+              <div>
+                <dt>Telefone do bar</dt>
+                <dd className="hd-mono">{ficha.phone ?? '—'}</dd>
+              </div>
+            </dl>
+          </Card>
+
+          <Card title="Truques" meta="vão para o Grimório">
+            <BarTricks key={ficha.id} bar={ficha} />
+          </Card>
+        </div>
       </div>
     </div>
   )
@@ -578,7 +489,7 @@ function Rows({
             gap: 14,
             minHeight: 60,
             padding: '10px 18px',
-            borderTop: i ? '1px solid rgb(255 255 255 / 0.05)' : undefined
+            borderTop: i ? '1px solid var(--hd-line)' : undefined
           }}
         >
           <span
@@ -597,7 +508,7 @@ function Rows({
           </span>
           <span
             className="hd-mono"
-            style={{ fontSize: 12, color: 'var(--hd-soft)' }}
+            style={{ fontSize: 12, color: 'var(--hd-body)' }}
           >
             {r.right}
           </span>

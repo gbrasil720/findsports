@@ -12,7 +12,7 @@ import { useTRPC } from '@/utils/trpc'
 import { refusalMessage } from './errors'
 import { formatDateTime } from './format'
 import { HoldButton } from './hold-button'
-import { HatIcon, Icon } from './icons'
+import { Icon } from './icons'
 
 type Plan = keyof typeof PLAN_NAMES
 
@@ -87,22 +87,8 @@ export function SearchDriftAlert({ bar }: { bar: TrickBar }) {
   // Só enquanto vale: estender o teste depois muda a busca de novo.
   if (fixedTo === bar.barPlan && !searchDrift(bar)) {
     return (
-      <div
-        role="status"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: '12px 14px',
-          borderRadius: 12,
-          background: 'rgb(64 214 150 / 0.10)',
-          border: '1px solid rgb(64 214 150 / 0.3)',
-          color: 'var(--hd-ok)',
-          fontSize: 13,
-          fontWeight: 600
-        }}
-      >
-        <Icon name="check" size={16} strokeWidth={2} />
+      <div role="status" className="hd-done">
+        <Icon name="check" size={16} />
         Busca em {PLAN_NAMES[fixedTo]} agora. Anotado no Grimório.
       </div>
     )
@@ -112,64 +98,146 @@ export function SearchDriftAlert({ bar }: { bar: TrickBar }) {
   return (
     <div className="hd-alert" role="alert">
       <span className="hd-alert-title">
-        <Icon name="warn" size={16} strokeWidth={1.8} />
+        <Icon name="warn" size={18} />
         Busca desatualizada
       </span>
-      <p
+      <p>
+        {bar.currentPlan ? (
+          <>
+            O plano é <b>{PLAN_NAMES[bar.currentPlan]}</b>
+          </>
+        ) : (
+          'O bar está sem plano (na busca, Starter)'
+        )}
+        , mas a busca ainda ordena este bar como{' '}
+        <b>{PLAN_NAMES[bar.barPlan]}</b>. A reconciliação diária só arrumaria em
+        até 24 h.
+      </p>
+      <div
         style={{
-          margin: 0,
-          fontSize: 13,
-          lineHeight: 1.5,
-          color: 'var(--hd-soft)'
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          gap: 12
         }}
       >
-        {bar.currentPlan
-          ? `O plano é ${PLAN_NAMES[bar.currentPlan]}`
-          : 'O bar está sem plano (na busca, Starter)'}
-        , mas a busca ainda ordena este bar como {PLAN_NAMES[bar.barPlan]}. A
-        reconciliação diária só arrumaria em até 24 h.
-      </p>
+        <button
+          type="button"
+          className="hd-btn hd-btn-primary"
+          disabled={sync.isPending}
+          onClick={() => sync.mutate({ barId: bar.id })}
+        >
+          {sync.isPending ? 'Arrumando…' : 'Arrumar agora'}
+        </button>
+        <span className="hd-small">
+          Aplica a mesma regra da reconciliação, só neste bar. Fica no Grimório.
+        </span>
+      </div>
+    </div>
+  )
+}
+
+/** Entrar na pele do dono: a sessão vira a dele e a página recarrega. */
+function useEnterOwner(bar: TrickBar) {
+  const [entering, setEntering] = useState(false)
+  async function enter() {
+    setEntering(true)
+    const res = await authClient.admin.impersonateUser({ userId: bar.ownerId })
+    if (res.error || !res.data) {
+      setEntering(false)
+      toast.error(
+        getUserFacingMessage(res.error, 'Não foi possível entrar na pele.')
+      )
+      return
+    }
+    window.location.href = appHref('/admin', new URL(window.location.href))
+  }
+  return { entering, enter }
+}
+
+/**
+ * Os atalhos de um bar: entrar na pele do dono, vê-lo como torcedor, o
+ * Stripe e (na lista) a ficha. Na ficha vão no cabeçalho.
+ */
+export function BarLinks({
+  bar,
+  showFicha = false,
+  publicHref,
+  stacked = false
+}: {
+  bar: TrickBar
+  showFicha?: boolean
+  /** Página do bar no app, para "Ver como torcedor". */
+  publicHref?: string
+  stacked?: boolean
+}) {
+  const { entering, enter } = useEnterOwner(bar)
+  const item = stacked ? { justifyContent: 'flex-start' as const } : undefined
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: stacked ? 'column' : 'row',
+        flexWrap: 'wrap',
+        gap: stacked ? 8 : 10
+      }}
+    >
       <button
         type="button"
-        className="hd-btn"
-        disabled={sync.isPending}
-        onClick={() => sync.mutate({ barId: bar.id })}
-        style={{
-          border: 0,
-          background: 'var(--hd-warn)',
-          color: 'var(--hd-bg)',
-          fontWeight: 700
-        }}
+        className="hd-btn hd-btn-ink"
+        disabled={entering}
+        onClick={enter}
+        style={item}
       >
-        {sync.isPending ? 'Arrumando…' : 'Arrumar agora'}
+        <Icon name="mask" size={18} />
+        {entering ? 'Entrando…' : 'Entrar na pele do dono'}
       </button>
-      <span className="hd-small" style={{ fontSize: 11 }}>
-        Aplica a mesma regra da reconciliação, só neste bar. Fica no Grimório.
-      </span>
+      {showFicha ? (
+        <Link
+          to="/houdini/bares/$barId"
+          params={{ barId: bar.id }}
+          className="hd-btn"
+          style={item}
+        >
+          <Icon name="doc" size={18} />
+          Abrir a ficha completa
+        </Link>
+      ) : null}
+      {publicHref ? (
+        <a
+          className="hd-btn"
+          href={publicHref}
+          target="_blank"
+          rel="noreferrer"
+          style={item}
+        >
+          Ver como torcedor
+        </a>
+      ) : null}
+      {bar.stripeUrl ? (
+        <a
+          className="hd-btn"
+          href={bar.stripeUrl}
+          target="_blank"
+          rel="noreferrer"
+          style={item}
+        >
+          <Icon name="external" size={18} />
+          Abrir no Stripe
+        </a>
+      ) : null}
     </div>
   )
 }
 
 /**
- * Os truques de um bar: estender o teste, entrar na pele do dono, Stripe e
- * tirar do ar ou religar. O painel de Bares empilha; a ficha põe em linha.
+ * Os truques de um bar: estender o teste do cadastro e tirar do ar (segurando)
+ * ou religar. Tudo vai para o Grimório.
  */
-export function BarTricks({
-  bar,
-  inline = false,
-  showFicha = false,
-  publicHref
-}: {
-  bar: TrickBar
-  inline?: boolean
-  showFicha?: boolean
-  /** Página do bar no app, para "Ver como torcedor". */
-  publicHref?: string
-}) {
+export function BarTricks({ bar }: { bar: TrickBar }) {
   const trpc = useTRPC()
   const refresh = useRefresh()
   const [days, setDays] = useState<(typeof TRIAL_DAYS)[number]>(14)
-  const [entering, setEntering] = useState(false)
 
   const extend = useMutation(
     trpc.adminBars.extendTrial.mutationOptions({
@@ -197,119 +265,60 @@ export function BarTricks({
         toast.error(refusalMessage(error, 'Não foi possível mudar o bar.'))
     })
   )
-  const busy = extend.isPending || setActive.isPending || entering
-
-  // O mesmo caminho de Pessoas: a sessão vira a do dono e a página recarrega.
-  async function enterOwner() {
-    setEntering(true)
-    const res = await authClient.admin.impersonateUser({ userId: bar.ownerId })
-    if (res.error || !res.data) {
-      setEntering(false)
-      toast.error(
-        getUserFacingMessage(res.error, 'Não foi possível entrar na pele.')
-      )
-      return
-    }
-    window.location.href = appHref('/admin', new URL(window.location.href))
-  }
-
-  const item = inline ? undefined : { justifyContent: 'flex-start' as const }
+  const busy = extend.isPending || setActive.isPending
+  const trial = isSignupTrial(bar)
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: inline ? 'row' : 'column',
-        flexWrap: inline ? 'wrap' : undefined,
-        alignItems: inline ? 'center' : undefined,
-        gap: 8
-      }}
-    >
-      {showFicha ? (
-        <Link
-          to="/houdini/bares/$barId"
-          params={{ barId: bar.id }}
-          className="hd-btn"
-          style={item}
+    <>
+      <div className="hd-label">
+        <span>Estender o teste</span>
+        <fieldset
+          className="hd-seg"
+          aria-label="Dias a mais no teste"
+          disabled={!trial}
         >
-          <Icon name="doc" size={16} strokeWidth={1.8} />
-          Abrir a ficha completa
-        </Link>
-      ) : null}
-
-      {isSignupTrial(bar) ? (
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 8,
-            alignItems: 'center'
-          }}
-        >
-          <fieldset className="hd-seg" aria-label="Dias a mais no teste">
-            {TRIAL_DAYS.map((n) => (
-              <button
-                key={n}
-                type="button"
-                aria-pressed={days === n}
-                onClick={() => setDays(n)}
-              >
-                {n} dias
-              </button>
-            ))}
-          </fieldset>
+          {TRIAL_DAYS.map((n) => (
+            <button
+              key={n}
+              type="button"
+              aria-pressed={trial && days === n}
+              onClick={() => setDays(n)}
+            >
+              {n} dias
+            </button>
+          ))}
+        </fieldset>
+        {trial ? (
           <button
             type="button"
             className="hd-btn hd-btn-primary"
             disabled={busy}
             onClick={() => extend.mutate({ barId: bar.id, days })}
-            style={{ flexGrow: 1, ...item }}
+            style={{ alignSelf: 'flex-start' }}
           >
-            <Icon name="hourglass" size={16} strokeWidth={2} />
+            <Icon name="hourglass" size={18} />
             {extend.isPending
               ? 'Estendendo…'
               : `Estender o teste em ${days} dias`}
           </button>
-        </div>
-      ) : null}
-
-      <button
-        type="button"
-        className={inline ? 'hd-btn hd-btn-primary' : 'hd-btn'}
-        disabled={busy}
-        onClick={enterOwner}
-        style={item}
-      >
-        <HatIcon size={16} />
-        {entering ? 'Entrando…' : 'Entrar na pele do dono'}
-      </button>
-
-      {publicHref ? (
-        <a
-          className="hd-btn"
-          href={publicHref}
-          target="_blank"
-          rel="noreferrer"
-        >
-          Ver como torcedor
-        </a>
-      ) : null}
-
-      {bar.stripeUrl ? (
-        <a
-          className="hd-btn"
-          href={bar.stripeUrl}
-          target="_blank"
-          rel="noreferrer"
-          style={item}
-        >
-          <Icon name="external" size={16} strokeWidth={1.8} />
-          Abrir no Stripe
-        </a>
-      ) : null}
-
+        ) : (
+          <small className="hd-small" style={{ fontWeight: 400 }}>
+            {bar.subscription?.externalSubscriptionId
+              ? 'Não se aplica: este bar já assina pelo Stripe.'
+              : 'Não se aplica: este bar não está no teste do cadastro.'}
+          </small>
+        )}
+      </div>
+      <hr className="hd-rule" />
       {bar.isActive ? (
-        <div style={inline ? { flex: '0 0 auto' } : undefined}>
+        <>
+          <div className="hd-label">
+            <span>Tirar do ar</span>
+            <small className="hd-small" style={{ fontWeight: 400 }}>
+              Some da busca e do mapa na hora. Os jogos ficam guardados e voltam
+              com o bar.
+            </small>
+          </div>
           <HoldButton
             label="Segure para tirar do ar"
             busyLabel="Tirando do ar…"
@@ -317,18 +326,23 @@ export function BarTricks({
             disabled={busy}
             onConfirm={() => setActive.mutate({ barId: bar.id, active: false })}
           />
-        </div>
+        </>
       ) : (
-        <button
-          type="button"
-          className="hd-btn"
-          disabled={busy}
-          onClick={() => setActive.mutate({ barId: bar.id, active: true })}
-        >
-          <Icon name="back" size={16} strokeWidth={1.8} />
-          {setActive.isPending ? 'Religando…' : 'Religar'}
-        </button>
+        <>
+          <div className="hd-label">
+            <span>Fora do ar</span>
+          </div>
+          <button
+            type="button"
+            className="hd-btn"
+            disabled={busy}
+            onClick={() => setActive.mutate({ barId: bar.id, active: true })}
+          >
+            <Icon name="back" size={18} />
+            {setActive.isPending ? 'Religando…' : 'Religar'}
+          </button>
+        </>
       )}
-    </div>
+    </>
   )
 }
