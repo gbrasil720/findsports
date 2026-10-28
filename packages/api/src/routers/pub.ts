@@ -136,7 +136,7 @@ export function resolvePhoneAcceptsWhatsapp(
       throw new TRPCError({
         code: 'BAD_REQUEST',
         message:
-          'Confirmação de WhatsApp requer telefone cadastrado. Envie um telefone junto com a confirmação.'
+          'Para confirmar o WhatsApp, preencha o telefone do bar em Informações e salve as alterações.'
       })
     }
   }
