@@ -102,17 +102,16 @@ export type DiaDesempenho = { date: string; views: number; actions: number }
 
 /**
  * A série da "Atividade diária": aberturas do perfil e, juntos, WhatsApp,
- * rota e telefone. Canal que o plano não vê vem nulo e conta zero.
+ * rota e telefone. Vem para todos os planos, com os canais já somados pelo
+ * servidor (WEB-449).
  */
 export function serieDiaria(data: AnalyticsOverviewData): DiaDesempenho[] {
-  const porDia = (lista: { date: string; value: number }[] | null) =>
-    new Map(lista?.map((p) => [p.date, p.value]))
-  const wa = porDia(data.dailyWhatsappOpened)
-  const rota = porDia(data.dailyDirectionsOpened)
-  const tel = porDia(data.dailyPhoneClicked)
-  return (data.dailyProfileViews ?? []).map(({ date, value }) => ({
+  const contatos = new Map(
+    data.dailyHighIntentActions.map((p) => [p.date, p.value])
+  )
+  return data.dailyProfileViews.map(({ date, value }) => ({
     date,
     views: value,
-    actions: (wa.get(date) ?? 0) + (rota.get(date) ?? 0) + (tel.get(date) ?? 0)
+    actions: contatos.get(date) ?? 0
   }))
 }

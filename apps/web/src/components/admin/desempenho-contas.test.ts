@@ -124,12 +124,10 @@ describe('números e série do Desempenho', () => {
       { date: '2026-10-10', value: 120 },
       { date: '2026-10-11', value: 205 }
     ],
-    dailyWhatsappOpened: [{ date: '2026-10-11', value: 15 }],
-    dailyDirectionsOpened: [
+    dailyHighIntentActions: [
       { date: '2026-10-10', value: 4 },
-      { date: '2026-10-11', value: 9 }
-    ],
-    dailyPhoneClicked: null
+      { date: '2026-10-11', value: 24 }
+    ]
   }
   type Overview = Parameters<typeof numerosDoDesempenho>[0]
 
@@ -145,13 +143,10 @@ describe('números e série do Desempenho', () => {
     expect(taxa?.variacao).toBe('+1,2 p.p.')
   })
 
-  test('série diária soma os canais; canal que o plano não vê conta zero', () => {
+  test('série diária: aberturas e contatos somados do mesmo dia', () => {
     expect(serieDiaria(base as unknown as Overview)).toEqual([
       { date: '2026-10-10', views: 120, actions: 4 },
       { date: '2026-10-11', views: 205, actions: 24 }
     ])
-    expect(
-      serieDiaria({ ...base, dailyProfileViews: null } as unknown as Overview)
-    ).toEqual([])
   })
 })

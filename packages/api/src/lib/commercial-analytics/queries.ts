@@ -59,6 +59,7 @@ type DailyRow = {
   directions_opened: number
   phone_clicked: number
   whatsapp_opened: number
+  high_intent: number
   classic_exposure: number
   classic_click: number
 }
@@ -238,6 +239,7 @@ export async function getMyAnalyticsOverview(
         COUNT(*) FILTER (WHERE type = 'directions_opened') AS directions_opened,
         COUNT(*) FILTER (WHERE type = 'phone_clicked')     AS phone_clicked,
         COUNT(*) FILTER (WHERE type = 'whatsapp_opened')   AS whatsapp_opened,
+        COUNT(*) FILTER (WHERE type IN ${HIGH_INTENT})     AS high_intent,
         COUNT(*) FILTER (WHERE type = 'classic_exposure')  AS classic_exposure,
         COUNT(*) FILTER (WHERE type = 'classic_click')      AS classic_click
       FROM eventos
@@ -332,6 +334,8 @@ export async function getMyAnalyticsOverview(
         directions_opened: dia.directions_opened,
         phone_clicked: dia.phone_clicked,
         whatsapp_opened: dia.whatsapp_opened,
+        high_intent:
+          dia.directions_opened + dia.phone_clicked + dia.whatsapp_opened,
         classic_exposure: dia.classic_exposures,
         classic_click: dia.classic_clicks
       })
@@ -342,9 +346,9 @@ export async function getMyAnalyticsOverview(
   const highIntentActionsPrev =
     directionsOpenedPrev + phoneClickedPrev + whatsappOpenedPrev
   const dailyProfileViews = fillGaps(diario, 'profile_view', from, to)
-  const dailyDirectionsOpened = fillGaps(diario, 'directions_opened', from, to)
-  const dailyPhoneClicked = fillGaps(diario, 'phone_clicked', from, to)
-  const dailyWhatsappOpened = fillGaps(diario, 'whatsapp_opened', from, to)
+  // WhatsApp, rota e telefone somados por dia, como o `highIntentActions` do
+  // período: o plano sem os canais vê o total, nunca a divisão (WEB-449).
+  const dailyHighIntentActions = fillGaps(diario, 'high_intent', from, to)
 
   return {
     uniqueVisitors,
@@ -378,9 +382,7 @@ export async function getMyAnalyticsOverview(
     classicExposuresChange: pctChange(classicExposures, classicExposuresPrev),
     classicClicksChange: pctChange(classicClicks, classicClicksPrev),
     dailyProfileViews,
-    dailyDirectionsOpened,
-    dailyPhoneClicked,
-    dailyWhatsappOpened,
+    dailyHighIntentActions,
     from: brasiliaDay(from),
     to: brasiliaDay(to),
     limitations
