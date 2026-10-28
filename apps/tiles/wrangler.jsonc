@@ -24,7 +24,7 @@
   "vars": {
     "PMTILES_PATH": "maps/{name}.pmtiles",
     "PUBLIC_HOSTNAME": "tiles.onside.sh",
-    "ALLOWED_ORIGINS": "https://www.onside.sh,https://onside.sh,http://localhost:3001,https://onside-web-preview.dev-guilhermebrasil.workers.dev",
+    "ALLOWED_ORIGINS": "https://www.onside.sh,https://onside.sh,http://localhost:*,https://onside-web-preview.dev-guilhermebrasil.workers.dev",
     "CACHE_CONTROL": "public, max-age=31536000, immutable"
   }
 }
