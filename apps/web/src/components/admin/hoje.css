@@ -18,6 +18,15 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
 }
+/* O "+42%": até o normal de um bar pequeno virar "+1.100%" (Anton, ~0,55em
+   por caractere), o número fica no tamanho dos outros KPIs. */
+.painel .hoje-kpi-interesse {
+  container-type: inline-size;
+}
+.painel .hoje-cabe {
+  font-size: min(1em, calc(100cqi / (var(--chars) * 0.55)));
+  white-space: nowrap;
+}
 .painel .hoje-sinal {
   display: flex;
   align-items: flex-end;

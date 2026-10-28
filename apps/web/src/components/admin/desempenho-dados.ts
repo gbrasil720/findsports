@@ -30,7 +30,7 @@ export function useDesempenho(range: AnalyticsDateRange) {
 export function variacaoPct(valor: number | null): string | null {
   if (valor === null) return null
   if (valor === 0) return '0%'
-  return `${valor > 0 ? '+' : ''}${valor}%`
+  return `${valor > 0 ? '+' : ''}${valor.toLocaleString('pt-BR')}%`
 }
 
 /**

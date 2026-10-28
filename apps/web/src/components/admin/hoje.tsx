@@ -5,7 +5,13 @@ import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
 import type { inferRouterOutputs } from '@trpc/server'
-import { type ReactNode, useId, useRef, useState } from 'react'
+import {
+  type CSSProperties,
+  type ReactNode,
+  useId,
+  useRef,
+  useState
+} from 'react'
 import { useMinuteNow } from '@/components/app/minute-tick'
 import {
   Avatar,
@@ -236,12 +242,17 @@ export function Hoje() {
           rotulo="códigos validados"
         />
         <Kpi
+          className="hoje-kpi-interesse"
           topo={<Sinal aceso={(interesse.data?.changePercent ?? 0) > 0} />}
           valor={
             interesse.isPending ? (
               <Carregando />
             ) : (
-              (variacaoPct(interesse.data?.changePercent ?? null) ?? '—')
+              <CabeNoCard
+                texto={
+                  variacaoPct(interesse.data?.changePercent ?? null) ?? '—'
+                }
+              />
             )
           }
           rotulo={`interesse ${(interesse.data?.changePercent ?? 0) < 0 ? 'abaixo' : 'acima'} do seu normal de ${nomeDoDia(noite.dia)}`}
@@ -590,6 +601,21 @@ function SoElite() {
 }
 
 /** As barrinhas de sinal acima do "interesse" (`bars` do design). */
+/**
+ * Número que diminui para caber no card estreito: bar pequeno, de normal 0,5,
+ * chega fácil a "+1.100%", e a 320 px isso passava da borda.
+ */
+function CabeNoCard({ texto }: { texto: string }) {
+  return (
+    <span
+      className="hoje-cabe"
+      style={{ '--chars': texto.length } as CSSProperties}
+    >
+      {texto}
+    </span>
+  )
+}
+
 /** As barras do KPI de interesse: acesas quando hoje passa do normal. */
 function Sinal({ aceso }: { aceso: boolean }) {
   return (
