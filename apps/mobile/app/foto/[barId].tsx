@@ -166,7 +166,10 @@ export default function Foto() {
               {categoryLabel(current.category).toUpperCase()}
             </Text>
             {current.caption ? (
-              <Text style={[text(21, 'Bold', 1.3), { color: PAPER }]}>
+              <Text
+                style={[text(21, 'Bold', 1.3), { color: PAPER }]}
+                numberOfLines={2}
+              >
                 {current.caption}
               </Text>
             ) : null}
@@ -223,7 +226,9 @@ const styles = StyleSheet.create({
   chips: { paddingHorizontal: 16, marginTop: 14, marginBottom: 18 },
   pager: { flex: 1 },
   info: { paddingHorizontal: 16, paddingTop: 22, gap: 18 },
-  caption: { gap: 6 },
+  // Altura fixa (tipo, duas linhas de legenda, quem enviou): com ou sem
+  // legenda, a foto não muda de tamanho ao arrastar.
+  caption: { gap: 6, height: 124 },
   kind: {
     fontFamily: 'GeistMono-Bold',
     fontSize: 14,
