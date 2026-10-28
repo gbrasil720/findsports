@@ -1013,6 +1013,9 @@ test('12 fotos: nada de "Adicionar"; recusada não conta', async ({ page }) => {
   await signIn(page, pub.user)
   await page.goto('/admin/meu-espaco')
   await expect(fotos(page)).toContainText('12publicadas')
+  await expect(fotos(page)).toContainText(
+    'A Onside revisa cada foto em até 24 h antes de aparecer para o torcedor.'
+  )
   await expect(
     fotos(page).getByRole('button', { name: 'Adicionar' })
   ).toHaveCount(0)

@@ -392,7 +392,8 @@ export function FotosDoBar({
             {fotos.length > 1
               ? 'Arraste para reordenar ou abra a foto para definir a capa. '
               : ''}
-            A Onside revisa cada foto antes de ela aparecer para o torcedor.
+            A Onside revisa cada foto em até 24 h antes de aparecer para o
+            torcedor.
           </p>
         </div>
       )}
@@ -736,8 +737,9 @@ function NovaFoto({
         />
         <p className="flex gap-3 rounded-[7px] bg-[var(--painel-acid-tint,rgb(205_242_56/22%))] p-4 text-[14px] text-[var(--painel-body)]">
           <Icone nome="olho" tamanho={20} className="mt-0.5 flex-none" />A
-          Onside revisa antes de a foto aparecer. Evite pessoas em primeiro
-          plano, texto sobre a foto e imagens de banco.
+          Onside revisa cada foto em até 24 h antes de aparecer para o torcedor.
+          Evite pessoas em primeiro plano, texto sobre a foto e imagens de
+          banco.
         </p>
         {erro ? (
           <p role="alert" className="text-[13px] text-[var(--painel-live)]">

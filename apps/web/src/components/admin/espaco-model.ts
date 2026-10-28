@@ -674,7 +674,7 @@ export function deslocamento(a: Ponto, b: Ponto, zoom: number) {
 
 /**
  * A linha embaixo da descrição (WEB-478): em revisão, recusada com o motivo,
- * ou o aviso de que a Onside revisa antes de aparecer.
+ * ou o aviso do prazo da revisão da Onside.
  */
 export function avisoDaDescricao(bar: {
   description: string | null
@@ -696,7 +696,8 @@ export function avisoDaDescricao(bar: {
     }
   }
   return {
-    texto: 'A Onside revisa a descrição antes de ela aparecer para o torcedor.',
+    texto:
+      'A Onside revisa a descrição em até 24 h antes de ela aparecer para o torcedor.',
     recusada: false
   }
 }
