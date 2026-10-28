@@ -11,6 +11,7 @@ import { runScheduledAnalyticsRetention } from './commercial-analytics/retention
 export const JOB_NAMES = [
   'bar_plans',
   'analytics_retention',
+  'ai_stale_runs',
   'bar_notices'
 ] as const
 export type JobName = (typeof JOB_NAMES)[number]
@@ -27,6 +28,9 @@ const JOBS: Record<JobName, (trigger: JobTrigger) => Promise<unknown>> = {
   // Importado aqui dentro: o `worker.ts` carrega este arquivo na subida, e
   // `bar-notices` puxa `env/server`, que valida as variáveis ao ser
   // importado. No Worker elas não existem nesse momento, e ele não sobe.
+  // Execução da IA presa em `running` (WEB-430). Importado aqui dentro pelo
+  // mesmo motivo do `bar_notices`: `ai/run` puxa a configuração da IA.
+  ai_stale_runs: async () => (await import('./ai/run')).closeStaleRuns(),
   bar_notices: async () =>
     (await import('./bar-notices')).sendWeeklyBarNotices()
 }
@@ -85,7 +89,11 @@ export async function runScheduledJobs() {
     try {
       await runJob('analytics_retention', 'cron')
     } finally {
-      await runJob('bar_notices', 'cron')
+      try {
+        await runJob('ai_stale_runs', 'cron')
+      } finally {
+        await runJob('bar_notices', 'cron')
+      }
     }
   }
 }
