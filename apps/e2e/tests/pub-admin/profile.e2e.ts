@@ -9,6 +9,7 @@ import { interceptMediaUploads } from '../../fixtures/media'
 import { LARGURAS_CELULAR, vazamentoLateral } from '../../fixtures/painel'
 import { createPub } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
+import { stubTiles } from '../../fixtures/tiles'
 import { createUser } from '../../fixtures/users'
 
 // "Meu espaço" (2c/2d): um formulário só, salvo por "Salvar alterações";
@@ -684,7 +685,7 @@ test('avaliações e prévia de como o torcedor vê', async ({ page }) => {
   await expect(preview).toContainText('Elite')
 })
 
-test('prévia em Card e Mapa: o card da lista e a gota do app (WEB-440)', async ({
+test('prévia em Card e Mapa: o card da lista, a gota no mapa e a distância de exemplo (WEB-440, WEB-456)', async ({
   page
 }) => {
   const pub = await createPub({ bar: { amenities: [1, 2] } })
@@ -702,9 +703,27 @@ test('prévia em Card e Mapa: o card da lista e a gota do app (WEB-440)', async 
       position
     })
   }
+  const tiles = await stubTiles(page)
+  const maplibre: string[] = []
+  page.on('request', (r) => {
+    if (/maplibre/.test(r.url())) maplibre.push(r.url())
+  })
   await signIn(page, pub.user)
+  // O MapLibre e os tiles são só da prévia: as outras telas não os pedem.
+  await page.goto('/admin')
+  await expect(page.getByRole('main')).toBeVisible()
+  expect(maplibre).toEqual([])
+  expect(tiles).toEqual([])
+
   await page.goto('/admin/meu-espaco')
   await info(page).getByLabel('Nome do estabelecimento').fill('Bar do Rascunho')
+  // A legenda avisa que a distância é de exemplo.
+  await expect(
+    page.getByText(
+      'A distância é de exemplo, de um torcedor a 0,8 km do bar.',
+      { exact: false }
+    )
+  ).toBeVisible()
 
   const abas = page.getByRole('group', { name: 'Prévia' })
   await abas.getByRole('button', { name: 'Card' }).click()
@@ -715,13 +734,13 @@ test('prévia em Card e Mapa: o card da lista e a gota do app (WEB-440)', async 
   const card = page.getByRole('img', {
     name: 'Prévia do card de Bar do Rascunho na lista do app'
   })
-  // Ao vivo, Elite em dia, confronto com as siglas, e sem distância.
+  // Ao vivo, Elite em dia, confronto com as siglas e a distância de exemplo.
   await expect(card).toContainText('Ao vivo')
   await expect(card).toContainText('Elite')
   await expect(card).toContainText('COR')
   await expect(card).toContainText('Corinthians')
   await expect(card).toContainText('Consolação')
-  await expect(card).not.toContainText('km')
+  await expect(card).toContainText('0,8 km')
 
   await abas.getByRole('button', { name: 'Mapa' }).click()
   const mapa = page.getByRole('img', {
@@ -729,11 +748,17 @@ test('prévia em Card e Mapa: o card da lista e a gota do app (WEB-440)', async 
   })
   await expect(mapa).toContainText('Bar do Rascunho')
   await expect(mapa).toContainText('AO VIVO')
+  // O mapa de verdade, com os tiles da Onside, por baixo da gota.
+  await expect(mapa.locator('canvas')).toBeVisible()
+  await expect(mapa).toContainText('© OpenStreetMap')
+  await expect.poll(() => tiles.some((t) => t.endsWith('.mvt'))).toBe(true)
 
   await abas.getByRole('button', { name: 'Página' }).click()
-  await expect(
-    page.getByRole('region', { name: /Prévia da página de Bar do Rascunho/ })
-  ).not.toContainText('km')
+  const pagina = page.getByRole('region', {
+    name: /Prévia da página de Bar do Rascunho/
+  })
+  await expect(pagina).toContainText('Consolação · 0,8 km · 11 min a pé')
+  await expect(pagina.locator('canvas')).toHaveCount(1)
 })
 
 for (const [plano, marcaram, mostra] of [
