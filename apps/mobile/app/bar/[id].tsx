@@ -13,7 +13,6 @@ import {
   Linking,
   Platform,
   Pressable,
-  ScrollView,
   Share,
   StyleSheet,
   View
@@ -39,6 +38,7 @@ import {
   MapDrop,
   PhotoPill
 } from '@/components/explore'
+import { Ambiente } from '@/components/gallery'
 import { Glass } from '@/components/glass'
 import {
   EASE,
@@ -435,27 +435,6 @@ export default function BarPage() {
 
         {data ? (
           <Animated.View entering={BODY_IN} style={styles.body}>
-            {data.galleryPhotos.length ? (
-              // A galeria do ambiente (WEB-439), logo depois da capa: o
-              // design não desenha fotos do bar, então vai um carrossel
-              // simples, com o canto e o contorno dos cards.
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.gallery}
-                contentContainerStyle={styles.galleryRow}
-              >
-                {data.galleryPhotos.map((url, index) => (
-                  <Image
-                    key={url}
-                    source={{ uri: url }}
-                    accessibilityLabel={`Foto ${index + 1} de ${data.galleryPhotos.length} do ambiente`}
-                    style={[styles.galleryPhoto, { borderColor: palette.ring }]}
-                    resizeMode="cover"
-                  />
-                ))}
-              </ScrollView>
-            ) : null}
             {next ? (
               <>
                 <Text style={[text(16, 'Bold', 1.4), { color: palette.ink }]}>
@@ -488,6 +467,10 @@ export default function BarPage() {
                 Nenhum jogo marcado por enquanto.
               </Text>
             )}
+
+            {/* "O ambiente" (25a, WEB-462): as fotos que a Onside aprovou,
+                logo depois de "Hoje no telão", como na 2g. */}
+            <Ambiente barId={data.id} photos={data.photos} />
 
             {tiles.length ? (
               <View style={styles.tiles}>
@@ -1048,15 +1031,6 @@ const styles = StyleSheet.create({
   },
   info: { color: '#e2dfd7', marginTop: 4 },
   body: { padding: 16, gap: 14 },
-  gallery: { marginHorizontal: -16 },
-  galleryRow: { paddingHorizontal: 16, gap: 8 },
-  galleryPhoto: {
-    width: 150,
-    height: 112,
-    borderRadius: 6,
-    borderWidth: 1,
-    backgroundColor: '#2a2a25'
-  },
   tiles: { flexDirection: 'row', gap: 8 },
   tile: {
     paddingTop: 11,

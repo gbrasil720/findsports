@@ -107,6 +107,14 @@ export default function Layout() {
                   name="pos-jogo/[eventId]"
                   options={{ presentation: 'fullScreenModal' }}
                 />
+                {/* A foto do bar em tela cheia (25b), no preto. */}
+                <Stack.Screen
+                  name="foto/[barId]"
+                  options={{
+                    presentation: 'fullScreenModal',
+                    contentStyle: { backgroundColor: '#0b0b09' }
+                  }}
+                />
                 {/* A medalha (2j, 2k), no escuro como a estante. */}
                 <Stack.Screen
                   name="conquista/[id]"
