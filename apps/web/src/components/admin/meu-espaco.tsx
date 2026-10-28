@@ -1270,7 +1270,7 @@ function Avaliacoes({ state }: { state: AvaliacoesState }) {
       ) : ratings && ratings.total === 0 ? (
         <p className="text-[13.5px] text-[var(--painel-muted)] leading-relaxed">
           Ninguém avaliou ainda. A pergunta aparece para quem marcou que ia ao
-          seu bar, no dia seguinte ao jogo.
+          seu bar, assim que o jogo termina.
         </p>
       ) : ratings ? (
         <>
