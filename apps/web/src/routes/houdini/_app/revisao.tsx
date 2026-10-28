@@ -32,7 +32,7 @@ const PHOTO_REASONS = [
 ]
 
 /**
- * Revisão (WEB-462): as fotos que os bares mandaram, da mais antiga para a
+ * Revisão (WEB-462, WEB-478): as fotos e as descrições que os bares mandaram, da mais antiga para a
  * mais nova. Nada aparece para o torcedor antes de ser aprovado; recusar pede
  * o motivo, que o dono lê no Meu espaço. Cada decisão fica no Grimório.
  */
@@ -44,6 +44,7 @@ function RevisaoPage() {
     meta: { errorToast: false }
   })
   const photos = queue.data?.photos ?? []
+  const descriptions = queue.data?.descriptions ?? []
 
   return (
     <HoudiniShell title="Revisão" env={env} user={admin}>
@@ -90,6 +91,30 @@ function RevisaoPage() {
             )}
           </section>
         )}
+        {queue.data ? (
+          <section
+            aria-labelledby="revisao-descricoes"
+            style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+          >
+            <h2 id="revisao-descricoes" className="hd-h2">
+              Descrições{' '}
+              <span className="hd-mono" style={{ color: 'var(--hd-faint)' }}>
+                {descriptions.length}
+              </span>
+            </h2>
+            {descriptions.length ? (
+              <div className="hd-grid" style={{ '--hd-min': '380px' } as never}>
+                {descriptions.map((item) => (
+                  <DescriptionCard key={item.barId} item={item} />
+                ))}
+              </div>
+            ) : (
+              <div className="hd-card hd-empty">
+                Nenhuma descrição esperando.
+              </div>
+            )}
+          </section>
+        ) : null}
       </div>
     </HoudiniShell>
   )
@@ -295,6 +320,76 @@ function PhotoCard({ photo }: { photo: Queue['photos'][number] }) {
         onApprove={() => decide.mutate({ photoId: photo.id, approve: true })}
         onReject={(reason) =>
           decide.mutate({ photoId: photo.id, approve: false, reason })
+        }
+      />
+    </article>
+  )
+}
+
+function DescriptionCard({ item }: { item: Queue['descriptions'][number] }) {
+  const trpc = useTRPC()
+  const decided = useDecided()
+  const decide = useMutation(
+    trpc.adminReview.decideDescription.mutationOptions({
+      onSuccess: async (result) => {
+        toast.success(
+          result.status === 'approved'
+            ? `Descrição de ${item.barName} aprovada. Anotado no Grimório.`
+            : `Descrição de ${item.barName} recusada. Anotado no Grimório.`
+        )
+        await decided()
+      },
+      onError: async (error) => {
+        toast.error(
+          getUserFacingMessage(error, 'Não foi possível gravar a decisão.')
+        )
+        await decided()
+      }
+    })
+  )
+  const text = item.pending ?? ''
+
+  return (
+    <article
+      className="hd-card"
+      aria-label={`Descrição de ${item.barName}`}
+      style={{ gap: 12, padding: 16 }}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <strong style={{ fontSize: 14, overflowWrap: 'anywhere' }}>
+          {item.barName}
+        </strong>
+        {item.submittedAt ? (
+          <span className="hd-small">
+            Enviada em {formatDateTime(item.submittedAt)}
+          </span>
+        ) : null}
+      </div>
+      <p
+        style={{
+          margin: 0,
+          fontSize: 14,
+          lineHeight: 1.55,
+          whiteSpace: 'pre-wrap',
+          overflowWrap: 'anywhere'
+        }}
+      >
+        {text}
+      </p>
+      <p className="hd-small" style={{ margin: 0, overflowWrap: 'anywhere' }}>
+        {item.published
+          ? `No ar hoje: “${item.published}”`
+          : 'Sem descrição no ar.'}
+      </p>
+      <Decision
+        label="descrição"
+        presets={[]}
+        pending={decide.isPending}
+        onApprove={() =>
+          decide.mutate({ barId: item.barId, text, approve: true })
+        }
+        onReject={(reason) =>
+          decide.mutate({ barId: item.barId, text, approve: false, reason })
         }
       />
     </article>

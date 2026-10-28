@@ -261,6 +261,20 @@ export function describe(entry: GrimorioEntry): {
         text: `aprovou uma foto de ${label}`,
         detail: detail.cover ? 'virou a capa' : null
       }
+    case 'bar.description_approve':
+      return {
+        icon: 'check',
+        tone: 'ok',
+        text: `aprovou a descrição de ${label}`,
+        detail: null
+      }
+    case 'bar.description_reject':
+      return {
+        icon: 'warn',
+        tone: 'bad',
+        text: `recusou a descrição de ${label}`,
+        detail: typeof detail.reason === 'string' ? detail.reason : null
+      }
     case 'bar.photo_reject':
       return {
         icon: 'warn',
