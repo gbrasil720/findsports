@@ -106,6 +106,7 @@ describe('números e série do Desempenho', () => {
     expect(variacaoPct(18)).toBe('+18%')
     expect(variacaoPct(-4)).toBe('-4%')
     expect(variacaoPct(0)).toBe('0%')
+    expect(variacaoPct(5900)).toBe('+5.900%')
     expect(variacaoPct(null)).toBeNull()
     expect(variacaoPp(0.134, 0.122)).toBe('+1,2 p.p.')
     expect(variacaoPp(0.1, 0.1)).toBe('0 p.p.')
