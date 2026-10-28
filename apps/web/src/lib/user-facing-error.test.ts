@@ -134,3 +134,47 @@ test('query não refaz recusa da API, e desiste na terceira falha temporária', 
   expect(shouldRetryQuery(2, { status: 503 })).toBe(true)
   expect(shouldRetryQuery(3, { status: 503 })).toBe(false)
 })
+
+// WEB-474: 400, 409 e 412 da nossa API mostram a frase do servidor, como o 403.
+test('recusa de regra da nossa API (400, 409, 412) mostra o motivo', () => {
+  const recusa = (message: string, code: string, httpStatus: number) =>
+    Object.assign(new Error(message), {
+      data: { code, httpStatus, path: 'pub.x' }
+    })
+  for (const [message, code, httpStatus] of [
+    ['CNPJ inválido. Confira os números.', 'BAD_REQUEST', 400],
+    ['A galeria mudou. Recarregue a página e tente de novo.', 'CONFLICT', 409],
+    [
+      'Este jogo tem 2 códigos de quem vai e não pode ser excluído.',
+      'PRECONDITION_FAILED',
+      412
+    ]
+  ] as const) {
+    expect(
+      getUserFacingError(recusa(message, code, httpStatus), 'Não foi.')
+    ).toEqual({ message, retryable: false })
+  }
+
+  // Entrada recusada pelo zod: o JSON das issues não vai para a tela.
+  const zod = recusa(
+    '[\n  {\n    "code": "too_small",\n    "path": ["n"],\n    "message": "Too small"\n  }\n]',
+    'BAD_REQUEST',
+    400
+  )
+  expect(getUserFacingError(zod, 'Não foi.').message).toBe('Não foi.')
+
+  // better-auth responde 400 em inglês e sem `data.httpStatus`.
+  expect(
+    getUserFacingError(
+      {
+        status: 400,
+        code: 'USER_ALREADY_EXISTS',
+        message: 'User already exists'
+      },
+      'Não foi.'
+    ).message
+  ).toBe('Não foi.')
+  expect(
+    getUserFacingError({ status: 409, message: 'Conflict' }, 'Não foi.').message
+  ).toBe('Não foi.')
+})

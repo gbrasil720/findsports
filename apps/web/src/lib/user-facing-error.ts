@@ -37,6 +37,27 @@ function isOwnApiRefusal(error: unknown): boolean {
 }
 
 /**
+ * Recusa de regra da nossa API (400, 409, 412) diz o que corrigir: "CNPJ
+ * inválido. Confira os números.", "A galeria mudou. Recarregue…". A entrada
+ * recusada pelo zod também é 400, mas a mensagem é o JSON das issues (em
+ * inglês), e essa fica com o texto da tela (WEB-474).
+ */
+const RULE_REFUSAL_STATUSES = new Set([400, 409, 412])
+
+function isRuleRefusal(
+  error: unknown,
+  status: number | undefined,
+  text: string
+) {
+  return (
+    status !== undefined &&
+    RULE_REFUSAL_STATUSES.has(status) &&
+    !/^\s*[[{]/.test(text) &&
+    isOwnApiRefusal(error)
+  )
+}
+
+/**
  * Falha passageira (sem rede, timeout, 5xx, 429): a regra comum de web e app
  * (WEB-460), em `@findsports_oficial/api/lib/transient-error`.
  */
@@ -138,6 +159,10 @@ export function getUserFacingError(
       message: 'O conteúdo solicitado não está disponível.',
       retryable: false
     }
+  }
+
+  if (text && isRuleRefusal(error, status, text)) {
+    return { message: text, retryable: false }
   }
 
   return { message: fallback, retryable: isRetryableError(error) }
