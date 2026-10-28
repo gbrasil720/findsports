@@ -9,6 +9,7 @@ import {
   sql
 } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
+import { appConfig } from '@findsports_oficial/db/schema/config'
 import { adminAction } from '@findsports_oficial/db/schema/houdini'
 import {
   bar,
@@ -21,6 +22,8 @@ import { adminProcedure, router } from '../index'
 import { readUnregisteredAlerts } from '../lib/attendance'
 import { getCurrentPlan } from '../lib/current-plan'
 import { escapeLike } from '../lib/escape-like'
+import { JOB_NAMES, lastJobRun } from '../lib/jobs'
+import { expectedSearchPlan } from './admin-bars'
 
 const DAY = 24 * 3_600_000
 const SEARCH_LIMIT = 8
@@ -62,6 +65,19 @@ const upcomingGames = sql<number>`(
 // ponytail: teto fixo nas listas da Ampulheta; paginar se passar disso.
 const AMPULHETA_LIMIT = 200
 
+// ponytail: teto por tipo no "Pede a sua mão"; o resto aparece em Bares.
+const PEDE_LIMIT = 20
+
+/** Rotinas cuja última execução falhou, com a hora e o erro. */
+async function failedJobs() {
+  const runs = await Promise.all(JOB_NAMES.map(lastJobRun))
+  return runs.flatMap((run) =>
+    run && !run.ok
+      ? [{ job: run.job, startedAt: run.startedAt, error: run.error }]
+      : []
+  )
+}
+
 /**
  * WEB-391: o Início do Houdini e o ⌘K. Só leitura, montado com o que as
  * tabelas já registram.
@@ -69,43 +85,65 @@ const AMPULHETA_LIMIT = 200
 export const houdiniRouter = router({
   overview: adminProcedure.query(async () => {
     const now = new Date()
-    const [[people], [bars], ghosts] = await Promise.all([
-      db
-        .select({
-          total: count(),
-          novas: tally(
-            sql`${user.createdAt} > ${iso(new Date(now.getTime() - DAY))}`
-          )
-        })
-        .from(user),
-      db
-        .select({
-          noAr: count(),
-          // Mesmos dois ramos de `getCurrentPlan`: `active` dá o plano, e
-          // `trialing` só enquanto o período não venceu.
-          emTeste: tally(
-            and(
-              eq(subscription.status, 'trialing'),
-              sql`${subscription.currentPeriodEnd} > ${iso(now)}`
+    const since = iso(new Date(now.getTime() - DAY))
+    const [[people], [bars], ghosts, [newBars], [games], [spells], failed] =
+      await Promise.all([
+        db
+          .select({
+            total: count(),
+            novas: tally(
+              sql`${user.createdAt} > ${iso(new Date(now.getTime() - DAY))}`
             )
+          })
+          .from(user),
+        db
+          .select({
+            noAr: count(),
+            // Mesmos dois ramos de `getCurrentPlan`: `active` dá o plano, e
+            // `trialing` só enquanto o período não venceu.
+            emTeste: tally(
+              and(
+                eq(subscription.status, 'trialing'),
+                sql`${subscription.currentPeriodEnd} > ${iso(now)}`
+              )
+            ),
+            pagando: tally(eq(subscription.status, 'active')),
+            testesAcabando: tally(trialEndingThisWeek)
+          })
+          .from(bar)
+          .leftJoin(subscription, eq(subscription.barId, bar.id))
+          .where(eq(bar.isActive, true)),
+        readUnregisteredAlerts(),
+        db
+          .select({ n: count() })
+          .from(bar)
+          .where(sql`${bar.createdAt} > ${since}`),
+        db
+          .select({ n: count() })
+          .from(event)
+          .where(sql`${event.startsAt} > now()`),
+        // Feitiço lançado e ainda valendo, como `carregarAppConfigGravada` lê.
+        db
+          .select({ n: count() })
+          .from(appConfig)
+          .where(
+            sql`${appConfig.expiresAt} IS NULL OR ${appConfig.expiresAt} > now()`
           ),
-          pagando: tally(eq(subscription.status, 'active')),
-          testesAcabando: tally(trialEndingThisWeek)
-        })
-        .from(bar)
-        .leftJoin(subscription, eq(subscription.barId, bar.id))
-        .where(eq(bar.isActive, true)),
-      readUnregisteredAlerts()
-    ])
+        failedJobs()
+      ])
     return {
       people: { total: people?.total ?? 0, novas: people?.novas ?? 0 },
       bars: {
         noAr: bars?.noAr ?? 0,
         emTeste: bars?.emTeste ?? 0,
-        pagando: bars?.pagando ?? 0
+        pagando: bars?.pagando ?? 0,
+        novos: newBars?.n ?? 0
       },
       testesAcabando: bars?.testesAcabando ?? 0,
-      fantasmas: ghosts.length
+      fantasmas: ghosts.length,
+      jogosFuturos: games?.n ?? 0,
+      feiticosLancados: spells?.n ?? 0,
+      rotinasFalhando: failed.length
     }
   }),
 
@@ -174,6 +212,56 @@ export const houdiniRouter = router({
       })),
       gone
     }
+  }),
+
+  /**
+   * WEB-480: "Pede a sua mão" do Início. Só o que as tabelas já dizem: fatura
+   * sem pagar (`past_due`), rotina cuja última execução falhou, busca atrás
+   * do plano e teste do cadastro que acaba hoje (a coluna de hoje da
+   * Ampulheta, vencidos à espera da reconciliação inclusive).
+   */
+  pedeAMao: adminProcedure.query(async () => {
+    const [pastDue, drift, endingToday, jobs] = await Promise.all([
+      db
+        .select({ id: bar.id, name: bar.name, plan: subscription.plan })
+        .from(subscription)
+        .innerJoin(bar, eq(bar.id, subscription.barId))
+        .where(eq(subscription.status, 'past_due'))
+        .orderBy(sql`${subscription.updatedAt} DESC`)
+        .limit(PEDE_LIMIT),
+      db
+        .select({
+          id: bar.id,
+          name: bar.name,
+          barPlan: bar.plan,
+          expectedSearchPlan
+        })
+        .from(bar)
+        .leftJoin(subscription, eq(subscription.barId, bar.id))
+        .where(sql`${bar.plan} IS DISTINCT FROM ${expectedSearchPlan}`)
+        .orderBy(sql`${bar.createdAt} DESC`)
+        .limit(PEDE_LIMIT),
+      db
+        .select({
+          id: bar.id,
+          name: bar.name,
+          currentPeriodEnd: subscription.currentPeriodEnd,
+          upcomingGames
+        })
+        .from(bar)
+        .innerJoin(subscription, eq(subscription.barId, bar.id))
+        .where(
+          and(
+            eq(bar.isActive, true),
+            trialEndingThisWeek,
+            sql`COALESCE(${spDaysUntilEnd}, 0) <= 0`
+          )
+        )
+        .orderBy(sql`${subscription.currentPeriodEnd} ASC NULLS FIRST`)
+        .limit(PEDE_LIMIT),
+      failedJobs()
+    ])
+    return { pastDue, drift, endingToday, jobs }
   }),
 
   /**

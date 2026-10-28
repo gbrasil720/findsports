@@ -46,7 +46,7 @@ export function stripeSubscriptionUrl(
  * a reconciliação diária usam (migration 0050). Bar sem assinatura cai em
  * `starter`, como na trigger.
  */
-const expectedSearchPlan = sql<
+export const expectedSearchPlan = sql<
   typeof bar.$inferSelect.plan
 >`subscription_current_plan(${subscription.plan}, ${subscription.status}, ${subscription.currentPeriodEnd})`
 
