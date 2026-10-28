@@ -13,7 +13,6 @@ import {
   CabecalhoCard,
   CabecalhoPagina,
   Card,
-  EmBreve,
   ErroBloco,
   Icone,
   IconeBotao,
@@ -41,7 +40,8 @@ import {
   numerosDoDesempenho,
   serieDiaria,
   ultimos30Dias,
-  useDesempenho
+  useDesempenho,
+  variacaoPct
 } from './desempenho-dados'
 import {
   chegadasDoDia,
@@ -115,6 +115,14 @@ export function Hoje() {
   })
   const ratings = useQuery({
     ...trpc.pub.getMyRatings.queryOptions(),
+    ...SEM_TOAST
+  })
+  // Interesse de hoje contra o normal do mesmo dia da semana (WEB-449).
+  const interesse = useQuery({
+    ...trpc.commercialAnalytics.getMyWeekdayInterest.queryOptions({
+      day: noite.dia
+    }),
+    refetchInterval: 60_000,
     ...SEM_TOAST
   })
 
@@ -228,14 +236,15 @@ export function Hoje() {
           rotulo="códigos validados"
         />
         <Kpi
-          topo={
-            <span className="hoje-kpi-topo">
-              <Sinal />
-              <EmBreve />
-            </span>
+          topo={<Sinal aceso={(interesse.data?.changePercent ?? 0) > 0} />}
+          valor={
+            interesse.isPending ? (
+              <Carregando />
+            ) : (
+              (variacaoPct(interesse.data?.changePercent ?? null) ?? '—')
+            )
           }
-          valor="—"
-          rotulo={`interesse acima do seu normal de ${nomeDoDia(noite.dia)}`}
+          rotulo={`interesse ${(interesse.data?.changePercent ?? 0) < 0 ? 'abaixo' : 'acima'} do seu normal de ${nomeDoDia(noite.dia)}`}
         />
       </section>
 
@@ -581,9 +590,14 @@ function SoElite() {
 }
 
 /** As barrinhas de sinal acima do "interesse" (`bars` do design). */
-function Sinal() {
+/** As barras do KPI de interesse: acesas quando hoje passa do normal. */
+function Sinal({ aceso }: { aceso: boolean }) {
   return (
-    <span className="hoje-sinal" aria-hidden="true">
+    <span
+      className="hoje-sinal"
+      data-aceso={aceso || undefined}
+      aria-hidden="true"
+    >
       {[6, 10, 14, 18].map((h) => (
         <span key={h} style={{ height: h }} />
       ))}
