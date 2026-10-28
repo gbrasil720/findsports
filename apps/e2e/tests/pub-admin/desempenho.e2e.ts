@@ -235,3 +235,14 @@ test('Comparar jogos: quatro à vista, o resto atrás do "+N" (1z)', async ({
     'true'
   )
 })
+
+test('a 320 px, "DESEMPENHO" cabe no cabeçalho', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 800 })
+  await openDesempenho(page, 'starter')
+  const titulo = page.getByRole('heading', { name: 'Desempenho', level: 1 })
+  const { scroll, client } = await titulo.evaluate((h) => ({
+    scroll: h.scrollWidth,
+    client: h.clientWidth
+  }))
+  expect(scroll).toBeLessThanOrEqual(client)
+})
