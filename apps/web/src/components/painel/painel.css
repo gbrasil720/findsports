@@ -1055,9 +1055,15 @@ html[data-consent] .painel .painel-lateral {
     transform: translateY(4px);
   }
 }
+/* Movimento reduzido: só aparece, sem subir. */
+@keyframes painel-horario-aparece {
+  from {
+    opacity: 0;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .painel .painel-horario-aviso {
-    animation: none;
+    animation-name: painel-horario-aparece;
   }
 }
 

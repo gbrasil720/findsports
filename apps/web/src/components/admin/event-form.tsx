@@ -513,7 +513,7 @@ export function EventFormComponent({
         {/* Região viva fixa: o aviso entra e sai dentro dela. */}
         <div role="status" className="contents">
           {foraDoHorario ? (
-            <p key={foraDoHorario} className="painel-horario-aviso" data-fora>
+            <p className="painel-horario-aviso" data-fora>
               <Icone nome="tv" tamanho={18} />
               {foraDoHorario}
             </p>
