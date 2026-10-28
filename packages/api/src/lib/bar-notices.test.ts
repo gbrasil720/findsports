@@ -5,6 +5,7 @@ import {
   createEmptyScheduleEmail,
   createGameFillingEmail,
   createWeeklySummaryEmail,
+  statNumber,
   weeklyNoticeFor
 } from './bar-notices'
 
@@ -89,21 +90,23 @@ describe('resumo da semana', () => {
     expect(email.text).toContain(
       'Olá, Zé Carvalho. Veja como foi a semana de 19/10 a 25/10 na Onside'
     )
-    expect(email.text).toContain('34 pessoas marcaram que iam aos seus jogos.')
-    expect(email.text).toContain('1 código validado no balcão.')
-    expect(email.text).toContain('O perfil do bar foi aberto 210 vezes.')
+    expect(email.text).toContain('BAR DO ZÉ · DE 19/10 A 25/10')
     expect(email.text).toContain(
-      'Nesta semana, de 26/10 a 01/11: Time 1 × Rival 1 (qua., 28/10, 21:30).'
+      '34 pessoas marcaram que iam aos seus jogos\n1 código validado no balcão\n210 vezes que o perfil do bar foi aberto'
+    )
+    expect(email.text).toContain(
+      'NESTA SEMANA · DE 26/10 A 01/11\nQUA 28/10 · Time 1 × Rival 1 · 21:30'
     )
     expect(email.text).toContain('Abrir o painel:\nhttp')
-    expect(email.html).toContain('1 código validado no balcão.')
+    expect(email.html).toContain('código validado no balcão')
+    expect(email.html).toContain('/admin/configuracoes#avisos')
   })
 
   test('fora do Elite, sem presenças nem códigos', () => {
     const email = createWeeklySummaryEmail({ ...base, elite: false })
     expect(email.text).not.toContain('marcaram')
     expect(email.text).not.toContain('código')
-    expect(email.text).toContain('O perfil do bar foi aberto 210 vezes.')
+    expect(email.text).toContain('210 vezes que o perfil do bar foi aberto')
   })
 
   test('semana vazia leva a cadastrar jogos', () => {
@@ -123,7 +126,7 @@ describe('resumo da semana', () => {
     const email = createWeeklySummaryEmail({ ...base, elite: true, games })
     expect(email.text).toContain('Time 4 × Rival 4')
     expect(email.text).not.toContain('Time 5 × Rival 5')
-    expect(email.text).toContain(' e 2 outros jogos.')
+    expect(email.text).toContain('\ne mais 2 outros jogos.')
   })
 
   test('nome e título com HTML saem escapados', () => {
@@ -136,6 +139,48 @@ describe('resumo da semana', () => {
     expect(email.html).not.toContain('<b>Zé</b>')
     expect(email.html).not.toContain('<script>')
   })
+})
+
+test('o campeonato vai no detalhe do jogo, e não repete quando é o título', () => {
+  const email = createWeeklySummaryEmail({
+    owner: 'Zé',
+    barName: 'Bar',
+    previous,
+    current,
+    numbers: { going: 1, validatedCodes: 0, profileViews: 1 },
+    elite: true,
+    games: [
+      { ...game(1, '2026-10-29T00:30:00Z'), championship: 'Brasileirão' },
+      {
+        ...game(2, '2026-10-31T20:00:00Z'),
+        title: 'Libertadores',
+        championship: 'Libertadores'
+      }
+    ]
+  })
+  expect(email.text).toContain(
+    'QUA 28/10 · Time 1 × Rival 1 · 21:30 · Brasileirão'
+  )
+  expect(email.text).toContain('SÁB 31/10 · Libertadores · 17:00\n')
+  // Singular e número grande.
+  expect(email.text).toContain('1 pessoa marcou que ia aos seus jogos')
+  expect(email.text).toContain('1 vez que o perfil do bar foi aberto')
+})
+
+test('número grande vira "mil" ou "mi", com espaço que quebra', () => {
+  expect(statNumber(1204)).toBe('1.204')
+  expect(statNumber(9999)).toBe('9.999')
+  expect(statNumber(12_345)).toBe('12 mil')
+  expect(statNumber(1_234_567)).toBe('1,2 mi')
+})
+
+test('semana vazia: os sete dias de segunda a domingo', () => {
+  const { text, html } = createEmptyScheduleEmail({ owner: 'Zé', current })
+  for (const day of ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'])
+    expect(html).toContain(`>${day}</div>`)
+  expect(html).toContain('>26</div>')
+  expect(html).toContain('>01</div>')
+  expect(text).toContain('1. Com jogo na agenda')
 })
 
 test('grade vazia', () => {
@@ -160,4 +205,13 @@ test('jogo lotando', () => {
   )
   expect(email.text).toMatch(/\/admin\/jogos\?jogo=jogo-7/)
   expect(email.text).toContain('Avisamos uma vez por jogo.')
+  expect(email.text).toContain(
+    'NO SEU BAR\nTime 7 × Rival 7\nQUA., 28/10, 21:30\n20+ pessoas marcaram que vão assistir aqui'
+  )
+  expect(
+    createGameFillingEmail({
+      owner: 'Zé',
+      game: { ...game(7, '2026-10-29T00:30:00Z'), championship: 'Brasileirão' }
+    }).text
+  ).toContain('BRASILEIRÃO · NO SEU BAR')
 })
