@@ -119,7 +119,7 @@ ligaria: `EMAIL_DELIVERY=console` — **nenhum e-mail sai
 do preview**: cadastro, verificação e reset de senha gravam o e-mail, com link e token,
 no log do Worker (`bunx wrangler tail onside-web-preview`), que é como se testa.
 Aceitável por ser ambiente de teste; o env recusa `EMAIL_DELIVERY=console` com
-`PUBLIC_APP_URL` em `onside.sh`, e produção sem `RESEND_API_KEY` continua falhando alto.
+`PUBLIC_APP_URL` em `onside.sh`, e produção sem `EMAIL_API_KEY` continua falhando alto.
 Sem chaves R2: upload de foto desligado. Para atualizar os dados, Neon → branch
 `preview` → **Reset from parent** (mesma conexão; Hyperdrive e segredo não mudam).
 
@@ -203,6 +203,14 @@ da nota. O que pode envelhecer um TTL fica no cache; o que não pode, ali.
 Split by runtime boundary:
 - `packages/env/src/server.ts` — `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `LOCATIONIQ_API_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NODE_ENV`
 - `apps/web/src/lib/env.ts` — client-safe `VITE_*` vars only
+
+**E-mail (WEB-476):** todo envio passa por `sendEmail`
+(`packages/auth/src/verification-email.ts`), um `POST <EMAIL_API_URL>/emails` no
+formato da Resend, que a MillionSend repete. O provedor é `EMAIL_API_URL` (var do
+`wrangler.jsonc`; padrão `https://api.resend.com`, MillionSend
+`https://api.millionsend.com`) com o segredo `EMAIL_API_KEY` e o remetente `EMAIL_FROM`.
+Os nomes antigos `RESEND_API_KEY` e `RESEND_FROM_EMAIL` ainda valem quando os novos
+faltam, até o dono trocar os segredos. DNS de envio: `docs/email-dns.md`.
 
 Client env lives in the app, not in `packages/env`: `import.meta.env` is only
 typed where Vite's types are, and the shared package needed an `any` cast to
