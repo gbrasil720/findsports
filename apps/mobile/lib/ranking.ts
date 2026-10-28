@@ -56,3 +56,32 @@ export const firstName = (name: string) => name.trim().split(/\s+/)[0] ?? name
 
 /** "1.284º". */
 export const ordinal = (n: number) => `${n.toLocaleString('pt-BR')}º`
+
+/** A lista da cidade (27a): só as duas métricas que o dono escolheu. */
+export const CITY_METRICS = METRICS.filter(
+  (m): m is { key: 'bars' | 'games'; label: string } =>
+    m.key === 'bars' || m.key === 'games'
+)
+
+/** "1.273 TORCEDORES", o corte da lista da cidade. */
+export const fansLabel = (n: number) =>
+  `${n.toLocaleString('pt-BR')} ${n === 1 ? 'TORCEDOR' : 'TORCEDORES'}`
+
+/**
+ * A lista da cidade na tela (27a): o que já veio do topo, o corte com
+ * quantos ficam no meio e a sua vizinhança, fixa embaixo. Quando o topo
+ * alcança a vizinhança, vira uma lista só; `rest` é quem fica depois do
+ * último mostrado.
+ */
+export function cityLayout<T extends { position: number }>(
+  loaded: T[],
+  around: T[],
+  total: number
+) {
+  const last = loaded.at(-1)?.position ?? 0
+  const first = around[0]?.position
+  if (first !== undefined && first - last - 1 > 0)
+    return { top: loaded, gap: first - last - 1, around, rest: 0 }
+  const top = [...loaded, ...around.filter((row) => row.position > last)]
+  return { top, gap: 0, around: [], rest: total - (top.at(-1)?.position ?? 0) }
+}
