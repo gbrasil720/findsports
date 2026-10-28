@@ -48,3 +48,18 @@ export function photoCategoryLabel(id: PhotoCategory): string {
 /** Revisão da Onside (WEB-462, WEB-478): fotos e descrição do bar. */
 export const REVIEW_STATUSES = ['pending', 'approved', 'rejected'] as const
 export type ReviewStatus = (typeof REVIEW_STATUSES)[number]
+
+/**
+ * As fotos por categoria, na ordem do design, só as categorias com foto. A
+ * ordem dentro de cada uma é a da lista recebida. O painel (28b) e a galeria
+ * do torcedor (25a–25c) agrupam igual.
+ */
+export function groupByCategory<T extends { category: PhotoCategory }>(
+  photos: readonly T[]
+): { id: PhotoCategory; label: string; photos: T[] }[] {
+  return PHOTO_CATEGORIES.map((c) => ({
+    id: c.id,
+    label: c.label,
+    photos: photos.filter((p) => p.category === c.id)
+  })).filter((g) => g.photos.length > 0)
+}

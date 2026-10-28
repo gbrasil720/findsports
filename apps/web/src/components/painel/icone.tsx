@@ -21,6 +21,20 @@ const ICONES = {
     ),
     a: null
   },
+  // Revisão da Onside (WEB-462): o olho do 28b e do 28c.
+  olho: {
+    b: (
+      <>
+        <path d="M12 5C6.5 5 2.6 9.4 1.5 12c1.1 2.6 5 7 10.5 7s9.4-4.4 10.5-7C21.4 9.4 17.5 5 12 5Z" />
+      </>
+    ),
+    d: (
+      <>
+        <circle cx="12" cy="12" r="3.6" />
+      </>
+    ),
+    a: null
+  },
   info: {
     b: (
       <>
