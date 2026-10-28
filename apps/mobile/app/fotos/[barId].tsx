@@ -152,6 +152,11 @@ function Grid({
     />
   )
   const [first, second, third, ...rest] = photos
+  const cells = feature ? rest : photos
+  // Linhas de três, com vaga vazia no fim: a última linha não estica.
+  const rows = Array.from({ length: Math.ceil(cells.length / 3) }, (_, r) =>
+    cells.slice(r * 3, r * 3 + 3)
+  )
   return (
     <View style={styles.gridWrap}>
       {feature && first && second && third ? (
@@ -163,9 +168,18 @@ function Grid({
           </View>
         </View>
       ) : null}
-      <View style={styles.grid}>
-        {(feature ? rest : photos).map((p) => tile(p, styles.cell))}
-      </View>
+      {rows.map((row) => (
+        <View key={row[0]?.id} style={styles.row}>
+          {[0, 1, 2].map((n) => {
+            const p = row[n]
+            return p ? (
+              tile(p, styles.cell)
+            ) : (
+              <View key={`vaga-${n}`} style={styles.cell} />
+            )
+          })}
+        </View>
+      ))}
     </View>
   )
 }
@@ -191,6 +205,6 @@ const styles = StyleSheet.create({
   gridWrap: { gap: 5 },
   feature: { flexDirection: 'row', gap: 5, height: 226 },
   featureSide: { flex: 1, gap: 5 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 5 },
-  cell: { width: '32.5%', aspectRatio: 1.04 }
+  row: { flexDirection: 'row', gap: 5 },
+  cell: { flex: 1, aspectRatio: 1.04 }
 })
