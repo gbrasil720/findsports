@@ -50,10 +50,12 @@ import { CodeConfirmationMode } from './code-confirmation-mode'
 import { Erro, Horario, OfertaDaCasa } from './espaco-campos'
 import {
   alteracoes,
+  avisoDosJogos,
   checklistDoPerfil,
   DESCRICAO_MAX,
   type Erros,
   gastoDoRascunho,
+  horarioDoRascunho,
   type ItemPerfil,
   NOME_E_LUGAR_MAX,
   type Rascunho,
@@ -484,6 +486,13 @@ export function MeuEspaco() {
               hours={r.hours}
               erro={erros.hours}
               mudar={(hours) => mudar({ hours })}
+              agora={now}
+              aviso={avisoDosJogos(
+                eventList,
+                bar.openingHours,
+                horarioDoRascunho(r.hours),
+                new Date(now)
+              )}
             />
           </Secao>
 

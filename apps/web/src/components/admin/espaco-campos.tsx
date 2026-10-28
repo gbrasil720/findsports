@@ -3,8 +3,14 @@ import {
   houseOfferLength,
   normalizeHouseOffer
 } from '@findsports_oficial/db/house-offer'
-import { Botao, CampoTexto } from '@/components/painel'
-import { type DiaRascunho, SEMANA_PADRAO } from './espaco-model'
+import { useRef } from 'react'
+import { Botao, CampoTexto, Chip, Icone, Toggle } from '@/components/painel'
+import {
+  atalhosDoHorario,
+  type DiaRascunho,
+  SEMANA_PADRAO,
+  situacaoDoHorario
+} from './espaco-model'
 
 /*
  * Horário e oferta da casa, como o Meu espaço os edita. A Revisão do
@@ -30,15 +36,28 @@ const DIAS = [
   [0, 'Domingo']
 ] as const
 
+const semMovimento = () =>
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+/**
+ * Editor do horário (28a; os atalhos e o aviso são da folha 28e, WEB-463).
+ * `agora` liga a linha "Aberto agora · fecha às 01:00"; `aviso` é o que o
+ * horário novo faz com os jogos publicados (`avisoDosJogos`).
+ */
 export function Horario({
   hours,
   erro,
-  mudar
+  mudar,
+  agora,
+  aviso
 }: {
   hours: DiaRascunho[] | null
   erro?: string
   mudar: (hours: DiaRascunho[] | null) => void
+  agora?: number
+  aviso?: { fora: boolean; texto: string } | null
 }) {
+  const lista = useRef<HTMLUListElement>(null)
   if (!hours) {
     return (
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -54,13 +73,47 @@ export function Horario({
   }
   const atualizar = (dia: number, patch: Partial<DiaRascunho>) =>
     mudar(hours.map((d, i) => (i === dia ? { ...d, ...patch } : d)))
+  // O atalho acende de leve as linhas que mudou, para o dono ver o que ele fez.
+  const aplicar = (resultado: DiaRascunho[]) => {
+    mudar(resultado)
+    if (semMovimento()) return
+    for (const [dia] of DIAS) {
+      if (JSON.stringify(resultado[dia]) === JSON.stringify(hours[dia]))
+        continue
+      lista.current
+        ?.querySelector(`[data-dia="${dia}"]`)
+        ?.animate([{ opacity: 1 }, { opacity: 0 }], {
+          duration: 700,
+          easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
+          pseudoElement: '::before'
+        })
+    }
+  }
+  const situacao =
+    agora === undefined ? null : situacaoDoHorario(hours, new Date(agora))
   return (
-    <div className="flex flex-col gap-3">
-      <p className="text-[12.5px] text-[var(--painel-muted)]">
-        Fecha depois da meia-noite? Informe a hora do dia seguinte, como 17:00
-        às 02:00.
-      </p>
-      <ul>
+    <div className="flex flex-col gap-3.5">
+      {situacao ? (
+        <p className="painel-horario-situacao" data-aberto={situacao.aberto}>
+          <span aria-hidden="true" />
+          <b>{situacao.aberto ? 'Aberto agora' : 'Fechado agora'}</b>
+          <span className="text-[var(--painel-muted)]">{situacao.texto}</span>
+        </p>
+      ) : null}
+      <fieldset className="flex flex-wrap gap-2">
+        <legend className="sr-only">Atalhos</legend>
+        {atalhosDoHorario(hours).map(({ rotulo, resultado }) => (
+          <Chip
+            key={rotulo}
+            check={false}
+            disabled={!resultado}
+            onClick={() => resultado && aplicar(resultado)}
+          >
+            {rotulo}
+          </Chip>
+        ))}
+      </fieldset>
+      <ul ref={lista}>
         {DIAS.map(([dia, nome], index) => {
           const d = hours[dia]
           if (!d) return null
@@ -68,17 +121,15 @@ export function Horario({
           return (
             <li
               key={dia}
-              className={`flex flex-wrap items-center gap-x-4 gap-y-2 py-2 ${index ? 'border-[var(--painel-line)] border-t' : ''}`}
+              data-dia={dia}
+              className={`painel-horario-dia ${index ? 'border-[var(--painel-line)] border-t' : ''}`}
             >
-              <label className="flex w-36 items-center gap-2.5 font-semibold text-[14px]">
-                <input
-                  type="checkbox"
-                  checked={d.open}
-                  onChange={(e) => atualizar(dia, { open: e.target.checked })}
-                  className="size-4 accent-[var(--painel-acid)]"
-                />
-                {nome}
-              </label>
+              <span
+                aria-hidden="true"
+                className={`painel-disp [--painel-disp-size:20px] ${d.open ? '' : 'text-[var(--painel-muted)]'}`}
+              >
+                {nome.slice(0, 3)}
+              </span>
               {d.open ? (
                 <div className="flex min-w-0 items-center gap-2">
                   <HoraCampo
@@ -99,11 +150,34 @@ export function Horario({
                   Fechado
                 </span>
               )}
+              <Toggle
+                ligado={d.open}
+                onChange={(open) => atualizar(dia, { open })}
+                rotulo={nome}
+              />
             </li>
           )
         })}
       </ul>
+      {/* Região viva fixa: o aviso entra e sai dentro dela. */}
+      <div role="status" className="contents">
+        {aviso ? (
+          <p
+            key={aviso.texto}
+            className="painel-horario-aviso"
+            data-fora={aviso.fora || undefined}
+          >
+            <Icone nome="tv" tamanho={18} />
+            {aviso.texto}
+          </p>
+        ) : null}
+      </div>
       <Erro texto={erro} />
+      <p className="text-[12.5px] text-[var(--painel-muted)] leading-[1.45]">
+        Fecha depois da meia-noite? Informe a hora do dia seguinte, como 17:00
+        às 02:00. O torcedor vê “Aberto agora” ou “Fechado agora”, no horário de
+        Brasília. Jogo fora do horário recebe um aviso ao publicar.
+      </p>
       <div>
         <Botao altura={36} onClick={() => mudar(null)}>
           Tirar o horário da página
