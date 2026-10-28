@@ -500,12 +500,23 @@ Design "Bar Web" (Rodada 2) no Claude Design. O painel **segue o tema do sistema
   plano em dia (`recursoPago`). Foto e "como o código é conferido" (WEB-412) gravam na
   hora. A prévia ao lado (`espaco-previa.tsx`) é a página do bar no app, desenhada do
   rascunho; Card e Mapa são "em breve". CEP também: o bar guarda rua e número
-  num campo só. Galeria do ambiente (WEB-439, Pro e Elite): até 8 fotos além da capa
-  (`GALLERY_MAX_PHOTOS`), em `bar.gallery_photos` na ordem da página; sobe pela rota da
-  capa com `?galeria` (chave `bars/<id>/gallery/<uuid>`), entra por `pub.addGalleryPhoto`,
-  ordena por `pub.reorderGallery` e apaga por `DELETE /api/bar/photo?galeria=<url>`. Sem o
-  plano some do perfil e fica guardada (`lib/bar-gallery.ts`). No app vai num carrossel logo
-  depois da capa: o design não desenha fotos do bar.
+  num campo só. Fotos (WEB-439, WEB-462; telas 28b e 28c do app trazidas ao painel,
+`espaco-fotos.tsx`): tabela `bar_photo` (categoria, legenda de até 80, ordem, revisão),
+até 12 fotos em todo plano (`GALLERY_MAX_PHOTOS`; recusada não conta). **Toda foto passa
+pela revisão da Onside antes de aparecer** (fila em `/houdini/revisao`,
+`adminReview`): o torcedor só vê `approved`. A capa é uma foto da galeria, de todo plano:
+"Usar como capa" numa aprovada grava `bar.photo_url` na hora; numa em revisão
+(`cover_requested`), quando for aprovada. As outras fotos são do Pro e do Elite; sem o
+plano somem do perfil e ficam guardadas (`lib/bar-gallery.ts`). Sobe pela rota
+`/api/bar/photo?galeria` (`&capa` deixa o Starter mandar a capa), entra por
+`pub.addPhoto`, ordena por `pub.reorderPhotos` (arrastar ou setas, dentro da categoria),
+troca categoria e capa por `setPhotoCategory`/`setPhotoCover` e apaga por
+`DELETE /api/bar/photo?galeria=<url>`. `bar.gallery_photos` é a coluna antiga, copiada
+pela migration 0080 e sem leitura (sai num contract). A descrição em texto livre também
+espera a revisão (WEB-478): `updateMe` e o cadastro gravam em `description_pending`,
+`bar.description` é a última aprovada; apagar tira do ar na hora. No app as fotos vão em
+"O ambiente" (25a, `components/gallery.tsx`), `app/fotos/[barId]` (25c) e
+`app/foto/[barId]` (25b).
 - **Configurações** (`/admin/configuracoes`, `components/account/configuracoes.tsx`): os
   diálogos de senha, 2FA e exclusão são os de `components/account/*`. "Baixar meus dados"
   ("Pedir arquivo") manda o JSON por e-mail pelo `account.requestExport` (conta, bar, plano
@@ -534,7 +545,9 @@ próprio o `rewrite` do router tira o prefixo (`apps/web/src/lib/houdini-host.ts
 `lib/houdini-gate.ts`: só admin com 2FA ligado; o resto recebe o 404 de verdade (a
 "Cortina"). Telas novas entram em `routes/houdini/_app/` e no `HOUDINI_NAV` de
 `components/houdini/shell.tsx`; o visual é o de `components/houdini/houdini.css`
-(proposta 3 do canvas https://claude.ai/artifact/YbJ76gkJaTKaqTtuRLQmNt). Jogo em rascunho (WEB-436) fica fora de
+(proposta 3 do canvas https://claude.ai/artifact/YbJ76gkJaTKaqTtuRLQmNt). Revisão (`/houdini/revisao`, WEB-462 e
+WEB-478): fotos e descrições dos bares, aprovar ou recusar com motivo, cada decisão no
+Grimório (`bar.photo_*`, `bar.description_*`). Jogo em rascunho (WEB-436) fica fora de
 Jogos e de toda contagem do Houdini; só a aba Jogos da ficha do bar o mostra, marcado "Rascunho". A seção IA está em "IA (Workers AI…)".
 
 ### App mobile
