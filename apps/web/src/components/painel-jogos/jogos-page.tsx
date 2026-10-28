@@ -942,6 +942,7 @@ export function JogosPage({
               isSaving={createMutation.isPending || updateMutation.isPending}
               barName={bar?.name}
               houseOffer={bar?.houseOffer ?? null}
+              openingHours={bar?.openingHours ?? null}
               showsGoing={showsGoing}
               goingCount={
                 eventoFolha

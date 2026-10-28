@@ -1,3 +1,4 @@
+import type { OpeningHours } from '@findsports_oficial/api/lib/opening-hours'
 import {
   EVENT_CHAMPIONSHIP_MAX_LENGTH,
   EVENT_CHAMPIONSHIP_MIN_LENGTH,
@@ -24,6 +25,7 @@ import {
   parseDateTime,
   timeOf
 } from './date-time-input'
+import { avisoForaDoHorario } from './espaco-model'
 
 // Tênis entra pelo jogo de simples (um contra um); dupla vai no texto livre.
 const DIRECT_CONFRONTATION_SLUGS = new Set([
@@ -92,6 +94,8 @@ type Props = {
   showsGoing?: boolean
   /** Quantos já marcaram neste jogo, para o aviso ao desligar a lista. */
   goingCount?: number
+  /** Horário do bar: jogo fora dele ganha aviso, sem bloquear (WEB-463). */
+  openingHours?: OpeningHours | null
   error?: string
 }
 
@@ -122,6 +126,7 @@ export function EventFormComponent({
   houseOffer = null,
   showsGoing = false,
   goingCount = 0,
+  openingHours = null,
   error
 }: Props) {
   const trpc = useTRPC()
@@ -212,6 +217,11 @@ export function EventFormComponent({
   const startProblem =
     starts.value && startsText !== formatDateTime(initial.startsAt)
       ? getEventStartProblem(new Date(starts.value))
+      : null
+
+  const foraDoHorario =
+    starts.value && !startProblem
+      ? avisoForaDoHorario(openingHours, new Date(starts.value))
       : null
 
   const endsBeforeStart =
@@ -499,6 +509,15 @@ export function EventFormComponent({
                 : undefined
             }
           />
+        </div>
+        {/* Região viva fixa: o aviso entra e sai dentro dela. */}
+        <div role="status" className="contents">
+          {foraDoHorario ? (
+            <p key={foraDoHorario} className="painel-horario-aviso" data-fora>
+              <Icone nome="tv" tamanho={18} />
+              {foraDoHorario}
+            </p>
+          ) : null}
         </div>
 
         <fieldset className="jogos-form-grupo">
