@@ -15,9 +15,17 @@ import {
   primaryKey,
   smallint,
   text,
-  timestamp
+  timestamp,
+  unique,
+  uniqueIndex
 } from 'drizzle-orm/pg-core'
-import { GALLERY_MAX_PHOTOS } from '../bar-gallery'
+import {
+  LEGACY_GALLERY_MAX_PHOTOS,
+  PHOTO_CAPTION_MAX,
+  PHOTO_CATEGORY_IDS,
+  REVIEW_REASON_MAX,
+  REVIEW_STATUSES
+} from '../bar-gallery'
 import { AVERAGE_SPEND_MAX_CENTS, MENU_URL_MAX_LENGTH } from '../bar-menu'
 import { HOUSE_OFFER_MAX_LENGTH } from '../house-offer'
 import { RESERVATION_CAP_MAX } from '../reservation-limits'
@@ -58,6 +66,15 @@ export type SubscriptionPlan = (typeof subscriptionPlanEnum.enumValues)[number]
  */
 export const teamKindEnum = pgEnum('team_kind', ['team', 'athlete'])
 
+/** Revisão da Onside antes de aparecer (WEB-462 fotos, WEB-478 descrição). */
+export const reviewStatusEnum = pgEnum('review_status', REVIEW_STATUSES)
+
+/** As categorias da foto do bar (design 28c), em `bar-gallery.ts`. */
+export const barPhotoCategoryEnum = pgEnum(
+  'bar_photo_category',
+  PHOTO_CATEGORY_IDS
+)
+
 export type TeamKind = (typeof teamKindEnum.enumValues)[number]
 
 const reservationCapRange = (column: AnyPgColumn) =>
@@ -74,7 +91,16 @@ export const bar = pgTable(
       .unique()
       .references(() => user.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
+    // A descrição PUBLICADA: a última que a Onside aprovou (WEB-478). Quem
+    // escreve aqui é a revisão do Houdini; o dono escreve em
+    // `description_pending`. Nula em bar novo até a primeira aprovação.
     description: text('description'),
+    // O texto que o dono mandou e espera revisão, ou que foi recusado
+    // (`description_review`). Nulo quando não há nada além do publicado.
+    descriptionPending: text('description_pending'),
+    descriptionReview: reviewStatusEnum('description_review'),
+    descriptionRejectionReason: text('description_rejection_reason'),
+    descriptionSubmittedAt: timestamp('description_submitted_at'),
     phone: text('phone'),
     phoneAcceptsWhatsapp: boolean('phone_accepts_whatsapp')
       .default(false)
@@ -95,11 +121,8 @@ export const bar = pgTable(
       sql`ST_SetSRID(ST_MakePoint(longitude::double precision, latitude::double precision), 4326)::geography`
     ),
     photoUrl: text('photo_url'),
-    // Galeria do ambiente (WEB-439), na ordem em que a página mostra. Array e
-    // não tabela: lida inteira com o bar, ordenada pelo dono e com teto
-    // pequeno, que o `UPDATE ... WHERE cardinality(...) <` segura numa
-    // instrução só. Mesma regra do cardápio: sem Pro/Elite vigente some do
-    // perfil e fica guardada (`packages/api/src/lib/bar-gallery.ts`).
+    // Galeria antiga (WEB-439). Copiada para `bar_photo` pela migration do
+    // WEB-462, que é de onde tudo lê; a coluna sai num contract depois.
     galleryPhotos: text('gallery_photos').array().default(sql`'{}'`).notNull(),
     // Ids do vocabulário de `packages/api/src/lib/amenities.ts`. Array em vez
     // de tabela de junção porque o filtro da busca é `@>` — contém todos, que
@@ -227,7 +250,7 @@ export const bar = pgTable(
     ),
     check(
       'bar_gallery_photos_max',
-      sql`cardinality(${table.galleryPhotos}) <= ${sql.raw(String(GALLERY_MAX_PHOTOS))}` // sql-raw-permitido: constante de limite em CHECK
+      sql`cardinality(${table.galleryPhotos}) <= ${sql.raw(String(LEGACY_GALLERY_MAX_PHOTOS))}` // sql-raw-permitido: constante de limite em CHECK
     ),
     check(
       'bar_average_spend_cents_range',
@@ -236,6 +259,10 @@ export const bar = pgTable(
     check(
       'bar_reservation_cap_range',
       reservationCapRange(table.reservationCap)
+    ),
+    check(
+      'bar_description_pending_length',
+      sql`${table.descriptionPending} IS NULL OR char_length(${table.descriptionPending}) BETWEEN 1 AND 500`
     )
   ]
 )
@@ -260,6 +287,58 @@ export const barNotice = pgTable(
     sentAt: timestamp('sent_at', { withTimezone: true }).defaultNow().notNull()
   },
   (table) => [primaryKey({ columns: [table.barId, table.kind, table.ref] })]
+)
+
+/**
+ * Fotos do bar (WEB-462): a capa e a galeria do ambiente, com categoria,
+ * legenda, ordem e a revisão da Onside. O torcedor só vê `approved`; o dono vê
+ * tudo, com o motivo da recusa. Regras em `packages/api/src/lib/bar-photos.ts`.
+ *
+ * A capa pública continua sendo `bar.photo_url`, que todas as listas leem:
+ * a revisão a escreve quando aprova a foto pedida como capa
+ * (`cover_requested`), e escolher uma foto já aprovada a escreve na hora.
+ */
+export const barPhoto = pgTable(
+  'bar_photo',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    barId: text('bar_id')
+      .notNull()
+      .references(() => bar.id, { onDelete: 'cascade' }),
+    url: text('url').notNull(),
+    category: barPhotoCategoryEnum('category').notNull(),
+    caption: text('caption'),
+    /** Ordem do dono; a página agrupa por categoria e ordena por ela. */
+    position: integer('position').notNull(),
+    /** O dono pediu esta foto como capa: vira `bar.photo_url` ao ser aprovada. */
+    coverRequested: boolean('cover_requested').default(false).notNull(),
+    status: reviewStatusEnum('status').default('pending').notNull(),
+    rejectionReason: text('rejection_reason'),
+    reviewedAt: timestamp('reviewed_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull()
+  },
+  (table) => [
+    index('bar_photo_bar_idx').on(table.barId, table.position),
+    unique('bar_photo_bar_url_unique').on(table.barId, table.url),
+    // Um pedido de capa por bar.
+    uniqueIndex('bar_photo_cover_requested_idx')
+      .on(table.barId)
+      .where(sql`cover_requested`),
+    // A fila do Houdini, da mais antiga para a mais nova.
+    index('bar_photo_pending_idx')
+      .on(table.createdAt)
+      .where(sql`status = 'pending'`),
+    check(
+      'bar_photo_caption_length',
+      sql`${table.caption} IS NULL OR char_length(${table.caption}) BETWEEN 1 AND ${sql.raw(String(PHOTO_CAPTION_MAX))}` // sql-raw-permitido: constante de limite em CHECK
+    ),
+    check(
+      'bar_photo_rejection_reason',
+      sql`(${table.status} = 'rejected') = (${table.rejectionReason} IS NOT NULL) AND (${table.rejectionReason} IS NULL OR char_length(${table.rejectionReason}) BETWEEN 1 AND ${sql.raw(String(REVIEW_REASON_MAX))})` // sql-raw-permitido: constante de limite em CHECK
+    )
+  ]
 )
 
 export const sport = pgTable('sport', {
@@ -525,7 +604,12 @@ export const barRelations = relations(bar, ({ one, many }) => ({
     references: [subscription.barId]
   }),
   favoritedBy: many(userFavoriteBars),
-  ratings: many(barRating)
+  ratings: many(barRating),
+  photos: many(barPhoto)
+}))
+
+export const barPhotoRelations = relations(barPhoto, ({ one }) => ({
+  bar: one(bar, { fields: [barPhoto.barId], references: [bar.id] })
 }))
 
 export const sportRelations = relations(sport, ({ many }) => ({
