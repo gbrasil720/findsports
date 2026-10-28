@@ -632,10 +632,13 @@ test('horário: atalhos da 28e e o aviso do jogo no novo horário', async ({
   }
   await expect(
     horario.getByRole('button', { name: 'Todo dia igual' })
-  ).toBeDisabled()
-  await expect(
-    horario.getByRole('button', { name: 'Copiar segunda para a semana' })
-  ).toBeDisabled()
+  ).toBeFocused()
+  for (const name of ['Todo dia igual', 'Copiar segunda para a semana']) {
+    await expect(horario.getByRole('button', { name })).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    )
+  }
 
   // Fim de semana igual: o domingo fechado volta como o sábado.
   await horario.getByRole('switch', { name: 'Domingo' }).click()

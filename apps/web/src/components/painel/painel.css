@@ -317,7 +317,8 @@
   color: var(--painel-ink);
   box-shadow: var(--painel-sh-btn);
 }
-.painel .painel-chip:disabled {
+.painel .painel-chip:disabled,
+.painel .painel-chip[aria-disabled="true"] {
   opacity: 0.5;
   cursor: not-allowed;
 }

@@ -104,7 +104,9 @@ export function Horario({
           <Chip
             key={rotulo}
             check={false}
-            disabled={!resultado}
+            // `aria-disabled`, não `disabled`: o atalho recém-usado desliga e o
+            // foco do teclado não pode cair no `body`.
+            aria-disabled={!resultado}
             onClick={() => resultado && aplicar(resultado)}
           >
             {rotulo}
