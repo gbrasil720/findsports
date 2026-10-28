@@ -2,11 +2,15 @@ import { describe, expect, test } from 'bun:test'
 import type { AdminBar } from './admin-model'
 import {
   alteracoes,
+  atalhosDoHorario,
+  avisoDosJogos,
   checklistDoPerfil,
+  type DiaRascunho,
   deslocamento,
   diaDoJogo,
   diaNaLista,
   formatKm,
+  horarioDoRascunho as horario,
   iniciaisDoApp,
   KM_DE_EXEMPLO,
   metrosPorPonto,
@@ -16,6 +20,7 @@ import {
   recursoPago,
   SEMANA_PADRAO,
   siglaDoTime,
+  situacaoDoHorario,
   temAlteracao,
   torcedorDeExemplo,
   zoomPara
@@ -260,5 +265,112 @@ describe('distância e mapa da prévia (WEB-456)', () => {
   test('zoomPara põe os km pedidos na largura pedida', () => {
     const zoom = zoomPara(vila.lat, 6, 360)
     expect(metrosPorPonto(vila.lat, zoom) * 360).toBeCloseTo(6000, 3)
+  })
+})
+
+describe('editor de horário (28a, 28e)', () => {
+  const dia = (opens: string, closes: string, open = true): DiaRascunho => ({
+    open,
+    opens,
+    closes
+  })
+  /** A semana do design, índice 0 = domingo: segunda fechada. */
+  const ZE: DiaRascunho[] = [
+    dia('12:00', '22:00'),
+    dia('17:00', '00:00', false),
+    dia('17:00', '00:00'),
+    dia('17:00', '00:00'),
+    dia('17:00', '01:00'),
+    dia('16:00', '02:00'),
+    dia('12:00', '02:00')
+  ]
+  const brt = (iso: string) => new Date(`${iso}-03:00`)
+
+  test('atalhos copiam a terça, o sábado e a semana inteira', () => {
+    const [semana, fimDeSemana, todoDia] = atalhosDoHorario(ZE)
+    expect(semana?.rotulo).toBe('Copiar terça para a semana')
+    // Seg continua fechada; qui e sex ganham a faixa da terça.
+    expect(semana?.resultado?.slice(1, 6)).toEqual([
+      dia('17:00', '00:00', false),
+      dia('17:00', '00:00'),
+      dia('17:00', '00:00'),
+      dia('17:00', '00:00'),
+      dia('17:00', '00:00')
+    ])
+    expect(fimDeSemana?.rotulo).toBe('Fim de semana igual')
+    expect(fimDeSemana?.resultado?.[0]).toEqual(dia('12:00', '02:00'))
+    expect(todoDia?.rotulo).toBe('Todo dia igual')
+    expect(todoDia?.resultado).toEqual(
+      Array.from({ length: 7 }, () => dia('17:00', '00:00'))
+    )
+  })
+
+  test('atalho que não muda nada vem desligado', () => {
+    const atalhos = atalhosDoHorario(SEMANA_PADRAO)
+    expect(atalhos.map((a) => a.resultado)).toEqual([null, null, null])
+    expect(atalhos[0]?.rotulo).toBe('Copiar segunda para a semana')
+    // Tudo fechado: não há dia para copiar.
+    const fechado = SEMANA_PADRAO.map((d) => ({ ...d, open: false }))
+    expect(atalhosDoHorario(fechado).map((a) => a.rotulo)).toEqual([
+      'Fim de semana igual'
+    ])
+  })
+
+  test('situação: aberto até quando, ou quando abre', () => {
+    // 23/10/2026 é sexta.
+    expect(situacaoDoHorario(ZE, brt('2026-10-23T22:00:00'))).toEqual({
+      aberto: true,
+      texto: 'fecha às 02:00'
+    })
+    expect(situacaoDoHorario(ZE, brt('2026-10-23T10:00:00'))).toEqual({
+      aberto: false,
+      texto: 'abre às 16:00'
+    })
+    // Domingo 23:00: segunda fechada, abre terça.
+    expect(situacaoDoHorario(ZE, brt('2026-10-25T23:00:00'))).toEqual({
+      aberto: false,
+      texto: 'abre terça às 17:00'
+    })
+    expect(situacaoDoHorario(ZE, brt('2026-10-24T03:00:00'))?.texto).toBe(
+      'abre às 12:00'
+    )
+    expect(situacaoDoHorario(null, new Date())).toBeNull()
+  })
+
+  describe('aviso dos jogos', () => {
+    // Quarta, 21/10/2026, 10:00. Sexta é 23/10.
+    const now = brt('2026-10-21T10:00:00')
+    const sexta22 = { startsAt: brt('2026-10-23T22:00:00') }
+    const antes = horario(
+      ZE.map((d, i) => (i === 5 ? dia('23:00', '02:00') : d))
+    )
+    const depois = horario(ZE)
+
+    test('o jogo que passa a caber no novo horário', () => {
+      expect(avisoDosJogos([sexta22], antes, depois, now)).toEqual({
+        fora: false,
+        texto: 'O jogo de sexta às 22:00 fica dentro do novo horário.'
+      })
+    })
+
+    test('jogo que fica fora tem a vez, com a contagem', () => {
+      const hoje = { startsAt: brt('2026-10-21T15:00:00') }
+      const amanha = { startsAt: brt('2026-10-22T12:00:00') }
+      expect(
+        avisoDosJogos([amanha, hoje, sexta22], depois, antes, now)
+      ).toEqual({
+        fora: true,
+        texto: 'O jogo de hoje às 15:00 e mais 2 ficam fora do novo horário.'
+      })
+    })
+
+    test('nada a dizer: horário igual, sem horário antes, jogo passado ou longe', () => {
+      expect(avisoDosJogos([sexta22], depois, depois, now)).toBeNull()
+      // Antes sem horário: o jogo dentro não é novidade.
+      expect(avisoDosJogos([sexta22], null, depois, now)).toBeNull()
+      const passado = { startsAt: brt('2026-10-20T15:00:00') }
+      const longe = { startsAt: brt('2026-10-28T15:00:00') }
+      expect(avisoDosJogos([passado, longe], depois, antes, now)).toBeNull()
+    })
   })
 })
