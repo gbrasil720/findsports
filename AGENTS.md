@@ -750,8 +750,8 @@ invente layout que o projeto não tem.
   senha). Ligar troca a sessão: a lista de aparelhos é relida. O `@usuário`
   dos amigos se troca na Conta. Avisos segue o desenho com os controles desligados e o
   aviso de "em breve" (não há notificação); em Privacidade, "Onde você foi" funciona
-  (quem vê os bares e jogos, quem pode te adicionar), "Aparecer no ranking global" e
-  comunidades seguem "em breve" (o controle pede coluna nova), e "Baixar meus dados" pede o arquivo (`account.requestExport`, WEB-418): o
+  (quem vê os bares e jogos, quem pode te adicionar), "Aparecer no ranking global" grava
+  `user.ranking_global` (WEB-465), comunidades seguem "em breve", e "Baixar meus dados" pede o arquivo (`account.requestExport`, WEB-418): o
   servidor monta o JSON (perfil, preferências, favoritos, jogos, avaliações, amigos e
   conquistas; de outra pessoa, só nome e `@` de amigo; para bar, `barData`) e o manda de
   anexo para o e-mail da sessão, um pedido a cada 24 h por conta (`rate_limit`, chave
@@ -785,11 +785,21 @@ invente layout que o projeto não tem.
   amigo; "Ninguém" não entra). Métricas do design: bares diferentes (padrão), jogos, bairros e
   conquistas desbloqueadas no mês. O mês é o de Brasília pela data do jogo e vira à 0h do dia
   1º; empate vai para quem chegou primeiro ao número, e com zero pelo nome. As setas comparam
-  com a posição de uma semana atrás (no começo do mês, sem setas). `ranking.city` dá só a
-  posição em bares no mês entre os torcedores com a mesma cidade no perfil ("3º em São
-  Paulo"), sem lista: a lista da cidade e a aba Comunidades avisam "em breve". Sozinho (sem
-  amigo visível), a tela é o 11e. Dados de teste: `apps/mobile/scripts/ranking.sql`, depois de
-  `conquistas.sql`.
+  com a posição de uma semana atrás (no começo do mês, sem setas). A aba Comunidades avisa
+  "em breve". Sozinho (sem amigo visível), a tela é o 11e. Dados de teste:
+  `apps/mobile/scripts/ranking.sql`, depois de `conquistas.sql`.
+- **Ranking da cidade (Rodada 27, 27a–27c; WEB-465):** aba Global e
+  `app/(fan)/voce/ranking-cidade.tsx` (pelo "Ver todos"), peças em
+  `components/city-ranking.tsx`. `ranking.city` (`readCityBoard`) pagina por posição
+  (`row_number` no banco): `cursor` 0 traz o top 8, os seguintes 30, e toda página traz a sua
+  vizinhança (você e 2 de cada lado), fixa abaixo do corte "N TORCEDORES"; tocar no corte
+  traz a próxima página até o topo encostar em você (`cityLayout`, `lib/ranking.ts`). Só
+  "Bares no mês" e "Jogos". Entra na lista quem ligou `user.ranking_global` (nasce desligado;
+  Configurações › Privacidade ou o interruptor do 27c) e não tem "Ninguém" em
+  `activity_visibility` (`listedInCity`). Aparecem nome, `@` e número, sem foto. Quem está
+  fora não aparece para ninguém e também não vê a própria posição (o 27c no lugar da aba).
+  Filtro de bairro, setas e a medalha Cidade ficaram para depois. Dados de teste:
+  `apps/mobile/scripts/ranking-cidade.sql`, depois de `ranking.sql`.
 - **Chamado de amigo ("Chamar Marina", Rodada 24):** tabela `friend_call` (um por de, para e
   jogo; pending, going, not_now). Quem cria é `createFriendCall`
   (`packages/api/src/lib/friend-calls.ts`; só amigo aceito, jogo começado recusa pela mesma
