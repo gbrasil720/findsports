@@ -514,7 +514,8 @@ function Notices() {
                 Nada de aviso entre o apito inicial e o final.
               </Text>
             </View>
-            <Toggle on />
+            {/* Sobre o acid a tinta fica tinta nos dois temas. */}
+            <Switch on off={INK} />
           </View>
         </View>
       </Off>
@@ -1144,9 +1145,21 @@ function Row({
   )
 }
 
+/**
+ * Ligado: trilho de tinta e bolinha acid no claro. No escuro a tinta some no
+ * card, então o trilho vira acid e a bolinha tinta, como nos interruptores
+ * de Filtros, Bares pra você e duas etapas.
+ */
 function Toggle({ on }: { on: boolean }) {
   const palette = usePalette()
-  return <Switch on={on} off={palette.mark} />
+  return (
+    <Switch
+      on={on}
+      off={palette.mark}
+      track={palette.dark ? ACID : INK}
+      knob={palette.dark ? INK : ACID}
+    />
+  )
 }
 
 function Choice({
