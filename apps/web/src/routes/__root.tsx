@@ -50,6 +50,8 @@ export interface RouterAppContext {
   trpc: TRPCOptionsProxy<AppRouter>
   queryClient: QueryClient
   syncSession: (userId: string | null) => void
+  // A origem do router (WEB-473): o `beforeLoad` não recebe o router.
+  origin: () => string
   // Última sessão conferida pelo `beforeLoad` da raiz, por instância de router.
   lastSessionCheck: {
     current?: {
@@ -106,7 +108,8 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
       session,
       location.pathname,
       location.search,
-      location.pathname + location.searchStr
+      location.pathname + location.searchStr,
+      context.origin()
     )
     return { session }
   },

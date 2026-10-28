@@ -115,6 +115,25 @@ describe('applyAuthGuards', () => {
     expect(() => applyAuthGuards(null, '/login')).not.toThrow()
   })
 
+  // WEB-473: no SSR não há `location`; a origem do router decide se o
+  // `callbackUrl` absoluto é do próprio site.
+  test('segue o callbackUrl absoluto de mesma origem com a origem do router', () => {
+    const origin = 'https://onside.sh'
+    const login = (callbackUrl: string, role: 'pub' | 'admin' = 'pub') =>
+      redirectOf(() =>
+        applyAuthGuards(
+          session(role),
+          '/login',
+          {},
+          `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`,
+          origin
+        )
+      )
+    expect(login('https://onside.sh/admin/jogos?x=1')).toBe('/admin/jogos?x=1')
+    expect(login('https://outro.site/admin/jogos')).toBe('/admin')
+    expect(login('https://onside.sh/houdini', 'admin')).toBe('/houdini')
+  })
+
   test('lets visitors stay on public pages and unknown URLs', () => {
     for (const path of ['/pagina-que-nao-existe', '/pub/bar-1', FAN_HOME]) {
       expect(() => applyAuthGuards(null, path)).not.toThrow()
