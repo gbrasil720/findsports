@@ -46,6 +46,7 @@ import {
 import { gameFillingDue, notifyGameFilling } from './bar-notices'
 import { issuesCounterCode } from './current-plan'
 import { participantNames } from './game-participants'
+import { effectiveHouseOffer } from './house-offer'
 import { getLateEntryWindow } from './reservation-validation'
 import { visit } from './visits'
 
@@ -79,7 +80,13 @@ export async function attendableGame(
   const game = await tx.query.event.findFirst({
     // Rascunho (WEB-436) é como jogo que não existe para o torcedor.
     where: and(eq(event.id, eventId), isNotNull(event.publishedAt)),
-    columns: { startsAt: true, barId: true, attendanceEnabled: true },
+    columns: {
+      startsAt: true,
+      barId: true,
+      attendanceEnabled: true,
+      houseOffer: true,
+      noHouseOffer: true
+    },
     with: {
       bar: {
         columns: { isActive: true, houseOffer: true, confirmsCodesLater: true },
@@ -158,7 +165,13 @@ export async function setAttendance(
         set: { source: 'manual' }
       })
     if (issuesCounterCode(game.bar.subscription ?? null, now)) {
-      await issueTicket(tx, userId, eventId, game.bar.houseOffer)
+      // A oferta deste jogo (WEB-422): a dele, a do bar ou nenhuma.
+      await issueTicket(
+        tx,
+        userId,
+        eventId,
+        effectiveHouseOffer(game.bar.houseOffer, game)
+      )
       ticket = await readTicket(tx, userId, eventId)
     }
     // "Jogo lotando" (WEB-441): a conta é feita aqui, que já vê esta
