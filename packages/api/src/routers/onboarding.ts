@@ -17,6 +17,7 @@ import {
   MAX_SCREEN_COUNT,
   writableAmenityIds
 } from '../lib/amenities'
+import { descriptionSubmission } from '../lib/bar-description'
 import {
   motivoTelefoneInvalido,
   UF_SIGLAS
@@ -168,7 +169,9 @@ export const onboardingRouter = router({
             uf: input.uf ?? null,
             address: input.address,
             phone: input.phone ?? null,
-            description: input.description ?? null,
+            // Em revisão até a Onside aprovar (WEB-478): o bar nasce sem
+            // descrição no ar.
+            ...descriptionSubmission(null, input.description ?? ''),
             amenities: writableAmenityIds(input.amenities ?? []),
             screenCount: input.screenCount ?? null,
             openingHours: normalizeOpeningHours(input.openingHours ?? null),

@@ -8,8 +8,8 @@ import { z } from 'zod'
 import { adminProcedure, router } from '../index'
 
 /**
- * Revisão da Onside (WEB-462): toda foto do bar passa por aqui antes de o
- * torcedor ver. Aprovar ou recusar com motivo; cada decisão fica no
+ * Revisão da Onside (WEB-462, WEB-478): toda foto do bar e a descrição em
+ * texto livre passam por aqui antes de o torcedor ver. Aprovar ou recusar com motivo; cada decisão fica no
  * Grimório, na mesma transação. A tela é `/houdini/revisao`.
  */
 
@@ -49,7 +49,18 @@ export const adminReviewRouter = router({
       .innerJoin(bar, eq(bar.id, barPhoto.barId))
       .where(eq(barPhoto.status, 'pending'))
       .orderBy(asc(barPhoto.createdAt))
-    return { photos }
+    const descriptions = await db
+      .select({
+        barId: bar.id,
+        barName: bar.name,
+        published: bar.description,
+        pending: bar.descriptionPending,
+        submittedAt: bar.descriptionSubmittedAt
+      })
+      .from(bar)
+      .where(eq(bar.descriptionReview, 'pending'))
+      .orderBy(asc(bar.descriptionSubmittedAt))
+    return { photos, descriptions }
   }),
 
   decidePhoto: adminProcedure
@@ -113,6 +124,79 @@ export const adminReviewRouter = router({
           tx
         )
         return { status: input.approve ? 'approved' : 'rejected', cover }
+      })
+    ),
+
+  /**
+   * A descrição em texto livre (WEB-478). `text` é o que o admin leu: se o
+   * dono mudou o texto no meio, a decisão é recusada e a fila recarrega.
+   * Aprovada, vira a publicada; recusada, o dono lê o motivo e o torcedor
+   * segue com a anterior.
+   */
+  decideDescription: adminProcedure
+    .input(
+      z
+        .object({
+          barId: z.string().min(1).max(255),
+          text: z.string().max(1000)
+        })
+        .and(decision)
+    )
+    .mutation(({ ctx, input }) =>
+      db.transaction(async (tx) => {
+        const [found] = await tx
+          .select({
+            name: bar.name,
+            published: bar.description,
+            pending: bar.descriptionPending
+          })
+          .from(bar)
+          .where(
+            and(
+              eq(bar.id, input.barId),
+              eq(bar.descriptionReview, 'pending'),
+              eq(bar.descriptionPending, input.text)
+            )
+          )
+          .for('update')
+        if (!found) throw alreadyReviewed()
+
+        const reason = input.approve ? null : input.reason
+        await tx
+          .update(bar)
+          .set(
+            input.approve
+              ? {
+                  description: found.pending,
+                  descriptionPending: null,
+                  descriptionReview: null,
+                  descriptionRejectionReason: null,
+                  descriptionSubmittedAt: null
+                }
+              : {
+                  descriptionReview: 'rejected',
+                  descriptionRejectionReason: reason
+                }
+          )
+          .where(eq(bar.id, input.barId))
+        await recordAdminAction(
+          {
+            kind: input.approve
+              ? 'bar.description_approve'
+              : 'bar.description_reject',
+            ...actor(ctx),
+            targetType: 'bar',
+            targetId: input.barId,
+            targetLabel: found.name,
+            before: { description: found.published },
+            after: {
+              description: input.approve ? found.pending : found.published
+            },
+            detail: { submitted: found.pending, reason }
+          },
+          tx
+        )
+        return { status: input.approve ? 'approved' : 'rejected' }
       })
     )
 })
