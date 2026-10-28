@@ -8,6 +8,11 @@ import {
   EVENT_START_PROBLEM_MESSAGE,
   getEventStartProblem
 } from '@findsports_oficial/db/event-window'
+import {
+  HOUSE_OFFER_MAX_LENGTH,
+  houseOfferLength,
+  normalizeHouseOffer
+} from '@findsports_oficial/db/house-offer'
 import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useId, useState } from 'react'
@@ -16,7 +21,7 @@ import { useTeamSearch } from '@/components/sports/team-picker'
 import { countLabel } from '@/lib/plural'
 import { CATALOG_QUERY } from '@/lib/query-cache'
 import { useTRPC } from '@/utils/trpc'
-import { Badge, Botao, Campo, Chip, EmBreve, Icone, Toggle } from '../painel'
+import { Badge, Botao, Campo, Chip, Icone, Toggle } from '../painel'
 import {
   DateTimeInput,
   dateTimeByName,
@@ -61,6 +66,12 @@ type EventForm = {
   withSound: boolean
   /** WEB-437: "Lista de quem vai" deste jogo; nasce ligada. */
   attendanceEnabled: boolean
+  /**
+   * WEB-422: oferta da casa deste jogo. Nasce com a que vale nele (a dele ou
+   * a padrão do bar); o que gravar sai de `gameHouseOfferFromForm`.
+   */
+  ofertaLigada: boolean
+  oferta: string
 }
 
 type Sport = { id: string; name: string; slug: string }
@@ -86,7 +97,10 @@ type Props = {
   onPrevia?: (previa: PreviaDoJogo) => void
   /** Para a prévia "Assim aparece no app". */
   barName?: string
+  /** A oferta padrão do bar (Meu espaço). */
   houseOffer?: string | null
+  /** Elite vigente: só ele troca a oferta por jogo (WEB-422). */
+  podeOferta?: boolean
   /**
    * O bar vê quem vai (Elite): só ele tem o interruptor da lista. Fora
    * dele a lista não existe no painel e o jogo segue com o que já tinha.
@@ -109,8 +123,8 @@ function limitError(subject: string, length: number, max: number) {
 
 /**
  * Formulário do jogo (telas 1p/1q): esporte, campeonato, times, horário, o que
- * o jogo tem, a lista de quem vai (WEB-437) e a prévia do app. Oferta por
- * jogo ainda não existe no servidor: aparece com "em breve".
+ * o jogo tem, a lista de quem vai (WEB-437), a oferta da casa deste jogo
+ * (WEB-422, só Elite) e a prévia do app.
  */
 export function EventFormComponent({
   initial,
@@ -124,6 +138,7 @@ export function EventFormComponent({
   onPrevia,
   barName,
   houseOffer = null,
+  podeOferta = false,
   showsGoing = false,
   goingCount = 0,
   openingHours = null,
@@ -132,6 +147,7 @@ export function EventFormComponent({
   const trpc = useTRPC()
   const ids = useId()
   const championshipErrorId = `${ids}-championship-error`
+  const offerErrorId = `${ids}-offer-error`
   const freeTextErrorId = `${ids}-free-text-error`
   const missingId = `${ids}-missing`
   const [form, setForm] = useState<EventForm>(initial)
@@ -239,6 +255,15 @@ export function EventFormComponent({
     form.participantFreeText.length,
     EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH
   )
+  // O mesmo limite do servidor, contado sobre o texto normalizado.
+  const ofertaTamanho = houseOfferLength(normalizeHouseOffer(form.oferta))
+  const offerError =
+    podeOferta && form.ofertaLigada
+      ? limitError('A oferta', ofertaTamanho, HOUSE_OFFER_MAX_LENGTH)
+      : null
+  const ofertaDoJogo =
+    podeOferta && form.ofertaLigada ? normalizeHouseOffer(form.oferta) : null
+  const padrao = normalizeHouseOffer(houseOffer)
   const missing = [
     !form.sportId && 'esporte',
     form.championship.trim().length < EVENT_CHAMPIONSHIP_MIN_LENGTH &&
@@ -253,7 +278,8 @@ export function EventFormComponent({
     !startProblem &&
     endsAtValid &&
     !championshipError &&
-    !freeTextError
+    !freeTextError &&
+    !offerError
 
   const previewTitle =
     matchup.length === 2
@@ -545,45 +571,90 @@ export function EventFormComponent({
           </p>
         </fieldset>
 
-        <div className="jogos-sub jogos-sub-lista">
-          {showsGoing ? (
-            <div className="jogos-sub-linha">
-              <div>
-                <b>Lista de quem vai</b>
-                {/* Desligar não apaga quem já marcou: o código continua
+        {showsGoing || podeOferta ? (
+          <div className="jogos-sub jogos-sub-lista">
+            {showsGoing ? (
+              <div className="jogos-sub-linha">
+                <div>
+                  <b>Lista de quem vai</b>
+                  {/* Desligar não apaga quem já marcou: o código continua
                     valendo no balcão, só não entra ninguém novo. */}
-                <span aria-live="polite">
-                  {form.attendanceEnabled
-                    ? 'Torcedores marcam “Vou assistir aqui” e recebem um código.'
-                    : goingCount > 0
-                      ? `${countLabel(goingCount, 'pessoa já marcou', 'pessoas já marcaram')}: o código continua valendo. Ninguém novo entra.`
-                      : 'O app não mostra “Vou assistir aqui” neste jogo.'}
-                </span>
+                  <span aria-live="polite">
+                    {form.attendanceEnabled
+                      ? 'Torcedores marcam “Vou assistir aqui” e recebem um código.'
+                      : goingCount > 0
+                        ? `${countLabel(goingCount, 'pessoa já marcou', 'pessoas já marcaram')}: o código continua valendo. Ninguém novo entra.`
+                        : 'O app não mostra “Vou assistir aqui” neste jogo.'}
+                  </span>
+                </div>
+                <Toggle
+                  ligado={form.attendanceEnabled}
+                  onChange={(ligado) =>
+                    setForm((prev) => ({ ...prev, attendanceEnabled: ligado }))
+                  }
+                  rotulo="Lista de quem vai neste jogo"
+                />
               </div>
-              <Toggle
-                ligado={form.attendanceEnabled}
-                onChange={(ligado) =>
-                  setForm((prev) => ({ ...prev, attendanceEnabled: ligado }))
-                }
-                rotulo="Lista de quem vai neste jogo"
-              />
-            </div>
-          ) : null}
-          <div className="jogos-sub-linha">
-            <div>
-              <b>
-                Oferta da casa neste jogo <EmBreve />
-              </b>
-              <span>{houseOffer ?? 'Sem oferta da casa no seu espaço.'}</span>
-            </div>
-            <Toggle
-              ligado={!!houseOffer}
-              onChange={() => {}}
-              disabled
-              rotulo="Oferta da casa neste jogo"
-            />
+            ) : null}
+            {podeOferta ? (
+              <div className="jogos-sub-linha jogos-sub-oferta">
+                <div>
+                  <b id={`${ids}-offer`}>Oferta da casa neste jogo</b>
+                  <span aria-live="polite">
+                    {!ofertaDoJogo
+                      ? 'Sem oferta neste jogo.'
+                      : ofertaDoJogo === padrao
+                        ? 'A mesma do seu espaço.'
+                        : padrao
+                          ? 'Só neste jogo. Os outros seguem com a do seu espaço.'
+                          : 'Só neste jogo.'}
+                  </span>
+                </div>
+                <Toggle
+                  ligado={form.ofertaLigada}
+                  onChange={(ligado) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      ofertaLigada: ligado,
+                      // Religar em branco volta à padrão, como nasce.
+                      oferta:
+                        ligado && !prev.oferta.trim()
+                          ? (padrao ?? '')
+                          : prev.oferta
+                    }))
+                  }
+                  aria-labelledby={`${ids}-offer`}
+                />
+                {form.ofertaLigada ? (
+                  <Campo
+                    aria-labelledby={`${ids}-offer`}
+                    className="jogos-oferta-campo"
+                    value={form.oferta}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, oferta: e.target.value }))
+                    }
+                    aria-invalid={offerError ? true : undefined}
+                    aria-describedby={offerError ? offerErrorId : undefined}
+                    altura={42}
+                    fim={
+                      <span
+                        className="painel-mono jogos-oferta-conta"
+                        data-passou={offerError ? true : undefined}
+                      >
+                        {ofertaTamanho}/{HOUSE_OFFER_MAX_LENGTH}
+                      </span>
+                    }
+                  />
+                ) : null}
+                {offerError ? (
+                  <p id={offerErrorId} className="jogos-erro" role="alert">
+                    {offerError}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
           </div>
-        </div>
+        ) : null}
 
         <div className="jogos-form-grupo">
           <span className="jogos-form-rotulo">Assim aparece no app</span>
@@ -599,7 +670,7 @@ export function EventFormComponent({
                   .join(' · ')}
               </span>
             </div>
-            {houseOffer ? <Badge tipo="acid">Oferta</Badge> : null}
+            {ofertaDoJogo ? <Badge tipo="acid">Oferta</Badge> : null}
           </div>
         </div>
 

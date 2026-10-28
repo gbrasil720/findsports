@@ -17,7 +17,6 @@ import {
   BotaoIcone,
   CabecalhoCard,
   Card,
-  EmBreve,
   Icone,
   Toggle
 } from '../painel'
@@ -137,6 +136,8 @@ export function JogoAberto({
   evento,
   barId,
   oferta,
+  ofertaSalvando,
+  onOferta,
   quemVai: quemVaiDoJogo,
   viramOJogo: viramDoJogo,
   onFechar,
@@ -150,7 +151,14 @@ export function JogoAberto({
 }: {
   evento: AdminEvent
   barId: string
-  oferta: string | null
+  /**
+   * A oferta da casa que vale neste jogo (WEB-422); `undefined` fora do
+   * Elite, sem a seção.
+   */
+  oferta: string | null | undefined
+  /** Enquanto salva o interruptor, o estado pedido. */
+  ofertaSalvando?: boolean
+  onOferta: (ligar: boolean) => void
   /** `undefined`: o bar não vê quem vai; `null`: ninguém marcou. */
   quemVai: JogoQuemVai | null | undefined
   /** `undefined`: o plano não tem analytics por jogo. */
@@ -232,21 +240,21 @@ export function JogoAberto({
         </div>
       ) : null}
 
-      <div className="jogos-sub">
-        <Icone nome="ticket" tamanho={22} />
-        <div className="jogos-sub-texto">
-          <b>
-            Oferta da casa neste jogo <EmBreve />
-          </b>
-          <span>{oferta ?? 'Sem oferta da casa no seu espaço.'}</span>
+      {oferta !== undefined ? (
+        <div className="jogos-sub">
+          <Icone nome="ticket" tamanho={22} />
+          <div className="jogos-sub-texto">
+            <b id={`oferta-${evento.id}`}>Oferta da casa neste jogo</b>
+            <span>{oferta ?? 'Sem oferta neste jogo.'}</span>
+          </div>
+          <Toggle
+            ligado={ofertaSalvando ?? oferta !== null}
+            disabled={ofertaSalvando !== undefined}
+            onChange={onOferta}
+            aria-labelledby={`oferta-${evento.id}`}
+          />
         </div>
-        <Toggle
-          ligado={!!oferta}
-          onChange={() => {}}
-          disabled
-          rotulo="Oferta da casa neste jogo"
-        />
-      </div>
+      ) : null}
 
       {quemVai !== undefined ? (
         <div>

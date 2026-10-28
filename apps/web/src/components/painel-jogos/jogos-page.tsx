@@ -1,4 +1,9 @@
 import { resolveEventScreen } from '@findsports_oficial/api/lib/event-screen'
+import {
+  effectiveHouseOffer,
+  type GameHouseOffer,
+  gameHouseOfferFromForm
+} from '@findsports_oficial/api/lib/house-offer'
 import { actionPhase } from '@findsports_oficial/api/lib/transient-error'
 import { brasiliaDay } from '@findsports_oficial/db/event-window'
 import { gameTitle } from '@findsports_oficial/db/game-title'
@@ -167,8 +172,8 @@ type Vista = 'lista' | 'semana'
  * Jogos do painel do bar (telas 1n–1q): a grade em lista por dia ou em
  * semana, o jogo aberto à direita e o formulário na folha lateral. Rascunho
  * (WEB-436) só aparece aqui e no Hoje, e vai ao ar pelo "Publicar". O que o
- * design mostra e o servidor não tem (sugestões e importação da rodada,
- * oferta por jogo) aparece com "em breve".
+ * design mostra e o servidor não tem (sugestões e importação da rodada)
+ * aparece com "em breve". A oferta da casa por jogo (WEB-422) é do Elite.
  */
 export function JogosPage({
   jogoInicial,
@@ -194,6 +199,10 @@ export function JogosPage({
   const { data: subscription } = useMySubscription()
   const showsGoing = useShowsGoing() === true
   const { data: entitlements } = useMyAnalyticsEntitlements()
+  // Oferta da casa por jogo (WEB-422): só o Elite vigente troca, como no
+  // servidor; `padrao` é a do Meu espaço.
+  const podeOferta = subscription?.currentPlan === 'elite'
+  const padrao = bar?.houseOffer ?? null
   const policyQuery = useMyEventCreationPolicy()
   const policyState: PolicyState = policyQuery.isLoading
     ? { status: 'loading' }
@@ -346,6 +355,31 @@ export function JogosPage({
   )
   const publicar = (eventId: string) =>
     publishMutation.mutate({ eventId, publish: true })
+  // O interruptor "Oferta da casa neste jogo" do jogo aberto (1n).
+  const offerMutation = useMutation(
+    trpc.pub.updateEvent.mutationOptions({
+      onSuccess: () => invalidateMyEvents(),
+      onError: (error) =>
+        toast.error(
+          getUserFacingMessage(
+            error,
+            'Não foi possível salvar a oferta do jogo. Tente novamente.'
+          )
+        )
+    })
+  )
+  /** O que mudou na oferta do jogo, ou nada: o servidor só recebe o que mudou. */
+  const ofertaParaSalvar = (form: EventForm, salvo: GameHouseOffer) => {
+    if (!podeOferta) return {}
+    const novo = gameHouseOfferFromForm(padrao, {
+      ligada: form.ofertaLigada,
+      texto: form.oferta
+    })
+    return novo.houseOffer === salvo.houseOffer &&
+      novo.noHouseOffer === salvo.noHouseOffer
+      ? {}
+      : novo
+  }
   const publicando = publishMutation.isPending
     ? (publishMutation.variables?.eventId ?? null)
     : null
@@ -366,6 +400,7 @@ export function JogosPage({
           onBigScreen: form.onBigScreen,
           withSound: form.withSound,
           attendanceEnabled: form.attendanceEnabled,
+          ...ofertaParaSalvar(form, { houseOffer: null, noHouseOffer: false }),
           ...(publicarJogo ? {} : { draft: true })
         },
         {
@@ -391,6 +426,7 @@ export function JogosPage({
         onBigScreen: form.onBigScreen,
         withSound: form.withSound,
         attendanceEnabled: form.attendanceEnabled,
+        ...(eventoFolha ? ofertaParaSalvar(form, eventoFolha) : {}),
         ...(publicarJogo && eventoFolha && ehRascunho(eventoFolha)
           ? { publish: true as const }
           : {})
@@ -444,7 +480,10 @@ export function JogosPage({
 
   const amenities = bar?.amenities ?? []
   function formDoEvento(evento: AdminEvent): EventForm {
+    const oferta = effectiveHouseOffer(padrao, evento)
     return {
+      ofertaLigada: oferta !== null,
+      oferta: oferta ?? '',
       sportId: evento.sportId,
       championship: evento.championship,
       startsAt: toDatetimeLocal(evento.startsAt),
@@ -463,6 +502,9 @@ export function JogosPage({
     participantIds: [],
     participantFreeText: '',
     attendanceEnabled: true,
+    // Jogo novo herda a padrão; o dono troca ou desliga no formulário.
+    ofertaLigada: padrao !== null,
+    oferta: padrao ?? '',
     ...resolveEventScreen({ onBigScreen: null, withSound: null }, amenities)
   }
 
@@ -516,6 +558,9 @@ export function JogosPage({
   const apoio = (evento: AdminEvent) => {
     if (ehRascunho(evento)) return `${evento.championship} · rascunho`
     const partes = [evento.championship]
+    // Só o desligado de propósito: sem padrão, nenhum jogo tem oferta e a
+    // frase repetiria em toda linha (1n).
+    if (podeOferta && evento.noHouseOffer) partes.push('sem oferta da casa')
     const passado =
       getEventTemporalState(evento.startsAt, evento.endsAt, now) === 'past'
     const ratio = interestByEvent.get(evento.id)
@@ -542,7 +587,18 @@ export function JogosPage({
   const detalheProps = (evento: AdminEvent) => ({
     evento,
     barId: bar?.id ?? '',
-    oferta: bar?.houseOffer ?? null,
+    // A oferta que vale neste jogo; `undefined` fora do Elite (sem a seção).
+    oferta: podeOferta ? effectiveHouseOffer(padrao, evento) : undefined,
+    ofertaSalvando:
+      offerMutation.isPending && offerMutation.variables?.eventId === evento.id
+        ? !offerMutation.variables.noHouseOffer
+        : undefined,
+    onOferta: (ligar: boolean) => {
+      // Desligado sem nada para religar (sem padrão nem texto próprio): o
+      // texto se escreve no formulário, como o Hoje manda ao Meu espaço.
+      if (ligar && !padrao) abrirFolha({ tipo: 'editar', id: evento.id })
+      else offerMutation.mutate({ eventId: evento.id, noHouseOffer: !ligar })
+    },
     // Lista desligada no jogo (WEB-437): como o bar que não vê quem vai.
     quemVai:
       showsGoing && evento.attendanceEnabled
@@ -941,7 +997,8 @@ export function JogosPage({
               onSave={handleSave}
               isSaving={createMutation.isPending || updateMutation.isPending}
               barName={bar?.name}
-              houseOffer={bar?.houseOffer ?? null}
+              houseOffer={padrao}
+              podeOferta={podeOferta}
               openingHours={bar?.openingHours ?? null}
               showsGoing={showsGoing}
               goingCount={

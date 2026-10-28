@@ -3,6 +3,7 @@ import {
   EVENT_CHAMPIONSHIP_MAX_LENGTH,
   EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH
 } from '@findsports_oficial/db/event-limits'
+import { HOUSE_OFFER_MAX_LENGTH } from '@findsports_oficial/db/house-offer'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { JSDOM } from 'jsdom'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -37,12 +38,19 @@ const FILLED: EventForm = {
   participantFreeText: '',
   onBigScreen: true,
   withSound: false,
-  attendanceEnabled: true
+  attendanceEnabled: true,
+  ofertaLigada: true,
+  oferta: 'Chopp em dobro'
 }
 
 function render(
   form: Partial<EventForm>,
-  props: { showsGoing?: boolean; goingCount?: number } = {}
+  props: {
+    showsGoing?: boolean
+    goingCount?: number
+    podeOferta?: boolean
+    houseOffer?: string | null
+  } = {}
 ) {
   const markup = renderToStaticMarkup(
     <QueryClientProvider client={new QueryClient()}>
@@ -209,4 +217,34 @@ test('lista de quem vai: só com o plano que a tem, e o aviso ao desligar', () =
   expect(
     render({ attendanceEnabled: false }, { showsGoing: true }).text
   ).toContain('O app não mostra “Vou assistir aqui” neste jogo.')
+})
+
+test('oferta deste jogo: só no Elite, com a padrão e o que difere dela', () => {
+  expect(render({}).text).not.toContain('Oferta da casa neste jogo')
+
+  const elite = { podeOferta: true, houseOffer: 'Chopp em dobro' }
+  const padrao = render({}, elite)
+  expect(padrao.text).toContain('Oferta da casa neste jogo')
+  expect(padrao.text).toContain('A mesma do seu espaço.')
+  expect(padrao.text).toContain('Oferta')
+
+  const propria = render({ oferta: 'Porção grátis' }, elite)
+  expect(propria.text).toContain(
+    'Só neste jogo. Os outros seguem com a do seu espaço.'
+  )
+
+  const sem = render({ ofertaLigada: false }, elite)
+  expect(sem.text).toContain('Sem oferta neste jogo.')
+  expect(sem.saveDisabled).toBe(false)
+})
+
+test('oferta deste jogo acima do limite avisa e trava o salvar', () => {
+  const longa = render(
+    { oferta: 'a'.repeat(HOUSE_OFFER_MAX_LENGTH + 2) },
+    { podeOferta: true, houseOffer: null }
+  )
+  expect(longa.alerts).toContain(
+    `A oferta aceita até ${HOUSE_OFFER_MAX_LENGTH} caracteres. Tire 2.`
+  )
+  expect(longa.saveDisabled).toBe(true)
 })
