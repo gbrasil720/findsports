@@ -927,15 +927,16 @@ async function execute(
         nome: quoted(b.name),
         bairro: quoted(b.neighborhood),
         descricao: quoted(b.description),
-        oferta_da_casa: quoted(b.houseOffer),
         caracteristicas: b.amenities.flatMap((a) =>
           AMENITY_LABEL.has(a) ? [AMENITY_LABEL.get(a)] : []
         ),
         gasto_medio_reais:
           b.averageSpendCents === null ? null : b.averageSpendCents / 100,
+        // A oferta é do jogo (WEB-422): a dele, a padrão do bar ou nenhuma.
         jogos: b.events.slice(0, 5).map((e) => ({
           titulo: gameTitle(e),
-          inicio: brt(e.startsAt)
+          inicio: brt(e.startsAt),
+          oferta_da_casa: quoted(e.houseOffer)
         }))
       })
     }
