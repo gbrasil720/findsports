@@ -101,15 +101,28 @@ class R2Source implements Source {
   }
 }
 
+/**
+ * `http://localhost:*` vale para qualquer porta: cada worktree sobe o web numa
+ * porta própria. Só a porta varia; o host tem de ser exatamente o da regra.
+ */
+function qualquerPorta(regra: string, origem: string): boolean {
+  if (!regra.endsWith(':*')) return false
+  const base = regra.slice(0, -1)
+  return origem.startsWith(base) && /^\d{1,5}$/.test(origem.slice(base.length))
+}
+
 function origemPermitida(env: Env, request: Request): string {
   if (typeof env.ALLOWED_ORIGINS === 'undefined') {
     return ''
   }
+  const origem = request.headers.get('Origin') ?? ''
   let allowedOrigin = ''
   for (const o of env.ALLOWED_ORIGINS.split(',')) {
     const candidato = o.trim()
-    if (candidato === request.headers.get('Origin') || candidato === '*') {
+    if (candidato === origem || candidato === '*') {
       allowedOrigin = candidato
+    } else if (qualquerPorta(candidato, origem)) {
+      allowedOrigin = origem
     }
   }
   return allowedOrigin
