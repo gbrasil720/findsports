@@ -32,6 +32,10 @@ export function horaDoJogo(startsAt: string, now = new Date()) {
   return `${DIA.format(new Date(startsAt)).replace('.', '')} ${hora}`
 }
 
+// O texto da antiga página do convite, que ela substitui.
+const CONVITE =
+  'Abra no app para aceitar o convite. Se você ainda não tem conta, é só criar pelo app: quem entra pelo convite já vira amigo de quem chamou.'
+
 /** O cartão escuro do bar (`barTeaser`), com o próximo jogo. */
 function CartaoBar({ bar }: { bar: BarTeaser }) {
   const next = bar.next
@@ -90,25 +94,62 @@ function Lojas() {
   )
 }
 
+/** O head da página sem bar: `/torcedor` e o link de bar fora do ar. */
+export const SEM_BAR_HEAD = {
+  title: 'A Onside de torcedor está no app — Onside',
+  description:
+    'Ache o bar que vai passar o seu jogo, marque que vai assistir e ganhe a oferta da casa no app Onside.'
+}
+
+/**
+ * O `onside://` do "Abrir no app": o convite de amigo, o bar (só se está no
+ * ar; fora do ar o app também não o mostra) ou o app.
+ */
+export function linkDoApp({
+  barId,
+  convite
+}: {
+  barId?: string | null
+  convite?: string
+}) {
+  if (convite) return `${APP_SCHEME}://convite/${encodeURIComponent(convite)}`
+  if (barId) return `${APP_SCHEME}://bar/${encodeURIComponent(barId)}`
+  return `${APP_SCHEME}://`
+}
+
 /**
  * "O Bar do Zé está no app" (design 4x/4y no computador, 4z no celular): o
  * web é só para bares, e quem chega por um link de bar, ou é torcedor e
- * entrou, vai ao app. Sem `bar`, a mesma página fala da Onside em geral.
+ * entrou, vai ao app. Sem `bar` — torcedor logado, bar fora do ar, convite de
+ * amigo —, a mesma página fala da Onside em geral (WEB-468: link sem bar não
+ * tem desenho próprio).
  *
  * O QR leva a esta mesma página: no celular ela tem o "Abrir no app"
  * (`onside://`), e quem não tem o app não cai num link que não abre nada.
+ * Com `convite`, o "Abrir no app" aceita o convite, e no celular a página já
+ * tenta abrir o app sozinha: link de WhatsApp não abre `onside://` direto.
  */
 export function NoApp({
   bar,
-  barId
+  barId,
+  convite
 }: {
   bar: BarTeaser | null
   barId?: string
+  convite?: string
 }) {
-  const appLink = `${APP_SCHEME}://${bar && barId ? `bar/${encodeURIComponent(barId)}` : ''}`
+  const appLink = linkDoApp({ barId: bar ? barId : null, convite })
   // A URL do QR é a da página aberta; no servidor ainda não há `location`.
   const [qr, setQr] = useState<string | null>(null)
   useEffect(() => setQr(window.location.href.split('#')[0] ?? null), [])
+
+  // Só no celular: no computador o esquema não abre nada (o Safari ainda
+  // mostra erro), e o caminho é o QR.
+  useEffect(() => {
+    if (convite && window.matchMedia('(pointer: coarse)').matches) {
+      window.location.href = appLink
+    }
+  }, [convite, appLink])
 
   const titulo = bar
     ? [{ texto: bar.name }, { texto: 'está no app.', tint: true }]
@@ -143,13 +184,16 @@ export function NoApp({
             </span>
             <Disp tamanho={80} linhas={titulo} className="entrada-app-titulo" />
             <p className="entrada-app-linha">
-              {bar
-                ? 'Para ver os jogos, marcar que vai assistir e ganhar a oferta da casa, abra no app Onside. O web agora é só para bares.'
-                : 'Para achar o bar que vai passar o seu jogo, marcar que vai assistir e ganhar a oferta da casa, use o app Onside. O web agora é só para bares.'}
+              {convite
+                ? CONVITE
+                : bar
+                  ? 'Para ver os jogos, marcar que vai assistir e ganhar a oferta da casa, abra no app Onside. O web agora é só para bares.'
+                  : 'Para achar o bar que vai passar o seu jogo, marcar que vai assistir e ganhar a oferta da casa, use o app Onside. O web agora é só para bares.'}
             </p>
             <p className="entrada-app-linha-cel">
-              Abra no app para marcar que vai assistir e ganhar a oferta da
-              casa.
+              {convite
+                ? CONVITE
+                : 'Abra no app para marcar que vai assistir e ganhar a oferta da casa.'}
             </p>
             <div className="entrada-app-qr">
               <div className="entrada-qr">
