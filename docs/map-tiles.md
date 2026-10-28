@@ -359,9 +359,9 @@ posiciona os pinos. Aparece no `attributionControl` do mapa, montada em
   chega ao componente. Por isso `criarEstiloDoMapa` recebe a origem.
 - **O `@2x` do sprite custa um 307 no Workers assets.** O MapLibre acrescenta
   `@2x` ao `sprite` em tela de alta densidade, e o Workers assets redireciona
-  `light@2x.*` para `light%402x.*` antes de servir. Duas regras `200` em
-  `apps/web/public/_redirects` reescrevem direto para a forma codificada. Sprite
-  novo com outro nome precisa das mesmas duas linhas.
+  `light@2x.*` para `light%402x.*` antes de servir. O sprite saiu em 24/10 e as
+  regras de `apps/web/public/_redirects` saíram com ele: sprite que voltar
+  precisa de duas regras `200` reescrevendo direto para a forma codificada.
 - **`maplibre-gl` está em `optimizeDeps.exclude`** (`apps/web/vite.config.ts`).
   O pré-empacotamento do Vite quebra o `new Worker(new URL(...))` do MapLibre e
   o worker vira 404 em desenvolvimento; sem worker, nenhum tile é decodificado —
