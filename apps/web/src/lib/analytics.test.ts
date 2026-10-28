@@ -13,6 +13,7 @@ describe('getPageSurface', () => {
     expect(getPageSurface('/torcedor')).toBe('fan')
     expect(getPageSurface('/pub/bar-1')).toBe('fan')
     expect(getPageSurface('/pub/abc')).toBe('fan')
+    expect(getPageSurface('/convite/GB-4821')).toBe('fan')
     expect(getPageSurface('/admin')).toBe('pub')
     expect(getPageSurface('/admin/billing')).toBe('pub')
     expect(getPageSurface('/houdini/feiticos')).toBe('other')
