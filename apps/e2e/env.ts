@@ -48,6 +48,9 @@ export const SERVER_ENV: Record<string, string> = {
   AUTH_DEV_TRUSTED_ORIGIN: '',
   E2E_EMAIL_OUTBOX: OUTBOX_FILE,
   E2E_DISABLE_CACHES: '1',
+  EMAIL_API_KEY: '',
+  EMAIL_FROM: '',
+  // Os nomes antigos também: o env cai neles quando os novos vêm vazios.
   RESEND_API_KEY: '',
   RESEND_FROM_EMAIL: '',
   LOCATIONIQ_API_KEY: 'e2e-fake-key',
