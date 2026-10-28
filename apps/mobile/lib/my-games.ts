@@ -82,3 +82,23 @@ export function calendarEvent(
     alarms: [{ relativeOffset: -60 }]
   }
 }
+
+/**
+ * O código do jogo de hoje (WEB-466), o que a manutenção e a falta de rede
+ * ainda abrem: janela de validação aberta (ou por abrir), o que falta
+ * validar antes do validado, e o jogo mais cedo. `null` sem nenhum.
+ */
+export function pickTodayCode<
+  G extends Pick<MyGame, 'code' | 'validated' | 'window' | 'startsAt'>
+>(games: readonly G[], now: number): G | null {
+  const open = games.filter(
+    (game) =>
+      game.code && game.window && new Date(game.window.closesAt).getTime() > now
+  )
+  open.sort(
+    (a, b) =>
+      Number(a.validated) - Number(b.validated) ||
+      new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()
+  )
+  return open[0] ?? null
+}
