@@ -249,7 +249,14 @@ const SECTIONS: { title: string; items: Item[] }[] = [
     title: '13 Ranking',
     items: [
       // Com a turma de `scripts/ranking.sql`; sem amigos, o vazio (11e).
-      { code: '10d', label: 'Ranking · amigos', href: '/voce/ranking' }
+      { code: '10d', label: 'Ranking · amigos', href: '/voce/ranking' },
+      // A cidade com `scripts/ranking-cidade.sql`; desligado, o 27c.
+      {
+        code: '27c',
+        label: 'Ranking · Global',
+        href: { pathname: '/voce/ranking', params: { aba: 'global' } }
+      },
+      { code: '27a', label: 'Lista da cidade', href: '/voce/ranking-cidade' }
     ]
   },
   {
