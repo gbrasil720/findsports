@@ -75,9 +75,9 @@ das páginas legais.
 | `/`, `/termos`, `/privacidade` | sim | `index, follow`, canônica, no sitemap |
 | `/guia`, `/guia/:slug` | sim | `index, follow`, canônica, no sitemap e no `llms.txt`; slug desconhecido é 404 |
 | `/login`, `/signup`, recuperação de senha, `/verify-email`, `/two-factor` | não | `noindex` |
-| `/pub/:id` | não | `noindex`: "O bar está no app" (o web é só para bares), uma página de passagem para o app, aberta sem sessão. Título com o nome do bar, para a prévia de link. Id que não existe: 404 |
+| `/pub/:id` | não | `noindex`: "O bar está no app" (o web é só para bares), uma página de passagem para o app, aberta sem sessão. Título com o nome do bar, para a prévia de link. Bar fora do ar: 200, a página sem bar, com o título dela. Id que não existe: 404 |
 | `/torcedor` | não | `noindex`: onde o torcedor logado cai no web, a mesma página sem bar |
-| `/convite/:código` | não | `noindex`: só abre o app no convite de amigo (`onside://convite/…`); os amigos não têm tela no web |
+| `/convite/:código` | não | `noindex`: a página sem bar (WEB-468), que no celular abre o app no convite de amigo (`onside://convite/…`); os amigos não têm tela no web |
 | rota que não existe (`/x`, `/termos/x`, `/x.txt`) | não | status 404 de verdade, `noindex, nofollow` |
 | `/llms.txt` | — | texto para assistentes de IA; não é página |
 | `/dashboard`, `/admin`, `/plan`, `/onboarding`, `/app`, `/houdini`, `/api` | não | `Disallow` no `robots.txt` (redirecionam para o login ou dão 404; `/dashboard` saiu e é 404) |
