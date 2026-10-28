@@ -3,7 +3,8 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 
 import { type GrimorioEntry, GrimorioRow } from '@/components/houdini/grimorio'
-import { HoudiniShell } from '@/components/houdini/shell'
+import { Icon } from '@/components/houdini/icons'
+import { HoudiniShell, PageHead } from '@/components/houdini/shell'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
@@ -37,29 +38,38 @@ const FILTERS = [
   { label: 'Jogos', kinds: ['event.update', 'event.delete', 'event.fix'] }
 ] as const
 
-function dayLabel(date: Date | string) {
-  const day = new Date(date).toLocaleDateString('pt-BR', {
-    timeZone: 'America/Sao_Paulo',
-    weekday: 'long',
-    day: '2-digit',
-    month: 'long'
-  })
-  const today = new Date().toLocaleDateString('pt-BR', {
-    timeZone: 'America/Sao_Paulo',
-    weekday: 'long',
-    day: '2-digit',
-    month: 'long'
-  })
-  return day === today ? 'Hoje' : day
+const TZ = 'America/Sao_Paulo'
+
+/** "qui, 22 out", no calendário de Brasília. */
+function shortDay(date: Date) {
+  const part = (options: Intl.DateTimeFormatOptions) =>
+    date
+      .toLocaleDateString('pt-BR', { ...options, timeZone: TZ })
+      .replace('.', '')
+  return `${part({ weekday: 'short' })}, ${part({ day: 'numeric' })} ${part({ month: 'short' })}`
+}
+
+/** "Hoje" e "Ontem" com a data ao lado; antes disso, a data é o título. */
+function dayOf(value: Date | string, now = new Date()) {
+  const date = new Date(value)
+  const day = shortDay(date)
+  if (day === shortDay(now)) return { label: 'Hoje', date: day }
+  if (day === shortDay(new Date(now.getTime() - 86_400_000)))
+    return { label: 'Ontem', date: day }
+  return { label: day, date: null }
 }
 
 function byDay(entries: GrimorioEntry[]) {
-  const groups: Array<{ day: string; entries: GrimorioEntry[] }> = []
+  const groups: Array<{
+    label: string
+    date: string | null
+    entries: GrimorioEntry[]
+  }> = []
   for (const entry of entries) {
-    const day = dayLabel(entry.createdAt)
+    const day = dayOf(entry.createdAt)
     const last = groups.at(-1)
-    if (last?.day === day) last.entries.push(entry)
-    else groups.push({ day, entries: [entry] })
+    if (last?.label === day.label) last.entries.push(entry)
+    else groups.push({ ...day, entries: [entry] })
   }
   return groups
 }
@@ -82,15 +92,19 @@ function GrimorioPage() {
   const entries = query.data?.pages.flatMap((p) => p.entries) ?? []
 
   return (
-    <HoudiniShell title="Grimório" env={env} user={admin}>
-      <div className="hd-page" style={{ maxWidth: 920 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <h1 className="hd-h1">Grimório</h1>
-          <p className="hd-lead">
-            Todo truque feito no Houdini fica escrito aqui: quem, quando, em
-            quem e o que mudou. Só se escreve: nem admin apaga uma linha.
-          </p>
-        </div>
+    <HoudiniShell env={env} user={admin}>
+      <div className="hd-page" style={{ maxWidth: 1052 }}>
+        <PageHead
+          overline="Registro"
+          title="Grimório"
+          summary="Todo truque feito no Houdini fica escrito aqui: quem, quando, em quem e o que mudou."
+          actions={
+            <span className="hd-pill is-lg">
+              <Icon name="lock" size={16} />
+              só se escreve · nem admin apaga
+            </span>
+          }
+        />
         <fieldset className="hd-seg" aria-label="Filtrar por truque">
           {FILTERS.map((f, index) => (
             <button
@@ -114,28 +128,32 @@ function GrimorioPage() {
         ) : query.isLoading ? (
           <div className="hd-skeleton" style={{ height: 200 }} />
         ) : entries.length === 0 ? (
-          <div className="hd-card hd-empty">Nenhum truque escrito ainda.</div>
+          <p className="hd-empty is-dashed">Nenhum truque escrito ainda.</p>
         ) : (
           byDay(entries).map((group) => (
             <section
-              key={group.day}
-              style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
+              key={group.label}
+              aria-label={group.label}
+              style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
             >
-              <h2
-                style={{
-                  margin: '0 0 4px',
-                  fontSize: 12,
-                  fontWeight: 700,
-                  letterSpacing: '0.06em',
-                  textTransform: 'uppercase',
-                  color: 'var(--hd-faint)'
-                }}
-              >
-                {group.day}
-              </h2>
-              {group.entries.map((entry) => (
-                <GrimorioRow key={entry.id} entry={entry} />
-              ))}
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+                <h2
+                  style={{
+                    font: '400 26px/1 var(--hd-display)',
+                    textTransform: 'uppercase'
+                  }}
+                >
+                  {group.label}
+                </h2>
+                {group.date ? (
+                  <span className="hd-mono hd-small">{group.date}</span>
+                ) : null}
+              </div>
+              <div className="hd-card" style={{ padding: '4px 20px', gap: 0 }}>
+                {group.entries.map((entry) => (
+                  <GrimorioRow key={entry.id} entry={entry} />
+                ))}
+              </div>
             </section>
           ))
         )}

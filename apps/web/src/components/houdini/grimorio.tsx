@@ -1,21 +1,22 @@
 import { PLAN_NAMES } from '@findsports_oficial/api/lib/plan-limits'
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
+import { Link } from '@tanstack/react-router'
 import type { inferRouterOutputs } from '@trpc/server'
 
-import { formatDateTime } from './format'
+import { formatDateTime, formatTime, initials, when } from './format'
 import { Icon, type IconName } from './icons'
 
 export type GrimorioEntry =
   inferRouterOutputs<AppRouter>['grimorio']['list']['entries'][number]
 
-type Tone = 'roxo' | 'bad' | 'warn' | 'ok' | 'neutral'
+/** O ladrilho do ícone: acid lança, vermelho tira, tinta é na pele. */
+type Tone = 'acid' | 'live' | 'ink' | 'stone'
 
 const TONES: Record<Tone, { bg: string; fg: string }> = {
-  roxo: { bg: 'var(--hd-roxo-tint)', fg: 'var(--hd-roxo-soft)' },
-  bad: { bg: 'var(--hd-bad-tint)', fg: 'var(--hd-bad)' },
-  warn: { bg: 'rgb(242 196 109 / 0.12)', fg: 'var(--hd-warn)' },
-  ok: { bg: 'var(--hd-ok-tint)', fg: 'var(--hd-ok)' },
-  neutral: { bg: 'rgb(255 255 255 / 0.07)', fg: 'var(--hd-soft)' }
+  acid: { bg: 'var(--hd-acid)', fg: '#12120f' },
+  live: { bg: 'var(--hd-live)', fg: '#fff' },
+  ink: { bg: 'var(--hd-fg)', fg: 'var(--hd-bg)' },
+  stone: { bg: 'var(--hd-sub)', fg: 'var(--hd-fg)' }
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -92,7 +93,7 @@ export function describe(entry: GrimorioEntry): {
     case 'user.impersonate':
       return {
         icon: 'mask',
-        tone: 'roxo',
+        tone: 'ink',
         text: `entrou na pele de ${label}`,
         detail: null
       }
@@ -100,7 +101,7 @@ export function describe(entry: GrimorioEntry): {
       const lasted = duration(detail.seconds)
       return {
         icon: 'mask',
-        tone: 'roxo',
+        tone: 'ink',
         text: `tirou a pele de ${label}`,
         detail: lasted ? `durou ${lasted}` : null
       }
@@ -109,7 +110,7 @@ export function describe(entry: GrimorioEntry): {
       const act = asRecord(entry.after).mode === 'act'
       return {
         icon: 'mask',
-        tone: act ? 'warn' : 'roxo',
+        tone: 'ink',
         text: `${act ? 'passou a agir' : 'voltou a só olhar'} na pele de ${label}`,
         detail: null
       }
@@ -117,7 +118,7 @@ export function describe(entry: GrimorioEntry): {
     case 'user.ban':
       return {
         icon: 'vanish',
-        tone: 'bad',
+        tone: 'live',
         text: `sumiu com ${label}`,
         detail:
           typeof detail.reason === 'string'
@@ -127,35 +128,35 @@ export function describe(entry: GrimorioEntry): {
     case 'user.unban':
       return {
         icon: 'back',
-        tone: 'ok',
+        tone: 'stone',
         text: `trouxe ${label} de volta`,
         detail: null
       }
     case 'user.set_role':
       return {
         icon: 'users',
-        tone: 'neutral',
-        text: `trocou a role de ${label}`,
+        tone: 'stone',
+        text: `trocou o papel de ${label}`,
         detail: `${asRecord(entry.before).role ?? '?'} → ${asRecord(entry.after).role ?? '?'}`
       }
     case 'user.resend_verification':
       return {
         icon: 'check',
-        tone: 'neutral',
+        tone: 'stone',
         text: `pediu o reenvio da verificação de e-mail para ${label}`,
         detail: null
       }
     case 'user.send_password_reset':
       return {
         icon: 'back',
-        tone: 'neutral',
+        tone: 'stone',
         text: `pediu o link de troca de senha para ${label}`,
         detail: null
       }
     case 'config.set':
       return {
         icon: 'wand',
-        tone: 'warn',
+        tone: 'acid',
         text: `lançou ${label}`,
         detail: `${show(entry.before)} → ${show(entry.after)}${
           typeof detail.expiresInMinutes === 'number'
@@ -166,35 +167,35 @@ export function describe(entry: GrimorioEntry): {
     case 'config.expire':
       return {
         icon: 'hourglass',
-        tone: 'warn',
+        tone: 'stone',
         text: `desfez ${label}: o prazo acabou`,
         detail: `${show(entry.before)} → padrão`
       }
     case 'config.reset':
       return {
         icon: 'wand',
-        tone: 'warn',
+        tone: 'stone',
         text: `desfez ${label}`,
         detail: `${show(entry.before)} → padrão`
       }
     case 'system.run_job':
       return {
         icon: 'pulse',
-        tone: detail.ok ? 'neutral' : 'bad',
+        tone: detail.ok ? 'stone' : 'live',
         text: `rodou ${JOB_LABELS[label] ?? label} na hora`,
         detail: detail.ok ? null : 'falhou: o erro está em Bastidores'
       }
     case 'event.update':
       return {
         icon: 'cal',
-        tone: 'warn',
+        tone: 'stone',
         text: `corrigiu o jogo ${label}`,
         detail: eventChanges(entry.before, entry.after)
       }
     case 'event.delete':
       return {
         icon: 'cal',
-        tone: 'bad',
+        tone: 'live',
         text: `apagou o jogo ${label}`,
         detail: eventField('startsAt', asRecord(entry.before).startsAt)
       }
@@ -202,13 +203,13 @@ export function describe(entry: GrimorioEntry): {
       return detail.warning === 'duplicate'
         ? {
             icon: 'cal',
-            tone: 'ok',
+            tone: 'stone',
             text: `apagou o duplicado ${label}`,
             detail: eventField('startsAt', asRecord(entry.before).startsAt)
           }
         : {
             icon: 'cal',
-            tone: 'ok',
+            tone: 'stone',
             text: `ligou ao catálogo o jogo ${label}`,
             detail: `“${asRecord(entry.before).participantFreeText ?? '?'}” → ${(
               (asRecord(entry.after).teams as string[] | undefined) ?? []
@@ -217,7 +218,7 @@ export function describe(entry: GrimorioEntry): {
     case 'bar.sync_search':
       return {
         icon: 'store',
-        tone: 'warn',
+        tone: 'stone',
         text: `sincronizou a busca de ${label}`,
         detail: `${planName(asRecord(entry.before).plan)} → ${planName(asRecord(entry.after).plan)}`
       }
@@ -230,7 +231,7 @@ export function describe(entry: GrimorioEntry): {
           : null
       return {
         icon: 'hourglass',
-        tone: 'roxo',
+        tone: 'stone',
         text: `estendeu o teste de ${label} em ${detail.days ?? '?'} dias`,
         detail:
           [end, !before.isActive && after.isActive ? 'religou o bar' : null]
@@ -241,27 +242,62 @@ export function describe(entry: GrimorioEntry): {
     case 'bar.take_off_air':
       return {
         icon: 'vanish',
-        tone: 'bad',
+        tone: 'live',
         text: `tirou ${label} do ar`,
         detail: null
       }
     case 'bar.put_on_air':
       return {
         icon: 'back',
-        tone: 'ok',
+        tone: 'stone',
         text: `religou ${label}`,
         detail: null
       }
     default:
       return {
         icon: 'book',
-        tone: 'neutral',
+        tone: 'stone',
         text: `${entry.kind} em ${label}`,
         detail: null
       }
   }
 }
 
+/** A ficha que a linha abre: pessoa e bar têm; jogo, feitiço e rotina não. */
+function Target({ entry }: { entry: GrimorioEntry }) {
+  const style = { paddingTop: 6, fontWeight: 600 }
+  if (entry.targetType === 'user') {
+    return (
+      <Link
+        to="/houdini/pessoas/$userId"
+        params={{ userId: entry.targetId }}
+        className="hd-small hd-grim-target"
+        style={style}
+      >
+        {entry.targetLabel}
+      </Link>
+    )
+  }
+  if (entry.targetType === 'bar') {
+    return (
+      <Link
+        to="/houdini/bares/$barId"
+        params={{ barId: entry.targetId }}
+        className="hd-small hd-grim-target"
+        style={style}
+      >
+        {entry.targetLabel}
+      </Link>
+    )
+  }
+  return null
+}
+
+/**
+ * Uma linha do Grimório. Na página, agrupada por dia: hora, ladrilho, quem e o
+ * quê, e a ficha do alvo. No Início (`compact`): as iniciais de quem fez e a
+ * hora no fim.
+ */
 export function GrimorioRow({
   entry,
   compact = false
@@ -271,35 +307,64 @@ export function GrimorioRow({
 }) {
   const d = describe(entry)
   const tone = TONES[d.tone]
-  return (
-    <article
-      className="hd-grim-row"
+  const time = (
+    <time
+      className="hd-mono hd-grim-time"
+      dateTime={new Date(entry.createdAt).toISOString()}
+      title={formatDateTime(entry.createdAt)}
       style={{
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: 14,
-        padding: compact ? '10px 0' : '14px 16px',
-        borderRadius: compact ? 0 : 12,
-        background: compact ? 'transparent' : 'var(--hd-panel)',
-        border: compact ? 0 : '1px solid rgb(255 255 255 / 0.06)',
-        borderTop: compact ? '1px solid rgb(255 255 255 / 0.05)' : undefined
+        flex: '0 0 auto',
+        fontSize: 12.5,
+        fontWeight: 600,
+        color: 'var(--hd-muted)',
+        paddingTop: compact ? 0 : 7,
+        minWidth: compact ? undefined : 48
       }}
     >
-      <span
-        style={{
-          flex: '0 0 auto',
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: 32,
-          height: 32,
-          borderRadius: 9,
-          background: tone.bg,
-          color: tone.fg
-        }}
-      >
-        <Icon name={d.icon} size={16} strokeWidth={1.8} />
-      </span>
+      {compact
+        ? when(entry.createdAt).replace(/^hoje /, '')
+        : formatTime(entry.createdAt)}
+    </time>
+  )
+
+  return (
+    <article
+      className="hd-row hd-grim-row"
+      style={{
+        alignItems: 'flex-start',
+        gap: compact ? 12 : 14,
+        padding: compact ? '10px 0' : '14px 0'
+      }}
+    >
+      {compact ? (
+        <span
+          className="hd-avatar is-sm"
+          role="img"
+          aria-label={entry.actorName}
+          title={entry.actorName}
+        >
+          {initials(entry.actorName)}
+        </span>
+      ) : (
+        <>
+          {time}
+          <span
+            style={{
+              flex: '0 0 auto',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 30,
+              height: 30,
+              borderRadius: 6,
+              background: tone.bg,
+              color: tone.fg
+            }}
+          >
+            <Icon name={d.icon} size={16} />
+          </span>
+        </>
+      )}
       <div
         style={{
           flexGrow: 1,
@@ -310,31 +375,21 @@ export function GrimorioRow({
         }}
       >
         <span
-          style={{ fontSize: 14, lineHeight: 1.45, overflowWrap: 'anywhere' }}
+          style={{ fontSize: compact ? 14 : 14.5, overflowWrap: 'anywhere' }}
         >
-          <strong style={{ fontWeight: 700 }}>{entry.actorName}</strong>{' '}
+          {compact ? null : <b>{entry.actorName} </b>}
           {d.text}
         </span>
         {d.detail ? (
           <span
-            className="hd-mono"
-            style={{
-              fontSize: 12,
-              color: 'var(--hd-muted)',
-              overflowWrap: 'anywhere'
-            }}
+            className="hd-mono hd-small"
+            style={{ overflowWrap: 'anywhere' }}
           >
             {d.detail}
           </span>
         ) : null}
       </div>
-      <time
-        className="hd-mono hd-grim-time"
-        dateTime={new Date(entry.createdAt).toISOString()}
-        style={{ flex: '0 0 auto', fontSize: 12, color: 'var(--hd-faint)' }}
-      >
-        {formatDateTime(entry.createdAt)}
-      </time>
+      {compact ? time : <Target entry={entry} />}
     </article>
   )
 }
