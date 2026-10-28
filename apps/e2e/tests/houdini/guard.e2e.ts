@@ -85,12 +85,26 @@ test.describe('admin com 2FA', () => {
     await page.goto('/houdini')
     const rail = page.getByRole('navigation', { name: 'Seções do Houdini' })
 
+    // No celular a barra de baixo só tem Início, Pessoas e Bares; o resto
+    // fica no "Mais", a folha com o trilho inteiro.
+    // O nome do link leva a contagem ao lado ("Pessoas 16").
+    const named = (name: string) => new RegExp(`^${name}( |$)`)
+    async function open(name: string) {
+      const link = rail.getByRole('link', { name: named(name) })
+      if (await link.isVisible()) return link.click()
+      await rail.getByRole('button', { name: 'Mais' }).click()
+      await page
+        .getByRole('navigation', { name: 'Todas as seções' })
+        .getByRole('link', { name: named(name) })
+        .click()
+    }
+
     for (const [name, url] of sections) {
-      await rail.getByRole('link', { name, exact: true }).click()
+      await open(name)
       await expect(page).toHaveURL(new RegExp(`${url}$`))
       await expect(page.getByRole('heading', { level: 1, name })).toBeVisible()
     }
-    await rail.getByRole('link', { name: 'Início', exact: true }).click()
+    await open('Início')
     await expect(page).toHaveURL(/\/houdini$/)
   })
 
