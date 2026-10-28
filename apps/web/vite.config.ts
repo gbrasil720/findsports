@@ -30,7 +30,17 @@ export default defineConfig(({ mode }) => ({
      * (WEB-333). Sem ele aqui o `vite dev` o descobre no meio da visita,
      * reempacota as dependências e recarrega a página.
      */
-    include: ['three']
+    include: ['three'],
+    /**
+     * WEB-73/456: pré-empacotado, o worker do MapLibre e a página carregam
+     * duas cópias do módulo compartilhado e o handshake trava, sem erro: o
+     * canvas aparece e nenhum tile é desenhado. Só afeta `vite dev`.
+     */
+    exclude: ['maplibre-gl']
+  },
+  /** O worker do MapLibre é módulo ES (`?worker&url` em `mapa-maplibre.ts`). */
+  worker: {
+    format: 'es'
   },
   server: {
     port: 3001,
