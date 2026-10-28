@@ -8,7 +8,7 @@ import {
   subscription
 } from '@findsports_oficial/db/schema/platform'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
-import { temOfertaDaCasa } from '../lib/pub-search/shared'
+import { eliteVigente, jogoComOferta } from '../lib/pub-search/shared'
 import { contextFor, load } from './integration-seed'
 
 /**
@@ -166,10 +166,11 @@ integrationTest(
 )
 
 /**
- * "Com oferta da casa" (10) não é marcada: é o bar Elite com oferta
- * cadastrada, a mesma regra que mostra a oferta na página do bar. A regra em
- * SQL (`temOfertaDaCasa`) e a da página têm de dizer a mesma coisa, com o id
- * gravado em `bar.amenities` (de quando era "Aceita reserva") ou sem ele.
+ * "Com oferta da casa" (10) não é marcada: é o bar Elite com oferta no jogo,
+ * a mesma regra que mostra a oferta na página do bar. A regra em SQL
+ * (`eliteVigente` e `jogoComOferta`) e a da página têm de dizer a mesma
+ * coisa, com o id gravado em `bar.amenities` (de quando era "Aceita reserva")
+ * ou sem ele. A oferta por jogo (WEB-422) está no teste seguinte.
  */
 integrationTest(
   'filtro "Com oferta da casa" traz todo bar Elite com oferta, e só eles, nos três caminhos',
@@ -311,8 +312,9 @@ integrationTest(
         fixtures.map((fixture) => [fixture.barId, fixture.tem])
       )
       const emSql = await db.execute(sql`
-        SELECT b.id, ${temOfertaDaCasa(sql`b`)} AS tem
+        SELECT b.id, ${eliteVigente(sql`b`)} AND ${jogoComOferta(sql`e`)} AS tem
         FROM bar b
+        JOIN event e ON e.bar_id = b.id
         WHERE b.id IN (${sql.join(
           barIds.map((id) => sql`${id}`),
           sql`, `
@@ -329,7 +331,7 @@ integrationTest(
       for (const barId of barIds) {
         const pagina = await caller.pubs.getById({ id: barId })
         expect(pagina.amenities).not.toContain(10)
-        naPagina[barId] = pagina.houseOffer !== null
+        naPagina[barId] = pagina.events[0]?.houseOffer != null
       }
       expect(naPagina).toEqual(esperado)
 

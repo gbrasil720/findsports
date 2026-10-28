@@ -41,6 +41,7 @@ import {
 } from '../index'
 import {
   declaredAmenityIds,
+  HOUSE_OFFER_AMENITY_ID,
   MAX_AMENITY_FILTER,
   normalizeAmenityIds
 } from '../lib/amenities'
@@ -997,6 +998,13 @@ export const pubsRouter = router({
         WHERE b.is_active
           AND ST_DWithin(b.geo, ${origin}, ${radiusMeters})
           ${amenityFilter(sql`b`)}
+          -- Sem jogo, a oferta que valeria é a padrão do bar (WEB-422); o
+          -- Elite já vem do filtro de características.
+          ${
+            input.amenities?.includes(HOUSE_OFFER_AMENITY_ID)
+              ? sql`AND b.house_offer IS NOT NULL`
+              : sql``
+          }
           AND NOT EXISTS (
             SELECT 1 FROM event e WHERE e.bar_id = b.id AND ${jogoNaoAcabou(sql`e`)}
           )
@@ -1048,6 +1056,7 @@ export const pubsRouter = router({
           AND ${onBrasiliaDaysSql(sql`e.starts_at`, brasiliaTodaySql(now), 7)}
           ${input.sportId ? sql`AND e.sport_id = ${input.sportId}` : sql``}
           ${filtros.amenityFilter(sql`b`)}
+          ${filtros.ofertaDoJogo}
         GROUP BY 1
       `)
       const games = new Map(result.rows.map((row) => [row.day, row.games]))

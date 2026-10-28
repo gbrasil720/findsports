@@ -65,12 +65,31 @@ export const eliteVigente = (barAlias: SQL) => sql`EXISTS (
   )`
 
 /**
- * "Com oferta da casa": Elite vigente e oferta cadastrada. É a mesma regra da
- * página do bar (`houseOffer` em `pubs.getById`): o código do balcão, que
- * resgata a oferta, só sai no Elite.
+ * Jogo com oferta da casa (WEB-422): a do jogo, senão a padrão do bar, e
+ * nenhuma com "sem oferta neste jogo". É `effectiveHouseOffer`
+ * (`lib/house-offer.ts`) em SQL; o Elite vigente fica no filtro do bar
+ * (`amenityFilter`): o código do balcão, que resgata a oferta, só sai nele.
+ *
+ * A padrão vem por subconsulta na chave do bar, e não pelo alias de quem
+ * chama, para o fragmento valer em todo lugar que aplica `eventFilter`, até
+ * na contagem sobre a lista já ranqueada, que não tem a coluna. Só entra com o
+ * filtro pedido: a busca sem ele não muda.
+ *
+ * Medido com 100 mil bares e 500 mil jogos (raio de 3 km em São Paulo, ~6 mil
+ * bares no raio), mediana de cinco: em camadas, de 63,5 para 65,9 mil buffers
+ * (+0,9 ms, ~26 ms); por nota, de 32,2 para 34,5 mil (+0,6 ms, ~18 ms). A
+ * subconsulta é uma busca na chave do bar por jogo candidato.
  */
-export const temOfertaDaCasa = (barAlias: SQL) =>
-  sql`(${eliteVigente(barAlias)} AND ${barAlias}.house_offer IS NOT NULL)`
+export const jogoComOferta = (e: SQL) => sql`(
+    NOT ${e}.no_house_offer
+    AND (
+      ${e}.house_offer IS NOT NULL
+      OR EXISTS (
+        SELECT 1 FROM bar oferta_bar
+        WHERE oferta_bar.id = ${e}.bar_id AND oferta_bar.house_offer IS NOT NULL
+      )
+    )
+  )`
 
 export type SearchInput = {
   lat: number
@@ -223,11 +242,17 @@ export type FiltrosBusca = {
   origin: SQL
   radiusMeters: number
   /**
-   * Recortes que só olham o jogo: esporte, data e times (jogo com ao menos
-   * um dos escolhidos). Um fragmento só, porque todo lugar que procura jogo
-   * aplica os três juntos.
+   * Recortes que só olham o jogo: esporte, data, times (jogo com ao menos
+   * um dos escolhidos) e, com "Oferta da casa", a oferta do jogo
+   * (`ofertaDoJogo`). Um fragmento só, porque todo lugar que procura jogo
+   * aplica todos juntos.
    */
   eventFilter: SQL
+  /**
+   * Só a parte da oferta de `eventFilter`, para quem conta jogo sem os outros
+   * recortes (`gameDays`). Vazio sem o filtro.
+   */
+  ofertaDoJogo: SQL
   /**
    * Texto do jogo OU nome do bar. O alias da
    * tabela do bar muda conforme a query, então entra como fragmento montado
@@ -248,9 +273,10 @@ export type FiltrosBusca = {
    * uma tabela de junção — ver migration 0021.
    *
    * "Com oferta da casa" é a exceção: não é marcada, é derivada do plano e
-   * da oferta. Pedir esse filtro é pedir `temOfertaDaCasa`, sem olhar o id em
-   * `amenities`; as demais continuam pelo `@>`, e as duas condições somam
-   * com E.
+   * da oferta. Aqui ela pede o Elite vigente, sem olhar o id em `amenities`;
+   * a oferta é de cada jogo e vai em `eventFilter` (WEB-422), então o bar
+   * entra pelo próximo jogo que casa com a busca e tem oferta. As demais
+   * continuam pelo `@>`, e as condições somam com E.
    *
    * O alias da tabela do bar muda entre os dois caminhos, então entra como
    * fragmento montado pelo chamador, igual ao filtro de campeonato.
@@ -294,6 +320,9 @@ export function montarFiltrosBusca(input: SearchInput): FiltrosBusca {
       )
     : null
 
+  const pedeOferta = amenities?.includes(HOUSE_OFFER_AMENITY_ID) ?? false
+  const ofertaDoJogo = pedeOferta ? sql`AND ${jogoComOferta(sql`e`)}` : sql``
+
   const eventFilter = sql.join(
     [
       sportId ? sql`AND e.sport_id = ${sportId}` : sql``,
@@ -308,7 +337,8 @@ export function montarFiltrosBusca(input: SearchInput): FiltrosBusca {
                   sql`, `
                 )})
             )`
-        : sql``
+        : sql``,
+      ofertaDoJogo
     ],
     sql` `
   )
@@ -319,6 +349,7 @@ export function montarFiltrosBusca(input: SearchInput): FiltrosBusca {
     origin: sql`ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography`,
     radiusMeters: radiusKm * 1000,
     eventFilter,
+    ofertaDoJogo,
     champBarFilter,
     proximoJogo: (barAlias) => sql`
       e.id AS next_event_id,
@@ -349,11 +380,7 @@ export function montarFiltrosBusca(input: SearchInput): FiltrosBusca {
         listaAmenidades
           ? sql`AND ${barAlias}.amenities @> ARRAY[${listaAmenidades}]::int[]`
           : sql``
-      } ${
-        amenities?.includes(HOUSE_OFFER_AMENITY_ID)
-          ? sql`AND ${temOfertaDaCasa(barAlias)}`
-          : sql``
-      }`
+      } ${pedeOferta ? sql`AND ${eliteVigente(barAlias)}` : sql``}`
   }
 }
 
