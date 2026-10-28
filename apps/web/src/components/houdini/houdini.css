@@ -132,6 +132,15 @@
    volta a valer contra a janela. */
 :is(html, body):has(.houdini) {
   overflow-x: clip;
+  /* O fundo de html e body é o papel do site: no fim de página curta e no
+     "elástico" da rolagem aparecia uma faixa clara embaixo do Houdini. */
+  background: #12120f;
+}
+
+@media (prefers-color-scheme: light) {
+  :is(html, body):has(.houdini) {
+    background: #f1eee6;
+  }
 }
 
 .houdini *,
@@ -196,10 +205,13 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
-  min-height: var(--hd-env-h);
-  padding: calc(6px + env(safe-area-inset-top, 0px))
-    calc(20px + env(safe-area-inset-right, 0px)) 6px
+  flex-wrap: nowrap;
+  /* Altura fixa: o trilho gruda logo abaixo (`top: var(--hd-env-h)`), e uma
+     faixa mais alta que a conta cobria o topo do trilho (a marca cortada). */
+  height: calc(var(--hd-env-h) + env(safe-area-inset-top, 0px));
+  overflow: hidden;
+  padding: env(safe-area-inset-top, 0px)
+    calc(20px + env(safe-area-inset-right, 0px)) 0
     calc(20px + env(safe-area-inset-left, 0px));
   font: 600 11px / 1.2 var(--hd-mono);
   letter-spacing: 0.08em;
@@ -248,8 +260,8 @@
 .hd-side {
   flex: 0 0 252px;
   position: sticky;
-  top: var(--hd-env-h);
-  height: calc(100dvh - var(--hd-env-h));
+  top: calc(var(--hd-env-h) + env(safe-area-inset-top, 0px));
+  height: calc(100dvh - var(--hd-env-h) - env(safe-area-inset-top, 0px));
   overflow-y: auto;
   overscroll-behavior: contain;
   display: flex;
@@ -596,7 +608,8 @@
 /* Painel ao lado da lista (Dossiê, bar e jogo escolhidos). */
 .hd-aside {
   position: sticky;
-  top: 20px;
+  /* Abaixo da faixa do ambiente, que também gruda no topo. */
+  top: calc(var(--hd-env-h) + env(safe-area-inset-top, 0px) + 20px);
   gap: 16px;
   padding: 20px 22px;
 }
