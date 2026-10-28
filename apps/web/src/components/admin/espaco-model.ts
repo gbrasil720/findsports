@@ -485,3 +485,57 @@ export const iniciaisDoApp = (nome: string) =>
     .map((palavra) => palavra[0])
     .join('')
     .toUpperCase()
+
+/* ─── Distância e mapa da prévia (WEB-456) ─── */
+
+/**
+ * O painel não sabe onde está o torcedor: a prévia põe um de exemplo a
+ * 0,8 km ao sul do bar (o "0,8 km · 11 min a pé" do design), e a legenda
+ * avisa que a distância é de exemplo.
+ */
+export const KM_DE_EXEMPLO = 0.8
+
+/** O raio de busca de quem não mexeu nele (`user.search_radius_km`). */
+export const RAIO_PADRAO_KM = 3
+
+type Ponto = { lat: number; lng: number }
+
+/** 1° de latitude tem ~111,2 km; ao sul para a gota ficar acima do ponto. */
+export const torcedorDeExemplo = (bar: Ponto): Ponto => ({
+  lat: bar.lat - KM_DE_EXEMPLO / 111.2,
+  lng: bar.lng
+})
+
+/** "0,8 km": o `formatKm` do app (`apps/mobile/lib/explore.ts`). */
+export const formatKm = (km: number) =>
+  `${km.toLocaleString('pt-BR', { maximumFractionDigits: 1, minimumFractionDigits: km < 10 ? 1 : 0 })} km`
+
+/** A pé, a 4,5 km/h: o `walkMinutes` de `app/bar/[id].tsx`. */
+export const minutosAPe = (km: number) =>
+  Math.max(1, Math.round((km / 4.5) * 60))
+
+/*
+ * Web Mercator em tiles de 512 px, a conta do MapLibre: põe as peças do app
+ * (gota, raio, você) por cima do mapa sem esperar ele carregar.
+ */
+const MUNDO = 512
+const EQUADOR_M = 40_075_016.686
+const rad = (graus: number) => (graus * Math.PI) / 180
+
+/** Metros que cabem em 1 pt do mapa nessa latitude e zoom. */
+export const metrosPorPonto = (lat: number, zoom: number) =>
+  (EQUADOR_M * Math.cos(rad(lat))) / (MUNDO * 2 ** zoom)
+
+/** O zoom em que `km` ocupam `pontos` na tela. */
+export const zoomPara = (lat: number, km: number, pontos: number) =>
+  Math.log2((EQUADOR_M * Math.cos(rad(lat)) * pontos) / (MUNDO * km * 1000))
+
+/** Quantos pt `b` fica à direita e abaixo de `a` no mapa. */
+export function deslocamento(a: Ponto, b: Ponto, zoom: number) {
+  const mundo = MUNDO * 2 ** zoom
+  const y = (lat: number) => {
+    const s = Math.sin(rad(lat))
+    return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * mundo
+  }
+  return { x: ((b.lng - a.lng) / 360) * mundo, y: y(b.lat) - y(a.lat) }
+}
