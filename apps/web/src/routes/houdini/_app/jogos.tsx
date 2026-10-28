@@ -18,7 +18,6 @@ import { createFileRoute } from '@tanstack/react-router'
 import type { inferRouterOutputs } from '@trpc/server'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { refusalMessage } from '@/components/houdini/errors'
 import { HoldButton } from '@/components/houdini/hold-button'
 import { Icon } from '@/components/houdini/icons'
 import { HoudiniShell } from '@/components/houdini/shell'
@@ -333,7 +332,7 @@ function GamePanel({ game }: { game: Game }) {
         await refresh()
       },
       onError: (error) =>
-        toast.error(refusalMessage(error, 'Não foi possível consertar.'))
+        toast.error(getUserFacingMessage(error, 'Não foi possível consertar.'))
     })
   )
   const update = useMutation(
@@ -345,7 +344,7 @@ function GamePanel({ game }: { game: Game }) {
         await refresh()
       },
       onError: (error) =>
-        toast.error(refusalMessage(error, 'Não foi possível salvar.'))
+        toast.error(getUserFacingMessage(error, 'Não foi possível salvar.'))
     })
   )
   const remove = useMutation(
@@ -355,7 +354,7 @@ function GamePanel({ game }: { game: Game }) {
         await refresh()
       },
       onError: (error) =>
-        toast.error(refusalMessage(error, 'Não foi possível apagar.'))
+        toast.error(getUserFacingMessage(error, 'Não foi possível apagar.'))
     })
   )
   const busy = fix.isPending || update.isPending || remove.isPending
