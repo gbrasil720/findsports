@@ -56,6 +56,24 @@ function brasiliaClock(now: Date) {
   }
 }
 
+/** A faixa aberta no minuto `minute` do dia `weekday`: a de hoje ou a de ontem que virou a meia-noite. */
+function slotAt(hours: OpeningHours, weekday: number, minute: number) {
+  const today = hours[weekday]
+  if (today) {
+    const opens = minutes(today.opens)
+    const closes = minutes(today.closes)
+    if (closes > opens ? minute >= opens && minute < closes : minute >= opens)
+      return today
+  }
+  const yesterday = hours[(weekday + 6) % 7]
+  if (yesterday) {
+    const opens = minutes(yesterday.opens)
+    const closes = minutes(yesterday.closes)
+    if (closes <= opens && minute < closes) return yesterday
+  }
+  return null
+}
+
 /**
  * O bar está aberto agora? Olha a faixa de hoje e a de ontem que virou a
  * meia-noite. `null` quando o bar não informou horário.
@@ -66,20 +84,50 @@ export function isOpenNow(
 ): boolean | null {
   if (!hours) return null
   const { weekday, minute } = brasiliaClock(now)
-  const today = hours[weekday]
-  const yesterday = hours[(weekday + 6) % 7]
-  if (today) {
-    const opens = minutes(today.opens)
-    const closes = minutes(today.closes)
-    if (closes > opens ? minute >= opens && minute < closes : minute >= opens)
-      return true
+  return slotAt(hours, weekday, minute) !== null
+}
+
+/**
+ * O jogo está dentro do horário de funcionamento (WEB-463)? Vale o início:
+ * o bar precisa estar aberto quando a bola rola, no relógio de Brasília. O fim
+ * não conta, porque quase nenhum jogo informa e o padrão de 3 h passaria da
+ * meia-noite em todo bar que fecha às 00:00. Dia marcado como fechado é fora;
+ * bar sem horário nenhum não tem como dizer (`null`) e o painel não avisa.
+ */
+export function isGameWithinHours(
+  hours: OpeningHours | null,
+  startsAt: Date
+): boolean | null {
+  return isOpenNow(hours, startsAt)
+}
+
+export type OpeningStatus =
+  | { open: true; closes: string }
+  /** `inDays`: 0 abre hoje, 1 amanhã... `day` é o dia da semana (0 = domingo). */
+  | { open: false; opens: string; inDays: number; day: number }
+
+/**
+ * "Aberto agora · fecha às 01:00" ou "Fechado agora · abre às 17:00" (28a):
+ * a próxima virada a partir de `now`. `null` sem horário.
+ */
+export function openingStatus(
+  hours: OpeningHours | null,
+  now: Date
+): OpeningStatus | null {
+  const week = normalizeOpeningHours(hours)
+  if (!week) return null
+  const { weekday, minute } = brasiliaClock(now)
+  const slot = slotAt(week, weekday, minute)
+  if (slot) return { open: true, closes: slot.closes }
+  const today = week[weekday]
+  if (today && minute < minutes(today.opens))
+    return { open: false, opens: today.opens, inDays: 0, day: weekday }
+  for (let inDays = 1; inDays <= 7; inDays++) {
+    const day = (weekday + inDays) % 7
+    const next = week[day]
+    if (next) return { open: false, opens: next.opens, inDays, day }
   }
-  if (yesterday) {
-    const opens = minutes(yesterday.opens)
-    const closes = minutes(yesterday.closes)
-    if (closes <= opens && minute < closes) return true
-  }
-  return false
+  return null
 }
 
 /** Segunda primeiro, como se lê uma semana de bar. */
@@ -94,6 +142,9 @@ const FULL = [
   'Sexta',
   'Sábado'
 ]
+
+/** "sexta", "sábado": o dia da semana no meio da frase (0 = domingo). */
+export const weekdayName = (day: number) => (FULL[day] ?? '').toLowerCase()
 
 const capital = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
 
