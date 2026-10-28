@@ -4,6 +4,7 @@ import {
   alteracoes,
   atalhosDoHorario,
   avisoDosJogos,
+  avisoForaDoHorario,
   checklistDoPerfil,
   type DiaRascunho,
   deslocamento,
@@ -335,6 +336,21 @@ describe('editor de horário (28a, 28e)', () => {
       'abre às 12:00'
     )
     expect(situacaoDoHorario(null, new Date())).toBeNull()
+  })
+
+  test('aviso do Novo jogo: fora da faixa ou em dia fechado', () => {
+    const ze = horario(ZE)
+    // Sexta 15:00: o bar abre às 16:00.
+    expect(avisoForaDoHorario(ze, brt('2026-10-23T15:00:00'))).toBe(
+      'Fora do horário de funcionamento (sexta, 16:00 – 02:00). Dá para publicar mesmo assim.'
+    )
+    // Segunda fechada.
+    expect(avisoForaDoHorario(ze, brt('2026-10-26T21:00:00'))).toBe(
+      'Fora do horário de funcionamento (segunda, fechado). Dá para publicar mesmo assim.'
+    )
+    // Sábado 01:30 ainda é a sexta que virou: dentro.
+    expect(avisoForaDoHorario(ze, brt('2026-10-24T01:30:00'))).toBeNull()
+    expect(avisoForaDoHorario(null, brt('2026-10-26T21:00:00'))).toBeNull()
   })
 
   describe('aviso dos jogos', () => {

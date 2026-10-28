@@ -213,7 +213,8 @@ export function avisoDosJogos(
   depois: OpeningHours | null,
   now: Date
 ): { fora: boolean; texto: string } | null {
-  if (JSON.stringify(antes) === JSON.stringify(depois)) return null
+  if (JSON.stringify(normalizeOpeningHours(antes)) === JSON.stringify(depois))
+    return null
   const fim = brasiliaDayStart(brasiliaDay(now, 7)).getTime()
   const proximos = jogos
     .map((jogo) => new Date(jogo.startsAt))
@@ -234,6 +235,21 @@ export function avisoDosJogos(
     fora: fora.length > 0,
     texto: `O jogo de ${diaNaFrase(primeiro, now)} às ${horaDoJogo(primeiro)} ${verbo} ${fora.length ? 'fora' : 'dentro'} do novo horário.`
   }
+}
+
+/**
+ * O aviso do "Novo jogo" quando a bola rola com o bar fechado (WEB-463, decisão
+ * do dono: só avisa, não bloqueia). O dia é o do início, em Brasília. Bar sem
+ * horário, ou jogo dentro dele: `null`.
+ */
+export function avisoForaDoHorario(
+  hours: OpeningHours | null,
+  startsAt: Date
+): string | null {
+  if (isGameWithinHours(hours, startsAt) !== false) return null
+  const dia = new Date(`${brasiliaDay(startsAt)}T12:00:00Z`).getUTCDay()
+  const faixa = hours?.[dia]
+  return `Fora do horário de funcionamento (${weekdayName(dia)}, ${faixa ? `${faixa.opens} – ${faixa.closes}` : 'fechado'}). Dá para publicar mesmo assim.`
 }
 
 const mesmaLista = (a: number[], b: number[]) =>
