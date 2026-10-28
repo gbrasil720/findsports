@@ -179,6 +179,28 @@ export const APP_CONFIG_DEFINITIONS = {
       'pessoa no dia, inclusive as que falharam. chatDailyMessages e ' +
       'chatMonthlyMessages: mensagens do chat com resposta útil por pessoa, ' +
       'no dia e no mês de Brasília.'
+  }),
+
+  /**
+   * WEB-466: modo de manutenção do app (26d, 26e). Só o app lê, pela rota
+   * `/api/app/status`; o servidor não recusa nada por causa dela, então o
+   * painel do bar, o Houdini e o login seguem no ar. `backAt` é a previsão
+   * de volta (sem ela, o app não mostra contagem). Não há checagem de data:
+   * uma previsão que passou continua válida aqui, o app é que deixa de
+   * mostrá-la, senão a manutenção desligaria sozinha na hora prevista.
+   */
+  'app.maintenance': definir({
+    schema: z.object({
+      on: z.boolean(),
+      backAt: z.iso.datetime({ offset: true }).nullable()
+    }),
+    padrao: { on: false, backAt: null },
+    publico: true,
+    descricao:
+      'Manutenção do app. on: true mostra "Voltamos já já" a quem abrir o ' +
+      'app, com a previsão de volta (backAt, data e hora ISO; null = sem ' +
+      'previsão). O painel do bar, o Houdini e o login continuam no ar, e o ' +
+      'código do jogo de hoje continua abrindo no app.'
   })
 } as const
 
