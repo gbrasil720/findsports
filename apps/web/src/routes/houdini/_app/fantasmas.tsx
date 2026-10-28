@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 
 import { Icon } from '@/components/houdini/icons'
-import { HoudiniShell } from '@/components/houdini/shell'
+import { HoudiniShell, PageHead } from '@/components/houdini/shell'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
@@ -18,25 +18,25 @@ const READINGS = [
     key: 'bothRegistered',
     label: 'Presença confiável',
     detail: 'bar registrou, torcedor foi',
-    color: '#6ee3b0'
+    color: 'var(--hd-acid)'
   },
   {
     key: 'unregistered',
     label: 'Bar não registra',
     detail: 'torcedor foi, bar não registrou',
-    color: '#ff8da3'
+    color: 'var(--hd-live)'
   },
   {
     key: 'burned',
     label: 'Código queimado',
     detail: 'bar registrou, torcedor não foi',
-    color: '#f2c46d'
+    color: 'var(--hd-sand)'
   },
   {
     key: 'noShow',
     label: 'No-show',
     detail: 'nenhum dos dois',
-    color: '#4a4658'
+    color: 'var(--hd-muted)'
   }
 ] as const
 
@@ -49,25 +49,21 @@ function FantasmasPage() {
   })
 
   return (
-    <HoudiniShell title="Fantasmas" env={env} user={admin}>
+    <HoudiniShell env={env} user={admin}>
       <div className="hd-page">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <h1 className="hd-h1">Fantasmas</h1>
-          <p className="hd-lead">
-            Bares em que o torcedor disse que foi e o bar não registrou o código
-            em vários jogos. Só entram jogos com a janela de validação
-            encerrada. As duas fontes são declaradas: o cruzamento aponta
-            padrão, não prova.
-          </p>
-        </div>
+        <PageHead
+          overline="Pede atenção"
+          title="Fantasmas"
+          summary="Bares em que o torcedor disse que foi e o bar não registrou o código em vários jogos. Só entram jogos com a janela de validação encerrada. As duas fontes são declaradas: o cruzamento aponta padrão, não prova."
+        />
 
         <div
           style={{
             display: 'flex',
             flexWrap: 'wrap',
             gap: 16,
-            fontSize: 12,
-            color: 'var(--hd-soft)'
+            fontSize: 13,
+            color: 'var(--hd-body)'
           }}
         >
           {READINGS.map((r) => (
@@ -85,7 +81,7 @@ function FantasmasPage() {
                 }}
               />
               {r.label}{' '}
-              <span style={{ color: 'var(--hd-faint)' }}>({r.detail})</span>
+              <span style={{ color: 'var(--hd-muted)' }}>({r.detail})</span>
             </span>
           ))}
         </div>
@@ -102,15 +98,15 @@ function FantasmasPage() {
         ) : alerts.isLoading ? (
           <div className="hd-skeleton" style={{ height: 160 }} />
         ) : !alerts.data?.length ? (
-          <div className="hd-card hd-empty">Nenhum fantasma por aqui.</div>
+          <p className="hd-empty is-dashed">Nenhum fantasma por aqui.</p>
         ) : (
-          <div className="hd-grid" style={{ '--hd-min': '420px' } as never}>
+          <div className="hd-grid" style={{ '--hd-min': '360px' } as never}>
             {alerts.data.map((alert) => {
               const total = READINGS.reduce((n, r) => n + alert[r.key], 0)
               return (
                 <article
                   key={alert.barId}
-                  className="hd-card"
+                  className="hd-card is-live"
                   style={{ gap: 14 }}
                 >
                   <div
@@ -127,21 +123,16 @@ function FantasmasPage() {
                         justifyContent: 'center',
                         width: 36,
                         height: 36,
-                        borderRadius: 10,
+                        borderRadius: 6,
                         flex: '0 0 auto',
-                        background: 'var(--hd-bad-tint)',
-                        color: 'var(--hd-bad)'
+                        background: 'var(--hd-live)',
+                        color: '#fff'
                       }}
                     >
-                      <Icon name="ghost" size={18} strokeWidth={1.8} />
+                      <Icon name="ghost" size={18} />
                     </span>
                     <div style={{ minWidth: 0 }}>
-                      <h2
-                        className="hd-h2"
-                        style={{ fontWeight: 700, fontSize: 16 }}
-                      >
-                        {alert.barName}
-                      </h2>
+                      <h2 className="hd-h2">{alert.barName}</h2>
                       <span style={{ fontSize: 13, color: 'var(--hd-muted)' }}>
                         {alert.unregisteredGames} jogos com “foi, mas não
                         registrou”
@@ -157,8 +148,8 @@ function FantasmasPage() {
                       style={{
                         display: 'flex',
                         gap: 2,
-                        height: 10,
-                        borderRadius: 999,
+                        height: 8,
+                        borderRadius: 3,
                         overflow: 'hidden'
                       }}
                     >
@@ -176,24 +167,16 @@ function FantasmasPage() {
                     </div>
                   ) : null}
                   <dl
+                    className="hd-dl"
                     style={{
-                      margin: 0,
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-                      gap: 8
+                      gridTemplateColumns:
+                        'repeat(auto-fit, minmax(110px, 1fr))'
                     }}
                   >
                     {READINGS.map((r) => (
                       <div key={r.key}>
-                        <dt style={{ fontSize: 11, color: 'var(--hd-faint)' }}>
-                          {r.label}
-                        </dt>
-                        <dd
-                          className="hd-mono"
-                          style={{ margin: 0, fontSize: 14, fontWeight: 500 }}
-                        >
-                          {alert[r.key]}
-                        </dd>
+                        <dt>{r.label}</dt>
+                        <dd className="hd-mono">{alert[r.key]}</dd>
                       </div>
                     ))}
                   </dl>
@@ -202,7 +185,7 @@ function FantasmasPage() {
             })}
           </div>
         )}
-        <p className="hd-small" style={{ margin: 0 }}>
+        <p className="hd-note">
           Registra e não julga: nada aqui avisa o bar nem identifica quem
           respondeu.
         </p>

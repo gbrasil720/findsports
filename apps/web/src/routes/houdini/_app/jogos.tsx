@@ -16,7 +16,7 @@ import { toast } from 'sonner'
 import { refusalMessage } from '@/components/houdini/errors'
 import { HoldButton } from '@/components/houdini/hold-button'
 import { Icon } from '@/components/houdini/icons'
-import { HoudiniShell } from '@/components/houdini/shell'
+import { HoudiniShell, PageHead } from '@/components/houdini/shell'
 import { countLabel } from '@/lib/plural'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
@@ -106,35 +106,35 @@ function JogosPage() {
   )
 
   return (
-    <HoudiniShell title="Jogos" env={env} user={admin}>
-      <div className="hd-split">
-        <section className="hd-page" aria-labelledby="jogos-h">
-          <div className="hd-head" style={{ alignItems: 'baseline' }}>
-            <h1 id="jogos-h" className="hd-h1">
-              Jogos
-            </h1>
-            {query.data ? (
-              <span className="hd-mono hd-small">
-                {query.data.total} futuros · {query.data.warned} com aviso
-              </span>
-            ) : null}
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 10,
-              alignItems: 'center'
-            }}
-          >
-            <label htmlFor="hd-busca-jogo" className="hd-sr">
-              Buscar jogo
-            </label>
+    <HoudiniShell env={env} user={admin}>
+      <div className="hd-page">
+        <PageHead
+          overline="Gente e bares"
+          title="Jogos"
+          titleId="jogos-h"
+          summary={
+            query.data ? (
+              <>
+                <b>{query.data.total}</b> futuros · <b>{query.data.warned}</b>{' '}
+                com aviso
+              </>
+            ) : null
+          }
+        />
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 12,
+            alignItems: 'center'
+          }}
+        >
+          <label className="hd-search">
+            <Icon name="search" size={18} />
+            <span className="hd-sr">Buscar jogo</span>
             <input
-              id="hd-busca-jogo"
               type="search"
               className="hd-input"
-              style={{ flex: '1 1 280px', minWidth: 0 }}
               placeholder="Buscar por time, campeonato ou bar..."
               value={search}
               onChange={(event) => {
@@ -142,135 +142,146 @@ function JogosPage() {
                 setPage(1)
               }}
             />
-            <fieldset className="hd-seg" aria-label="Período">
-              {FILTERS.map((f, index) => (
-                <button
-                  key={f.label}
-                  type="button"
-                  aria-pressed={index === filter}
-                  onClick={() => {
-                    setFilter(index)
-                    setPage(1)
-                  }}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </fieldset>
-          </div>
-
-          {query.isError ? (
-            <div className="hd-card" role="alert">
-              <p style={{ margin: 0 }}>
-                {getUserFacingMessage(
-                  query.error,
-                  'Não foi possível carregar os jogos.'
-                )}
-              </p>
-            </div>
-          ) : (
-            <div className="hd-table-wrap" aria-busy={query.isFetching}>
-              <table className="hd-table" style={{ minWidth: 680 }}>
-                <thead>
-                  <tr>
-                    <th scope="col">Quando</th>
-                    <th scope="col">Jogo</th>
-                    <th scope="col">Bar</th>
-                    <th scope="col">Códigos</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {query.isLoading ? (
+          </label>
+          <fieldset className="hd-seg" aria-label="Período">
+            {FILTERS.map((f, index) => (
+              <button
+                key={f.label}
+                type="button"
+                aria-pressed={index === filter}
+                onClick={() => {
+                  setFilter(index)
+                  setPage(1)
+                }}
+              >
+                {f.label}
+              </button>
+            ))}
+          </fieldset>
+        </div>
+        <div className="hd-cols">
+          <section className="grow" aria-labelledby="jogos-h">
+            {query.isError ? (
+              <div className="hd-card" role="alert">
+                <p style={{ margin: 0 }}>
+                  {getUserFacingMessage(
+                    query.error,
+                    'Não foi possível carregar os jogos.'
+                  )}
+                </p>
+              </div>
+            ) : (
+              <div className="hd-table-wrap" aria-busy={query.isFetching}>
+                <table className="hd-table" style={{ minWidth: 680 }}>
+                  <thead>
                     <tr>
-                      <td colSpan={4}>
-                        <div className="hd-skeleton" style={{ height: 160 }} />
-                      </td>
+                      <th scope="col">Quando</th>
+                      <th scope="col">Jogo</th>
+                      <th scope="col">Bar</th>
+                      <th scope="col">Códigos</th>
                     </tr>
-                  ) : games.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="hd-empty">
-                        {onlyWarnings
-                          ? 'Nenhum jogo com aviso. Tudo em ordem.'
-                          : 'Nenhum jogo neste período.'}
-                      </td>
-                    </tr>
-                  ) : (
-                    games.map((game) => (
-                      <tr key={game.id} aria-selected={game.id === picked?.id}>
-                        <td
-                          className="hd-mono"
-                          style={{ fontSize: 12, whiteSpace: 'nowrap' }}
-                        >
-                          {whenLabel(game.startsAt)}
-                        </td>
-                        <td>
-                          <button
-                            type="button"
-                            className="hd-cell-btn"
-                            onClick={() => setPickedId(game.id)}
-                          >
-                            {matchTitle(game)}
-                            <span className="hd-sub">{game.championship}</span>
-                            {game.warnings.length > 0 ? (
-                              <span
-                                style={{
-                                  fontWeight: 600,
-                                  fontSize: 11,
-                                  color: 'var(--hd-warn)'
-                                }}
-                              >
-                                {game.warnings
-                                  .map((w) => WARN_SHORT[w.kind])
-                                  .join(' · ')}
-                              </span>
-                            ) : null}
-                          </button>
-                        </td>
-                        <td style={{ color: 'var(--hd-soft)' }}>
-                          {game.barName}
-                        </td>
-                        <td className="hd-mono" style={{ fontSize: 12 }}>
-                          {codesLabel(game)}
+                  </thead>
+                  <tbody>
+                    {query.isLoading ? (
+                      <tr>
+                        <td colSpan={4}>
+                          <div
+                            className="hd-skeleton"
+                            style={{ height: 160 }}
+                          />
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-          {lastPage > 1 ? (
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <button
-                type="button"
-                className="hd-btn"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                Anterior
-              </button>
-              <span className="hd-mono hd-small">
-                {page} / {lastPage}
-              </span>
-              <button
-                type="button"
-                className="hd-btn"
-                disabled={page >= lastPage}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Próxima
-              </button>
-            </div>
-          ) : null}
-        </section>
+                    ) : games.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="hd-empty">
+                          {onlyWarnings
+                            ? 'Nenhum jogo com aviso. Tudo em ordem.'
+                            : 'Nenhum jogo neste período.'}
+                        </td>
+                      </tr>
+                    ) : (
+                      games.map((game) => (
+                        <tr
+                          key={game.id}
+                          aria-selected={game.id === picked?.id}
+                        >
+                          <td
+                            className="hd-mono"
+                            style={{ fontSize: 12, whiteSpace: 'nowrap' }}
+                          >
+                            {whenLabel(game.startsAt)}
+                          </td>
+                          <td>
+                            <button
+                              type="button"
+                              className="hd-cell-btn"
+                              onClick={() => setPickedId(game.id)}
+                            >
+                              {matchTitle(game)}
+                              <span className="hd-sub">
+                                {game.championship}
+                              </span>
+                              {game.warnings.length > 0 ? (
+                                <span
+                                  style={{
+                                    fontWeight: 600,
+                                    fontSize: 11,
+                                    color: 'var(--hd-sand-text)'
+                                  }}
+                                >
+                                  {game.warnings
+                                    .map((w) => WARN_SHORT[w.kind])
+                                    .join(' · ')}
+                                </span>
+                              ) : null}
+                            </button>
+                          </td>
+                          <td style={{ color: 'var(--hd-body)' }}>
+                            {game.barName}
+                          </td>
+                          <td className="hd-mono" style={{ fontSize: 12 }}>
+                            {codesLabel(game)}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {lastPage > 1 ? (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <button
+                  type="button"
+                  className="hd-btn"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  Anterior
+                </button>
+                <span className="hd-mono hd-small">
+                  {page} / {lastPage}
+                </span>
+                <button
+                  type="button"
+                  className="hd-btn"
+                  disabled={page >= lastPage}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Próxima
+                </button>
+              </div>
+            ) : null}
+          </section>
 
-        <aside className="hd-aside" aria-label="Jogo escolhido">
-          {picked ? (
-            <GamePanel key={picked.id} game={picked} />
-          ) : (
-            <p className="hd-empty">Escolha um jogo na lista.</p>
-          )}
-        </aside>
+          <aside className="hd-card hd-aside side" aria-label="Jogo escolhido">
+            {picked ? (
+              <GamePanel key={picked.id} game={picked} />
+            ) : (
+              <p className="hd-empty">Escolha um jogo na lista.</p>
+            )}
+          </aside>
+        </div>
       </div>
     </HoudiniShell>
   )
@@ -384,9 +395,8 @@ function GamePanel({ game }: { game: Game }) {
   return (
     <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <h2 className="hd-h1" style={{ fontSize: 18 }}>
-          {matchTitle(game)}
-        </h2>
+        <span className="hd-eyebrow">Jogo escolhido</span>
+        <h2 className="hd-h1 is-sm">{matchTitle(game)}</h2>
         <span className="hd-small">
           {game.championship} · {game.barName}
         </span>
@@ -400,27 +410,13 @@ function GamePanel({ game }: { game: Game }) {
               <Icon name="warn" size={16} strokeWidth={1.8} />
               {copy.title}
             </span>
-            <p
-              style={{
-                margin: 0,
-                fontSize: 13,
-                lineHeight: 1.5,
-                color: 'var(--hd-soft)'
-              }}
-            >
-              {copy.text}
-            </p>
+            <p>{copy.text}</p>
             {copy.fix ? (
               <button
                 type="button"
-                className="hd-btn"
+                className="hd-btn hd-btn-primary"
                 disabled={busy}
-                style={{
-                  border: 0,
-                  background: 'var(--hd-warn)',
-                  color: 'var(--hd-bg)',
-                  fontWeight: 700
-                }}
+                style={{ alignSelf: 'flex-start' }}
                 onClick={() =>
                   fix.mutate({ eventId: game.id, warning: warning.kind })
                 }
@@ -432,22 +428,8 @@ function GamePanel({ game }: { game: Game }) {
         )
       })}
       {fixedText ? (
-        <div
-          role="status"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '12px 14px',
-            borderRadius: 12,
-            background: 'var(--hd-ok-tint)',
-            border: '1px solid rgb(64 214 150 / 0.3)',
-            color: 'var(--hd-ok)',
-            fontSize: 13,
-            fontWeight: 600
-          }}
-        >
-          <Icon name="check" size={16} strokeWidth={2} />
+        <div role="status" className="hd-done">
+          <Icon name="check" size={16} />
           {fixedText}
         </div>
       ) : null}
