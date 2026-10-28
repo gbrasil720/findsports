@@ -3,6 +3,7 @@ import type { AdminBar } from './admin-model'
 import {
   alteracoes,
   atalhosDoHorario,
+  avisoDaDescricao,
   avisoDosJogos,
   avisoForaDoHorario,
   checklistDoPerfil,
@@ -388,5 +389,56 @@ describe('editor de horário (28a, 28e)', () => {
       const longe = { startsAt: brt('2026-10-28T15:00:00') }
       expect(avisoDosJogos([passado, longe], depois, antes, now)).toBeNull()
     })
+  })
+})
+
+describe('descrição em revisão (WEB-478)', () => {
+  test('o rascunho parte do texto mandado, não do publicado', () => {
+    const emRevisao = {
+      ...bar,
+      description: 'Antiga',
+      descriptionPending: 'Nova'
+    } as unknown as AdminBar
+    expect(rascunhoDoBar(emRevisao).description).toBe('Nova')
+    expect(rascunhoDoBar(bar).description).toBe('')
+  })
+
+  test('em revisão, recusada com o motivo, ou o aviso da revisão', () => {
+    expect(
+      avisoDaDescricao({
+        description: 'Antiga',
+        descriptionReview: 'pending',
+        descriptionRejectionReason: null
+      }).texto
+    ).toBe(
+      'Em revisão. Até a Onside aprovar, o torcedor vê a descrição anterior.'
+    )
+    expect(
+      avisoDaDescricao({
+        description: null,
+        descriptionReview: 'pending',
+        descriptionRejectionReason: null
+      }).texto
+    ).toBe(
+      'Em revisão. A descrição aparece para o torcedor quando a Onside aprovar.'
+    )
+    expect(
+      avisoDaDescricao({
+        description: null,
+        descriptionReview: 'rejected',
+        descriptionRejectionReason: 'Tem telefone no texto.'
+      })
+    ).toEqual({
+      texto:
+        'Recusada: Tem telefone no texto. Mude o texto e salve para mandar de novo.',
+      recusada: true
+    })
+    expect(
+      avisoDaDescricao({
+        description: 'X',
+        descriptionReview: null,
+        descriptionRejectionReason: null
+      }).recusada
+    ).toBe(false)
   })
 })

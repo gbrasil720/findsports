@@ -51,6 +51,7 @@ import { Erro, Horario, OfertaDaCasa } from './espaco-campos'
 import { FotosDoBar, useEnvioDeFoto } from './espaco-fotos'
 import {
   alteracoes,
+  avisoDaDescricao,
   avisoDosJogos,
   checklistDoPerfil,
   DESCRICAO_MAX,
@@ -443,6 +444,7 @@ export function MeuEspaco() {
               base={base}
               erros={erros}
               cep={cep}
+              descricao={avisoDaDescricao(bar)}
               whatsapp={
                 Boolean(bar.phoneAcceptsWhatsapp) &&
                 r.phone === base.phone &&
@@ -711,8 +713,10 @@ function Informacoes({
   base,
   erros,
   cep,
+  descricao,
   whatsapp
 }: {
+  descricao: ReturnType<typeof avisoDaDescricao>
   r: Rascunho
   mudar: (patch: Partial<Rascunho>) => void
   setRascunho: (fn: (prev: Rascunho | null) => Rascunho) => void
@@ -851,7 +855,19 @@ function Informacoes({
         value={r.description}
         onChange={(e) => mudar({ description: e.target.value })}
         aria-invalid={erros.description ? true : undefined}
-        dica={<Erro texto={erros.description} />}
+        dica={
+          erros.description ? (
+            <Erro texto={erros.description} />
+          ) : (
+            <span
+              className={
+                descricao.recusada ? 'text-[var(--painel-live)]' : undefined
+              }
+            >
+              {descricao.texto}
+            </span>
+          )
+        }
       />
     </div>
   )

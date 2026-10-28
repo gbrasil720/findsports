@@ -109,7 +109,9 @@ export function rascunhoDoBar(bar: AdminBar): Rascunho {
     neighborhood: bar.neighborhood ?? '',
     city: bar.city ?? '',
     uf: bar.uf ?? '',
-    description: bar.description ?? '',
+    // A que o dono mandou por último, em revisão ou recusada (WEB-478); sem
+    // pedido aberto, a publicada.
+    description: bar.descriptionPending ?? bar.description ?? '',
     amenities: bar.amenities ?? [],
     screenCount: bar.screenCount ?? null,
     menuUrl: bar.menuUrl ?? '',
@@ -668,4 +670,33 @@ export function deslocamento(a: Ponto, b: Ponto, zoom: number) {
     return (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * mundo
   }
   return { x: ((b.lng - a.lng) / 360) * mundo, y: y(b.lat) - y(a.lat) }
+}
+
+/**
+ * A linha embaixo da descrição (WEB-478): em revisão, recusada com o motivo,
+ * ou o aviso de que a Onside revisa antes de aparecer.
+ */
+export function avisoDaDescricao(bar: {
+  description: string | null
+  descriptionReview: 'pending' | 'approved' | 'rejected' | null
+  descriptionRejectionReason: string | null
+}): { texto: string; recusada: boolean } {
+  if (bar.descriptionReview === 'pending') {
+    return {
+      texto: bar.description
+        ? 'Em revisão. Até a Onside aprovar, o torcedor vê a descrição anterior.'
+        : 'Em revisão. A descrição aparece para o torcedor quando a Onside aprovar.',
+      recusada: false
+    }
+  }
+  if (bar.descriptionReview === 'rejected') {
+    return {
+      texto: `Recusada: ${bar.descriptionRejectionReason ?? ''} Mude o texto e salve para mandar de novo.`,
+      recusada: true
+    }
+  }
+  return {
+    texto: 'A Onside revisa a descrição antes de ela aparecer para o torcedor.',
+    recusada: false
+  }
 }
