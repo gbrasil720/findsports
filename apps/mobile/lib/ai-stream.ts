@@ -25,6 +25,15 @@ export async function* converse(
   yield* await server.ai.converse.mutate(input, { signal })
 }
 
+/**
+ * O "parar" da 24b: o servidor não chama o modelo de novo e a pergunta não
+ * desconta do limite (WEB-430). Falhar aqui não muda a tela, que já parou.
+ */
+export const stop = (runId: string, dubla: boolean) => {
+  if (__DEV__ && dubla) return
+  server.ai.stop.mutate({ runId }).catch(() => {})
+}
+
 export const confirm = (input: ConfirmInput, dubla: boolean) =>
   __DEV__ && dubla
     ? (require('./ai-dubla') as DublaModule).dublaConfirm(input)
