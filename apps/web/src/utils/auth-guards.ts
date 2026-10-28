@@ -34,13 +34,16 @@ export function applyAuthGuards(
   session: AuthSession,
   pathname: string,
   search: Record<string, unknown> = {},
-  href = pathname
+  href = pathname,
+  origin?: string
 ) {
   // Unknown URLs stay public so the 404 page can render for visitors.
   // /onboarding/pub stays public — o rascunho pré-cadastro depende do fluxo
   // de verificação de e-mail, que precisa funcionar antes da sessão existir.
   // WEB-210: `href` relativo (caminho + query) volta como destino do login;
-  // `getCallbackUrl` só aceita mesma origem.
+  // `getCallbackUrl` só aceita mesma origem. WEB-473: `origin` é a do router
+  // (no SSR, a da requisição), como no `useCallbackUrl` do WEB-472; sem ela o
+  // servidor recusava o `callbackUrl` absoluto de mesma origem.
   // WEB-383: o Houdini tem portão próprio (`lib/houdini-gate`), que vale
   // também para sessão impersonada de conta sem onboarding.
   if (pathname === '/houdini' || pathname.startsWith('/houdini/')) return
@@ -81,7 +84,7 @@ export function applyAuthGuards(
     // WEB-278: sessão pronta não fica olhando o formulário de login; segue o
     // destino pedido (o do admin para o Houdini) ou vai à página do app.
     if (pathname === '/login' || pathname === '/signup') {
-      const destino = getCallbackUrl(href)
+      const destino = getCallbackUrl(href, origin)
       throw redirect({ to: destino === '/admin' ? FAN_HOME : destino })
     }
     // Landing: o torcedor vai ao app; admin fica (é o "Ir para o site" dele).
@@ -112,7 +115,7 @@ export function applyAuthGuards(
   // WEB-278: quem já tem sessão não vê o formulário de login nem o de
   // cadastro; segue para o destino que a URL levava (`/admin` por padrão).
   if (pathname === '/login' || pathname === '/signup') {
-    throw redirect({ to: getCallbackUrl(href) })
+    throw redirect({ to: getCallbackUrl(href, origin) })
   }
 
   // Landing é para visitantes: o bar vai ao painel.
