@@ -366,15 +366,95 @@ test('desliga a lista de quem vai num jogo, avisando quem já marcou', async ({
   await expect(page.getByText(ticket.guestName)).toHaveCount(0)
 })
 
-test('Starter não tem o interruptor da lista de quem vai', async ({ page }) => {
+test('Starter não tem o interruptor da lista de quem vai nem a oferta do jogo', async ({
+  page
+}) => {
   await openSchedule(page, { subscription: { plan: 'starter' } })
   await gotoSchedule(page)
   await page.getByRole('button', { name: 'Novo jogo' }).click()
   const dialog = page.getByRole('dialog', { name: 'Novo jogo' })
-  await expect(dialog.getByText('Oferta da casa neste jogo')).toBeVisible()
+  await expect(dialog.getByLabel('Campeonato', { exact: true })).toBeVisible()
+  await expect(dialog.getByText('Oferta da casa neste jogo')).toHaveCount(0)
   await expect(
     dialog.getByRole('switch', { name: 'Lista de quem vai neste jogo' })
   ).toHaveCount(0)
+})
+
+// WEB-422/WEB-464: a oferta padrão do bar vale em todo jogo, e o Elite troca
+// ou desliga num jogo só. O código do balcão leva a deste jogo.
+test('Elite troca a oferta de um jogo e desliga em outro', async ({ page }) => {
+  const { barId } = await openSchedule(page, {
+    bar: { house_offer: 'Chopp em dobro' }
+  })
+  const { eventId: desligar } = await createEvent(barId, {
+    championship: 'Sem oferta E2E'
+  })
+  await gotoSchedule(page)
+
+  await page.getByRole('button', { name: 'Novo jogo' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Novo jogo' })
+  await dialog.getByRole('button', { name: 'Futebol', exact: true }).click()
+  await dialog.getByLabel('Campeonato', { exact: true }).fill('Oferta E2E')
+  await dialog.getByLabel('Começa').fill(tomorrowAt(21))
+  const oferta = dialog.getByRole('switch', {
+    name: 'Oferta da casa neste jogo'
+  })
+  await expect(oferta).toHaveAttribute('aria-checked', 'true')
+  const texto = dialog.getByRole('textbox', {
+    name: 'Oferta da casa neste jogo'
+  })
+  // Nasce com a padrão do bar.
+  await expect(texto).toHaveValue('Chopp em dobro')
+  await expect(dialog).toContainText('A mesma do seu espaço.')
+  await texto.fill('Porção de batata grátis')
+  await expect(dialog).toContainText(
+    'Só neste jogo. Os outros seguem com a do seu espaço.'
+  )
+  await dialog.getByRole('button', { name: 'Publicar jogo' }).click()
+  await expect(dialog).toBeHidden()
+  await expect
+    .poll(async () =>
+      query(
+        'SELECT house_offer, no_house_offer FROM event WHERE bar_id = $1 AND championship = $2',
+        [barId, 'Oferta E2E']
+      )
+    )
+    .toEqual([
+      { house_offer: 'Porção de batata grátis', no_house_offer: false }
+    ])
+
+  // No jogo aberto, o interruptor desliga a oferta só neste jogo.
+  const aberto = await openGame(page, 'Sem oferta E2E')
+  await expect(aberto).toContainText('Chopp em dobro')
+  const interruptor = aberto.getByRole('switch', {
+    name: 'Oferta da casa neste jogo'
+  })
+  await interruptor.click()
+  await expect(interruptor).toHaveAttribute('aria-checked', 'false')
+  await expect(aberto).toContainText('Sem oferta neste jogo.')
+  await expect
+    .poll(async () =>
+      query('SELECT house_offer, no_house_offer FROM event WHERE id = $1', [
+        desligar
+      ])
+    )
+    .toEqual([{ house_offer: null, no_house_offer: true }])
+
+  // O formulário de edição abre como o jogo está.
+  await aberto.getByRole('button', { name: 'Editar' }).click()
+  const edit = page.getByRole('dialog', { name: 'Editar jogo' })
+  await expect(
+    edit.getByRole('switch', { name: 'Oferta da casa neste jogo' })
+  ).toHaveAttribute('aria-checked', 'false')
+  await expect(edit).toContainText('Sem oferta neste jogo.')
+
+  // A linha da grade avisa o jogo sem oferta (1n). No celular o jogo abre em
+  // folha, que esconde a lista: fecha antes.
+  await page.keyboard.press('Escape')
+  await expect(edit).toBeHidden()
+  await expect(
+    page.getByRole('listitem').filter({ hasText: 'Sem oferta E2E' })
+  ).toContainText('sem oferta da casa')
 })
 
 test('término antes do início não deixa salvar', async ({ page }) => {
