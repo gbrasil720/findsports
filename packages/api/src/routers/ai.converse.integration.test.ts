@@ -116,6 +116,7 @@ integrationTest(
         })
       )
       expect(brief(events)).toEqual([
+        'run',
         'step:understood:done',
         'step:rank:todo',
         'tool:run',
@@ -229,9 +230,11 @@ integrationTest(
     const quiet = spyOn(console, 'error').mockImplementation(() => {})
 
     try {
-      expect(
-        await collect(await fan.ai.converse({ message: 'e amanhã?' }))
-      ).toEqual([{ type: 'blocked', reason: 'unavailable' }])
+      const events = await collect(
+        await fan.ai.converse({ message: 'e amanhã?' })
+      )
+      expect(brief(events)).toEqual(['run', 'blocked'])
+      expect(events.at(-1)).toEqual({ type: 'blocked', reason: 'unavailable' })
       expect(log).toHaveLength(3)
       expect(new Set(log).size).toBe(2)
       expect(
@@ -313,6 +316,7 @@ integrationTest(
         })
       )
       expect(brief(events)).toEqual([
+        'run',
         'step:understood:done',
         'tool:run',
         'step:game:done',
@@ -321,8 +325,8 @@ integrationTest(
         'proposal',
         'done'
       ])
-      expect(events[0]).toMatchObject({ tags: ['bar r24 elite', 'Marina'] })
-      expect(events[3]).toMatchObject({
+      expect(events[1]).toMatchObject({ tags: ['bar r24 elite', 'Marina'] })
+      expect(events[4]).toMatchObject({
         name: 'marcar_vou_assistir',
         label: 'Marcar presença',
         params: [
@@ -544,6 +548,112 @@ integrationTest(
       expect(rows[0]).toMatchObject({ feature: 'chat', useful: true })
     } finally {
       setBackgroundTaskHandler(() => {})
+      await resetAppConfig('ai.enabled')
+      await db.delete(aiRun).where(eq(aiRun.userId, seeded.fanId))
+      await seeded.cleanup()
+    }
+  }
+)
+
+integrationTest(
+  'parar corta a próxima chamada ao modelo, grava o gasto e não desconta',
+  async () => {
+    const { db, appRouter } = await load()
+    const { setAppConfig, resetAppConfig } = await import('../lib/app-config')
+    const seeded = await seedBar('pro', 'active', inAMonth(), {
+      name: 'Bar R24 Parar',
+      latitude: String(ORIGIN.lat + 0.007),
+      longitude: String(ORIGIN.lng)
+    })
+    await seeded.seedGame({ startsAt: new Date(Date.now() + 3_600_000) })
+    const fan = appRouter.createCaller(contextFor(seeded.fanId, 'fan'))
+    const other = appRouter.createCaller(contextFor(crypto.randomUUID(), 'fan'))
+    // A primeira chamada ao modelo espera o teste parar, como uma resposta
+    // que demora; a segunda não pode sair.
+    const models: string[] = []
+    let release = () => {}
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    setAiBinding({
+      run: async (model) => {
+        models.push(model)
+        await held
+        return call('c1', 'buscar_bares', {})
+      }
+    })
+    await setAppConfig('ai.enabled', true, null)
+    const errors = spyOn(console, 'error')
+
+    try {
+      const stream = (
+        await fan.ai.converse({ message: 'tem jogo hoje?', origin: ORIGIN })
+      )[Symbol.asyncIterator]()
+      const first = (await stream.next()).value as ChatEvent
+      if (first.type !== 'run') throw new Error('sem run')
+      while (!models.length) await Bun.sleep(5)
+
+      expect(await other.ai.stop({ runId: first.runId })).toEqual({
+        stopped: false
+      })
+      expect(await fan.ai.stop({ runId: first.runId })).toEqual({
+        stopped: true
+      })
+      release()
+      const rest: ChatEvent[] = []
+      for (
+        let next = await stream.next();
+        !next.done;
+        next = await stream.next()
+      )
+        rest.push(next.value)
+
+      expect(models).toHaveLength(1)
+      expect(rest.some((e) => e.type === 'text' || e.type === 'done')).toBe(
+        false
+      )
+      expect(errors).not.toHaveBeenCalled()
+      const [row] = await db
+        .select()
+        .from(aiRun)
+        .where(eq(aiRun.runId, first.runId))
+      // A chamada feita é cobrada: tokens e custo ficam na linha.
+      expect(row).toMatchObject({
+        status: 'stopped',
+        useful: false,
+        tokensIn: 800,
+        tokensOut: 40
+      })
+      expect(row?.costUsd).toBeGreaterThan(0)
+      expect(await fan.ai.status()).toMatchObject({
+        remainingToday: 10,
+        remainingMonth: 100
+      })
+      // Parada não volta atrás nem para de novo.
+      expect(await fan.ai.stop({ runId: first.runId })).toEqual({
+        stopped: false
+      })
+
+      // Resposta pronta não é parada: já descontou.
+      setAiBinding(fakeModel((id) => call(id, 'buscar_bares', {})))
+      const done = (
+        await collect(
+          await fan.ai.converse({ message: 'e agora?', origin: ORIGIN })
+        )
+      ).at(-1)
+      if (done?.type !== 'done') throw new Error('sem done')
+      expect(await fan.ai.stop({ runId: done.runId })).toEqual({
+        stopped: false
+      })
+      const [kept] = await db
+        .select({ status: aiRun.status, useful: aiRun.useful })
+        .from(aiRun)
+        .where(eq(aiRun.runId, done.runId))
+      expect(kept).toEqual({ status: 'ok', useful: true })
+      expect(await fan.ai.status()).toMatchObject({ remainingToday: 9 })
+    } finally {
+      release()
+      errors.mockRestore()
       await resetAppConfig('ai.enabled')
       await db.delete(aiRun).where(eq(aiRun.userId, seeded.fanId))
       await seeded.cleanup()
