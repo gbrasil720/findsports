@@ -27,8 +27,10 @@ import {
   text,
   useStatusBar
 } from '@/components/ui'
+import { authClient } from '@/lib/auth-client'
 import { env } from '@/lib/env'
 import { formatTime } from '@/lib/explore'
+import { readTodayCode } from '@/lib/maintenance'
 import { formatCode } from '@/lib/my-games'
 import { trpc } from '@/lib/trpc'
 
@@ -82,7 +84,13 @@ export default function CounterCode() {
         : false
     }
   })
-  const game = mine.data?.find((item) => item.eventId === eventId)
+  // Sem resposta do servidor (sem rede, manutenção), o código guardado no
+  // aparelho (WEB-466).
+  const userId = authClient.useSession().data?.user.id
+  const saved = mine.data ? null : readTodayCode(userId)
+  const game =
+    mine.data?.find((item) => item.eventId === eventId) ??
+    (saved?.eventId === eventId ? saved : undefined)
   const validated = Boolean(game?.validated)
   useEffect(() => {
     if (validated)
