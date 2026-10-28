@@ -618,6 +618,16 @@ invente layout que o projeto não tem.
   `NODE_ENV=development bun run db:catalog:sync` (o resolver fixa o Postgres local).
 - **Avulsas ("06"):** `app/+not-found.tsx` (404) e `app/legal.tsx` (Termos e Privacidade).
   O texto legal vem de `packages/legal`, o mesmo do site.
+- **Manutenção (26d, 26e, WEB-466):** o Houdini liga no card "Manutenção do app" dos
+  Feitiços (chave `app.maintenance`, com a previsão de volta; confirmação e Grimório). Só o
+  app muda: o servidor não recusa nada, então painel do bar, Houdini e login seguem no ar.
+  O app lê `GET /api/app/status` (sem sessão, 503 se o banco não responde) ao abrir, a cada
+  minuto e ao voltar ao primeiro plano, e guarda a última resposta boa: manutenção é o que
+  o servidor anunciou, falha sem anúncio continua no erro de sempre. A tela
+  (`components/maintenance.tsx`) cobre o app; "Ver meu código de hoje" abre o código
+  guardado no aparelho (`lib/maintenance.ts`, gravado a cada `attendance.mine`, apagado ao
+  sair da conta), que a tela do código também usa sem resposta do servidor. No navegador
+  DEV, seção "26" (`app/manutencao.tsx`).
 - **Explorar ("07"):** `app/explore.tsx`, onde o torcedor com onboarding feito começa, e
   `app/bar/[id].tsx` (página do bar); peças em `components/explore.tsx`, contas puras em
   `lib/explore.ts`. O mapa é o nativo, pelo `react-native-maps` (decisão do dono em
