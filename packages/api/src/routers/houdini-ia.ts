@@ -1,4 +1,5 @@
 import { db, type SQL, sql } from '@findsports_oficial/db'
+import { aiRun } from '@findsports_oficial/db/schema/ai'
 import { z } from 'zod'
 
 import { adminProcedure, router } from '../index'
@@ -370,7 +371,7 @@ export const houdiniIaRouter = router({
         feature: z.enum(['chat', 'recommender']).optional(),
         variant: z.enum(['a', 'b', 'c']).optional(),
         model: z.string().max(80).optional(),
-        status: z.enum(['ok', 'fallback', 'error', 'timeout']).optional(),
+        status: z.enum(aiRun.status.enumValues).optional(),
         limit: z.number().int().min(1).max(200).default(50)
       })
     )
@@ -390,7 +391,7 @@ export const houdiniIaRouter = router({
         variant: string
         assigned_model: string
         served_model: string | null
-        status: 'ok' | 'fallback' | 'error' | 'timeout'
+        status: (typeof aiRun.status.enumValues)[number]
         latency_ms: number
         tokens_in: number
         tokens_out: number

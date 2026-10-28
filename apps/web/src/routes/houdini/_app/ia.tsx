@@ -1156,13 +1156,16 @@ const STATUS_TONE: Record<string, 'ok' | 'warn' | 'bad'> = {
   ok: 'ok',
   fallback: 'warn',
   error: 'bad',
-  timeout: 'bad'
+  timeout: 'bad',
+  stopped: 'warn'
 }
 const STATUS_LABEL: Record<string, string> = {
   ok: 'ok',
   fallback: 'desvio',
   error: 'erro',
-  timeout: 'demora'
+  timeout: 'demora',
+  stopped: 'parada',
+  running: 'rodando'
 }
 
 function RunsLog() {
@@ -1171,7 +1174,7 @@ function RunsLog() {
     feature?: 'chat' | 'recommender'
     variant?: 'a' | 'b' | 'c'
     model?: string
-    status?: 'ok' | 'fallback' | 'error' | 'timeout'
+    status?: 'ok' | 'fallback' | 'error' | 'timeout' | 'stopped' | 'running'
   }>({})
   const runs = useQuery({
     ...trpc.houdini.ia.runs.queryOptions({ ...filters, limit: 50 }),
@@ -1229,7 +1232,9 @@ function RunsLog() {
           ['ok', 'ok'],
           ['fallback', 'desvio'],
           ['error', 'erro'],
-          ['timeout', 'demora']
+          ['timeout', 'demora'],
+          ['stopped', 'parada'],
+          ['running', 'rodando']
         ])}
       </div>
       {runs.isError ? (
