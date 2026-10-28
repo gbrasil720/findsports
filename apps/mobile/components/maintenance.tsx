@@ -80,11 +80,11 @@ function Band({ width }: { width: number }) {
 
 // A faixa entra de lado, como fita sendo esticada; o resto sobe em
 // sequência (`enterAt`). Constantes de módulo (ver `components/motion.tsx`).
-const BAND_IN = FadeInLeft.duration(520)
+const BAND_IN = FadeInLeft.duration(300)
   .easing(EASE)
   .withInitialValues({ opacity: 0, transform: [{ translateX: -48 }] })
 const SCREEN_IN = FadeIn.duration(200)
-const SCREEN_OUT = FadeOut.duration(220)
+const SCREEN_OUT = FadeOut.duration(160)
 
 /** Relógio que anda de 15 em 15 s: a contagem é em minutos. */
 function useNow() {
