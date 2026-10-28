@@ -386,6 +386,20 @@
   padding-top: 10px;
   border-top: 1px solid var(--painel-line);
 }
+/* Oferta deste jogo (WEB-422): o campo e o erro descem para a linha de baixo. */
+.painel .jogos-sub-oferta {
+  flex-wrap: wrap;
+}
+.painel .jogos-sub-oferta > :is(.jogos-oferta-campo, .jogos-erro) {
+  flex-basis: 100%;
+}
+.painel .jogos-oferta-conta {
+  font-size: 12px;
+  color: var(--painel-muted);
+}
+.painel .jogos-oferta-conta[data-passou] {
+  color: var(--painel-live);
+}
 
 .painel .jogos-quem-vai {
   margin: 4px 0 0;
