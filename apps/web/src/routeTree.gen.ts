@@ -41,6 +41,7 @@ import { Route as HoudiniEntrarRouteImport } from './routes/houdini/entrar'
 import { Route as PlanConfirmedRouteImport } from './routes/plan_.confirmed'
 import { Route as onboardingOnboardingPubRouteImport } from './routes/(onboarding)/onboarding.pub'
 import { Route as pubPubPubIdRouteImport } from './routes/(pub)/pub.$pubId'
+import { Route as ApiAppStatusRouteImport } from './routes/api/app/status'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiBarCommercialEventRouteImport } from './routes/api/bar/commercial-event'
 import { Route as ApiBarPhotoRouteImport } from './routes/api/bar/photo'
@@ -219,6 +220,11 @@ const pubPubPubIdRoute = pubPubPubIdRouteImport.update({
   path: '/pub/$pubId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAppStatusRoute = ApiAppStatusRouteImport.update({
+  id: '/api/app/status',
+  path: '/api/app/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -343,6 +349,7 @@ export interface FileRoutesByFullPath {
   '/guia/': typeof GuiaIndexRoute
   '/onboarding/pub': typeof onboardingOnboardingPubRoute
   '/pub/$pubId': typeof pubPubPubIdRoute
+  '/api/app/status': typeof ApiAppStatusRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/bar/commercial-event': typeof ApiBarCommercialEventRoute
   '/api/bar/photo': typeof ApiBarPhotoRoute
@@ -393,6 +400,7 @@ export interface FileRoutesByTo {
   '/guia': typeof GuiaIndexRoute
   '/onboarding/pub': typeof onboardingOnboardingPubRoute
   '/pub/$pubId': typeof pubPubPubIdRoute
+  '/api/app/status': typeof ApiAppStatusRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/bar/commercial-event': typeof ApiBarCommercialEventRoute
   '/api/bar/photo': typeof ApiBarPhotoRoute
@@ -445,6 +453,7 @@ export interface FileRoutesById {
   '/guia/': typeof GuiaIndexRoute
   '/(onboarding)/onboarding/pub': typeof onboardingOnboardingPubRoute
   '/(pub)/pub/$pubId': typeof pubPubPubIdRoute
+  '/api/app/status': typeof ApiAppStatusRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/bar/commercial-event': typeof ApiBarCommercialEventRoute
   '/api/bar/photo': typeof ApiBarPhotoRoute
@@ -498,6 +507,7 @@ export interface FileRouteTypes {
     | '/guia/'
     | '/onboarding/pub'
     | '/pub/$pubId'
+    | '/api/app/status'
     | '/api/auth/$'
     | '/api/bar/commercial-event'
     | '/api/bar/photo'
@@ -548,6 +558,7 @@ export interface FileRouteTypes {
     | '/guia'
     | '/onboarding/pub'
     | '/pub/$pubId'
+    | '/api/app/status'
     | '/api/auth/$'
     | '/api/bar/commercial-event'
     | '/api/bar/photo'
@@ -599,6 +610,7 @@ export interface FileRouteTypes {
     | '/guia/'
     | '/(onboarding)/onboarding/pub'
     | '/(pub)/pub/$pubId'
+    | '/api/app/status'
     | '/api/auth/$'
     | '/api/bar/commercial-event'
     | '/api/bar/photo'
@@ -642,6 +654,7 @@ export interface RootRouteChildren {
   GuiaIndexRoute: typeof GuiaIndexRoute
   onboardingOnboardingPubRoute: typeof onboardingOnboardingPubRoute
   pubPubPubIdRoute: typeof pubPubPubIdRoute
+  ApiAppStatusRoute: typeof ApiAppStatusRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiBarCommercialEventRoute: typeof ApiBarCommercialEventRoute
   ApiBarPhotoRoute: typeof ApiBarPhotoRoute
@@ -876,6 +889,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof pubPubPubIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/app/status': {
+      id: '/api/app/status'
+      path: '/api/app/status'
+      fullPath: '/api/app/status'
+      preLoaderRoute: typeof ApiAppStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -1099,6 +1119,7 @@ const rootRouteChildren: RootRouteChildren = {
   GuiaIndexRoute: GuiaIndexRoute,
   onboardingOnboardingPubRoute: onboardingOnboardingPubRoute,
   pubPubPubIdRoute: pubPubPubIdRoute,
+  ApiAppStatusRoute: ApiAppStatusRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiBarCommercialEventRoute: ApiBarCommercialEventRoute,
   ApiBarPhotoRoute: ApiBarPhotoRoute,
