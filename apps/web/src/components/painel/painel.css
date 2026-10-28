@@ -984,15 +984,36 @@ html[data-consent] .painel .painel-lateral {
   color: var(--painel-live);
 }
 
-/* Dia, as duas horas e o interruptor; as horas encolhem até 320 px. */
+/* Dia, as duas horas e o interruptor numa linha. Estreito (celular), as horas
+ * descem para a linha de baixo: espremidas, "05:00 PM" perdia o PM e o 17:00
+ * do relógio de 24 h cortava a 360 px. */
+.painel .painel-horario-lista {
+  container-type: inline-size;
+}
 .painel .painel-horario-dia {
   position: relative;
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr) auto;
+  grid-template-areas: "dia horas toggle";
   align-items: center;
-  gap: 12px;
+  gap: 8px 12px;
   min-height: 56px;
   padding: 8px 0;
+}
+.painel .painel-horario-dia > :first-child {
+  grid-area: dia;
+}
+.painel .painel-horario-dia > :nth-child(2) {
+  grid-area: horas;
+}
+.painel .painel-horario-dia > :last-child {
+  grid-area: toggle;
+}
+@container (max-width: 340px) {
+  .painel .painel-horario-dia {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "dia toggle" "horas horas";
+  }
 }
 /* O brilho de quando um atalho muda a linha (WAAPI anima a opacidade). */
 .painel .painel-horario-dia::before {

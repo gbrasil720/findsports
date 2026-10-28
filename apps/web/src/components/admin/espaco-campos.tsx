@@ -113,7 +113,7 @@ export function Horario({
           </Chip>
         ))}
       </fieldset>
-      <ul ref={lista}>
+      <ul ref={lista} className="painel-horario-lista">
         {DIAS.map(([dia, nome], index) => {
           const d = hours[dia]
           if (!d) return null
