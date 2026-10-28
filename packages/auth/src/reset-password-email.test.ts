@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import {
   createResetPasswordEmail,
-  sendResetPasswordEmailWithResend
+  sendResetPasswordEmail
 } from './reset-password-email'
 import { publicEmailUrl } from './verification-email'
 
@@ -86,9 +86,9 @@ describe('e-mail de redefinição de senha', () => {
     expect(email.html).toContain('callbackURL=%2Freset-password')
   })
 
-  it('envia HTML e texto pela API do Resend sem expor a chave no corpo', async () => {
+  it('envia HTML e texto pela API de e-mail sem expor a chave no corpo', async () => {
     let request: Request | undefined
-    await sendResetPasswordEmailWithResend({
+    await sendResetPasswordEmail({
       apiKey: 're_test',
       fromEmail: 'contato@onside.app',
       to: 'ana@example.com',

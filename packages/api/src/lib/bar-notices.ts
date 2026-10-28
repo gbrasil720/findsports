@@ -1,5 +1,5 @@
 import { createOnsideEmailTemplate } from '@findsports_oficial/auth/email-layout'
-import { sendEmailWithResend } from '@findsports_oficial/auth/verification-email'
+import { sendEmail } from '@findsports_oficial/auth/verification-email'
 import { and, db, eq, sql } from '@findsports_oficial/db'
 import {
   BRASILIA_TIME_ZONE,
@@ -199,9 +199,9 @@ async function sendOnce(notice: Notice, to: string, email: Email) {
     .returning({ barId: barNotice.barId })
   if (!claimed) return false
   try {
-    await sendEmailWithResend({
-      apiKey: env.RESEND_API_KEY,
-      fromEmail: env.RESEND_FROM_EMAIL,
+    await sendEmail({
+      apiKey: env.EMAIL_API_KEY,
+      fromEmail: env.EMAIL_FROM,
       to,
       ...email
     })

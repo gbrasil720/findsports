@@ -5,7 +5,7 @@ import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolv
 import { FEEDBACK_LIMIT, FEEDBACK_TO, feedbackLimitKey } from './feedback'
 import {
   contextFor,
-  fakeResend,
+  fakeEmailApi,
   inAMonth,
   load,
   refusal,
@@ -14,8 +14,8 @@ import {
 
 /**
  * `feedback.send` contra o banco de verdade (o limite por usuário mora na
- * tabela `rate_limit`) e até a requisição que a Resend receberia. Nenhum
- * e-mail sai: o `fetch` para a Resend é dublê.
+ * tabela `rate_limit`) e até a requisição que a API de e-mail receberia. Nenhum
+ * e-mail sai: o `fetch` para a API de e-mail é dublê.
  */
 
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
@@ -66,7 +66,7 @@ const WEBP = image([...Buffer.from('RIFF'), 0, 0, 0, 0, ...Buffer.from('WEBP')])
 integrationTest(
   'torcedor: um e-mail para a caixa da Onside, com Reply-To de quem escreveu',
   async () => {
-    const sent = fakeResend(cleanups)
+    const sent = fakeEmailApi(cleanups)
     const { fan, email } = await fanCaller()
 
     await fan.feedback.send({
@@ -90,7 +90,7 @@ integrationTest(
 )
 
 integrationTest('bar: o assunto e o corpo levam o nome do bar', async () => {
-  const sent = fakeResend(cleanups)
+  const sent = fakeEmailApi(cleanups)
   const seeded = await seedBar('pro', 'active', inAMonth())
   cleanups.push(seeded.cleanup)
 
@@ -103,7 +103,7 @@ integrationTest('bar: o assunto e o corpo levam o nome do bar', async () => {
 })
 
 integrationTest('uma imagem vai como anexo do mesmo e-mail', async () => {
-  const sent = fakeResend(cleanups)
+  const sent = fakeEmailApi(cleanups)
   const { fan } = await fanCaller()
 
   await fan.feedback.send({ message, pageUrl, images: [PNG] })
@@ -116,7 +116,7 @@ integrationTest('uma imagem vai como anexo do mesmo e-mail', async () => {
 })
 
 integrationTest('três imagens vão como três anexos, na ordem', async () => {
-  const sent = fakeResend(cleanups)
+  const sent = fakeEmailApi(cleanups)
   const { fan } = await fanCaller()
 
   await fan.feedback.send({ message, pageUrl, images: [JPEG, PNG, WEBP] })
@@ -131,7 +131,7 @@ integrationTest('três imagens vão como três anexos, na ordem', async () => {
 integrationTest(
   'limite por usuário: o sexto envio da hora é recusado e não vira e-mail',
   async () => {
-    const sent = fakeResend(cleanups)
+    const sent = fakeEmailApi(cleanups)
     const { fan } = await fanCaller()
     const other = await fanCaller()
 
@@ -169,7 +169,7 @@ integrationTest(
     )
     expect(await attemptsOf(db, id)).toBeUndefined()
 
-    fakeResend(cleanups, 500)
+    fakeEmailApi(cleanups, 500)
     const { code, message: reason } = await refusal(
       fan.feedback.send({ message, pageUrl })
     )

@@ -9,9 +9,9 @@ import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolv
 import { barData, dataExportLimitKey, fanData } from './account'
 import {
   contextFor,
-  fakeResend,
+  type EmailApiBody,
+  fakeEmailApi,
   load,
-  type ResendBody,
   seedBar
 } from './integration-seed'
 
@@ -19,7 +19,7 @@ import {
  * "Baixar meus dados" (11i e 2e, WEB-418): o arquivo vai de anexo para o
  * e-mail da conta, um pedido por dia, e traz a conta inteira de quem pede e
  * nada de outra pessoa além do nome e do `@` de quem é amigo. Nenhum e-mail
- * sai: a Resend é dublê.
+ * sai: a API de e-mail é dublê.
  */
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
 
@@ -28,8 +28,8 @@ afterEach(async () => {
   for (const cleanup of cleanups.splice(0)) await cleanup()
 })
 
-/** O JSON anexado ao e-mail, como a Resend o recebe. */
-function attached(email: ResendBody | undefined) {
+/** O JSON anexado ao e-mail, como a API de e-mail o recebe. */
+function attached(email: EmailApiBody | undefined) {
   const [file] = email?.attachments ?? []
   expect(file?.content_type).toBe('application/json')
   expect(file?.filename).toMatch(/^onside-meus-dados-\d{4}-\d{2}-\d{2}\.json$/)
@@ -44,7 +44,7 @@ async function forgetLimit(userId: string) {
 }
 
 integrationTest('torcedor recebe os dados por e-mail', async () => {
-  const sent = fakeResend(cleanups)
+  const sent = fakeEmailApi(cleanups)
   const ctx = await seedBar('elite', 'active', null)
   const { db } = ctx
   const { appRouter } = await load()
@@ -161,7 +161,7 @@ integrationTest(
 )
 
 integrationTest('bar recebe a conta, o bar, o plano e os jogos', async () => {
-  const sent = fakeResend(cleanups)
+  const sent = fakeEmailApi(cleanups)
   const ctx = await seedBar('elite', 'active', null)
   cleanups.push(() => forgetLimit(ctx.ownerId))
   const { db } = ctx
@@ -197,7 +197,7 @@ integrationTest('bar recebe a conta, o bar, o plano e os jogos', async () => {
 integrationTest(
   'um pedido por dia: o segundo é recusado e não manda e-mail',
   async () => {
-    const sent = fakeResend(cleanups)
+    const sent = fakeEmailApi(cleanups)
     const ctx = await seedBar('pro', 'active', null)
     cleanups.push(ctx.cleanup, () => forgetLimit(ctx.fanId))
 
@@ -220,13 +220,13 @@ integrationTest('envio que falhou não gasta o pedido do dia', async () => {
   const ctx = await seedBar('pro', 'active', null)
   cleanups.push(ctx.cleanup, () => forgetLimit(ctx.fanId))
 
-  fakeResend(cleanups, 500)
+  fakeEmailApi(cleanups, 500)
   await expect(ctx.fan.account.requestExport()).rejects.toMatchObject({
     code: 'INTERNAL_SERVER_ERROR'
   })
   for (const cleanup of cleanups.splice(0, 1)) await cleanup()
 
-  const sent = fakeResend(cleanups)
+  const sent = fakeEmailApi(cleanups)
   await ctx.fan.account.requestExport()
   expect(sent).toHaveLength(1)
 })

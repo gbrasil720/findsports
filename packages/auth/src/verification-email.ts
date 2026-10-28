@@ -51,7 +51,7 @@ export function createVerificationEmail({
   }
 }
 
-export async function sendVerificationEmailWithResend(input: {
+export async function sendVerificationEmail(input: {
   apiKey: string | undefined
   fromEmail: string | undefined
   to: string
@@ -60,7 +60,7 @@ export async function sendVerificationEmailWithResend(input: {
   fetcher?: EmailFetcher
 }): Promise<void> {
   const email = createVerificationEmail(input)
-  await sendEmailWithResend({ ...input, ...email })
+  await sendEmail({ ...input, ...email })
 }
 
 /**
@@ -69,14 +69,18 @@ export async function sendVerificationEmailWithResend(input: {
  */
 const REPLY_TO_EMAIL = 'contato@onside.sh'
 
-/** `content` em base64, como a Resend recebe. */
+/** `content` em base64, como a API de e-mail recebe. */
 export type EmailAttachment = {
   filename: string
   contentType: string
   content: string
 }
 
-export async function sendEmailWithResend(input: {
+/**
+ * Envia pela API de `EMAIL_API_URL` (WEB-476), no formato da Resend, que a
+ * MillionSend repete: `POST /emails` com Bearer.
+ */
+export async function sendEmail(input: {
   apiKey: string | undefined
   fromEmail: string | undefined
   to: string
@@ -112,7 +116,7 @@ export async function sendEmailWithResend(input: {
 
   // E2E (WEB-174): o e-mail vira uma linha JSON num arquivo, lida pelo
   // `lastEmailTo` da suíte. Conta como entregue para o fluxo seguir igual ao
-  // de produção. Vem antes da Resend: nem uma chave real no .env sai daqui.
+  // de produção. Vem antes da API: nem uma chave real no .env sai daqui.
   if (env.E2E_EMAIL_OUTBOX) {
     const { to, subject, text, html } = input
     await appendFile(
@@ -131,16 +135,16 @@ export async function sendEmailWithResend(input: {
 
   if (!input.apiKey || !input.fromEmail) {
     if (process.env.NODE_ENV === 'production') {
-      throw new Error('Resend não configurado para envio de e-mail.')
+      throw new Error('Envio de e-mail não configurado.')
     }
     console.warn(
-      `[email] Resend não configurado. E-mail não enviado.\n${summary}`
+      `[email] Envio de e-mail não configurado. E-mail não enviado.\n${summary}`
     )
     return { delivered: false }
   }
 
   const response = await (input.fetcher ?? fetch)(
-    'https://api.resend.com/emails',
+    `${env.EMAIL_API_URL.replace(/\/+$/, '')}/emails`,
     {
       method: 'POST',
       headers: {
@@ -168,7 +172,7 @@ export async function sendEmailWithResend(input: {
   )
 
   if (!response.ok) {
-    throw new Error(`Resend recusou o envio (${response.status}).`)
+    throw new Error(`A API de e-mail recusou o envio (${response.status}).`)
   }
   return { delivered: true }
 }

@@ -35,7 +35,7 @@ import {
   isReadOnlyImpersonation,
   READ_ONLY_IMPERSONATION_MESSAGE
 } from './impersonation-mode'
-import { sendResetPasswordEmailWithResend } from './reset-password-email'
+import { sendResetPasswordEmail } from './reset-password-email'
 import { isCloudflareWorkers } from './runtime'
 import { assertNoSelfRoleChange } from './self-role-change'
 import { isSafeUserImage } from './session-image'
@@ -46,10 +46,7 @@ import { stripeClient } from './stripe-client'
 import { STRIPE_PLANS } from './stripe-plan'
 import { syncStripeEvent } from './stripe-sync'
 import { APP_SCHEME, buildTrustedOrigins } from './trusted-origins'
-import {
-  publicEmailUrl,
-  sendVerificationEmailWithResend
-} from './verification-email'
+import { publicEmailUrl, sendVerificationEmail } from './verification-email'
 
 function cookieDomainFor(baseUrl: string): string | undefined {
   const host = new URL(baseUrl).hostname.replace(/^www\./, '')
@@ -243,9 +240,9 @@ export function createAuth() {
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: async ({ user, url }) => {
         const publicAppUrl = getPublicAppUrl()
-        await sendResetPasswordEmailWithResend({
-          apiKey: env.RESEND_API_KEY,
-          fromEmail: env.RESEND_FROM_EMAIL,
+        await sendResetPasswordEmail({
+          apiKey: env.EMAIL_API_KEY,
+          fromEmail: env.EMAIL_FROM,
           to: user.email,
           name: user.name,
           // `url` sai com o host de `BETTER_AUTH_URL`, que localmente é
@@ -272,9 +269,9 @@ export function createAuth() {
       expiresIn: 60 * 60,
       sendVerificationEmail: async ({ user, url }) => {
         const publicAppUrl = getPublicAppUrl()
-        await sendVerificationEmailWithResend({
-          apiKey: env.RESEND_API_KEY,
-          fromEmail: env.RESEND_FROM_EMAIL,
+        await sendVerificationEmail({
+          apiKey: env.EMAIL_API_KEY,
+          fromEmail: env.EMAIL_FROM,
           to: user.email,
           name: user.name,
           verificationUrl: publicEmailUrl(

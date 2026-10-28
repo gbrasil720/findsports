@@ -1,5 +1,5 @@
 import { createOnsideEmailTemplate } from '@findsports_oficial/auth/email-layout'
-import { sendEmailWithResend } from '@findsports_oficial/auth/verification-email'
+import { sendEmail } from '@findsports_oficial/auth/verification-email'
 import { db, eq, sql } from '@findsports_oficial/db'
 import { attendanceReport } from '@findsports_oficial/db/schema/attendance'
 import { user } from '@findsports_oficial/db/schema/auth'
@@ -334,9 +334,9 @@ export const accountRouter = router({
     try {
       const data =
         user.role === 'pub' ? await barData(user.id) : await fanData(user.id)
-      await sendEmailWithResend({
-        apiKey: env.RESEND_API_KEY,
-        fromEmail: env.RESEND_FROM_EMAIL,
+      await sendEmail({
+        apiKey: env.EMAIL_API_KEY,
+        fromEmail: env.EMAIL_FROM,
         to: user.email,
         attachments: [
           {
