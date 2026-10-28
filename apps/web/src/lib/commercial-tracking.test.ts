@@ -3,6 +3,10 @@ import { trackCommercialEvent } from './commercial-tracking'
 
 describe('commercial-tracking', () => {
   let mockFetch: ReturnType<typeof mock>
+  // O `fetch` global é trocado por atribuição, que o `mock.restore` não
+  // desfaz: sem devolver o original, o mock vazava para os arquivos seguintes
+  // (o do service worker recebia uma resposta sem cabeçalhos).
+  const fetchOriginal = globalThis.fetch
 
   beforeEach(() => {
     mockFetch = mock().mockResolvedValue({ ok: true, json: async () => ({}) })
@@ -11,6 +15,7 @@ describe('commercial-tracking', () => {
 
   afterEach(() => {
     mock.restore()
+    globalThis.fetch = fetchOriginal
   })
 
   it('sends profile_view with pubId and type', () => {
