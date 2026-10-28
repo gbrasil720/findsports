@@ -170,9 +170,8 @@ function anotherValue(value: unknown): unknown {
     return { ...limits, userDailyCalls: limits.userDailyCalls + 1 }
   }
   // Manutenção do app (WEB-466): o contrário, sem previsão.
-  if (value !== null && typeof value === 'object' && 'backAt' in value) {
-    const maintenance = value as { on: boolean }
-    return { on: !maintenance.on, backAt: null }
+  if (value !== null && typeof value === 'object' && 'on' in value) {
+    return { on: !value.on, backAt: null }
   }
   throw new Error(`Formato sem valor alternativo: ${JSON.stringify(value)}`)
 }
