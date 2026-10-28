@@ -38,12 +38,17 @@
   // WEB-205: as três URLs são o domínio público. O better-auth confia nessa
   // origem e na irmã sem www., e o cookie vale em onside.sh.
   // O workers.dev deixa de logar.
+  //
+  // WEB-476: o provedor de e-mail é `EMAIL_API_URL` mais o segredo
+  // `EMAIL_API_KEY` (a MillionSend é `https://api.millionsend.com`). Os dois
+  // trocam juntos; o segredo antigo, `RESEND_API_KEY`, vale até lá.
   "vars": {
     "NODE_ENV": "production",
     "BETTER_AUTH_URL": "https://www.onside.sh",
     "CORS_ORIGIN": "https://www.onside.sh",
     "PUBLIC_APP_URL": "https://www.onside.sh",
-    "RESEND_FROM_EMAIL": "contato@mail.onside.sh",
+    "EMAIL_FROM": "contato@mail.onside.sh",
+    "EMAIL_API_URL": "https://api.resend.com",
     "CF_ACCOUNT_ID": "dc48dae1d364480e5b618e4a00e98565",
     "MEDIA_PUBLIC_ORIGIN": "https://media.onside.sh"
   },
@@ -86,7 +91,8 @@
         "BETTER_AUTH_URL": "https://onside-web-preview.dev-guilhermebrasil.workers.dev",
         "CORS_ORIGIN": "https://onside-web-preview.dev-guilhermebrasil.workers.dev",
         "PUBLIC_APP_URL": "https://onside-web-preview.dev-guilhermebrasil.workers.dev",
-        "RESEND_FROM_EMAIL": "contato@mail.onside.sh",
+        "EMAIL_FROM": "contato@mail.onside.sh",
+        "EMAIL_API_URL": "https://api.resend.com",
         "MEDIA_PUBLIC_ORIGIN": "https://media.onside.sh",
         // Banco com e-mails reais: e-mail vai para o log, com o link. O env
         // recusa isto com PUBLIC_APP_URL em onside.sh.
