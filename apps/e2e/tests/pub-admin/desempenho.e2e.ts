@@ -61,6 +61,10 @@ async function openDesempenho(page: Page, plan: Plan) {
 const numeros = (page: Page) =>
   page.getByRole('region', { name: 'Os números do bar' })
 const periodo = (page: Page) => page.getByRole('group', { name: 'Período' })
+const atividade = (page: Page) =>
+  page.locator('.desemp-ativ').filter({
+    has: page.getByRole('heading', { name: 'Atividade diária' })
+  })
 const card = (page: Page, titulo: string) =>
   page.locator('.painel-card').filter({
     has: page.getByRole('heading', { name: titulo, exact: true })
@@ -125,7 +129,7 @@ test('Elite: tudo do Desempenho e Passados com Comparar jogos', async ({
   ).toBeVisible()
 })
 
-test('Pro: sem atividade diária nem itens do Elite; compara jogos', async ({
+test('Pro: atividade diária, sem itens do Elite; compara jogos', async ({
   page
 }) => {
   const { jogo } = await openDesempenho(page, 'pro')
@@ -140,9 +144,9 @@ test('Pro: sem atividade diária nem itens do Elite; compara jogos', async ({
   await expect(card(page, 'Como te procuraram')).toContainText(
     'Mais usado: WhatsApp'
   )
-  await expect(
-    page.getByRole('heading', { name: 'Atividade diária' })
-  ).toHaveCount(0)
+  // A atividade diária é de todos os planos (WEB-449).
+  await expect(atividade(page)).toContainText('Aberturas3')
+  await expect(atividade(page)).toContainText('WhatsApp, rota e telefone2')
   await expect(card(page, 'Entrega Elite nos clássicos')).toHaveCount(0)
   await expect(card(page, 'Quem foi pela Onside')).toHaveCount(0)
 
@@ -170,6 +174,8 @@ test('Starter: só 30 dias, canais travados e sem Comparar jogos', async ({
   await expect(card(page, 'Como te procuraram')).toContainText(
     'Exclusivo do plano superior'
   )
+  // Sem os canais um a um, a atividade diária traz os contatos somados.
+  await expect(atividade(page)).toContainText('WhatsApp, rota e telefone2')
 
   // O personalizado respeita o histórico do plano.
   await periodo(page).getByRole('button', { name: 'Personalizado' }).click()

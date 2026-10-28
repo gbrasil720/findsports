@@ -234,7 +234,50 @@ test('Pro: sem a lista do Elite, nada de contagem de quem vai', async ({
     page.getByRole('switch', { name: 'Oferta da casa' })
   ).toHaveCount(0)
   await expect(desempenho(page)).toContainText('Se interessaram')
+  // A atividade diária pequena é de todos os planos (WEB-449).
+  await expect(desempenho(page).locator('.hoje-mini')).toBeVisible()
   await expect(plano(page)).toContainText('Pro')
+})
+
+test('interesse de hoje contra o normal do mesmo dia da semana (1r)', async ({
+  page
+}) => {
+  const pub = await openHoje(page, {
+    subscription: { plan: 'pro' },
+    bar: { created_at: new Date(Date.now() - 60 * 86_400_000) }
+  })
+  const inicio = new Date(`${DIA}T00:00:30-03:00`).getTime()
+  const interesse = async (semanasAtras: number) => {
+    const fan = await createUser()
+    const at = new Date(inicio - semanasAtras * 7 * 86_400_000)
+    await insert('bar_commercial_event', {
+      id: randomUUID(),
+      bar_id: pub.barId,
+      actor_user_id: fan.id,
+      type: 'whatsapp_opened',
+      occurred_at: at,
+      commercial_day: at.toLocaleDateString('sv-SE', {
+        timeZone: 'America/Sao_Paulo'
+      })
+    })
+  }
+  // Hoje 2 pessoas; uma em cada um dos quatro mesmos dias de antes.
+  for (const semanasAtras of [0, 0, 1, 2, 3, 4]) await interesse(semanasAtras)
+  const dia = [
+    'domingo',
+    'segunda',
+    'terça',
+    'quarta',
+    'quinta',
+    'sexta',
+    'sábado'
+  ][new Date(`${DIA}T12:00:00Z`).getUTCDay()]
+
+  await page.goto('/admin')
+  const card = kpi(page, 'do seu normal de')
+  await expect(card).toContainText('+100%')
+  await expect(card).toContainText(`interesse acima do seu normal de ${dia}`)
+  await expect(card).not.toContainText('em breve')
 })
 
 test('Starter sem jogo hoje: noite vazia, quem viu o bar e "Novo jogo"', async ({
@@ -256,6 +299,9 @@ test('Starter sem jogo hoje: noite vazia, quem viu o bar e "Novo jogo"', async (
   await expect(desempenho(page).getByRole('listitem').first()).toContainText(
     'Pessoas que viram seu bar1'
   )
+  await expect(desempenho(page).locator('.hoje-mini')).toBeVisible()
+  // Bar novo, sem quatro semanas de história: ainda não há "normal".
+  await expect(kpi(page, 'do seu normal de')).toContainText('—')
   await expect(plano(page)).toContainText('0 de 5 jogos usados neste ciclo')
   // O aviso do Starter dentro do limite é de Jogos, não de Hoje.
   await expect(
