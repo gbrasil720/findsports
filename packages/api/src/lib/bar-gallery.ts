@@ -2,23 +2,32 @@ import {
   isOwnMediaUrl,
   type MediaHosts
 } from '@findsports_oficial/auth/session-image'
+import {
+  GALLERY_MAX_PHOTOS,
+  PHOTO_CATEGORY_IDS,
+  type PhotoCategory,
+  type ReviewStatus
+} from '@findsports_oficial/db/bar-gallery'
 import { TRPCError } from '@trpc/server'
 import { canShowBarMenu } from './bar-menu'
+import { isOwnPhotoUrl } from './blob-photo'
 import type { SubscriptionForPlan } from './current-plan'
 
 export { GALLERY_MAX_PHOTOS } from '@findsports_oficial/db/bar-gallery'
 
 /**
- * Galeria de fotos do ambiente (WEB-439): até `GALLERY_MAX_PHOTOS` fotos além
- * da capa, em `bar.gallery_photos`, na ordem da página.
+ * Fotos do bar (WEB-439, WEB-462), em `bar_photo`: a capa e a galeria do
+ * ambiente, até `GALLERY_MAX_PHOTOS` no total, cada uma com categoria,
+ * legenda e a revisão da Onside antes de aparecer.
  *
  * O upload é o da capa (WEB-202): a rota escolhe a chave, assina o `PUT` e o
  * navegador sobe direto para o R2. Cada foto tem chave própria, com um id
- * sorteado no servidor, e a URL só entra no bar depois do upload, por
- * `pub.addGalleryPhoto`.
+ * sorteado no servidor, e só entra no bar depois do upload, por
+ * `pub.addPhoto`, já em revisão.
  *
- * O plano segue a regra do cardápio (Pro e Elite vigentes): gravar foto nova
- * pede o plano; ordenar e apagar não, para o dono arrumar o que tem guardado.
+ * Plano: a capa é de todos; as outras fotos seguem a regra do cardápio (Pro e
+ * Elite vigentes). Ordenar, trocar a categoria e apagar não pedem plano, para
+ * o dono arrumar o que tem guardado.
  */
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
@@ -49,18 +58,34 @@ export function isOwnGalleryPhotoUrl(
   )
 }
 
-/** A chave no bucket de uma URL já conferida por `isOwnGalleryPhotoUrl`. */
-export function galleryPhotoKey(url: string): string {
-  return new URL(url).pathname.slice(1)
+/**
+ * A chave no bucket de uma foto do bar, ou `null` se ela não é nossa. A capa
+ * de antes do WEB-462 (`bars/<id>/photo`) entrou em `bar_photo` pela
+ * migration e se apaga do mesmo jeito.
+ */
+export function barPhotoKey(
+  url: string,
+  barId: string,
+  hosts: MediaHosts
+): string | null {
+  if (
+    isOwnGalleryPhotoUrl(url, barId, hosts) ||
+    isOwnPhotoUrl(url, barId, hosts)
+  ) {
+    return new URL(url).pathname.slice(1)
+  }
+  return null
 }
 
 export const canUseGallery = canShowBarMenu
 
-export function assertCanUseGallery(
+/** A foto pedida pode entrar? A capa é de todos os planos; o resto, do Pro. */
+export function assertCanAddPhoto(
   subscription: SubscriptionForPlan | null,
+  cover: boolean,
   now = new Date()
 ): void {
-  if (!canUseGallery(subscription, now)) {
+  if (!cover && !canUseGallery(subscription, now)) {
     throw new TRPCError({
       code: 'FORBIDDEN',
       message: 'A galeria de fotos é dos planos Pro e Elite.'
@@ -68,11 +93,37 @@ export function assertCanUseGallery(
   }
 }
 
-/** O que a página do bar mostra: nada sem Pro/Elite vigente. */
-export function resolvePublicGallery(
-  stored: string[],
+export const GALLERY_FULL_MESSAGE = `O bar já tem ${GALLERY_MAX_PHOTOS} fotos. Apague uma para pôr outra.`
+
+/** Recusada não ocupa lugar: o dono manda outra no lugar dela. */
+export function occupiedSlots(photos: ReadonlyArray<{ status: ReviewStatus }>) {
+  return photos.filter((p) => p.status !== 'rejected').length
+}
+
+const CATEGORY_ORDER = new Map(PHOTO_CATEGORY_IDS.map((id, i) => [id, i]))
+
+/** Na ordem da página: por categoria (a do design), depois pela do dono. */
+export function byCategoryThenPosition<
+  T extends { category: PhotoCategory; position: number }
+>(photos: readonly T[]): T[] {
+  return [...photos].sort(
+    (a, b) =>
+      (CATEGORY_ORDER.get(a.category) ?? 0) -
+        (CATEGORY_ORDER.get(b.category) ?? 0) || a.position - b.position
+  )
+}
+
+/**
+ * O que a página do bar mostra: só as aprovadas, e nada sem Pro/Elite
+ * vigente. A capa continua em `bar.photo_url`, para todos os planos.
+ */
+export function resolvePublicGallery<
+  T extends { category: PhotoCategory; position: number; status: ReviewStatus }
+>(
+  stored: readonly T[],
   subscription: SubscriptionForPlan | null,
   now = new Date()
-): string[] {
-  return canUseGallery(subscription, now) ? stored : []
+): T[] {
+  if (!canUseGallery(subscription, now)) return []
+  return byCategoryThenPosition(stored.filter((p) => p.status === 'approved'))
 }
