@@ -5,7 +5,11 @@ import { createPub } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
 
 // O link de um bar, `/pub/$pubId` (design 4x–4z): o web é só para bares, e a
-// página do bar virou "O <bar> está no app", aberta sem sessão.
+// página do bar virou "O <bar> está no app", aberta sem sessão. Link sem bar
+// (bar fora do ar, convite de amigo) cai na mesma página, sem o cartão
+// (WEB-468).
+
+const SEM_BAR = 'A Onside para torcedores está no app.'
 
 test('mostra o cartão do bar e o caminho para o app', async ({
   page,
@@ -82,20 +86,75 @@ test('jogo de outro dia leva o dia junto da hora', async ({ page }) => {
 })
 
 test('bar inexistente é 404 e bar fora do ar fica sem cartão', async ({
-  page
+  page,
+  isMobile
 }) => {
   const missing = await page.goto(`/pub/${randomUUID()}`)
   expect(missing?.status()).toBe(404)
 
-  const { barId } = await createPub({ bar: { is_active: false } })
+  const name = `Bar Fechado ${randomUUID().slice(0, 6)}`
+  const { barId } = await createPub({ bar: { name, is_active: false } })
   const offAir = await page.goto(`/pub/${barId}`)
   expect(offAir?.status()).toBe(200)
+  // O nome do bar fora do ar não vaza no título da prévia de link.
+  await expect(page).toHaveTitle('A Onside de torcedor está no app — Onside')
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+    'content',
+    /noindex/
+  )
   await expect(
-    page.getByRole('heading', {
-      level: 1,
-      name: 'A Onside para torcedores está no app.'
-    })
+    page.getByRole('heading', { level: 1, name: SEM_BAR })
   ).toBeVisible()
+  await expect(page.getByText(name)).toHaveCount(0)
+  if (isMobile) {
+    // O app também não mostra o bar fora do ar: abre o app.
+    await expect(
+      page.getByRole('link', { name: 'Abrir no app' })
+    ).toHaveAttribute('href', 'onside://')
+  }
+})
+
+test('o convite de amigo é a página sem bar e abre o app no convite', async ({
+  page,
+  isMobile
+}) => {
+  // No celular a página tenta abrir o app sozinha. A ida ao `onside://` não
+  // vira request: quem a vê é o protocolo do Chromium.
+  const tentativas: string[] = []
+  const cdp = await page.context().newCDPSession(page)
+  await cdp.send('Page.enable')
+  cdp.on('Page.frameRequestedNavigation', ({ url }) => {
+    if (url.startsWith('onside://')) tentativas.push(url)
+  })
+
+  const response = await page.goto('/convite/GB-4821')
+  expect(response?.status()).toBe(200)
+  await expect(page).toHaveTitle('Convite de amigo — Onside')
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+    'content',
+    /noindex/
+  )
+  await expect(
+    page.getByRole('heading', { level: 1, name: SEM_BAR })
+  ).toBeVisible()
+  // A frase do convite fica no lugar da linha do computador e da do celular.
+  await expect(
+    page
+      .getByText('Abra no app para aceitar o convite.')
+      .filter({ visible: true })
+  ).toHaveCount(1)
+
+  if (isMobile) {
+    await expect(
+      page.getByRole('link', { name: 'Abrir no app' })
+    ).toHaveAttribute('href', 'onside://convite/GB-4821')
+    await expect.poll(() => tentativas).toEqual(['onside://convite/GB-4821'])
+  } else {
+    await expect(
+      page.getByRole('img', { name: 'QR code: abre esta página no celular' })
+    ).toBeVisible()
+    expect(tentativas).toEqual([])
+  }
 })
 
 test.describe('com sessão de torcedor', () => {
