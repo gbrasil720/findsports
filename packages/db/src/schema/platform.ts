@@ -423,6 +423,14 @@ export const event = pgTable(
     // recusa marcação nova e o painel não lista quem vai. Quem já marcou
     // continua marcado, com o código valendo. Regra em `lib/attendance.ts`.
     attendanceEnabled: boolean('attendance_enabled').default(true).notNull(),
+    // Oferta da casa deste jogo (WEB-422). Nula herda a do bar
+    // (`bar.house_offer`); escrita, substitui a do bar neste jogo.
+    // `no_house_offer` é o "sem oferta neste jogo": desliga a do bar só aqui.
+    // Duas colunas, e não um texto vazio como sinal: vazio continua proibido,
+    // como na do bar, e "herda" e "desligada" ficam distintos no banco.
+    // Quem resolve é `effectiveHouseOffer` (`packages/api/src/lib/house-offer.ts`).
+    houseOffer: text('house_offer'),
+    noHouseOffer: boolean('no_house_offer').default(false).notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull()
   },
   (table) => [
@@ -440,6 +448,16 @@ export const event = pgTable(
     check(
       'event_reservation_cap_range',
       reservationCapRange(table.reservationCap)
+    ),
+    // Mesma regra de `bar_house_offer_length`.
+    check(
+      'event_house_offer_length',
+      sql`${table.houseOffer} IS NULL OR char_length(${table.houseOffer}) BETWEEN 1 AND ${sql.raw(String(HOUSE_OFFER_MAX_LENGTH))}` // sql-raw-permitido: constante de limite em CHECK
+    ),
+    // "Sem oferta neste jogo" não guarda texto: os dois estados se excluem.
+    check(
+      'event_no_house_offer_without_text',
+      sql`NOT ${table.noHouseOffer} OR ${table.houseOffer} IS NULL`
     )
   ]
 )

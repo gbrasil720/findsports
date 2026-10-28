@@ -568,6 +568,13 @@
       "when": 1793223830199,
       "tag": "0081_user_ranking_global",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1793224372609,
+      "tag": "0082_event_house_offer",
+      "breakpoints": true
     }
   ]
 }
