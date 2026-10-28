@@ -49,6 +49,7 @@ describe('registro de configuração (ESC-19)', () => {
       'ai.enabled',
       'ai.limits',
       'ai.variant_weights',
+      'app.maintenance',
       'rating.public_display',
       'search.tiered_plan_query'
     ])
@@ -102,6 +103,22 @@ describe('registro de configuração (ESC-19)', () => {
     })
   })
 
+  // WEB-466: a previsão é data com fuso ou nada; passada, continua aceita.
+  it('manutenção aceita previsão com fuso, passada ou nula, e recusa texto solto', () => {
+    for (const backAt of [
+      null,
+      '2020-01-01T00:00:00Z',
+      '2026-10-28T23:30:00-03:00'
+    ])
+      expect(
+        validateAppConfigValue('app.maintenance', { on: true, backAt }).ok
+      ).toBe(true)
+    expect(
+      validateAppConfigValue('app.maintenance', { on: true, backAt: '23:30' })
+        .ok
+    ).toBe(false)
+  })
+
   it('subconjunto público não inclui chave interna', () => {
     expect(PUBLIC_APP_CONFIG_KEYS).toContain('rating.public_display')
     expect(PUBLIC_APP_CONFIG_KEYS).not.toContain('search.tiered_plan_query')
@@ -116,6 +133,10 @@ describe('registro de configuração (ESC-19)', () => {
     expect(appConfigDefault('search.tiered_plan_query')).toBe(true)
     expect(appConfigDefault('rating.public_display')).toBe(false)
     expect(appConfigDefault('ai.enabled')).toBe(false)
+    expect(appConfigDefault('app.maintenance')).toEqual({
+      on: false,
+      backAt: null
+    })
     expect(appConfigDefault('ai.limits')).toEqual({
       monthlyBudgetUsd: 40,
       userMonthlyUsd: 1.5,
