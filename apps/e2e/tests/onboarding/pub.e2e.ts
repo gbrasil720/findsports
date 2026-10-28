@@ -100,7 +100,8 @@ const storedDraft = async (page: Page) =>
 
 async function barOf(userId: string) {
   return query(
-    `SELECT name, address, neighborhood, city, uf, phone, description, amenities,
+    `SELECT name, address, neighborhood, city, uf, phone, description,
+            description_pending, description_review, amenities,
             screen_count, is_active, opening_hours, house_offer
      FROM bar WHERE user_id = $1`,
     [userId]
@@ -216,7 +217,10 @@ test('com sessão verificada: passos, completePub e "no ar", bar nasce no ar', a
     city: 'São Paulo',
     uf: 'SP',
     phone: '+5511987654321',
-    description: 'Sinuca no fundo',
+    // A descrição espera a revisão da Onside (WEB-478).
+    description: null,
+    description_pending: 'Sinuca no fundo',
+    description_review: 'pending',
     // 1 = "Telão / projetor" em `packages/api/src/lib/amenities.ts`.
     amenities: [1],
     screen_count: 4,
@@ -540,7 +544,7 @@ test('recarregar no meio do wizard volta ao passo e aos dados, e concluir apaga 
     name: 'Bar Recarregado',
     address,
     phone: '+5511987654321',
-    description: 'Chope gelado',
+    description_pending: 'Chope gelado',
     amenities: [1],
     screen_count: 3
   })

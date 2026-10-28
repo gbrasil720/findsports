@@ -43,12 +43,9 @@ async function fillAddress(page: Page, rua: string, numero: string) {
 
 type Arquivo = Parameters<Locator['setInputFiles']>[0]
 
+/** O seletor de arquivo da seção Fotos (WEB-462): abre a folha "Nova foto". */
 const pickPhoto = (page: Page, file: Arquivo) =>
-  page.getByLabel('Foto de capa').setInputFiles(file)
-
-/** Foto da galeria do ambiente (WEB-439): o outro `input` da seção Fotos. */
-const pickGalleryPhoto = (page: Page, file: Arquivo) =>
-  page.getByLabel('Foto da galeria').setInputFiles(file)
+  page.getByLabel('Escolher foto').setInputFiles(file)
 
 /**
  * Erros não tratados da página, inclusive promessa rejeitada sem `catch`
@@ -73,7 +70,9 @@ async function save(page: Page, path = /pub\.updateMe/) {
 const saveError = (page: Page) =>
   page.getByRole('main').getByRole('alert').first()
 
-test('mudar só a descrição salva sem chamar o geocoding', async ({ page }) => {
+test('mudar só a descrição manda para a revisão, sem chamar o geocoding', async ({
+  page
+}) => {
   const { barId, street } = await openProfile(page)
 
   await expect(saveButton(page)).toBeDisabled()
@@ -87,10 +86,19 @@ test('mudar só a descrição salva sem chamar o geocoding', async ({ page }) =>
   await expect(info(page).getByLabel('Descrição')).toHaveValue(
     'Telão de 100 polegadas e chope gelado.'
   )
-  const [bar] = await query('SELECT description FROM bar WHERE id = $1', [
-    barId
-  ])
-  expect(bar?.description).toBe('Telão de 100 polegadas e chope gelado.')
+  // WEB-478: o torcedor só vê depois que a Onside aprovar.
+  const [bar] = await query(
+    'SELECT description, description_pending, description_review FROM bar WHERE id = $1',
+    [barId]
+  )
+  expect(bar).toEqual({
+    description: null,
+    description_pending: 'Telão de 100 polegadas e chope gelado.',
+    description_review: 'pending'
+  })
+  await expect(info(page)).toContainText(
+    'Em revisão. A descrição aparece para o torcedor quando a Onside aprovar.'
+  )
   expect(await geocodedStreets(page)).not.toContain(street)
 })
 
@@ -316,120 +324,6 @@ test('geocoding fora do ar pede para tentar em instantes, sem culpar o endereço
   )
   const [bar] = await query('SELECT address FROM bar WHERE id = $1', [barId])
   expect(bar?.address).toBe(street)
-})
-
-test('trocar a foto sobe para o R2 e grava a URL do bar', async ({ page }) => {
-  const uploads = await interceptMediaUploads(page)
-  const { barId } = await openProfile(page)
-
-  const saved = page.waitForResponse(/pub\.updateMe/)
-  await pickPhoto(page, {
-    name: 'bar.png',
-    mimeType: 'image/png',
-    buffer: Buffer.from(
-      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
-      'base64'
-    )
-  })
-  expect((await saved).ok()).toBe(true)
-
-  expect(uploads).toEqual([
-    { pathname: `bars/${barId}/photo`, contentType: 'image/png' }
-  ])
-  // `?v=` fura o cache da borda quando a foto é trocada no mesmo caminho.
-  const [bar] = await query('SELECT photo_url FROM bar WHERE id = $1', [barId])
-  expect(bar?.photo_url).toMatch(
-    new RegExp(`^${MEDIA_PUBLIC_ORIGIN}/bars/${barId}/photo\\?v=\\d+$`)
-  )
-  await expect(
-    fotos(page).locator(`img[src="${bar?.photo_url}"]`)
-  ).toBeVisible()
-  await expect(
-    fotos(page).getByRole('button', { name: 'Trocar' })
-  ).toBeVisible()
-  // A foto não espera o "Salvar alterações".
-  await expect(saveButton(page)).toBeDisabled()
-})
-
-test('falha ao gravar a URL da foto aparece na foto, sem rejeição não tratada', async ({
-  page
-}) => {
-  const pageErrors = collectPageErrors(page)
-  const uploads = await interceptMediaUploads(page)
-  await page.route('**/api/trpc/pub.updateMe**', (route) => route.abort())
-  const { barId } = await openProfile(page)
-
-  await pickPhoto(page, {
-    name: 'bar.png',
-    mimeType: 'image/png',
-    buffer: Buffer.from('e2e-image')
-  })
-
-  // O upload conclui; quem falha é a gravação da URL (WEB-212).
-  await expect(fotos(page).getByRole('alert')).toHaveText(
-    'Erro ao fazer upload. Tente novamente.'
-  )
-  expect(uploads).toHaveLength(1)
-  const [bar] = await query('SELECT photo_url FROM bar WHERE id = $1', [barId])
-  expect(bar?.photo_url).toBeNull()
-  expect(pageErrors).toEqual([])
-  // A falha da foto é da foto: o formulário não a herda.
-  await expect(page.getByRole('main').getByRole('alert')).toHaveCount(1)
-})
-
-test('foto em formato errado é recusada no navegador, sem upload', async ({
-  page
-}) => {
-  const uploads = await interceptMediaUploads(page)
-  await openProfile(page)
-
-  await pickPhoto(page, {
-    name: 'bar.gif',
-    mimeType: 'image/gif',
-    buffer: Buffer.from('GIF89a')
-  })
-  await expect(fotos(page).getByRole('alert')).toHaveText(
-    'Formato inválido. Use JPG, PNG ou WebP.'
-  )
-  expect(uploads).toEqual([])
-})
-
-for (const [name, mimeType] of [
-  ['bar.jpg', 'image/jpeg'],
-  ['bar.webp', 'image/webp']
-] as const) {
-  test(`foto ${mimeType} é aceita`, async ({ page }) => {
-    const uploads = await interceptMediaUploads(page)
-    const { barId } = await openProfile(page)
-
-    const saved = page.waitForResponse(/pub\.updateMe/)
-    await pickPhoto(page, {
-      name,
-      mimeType,
-      buffer: Buffer.from('e2e-image')
-    })
-    expect((await saved).ok()).toBe(true)
-    expect(uploads).toEqual([
-      { pathname: `bars/${barId}/photo`, contentType: mimeType }
-    ])
-  })
-}
-
-test('foto acima de 5 MB é recusada no navegador, sem upload', async ({
-  page
-}) => {
-  const uploads = await interceptMediaUploads(page)
-  await openProfile(page)
-
-  await pickPhoto(page, {
-    name: 'grande.png',
-    mimeType: 'image/png',
-    buffer: Buffer.alloc(5 * 1024 * 1024 + 1)
-  })
-  await expect(fotos(page).getByRole('alert')).toHaveText(
-    'Arquivo muito grande. Máximo 5MB.'
-  )
-  expect(uploads).toEqual([])
 })
 
 test('edita nome, telefone, características e telas, e confirma o WhatsApp', async ({
@@ -879,7 +773,7 @@ for (const [plano, marcaram, mostra] of [
   })
 }
 
-/* ─── Galeria do ambiente (WEB-439) ─── */
+/* ─── Fotos com revisão (WEB-439, WEB-462) ─── */
 
 const PNG = {
   name: 'ambiente.png',
@@ -890,88 +784,251 @@ const PNG = {
   )
 }
 
-async function galleryOf(barId: string): Promise<string[]> {
-  const [bar] = await query('SELECT gallery_photos FROM bar WHERE id = $1', [
-    barId
-  ])
-  return bar?.gallery_photos as string[]
+type Foto = {
+  category?: string
+  status?: 'pending' | 'approved' | 'rejected'
+  reason?: string
+  caption?: string
+  /** Fora das chaves do bar: apagar não chama o R2, que o E2E não dubla do servidor. */
+  alheia?: boolean
 }
 
-test('galeria: põe duas fotos pelo R2, troca a ordem e a prévia mostra', async ({
+/** Fotos já no bar, na ordem dada; devolve as URLs. */
+async function seedPhotos(barId: string, fotos: Foto[]): Promise<string[]> {
+  const urls: string[] = []
+  for (const [position, f] of fotos.entries()) {
+    const url = `${MEDIA_PUBLIC_ORIGIN}/bars/${f.alheia ? 'fora' : barId}/gallery/${randomUUID()}`
+    urls.push(url)
+    await insert('bar_photo', {
+      id: randomUUID(),
+      bar_id: barId,
+      url,
+      category: f.category ?? 'telao',
+      caption: f.caption ?? null,
+      position,
+      status: f.status ?? 'approved',
+      rejection_reason: f.status === 'rejected' ? (f.reason ?? 'Motivo.') : null
+    })
+  }
+  return urls
+}
+
+async function photosOf(barId: string) {
+  return query<{
+    url: string
+    category: string
+    caption: string | null
+    status: string
+    cover_requested: boolean
+  }>(
+    `SELECT url, category, caption, status, cover_requested
+     FROM bar_photo WHERE bar_id = $1 ORDER BY position`,
+    [barId]
+  )
+}
+
+const folha = (page: Page) => page.getByRole('dialog')
+
+test('enviar foto: categoria, legenda e capa, sobe pelo R2 e entra em revisão', async ({
   page
 }) => {
   const uploads = await interceptMediaUploads(page)
   const { barId } = await openProfile(page)
-  const adicionar = fotos(page).getByRole('button', { name: /Adicionar foto/ })
-  await expect(adicionar).toContainText('Galeria · 0 de 8')
 
-  for (const total of [1, 2]) {
-    const saved = page.waitForResponse(/pub\.addGalleryPhoto/)
-    await pickGalleryPhoto(page, PNG)
-    expect((await saved).ok()).toBe(true)
-    await expect(adicionar).toContainText(`Galeria · ${total} de 8`)
-  }
+  await pickPhoto(page, PNG)
+  await expect(folha(page).getByText('Nova foto')).toBeVisible()
+  await folha(page).getByRole('button', { name: 'Área externa' }).click()
+  await folha(page).getByLabel('Legenda').fill('A varanda com dois telões')
+  await expect(folha(page)).toContainText('25/80')
+  await folha(page).getByRole('switch').click()
+  const saved = page.waitForResponse(/pub\.addPhoto/)
+  await folha(page).getByRole('button', { name: 'Enviar para revisão' }).click()
+  expect((await saved).ok()).toBe(true)
+  await expect(folha(page)).toHaveCount(0)
 
-  // Cada foto numa chave nova, sorteada no servidor.
-  expect(uploads).toHaveLength(2)
-  for (const upload of uploads) {
-    expect(upload.pathname).toMatch(
-      new RegExp(`^bars/${barId}/gallery/[0-9a-f-]{36}$`)
-    )
-  }
-  const [primeira, segunda] = await galleryOf(barId)
-  expect(primeira).toContain(uploads[0]?.pathname)
-  expect(segunda).toContain(uploads[1]?.pathname)
+  // Chave nova sorteada no servidor; capa pedida, mas nada no ar ainda.
+  expect(uploads).toHaveLength(1)
+  expect(uploads[0]?.pathname).toMatch(
+    new RegExp(`^bars/${barId}/gallery/[0-9a-f-]{36}$`)
+  )
+  expect(await photosOf(barId)).toEqual([
+    {
+      url: expect.stringContaining(uploads[0]?.pathname ?? '?'),
+      category: 'area_externa',
+      caption: 'A varanda com dois telões',
+      status: 'pending',
+      cover_requested: true
+    }
+  ])
+  const [bar] = await query('SELECT photo_url FROM bar WHERE id = $1', [barId])
+  expect(bar?.photo_url).toBeNull()
 
-  const reordered = page.waitForResponse(/pub\.reorderGallery/)
-  await fotos(page)
-    .getByRole('button', { name: 'Mover a foto 2 para antes' })
-    .click()
-  expect((await reordered).ok()).toBe(true)
-  expect(await galleryOf(barId)).toEqual([segunda, primeira])
-  await expect(
-    fotos(page).getByRole('button', { name: 'Mover a foto 1 para antes' })
-  ).toBeDisabled()
-
-  // A prévia é a página do app: as duas fotos depois da capa.
+  const area = fotos(page).getByRole('region', { name: 'Área externa' })
+  await expect(area.getByRole('button', { name: /em revisão/ })).toHaveCount(1)
+  await expect(fotos(page)).toContainText('1em revisão')
+  // A prévia é o que o torcedor vê: nada da foto em revisão.
   await expect(
     page
       .getByRole('region', { name: /Prévia da página de/ })
       .getByRole('img', { name: /do ambiente$/ })
-  ).toHaveCount(2)
+  ).toHaveCount(0)
+  // A foto não espera o "Salvar alterações".
+  await expect(saveButton(page)).toBeDisabled()
 })
 
-const galeriaDe = (n: number) =>
-  Array.from(
-    { length: n },
-    () => `${MEDIA_PUBLIC_ORIGIN}/bars/x/gallery/${randomUUID()}`
-  )
-
-test('galeria cheia: as 8 fotos e nada de "Adicionar foto"', async ({
+test('arquivo errado ou grande não sobe; R2 fora do ar avisa na folha', async ({
   page
 }) => {
-  const pub = await createPub({ bar: { gallery_photos: galeriaDe(8) } })
-  await interceptMediaUploads(page)
-  await signIn(page, pub.user)
-  await page.goto('/admin/meu-espaco')
-  await expect(
-    fotos(page).getByRole('img', { name: /do ambiente de/ })
-  ).toHaveCount(8)
-  await expect(fotos(page).getByText('Adicionar foto')).toHaveCount(0)
-})
+  const pageErrors = collectPageErrors(page)
+  const uploads = await interceptMediaUploads(page)
+  await openProfile(page)
 
-test('Starter: "Adicionar foto" leva aos planos e a galeria guardada não vai à prévia', async ({
-  page
-}) => {
-  const pub = await createPub({
-    subscription: { plan: 'starter' },
-    bar: { gallery_photos: galeriaDe(1) }
+  await pickPhoto(page, {
+    name: 'bar.gif',
+    mimeType: 'image/gif',
+    buffer: Buffer.from('GIF89a')
   })
+  await expect(fotos(page).getByRole('alert')).toHaveText(
+    'Formato inválido. Use JPG, PNG ou WebP.'
+  )
+  await pickPhoto(page, {
+    name: 'grande.png',
+    mimeType: 'image/png',
+    buffer: Buffer.alloc(5 * 1024 * 1024 + 1)
+  })
+  await expect(fotos(page).getByRole('alert')).toHaveText(
+    'Arquivo muito grande. Máximo 5MB.'
+  )
+  await expect(folha(page)).toHaveCount(0)
+
+  // Sem as chaves do R2 a rota responde 503 com a frase pronta.
+  await page.route('**/api/bar/photo?galeria*', (route) =>
+    route.request().method() === 'POST'
+      ? route.fulfill({
+          status: 503,
+          json: { error: 'Upload de foto indisponível no momento.' }
+        })
+      : route.continue()
+  )
+  await pickPhoto(page, PNG)
+  await folha(page).getByRole('button', { name: 'Enviar para revisão' }).click()
+  await expect(folha(page).getByRole('alert')).toHaveText(
+    'Upload de foto indisponível no momento.'
+  )
+  await expect(
+    folha(page).getByRole('button', { name: 'Enviar para revisão' })
+  ).toBeEnabled()
+  expect(uploads).toEqual([])
+  expect(pageErrors).toEqual([])
+})
+
+test('recusada mostra o motivo; setas e arrastar reordenam; capa e apagar', async ({
+  page
+}) => {
   await interceptMediaUploads(page)
+  const pub = await createPub()
+  const [a, b, c, recusada] = await seedPhotos(pub.barId, [
+    { category: 'telao' },
+    { category: 'telao' },
+    { category: 'telao' },
+    {
+      category: 'balcao',
+      status: 'rejected',
+      reason: 'Tem pessoas identificáveis no primeiro plano.',
+      alheia: true
+    }
+  ])
   await signIn(page, pub.user)
   await page.goto('/admin/meu-espaco')
+
+  await expect(fotos(page)).toContainText('3publicadas')
+  await expect(fotos(page)).toContainText('1recusada')
+  await expect(fotos(page)).toContainText(
+    '1 foto recusadaTem pessoas identificáveis no primeiro plano. Envie outra do mesmo espaço.'
+  )
+  const telao = fotos(page).getByRole('region', { name: 'Telão' })
+
+  const reordered = page.waitForResponse(/pub\.reorderPhotos/)
+  await telao
+    .getByRole('button', { name: 'Mover a foto 2 de Telão para antes' })
+    .click()
+  expect((await reordered).ok()).toBe(true)
+  await expect
+    .poll(async () => (await photosOf(pub.barId)).map((p) => p.url))
+    .toEqual([b, a, c, recusada])
+
+  // Arrastar a terceira para o lugar da primeira (só no desktop há mouse).
+  if (!test.info().project.name.startsWith('mobile')) {
+    const dragged = page.waitForResponse(/pub\.reorderPhotos/)
+    await telao
+      .getByRole('listitem')
+      .nth(2)
+      .dragTo(telao.getByRole('listitem').first())
+    expect((await dragged).ok()).toBe(true)
+    await expect
+      .poll(async () => (await photosOf(pub.barId)).map((p) => p.url))
+      .toEqual([c, b, a, recusada])
+  }
+
+  // Aprovada vira capa na hora.
+  await telao.getByRole('button', { name: /Telão, foto 1 de 3/ }).click()
+  const capa = page.waitForResponse(/pub\.setPhotoCover/)
+  await folha(page).getByRole('switch').click()
+  expect((await capa).ok()).toBe(true)
+  const [first] = await photosOf(pub.barId)
+  await expect
+    .poll(async () => {
+      const [bar] = await query('SELECT photo_url FROM bar WHERE id = $1', [
+        pub.barId
+      ])
+      return bar?.photo_url
+    })
+    .toBe(first?.url)
+  await folha(page).getByRole('button', { name: 'Fechar' }).last().click()
   await expect(
-    fotos(page).getByRole('link', { name: /Adicionar foto/ })
+    telao.getByRole('button', { name: /, capa\. Abrir/ })
+  ).toHaveCount(1)
+
+  // A recusada se apaga e libera o aviso.
+  page.once('dialog', (d) => d.accept())
+  await fotos(page)
+    .getByRole('button', { name: /1 foto recusada/ })
+    .click()
+  await expect(folha(page)).toContainText(
+    'Tem pessoas identificáveis no primeiro plano. Envie outra do mesmo espaço.'
+  )
+  await folha(page).getByRole('button', { name: 'Apagar foto' }).click()
+  await expect(folha(page)).toHaveCount(0)
+  await expect(fotos(page)).not.toContainText('foto recusada')
+  expect(await photosOf(pub.barId)).toHaveLength(3)
+})
+
+test('12 fotos: nada de "Adicionar"; recusada não conta', async ({ page }) => {
+  await interceptMediaUploads(page)
+  const pub = await createPub()
+  await seedPhotos(pub.barId, [
+    ...Array.from({ length: 12 }, () => ({})),
+    { status: 'rejected' as const }
+  ])
+  await signIn(page, pub.user)
+  await page.goto('/admin/meu-espaco')
+  await expect(fotos(page)).toContainText('12publicadas')
+  await expect(
+    fotos(page).getByRole('button', { name: 'Adicionar' })
+  ).toHaveCount(0)
+})
+
+test('Starter: a foto nova entra como capa; a galeria guardada não vai à prévia', async ({
+  page
+}) => {
+  await interceptMediaUploads(page)
+  const pub = await createPub({ subscription: { plan: 'starter' } })
+  await seedPhotos(pub.barId, [{}, {}])
+  await signIn(page, pub.user)
+  await page.goto('/admin/meu-espaco')
+
+  await expect(
+    fotos(page).getByRole('link', { name: /Galeria · nos planos Pro e Elite/ })
   ).toHaveAttribute('href', '/plan?origin=admin')
   await expect(fotos(page)).toContainText(
     'As fotos da galeria continuam guardadas, mas não aparecem no perfil até o plano voltar.'
@@ -981,4 +1038,9 @@ test('Starter: "Adicionar foto" leva aos planos e a galeria guardada não vai à
       .getByRole('region', { name: /Prévia da página de/ })
       .getByRole('img', { name: /do ambiente$/ })
   ).toHaveCount(0)
+
+  await pickPhoto(page, PNG)
+  const capa = folha(page).getByRole('switch')
+  await expect(capa).toBeChecked()
+  await expect(capa).toBeDisabled()
 })
