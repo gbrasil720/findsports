@@ -192,10 +192,11 @@ integrationTest(
       expect(summary?.text).toContain(
         'Veja como foi a semana de 22/02 a 28/02 na Onside'
       )
-      expect(summary?.text).toContain('1 pessoa marcou que ia aos seus jogos.')
-      expect(summary?.text).toContain('0 códigos validados no balcão.')
+      expect(summary?.text).toContain('1 pessoa marcou que ia aos seus jogos')
+      expect(summary?.text).toContain('0 códigos validados no balcão')
+      // O campeonato vem do banco para o detalhe do jogo (WEB-477).
       expect(summary?.text).toContain(
-        'Nesta semana, de 01/03 a 07/03: Clássico (qua., 03/03, 20:30).'
+        'NESTA SEMANA · DE 01/03 A 07/03\nQUA 03/03 · Clássico · 20:30 · Campeonato de integração'
       )
       expect(to(sent, email(quiet)).map((body) => body.subject)).toEqual([
         'Nenhum jogo na agenda desta semana'
