@@ -66,6 +66,8 @@ export type ConfirmFailure = {
 }
 
 export type ChatEvent =
+  // O primeiro evento da mensagem: o `run_id` que o `ai.stop` para.
+  | { type: 'run'; runId: string }
   | {
       type: 'blocked'
       reason: 'limit'
