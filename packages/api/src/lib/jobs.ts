@@ -1,4 +1,4 @@
-import { db } from '@findsports_oficial/db'
+import { db, eq, sql } from '@findsports_oficial/db'
 import { jobRun } from '@findsports_oficial/db/schema/houdini'
 
 import { reconcileBarPlans } from './bar-plan-sync'
@@ -76,6 +76,17 @@ export async function runScheduledJobs() {
 }
 
 export type Health = 'ok' | 'warn' | 'bad'
+
+/** A execução mais recente de uma rotina, ou nada se ela nunca rodou. */
+export async function lastJobRun(job: JobName) {
+  const [row] = await db
+    .select()
+    .from(jobRun)
+    .where(eq(jobRun.job, job))
+    .orderBy(sql`${jobRun.startedAt} DESC`)
+    .limit(1)
+  return row ?? null
+}
 
 /** Um dia e duas horas de folga: o cron atrasado não acende o alerta. */
 const STALE_AFTER_MS = 26 * 60 * 60 * 1000
