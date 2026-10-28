@@ -1,4 +1,4 @@
-import { and, asc, db, eq } from '@findsports_oficial/db'
+import { and, asc, db, eq, sql } from '@findsports_oficial/db'
 import { recordAdminAction } from '@findsports_oficial/db/admin-action'
 import { REVIEW_REASON_MAX } from '@findsports_oficial/db/bar-gallery'
 import { bar, barPhoto } from '@findsports_oficial/db/schema/platform'
@@ -79,7 +79,7 @@ export const adminReviewRouter = router({
           .set({
             status: input.approve ? 'approved' : 'rejected',
             rejectionReason: reason,
-            reviewedAt: new Date(),
+            reviewedAt: sql`now()`,
             // Pedido de capa recusado não fica pendurado.
             coverRequested: false
           })
