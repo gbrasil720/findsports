@@ -1,6 +1,8 @@
 import type { Page } from '@playwright/test'
-import { storageState } from '../../fixtures/auth'
+import { BASE_URL } from '../../env'
+import { signIn, storageState } from '../../fixtures/auth'
 import { query, resetAppConfig } from '../../fixtures/db'
+import { createPub } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
 
 // Feitiços do Houdini (antes /internal/flags, WEB-181). Serial: grava
@@ -167,6 +169,11 @@ function anotherValue(value: unknown): unknown {
     const limits = value as { userDailyCalls: number }
     return { ...limits, userDailyCalls: limits.userDailyCalls + 1 }
   }
+  // Manutenção do app (WEB-466): o contrário, sem previsão.
+  if (value !== null && typeof value === 'object' && 'backAt' in value) {
+    const maintenance = value as { on: boolean }
+    return { on: !maintenance.on, backAt: null }
+  }
   throw new Error(`Formato sem valor alternativo: ${JSON.stringify(value)}`)
 }
 
@@ -206,6 +213,7 @@ test('todo feitiço edita como JSON, lança e volta ao padrão', async ({
     'ai.enabled',
     'ai.limits',
     'ai.variant_weights',
+    'app.maintenance',
     'rating.public_display',
     'search.tiered_plan_query'
   ])
@@ -229,4 +237,105 @@ test('todo feitiço edita como JSON, lança e volta ao padrão', async ({
       expect(await stored(key)).toBeUndefined()
     })
   }
+})
+
+/** O que o app lê (WEB-466). */
+async function appStatus(page: Page) {
+  const response = await page.request.get('/api/app/status')
+  expect(response.ok()).toBe(true)
+  expect(response.headers()['cache-control']).toBe('no-store')
+  return (
+    (await response.json()) as {
+      maintenance: { on: boolean; backAt: string | null }
+    }
+  ).maintenance
+}
+
+// WEB-466: o interruptor da manutenção do app (26d, 26e), com a previsão.
+// Ligado, o painel do bar e o Houdini continuam no ar.
+test('manutenção do app liga com previsão, muda a previsão e desliga', async ({
+  page,
+  browser,
+  extraHTTPHeaders
+}) => {
+  await page.goto('/houdini/feiticos')
+  const card = page.locator('article').filter({
+    has: page.getByRole('switch', { name: 'App em manutenção' })
+  })
+  const toggle = card.getByRole('switch', { name: 'App em manutenção' })
+  const confirm = card.getByRole('alertdialog')
+
+  await expect(card).toContainText('No ar')
+  await expect(toggle).toHaveAttribute('aria-checked', 'false')
+  expect(await appStatus(page)).toEqual({ on: false, backAt: null })
+
+  // Pede confirmação; cancelar não grava.
+  await toggle.click()
+  await expect(confirm).toContainText('Pôr o app em manutenção (volta em 1 h)?')
+  await confirm.getByRole('button', { name: 'Cancelar' }).click()
+  await expect(confirm).toHaveCount(0)
+  expect(await stored('app.maintenance')).toBeUndefined()
+
+  const before = Date.now()
+  await toggle.click()
+  await confirm.getByRole('button', { name: 'Pôr em manutenção' }).click()
+  await expect(page.getByText('App em manutenção.')).toBeVisible()
+  await expect(toggle).toHaveAttribute('aria-checked', 'true')
+  await expect(card).toContainText('Em manutenção')
+  await expect(card).toContainText(
+    /Previsão de volta \d\d:\d\d, faltam cerca de (1 h|55 min)\./
+  )
+  const on = await appStatus(page)
+  expect(on.on).toBe(true)
+  const minutes = (Date.parse(on.backAt ?? '') - before) / 60_000
+  expect(minutes).toBeGreaterThan(59)
+  expect(minutes).toBeLessThan(61)
+  // Sem prazo: a manutenção só sai pelo interruptor.
+  expect((await stored('app.maintenance'))?.minutes_left).toBeNull()
+
+  // O Grimório anota quem ligou.
+  const [entry] = await query<{ actor_name: string }>(
+    `SELECT actor_name FROM admin_action
+     WHERE kind = 'config.set' AND target_id = 'app.maintenance'
+     ORDER BY created_at DESC LIMIT 1`
+  )
+  expect(entry?.actor_name).toBe('E2E admin')
+
+  // O painel do bar segue no ar: a validação do código abre.
+  const pubContext = await browser.newContext({
+    baseURL: BASE_URL,
+    extraHTTPHeaders
+  })
+  try {
+    const pubPage = await pubContext.newPage()
+    await signIn(
+      pubPage,
+      (await createPub({ subscription: { plan: 'elite' } })).user
+    )
+    await pubPage.goto('/admin/validate')
+    await expect(pubPage.getByLabel('Código', { exact: true })).toBeVisible()
+  } finally {
+    await pubContext.close()
+  }
+
+  // Nova previsão: sem previsão, o app não mostra contagem.
+  await card
+    .getByRole('group', { name: 'Previsão de volta' })
+    .getByRole('button', { name: 'Sem previsão' })
+    .click()
+  await card.getByRole('button', { name: 'Mudar a previsão' }).click()
+  await expect(confirm).toContainText(
+    'Mudar a previsão de volta (sem previsão)?'
+  )
+  await confirm.getByRole('button', { name: 'Mudar a previsão' }).click()
+  await expect(card).toContainText('Sem previsão de volta')
+  expect(await appStatus(page)).toEqual({ on: true, backAt: null })
+
+  await page.reload()
+  await toggle.click()
+  await expect(confirm).toContainText('Tirar o app da manutenção?')
+  await confirm.getByRole('button', { name: 'Tirar da manutenção' }).click()
+  await expect(page.getByText('App de volta ao ar.')).toBeVisible()
+  await expect(card).toContainText('No ar')
+  expect(await appStatus(page)).toEqual({ on: false, backAt: null })
 })
