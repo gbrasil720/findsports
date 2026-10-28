@@ -540,13 +540,23 @@ export function CabecalhoPagina({
   tamanho?: number
   children?: ReactNode
 }) {
+  // A palavra mais longa não quebra: a 320 px, "DESEMPENHO" a 52 px passava
+  // da tela. O título encolhe só quando ela não cabe na largura do cabeçalho
+  // (Anton, ~0,5em por caractere); nas larguras normais fica o `tamanho`.
+  const palavra =
+    typeof titulo === 'string'
+      ? Math.max(...titulo.split(/\s+/).map((p) => p.length))
+      : 0
+  const tamanhoCss = palavra
+    ? `min(${tamanho}px, calc(100cqi / ${palavra * 0.5}))`
+    : `${tamanho}px`
   return (
     <header className="painel-page-head">
       <div className="painel-page-head-texto">
         {kicker ? <p className="painel-page-head-kicker">{kicker}</p> : null}
         <h1
           className="painel-disp"
-          style={vars({ '--painel-disp-size': `${tamanho}px` })}
+          style={vars({ '--painel-disp-size': tamanhoCss })}
         >
           {titulo}
         </h1>
