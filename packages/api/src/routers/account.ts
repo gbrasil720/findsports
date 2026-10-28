@@ -53,14 +53,26 @@ export function dataExportLimitKey(userId: string): string {
 export function createDataExportEmail(input: {
   name: string
   role: 'fan' | 'pub' | 'admin'
+  /** Nome do anexo, que o e-mail mostra. */
+  filename: string
 }): { subject: string; html: string; text: string } {
   const contents =
     input.role === 'pub'
       ? 'Ele traz a conta, o bar, o plano e os jogos cadastrados. De torcedor não vem nada, nem quem marcou presença.'
       : 'Ele traz a conta, as preferências, os bares salvos, os jogos, as avaliações, os amigos e as conquistas. De outra pessoa, só o nome e o @ de quem é seu amigo.'
   const template = createOnsideEmailTemplate({
-    heading: 'Seus dados na Onside',
+    tag: 'PRIVACIDADE',
+    heading: 'Seus dados',
+    headingAccent: 'na Onside',
+    shadow: 'ink',
     intro: `Olá, ${input.name.trim() || 'torcedor'}. Como você pediu, o arquivo com os dados da sua conta na Onside está anexado a este e-mail.`,
+    blocks: [
+      {
+        kind: 'file',
+        name: input.filename,
+        detail: 'JSON · anexado a este e-mail'
+      }
+    ],
     steps: [
       contents,
       'O arquivo é JSON, um formato de texto aberto: abre em qualquer editor e pode ser levado para outro serviço.',
@@ -74,7 +86,7 @@ export function createDataExportEmail(input: {
     actionTone: 'secondary',
     note: 'Se não foi você quem pediu, troque a senha da conta e escreva para contato@onside.sh.',
     reason:
-      'Você recebeu este e-mail porque alguém pediu, de dentro da sua conta, uma cópia dos seus dados na Onside.'
+      'Você recebeu este e-mail porque um arquivo com os dados desta conta foi pedido na Onside.'
   })
   return { subject: 'Seus dados da Onside', ...template }
 }
@@ -334,20 +346,25 @@ export const accountRouter = router({
     try {
       const data =
         user.role === 'pub' ? await barData(user.id) : await fanData(user.id)
+      const filename = `onside-meus-dados-${data.exportedAt.slice(0, 10)}.json`
       await sendEmail({
         apiKey: env.EMAIL_API_KEY,
         fromEmail: env.EMAIL_FROM,
         to: user.email,
         attachments: [
           {
-            filename: `onside-meus-dados-${data.exportedAt.slice(0, 10)}.json`,
+            filename,
             contentType: 'application/json',
             content: Buffer.from(JSON.stringify(data, null, 2)).toString(
               'base64'
             )
           }
         ],
-        ...createDataExportEmail({ name: user.name, role: user.role })
+        ...createDataExportEmail({
+          name: user.name,
+          role: user.role,
+          filename
+        })
       })
     } catch (error) {
       // Pedido que não saiu não conta: a pessoa vai tentar de novo.
