@@ -59,6 +59,38 @@ integrationTest(
 )
 
 integrationTest(
+  'Jogos do trilho conta o que a tela Jogos lista: publicado e não acabado',
+  async () => {
+    const caller = await admin()
+    const listed = async () =>
+      (await caller.adminEvents.list({ period: 'all' })).total
+    const [before, beforeListed] = await Promise.all([
+      caller.houdini.overview(),
+      listed()
+    ])
+    const seeded = await seedBar('pro', 'active', inAMonth())
+    try {
+      await seeded.seedGame()
+      // Começou há meia hora e ainda não acabou: a tela lista.
+      await seeded.seedGame({ startsAt: inDays(-1 / 48) })
+      // Rascunhos (WEB-436) e jogo que já acabou ficam fora dos dois.
+      await seeded.seedGame({ publishedAt: null })
+      await seeded.seedGame({ publishedAt: null })
+      await seeded.seedGame({
+        startsAt: inDays(-1),
+        endsAt: inDays(-1 + 1 / 12)
+      })
+
+      const after = await caller.houdini.overview()
+      expect(after.jogosFuturos - before.jogosFuturos).toBe(2)
+      expect((await listed()) - beforeListed).toBe(2)
+    } finally {
+      await seeded.cleanup()
+    }
+  }
+)
+
+integrationTest(
   'coelhos traz conta nova, bar novo e assinatura mexida',
   async () => {
     const caller = await admin()
