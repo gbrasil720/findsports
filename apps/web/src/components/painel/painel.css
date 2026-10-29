@@ -1420,12 +1420,6 @@ html[data-consent] .painel .painel-lateral {
     opacity: 0;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .painel .painel-erro {
-    animation: none;
-  }
-}
-
 /* `BotaoAcao`: os rótulos empilhados na mesma célula (a largura é a do maior).
  * O que entra vem do lado da fase seguinte; o que sai vai para o da anterior,
  * com um desfoque curto que costura as duas palavras. */
