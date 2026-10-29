@@ -636,15 +636,27 @@
   white-space: nowrap;
 }
 .painel .entrada-ob-passos i {
+  position: relative;
+  overflow: hidden;
   height: 4px;
   border-radius: 2px;
   background: rgb(18 18 15 / 12%);
 }
+/* O trecho do passo se enche da esquerda ao avançar e esvazia ao voltar. */
+.painel .entrada-ob-passos i::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--painel-fg);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--onside-motion-slow) var(--onside-ease-out);
+}
 .painel .entrada-ob-passos li[data-feito] {
   color: var(--painel-fg);
 }
-.painel .entrada-ob-passos li[data-feito] i {
-  background: var(--painel-fg);
+.painel .entrada-ob-passos li[data-feito] i::after {
+  transform: none;
 }
 .painel .entrada-ob-passos li[aria-current] {
   font-weight: 700;
@@ -653,8 +665,19 @@
   .painel .entrada-ob-passos i {
     background: #2e2e29;
   }
-  .painel .entrada-ob-passos li[data-feito] i {
+  .painel .entrada-ob-passos li[data-feito] i::after {
     background: var(--painel-acid);
+  }
+}
+/* Movimento reduzido: a barra acende sem crescer. */
+@media (prefers-reduced-motion: reduce) {
+  .painel .entrada-ob-passos i::after {
+    transform: none;
+    opacity: 0;
+    transition: opacity var(--onside-motion-base) var(--onside-ease-out);
+  }
+  .painel .entrada-ob-passos li[data-feito] i::after {
+    opacity: 1;
   }
 }
 .painel .entrada-ob-acao {
