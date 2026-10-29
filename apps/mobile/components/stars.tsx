@@ -1,5 +1,5 @@
 import { RATING_STARS_MAX } from '@findsports_oficial/db/rating-limits'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
 import Animated, {
   useAnimatedStyle,
@@ -16,7 +16,8 @@ import { Icon } from '@/components/ui'
 /*
  * Estrelas da avaliação (WEB-451). `Stars` só mostra; `StarPicker` é a
  * escolha do pós-jogo: tocar na terceira acende três, cada uma com um estalo
- * curto que corre da esquerda para a direita (25 ms entre elas), e a
+ * curto que corre da esquerda para a direita (25 ms entre elas; só as que
+ * acendem agora), e a
  * escolhida vibra uma vez. Com "Reduzir movimento" o Reanimated pula o
  * estalo e a cor troca na hora.
  */
@@ -52,6 +53,13 @@ export function StarPicker({
   value: number | null
   onChange: (stars: number) => void
 }) {
+  // As que acendem agora estalam a partir da última acesa; baixar a nota só
+  // apaga, sem estalo.
+  const before = useRef(value ?? 0)
+  const lit = before.current
+  useEffect(() => {
+    before.current = value ?? 0
+  }, [value])
   return (
     <View accessibilityRole="radiogroup" style={styles.picker}>
       {STEPS.map((n) => (
@@ -60,7 +68,7 @@ export function StarPicker({
           n={n}
           on={value !== null && n <= value}
           selected={value === n}
-          chosen={value}
+          delay={Math.max(n - 1 - lit, 0) * 25}
           onPress={() => {
             if (value !== n) haptic.select()
             onChange(n)
@@ -75,30 +83,32 @@ function PickStar({
   n,
   on,
   selected,
-  chosen,
+  delay,
   onPress
 }: {
   n: number
   on: boolean
   selected: boolean
-  /** A nota escolhida: o estalo corre até ela. */
-  chosen: number | null
+  /** Quando estalar, se acender agora: a fileira corre da esquerda. */
+  delay: number
   onPress: () => void
 }) {
   const palette = usePalette()
   const scale = useSharedValue(1)
+  // Só o `on` dispara: estrela que já estava acesa não estala de novo.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: o atraso é lido no instante em que acende
   useEffect(() => {
-    if (!on || chosen === null) return
+    if (!on) return
     scale.set(
       withDelay(
-        (n - 1) * 25,
+        delay,
         withSequence(
-          withTiming(1.22, { duration: 90, easing: EASE }),
-          withSpring(1, { duration: 260, dampingRatio: 0.6 })
+          withTiming(1.2, { duration: 80, easing: EASE }),
+          withSpring(1, { duration: 220, dampingRatio: 0.6 })
         )
       )
     )
-  }, [on, chosen, n, scale])
+  }, [on, scale])
   const style = useAnimatedStyle(() => ({
     transform: [{ scale: scale.get() }]
   }))
