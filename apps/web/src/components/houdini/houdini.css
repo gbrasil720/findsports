@@ -899,6 +899,12 @@ a.hd-kpi:active {
   align-items: center;
 }
 
+/* Sozinha na coluna da página (Bares), a base de 280 px virava altura e abria
+   vãos acima e abaixo da busca. */
+.hd-page > .hd-search {
+  flex: none;
+}
+
 .hd-search > svg {
   position: absolute;
   left: 13px;
