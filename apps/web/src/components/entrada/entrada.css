@@ -715,6 +715,15 @@
     transform: translateX(var(--entrada-ob-de, 12px));
   }
 }
+/* A prévia à direita só esmaece, quando troca de foto para card. */
+.painel .entrada-ob-lado[data-sentido] {
+  animation: entrada-ob-lado var(--onside-motion-base) var(--onside-ease-out);
+}
+@keyframes entrada-ob-lado {
+  from {
+    opacity: 0;
+  }
+}
 /* Movimento reduzido: o passo só esmaece. */
 @media (prefers-reduced-motion: reduce) {
   .painel .entrada-ob-form,
