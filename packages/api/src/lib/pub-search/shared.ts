@@ -38,6 +38,13 @@ import { utcIso } from '../utc-timestamp'
 const MAX_LIVE_SPAN_INTERVAL = '24 hours'
 
 /**
+ * Teto de `texto_jogos`. Abaixo dele a busca com texto parte dos jogos que
+ * casam; no teto, vai bar a bar. Medido em 29/10/2026 no dataset de 100 mil
+ * bares (ver `tiered.ts`).
+ */
+const TEXTO_TETO = 2000
+
+/**
  * Jogo publicado que ainda não acabou: o próximo ou o que está rolando agora.
  * Rascunho (`published_at` nulo, WEB-436) nunca entra na busca.
  *
@@ -260,6 +267,21 @@ export type FiltrosBusca = {
    */
   champBarFilter: (nomeDoBar: SQL) => SQL
   /**
+   * Com texto na busca, o CTE `texto_jogos`: até `TEXTO_TETO` bares de jogos
+   * que não acabaram e casam pelo texto do jogo (campeonato e participantes
+   * juntos, pelo índice trigram `event_search_text_trgm_idx`) ou pelo nome de
+   * um time. Vazio sem texto; vai no `WITH` de quem usa `prefiltroTexto`.
+   */
+  textoJogosCte: SQL | null
+  /**
+   * Com menos de `TEXTO_TETO` linhas, `texto_jogos` está completo e só passa
+   * bar que está nele ou que casa pelo nome: texto raro não vai mais bar a
+   * bar. No teto, o texto é comum e o filtro deixa todos passarem (a trava é
+   * avaliada uma vez só). Folgado de propósito: quem decide é
+   * `champBarFilter`, no próximo jogo.
+   */
+  prefiltroTexto: (barAlias: SQL) => SQL
+  /**
    * Próximo jogo do bar, com os mesmos recortes que o admitem na busca.
    *
    * Vai sem o `SELECT` para o linear poder pôr a contagem por janela na
@@ -345,12 +367,41 @@ export function montarFiltrosBusca(input: SearchInput): FiltrosBusca {
   const champBarFilter = (nomeDoBar: SQL) =>
     championship ? sql`AND (${textoDoJogo} OR ${casa(nomeDoBar)})` : sql``
 
+  const jogoAberto = sql`e.published_at IS NOT NULL
+    AND e.starts_at >= ${utcNowSql()} - ${MAX_LIVE_SPAN_INTERVAL}::interval`
+  // A expressão do texto precisa ser a mesma do índice, letra por letra.
+  const textoJogosCte = championship
+    ? sql`texto_jogos AS MATERIALIZED (
+        SELECT bar_id FROM (
+          SELECT e.bar_id FROM event e
+          WHERE ${jogoAberto}
+            AND search_normalize(coalesce(e.championship, '') || ' ' || coalesce(e.participant_free_text, '')) LIKE ${padrao}
+          UNION ALL
+          SELECT e.bar_id FROM team t
+          JOIN event_participants ep ON ep.team_id = t.id
+          JOIN event e ON e.id = ep.event_id
+          WHERE ${casa(sql`t.name`)} AND ${jogoAberto}
+        ) jogos
+        LIMIT ${TEXTO_TETO}
+      )`
+    : null
+  const prefiltroTexto = (barAlias: SQL) =>
+    championship
+      ? sql`AND (
+          (SELECT count(*) FROM texto_jogos) >= ${TEXTO_TETO}
+          OR ${barAlias}.id IN (SELECT bar_id FROM texto_jogos)
+          OR ${casa(sql`${barAlias}.name`)}
+        )`
+      : sql``
+
   return {
     origin: sql`ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography`,
     radiusMeters: radiusKm * 1000,
     eventFilter,
     ofertaDoJogo,
     champBarFilter,
+    textoJogosCte,
+    prefiltroTexto,
     proximoJogo: (barAlias) => sql`
       e.id AS next_event_id,
       e.championship AS next_championship,
