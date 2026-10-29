@@ -109,24 +109,23 @@ describe('envio de e-mail (WEB-476)', () => {
     return { ...result, values: result.stdout.toString().trim() }
   }
 
-  it('aceita os nomes antigos enquanto os segredos não são trocados', () => {
+  it('a MillionSend é o padrão, e os nomes antigos da Resend não valem mais', () => {
     expect(
       emailEnv({
         RESEND_API_KEY: 're_antiga',
         RESEND_FROM_EMAIL: 'contato@mail.onside.sh'
       }).values
-    ).toBe('["re_antiga","contato@mail.onside.sh","https://api.resend.com"]')
+    ).toBe('[null,null,"https://api.millionsend.com"]')
   })
 
-  it('o nome novo vence o antigo', () => {
+  it('lê a chave, o remetente e a URL pelos nomes novos', () => {
     expect(
       emailEnv({
-        RESEND_API_KEY: 're_antiga',
         EMAIL_API_KEY: 'ms_nova',
         EMAIL_FROM: 'contato@mail.onside.sh',
-        EMAIL_API_URL: 'https://api.millionsend.com'
+        EMAIL_API_URL: 'https://outra.api.test'
       }).values
-    ).toBe('["ms_nova","contato@mail.onside.sh","https://api.millionsend.com"]')
+    ).toBe('["ms_nova","contato@mail.onside.sh","https://outra.api.test"]')
   })
 
   it('recusa EMAIL_API_URL sem https: a chave iria em texto aberto', () => {
