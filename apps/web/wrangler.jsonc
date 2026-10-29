@@ -40,14 +40,15 @@
   // O workers.dev deixa de logar.
   //
   // WEB-476: o provedor de e-mail é `EMAIL_API_URL` mais o segredo
-  // `EMAIL_API_KEY` (a MillionSend é `https://api.millionsend.com`). Os dois
-  // trocam juntos; o segredo antigo, `RESEND_API_KEY`, vale até lá.
+  // `EMAIL_API_KEY`, que trocam juntos. MillionSend desde 29/10/2026 (chave
+  // "onside-web produção", só envio, só mail.onside.sh). Rollback em
+  // docs/email-dns.md: URL da Resend de volta e `EMAIL_API_KEY` apagado.
   "vars": {
     "NODE_ENV": "production",
     "BETTER_AUTH_URL": "https://www.onside.sh",
     "PUBLIC_APP_URL": "https://www.onside.sh",
     "EMAIL_FROM": "contato@mail.onside.sh",
-    "EMAIL_API_URL": "https://api.resend.com",
+    "EMAIL_API_URL": "https://api.millionsend.com",
     "CF_ACCOUNT_ID": "dc48dae1d364480e5b618e4a00e98565",
     "MEDIA_PUBLIC_ORIGIN": "https://media.onside.sh",
     "AI_GATEWAY_ID": "onside-prod"
@@ -96,7 +97,7 @@
         "BETTER_AUTH_URL": "https://onside-web-preview.dev-guilhermebrasil.workers.dev",
         "PUBLIC_APP_URL": "https://onside-web-preview.dev-guilhermebrasil.workers.dev",
         "EMAIL_FROM": "contato@mail.onside.sh",
-        "EMAIL_API_URL": "https://api.resend.com",
+        "EMAIL_API_URL": "https://api.millionsend.com",
         "MEDIA_PUBLIC_ORIGIN": "https://media.onside.sh",
         "AI_GATEWAY_ID": "onside-preview",
         // Banco com e-mails reais: e-mail vai para o log, com o link. O env

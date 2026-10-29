@@ -71,6 +71,17 @@ no `.env`.
 
 ## Troca para a MillionSend (WEB-476)
 
+**Feita em 29/10/2026.** Domínio `mail.onside.sh` verificado na MillionSend
+(sa-east-1, Return-Path `send.mail.onside.sh`, o mesmo da Resend), com o DKIM
+`millionsend._domainkey.mail` na Cloudflare; o `_dmarc.mail` com `p=none` que o
+painel sugere não foi criado, para não enfraquecer o `p=quarantine` de
+`onside.sh`. Duas chaves só de envio, só para o domínio: "onside-web produção"
+(Worker `onside-web`) e "onside-web preview e local" (`onside-web-preview`). O
+segredo entrou nos dois Workers antes do deploy, e a URL veio no mesmo PR que
+trouxe o código para a master: URL e chave trocaram no mesmo deploy. Envio real
+conferido no Gmail (SPF, DKIM e DMARC `pass`, `Reply-To` certo, anexo). Falta
+o passo 6.
+
 Decisão do dono em 28/10/2026: plano Free da nuvem (100 e-mails/dia; passando
 disso, o envio fica para o dia seguinte, inclusive verificação e reset de senha).
 O código já fala com qualquer API no formato da Resend: muda o provedor
