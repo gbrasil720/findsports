@@ -483,7 +483,7 @@ function Quadro({
         src={foto.url}
         alt=""
         draggable={false}
-        className="absolute inset-0 size-full object-cover transition-opacity group-data-[status=pending]:opacity-55"
+        className="absolute inset-0 size-full object-cover transition-opacity duration-150 ease-(--onside-ease-out) group-data-[status=pending]:opacity-55"
       />
       <span className="absolute top-1.5 left-1.5">
         <Selo foto={foto} capa={capa} />
