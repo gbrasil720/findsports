@@ -532,7 +532,7 @@ export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
             ],
             [
               'MillionSend (Codari Global, LLC)',
-              'Envio dos e-mails da plataforma: confirmação de cadastro, redefinição de senha e o feedback enviado de dentro da plataforma',
+              'Envio dos e-mails da plataforma: confirmação de cadastro, redefinição de senha, cópia dos seus dados, avisos ao estabelecimento e o feedback enviado de dentro da plataforma',
               'Estados Unidos, com envio a partir de São Paulo (Brasil)'
             ],
             [
@@ -576,7 +576,7 @@ export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
         {
           type: 'p',
           content:
-            'Os e-mails da plataforma — confirmação de cadastro, redefinição de senha e o feedback que você manda de dentro da plataforma, que chega à Onside com o seu nome, o seu e-mail e as imagens anexadas — são enviados pela MillionSend, listada na tabela acima. Se trocarmos de fornecedor, a tabela será atualizada com o nome e o local de tratamento, e a mudança será comunicada conforme a seção sobre alterações.'
+            'Os e-mails da plataforma — confirmação de cadastro, redefinição de senha, a cópia dos seus dados, os avisos ao estabelecimento (resumo da semana, jogo lotando e agenda vazia) e o feedback que você manda de dentro da plataforma, que chega à Onside com o seu nome, o seu e-mail e as imagens anexadas — são enviados pela MillionSend, listada na tabela acima. Se trocarmos de fornecedor, a tabela será atualizada com o nome e o local de tratamento, e a mudança será comunicada conforme a seção sobre alterações.'
         },
         {
           type: 'h3',
