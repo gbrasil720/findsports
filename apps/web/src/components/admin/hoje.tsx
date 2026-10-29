@@ -350,9 +350,8 @@ export function Hoje() {
                       <b>{nomeDeQuemAvaliou(r.name)}</b>
                       {/* Com comentário aprovado, ele fala por si (1r). */}
                       {r.comment ? (
-                        <span className="[overflow-wrap:anywhere]">
-                          {r.comment}
-                        </span>
+                        // Até duas linhas; o texto inteiro fica no Meu espaço.
+                        <span style={DUAS_LINHAS}>{r.comment}</span>
                       ) : (
                         <span>
                           {r.wouldReturn ? 'Voltaria' : 'Não voltaria'} ·{' '}
@@ -373,6 +372,14 @@ export function Hoje() {
     </div>
   )
 }
+
+const DUAS_LINHAS = {
+  whiteSpace: 'normal',
+  overflowWrap: 'anywhere',
+  display: '-webkit-box',
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: 'vertical'
+} as const
 
 type Noite = ReturnType<
   typeof montarNoite<RouterOutputs['pub']['getMyEvents'][number]>
