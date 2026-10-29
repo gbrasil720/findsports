@@ -13,18 +13,15 @@ const rawEnv = createEnv({
     CORS_ORIGIN: z.url(),
     AUTH_DEV_TRUSTED_ORIGIN: z.url().optional(),
     /**
-     * Envio de e-mail (WEB-476): qualquer API no formato da Resend
-     * (`POST <EMAIL_API_URL>/emails`, Bearer). A Resend é o padrão; a
-     * MillionSend é a mesma API em `https://api.millionsend.com`. Os nomes
-     * antigos (`RESEND_API_KEY`, `RESEND_FROM_EMAIL`) valem enquanto os
-     * segredos não forem trocados: ver `runtimeEnv` abaixo.
+     * Envio de e-mail (WEB-476): a MillionSend, ou qualquer API no mesmo
+     * formato (`POST <EMAIL_API_URL>/emails`, Bearer).
      */
     EMAIL_API_KEY: z.string().min(1).optional(),
     EMAIL_FROM: z.email().optional(),
     // https: a chave vai no cabeçalho de cada envio.
     EMAIL_API_URL: z
       .url({ protocol: /^https$/ })
-      .default('https://api.resend.com'),
+      .default('https://api.millionsend.com'),
     /**
      * `console`: o e-mail vai para o log (com o link, que é como se testa)
      * e conta como entregue, mesmo com `EMAIL_API_KEY`. Só para o Worker de
@@ -98,12 +95,7 @@ const rawEnv = createEnv({
       .enum(['development', 'production', 'test'])
       .default('development')
   },
-  runtimeEnv: {
-    ...process.env,
-    // Nomes antigos, de antes do WEB-476: o novo vence, vazio cai no antigo.
-    EMAIL_API_KEY: process.env.EMAIL_API_KEY || process.env.RESEND_API_KEY,
-    EMAIL_FROM: process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL
-  },
+  runtimeEnv: process.env,
   emptyStringAsUndefined: true
 })
 

@@ -84,7 +84,7 @@ describe('e-mail de verificação Onside', () => {
       }
     })
 
-    expect(request?.url).toBe('https://api.resend.com/emails')
+    expect(request?.url).toBe('https://api.millionsend.com/emails')
     expect(request?.headers.get('authorization')).toBe('Bearer re_test')
     const body = (await request?.json()) as { text: string; html: string }
     expect(body).toMatchObject({
