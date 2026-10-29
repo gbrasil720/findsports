@@ -301,6 +301,19 @@ desligada). Regras, textos e envio em `packages/api/src/lib/bar-notices.ts`:
   segunda pelo Houdini só manda o que faltou.
 - "Notificações no celular" segue "em breve" até o app abrir por link universal.
 
+### Oferta da casa por jogo (WEB-422, WEB-464)
+
+Só Elite. `bar.house_offer` é a padrão (Meu espaço e Revisão do cadastro, com as
+sugestões e a prévia da 28f; **sem prazo**). Cada jogo pode trocar (`event.house_offer`)
+ou desligar (`event.no_house_offer`, "sem oferta neste jogo"); nulo e falso herda a
+padrão. A regra é `effectiveHouseOffer` (`packages/api/src/lib/house-offer.ts`) e vale
+em tudo: `pubs.getById` devolve `events[].houseOffer` já resolvida (a `houseOffer` do
+topo é a padrão, para o app anterior), o código do balcão copia a deste jogo em
+`offer_snapshot` e o filtro "Oferta da casa" da busca olha o jogo que casa
+(`jogoComOferta`, em `pub-search/shared.ts`). O painel troca no "Novo jogo"/"Editar
+jogo" e no interruptor do jogo aberto (`pub.createEvent`/`updateEvent`, campos
+`houseOffer` e `noHouseOffer`, recusados fora do Elite).
+
 ### Código do balcão pela comanda (WEB-412)
 
 Opção do bar Elite, **desligada por padrão** (`bar.confirms_codes_later`), escolhida
