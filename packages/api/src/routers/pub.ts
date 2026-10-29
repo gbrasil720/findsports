@@ -33,6 +33,7 @@ import {
   subscriptionPlanEnum,
   team
 } from '@findsports_oficial/db/schema/platform'
+import { barRating } from '@findsports_oficial/db/schema/rating'
 import { env } from '@findsports_oficial/env/server'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
@@ -73,7 +74,7 @@ import {
   getEventDeletionBlock,
   readEventDeletionImpact
 } from '../lib/event-deletion'
-import { byMatchOrder, participantNames } from '../lib/game-participants'
+import { byMatchOrder } from '../lib/game-participants'
 import { geocodeAddress } from '../lib/geocode-address'
 import {
   assertCanConfigureHouseOffer,
@@ -93,10 +94,10 @@ import {
   RATING_PUBLIC_FLOOR,
   ratingPercentage
 } from '../lib/rating'
-import type { RatingReasonId } from '../lib/rating-reasons'
+import { readRatingList } from '../lib/rating-list'
+import { starsAverage } from '../lib/rating-review'
 import { assertCanValidateReservations } from '../lib/reservation-validation'
 import { createSubscriptionCancelUrl } from '../lib/subscription-cancel'
-import { utcIso } from '../lib/utc-timestamp'
 
 /**
  * Resolve the effective phoneAcceptsWhatsapp value given the input and
@@ -390,6 +391,8 @@ async function getOwnBar(userId: string) {
       isActive: bar.isActive,
       ratingCount: bar.ratingCount,
       ratingPositive: bar.ratingPositive,
+      ratingStarsCount: bar.ratingStarsCount,
+      ratingStarsSum: bar.ratingStarsSum,
       subscription
     })
     .from(bar)
@@ -895,35 +898,34 @@ export const pubRouter = router({
     }),
 
   /**
-   * As avaliações do próprio bar, cruas.
+   * As avaliações do próprio bar.
    *
    * O piso público (`RATING_PUBLIC_FLOOR`) e a flag de exibição NÃO se
    * aplicam aqui: eles existem para proteger o bar de ter uma amostra
    * minúscula exibida ao torcedor, não para esconder do dono o que estão
    * dizendo do espaço dele. Ele vê desde a primeira.
    *
-   * Não devolve quem avaliou. A resposta é binária e a base é pequena — um
-   * nome ao lado de um "não voltaria" transformaria avaliação em conflito
-   * pessoal, e o dono tem o telefone dessa pessoa.
+   * A nota (`total`, `percentage`, `stars`) é a pública: só as verificadas
+   * (WEB-408). As outras vêm na lista com `verified: false` e em
+   * `unverified`, para o dono ler sem confundir com a nota. Nome só de quem
+   * escolheu se identificar, e comentário só depois da revisão da Onside
+   * (WEB-451, `readRatingList`).
    */
   getMyRatings: pubProcedure.query(async ({ ctx }) => {
     const existingBar = await getOwnBar(ctx.session.user.id)
 
-    const rows = await db.execute(sql`
-      SELECT
-        r.would_return,
-        r.reasons,
-        r.created_at,
-        e.championship,
-        e.participant_free_text,
-        ${participantNames(sql`e.id`)} AS participants,
-        e.starts_at
-      FROM bar_rating r
-      JOIN event e ON e.id = r.event_id
-      WHERE r.bar_id = ${existingBar.id}
-      ORDER BY r.created_at DESC
-      LIMIT 50
-    `)
+    const [recent, [counts]] = await Promise.all([
+      readRatingList(existingBar.id, { public: false, limit: 50 }),
+      db
+        .select({ unverified: sql<number>`count(*)::int` })
+        .from(barRating)
+        .where(
+          and(
+            eq(barRating.barId, existingBar.id),
+            eq(barRating.verified, false)
+          )
+        )
+    ])
 
     const total = existingBar.ratingCount
     const positive = existingBar.ratingPositive
@@ -932,28 +934,16 @@ export const pubRouter = router({
       total,
       positive,
       percentage: ratingPercentage(positive, total),
+      // O dono vê a média desde a primeira estrela, como a porcentagem.
+      stars: starsAverage(
+        existingBar.ratingStarsSum,
+        existingBar.ratingStarsCount,
+        1
+      ),
+      unverified: counts?.unverified ?? 0,
       isPublic: hasPublicRating(total),
       floor: RATING_PUBLIC_FLOOR,
-      recent: (
-        rows.rows as {
-          would_return: boolean
-          reasons: RatingReasonId[] | null
-          created_at: string
-          championship: string
-          participant_free_text: string | null
-          participants: string[]
-          starts_at: string
-        }[]
-      ).map((row) => ({
-        wouldReturn: row.would_return,
-        // "O que pesou?" (WEB-398): as etiquetas, sem quem marcou.
-        reasons: row.reasons ?? [],
-        createdAt: row.created_at,
-        championship: row.championship,
-        participantFreeText: row.participant_free_text,
-        participants: row.participants,
-        startsAt: utcIso(row.starts_at)
-      }))
+      recent
     }
   }),
 

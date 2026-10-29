@@ -194,6 +194,12 @@ integrationTest(
       }
 
       for (const raterId of raterIds) {
+        // Check-in antes: só a avaliação verificada entra na nota (WEB-408).
+        await db.execute(sql`
+          INSERT INTO attendance_checkin
+            (user_id, event_id, latitude, longitude, distance_m)
+          VALUES (${raterId}, ${proClassic.eventId}, 0, 0, 0)
+        `)
         await db.execute(sql`
           INSERT INTO bar_rating
             (id, bar_id, actor_user_id, event_id, would_return)

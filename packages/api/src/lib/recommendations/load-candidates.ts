@@ -322,7 +322,9 @@ export async function loadRecommendationCandidates(input: {
         COUNT(*)::int AS recent_rating_count,
         COUNT(*) FILTER (WHERE r.would_return)::int AS recent_rating_positive
       FROM bar_rating r
-      WHERE r.bar_id = eligible.id AND r.updated_at >= ${sixtyDaysAgo}
+      -- Só a verificada pesa, como na nota pública (WEB-408).
+      WHERE r.bar_id = eligible.id AND r.verified
+        AND r.updated_at >= ${sixtyDaysAgo}
     ) quality ON true
     LEFT JOIN LATERAL (
       SELECT

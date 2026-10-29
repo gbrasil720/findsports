@@ -49,6 +49,7 @@ import { getAppConfig } from '../lib/app-config'
 import { type Going, readFanAttendance, readGoing } from '../lib/attendance'
 import { resolvePublicGallery } from '../lib/bar-gallery'
 import { canShowBarMenu, resolvePublicBarMenu } from '../lib/bar-menu'
+import { readCheckIn } from '../lib/check-in'
 import {
   getSubscriptionStanding,
   issuesCounterCode,
@@ -74,8 +75,14 @@ import {
   type SearchPage
 } from '../lib/pub-search'
 import { PUBLIC_BAR_COLUMNS } from '../lib/public-bar'
-import { hasPublicRating, ratingPercentage } from '../lib/rating'
+import {
+  hasPublicRating,
+  RATING_PUBLIC_FLOOR,
+  ratingPercentage
+} from '../lib/rating'
+import { readRatingList } from '../lib/rating-list'
 import { summarizeReasons } from '../lib/rating-reasons'
+import { starsAverage } from '../lib/rating-review'
 import { chaveBusca, chaveBuscaLocal } from '../lib/search-cache'
 import {
   findSearchCity,
@@ -115,16 +122,14 @@ const TEAM_SEARCH_LIMIT = 30
 
 /**
  * Quantas vezes cada etiqueta de "O que pesou?" foi citada no bar, de quem
- * voltaria e de quem não voltaria (WEB-398). Todas as avaliações contam: a
- * Onside ainda não separa avaliação verificada (código validado ou check-in,
- * WEB-408); o portão de `ratings.submit` já exige ter marcado presença ou
- * aberto rota, WhatsApp ou telefone para aquele jogo.
+ * voltaria e de quem não voltaria (WEB-398). Só as avaliações verificadas
+ * (código validado ou check-in, WEB-408), como a nota.
  */
 async function readReasonSummary(barId: string) {
   const rows = await db.execute(sql`
     SELECT r.would_return, reason, COUNT(*)::int AS count
     FROM bar_rating r, unnest(r.reasons) AS reason
-    WHERE r.bar_id = ${barId}
+    WHERE r.bar_id = ${barId} AND r.verified
     GROUP BY r.would_return, reason
   `)
   return summarizeReasons(
@@ -497,6 +502,8 @@ export const pubsRouter = router({
           isActive: true,
           ratingCount: true,
           ratingPositive: true,
+          ratingStarsCount: true,
+          ratingStarsSum: true,
           houseOffer: true,
           menuUrl: true,
           averageSpendCents: true,
@@ -565,6 +572,8 @@ export const pubsRouter = router({
         userId,
         ratingCount,
         ratingPositive,
+        ratingStarsCount,
+        ratingStarsSum,
         houseOffer,
         menuUrl,
         averageSpendCents,
@@ -582,7 +591,13 @@ export const pubsRouter = router({
         ? {
             positive: ratingPositive,
             total: ratingCount,
-            percentage: ratingPercentage(ratingPositive, ratingCount)
+            percentage: ratingPercentage(ratingPositive, ratingCount),
+            // Média das estrelas (WEB-451), com o mesmo piso.
+            stars: starsAverage(
+              ratingStarsSum,
+              ratingStarsCount,
+              RATING_PUBLIC_FLOOR
+            )
           }
         : null
 
@@ -590,7 +605,7 @@ export const pubsRouter = router({
       // dele, anunciar a oferta seria prometer sem caminho (WEB-131).
       const elite = issuesCounterCode(subscription ?? null, now)
       const fan = ctx.session.user.role === 'fan'
-      const [attendance, going, reasons] = await Promise.all([
+      const [attendance, going, reasons, reviews, checkIn] = await Promise.all([
         readFanAttendance(ctx.session.user, events, now),
         // A contagem do ingresso, inclusive do jogo ao vivo; como o botão,
         // só para torcedor.
@@ -601,7 +616,12 @@ export const pubsRouter = router({
             )
           : new Map<string, Going>(),
         // "O que pesou?" (WEB-398): o mesmo piso da nota, e só o resumo.
-        showRating ? readReasonSummary(result.id) : null
+        showRating ? readReasonSummary(result.id) : null,
+        // Os comentários de "O que dizem" (WEB-451): o mesmo piso, só as
+        // verificadas e aprovadas pela Onside.
+        showRating ? readRatingList(result.id, { public: true, limit: 3 }) : [],
+        // "Estou aqui" (WEB-408): o jogo deste bar com check-in aberto agora.
+        fan ? readCheckIn(ctx.session.user.id, events, now) : null
       ])
       return {
         ...publicBar,
@@ -635,6 +655,10 @@ export const pubsRouter = router({
         ),
         rating,
         ratingReasons: reasons,
+        reviews: reviews.map(
+          ({ verified: _v, createdAt: _c, ...review }) => review
+        ),
+        checkIn,
         // A padrão do bar. O que vale em cada jogo é `events[].houseOffer`;
         // esta fica para o app anterior, que só lia a do bar.
         houseOffer: elite ? houseOffer : null,
