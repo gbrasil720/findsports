@@ -25,7 +25,7 @@ export function MetricHint({ metric }: { metric: MetricId }) {
       >
         i
       </PopoverTrigger>
-      <PopoverContent className="desemp-hint-pop">
+      <PopoverContent className="desemp-hint-pop origin-(--transform-origin) ease-(--onside-ease-out) data-open:zoom-in-95 data-closed:zoom-out-95">
         <PopoverTitle className="mb-2 font-[family-name:var(--onside-mono)] font-semibold text-[11px] uppercase leading-tight tracking-[0.12em]">
           {label}
         </PopoverTitle>
