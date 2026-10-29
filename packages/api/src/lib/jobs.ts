@@ -24,13 +24,13 @@ const JOBS: Record<JobName, (trigger: JobTrigger) => Promise<unknown>> = {
   // quem não é o cron.
   analytics_retention: (trigger) =>
     runScheduledAnalyticsRetention(trigger === 'cron' ? 'cron' : 'admin'),
+  // Execução da IA presa em `running` (WEB-430).
+  ai_stale_runs: () => closeStaleRuns(),
   // Resumo da semana e grade vazia por e-mail (WEB-441). Roda todo dia e só
   // manda às segundas, depois dos planos: o resumo lê `bar.plan` em dia.
   // Importado aqui dentro: o `worker.ts` carrega este arquivo na subida, e
   // `bar-notices` puxa `env/server`, que valida as variáveis ao ser
   // importado. No Worker elas não existem nesse momento, e ele não sobe.
-  // Execução da IA presa em `running` (WEB-430).
-  ai_stale_runs: () => closeStaleRuns(),
   bar_notices: async () =>
     (await import('./bar-notices')).sendWeeklyBarNotices()
 }
