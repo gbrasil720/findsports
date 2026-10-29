@@ -186,10 +186,13 @@ function buildChecks(status: Status): Check[] {
     {
       key: 'email',
       title: 'E-mail',
-      where: 'Resend',
+      where: 'MillionSend',
       state: 'link',
-      facts: [{ k: 'Enviados e falhas', v: 'no painel do Resend' }],
-      href: { label: 'Abrir no Resend', url: 'https://resend.com/emails' }
+      facts: [{ k: 'Enviados e falhas', v: 'no painel da MillionSend' }],
+      href: {
+        label: 'Abrir na MillionSend',
+        url: 'https://app.millionsend.com/emails'
+      }
     },
     {
       key: 'errors',
