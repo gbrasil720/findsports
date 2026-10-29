@@ -206,11 +206,10 @@ Split by runtime boundary:
 
 **E-mail (WEB-476):** todo envio passa por `sendEmail`
 (`packages/auth/src/verification-email.ts`), um `POST <EMAIL_API_URL>/emails` no
-formato da Resend, que a MillionSend repete. O provedor é `EMAIL_API_URL` (var do
-`wrangler.jsonc`; padrão `https://api.resend.com`, MillionSend
-`https://api.millionsend.com`) com o segredo `EMAIL_API_KEY` e o remetente `EMAIL_FROM`.
-Os nomes antigos `RESEND_API_KEY` e `RESEND_FROM_EMAIL` ainda valem quando os novos
-faltam, até o dono trocar os segredos. DNS de envio: `docs/email-dns.md`.
+da MillionSend (plano Free da nuvem, 100 por dia). O provedor é `EMAIL_API_URL` (var do
+`wrangler.jsonc`, padrão `https://api.millionsend.com`) com o segredo `EMAIL_API_KEY` e o
+remetente `EMAIL_FROM`. A Resend saiu em 29/10/2026 (WEB-482). DNS de envio:
+`docs/email-dns.md`.
 
 Client env lives in the app, not in `packages/env`: `import.meta.env` is only
 typed where Vite's types are, and the shared package needed an `any` cast to
