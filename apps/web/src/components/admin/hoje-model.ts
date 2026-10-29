@@ -187,6 +187,22 @@ export function posicao(
 /** "18h", "00h", "01h": o rótulo de cada coluna. */
 export const rotuloHora = (h: number) => `${String(h % 24).padStart(2, '0')}h`
 
+/**
+ * O jogo de que fala o card "Oferta da casa" do Hoje: o ao vivo, senão o
+ * próximo, senão o último que acabou. Rascunho fica de fora (o torcedor não o
+ * vê). `null` sem jogo publicado na noite: o card volta à oferta padrão.
+ */
+export function jogoDaOferta<T extends { publishedAt: Instante | null }>(
+  blocos: readonly BlocoNoite<T>[]
+): T | null {
+  const publicados = blocos.filter((b) => b.jogo.publishedAt !== null)
+  // Em ordem de início: o primeiro que não acabou é o ao vivo, se houver.
+  return (
+    (publicados.find((b) => b.estado !== 'past') ?? publicados.at(-1))?.jogo ??
+    null
+  )
+}
+
 /* ─── Contagens ─── */
 
 type LinhaAnalytics = {

@@ -3,6 +3,7 @@ import {
   chegadasDoDia,
   dataCurta,
   diaDaCasa,
+  jogoDaOferta,
   montarNoite,
   nomeDoDia,
   posicao,
@@ -114,6 +115,52 @@ describe('montarNoite', () => {
       '00h',
       '01h'
     ])
+  })
+})
+
+describe('jogoDaOferta', () => {
+  const jogo = (
+    id: string,
+    hm: string,
+    fim?: string,
+    publicado: boolean = true
+  ) => ({
+    id,
+    startsAt: br('2026-10-12', hm),
+    endsAt: fim ? br('2026-10-12', fim) : null,
+    publishedAt: publicado ? br('2026-10-01', '12:00') : null
+  })
+  const ids = (
+    hm: string,
+    jogos: ReturnType<typeof jogo>[],
+    dia = '2026-10-12'
+  ) =>
+    jogoDaOferta(montarNoite(jogos, br(dia, hm).getTime()).blocos)?.id ?? null
+
+  test('o ao vivo, senão o próximo, senão o último que acabou', () => {
+    const noite = [
+      jogo('tarde', '16:00', '18:00'),
+      jogo('cor', '21:30', '23:30'),
+      jogo('real', '23:45')
+    ]
+    expect(ids('22:00', noite)).toBe('cor')
+    expect(ids('19:00', noite)).toBe('cor')
+    expect(ids('15:00', noite)).toBe('tarde')
+    // Às 3h da madrugada ainda é a noite do dia 12, e tudo já acabou.
+    expect(ids('03:00', noite, '2026-10-13')).toBe('real')
+  })
+
+  test('rascunho fica de fora; sem jogo publicado, nenhum', () => {
+    expect(
+      ids('19:00', [
+        jogo('rascunho', '20:00', undefined, false),
+        jogo('pub', '22:00')
+      ])
+    ).toBe('pub')
+    expect(ids('19:00', [jogo('rascunho', '20:00', undefined, false)])).toBe(
+      null
+    )
+    expect(ids('19:00', [])).toBe(null)
   })
 })
 
