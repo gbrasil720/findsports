@@ -50,13 +50,16 @@ Próximo passo: após algumas semanas de relatórios limpos, subir para
 
 O envio transacional sai de `contato@mail.onside.sh` (`EMAIL_FROM` nas
 `vars` do Worker), separado da reputação do domínio raiz, que é o do Google Workspace.
-Domínio verificado no Resend, região `sa-east-1`, com os registros:
+Domínio verificado na MillionSend, região `sa-east-1`, com os registros:
 
 ```text
-resend._domainkey.mail.onside.sh  TXT  "p=MIGfMA0GCSq…"   (DKIM, valor no painel do Resend)
-send.mail.onside.sh               TXT  "v=spf1 include:amazonses.com ~all"
-send.mail.onside.sh               MX   10 feedback-smtp.sa-east-1.amazonses.com
+millionsend._domainkey.mail.onside.sh  TXT  "v=DKIM1; k=rsa; p=MIIB…"  (DKIM, valor no painel da MillionSend)
+send.mail.onside.sh                    TXT  "v=spf1 include:amazonses.com ~all"
+send.mail.onside.sh                    MX   10 feedback-smtp.sa-east-1.amazonses.com
 ```
+
+O Return-Path `send.mail.onside.sh` (SPF e MX) é o mesmo que a Resend usava:
+as duas enviam pelo Amazon SES de `sa-east-1`.
 
 `mail.onside.sh` não tem MX, então todo envio leva `reply_to:
 contato@onside.sh` (`sendEmail`, em `packages/auth`). Sem isso, a
@@ -69,59 +72,34 @@ depois do deploy que passou produção para `mail.onside.sh`.
 Para enviar localmente, use `EMAIL_FROM=contato@mail.onside.sh` e `EMAIL_API_KEY`
 no `.env`.
 
-## Troca para a MillionSend (WEB-476)
+## Troca para a MillionSend (WEB-476, WEB-482)
 
-**Feita em 29/10/2026.** Domínio `mail.onside.sh` verificado na MillionSend
-(sa-east-1, Return-Path `send.mail.onside.sh`, o mesmo da Resend), com o DKIM
-`millionsend._domainkey.mail` na Cloudflare; o `_dmarc.mail` com `p=none` que o
-painel sugere não foi criado, para não enfraquecer o `p=quarantine` de
-`onside.sh`. Duas chaves só de envio, só para o domínio: "onside-web produção"
-(Worker `onside-web`) e "onside-web preview e local" (`onside-web-preview`). O
-segredo entrou nos dois Workers antes do deploy, e a URL veio no mesmo PR que
-trouxe o código para a master: URL e chave trocaram no mesmo deploy. Envio real
-conferido no Gmail (SPF, DKIM e DMARC `pass`, `Reply-To` certo, anexo). Falta
-o passo 6.
+Feita em 29/10/2026, por decisão do dono (28/10): plano Free da nuvem, 100
+e-mails por dia; passando disso, o envio fica para o dia seguinte, inclusive
+verificação e reset de senha.
 
-Decisão do dono em 28/10/2026: plano Free da nuvem (100 e-mails/dia; passando
-disso, o envio fica para o dia seguinte, inclusive verificação e reset de senha).
-O código já fala com qualquer API no formato da Resend: muda o provedor
-`EMAIL_API_URL` com `EMAIL_API_KEY`. A Resend fica até a troca ser conferida.
+- Domínio `mail.onside.sh` adicionado na MillionSend (sa-east-1, Return-Path
+  `send`) e verificado com o DKIM `millionsend._domainkey.mail` na Cloudflare.
+  O `_dmarc.mail` com `p=none` que o painel sugere não foi criado: enfraqueceria
+  o `p=quarantine` herdado de `onside.sh`.
+- Duas chaves só de envio, só para o domínio: "onside-web produção" (Worker
+  `onside-web`) e "onside-web preview e local" (`onside-web-preview` e o `.env`
+  local). O segredo `EMAIL_API_KEY` entrou nos Workers antes do deploy que levou
+  `EMAIL_API_URL` para a MillionSend (#391): URL e chave trocaram juntas.
+- Conferido com envio real (local e um "esqueci a senha" em produção): caixa de
+  entrada, SPF, DKIM e DMARC `pass`, `Reply-To` certo, anexo.
+- No mesmo dia a Resend saiu: `RESEND_API_KEY` dos Workers, o
+  `resend._domainkey.mail` da zona, o domínio e as chaves `onside-production` e
+  `onside-local` no painel da Resend (a `envy` é de outro projeto), os nomes
+  antigos em `packages/env` e a Resend na política de privacidade e no Bastidores.
 
-1. Conta na MillionSend; em **Domains**, adicionar `mail.onside.sh` (região
-   `sa-east-1`). Ela usa DKIM próprio: a tabela de registros sai no painel.
-2. Na Cloudflare (zona `onside.sh`), criar os registros da tabela **sem apagar os
-   da Resend** (seletores de DKIM diferentes convivem; o `send.mail.onside.sh` do
-   SPF e do MX já aponta para o SES de `sa-east-1`, o mesmo da MillionSend: se a
-   tabela pedir outro valor para ele, pare e compare antes de trocar). Proxy
-   desligado (nuvem cinza). O DMARC de `onside.sh` vale para o subdomínio: nada a
-   mudar. Esperar o domínio ficar verificado no painel.
-3. Criar uma chave de envio (`ms_…`), só com permissão de envio.
-4. Preview: `bunx wrangler secret put EMAIL_API_KEY --env preview` e, em
-   `apps/web/wrangler.jsonc`, `env.preview.vars.EMAIL_API_URL =
-   "https://api.millionsend.com"`. O preview tem `EMAIL_DELIVERY=console`, então
-   nada sai de lá: para um envio de verdade, rode o web local com
-   `EMAIL_API_URL=https://api.millionsend.com`, `EMAIL_API_KEY=ms_…` e
-   `EMAIL_FROM=contato@mail.onside.sh`, cadastre-se com um e-mail seu e confira
-   chegada, SPF/DKIM/DMARC `pass` no "mostrar original" do Gmail e o `Reply-To`.
-5. Produção: URL e chave têm de trocar juntas (chave da MillionSend indo para a
-   Resend, ou o contrário, é envio recusado). No painel da Cloudflare, Worker
-   `onside-web` → Settings → Variables and Secrets: editar `EMAIL_API_URL` para
-   `https://api.millionsend.com` e adicionar o segredo `EMAIL_API_KEY`, e salvar
-   uma vez só (vira uma versão). Logo depois, um PR com o mesmo `vars.EMAIL_API_URL`
-   no topo do `wrangler.jsonc`: sem ele, o próximo deploy do CI volta a URL para a
-   Resend com a chave nova. Conferir com um "esqueci a senha" real.
-   Rollback: o mesmo, ao contrário (URL de volta para `https://api.resend.com` e
-   apagar `EMAIL_API_KEY`, numa versão só): sem o novo, vale de novo o
-   `RESEND_API_KEY`.
-6. Depois de alguns dias limpos: apagar `RESEND_API_KEY` do Worker, o
-   `resend._domainkey` da zona, o domínio no painel da Resend, a Resend da
-   política de privacidade (`packages/legal`) e o link do Bastidores no Houdini.
+Voltar para a Resend agora exige refazer domínio, DKIM e chave lá.
 
 ## Verificação
 
 ```bash
 dig +short TXT _dmarc.onside.sh @1.1.1.1
-dig +short TXT resend._domainkey.mail.onside.sh @1.1.1.1
+dig +short TXT millionsend._domainkey.mail.onside.sh @8.8.8.8
 dig +short MX send.mail.onside.sh @1.1.1.1
 curl -sI https://www.onside.sh/og-image.jpg  # deve ser 200 image/jpeg
 ```
@@ -130,5 +108,5 @@ curl -sI https://www.onside.sh/og-image.jpg  # deve ser 200 image/jpeg
 confirme a chegada na caixa de entrada e confira que nenhum link ou `<img src>`
 contém `localhost`.
 
-DNS e Resend não têm CLI configurada neste repositório; as mudanças acima foram
+DNS e MillionSend não têm CLI configurada neste repositório; as mudanças acima foram
 feitas pelos painéis.
