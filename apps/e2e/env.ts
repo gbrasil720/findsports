@@ -50,9 +50,6 @@ export const SERVER_ENV: Record<string, string> = {
   E2E_DISABLE_CACHES: '1',
   EMAIL_API_KEY: '',
   EMAIL_FROM: '',
-  // Os nomes antigos também: o env cai neles quando os novos vêm vazios.
-  RESEND_API_KEY: '',
-  RESEND_FROM_EMAIL: '',
   LOCATIONIQ_API_KEY: 'e2e-fake-key',
   LOCATIONIQ_BASE_URL: STUB_URL,
   // O PUT para `e2e.r2.cloudflarestorage.com` nunca sai do navegador: o
