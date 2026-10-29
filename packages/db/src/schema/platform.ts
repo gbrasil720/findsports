@@ -23,14 +23,16 @@ import {
   LEGACY_GALLERY_MAX_PHOTOS,
   PHOTO_CAPTION_MAX,
   PHOTO_CATEGORY_IDS,
-  REVIEW_REASON_MAX,
-  REVIEW_STATUSES
+  REVIEW_REASON_MAX
 } from '../bar-gallery'
 import { AVERAGE_SPEND_MAX_CENTS, MENU_URL_MAX_LENGTH } from '../bar-menu'
 import { HOUSE_OFFER_MAX_LENGTH } from '../house-offer'
 import { RESERVATION_CAP_MAX } from '../reservation-limits'
 import { user } from './auth'
 import { barRating } from './rating'
+import { reviewStatusEnum } from './review-status'
+
+export { reviewStatusEnum }
 
 /**
  * PostGIS `geography(Point,4326)`. Requer a extensão `postgis` — criada na
@@ -65,9 +67,6 @@ export type SubscriptionPlan = (typeof subscriptionPlanEnum.enumValues)[number]
  * pela mesma tabela.
  */
 export const teamKindEnum = pgEnum('team_kind', ['team', 'athlete'])
-
-/** Revisão da Onside antes de aparecer (WEB-462 fotos, WEB-478 descrição). */
-export const reviewStatusEnum = pgEnum('review_status', REVIEW_STATUSES)
 
 /** As categorias da foto do bar (design 28c), em `bar-gallery.ts`. */
 export const barPhotoCategoryEnum = pgEnum(
@@ -186,9 +185,14 @@ export const bar = pgTable(
       >(),
     // Contadores de avaliação, mantidos por trigger a partir de `bar_rating`
     // (migration 0022). A busca precisa ordenar por nota sem agregar por
-    // candidato — que é o mesmo motivo de `plan` viver aqui.
+    // candidato — que é o mesmo motivo de `plan` viver aqui. Contam só a
+    // avaliação verificada (WEB-408): código validado ou check-in.
     ratingCount: integer('rating_count').default(0).notNull(),
     ratingPositive: integer('rating_positive').default(0).notNull(),
+    // Estrelas das verificadas que deram estrelas (WEB-451): a média pública
+    // é `ratingStarsSum / ratingStarsCount`. Mesmo trigger.
+    ratingStarsCount: integer('rating_stars_count').default(0).notNull(),
+    ratingStarsSum: integer('rating_stars_sum').default(0).notNull(),
     // Limite inferior de Wilson, DERIVADO pelo próprio Postgres a partir dos
     // dois contadores acima. Coluna gerada, não trigger: a fórmula é
     // aritmética imutável, então não há o que dessincronizar. A mesma conta

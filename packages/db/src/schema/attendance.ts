@@ -2,7 +2,9 @@ import { sql } from 'drizzle-orm'
 import {
   boolean,
   check,
+  doublePrecision,
   index,
+  integer,
   pgTable,
   primaryKey,
   text,
@@ -87,5 +89,36 @@ export const attendanceReport = pgTable(
       'attendance_report_offer_only_if_attended',
       sql`${table.attended} OR ${table.offerReceived} IS NULL`
     )
+  ]
+)
+
+/**
+ * Check-in "Estou aqui" (WEB-408): o torcedor, com o app aberto no bar
+ * durante o jogo, manda a posição; o servidor confere a distância do bar
+ * (`CHECK_IN_RADIUS_M`) e a janela do jogo (a do código do balcão) antes de
+ * gravar. Um por jogo. É a segunda fonte de visita (`visits.ts`) e torna a
+ * avaliação daquele jogo verificada (`bar_rating.verified`).
+ *
+ * A posição fica guardada como prova, com a distância que o servidor mediu.
+ */
+export const attendanceCheckin = pgTable(
+  'attendance_checkin',
+  {
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    eventId: text('event_id')
+      .notNull()
+      .references(() => event.id, { onDelete: 'cascade' }),
+    latitude: doublePrecision('latitude').notNull(),
+    longitude: doublePrecision('longitude').notNull(),
+    distanceM: integer('distance_m').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull()
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.eventId] }),
+    index('attendance_checkin_eventId_idx').on(table.eventId)
   ]
 )
