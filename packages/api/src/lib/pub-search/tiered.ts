@@ -38,20 +38,28 @@ const PLAN_TIERS = [
  *
  * O primeiro morreu com `bar.plan` (projeção mantida por trigger, migration
  * 0018). O segundo encolheu com avaliação em camadas: o plano é a primeira
- * chave de ordenação, então cada camada é uma subquery com o seu próprio
- * LIMIT, e sem ordenação por fora o `Append` só descia para a camada seguinte
- * se a anterior não enchesse a página. No dataset grande a camada `elite` (5%
- * dos bares, ~300 candidatos no raio) resolvia sozinha as buscas sem filtro:
- * 5,5 ms / 1.355 buffers, contra 24 ms / 44.363 do plano antigo.
+ * chave de ordenação, então cada camada é um CTE com o seu próprio LIMIT, e
+ * uma camada só roda se as anteriores não encheram a página. No dataset
+ * grande a camada `elite` (5% dos bares, ~300 candidatos no raio) resolve
+ * sozinha as buscas sem filtro.
  *
- * Isso acabou com o `ORDER BY` de fora de `ranked`, que entrou com o ranking
- * de clássicos (08/09): um `Sort` sobre o `Append` lê as três camadas até o
- * fim em toda busca. Medido em 29/10/2026 (Postgres 17, mediana de 7), raio
- * de 3 km em (-23,55, -46,63), 6.100 bares no raio (300 elite, 1.000 pro,
- * 4.800 starter): sem filtro, 54 ms / 39.081 buffers, quase todos na camada
- * starter (30.329); com um campeonato que não casa com nada, 58 ms / 42.930.
- * Sem esse `ORDER BY` volta a 3,3 ms / 2.154 buffers. O caminho linear, na
- * mesma busca sem filtro, fica em 143 ms / 86.323.
+ * A trava é a condição `count(anteriores) < limit` de cada camada, e não a
+ * ordem em que o `Append` de um `UNION ALL` lê os filhos: o SQL não promete
+ * essa ordem, e o `ORDER BY` que o ranking de clássicos (08/09) pôs por fora
+ * para garanti-la fazia o `Sort` ler as três camadas até o fim em toda busca.
+ * Com a trava, o `ORDER BY` de fora ordena no máximo 3 × limit linhas.
+ *
+ * Medido em 29/10/2026 (Postgres 17, mediana de 7), raio de 3 km em
+ * (-23,55, -46,63), 6.100 bares no raio (300 elite, 1.000 pro, 4.800
+ * starter): sem filtro, 3,5 ms / 2.154 buffers (com o `Sort` sobre as três
+ * camadas eram 53 ms / 39.134); com um campeonato comum, 5,9 ms / 2.556 (eram
+ * 79 ms / 47.215). Mesmas páginas da versão anterior, 40 páginas pelo cursor,
+ * inclusive as que cruzam de camada. O caminho linear, na mesma busca sem
+ * filtro, fica em 143 ms / 86.323.
+ *
+ * Continua caro o filtro que quase nada casa: as três camadas rodam, e cada
+ * bar no raio custa uma ida ao índice de `event` (campeonato que não casa com
+ * nada: 57 ms / 42.980, metade em `search_normalize`).
  *
  * Para medir: em `packages/db`, `NODE_ENV=test bun run db:seed:load-test
  * --bars 100000` (100 mil bares, 500 mil jogos; só aceita o
