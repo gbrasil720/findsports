@@ -1032,7 +1032,7 @@ a.hd-kpi:active {
   transition: background-color 120ms ease;
 }
 
-.hd-table tr:last-child td {
+.hd-table tbody tr:last-child :is(td, th) {
   border-bottom: 0;
 }
 
