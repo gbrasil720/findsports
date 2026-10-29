@@ -90,7 +90,7 @@ test('mostra os números semeados, liga e desliga a IA e muda um peso', async ({
   await expect(page.getByText('Desligada', { exact: true })).toBeVisible()
   const budget = page.getByRole('article', { name: 'Gasto do mês' })
   await expect(budget).toContainText('US$ 0,75')
-  await expect(budget).toContainText('de US$ 40,00')
+  await expect(budget).toContainText('teto US$ 40,00')
 
   // Teste do chat: A tem 3 mensagens, 2 úteis, 1 erro, 1 conversa com ação.
   const table = page.getByRole('table').filter({ hasText: 'Braço A' })
@@ -136,7 +136,7 @@ test('mostra os números semeados, liga e desliga a IA e muda um peso', async ({
 
   // Peso do chat: soma errada não deixa mudar; 70/30 grava e fica no
   // Grimório com quem mudou.
-  const weights = page.locator('article').filter({ hasText: 'Pesos do chat' })
+  const weights = page.getByRole('region', { name: 'Teste do chat' })
   await weights.getByLabel('A · Gemini 2.5 Flash').fill('70')
   await expect(weights.getByText('soma 120, precisa ser 100')).toBeVisible()
   await expect(
@@ -164,7 +164,7 @@ test('limites editam com confirmação e o servidor recusa o absurdo', async ({
   page
 }) => {
   await page.goto('/houdini/ia')
-  const card = page.locator('article').filter({ hasText: 'ai.limits' })
+  const card = page.getByRole('region', { name: 'Limites' })
   await card.getByLabel('Mensagens do chat no dia').fill('20')
   await card.getByRole('button', { name: 'Mudar limites' }).click()
   await expect(card).toContainText('mensagens do chat no dia de 10 para 20')
