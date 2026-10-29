@@ -93,7 +93,7 @@ function RevisaoPage() {
             >
               {photos.length ? (
                 <div
-                  className="hd-grid"
+                  className="hd-grid is-fila"
                   style={{ '--hd-min': 'min(300px, 100%)' } as CSSProperties}
                 >
                   {photos.map((photo) => (
@@ -111,7 +111,7 @@ function RevisaoPage() {
             >
               {descriptions.length ? (
                 <div
-                  className="hd-grid"
+                  className="hd-grid is-fila"
                   style={{ '--hd-min': 'min(380px, 100%)' } as CSSProperties}
                 >
                   {descriptions.map((item) => (
@@ -131,7 +131,7 @@ function RevisaoPage() {
             >
               {comments.length ? (
                 <div
-                  className="hd-grid"
+                  className="hd-grid is-fila"
                   style={{ '--hd-min': 'min(340px, 100%)' } as CSSProperties}
                 >
                   {comments.map((item) => (
