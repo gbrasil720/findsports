@@ -31,10 +31,19 @@ const PHOTO_REASONS = [
   'Parece imagem de banco, não do bar.'
 ]
 
+/** Motivos prontos para o comentário da avaliação (WEB-451). */
+const COMMENT_REASONS = [
+  'Ofensivo ou com ataque pessoal.',
+  'Não fala do jogo no bar.',
+  'Tem dado pessoal (telefone, e-mail, endereço).'
+]
+
 /**
- * Revisão (WEB-462, WEB-478): as fotos e as descrições que os bares mandaram, da mais antiga para a
- * mais nova. Nada aparece para o torcedor antes de ser aprovado; recusar pede
- * o motivo, que o dono lê no Meu espaço. Cada decisão fica no Grimório.
+ * Revisão (WEB-462, WEB-478, WEB-451): as fotos e as descrições que os bares
+ * mandaram e os comentários das avaliações, da mais antiga para a mais nova.
+ * Nada aparece antes de ser aprovado; recusar pede o motivo (o da foto e o da
+ * descrição o dono lê no Meu espaço; o do comentário fica no Grimório). Cada
+ * decisão fica no Grimório.
  */
 function RevisaoPage() {
   const { env, admin } = Route.useRouteContext()
@@ -45,6 +54,7 @@ function RevisaoPage() {
   })
   const photos = queue.data?.photos ?? []
   const descriptions = queue.data?.descriptions ?? []
+  const comments = queue.data?.comments ?? []
 
   return (
     <HoudiniShell env={env} user={admin}>
@@ -52,7 +62,7 @@ function RevisaoPage() {
         <PageHead
           overline="Pede atenção"
           title="Revisão"
-          summary="O que os bares mandaram, do mais antigo para o mais novo. Nada aparece para o torcedor antes de ser aprovado; a recusa leva o motivo, que o dono lê no Meu espaço. Cada decisão fica no Grimório."
+          summary="O que os bares e os torcedores mandaram, do mais antigo para o mais novo. Nada aparece antes de ser aprovado; a recusa de foto e de descrição leva o motivo, que o dono lê no Meu espaço. Cada decisão fica no Grimório."
         />
 
         {queue.isError ? (
@@ -114,6 +124,26 @@ function RevisaoPage() {
                 </p>
               )}
             </QueueSection>
+            <QueueSection
+              id="revisao-comentarios"
+              title="Comentários"
+              count={comments.length}
+            >
+              {comments.length ? (
+                <div
+                  className="hd-grid"
+                  style={{ '--hd-min': 'min(340px, 100%)' } as CSSProperties}
+                >
+                  {comments.map((item) => (
+                    <CommentCard key={item.ratingId} item={item} />
+                  ))}
+                </div>
+              ) : (
+                <p className="hd-empty is-dashed">
+                  Nenhum comentário esperando.
+                </p>
+              )}
+            </QueueSection>
           </>
         )}
       </div>
@@ -165,12 +195,15 @@ function useDecided() {
 /** Aprovar na hora; recusar abre o motivo, com os prontos à mão. */
 export function Decision({
   label,
+  reader = 'o bar lê',
   presets,
   pending,
   onApprove,
   onReject
 }: {
   label: string
+  /** Quem lê o motivo, no rótulo do campo. */
+  reader?: string
   presets: readonly string[]
   pending: boolean
   onApprove: () => void
@@ -233,7 +266,7 @@ export function Decision({
         </fieldset>
       ) : null}
       <label className="hd-label">
-        {`Motivo da recusa de ${label} (o bar lê)`}
+        {`Motivo da recusa de ${label} (${reader})`}
         <textarea
           className="hd-input hd-textarea"
           value={reason}
@@ -426,6 +459,105 @@ function DescriptionCard({ item }: { item: Queue['descriptions'][number] }) {
         }
         onReject={(reason) =>
           decide.mutate({ barId: item.barId, text, approve: false, reason })
+        }
+      />
+    </article>
+  )
+}
+
+function CommentCard({ item }: { item: Queue['comments'][number] }) {
+  const trpc = useTRPC()
+  const decided = useDecided()
+  const decide = useMutation(
+    trpc.adminReview.decideComment.mutationOptions({
+      onSuccess: async (result) => {
+        toast.success(
+          result.status === 'approved'
+            ? `Comentário sobre ${item.barName} aprovado. Anotado no Grimório.`
+            : `Comentário sobre ${item.barName} recusado. Anotado no Grimório.`
+        )
+        await decided()
+      },
+      onError: async (error) => {
+        toast.error(
+          getUserFacingMessage(error, 'Não foi possível gravar a decisão.')
+        )
+        await decided()
+      }
+    })
+  )
+  const text = item.comment ?? ''
+
+  return (
+    <article
+      className="hd-card"
+      aria-label={`Comentário sobre ${item.barName}`}
+      style={{ gap: 12, padding: 16 }}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            flexWrap: 'wrap'
+          }}
+        >
+          <strong style={{ fontSize: 14, overflowWrap: 'anywhere' }}>
+            {item.barName}
+          </strong>
+          {item.stars ? (
+            <span
+              className="hd-pill"
+              role="img"
+              aria-label={`${item.stars} de 5 estrelas`}
+            >
+              {'★'.repeat(item.stars)}
+              {'☆'.repeat(5 - item.stars)}
+            </span>
+          ) : null}
+          <span className="hd-pill">
+            {item.wouldReturn ? 'Voltaria' : 'Não voltaria'}
+          </span>
+          <span
+            className="hd-pill"
+            data-tone={item.verified ? 'acid' : undefined}
+          >
+            {item.verified ? 'verificada' : 'não verificada'}
+          </span>
+        </div>
+        <span className="hd-small" style={{ overflowWrap: 'anywhere' }}>
+          {item.authorName} ·{' '}
+          {item.identified ? 'aparece com o nome' : 'anônima para o bar'} ·{' '}
+          enviado em {formatDateTime(item.submittedAt)}
+        </span>
+      </div>
+      <p
+        style={{
+          margin: 0,
+          fontSize: 14,
+          lineHeight: 1.55,
+          whiteSpace: 'pre-wrap',
+          overflowWrap: 'anywhere'
+        }}
+      >
+        {text}
+      </p>
+      <Decision
+        label="comentário"
+        reader="fica no Grimório"
+        presets={COMMENT_REASONS}
+        pending={decide.isPending}
+        onApprove={() =>
+          decide.mutate({ ratingId: item.ratingId, text, approve: true })
+        }
+        onReject={(reason) =>
+          decide.mutate({
+            ratingId: item.ratingId,
+            text,
+            approve: false,
+            reason
+          })
         }
       />
     </article>
