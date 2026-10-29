@@ -801,8 +801,8 @@ function OfertaDoJogo({
 
   return (
     <CardOferta
-      titulo="Oferta da casa neste jogo"
-      jogo={`${gameTitle(jogo)} · ${hora(jogo.startsAt)}`}
+      titulo="Oferta da casa"
+      jogo={`${hora(jogo.startsAt)} · ${gameTitle(jogo)}`}
       texto={oferta ?? 'Sem oferta neste jogo.'}
       erro={salvar.error}
       ligada={ligada}
