@@ -225,6 +225,22 @@ export const SUGESTOES_DE_OFERTA = [
   'Caipirinha pela metade'
 ] as const
 
+/** O canhoto que o torcedor vê, com o texto já normalizado. */
+export function PreviaDaOferta({ texto }: { texto: string }) {
+  return (
+    <div className="painel-oferta-previa">
+      <div className="painel-oferta-canhoto" aria-hidden="true">
+        <Icone nome="ticket" tamanho={26} />
+      </div>
+      <div>
+        <span className="painel-mono">Prévia · o que o torcedor vê</span>
+        <b>{texto}</b>
+        <span>Vale com o código da Onside</span>
+      </div>
+    </div>
+  )
+}
+
 /**
  * Editor da oferta da casa padrão (28f, sem o "Até quando": a oferta não tem
  * prazo). A prévia é o canhoto que o torcedor vê; a troca por jogo fica no
@@ -244,18 +260,7 @@ export function OfertaDaCasa({
   const passou = tamanho > HOUSE_OFFER_MAX_LENGTH
   return (
     <div className="flex flex-col gap-3">
-      {texto ? (
-        <div className="painel-oferta-previa">
-          <div className="painel-oferta-canhoto" aria-hidden="true">
-            <Icone nome="ticket" tamanho={26} />
-          </div>
-          <div>
-            <span className="painel-mono">Prévia · o que o torcedor vê</span>
-            <b>{texto}</b>
-            <span>Vale com o código da Onside</span>
-          </div>
-        </div>
-      ) : null}
+      {texto ? <PreviaDaOferta texto={texto} /> : null}
       <div>
         <CampoTexto
           rotulo="A oferta"
