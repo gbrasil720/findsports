@@ -297,6 +297,16 @@ integrationTest(
           isActive: true
         }))
       )
+      // A carga entra em lotes de 27 mil linhas, e cada linha passa pelos
+      // gatilhos e pelas FKs (`reservation_code_guard`, `used_count`, a
+      // reverificação da avaliação), que buscam por id em `user`,
+      // `reservation` e `reservation_code`. A conexão do pool guarda o plano
+      // genérico dessas buscas: se o autovacuum analisou as tabelas quase
+      // vazias e a conexão já rodou os gatilhos (o teste de cima, ou outro
+      // arquivo), o plano guardado é varredura sequencial, e cada linha varre
+      // a tabela inteira: 60 s só na carga no CI. `ANALYZE` depois de cada
+      // lote invalida esses planos. Em produção a tabela não sai de vazia
+      // para 27 mil linhas sem o autovacuum reanalisar no caminho.
       // 15 jogos em outubro, nos 5 bares; o torcedor n foi aos n % 12
       // primeiros. Todos ligaram o ranking global.
       await db.execute(sql`
@@ -308,6 +318,7 @@ integrationTest(
           ${city}, 'ZZ', true, 'friends'
         FROM generate_series(1, ${fans}) n
       `)
+      await db.execute(sql`ANALYZE "user"`)
       await db.execute(sql`
         INSERT INTO event (id, bar_id, sport_id, championship, starts_at)
         SELECT ${tag} || '-ev-' || e,
@@ -322,11 +333,13 @@ integrationTest(
         FROM generate_series(1, ${fans}) n, generate_series(1, 15) e
         WHERE e <= n % 12
       `)
+      await db.execute(sql`ANALYZE reservation`)
       await db.execute(sql`
         INSERT INTO reservation_code (id, code, reservation_id, max_uses)
         SELECT id, upper(left(md5(id), 10)), id, 1 FROM reservation
         WHERE id LIKE ${`${tag}-r-%`}
       `)
+      await db.execute(sql`ANALYZE reservation_code`)
       await db.execute(sql`
         INSERT INTO reservation_code_use (id, code_id, used_at)
         SELECT c.id, c.id, e.starts_at + interval '20 minutes'
@@ -335,11 +348,9 @@ integrationTest(
         JOIN event e ON e.id = r.event_id
         WHERE c.id LIKE ${`${tag}-r-%`}
       `)
-      // Estatísticas em dia, como em produção: sem elas o planejador acha as
-      // tabelas vazias e faz laço aninhado sobre as visitas (passa de 60 s).
-      await db.execute(
-        sql`ANALYZE "user", event, reservation, reservation_code, reservation_code_use`
-      )
+      // Estatísticas em dia para a leitura, como em produção (e para a
+      // limpeza, que apaga em cascata pelas mesmas buscas).
+      await db.execute(sql`ANALYZE event, reservation_code_use`)
       const now = new Date('2026-10-20T15:00:00Z')
       const me = `${tag}-2500`
       const started = performance.now()
