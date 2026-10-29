@@ -39,14 +39,26 @@ const PLAN_TIERS = [
  * O primeiro morreu com `bar.plan` (projeção mantida por trigger, migration
  * 0018). O segundo encolheu com avaliação em camadas: o plano é a primeira
  * chave de ordenação, então cada camada é uma subquery com o seu próprio
- * LIMIT e o `Append` só desce para a camada seguinte se a anterior não
- * encheu a página. No dataset grande a camada `elite` (5% dos bares, ~300
- * candidatos no raio) resolve sozinha as buscas sem filtro.
+ * LIMIT, e sem ordenação por fora o `Append` só descia para a camada seguinte
+ * se a anterior não enchesse a página. No dataset grande a camada `elite` (5%
+ * dos bares, ~300 candidatos no raio) resolvia sozinha as buscas sem filtro:
+ * 5,5 ms / 1.355 buffers, contra 24 ms / 44.363 do plano antigo.
  *
- * Medido no harness local, raio de 3 km em São Paulo, 6.100 bares no raio:
- * 24 ms / 44.363 buffers antes, 5,5 ms / 1.355 buffers depois. No pior caso
- * — filtro que não casa com nada, obrigando as três camadas a varrer tudo —
- * ficou em 23 ms, ou seja, empata com o plano antigo em vez de regredir.
+ * Isso acabou com o `ORDER BY` de fora de `ranked`, que entrou com o ranking
+ * de clássicos (08/09): um `Sort` sobre o `Append` lê as três camadas até o
+ * fim em toda busca. Medido em 29/10/2026 (Postgres 17, mediana de 7), raio
+ * de 3 km em (-23,55, -46,63), 6.100 bares no raio (300 elite, 1.000 pro,
+ * 4.800 starter): sem filtro, 54 ms / 39.081 buffers, quase todos na camada
+ * starter (30.329); com um campeonato que não casa com nada, 58 ms / 42.930.
+ * Sem esse `ORDER BY` volta a 3,3 ms / 2.154 buffers. O caminho linear, na
+ * mesma busca sem filtro, fica em 143 ms / 86.323.
+ *
+ * Para medir: em `packages/db`, `NODE_ENV=test bun run db:seed:load-test
+ * --bars 100000` (100 mil bares, 500 mil jogos; só aceita o
+ * `findsports_load_test`, ver AGENTS.md) e
+ * `EXPLAIN (ANALYZE, BUFFERS)` da consulta que `executarBuscaEmCamadas`
+ * manda para `{ lat: -23.55, lng: -46.63, radiusKm: 3, limit: 20 }`;
+ * buffers são `shared hit + read` do nó de cima.
  *
  * Preserva os mesmos filtros e a troca segura para o caminho linear; o cursor
  * de relevância agora é v2 porque inclui clássico e qualidade. Campeonato
