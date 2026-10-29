@@ -10,6 +10,7 @@ import {
   readVisitedGames,
   setAttendance
 } from '../lib/attendance'
+import { checkIn } from '../lib/check-in'
 import { answerPostGame, undoPostGame } from '../lib/post-game'
 
 /**
@@ -50,6 +51,20 @@ export const attendanceRouter = router({
       // O código vem na resposta: a tela o mostra sem esperar o perfil recarregar.
       return marked
     }),
+
+  /**
+   * "Estou aqui" (WEB-408): check-in por localização durante o jogo. O app
+   * só manda a posição; distância e horário são conferidos em `checkIn`.
+   */
+  checkIn: fanProcedure
+    .input(
+      z.object({
+        eventId: z.string().uuid(),
+        latitude: z.number().min(-90).max(90),
+        longitude: z.number().min(-180).max(180)
+      })
+    )
+    .mutation(({ ctx, input }) => checkIn(ctx.session.user.id, input)),
 
   /** "Meus jogos": onde o torcedor marcou que vai, com o código. */
   mine: fanProcedure.query(({ ctx }) => readMyGames(ctx.session.user.id)),

@@ -1,4 +1,5 @@
 import { db, eq, isNull, sql } from '@findsports_oficial/db'
+import { attendanceCheckin } from '@findsports_oficial/db/schema/attendance'
 import { event } from '@findsports_oficial/db/schema/platform'
 import {
   reservation,
@@ -12,11 +13,10 @@ import {
  * conquistas, "Já fui", o mês do amigo, os amigos que mais saem e o "onde você
  * foi 4 vezes" das recomendações.
  *
- * Hoje a única fonte é o código validado no balcão e não desfeito (o
- * ingresso mora em `reservation`/`reservation_code`, `attendance-ticket.ts`).
- * O check-in por localização (WEB-408) é a segunda: um `select` com as mesmas
- * quatro colunas, unido a `byCounterCode` por `unionAll` antes do `groupBy`.
- * Nenhum leitor muda.
+ * Duas fontes: o código validado no balcão e não desfeito (o ingresso mora
+ * em `reservation`/`reservation_code`, `attendance-ticket.ts`) e o check-in
+ * por localização (WEB-408, `attendance_checkin`). A mesma regra, em SQL, é
+ * a da avaliação verificada (`bar_rating_is_verified`, migration 0083).
  *
  * Não é visita: a validação vista pelo bar ("Quem vai", o alerta "diz que foi
  * e o bar não registrou", as chegadas da análise comercial). Essas leem o
@@ -26,7 +26,7 @@ import {
  * (vira `(select …) "visit"`, com as colunas `user_id`, `event_id`, `bar_id`
  * e `visited_at`).
  */
-const byCounterCode = db
+const proof = db
   .select({
     userId: reservation.userId,
     eventId: reservation.eventId,
@@ -38,17 +38,28 @@ const byCounterCode = db
   .innerJoin(reservation, eq(reservation.id, reservationCode.reservationId))
   .innerJoin(event, eq(event.id, reservation.eventId))
   .where(isNull(reservationCodeUse.undoneAt))
-  .as('by_counter_code')
+  .unionAll(
+    db
+      .select({
+        userId: attendanceCheckin.userId,
+        eventId: attendanceCheckin.eventId,
+        barId: event.barId,
+        at: attendanceCheckin.createdAt
+      })
+      .from(attendanceCheckin)
+      .innerJoin(event, eq(event.id, attendanceCheckin.eventId))
+  )
+  .as('proof')
 
 export const visit = db
   .select({
-    userId: byCounterCode.userId,
-    eventId: byCounterCode.eventId,
-    barId: byCounterCode.barId,
-    visitedAt: sql<Date>`min(${byCounterCode.at})`
+    userId: proof.userId,
+    eventId: proof.eventId,
+    barId: proof.barId,
+    visitedAt: sql<Date>`min(${proof.at})`
       .mapWith(reservationCodeUse.usedAt)
       .as('visited_at')
   })
-  .from(byCounterCode)
-  .groupBy(byCounterCode.userId, byCounterCode.eventId, byCounterCode.barId)
+  .from(proof)
+  .groupBy(proof.userId, proof.eventId, proof.barId)
   .as('visit')
