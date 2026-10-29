@@ -1,3 +1,4 @@
+import { effectiveHouseOffer } from '@findsports_oficial/api/lib/house-offer'
 import { reasonLabel } from '@findsports_oficial/api/lib/rating-reasons'
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import { gameTitle } from '@findsports_oficial/db/game-title'
@@ -55,6 +56,7 @@ import {
   dataCurta,
   diaDaCasa,
   hora,
+  jogoDaOferta,
   montarNoite,
   nomeDoDia,
   posicao,
@@ -66,6 +68,8 @@ import {
 import './hoje.css'
 
 type RouterOutputs = inferRouterOutputs<AppRouter>
+
+type JogoDaNoite = RouterOutputs['pub']['getMyEvents'][number]
 
 type Chegada = ReturnType<
   typeof chegadasDoDia<RouterOutputs['barReservations']['going'][number]>
@@ -156,6 +160,7 @@ export function Hoje() {
     )
   const porJogo = new Map(semana.data?.events.map((e) => [e.eventId, e]))
   const ofertaLiberada = subscription?.currentPlan === 'elite'
+  const jogoOferta = jogoDaOferta(noite.blocos)
   const fora = bar.isActive === false
   const bloqueado = politica?.canCreate === false
 
@@ -295,7 +300,15 @@ export function Hoje() {
       >
         {ofertaLiberada || showsGoing ? (
           <div className="hoje-coluna hoje-apaga">
-            {ofertaLiberada ? <OfertaDaCasa oferta={bar.houseOffer} /> : null}
+            {!ofertaLiberada || !jogosLidos ? null : jogoOferta ? (
+              <OfertaDoJogo
+                key={jogoOferta.id}
+                jogo={jogoOferta}
+                padrao={bar.houseOffer}
+              />
+            ) : (
+              <OfertaDaCasa oferta={bar.houseOffer} />
+            )}
             {showsGoing ? (
               <ChegaramAgora
                 chegadas={
@@ -654,11 +667,61 @@ function Sinal({ aceso }: { aceso: boolean }) {
   )
 }
 
+/** O card da oferta: a padrão do bar (sem jogo hoje) ou a do jogo da noite. */
+function CardOferta({
+  titulo,
+  jogo,
+  texto,
+  erro,
+  ligada,
+  salvando,
+  onChange
+}: {
+  titulo: string
+  jogo?: string
+  texto: string
+  erro: unknown
+  ligada: boolean
+  salvando: boolean
+  onChange: (ligar: boolean) => void
+}) {
+  const tituloId = useId()
+  const jogoId = useId()
+  return (
+    <Card kind="hero" className="hoje-oferta">
+      <Icone nome="ticket" tamanho={28} />
+      <div className="hoje-oferta-texto">
+        <b id={tituloId}>{titulo}</b>
+        {jogo ? (
+          <span id={jogoId} className="hoje-oferta-jogo">
+            {jogo}
+          </span>
+        ) : null}
+        <span>{texto}</span>
+        {erro ? (
+          <span role="alert" className="hoje-erro">
+            {getUserFacingMessage(
+              erro,
+              'Não foi possível salvar a oferta. Tente novamente.'
+            )}
+          </span>
+        ) : null}
+      </div>
+      <Toggle
+        ligado={ligada}
+        aria-labelledby={jogo ? `${tituloId} ${jogoId}` : tituloId}
+        disabled={salvando}
+        onChange={onChange}
+      />
+    </Card>
+  )
+}
+
+/** Sem jogo hoje: a oferta padrão do bar, que vale em todo jogo sem a sua. */
 function OfertaDaCasa({ oferta }: { oferta: string | null }) {
   const trpc = useTRPC()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
-  const tituloId = useId()
   // O servidor não tem "liga/desliga": desligar apaga o texto. Ele fica
   // guardado aqui para religar na mesma visita sem reescrever.
   const [guardada, setGuardada] = useState<string | null>(null)
@@ -678,39 +741,86 @@ function OfertaDaCasa({ oferta }: { oferta: string | null }) {
   const ligada = salvar.isPending
     ? salvar.variables.houseOffer !== null
     : oferta !== null
-  const texto = oferta ?? guardada
 
   return (
-    <Card kind="hero" className="hoje-oferta">
-      <Icone nome="ticket" tamanho={28} />
-      <div className="hoje-oferta-texto">
-        <b id={tituloId}>Oferta da casa</b>
-        <span>{texto ?? 'Nenhuma oferta escrita.'}</span>
-        {salvar.error ? (
-          <span role="alert" className="hoje-erro">
-            {getUserFacingMessage(
-              salvar.error,
-              'Não foi possível salvar a oferta. Tente novamente.'
-            )}
-          </span>
-        ) : null}
-      </div>
-      <Toggle
-        ligado={ligada}
-        aria-labelledby={tituloId}
-        disabled={salvar.isPending}
-        onChange={(ligar) => {
-          if (!ligar) {
-            setGuardada(oferta)
-            salvar.mutate({ houseOffer: null })
-          } else if (guardada) {
-            salvar.mutate({ houseOffer: guardada })
-          } else {
-            void navigate({ to: '/admin/meu-espaco' })
-          }
-        }}
-      />
-    </Card>
+    <CardOferta
+      titulo="Oferta da casa"
+      texto={oferta ?? guardada ?? 'Nenhuma oferta escrita.'}
+      erro={salvar.error}
+      ligada={ligada}
+      salvando={salvar.isPending}
+      onChange={(ligar) => {
+        if (!ligar) {
+          setGuardada(oferta)
+          salvar.mutate({ houseOffer: null })
+        } else if (guardada) {
+          salvar.mutate({ houseOffer: guardada })
+        } else {
+          void navigate({ to: '/admin/meu-espaco' })
+        }
+      }}
+    />
+  )
+}
+
+/**
+ * Com jogo hoje: a oferta que vale nele (a própria, senão a padrão), e o
+ * interruptor liga e desliga só nele (`noHouseOffer`), pela mesma mutation
+ * do jogo aberto (1n). A padrão do bar não muda.
+ */
+function OfertaDoJogo({
+  jogo,
+  padrao
+}: {
+  jogo: JogoDaNoite
+  padrao: string | null
+}) {
+  const trpc = useTRPC()
+  const queryClient = useQueryClient()
+  const navigate = useNavigate()
+  // Desligar apaga o texto próprio do jogo; ele fica guardado aqui para
+  // religar na mesma visita.
+  const [guardada, setGuardada] = useState<string | null>(null)
+  const salvar = useMutation(
+    trpc.pub.updateEvent.mutationOptions({
+      onSuccess: () =>
+        Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: trpc.pub.getMyEvents.queryKey()
+          }),
+          queryClient.invalidateQueries({
+            queryKey: trpc.pubs.getById.pathKey()
+          })
+        ])
+    })
+  )
+  const oferta = effectiveHouseOffer(padrao, jogo)
+  const ligada = salvar.isPending
+    ? salvar.variables.noHouseOffer !== true
+    : oferta !== null
+
+  return (
+    <CardOferta
+      titulo="Oferta da casa neste jogo"
+      jogo={`${gameTitle(jogo)} · ${hora(jogo.startsAt)}`}
+      texto={oferta ?? 'Sem oferta neste jogo.'}
+      erro={salvar.error}
+      ligada={ligada}
+      salvando={salvar.isPending}
+      onChange={(ligar) => {
+        if (!ligar) {
+          setGuardada(jogo.houseOffer)
+          salvar.mutate({ eventId: jogo.id, noHouseOffer: true })
+        } else if (guardada) {
+          salvar.mutate({ eventId: jogo.id, houseOffer: guardada })
+        } else if (padrao) {
+          salvar.mutate({ eventId: jogo.id, noHouseOffer: false })
+        } else {
+          // Sem texto para religar: escreve-se no jogo, como no jogo aberto.
+          void navigate({ to: '/admin/jogos', search: { jogo: jogo.id } })
+        }
+      }}
+    />
   )
 }
 

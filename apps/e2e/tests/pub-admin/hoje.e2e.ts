@@ -104,31 +104,116 @@ test('Elite: a noite, quem vai, quem chegou e a oferta da casa', async ({
     plano(page).getByRole('link', { name: 'Plano e cobrança →' })
   ).toHaveAttribute('href', '/admin/billing')
 
-  // Desligar apaga o texto no servidor; religar na mesma visita o devolve.
-  const oferta = page.getByRole('switch', { name: 'Oferta da casa' })
+  // Com jogo hoje, a oferta é a do jogo ao vivo, e o interruptor a desliga só
+  // nele (`no_house_offer`): a padrão do bar fica como estava.
+  const card = page.locator('.hoje-oferta')
+  await expect(card).toContainText('Oferta da casa neste jogo')
+  await expect(card).toContainText(`${live.championship} · 20:45`)
+  await expect(card).toContainText('Chopp em dobro')
+  const oferta = page.getByRole('switch', { name: 'Oferta da casa neste jogo' })
   await expect(oferta).toHaveAttribute('aria-checked', 'true')
   await oferta.click()
   await expect(oferta).toHaveAttribute('aria-checked', 'false')
+  await expect(card).toContainText('Sem oferta neste jogo.')
   await expect
-    .poll(async () => {
-      const [bar] = await query<{ house_offer: string | null }>(
-        'SELECT house_offer FROM bar WHERE id = $1',
-        [pub.barId]
-      )
-      return bar?.house_offer
+    .poll(() => ofertaNoBanco(pub.barId, live.eventId))
+    .toEqual({
+      bar: 'Chopp em dobro',
+      jogo: null,
+      sem: true
     })
-    .toBeNull()
   await oferta.click()
   await expect(oferta).toHaveAttribute('aria-checked', 'true')
   await expect
-    .poll(async () => {
-      const [bar] = await query<{ house_offer: string | null }>(
-        'SELECT house_offer FROM bar WHERE id = $1',
-        [pub.barId]
-      )
-      return bar?.house_offer
+    .poll(() => ofertaNoBanco(pub.barId, live.eventId))
+    .toEqual({
+      bar: 'Chopp em dobro',
+      jogo: null,
+      sem: false
     })
-    .toBe('Chopp em dobro')
+})
+
+/** A padrão do bar e a do jogo, como estão no banco. */
+async function ofertaNoBanco(barId: string, eventId: string) {
+  const [linha] = await query<{
+    bar: string | null
+    jogo: string | null
+    sem: boolean
+  }>(
+    `SELECT b.house_offer AS bar, e.house_offer AS jogo, e.no_house_offer AS sem
+       FROM bar b JOIN event e ON e.bar_id = b.id
+      WHERE b.id = $1 AND e.id = $2`,
+    [barId, eventId]
+  )
+  return linha
+}
+
+test('Elite: oferta própria do jogo de hoje some ao desligar e volta ao religar', async ({
+  page
+}) => {
+  const pub = await openHoje(page, { bar: { house_offer: 'Chopp em dobro' } })
+  // Rascunho não conta: o card fala do próximo publicado.
+  const rascunho = await createEvent(pub.barId, { startsAt: noite('21:15') })
+  await query('UPDATE event SET published_at = NULL WHERE id = $1', [
+    rascunho.eventId
+  ])
+  const jogo = await createEvent(pub.barId, { startsAt: noite('22:30') })
+  await query('UPDATE event SET house_offer = $2 WHERE id = $1', [
+    jogo.eventId,
+    'Porção de fritas grátis'
+  ])
+
+  await page.goto('/admin')
+  const card = page.locator('.hoje-oferta')
+  await expect(card).toContainText(`${jogo.championship} · 22:30`)
+  await expect(card).toContainText('Porção de fritas grátis')
+  const oferta = page.getByRole('switch', { name: 'Oferta da casa neste jogo' })
+  await oferta.click()
+  await expect(oferta).toHaveAttribute('aria-checked', 'false')
+  await expect
+    .poll(() => ofertaNoBanco(pub.barId, jogo.eventId))
+    .toEqual({
+      bar: 'Chopp em dobro',
+      jogo: null,
+      sem: true
+    })
+  await oferta.click()
+  await expect(card).toContainText('Porção de fritas grátis')
+  await expect
+    .poll(() => ofertaNoBanco(pub.barId, jogo.eventId))
+    .toEqual({
+      bar: 'Chopp em dobro',
+      jogo: 'Porção de fritas grátis',
+      sem: false
+    })
+})
+
+test('Elite sem jogo hoje: o card é a oferta padrão do bar', async ({
+  page
+}) => {
+  const pub = await openHoje(page, { bar: { house_offer: 'Chopp em dobro' } })
+  const padrao = async () => {
+    const [bar] = await query<{ house_offer: string | null }>(
+      'SELECT house_offer FROM bar WHERE id = $1',
+      [pub.barId]
+    )
+    return bar?.house_offer
+  }
+
+  await page.goto('/admin')
+  await expect(page.getByText('Nenhum jogo marcado para hoje.')).toBeVisible()
+  // Desligar apaga o texto no servidor; religar na mesma visita o devolve.
+  const oferta = page.getByRole('switch', {
+    name: 'Oferta da casa',
+    exact: true
+  })
+  await expect(oferta).toHaveAttribute('aria-checked', 'true')
+  await oferta.click()
+  await expect(oferta).toHaveAttribute('aria-checked', 'false')
+  await expect.poll(padrao).toBeNull()
+  await oferta.click()
+  await expect(oferta).toHaveAttribute('aria-checked', 'true')
+  await expect.poll(padrao).toBe('Chopp em dobro')
 })
 
 test('Elite: quem chegou é a primeira vez no bar ou a Nª no mês, e a oferta é a do código', async ({
