@@ -57,9 +57,14 @@ const PLAN_TIERS = [
  * inclusive as que cruzam de camada. O caminho linear, na mesma busca sem
  * filtro, fica em 143 ms / 86.323.
  *
- * Continua caro o filtro que quase nada casa: as três camadas rodam, e cada
- * bar no raio custa uma ida ao índice de `event` (campeonato que não casa com
- * nada: 57 ms / 42.980, metade em `search_normalize`).
+ * Texto que quase nada casa faz as três camadas rodarem, e cada bar no raio
+ * custava uma ida ao índice de `event` (57 ms). A camada starter (80% dos
+ * bares) agora parte dos jogos que casam (`texto_jogos`, índice trigram):
+ * 21 ms. Elite e pro continuam bar a bar: com `texto_jogos` também na pro o
+ * texto raro ia a 11 ms, mas texto comum, que enche o teto, pagava a lista
+ * inteira do índice nas páginas da pro (da 12ª em diante: 18 para 54 ms).
+ * Texto comum na primeira página: 3,7 a 5,6 ms, como antes. Medido sem JIT
+ * (migration 0084): com ele, a compilação sozinha levava 121 ms.
  *
  * Para medir: em `packages/db`, `NODE_ENV=test bun run db:seed:load-test
  * --bars 100000` (100 mil bares, 500 mil jogos; só aceita o
