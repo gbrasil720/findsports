@@ -151,7 +151,7 @@ Na dúvida entre `Bug` e `Improvement`: se dá para escrever um Repro que falha,
 | `waitlist` | Inscrição, confirmação, convite, painel interno da waitlist |
 | `auth` | Login, cadastro, sessão, ativação de convite, 2FA, recuperação de senha, Turnstile |
 | `onboarding` | Onboarding do torcedor e do bar, `/verify-email` |
-| `email` | Templates, envio, Resend, entregabilidade, DNS de e-mail |
+| `email` | Templates, envio, MillionSend, entregabilidade, DNS de e-mail |
 | `landing` | Página pública, copy, SEO, performance de first paint |
 | `admin` | Houdini (`/houdini/*`, painel interno), gestão de usuários, flags |
 | `infra` | Banco, migrations, deploy, ambiente, variáveis |

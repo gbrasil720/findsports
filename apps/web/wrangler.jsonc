@@ -41,8 +41,8 @@
   //
   // WEB-476: o provedor de e-mail é `EMAIL_API_URL` mais o segredo
   // `EMAIL_API_KEY`, que trocam juntos. MillionSend desde 29/10/2026 (chave
-  // "onside-web produção", só envio, só mail.onside.sh). Rollback em
-  // docs/email-dns.md: URL da Resend de volta e `EMAIL_API_KEY` apagado.
+  // "onside-web produção", só envio, só mail.onside.sh); a Resend saiu de
+  // vez no mesmo dia (WEB-482), ver docs/email-dns.md.
   "vars": {
     "NODE_ENV": "production",
     "BETTER_AUTH_URL": "https://www.onside.sh",
