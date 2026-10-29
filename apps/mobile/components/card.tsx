@@ -185,7 +185,11 @@ export function OfferCard({
               { color: palette.muted }
             ]}
           >
-            {note ? `${offer} ${note}` : offer}
+            {/* A oferta é texto do dono: ponto final só se ele não pôs, senão
+                "no intervalo Vale com…" sai colado. */}
+            {note
+              ? `${/[.!?…]$/.test(offer) ? offer : `${offer}.`} ${note}`
+              : offer}
           </Text>
         </View>
       </View>
