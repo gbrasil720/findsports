@@ -365,6 +365,14 @@ export default function AfterGame() {
           {error}
         </ErrorText>
       </ScrollView>
+      {/* Rolando, o texto passa por baixo da barra de status: o papel a cobre. */}
+      <View
+        pointerEvents="none"
+        style={[
+          styles.edge,
+          { height: insets.top, backgroundColor: palette.bg }
+        ]}
+      />
 
       <View
         style={[styles.foot, { paddingBottom: Math.max(insets.bottom, 16) }]}
@@ -520,6 +528,7 @@ const styles = StyleSheet.create({
     borderWidth: 1
   },
   foot: { paddingHorizontal: 16, paddingTop: 12 },
+  edge: { position: 'absolute', top: 0, left: 0, right: 0 },
   comment: {
     minHeight: 88,
     borderWidth: 1,
