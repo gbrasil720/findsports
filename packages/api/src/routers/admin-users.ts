@@ -121,7 +121,10 @@ export const adminUsersRouter = router({
             role: user.role,
             banned: user.banned,
             banReason: user.banReason,
-            createdAt: user.createdAt
+            createdAt: user.createdAt,
+            twoFactorEnabled: user.twoFactorEnabled,
+            cityName: user.searchCityName,
+            cityUf: user.searchCityUf
           })
           .from(user)
           .where(where)

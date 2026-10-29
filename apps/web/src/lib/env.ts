@@ -51,8 +51,12 @@ export const env = createEnv({
      */
     VITE_POSTHOG_KEY: z.optional(z.string().check(z.minLength(1))),
 
-    /** Região da instância. O padrão é o mesmo que estava embutido no código. */
-    VITE_POSTHOG_HOST: z._default(z.url(), 'https://eu.i.posthog.com'),
+    /**
+     * Para onde os eventos vão: o proxy reverso gerenciado do PostHog no
+     * nosso domínio, que bloqueador de anúncio não derruba como derruba
+     * `*.posthog.com`. Ele repassa à nuvem europeia (`eu.i.posthog.com`).
+     */
+    VITE_POSTHOG_HOST: z._default(z.url(), 'https://a.onside.sh'),
 
     /**
      * Site key do Cloudflare Turnstile (pública). Ausente = sem widget, que é

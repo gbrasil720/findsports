@@ -16,35 +16,30 @@ function Entrada() {
   return (
     <main className="hd-center">
       <span className="hd-hat-tile">
-        <HatIcon size={64} />
+        <HatIcon size={68} />
       </span>
       <div
         style={{
           display: 'flex',
           flexDirection: 'column',
-          gap: 8,
+          gap: 10,
           alignItems: 'center'
         }}
       >
-        <h1
-          style={{
-            margin: 0,
-            fontWeight: 700,
-            fontSize: 40,
-            letterSpacing: '-0.03em'
-          }}
-        >
+        <h1 className="hd-h1" style={{ fontSize: 72 }}>
           Houdini
         </h1>
-        <p style={{ margin: 0, fontSize: 16, color: 'var(--hd-muted)' }}>
-          Está e não está.
-        </p>
+        <p className="hd-lead">Está e não está.</p>
       </div>
-      <a href={loginHref} className="hd-btn hd-btn-primary">
+      <a
+        href={loginHref}
+        className="hd-btn hd-btn-primary is-lg"
+        style={{ minWidth: 'min(300px, 100%)' }}
+      >
         Entrar com a conta Onside
       </a>
       <p className="hd-mono hd-small" style={{ margin: 0 }}>
-        só role admin com 2FA · o resto recebe 404 do servidor
+        só admin com 2FA · o resto recebe 404 do servidor
       </p>
     </main>
   )

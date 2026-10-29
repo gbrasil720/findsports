@@ -52,14 +52,9 @@ export function HoldButton({
   return (
     <button
       type="button"
-      className="hd-btn hd-btn-danger"
+      className="hd-btn hd-btn-danger is-block"
       disabled={busy || disabled}
-      style={{
-        position: 'relative',
-        overflow: 'hidden',
-        width: '100%',
-        touchAction: 'none'
-      }}
+      style={{ touchAction: 'none' }}
       onPointerDown={start}
       onPointerUp={stop}
       onPointerLeave={stop}
@@ -75,17 +70,22 @@ export function HoldButton({
       }}
       onBlur={stop}
     >
+      {/* `scaleX` e não `width`: o enchimento anda sem refazer o layout. */}
       <span
         aria-hidden="true"
+        className="fill"
         style={{
-          position: 'absolute',
-          inset: 0,
-          width: `${progress * 100}%`,
-          background: 'rgb(255 92 122 / 0.22)'
+          width: '100%',
+          transform: `scaleX(${progress})`,
+          transformOrigin: 'left'
         }}
       />
-      <span style={{ position: 'relative' }}>
-        {busy ? (busyLabel ?? label) : label}
+      <span className="lbl">
+        {busy
+          ? (busyLabel ?? label)
+          : progress > 0
+            ? `Segure… ${Math.round(progress * 100)}%`
+            : label}
       </span>
     </button>
   )

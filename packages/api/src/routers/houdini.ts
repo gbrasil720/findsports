@@ -14,10 +14,13 @@ import {
   brasiliaTodaySql,
   utcNowSql
 } from '@findsports_oficial/db/event-window-sql'
+import { aiRun } from '@findsports_oficial/db/schema/ai'
 import { user } from '@findsports_oficial/db/schema/auth'
+import { appConfig } from '@findsports_oficial/db/schema/config'
 import { adminAction } from '@findsports_oficial/db/schema/houdini'
 import {
   bar,
+  barPhoto,
   event,
   subscription
 } from '@findsports_oficial/db/schema/platform'
@@ -27,6 +30,8 @@ import { adminProcedure, router } from '../index'
 import { readUnregisteredAlerts } from '../lib/attendance'
 import { getCurrentPlan } from '../lib/current-plan'
 import { escapeLike } from '../lib/escape-like'
+import { JOB_NAMES, lastJobRun } from '../lib/jobs'
+import { expectedSearchPlan } from './admin-bars'
 import { houdiniIaRouter } from './houdini-ia'
 
 const DAY = 24 * 3_600_000
@@ -70,6 +75,51 @@ const upcomingGames = sql<number>`(
 // ponytail: teto fixo nas listas da Ampulheta; paginar se passar disso.
 const AMPULHETA_LIMIT = 200
 
+// ponytail: teto por tipo no "Pede a sua mão"; o resto aparece em Bares.
+const PEDE_LIMIT = 20
+
+/** Rotinas cuja última execução falhou, com a hora e o erro. */
+async function failedJobs() {
+  const runs = await Promise.all(JOB_NAMES.map(lastJobRun))
+  return runs.flatMap((run) =>
+    run && !run.ok
+      ? [{ job: run.job, startedAt: run.startedAt, error: run.error }]
+      : []
+  )
+}
+
+/** Fila da Revisão (WEB-462, WEB-478): fotos e descrições à espera. */
+async function reviewQueue() {
+  const [[photos], [descriptions]] = await Promise.all([
+    db
+      .select({ n: count() })
+      .from(barPhoto)
+      .where(eq(barPhoto.status, 'pending')),
+    db
+      .select({ n: count() })
+      .from(bar)
+      .where(eq(bar.descriptionReview, 'pending'))
+  ])
+  return { photos: photos?.n ?? 0, descriptions: descriptions?.n ?? 0 }
+}
+
+/**
+ * Execução da IA em `running` há mais de uma hora: não termina mais, e a
+ * rotina `ai_stale_runs` só a fecha no cron seguinte (`closeStaleRuns`).
+ */
+async function stuckAiRuns() {
+  const [row] = await db
+    .select({ n: count() })
+    .from(aiRun)
+    .where(
+      and(
+        eq(aiRun.status, 'running'),
+        sql`${aiRun.createdAt} <= now() - interval '1 hour'`
+      )
+    )
+  return row?.n ?? 0
+}
+
 /**
  * WEB-391: o Início do Houdini e o ⌘K. Só leitura, montado com o que as
  * tabelas já registram.
@@ -80,7 +130,17 @@ export const houdiniRouter = router({
 
   overview: adminProcedure.query(async () => {
     const now = new Date()
-    const [[people], [bars], ghosts] = await Promise.all([
+    const since = iso(new Date(now.getTime() - DAY))
+    const [
+      [people],
+      [bars],
+      ghosts,
+      [newBars],
+      [games],
+      [spells],
+      failed,
+      review
+    ] = await Promise.all([
       db
         .select({
           total: count(),
@@ -106,17 +166,39 @@ export const houdiniRouter = router({
         .from(bar)
         .leftJoin(subscription, eq(subscription.barId, bar.id))
         .where(eq(bar.isActive, true)),
-      readUnregisteredAlerts()
+      readUnregisteredAlerts(),
+      db
+        .select({ n: count() })
+        .from(bar)
+        .where(sql`${bar.createdAt} > ${since}`),
+      db
+        .select({ n: count() })
+        .from(event)
+        .where(sql`${event.startsAt} > ${utcNowSql()}`),
+      // Feitiço lançado e ainda valendo, como `carregarAppConfigGravada` lê.
+      db
+        .select({ n: count() })
+        .from(appConfig)
+        .where(
+          sql`${appConfig.expiresAt} IS NULL OR ${appConfig.expiresAt} > ${utcNowSql()}`
+        ),
+      failedJobs(),
+      reviewQueue()
     ])
     return {
       people: { total: people?.total ?? 0, novas: people?.novas ?? 0 },
       bars: {
         noAr: bars?.noAr ?? 0,
         emTeste: bars?.emTeste ?? 0,
-        pagando: bars?.pagando ?? 0
+        pagando: bars?.pagando ?? 0,
+        novos: newBars?.n ?? 0
       },
       testesAcabando: bars?.testesAcabando ?? 0,
-      fantasmas: ghosts.length
+      fantasmas: ghosts.length,
+      jogosFuturos: games?.n ?? 0,
+      feiticosLancados: spells?.n ?? 0,
+      rotinasFalhando: failed.length,
+      revisao: review.photos + review.descriptions
     }
   }),
 
@@ -185,6 +267,60 @@ export const houdiniRouter = router({
       })),
       gone
     }
+  }),
+
+  /**
+   * WEB-480: "Pede a sua mão" do Início. Só o que as tabelas já dizem: fatura
+   * sem pagar (`past_due`), rotina cuja última execução falhou, busca atrás
+   * do plano e teste do cadastro que acaba hoje (a coluna de hoje da
+   * Ampulheta, vencidos à espera da reconciliação inclusive). E também a
+   * fila da Revisão e a execução da IA presa.
+   */
+  pedeAMao: adminProcedure.query(async () => {
+    const [pastDue, drift, endingToday, jobs, review, stuckAi] =
+      await Promise.all([
+        db
+          .select({ id: bar.id, name: bar.name, plan: subscription.plan })
+          .from(subscription)
+          .innerJoin(bar, eq(bar.id, subscription.barId))
+          .where(eq(subscription.status, 'past_due'))
+          .orderBy(sql`${subscription.updatedAt} DESC`)
+          .limit(PEDE_LIMIT),
+        db
+          .select({
+            id: bar.id,
+            name: bar.name,
+            barPlan: bar.plan,
+            expectedSearchPlan
+          })
+          .from(bar)
+          .leftJoin(subscription, eq(subscription.barId, bar.id))
+          .where(sql`${bar.plan} IS DISTINCT FROM ${expectedSearchPlan}`)
+          .orderBy(sql`${bar.createdAt} DESC`)
+          .limit(PEDE_LIMIT),
+        db
+          .select({
+            id: bar.id,
+            name: bar.name,
+            currentPeriodEnd: subscription.currentPeriodEnd,
+            upcomingGames
+          })
+          .from(bar)
+          .innerJoin(subscription, eq(subscription.barId, bar.id))
+          .where(
+            and(
+              eq(bar.isActive, true),
+              trialEndingThisWeek,
+              sql`COALESCE(${spDaysUntilEnd}, 0) <= 0`
+            )
+          )
+          .orderBy(sql`${subscription.currentPeriodEnd} ASC NULLS FIRST`)
+          .limit(PEDE_LIMIT),
+        failedJobs(),
+        reviewQueue(),
+        stuckAiRuns()
+      ])
+    return { pastDue, drift, endingToday, jobs, review, stuckAi }
   }),
 
   /**
