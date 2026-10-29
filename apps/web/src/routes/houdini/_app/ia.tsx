@@ -690,7 +690,6 @@ function DailyChart({ daily }: { daily: Overview['status']['daily'] }) {
   const max = Math.max(...daily.map((d) => d.costUsd), 0)
   const total = daily.reduce((sum, d) => sum + d.costUsd, 0)
   const peak = daily.find((d) => d.costUsd === max)
-  const last = daily.at(-1)
   return (
     <section className="hd-card" aria-labelledby="ia-dia" style={{ gap: 16 }}>
       <div className="hd-card-hd">
@@ -702,6 +701,55 @@ function DailyChart({ daily }: { daily: Overview['status']['daily'] }) {
           {max > 0 ? ` · maior ${usd(max)}` : ''}
         </span>
       </div>
+      {max === 0 ? (
+        <p className="hd-empty is-dashed">Nenhum gasto no período.</p>
+      ) : (
+        <DailyBars daily={daily} max={max} peak={peak} total={total} />
+      )}
+      <details>
+        <summary className="hd-small" style={{ cursor: 'pointer' }}>
+          Ver em tabela
+        </summary>
+        <div className="hd-table-wrap is-flat" style={{ marginTop: 10 }}>
+          <table className="hd-table" style={{ minWidth: 0 }}>
+            <thead>
+              <tr>
+                <th>Dia</th>
+                <th>Gasto</th>
+                <th>Chamadas</th>
+              </tr>
+            </thead>
+            <tbody>
+              {daily.map((d) => (
+                <tr key={d.day}>
+                  <td className="hd-mono">{shortDay(d.day)}</td>
+                  <td>{usd(d.costUsd)}</td>
+                  <td>{int(d.runs)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </section>
+  )
+}
+
+/** As barras do gasto por dia: o último dia em destaque, o maior com o valor. */
+function DailyBars({
+  daily,
+  max,
+  peak,
+  total
+}: {
+  daily: Overview['status']['daily']
+  max: number
+  peak: Overview['status']['daily'][number] | undefined
+  total: number
+}) {
+  const last = daily.at(-1)
+  return (
+    <>
       <div
         role="img"
         aria-label={`Gasto por dia: ${usd(total)} no período${
@@ -769,32 +817,7 @@ function DailyChart({ daily }: { daily: Overview['status']['daily'] }) {
         <span>{daily[0] ? shortDay(daily[0].day) : ''}</span>
         <span>{last ? shortDay(last.day) : ''}</span>
       </div>
-      <details>
-        <summary className="hd-small" style={{ cursor: 'pointer' }}>
-          Ver em tabela
-        </summary>
-        <div className="hd-table-wrap" style={{ marginTop: 10 }}>
-          <table className="hd-table" style={{ minWidth: 0 }}>
-            <thead>
-              <tr>
-                <th>Dia</th>
-                <th>Gasto</th>
-                <th>Chamadas</th>
-              </tr>
-            </thead>
-            <tbody>
-              {daily.map((d) => (
-                <tr key={d.day}>
-                  <td className="hd-mono">{shortDay(d.day)}</td>
-                  <td>{usd(d.costUsd)}</td>
-                  <td>{int(d.runs)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </details>
-    </section>
+    </>
   )
 }
 
@@ -837,7 +860,7 @@ const ARM_ROWS: Array<{ label: string; cell: (a: Arm) => string }> = [
 
 function ArmsTable({ arms, unitLabel }: { arms: Arm[]; unitLabel: string }) {
   return (
-    <div className="hd-table-wrap">
+    <div className="hd-table-wrap is-flat">
       <table className="hd-table" style={{ minWidth: 120 + arms.length * 160 }}>
         <thead>
           <tr>
@@ -875,7 +898,8 @@ function ArmsTable({ arms, unitLabel }: { arms: Arm[]; unitLabel: string }) {
                   letterSpacing: 0,
                   textTransform: 'none',
                   color: 'var(--hd-fg)',
-                  whiteSpace: 'normal'
+                  whiteSpace: 'normal',
+                  minWidth: 160
                 }}
               >
                 {row.label}
@@ -1212,7 +1236,7 @@ function TopTable({
   limitLabel: string
 }) {
   return (
-    <div className="hd-table-wrap">
+    <div className="hd-table-wrap is-flat">
       <table
         className="hd-table"
         style={{ minWidth: 380, whiteSpace: 'nowrap' }}
@@ -1348,7 +1372,7 @@ function RunsLog() {
           {getUserFacingMessage(runs.error, 'Não foi possível ler o registro.')}
         </div>
       ) : (
-        <div className="hd-table-wrap">
+        <div className="hd-table-wrap is-flat">
           <table
             className="hd-table"
             style={{ minWidth: 980, whiteSpace: 'nowrap' }}
