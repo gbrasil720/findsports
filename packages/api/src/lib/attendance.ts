@@ -420,7 +420,9 @@ export async function readMyGames(
       currentPeriodEnd: subscription.currentPeriodEnd,
       offer: reservation.offerSnapshot,
       code: reservationCode.code,
-      usedCount: reservationCode.usedCount
+      usedCount: reservationCode.usedCount,
+      // Presença confirmada (WEB-408): código validado ou check-in "Estou aqui".
+      visited: sql<boolean>`${visit.eventId} is not null`
     })
     .from(attendance)
     .innerJoin(event, eq(event.id, attendance.eventId))
@@ -440,6 +442,10 @@ export async function readMyGames(
         eq(reservationCode.reservationId, reservation.id),
         isNull(reservationCode.retiredAt)
       )
+    )
+    .leftJoin(
+      visit,
+      and(eq(visit.userId, attendance.userId), eq(visit.eventId, event.id))
     )
     .where(eq(attendance.userId, userId))
     .orderBy(sql`${event.startsAt} desc`)
