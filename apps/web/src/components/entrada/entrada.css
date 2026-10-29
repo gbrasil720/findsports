@@ -693,12 +693,34 @@
   flex: 1;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   min-height: 0;
+  overflow-x: clip;
 }
 .painel .entrada-ob-form {
   display: flex;
   flex-direction: column;
   gap: 22px;
   padding: 48px 64px;
+}
+/* Troca de passo: o formulário novo entra do lado para onde o cadastro anda
+ * (da direita ao avançar, da esquerda ao voltar). O que sai não anima. */
+.painel .entrada-ob-form[data-sentido] {
+  animation: entrada-ob-passo var(--onside-motion-slow) var(--onside-ease-out);
+}
+.painel .entrada-ob-form[data-sentido="volta"] {
+  --entrada-ob-de: -12px;
+}
+@keyframes entrada-ob-passo {
+  from {
+    opacity: 0;
+    transform: translateX(var(--entrada-ob-de, 12px));
+  }
+}
+/* Movimento reduzido: o passo só esmaece. */
+@media (prefers-reduced-motion: reduce) {
+  .painel .entrada-ob-form,
+  .painel .entrada-ob-form[data-sentido="volta"] {
+    --entrada-ob-de: 0px;
+  }
 }
 .painel .entrada-ob-lado {
   position: relative;

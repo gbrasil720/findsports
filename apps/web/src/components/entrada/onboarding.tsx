@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import type { ReactNode } from 'react'
+import { type ReactNode, useState } from 'react'
 import { Avatar, Badge, Icone } from '@/components/painel'
 import { Marca } from './auth'
 
@@ -30,6 +30,16 @@ export function ObShell({
   ladoFoto?: boolean
   children: ReactNode
 }) {
+  // O sentido da troca de passo, guardado de uma renderização para outra (o
+  // padrão do React para "valor anterior"). Na primeira abertura não há troca,
+  // então nada anima.
+  const [troca, setTroca] = useState<{
+    passo: number
+    sentido?: 'avanca' | 'volta'
+  }>({ passo })
+  if (troca.passo !== passo) {
+    setTroca({ passo, sentido: passo > troca.passo ? 'avanca' : 'volta' })
+  }
   return (
     <div className="onside-app painel entrada">
       <div className="entrada-ob">
@@ -54,7 +64,13 @@ export function ObShell({
           {acao}
         </header>
         <div className="entrada-ob-corpo">
-          <main className="entrada-ob-form">{children}</main>
+          <main
+            key={passo}
+            className="entrada-ob-form"
+            data-sentido={troca.sentido}
+          >
+            {children}
+          </main>
           <aside className="entrada-ob-lado" data-foto={ladoFoto || undefined}>
             {lado}
           </aside>
