@@ -2,7 +2,7 @@ import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useQuery } from '@tanstack/react-query'
 import * as Calendar from 'expo-calendar/legacy'
 import { type Href, useRouter } from 'expo-router'
-import { useRef, useState } from 'react'
+import { Fragment, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -15,6 +15,7 @@ import {
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card } from '@/components/card'
+import { CheckInCard } from '@/components/check-in'
 import { dayLabel, Perforation, Photo } from '@/components/explore'
 import { Glass } from '@/components/glass'
 import { haptic, usePressScale } from '@/components/motion'
@@ -43,6 +44,7 @@ import {
   type MyGame,
   pastLabel,
   shortDate,
+  showsCheckIn,
   thisMonth
 } from '@/lib/my-games'
 import { trpc } from '@/lib/trpc'
@@ -52,6 +54,10 @@ import { trpc } from '@/lib/trpc'
  * O próximo jogo vem grande, com o código do balcão (bar Elite); os outros
  * próximos, compactos; os que passaram, numa lista com o desfecho ou
  * "Avaliar". O código abre em tela cheia (3f), a avaliação no pós-jogo (3g).
+ *
+ * No dia do jogo, o "Estou aqui" (check-in, WEB-408) da página do bar vem
+ * logo abaixo do jogo; o design da 08 não o desenha. O jogo que acabou há
+ * menos de 3 h já está em "Anteriores", e o card vai acima da lista.
  */
 
 export default function MyGames() {
@@ -111,6 +117,15 @@ export default function MyGames() {
   }
   const openBar = (game: MyGame) =>
     game.barActive ? router.push(`/bar/${game.barId}` as Href) : undefined
+  const checkIn = (game: MyGame) =>
+    showsCheckIn(game, now) ? (
+      <CheckInCard
+        key={`check-in-${game.eventId}`}
+        barId={game.barId}
+        eventId={game.eventId}
+        done={game.visited}
+      />
+    ) : null
 
   const pull = usePullRefresh(() =>
     Promise.all([mine.refetch(), postGame.refetch()])
@@ -190,24 +205,29 @@ export default function MyGames() {
             </View>
 
             {first ? (
-              <NextGame
-                game={first}
-                now={now}
-                onCode={() => openCode(first)}
-                onBar={() => openBar(first)}
-              />
+              <>
+                <NextGame
+                  game={first}
+                  now={now}
+                  onCode={() => openCode(first)}
+                  onBar={() => openBar(first)}
+                />
+                {checkIn(first)}
+              </>
             ) : (
               <Text style={[text(14), { color: palette.muted }]}>
                 Nenhum jogo marcado daqui para a frente.
               </Text>
             )}
             {rest.map((game) => (
-              <LaterGame
-                key={game.eventId}
-                game={game}
-                now={now}
-                onPress={() => (game.code ? openCode(game) : openBar(game))}
-              />
+              <Fragment key={game.eventId}>
+                <LaterGame
+                  game={game}
+                  now={now}
+                  onPress={() => (game.code ? openCode(game) : openBar(game))}
+                />
+                {checkIn(game)}
+              </Fragment>
             ))}
             {upcoming.some((game) => game.code) ? (
               <Text
@@ -235,6 +255,7 @@ export default function MyGames() {
                     {thisMonth(past, now) ?? ''}
                   </Text>
                 </View>
+                {past.map(checkIn)}
                 <Card soft>
                   <View style={styles.list}>
                     {past.map((game, index) => (
@@ -519,6 +540,7 @@ function PastRow({
 }) {
   const palette = usePalette()
   const label = pastLabel(game)
+  const confirmed = game.validated || game.visited
   const press = usePressScale()
   return (
     <View
@@ -566,13 +588,13 @@ function PastRow({
         <View
           style={[
             styles.badge,
-            { backgroundColor: game.validated ? ACID : palette.mark }
+            { backgroundColor: confirmed ? ACID : palette.mark }
           ]}
         >
           <Text
             style={[
               text(10.5, 'Bold', 1.2),
-              { color: game.validated ? INK : palette.ink }
+              { color: confirmed ? INK : palette.ink }
             ]}
           >
             {label}
