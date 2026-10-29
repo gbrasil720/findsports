@@ -12,6 +12,7 @@ import { readAttendanceQuestions } from './attendance'
 import { participantNames } from './game-participants'
 import { RATING_WINDOW_DAYS } from './rating'
 import type { RatingReasonId } from './rating-reasons'
+import type { RatingDetails } from './rating-review'
 import { utcIso } from './utc-timestamp'
 
 /*
@@ -48,9 +49,11 @@ const RATING_WINDOW_MS = RATING_WINDOW_DAYS * 24 * 60 * 60 * 1000
  * entre uma nota que significa alguma coisa e um placar de popularidade:
  *
  *   1. ele demonstrou intenção de ir — marcou "Vou assistir aqui" naquele
- *      jogo, ou abriu rota, WhatsApp ou telefone DAQUELE bar, para AQUELE
- *      jogo (`bar_commercial_event`, com `actor_user_id` e
- *      `source_event_id`);
+ *      jogo, fez check-in, ou abriu rota, WhatsApp ou telefone DAQUELE bar,
+ *      para AQUELE jogo (`bar_commercial_event`, com `actor_user_id` e
+ *      `source_event_id`). Responder não é o mesmo que contar: só a
+ *      avaliação verificada (código validado ou check-in, WEB-408) entra na
+ *      nota pública, e o banco decide isso (`bar_rating.verified`);
  *   2. o jogo já acabou. Avaliar antes seria avaliar expectativa;
  *   3. faz menos de `RATING_WINDOW_DAYS` que acabou. Depois disso é memória,
  *      não observação — e é onde mora a avaliação movida por raiva acumulada.
@@ -83,6 +86,9 @@ async function checkEligibility(input: {
       ) OR EXISTS (
         SELECT 1 FROM attendance a
         WHERE a.user_id = ${input.userId} AND a.event_id = e.id
+      ) OR EXISTS (
+        SELECT 1 FROM attendance_checkin c
+        WHERE c.user_id = ${input.userId} AND c.event_id = e.id
       ) AS has_intent
     FROM event e
     JOIN bar b ON b.id = e.bar_id
@@ -158,6 +164,12 @@ export async function readPendingRatings(userId: string) {
       FROM attendance a
       JOIN event ev ON ev.id = a.event_id
       WHERE a.user_id = ${userId}
+      UNION
+      -- Quem fez check-in esteve lá (WEB-408), mesmo sem "Vou assistir".
+      SELECT ev.bar_id, c.event_id
+      FROM attendance_checkin c
+      JOIN event ev ON ev.id = c.event_id
+      WHERE c.user_id = ${userId}
     )
     SELECT DISTINCT ON (e.id)
       e.id AS event_id,
@@ -282,7 +294,10 @@ export type PostGameAnswer = {
   attended?: boolean
   /** Só vale com `attended` e oferta congelada. */
   offerReceived?: boolean
-  rating?: { wouldReturn: boolean; reasons: RatingReasonId[] }
+  rating?: {
+    wouldReturn: boolean
+    reasons: RatingReasonId[]
+  } & Partial<RatingDetails>
 }
 
 /**
@@ -332,12 +347,29 @@ export async function answerPostGame(
         })
     }
     if (rating && barId) {
+      const { comment = null, ...values } = rating
+      // Comentário novo ou trocado volta para a revisão da Onside (WEB-451);
+      // o mesmo texto reenviado guarda a decisão que já tinha.
+      const review = comment === null ? null : ('pending' as const)
       await tx
         .insert(barRating)
-        .values({ barId, actorUserId: userId, eventId, ...rating })
+        .values({
+          barId,
+          actorUserId: userId,
+          eventId,
+          ...values,
+          comment,
+          commentReview: review
+        })
         .onConflictDoUpdate({
           target: [barRating.barId, barRating.actorUserId, barRating.eventId],
-          set: { ...rating, updatedAt: new Date() }
+          set: {
+            ...values,
+            comment,
+            commentReview: sql`CASE WHEN ${barRating.comment} IS NOT DISTINCT FROM excluded.comment THEN ${barRating.commentReview} ELSE excluded.comment_review END`,
+            commentRejectionReason: sql`CASE WHEN ${barRating.comment} IS NOT DISTINCT FROM excluded.comment THEN ${barRating.commentRejectionReason} END`,
+            updatedAt: new Date()
+          }
         })
     }
   })

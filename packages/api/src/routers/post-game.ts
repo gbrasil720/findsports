@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { fanProcedure, router } from '../index'
 import { answerPostGame, readPostGame, undoPostGame } from '../lib/post-game'
 import { ratingReasonsSchema } from '../lib/rating-reasons'
+import { ratingDetailsSchema } from '../lib/rating-review'
 
 const eventId = z.string().uuid()
 
@@ -27,6 +28,10 @@ export const postGameRouter = router({
             // "O que pesou?" (WEB-398), opcional. Reenviar troca as etiquetas.
             reasons: ratingReasonsSchema.default([])
           })
+          // Estrelas, comentário e nome (WEB-451). Opcionais aqui porque o
+          // app publicado antes deles ainda manda só "voltaria" e etiquetas;
+          // o pós-jogo novo exige as estrelas na tela.
+          .extend(ratingDetailsSchema.partial().shape)
           .optional()
       })
     )
