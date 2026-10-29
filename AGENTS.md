@@ -292,9 +292,12 @@ próprio o `rewrite` do router tira o prefixo (`apps/web/src/lib/houdini-host.ts
 `www` o caminho `/houdini` dá 404 (admin é mandado para o host); no preview e no
 `vite dev` o Houdini responde em `/houdini`. Quem entra é decidido no servidor por
 `lib/houdini-gate.ts`: só admin com 2FA ligado; o resto recebe o 404 de verdade (a
-"Cortina"). Telas novas entram em `routes/houdini/_app/` e no `HOUDINI_NAV` de
-`components/houdini/shell.tsx`; o visual é o de `components/houdini/houdini.css`
-(proposta 3 do canvas https://claude.ai/artifact/YbJ76gkJaTKaqTtuRLQmNt).
+"Cortina"). Telas novas entram em `routes/houdini/_app/` e no grupo delas em
+`HOUDINI_NAV_GROUPS` (`components/houdini/shell.tsx`). O visual é o redesign na
+linguagem da Onside (WEB-480, canvas https://claude.ai/artifact/DmzHetdEyDNRP3eWaXqzHz),
+todo em `components/houdini/houdini.css`, preso a `.houdini`: Anton, Archivo e Geist
+Mono, acid e sombra dura. O tema segue o do sistema (escuro por padrão), e toda
+diferença entre claro e escuro é token `--hd-*`.
 
 ### App mobile
 
