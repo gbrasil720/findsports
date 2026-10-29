@@ -40,7 +40,9 @@ const FILTERS = [
       'bar.photo_approve',
       'bar.photo_reject',
       'bar.description_approve',
-      'bar.description_reject'
+      'bar.description_reject',
+      'bar.rating_comment_approve',
+      'bar.rating_comment_reject'
     ]
   },
   { label: 'Jogos', kinds: ['event.update', 'event.delete', 'event.fix'] }

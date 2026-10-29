@@ -276,6 +276,20 @@ export function describe(entry: GrimorioEntry): {
         text: `recusou a descrição de ${label}`,
         detail: typeof detail.reason === 'string' ? detail.reason : null
       }
+    case 'bar.rating_comment_approve':
+      return {
+        icon: 'check',
+        tone: 'acid',
+        text: `aprovou um comentário sobre ${label}`,
+        detail: null
+      }
+    case 'bar.rating_comment_reject':
+      return {
+        icon: 'warn',
+        tone: 'live',
+        text: `recusou um comentário sobre ${label}`,
+        detail: typeof detail.reason === 'string' ? detail.reason : null
+      }
     case 'bar.photo_reject':
       return {
         icon: 'warn',

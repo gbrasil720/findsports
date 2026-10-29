@@ -1,15 +1,19 @@
 import { and, asc, db, eq, sql } from '@findsports_oficial/db'
 import { recordAdminAction } from '@findsports_oficial/db/admin-action'
 import { REVIEW_REASON_MAX } from '@findsports_oficial/db/bar-gallery'
+import { RATING_COMMENT_MAX } from '@findsports_oficial/db/rating-limits'
+import { user } from '@findsports_oficial/db/schema/auth'
 import { bar, barPhoto } from '@findsports_oficial/db/schema/platform'
+import { barRating } from '@findsports_oficial/db/schema/rating'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
 import { adminProcedure, router } from '../index'
 
 /**
- * Revisão da Onside (WEB-462, WEB-478): toda foto do bar e a descrição em
- * texto livre passam por aqui antes de o torcedor ver. Aprovar ou recusar com motivo; cada decisão fica no
+ * Revisão da Onside (WEB-462, WEB-478, WEB-451): toda foto do bar, a
+ * descrição em texto livre e o comentário da avaliação passam por aqui antes
+ * de aparecer. Aprovar ou recusar com motivo; cada decisão fica no
  * Grimório, na mesma transação. A tela é `/houdini/revisao`.
  */
 
@@ -60,7 +64,26 @@ export const adminReviewRouter = router({
       .from(bar)
       .where(eq(bar.descriptionReview, 'pending'))
       .orderBy(asc(bar.descriptionSubmittedAt))
-    return { photos, descriptions }
+    // O admin vê quem escreveu mesmo anônimo: o anonimato é para o bar.
+    const comments = await db
+      .select({
+        ratingId: barRating.id,
+        comment: barRating.comment,
+        stars: barRating.stars,
+        wouldReturn: barRating.wouldReturn,
+        verified: barRating.verified,
+        identified: barRating.identified,
+        authorName: user.name,
+        submittedAt: barRating.updatedAt,
+        barId: bar.id,
+        barName: bar.name
+      })
+      .from(barRating)
+      .innerJoin(bar, eq(bar.id, barRating.barId))
+      .innerJoin(user, eq(user.id, barRating.actorUserId))
+      .where(eq(barRating.commentReview, 'pending'))
+      .orderBy(asc(barRating.updatedAt))
+    return { photos, descriptions, comments }
   }),
 
   decidePhoto: adminProcedure
@@ -197,6 +220,63 @@ export const adminReviewRouter = router({
           tx
         )
         return { status: input.approve ? 'approved' : 'rejected' }
+      })
+    ),
+
+  /**
+   * O comentário da avaliação (WEB-451). `text` é o que o admin leu: se o
+   * torcedor trocou o texto no meio, a decisão é recusada e a fila recarrega.
+   * Aprovado, aparece para o bar e, se a avaliação é verificada, em "O que
+   * dizem"; recusado, não aparece em lugar nenhum e o resto da avaliação
+   * (estrelas, "voltaria", etiquetas) continua valendo.
+   */
+  decideComment: adminProcedure
+    .input(
+      z
+        .object({
+          ratingId: z.string().min(1).max(255),
+          text: z.string().max(RATING_COMMENT_MAX)
+        })
+        .and(decision)
+    )
+    .mutation(({ ctx, input }) =>
+      db.transaction(async (tx) => {
+        const [found] = await tx
+          .select({ barId: bar.id, barName: bar.name })
+          .from(barRating)
+          .innerJoin(bar, eq(bar.id, barRating.barId))
+          .where(
+            and(
+              eq(barRating.id, input.ratingId),
+              eq(barRating.commentReview, 'pending'),
+              eq(barRating.comment, input.text)
+            )
+          )
+          .for('update', { of: barRating })
+        if (!found) throw alreadyReviewed()
+
+        const reason = input.approve ? null : input.reason
+        const status = input.approve ? 'approved' : 'rejected'
+        await tx
+          .update(barRating)
+          .set({ commentReview: status, commentRejectionReason: reason })
+          .where(eq(barRating.id, input.ratingId))
+        await recordAdminAction(
+          {
+            kind: input.approve
+              ? 'bar.rating_comment_approve'
+              : 'bar.rating_comment_reject',
+            ...actor(ctx),
+            targetType: 'bar',
+            targetId: found.barId,
+            targetLabel: found.barName,
+            before: { status: 'pending' },
+            after: { status },
+            detail: { ratingId: input.ratingId, comment: input.text, reason }
+          },
+          tx
+        )
+        return { status }
       })
     )
 })
