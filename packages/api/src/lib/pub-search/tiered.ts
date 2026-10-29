@@ -21,9 +21,9 @@ import {
  * caminhos continuam válidos no outro.
  */
 const PLAN_TIERS = [
-  { rank: 1, plan: sql`'elite'` },
-  { rank: 2, plan: sql`'pro'` },
-  { rank: 3, plan: sql`'starter'` }
+  { rank: 1, plan: sql`'elite'`, cte: sql`camada_elite` },
+  { rank: 2, plan: sql`'pro'`, cte: sql`camada_pro` },
+  { rank: 3, plan: sql`'starter'`, cte: sql`camada_starter` }
 ] as const
 
 /**
@@ -96,9 +96,8 @@ export async function executarBuscaEmCamadas(
   // Uma camada por plano, na mesma ordem em que a query ordenava. Os literais
   // vêm desta lista fixa, nunca da entrada do usuário: precisam ser constantes
   // para o Postgres casar o índice parcial `bar_geo_<plano>_idx`.
-  const tiers = PLAN_TIERS.filter(
-    (tier) => !keyset || tier.rank >= keyset.p
-  ).map((tier) => {
+  const included = PLAN_TIERS.filter((tier) => !keyset || tier.rank >= keyset.p)
+  const tiers = included.map((tier, index) => {
     const classicRank =
       tier.rank === 1
         ? sql`CASE WHEN agg.classic_rule_id IS NULL THEN 1 ELSE 0 END`
@@ -118,7 +117,18 @@ export async function executarBuscaEmCamadas(
                  ${keyset.d}::float8, ${keyset.i}::text)`
         : sql``
 
-    return sql`(
+    // A camada só roda se as anteriores não encheram a página. Sem coluna da
+    // linha, a condição vira um `One-Time Filter` no topo do plano: falsa, a
+    // camada não lê nem o índice.
+    const earlier = included.slice(0, index)
+    const gate = earlier.length
+      ? sql`AND ${sql.join(
+          earlier.map((prev) => sql`(SELECT count(*) FROM ${prev.cte})`),
+          sql` + `
+        )} < ${limit}`
+      : sql``
+
+    return sql`${tier.cte} AS MATERIALIZED (
       SELECT
         ${tier.rank}::int AS cursor_plan_rank,
         b.id,
@@ -156,6 +166,7 @@ export async function executarBuscaEmCamadas(
         AND ST_DWithin(b.geo, ${origin}, ${radiusMeters})
         ${amenityFilterB}
         ${tierKeyset}
+        ${gate}
       ORDER BY
         ${classicRank} ASC,
         ${qualityRank} ASC,
@@ -167,9 +178,13 @@ export async function executarBuscaEmCamadas(
   })
 
   const results = await db.execute(sql`
-    WITH ${currentClassicRulesCte}, ranked AS MATERIALIZED (
+    WITH ${currentClassicRulesCte}, ${sql.join(tiers, sql`, `)},
+    ranked AS MATERIALIZED (
       SELECT * FROM (
-        ${sql.join(tiers, sql` UNION ALL `)}
+        ${sql.join(
+          included.map((tier) => sql`SELECT * FROM ${tier.cte}`),
+          sql` UNION ALL `
+        )}
       ) tiers
       ORDER BY
         cursor_plan_rank,
