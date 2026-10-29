@@ -82,6 +82,8 @@ export async function executarBuscaEmCamadas(
     eventFilter,
     champBarFilter,
     proximoJogo,
+    textoJogosCte,
+    prefiltroTexto,
     amenityFilter
   } = montarFiltrosBusca(input)
 
@@ -173,6 +175,10 @@ export async function executarBuscaEmCamadas(
         AND b.plan = ${tier.plan}
         AND ST_DWithin(b.geo, ${origin}, ${radiusMeters})
         ${amenityFilterB}
+        ${
+          // Só na starter: ver o comentário do topo.
+          tier.rank === 3 ? prefiltroTexto(sql`b`) : sql``
+        }
         ${tierKeyset}
         ${gate}
       ORDER BY
@@ -186,7 +192,14 @@ export async function executarBuscaEmCamadas(
   })
 
   const results = await db.execute(sql`
-    WITH ${currentClassicRulesCte}, ${sql.join(tiers, sql`, `)},
+    WITH ${sql.join(
+      [
+        currentClassicRulesCte,
+        ...(textoJogosCte ? [textoJogosCte] : []),
+        ...tiers
+      ],
+      sql`, `
+    )},
     ranked AS MATERIALIZED (
       SELECT * FROM (
         ${sql.join(
