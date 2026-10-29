@@ -33,7 +33,7 @@ function DialogBackdrop({
       data-slot="dialog-backdrop"
       className={cn(
         'fixed inset-0 z-50 bg-black/40 backdrop-blur-sm',
-        'data-open:animate-in data-closed:animate-out data-open:fade-in-0 data-closed:fade-out-0 duration-150',
+        'data-open:animate-in data-closed:animate-out data-open:fade-in-0 data-closed:fade-out-0 duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]',
         className
       )}
       {...props}
@@ -53,7 +53,7 @@ function DialogContent({
         data-slot="dialog-content"
         className={cn(
           'fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-2xl p-6 shadow-2xl',
-          'data-open:animate-in data-closed:animate-out data-open:fade-in-0 data-closed:fade-out-0 data-open:zoom-in-95 data-closed:zoom-out-95 duration-150',
+          'data-open:animate-in data-closed:animate-out data-open:fade-in-0 data-closed:fade-out-0 data-open:zoom-in-95 data-closed:zoom-out-95 duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]',
           className
         )}
         {...props}
