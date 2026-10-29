@@ -663,8 +663,10 @@ invente layout que o projeto não tem.
   do aparelho, senão da cidade do perfil (`pubs.getMyCity`), senão São Paulo; o fim do jogo
   ("ao vivo") vem de `@findsports_oficial/db/event-window`, a mesma fonte do servidor. A
   página do bar registra `profile_view` em `/api/bar/commercial-event`, como o web. A página do bar segue
-  o design até "O que dizem", menos as avaliações escritas e "Ver todas" (a avaliação é
-  "voltaria" mais etiquetas). "Horário" (WEB-397) só com horário informado: o dono grava em
+  o design até "O que dizem", menos "Ver todas": entram a média das estrelas e os três
+  comentários mais recentes aprovados (WEB-451, `readRatingList` em
+  `packages/api/src/lib/rating-list.ts`), só das avaliações verificadas. No dia do jogo,
+  "Estou aqui" (`components/check-in.tsx`, `attendance.checkIn`) faz o check-in. "Horário" (WEB-397) só com horário informado: o dono grava em
   `/admin` (`pub.updateOpeningHours`), sete faixas em `bar.opening_hours` (0 = domingo, fechar
   antes de abrir vira a meia-noite) e `pubs.getById` devolve `openNow` no relógio de Brasília;
   a regra e o agrupamento ("Seg a qui") são de `packages/api/src/lib/opening-hours.ts`, que o
@@ -705,8 +707,18 @@ invente layout que o projeto não tem.
   "Vou assistir aqui" libera a avaliação, e "Não fui" a recusa. "O que pesou?" são as
   seis etiquetas de `RATING_REASONS` (`packages/api/src/lib/rating-reasons.ts`, id nunca
   reusado), opcionais, gravadas com o "voltaria" em `bar_rating.reasons`; o card de
-  avaliação do dashboard web usa as mesmas. Não há avaliação "verificada": todas entram
-  no resumo. O rodapé de Meus jogos abre o ranking do mês (WEB-409). "34
+  avaliação do dashboard web usa as mesmas. A avaliação tem ainda estrelas (1 a 5,
+  obrigatórias no app novo), comentário opcional e "Mostrar meu nome" (WEB-451): o
+  comentário só aparece depois da revisão da Onside (`/houdini/revisao`,
+  `adminReview.decideComment`; recusado não aparece em lugar nenhum e o torcedor não é
+  avisado), e o nome só de quem ligou o interruptor. **Só a avaliação verificada entra
+  na nota** (WEB-408): código validado no balcão ou check-in "Estou aqui" (até 150 m do
+  bar, na janela do código, um por jogo, `packages/api/src/lib/check-in.ts`).
+  `bar_rating.verified` é do banco (triggers da migration 0083, a mesma regra da
+  visita); os contadores do bar (`rating_count`, `rating_positive`, `rating_stars_*`)
+  contam só as verificadas, e o resumo de etiquetas e "O que dizem" também. A não
+  verificada é gravada e aparece para o dono (selo "Não verificada") e na revisão.
+  Quem pode responder não mudou: intenção de ir, "Vou assistir aqui" ou check-in. O rodapé de Meus jogos abre o ranking do mês (WEB-409). "34
   pessoas vão, entre elas Marina e Rafael" (WEB-404) sai de `readGoing(eventIds,
   viewerId)` (`packages/api/src/lib/attendance.ts`): só nomeia amigo aceito com
   `activity_visibility` "todos" ou "amigos", mesmo abaixo do piso (aí sem contagem); quem
@@ -721,8 +733,8 @@ invente layout que o projeto não tem.
   servidor (`packages/api/src/lib/achievements.ts`, `achievements.mine`): nada é gravado,
   tudo sai das visitas e das avaliações. **Visita** é uma fonte só,
   `packages/api/src/lib/visits.ts` (uma linha por torcedor e jogo; hoje o código validado
-  no balcão e não desfeito): conquistas, "Já fui", amigos e recomendações a leem, e o
-  check-in do WEB-408 entra lá como segunda fonte. "Quem vai", o alerta interno e a
+  no balcão e não desfeito, e o check-in "Estou aqui" do WEB-408): conquistas, "Já
+  fui", amigos e recomendações a leem. "Quem vai", o alerta interno e a
   análise comercial leem o código de propósito (é o registro do bar, não a visita). A 2k abre sozinha quando sai medalha nova
   (`components/achievement-watcher.tsx`; a tela do código pergunta a cada 5 s até o
   balcão validar). **A medalha 3D é uma WebView**, não `expo-gl`: o three roda no WebGL
