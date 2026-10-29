@@ -5,6 +5,7 @@ import {
   pastLabel,
   pickTodayCode,
   shortDate,
+  showsCheckIn,
   thisMonth
 } from './my-games'
 
@@ -13,9 +14,42 @@ test('o código sai em dois blocos', () => {
 })
 
 test('validado vence; código não usado é não validado; sem código, encerrado', () => {
-  expect(pastLabel({ validated: true, missed: false })).toBe('Validado')
-  expect(pastLabel({ validated: false, missed: true })).toBe('Não validado')
-  expect(pastLabel({ validated: false, missed: false })).toBe('Jogo encerrado')
+  expect(pastLabel({ validated: true, missed: false, visited: true })).toBe(
+    'Validado'
+  )
+  expect(pastLabel({ validated: false, missed: true, visited: false })).toBe(
+    'Não validado'
+  )
+  expect(pastLabel({ validated: false, missed: false, visited: false })).toBe(
+    'Jogo encerrado'
+  )
+})
+
+test('o check-in confirma a presença mesmo com o código não validado', () => {
+  expect(pastLabel({ validated: false, missed: true, visited: true })).toBe(
+    'Presença confirmada'
+  )
+})
+
+test('"Estou aqui" aparece de 3 h antes do jogo a 3 h depois do fim, com o bar no ar', () => {
+  const game = {
+    startsAt: '2026-10-29T22:00:00Z',
+    endsAt: '2026-10-30T00:00:00Z',
+    barActive: true
+  }
+  const at = (iso: string) => showsCheckIn(game, Date.parse(iso))
+  expect(at('2026-10-29T18:59:00Z')).toBe(false)
+  expect(at('2026-10-29T19:00:00Z')).toBe(true)
+  expect(at('2026-10-29T23:00:00Z')).toBe(true)
+  // Acabou há pouco: o jogo já está em "Anteriores" e o check-in ainda vale.
+  expect(at('2026-10-30T03:00:00Z')).toBe(true)
+  expect(at('2026-10-30T03:01:00Z')).toBe(false)
+  expect(
+    showsCheckIn(
+      { ...game, barActive: false },
+      Date.parse('2026-10-29T23:00:00Z')
+    )
+  ).toBe(false)
 })
 
 test('a data curta é a do horário de Brasília', () => {
