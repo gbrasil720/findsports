@@ -37,28 +37,28 @@ afterEach(async () => {
 })
 
 /**
- * A Resend como dublê: guarda o corpo de cada envio. As chaves somem do
+ * A API de e-mail como dublê: guarda o corpo de cada envio. As chaves somem do
  * `.env.test` de propósito, então entram aqui e saem no fim do teste.
  */
 function fakeResend(status = 200) {
   const real = globalThis.fetch
   const sent: ResendBody[] = []
-  const keys = env as { RESEND_API_KEY?: string; RESEND_FROM_EMAIL?: string }
-  keys.RESEND_API_KEY = 're_teste'
-  keys.RESEND_FROM_EMAIL = 'nao-responda@mail.onside.sh'
+  const keys = env as { EMAIL_API_KEY?: string; EMAIL_FROM?: string }
+  keys.EMAIL_API_KEY = 're_teste'
+  keys.EMAIL_FROM = 'nao-responda@mail.onside.sh'
   const spy = spyOn(globalThis, 'fetch').mockImplementation(((
     input: Parameters<typeof fetch>[0],
     init?: Parameters<typeof fetch>[1]
   ) => {
     const url = String(input instanceof Request ? input.url : input)
-    if (url !== 'https://api.resend.com/emails') return real(input, init)
+    if (url !== `${env.EMAIL_API_URL}/emails`) return real(input, init)
     sent.push(JSON.parse(String(init?.body)))
     return Promise.resolve(new Response('{}', { status }))
   }) as typeof fetch)
   cleanups.push(() => {
     spy.mockRestore()
-    keys.RESEND_API_KEY = undefined
-    keys.RESEND_FROM_EMAIL = undefined
+    keys.EMAIL_API_KEY = undefined
+    keys.EMAIL_FROM = undefined
   })
   return sent
 }
