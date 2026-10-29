@@ -3,10 +3,18 @@ import {
   type RatingReasonId
 } from '@findsports_oficial/api/lib/rating-reasons'
 import { gameTitle } from '@findsports_oficial/db/game-title'
+import { RATING_COMMENT_MAX } from '@findsports_oficial/db/rating-limits'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native'
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View
+} from 'react-native'
 import Animated, { FadeOut } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card } from '@/components/card'
@@ -20,6 +28,7 @@ import {
   SWAP,
   usePressScale
 } from '@/components/motion'
+import { StarPicker } from '@/components/stars'
 import { usePalette } from '@/components/theme'
 import {
   ACID,
@@ -31,6 +40,7 @@ import {
   PillButton,
   Text,
   Title,
+  Toggle,
   text,
   useStatusBar
 } from '@/components/ui'
@@ -42,7 +52,13 @@ import { trpc } from '@/lib/trpc'
  * um item de `postGame.pending`. A primeira (WEB-128) só existe para quem
  * marcou "Vou assistir aqui"; a segunda conta para as medalhas de resenha (o
  * cartão "Sua Nª resenha"). "O que pesou?" (WEB-398) são só etiquetas,
- * opcionais. Tudo vai num `postGame.answer`, que grava junto ou nada.
+ * opcionais. A nota em estrelas é obrigatória para enviar; o comentário e o
+ * nome, opcionais (WEB-451): o comentário passa pela revisão da Onside e,
+ * sem ligar "Mostrar meu nome", a avaliação aparece como "Anônimo". Tudo vai
+ * num `postGame.answer`, que grava junto ou nada.
+ *
+ * A tela não diz se a avaliação vai contar na nota (só a verificada conta,
+ * WEB-408): quem não fez check-in nem validou o código avalia igual.
  */
 
 export default function AfterGame() {
@@ -60,6 +76,9 @@ export default function AfterGame() {
   const [went, setWent] = useState(true)
   const [wouldReturn, setWouldReturn] = useState<boolean | null>(null)
   const [reasons, setReasons] = useState<RatingReasonId[]>([])
+  const [stars, setStars] = useState<number | null>(null)
+  const [comment, setComment] = useState('')
+  const [identified, setIdentified] = useState(false)
 
   const answer = useMutation(trpc.postGame.answer.mutationOptions())
   const sending = answer.isPending
@@ -73,8 +92,8 @@ export default function AfterGame() {
         eventId: game.eventId,
         attended: asksPresence ? went : undefined,
         rating:
-          went && canRate && wouldReturn !== null
-            ? { wouldReturn, reasons }
+          went && canRate && wouldReturn !== null && stars !== null
+            ? { wouldReturn, reasons, stars, comment, identified }
             : undefined
       })
     } catch {
@@ -115,12 +134,19 @@ export default function AfterGame() {
   }
 
   const rating = went && canRate
-  const ready = !sending && (!rating || wouldReturn !== null)
+  const ready =
+    !sending && (!rating || (wouldReturn !== null && stars !== null))
   const day = dayLabel(game.startsAt, Date.now())
 
   return (
     <View style={[styles.screen, { backgroundColor: palette.bg }]}>
-      <View style={[styles.body, { paddingTop: insets.top + 8 }]}>
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={[styles.body, { paddingTop: insets.top + 8 }]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        automaticallyAdjustKeyboardInsets
+      >
         <View style={styles.top}>
           <BackButton icon="close" />
           <Text
@@ -200,6 +226,12 @@ export default function AfterGame() {
             </View>
             <View style={styles.weighed}>
               <Text style={[text(14, 'Bold', 1.4), { color: palette.ink }]}>
+                Sua nota
+              </Text>
+              <StarPicker value={stars} onChange={setStars} />
+            </View>
+            <View style={styles.weighed}>
+              <Text style={[text(14, 'Bold', 1.4), { color: palette.ink }]}>
                 O que pesou?{' '}
                 <Text
                   style={[text(14, 'Regular', 1.4), { color: palette.muted }]}
@@ -247,6 +279,78 @@ export default function AfterGame() {
                 })}
               </View>
             </View>
+            <View style={styles.weighed}>
+              <Text style={[text(14, 'Bold', 1.4), { color: palette.ink }]}>
+                Conte como foi{' '}
+                <Text
+                  style={[text(14, 'Regular', 1.4), { color: palette.muted }]}
+                >
+                  opcional
+                </Text>
+              </Text>
+              <TextInput
+                accessibilityLabel="Conte como foi"
+                value={comment}
+                onChangeText={setComment}
+                maxLength={RATING_COMMENT_MAX}
+                multiline
+                placeholder="Som, telão, atendimento, a torcida…"
+                placeholderTextColor={palette.muted}
+                selectionColor={palette.ink}
+                style={[
+                  text(14.5, 'Regular', 1.4),
+                  styles.comment,
+                  {
+                    color: palette.ink,
+                    backgroundColor: palette.field,
+                    borderColor: palette.fieldLine
+                  }
+                ]}
+              />
+              <View style={styles.commentFoot}>
+                <Text
+                  style={[
+                    text(12.5, 'Regular', 1.4),
+                    { color: palette.muted, flex: 1 }
+                  ]}
+                >
+                  A Onside revisa o comentário em até 24 h antes de aparecer.
+                </Text>
+                <Text
+                  style={[text(12.5, 'Regular', 1.4), { color: palette.muted }]}
+                >
+                  {comment.length}/{RATING_COMMENT_MAX}
+                </Text>
+              </View>
+            </View>
+            <Pressable
+              accessibilityRole="switch"
+              accessibilityState={{ checked: identified }}
+              onPress={() => {
+                haptic.select()
+                setIdentified(!identified)
+              }}
+              style={styles.identify}
+            >
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={[text(14, 'Bold', 1.4), { color: palette.ink }]}>
+                  Mostrar meu nome
+                </Text>
+                <Text
+                  style={[text(12.5, 'Regular', 1.4), { color: palette.muted }]}
+                >
+                  {identified
+                    ? 'O bar e os torcedores veem seu nome na avaliação.'
+                    : 'Desligado, sua avaliação aparece como “Anônimo”.'}
+                </Text>
+              </View>
+              <Toggle
+                on={identified}
+                off={palette.mark}
+                track={palette.dark ? ACID : INK}
+                knob={palette.dark ? INK : ACID}
+              />
+            </Pressable>
           </>
         ) : null}
 
@@ -260,7 +364,7 @@ export default function AfterGame() {
         <ErrorText style={[text(13.5, 'SemiBold'), { color: LIVE }]}>
           {error}
         </ErrorText>
-      </View>
+      </ScrollView>
 
       <View
         style={[styles.foot, { paddingBottom: Math.max(insets.bottom, 16) }]}
@@ -369,7 +473,7 @@ function Choice({
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   center: { alignItems: 'center', justifyContent: 'center', gap: 16 },
-  body: { flex: 1, paddingHorizontal: 18, gap: 16 },
+  body: { paddingHorizontal: 18, paddingBottom: 16, gap: 16 },
   top: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -416,6 +520,22 @@ const styles = StyleSheet.create({
     borderWidth: 1
   },
   foot: { paddingHorizontal: 16, paddingTop: 12 },
+  comment: {
+    minHeight: 88,
+    borderWidth: 1,
+    borderRadius: 5,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 10,
+    textAlignVertical: 'top'
+  },
+  commentFoot: { flexDirection: 'row', gap: 12 },
+  identify: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 4
+  },
   review: {
     flexDirection: 'row',
     alignItems: 'center',
