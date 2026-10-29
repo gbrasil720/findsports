@@ -1,5 +1,8 @@
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
-import { BRASILIA_TIME_ZONE as TZ } from '@findsports_oficial/db/event-window'
+import {
+  isWithinValidationWindow,
+  BRASILIA_TIME_ZONE as TZ
+} from '@findsports_oficial/db/event-window'
 import { gameTitle } from '@findsports_oficial/db/game-title'
 import type { inferRouterOutputs } from '@trpc/server'
 
@@ -16,12 +19,29 @@ export const formatCode = (code: string) =>
 
 /**
  * Como o jogo que passou terminou, como no design ("Validado"...). Sem o
- * "Desmarcado" do design: desmarcar apaga a presença, sem registro.
+ * "Desmarcado" do design: desmarcar apaga a presença, sem registro. O
+ * check-in (WEB-408) confirma a presença mesmo sem o código validado.
  */
-export function pastLabel(game: Pick<MyGame, 'validated' | 'missed'>) {
+export function pastLabel(
+  game: Pick<MyGame, 'validated' | 'missed' | 'visited'>
+) {
   if (game.validated) return 'Validado'
+  if (game.visited) return 'Presença confirmada'
   if (game.missed) return 'Não validado'
   return 'Jogo encerrado'
+}
+
+/**
+ * "Estou aqui" (WEB-408) na linha do jogo: a mesma janela que o servidor
+ * confere (3 h antes a 3 h depois do fim) e o bar no ar. A distância só o
+ * servidor sabe; feito, o card fica com "Presença confirmada" até a janela
+ * fechar.
+ */
+export function showsCheckIn(
+  game: Pick<MyGame, 'startsAt' | 'endsAt' | 'barActive'>,
+  now: number
+) {
+  return game.barActive && isWithinValidationWindow(game, new Date(now))
 }
 
 /** "4 out": o dia do jogo na lista dos anteriores. */
