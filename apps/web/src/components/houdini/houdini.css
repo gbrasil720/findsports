@@ -130,7 +130,8 @@
    de rolagem que nunca rola: a faixa do ambiente e o trilho grudavam nele e
    subiam com a página. `clip` corta igual sem criar contêiner, e o sticky
    volta a valer contra a janela. */
-:is(html, body):has(.houdini) {
+:is(html, body):has(.houdini),
+html[data-consent]:has(.houdini) body {
   overflow-x: clip;
   /* O fundo de html e body é o papel do site: no fim de página curta e no
      "elástico" da rolagem aparecia uma faixa clara embaixo do Houdini. */
@@ -138,9 +139,19 @@
 }
 
 @media (prefers-color-scheme: light) {
-  :is(html, body):has(.houdini) {
+  :is(html, body):has(.houdini),
+  html[data-consent]:has(.houdini) body {
     background: #f1eee6;
   }
+}
+
+/* O script do `<head>` marca `<html data-consent="pending">` em todo host sem
+   escolha de cookies gravada, e houdini.onside.sh nunca tem uma: o aviso não é
+   montado aqui. A regra do aviso (`cookie-consent.css`) pinta o body de papel
+   e soma o espaço dele no fim; em produção isso virava a faixa clara de 32 px
+   embaixo e empurrava o trilho para cima no fim da página. */
+html[data-consent]:has(.houdini) body {
+  padding-bottom: 0;
 }
 
 .houdini *,
