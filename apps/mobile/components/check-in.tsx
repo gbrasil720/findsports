@@ -26,8 +26,8 @@ import {
 import { trpc } from '@/lib/trpc'
 
 /*
- * "Estou aqui" (WEB-408): check-in por localização na página do bar, no dia
- * do jogo (3 h antes a 3 h depois). Pede só a permissão "durante o uso", a do
+ * "Estou aqui" (WEB-408): check-in por localização na página do bar e em
+ * Meus jogos, no dia do jogo (3 h antes a 3 h depois). Pede só a permissão "durante o uso", a do
  * Explorar; a posição vai ao servidor, que confere distância e horário. Feito
  * (ou com o código já validado no balcão), a avaliação deste jogo conta na
  * nota do bar.
@@ -70,9 +70,14 @@ export function CheckInCard({
         longitude: position.coords.longitude
       })
       haptic.success()
-      await queryClient.invalidateQueries({
-        queryKey: trpc.pubs.getById.queryKey({ id: barId })
-      })
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: trpc.pubs.getById.queryKey({ id: barId })
+        }),
+        queryClient.invalidateQueries({
+          queryKey: trpc.attendance.mine.queryKey()
+        })
+      ])
     } catch (failure) {
       // A recusa do servidor (longe, fora do horário) chega com a frase dele.
       setError(
