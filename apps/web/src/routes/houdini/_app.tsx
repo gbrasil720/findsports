@@ -56,10 +56,17 @@ function NaPeleAqui({ name, email }: { name: string; email: string }) {
   return (
     <main className="hd-center">
       <span className="hd-hat-tile">
-        <HatIcon size={56} />
+        <HatIcon size={68} />
       </span>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <h1 className="hd-h1">Você está na pele de {name}</h1>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
+          alignItems: 'center'
+        }}
+      >
+        <h1 className="hd-h1 is-md">Você está na pele de {name}</h1>
         <p className="hd-mono hd-small" style={{ margin: 0 }}>
           {email}
         </p>
@@ -69,14 +76,15 @@ function NaPeleAqui({ name, email }: { name: string; email: string }) {
       </p>
       <button
         type="button"
-        className="hd-btn hd-btn-primary"
+        className="hd-btn hd-btn-primary is-lg"
+        style={{ minWidth: 300 }}
         onClick={stop}
         disabled={stopping}
       >
         {stopping ? 'Tirando…' : 'Tirar a pele'}
       </button>
       {error ? (
-        <p role="alert" style={{ margin: 0, color: 'var(--hd-bad)' }}>
+        <p role="alert" style={{ margin: 0, color: 'var(--hd-live-text)' }}>
           {error}
         </p>
       ) : null}
@@ -88,27 +96,49 @@ function NaPeleAqui({ name, email }: { name: string; email: string }) {
 function DoisFatores() {
   const router = useRouter()
   return (
-    <main className="hd-center" style={{ gap: 24 }}>
-      <span className="hd-hat-tile">
-        <HatIcon size={56} />
-      </span>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <h1 className="hd-h1">Antes do truque, o 2FA</h1>
-        <p className="hd-lead">
-          O Houdini entra na pele de contas, bane e tira bar do ar. Por isso só
-          abre para admin com autenticação em dois fatores ligada.
+    <main
+      className="hd-center"
+      style={{ alignItems: 'stretch', textAlign: 'left', gap: 22 }}
+    >
+      <div
+        style={{
+          width: '100%',
+          maxWidth: 560,
+          margin: '0 auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 22
+        }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <h1 className="hd-h1 is-md">
+            Antes do truque, <em>o 2FA</em>
+          </h1>
+          <p className="hd-lead" style={{ fontSize: 14.5 }}>
+            O Houdini entra na pele de contas, bane e tira bar do ar. Por isso
+            só abre para admin com dois fatores ligados.
+          </p>
+        </div>
+        <TwoFactorSettings />
+        <p className="hd-note">
+          Já ligou em outro lugar?{' '}
+          <button
+            type="button"
+            className="hd-link"
+            style={{
+              padding: 0,
+              border: 0,
+              background: 'none',
+              font: 'inherit',
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}
+            onClick={() => void router.invalidate()}
+          >
+            Continuar
+          </button>
         </p>
       </div>
-      <div style={{ width: '100%', maxWidth: 560, textAlign: 'left' }}>
-        <TwoFactorSettings />
-      </div>
-      <button
-        type="button"
-        className="hd-btn"
-        onClick={() => void router.invalidate()}
-      >
-        Já ativei, continuar
-      </button>
     </main>
   )
 }

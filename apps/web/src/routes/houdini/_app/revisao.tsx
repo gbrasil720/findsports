@@ -6,11 +6,11 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import type { inferRouterOutputs } from '@trpc/server'
-import { useState } from 'react'
+import { type CSSProperties, type ReactNode, useState } from 'react'
 import { toast } from 'sonner'
 
 import { formatDateTime } from '@/components/houdini/format'
-import { HoudiniShell } from '@/components/houdini/shell'
+import { HoudiniShell, PageHead } from '@/components/houdini/shell'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
@@ -47,16 +47,13 @@ function RevisaoPage() {
   const descriptions = queue.data?.descriptions ?? []
 
   return (
-    <HoudiniShell title="Revisão" env={env} user={admin}>
+    <HoudiniShell env={env} user={admin}>
       <div className="hd-page">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <h1 className="hd-h1">Revisão</h1>
-          <p className="hd-lead">
-            O que os bares mandaram, do mais antigo para o mais novo. Nada
-            aparece para o torcedor antes de ser aprovado; a recusa leva o
-            motivo, que o dono lê no Meu espaço. Cada decisão fica no Grimório.
-          </p>
-        </div>
+        <PageHead
+          overline="Pede atenção"
+          title="Revisão"
+          summary="O que os bares mandaram, do mais antigo para o mais novo. Nada aparece para o torcedor antes de ser aprovado; a recusa leva o motivo, que o dono lê no Meu espaço. Cada decisão fica no Grimório."
+        />
 
         {queue.isError ? (
           <div className="hd-card" role="alert">
@@ -66,57 +63,90 @@ function RevisaoPage() {
                 'Não foi possível carregar a fila.'
               )}
             </p>
+            <button
+              type="button"
+              className="hd-btn"
+              style={{ alignSelf: 'flex-start', marginTop: 12 }}
+              onClick={() => void queue.refetch()}
+            >
+              Tentar de novo
+            </button>
           </div>
         ) : queue.isLoading ? (
           <div className="hd-skeleton" style={{ height: 220 }} />
         ) : (
-          <section
-            aria-labelledby="revisao-fotos"
-            style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
-          >
-            <h2 id="revisao-fotos" className="hd-h2">
-              Fotos{' '}
-              <span className="hd-mono" style={{ color: 'var(--hd-faint)' }}>
-                {photos.length}
-              </span>
-            </h2>
-            {photos.length ? (
-              <div className="hd-grid" style={{ '--hd-min': '300px' } as never}>
-                {photos.map((photo) => (
-                  <PhotoCard key={photo.id} photo={photo} />
-                ))}
-              </div>
-            ) : (
-              <div className="hd-card hd-empty">Nenhuma foto esperando.</div>
-            )}
-          </section>
+          <>
+            <QueueSection
+              id="revisao-fotos"
+              title="Fotos"
+              count={photos.length}
+            >
+              {photos.length ? (
+                <div
+                  className="hd-grid"
+                  style={{ '--hd-min': 'min(300px, 100%)' } as CSSProperties}
+                >
+                  {photos.map((photo) => (
+                    <PhotoCard key={photo.id} photo={photo} />
+                  ))}
+                </div>
+              ) : (
+                <p className="hd-empty is-dashed">Nenhuma foto esperando.</p>
+              )}
+            </QueueSection>
+            <QueueSection
+              id="revisao-descricoes"
+              title="Descrições"
+              count={descriptions.length}
+            >
+              {descriptions.length ? (
+                <div
+                  className="hd-grid"
+                  style={{ '--hd-min': 'min(380px, 100%)' } as CSSProperties}
+                >
+                  {descriptions.map((item) => (
+                    <DescriptionCard key={item.barId} item={item} />
+                  ))}
+                </div>
+              ) : (
+                <p className="hd-empty is-dashed">
+                  Nenhuma descrição esperando.
+                </p>
+              )}
+            </QueueSection>
+          </>
         )}
-        {queue.data ? (
-          <section
-            aria-labelledby="revisao-descricoes"
-            style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
-          >
-            <h2 id="revisao-descricoes" className="hd-h2">
-              Descrições{' '}
-              <span className="hd-mono" style={{ color: 'var(--hd-faint)' }}>
-                {descriptions.length}
-              </span>
-            </h2>
-            {descriptions.length ? (
-              <div className="hd-grid" style={{ '--hd-min': '380px' } as never}>
-                {descriptions.map((item) => (
-                  <DescriptionCard key={item.barId} item={item} />
-                ))}
-              </div>
-            ) : (
-              <div className="hd-card hd-empty">
-                Nenhuma descrição esperando.
-              </div>
-            )}
-          </section>
-        ) : null}
       </div>
     </HoudiniShell>
+  )
+}
+
+function QueueSection({
+  id,
+  title,
+  count,
+  children
+}: {
+  id: string
+  title: string
+  count: number
+  children: ReactNode
+}) {
+  return (
+    <section
+      aria-labelledby={id}
+      style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+    >
+      <div className="hd-card-hd">
+        <h2 id={id} className="hd-h2">
+          {title}
+        </h2>
+        <span className="meta">
+          {count ? `${count} esperando` : 'fila vazia'}
+        </span>
+      </div>
+      {children}
+    </section>
   )
 }
 
@@ -183,19 +213,24 @@ export function Decision({
       }}
     >
       {presets.length ? (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        <fieldset className="hd-seg" aria-label="Motivos prontos">
           {presets.map((preset) => (
             <button
               key={preset}
               type="button"
-              className="hd-btn hd-btn-soft"
               aria-pressed={reason === preset}
+              style={{
+                whiteSpace: 'normal',
+                textAlign: 'left',
+                lineHeight: 1.3,
+                padding: '8px 12px'
+              }}
               onClick={() => setReason(preset)}
             >
               {preset}
             </button>
           ))}
-        </div>
+        </fieldset>
       ) : null}
       <label className="hd-label">
         {`Motivo da recusa de ${label} (o bar lê)`}
@@ -268,9 +303,9 @@ function PhotoCard({ photo }: { photo: Queue['photos'][number] }) {
         style={{
           display: 'block',
           aspectRatio: '4 / 3',
-          borderRadius: 10,
+          borderRadius: 5,
           overflow: 'hidden',
-          background: 'rgb(255 255 255 / 0.04)'
+          background: 'var(--hd-sub)'
         }}
       >
         <img
@@ -288,12 +323,12 @@ function PhotoCard({ photo }: { photo: Queue['photos'][number] }) {
             flexWrap: 'wrap'
           }}
         >
-          <strong style={{ fontSize: 14, overflowWrap: 'anywhere' }}>
+          <strong style={{ fontSize: 15, overflowWrap: 'anywhere' }}>
             {photo.barName}
           </strong>
           <span className="hd-pill">{photoCategoryLabel(photo.category)}</span>
           {photo.coverRequested ? (
-            <span className="hd-pill" data-tone="roxo">
+            <span className="hd-pill" data-tone="acid">
               pedida como capa
             </span>
           ) : null}
@@ -303,7 +338,7 @@ function PhotoCard({ photo }: { photo: Queue['photos'][number] }) {
             style={{
               margin: 0,
               fontSize: 13,
-              color: 'var(--hd-soft)',
+              color: 'var(--hd-body)',
               overflowWrap: 'anywhere'
             }}
           >

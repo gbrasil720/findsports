@@ -20,7 +20,7 @@ import { toast } from 'sonner'
 import { Confirm } from '@/components/houdini/confirm'
 import { formatDateTime } from '@/components/houdini/format'
 import { Icon } from '@/components/houdini/icons'
-import { HoudiniShell } from '@/components/houdini/shell'
+import { HoudiniShell, PageHead } from '@/components/houdini/shell'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
@@ -68,6 +68,70 @@ const LIMIT_FIELDS: Array<{
 ]
 
 const TZ = BRASILIA_TIME_ZONE
+
+/** "Como ler esta página", da prancha 10, com o que a tela de fato mede. */
+const GLOSSARY: ReadonlyArray<readonly [string, string | null, string]> = [
+  [
+    'Teste A/B',
+    null,
+    'Duas versões da IA rodando ao mesmo tempo. Cada torcedor cai em uma, sorteado, e a gente compara qual funciona melhor.'
+  ],
+  [
+    'Braço',
+    null,
+    'Cada versão dentro de um teste: o braço A usa um modelo, o B usa outro. O recomendador tem três braços (A, B e C).'
+  ],
+  [
+    'Peso',
+    null,
+    'A fatia de torcedores que vai para cada braço, de 0 a 100. Os pesos de um teste sempre somam 100.'
+  ],
+  [
+    'Conversão',
+    null,
+    'Quando, em até 24 h depois de uma resposta, o torcedor abre um bar citado, marca "Vou assistir" ou pede a rota. É o que mais importa no teste.'
+  ],
+  [
+    'p.p.',
+    'pontos percentuais',
+    'Diferença entre duas porcentagens. De 11,2% para 13,3% são 2,1 p.p. a mais.'
+  ],
+  [
+    'Sem vencedor',
+    null,
+    'A diferença ainda é pequena demais para descartar sorte. Só troque os pesos quando aparecer "diferença real".'
+  ],
+  [
+    'Tempo de resposta',
+    'p50 · p95',
+    'p50 é o tempo normal: metade das respostas sai até ali. p95 é o pior caso comum: só 5 em cada 100 demoram mais que isso.'
+  ],
+  [
+    'Desvio',
+    null,
+    'O modelo do braço falhou e a resposta saiu pelo modelo do outro braço.'
+  ],
+  [
+    'Teto',
+    null,
+    'O máximo que a IA pode gastar no mês, somando todo mundo. Chegou nele, a IA para sozinha até o mês virar.'
+  ],
+  [
+    'Gateway',
+    null,
+    'O serviço da Cloudflare por onde passam as chamadas à IA. Ele também tem um teto próprio, separado deste.'
+  ],
+  [
+    'Token',
+    null,
+    'A unidade que os modelos cobram, mais ou menos um pedaço de palavra. Mais texto, mais tokens, mais custo.'
+  ],
+  [
+    'Recomendador',
+    null,
+    'A parte da IA que sugere bares no app sem conversa. Tem o próprio teste A/B.'
+  ]
+]
 
 function usd(value: number | null, digits = 2) {
   if (value === null) return '—'
@@ -176,29 +240,32 @@ function IaPage() {
     | undefined
 
   return (
-    <HoudiniShell title="IA" env={env} user={admin}>
+    <HoudiniShell env={env} user={admin}>
       <div className="hd-page">
-        <div className="hd-head">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <h1 className="hd-h1">IA</h1>
-            <p className="hd-lead">
-              Os testes de IA: quanto gastam, quanto rendem e os limites. Só
-              números de cada chamada: o texto das conversas não é guardado.
-            </p>
-          </div>
-          <fieldset className="hd-seg" aria-label="Período">
-            {PERIODS.map((p) => (
-              <button
-                key={p.value}
-                type="button"
-                aria-pressed={period === p.value}
-                onClick={() => setPeriod(p.value)}
-              >
-                {p.label}
-              </button>
-            ))}
-          </fieldset>
-        </div>
+        <PageHead
+          overline="Máquina"
+          title="IA"
+          summary="Quanto os testes de IA gastam, quanto rendem e os limites. Só números de cada chamada: o texto das conversas não é guardado."
+          actions={
+            <fieldset className="hd-seg" aria-label="Período">
+              {PERIODS.map((p) => (
+                <button
+                  key={p.value}
+                  type="button"
+                  aria-pressed={period === p.value}
+                  onClick={() => setPeriod(p.value)}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </fieldset>
+          }
+        >
+          <a className="hd-help" href="#legenda">
+            <Icon name="help" size={16} />
+            Como ler esta página
+          </a>
+        </PageHead>
 
         {overview.isError ? (
           <div className="hd-card" role="alert">
@@ -221,66 +288,82 @@ function IaPage() {
           <div className="hd-skeleton" style={{ height: 420 }} />
         ) : (
           <>
-            <Section id="ia-situacao" title="Situação">
-              <div
-                className="hd-grid"
-                style={{ '--hd-min': 'min(300px, 100%)' } as CSSProperties}
-              >
-                <SwitchCard
-                  enabled={
-                    enabledSpell
-                      ? enabledSpell.valor === true
-                      : o.status.enabled
-                  }
-                  gatewayId={o.status.gatewayId}
-                  changed={changedBy(enabledSpell)}
-                  busy={set.isPending || !config.data}
-                  onChange={cast('ai.enabled')}
-                />
-                <BudgetCard month={o.status.month} />
-                <HitsCard hits={o.status.hits} limits={o.status.limits} />
-              </div>
-              <DailyChart daily={o.status.daily} />
-            </Section>
+            <section
+              className="hd-grid"
+              aria-label="Situação"
+              style={
+                {
+                  '--hd-min': 'min(280px, 100%)',
+                  alignItems: 'start'
+                } as CSSProperties
+              }
+            >
+              <SwitchCard
+                enabled={
+                  enabledSpell ? enabledSpell.valor === true : o.status.enabled
+                }
+                overridden={enabledSpell?.sobrescrito ?? false}
+                gatewayId={o.status.gatewayId}
+                changed={changedBy(enabledSpell)}
+                busy={set.isPending || !config.data}
+                onChange={cast('ai.enabled')}
+              />
+              <BudgetCard month={o.status.month} />
+              <HitsCard hits={o.status.hits} limits={o.status.limits} />
+            </section>
+
+            <DailyChart daily={o.status.daily} />
 
             <Section
               id="ia-chat"
               title="Teste do chat"
-              aside="A Gemini 2.5 Flash × B GPT-6 Luna"
+              meta="A Gemini 2.5 Flash × B GPT-6 Luna"
             >
-              <ArmsTable arms={o.chat.arms} unitLabel="Conversas" />
-              <ConversionCard
-                arms={o.chat.arms}
-                conversion={o.chat.conversion}
-                minimum={o.chat.minimum}
-              />
-              {weights ? (
-                <WeightsEditor
-                  title="Pesos do chat"
-                  arms={CHAT_ARMS}
-                  value={weights.chat}
-                  changed={changedBy(weightsSpell)}
-                  busy={set.isPending}
-                  onSave={(chat) =>
-                    cast('ai.variant_weights')({ ...weights, chat })
-                  }
-                />
-              ) : null}
+              <div className="hd-cols" style={{ gap: 24 }}>
+                <div className="grow" style={{ gap: 0 }}>
+                  <ArmsTable arms={o.chat.arms} unitLabel="Conversas" />
+                </div>
+                <div className="side" style={{ gap: 16 }}>
+                  <ConversionCard
+                    arms={o.chat.arms}
+                    conversion={o.chat.conversion}
+                    minimum={o.chat.minimum}
+                  />
+                  {weights ? (
+                    <WeightsEditor
+                      title="Pesos do chat"
+                      arms={CHAT_ARMS}
+                      value={weights.chat}
+                      changed={changedBy(weightsSpell)}
+                      busy={set.isPending}
+                      onSave={(chat) =>
+                        cast('ai.variant_weights')({ ...weights, chat })
+                      }
+                    />
+                  ) : null}
+                </div>
+              </div>
             </Section>
 
             <Section
               id="ia-recomendador"
               title="Teste do recomendador"
-              aside="A só o algoritmo × B Jev × C Clef-flash"
+              meta="A só o algoritmo × B Jev × C Clef-flash"
             >
               {o.recommender.live ? (
                 <ArmsTable arms={o.recommender.arms} unitLabel="Pedidos" />
               ) : (
-                <div className="hd-card" style={{ gap: 10 }}>
-                  <span className="hd-pill" style={{ alignSelf: 'flex-start' }}>
+                <div
+                  style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
+                >
+                  <span
+                    className="hd-pill"
+                    data-tone="draft"
+                    style={{ alignSelf: 'flex-start' }}
+                  >
                     ainda não ligado
                   </span>
-                  <p className="hd-lead" style={{ margin: 0 }}>
+                  <p style={{ margin: 0, color: 'var(--hd-body)' }}>
                     O recomendador (WEB-426) ainda não chama a IA, então não há
                     número para mostrar. Os pesos abaixo já valem no dia em que
                     ele ligar.
@@ -292,20 +375,23 @@ function IaPage() {
                 </div>
               )}
               {weights ? (
-                <WeightsEditor
-                  title="Pesos do recomendador"
-                  arms={RECOMMENDER_ARMS}
-                  value={weights.recommender}
-                  changed={changedBy(weightsSpell)}
-                  busy={set.isPending}
-                  onSave={(recommender) =>
-                    cast('ai.variant_weights')({ ...weights, recommender })
-                  }
-                />
+                <>
+                  <hr className="hd-rule" />
+                  <WeightsEditor
+                    title="Pesos do recomendador"
+                    arms={RECOMMENDER_ARMS}
+                    value={weights.recommender}
+                    changed={changedBy(weightsSpell)}
+                    busy={set.isPending}
+                    onSave={(recommender) =>
+                      cast('ai.variant_weights')({ ...weights, recommender })
+                    }
+                  />
+                </>
               ) : null}
             </Section>
 
-            <Section id="ia-limites" title="Limites">
+            <Section id="ia-limites" title="Limites" meta="ai.limits">
               {limitsSpell ? (
                 <LimitsEditor
                   value={limitsSpell.valor as Limits}
@@ -350,66 +436,78 @@ function IaPage() {
         <Section id="ia-registro" title="Registro recente">
           <RunsLog />
         </Section>
+
+        <Section
+          id="legenda-h"
+          sectionId="legenda"
+          title="Como ler esta página"
+          meta="os termos que aparecem aqui"
+        >
+          <dl className="hd-gloss">
+            {GLOSSARY.map(([term, abbr, text]) => (
+              <div key={term}>
+                <dt>
+                  {term}
+                  {abbr ? <span className="hd-mono">{abbr}</span> : null}
+                </dt>
+                <dd>{text}</dd>
+              </div>
+            ))}
+          </dl>
+        </Section>
       </div>
     </HoudiniShell>
   )
 }
 
+/** Um cartão por bloco da página, com o título e o resumo ao lado. */
 function Section({
   id,
+  sectionId,
   title,
-  aside,
+  meta,
   children
 }: {
   id: string
+  sectionId?: string
   title: string
-  aside?: string
+  meta?: string
   children: ReactNode
 }) {
   return (
     <section
+      id={sectionId}
+      className="hd-card"
       aria-labelledby={id}
-      style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+      style={{ gap: 16 }}
     >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'baseline',
-          flexWrap: 'wrap',
-          gap: '4px 12px'
-        }}
-      >
+      <div className="hd-card-hd">
         <h2 id={id} className="hd-h2">
           {title}
         </h2>
-        {aside ? <span className="hd-mono hd-small">{aside}</span> : null}
+        {meta ? <span className="meta hd-mono">{meta}</span> : null}
       </div>
       {children}
     </section>
   )
 }
 
-const label: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  fontSize: 13,
-  color: 'var(--hd-muted)'
-}
-const big: CSSProperties = {
-  fontWeight: 700,
-  fontSize: 28,
-  letterSpacing: '-0.03em'
-}
+/** O número grande das pranchas, em Anton. */
+const display = (size: number): CSSProperties => ({
+  font: `400 ${size}px/1 var(--hd-display)`,
+  textTransform: 'uppercase'
+})
 
 function SwitchCard({
   enabled,
+  overridden,
   gatewayId,
   changed,
   busy,
   onChange
 }: {
   enabled: boolean
+  overridden: boolean
   gatewayId: string | null
   changed: string
   busy: boolean
@@ -417,40 +515,37 @@ function SwitchCard({
 }) {
   const [asking, setAsking] = useState(false)
   return (
-    <article className="hd-card" style={{ gap: 10 }}>
-      <span style={label}>
-        <Icon name="spark" size={16} strokeWidth={1.8} />A IA
-      </span>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+    <article className="hd-card" style={{ gap: 14 }} aria-label="A IA">
+      <div className="hd-card-hd">
+        <b>A IA</b>
+        <span className="meta hd-mono">
+          ai.enabled · {overridden ? 'lançado' : 'no padrão'}
+        </span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
         <span
           style={{
-            ...big,
-            color: enabled ? 'var(--hd-ok)' : 'var(--hd-muted)'
+            ...display(40),
+            color: enabled ? 'var(--hd-fg)' : 'var(--hd-muted)'
           }}
         >
           {enabled ? 'Ligada' : 'Desligada'}
         </span>
-        <span style={{ flexGrow: 1 }} />
         <button
           type="button"
           role="switch"
           className="hd-switch"
           aria-checked={enabled}
           aria-label="IA ligada"
+          style={{ marginLeft: 'auto' }}
           disabled={busy || asking}
           onClick={() => setAsking(true)}
         />
       </div>
-      <dl className="hd-dl" style={{ gap: '8px 14px' }}>
+      <dl className="hd-dl">
         <div>
           <dt>Gateway</dt>
           <dd className="hd-mono">{gatewayId ?? 'nenhum (nada é chamado)'}</dd>
-        </div>
-        <div>
-          <dt>Chave</dt>
-          <dd className="hd-mono" style={{ fontWeight: 400, fontSize: 12 }}>
-            ai.enabled
-          </dd>
         </div>
       </dl>
       <span className="hd-mono hd-small">{changed}</span>
@@ -477,22 +572,37 @@ function BudgetCard({ month }: { month: Overview['status']['month'] }) {
   const over = month.projectionUsd > month.budgetUsd
   const fill = Math.min(1, month.share)
   return (
-    <article className="hd-card" style={{ gap: 10 }} aria-label="Gasto do mês">
-      <span style={label}>Gasto do mês</span>
-      <span style={big}>
-        {usd(month.spentUsd)}{' '}
-        <span
-          style={{ fontSize: 14, fontWeight: 500, color: 'var(--hd-muted)' }}
-        >
-          de {usd(month.budgetUsd)}
-        </span>
-      </span>
+    <article
+      className={`hd-card ${month.blocked ? 'is-live' : 'is-hero'}`}
+      style={{ gap: 12 }}
+      aria-label="Gasto do mês"
+    >
+      <div className="hd-card-hd">
+        <b>Gasto do mês</b>
+        <span className="meta">teto {usd(month.budgetUsd)}</span>
+      </div>
       <div
-        aria-hidden="true"
         style={{
-          height: 8,
-          borderRadius: 4,
-          background: 'var(--hd-raise)',
+          display: 'flex',
+          alignItems: 'baseline',
+          gap: 10,
+          flexWrap: 'wrap'
+        }}
+      >
+        <span style={{ ...display(46), color: 'var(--hd-kpi-hero)' }}>
+          {usd(month.spentUsd)}
+        </span>
+        <span style={{ color: 'var(--hd-muted)' }}>
+          {pct(month.share)} do teto
+        </span>
+      </div>
+      <div
+        role="img"
+        aria-label={`${pct(month.share)} do teto mensal`}
+        style={{
+          height: 6,
+          borderRadius: 3,
+          background: 'var(--hd-line2)',
           overflow: 'hidden'
         }}
       >
@@ -500,25 +610,19 @@ function BudgetCard({ month }: { month: Overview['status']['month'] }) {
           style={{
             width: `${fill * 100}%`,
             height: '100%',
-            borderRadius: 4,
-            background: month.blocked
-              ? 'var(--hd-bad-dot)'
-              : fill >= 0.8
-                ? 'var(--hd-warn)'
-                : 'var(--hd-roxo)'
+            background: month.blocked ? 'var(--hd-live)' : 'var(--hd-mark)'
           }}
         />
       </div>
-      <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 13 }}>
-        <strong>{pct(month.share)}</strong>
-        <span style={{ color: 'var(--hd-muted)' }}>
-          · no ritmo de agora, {usd(month.projectionUsd)} no fim do mês
-        </span>
-      </span>
+      <p className="hd-small" style={{ margin: 0 }}>
+        No ritmo de agora,{' '}
+        <b style={{ color: 'var(--hd-fg)' }}>{usd(month.projectionUsd)}</b> no
+        fim do mês.
+      </p>
       {month.blocked ? (
         <span
           className="hd-pill"
-          data-tone="bad"
+          data-tone="live"
           style={{ alignSelf: 'flex-start' }}
         >
           teto atingido: a IA está indisponível para todos
@@ -526,7 +630,7 @@ function BudgetCard({ month }: { month: Overview['status']['month'] }) {
       ) : over ? (
         <span
           className="hd-pill"
-          data-tone="warn"
+          data-tone="sand"
           style={{ alignSelf: 'flex-start' }}
         >
           a projeção passa do teto
@@ -550,16 +654,30 @@ function HitsCard({
     { k: `${usd(limits.userMonthlyUsd)} no mês`, v: hits.costMonth }
   ]
   return (
-    <article className="hd-card" style={{ gap: 10 }}>
-      <span style={label}>Pessoas que chegaram ao limite</span>
-      <dl className="hd-dl" style={{ gap: '10px 14px' }}>
+    <article
+      className="hd-card"
+      style={{ gap: 12 }}
+      aria-label="Pessoas que chegaram ao limite"
+    >
+      <div className="hd-card-hd">
+        <b>Pessoas que chegaram ao limite</b>
+      </div>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+          gap: '12px 16px'
+        }}
+      >
         {rows.map((row) => (
           <div key={row.k}>
-            <dt>{row.k}</dt>
-            <dd style={{ fontSize: 18 }}>{int(row.v)}</dd>
+            <span style={{ ...display(30), display: 'block' }}>
+              {int(row.v)}
+            </span>
+            <span className="hd-small">{row.k}</span>
           </div>
         ))}
-      </dl>
+      </div>
       <span className="hd-small">
         No período, pelos limites de agora. Pedido barrado não é gravado: conta
         quem chegou, não quantas vezes bateu.
@@ -573,78 +691,26 @@ function DailyChart({ daily }: { daily: Overview['status']['daily'] }) {
   const total = daily.reduce((sum, d) => sum + d.costUsd, 0)
   const peak = daily.find((d) => d.costUsd === max)
   return (
-    <article className="hd-card" style={{ gap: 12 }}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          gap: 12,
-          flexWrap: 'wrap'
-        }}
-      >
-        <span style={label}>Gasto por dia</span>
-        <span className="hd-mono hd-small">
+    <section className="hd-card" aria-labelledby="ia-dia" style={{ gap: 16 }}>
+      <div className="hd-card-hd">
+        <h2 id="ia-dia" className="hd-h2">
+          Gasto por dia
+        </h2>
+        <span className="meta hd-mono">
           {usd(total)} em {daily.length} {daily.length === 1 ? 'dia' : 'dias'}
           {max > 0 ? ` · maior ${usd(max)}` : ''}
         </span>
       </div>
-      <div
-        role="img"
-        aria-label={`Gasto por dia: ${usd(total)} no período${
-          peak && max > 0
-            ? `, maior em ${shortDay(peak.day)} (${usd(max)})`
-            : ''
-        }.`}
-        style={{
-          display: 'flex',
-          alignItems: 'flex-end',
-          gap: 2,
-          height: 120,
-          borderBottom: '1px solid var(--hd-line-2)'
-        }}
-      >
-        {daily.map((d) => (
-          <div
-            key={d.day}
-            title={`${shortDay(d.day)}: ${usd(d.costUsd)} · ${int(d.runs)} chamadas`}
-            style={{
-              flex: '1 1 0',
-              height: '100%',
-              display: 'flex',
-              alignItems: 'flex-end',
-              justifyContent: 'center'
-            }}
-          >
-            <div
-              style={{
-                width: '100%',
-                maxWidth: 28,
-                height: max ? `${(d.costUsd / max) * 100}%` : 0,
-                minHeight: d.costUsd > 0 ? 2 : 0,
-                borderRadius: '4px 4px 0 0',
-                background: 'var(--hd-roxo)'
-              }}
-            />
-          </div>
-        ))}
-      </div>
-      <div
-        className="hd-mono"
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          fontSize: 11,
-          color: 'var(--hd-faint)'
-        }}
-      >
-        <span>{daily[0] ? shortDay(daily[0].day) : ''}</span>
-        <span>{daily.at(-1) ? shortDay(daily.at(-1)?.day ?? '') : ''}</span>
-      </div>
+      {max === 0 ? (
+        <p className="hd-empty is-dashed">Nenhum gasto no período.</p>
+      ) : (
+        <DailyBars daily={daily} max={max} peak={peak} total={total} />
+      )}
       <details>
         <summary className="hd-small" style={{ cursor: 'pointer' }}>
           Ver em tabela
         </summary>
-        <div className="hd-table-wrap" style={{ marginTop: 10 }}>
+        <div className="hd-table-wrap is-flat" style={{ marginTop: 10 }}>
           <table className="hd-table" style={{ minWidth: 0 }}>
             <thead>
               <tr>
@@ -665,7 +731,93 @@ function DailyChart({ daily }: { daily: Overview['status']['daily'] }) {
           </table>
         </div>
       </details>
-    </article>
+    </section>
+  )
+}
+
+/** As barras do gasto por dia: o último dia em destaque, o maior com o valor. */
+function DailyBars({
+  daily,
+  max,
+  peak,
+  total
+}: {
+  daily: Overview['status']['daily']
+  max: number
+  peak: Overview['status']['daily'][number] | undefined
+  total: number
+}) {
+  const last = daily.at(-1)
+  return (
+    <>
+      <div
+        role="img"
+        aria-label={`Gasto por dia: ${usd(total)} no período${
+          peak && max > 0
+            ? `, maior em ${shortDay(peak.day)} (${usd(max)})`
+            : ''
+        }.`}
+        style={{
+          display: 'flex',
+          alignItems: 'flex-end',
+          gap: daily.length > 40 ? 2 : 6,
+          height: 160,
+          paddingTop: 18,
+          borderBottom: '1px solid var(--hd-line2)'
+        }}
+      >
+        {daily.map((d) => {
+          const isLast = d === last
+          const marked = max > 0 && (isLast || d === peak)
+          return (
+            <div
+              key={d.day}
+              title={`${shortDay(d.day)}: ${usd(d.costUsd)} · ${int(d.runs)} chamadas`}
+              style={{
+                flex: '1 1 0',
+                minWidth: 0,
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                gap: 4
+              }}
+            >
+              {marked ? (
+                <span
+                  className="hd-mono"
+                  style={{ fontSize: 10.5, color: 'var(--hd-muted)' }}
+                >
+                  {d.costUsd.toLocaleString('pt-BR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                  })}
+                </span>
+              ) : null}
+              <span
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  maxWidth: 28,
+                  height: max ? `${(d.costUsd / max) * 120}px` : 0,
+                  minHeight: d.costUsd > 0 ? 2 : 0,
+                  borderRadius: '4px 4px 2px 2px',
+                  background: isLast ? 'var(--hd-mark)' : 'var(--hd-line2)'
+                }}
+              />
+            </div>
+          )
+        })}
+      </div>
+      <div
+        className="hd-mono hd-small"
+        style={{ display: 'flex', justifyContent: 'space-between' }}
+      >
+        <span>{daily[0] ? shortDay(daily[0].day) : ''}</span>
+        <span>{last ? shortDay(last.day) : ''}</span>
+      </div>
+    </>
   )
 }
 
@@ -708,7 +860,7 @@ const ARM_ROWS: Array<{ label: string; cell: (a: Arm) => string }> = [
 
 function ArmsTable({ arms, unitLabel }: { arms: Arm[]; unitLabel: string }) {
   return (
-    <div className="hd-table-wrap">
+    <div className="hd-table-wrap is-flat">
       <table className="hd-table" style={{ minWidth: 120 + arms.length * 160 }}>
         <thead>
           <tr>
@@ -722,7 +874,7 @@ function ArmsTable({ arms, unitLabel }: { arms: Arm[]; unitLabel: string }) {
                     display: 'flex',
                     flexDirection: 'column',
                     gap: 2,
-                    color: 'var(--hd-text)'
+                    color: 'var(--hd-fg)'
                   }}
                 >
                   Braço {a.variant.toUpperCase()}
@@ -742,10 +894,12 @@ function ArmsTable({ arms, unitLabel }: { arms: Arm[]; unitLabel: string }) {
               <th
                 scope="row"
                 style={{
-                  background: 'transparent',
-                  fontWeight: 500,
-                  color: 'var(--hd-muted)',
-                  borderTop: '1px solid rgb(255 255 255 / 0.05)'
+                  font: '500 14px/1.3 var(--hd-sans)',
+                  letterSpacing: 0,
+                  textTransform: 'none',
+                  color: 'var(--hd-fg)',
+                  whiteSpace: 'normal',
+                  minWidth: 160
                 }}
               >
                 {row.label}
@@ -754,7 +908,11 @@ function ArmsTable({ arms, unitLabel }: { arms: Arm[]; unitLabel: string }) {
                 <td
                   key={a.variant}
                   className="hd-mono"
-                  style={{ whiteSpace: 'nowrap' }}
+                  style={{
+                    whiteSpace: 'nowrap',
+                    textAlign: 'right',
+                    fontWeight: 600
+                  }}
                 >
                   {row.cell(a)}
                 </td>
@@ -781,17 +939,22 @@ function ConversionCard({
       maximumFractionDigits: 1
     })} p.p.`
   return (
-    <article className="hd-card" style={{ gap: 10 }}>
-      <span style={label}>Conversão: B − A, com intervalo de 95%</span>
+    <article
+      className="hd-card"
+      style={{ gap: 8, background: 'var(--hd-card-2)' }}
+    >
+      <span className="hd-eyebrow">Conversão: B − A, com intervalo de 95%</span>
       {conversion.enough ? (
         <>
-          <span style={big}>{points(conversion.diff)}</span>
+          <span style={{ font: '400 44px/1 var(--hd-display)', marginTop: 4 }}>
+            {points(conversion.diff)}
+          </span>
           <span className="hd-mono hd-small">
             intervalo de {points(conversion.low)} a {points(conversion.high)}
           </span>
           <span
             className="hd-pill"
-            data-tone={conversion.significant ? 'ok' : undefined}
+            data-tone={conversion.significant ? 'acid' : 'draft'}
             style={{ alignSelf: 'flex-start' }}
           >
             {conversion.significant
@@ -803,7 +966,7 @@ function ConversionCard({
         <>
           <span
             className="hd-pill"
-            data-tone="warn"
+            data-tone="sand"
             style={{ alignSelf: 'flex-start' }}
           >
             amostra insuficiente
@@ -811,7 +974,7 @@ function ConversionCard({
           <span style={{ fontSize: 13 }}>Falta: {conversion.missing}.</span>
         </>
       )}
-      <p className="hd-small" style={{ margin: 0 }}>
+      <p className="hd-small" style={{ margin: 0, color: 'var(--hd-body)' }}>
         Conversa: mensagens da mesma pessoa no mesmo braço sem pausa de mais de
         30 minutos. Converte quando alguma resposta dela leva, em até 24 h, a
         abrir um bar citado, marcar "Vou assistir" ou pedir a rota. O teste
@@ -878,8 +1041,8 @@ function WeightsEditor({
     arms.map((arm) => `${arm.key.toUpperCase()} ${w[arm.key]}`).join(' / ')
 
   return (
-    <article className="hd-card" style={{ gap: 12 }}>
-      <span style={label}>{title}</span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <span style={{ fontSize: 13, fontWeight: 600 }}>{title}</span>
       <div
         style={{
           display: 'flex',
@@ -889,7 +1052,11 @@ function WeightsEditor({
         }}
       >
         {arms.map((arm) => (
-          <label key={arm.key} className="hd-label" style={{ width: 170 }}>
+          <label
+            key={arm.key}
+            className="hd-label"
+            style={{ width: 'min(170px, 100%)' }}
+          >
             {arm.label}
             <input
               className="hd-input hd-mono"
@@ -913,8 +1080,8 @@ function WeightsEditor({
         ))}
         <span
           className="hd-pill"
-          data-tone={sum === 100 ? 'ok' : 'bad'}
-          style={{ minHeight: 40, padding: '0 12px', borderRadius: 10 }}
+          data-tone={sum === 100 ? 'acid' : 'live'}
+          style={{ alignSelf: 'center' }}
         >
           soma {sum}
           {sum === 100 ? '' : ', precisa ser 100'}
@@ -938,7 +1105,7 @@ function WeightsEditor({
         />
       ) : null}
       <span className="hd-mono hd-small">ai.variant_weights · {changed}</span>
-    </article>
+    </div>
   )
 }
 
@@ -975,7 +1142,7 @@ function LimitsEditor({
     f.unit === 'usd' ? usd(v) : int(v)
 
   return (
-    <article className="hd-card" style={{ gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div
         className="hd-grid"
         style={{ '--hd-min': 'min(200px, 100%)' } as CSSProperties}
@@ -1029,7 +1196,7 @@ function LimitsEditor({
         nada. Os modelos de cada braço são decisão de produto e ficam no código.
       </p>
       <span className="hd-mono hd-small">ai.limits · {changed}</span>
-    </article>
+    </div>
   )
 }
 
@@ -1043,16 +1210,12 @@ type Spender = Overview['top']['month'][number]
 
 function Person({ id, name }: { id: string | null; name: string | null }) {
   if (!id)
-    return <span style={{ color: 'var(--hd-faint)' }}>conta apagada</span>
+    return <span style={{ color: 'var(--hd-muted)' }}>conta apagada</span>
   return (
     <Link
       to="/houdini/pessoas/$userId"
       params={{ userId: id }}
-      style={{
-        color: 'var(--hd-roxo-soft)',
-        textDecoration: 'none',
-        fontWeight: 600
-      }}
+      className="hd-link"
     >
       {name || 'sem nome'}
     </Link>
@@ -1073,7 +1236,7 @@ function TopTable({
   limitLabel: string
 }) {
   return (
-    <div className="hd-table-wrap">
+    <div className="hd-table-wrap is-flat">
       <table
         className="hd-table"
         style={{ minWidth: 380, whiteSpace: 'nowrap' }}
@@ -1119,12 +1282,12 @@ function TopTable({
   )
 }
 
-const STATUS_TONE: Record<string, 'ok' | 'warn' | 'bad'> = {
-  ok: 'ok',
-  fallback: 'warn',
-  error: 'bad',
-  timeout: 'bad',
-  stopped: 'warn'
+const STATUS_TONE: Record<string, 'sand' | 'live' | undefined> = {
+  ok: undefined,
+  fallback: 'sand',
+  error: 'live',
+  timeout: 'live',
+  stopped: 'sand'
 }
 const STATUS_LABEL: Record<string, string> = {
   ok: 'ok',
@@ -1209,7 +1372,7 @@ function RunsLog() {
           {getUserFacingMessage(runs.error, 'Não foi possível ler o registro.')}
         </div>
       ) : (
-        <div className="hd-table-wrap">
+        <div className="hd-table-wrap is-flat">
           <table
             className="hd-table"
             style={{ minWidth: 980, whiteSpace: 'nowrap' }}

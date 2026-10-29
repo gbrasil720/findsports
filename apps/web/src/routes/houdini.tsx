@@ -73,8 +73,18 @@ export const Route = createFileRoute('/houdini')({
           content:
             'width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content'
         },
-        { name: 'theme-color', content: '#0C0B10' },
-        { name: 'color-scheme', content: 'dark' },
+        // O tema segue o sistema (`houdini.css`); a barra do navegador junto.
+        {
+          name: 'theme-color',
+          content: '#12120F',
+          media: '(prefers-color-scheme: dark)'
+        },
+        {
+          name: 'theme-color',
+          content: '#F1EEE6',
+          media: '(prefers-color-scheme: light)'
+        },
+        { name: 'color-scheme', content: 'dark light' },
         ...(app ? HOUDINI_APP_META : [])
       ],
       links: [

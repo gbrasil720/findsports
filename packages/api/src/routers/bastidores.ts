@@ -1,7 +1,6 @@
-import { db, eq, sql } from '@findsports_oficial/db'
+import { db, sql } from '@findsports_oficial/db'
 import { recordAdminActionSafely } from '@findsports_oficial/db/admin-action'
 import journal from '@findsports_oficial/db/migrations/meta/_journal.json'
-import { jobRun } from '@findsports_oficial/db/schema/houdini'
 import { z } from 'zod'
 
 import { adminProcedure, router } from '../index'
@@ -10,6 +9,7 @@ import {
   type Health,
   JOB_NAMES,
   jobHealth,
+  lastJobRun,
   nextScheduledRun,
   runJob
 } from '../lib/jobs'
@@ -24,16 +24,6 @@ const TILEJSON_URL = `https://tiles.onside.sh/${TILESET}.json`
 
 function message(error: unknown) {
   return error instanceof Error ? error.message : String(error)
-}
-
-async function lastRun(job: (typeof JOB_NAMES)[number]) {
-  const [row] = await db
-    .select()
-    .from(jobRun)
-    .where(eq(jobRun.job, job))
-    .orderBy(sql`${jobRun.startedAt} DESC`)
-    .limit(1)
-  return row ?? null
 }
 
 /**
@@ -103,7 +93,7 @@ export const bastidoresRouter = router({
       await Promise.all([
         Promise.all(
           JOB_NAMES.map(async (job) => {
-            const run = await lastRun(job)
+            const run = await lastJobRun(job)
             return { job, lastRun: run, nextRunAt, state: jobHealth(run, now) }
           })
         ),

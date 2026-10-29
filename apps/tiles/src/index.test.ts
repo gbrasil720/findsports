@@ -128,6 +128,30 @@ describe('worker de tiles em cache miss', () => {
     expect(estado.leituras).toBe(3)
   })
 
+  it('http://localhost:* libera qualquer porta do localhost, e só ela', async () => {
+    const { BUCKET } = bucket({ 'maps/fora.pmtiles': archiveMinimo('tile!') })
+    const local = {
+      ...(env(BUCKET) as object),
+      ALLOWED_ORIGINS: 'http://localhost:*'
+    } as never
+    const cors = async (origem: string) =>
+      (
+        await worker.fetch(
+          new Request('https://tiles.onside.sh/fora/0/0/0.mvt', {
+            headers: { Origin: origem }
+          }),
+          local,
+          ctx
+        )
+      ).headers.get('Access-Control-Allow-Origin')
+
+    expect(await cors('http://localhost:4056')).toBe('http://localhost:4056')
+    expect(await cors('http://localhost:3001')).toBe('http://localhost:3001')
+    expect(await cors('http://localhost.evil.com:4056')).toBeNull()
+    expect(await cors('http://localhost:4056.evil.com')).toBeNull()
+    expect(await cors('https://localhost:4056')).toBeNull()
+  })
+
   it('R2 fora responde 503 com Retry-After, sem cache e com CORS', async () => {
     const erroLog = spyOn(console, 'error').mockImplementation(() => {})
     const { BUCKET } = bucket(

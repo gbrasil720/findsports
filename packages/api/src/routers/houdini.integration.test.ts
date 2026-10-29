@@ -234,9 +234,56 @@ for (const session of ['UTC', 'America/Sao_Paulo']) {
   )
 }
 
+integrationTest(
+  'pedeAMao traz fatura sem pagar, busca atrás do plano e teste de hoje',
+  async () => {
+    const caller = await admin()
+    const unpaid = await seedBar('pro', 'past_due', inAMonth())
+    const behind = await seedBar('starter', 'active', inAMonth())
+    // Venceu há uma hora e segue no ar à espera da reconciliação: é de hoje.
+    const today = await seedBar('elite', 'trialing', inDays(-1 / 24))
+    const later = await seedBar('elite', 'trialing', inDays(3))
+    const seeds = [unpaid, behind, today, later]
+    try {
+      await behind.db
+        .update(bar)
+        .set({ plan: 'elite' })
+        .where(eq(bar.id, behind.barId))
+      await later.db
+        .update(bar)
+        .set({
+          descriptionPending: 'Telão e chope.',
+          descriptionReview: 'pending'
+        })
+        .where(eq(bar.id, later.barId))
+
+      const { pastDue, drift, endingToday, review, stuckAi } =
+        await caller.houdini.pedeAMao()
+      expect(review.descriptions).toBeGreaterThanOrEqual(1)
+      expect(stuckAi).toBeGreaterThanOrEqual(0)
+      expect(pastDue.find((b) => b.id === unpaid.barId)).toMatchObject({
+        plan: 'pro'
+      })
+      expect(drift.find((b) => b.id === behind.barId)).toMatchObject({
+        barPlan: 'elite',
+        expectedSearchPlan: 'starter'
+      })
+      expect(endingToday.some((b) => b.id === today.barId)).toBe(true)
+      expect(endingToday.some((b) => b.id === later.barId)).toBe(false)
+
+      const overview = await caller.houdini.overview()
+      expect(overview.bars.novos).toBeGreaterThanOrEqual(seeds.length)
+      expect(overview.revisao).toBeGreaterThanOrEqual(1)
+    } finally {
+      for (const seed of seeds) await seed.cleanup()
+    }
+  }
+)
+
 integrationTest('houdini é só de admin', async () => {
   const { appRouter } = await load()
   const caller = appRouter.createCaller(contextFor(crypto.randomUUID(), 'pub'))
+  await expect(caller.houdini.pedeAMao()).rejects.toThrow()
   await expect(caller.houdini.overview()).rejects.toThrow()
   await expect(caller.houdini.coelhos({})).rejects.toThrow()
   await expect(caller.houdini.search({ q: 'a' })).rejects.toThrow()

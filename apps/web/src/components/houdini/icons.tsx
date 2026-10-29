@@ -1,4 +1,7 @@
-/** Cartola do Houdini: copa, faixa em meio-tom, aba curvada e a estrela. */
+/**
+ * Cartola do Houdini: copa, faixa, aba curvada e a estrela. Faixa e estrela
+ * levam `.hd-spark` (acid no escuro, vermelho no claro).
+ */
 export function HatIcon({
   size = 24,
   sparkle = true
@@ -15,10 +18,13 @@ export function HatIcon({
       aria-hidden="true"
     >
       <path d="M7 4.5c0-.8 2.2-1.5 5-1.5s5 .7 5 1.5L16.4 12.5H7.6Z" />
-      <path d="M7.6 12.9H16.4L16.1 16.1H7.9Z" fillOpacity="0.5" />
+      <path className="hd-spark" d="M7.6 12.9H16.4L16.1 16.1H7.9Z" />
       <path d="M2.5 16.4c0-.9 1-1.2 2.2-.9 2 .5 4.4.8 7.3.8s5.3-.3 7.3-.8c1.2-.3 2.2 0 2.2.9 0 1.6-4.3 3.3-9.5 3.3S2.5 18 2.5 16.4Z" />
       {sparkle ? (
-        <path d="M20 1.5l.6 1.4 1.4.6-1.4.6-.6 1.4-.6-1.4-1.4-.6 1.4-.6Z" />
+        <path
+          className="hd-spark"
+          d="M20 1.5l.6 1.4 1.4.6-1.4.6-.6 1.4-.6-1.4-1.4-.6 1.4-.6Z"
+        />
       ) : null}
     </svg>
   )
@@ -44,7 +50,13 @@ export const ICON_PATHS = {
   external: 'M14 4h6v6 M20 4l-9 9 M18 14v6H4V6h6',
   doc: 'M5 3h10l4 4v14H5Z M9 12h6 M9 16h6 M9 8h3',
   spark:
-    'M10 4l1.8 5.2L17 11l-5.2 1.8L10 18l-1.8-5.2L3 11l5.2-1.8Z M18 3v4 M16 5h4 M18 16v4 M16 18h4'
+    'M10 4l1.8 5.2L17 11l-5.2 1.8L10 18l-1.8-5.2L3 11l5.2-1.8Z M18 3v4 M16 5h4 M18 16v4 M16 18h4',
+  search: 'M11 4a7 7 0 1 0 0 14a7 7 0 1 0 0-14 M20 20l-4-4',
+  menu: 'M4 6h16 M4 12h16 M4 18h16',
+  next: 'M9 6l6 6-6 6',
+  prev: 'M15 6l-6 6 6 6',
+  help: 'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18 M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14 M12 17v.5',
+  lock: 'M6 11h12v10H6Z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11'
 } as const
 
 export type IconName = keyof typeof ICON_PATHS
@@ -52,7 +64,7 @@ export type IconName = keyof typeof ICON_PATHS
 export function Icon({
   name,
   size = 20,
-  strokeWidth = 1.7
+  strokeWidth = 2
 }: {
   name: IconName
   size?: number
