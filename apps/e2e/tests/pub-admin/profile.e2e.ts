@@ -599,8 +599,13 @@ test('bairro e cidade param em 100 caracteres, e o servidor recusa mais', async 
 })
 
 test('Elite salva cardápio, preço médio e oferta num "Salvar" só', async ({
-  page
+  page,
+  isMobile
 }) => {
+  test.skip(
+    isMobile,
+    'No celular a oferta tem folha e "Salvar oferta" próprios'
+  )
   const { barId } = await openProfile(page)
 
   const menu = page.getByRole('region', { name: 'Cardápio e preço' })
@@ -631,6 +636,76 @@ test('Elite salva cardápio, preço médio e oferta num "Salvar" só', async ({
     menu_url: 'https://cardapio.e2e.test/menu',
     average_spend_cents: 8550,
     house_offer: 'Chope em dobro no intervalo'
+  })
+})
+
+test('celular: a oferta abre na folha 28f e "Salvar oferta" grava só ela', async ({
+  page,
+  isMobile
+}) => {
+  test.skip(!isMobile, 'Folha só abaixo de 640 px')
+  const { barId } = await openProfile(page)
+  // Rascunho da página aberto antes: a folha não pode gravá-lo junto.
+  await page
+    .getByRole('region', { name: 'Cardápio e preço' })
+    .getByLabel('Link do cardápio')
+    .fill('https://cardapio.e2e.test/menu')
+
+  const offer = page.getByRole('region', { name: 'Oferta da casa' })
+  await expect(offer.getByLabel('A oferta')).toHaveCount(0)
+  await expect(offer).toContainText('Em branco, o perfil não mostra oferta.')
+  const editar = offer.getByRole('button', { name: 'Editar oferta' })
+  await editar.click()
+
+  const folha = page.getByRole('dialog', { name: 'Oferta da casa' })
+  const campo = folha.getByLabel('A oferta')
+  await campo.fill('Chopp em dobro')
+  // A sugestão igual ao texto sai: ficam três, como no design.
+  await expect(
+    folha.getByRole('group', { name: 'Sugestões' }).getByRole('button')
+  ).toHaveCount(3)
+  await expect(folha).toContainText('Prévia · o que o torcedor vê')
+
+  // Passou do limite: o erro fica na folha e nada vai ao servidor.
+  await campo.fill('a'.repeat(141))
+  await folha.getByRole('button', { name: 'Salvar oferta' }).click()
+  await expect(folha.getByRole('alert')).toContainText(
+    'A oferta aceita até 140 caracteres. Tire 1.'
+  )
+
+  // Esc fecha sem salvar e devolve o foco ao botão.
+  await page.keyboard.press('Escape')
+  await expect(folha).toHaveCount(0)
+  await expect(editar).toBeFocused()
+
+  await editar.click()
+  await expect(campo).toHaveValue('')
+  await folha.getByRole('button', { name: 'Porção de batata grátis' }).click()
+  const salvo = page.waitForResponse(/pub\.updateHouseOffer/)
+  await folha.getByRole('button', { name: 'Salvar oferta' }).click()
+  expect((await salvo).ok()).toBe(true)
+  await expect(folha).toHaveCount(0)
+  await expect(offer).toContainText('Porção de batata grátis')
+
+  const [bar] = await query(
+    'SELECT menu_url, house_offer FROM bar WHERE id = $1',
+    [barId]
+  )
+  expect(bar).toEqual({
+    menu_url: null,
+    house_offer: 'Porção de batata grátis'
+  })
+
+  // O cardápio segue pendente, e salvá-lo não desfaz a oferta.
+  expect((await save(page, /pub\.updateMenuInfo/)).ok()).toBe(true)
+  await expect(page.getByRole('button', { name: 'Salvo' })).toBeVisible()
+  const [depois] = await query(
+    'SELECT menu_url, house_offer FROM bar WHERE id = $1',
+    [barId]
+  )
+  expect(depois).toEqual({
+    menu_url: 'https://cardapio.e2e.test/menu',
+    house_offer: 'Porção de batata grátis'
   })
 })
 
