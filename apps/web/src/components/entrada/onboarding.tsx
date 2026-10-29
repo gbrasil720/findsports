@@ -71,7 +71,14 @@ export function ObShell({
           >
             {children}
           </main>
-          <aside className="entrada-ob-lado" data-foto={ladoFoto || undefined}>
+          {/* Nasce de novo só quando troca de foto para prévia (ou o contrário):
+              entre os passos com prévia é o mesmo card mudando de dados. */}
+          <aside
+            key={ladoFoto ? 'foto' : 'previa'}
+            className="entrada-ob-lado"
+            data-foto={ladoFoto || undefined}
+            data-sentido={troca.sentido}
+          >
             {lado}
           </aside>
         </div>
