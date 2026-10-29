@@ -52,7 +52,7 @@ function PopoverContent({
           data-slot="popover-content"
           className={cn(
             'z-50 w-72 max-w-[calc(100vw-2rem)] bg-white p-4 text-sm shadow-lg outline-none',
-            'data-open:animate-in data-closed:animate-out data-open:fade-in-0 data-closed:fade-out-0 duration-150',
+            'origin-(--transform-origin) data-open:animate-in data-closed:animate-out data-open:fade-in-0 data-closed:fade-out-0 data-open:zoom-in-95 data-closed:zoom-out-95 duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]',
             className
           )}
           {...props}
