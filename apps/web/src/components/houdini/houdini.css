@@ -999,6 +999,14 @@ a.hd-kpi:active {
   box-shadow: var(--hd-shadow);
 }
 
+/* Tabela dentro de um cartão (a IA): sem o segundo cartão em volta. */
+.hd-table-wrap.is-flat {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
 .hd-table {
   width: 100%;
   min-width: 640px;
@@ -1263,6 +1271,14 @@ a.hd-row + a.hd-row {
 .hd-gloss dt {
   font-size: 14px;
   font-weight: 700;
+}
+
+/* A sigla ao lado do termo ("p.p. pontos percentuais"), como no hd.css. */
+.hd-gloss dt .hd-mono {
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--hd-muted);
 }
 
 .hd-gloss dd {
