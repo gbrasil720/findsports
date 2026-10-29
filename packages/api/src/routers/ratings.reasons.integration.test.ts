@@ -1,6 +1,9 @@
 import { expect, test } from 'bun:test'
 import { and, eq, inArray } from '@findsports_oficial/db'
-import { attendance } from '@findsports_oficial/db/schema/attendance'
+import {
+  attendance,
+  attendanceCheckin
+} from '@findsports_oficial/db/schema/attendance'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { barRating } from '@findsports_oficial/db/schema/rating'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
@@ -44,6 +47,16 @@ integrationTest(
       await db
         .insert(attendance)
         .values([seeded.fanId, ...fans].map((userId) => ({ userId, eventId })))
+      // E com check-in: só a avaliação verificada entra na nota (WEB-408).
+      await db.insert(attendanceCheckin).values(
+        fans.map((userId) => ({
+          userId,
+          eventId,
+          latitude: 0,
+          longitude: 0,
+          distanceM: 0
+        }))
+      )
       const callers = fans.map((id) =>
         appRouter.createCaller(contextFor(id, 'fan'))
       )

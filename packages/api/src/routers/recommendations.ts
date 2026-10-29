@@ -551,6 +551,8 @@ export const recommendationsRouter = router({
       FROM bar b
       LEFT JOIN bar_rating r
         ON r.bar_id = b.id
+        -- Só a verificada pesa, como na nota pública (WEB-408).
+        AND r.verified
         AND r.updated_at >= NOW() - ${RECOMMENDATION_QUALITY_WINDOW_DAYS} * INTERVAL '1 day'
       WHERE b.user_id = ${ctx.session.user.id}
       GROUP BY b.id, b.is_active

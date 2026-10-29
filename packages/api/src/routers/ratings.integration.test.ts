@@ -189,6 +189,16 @@ integrationTest(
 
       // --- contadores por trigger ---------------------------------------
 
+      // Só a avaliação verificada conta (WEB-408): estes três fizeram
+      // check-in no jogo. `vaiAssistir`, mais abaixo, não fez.
+      for (const fanId of [comIntencao, extra1, extra2]) {
+        await db.execute(sql`
+          INSERT INTO attendance_checkin
+            (user_id, event_id, latitude, longitude, distance_m)
+          VALUES (${fanId}, ${jogoPassadoId}, ${ORIGIN_LAT}, ${ORIGIN_LNG}, 0)
+        `)
+      }
+
       await appRouter
         .createCaller(contextFor(comIntencao, 'fan', now))
         .ratings.submit({ barId, eventId: jogoPassadoId, wouldReturn: true })
@@ -264,6 +274,8 @@ integrationTest(
       await appRouter
         .createCaller(contextFor(vaiAssistir, 'fan', now))
         .ratings.submit({ barId, eventId: jogoPassadoId, wouldReturn: true })
+      // Sem check-in nem código: gravada, fora da nota.
+      expect(await contadores()).toEqual({ ratingCount: 3, ratingPositive: 3 })
       await appRouter
         .createCaller(contextFor(vaiAssistir, 'fan', now))
         .ratings.remove({ barId, eventId: jogoPassadoId })
