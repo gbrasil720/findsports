@@ -116,6 +116,12 @@ const notEnded = eventNotEndedSql()
  */
 const published = isNotNull(event.publishedAt)
 
+/**
+ * Os jogos que Jogos lista: publicados e que ainda não acabaram. O número do
+ * trilho do Houdini (`houdini.overview`, `jogosFuturos`) conta estes mesmos.
+ */
+export const listedGames = and(published, notEnded)
+
 // "Hoje" é o dia em Brasília.
 const PERIOD: Record<'today' | 'week' | 'all', SQL | undefined> = {
   today: sql`${event.startsAt} < ${brasiliaDayStartSql(brasiliaTodaySql(), 1)}`,
@@ -210,8 +216,7 @@ export const adminEventsRouter = router({
     .query(async ({ input }) => {
       const pattern = input.search ? `%${escapeLike(input.search)}%` : null
       const base = and(
-        published,
-        notEnded,
+        listedGames,
         PERIOD[input.period],
         pattern
           ? sql`(
