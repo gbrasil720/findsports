@@ -46,6 +46,7 @@ import { formatPhone } from '@/utils/format-phone'
 import { useTRPC } from '@/utils/trpc'
 import type { PlanState } from './admin-model'
 import { useMyBar, useMyEvents, useMySubscription } from './admin-queries'
+import { Estrelas, iniciais, nomeDeQuemAvaliou } from './avaliacao-pecas'
 import { CodeConfirmationMode } from './code-confirmation-mode'
 import { Erro, Horario, OfertaDaCasa } from './espaco-campos'
 import { FotosDoBar, useEnvioDeFoto } from './espaco-fotos'
@@ -590,6 +591,7 @@ export function MeuEspaco() {
             events={events.data ? eventList : null}
             nota={profile.data?.rating ?? null}
             motivos={profile.data?.ratingReasons ?? null}
+            comentarios={profile.data?.reviews ?? []}
             gastoCents={
               cardapio.status === 'liberado'
                 ? gastoDoRascunho(r.averageSpend)
@@ -1022,10 +1024,11 @@ type AvaliacoesState =
 const RECENTES = 3
 
 /**
- * O que os torcedores responderam (a nota é "voltaria", não estrelas). O
- * dono vê desde a primeira resposta, antes de a nota ficar pública; não vê
- * quem respondeu: um nome ao lado de "não voltaria" viraria conflito
- * pessoal, não melhoria de serviço.
+ * O que os torcedores responderam (2c): estrelas, "voltaria", etiquetas e o
+ * comentário (WEB-451). O dono vê desde a primeira resposta, antes de a nota
+ * ficar pública. O nome só de quem escolheu se identificar, e o comentário
+ * só depois da revisão da Onside. A nota conta só as verificadas (WEB-408);
+ * as outras aparecem na lista com o selo "Não verificada".
  */
 function Avaliacoes({ state }: { state: AvaliacoesState }) {
   const [todas, setTodas] = useState(false)
@@ -1068,59 +1071,94 @@ function Avaliacoes({ state }: { state: AvaliacoesState }) {
             </button>
           ) : null}
         </div>
-      ) : ratings && ratings.total === 0 ? (
+      ) : ratings && ratings.recent.length === 0 ? (
         <p className="text-[13.5px] text-[var(--painel-muted)] leading-relaxed">
           Ninguém avaliou ainda. A pergunta aparece para quem marcou que ia ao
           seu bar, assim que o jogo termina.
         </p>
       ) : ratings ? (
         <>
-          <div className="mb-1.5 flex items-center gap-6">
-            <span className="painel-disp [--painel-disp-size:48px]">
-              {ratings.percentage}%
-            </span>
-            <div className="text-[13px] text-[var(--painel-muted)]">
-              <p>
-                {ratings.total === 1
-                  ? '1 avaliação'
-                  : `${ratings.total} avaliações`}{' '}
-                · voltariam pra ver jogo aqui
-              </p>
-              {ratings.isPublic ? null : (
+          {ratings.total === 0 ? (
+            <p className="mb-1.5 text-[13.5px] text-[var(--painel-muted)] leading-relaxed">
+              Nenhuma avaliação verificada ainda. Só entra na nota quem teve o
+              código validado no balcão ou fez check-in no bar durante o jogo.
+            </p>
+          ) : (
+            <div className="mb-1.5 flex items-center gap-6">
+              <span className="painel-disp [--painel-disp-size:48px]">
+                {ratings.stars !== null
+                  ? ratings.stars.toLocaleString('pt-BR', {
+                      minimumFractionDigits: 1
+                    })
+                  : `${ratings.percentage}%`}
+              </span>
+              <div className="text-[13px] text-[var(--painel-muted)]">
+                {ratings.stars !== null ? (
+                  <Estrelas nota={ratings.stars} />
+                ) : null}
                 <p>
-                  Ainda não aparece para o torcedor: a nota fica pública a
-                  partir de {ratings.floor} avaliações —{' '}
-                  {ratings.floor - ratings.total === 1
-                    ? 'falta 1'
-                    : `faltam ${ratings.floor - ratings.total}`}
-                  .
+                  {ratings.total === 1
+                    ? '1 avaliação'
+                    : `${ratings.total} avaliações`}{' '}
+                  ·{' '}
+                  {ratings.stars !== null
+                    ? `${ratings.percentage}% voltariam`
+                    : 'voltariam pra ver jogo aqui'}
                 </p>
-              )}
+                {ratings.isPublic ? null : (
+                  <p>
+                    Ainda não aparece para o torcedor: a nota fica pública a
+                    partir de {ratings.floor} avaliações —{' '}
+                    {ratings.floor - ratings.total === 1
+                      ? 'falta 1'
+                      : `faltam ${ratings.floor - ratings.total}`}
+                    .
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
+          )}
           <ul>
             {lista.map((item) => (
               <li
-                key={`${item.startsAt}-${item.createdAt}`}
-                className="flex items-start gap-3 border-[var(--painel-line)] border-t py-3"
+                key={item.id}
+                className="flex items-start gap-3 border-[var(--painel-line)] border-t py-3 first:border-t-0"
               >
                 <span
                   aria-hidden="true"
-                  className={`grid size-8 flex-none place-items-center rounded-[6px] ${item.wouldReturn ? 'bg-[var(--painel-acid)]' : 'bg-[var(--painel-av)]'}`}
+                  className={`grid size-8 flex-none place-items-center rounded-[6px] font-bold text-[12px] ${item.wouldReturn ? 'bg-[var(--painel-acid)] text-[var(--painel-ink)]' : 'bg-[var(--painel-av)] text-[var(--painel-fg)]'}`}
                 >
-                  <Icone
-                    nome={item.wouldReturn ? 'check' : 'x'}
-                    tamanho={15}
-                    acento={
-                      item.wouldReturn ? 'var(--painel-ink)' : 'currentColor'
-                    }
-                  />
+                  {item.name ? (
+                    iniciais(item.name)
+                  ) : (
+                    <Icone
+                      nome={item.wouldReturn ? 'check' : 'x'}
+                      tamanho={15}
+                      acento={
+                        item.wouldReturn ? 'var(--painel-ink)' : 'currentColor'
+                      }
+                    />
+                  )}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <b className="block text-[14.5px]">
-                    {item.wouldReturn ? 'Voltaria' : 'Não voltaria'}
-                  </b>
-                  <p className="text-[13px] text-[var(--painel-muted)]">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <b className="text-[14px] [overflow-wrap:anywhere]">
+                      {nomeDeQuemAvaliou(item.name)}
+                    </b>
+                    {item.stars ? (
+                      <Estrelas nota={item.stars} tamanho={13} />
+                    ) : null}
+                    {item.verified ? null : (
+                      <Badge tipo="muted">Não verificada</Badge>
+                    )}
+                  </div>
+                  {item.comment ? (
+                    <p className="mt-0.5 text-[13.5px] text-[var(--painel-muted)] leading-[1.45] [overflow-wrap:anywhere]">
+                      {item.comment}
+                    </p>
+                  ) : null}
+                  <p className="mt-0.5 text-[12.5px] text-[var(--painel-muted)]">
+                    {item.wouldReturn ? 'Voltaria' : 'Não voltaria'} ·{' '}
                     {gameTitle(item)} ·{' '}
                     {formatDayLabel(new Date(item.startsAt))}
                   </p>
