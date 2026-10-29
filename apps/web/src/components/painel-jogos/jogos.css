@@ -605,10 +605,30 @@
   background: var(--painel-bg);
   color: var(--painel-fg);
   box-shadow: -20px 0 40px -20px rgb(0 0 0 / 50%);
-  --tw-enter-scale: 1;
-  --tw-exit-scale: 1;
-  --tw-enter-translate-x: 40px;
-  --tw-exit-translate-x: 40px;
+}
+/* A folha presa à direita entra pela direita, não cresce do centro como o
+ * diálogo de `app-motion.css`. `translate`, e não `transform`, pelo mesmo
+ * motivo de lá. Com movimento reduzido só esmaece (regra de lá). */
+@media (prefers-reduced-motion: no-preference) {
+  .painel .jogos-folha {
+    transition:
+      opacity var(--onside-motion-base) var(--onside-ease-out),
+      translate var(--onside-motion-base) var(--onside-ease-out);
+  }
+  .painel .jogos-folha[data-open] {
+    scale: none;
+    translate: 0 0;
+  }
+  .painel .jogos-folha[data-closed] {
+    scale: none;
+    translate: 40px 0;
+  }
+  @starting-style {
+    .painel .jogos-folha[data-open] {
+      scale: none;
+      translate: 40px 0;
+    }
+  }
 }
 .painel .jogos-folha-cab {
   display: flex;
