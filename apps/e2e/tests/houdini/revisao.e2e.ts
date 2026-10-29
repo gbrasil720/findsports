@@ -2,9 +2,11 @@ import { randomUUID } from 'node:crypto'
 import { MEDIA_PUBLIC_ORIGIN } from '../../env'
 import { storageState } from '../../fixtures/auth'
 import { insert, query } from '../../fixtures/db'
+import { createEvent } from '../../fixtures/going'
 import { interceptMediaUploads } from '../../fixtures/media'
 import { createPub } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
+import { createUser } from '../../fixtures/users'
 
 // Revisão do Houdini (WEB-462, WEB-478): fotos e descrições que os bares
 // mandaram. Aprovar põe no ar, recusar pede o motivo; cada decisão vai ao
@@ -124,4 +126,87 @@ test('aprova a capa, recusa uma foto e a descrição com motivo', async ({
   await expect(
     page.getByText(`recusou a descrição de ${bar.name}`)
   ).toBeVisible()
+})
+
+test('comentário da avaliação: aprova um, recusa outro com motivo (WEB-451)', async ({
+  page
+}) => {
+  const name = `Bar Comentário ${randomUUID().slice(0, 8)}`
+  const pub = await createPub({ bar: { name } })
+  const { eventId } = await createEvent(pub.barId, {
+    startsAt: new Date(Date.now() - 2 * 86_400_000)
+  })
+  const comments = [
+    {
+      name: 'Marina Costa',
+      text: 'Som alto e telão enorme.',
+      identified: true
+    },
+    { name: 'Pedro Okada', text: 'Liga para 11 99999-0000.', identified: false }
+  ]
+  const ids: string[] = []
+  for (const c of comments) {
+    const fan = await createUser({ name: c.name })
+    const id = randomUUID()
+    ids.push(id)
+    await insert('bar_rating', {
+      id,
+      bar_id: pub.barId,
+      actor_user_id: fan.id,
+      event_id: eventId,
+      would_return: true,
+      stars: 4,
+      comment: c.text,
+      comment_review: 'pending',
+      identified: c.identified
+    })
+  }
+  await page.goto('/houdini/revisao')
+
+  const card = (author: string) =>
+    page
+      .getByRole('article', { name: `Comentário sobre ${name}` })
+      .filter({ hasText: author })
+  // O admin vê quem escreveu, e se a pessoa pediu para ficar anônima.
+  await expect(card('Marina Costa')).toContainText('aparece com o nome')
+  await expect(card('Pedro Okada')).toContainText('anônima para o bar')
+  await expect(card('Pedro Okada')).toContainText('não verificada')
+  await expect(
+    card('Marina Costa').getByRole('img', { name: '4 de 5 estrelas' })
+  ).toBeVisible()
+
+  await card('Marina Costa')
+    .getByRole('button', { name: 'Aprovar' })
+    .press('Enter')
+  await expect(card('Marina Costa')).toHaveCount(0)
+
+  await card('Pedro Okada')
+    .getByRole('button', { name: 'Recusar' })
+    .press('Enter')
+  await expect(card('Pedro Okada').getByLabel(/fica no Grimório/)).toBeVisible()
+  await card('Pedro Okada')
+    .getByRole('button', {
+      name: 'Tem dado pessoal (telefone, e-mail, endereço).'
+    })
+    .press('Enter')
+  await card('Pedro Okada')
+    .getByRole('button', { name: 'Confirmar recusa' })
+    .press('Enter')
+  await expect(card('Pedro Okada')).toHaveCount(0)
+
+  const rows = await query(
+    'SELECT comment_review, comment_rejection_reason FROM bar_rating WHERE id = ANY($1) ORDER BY comment',
+    [ids]
+  )
+  expect(rows).toEqual([
+    {
+      comment_review: 'rejected',
+      comment_rejection_reason: 'Tem dado pessoal (telefone, e-mail, endereço).'
+    },
+    { comment_review: 'approved', comment_rejection_reason: null }
+  ])
+  expect((await grimorio(pub.barId)).map((e) => e.kind)).toEqual([
+    'bar.rating_comment_approve',
+    'bar.rating_comment_reject'
+  ])
 })

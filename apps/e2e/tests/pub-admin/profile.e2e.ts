@@ -639,27 +639,82 @@ test('avaliações e prévia de como o torcedor vê', async ({ page }) => {
   const { eventId } = await createEvent(pub.barId, {
     startsAt: new Date(Date.now() - 2 * 86_400_000)
   })
-  for (const wouldReturn of [true, false]) {
-    const fan = await createUser()
+  // Duas verificadas (check-in no jogo, WEB-408) e uma sem prova (WEB-451:
+  // estrelas, comentário aprovado e nome só de quem quis).
+  const ratings_ = [
+    {
+      name: 'Marina Costa',
+      wouldReturn: true,
+      stars: 5,
+      identified: true,
+      comment: 'Som alto e telão enorme.',
+      verified: true
+    },
+    {
+      name: 'Pedro Okada',
+      wouldReturn: false,
+      stars: 4,
+      identified: false,
+      comment: 'Demorou para servir.',
+      verified: true
+    },
+    {
+      name: 'Bia Torres',
+      wouldReturn: false,
+      stars: 1,
+      identified: true,
+      comment: null,
+      verified: false
+    }
+  ]
+  for (const r of ratings_) {
+    const fan = await createUser({ name: r.name })
+    if (r.verified) {
+      await insert('attendance_checkin', {
+        user_id: fan.id,
+        event_id: eventId,
+        latitude: 0,
+        longitude: 0,
+        distance_m: 0
+      })
+    }
     await insert('bar_rating', {
       id: randomUUID(),
       bar_id: pub.barId,
       actor_user_id: fan.id,
       event_id: eventId,
-      would_return: wouldReturn,
-      reasons: wouldReturn ? ['screen', 'sound'] : []
+      would_return: r.wouldReturn,
+      reasons: r.wouldReturn ? ['screen', 'sound'] : [],
+      stars: r.stars,
+      identified: r.identified,
+      comment: r.comment,
+      comment_review: r.comment ? 'approved' : null
     })
   }
   await signIn(page, pub.user)
   await page.goto('/admin/meu-espaco')
 
   const ratings = page.getByRole('region', { name: 'Avaliações' })
-  await expect(ratings).toContainText('50%')
+  // A nota é das verificadas: 4,5 estrelas, 1 de 2 voltaria.
+  await expect(ratings).toContainText('4,5')
+  await expect(ratings).toContainText('2 avaliações · 50% voltariam')
+  await expect(
+    ratings.getByRole('img', { name: '4,5 de 5 estrelas' })
+  ).toBeVisible()
   // Duas avaliações, abaixo do piso público de 3: o dono é avisado.
   await expect(ratings).toContainText('Ainda não aparece para o torcedor')
   await expect(ratings).toContainText('falta 1')
-  await expect(ratings.getByRole('listitem')).toHaveCount(2)
-  // "O que pesou?" (WEB-398), sem quem respondeu.
+  await expect(ratings.getByRole('listitem')).toHaveCount(3)
+  // Nome só de quem escolheu; o resto é "Anônimo".
+  await expect(ratings).toContainText('Marina Costa')
+  await expect(ratings).toContainText('Som alto e telão enorme.')
+  await expect(ratings).not.toContainText('Pedro Okada')
+  await expect(ratings).toContainText('Anônimo')
+  // A sem prova aparece para o dono, com o selo, e fora da nota.
+  await expect(
+    ratings.getByRole('listitem').filter({ hasText: 'Bia Torres' })
+  ).toContainText('Não verificada')
+  // "O que pesou?" (WEB-398).
   await expect(ratings).toContainText('Telão')
   await expect(ratings).toContainText('Som do jogo')
 
