@@ -14,16 +14,30 @@ import { reasonLabel } from '@findsports_oficial/api/lib/rating-reasons'
 import { actionPhase } from '@findsports_oficial/api/lib/transient-error'
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import { gameTitle } from '@findsports_oficial/db/game-title'
+import { normalizeHouseOffer } from '@findsports_oficial/db/house-offer'
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger
+} from '@findsports_oficial/ui/components/dialog'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
 import type { inferRouterOutputs } from '@trpc/server'
-import { type CSSProperties, type ReactNode, useId, useState } from 'react'
+import {
+  type CSSProperties,
+  type ReactNode,
+  useId,
+  useState,
+  useSyncExternalStore
+} from 'react'
 import { toast } from 'sonner'
 import { useMinuteNow } from '@/components/app/minute-tick'
 import {
   Badge,
   Botao,
   BotaoAcao,
+  BotaoIcone,
   CabecalhoPagina,
   Campo,
   CampoTexto,
@@ -48,7 +62,7 @@ import type { PlanState } from './admin-model'
 import { useMyBar, useMyEvents, useMySubscription } from './admin-queries'
 import { Estrelas, iniciais, nomeDeQuemAvaliou } from './avaliacao-pecas'
 import { CodeConfirmationMode } from './code-confirmation-mode'
-import { Erro, Horario, OfertaDaCasa } from './espaco-campos'
+import { Erro, Horario, OfertaDaCasa, PreviaDaOferta } from './espaco-campos'
 import { FotosDoBar, useEnvioDeFoto } from './espaco-fotos'
 import {
   alteracoes,
@@ -57,6 +71,7 @@ import {
   checklistDoPerfil,
   DESCRICAO_MAX,
   type Erros,
+  erroDaOferta,
   gastoDoRascunho,
   horarioDoRascunho,
   type ItemPerfil,
@@ -85,6 +100,20 @@ const SECAO = {
   caracteristicas: 'espaco-caracteristicas'
 } as const
 
+/** O celular do painel: abaixo daqui o trilho encolhe (`painel.css`). */
+const CELULAR = '(max-width: 640px)'
+function useCelular() {
+  return useSyncExternalStore(
+    (avisar) => {
+      const media = window.matchMedia(CELULAR)
+      media.addEventListener('change', avisar)
+      return () => media.removeEventListener('change', avisar)
+    },
+    () => window.matchMedia(CELULAR).matches,
+    () => false
+  )
+}
+
 const irPara = (id: string, foco?: string) => {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
   if (foco) document.getElementById(foco)?.focus({ preventScroll: true })
@@ -95,6 +124,7 @@ export function MeuEspaco() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const now = useMinuteNow()
+  const celular = useCelular()
   const { data: bar } = useMyBar()
   const events = useMyEvents()
   const subscription = useMySubscription()
@@ -539,11 +569,23 @@ export function MeuEspaco() {
                     : 'Com o Elite, você escreve o que oferece a quem chega pela Onside e o texto aparece no perfil do bar.'
                 }
               >
-                <OfertaDaCasa
-                  valor={r.houseOffer}
-                  erro={erros.houseOffer}
-                  mudar={(houseOffer) => mudar({ houseOffer })}
-                />
+                {celular ? (
+                  <OfertaNaFolha
+                    valor={r.houseOffer}
+                    recarregar={invalidateBar}
+                    // O que a folha gravou não pode voltar como pendente se
+                    // o rascunho da página já existia.
+                    aoSalvar={(houseOffer) =>
+                      setRascunho((prev) => prev && { ...prev, houseOffer })
+                    }
+                  />
+                ) : (
+                  <OfertaDaCasa
+                    valor={r.houseOffer}
+                    erro={erros.houseOffer}
+                    mudar={(houseOffer) => mudar({ houseOffer })}
+                  />
+                )}
                 <CodeConfirmationMode
                   offer={bar.houseOffer}
                   // Enquanto grava, a escolha nova já aparece marcada.
@@ -621,6 +663,110 @@ export function MeuEspaco() {
 }
 
 /* ─── Peças da página ─── */
+
+/**
+ * A oferta da casa no celular (folha 28f): no card, só a prévia e "Editar
+ * oferta"; a 254 px o editor punha uma sugestão por linha. "Salvar oferta"
+ * grava só a oferta, sem levar junto o resto do rascunho da página.
+ */
+function OfertaNaFolha({
+  valor,
+  recarregar,
+  aoSalvar
+}: {
+  valor: string
+  recarregar: () => Promise<unknown>
+  aoSalvar: (houseOffer: string) => void
+}) {
+  const trpc = useTRPC()
+  const updateOffer = useMutation(trpc.pub.updateHouseOffer.mutationOptions())
+  const [aberta, setAberta] = useState(false)
+  const [texto, setTexto] = useState(valor)
+  const [tentou, setTentou] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+  const previa = normalizeHouseOffer(valor)
+
+  const salvar = async () => {
+    setTentou(true)
+    if (erroDaOferta(texto) || updateOffer.isPending) return
+    setErro(null)
+    const houseOffer = normalizeHouseOffer(texto)
+    try {
+      await updateOffer.mutateAsync({ houseOffer })
+      await recarregar()
+      aoSalvar(houseOffer ?? '')
+      setAberta(false)
+    } catch (err) {
+      setErro(getUserFacingMessage(err, 'Não foi possível salvar a oferta.'))
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-start gap-3">
+      {previa ? (
+        <div className="self-stretch">
+          <PreviaDaOferta texto={previa} />
+        </div>
+      ) : (
+        <p className="text-[13.5px] text-[var(--painel-muted)]">
+          Em branco, o perfil não mostra oferta.
+        </p>
+      )}
+      <Dialog
+        open={aberta}
+        onOpenChange={(open) => {
+          // Abre sempre do que está no card: fechar sem salvar descarta.
+          if (open) {
+            setTexto(valor)
+            setTentou(false)
+            setErro(null)
+          }
+          setAberta(open)
+        }}
+      >
+        <DialogTrigger {...propsBotao()}>Editar oferta</DialogTrigger>
+        <DialogContent className="jogos-folha">
+          <div className="jogos-folha-cab">
+            <DialogTitle
+              className="painel-disp"
+              style={{ ['--painel-disp-size' as string]: '34px' }}
+            >
+              Oferta da casa
+            </DialogTitle>
+            <BotaoIcone
+              icone="x"
+              rotulo="Fechar"
+              className="ml-auto"
+              onClick={() => setAberta(false)}
+            />
+          </div>
+          <div className="jogos-folha-corpo flex flex-col gap-5">
+            <OfertaDaCasa
+              valor={texto}
+              erro={tentou ? erroDaOferta(texto) : undefined}
+              mudar={setTexto}
+            />
+            {erro ? (
+              <p role="alert" className="text-[13px] text-[var(--painel-live)]">
+                {erro}
+              </p>
+            ) : null}
+          </div>
+          <div className="jogos-folha-pe">
+            <Botao
+              variante="acid"
+              className="w-full"
+              disabled={updateOffer.isPending}
+              onClick={() => void salvar()}
+            >
+              {updateOffer.isPending ? 'Salvando…' : 'Salvar oferta'}
+            </Botao>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
 
 const PAD: CSSProperties = { padding: '20px 22px' }
 
