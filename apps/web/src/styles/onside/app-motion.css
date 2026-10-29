@@ -264,4 +264,16 @@
     --y: translateY(0) !important;
     transition: opacity 120ms ease-out !important;
   }
+
+  /* A entrada também esmaece: sem isto o diálogo e o menu apareciam prontos.
+   * No fim do bloco para ganhar das regras `[data-open]` acima. */
+  @starting-style {
+    [data-slot="dialog-backdrop"][data-open],
+    [data-slot="dialog-content"][data-open],
+    [data-slot="popover-content"][data-open],
+    [data-slot="dropdown-menu-content"][data-open],
+    [data-slot="select-content"][data-open] {
+      opacity: 0;
+    }
+  }
 }
