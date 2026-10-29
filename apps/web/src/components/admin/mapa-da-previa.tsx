@@ -61,7 +61,7 @@ export function MapaDaPrevia({
           dele, e o React a apagaria ao trocar o `className`. */}
       <div
         aria-hidden="true"
-        className={`h-full transition-opacity duration-300 ease-out motion-reduce:transition-none ${pronto ? 'opacity-100' : 'opacity-0'}`}
+        className={`h-full transition-opacity duration-300 ease-(--onside-ease-out) ${pronto ? 'opacity-100' : 'opacity-0'}`}
       >
         <div ref={caixa} className="h-full w-full" />
       </div>
