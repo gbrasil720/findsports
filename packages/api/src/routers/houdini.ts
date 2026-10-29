@@ -32,6 +32,7 @@ import { getCurrentPlan } from '../lib/current-plan'
 import { escapeLike } from '../lib/escape-like'
 import { JOB_NAMES, lastJobRun } from '../lib/jobs'
 import { expectedSearchPlan } from './admin-bars'
+import { listedGames } from './admin-events'
 import { houdiniIaRouter } from './houdini-ia'
 
 const DAY = 24 * 3_600_000
@@ -171,10 +172,7 @@ export const houdiniRouter = router({
         .select({ n: count() })
         .from(bar)
         .where(sql`${bar.createdAt} > ${since}`),
-      db
-        .select({ n: count() })
-        .from(event)
-        .where(sql`${event.startsAt} > ${utcNowSql()}`),
+      db.select({ n: count() }).from(event).where(listedGames),
       // Feitiço lançado e ainda valendo, como `carregarAppConfigGravada` lê.
       db
         .select({ n: count() })
