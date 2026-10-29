@@ -40,6 +40,7 @@ import {
   useMySubscription,
   useShowsGoing
 } from './admin-queries'
+import { iniciais, nomeDeQuemAvaliou } from './avaliacao-pecas'
 import { AvisoDoPainel, CardDoPlano } from './avisos'
 import { buildSeries, niceMax } from './daily-chart-model'
 import {
@@ -329,21 +330,36 @@ export function Hoje() {
             ) : (
               <ul className="hoje-lista">
                 {ratings.data.recent.slice(0, 2).map((r) => (
-                  <li key={`${r.startsAt}-${r.createdAt}`}>
-                    <span className="hoje-voto" data-sim={r.wouldReturn}>
-                      <Icone
-                        nome={r.wouldReturn ? 'check' : 'x'}
-                        tamanho={16}
-                        acento="currentColor"
-                      />
+                  <li key={r.id}>
+                    <span
+                      className="hoje-voto"
+                      data-sim={r.wouldReturn}
+                      aria-hidden="true"
+                    >
+                      {r.name ? (
+                        <b className="text-[12px]">{iniciais(r.name)}</b>
+                      ) : (
+                        <Icone
+                          nome={r.wouldReturn ? 'check' : 'x'}
+                          tamanho={16}
+                          acento="currentColor"
+                        />
+                      )}
                     </span>
                     <div>
-                      <b>{gameTitle(r)}</b>
-                      <span>
-                        {r.wouldReturn ? 'Voltaria' : 'Não voltaria'} ·{' '}
-                        {dataCurta(diaDaCasa(r.startsAt))}
-                      </span>
-                      {r.reasons.length > 0 ? (
+                      <b>{nomeDeQuemAvaliou(r.name)}</b>
+                      {/* Com comentário aprovado, ele fala por si (1r). */}
+                      {r.comment ? (
+                        <span className="[overflow-wrap:anywhere]">
+                          {r.comment}
+                        </span>
+                      ) : (
+                        <span>
+                          {r.wouldReturn ? 'Voltaria' : 'Não voltaria'} ·{' '}
+                          {gameTitle(r)} · {dataCurta(diaDaCasa(r.startsAt))}
+                        </span>
+                      )}
+                      {!r.comment && r.reasons.length > 0 ? (
                         <span>{r.reasons.map(reasonLabel).join(' · ')}</span>
                       ) : null}
                     </div>

@@ -25,6 +25,7 @@ import {
 } from '@/domain/events'
 import { juntarEndereco } from '@/lib/cep'
 import type { AdminEvent } from './admin-model'
+import { iniciais, nomeDeQuemAvaliou } from './avaliacao-pecas'
 import {
   deslocamento,
   diaDoJogo,
@@ -61,7 +62,15 @@ type Props = {
   /** Jogos do bar; `null` enquanto carregam. */
   events: AdminEvent[] | null
   /** A nota pública (acima do piso); `null` quando não aparece. */
-  nota: { percentage: number; total: number } | null
+  nota: { percentage: number; total: number; stars?: number | null } | null
+  /** Os comentários aprovados de "O que dizem" (WEB-451), como o app mostra. */
+  comentarios?: {
+    id: string
+    name: string | null
+    comment: string | null
+    wouldReturn: boolean
+    reasons: RatingReasonId[]
+  }[]
   /** "O que pesou?" (WEB-398), o resumo que a página mostra. */
   motivos: {
     positive: RatingReasonId[]
@@ -838,6 +847,7 @@ function TelaDoApp(visto: Visto) {
     elite,
     nota,
     motivos,
+    comentarios = [],
     gastoCents,
     local,
     now,
@@ -1229,7 +1239,7 @@ function TelaDoApp(visto: Visto) {
           <>
             <Titulo
               titulo="O que dizem"
-              aside={`${nota.total} ${nota.total === 1 ? 'avaliação' : 'avaliações'}`}
+              aside={`${nota.stars ? `★ ${nota.stars.toLocaleString('pt-BR', { minimumFractionDigits: 1 })} · ` : ''}${nota.total} ${nota.total === 1 ? 'avaliação' : 'avaliações'}`}
             />
             <div className="relative">
               <SombraDura cor="var(--a-score-shadow)" desvio={4} />
@@ -1242,6 +1252,70 @@ function TelaDoApp(visto: Visto) {
                 </span>
               </div>
             </div>
+            {comentarios.length ? (
+              <Cartao soft>
+                <div className="px-3.5">
+                  {comentarios.map((item, indice) => (
+                    <div
+                      key={item.id}
+                      className={`flex flex-col gap-2 py-3 ${linhaComFio(indice)}`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span
+                          className="grid size-[30px] flex-none place-items-center rounded-[4px]"
+                          style={{
+                            ...texto(11.5, 700, 1.2),
+                            background: item.wouldReturn
+                              ? ACID
+                              : 'var(--a-mark)',
+                            color: item.wouldReturn ? INK : 'var(--a-ink)'
+                          }}
+                        >
+                          {item.name ? (
+                            iniciais(item.name)
+                          ) : item.wouldReturn ? (
+                            <IconeDoApp nome="fan" tamanho={15} cor={INK} />
+                          ) : (
+                            <IconeDoApp
+                              nome="close"
+                              tamanho={15}
+                              cor="var(--a-ink)"
+                            />
+                          )}
+                        </span>
+                        <b
+                          className="flex-1 truncate"
+                          style={texto(15, 700, 1.3)}
+                        >
+                          {nomeDeQuemAvaliou(item.name)}
+                        </b>
+                      </div>
+                      <p
+                        className="m-0 [overflow-wrap:anywhere]"
+                        style={texto(14, 400, 1.45)}
+                      >
+                        {item.comment}
+                      </p>
+                      {item.reasons.length ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {item.reasons.map((id) => (
+                            <Etiqueta
+                              key={id}
+                              style={{
+                                ...texto(12.5, 700, 1.3),
+                                padding: '4px 8px'
+                              }}
+                            >
+                              {reasonLabel(id)}
+                            </Etiqueta>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </Cartao>
+            ) : null}
             {motivos && (motivos.positive.length || motivos.negative.length) ? (
               <Cartao soft>
                 <div className="px-3.5">
