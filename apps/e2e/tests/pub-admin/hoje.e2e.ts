@@ -107,10 +107,11 @@ test('Elite: a noite, quem vai, quem chegou e a oferta da casa', async ({
   // Com jogo hoje, a oferta é a do jogo ao vivo, e o interruptor a desliga só
   // nele (`no_house_offer`): a padrão do bar fica como estava.
   const card = page.locator('.hoje-oferta')
-  await expect(card).toContainText('Oferta da casa neste jogo')
-  await expect(card).toContainText(`${live.championship} · 20:45`)
+  await expect(card).toContainText(`20:45 · ${live.championship}`)
   await expect(card).toContainText('Chopp em dobro')
-  const oferta = page.getByRole('switch', { name: 'Oferta da casa neste jogo' })
+  const oferta = page.getByRole('switch', {
+    name: `Oferta da casa 20:45 · ${live.championship}`
+  })
   await expect(oferta).toHaveAttribute('aria-checked', 'true')
   await oferta.click()
   await expect(oferta).toHaveAttribute('aria-checked', 'false')
@@ -165,9 +166,11 @@ test('Elite: oferta própria do jogo de hoje some ao desligar e volta ao religar
 
   await page.goto('/admin')
   const card = page.locator('.hoje-oferta')
-  await expect(card).toContainText(`${jogo.championship} · 22:30`)
+  await expect(card).toContainText(`22:30 · ${jogo.championship}`)
   await expect(card).toContainText('Porção de fritas grátis')
-  const oferta = page.getByRole('switch', { name: 'Oferta da casa neste jogo' })
+  const oferta = page.getByRole('switch', {
+    name: `Oferta da casa 22:30 · ${jogo.championship}`
+  })
   await oferta.click()
   await expect(oferta).toHaveAttribute('aria-checked', 'false')
   await expect
