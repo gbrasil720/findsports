@@ -1,8 +1,10 @@
 import { AMENITIES } from '@findsports_oficial/api/lib/amenities'
 import { groupOpeningHours } from '@findsports_oficial/api/lib/opening-hours'
 import { reasonLabel } from '@findsports_oficial/api/lib/rating-reasons'
+import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import type { inferRouterOutputs } from '@trpc/server'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { type ReactNode, useEffect, useState } from 'react'
@@ -31,10 +33,12 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { scheduleOnRN } from 'react-native-worklets'
 import { Card, OfferCard } from '@/components/card'
+import { CheckInCard } from '@/components/check-in'
 import {
   BarTicket,
   dayLabel,
   dropBox,
+  initials,
   MapDrop,
   PhotoPill
 } from '@/components/explore'
@@ -48,6 +52,7 @@ import {
   usePressScale
 } from '@/components/motion'
 import { useSoon } from '@/components/soon'
+import { Stars } from '@/components/stars'
 import { usePalette } from '@/components/theme'
 import {
   ACID,
@@ -77,10 +82,15 @@ import { trpc } from '@/lib/trpc'
  * 16/10/2026, card da seção 08): quem marca recebe um código.
  *
  * "Horário" (WEB-397) só aparece com o horário informado, e "aberto agora"
- * vem do servidor. Em "O que dizem" entra o resumo de "O que pesou?"
- * (WEB-398), a favor e contra, sem nome de ninguém: a lista de avaliações
- * escritas e "Ver todas" do design ficam de fora (só há etiquetas). "Em dia
- * de clássico" também não entra (decisão do dono em 17/10/2026).
+ * vem do servidor. Em "O que dizem" entram a média das estrelas, os três
+ * comentários mais recentes que a Onside aprovou, com o nome só de quem
+ * escolheu aparecer (WEB-451), e o resumo de "O que pesou?" (WEB-398). Tudo
+ * só das avaliações verificadas (WEB-408). "Ver todas" do design fica de
+ * fora. "Em dia de clássico" também não entra (decisão do dono em
+ * 17/10/2026).
+ *
+ * No dia do jogo, quem é torcedor vê "Estou aqui" (check-in, WEB-408) logo
+ * abaixo do jogo.
  */
 
 /** As características que o design desenha em ladrilho, com ícone. */
@@ -468,6 +478,14 @@ export default function BarPage() {
               </Text>
             )}
 
+            {data.checkIn ? (
+              <CheckInCard
+                barId={data.id}
+                eventId={data.checkIn.eventId}
+                done={data.checkIn.done}
+              />
+            ) : null}
+
             {/* "O ambiente" (25a, WEB-462): as fotos que a Onside aprovou,
                 logo depois de "Hoje no telão", como na 2g. */}
             <Ambiente barId={data.id} photos={data.photos} />
@@ -748,7 +766,7 @@ export default function BarPage() {
               <>
                 <Heading
                   title="O que dizem"
-                  aside={`${data.rating.total} ${data.rating.total === 1 ? 'avaliação' : 'avaliações'}`}
+                  aside={`${data.rating.stars !== null ? `★ ${data.rating.stars.toLocaleString('pt-BR', { minimumFractionDigits: 1 })} · ` : ''}${data.rating.total} ${data.rating.total === 1 ? 'avaliação' : 'avaliações'}`}
                 />
                 <View>
                   <View
@@ -768,6 +786,19 @@ export default function BarPage() {
                     </Text>
                   </View>
                 </View>
+                {data.reviews.length ? (
+                  <Card soft>
+                    <View style={styles.list}>
+                      {data.reviews.map((review, index) => (
+                        <Review
+                          key={review.id}
+                          review={review}
+                          divided={index > 0}
+                        />
+                      ))}
+                    </View>
+                  </Card>
+                ) : null}
                 {data.ratingReasons &&
                 (data.ratingReasons.positive.length ||
                   data.ratingReasons.negative.length) ? (
@@ -948,6 +979,94 @@ export default function BarPage() {
         </Glass>
       ) : null}
       {soon.toast}
+    </View>
+  )
+}
+
+/**
+ * Um comentário de "O que dizem" (2g): quem (ou "Anônimo"), o jogo e o mês,
+ * o texto e as etiquetas. O quadrinho é acid para quem voltaria.
+ */
+function Review({
+  review,
+  divided
+}: {
+  review: inferRouterOutputs<AppRouter>['pubs']['getById']['reviews'][number]
+  divided: boolean
+}) {
+  const palette = usePalette()
+  const month = new Date(review.startsAt)
+    .toLocaleDateString('pt-BR', {
+      month: 'short',
+      timeZone: 'America/Sao_Paulo'
+    })
+    .replace('.', '')
+  return (
+    <View
+      style={[
+        styles.said,
+        divided && { borderTopWidth: 1, borderTopColor: palette.line }
+      ]}
+    >
+      <View style={styles.saidHead}>
+        <View
+          style={[
+            styles.saidMark,
+            { backgroundColor: review.wouldReturn ? ACID : palette.mark }
+          ]}
+        >
+          {review.name ? (
+            <Text
+              style={[
+                text(11.5, 'Bold', 1.2),
+                { color: review.wouldReturn ? INK : palette.ink }
+              ]}
+            >
+              {initials(review.name)}
+            </Text>
+          ) : (
+            <Icon
+              name={review.wouldReturn ? 'fan' : 'close'}
+              size={15}
+              color={review.wouldReturn ? INK : palette.ink}
+              accent={review.wouldReturn ? INK : palette.accent}
+            />
+          )}
+        </View>
+        <Text
+          style={[text(15, 'Bold', 1.3), { color: palette.ink, flex: 1 }]}
+          numberOfLines={1}
+        >
+          {review.name ?? 'Anônimo'}
+        </Text>
+        <Text
+          style={[
+            text(12.5, 'Regular', 1.4),
+            { color: palette.muted, flexShrink: 1 }
+          ]}
+          numberOfLines={1}
+        >
+          {gameTitle(review)} · {month}
+        </Text>
+      </View>
+      {review.stars ? <Stars value={review.stars} size={13} /> : null}
+      <Text style={[text(14, 'Regular', 1.45), { color: palette.ink }]}>
+        {review.comment}
+      </Text>
+      {review.reasons.length ? (
+        <View style={styles.chips}>
+          {review.reasons.map((id) => (
+            <View
+              key={id}
+              style={[styles.reason, { backgroundColor: palette.mark }]}
+            >
+              <Text style={[text(12.5, 'Bold', 1.3), { color: palette.ink }]}>
+                {reasonLabel(id)}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
     </View>
   )
 }
