@@ -582,6 +582,12 @@
   grid-template-columns: repeat(auto-fit, minmax(var(--hd-min, 210px), 1fr));
 }
 
+/* Fila da Revisão: o cartão com o recusar aberto cresce sozinho; o vizinho
+ * da mesma linha fica na altura dele. */
+.hd-grid.is-fila {
+  align-items: start;
+}
+
 .hd-cols {
   display: flex;
   flex-wrap: wrap;
