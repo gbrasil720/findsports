@@ -31,6 +31,7 @@ import {
   type ViewStyle
 } from 'react-native'
 import Animated, {
+  FadeInDown,
   interpolateColor,
   useAnimatedStyle,
   useSharedValue,
@@ -650,6 +651,20 @@ export function useBrandFrame() {
   return kind === 'split' || kind === 'stack'
 }
 
+/**
+ * As telas curtas da conta abrem como folha fora do celular (regra 06 da
+ * a08): o `app/_layout.tsx` as apresenta por cima (`transparentModal`) e o
+ * `Screen` desenha a folha.
+ */
+export function useAccountSheet() {
+  const { kind } = useLayout()
+  return kind !== 'phone' && kind !== 'duoClosed' && kind !== 'cover'
+}
+
+// A folha sobe um pouco enquanto o fundo escurece (constante de módulo: ver
+// `POP` em `motion.tsx`).
+const SHEET_IN = FadeInDown.duration(260).easing(EASE)
+
 /** Tablet (iPad, Galaxy Tab): a marca fica com mais da metade da tela. */
 const IS_TABLET_NAV = (nav: string) =>
   nav === 'rail' || (Platform.OS === 'ios' && Platform.isPad)
@@ -663,6 +678,7 @@ export function Screen({
   header,
   footer,
   brand,
+  sheet,
   children
 }: {
   dark?: boolean
@@ -680,10 +696,19 @@ export function Screen({
    * marca (ou sob ela) numa coluna de leitura (`useBrandFrame`).
    */
   brand?: boolean
+  /**
+   * Tela curta da conta (Cidade, Senha, Duas etapas): fora do celular abre
+   * como folha no meio, com "Cancelar" e o botão de pronto no topo (sheet8 do
+   * design); no dobrável aberto, na metade da direita. O voltar sai.
+   */
+  sheet?: { done?: string; onDone?: () => void; busy?: boolean }
   children: ReactNode
 }) {
   const insets = useSafeAreaInsets()
   const layout = useLayout()
+  const router = useRouter()
+  const asSheet = useAccountSheet()
+  const sheetMode = sheet && asSheet
   const framed = brand && (layout.kind === 'split' || layout.kind === 'stack')
   // Na mesa (Duo em laptop, Flex Mode), os campos em cima e o teclado embaixo.
   const table = layout.kind === 'table'
@@ -731,6 +756,79 @@ export function Screen({
     )
   )
   const background = dark ? INK : BG
+
+  if (sheetMode) {
+    const half = layout.kind === 'split' && layout.width < 1000
+    const width = half
+      ? layout.width - layout.split - layout.gap
+      : Math.min(560, layout.width - 120)
+    return (
+      <View style={{ flex: 1 }}>
+        <Pressable
+          accessibilityLabel="Fechar"
+          onPress={() => router.back()}
+          style={[StyleSheet.absoluteFill, styles.sheetDim]}
+        />
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          pointerEvents="box-none"
+          style={
+            half
+              ? [StyleSheet.absoluteFill, { left: layout.split + layout.gap }]
+              : styles.sheetCenter
+          }
+        >
+          <Animated.View
+            entering={SHEET_IN}
+            style={[
+              styles.sheetCard,
+              { width, backgroundColor: background },
+              half
+                ? { flex: 1, borderRadius: 0, paddingTop: insets.top }
+                : { maxHeight: layout.height - 120 }
+            ]}
+          >
+            <View style={styles.sheetBar}>
+              <Text
+                accessibilityRole="button"
+                suppressHighlighting
+                onPress={() => router.back()}
+                style={[text(15, 'SemiBold'), { color: SUB }]}
+              >
+                Cancelar
+              </Text>
+              <View style={[styles.grabber, { backgroundColor: LINE }]} />
+              <Text
+                accessibilityRole="button"
+                suppressHighlighting
+                disabled={!sheet.onDone || sheet.busy}
+                onPress={sheet.onDone}
+                style={[
+                  text(15, 'Bold'),
+                  { color: HOT, opacity: sheet.onDone ? 1 : 0 }
+                ]}
+              >
+                {sheet.done ?? 'Salvar'}
+              </Text>
+            </View>
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{
+                paddingHorizontal: 28,
+                paddingBottom: 28,
+                gap
+              }}
+            >
+              {items.filter(
+                (child) => !(isValidElement(child) && child.type === BackButton)
+              )}
+              {footer}
+            </ScrollView>
+          </Animated.View>
+        </KeyboardAvoidingView>
+      </View>
+    )
+  }
 
   if (framed || table) {
     const body = (
@@ -1532,6 +1630,25 @@ export function authErrorMessage(
 }
 
 const styles = StyleSheet.create({
+  sheetDim: { backgroundColor: 'rgba(18,18,15,.42)' },
+  sheetCenter: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  sheetCard: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+    shadowRadius: 35,
+    shadowOffset: { width: 0, height: 30 }
+  },
+  sheetBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 28,
+    paddingTop: 22,
+    paddingBottom: 12
+  },
+  grabber: { width: 40, height: 5, borderRadius: 3 },
   // A folha do formulário sobe 28 por cima da marca (tablet em pé, a08).
   sheet: {
     flex: 1,

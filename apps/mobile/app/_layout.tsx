@@ -19,6 +19,7 @@ import { MaintenanceGate } from '@/components/maintenance'
 import { OfflineBanner } from '@/components/offline-banner'
 import { Splash, SplashDone } from '@/components/splash'
 import { PaletteProvider } from '@/components/theme'
+import { useAccountSheet } from '@/components/ui'
 import { queryClient, trpc } from '@/lib/trpc'
 
 // A splash nativa (cor chapada, `app.json`) fica até as fontes da marca
@@ -92,10 +93,10 @@ export default function Layout() {
   const aiSheet = phone
   // Telas curtas da conta abrem como folha no meio da tela fora do celular
   // (regra 06 da a08, WEB-491); no celular, empilhadas como sempre.
-  const accountSheet =
-    kind === 'phone' || kind === 'duoClosed' || kind === 'cover'
-      ? undefined
-      : { presentation: 'modal' as const }
+  // O `Screen` desenha a folha (centrada, ou na metade do dobrável aberto).
+  const accountSheet = useAccountSheet()
+    ? { presentation: 'transparentModal' as const, animation: 'fade' as const }
+    : undefined
   const ready = fontsLoaded && agenda !== undefined
   const [splashDone, setSplashDone] = useState(false)
   const endSplash = useCallback(() => setSplashDone(true), [])
