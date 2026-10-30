@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router'
 import { StyleSheet, View } from 'react-native'
-import { OnboardingTop } from '@/components/onboarding'
+import { OnboardingTop, useFrameKind } from '@/components/onboarding'
 import {
   CARD,
   DROP,
@@ -29,6 +29,8 @@ const FEATURES = [
 ] as const
 
 export default function Welcome() {
+  // Na mesa a pergunta já está na metade de cima (Adaptativo 09).
+  const table = useFrameKind() === 'table'
   const router = useRouter()
   return (
     <Screen
@@ -47,14 +49,16 @@ export default function Welcome() {
         <Text style={[text(14, 'Bold'), { color: HOT }]}>
           É torcedor? Chegou no lugar certo.
         </Text>
-        <Title
-          lines={[
-            ['Vamos achar os'],
-            ['', 'melhores bares'],
-            ['pro seu jogo.']
-          ]}
-          size={42}
-        />
+        {table ? null : (
+          <Title
+            lines={[
+              ['Vamos achar os'],
+              ['', 'melhores bares'],
+              ['pro seu jogo.']
+            ]}
+            size={42}
+          />
+        )}
       </View>
       <Text style={[text(16.5, 'Regular', 1.48), { color: SUB }]}>
         Em 3 passos a gente calibra sua busca: esportes favoritos, quem você

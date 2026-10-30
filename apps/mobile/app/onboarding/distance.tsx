@@ -18,6 +18,7 @@ import {
   OnboardingTop,
   type Radius,
   RadiusTile,
+  useFrameKind,
   useOnboarding
 } from '@/components/onboarding'
 import {
@@ -66,6 +67,8 @@ function useDebounced(value: string) {
 }
 
 export default function Distance() {
+  // Na mesa a pergunta já está na metade de cima (Adaptativo 09).
+  const table = useFrameKind() === 'table'
   const router = useRouter()
   const dark = useColorScheme() === 'dark'
   const { choices, set } = useOnboarding()
@@ -114,9 +117,11 @@ export default function Distance() {
       }
     >
       <OnboardingTop step={4} />
-      <View style={{ marginTop: 8 }}>
-        <Title lines={[['Quão longe você topa ir?']]} size={36} />
-      </View>
+      {table ? null : (
+        <View style={{ marginTop: 8 }}>
+          <Title lines={[['Quão longe você topa ir?']]} size={36} />
+        </View>
+      )}
       <Text style={[text(15, 'Regular', 1.45), { color: SUB, marginTop: -4 }]}>
         Sua cidade e a distância definem quais bares aparecem pra você.
       </Text>
