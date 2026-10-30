@@ -759,15 +759,20 @@ export function Screen({
     )
     if (layout.kind === 'split')
       return (
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        // Só o formulário sobe com o teclado; a marca fica parada.
+        <View
           style={{ flex: 1, flexDirection: 'row', backgroundColor: background }}
         >
           <View style={{ width: brandWidth }}>
             <AuthBrand column />
           </View>
-          <View style={{ flex: 1, marginLeft: layout.gap }}>{body}</View>
-        </KeyboardAvoidingView>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={{ flex: 1, marginLeft: layout.gap }}
+          >
+            {body}
+          </KeyboardAvoidingView>
+        </View>
       )
     if (table)
       return (
