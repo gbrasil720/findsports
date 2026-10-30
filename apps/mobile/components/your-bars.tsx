@@ -192,13 +192,19 @@ export function MonthsCard({
         <View style={styles.legend}>
           <View style={styles.legendItem}>
             <View style={[styles.swatch, { backgroundColor: ACID }]} />
-            <Text style={[text(12), { color: palette.muted }]}>
+            <Text
+              style={[text(12), { color: palette.muted }]}
+              numberOfLines={1}
+            >
               jogo com código validado
             </Text>
           </View>
           <View style={styles.legendItem}>
             <View style={[styles.swatch, { backgroundColor: palette.ink }]} />
-            <Text style={[text(12), { color: palette.muted }]}>
+            <Text
+              style={[text(12), { color: palette.muted }]}
+              numberOfLines={1}
+            >
               selecionado
             </Text>
           </View>
