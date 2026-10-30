@@ -7,7 +7,7 @@ import {
   SafeAreaInsetsContext,
   useSafeAreaInsets
 } from 'react-native-safe-area-context'
-import { useLayout, useNavInsets } from '@/components/layout'
+import { InnerLayout, useLayout, useNavInsets } from '@/components/layout'
 import { EASE } from '@/components/motion'
 import { FrameKind, Pane, useOnboarding } from '@/components/onboarding'
 import {
@@ -396,11 +396,25 @@ export function OnboardingFrame({ children }: { children: ReactNode }) {
         <SafeAreaInsetsContext.Provider value={paneInsets}>
           <StatusBarOver.Provider value={decor ? 'light' : null}>
             <FrameKind.Provider value={kind === 'column' ? 'phone' : kind}>
-              <Pane.Provider
-                value={{ width: pane.width, height: pane.height, side }}
+              {/* O passo já está na coluna dele: para as telas de dentro
+                  (e o `Screen`), é um celular, sem faixa do Duo nem mesa. */}
+              <InnerLayout.Provider
+                value={{
+                  kind: 'phone',
+                  nav: 'tabs',
+                  width: pane.width,
+                  height: pane.height,
+                  split: pane.width,
+                  gap: 0,
+                  wide: false
+                }}
               >
-                {children}
-              </Pane.Provider>
+                <Pane.Provider
+                  value={{ width: pane.width, height: pane.height, side }}
+                >
+                  {children}
+                </Pane.Provider>
+              </InnerLayout.Provider>
             </FrameKind.Provider>
           </StatusBarOver.Provider>
         </SafeAreaInsetsContext.Provider>
