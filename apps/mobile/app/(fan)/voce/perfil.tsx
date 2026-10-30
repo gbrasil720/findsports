@@ -134,6 +134,268 @@ export default function Profile() {
     Promise.all([...queries.map((q) => q.refetch()), pending.refetch()])
   )
 
+  const who = (
+    <View style={styles.who}>
+      {/* No escuro, o quadro do cartão: tinta sobre tinta sumiria. */}
+      <View
+        style={[
+          styles.avatar,
+          palette.dark && { backgroundColor: palette.card }
+        ]}
+      >
+        {user?.image ? (
+          <Image
+            accessibilityIgnoresInvertColors
+            source={{ uri: user.image }}
+            style={styles.photo}
+          />
+        ) : (
+          <Text style={styles.avatarText}>{initials(user?.name ?? '')}</Text>
+        )}
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text
+          style={[styles.name, { color: palette.ink }]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+        >
+          {user?.name}
+        </Text>
+        {place ? (
+          <Text style={[text(13), { color: palette.muted }]}>{place}</Text>
+        ) : null}
+        {level ? (
+          <View style={styles.levelChip}>
+            <Icon name="medal" size={11} color={INK} accent={INK} />
+            <Text style={[text(10.5, 'Bold', 1.2), { color: INK }]}>
+              Nível {level.level} · {level.name}
+            </Text>
+          </View>
+        ) : null}
+      </View>
+      {/* Compartilhar e configurações na linha do nome, não numa
+          linha só deles por cima. */}
+      <View style={styles.actions}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Compartilhar seu nível"
+          hitSlop={8}
+          onPress={share}
+        >
+          <GlassRound>
+            <Icon name="share" size={18} color={palette.ink} />
+          </GlassRound>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Configurações"
+          hitSlop={8}
+          onPress={settings}
+        >
+          <GlassRound>
+            <Icon name="gear" size={18} color={palette.ink} />
+          </GlassRound>
+        </Pressable>
+      </View>
+    </View>
+  )
+
+  const trophies = (
+    <Tap onPress={() => router.navigate('/voce/conquistas')}>
+      <Card
+        shadow={palette.dark ? 'rgba(201,241,53,.22)' : 'rgba(201,241,53,.85)'}
+        offset={5}
+        soft
+        style={[
+          styles.trophies,
+          { backgroundColor: palette.dark ? palette.card : INK }
+        ]}
+      >
+        <View style={{ flex: 1 }}>
+          <Text
+            style={[text(15, 'Bold'), { color: PAPER }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.85}
+          >
+            {unlocked.length ? 'Últimas conquistas' : 'Conquistas'}
+          </Text>
+          <Text style={[text(12.5), { color: '#aaa9a4' }]}>
+            {unlocked.length} de {list.length} · ver todas
+          </Text>
+        </View>
+        {medals.map((a) => (
+          <MedalImage key={a.id} id={a.id} locked={!a.unlockedAt} size={58} />
+        ))}
+      </Card>
+    </Tap>
+  )
+
+  const tiles = (
+    <View style={styles.grid}>
+      <Tile
+        icon="fan"
+        value={String(yourBarCount(visits.data ?? [], saved.data ?? []))}
+        label="Seus bares"
+        onPress={() => router.navigate('/favoritos')}
+      />
+      <Tile
+        icon="ticket"
+        value={String(today)}
+        label={today === 1 ? 'Jogo marcado hoje' : 'Jogos marcados hoje'}
+        hot={today > 0}
+        onPress={() => router.navigate('/voce/meus-jogos')}
+      />
+      <Tile
+        icon="map"
+        value={`${user?.searchRadiusKm ?? 3} km`}
+        label="Raio de busca"
+        onPress={() => router.push('/configuracoes')}
+      />
+      <Tile
+        icon="tv"
+        value={String(sports.data?.length ?? 0)}
+        label={sports.data?.length === 1 ? 'Esporte' : 'Esportes'}
+        onPress={() => router.push('/configuracoes')}
+      />
+    </View>
+  )
+
+  const nextGames = next.length ? (
+    <Card soft style={styles.next}>
+      <Text
+        style={[text(16, 'Bold'), styles.nextTitle, { color: palette.ink }]}
+      >
+        Próximos jogos nos seus bares
+      </Text>
+      {next.map(({ barId, barName, photoUrl, game }) => (
+        <Pressable
+          key={game.id}
+          accessibilityRole="button"
+          onPress={() => openBar(barId)}
+          style={[styles.nextRow, { borderTopColor: palette.line }]}
+        >
+          <Photo uri={photoUrl} name={barName} style={styles.nextPhoto} />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text
+              style={[text(14.5, 'Bold'), { color: palette.ink }]}
+              numberOfLines={1}
+            >
+              {gameTitle(game)}
+            </Text>
+            <Text
+              style={[text(12.5), { color: palette.muted }]}
+              numberOfLines={1}
+            >
+              {barName}
+            </Text>
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={[styles.time, { color: palette.ink }]}>
+              {formatTime(game.startsAt)}
+            </Text>
+            <Text style={[text(11.5), { color: palette.muted }]}>
+              {dayLabel(game.startsAt, now)} · {game.sport.name}
+            </Text>
+          </View>
+        </Pressable>
+      ))}
+    </Card>
+  ) : null
+
+  const extras = (
+    <>
+      {top.bars.length ? (
+        <>
+          <Heading title="Bares que você mais foi" meta={top.label} />
+          <View style={styles.topBars}>
+            {top.bars.map((bar) => (
+              <Pressable
+                key={bar.barId}
+                accessibilityRole="button"
+                accessibilityLabel={`${bar.barName}, ${bar.games} ${bar.games === 1 ? 'jogo' : 'jogos'}`}
+                onPress={() => openBar(bar.barId)}
+                style={styles.topBar}
+              >
+                <Photo
+                  uri={bar.photoUrl}
+                  name={bar.barName}
+                  style={styles.topPhoto}
+                  big
+                />
+                <Text
+                  style={[text(13, 'Bold'), { color: palette.ink }]}
+                  numberOfLines={1}
+                >
+                  {bar.barName}
+                </Text>
+                <Text
+                  style={[text(11.5), { color: palette.muted, marginTop: -4 }]}
+                >
+                  {bar.games} {bar.games === 1 ? 'jogo' : 'jogos'}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </>
+      ) : null}
+
+      {pending.data?.length ? (
+        <>
+          <Heading
+            title="Avaliações"
+            meta={`${pending.data.length} ${pending.data.length === 1 ? 'pendente' : 'pendentes'}`}
+          />
+          <Card soft>
+            <View style={styles.rows}>
+              {pending.data.slice(0, 3).map((item, i) => (
+                <Row
+                  key={item.eventId}
+                  first={i === 0}
+                  icon="star"
+                  title={item.barName}
+                  sub={`${gameTitle(item)} · ${shortDate(item.startsAt)}`}
+                  onPress={() => router.push(`/pos-jogo/${item.eventId}`)}
+                  action="Avaliar"
+                />
+              ))}
+            </View>
+          </Card>
+        </>
+      ) : null}
+
+      <Card soft>
+        <View style={styles.rows}>
+          <Row first icon="chat" title="Ajuda e suporte" onPress={help} />
+          <Row
+            icon="doc"
+            title="Termos e privacidade"
+            onPress={() =>
+              router.push({
+                pathname: '/legal',
+                params: { doc: 'termos' }
+              })
+            }
+          />
+        </View>
+      </Card>
+    </>
+  )
+
+  const status = queries.some((q) => q.isPending) ? (
+    <ActivityIndicator color={palette.ink} style={{ marginTop: 40 }} />
+  ) : queries.some((q) => q.isError) ? (
+    <ErrorState
+      style={styles.empty}
+      title="Não deu para abrir seu perfil."
+      error={queries.find((q) => q.isError)?.error}
+      onRetry={() => {
+        for (const q of queries) if (q.isError) q.refetch()
+      }}
+      retrying={queries.some((q) => q.isFetching)}
+    />
+  ) : null
+
   return (
     <View style={[styles.screen, { backgroundColor: palette.bg }]}>
       <ScrollView
@@ -143,281 +405,13 @@ export default function Profile() {
         ]}
         refreshControl={<RefreshControl {...pull} tintColor={palette.muted} />}
       >
-        <View style={styles.who}>
-          {/* No escuro, o quadro do cartão: tinta sobre tinta sumiria. */}
-          <View
-            style={[
-              styles.avatar,
-              palette.dark && { backgroundColor: palette.card }
-            ]}
-          >
-            {user?.image ? (
-              <Image
-                accessibilityIgnoresInvertColors
-                source={{ uri: user.image }}
-                style={styles.photo}
-              />
-            ) : (
-              <Text style={styles.avatarText}>
-                {initials(user?.name ?? '')}
-              </Text>
-            )}
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text
-              style={[styles.name, { color: palette.ink }]}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-            >
-              {user?.name}
-            </Text>
-            {place ? (
-              <Text style={[text(13), { color: palette.muted }]}>{place}</Text>
-            ) : null}
-            {level ? (
-              <View style={styles.levelChip}>
-                <Icon name="medal" size={11} color={INK} accent={INK} />
-                <Text style={[text(10.5, 'Bold', 1.2), { color: INK }]}>
-                  Nível {level.level} · {level.name}
-                </Text>
-              </View>
-            ) : null}
-          </View>
-          {/* Compartilhar e configurações na linha do nome, não numa
-              linha só deles por cima. */}
-          <View style={styles.actions}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Compartilhar seu nível"
-              hitSlop={8}
-              onPress={share}
-            >
-              <GlassRound>
-                <Icon name="share" size={18} color={palette.ink} />
-              </GlassRound>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Configurações"
-              hitSlop={8}
-              onPress={settings}
-            >
-              <GlassRound>
-                <Icon name="gear" size={18} color={palette.ink} />
-              </GlassRound>
-            </Pressable>
-          </View>
-        </View>
-
-        {queries.some((q) => q.isPending) ? (
-          <ActivityIndicator color={palette.ink} style={{ marginTop: 40 }} />
-        ) : queries.some((q) => q.isError) ? (
-          <ErrorState
-            style={styles.empty}
-            title="Não deu para abrir seu perfil."
-            error={queries.find((q) => q.isError)?.error}
-            onRetry={() => {
-              for (const q of queries) if (q.isError) q.refetch()
-            }}
-            retrying={queries.some((q) => q.isFetching)}
-          />
-        ) : (
+        {who}
+        {status ?? (
           <>
-            <Tap onPress={() => router.navigate('/voce/conquistas')}>
-              <Card
-                shadow={
-                  palette.dark ? 'rgba(201,241,53,.22)' : 'rgba(201,241,53,.85)'
-                }
-                offset={5}
-                soft
-                style={[
-                  styles.trophies,
-                  { backgroundColor: palette.dark ? palette.card : INK }
-                ]}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={[text(15, 'Bold'), { color: PAPER }]}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.85}
-                  >
-                    {unlocked.length ? 'Últimas conquistas' : 'Conquistas'}
-                  </Text>
-                  <Text style={[text(12.5), { color: '#aaa9a4' }]}>
-                    {unlocked.length} de {list.length} · ver todas
-                  </Text>
-                </View>
-                {medals.map((a) => (
-                  <MedalImage
-                    key={a.id}
-                    id={a.id}
-                    locked={!a.unlockedAt}
-                    size={58}
-                  />
-                ))}
-              </Card>
-            </Tap>
-
-            <View style={styles.grid}>
-              <Tile
-                icon="fan"
-                value={String(
-                  yourBarCount(visits.data ?? [], saved.data ?? [])
-                )}
-                label="Seus bares"
-                onPress={() => router.navigate('/favoritos')}
-              />
-              <Tile
-                icon="ticket"
-                value={String(today)}
-                label={
-                  today === 1 ? 'Jogo marcado hoje' : 'Jogos marcados hoje'
-                }
-                hot={today > 0}
-                onPress={() => router.navigate('/voce/meus-jogos')}
-              />
-              <Tile
-                icon="map"
-                value={`${user?.searchRadiusKm ?? 3} km`}
-                label="Raio de busca"
-                onPress={() => router.push('/configuracoes')}
-              />
-              <Tile
-                icon="tv"
-                value={String(sports.data?.length ?? 0)}
-                label={sports.data?.length === 1 ? 'Esporte' : 'Esportes'}
-                onPress={() => router.push('/configuracoes')}
-              />
-            </View>
-
-            {next.length ? (
-              <Card soft style={styles.next}>
-                <Text
-                  style={[
-                    text(16, 'Bold'),
-                    styles.nextTitle,
-                    { color: palette.ink }
-                  ]}
-                >
-                  Próximos jogos nos seus bares
-                </Text>
-                {next.map(({ barId, barName, photoUrl, game }) => (
-                  <Pressable
-                    key={game.id}
-                    accessibilityRole="button"
-                    onPress={() => openBar(barId)}
-                    style={[styles.nextRow, { borderTopColor: palette.line }]}
-                  >
-                    <Photo
-                      uri={photoUrl}
-                      name={barName}
-                      style={styles.nextPhoto}
-                    />
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text
-                        style={[text(14.5, 'Bold'), { color: palette.ink }]}
-                        numberOfLines={1}
-                      >
-                        {gameTitle(game)}
-                      </Text>
-                      <Text
-                        style={[text(12.5), { color: palette.muted }]}
-                        numberOfLines={1}
-                      >
-                        {barName}
-                      </Text>
-                    </View>
-                    <View style={{ alignItems: 'flex-end' }}>
-                      <Text style={[styles.time, { color: palette.ink }]}>
-                        {formatTime(game.startsAt)}
-                      </Text>
-                      <Text style={[text(11.5), { color: palette.muted }]}>
-                        {dayLabel(game.startsAt, now)} · {game.sport.name}
-                      </Text>
-                    </View>
-                  </Pressable>
-                ))}
-              </Card>
-            ) : null}
-
-            {top.bars.length ? (
-              <>
-                <Heading title="Bares que você mais foi" meta={top.label} />
-                <View style={styles.topBars}>
-                  {top.bars.map((bar) => (
-                    <Pressable
-                      key={bar.barId}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${bar.barName}, ${bar.games} ${bar.games === 1 ? 'jogo' : 'jogos'}`}
-                      onPress={() => openBar(bar.barId)}
-                      style={styles.topBar}
-                    >
-                      <Photo
-                        uri={bar.photoUrl}
-                        name={bar.barName}
-                        style={styles.topPhoto}
-                        big
-                      />
-                      <Text
-                        style={[text(13, 'Bold'), { color: palette.ink }]}
-                        numberOfLines={1}
-                      >
-                        {bar.barName}
-                      </Text>
-                      <Text
-                        style={[
-                          text(11.5),
-                          { color: palette.muted, marginTop: -4 }
-                        ]}
-                      >
-                        {bar.games} {bar.games === 1 ? 'jogo' : 'jogos'}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </>
-            ) : null}
-
-            {pending.data?.length ? (
-              <>
-                <Heading
-                  title="Avaliações"
-                  meta={`${pending.data.length} ${pending.data.length === 1 ? 'pendente' : 'pendentes'}`}
-                />
-                <Card soft>
-                  <View style={styles.rows}>
-                    {pending.data.slice(0, 3).map((item, i) => (
-                      <Row
-                        key={item.eventId}
-                        first={i === 0}
-                        icon="star"
-                        title={item.barName}
-                        sub={`${gameTitle(item)} · ${shortDate(item.startsAt)}`}
-                        onPress={() => router.push(`/pos-jogo/${item.eventId}`)}
-                        action="Avaliar"
-                      />
-                    ))}
-                  </View>
-                </Card>
-              </>
-            ) : null}
-
-            <Card soft>
-              <View style={styles.rows}>
-                <Row first icon="chat" title="Ajuda e suporte" onPress={help} />
-                <Row
-                  icon="doc"
-                  title="Termos e privacidade"
-                  onPress={() =>
-                    router.push({
-                      pathname: '/legal',
-                      params: { doc: 'termos' }
-                    })
-                  }
-                />
-              </View>
-            </Card>
+            {trophies}
+            {tiles}
+            {nextGames}
+            {extras}
           </>
         )}
       </ScrollView>
