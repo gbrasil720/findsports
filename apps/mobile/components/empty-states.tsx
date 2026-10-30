@@ -201,12 +201,17 @@ export function MyGamesEmpty({ week }: { week: WeekGame[] }) {
         <GhostTicket width={300} />
         <View style={styles.stampWrap} pointerEvents="none">
           <View style={styles.stamp}>
-            <Text
-              maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
-              style={styles.stampText}
-            >
-              Nenhum jogo
-            </Text>
+            {/* Uma linha por palavra: com quebra automática o Anton fica com
+                a entrelinha natural (1,5), longe do 1 do design. */}
+            {['Nenhum', 'jogo'].map((word) => (
+              <Text
+                key={word}
+                maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
+                style={styles.stampText}
+              >
+                {word}
+              </Text>
+            ))}
           </View>
         </View>
       </View>
@@ -812,9 +817,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
-  // Estreito como o do design: "Nenhum / jogo" em duas linhas.
   stamp: {
-    maxWidth: 140,
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 5,
