@@ -4,7 +4,12 @@ import {
   useQuery,
   useQueryClient
 } from '@tanstack/react-query'
-import { type Href, useLocalSearchParams, useRouter } from 'expo-router'
+import {
+  type Href,
+  Redirect,
+  useLocalSearchParams,
+  useRouter
+} from 'expo-router'
 import { type ReactNode, useState } from 'react'
 import {
   ActivityIndicator,
@@ -14,6 +19,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  useWindowDimensions,
   View
 } from 'react-native'
 import MapView from 'react-native-maps'
@@ -22,6 +28,7 @@ import { Card } from '@/components/card'
 import { initials, MeDot, RadiusCircle } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
+import { useLayout } from '@/components/layout'
 import { haptic, ScalePress } from '@/components/motion'
 import { usePalette } from '@/components/theme'
 import {
@@ -60,14 +67,48 @@ import { trpc } from '@/lib/trpc'
  * "Baixar meus dados" manda o arquivo para o e-mail da conta (WEB-418).
  */
 
-type Tab = 'preferencias' | 'avisos' | 'conta' | 'privacidade'
-const TABS: [Tab, string][] = [
+export type SettingsTab = 'preferencias' | 'avisos' | 'conta' | 'privacidade'
+type Tab = SettingsTab
+export const TABS: [Tab, string][] = [
   ['preferencias', 'Preferências'],
   ['avisos', 'Avisos'],
   ['conta', 'Conta'],
   ['privacidade', 'Privacidade']
 ]
 const RADII = [1, 3, 5, 10]
+/** Acima disso, Preferências e Privacidade em duas colunas (regra 05 da T5). */
+const TWO_COLUMNS = 620
+/** A coluna das Configurações fora do celular, centrada. */
+const COLUMN = 760
+
+/**
+ * O corpo de uma seção, sem cabeçalho: na tela das Configurações e, no tablet
+ * deitado e no dobrável aberto, à direita do menu "Você" (WEB-491).
+ */
+export function SettingsSection({
+  tab,
+  width,
+  mapHeight
+}: {
+  tab: Tab
+  /** A largura da coluna: com mais de 620, duas colunas. */
+  width: number
+  mapHeight?: number
+}) {
+  const wide = width > TWO_COLUMNS
+  return tab === 'preferencias' ? (
+    <Preferences
+      wide={wide}
+      mapHeight={mapHeight ?? (wide ? 150 : undefined)}
+    />
+  ) : tab === 'avisos' ? (
+    <Notices />
+  ) : tab === 'conta' ? (
+    <Account />
+  ) : (
+    <Privacy wide={wide} />
+  )
+}
 
 export default function Settings() {
   const router = useRouter()
@@ -84,13 +125,21 @@ export default function Settings() {
     setSeen(aba)
     setTab(pick(aba))
   }
+  // Fora do celular, uma coluna centrada; no tablet deitado e no dobrável
+  // aberto, as seções ficam à direita do menu "Você" (regra 02 da T5).
+  const { kind } = useLayout()
+  const { width } = useWindowDimensions()
+  const column = Math.min(width, COLUMN)
+  if (kind === 'split')
+    return <Redirect href={{ pathname: '/voce', params: { aba: tab } }} />
 
   return (
     <View style={[styles.screen, { backgroundColor: palette.bg }]}>
       <ScrollView
         contentContainerStyle={[
           styles.body,
-          { paddingTop: insets.top + 6, paddingBottom: insets.bottom + 32 }
+          { paddingTop: insets.top + 6, paddingBottom: insets.bottom + 32 },
+          width > COLUMN && { width: COLUMN, alignSelf: 'center' }
         ]}
       >
         <View style={styles.head}>
@@ -146,15 +195,7 @@ export default function Settings() {
             )
           })}
         </Glass>
-        {tab === 'preferencias' ? (
-          <Preferences />
-        ) : tab === 'avisos' ? (
-          <Notices />
-        ) : tab === 'conta' ? (
-          <Account />
-        ) : (
-          <Privacy />
-        )}
+        <SettingsSection tab={tab} width={column - 32} />
       </ScrollView>
     </View>
   )
@@ -162,7 +203,14 @@ export default function Settings() {
 
 // --- Preferências (11f) -----------------------------------------------------
 
-function Preferences() {
+function Preferences({
+  wide,
+  mapHeight = 92
+}: {
+  /** Esportes e raio lado a lado. */
+  wide?: boolean
+  mapHeight?: number
+}) {
   const palette = usePalette()
   const router = useRouter()
   const state = useExploreState()
@@ -236,132 +284,148 @@ function Preferences() {
         <ResetSuggestions inline />
       </SummaryCard>
 
-      <Card>
-        <View style={styles.pad}>
-          <View style={styles.cardHead}>
-            <Text style={[text(15, 'Bold'), { color: palette.ink }]}>
-              Esportes e times
-            </Text>
-            <Text
-              accessibilityRole="button"
-              onPress={editSports}
-              suppressHighlighting
-              style={[
-                text(13, 'Bold'),
-                { color: palette.dark ? ACID : ACCENT }
-              ]}
-            >
-              Editar
-            </Text>
-          </View>
-          <View style={styles.chips}>
-            {(sports.data ?? []).map((p) => (
-              <View key={p.sport.id} style={styles.sportChip}>
-                <Text style={[text(13, 'SemiBold', 1.2), { color: INK }]}>
-                  {p.sport.name}
+      <View style={wide ? styles.columns : styles.stacked}>
+        <View style={wide && styles.column}>
+          <Card>
+            <View style={styles.pad}>
+              <View style={styles.cardHead}>
+                <Text style={[text(15, 'Bold'), { color: palette.ink }]}>
+                  Esportes e times
                 </Text>
-              </View>
-            ))}
-          </View>
-          <View style={[styles.teams, { borderTopColor: palette.line }]}>
-            {(teams.data ?? []).map((team) => (
-              <View
-                key={team.id}
-                accessibilityLabel={team.name}
-                style={[styles.teamMark, { backgroundColor: palette.mark }]}
-              >
-                <Text style={[styles.teamText, { color: palette.ink }]}>
-                  {teamMark(team.name)}
-                </Text>
-              </View>
-            ))}
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Escolher times"
-              onPress={editTeams}
-              style={[styles.teamAdd, { borderColor: palette.dash }]}
-            >
-              <Text style={[text(20, 'Regular', 1), { color: palette.ink }]}>
-                +
-              </Text>
-            </Pressable>
-          </View>
-        </View>
-      </Card>
-
-      <Card>
-        <View style={styles.pad}>
-          <View style={styles.cardHead}>
-            <Text style={[text(15, 'Bold'), { color: palette.ink }]}>
-              Raio de busca
-            </Text>
-            <Text style={[text(12.5), { color: palette.muted }]}>
-              {count}
-              {more ? '+' : ''} {count === 1 ? 'bar' : 'bares'} no raio
-            </Text>
-          </View>
-          <View style={styles.radiusMap}>
-            <MapView
-              style={StyleSheet.absoluteFill}
-              region={{
-                latitude: center.lat,
-                longitude: center.lng,
-                // O círculo passa um pouco da altura do recorte, como no design.
-                latitudeDelta: ((radiusKm * 2) / 111) * (92 / 120),
-                longitudeDelta: ((radiusKm * 2) / 111) * (92 / 120)
-              }}
-              mapType={Platform.OS === 'ios' ? 'mutedStandard' : 'standard'}
-              customMapStyle={palette.dark ? MAP_STYLE.dark : MAP_STYLE.light}
-              userInterfaceStyle={palette.dark ? 'dark' : 'light'}
-              showsPointsOfInterests={false}
-              scrollEnabled={false}
-              zoomEnabled={false}
-              rotateEnabled={false}
-              pitchEnabled={false}
-              pointerEvents="none"
-            >
-              <RadiusCircle
-                center={{ latitude: center.lat, longitude: center.lng }}
-                km={radiusKm}
-                dark={palette.dark}
-                strong
-              />
-            </MapView>
-            <View style={styles.radiusMe} pointerEvents="none">
-              <MeDot />
-            </View>
-          </View>
-          <View style={[styles.segment, { backgroundColor: palette.mark }]}>
-            {radii.map((km) => {
-              const on = km === radiusKm
-              return (
-                <Pressable
-                  key={km}
+                <Text
                   accessibilityRole="button"
-                  accessibilityState={{ selected: on }}
-                  accessibilityLabel={`${km} quilômetros`}
-                  onPress={() => pickRadius(km)}
+                  onPress={editSports}
+                  suppressHighlighting
                   style={[
-                    styles.segmentItem,
-                    on && { backgroundColor: palette.dark ? ACID : INK }
+                    text(13, 'Bold'),
+                    { color: palette.dark ? ACID : ACCENT }
                   ]}
                 >
-                  <Text
-                    style={[
-                      styles.mono,
-                      {
-                        color: on ? (palette.dark ? INK : ACID) : palette.muted
-                      }
-                    ]}
+                  Editar
+                </Text>
+              </View>
+              <View style={styles.chips}>
+                {(sports.data ?? []).map((p) => (
+                  <View key={p.sport.id} style={styles.sportChip}>
+                    <Text style={[text(13, 'SemiBold', 1.2), { color: INK }]}>
+                      {p.sport.name}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+              <View style={[styles.teams, { borderTopColor: palette.line }]}>
+                {(teams.data ?? []).map((team) => (
+                  <View
+                    key={team.id}
+                    accessibilityLabel={team.name}
+                    style={[styles.teamMark, { backgroundColor: palette.mark }]}
                   >
-                    {km} km
+                    <Text style={[styles.teamText, { color: palette.ink }]}>
+                      {teamMark(team.name)}
+                    </Text>
+                  </View>
+                ))}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Escolher times"
+                  onPress={editTeams}
+                  style={[styles.teamAdd, { borderColor: palette.dash }]}
+                >
+                  <Text
+                    style={[text(20, 'Regular', 1), { color: palette.ink }]}
+                  >
+                    +
                   </Text>
                 </Pressable>
-              )
-            })}
-          </View>
+              </View>
+            </View>
+          </Card>
         </View>
-      </Card>
+
+        <View style={wide && styles.column}>
+          <Card>
+            <View style={styles.pad}>
+              <View style={styles.cardHead}>
+                <Text style={[text(15, 'Bold'), { color: palette.ink }]}>
+                  Raio de busca
+                </Text>
+                <Text style={[text(12.5), { color: palette.muted }]}>
+                  {count}
+                  {more ? '+' : ''} {count === 1 ? 'bar' : 'bares'} no raio
+                </Text>
+              </View>
+              <View style={[styles.radiusMap, { height: mapHeight }]}>
+                <MapView
+                  style={StyleSheet.absoluteFill}
+                  region={{
+                    latitude: center.lat,
+                    longitude: center.lng,
+                    // O círculo passa um pouco da altura do recorte, como no design.
+                    latitudeDelta:
+                      ((radiusKm * 2) / 111) * (mapHeight / (mapHeight + 28)),
+                    longitudeDelta:
+                      ((radiusKm * 2) / 111) * (mapHeight / (mapHeight + 28))
+                  }}
+                  mapType={Platform.OS === 'ios' ? 'mutedStandard' : 'standard'}
+                  customMapStyle={
+                    palette.dark ? MAP_STYLE.dark : MAP_STYLE.light
+                  }
+                  userInterfaceStyle={palette.dark ? 'dark' : 'light'}
+                  showsPointsOfInterests={false}
+                  scrollEnabled={false}
+                  zoomEnabled={false}
+                  rotateEnabled={false}
+                  pitchEnabled={false}
+                  pointerEvents="none"
+                >
+                  <RadiusCircle
+                    center={{ latitude: center.lat, longitude: center.lng }}
+                    km={radiusKm}
+                    dark={palette.dark}
+                    strong
+                  />
+                </MapView>
+                <View style={styles.radiusMe} pointerEvents="none">
+                  <MeDot />
+                </View>
+              </View>
+              <View style={[styles.segment, { backgroundColor: palette.mark }]}>
+                {radii.map((km) => {
+                  const on = km === radiusKm
+                  return (
+                    <Pressable
+                      key={km}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: on }}
+                      accessibilityLabel={`${km} quilômetros`}
+                      onPress={() => pickRadius(km)}
+                      style={[
+                        styles.segmentItem,
+                        on && { backgroundColor: palette.dark ? ACID : INK }
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.mono,
+                          {
+                            color: on
+                              ? palette.dark
+                                ? INK
+                                : ACID
+                              : palette.muted
+                          }
+                        ]}
+                      >
+                        {km} km
+                      </Text>
+                    </Pressable>
+                  )
+                })}
+              </View>
+            </View>
+          </Card>
+        </View>
+      </View>
     </>
   )
 }
@@ -890,7 +954,7 @@ const ADDS = {
 const keyOf = <T extends Record<string, string>>(map: T, label: string) =>
   (Object.keys(map) as (keyof T)[]).find((key) => map[key] === label) as keyof T
 
-function Privacy() {
+function Privacy({ wide }: { wide?: boolean }) {
   const palette = usePalette()
   const queryClient = useQueryClient()
   const me = useQuery(trpc.friends.me.queryOptions())
@@ -936,37 +1000,38 @@ function Privacy() {
       }
     })
   )
-  return (
+  const where = (
+    <Section icon="pin" title="Onde você foi">
+      <Row
+        title="Quem vê os bares que você validou"
+        sub="Também vale para jogos marcados"
+        extra={
+          <Choice
+            options={Object.values(SEES)}
+            on={SEES[me.data?.activityVisibility ?? 'friends']}
+            onPick={(label) =>
+              save.mutate({ activityVisibility: keyOf(SEES, label) })
+            }
+          />
+        }
+      />
+      <Row
+        title="Quem pode te adicionar"
+        divided
+        extra={
+          <Choice
+            options={Object.values(ADDS)}
+            on={ADDS[me.data?.friendRequestsFrom ?? 'everyone']}
+            onPick={(label) =>
+              save.mutate({ friendRequestsFrom: keyOf(ADDS, label) })
+            }
+          />
+        }
+      />
+    </Section>
+  )
+  const rest = (
     <>
-      <Section icon="pin" title="Onde você foi">
-        <Row
-          title="Quem vê os bares que você validou"
-          sub="Também vale para jogos marcados"
-          extra={
-            <Choice
-              options={Object.values(SEES)}
-              on={SEES[me.data?.activityVisibility ?? 'friends']}
-              onPick={(label) =>
-                save.mutate({ activityVisibility: keyOf(SEES, label) })
-              }
-            />
-          }
-        />
-        <Row
-          title="Quem pode te adicionar"
-          divided
-          extra={
-            <Choice
-              options={Object.values(ADDS)}
-              on={ADDS[me.data?.friendRequestsFrom ?? 'everyone']}
-              onPick={(label) =>
-                save.mutate({ friendRequestsFrom: keyOf(ADDS, label) })
-              }
-            />
-          }
-        />
-      </Section>
-      <SoonNote icon="eye" sentence="Comunidades chegam em breve." />
       <Section icon="ranking" title="Ranking">
         <Row
           title="Aparecer no ranking global"
@@ -1006,6 +1071,25 @@ function Privacy() {
         <View style={[styles.divider, { backgroundColor: palette.line }]} />
         <ResetSuggestions />
       </Section>
+    </>
+  )
+  const soon = <SoonNote icon="eye" sentence="Comunidades chegam em breve." />
+  // Largo: o aviso por cima e os grupos em duas colunas (regra 05 da T5).
+  if (wide)
+    return (
+      <>
+        {soon}
+        <View style={styles.columns}>
+          <View style={styles.column}>{where}</View>
+          <View style={styles.column}>{rest}</View>
+        </View>
+      </>
+    )
+  return (
+    <>
+      {where}
+      {soon}
+      {rest}
     </>
   )
 }
@@ -1260,6 +1344,10 @@ const styles = StyleSheet.create({
   },
   summaryNote: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   pad: { padding: 14 },
+  // Duas colunas que não esticam: cada cartão na própria altura.
+  columns: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
+  column: { flex: 1, minWidth: 0, gap: 12 },
+  stacked: { gap: 12 },
   cardHead: {
     flexDirection: 'row',
     justifyContent: 'space-between',
