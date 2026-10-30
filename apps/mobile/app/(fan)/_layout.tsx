@@ -295,7 +295,11 @@ export default function FanTabs() {
           }
           initials={initials(user?.name ?? '')}
           left={
-            layout.kind === 'split' && layout.nav === 'float'
+            // No Explorar a barra flutua sobre o mapa (04b); nas outras
+            // abas, centrada na tela (design T3 e T4).
+            pathname === '/explore' &&
+            layout.kind === 'split' &&
+            layout.nav === 'float'
               ? layout.split + layout.gap
               : 0
           }
