@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, View } from 'react-native'
 import Svg, { Circle, Defs, Line, RadialGradient, Stop } from 'react-native-svg'
 import { Card } from '@/components/card'
 import { HardShadow } from '@/components/explore'
+import { Medal3D, MedalImage } from '@/components/medal'
 import { usePalette } from '@/components/theme'
 import {
   ACID,
@@ -15,6 +16,7 @@ import {
   Toggle,
   text
 } from '@/components/ui'
+import { type Achievement, firstToUnlock } from '@/lib/achievements'
 
 /*
  * Os vazios da Rodada 14 do design (`gen/build14.js`), que o Adaptativo 10
@@ -346,6 +348,204 @@ export function SearchEmpty({
   )
 }
 
+/**
+ * Conquistas sem nenhuma (`eMedals`): a primeira, perto, em 3D no cartão de
+ * tinta; quatro vagas com "?"; e o que fazer para começar. Os nomes são os
+ * das medalhas do produto (`ACHIEVEMENTS`).
+ */
+export function MedalsEmpty({ onStart }: { onStart: () => void }) {
+  const palette = usePalette()
+  const steps = [
+    ['Valide um código', 'Marque “vou assistir” e mostre no balcão'],
+    ['Assista em 3 bairros', 'Desbloqueia Rodou a cidade'],
+    ['Avalie um bar', 'Desbloqueia Primeira resenha']
+  ]
+  return (
+    <View style={{ gap: 14 }}>
+      <View>
+        {/* A sombra de destaque do design (`hero`): acid. */}
+        <HardShadow
+          color={palette.dark ? 'rgba(201,241,53,.28)' : ACID}
+          offset={5}
+          radius={7}
+        />
+        <View style={styles.first}>
+          <Medal3D
+            medal={{ id: 'bar1', name: 'Primeira rodada', locked: true }}
+            drag
+            style={{ width: 118, height: 118 }}
+          />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={[text(12.5, 'Bold', 1.3), { color: ACID }]}>
+              A primeira está perto
+            </Text>
+            <Text
+              maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
+              style={styles.firstName}
+            >
+              Primeira rodada
+            </Text>
+            <Text style={[text(12.5, 'Regular', 1.35), { color: '#aaa9a4' }]}>
+              Valide seu código num bar e ela é sua. Arraste para girar.
+            </Text>
+          </View>
+        </View>
+      </View>
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        {[0, 1, 2, 3].map((slot) => (
+          <View
+            key={slot}
+            style={[
+              styles.slot,
+              { borderColor: dashColor(palette.dark, 0.25) }
+            ]}
+          >
+            <Text
+              style={[styles.slotMark, { color: dashColor(palette.dark, 0.3) }]}
+            >
+              ?
+            </Text>
+          </View>
+        ))}
+      </View>
+      <Text style={[text(13, 'Bold'), { color: palette.ink }]}>
+        Para começar
+      </Text>
+      <Card>
+        <View style={{ paddingHorizontal: 14 }}>
+          {steps.map(([title, detail], index) => (
+            <View
+              key={title}
+              style={[
+                styles.toggle,
+                index > 0 && {
+                  borderTopWidth: 1,
+                  borderTopColor: palette.line
+                }
+              ]}
+            >
+              <View
+                style={[
+                  styles.stepDot,
+                  index === 0
+                    ? { backgroundColor: INK }
+                    : {
+                        borderWidth: 1.5,
+                        borderColor: dashColor(palette.dark, 0.3)
+                      }
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.stepNumber,
+                    { color: index === 0 ? ACID : palette.muted }
+                  ]}
+                >
+                  {index + 1}
+                </Text>
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text
+                  style={[text(14.5, 'Bold', 1.25), { color: palette.ink }]}
+                >
+                  {title}
+                </Text>
+                <Text
+                  style={[text(12, 'Regular', 1.3), { color: palette.muted }]}
+                >
+                  {detail}
+                </Text>
+              </View>
+              {index === 0 ? (
+                <Pressable
+                  accessibilityRole="button"
+                  hitSlop={8}
+                  onPress={onStart}
+                >
+                  <Text
+                    style={[
+                      text(12.5, 'Bold', 1.2),
+                      { color: palette.dark ? ACID : '#c92b0c' }
+                    ]}
+                  >
+                    Começar
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
+          ))}
+        </View>
+      </Card>
+    </View>
+  )
+}
+
+/**
+ * "As primeiras" (`ctxMedals`): ao lado (ou em cima) das conquistas vazias
+ * no tablet, as três que faltam menos, com o que pedem e quanto falta.
+ */
+export function FirstMedals({
+  list,
+  top,
+  onOpen
+}: {
+  list: Achievement[]
+  /** O respiro do topo (a barra de status, quando encosta nela). */
+  top: number
+  onOpen: (id: string) => void
+}) {
+  const palette = usePalette()
+  return (
+    <View
+      style={[
+        styles.aside,
+        {
+          paddingTop: top,
+          backgroundColor: palette.dark ? '#161613' : '#ebe8df'
+        }
+      ]}
+    >
+      <Text
+        maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
+        style={[styles.asideTitle, { color: palette.dark ? ACID : '#c92b0c' }]}
+      >
+        As primeiras
+      </Text>
+      <Text style={[text(13), { color: palette.muted, marginTop: -8 }]}>
+        Saem com um código validado no balcão.
+      </Text>
+      {firstToUnlock(list).map(({ achievement, asks, left }) => (
+        <Pressable
+          key={achievement.id}
+          accessibilityRole="button"
+          onPress={() => onOpen(achievement.id)}
+        >
+          <Card>
+            <View style={styles.near}>
+              <MedalImage id={achievement.id} locked size={70} />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={[text(15, 'Bold', 1.25), { color: palette.ink }]}>
+                  {achievement.name}
+                </Text>
+                <Text
+                  style={[text(12.5, 'Regular', 1.3), { color: palette.muted }]}
+                >
+                  {asks}
+                </Text>
+              </View>
+              <View style={styles.badge}>
+                <Text style={[text(11, 'Bold', 1.2), { color: INK }]}>
+                  {left}
+                </Text>
+              </View>
+            </View>
+          </Card>
+        </Pressable>
+      ))}
+    </View>
+  )
+}
+
 /** Uma linha de aviso com o interruptor (`eNotif`). */
 export type NoticeToggle = {
   icon: 'tv' | 'people' | 'crew'
@@ -544,6 +744,57 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '10deg' }]
   },
   zSmall: { right: 38, top: 2, fontSize: 20, transform: [{ rotate: '14deg' }] },
+  aside: { flex: 1, paddingHorizontal: 22, gap: 14 },
+  asideTitle: {
+    fontFamily: 'Anton',
+    fontSize: 22,
+    textTransform: 'uppercase',
+    marginVertical: -0.2425 * 22
+  },
+  near: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 12 },
+  badge: {
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderRadius: 3,
+    backgroundColor: ACID
+  },
+  first: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingTop: 18,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    borderRadius: 7,
+    backgroundColor: INK,
+    overflow: 'hidden'
+  },
+  firstName: {
+    fontFamily: 'Anton',
+    fontSize: 30,
+    textTransform: 'uppercase',
+    color: PAPER,
+    marginTop: 4 - 0.2425 * 30,
+    marginBottom: 4 - 0.2425 * 30
+  },
+  slot: {
+    flex: 1,
+    aspectRatio: 1,
+    borderRadius: 999,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  slotMark: { fontFamily: 'Anton', fontSize: 26 },
+  stepDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  stepNumber: { fontFamily: 'GeistMono-SemiBold', fontSize: 12 },
   toggle: {
     flexDirection: 'row',
     alignItems: 'center',
