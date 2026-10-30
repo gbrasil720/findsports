@@ -144,7 +144,7 @@ export default function VerifyEmail() {
 
   if (framed)
     return (
-      <Screen brand gap={16} footer={resendRow}>
+      <Screen brand gap={16}>
         <BackButton />
         <View>
           <View style={styles.squareShadow} />
@@ -189,6 +189,7 @@ export default function VerifyEmail() {
           height={54}
           onPress={() => openMailApp('app de e-mail', MAIL)}
         />
+        {resendRow}
         {notice ? (
           <ErrorText style={[text(13.5), { color: LIVE }]}>{notice}</ErrorText>
         ) : null}
