@@ -237,6 +237,7 @@ export default function YourBars() {
             onToggle={toggleSaved}
             board={board}
             gridEnd={gridEnd}
+            wide={layout.kind !== 'phone'}
             selected={aside ? pick?.key : undefined}
             onSelect={choose}
           />
@@ -704,6 +705,7 @@ function Visits({
   onToggle,
   board,
   gridEnd,
+  wide,
   selected,
   onSelect
 }: {
@@ -718,6 +720,8 @@ function Visits({
   board?: { columns: number; cell: number }
   /** Onde termina a semana de quadrados (fora do celular, na última visita). */
   gridEnd: number
+  /** Fora do celular: o mês com a contagem ao lado. */
+  wide: boolean
   /** Lado a lado: a linha tocada, cujo bar a lembrança ao lado mostra. */
   selected?: string | null
   onSelect?: (barId: string, key: string) => void
@@ -809,9 +813,17 @@ function Visits({
       ) : (
         byMonth(rows).map((group) => (
           <View key={group.key}>
-            <Text style={[styles.heading, { color: t.heading }]}>
-              {group.label}
-            </Text>
+            {/* Fora do celular o mês leva a contagem, como no design (A04). */}
+            {!wide ? (
+              <Text style={[styles.heading, { color: t.heading }]}>
+                {group.label}
+              </Text>
+            ) : (
+              <Header
+                label={group.label}
+                count={`${group.rows.length} ${group.rows.length === 1 ? 'jogo' : 'jogos'}`}
+              />
+            )}
             {group.rows.map((visit, i) => {
               const date = dayMonth(visit.startsAt)
               return (
