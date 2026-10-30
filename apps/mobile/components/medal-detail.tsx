@@ -2,17 +2,21 @@ import { useRouter } from 'expo-router'
 import { useRef } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
 import Animated from 'react-native-reanimated'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg'
 import { Card } from '@/components/card'
 import { Glass } from '@/components/glass'
 import { Medal3D, MedalImage, useMedalPalette } from '@/components/medal'
 import { haptic, SWAP, usePressScale } from '@/components/motion'
+import { PALETTE, PaletteProvider } from '@/components/theme'
 import {
   ACID,
   BackButton,
   DISPLAY_FONT_SCALE,
   GlassRound,
   Icon,
+  INK,
+  PAPER,
   PillButton,
   Text,
   Title,
@@ -20,10 +24,13 @@ import {
 } from '@/components/ui'
 import {
   type Achievement,
+  coverLine,
   describe,
   fullDate,
+  missingLine,
   nextInSeries,
   progressLabel,
+  progressShare,
   series,
   seriesLabel,
   unit
@@ -324,6 +331,65 @@ export function GlassPill({
   )
 }
 
+/**
+ * A tela de fora do Z Flip 8 (A06): a medalha girando, o que ela é e a
+ * próxima da série, com "Compartilhar". Sempre no escuro, como o design.
+ */
+export function CoverMedal({
+  medal,
+  list,
+  share
+}: {
+  medal: Achievement
+  list: Achievement[]
+  share: () => void
+}) {
+  const insets = useSafeAreaInsets()
+  const next = nextInSeries(list, medal)
+  const done = Boolean(medal.unlockedAt)
+  return (
+    <PaletteProvider value={PALETTE.dark}>
+      <View style={[styles.cover, { paddingTop: insets.top + 28 }]}>
+        <View style={styles.coverRow}>
+          <Medal3D medal={engraving(medal)} style={styles.coverMedal} />
+          <View style={styles.coverCopy}>
+            {done ? <Text style={styles.coverKicker}>DESBLOQUEOU</Text> : null}
+            <Text style={styles.coverName}>{medal.name}</Text>
+            <Text style={[text(12.5, 'Regular', 1.35), { color: '#aaa9a4' }]}>
+              {done ? coverLine(medal) : missingLine(medal)}
+            </Text>
+            {next ? (
+              <>
+                <View style={styles.coverTrack}>
+                  <View
+                    style={{
+                      width: `${Math.round(progressShare(next) * 100)}%`,
+                      height: '100%',
+                      backgroundColor: ACID
+                    }}
+                  />
+                </View>
+                <Text style={styles.coverMono}>
+                  PRÓXIMA {progressLabel(next)}
+                </Text>
+              </>
+            ) : null}
+          </View>
+        </View>
+        <View style={[styles.coverPill, { bottom: insets.bottom + 26 }]}>
+          <PillButton
+            label="Compartilhar"
+            leading="share"
+            height={50}
+            edge="#000"
+            onPress={share}
+          />
+        </View>
+      </View>
+    </PaletteProvider>
+  )
+}
+
 const styles = StyleSheet.create({
   top: {
     flexDirection: 'row',
@@ -377,5 +443,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8
-  }
+  },
+  cover: { flex: 1, backgroundColor: INK, paddingHorizontal: 22 },
+  coverRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
+  coverMedal: { width: 120, height: 120, marginTop: 6 },
+  coverCopy: { flex: 1, minWidth: 0, gap: 8, paddingTop: 6 },
+  coverKicker: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11,
+    letterSpacing: 0.66,
+    color: ACID
+  },
+  coverName: {
+    fontFamily: 'Anton',
+    fontSize: 30,
+    textTransform: 'uppercase',
+    color: PAPER,
+    marginVertical: -7
+  },
+  coverTrack: {
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#2c2c27',
+    overflow: 'hidden',
+    marginTop: 4
+  },
+  coverMono: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11,
+    color: '#aaa9a4'
+  },
+  coverPill: { position: 'absolute', right: 22, width: 180 }
 })
