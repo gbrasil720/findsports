@@ -279,7 +279,7 @@ export default function Profile() {
         <View style={{ flex: 1 }}>
           <Text
             style={[text(15, 'Bold'), { color: PAPER }]}
-            numberOfLines={1}
+            numberOfLines={layout.kind === 'phone' ? 1 : 2}
             adjustsFontSizeToFit={layout.kind === 'phone'}
             minimumFontScale={0.85}
           >
@@ -518,7 +518,9 @@ export default function Profile() {
           ]}
         >
           {who}
-          {status ?? tiles}
+          {/* Sem encolher: a altura da metade é fixa, e o Yoga apertava a
+              fileira dos números até cortar os cartões. */}
+          <View style={{ flexShrink: 0 }}>{status ?? tiles}</View>
         </View>
         {status ? null : (
           <ScrollView
