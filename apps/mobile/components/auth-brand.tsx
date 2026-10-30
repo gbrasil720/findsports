@@ -39,10 +39,14 @@ export function AuthBrand({
     0,
     column ? (height > 700 ? 4 : height > 420 ? 3 : 2) : width > 900 ? 4 : 3
   )
+  // Coluna estreita (dobrável aberto): a versão pequena da marca (brand8).
+  const big = !column || (width > 460 && height > 560)
   const size = column
-    ? width > 620
-      ? 84
-      : 64
+    ? big
+      ? width > 620
+        ? 84
+        : 64
+      : 44
     : width > 900
       ? 72
       : width > 780
@@ -73,6 +77,7 @@ export function AuthBrand({
         style={[
           styles.content,
           column ? styles.contentColumn : styles.contentBand,
+          !big && styles.contentSmall,
           { paddingTop: insets.top + (column ? 16 : 22) }
         ]}
       >
@@ -80,8 +85,8 @@ export function AuthBrand({
           source={require('../assets/images/brand/wordmark-light.png')}
           accessibilityLabel="Onside"
           style={{
-            height: column ? 32 : 28,
-            width: ((column ? 32 : 28) * 845) / 256
+            height: big ? (column ? 32 : 28) : 24,
+            width: ((big ? (column ? 32 : 28) : 24) * 845) / 256
           }}
         />
         <View style={{ gap: column ? 18 : 16 }}>
@@ -112,14 +117,22 @@ export function AuthBrand({
                   key={`${game.title}-${game.startsAt}`}
                   tone="dark"
                   tint={index === 0 ? 'rgba(232,50,12,.55)' : undefined}
-                  style={column ? styles.row : styles.pill}
+                  style={[
+                    column ? styles.row : styles.pill,
+                    !big && styles.rowSmall
+                  ]}
                 >
-                  <Text style={[styles.time, column && { fontSize: 24 }]}>
+                  <Text
+                    style={[styles.time, column && big && { fontSize: 24 }]}
+                  >
                     {formatTime(game.startsAt)}
                   </Text>
                   <Text
                     numberOfLines={1}
-                    style={[styles.game, column && { flex: 1, fontSize: 15 }]}
+                    style={[
+                      styles.game,
+                      column && { flex: 1, fontSize: big ? 15 : 13.5 }
+                    ]}
                   >
                     {marks(game.title)}
                   </Text>
@@ -147,6 +160,8 @@ const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: '#2a2a25', overflow: 'hidden' },
   content: { flex: 1, justifyContent: 'space-between' },
   contentColumn: { paddingHorizontal: 40, paddingBottom: 40 },
+  contentSmall: { paddingHorizontal: 24, paddingBottom: 24 },
+  rowSmall: { height: 44, borderRadius: 22 },
   contentBand: { paddingHorizontal: 40, paddingBottom: 58 },
   headline: {
     fontFamily: 'Anton',

@@ -7,9 +7,11 @@ import { useFocusEffect, useNavigation, useRouter } from 'expo-router'
 import { setStatusBarStyle } from 'expo-status-bar'
 import {
   Children,
+  createContext,
   isValidElement,
   type ReactNode,
   useCallback,
+  useContext,
   useEffect,
   useRef,
   useState
@@ -820,9 +822,12 @@ export function Screen({
                 gap
               }}
             >
-              {items.filter(
-                (child) => !(isValidElement(child) && child.type === BackButton)
-              )}
+              <TitleSize.Provider value={half ? 36 : 40}>
+                {items.filter(
+                  (child) =>
+                    !(isValidElement(child) && child.type === BackButton)
+                )}
+              </TitleSize.Provider>
               {footer}
             </ScrollView>
           </Animated.View>
@@ -845,7 +850,14 @@ export function Screen({
         }}
       >
         <View style={{ width: column, gap }}>
-          {items}
+          <TitleSize.Provider
+            value={
+              // Os tamanhos do título no design (split8, port8, table8).
+              table ? 30 : layout.kind === 'stack' ? 48 : column < 360 ? 34 : 42
+            }
+          >
+            {items}
+          </TitleSize.Provider>
           {footer ? (
             <Animated.View
               entering={entering('footer', items.length)}
@@ -1035,9 +1047,15 @@ export function GlassRound({
  * iOS ele corta o topo das letras quando é menor que a altura da fonte
  * (1,505em); a margem negativa leva a linha ao 1.02 do design.
  */
+/**
+ * Fora do celular o `Screen` dita o tamanho do título (o do design de cada
+ * moldura); no celular, vale o de cada tela.
+ */
+const TitleSize = createContext<number | null>(null)
+
 export function Title({
   lines,
-  size,
+  size: own,
   color = FG,
   accentColor = HOT
 }: {
@@ -1046,6 +1064,7 @@ export function Title({
   color?: string
   accentColor?: string
 }) {
+  const size = useContext(TitleSize) ?? own
   const style = {
     fontFamily: 'Anton',
     fontSize: size,
