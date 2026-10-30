@@ -219,7 +219,27 @@ export default function MyGames() {
           />
         ) : !games.length ? (
           <View style={styles.empty}>
-            <WeekEmpty />
+            {/* O vazio da Rodada 14 é do tablet (Adaptativo 10); no
+                celular, o de sempre. */}
+            {layout.kind === 'phone' ? (
+              <>
+                <Text style={[text(16, 'Bold'), { color: palette.ink }]}>
+                  Você ainda não marcou nenhum jogo.
+                </Text>
+                <Text
+                  style={[text(14, 'Regular', 1.45), { color: palette.muted }]}
+                >
+                  Na página de um bar, toque em “Vou assistir aqui”. Nos bares
+                  Elite o código sai na hora e vale a oferta da casa no balcão.
+                </Text>
+                <PillButton
+                  label="Procurar bares"
+                  onPress={() => router.navigate('/explore')}
+                />
+              </>
+            ) : (
+              <WeekEmpty />
+            )}
           </View>
         ) : (
           <>
