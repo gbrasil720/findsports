@@ -2,7 +2,7 @@ import { actionPhase } from '@findsports_oficial/api/lib/transient-error'
 import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -50,7 +50,20 @@ export default function GoingSheet() {
   const insets = useSafeAreaInsets()
   const palette = usePalette()
   const queryClient = useQueryClient()
-  const bar = useQuery(trpc.pubs.getById.queryOptions({ id: barId }))
+  // Sem bar (link quebrado, amigo sem jogo), a folha fecha em vez de pedir
+  // ao servidor um id vazio (erro do zod).
+  const bar = useQuery({
+    ...trpc.pubs.getById.queryOptions({ id: barId ?? '' }),
+    enabled: !!barId
+  })
+  // Aberta direto (link, recarga), não há tela por baixo para voltar: o
+  // Explorar entra no lugar ("GO_BACK was not handled").
+  const close = () =>
+    router.canGoBack() ? router.back() : router.replace('/explore')
+  // biome-ignore lint/correctness/useExhaustiveDependencies: uma vez, ao abrir sem bar
+  useEffect(() => {
+    if (!barId) close()
+  }, [barId])
   const data = bar.data
   // Só os jogos em que o botão cabe: o servidor manda `attendance` neles.
   const games = (data?.events ?? [])
@@ -79,7 +92,7 @@ export default function GoingSheet() {
         if (attending) haptic.success()
         else haptic.select()
         if (attending && data?.issuesCode) router.replace(`/codigo/${id}`)
-        else router.back()
+        else close()
       }
     })
   )
@@ -95,7 +108,7 @@ export default function GoingSheet() {
           onRetry={bar.refetch}
           retrying={bar.isFetching}
         />
-        <BackButton icon="close" />
+        <BackButton icon="close" onPress={close} />
       </View>
     )
   }
@@ -156,7 +169,7 @@ export default function GoingSheet() {
               {[data.name, data.neighborhood].filter(Boolean).join(' · ')}
             </Text>
           </View>
-          <BackButton icon="close" />
+          <BackButton icon="close" onPress={close} />
         </View>
         <Text
           style={[
