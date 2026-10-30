@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import {
+  gameToday,
+  levelLine,
   markedToday,
   memberSince,
   nextInSaved,
@@ -96,5 +98,32 @@ describe('perfil (2l)', () => {
     const before = topBars([visit('c', '2026-09-30T22:00:00Z')], NOW)
     expect(before.label).toBe('ao todo')
     expect(before.bars.map((b) => b.barId)).toEqual(['c'])
+  })
+
+  test('tela de fora: o jogo de hoje que não acabou, o mais cedo', () => {
+    const game = (id: string, startsAt: string, ended = false) => ({
+      id,
+      startsAt,
+      ended
+    })
+    expect(
+      gameToday(
+        [
+          game('noite', '2026-10-20T23:30:00Z'),
+          game('tarde', '2026-10-20T19:00:00Z'),
+          game('cedo', '2026-10-20T13:00:00Z', true),
+          game('amanha', '2026-10-21T19:00:00Z')
+        ],
+        NOW
+      )?.id
+    ).toBe('tarde')
+    expect(gameToday([game('amanha', '2026-10-21T19:00:00Z')], NOW)).toBeNull()
+  })
+
+  test('linha do nível com o caminho até o próximo', () => {
+    expect(levelLine({ level: 4, unlocked: 5, nextAt: 8 })).toBe(
+      'NÍVEL 4 · 5/8'
+    )
+    expect(levelLine({ level: 5, unlocked: 9, nextAt: null })).toBe('NÍVEL 5')
   })
 })

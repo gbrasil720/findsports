@@ -100,3 +100,30 @@ export function topBars(visits: Visit[], now: number) {
       .slice(0, 3)
   }
 }
+
+/**
+ * A tela de fora do Flip (WEB-491): o jogo marcado de hoje que ainda não
+ * acabou, o mais cedo primeiro.
+ */
+export function gameToday<
+  G extends { startsAt: string | Date; ended: boolean }
+>(games: G[], now: number) {
+  return (
+    games
+      .filter((game) => !game.ended && dayKey(game.startsAt) === dayKey(now))
+      .sort(
+        (a, b) =>
+          new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()
+      )[0] ?? null
+  )
+}
+
+/** "NÍVEL 4 · 5/8": conquistas até o próximo nível; no último, só o nível. */
+export const levelLine = (level: {
+  level: number
+  unlocked: number
+  nextAt: number | null
+}) =>
+  level.nextAt === null
+    ? `NÍVEL ${level.level}`
+    : `NÍVEL ${level.level} · ${level.unlocked}/${level.nextAt}`
