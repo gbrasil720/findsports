@@ -272,7 +272,7 @@ export default function FanTabs() {
           <NativeTabs.Trigger.Label>IA</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
       </NativeTabs>
-      {layout.nav !== 'tabs' ? (
+      {layout.nav !== 'tabs' && layout.nav !== 'none' ? (
         <SideNav
           kind={layout.nav}
           current={
@@ -318,7 +318,11 @@ export default function FanTabs() {
           onSettings={settings}
         />
       ) : null}
-      {coach.pending && pathname === '/explore' && !menuOpen ? (
+      {/* Na tela de fora do Flip não há botão da IA para apontar. */}
+      {coach.pending &&
+      pathname === '/explore' &&
+      !menuOpen &&
+      layout.nav !== 'none' ? (
         <AiCoach
           onClose={coach.done}
           onOpen={() => {

@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import { Dimensions, Platform, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { classify, locksPortrait } from '@/lib/layout'
+import { usePosture } from '@/modules/fold-posture'
 
 /*
  * O layout do aparelho (WEB-486): as classes de `lib/layout.ts` pela janela
@@ -14,7 +15,8 @@ const IS_PAD = Platform.OS === 'ios' && Platform.isPad
 
 export function useLayout() {
   const { width, height } = useWindowDimensions()
-  return classify({ width, height, os: Platform.OS, isPad: IS_PAD })
+  const posture = usePosture()
+  return classify({ width, height, os: Platform.OS, isPad: IS_PAD, posture })
 }
 
 /** Medidas da navegação de cada aparelho, as do design (gen/adapt-dev.js). */
@@ -39,6 +41,8 @@ export function useNavInsets() {
     return { bottom: insets.bottom, left: 0, right: NAV.duoRail.width }
   if (nav === 'rail')
     return { bottom: insets.bottom, left: NAV.rail.width, right: 0 }
+  // A tela de fora do Flip não tem navegação.
+  if (nav === 'none') return { bottom: insets.bottom, left: 0, right: 0 }
   if (nav === 'float')
     return {
       bottom: insets.bottom + NAV.float.gap + NAV.float.height,

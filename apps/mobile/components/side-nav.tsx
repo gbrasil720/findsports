@@ -22,7 +22,7 @@ const TABS: { key: NavTab; icon: 'map' | 'fan' | 'you'; label: string }[] = [
 ]
 
 type Props = {
-  kind: Exclude<NavKind, 'tabs'>
+  kind: Exclude<NavKind, 'tabs' | 'none'>
   current: NavTab
   onTab: (tab: NavTab) => void
   onAi: () => void
