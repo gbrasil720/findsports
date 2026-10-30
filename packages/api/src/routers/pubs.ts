@@ -369,12 +369,17 @@ export const pubsRouter = router({
   /**
    * Os jogos de hoje nos bares no ar, para a splash do app (`apps/mobile`).
    * Aberta: aparece antes do login. Sai só o título e a hora do jogo, sem
-   * identificar bar nenhum, e o mesmo jogo em vários bares conta uma vez.
+   * identificar bar nenhum, e o mesmo jogo em vários bares conta uma vez,
+   * com quantos bares o passam (a marca das telas de entrar do tablet).
    * "Hoje" é o dia de Brasília; `starts_at` é `timestamp` sem fuso, em UTC.
    */
   todayGames: publicProcedure.query(async () => {
-    const games = await db.execute<{ title: string; starts_at: string }>(sql`
-      SELECT g.title, g.starts_at
+    const games = await db.execute<{
+      title: string
+      starts_at: string
+      bars: number
+    }>(sql`
+      SELECT g.title, g.starts_at, count(DISTINCT g.bar_id)::int AS bars
       FROM (
         SELECT
           ${gameTitle({
@@ -382,7 +387,8 @@ export const pubsRouter = router({
             participantFreeText: sql`e.participant_free_text`,
             championship: sql`e.championship`
           })} AS title,
-          e.starts_at
+          e.starts_at,
+          e.bar_id
         FROM event e
         JOIN bar b ON b.id = e.bar_id
         WHERE b.is_active
@@ -395,7 +401,8 @@ export const pubsRouter = router({
     `)
     return games.rows.map((game) => ({
       title: game.title,
-      startsAt: utcIso(game.starts_at)
+      startsAt: utcIso(game.starts_at),
+      bars: Number(game.bars)
     }))
   }),
 

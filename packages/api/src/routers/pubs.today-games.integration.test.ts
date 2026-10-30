@@ -13,7 +13,8 @@ import { load } from './integration-seed'
 
 /**
  * A agenda do dia que a splash do app mostra (`pubs.todayGames`): aberta, só
- * de bar no ar, só de hoje, e o mesmo jogo em dois bares conta uma vez.
+ * de bar no ar, só de hoje, e o mesmo jogo em dois bares conta uma vez, com
+ * os dois bares na contagem.
  */
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
 
@@ -120,6 +121,13 @@ integrationTest(
       for (const game of games) {
         expect(game.startsAt).toBe(now.toISOString())
       }
+      // Quantos bares no ar passam cada jogo: o do bar fora do ar não conta.
+      expect(
+        Object.fromEntries(games.map((game) => [game.title, game.bars]))
+      ).toEqual({
+        [`Mandante ${mark} × Visitante ${mark}`]: 2,
+        [`Treino livre ${mark}`]: 1
+      })
     } finally {
       await db.delete(user).where(
         inArray(
