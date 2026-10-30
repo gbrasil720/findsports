@@ -248,7 +248,9 @@ export default function Shelf() {
         <View
           style={[
             styles.tableBottom,
-            { marginTop: layout.gap, paddingBottom: tabBar + 12 }
+            // A fileira não desconta a barra: ela flutua mais abaixo, e o
+            // recorte cortava o nome das medalhas.
+            { marginTop: layout.gap }
           ]}
         >
           <View style={styles.tableBar}>
