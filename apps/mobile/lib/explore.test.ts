@@ -9,6 +9,7 @@ import {
   goingSummary,
   greeting,
   isLive,
+  matchPeriod,
   searchCenter,
   teamMark
 } from './explore'
@@ -124,6 +125,10 @@ test('tela de fora do Flip: o jogo em siglas, ao vivo ou com a hora', () => {
   expect(coverKicker(game, at('2026-10-15T23:00:00Z'))).toBe(
     'COR × PAL · AO VIVO'
   )
+  const futebol = { ...game, sport: { slug: 'futebol' } }
+  expect(coverKicker(futebol, at('2026-10-15T23:10:00Z'))).toBe(
+    'COR × PAL · 2º TEMPO'
+  )
   expect(coverKicker(game, at('2026-10-15T20:00:00Z'))).toBe(
     'COR × PAL · 19:00'
   )
@@ -133,4 +138,21 @@ test('tela de fora do Flip: o jogo em siglas, ao vivo ou com a hora', () => {
       at('2026-10-15T20:00:00Z')
     )
   ).toBe('GP DE INTERLAGOS · 19:00')
+})
+
+test('parte do jogo de futebol pelo relógio', () => {
+  const game = {
+    startsAt: '2026-10-15T22:00:00Z',
+    endsAt: null,
+    sport: { slug: 'futebol' }
+  }
+  const at = (min: number) => Date.parse(game.startsAt) + min * 60_000
+  expect(matchPeriod(game, at(-5))).toBeNull()
+  expect(matchPeriod(game, at(30))).toBe('1º tempo')
+  expect(matchPeriod(game, at(50))).toBe('Intervalo')
+  expect(matchPeriod(game, at(80))).toBe('2º tempo')
+  expect(matchPeriod(game, at(130))).toBe('Ao vivo')
+  expect(matchPeriod({ ...game, sport: { slug: 'basquete' } }, at(30))).toBe(
+    'Ao vivo'
+  )
 })
