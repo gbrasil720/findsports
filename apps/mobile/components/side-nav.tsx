@@ -53,7 +53,7 @@ export function useAiButtonCenter() {
   if (layout.nav === 'float') {
     // Barra (3 abas de 96, 2 vãos de 2, 5 de cada lado) + 10 + o círculo.
     const group = 3 * 96 + 2 * 2 + 10 + 10 + NAV.float.height
-    const left = layout.kind === 'split' ? layout.split : 0
+    const left = layout.kind === 'split' ? layout.split + layout.gap : 0
     const mid = (left + width) / 2
     return {
       x: mid + group / 2 - NAV.float.height / 2,

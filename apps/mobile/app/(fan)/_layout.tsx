@@ -295,7 +295,9 @@ export default function FanTabs() {
           }
           initials={initials(user?.name ?? '')}
           left={
-            layout.kind === 'split' && layout.nav === 'float' ? layout.split : 0
+            layout.kind === 'split' && layout.nav === 'float'
+              ? layout.split + layout.gap
+              : 0
           }
         />
       ) : null}
