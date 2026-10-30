@@ -15,6 +15,7 @@ import {
 import Animated, { FadeOut, LinearTransition } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card, FilterChip } from '@/components/card'
+import { SavedEmpty } from '@/components/empty-states'
 import { HardShadow, Photo } from '@/components/explore'
 import { useExploreState, useShotSource } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
@@ -36,7 +37,6 @@ import {
   Icon,
   INK,
   LIVE,
-  PillButton,
   Text,
   TextInput,
   Title,
@@ -972,14 +972,7 @@ function Saved({
 
       {!rows.length && !searching ? (
         <View style={styles.empty}>
-          <Text style={[text(16, 'Bold'), { color: palette.ink }]}>
-            Nenhum bar salvo ainda.
-          </Text>
-          <Text style={[text(14, 'Regular', 1.45), { color: palette.muted }]}>
-            Toque no coração de um bar, no mapa ou na página dele, para ver aqui
-            os jogos da semana de lá.
-          </Text>
-          <PillButton label="Procurar bares" onPress={onExplore} />
+          <SavedEmpty onExplore={onExplore} />
         </View>
       ) : !rows.length ? (
         <NoMatch />
@@ -1097,6 +1090,7 @@ function Bars({
   selected?: string | null
   onSelect?: (barId: string, key: string) => void
 }) {
+  const router = useRouter()
   const palette = usePalette()
   const t = tones(palette)
   const [sort, setSort] = useState<BarSort>('bairro')
@@ -1108,13 +1102,7 @@ function Bars({
   if (!all.bars.length)
     return (
       <View style={styles.empty}>
-        <Text style={[text(16, 'Bold'), { color: palette.ink }]}>
-          Nenhum bar salvo ainda.
-        </Text>
-        <Text style={[text(14, 'Regular', 1.45), { color: palette.muted }]}>
-          Toque no coração de um bar, no mapa ou na página dele, para guardar
-          aqui, por bairro.
-        </Text>
+        <SavedEmpty onExplore={() => router.navigate('/explore')} />
       </View>
     )
   return (
