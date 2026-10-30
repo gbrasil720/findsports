@@ -23,6 +23,7 @@
     "expo": "~57.0.20",
     "expo-asset": "~57.0.19",
     "expo-brightness": "~57.0.2",
+    "expo-build-properties": "~57.0.22",
     "expo-calendar": "~57.0.5",
     "expo-camera": "~57.0.6",
     "expo-clipboard": "~57.0.2",
