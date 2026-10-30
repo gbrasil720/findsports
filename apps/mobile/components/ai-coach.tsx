@@ -1,13 +1,7 @@
 import { isLiquidGlassAvailable } from 'expo-glass-effect'
 import * as SecureStore from 'expo-secure-store'
 import { useEffect, useState } from 'react'
-import {
-  Pressable,
-  StyleSheet,
-  useColorScheme,
-  useWindowDimensions,
-  View
-} from 'react-native'
+import { Pressable, StyleSheet, useColorScheme, View } from 'react-native'
 import Animated, {
   Easing,
   type EntryExitAnimationFunction,
@@ -19,6 +13,7 @@ import Animated, {
   withRepeat,
   withTiming
 } from 'react-native-reanimated'
+import { useSafeAreaFrame } from 'react-native-safe-area-context'
 import Svg, {
   Defs,
   Mask,
@@ -138,7 +133,7 @@ export function AiCoach({
   onClose: () => void
   onOpen: () => void
 }) {
-  const { width, height } = useWindowDimensions()
+  const { width, height } = useSafeAreaFrame()
   const dark = useColorScheme() === 'dark'
   const { x: cx, y: cy } = useAiButtonCenter()
   // O balão fica acima do botão; no rail do Galaxy Tab (botão no topo), abaixo.

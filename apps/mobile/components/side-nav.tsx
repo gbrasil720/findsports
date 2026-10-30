@@ -1,5 +1,8 @@
-import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Pressable, StyleSheet, View } from 'react-native'
+import {
+  useSafeAreaFrame,
+  useSafeAreaInsets
+} from 'react-native-safe-area-context'
 import { Glass } from '@/components/glass'
 import { NAV, useLayout } from '@/components/layout'
 import { usePalette } from '@/components/theme'
@@ -44,7 +47,7 @@ export function SideNav(props: Props) {
  * barra nativa do iOS 26, medido no iPhone 16e (52 pt dos cantos).
  */
 export function useAiButtonCenter() {
-  const { width, height } = useWindowDimensions()
+  const { width, height } = useSafeAreaFrame()
   const insets = useSafeAreaInsets()
   const layout = useLayout()
   if (layout.nav === 'duoRail')

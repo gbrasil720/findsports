@@ -1,7 +1,12 @@
 import * as ScreenOrientation from 'expo-screen-orientation'
+import * as SystemUI from 'expo-system-ui'
 import { useEffect } from 'react'
-import { Platform, useWindowDimensions } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Platform, useColorScheme, useWindowDimensions } from 'react-native'
+import {
+  useSafeAreaFrame,
+  useSafeAreaInsets
+} from 'react-native-safe-area-context'
+import { INK, PAPER } from '@/components/theme'
 import { classify, locksPortrait } from '@/lib/layout'
 import { usePosture } from '@/modules/fold-posture'
 
@@ -13,8 +18,13 @@ import { usePosture } from '@/modules/fold-posture'
 
 const IS_PAD = Platform.OS === 'ios' && Platform.isPad
 
+/**
+ * Pela área do app, não pela janela: no Android em tela grande a barra de
+ * tarefas fixa fica fora da área do app, e a janela a conta (883 contra 801
+ * dp no Fold aberto).
+ */
 export function useLayout() {
-  const { width, height } = useWindowDimensions()
+  const { width, height } = useSafeAreaFrame()
   const posture = usePosture()
   return classify({ width, height, os: Platform.OS, isPad: IS_PAD, posture })
 }
@@ -51,6 +61,17 @@ export function useNavInsets() {
     }
   // A barra nativa do iOS 26.
   return { bottom: insets.bottom + 62, left: 0, right: 0 }
+}
+
+/**
+ * O fundo da janela na cor do app: no Android em tela grande, a faixa da barra
+ * de tarefas fixa mostra a janela, que era cinza.
+ */
+export function useWindowBackground() {
+  const dark = useColorScheme() === 'dark'
+  useEffect(() => {
+    SystemUI.setBackgroundColorAsync(dark ? INK : PAPER).catch(() => {})
+  }, [dark])
 }
 
 /**
