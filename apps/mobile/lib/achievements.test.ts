@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import {
   type Achievement,
+  amountLine,
   coverLine,
   describe as describeMedal,
   fullDate,
@@ -10,6 +11,7 @@ import {
   reviewLine,
   seriesLabel,
   shortDate,
+  shortDescribe,
   timeline,
   unlockedLine
 } from './achievements'
@@ -96,6 +98,17 @@ describe('estante no tablet', () => {
     expect(nearest(list).map((a) => a.id)).toEqual(['esp4', 'bai6', 'bar10'])
     expect(missingLine(list[4] as Achievement)).toBe('Faltam 2 bairros.')
     expect(missingLine(list[5] as Achievement)).toBe('Falta 1 esporte.')
+  })
+  it('destaque e mesa do tablet', () => {
+    const bar5 = bares[1] as Achievement
+    expect(amountLine(bar5)).toBe('5 bares diferentes')
+    expect(amountLine(medal('ava10', 'resenhas', 10, 10))).toBe('10 resenhas')
+    expect(shortDescribe(bar5)).toBe(
+      '5 bares diferentes, com o código validado por cada um.'
+    )
+    expect(shortDescribe(medal('esp4', 'esportes', 4, 4))).toBe(
+      '4 esportes diferentes num bar, com o código validado.'
+    )
   })
   it('a linha da tela de fora do Flip', () => {
     expect(coverLine(bares[1] as Achievement)).toBe('5º bar diferente')
