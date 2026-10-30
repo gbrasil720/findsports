@@ -96,7 +96,7 @@ export default function City() {
       />
       {(suggestions.data?.length ?? 0) > 0 ? (
         <Animated.View entering={SWAP} style={styles.suggestions}>
-          {suggestions.data?.map((city) => (
+          {suggestions.data?.slice(0, 4).map((city) => (
             <Pressable
               key={`${city.name}-${city.uf}`}
               accessibilityRole="button"
