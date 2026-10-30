@@ -8,6 +8,8 @@ import { AiCoach, useCoachPending } from '@/components/ai-coach'
 import { initials } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { usePendingInvite } from '@/components/friends'
+import { useLayout } from '@/components/layout'
+import { SideNav } from '@/components/side-nav'
 import { useSoon } from '@/components/soon'
 import { type MenuItem, YouMenu } from '@/components/tab-bar'
 import { usePalette } from '@/components/theme'
@@ -119,6 +121,13 @@ export default function FanTabs() {
   const fresh = suggestions.data?.round ? freshCount(suggestions.data.round) : 0
   const icons = TAB_ICONS[palette.dark ? 'dark' : 'light']
   const user = session.data?.user
+  const layout = useLayout()
+  // O mesmo toque da aba "Você" na barra nativa.
+  const pressYou = () => {
+    if (menuOpen) closeMenu()
+    else if (pathname.startsWith('/voce/')) setOver(true)
+    else router.navigate('/voce')
+  }
 
   const items: MenuItem[] = [
     {
@@ -210,6 +219,9 @@ export default function FanTabs() {
   return (
     <View style={{ flex: 1 }}>
       <NativeTabs
+        // Fora do celular a navegação é a do aparelho (`SideNav`); a barra
+        // nativa só se esconde, para as abas não remontarem ao abrir o dobrável.
+        hidden={layout.nav !== 'tabs'}
         minimizeBehavior="never"
         tintColor={palette.ink}
         // No aparelho, uma renderização do JS feita antes do toque chegava
@@ -260,6 +272,33 @@ export default function FanTabs() {
           <NativeTabs.Trigger.Label>IA</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
       </NativeTabs>
+      {layout.nav !== 'tabs' ? (
+        <SideNav
+          kind={layout.nav}
+          current={
+            menuOpen || pathname.startsWith('/voce')
+              ? 'voce'
+              : pathname === '/favoritos'
+                ? 'favoritos'
+                : 'explore'
+          }
+          onTab={(tab) =>
+            tab === 'voce' ? pressYou() : router.navigate(`/${tab}`)
+          }
+          onAi={() => router.push('/busca-ia')}
+          onShortcut={(to) =>
+            to === 'avisos'
+              ? router.push('/avisos')
+              : router.navigate(
+                  to === 'jogos' ? '/voce/meus-jogos' : `/voce/${to}`
+                )
+          }
+          initials={initials(user?.name ?? '')}
+          left={
+            layout.kind === 'split' && layout.nav === 'float' ? layout.split : 0
+          }
+        />
+      ) : null}
       {menuOpen ? (
         <YouMenu
           name={user?.name ?? ''}
