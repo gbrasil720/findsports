@@ -38,7 +38,9 @@ import Animated, {
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, G, Path, Rect } from 'react-native-svg'
+import { AuthBrand } from '@/components/auth-brand'
 import { Glass } from '@/components/glass'
+import { NAV, useLayout } from '@/components/layout'
 import {
   EASE,
   enterAt,
@@ -636,6 +638,21 @@ export function usePullRefresh(refetch: () => Promise<unknown>) {
  * A moldura das telas de conta: fundo papel (ou tinta), conteúdo que rola
  * acima do teclado e, opcional, um rodapé preso embaixo.
  */
+/**
+ * As telas de entrar fora do celular (a08 do design, WEB-491): marca e
+ * formulário lado a lado no tablet deitado e no dobrável aberto, marca em
+ * cima no tablet em pé. A tela que desenha a própria foto (o login) a deixa
+ * de lado quando isto é verdade.
+ */
+export function useBrandFrame() {
+  const { kind } = useLayout()
+  return kind === 'split' || kind === 'stack'
+}
+
+/** Tablet (iPad, Galaxy Tab): a marca fica com mais da metade da tela. */
+const IS_TABLET_NAV = (nav: string) =>
+  nav === 'rail' || (Platform.OS === 'ios' && Platform.isPad)
+
 export function Screen({
   dark,
   lightStatus,
@@ -644,6 +661,7 @@ export function Screen({
   padding = 20,
   header,
   footer,
+  brand,
   children
 }: {
   dark?: boolean
@@ -656,10 +674,33 @@ export function Screen({
   /** Fica atrás do conteúdo, no topo, e rola junto (a foto do login). */
   header?: ReactNode
   footer?: ReactNode
+  /**
+   * Tela de entrar ou de conta antes do login: fora do celular, ao lado da
+   * marca (ou sob ela) numa coluna de leitura (`useBrandFrame`).
+   */
+  brand?: boolean
   children: ReactNode
 }) {
   const insets = useSafeAreaInsets()
-  useStatusBar(dark || lightStatus ? 'light' : 'auto')
+  const layout = useLayout()
+  const framed = brand && (layout.kind === 'split' || layout.kind === 'stack')
+  // Na mesa (Duo em laptop, Flex Mode), os campos em cima e o teclado embaixo.
+  const table = layout.kind === 'table'
+  // A faixa da direita do Duo fechado (status e Dynamic Island).
+  const strip = layout.kind === 'duoClosed' ? NAV.duoRail.width : 0
+  const tablet = IS_TABLET_NAV(layout.nav)
+  const brandWidth = tablet ? Math.round(layout.width * 0.55) : layout.split
+  const rightWidth = layout.width - brandWidth - layout.gap
+  const column = table
+    ? Math.min(560, layout.width - 48)
+    : layout.kind === 'split'
+      ? Math.min(440, rightWidth - 48)
+      : Math.min(480, layout.width - 80)
+  useStatusBar(
+    dark || lightStatus || (framed && layout.kind === 'stack')
+      ? 'light'
+      : 'auto'
+  )
   // A entrada em sequência vale só para o que nasce com a tela; o que aparece
   // depois (erro, aviso) entra sozinho, na hora.
   const born = useRef(Date.now())
@@ -674,46 +715,115 @@ export function Screen({
     }
     return entry
   }
-  const items = Children.toArray(children)
+  const items = Children.toArray(children).map((child, index) =>
+    // O voltar é vidro, e vidro com transparência animada sai errado no
+    // iOS 26; ele chega com a própria transição da tela.
+    isValidElement(child) && child.type === BackButton ? (
+      child
+    ) : (
+      <Animated.View
+        key={String(isValidElement(child) ? child.key : index)}
+        entering={entering(
+          String(isValidElement(child) ? child.key : index),
+          index
+        )}
+      >
+        {child}
+      </Animated.View>
+    )
+  )
+  const background = dark ? INK : BG
+
+  if (framed || table) {
+    const body = (
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        style={table && { maxHeight: layout.split }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          alignItems: 'center',
+          justifyContent: table ? 'flex-start' : 'center',
+          paddingTop: layout.kind === 'stack' ? 36 : insets.top + top,
+          paddingBottom: 30
+        }}
+      >
+        <View style={{ width: column, gap }}>
+          {items}
+          {footer ? (
+            <Animated.View
+              entering={entering('footer', items.length)}
+              style={{ gap: 12, paddingTop: 4 }}
+            >
+              {footer}
+            </Animated.View>
+          ) : null}
+        </View>
+      </ScrollView>
+    )
+    if (layout.kind === 'split')
+      return (
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1, flexDirection: 'row', backgroundColor: background }}
+        >
+          <View style={{ width: brandWidth }}>
+            <AuthBrand column />
+          </View>
+          <View style={{ flex: 1, marginLeft: layout.gap }}>{body}</View>
+        </KeyboardAvoidingView>
+      )
+    if (table)
+      return (
+        <View style={{ flex: 1, backgroundColor: background }}>{body}</View>
+      )
+    // Em pé: a marca no terço de cima e o formulário numa folha por cima dela.
+    const band = Math.round(layout.height * 0.36)
+    return (
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1, backgroundColor: INK }}
+      >
+        <View style={{ height: band }}>
+          <AuthBrand />
+        </View>
+        <View
+          style={[
+            styles.sheet,
+            { backgroundColor: background, paddingBottom: insets.bottom + 12 }
+          ]}
+        >
+          {body}
+          <BrandLinks dark={dark} />
+        </View>
+      </KeyboardAvoidingView>
+    )
+  }
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={{ flex: 1, backgroundColor: dark ? INK : BG }}
+      style={{ flex: 1, backgroundColor: background }}
     >
       <ScrollView
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
           flexGrow: 1,
           paddingTop: header ? 0 : insets.top + top,
-          paddingHorizontal: header ? 0 : padding,
+          paddingLeft: header ? 0 : padding,
+          paddingRight: (header ? 0 : padding) + strip,
           paddingBottom: 24,
           gap
         }}
       >
         {header}
-        {items.map((child, index) =>
-          // O voltar é vidro, e vidro com transparência animada sai errado no
-          // iOS 26; ele chega com a própria transição da tela.
-          isValidElement(child) && child.type === BackButton ? (
-            child
-          ) : (
-            <Animated.View
-              key={String(isValidElement(child) ? child.key : index)}
-              entering={entering(
-                String(isValidElement(child) ? child.key : index),
-                index
-              )}
-            >
-              {child}
-            </Animated.View>
-          )
-        )}
+        {items}
       </ScrollView>
       {footer ? (
         <Animated.View
           entering={entering('footer', items.length)}
           style={{
-            paddingHorizontal: 16,
+            paddingLeft: 16,
+            paddingRight: 16 + strip,
             paddingTop: 12,
             paddingBottom: Math.max(insets.bottom - 4, 16),
             gap: 12
@@ -723,6 +833,32 @@ export function Screen({
         </Animated.View>
       ) : null}
     </KeyboardAvoidingView>
+  )
+}
+
+/** "Termos de uso · Privacidade" no pé da folha do tablet em pé. */
+function BrandLinks({ dark }: { dark?: boolean }) {
+  const router = useRouter()
+  const color = dark ? '#aaa9a4' : SUB
+  return (
+    <View style={styles.brandLinks}>
+      {(
+        [
+          ['termos', 'Termos de uso'],
+          ['privacidade', 'Privacidade']
+        ] as const
+      ).map(([doc, label]) => (
+        <Text
+          key={doc}
+          accessibilityRole="link"
+          suppressHighlighting
+          onPress={() => router.push({ pathname: '/legal', params: { doc } })}
+          style={[text(13, 'SemiBold'), { color }]}
+        >
+          {label}
+        </Text>
+      ))}
+    </View>
   )
 }
 
@@ -1384,6 +1520,20 @@ export function authErrorMessage(
 }
 
 const styles = StyleSheet.create({
+  // A folha do formulário sobe 28 por cima da marca (tablet em pé, a08).
+  sheet: {
+    flex: 1,
+    marginTop: -28,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    overflow: 'hidden'
+  },
+  brandLinks: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 22,
+    paddingTop: 8
+  },
   toggle: { width: 50, height: 30, borderRadius: 15, padding: 3 },
   knob: { width: 24, height: 24, borderRadius: 12 },
   // No escuro a base branca deixava o vidro leitoso, mais claro que o topo.
