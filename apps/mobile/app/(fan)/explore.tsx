@@ -1141,7 +1141,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
           // fade: o card tem vidro.
           <Animated.View
             key={detail.id}
-            entering={DETAIL_IN}
+            entering={reduced ? undefined : DETAIL_IN}
             style={[
               styles.detail,
               { top: insets.top + 6, right: navInsets.right + 20 }
