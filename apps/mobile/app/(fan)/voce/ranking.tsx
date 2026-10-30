@@ -24,6 +24,7 @@ import {
 } from '@/components/city-ranking'
 import { Avatar, personLine } from '@/components/friends'
 import { Glass } from '@/components/glass'
+import { useLayout, useNavInsets } from '@/components/layout'
 import { haptic, SWAP, usePressScale } from '@/components/motion'
 import { useSoon } from '@/components/soon'
 import { useTabBarSpace } from '@/components/tab-bar'
@@ -35,6 +36,7 @@ import {
   Icon,
   INK,
   LIVE,
+  PAPER,
   PillButton,
   Text,
   Title,
@@ -52,6 +54,7 @@ import {
   ordinal,
   RULES,
   TIE_RULE,
+  topLabel,
   unit
 } from '@/lib/ranking'
 import { trpc } from '@/lib/trpc'
@@ -88,7 +91,11 @@ export default function Ranking() {
     placeholderData: keepPreviousData
   })
   const alone = board.data ? board.data.rows.length < 2 : false
-  const city = useCityBoard('bars', tab === 'global' || alone)
+  const layout = useLayout()
+  const nav = useNavInsets()
+  // Fora do celular a cidade aparece junto com os amigos.
+  const phone = layout.kind === 'phone' || layout.kind === 'duoClosed'
+  const city = useCityBoard('bars', tab === 'global' || alone || !phone)
   const head = city.data?.pages[0]
   // Fora do ranking global você não vê a sua posição (27c).
   const where =
@@ -102,6 +109,14 @@ export default function Ranking() {
   )
   const open = (row: Row) =>
     router.push(row.me ? PROFILE : (`/amigo/${row.id}` as Href))
+  const newBars = () => router.push('/bares-pra-voce')
+  const pick = (next: Tab | 'communities') => {
+    if (next === 'communities')
+      return soon.show('As comunidades chegam em breve')
+    if (next === tab) return
+    haptic.select()
+    setTab(next)
+  }
 
   const share = () => {
     const data = board.data
@@ -113,14 +128,310 @@ export default function Ranking() {
     })
   }
 
+  const ready = board.data && !alone ? board.data : null
+  const global = (
+    <GlobalBody
+      city={city}
+      where={where}
+      onAll={() => router.push(CITY)}
+      onCity={() => router.push(where ? CITY : '/cidade')}
+    />
+  )
+  const root = [
+    styles.screen,
+    {
+      backgroundColor: palette.bg,
+      paddingLeft: nav.left,
+      paddingRight: nav.right
+    }
+  ]
+  const refresh = <RefreshControl {...pull} tintColor={palette.muted} />
+
+  // Tela de fora do Z Flip 8 (A05): a posição entre amigos e quanto falta.
+  if (layout.kind === 'cover')
+    return <Cover data={board.data} onNewBars={newBars} />
+
+  // Na mesa (Duo em laptop, Flex Mode): o pódio e quanto falta em cima, o
+  // resto da lista embaixo em duas colunas.
+  if (layout.kind === 'table' && ready) {
+    const below = ready.rows.filter((r) => r.position > 3)
+    const half = Math.ceil(below.length / 2)
+    const wide = layout.width > 800
+    const tall = layout.split - insets.top > 400
+    return (
+      <View style={root}>
+        <View
+          style={[
+            styles.tableTop,
+            { height: layout.split, paddingTop: insets.top + 12 }
+          ]}
+        >
+          <View
+            style={[
+              styles.tableLead,
+              { justifyContent: tall ? 'center' : 'space-between' }
+            ]}
+          >
+            <View style={{ gap: 8 }}>
+              <Title lines={[['Ranking']]} size={30} color={palette.ink} />
+              <Text style={[text(13), { color: palette.muted }]}>
+                {monthLabel(ready.month)} · amigos ·{' '}
+                {METRICS.find(
+                  (m) => m.key === ready.metric
+                )?.label.toLocaleLowerCase('pt-BR')}
+              </Text>
+            </View>
+            <ChaseCard data={ready} onNewBars={newBars} />
+          </View>
+          <View style={{ width: tall ? 380 : wide ? 400 : 330 }}>
+            <Podium
+              rows={ready.rows}
+              metric={ready.metric}
+              onOpen={open}
+              k={tall ? 1.22 : wide ? 1 : 0.88}
+            />
+          </View>
+        </View>
+        <View style={[styles.tableBottom, { marginTop: layout.gap }]}>
+          <View style={styles.tableBar}>
+            <View style={{ width: 360 }}>
+              <Segments tab={tab} onPick={pick} />
+            </View>
+            <Text style={[text(12.5), { color: palette.muted }]}>
+              {closesLabel(ready.closesInDays)}
+            </Text>
+          </View>
+          <ScrollView
+            contentContainerStyle={{ paddingBottom: tabBar + 24 }}
+            refreshControl={refresh}
+          >
+            {tab === 'global' ? (
+              global
+            ) : (
+              <View style={styles.tableRows}>
+                {[below.slice(0, half), below.slice(half)].map((part) =>
+                  part.length ? (
+                    <View key={part[0]?.id} style={{ flex: 1, minWidth: 0 }}>
+                      <Card soft>
+                        <View style={styles.list}>
+                          {part.map((row, index) => (
+                            <ListRow
+                              key={row.id}
+                              row={row}
+                              first={index === 0}
+                              near
+                              onPress={() => open(row)}
+                            />
+                          ))}
+                        </View>
+                      </Card>
+                    </View>
+                  ) : null
+                )}
+              </View>
+            )}
+          </ScrollView>
+        </View>
+        {soon.toast}
+      </View>
+    )
+  }
+
+  // Lado a lado. No 13″ e no Ultra deitados, Amigos, Comunidades e Global em
+  // três colunas. No resto (tablet deitado, dobrável aberto), os amigos na
+  // coluna da lista e Global ao lado, com o "em breve" das comunidades: no
+  // design a lista é das comunidades e o lado, a comunidade tocada.
+  if (layout.kind === 'split' && ready) {
+    const friendsBoard = (
+      <FriendsBoard
+        data={ready}
+        metric={metric}
+        onMetric={setMetric}
+        onOpen={open}
+        onNewBars={newBars}
+        bare={layout.wide}
+      />
+    )
+    if (layout.wide)
+      return (
+        <View style={root}>
+          <View style={[styles.wideTop, { paddingTop: insets.top + 24 }]}>
+            <Title lines={[['Ranking']]} size={48} color={palette.ink} />
+            <View style={styles.chipsRow}>
+              <MetricChips metric={metric} onMetric={setMetric} />
+            </View>
+          </View>
+          <View style={styles.wideColumns}>
+            {(
+              [
+                [
+                  'Amigos',
+                  `${ready.rows.length - 1} · ${monthLabel(ready.month).toLocaleLowerCase('pt-BR')}`,
+                  friendsBoard
+                ],
+                ['Comunidades', '', <SoonCard key="soon" />],
+                ['Global', head?.listed ? head.city : '', global]
+              ] as const
+            ).map(([title, sub, body]) => (
+              <View key={title} style={styles.wideColumn}>
+                <ColumnHead title={title} sub={sub} />
+                <ScrollView
+                  contentContainerStyle={[
+                    styles.columnBody,
+                    { paddingBottom: tabBar + 24 }
+                  ]}
+                  refreshControl={refresh}
+                >
+                  {body}
+                </ScrollView>
+              </View>
+            ))}
+          </View>
+          {soon.toast}
+        </View>
+      )
+    return (
+      <View style={[root, styles.row2]}>
+        <ScrollView
+          style={{ width: layout.split - nav.left, flexGrow: 0 }}
+          contentContainerStyle={[
+            styles.body,
+            { paddingTop: insets.top + 20, paddingBottom: tabBar + 24 }
+          ]}
+          refreshControl={refresh}
+        >
+          <View style={styles.top}>
+            <Title lines={[['Ranking']]} size={34} color={palette.ink} />
+          </View>
+          {friendsBoard}
+        </ScrollView>
+        <View
+          style={{
+            flex: 1,
+            marginLeft: layout.gap,
+            backgroundColor: palette.dark ? '#161613' : '#ebe8df'
+          }}
+        >
+          <ScrollView
+            contentContainerStyle={[
+              styles.aside,
+              { paddingTop: insets.top + 20, paddingBottom: tabBar + 24 }
+            ]}
+          >
+            <ColumnHead title="Global" sub={head?.listed ? head.city : ''} />
+            {global}
+            <Section title="Comunidades" sub="" />
+            <SoonCard />
+          </ScrollView>
+        </View>
+        {soon.toast}
+      </View>
+    )
+  }
+
+  // Tablet em pé (A05): pódio largo com a meta ao lado; embaixo, a lista
+  // inteira dos amigos e, ao lado, a posição na cidade.
+  if (layout.kind === 'stack' && ready) {
+    const content = layout.width - nav.left - nav.right - 56
+    const big = content > 820
+    return (
+      <View style={root}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.stackBody,
+            { paddingTop: insets.top + 28, paddingBottom: tabBar + 24 }
+          ]}
+          refreshControl={refresh}
+        >
+          <View style={styles.stackTop}>
+            <Title lines={[['Ranking']]} size={52} color={palette.ink} />
+            <View style={{ width: Math.min(440, content - 280) }}>
+              <Segments tab={tab} onPick={pick} />
+            </View>
+          </View>
+          {tab === 'global' ? (
+            <Animated.View entering={SWAP} style={styles.stack}>
+              {global}
+            </Animated.View>
+          ) : (
+            <Animated.View entering={SWAP} style={{ gap: 16 }}>
+              <View style={styles.stackMeta}>
+                <View style={styles.chipsRow}>
+                  <MetricChips metric={metric} onMetric={setMetric} />
+                </View>
+                <Text style={[text(12.5), { color: palette.muted }]}>
+                  {monthLabel(ready.month)} ·{' '}
+                  {closesLabel(ready.closesInDays).toLocaleLowerCase('pt-BR')}
+                </Text>
+              </View>
+              <Animated.View key={ready.metric} entering={SWAP}>
+                <Card
+                  shadow={palette.dark ? 'rgba(201,241,53,.32)' : ACID}
+                  offset={5}
+                >
+                  <View style={styles.hero}>
+                    <View style={{ width: big ? 460 : 380 }}>
+                      <Podium
+                        rows={ready.rows}
+                        metric={ready.metric}
+                        onOpen={open}
+                        k={big ? 1.2 : 1.05}
+                      />
+                    </View>
+                    <Goal data={ready} onNewBars={newBars} />
+                  </View>
+                </Card>
+              </Animated.View>
+              <View style={styles.stackColumns}>
+                <View style={{ flex: 56, gap: 12 }}>
+                  <Section
+                    title="Entre amigos"
+                    sub={String(ready.rows.length - 1)}
+                  />
+                  <Card soft>
+                    <View style={styles.list}>
+                      {ready.rows.map((row, index) => (
+                        <ListRow
+                          key={row.id}
+                          row={row}
+                          first={index === 0}
+                          near
+                          mark={row.me}
+                          onPress={() => open(row)}
+                        />
+                      ))}
+                    </View>
+                  </Card>
+                </View>
+                <View style={{ flex: 44, gap: 12 }}>
+                  <Section
+                    title={head?.listed ? head.city : 'Global'}
+                    sub="global"
+                  />
+                  {global}
+                  <Section title="Comunidades" sub="" />
+                  <SoonCard />
+                </View>
+              </View>
+            </Animated.View>
+          )}
+        </ScrollView>
+        {soon.toast}
+      </View>
+    )
+  }
+
   return (
-    <View style={[styles.screen, { backgroundColor: palette.bg }]}>
+    <View style={root}>
       <ScrollView
         contentContainerStyle={[
           styles.body,
-          { paddingTop: insets.top + 13, paddingBottom: tabBar + 24 }
+          { paddingTop: insets.top + 13, paddingBottom: tabBar + 24 },
+          // Fora do celular, sem placar (carregando, erro, sem amigos): a
+          // coluna do celular no meio da tela.
+          !phone && styles.narrow
         ]}
-        refreshControl={<RefreshControl {...pull} tintColor={palette.muted} />}
+        refreshControl={refresh}
       >
         <View style={styles.top}>
           <Title lines={[['Ranking']]} size={40} color={palette.ink} />
@@ -149,16 +460,7 @@ export default function Ranking() {
           )}
         </View>
 
-        <Segments
-          tab={tab}
-          onPick={(next) => {
-            if (next === 'communities')
-              return soon.show('As comunidades chegam em breve')
-            if (next === tab) return
-            haptic.select()
-            setTab(next)
-          }}
-        />
+        <Segments tab={tab} onPick={pick} />
 
         {tab === 'global' ? (
           // Ligar o ranking global troca o 27c pela cidade no mesmo fade curto.
@@ -258,7 +560,7 @@ export default function Ranking() {
             metric={metric}
             onMetric={setMetric}
             onOpen={open}
-            onNewBars={() => router.push('/bares-pra-voce')}
+            onNewBars={newBars}
           />
         )}
       </ScrollView>
@@ -324,13 +626,16 @@ function FriendsBoard({
   metric,
   onMetric,
   onOpen,
-  onNewBars
+  onNewBars,
+  bare
 }: {
   data: Board
   metric: Metric
   onMetric: (metric: Metric) => void
   onOpen: (row: Row) => void
   onNewBars: () => void
+  /** Na coluna do 13″ deitado: as métricas e o mês ficam no cabeçalho. */
+  bare?: boolean
 }) {
   const palette = usePalette()
   const friends = data.rows.length - 1
@@ -338,70 +643,33 @@ function FriendsBoard({
   const rest = data.rows.filter((r) => r.position > 6)
   return (
     <View style={styles.stack}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.chipsScroll}
-        contentContainerStyle={styles.chips}
-      >
-        {METRICS.map((m) => (
-          <FilterChip
-            key={m.key}
-            label={m.label}
-            raised
-            on={metric === m.key}
-            onPress={() => onMetric(m.key)}
-          />
-        ))}
-      </ScrollView>
-      <View style={styles.meta}>
-        <Text style={[text(12.5), { color: palette.muted }]}>
-          {monthLabel(data.month)} · {friends}{' '}
-          {friends === 1 ? 'amigo' : 'amigos'}
-        </Text>
-        <Text style={[text(12.5), { color: palette.muted }]}>
-          {closesLabel(data.closesInDays)}
-        </Text>
-      </View>
+      {bare ? null : (
+        <>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.chipsScroll}
+            contentContainerStyle={styles.chips}
+          >
+            <MetricChips metric={metric} onMetric={onMetric} />
+          </ScrollView>
+          <View style={styles.meta}>
+            <Text style={[text(12.5), { color: palette.muted }]}>
+              {monthLabel(data.month)} · {friends}{' '}
+              {friends === 1 ? 'amigo' : 'amigos'}
+            </Text>
+            <Text style={[text(12.5), { color: palette.muted }]}>
+              {closesLabel(data.closesInDays)}
+            </Text>
+          </View>
+        </>
+      )}
       {/* Trocar de métrica troca o placar em fade curto, sem salto. */}
       <Animated.View key={data.metric} entering={SWAP} style={styles.stack}>
         <Podium rows={data.rows} metric={data.metric} onOpen={onOpen} />
         {data.chase ? (
           <View style={styles.chaseWrap}>
-            <Card shadow={palette.liveShadow} offset={5} soft>
-              <View style={styles.chase}>
-                <View style={{ flex: 1, gap: 8 }}>
-                  <Text
-                    style={[text(14.5, 'Bold', 1.35), { color: palette.ink }]}
-                  >
-                    {chaseLabel(data.metric, data.chase.need, data.chase.name)}
-                  </Text>
-                  <View
-                    style={[styles.track, { backgroundColor: palette.mark }]}
-                  >
-                    <View
-                      style={[
-                        styles.fill,
-                        {
-                          width: `${Math.round((data.chase.mine / (data.chase.mine + data.chase.need)) * 100)}%`
-                        }
-                      ]}
-                    />
-                  </View>
-                </View>
-                <Pressable
-                  accessibilityRole="link"
-                  hitSlop={8}
-                  onPress={onNewBars}
-                  style={styles.newBars}
-                >
-                  <Text style={[text(13, 'Bold'), { color: palette.ink }]}>
-                    Bares novos
-                  </Text>
-                  <Icon name="next" size={12} color={palette.ink} />
-                </Pressable>
-              </View>
-            </Card>
+            <ChaseCard data={data} onNewBars={onNewBars} />
           </View>
         ) : null}
         {near.length ? (
@@ -451,17 +719,80 @@ function FriendsBoard({
   )
 }
 
+function MetricChips({
+  metric,
+  onMetric
+}: {
+  metric: Metric
+  onMetric: (metric: Metric) => void
+}) {
+  return METRICS.map((m) => (
+    <FilterChip
+      key={m.key}
+      label={m.label}
+      raised
+      on={metric === m.key}
+      onPress={() => onMetric(m.key)}
+    />
+  ))
+}
+
+/** "Faltam 3 bares para passar Marina", a barra e "Bares novos" (10d). */
+function ChaseCard({
+  data,
+  onNewBars
+}: {
+  data: Board
+  onNewBars: () => void
+}) {
+  const palette = usePalette()
+  if (!data.chase) return null
+  return (
+    <Card shadow={palette.liveShadow} offset={5} soft>
+      <View style={styles.chase}>
+        <View style={{ flex: 1, gap: 8 }}>
+          <Text style={[text(14.5, 'Bold', 1.35), { color: palette.ink }]}>
+            {chaseLabel(data.metric, data.chase.need, data.chase.name)}
+          </Text>
+          <View style={[styles.track, { backgroundColor: palette.mark }]}>
+            <View
+              style={[styles.fill, { width: `${chaseShare(data.chase)}%` }]}
+            />
+          </View>
+        </View>
+        <Pressable
+          accessibilityRole="link"
+          hitSlop={8}
+          onPress={onNewBars}
+          style={styles.newBars}
+        >
+          <Text style={[text(13, 'Bold'), { color: palette.ink }]}>
+            Bares novos
+          </Text>
+          <Icon name="next" size={12} color={palette.ink} />
+        </Pressable>
+      </View>
+    </Card>
+  )
+}
+
+const chaseShare = (chase: { mine: number; need: number }) =>
+  Math.round((chase.mine / (chase.mine + chase.need)) * 100)
+
 // O pódio do design: o 1º no meio, mais alto e em acid; você em tinta.
 const STEP = { 1: 92, 2: 64, 3: 44 } as const
 
 function Podium({
   rows,
   metric,
-  onOpen
+  onOpen,
+  k = 1
 }: {
   rows: Row[]
   metric: Metric
   onOpen: (row: Row) => void
+  /** Escala do pódio largo do tablet (A05): 1,05 a 1,22. */
+  k?: number
 }) {
   return (
     <View style={styles.podium}>
@@ -473,10 +804,11 @@ function Podium({
             row={row}
             place={place}
             metric={metric}
+            k={k}
             onPress={() => onOpen(row)}
           />
         ) : (
-          <Ghost key={place} height={STEP[place] - 8} />
+          <Ghost key={place} height={Math.round(STEP[place] * k) - 8} />
         )
       })}
     </View>
@@ -487,11 +819,13 @@ function Step({
   row,
   place,
   metric,
+  k,
   onPress
 }: {
   row: Row
   place: 1 | 2 | 3
   metric: Metric
+  k: number
   onPress: () => void
 }) {
   const palette = usePalette()
@@ -513,18 +847,21 @@ function Step({
           name={row.name}
           image={row.image}
           me={row.me}
-          size={first ? 64 : 52}
+          size={Math.round((first ? 64 : 52) * k)}
         />
         <Text
           numberOfLines={1}
-          style={[text(13.5, 'Bold', 1.2), { color: palette.ink }]}
+          style={[
+            text(Math.round(13.5 * Math.min(k, 1.15) * 2) / 2, 'Bold', 1.2),
+            { color: palette.ink }
+          ]}
         >
           {row.me ? 'Você' : firstName(row.name)}
         </Text>
         <Text
           style={[
             styles.value,
-            { fontSize: first ? 26 : 21, color: palette.ink }
+            { fontSize: Math.round((first ? 26 : 21) * k), color: palette.ink }
           ]}
         >
           {row.value}{' '}
@@ -542,10 +879,17 @@ function Step({
           <View
             style={[
               styles.block,
-              { height: STEP[place], backgroundColor: block.bg }
+              { height: Math.round(STEP[place] * k), backgroundColor: block.bg }
             ]}
           >
-            <Text style={[styles.place, { color: block.fg }]}>{place}</Text>
+            <Text
+              style={[
+                styles.place,
+                { fontSize: Math.round(30 * k), color: block.fg }
+              ]}
+            >
+              {place}
+            </Text>
           </View>
         </View>
       </Animated.View>
@@ -603,11 +947,14 @@ function ListRow({
   row,
   first,
   near,
+  mark,
   onPress
 }: {
   row: Row
   first: boolean
   near?: boolean
+  /** Você na lista inteira do tablet (A05): a linha em destaque. */
+  mark?: boolean
   onPress: () => void
 }) {
   const palette = usePalette()
@@ -620,6 +967,14 @@ function ListRow({
         styles.row,
         { gap: near ? 12 : 11 },
         !first && { borderTopWidth: 1, borderTopColor: palette.line },
+        mark && [
+          styles.mark,
+          {
+            backgroundColor: palette.dark ? '#262621' : '#fff',
+            borderColor: palette.dark ? 'rgba(241,238,230,.6)' : INK,
+            borderTopColor: palette.dark ? 'rgba(241,238,230,.6)' : INK
+          }
+        ],
         pressed && { opacity: 0.7 }
       ]}
     >
@@ -803,9 +1158,374 @@ function OutlineButton({
   )
 }
 
+// --- Fora do celular (A05) ------------------------------------------------
+
+/** "Entre amigos 12", o título de seção do tablet. */
+function Section({ title, sub }: { title: string; sub: string }) {
+  const palette = usePalette()
+  return (
+    <View style={styles.section}>
+      <Text style={[styles.sectionTitle, { color: palette.hot }]}>{title}</Text>
+      <Text style={[text(12.5), { color: palette.muted }]}>{sub}</Text>
+    </View>
+  )
+}
+
+/** O topo de cada coluna lado a lado: nome e o filete de tinta. */
+function ColumnHead({ title, sub }: { title: string; sub: string }) {
+  const palette = usePalette()
+  return (
+    <View style={[styles.columnHead, { borderBottomColor: palette.ink }]}>
+      <Text style={[styles.columnTitle, { color: palette.ink }]}>{title}</Text>
+      <Text style={[styles.columnSub, { color: palette.muted }]}>{sub}</Text>
+    </View>
+  )
+}
+
+/** Comunidades não existem: no lugar delas, o aviso do celular. */
+function SoonCard() {
+  const palette = usePalette()
+  return (
+    <Card soft>
+      <View style={styles.rule}>
+        <Icon name="people" size={24} color={palette.ink} />
+        <Text
+          style={[
+            text(13.5, 'Regular', 1.4),
+            { flex: 1, color: palette.muted }
+          ]}
+        >
+          As comunidades chegam em breve
+        </Text>
+      </View>
+    </Card>
+  )
+}
+
+/** Ao lado do pódio largo: a sua posição e quanto falta para subir. */
+function Goal({ data, onNewBars }: { data: Board; onNewBars: () => void }) {
+  const palette = usePalette()
+  const me = data.rows.find((row) => row.me)
+  return (
+    <View style={styles.goal}>
+      {me ? (
+        <Text style={[styles.kicker, { color: palette.hot }]}>
+          VOCÊ ESTÁ EM {ordinal(me.position)}
+        </Text>
+      ) : null}
+      {data.chase ? (
+        <>
+          <Text style={[text(20, 'Bold', 1.25), { color: palette.ink }]}>
+            {chaseLabel(data.metric, data.chase.need, data.chase.name)}
+          </Text>
+          <View
+            style={[styles.track, { height: 6, backgroundColor: palette.mark }]}
+          >
+            <View
+              style={[styles.fill, { width: `${chaseShare(data.chase)}%` }]}
+            />
+          </View>
+        </>
+      ) : null}
+      <Pressable
+        accessibilityRole="link"
+        hitSlop={8}
+        onPress={onNewBars}
+        style={({ pressed }) => [styles.newBars, pressed && { opacity: 0.6 }]}
+      >
+        <Text style={[text(13.5, 'Bold'), { color: palette.ink }]}>
+          Ver bares novos perto
+        </Text>
+        <Icon name="next" size={12} color={palette.ink} />
+      </Pressable>
+    </View>
+  )
+}
+
+/** A aba Global fora do celular: a sua posição em destaque e o top. */
+function GlobalBody({
+  city,
+  where,
+  onAll,
+  onCity
+}: {
+  city: ReturnType<typeof useCityBoard>
+  where: { city: string; position: number } | null | undefined
+  onAll: () => void
+  onCity: () => void
+}) {
+  const palette = usePalette()
+  const head = city.data?.pages[0]
+  if (city.isPending)
+    return <ActivityIndicator color={palette.ink} style={{ marginTop: 24 }} />
+  if (city.isError)
+    return (
+      <View style={styles.stack}>
+        <Text style={[text(15, 'SemiBold'), { color: palette.ink }]}>
+          Não deu para abrir o ranking.
+        </Text>
+        <PillButton label="Tentar de novo" onPress={() => city.refetch()} />
+      </View>
+    )
+  if (head && !head.listed) return <OffGlobal data={head} />
+  return (
+    <View style={styles.stack}>
+      {head?.listed && head.position ? (
+        <PosCard data={head} position={head.position} />
+      ) : (
+        <CityRow
+          data={where}
+          pending={false}
+          lead="Você está em"
+          onPress={onCity}
+        />
+      )}
+      {head?.listed && head.rows.length ? (
+        <CityTop data={head} onAll={onAll} />
+      ) : null}
+    </View>
+  )
+}
+
+/** "Sua posição em São Paulo · 1.284º" (A05), no cartão de tinta. */
+function PosCard({ data, position }: { data: CityBoard; position: number }) {
+  const palette = usePalette()
+  const me = data.around.find((row) => row.me)
+  return (
+    <Card
+      fill={palette.dark ? palette.card : INK}
+      shadow={palette.dark ? 'rgba(201,241,53,.32)' : ACID}
+      offset={5}
+    >
+      <View style={styles.pos}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={[text(12.5, 'SemiBold'), { color: '#aaa9a4' }]}>
+            Sua posição em {data.city}
+          </Text>
+          <View style={styles.posLine}>
+            <Text style={styles.posNumber}>
+              {position.toLocaleString('pt-BR')}
+            </Text>
+            <Text style={styles.posMark}>º</Text>
+          </View>
+          <Text style={[text(13, 'Regular', 1.35), { color: '#d6d3cb' }]}>
+            de {data.total.toLocaleString('pt-BR')}{' '}
+            {data.total === 1 ? 'torcedor' : 'torcedores'}
+            {me
+              ? ` · ${me.value} ${unit(data.metric, me.value)} em ${monthLabel(data.month).toLocaleLowerCase('pt-BR')}`
+              : ''}
+          </Text>
+        </View>
+        <View style={styles.badge}>
+          <Text style={[text(12, 'Bold'), { color: INK }]}>
+            {topLabel(position, data.total)}
+          </Text>
+        </View>
+      </View>
+    </Card>
+  )
+}
+
+/**
+ * A tela de fora do Z Flip 8 (A05): a sua posição entre amigos e quanto
+ * falta para passar quem está na frente. Sempre no escuro, como o design.
+ */
+function Cover({
+  data,
+  onNewBars
+}: {
+  data: Board | undefined
+  onNewBars: () => void
+}) {
+  const insets = useSafeAreaInsets()
+  const me = data?.rows.find((row) => row.me)
+  const friends = (data?.rows.length ?? 1) - 1
+  // Quem está logo acima, ou logo abaixo de quem lidera.
+  const other =
+    data?.rows.find(
+      (row) => !row.me && me && row.position === Math.max(1, me.position - 1)
+    ) ?? data?.rows.find((row) => !row.me)
+  return (
+    <View style={[styles.cover, { paddingTop: insets.top + 20 }]}>
+      {!data || !me ? (
+        <ActivityIndicator color={PAPER} style={{ marginTop: 40 }} />
+      ) : (
+        <>
+          <Text style={[styles.kicker, { color: ACID }]}>
+            RANKING · {monthLabel(data.month).toLocaleUpperCase('pt-BR')}
+          </Text>
+          <View style={styles.coverRank}>
+            <Text style={styles.coverPlace}>{ordinal(me.position)}</Text>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={[text(15, 'Bold', 1.3), { color: PAPER }]}>
+                entre {friends} {friends === 1 ? 'amigo' : 'amigos'}
+              </Text>
+              <Text
+                numberOfLines={2}
+                style={[text(12.5, 'Regular', 1.35), { color: '#aaa9a4' }]}
+              >
+                {me.value} {unit(data.metric, me.value)}
+                {other ? ` · ${firstName(other.name)} tem ${other.value}` : ''}
+              </Text>
+            </View>
+          </View>
+          {data.chase ? (
+            <>
+              <View style={[styles.track, styles.coverTrack]}>
+                <View
+                  style={[styles.fill, { width: `${chaseShare(data.chase)}%` }]}
+                />
+              </View>
+              <Text style={[text(13, 'Regular', 1.4), { color: '#d6d3cb' }]}>
+                {chaseLabel(data.metric, data.chase.need, data.chase.name)}.
+              </Text>
+            </>
+          ) : null}
+          <View style={[styles.coverPill, { bottom: insets.bottom + 26 }]}>
+            <PillButton
+              label="Bares novos"
+              height={50}
+              edge="#000"
+              onPress={onNewBars}
+            />
+          </View>
+        </>
+      )}
+    </View>
+  )
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   body: { paddingHorizontal: 16, gap: 12 },
+  narrow: { width: '100%', maxWidth: 640, alignSelf: 'center' },
+  // Fora do celular (A05).
+  section: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline'
+  },
+  sectionTitle: {
+    fontFamily: 'Anton',
+    fontSize: 22,
+    textTransform: 'uppercase',
+    marginVertical: -5
+  },
+  columnHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    paddingBottom: 10,
+    borderBottomWidth: 2
+  },
+  columnTitle: {
+    fontFamily: 'Anton',
+    fontSize: 26,
+    textTransform: 'uppercase',
+    marginVertical: -6
+  },
+  columnSub: { fontFamily: 'GeistMono-SemiBold', fontSize: 11.5 },
+  chipsRow: { flexDirection: 'row', gap: 6 },
+  wideTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 20,
+    paddingHorizontal: 24,
+    paddingBottom: 22
+  },
+  wideColumns: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 20,
+    paddingHorizontal: 24
+  },
+  wideColumn: { flex: 1, minWidth: 0, gap: 12 },
+  columnBody: { gap: 12, paddingTop: 2 },
+  row2: { flexDirection: 'row' },
+  aside: { paddingHorizontal: 18, gap: 12 },
+  stackBody: { paddingHorizontal: 28, gap: 16 },
+  stackTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    gap: 20
+  },
+  stackMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12
+  },
+  hero: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 28,
+    paddingTop: 18,
+    paddingHorizontal: 20
+  },
+  goal: {
+    flex: 1,
+    minWidth: 0,
+    alignSelf: 'center',
+    gap: 12,
+    paddingBottom: 16
+  },
+  kicker: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11,
+    letterSpacing: 0.66
+  },
+  stackColumns: { flexDirection: 'row', gap: 16, alignItems: 'flex-start' },
+  pos: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 },
+  posLine: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 4 },
+  posNumber: {
+    fontFamily: 'Anton',
+    fontSize: 52,
+    color: ACID,
+    marginVertical: -12
+  },
+  posMark: { fontFamily: 'Archivo-Bold', fontSize: 22, color: ACID },
+  badge: {
+    alignSelf: 'flex-start',
+    backgroundColor: ACID,
+    borderRadius: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 5
+  },
+  tableTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 24,
+    paddingHorizontal: 24,
+    overflow: 'hidden'
+  },
+  tableLead: {
+    flex: 1,
+    minWidth: 0,
+    alignSelf: 'stretch',
+    gap: 18,
+    paddingBottom: 16
+  },
+  tableBottom: { flex: 1, paddingTop: 14, paddingHorizontal: 20, gap: 12 },
+  tableBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 16
+  },
+  tableRows: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+  cover: { flex: 1, backgroundColor: INK, paddingHorizontal: 22, gap: 12 },
+  coverRank: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  coverPlace: {
+    fontFamily: 'Anton',
+    fontSize: 72,
+    color: ACID,
+    marginVertical: -16
+  },
+  coverTrack: { height: 6, backgroundColor: '#2c2c27' },
+  coverPill: { position: 'absolute', right: 22, width: 160 },
+
   top: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -893,6 +1613,19 @@ const styles = StyleSheet.create({
   nearPlace: { width: 20, fontFamily: 'GeistMono-SemiBold', fontSize: 13 },
   restPlace: { width: 44, fontFamily: 'Anton', fontSize: 20 },
   rowValue: { fontFamily: 'Anton', fontSize: 20 },
+  // A sua linha na lista inteira (A05): papel, contorno e a sombra acid.
+  mark: {
+    borderWidth: 1.5,
+    borderTopWidth: 1.5,
+    borderRadius: 6,
+    marginHorizontal: -6,
+    marginVertical: 4,
+    paddingHorizontal: 8.5,
+    shadowColor: ACID,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 3, height: 3 }
+  },
   moveBox: { width: 12, alignItems: 'center', justifyContent: 'center' },
   flat: { width: 10, height: 2, borderRadius: 1 },
   triangle: {
