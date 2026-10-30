@@ -1081,6 +1081,88 @@ export function BarRow({
   )
 }
 
+/**
+ * A linha da coluna estreita do tablet e do dobrável (`rowN` do design
+ * adaptativo): foto de 52, nome, jogo e, em mono, "Agora" (ao vivo) ou a hora
+ * com a distância. `chosen` é o bar aberto ao lado, com a sombra acid.
+ */
+export function BarLine({
+  bar,
+  now,
+  onPress,
+  chosen
+}: Omit<CardProps, 'favorite' | 'onFavorite'> & { chosen?: boolean }) {
+  const palette = usePalette()
+  const game = bar.nextEvent
+  const live = game ? isLive(game, now) : false
+  const press = usePressScale(0.985)
+  const when = !game
+    ? null
+    : dayLabel(game.startsAt, now) === 'Hoje'
+      ? formatTime(game.startsAt)
+      : `${dayLabel(game.startsAt, now)} às ${formatTime(game.startsAt)}`
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={bar.name}
+      accessibilityState={{ selected: chosen }}
+      onPress={onPress}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+    >
+      <Animated.View style={press.style}>
+        <HardShadow
+          color={chosen ? 'rgba(201,241,53,.85)' : palette.shadow}
+          offset={chosen ? 5 : 4}
+        />
+        <View
+          style={[
+            styles.line,
+            { backgroundColor: palette.card, borderColor: palette.ring }
+          ]}
+        >
+          <Photo uri={bar.photo_url} name={bar.name} style={styles.linePhoto} />
+          <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+            <Text
+              style={[text(15, 'Bold', 1.2), { color: palette.ink }]}
+              numberOfLines={1}
+            >
+              {bar.name}
+            </Text>
+            <Text
+              style={[text(12.5, 'Regular', 1.3), { color: palette.muted }]}
+              numberOfLines={1}
+            >
+              {game ? gameTitle(game) : 'Sem eventos programados'}
+            </Text>
+            <View style={styles.lineMeta}>
+              {live ? (
+                <View style={styles.lineLive}>
+                  <View style={styles.lineHalo}>
+                    <View style={styles.lineDot} />
+                  </View>
+                  <Text
+                    style={[text(12, 'Bold', 1.2), { color: palette.live }]}
+                  >
+                    Agora
+                  </Text>
+                </View>
+              ) : when ? (
+                <Text style={[styles.lineMono, { color: palette.muted }]}>
+                  {when}
+                </Text>
+              ) : null}
+              <Text style={[styles.lineMono, { color: palette.ink }]}>
+                {formatKm(bar.distance_km)}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </Animated.View>
+    </Pressable>
+  )
+}
+
 const styles = StyleSheet.create({
   quietHit: {
     width: 28,
@@ -1339,6 +1421,27 @@ const styles = StyleSheet.create({
     borderWidth: 1
   },
   rowPhoto: { width: 62, height: 62, borderRadius: 3 },
+  line: {
+    flexDirection: 'row',
+    gap: 11,
+    alignItems: 'center',
+    padding: 9,
+    borderRadius: 6,
+    borderWidth: 1
+  },
+  linePhoto: { width: 52, height: 52, borderRadius: 3 },
+  lineMeta: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  lineMono: { fontFamily: 'GeistMono-SemiBold', fontSize: 12 },
+  lineLive: { flexDirection: 'row', gap: 6, alignItems: 'center' },
+  lineHalo: {
+    width: 15,
+    height: 15,
+    borderRadius: 7.5,
+    backgroundColor: 'rgba(232,50,12,.22)',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  lineDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: LIVE },
   newTag: { position: 'absolute', left: -4, top: -4 },
   rowMeta: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   km: { flexDirection: 'row', gap: 2, alignItems: 'center' },
