@@ -343,8 +343,10 @@ export default function YourBars() {
   // 14) no lugar das abas; no tablet, com o mapa em cima ou ao lado para
   // achar o primeiro (Adaptativo 10).
   // Só fora do celular: no celular as abas e o vazio de sempre.
+  // Só no tablet e no dobrável aberto (Adaptativo 10); a capa do Flip e a
+  // mesa ficam com as telas do T3.
   const nothing =
-    layout.kind !== 'phone' &&
+    (layout.kind === 'split' || layout.kind === 'stack') &&
     search === null &&
     visits.isSuccess &&
     saved.isSuccess &&
