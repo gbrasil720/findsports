@@ -16,6 +16,7 @@ import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card } from '@/components/card'
 import { CheckInCard } from '@/components/check-in'
+import { MyGamesEmpty } from '@/components/empty-states'
 import { BarRow, dayLabel, Perforation, Photo } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
@@ -32,7 +33,6 @@ import {
   INK,
   LIVE,
   PAPER,
-  PillButton,
   Text,
   Title,
   text,
@@ -210,17 +210,7 @@ export default function MyGames() {
           />
         ) : !games.length ? (
           <View style={styles.empty}>
-            <Text style={[text(16, 'Bold'), { color: palette.ink }]}>
-              Você ainda não marcou nenhum jogo.
-            </Text>
-            <Text style={[text(14, 'Regular', 1.45), { color: palette.muted }]}>
-              Na página de um bar, toque em “Vou assistir aqui”. Nos bares Elite
-              o código sai na hora e vale a oferta da casa no balcão.
-            </Text>
-            <PillButton
-              label="Procurar bares"
-              onPress={() => router.navigate('/explore')}
-            />
+            <WeekEmpty />
           </View>
         ) : (
           <>
@@ -330,28 +320,79 @@ export default function MyGames() {
   )
 }
 
-/** Ao lado da lista vazia: os bares perto com jogo hoje, para marcar um. */
-function TodayNear() {
-  const router = useRouter()
-  const insets = useSafeAreaInsets()
-  const tabBar = useTabBarSpace()
-  const palette = usePalette()
+/**
+ * Os bares perto com jogo: a busca do Explorar (o cache é o dele), de hoje
+ * ou, sem dia, com o próximo jogo de cada bar.
+ */
+function useGamesNear(date?: string) {
   const session = authClient.useSession()
-  // A mesma busca do Explorar, só com jogo hoje (o cache é o dele).
   const { device } = useExploreState()
   const city = useQuery(trpc.pubs.getMyCity.queryOptions())
-  const now = Date.now()
   const search = useQuery({
     ...trpc.pubs.search.queryOptions(
       searchInput(
-        { ...NO_FILTERS, date: dayKey(now) },
+        { ...NO_FILTERS, date: date ?? null },
         searchCenter(device, city.data),
         session.data?.user.searchRadiusKm ?? 3
       )
     ),
     enabled: device !== null || !city.isPending
   })
-  const bars = (search.data?.bars ?? []).filter((bar) => bar.nextEvent)
+  return {
+    search,
+    bars: (search.data?.bars ?? []).filter((bar) => bar.nextEvent)
+  }
+}
+
+const WEEKDAYS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB']
+/** "QUA": o dia da semana em Brasília (UTC-3, sem horário de verão). */
+const weekday = (iso: string) =>
+  WEEKDAYS[new Date(Date.parse(iso) - 3 * 3600_000).getUTCDay()]
+
+/**
+ * O vazio de Meus jogos (`eRes`), com os jogos desta semana perto: o
+ * próximo jogo de cada bar, dos que caem nos próximos 7 dias.
+ */
+function WeekEmpty() {
+  const router = useRouter()
+  const { bars } = useGamesNear()
+  const now = Date.now()
+  const week = bars
+    .filter((bar) => {
+      const at = Date.parse(bar.nextEvent?.startsAt ?? '')
+      return at - now < 7 * 24 * 3600_000
+    })
+    .sort((a, b) =>
+      (a.nextEvent?.startsAt ?? '').localeCompare(b.nextEvent?.startsAt ?? '')
+    )
+    .slice(0, 2)
+    .map((bar) => {
+      const game = bar.nextEvent as NonNullable<typeof bar.nextEvent>
+      return {
+        key: bar.id,
+        day: weekday(game.startsAt),
+        title: gameTitle(game),
+        detail: bar.goingCount
+          ? `${bar.name} · ${bar.goingCount} vão`
+          : bar.name,
+        onPress: () =>
+          router.push({
+            pathname: '/vou/[barId]',
+            params: { barId: bar.id, eventId: game.id }
+          } as Href)
+      }
+    })
+  return <MyGamesEmpty week={week} />
+}
+
+/** Ao lado da lista vazia: os bares perto com jogo hoje, para marcar um. */
+function TodayNear() {
+  const router = useRouter()
+  const insets = useSafeAreaInsets()
+  const tabBar = useTabBarSpace()
+  const palette = usePalette()
+  const now = Date.now()
+  const { search, bars } = useGamesNear(dayKey(now))
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: palette.dark ? '#161613' : '#ebe8df' }}
