@@ -152,7 +152,12 @@ export default function Search() {
     layout.kind === 'phone' || layout.kind === 'duoClosed'
       ? 0
       : (layout.width - strip - Math.min(560, layout.width - strip - 80)) / 2
-  const nothing = !results.length && !remote.isFetching && !local.hood
+  // O vazio do design (Rodada 14) só fora do celular; no celular, a frase.
+  const nothing =
+    layout.kind !== 'phone' &&
+    !results.length &&
+    !remote.isFetching &&
+    !local.hood
   return (
     <View
       style={[
@@ -291,7 +296,9 @@ export default function Search() {
               <Text
                 style={[text(14, 'Regular', 1.45), { color: palette.muted }]}
               >
-                Buscando…
+                {remote.isFetching
+                  ? 'Buscando…'
+                  : `Nada perto com “${query.trim()}”. Tente o nome do bar, o bairro ou um time.`}
               </Text>
             )}
           </>
