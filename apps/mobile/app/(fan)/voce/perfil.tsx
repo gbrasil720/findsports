@@ -884,17 +884,20 @@ function Tile({
           soft
           shadow={hot ? palette.liveShadow : undefined}
           offset={hot ? 5 : 4}
-          style={styles.tileBody}
         >
-          <Icon name={icon} size={24} color={palette.ink} />
-          <Text style={[styles.tileValue, { color: palette.ink }]}>
-            {value}
-          </Text>
-          <View style={styles.tileLabel}>
-            <Text style={[text(12.5), { color: palette.muted, flex: 1 }]}>
-              {label}
+          {/* O respiro por dentro: `style` no Card estica o cartão (flex 1),
+              e na metade de cima da mesa ele encolhia até sumir. */}
+          <View style={styles.tileBody}>
+            <Icon name={icon} size={24} color={palette.ink} />
+            <Text style={[styles.tileValue, { color: palette.ink }]}>
+              {value}
             </Text>
-            <Icon name="next" size={12} color={palette.muted} />
+            <View style={styles.tileLabel}>
+              <Text style={[text(12.5), { color: palette.muted, flex: 1 }]}>
+                {label}
+              </Text>
+              <Icon name="next" size={12} color={palette.muted} />
+            </View>
           </View>
         </Card>
       </Tap>
