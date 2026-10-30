@@ -1,13 +1,13 @@
 import * as ScreenOrientation from 'expo-screen-orientation'
 import * as SystemUI from 'expo-system-ui'
-import { useEffect } from 'react'
+import { createContext, useContext, useEffect } from 'react'
 import { Platform, useColorScheme, useWindowDimensions } from 'react-native'
 import {
   useSafeAreaFrame,
   useSafeAreaInsets
 } from 'react-native-safe-area-context'
 import { INK, PAPER } from '@/components/theme'
-import { classify, locksPortrait } from '@/lib/layout'
+import { classify, type Layout, locksPortrait } from '@/lib/layout'
 import { usePosture } from '@/modules/fold-posture'
 
 /*
@@ -26,8 +26,19 @@ const IS_PAD = Platform.OS === 'ios' && Platform.isPad
 export function useLayout() {
   const { width, height } = useSafeAreaFrame()
   const posture = usePosture()
-  return classify({ width, height, os: Platform.OS, isPad: IS_PAD, posture })
+  const inner = useContext(InnerLayout)
+  return (
+    inner ??
+    classify({ width, height, os: Platform.OS, isPad: IS_PAD, posture })
+  )
 }
+
+/**
+ * Um quadro que já resolveu o aparelho (o do onboarding põe o passo numa
+ * coluna, ao lado do painel ou na metade da mesa) diz às telas de dentro em
+ * que layout elas estão, para não aplicarem de novo a faixa do Duo ou a mesa.
+ */
+export const InnerLayout = createContext<Layout | null>(null)
 
 /** Medidas da navegação de cada aparelho, as do design (gen/adapt-dev.js). */
 export const NAV = {
