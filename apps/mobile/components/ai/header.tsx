@@ -104,20 +104,109 @@ export function AiHeader({
   )
 }
 
+/**
+ * O cabeçalho da busca com IA em tela cheia (Adaptativo 03, chatHead):
+ * voltar, o ícone com "Busca com IA" e "+". O status do celular não entra.
+ */
+export function AiTopBar({
+  palette,
+  onBack,
+  onNew
+}: {
+  palette: AiPalette
+  onBack?: () => void
+  onNew?: () => void
+}) {
+  return (
+    <View style={styles.bar}>
+      {onBack ? (
+        <RoundButton
+          icon="back"
+          label="Voltar"
+          palette={palette}
+          onPress={onBack}
+        />
+      ) : null}
+      <View style={styles.barTitle}>
+        <Icon
+          name="sparkle"
+          size={26}
+          color={palette.ink}
+          accent={palette.accent}
+        />
+        <Text style={[text(17, 'Bold', 1.3), { color: palette.ink }]}>
+          Busca com IA
+        </Text>
+      </View>
+      {onNew ? (
+        <RoundButton
+          icon="plus"
+          label="Nova conversa"
+          palette={palette}
+          onPress={onNew}
+        />
+      ) : null}
+    </View>
+  )
+}
+
+/** Voltar ou "+" no vidro redondo (40 no design; 56 na faixa do Duo). */
+export function RoundButton({
+  icon,
+  label,
+  palette,
+  size = 40,
+  onPress
+}: {
+  icon: 'back' | 'plus'
+  label: string
+  palette: AiPalette
+  size?: number
+  onPress: () => void
+}) {
+  const glyph = Math.round(size * 0.45)
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={6}
+      onPress={onPress}
+    >
+      <Round palette={palette} size={size}>
+        {icon === 'plus' ? (
+          <AiIcon name="plus" size={glyph} color={palette.ink} />
+        ) : (
+          <Icon name="back" size={glyph} color={palette.ink} />
+        )}
+      </Round>
+    </Pressable>
+  )
+}
+
 /** O botão redondo de vidro do cabeçalho (38 pt no design). */
 export function Round({
   palette,
+  size = 38,
   children
 }: {
   palette: AiPalette
+  size?: number
   children: ReactNode
 }) {
+  const round =
+    size === 38 ? null : { width: size, height: size, borderRadius: size / 2 }
   return (
-    <View style={[styles.roundBase, palette.dark && styles.roundBaseDark]}>
+    <View
+      style={[
+        styles.roundBase,
+        palette.dark && styles.roundBaseDark,
+        round && { borderRadius: size / 2 }
+      ]}
+    >
       <Glass
         tone={palette.dark ? 'dark' : 'light'}
         interactive
-        style={styles.round}
+        style={[styles.round, round]}
       >
         {children}
       </Glass>
@@ -126,6 +215,14 @@ export function Round({
 }
 
 const styles = StyleSheet.create({
+  bar: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  barTitle: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
   head: {
     flexDirection: 'row',
     alignItems: 'center',

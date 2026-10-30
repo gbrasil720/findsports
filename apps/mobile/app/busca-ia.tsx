@@ -33,7 +33,7 @@ import {
   DecisionLine
 } from '@/components/ai/confirmation'
 import { Conversations } from '@/components/ai/conversations'
-import { AiHeader } from '@/components/ai/header'
+import { AiHeader, AiTopBar, RoundButton } from '@/components/ai/header'
 import { AiIcon } from '@/components/ai/icons'
 import { UserMessage } from '@/components/ai/message'
 import { PromptInput } from '@/components/ai/prompt-input'
@@ -51,6 +51,7 @@ import { Chip, dayLabel } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { NAV, useLayout } from '@/components/layout'
 import { EASE, haptic, popFrom, SWAP } from '@/components/motion'
+import { StackRail } from '@/components/side-nav'
 import {
   ACID,
   Icon,
@@ -186,8 +187,11 @@ export default function AiSearch() {
   // à esquerda no tablet deitado e no Duo aberto, o mapa da resposta ao lado
   // no dobrável aberto e no 13″, embaixo no tablet em pé, em cima na mesa.
   const layout = useLayout()
-  const sheet = layout.kind === 'phone' || layout.kind === 'duoClosed'
-  const duo = layout.kind === 'split' && layout.nav === 'duoRail'
+  const sheet = layout.kind === 'phone'
+  const duo = layout.nav === 'duoRail'
+  // O rail do Galaxy Tab fica à esquerda (03q–03u).
+  const rail = layout.nav === 'rail' ? NAV.rail.width : 0
+  const W = layout.width - rail
   const fold =
     layout.kind === 'split' &&
     !duo &&
@@ -203,16 +207,34 @@ export default function AiSearch() {
   const sideMap = fold || (convo && !duo && layout.wide)
   const mapW = fold
     ? layout.width - layout.split - layout.gap
-    : Math.round((layout.width - convoW) * 0.42)
+    : Math.round((W - convoW) * 0.42)
   // A coluna de leitura: até 680 no meio no tablet em pé.
   const pad =
     layout.kind === 'stack'
-      ? Math.max(24, (layout.width - 680) / 2)
+      ? Math.max(24, (W - 680) / 2)
       : layout.kind === 'table'
         ? 20
         : convo
           ? 28
-          : 16
+          : layout.kind === 'duoClosed'
+            ? 16
+            : 14
+  // O cabeçalho do design (chatHead) só no tablet em pé e no dobrável com o
+  // mapa; nos outros, as conversas, a faixa do Duo ou o mapa têm o voltar.
+  const topBar = layout.kind === 'stack' || fold
+  // A largura da coluna do chat, para o campo ficar em até 680 no meio dela.
+  const chatW = convo
+    ? W -
+      convoW -
+      layout.gap -
+      (sideMap ? mapW : 0) -
+      (duo ? NAV.duoRail.width : 0)
+    : fold
+      ? layout.split
+      : layout.kind === 'duoClosed'
+        ? W - NAV.duoRail.width
+        : W
+  const dockPad = Math.max(pad, (chatW - 680) / 2) - 12
   useStatusBar(sheet || layout.kind === 'cover' ? 'light' : 'auto')
   // Navegador DEV: `?dubla=1` usa o dublê; `estado` já manda a pergunta de
   // cada tela (24b pensando, 24c resposta, 24d confirmar, 24e feito).
@@ -790,35 +812,49 @@ export default function AiSearch() {
         <View style={{ height: dockHeight + 16 }} />
       </ScrollView>
 
-      <View
-        style={[
-          styles.top,
-          { backgroundColor: palette.sheetBg },
-          sheet
-            ? null
-            : {
-                // Em tela cheia não há mapa atrás: o cabeçalho é opaco.
-                backgroundColor: palette.sheet,
-                paddingTop: layout.kind === 'table' ? 0 : insets.top,
-                paddingHorizontal: pad - 16
-              }
-        ]}
-        onLayout={(e) => setHeadHeight(e.nativeEvent.layout.height)}
-      >
-        <AiHeader
-          status={subtitle}
-          busy={spinning}
-          quiet={!!blocked || off}
-          palette={palette}
-          onNew={convo ? undefined : newConversation}
-          onClose={() => router.back()}
-        />
-      </View>
+      {sheet ? (
+        <View
+          style={[styles.top, { backgroundColor: palette.sheetBg }]}
+          onLayout={(e) => setHeadHeight(e.nativeEvent.layout.height)}
+        >
+          <AiHeader
+            status={subtitle}
+            busy={spinning}
+            quiet={!!blocked || off}
+            palette={palette}
+            onNew={newConversation}
+            onClose={() => router.back()}
+          />
+        </View>
+      ) : (
+        <View
+          style={[
+            styles.top,
+            {
+              // Em tela cheia não há mapa atrás: o cabeçalho é opaco.
+              backgroundColor: palette.sheet,
+              paddingTop:
+                layout.kind === 'table' ? 14 : insets.top + (topBar ? 20 : 18),
+              paddingBottom: topBar ? 14 : 0,
+              paddingHorizontal: pad
+            }
+          ]}
+          onLayout={(e) => setHeadHeight(e.nativeEvent.layout.height)}
+        >
+          {topBar ? (
+            <AiTopBar
+              palette={palette}
+              onBack={rail ? undefined : () => router.back()}
+              onNew={newConversation}
+            />
+          ) : null}
+        </View>
+      )}
       <Animated.View
         style={[
           styles.dock,
           footer,
-          sheet ? null : { paddingHorizontal: pad - 12 }
+          sheet ? null : { paddingHorizontal: dockPad }
         ]}
         onLayout={(e) => setDockHeight(e.nativeEvent.layout.height)}
       >
@@ -969,7 +1005,8 @@ export default function AiSearch() {
         styles.full,
         {
           backgroundColor: palette.sheet,
-          flexDirection: table ? 'column' : 'row'
+          flexDirection: table ? 'column' : 'row',
+          paddingLeft: rail
         }
       ]}
     >
@@ -983,12 +1020,22 @@ export default function AiSearch() {
             top={insets.top + 18}
             onOpen={reopen}
             onNew={newConversation}
+            onBack={duo || rail ? undefined : () => router.back()}
           />
         </View>
       ) : null}
       {table ? (
         <View style={{ height: layout.split, marginBottom: layout.gap }}>
           {answerMap}
+          {/* A mesa não tem por onde sair no design: o voltar no canto. */}
+          <View style={[styles.mapBack, { top: insets.top + 8 }]}>
+            <RoundButton
+              icon="back"
+              label="Voltar"
+              palette={palette}
+              onPress={() => router.back()}
+            />
+          </View>
         </View>
       ) : null}
       <View
@@ -1005,6 +1052,29 @@ export default function AiSearch() {
           {answerMap}
         </View>
       ) : null}
+      {duo ? (
+        // Duo (03a–03c): voltar e nova conversa na faixa da direita.
+        <View
+          style={[
+            styles.duoControls,
+            layout.kind === 'duoClosed'
+              ? { right: 26, top: 176 }
+              : { right: 13, bottom: 30 }
+          ]}
+        >
+          {(['back', 'plus'] as const).map((icon) => (
+            <RoundButton
+              key={icon}
+              icon={icon}
+              label={icon === 'back' ? 'Voltar' : 'Nova conversa'}
+              palette={palette}
+              size={layout.kind === 'duoClosed' ? 50 : 56}
+              onPress={icon === 'back' ? () => router.back() : newConversation}
+            />
+          ))}
+        </View>
+      ) : null}
+      {rail ? <StackRail current={null} /> : null}
     </View>
   )
 }
@@ -1347,6 +1417,8 @@ function ApprovedLines({
 const styles = StyleSheet.create({
   sheet: { flex: 1 },
   full: { flex: 1 },
+  mapBack: { position: 'absolute', right: 16 },
+  duoControls: { position: 'absolute', gap: 10, zIndex: 40 },
   stackMap: { borderRadius: 10, overflow: 'hidden' },
   cover: { flex: 1, backgroundColor: INK, paddingHorizontal: 22, gap: 12 },
   coverHead: { flexDirection: 'row', alignItems: 'center', gap: 7 },
