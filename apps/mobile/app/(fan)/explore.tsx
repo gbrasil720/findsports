@@ -1428,7 +1428,8 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
             styles.pane,
             {
               left: navInsets.left,
-              paddingTop: insets.top + 20,
+              // 44 do topo, como no design, abaixo da barra de status.
+              paddingTop: Math.max(44, insets.top + 12),
               paddingHorizontal: pad,
               gap: stack ? 16 : 14
             },
