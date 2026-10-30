@@ -344,7 +344,9 @@ export default function Ranking() {
     // com até 760; no dobrável, cada metade.
     const tablet =
       (Platform.OS === 'ios' && Platform.isPad) || layout.nav === 'rail'
-    const list = layout.split - nav.left
+    // A coluna da lista tem a largura toda de `split`, depois do rail do
+    // Galaxy Tab (400 no S11, como no design).
+    const list = layout.split
     const page = layout.width - nav.left - nav.right - list - layout.gap
     const choose = (row: Row) => {
       if (row.me) return open(row)
