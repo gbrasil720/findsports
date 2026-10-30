@@ -13,7 +13,7 @@ import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { MeDot, RadiusCircle } from '@/components/explore'
 import { EASE, haptic } from '@/components/motion'
-import { useOnboarding } from '@/components/onboarding'
+import { useFrameKind, useOnboarding, usePane } from '@/components/onboarding'
 import {
   ACID,
   BG,
@@ -53,7 +53,13 @@ export default function LocationAsk() {
   const { choices } = useOnboarding()
   useStatusBar('auto')
   const dark = useColorScheme() === 'dark'
-  const { width, height: screen } = useWindowDimensions()
+  // Fora do celular o mapa ocupa a área do passo, e a folha vira um card
+  // no meio dela (Adaptativo 09, "localização").
+  const window = useWindowDimensions()
+  const pane = usePane()
+  const frame = useFrameKind()
+  const card = frame !== 'phone' && frame !== 'cover'
+  const { width, height: screen } = card && pane ? pane : window
   const center = choices.city ? `de ${choices.city.name}` : 'da sua cidade'
   const { lat, lng } = choices.city ?? SAO_PAULO
   // O Apple Maps encaixa a região na área segura, não na tela toda: a conta
@@ -107,7 +113,9 @@ export default function LocationAsk() {
         entering={SHEET_IN}
         style={[
           styles.sheet,
-          { paddingBottom: Math.max(insets.bottom, 16) + 8 }
+          card
+            ? [styles.card, { maxWidth: width - 32, paddingBottom: 24 }]
+            : { paddingBottom: Math.max(insets.bottom, 16) + 8 }
         ]}
       >
         <View style={styles.grabber} />
@@ -178,6 +186,18 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingHorizontal: 20,
     gap: 12
+  },
+  card: {
+    left: undefined,
+    right: undefined,
+    bottom: 28,
+    width: 520,
+    alignSelf: 'center',
+    borderRadius: 32,
+    shadowColor: '#000',
+    shadowOpacity: 0.4,
+    shadowRadius: 25,
+    shadowOffset: { width: 0, height: 20 }
   },
   grabber: {
     alignSelf: 'center',
