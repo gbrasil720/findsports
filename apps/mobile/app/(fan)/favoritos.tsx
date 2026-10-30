@@ -15,7 +15,7 @@ import {
 import Animated, { FadeOut, LinearTransition } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card, FilterChip } from '@/components/card'
-import { SavedEmpty } from '@/components/empty-states'
+import { SavedEmpty, SaveMap } from '@/components/empty-states'
 import { HardShadow, Photo } from '@/components/explore'
 import { useExploreState, useShotSource } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
@@ -53,6 +53,7 @@ import {
   type VisitRow,
   VisitsMap
 } from '@/components/your-bars'
+import { authClient } from '@/lib/auth-client'
 import { distanceKm, formatKm, searchCenter } from '@/lib/explore'
 import { useFavorites } from '@/lib/favorites'
 import { trpc } from '@/lib/trpc'
@@ -151,7 +152,7 @@ export default function YourBars() {
   const pull = usePullRefresh(() =>
     Promise.all([visits.refetch(), saved.refetch()])
   )
-
+  const session = authClient.useSession()
   // Fora do celular (A04): tablet em pé é o mês inteiro e cards; deitado,
   // "Já fui" e a lembrança do bar tocado (no dobrável) ou o mapa de onde você
   // foi (no tablet); 13″ e Ultra deitados, as três abas em colunas.
@@ -337,6 +338,101 @@ export default function YourBars() {
 
   // Tela de fora do Z Flip 8: o último bar onde você foi e "Voltar lá". A
   // linha de cima fica a 30 do topo, como no design, abaixo da barra de status.
+  // Nada ainda (nenhuma visita, nenhum salvo): o vazio do design (Rodada
+  // 14) no lugar das abas; no tablet, com o mapa em cima ou ao lado para
+  // achar o primeiro (Adaptativo 10).
+  const nothing =
+    search === null &&
+    visits.isSuccess &&
+    saved.isSuccess &&
+    !visits.data.length &&
+    !saved.data.length
+  if (nothing) {
+    const wide = layout.kind === 'split' || layout.kind === 'stack'
+    const column = (
+      <ScrollView
+        contentContainerStyle={[
+          styles.body,
+          {
+            paddingTop: layout.kind === 'stack' ? 40 : insets.top + 4,
+            paddingBottom: tabBar + 24
+          }
+        ]}
+      >
+        <View style={styles.top}>
+          <Title lines={[['Seus bares']]} size={42} color={palette.ink} />
+        </View>
+        <SavedEmpty onExplore={() => router.navigate('/explore')} />
+      </ScrollView>
+    )
+    const map = (
+      <SaveMap
+        center={from}
+        radiusKm={session.data?.user.searchRadiusKm ?? 3}
+        onOpen={openBar}
+      />
+    )
+    const usable = layout.width - nav.left - nav.right
+    if (!wide)
+      return (
+        <View
+          ref={shotSource.ref}
+          collapsable={false}
+          style={[styles.screen, { backgroundColor: palette.bg }]}
+        >
+          {column}
+        </View>
+      )
+    if (layout.kind === 'stack') {
+      const width = Math.min(560, usable - 80)
+      return (
+        <View
+          ref={shotSource.ref}
+          collapsable={false}
+          style={[styles.screen, { backgroundColor: palette.bg }]}
+        >
+          <View style={{ height: 520, marginLeft: nav.left }}>{map}</View>
+          <View
+            style={[
+              styles.sheet,
+              {
+                width,
+                left: nav.left + (usable - width) / 2,
+                backgroundColor: palette.bg
+              }
+            ]}
+          >
+            {column}
+          </View>
+        </View>
+      )
+    }
+    const listWidth = layout.gap ? layout.split : Math.round(usable * 0.42)
+    return (
+      <View
+        ref={shotSource.ref}
+        collapsable={false}
+        style={[
+          styles.screen,
+          {
+            backgroundColor: palette.bg,
+            flexDirection: 'row',
+            gap: layout.gap,
+            paddingLeft: nav.left,
+            paddingRight: nav.right
+          }
+        ]}
+      >
+        <View style={{ width: listWidth, alignItems: 'center' }}>
+          <View style={{ flex: 1, width: Math.min(listWidth, 430) }}>
+            {column}
+          </View>
+        </View>
+        <View style={{ flex: 1 }}>{map}</View>
+      </View>
+    )
+  }
+
   if (layout.kind === 'cover')
     return (
       <View
@@ -1382,6 +1478,15 @@ function Row({
 }
 
 const styles = StyleSheet.create({
+  // A folha do vazio em pé: sobe por cima do mapa (Adaptativo 10).
+  sheet: {
+    position: 'absolute',
+    top: 492,
+    bottom: 0,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    overflow: 'hidden'
+  },
   screen: { flex: 1 },
   body: { paddingHorizontal: 16, gap: 14 },
   stack: { gap: 14 },
