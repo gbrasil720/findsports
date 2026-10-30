@@ -53,9 +53,10 @@ export default function City() {
   const palette = usePalette()
   // O mapa do design (a08v): o centro da cidade marcada, senão a primeira
   // sugestão. A busca de cidades já traz o centro de cada uma.
-  const shown = chosen ?? suggestions.data?.[0] ?? null
+  // Só fora do celular (a08): no celular a tela é a aprovada, sem mapa.
+  const shown = asSheet ? (chosen ?? suggestions.data?.[0] ?? null) : null
   // Destaca na lista o que a pessoa digitou ("Campi" em "Campinas").
-  const typedNorm = query.toLocaleLowerCase('pt-BR')
+  const typedNorm = asSheet ? query.toLocaleLowerCase('pt-BR') : ''
   const save = useMutation(
     trpc.pubs.updateMyCity.mutationOptions({
       onSuccess: () => {
@@ -96,7 +97,7 @@ export default function City() {
       />
       {(suggestions.data?.length ?? 0) > 0 ? (
         <Animated.View entering={SWAP} style={styles.suggestions}>
-          {suggestions.data?.slice(0, 4).map((city) => (
+          {suggestions.data?.slice(0, asSheet ? 4 : undefined).map((city) => (
             <Pressable
               key={`${city.name}-${city.uf}`}
               accessibilityRole="button"
@@ -106,9 +107,10 @@ export default function City() {
               style={({ pressed }) => [
                 styles.suggestion,
                 pressed && { backgroundColor: PRESSED },
-                (chosen ?? suggestions.data?.[0]) === city && {
-                  backgroundColor: CHOSEN
-                }
+                asSheet &&
+                  (chosen ?? suggestions.data?.[0]) === city && {
+                    backgroundColor: CHOSEN
+                  }
               ]}
             >
               <Highlighted name={city.name} typed={typedNorm} />
