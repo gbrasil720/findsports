@@ -80,7 +80,7 @@ export default function Layout() {
   // A busca com IA é folha no celular e tela cheia fora dele (WEB-488): no
   // iPad a folha viraria um cartão no meio da tela.
   const kind = useLayout().kind
-  const aiSheet = kind === 'phone' || kind === 'duoClosed'
+  const aiSheet = kind === 'phone'
   const ready = fontsLoaded && agenda !== undefined
   const [splashDone, setSplashDone] = useState(false)
   const endSplash = useCallback(() => setSplashDone(true), [])

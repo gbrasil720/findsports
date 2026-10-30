@@ -9,7 +9,7 @@ import {
   type Recent,
   shownReply
 } from '@/lib/ai-chat'
-import { Round } from './header'
+import { Round, RoundButton } from './header'
 import { AiIcon } from './icons'
 import type { AiPalette } from './theme'
 
@@ -25,7 +25,8 @@ export function Conversations({
   palette,
   top,
   onOpen,
-  onNew
+  onNew,
+  onBack
 }: {
   recents: Recent[]
   /** A conversa aberta, marcada na lista. */
@@ -36,6 +37,11 @@ export function Conversations({
   top: number
   onOpen: (recent: Recent) => void
   onNew: () => void
+  /**
+   * O iPad deitado não tem por onde sair no design (o Galaxy Tab tem o rail):
+   * o voltar entra antes do título, o menor acréscimo.
+   */
+  onBack?: () => void
 }) {
   const [query, setQuery] = useState('')
   const q = query.trim().toLocaleLowerCase('pt-BR')
@@ -58,7 +64,18 @@ export function Conversations({
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.head}>
-          <Text style={[styles.title, { color: palette.ink }]}>Conversas</Text>
+          {onBack ? (
+            <RoundButton
+              icon="back"
+              label="Voltar"
+              palette={palette}
+              size={38}
+              onPress={onBack}
+            />
+          ) : null}
+          <Text style={[styles.title, { color: palette.ink, flex: 1 }]}>
+            Conversas
+          </Text>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Nova conversa"
@@ -146,11 +163,7 @@ export function Conversations({
 const styles = StyleSheet.create({
   column: { height: '100%', borderRightWidth: 1 },
   body: { paddingHorizontal: 14, paddingBottom: 24, gap: 12 },
-  head: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center'
-  },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   // Anton 28 do design, sem `lineHeight` (corta no iOS): margem negativa.
   title: {
     fontFamily: 'Anton',
