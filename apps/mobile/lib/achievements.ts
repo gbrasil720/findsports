@@ -112,6 +112,18 @@ export function describe(a: Achievement) {
   return `Avalie ${n} jogos dizendo se voltaria ao bar. Falta${left === 1 ? '' : 'm'} ${unit('resenhas', left)}.`
 }
 
+/** "5 bares diferentes", no destaque do tablet em pé (A06). */
+export const amountLine = (a: Achievement) =>
+  a.group === 'resenhas'
+    ? unit(a.group, a.target)
+    : `${unit(a.group, a.target)} diferentes`
+
+/** O texto curto da mesa (A06): o do detalhe sem "Você assistiu a jogos em". */
+export function shortDescribe(a: Achievement) {
+  const line = describe(a).replace(/^Você assistiu a (jogos em )?/, '')
+  return line.charAt(0).toUpperCase() + line.slice(1)
+}
+
 const ordinal = (n: number, feminine = false) => `${n}${feminine ? 'ª' : 'º'}`
 
 /** O texto da conquista desbloqueada (2k). */
