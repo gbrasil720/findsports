@@ -335,13 +335,14 @@ export default function YourBars() {
     }
   ]
 
-  // Tela de fora do Z Flip 8: o último bar onde você foi e "Voltar lá".
+  // Tela de fora do Z Flip 8: o último bar onde você foi e "Voltar lá". A
+  // linha de cima fica a 30 do topo, como no design, abaixo da barra de status.
   if (layout.kind === 'cover')
     return (
       <View
         ref={shotSource.ref}
         collapsable={false}
-        style={[styles.cover, { paddingTop: insets.top + 30 }]}
+        style={[styles.cover, { paddingTop: Math.max(insets.top + 6, 30) }]}
       >
         {all[0] ? <LastBar visit={all[0]} onOpen={openBar} /> : null}
       </View>
