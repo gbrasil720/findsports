@@ -401,52 +401,56 @@ export function SettingsList({
         {SECTIONS.map((section, index) => {
           const on = section.tab === current
           return (
-            <Pressable
-              key={section.tab}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: on }}
-              onPress={() => {
-                if (on) return
-                haptic.select()
-                onPick(section.tab)
-              }}
-              style={({ pressed }) => [
-                styles.section,
-                index > 0 &&
-                  !on &&
-                  SECTIONS[index - 1]?.tab !== current && {
-                    borderTopWidth: 1,
-                    borderTopColor: palette.line
-                  },
-                on && [
-                  styles.sectionOn,
-                  {
-                    backgroundColor: palette.dark ? '#262621' : '#fff',
-                    borderColor: palette.dark ? 'rgba(241,238,230,.6)' : INK
-                  }
-                ],
-                pressed && !on && { opacity: 0.6 }
-              ]}
-            >
-              <Icon
-                name={section.icon}
-                size={22}
-                color={palette.ink}
-                accent={accent}
-              />
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={[text(15, 'Bold'), { color: palette.ink }]}>
-                  {section.title}
-                </Text>
-                <Text
-                  numberOfLines={1}
-                  style={[text(12.5), { color: palette.muted }]}
-                >
-                  {section.sub}
-                </Text>
-              </View>
-              <Icon name="next" size={12} color={palette.muted} />
-            </Pressable>
+            // A sombra dura acid é um bloco por trás: `shadow*` não desenha
+            // no Android.
+            <View key={section.tab} style={on && styles.sectionWrap}>
+              {on ? <View style={styles.sectionShadow} /> : null}
+              <Pressable
+                accessibilityRole="tab"
+                accessibilityState={{ selected: on }}
+                onPress={() => {
+                  if (on) return
+                  haptic.select()
+                  onPick(section.tab)
+                }}
+                style={({ pressed }) => [
+                  styles.section,
+                  index > 0 &&
+                    !on &&
+                    SECTIONS[index - 1]?.tab !== current && {
+                      borderTopWidth: 1,
+                      borderTopColor: palette.line
+                    },
+                  on && [
+                    styles.sectionOn,
+                    {
+                      backgroundColor: palette.dark ? '#262621' : '#fff',
+                      borderColor: palette.dark ? 'rgba(241,238,230,.6)' : INK
+                    }
+                  ],
+                  pressed && !on && { opacity: 0.6 }
+                ]}
+              >
+                <Icon
+                  name={section.icon}
+                  size={22}
+                  color={palette.ink}
+                  accent={accent}
+                />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={[text(15, 'Bold'), { color: palette.ink }]}>
+                    {section.title}
+                  </Text>
+                  <Text
+                    numberOfLines={1}
+                    style={[text(12.5), { color: palette.muted }]}
+                  >
+                    {section.sub}
+                  </Text>
+                </View>
+                <Icon name="next" size={12} color={palette.muted} />
+              </Pressable>
+            </View>
           )
         })}
       </View>
@@ -514,17 +518,17 @@ const styles = StyleSheet.create({
     paddingVertical: 11
   },
   // A seção aberta: o cartão branco de borda de tinta e sombra acid (sel7).
-  sectionOn: {
-    marginHorizontal: -8,
-    marginVertical: 4,
-    paddingHorizontal: 12,
+  sectionWrap: { marginHorizontal: -8, marginVertical: 4 },
+  sectionShadow: {
+    ...StyleSheet.absoluteFill,
+    top: 3,
+    left: 3,
+    right: -3,
+    bottom: -3,
     borderRadius: 6,
-    borderWidth: 1.5,
-    shadowColor: ACID,
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    shadowOffset: { width: 3, height: 3 }
+    backgroundColor: ACID
   },
+  sectionOn: { paddingHorizontal: 12, borderRadius: 6, borderWidth: 1.5 },
   detail: { flex: 1 },
   body: { gap: 14 }
 })
