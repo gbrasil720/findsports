@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
 import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react'
 import {
+  BackHandler,
   Platform,
   Pressable,
   ScrollView,
@@ -28,7 +29,9 @@ import Animated, {
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { scheduleOnRN } from 'react-native-worklets'
+import { BarDetail } from '@/app/bar/[id]'
 import {
+  BarLine,
   BarRow,
   BarTicket,
   Chip,
@@ -138,6 +141,11 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   // Meio dobrado na mesa (Duo em laptop, Flex Mode): o mapa em cima, a lista
   // embaixo da dobra. Tela de fora do Flip: só o bar mais perto (`Cover`).
   const table = layout.kind === 'table'
+  // Tablet deitado (iPad, Galaxy Tab): abrir um bar troca o mapa pela página
+  // dele, com a lista ao lado (a02). No dobrável e no Duo, a página inteira.
+  const besideList =
+    layout.kind === 'split' &&
+    (layout.nav === 'rail' || (layout.nav === 'float' && Platform.OS === 'ios'))
   const cover = layout.kind === 'cover'
   // O dobrável aberto tem a lista mais justa (12 dos lados, não 22).
   const pad = stack
@@ -217,19 +225,22 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
     state.shortcuts ?? defaultShortcuts(prefs.data?.[0]?.sport.slug ?? null)
   const active = activeCount(filters)
 
-  const open = (bar: SearchBar) =>
-    router.push({
-      pathname: '/bar/[id]',
-      // Nome e foto vão junto: a página desenha o topo antes da resposta.
-      params: {
-        id: bar.id,
-        km: String(bar.distance_km),
-        name: bar.name,
-        photo: bar.photo_url ?? undefined,
-        // Distância do aparelho, não do centro da cidade: vale "N min a pé".
-        walk: device ? '1' : undefined
-      }
-    })
+  const open = (bar: SearchBar) => {
+    // Nome e foto vão junto: a página desenha o topo antes da resposta.
+    const params = {
+      id: bar.id,
+      km: String(bar.distance_km),
+      name: bar.name,
+      photo: bar.photo_url ?? undefined,
+      // Distância do aparelho, não do centro da cidade: vale "N min a pé".
+      walk: device ? '1' : undefined
+    }
+    if (!besideList) return router.push({ pathname: '/bar/[id]', params })
+    // Tocar de novo no bar aberto volta ao mapa.
+    if (state.beside?.id === bar.id) return state.setBeside(null)
+    haptic.select()
+    state.setBeside(params)
+  }
   // "Vou assistir aqui" no próximo jogo do bar (o card ao lado no 13″, a
   // tela de fora do Flip).
   const go = (bar: SearchBar) =>
@@ -651,11 +662,21 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   // Os cards fora do celular: o primeiro com jogo em ingresso; numa coluna
   // estreita (iPad mini deitado, Fold aberto) e na mesa, todos na linha
   // compacta. Em pé e na mesa, em duas colunas (`columns` é a largura de uma).
-  const compactRows = narrow || table
+  // Com um bar aberto ao lado, a lista vira linhas, com ele marcado (a02).
+  const beside = besideList ? state.beside : null
+  // O voltar do Android fecha o bar aberto ao lado antes de sair da aba.
+  const { setBeside } = state
+  useEffect(() => {
+    if (!beside) return
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setBeside(null)
+      return true
+    })
+    return () => sub.remove()
+  }, [beside, setBeside])
+  const compactRows = narrow || table || !!beside
   const columns = stack ? column : table ? (width - 40 - 12) / 2 : 0
   const gridCards = listed.map((bar, index) => {
-    // O primeiro com jogo vai em ingresso; numa coluna estreita
-    // (iPad mini deitado, Fold aberto), todos na linha compacta.
     const ticket = index === 0 && bars.length > 0 && !compactRows
     return (
       <Fragment key={bar.id}>
@@ -673,13 +694,15 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
               onFavorite={() => favorites.toggle(bar.id)}
               onPress={() => open(bar)}
             />
-          ) : (
-            <BarRow
+          ) : compactRows ? (
+            <BarLine
               bar={bar}
               now={now}
-              compact={compactRows}
+              chosen={beside?.id === bar.id}
               onPress={() => open(bar)}
             />
+          ) : (
+            <BarRow bar={bar} now={now} onPress={() => open(bar)} />
           )}
         </View>
       </Fragment>
@@ -1513,6 +1536,23 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
           </ScrollView>
         </View>
       )}
+      {beside ? (
+        // O bar aberto ao lado da lista (a02), no lugar do mapa, que continua
+        // montado por baixo, onde estava.
+        <View
+          style={[
+            styles.beside,
+            { left: mapBox.left, backgroundColor: palette.bg }
+          ]}
+        >
+          <BarDetail
+            key={beside.id}
+            {...beside}
+            width={mapBox.width}
+            back={false}
+          />
+        </View>
+      ) : null}
       {soon.toast}
     </View>
   )
@@ -1749,6 +1789,7 @@ const DETAIL_IN: EntryExitAnimationFunction = () => {
 
 const styles = StyleSheet.create({
   pane: { position: 'absolute', top: 0, bottom: 0 },
+  beside: { position: 'absolute', top: 0, bottom: 0, right: 0 },
   coverEmpty: {
     backgroundColor: INK,
     alignItems: 'center',
