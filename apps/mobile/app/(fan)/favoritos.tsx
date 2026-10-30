@@ -37,6 +37,7 @@ import {
   Icon,
   INK,
   LIVE,
+  PillButton,
   Text,
   TextInput,
   Title,
@@ -341,7 +342,9 @@ export default function YourBars() {
   // Nada ainda (nenhuma visita, nenhum salvo): o vazio do design (Rodada
   // 14) no lugar das abas; no tablet, com o mapa em cima ou ao lado para
   // achar o primeiro (Adaptativo 10).
+  // Só fora do celular: no celular as abas e o vazio de sempre.
   const nothing =
+    layout.kind !== 'phone' &&
     search === null &&
     visits.isSuccess &&
     saved.isSuccess &&
@@ -1012,6 +1015,8 @@ function Saved({
   const palette = usePalette()
   const t = tones(palette)
   const week = savedWeek(rows, now)
+  // O vazio da Rodada 14 é do tablet; no celular, o de sempre.
+  const phone = useLayout().kind === 'phone'
   return (
     <>
       <Card shadow={t.glow} offset={5}>
@@ -1068,7 +1073,22 @@ function Saved({
 
       {!rows.length && !searching ? (
         <View style={styles.empty}>
-          <SavedEmpty onExplore={onExplore} />
+          {phone ? (
+            <>
+              <Text style={[text(16, 'Bold'), { color: palette.ink }]}>
+                Nenhum bar salvo ainda.
+              </Text>
+              <Text
+                style={[text(14, 'Regular', 1.45), { color: palette.muted }]}
+              >
+                Toque no coração de um bar, no mapa ou na página dele, para ver
+                aqui os jogos da semana de lá.
+              </Text>
+              <PillButton label="Procurar bares" onPress={onExplore} />
+            </>
+          ) : (
+            <SavedEmpty onExplore={onExplore} />
+          )}
         </View>
       ) : !rows.length ? (
         <NoMatch />
@@ -1189,6 +1209,7 @@ function Bars({
   const router = useRouter()
   const palette = usePalette()
   const t = tones(palette)
+  const phone = useLayout().kind === 'phone'
   const [sort, setSort] = useState<BarSort>('bairro')
   const sorts: [BarSort, string][] = [
     ['bairro', 'Bairro'],
@@ -1198,7 +1219,19 @@ function Bars({
   if (!all.bars.length)
     return (
       <View style={styles.empty}>
-        <SavedEmpty onExplore={() => router.navigate('/explore')} />
+        {phone ? (
+          <>
+            <Text style={[text(16, 'Bold'), { color: palette.ink }]}>
+              Nenhum bar salvo ainda.
+            </Text>
+            <Text style={[text(14, 'Regular', 1.45), { color: palette.muted }]}>
+              Toque no coração de um bar, no mapa ou na página dele, para
+              guardar aqui, por bairro.
+            </Text>
+          </>
+        ) : (
+          <SavedEmpty onExplore={() => router.navigate('/explore')} />
+        )}
       </View>
     )
   return (
