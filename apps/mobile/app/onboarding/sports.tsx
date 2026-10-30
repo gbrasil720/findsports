@@ -9,7 +9,8 @@ import {
   TableTile,
   useEditing,
   useFrameKind,
-  useOnboarding
+  useOnboarding,
+  usePane
 } from '@/components/onboarding'
 import {
   LIVE,
@@ -44,6 +45,7 @@ export default function Sports() {
   const edit = useEditing()
   // Na mesa a pergunta já está na metade de cima (Adaptativo 09).
   const table = useFrameKind() === 'table'
+  const wide = usePane()?.wide ?? false
   const query = useQuery(trpc.pubs.getSports.queryOptions())
   const sports = [...(query.data ?? [])].sort(
     (a, b) => rank(a.slug) - rank(b.slug) || a.name.localeCompare(b.name)
@@ -98,7 +100,15 @@ export default function Sports() {
       {edit.back ?? <OnboardingTop step={2} />}
       {table ? null : (
         <View style={{ marginTop: 8 }}>
-          <Title lines={[['Quais esportes'], ['você curte?']]} size={36} />
+          {/* Na coluna mais larga de fora do celular, numa linha só. */}
+          <Title
+            lines={
+              wide
+                ? [['Quais esportes você curte?']]
+                : [['Quais esportes'], ['você curte?']]
+            }
+            size={36}
+          />
         </View>
       )}
       {table ? null : (
