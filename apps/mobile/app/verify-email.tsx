@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
-import { Image, Pressable, StyleSheet, View } from 'react-native'
+import { Image, Platform, Pressable, StyleSheet, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Glass } from '@/components/glass'
@@ -21,14 +21,17 @@ import {
   LINE,
   LIVE,
   MAIL_APPS,
+  maskEmail,
   openMailApp,
   PAPER,
+  PillButton,
   Screen,
   SUB,
   Text,
   TextLink,
   Title,
   text,
+  useBrandFrame,
   useCountdown
 } from '@/components/ui'
 import { settleAuth } from '@/lib/auth-attempt'
@@ -46,6 +49,9 @@ export default function VerifyEmail() {
   const [notice, setNotice] = useState<string | null>(null)
   const turnstile = useTurnstile()
   const cover = useLayout().kind === 'cover'
+  // Tablet e dobrável aberto: a versão do design (a08, `verify`), com os três
+  // passos; os apps de e-mail entram no passo de abrir o e-mail.
+  const framed = useBrandFrame()
   const insets = useSafeAreaInsets()
 
   const resend = async () => {
@@ -107,6 +113,87 @@ export default function VerifyEmail() {
           </Text>
         </Glass>
       </View>
+    )
+
+  const resendRow = (
+    <View style={styles.resendRow}>
+      {countdown.left > 0 ? (
+        <Text style={[text(14, 'SemiBold'), { color: SUB }]}>
+          Reenviar em <Text style={styles.mono}>{countdown.label}</Text>
+        </Text>
+      ) : (
+        <Text
+          accessibilityRole="button"
+          suppressHighlighting
+          onPress={resend}
+          style={[text(14, 'SemiBold'), { color: FG }]}
+        >
+          Reenviar
+        </Text>
+      )}
+      <Text
+        accessibilityRole="button"
+        suppressHighlighting
+        onPress={() => router.back()}
+        style={[text(14, 'SemiBold'), { color: FG }]}
+      >
+        Usar outro e-mail
+      </Text>
+    </View>
+  )
+
+  if (framed)
+    return (
+      <Screen brand gap={16} footer={resendRow}>
+        <BackButton />
+        <View>
+          <View style={styles.squareShadow} />
+          <View style={styles.square}>
+            <Icon name="mail" size={56} color={INK} accent={LIVE} />
+          </View>
+        </View>
+        <Title lines={[['Confirme seu ', 'e-mail']]} size={42} />
+        <Text style={[text(15, 'Regular', 1.5), { color: SUB }]}>
+          Mandamos um link para{' '}
+          <Text style={[text(15, 'Bold', 1.5), { color: FG }]}>
+            {maskEmail(email)}
+          </Text>
+          . Abra no celular em que começou o cadastro e você entra direto.
+        </Text>
+        <View style={styles.steps}>
+          <Step n="1">
+            Abra o e-mail “Confirme seu e-mail para entrar em campo”
+          </Step>
+          <View style={[styles.apps, { marginLeft: 32, marginTop: 0 }]}>
+            {MAIL_APPS.map((app) => (
+              <Pressable
+                key={app.label}
+                accessibilityRole="button"
+                onPress={() => openMailApp(app.label, app.url)}
+                style={[
+                  styles.app,
+                  { height: 34, shadowOffset: { width: 2, height: 2 } }
+                ]}
+              >
+                <Text style={[text(13, 'Bold'), { color: FG }]}>
+                  {app.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <Step n="2">Toque em Confirmar meu e-mail</Step>
+          <Step n="3">O link vale por 1 hora</Step>
+        </View>
+        <PillButton
+          label="Abrir app de e-mail"
+          height={54}
+          onPress={() => openMailApp('app de e-mail', MAIL)}
+        />
+        {notice ? (
+          <ErrorText style={[text(13.5), { color: LIVE }]}>{notice}</ErrorText>
+        ) : null}
+        {turnstile.widget}
+      </Screen>
     )
 
   return (
@@ -175,7 +262,61 @@ export default function VerifyEmail() {
   )
 }
 
+const MAIL = Platform.OS === 'ios' ? 'message://' : 'mailto:'
+
+/** Um passo numerado do quadro de confirmação (a08). */
+function Step({ n, children }: { n: string; children: string }) {
+  return (
+    <View style={styles.step}>
+      <View style={styles.stepN}>
+        <Text style={styles.stepNText}>{n}</Text>
+      </View>
+      <Text style={[text(13.5, 'Regular', 1.35), { color: FG, flex: 1 }]}>
+        {children}
+      </Text>
+    </View>
+  )
+}
+
 const styles = StyleSheet.create({
+  squareShadow: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    width: 104,
+    height: 104,
+    borderRadius: 7,
+    backgroundColor: EDGE
+  },
+  square: {
+    width: 104,
+    height: 104,
+    borderRadius: 7,
+    backgroundColor: ACID,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  steps: {
+    gap: 9,
+    paddingVertical: 13,
+    paddingHorizontal: 14,
+    borderRadius: 6,
+    backgroundColor: CARD,
+    borderWidth: 1,
+    borderColor: LINE
+  },
+  step: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  stepN: {
+    width: 22,
+    height: 22,
+    borderRadius: 4,
+    backgroundColor: ACID,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  stepNText: { fontFamily: 'Anton', fontSize: 13, color: INK },
+  resendRow: { flexDirection: 'row', justifyContent: 'center', gap: 18 },
+  mono: { fontFamily: 'GeistMono-SemiBold' },
   cover: { flex: 1, backgroundColor: INK, paddingHorizontal: 22, gap: 12 },
   coverSent: {
     flexDirection: 'row',
