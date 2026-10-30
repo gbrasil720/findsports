@@ -13,6 +13,7 @@ import {
 import MapView, { Marker } from 'react-native-maps'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card } from '@/components/card'
+import { SearchEmpty } from '@/components/empty-states'
 import {
   dayLabel,
   dropBox,
@@ -151,6 +152,7 @@ export default function Search() {
     layout.kind === 'phone' || layout.kind === 'duoClosed'
       ? 0
       : (layout.width - strip - Math.min(560, layout.width - strip - 80)) / 2
+  const nothing = !results.length && !remote.isFetching && !local.hood
   return (
     <View
       style={[
@@ -256,7 +258,7 @@ export default function Search() {
                 onMap={() => showOnMap(local.hood as Hood<NearBar>)}
               />
             ) : null}
-            <View style={styles.heading}>
+            <View style={[styles.heading, nothing && { display: 'none' }]}>
               <Text style={[text(15, 'Bold'), { color: palette.ink }]}>
                 {local.hood ? `Bares em ${local.hood.name}` : 'Bares e jogos'}
               </Text>
@@ -279,13 +281,17 @@ export default function Search() {
                   ))}
                 </View>
               </Card>
+            ) : nothing ? (
+              // O vazio do design (Rodada 14): o zero, o pedido e a IA.
+              <SearchEmpty
+                query={query.trim()}
+                onAi={() => router.push('/busca-ia')}
+              />
             ) : (
               <Text
                 style={[text(14, 'Regular', 1.45), { color: palette.muted }]}
               >
-                {remote.isFetching
-                  ? 'Buscando…'
-                  : `Nada perto com “${query.trim()}”. Tente o nome do bar, o bairro ou um time.`}
+                Buscando…
               </Text>
             )}
           </>
