@@ -16,6 +16,7 @@ import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card } from '@/components/card'
 import { dayLabel, initials, Photo } from '@/components/explore'
+import { useLayout, useNavInsets } from '@/components/layout'
 import { MedalImage } from '@/components/medal'
 import { haptic, usePressScale } from '@/components/motion'
 import { useSoon } from '@/components/soon'
@@ -27,16 +28,20 @@ import {
   GlassRound,
   Icon,
   INK,
+  LIVE,
   PAPER,
   Text,
   text,
   usePullRefresh,
   useStatusBar
 } from '@/components/ui'
+import { SettingsList } from '@/components/you-panel'
 import { authClient } from '@/lib/auth-client'
 import { formatTime } from '@/lib/explore'
-import { shortDate } from '@/lib/my-games'
+import { formatCode, shortDate } from '@/lib/my-games'
 import {
+  gameToday,
+  levelLine,
   markedToday,
   memberSince,
   nextInSaved,
@@ -72,6 +77,25 @@ export default function Profile() {
   const feedback = useMutation(trpc.feedback.send.mutationOptions())
   const queries = [achievements, visits, saved, mine, sports]
   const now = Date.now()
+  const layout = useLayout()
+  const nav = useNavInsets()
+  // Tablet em pé e o Perfil aberto do "Você" deitado: o painel largo, com
+  // cinco medalhas e os números numa linha (regra 04 da T5, WEB-491).
+  const wide = layout.kind === 'stack' || layout.kind === 'split'
+  // Mesa (Duo em laptop, Flex Mode): você em cima, jogos e conquistas embaixo.
+  const table = layout.kind === 'table'
+  const free = layout.width - nav.left - nav.right
+  // A coluna do painel: 28 de margem, até 960 de largura.
+  const side = wide ? Math.max(28, (free - 960) / 2) : 16
+  const column = free - side * 2
+  const avatar = wide ? 96 : table ? (layout.width > 800 ? 84 : 72) : 76
+  const medalSize = wide
+    ? column > 900
+      ? 78
+      : 64
+    : table && layout.width <= 800
+      ? 48
+      : 58
 
   const level = achievements.data?.level
   const list = achievements.data?.achievements ?? []
@@ -83,7 +107,7 @@ export default function Profile() {
         new Date(y.unlockedAt ?? 0).getTime() -
         new Date(x.unlockedAt ?? 0).getTime()
     )
-  const medals = (unlocked.length ? unlocked : list).slice(0, 3)
+  const medals = (unlocked.length ? unlocked : list).slice(0, wide ? 5 : 3)
   const games = mine.data ?? []
   const today = markedToday(
     games.filter((game) => !game.ended),
@@ -140,22 +164,31 @@ export default function Profile() {
       <View
         style={[
           styles.avatar,
-          palette.dark && { backgroundColor: palette.card }
+          palette.dark && { backgroundColor: palette.card },
+          { width: avatar, height: avatar }
         ]}
       >
         {user?.image ? (
           <Image
             accessibilityIgnoresInvertColors
             source={{ uri: user.image }}
-            style={styles.photo}
+            style={[styles.photo, { width: avatar, height: avatar }]}
           />
         ) : (
-          <Text style={styles.avatarText}>{initials(user?.name ?? '')}</Text>
+          <Text
+            style={[styles.avatarText, { fontSize: Math.round(avatar * 0.42) }]}
+          >
+            {initials(user?.name ?? '')}
+          </Text>
         )}
       </View>
       <View style={{ flex: 1 }}>
         <Text
-          style={[styles.name, { color: palette.ink }]}
+          style={[
+            styles.name,
+            { color: palette.ink },
+            (wide || table) && { fontSize: 28, lineHeight: 36 }
+          ]}
           numberOfLines={1}
           adjustsFontSizeToFit
         >
@@ -174,8 +207,8 @@ export default function Profile() {
         ) : null}
       </View>
       {/* Compartilhar e configurações na linha do nome, não numa
-          linha só deles por cima. */}
-      <View style={styles.actions}>
+          linha só deles por cima. Na mesa, só você (o menu tem a engrenagem). */}
+      <View style={[styles.actions, table && { display: 'none' }]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Compartilhar seu nível"
@@ -225,7 +258,12 @@ export default function Profile() {
           </Text>
         </View>
         {medals.map((a) => (
-          <MedalImage key={a.id} id={a.id} locked={!a.unlockedAt} size={58} />
+          <MedalImage
+            key={a.id}
+            id={a.id}
+            locked={!a.unlockedAt}
+            size={medalSize}
+          />
         ))}
       </Card>
     </Tap>
@@ -234,12 +272,14 @@ export default function Profile() {
   const tiles = (
     <View style={styles.grid}>
       <Tile
+        quarter={wide || table}
         icon="fan"
         value={String(yourBarCount(visits.data ?? [], saved.data ?? []))}
         label="Seus bares"
         onPress={() => router.navigate('/favoritos')}
       />
       <Tile
+        quarter={wide || table}
         icon="ticket"
         value={String(today)}
         label={today === 1 ? 'Jogo marcado hoje' : 'Jogos marcados hoje'}
@@ -247,12 +287,14 @@ export default function Profile() {
         onPress={() => router.navigate('/voce/meus-jogos')}
       />
       <Tile
+        quarter={wide || table}
         icon="map"
         value={`${user?.searchRadiusKm ?? 3} km`}
         label="Raio de busca"
         onPress={() => router.push('/configuracoes')}
       />
       <Tile
+        quarter={wide || table}
         icon="tv"
         value={String(sports.data?.length ?? 0)}
         label={sports.data?.length === 1 ? 'Esporte' : 'Esportes'}
@@ -262,44 +304,47 @@ export default function Profile() {
   )
 
   const nextGames = next.length ? (
-    <Card soft style={styles.next}>
-      <Text
-        style={[text(16, 'Bold'), styles.nextTitle, { color: palette.ink }]}
-      >
-        Próximos jogos nos seus bares
-      </Text>
-      {next.map(({ barId, barName, photoUrl, game }) => (
-        <Pressable
-          key={game.id}
-          accessibilityRole="button"
-          onPress={() => openBar(barId)}
-          style={[styles.nextRow, { borderTopColor: palette.line }]}
+    <Card soft>
+      {/* O respiro por dentro: `style` no Card o faz crescer na coluna do tablet. */}
+      <View style={styles.next}>
+        <Text
+          style={[text(16, 'Bold'), styles.nextTitle, { color: palette.ink }]}
         >
-          <Photo uri={photoUrl} name={barName} style={styles.nextPhoto} />
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text
-              style={[text(14.5, 'Bold'), { color: palette.ink }]}
-              numberOfLines={1}
-            >
-              {gameTitle(game)}
-            </Text>
-            <Text
-              style={[text(12.5), { color: palette.muted }]}
-              numberOfLines={1}
-            >
-              {barName}
-            </Text>
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={[styles.time, { color: palette.ink }]}>
-              {formatTime(game.startsAt)}
-            </Text>
-            <Text style={[text(11.5), { color: palette.muted }]}>
-              {dayLabel(game.startsAt, now)} · {game.sport.name}
-            </Text>
-          </View>
-        </Pressable>
-      ))}
+          Próximos jogos nos seus bares
+        </Text>
+        {next.map(({ barId, barName, photoUrl, game }) => (
+          <Pressable
+            key={game.id}
+            accessibilityRole="button"
+            onPress={() => openBar(barId)}
+            style={[styles.nextRow, { borderTopColor: palette.line }]}
+          >
+            <Photo uri={photoUrl} name={barName} style={styles.nextPhoto} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text
+                style={[text(14.5, 'Bold'), { color: palette.ink }]}
+                numberOfLines={1}
+              >
+                {gameTitle(game)}
+              </Text>
+              <Text
+                style={[text(12.5), { color: palette.muted }]}
+                numberOfLines={1}
+              >
+                {barName}
+              </Text>
+            </View>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={[styles.time, { color: palette.ink }]}>
+                {formatTime(game.startsAt)}
+              </Text>
+              <Text style={[text(11.5), { color: palette.muted }]}>
+                {dayLabel(game.startsAt, now)} · {game.sport.name}
+              </Text>
+            </View>
+          </Pressable>
+        ))}
+      </View>
     </Card>
   ) : null
 
@@ -396,12 +441,81 @@ export default function Profile() {
     />
   ) : null
 
+  if (layout.kind === 'cover')
+    return (
+      <ProfileCover
+        name={user?.name ?? ''}
+        image={user?.image}
+        level={level}
+        game={gameToday(games, now)}
+      />
+    )
+
+  // Tablet em pé: os próximos jogos ao lado do atalho das Configurações.
+  const settingsShortcut = (
+    <View style={[styles.half, { gap: 12 }]}>
+      <Text
+        style={[
+          styles.sectionTitle,
+          { color: palette.dark ? ACID : palette.accent }
+        ]}
+      >
+        Configurações
+      </Text>
+      <SettingsList
+        onPick={(aba) =>
+          router.push({ pathname: '/configuracoes', params: { aba } })
+        }
+      />
+    </View>
+  )
+
+  if (table)
+    return (
+      <View style={[styles.screen, { backgroundColor: palette.bg }]}>
+        <View
+          style={[
+            styles.tableTop,
+            {
+              height: layout.split,
+              paddingTop: insets.top + 4,
+              justifyContent: layout.split > 400 ? 'center' : 'space-between',
+              gap: layout.split > 400 ? 28 : 14
+            }
+          ]}
+        >
+          {who}
+          {status ?? tiles}
+        </View>
+        {status ? null : (
+          <ScrollView
+            style={{ marginTop: layout.gap }}
+            contentContainerStyle={[
+              styles.pair,
+              styles.tableBottom,
+              { paddingBottom: tabBar + 24 }
+            ]}
+          >
+            {nextGames ? <View style={{ flex: 1.2 }}>{nextGames}</View> : null}
+            <View style={styles.half}>{trophies}</View>
+          </ScrollView>
+        )}
+        {soon.toast}
+      </View>
+    )
+
   return (
     <View style={[styles.screen, { backgroundColor: palette.bg }]}>
       <ScrollView
         contentContainerStyle={[
           styles.body,
-          { paddingTop: insets.top + 4, paddingBottom: tabBar + 24 }
+          {
+            paddingTop: insets.top + (wide ? 16 : 4),
+            paddingBottom: tabBar + 24,
+            paddingLeft: nav.left + side,
+            paddingRight: nav.right + side
+          },
+          wide && { gap: 18 }
         ]}
         refreshControl={<RefreshControl {...pull} tintColor={palette.muted} />}
       >
@@ -410,7 +524,18 @@ export default function Profile() {
           <>
             {trophies}
             {tiles}
-            {nextGames}
+            {wide ? (
+              <View style={styles.pair}>
+                {nextGames ? (
+                  <View style={{ flex: 55, minWidth: 0 }}>{nextGames}</View>
+                ) : null}
+                <View style={{ flex: 45, minWidth: 0 }}>
+                  {settingsShortcut}
+                </View>
+              </View>
+            ) : (
+              nextGames
+            )}
             {extras}
           </>
         )}
@@ -446,9 +571,12 @@ function Tile({
   value,
   label,
   hot,
+  quarter,
   onPress
 }: {
   icon: 'fan' | 'ticket' | 'map' | 'tv'
+  /** Os quatro numa linha (tablet e mesa). */
+  quarter?: boolean
   value: string
   label: string
   /** Jogo marcado hoje: a sombra vermelha do design. */
@@ -457,7 +585,7 @@ function Tile({
 }) {
   const palette = usePalette()
   return (
-    <View style={styles.tile}>
+    <View style={[styles.tile, quarter && styles.tileQuarter]}>
       <Tap onPress={onPress}>
         <Card
           soft
@@ -549,9 +677,116 @@ function Row({
   )
 }
 
+/**
+ * A tela de fora do Z Flip 8 (regra 06 da T5): o nível e, se houver, o jogo
+ * marcado de hoje com o código pronto para mostrar no balcão.
+ */
+function ProfileCover({
+  name,
+  image,
+  level,
+  game
+}: {
+  name: string
+  image?: string | null
+  level?: { level: number; unlocked: number; nextAt: number | null }
+  game:
+    | (Parameters<typeof gameTitle>[0] & {
+        startsAt: string | Date
+        barName: string
+        code: string | null
+      })
+    | null
+}) {
+  const insets = useSafeAreaInsets()
+  const palette = usePalette()
+  return (
+    <View
+      style={[
+        styles.screen,
+        styles.cover,
+        { backgroundColor: palette.bg, paddingTop: insets.top + 16 }
+      ]}
+    >
+      <View style={styles.who}>
+        <View style={[styles.avatar, styles.coverAvatar]}>
+          {image ? (
+            <Image
+              accessibilityIgnoresInvertColors
+              source={{ uri: image }}
+              style={[styles.photo, { width: 52, height: 52 }]}
+            />
+          ) : (
+            <Text style={[styles.avatarText, { fontSize: 22 }]}>
+              {initials(name)}
+            </Text>
+          )}
+        </View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text
+            numberOfLines={1}
+            style={[text(15, 'Bold'), { color: palette.ink }]}
+          >
+            {name.split(' ')[0]}
+          </Text>
+          {level ? (
+            <Text
+              style={[
+                styles.coverLevel,
+                { color: palette.dark ? ACID : palette.accent }
+              ]}
+            >
+              {levelLine(level)}
+            </Text>
+          ) : null}
+        </View>
+      </View>
+      {game ? (
+        <Card shadow={palette.liveShadow}>
+          <View style={styles.coverGame}>
+            <View style={styles.coverWhen}>
+              <View style={styles.liveDot} />
+              <Text style={[text(12, 'Bold', 1.2), { color: palette.ink }]}>
+                Hoje · {formatTime(game.startsAt)}
+              </Text>
+            </View>
+            <Text
+              numberOfLines={1}
+              style={[text(15, 'Bold'), { color: palette.ink, marginTop: 4 }]}
+            >
+              {gameTitle(game)}
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={[text(12.5), { color: palette.muted }]}
+            >
+              {game.barName} · você vai
+            </Text>
+          </View>
+        </Card>
+      ) : null}
+      {game?.code ? (
+        <View
+          style={[styles.coverCode, { bottom: insets.bottom + 26 }]}
+          accessibilityLabel={`Código ${game.code.split('').join(' ')}`}
+        >
+          <Text style={[styles.coverCodeLabel, { color: palette.muted }]}>
+            CÓDIGO
+          </Text>
+          <View style={styles.coverCodeBox}>
+            <Text style={styles.coverCodeText}>{formatCode(game.code)}</Text>
+          </View>
+        </View>
+      ) : null}
+    </View>
+  )
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  body: { paddingHorizontal: 16, gap: 16 },
+  body: { gap: 16 },
+  tableTop: { paddingHorizontal: 24, paddingBottom: 16 },
+  tableBottom: { paddingHorizontal: 20, paddingTop: 14 },
   actions: { flexDirection: 'row', gap: 8, alignSelf: 'flex-start' },
   who: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   photo: { width: 76, height: 76, borderRadius: 6 },
@@ -590,6 +825,52 @@ const styles = StyleSheet.create({
   },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   tile: { width: '48.5%', flexGrow: 1 },
+  tileQuarter: { width: '23%' },
+  pair: { flexDirection: 'row', gap: 16, alignItems: 'flex-start' },
+  sectionTitle: {
+    fontFamily: 'Anton',
+    fontSize: 22,
+    textTransform: 'uppercase',
+    marginTop: -2
+  },
+  half: { flex: 1, minWidth: 0 },
+  cover: { paddingHorizontal: 22, gap: 12 },
+  coverAvatar: {
+    width: 52,
+    height: 52,
+    shadowOffset: { width: 3, height: 3 }
+  },
+  coverLevel: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11,
+    marginTop: 4
+  },
+  coverGame: { paddingVertical: 12, paddingHorizontal: 14 },
+  coverWhen: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: LIVE },
+  coverCode: {
+    position: 'absolute',
+    right: 22,
+    alignItems: 'flex-end',
+    gap: 6
+  },
+  coverCodeLabel: { fontFamily: 'GeistMono-SemiBold', fontSize: 10.5 },
+  coverCodeBox: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 5,
+    backgroundColor: PAPER,
+    shadowColor: ACID,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 3, height: 3 }
+  },
+  coverCodeText: {
+    fontFamily: 'Anton',
+    fontSize: 26,
+    letterSpacing: 1.5,
+    color: INK
+  },
   tileBody: { paddingVertical: 13, paddingHorizontal: 14 },
   tileValue: { ...text(26, 'Bold', 1.1), marginTop: 8 },
   tileLabel: {
