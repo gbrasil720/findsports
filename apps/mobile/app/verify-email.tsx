@@ -1,7 +1,10 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
-import { Pressable, StyleSheet, View } from 'react-native'
+import { Image, Pressable, StyleSheet, View } from 'react-native'
 import Animated from 'react-native-reanimated'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Glass } from '@/components/glass'
+import { useLayout } from '@/components/layout'
 import { ErrorText, Float, haptic, POP_LATE } from '@/components/motion'
 import { useTurnstile } from '@/components/turnstile'
 import {
@@ -42,6 +45,8 @@ export default function VerifyEmail() {
   const countdown = useCountdown(60)
   const [notice, setNotice] = useState<string | null>(null)
   const turnstile = useTurnstile()
+  const cover = useLayout().kind === 'cover'
+  const insets = useSafeAreaInsets()
 
   const resend = async () => {
     setNotice(null)
@@ -66,6 +71,43 @@ export default function VerifyEmail() {
     haptic.success()
     countdown.restart()
   }
+
+  // Tela de fora do Z Flip 8 (a08): sem teclado, avisa e manda abrir.
+  if (cover)
+    return (
+      <View style={[styles.cover, { paddingTop: insets.top + 18 }]}>
+        <Image
+          source={require('../assets/images/brand/wordmark-light.png')}
+          accessibilityLabel="Onside"
+          style={{ height: 18, width: (18 * 845) / 256 }}
+        />
+        <View style={styles.coverSent}>
+          <View style={styles.coverIcon}>
+            <Icon name="mail" size={26} color={INK} accent={LIVE} />
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={[text(15, 'Bold'), { color: PAPER }]}>
+              Link enviado
+            </Text>
+            <Text numberOfLines={1} style={[text(12.5), { color: '#aaa9a4' }]}>
+              para {email}
+            </Text>
+          </View>
+        </View>
+        <Text style={[text(13.5, 'Regular', 1.45), { color: '#d6d3cb' }]}>
+          Abra o celular para confirmar o e-mail. Você entra direto.
+        </Text>
+        <Glass
+          tone="dark"
+          style={[styles.coverOpen, { bottom: insets.bottom + 26 }]}
+        >
+          <Icon name="next" size={13} color={PAPER} />
+          <Text style={[text(13.5, 'Bold'), { color: PAPER }]}>
+            Abrir o celular
+          </Text>
+        </Glass>
+      </View>
+    )
 
   return (
     <Screen
@@ -134,6 +176,36 @@ export default function VerifyEmail() {
 }
 
 const styles = StyleSheet.create({
+  cover: { flex: 1, backgroundColor: INK, paddingHorizontal: 22, gap: 12 },
+  coverSent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 6
+  },
+  coverIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 7,
+    backgroundColor: ACID,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 3, height: 3 }
+  },
+  coverOpen: {
+    position: 'absolute',
+    right: 22,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 22,
+    overflow: 'hidden'
+  },
   art: { height: 220, alignItems: 'center', justifyContent: 'center' },
   orb: {
     width: 150,
