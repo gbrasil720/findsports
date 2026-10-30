@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router'
 import { useEffect } from 'react'
 import { Image, Platform, StyleSheet, View } from 'react-native'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
@@ -11,11 +12,13 @@ import {
   useSafeAreaInsets
 } from 'react-native-safe-area-context'
 import { scheduleOnRN } from 'react-native-worklets'
+import { initials } from '@/components/explore'
 import { Glass } from '@/components/glass'
 import { NAV, useLayout } from '@/components/layout'
 import { haptic, ScalePress } from '@/components/motion'
 import { usePalette } from '@/components/theme'
 import { ACID, Icon, INK, PAPER, Text, text } from '@/components/ui'
+import { authClient } from '@/lib/auth-client'
 import type { NavKind } from '@/lib/layout'
 
 /*
@@ -100,6 +103,36 @@ type Props = {
   initials: string
   /** No dobrável aberto, a barra fica na metade do mapa. */
   left?: number
+}
+
+/**
+ * O rail do Galaxy Tab por cima de uma tela da pilha (a página do bar, a
+ * busca com IA), como o design desenha (02q–02u, 03q–03u): as abas levam de
+ * volta a elas.
+ */
+export function StackRail({ current }: { current: NavTab }) {
+  const router = useRouter()
+  const session = authClient.useSession()
+  return (
+    <TabRail
+      kind="rail"
+      current={current}
+      onTab={(tab) =>
+        router.navigate(tab === 'voce' ? '/voce/perfil' : `/${tab}`)
+      }
+      onAi={() => router.push('/busca-ia')}
+      onShortcut={(to) =>
+        router.navigate(
+          to === 'avisos'
+            ? '/avisos'
+            : to === 'jogos'
+              ? '/voce/meus-jogos'
+              : `/voce/${to}`
+        )
+      }
+      initials={initials(session.data?.user.name ?? '')}
+    />
+  )
 }
 
 export function SideNav(props: Props) {
