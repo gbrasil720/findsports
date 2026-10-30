@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Image, StyleSheet, View } from 'react-native'
+import { Image, Platform, StyleSheet, View } from 'react-native'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import Animated, {
   useAnimatedStyle,
@@ -228,7 +228,8 @@ function GlassTabs({
       <View>
         <Glass
           tone={tone}
-          accessibilityRole="tabbar"
+          // "tabbar" só existe no iOS: no Android derruba o app.
+          accessibilityRole={Platform.OS === 'ios' ? 'tabbar' : undefined}
           style={[
             styles.capsule,
             vertical
