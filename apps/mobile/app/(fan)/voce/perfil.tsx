@@ -764,21 +764,12 @@ function TabletExtras({
           />
           <View style={styles.board}>
             {board.map((person, index) => (
-              <View
+              <Card
                 key={person.id}
+                shadow={person.me ? ACID : undefined}
                 style={[
                   styles.person,
-                  { backgroundColor: palette.card },
-                  person.me
-                    ? {
-                        borderColor: palette.ink,
-                        borderWidth: 1.5,
-                        shadowColor: ACID,
-                        shadowOpacity: 1,
-                        shadowRadius: 0,
-                        shadowOffset: { width: 4, height: 4 }
-                      }
-                    : styles.personSoft
+                  person.me && { borderColor: palette.ink, borderWidth: 1.5 }
                 ]}
               >
                 <Text
@@ -805,7 +796,7 @@ function TabletExtras({
                 <Text style={[styles.personBars, { color: palette.ink }]}>
                   {person.value} {person.value === 1 ? 'bar' : 'bares'}
                 </Text>
-              </View>
+              </Card>
             ))}
           </View>
         </>
@@ -1011,18 +1002,21 @@ function ProfileCover({
       ]}
     >
       <View style={styles.who}>
-        <View style={[styles.avatar, styles.coverAvatar]}>
-          {image ? (
-            <Image
-              accessibilityIgnoresInvertColors
-              source={{ uri: image }}
-              style={[styles.photo, { width: 52, height: 52 }]}
-            />
-          ) : (
-            <Text style={[styles.avatarText, { fontSize: 22 }]}>
-              {initials(name)}
-            </Text>
-          )}
+        <View>
+          <View style={[styles.hardBlock, { borderRadius: 6 }]} />
+          <View style={[styles.avatar, styles.coverAvatar]}>
+            {image ? (
+              <Image
+                accessibilityIgnoresInvertColors
+                source={{ uri: image }}
+                style={[styles.photo, { width: 52, height: 52 }]}
+              />
+            ) : (
+              <Text style={[styles.avatarText, { fontSize: 22 }]}>
+                {initials(name)}
+              </Text>
+            )}
+          </View>
         </View>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text
@@ -1075,8 +1069,12 @@ function ProfileCover({
           <Text style={[styles.coverCodeLabel, { color: palette.muted }]}>
             CÓDIGO
           </Text>
-          <View style={styles.coverCodeBox}>
-            <Text style={styles.coverCodeText}>{formatCode(game.code)}</Text>
+          <View>
+            {/* Sombra dura num bloco: `shadow*` não desenha no Android. */}
+            <View style={[styles.hardBlock, { borderRadius: 5 }]} />
+            <View style={styles.coverCodeBox}>
+              <Text style={styles.coverCodeText}>{formatCode(game.code)}</Text>
+            </View>
           </View>
         </View>
       ) : null}
@@ -1207,11 +1205,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: 6
   },
-  personSoft: {
-    shadowColor: '#000',
-    shadowOpacity: 0.09,
-    shadowRadius: 0,
-    shadowOffset: { width: 4, height: 4 }
+  hardBlock: {
+    position: 'absolute',
+    top: 3,
+    left: 3,
+    right: -3,
+    bottom: -3,
+    backgroundColor: ACID
   },
   place: { fontFamily: 'Anton', fontSize: 15 },
   personBars: { fontFamily: 'GeistMono-SemiBold', fontSize: 12 },
