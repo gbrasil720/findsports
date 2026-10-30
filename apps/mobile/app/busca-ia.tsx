@@ -7,7 +7,9 @@ import { useEffect, useRef, useState } from 'react'
 import {
   ActionSheetIOS,
   Alert,
+  Image,
   Platform,
+  Pressable,
   ScrollView,
   Share,
   StyleSheet,
@@ -22,13 +24,17 @@ import Animated, {
   useAnimatedKeyboard,
   useAnimatedStyle
 } from 'react-native-reanimated'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Actions, FollowUps } from '@/components/ai/actions'
+import { AnswerMap } from '@/components/ai/answer-map'
 import {
   CodeCard,
   ConfirmCard,
   DecisionLine
 } from '@/components/ai/confirmation'
+import { Conversations } from '@/components/ai/conversations'
 import { AiHeader } from '@/components/ai/header'
+import { AiIcon } from '@/components/ai/icons'
 import { UserMessage } from '@/components/ai/message'
 import { PromptInput } from '@/components/ai/prompt-input'
 import { Reasoning } from '@/components/ai/reasoning'
@@ -43,8 +49,18 @@ import { type AiPalette, useAiPalette } from '@/components/ai/theme'
 import { DoneLine, ToolCard } from '@/components/ai/tool'
 import { Chip, dayLabel } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
+import { NAV, useLayout } from '@/components/layout'
 import { EASE, haptic, popFrom, SWAP } from '@/components/motion'
-import { Text, text, useStatusBar } from '@/components/ui'
+import {
+  ACID,
+  Icon,
+  INK,
+  TextInput as Input,
+  PAPER,
+  Text,
+  text,
+  useStatusBar
+} from '@/components/ui'
 import {
   applyEvent,
   barsFound,
@@ -77,7 +93,7 @@ import type { Dubla } from '@/lib/ai-dubla'
 import type { ChatBar, ConfirmResult } from '@/lib/ai-events'
 import { confirm, converse, stop as stopRun } from '@/lib/ai-stream'
 import { authClient } from '@/lib/auth-client'
-import { formatTime, isLive } from '@/lib/explore'
+import { formatKm, formatTime, isLive } from '@/lib/explore'
 import { trpc } from '@/lib/trpc'
 
 /*
@@ -165,7 +181,39 @@ export default function AiSearch() {
   const palette = useAiPalette()
   const explore = useExploreState()
   const session = authClient.useSession()
-  useStatusBar('light')
+  const insets = useSafeAreaInsets()
+  // Fora do celular (Adaptativo 03, WEB-488) a busca ocupa a tela: conversas
+  // à esquerda no tablet deitado e no Duo aberto, o mapa da resposta ao lado
+  // no dobrável aberto e no 13″, embaixo no tablet em pé, em cima na mesa.
+  const layout = useLayout()
+  const sheet = layout.kind === 'phone' || layout.kind === 'duoClosed'
+  const duo = layout.kind === 'split' && layout.nav === 'duoRail'
+  const fold =
+    layout.kind === 'split' &&
+    !duo &&
+    (layout.gap > 0 || layout.split * 2 >= layout.width - 2)
+  const convo = layout.kind === 'split' && !fold
+  const convoW = duo
+    ? layout.gap
+      ? layout.split
+      : 330
+    : layout.width < 1150
+      ? 300
+      : 320
+  const sideMap = fold || (convo && !duo && layout.wide)
+  const mapW = fold
+    ? layout.width - layout.split - layout.gap
+    : Math.round((layout.width - convoW) * 0.42)
+  // A coluna de leitura: até 680 no meio no tablet em pé.
+  const pad =
+    layout.kind === 'stack'
+      ? Math.max(24, (layout.width - 680) / 2)
+      : layout.kind === 'table'
+        ? 20
+        : convo
+          ? 28
+          : 16
+  useStatusBar(sheet ? 'light' : 'auto')
   // Navegador DEV: `?dubla=1` usa o dublê; `estado` já manda a pergunta de
   // cada tela (24b pensando, 24c resposta, 24d confirmar, 24e feito).
   const params = useLocalSearchParams<{ dubla?: Dubla; estado?: DevState }>()
@@ -604,7 +652,17 @@ export default function AiSearch() {
     transform: [{ translateY: -Math.max(0, keyboard.height.get() - 20) }]
   }))
 
-  return (
+  const answerMap = (
+    <AnswerMap
+      bars={lastBars}
+      frame={mapFocus(lastBars, chips, fieldOrigin, radiusKm)}
+      origin={explore.device ?? fieldOrigin}
+      palette={palette}
+      pillTop={layout.kind === 'stack' ? 14 : insets.top + 8}
+      onBar={(bar) => openBar(lastReply?.done?.runId, bar)}
+    />
+  )
+  const chat = (
     <>
       {/* Filho direto da tela, com flex: 1: numa folha nativa o
           react-native-screens mede outro caminho e o conteúdo some. */}
@@ -635,10 +693,14 @@ export default function AiSearch() {
           skipEntering={restored}
           skipExiting
         >
-          <View ref={content} collapsable={false} style={styles.body}>
+          <View
+            ref={content}
+            collapsable={false}
+            style={[styles.body, sheet ? null : { paddingHorizontal: pad }]}
+          >
             {!turns.length ? (
               <Start
-                recents={recents}
+                recents={convo ? [] : recents}
                 now={now}
                 notice={
                   off
@@ -702,13 +764,37 @@ export default function AiSearch() {
                 }
               />
             ))}
+            {layout.kind === 'stack' && lastBars.length ? (
+              <Animated.View
+                entering={IN}
+                style={[
+                  styles.stackMap,
+                  {
+                    height: Math.max(240, Math.min(560, layout.height - 790))
+                  }
+                ]}
+              >
+                {answerMap}
+              </Animated.View>
+            ) : null}
           </View>
         </LayoutAnimationConfig>
         <View style={{ height: dockHeight + 16 }} />
       </ScrollView>
 
       <View
-        style={[styles.top, { backgroundColor: palette.sheetBg }]}
+        style={[
+          styles.top,
+          { backgroundColor: palette.sheetBg },
+          sheet
+            ? null
+            : {
+                // Em tela cheia não há mapa atrás: o cabeçalho é opaco.
+                backgroundColor: palette.sheet,
+                paddingTop: layout.kind === 'table' ? 0 : insets.top,
+                paddingHorizontal: pad - 16
+              }
+        ]}
         onLayout={(e) => setHeadHeight(e.nativeEvent.layout.height)}
       >
         <AiHeader
@@ -716,12 +802,16 @@ export default function AiSearch() {
           busy={spinning}
           quiet={!!blocked || off}
           palette={palette}
-          onNew={newConversation}
+          onNew={convo ? undefined : newConversation}
           onClose={() => router.back()}
         />
       </View>
       <Animated.View
-        style={[styles.dock, footer]}
+        style={[
+          styles.dock,
+          footer,
+          sheet ? null : { paddingHorizontal: pad - 12 }
+        ]}
         onLayout={(e) => setDockHeight(e.nativeEvent.layout.height)}
       >
         {/* Borda de rolagem: a conversa some aos poucos sob o rodapé. */}
@@ -782,6 +872,132 @@ export default function AiSearch() {
         />
       </Animated.View>
     </>
+  )
+  if (sheet) return chat
+
+  // Tela de fora do Z Flip 8 (03j): a última pergunta, o melhor resultado e
+  // o botão grande de falar.
+  if (layout.kind === 'cover') {
+    const best = lastBars[0]
+    return (
+      <View
+        style={[
+          styles.cover,
+          { paddingTop: insets.top + 18, paddingBottom: insets.bottom + 18 }
+        ]}
+      >
+        <View style={styles.coverHead}>
+          <Icon name="sparkle" size={16} color={PAPER} accent={ACID} />
+          <Text style={styles.coverKicker}>BUSCA COM IA</Text>
+        </View>
+        {last ? (
+          <Text style={[text(16, 'Regular', 1.4), { color: '#d6d3cb' }]}>
+            “{last.question}”
+          </Text>
+        ) : null}
+        {best ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => openBar(lastReply?.done?.runId, best)}
+            style={styles.coverBar}
+          >
+            {best.photoUrl ? (
+              <Image
+                source={{ uri: best.photoUrl }}
+                style={styles.coverPhoto}
+              />
+            ) : (
+              <View style={styles.coverPhoto} />
+            )}
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text
+                style={[text(14.5, 'Bold', 1.3), { color: PAPER }]}
+                numberOfLines={1}
+              >
+                {best.name}
+              </Text>
+              <Text style={[text(12, 'Regular', 1.4), { color: '#a8a49b' }]}>
+                {[
+                  best.distanceKm === null ? null : formatKm(best.distanceKm),
+                  lastBars.length > 1 ? `+${lastBars.length - 1} bares` : null
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </Text>
+            </View>
+          </Pressable>
+        ) : null}
+        {/* ponytail: o microfone abre o teclado (o ditado é do sistema), como
+            no celular; gravar segurando exige reconhecimento de voz próprio. */}
+        <Input
+          ref={input}
+          value={draft}
+          onChangeText={setDraft}
+          onSubmitEditing={() => send()}
+          returnKeyType="send"
+          style={styles.coverInput}
+        />
+        <View style={styles.coverFoot}>
+          <Text style={[text(11, 'Regular', 1.35), styles.coverHint]}>
+            Segure para falar
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Falar a pergunta"
+            onPress={() => input.current?.focus()}
+            style={styles.coverMic}
+          >
+            <AiIcon name="mic" size={32} color={INK} />
+          </Pressable>
+        </View>
+      </View>
+    )
+  }
+
+  const table = layout.kind === 'table'
+  return (
+    <View
+      style={[
+        styles.full,
+        {
+          backgroundColor: palette.sheet,
+          flexDirection: table ? 'column' : 'row'
+        }
+      ]}
+    >
+      {convo ? (
+        <View style={{ width: convoW }}>
+          <Conversations
+            recents={recents}
+            current={conversation.id}
+            now={now}
+            palette={palette}
+            top={insets.top + 18}
+            onOpen={reopen}
+            onNew={newConversation}
+          />
+        </View>
+      ) : null}
+      {table ? (
+        <View style={{ height: layout.split, marginBottom: layout.gap }}>
+          {answerMap}
+        </View>
+      ) : null}
+      <View
+        style={{
+          flex: 1,
+          marginLeft: convo ? layout.gap : 0,
+          marginRight: duo ? NAV.duoRail.width : 0
+        }}
+      >
+        {chat}
+      </View>
+      {sideMap ? (
+        <View style={{ width: mapW, marginLeft: fold ? layout.gap : 0 }}>
+          {answerMap}
+        </View>
+      ) : null}
+    </View>
   )
 }
 
@@ -1122,6 +1338,48 @@ function ApprovedLines({
 
 const styles = StyleSheet.create({
   sheet: { flex: 1 },
+  full: { flex: 1 },
+  stackMap: { borderRadius: 10, overflow: 'hidden' },
+  cover: { flex: 1, backgroundColor: INK, paddingHorizontal: 22, gap: 12 },
+  coverHead: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  coverKicker: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11,
+    letterSpacing: 0.66,
+    color: ACID
+  },
+  coverBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 10,
+    borderRadius: 6,
+    backgroundColor: '#1c1c18'
+  },
+  coverPhoto: {
+    width: 44,
+    height: 44,
+    borderRadius: 4,
+    backgroundColor: '#2a2a25'
+  },
+  coverInput: { position: 'absolute', width: 1, height: 1, opacity: 0 },
+  coverFoot: {
+    marginTop: 'auto',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 16
+  },
+  coverHint: { color: '#a8a49b', flexShrink: 1 },
+  coverMic: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: ACID,
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0 0 0 8px rgba(201,241,53,.18), 4px 4px 0 #000'
+  },
   top: { position: 'absolute', top: 0, left: 0, right: 0 },
   body: { paddingTop: 6, paddingHorizontal: 16, paddingBottom: 14, gap: 14 },
   answer: { ...text(15.5, 'Regular', 1.5) },
