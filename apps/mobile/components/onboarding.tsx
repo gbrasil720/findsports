@@ -1,5 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
+import { File, Paths } from 'expo-file-system'
+import {
+  type Href,
+  Stack,
+  useGlobalSearchParams,
+  useLocalSearchParams,
+  usePathname,
+  useRouter
+} from 'expo-router'
 import {
   createContext,
   type ReactNode,
@@ -36,7 +44,8 @@ import {
   Text,
   text
 } from '@/components/ui'
-import type { Frame } from '@/lib/onboarding'
+import { authClient } from '@/lib/auth-client'
+import { FLOW, type Frame, stepOf } from '@/lib/onboarding'
 import { trpc } from '@/lib/trpc'
 
 /*
@@ -70,16 +79,76 @@ const Context = createContext<{
   set: (patch: Partial<Choices>) => void
 } | null>(null)
 
+/*
+ * O rascunho do cadastro (regra 05 do Adaptativo 09): as escolhas e o passo
+ * vão para um arquivo a cada mudança. Dobrar ou abrir não remonta a pilha,
+ * mas o Android pode recriar a tela ao trocar de display (a tela de fora do
+ * Flip); aí o app reabre no passo onde parou, com as escolhas. Arquivo, não
+ * SecureStore: com muitos times passa dos 2 KB que ele aceita no Android.
+ */
+const DRAFT = 'onboarding-rascunho.json'
+type Draft = { userId: string; route: string; choices: Choices }
+
+function readDraft(): Draft | null {
+  try {
+    const file = new File(Paths.document, DRAFT)
+    return file.exists ? (JSON.parse(file.textSync()) as Draft) : null
+  } catch {
+    return null
+  }
+}
+
+function writeDraft(draft: Draft | null) {
+  try {
+    const file = new File(Paths.document, DRAFT)
+    if (!draft) {
+      if (file.exists) file.delete()
+      return
+    }
+    if (!file.exists) file.create()
+    file.write(JSON.stringify(draft))
+  } catch {}
+}
+
+/** O cadastro terminou: o rascunho sai. */
+export const clearDraft = () => writeDraft(null)
+
 export function OnboardingProvider({ children }: { children: ReactNode }) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const userId = authClient.useSession().data?.user.id
+  // Na edição pelas Configurações não há rascunho: ela parte do perfil.
+  const editing = useGlobalSearchParams<{ edit?: string }>().edit === '1'
+  const [draft] = useState(readDraft)
   // O raio começa em 3 km, o padrão do servidor (`searchRadiusKm`).
-  const [choices, setChoices] = useState<Choices>({
-    sportIds: [],
-    teams: [],
-    city: null,
-    radius: 3
-  })
+  const [choices, setChoices] = useState<Choices>(
+    () =>
+      (!editing && draft?.choices) || {
+        sportIds: [],
+        teams: [],
+        city: null,
+        radius: 3
+      }
+  )
   const set = (patch: Partial<Choices>) =>
     setChoices((current) => ({ ...current, ...patch }))
+  // Abriu de novo no começo, com rascunho: volta ao passo onde parou.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: só ao abrir
+  useEffect(() => {
+    if (editing || !draft?.route || stepOf(pathname) !== 0) return
+    router.push(`/onboarding/${draft.route}` as Href)
+  }, [])
+  // De quem é o rascunho só se sabe com a sessão: o de outra conta sai.
+  useEffect(() => {
+    if (userId && draft && draft.userId !== userId) {
+      writeDraft(null)
+      setChoices({ sportIds: [], teams: [], city: null, radius: 3 })
+    }
+  }, [userId, draft])
+  useEffect(() => {
+    if (editing || !userId) return
+    writeDraft({ userId, route: FLOW[stepOf(pathname)].route, choices })
+  }, [editing, userId, pathname, choices])
   return (
     <Context.Provider value={{ choices, set }}>{children}</Context.Provider>
   )

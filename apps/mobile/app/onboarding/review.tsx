@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { ErrorText, haptic, POP_LATE } from '@/components/motion'
 import {
+  clearDraft,
   OnboardingTop,
   StepFooter,
   useFrameKind,
@@ -62,6 +63,7 @@ export default function Review() {
     trpc.onboarding.completeFan.mutationOptions({
       onSuccess: async () => {
         haptic.success()
+        clearDraft()
         await refreshSession()
         await queryClient.invalidateQueries()
         router.dismissAll()
