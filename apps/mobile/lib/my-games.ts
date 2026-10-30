@@ -122,3 +122,22 @@ export function pickTodayCode<
   )
   return open[0] ?? null
 }
+
+/**
+ * A tela de fora do Flip sem jogo marcado (Adaptativo 10): o jogo de hoje
+ * que mais bares perto passam ("Corinthians × Palmeiras às 21:30 em 5 bares
+ * perto."). Empate: o que começa antes.
+ */
+export function todayHeadline(games: { title: string; startsAt: string }[]) {
+  const count = new Map<string, number>()
+  for (const game of games) {
+    const key = `${game.startsAt}\n${game.title}`
+    count.set(key, (count.get(key) ?? 0) + 1)
+  }
+  const [best] = [...count].sort(
+    ([a, x], [b, y]) => y - x || a.localeCompare(b)
+  )
+  if (!best) return null
+  const [startsAt, title] = best[0].split('\n')
+  return { title, startsAt, bars: best[1] }
+}

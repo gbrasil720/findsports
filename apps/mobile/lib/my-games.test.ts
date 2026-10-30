@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test'
+import { describe, expect, test } from 'bun:test'
 import {
   calendarEvent,
   formatCode,
@@ -6,7 +6,8 @@ import {
   pickTodayCode,
   shortDate,
   showsCheckIn,
-  thisMonth
+  thisMonth,
+  todayHeadline
 } from './my-games'
 
 test('o código sai em dois blocos', () => {
@@ -138,4 +139,25 @@ test('código de hoje: janela aberta, o que falta validar antes, o jogo mais ced
   expect(pickTodayCode([done, closed], now)).toBe(done)
   expect(pickTodayCode([closed, noCode], now)).toBeNull()
   expect(pickTodayCode([], now)).toBeNull()
+})
+
+describe('todayHeadline', () => {
+  test('o jogo que mais bares passam, e o primeiro no empate', () => {
+    const at = '2026-10-30T00:30:00.000Z'
+    const early = '2026-10-29T22:00:00.000Z'
+    expect(
+      todayHeadline([
+        { title: 'Lakers × Celtics', startsAt: early },
+        { title: 'Corinthians × Palmeiras', startsAt: at },
+        { title: 'Corinthians × Palmeiras', startsAt: at }
+      ])
+    ).toEqual({ title: 'Corinthians × Palmeiras', startsAt: at, bars: 2 })
+    expect(
+      todayHeadline([
+        { title: 'B', startsAt: at },
+        { title: 'A', startsAt: early }
+      ])
+    ).toMatchObject({ title: 'A' })
+    expect(todayHeadline([])).toBeNull()
+  })
 })
