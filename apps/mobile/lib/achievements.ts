@@ -223,3 +223,27 @@ export function reviewLine(list: Achievement[]) {
     next
   }
 }
+
+/**
+ * "As primeiras" ao lado das conquistas vazias (Adaptativo 10): as três que
+ * faltam menos para sair, fora a primeira (que já está no destaque), com o
+ * que pedem e quanto falta.
+ */
+export function firstToUnlock(list: Achievement[], skip = 'bar1') {
+  return list
+    .filter((a) => !a.unlockedAt && a.id !== skip)
+    .sort(
+      (a, b) =>
+        a.target - a.progress - (b.target - b.progress) || a.target - b.target
+    )
+    .slice(0, 3)
+    .map((a) => {
+      const left = a.target - a.progress
+      return {
+        achievement: a,
+        // "5 bares diferentes"; resenha não é "diferente".
+        asks: `${unit(a.group, a.target)}${a.group === 'resenhas' || a.target === 1 ? '' : ' diferentes'}`,
+        left: `${left === 1 ? 'Falta' : 'Faltam'} ${left}`
+      }
+    })
+}

@@ -4,6 +4,7 @@ import {
   amountLine,
   coverLine,
   describe as describeMedal,
+  firstToUnlock,
   fullDate,
   missingLine,
   nearest,
@@ -126,5 +127,25 @@ describe('estante no tablet', () => {
   })
   it('linha do tempo: só as ganhas, da mais nova', () => {
     expect(timeline(list).map((a) => a.id)).toEqual(['bar1', 'bar5', 'bai3'])
+  })
+})
+
+describe('firstToUnlock', () => {
+  it('as três que faltam menos, sem a primeira e sem as que já saíram', () => {
+    const list = [
+      medal('bar1', 'bares', 1, 0),
+      medal('bar5', 'bares', 5, 0),
+      medal('bai3', 'bairros', 3, 0),
+      medal('ava1', 'resenhas', 1, 0),
+      medal('esp2', 'esportes', 2, 2),
+      medal('bar10', 'bares', 10, 0)
+    ]
+    expect(
+      firstToUnlock(list).map((n) => [n.achievement.id, n.asks, n.left])
+    ).toEqual([
+      ['ava1', '1 resenha', 'Falta 1'],
+      ['bai3', '3 bairros diferentes', 'Faltam 3'],
+      ['bar5', '5 bares diferentes', 'Faltam 5']
+    ])
   })
 })
