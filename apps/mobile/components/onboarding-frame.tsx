@@ -1,7 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
-import { useGlobalSearchParams, usePathname } from 'expo-router'
+import {
+  type Href,
+  useGlobalSearchParams,
+  usePathname,
+  useRouter
+} from 'expo-router'
 import { type ReactNode, useEffect, useState } from 'react'
-import { Image, Platform, StyleSheet, View } from 'react-native'
+import { Image, Platform, Pressable, StyleSheet, View } from 'react-native'
 import Animated, { FadeIn, FadeInDown, FadeOut } from 'react-native-reanimated'
 import {
   SafeAreaInsetsContext,
@@ -177,15 +182,49 @@ function Side({ step, height }: { step: number; height: number }) {
   )
 }
 
+/**
+ * O "Pular" do design, no topo da faixa e da mesa. O produto não pula o
+ * cadastro inteiro: só aparece nos passos que o celular já deixa pular
+ * (Times e Localização) e faz o mesmo que eles.
+ */
+function Skip({ step }: { step: number }) {
+  const router = useRouter()
+  const skip = FLOW[step].skip
+  if (!skip) return null
+  return (
+    <Pressable
+      accessibilityRole="button"
+      hitSlop={12}
+      onPress={() =>
+        skip.replace
+          ? router.replace(skip.to as Href)
+          : router.push(skip.to as Href)
+      }
+    >
+      <Text style={[text(14, 'SemiBold', 1.2), { color: MUTED }]}>Pular</Text>
+    </Pressable>
+  )
+}
+
+/** A marca à esquerda e o "Pular" à direita. */
+function TopRow({ step, height }: { step: number; height: number }) {
+  return (
+    <View style={styles.topRow}>
+      <Wordmark height={height} />
+      <Skip step={step} />
+    </View>
+  )
+}
+
 /** Tablet em pé: a etapa atual e os passos em linha, na faixa do topo. */
 function Band({ step }: { step: number }) {
   const insets = useSafeAreaInsets()
   return (
     <View
       style={[styles.bandInner, { top: insets.top + 30 }]}
-      pointerEvents="none"
+      pointerEvents="box-none"
     >
-      <Wordmark height={24} />
+      <TopRow step={step} height={24} />
       <View style={styles.bandNumber}>
         <StepNumber step={step} size={96} />
         <View style={{ paddingBottom: 6 }}>
@@ -234,7 +273,7 @@ function TableTop({ step, wide }: { step: number; wide: boolean }) {
         { top: insets.top + 10, left: wide ? 44 : 30, right: wide ? 44 : 30 }
       ]}
     >
-      <Wordmark height={22} />
+      <TopRow step={step} height={22} />
       <View>
         <View style={styles.numberRow}>
           <StepNumber step={step} size={64} />
@@ -370,7 +409,7 @@ export function OnboardingFrame({ children }: { children: ReactNode }) {
     const below = frame.top + frame.gap
     pane = { left: 0, top: below, width, height: height - below }
     column = frame.column
-    top = 16
+    top = 8
     decor = (
       <View style={[styles.panel, { right: strip, height: frame.top }]}>
         <Photo opacity={0.18} />
@@ -442,6 +481,11 @@ const styles = StyleSheet.create({
   },
   pane: { position: 'absolute', backgroundColor: BG, overflow: 'hidden' },
   sheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28 },
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
   numberRow: { flexDirection: 'row', alignItems: 'baseline', gap: 12 },
   of: {
     fontFamily: 'GeistMono-SemiBold',

@@ -8,11 +8,23 @@ import type { Layout } from '@/lib/layout'
  * tela de fora do Flip.
  */
 
+type Step = {
+  route: string
+  name: string
+  hint: string
+  ask: string
+  /**
+   * O passo que dá para pular no celular (Times, "Pular"; Localização,
+   * "Agora não"): só neles a faixa e a mesa mostram o "Pular" do design.
+   */
+  skip?: { to: string; replace: boolean }
+}
+
 /**
  * Os passos, na ordem das rotas de `app/onboarding/`: o nome, o que pede e a
  * pergunta (o título do passo, que na mesa sobe para a metade de cima).
  */
-export const FLOW = [
+export const FLOW: Step[] = [
   {
     route: '',
     name: 'Boas-vindas',
@@ -29,7 +41,9 @@ export const FLOW = [
     route: 'teams',
     name: 'Times',
     hint: 'Para avisar dos jogos',
-    ask: 'Quem você acompanha?'
+    ask: 'Quem você acompanha?',
+    // Times são opcionais: o "Pular" do passo leva à distância.
+    skip: { to: '/onboarding/distance', replace: false }
   },
   {
     route: 'distance',
@@ -41,7 +55,9 @@ export const FLOW = [
     route: 'location',
     name: 'Localização',
     hint: 'Para achar os mais perto',
-    ask: 'Usar sua localização?'
+    ask: 'Usar sua localização?',
+    // O "Agora não" do passo: segue sem a localização.
+    skip: { to: '/onboarding/review', replace: true }
   },
   {
     route: 'review',
@@ -49,7 +65,7 @@ export const FLOW = [
     hint: 'Confira e comece',
     ask: 'Pronto para salvar'
   }
-] as const
+]
 
 /** O passo pelo caminho (`/onboarding/teams` → 2). */
 export function stepOf(pathname: string) {
