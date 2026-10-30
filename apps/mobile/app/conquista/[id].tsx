@@ -1,7 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
 import { useLocalSearchParams } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, Share, StyleSheet, View } from 'react-native'
+import {
+  ActivityIndicator,
+  Share,
+  StyleSheet,
+  useWindowDimensions,
+  View
+} from 'react-native'
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -12,12 +18,15 @@ import Animated, {
   withTiming
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useLayout } from '@/components/layout'
 import { Medal3D, useMedalPalette } from '@/components/medal'
 import {
+  CoverMedal,
   engraving,
   GlassPill,
   Glow,
-  MedalDetail
+  MedalDetail,
+  medalCard
 } from '@/components/medal-detail'
 import { EASE, haptic, popFrom } from '@/components/motion'
 import {
@@ -48,12 +57,19 @@ import { trpc } from '@/lib/trpc'
  * - logo depois de ganhar (`?nova=1`), a conquista desbloqueada (2k): a
  *   medalha girando sozinha, o que a liberou e a próxima da série. "Ver
  *   medalha" troca para o detalhe na mesma tela.
+ *
+ * Fora do celular (A06) as medidas seguem a tela; no tablet o desbloqueio é
+ * um cartão no meio, sobre a estante (`transparentModal`, em `app/_layout`),
+ * e na tela de fora do Flip, a medalha girando com "Compartilhar".
  */
 
 export default function Medal() {
   const P = useMedalPalette()
   const params = useLocalSearchParams<{ id: string; nova?: string }>()
   const insets = useSafeAreaInsets()
+  const layout = useLayout()
+  const window = useWindowDimensions()
+  const phone = layout.kind === 'phone' || layout.kind === 'duoClosed'
   useStatusBar('auto')
   const mine = useQuery(trpc.achievements.mine.queryOptions())
   const list = mine.data?.achievements ?? []
@@ -88,6 +104,42 @@ export default function Medal() {
         : `Estou atrás da medalha ${medal.name} na Onside: ${progressLabel(medal)}. https://onside.sh`
     })
 
+  if (layout.kind === 'cover')
+    return <CoverMedal medal={medal} list={list} share={share} />
+
+  // O desbloqueio no tablet: cartão de até 560 x 720 no meio da tela, com a
+  // estante escurecida atrás. Sem fechar, como no celular.
+  if (fresh && medalCard(layout.nav)) {
+    const width = Math.min(560, window.width - 80)
+    const height = Math.min(720, window.height - 120)
+    return (
+      <Animated.View entering={SCRIM_IN} style={styles.scrim}>
+        <Animated.View
+          entering={CARD_IN}
+          style={[styles.card, { width, height, backgroundColor: P.bg }]}
+        >
+          {/* O recorte fica por dentro: no iOS ele apagaria a sombra. */}
+          <View style={[styles.cardInner, { borderColor: P.line }]}>
+            <Glow strength={0.18 * (P.dark ? 1 : 2.4)} rx="60%" />
+            <Unlocked
+              medal={medal}
+              list={list}
+              insets={{ top: 0, bottom: 28 }}
+              share={share}
+              onSee={() => setFresh(false)}
+              frame={{
+                width,
+                height,
+                medal: Math.min(240, height * 0.34),
+                top: 40
+              }}
+            />
+          </View>
+        </Animated.View>
+      </Animated.View>
+    )
+  }
+
   return (
     <View style={[styles.screen, { backgroundColor: P.bg }]}>
       {/* No papel o acid quase some: o brilho vem mais forte. */}
@@ -102,6 +154,16 @@ export default function Medal() {
           insets={insets}
           share={share}
           onSee={() => setFresh(false)}
+          frame={
+            phone
+              ? undefined
+              : {
+                  width: window.width,
+                  height: window.height,
+                  medal: Math.min(250, window.height * 0.32),
+                  top: insets.top + 20
+                }
+          }
         />
       ) : (
         <Animated.View
@@ -114,6 +176,15 @@ export default function Medal() {
             insets={insets}
             share={share}
             onPick={setId}
+            frame={
+              phone
+                ? undefined
+                : {
+                    width: window.width,
+                    medal: Math.min(window.width - 40, window.height * 0.36),
+                    title: 48
+                  }
+            }
           />
         </Animated.View>
       )}
@@ -148,14 +219,24 @@ const LINE_IN = FadeInDown.delay(120)
   .easing(EASE)
   .withInitialValues({ opacity: 0, transform: [{ translateY: 8 }] })
 const DETAIL_IN = FadeIn.duration(220).easing(EASE)
+const SCRIM_IN = FadeIn.duration(200).easing(EASE)
+const CARD_IN = popFrom(0.96, 60)
 
 function Unlocked({
   medal,
   list,
   insets,
   share,
-  onSee
-}: ScreenProps & { onSee: () => void }) {
+  onSee,
+  frame
+}: ScreenProps & {
+  onSee: () => void
+  /**
+   * Fora do celular: o espaço (a tela, ou o cartão do tablet), o lado da
+   * medalha e onde ela começa. Sem ele, as medidas do 2k (390 x 844).
+   */
+  frame?: { width: number; height: number; medal: number; top: number }
+}) {
   const P = useMedalPalette()
   const next = nextInSeries(list, medal)
   // Háptico, confete e texto no quadro em que a medalha aparece, não ao
@@ -184,7 +265,9 @@ function Unlocked({
               styles.confetti,
               {
                 left: `${(x / 390) * 100}%`,
-                top: insets.top - 47 + y
+                top: frame
+                  ? frame.top - 96 + (y / 844) * frame.height
+                  : insets.top - 47 + y
               }
             ]}
           >
@@ -205,7 +288,16 @@ function Unlocked({
       <Medal3D
         medal={engraving(medal)}
         onReady={reveal}
-        style={[styles.spin, { marginTop: insets.top + 49 }]}
+        style={
+          frame
+            ? {
+                width: frame.medal,
+                height: Math.round(frame.medal * 1.12),
+                alignSelf: 'center',
+                marginTop: frame.top
+              }
+            : [styles.spin, { marginTop: insets.top + 49 }]
+        }
       />
       {shown ? (
         <Animated.View
@@ -215,7 +307,11 @@ function Unlocked({
           <Text style={[text(14, 'Bold'), { color: P.hot }]}>
             Conquista desbloqueada
           </Text>
-          <Title lines={[[medal.name]]} size={52} color={P.ink} />
+          <Title
+            lines={[[medal.name]]}
+            size={frame && frame.width < 600 ? 48 : 52}
+            color={P.ink}
+          />
           <Text
             style={[text(16, 'Regular', 1.45), styles.lead, { color: P.body }]}
           >
@@ -246,7 +342,14 @@ function Unlocked({
         </Animated.View>
       ) : null}
       <View
-        style={[styles.foot, { paddingBottom: Math.max(insets.bottom, 16) }]}
+        style={[
+          styles.foot,
+          frame && {
+            left: Math.max(16, (frame.width - 420) / 2),
+            right: Math.max(16, (frame.width - 420) / 2)
+          },
+          { paddingBottom: Math.max(insets.bottom, 16) }
+        ]}
       >
         <GlassPill label="Compartilhar" onPress={share} />
         <View style={{ flex: 1.2 }}>
@@ -326,6 +429,26 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
     marginTop: 7,
+    overflow: 'hidden'
+  },
+  scrim: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,.58)'
+  },
+  // O cartão do desbloqueio no tablet: a sombra dura acid do design.
+  card: {
+    borderRadius: 14,
+    shadowColor: ACID,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 8, height: 8 }
+  },
+  cardInner: {
+    flex: 1,
+    borderRadius: 14,
+    borderWidth: 1,
     overflow: 'hidden'
   }
 })

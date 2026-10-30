@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router'
 import { useRef } from 'react'
-import { Pressable, StyleSheet, View } from 'react-native'
+import { Platform, Pressable, StyleSheet, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg'
@@ -35,6 +35,10 @@ import {
   seriesLabel,
   unit
 } from '@/lib/achievements'
+
+/** iPad e Galaxy Tab: o desbloqueio abre como cartão (regra 05 da A06). */
+export const medalCard = (nav: string) =>
+  (Platform.OS === 'ios' && Platform.isPad) || nav === 'rail'
 
 /** O que a medalha 3D grava no verso: a data e o lugar em que saiu. */
 export const engraving = (a: Achievement) => ({
