@@ -90,6 +90,12 @@ export default function Layout() {
   const [phone, setPhone] = useState(kind === 'phone')
   if (!open && phone !== (kind === 'phone')) setPhone(kind === 'phone')
   const aiSheet = phone
+  // Telas curtas da conta abrem como folha no meio da tela fora do celular
+  // (regra 06 da a08, WEB-491); no celular, empilhadas como sempre.
+  const accountSheet =
+    kind === 'phone' || kind === 'duoClosed' || kind === 'cover'
+      ? undefined
+      : { presentation: 'modal' as const }
   const ready = fontsLoaded && agenda !== undefined
   const [splashDone, setSplashDone] = useState(false)
   const endSplash = useCallback(() => setSplashDone(true), [])
@@ -197,9 +203,9 @@ export default function Layout() {
                 {/* Configurações (11f–11i): com voltar, sem a barra de abas.
                 Cidade e senha empilham por cima. */}
                 <Stack.Screen name="configuracoes" />
-                <Stack.Screen name="cidade" />
-                <Stack.Screen name="senha" />
-                <Stack.Screen name="duas-etapas" />
+                <Stack.Screen name="cidade" options={accountSheet} />
+                <Stack.Screen name="senha" options={accountSheet} />
+                <Stack.Screen name="duas-etapas" options={accountSheet} />
                 {/* Amigos (S1): busca em tela cheia como a do mapa; código,
                 contatos e o perfil de amigo empilham com voltar. */}
                 <Stack.Screen name="amigos" />
