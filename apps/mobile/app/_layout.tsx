@@ -9,7 +9,11 @@ import { useCallback, useEffect, useState } from 'react'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { DevTab } from '@/components/dev-tab'
 import { ExploreStateProvider } from '@/components/explore-state'
-import { usePortraitLock, useWindowBackground } from '@/components/layout'
+import {
+  useLayout,
+  usePortraitLock,
+  useWindowBackground
+} from '@/components/layout'
 import { MaintenanceGate } from '@/components/maintenance'
 import { OfflineBanner } from '@/components/offline-banner'
 import { Splash, SplashDone } from '@/components/splash'
@@ -73,6 +77,10 @@ export default function Layout() {
   const agenda = useTodayAgenda()
   usePortraitLock()
   useWindowBackground()
+  // A busca com IA é folha no celular e tela cheia fora dele (WEB-488): no
+  // iPad a folha viraria um cartão no meio da tela.
+  const kind = useLayout().kind
+  const aiSheet = kind === 'phone' || kind === 'duoClosed'
   const ready = fontsLoaded && agenda !== undefined
   const [splashDone, setSplashDone] = useState(false)
   const endSplash = useCallback(() => setSplashDone(true), [])
@@ -136,13 +144,17 @@ export default function Layout() {
                 {/* Busca com IA (2h): folha alta sobre o mapa, aberta pela aba IA. */}
                 <Stack.Screen
                   name="busca-ia"
-                  options={{
-                    presentation: 'formSheet',
-                    sheetAllowedDetents: [1],
-                    sheetGrabberVisible: true,
-                    sheetCornerRadius: 34,
-                    contentStyle: { backgroundColor: 'transparent' }
-                  }}
+                  options={
+                    aiSheet
+                      ? {
+                          presentation: 'formSheet',
+                          sheetAllowedDetents: [1],
+                          sheetGrabberVisible: true,
+                          sheetCornerRadius: 34,
+                          contentStyle: { backgroundColor: 'transparent' }
+                        }
+                      : { presentation: 'fullScreenModal' }
+                  }
                 />
                 {/* Busca (19a, 19b): tela cheia, sobe sem a barra de abas. */}
                 <Stack.Screen
