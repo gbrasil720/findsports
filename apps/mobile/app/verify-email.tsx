@@ -69,6 +69,7 @@ export default function VerifyEmail() {
 
   return (
     <Screen
+      brand
       gap={16}
       footer={
         <View style={{ gap: 12, alignItems: 'center' }}>

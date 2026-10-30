@@ -198,6 +198,7 @@ export default function Profile() {
 
   return (
     <Screen
+      brand
       gap={14}
       padding={18}
       footer={

@@ -31,7 +31,8 @@ import {
   SUB,
   Text,
   Title,
-  text
+  text,
+  useBrandFrame
 } from '@/components/ui'
 import { attemptPhase, retryable, settleAuth } from '@/lib/auth-attempt'
 import { authClient } from '@/lib/auth-client'
@@ -63,6 +64,8 @@ export default function SignIn() {
   const [tries, setTries] = useState(0)
   const turnstile = useTurnstile()
   const notice = params.notice ? NOTICES[params.notice] : undefined
+  // Fora do celular a marca fica ao lado (ou em cima), sem a foto (a08).
+  const framed = useBrandFrame()
   // A foto assenta de um zoom leve quando a tela abre.
   const zoom = useSharedValue(1.04)
   useEffect(() => {
@@ -125,48 +128,51 @@ export default function SignIn() {
 
   return (
     <Screen
+      brand
       gap={0}
-      lightStatus
+      lightStatus={!framed}
       header={
-        <View style={styles.hero}>
-          <Animated.Image
-            source={require('../assets/images/intro/bar.jpg')}
-            style={[{ width: '100%', height: '100%' }, settle]}
-            resizeMode="cover"
-          />
-          <LinearGradient
-            // Funde no fundo da tela; o gradiente pede cor pronta, não dinâmica.
-            colors={[
-              'rgba(18,18,15,.2)',
-              'rgba(18,18,15,0)',
-              dark ? INK : PAPER
-            ]}
-            locations={[0, 0.45, 1]}
-            style={StyleSheet.absoluteFill}
-          />
-          <View style={[styles.top, { top: insets.top + 8 }]}>
-            <Glass tone="dark" style={styles.chip}>
-              <Image
-                source={require('../assets/images/brand/wordmark-light.png')}
-                accessibilityLabel="Onside"
-                style={{ height: 19, width: (19 * 845) / 256 }}
-              />
-            </Glass>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push('/profile')}
-            >
-              <Glass tone="dark" interactive style={styles.chip}>
-                <Text style={[text(13.5, 'SemiBold'), { color: PAPER }]}>
-                  Criar conta
-                </Text>
+        framed ? undefined : (
+          <View style={styles.hero}>
+            <Animated.Image
+              source={require('../assets/images/intro/bar.jpg')}
+              style={[{ width: '100%', height: '100%' }, settle]}
+              resizeMode="cover"
+            />
+            <LinearGradient
+              // Funde no fundo da tela; o gradiente pede cor pronta, não dinâmica.
+              colors={[
+                'rgba(18,18,15,.2)',
+                'rgba(18,18,15,0)',
+                dark ? INK : PAPER
+              ]}
+              locations={[0, 0.45, 1]}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={[styles.top, { top: insets.top + 8 }]}>
+              <Glass tone="dark" style={styles.chip}>
+                <Image
+                  source={require('../assets/images/brand/wordmark-light.png')}
+                  accessibilityLabel="Onside"
+                  style={{ height: 19, width: (19 * 845) / 256 }}
+                />
               </Glass>
-            </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.push('/profile')}
+              >
+                <Glass tone="dark" interactive style={styles.chip}>
+                  <Text style={[text(13.5, 'SemiBold'), { color: PAPER }]}>
+                    Criar conta
+                  </Text>
+                </Glass>
+              </Pressable>
+            </View>
           </View>
-        </View>
+        )
       }
     >
-      <View style={styles.content}>
+      <View style={[styles.content, framed && styles.framed]}>
         <View>
           <Title lines={[['De volta ', 'ao jogo.']]} size={48} />
           <View style={{ marginTop: 8 }}>
@@ -264,5 +270,6 @@ const styles = StyleSheet.create({
   },
   // O conteúdo começa a 226 do topo, sobre o fim da foto.
   content: { marginTop: 226 - 310, paddingHorizontal: 20, gap: 16 },
+  framed: { marginTop: 0, paddingHorizontal: 0 },
   underline: { textDecorationLine: 'underline' }
 })

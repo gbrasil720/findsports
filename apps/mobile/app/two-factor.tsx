@@ -122,7 +122,7 @@ export default function TwoFactor() {
   const phase = attemptPhase(pending, failed)
 
   return (
-    <Screen dark gap={18} top={2}>
+    <Screen brand dark gap={18} top={2}>
       <BackButton tone="dark" />
       <Icon name="shield" size={52} color={PAPER} />
       <Title

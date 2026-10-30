@@ -89,7 +89,7 @@ export default function SignUp() {
   const phase = attemptPhase(pending, failed)
 
   return (
-    <Screen gap={15}>
+    <Screen brand gap={15}>
       <View style={styles.top}>
         <BackButton />
         <TextLink
