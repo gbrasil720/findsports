@@ -28,7 +28,7 @@ import { Card } from '@/components/card'
 import { initials, MeDot, RadiusCircle } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
-import { useLayout } from '@/components/layout'
+import { NAV, useLayout } from '@/components/layout'
 import { haptic, ScalePress } from '@/components/motion'
 import { usePalette } from '@/components/theme'
 import {
@@ -129,7 +129,10 @@ export default function Settings() {
   // aberto, as seções ficam à direita do menu "Você" (regra 02 da T5).
   const { kind } = useLayout()
   const { width } = useWindowDimensions()
-  const column = Math.min(width, COLUMN)
+  const column = Math.min(
+    width - (kind === 'duoClosed' ? NAV.duoRail.width : 0),
+    COLUMN
+  )
   if (kind === 'split')
     return <Redirect href={{ pathname: '/voce', params: { aba: tab } }} />
 
@@ -139,6 +142,8 @@ export default function Settings() {
         contentContainerStyle={[
           styles.body,
           { paddingTop: insets.top + 6, paddingBottom: insets.bottom + 32 },
+          // A faixa da direita do Duo fechado (status e Dynamic Island).
+          kind === 'duoClosed' && { paddingRight: 16 + NAV.duoRail.width },
           width > COLUMN && { width: COLUMN, alignSelf: 'center' }
         ]}
       >
