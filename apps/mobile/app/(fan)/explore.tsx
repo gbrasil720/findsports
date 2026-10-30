@@ -918,6 +918,10 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
           ]}
         >
           <MapView
+            // No iPhone Duo, abrir ou fechar leva o app para a outra tela, e o
+            // mapa da Apple fica em branco na tela nova. Recomeça nela, onde a
+            // pessoa estava (`view`).
+            key={layout.kind === 'duoClosed' ? 'fora' : 'dentro'}
             ref={map}
             onMapReady={() => setMapReady(true)}
             // A região que o mapa informa vem com o `mapPadding` misturado; os
@@ -941,7 +945,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
               setSelected(null)
             }}
             style={StyleSheet.absoluteFill}
-            initialRegion={region}
+            initialRegion={view}
             mapType={Platform.OS === 'ios' ? 'mutedStandard' : 'standard'}
             customMapStyle={palette.dark ? MAP_STYLE.dark : MAP_STYLE.light}
             userInterfaceStyle={palette.dark ? 'dark' : 'light'}
