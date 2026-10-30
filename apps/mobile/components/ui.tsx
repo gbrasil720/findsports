@@ -595,6 +595,12 @@ const ICONS = {
 // --- Barra de status -------------------------------------------------------
 
 /**
+ * Quem desenha atrás da barra de status no lugar da tela (o painel escuro do
+ * onboarding no tablet) diz a cor dela aqui.
+ */
+export const StatusBarOver = createContext<'light' | 'dark' | null>(null)
+
+/**
  * A cor da barra de status da tela em foco. Não dá para usar `<StatusBar>`
  * (com telas empilhadas, a de baixo re-renderizando ganha da de cima) nem a
  * opção `statusBarStyle` da pilha (o Expo Go não liga
@@ -602,8 +608,9 @@ const ICONS = {
  * react-native-screens reaplica o padrão no fim da transição: por isso
  * também no `transitionEnd`.
  */
-export function useStatusBar(wanted: 'light' | 'dark' | 'auto') {
+export function useStatusBar(asked: 'light' | 'dark' | 'auto') {
   const navigation = useNavigation()
+  const wanted = useContext(StatusBarOver) ?? asked
   // "auto" resolvido aqui: o do expo-status-bar só olha o tema na hora da
   // chamada, e trocar o tema com a tela aberta deixaria a barra errada.
   const scheme = useColorScheme()
