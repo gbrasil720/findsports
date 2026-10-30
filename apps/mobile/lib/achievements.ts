@@ -160,6 +160,12 @@ export const timeline = (list: Achievement[]) =>
         new Date(x.unlockedAt ?? 0).getTime()
     )
 
+/** "5º bar diferente", na tela de fora do Z Flip 8 (A06). */
+export const coverLine = (a: Achievement) =>
+  a.group === 'resenhas'
+    ? `${a.target}ª resenha`
+    : `${a.target}º ${UNIT[a.group][0]} diferente`
+
 /** O que mostrar quando a medalha ainda não saiu. */
 export const progressLabel = (a: Achievement) =>
   `${Math.min(a.progress, a.target)}/${a.target}`
