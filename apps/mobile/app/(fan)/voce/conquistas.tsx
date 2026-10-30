@@ -244,6 +244,7 @@ export default function Shelf() {
                 size={size}
                 highlight={false}
                 selected={a.id === picked.id}
+                single
                 onPress={() => pick(a.id)}
               />
             ))}
@@ -726,6 +727,7 @@ function Tile({
   size,
   highlight,
   selected,
+  single,
   onPress
 }: {
   achievement: Achievement
@@ -734,6 +736,11 @@ function Tile({
   highlight: boolean
   /** Lado a lado: a medalha que está grande no detalhe. */
   selected?: boolean
+  /**
+   * Numa fileira só (a mesa): sem igualar a altura à da vizinha, que lá é a
+   * metade de baixo inteira.
+   */
+  single?: boolean
   onPress: () => void
 }) {
   const P = useMedalPalette()
@@ -750,18 +757,19 @@ function Tile({
       style={{ width }}
     >
       {/* Altura da linha: a medalha ganha fica do tamanho da que tem barra. */}
-      <Animated.View style={[{ flex: 1 }, press.style]}>
+      <Animated.View style={[!single && { flex: 1 }, press.style]}>
         <Card
           shadow={selected ? ACID : highlight ? P.glow : P.drop}
           offset={selected ? 3 : highlight ? 5 : 4}
           fill={selected ? (P.dark ? '#262621' : '#fff') : undefined}
-          style={{ flex: 1 }}
+          style={single ? undefined : { flex: 1 }}
         >
           <View
             style={[
               styles.tile,
               selected && [
                 styles.tileOn,
+                single && { flex: 0 },
                 { borderColor: P.dark ? 'rgba(241,238,230,.6)' : INK }
               ]
             ]}
@@ -917,5 +925,5 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingRight: 20
   },
-  tableShelf: { gap: 10, paddingHorizontal: 20 }
+  tableShelf: { gap: 10, paddingHorizontal: 20, alignItems: 'flex-start' }
 })
