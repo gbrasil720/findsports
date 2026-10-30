@@ -979,6 +979,31 @@ invente layout que o projeto não tem.
 - **Tocar e digitar no simulador:** `idb` (`brew install facebook/fb/idb-companion` e
   `pip install fb-idb`; `idb connect <udid>`, `idb ui tap --udid <udid> x y` em pontos,
   `idb ui text`). Com `recordVideo` dá para conferir a microinteração quadro a quadro.
+  O simulador do Xcode 27 não tem menu de girar: `idb ui rotate --udid <udid> LANDSCAPE_LEFT`
+  (e `PORTRAIT`) gira o iPad. Em alguns aparelhos `simctl io screenshot` falha
+  ("Invalid argument"); `idb screenshot --udid <udid> <arquivo>` funciona.
+- **Tablet e dobrável (WEB-483, base no WEB-486):** o app abre em tela cheia no iPad
+  (`supportsTablet`) e gira; celular e capa de dobrável ficam em retrato
+  (`usePortraitLock`, pela menor medida da tela, abaixo de 600). O layout vem de
+  `useLayout()` (`components/layout.tsx`, contas em `lib/layout.ts`), pela largura da janela e
+  pelo sistema, nunca pelo modelo: `phone`, `duoClosed` (iPhone com mais de 460 pt),
+  `split` (lista e detalhe lado a lado: tablet deitado e dobrável aberto; `split` é a largura
+  da lista, ou a metade no dobrável) e `stack` (tablet em pé); `wide` marca a terceira coluna
+  (13″ e Tab S11 Ultra deitados). A navegação também: `tabs` (a `NativeTabs`, só no
+  celular), `float` (barra flutuante embaixo: iPad e dobrável aberto, sobre a metade do mapa),
+  `duoRail` (faixa da direita do Duo) e `rail` (Galaxy Tab, com a IA no topo e os atalhos),
+  em `components/side-nav.tsx`. Fora do celular a `NativeTabs` só se esconde (`hidden`),
+  para abrir o dobrável não remontar as abas. Telas das abas descontam a navegação por
+  `useNavInsets()` (`useTabBarSpace` é o `bottom` dele); o primeiro acesso (4o) cerca o botão
+  da IA por `useAiButtonCenter`. A postura da dobra (livro, Flex Mode) não é lida: o
+  dobrável aberto é reconhecido pela proporção, e a postura de verdade exige a Jetpack
+  WindowManager num build de desenvolvimento. **Build de desenvolvimento no iOS 27 não abre**
+  ("UIScene life cycle is required"): o SDK 57 não adota UIScene, então o iPhone Duo (só
+  existe no iOS 27.1) roda apenas no Expo Go, em modo de compatibilidade de iPhone. iPad e
+  Android rodam no Expo Go em tela cheia. No Android: `adb reverse tcp:8081 tcp:8081` e
+  `tcp:3001`, e `adb shell am start -a android.intent.action.VIEW -d exp://localhost:8081`.
+  O web do `vite dev` escuta só em `::1`: para o simulador alcançar, suba com
+  `bun run dev -- --host 127.0.0.1`.
 - **Liquid glass:** o que o design faz em vidro (botão "Pular", card sobre mapa ou foto) usa
   `Glass` (`components/glass.tsx`), que é o `GlassView` do `expo-glass-effect` no iOS 26 e
   cor translúcida mais opaca onde o vidro do sistema não existe (Android, iOS anterior).
