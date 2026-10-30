@@ -1,7 +1,7 @@
-import { Pressable, StyleSheet, View } from 'react-native'
+import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Glass } from '@/components/glass'
-import { NAV } from '@/components/layout'
+import { NAV, useLayout } from '@/components/layout'
 import { usePalette } from '@/components/theme'
 import { ACCENT, ACID, Icon, INK, PAPER, Text, text } from '@/components/ui'
 import type { NavKind } from '@/lib/layout'
@@ -37,6 +37,30 @@ export function SideNav(props: Props) {
   if (props.kind === 'duoRail') return <DuoRail {...props} />
   if (props.kind === 'rail') return <TabRail {...props} />
   return <FloatNav {...props} />
+}
+
+/**
+ * O centro do botão da IA na tela, para o primeiro acesso (4o) cercá-lo. Na
+ * barra nativa do iOS 26, medido no iPhone 16e (52 pt dos cantos).
+ */
+export function useAiButtonCenter() {
+  const { width, height } = useWindowDimensions()
+  const insets = useSafeAreaInsets()
+  const layout = useLayout()
+  if (layout.nav === 'duoRail')
+    return { x: width - 10 - 31, y: height - insets.bottom - 24 - 29 }
+  if (layout.nav === 'rail') return { x: 10 + 42, y: insets.top + 8 + 14 + 29 }
+  if (layout.nav === 'float') {
+    // Barra (3 abas de 96, 2 vãos de 2, 5 de cada lado) + 10 + o círculo.
+    const group = 3 * 96 + 2 * 2 + 10 + 10 + NAV.float.height
+    const left = layout.kind === 'split' ? layout.split : 0
+    const mid = (left + width) / 2
+    return {
+      x: mid + group / 2 - NAV.float.height / 2,
+      y: height - insets.bottom - NAV.float.gap - NAV.float.height / 2
+    }
+  }
+  return { x: width - 52, y: height - 52 }
 }
 
 function useTone() {

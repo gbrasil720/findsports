@@ -29,6 +29,7 @@ import Svg, {
 } from 'react-native-svg'
 import { Glass } from '@/components/glass'
 import { EASE, haptic, ScalePress } from '@/components/motion'
+import { useAiButtonCenter } from '@/components/side-nav'
 import { ACID, INK, PAPER, Text, text } from '@/components/ui'
 
 /*
@@ -44,11 +45,12 @@ import { ACID, INK, PAPER, Text, text } from '@/components/ui'
 const SEEN_KEY = 'onside.coach-ia'
 
 /**
- * Centro do botão da IA a partir do canto de baixo à direita. No design
- * (390 x 844) é x = 344, y = 784; a barra nativa do iOS 26 o põe em
- * x = 338, y = 792 (medido no iPhone 16e), e é ele que o furo tem de cercar.
+ * O furo em volta do botão da IA. No design (390 x 844) o centro é x = 344,
+ * y = 784; a barra nativa do iOS 26 o põe em x = 338, y = 792 (iPhone 16e).
+ * Fora do celular, ele está onde a navegação do aparelho o põe
+ * (`useAiButtonCenter`).
  */
-const HOLE = { right: 52, bottom: 52, r: 44 }
+const HOLE = { r: 44 }
 
 const LIQUID = isLiquidGlassAvailable()
 
@@ -138,8 +140,16 @@ export function AiCoach({
 }) {
   const { width, height } = useWindowDimensions()
   const dark = useColorScheme() === 'dark'
-  const cx = width - HOLE.right
-  const cy = height - HOLE.bottom
+  const { x: cx, y: cy } = useAiButtonCenter()
+  // O balão fica acima do botão; no rail do Galaxy Tab (botão no topo), abaixo.
+  const below = cy < height / 2
+  const callout = below
+    ? {
+        top: cy + 52,
+        left: Math.max(18, cx - 34),
+        alignItems: 'flex-start' as const
+      }
+    : { bottom: height - cy + 66, right: Math.max(18, width - cx - 34) }
   // O halo do anel respira devagar, para o olho achar o botão.
   const breathe = useSharedValue(1)
   useEffect(() => {
@@ -217,11 +227,15 @@ export function AiCoach({
         />
       </Animated.View>
 
-      <View pointerEvents="box-none" style={styles.callout}>
+      <View pointerEvents="box-none" style={[styles.callout, callout]}>
         <Animated.View
           entering={BALLOON_IN}
           exiting={BALLOON_OUT}
-          style={[styles.balloon, { backgroundColor: dark ? INK : PAPER }]}
+          style={[
+            styles.balloon,
+            { backgroundColor: dark ? INK : PAPER },
+            below ? styles.balloonBelow : null
+          ]}
         >
           <Text
             style={[text(15, 'Regular', 1.45), { color: dark ? PAPER : INK }]}
@@ -279,11 +293,14 @@ const styles = StyleSheet.create({
   hit: { position: 'absolute', width: 76, height: 76, borderRadius: 38 },
   callout: {
     position: 'absolute',
-    left: 18,
-    right: 18,
-    bottom: 118,
+    maxWidth: 354,
     alignItems: 'flex-end',
     gap: 12
+  },
+  balloonBelow: {
+    transformOrigin: 'top left',
+    borderTopLeftRadius: 4,
+    borderBottomRightRadius: 20
   },
   balloon: {
     maxWidth: 250,
