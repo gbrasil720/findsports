@@ -4,6 +4,7 @@ import {
   byMonth,
   dayMonth,
   gameWhen,
+  memoryBar,
   monthGrids,
   savedWeek,
   visitGrid,
@@ -164,5 +165,31 @@ describe('calendário do mês (tablet)', () => {
     const [dec, jan] = monthGrids([], Date.parse('2027-01-10T15:00:00Z'))
     expect(dec?.key).toBe('2026-12')
     expect(jan?.key).toBe('2027-01')
+  })
+})
+
+describe('bar da lembrança', () => {
+  const info = {
+    neighborhood: 'Pinheiros',
+    photoUrl: null,
+    latitude: '-23.56',
+    longitude: '-46.68'
+  }
+  const visit = { ...info, barId: 'a', barName: 'Casa 92', barActive: false }
+  const fav = { barId: 'b', bar: { ...info, name: 'Bar do Zé' } }
+
+  it('vem da visita, que diz se o bar está no ar', () => {
+    expect(memoryBar('a', [visit], [fav])).toMatchObject({
+      name: 'Casa 92',
+      active: false
+    })
+  })
+
+  it('senão do salvo, que só traz bar no ar', () => {
+    expect(memoryBar('b', [visit], [fav])).toMatchObject({
+      name: 'Bar do Zé',
+      active: true
+    })
+    expect(memoryBar('c', [visit], [fav])).toBeNull()
   })
 })
