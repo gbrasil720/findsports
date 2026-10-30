@@ -84,7 +84,7 @@ export default function Layout() {
   // aberta derrubava o app no Android: "Sheet delegate accepts screen with
   // initialized sheet behaviour only"): só troca quando nenhuma das duas está
   // na tela.
-  const kind = useLayout().kind
+  const { kind, nav } = useLayout()
   const pathname = usePathname()
   const open = pathname.startsWith('/busca-ia') || pathname.startsWith('/vou/')
   const [phone, setPhone] = useState(kind === 'phone')
@@ -144,10 +144,20 @@ export default function Layout() {
                     contentStyle: { backgroundColor: '#0b0b09' }
                   }}
                 />
-                {/* A medalha (2j, 2k), no escuro como a estante. */}
+                {/* A medalha (2j, 2k), no escuro como a estante. No tablet,
+                    o desbloqueio é um cartão sobre a estante (A06). */}
                 <Stack.Screen
                   name="conquista/[id]"
-                  options={{ presentation: 'fullScreenModal' }}
+                  options={{
+                    // O mesmo `medalCard` de components/medal-detail, que
+                    // não entra aqui: a medalha puxa o expo-asset antes de o
+                    // app subir ("Cannot find native module 'ExpoAsset'").
+                    presentation:
+                      (Platform.OS === 'ios' && Platform.isPad) ||
+                      nav === 'rail'
+                        ? 'transparentModal'
+                        : 'fullScreenModal'
+                  }}
                 />
                 {/* Todos os filtros (19d): folha alta sobre o Explorar. */}
                 <Stack.Screen
