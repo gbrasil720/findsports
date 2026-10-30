@@ -15,6 +15,7 @@ import Animated, {
   withTiming
 } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
+import { useLayout, useNavInsets } from '@/components/layout'
 import { Text } from '@/components/ui'
 import { SPLASH_ON, SPLASH_SIDE } from './splash-letters'
 
@@ -239,11 +240,18 @@ export function Splash({
   const real = agenda && agenda.length > 0 ? agenda : null
   const shown = real ?? SAMPLE_AGENDA
   const theme = THEMES[useColorScheme() === 'dark' ? 'dark' : 'light']
-  const { width } = useWindowDimensions()
-  const scale = Math.min(
-    1.3,
-    (width - 2 * MARGIN) / (DESIGN_WIDTH - 2 * MARGIN)
-  )
+  const window = useWindowDimensions()
+  const phone = useLayout().kind === 'phone'
+  // No iPhone Duo a barra de status e a ilha ficam na faixa da direita.
+  const strip = useNavInsets().right
+  const width = window.width - strip
+  const fit = (width - 2 * MARGIN) / (DESIGN_WIDTH - 2 * MARGIN)
+  // No tablet as letras crescem com a altura (o "ON / SIDE" em 45% dela), e
+  // as faixas cobrem a tela toda; no celular, as medidas do design.
+  const scale = phone
+    ? Math.min(1.3, fit)
+    : Math.min(fit, (window.height * 0.45) / (2 * LINE))
+  const rows = phone ? ROWS : Math.max(ROWS, Math.ceil(window.height / 56))
   const footer = useSharedValue(0)
   const exit = useSharedValue(0)
 
@@ -282,7 +290,7 @@ export function Splash({
       ]}
     >
       <View pointerEvents="none" style={styles.bands}>
-        {Array.from({ length: ROWS }, (_, i) => (
+        {Array.from({ length: rows }, (_, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: as faixas são fixas, a posição é a identidade
           <Band key={i} index={i} agenda={shown} theme={theme} />
         ))}
@@ -293,7 +301,7 @@ export function Splash({
         pointerEvents="none"
         style={StyleSheet.absoluteFill}
       />
-      <View style={styles.word}>
+      <View style={[styles.word, { right: MARGIN + strip }]}>
         <Line
           letters={SPLASH_ON}
           color={theme.word}
@@ -308,7 +316,9 @@ export function Splash({
           square
         />
       </View>
-      <Animated.View style={[styles.footer, footerStyle]}>
+      <Animated.View
+        style={[styles.footer, { right: MARGIN + strip }, footerStyle]}
+      >
         <Text style={[styles.footerText, { color: theme.footer }]}>
           O JOGO É AQUI
         </Text>
