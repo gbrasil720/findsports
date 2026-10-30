@@ -19,7 +19,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  useWindowDimensions,
   View
 } from 'react-native'
 import MapView from 'react-native-maps'
@@ -127,8 +126,7 @@ export default function Settings() {
   }
   // Fora do celular, uma coluna centrada; no tablet deitado e no dobrável
   // aberto, as seções ficam à direita do menu "Você" (regra 02 da T5).
-  const { kind } = useLayout()
-  const { width } = useWindowDimensions()
+  const { kind, width } = useLayout()
   const column = Math.min(
     width - (kind === 'duoClosed' ? NAV.duoRail.width : 0),
     COLUMN

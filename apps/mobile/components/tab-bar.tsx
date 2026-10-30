@@ -1,10 +1,4 @@
-import {
-  Image,
-  Pressable,
-  StyleSheet,
-  useWindowDimensions,
-  View
-} from 'react-native'
+import { Image, Pressable, StyleSheet, View } from 'react-native'
 import Animated, {
   type EntryExitAnimationFunction,
   FadeIn,
@@ -12,7 +6,7 @@ import Animated, {
   withTiming
 } from 'react-native-reanimated'
 import { Glass } from '@/components/glass'
-import { useNavInsets } from '@/components/layout'
+import { useLayout, useNavInsets } from '@/components/layout'
 import { EASE } from '@/components/motion'
 import { usePalette } from '@/components/theme'
 import { ACID, Icon, INK, Text, text } from '@/components/ui'
@@ -100,7 +94,7 @@ export function YouMenu({
   const bottom = bar + 10
   // No celular, de borda a borda (14 de cada lado); no tablet em pé e na
   // mesa, 420 de largura sobre a barra, fora das faixas laterais (WEB-491).
-  const { width } = useWindowDimensions()
+  const { width } = useLayout()
   const free = width - nav.left - nav.right
   const menuWidth = Math.min(free - 28, 420)
   const tone = palette.dark ? 'dark' : 'light'
