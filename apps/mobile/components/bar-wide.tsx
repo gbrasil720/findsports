@@ -328,14 +328,7 @@ export function GameCard({
 }
 
 /** Os próximos jogos (nextB): o dia numa caixinha, o jogo e a hora. */
-export function NextGames<G extends Game>({
-  games,
-  tag
-}: {
-  games: G[]
-  /** A etiqueta do produto ("Vou", "Telão", WEB-399). */
-  tag: (game: G) => string | null
-}) {
+export function NextGames({ games }: { games: Game[] }) {
   const palette = usePalette()
   return (
     <Card soft>
@@ -347,7 +340,6 @@ export function NextGames<G extends Game>({
               ...o,
               timeZone: 'America/Sao_Paulo'
             })
-          const label = tag(game)
           return (
             <View
               key={game.id}
@@ -380,15 +372,6 @@ export function NextGames<G extends Game>({
               >
                 {gameTitle(game)}
               </Text>
-              {label ? (
-                <View style={[styles.tag, { backgroundColor: palette.mark }]}>
-                  <Text
-                    style={[text(10.5, 'Bold', 1.2), { color: palette.ink }]}
-                  >
-                    {label}
-                  </Text>
-                </View>
-              ) : null}
               <Text style={[styles.time, { color: palette.ink }]}>
                 {formatTime(game.startsAt)}
               </Text>
@@ -760,7 +743,6 @@ const styles = StyleSheet.create({
   day: { width: 44, paddingVertical: 6, borderRadius: 4, alignItems: 'center' },
   dayTop: { fontFamily: 'GeistMono-SemiBold', fontSize: 9.5 },
   dayNum: { fontFamily: 'Anton', fontSize: 18, marginTop: 3, marginBottom: -4 },
-  tag: { paddingVertical: 3, paddingHorizontal: 6, borderRadius: 3 },
   time: { fontFamily: 'Anton', fontSize: 20, marginVertical: -5 },
   map: { height: 150, borderRadius: 6, overflow: 'hidden' },
   pin: {
