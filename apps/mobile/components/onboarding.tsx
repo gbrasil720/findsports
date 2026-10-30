@@ -35,6 +35,7 @@ import {
   Text,
   text
 } from '@/components/ui'
+import type { Frame } from '@/lib/onboarding'
 import { trpc } from '@/lib/trpc'
 
 /*
@@ -157,6 +158,23 @@ export function useEditing() {
   }
 }
 
+// --- Entorno (fora do celular, ver `onboarding-frame.tsx`) -----------------
+
+/** O passo vê o entorno: na mesa, a pergunta e o progresso já estão em cima. */
+export const FrameKind = createContext<Frame['kind']>('phone')
+export const useFrameKind = () => useContext(FrameKind)
+
+/**
+ * A área do passo: o tamanho (o mapa da localização se encaixa nela) e o
+ * respiro de cada lado que leva o passo para a coluna.
+ */
+export const Pane = createContext<{
+  width: number
+  height: number
+  side: number
+} | null>(null)
+export const usePane = () => useContext(Pane)
+
 /** "FU", "BA", "F1", "MMA": a sigla grande atrás do nome do esporte. */
 export function sportMark(name: string) {
   const acronym = name.match(/\b[A-Z]{2,}\b/)
@@ -192,6 +210,8 @@ function Segment({ on }: { on: boolean }) {
 
 /** "Conta de torcedor" (ou voltar), o progresso e "N de 5". */
 export function OnboardingTop({ step }: { step: number }) {
+  // Na mesa o progresso fica na metade de cima: aqui, só o voltar.
+  if (useFrameKind() === 'table') return step === 1 ? null : <BackButton />
   return (
     <View style={styles.top}>
       {step === 1 ? (
