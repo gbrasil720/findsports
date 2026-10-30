@@ -13,9 +13,11 @@ import { SideNav, TAB_ICONS } from '@/components/side-nav'
 import { useSoon } from '@/components/soon'
 import { type MenuItem, YouMenu } from '@/components/tab-bar'
 import { usePalette } from '@/components/theme'
+import { YouPanel } from '@/components/you-panel'
 import { authClient } from '@/lib/auth-client'
 import { freshCount } from '@/lib/suggestions'
 import { trpc } from '@/lib/trpc'
+import type { SettingsTab } from '../configuracoes'
 
 /*
  * As abas do torcedor ("02 Navbar glass"): Explorar, Bares (Seus bares) e Você, com a
@@ -64,7 +66,10 @@ export default function FanTabs() {
     over ? setOver(false) : router.navigate(from.current)
   // Primeiro acesso (4o): o coach da busca com IA, uma vez, sobre o Explorar.
   // `?coach=1` mostra de novo (navegador DEV).
-  const { coach: forceCoach } = useGlobalSearchParams<{ coach?: string }>()
+  const { coach: forceCoach, aba } = useGlobalSearchParams<{
+    coach?: string
+    aba?: SettingsTab
+  }>()
   const coach = useCoachPending(forceCoach === '1')
   const pending = useQuery({
     ...trpc.postGame.pending.queryOptions(),
@@ -82,9 +87,14 @@ export default function FanTabs() {
   const icons = TAB_ICONS[palette.dark ? 'dark' : 'light']
   const user = session.data?.user
   const layout = useLayout()
+  // Tablet deitado e dobrável aberto: o "Você" é uma tela (menu e seção lado
+  // a lado, `YouPanel`), não o menu de vidro; tocar de novo não fecha.
+  const panel = layout.kind === 'split'
   // O mesmo toque da aba "Você" na barra nativa.
   const pressYou = () => {
-    if (menuOpen) closeMenu()
+    if (panel) {
+      if (!menuOpen) router.navigate('/voce')
+    } else if (menuOpen) closeMenu()
     else if (pathname.startsWith('/voce/')) setOver(true)
     else router.navigate('/voce')
   }
@@ -232,6 +242,19 @@ export default function FanTabs() {
           <NativeTabs.Trigger.Label>IA</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
       </NativeTabs>
+      {menuOpen && panel ? (
+        <YouPanel
+          name={user?.name ?? ''}
+          initials={initials(user?.name ?? '')}
+          image={user?.image}
+          items={items.filter(
+            (item) => item.key !== 'perfil' && item.key !== 'preferencias'
+          )}
+          tab={aba}
+          onProfile={() => router.navigate('/voce/perfil')}
+          onItem={(item) => (item.open ? item.open() : soon.show(item.soon))}
+        />
+      ) : null}
       {layout.nav !== 'tabs' && layout.nav !== 'none' ? (
         <SideNav
           kind={layout.nav}
@@ -255,9 +278,10 @@ export default function FanTabs() {
           }
           initials={initials(user?.name ?? '')}
           left={
-            // No Explorar a barra flutua sobre o mapa (04b); nas outras
-            // abas, centrada na tela (design T3 e T4).
-            pathname === '/explore' &&
+            // No Explorar a barra flutua sobre o mapa (04b) e no "Você"
+            // deitado, sobre a seção da direita (a07); nas outras abas,
+            // centrada na tela (design T3 e T4).
+            (pathname === '/explore' || (menuOpen && panel)) &&
             layout.kind === 'split' &&
             layout.nav === 'float' &&
             !beside
@@ -272,7 +296,7 @@ export default function FanTabs() {
           }
         />
       ) : null}
-      {menuOpen ? (
+      {menuOpen && !panel ? (
         <YouMenu
           name={user?.name ?? ''}
           initials={initials(user?.name ?? '')}
