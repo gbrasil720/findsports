@@ -2,6 +2,11 @@ import {
   isEventLive,
   BRASILIA_TIME_ZONE as TZ
 } from '@findsports_oficial/db/event-window'
+import {
+  gameTitle,
+  matchSides,
+  type TitledGame
+} from '@findsports_oficial/db/game-title'
 
 /*
  * Contas do Explorar ("07" do design) que não dependem de tela: de onde a
@@ -130,4 +135,33 @@ export function goingSummary(going: {
     lead: `${going.count.toLocaleString('pt-BR')} ${going.count === 1 ? 'pessoa vai' : 'pessoas vão'}`,
     tail: joined ? `, entre elas ${joined}` : ''
   }
+}
+
+/**
+ * A tela de fora do Z Flip 8 (regra 07 da T1): só os bares com jogo, do mais
+ * perto para o mais longe, um por página. Cinco bastam para deslizar.
+ */
+export function coverBars<
+  T extends { distance_km: number; nextEvent?: unknown }
+>(bars: T[]): T[] {
+  return bars
+    .filter((bar) => bar.nextEvent)
+    .sort((a, b) => a.distance_km - b.distance_km)
+    .slice(0, 5)
+}
+
+/**
+ * O jogo na tela de fora: "COR × PAL · AO VIVO" ou "COR × PAL · 21:30"; fora
+ * do confronto, o título. O tempo de jogo do design ("2º TEMPO") não existe
+ * nos dados.
+ */
+export function coverKicker(
+  game: TitledGame & { startsAt: string; endsAt: string | null },
+  now: number
+) {
+  const sides = matchSides(game)
+  const what = sides
+    ? sides.map(teamMark).join(' × ')
+    : gameTitle(game).toLocaleUpperCase('pt-BR')
+  return `${what} · ${isLive(game, now) ? 'AO VIVO' : formatTime(game.startsAt)}`
 }
