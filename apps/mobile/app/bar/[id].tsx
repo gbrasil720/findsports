@@ -1183,6 +1183,7 @@ export function BarDetail({
             locations={[0, 0.5, 1]}
             style={StyleSheet.absoluteFill}
           />
+          <PhotoCount total={photos.length} onPress={openGallery} />
           <View style={styles.tableName}>
             <Text
               style={[styles.name, styles.tableTitle]}
