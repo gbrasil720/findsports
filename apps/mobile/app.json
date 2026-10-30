@@ -65,6 +65,14 @@
           "cameraPermission": "A Onside usa a câmera para ler o código de amigo (QR) de outra pessoa e para tirar a sua foto do perfil.",
           "microphonePermission": false
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "enableSceneSupport": true
+          }
+        }
       ]
     ],
     "experiments": {
