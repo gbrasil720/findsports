@@ -16,8 +16,10 @@ import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card } from '@/components/card'
 import { CheckInCard } from '@/components/check-in'
-import { dayLabel, Perforation, Photo } from '@/components/explore'
+import { BarRow, dayLabel, Perforation, Photo } from '@/components/explore'
+import { useExploreState } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
+import { useLayout, useNavInsets } from '@/components/layout'
 import { haptic, usePressScale } from '@/components/motion'
 import { useSoon } from '@/components/soon'
 import { useTabBarSpace } from '@/components/tab-bar'
@@ -37,7 +39,9 @@ import {
   usePullRefresh,
   useStatusBar
 } from '@/components/ui'
-import { formatTime } from '@/lib/explore'
+import { authClient } from '@/lib/auth-client'
+import { formatTime, searchCenter } from '@/lib/explore'
+import { dayKey, NO_FILTERS, searchInput } from '@/lib/filters'
 import {
   calendarEvent,
   formatCode,
@@ -131,13 +135,42 @@ export default function MyGames() {
     Promise.all([mine.refetch(), postGame.refetch()])
   )
 
+  // Fora do celular a lista fica numa coluna; vazia na tela larga, os jogos
+  // de hoje perto vão ao lado, para marcar um (Adaptativo 10, regra 01).
+  const layout = useLayout()
+  const nav = useNavInsets()
+  const usable = layout.width - nav.left - nav.right
+  const aside = layout.kind === 'split' && mine.isSuccess && !games.length
+  const listWidth = aside
+    ? layout.gap
+      ? layout.split
+      : Math.round(usable * 0.46)
+    : usable
+  const column =
+    layout.kind === 'phone' || layout.kind === 'duoClosed'
+      ? listWidth
+      : Math.min(listWidth, aside ? 430 : 560)
+  const pad = (listWidth - column) / 2
+
   return (
-    <View style={[styles.screen, { backgroundColor: palette.bg }]}>
+    <View
+      style={[
+        styles.screen,
+        { backgroundColor: palette.bg },
+        (nav.left > 0 || nav.right > 0) && {
+          paddingLeft: nav.left,
+          paddingRight: nav.right
+        },
+        aside && { flexDirection: 'row', gap: layout.gap }
+      ]}
+    >
       <ScrollView
         ref={scroll}
+        style={aside ? { width: listWidth, flexGrow: 0 } : undefined}
         contentContainerStyle={[
           styles.body,
-          { paddingTop: insets.top + 8, paddingBottom: tabBar + 24 }
+          { paddingTop: insets.top + 8, paddingBottom: tabBar + 24 },
+          pad > 0 && { paddingHorizontal: 16 + pad }
         ]}
         refreshControl={<RefreshControl {...pull} tintColor={palette.muted} />}
       >
@@ -291,8 +324,69 @@ export default function MyGames() {
           </>
         )}
       </ScrollView>
+      {aside ? <TodayNear /> : null}
       {soon.toast}
     </View>
+  )
+}
+
+/** Ao lado da lista vazia: os bares perto com jogo hoje, para marcar um. */
+function TodayNear() {
+  const router = useRouter()
+  const insets = useSafeAreaInsets()
+  const tabBar = useTabBarSpace()
+  const palette = usePalette()
+  const session = authClient.useSession()
+  // A mesma busca do Explorar, só com jogo hoje (o cache é o dele).
+  const { device } = useExploreState()
+  const city = useQuery(trpc.pubs.getMyCity.queryOptions())
+  const now = Date.now()
+  const search = useQuery({
+    ...trpc.pubs.search.queryOptions(
+      searchInput(
+        { ...NO_FILTERS, date: dayKey(now) },
+        searchCenter(device, city.data),
+        session.data?.user.searchRadiusKm ?? 3
+      )
+    ),
+    enabled: device !== null || !city.isPending
+  })
+  const bars = (search.data?.bars ?? []).filter((bar) => bar.nextEvent)
+  return (
+    <ScrollView
+      style={{ flex: 1, backgroundColor: palette.dark ? '#161613' : '#ebe8df' }}
+      contentContainerStyle={{
+        paddingTop: insets.top + 8,
+        paddingHorizontal: 20,
+        paddingBottom: tabBar + 24,
+        gap: 12
+      }}
+    >
+      <Text style={[styles.aside, { color: palette.dark ? ACID : '#c92b0c' }]}>
+        Jogos hoje perto
+      </Text>
+      <Text style={[text(13), { color: palette.muted, marginTop: -6 }]}>
+        Marque um e ele aparece em Meus jogos.
+      </Text>
+      {search.isPending ? (
+        <ActivityIndicator color={palette.ink} style={{ marginTop: 24 }} />
+      ) : bars.length ? (
+        bars
+          .slice(0, 8)
+          .map((bar) => (
+            <BarRow
+              key={bar.id}
+              bar={bar}
+              now={now}
+              onPress={() => router.push(`/bar/${bar.id}` as Href)}
+            />
+          ))
+      ) : (
+        <Text style={[text(14, 'Regular', 1.45), { color: palette.muted }]}>
+          Nenhum bar perto com jogo publicado hoje.
+        </Text>
+      )}
+    </ScrollView>
   )
 }
 
@@ -616,6 +710,13 @@ const styles = StyleSheet.create({
     marginBottom: 4
   },
   empty: { gap: 14, marginTop: 24 },
+  // Anton 22 do design, sem `lineHeight` (corta no iOS): margem negativa.
+  aside: {
+    fontFamily: 'Anton',
+    fontSize: 22,
+    textTransform: 'uppercase',
+    marginVertical: -0.2425 * 22
+  },
   tabs: { flexDirection: 'row', gap: 8, marginTop: 4 },
   tab: {
     paddingVertical: 8,
