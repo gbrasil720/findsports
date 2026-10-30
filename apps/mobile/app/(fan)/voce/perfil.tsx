@@ -16,6 +16,7 @@ import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card } from '@/components/card'
 import { dayLabel, initials, Photo } from '@/components/explore'
+import { Avatar } from '@/components/friends'
 import { useLayout, useNavInsets } from '@/components/layout'
 import { MedalImage } from '@/components/medal'
 import { haptic, usePressScale } from '@/components/motion'
@@ -44,7 +45,9 @@ import {
   levelLine,
   markedToday,
   memberSince,
+  monthRecap,
   nextInSaved,
+  profileBars,
   topBars,
   yourBarCount
 } from '@/lib/profile'
@@ -108,12 +111,39 @@ export default function Profile() {
         new Date(x.unlockedAt ?? 0).getTime()
     )
   const medals = (unlocked.length ? unlocked : list).slice(0, wide ? 5 : 3)
+  // Tablet em pé (tabPort7): Seus bares em grade, a retrospectiva do mês e os
+  // amigos no mês, quanto a altura do design comporta.
+  const ranking = useQuery({
+    ...trpc.ranking.friends.queryOptions({ metric: 'bars' }),
+    enabled: wide
+  })
+  const friendCount = useQuery({
+    ...trpc.friends.overview.queryOptions(),
+    enabled: wide
+  }).data?.friends.length
+  const gridColumns = column > 720 ? 4 : 3
+  const gridRows = layout.height > 1150 ? 2 : 1
+  const bars = wide
+    ? profileBars(visits.data ?? [], saved.data ?? []).slice(
+        0,
+        gridColumns * gridRows
+      )
+    : []
+  const recap =
+    wide && layout.height > 1100 ? monthRecap(visits.data ?? [], now) : null
+  const board =
+    wide && layout.height > 1250
+      ? (ranking.data?.rows ?? []).slice(0, column > 900 ? 6 : 5)
+      : []
   const games = mine.data ?? []
   const today = markedToday(
     games.filter((game) => !game.ended),
     now
   )
-  const next = nextInSaved(saved.data ?? [], 3)
+  const next = nextInSaved(
+    saved.data ?? [],
+    wide && layout.height > 1250 ? 4 : table ? 2 : 3
+  )
   const top = topBars(visits.data ?? [], now)
   const place = [city.data?.name, user ? memberSince(user.createdAt) : null]
     .filter(Boolean)
@@ -350,7 +380,8 @@ export default function Profile() {
 
   const extras = (
     <>
-      {top.bars.length ? (
+      {/* No tablet, "Seus bares" em grade faz esse papel. */}
+      {top.bars.length && !wide ? (
         <>
           <Heading title="Bares que você mais foi" meta={top.label} />
           <View style={styles.topBars}>
@@ -536,11 +567,282 @@ export default function Profile() {
             ) : (
               nextGames
             )}
+            {wide ? (
+              <TabletExtras
+                bars={bars}
+                barCount={yourBarCount(visits.data ?? [], saved.data ?? [])}
+                columns={gridColumns}
+                recap={recap}
+                board={board}
+                friendCount={friendCount}
+                place={
+                  (ranking.data?.rows.length ?? 0) > 1
+                    ? ranking.data?.rows.find((row) => row.me)?.position
+                    : undefined
+                }
+                wideCard={column > 900}
+                onBar={openBar}
+                onBars={() => router.navigate('/favoritos')}
+                onRanking={() => router.navigate('/voce/ranking')}
+              />
+            ) : null}
             {extras}
           </>
         )}
       </ScrollView>
       {soon.toast}
+    </View>
+  )
+}
+
+/**
+ * O fim do Perfil no tablet em pé (tabPort7): Seus bares em grade, a
+ * retrospectiva do mês e os amigos no mês (ranking dos amigos por bares).
+ */
+function TabletExtras({
+  bars,
+  barCount,
+  columns,
+  recap,
+  board,
+  friendCount,
+  place,
+  wideCard,
+  onBar,
+  onBars,
+  onRanking
+}: {
+  bars: ReturnType<typeof profileBars>
+  barCount: number
+  columns: number
+  recap: ReturnType<typeof monthRecap>
+  board: {
+    id: string
+    name: string
+    image: string | null
+    me: boolean
+    position: number
+    value: number
+  }[]
+  friendCount?: number
+  /** A sua posição entre os amigos no mês. */
+  place?: number
+  wideCard: boolean
+  onBar: (barId: string) => void
+  onBars: () => void
+  onRanking: () => void
+}) {
+  const palette = usePalette()
+  const accent = palette.dark ? ACID : palette.accent
+  const month = new Date().toLocaleDateString('pt-BR', {
+    month: 'long',
+    timeZone: 'America/Sao_Paulo'
+  })
+  return (
+    <>
+      {bars.length ? (
+        <>
+          <SectionHead
+            title="Seus bares"
+            meta={`${barCount} · ver todos`}
+            onMeta={onBars}
+          />
+          <View style={styles.barGrid}>
+            {bars.map((bar) => (
+              <View
+                key={bar.barId}
+                style={{ width: `${100 / columns - 2.3}%`, flexGrow: 1 }}
+              >
+                <Tap onPress={() => onBar(bar.barId)}>
+                  <Card soft>
+                    <Photo
+                      uri={bar.photoUrl}
+                      name={bar.name}
+                      style={styles.gridPhoto}
+                      big
+                    />
+                    <View style={styles.gridText}>
+                      <Text
+                        numberOfLines={1}
+                        style={[text(14.5, 'Bold'), { color: palette.ink }]}
+                      >
+                        {bar.name}
+                      </Text>
+                      <Text style={[text(12), { color: palette.muted }]}>
+                        {bar.sub}
+                      </Text>
+                    </View>
+                  </Card>
+                </Tap>
+              </View>
+            ))}
+          </View>
+        </>
+      ) : null}
+
+      {recap ? (
+        <View>
+          <View
+            style={[
+              styles.recapShadow,
+              { backgroundColor: palette.dark ? '#000' : INK }
+            ]}
+          />
+          <View style={styles.recap}>
+            <View style={styles.recapText}>
+              <Text style={[text(13, 'Bold'), { color: INK }]}>
+                Sua retrospectiva de {recap.month}
+              </Text>
+              <Text
+                maxFontSizeMultiplier={1}
+                style={[
+                  styles.recapMonth,
+                  {
+                    fontSize: wideCard ? 64 : 52,
+                    marginVertical: -0.2425 * (wideCard ? 64 : 52)
+                  }
+                ]}
+              >
+                {recap.month}
+              </Text>
+              <View style={styles.recapStats}>
+                {[
+                  [recap.bars, recap.bars === 1 ? 'bar' : 'bares'],
+                  [recap.games, recap.games === 1 ? 'jogo' : 'jogos'],
+                  [
+                    recap.neighborhoods,
+                    recap.neighborhoods === 1 ? 'bairro' : 'bairros'
+                  ],
+                  // "2º na Resenha" do design é de comunidade, que não
+                  // existe: vai a posição entre os amigos no mês.
+                  ...(place ? ([[`${place}º`, 'entre amigos']] as const) : [])
+                ].map(([value, label]) => (
+                  <View key={String(label)} style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={styles.recapValue}>{value}</Text>
+                    <Text style={[text(12), { color: INK }]}>{label}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+            {recap.top ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Bar do mês, ${recap.top.barName}`}
+                onPress={onBars}
+                style={{ width: wideCard ? 260 : 200 }}
+              >
+                <Photo
+                  uri={recap.top.photoUrl}
+                  name={recap.top.barName}
+                  style={StyleSheet.absoluteFill}
+                  big
+                />
+                <View style={styles.recapMonthBar}>
+                  <Text
+                    numberOfLines={1}
+                    style={[text(12.5, 'Bold'), { color: PAPER }]}
+                  >
+                    Bar do mês · {recap.top.barName}
+                  </Text>
+                </View>
+                <View style={styles.recapSee}>
+                  <Text style={[text(13, 'Bold'), { color: INK }]}>Ver</Text>
+                  <Icon name="next" size={11} color={INK} />
+                </View>
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
+      ) : null}
+
+      {board.length > 1 ? (
+        <>
+          <SectionHead
+            title={`Amigos em ${month}`}
+            meta={`${friendCount ?? board.length - 1} · ver ranking`}
+            onMeta={onRanking}
+          />
+          <View style={styles.board}>
+            {board.map((person, index) => (
+              <View
+                key={person.id}
+                style={[
+                  styles.person,
+                  { backgroundColor: palette.card },
+                  person.me
+                    ? {
+                        borderColor: palette.ink,
+                        borderWidth: 1.5,
+                        shadowColor: ACID,
+                        shadowOpacity: 1,
+                        shadowRadius: 0,
+                        shadowOffset: { width: 4, height: 4 }
+                      }
+                    : styles.personSoft
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.place,
+                    { color: index === 0 ? accent : palette.muted }
+                  ]}
+                >
+                  {person.position}º
+                </Text>
+                <Avatar
+                  id={person.id}
+                  name={person.name}
+                  size={48}
+                  me={person.me}
+                  image={person.image}
+                />
+                <Text
+                  numberOfLines={1}
+                  style={[text(13.5, 'Bold'), { color: palette.ink }]}
+                >
+                  {person.me ? 'Você' : person.name.split(' ')[0]}
+                </Text>
+                <Text style={[styles.personBars, { color: palette.ink }]}>
+                  {person.value} {person.value === 1 ? 'bar' : 'bares'}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </>
+      ) : null}
+    </>
+  )
+}
+
+/** O título de seção em Anton, como no design (h7), com o atalho à direita. */
+function SectionHead({
+  title,
+  meta,
+  onMeta
+}: {
+  title: string
+  meta: string
+  onMeta: () => void
+}) {
+  const palette = usePalette()
+  return (
+    <View style={styles.heading}>
+      <Text
+        style={[
+          styles.sectionTitle,
+          { color: palette.dark ? ACID : palette.accent }
+        ]}
+      >
+        {title}
+      </Text>
+      <Text
+        accessibilityRole="button"
+        suppressHighlighting
+        onPress={onMeta}
+        style={[text(12.5), { color: palette.muted }]}
+      >
+        {meta}
+      </Text>
     </View>
   )
 }
@@ -834,6 +1136,85 @@ const styles = StyleSheet.create({
     marginTop: -2
   },
   half: { flex: 1, minWidth: 0 },
+  barGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  gridPhoto: {
+    height: 96,
+    width: '100%',
+    borderTopLeftRadius: 6,
+    borderTopRightRadius: 6
+  },
+  gridText: { paddingTop: 10, paddingHorizontal: 12, paddingBottom: 12 },
+  recapShadow: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    right: -6,
+    bottom: -6,
+    borderRadius: 8
+  },
+  recap: {
+    flexDirection: 'row',
+    borderRadius: 8,
+    backgroundColor: ACID,
+    overflow: 'hidden'
+  },
+  recapText: {
+    flex: 1,
+    minWidth: 0,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    gap: 12
+  },
+  recapMonth: {
+    fontFamily: 'Anton',
+    textTransform: 'uppercase',
+    color: INK,
+    letterSpacing: -1
+  },
+  recapStats: { flexDirection: 'row', gap: 12, maxWidth: 420 },
+  recapValue: { fontFamily: 'Anton', fontSize: 34, color: INK },
+  recapMonthBar: {
+    position: 'absolute',
+    left: 14,
+    right: 14,
+    bottom: 14,
+    alignSelf: 'flex-start',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 4,
+    backgroundColor: INK
+  },
+  recapSee: {
+    position: 'absolute',
+    right: 14,
+    top: 14,
+    height: 34,
+    paddingHorizontal: 13,
+    borderRadius: 17,
+    backgroundColor: PAPER,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6
+  },
+  board: { flexDirection: 'row', gap: 10 },
+  person: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: 'center',
+    gap: 7,
+    paddingTop: 14,
+    paddingBottom: 12,
+    paddingHorizontal: 8,
+    borderRadius: 6
+  },
+  personSoft: {
+    shadowColor: '#000',
+    shadowOpacity: 0.09,
+    shadowRadius: 0,
+    shadowOffset: { width: 4, height: 4 }
+  },
+  place: { fontFamily: 'Anton', fontSize: 15 },
+  personBars: { fontFamily: 'GeistMono-SemiBold', fontSize: 12 },
   cover: { paddingHorizontal: 22, gap: 12 },
   coverAvatar: {
     width: 52,
