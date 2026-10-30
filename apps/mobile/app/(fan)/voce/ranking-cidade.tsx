@@ -18,6 +18,7 @@ import {
   placeWidth,
   useCityBoard
 } from '@/components/city-ranking'
+import { useLayout, useNavInsets } from '@/components/layout'
 import { SWAP } from '@/components/motion'
 import { useTabBarSpace } from '@/components/tab-bar'
 import { usePalette } from '@/components/theme'
@@ -50,6 +51,8 @@ export default function CityRanking() {
   const insets = useSafeAreaInsets()
   const tabBar = useTabBarSpace()
   const palette = usePalette()
+  const layout = useLayout()
+  const nav = useNavInsets()
   useStatusBar('auto')
   const [metric, setMetric] = useState<CityMetric>('bars')
   const board = useCityBoard(metric)
@@ -57,11 +60,24 @@ export default function CityRanking() {
   const head = board.data?.pages[0]
 
   return (
-    <View style={[styles.screen, { backgroundColor: palette.bg }]}>
+    <View
+      style={[
+        styles.screen,
+        {
+          backgroundColor: palette.bg,
+          paddingLeft: nav.left,
+          paddingRight: nav.right
+        }
+      ]}
+    >
       <ScrollView
         contentContainerStyle={[
           styles.body,
-          { paddingTop: insets.top + 13, paddingBottom: tabBar + 24 }
+          { paddingTop: insets.top + 13, paddingBottom: tabBar + 24 },
+          // Fora do celular a lista fica numa coluna de celular, no meio.
+          layout.kind !== 'phone' &&
+            layout.kind !== 'duoClosed' &&
+            styles.narrow
         ]}
         refreshControl={<RefreshControl {...pull} tintColor={palette.muted} />}
       >
@@ -206,6 +222,7 @@ function Board({
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   body: { paddingHorizontal: 16, gap: 14 },
+  narrow: { width: '100%', maxWidth: 640, alignSelf: 'center' },
   top: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   stack: { gap: 14 },
   chips: { flexDirection: 'row', gap: 6 },
