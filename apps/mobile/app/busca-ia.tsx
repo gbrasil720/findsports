@@ -750,12 +750,15 @@ export default function AiSearch() {
                 onRecent={reopen}
               />
             ) : null}
-            {turns.map((turn) => (
+            {(barWidth ? turns.slice(-1) : turns).map((turn) => (
               <TurnView
                 key={turn.id}
                 barWidth={barWidth}
                 turn={turn}
-                bars={barsOf(turn, shownReply(turn))}
+                bars={barsOf(turn, shownReply(turn)).slice(
+                  0,
+                  barWidth ? tableCols : undefined
+                )}
                 isLast={turn === last}
                 busy={busy}
                 now={now}
@@ -1136,6 +1139,10 @@ function TurnView({
   onRate: (value: 1 | -1) => void
   onVersion: (by: -1 | 1) => void
 }) {
+  // Na mesa (03d, 03g) a conversa é só a última resposta: o texto e os bares
+  // lado a lado, como o design; a pergunta, o raciocínio, as fontes e as
+  // ações ficam no celular e no tablet.
+  const compact = !!barWidth
   const reply = shownReply(turn)
   const thinking = isThinking(reply)
   const decision = reply.decision
@@ -1162,14 +1169,18 @@ function TurnView({
 
   return (
     <>
-      <Animated.View entering={IN} layout={settle}>
-        <UserMessage palette={palette}>{turn.question}</UserMessage>
-      </Animated.View>
+      {compact ? null : (
+        <Animated.View entering={IN} layout={settle}>
+          <UserMessage palette={palette}>{turn.question}</UserMessage>
+        </Animated.View>
+      )}
 
       {/* Depois do "Confirmar", o raciocínio sai e ficam as linhas (24e).
           "Pensando" aparece já no envio: o primeiro passo só chega quando o
           modelo pede a primeira ferramenta, alguns segundos depois. */}
-      {(reply.steps.length || thinking) && !approved ? (
+      {(reply.steps.length || thinking) &&
+      !approved &&
+      !(compact && !thinking) ? (
         <Animated.View entering={IN} exiting={OUT} layout={settle}>
           <Reasoning
             steps={reply.steps}
@@ -1255,7 +1266,7 @@ function TurnView({
         </Animated.View>
       ) : null}
 
-      {reply.done?.chips.length ? (
+      {reply.done?.chips.length && !compact ? (
         <Animated.View entering={IN} layout={settle}>
           <FilterChips
             chips={reply.done.chips.filter(
@@ -1307,7 +1318,7 @@ function TurnView({
         </Animated.View>
       ) : null}
 
-      {reply.done?.sources.length ? (
+      {reply.done?.sources.length && !compact ? (
         <Animated.View entering={IN} layout={settle}>
           <Sources
             label={sourcesLabel(reply.done.sources, reply.done.chips, now)}
@@ -1372,7 +1383,8 @@ function TurnView({
       ) : null}
 
       {/* Com a confirmação na tela (24d) a resposta ainda não existe: sem ações. */}
-      {finished &&
+      {!compact &&
+      finished &&
       (reply.text || approved) &&
       !(busy && isLast) &&
       !(proposal && (!decision || decision.kind === 'sending')) ? (
