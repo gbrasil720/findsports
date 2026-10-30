@@ -377,12 +377,17 @@ function AiButton({ onPress }: { onPress: () => void }) {
 /** iPad e dobrável aberto: a barra do celular no rodapé, centralizada (03, 04b). */
 function FloatNav({ current, onTab, onAi, left = 0, right = 0 }: Props) {
   const insets = useSafeAreaInsets()
+  // Na metade do mapa do Fold 8 aberto (352 dp) a barra não cabe: encolhe,
+  // como no design (86%), com 12 de folga de cada lado.
+  const room = useLayout().width - left - right - 24
+  const scale = Math.min(1, room / FLOAT_WIDTH)
   return (
     <View
       pointerEvents="box-none"
       style={[
         styles.floatWrap,
-        { left, right, bottom: insets.bottom + NAV.float.gap }
+        { left, right, bottom: insets.bottom + NAV.float.gap },
+        scale < 1 && { transform: [{ scale }], transformOrigin: 'bottom' }
       ]}
     >
       <GlassTabs current={current} onTab={onTab} vertical={false} />
