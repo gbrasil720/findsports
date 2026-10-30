@@ -5,6 +5,7 @@ import { type Href, useLocalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -22,6 +23,7 @@ import {
   placeWidth,
   useCityBoard
 } from '@/components/city-ranking'
+import { FriendPage } from '@/components/friend-page'
 import { Avatar, personLine } from '@/components/friends'
 import { Glass } from '@/components/glass'
 import { useLayout, useNavInsets } from '@/components/layout'
@@ -128,13 +130,61 @@ export default function Ranking() {
     })
   }
 
+  const headButton =
+    alone || tab === 'global' ? (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Adicionar amigos"
+        hitSlop={8}
+        onPress={() => router.push('/amigos')}
+      >
+        <GlassRound>
+          <Icon name="userplus" size={18} color={palette.ink} />
+        </GlassRound>
+      </Pressable>
+    ) : (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Compartilhar sua posição"
+        hitSlop={8}
+        onPress={share}
+      >
+        <GlassRound>
+          <Icon name="share" size={18} color={palette.ink} />
+        </GlassRound>
+      </Pressable>
+    )
   const ready = board.data && !alone ? board.data : null
+  // Lado a lado, o amigo tocado abre na outra metade (A05: a lista numa
+  // metade e a página tocada na outra). De início, o primeiro que não é você.
+  const [chosen, setChosen] = useState<string | null>(null)
+  const friend =
+    ready?.rows.find((row) => row.id === chosen && !row.me) ??
+    ready?.rows.find((row) => !row.me)
   const global = (
     <GlobalBody
       city={city}
       where={where}
       onAll={() => router.push(CITY)}
       onCity={() => router.push(where ? CITY : '/cidade')}
+    />
+  )
+  const globalAlone = (
+    <GlobalBody
+      city={city}
+      where={where}
+      onAll={() => router.push(CITY)}
+      onCity={() => router.push(where ? CITY : '/cidade')}
+      top="none"
+    />
+  )
+  const globalRows = (
+    <GlobalBody
+      city={city}
+      where={where}
+      onAll={() => router.push(CITY)}
+      onCity={() => router.push(where ? CITY : '/cidade')}
+      top="rows"
     />
   )
   const root = [
@@ -270,7 +320,7 @@ export default function Ranking() {
                   friendsBoard
                 ],
                 ['Comunidades', '', <SoonCard key="soon" />],
-                ['Global', head?.listed ? head.city : '', global]
+                ['Global', head?.listed ? head.city : '', globalRows]
               ] as const
             ).map(([title, sub, body]) => (
               <View key={title} style={styles.wideColumn}>
@@ -290,39 +340,82 @@ export default function Ranking() {
           {soon.toast}
         </View>
       )
+    // Tablet deitado: a lista com 370 a 440 e a página no meio do resto,
+    // com até 760; no dobrável, cada metade.
+    const tablet =
+      (Platform.OS === 'ios' && Platform.isPad) || layout.nav === 'rail'
+    const list = layout.split - nav.left
+    const page = layout.width - nav.left - nav.right - list - layout.gap
+    const choose = (row: Row) => {
+      if (row.me) return open(row)
+      if (row.id === friend?.id) return
+      haptic.select()
+      setChosen(row.id)
+    }
     return (
       <View style={[root, styles.row2]}>
         <ScrollView
-          style={{ width: layout.split - nav.left, flexGrow: 0 }}
+          style={{ width: list, flexGrow: 0 }}
           contentContainerStyle={[
             styles.body,
-            { paddingTop: insets.top + 20, paddingBottom: tabBar + 24 }
+            {
+              paddingHorizontal: tablet ? 20 : 16,
+              paddingTop: insets.top + (tablet ? 26 : 20),
+              paddingBottom: tabBar + 24
+            }
           ]}
           refreshControl={refresh}
         >
           <View style={styles.top}>
-            <Title lines={[['Ranking']]} size={34} color={palette.ink} />
+            <Title
+              lines={[['Ranking']]}
+              size={tablet ? 38 : 34}
+              color={palette.ink}
+            />
+            {headButton}
           </View>
-          {friendsBoard}
+          <Segments tab={tab} onPick={pick} />
+          {tab === 'global' ? (
+            <Animated.View entering={SWAP} style={styles.stack}>
+              {global}
+            </Animated.View>
+          ) : (
+            <FriendsBoard
+              data={ready}
+              metric={metric}
+              onMetric={setMetric}
+              onOpen={choose}
+              onNewBars={newBars}
+              selected={friend?.id}
+            />
+          )}
         </ScrollView>
         <View
-          style={{
-            flex: 1,
-            marginLeft: layout.gap,
-            backgroundColor: palette.dark ? '#161613' : '#ebe8df'
-          }}
+          style={[
+            styles.page,
+            {
+              marginLeft: layout.gap,
+              backgroundColor: palette.dark ? '#161613' : '#ebe8df'
+            }
+          ]}
         >
-          <ScrollView
-            contentContainerStyle={[
-              styles.aside,
-              { paddingTop: insets.top + 20, paddingBottom: tabBar + 24 }
-            ]}
-          >
-            <ColumnHead title="Global" sub={head?.listed ? head.city : ''} />
-            {global}
-            <Section title="Comunidades" sub="" />
-            <SoonCard />
-          </ScrollView>
+          {friend ? (
+            <Animated.View
+              key={friend.id}
+              entering={SWAP}
+              style={{
+                flex: 1,
+                width: tablet ? Math.min(760, page - 56) : '100%',
+                alignSelf: 'center'
+              }}
+            >
+              <FriendPage
+                id={friend.id}
+                via="search"
+                pane={{ top: insets.top + 10, bottom: tabBar + 8 }}
+              />
+            </Animated.View>
+          ) : null}
         </View>
         {soon.toast}
       </View>
@@ -402,15 +495,21 @@ export default function Ranking() {
                       ))}
                     </View>
                   </Card>
+                  <RuleCard metric={ready.metric} />
                 </View>
                 <View style={{ flex: 44, gap: 12 }}>
                   <Section
                     title={head?.listed ? head.city : 'Global'}
                     sub="global"
                   />
-                  {global}
+                  {globalAlone}
                   <Section title="Comunidades" sub="" />
                   <SoonCard />
+                  {/* O top da cidade não está no design em pé: vai no fim da
+                      coluna dela, como no celular. */}
+                  {head?.listed && head.rows.length ? (
+                    <CityTop data={head} onAll={() => router.push(CITY)} />
+                  ) : null}
                 </View>
               </View>
             </Animated.View>
@@ -435,29 +534,7 @@ export default function Ranking() {
       >
         <View style={styles.top}>
           <Title lines={[['Ranking']]} size={40} color={palette.ink} />
-          {alone || tab === 'global' ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Adicionar amigos"
-              hitSlop={8}
-              onPress={() => router.push('/amigos')}
-            >
-              <GlassRound>
-                <Icon name="userplus" size={18} color={palette.ink} />
-              </GlassRound>
-            </Pressable>
-          ) : (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Compartilhar sua posição"
-              hitSlop={8}
-              onPress={share}
-            >
-              <GlassRound>
-                <Icon name="share" size={18} color={palette.ink} />
-              </GlassRound>
-            </Pressable>
-          )}
+          {headButton}
         </View>
 
         <Segments tab={tab} onPick={pick} />
@@ -627,7 +704,8 @@ function FriendsBoard({
   onMetric,
   onOpen,
   onNewBars,
-  bare
+  bare,
+  selected
 }: {
   data: Board
   metric: Metric
@@ -636,6 +714,8 @@ function FriendsBoard({
   onNewBars: () => void
   /** Na coluna do 13″ deitado: as métricas e o mês ficam no cabeçalho. */
   bare?: boolean
+  /** Lado a lado: o amigo aberto na outra metade, marcado na lista. */
+  selected?: string
 }) {
   const palette = usePalette()
   const friends = data.rows.length - 1
@@ -666,7 +746,12 @@ function FriendsBoard({
       )}
       {/* Trocar de métrica troca o placar em fade curto, sem salto. */}
       <Animated.View key={data.metric} entering={SWAP} style={styles.stack}>
-        <Podium rows={data.rows} metric={data.metric} onOpen={onOpen} />
+        <Podium
+          rows={data.rows}
+          metric={data.metric}
+          onOpen={onOpen}
+          selected={selected}
+        />
         {data.chase ? (
           <View style={styles.chaseWrap}>
             <ChaseCard data={data} onNewBars={onNewBars} />
@@ -681,6 +766,7 @@ function FriendsBoard({
                   row={row}
                   first={index === 0}
                   near
+                  mark={row.id === selected}
                   onPress={() => onOpen(row)}
                 />
               ))}
@@ -695,6 +781,7 @@ function FriendsBoard({
                   key={row.id}
                   row={row}
                   first={index === 0}
+                  mark={row.id === selected}
                   onPress={() => onOpen(row)}
                 />
               ))}
@@ -702,20 +789,25 @@ function FriendsBoard({
           </Card>
         ) : null}
       </Animated.View>
-      <Card soft>
-        <View style={styles.rule}>
-          <Icon name="ranking" size={24} color={palette.ink} />
-          <Text
-            style={[
-              text(13, 'Regular', 1.4),
-              { flex: 1, color: palette.muted }
-            ]}
-          >
-            {RULES[data.metric]} {TIE_RULE}
-          </Text>
-        </View>
-      </Card>
+      <RuleCard metric={data.metric} />
     </View>
+  )
+}
+
+/** O que conta e o desempate (rodapé do 10d). */
+function RuleCard({ metric }: { metric: Metric }) {
+  const palette = usePalette()
+  return (
+    <Card soft>
+      <View style={styles.rule}>
+        <Icon name="ranking" size={24} color={palette.ink} />
+        <Text
+          style={[text(13, 'Regular', 1.4), { flex: 1, color: palette.muted }]}
+        >
+          {RULES[metric]} {TIE_RULE}
+        </Text>
+      </View>
+    </Card>
   )
 }
 
@@ -786,13 +878,16 @@ function Podium({
   rows,
   metric,
   onOpen,
-  k = 1
+  k = 1,
+  selected
 }: {
   rows: Row[]
   metric: Metric
   onOpen: (row: Row) => void
   /** Escala do pódio largo do tablet (A05): 1,05 a 1,22. */
   k?: number
+  /** Lado a lado: o amigo aberto na outra metade. */
+  selected?: string
 }) {
   return (
     <View style={styles.podium}>
@@ -805,6 +900,7 @@ function Podium({
             place={place}
             metric={metric}
             k={k}
+            on={row.id === selected}
             onPress={() => onOpen(row)}
           />
         ) : (
@@ -820,12 +916,15 @@ function Step({
   place,
   metric,
   k,
+  on,
   onPress
 }: {
   row: Row
   place: 1 | 2 | 3
   metric: Metric
   k: number
+  /** Aberto ao lado: o quadrinho ganha o contorno de tinta. */
+  on?: boolean
   onPress: () => void
 }) {
   const palette = usePalette()
@@ -842,13 +941,19 @@ function Step({
       style={styles.column}
     >
       <Animated.View style={[styles.columnInner, press.style]}>
-        <Avatar
-          id={row.id}
-          name={row.name}
-          image={row.image}
-          me={row.me}
-          size={Math.round((first ? 64 : 52) * k)}
-        />
+        <View
+          style={
+            on && [styles.stepOn, { borderColor: palette.dark ? PAPER : INK }]
+          }
+        >
+          <Avatar
+            id={row.id}
+            name={row.name}
+            image={row.image}
+            me={row.me}
+            size={Math.round((first ? 64 : 52) * k)}
+          />
+        </View>
         <Text
           numberOfLines={1}
           style={[
@@ -1247,12 +1352,18 @@ function GlobalBody({
   city,
   where,
   onAll,
-  onCity
+  onCity,
+  top = 'list'
 }: {
   city: ReturnType<typeof useCityBoard>
   where: { city: string; position: number } | null | undefined
   onAll: () => void
   onCity: () => void
+  /**
+   * Embaixo da posição: o top com "Ver todos" (aba Global), as linhas da
+   * coluna Global do 13″ (`rows`) ou nada (coluna da cidade em pé).
+   */
+  top?: 'list' | 'rows' | 'none'
 }) {
   const palette = usePalette()
   const head = city.data?.pages[0]
@@ -1271,7 +1382,7 @@ function GlobalBody({
   return (
     <View style={styles.stack}>
       {head?.listed && head.position ? (
-        <PosCard data={head} position={head.position} />
+        <PosCard data={head} position={head.position} onPress={onAll} />
       ) : (
         <CityRow
           data={where}
@@ -1280,24 +1391,97 @@ function GlobalBody({
           onPress={onCity}
         />
       )}
-      {head?.listed && head.rows.length ? (
+      {!head?.listed || !head.rows.length || top === 'none' ? null : top ===
+        'rows' ? (
+        <GlobalRows rows={head.rows.slice(0, 6)} />
+      ) : (
         <CityTop data={head} onAll={onAll} />
-      ) : null}
+      )}
     </View>
   )
 }
 
+/** O top da cidade na coluna Global (A05): posição, quadrinho, nome e número. */
+function GlobalRows({ rows }: { rows: CityBoard['rows'] }) {
+  const palette = usePalette()
+  return (
+    <Card soft>
+      <View style={styles.list}>
+        {rows.map((row, index) => (
+          <View
+            key={row.id}
+            accessible
+            accessibilityLabel={`${row.position}º, ${row.me ? 'você' : row.name}, ${row.value}`}
+            style={[
+              styles.row,
+              { gap: 12 },
+              index > 0 && { borderTopWidth: 1, borderTopColor: palette.line }
+            ]}
+          >
+            <Text
+              style={[
+                styles.globalPlace,
+                { color: index === 0 ? palette.hot : palette.ink }
+              ]}
+            >
+              {row.position}
+            </Text>
+            <Avatar id={row.id} name={row.name} me={row.me} size={38} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text
+                numberOfLines={1}
+                style={[text(14.5, 'Bold', 1.3), { color: palette.ink }]}
+              >
+                {row.me ? 'Você' : row.name}
+              </Text>
+              {row.username ? (
+                <Text
+                  numberOfLines={1}
+                  style={[text(12, 'Regular', 1.3), { color: palette.muted }]}
+                >
+                  @{row.username}
+                </Text>
+              ) : null}
+            </View>
+            <Text style={[styles.rowValue, { color: palette.ink }]}>
+              {row.value}
+            </Text>
+          </View>
+        ))}
+      </View>
+    </Card>
+  )
+}
+
 /** "Sua posição em São Paulo · 1.284º" (A05), no cartão de tinta. */
-function PosCard({ data, position }: { data: CityBoard; position: number }) {
+function PosCard({
+  data,
+  position,
+  onPress
+}: {
+  data: CityBoard
+  position: number
+  /** A lista inteira da cidade (27a), o "Ver todos" do celular. */
+  onPress: () => void
+}) {
   const palette = usePalette()
   const me = data.around.find((row) => row.me)
+  const move = data.weekMove
   return (
     <Card
       fill={palette.dark ? palette.card : INK}
       shadow={palette.dark ? 'rgba(201,241,53,.32)' : ACID}
       offset={5}
     >
-      <View style={styles.pos}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityHint="Abre a lista da cidade"
+        onPress={() => {
+          haptic.select()
+          onPress()
+        }}
+        style={({ pressed }) => [styles.pos, pressed && { opacity: 0.8 }]}
+      >
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={[text(12.5, 'SemiBold'), { color: '#aaa9a4' }]}>
             Sua posição em {data.city}
@@ -1316,12 +1500,35 @@ function PosCard({ data, position }: { data: CityBoard; position: number }) {
               : ''}
           </Text>
         </View>
-        <View style={styles.badge}>
-          <Text style={[text(12, 'Bold'), { color: INK }]}>
-            {topLabel(position, data.total)}
-          </Text>
+        <View style={styles.posSide}>
+          <View style={styles.badge}>
+            <Text style={[text(12, 'Bold'), { color: INK }]}>
+              {topLabel(position, data.total)}
+            </Text>
+          </View>
+          {move ? (
+            <View style={styles.posMove}>
+              <View
+                style={[
+                  styles.triangle,
+                  move > 0
+                    ? { borderBottomColor: ACID }
+                    : {
+                        borderTopColor: LIVE,
+                        borderBottomWidth: 0,
+                        borderTopWidth: 7
+                      }
+                ]}
+              />
+              <Text
+                style={[text(12.5, 'Bold'), { color: move > 0 ? ACID : LIVE }]}
+              >
+                {Math.abs(move).toLocaleString('pt-BR')} na semana
+              </Text>
+            </View>
+          ) : null}
         </View>
-      </View>
+      </Pressable>
     </Card>
   )
 }
@@ -1443,7 +1650,7 @@ const styles = StyleSheet.create({
   wideColumn: { flex: 1, minWidth: 0, gap: 12 },
   columnBody: { gap: 12, paddingTop: 2 },
   row2: { flexDirection: 'row' },
-  aside: { paddingHorizontal: 18, gap: 12 },
+  page: { flex: 1, overflow: 'hidden' },
   stackBody: { paddingHorizontal: 28, gap: 16 },
   stackTop: {
     flexDirection: 'row',
@@ -1486,8 +1693,10 @@ const styles = StyleSheet.create({
     marginVertical: -12
   },
   posMark: { fontFamily: 'Archivo-Bold', fontSize: 22, color: ACID },
+  posSide: { alignItems: 'flex-end', gap: 8 },
+  posMove: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  globalPlace: { width: 26, fontFamily: 'Anton', fontSize: 20 },
   badge: {
-    alignSelf: 'flex-start',
     backgroundColor: ACID,
     borderRadius: 3,
     paddingHorizontal: 8,
@@ -1596,6 +1805,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 6,
     borderTopRightRadius: 6
   },
+  stepOn: { borderRadius: 9, borderWidth: 2, margin: -4, padding: 2 },
   meRing: { borderRadius: 9, borderWidth: 2.5, borderColor: ACID },
   chaseWrap: { marginTop: -12 },
   chase: {
