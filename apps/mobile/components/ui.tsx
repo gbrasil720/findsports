@@ -785,7 +785,8 @@ export function Screen({
               { width, backgroundColor: background },
               half
                 ? { flex: 1, borderRadius: 0, paddingTop: insets.top }
-                : { maxHeight: layout.height - 120 }
+                : // Cabe entre o topo e o teclado: a folha encolhe e rola.
+                  { maxHeight: '100%' }
             ]}
           >
             <View style={styles.sheetBar}>
@@ -1631,7 +1632,12 @@ export function authErrorMessage(
 
 const styles = StyleSheet.create({
   sheetDim: { backgroundColor: 'rgba(18,18,15,.42)' },
-  sheetCenter: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  sheetCenter: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60
+  },
   sheetCard: {
     borderRadius: 24,
     overflow: 'hidden',
