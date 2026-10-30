@@ -25,6 +25,7 @@ import {
   TicketArt
 } from '@/components/intro-art'
 import { Enter, type Frame, useEntrance } from '@/components/intro-motion'
+import { useNavInsets } from '@/components/layout'
 import { SplashDone } from '@/components/splash'
 import { usePalette } from '@/components/theme'
 import { PillButton, Text, useStatusBar } from '@/components/ui'
@@ -81,7 +82,13 @@ const PAGES: Page[] = [
 export default function Intro() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const { width, height } = useWindowDimensions()
+  const window = useWindowDimensions()
+  const { height } = window
+  // No iPhone Duo a barra de status e a ilha ficam na faixa da direita.
+  const strip = useNavInsets().right
+  const width = window.width - strip
+  // Fora do celular o texto e os botões ficam numa coluna de até 480 no meio.
+  const ox = (width - Math.min(width, 480)) / 2
   const pager = useRef<ScrollView>(null)
   // `?page=N` abre direto na tela N (`onside://intro?page=3`).
   const params = useLocalSearchParams<{ page?: string }>()
@@ -91,11 +98,18 @@ export default function Intro() {
   const [reached, setReached] = useState(start)
   const reach = (index: number) =>
     setReached((current) => Math.max(current, index))
+  // biome-ignore lint/correctness/useExhaustiveDependencies: só quando o link muda
   useEffect(() => {
     pager.current?.scrollTo({ x: start * width, animated: false })
     setPage(start)
     setReached((current) => Math.max(current, start))
-  }, [start, width])
+  }, [start])
+  // Girar o tablet muda a largura: a página que estava à vista volta ao lugar.
+  const shown = useRef(page)
+  shown.current = page
+  useEffect(() => {
+    pager.current?.scrollTo({ x: shown.current * width, animated: false })
+  }, [width])
   const splashDone = useContext(SplashDone)
   // O design só tem o claro; no escuro, tinta e papel trocam e o acid
   // assume o destaque do vermelho, como na tab bar do design.
@@ -128,7 +142,12 @@ export default function Intro() {
   }
 
   return (
-    <View style={[styles.screen, { backgroundColor: palette.bg }]}>
+    <View
+      style={[
+        styles.screen,
+        { backgroundColor: palette.bg, paddingRight: strip }
+      ]}
+    >
       <ScrollView
         ref={pager}
         horizontal
@@ -145,6 +164,7 @@ export default function Intro() {
             item={item}
             index={index}
             width={width}
+            column={ox}
             artHeight={artHeight}
             done={index < start}
             play={splashDone && index <= reached}
@@ -155,7 +175,7 @@ export default function Intro() {
       <Pressable
         accessibilityRole="button"
         onPress={signUp}
-        style={[styles.skip, { top: insets.top + 4 }]}
+        style={[styles.skip, { top: insets.top + 4, right: 18 + strip }]}
       >
         <Glass tone="dark" interactive style={styles.skipGlass}>
           <Text style={styles.skipText}>Pular</Text>
@@ -163,7 +183,14 @@ export default function Intro() {
       </Pressable>
 
       <View
-        style={[styles.footer, { bottom: Math.max(insets.bottom - 4, 16) }]}
+        style={[
+          styles.footer,
+          {
+            bottom: Math.max(insets.bottom - 4, 16),
+            left: 16 + ox,
+            right: 16 + ox + strip
+          }
+        ]}
       >
         <PillButton
           label={last ? 'Começar' : 'Continuar'}
@@ -202,6 +229,7 @@ function IntroPage({
   item: { Art, title, body },
   index,
   width,
+  column,
   artHeight,
   done,
   play
@@ -209,6 +237,8 @@ function IntroPage({
   item: Page
   index: number
   width: number
+  /** O recuo da coluna do texto (0 no celular). */
+  column: number
   artHeight: number
   done: boolean
   play: boolean
@@ -228,7 +258,7 @@ function IntroPage({
           <Art width={width} height={artHeight} progress={progress} />
         </View>
       </View>
-      <View style={styles.copy}>
+      <View style={[styles.copy, { paddingHorizontal: 22 + column }]}>
         <Enter progress={progress} frames={COPY.dots} style={styles.dots}>
           {PAGES.map((p, dot) => (
             <View
