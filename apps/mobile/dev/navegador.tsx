@@ -335,7 +335,7 @@ export default function Dev() {
           mutations e a pílula aparece; tocar de novo volta. Para a rede
           que falha de verdade, derrube o servidor do web. */}
       <Text style={[text(12, 'Bold'), { color: MUTED }]}>
-        {`${layout.kind} · ${layout.nav} · ${layout.width}×${layout.height} · divide em ${layout.split}${layout.gap ? ` + ${layout.gap}` : ''} · dobra ${posture.state}${posture.angle != null ? ` ${Math.round(posture.angle)}°` : ''}${posture.orientation ? ` ${posture.orientation}` : ''}`}
+        {`${layout.kind} · ${layout.nav} · ${Math.round(layout.width)}×${Math.round(layout.height)} · divide em ${layout.split}${layout.gap ? ` + ${layout.gap}` : ''} · dobra ${posture.state}${posture.angle != null ? ` ${Math.round(posture.angle)}°` : ''}${posture.orientation ? ` ${posture.orientation}` : ''}`}
       </Text>
       <Row
         item={{ code: '⌁', label: 'Simular sem rede (liga e desliga)' }}
