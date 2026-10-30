@@ -1,13 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useLocalSearchParams } from 'expo-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  ActivityIndicator,
-  Pressable,
-  Share,
-  StyleSheet,
-  View
-} from 'react-native'
+import { ActivityIndicator, Share, StyleSheet, View } from 'react-native'
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -18,17 +12,17 @@ import Animated, {
   withTiming
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg'
-import { Card } from '@/components/card'
-import { Glass } from '@/components/glass'
-import { Medal3D, MedalImage, useMedalPalette } from '@/components/medal'
-import { EASE, haptic, popFrom, SWAP, usePressScale } from '@/components/motion'
+import { Medal3D, useMedalPalette } from '@/components/medal'
+import {
+  engraving,
+  GlassPill,
+  Glow,
+  MedalDetail
+} from '@/components/medal-detail'
+import { EASE, haptic, popFrom } from '@/components/motion'
 import {
   ACID,
   BackButton,
-  DISPLAY_FONT_SCALE,
-  GlassRound,
-  Icon,
   LIVE,
   PAPER,
   PillButton,
@@ -40,13 +34,9 @@ import {
 import {
   type Achievement,
   describe,
-  fullDate,
   nextInSeries,
   progressLabel,
   progressShare,
-  series,
-  seriesLabel,
-  unit,
   unlockedLine
 } from '@/lib/achievements'
 import { trpc } from '@/lib/trpc'
@@ -118,7 +108,7 @@ export default function Medal() {
           style={{ flex: 1 }}
           entering={fromUnlock ? DETAIL_IN : undefined}
         >
-          <Detail
+          <MedalDetail
             medal={medal}
             list={list}
             insets={insets}
@@ -131,172 +121,11 @@ export default function Medal() {
   )
 }
 
-/** O que a medalha 3D grava no verso: a data e o lugar em que saiu. */
-const engraving = (a: Achievement) => ({
-  id: a.id,
-  name: a.name,
-  locked: !a.unlockedAt,
-  date: a.unlockedAt ? fullDate(a.unlockedAt) : undefined,
-  where: a.where ?? undefined
-})
-
-/** O brilho acid atrás da medalha (radial-gradient do design). */
-function Glow({ strength, rx }: { strength: number; rx: string }) {
-  const P = useMedalPalette()
-  return (
-    <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
-      <Defs>
-        <RadialGradient id="glow" cx="50%" cy="32%" rx={rx} ry="45%">
-          <Stop offset="0" stopColor={ACID} stopOpacity={strength} />
-          <Stop offset="0.7" stopColor={P.bg} stopOpacity={0} />
-        </RadialGradient>
-      </Defs>
-      <Rect width="100%" height="100%" fill="url(#glow)" />
-    </Svg>
-  )
-}
-
 type ScreenProps = {
   medal: Achievement
   list: Achievement[]
   insets: { top: number; bottom: number }
   share: () => void
-}
-
-function Detail({
-  medal,
-  list,
-  insets,
-  share,
-  onPick
-}: ScreenProps & { onPick: (id: string) => void }) {
-  const P = useMedalPalette()
-  const router = useRouter()
-  const firstId = useRef(medal.id).current
-  const next = nextInSeries(list, medal)
-  const done = Boolean(medal.unlockedAt)
-  const stats: [string, string][] = done
-    ? [
-        ['Conquistada', fullDate(medal.unlockedAt as string)],
-        ['Onde', medal.where ?? ''],
-        ['Têm essa', `${medal.share}% dos torcedores`]
-      ]
-    : [
-        ['Progresso', progressLabel(medal)],
-        [
-          'Faltam',
-          unit(
-            medal.group,
-            medal.target - Math.min(medal.progress, medal.target)
-          )
-        ],
-        ['Têm essa', `${medal.share}% dos torcedores`]
-      ]
-
-  return (
-    <>
-      <View style={[styles.top, { paddingTop: insets.top + 4 }]}>
-        {/* Aberta por link, sem tela atrás: fechar leva à estante. */}
-        <BackButton
-          icon="close"
-          onPress={() =>
-            router.canGoBack()
-              ? router.back()
-              : router.replace('/voce/conquistas')
-          }
-        />
-        <Text style={[text(13), { color: P.muted }]}>
-          {seriesLabel(list, medal)}
-        </Text>
-        <ShareButton onPress={share} />
-      </View>
-
-      <Medal3D medal={engraving(medal)} drag style={styles.big} />
-      <View style={styles.hint}>
-        <Icon name="back" size={12} color={P.muted} />
-        <Text style={[text(12), { color: P.muted }]}>Arraste para girar</Text>
-        <View style={{ transform: [{ scaleX: -1 }] }}>
-          <Icon name="back" size={12} color={P.muted} />
-        </View>
-      </View>
-
-      {/* Trocar de medalha na série: o texto troca em fade curto. */}
-      <Animated.View
-        key={medal.id}
-        entering={medal.id === firstId ? undefined : SWAP}
-        style={styles.copy}
-      >
-        <Title lines={[[medal.name]]} size={48} color={P.ink} />
-        <Text
-          style={[text(15, 'Regular', 1.45), styles.lead, { color: P.body }]}
-        >
-          {describe(medal)}
-        </Text>
-        <View style={{ alignSelf: 'stretch', marginTop: 4 }}>
-          <Card shadow={P.drop}>
-            <View style={styles.stats}>
-              {stats.map(([label, value], i) => (
-                <View
-                  key={label}
-                  style={[
-                    styles.stat,
-                    i > 0 && styles.statLine,
-                    i > 0 && { borderLeftColor: P.line }
-                  ]}
-                >
-                  <Text style={[text(11), { color: P.muted }]}>{label}</Text>
-                  <Text
-                    style={[
-                      text(13, 'Bold'),
-                      styles.statValue,
-                      { color: P.ink }
-                    ]}
-                    numberOfLines={2}
-                  >
-                    {value}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </Card>
-        </View>
-        <View style={styles.series}>
-          {series(list, medal.group).map((a) => (
-            <SeriesPick
-              key={a.id}
-              medal={a}
-              on={a.id === medal.id}
-              onPress={() => {
-                if (a.id === medal.id) return
-                haptic.select()
-                onPick(a.id)
-              }}
-            />
-          ))}
-        </View>
-      </Animated.View>
-
-      <View
-        style={[styles.foot, { paddingBottom: Math.max(insets.bottom, 16) }]}
-      >
-        <GlassPill label="Compartilhar" onPress={share} />
-        <View style={{ flex: 1.2 }}>
-          <PillButton
-            label={
-              next ? `Próxima: ${unit(next.group, next.target)}` : 'Ver todas'
-            }
-            height={52}
-            edge="#000"
-            onPress={() => {
-              if (!next) return router.back()
-              haptic.select()
-              onPick(next.id)
-            }}
-          />
-        </View>
-      </View>
-    </>
-  )
 }
 
 // Os quadradinhos de confete do design (2k), parados no lugar dele. Entram
@@ -470,110 +299,10 @@ function GrowBar({
   )
 }
 
-/** Uma medalha da série, embaixo do detalhe. */
-function SeriesPick({
-  medal,
-  on,
-  onPress
-}: {
-  medal: Achievement
-  on: boolean
-  onPress: () => void
-}) {
-  const P = useMedalPalette()
-  const press = usePressScale()
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected: on }}
-      accessibilityLabel={medal.name}
-      onPress={onPress}
-      onPressIn={press.onPressIn}
-      onPressOut={press.onPressOut}
-    >
-      <Animated.View
-        style={[
-          styles.pick,
-          on && [
-            styles.pickOn,
-            { backgroundColor: P.pick, borderColor: P.pickEdge }
-          ],
-          press.style
-        ]}
-      >
-        <MedalImage id={medal.id} locked={!medal.unlockedAt} size={52} />
-      </Animated.View>
-    </Pressable>
-  )
-}
-
-function ShareButton({ onPress }: { onPress: () => void }) {
-  const P = useMedalPalette()
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Compartilhar"
-      hitSlop={8}
-      onPress={onPress}
-    >
-      <GlassRound>
-        <Icon name="share" size={18} color={P.ink} />
-      </GlassRound>
-    </Pressable>
-  )
-}
-
-/** "Compartilhar" em vidro, ao lado do botão acid do rodapé. */
-function GlassPill({ label, onPress }: { label: string; onPress: () => void }) {
-  const P = useMedalPalette()
-  const press = usePressScale()
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      onPressIn={press.onPressIn}
-      onPressOut={press.onPressOut}
-      style={{ flex: 1 }}
-    >
-      <Animated.View style={press.style}>
-        <Glass
-          tone={P.dark ? 'dark' : 'light'}
-          interactive
-          style={styles.glassPill}
-        >
-          <Icon name="share" size={17} color={P.ink} />
-          <Text
-            style={[text(15, 'Bold'), { color: P.ink, flexShrink: 1 }]}
-            maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-          >
-            {label}
-          </Text>
-        </Glass>
-      </Animated.View>
-    </Pressable>
-  )
-}
-
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   center: { alignItems: 'center', justifyContent: 'center', gap: 16 },
-  top: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16
-  },
-  big: { height: 330, marginHorizontal: 20, marginTop: 4 },
   spin: { width: 250, height: 280, alignSelf: 'center' },
-  hint: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: -8
-  },
   copy: {
     alignItems: 'center',
     gap: 10,
@@ -581,21 +310,6 @@ const styles = StyleSheet.create({
     marginTop: 12
   },
   lead: { textAlign: 'center', maxWidth: 320 },
-  stats: { flexDirection: 'row' },
-  stat: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    alignItems: 'center'
-  },
-  statLine: { borderLeftWidth: 1 },
-  statValue: { textAlign: 'center' },
-  series: { flexDirection: 'row', gap: 6, justifyContent: 'center' },
-  pick: { padding: 4, borderRadius: 6 },
-  pickOn: {
-    borderWidth: 1,
-    padding: 3
-  },
   foot: {
     position: 'absolute',
     left: 16,
@@ -603,15 +317,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     flexDirection: 'row',
     gap: 10
-  },
-  glassPill: {
-    height: 52,
-    borderRadius: 26,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8
   },
   confetti: { position: 'absolute' },
   progress: { width: '100%', maxWidth: 300, marginTop: 12 },
