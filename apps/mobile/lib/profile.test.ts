@@ -4,7 +4,9 @@ import {
   levelLine,
   markedToday,
   memberSince,
+  monthRecap,
   nextInSaved,
+  profileBars,
   topBars,
   yourBarCount
 } from './profile'
@@ -125,5 +127,62 @@ describe('perfil (2l)', () => {
       'NÍVEL 4 · 5/8'
     )
     expect(levelLine({ level: 5, unlocked: 9, nextAt: null })).toBe('NÍVEL 5')
+  })
+
+  const visit = (
+    barId: string,
+    startsAt: string,
+    neighborhood = 'Pinheiros'
+  ) => ({
+    barId,
+    barName: `Bar ${barId}`,
+    photoUrl: null,
+    neighborhood,
+    startsAt
+  })
+
+  test('seus bares: mais vezes primeiro, depois os salvos sem visita', () => {
+    const bars = profileBars(
+      [
+        visit('a', '2026-09-28T22:00:00Z'),
+        visit('b', '2026-10-04T22:00:00Z'),
+        visit('a', '2026-09-20T22:00:00Z')
+      ],
+      [
+        {
+          barId: 'b',
+          bar: { name: 'Bar b', photoUrl: null, neighborhood: 'X' }
+        },
+        {
+          barId: 'c',
+          bar: { name: 'Bar c', photoUrl: null, neighborhood: 'X' }
+        }
+      ]
+    )
+    expect(bars.map((b) => [b.barId, b.sub])).toEqual([
+      ['a', 'Foi 2 vezes · 28 set'],
+      ['b', 'Foi 1 vez · 04 out'],
+      ['c', 'Salvo']
+    ])
+  })
+
+  test('retrospectiva do mês: bares, jogos, bairros e o bar do mês', () => {
+    const recap = monthRecap(
+      [
+        visit('a', '2026-10-04T22:00:00Z', 'Pinheiros'),
+        visit('a', '2026-10-11T22:00:00Z', 'Pinheiros'),
+        visit('b', '2026-10-12T22:00:00Z', 'Vila Madalena'),
+        visit('c', '2026-09-12T22:00:00Z', 'Centro')
+      ],
+      NOW
+    )
+    expect(recap).toMatchObject({
+      month: 'outubro',
+      bars: 2,
+      games: 3,
+      neighborhoods: 2,
+      top: { barId: 'a' }
+    })
+    expect(monthRecap([visit('c', '2026-09-12T22:00:00Z')], NOW)).toBeNull()
   })
 })

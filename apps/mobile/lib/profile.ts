@@ -127,3 +127,97 @@ export const levelLine = (level: {
   level.nextAt === null
     ? `NÍVEL ${level.level}`
     : `NÍVEL ${level.level} · ${level.unlocked}/${level.nextAt}`
+
+type SavedBar = {
+  barId: string
+  bar: { name: string; photoUrl: string | null; neighborhood: string }
+}
+
+/**
+ * "Seus bares" do Perfil no tablet (tabPort7): onde você foi, do que mais foi
+ * ao que menos foi (empate pela visita mais recente), depois os salvos em que
+ * ainda não foi. "Foi 4 vezes · 28 set" ou "Salvo".
+ */
+export function profileBars(
+  visits: (Visit & { neighborhood?: string })[],
+  saved: SavedBar[]
+) {
+  const bars = new Map<
+    string,
+    {
+      barId: string
+      name: string
+      photoUrl: string | null
+      times: number
+      last: string | Date | null
+    }
+  >()
+  for (const v of visits) {
+    const bar = bars.get(v.barId)
+    if (!bar)
+      bars.set(v.barId, {
+        barId: v.barId,
+        name: v.barName,
+        photoUrl: v.photoUrl,
+        times: 1,
+        last: v.startsAt
+      })
+    else {
+      bar.times += 1
+      if (new Date(v.startsAt) > new Date(bar.last ?? 0)) bar.last = v.startsAt
+    }
+  }
+  for (const s of saved)
+    if (!bars.has(s.barId))
+      bars.set(s.barId, {
+        barId: s.barId,
+        name: s.bar.name,
+        photoUrl: s.bar.photoUrl,
+        times: 0,
+        last: null
+      })
+  const time = (d: string | Date | null) => (d ? new Date(d).getTime() : 0)
+  return [...bars.values()]
+    .sort((a, b) => b.times - a.times || time(b.last) - time(a.last))
+    .map((bar) => ({
+      ...bar,
+      sub: bar.last
+        ? `Foi ${bar.times} ${bar.times === 1 ? 'vez' : 'vezes'} · ${shortDay(bar.last)}`
+        : 'Salvo'
+    }))
+}
+
+/** "28 set". */
+const shortDay = (date: string | Date) =>
+  new Date(date)
+    .toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: 'short',
+      timeZone: TZ
+    })
+    .replace(' de ', ' ')
+    .replace('.', '')
+
+/**
+ * "Sua retrospectiva de outubro" (tabPort7): bares, jogos e bairros do mês
+ * e o bar em que mais foi. Sem visita no mês, nada.
+ */
+export function monthRecap(
+  visits: (Visit & { neighborhood: string })[],
+  now: number
+) {
+  const month = dayKey(now).slice(0, 7)
+  const inMonth = visits.filter((v) => dayKey(v.startsAt).startsWith(month))
+  if (!inMonth.length) return null
+  const top = topBars(inMonth, now).bars[0]
+  return {
+    month: new Date(now).toLocaleDateString('pt-BR', {
+      month: 'long',
+      timeZone: TZ
+    }),
+    bars: new Set(inMonth.map((v) => v.barId)).size,
+    games: inMonth.length,
+    neighborhoods: new Set(inMonth.map((v) => v.neighborhood)).size,
+    top: top ?? null
+  }
+}
