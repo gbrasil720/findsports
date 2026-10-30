@@ -6,6 +6,7 @@ import { useFonts } from 'expo-font'
 import { Stack } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
 import { useCallback, useEffect, useState } from 'react'
+import { Platform } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { DevTab } from '@/components/dev-tab'
 import { ExploreStateProvider } from '@/components/explore-state'
@@ -102,12 +103,21 @@ export default function Layout() {
                 transparente: é o que deixa o iOS 26 desenhar o vidro dela. */}
                 <Stack.Screen
                   name="vou/[barId]"
-                  options={{
-                    presentation: 'formSheet',
-                    sheetAllowedDetents: [0.88],
-                    sheetGrabberVisible: true,
-                    contentStyle: { backgroundColor: 'transparent' }
-                  }}
+                  options={
+                    // No iPad a folha de detent vira um cartão pequeno no
+                    // meio da tela: lá ela é a folha de página, alta.
+                    kind === 'phone' || Platform.OS !== 'ios'
+                      ? {
+                          presentation: 'formSheet',
+                          sheetAllowedDetents: [0.88],
+                          sheetGrabberVisible: true,
+                          contentStyle: { backgroundColor: 'transparent' }
+                        }
+                      : {
+                          presentation: 'pageSheet',
+                          contentStyle: { backgroundColor: 'transparent' }
+                        }
+                  }
                 />
                 {/* O código no balcão cobre tudo, no escuro (3f). */}
                 <Stack.Screen
