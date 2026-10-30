@@ -1,7 +1,9 @@
-import { Pressable, StyleSheet, View } from 'react-native'
+import { useQuery } from '@tanstack/react-query'
+import { Platform, Pressable, StyleSheet, View } from 'react-native'
+import MapView, { Marker } from 'react-native-maps'
 import Svg, { Circle, Defs, Line, RadialGradient, Stop } from 'react-native-svg'
 import { Card } from '@/components/card'
-import { HardShadow } from '@/components/explore'
+import { dropBox, HardShadow, MapDrop, MeDot } from '@/components/explore'
 import { Medal3D, MedalImage } from '@/components/medal'
 import { usePalette } from '@/components/theme'
 import {
@@ -17,6 +19,10 @@ import {
   text
 } from '@/components/ui'
 import { type Achievement, firstToUnlock } from '@/lib/achievements'
+import { isLive } from '@/lib/explore'
+import { NO_FILTERS, searchInput } from '@/lib/filters'
+import { MAP_STYLE } from '@/lib/map-style'
+import { trpc } from '@/lib/trpc'
 
 /*
  * Os vazios da Rodada 14 do design (`gen/build14.js`), que o Adaptativo 10
@@ -604,6 +610,74 @@ export function RadiusEmpty({
   )
 }
 
+/**
+ * O mapa ao lado (ou em cima) de Seus bares vazio (`ctxMap`): os bares com
+ * jogo no raio, nas gotas do Explorar; tocar abre o bar, onde se salva.
+ */
+export function SaveMap({
+  center,
+  radiusKm,
+  onOpen
+}: {
+  center: { lat: number; lng: number }
+  radiusKm: number
+  onOpen: (barId: string) => void
+}) {
+  const palette = usePalette()
+  const search = useQuery(
+    trpc.pubs.search.queryOptions(searchInput(NO_FILTERS, center, radiusKm))
+  )
+  const now = Date.now()
+  // Zoom de rua, como o mapa do design: os bares mais perto de você.
+  const span = ((radiusKm * 2) / 111) * 0.6
+  return (
+    <View style={StyleSheet.absoluteFill}>
+      <MapView
+        style={StyleSheet.absoluteFill}
+        initialRegion={{
+          latitude: center.lat,
+          longitude: center.lng,
+          latitudeDelta: span,
+          longitudeDelta: span
+        }}
+        mapType={Platform.OS === 'ios' ? 'mutedStandard' : 'standard'}
+        customMapStyle={palette.dark ? MAP_STYLE.dark : MAP_STYLE.light}
+        userInterfaceStyle={palette.dark ? 'dark' : 'light'}
+        showsPointsOfInterests={false}
+        showsCompass={false}
+        toolbarEnabled={false}
+      >
+        {(search.data?.bars ?? []).slice(0, 30).map((bar) => {
+          const live = bar.nextEvent ? isLive(bar.nextEvent, now) : false
+          const box = dropBox({ live })
+          return (
+            <Marker
+              key={bar.id}
+              coordinate={{
+                latitude: Number(bar.latitude),
+                longitude: Number(bar.longitude)
+              }}
+              anchor={box.anchor}
+              centerOffset={box.centerOffset}
+              tracksViewChanges={false}
+              onPress={() => onOpen(bar.id)}
+            >
+              <MapDrop
+                live={live}
+                elite={bar.plan === 'elite'}
+                dark={palette.dark}
+              />
+            </Marker>
+          )
+        })}
+      </MapView>
+      <View style={styles.me} pointerEvents="none">
+        <MeDot />
+      </View>
+    </View>
+  )
+}
+
 /** Uma linha de aviso com o interruptor (`eNotif`). */
 export type NoticeToggle = {
   icon: 'tv' | 'people' | 'crew'
@@ -802,6 +876,11 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '10deg' }]
   },
   zSmall: { right: 38, top: 2, fontSize: 20, transform: [{ rotate: '14deg' }] },
+  me: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
   aside: { flex: 1, paddingHorizontal: 22, gap: 14 },
   asideTitle: {
     fontFamily: 'Anton',
