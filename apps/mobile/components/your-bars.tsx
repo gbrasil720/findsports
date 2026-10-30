@@ -27,6 +27,7 @@ import {
   INK,
   LIVE,
   PAPER,
+  PillButton,
   Text,
   text
 } from '@/components/ui'
@@ -468,6 +469,68 @@ export function BarMemory({
   )
 }
 
+/**
+ * A tela de fora do Z Flip 8: o último bar onde você foi, o jogo de hoje lá
+ * (se houver) e "Voltar lá", que abre a página do bar.
+ */
+export function LastBar({
+  visit,
+  onOpen
+}: {
+  visit: VisitRow
+  onOpen: (barId: string) => void
+}) {
+  const now = Date.now()
+  const bar = useQuery({
+    ...trpc.pubs.getById.queryOptions({ id: visit.barId }),
+    enabled: visit.barActive
+  })
+  const next = bar.data?.events?.[0]
+  const today = next && dayLabel(next.startsAt, now) === 'Hoje'
+  const date = dayMonth(visit.startsAt)
+  return (
+    <View style={styles.last}>
+      <Text style={styles.heroTimes}>ÚLTIMO BAR</Text>
+      <View style={styles.lastBar}>
+        <Photo
+          uri={visit.photoUrl}
+          name={visit.barName}
+          big
+          style={styles.lastPhoto}
+        />
+        <View style={styles.grow}>
+          <Text style={styles.lastName} numberOfLines={1}>
+            {visit.barName}
+          </Text>
+          <Text style={[text(12.5), { color: MUTED_ON_INK }]} numberOfLines={1}>
+            {date.day} {date.month.toLocaleLowerCase('pt-BR')} ·{' '}
+            {gameTitle(visit)}
+          </Text>
+        </View>
+      </View>
+      {today && next ? (
+        <Text style={[text(13), { color: '#d6d3cb' }]}>
+          {isLive(next, now)
+            ? 'Tem jogo lá agora.'
+            : `Hoje tem jogo lá às ${formatTime(next.startsAt)}.`}
+        </Text>
+      ) : null}
+      {visit.barActive ? (
+        <View style={styles.lastGo}>
+          <PillButton
+            label="Voltar lá"
+            height={50}
+            onPress={() => onOpen(visit.barId)}
+          />
+        </View>
+      ) : null}
+    </View>
+  )
+}
+
+/** O cinza do texto sobre tinta (o `MUTEDINK` do design). */
+const MUTED_ON_INK = '#aaa9a4'
+
 const MEMORY_IN = FadeIn.duration(180)
 
 function GlassPill({
@@ -781,5 +844,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 7
   },
+  last: { flex: 1, gap: 12 },
+  lastBar: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  lastPhoto: { width: 60, height: 60, borderRadius: 4 },
+  lastName: {
+    fontFamily: 'Anton',
+    fontSize: 26,
+    textTransform: 'uppercase',
+    color: PAPER,
+    marginVertical: -4
+  },
+  lastGo: { position: 'absolute', right: 0, bottom: 26, width: 150 },
   mapPill: { position: 'absolute', left: 16 }
 })

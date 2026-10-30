@@ -46,6 +46,7 @@ import {
 } from '@/components/ui'
 import {
   BarMemory,
+  LastBar,
   MonthsCard,
   SavedHeart,
   VisitCard,
@@ -156,7 +157,9 @@ export default function YourBars() {
   const aside = layout.kind === 'split' && !layout.wide
   const fold =
     aside &&
-    (layout.nav === 'duoRail' || layout.split === Math.round(layout.width / 2))
+    (layout.nav === 'duoRail' ||
+      layout.gap > 0 ||
+      layout.split === Math.round(layout.width / 2))
   const content = layout.width - nav.left - nav.right - 56
   const board =
     layout.kind === 'stack'
@@ -306,6 +309,83 @@ export default function YourBars() {
     }
   ]
 
+  // Tela de fora do Z Flip 8: o último bar onde você foi e "Voltar lá".
+  if (layout.kind === 'cover')
+    return (
+      <View
+        ref={shotSource.ref}
+        collapsable={false}
+        style={[styles.cover, { paddingTop: insets.top + 30 }]}
+      >
+        {all[0] ? <LastBar visit={all[0]} onOpen={openBar} /> : null}
+      </View>
+    )
+
+  // Na mesa (Duo em laptop, Flex Mode): o mapa de onde você foi em cima, as
+  // visitas em cards embaixo, com a rolagem de lado.
+  if (layout.kind === 'table')
+    return (
+      <View ref={shotSource.ref} collapsable={false} style={root}>
+        <View style={{ height: layout.split }}>
+          <VisitsMap
+            visits={all}
+            selected={memory}
+            onSelect={(v) => {
+              haptic.select()
+              setChosen(v.eventId)
+            }}
+            top={insets.top + 12}
+            center={{ latitude: from.lat, longitude: from.lng }}
+            padding={{ top: insets.top + 90, left: 40, right: 40, bottom: 40 }}
+          />
+        </View>
+        <View
+          style={[
+            styles.tableBottom,
+            { marginTop: layout.gap, backgroundColor: palette.bg }
+          ]}
+        >
+          <View style={styles.tableTop}>
+            <Title lines={[['Seus bares']]} size={28} color={palette.ink} />
+            <View style={{ width: 280 }}>{segments}</View>
+          </View>
+          {tab === 'visits' ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.tableCards}
+              contentContainerStyle={styles.tableCardsBody}
+            >
+              {all.map((visit) => (
+                <View
+                  key={visit.eventId}
+                  style={{ width: layout.width > 800 ? 250 : 230 }}
+                >
+                  <VisitCard
+                    visit={visit}
+                    saved={favorites.ids.has(visit.barId)}
+                    onOpen={
+                      visit.barActive ? () => openBar(visit.barId) : undefined
+                    }
+                    onToggle={() => toggleSaved(visit.barId)}
+                  />
+                </View>
+              ))}
+            </ScrollView>
+          ) : (
+            <ScrollView
+              contentContainerStyle={[
+                styles.columnBody,
+                { paddingHorizontal: 20, paddingBottom: tabBar + 24 }
+              ]}
+            >
+              {body(tab)}
+            </ScrollView>
+          )}
+        </View>
+      </View>
+    )
+
   if (columns)
     return (
       <View ref={shotSource.ref} collapsable={false} style={root}>
@@ -383,7 +463,10 @@ export default function YourBars() {
           </ScrollView>
           {fold ? (
             <ScrollView
-              style={{ backgroundColor: palette.dark ? '#161613' : '#ebe8df' }}
+              style={{
+                marginLeft: layout.gap,
+                backgroundColor: palette.dark ? '#161613' : '#ebe8df'
+              }}
               contentContainerStyle={{
                 paddingTop: insets.top + 74,
                 paddingHorizontal: 18,
@@ -398,7 +481,9 @@ export default function YourBars() {
                   saved={favorites.ids.has(memory.barId)}
                   onToggle={() => toggleSaved(memory.barId)}
                   photoHeight={
-                    layout.width - layout.split - nav.right < 436 ? 170 : 210
+                    layout.width - layout.split - layout.gap - nav.right < 436
+                      ? 170
+                      : 210
                   }
                 />
               ) : null}
@@ -1339,6 +1424,16 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 20 }
   },
   floatingBody: { padding: 14 },
+  cover: { flex: 1, backgroundColor: INK, paddingHorizontal: 22 },
+  tableBottom: { flex: 1, paddingTop: 14, gap: 12 },
+  tableTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20
+  },
+  tableCards: { flexGrow: 0 },
+  tableCardsBody: { gap: 12, paddingHorizontal: 20, paddingBottom: 8 },
   wideTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
