@@ -1219,6 +1219,8 @@ const styles = StyleSheet.create({
   coverAvatar: {
     width: 52,
     height: 52,
+    borderWidth: 1.5,
+    borderColor: 'rgba(241,238,230,.3)',
     shadowOffset: { width: 3, height: 3 }
   },
   coverLevel: {
