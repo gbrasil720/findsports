@@ -32,6 +32,7 @@ import Animated, {
   withTiming
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import Svg, { Line } from 'react-native-svg'
 import { scheduleOnRN } from 'react-native-worklets'
 import {
   Amenities,
@@ -162,6 +163,7 @@ const TITLE_PORTRAIT: [number, number][] = [
 ]
 /** A barra do "Vou assistir aqui" fora do celular. */
 const DOCK = 440
+const LIVE_RED = '#e8320c'
 
 /** O rótulo curto do design ("Premiere"), não o do cadastro. */
 const chipLabel = (item: (typeof AMENITIES)[number]) =>
@@ -1136,10 +1138,22 @@ export function BarDetail({
               {gameTitle(going)}
             </Text>
           </View>
-          <View style={styles.coverCut} />
+          {/* Picote em SVG: borda tracejada de um lado só não desenha no
+              Android nem no iOS. */}
+          <Svg height={2} style={styles.coverCut}>
+            <Line
+              x1={0}
+              y1={1}
+              x2="100%"
+              y2={1}
+              stroke="rgba(18,18,15,.18)"
+              strokeWidth={2}
+              strokeDasharray="6,5"
+            />
+          </Svg>
           <View style={styles.coverFoot}>
             <Text style={styles.coverCode}>{formatCode(mine.code)}</Text>
-            <Icon name="ticket" size={30} color={INK} accent={ACID} />
+            <Icon name="qr" size={30} color={INK} accent={LIVE_RED} />
           </View>
         </Pressable>
         <Text style={styles.coverNote}>
@@ -1844,12 +1858,7 @@ const styles = StyleSheet.create({
     boxShadow: `5px 5px 0 ${ACID}`
   },
   coverHead: { paddingTop: 12, paddingHorizontal: 14, paddingBottom: 8 },
-  coverCut: {
-    marginHorizontal: 14,
-    borderTopWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: 'rgba(18,18,15,.18)'
-  },
+  coverCut: { marginHorizontal: 14, alignSelf: 'stretch' },
   coverFoot: {
     paddingTop: 8,
     paddingHorizontal: 14,
