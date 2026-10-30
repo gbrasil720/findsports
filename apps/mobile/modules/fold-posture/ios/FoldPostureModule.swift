@@ -70,7 +70,8 @@ public class FoldPostureModule: Module {
     case .fullyOpen: state = "flat"
     default: state = "unknown"
     }
-    return ["state": state, "angle": hinge.angle]
+    // O UIKit dá o ângulo em radianos.
+    return ["state": state, "angle": hinge.angle * 180 / .pi]
   }
   #endif
 }

@@ -14,7 +14,7 @@ export type Posture = {
   orientation?: 'vertical' | 'horizontal'
   /** Só no Android: onde a dobra fica na janela, em dp. */
   hinge?: { x: number; y: number; width: number; height: number }
-  /** Só no iOS: o ângulo da dobradiça, em graus. */
+  /** Só no iOS: o ângulo da dobradiça, em graus (180 = plano). */
   angle?: number
 }
 
