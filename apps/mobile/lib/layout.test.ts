@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { classify, locksPortrait } from './layout'
+import { byHeight, classify, locksPortrait } from './layout'
 
 // Medidas dos aparelhos do design (gen/adapt-dev.js), em pt e dp.
 const ios = (width: number, height: number, isPad = false) =>
@@ -126,4 +126,16 @@ test('locksPortrait: só o celular trava', () => {
   expect(locksPortrait({ width: 475, height: 760 })).toBe(true)
   expect(locksPortrait({ width: 704, height: 932 })).toBe(false)
   expect(locksPortrait({ width: 1032, height: 1376 })).toBe(false)
+})
+
+test('byHeight: o ponto do design, a reta entre eles e o mais perto fora', () => {
+  const points: [number, number][] = [
+    [1133, 320],
+    [1180, 380],
+    [1376, 460]
+  ]
+  expect(byHeight(points, 1180)).toBe(380)
+  expect(byHeight(points, 1278)).toBe(420)
+  expect(byHeight(points, 900)).toBe(320)
+  expect(byHeight(points, 2000)).toBe(460)
 })
