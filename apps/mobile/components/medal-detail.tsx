@@ -50,12 +50,24 @@ export const engraving = (a: Achievement) => ({
 })
 
 /** O brilho acid atrás da medalha (radial-gradient do design). */
-export function Glow({ strength, rx }: { strength: number; rx: string }) {
+export function Glow({
+  strength,
+  rx,
+  ry = '45%',
+  cx = '50%',
+  cy = '32%'
+}: {
+  strength: number
+  rx: string
+  ry?: string
+  cx?: string
+  cy?: string
+}) {
   const P = useMedalPalette()
   return (
     <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
       <Defs>
-        <RadialGradient id="glow" cx="50%" cy="32%" rx={rx} ry="45%">
+        <RadialGradient id="glow" cx={cx} cy={cy} rx={rx} ry={ry}>
           <Stop offset="0" stopColor={ACID} stopOpacity={strength} />
           <Stop offset="0.7" stopColor={P.bg} stopOpacity={0} />
         </RadialGradient>
@@ -88,7 +100,16 @@ export function MedalDetail({
    * Fora do celular: a largura do espaço, o lado da medalha e o tamanho do
    * nome. `close: false` ao lado da estante, onde não há o que fechar.
    */
-  frame?: { width: number; medal: number; title: number; close?: boolean }
+  frame?: {
+    width: number
+    medal: number
+    title: number
+    close?: boolean
+    /** O alvo embaixo de cada medalha da série ("1 5 10 25"), como no A06. */
+    tiers?: number
+    /** Dobrável baixo (Duo aberto): sem o rodapé, como no design. */
+    actions?: boolean
+  }
 }) {
   const P = useMedalPalette()
   const router = useRouter()
@@ -203,6 +224,7 @@ export function MedalDetail({
               key={a.id}
               medal={a}
               on={a.id === medal.id}
+              size={frame?.tiers}
               onPress={() => {
                 if (a.id === medal.id) return
                 haptic.select()
@@ -216,6 +238,7 @@ export function MedalDetail({
       <View
         style={[
           styles.foot,
+          frame?.actions === false && { display: 'none' },
           {
             left: side,
             right: side,
@@ -247,10 +270,13 @@ export function MedalDetail({
 function SeriesPick({
   medal,
   on,
+  size,
   onPress
 }: {
   medal: Achievement
   on: boolean
+  /** Fora do celular: o lado da medalha, e o alvo embaixo dela. */
+  size?: number
   onPress: () => void
 }) {
   const P = useMedalPalette()
@@ -274,7 +300,16 @@ function SeriesPick({
           press.style
         ]}
       >
-        <MedalImage id={medal.id} locked={!medal.unlockedAt} size={52} />
+        <MedalImage
+          id={medal.id}
+          locked={!medal.unlockedAt}
+          size={size ?? 52}
+        />
+        {size ? (
+          <Text style={[styles.target, { color: P.muted }]}>
+            {medal.target}
+          </Text>
+        ) : null}
       </Animated.View>
     </Pressable>
   )
@@ -426,7 +461,8 @@ const styles = StyleSheet.create({
   statLine: { borderLeftWidth: 1 },
   statValue: { textAlign: 'center' },
   series: { flexDirection: 'row', gap: 6, justifyContent: 'center' },
-  pick: { padding: 4, borderRadius: 6 },
+  pick: { padding: 4, borderRadius: 6, alignItems: 'center', gap: 4 },
+  target: { fontFamily: 'GeistMono-SemiBold', fontSize: 10.5 },
   pickOn: {
     borderWidth: 1,
     padding: 3
