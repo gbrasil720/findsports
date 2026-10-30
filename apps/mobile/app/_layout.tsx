@@ -3,7 +3,7 @@ import '@/global.css'
 import '@/lib/latest-url'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { useFonts } from 'expo-font'
-import { Stack } from 'expo-router'
+import { Stack, usePathname } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
 import { useCallback, useEffect, useState } from 'react'
 import { Platform } from 'react-native'
@@ -80,8 +80,16 @@ export default function Layout() {
   useWindowBackground()
   // A busca com IA é folha no celular e tela cheia fora dele (WEB-488): no
   // iPad a folha viraria um cartão no meio da tela.
+  // A apresentação não pode mudar com a tela aberta (dobrar o Fold com a busca
+  // aberta derrubava o app no Android: "Sheet delegate accepts screen with
+  // initialized sheet behaviour only"): só troca quando nenhuma das duas está
+  // na tela.
   const kind = useLayout().kind
-  const aiSheet = kind === 'phone'
+  const pathname = usePathname()
+  const open = pathname.startsWith('/busca-ia') || pathname.startsWith('/vou/')
+  const [phone, setPhone] = useState(kind === 'phone')
+  if (!open && phone !== (kind === 'phone')) setPhone(kind === 'phone')
+  const aiSheet = phone
   const ready = fontsLoaded && agenda !== undefined
   const [splashDone, setSplashDone] = useState(false)
   const endSplash = useCallback(() => setSplashDone(true), [])
@@ -106,7 +114,7 @@ export default function Layout() {
                   options={
                     // No iPad a folha de detent vira um cartão pequeno no
                     // meio da tela: lá ela é a folha de página, alta.
-                    kind === 'phone' || Platform.OS !== 'ios'
+                    phone || Platform.OS !== 'ios'
                       ? {
                           presentation: 'formSheet',
                           sheetAllowedDetents: [0.88],
