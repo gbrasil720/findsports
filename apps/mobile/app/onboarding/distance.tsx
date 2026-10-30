@@ -18,6 +18,7 @@ import {
   OnboardingTop,
   type Radius,
   RadiusTile,
+  StepFooter,
   useFrameKind,
   useOnboarding
 } from '@/components/onboarding'
@@ -113,7 +114,9 @@ export default function Distance() {
       gap={14}
       padding={18}
       footer={
-        <PillButton label="Continuar" disabled={pending} onPress={next} />
+        <StepFooter>
+          <PillButton label="Continuar" disabled={pending} onPress={next} />
+        </StepFooter>
       }
     >
       <OnboardingTop step={4} />

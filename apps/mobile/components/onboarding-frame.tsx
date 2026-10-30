@@ -410,7 +410,12 @@ export function OnboardingFrame({ children }: { children: ReactNode }) {
                 }}
               >
                 <Pane.Provider
-                  value={{ width: pane.width, height: pane.height, side }}
+                  value={{
+                    width: pane.width,
+                    height: pane.height,
+                    side,
+                    wide: layout.kind !== 'phone'
+                  }}
                 >
                   {children}
                 </Pane.Provider>

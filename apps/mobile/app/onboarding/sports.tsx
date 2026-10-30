@@ -5,6 +5,8 @@ import { ErrorText } from '@/components/motion'
 import {
   OnboardingTop,
   SportTile,
+  StepFooter,
+  TableTile,
   useEditing,
   useFrameKind,
   useOnboarding
@@ -59,29 +61,38 @@ export default function Sports() {
     })
   }
 
+  // Na mesa, a grade de 4 colunas do design (`table9`); no resto, a de 2.
+  const columns = table ? 4 : 2
   const rows: (typeof sports)[] = []
-  for (let index = 0; index < sports.length; index += 2)
-    rows.push(sports.slice(index, index + 2))
+  for (let index = 0; index < sports.length; index += columns)
+    rows.push(sports.slice(index, index + columns))
+  const chosen = choices.sportIds.length
 
   return (
     <Screen
       gap={14}
       padding={18}
       footer={
-        <PillButton
-          label="Continuar"
-          disabled={choices.sportIds.length === 0}
-          onPress={() =>
-            router.push(
-              edit.editing
-                ? {
-                    pathname: '/onboarding/teams',
-                    params: { edit: '1', from: 'sports' }
-                  }
-                : '/onboarding/teams'
-            )
-          }
-        />
+        <StepFooter>
+          <PillButton
+            label={
+              table && chosen
+                ? `Continuar · ${chosen} ${chosen === 1 ? 'escolhido' : 'escolhidos'}`
+                : 'Continuar'
+            }
+            disabled={chosen === 0}
+            onPress={() =>
+              router.push(
+                edit.editing
+                  ? {
+                      pathname: '/onboarding/teams',
+                      params: { edit: '1', from: 'sports' }
+                    }
+                  : '/onboarding/teams'
+              )
+            }
+          />
+        </StepFooter>
       }
     >
       {edit.back ?? <OnboardingTop step={2} />}
@@ -90,9 +101,13 @@ export default function Sports() {
           <Title lines={[['Quais esportes'], ['você curte?']]} size={36} />
         </View>
       )}
-      <Text style={[text(15, 'Regular', 1.45), { color: SUB, marginTop: -4 }]}>
-        Marque tudo que você acompanha — a gente filtra os bares pra você.
-      </Text>
+      {table ? null : (
+        <Text
+          style={[text(15, 'Regular', 1.45), { color: SUB, marginTop: -4 }]}
+        >
+          Marque tudo que você acompanha — a gente filtra os bares pra você.
+        </Text>
+      )}
       {query.isError ? (
         <ErrorText style={[text(13.5), { color: LIVE }]}>
           Não foi possível carregar os esportes. Puxe para tentar de novo.
@@ -101,21 +116,35 @@ export default function Sports() {
       <View style={{ gap: 10 }}>
         {rows.map((row) => (
           <View key={row[0].id} style={{ flexDirection: 'row', gap: 10 }}>
-            {row.map((sport) => (
-              <SportTile
-                key={sport.id}
-                name={sport.name}
-                selected={choices.sportIds.includes(sport.id)}
-                onPress={() => toggle(sport.id)}
-              />
+            {row.map((sport) =>
+              table ? (
+                <TableTile
+                  key={sport.id}
+                  name={sport.name}
+                  selected={choices.sportIds.includes(sport.id)}
+                  onPress={() => toggle(sport.id)}
+                />
+              ) : (
+                <SportTile
+                  key={sport.id}
+                  name={sport.name}
+                  selected={choices.sportIds.includes(sport.id)}
+                  onPress={() => toggle(sport.id)}
+                />
+              )
+            )}
+            {Array.from({ length: columns - row.length }, (_, index) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: vaga da grade
+              <View key={index} style={{ flex: 1 }} />
             ))}
-            {row.length === 1 ? <View style={{ flex: 1 }} /> : null}
           </View>
         ))}
       </View>
-      <Text style={[text(13), { color: SUB }]}>
-        {countLabel(choices.sportIds.length)}
-      </Text>
+      {table ? null : (
+        <Text style={[text(13), { color: SUB }]}>
+          {countLabel(choices.sportIds.length)}
+        </Text>
+      )}
     </Screen>
   )
 }

@@ -5,6 +5,7 @@ import { Pressable, View } from 'react-native'
 import {
   OnboardingTop,
   SportBadge,
+  StepFooter,
   type Team,
   TeamChip,
   useEditing,
@@ -127,20 +128,22 @@ export default function Teams() {
       gap={14}
       padding={18}
       footer={
-        edit.editing ? (
+        <StepFooter>
+          edit.editing ? (
           <PillButton
             label={edit.saving ? 'Salvando…' : 'Salvar'}
             disabled={!edit.ready || edit.saving}
             onPress={() => edit.save().catch(() => {})}
           />
-        ) : (
+          ) : (
           <PillButton
             label={
               count === 0 ? 'Pular' : `Continuar · ${countLabel(choices.teams)}`
             }
             onPress={() => router.push('/onboarding/distance')}
           />
-        )
+          )
+        </StepFooter>
       }
     >
       {edit.back ?? <OnboardingTop step={3} />}

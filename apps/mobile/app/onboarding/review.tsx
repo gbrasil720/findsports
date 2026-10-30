@@ -5,6 +5,7 @@ import Animated from 'react-native-reanimated'
 import { ErrorText, haptic, POP_LATE } from '@/components/motion'
 import {
   OnboardingTop,
+  StepFooter,
   useFrameKind,
   useOnboarding
 } from '@/components/onboarding'
@@ -87,11 +88,15 @@ export default function Review() {
       gap={14}
       padding={18}
       footer={
-        <PillButton
-          label={complete.isPending ? 'Salvando…' : 'Salvar e encontrar bares'}
-          disabled={complete.isPending || choices.sportIds.length === 0}
-          onPress={save}
-        />
+        <StepFooter>
+          <PillButton
+            label={
+              complete.isPending ? 'Salvando…' : 'Salvar e encontrar bares'
+            }
+            disabled={complete.isPending || choices.sportIds.length === 0}
+            onPress={save}
+          />
+        </StepFooter>
       }
     >
       <OnboardingTop step={5} />
