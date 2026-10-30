@@ -62,6 +62,16 @@ export default function FanTabs() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: reage à rota
   useEffect(() => setOver(false), [pathname])
   const menuOpen = pathname === '/voce' || over
+  // A última rota das abas: com uma tela da conta aberta por cima (Senha,
+  // Cidade), o "Você" deitado continua embaixo dela.
+  const inTabs =
+    pathname === '/explore' ||
+    pathname === '/favoritos' ||
+    pathname.startsWith('/voce')
+  const [tabPath, setTabPath] = useState(pathname)
+  useEffect(() => {
+    if (inTabs) setTabPath(pathname)
+  }, [inTabs, pathname])
   const closeMenu = () =>
     over ? setOver(false) : router.navigate(from.current)
   // Primeiro acesso (4o): o coach da busca com IA, uma vez, sobre o Explorar.
@@ -90,6 +100,7 @@ export default function FanTabs() {
   // Tablet deitado e dobrável aberto: o "Você" é uma tela (menu e seção lado
   // a lado, `YouPanel`), não o menu de vidro; tocar de novo não fecha.
   const panel = layout.kind === 'split'
+  const panelOpen = panel && (menuOpen || (!inTabs && tabPath === '/voce'))
   // O mesmo toque da aba "Você" na barra nativa.
   const pressYou = () => {
     if (panel) {
@@ -242,7 +253,7 @@ export default function FanTabs() {
           <NativeTabs.Trigger.Label>IA</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
       </NativeTabs>
-      {menuOpen && panel ? (
+      {panelOpen ? (
         <YouPanel
           name={user?.name ?? ''}
           initials={initials(user?.name ?? '')}
@@ -281,7 +292,7 @@ export default function FanTabs() {
             // No Explorar a barra flutua sobre o mapa (04b) e no "Você"
             // deitado, sobre a seção da direita (a07); nas outras abas,
             // centrada na tela (design T3 e T4).
-            (pathname === '/explore' || (menuOpen && panel)) &&
+            (pathname === '/explore' || panelOpen) &&
             layout.kind === 'split' &&
             layout.nav === 'float' &&
             !beside
