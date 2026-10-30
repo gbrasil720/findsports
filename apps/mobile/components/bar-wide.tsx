@@ -13,7 +13,7 @@ import { Glass } from '@/components/glass'
 import { usePressScale } from '@/components/motion'
 import { usePalette } from '@/components/theme'
 import { ACID, Icon, INK, PAPER, Text, text } from '@/components/ui'
-import { formatTime, isLive, teamMark } from '@/lib/explore'
+import { formatTime, goingSummary, isLive, teamMark } from '@/lib/explore'
 import type { GalleryPhoto } from '@/lib/gallery'
 import { MAP_STYLE } from '@/lib/map-style'
 
@@ -35,7 +35,11 @@ type Game = {
   id: string
   startsAt: string
   championship: string | null
-  going?: { count: number | null; initials: string[] } | null
+  going?: {
+    count: number | null
+    initials: string[]
+    friends: { name: string }[]
+  } | null
 } & Parameters<typeof gameTitle>[0] &
   Parameters<typeof isLive>[0] &
   Parameters<typeof matchSides>[0]
@@ -205,9 +209,18 @@ export function GameCard({
   const live = isLive(game, now)
   const [home, away] = matchSides(game) ?? []
   const size = narrow ? 20 : 22
+  // Quem vai (`readGoing`): a contagem acima do piso, senão só os amigos.
   const going = game.going
-  const shown = going?.initials.slice(0, 2) ?? []
-  const rest = going?.count ? going.count - shown.length : 0
+  const summary = going ? goingSummary(going) : null
+  const shown = summary?.faces ?? []
+  const rest = summary?.more ?? 0
+  const goingLine = !going
+    ? null
+    : going.count
+      ? `${going.count} ${going.count === 1 ? 'vai' : 'vão'} assistir aqui`
+      : going.friends.length
+        ? `${summary?.lead} assistir aqui`
+        : null
   const team = (name: string, right?: boolean) => (
     <View style={[styles.side, right && { justifyContent: 'flex-end' }]}>
       {narrow || right ? null : <Crest name={name} onInk={onInk} />}
@@ -268,7 +281,7 @@ export function GameCard({
             {gameTitle(game).toUpperCase()}
           </Text>
         )}
-        {going?.count || more > 0 ? (
+        {goingLine || more > 0 ? (
           <View
             style={[
               styles.gameFoot,
@@ -279,7 +292,7 @@ export function GameCard({
               }
             ]}
           >
-            {going?.count ? (
+            {goingLine ? (
               <View style={styles.going}>
                 <View style={{ flexDirection: 'row' }}>
                   {[
@@ -308,8 +321,7 @@ export function GameCard({
                   ))}
                 </View>
                 <Text style={[text(13, 'Regular', 1.3), { color: fg }]}>
-                  {going.count} {going.count === 1 ? 'vai' : 'vão'} assistir
-                  aqui
+                  {goingLine}
                 </Text>
               </View>
             ) : (
