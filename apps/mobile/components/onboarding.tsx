@@ -15,6 +15,7 @@ import Animated, {
   useSharedValue,
   withTiming
 } from 'react-native-reanimated'
+import { Glass } from '@/components/glass'
 import { EASE, haptic, POP } from '@/components/motion'
 import {
   ACID,
@@ -172,6 +173,8 @@ export const Pane = createContext<{
   width: number
   height: number
   side: number
+  /** Fora do celular (Duo fechado incluso): o título pode correr mais largo. */
+  wide: boolean
 } | null>(null)
 export const usePane = () => useContext(Pane)
 
@@ -210,8 +213,9 @@ function Segment({ on }: { on: boolean }) {
 
 /** "Conta de torcedor" (ou voltar), o progresso e "N de 5". */
 export function OnboardingTop({ step }: { step: number }) {
-  // Na mesa o progresso fica na metade de cima: aqui, só o voltar.
-  if (useFrameKind() === 'table') return step === 1 ? null : <BackButton />
+  // Na mesa o progresso fica na metade de cima e o voltar vai para o
+  // rodapé, ao lado do botão (`StepFooter`).
+  if (useFrameKind() === 'table') return null
   return (
     <View style={styles.top}>
       {step === 1 ? (
@@ -230,6 +234,42 @@ export function OnboardingTop({ step }: { step: number }) {
       <Text style={[text(13, 'SemiBold'), { color: SUB }]}>
         {step} de {STEPS}
       </Text>
+    </View>
+  )
+}
+
+/**
+ * O rodapé do passo. Na mesa o voltar sai do topo e fica ao lado do botão,
+ * perto do dedo, como no design (`table9`): círculo de 52 e o botão de 52.
+ */
+export function StepFooter({
+  back = true,
+  children
+}: {
+  back?: boolean
+  children: ReactNode
+}) {
+  const router = useRouter()
+  const dark = useColorScheme() === 'dark'
+  if (useFrameKind() !== 'table') return children
+  return (
+    <View style={styles.tableFooter}>
+      {back ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
+          onPress={() => router.back()}
+        >
+          <Glass
+            tone={dark ? 'dark' : 'light'}
+            interactive
+            style={styles.tableBack}
+          >
+            <Icon name="back" size={20} color={dark ? PAPER : INK} />
+          </Glass>
+        </Pressable>
+      ) : null}
+      <View style={{ flex: 1 }}>{children}</View>
     </View>
   )
 }
@@ -312,6 +352,68 @@ export function SportTile({
         {selected ? (
           <Animated.View entering={POP} style={styles.tileCheck}>
             <Icon name="check" size={13} color={ACID} />
+          </Animated.View>
+        ) : null}
+      </Animated.View>
+    </Pressable>
+  )
+}
+
+/**
+ * Um esporte na mesa (`table9`): card baixo de 72 em grade de 4, a sigla em
+ * mono em cima, o nome embaixo e o check no canto. Acid com sombra dura de
+ * tinta quando escolhido, como o `SportTile`.
+ */
+export function TableTile({
+  name,
+  selected,
+  onPress
+}: {
+  name: string
+  selected: boolean
+  onPress: () => void
+}) {
+  const on = useSelected(selected)
+  const { idle, ink } = useIdle()
+  const card = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(on.value, [0, 1], [idle, ACID])
+  }))
+  const shadow = useAnimatedStyle(() => ({ opacity: on.value }))
+  const label = useTextColor(on, ink, INK)
+  return (
+    <Pressable
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: selected }}
+      accessibilityLabel={name}
+      onPress={() => {
+        haptic.select()
+        onPress()
+      }}
+      style={({ pressed }) => [
+        { flex: 1 },
+        pressed && { transform: [{ scale: 0.98 }] }
+      ]}
+    >
+      <View style={[styles.tileIdleShadow, styles.cellShadow]} />
+      <Animated.View style={[styles.tileShadow, styles.cellShadow, shadow]} />
+      <Animated.View style={[styles.cell, card]}>
+        <Animated.Text
+          maxFontSizeMultiplier={MAX_FONT_SCALE}
+          numberOfLines={1}
+          style={[styles.cellMark, label]}
+        >
+          {sportMark(name).slice(0, 3)}
+        </Animated.Text>
+        <Animated.Text
+          maxFontSizeMultiplier={MAX_FONT_SCALE}
+          numberOfLines={2}
+          style={[text(14, 'Bold', 1.15), label]}
+        >
+          {name}
+        </Animated.Text>
+        {selected ? (
+          <Animated.View entering={POP} style={styles.cellCheck}>
+            <Icon name="check" size={15} color={INK} accent={INK} />
           </Animated.View>
         ) : null}
       </Animated.View>
@@ -447,6 +549,31 @@ const styles = StyleSheet.create({
     transformOrigin: 'left'
   },
   tileWrap: { flex: 1 },
+  tableFooter: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  tableBack: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden'
+  },
+  cell: {
+    height: 72,
+    borderRadius: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: LINE
+  },
+  cellShadow: { top: 3, left: 3, right: -3, bottom: -3 },
+  cellMark: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11,
+    letterSpacing: 0.55
+  },
+  cellCheck: { position: 'absolute', right: 9, top: 9 },
   // O design soma o espaçamento à altura (88 + 2 × 12, `box-sizing` padrão).
   tile: {
     height: 112,
