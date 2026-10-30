@@ -14,11 +14,11 @@ import {
 } from 'react-native'
 import Animated, { FadeOut, LinearTransition } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import Svg, { G, Path } from 'react-native-svg'
 import { Card, FilterChip } from '@/components/card'
-import { Photo } from '@/components/explore'
+import { HardShadow, Photo } from '@/components/explore'
 import { useExploreState, useShotSource } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
+import { useLayout, useNavInsets } from '@/components/layout'
 import {
   EASE,
   haptic,
@@ -44,6 +44,14 @@ import {
   usePullRefresh,
   useStatusBar
 } from '@/components/ui'
+import {
+  BarMemory,
+  MonthsCard,
+  SavedHeart,
+  VisitCard,
+  type VisitRow,
+  VisitsMap
+} from '@/components/your-bars'
 import { distanceKm, formatKm, searchCenter } from '@/lib/explore'
 import { useFavorites } from '@/lib/favorites'
 import { trpc } from '@/lib/trpc'
@@ -51,6 +59,7 @@ import {
   type BarSort,
   barGroups,
   byMonth,
+  dayKey,
   dayMonth,
   gameWhen,
   savedWeek,
@@ -76,7 +85,6 @@ import {
  */
 
 type Outputs = inferRouterOutputs<AppRouter>
-type VisitRow = Outputs['attendance']['visits'][number]
 type SavedRow = Outputs['pubs']['getFavorites'][number]
 type Tab = 'visits' | 'saved' | 'bars'
 
@@ -85,6 +93,8 @@ export default function YourBars() {
   const insets = useSafeAreaInsets()
   const tabBar = useTabBarSpace()
   const palette = usePalette()
+  const layout = useLayout()
+  const nav = useNavInsets()
   useStatusBar('auto')
   const visits = useQuery(trpc.attendance.visits.queryOptions())
   const saved = useQuery(trpc.pubs.getFavorites.queryOptions())
@@ -126,10 +136,10 @@ export default function YourBars() {
   const mine = yourBars(visits.data ?? [], saved.data ?? [], from, distanceKm)
   const barRows = mine.bars.filter((b) => hit(b.name, b.neighborhood))
   // "Bares" junta as duas leituras; as outras abas dependem de uma só.
-  const query =
-    tab === 'visits'
+  const queryOf = (which: Tab) =>
+    which === 'visits'
       ? visits
-      : tab === 'saved'
+      : which === 'saved'
         ? saved
         : visits.isPending || visits.isError
           ? visits
@@ -139,114 +149,350 @@ export default function YourBars() {
     Promise.all([visits.refetch(), saved.refetch()])
   )
 
-  return (
-    <View
-      ref={shotSource.ref}
-      collapsable={false}
-      style={[styles.screen, { backgroundColor: palette.bg }]}
+  // Fora do celular (A04): tablet em pé é o mês inteiro e cards; deitado,
+  // "Já fui" e a lembrança do bar tocado (no dobrável) ou o mapa de onde você
+  // foi (no tablet); 13″ e Ultra deitados, as três abas em colunas.
+  const columns = layout.kind === 'split' && layout.wide
+  const aside = layout.kind === 'split' && !layout.wide
+  const fold =
+    aside &&
+    (layout.nav === 'duoRail' || layout.split === Math.round(layout.width / 2))
+  const content = layout.width - nav.left - nav.right - 56
+  const board =
+    layout.kind === 'stack'
+      ? { columns: content > 820 ? 3 : 2, cell: content > 820 ? 44 : 38 }
+      : undefined
+  // No lado a lado, tocar numa visita a escolhe (a mais recente de início).
+  const [chosen, setChosen] = useState<string | null>(null)
+  const all = visits.data ?? []
+  const memory = all.find((v) => v.eventId === chosen) ?? all[0] ?? null
+  const kmTo = (v: VisitRow) =>
+    v.latitude === null || v.longitude === null
+      ? null
+      : distanceKm(from, { lat: Number(v.latitude), lng: Number(v.longitude) })
+
+  const body = (which: Tab) => {
+    const query = queryOf(which)
+    return query.isPending ? (
+      <ActivityIndicator color={palette.ink} style={{ marginTop: 40 }} />
+    ) : query.isError ? (
+      <ErrorState
+        style={styles.empty}
+        title="Não deu para abrir seus bares."
+        error={query.error}
+        onRetry={query.refetch}
+        retrying={query.isFetching}
+      />
+    ) : (
+      // Trocar de aba troca o conteúdo em fade curto, sem salto.
+      <Animated.View key={which} entering={SWAP} style={styles.stack}>
+        {which === 'bars' ? (
+          <Bars
+            all={mine}
+            rows={barRows}
+            searching={Boolean(term)}
+            onOpen={openBar}
+            onToggle={toggleSaved}
+          />
+        ) : which === 'visits' ? (
+          <Visits
+            now={now}
+            all={all}
+            rows={visitRows}
+            searching={Boolean(term)}
+            isSaved={(id) => favorites.ids.has(id)}
+            onOpen={openBar}
+            onToggle={toggleSaved}
+            board={board}
+            selected={aside ? (memory?.eventId ?? null) : undefined}
+            onSelect={
+              aside
+                ? (v) => {
+                    haptic.select()
+                    setChosen(v.eventId)
+                  }
+                : undefined
+            }
+          />
+        ) : (
+          <Saved
+            now={now}
+            rows={savedRows}
+            searching={Boolean(term)}
+            onOpen={openBar}
+            onToggle={toggleSaved}
+            onExplore={() => router.navigate('/explore')}
+          />
+        )}
+      </Animated.View>
+    )
+  }
+
+  const segments = (
+    <Segments
+      tab={tab}
+      visits={visits.data?.length ?? 0}
+      saved={saved.data?.length ?? 0}
+      bars={mine.bars.length}
+      onPick={(next) => {
+        if (next === tab) return
+        haptic.select()
+        setPicked(next)
+      }}
+    />
+  )
+  const searchButton = (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={search === null ? 'Buscar' : 'Fechar busca'}
+      hitSlop={8}
+      onPress={() => setSearch(search === null ? '' : null)}
     >
+      <GlassRound>
+        <Icon
+          name={search === null ? 'search' : 'close'}
+          size={18}
+          color={palette.ink}
+        />
+      </GlassRound>
+    </Pressable>
+  )
+  const searchField =
+    search !== null ? (
+      <Animated.View entering={SWAP}>
+        <Glass tone={palette.dark ? 'dark' : 'light'} style={styles.search}>
+          <Icon name="search" size={16} color={palette.muted} />
+          <TextInput
+            autoFocus
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Buscar por nome, bairro ou jogo"
+            placeholderTextColor={palette.muted}
+            returnKeyType="search"
+            style={[text(14.5), styles.searchInput, { color: palette.ink }]}
+          />
+        </Glass>
+      </Animated.View>
+    ) : null
+  // Tablet em pé e três colunas: a busca fica sempre à vista.
+  const openSearch = (
+    <Glass
+      tone={palette.dark ? 'dark' : 'light'}
+      style={[styles.search, styles.searchOpen]}
+    >
+      <Icon
+        name="search"
+        size={18}
+        color={palette.muted}
+        accent={palette.dark ? ACID : LIVE}
+      />
+      <TextInput
+        value={search ?? ''}
+        onChangeText={setSearch}
+        placeholder="Qual era aquele bar?"
+        placeholderTextColor={palette.muted}
+        returnKeyType="search"
+        style={[text(15), styles.searchInput, { color: palette.ink }]}
+      />
+    </Glass>
+  )
+  const refresh = <RefreshControl {...pull} tintColor={palette.muted} />
+  const root = [
+    styles.screen,
+    {
+      backgroundColor: palette.bg,
+      paddingLeft: nav.left,
+      paddingRight: nav.right
+    }
+  ]
+
+  if (columns)
+    return (
+      <View ref={shotSource.ref} collapsable={false} style={root}>
+        <View style={[styles.wideTop, { paddingTop: insets.top + 28 }]}>
+          <Title lines={[['Seus bares']]} size={48} color={palette.ink} />
+          <View style={styles.wideSearch}>{openSearch}</View>
+        </View>
+        <View style={styles.wideColumns}>
+          {(
+            [
+              [
+                'visits',
+                'Já fui',
+                `${new Set(all.map((v) => v.barId)).size} bares`
+              ],
+              ['saved', 'Salvos', `${saved.data?.length ?? 0} bares`],
+              ['bars', 'Bares', `${mine.bars.length} no total`]
+            ] as const
+          ).map(([which, title, sub]) => (
+            <View key={which} style={styles.wideColumn}>
+              <View
+                style={[styles.columnHead, { borderBottomColor: palette.ink }]}
+              >
+                <Text style={[styles.columnTitle, { color: palette.ink }]}>
+                  {title}
+                </Text>
+                <Text style={[styles.columnSub, { color: palette.muted }]}>
+                  {sub}
+                </Text>
+              </View>
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={[
+                  styles.columnBody,
+                  { paddingBottom: tabBar + 24 }
+                ]}
+                refreshControl={refresh}
+              >
+                {body(which)}
+              </ScrollView>
+            </View>
+          ))}
+        </View>
+      </View>
+    )
+
+  if (aside)
+    return (
+      <View ref={shotSource.ref} collapsable={false} style={root}>
+        <View style={styles.sideBySide}>
+          <ScrollView
+            style={{ width: layout.split, flexGrow: 0 }}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={[
+              styles.body,
+              {
+                paddingTop: insets.top + (fold ? 22 : 26),
+                paddingBottom: tabBar + 24
+              },
+              !fold && { paddingHorizontal: 20 }
+            ]}
+            refreshControl={refresh}
+          >
+            {/* O título embaixo da lupa, como no design do lado a lado. */}
+            <View style={styles.sideTop}>{searchButton}</View>
+            <Title
+              lines={[['Seus bares']]}
+              size={fold ? 36 : 40}
+              color={palette.ink}
+            />
+            {searchField}
+            {segments}
+            {body(tab)}
+          </ScrollView>
+          {fold ? (
+            <ScrollView
+              style={{ backgroundColor: palette.dark ? '#161613' : '#ebe8df' }}
+              contentContainerStyle={{
+                paddingTop: insets.top + 74,
+                paddingHorizontal: 18,
+                paddingBottom: tabBar + 24
+              }}
+            >
+              {memory ? (
+                <BarMemory
+                  visit={memory}
+                  here={all.filter((v) => v.barId === memory.barId)}
+                  km={kmTo(memory)}
+                  saved={favorites.ids.has(memory.barId)}
+                  onToggle={() => toggleSaved(memory.barId)}
+                  photoHeight={
+                    layout.width - layout.split - nav.right < 436 ? 170 : 210
+                  }
+                />
+              ) : null}
+            </ScrollView>
+          ) : (
+            <View style={styles.grow}>
+              <VisitsMap
+                visits={all}
+                selected={memory}
+                onSelect={(v) => {
+                  haptic.select()
+                  setChosen(v.eventId)
+                }}
+                top={insets.top + 26}
+                center={{ latitude: from.lat, longitude: from.lng }}
+                padding={{
+                  top: insets.top + 80,
+                  left: 40,
+                  right: memory ? 400 : 40,
+                  bottom: tabBar + 40
+                }}
+              />
+              {memory ? (
+                <ScrollView
+                  style={[
+                    styles.floating,
+                    {
+                      top: insets.top + 32,
+                      maxHeight: layout.height - insets.top - 32 - tabBar - 16,
+                      backgroundColor: palette.dark
+                        ? 'rgba(22,22,19,.92)'
+                        : 'rgba(241,238,230,.94)'
+                    }
+                  ]}
+                  contentContainerStyle={styles.floatingBody}
+                >
+                  <BarMemory
+                    visit={memory}
+                    here={all.filter((v) => v.barId === memory.barId)}
+                    km={kmTo(memory)}
+                    saved={favorites.ids.has(memory.barId)}
+                    onToggle={() => toggleSaved(memory.barId)}
+                    photoHeight={170}
+                  />
+                </ScrollView>
+              ) : null}
+            </View>
+          )}
+        </View>
+      </View>
+    )
+
+  return (
+    <View ref={shotSource.ref} collapsable={false} style={root}>
       <ScrollView
         keyboardShouldPersistTaps="handled"
         onScrollEndDrag={shotSource.again}
         onMomentumScrollEnd={shotSource.again}
         contentContainerStyle={[
           styles.body,
-          { paddingTop: insets.top + 4, paddingBottom: tabBar + 24 }
+          board ? styles.boardBody : null,
+          {
+            paddingTop: insets.top + (board ? 28 : 4),
+            paddingBottom: tabBar + 24
+          }
         ]}
-        refreshControl={<RefreshControl {...pull} tintColor={palette.muted} />}
+        refreshControl={refresh}
       >
-        {/* O título com a lupa ao lado, na altura das outras telas. O
-            voltar do design não entra: aqui a tela é a raiz da aba. */}
-        <View style={styles.top}>
-          <Title lines={[['Seus bares']]} size={42} color={palette.ink} />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={search === null ? 'Buscar' : 'Fechar busca'}
-            hitSlop={8}
-            onPress={() => setSearch(search === null ? '' : null)}
-          >
-            <GlassRound>
-              <Icon
-                name={search === null ? 'search' : 'close'}
-                size={18}
-                color={palette.ink}
-              />
-            </GlassRound>
-          </Pressable>
-        </View>
-
-        {search !== null ? (
-          <Animated.View entering={SWAP}>
-            <Glass tone={palette.dark ? 'dark' : 'light'} style={styles.search}>
-              <Icon name="search" size={16} color={palette.muted} />
-              <TextInput
-                autoFocus
-                value={search}
-                onChangeText={setSearch}
-                placeholder="Buscar por nome, bairro ou jogo"
-                placeholderTextColor={palette.muted}
-                returnKeyType="search"
-                style={[text(14.5), styles.searchInput, { color: palette.ink }]}
-              />
-            </Glass>
-          </Animated.View>
-        ) : null}
-
-        <Segments
-          tab={tab}
-          visits={visits.data?.length ?? 0}
-          saved={saved.data?.length ?? 0}
-          bars={mine.bars.length}
-          onPick={(next) => {
-            if (next === tab) return
-            haptic.select()
-            setPicked(next)
-          }}
-        />
-
-        {query.isPending ? (
-          <ActivityIndicator color={palette.ink} style={{ marginTop: 40 }} />
-        ) : query.isError ? (
-          <ErrorState
-            style={styles.empty}
-            title="Não deu para abrir seus bares."
-            error={query.error}
-            onRetry={query.refetch}
-            retrying={query.isFetching}
-          />
+        {board ? (
+          <>
+            {/* Tablet em pé: as abas ao lado do título, a busca aberta. */}
+            <View style={styles.boardTop}>
+              <Title lines={[['Seus bares']]} size={52} color={palette.ink} />
+              <View
+                style={{ width: Math.min(420, content - 280), flexShrink: 0 }}
+              >
+                {segments}
+              </View>
+            </View>
+            {openSearch}
+          </>
         ) : (
-          // Trocar de aba troca o conteúdo em fade curto, sem salto.
-          <Animated.View key={tab} entering={SWAP} style={styles.stack}>
-            {tab === 'bars' ? (
-              <Bars
-                all={mine}
-                rows={barRows}
-                searching={Boolean(term)}
-                onOpen={openBar}
-                onToggle={toggleSaved}
-              />
-            ) : tab === 'visits' ? (
-              <Visits
-                now={now}
-                all={visits.data ?? []}
-                rows={visitRows}
-                searching={Boolean(term)}
-                isSaved={(id) => favorites.ids.has(id)}
-                onOpen={openBar}
-                onToggle={toggleSaved}
-              />
-            ) : (
-              <Saved
-                now={now}
-                rows={savedRows}
-                searching={Boolean(term)}
-                onOpen={openBar}
-                onToggle={toggleSaved}
-                onExplore={() => router.navigate('/explore')}
-              />
-            )}
-          </Animated.View>
+          <>
+            {/* O título com a lupa ao lado, na altura das outras telas. O
+                voltar do design não entra: aqui a tela é a raiz da aba. */}
+            <View style={styles.top}>
+              <Title lines={[['Seus bares']]} size={42} color={palette.ink} />
+              {searchButton}
+            </View>
+            {searchField}
+            {segments}
+          </>
         )}
+        {body(tab)}
       </ScrollView>
     </View>
   )
@@ -351,7 +597,10 @@ function Visits({
   searching,
   isSaved,
   onOpen,
-  onToggle
+  onToggle,
+  board,
+  selected,
+  onSelect
 }: {
   now: number
   all: VisitRow[]
@@ -360,10 +609,63 @@ function Visits({
   isSaved: (barId: string) => boolean
   onOpen: (barId: string) => void
   onToggle: (barId: string) => void
+  /** Tablet em pé: o mês inteiro e as visitas em cards. */
+  board?: { columns: number; cell: number }
+  /** Lado a lado: a visita tocada, que a lembrança ao lado mostra. */
+  selected?: string | null
+  onSelect?: (visit: VisitRow) => void
 }) {
   const palette = usePalette()
   const t = tones(palette)
   const grid = visitGrid(all, now)
+  if (board) {
+    const cards = Array.from(
+      { length: Math.ceil(rows.length / board.columns) },
+      (_, r) => rows.slice(r * board.columns, (r + 1) * board.columns)
+    )
+    return (
+      <>
+        <MonthsCard
+          visits={all}
+          now={now}
+          selected={all[0] ? dayKey(all[0].startsAt) : null}
+          cell={board.cell}
+        />
+        {!all.length ? (
+          <NoVisits />
+        ) : (
+          <>
+            <Header
+              label="Onde você foi"
+              count={`${new Set(all.map((v) => v.barId)).size} bares · ${all.length} ${all.length === 1 ? 'jogo' : 'jogos'}`}
+            />
+            {!rows.length && searching ? <NoMatch /> : null}
+            {cards.map((line) => (
+              <View key={line[0]?.eventId} style={styles.cardRow}>
+                {Array.from({ length: board.columns }, (_, i) => {
+                  const visit = line[i]
+                  return visit ? (
+                    <VisitCard
+                      key={visit.eventId}
+                      visit={visit}
+                      saved={isSaved(visit.barId)}
+                      onOpen={
+                        visit.barActive ? () => onOpen(visit.barId) : undefined
+                      }
+                      onToggle={() => onToggle(visit.barId)}
+                    />
+                  ) : (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: lugar vazio no fim da linha
+                    <View key={i} style={styles.grow} />
+                  )
+                })}
+              </View>
+            ))}
+          </>
+        )}
+      </>
+    )
+  }
   return (
     <>
       <Card shadow={t.glow} offset={5}>
@@ -394,15 +696,7 @@ function Visits({
       </Text>
 
       {!all.length ? (
-        <View style={styles.empty}>
-          <Text style={[text(16, 'Bold'), { color: palette.ink }]}>
-            Nenhum jogo com código validado ainda.
-          </Text>
-          <Text style={[text(14, 'Regular', 1.45), { color: palette.muted }]}>
-            Nos bares Elite, “Vou assistir aqui” dá um código que vale a oferta
-            da casa no balcão. Validado, o jogo entra aqui.
-          </Text>
-        </View>
+        <NoVisits />
       ) : !rows.length && searching ? (
         <NoMatch />
       ) : (
@@ -416,7 +710,8 @@ function Visits({
               return (
                 <Row
                   key={visit.eventId}
-                  first={i === 0}
+                  first={i === 0 || group.rows[i - 1]?.eventId === selected}
+                  selected={visit.eventId === selected}
                   side={
                     <View style={styles.dateCol}>
                       <Text style={[styles.day, { color: palette.ink }]}>
@@ -431,7 +726,11 @@ function Visits({
                   line={gameTitle(visit)}
                   saved={isSaved(visit.barId)}
                   onOpen={
-                    visit.barActive ? () => onOpen(visit.barId) : undefined
+                    onSelect
+                      ? () => onSelect(visit)
+                      : visit.barActive
+                        ? () => onOpen(visit.barId)
+                        : undefined
                   }
                   onToggle={() => onToggle(visit.barId)}
                 />
@@ -441,6 +740,21 @@ function Visits({
         ))
       )}
     </>
+  )
+}
+
+function NoVisits() {
+  const palette = usePalette()
+  return (
+    <View style={styles.empty}>
+      <Text style={[text(16, 'Bold'), { color: palette.ink }]}>
+        Nenhum jogo com código validado ainda.
+      </Text>
+      <Text style={[text(14, 'Regular', 1.45), { color: palette.muted }]}>
+        Nos bares Elite, “Vou assistir aqui” dá um código que vale a oferta da
+        casa no balcão. Validado, o jogo entra aqui.
+      </Text>
+    </View>
   )
 }
 
@@ -834,10 +1148,13 @@ function Row({
   onOpen,
   onToggle,
   extra,
+  selected,
   gap = 14,
   pad = 12
 }: {
   first: boolean
+  /** A visita tocada no lado a lado: cartão com contorno e sombra acid. */
+  selected?: boolean
   side: ReactNode
   name: string
   line: string
@@ -867,10 +1184,19 @@ function Row({
           style={[
             styles.row,
             { gap, paddingVertical: pad },
-            !first && { borderTopWidth: 1, borderTopColor: palette.line },
+            !first &&
+              !selected && { borderTopWidth: 1, borderTopColor: palette.line },
+            selected && [
+              styles.picked,
+              {
+                backgroundColor: palette.dark ? '#262621' : '#fff',
+                borderColor: palette.dark ? 'rgba(241,238,230,.6)' : INK
+              }
+            ],
             press.style
           ]}
         >
+          {selected ? <HardShadow color={ACID} offset={3} radius={6} /> : null}
           {side}
           <View style={styles.rowText}>
             <Text
@@ -902,30 +1228,6 @@ function Row({
         </Animated.View>
       </Pressable>
     </Animated.View>
-  )
-}
-
-/** O coração do design: vermelho cheio salvo, apagado quando não. */
-function SavedHeart({ on }: { on: boolean }) {
-  const palette = usePalette()
-  const color = on ? palette.live : palette.muted
-  return (
-    <Svg width={20} height={20} viewBox="0 0 24 24">
-      <G opacity={on ? 1 : 0.25}>
-        <Path
-          d="M12 21s-8.6-5-8.6-11.2A4.8 4.8 0 0 1 12 6.6a4.8 4.8 0 0 1 8.6 3.2C20.6 16 12 21 12 21z"
-          fill={color}
-        />
-      </G>
-      <Path
-        d="M12 18.6s-6.4-3.9-6.4-8.5A3.2 3.2 0 0 1 12 8.9a3.2 3.2 0 0 1 6.4 1.2c0 4.6-6.4 8.5-6.4 8.5z"
-        fill={color}
-      />
-      <Path
-        d="M19.3 2.2l.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7z"
-        fill={on ? palette.ink : palette.muted}
-      />
-    </Svg>
   )
 }
 
@@ -1006,6 +1308,68 @@ const styles = StyleSheet.create({
     marginBottom: 4
   },
   row: { flexDirection: 'row', alignItems: 'center' },
+  picked: {
+    marginTop: 4,
+    marginRight: 6,
+    marginBottom: 7,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    borderWidth: 1.5
+  },
+  grow: { flex: 1, minWidth: 0 },
+  cardRow: { flexDirection: 'row', gap: 12 },
+  boardBody: { paddingHorizontal: 28, gap: 16 },
+  boardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    gap: 20
+  },
+  searchOpen: { height: 50, borderRadius: 25 },
+  sideBySide: { flex: 1, flexDirection: 'row' },
+  sideTop: { flexDirection: 'row', justifyContent: 'flex-end' },
+  floating: {
+    position: 'absolute',
+    right: 20,
+    width: 368,
+    borderRadius: 9,
+    shadowColor: '#000',
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 20 }
+  },
+  floatingBody: { padding: 14 },
+  wideTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 20,
+    paddingHorizontal: 24
+  },
+  wideSearch: { width: 420 },
+  wideColumns: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 20,
+    paddingHorizontal: 24,
+    marginTop: 12
+  },
+  wideColumn: { flex: 1, minWidth: 0 },
+  columnHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    paddingBottom: 10,
+    borderBottomWidth: 2
+  },
+  columnTitle: {
+    fontFamily: 'Anton',
+    fontSize: 26,
+    textTransform: 'uppercase',
+    marginVertical: -6
+  },
+  columnSub: { fontFamily: 'GeistMono-SemiBold', fontSize: 11.5 },
+  columnBody: { gap: 14, paddingTop: 14 },
   thumb: { width: 50, height: 50, borderRadius: 3 },
   times: { width: 40, alignItems: 'flex-end' },
   timesNumber: { fontFamily: 'Anton', fontSize: 20, marginVertical: -4 },
