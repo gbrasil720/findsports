@@ -1,6 +1,11 @@
 import { useRouter } from 'expo-router'
 import { StyleSheet, View } from 'react-native'
-import { OnboardingTop, useFrameKind } from '@/components/onboarding'
+import {
+  OnboardingTop,
+  StepFooter,
+  useFrameKind,
+  usePane
+} from '@/components/onboarding'
 import {
   CARD,
   DROP,
@@ -31,17 +36,20 @@ const FEATURES = [
 export default function Welcome() {
   // Na mesa a pergunta já está na metade de cima (Adaptativo 09).
   const table = useFrameKind() === 'table'
+  const wide = usePane()?.wide ?? false
   const router = useRouter()
   return (
     <Screen
       gap={16}
       padding={18}
       footer={
-        <PillButton
-          label="Começar"
-          trailing
-          onPress={() => router.push('/onboarding/sports')}
-        />
+        <StepFooter back={false}>
+          <PillButton
+            label="Começar"
+            trailing
+            onPress={() => router.push('/onboarding/sports')}
+          />
+        </StepFooter>
       }
     >
       <OnboardingTop step={1} />
@@ -51,11 +59,20 @@ export default function Welcome() {
         </Text>
         {table ? null : (
           <Title
-            lines={[
-              ['Vamos achar os'],
-              ['', 'melhores bares'],
-              ['pro seu jogo.']
-            ]}
+            // Fora do celular a coluna é mais larga e o título corre como no
+            // design ("Vamos achar os melhores / bares pro seu jogo.").
+            lines={
+              wide
+                ? [
+                    ['Vamos achar os ', 'melhores'],
+                    ['', 'bares', ' pro seu jogo.']
+                  ]
+                : [
+                    ['Vamos achar os'],
+                    ['', 'melhores bares'],
+                    ['pro seu jogo.']
+                  ]
+            }
             size={42}
           />
         )}
