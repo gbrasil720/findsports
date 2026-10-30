@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import {
   type Achievement,
+  coverLine,
   describe as describeMedal,
   fullDate,
   missingLine,
@@ -95,6 +96,10 @@ describe('estante no tablet', () => {
     expect(nearest(list).map((a) => a.id)).toEqual(['esp4', 'bai6', 'bar10'])
     expect(missingLine(list[4] as Achievement)).toBe('Faltam 2 bairros.')
     expect(missingLine(list[5] as Achievement)).toBe('Falta 1 esporte.')
+  })
+  it('a linha da tela de fora do Flip', () => {
+    expect(coverLine(bares[1] as Achievement)).toBe('5º bar diferente')
+    expect(coverLine(medal('ava10', 'resenhas', 10, 10))).toBe('10ª resenha')
   })
   it('linha do tempo: só as ganhas, da mais nova', () => {
     expect(timeline(list).map((a) => a.id)).toEqual(['bar1', 'bar5', 'bai3'])
