@@ -930,7 +930,13 @@ function Step({
   const palette = usePalette()
   const press = usePressScale()
   const first = place === 1
-  const block = blockColors(palette, first, row.me)
+  const { kind } = useLayout()
+  const block = blockColors(
+    palette,
+    first,
+    row.me,
+    kind !== 'phone' && kind !== 'duoClosed'
+  )
   return (
     <Pressable
       accessibilityRole="button"
@@ -966,7 +972,12 @@ function Step({
         <Text
           style={[
             styles.value,
-            { fontSize: Math.round((first ? 26 : 21) * k), color: palette.ink }
+            { fontSize: Math.round((first ? 26 : 21) * k), color: palette.ink },
+            // No Android a linha mede menos que o Anton e o número saía
+            // cortado embaixo; no iOS a altura natural já basta.
+            Platform.OS === 'android' && {
+              lineHeight: Math.round((first ? 26 : 21) * k * 1.5)
+            }
           ]}
         >
           {row.value}{' '}
@@ -1002,8 +1013,15 @@ function Step({
   )
 }
 
-function blockColors(palette: Palette, first: boolean, me: boolean) {
+function blockColors(
+  palette: Palette,
+  first: boolean,
+  me: boolean,
+  wide: boolean
+) {
   if (first) return { bg: ACID, fg: INK }
+  // Fora do celular, no escuro, o seu degrau é o grafite do A05, não papel.
+  if (me && wide && palette.dark) return { bg: '#34342e', fg: PAPER }
   if (me) return { bg: palette.ink, fg: palette.bg }
   return { bg: palette.mark, fg: palette.ink }
 }
