@@ -4,7 +4,7 @@ import {
   OnboardingTop,
   StepFooter,
   useFrameKind,
-  usePane
+  useStepTitle
 } from '@/components/onboarding'
 import {
   CARD,
@@ -36,7 +36,15 @@ const FEATURES = [
 export default function Welcome() {
   // Na mesa a pergunta já está na metade de cima (Adaptativo 09).
   const table = useFrameKind() === 'table'
-  const wide = usePane()?.wide ?? false
+  // Fora do celular, com coluna larga, o título corre como no design
+  // ("Vamos achar os melhores / bares pro seu jogo.").
+  const title = useStepTitle(
+    [
+      ['Vamos achar os ', 'melhores'],
+      ['', 'bares', ' pro seu jogo.']
+    ],
+    [['Vamos achar os'], ['', 'melhores bares'], ['pro seu jogo.']]
+  )
   const router = useRouter()
   return (
     <Screen
@@ -57,25 +65,7 @@ export default function Welcome() {
         <Text style={[text(14, 'Bold'), { color: HOT }]}>
           É torcedor? Chegou no lugar certo.
         </Text>
-        {table ? null : (
-          <Title
-            // Fora do celular a coluna é mais larga e o título corre como no
-            // design ("Vamos achar os melhores / bares pro seu jogo.").
-            lines={
-              wide
-                ? [
-                    ['Vamos achar os ', 'melhores'],
-                    ['', 'bares', ' pro seu jogo.']
-                  ]
-                : [
-                    ['Vamos achar os'],
-                    ['', 'melhores bares'],
-                    ['pro seu jogo.']
-                  ]
-            }
-            size={42}
-          />
-        )}
+        {table ? null : <Title lines={title} size={42} />}
       </View>
       <Text style={[text(16.5, 'Regular', 1.48), { color: SUB }]}>
         Em 3 passos a gente calibra sua busca: esportes favoritos, quem você

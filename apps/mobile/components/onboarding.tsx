@@ -247,6 +247,22 @@ export const Pane = createContext<{
 } | null>(null)
 export const usePane = () => useContext(Pane)
 
+/**
+ * O título do passo fora do celular: numa linha quando cabe na coluna
+ * (Anton 36 até ~400 de texto), senão quebrado onde o design quebra. No
+ * celular, sempre o de antes.
+ */
+export function useStepTitle(
+  one: [string, string?, string?][],
+  two: [string, string?, string?][],
+  phone: [string, string?, string?][] = two
+) {
+  const pane = useContext(Pane)
+  if (!pane?.wide) return phone
+  // A coluna menos os 18 de cada lado do passo.
+  return pane.width - 2 * pane.side - 36 >= 400 ? one : two
+}
+
 /** "FU", "BA", "F1", "MMA": a sigla grande atrás do nome do esporte. */
 export function sportMark(name: string) {
   const acronym = name.match(/\b[A-Z]{2,}\b/)
