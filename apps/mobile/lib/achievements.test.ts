@@ -13,6 +13,7 @@ import {
   shortDate,
   shortDescribe,
   timeline,
+  timelineLine,
   unlockedLine
 } from './achievements'
 
@@ -113,6 +114,15 @@ describe('estante no tablet', () => {
   it('a linha da tela de fora do Flip', () => {
     expect(coverLine(bares[1] as Achievement)).toBe('5º bar diferente')
     expect(coverLine(medal('ava10', 'resenhas', 10, 10))).toBe('10ª resenha')
+  })
+  it('a linha de cada medalha na linha do tempo', () => {
+    expect(timelineLine(bares[1] as Achievement)).toBe(
+      'Boteco Sete validou seu código'
+    )
+    expect(
+      timelineLine(medal('bai3', 'bairros', 3, 3, { where: 'Itaim' }))
+    ).toBe('Terceiro bairro: Itaim')
+    expect(timelineLine(medal('ava1', 'resenhas', 1, 0))).toBe('')
   })
   it('linha do tempo: só as ganhas, da mais nova', () => {
     expect(timeline(list).map((a) => a.id)).toEqual(['bar1', 'bar5', 'bai3'])

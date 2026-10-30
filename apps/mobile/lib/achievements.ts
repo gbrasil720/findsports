@@ -118,6 +118,26 @@ export const amountLine = (a: Achievement) =>
     ? unit(a.group, a.target)
     : `${unit(a.group, a.target)} diferentes`
 
+const NTH: Record<number, string> = {
+  2: 'Segundo',
+  3: 'Terceiro',
+  4: 'Quarto',
+  5: 'Quinto',
+  6: 'Sexto'
+}
+
+/**
+ * A linha da medalha na linha do tempo (A06): "Boteco Sete validou seu
+ * código", "Terceiro bairro: Itaim"; das outras, o lugar gravado.
+ */
+export function timelineLine(a: Achievement) {
+  if (!a.where) return ''
+  if (a.group === 'bares') return `${a.where} validou seu código`
+  if (a.group === 'bairros')
+    return `${NTH[a.target] ?? `${a.target}º`} bairro: ${a.where}`
+  return a.where
+}
+
 /** O texto curto da mesa (A06): o do detalhe sem "Você assistiu a jogos em". */
 export function shortDescribe(a: Achievement) {
   const line = describe(a).replace(/^Você assistiu a (jogos em )?/, '')
