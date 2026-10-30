@@ -381,9 +381,13 @@ export default function YourBars() {
               contentContainerStyle={styles.tableCardsBody}
             >
               {all.map((visit) => (
+                // Em linha: o card divide a largura (`flex: 1`) com a da caixa.
                 <View
                   key={visit.eventId}
-                  style={{ width: layout.width > 800 ? 250 : 230 }}
+                  style={{
+                    width: layout.width > 800 ? 250 : 230,
+                    flexDirection: 'row'
+                  }}
                 >
                   <VisitCard
                     visit={visit}
@@ -585,6 +589,15 @@ export default function YourBars() {
               </View>
             </View>
             {openSearch}
+          </>
+        ) : layout.kind === 'duoClosed' ? (
+          <>
+            {/* Duo fechado: a lupa em cima e o título embaixo, como no
+                design (o voltar não entra: a tela é a raiz da aba). */}
+            <View style={styles.sideTop}>{searchButton}</View>
+            <Title lines={[['Seus bares']]} size={42} color={palette.ink} />
+            {searchField}
+            {segments}
           </>
         ) : (
           <>
