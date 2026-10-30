@@ -40,7 +40,6 @@ import {
   MapGroup,
   MeDot,
   Photo,
-  PhotoPill,
   QuietDot,
   RadiusCircle,
   type SearchBar
@@ -1559,7 +1558,13 @@ function Cover({
   onOpen: (bar: SearchBar) => void
   onGo: (bar: SearchBar) => void
 }) {
-  const { width, height } = useWindowDimensions()
+  // A medida da própria tela (no emulador e na capa, a janela diz outra).
+  const window = useWindowDimensions()
+  const [{ width, height }, setSize] = useState({
+    width: window.width,
+    height: window.height
+  })
+  const insets = useSafeAreaInsets()
   const [page, setPage] = useState(0)
   const shown = coverBars(bars)
   const bar = shown[Math.min(page, shown.length - 1)]
@@ -1574,7 +1579,10 @@ function Cover({
   const live = isLive(bar.nextEvent, now)
   const where = `${live ? 'Ao vivo' : formatTime(bar.nextEvent.startsAt)} · ${formatKm(bar.distance_km)}`
   return (
-    <View style={[StyleSheet.absoluteFill, { backgroundColor: '#2a2a25' }]}>
+    <View
+      style={[StyleSheet.absoluteFill, { backgroundColor: '#2a2a25' }]}
+      onLayout={(e) => setSize(e.nativeEvent.layout)}
+    >
       <ScrollView
         horizontal
         pagingEnabled
@@ -1619,24 +1627,28 @@ function Cover({
               >
                 {item.name}
               </Text>
-              <Text
-                style={[text(13, 'Regular', 1.3), { color: '#d6d3cb' }]}
-                numberOfLines={1}
-              >
-                {item.neighborhood}
-                {item.goingCount ? ` · ${item.goingCount} vão` : ''}
-              </Text>
+              <CoverLine bar={item} />
             </View>
           </Pressable>
         ))}
       </ScrollView>
-      <View pointerEvents="none" style={styles.coverTop}>
-        <PhotoPill kind={live ? 'live' : 'dark'} height={26}>
+      <View
+        pointerEvents="none"
+        // 26 do topo, como no design, abaixo da barra de status se houver.
+        style={[styles.coverTop, { top: Math.max(26, insets.top + 8) }]}
+      >
+        {/* O selo reto do design (a01j), vermelho ao vivo. */}
+        <View
+          style={[
+            styles.coverBadge,
+            { backgroundColor: live ? LIVE : 'rgba(18,18,15,.7)' }
+          ]}
+        >
           {live ? <View style={styles.coverDot} /> : null}
           <Text style={[text(11.5, 'Bold', 1.2), { color: PAPER }]}>
             {where}
           </Text>
-        </PhotoPill>
+        </View>
         {shown.length > 1 ? (
           <View style={styles.coverDots}>
             {shown.map((item) => (
@@ -1674,6 +1686,29 @@ function Cover({
         </View>
       </ScalePress>
     </View>
+  )
+}
+
+/**
+ * "34 vão · chopp em dobro até o intervalo…": quem vai e a oferta da casa
+ * neste jogo (só no Elite), que a busca não traz e a página do bar traz.
+ */
+function CoverLine({ bar }: { bar: SearchBar }) {
+  const page = useQuery(trpc.pubs.getById.queryOptions({ id: bar.id }))
+  const offer =
+    page.data?.events.find((game) => game.id === bar.nextEvent?.id)
+      ?.houseOffer ?? null
+  const parts = [
+    bar.goingCount ? `${bar.goingCount} vão` : bar.neighborhood,
+    offer ? offer.charAt(0).toLocaleLowerCase('pt-BR') + offer.slice(1) : null
+  ].filter(Boolean)
+  return (
+    <Text
+      style={[text(13, 'Regular', 1.3), { color: '#d6d3cb' }]}
+      numberOfLines={1}
+    >
+      {parts.join(' · ')}
+    </Text>
   )
 }
 
@@ -1718,12 +1753,19 @@ const styles = StyleSheet.create({
   },
   coverTop: {
     position: 'absolute',
-    top: 26,
     left: 22,
     right: 22,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center'
+  },
+  coverBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    borderRadius: 3
   },
   coverDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: PAPER },
   coverDots: { flexDirection: 'row', gap: 5 },
