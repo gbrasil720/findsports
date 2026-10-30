@@ -221,6 +221,14 @@ integrationTest('ranking dos amigos e posição na cidade', async () => {
     ])
     expect(board.rows[0]?.username).toBeTruthy()
     expect(board.around.map((r) => r.position)).toEqual([2, 3, 4])
+    // Uma semana atrás a Ana era 3ª (1 bar; Dora ainda sem nenhum em
+    // outubro): caiu uma posição.
+    expect(board.weekMove).toBe(-1)
+    // A página seguinte não refaz a conta da semana.
+    expect(await readCityBoard(ana.id, 'bars', 4, now)).toMatchObject({
+      listed: true,
+      weekMove: null
+    })
     // Jogos: um por jogo validado; Dora tem dois em outubro, como a Ana.
     const games = await readCityBoard(ana.id, 'games', 0, now)
     if (!games?.listed) throw new Error('Ana devia estar na lista')

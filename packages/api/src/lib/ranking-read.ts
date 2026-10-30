@@ -130,15 +130,9 @@ export async function readCityBoard(
   const size = cursor === 0 ? CITY_TOP : CITY_PAGE
   const start = monthStart(now)
   const key = metric === 'bars' ? visit.barId : visit.eventId
-  const result = await db.execute<{
-    id: string
-    name: string
-    username: string | null
-    value: number
-    position: number
-    total: number
-  }>(sql`
-    WITH people AS (
+  /** A cidade em ordem com as visitas do mês até `to`. */
+  const ranked = (to: Date) => sql`
+    people AS (
       SELECT u.id, u.name, u.username
       FROM "user" u
       WHERE u.role = 'fan' AND u.banned IS NOT TRUE
@@ -150,7 +144,7 @@ export async function readCityBoard(
       FROM ${visit}
       JOIN event e ON e.id = ${visit.eventId}
       WHERE e.starts_at >= (${start.toISOString()}::timestamptz AT TIME ZONE 'UTC')
-        AND e.starts_at < (${now.toISOString()}::timestamptz AT TIME ZONE 'UTC')
+        AND e.starts_at < (${to.toISOString()}::timestamptz AT TIME ZONE 'UTC')
         AND ${visit.userId} IN (SELECT id FROM people)
       GROUP BY 1, 2
     ), scores AS (
@@ -165,7 +159,16 @@ export async function readCityBoard(
         (count(*) OVER ())::int AS total
       FROM people p
       LEFT JOIN scores s ON s.user_id = p.id
-    )
+    )`
+  const result = await db.execute<{
+    id: string
+    name: string
+    username: string | null
+    value: number
+    position: number
+    total: number
+  }>(sql`
+    WITH ${ranked(now)}
     SELECT r.id, r.name, r.username, r.value, r.position, r.total
     FROM ranked r, (SELECT position FROM ranked WHERE id = ${me}) m
     WHERE (r.position > ${cursor} AND r.position <= ${cursor + size})
@@ -178,6 +181,19 @@ export async function readCityBoard(
   }))
   const total = result.rows[0]?.total ?? 0
   const position = rows.find((row) => row.me)?.position ?? null
+  // "▲ 312 na semana" (A05): a sua posição de uma semana atrás, na mesma
+  // lista de hoje. Só na primeira página; no começo do mês, nada, como as
+  // setas dos amigos.
+  const weekAgo = new Date(now.getTime() - MOVE_WINDOW_MS)
+  let weekMove: number | null = null
+  if (cursor === 0 && position && weekAgo >= start) {
+    const before = await db.execute<{ position: number }>(sql`
+      WITH ${ranked(weekAgo)}
+      SELECT position FROM ranked WHERE id = ${me}
+    `)
+    const was = before.rows[0]?.position
+    weekMove = was === undefined ? null : was - position
+  }
   return {
     listed: true as const,
     city: mine.city,
@@ -185,6 +201,7 @@ export async function readCityBoard(
     metric,
     total,
     position,
+    weekMove,
     rows: rows.filter(
       (r) => r.position > cursor && r.position <= cursor + size
     ),
