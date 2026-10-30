@@ -336,7 +336,7 @@ export default function YourBars() {
             }}
             top={insets.top + 12}
             center={{ latitude: from.lat, longitude: from.lng }}
-            padding={{ top: insets.top + 90, left: 40, right: 40, bottom: 40 }}
+            padding={{ top: insets.top + 120, left: 60, right: 60, bottom: 30 }}
           />
         </View>
         <View
@@ -500,9 +500,9 @@ export default function YourBars() {
                 top={insets.top + 26}
                 center={{ latitude: from.lat, longitude: from.lng }}
                 padding={{
-                  top: insets.top + 80,
+                  top: insets.top + 130,
                   left: 40,
-                  right: memory ? 400 : 40,
+                  right: memory ? 470 : 60,
                   bottom: tabBar + 40
                 }}
               />
@@ -1264,7 +1264,9 @@ function Row({
         onPress={onOpen}
         onPressIn={press.onPressIn}
         onPressOut={press.onPressOut}
+        style={selected && styles.pickedSlot}
       >
+        {selected ? <HardShadow color={ACID} offset={3} radius={6} /> : null}
         <Animated.View
           style={[
             styles.row,
@@ -1281,7 +1283,6 @@ function Row({
             press.style
           ]}
         >
-          {selected ? <HardShadow color={ACID} offset={3} radius={6} /> : null}
           {side}
           <View style={styles.rowText}>
             <Text
@@ -1393,10 +1394,8 @@ const styles = StyleSheet.create({
     marginBottom: 4
   },
   row: { flexDirection: 'row', alignItems: 'center' },
+  pickedSlot: { marginTop: 4, marginRight: 6, marginBottom: 7 },
   picked: {
-    marginTop: 4,
-    marginRight: 6,
-    marginBottom: 7,
     paddingHorizontal: 12,
     borderRadius: 6,
     borderWidth: 1.5
