@@ -57,6 +57,10 @@ export const firstName = (name: string) => name.trim().split(/\s+/)[0] ?? name
 /** "1.284º". */
 export const ordinal = (n: number) => `${n.toLocaleString('pt-BR')}º`
 
+/** "Top 4%" (A05): a fatia da cidade em que você está, para cima. */
+export const topLabel = (position: number, total: number) =>
+  `Top ${Math.max(1, Math.ceil((position / Math.max(total, 1)) * 100))}%`
+
 /** A lista da cidade (27a): só as duas métricas que o dono escolheu. */
 export const CITY_METRICS = METRICS.filter(
   (m): m is { key: 'bars' | 'games'; label: string } =>
