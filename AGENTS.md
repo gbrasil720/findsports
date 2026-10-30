@@ -995,12 +995,25 @@ invente layout que o projeto não tem.
   em `components/side-nav.tsx`. Fora do celular a `NativeTabs` só se esconde (`hidden`),
   para abrir o dobrável não remontar as abas. Telas das abas descontam a navegação por
   `useNavInsets()` (`useTabBarSpace` é o `bottom` dele); o primeiro acesso (4o) cerca o botão
-  da IA por `useAiButtonCenter`. A postura da dobra (livro, Flex Mode) não é lida: o
-  dobrável aberto é reconhecido pela proporção, e a postura de verdade exige a Jetpack
-  WindowManager num build de desenvolvimento. **Build de desenvolvimento no iOS 27 não abre**
-  ("UIScene life cycle is required"): o SDK 57 não adota UIScene, então o iPhone Duo (só
-  existe no iOS 27.1) roda apenas no Expo Go, em modo de compatibilidade de iPhone. iPad e
-  Android rodam no Expo Go em tela cheia. No Android: `adb reverse tcp:8081 tcp:8081` e
+  da IA por `useAiButtonCenter`. Há ainda `table` (meio dobrado na mesa: Duo em laptop, Flex
+  Mode; `split` é a altura da metade de cima) e `cover` (tela de fora do Z Flip 8, 360 x 400 dp,
+  nav `none`); `gap` é a largura da dobra, e o painel da direita começa em `split + gap`. A
+  postura vem de `modules/fold-posture` (módulo local do Expo: `UIHingeInteraction` no iOS
+  27.1, Jetpack WindowManager no Android), que só existe no build de desenvolvimento; no Expo
+  Go o dobrável aberto é reconhecido pela proporção e `table` não aparece. O navegador DEV
+  mostra a classe e a postura no topo. **Build de desenvolvimento:** iOS com
+  `bunx expo run:ios --device <udid>` (o iOS 27 exige o ciclo de cenas, ligado por
+  `ios.enableSceneSupport` do `expo-build-properties`; sai no SDK 58); depois de criar ou
+  mudar módulo local, `pod install` em `ios/`. Android com `bunx expo run:android`, usando o
+  JDK do Android Studio (25) com `JAVA_TOOL_OPTIONS=--enable-native-access=ALL-UNNAMED`, senão
+  o CMake falha em "A restricted method in java.lang.System has been called"; o build Android
+  ainda fecha no mapa sem a chave do Maps SDK (`com.google.android.geo.API_KEY`), então abra
+  `onside://dev` para conferir postura. **Dobrar no simulador:** o iPhone Duo dobra pelos três
+  botões da barra de baixo da janela dele no DeviceHub (fechado, livro, aberto) e gira por
+  `idb ui rotate`; a tela aberta é o display `primary-1` do `simctl io screenshot`. O AVD do
+  Fold dobra por `adb emu posture 2` (meio) e `3` (aberto) e gira por `adb emu rotate`; a
+  tela de fora do Flip se imita com `adb shell wm size 720x800` e `wm density 320`. iPad e
+  Android também rodam no Expo Go em tela cheia. No Android: `adb reverse tcp:8081 tcp:8081` e
   `tcp:3001`, e `adb shell am start -a android.intent.action.VIEW -d exp://localhost:8081`.
   O web do `vite dev` escuta só em `::1`: para o simulador alcançar, suba com
   `bun run dev -- --host 127.0.0.1`.
