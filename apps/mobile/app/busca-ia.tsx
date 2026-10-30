@@ -230,6 +230,14 @@ export default function AiSearch() {
   // só turnos novos animam.
   const [restored, setRestored] = useState(() => turns.length > 0)
   const [recents, setRecents] = useState<Recent[]>(readRecents)
+  // Girar o tablet muda a largura da conversa, e a transição de layout dos
+  // blocos ficava presa na largura antiga: a conversa monta de novo na nova,
+  // pronta, sem replay das entradas.
+  const [shownWidth, setShownWidth] = useState(layout.width)
+  if (shownWidth !== layout.width) {
+    setShownWidth(layout.width)
+    setRestored(true)
+  }
   const [draft, setDraft] = useState('')
   const [placeOn, setPlaceOn] = useState(true)
   const [day, setDay] = useState<'today' | 'tomorrow' | null>('today')
@@ -689,7 +697,7 @@ export default function AiSearch() {
         }}
       >
         <LayoutAnimationConfig
-          key={conversation.id}
+          key={`${conversation.id}:${shownWidth}`}
           skipEntering={restored}
           skipExiting
         >
