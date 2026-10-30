@@ -277,8 +277,8 @@ function Cover({ step, onContinue }: { step: number; onContinue: () => void }) {
     .map((sport) => sport.name)
   return (
     <Animated.View
-      entering={FadeIn.duration(200)}
-      exiting={FadeOut.duration(140)}
+      entering={FadeIn.duration(200).easing(EASE)}
+      exiting={FadeOut.duration(140).easing(EASE)}
       style={styles.cover}
     >
       <Text style={styles.coverKicker}>
