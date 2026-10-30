@@ -87,25 +87,36 @@ const COLUMN = 760
 export function SettingsSection({
   tab,
   width,
-  mapHeight
+  mapHeight,
+  panel
 }: {
   tab: Tab
   /** A largura da coluna: com mais de 620, duas colunas. */
   width: number
   mapHeight?: number
+  /**
+   * À direita do menu "Você" (o "Sair da conta" fica na lista); `tablet`
+   * acrescenta o que o design põe a mais no tablet deitado: os avisos sob as
+   * Preferências e as sessões sob a Privacidade (tabLand7).
+   */
+  panel?: 'tablet' | 'fold'
 }) {
   const wide = width > TWO_COLUMNS
+  const extras = panel === 'tablet'
   return tab === 'preferencias' ? (
-    <Preferences
-      wide={wide}
-      mapHeight={mapHeight ?? (wide ? 150 : undefined)}
-    />
+    <>
+      <Preferences
+        wide={wide}
+        mapHeight={mapHeight ?? (wide ? 150 : undefined)}
+      />
+      {extras ? <NoticesPreview /> : null}
+    </>
   ) : tab === 'avisos' ? (
     <Notices />
   ) : tab === 'conta' ? (
-    <Account />
+    <Account leave={!panel} />
   ) : (
-    <Privacy wide={wide} />
+    <Privacy wide={wide} sessions={extras} />
   )
 }
 
@@ -504,87 +515,136 @@ function ResetSuggestions({ inline }: { inline?: boolean }) {
 
 // --- Avisos (11g) -----------------------------------------------------------
 
-function Notices() {
+/** Os grupos de Avisos (11g), desenhados e desligados: o app não manda aviso. */
+function useNoticeGroups() {
   const palette = usePalette()
+  const games = (
+    <Section icon="tv" title="Jogos">
+      <Row
+        title="Meus times vão jogar"
+        sub="Aviso antes do jogo, com bares perto passando"
+        extra={
+          <View style={styles.leads}>
+            {['30 min', '1 h', '3 h'].map((lead) => (
+              <View
+                key={lead}
+                style={[
+                  styles.lead,
+                  lead === '1 h'
+                    ? { backgroundColor: palette.dark ? ACID : INK }
+                    : { borderColor: palette.line, borderWidth: 1 }
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.monoSmall,
+                    {
+                      color:
+                        lead === '1 h'
+                          ? palette.dark
+                            ? INK
+                            : ACID
+                          : palette.muted
+                    }
+                  ]}
+                >
+                  {lead}
+                </Text>
+              </View>
+            ))}
+          </View>
+        }
+        right={<Toggle on />}
+      />
+      <Row title="Clássicos perto de você" right={<Toggle on />} divided />
+    </Section>
+  )
+  const going = (
+    <Section icon="ticket" title="Vou assistir">
+      <Row
+        title="Lembrete do jogo marcado"
+        sub="Sempre ligado enquanto houver jogo marcado"
+        right={
+          <Text style={[text(12.5, 'Bold'), { color: palette.muted }]}>
+            Sempre
+          </Text>
+        }
+      />
+    </Section>
+  )
+  const friends = (
+    <Section icon="people" title="Amigos e comunidades">
+      <Row title="Pedidos de amizade" right={<Toggle on />} />
+      <Row title="Amigo vai ao mesmo jogo" right={<Toggle on />} divided />
+      <Row
+        title="Ranking do mês fechou"
+        right={<Toggle on={false} />}
+        divided
+      />
+    </Section>
+  )
+  const mute = (
+    <View>
+      <View style={[styles.hardShadow, { backgroundColor: INK }]} />
+      <View style={styles.mute}>
+        <Icon name="sound" size={22} color={INK} accent={INK} />
+        <View style={{ flex: 1 }}>
+          <Text style={[text(15, 'Bold'), { color: INK }]}>
+            Silenciar durante o jogo
+          </Text>
+          <Text style={[text(12.5, 'Regular', 1.35), { color: INK }]}>
+            Nada de aviso entre o apito inicial e o final.
+          </Text>
+        </View>
+        {/* Sobre o acid a tinta fica tinta nos dois temas. */}
+        <Switch on off={INK} />
+      </View>
+    </View>
+  )
+  return { games, going, friends, mute }
+}
+
+function Notices() {
+  const { games, going, friends, mute } = useNoticeGroups()
   return (
     <>
       <SoonNote sentence="Os avisos no celular chegam em breve. Até lá, o que é seu aparece no sino do Explorar." />
       <Off>
-        <Section icon="tv" title="Jogos">
-          <Row
-            title="Meus times vão jogar"
-            sub="Aviso antes do jogo, com bares perto passando"
-            extra={
-              <View style={styles.leads}>
-                {['30 min', '1 h', '3 h'].map((lead) => (
-                  <View
-                    key={lead}
-                    style={[
-                      styles.lead,
-                      lead === '1 h'
-                        ? { backgroundColor: palette.dark ? ACID : INK }
-                        : { borderColor: palette.line, borderWidth: 1 }
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.monoSmall,
-                        {
-                          color:
-                            lead === '1 h'
-                              ? palette.dark
-                                ? INK
-                                : ACID
-                              : palette.muted
-                        }
-                      ]}
-                    >
-                      {lead}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            }
-            right={<Toggle on />}
-          />
-          <Row title="Clássicos perto de você" right={<Toggle on />} divided />
-        </Section>
-        <Section icon="ticket" title="Vou assistir">
-          <Row
-            title="Lembrete do jogo marcado"
-            sub="Sempre ligado enquanto houver jogo marcado"
-            right={
-              <Text style={[text(12.5, 'Bold'), { color: palette.muted }]}>
-                Sempre
-              </Text>
-            }
-          />
-        </Section>
-        <Section icon="people" title="Amigos e comunidades">
-          <Row title="Pedidos de amizade" right={<Toggle on />} />
-          <Row title="Amigo vai ao mesmo jogo" right={<Toggle on />} divided />
-          <Row
-            title="Ranking do mês fechou"
-            right={<Toggle on={false} />}
-            divided
-          />
-        </Section>
-        <View>
-          <View style={[styles.hardShadow, { backgroundColor: INK }]} />
-          <View style={styles.mute}>
-            <Icon name="sound" size={22} color={INK} accent={INK} />
-            <View style={{ flex: 1 }}>
-              <Text style={[text(15, 'Bold'), { color: INK }]}>
-                Silenciar durante o jogo
-              </Text>
-              <Text style={[text(12.5, 'Regular', 1.35), { color: INK }]}>
-                Nada de aviso entre o apito inicial e o final.
-              </Text>
-            </View>
-            {/* Sobre o acid a tinta fica tinta nos dois temas. */}
-            <Switch on off={INK} />
-          </View>
+        {games}
+        {going}
+        {friends}
+        {mute}
+      </Off>
+    </>
+  )
+}
+
+/**
+ * Os avisos por baixo das Preferências no tablet deitado (extraPref7 do
+ * design): jogos e amigos lado a lado, e o silenciar embaixo. Desligados
+ * como na seção Avisos.
+ */
+function NoticesPreview() {
+  const palette = usePalette()
+  const { games, friends, mute } = useNoticeGroups()
+  return (
+    <>
+      <View style={styles.previewHead}>
+        <Text
+          style={[styles.previewTitle, { color: palette.dark ? ACID : ACCENT }]}
+        >
+          Avisos
+        </Text>
+        <Text style={[text(12.5), { color: palette.muted }]}>
+          também em Configurações › Avisos
+        </Text>
+      </View>
+      <Off>
+        <View style={styles.columns}>
+          <View style={styles.column}>{games}</View>
+          <View style={styles.column}>{friends}</View>
         </View>
+        {mute}
       </Off>
     </>
   )
@@ -592,22 +652,12 @@ function Notices() {
 
 // --- Conta (11h) ------------------------------------------------------------
 
-function Account() {
+function Account({ leave = true }: { leave?: boolean }) {
   const palette = usePalette()
   const router = useRouter()
   const session = authClient.useSession()
   const user = session.data?.user
   const city = useQuery(trpc.pubs.getMyCity.queryOptions())
-  const sessions = useQuery({
-    queryKey: ['account-sessions'],
-    queryFn: async () => {
-      const result = await authClient.listSessions()
-      if (result.error) throw result.error
-      return result.data ?? []
-    }
-  })
-  const now = Date.now()
-  const current = session.data?.session.id
   const queryClient = useQueryClient()
   const me = useQuery(trpc.friends.me.queryOptions())
   const username = useMutation(
@@ -651,38 +701,6 @@ function Account() {
       'plain-text',
       user?.name ?? ''
     )
-
-  const revoke = (id: string, name: string) =>
-    Alert.alert(
-      `Sair do ${name}?`,
-      'Esse aparelho vai precisar entrar de novo.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Sair',
-          style: 'destructive',
-          onPress: async () => {
-            await authClient
-              .$fetch('/revoke-session-by-id', { method: 'POST', body: { id } })
-              .catch(() => {})
-            sessions.refetch()
-          }
-        }
-      ]
-    )
-
-  const signOut = () =>
-    Alert.alert('Sair da conta?', undefined, [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Sair',
-        style: 'destructive',
-        onPress: async () => {
-          await authClient.signOut()
-          router.replace('/intro')
-        }
-      }
-    ])
 
   const [photoBusy, setPhotoBusy] = useState(false)
   // Com foto nova o véu fica até a imagem baixar (`onLoad` do `Image`): a URL
@@ -728,35 +746,6 @@ function Account() {
         : []),
       { text: 'Cancelar', style: 'cancel' as const }
     ])
-
-  const deleteAccount = () =>
-    Alert.alert(
-      'Excluir a conta?',
-      'Seus jogos, conquistas, favoritos e avaliações somem e não voltam.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Continuar',
-          style: 'destructive',
-          onPress: () =>
-            Alert.prompt(
-              'Confirme com a senha',
-              undefined,
-              async (password) => {
-                if (!password) return
-                const result = await authClient.deleteUser({ password })
-                if (result.error)
-                  return Alert.alert(
-                    'Não foi possível excluir',
-                    result.error.message ?? 'Confira a senha e tente de novo.'
-                  )
-                router.replace('/intro')
-              },
-              'secure-text'
-            )
-        }
-      ]
-    )
 
   return (
     <>
@@ -859,89 +848,177 @@ function Account() {
         />
       </Section>
 
-      <Section icon="lock" title="Sessões ativas">
-        {sessions.isPending ? (
-          <ActivityIndicator style={{ padding: 18 }} color={palette.muted} />
-        ) : sessions.isError ? (
-          // A lista pede login recente (`freshAge` do better-auth, um dia).
-          <Row
-            title="Entre de novo para ver"
-            sub="Por segurança, a lista dos aparelhos pede um login recente."
-            right={
-              <Text
-                accessibilityRole="button"
-                onPress={async () => {
-                  const email = user?.email
-                  await authClient.signOut()
-                  router.replace({ pathname: '/sign-in', params: { email } })
-                }}
-                suppressHighlighting
-                style={[
-                  text(13.5, 'Bold'),
-                  { color: palette.dark ? ACID : ACCENT }
-                ]}
-              >
-                Entrar
-              </Text>
-            }
-          />
-        ) : (
-          [...(sessions.data ?? [])]
-            .sort(
-              (a, b) =>
-                Number(b.id === current) - Number(a.id === current) ||
-                new Date(b.updatedAt).getTime() -
-                  new Date(a.updatedAt).getTime()
-            )
-            .map((item, index) => {
-              const device = deviceLabel(item.userAgent)
-              const mine = item.id === current
-              return (
-                <Row
-                  key={item.id}
-                  icon={device.computer ? 'tv' : 'you'}
-                  title={device.name}
-                  sub={mine ? 'agora' : lastSeen(item.updatedAt, now)}
-                  divided={index > 0}
-                  right={
-                    mine ? (
-                      <Badge>Este aparelho</Badge>
-                    ) : (
-                      <Text
-                        accessibilityRole="button"
-                        onPress={() => revoke(item.id, device.name)}
-                        suppressHighlighting
-                        style={[text(13.5, 'Bold'), { color: LIVE }]}
-                      >
-                        Sair
-                      </Text>
-                    )
-                  }
-                />
-              )
-            })
-        )}
-      </Section>
-
-      <View style={styles.leave}>
-        <Text
-          accessibilityRole="button"
-          onPress={signOut}
-          suppressHighlighting
-          style={[text(16, 'Bold'), { color: palette.ink }]}
-        >
-          Sair da conta
-        </Text>
-        <Text
-          accessibilityRole="button"
-          onPress={deleteAccount}
-          suppressHighlighting
-          style={[text(16, 'Bold'), { color: LIVE }]}
-        >
-          Excluir conta
-        </Text>
-      </View>
+      <Sessions />
+      {leave ? <LeaveAccount /> : null}
     </>
+  )
+}
+
+/** "Sessões ativas": os aparelhos com a conta aberta; os outros saem daqui. */
+export function Sessions() {
+  const palette = usePalette()
+  const router = useRouter()
+  const session = authClient.useSession()
+  const user = session.data?.user
+  const sessions = useQuery({
+    queryKey: ['account-sessions'],
+    queryFn: async () => {
+      const result = await authClient.listSessions()
+      if (result.error) throw result.error
+      return result.data ?? []
+    }
+  })
+  const now = Date.now()
+  const current = session.data?.session.id
+  const revoke = (id: string, name: string) =>
+    Alert.alert(
+      `Sair do ${name}?`,
+      'Esse aparelho vai precisar entrar de novo.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Sair',
+          style: 'destructive',
+          onPress: async () => {
+            await authClient
+              .$fetch('/revoke-session-by-id', { method: 'POST', body: { id } })
+              .catch(() => {})
+            sessions.refetch()
+          }
+        }
+      ]
+    )
+
+  return (
+    <Section icon="lock" title="Sessões ativas">
+      {sessions.isPending ? (
+        <ActivityIndicator style={{ padding: 18 }} color={palette.muted} />
+      ) : sessions.isError ? (
+        // A lista pede login recente (`freshAge` do better-auth, um dia).
+        <Row
+          title="Entre de novo para ver"
+          sub="Por segurança, a lista dos aparelhos pede um login recente."
+          right={
+            <Text
+              accessibilityRole="button"
+              onPress={async () => {
+                const email = user?.email
+                await authClient.signOut()
+                router.replace({ pathname: '/sign-in', params: { email } })
+              }}
+              suppressHighlighting
+              style={[
+                text(13.5, 'Bold'),
+                { color: palette.dark ? ACID : ACCENT }
+              ]}
+            >
+              Entrar
+            </Text>
+          }
+        />
+      ) : (
+        [...(sessions.data ?? [])]
+          .sort(
+            (a, b) =>
+              Number(b.id === current) - Number(a.id === current) ||
+              new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+          )
+          .map((item, index) => {
+            const device = deviceLabel(item.userAgent)
+            const mine = item.id === current
+            return (
+              <Row
+                key={item.id}
+                icon={device.computer ? 'tv' : 'you'}
+                title={device.name}
+                sub={mine ? 'agora' : lastSeen(item.updatedAt, now)}
+                divided={index > 0}
+                right={
+                  mine ? (
+                    <Badge>Este aparelho</Badge>
+                  ) : (
+                    <Text
+                      accessibilityRole="button"
+                      onPress={() => revoke(item.id, device.name)}
+                      suppressHighlighting
+                      style={[text(13.5, 'Bold'), { color: LIVE }]}
+                    >
+                      Sair
+                    </Text>
+                  )
+                }
+              />
+            )
+          })
+      )}
+    </Section>
+  )
+}
+
+/** "Sair da conta" e "Excluir conta", no fim da Conta e à esquerda do "Você" deitado. */
+export function LeaveAccount() {
+  const palette = usePalette()
+  const router = useRouter()
+  const signOut = () =>
+    Alert.alert('Sair da conta?', undefined, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Sair',
+        style: 'destructive',
+        onPress: async () => {
+          await authClient.signOut()
+          router.replace('/intro')
+        }
+      }
+    ])
+  const deleteAccount = () =>
+    Alert.alert(
+      'Excluir a conta?',
+      'Seus jogos, conquistas, favoritos e avaliações somem e não voltam.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Continuar',
+          style: 'destructive',
+          onPress: () =>
+            Alert.prompt(
+              'Confirme com a senha',
+              undefined,
+              async (password) => {
+                if (!password) return
+                const result = await authClient.deleteUser({ password })
+                if (result.error)
+                  return Alert.alert(
+                    'Não foi possível excluir',
+                    result.error.message ?? 'Confira a senha e tente de novo.'
+                  )
+                router.replace('/intro')
+              },
+              'secure-text'
+            )
+        }
+      ]
+    )
+
+  return (
+    <View style={styles.leave}>
+      <Text
+        accessibilityRole="button"
+        onPress={signOut}
+        suppressHighlighting
+        style={[text(16, 'Bold'), { color: palette.ink }]}
+      >
+        Sair da conta
+      </Text>
+      <Text
+        accessibilityRole="button"
+        onPress={deleteAccount}
+        suppressHighlighting
+        style={[text(16, 'Bold'), { color: LIVE }]}
+      >
+        Excluir conta
+      </Text>
+    </View>
   )
 }
 
@@ -957,7 +1034,14 @@ const ADDS = {
 const keyOf = <T extends Record<string, string>>(map: T, label: string) =>
   (Object.keys(map) as (keyof T)[]).find((key) => map[key] === label) as keyof T
 
-function Privacy({ wide }: { wide?: boolean }) {
+function Privacy({
+  wide,
+  sessions
+}: {
+  wide?: boolean
+  /** As sessões ativas embaixo, na coluna da esquerda (tablet deitado). */
+  sessions?: boolean
+}) {
   const palette = usePalette()
   const queryClient = useQueryClient()
   const me = useQuery(trpc.friends.me.queryOptions())
@@ -1078,14 +1162,28 @@ function Privacy({ wide }: { wide?: boolean }) {
   )
   const soon = <SoonNote icon="eye" sentence="Comunidades chegam em breve." />
   // Largo: o aviso por cima e os grupos em duas colunas (regra 05 da T5).
+  // Largo: a frase de quem vê no lugar do aviso, os grupos em duas colunas
+  // (regra 05 da T5) e, no tablet deitado, as sessões. Bloqueados do design
+  // não existem no produto.
   if (wide)
     return (
       <>
-        {soon}
+        <WhoSees
+          visibility={me.data?.activityVisibility}
+          ranking={!!me.data?.rankingGlobal}
+        />
         <View style={styles.columns}>
           <View style={styles.column}>{where}</View>
           <View style={styles.column}>{rest}</View>
         </View>
+        {sessions ? (
+          <View style={styles.columns}>
+            <View style={styles.column}>
+              <Sessions />
+            </View>
+            <View style={styles.column} />
+          </View>
+        ) : null}
       </>
     )
   return (
@@ -1094,6 +1192,49 @@ function Privacy({ wide }: { wide?: boolean }) {
       {soon}
       {rest}
     </>
+  )
+}
+
+/**
+ * "Hoje seus amigos veem onde você foi. O ranking global mostra só nome e
+ * número." (11i largo): a frase do design pelo que a pessoa escolheu, sem as
+ * comunidades, que não existem.
+ */
+function WhoSees({
+  visibility,
+  ranking
+}: {
+  visibility?: keyof typeof SEES
+  ranking: boolean
+}) {
+  const palette = usePalette()
+  const strong = [text(13.5, 'Bold', 1.4), { color: palette.ink }]
+  return (
+    <Card shadow={palette.liveShadow}>
+      <View style={styles.whoSees}>
+        <Icon name="eye" size={26} color={palette.ink} accent={LIVE} />
+        <Text
+          style={[text(13.5, 'Regular', 1.4), { color: palette.ink, flex: 1 }]}
+        >
+          {visibility === 'everyone' ? (
+            <>
+              Hoje <Text style={strong}>todos</Text> veem onde você foi.
+            </>
+          ) : visibility === 'nobody' ? (
+            <>
+              Hoje <Text style={strong}>ninguém</Text> vê onde você foi.
+            </>
+          ) : (
+            <>
+              Hoje seus <Text style={strong}>amigos</Text> veem onde você foi.
+            </>
+          )}{' '}
+          {ranking
+            ? 'O ranking global mostra só nome e número.'
+            : 'Você não aparece no ranking global.'}
+        </Text>
+      </View>
+    </Card>
   )
 }
 
@@ -1347,6 +1488,24 @@ const styles = StyleSheet.create({
   },
   summaryNote: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   pad: { padding: 14 },
+  whoSees: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 13,
+    paddingHorizontal: 14
+  },
+  previewHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginTop: 4
+  },
+  previewTitle: {
+    fontFamily: 'Anton',
+    fontSize: 22,
+    textTransform: 'uppercase'
+  },
   // Duas colunas que não esticam: cada cartão na própria altura.
   columns: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
   column: { flex: 1, minWidth: 0, gap: 12 },
