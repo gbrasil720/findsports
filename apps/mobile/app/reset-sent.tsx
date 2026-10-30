@@ -66,6 +66,7 @@ export default function ResetSent() {
 
   return (
     <Screen
+      brand
       dark
       gap={18}
       top={6}

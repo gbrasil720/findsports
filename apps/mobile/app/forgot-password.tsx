@@ -75,7 +75,7 @@ export default function ForgotPassword() {
   const phase = attemptPhase(pending, failed)
 
   return (
-    <Screen gap={18} top={6}>
+    <Screen brand gap={18} top={6}>
       <BackButton />
       <View style={{ gap: 10, marginTop: 10 }}>
         <Title lines={[['Esqueceu ', 'a senha?']]} size={46} />

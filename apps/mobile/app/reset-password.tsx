@@ -123,7 +123,7 @@ export default function ResetPassword() {
   const phase = attemptPhase(pending, failed)
 
   return (
-    <Screen gap={16} top={6}>
+    <Screen brand gap={16} top={6}>
       <BackButton icon="close" onPress={() => router.dismissTo('/sign-in')} />
       <Title lines={[['Crie uma ', 'senha nova']]} size={44} />
       <Field
