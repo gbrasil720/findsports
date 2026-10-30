@@ -933,7 +933,8 @@ const styles = StyleSheet.create({
     color: PAPER,
     marginVertical: -4
   },
-  lastGo: { position: 'absolute', right: 0, bottom: 26, width: 150 },
+  // 150 de conteúdo mais 22 de cada lado, como o `pillA` do design.
+  lastGo: { position: 'absolute', right: 0, bottom: 26, width: 194 },
   pillBase: {
     shadowColor: '#000',
     shadowOpacity: 0.14,
