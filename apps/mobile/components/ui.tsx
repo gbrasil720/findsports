@@ -589,6 +589,45 @@ const ICONS = {
       <Circle cx={15.5} cy={7} r={3.2} fill={c} />
       <Circle cx={8.5} cy={17} r={3.2} fill={a} />
     </>
+  ),
+  // Vazios da Rodada 14 (WEB-492): o coração dos salvos e o copo.
+  heart: (c: string, a: string) => (
+    <>
+      <Path
+        d="M12 21s-8.6-5-8.6-11.2A4.8 4.8 0 0 1 12 6.6a4.8 4.8 0 0 1 8.6 3.2C20.6 16 12 21 12 21z"
+        fill={c}
+        opacity={0.3}
+      />
+      <Path
+        d="M12 18.6s-6.4-3.9-6.4-8.5A3.2 3.2 0 0 1 12 8.9a3.2 3.2 0 0 1 6.4 1.2c0 4.6-6.4 8.5-6.4 8.5z"
+        fill={c}
+      />
+      <Path
+        d="M19.3 2.2l.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7z"
+        fill={a}
+      />
+    </>
+  ),
+  beer: (c: string, a: string) => (
+    <>
+      <Path
+        d="M5 6h11v13.5a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 5 19.5z"
+        fill={c}
+        opacity={0.3}
+      />
+      <Path
+        d="M16 9h2.2a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H16v-2h2v-4h-2z"
+        fill={c}
+        opacity={0.3}
+      />
+      <Path
+        d="M5 11h11v8.5a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 5 19.5z"
+        fill={c}
+      />
+      <Circle cx={7.4} cy={5.6} r={2.6} fill={a} />
+      <Circle cx={11} cy={4.6} r={2.9} fill={a} />
+      <Circle cx={14.2} cy={5.8} r={2.3} fill={a} />
+    </>
   )
 }
 
