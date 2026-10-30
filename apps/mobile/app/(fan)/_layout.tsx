@@ -270,7 +270,7 @@ export default function FanTabs() {
         <SideNav
           kind={layout.nav}
           current={
-            menuOpen || pathname.startsWith('/voce')
+            menuOpen || panelOpen || pathname.startsWith('/voce')
               ? 'voce'
               : pathname === '/favoritos'
                 ? 'favoritos'
