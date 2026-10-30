@@ -480,7 +480,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
+  // Estreito como o do design: "Nenhum / jogo" em duas linhas.
   stamp: {
+    maxWidth: 140,
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 5,
