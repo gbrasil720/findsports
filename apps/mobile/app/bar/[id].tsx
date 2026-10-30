@@ -44,6 +44,7 @@ import {
 } from '@/components/explore'
 import { Ambiente } from '@/components/gallery'
 import { Glass } from '@/components/glass'
+import { NAV, useLayout } from '@/components/layout'
 import {
   EASE,
   haptic,
@@ -123,8 +124,10 @@ const BODY_IN: EntryExitAnimationFunction = () => {
 }
 /** Quantos próximos jogos a página lista: três, como o design. */
 const MORE_GAMES = 3
-/** Onde a foto (340) termina embaixo da barra de status. */
-const HERO_EDGE = 290
+/** A foto do celular; a dos tablets sai da medida da tela. */
+const HERO = 340
+/** A barra do "Vou assistir aqui" fora do celular. */
+const DOCK = 440
 
 /** O rótulo curto do design ("Premiere"), não o do cadastro. */
 const chipLabel = (item: (typeof AMENITIES)[number]) =>
@@ -180,18 +183,65 @@ const HERO_SHADE = [
   'rgba(18,18,15,.82)'
 ] as const
 
+type BarParams = {
+  id: string
+  km?: string
+  name?: string
+  photo?: string
+  /** A distância é do aparelho: dá para dizer quantos minutos a pé. */
+  walk?: string
+  /** Veio da busca com IA (WEB-400): o `run_id` da resposta que citou o bar. */
+  ai?: string
+}
+
 export default function BarPage() {
-  const { id, km, name, photo, walk, ai } = useLocalSearchParams<{
-    id: string
-    km?: string
-    name?: string
-    photo?: string
-    /** A distância é do aparelho: dá para dizer quantos minutos a pé. */
-    walk?: string
-    /** Veio da busca com IA (WEB-400): o `run_id` da resposta que citou o bar. */
-    ai?: string
-  }>()
+  return <BarDetail {...useLocalSearchParams<BarParams>()} />
+}
+
+/**
+ * A página do bar. Fora do celular (WEB-488) vira duas colunas quando cabe:
+ * à esquerda o nome, o jogo e a oferta; à direita onde fica, o que tem, as
+ * fotos e as avaliações. No tablet a foto atravessa a tela em cima; no
+ * dobrável aberto ela fica na coluna da esquerda, uma coluna de cada lado da
+ * dobra.
+ *
+ * Para abrir ao lado da lista do Explorar (tablet deitado), passe `width` (a
+ * largura que sobra) e `back={false}`: a página se ajusta a essa largura.
+ */
+export function BarDetail({
+  id,
+  km,
+  name,
+  photo,
+  walk,
+  ai,
+  width: given,
+  back = true
+}: BarParams & { width?: number; back?: boolean }) {
   const insets = useSafeAreaInsets()
+  const layout = useLayout()
+  const W = given ?? layout.width
+  // Duas colunas a partir de 700 pt (o iPad mini em pé tem 744).
+  const cols = layout.kind !== 'phone' && W >= 700
+  // Dobrável aberto ocupando a tela: a foto fica na coluna da esquerda.
+  const halves =
+    cols &&
+    !given &&
+    layout.kind === 'split' &&
+    (layout.nav === 'duoRail' || layout.split * 2 >= layout.width - 2)
+  const leftW = halves ? layout.split : W
+  // A faixa do Duo fechado à direita: voltar, compartilhar e favoritar descem
+  // para ela, abaixo da foto (regra 01 da T2).
+  const rail = layout.kind === 'duoClosed' ? NAV.duoRail.width : 0
+  const heroH = !cols
+    ? HERO
+    : halves
+      ? Math.round(leftW * 0.58)
+      : Math.round(Math.min(W * 0.45, layout.height * 0.34))
+  const heroEdge = heroH - 50
+  const titleSize = halves
+    ? 36
+    : Math.round(Math.min(52, Math.max(40, W * 0.05)))
   const router = useRouter()
   const palette = usePalette()
   const session = authClient.useSession()
@@ -223,28 +273,32 @@ export default function BarPage() {
   // A foto sai de baixo da barra de status em ~290: dali o topo ganha um
   // véu do fundo (scroll edge do iOS) e a barra troca de cor, uma vez só.
   useAnimatedReaction(
-    () => scrollY.get() > HERO_EDGE,
+    () => scrollY.get() > heroEdge,
     (past, before) => {
       if (past !== before) scheduleOnRN(setPastHero, past)
-    }
+    },
+    [heroEdge]
   )
-  const edge = useAnimatedStyle(() => ({
-    opacity: interpolate(
-      scrollY.get(),
-      [HERO_EDGE - 40, HERO_EDGE],
-      [0, 1],
-      Extrapolation.CLAMP
-    )
-  }))
+  const edge = useAnimatedStyle(
+    () => ({
+      opacity: interpolate(
+        scrollY.get(),
+        [heroEdge - 40, heroEdge],
+        [0, 1],
+        Extrapolation.CLAMP
+      )
+    }),
+    [heroEdge]
+  )
   const stretch = useAnimatedStyle(() => {
     const pull = Math.max(-scrollY.get(), 0)
     return {
       transform: [
         { translateY: Math.min(scrollY.get(), 0) },
-        { scale: 1 + pull / 340 }
+        { scale: 1 + pull / heroH }
       ]
     }
-  })
+  }, [heroH])
 
   // Uma visita por abertura da página, só depois de ela existir.
   const loaded = bar.isSuccess
@@ -377,6 +431,580 @@ export default function BarPage() {
       message: `${data?.name ?? name} na Onside: ${env.EXPO_PUBLIC_SERVER_URL}/pub/${id}`
     })
 
+  // As seções da página, na ordem do celular; fora dele, em duas colunas.
+  const sGame = data ? (
+    next ? (
+      <>
+        <Text style={[text(16, 'Bold', 1.4), { color: palette.ink }]}>
+          {dayLabel(next.startsAt, now) === 'Hoje' ||
+          new Date(next.startsAt).getTime() <= now
+            ? 'Hoje no telão'
+            : 'Próximo jogo'}
+        </Text>
+        <BarTicket
+          bar={{
+            id: data.id,
+            name: data.name,
+            neighborhood: data.neighborhood,
+            photo_url: data.photoUrl,
+            plan: data.plan,
+            rating: data.rating,
+            distance_km: km ? Number(km) : null,
+            amenities: data.amenities,
+            goingCount: next.going?.count ?? null,
+            goingInitials: next.going?.initials ?? [],
+            nextEvent: next
+          }}
+          now={now}
+          favorite={favorite}
+          onFavorite={toggleFavorite}
+        />
+      </>
+    ) : (
+      <Text style={[text(15), { color: palette.muted }]}>
+        Nenhum jogo marcado por enquanto.
+      </Text>
+    )
+  ) : null
+  const sCheck = data ? (
+    data.checkIn ? (
+      <CheckInCard
+        barId={data.id}
+        eventId={data.checkIn.eventId}
+        done={data.checkIn.done}
+      />
+    ) : null
+  ) : null
+  const sPhotos = data ? (
+    <>
+      {/* "O ambiente" (25a, WEB-462): as fotos que a Onside aprovou,
+                logo depois de "Hoje no telão", como na 2g. */}
+      <Ambiente barId={data.id} photos={data.photos} />
+    </>
+  ) : null
+  const sTiles = data ? (
+    tiles.length ? (
+      <View style={styles.tiles}>
+        {tiles.map((tile) => (
+          <Card key={tile.id} style={styles.tile}>
+            <Icon
+              name={tile.icon}
+              size={26}
+              color={palette.ink}
+              accent={palette.accent}
+            />
+            <Text
+              style={[
+                text(11.5, 'SemiBold', 1.4),
+                { color: palette.ink, textAlign: 'center' }
+              ]}
+              numberOfLines={2}
+            >
+              {tile.label}
+            </Text>
+          </Card>
+        ))}
+      </View>
+    ) : null
+  ) : null
+  const sOffer = data ? (
+    <>
+      {/* A oferta do jogo em destaque (WEB-422): cada jogo tem a
+                sua, e "Vou assistir aqui" mostra a do jogo escolhido. */}
+      {next?.houseOffer ? <OfferCard offer={next.houseOffer} /> : null}
+    </>
+  ) : null
+  const sNext = data ? (
+    games.length > 1 ? (
+      <>
+        <Heading title="Próximos jogos aqui" aside={`${week} esta semana`} />
+        <Card soft>
+          <View style={styles.list}>
+            {games.slice(1, 1 + MORE_GAMES).map((game, index) => (
+              <View
+                key={game.id}
+                style={[
+                  styles.game,
+                  index > 0 && {
+                    borderTopWidth: 1,
+                    borderTopColor: palette.line
+                  }
+                ]}
+              >
+                <Text style={[styles.when, { color: palette.ink }]}>
+                  {gameDay(game.startsAt, now)}
+                </Text>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text
+                    style={[text(14.5, 'Bold', 1.4), { color: palette.ink }]}
+                    numberOfLines={2}
+                  >
+                    {gameTitle(game)}
+                  </Text>
+                  {/* A hora não pode sumir com campeonato longo: o
+                            campeonato encolhe, a hora fica. */}
+                  <View style={styles.sub}>
+                    {gameTitle(game) === game.championship ? null : (
+                      <Text
+                        style={[
+                          text(12, 'Regular', 1.4),
+                          { color: palette.muted, flexShrink: 1 }
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {game.championship} ·{' '}
+                      </Text>
+                    )}
+                    <Text
+                      style={[
+                        text(12, 'Regular', 1.4),
+                        { color: palette.muted }
+                      ]}
+                    >
+                      {dayLabel(game.startsAt, now) === 'Hoje'
+                        ? 'hoje'
+                        : formatTime(game.startsAt)}
+                    </Text>
+                  </View>
+                </View>
+                {gameTag(game) ? <Label>{gameTag(game) ?? ''}</Label> : null}
+              </View>
+            ))}
+          </View>
+        </Card>
+      </>
+    ) : null
+  ) : null
+  const sFeatures = data ? (
+    features.length ? (
+      <>
+        <Heading title="O que tem" />
+        <View style={styles.chips}>
+          {features.map((label) => (
+            <View
+              key={label}
+              style={[styles.chip, { backgroundColor: palette.mark }]}
+            >
+              <Text
+                style={[text(11.5, 'SemiBold', 1.4), { color: palette.ink }]}
+              >
+                {label}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </>
+    ) : null
+  ) : null
+  const sWhere = data ? (
+    located ? (
+      <>
+        <Heading title="Onde fica" />
+        <Card soft>
+          {/* Tocar no mapa abre a rota, como um mapa estático no iOS. */}
+          <AnimatedPressable
+            accessibilityRole="link"
+            accessibilityLabel={`Como chegar ao ${data.name}`}
+            onPress={() => {
+              fromAi('route')
+              Linking.openURL(directions(lat, lng))
+            }}
+            onPressIn={mapPress.onPressIn}
+            onPressOut={mapPress.onPressOut}
+            style={[styles.map, mapPress.style]}
+          >
+            {/* O mapa não recebe toque: o toque é do botão. */}
+            <View style={StyleSheet.absoluteFill} pointerEvents="none">
+              <MapView
+                style={StyleSheet.absoluteFill}
+                initialRegion={{
+                  latitude: lat,
+                  longitude: lng,
+                  latitudeDelta: 0.006,
+                  longitudeDelta: 0.012
+                }}
+                // O bar fica em 112 de 130 (o centro da faixa abaixo
+                // dos 94 pt): cabe a gota grande com o balão em cima.
+                mapPadding={{ top: 94, right: 0, bottom: 0, left: 0 }}
+                mapType={Platform.OS === 'ios' ? 'mutedStandard' : 'standard'}
+                customMapStyle={palette.dark ? MAP_STYLE.dark : MAP_STYLE.light}
+                userInterfaceStyle={palette.dark ? 'dark' : 'light'}
+                showsPointsOfInterests={false}
+                scrollEnabled={false}
+                zoomEnabled={false}
+                rotateEnabled={false}
+                pitchEnabled={false}
+                toolbarEnabled={false}
+              />
+            </View>
+            {/* A gota do bar tocado no Explorar (21a): a ponta em
+                        112 de 130, o balão com o nome e o próximo jogo. */}
+            <View
+              style={[styles.mapPin, { top: 112 - pin.box.tipY }]}
+              pointerEvents="none"
+            >
+              <MapDrop
+                live={pin.live}
+                elite={data.plan === 'elite'}
+                dark={palette.dark}
+                callout={pin.callout}
+              />
+            </View>
+          </AnimatedPressable>
+          <View style={styles.where}>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text
+                style={[text(14.5, 'Bold', 1.4), { color: palette.ink }]}
+                numberOfLines={1}
+              >
+                {data.address}
+              </Text>
+              <Text
+                style={[text(12.5, 'Regular', 1.4), { color: palette.muted }]}
+                numberOfLines={1}
+              >
+                {place.join(' · ')}
+              </Text>
+            </View>
+            <AnimatedPressable
+              accessibilityRole="link"
+              hitSlop={8}
+              onPress={() => {
+                fromAi('route')
+                Linking.openURL(directions(lat, lng))
+              }}
+              onPressIn={goPress.onPressIn}
+              onPressOut={goPress.onPressOut}
+              style={[
+                styles.go,
+                { backgroundColor: palette.ink },
+                goPress.style
+              ]}
+            >
+              <Text style={[text(13, 'Bold', 1.4), { color: palette.bg }]}>
+                Como chegar
+              </Text>
+            </AnimatedPressable>
+          </View>
+        </Card>
+      </>
+    ) : null
+  ) : null
+  const sHours = data ? (
+    data.openingHours ? (
+      <>
+        <Heading
+          title="Horário"
+          aside={
+            data.openNow === null
+              ? undefined
+              : data.openNow
+                ? 'Aberto agora'
+                : 'Fechado agora'
+          }
+        />
+        <Card soft>
+          <View style={styles.list}>
+            {groupOpeningHours(data.openingHours).map((row, index) => (
+              <View
+                key={row.days}
+                style={[
+                  styles.hours,
+                  index > 0 && {
+                    borderTopWidth: 1,
+                    borderTopColor: palette.line
+                  }
+                ]}
+              >
+                <Text
+                  style={[
+                    text(13.5, 'Regular', 1.4),
+                    { color: palette.ink, flexShrink: 1 }
+                  ]}
+                >
+                  {row.days}
+                </Text>
+                <Text
+                  style={[
+                    styles.mono,
+                    { color: row.hours ? palette.ink : palette.muted }
+                  ]}
+                >
+                  {row.hours ?? 'Fechado'}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </Card>
+      </>
+    ) : null
+  ) : null
+  const sRating = data ? (
+    data.rating ? (
+      <>
+        <Heading
+          title="O que dizem"
+          aside={`${data.rating.stars !== null ? `★ ${data.rating.stars.toLocaleString('pt-BR', { minimumFractionDigits: 1 })} · ` : ''}${data.rating.total} ${data.rating.total === 1 ? 'avaliação' : 'avaliações'}`}
+        />
+        <View>
+          <View
+            style={[
+              styles.scoreShadow,
+              { backgroundColor: palette.dark ? '#000' : INK }
+            ]}
+          />
+          <View style={styles.score}>
+            <Text style={styles.scoreNumber}>{data.rating.percentage}%</Text>
+            <Text style={[text(13.5, 'SemiBold', 1.35), styles.scoreText]}>
+              dos torcedores voltariam para ver outro jogo aqui
+            </Text>
+          </View>
+        </View>
+        {data.reviews.length ? (
+          <Card soft>
+            <View style={styles.list}>
+              {data.reviews.map((review, index) => (
+                <Review key={review.id} review={review} divided={index > 0} />
+              ))}
+            </View>
+          </Card>
+        ) : null}
+        {data.ratingReasons &&
+        (data.ratingReasons.positive.length ||
+          data.ratingReasons.negative.length) ? (
+          <Card soft>
+            <View style={styles.list}>
+              {(
+                [
+                  [true, data.ratingReasons.positive],
+                  [false, data.ratingReasons.negative]
+                ] as const
+              )
+                .filter(([, ids]) => ids.length)
+                .map(([back, ids], index) => (
+                  <View
+                    key={String(back)}
+                    style={[
+                      styles.said,
+                      index > 0 && {
+                        borderTopWidth: 1,
+                        borderTopColor: palette.line
+                      }
+                    ]}
+                  >
+                    <View style={styles.saidHead}>
+                      <View
+                        style={[
+                          styles.saidMark,
+                          {
+                            backgroundColor: back ? ACID : palette.mark
+                          }
+                        ]}
+                      >
+                        <Icon
+                          name={back ? 'fan' : 'close'}
+                          size={15}
+                          color={back ? INK : palette.ink}
+                          accent={back ? INK : palette.accent}
+                        />
+                      </View>
+                      <Text
+                        style={[
+                          text(15, 'Bold', 1.3),
+                          { color: palette.ink, flex: 1 }
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {back ? 'Quem voltaria' : 'Quem não voltaria'}
+                      </Text>
+                      <Text
+                        style={[
+                          text(12.5, 'Regular', 1.4),
+                          { color: palette.muted }
+                        ]}
+                      >
+                        mais citados
+                      </Text>
+                    </View>
+                    <View style={styles.chips}>
+                      {ids.map((id) => (
+                        <View
+                          key={id}
+                          style={[
+                            styles.reason,
+                            { backgroundColor: palette.mark }
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              text(12.5, 'Bold', 1.3),
+                              { color: palette.ink }
+                            ]}
+                          >
+                            {reasonLabel(id)}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                ))}
+            </View>
+          </Card>
+        ) : null}
+      </>
+    ) : null
+  ) : null
+  const sReport = data ? (
+    Platform.OS === 'ios' ? (
+      <AnimatedPressable
+        accessibilityRole="button"
+        hitSlop={8}
+        onPress={() => report(data.name)}
+        onPressIn={reportPress.onPressIn}
+        onPressOut={reportPress.onPressOut}
+        style={[styles.report, reportPress.style]}
+      >
+        <Text style={[text(13.5, 'SemiBold', 1.4), { color: palette.muted }]}>
+          Reportar um problema
+        </Text>
+      </AnimatedPressable>
+    ) : null
+  ) : null
+
+  const hero = (
+    <View style={[styles.hero, { height: heroH }]}>
+      <Animated.View style={[styles.heroArt, stretch]}>
+        {(data ? data.photoUrl : photo) ? (
+          <Image
+            source={{ uri: (data ? data.photoUrl : photo) ?? undefined }}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+          />
+        ) : null}
+        <LinearGradient
+          colors={HERO_SHADE}
+          locations={[0, 0.35, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+      </Animated.View>
+      {cols ? null : (
+        <View style={styles.heroText}>
+          {/* O topo cresce para cima (`flex-end`): as etiquetas chegam
+                acima do nome sem empurrá-lo. São vidro: entram só pela
+                posição, como o corpo (com `FadeIn` o vidro não desenhava e o
+                "Elite" ficava quase invisível sobre a foto). */}
+          <Animated.View entering={BODY_IN} style={styles.heroPills}>
+            {data?.plan === 'elite' ? (
+              <PhotoPill kind="acid" height={28}>
+                <Icon name="medal" size={15} color={INK} />
+                <Text style={[text(12, 'Bold', 1.2), { color: INK }]}>
+                  Elite
+                </Text>
+              </PhotoPill>
+            ) : null}
+            {data?.rating ? (
+              <PhotoPill kind="dark" height={28}>
+                <Text style={[text(12, 'Bold', 1.2), { color: PAPER }]}>
+                  {data.rating.percentage}% voltariam
+                </Text>
+              </PhotoPill>
+            ) : null}
+          </Animated.View>
+          <Text
+            style={styles.name}
+            numberOfLines={2}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}
+          >
+            {(data?.name ?? name ?? '').toUpperCase()}
+          </Text>
+          {/* Um espaço segura a linha enquanto carrega: o nome não sobe. */}
+          <Animated.Text
+            key={data ? 'info' : 'wait'}
+            entering={SWAP}
+            style={[text(14, 'Regular', 1.4), styles.info]}
+            numberOfLines={2}
+            maxFontSizeMultiplier={MAX_FONT_SCALE}
+          >
+            {info.join(' · ') || ' '}
+          </Animated.Text>
+        </View>
+      )}
+    </View>
+  )
+  // Fora do celular o nome sai da foto e abre a coluna da esquerda (02 do
+  // design): as etiquetas, o nome e o bairro com a distância.
+  const sTitle = cols ? (
+    <View style={styles.title}>
+      {data?.plan === 'elite' || data?.rating ? (
+        <Animated.View entering={BODY_IN} style={styles.badges}>
+          {data.plan === 'elite' ? (
+            <View style={[styles.badge, { backgroundColor: ACID }]}>
+              <Icon name="medal" size={13} color={INK} />
+              <Text style={[text(11.5, 'Bold', 1.2), { color: INK }]}>
+                Elite
+              </Text>
+            </View>
+          ) : null}
+          {data.rating ? (
+            <>
+              <View style={[styles.badge, { backgroundColor: palette.mark }]}>
+                <Text style={[text(11.5, 'Bold', 1.2), { color: palette.ink }]}>
+                  {data.rating.percentage}% voltariam
+                </Text>
+              </View>
+              <Text
+                style={[text(12, 'Regular', 1.3), { color: palette.muted }]}
+              >
+                de {data.rating.total}{' '}
+                {data.rating.total === 1 ? 'torcedor' : 'torcedores'}
+              </Text>
+            </>
+          ) : null}
+        </Animated.View>
+      ) : null}
+      <Text
+        style={[styles.titleName, { color: palette.ink, fontSize: titleSize }]}
+        numberOfLines={2}
+        adjustsFontSizeToFit
+        minimumFontScale={0.6}
+      >
+        {(data?.name ?? name ?? '').toUpperCase()}
+      </Text>
+      <Animated.Text
+        key={data ? 'info' : 'wait'}
+        entering={SWAP}
+        style={[text(14, 'Regular', 1.4), { color: palette.muted }]}
+        numberOfLines={2}
+        maxFontSizeMultiplier={MAX_FONT_SCALE}
+      >
+        {info.join(' · ') || ' '}
+      </Animated.Text>
+    </View>
+  ) : null
+  const left = (
+    <>
+      {sGame}
+      {sCheck}
+      {sTiles}
+      {sOffer}
+      {sNext}
+    </>
+  )
+  const right = (
+    <>
+      {sWhere}
+      {sFeatures}
+      {sPhotos}
+      {sHours}
+      {sRating}
+      {sReport}
+    </>
+  )
+  const wait = (
+    <ActivityIndicator color={palette.ink} style={{ marginTop: 32 }} />
+  )
+
   return (
     <View style={{ flex: 1, backgroundColor: palette.sheet }}>
       <Animated.ScrollView
@@ -385,527 +1013,64 @@ export default function BarPage() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 120 }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.hero}>
-          <Animated.View style={[styles.heroArt, stretch]}>
-            {(data ? data.photoUrl : photo) ? (
-              <Image
-                source={{ uri: (data ? data.photoUrl : photo) ?? undefined }}
-                style={StyleSheet.absoluteFill}
-                resizeMode="cover"
-              />
-            ) : null}
-            <LinearGradient
-              colors={HERO_SHADE}
-              locations={[0, 0.35, 1]}
-              style={StyleSheet.absoluteFill}
-            />
-          </Animated.View>
-          <View style={styles.heroText}>
-            {/* O topo cresce para cima (`flex-end`): as etiquetas chegam
-                acima do nome sem empurrá-lo. São vidro: entram só pela
-                posição, como o corpo (com `FadeIn` o vidro não desenhava e o
-                "Elite" ficava quase invisível sobre a foto). */}
-            <Animated.View entering={BODY_IN} style={styles.heroPills}>
-              {data?.plan === 'elite' ? (
-                <PhotoPill kind="acid" height={28}>
-                  <Icon name="medal" size={15} color={INK} />
-                  <Text style={[text(12, 'Bold', 1.2), { color: INK }]}>
-                    Elite
-                  </Text>
-                </PhotoPill>
-              ) : null}
-              {data?.rating ? (
-                <PhotoPill kind="dark" height={28}>
-                  <Text style={[text(12, 'Bold', 1.2), { color: PAPER }]}>
-                    {data.rating.percentage}% voltariam
-                  </Text>
-                </PhotoPill>
-              ) : null}
-            </Animated.View>
-            <Text
-              style={styles.name}
-              numberOfLines={2}
-              adjustsFontSizeToFit
-              minimumFontScale={0.6}
-            >
-              {(data?.name ?? name ?? '').toUpperCase()}
-            </Text>
-            {/* Um espaço segura a linha enquanto carrega: o nome não sobe. */}
-            <Animated.Text
-              key={data ? 'info' : 'wait'}
-              entering={SWAP}
-              style={[text(14, 'Regular', 1.4), styles.info]}
-              numberOfLines={2}
-              maxFontSizeMultiplier={MAX_FONT_SCALE}
-            >
-              {info.join(' · ') || ' '}
-            </Animated.Text>
-          </View>
-        </View>
-
-        {data ? (
-          <Animated.View entering={BODY_IN} style={styles.body}>
-            {next ? (
-              <>
-                <Text style={[text(16, 'Bold', 1.4), { color: palette.ink }]}>
-                  {dayLabel(next.startsAt, now) === 'Hoje' ||
-                  new Date(next.startsAt).getTime() <= now
-                    ? 'Hoje no telão'
-                    : 'Próximo jogo'}
-                </Text>
-                <BarTicket
-                  bar={{
-                    id: data.id,
-                    name: data.name,
-                    neighborhood: data.neighborhood,
-                    photo_url: data.photoUrl,
-                    plan: data.plan,
-                    rating: data.rating,
-                    distance_km: km ? Number(km) : null,
-                    amenities: data.amenities,
-                    goingCount: next.going?.count ?? null,
-                    goingInitials: next.going?.initials ?? [],
-                    nextEvent: next
-                  }}
-                  now={now}
-                  favorite={favorite}
-                  onFavorite={toggleFavorite}
-                />
-              </>
-            ) : (
-              <Text style={[text(15), { color: palette.muted }]}>
-                Nenhum jogo marcado por enquanto.
-              </Text>
-            )}
-
-            {data.checkIn ? (
-              <CheckInCard
-                barId={data.id}
-                eventId={data.checkIn.eventId}
-                done={data.checkIn.done}
-              />
-            ) : null}
-
-            {/* "O ambiente" (25a, WEB-462): as fotos que a Onside aprovou,
-                logo depois de "Hoje no telão", como na 2g. */}
-            <Ambiente barId={data.id} photos={data.photos} />
-
-            {tiles.length ? (
-              <View style={styles.tiles}>
-                {tiles.map((tile) => (
-                  <Card key={tile.id} style={styles.tile}>
-                    <Icon
-                      name={tile.icon}
-                      size={26}
-                      color={palette.ink}
-                      accent={palette.accent}
-                    />
-                    <Text
-                      style={[
-                        text(11.5, 'SemiBold', 1.4),
-                        { color: palette.ink, textAlign: 'center' }
-                      ]}
-                      numberOfLines={2}
-                    >
-                      {tile.label}
-                    </Text>
-                  </Card>
-                ))}
+        {halves ? (
+          <View style={styles.row}>
+            <View style={{ width: leftW }}>
+              {hero}
+              <View style={styles.half}>
+                {sTitle}
+                {data ? left : wait}
               </View>
-            ) : null}
-
-            {/* A oferta do jogo em destaque (WEB-422): cada jogo tem a
-                sua, e "Vou assistir aqui" mostra a do jogo escolhido. */}
-            {next?.houseOffer ? <OfferCard offer={next.houseOffer} /> : null}
-
-            {games.length > 1 ? (
-              <>
-                <Heading
-                  title="Próximos jogos aqui"
-                  aside={`${week} esta semana`}
-                />
-                <Card soft>
-                  <View style={styles.list}>
-                    {games.slice(1, 1 + MORE_GAMES).map((game, index) => (
-                      <View
-                        key={game.id}
-                        style={[
-                          styles.game,
-                          index > 0 && {
-                            borderTopWidth: 1,
-                            borderTopColor: palette.line
-                          }
-                        ]}
-                      >
-                        <Text style={[styles.when, { color: palette.ink }]}>
-                          {gameDay(game.startsAt, now)}
-                        </Text>
-                        <View style={{ flex: 1, minWidth: 0 }}>
-                          <Text
-                            style={[
-                              text(14.5, 'Bold', 1.4),
-                              { color: palette.ink }
-                            ]}
-                            numberOfLines={2}
-                          >
-                            {gameTitle(game)}
-                          </Text>
-                          {/* A hora não pode sumir com campeonato longo: o
-                            campeonato encolhe, a hora fica. */}
-                          <View style={styles.sub}>
-                            {gameTitle(game) === game.championship ? null : (
-                              <Text
-                                style={[
-                                  text(12, 'Regular', 1.4),
-                                  { color: palette.muted, flexShrink: 1 }
-                                ]}
-                                numberOfLines={1}
-                              >
-                                {game.championship} ·{' '}
-                              </Text>
-                            )}
-                            <Text
-                              style={[
-                                text(12, 'Regular', 1.4),
-                                { color: palette.muted }
-                              ]}
-                            >
-                              {dayLabel(game.startsAt, now) === 'Hoje'
-                                ? 'hoje'
-                                : formatTime(game.startsAt)}
-                            </Text>
-                          </View>
-                        </View>
-                        {gameTag(game) ? (
-                          <Label>{gameTag(game) ?? ''}</Label>
-                        ) : null}
-                      </View>
-                    ))}
-                  </View>
-                </Card>
-              </>
-            ) : null}
-
-            {features.length ? (
-              <>
-                <Heading title="O que tem" />
-                <View style={styles.chips}>
-                  {features.map((label) => (
-                    <View
-                      key={label}
-                      style={[styles.chip, { backgroundColor: palette.mark }]}
-                    >
-                      <Text
-                        style={[
-                          text(11.5, 'SemiBold', 1.4),
-                          { color: palette.ink }
-                        ]}
-                      >
-                        {label}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              </>
-            ) : null}
-
-            {located ? (
-              <>
-                <Heading title="Onde fica" />
-                <Card soft>
-                  {/* Tocar no mapa abre a rota, como um mapa estático no iOS. */}
-                  <AnimatedPressable
-                    accessibilityRole="link"
-                    accessibilityLabel={`Como chegar ao ${data.name}`}
-                    onPress={() => {
-                      fromAi('route')
-                      Linking.openURL(directions(lat, lng))
-                    }}
-                    onPressIn={mapPress.onPressIn}
-                    onPressOut={mapPress.onPressOut}
-                    style={[styles.map, mapPress.style]}
-                  >
-                    {/* O mapa não recebe toque: o toque é do botão. */}
-                    <View style={StyleSheet.absoluteFill} pointerEvents="none">
-                      <MapView
-                        style={StyleSheet.absoluteFill}
-                        initialRegion={{
-                          latitude: lat,
-                          longitude: lng,
-                          latitudeDelta: 0.006,
-                          longitudeDelta: 0.012
-                        }}
-                        // O bar fica em 112 de 130 (o centro da faixa abaixo
-                        // dos 94 pt): cabe a gota grande com o balão em cima.
-                        mapPadding={{ top: 94, right: 0, bottom: 0, left: 0 }}
-                        mapType={
-                          Platform.OS === 'ios' ? 'mutedStandard' : 'standard'
-                        }
-                        customMapStyle={
-                          palette.dark ? MAP_STYLE.dark : MAP_STYLE.light
-                        }
-                        userInterfaceStyle={palette.dark ? 'dark' : 'light'}
-                        showsPointsOfInterests={false}
-                        scrollEnabled={false}
-                        zoomEnabled={false}
-                        rotateEnabled={false}
-                        pitchEnabled={false}
-                        toolbarEnabled={false}
-                      />
-                    </View>
-                    {/* A gota do bar tocado no Explorar (21a): a ponta em
-                        112 de 130, o balão com o nome e o próximo jogo. */}
-                    <View
-                      style={[styles.mapPin, { top: 112 - pin.box.tipY }]}
-                      pointerEvents="none"
-                    >
-                      <MapDrop
-                        live={pin.live}
-                        elite={data.plan === 'elite'}
-                        dark={palette.dark}
-                        callout={pin.callout}
-                      />
-                    </View>
-                  </AnimatedPressable>
-                  <View style={styles.where}>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text
-                        style={[
-                          text(14.5, 'Bold', 1.4),
-                          { color: palette.ink }
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {data.address}
-                      </Text>
-                      <Text
-                        style={[
-                          text(12.5, 'Regular', 1.4),
-                          { color: palette.muted }
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {place.join(' · ')}
-                      </Text>
-                    </View>
-                    <AnimatedPressable
-                      accessibilityRole="link"
-                      hitSlop={8}
-                      onPress={() => {
-                        fromAi('route')
-                        Linking.openURL(directions(lat, lng))
-                      }}
-                      onPressIn={goPress.onPressIn}
-                      onPressOut={goPress.onPressOut}
-                      style={[
-                        styles.go,
-                        { backgroundColor: palette.ink },
-                        goPress.style
-                      ]}
-                    >
-                      <Text
-                        style={[text(13, 'Bold', 1.4), { color: palette.bg }]}
-                      >
-                        Como chegar
-                      </Text>
-                    </AnimatedPressable>
-                  </View>
-                </Card>
-              </>
-            ) : null}
-
-            {data.openingHours ? (
-              <>
-                <Heading
-                  title="Horário"
-                  aside={
-                    data.openNow === null
-                      ? undefined
-                      : data.openNow
-                        ? 'Aberto agora'
-                        : 'Fechado agora'
-                  }
-                />
-                <Card soft>
-                  <View style={styles.list}>
-                    {groupOpeningHours(data.openingHours).map((row, index) => (
-                      <View
-                        key={row.days}
-                        style={[
-                          styles.hours,
-                          index > 0 && {
-                            borderTopWidth: 1,
-                            borderTopColor: palette.line
-                          }
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            text(13.5, 'Regular', 1.4),
-                            { color: palette.ink, flexShrink: 1 }
-                          ]}
-                        >
-                          {row.days}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.mono,
-                            { color: row.hours ? palette.ink : palette.muted }
-                          ]}
-                        >
-                          {row.hours ?? 'Fechado'}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                </Card>
-              </>
-            ) : null}
-
-            {data.rating ? (
-              <>
-                <Heading
-                  title="O que dizem"
-                  aside={`${data.rating.stars !== null ? `★ ${data.rating.stars.toLocaleString('pt-BR', { minimumFractionDigits: 1 })} · ` : ''}${data.rating.total} ${data.rating.total === 1 ? 'avaliação' : 'avaliações'}`}
-                />
-                <View>
-                  <View
-                    style={[
-                      styles.scoreShadow,
-                      { backgroundColor: palette.dark ? '#000' : INK }
-                    ]}
-                  />
-                  <View style={styles.score}>
-                    <Text style={styles.scoreNumber}>
-                      {data.rating.percentage}%
-                    </Text>
-                    <Text
-                      style={[text(13.5, 'SemiBold', 1.35), styles.scoreText]}
-                    >
-                      dos torcedores voltariam para ver outro jogo aqui
-                    </Text>
-                  </View>
-                </View>
-                {data.reviews.length ? (
-                  <Card soft>
-                    <View style={styles.list}>
-                      {data.reviews.map((review, index) => (
-                        <Review
-                          key={review.id}
-                          review={review}
-                          divided={index > 0}
-                        />
-                      ))}
-                    </View>
-                  </Card>
-                ) : null}
-                {data.ratingReasons &&
-                (data.ratingReasons.positive.length ||
-                  data.ratingReasons.negative.length) ? (
-                  <Card soft>
-                    <View style={styles.list}>
-                      {(
-                        [
-                          [true, data.ratingReasons.positive],
-                          [false, data.ratingReasons.negative]
-                        ] as const
-                      )
-                        .filter(([, ids]) => ids.length)
-                        .map(([back, ids], index) => (
-                          <View
-                            key={String(back)}
-                            style={[
-                              styles.said,
-                              index > 0 && {
-                                borderTopWidth: 1,
-                                borderTopColor: palette.line
-                              }
-                            ]}
-                          >
-                            <View style={styles.saidHead}>
-                              <View
-                                style={[
-                                  styles.saidMark,
-                                  {
-                                    backgroundColor: back ? ACID : palette.mark
-                                  }
-                                ]}
-                              >
-                                <Icon
-                                  name={back ? 'fan' : 'close'}
-                                  size={15}
-                                  color={back ? INK : palette.ink}
-                                  accent={back ? INK : palette.accent}
-                                />
-                              </View>
-                              <Text
-                                style={[
-                                  text(15, 'Bold', 1.3),
-                                  { color: palette.ink, flex: 1 }
-                                ]}
-                                numberOfLines={1}
-                              >
-                                {back ? 'Quem voltaria' : 'Quem não voltaria'}
-                              </Text>
-                              <Text
-                                style={[
-                                  text(12.5, 'Regular', 1.4),
-                                  { color: palette.muted }
-                                ]}
-                              >
-                                mais citados
-                              </Text>
-                            </View>
-                            <View style={styles.chips}>
-                              {ids.map((id) => (
-                                <View
-                                  key={id}
-                                  style={[
-                                    styles.reason,
-                                    { backgroundColor: palette.mark }
-                                  ]}
-                                >
-                                  <Text
-                                    style={[
-                                      text(12.5, 'Bold', 1.3),
-                                      { color: palette.ink }
-                                    ]}
-                                  >
-                                    {reasonLabel(id)}
-                                  </Text>
-                                </View>
-                              ))}
-                            </View>
-                          </View>
-                        ))}
-                    </View>
-                  </Card>
-                ) : null}
-              </>
-            ) : null}
-
-            {Platform.OS === 'ios' ? (
-              <AnimatedPressable
-                accessibilityRole="button"
-                hitSlop={8}
-                onPress={() => report(data.name)}
-                onPressIn={reportPress.onPressIn}
-                onPressOut={reportPress.onPressOut}
-                style={[styles.report, reportPress.style]}
-              >
-                <Text
-                  style={[
-                    text(13.5, 'SemiBold', 1.4),
-                    { color: palette.muted }
-                  ]}
-                >
-                  Reportar um problema
-                </Text>
-              </AnimatedPressable>
-            ) : null}
-          </Animated.View>
+            </View>
+            <View
+              style={[
+                styles.col,
+                styles.half,
+                {
+                  paddingTop: insets.top + 10,
+                  paddingRight:
+                    16 + (layout.nav === 'duoRail' ? NAV.duoRail.width : 0)
+                }
+              ]}
+            >
+              {data ? right : null}
+            </View>
+          </View>
+        ) : cols ? (
+          <>
+            {hero}
+            <View style={styles.cols}>
+              <View style={styles.col}>
+                {sTitle}
+                {data ? left : wait}
+              </View>
+              <View style={styles.col}>{data ? right : null}</View>
+            </View>
+          </>
         ) : (
-          <ActivityIndicator color={palette.ink} style={{ marginTop: 32 }} />
+          <>
+            {hero}
+            {data ? (
+              <Animated.View
+                entering={BODY_IN}
+                style={[styles.body, rail ? { paddingRight: rail } : null]}
+              >
+                {sGame}
+                {sCheck}
+                {sPhotos}
+                {sTiles}
+                {sOffer}
+                {sNext}
+                {sFeatures}
+                {sWhere}
+                {sHours}
+                {sRating}
+                {sReport}
+              </Animated.View>
+            ) : (
+              wait
+            )}
+          </>
         )}
       </Animated.ScrollView>
 
@@ -920,9 +1085,20 @@ export default function BarPage() {
         />
       </Animated.View>
 
-      <View style={[styles.top, { top: insets.top + 6 }]}>
-        <BackButton tone="dark" />
-        <View style={{ flexDirection: 'row', gap: 10 }}>
+      <View
+        style={[
+          styles.top,
+          rail
+            ? // Duo fechado: em coluna na faixa da direita, abaixo da foto.
+              [styles.column, { left: undefined, top: heroH + 14 }]
+            : {
+                top: insets.top + 6,
+                right: halves ? W - leftW + 16 : 16
+              }
+        ]}
+      >
+        {back ? <BackButton tone="dark" /> : <View />}
+        <View style={rail ? styles.column : styles.actions}>
           <RoundGlass label="Compartilhar" onPress={share}>
             <Icon name="share" size={19} color={PAPER} />
           </RoundGlass>
@@ -939,7 +1115,19 @@ export default function BarPage() {
       {going && mine ? (
         <Glass
           tone={palette.dark ? 'dark' : 'light'}
-          style={[styles.dock, { bottom: Math.max(insets.bottom - 6, 14) }]}
+          style={[
+            styles.dock,
+            { bottom: Math.max(insets.bottom - 6, 14) },
+            // Fora do celular, a barra tem 440 no meio da página; no
+            // dobrável, cabe na coluna da esquerda.
+            halves
+              ? { left: 12, right: W - leftW + 12 }
+              : cols
+                ? { left: (W - DOCK) / 2, right: (W - DOCK) / 2 }
+                : rail
+                  ? { left: 12, right: rail + 12 }
+                  : null
+          ]}
         >
           <Pressable
             accessibilityRole="button"
@@ -1252,6 +1440,36 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between'
   },
+  column: { flexDirection: 'column', gap: 10 },
+  actions: { flexDirection: 'row', gap: 10 },
+  // Fora do celular: duas colunas abaixo da foto (tablet) ou uma de cada
+  // lado da dobra.
+  row: { flexDirection: 'row' },
+  cols: {
+    flexDirection: 'row',
+    gap: 20,
+    paddingTop: 22,
+    paddingHorizontal: 24,
+    alignItems: 'flex-start'
+  },
+  col: { flex: 1, minWidth: 0, gap: 16 },
+  half: { paddingTop: 16, paddingHorizontal: 16, gap: 16 },
+  title: { gap: 8 },
+  badges: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    height: 22,
+    paddingHorizontal: 7,
+    borderRadius: 3
+  },
+  titleName: { fontFamily: 'Anton', letterSpacing: -0.5, marginVertical: -8 },
   round: {
     width: 44,
     height: 44,
