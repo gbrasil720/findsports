@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Glass } from '@/components/glass'
 import { Text } from '@/components/text'
 import { ACID, PAPER } from '@/components/theme'
-import { formatTime } from '@/lib/explore'
+import { formatTime, teamMark } from '@/lib/explore'
 import { trpc } from '@/lib/trpc'
 
 /*
@@ -13,17 +13,41 @@ import { trpc } from '@/lib/trpc'
  * WEB-491): a foto do bar, "O jogo começa aqui." e os jogos de hoje
  * (`pubs.todayGames`, pública, a mesma da splash). Ao lado do formulário no
  * tablet deitado e no dobrável aberto (`column`); em cima dele, no tablet em pé.
- * Sem jogo hoje, só a frase. O servidor não conta bares por jogo, então a
- * contagem "5 bares" do design não entra.
+ * Sem jogo hoje, só a frase. O jogo vai em siglas ("COR × PAL"), como no
+ * design, com quantos bares no ar o passam.
  */
 
-export function AuthBrand({ column }: { column?: boolean }) {
+/** "Corinthians × Palmeiras" vira "COR × PAL"; sem times, o título inteiro. */
+const marks = (title: string) =>
+  title.includes(' × ') ? title.split(' × ').map(teamMark).join(' × ') : title
+
+export function AuthBrand({
+  column,
+  width,
+  height
+}: {
+  column?: boolean
+  /** A área da marca: o título e quantos jogos cabem saem dela (brand8, brandP8). */
+  width: number
+  height: number
+}) {
   const insets = useSafeAreaInsets()
   const games = useQuery({
     ...trpc.pubs.todayGames.queryOptions(),
     retry: false
-  }).data?.slice(0, column ? 4 : 3)
-  const size = column ? 84 : 64
+  }).data?.slice(
+    0,
+    column ? (height > 700 ? 4 : height > 420 ? 3 : 2) : width > 900 ? 4 : 3
+  )
+  const size = column
+    ? width > 620
+      ? 84
+      : 64
+    : width > 900
+      ? 72
+      : width > 780
+        ? 64
+        : 56
   const headline = {
     fontSize: size,
     letterSpacing: -0.02 * size,
@@ -97,8 +121,18 @@ export function AuthBrand({ column }: { column?: boolean }) {
                     numberOfLines={1}
                     style={[styles.game, column && { flex: 1, fontSize: 15 }]}
                   >
-                    {game.title}
+                    {marks(game.title)}
                   </Text>
+                  {game.bars ? (
+                    <Text
+                      style={[
+                        styles.bars,
+                        { color: index === 0 ? PAPER : ACID }
+                      ]}
+                    >
+                      {game.bars} {game.bars === 1 ? 'bar' : 'bares'}
+                    </Text>
+                  ) : null}
                 </Glass>
               ))}
             </View>
@@ -142,6 +176,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden'
   },
   time: { fontFamily: 'Anton', fontSize: 20, color: PAPER },
+  bars: { fontFamily: 'GeistMono-SemiBold', fontSize: 11.5 },
   game: {
     fontFamily: 'Archivo-Bold',
     fontSize: 13.5,

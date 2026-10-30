@@ -64,6 +64,7 @@ import {
   PAPER,
   type Palette
 } from '@/components/theme'
+import { APP_VERSION, HELP_URL } from '@/lib/env'
 
 /*
  * As peças das telas de conta ("04 Conta" do design): botão de voltar em
@@ -764,7 +765,7 @@ export function Screen({
           style={{ flex: 1, flexDirection: 'row', backgroundColor: background }}
         >
           <View style={{ width: brandWidth }}>
-            <AuthBrand column />
+            <AuthBrand column width={brandWidth} height={layout.height} />
           </View>
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -786,7 +787,7 @@ export function Screen({
         style={{ flex: 1, backgroundColor: INK }}
       >
         <View style={{ height: band }}>
-          <AuthBrand />
+          <AuthBrand width={layout.width} height={band} />
         </View>
         <View
           style={[
@@ -838,7 +839,7 @@ export function Screen({
   )
 }
 
-/** "Termos de uso · Privacidade" no pé da folha do tablet em pé. */
+/** "Termos de uso · Privacidade · Ajuda · v0.1.0" no pé da folha do tablet em pé. */
 function BrandLinks({ dark }: { dark?: boolean }) {
   const router = useRouter()
   const color = dark ? '#aaa9a4' : SUB
@@ -860,6 +861,15 @@ function BrandLinks({ dark }: { dark?: boolean }) {
           {label}
         </Text>
       ))}
+      <Text
+        accessibilityRole="link"
+        suppressHighlighting
+        onPress={() => Linking.openURL(HELP_URL).catch(() => {})}
+        style={[text(13, 'SemiBold'), { color }]}
+      >
+        Ajuda
+      </Text>
+      <Text style={[styles.version, { color }]}>{APP_VERSION}</Text>
     </View>
   )
 }
@@ -1530,6 +1540,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 28,
     overflow: 'hidden'
   },
+  version: { fontFamily: 'GeistMono-SemiBold', fontSize: 12 },
   brandLinks: {
     flexDirection: 'row',
     justifyContent: 'center',
