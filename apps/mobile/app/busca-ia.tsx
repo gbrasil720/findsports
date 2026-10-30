@@ -939,7 +939,8 @@ export default function AiSearch() {
       >
         <View style={styles.coverHead}>
           <Icon name="sparkle" size={16} color={PAPER} accent={ACID} />
-          <Text style={styles.coverKicker}>BUSCA COM IA</Text>
+          <Text style={[styles.coverKicker, { flex: 1 }]}>BUSCA COM IA</Text>
+          <Text style={styles.coverClock}>{clock(now)}</Text>
         </View>
         {last ? (
           <Text style={[text(16, 'Regular', 1.4), { color: '#d6d3cb' }]}>
@@ -1447,6 +1448,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.66,
     color: ACID
   },
+  coverClock: { fontFamily: 'GeistMono-SemiBold', fontSize: 12, color: PAPER },
   coverBar: {
     flexDirection: 'row',
     alignItems: 'center',
