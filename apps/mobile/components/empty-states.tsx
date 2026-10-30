@@ -546,6 +546,64 @@ export function FirstMedals({
   )
 }
 
+/**
+ * O Explorar sem bar com jogo no raio (`eRadius`, a folha): o que falta, o
+ * "Ampliar" com quantos bares o raio maior traz e os jogos de amanhã.
+ */
+export function RadiusEmpty({
+  radiusKm,
+  wider,
+  widerCount,
+  onWiden,
+  onTomorrow
+}: {
+  radiusKm: number
+  /** O raio maior, quando ainda dá para ampliar. */
+  wider: number | null
+  widerCount?: number
+  onWiden: () => void
+  onTomorrow: () => void
+}) {
+  const palette = usePalette()
+  return (
+    <View style={{ gap: 12 }}>
+      <View style={{ marginTop: 4 }}>
+        <EmptyTitle
+          plain="Nenhum bar com jogo "
+          accent={`a ${radiusKm} km.`}
+          size={28}
+        />
+      </View>
+      <Text
+        style={[
+          text(14.5, 'Regular', 1.45),
+          { color: palette.muted, marginTop: -4 }
+        ]}
+      >
+        {wider
+          ? 'Os mais perto estão logo fora do seu raio.'
+          : 'Ninguém publicou jogo perto de você por enquanto.'}
+      </Text>
+      {wider ? (
+        <PillButton
+          label={`Ampliar para ${wider} km${widerCount ? ` · ${widerCount} ${widerCount === 1 ? 'bar' : 'bares'}` : ''}`}
+          onPress={onWiden}
+        />
+      ) : null}
+      <Pressable accessibilityRole="button" hitSlop={8} onPress={onTomorrow}>
+        <Text
+          style={[
+            text(14, 'Bold', 1.3),
+            { color: palette.ink, textAlign: 'center' }
+          ]}
+        >
+          Ver jogos de amanhã
+        </Text>
+      </Pressable>
+    </View>
+  )
+}
+
 /** Uma linha de aviso com o interruptor (`eNotif`). */
 export type NoticeToggle = {
   icon: 'tv' | 'people' | 'crew'
