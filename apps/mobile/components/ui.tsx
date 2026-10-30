@@ -696,11 +696,8 @@ export function Screen({
     : layout.kind === 'split'
       ? Math.min(440, rightWidth - 48)
       : Math.min(480, layout.width - 80)
-  useStatusBar(
-    dark || lightStatus || (framed && layout.kind === 'stack')
-      ? 'light'
-      : 'auto'
-  )
+  // Com a marca, a hora fica sobre a foto: clara.
+  useStatusBar(dark || lightStatus || framed ? 'light' : 'auto')
   // A entrada em sequência vale só para o que nasce com a tela; o que aparece
   // depois (erro, aviso) entra sozinho, na hora.
   const born = useRef(Date.now())
