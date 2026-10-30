@@ -28,6 +28,8 @@ export const useTabBarSpace = () => useNavInsets().bottom
 export type MenuItem = {
   key: string
   icon:
+    | 'fan'
+    | 'crew'
     | 'you'
     | 'medal'
     | 'ticket'

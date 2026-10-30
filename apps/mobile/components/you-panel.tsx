@@ -1,8 +1,20 @@
 import { useQuery } from '@tanstack/react-query'
+import { useRouter } from 'expo-router'
 import { useState } from 'react'
-import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import {
+  Image,
+  Linking,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View
+} from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { SettingsSection, type SettingsTab } from '@/app/configuracoes'
+import {
+  LeaveAccount,
+  SettingsSection,
+  type SettingsTab
+} from '@/app/configuracoes'
 import { Card } from '@/components/card'
 import { useLayout, useNavInsets } from '@/components/layout'
 import { haptic } from '@/components/motion'
@@ -17,6 +29,8 @@ import {
   text,
   useStatusBar
 } from '@/components/ui'
+import { APP_VERSION, HELP_URL } from '@/lib/env'
+import { markedToday, yourBarCount } from '@/lib/profile'
 import { trpc } from '@/lib/trpc'
 
 /*
@@ -90,12 +104,57 @@ export function YouPanel({
     setSeen(asked)
     if (asked) setTab(asked)
   }
-  // A lista tem a largura da coluna do aparelho; no dobrável, a metade.
-  const listWidth = layout.split
+  const router = useRouter()
+  // Dobrável aberto: cada lado numa metade, títulos e respiros menores
+  // (split7); tablet: a lista com 380 (tabLand7).
+  const fold = layout.width - nav.left - nav.right < 1000
+  const listWidth = fold ? layout.split : 380
   const right = layout.width - nav.left - nav.right - listWidth - layout.gap
-  const column = Math.min(780, right - 56)
-  // Dobrável: títulos e respiros menores, como no design (split7).
-  const fold = right < 600
+  const column = Math.min(780, right - (fold ? 32 : 56))
+  // Os números do design ao lado de cada item: Seus bares, jogos de hoje,
+  // amigos. Comunidades não existem: "em breve".
+  const visits = useQuery(trpc.attendance.visits.queryOptions())
+  const saved = useQuery(trpc.pubs.getFavorites.queryOptions())
+  const mine = useQuery(trpc.attendance.mine.queryOptions())
+  const friends = useQuery(trpc.friends.overview.queryOptions())
+  const today = markedToday(
+    (mine.data ?? []).filter((game) => !game.ended),
+    Date.now()
+  )
+  const pick = (key: string) => items.find((item) => item.key === key)
+  const games = pick('jogos')
+  const amigos = pick('amigos')
+  const list: MenuItem[] = [
+    {
+      key: 'seus-bares',
+      icon: 'fan',
+      label: 'Seus bares',
+      soon: '',
+      meta: visits.data
+        ? String(yourBarCount(visits.data, saved.data ?? []))
+        : undefined,
+      open: () => router.navigate('/favoritos')
+    },
+    ...(games ? [{ ...games, meta: today ? `${today} hoje` : undefined }] : []),
+    ...(amigos
+      ? [
+          {
+            ...amigos,
+            meta: friends.data ? String(friends.data.friends.length) : undefined
+          }
+        ]
+      : []),
+    {
+      key: 'comunidades',
+      icon: 'crew',
+      label: 'Comunidades',
+      soon: 'As comunidades chegam em breve',
+      meta: 'em breve'
+    },
+    ...items.filter((item) => item.key !== 'jogos' && item.key !== 'amigos')
+  ]
+  // Tablet alto: Ajuda, Termos, Privacidade e a versão no fim da lista.
+  const tall = !fold && layout.height > 900
   const accent = palette.dark ? ACID : ACCENT
   const current = SECTIONS.find((s) => s.tab === tab) ?? SECTIONS[0]
 
@@ -163,7 +222,7 @@ export function YouPanel({
         <Text style={[styles.heading, { color: accent }]}>Você</Text>
         <Card soft>
           <View style={styles.rows}>
-            {items.map((item, index) => (
+            {list.map((item, index) => (
               <Pressable
                 key={item.key}
                 accessibilityRole="button"
@@ -208,6 +267,77 @@ export function YouPanel({
         </Card>
         <Text style={[styles.heading, { color: accent }]}>Configurações</Text>
         <SettingsList current={tab} onPick={setTab} />
+        <LeaveAccount />
+        {tall ? (
+          <>
+            <Card soft>
+              <View style={styles.rows}>
+                {(
+                  [
+                    [
+                      'chat',
+                      'Ajuda e contato',
+                      () => Linking.openURL(HELP_URL)
+                    ],
+                    [
+                      'doc',
+                      'Termos de uso',
+                      () =>
+                        router.push({
+                          pathname: '/legal',
+                          params: { doc: 'termos' }
+                        })
+                    ],
+                    [
+                      'shield',
+                      'Privacidade da Onside',
+                      () =>
+                        router.push({
+                          pathname: '/legal',
+                          params: { doc: 'privacidade' }
+                        })
+                    ]
+                  ] as const
+                ).map(([icon, label, onPress], index) => (
+                  <Pressable
+                    key={label}
+                    accessibilityRole="link"
+                    onPress={() => {
+                      Promise.resolve(onPress()).catch(() => {})
+                    }}
+                    style={({ pressed }) => [
+                      styles.link,
+                      index > 0 && {
+                        borderTopWidth: 1,
+                        borderTopColor: palette.line
+                      },
+                      pressed && { opacity: 0.6 }
+                    ]}
+                  >
+                    <Icon
+                      name={icon}
+                      size={20}
+                      color={palette.ink}
+                      accent={accent}
+                    />
+                    <Text
+                      style={[
+                        text(14.5, 'SemiBold'),
+                        { color: palette.ink, flex: 1 }
+                      ]}
+                    >
+                      {label}
+                    </Text>
+                    <Icon name="next" size={12} color={palette.muted} />
+                  </Pressable>
+                ))}
+              </View>
+            </Card>
+            <Text style={[styles.version, { color: palette.muted }]}>
+              Onside {APP_VERSION}
+            </Text>
+          </>
+        ) : null}
       </ScrollView>
       <View
         style={[
@@ -240,6 +370,7 @@ export function YouPanel({
             <SettingsSection
               tab={tab}
               width={column}
+              panel={fold ? 'fold' : 'tablet'}
               mapHeight={
                 column > 620 ? (layout.height > 900 ? 300 : 200) : undefined
               }
@@ -363,6 +494,12 @@ const styles = StyleSheet.create({
     paddingVertical: 11
   },
   meta: { fontFamily: 'GeistMono-SemiBold', fontSize: 12 },
+  link: { flexDirection: 'row', alignItems: 'center', gap: 12, height: 52 },
+  version: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11.5,
+    textAlign: 'center'
+  },
   badge: {
     paddingHorizontal: 7,
     paddingVertical: 3,
