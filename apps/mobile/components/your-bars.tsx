@@ -555,10 +555,14 @@ function GlassPill({
       style={styles.grow}
     >
       <Animated.View style={press.style}>
-        <Glass
-          tone={palette.dark ? 'dark' : 'light'}
-          interactive
-          style={styles.pill}
+        {/* Papel com sombra macia, não vidro: sobre o painel liso o vidro
+            some. */}
+        <View
+          style={[
+            styles.pill,
+            styles.pillBase,
+            { backgroundColor: palette.dark ? '#262621' : palette.card }
+          ]}
         >
           {icon ? (
             <Icon
@@ -576,7 +580,7 @@ function GlassPill({
           >
             {label}
           </Text>
-        </Glass>
+        </View>
       </Animated.View>
     </Pressable>
   )
@@ -622,11 +626,19 @@ export function VisitsMap({
     latitude: Number(v.latitude),
     longitude: Number(v.longitude)
   }))
-  const frame = () =>
+  // Enquadra as gotas quando o mapa fica pronto e quando as visitas chegam
+  // ou mudam (o mapa pode nascer antes da leitura).
+  const ready = useRef(false)
+  const frame = () => {
+    if (!ready.current || !coords.length) return
     map.current?.fitToCoordinates(coords, {
       edgePadding: padding,
       animated: false
     })
+  }
+  const framing = `${coords.map((c) => `${c.latitude},${c.longitude}`).join('|')}:${Object.values(padding).join(',')}`
+  // biome-ignore lint/correctness/useExhaustiveDependencies: enquadra de novo só quando o desenho muda
+  useEffect(frame, [framing])
   const times = (barId: string) =>
     visits.filter((v) => v.barId === barId).length
   const first = coords[0] ?? center
@@ -635,7 +647,10 @@ export function VisitsMap({
       <MapView
         ref={map}
         style={StyleSheet.absoluteFill}
-        onMapReady={frame}
+        onMapReady={() => {
+          ready.current = true
+          frame()
+        }}
         initialRegion={{ ...first, latitudeDelta: 0.03, longitudeDelta: 0.03 }}
         mapType={Platform.OS === 'ios' ? 'mutedStandard' : 'standard'}
         customMapStyle={palette.dark ? MAP_STYLE.dark : MAP_STYLE.light}
@@ -855,5 +870,11 @@ const styles = StyleSheet.create({
     marginVertical: -4
   },
   lastGo: { position: 'absolute', right: 0, bottom: 26, width: 150 },
+  pillBase: {
+    shadowColor: '#000',
+    shadowOpacity: 0.14,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 }
+  },
   mapPill: { position: 'absolute', left: 16 }
 })
