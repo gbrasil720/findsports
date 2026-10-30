@@ -29,6 +29,7 @@ import {
   useFriendActions,
   useKept
 } from '@/components/friends'
+import { useLayout, useNavInsets } from '@/components/layout'
 import { MedalImage } from '@/components/medal'
 import {
   haptic,
@@ -255,12 +256,29 @@ export default function Notices() {
     ])
   )
 
+  // Fora do celular os avisos (e o "Tudo em dia") ficam numa coluna de até
+  // 560 no meio (Adaptativo 10, avisos), fora da faixa do Duo.
+  const strip = useNavInsets().right
+  const layout = useLayout()
+  const width = layout.width - strip
+  const column =
+    layout.kind === 'phone' || layout.kind === 'duoClosed'
+      ? 0
+      : Math.min(560, width - 80)
+  const pad = column ? (width - column) / 2 : 0
   return (
-    <View style={[styles.screen, { backgroundColor: palette.bg }]}>
+    <View
+      style={[
+        styles.screen,
+        { backgroundColor: palette.bg },
+        strip > 0 && { paddingRight: strip }
+      ]}
+    >
       <ScrollView
         contentContainerStyle={[
           styles.body,
-          { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 32 }
+          { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 32 },
+          pad > 0 && { paddingHorizontal: pad }
         ]}
         refreshControl={<RefreshControl {...pull} tintColor={palette.muted} />}
       >
