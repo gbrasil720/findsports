@@ -4,6 +4,7 @@ import {
   byMonth,
   dayMonth,
   gameWhen,
+  monthGrids,
   savedWeek,
   visitGrid,
   weekOf,
@@ -133,5 +134,35 @@ describe('aba Bares', () => {
     expect(result.nearest).toBeCloseTo(0.1)
     const groups = barGroups(result.bars, result.neighborhoods, 'bairro')
     expect(groups[0]?.bars.map((b) => b.name)).toEqual(['Casa 92'])
+  })
+})
+
+describe('calendário do mês (tablet)', () => {
+  it('mês anterior e atual, começando na segunda', () => {
+    const [sep, oct] = monthGrids(
+      [
+        at('2026-10-04T22:00:00Z'),
+        at('2026-09-02T22:00:00Z'),
+        at('2026-09-28T23:30:00Z')
+      ],
+      now
+    )
+    expect(sep?.label).toBe('Setembro')
+    expect(oct?.label).toBe('Outubro')
+    // 1/9/2026 é terça: um vazio antes; 1/10 é quinta: três.
+    expect(sep?.cells.slice(0, 2).map((c) => c?.day ?? null)).toEqual([null, 1])
+    expect(oct?.cells.indexOf(null, 3)).toBe(-1)
+    expect(oct?.cells[3]?.day).toBe(1)
+    expect(sep?.cells.filter(Boolean)).toHaveLength(30)
+    expect(oct?.cells.filter(Boolean)).toHaveLength(31)
+    expect(sep?.count).toBe(2)
+    expect(oct?.count).toBe(1)
+    expect(oct?.cells.find((c) => c?.day === 4)?.on).toBe(true)
+  })
+
+  it('janeiro mostra dezembro do ano anterior', () => {
+    const [dec, jan] = monthGrids([], Date.parse('2027-01-10T15:00:00Z'))
+    expect(dec?.key).toBe('2026-12')
+    expect(jan?.key).toBe('2027-01')
   })
 })

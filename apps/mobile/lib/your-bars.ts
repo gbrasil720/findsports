@@ -280,3 +280,35 @@ export function barGroups(
     bars: bars.filter((b) => b.neighborhood === n.name).sort(byKm)
   }))
 }
+
+/**
+ * O calendário do mês inteiro (tablet em pé, A04): o mês anterior e o atual
+ * de `now`, de segunda a domingo, com `null` antes do dia 1. `on` onde houve
+ * jogo com código validado; `count` são os jogos do mês.
+ */
+export function monthGrids(visits: { startsAt: string | Date }[], now: number) {
+  const days = new Map<string, number>()
+  for (const v of visits) {
+    const key = dayKey(v.startsAt)
+    days.set(key, (days.get(key) ?? 0) + 1)
+  }
+  const [year, month] = dayKey(now).split('-').map(Number) as [number, number]
+  return [month - 1, month].map((m) => {
+    // Meio-dia em UTC cai no mesmo dia em Brasília.
+    const first = Date.UTC(year, m - 1, 1, 12)
+    const length = new Date(Date.UTC(year, m, 0)).getUTCDate()
+    const prefix = dayKey(first).slice(0, 7)
+    const cells = [
+      ...Array.from({ length: weekday(first) }, () => null),
+      ...Array.from({ length }, (_, i) => {
+        const key = `${prefix}-${String(i + 1).padStart(2, '0')}`
+        return { key, day: i + 1, on: days.has(key) }
+      })
+    ]
+    const count = [...days].reduce(
+      (sum, [key, n]) => (key.startsWith(prefix) ? sum + n : sum),
+      0
+    )
+    return { key: prefix, label: monthName(new Date(first)), count, cells }
+  })
+}
