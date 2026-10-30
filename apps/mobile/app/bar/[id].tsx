@@ -33,6 +33,16 @@ import Animated, {
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { scheduleOnRN } from 'react-native-worklets'
+import {
+  Amenities,
+  amenityChips,
+  BarTitle,
+  GameCard,
+  NextGames,
+  PhotoCount,
+  PhotoGrid,
+  WhereCard
+} from '@/components/bar-wide'
 import { Card, OfferCard } from '@/components/card'
 import { CheckInCard } from '@/components/check-in'
 import {
@@ -53,6 +63,7 @@ import {
   usePress,
   usePressScale
 } from '@/components/motion'
+import { StackRail } from '@/components/side-nav'
 import { useSoon } from '@/components/soon'
 import { Stars } from '@/components/stars'
 import { usePalette } from '@/components/theme'
@@ -73,6 +84,7 @@ import { trackCommercialEvent } from '@/lib/commercial'
 import { env } from '@/lib/env'
 import { formatKm, formatTime, isLive } from '@/lib/explore'
 import { useFavorites } from '@/lib/favorites'
+import { byHeight } from '@/lib/layout'
 import { MAP_STYLE } from '@/lib/map-style'
 import { formatCode } from '@/lib/my-games'
 import { trpc } from '@/lib/trpc'
@@ -128,6 +140,25 @@ const BODY_IN: EntryExitAnimationFunction = () => {
 const MORE_GAMES = 3
 /** A foto do celular; a dos tablets sai da medida da tela. */
 const HERO = 340
+/** A foto e o nome no tablet, pela altura da tela (gen/adapt02.js). */
+const HERO_PORTRAIT: [number, number][] = [
+  [1133, 320],
+  [1180, 380],
+  [1280, 400],
+  [1376, 460],
+  [1480, 520]
+]
+const HERO_LANDSCAPE: [number, number][] = [
+  [744, 260],
+  [800, 280],
+  [820, 280],
+  [924, 340]
+]
+const TITLE_PORTRAIT: [number, number][] = [
+  [1133, 40],
+  [1180, 46],
+  [1376, 52]
+]
 /** A barra do "Vou assistir aqui" fora do celular. */
 const DOCK = 440
 
@@ -179,6 +210,9 @@ function gameDay(startsAt: string, now: number) {
   })
 }
 
+/** A sombra do topo da foto fora do celular (coverB): só sob os botões. */
+const COVER_SHADE = ['rgba(18,18,15,.45)', 'rgba(18,18,15,0)'] as const
+
 const HERO_SHADE = [
   'rgba(18,18,15,.3)',
   'rgba(18,18,15,0)',
@@ -223,29 +257,50 @@ export function BarDetail({
   const insets = useSafeAreaInsets()
   const layout = useLayout()
   const W = given ?? layout.width
-  // Duas colunas a partir de 700 pt (o iPad mini em pé tem 744).
-  const cols = layout.kind !== 'phone' && W >= 700
-  // Dobrável aberto ocupando a tela: a foto fica na coluna da esquerda.
+  // Fora do celular a página segue o Adaptativo 02 (WEB-488). A tela de fora
+  // do Flip só sai do celular com o código (mais abaixo).
+  const wide = layout.kind !== 'phone' && layout.kind !== 'cover'
+  // O Duo fechado (02a): a coluna do iPhone com a faixa à direita.
+  const duoClosed = !given && layout.kind === 'duoClosed'
+  // Dobrável aberto ocupando a tela (02b, 02c, 02f, 02i): uma coluna de cada
+  // lado da dobra, a foto na da esquerda.
   const halves =
-    cols &&
+    wide &&
     !given &&
     layout.kind === 'split' &&
     (layout.nav === 'duoRail' ||
       layout.gap > 0 ||
       layout.split * 2 >= layout.width - 2)
-  const leftW = halves ? layout.split : W
-  // A faixa do Duo fechado à direita: voltar, compartilhar e favoritar descem
-  // para ela, abaixo da foto (regra 01 da T2).
-  const rail = layout.kind === 'duoClosed' ? NAV.duoRail.width : 0
-  const heroH = !cols
+  // O rail do Galaxy Tab continua à esquerda da página (02q–02u).
+  const tabRail = wide && !given && layout.nav === 'rail' ? NAV.rail.width : 0
+  // A faixa do Duo, à direita: voltar, compartilhar e favoritar descem nela.
+  const duoRail = !given && layout.nav === 'duoRail' ? NAV.duoRail.width : 0
+  const pageW = W - tabRail
+  // Tablet: duas colunas abaixo da foto a partir de 700 (02k–02u).
+  const cols = wide && !halves && !duoClosed && pageW >= 700
+  const leftW = halves ? layout.split : pageW
+  const portrait = layout.height > layout.width
+  const heroH = !wide
     ? HERO
-    : halves
-      ? Math.round(leftW * 0.58)
-      : Math.round(Math.min(W * 0.45, layout.height * 0.34))
+    : duoClosed
+      ? 250
+      : halves
+        ? leftW < 400
+          ? 240
+          : 255
+        : portrait
+          ? byHeight(HERO_PORTRAIT, layout.height)
+          : byHeight(HERO_LANDSCAPE, layout.height)
   const heroEdge = heroH - 50
-  const titleSize = halves
+  const titleSize = duoClosed
     ? 36
-    : Math.round(Math.min(52, Math.max(40, W * 0.05)))
+    : halves
+      ? leftW < 400
+        ? 32
+        : 36
+      : portrait
+        ? byHeight(TITLE_PORTRAIT, layout.height)
+        : 42
   const router = useRouter()
   const palette = usePalette()
   const session = authClient.useSession()
@@ -698,6 +753,7 @@ export function BarDetail({
     data.openingHours ? (
       <>
         <Heading
+          small={wide}
           title="Horário"
           aside={
             data.openNow === null
@@ -747,6 +803,7 @@ export function BarDetail({
     data.rating ? (
       <>
         <Heading
+          small={wide}
           title="O que dizem"
           aside={`${data.rating.stars !== null ? `★ ${data.rating.stars.toLocaleString('pt-BR', { minimumFractionDigits: 1 })} · ` : ''}${data.rating.total} ${data.rating.total === 1 ? 'avaliação' : 'avaliações'}`}
         />
@@ -875,6 +932,12 @@ export function BarDetail({
     ) : null
   ) : null
 
+  const photos = data?.photos ?? []
+  const openGallery = () =>
+    router.push({
+      pathname: '/fotos/[barId]',
+      params: { barId: id, cat: 'all' }
+    })
   const hero = (
     <View style={[styles.hero, { height: heroH }]}>
       <Animated.View style={[styles.heroArt, stretch]}>
@@ -886,12 +949,18 @@ export function BarDetail({
           />
         ) : null}
         <LinearGradient
-          colors={HERO_SHADE}
-          locations={[0, 0.35, 1]}
+          colors={wide ? COVER_SHADE : HERO_SHADE}
+          locations={wide ? [0, 0.42] : [0, 0.35, 1]}
           style={StyleSheet.absoluteFill}
         />
       </Animated.View>
-      {cols ? null : (
+      {wide ? (
+        <PhotoCount
+          total={photos.length}
+          left={duoClosed}
+          onPress={openGallery}
+        />
+      ) : (
         <View style={styles.heroText}>
           {/* O topo cresce para cima (`flex-end`): as etiquetas chegam
                 acima do nome sem empurrá-lo. São vidro: entram só pela
@@ -936,78 +1005,67 @@ export function BarDetail({
       )}
     </View>
   )
-  // Fora do celular o nome sai da foto e abre a coluna da esquerda (02 do
-  // design): as etiquetas, o nome e o bairro com a distância.
-  const sTitle = cols ? (
-    <View style={styles.title}>
-      {data?.plan === 'elite' || data?.rating ? (
-        <Animated.View entering={BODY_IN} style={styles.badges}>
-          {data.plan === 'elite' ? (
-            <View style={[styles.badge, { backgroundColor: ACID }]}>
-              <Icon name="medal" size={13} color={INK} />
-              <Text style={[text(11.5, 'Bold', 1.2), { color: INK }]}>
-                Elite
-              </Text>
-            </View>
-          ) : null}
-          {data.rating ? (
-            <>
-              <View style={[styles.badge, { backgroundColor: palette.mark }]}>
-                <Text style={[text(11.5, 'Bold', 1.2), { color: palette.ink }]}>
-                  {data.rating.percentage}% voltariam
-                </Text>
-              </View>
-              <Text
-                style={[text(12, 'Regular', 1.3), { color: palette.muted }]}
-              >
-                de {data.rating.total}{' '}
-                {data.rating.total === 1 ? 'torcedor' : 'torcedores'}
-              </Text>
-            </>
-          ) : null}
-        </Animated.View>
-      ) : null}
-      <Text
-        style={[styles.titleName, { color: palette.ink, fontSize: titleSize }]}
-        numberOfLines={2}
-        adjustsFontSizeToFit
-        minimumFontScale={0.6}
-      >
-        {(data?.name ?? name ?? '').toUpperCase()}
-      </Text>
-      <Animated.Text
-        key={data ? 'info' : 'wait'}
-        entering={SWAP}
-        style={[text(14, 'Regular', 1.4), { color: palette.muted }]}
-        numberOfLines={2}
-        maxFontSizeMultiplier={MAX_FONT_SCALE}
-      >
-        {info.join(' · ') || ' '}
-      </Animated.Text>
-    </View>
-  ) : null
-  const left = (
-    <>
-      {sGame}
-      {sCheck}
-      {sTiles}
-      {sOffer}
-      {sNext}
-    </>
-  )
-  const right = (
-    <>
-      {sWhere}
-      {sFeatures}
-      {sPhotos}
-      {sHours}
-      {sRating}
-      {sReport}
-    </>
-  )
   const wait = (
     <ActivityIndicator color={palette.ink} style={{ marginTop: 32 }} />
   )
+  // As peças do Adaptativo 02 fora do celular.
+  const wTitle = (
+    <BarTitle
+      name={data?.name ?? name ?? ''}
+      elite={data?.plan === 'elite'}
+      rating={data?.rating ?? null}
+      info={[
+        data?.neighborhood,
+        km ? formatKm(Number(km)) : null,
+        data?.averageSpendCents
+          ? `R$ ${Math.round(data.averageSpendCents / 100)} por pessoa`
+          : null
+      ]
+        .filter(Boolean)
+        .join(' · ')}
+      size={titleSize}
+    />
+  )
+  const wGame = data ? (
+    next ? (
+      <GameCard
+        game={next}
+        more={games.length - 1}
+        now={now}
+        narrow={halves ? leftW < 380 : duoClosed && pageW - duoRail - 64 < 340}
+      />
+    ) : (
+      <Text style={[text(15), { color: palette.muted }]}>
+        Nenhum jogo marcado por enquanto.
+      </Text>
+    )
+  ) : null
+  const wOffer = next?.houseOffer ? (
+    <OfferCard
+      offer={next.houseOffer}
+      note={data?.issuesCode ? 'Vale com o seu código.' : undefined}
+    />
+  ) : null
+  const wNext =
+    games.length > 1 ? (
+      <NextGames games={games.slice(1, 1 + MORE_GAMES)} tag={gameTag} />
+    ) : null
+  const wWhere =
+    data && located ? (
+      <WhereCard
+        lat={lat}
+        lng={lng}
+        address={[data.address, data.neighborhood].filter(Boolean).join(' · ')}
+        live={pinLive}
+        elite={data.plan === 'elite'}
+        onRoute={() => fromAi('route')}
+      />
+    ) : null
+  const wAmen = data ? (
+    <Amenities chips={amenityChips(data.amenities, data.screenCount)} />
+  ) : null
+  const wPhotos = (n: number) =>
+    data ? <PhotoGrid barId={data.id} photos={photos} cols={n} /> : null
 
   // "Vou assistir aqui": no vidro preso embaixo; na mesa, embaixo da oferta.
   const attendButton =
@@ -1172,6 +1230,228 @@ export function BarDetail({
     )
   }
 
+  // Os controles sobre a foto; no Duo, em coluna na faixa da direita.
+  const controls = (size: number) => (
+    <>
+      {back ? (
+        <RoundGlass label="Voltar" size={size} onPress={() => router.back()}>
+          <Icon name="back" size={Math.round(size * 0.43)} color={PAPER} />
+        </RoundGlass>
+      ) : (
+        <View />
+      )}
+      <View style={duoRail ? styles.column : styles.actions}>
+        <RoundGlass label="Compartilhar" size={size} onPress={share}>
+          <Icon name="share" size={Math.round(size * 0.43)} color={PAPER} />
+        </RoundGlass>
+        <RoundGlass
+          label={favorite ? 'Tirar dos favoritos' : 'Favoritar'}
+          selected={favorite}
+          size={size}
+          onPress={toggleFavorite}
+        >
+          <Icon
+            name="fan"
+            size={Math.round(size * 0.45)}
+            color={PAPER}
+            accent={PAPER}
+          />
+        </RoundGlass>
+      </View>
+    </>
+  )
+  const extras = (
+    <>
+      {sHours}
+      {sRating}
+      {sReport}
+    </>
+  )
+
+  if (wide) {
+    const dockW = halves
+      ? leftW - 24
+      : duoClosed
+        ? pageW - duoRail - 24
+        : Math.min(DOCK, pageW - 48)
+    const dockLeft = halves || duoClosed ? 12 : (pageW - dockW) / 2
+    return (
+      <View style={{ flex: 1, backgroundColor: palette.sheet }}>
+        <Animated.ScrollView
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+          style={{ marginLeft: tabRail }}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 120 }}
+          showsVerticalScrollIndicator={false}
+        >
+          {halves ? (
+            <View style={styles.row}>
+              <View style={{ width: leftW }}>
+                {hero}
+                <View style={[styles.stack, styles.half, { gap: 14 }]}>
+                  {wTitle}
+                  {data ? (
+                    <>
+                      {wGame}
+                      {sCheck}
+                      {duoRail && !layout.gap ? null : wOffer}
+                    </>
+                  ) : (
+                    wait
+                  )}
+                </View>
+              </View>
+              <View
+                style={[
+                  styles.col,
+                  styles.half,
+                  {
+                    gap: 18,
+                    // A coluna da direita começa depois da dobra.
+                    marginLeft: layout.gap,
+                    paddingTop: insets.top + (duoRail ? 6 : 4),
+                    paddingRight: 16 + duoRail
+                  }
+                ]}
+              >
+                {data ? (
+                  <>
+                    {duoRail && !layout.gap ? wOffer : null}
+                    {wWhere}
+                    {wAmen}
+                    {wPhotos(4)}
+                    {wNext}
+                    {extras}
+                  </>
+                ) : null}
+              </View>
+            </View>
+          ) : cols ? (
+            <>
+              {hero}
+              <View style={styles.cols}>
+                <View style={[styles.col, { gap: 16 }]}>
+                  {wTitle}
+                  {data ? (
+                    <>
+                      {wGame}
+                      {sCheck}
+                      {wOffer}
+                      {wNext}
+                    </>
+                  ) : (
+                    wait
+                  )}
+                </View>
+                <View style={[styles.col, { gap: 18 }]}>
+                  {data ? (
+                    <>
+                      {wWhere}
+                      {wAmen}
+                      {wPhotos(3)}
+                      {extras}
+                    </>
+                  ) : null}
+                </View>
+              </View>
+            </>
+          ) : (
+            <>
+              {hero}
+              <View
+                style={[
+                  styles.stack,
+                  duoClosed
+                    ? {
+                        padding: 16,
+                        paddingBottom: 0,
+                        paddingRight: 16 + duoRail,
+                        gap: 14
+                      }
+                    : { paddingTop: 18, paddingHorizontal: 24, gap: 16 }
+                ]}
+              >
+                {wTitle}
+                {data ? (
+                  <>
+                    {wGame}
+                    {sCheck}
+                    {wOffer}
+                    {wWhere}
+                    {wAmen}
+                    {wPhotos(4)}
+                    {wNext}
+                    {extras}
+                  </>
+                ) : (
+                  wait
+                )}
+              </View>
+            </>
+          )}
+        </Animated.ScrollView>
+
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.edge, { height: insets.top + 64 }, edge]}
+        >
+          <LinearGradient
+            colors={[palette.sheet, palette.sheet, `${palette.sheet}00`]}
+            locations={[0, 0.6, 1]}
+            style={StyleSheet.absoluteFill}
+          />
+        </Animated.View>
+
+        {duoRail ? (
+          // Duo (02a–02c): voltar, compartilhar e favoritar na faixa.
+          <View
+            style={[
+              styles.column,
+              styles.duoControls,
+              duoClosed
+                ? { right: 16, top: heroH + 14 }
+                : { right: 13, top: 96 }
+            ]}
+          >
+            {controls(duoClosed ? 50 : 56)}
+          </View>
+        ) : (
+          <View
+            style={[
+              styles.top,
+              {
+                top: insets.top + 20,
+                left: tabRail + 16,
+                right: halves ? W - leftW + 16 : 16
+              }
+            ]}
+          >
+            {controls(42)}
+          </View>
+        )}
+
+        {attendButton ? (
+          <Glass
+            tone={palette.dark ? 'dark' : 'light'}
+            style={[
+              styles.dock,
+              {
+                bottom: Math.max(insets.bottom - 6, 14) + 12,
+                left: tabRail + dockLeft,
+                right: undefined,
+                width: dockW
+              }
+            ]}
+          >
+            {attendButton}
+          </Glass>
+        ) : null}
+        {tabRail ? <StackRail current="explore" /> : null}
+        {soon.toast}
+      </View>
+    )
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: palette.sheet }}>
       <Animated.ScrollView
@@ -1180,66 +1460,23 @@ export function BarDetail({
         contentContainerStyle={{ paddingBottom: insets.bottom + 120 }}
         showsVerticalScrollIndicator={false}
       >
-        {halves ? (
-          <View style={styles.row}>
-            <View style={{ width: leftW }}>
-              {hero}
-              <View style={styles.half}>
-                {sTitle}
-                {data ? left : wait}
-              </View>
-            </View>
-            <View
-              style={[
-                styles.col,
-                styles.half,
-                {
-                  // A coluna da direita começa depois da dobra.
-                  marginLeft: layout.gap,
-                  paddingTop: insets.top + 10,
-                  paddingRight:
-                    16 + (layout.nav === 'duoRail' ? NAV.duoRail.width : 0)
-                }
-              ]}
-            >
-              {data ? right : null}
-            </View>
-          </View>
-        ) : cols ? (
-          <>
-            {hero}
-            <View style={styles.cols}>
-              <View style={styles.col}>
-                {sTitle}
-                {data ? left : wait}
-              </View>
-              <View style={styles.col}>{data ? right : null}</View>
-            </View>
-          </>
+        {hero}
+        {data ? (
+          <Animated.View entering={BODY_IN} style={styles.body}>
+            {sGame}
+            {sCheck}
+            {sPhotos}
+            {sTiles}
+            {sOffer}
+            {sNext}
+            {sFeatures}
+            {sWhere}
+            {sHours}
+            {sRating}
+            {sReport}
+          </Animated.View>
         ) : (
-          <>
-            {hero}
-            {data ? (
-              <Animated.View
-                entering={BODY_IN}
-                style={[styles.body, rail ? { paddingRight: rail } : null]}
-              >
-                {sGame}
-                {sCheck}
-                {sPhotos}
-                {sTiles}
-                {sOffer}
-                {sNext}
-                {sFeatures}
-                {sWhere}
-                {sHours}
-                {sRating}
-                {sReport}
-              </Animated.View>
-            ) : (
-              wait
-            )}
-          </>
+          wait
         )}
       </Animated.ScrollView>
 
@@ -1254,20 +1491,9 @@ export function BarDetail({
         />
       </Animated.View>
 
-      <View
-        style={[
-          styles.top,
-          rail
-            ? // Duo fechado: em coluna na faixa da direita, abaixo da foto.
-              [styles.column, { left: undefined, top: heroH + 14 }]
-            : {
-                top: insets.top + 6,
-                right: halves ? W - leftW + 16 : 16
-              }
-        ]}
-      >
-        {back ? <BackButton tone="dark" /> : <View />}
-        <View style={rail ? styles.column : styles.actions}>
+      <View style={[styles.top, { top: insets.top + 6 }]}>
+        <BackButton tone="dark" />
+        <View style={{ flexDirection: 'row', gap: 10 }}>
           <RoundGlass label="Compartilhar" onPress={share}>
             <Icon name="share" size={19} color={PAPER} />
           </RoundGlass>
@@ -1281,22 +1507,10 @@ export function BarDetail({
         </View>
       </View>
 
-      {going && mine ? (
+      {attendButton ? (
         <Glass
           tone={palette.dark ? 'dark' : 'light'}
-          style={[
-            styles.dock,
-            { bottom: Math.max(insets.bottom - 6, 14) },
-            // Fora do celular, a barra tem 440 no meio da página; no
-            // dobrável, cabe na coluna da esquerda.
-            halves
-              ? { left: 12, right: W - leftW + 12 }
-              : cols
-                ? { left: (W - DOCK) / 2, right: (W - DOCK) / 2 }
-                : rail
-                  ? { left: 12, right: rail + 12 }
-                  : null
-          ]}
+          style={[styles.dock, { bottom: Math.max(insets.bottom - 6, 14) }]}
         >
           {attendButton}
         </Glass>
@@ -1395,12 +1609,24 @@ function Review({
 }
 
 /** O título de seção do design, com o número à direita ("5 esta semana"). */
-function Heading({ title, aside }: { title: string; aside?: string }) {
+function Heading({
+  title,
+  aside,
+  small
+}: {
+  title: string
+  aside?: string
+  /** Fora do celular, o título de seção do Adaptativo 02 (15). */
+  small?: boolean
+}) {
   const palette = usePalette()
   return (
     <View style={styles.heading}>
       <Text
-        style={[text(16, 'Bold', 1.4), { color: palette.ink, flexShrink: 1 }]}
+        style={[
+          text(small ? 15 : 16, 'Bold', small ? 1.3 : 1.4),
+          { color: palette.ink, flexShrink: 1 }
+        ]}
       >
         {title}
       </Text>
@@ -1428,11 +1654,13 @@ function Label({ children }: { children: string }) {
 function RoundGlass({
   label,
   selected,
+  size = 44,
   onPress,
   children
 }: {
   label: string
   selected?: boolean
+  size?: number
   onPress: () => void
   children: ReactNode
 }) {
@@ -1448,7 +1676,12 @@ function RoundGlass({
         tone="dark"
         tint={selected ? 'rgba(232,50,12,.8)' : undefined}
         interactive
-        style={styles.round}
+        style={[
+          styles.round,
+          size === 44
+            ? null
+            : { width: size, height: size, borderRadius: size / 2 }
+        ]}
       >
         {children}
       </Glass>
@@ -1576,6 +1809,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between'
   },
   column: { flexDirection: 'column', gap: 10 },
+  duoControls: { position: 'absolute', zIndex: 40 },
+  stack: { gap: 16 },
   dockInline: { position: 'relative', left: 0, right: 0 },
   tableName: { position: 'absolute', left: 20, right: 20, bottom: 18 },
   tableBody: { paddingTop: 16, paddingHorizontal: 20, gap: 12 },
