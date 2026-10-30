@@ -105,7 +105,8 @@ export function frameOf(layout: Layout, fold: boolean): Frame {
       kind: 'table',
       top: layout.split,
       gap: layout.gap,
-      column: Math.min(540, width - 48)
+      // Na mesa as opções vão de ponta a ponta (24 de cada lado, `table9`).
+      column: width - 48
     }
   if (kind === 'stack')
     return {

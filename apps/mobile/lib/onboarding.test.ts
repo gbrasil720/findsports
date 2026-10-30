@@ -66,7 +66,7 @@ describe('frameOf', () => {
           hinge: { x: 0, y: 338, width: 932, height: 28 }
         }
       })
-    ).toEqual({ kind: 'table', top: 338, gap: 28, column: 540 })
+    ).toEqual({ kind: 'table', top: 338, gap: 28, column: 884 })
   })
 
   test('tela de fora do Flip', () => {
