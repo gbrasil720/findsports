@@ -207,61 +207,7 @@ export function YouPanel({
           </View>
         </Card>
         <Text style={[styles.heading, { color: accent }]}>Configurações</Text>
-        <Card soft>
-          <View style={styles.rows}>
-            {SECTIONS.map((section, index) => {
-              const on = section.tab === tab
-              return (
-                <Pressable
-                  key={section.tab}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: on }}
-                  onPress={() => {
-                    if (on) return
-                    haptic.select()
-                    setTab(section.tab)
-                  }}
-                  style={({ pressed }) => [
-                    styles.section,
-                    index > 0 &&
-                      !on &&
-                      SECTIONS[index - 1]?.tab !== tab && {
-                        borderTopWidth: 1,
-                        borderTopColor: palette.line
-                      },
-                    on && [
-                      styles.sectionOn,
-                      {
-                        backgroundColor: palette.dark ? '#262621' : '#fff',
-                        borderColor: palette.dark ? 'rgba(241,238,230,.6)' : INK
-                      }
-                    ],
-                    pressed && !on && { opacity: 0.6 }
-                  ]}
-                >
-                  <Icon
-                    name={section.icon}
-                    size={22}
-                    color={palette.ink}
-                    accent={accent}
-                  />
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={[text(15, 'Bold'), { color: palette.ink }]}>
-                      {section.title}
-                    </Text>
-                    <Text
-                      numberOfLines={1}
-                      style={[text(12.5), { color: palette.muted }]}
-                    >
-                      {section.sub}
-                    </Text>
-                  </View>
-                  <Icon name="next" size={12} color={palette.muted} />
-                </Pressable>
-              )
-            })}
-          </View>
-        </Card>
+        <SettingsList current={tab} onPick={setTab} />
       </ScrollView>
       <View
         style={[
@@ -302,6 +248,78 @@ export function YouPanel({
         </ScrollView>
       </View>
     </View>
+  )
+}
+
+/**
+ * As quatro seções das Configurações: à esquerda do "Você" deitado, com a
+ * aberta marcada, e no Perfil do tablet em pé, como atalho (WEB-491).
+ */
+export function SettingsList({
+  current,
+  onPick
+}: {
+  current?: SettingsTab
+  onPick: (tab: SettingsTab) => void
+}) {
+  const palette = usePalette()
+  const accent = palette.dark ? ACID : ACCENT
+  return (
+    <Card soft>
+      <View style={styles.rows}>
+        {SECTIONS.map((section, index) => {
+          const on = section.tab === current
+          return (
+            <Pressable
+              key={section.tab}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: on }}
+              onPress={() => {
+                if (on) return
+                haptic.select()
+                onPick(section.tab)
+              }}
+              style={({ pressed }) => [
+                styles.section,
+                index > 0 &&
+                  !on &&
+                  SECTIONS[index - 1]?.tab !== current && {
+                    borderTopWidth: 1,
+                    borderTopColor: palette.line
+                  },
+                on && [
+                  styles.sectionOn,
+                  {
+                    backgroundColor: palette.dark ? '#262621' : '#fff',
+                    borderColor: palette.dark ? 'rgba(241,238,230,.6)' : INK
+                  }
+                ],
+                pressed && !on && { opacity: 0.6 }
+              ]}
+            >
+              <Icon
+                name={section.icon}
+                size={22}
+                color={palette.ink}
+                accent={accent}
+              />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={[text(15, 'Bold'), { color: palette.ink }]}>
+                  {section.title}
+                </Text>
+                <Text
+                  numberOfLines={1}
+                  style={[text(12.5), { color: palette.muted }]}
+                >
+                  {section.sub}
+                </Text>
+              </View>
+              <Icon name="next" size={12} color={palette.muted} />
+            </Pressable>
+          )
+        })}
+      </View>
+    </Card>
   )
 }
 
