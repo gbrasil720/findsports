@@ -116,7 +116,7 @@ export function SettingsSection({
   ) : tab === 'conta' ? (
     <Account leave={!panel} />
   ) : (
-    <Privacy wide={wide} sessions={extras} />
+    <Privacy wide={wide} sessions={extras} intro={!!panel} />
   )
 }
 
@@ -1036,9 +1036,12 @@ const keyOf = <T extends Record<string, string>>(map: T, label: string) =>
 
 function Privacy({
   wide,
-  sessions
+  sessions,
+  intro
 }: {
   wide?: boolean
+  /** Ao lado do menu "Você": a frase de quem vê no topo (privBody7). */
+  intro?: boolean
   /** As sessões ativas embaixo, na coluna da esquerda (tablet deitado). */
   sessions?: boolean
 }) {
@@ -1184,6 +1187,20 @@ function Privacy({
             <View style={styles.column} />
           </View>
         ) : null}
+      </>
+    )
+  const whoSees = (
+    <WhoSees
+      visibility={me.data?.activityVisibility}
+      ranking={!!me.data?.rankingGlobal}
+    />
+  )
+  if (intro && !wide)
+    return (
+      <>
+        {whoSees}
+        {where}
+        {rest}
       </>
     )
   return (
