@@ -25,6 +25,7 @@ import {
   PillButton,
   StatusBarOver,
   Text,
+  Title,
   text
 } from '@/components/ui'
 import { coverNote, FLOW, frameOf, stepOf, twoDigits } from '@/lib/onboarding'
@@ -324,12 +325,13 @@ function Cover({ step, onContinue }: { step: number; onContinue: () => void }) {
         CADASTRO · {twoDigits(step + 1)} DE {twoDigits(FLOW.length)}
       </Text>
       <Bars step={step} gap={4} />
-      <Text
-        maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
-        style={[styles.ask, styles.coverTitle]}
-      >
-        Termine no{'\n'}celular aberto
-      </Text>
+      <View style={{ marginTop: 4 }}>
+        <Title
+          lines={[['Termine no'], ['celular aberto']]}
+          size={26}
+          color={PAPER}
+        />
+      </View>
       <Text style={[text(12.5, 'Regular', 1.4), { color: MUTED }]}>
         {coverNote(names, step)}
       </Text>
@@ -560,10 +562,5 @@ const styles = StyleSheet.create({
     fontSize: 11,
     letterSpacing: 0.66,
     color: ACID
-  },
-  coverTitle: {
-    fontSize: 26,
-    marginTop: 4 - 0.2425 * 26,
-    marginBottom: -0.2425 * 26
   }
 })

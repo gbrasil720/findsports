@@ -409,7 +409,11 @@ function CoverEmpty() {
   return (
     <View style={[styles.cover, { paddingTop: Math.max(insets.top, 40) }]}>
       <Text style={styles.coverKicker}>MEUS JOGOS</Text>
-      <Text style={styles.coverTitle}>Nenhum jogo{'\n'}marcado hoje</Text>
+      <Title
+        lines={[['Nenhum jogo'], ['marcado hoje']]}
+        size={26}
+        color={PAPER}
+      />
       {top ? (
         <Text style={[text(12.5, 'Regular', 1.4), { color: '#aaa9a4' }]}>
           {top.title} às {formatTime(top.startsAt)} em {top.bars}{' '}
@@ -806,14 +810,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     letterSpacing: 0.66,
     color: ACID
-  },
-  coverTitle: {
-    fontFamily: 'Anton',
-    fontSize: 26,
-    textTransform: 'uppercase',
-    color: PAPER,
-    marginTop: -0.2425 * 26,
-    marginBottom: -0.2425 * 26
   },
   // Anton 22 do design, sem `lineHeight` (corta no iOS): margem negativa.
   aside: {
