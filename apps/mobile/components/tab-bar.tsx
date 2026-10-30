@@ -5,8 +5,8 @@ import Animated, {
   FadeOut,
   withTiming
 } from 'react-native-reanimated'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Glass } from '@/components/glass'
+import { useNavInsets } from '@/components/layout'
 import { EASE } from '@/components/motion'
 import { usePalette } from '@/components/theme'
 import { ACID, Icon, INK, Text, text } from '@/components/ui'
@@ -17,11 +17,11 @@ import { ACID, Icon, INK, Text, text } from '@/components/ui'
  * (`NativeTabs`, em `app/(fan)/_layout.tsx`).
  */
 
-/** Espaço que a barra de abas nativa (iOS 26) ocupa no rodapé. */
-export function useTabBarSpace() {
-  const insets = useSafeAreaInsets()
-  return insets.bottom + 62
-}
+/**
+ * Espaço que a barra de abas ocupa no rodapé: a nativa (iOS 26) ou a
+ * flutuante do iPad; nas faixas laterais (Duo, Galaxy Tab), só a área segura.
+ */
+export const useTabBarSpace = () => useNavInsets().bottom
 
 // --- Menu "Você" (2c) --------------------------------------------------------
 
