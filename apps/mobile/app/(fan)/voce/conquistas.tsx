@@ -53,7 +53,8 @@ import {
   seriesLabel,
   shortDate,
   shortDescribe,
-  timeline
+  timeline,
+  timelineLine
 } from '@/lib/achievements'
 import { trpc } from '@/lib/trpc'
 
@@ -161,6 +162,31 @@ export default function Shelf() {
       ))}
     </Animated.View>
   )
+
+  /** "Perto de desbloquear" (A06) em `cols` colunas na largura `width`. */
+  const nearSection = (
+    width: number,
+    cols: number,
+    onOpen: (id: string) => void
+  ) => {
+    const near = nearest(list)
+    if (!near.length) return null
+    return (
+      <View style={{ gap: 12 }}>
+        <Section title="Perto de desbloquear" sub={String(near.length)} />
+        <View style={styles.nearGrid}>
+          {near.map((a) => (
+            <View
+              key={a.id}
+              style={{ width: (width - 12 * (cols - 1)) / cols }}
+            >
+              <Near achievement={a} onPress={() => onOpen(a.id)} />
+            </View>
+          ))}
+        </View>
+      </View>
+    )
+  }
 
   // Tela de fora do Z Flip 8 (A06): a última conquista girando; sem
   // nenhuma ainda, a primeira, com quanto falta.
@@ -316,6 +342,11 @@ export default function Shelf() {
             tablet ? 10 : 8,
             true
           )}
+          {/* No Galaxy Tab deitado (800 de altura ou mais) o design põe as
+              que estão perto embaixo da estante. */}
+          {layout.nav === 'rail' && layout.height >= 800
+            ? nearSection(shelf - pad * 2, shelf > 800 ? 3 : 2, pick)
+            : null}
         </ScrollView>
         <View
           style={[
@@ -365,7 +396,6 @@ export default function Shelf() {
           ? 104
           : 110
     const big = content > 900
-    const near = nearest(list)
     const done = timeline(list)
     return (
       <View style={root}>
@@ -436,28 +466,9 @@ export default function Shelf() {
             {chips}
           </ScrollView>
           {grid(content, cols, size, 12, false)}
-          {near.length ? (
-            <View style={{ gap: 12 }}>
-              <Section title="Perto de desbloquear" sub={String(near.length)} />
-              <View style={styles.nearGrid}>
-                {near.map((a) => (
-                  <View
-                    key={a.id}
-                    style={{
-                      width:
-                        (content - 12 * (big && !tall ? 2 : 1)) /
-                        (big && !tall ? 3 : 2)
-                    }}
-                  >
-                    <Near
-                      achievement={a}
-                      onPress={() => router.push(`/conquista/${a.id}`)}
-                    />
-                  </View>
-                ))}
-              </View>
-            </View>
-          ) : null}
+          {nearSection(content, big && !tall ? 3 : 2, (id) =>
+            router.push(`/conquista/${id}`)
+          )}
           {layout.height > 1250 && done.length ? (
             <View style={{ gap: 12 }}>
               <Section
@@ -496,9 +507,7 @@ export default function Shelf() {
                             numberOfLines={1}
                             style={[text(12.5), { color: P.muted }]}
                           >
-                            {a.group === 'bares'
-                              ? `${a.where} validou seu código`
-                              : a.where}
+                            {timelineLine(a)}
                           </Text>
                         ) : null}
                       </View>
@@ -724,6 +733,10 @@ function Bar({
   style?: object
 }) {
   const P = useMedalPalette()
+  const { kind } = useLayout()
+  // Fora do celular a barra é acid nos dois temas, como no A06; no celular
+  // segue a paleta da medalha (tinta no claro).
+  const fill = kind === 'phone' || kind === 'duoClosed' ? P.fill : ACID
   return (
     <View
       style={[
@@ -736,7 +749,7 @@ function Bar({
         style={{
           width: `${Math.round(share * 100)}%`,
           height: '100%',
-          backgroundColor: P.fill
+          backgroundColor: fill
         }}
       />
     </View>
