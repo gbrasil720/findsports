@@ -22,6 +22,7 @@ import {
 } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
+import { useLayout, useNavInsets } from '@/components/layout'
 import { haptic, ScalePress } from '@/components/motion'
 import { usePalette } from '@/components/theme'
 import {
@@ -142,8 +143,25 @@ export default function Search() {
     ? dedupe([...local.bars, ...((remote.data?.bars ?? []) as typeof bars)])
     : []
 
+  // Fora do celular a busca (e o "Nada para") fica numa coluna de até 560
+  // no meio (Adaptativo 10, busca sem resultado), fora da faixa do Duo.
+  const layout = useLayout()
+  const strip = useNavInsets().right
+  const pad =
+    layout.kind === 'phone' || layout.kind === 'duoClosed'
+      ? 0
+      : (layout.width - strip - Math.min(560, layout.width - strip - 80)) / 2
   return (
-    <View style={[styles.screen, { backgroundColor: palette.bg }]}>
+    <View
+      style={[
+        styles.screen,
+        { backgroundColor: palette.bg },
+        (pad > 0 || strip > 0) && {
+          paddingLeft: pad,
+          paddingRight: pad + strip
+        }
+      ]}
+    >
       <View style={[styles.top, { paddingTop: insets.top + 8 }]}>
         <Glass
           tone={palette.dark ? 'dark' : 'light'}
