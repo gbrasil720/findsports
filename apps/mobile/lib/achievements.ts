@@ -134,6 +134,32 @@ export function unlockedLine(a: Achievement) {
     : `Você avaliou o jogo em ${where}. É a sua ${ordinal(n, true)} resenha na Onside.`
 }
 
+/**
+ * "Perto de desbloquear" (A06, tablet em pé): as que ainda não saíram e já
+ * andaram, da mais perto para a mais longe.
+ */
+export const nearest = (list: Achievement[], n = 3) =>
+  list
+    .filter((a) => !a.unlockedAt && a.progress > 0)
+    .sort((x, y) => progressShare(y) - progressShare(x))
+    .slice(0, n)
+
+/** "Faltam 3 bares.", embaixo da barra de quem está perto. */
+export function missingLine(a: Achievement) {
+  const left = a.target - Math.min(a.progress, a.target)
+  return `Falta${left === 1 ? '' : 'm'} ${unit(a.group, left)}.`
+}
+
+/** A linha do tempo (A06): as ganhas, da mais nova para a mais antiga. */
+export const timeline = (list: Achievement[]) =>
+  list
+    .filter((a) => a.unlockedAt)
+    .sort(
+      (x, y) =>
+        new Date(y.unlockedAt ?? 0).getTime() -
+        new Date(x.unlockedAt ?? 0).getTime()
+    )
+
 /** O que mostrar quando a medalha ainda não saiu. */
 export const progressLabel = (a: Achievement) =>
   `${Math.min(a.progress, a.target)}/${a.target}`
