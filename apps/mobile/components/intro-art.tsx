@@ -108,10 +108,28 @@ const size = (fontSize: number, lineHeight = 1.4) => ({
   lineHeight: fontSize * lineHeight
 })
 
-const scale = ({ width, height }: ArtProps) => ({
-  sx: width / 390,
-  sy: height / 476
-})
+/**
+ * As peças do desenho (pinos, cards, canhoto, conversa) ficam num palco de
+ * até 480 de largura no meio da tela; o fundo (mapa, foto, brilho) vai de
+ * ponta a ponta. No celular o palco é a tela inteira.
+ */
+const STAGE = 480
+
+const scale = ({ width, height }: ArtProps) => {
+  const stage = Math.min(width, STAGE)
+  return {
+    sx: stage / 390,
+    sy: height / 476,
+    /** Onde o palco começa. */
+    ox: (width - stage) / 2
+  }
+}
+
+/** As margens de 18 (ou outras) do desenho, medidas a partir do palco. */
+const inset = (props: ArtProps, side: number) => {
+  const { ox } = scale(props)
+  return { left: ox + side, right: ox + side }
+}
 
 /** A gota do Explorar (21a): a ponta fica em (x, y); o ao vivo leva o nome. */
 function Pin({
@@ -159,7 +177,10 @@ const RADIUS = 120
 
 /** 4b, "O jogo é aqui": o mapa com os bares que passam a partida. */
 export function MapArt(props: ArtProps) {
-  const { sx, sy } = scale(props)
+  const { sx, sy, ox } = scale(props)
+  // O raio é um círculo: fora do celular, na menor das duas escalas, para não
+  // sair do mapa na tela deitada.
+  const r = RADIUS * (ox > 0 ? Math.min(sx, sy) : sx)
   const { progress } = props
   const dark = useColorScheme() === 'dark'
   return (
@@ -189,16 +210,16 @@ export function MapArt(props: ArtProps) {
         frames={MOTION.radius}
         style={{
           position: 'absolute',
-          left: 193 * sx - RADIUS * sx,
-          top: 375 * sy - RADIUS * sx
+          left: ox + 193 * sx - r,
+          top: 375 * sy - r
         }}
         pointerEvents="none"
       >
-        <Svg width={RADIUS * 2 * sx} height={RADIUS * 2 * sx}>
+        <Svg width={r * 2} height={r * 2}>
           <Circle
-            cx={RADIUS * sx}
-            cy={RADIUS * sx}
-            r={RADIUS * sx - 1}
+            cx={r}
+            cy={r}
+            r={r - 1}
             stroke={dark ? ACID : INK}
             strokeWidth={1.5}
             strokeDasharray="6 6"
@@ -207,14 +228,14 @@ export function MapArt(props: ArtProps) {
         </Svg>
       </Enter>
       <Pin
-        x={110 * sx}
+        x={ox + 110 * sx}
         y={250 * sy}
         name="Casa 92"
         progress={progress}
         frames={MOTION.pins[0]}
       />
       <Pin
-        x={300 * sx}
+        x={ox + 300 * sx}
         y={226 * sy}
         name="Boteco Sete"
         elite
@@ -222,14 +243,18 @@ export function MapArt(props: ArtProps) {
         frames={MOTION.pins[1]}
       />
       <Pin
-        x={206 * sx}
+        x={ox + 206 * sx}
         y={312 * sy}
         name="Bar do Zé"
         live
         progress={progress}
         frames={MOTION.livePin}
       />
-      <Enter progress={progress} frames={MOTION.card} style={styles.matchCard}>
+      <Enter
+        progress={progress}
+        frames={MOTION.card}
+        style={[styles.matchCard, inset(props, 18)]}
+      >
         <Glass tone={dark ? 'dark' : 'light'} style={styles.matchGlass}>
           <View style={styles.matchIcon}>
             <Svg width={22} height={22} viewBox="0 0 24 24">
@@ -267,7 +292,7 @@ export function MapArt(props: ArtProps) {
       </Enter>
       {/* Você: o ponto acid com os dois anéis do design, por cima do card como lá. */}
       <View
-        style={[styles.you, { left: 193 * sx - 40, top: 375 * sy - 40 }]}
+        style={[styles.you, { left: ox + 193 * sx - 40, top: 375 * sy - 40 }]}
         pointerEvents="none"
       >
         <Enter
@@ -313,7 +338,8 @@ function Avatar({
 }
 
 /** 4c, "Quem vai": a foto do bar e o "Vou assistir aqui". */
-export function CrowdArt({ width, height, progress }: ArtProps) {
+export function CrowdArt(props: ArtProps) {
+  const { width, height, progress } = props
   return (
     <View style={[StyleSheet.absoluteFill, { backgroundColor: '#2a2a25' }]}>
       <Enter progress={progress} frames={MOTION.photo}>
@@ -332,7 +358,11 @@ export function CrowdArt({ width, height, progress }: ArtProps) {
         locations={[0, 0.3, 1]}
         style={StyleSheet.absoluteFill}
       />
-      <Enter progress={progress} frames={MOTION.card} style={styles.goingCard}>
+      <Enter
+        progress={progress}
+        frames={MOTION.card}
+        style={[styles.goingCard, inset(props, 18)]}
+      >
         <Glass tone="dark" style={styles.goingGlass}>
           <View style={styles.goingRow}>
             <View style={styles.goingRow}>
@@ -416,7 +446,7 @@ export function TicketArt(props: ArtProps) {
           <Rect width="100%" height="100%" fill="url(#glow)" />
         </Svg>
       </Enter>
-      <View style={[styles.ticketWrap, { top: 120 * sy }]}>
+      <View style={[styles.ticketWrap, inset(props, 46), { top: 120 * sy }]}>
         <Enter progress={progress} frames={MOTION.ticket}>
           <View style={styles.ticketShadow} />
           <View style={styles.ticket}>
@@ -572,7 +602,7 @@ export function AskArt(props: ArtProps) {
           </Svg>
         </Enter>
       </Enter>
-      <View style={styles.chat}>
+      <View style={[styles.chat, inset(props, 18)]}>
         <Bubble mine progress={progress}>
           <Text
             style={[
