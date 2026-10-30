@@ -30,6 +30,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { scheduleOnRN } from 'react-native-worklets'
 import { BarDetail } from '@/app/bar/[id]'
+import { RadiusEmpty } from '@/components/empty-states'
 import {
   BarLine,
   BarRow,
@@ -81,6 +82,7 @@ import { useFavorites } from '@/lib/favorites'
 import {
   activeCount,
   applyShortcut,
+  dayKey,
   defaultShortcuts,
   searchInput,
   searchRadius,
@@ -207,6 +209,17 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   const quiet = few
     ? (nearby.data ?? []).filter((bar) => !foundIds.has(bar.id))
     : []
+  // Nada no raio, fora do celular: quantos bares com jogo o raio maior
+  // traria ("Ampliar para 6 km · 8 bares", o vazio da Rodada 14).
+  const widerSearch = useQuery({
+    ...trpc.pubs.search.queryOptions(searchInput(filters, center, wider)),
+    enabled:
+      layout.kind !== 'phone' &&
+      Boolean(search.data) &&
+      bars.length === 0 &&
+      quiet.length === 0 &&
+      wider > radiusKm
+  })
   const todayCount = bars.filter(
     // Jogo que começou ontem à noite e ainda rola também é "hoje".
     (bar) =>
@@ -859,12 +872,31 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
         <Text style={[text(14), styles.note, { color: palette.muted }]}>
           Buscando bares…
         </Text>
-      ) : bars.length === 0 && quiet.length === 0 ? (
+      ) : bars.length === 0 &&
+        quiet.length === 0 &&
+        (liveOnly || layout.kind === 'phone') ? (
         <Text style={[text(14), styles.note, { color: palette.muted }]}>
           {liveOnly
             ? 'Nenhum jogo ao vivo agora por perto.'
             : `Nenhum bar com jogo num raio de ${radiusKm} km.`}
         </Text>
+      ) : bars.length === 0 && quiet.length === 0 ? (
+        // Fora do celular, o vazio do design (Rodada 14): ampliar ou ver
+        // amanhã. No celular, a frase de sempre.
+        <RadiusEmpty
+          radiusKm={radiusKm}
+          wider={wider > radiusKm ? wider : null}
+          widerCount={
+            widerSearch.data?.bars.filter((bar) => bar.nextEvent).length
+          }
+          onWiden={() => {
+            haptic.select()
+            state.setFilters({ ...filters, radius: wider })
+          }}
+          onTomorrow={() =>
+            state.setFilters({ ...filters, date: dayKey(now, 1) })
+          }
+        />
       ) : (
         <Animated.View style={[{ gap: 12 }, grid, listFade]}>
           {cards}
