@@ -9,7 +9,7 @@ import { initials } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { usePendingInvite } from '@/components/friends'
 import { useLayout } from '@/components/layout'
-import { SideNav } from '@/components/side-nav'
+import { SideNav, TAB_ICONS } from '@/components/side-nav'
 import { useSoon } from '@/components/soon'
 import { type MenuItem, YouMenu } from '@/components/tab-bar'
 import { usePalette } from '@/components/theme'
@@ -26,46 +26,6 @@ import { trpc } from '@/lib/trpc'
  * A IA abre a busca com IA (2h) numa folha; "Você" mostra o
  * mesmo Explorar com o menu de vidro (2c) por cima.
  */
-
-// Fora da aba, só o ícone; selecionada, o ícone com o nome ao lado (e as
-// setinhas no Você), como no design. A barra do sistema só põe o nome
-// embaixo, então o nome vai dentro da imagem e o rótulo nativo fica oculto.
-// O nome sai em 12,5 (o design usa 14): a lente de vidro da seleção desenha
-// por dentro a versão selecionada de todas as abas, e uma imagem mais larga
-// que a aba aparece na lente da vizinha: cada imagem cabe em ~72 pt ("Seus
-// bares" não coube; a aba de Seus bares se chama "Bares").
-const TAB_ICONS = {
-  light: {
-    map: {
-      default: require('../../assets/images/tabs/map-light.png'),
-      selected: require('../../assets/images/tabs/map-light-on.png')
-    },
-    fan: {
-      default: require('../../assets/images/tabs/fan-light.png'),
-      selected: require('../../assets/images/tabs/fan-light-on.png')
-    },
-    you: {
-      default: require('../../assets/images/tabs/you-light.png'),
-      selected: require('../../assets/images/tabs/you-light-on.png')
-    },
-    sparkle: require('../../assets/images/tabs/sparkle-light.png')
-  },
-  dark: {
-    map: {
-      default: require('../../assets/images/tabs/map-dark.png'),
-      selected: require('../../assets/images/tabs/map-dark-on.png')
-    },
-    fan: {
-      default: require('../../assets/images/tabs/fan-dark.png'),
-      selected: require('../../assets/images/tabs/fan-dark-on.png')
-    },
-    you: {
-      default: require('../../assets/images/tabs/you-dark.png'),
-      selected: require('../../assets/images/tabs/you-dark-on.png')
-    },
-    sparkle: require('../../assets/images/tabs/sparkle-dark.png')
-  }
-}
 
 /** A tela da pilha "Você" e o item do menu que a abre. */
 const MENU_SCREENS: Record<string, string> = {
