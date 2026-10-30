@@ -40,6 +40,7 @@ import {
 import {
   type Achievement,
   type Achievements,
+  amountLine,
   describe,
   GROUPS,
   type Group,
@@ -51,8 +52,8 @@ import {
   series,
   seriesLabel,
   shortDate,
-  timeline,
-  unit
+  shortDescribe,
+  timeline
 } from '@/lib/achievements'
 import { trpc } from '@/lib/trpc'
 
@@ -179,11 +180,19 @@ export default function Shelf() {
   if (layout.kind === 'table' && ready && picked) {
     const wide = layout.width > 800
     const medal = Math.min(layout.split - insets.top - 24, 300)
+    // Uma fileira de cinco (seis na mesa larga), dividindo a largura.
+    const cols = wide ? 6 : 5
     const size = wide ? 96 : 84
     return (
       <View style={root}>
         <View style={{ height: layout.split, overflow: 'hidden' }}>
-          <Glow strength={P.dark ? 0.14 : 0.3} rx="50%" />
+          <Glow
+            strength={P.dark ? 0.14 : 0.3}
+            rx="50%"
+            ry="70%"
+            cx="30%"
+            cy="55%"
+          />
           <View style={[styles.tableTop, { paddingTop: insets.top }]}>
             <Medal3D
               medal={engraving(picked)}
@@ -204,7 +213,7 @@ export default function Shelf() {
                 color={P.ink}
               />
               <Text style={[text(14.5, 'Regular', 1.45), { color: P.body }]}>
-                {describe(picked)}
+                {shortDescribe(picked)}
               </Text>
               <Tiers medal={picked} list={list} size={44} onPick={pick} />
             </Animated.View>
@@ -240,7 +249,10 @@ export default function Shelf() {
               <Tile
                 key={a.id}
                 achievement={a}
-                width={size + 24}
+                width={
+                  (layout.width - nav.left - nav.right - 40 - 10 * (cols - 1)) /
+                  cols
+                }
                 size={size}
                 highlight={false}
                 selected={a.id === picked.id}
@@ -326,7 +338,10 @@ export default function Shelf() {
               width: detail,
               medal: Math.min(320, detail - 60, layout.height * 0.36),
               title: tablet ? 42 : detail < 400 ? 36 : 44,
-              close: false
+              close: false,
+              tiers: tablet ? 46 : 52,
+              // Duo aberto (669 de altura): o design tira o rodapé.
+              actions: tablet || layout.height > 800
             }}
           />
         </View>
@@ -375,6 +390,14 @@ export default function Shelf() {
                     onPress={() => router.push(`/conquista/${star.id}`)}
                     style={styles.hero}
                   >
+                    {/* O brilho acid atrás da medalha, como no design. */}
+                    <Glow
+                      strength={P.dark ? 0.14 : 0.45}
+                      rx="50%"
+                      ry="80%"
+                      cx="18%"
+                      cy="50%"
+                    />
                     <MedalImage id={star.id} size={big ? 170 : 140} />
                     <View style={styles.heroCopy}>
                       <Text style={[styles.kicker, { color: P.hot }]}>
@@ -387,8 +410,7 @@ export default function Shelf() {
                         color={P.ink}
                       />
                       <Text style={[text(13.5), { color: P.muted }]}>
-                        {unit(star.group, star.target)} · {star.share}% dos
-                        torcedores têm
+                        {amountLine(star)} · {star.share}% dos torcedores têm
                       </Text>
                       <Tiers
                         medal={star}
