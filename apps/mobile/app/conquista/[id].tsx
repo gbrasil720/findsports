@@ -29,9 +29,11 @@ import {
   medalCard
 } from '@/components/medal-detail'
 import { EASE, haptic, popFrom } from '@/components/motion'
+import { PALETTE, PaletteProvider } from '@/components/theme'
 import {
   ACID,
   BackButton,
+  INK,
   LIVE,
   PAPER,
   PillButton,
@@ -114,28 +116,36 @@ export default function Medal() {
     const height = Math.min(720, window.height - 120)
     return (
       <Animated.View entering={SCRIM_IN} style={styles.scrim}>
-        <Animated.View
-          entering={CARD_IN}
-          style={[styles.card, { width, height, backgroundColor: P.bg }]}
-        >
-          {/* O recorte fica por dentro: no iOS ele apagaria a sombra. */}
-          <View style={[styles.cardInner, { borderColor: P.line }]}>
-            <Glow strength={0.18 * (P.dark ? 1 : 2.4)} rx="60%" />
-            <Unlocked
-              medal={medal}
-              list={list}
-              insets={{ top: 0, bottom: 28 }}
-              share={share}
-              onSee={() => setFresh(false)}
-              frame={{
-                width,
-                height,
-                medal: Math.min(240, height * 0.34),
-                top: 40
-              }}
-            />
-          </View>
-        </Animated.View>
+        {/* Escuro nos dois temas, como o design desenha o cartão. */}
+        <PaletteProvider value={PALETTE.dark}>
+          <Animated.View
+            entering={CARD_IN}
+            style={[styles.card, { width, height, backgroundColor: INK }]}
+          >
+            {/* O recorte fica por dentro: no iOS ele apagaria a sombra. */}
+            <View
+              style={[
+                styles.cardInner,
+                { borderColor: 'rgba(241,238,230,.1)' }
+              ]}
+            >
+              <Glow strength={0.18} rx="60%" />
+              <Unlocked
+                medal={medal}
+                list={list}
+                insets={{ top: 0, bottom: 28 }}
+                share={share}
+                onSee={() => setFresh(false)}
+                frame={{
+                  width,
+                  height,
+                  medal: Math.min(240, height * 0.34),
+                  top: 40
+                }}
+              />
+            </View>
+          </Animated.View>
+        </PaletteProvider>
       </Animated.View>
     )
   }
@@ -182,7 +192,8 @@ export default function Medal() {
                 : {
                     width: window.width,
                     medal: Math.min(window.width - 40, window.height * 0.36),
-                    title: 48
+                    title: 48,
+                    tiers: 52
                   }
             }
           />
