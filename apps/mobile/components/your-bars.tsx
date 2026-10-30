@@ -351,10 +351,16 @@ export function BarMemory({
             big
             style={StyleSheet.absoluteFill}
           />
+          {/* O degradê do design (0 em 40%, .85 no pé) com um meio-termo:
+              sobre foto clara o "VOCÊ FOI" em acid sumia. */}
           <LinearGradient
             pointerEvents="none"
-            colors={['rgba(18,18,15,0)', 'rgba(18,18,15,.85)']}
-            locations={[0.4, 1]}
+            colors={[
+              'rgba(18,18,15,0)',
+              'rgba(18,18,15,.6)',
+              'rgba(18,18,15,.85)'
+            ]}
+            locations={[0.25, 0.55, 1]}
             style={StyleSheet.absoluteFill}
           />
           <View style={styles.heroText}>
@@ -455,7 +461,10 @@ export function BarMemory({
               }
               style={styles.going}
             >
-              <Text style={[text(13.5, 'Bold', 1.2), { color: INK }]}>
+              <Text
+                style={[text(13.5, 'Bold', 1.2), { color: INK }]}
+                numberOfLines={1}
+              >
                 {next.attendance?.attending ? 'Você vai' : 'Vou assistir'}
               </Text>
             </Pressable>
@@ -596,6 +605,7 @@ function GlassPill({
               text(13.5, bold ? 'Bold' : 'SemiBold', 1.2),
               { color: palette.ink }
             ]}
+            numberOfLines={1}
           >
             {label}
           </Text>
@@ -848,7 +858,10 @@ const styles = StyleSheet.create({
     fontFamily: 'GeistMono-SemiBold',
     fontSize: 11,
     letterSpacing: 0.66,
-    color: ACID
+    color: ACID,
+    // Sobre foto clara o acid some; a sombra não aparece sobre o escuro.
+    textShadowColor: 'rgba(18,18,15,.7)',
+    textShadowRadius: 6
   },
   heroName: {
     fontFamily: 'Anton',
