@@ -1,6 +1,6 @@
 import * as ScreenOrientation from 'expo-screen-orientation'
 import { useEffect } from 'react'
-import { Dimensions, Platform, useWindowDimensions } from 'react-native'
+import { Platform, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { classify, locksPortrait } from '@/lib/layout'
 import { usePosture } from '@/modules/fold-posture'
@@ -53,21 +53,20 @@ export function useNavInsets() {
   return { bottom: insets.bottom + 62, left: 0, right: 0 }
 }
 
-/** Celular e capa em retrato; tablet e dobrável aberto giram (`app.json`). */
+/**
+ * Celular e capa em retrato; tablet e dobrável aberto giram (`app.json`). Pela
+ * janela, não pela tela: no iPhone Duo aberto, `Dimensions.get('screen')`
+ * continua dando a tela de fora.
+ */
 export function usePortraitLock() {
+  const window = useWindowDimensions()
+  const lock = !IS_PAD && locksPortrait(window)
   useEffect(() => {
     if (IS_PAD) return
-    const apply = () => {
-      const lock = locksPortrait(Dimensions.get('screen'))
-      ScreenOrientation.lockAsync(
-        lock
-          ? ScreenOrientation.OrientationLock.PORTRAIT_UP
-          : ScreenOrientation.OrientationLock.DEFAULT
-      ).catch(() => {})
-    }
-    apply()
-    // Abrir o dobrável troca a tela (capa para a interna).
-    const sub = Dimensions.addEventListener('change', apply)
-    return () => sub.remove()
-  }, [])
+    ScreenOrientation.lockAsync(
+      lock
+        ? ScreenOrientation.OrientationLock.PORTRAIT_UP
+        : ScreenOrientation.OrientationLock.DEFAULT
+    ).catch(() => {})
+  }, [lock])
 }
