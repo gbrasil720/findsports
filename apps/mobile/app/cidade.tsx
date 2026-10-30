@@ -16,7 +16,8 @@ import {
   Text,
   Title,
   text,
-  themed
+  themed,
+  useAccountSheet
 } from '@/components/ui'
 import { trpc } from '@/lib/trpc'
 
@@ -35,6 +36,11 @@ export default function City() {
     return () => clearTimeout(timer)
   }, [typed])
   const current = useQuery(trpc.pubs.getMyCity.queryOptions())
+  // Na folha (tablet), tocar escolhe e "Salvar" grava, como no design; no
+  // celular o toque já grava.
+  const asSheet = useAccountSheet()
+  type City = { name: string; uf: string }
+  const [chosen, setChosen] = useState<City | null>(null)
   const suggestions = useQuery({
     ...trpc.pubs.searchCities.queryOptions({ query }),
     enabled: query.length >= 2
@@ -52,7 +58,14 @@ export default function City() {
   )
 
   return (
-    <Screen gap={14} padding={18}>
+    <Screen
+      gap={14}
+      padding={18}
+      sheet={{
+        onDone: chosen ? () => save.mutate(chosen) : undefined,
+        busy: save.isPending
+      }}
+    >
       <BackButton />
       <Title lines={[['Sua cidade']]} size={36} />
       <Text style={[text(15, 'Regular', 1.45), { color: SUB, marginTop: -4 }]}>
@@ -77,10 +90,12 @@ export default function City() {
               key={`${city.name}-${city.uf}`}
               accessibilityRole="button"
               disabled={save.isPending}
-              onPress={() => save.mutate(city)}
+              accessibilityState={{ selected: chosen === city }}
+              onPress={() => (asSheet ? setChosen(city) : save.mutate(city))}
               style={({ pressed }) => [
                 styles.suggestion,
-                pressed && { backgroundColor: PRESSED }
+                pressed && { backgroundColor: PRESSED },
+                chosen === city && { backgroundColor: CHOSEN }
               ]}
             >
               <Text style={[text(15, 'SemiBold'), { color: FG }]}>
@@ -102,6 +117,7 @@ export default function City() {
 }
 
 const PRESSED = themed('rgba(18,18,15,.05)', 'rgba(241,238,230,.06)')
+const CHOSEN = themed('rgba(201,241,53,.28)', 'rgba(201,241,53,.12)')
 
 const styles = StyleSheet.create({
   suggestions: {

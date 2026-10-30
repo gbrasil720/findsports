@@ -78,7 +78,7 @@ export default function ChangePassword() {
   const phase = attemptPhase(pending, failed)
 
   return (
-    <Screen gap={16} top={6}>
+    <Screen gap={16} top={6} sheet={{ onDone: submit, busy: pending }}>
       <BackButton />
       <Title lines={[['Alterar ', 'senha']]} size={44} />
       <Field
