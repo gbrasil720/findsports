@@ -19,8 +19,13 @@ export default function YouStack() {
       screenOptions={{ headerShown: false }}
       screenListeners={({ navigation }) => ({
         blur: () => {
+          // Só quando outra aba ficou na frente. Uma tela da pilha de cima
+          // (a medalha, o perfil de um amigo) também tira o foco das abas, e
+          // ao fechar a pessoa volta para onde estava, não para o menu.
+          const tabs = navigation.getParent()
           if (
-            !navigation.getParent()?.isFocused() &&
+            !tabs?.isFocused() &&
+            (tabs?.getParent()?.isFocused() ?? true) &&
             navigation.getState().index > 0
           )
             navigation.popToTop()
