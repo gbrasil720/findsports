@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { DevTab } from '@/components/dev-tab'
 import { ExploreStateProvider } from '@/components/explore-state'
-import { usePortraitLock } from '@/components/layout'
+import { usePortraitLock, useWindowBackground } from '@/components/layout'
 import { MaintenanceGate } from '@/components/maintenance'
 import { OfflineBanner } from '@/components/offline-banner'
 import { Splash, SplashDone } from '@/components/splash'
@@ -72,6 +72,7 @@ export default function Layout() {
   })
   const agenda = useTodayAgenda()
   usePortraitLock()
+  useWindowBackground()
   const ready = fontsLoaded && agenda !== undefined
   const [splashDone, setSplashDone] = useState(false)
   const endSplash = useCallback(() => setSplashDone(true), [])
