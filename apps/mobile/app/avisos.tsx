@@ -208,9 +208,15 @@ export default function Notices() {
   const sources = [mine, medals, friendNotices, asked]
   const failed = sources.find((q) => q.isError)
   const unread = notices.filter((n) => !read.includes(n.id))
-  // Nada em lugar nenhum: o "Tudo em dia" do design (Rodada 14), sem as abas.
+  // Nada em lugar nenhum, fora do celular: o "Tudo em dia" do design
+  // (Rodada 14, Adaptativo 10), sem as abas. No celular, a frase de sempre.
+  const phone = useLayout().kind === 'phone'
   const calm =
-    !mine.isPending && !medals.isPending && !failed && notices.length === 0
+    !phone &&
+    !mine.isPending &&
+    !medals.isPending &&
+    !failed &&
+    notices.length === 0
   const markAll = () => {
     haptic.select()
     const next = [...new Set([...read, ...notices.map((n) => n.id)])].slice(
