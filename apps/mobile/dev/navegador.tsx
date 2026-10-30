@@ -1,7 +1,9 @@
 import { onlineManager } from '@tanstack/react-query'
 import { type Href, useLocalSearchParams, useRouter } from 'expo-router'
 import { DevSettings, Pressable, StyleSheet, Text, View } from 'react-native'
+import { useLayout } from '@/components/layout'
 import { BackButton, INK, MUTED, Screen, Title, text } from '@/components/ui'
+import { usePosture } from '@/modules/fold-posture'
 
 /*
  * Navegador de desenvolvimento: ir direto a qualquer tela pelo código do
@@ -301,6 +303,10 @@ function Row({ item, onPress }: { item: Item; onPress: () => void }) {
 
 export default function Dev() {
   const router = useRouter()
+  // A classe de layout e a postura da dobra (WEB-486), para conferir ao
+  // dobrar, abrir e girar.
+  const layout = useLayout()
+  const posture = usePosture()
   const { from, fromParams } = useLocalSearchParams<{
     from?: string
     fromParams?: string
@@ -328,6 +334,9 @@ export default function Dev() {
       {/* Sem rede de mentira (WEB-460): o React Query pausa consultas e
           mutations e a pílula aparece; tocar de novo volta. Para a rede
           que falha de verdade, derrube o servidor do web. */}
+      <Text style={[text(12, 'Bold'), { color: MUTED }]}>
+        {`${layout.kind} · ${layout.nav} · ${layout.width}×${layout.height} · divide em ${layout.split}${layout.gap ? ` + ${layout.gap}` : ''} · dobra ${posture.state}${posture.angle != null ? ` ${Math.round(posture.angle)}°` : ''}${posture.orientation ? ` ${posture.orientation}` : ''}`}
+      </Text>
       <Row
         item={{ code: '⌁', label: 'Simular sem rede (liga e desliga)' }}
         onPress={() => onlineManager.setOnline(!onlineManager.isOnline())}
