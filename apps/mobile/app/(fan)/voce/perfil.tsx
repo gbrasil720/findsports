@@ -1063,7 +1063,7 @@ function ProfileCover({
       ) : null}
       {game?.code ? (
         <View
-          style={[styles.coverCode, { bottom: insets.bottom + 26 }]}
+          style={[styles.coverCode, { marginBottom: insets.bottom + 26 }]}
           accessibilityLabel={`Código ${game.code.split('').join(' ')}`}
         >
           <Text style={[styles.coverCodeLabel, { color: palette.muted }]}>
@@ -1229,9 +1229,10 @@ const styles = StyleSheet.create({
   coverGame: { paddingVertical: 12, paddingHorizontal: 14 },
   coverWhen: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: LIVE },
+  // Embaixo à direita, no fluxo: na tela curta não cobre o jogo.
   coverCode: {
-    position: 'absolute',
-    right: 22,
+    marginTop: 'auto',
+    alignSelf: 'flex-end',
     alignItems: 'flex-end',
     gap: 6
   },
