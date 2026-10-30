@@ -1066,7 +1066,8 @@ export function Title({
   color = FG,
   accentColor = HOT
 }: {
-  lines: [string, string?][]
+  /** Cada linha: texto, trecho em destaque e, se houver, o que vem depois. */
+  lines: [string, string?, string?][]
   size: number
   color?: string
   accentColor?: string
@@ -1082,10 +1083,11 @@ export function Title({
   }
   return (
     <View accessible accessibilityRole="header">
-      {lines.map(([plain, accent]) => (
+      {lines.map(([plain, accent, after]) => (
         <Text key={plain + accent} style={style}>
           {plain}
           {accent ? <Text style={{ color: accentColor }}>{accent}</Text> : null}
+          {after}
         </Text>
       ))}
     </View>
