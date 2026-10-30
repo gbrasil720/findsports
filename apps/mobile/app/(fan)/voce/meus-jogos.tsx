@@ -378,6 +378,7 @@ function TodayNear() {
               key={bar.id}
               bar={bar}
               now={now}
+              compact
               onPress={() => router.push(`/bar/${bar.id}` as Href)}
             />
           ))
