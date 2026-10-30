@@ -20,7 +20,8 @@ import {
   RadiusTile,
   StepFooter,
   useFrameKind,
-  useOnboarding
+  useOnboarding,
+  useStepTitle
 } from '@/components/onboarding'
 import {
   DROP,
@@ -70,6 +71,12 @@ function useDebounced(value: string) {
 export default function Distance() {
   // Na mesa a pergunta já está na metade de cima (Adaptativo 09).
   const table = useFrameKind() === 'table'
+  // Na coluna estreita (dobrável aberto), quebra onde o design quebra.
+  const title = useStepTitle(
+    [['Quão longe você topa ir?']],
+    [['Quão longe'], ['você topa ir?']],
+    [['Quão longe você topa ir?']]
+  )
   const router = useRouter()
   const dark = useColorScheme() === 'dark'
   const { choices, set } = useOnboarding()
@@ -122,7 +129,7 @@ export default function Distance() {
       <OnboardingTop step={4} />
       {table ? null : (
         <View style={{ marginTop: 8 }}>
-          <Title lines={[['Quão longe você topa ir?']]} size={36} />
+          <Title lines={title} size={36} />
         </View>
       )}
       <Text style={[text(15, 'Regular', 1.45), { color: SUB, marginTop: -4 }]}>
