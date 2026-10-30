@@ -15,6 +15,7 @@ import {
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card, FilterChip } from '@/components/card'
+import { FirstMedals, MedalsEmpty } from '@/components/empty-states'
 import { useLayout, useNavInsets } from '@/components/layout'
 import { Medal3D, MedalImage, useMedalPalette } from '@/components/medal'
 import {
@@ -184,6 +185,74 @@ export default function Shelf() {
             </View>
           ))}
         </View>
+      </View>
+    )
+  }
+
+  // Nenhuma ainda, no tablet (Adaptativo 10): o vazio da Rodada 14 numa
+  // coluna e "As primeiras" em cima (em pé) ou ao lado (deitado, dobrável
+  // aberto). No celular, a estante de sempre, com todas bloqueadas.
+  const empty =
+    (layout.kind === 'split' || layout.kind === 'stack') &&
+    mine.isSuccess &&
+    !list.some((a) => a.unlockedAt)
+  if (empty) {
+    const column = (
+      <ScrollView
+        contentContainerStyle={[
+          styles.body,
+          {
+            paddingTop: layout.kind === 'stack' ? 40 : insets.top + 13,
+            paddingBottom: tabBar + 24
+          }
+        ]}
+      >
+        <View style={styles.top}>
+          <Title lines={[['Conquistas']]} size={40} color={P.ink} />
+          <Text style={[styles.total, { color: P.muted }]}>
+            0/{list.length}
+          </Text>
+        </View>
+        <MedalsEmpty onStart={() => router.navigate('/explore')} />
+      </ScrollView>
+    )
+    const first = (
+      <FirstMedals
+        list={list}
+        top={layout.kind === 'stack' ? insets.top + 16 : insets.top + 8}
+        onOpen={(id) => router.push(`/conquista/${id}`)}
+      />
+    )
+    const usable = layout.width - nav.left - nav.right
+    if (layout.kind === 'stack') {
+      const width = Math.min(560, usable - 80)
+      return (
+        <View style={root}>
+          <View style={{ height: 460 }}>{first}</View>
+          <View
+            style={[
+              styles.sheet,
+              {
+                width,
+                left: nav.left + (usable - width) / 2,
+                backgroundColor: P.bg
+              }
+            ]}
+          >
+            {column}
+          </View>
+        </View>
+      )
+    }
+    const listWidth = layout.gap ? layout.split : Math.round(usable * 0.42)
+    return (
+      <View style={[root, { flexDirection: 'row', gap: layout.gap }]}>
+        <View style={{ width: listWidth, alignItems: 'center' }}>
+          <View style={{ flex: 1, width: Math.min(listWidth, 430) }}>
+            {column}
+          </View>
+        </View>
+        <View style={{ flex: 1 }}>{first}</View>
       </View>
     )
   }
@@ -856,6 +925,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between'
   },
   empty: { gap: 16, marginTop: 24 },
+  total: { fontFamily: 'GeistMono-SemiBold', fontSize: 13 },
+  // A folha do vazio em pé: sobe por cima de "As primeiras".
+  sheet: {
+    position: 'absolute',
+    top: 432,
+    bottom: 0,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: -14 }
+  },
   level: {
     flexDirection: 'row',
     alignItems: 'center',
