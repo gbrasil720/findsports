@@ -235,6 +235,12 @@ export default function AiSearch() {
         ? W - NAV.duoRail.width
         : W
   const dockPad = Math.max(pad, (chatW - 680) / 2) - 12
+  // Mesa: dois bares lado a lado, três acima de 800 (tableAI).
+  const tableCols = layout.width > 800 ? 3 : 2
+  const barWidth =
+    layout.kind === 'table'
+      ? (layout.width - 2 * pad - 10 * (tableCols - 1)) / tableCols
+      : undefined
   useStatusBar(sheet || layout.kind === 'cover' ? 'light' : 'auto')
   // Navegador DEV: `?dubla=1` usa o dublê; `estado` já manda a pergunta de
   // cada tela (24b pensando, 24c resposta, 24d confirmar, 24e feito).
@@ -747,6 +753,7 @@ export default function AiSearch() {
             {turns.map((turn) => (
               <TurnView
                 key={turn.id}
+                barWidth={barWidth}
                 turn={turn}
                 bars={barsOf(turn, shownReply(turn))}
                 isLast={turn === last}
@@ -1081,6 +1088,7 @@ export default function AiSearch() {
 
 /** Uma troca: a pergunta e a versão da resposta que está na tela. */
 function TurnView({
+  barWidth,
   turn,
   bars,
   isLast,
@@ -1103,6 +1111,8 @@ function TurnView({
   onRate,
   onVersion
 }: {
+  /** Na mesa, os bares lado a lado (03d, 03g): a largura de cada um. */
+  barWidth?: number
   turn: Turn
   bars: ChatBar[]
   isLast: boolean
@@ -1271,9 +1281,17 @@ function TurnView({
 
       {/* Os cards chegam com a ferramenta, antes do texto. */}
       {bars.length ? (
-        <Animated.View layout={settle} style={{ gap: 10 }}>
+        <Animated.View
+          layout={settle}
+          style={[{ gap: 10 }, barWidth ? styles.barGrid : null]}
+        >
           {bars.map((bar, i) => (
-            <Animated.View key={bar.id} entering={BAR_IN[i]} layout={settle}>
+            <Animated.View
+              key={bar.id}
+              entering={BAR_IN[i]}
+              layout={settle}
+              style={barWidth ? { width: barWidth } : null}
+            >
               <CitedBar
                 ref={(view) => cardRef(bar.id, view)}
                 bar={bar}
@@ -1417,6 +1435,7 @@ function ApprovedLines({
 const styles = StyleSheet.create({
   sheet: { flex: 1 },
   full: { flex: 1 },
+  barGrid: { flexDirection: 'row', flexWrap: 'wrap' },
   mapBack: { position: 'absolute', right: 16 },
   duoControls: { position: 'absolute', gap: 10, zIndex: 40 },
   stackMap: { borderRadius: 10, overflow: 'hidden' },
