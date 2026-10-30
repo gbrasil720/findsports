@@ -3,10 +3,13 @@ import {
   type Achievement,
   describe as describeMedal,
   fullDate,
+  missingLine,
+  nearest,
   nextInSeries,
   reviewLine,
   seriesLabel,
   shortDate,
+  timeline,
   unlockedLine
 } from './achievements'
 
@@ -75,5 +78,25 @@ describe('conquistas', () => {
       'Sua 7ª resenha. Faltam 3 para a medalha ava10.'
     )
     expect(reviewLine([medal('ava10', 'resenhas', 10, 12)]).tail).toBe('')
+  })
+})
+
+describe('estante no tablet', () => {
+  const list = [
+    ...bares,
+    medal('bai6', 'bairros', 6, 4),
+    medal('esp4', 'esportes', 4, 3),
+    medal('ava10', 'resenhas', 10, 0),
+    medal('bai3', 'bairros', 3, 3, {
+      unlockedAt: '2026-09-21T22:20:00.000Z'
+    })
+  ]
+  it('perto de desbloquear: as que já andaram, da mais perto', () => {
+    expect(nearest(list).map((a) => a.id)).toEqual(['esp4', 'bai6', 'bar10'])
+    expect(missingLine(list[4] as Achievement)).toBe('Faltam 2 bairros.')
+    expect(missingLine(list[5] as Achievement)).toBe('Falta 1 esporte.')
+  })
+  it('linha do tempo: só as ganhas, da mais nova', () => {
+    expect(timeline(list).map((a) => a.id)).toEqual(['bar1', 'bar5', 'bai3'])
   })
 })
