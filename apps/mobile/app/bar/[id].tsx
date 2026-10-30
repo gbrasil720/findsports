@@ -15,6 +15,7 @@ import {
   Linking,
   Platform,
   Pressable,
+  ScrollView,
   Share,
   StyleSheet,
   View
@@ -73,6 +74,7 @@ import { env } from '@/lib/env'
 import { formatKm, formatTime, isLive } from '@/lib/explore'
 import { useFavorites } from '@/lib/favorites'
 import { MAP_STYLE } from '@/lib/map-style'
+import { formatCode } from '@/lib/my-games'
 import { trpc } from '@/lib/trpc'
 
 /*
@@ -228,7 +230,9 @@ export function BarDetail({
     cols &&
     !given &&
     layout.kind === 'split' &&
-    (layout.nav === 'duoRail' || layout.split * 2 >= layout.width - 2)
+    (layout.nav === 'duoRail' ||
+      layout.gap > 0 ||
+      layout.split * 2 >= layout.width - 2)
   const leftW = halves ? layout.split : W
   // A faixa do Duo fechado à direita: voltar, compartilhar e favoritar descem
   // para ela, abaixo da foto (regra 01 da T2).
@@ -1005,6 +1009,169 @@ export function BarDetail({
     <ActivityIndicator color={palette.ink} style={{ marginTop: 32 }} />
   )
 
+  // "Vou assistir aqui": no vidro preso embaixo; na mesa, embaixo da oferta.
+  const attendButton =
+    going && mine ? (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ selected: mine.attending }}
+        accessibilityHint={`${gameTitle(going)}, ${dayLabel(going.startsAt, now).toLowerCase()} às ${formatTime(going.startsAt)}`}
+        onPressIn={attendPress.onPressIn}
+        onPressOut={attendPress.onPressOut}
+        // A folha também é onde se vê o código e se desmarca.
+        onPress={() => {
+          fromAi('going')
+          router.push({
+            pathname: '/vou/[barId]',
+            params: { barId: id, eventId: going.id }
+          })
+        }}
+        style={styles.attendSlot}
+      >
+        <View style={styles.attendShadow} />
+        <Animated.View style={[styles.attend, attendPress.style]}>
+          <Icon
+            name={mine.attending ? 'check' : 'ticket'}
+            size={18}
+            color={INK}
+            accent={INK}
+          />
+          <Animated.Text
+            key={mine.attending ? 'on' : 'off'}
+            entering={SWAP}
+            style={[text(15, 'Bold', 1.2), { color: INK, flexShrink: 1 }]}
+            numberOfLines={1}
+            maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
+          >
+            {mine.attending ? 'Você vai' : 'Vou assistir aqui'}
+          </Animated.Text>
+        </Animated.View>
+      </Pressable>
+    ) : null
+
+  // Tela de fora do Z Flip 8 (02j): marcado o jogo, só o código do balcão.
+  if (layout.kind === 'cover' && going && mine?.attending && mine.code)
+    return (
+      <View style={[styles.cover, { paddingTop: insets.top + 18 }]}>
+        <Text style={styles.coverKicker}>SEU CÓDIGO</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityHint="Abre o código em tela cheia"
+          onPress={() =>
+            router.push({
+              pathname: '/codigo/[eventId]',
+              params: { eventId: going.id }
+            })
+          }
+          style={styles.coverCard}
+        >
+          <View style={styles.coverHead}>
+            <Text style={[text(15, 'Bold', 1.3), { color: INK }]}>
+              {data?.name} · {dayLabel(going.startsAt, now).toLowerCase()}{' '}
+              {formatTime(going.startsAt)}
+            </Text>
+            <Text style={[text(12, 'Regular', 1.4), { color: '#6b675f' }]}>
+              {gameTitle(going)}
+            </Text>
+          </View>
+          <View style={styles.coverCut} />
+          <View style={styles.coverFoot}>
+            <Text style={styles.coverCode}>{formatCode(mine.code)}</Text>
+            <Icon name="ticket" size={30} color={INK} accent={ACID} />
+          </View>
+        </Pressable>
+        <Text style={styles.coverNote}>
+          Mostre no balcão para a oferta da casa
+        </Text>
+      </View>
+    )
+
+  // Meio dobrado na mesa (02d, 02g): a foto com o nome na metade de cima; o
+  // jogo, a oferta e o botão na de baixo.
+  if (layout.kind === 'table') {
+    const twoUp = W > 800
+    return (
+      <View style={{ flex: 1, backgroundColor: palette.sheet }}>
+        <View style={{ height: layout.split, overflow: 'hidden' }}>
+          {(data ? data.photoUrl : photo) ? (
+            <Image
+              source={{ uri: (data ? data.photoUrl : photo) ?? undefined }}
+              style={StyleSheet.absoluteFill}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={[StyleSheet.absoluteFill, styles.heroArt]} />
+          )}
+          <LinearGradient
+            colors={HERO_SHADE}
+            locations={[0, 0.5, 1]}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={styles.tableName}>
+            <Text style={styles.name} numberOfLines={1} adjustsFontSizeToFit>
+              {(data?.name ?? name ?? '').toUpperCase()}
+            </Text>
+            <Text
+              style={[text(13, 'Regular', 1.4), styles.info]}
+              numberOfLines={1}
+            >
+              {[
+                data?.neighborhood,
+                km ? formatKm(Number(km)) : null,
+                data?.rating ? `${data.rating.percentage}% voltariam` : null
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </Text>
+          </View>
+          <View style={[styles.top, { top: insets.top + 6 }]}>
+            {back ? <BackButton tone="dark" /> : <View />}
+            <View style={styles.actions}>
+              <RoundGlass label="Compartilhar" onPress={share}>
+                <Icon name="share" size={19} color={PAPER} />
+              </RoundGlass>
+              <RoundGlass
+                label={favorite ? 'Tirar dos favoritos' : 'Favoritar'}
+                selected={favorite}
+                onPress={toggleFavorite}
+              >
+                <Icon name="fan" size={20} color={PAPER} accent={PAPER} />
+              </RoundGlass>
+            </View>
+          </View>
+        </View>
+        <ScrollView
+          style={{ marginTop: layout.gap }}
+          contentContainerStyle={[
+            styles.tableBody,
+            twoUp && styles.tableTwo,
+            { paddingBottom: insets.bottom + 16 }
+          ]}
+        >
+          {data ? (
+            <>
+              <View style={twoUp ? styles.col : null}>{sGame}</View>
+              <View style={[styles.col, { gap: 12 }]}>
+                {sOffer}
+                {attendButton ? (
+                  <Glass
+                    tone={palette.dark ? 'dark' : 'light'}
+                    style={[styles.dock, styles.dockInline]}
+                  >
+                    {attendButton}
+                  </Glass>
+                ) : null}
+              </View>
+            </>
+          ) : (
+            wait
+          )}
+        </ScrollView>
+        {soon.toast}
+      </View>
+    )
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: palette.sheet }}>
       <Animated.ScrollView
@@ -1027,6 +1194,8 @@ export function BarDetail({
                 styles.col,
                 styles.half,
                 {
+                  // A coluna da direita começa depois da dobra.
+                  marginLeft: layout.gap,
                   paddingTop: insets.top + 10,
                   paddingRight:
                     16 + (layout.nav === 'duoRail' ? NAV.duoRail.width : 0)
@@ -1129,41 +1298,7 @@ export function BarDetail({
                   : null
           ]}
         >
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ selected: mine.attending }}
-            accessibilityHint={`${gameTitle(going)}, ${dayLabel(going.startsAt, now).toLowerCase()} às ${formatTime(going.startsAt)}`}
-            onPressIn={attendPress.onPressIn}
-            onPressOut={attendPress.onPressOut}
-            // A folha também é onde se vê o código e se desmarca.
-            onPress={() => {
-              fromAi('going')
-              router.push({
-                pathname: '/vou/[barId]',
-                params: { barId: id, eventId: going.id }
-              })
-            }}
-            style={styles.attendSlot}
-          >
-            <View style={styles.attendShadow} />
-            <Animated.View style={[styles.attend, attendPress.style]}>
-              <Icon
-                name={mine.attending ? 'check' : 'ticket'}
-                size={18}
-                color={INK}
-                accent={INK}
-              />
-              <Animated.Text
-                key={mine.attending ? 'on' : 'off'}
-                entering={SWAP}
-                style={[text(15, 'Bold', 1.2), { color: INK, flexShrink: 1 }]}
-                numberOfLines={1}
-                maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
-              >
-                {mine.attending ? 'Você vai' : 'Vou assistir aqui'}
-              </Animated.Text>
-            </Animated.View>
-          </Pressable>
+          {attendButton}
         </Glass>
       ) : null}
       {soon.toast}
@@ -1441,6 +1576,51 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between'
   },
   column: { flexDirection: 'column', gap: 10 },
+  dockInline: { position: 'relative', left: 0, right: 0 },
+  tableName: { position: 'absolute', left: 20, right: 20, bottom: 18 },
+  tableBody: { paddingTop: 16, paddingHorizontal: 20, gap: 12 },
+  tableTwo: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+  cover: { flex: 1, backgroundColor: INK, paddingHorizontal: 22, gap: 10 },
+  coverKicker: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11,
+    letterSpacing: 0.66,
+    color: ACID
+  },
+  coverCard: {
+    borderRadius: 8,
+    backgroundColor: PAPER,
+    overflow: 'hidden',
+    boxShadow: `5px 5px 0 ${ACID}`
+  },
+  coverHead: { paddingTop: 12, paddingHorizontal: 14, paddingBottom: 8 },
+  coverCut: {
+    marginHorizontal: 14,
+    borderTopWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(18,18,15,.18)'
+  },
+  coverFoot: {
+    paddingTop: 8,
+    paddingHorizontal: 14,
+    paddingBottom: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  coverCode: {
+    fontFamily: 'Anton',
+    fontSize: 40,
+    letterSpacing: 2.4,
+    color: INK,
+    marginVertical: -10
+  },
+  coverNote: {
+    ...text(12, 'Regular', 1.35),
+    color: '#a8a49b',
+    textAlign: 'right',
+    paddingLeft: 150
+  },
   actions: { flexDirection: 'row', gap: 10 },
   // Fora do celular: duas colunas abaixo da foto (tablet) ou uma de cada
   // lado da dobra.
