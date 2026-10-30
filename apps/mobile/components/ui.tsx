@@ -159,6 +159,12 @@ const ICONS = {
       fill={c}
     />
   ),
+  plus: (c: string) => (
+    <Path
+      d="M10.75 4h2.5v6.75H20v2.5h-6.75V20h-2.5v-6.75H4v-2.5h6.75z"
+      fill={c}
+    />
+  ),
   next: (c: string) => (
     <Path d="M8.4 3.4 6.6 5.2 13.4 12l-6.8 6.8 1.8 1.8L17 12z" fill={c} />
   ),
