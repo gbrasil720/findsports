@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { Glass } from '@/components/glass'
+import { ScalePress } from '@/components/motion'
 import { ACID, Icon, INK, Text, TextInput, text } from '@/components/ui'
 import {
   conversationDate,
@@ -86,8 +87,9 @@ export function Conversations({
             const date = conversationDate(r.at, now)
             const first = r.turns[0] ? shownReply(r.turns[0]).text : ''
             return (
-              <Pressable
+              <ScalePress
                 key={r.id}
+                to={0.98}
                 accessibilityRole="button"
                 accessibilityState={{ selected: on }}
                 accessibilityLabel={`Reabrir: ${r.title}`}
@@ -132,7 +134,7 @@ export function Conversations({
                     {first ? plainText(first) : ' '}
                   </Text>
                 </View>
-              </Pressable>
+              </ScalePress>
             )
           })}
         </View>
