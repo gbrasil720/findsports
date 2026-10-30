@@ -122,12 +122,13 @@ const HEAD_FONT_SCALE = 1.1
 export default function Explore({ capture = true }: { capture?: boolean }) {
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const { width, height } = useWindowDimensions()
   const palette = usePalette()
   const session = authClient.useSession()
   const soon = useSoon()
   const tabSpace = useTabBarSpace()
   const layout = useLayout()
+  // A área do app (no Android em tela grande, sem a barra de tarefas).
+  const { width, height } = layout
   const navInsets = useNavInsets()
   // Celular (e Duo fechado): o mapa na tela toda e a lista numa folha. No
   // tablet e no dobrável aberto (T1 do design adaptativo), a lista à esquerda
@@ -313,10 +314,22 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   }
   const band = mapBox.height - padding.top - padding.bottom
   const shift = mapBox.height / 2 - (padding.top + band / 2)
-  const region = frameRegion(
-    { ...center, kmTall: radiusKm * 2, kmWide: radiusKm * 2 },
-    screen
-  )
+  // No celular, o raio inteiro na faixa livre. Fora dele, o zoom de rua do
+  // design adaptativo (a01: uns 2,7 m por ponto, os bares de perto
+  // espalhados), com você no meio da faixa.
+  const region = phone
+    ? frameRegion(
+        { ...center, kmTall: radiusKm * 2, kmWide: radiusKm * 2 },
+        screen
+      )
+    : frameRegion(
+        {
+          ...center,
+          kmTall: (band * STREET_M_PER_PT) / 1000,
+          kmWide: (mapBox.width * STREET_M_PER_PT) / 1000
+        },
+        screen
+      )
   const map = useRef<MapView>(null)
   const frameRadius = () =>
     map.current?.animateToRegion(region, reduced ? 0 : 400)
@@ -955,12 +968,15 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
             toolbarEnabled={false}
           >
             {/* O raio de busca em volta de onde a busca parte (você, ou a
-                cidade do perfil). */}
-            <RadiusCircle
-              center={{ latitude: center.lat, longitude: center.lng }}
-              km={radiusKm}
-              dark={palette.dark}
-            />
+                cidade do perfil). Só no celular: o design adaptativo abre no
+                zoom de rua, sem o círculo. */}
+            {phone ? (
+              <RadiusCircle
+                center={{ latitude: center.lat, longitude: center.lng }}
+                km={radiusKm}
+                dark={palette.dark}
+              />
+            ) : null}
             {device ? (
               <Marker
                 coordinate={{ latitude: device.lat, longitude: device.lng }}
@@ -1506,6 +1522,9 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
 const VEIL_ABOVE_TABS = 16
 /** …e chega à cor da folha nesta altura, já por baixo do vidro da barra. */
 const VEIL_HEIGHT = 64
+
+/** O zoom de rua do design adaptativo (tiles do nível 15 a 410 px). */
+const STREET_M_PER_PT = 2.7
 
 /** Tablet em pé com mais altura que isto (13″, Tab S11 Ultra): mapa maior. */
 const TALL = 1350
