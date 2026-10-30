@@ -21,6 +21,7 @@ import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Line } from 'react-native-svg'
 import { Card } from '@/components/card'
+import { NoticesEmpty } from '@/components/empty-states'
 import { HardShadow } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import {
@@ -207,6 +208,9 @@ export default function Notices() {
   const sources = [mine, medals, friendNotices, asked]
   const failed = sources.find((q) => q.isError)
   const unread = notices.filter((n) => !read.includes(n.id))
+  // Nada em lugar nenhum: o "Tudo em dia" do design (Rodada 14), sem as abas.
+  const calm =
+    !mine.isPending && !medals.isPending && !failed && notices.length === 0
   const markAll = () => {
     haptic.select()
     const next = [...new Set([...read, ...notices.map((n) => n.id)])].slice(
@@ -325,7 +329,7 @@ export default function Notices() {
           </ScalePress>
         ) : null}
 
-        <View style={styles.tabsRow}>
+        <View style={[styles.tabsRow, calm && !today && { display: 'none' }]}>
           <View style={styles.tabs}>
             {(
               [
@@ -470,7 +474,29 @@ export default function Notices() {
               </View>
             )
           })
-        ) : failed ? null : (
+        ) : failed ? null : calm && !today ? (
+          <NoticesEmpty
+            toggles={[
+              {
+                icon: 'tv',
+                title: 'Jogos dos seus times',
+                detail: (teams.data ?? [])
+                  .slice(0, 3)
+                  .map((team) => team.name)
+                  .join(', '),
+                on: true
+              },
+              { icon: 'people', title: 'Pedidos de amizade', on: true },
+              { icon: 'crew', title: 'Ranking do mês fechou', on: false }
+            ]}
+            onToggles={() =>
+              router.push({
+                pathname: '/configuracoes',
+                params: { aba: 'avisos' }
+              })
+            }
+          />
+        ) : (
           <Text style={[text(14, 'Regular', 1.45), { color: palette.muted }]}>
             {tab === 'friends'
               ? 'Nada dos amigos por aqui. Pedidos de amizade, pedidos aceitos e chamados para jogos aparecem aqui.'
