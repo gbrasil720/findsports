@@ -52,6 +52,69 @@ describe('classify', () => {
     expect(android(859, 954)).toMatchObject({ kind: 'split', split: 430 })
   })
 
+  test('Duo aberto: plano com lista própria, livro e laptop pela dobradiça', () => {
+    expect(ios(951, 669)).toMatchObject({ kind: 'split', split: 420, gap: 0 })
+    const half = { state: 'half' as const }
+    expect(
+      classify({
+        width: 951,
+        height: 669,
+        os: 'ios',
+        isPad: false,
+        posture: half
+      })
+    ).toMatchObject({ kind: 'split', nav: 'duoRail', split: 456, gap: 40 })
+    expect(
+      classify({
+        width: 669,
+        height: 951,
+        os: 'ios',
+        isPad: false,
+        posture: half
+      })
+    ).toMatchObject({ kind: 'table', nav: 'float', split: 456, gap: 40 })
+  })
+
+  test('Fold com a dobra lida: divide nela; meio dobrado deitado é a mesa', () => {
+    const fold = (
+      state: 'flat' | 'half',
+      orientation: 'vertical' | 'horizontal'
+    ) =>
+      classify({
+        width: orientation === 'vertical' ? 704 : 932,
+        height: orientation === 'vertical' ? 932 : 704,
+        os: 'android',
+        isPad: false,
+        posture: {
+          state,
+          orientation,
+          hinge:
+            orientation === 'vertical'
+              ? { x: 348, y: 0, width: 8, height: 932 }
+              : { x: 0, y: 348, width: 932, height: 8 }
+        }
+      })
+    expect(fold('flat', 'vertical')).toMatchObject({
+      kind: 'split',
+      split: 348,
+      gap: 8
+    })
+    expect(fold('half', 'vertical')).toMatchObject({
+      kind: 'split',
+      split: 348
+    })
+    expect(fold('half', 'horizontal')).toMatchObject({
+      kind: 'table',
+      split: 348,
+      gap: 8
+    })
+  })
+
+  test('tela de fora do Z Flip 8: só o essencial, sem navegação', () => {
+    expect(android(360, 400)).toMatchObject({ kind: 'cover', nav: 'none' })
+    expect(android(412, 915)).toMatchObject({ kind: 'phone' })
+  })
+
   test('iPad em Split View estreito vira celular', () => {
     expect(ios(320, 1032, true)).toMatchObject({ kind: 'phone', nav: 'tabs' })
   })
