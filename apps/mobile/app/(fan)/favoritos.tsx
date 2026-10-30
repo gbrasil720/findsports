@@ -1139,8 +1139,11 @@ function Bars({
                     { backgroundColor: segmentColor(palette, i) }
                   ]}
                 />
+                {/* Uma linha só: no Android o nome de duas palavras quebrava
+                    e a segunda sumia ("Vila", e o espaço de "Madalena"). */}
                 <Text
                   style={[text(12.5, 'Regular', 1.2), { color: palette.ink }]}
+                  numberOfLines={1}
                 >
                   {n.name}
                 </Text>
