@@ -1082,7 +1082,7 @@ export default function AiSearch() {
           ))}
         </View>
       ) : null}
-      {rail ? <StackRail current={null} /> : null}
+      {rail ? <StackRail current="explore" /> : null}
     </View>
   )
 }
