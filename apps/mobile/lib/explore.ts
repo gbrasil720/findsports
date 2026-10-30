@@ -151,17 +151,39 @@ export function coverBars<
 }
 
 /**
- * O jogo na tela de fora: "COR × PAL · AO VIVO" ou "COR × PAL · 21:30"; fora
- * do confronto, o título. O tempo de jogo do design ("2º TEMPO") não existe
- * nos dados.
+ * Em que parte do jogo de futebol estamos, pelo relógio desde o início
+ * (aproximado: 45 + 2 de acréscimo, 15 de intervalo, 45 + 3). Os outros
+ * esportes e o fim da janela ficam "Ao vivo"; antes de começar, `null`.
+ */
+export function matchPeriod(
+  game: { startsAt: string; endsAt: string | null; sport?: { slug: string } },
+  now: number
+): string | null {
+  if (!isLive(game, now)) return null
+  if (game.sport?.slug !== 'futebol') return 'Ao vivo'
+  const minutes = (now - Date.parse(game.startsAt)) / 60_000
+  if (minutes < 47) return '1º tempo'
+  if (minutes < 62) return 'Intervalo'
+  if (minutes < 110) return '2º tempo'
+  return 'Ao vivo'
+}
+
+/**
+ * O jogo na tela de fora: "COR × PAL · 2º TEMPO" (ou "AO VIVO") e
+ * "COR × PAL · 21:30" antes de começar; fora do confronto, o título.
  */
 export function coverKicker(
-  game: TitledGame & { startsAt: string; endsAt: string | null },
+  game: TitledGame & {
+    startsAt: string
+    endsAt: string | null
+    sport?: { slug: string }
+  },
   now: number
 ) {
   const sides = matchSides(game)
   const what = sides
     ? sides.map(teamMark).join(' × ')
     : gameTitle(game).toLocaleUpperCase('pt-BR')
-  return `${what} · ${isLive(game, now) ? 'AO VIVO' : formatTime(game.startsAt)}`
+  const when = matchPeriod(game, now)?.toLocaleUpperCase('pt-BR')
+  return `${what} · ${when ?? formatTime(game.startsAt)}`
 }
