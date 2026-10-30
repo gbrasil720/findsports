@@ -156,3 +156,20 @@ function listWidth(width: number) {
 /** O celular (e a capa) fica em retrato; tablet e dobrável aberto giram. */
 export const locksPortrait = (screen: { width: number; height: number }) =>
   Math.min(screen.width, screen.height) < TABLET
+
+/**
+ * Uma medida do design que muda com o aparelho (a foto do bar, o nome), pela
+ * altura da tela: a dos pontos desenhados, em linha reta entre eles, e a do
+ * ponto mais perto fora deles.
+ */
+export function byHeight(points: [number, number][], height: number) {
+  const first = points[0]
+  const last = points.at(-1)
+  if (!first || !last) return 0
+  if (height <= first[0]) return first[1]
+  if (height >= last[0]) return last[1]
+  const i = points.findIndex(([h]) => h >= height)
+  const [h0, v0] = points[i - 1] ?? first
+  const [h1, v1] = points[i] ?? last
+  return Math.round(v0 + ((v1 - v0) * (height - h0)) / (h1 - h0))
+}
