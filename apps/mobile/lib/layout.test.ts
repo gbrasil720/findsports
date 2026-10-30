@@ -54,6 +54,7 @@ describe('classify', () => {
 
   test('Duo aberto: plano com lista própria, livro e laptop pela dobradiça', () => {
     expect(ios(951, 669)).toMatchObject({ kind: 'split', split: 420, gap: 0 })
+    expect(ios(669, 951)).toMatchObject({ kind: 'stack', nav: 'duoRail' })
     const half = { state: 'half' as const }
     expect(
       classify({

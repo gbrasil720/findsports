@@ -95,6 +95,9 @@ export function classify({
           split: Math.round(width / 2 - DUO_HINGE / 2),
           gap: DUO_HINGE
         }
+      // Plano e em pé, a tela é quase a de um iPad mini: uma coluna larga.
+      if (height > width)
+        return { ...base, kind: 'stack', nav: 'duoRail', split: width }
       return { ...base, kind: 'split', nav: 'duoRail', split: 420 }
     }
     if (width >= DUO_CLOSED && height > width)
