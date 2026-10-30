@@ -63,6 +63,8 @@ import {
   dayKey,
   dayMonth,
   gameWhen,
+  type MemoryBar,
+  memoryBar,
   savedWeek,
   visitGrid,
   WEEK_COLUMNS,
@@ -165,14 +167,39 @@ export default function YourBars() {
     layout.kind === 'stack'
       ? { columns: content > 820 ? 3 : 2, cell: content > 820 ? 44 : 38 }
       : undefined
-  // No lado a lado, tocar numa visita a escolhe (a mais recente de início).
-  const [chosen, setChosen] = useState<string | null>(null)
+  // No lado a lado, tocar numa linha de qualquer aba escolhe o bar dela
+  // (`key` é a linha, para só ela ganhar o contorno); de início, a visita
+  // mais recente.
+  const [chosen, setChosen] = useState<{ barId: string; key: string } | null>(
+    null
+  )
   const all = visits.data ?? []
-  const memory = all.find((v) => v.eventId === chosen) ?? all[0] ?? null
-  const kmTo = (v: VisitRow) =>
-    v.latitude === null || v.longitude === null
+  const pick =
+    chosen ?? (all[0] ? { barId: all[0].barId, key: all[0].eventId } : null)
+  const memory = pick ? memoryBar(pick.barId, all, saved.data ?? []) : null
+  const here = memory ? all.filter((v) => v.barId === memory.barId) : []
+  const choose = aside
+    ? (barId: string, key: string) => {
+        haptic.select()
+        setChosen({ barId, key })
+      }
+    : undefined
+  // Tocar numa gota escolhe a visita mais recente daquele bar.
+  const chooseOnMap = (barId: string) => {
+    haptic.select()
+    setChosen({
+      barId,
+      key: all.find((v) => v.barId === barId)?.eventId ?? `bar:${barId}`
+    })
+  }
+  const kmTo = (b: MemoryBar) =>
+    b.latitude === null || b.longitude === null
       ? null
-      : distanceKm(from, { lat: Number(v.latitude), lng: Number(v.longitude) })
+      : distanceKm(from, { lat: Number(b.latitude), lng: Number(b.longitude) })
+  // A semana de quadrados fora do celular termina na visita mais recente: o
+  // design a mostra sempre com jogos, não quatro semanas vazias.
+  const lastVisit = all[0] ? new Date(all[0].startsAt).getTime() : now
+  const gridEnd = layout.kind === 'phone' ? now : Math.min(now, lastVisit)
 
   const body = (which: Tab) => {
     const query = queryOf(which)
@@ -196,6 +223,8 @@ export default function YourBars() {
             searching={Boolean(term)}
             onOpen={openBar}
             onToggle={toggleSaved}
+            selected={aside ? pick?.key : undefined}
+            onSelect={choose}
           />
         ) : which === 'visits' ? (
           <Visits
@@ -207,15 +236,9 @@ export default function YourBars() {
             onOpen={openBar}
             onToggle={toggleSaved}
             board={board}
-            selected={aside ? (memory?.eventId ?? null) : undefined}
-            onSelect={
-              aside
-                ? (v) => {
-                    haptic.select()
-                    setChosen(v.eventId)
-                  }
-                : undefined
-            }
+            gridEnd={gridEnd}
+            selected={aside ? pick?.key : undefined}
+            onSelect={choose}
           />
         ) : (
           <Saved
@@ -225,6 +248,8 @@ export default function YourBars() {
             onOpen={openBar}
             onToggle={toggleSaved}
             onExplore={() => router.navigate('/explore')}
+            selected={aside ? pick?.key : undefined}
+            onSelect={choose}
           />
         )}
       </Animated.View>
@@ -330,10 +355,7 @@ export default function YourBars() {
           <VisitsMap
             visits={all}
             selected={memory}
-            onSelect={(v) => {
-              haptic.select()
-              setChosen(v.eventId)
-            }}
+            onSelect={chooseOnMap}
             top={insets.top + 12}
             center={{ latitude: from.lat, longitude: from.lng }}
             padding={{ top: insets.top + 120, left: 60, right: 60, bottom: 30 }}
@@ -438,7 +460,7 @@ export default function YourBars() {
       <View ref={shotSource.ref} collapsable={false} style={root}>
         <View style={styles.sideBySide}>
           <ScrollView
-            style={{ width: layout.split, flexGrow: 0 }}
+            style={{ width: fold ? layout.split : 400, flexGrow: 0 }}
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={[
               styles.body,
@@ -475,13 +497,13 @@ export default function YourBars() {
             >
               {memory ? (
                 <BarMemory
-                  visit={memory}
-                  here={all.filter((v) => v.barId === memory.barId)}
+                  bar={memory}
+                  here={here}
                   km={kmTo(memory)}
                   saved={favorites.ids.has(memory.barId)}
                   onToggle={() => toggleSaved(memory.barId)}
                   photoHeight={
-                    layout.width - layout.split - layout.gap - nav.right < 436
+                    layout.width - layout.split - layout.gap - nav.right < 400
                       ? 170
                       : 210
                   }
@@ -493,11 +515,8 @@ export default function YourBars() {
               <VisitsMap
                 visits={all}
                 selected={memory}
-                onSelect={(v) => {
-                  haptic.select()
-                  setChosen(v.eventId)
-                }}
-                top={insets.top + 26}
+                onSelect={chooseOnMap}
+                top={insets.top + 38}
                 center={{ latitude: from.lat, longitude: from.lng }}
                 padding={{
                   top: insets.top + 130,
@@ -521,8 +540,8 @@ export default function YourBars() {
                   contentContainerStyle={styles.floatingBody}
                 >
                   <BarMemory
-                    visit={memory}
-                    here={all.filter((v) => v.barId === memory.barId)}
+                    bar={memory}
+                    here={here}
                     km={kmTo(memory)}
                     saved={favorites.ids.has(memory.barId)}
                     onToggle={() => toggleSaved(memory.barId)}
@@ -684,6 +703,7 @@ function Visits({
   onOpen,
   onToggle,
   board,
+  gridEnd,
   selected,
   onSelect
 }: {
@@ -696,13 +716,15 @@ function Visits({
   onToggle: (barId: string) => void
   /** Tablet em pé: o mês inteiro e as visitas em cards. */
   board?: { columns: number; cell: number }
-  /** Lado a lado: a visita tocada, que a lembrança ao lado mostra. */
+  /** Onde termina a semana de quadrados (fora do celular, na última visita). */
+  gridEnd: number
+  /** Lado a lado: a linha tocada, cujo bar a lembrança ao lado mostra. */
   selected?: string | null
-  onSelect?: (visit: VisitRow) => void
+  onSelect?: (barId: string, key: string) => void
 }) {
   const palette = usePalette()
   const t = tones(palette)
-  const grid = visitGrid(all, now)
+  const grid = visitGrid(all, gridEnd)
   if (board) {
     const cards = Array.from(
       { length: Math.ceil(rows.length / board.columns) },
@@ -812,7 +834,7 @@ function Visits({
                   saved={isSaved(visit.barId)}
                   onOpen={
                     onSelect
-                      ? () => onSelect(visit)
+                      ? () => onSelect(visit.barId, visit.eventId)
                       : visit.barActive
                         ? () => onOpen(visit.barId)
                         : undefined
@@ -849,7 +871,9 @@ function Saved({
   searching,
   onOpen,
   onToggle,
-  onExplore
+  onExplore,
+  selected,
+  onSelect
 }: {
   now: number
   rows: SavedRow[]
@@ -857,7 +881,12 @@ function Saved({
   onOpen: (barId: string) => void
   onToggle: (barId: string) => void
   onExplore: () => void
+  /** Lado a lado: a linha tocada abre o bar na lembrança, como em "Já fui". */
+  selected?: string | null
+  onSelect?: (barId: string, key: string) => void
 }) {
+  const open = (barId: string, key: string) =>
+    onSelect ? () => onSelect(barId, key) : () => onOpen(barId)
   const palette = usePalette()
   const t = tones(palette)
   const week = savedWeek(rows, now)
@@ -941,7 +970,8 @@ function Saved({
                 return (
                   <Row
                     key={game.id}
-                    first={i === 0}
+                    first={i === 0 || group.games[i - 1]?.game.id === selected}
+                    selected={game.id === selected}
                     side={
                       <View style={styles.timeCol}>
                         {when.live ? (
@@ -968,7 +998,7 @@ function Saved({
                     name={s.bar.name}
                     line={gameTitle(game)}
                     saved
-                    onOpen={() => onOpen(s.barId)}
+                    onOpen={open(s.barId, game.id)}
                     onToggle={() => onToggle(s.barId)}
                   />
                 )
@@ -985,7 +1015,10 @@ function Saved({
                 return (
                   <Row
                     key={s.barId}
-                    first={i === 0}
+                    first={
+                      i === 0 || `idle:${week.idle[i - 1]?.barId}` === selected
+                    }
+                    selected={`idle:${s.barId}` === selected}
                     side={
                       <View style={styles.timeCol}>
                         <View
@@ -1003,7 +1036,7 @@ function Saved({
                         : 'sem jogo publicado'
                     }`}
                     saved
-                    onOpen={() => onOpen(s.barId)}
+                    onOpen={open(s.barId, `idle:${s.barId}`)}
                     onToggle={() => onToggle(s.barId)}
                   />
                 )
@@ -1025,13 +1058,18 @@ function Bars({
   rows,
   searching,
   onOpen,
-  onToggle
+  onToggle,
+  selected,
+  onSelect
 }: {
   all: ReturnType<typeof yourBars>
   rows: YourBar[]
   searching: boolean
   onOpen: (barId: string) => void
   onToggle: (barId: string) => void
+  /** Lado a lado: a linha tocada abre o bar na lembrança, como em "Já fui". */
+  selected?: string | null
+  onSelect?: (barId: string, key: string) => void
 }) {
   const palette = usePalette()
   const t = tones(palette)
@@ -1138,7 +1176,10 @@ function Bars({
               {group.bars.map((b, i) => (
                 <Row
                   key={b.barId}
-                  first={i === 0}
+                  first={
+                    i === 0 || `bar:${group.bars[i - 1]?.barId}` === selected
+                  }
+                  selected={`bar:${b.barId}` === selected}
                   gap={13}
                   pad={11}
                   side={
@@ -1182,7 +1223,13 @@ function Bars({
                     </View>
                   }
                   saved={b.saved}
-                  onOpen={b.active ? () => onOpen(b.barId) : undefined}
+                  onOpen={
+                    onSelect
+                      ? () => onSelect(b.barId, `bar:${b.barId}`)
+                      : b.active
+                        ? () => onOpen(b.barId)
+                        : undefined
+                  }
                   onToggle={() => onToggle(b.barId)}
                 />
               ))}

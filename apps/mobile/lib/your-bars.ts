@@ -312,3 +312,53 @@ export function monthGrids(visits: { startsAt: string | Date }[], now: number) {
     return { key: prefix, label: monthName(new Date(first)), count, cells }
   })
 }
+
+/** O bar da lembrança (lado a lado): tocado em "Já fui", "Salvos" ou "Bares". */
+export type MemoryBar = {
+  barId: string
+  name: string
+  neighborhood: string
+  photoUrl: string | null
+  latitude: string | number | null
+  longitude: string | number | null
+  /** Bar fora do ar não abre a página nem mostra o próximo jogo. */
+  active: boolean
+}
+
+/**
+ * O bar tocado, pelo que já foi lido: a visita (que diz se ele está no ar) ou
+ * o salvo. `null` se ele não está em nenhuma das duas.
+ */
+export function memoryBar(
+  barId: string,
+  visits: (Omit<BarInfo, 'name'> & {
+    barId: string
+    barName: string
+    barActive: boolean
+  })[],
+  saved: { barId: string; bar: BarInfo }[]
+): MemoryBar | null {
+  const visit = visits.find((v) => v.barId === barId)
+  if (visit)
+    return {
+      barId,
+      name: visit.barName,
+      neighborhood: visit.neighborhood,
+      photoUrl: visit.photoUrl,
+      latitude: visit.latitude,
+      longitude: visit.longitude,
+      active: visit.barActive
+    }
+  const s = saved.find((row) => row.barId === barId)
+  if (!s) return null
+  // Os salvos só trazem bares no ar.
+  return {
+    barId,
+    name: s.bar.name,
+    neighborhood: s.bar.neighborhood,
+    photoUrl: s.bar.photoUrl,
+    latitude: s.bar.latitude,
+    longitude: s.bar.longitude,
+    active: true
+  }
+}

@@ -34,7 +34,12 @@ import {
 import { formatKm, formatTime, isLive } from '@/lib/explore'
 import { MAP_STYLE } from '@/lib/map-style'
 import { trpc } from '@/lib/trpc'
-import { dayMonth, monthGrids, WEEK_LETTERS } from '@/lib/your-bars'
+import {
+  dayMonth,
+  type MemoryBar,
+  monthGrids,
+  WEEK_LETTERS
+} from '@/lib/your-bars'
 
 /*
  * As peças de Seus bares fora do celular (A04 do design): o calendário do mês
@@ -282,7 +287,8 @@ const directions = (lat: number, lng: number) =>
     : `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
 
 /** "VOCÊ FOI 2 VEZES". */
-const timesLabel = (n: number) => `VOCÊ FOI ${n} ${n === 1 ? 'VEZ' : 'VEZES'}`
+const timesLabel = (n: number) =>
+  n ? `VOCÊ FOI ${n} ${n === 1 ? 'VEZ' : 'VEZES'}` : 'VOCÊ NUNCA FOI'
 
 /** O dia e a hora do próximo jogo, como no balão do mapa: "HOJE 21:30". */
 const nextWhen = (startsAt: string, now: number) =>
@@ -294,16 +300,16 @@ const nextWhen = (startsAt: string, now: number) =>
  * chegar.
  */
 export function BarMemory({
-  visit,
+  bar: place,
   here,
   km,
   saved,
   onToggle,
   photoHeight
 }: {
-  /** A visita tocada. */
-  visit: VisitRow
-  /** Todas as visitas a esse bar, da mais recente. */
+  /** O bar tocado. */
+  bar: MemoryBar
+  /** As visitas a esse bar, da mais recente (nenhuma num salvo novo). */
   here: VisitRow[]
   km: number | null
   saved: boolean
@@ -315,24 +321,27 @@ export function BarMemory({
   const now = Date.now()
   // O próximo jogo vem da página do bar (a mesma leitura, em cache).
   const bar = useQuery({
-    ...trpc.pubs.getById.queryOptions({ id: visit.barId }),
-    enabled: visit.barActive
+    ...trpc.pubs.getById.queryOptions({ id: place.barId }),
+    enabled: place.active
   })
   const next = bar.data?.events?.[0]
-  const lat = Number(visit.latitude)
-  const lng = Number(visit.longitude)
+  const lat = Number(place.latitude)
+  const lng = Number(place.longitude)
   const located =
-    visit.latitude !== null && Number.isFinite(lat) && Number.isFinite(lng)
+    place.latitude !== null &&
+    place.longitude !== null &&
+    Number.isFinite(lat) &&
+    Number.isFinite(lng)
   const glow = glowOf(palette.dark)
   return (
     // Trocar de bar troca a lembrança em fade curto.
-    <Animated.View key={visit.barId} entering={MEMORY_IN} style={styles.memory}>
+    <Animated.View key={place.barId} entering={MEMORY_IN} style={styles.memory}>
       <View style={{ height: photoHeight }}>
         <HardShadow color={glow} offset={5} radius={8} />
         <View style={styles.hero}>
           <Photo
-            uri={visit.photoUrl}
-            name={visit.barName}
+            uri={place.photoUrl}
+            name={place.name}
             big
             style={StyleSheet.absoluteFill}
           />
@@ -345,10 +354,10 @@ export function BarMemory({
           <View style={styles.heroText}>
             <Text style={styles.heroTimes}>{timesLabel(here.length)}</Text>
             <Text style={styles.heroName} numberOfLines={1}>
-              {visit.barName}
+              {place.name}
             </Text>
             <Text style={[text(13), { color: '#d6d3cb' }]} numberOfLines={1}>
-              {[visit.neighborhood, km === null ? null : formatKm(km)]
+              {[place.neighborhood, km === null ? null : formatKm(km)]
                 .filter(Boolean)
                 .join(' · ')}
             </Text>
@@ -367,38 +376,42 @@ export function BarMemory({
         </View>
       </View>
 
-      <Card soft>
-        <View style={styles.history}>
-          {/* ponytail: os três jogos mais recentes; o número de vezes está
-              na foto. Lista inteira se alguém pedir. */}
-          {here.slice(0, 3).map((v, i) => {
-            const date = dayMonth(v.startsAt)
-            return (
-              <View
-                key={v.eventId}
-                style={[
-                  styles.historyRow,
-                  i > 0 && { borderTopWidth: 1, borderTopColor: palette.line }
-                ]}
-              >
-                <Text style={[styles.historyDate, { color: palette.ink }]}>
-                  {date.day} {date.month}
-                </Text>
-                <Text
-                  style={[text(14, 'Regular', 1.3), styles.grow]}
-                  numberOfLines={2}
+      {here.length ? (
+        <Card soft>
+          <View style={styles.history}>
+            {here.map((v, i) => {
+              const date = dayMonth(v.startsAt)
+              return (
+                <View
+                  key={v.eventId}
+                  style={[
+                    styles.historyRow,
+                    i > 0 && { borderTopWidth: 1, borderTopColor: palette.line }
+                  ]}
                 >
-                  {gameTitle(v)}
-                </Text>
-                <View style={styles.badge}>
-                  <Icon name="check" size={11} color={INK} />
-                  <Text style={styles.badgeText}>Validado</Text>
+                  <Text style={[styles.historyDate, { color: palette.ink }]}>
+                    {date.day} {date.month}
+                  </Text>
+                  <Text
+                    style={[
+                      text(14, 'Regular', 1.3),
+                      styles.grow,
+                      { color: palette.ink }
+                    ]}
+                    numberOfLines={2}
+                  >
+                    {gameTitle(v)}
+                  </Text>
+                  <View style={styles.badge}>
+                    <Icon name="check" size={11} color={INK} />
+                    <Text style={styles.badgeText}>Validado</Text>
+                  </View>
                 </View>
-              </View>
-            )
-          })}
-        </View>
-      </Card>
+              )
+            })}
+          </View>
+        </Card>
+      ) : null}
 
       {next ? (
         <View>
@@ -431,7 +444,7 @@ export function BarMemory({
               onPress={() =>
                 router.push({
                   pathname: '/vou/[barId]',
-                  params: { barId: visit.barId, eventId: next.id }
+                  params: { barId: place.barId, eventId: next.id }
                 })
               }
               style={styles.going}
@@ -452,14 +465,14 @@ export function BarMemory({
             onPress={() => Linking.openURL(directions(lat, lng))}
           />
         ) : null}
-        {visit.barActive ? (
+        {place.active ? (
           <GlassPill
             label="Ver bar"
             bold
             onPress={() =>
               router.push({
                 pathname: '/bar/[id]',
-                params: { id: visit.barId }
+                params: { id: place.barId }
               })
             }
           />
@@ -600,9 +613,9 @@ export function VisitsMap({
   center
 }: {
   visits: VisitRow[]
-  /** A visita tocada. */
-  selected: VisitRow | null
-  onSelect: (visit: VisitRow) => void
+  /** O bar tocado (pode ser um salvo onde você nunca foi). */
+  selected: MemoryBar | null
+  onSelect: (barId: string) => void
   /** O que a lembrança e a navegação cobrem, para as gotas ficarem à vista. */
   padding: { top: number; right: number; bottom: number; left: number }
   /** Onde a pílula fica. */
@@ -612,19 +625,25 @@ export function VisitsMap({
 }) {
   const palette = usePalette()
   const map = useRef<MapView>(null)
-  // Um por bar, a visita mais recente (a lista chega da mais recente).
-  const bars = [
-    ...new Map(visits.map((v) => [v.barId, v] as const)).values()
-  ].filter(
-    (v) =>
-      v.latitude !== null &&
-      v.longitude !== null &&
-      Number.isFinite(Number(v.latitude)) &&
-      Number.isFinite(Number(v.longitude))
-  )
-  const coords = bars.map((v) => ({
-    latitude: Number(v.latitude),
-    longitude: Number(v.longitude)
+  const located = (b: Pick<MemoryBar, 'latitude' | 'longitude'>) =>
+    b.latitude !== null &&
+    b.longitude !== null &&
+    Number.isFinite(Number(b.latitude)) &&
+    Number.isFinite(Number(b.longitude))
+  // Um por bar (a lista chega da visita mais recente).
+  const visited = [
+    ...new Map(visits.map((v) => [v.barId, { ...v, name: v.barName }])).values()
+  ].filter(located)
+  // O salvo tocado onde você nunca foi também entra no mapa.
+  const pins =
+    selected &&
+    located(selected) &&
+    !visited.some((b) => b.barId === selected.barId)
+      ? [...visited, selected]
+      : visited
+  const coords = visited.map((b) => ({
+    latitude: Number(b.latitude),
+    longitude: Number(b.longitude)
   }))
   // Enquadra as gotas quando o mapa fica pronto e quando as visitas chegam
   // ou mudam (o mapa pode nascer antes da leitura).
@@ -639,8 +658,13 @@ export function VisitsMap({
   const framing = `${coords.map((c) => `${c.latitude},${c.longitude}`).join('|')}:${Object.values(padding).join(',')}`
   // biome-ignore lint/correctness/useExhaustiveDependencies: enquadra de novo só quando o desenho muda
   useEffect(frame, [framing])
-  const times = (barId: string) =>
-    visits.filter((v) => v.barId === barId).length
+  /** "04 OUT · 2×": a visita mais recente e quantas vezes. */
+  const when = (barId: string) => {
+    const here = visits.filter((v) => v.barId === barId)
+    if (!here[0]) return null
+    const date = dayMonth(here[0].startsAt)
+    return `${date.day} ${date.month} · ${here.length}×`
+  }
   const first = coords[0] ?? center
   return (
     <View style={StyleSheet.absoluteFill}>
@@ -660,39 +684,59 @@ export function VisitsMap({
         pitchEnabled={false}
         toolbarEnabled={false}
       >
-        {bars.map((v) => {
-          const on = v.barId === selected?.barId
-          const date = dayMonth(selected?.startsAt ?? v.startsAt)
-          const drop = on
-            ? {
-                callout: {
-                  name: v.barName,
-                  when: `${date.day} ${date.month} · ${times(v.barId)}×`
-                }
-              }
-            : { label: v.barName }
-          const box = dropBox(drop)
+        {pins.map((b) => {
+          const on = b.barId === selected?.barId
+          const callout = on ? { name: b.name, when: when(b.barId) } : undefined
+          // A caixa conta a pílula do nome (a do design é de papel, não a do
+          // ao vivo do Explorar): a gota fica na mesma ponta.
+          const box = dropBox(callout ? { callout } : { label: b.name })
           return (
             <DrawnMarker
               // Mudou o tipo (gota, tocada), nasce outro marcador: o Apple
               // Maps não muda o `centerOffset` de um marcador vivo.
-              key={`${on ? 'on' : 'off'}:${v.barId}`}
+              key={`${on ? 'on' : 'off'}:${b.barId}`}
               draw={`${on}:${palette.dark}`}
               coordinate={{
-                latitude: Number(v.latitude),
-                longitude: Number(v.longitude)
+                latitude: Number(b.latitude),
+                longitude: Number(b.longitude)
               }}
               anchor={box.anchor}
               centerOffset={box.centerOffset}
               zIndex={on ? 3 : 1}
-              onPress={() => onSelect(v)}
+              onPress={() => onSelect(b.barId)}
             >
-              <MapDrop
-                live={false}
-                elite={false}
-                dark={palette.dark}
-                {...drop}
-              />
+              {callout ? (
+                <MapDrop
+                  live={false}
+                  elite={false}
+                  dark={palette.dark}
+                  callout={callout}
+                />
+              ) : (
+                <View style={{ width: box.width, height: box.height }}>
+                  <MapDrop live={false} elite={false} dark={palette.dark} />
+                  <View
+                    style={[
+                      styles.pinLabel,
+                      {
+                        left: box.tipX + 20,
+                        top: box.tipY - 34,
+                        backgroundColor: palette.dark ? '#1c1c18' : PAPER,
+                        borderColor: palette.dark
+                          ? 'rgba(241,238,230,.12)'
+                          : 'rgba(18,18,15,.08)'
+                      }
+                    ]}
+                  >
+                    <Text
+                      style={[text(12, 'Bold', 1.1), { color: palette.ink }]}
+                      numberOfLines={1}
+                    >
+                      {b.name}
+                    </Text>
+                  </View>
+                </View>
+              )}
             </DrawnMarker>
           )
         })}
@@ -709,7 +753,8 @@ export function VisitsMap({
             accent={palette.dark ? ACID : LIVE}
           />
           <Text style={[text(13.5, 'Bold', 1.2), { color: palette.ink }]}>
-            {bars.length} {bars.length === 1 ? 'bar' : 'bares'} onde você foi
+            {visited.length} {visited.length === 1 ? 'bar' : 'bares'} onde você
+            foi
           </Text>
         </Glass>
       </View>
@@ -875,6 +920,18 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.14,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 8 }
+  },
+  pinLabel: {
+    position: 'absolute',
+    height: 24,
+    paddingHorizontal: 9,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: 'center',
+    shadowColor: INK,
+    shadowOpacity: 0.22,
+    shadowRadius: 0,
+    shadowOffset: { width: 2, height: 3 }
   },
   mapPill: { position: 'absolute', left: 16 }
 })
