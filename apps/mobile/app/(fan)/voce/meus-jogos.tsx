@@ -33,6 +33,7 @@ import {
   INK,
   LIVE,
   PAPER,
+  PillButton,
   Text,
   Title,
   text,
@@ -49,7 +50,8 @@ import {
   pastLabel,
   shortDate,
   showsCheckIn,
-  thisMonth
+  thisMonth,
+  todayHeadline
 } from '@/lib/my-games'
 import { trpc } from '@/lib/trpc'
 
@@ -134,11 +136,18 @@ export default function MyGames() {
   const pull = usePullRefresh(() =>
     Promise.all([mine.refetch(), postGame.refetch()])
   )
+  const layout = useLayout()
+  // A tela de fora do Flip, sem jogo hoje: uma frase e um botão (regra 04
+  // do Adaptativo 10).
+  const markedToday = upcoming.some(
+    (game) => dayLabel(game.startsAt, now) === 'Hoje'
+  )
+  const nav = useNavInsets()
+  if (layout.kind === 'cover' && mine.isSuccess && !markedToday)
+    return <CoverEmpty />
 
   // Fora do celular a lista fica numa coluna; vazia na tela larga, os jogos
   // de hoje perto vão ao lado, para marcar um (Adaptativo 10, regra 01).
-  const layout = useLayout()
-  const nav = useNavInsets()
   const usable = layout.width - nav.left - nav.right
   const aside = layout.kind === 'split' && mine.isSuccess && !games.length
   const listWidth = aside
@@ -383,6 +392,40 @@ function WeekEmpty() {
       }
     })
   return <MyGamesEmpty week={week} />
+}
+
+/** A tela de fora do Flip sem jogo marcado hoje (`flip10`). */
+function CoverEmpty() {
+  const router = useRouter()
+  const insets = useSafeAreaInsets()
+  const now = Date.now()
+  const { bars } = useGamesNear(dayKey(now))
+  const top = todayHeadline(
+    bars.map((bar) => {
+      const game = bar.nextEvent as NonNullable<typeof bar.nextEvent>
+      return { title: gameTitle(game), startsAt: game.startsAt }
+    })
+  )
+  return (
+    <View style={[styles.cover, { paddingTop: Math.max(insets.top, 40) }]}>
+      <Text style={styles.coverKicker}>MEUS JOGOS</Text>
+      <Text style={styles.coverTitle}>Nenhum jogo{'\n'}marcado hoje</Text>
+      {top ? (
+        <Text style={[text(12.5, 'Regular', 1.4), { color: '#aaa9a4' }]}>
+          {top.title} às {formatTime(top.startsAt)} em {top.bars}{' '}
+          {top.bars === 1 ? 'bar perto' : 'bares perto'}.
+        </Text>
+      ) : null}
+      <View style={{ alignSelf: 'flex-end', width: 170, marginTop: 6 }}>
+        <PillButton
+          label="Ver bares"
+          height={48}
+          edge="#000"
+          onPress={() => router.navigate('/explore')}
+        />
+      </View>
+    </View>
+  )
 }
 
 /** Ao lado da lista vazia: os bares perto com jogo hoje, para marcar um. */
@@ -752,6 +795,26 @@ const styles = StyleSheet.create({
     marginBottom: 4
   },
   empty: { gap: 14, marginTop: 24 },
+  cover: {
+    flex: 1,
+    backgroundColor: INK,
+    paddingHorizontal: 22,
+    gap: 10
+  },
+  coverKicker: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11,
+    letterSpacing: 0.66,
+    color: ACID
+  },
+  coverTitle: {
+    fontFamily: 'Anton',
+    fontSize: 26,
+    textTransform: 'uppercase',
+    color: PAPER,
+    marginTop: -0.2425 * 26,
+    marginBottom: -0.2425 * 26
+  },
   // Anton 22 do design, sem `lineHeight` (corta no iOS): margem negativa.
   aside: {
     fontFamily: 'Anton',
