@@ -79,6 +79,7 @@ import {
   text,
   useStatusBar
 } from '@/components/ui'
+import { clock } from '@/lib/ai-chat'
 import { authClient } from '@/lib/auth-client'
 import { trackCommercialEvent } from '@/lib/commercial'
 import { env } from '@/lib/env'
@@ -1111,7 +1112,10 @@ export function BarDetail({
   if (layout.kind === 'cover' && going && mine?.attending && mine.code)
     return (
       <View style={[styles.cover, { paddingTop: insets.top + 18 }]}>
-        <Text style={styles.coverKicker}>SEU CÓDIGO</Text>
+        <View style={styles.coverTop}>
+          <Text style={styles.coverKicker}>SEU CÓDIGO</Text>
+          <Text style={styles.coverClock}>{clock(now)}</Text>
+        </View>
         <Pressable
           accessibilityRole="button"
           accessibilityHint="Abre o código em tela cheia"
@@ -1166,7 +1170,11 @@ export function BarDetail({
             style={StyleSheet.absoluteFill}
           />
           <View style={styles.tableName}>
-            <Text style={styles.name} numberOfLines={1} adjustsFontSizeToFit>
+            <Text
+              style={[styles.name, styles.tableTitle]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
               {(data?.name ?? name ?? '').toUpperCase()}
             </Text>
             <Text
@@ -1208,9 +1216,9 @@ export function BarDetail({
         >
           {data ? (
             <>
-              <View style={twoUp ? styles.col : null}>{sGame}</View>
+              <View style={twoUp ? styles.col : null}>{wGame}</View>
               <View style={[styles.col, { gap: 12 }]}>
-                {sOffer}
+                {wOffer}
                 {attendButton ? (
                   <Glass
                     tone={palette.dark ? 'dark' : 'light'}
@@ -1812,6 +1820,13 @@ const styles = StyleSheet.create({
   duoControls: { position: 'absolute', zIndex: 40 },
   stack: { gap: 16 },
   dockInline: { position: 'relative', left: 0, right: 0 },
+  tableTitle: { fontSize: 40, marginVertical: -10, letterSpacing: 0 },
+  coverTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  coverClock: { fontFamily: 'GeistMono-SemiBold', fontSize: 12, color: PAPER },
   tableName: { position: 'absolute', left: 20, right: 20, bottom: 18 },
   tableBody: { paddingTop: 16, paddingHorizontal: 20, gap: 12 },
   tableTwo: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
