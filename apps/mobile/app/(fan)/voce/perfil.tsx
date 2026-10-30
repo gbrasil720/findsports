@@ -220,7 +220,9 @@ export default function Profile() {
             (wide || table) && { fontSize: 28, lineHeight: 36 }
           ]}
           numberOfLines={1}
-          adjustsFontSizeToFit
+          // Encolher só no celular: fora dele há espaço, e no iPhone Duo o
+          // ajuste media antes da tela trocar e deixava o nome minúsculo.
+          adjustsFontSizeToFit={layout.kind === 'phone'}
         >
           {user?.name}
         </Text>
@@ -278,7 +280,7 @@ export default function Profile() {
           <Text
             style={[text(15, 'Bold'), { color: PAPER }]}
             numberOfLines={1}
-            adjustsFontSizeToFit
+            adjustsFontSizeToFit={layout.kind === 'phone'}
             minimumFontScale={0.85}
           >
             {unlocked.length ? 'Últimas conquistas' : 'Conquistas'}
