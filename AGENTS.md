@@ -992,7 +992,9 @@ invente layout que o projeto não tem.
   (13″ e Tab S11 Ultra deitados). A navegação também: `tabs` (a `NativeTabs`, só no
   celular), `float` (barra flutuante embaixo: iPad e dobrável aberto, sobre a metade do mapa),
   `duoRail` (faixa da direita do Duo) e `rail` (Galaxy Tab, com a IA no topo e os atalhos),
-  em `components/side-nav.tsx`. Fora do celular a `NativeTabs` só se esconde (`hidden`),
+  em `components/side-nav.tsx`. Em todos, a barra é a do celular (o dono pediu, o design tinha a
+  antiga): cápsula de vidro de 290 x 62, lente que desliza com mola e segue o dedo, os mesmos
+  PNG de `TAB_ICONS` e o círculo da IA; em pé (Duo, rail) a cápsula fica de pé, só com os ícones. Fora do celular a `NativeTabs` só se esconde (`hidden`),
   para abrir o dobrável não remontar as abas. Telas das abas descontam a navegação por
   `useNavInsets()` (`useTabBarSpace` é o `bottom` dele); o primeiro acesso (4o) cerca o botão
   da IA por `useAiButtonCenter`. Há ainda `table` (meio dobrado na mesa: Duo em laptop, Flex
