@@ -1,4 +1,10 @@
-import { Image, Pressable, StyleSheet, View } from 'react-native'
+import {
+  Image,
+  Pressable,
+  StyleSheet,
+  useWindowDimensions,
+  View
+} from 'react-native'
 import Animated, {
   type EntryExitAnimationFunction,
   FadeIn,
@@ -89,8 +95,14 @@ export function YouMenu({
   onSettings: () => void
 }) {
   const palette = usePalette()
-  const bar = useTabBarSpace()
+  const nav = useNavInsets()
+  const bar = nav.bottom
   const bottom = bar + 10
+  // No celular, de borda a borda (14 de cada lado); no tablet em pé e na
+  // mesa, 420 de largura sobre a barra, fora das faixas laterais (WEB-491).
+  const { width } = useWindowDimensions()
+  const free = width - nav.left - nav.right
+  const menuWidth = Math.min(free - 28, 420)
   const tone = palette.dark ? 'dark' : 'light'
   return (
     <>
@@ -114,7 +126,17 @@ export function YouMenu({
           ]}
         />
       </Animated.View>
-      <Animated.View entering={MENU_IN} style={[styles.menuWrap, { bottom }]}>
+      <Animated.View
+        entering={MENU_IN}
+        style={[
+          styles.menuWrap,
+          {
+            bottom,
+            width: menuWidth,
+            left: nav.left + (free - menuWidth) / 2
+          }
+        ]}
+      >
         <Glass
           tone={tone}
           tint={palette.dark ? 'rgba(30,30,27,.55)' : 'rgba(255,255,255,.55)'}
@@ -239,8 +261,6 @@ const styles = StyleSheet.create({
   // Cresce da aba "Você" (terceira da barra), não do próprio centro.
   menuWrap: {
     position: 'absolute',
-    left: 14,
-    right: 14,
     zIndex: 30,
     transformOrigin: '62% 100%'
   },
