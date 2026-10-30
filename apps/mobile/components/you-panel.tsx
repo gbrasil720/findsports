@@ -163,7 +163,12 @@ export function YouPanel({
       style={[
         StyleSheet.absoluteFill,
         styles.screen,
-        { backgroundColor: palette.bg, left: nav.left, right: nav.right }
+        // O fundo passa por baixo das faixas (rail, Duo); o conteúdo, não.
+        {
+          backgroundColor: palette.bg,
+          paddingLeft: nav.left,
+          paddingRight: nav.right
+        }
       ]}
     >
       <ScrollView
