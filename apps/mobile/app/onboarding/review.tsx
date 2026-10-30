@@ -3,7 +3,11 @@ import { useRouter } from 'expo-router'
 import { StyleSheet, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { ErrorText, haptic, POP_LATE } from '@/components/motion'
-import { OnboardingTop, useOnboarding } from '@/components/onboarding'
+import {
+  OnboardingTop,
+  useFrameKind,
+  useOnboarding
+} from '@/components/onboarding'
 import {
   ACID,
   CARD,
@@ -48,6 +52,8 @@ function Chip({
 }
 
 export default function Review() {
+  // Na mesa a pergunta já está na metade de cima (Adaptativo 09).
+  const table = useFrameKind() === 'table'
   const router = useRouter()
   const { choices } = useOnboarding()
   const sports = useQuery(trpc.pubs.getSports.queryOptions())
@@ -97,7 +103,7 @@ export default function Review() {
         </Animated.View>
       </View>
       <View style={{ alignItems: 'center', gap: 8 }}>
-        <Title lines={[['Pronto para salvar']]} size={38} />
+        {table ? null : <Title lines={[['Pronto para salvar']]} size={38} />}
         <Text
           style={[
             text(15.5, 'Regular', 1.48),

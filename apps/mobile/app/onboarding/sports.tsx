@@ -6,6 +6,7 @@ import {
   OnboardingTop,
   SportTile,
   useEditing,
+  useFrameKind,
   useOnboarding
 } from '@/components/onboarding'
 import {
@@ -39,6 +40,8 @@ export default function Sports() {
   const router = useRouter()
   const { choices, set } = useOnboarding()
   const edit = useEditing()
+  // Na mesa a pergunta já está na metade de cima (Adaptativo 09).
+  const table = useFrameKind() === 'table'
   const query = useQuery(trpc.pubs.getSports.queryOptions())
   const sports = [...(query.data ?? [])].sort(
     (a, b) => rank(a.slug) - rank(b.slug) || a.name.localeCompare(b.name)
@@ -82,9 +85,11 @@ export default function Sports() {
       }
     >
       {edit.back ?? <OnboardingTop step={2} />}
-      <View style={{ marginTop: 8 }}>
-        <Title lines={[['Quais esportes'], ['você curte?']]} size={36} />
-      </View>
+      {table ? null : (
+        <View style={{ marginTop: 8 }}>
+          <Title lines={[['Quais esportes'], ['você curte?']]} size={36} />
+        </View>
+      )}
       <Text style={[text(15, 'Regular', 1.45), { color: SUB, marginTop: -4 }]}>
         Marque tudo que você acompanha — a gente filtra os bares pra você.
       </Text>

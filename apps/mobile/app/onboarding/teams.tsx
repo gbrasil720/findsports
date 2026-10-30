@@ -8,6 +8,7 @@ import {
   type Team,
   TeamChip,
   useEditing,
+  useFrameKind,
   useOnboarding
 } from '@/components/onboarding'
 import {
@@ -41,6 +42,8 @@ function countLabel(teams: Team[]) {
 }
 
 export default function Teams() {
+  // Na mesa a pergunta já está na metade de cima (Adaptativo 09).
+  const table = useFrameKind() === 'table'
   const router = useRouter()
   const { choices, set } = useOnboarding()
   const edit = useEditing()
@@ -146,9 +149,11 @@ export default function Teams() {
           Não foi possível salvar. Tente de novo.
         </Text>
       ) : null}
-      <View style={{ marginTop: 8 }}>
-        <Title lines={[['Quem você acompanha?']]} size={36} />
-      </View>
+      {table ? null : (
+        <View style={{ marginTop: 8 }}>
+          <Title lines={[['Quem você acompanha?']]} size={36} />
+        </View>
+      )}
       <Text style={[text(15), { color: SUB, marginTop: -4 }]}>
         Opcional — marque quantos quiser em cada esporte, ou pule.
       </Text>
