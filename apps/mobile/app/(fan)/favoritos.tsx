@@ -353,7 +353,6 @@ export default function YourBars() {
     !visits.data.length &&
     !saved.data.length
   if (nothing) {
-    const wide = layout.kind === 'split' || layout.kind === 'stack'
     const column = (
       <ScrollView
         contentContainerStyle={[
@@ -378,16 +377,6 @@ export default function YourBars() {
       />
     )
     const usable = layout.width - nav.left - nav.right
-    if (!wide)
-      return (
-        <View
-          ref={shotSource.ref}
-          collapsable={false}
-          style={[styles.screen, { backgroundColor: palette.bg }]}
-        >
-          {column}
-        </View>
-      )
     if (layout.kind === 'stack') {
       const width = Math.min(560, usable - 80)
       return (
