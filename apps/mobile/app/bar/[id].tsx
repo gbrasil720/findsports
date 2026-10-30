@@ -1254,30 +1254,45 @@ export function BarDetail({
   }
 
   // Os controles sobre a foto; no Duo, em coluna na faixa da direita.
+  // Na faixa do Duo os botões ficam sobre o papel: vidro claro (02a–02c).
+  const glassTone: 'light' | 'dark' =
+    duoRail && !palette.dark ? 'light' : 'dark'
+  const glyph = glassTone === 'light' ? INK : PAPER
   const controls = (size: number) => (
     <>
       {back ? (
-        <RoundGlass label="Voltar" size={size} onPress={() => router.back()}>
-          <Icon name="back" size={Math.round(size * 0.43)} color={PAPER} />
+        <RoundGlass
+          label="Voltar"
+          size={size}
+          tone={glassTone}
+          onPress={() => router.back()}
+        >
+          <Icon name="back" size={Math.round(size * 0.43)} color={glyph} />
         </RoundGlass>
       ) : (
         <View />
       )}
       <View style={duoRail ? styles.column : styles.actions}>
-        <RoundGlass label="Compartilhar" size={size} onPress={share}>
-          <Icon name="share" size={Math.round(size * 0.43)} color={PAPER} />
+        <RoundGlass
+          label="Compartilhar"
+          size={size}
+          tone={glassTone}
+          onPress={share}
+        >
+          <Icon name="share" size={Math.round(size * 0.43)} color={glyph} />
         </RoundGlass>
         <RoundGlass
           label={favorite ? 'Tirar dos favoritos' : 'Favoritar'}
           selected={favorite}
           size={size}
+          tone={glassTone}
           onPress={toggleFavorite}
         >
           <Icon
             name="fan"
             size={Math.round(size * 0.45)}
-            color={PAPER}
-            accent={PAPER}
+            color={favorite ? PAPER : glyph}
+            accent={favorite ? PAPER : glyph}
           />
         </RoundGlass>
       </View>
@@ -1678,12 +1693,14 @@ function RoundGlass({
   label,
   selected,
   size = 44,
+  tone = 'dark',
   onPress,
   children
 }: {
   label: string
   selected?: boolean
   size?: number
+  tone?: 'light' | 'dark'
   onPress: () => void
   children: ReactNode
 }) {
@@ -1696,7 +1713,7 @@ function RoundGlass({
       onPress={onPress}
     >
       <Glass
-        tone="dark"
+        tone={tone}
         tint={selected ? 'rgba(232,50,12,.8)' : undefined}
         interactive
         style={[
