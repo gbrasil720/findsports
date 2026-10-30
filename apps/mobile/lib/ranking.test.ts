@@ -5,7 +5,8 @@ import {
   closesLabel,
   fansLabel,
   monthLabel,
-  ordinal
+  ordinal,
+  topLabel
 } from './ranking'
 
 describe('frases do ranking', () => {
@@ -57,5 +58,14 @@ describe('lista da cidade', () => {
       rest: 0
     })
     expect(fansLabel(1)).toBe('1 TORCEDOR')
+  })
+})
+
+describe('fatia da cidade', () => {
+  it('arredonda para cima e nunca passa de 100% nem fica em 0%', () => {
+    expect(topLabel(1284, 38420)).toBe('Top 4%')
+    expect(topLabel(1, 38420)).toBe('Top 1%')
+    expect(topLabel(5, 5)).toBe('Top 100%')
+    expect(topLabel(1, 0)).toBe('Top 100%')
   })
 })
