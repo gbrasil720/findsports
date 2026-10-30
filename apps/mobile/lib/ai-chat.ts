@@ -581,3 +581,21 @@ export const clock = (value: number | string) =>
     hour: '2-digit',
     minute: '2-digit'
   })
+
+/**
+ * A data de uma conversa na coluna "Conversas" (Adaptativo 03): de hoje, a
+ * hora ("HOJE", "19:04"); antes, o mês e o dia ("OUT", "21"), em Brasília.
+ */
+export function conversationDate(at: number, now: number) {
+  const day = (t: number) =>
+    new Date(t).toLocaleDateString('pt-BR', { timeZone: TZ })
+  if (day(at) === day(now)) return { top: 'HOJE', main: clock(at), today: true }
+  const date = new Date(at)
+  const part = (o: Intl.DateTimeFormatOptions) =>
+    date.toLocaleDateString('pt-BR', { ...o, timeZone: TZ })
+  return {
+    top: part({ month: 'short' }).replace('.', '').toUpperCase(),
+    main: part({ day: 'numeric' }),
+    today: false
+  }
+}

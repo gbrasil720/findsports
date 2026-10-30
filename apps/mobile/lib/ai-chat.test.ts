@@ -9,6 +9,7 @@ import {
   chipSearch,
   citationPieces,
   confirmText,
+  conversationDate,
   followUps,
   fromSearchBar,
   historyOf,
@@ -502,4 +503,24 @@ describe('passo que ainda vem', () => {
     )
     expect(ended.steps).toEqual([])
   })
+})
+
+it('conversationDate: de hoje a hora, de antes o mês e o dia (Brasília)', () => {
+  const now = Date.parse('2026-10-29T22:00:00Z') // 19:00 em Brasília
+  expect(
+    conversationDate(Date.parse('2026-10-29T22:04:00Z') - 3600_000, now)
+  ).toEqual({
+    top: 'HOJE',
+    main: '18:04',
+    today: true
+  })
+  expect(conversationDate(Date.parse('2026-10-21T15:00:00Z'), now)).toEqual({
+    top: 'OUT',
+    main: '21',
+    today: false
+  })
+  // 01:00 de 30/10 em UTC ainda é 29/10 em Brasília.
+  expect(conversationDate(Date.parse('2026-10-30T01:00:00Z'), now).today).toBe(
+    true
+  )
 })
