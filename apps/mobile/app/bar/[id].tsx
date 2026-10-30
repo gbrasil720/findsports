@@ -1048,7 +1048,7 @@ export function BarDetail({
   ) : null
   const wNext =
     games.length > 1 ? (
-      <NextGames games={games.slice(1, 1 + MORE_GAMES)} tag={gameTag} />
+      <NextGames games={games.slice(1, 1 + MORE_GAMES)} />
     ) : null
   const wWhere =
     data && located ? (
