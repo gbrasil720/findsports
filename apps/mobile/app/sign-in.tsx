@@ -22,6 +22,8 @@ import {
   BlockButton,
   FG,
   Field,
+  HOT,
+  Icon,
   INK,
   LIVE,
   PAPER,
@@ -173,6 +175,17 @@ export default function SignIn() {
       }
     >
       <View style={[styles.content, framed && styles.framed]}>
+        {/* Fora do celular, o aviso vai num quadro acima do título (a08u). */}
+        {notice && framed ? (
+          <View accessibilityRole="alert" style={styles.notice}>
+            <Icon name="bell" size={18} color={HOT} accent={LIVE} />
+            <Text style={[text(13.5, 'Regular', 1.4), { color: FG, flex: 1 }]}>
+              {params.notice === 'expired'
+                ? 'Esse link de confirmação venceu. Entre e peça outro.'
+                : notice}
+            </Text>
+          </View>
+        ) : null}
         <View>
           <Title lines={[['De volta ', 'ao jogo.']]} size={48} />
           <View style={{ marginTop: 8 }}>
@@ -188,7 +201,7 @@ export default function SignIn() {
             </Text>
           </View>
         </View>
-        {notice ? (
+        {notice && !framed ? (
           <Text
             accessibilityRole="alert"
             style={[text(14, 'SemiBold'), { color: FG }]}
@@ -271,5 +284,16 @@ const styles = StyleSheet.create({
   // O conteúdo começa a 226 do topo, sobre o fim da foto.
   content: { marginTop: 226 - 310, paddingHorizontal: 20, gap: 16 },
   framed: { marginTop: 0, paddingHorizontal: 0 },
+  notice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 11,
+    paddingHorizontal: 13,
+    borderRadius: 6,
+    backgroundColor: 'rgba(232,50,12,.09)',
+    borderWidth: 1,
+    borderColor: 'rgba(232,50,12,.35)'
+  },
   underline: { textDecorationLine: 'underline' }
 })
