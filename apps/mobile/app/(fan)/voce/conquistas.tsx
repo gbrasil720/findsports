@@ -161,13 +161,16 @@ export default function Shelf() {
     </Animated.View>
   )
 
-  // Tela de fora do Z Flip 8 (A06): a última conquista girando.
-  if (layout.kind === 'cover')
-    return star ? (
-      <CoverMedal medal={star} list={list} share={() => shareMedal(star)} />
+  // Tela de fora do Z Flip 8 (A06): a última conquista girando; sem
+  // nenhuma ainda, a primeira, com quanto falta.
+  if (layout.kind === 'cover') {
+    const medal = star ?? list[0]
+    return medal ? (
+      <CoverMedal medal={medal} list={list} share={() => shareMedal(medal)} />
     ) : (
       <View style={[styles.screen, { backgroundColor: INK }]} />
     )
+  }
 
   const ready = data && picked ? data : null
 
@@ -334,7 +337,9 @@ export default function Shelf() {
   // grade em quatro a seis colunas, as que estão perto e a linha do tempo.
   if (layout.kind === 'stack' && ready) {
     const content = layout.width - nav.left - nav.right - 56
-    const tall = layout.height / layout.width > 1.45
+    // Mini e Galaxy Tab em pé (1,52 e 1,6): quatro colunas grandes. O 11″
+    // (1,44; o Pro, 1,45) fica com cinco, como o Air do design.
+    const tall = layout.height / layout.width > 1.48
     const cols = tall ? 4 : content > 900 ? 6 : content > 700 ? 5 : 4
     const size = tall
       ? Math.min(150, Math.floor((content - 36) / 4) - 24)
@@ -457,7 +462,10 @@ export default function Shelf() {
                       </Text>
                       <MedalImage id={a.id} size={48} />
                       <View style={{ flex: 1, minWidth: 0 }}>
-                        <Text style={[text(15, 'Bold'), { color: P.ink }]}>
+                        <Text
+                          numberOfLines={1}
+                          style={[text(15, 'Bold'), { color: P.ink }]}
+                        >
                           {a.name}
                         </Text>
                         {a.where ? (
