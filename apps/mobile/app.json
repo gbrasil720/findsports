@@ -3,12 +3,12 @@
     "name": "Onside",
     "slug": "onside",
     "version": "0.1.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "onside",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": false,
+      "supportsTablet": true,
       "bundleIdentifier": "sh.onside.app"
     },
     "android": {
