@@ -105,7 +105,7 @@ export function AiHeader({
 }
 
 /** O botão redondo de vidro do cabeçalho (38 pt no design). */
-function Round({
+export function Round({
   palette,
   children
 }: {
