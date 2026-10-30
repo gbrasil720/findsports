@@ -213,7 +213,7 @@ export default function AiSearch() {
         : convo
           ? 28
           : 16
-  useStatusBar(sheet ? 'light' : 'auto')
+  useStatusBar(sheet || layout.kind === 'cover' ? 'light' : 'auto')
   // Navegador DEV: `?dubla=1` usa o dublê; `estado` já manda a pergunta de
   // cada tela (24b pensando, 24c resposta, 24d confirmar, 24e feito).
   const params = useLocalSearchParams<{ dubla?: Dubla; estado?: DevState }>()
