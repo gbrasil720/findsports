@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { DevTab } from '@/components/dev-tab'
 import { ExploreStateProvider } from '@/components/explore-state'
+import { usePortraitLock } from '@/components/layout'
 import { MaintenanceGate } from '@/components/maintenance'
 import { OfflineBanner } from '@/components/offline-banner'
 import { Splash, SplashDone } from '@/components/splash'
@@ -70,6 +71,7 @@ export default function Layout() {
     'GeistMono-Bold': require('../assets/fonts/GeistMono-Bold.ttf')
   })
   const agenda = useTodayAgenda()
+  usePortraitLock()
   const ready = fontsLoaded && agenda !== undefined
   const [splashDone, setSplashDone] = useState(false)
   const endSplash = useCallback(() => setSplashDone(true), [])

@@ -72,7 +72,7 @@ export function classify({
   return { ...base, kind: 'split', nav, split: listWidth(width) }
 }
 
-/** A coluna da lista no tablet deitado: 370 no mini, 400 no 11″, 430 no 13″. */
+/** A coluna da lista no tablet deitado: 370 no mini, 400 no 11″, 440 no 13″ e no Ultra. */
 function listWidth(width: number) {
   if (width >= WIDE) return 440
   if (width >= 1170) return 400
