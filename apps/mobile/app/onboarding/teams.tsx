@@ -129,20 +129,22 @@ export default function Teams() {
       padding={18}
       footer={
         <StepFooter>
-          edit.editing ? (
-          <PillButton
-            label={edit.saving ? 'Salvando…' : 'Salvar'}
-            disabled={!edit.ready || edit.saving}
-            onPress={() => edit.save().catch(() => {})}
-          />
+          {edit.editing ? (
+            <PillButton
+              label={edit.saving ? 'Salvando…' : 'Salvar'}
+              disabled={!edit.ready || edit.saving}
+              onPress={() => edit.save().catch(() => {})}
+            />
           ) : (
-          <PillButton
-            label={
-              count === 0 ? 'Pular' : `Continuar · ${countLabel(choices.teams)}`
-            }
-            onPress={() => router.push('/onboarding/distance')}
-          />
-          )
+            <PillButton
+              label={
+                count === 0
+                  ? 'Pular'
+                  : `Continuar · ${countLabel(choices.teams)}`
+              }
+              onPress={() => router.push('/onboarding/distance')}
+            />
+          )}
         </StepFooter>
       }
     >
