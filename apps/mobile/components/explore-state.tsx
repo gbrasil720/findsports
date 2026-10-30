@@ -59,6 +59,21 @@ type ExploreState = {
   /** Onde a folha parou (distância do topo); `null` até a primeira vez. */
   resting: number | null
   setResting: (top: number) => void
+  /**
+   * O bar aberto ao lado da lista no tablet deitado (a02): o Explorar troca
+   * o mapa pela página dele, e a barra flutuante volta para baixo da lista.
+   */
+  beside: BesideBar | null
+  setBeside: (bar: BesideBar | null) => void
+}
+
+/** O que a página do bar desenha antes da resposta (os parâmetros dela). */
+export type BesideBar = {
+  id: string
+  km?: string
+  name?: string
+  photo?: string
+  walk?: string
 }
 
 const SHORTCUTS_KEY = 'onside.atalhos-do-mapa'
@@ -102,6 +117,7 @@ export function ExploreStateProvider({ children }: { children: ReactNode }) {
     )
   }
   const [resting, setResting] = useState<number | null>(null)
+  const [beside, setBeside] = useState<BesideBar | null>(null)
 
   useEffect(() => {
     Location.getForegroundPermissionsAsync()
@@ -144,7 +160,9 @@ export function ExploreStateProvider({ children }: { children: ReactNode }) {
         answer,
         clearAnswer,
         resting,
-        setResting
+        setResting,
+        beside,
+        setBeside
       }}
     >
       {children}

@@ -103,6 +103,8 @@ type Props = {
   initials: string
   /** No dobrável aberto, a barra fica na metade do mapa. */
   left?: number
+  /** Com um bar aberto ao lado da lista (a02), a barra fica sob a lista. */
+  right?: number
 }
 
 /**
@@ -373,14 +375,14 @@ function AiButton({ onPress }: { onPress: () => void }) {
 }
 
 /** iPad e dobrável aberto: a barra do celular no rodapé, centralizada (03, 04b). */
-function FloatNav({ current, onTab, onAi, left = 0 }: Props) {
+function FloatNav({ current, onTab, onAi, left = 0, right = 0 }: Props) {
   const insets = useSafeAreaInsets()
   return (
     <View
       pointerEvents="box-none"
       style={[
         styles.floatWrap,
-        { left, bottom: insets.bottom + NAV.float.gap }
+        { left, right, bottom: insets.bottom + NAV.float.gap }
       ]}
     >
       <GlassTabs current={current} onTab={onTab} vertical={false} />

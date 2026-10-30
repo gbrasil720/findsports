@@ -72,7 +72,7 @@ export default function FanTabs() {
   })
   // "Bares pra você · N novos" (2c): a rodada de hoje, criada aqui mesmo se
   // ainda não existe e o aparelho sabe onde está.
-  const { device } = useExploreState()
+  const { device, beside } = useExploreState()
   const suggestions = useQuery({
     ...trpc.recommendations.today.queryOptions({ where: device }),
     enabled: menuOpen,
@@ -259,8 +259,15 @@ export default function FanTabs() {
             // abas, centrada na tela (design T3 e T4).
             pathname === '/explore' &&
             layout.kind === 'split' &&
-            layout.nav === 'float'
+            layout.nav === 'float' &&
+            !beside
               ? layout.split + layout.gap
+              : 0
+          }
+          // Com um bar aberto ao lado da lista, sob a lista (a02).
+          right={
+            pathname === '/explore' && layout.kind === 'split' && beside
+              ? layout.width - layout.split
               : 0
           }
         />
