@@ -87,6 +87,12 @@ export const onboardingRouter = router({
         // com erro genérico; aceitar grava o bar sem UF, como os anteriores.
         uf: z.enum(UF_SIGLAS).optional(),
         address: z.string().min(5).max(255),
+        // Só para o geocoding achar o trecho da rua (não é gravado). Opcional:
+        // rascunho e aba abertos antes do campo não o mandam.
+        cep: z
+          .string()
+          .regex(/^\d{5}-?\d{3}$/)
+          .optional(),
         phone: z.string().max(30).optional(),
         description: z.string().max(500).optional(),
         // Ids desconhecidos são descartados por `normalizeAmenityIds`, não
@@ -125,7 +131,8 @@ export const onboardingRouter = router({
           street: input.address,
           city: input.city,
           neighborhood: input.neighborhood,
-          uf: input.uf
+          uf: input.uf,
+          cep: input.cep
         },
         apiKey
       )
