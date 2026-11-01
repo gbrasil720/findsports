@@ -42,6 +42,17 @@ import { createTtlCache } from './ttl-cache'
  * O bairro fica **fora** da consulta: não existe campo para ele no provedor, e
  * enfiá-lo no texto livre foi o que degradou a busca até o centro de São Paulo
  * no mesmo teste. Ele entra depois, como **desempate** — ver `escolherMelhor`.
+ *
+ * ## O CEP aponta o trecho da rua
+ *
+ * A base quase nunca tem o número da casa: numa avenida longa, a resposta é
+ * uma lista de trechos da rua, todos sem número, e o primeiro pode ser o do
+ * outro lado da cidade. Medido em 31/10/2026 com o The Flag Bar, "Avenida
+ * Kennedy 304", em São Bernardo do Campo: o primeiro trecho era o do número
+ * 1250, a ~850 m. Com `postalcode=09726-251` o primeiro passa a ser o do CEP,
+ * a ~50 m. O provedor usa o CEP só para ordenar (CEP errado ou inexistente
+ * devolve a mesma lista de antes, nunca 404), e o trecho com o CEP exato
+ * vence o desempate por bairro.
  */
 
 const TIMEOUT_MS = 4_000
@@ -91,6 +102,17 @@ export type EnderecoEstruturado = {
    * cadastrado antes do campo: aí a consulta é a de sempre, só rua e cidade.
    */
   uf?: string | null
+  /**
+   * CEP, com ou sem hífen. Opcional: o app e o cliente antigo não mandam, e
+   * aí a consulta é só rua, cidade e UF, como antes.
+   */
+  cep?: string | null
+}
+
+/** "09726251" ou "09726-251" → "09726-251"; o resto, `undefined`. */
+export function normalizarCep(cep: string | null | undefined) {
+  const d = cep?.replace(/\D/g, '') ?? ''
+  return d.length === 8 ? `${d.slice(0, 5)}-${d.slice(5)}` : undefined
 }
 
 const cache = createTtlCache<Coordenadas>({
@@ -339,6 +361,8 @@ type LocationIqResultado = {
     suburb?: string
     neighbourhood?: string
     city_district?: string
+    /** CEP do trecho, "09726-251". Nem todo trecho tem. */
+    postcode?: string
   }
 }
 
@@ -358,8 +382,11 @@ type LocationIqResultado = {
  */
 function escolherMelhor(
   candidatos: LocationIqResultado[],
-  neighborhood: string | undefined
+  neighborhood: string | undefined,
+  cep: string | undefined
 ): LocationIqResultado | undefined {
+  const doCep = cep && candidatos.find((c) => c.address?.postcode === cep)
+  if (doCep) return doCep
   if (candidatos.length <= 1 || !neighborhood?.trim()) return candidatos[0]
 
   const pedido = tokensDaRua(neighborhood)
@@ -397,7 +424,13 @@ function estadoConfere(
 }
 
 async function consultarProvedor(
-  { street, city, neighborhood, uf: ufInformada }: EnderecoEstruturado,
+  {
+    street,
+    city,
+    neighborhood,
+    uf: ufInformada,
+    cep: cepInformado
+  }: EnderecoEstruturado,
   apiKey: string,
   fetchImpl: typeof fetch
 ): Promise<Coordenadas> {
@@ -425,6 +458,8 @@ async function consultarProvedor(
   // Por extenso, que é como a base grafa o estado (`address.state`); não foi
   // medido se a sigla solta casaria.
   if (uf) params.set('state', UFS[uf])
+  const cep = normalizarCep(cepInformado)
+  if (cep) params.set('postalcode', cep)
   const naoEncontrado = () => enderecoNaoEncontrado(city, uf)
 
   let res: Response
@@ -499,7 +534,7 @@ async function consultarProvedor(
     throw naoEncontrado()
   }
 
-  const primeiro = escolherMelhor(daRuaCerta, neighborhood)
+  const primeiro = escolherMelhor(daRuaCerta, neighborhood, cep)
   if (!primeiro) throw naoEncontrado()
 
   const latitude = Number.parseFloat(primeiro.lat ?? '')
@@ -523,12 +558,13 @@ export async function geocodeAddress(
 ): Promise<Coordenadas> {
   // O bairro entra na chave porque muda a escolha entre ruas homônimas: sem
   // ele, dois bares na mesma rua de bairros diferentes leriam a mesma entrada.
-  // A UF, pelo mesmo motivo entre cidades homônimas.
+  // A UF, pelo mesmo motivo entre cidades homônimas; o CEP, entre trechos.
   const chave = [
     endereco.street,
     endereco.city,
     endereco.neighborhood ?? '',
-    endereco.uf ?? ''
+    endereco.uf ?? '',
+    normalizarCep(endereco.cep) ?? ''
   ]
     .map(normalizar)
     .join('|')
