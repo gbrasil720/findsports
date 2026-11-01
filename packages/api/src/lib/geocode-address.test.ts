@@ -340,6 +340,92 @@ describe('geocoding de endereço (ESC-14, WEB-73)', () => {
     })
   })
 
+  describe('CEP', () => {
+    /**
+     * Trechos da Avenida Kennedy, em São Bernardo do Campo, como a LocationIQ
+     * devolveu para o número 304 (medido em 31/10/2026): nenhum tem número,
+     * e o primeiro é o do 1250, a ~850 m.
+     */
+    const kennedy = [
+      {
+        lat: '-23.6787561',
+        lon: '-46.5572727',
+        display_name: 'Avenida Kennedy, Anchieta',
+        address: {
+          road: 'Avenida Kennedy',
+          suburb: 'Anchieta',
+          postcode: '09732-340'
+        }
+      },
+      {
+        lat: '-23.6859923',
+        lon: '-46.5593735',
+        display_name: 'Avenida Kennedy, Centro',
+        address: {
+          road: 'Avenida Kennedy',
+          suburb: 'Centro',
+          postcode: '09726-251'
+        }
+      }
+    ]
+    const flag = {
+      street: 'Avenida Kennedy 304',
+      city: 'São Bernardo do Campo',
+      neighborhood: 'Vila Marli'
+    }
+
+    it('manda o CEP ao provedor, com hífen', async () => {
+      const f = fetchFalso(resposta(kennedy))
+      await geocodeAddress({ ...flag, cep: '09726251' }, 'k', f.impl)
+      const url = new URL(f.urls()[0] as string)
+      expect(url.searchParams.get('postalcode')).toBe('09726-251')
+    })
+
+    it('fica com o trecho do CEP, antes da ordem do provedor', async () => {
+      const f = fetchFalso(resposta(kennedy))
+      const coords = await geocodeAddress(
+        { ...flag, cep: '09726-251' },
+        'k',
+        f.impl
+      )
+      expect(coords.latitude).toBe('-23.6859923')
+    })
+
+    it('o CEP vence o bairro', async () => {
+      const f = fetchFalso(resposta(kennedy))
+      const coords = await geocodeAddress(
+        { ...flag, neighborhood: 'Anchieta', cep: '09726-251' },
+        'k',
+        f.impl
+      )
+      expect(coords.latitude).toBe('-23.6859923')
+    })
+
+    it('sem trecho do CEP, segue o desempate de sempre', async () => {
+      const f = fetchFalso(resposta(kennedy))
+      const coords = await geocodeAddress(
+        { ...flag, cep: '09726-999' },
+        'k',
+        f.impl
+      )
+      expect(coords.latitude).toBe('-23.6787561')
+    })
+
+    it('CEP incompleto não vai ao provedor', async () => {
+      const f = fetchFalso(resposta(kennedy))
+      await geocodeAddress({ ...flag, cep: '09726' }, 'k', f.impl)
+      const url = new URL(f.urls()[0] as string)
+      expect(url.searchParams.get('postalcode')).toBeNull()
+    })
+
+    it('CEP diferente não reaproveita o cache', async () => {
+      const f = fetchFalso(resposta(kennedy))
+      await geocodeAddress(flag, 'k', f.impl)
+      await geocodeAddress({ ...flag, cep: '09726-251' }, 'k', f.impl)
+      expect(f.chamadas()).toBe(2)
+    })
+  })
+
   describe('UF (WEB-270)', () => {
     /** Bonito existe em MS, PE, PA e BA; a rua, em mais de uma delas. */
     const bonitos = [

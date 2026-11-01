@@ -24,6 +24,8 @@ export type PubOnboardingDraft = {
    */
   uf?: Uf
   address: string
+  /** "09726-251". Vai ao servidor só para o geocoding; não é gravado. */
+  cep?: string
   phone?: string
   description?: string
   amenities?: number[]
@@ -31,8 +33,6 @@ export type PubOnboardingDraft = {
   /** Da Revisão (WEB-448); opcionais, como no Meu espaço. */
   openingHours?: OpeningHours | null
   houseOffer?: string
-  /** Só para o formulário voltar com ele; o servidor não recebe CEP. */
-  cep?: string
   /**
    * Passo do wizard em que o dono parou, gravado enquanto ele preenche. Ausente
    * no rascunho que passou pela revisão — o formato de antes, e o único que

@@ -543,7 +543,8 @@ espera a revisão (WEB-478): `updateMe` e o cadastro gravam em `description_pend
   de senha e confirmação de e-mail no `AuthSplit`; onboarding do bar no `ObShell`, com a
   prévia "Assim o torcedor vê" ao lado. Peças e estilos em `components/entrada/`
   (`entradaHead` carrega o `painel.css` e o `entrada.css`), no tema do sistema. O CEP
-  preenche o endereço pelo ViaCEP, do navegador (`lib/cep.ts`; o servidor não recebe CEP).
+  preenche o endereço pelo ViaCEP, do navegador (`lib/cep.ts`). O CEP vai ao servidor só para o geocoding achar o
+  trecho certo da rua (`geocode-address.ts`), sem ser gravado.
   Depois do cadastro, `/onboarding/pub/no-ar` (`PUB_LIVE_PATH`, a única `/onboarding/*`
   aberta a bar pronto), com o atalho para cadastrar o primeiro jogo.
 
@@ -555,9 +556,13 @@ próprio o `rewrite` do router tira o prefixo (`apps/web/src/lib/houdini-host.ts
 `www` o caminho `/houdini` dá 404 (admin é mandado para o host); no preview e no
 `vite dev` o Houdini responde em `/houdini`. Quem entra é decidido no servidor por
 `lib/houdini-gate.ts`: só admin com 2FA ligado; o resto recebe o 404 de verdade (a
-"Cortina"). Telas novas entram em `routes/houdini/_app/` e no `HOUDINI_NAV` de
-`components/houdini/shell.tsx`; o visual é o de `components/houdini/houdini.css`
-(proposta 3 do canvas https://claude.ai/artifact/YbJ76gkJaTKaqTtuRLQmNt). Revisão (`/houdini/revisao`, WEB-462 e
+"Cortina"). Telas novas entram em `routes/houdini/_app/` e no grupo delas em
+`HOUDINI_NAV_GROUPS` (`components/houdini/shell.tsx`). O visual é o redesign na
+linguagem da Onside (WEB-480, canvas https://claude.ai/artifact/DmzHetdEyDNRP3eWaXqzHz),
+todo em `components/houdini/houdini.css`, preso a `.houdini`: Anton, Archivo e Geist
+Mono, acid e sombra dura. O tema segue o do sistema (escuro por padrão), e toda
+diferença entre claro e escuro é token `--hd-*`.
+Revisão (`/houdini/revisao`, WEB-462 e
 WEB-478): fotos e descrições dos bares, aprovar ou recusar com motivo, cada decisão no
 Grimório (`bar.photo_*`, `bar.description_*`). Jogo em rascunho (WEB-436) fica fora de
 Jogos e de toda contagem do Houdini; só a aba Jogos da ficha do bar o mostra, marcado "Rascunho". A seção IA está em "IA (Workers AI…)".

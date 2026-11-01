@@ -395,6 +395,47 @@ test('UF acompanha a cidade, vai ao geocoding e é gravada no bar (WEB-270)', as
   )
 })
 
+// A LocationIQ quase nunca tem o número da casa: o CEP aponta o trecho da rua.
+// O ViaCEP é chamado pelo navegador e respondido aqui.
+test('CEP preenche o endereço e vai ao geocoding', async ({ page }) => {
+  const owner = await signInPendingPub(page)
+  const rua = `Avenida CEP E2E ${randomUUID().slice(0, 8)}`
+  await page.route('https://viacep.com.br/ws/**', (route) =>
+    route.fulfill({
+      json: {
+        logradouro: rua,
+        bairro: 'Jardim do Mar',
+        localidade: 'São Bernardo do Campo',
+        uf: 'SP'
+      }
+    })
+  )
+  await button(page, 'Começar').click()
+  await page.getByLabel('Nome do estabelecimento').fill('Bar do CEP')
+  await page.getByLabel('CEP').fill('09726251')
+  await expect(page.getByText('Preenchido pelo CEP')).toBeVisible()
+  await expect(page.getByLabel('CEP')).toHaveValue('09726-251')
+  await expect(page.getByLabel('Endereço')).toHaveValue(rua)
+  await expect(page.getByLabel('Bairro')).toHaveValue('Jardim do Mar')
+  await expect(page.getByLabel('Cidade', { exact: true })).toHaveValue(
+    'São Bernardo do Campo'
+  )
+  await page.getByLabel('Endereço').fill(`${rua}, 304`)
+  await button(page, 'Continuar').click()
+  await button(page, 'Pular').click()
+  await button(page, CONCLUIR).click()
+  await expect(page).toHaveURL(/\/plan\?trial=started$/)
+
+  const [bar] = await barOf(owner.id)
+  expect(bar).toMatchObject({ city: 'São Bernardo do Campo', uf: 'SP' })
+  const calls = (await (
+    await page.request.get(`${STUB_URL}/locationiq/calls`)
+  ).json()) as { street: string; postalcode: string | null }[]
+  expect(calls.find((c) => c.street === `${rua}, 304`)?.postalcode).toBe(
+    '09726-251'
+  )
+})
+
 test('rascunho de antes da UF não é enviado: abre no formulário pedindo o estado (WEB-270)', async ({
   page
 }) => {

@@ -35,9 +35,9 @@ export function lerViaCep(json: unknown): EnderecoDoCep | null {
 
 /**
  * Endereço de um CEP pelo ViaCEP, direto do navegador (o serviço é público e
- * aceita CORS). Só preenche o formulário: o CEP não vai ao servidor, que
- * continua geocodificando rua, cidade e UF. Fora do ar ou sem resposta,
- * `null`, e o dono preenche à mão.
+ * aceita CORS). Preenche o formulário; o CEP vai junto ao servidor só para o
+ * geocoding achar o trecho certo da rua (`geocode-address.ts`), sem ser
+ * gravado. Fora do ar ou sem resposta, `null`, e o dono preenche à mão.
  */
 export async function buscarCep(cep: string): Promise<EnderecoDoCep | null> {
   const d = cep.replace(/\D/g, '')
