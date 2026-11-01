@@ -11,6 +11,7 @@ import { BarAvatar } from '@/components/admin/pub-avatar'
 import { PhoneInput } from '@/components/phone-input'
 import { AmenityChecklist } from '@/components/pub-profile/amenity-checklist'
 import { conciliarUfComCidade, UfSelect } from '@/components/uf-select'
+import { juntarEndereco, separarNumero, useCep } from '@/lib/cep'
 import { formatStoredPhone } from '@/utils/format-phone'
 
 type Participant = { team: { name: string } }
@@ -54,7 +55,8 @@ type Props = {
   bar: Bar
   liveEvent?: Event
   totalCount: number
-  onSave: (data: EditForm) => Promise<void>
+  /** `cep` não é gravado: vai só ao geocoding, quando preenchido. */
+  onSave: (data: EditForm & { cep: string }) => Promise<void>
   onPhotoUpdate: (url: string) => Promise<void>
   onPhotoRemove: () => Promise<unknown>
   isSaving?: boolean
@@ -84,6 +86,25 @@ export function PubHeroSection({
     screenCount: bar.screenCount ?? null
   }
   const [form, setForm] = useState<EditForm>(initialForm)
+  // O CEP não é gravado, então nasce vazio. Preenchido, preenche o endereço
+  // (o número já digitado fica) e salvar geocodifica de novo: é como o dono
+  // tira o pino de um trecho errado da rua.
+  const {
+    cep,
+    status: cepStatus,
+    mudar: mudarCep,
+    definir: setCep
+  } = useCep((achado) =>
+    setForm((prev) => ({
+      ...prev,
+      address: achado.rua
+        ? juntarEndereco(achado.rua, separarNumero(prev.address)[1])
+        : prev.address,
+      neighborhood: achado.bairro || prev.neighborhood,
+      city: achado.cidade,
+      uf: achado.uf || prev.uf
+    }))
+  )
 
   const toggleAmenity = (id: number) => {
     setForm((prev) => ({
@@ -99,6 +120,7 @@ export function PubHeroSection({
   // referência marcaria como sujo até um marcar-e-desmarcar que voltou ao
   // início.
   const isDirty =
+    cep !== '' ||
     (Object.keys(form) as (keyof EditForm)[]).some(
       (k) => k !== 'amenities' && form[k] !== initialForm[k]
     ) ||
@@ -107,7 +129,8 @@ export function PubHeroSection({
 
   const handleSave = async () => {
     try {
-      await onSave(form)
+      await onSave({ ...form, cep })
+      setCep('')
       setEditing(false)
     } catch {
       // A recusa chega por `saveError`; o formulário fica aberto (WEB-195).
@@ -116,6 +139,7 @@ export function PubHeroSection({
 
   const handleCancel = () => {
     setForm(initialForm)
+    setCep('')
     setEditing(false)
   }
 
@@ -181,6 +205,49 @@ export function PubHeroSection({
                       placeholder="Nome do bar"
                       className="onside-input onside-input-ink onside-input-title font-bold"
                     />
+                  </div>
+                  <div>
+                    <label htmlFor="admin-bar-cep" className="sr-only">
+                      CEP
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        id="admin-bar-cep"
+                        value={cep}
+                        onChange={(e) => void mudarCep(e.target.value)}
+                        placeholder="CEP"
+                        inputMode="numeric"
+                        autoComplete="postal-code"
+                        maxLength={9}
+                        aria-describedby={
+                          cepStatus === 'idle'
+                            ? undefined
+                            : 'admin-bar-cep-status'
+                        }
+                        className="onside-input onside-input-ink sm:max-w-[12rem]"
+                      />
+                      <a
+                        href="https://buscacepinter.correios.com.br/app/endereco/index.php"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="shrink-0 text-xs underline underline-offset-2"
+                      >
+                        Não sei o CEP
+                      </a>
+                    </div>
+                    {cepStatus === 'idle' ? null : (
+                      <p
+                        id="admin-bar-cep-status"
+                        className="mt-1 text-xs"
+                        aria-live="polite"
+                      >
+                        {cepStatus === 'buscando'
+                          ? 'Buscando…'
+                          : cepStatus === 'achou'
+                            ? 'Preenchido pelo CEP'
+                            : 'Não achamos esse CEP. Preencha o endereço abaixo.'}
+                      </p>
+                    )}
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div className="min-w-0">
