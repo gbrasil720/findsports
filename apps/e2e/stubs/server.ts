@@ -55,6 +55,7 @@ const calls: {
   street: string
   city: string
   state: string | null
+  postalcode: string | null
   at: string
 }[] = []
 
@@ -100,7 +101,14 @@ Bun.serve({
       const street = url.searchParams.get('street') ?? ''
       const city = url.searchParams.get('city') ?? ''
       const state = url.searchParams.get('state')
-      calls.push({ street, city, state, at: new Date().toISOString() })
+      const postalcode = url.searchParams.get('postalcode')
+      calls.push({
+        street,
+        city,
+        state,
+        postalcode,
+        at: new Date().toISOString()
+      })
       if (street.includes('falha-geocoding')) {
         return new Response('stub down', { status: 503 })
       }
