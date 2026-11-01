@@ -412,22 +412,23 @@ test('CEP preenche o endereço e vai ao geocoding', async ({ page }) => {
   )
   await button(page, 'Começar').click()
   await page.getByLabel('Nome do estabelecimento').fill('Bar do CEP')
-  await page.getByLabel('CEP').fill('09726251')
-  await expect(page.getByText('Preenchido pelo CEP')).toBeVisible()
-  await expect(page.getByLabel('CEP')).toHaveValue('09726-251')
-  await expect(page.getByLabel('Endereço')).toHaveValue(rua)
-  await expect(page.getByLabel('Bairro')).toHaveValue('Jardim do Mar')
-  await expect(page.getByLabel('Cidade', { exact: true })).toHaveValue(
-    'São Bernardo do Campo'
+  await page.getByLabel('CEP', { exact: true }).fill('09726251')
+  await expect(page.getByLabel('Rua *', { exact: true })).toHaveValue(rua)
+  await expect(page.getByLabel('Bairro *', { exact: true })).toHaveValue(
+    'Jardim do Mar'
   )
-  await page.getByLabel('Endereço').fill(`${rua}, 304`)
+  await page.getByLabel('Número *', { exact: true }).fill('304')
   await button(page, 'Continuar').click()
   await button(page, 'Pular').click()
   await button(page, CONCLUIR).click()
-  await expect(page).toHaveURL(/\/plan\?trial=started$/)
+  await expect(page).toHaveURL(NO_AR)
 
   const [bar] = await barOf(owner.id)
-  expect(bar).toMatchObject({ city: 'São Bernardo do Campo', uf: 'SP' })
+  expect(bar).toMatchObject({
+    address: `${rua}, 304`,
+    city: 'São Bernardo do Campo',
+    uf: 'SP'
+  })
   const calls = (await (
     await page.request.get(`${STUB_URL}/locationiq/calls`)
   ).json()) as { street: string; postalcode: string | null }[]

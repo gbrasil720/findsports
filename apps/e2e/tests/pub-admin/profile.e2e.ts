@@ -173,7 +173,14 @@ test('CEP preenche o endereço e o número vai junto da rua', async ({
   await info(page).getByLabel('Número', { exact: true }).fill('214')
   const saved = page.waitForRequest(/pub\.updateMe/)
   expect((await save(page)).ok()).toBe(true)
-  expect((await saved).postData()).not.toContain('05433')
+  // O CEP vai junto, só para o geocoding achar o trecho certo da rua.
+  expect((await saved).postData()).toContain('05433-000')
+  const calls = (await (
+    await page.request.get(`${STUB_URL}/locationiq/calls`)
+  ).json()) as { street: string; postalcode: string | null }[]
+  expect(calls.find((c) => c.street === `${rua}, 214`)?.postalcode).toBe(
+    '05433-000'
+  )
 
   const [bar] = await query(
     'SELECT address, neighborhood, uf FROM bar WHERE id = $1',
@@ -264,32 +271,35 @@ test('escolher a UF num bar sem UF geocodifica com o estado e grava', async ({
   expect(calls.find((c) => c.street === street)?.state).toBe('São Paulo')
 })
 
-// O CEP não é gravado: digitado, geocodifica de novo mesmo sem o endereço
-// mudar, que é como o dono tira o pino de um trecho errado da rua.
-test('digitar o CEP geocodifica de novo com ele, sem mudar o endereço', async ({
+// O CEP não é gravado: achado, geocodifica de novo mesmo sem o endereço mudar,
+// que é como o dono tira o pino de um trecho errado da rua.
+test('CEP achado geocodifica de novo com ele, sem mudar o endereço', async ({
   page
 }) => {
   const { barId, street } = await openProfile(page)
-  // CEP que o ViaCEP não conhece: o formulário não muda, e o CEP vai mesmo assim.
+  const [rua] = street.split(', ')
   await page.route('https://viacep.com.br/ws/**', (route) =>
-    route.fulfill({ json: { erro: 'true' } })
+    route.fulfill({
+      json: {
+        logradouro: rua,
+        bairro: 'Consolação',
+        localidade: 'São Paulo',
+        uf: ''
+      }
+    })
   )
 
-  await editor(page).getByRole('button', { name: 'Editar perfil' }).click()
-  await editor(page).getByLabel('CEP').fill('09726251')
-  await expect(
-    editor(page).getByText('Não achamos esse CEP. Preencha o endereço abaixo.')
-  ).toBeVisible()
+  await info(page).getByLabel('CEP').fill('01302000')
+  await expect(info(page).getByText('Encontrado')).toBeVisible()
   expect((await save(page)).ok()).toBe(true)
 
-  const response = await page.request.get(`${STUB_URL}/locationiq/calls`)
-  const calls = (await response.json()) as {
-    street: string
-    postalcode: string | null
-  }[]
-  expect(calls.find((c) => c.street === street)?.postalcode).toBe('09726-251')
+  const calls = (await (
+    await page.request.get(`${STUB_URL}/locationiq/calls`)
+  ).json()) as { street: string; postalcode: string | null }[]
+  expect(calls.find((c) => c.street === street)?.postalcode).toBe('01302-000')
   const [bar] = await query('SELECT address FROM bar WHERE id = $1', [barId])
   expect(bar?.address).toBe(street)
+  await expect(saveButton(page)).toBeDisabled()
 })
 
 test('endereço que o geocoding não acha é recusado com a mensagem certa', async ({
