@@ -239,6 +239,9 @@ export function SpaceTab({
             // Sem UF escolhida vira "não mexer", como os vizinhos: bar
             // anterior ao campo salva o resto do perfil sem ela (WEB-270).
             uf: ehUf(data.uf) ? data.uf : undefined,
+            // Só quando o dono digitou: aí o servidor geocodifica de novo,
+            // mesmo sem o endereço mudar.
+            cep: data.cep.length === 9 ? data.cep : undefined,
             phone: data.phone,
             description: data.description,
             amenities: data.amenities,
