@@ -31,6 +31,7 @@ import { conciliarUfComCidade } from '@/components/uf-select'
 import { useSession } from '@/hooks/use-session'
 import { analytics } from '@/lib/analytics'
 import { refreshSessionCache } from '@/lib/auth-client'
+import { juntarEndereco, separarNumero, useCep } from '@/lib/cep'
 import { mensagemOnboardingJaConcluido } from '@/lib/onboarding-concluido'
 import { readPendingEmail } from '@/lib/pending-verification'
 import {
@@ -106,10 +107,26 @@ function PubOnboarding() {
   const [phoneError, setPhoneError] = useState<string | null>(null)
   const [draftRestored, setDraftRestored] = useState(false)
 
+  // O número que o dono já digitou fica: o CEP traz só a rua.
+  const {
+    cep,
+    status: cepStatus,
+    mudar: mudarCep,
+    definir: setCep
+  } = useCep((achado) => {
+    if (achado.rua) {
+      setAddress((atual) => juntarEndereco(achado.rua, separarNumero(atual)[1]))
+    }
+    if (achado.bairro) setNeighborhood(achado.bairro)
+    setCity(achado.cidade)
+    if (achado.uf) setUf(achado.uf)
+  })
+
   const draft = useMemo<PubOnboardingDraft>(
     () => ({
       name: name.trim(),
       address: address.trim(),
+      cep: cep || undefined,
       neighborhood: neighborhood.trim(),
       city: city.trim() || undefined,
       uf: ehUf(uf) ? uf : undefined,
@@ -121,6 +138,7 @@ function PubOnboarding() {
     [
       name,
       address,
+      cep,
       neighborhood,
       city,
       uf,
@@ -198,6 +216,7 @@ function PubOnboarding() {
     }
     setName(salvo.name)
     setAddress(salvo.address)
+    setCep(salvo.cep ?? '')
     setNeighborhood(salvo.neighborhood)
     setCity(salvo.city ?? 'São Paulo')
     // Rascunho de antes do campo vem sem UF (WEB-270): a cidade preenche
@@ -212,7 +231,7 @@ function PubOnboarding() {
     setPhoneError(motivoTelefoneInvalido(salvo.phone))
     setDraftRestored(true)
     setStep(Math.min(salvo.step ?? 1, STEPS.length - 1))
-  }, [contaEmail])
+  }, [contaEmail, setCep])
 
   // Recarregar a página no meio do wizard zerava os quatro passos: o rascunho
   // só era gravado ao concluir a revisão. Agora ele acompanha o preenchimento,
@@ -258,6 +277,7 @@ function PubOnboarding() {
     localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)
     setName('')
     setAddress('')
+    setCep('')
     setNeighborhood('')
     setCity('São Paulo')
     setUf('SP')
@@ -422,6 +442,9 @@ function PubOnboarding() {
             ) : null}
             <PubInfoForm
               name={name}
+              cep={cep}
+              cepStatus={cepStatus}
+              onCepChange={(value) => void mudarCep(value)}
               address={address}
               neighborhood={neighborhood}
               city={city}

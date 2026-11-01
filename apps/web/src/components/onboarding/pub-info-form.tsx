@@ -1,8 +1,13 @@
 import { PhoneInput } from '@/components/phone-input'
 import { UfSelect } from '@/components/uf-select'
+import type { CepStatus } from '@/lib/cep'
 
 type Props = {
   name: string
+  cep: string
+  cepStatus: CepStatus
+  /** Com os oito dígitos, a tela busca no ViaCEP e preenche o endereço. */
+  onCepChange: (value: string) => void
   address: string
   neighborhood: string
   city: string
@@ -23,6 +28,9 @@ const labelClass = 'onside-label onside-label-ink'
 
 export function PubInfoForm({
   name,
+  cep,
+  cepStatus,
+  onCepChange,
   address,
   neighborhood,
   city,
@@ -60,6 +68,43 @@ export function PubInfoForm({
             {errors.name}
           </p>
         ) : null}
+      </div>
+
+      <div className="sm:w-1/2 sm:pr-1.5">
+        <div className="flex items-baseline justify-between gap-3">
+          <label htmlFor="pub-cep" className={labelClass}>
+            CEP
+          </label>
+          <a
+            href="https://buscacepinter.correios.com.br/app/endereco/index.php"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs underline underline-offset-2"
+          >
+            Não sei o CEP
+          </a>
+        </div>
+        <input
+          id="pub-cep"
+          name="cep"
+          value={cep}
+          onChange={(e) => onCepChange(e.target.value)}
+          placeholder="00000-000"
+          inputMode="numeric"
+          autoComplete="postal-code"
+          maxLength={9}
+          aria-describedby={cepStatus === 'idle' ? undefined : 'pub-cep-status'}
+          className={fieldClass}
+        />
+        {cepStatus === 'idle' ? null : (
+          <p id="pub-cep-status" className="mt-1 text-xs" aria-live="polite">
+            {cepStatus === 'buscando'
+              ? 'Buscando…'
+              : cepStatus === 'achou'
+                ? 'Preenchido pelo CEP'
+                : 'Não achamos esse CEP. Preencha o endereço abaixo.'}
+          </p>
+        )}
       </div>
 
       <div>

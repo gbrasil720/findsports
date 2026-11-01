@@ -20,6 +20,8 @@ export type PubOnboardingDraft = {
    */
   uf?: Uf
   address: string
+  /** "09726-251". Vai ao servidor só para o geocoding; não é gravado. */
+  cep?: string
   phone?: string
   description?: string
   amenities?: number[]
