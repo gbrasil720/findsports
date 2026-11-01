@@ -783,8 +783,12 @@ integrationTest(
       // Davi marcou e não validou: o bar não vê histórico dele.
       await ctx.reserve(tonight, davi, { offer: 'Chopp em dobro' })
 
-      const [going] = await ctx.owner.barReservations.going()
-      expect(going?.id).toBe(tonight)
+      // Pelo id, não pela posição: da noite do último dia do mês até a
+      // validação do jogo do dia 1º fechar, o jogo do começo do mês também
+      // está na lista, e antes do de hoje.
+      const going = (await ctx.owner.barReservations.going()).find(
+        ({ id }) => id === tonight
+      )
       expect(
         Object.fromEntries(
           (going?.people ?? []).map(({ name, arrival }) => [name, arrival])

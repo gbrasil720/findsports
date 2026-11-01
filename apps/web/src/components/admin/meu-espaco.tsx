@@ -190,7 +190,9 @@ export function MeuEspaco() {
     ...trpc.pub.photos.queryOptions(),
     meta: { errorToast: false }
   })
-  // O CEP só preenche o rascunho, como no cadastro: não vai ao servidor.
+  // O CEP preenche o rascunho e, achado, vai ao `updateMe` para o geocoding
+  // achar o trecho certo da rua (não é gravado). Achado sem mudar nada, ainda
+  // conta como alteração: é como o dono tira o pino de um trecho errado.
   const cep = useCep((achado) =>
     setRascunho((prev) => {
       const atual = prev ?? (bar ? rascunhoDoBar(bar) : null)
@@ -239,7 +241,11 @@ export function MeuEspaco() {
     podeOferta: oferta.status === 'liberado'
   })
   // Campo mexido com erro também conta: é o "Salvar" que mostra o erro.
-  const sujo = temAlteracao(pendente) || Object.keys(pendente.erros).length > 0
+  const cepAchado = cep.status === 'achou' ? cep.cep : undefined
+  const sujo =
+    temAlteracao(pendente) ||
+    Boolean(cepAchado) ||
+    Object.keys(pendente.erros).length > 0
   const erros: Erros = tentou ? pendente.erros : {}
 
   // Rascunho (WEB-436) não está no app: nem no checklist nem na prévia.
@@ -271,8 +277,8 @@ export function MeuEspaco() {
         if (typeof err !== 'string') passageira ||= isRetryableError(err)
       }
     }
-    if (pendente.perfil) {
-      const perfil = pendente.perfil
+    if (pendente.perfil || cepAchado) {
+      const perfil = { ...pendente.perfil, cep: cepAchado }
       await tentar(async () => {
         try {
           await updateMe.mutateAsync(perfil)
@@ -329,6 +335,7 @@ export function MeuEspaco() {
       return
     }
     descartar()
+    cep.definir('')
     marcarSalvo()
   }
 
