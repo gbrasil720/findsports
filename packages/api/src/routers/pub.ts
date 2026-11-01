@@ -273,6 +273,13 @@ export const pubRouter = router({
         // WEB-270. Opcional: bar anterior ao campo edita o resto do perfil sem
         // UF, e o cliente antigo, aberto durante o deploy, não a manda.
         uf: z.enum(UF_SIGLAS).optional(),
+        // Não é gravado: só aponta o trecho da rua ao geocoding, e mandá-lo
+        // geocodifica de novo mesmo sem mudar o endereço (é como o dono
+        // conserta um pino que caiu no trecho errado).
+        cep: z
+          .string()
+          .regex(/^\d{5}-?\d{3}$/)
+          .optional(),
         photoUrl: z.string().url().optional(),
         // Lista completa, não incremental: o formulário manda o estado final
         // das características. Array vazio desmarca tudo, e `undefined` não
@@ -325,7 +332,7 @@ export const pubRouter = router({
       )
 
       let coordinates: { latitude: string; longitude: string } | undefined
-      if (addressFieldsChanged(input, existingBar)) {
+      if (input.cep || addressFieldsChanged(input, existingBar)) {
         const apiKey = env.LOCATIONIQ_API_KEY
         if (!apiKey) {
           throw new TRPCError({
@@ -340,7 +347,8 @@ export const pubRouter = router({
             street: input.address ?? existingBar.address,
             city: input.city ?? existingBar.city,
             neighborhood: input.neighborhood ?? existingBar.neighborhood,
-            uf: input.uf ?? existingBar.uf
+            uf: input.uf ?? existingBar.uf,
+            cep: input.cep
           },
           apiKey
         )
