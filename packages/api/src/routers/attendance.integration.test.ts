@@ -21,7 +21,8 @@ import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolv
 import {
   ATTENDANCE_DISPLAY_FLOOR,
   ATTENDANCE_REPORT_WINDOW_DAYS,
-  UNREGISTERED_ALERT_MIN_GAMES
+  UNREGISTERED_ALERT_MIN_GAMES,
+  UNVALIDATED_CODES_ALERT_MIN
 } from '../lib/attendance'
 import { contextFor, load, type Role, refusal } from './integration-seed'
 
@@ -551,6 +552,85 @@ integrationTest(
       expect(
         (await refusal(ctx.owner.attendance.removeReport({ eventId: ended })))
           .code
+      ).toBe('FORBIDDEN')
+    } finally {
+      await ctx.cleanup()
+    }
+  }
+)
+
+integrationTest(
+  'alerta de códigos sem validar vale por jogo e espera o prazo do bar',
+  async () => {
+    const min = UNVALIDATED_CODES_ALERT_MIN
+    // Encerrados há 2 dias, 1 dia e 1 hora: 25 h vencem o balcão, não a comanda.
+    const ctx = await seed({
+      elite: true,
+      fans: min,
+      offsets: [-2 * DAY - 3 * HOUR, -DAY - 3 * HOUR, -4 * HOUR]
+    })
+    const [closed, yesterday, recent] = ctx.gameIds as [string, string, string]
+    const admin = (await import('./index')).appRouter.createCaller(
+      contextFor(crypto.randomUUID(), 'admin')
+    ).attendance
+    const alerted = async () =>
+      (await admin.unvalidatedCodeAlerts())
+        .filter(({ barId }) => barId === ctx.barId)
+        .map(({ eventId }) => eventId)
+    try {
+      const codes: string[] = []
+      for (const fan of ctx.fanIds.slice(0, -1)) {
+        codes.push(await ctx.reserve(closed, fan))
+      }
+      const last = ctx.fanIds.at(-1) as string
+      for (const game of [yesterday, recent]) {
+        for (const fan of ctx.fanIds) await ctx.reserve(game, fan)
+      }
+      // Um a menos que o piso; `recent` tem o piso, com a janela aberta.
+      expect(await alerted()).toEqual([yesterday])
+
+      await ctx.reserve(closed, last)
+      expect(await admin.unvalidatedCodeAlerts()).toContainEqual(
+        expect.objectContaining({
+          eventId: closed,
+          barId: ctx.barId,
+          barName: 'Bar da presença',
+          codes: min
+        })
+      )
+
+      // Código aposentado não conta.
+      await ctx.db
+        .update(reservationCode)
+        .set({ retiredAt: new Date() })
+        .where(eq(reservationCode.id, codes[0] as string))
+      expect(await alerted()).toEqual([yesterday])
+      await ctx.db
+        .update(reservationCode)
+        .set({ retiredAt: null })
+        .where(eq(reservationCode.id, codes[0] as string))
+
+      // Um validado tira o jogo; desfeito, ele volta.
+      const [use] = await ctx.db
+        .insert(reservationCodeUse)
+        .values({ codeId: codes[0] as string })
+        .returning({ id: reservationCodeUse.id })
+      expect(await alerted()).toEqual([yesterday])
+      await ctx.db
+        .update(reservationCodeUse)
+        .set({ undoneAt: new Date() })
+        .where(eq(reservationCodeUse.id, use?.id as string))
+      expect(await alerted()).toEqual([yesterday, closed])
+
+      // Pela comanda, o bar ainda pode lançar por 48 h.
+      await ctx.db
+        .update(bar)
+        .set({ confirmsCodesLater: true })
+        .where(eq(bar.id, ctx.barId))
+      expect(await alerted()).toEqual([closed])
+
+      expect(
+        (await refusal(ctx.owner.attendance.unvalidatedCodeAlerts())).code
       ).toBe('FORBIDDEN')
     } finally {
       await ctx.cleanup()

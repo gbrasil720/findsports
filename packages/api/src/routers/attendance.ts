@@ -11,7 +11,8 @@ import { adminProcedure, fanProcedure, router } from '../index'
 import {
   readAttendanceQuestions,
   readMyGames,
-  readUnregisteredAlerts
+  readUnregisteredAlerts,
+  readUnvalidatedCodeAlerts
 } from '../lib/attendance'
 import { issueTicket, readTicket, retireTicket } from '../lib/attendance-ticket'
 import { getCurrentPlan } from '../lib/current-plan'
@@ -182,5 +183,8 @@ export const attendanceRouter = router({
     }),
 
   /** Alerta interno de "foi, mas o bar não registrou" repetido. */
-  unregisteredAlerts: adminProcedure.query(() => readUnregisteredAlerts())
+  unregisteredAlerts: adminProcedure.query(() => readUnregisteredAlerts()),
+
+  /** Alerta interno de jogo encerrado com códigos e nenhum validado. */
+  unvalidatedCodeAlerts: adminProcedure.query(() => readUnvalidatedCodeAlerts())
 })
