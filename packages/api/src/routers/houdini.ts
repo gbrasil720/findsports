@@ -19,7 +19,10 @@ import {
 import { z } from 'zod'
 
 import { adminProcedure, router } from '../index'
-import { readUnregisteredAlerts } from '../lib/attendance'
+import {
+  readUnregisteredAlerts,
+  readUnvalidatedCodeAlerts
+} from '../lib/attendance'
 import { getCurrentPlan } from '../lib/current-plan'
 import { escapeLike } from '../lib/escape-like'
 import { JOB_NAMES, lastJobRun } from '../lib/jobs'
@@ -86,51 +89,60 @@ export const houdiniRouter = router({
   overview: adminProcedure.query(async () => {
     const now = new Date()
     const since = iso(new Date(now.getTime() - DAY))
-    const [[people], [bars], ghosts, [newBars], [games], [spells], failed] =
-      await Promise.all([
-        db
-          .select({
-            total: count(),
-            novas: tally(
-              sql`${user.createdAt} > ${iso(new Date(now.getTime() - DAY))}`
+    const [
+      [people],
+      [bars],
+      ghosts,
+      silentGames,
+      [newBars],
+      [games],
+      [spells],
+      failed
+    ] = await Promise.all([
+      db
+        .select({
+          total: count(),
+          novas: tally(
+            sql`${user.createdAt} > ${iso(new Date(now.getTime() - DAY))}`
+          )
+        })
+        .from(user),
+      db
+        .select({
+          noAr: count(),
+          // Mesmos dois ramos de `getCurrentPlan`: `active` dá o plano, e
+          // `trialing` só enquanto o período não venceu.
+          emTeste: tally(
+            and(
+              eq(subscription.status, 'trialing'),
+              sql`${subscription.currentPeriodEnd} > ${iso(now)}`
             )
-          })
-          .from(user),
-        db
-          .select({
-            noAr: count(),
-            // Mesmos dois ramos de `getCurrentPlan`: `active` dá o plano, e
-            // `trialing` só enquanto o período não venceu.
-            emTeste: tally(
-              and(
-                eq(subscription.status, 'trialing'),
-                sql`${subscription.currentPeriodEnd} > ${iso(now)}`
-              )
-            ),
-            pagando: tally(eq(subscription.status, 'active')),
-            testesAcabando: tally(trialEndingThisWeek)
-          })
-          .from(bar)
-          .leftJoin(subscription, eq(subscription.barId, bar.id))
-          .where(eq(bar.isActive, true)),
-        readUnregisteredAlerts(),
-        db
-          .select({ n: count() })
-          .from(bar)
-          .where(sql`${bar.createdAt} > ${since}`),
-        db
-          .select({ n: count() })
-          .from(event)
-          .where(sql`${event.startsAt} > now()`),
-        // Feitiço lançado e ainda valendo, como `carregarAppConfigGravada` lê.
-        db
-          .select({ n: count() })
-          .from(appConfig)
-          .where(
-            sql`${appConfig.expiresAt} IS NULL OR ${appConfig.expiresAt} > now()`
           ),
-        failedJobs()
-      ])
+          pagando: tally(eq(subscription.status, 'active')),
+          testesAcabando: tally(trialEndingThisWeek)
+        })
+        .from(bar)
+        .leftJoin(subscription, eq(subscription.barId, bar.id))
+        .where(eq(bar.isActive, true)),
+      readUnregisteredAlerts(),
+      readUnvalidatedCodeAlerts(),
+      db
+        .select({ n: count() })
+        .from(bar)
+        .where(sql`${bar.createdAt} > ${since}`),
+      db
+        .select({ n: count() })
+        .from(event)
+        .where(sql`${event.startsAt} > now()`),
+      // Feitiço lançado e ainda valendo, como `carregarAppConfigGravada` lê.
+      db
+        .select({ n: count() })
+        .from(appConfig)
+        .where(
+          sql`${appConfig.expiresAt} IS NULL OR ${appConfig.expiresAt} > now()`
+        ),
+      failedJobs()
+    ])
     return {
       people: { total: people?.total ?? 0, novas: people?.novas ?? 0 },
       bars: {
@@ -140,7 +152,7 @@ export const houdiniRouter = router({
         novos: newBars?.n ?? 0
       },
       testesAcabando: bars?.testesAcabando ?? 0,
-      fantasmas: ghosts.length,
+      fantasmas: new Set([...ghosts, ...silentGames].map((g) => g.barId)).size,
       jogosFuturos: games?.n ?? 0,
       feiticosLancados: spells?.n ?? 0,
       rotinasFalhando: failed.length
