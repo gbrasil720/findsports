@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { OnsideLanding } from '@/components/landing/onside-landing'
+import { LandingV3 } from '@/components/landing/v3/landing-v3'
 import { pageHead } from '@/lib/page-head'
 import { HOME_STRUCTURED_DATA, jsonLd } from '@/lib/structured-data'
 
@@ -78,7 +78,7 @@ function Landing() {
   return (
     <>
       <StructuredData schema={HOME_STRUCTURED_DATA} />
-      <OnsideLanding />
+      <LandingV3 />
     </>
   )
 }
