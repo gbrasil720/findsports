@@ -8,17 +8,16 @@ test('landing carrega para visitante', async ({ page }) => {
   await page.goto('/')
   await expect(page).toHaveTitle(/Onside/)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-    '“Onde vai passar o jogo?” finalmente tem uma (ótima) resposta.'
+    /Onde vai ser o\s+jogo\?/
   )
 
-  // Landing v2 (WEB-333): a chamada principal leva ao cadastro, e a lista de
-  // espera saiu da página.
+  // Landing v3 (WEB-501): a chamada principal leva ao cadastro. A lista de
+  // espera do app só volta com o WEB-511.
   const main = page.getByRole('main')
   await expect(
-    main.getByRole('link', { name: 'Entrar / Criar conta' }).first()
+    main.getByRole('link', { name: 'Ver os jogos de hoje' })
   ).toHaveAttribute('href', '/signup')
-  await expect(main.locator('form')).toHaveCount(0)
-  await expect(page.locator('#lista, #bar-form')).toHaveCount(0)
+  await expect(page.locator('#email, #lista, #bar-form')).toHaveCount(0)
 })
 
 test('torcedor semeado entra pelo /login e chega no /dashboard', async ({

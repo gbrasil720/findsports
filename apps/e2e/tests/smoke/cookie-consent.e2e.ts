@@ -20,15 +20,14 @@ const box = async (locator: Locator) => {
 test.describe('sem escolha feita', () => {
   test.use({ cookieConsent: 'pending' })
 
-  // No celular o aviso é uma barra no pé da tela, bem onde a chamada do hero
-  // termina. Enquanto a escolha está pendente a arte do hero cede a altura.
-  test('celular: a barra não cobre a chamada principal da landing, e aceitar a tira', async ({
+  // No celular o aviso é uma barra no pé da tela. A busca do topo (a ação da
+  // primeira dobra) não pode ficar embaixo dela, e aceitar tira a barra.
+  test('celular: a barra não cobre a busca da landing, e aceitar a tira', async ({
     page,
     isMobile
   }) => {
     test.skip(!isMobile, 'só no projeto mobile')
-    const hero = page.locator('.onside-hero [data-cta]')
-    const stage = page.locator('.onside-hero-stage')
+    const go = page.locator('#busca button[type="submit"]')
 
     for (const viewport of [
       { width: 360, height: 740 },
@@ -42,24 +41,17 @@ test.describe('sem escolha feita', () => {
       await expect(banner(page)).toContainText(
         'Usamos cookies de análise com a sua permissão.'
       )
-      // `poll`: a entrada do hero anima a chamada até o lugar dela.
-      await expect
-        .poll(async () => {
-          const bar = await box(banner(page))
-          const cta = await box(hero)
-          return Math.round(cta.y + cta.height - bar.y)
-        }, `chamada acima da barra em ${viewport.width}x${viewport.height}`)
-        .toBeLessThanOrEqual(0)
-      await expect(hero).toBeInViewport({ ratio: 1 })
+      await go.scrollIntoViewIfNeeded()
+      const bar = await box(banner(page))
+      const button = await box(go)
+      expect(
+        button.y + button.height <= bar.y || button.y >= bar.y + bar.height,
+        `busca livre da barra em ${viewport.width}x${viewport.height}`
+      ).toBe(true)
     }
 
-    const pending = (await box(stage)).height
     await banner(page).getByRole('button', { name: 'Aceitar' }).click()
     await expect(banner(page)).toBeHidden()
-    // O hero volta ao normal: a arte recupera a altura que tinha cedido.
-    await expect
-      .poll(async () => (await box(stage)).height)
-      .toBeGreaterThan(pending)
 
     // A escolha fica: recarregar não traz o aviso de volta.
     await page.reload()

@@ -56,16 +56,17 @@ test('rodapé: colunas do desenho, links de verdade, e o sitemap lista as págin
   page
 }) => {
   await page.goto('/')
-  // Pela classe: as devtools do router também renderizam um <footer>.
-  const footer = page.locator('footer.onside-site-footer')
-  const nav = footer.getByRole('navigation', { name: 'Rodapé' })
+  // Landing v3 (WEB-501): rodapé próprio. Pela classe: as devtools do router
+  // também renderizam um <footer>.
+  const nav = page
+    .locator('.lp3 footer.foot')
+    .getByRole('navigation', { name: 'Rodapé' })
   for (const [label, href] of [
-    ['A Onside', '#produto'],
     ['Entrar', '/login'],
     ['Criar conta', '/signup'],
     ['Cadastre seu bar', '/signup?role=pub'],
-    ['Fale com a gente', 'mailto:contato@onside.sh'],
     ['Contato', 'mailto:contato@onside.sh'],
+    ['Termos', '/termos'],
     ['Privacidade', '/privacidade'],
     ['Instagram', 'https://www.instagram.com/onside.sh/'],
     ['X', 'https://x.com/onside_sh'],
@@ -75,11 +76,6 @@ test('rodapé: colunas do desenho, links de verdade, e o sitemap lista as págin
       nav.getByRole('link', { name: label, exact: true })
     ).toHaveAttribute('href', href)
   }
-  // Fora da navegação, a chamada do rodapé também leva ao cadastro.
-  await expect(footer.locator('a.onside-footer-cta')).toHaveAttribute(
-    'href',
-    '/signup'
-  )
 
   await nav.getByRole('link', { name: 'Termos', exact: true }).click()
   await expect(page).toHaveURL(/\/termos$/)

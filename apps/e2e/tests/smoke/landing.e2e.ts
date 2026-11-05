@@ -2,92 +2,41 @@ import type { Page } from '@playwright/test'
 import { storageState } from '../../fixtures/auth'
 import { expect, test } from '../../fixtures/test'
 
-// WEB-333: a cena 3D da landing só existe no desktop. Fora dele — e no desktop
-// sem WebGL — quem aparece é o pôster, e o three nem é baixado no celular.
+// WEB-501: landing v3 ("O Telão do Bar"). O telão de LED é enfeite: carrega a
+// grade depois da página e não pode empurrar nada para o lado no celular.
 
-/** O módulo das cenas e o three, em `vite dev` e no build. */
-const THREE_CHUNK = /onside-scenes|[/_.-]three[/_.-]/
+const hasLed = (page: Page) =>
+  page.locator('.lp3 canvas[data-led]').evaluateAll((list) => list.length)
 
-const stage = (page: Page) => page.locator('.onside-hero-stage')
-
-test('celular: pôster com os cards, sem pedir o three', async ({
+test('celular: sem rolagem lateral e com o telão no topo', async ({
   page,
   isMobile
 }) => {
   test.skip(!isMobile, 'só no projeto mobile')
-  const requested: string[] = []
-  page.on('request', (request) => requested.push(request.url()))
-
   await page.goto('/')
-  await expect(stage(page)).toHaveAttribute('data-scene', 'poster')
-  await expect(stage(page).locator('img')).toBeVisible()
-  // A imagem é a do retrato, e chegou.
-  const image = stage(page).locator('img')
-  await expect(image).toHaveJSProperty('complete', true)
-  expect(await image.evaluate((img) => img.currentSrc)).toContain(
-    'hero-mapa-retrato'
-  )
-  expect(await image.evaluate((img) => img.naturalWidth)).toBeGreaterThan(0)
-
-  // O ciclo é CSS: sempre há um card de bar à mostra (fora o meio segundo da
-  // troca), e é um dos do conjunto em retrato.
-  const cards = stage(page).locator(
-    '.onside-hero-spots.is-portrait .onside-map-card'
-  )
-  await expect(cards).toHaveCount(6)
-  // (`ownerDocument.defaultView`: a suíte compila sem os tipos do DOM.)
-  await expect
-    .poll(() =>
-      cards.evaluateAll((list) =>
-        Math.max(
-          ...list.map((card) =>
-            Number(
-              card.ownerDocument.defaultView?.getComputedStyle(
-                card.parentElement ?? card
-              ).opacity
-            )
-          )
-        )
-      )
-    )
-    .toBeGreaterThan(0.9)
-  await expect(cards.first()).toBeInViewport()
-
-  // Tempo de sobra para o `import()` do desktop ter saído, se fosse sair.
-  await page.waitForTimeout(1500)
-  expect(requested.filter((url) => THREE_CHUNK.test(url))).toEqual([])
-  await expect(stage(page)).toHaveAttribute('data-scene', 'poster')
+  await expect(page.locator('.lp3 h1')).toBeVisible()
+  expect(await hasLed(page)).toBe(3)
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth)
+  ).toBeLessThanOrEqual(page.viewportSize()?.width ?? 0)
 })
 
-test('desktop sem WebGL: o pôster fica, sem erro no console', async ({
-  page,
-  isMobile
+test('a busca de exemplo mostra bares marcados como exemplo e leva ao cadastro', async ({
+  page
 }) => {
-  test.skip(isMobile, 'só no projeto desktop')
-  const errors: string[] = []
-  page.on('console', (message) => {
-    if (message.type() === 'error') errors.push(message.text())
-  })
-  page.on('pageerror', (error) => errors.push(error.message))
-  await page.addInitScript(`
-    const getContext = HTMLCanvasElement.prototype.getContext
-    HTMLCanvasElement.prototype.getContext = function (type, ...rest) {
-      return type.includes('webgl') ? null : getContext.call(this, type, ...rest)
-    }
-  `)
-
-  // O desktop pede as cenas; é a criação do contexto que falha.
-  const scenes = page.waitForResponse((response) =>
-    THREE_CHUNK.test(response.url())
-  )
   await page.goto('/')
-  await scenes
-  await page.waitForTimeout(1500)
-
-  await expect(stage(page)).toHaveAttribute('data-scene', 'poster')
-  await expect(stage(page).locator('img')).toBeVisible()
-  await expect(stage(page).locator('canvas')).toHaveCSS('opacity', '0')
-  expect(errors).toEqual([])
+  await page
+    .locator('#busca')
+    .getByRole('button', { name: 'Ver bares' })
+    .click()
+  const results = page.locator('.lp3 .results')
+  await expect(results).toBeVisible()
+  await expect(results).toContainText('EXEMPLO')
+  await expect(results.locator('[data-cta]')).toHaveAttribute(
+    'data-cta',
+    'results_signup'
+  )
+  await expect(results.locator('[data-cta]')).toHaveAttribute('href', '/signup')
 })
 
 test('o CTA do bar leva ao cadastro com "Dono de Bar" marcado', async ({
@@ -122,18 +71,16 @@ test('sem sessão, as chamadas principais se chamam *_signup', async ({
   page
 }) => {
   await page.goto('/')
-  const hero = page.locator('.onside-hero [data-cta]')
-  await expect(hero).toHaveAttribute('data-cta', 'hero_signup')
-  await expect(hero).toHaveAttribute('href', '/signup')
+  const nav = page.locator('.lp3 .nav [data-cta="nav_signup"]')
+  await expect(nav).toHaveAttribute('href', '/signup')
+  await expect(nav).toHaveText('Criar conta grátis')
   expect((await ctaNames(page)).sort()).toEqual([
-    'community_signup',
+    'final_pub_signup',
     'final_signup',
     'footer_pub_signup',
-    'footer_signup',
-    'hero_signup',
+    'nav_pub_signup',
     'nav_signup',
-    'sticky_signup',
-    'story_signup'
+    'pub_pub_signup'
   ])
 })
 
@@ -145,19 +92,17 @@ test.describe('com sessão', () => {
   }) => {
     // `?public=1`: sem ele o guard manda o torcedor logado para o dashboard.
     await page.goto('/?public=1')
-    const hero = page.locator('.onside-hero [data-cta]')
-    await expect(hero).toHaveAttribute('data-cta', 'hero_app')
-    await expect(hero).toHaveAttribute('href', '/app')
-    // A do bar continua sendo um cadastro.
+    const nav = page.locator('.lp3 .nav [data-cta="nav_app"]')
+    await expect(nav).toHaveAttribute('href', '/app')
+    await expect(nav).toHaveText('Ver jogos de hoje')
+    // As do bar continuam sendo cadastro.
     expect((await ctaNames(page)).sort()).toEqual([
-      'community_app',
       'final_app',
-      'footer_app',
+      'final_pub_signup',
       'footer_pub_signup',
-      'hero_app',
       'nav_app',
-      'sticky_app',
-      'story_app'
+      'nav_pub_signup',
+      'pub_pub_signup'
     ])
   })
 })
