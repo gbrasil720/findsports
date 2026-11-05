@@ -1,0 +1,32 @@
+<style>
+.pv-btn{position:fixed;right:max(20px,env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:200;display:flex;gap:9px;align-items:center;height:48px;padding:0 20px 0 16px;border-radius:999px;border:0;background:#12120f;color:#f1eee6;font:700 14.5px/1 Archivo,system-ui,sans-serif;box-shadow:0 4px 0 #000,0 18px 30px -12px rgba(0,0,0,.5);cursor:pointer;transition:transform .18s cubic-bezier(.16,1,.3,1)}
+.pv-btn:hover{transform:translateY(-2px)}
+@media (max-width:900px){.pv-btn{display:none}}
+.pv{position:fixed;inset:0;z-index:300;background:rgba(18,18,15,.72);display:flex;align-items:center;justify-content:center;gap:28px;animation:pvin .35s cubic-bezier(.16,1,.3,1)}
+@keyframes pvin{from{opacity:0}}
+.pv-frame{flex:none;width:414px;height:868px;border-radius:58px;background:#0a0a08;padding:12px;box-shadow:inset 0 0 0 2px #3a3a33,0 60px 120px -30px rgba(0,0,0,.8);transform-origin:center}
+.pv-frame iframe{display:block;width:390px;height:844px;border:0;border-radius:46px;background:#f1eee6}
+.pv-side{color:#f1eee6;font:500 14px/1.5 Archivo,system-ui,sans-serif;max-width:220px}
+.pv-side b{display:block;font:400 30px/1 Anton,Impact,sans-serif;text-transform:uppercase;margin-bottom:10px}
+.pv-x{margin-top:18px;height:44px;padding:0 18px;border-radius:999px;border:0;background:#c9f135;color:#12120f;font:700 14px Archivo,sans-serif;box-shadow:0 4px 0 #7f9a12;cursor:pointer}
+</style>
+<script>
+(function(){
+  var framed=false;try{framed=window.parent!==window&&!!window.parent.__ONS_PV}catch(e){}
+  if(framed)return;
+  var b=document.createElement('button');b.type='button';b.className='pv-btn';
+  b.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></svg>Ver no celular';
+  document.body.appendChild(b);
+  b.addEventListener('click',function(){
+    window.__ONS_PV=true;
+    var o=document.createElement('div');o.className='pv';o.setAttribute('role','dialog');o.setAttribute('aria-label','Prévia no celular');
+    o.innerHTML='<div class="pv-frame"><iframe title="Página em 390 px" src="'+location.href.split('#')[0]+(location.hash||'')+'"></iframe></div><div class="pv-side"><b>No celular</b>390 × 844, como num iPhone. Role, toque e arraste dentro da moldura.<br><button type="button" class="pv-x">Fechar prévia</button></div>';
+    document.body.appendChild(o);
+    var f=o.querySelector('.pv-frame');function fit(){var s=Math.min(1,(innerHeight-40)/868);f.style.transform='scale('+s+')';f.style.margin=(-(868*(1-s))/2)+'px '+(-(414*(1-s))/2)+'px'}fit();addEventListener('resize',fit);
+    function close(){o.remove();removeEventListener('resize',fit);document.removeEventListener('keydown',k);b.focus()}
+    function k(e){if(e.key==='Escape')close()}
+    o.querySelector('.pv-x').addEventListener('click',close);o.addEventListener('click',function(e){if(e.target===o)close()});document.addEventListener('keydown',k);
+    o.querySelector('.pv-x').focus();
+  });
+})();
+</script>
