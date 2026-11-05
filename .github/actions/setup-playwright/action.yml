@@ -1,10 +1,12 @@
 name: Setup Playwright (Chromium)
-description: Restore browser cache or install Chromium with OS deps for E2E
+description: Restore browser cache or install Chromium with OS deps for E2E; save the cache on master only
 
 runs:
   using: composite
   steps:
-    - uses: actions/cache@v4
+    # PRs só leem o cache da master (ver setup-monorepo): sem cópia de ~280 MB
+    # por PR.
+    - uses: actions/cache/restore@v4
       id: playwright-cache
       with:
         path: ~/.cache/ms-playwright
@@ -21,3 +23,8 @@ runs:
       shell: bash
       working-directory: apps/e2e
       run: bunx playwright install-deps chromium
+    - if: github.ref == 'refs/heads/master' && steps.playwright-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: ${{ steps.playwright-cache.outputs.cache-primary-key }}
