@@ -5,6 +5,7 @@ import {
   motivoTelefoneInvalido,
   type Uf
 } from '@findsports_oficial/api/lib/bar-profile-validation'
+import type { SubscriptionPlan } from '@findsports_oficial/db'
 import { getErrorCode, getUserFacingMessage } from '@/lib/user-facing-error'
 
 export const PUB_ONBOARDING_DRAFT_KEY = 'onside:pub-onboarding-draft'
@@ -32,7 +33,15 @@ export type PubOnboardingDraft = {
    * `/verify-email` envia sozinho. Não vai ao servidor.
    */
   step?: number
+  /**
+   * Plano do teste escolhido no passo "Plano". Não vai ao `completePub`: o bar
+   * nasce no teste do Elite, e quem envia o rascunho troca depois por
+   * `pub.changeTrialPlan`.
+   */
+  plan?: SubscriptionPlan
 }
+
+const PLANOS: readonly SubscriptionPlan[] = ['starter', 'pro', 'elite']
 
 const mesmoEmail = (a: string, b: string) =>
   a.trim().toLowerCase() === b.trim().toLowerCase()
@@ -86,7 +95,10 @@ export function parsePubOnboardingDraft(
     return {
       ...parsed.draft,
       uf: ehUf(parsed.draft.uf) ? parsed.draft.uf : undefined,
-      step: Number.isInteger(step) && Number(step) > 0 ? step : undefined
+      step: Number.isInteger(step) && Number(step) > 0 ? step : undefined,
+      plan: PLANOS.includes(parsed.draft.plan as SubscriptionPlan)
+        ? parsed.draft.plan
+        : undefined
     }
   } catch {
     return null
