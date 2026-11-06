@@ -12,8 +12,10 @@ import {
   formatPlanPricing,
   founderCouponFromQuery,
   getAnalyticsEntitlement,
+  getCommonPlanItems,
   getDefaultPlanSelection,
   getPlan,
+  getPlanCardLists,
   getPlanExitLink,
   getPlanHeader,
   getPlanLosses,
@@ -878,5 +880,47 @@ describe('getTrialNotice (WEB-260)', () => {
       getTrialNotice({ ...trial, standing: 'trial_ended' }, now)
     ).toBeNull()
     expect(getTrialNotice({ ...trial, currentPeriodEnd: null }, now)).toBeNull()
+  })
+})
+
+describe('getPlanCardLists', () => {
+  test('cada cartão lista só o que acrescenta, e o comum fica fora', () => {
+    const common = getCommonPlanItems()
+    expect(common).toEqual([
+      'Perfil completo com agenda e rota',
+      'Contato direto por WhatsApp',
+      'Foto de capa',
+      'Suporte por e-mail'
+    ])
+    const [starter, pro, elite] = PLAN_CATALOG.map(getPlanCardLists)
+    expect(starter?.lead).toBe('O essencial')
+    expect(starter?.profile).toEqual([])
+    expect(pro?.lead).toBe('Tudo do Starter, e mais')
+    expect(elite?.lead).toBe('Tudo do Pro, e mais')
+    expect(elite?.panel).not.toContain('Jogos ilimitados na agenda')
+    expect(elite?.profile.map((perk) => perk.label)).toEqual([
+      'Selo Elite no topo do perfil',
+      'Lista de quem vai assistir, jogo a jogo',
+      'Oferta da casa para quem chega pela Onside'
+    ])
+  })
+
+  test('nenhum item do catálogo some da página', () => {
+    const shown = new Set([
+      ...getCommonPlanItems(),
+      'Perfil do bar no Onside',
+      ...PLAN_CATALOG.flatMap((plan) => {
+        const lists = getPlanCardLists(plan)
+        return [...lists.panel, ...lists.profile.map((perk) => perk.label)]
+      })
+    ])
+    for (const plan of PLAN_CATALOG) {
+      for (const label of [
+        ...plan.features,
+        ...plan.profilePerks.filter((p) => !p.includes).map((p) => p.label)
+      ]) {
+        expect(shown.has(label)).toBe(true)
+      }
+    }
   })
 })

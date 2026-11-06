@@ -231,6 +231,9 @@ export interface Plan {
 /** Sem limite de jogos: o que o Starter troca por `STARTER_EVENT_LIMIT`. */
 const UNLIMITED_EVENTS_FEATURE = 'Jogos ilimitados na agenda'
 
+/** Todo plano tem; a página de planos a cobre com "Perfil completo com agenda e rota". */
+const BAR_PROFILE_FEATURE = 'Perfil do bar no Onside'
+
 export const PLAN_CATALOG: Plan[] = [
   {
     id: 'starter',
@@ -241,7 +244,7 @@ export const PLAN_CATALOG: Plan[] = [
     period: '/mês',
     icon: Fire,
     features: [
-      'Perfil do bar no Onside',
+      BAR_PROFILE_FEATURE,
       `Até ${STARTER_EVENT_LIMIT} jogos por ciclo de cobrança na agenda`,
       'Aparece nas buscas básicas',
       'Suporte por e-mail',
@@ -268,7 +271,7 @@ export const PLAN_CATALOG: Plan[] = [
     icon: Star,
     highlight: true,
     features: [
-      'Perfil do bar no Onside',
+      BAR_PROFILE_FEATURE,
       UNLIMITED_EVENTS_FEATURE,
       'Destaque na busca por time e liga',
       'Pin destacado no mapa',
@@ -303,7 +306,7 @@ export const PLAN_CATALOG: Plan[] = [
     period: '/mês',
     icon: Trophy,
     features: [
-      'Perfil do bar no Onside',
+      BAR_PROFILE_FEATURE,
       UNLIMITED_EVENTS_FEATURE,
       'Destaque na busca por time e liga',
       'Pin exclusivo Elite no mapa',
@@ -350,6 +353,52 @@ export const PLAN_TIER_ORDER: Record<SubscriptionPlan, number> = {
 }
 
 export type PlanOrigin = 'admin' | 'billing'
+
+/**
+ * O que todos os planos têm, numa linha só abaixo dos cartões da página de
+ * planos: o perfil do Starter e os itens do painel que os três repetem.
+ */
+export function getCommonPlanItems(): string[] {
+  const [first, ...rest] = PLAN_CATALOG
+  if (!first) return []
+  return [
+    ...livePerks(first.id).map((perk) => perk.label),
+    ...first.features.filter(
+      (feature) =>
+        feature !== BAR_PROFILE_FEATURE &&
+        rest.every((plan) => plan.features.includes(feature))
+    )
+  ]
+}
+
+/**
+ * O que o cartão de um plano lista na página de planos: só o que ele
+ * acrescenta ao plano anterior, sem o que todos têm (`getCommonPlanItems`).
+ * Assim nenhum item some e nenhum aparece três vezes.
+ */
+export function getPlanCardLists(plan: Plan): {
+  lead: string
+  panel: string[]
+  profile: PlanProfilePerk[]
+} {
+  const index = PLAN_CATALOG.findIndex((item) => item.id === plan.id)
+  const previous = index > 0 ? PLAN_CATALOG[index - 1] : undefined
+  const common = new Set([...getCommonPlanItems(), BAR_PROFILE_FEATURE])
+  const before = new Set([
+    ...(previous?.features ?? []),
+    ...(previous?.profilePerks.map((perk) => perk.label) ?? [])
+  ])
+  return {
+    lead: previous ? `Tudo do ${previous.name}, e mais` : 'O essencial',
+    panel: plan.features.filter(
+      (feature) => !common.has(feature) && !before.has(feature)
+    ),
+    profile: plan.profilePerks.filter(
+      (perk) =>
+        !perk.includes && !common.has(perk.label) && !before.has(perk.label)
+    )
+  }
+}
 
 export function getPlan(id: SubscriptionPlan): Plan {
   const entry = PLAN_CATALOG.find((p) => p.id === id)
