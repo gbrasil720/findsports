@@ -18,13 +18,16 @@ const openAccountMenu = (page: Page) =>
 test.describe('sessão de admin', () => {
   test.use({ storageState: storageState('admin') })
 
-  test('abre a landing, e "Ir para o app" leva à busca', async ({ page }) => {
+  test('abre a landing, e "Ver jogos de hoje" leva à busca', async ({
+    page
+  }) => {
     const response = await page.goto('/')
     expect(response?.status()).toBe(200)
     await expect(page).toHaveURL(/\/$/)
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
 
-    await page.getByRole('link', { name: 'Ir para o app' }).first().click()
+    // Landing v3 (WEB-501): com sessão, a chamada é "Ver jogos de hoje".
+    await page.getByRole('link', { name: 'Ver jogos de hoje' }).first().click()
     await expect(page).toHaveURL(/\/dashboard$/)
   })
 
