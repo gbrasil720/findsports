@@ -69,3 +69,36 @@ export function PubPreview({
     </>
   )
 }
+
+/**
+ * A direita das boas-vindas: antes de o dono preencher qualquer coisa, o card
+ * vazio não mostrava nada. Aqui vai o telão com a página de um bar de verdade
+ * no app (a mesma tela da landing), marcada como exemplo.
+ */
+export function PubWelcomeTv() {
+  return (
+    <div className="ob-tv">
+      {/* biome-ignore lint/performance/noImgElement: pôster estático do telão, de public/landing/v3, com width e height. */}
+      <img
+        className="ob-tv-bg"
+        src="/landing/v3/led-hero.webp"
+        alt=""
+        width="1920"
+        height="1280"
+      />
+      <p className="ob-tv-k">Assim o torcedor acha o seu bar</p>
+      <div className="phone">
+        {/* biome-ignore lint/performance/noImgElement: captura estática do app, de public/landing/v3, com width e height. */}
+        <img
+          src="/landing/v3/tela-bar.webp"
+          alt="Exemplo: a página do Bar do Zé no app, com o jogo de hoje no telão, o que o bar tem e quantas pessoas vão"
+          width="448"
+          height="976"
+        />
+      </div>
+      <p className="ob-tv-cap">
+        Exemplo. A página do seu bar fica assim, com os seus jogos.
+      </p>
+    </div>
+  )
+}

@@ -14,6 +14,7 @@ export function PubObShell({
   step = 0,
   aside,
   wide,
+  tv,
   children
 }: {
   steps?: readonly string[]
@@ -21,6 +22,8 @@ export function PubObShell({
   aside?: ReactNode
   /** Página inteira, sem a coluna da direita (o passo "Plano"). */
   wide?: boolean
+  /** A coluna da direita vira o telão, sem o fundo claro (boas-vindas). */
+  tv?: boolean
   children: ReactNode
 }) {
   return (
@@ -67,7 +70,10 @@ export function PubObShell({
           {children}
         </main>
         {aside ? (
-          <aside className="ob-prev" aria-label="Assim o torcedor vê">
+          <aside
+            className={`ob-prev${tv ? ' tv' : ''}`}
+            aria-label="Assim o torcedor vê"
+          >
             <div className="ob-prev-in">{aside}</div>
           </aside>
         ) : null}
