@@ -6,7 +6,7 @@
 
 type Cleanup = () => void
 
-const STEP_TIMES = ['18:00', '18:40', '19:10', '19:30', '21:30'] as const
+const STEP_TIMES = ['18:00', '18:40', '19:30'] as const
 
 function digits(time: string) {
   return `<span>${time[0]}</span><span>${time[1]}</span><span class="c">:</span><span>${time[3]}</span><span>${time[4]}</span>`

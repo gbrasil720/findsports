@@ -7,6 +7,7 @@ import { CookiePreferencesButton } from '@/components/consent/cookie-consent'
 import { useTRPC } from '@/utils/trpc'
 import {
   DEFINITION_POINTS,
+  JOURNEY_STEPS,
   LANDING_COPY,
   NAV_ITEMS,
   PROBLEM_ITEMS,
@@ -14,7 +15,18 @@ import {
   TICKER_BENEFITS
 } from '../onside-landing-content'
 import { startEffects } from './effects'
-import { Arrow, Check, Logo, Stars, Tv } from './icons'
+import {
+  Arrow,
+  Beer,
+  Calendar,
+  Check,
+  Logo,
+  People,
+  Pin,
+  Search,
+  Stars,
+  Tv
+} from './icons'
 import { startLeds } from './led'
 
 /*
@@ -199,6 +211,38 @@ function DefinitionNote({ i }: { i: number }) {
     </div>
   )
 }
+
+/** A noite do jogo em três horários, um por passo, com a tela de cada um. */
+const STEP_EXTRAS = [
+  {
+    time: '18:00',
+    screen: '/landing/v3/tela-explorar.webp',
+    facts: [
+      [Search, 'Time'],
+      [Search, 'Campeonato'],
+      [Search, 'Esporte']
+    ]
+  },
+  {
+    time: '18:40',
+    screen: '/landing/v3/tela-ia.webp',
+    facts: [
+      [Pin, 'Distância'],
+      [Tv, 'Infraestrutura e telões'],
+      [Beer, 'Preço médio'],
+      [People, 'Perfil da torcida']
+    ]
+  },
+  {
+    time: '19:30',
+    screen: '/landing/v3/tela-vou.webp',
+    facts: [
+      [Check, 'Escolha o bar'],
+      [People, 'Chame a galera'],
+      [Calendar, 'Informação atualizada']
+    ]
+  }
+] as const
 
 type Result = { game: Game; where: string; example: boolean }
 
@@ -672,10 +716,16 @@ export function LandingV3() {
         </section>
 
         {/* ================= COMO FUNCIONA ================= */}
-        <section className="how on-ink" id="como" aria-labelledby="h-how">
+        <section
+          className="how on-ink"
+          id="como-funciona"
+          aria-labelledby="h-how"
+        >
           <div className="wrap sec" style={{ paddingBottom: '12vh' }}>
+            <p className="kick rv">{LANDING_COPY.journey.kicker}</p>
             <h2 id="h-how" className="disp rv">
-              A noite do jogo, <span className="h2-2">das 18h ao balcão.</span>
+              Tudo isso seguindo apenas{' '}
+              <span className="h2-2">três passos simples.</span>
             </h2>
             <div className="mnav" aria-hidden="true">
               <div className="digits" id="lp3-mdigits">
@@ -686,522 +736,57 @@ export function LandingV3() {
                 <span>0</span>
               </div>
               <div className="prog" id="lp3-mprog">
-                <i className="on"></i>
-                <i></i>
-                <i></i>
-                <i></i>
-                <i></i>
+                {JOURNEY_STEPS.map((step, i) => (
+                  <i key={step.id} className={i ? undefined : 'on'}></i>
+                ))}
               </div>
               <span className="mhint">
                 deslize
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M8.4 3.4 6.6 5.2 13.4 12l-6.8 6.8 1.8 1.8L17 12z"
-                    fill="currentColor"
-                  />
-                </svg>
+                <Arrow />
               </span>
             </div>
             <div className="how-grid">
               <div className="steps" id="lp3-steps">
-                <article className="step on" data-i="0" data-t="18:00">
-                  <div className="clock">18:00</div>
-                  <h3>Veja o que passa hoje, perto de você</h3>
-                  <p>
-                    O mapa abre no seu raio com os bares que publicaram jogo
-                    hoje. Vermelho é ao vivo. Toque e veja a grade da casa.
-                  </p>
-                  <ul className="facts">
-                    <li>
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M12 2a7.5 7.5 0 0 1 7.5 7.5c0 5.5-7.5 12.5-7.5 12.5S4.5 15 4.5 9.5A7.5 7.5 0 0 1 12 2zm0 4.6a2.9 2.9 0 1 0 0 5.8 2.9 2.9 0 0 0 0-5.8z"
-                          fill="currentColor"
+                {JOURNEY_STEPS.map((step, i) => {
+                  const extra = STEP_EXTRAS[i]
+                  if (!extra) return null
+                  return (
+                    <article
+                      key={step.id}
+                      className={i ? 'step' : 'step on'}
+                      data-i={i}
+                      data-t={extra.time}
+                    >
+                      <div className="clock">
+                        {step.number} · {extra.time}
+                      </div>
+                      <h3>{step.title}</h3>
+                      {step.variant === 'search' && (
+                        <span className="q">
+                          {LANDING_COPY.journey.searchTyped}
+                        </span>
+                      )}
+                      <p>{step.body}</p>
+                      <ul className="facts">
+                        {extra.facts.map(([Icon, label]) => (
+                          <li key={label}>
+                            <Icon />
+                            {label}
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="mphone phone">
+                        <img
+                          src={extra.screen}
+                          alt=""
+                          loading="lazy"
+                          width="448"
+                          height="976"
                         />
-                      </svg>
-                      Raio de 500 m a 5 km
-                    </li>
-                    <li>
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                      >
-                        <rect
-                          x="2.5"
-                          y="4"
-                          width="19"
-                          height="13"
-                          rx="2.5"
-                          fill="currentColor"
-                          opacity="0.3"
-                        />{' '}
-                        <rect
-                          x="8"
-                          y="18.6"
-                          width="8"
-                          height="2.4"
-                          rx="1.2"
-                          fill="currentColor"
-                        />{' '}
-                        <path
-                          d="M4.5 6.5h15v8h-15z"
-                          fill="currentColor"
-                          opacity="0.55"
-                        />{' '}
-                        <circle
-                          cx="18"
-                          cy="8.2"
-                          r="1.7"
-                          fill="var(--spark,#e8320c)"
-                        />
-                      </svg>
-                      Telão e som por jogo
-                    </li>
-                    <li>
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                      >
-                        <path
-                          d="M12 22a7 7 0 0 1-7-7c0-4.6 3.5-6 3.5-10.5 3.5 2.3 4.7 4.7 4.7 7 1.2-1.2 1.7-2.3 1.7-3.5C17.2 10.3 19 12.6 19 15a7 7 0 0 1-7 7z"
-                          fill="currentColor"
-                          opacity="0.3"
-                        />{' '}
-                        <path
-                          d="M12 22a3.6 3.6 0 0 1-3.6-3.6c0-2.4 1.8-3.4 2.4-5.4 2.6 1.5 4.8 3 4.8 5.4A3.6 3.6 0 0 1 12 22z"
-                          fill="currentColor"
-                        />
-                      </svg>
-                      Ao vivo em vermelho
-                    </li>
-                  </ul>
-                  <div className="mphone phone">
-                    <img
-                      src="/landing/v3/tela-explorar.webp"
-                      alt=""
-                      loading="lazy"
-                      width="448"
-                      height="976"
-                    />
-                  </div>
-                </article>
-                <article className="step" data-i="1" data-t="18:40">
-                  <div className="clock">18:40</div>
-                  <h3>Peça do seu jeito</h3>
-                  <span className="q">Corinthians hoje com telão perto</span>
-                  <p>
-                    A busca com IA entende o pedido, procura só nas grades dos
-                    bares e mostra de onde tirou cada resposta. Bar que ela não
-                    achou não aparece.
-                  </p>
-                  <ul className="facts">
-                    <li>
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                      >
-                        <path
-                          d="M18.6 1.7Q19.3 4.7 22.3 5.4Q19.3 6.1 18.6 9.1Q17.9 6.1 14.9 5.4Q17.9 4.7 18.6 1.7Z"
-                          fill="currentColor"
-                          opacity="0.3"
-                        />{' '}
-                        <path
-                          d="M10 5.4Q11.35 11.85 17.8 13.2Q11.35 14.55 10 21Q8.65 14.55 2.2 13.2Q8.65 11.85 10 5.4Z"
-                          fill="currentColor"
-                        />{' '}
-                        <path
-                          d="M19.2 15.1Q19.7 17.3 21.9 17.8Q19.7 18.3 19.2 20.5Q18.7 18.3 16.5 17.8Q18.7 17.3 19.2 15.1Z"
-                          fill="var(--spark,#e8320c)"
-                        />
-                      </svg>
-                      Entende time, dia e lugar
-                    </li>
-                    <li>
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                      >
-                        <path
-                          d="M5 2.5h9.5L19 7v14.5H5z"
-                          fill="currentColor"
-                          opacity="0.35"
-                        />{' '}
-                        <path
-                          d="M14.5 2.5V7H19zM8 11h8v2H8zM8 15h6v2H8z"
-                          fill="currentColor"
-                        />
-                      </svg>
-                      Mostra de onde tirou
-                    </li>
-                    <li>
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                      >
-                        <path
-                          d="m4.2 12.4 1.8-1.8 4 4 8-8 1.8 1.8-9.8 9.8z"
-                          fill="currentColor"
-                        />
-                      </svg>
-                      Nada de bar inventado
-                    </li>
-                  </ul>
-                  <div className="mphone phone">
-                    <img
-                      src="/landing/v3/tela-ia.webp"
-                      alt=""
-                      loading="lazy"
-                      width="448"
-                      height="976"
-                    />
-                  </div>
-                </article>
-                <article className="step" data-i="2" data-t="19:10">
-                  <div className="clock">19:10</div>
-                  <h3>Confira o bar antes de sair</h3>
-                  <p>
-                    Telão, som ligado, Premiere, área externa, oferta da casa e
-                    quem já vai. O próprio bar informa, para aquele jogo.
-                  </p>
-                  <ul className="facts">
-                    <li>
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                      >
-                        <rect
-                          x="2.5"
-                          y="4"
-                          width="19"
-                          height="13"
-                          rx="2.5"
-                          fill="currentColor"
-                          opacity="0.3"
-                        />{' '}
-                        <rect
-                          x="8"
-                          y="18.6"
-                          width="8"
-                          height="2.4"
-                          rx="1.2"
-                          fill="currentColor"
-                        />{' '}
-                        <path
-                          d="M4.5 6.5h15v8h-15z"
-                          fill="currentColor"
-                          opacity="0.55"
-                        />{' '}
-                        <circle
-                          cx="18"
-                          cy="8.2"
-                          r="1.7"
-                          fill="var(--spark,#e8320c)"
-                        />
-                      </svg>
-                      Telão, som, Premiere
-                    </li>
-                    <li>
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                      >
-                        <path
-                          d="M5 6h11v13.5a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 5 19.5z"
-                          fill="currentColor"
-                          opacity="0.3"
-                        />{' '}
-                        <path
-                          d="M16 9h2.2a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H16v-2h2v-4h-2z"
-                          fill="currentColor"
-                          opacity="0.3"
-                        />{' '}
-                        <path
-                          d="M5 11h11v8.5a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 5 19.5z"
-                          fill="currentColor"
-                        />{' '}
-                        <circle
-                          cx="7.4"
-                          cy="5.6"
-                          r="2.6"
-                          fill="var(--spark,#e8320c)"
-                        />{' '}
-                        <circle
-                          cx="11"
-                          cy="4.6"
-                          r="2.9"
-                          fill="var(--spark,#e8320c)"
-                        />{' '}
-                        <circle
-                          cx="14.2"
-                          cy="5.8"
-                          r="2.3"
-                          fill="var(--spark,#e8320c)"
-                        />
-                      </svg>
-                      Oferta da casa
-                    </li>
-                    <li>
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                      >
-                        <g fill="currentColor" opacity="0.3">
-                          {' '}
-                          <circle cx="16.5" cy="8" r="3.4" />{' '}
-                          <path d="M12.5 20a5 5 0 0 1 9.5-1.8V20z" />{' '}
-                        </g>{' '}
-                        <circle cx="9" cy="8" r="4" fill="currentColor" />{' '}
-                        <path d="M2 20.5a7 7 0 0 1 14 0z" fill="currentColor" />
-                      </svg>
-                      Quem já vai
-                    </li>
-                  </ul>
-                  <div className="mphone phone">
-                    <img
-                      src="/landing/v3/tela-bar.webp"
-                      alt=""
-                      loading="lazy"
-                      width="448"
-                      height="976"
-                    />
-                  </div>
-                </article>
-                <article className="step" data-i="3" data-t="19:30">
-                  <div className="clock">19:30</div>
-                  <h3>Marque que vai</h3>
-                  <p>
-                    “Vou assistir aqui” avisa os amigos e conta para o bar. Não
-                    é reserva de mesa: é você dizendo que vai estar lá.
-                  </p>
-                  <ul className="facts">
-                    <li>
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                      >
-                        <g fill="currentColor" opacity="0.3">
-                          {' '}
-                          <circle cx="16.5" cy="8" r="3.4" />{' '}
-                          <path d="M12.5 20a5 5 0 0 1 9.5-1.8V20z" />{' '}
-                        </g>{' '}
-                        <circle cx="9" cy="8" r="4" fill="currentColor" />{' '}
-                        <path d="M2 20.5a7 7 0 0 1 14 0z" fill="currentColor" />
-                      </svg>
-                      Amigos veem que você vai
-                    </li>
-                    <li>
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                      >
-                        <path
-                          d="M5 17V11a7 7 0 0 1 14 0v6l1.6 2H3.4z"
-                          fill="currentColor"
-                          opacity="0.3"
-                        />{' '}
-                        <path
-                          d="M9.4 20a2.6 2.6 0 0 0 5.2 0z"
-                          fill="currentColor"
-                        />{' '}
-                        <path d="M3.4 19 5 17h14l1.6 2z" fill="currentColor" />{' '}
-                        <circle
-                          cx="18"
-                          cy="5.5"
-                          r="3.2"
-                          fill="var(--spark,#e8320c)"
-                        />
-                      </svg>
-                      Lembrete 3 h antes
-                    </li>
-                    <li>
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                      >
-                        <rect
-                          x="3"
-                          y="5"
-                          width="18"
-                          height="16"
-                          rx="2.5"
-                          fill="currentColor"
-                          opacity="0.3"
-                        />{' '}
-                        <path
-                          d="M3 7.5A2.5 2.5 0 0 1 5.5 5h13A2.5 2.5 0 0 1 21 7.5V10H3z"
-                          fill="currentColor"
-                        />{' '}
-                        <rect
-                          x="7"
-                          y="2.5"
-                          width="2.4"
-                          height="5"
-                          rx="1.2"
-                          fill="currentColor"
-                        />{' '}
-                        <rect
-                          x="14.6"
-                          y="2.5"
-                          width="2.4"
-                          height="5"
-                          rx="1.2"
-                          fill="currentColor"
-                        />{' '}
-                        <rect
-                          x="13"
-                          y="13.5"
-                          width="4.5"
-                          height="4.5"
-                          rx="1"
-                          fill="var(--spark,#e8320c)"
-                        />
-                      </svg>
-                      Vai para a sua agenda
-                    </li>
-                  </ul>
-                  <div className="mphone phone">
-                    <img
-                      src="/landing/v3/tela-vou.webp"
-                      alt=""
-                      loading="lazy"
-                      width="448"
-                      height="976"
-                    />
-                  </div>
-                </article>
-                <article className="step" data-i="4" data-t="21:30">
-                  <div className="clock">21:30</div>
-                  <h3>Mostre o código no balcão</h3>
-                  <p>
-                    Nos bares Elite, o código libera a oferta da casa. O garçom
-                    confere, a visita conta e a sua nota passa a valer.
-                  </p>
-                  <ul className="facts">
-                    <li>
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                      >
-                        <path
-                          d="M2.5 6.5h19v3.2a2.3 2.3 0 0 0 0 4.6v3.2h-19v-3.2a2.3 2.3 0 0 0 0-4.6z"
-                          fill="currentColor"
-                          opacity="0.25"
-                        />{' '}
-                        <path
-                          d="M15.5 6.5h6v3.2a2.3 2.3 0 0 0 0 4.6v3.2h-6z"
-                          fill="currentColor"
-                        />{' '}
-                        <circle
-                          cx="8.6"
-                          cy="12"
-                          r="2"
-                          fill="var(--spark,#e8320c)"
-                        />
-                      </svg>
-                      Código de 6 letras
-                    </li>
-                    <li>
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                      >
-                        <path
-                          d="M5 6h11v13.5a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 5 19.5z"
-                          fill="currentColor"
-                          opacity="0.3"
-                        />{' '}
-                        <path
-                          d="M16 9h2.2a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H16v-2h2v-4h-2z"
-                          fill="currentColor"
-                          opacity="0.3"
-                        />{' '}
-                        <path
-                          d="M5 11h11v8.5a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 5 19.5z"
-                          fill="currentColor"
-                        />{' '}
-                        <circle
-                          cx="7.4"
-                          cy="5.6"
-                          r="2.6"
-                          fill="var(--spark,#e8320c)"
-                        />{' '}
-                        <circle
-                          cx="11"
-                          cy="4.6"
-                          r="2.9"
-                          fill="var(--spark,#e8320c)"
-                        />{' '}
-                        <circle
-                          cx="14.2"
-                          cy="5.8"
-                          r="2.3"
-                          fill="var(--spark,#e8320c)"
-                        />
-                      </svg>
-                      Oferta liberada na hora
-                    </li>
-                    <li>
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                      >
-                        <path
-                          d="m12 2.8 2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.6l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z"
-                          fill="currentColor"
-                        />
-                      </svg>
-                      Sua nota passa a valer
-                    </li>
-                  </ul>
-                  <div className="mphone phone">
-                    <img
-                      src="/landing/v3/tela-codigo.webp"
-                      alt=""
-                      loading="lazy"
-                      width="448"
-                      height="976"
-                    />
-                  </div>
-                </article>
+                      </div>
+                    </article>
+                  )
+                })}
               </div>
               <div className="stick" aria-hidden="true">
                 <div className="board">
@@ -1213,50 +798,24 @@ export function LandingV3() {
                     <span>0</span>
                   </div>
                   <div className="prog" id="lp3-prog">
-                    <i className="on"></i>
-                    <i></i>
-                    <i></i>
-                    <i></i>
-                    <i></i>
+                    {JOURNEY_STEPS.map((step, i) => (
+                      <i key={step.id} className={i ? undefined : 'on'}></i>
+                    ))}
                   </div>
                 </div>
                 <div className="phone">
                   <div className="screens" id="lp3-screens">
-                    <img
-                      className="on"
-                      src="/landing/v3/tela-explorar.webp"
-                      alt=""
-                      width="448"
-                      height="976"
-                    />
-                    <img
-                      src="/landing/v3/tela-ia.webp"
-                      alt=""
-                      width="448"
-                      height="976"
-                      loading="lazy"
-                    />
-                    <img
-                      src="/landing/v3/tela-bar.webp"
-                      alt=""
-                      width="448"
-                      height="976"
-                      loading="lazy"
-                    />
-                    <img
-                      src="/landing/v3/tela-vou.webp"
-                      alt=""
-                      width="448"
-                      height="976"
-                      loading="lazy"
-                    />
-                    <img
-                      src="/landing/v3/tela-codigo.webp"
-                      alt=""
-                      width="448"
-                      height="976"
-                      loading="lazy"
-                    />
+                    {STEP_EXTRAS.map((extra, i) => (
+                      <img
+                        key={extra.screen}
+                        className={i ? undefined : 'on'}
+                        src={extra.screen}
+                        alt=""
+                        width="448"
+                        height="976"
+                        loading={i ? 'lazy' : undefined}
+                      />
+                    ))}
                   </div>
                 </div>
               </div>
