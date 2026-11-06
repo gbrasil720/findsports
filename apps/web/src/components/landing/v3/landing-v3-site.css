@@ -917,7 +917,45 @@ html:has(.lp3) body {
 }
 
 html.vt-theme::view-transition-new(root) {
-  animation: vt-theme 0.7s var(--vt-ease, cubic-bezier(0.16, 1, 0.3, 1)) both;
+  animation: vt-theme 0.85s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* A borda verde-limão que corre na frente do círculo. */
+.vt-ring {
+  position: fixed;
+  z-index: 2147483647;
+  border-radius: 50%;
+  pointer-events: none;
+  box-shadow:
+    0 0 0 3px #c9f135,
+    0 0 36px 10px rgba(201, 241, 53, 0.45);
+  view-transition-name: vt-ring;
+}
+
+::view-transition-group(vt-ring) {
+  animation: none;
+}
+
+::view-transition-old(vt-ring) {
+  display: none;
+}
+
+::view-transition-new(vt-ring) {
+  animation: vt-ring 0.85s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes vt-ring {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
 }
 
 @keyframes vt-theme {
@@ -926,5 +964,63 @@ html.vt-theme::view-transition-new(root) {
   }
   to {
     clip-path: circle(var(--vt-r) at var(--vt-x) var(--vt-y));
+  }
+}
+
+/* No cabeçalho: só os ícones, menor; no celular, o botão de sol e lua. */
+.lp3 .theme-switch.is-compact {
+  padding: 3px;
+  background: rgba(127, 127, 110, 0.16);
+  box-shadow: none;
+}
+
+.lp3 .theme-switch.is-compact .thumb {
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc((100% - 6px) / 3);
+}
+
+.lp3 .theme-switch.is-compact label {
+  width: 36px;
+  height: 38px;
+  padding: 0;
+  color: inherit;
+  opacity: 0.75;
+}
+
+.lp3 .theme-switch.is-compact label:hover,
+.lp3 .theme-switch.is-compact label[data-on="true"] {
+  opacity: 1;
+}
+
+.lp3 .theme-switch.is-compact label[data-on="true"] {
+  color: #12120f;
+}
+
+.lp3 .theme-flip {
+  display: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(127, 127, 110, 0.16);
+  color: inherit;
+  cursor: pointer;
+}
+
+.lp3 .theme-flip svg {
+  width: 20px;
+  height: 20px;
+}
+
+@media (max-width: 640px) {
+  .lp3 :is(.nav, .ent-top) .theme-switch.is-compact {
+    display: none;
+  }
+
+  .lp3 :is(.nav, .ent-top) .theme-flip {
+    display: grid;
   }
 }

@@ -82,41 +82,89 @@ function change(next: ThemeChoice, current: ThemeChoice, from: HTMLElement) {
   root.style.setProperty('--vt-y', `${y}px`)
   root.style.setProperty('--vt-r', `${r}px`)
   root.classList.add('vt-theme')
-  const transition = document.startViewTransition(() => setThemeChoice(next))
-  transition.finished.finally(() => root.classList.remove('vt-theme'))
+  // A borda acesa vai na frente do círculo: topo e rodapé são tinta nos dois
+  // temas, e sem ela a troca passava em branco onde nada muda de cor.
+  let ring: HTMLSpanElement | null = null
+  const transition = document.startViewTransition(() => {
+    setThemeChoice(next)
+    ring = document.createElement('span')
+    ring.className = 'vt-ring'
+    ring.style.cssText = `left:${x - r}px;top:${y - r}px;width:${2 * r}px;height:${2 * r}px`
+    document.body.appendChild(ring)
+  })
+  transition.finished.finally(() => {
+    root.classList.remove('vt-theme')
+    ring?.remove()
+  })
 }
 
-export function ThemeSwitch() {
+/**
+ * `nav`: a versão do cabeçalho. No computador, as três posições só com o
+ * ícone; no celular, onde o cabeçalho não tem espaço, um botão só que troca
+ * entre claro e escuro. O rodapé continua com as três posições e os nomes.
+ */
+export function ThemeSwitch({
+  variant = 'full'
+}: {
+  variant?: 'full' | 'nav'
+}) {
   const choice = useThemeChoice()
   const index = OPTIONS.findIndex((o) => o.value === choice)
+  const nav = variant === 'nav'
+  const dark = resolvedTheme(choice) === 'dark'
 
   // Rádios nativos: setas, Tab e leitor de tela já vêm de graça.
   return (
-    <fieldset className="theme-switch">
-      <legend className="sr-only">Tema</legend>
-      <span
-        className="thumb"
-        aria-hidden="true"
-        style={{ transform: `translateX(${index * 100}%)` }}
-      />
-      {OPTIONS.map((option) => (
-        <label key={option.value} data-on={option.value === choice}>
-          <input
-            type="radio"
-            name="onside-tema"
-            value={option.value}
-            checked={option.value === choice}
-            onChange={(event: ChangeEvent<HTMLInputElement>) => {
-              const label = event.currentTarget.parentElement
-              if (label) change(option.value, choice, label)
-            }}
-          />
+    <>
+      <fieldset className={nav ? 'theme-switch is-compact' : 'theme-switch'}>
+        <legend className="sr-only">Tema</legend>
+        <span
+          className="thumb"
+          aria-hidden="true"
+          style={{ transform: `translateX(${index * 100}%)` }}
+        />
+        {OPTIONS.map((option) => (
+          <label
+            key={option.value}
+            data-on={option.value === choice}
+            title={nav ? option.label : undefined}
+          >
+            <input
+              type="radio"
+              name={nav ? 'onside-tema-topo' : 'onside-tema'}
+              value={option.value}
+              checked={option.value === choice}
+              onChange={(event: ChangeEvent<HTMLInputElement>) => {
+                const label = event.currentTarget.parentElement
+                if (label) change(option.value, choice, label)
+              }}
+            />
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              {option.icon}
+            </svg>
+            <span className={nav ? 'sr-only' : undefined}>{option.label}</span>
+          </label>
+        ))}
+      </fieldset>
+      {nav ? (
+        <button
+          type="button"
+          className="theme-flip"
+          aria-label={dark ? 'Usar o tema claro' : 'Usar o tema escuro'}
+          onClick={(event) =>
+            change(dark ? 'light' : 'dark', choice, event.currentTarget)
+          }
+        >
           <svg viewBox="0 0 24 24" aria-hidden="true">
-            {option.icon}
+            {
+              (
+                OPTIONS.find((o) => o.value === (dark ? 'light' : 'dark')) ??
+                OPTIONS[0]
+              )?.icon
+            }
           </svg>
-          <span>{option.label}</span>
-        </label>
-      ))}
-    </fieldset>
+        </button>
+      ) : null}
+    </>
   )
 }
