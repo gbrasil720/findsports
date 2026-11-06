@@ -1,9 +1,28 @@
+import type { Page } from '@playwright/test'
 import { expect, test } from '../../fixtures/test'
 
 // WEB-240: páginas públicas de termos e de privacidade. Sem sessão.
 
+// No celular o índice é uma pílula presa no alto: a lista abre pelo botão.
+// `toPass`: o clique antes da hidratação não abre nada, e o teste tenta de novo.
+async function openIndex(page: Page, isMobile: boolean) {
+  const toggle = page.locator('.lg-index-toggle')
+  if (isMobile) {
+    await expect(async () => {
+      if ((await toggle.getAttribute('aria-expanded')) !== 'true') {
+        await toggle.click()
+      }
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true', {
+        timeout: 1000
+      })
+    }).toPass()
+  }
+  return page.getByRole('navigation', { name: 'Seções' })
+}
+
 test('termos: título, índice, contato e ida para a política', async ({
-  page
+  page,
+  isMobile
 }) => {
   await page.goto('/termos')
   await expect(page).toHaveTitle('Termos de uso — Onside')
@@ -11,8 +30,9 @@ test('termos: título, índice, contato e ida para a política', async ({
     page.getByRole('heading', { level: 1, name: 'Termos de uso' })
   ).toBeVisible()
 
-  const index = page.getByRole('navigation', { name: 'Seções' })
+  const index = await openIndex(page, isMobile)
   await expect(index.getByRole('link')).toHaveCount(19)
+  if (isMobile) await page.locator('.lg-index-toggle').click()
   await expect(
     page.getByRole('heading', { level: 2, name: 'Quem pode usar' })
   ).toBeVisible()
@@ -33,17 +53,20 @@ test('termos: título, índice, contato e ida para a política', async ({
   await expect(
     page.getByRole('heading', { level: 1, name: 'Política de privacidade' })
   ).toBeVisible()
-  await expect(
-    page.getByRole('navigation', { name: 'Seções' }).getByRole('link')
-  ).toHaveCount(17)
+  await expect((await openIndex(page, isMobile)).getByRole('link')).toHaveCount(
+    17
+  )
   await expect(page.getByRole('main')).not.toContainText(
     'privacidade@onside.sh'
   )
 })
 
-test('índice leva à seção e marca a seção em leitura', async ({ page }) => {
+test('índice leva à seção e marca a seção em leitura', async ({
+  page,
+  isMobile
+}) => {
   await page.goto('/privacidade')
-  const index = page.getByRole('navigation', { name: 'Seções' })
+  const index = await openIndex(page, isMobile)
   const link = index.getByRole('link', { name: /Quais dados coletamos/ })
   await link.click()
   await expect(page).toHaveURL(/#s-4$/)
@@ -90,7 +113,7 @@ test('rodapé: colunas do desenho, links de verdade, e o sitemap lista as págin
   // Fora da landing as âncoras voltam para ela.
   await expect(
     page
-      .locator('footer.onside-site-footer')
+      .locator('.lp3 footer.foot')
       .getByRole('link', { name: 'A Onside', exact: true })
   ).toHaveAttribute('href', '/#produto')
 
