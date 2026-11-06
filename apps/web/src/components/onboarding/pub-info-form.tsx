@@ -55,18 +55,16 @@ function Field({
 }) {
   return (
     <div className={`ob-fl ${span}${auto ? ' auto' : ''}`}>
-      <label htmlFor={id} className="onside-label">
-        <span>
-          {label}
-          {auto ? (
-            <em className="ob-auto" aria-hidden="true">
-              {' '}
-              · pelo CEP
-            </em>
-          ) : null}
+      <div className="ob-fl-head">
+        {/* "Pelo CEP" fica fora do rótulo: o nome do campo não muda. */}
+        <span className="ob-fl-name">
+          <label htmlFor={id} className="onside-label">
+            {label}
+          </label>
+          {auto ? <em className="ob-auto"> · pelo CEP</em> : null}
         </span>
         {extra}
-      </label>
+      </div>
       {children}
       {error ? (
         <p id={`${id}-error`} className="onside-field-error" role="alert">
@@ -158,7 +156,7 @@ export function PubInfoForm({
             target="_blank"
             rel="noopener noreferrer"
           >
-            Não sei
+            Não sei o CEP
           </a>
         }
       >

@@ -625,14 +625,27 @@
   grid-column: span 2;
 }
 
-.lp3.ob3 .ob-fl .onside-label {
+.lp3.ob3 .ob-fl-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
+  margin-bottom: 8px;
 }
 
-.lp3.ob3 .ob-fl .onside-label > :is(a, span[aria-hidden]) {
+.lp3.ob3 .ob-fl-head .onside-label {
+  display: inline;
+  margin: 0;
+}
+
+.lp3.ob3 .ob-fl-name {
+  font: 600 12px / 1.2 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.lp3.ob3 .ob-fl-head > :is(a, span:not(.ob-fl-name)) {
+  padding: 6px 0;
   color: var(--ink);
   font: 600 12px / 1 var(--body);
   letter-spacing: 0;
