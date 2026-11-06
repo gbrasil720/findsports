@@ -110,7 +110,7 @@
 }
 
 .lp3.ob3 .ob-step-body {
-  animation: ob-in 0.4s var(--ease) both;
+  animation: ob-in 0.3s var(--ease) both;
 }
 
 @keyframes ob-in {
@@ -138,7 +138,7 @@
 }
 
 .lp3.ob3 .ent-cap {
-  animation: ob-in 0.4s var(--ease) 0.06s both;
+  animation: ob-in 0.3s var(--ease) 0.06s both;
 }
 
 /*
@@ -147,7 +147,7 @@
  * selecionado e da pressão.
  */
 .lp3.ob3 :is(.ob-ben li, .ob-sports button) {
-  animation: ob-in 0.4s var(--ease) backwards;
+  animation: ob-in 0.3s var(--ease) backwards;
 }
 
 .lp3.ob3 :is(.ob-ben li, .ob-sports button):nth-child(2) {
