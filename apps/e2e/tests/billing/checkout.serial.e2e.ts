@@ -152,7 +152,8 @@ test('teste grátis em vigor: contrata já, e a primeira cobrança fica para o f
   await signIn(page, user)
   await page.goto('/plan')
 
-  await expect(page.getByText('O teste grátis não pede cartão.')).toBeVisible()
+  // No celular a versão longa do subtítulo fica oculta; o texto continua na página.
+  await expect(page.getByText('O teste grátis não pede cartão.')).toBeAttached()
   await page.getByRole('button', { name: 'Contratar o Elite' }).click()
   await page.waitForURL(`${STUB_URL}/stripe/checkout/**`)
 

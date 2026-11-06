@@ -147,13 +147,13 @@ test('trial vencido e bar fora do ar: aviso de bar não visível e o caminho par
   await expect(plans).toHaveAttribute('href', '/plan?origin=admin')
   await plans.click()
   await expect(
-    page.getByRole('heading', { name: 'Continue no plano Elite.' })
+    page.getByRole('heading', { name: 'Seu teste do Elite acabou' })
   ).toBeVisible()
   await expect(
-    page.getByText('Contrate o plano para o bar voltar às buscas e ao mapa')
+    page.getByText('Contrate um plano para o bar voltar às buscas e ao mapa')
   ).toBeVisible()
   await expect(
-    page.getByRole('button', { name: 'Continuar com Elite' })
+    page.getByRole('button', { name: 'Contratar o Elite' }).first()
   ).toBeVisible()
 })
 
