@@ -1664,6 +1664,15 @@
   .lp3 .ob-seg li::after {
     transition: none;
   }
+
+  /* Cadastro do bar: o que subia ou crescia só aparece. */
+  .lp3.ob3 :is(.ob-pgrid .ob-pc, .ob-tv .phone, .ob-pin .ob-tag, .ob-cepf .ck) {
+    animation-name: ob-fade;
+  }
+
+  .lp3.ob3 :is(.ob-tchip, .ob-stepper button, .ob-pc):active {
+    transform: none;
+  }
 }
 
 /*
