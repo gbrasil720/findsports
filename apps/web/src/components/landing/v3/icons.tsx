@@ -315,3 +315,67 @@ export function Close({ size }: IconProps) {
     </Svg>
   )
 }
+
+export function Sound({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path
+        d="M16 7.5a6 6 0 0 1 0 9M18.6 4.8a10 10 0 0 1 0 14.4"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        fill="none"
+        opacity="0.3"
+      />
+      <path d="M3 9h4l5-4.5v15L7 15H3z" fill="currentColor" />
+    </Svg>
+  )
+}
+
+export function Share({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path
+        d="M4.5 10.5h4v2h-2v7h11v-7h-2v-2h4v11h-15z"
+        fill="currentColor"
+        opacity="0.3"
+      />
+      <path
+        d="M12 2.2 16.6 7l-1.5 1.5L13.1 6.4V15h-2.2V6.4L8.9 8.5 7.4 7z"
+        fill="currentColor"
+      />
+    </Svg>
+  )
+}
+
+export function Sparkle({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path
+        d="M18.6 1.7Q19.3 4.7 22.3 5.4Q19.3 6.1 18.6 9.1Q17.9 6.1 14.9 5.4Q17.9 4.7 18.6 1.7Z"
+        fill="currentColor"
+        opacity="0.3"
+      />
+      <path
+        d="M10 5.4Q11.35 11.85 17.8 13.2Q11.35 14.55 10 21Q8.65 14.55 2.2 13.2Q8.65 11.85 10 5.4Z"
+        fill="currentColor"
+      />
+      <path
+        d="M19.2 15.1Q19.7 17.3 21.9 17.8Q19.7 18.3 19.2 20.5Q18.7 18.3 16.5 17.8Q18.7 17.3 19.2 15.1Z"
+        fill="var(--spark,#e8320c)"
+      />
+    </Svg>
+  )
+}
+
+/** O "+" de "Novo jogo", na cor do texto (o `Plus` da landing é tinta fixa). */
+export function Add({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path
+        d="M10.75 4h2.5v6.75H20v2.5h-6.75V20h-2.5v-6.75H4v-2.5h6.75z"
+        fill="currentColor"
+      />
+    </Svg>
+  )
+}
