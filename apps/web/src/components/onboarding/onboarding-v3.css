@@ -599,6 +599,15 @@
   font: 600 12px / 1 var(--mono);
 }
 
+/* Avançar e voltar pinta o passo em vez de trocar a cor de uma vez. */
+.lp3 .ob-steps li,
+.lp3 .ob-steps li > span {
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
 .lp3 .ob-steps li.on {
   background: var(--card);
   color: var(--ink);
