@@ -120,6 +120,27 @@
   }
 }
 
+@keyframes ob-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Telão: a imagem nova clareia sobre o fundo escuro e a legenda sobe junto. */
+@keyframes ob-dim {
+  from {
+    opacity: 0.3;
+  }
+}
+
+.lp3.ob3 .ent-right img {
+  animation: ob-dim 0.4s var(--ease) both;
+}
+
+.lp3.ob3 .ent-cap {
+  animation: ob-in 0.4s var(--ease) 0.06s both;
+}
+
 /* ─── Navegação do pé ─── */
 .lp3.ob3 .ob-nav {
   margin-top: auto;

@@ -102,7 +102,9 @@ export function AuthShell({
           </div>
           <div className="ent-form">{children}</div>
         </main>
-        <Panel panel={panel} />
+        {/* A chave remonta o telão quando a imagem troca (passos do onboarding),
+            para a troca entrar com o fade em vez de pular. */}
+        <Panel key={panel.led} panel={panel} />
       </div>
     </div>
   )
