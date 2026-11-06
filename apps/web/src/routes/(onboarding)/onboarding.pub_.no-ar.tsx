@@ -58,22 +58,19 @@ const NEXT_STEPS = [
     title: 'Cadastre o primeiro jogo',
     text: 'Escolha no catálogo, marque telão e som.',
     go: 'Cadastrar',
-    to: '/admin',
-    hash: 'admin-grade'
+    to: '/admin/jogos'
   },
   {
     title: 'Mande a foto de capa',
     text: 'Bar com foto recebe mais cliques.',
     go: 'Mandar',
-    to: '/admin',
-    hash: 'admin-espaco'
+    to: '/admin/meu-espaco'
   },
   {
     title: 'Compare os planos',
     text: 'Troque quantas vezes quiser durante o teste.',
     go: 'Ver planos',
-    to: '/plan',
-    hash: undefined
+    to: '/plan'
   }
 ] as const
 
@@ -114,7 +111,6 @@ function NoAr() {
               <li key={step.title}>
                 <Link
                   to={step.to}
-                  hash={step.hash}
                   className={`noar-nx${i === 0 ? ' first' : ''}`}
                 >
                   <i aria-hidden="true">{i + 1}</i>
@@ -130,7 +126,7 @@ function NoAr() {
             ))}
           </ol>
           <div className="noar-acts">
-            <Link to="/admin" hash="admin-grade" className="btn btn-acid">
+            <Link to="/admin/jogos" className="btn btn-acid">
               Cadastrar o primeiro jogo
             </Link>
             <Link to="/admin" className="btn btn-ghost">

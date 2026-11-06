@@ -106,8 +106,7 @@ export function BarCover({
           <OwnerNudge
             action={{
               label: 'Adicionar foto',
-              to: '/admin',
-              hash: 'admin-espaco'
+              to: '/admin/meu-espaco'
             }}
           >
             Seu perfil está sem foto. É a primeira coisa que o torcedor vê ao

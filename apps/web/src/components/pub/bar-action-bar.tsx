@@ -129,9 +129,7 @@ export function BarActions({
     return isOwner && !isBar ? (
       <section className="onside-panel p-5 md:p-6">
         <p className="onside-kicker">{title}</p>
-        <OwnerNudge
-          action={{ label: 'Completar', to: '/admin', hash: 'admin-espaco' }}
-        >
+        <OwnerNudge action={{ label: 'Completar', to: '/admin/meu-espaco' }}>
           Seu perfil não tem nenhuma forma de contato. O torcedor chega até aqui
           e não consegue falar com você.
         </OwnerNudge>
@@ -170,9 +168,7 @@ export function BarActions({
       {presence && <div className="md:mt-4">{presence}</div>}
       {!whatsappUrl &&
         (isOwner ? (
-          <OwnerNudge
-            action={{ label: 'Liberar', to: '/admin', hash: 'admin-espaco' }}
-          >
+          <OwnerNudge action={{ label: 'Liberar', to: '/admin/meu-espaco' }}>
             Sem WhatsApp confirmado, você perde o contato de quem quer saber se
             tem mesa.
           </OwnerNudge>

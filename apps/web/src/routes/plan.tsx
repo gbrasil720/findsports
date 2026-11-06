@@ -556,7 +556,7 @@ function PlanSelection() {
       </>
     ) : null
   const renameLink = (
-    <Link to="/admin" hash="admin-espaco">
+    <Link to="/admin/meu-espaco">
       Alterar<span className="sr-only"> o nome do bar</span>
     </Link>
   )

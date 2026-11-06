@@ -119,9 +119,7 @@ export function BarCharacteristics({
           ) : null}
 
           {isOwner && !hasAmenities ? (
-            <OwnerNudge
-              action={{ label: 'Marcar', to: '/admin', hash: 'admin-espaco' }}
-            >
+            <OwnerNudge action={{ label: 'Marcar', to: '/admin/meu-espaco' }}>
               Sem características marcadas, o torcedor que está explorando não
               sabe o que diferencia o seu bar dos outros da lista.
             </OwnerNudge>

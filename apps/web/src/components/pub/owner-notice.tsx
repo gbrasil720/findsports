@@ -85,8 +85,7 @@ export function OwnerPreviewBanner({
         </p>
       </div>
       <Link
-        to="/admin"
-        hash="admin-espaco"
+        to="/admin/meu-espaco"
         className="onside-btn onside-btn-ink shrink-0"
       >
         <Edit size={14} color="currentColor" aria-hidden="true" />
@@ -98,7 +97,7 @@ export function OwnerPreviewBanner({
 
 type NudgeProps = {
   children: string
-  action?: { label: string; to: string; hash?: string }
+  action?: { label: string; to: string }
 }
 
 /** Aviso pontual, ancorado no buraco que ele descreve. */
@@ -119,7 +118,6 @@ export function OwnerNudge({ children, action }: NudgeProps) {
       {action && (
         <Link
           to={action.to}
-          hash={action.hash}
           className="onside-btn onside-btn-outline onside-btn-sm shrink-0"
         >
           {action.label}
