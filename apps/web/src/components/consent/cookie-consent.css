@@ -118,6 +118,13 @@ html[data-consent] .onside-app > aside {
   text-transform: uppercase;
 }
 
+/* Só a landing nova (abaixo) mostra os quadradinhos, o "de análise" e a nota. */
+.onside-consent-leds,
+.onside-consent-kind,
+.onside-consent-note {
+  display: none;
+}
+
 .onside-consent .onside-consent-current {
   margin-top: 8px;
   color: var(--onside-muted-on-ink);
@@ -310,5 +317,156 @@ html[data-consent] .onside-app > aside {
     display: inline-flex;
     align-items: center;
     min-height: 44px;
+  }
+}
+
+/*
+ * Landing nova (WEB-501), o "Placar" do design (artifact NBSYLhfA5wNhtXmpFGNuFp,
+ * opção A): cartão de tinta no canto, título em mono com os quadradinhos do
+ * telão e botões em pílula do mesmo tamanho. No celular e no tablet em pé vira
+ * uma folha presa ao pé da tela, com a barra fixa da landing logo acima
+ * (`--onside-consent-space`). Só o texto curto, nas duas larguras.
+ */
+:root:has(.lp3) .onside-consent {
+  /* No canto direito: à esquerda, embaixo, fica a busca do topo. */
+  right: 32px;
+  bottom: calc(32px + env(safe-area-inset-bottom, 0px));
+  left: auto;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  width: min(calc(100% - 64px), 452px);
+  margin: 0;
+  padding: 20px 20px 18px;
+  border: 0;
+  border-radius: 24px;
+  background: #12120f;
+  box-shadow:
+    inset 0 0 0 1px #34342d,
+    0 4px 0 #000,
+    0 30px 60px -30px rgba(0, 0, 0, 0.9);
+}
+
+:root:has(.lp3) .onside-consent .onside-consent-long {
+  display: none;
+}
+
+:root:has(.lp3) .onside-consent .onside-consent-short {
+  display: block;
+  font-size: 15.5px;
+  line-height: 1.5;
+}
+
+:root:has(.lp3) .onside-consent .onside-consent-kicker {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 14px;
+  color: #aaa9a4;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+}
+
+:root:has(.lp3) .onside-consent-kind {
+  display: inline;
+}
+
+:root:has(.lp3) .onside-consent-note {
+  display: inline;
+  margin-left: auto;
+  color: #8a8983;
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Seis quadradinhos do telão, acesos e meio apagados. */
+:root:has(.lp3) .onside-consent-leds {
+  display: grid;
+  grid-template-columns: repeat(3, 4px);
+  gap: 2px;
+}
+
+:root:has(.lp3) .onside-consent-leds i {
+  width: 4px;
+  height: 4px;
+  background: #c9f135;
+}
+
+:root:has(.lp3) .onside-consent-leds i:nth-child(even) {
+  opacity: 0.5;
+}
+
+:root:has(.lp3) .onside-consent a {
+  font-weight: 700;
+  text-decoration-color: #c9f135;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+:root:has(.lp3) .onside-consent-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+:root:has(.lp3) .onside-consent-actions button {
+  min-width: 0;
+  min-height: 48px;
+  border: 0;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1.5px #f1eee6;
+  font-size: 15px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+:root:has(.lp3) .onside-consent-actions button.is-accept {
+  background: #c9f135;
+  box-shadow: 0 3px 0 #7f9a12;
+  color: #12120f;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :root:has(.lp3) .onside-consent-actions button.is-accept:hover {
+    background: #d4f55a;
+    color: #12120f;
+  }
+}
+
+@media (max-width: 760px), (max-width: 1100px) and (orientation: portrait) {
+  :root:has(.lp3) .onside-consent {
+    right: 0;
+    bottom: 0;
+    left: 0;
+    gap: 12px;
+    width: auto;
+    padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+    border-radius: 26px 26px 0 0;
+    box-shadow:
+      0 -1px 0 #34342d,
+      0 -24px 50px -30px rgba(0, 0, 0, 0.7);
+  }
+
+  :root:has(.lp3) .onside-consent .onside-consent-kicker {
+    display: flex;
+    margin-bottom: 12px;
+    font-size: 11.5px;
+  }
+
+  :root:has(.lp3) .onside-consent .onside-consent-short {
+    font-size: 15px;
+  }
+
+  :root:has(.lp3) .onside-consent-actions button {
+    min-height: 50px;
+  }
+}
+
+/* Celular estreito: a nota não cabe ao lado do título. */
+@media (max-width: 380px) {
+  :root:has(.lp3) .onside-consent-note {
+    display: none;
   }
 }
