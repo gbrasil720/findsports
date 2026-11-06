@@ -456,7 +456,7 @@ test('aba sem sessão e sem cadastro pede o login antes do wizard, e o bar preen
 
   await page.getByLabel('E-mail').fill(owner.email)
   await page.getByLabel('Senha', { exact: true }).fill(owner.password)
-  await button(page, 'Acessar minha conta').click()
+  await button(page, 'Entrar').click()
   await expect(page).toHaveURL(/\/onboarding\/pub$/)
 
   await reachReview(page, {

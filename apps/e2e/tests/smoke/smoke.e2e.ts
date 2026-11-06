@@ -28,7 +28,7 @@ test('torcedor semeado entra pelo /login e chega no /dashboard', async ({
   await page.goto('/login')
   await page.getByLabel('E-mail').fill(fan.email)
   await page.getByLabel('Senha', { exact: true }).fill(fan.password)
-  await page.getByRole('button', { name: 'Acessar minha conta' }).click()
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click()
 
   await expect(page).toHaveURL(/\/dashboard$/)
 })

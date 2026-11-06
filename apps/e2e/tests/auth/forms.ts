@@ -40,7 +40,7 @@ export async function loginWithForm(
   await page.goto(url)
   await page.getByLabel('E-mail').fill(user.email)
   await page.getByLabel('Senha', { exact: true }).fill(user.password)
-  await page.getByRole('button', { name: 'Acessar minha conta' }).click()
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click()
 }
 
 export async function openAccountSettings(page: Page) {

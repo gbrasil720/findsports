@@ -132,7 +132,7 @@ test.describe('sem escolha feita', () => {
     await expect.poll(atBottom).toBe(viewport.height)
   })
 
-  // Em 320x568 o "Acessar minha conta" do login cai na faixa do aviso. O
+  // Em 320x568 o "Entrar" do login cai na faixa do aviso. O
   // navegador o dava por visível e não rolava ao receber o foco.
   test('celular: botão que recebe o foco debaixo do aviso rola para cima dele', async ({
     page,
@@ -142,7 +142,7 @@ test.describe('sem escolha feita', () => {
     await page.setViewportSize({ width: 320, height: 568 })
     await page.goto('/login')
     await expect(banner(page)).toBeVisible()
-    const submit = page.getByRole('button', { name: 'Acessar minha conta' })
+    const submit = page.getByRole('button', { name: 'Entrar', exact: true })
     await submit.focus()
     await expect
       .poll(async () => {
