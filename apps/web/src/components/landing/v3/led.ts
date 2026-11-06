@@ -179,6 +179,8 @@ export function startLeds(root: HTMLElement): () => void {
           host.removeEventListener('pointerleave', leave)
         })
         led.draw(performance.now())
+        // O canvas já pinta o telão: sai o pôster de fundo.
+        led.canvas.classList.add('on')
       }
       if (reduce) return
       const io = new IntersectionObserver((entries) => {

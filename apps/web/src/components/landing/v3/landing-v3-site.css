@@ -804,3 +804,31 @@
     font-size: 14px;
   }
 }
+
+/* Telão parado antes do JavaScript: o primeiro quadro de cada grade
+   (docs/design/redesign-2026-11/scripts/led-posters.py), no mesmo enquadramento
+   do canvas. Quando o telão acende, o led.ts tira o fundo. */
+.lp3 canvas.led {
+  background: center / cover no-repeat;
+}
+.lp3 canvas.led[data-led="hero"] {
+  background-image: url(/landing/v3/led-hero.webp);
+}
+.lp3 canvas.led[data-led="hero"][data-mode="soft"] {
+  background-image: url(/landing/v3/led-hero-soft.webp);
+}
+.lp3 canvas.led[data-led="crowd"] {
+  background-image: url(/landing/v3/led-crowd.webp);
+}
+.lp3 canvas.led[data-led="scarf"] {
+  background-image: url(/landing/v3/led-scarf.webp);
+}
+.lp3 canvas.led.on {
+  background: none;
+}
+@media (max-width: 640px) {
+  /* Faixa baixa: o quadrado não fica menor que 5,5 px, como no canvas. */
+  .lp3 .hero canvas.led {
+    background-size: 1320px auto;
+  }
+}
