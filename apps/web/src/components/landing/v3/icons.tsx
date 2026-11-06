@@ -228,3 +228,90 @@ export function Logo({ size = 30 }: IconProps) {
     </svg>
   )
 }
+
+/* Os do painel do bar (WEB-501), dos `ICONS` do app. */
+
+export function Ranking({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path
+        d="M2 11.5h6V21H2zM16 14h6v7h-6z"
+        fill="currentColor"
+        opacity="0.35"
+      />
+      <path d="M8.7 7.5h6.6V21H8.7z" fill="currentColor" />
+      <path
+        d="M12 1.1Q12.45 3.15 14.5 3.6Q12.45 4.05 12 6.1Q11.55 4.05 9.5 3.6Q11.55 3.15 12 1.1Z"
+        fill="var(--spark,#e8320c)"
+      />
+    </Svg>
+  )
+}
+
+export function Medal({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path
+        d="M6.5 2h4.2l2.4 6.2H8.9zM13.3 2h4.2l-2.4 6.2h-4.2z"
+        fill="currentColor"
+        opacity="0.35"
+      />
+      <circle cx="12" cy="15" r="6.6" fill="currentColor" />
+      <path
+        d="m12 11.6 1 2.1 2.3.3-1.7 1.6.4 2.3-2-1.1-2 1.1.4-2.3-1.7-1.6 2.3-.3z"
+        fill="var(--medal-star,#12120f)"
+      />
+    </Svg>
+  )
+}
+
+export function Gear({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <circle cx="12" cy="12" r="9" fill="currentColor" opacity="0.3" />
+      <path
+        fillRule="evenodd"
+        d="M10.6 2h2.8l.5 2.7 1.9.8 2.3-1.6 2 2-1.6 2.3.8 1.9 2.7.5v2.8l-2.7.5-.8 1.9 1.6 2.3-2 2-2.3-1.6-1.9.8-.5 2.7h-2.8l-.5-2.7-1.9-.8-2.3 1.6-2-2 1.6-2.3-.8-1.9L2 13.4v-2.8l2.7-.5.8-1.9-1.6-2.3 2-2 2.3 1.6 1.9-.8zM12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8z"
+        fill="currentColor"
+      />
+    </Svg>
+  )
+}
+
+export function Qr({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <rect
+        x="3"
+        y="3"
+        width="18"
+        height="18"
+        rx="3"
+        fill="currentColor"
+        opacity="0.3"
+      />
+      <g fill="currentColor">
+        <rect x="5.5" y="5.5" width="5" height="5" rx="1" />
+        <rect x="13.5" y="5.5" width="5" height="5" rx="1" />
+        <rect x="5.5" y="13.5" width="5" height="5" rx="1" />
+        <rect x="13.5" y="13.5" width="2.2" height="2.2" />
+        <rect x="16.3" y="16.3" width="2.2" height="2.2" />
+      </g>
+      <g fill="var(--spark,#e8320c)">
+        <rect x="16.3" y="13.5" width="2.2" height="2.2" />
+        <rect x="13.5" y="16.3" width="2.2" height="2.2" />
+      </g>
+    </Svg>
+  )
+}
+
+export function Close({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path
+        d="M6.3 4.6 12 10.3l5.7-5.7 1.7 1.7-5.7 5.7 5.7 5.7-1.7 1.7-5.7-5.7-5.7 5.7-1.7-1.7 5.7-5.7-5.7-5.7z"
+        fill="currentColor"
+      />
+    </Svg>
+  )
+}
