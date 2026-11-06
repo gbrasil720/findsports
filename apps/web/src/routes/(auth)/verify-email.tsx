@@ -11,6 +11,12 @@ import Envelope from 'reicon-react/icons/Envelope'
 import Loader from 'reicon-react/icons/Loader'
 import { toast } from 'sonner'
 import { type AuthPanel, AuthShell } from '@/components/entrada/auth-shell'
+import { PubObShell } from '@/components/onboarding/pub-ob-shell'
+import {
+  PubReceipt,
+  type PubReceiptData,
+  useFinishPubSignup
+} from '@/components/onboarding/pub-receipt'
 import { useTurnstile } from '@/components/turnstile'
 import { authClient, refreshSessionCache } from '@/lib/auth-client'
 import { mensagemOnboardingJaConcluido } from '@/lib/onboarding-concluido'
@@ -71,6 +77,11 @@ function VerifyEmailPage() {
   const { mutateAsync: completePub } = useMutation(
     trpc.onboarding.completePub.mutationOptions()
   )
+  const finishSignup = useFinishPubSignup()
+  // Bar criado daqui (WEB-501): o comprovante abre no lugar desta tela, e o
+  // botão dele segue para `/plan`, como seguia antes.
+  const [receipt, setReceipt] = useState<PubReceiptData | null>(null)
+  const [leaving, setLeaving] = useState(false)
 
   const continueVerified = useCallback(async () => {
     if (continuing.current) return
@@ -104,8 +115,13 @@ function VerifyEmailPage() {
           navigate({ to: '/onboarding/pub' })
           return
         }
+        // O plano escolhido não vai ao `completePub`: entra depois, por
+        // `changeTrialPlan`, em `finishSignup`.
+        const { plan, ...payload } = draft
+        let created = false
         try {
-          await completePub(draft)
+          await completePub(payload)
+          created = true
         } catch (err) {
           const concluido = mensagemOnboardingJaConcluido(err)
           if (!concluido) {
@@ -118,7 +134,11 @@ function VerifyEmailPage() {
         }
         localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)
         await refreshSessionCache()
-        navigate({ to: '/plan', search: { trial: 'started' } })
+        const comprovante = created
+          ? await finishSignup({ ...payload, plan })
+          : null
+        if (comprovante) setReceipt(comprovante)
+        else navigate({ to: '/plan', search: { trial: 'started' } })
         return
       }
 
@@ -131,7 +151,7 @@ function VerifyEmailPage() {
       continuing.current = false
       setChecking(false)
     }
-  }, [callbackUrl, completePub, navigate])
+  }, [callbackUrl, completePub, finishSignup, navigate])
 
   useEffect(() => {
     setEmail(readPendingEmail())
@@ -164,6 +184,22 @@ function VerifyEmailPage() {
       return
     }
     toast.success('Se o endereço estiver cadastrado, um novo link foi enviado.')
+  }
+
+  if (receipt) {
+    return (
+      <PubObShell>
+        <PubReceipt
+          data={receipt}
+          pending={leaving}
+          continueLabel="Ver meu bar no ar"
+          onContinue={() => {
+            setLeaving(true)
+            void navigate({ to: '/plan', search: { trial: 'started' } })
+          }}
+        />
+      </PubObShell>
+    )
   }
 
   return (
