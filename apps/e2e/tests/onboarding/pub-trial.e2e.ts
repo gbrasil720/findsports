@@ -70,7 +70,7 @@ test('o bar nasce publicado, com 120 dias de teste do Elite, e o torcedor o abre
 
 // WEB-238 e WEB-501: a revisão diz o plano escolhido no cadastro, o bar nasce
 // no teste dele (troca por `changeTrialPlan`) e o comprovante sai com R$ 0,00.
-test('o plano escolhido no cadastro vira o do teste, com comprovante e /plan', async ({
+test('o plano escolhido no cadastro vira o do teste, com comprovante, tela "no ar" e /plan', async ({
   page
 }) => {
   const owner = await createUser({ role: 'pub', onboardingCompleted: false })
@@ -136,16 +136,15 @@ test('o plano escolhido no cadastro vira o do teste, com comprovante e /plan', a
   })
 
   await button('Ver meu bar no ar').click()
-  await expect(page).toHaveURL(/\/plan\?trial=started$/)
-  const confirmacao = page.getByRole('dialog')
-  await expect(
-    confirmacao.getByRole('heading', {
-      name: 'Seu bar está no ar com o Starter grátis.'
-    })
-  ).toBeVisible()
-  await confirmacao.getByRole('button', { name: 'Ver os planos' }).click()
+  await expect(page).toHaveURL(/\/onboarding\/pub\/no-ar$/)
+  // A tela "no ar" substitui o aviso que abria por cima de /plan.
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+    /está no ar$/
+  )
+  await expect(page.getByText('Seu teste do Starter')).toBeVisible()
+  await page.getByRole('link', { name: /^Compare os planos/ }).click()
   await expect(page).toHaveURL(/\/plan$/)
   await expect(
-    page.getByRole('heading', { name: /^Você está no trial do Starter até / })
+    page.getByRole('heading', { name: 'Você está testando o Starter' })
   ).toBeVisible()
 })
