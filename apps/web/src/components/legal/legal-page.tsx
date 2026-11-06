@@ -5,11 +5,11 @@ import type {
   LegalRich
 } from '@findsports_oficial/legal/legal-types'
 import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react'
-import ArrowRight from 'reicon-react/icons/ArrowRight'
-import { OnsideFooter, OnsideHeader } from '@/components/landing/onside-landing'
+import { startNavTone } from '@/components/landing/v3/effects'
+import { Arrow } from '@/components/landing/v3/icons'
+import { SiteFooter, SiteNav } from '@/components/landing/v3/site-chrome'
 
 const CONTACT_EMAIL = 'contato@onside.sh'
-const HERO_ID = 'top'
 
 /**
  * Trechos do texto longo do site: os dos documentos legais e, no guia, link
@@ -24,19 +24,19 @@ function Inline({ part }: { part: PageInline }) {
   if ('b' in part) return <strong>{part.b}</strong>
   if ('link' in part) {
     return (
-      <a className="onside-legal-link" href={part.to}>
+      <a className="lg-link" href={part.to}>
         {part.link}
       </a>
     )
   }
   if ('email' in part) {
     return (
-      <a className="onside-legal-link" href={`mailto:${part.email}`}>
+      <a className="lg-link" href={`mailto:${part.email}`}>
         {part.email}
       </a>
     )
   }
-  return <span className="onside-legal-link">{part.mark}</span>
+  return <span className="lg-link">{part.mark}</span>
 }
 
 function Rich({ content }: { content: PageRich }) {
@@ -53,20 +53,20 @@ function Block({ block }: { block: LegalBlock<PageInline> }) {
   switch (block.type) {
     case 'h3':
       return (
-        <h3 className="onside-legal-h3">
+        <h3 className="lg-h3">
           {block.num ? <span aria-hidden="true">{block.num}</span> : null}
           {block.text}
         </h3>
       )
     case 'p':
       return (
-        <p className="onside-legal-p">
+        <p className="lg-p">
           <Rich content={block.content} />
         </p>
       )
     case 'ul':
       return (
-        <ul className="onside-legal-list">
+        <ul className="lg-list">
           {block.items.map((item, index) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: texto estático, nunca reordenado
             <li key={index}>
@@ -79,8 +79,18 @@ function Block({ block }: { block: LegalBlock<PageInline> }) {
       )
     case 'attention':
       return (
-        <div className="onside-legal-attention">
-          <p>{block.label}</p>
+        <div className="lg-attention">
+          <p className="lg-attention-label">
+            <span className="lg-leds" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+              <i />
+              <i />
+              <i />
+            </span>
+            {block.label}
+          </p>
           <p>
             <Rich content={block.content} />
           </p>
@@ -89,7 +99,7 @@ function Block({ block }: { block: LegalBlock<PageInline> }) {
     case 'table': {
       const total = block.columnWeights?.reduce((sum, w) => sum + w, 0)
       return (
-        <div className="onside-legal-table">
+        <div className="lg-table">
           <table>
             {block.columnWeights && total ? (
               <colgroup>
@@ -160,7 +170,7 @@ function useReadingProgress(firstSectionId: string | undefined) {
       const line = window.innerHeight * 0.45
       const done = Math.min(1, Math.max(0, (line - box.top) / box.height))
       if (progressRef.current) {
-        progressRef.current.style.height = `${(done * 100).toFixed(2)}%`
+        progressRef.current.style.width = `${(done * 100).toFixed(2)}%`
       }
     }
     onScroll()
@@ -217,39 +227,57 @@ const CONTACT_CLOSING: PageClosing = {
   label: CONTACT_EMAIL
 }
 
-/** Texto longo no visual das páginas legais: termos, privacidade e o guia. */
+/**
+ * Texto longo no visual das páginas legais: termos, privacidade e os artigos
+ * do guia. É o redesign da landing (WEB-501; design no artifact
+ * E5cnrZGSh5V2DDHnYVTjzX): cabeçalho e rodapé dela, topo no telão, índice
+ * com a leitura e o texto em colunas de leitura. CSS em `legal-v3.css`.
+ */
 export function LegalPage({
   document: doc,
-  closing = CONTACT_CLOSING
+  closing = CONTACT_CLOSING,
+  current
 }: {
   document: PageDocument
   closing?: PageClosing
+  current?: '/termos' | '/privacidade'
 }) {
   const { activeId, contentRef, progressRef } = useReadingProgress(
     doc.sections[0]?.id
   )
+  const rootRef = useRef<HTMLDivElement>(null)
+  const [indexOpen, setIndexOpen] = useState(false)
+  const activeIndex = Math.max(
+    0,
+    doc.sections.findIndex((section) => section.id === activeId)
+  )
+  const active = doc.sections[activeIndex]
+  const total = String(doc.sections.length).padStart(2, '0')
+  const position = String(activeIndex + 1).padStart(2, '0')
+
+  useEffect(() => {
+    const root = rootRef.current
+    if (root) return startNavTone(root)
+  }, [])
 
   return (
-    <div className="onside-page onside-legal">
-      <a className="onside-skip-link" href="#main">
+    <div className="lp3 lg" ref={rootRef}>
+      <a className="lg-skip" href="#main">
         Pular para o conteúdo
       </a>
 
-      <OnsideHeader home="/" inkHeroId={HERO_ID} />
+      <SiteNav home="/" />
 
       <main id="main">
-        <section className="onside-legal-hero" id={HERO_ID}>
-          <div className="onside-shell onside-legal-hero-grid">
+        <section className="lg-hero" id="top" data-ink>
+          <div className="wrap lg-hero-grid">
             <div>
-              <p className="onside-legal-kicker">
-                <span aria-hidden="true" />
-                {doc.kicker}
-              </p>
-              <h1>
+              <p className="kick">{doc.kicker}</p>
+              <h1 className="disp">
                 {doc.title}
                 <span aria-hidden="true">.</span>
               </h1>
-              <div className="onside-legal-intro">
+              <div className="lg-intro">
                 {doc.intro.map((paragraph, index) => (
                   // biome-ignore lint/suspicious/noArrayIndexKey: texto estático, nunca reordenado
                   <p key={index}>
@@ -259,8 +287,8 @@ export function LegalPage({
               </div>
             </div>
 
-            <div className="onside-legal-side">
-              <dl className="onside-legal-meta">
+            <div className="lg-side">
+              <dl className="lg-meta">
                 <div>
                   <dt>Última atualização</dt>
                   <dd>{doc.updated}</dd>
@@ -277,21 +305,21 @@ export function LegalPage({
                 </div>
               </dl>
 
-              <a className="onside-legal-other" href={doc.other.to}>
+              <a className="lg-other" href={doc.other.to}>
                 <span>
                   <span>Leia também</span>
                   <b>{doc.other.label}</b>
                   <span>{doc.other.blurb}</span>
                 </span>
-                <ArrowRight size={16} aria-hidden="true" focusable="false" />
+                <Arrow size={22} />
               </a>
             </div>
           </div>
         </section>
 
         {doc.company.length > 0 ? (
-          <div className="onside-legal-company">
-            <div className="onside-shell">
+          <div className="lg-company" data-ink>
+            <div className="wrap">
               {doc.company.map((item) => (
                 <span key={item}>{item}</span>
               ))}
@@ -299,16 +327,37 @@ export function LegalPage({
           </div>
         ) : null}
 
-        <div className="onside-shell onside-legal-body">
-          <aside>
-            <p>Índice</p>
-            <nav aria-label="Seções">
-              <span ref={progressRef} aria-hidden="true" />
+        <div className="wrap lg-body">
+          <aside className="lg-index" data-open={indexOpen || undefined}>
+            <button
+              className="lg-index-toggle"
+              type="button"
+              aria-expanded={indexOpen}
+              aria-controls="lg-sections"
+              onClick={() => setIndexOpen((open) => !open)}
+            >
+              <span className="n">{active?.num}</span>
+              <span className="t">{active?.title}</span>
+              <span className="c">
+                Índice · {position}/{total}
+              </span>
+            </button>
+            <p className="lg-index-head">
+              <span>Índice</span>
+              <span>
+                {position} de {total}
+              </span>
+            </p>
+            <div className="lg-progress" aria-hidden="true">
+              <span ref={progressRef} />
+            </div>
+            <nav id="lg-sections" aria-label="Seções">
               {doc.sections.map((section) => (
                 <a
                   key={section.id}
                   href={`#${section.id}`}
                   aria-current={activeId === section.id ? 'true' : undefined}
+                  onClick={() => setIndexOpen(false)}
                 >
                   <span>{section.num}</span>
                   <span>{section.title}</span>
@@ -317,14 +366,14 @@ export function LegalPage({
             </nav>
           </aside>
 
-          <div ref={contentRef} className="onside-legal-content">
+          <div ref={contentRef} className="lg-content">
             {doc.sections.map((section) => (
               <section key={section.id} id={section.id}>
-                <div className="onside-legal-section-head">
+                <div className="lg-section-head">
                   <span aria-hidden="true">{section.num}</span>
                   <h2>{section.title}</h2>
                 </div>
-                <div className="onside-legal-section-body">
+                <div className="lg-section-body">
                   {section.blocks.map((block, index) => (
                     // biome-ignore lint/suspicious/noArrayIndexKey: texto estático, nunca reordenado
                     <Block key={index} block={block} />
@@ -335,21 +384,21 @@ export function LegalPage({
           </div>
         </div>
 
-        <section className="onside-legal-contact">
-          <div className="onside-shell">
+        <section className="lg-closing" data-ink>
+          <div className="wrap">
             <div>
-              <p>{closing.kicker}</p>
-              <h2>{closing.title}</h2>
+              <p className="kick">{closing.kicker}</p>
+              <h2 className="disp">{closing.title}</h2>
             </div>
-            <a href={closing.href}>
+            <a className="btn btn-acid" href={closing.href}>
               {closing.label}
-              <ArrowRight size={16} aria-hidden="true" focusable="false" />
+              <Arrow />
             </a>
           </div>
         </section>
       </main>
 
-      <OnsideFooter home="/" />
+      <SiteFooter home="/" current={current} />
     </div>
   )
 }
