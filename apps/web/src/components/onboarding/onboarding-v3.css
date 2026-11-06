@@ -546,6 +546,11 @@
 
 .lp3 .ob-steps .of {
   display: none;
+  font-style: normal;
+}
+
+.lp3 .ob-head .sp {
+  margin-left: auto;
 }
 
 .lp3 .ob-grid {
@@ -622,7 +627,7 @@
   gap: 8px;
 }
 
-.lp3.ob3 .ob-fl .onside-label a {
+.lp3.ob3 .ob-fl .onside-label > :is(a, span[aria-hidden]) {
   color: var(--ink);
   font: 600 12px / 1 var(--body);
   letter-spacing: 0;
@@ -634,9 +639,9 @@
   box-shadow: inset 0 0 0 1px rgba(127, 154, 18, 0.45);
 }
 
-.lp3.ob3 .ob-fl.auto .onside-label > span::after {
-  content: " · pelo CEP";
+.lp3.ob3 .ob-auto {
   color: var(--auto);
+  font-style: normal;
 }
 
 .lp3.ob3 .ob-cepf {
@@ -971,6 +976,7 @@
   gap: 9px;
   margin: 16px 0 0;
   padding: 16px 0 0;
+  margin-bottom: 18px;
   border-top: 1px dashed var(--line2);
   font-size: 14px;
   list-style: none;
@@ -996,10 +1002,6 @@
   border-radius: 14px;
   background: var(--sub);
   font-size: 13.5px;
-}
-
-.lp3.ob3 .ob-pcf + .ob-pcb {
-  margin-top: 18px;
 }
 
 .lp3.ob3 .ob-pcb b {

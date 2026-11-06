@@ -1,0 +1,77 @@
+import { Link } from '@tanstack/react-router'
+import type { ReactNode } from 'react'
+import { Check, Logo } from '@/components/landing/v3/icons'
+import { ThemeSwitch } from '@/components/landing/v3/theme-switch'
+
+/*
+ * Casca do cadastro do bar no redesign (WEB-501; `cadastro()` do protótipo do
+ * painel): logo, os passos e a troca de tema no topo; o passo à esquerda e,
+ * quando há, a prévia "Assim o torcedor vê" à direita. Sem `steps`, só o topo
+ * e o miolo (o comprovante). CSS em `onboarding-v3.css`.
+ */
+export function PubObShell({
+  steps,
+  step = 0,
+  aside,
+  wide,
+  children
+}: {
+  steps?: readonly string[]
+  step?: number
+  aside?: ReactNode
+  /** Página inteira, sem a coluna da direita (o passo "Plano"). */
+  wide?: boolean
+  children: ReactNode
+}) {
+  return (
+    <div className="onside-app lp3 ent ob3 obb">
+      <a className="onside-skip-link" href="#onboarding-main">
+        Ir para o conteúdo
+      </a>
+      <header className="ob-head">
+        <Link className="logo" to="/" aria-label="Onside, página inicial">
+          <Logo size={26} />
+          <b>
+            ONSIDE<i></i>
+          </b>
+        </Link>
+        {steps ? (
+          <>
+            <p className="sr-only" aria-live="polite">
+              Passo {step + 1} de {steps.length} · {steps[step]}
+            </p>
+            <ol className="ob-steps" aria-hidden="true">
+              {steps.map((name, i) => (
+                <li
+                  key={name}
+                  className={i < step ? 'ok' : i === step ? 'on' : undefined}
+                >
+                  <span>{i < step ? <Check size={14} /> : i + 1}</span>
+                  {name}
+                  {i === step ? (
+                    <em className="of">
+                      {i + 1} de {steps.length}
+                    </em>
+                  ) : null}
+                </li>
+              ))}
+            </ol>
+          </>
+        ) : (
+          <span className="sp" />
+        )}
+        <ThemeSwitch variant="nav" />
+      </header>
+      <div className={`ob-grid${aside ? '' : ' one'}`}>
+        <main id="onboarding-main" className={`ob-main${wide ? ' wide' : ''}`}>
+          {children}
+        </main>
+        {aside ? (
+          <aside className="ob-prev" aria-label="Assim o torcedor vê">
+            <div className="ob-prev-in">{aside}</div>
+          </aside>
+        ) : null}
+      </div>
+    </div>
+  )
+}
