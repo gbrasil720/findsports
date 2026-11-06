@@ -45,13 +45,24 @@
 .lp3 .ob-seg li {
   flex: 1;
   height: 5px;
+  overflow: hidden;
   border-radius: 5px;
   background: var(--line2);
-  transition: background 0.3s var(--ease);
 }
 
-.lp3 .ob-seg li.on {
+/* O trecho enche da esquerda ao avançar e esvazia ao voltar (só transform). */
+.lp3 .ob-seg li::after {
+  content: "";
+  display: block;
+  height: 100%;
   background: var(--ink);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s var(--ease);
+}
+
+.lp3 .ob-seg li.on::after {
+  transform: scaleX(1);
 }
 
 .lp3 .ob-stepk {
@@ -1468,7 +1479,7 @@
   }
 
   .lp3.ob3 .ob-pc,
-  .lp3 .ob-seg li {
+  .lp3 .ob-seg li::after {
     transition: none;
   }
 }
