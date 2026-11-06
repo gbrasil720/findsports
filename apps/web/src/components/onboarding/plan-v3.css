@@ -532,6 +532,11 @@
   width: 100%;
 }
 
+/* Verde-limão leva tinta mesmo no cartão escuro, que troca a --ink. */
+.lp3.ob3 .pl-pc .act .btn-acid {
+  color: #12120f;
+}
+
 .lp3.ob3 .pl-pc .act .fine {
   margin-top: 8px;
   text-align: center;
