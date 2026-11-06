@@ -1,7 +1,7 @@
 import { ONBOARDING_TRIAL } from '@findsports_oficial/api/lib/plan-limits'
 import type { SubscriptionPlan } from '@findsports_oficial/db'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { type ReactNode, useCallback, useEffect, useRef } from 'react'
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import Loader from 'reicon-react/icons/Loader'
 import { toast } from 'sonner'
 import { Logo } from '@/components/landing/v3/icons'
@@ -60,6 +60,9 @@ export function PubReceipt({
   onContinue: () => void
 }) {
   const headingRef = useRef<HTMLHeadingElement>(null)
+  // A chave da impressora e do papel: trocar remonta os dois e a impressão
+  // recomeça do zero.
+  const [printRun, setPrintRun] = useState(0)
   useEffect(() => {
     headingRef.current?.focus({ preventScroll: true })
   }, [])
@@ -131,11 +134,16 @@ export function PubReceipt({
       <h1 ref={headingRef} className="ob-h" tabIndex={-1}>
         {bar.name} entrou na Onside
       </h1>
-      <div className="ob-printer" aria-hidden="true">
+      <div
+        key={`printer-${printRun}`}
+        className="ob-printer"
+        aria-hidden="true"
+      >
         <span className="slot" />
         <span className="ob-led" />
       </div>
       <div
+        key={`paper-${printRun}`}
         className="ob-paper"
         role="document"
         aria-label="Comprovante de cadastro"
@@ -155,6 +163,13 @@ export function PubReceipt({
         ))}
       </div>
       <div className="ob-cta">
+        <button
+          type="button"
+          className="btn btn-ghost"
+          onClick={() => setPrintRun((n) => n + 1)}
+        >
+          Imprimir de novo
+        </button>
         <button
           type="button"
           className="btn btn-acid"
