@@ -1937,17 +1937,17 @@
 /*
  * A prévia acompanha o formulário: o que entra (foto, endereço, descrição,
  * telefone, uma característica, o selo do plano) aparece em 200 ms em vez de
- * surgir de uma vez. A etiqueta sai do 95%, não do nada. Sair é instantâneo.
+ * surgir de uma vez. A etiqueta sai do 90%, não do nada. Sair é instantâneo.
  */
 .lp3.ob3
-  :is(
-    .ob-pimg.has img,
-    .ob-photo-th img,
-    .ob-pwhere,
-    .ob-pabout,
-    .ob-pcall,
-    .ob-pel
-  ) {
+:is(
+  .ob-pimg.has img,
+  .ob-photo-th img,
+  .ob-pwhere,
+  .ob-pabout,
+  .ob-pcall,
+  .ob-pel
+) {
   animation: ob-fade 0.2s var(--ease);
 }
 
