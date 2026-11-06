@@ -23,8 +23,12 @@ test('mostra Starter, Pro e Elite para quem ainda não assinou', async ({
   ).toBeVisible()
   for (const plan of ['Starter', 'Pro', 'Elite']) {
     await expect(
-      page.getByRole('radio', { name: new RegExp(`^${plan},`) })
+      page.getByRole('heading', { level: 3, name: plan, exact: true })
     ).toHaveCount(1)
+    // Sem assinatura, cada cartão contrata o próprio plano.
+    await expect(
+      page.getByRole('button', { name: `Contratar o ${plan}` }).first()
+    ).toBeVisible()
   }
 })
 
@@ -41,7 +45,7 @@ test('diz em nome de quem a assinatura sai, com o caminho para corrigir o bar (W
   // O checkout não pede nome nem empresa: saem do cadastro, e a tela avisa.
   await expect(
     page.getByText(
-      `Assinatura em nome de Dona Marta · Bar E2E ${barId.slice(0, 8)}.`
+      `A assinatura sai em nome de Dona Marta · Bar E2E ${barId.slice(0, 8)}.`
     )
   ).toBeVisible()
   await expect(
@@ -60,13 +64,13 @@ test('pagamento pendente: aviso para regularizar, sem checkout novo', async ({
 
   await expect(page.getByText('Pagamento pendente')).toBeVisible()
   await expect(
-    page.getByRole('heading', { name: 'Regularize seu plano Pro.' })
+    page.getByRole('heading', { name: 'Regularize seu plano Pro' })
   ).toBeVisible()
   await expect(
-    page.getByRole('link', { name: 'Regularizar assinatura' })
+    page.getByRole('link', { name: 'Atualizar pagamento' })
   ).toHaveAttribute('href', '/admin/billing')
   await expect(
-    page.getByRole('button', { name: /^Continuar com/ })
+    page.getByRole('button', { name: /^(Contratar|Mudar para|Testar)/ })
   ).toHaveCount(0)
   // WEB-328: sem checkout, não há o que anunciar.
   await expect(page.getByText(/Assinatura em nome de/)).toHaveCount(0)
@@ -88,16 +92,16 @@ test('trial encerrado sem assinatura no provedor: checkout do plano do trial', a
   await signIn(page, user)
   await page.goto('/plan')
 
-  await expect(page.getByText('Trial encerrado')).toBeVisible()
+  await expect(page.getByText('Teste encerrado')).toBeVisible()
   await expect(
-    page.getByRole('heading', { name: 'Continue no plano Elite.' })
+    page.getByRole('heading', { name: 'Seu teste do Elite acabou' })
   ).toBeVisible()
-  await expect(page.getByRole('radio', { name: /^Elite,/ })).toBeChecked()
+  // O cartão do plano do teste e a faixa de baixo contratam o mesmo plano.
   await expect(
-    page.getByRole('button', { name: 'Continuar com Elite' })
-  ).toBeVisible()
+    page.getByRole('button', { name: 'Contratar o Elite' })
+  ).toHaveCount(2)
   await expect(
-    page.getByRole('link', { name: 'Regularizar assinatura' })
+    page.getByRole('link', { name: 'Atualizar pagamento' })
   ).toHaveCount(0)
 })
 
@@ -116,10 +120,10 @@ test('trial encerrado com assinatura no provedor: regulariza, sem checkout novo'
   await page.goto('/plan')
 
   await expect(
-    page.getByRole('link', { name: 'Regularizar assinatura' })
+    page.getByRole('link', { name: 'Atualizar pagamento' })
   ).toBeVisible()
   await expect(
-    page.getByRole('button', { name: /^Continuar com/ })
+    page.getByRole('button', { name: /^(Contratar|Mudar para|Testar)/ })
   ).toHaveCount(0)
 })
 
@@ -140,33 +144,34 @@ test('trial em vigor: sem cartão, e contratar qualquer plano já é possível (
   // cobrança". O card do Starter fala em ciclo de cobrança, mas do limite de
   // jogos (WEB-353).
   await expect(
-    page.getByRole('heading', { name: /^Você está no trial do Elite até / })
+    page.getByRole('heading', { name: 'Você está testando o Elite' })
   ).toBeVisible()
-  await expect(page.getByText('Alterar plano')).toHaveCount(0)
+  await expect(page.getByText('Plano e cobrança')).toHaveCount(0)
   await expect(page.getByText(/próximo ciclo de cobrança/)).toHaveCount(0)
   await expect(
     page.getByText('Até 5 jogos por ciclo de cobrança na agenda')
   ).toBeVisible()
-  await expect(page.getByText('O teste grátis não pede cartão.')).toBeVisible()
+  // No celular o cabeçalho encurta, e o placar diz "Cartão: NÃO".
+  await expect(page.getByText('O teste grátis não pede cartão.')).toBeAttached()
   await expect(
     page.getByText(/primeira cobrança só sai em \d+ de /)
-  ).toBeVisible()
-
-  // WEB-249: abre no plano do trial, não num inferior a um clique do checkout.
-  await expect(page.getByRole('radio', { name: /^Elite,/ })).toBeChecked()
-  await expect(page.getByText(/plano inferior ao atual/)).toHaveCount(0)
-  // O plano do teste ainda não foi contratado: o botão contrata, não diz
-  // "Plano atual". Fica desabilitado aqui só porque o checkout está desligado.
-  await expect(page.getByRole('button', { name: 'Plano atual' })).toHaveCount(0)
+  ).toBeAttached()
   await expect(
-    page.getByRole('button', { name: 'Contratar Elite' })
-  ).toBeVisible()
+    page.getByRole('region', { name: 'Seu teste grátis' })
+  ).toContainText('NÃO')
 
-  await page.getByRole('radio', { name: /^Pro,/ }).check({ force: true })
+  // WEB-249: a faixa contrata o plano do teste, não um inferior. O plano do
+  // teste ainda não foi contratado: nada de "Seu plano atual".
   await expect(
-    page.getByRole('button', { name: 'Contratar Pro' })
+    page.getByRole('button', { name: 'Seu plano atual' })
+  ).toHaveCount(0)
+  await expect(
+    page.getByRole('button', { name: 'Contratar o Elite' })
   ).toBeVisible()
-  await expect(page.getByText(/plano inferior ao atual/)).toBeVisible()
+  // Os outros cartões testam, sem cartão (WEB-358).
+  await expect(
+    page.getByRole('button', { name: 'Testar o Pro grátis' })
+  ).toBeVisible()
 })
 
 // WEB-358: o teste do cadastro não é só do Elite. Sem cartão e com o checkout
@@ -203,26 +208,21 @@ test('trial em vigor: testa outro plano sem cartão, confirma o que perde no men
   await page.goto('/plan')
 
   await expect(
-    page.getByRole('heading', { name: /^Você está no trial do Elite até / })
+    page.getByRole('heading', { name: 'Você está testando o Elite' })
   ).toBeVisible()
+  // Plano em teste ainda não é o plano contratado, e não tem para onde trocar.
   await expect(
-    page.getByText('Até lá você pode testar qualquer plano abaixo')
-  ).toBeVisible()
-  // Plano em teste ainda não é o plano contratado.
-  await expect(
-    page.getByText(/Você está testando o plano Elite\./)
-  ).toBeVisible()
-  // O plano em teste não tem para onde trocar.
-  await expect(
-    page.getByRole('button', { name: 'Testando o Elite' })
+    page.getByRole('button', { name: 'Você está testando o Elite' })
   ).toBeDisabled()
 
   // Plano menor: o mesmo aviso do que se perde da troca paga (WEB-351).
-  await page.getByRole('radio', { name: /^Starter,/ }).check({ force: true })
-  await page.getByRole('button', { name: 'Testar o Starter grátis' }).click()
+  const testStarter = page
+    .getByRole('button', { name: 'Testar o Starter grátis' })
+    .first()
+  await testStarter.click()
   const dialog = page.getByRole('dialog')
   await expect(
-    dialog.getByRole('heading', { name: 'Trocar para o Starter?' })
+    dialog.getByRole('heading', { name: /^O que o .+ perde$/ })
   ).toBeVisible()
   await expect(dialog).toContainText('Jogos ilimitados na agenda')
   await expect(dialog).toContainText(
@@ -232,14 +232,14 @@ test('trial em vigor: testa outro plano sem cartão, confirma o que perde no men
   await expect(dialog).toContainText(
     'Sua oferta da casa sai do perfil e fica guardada.'
   )
-  await dialog.getByRole('button', { name: 'Manter o Elite' }).click()
+  await dialog.getByRole('button', { name: 'Ficar no Elite' }).click()
   await expect(dialog).toHaveCount(0)
   expect(await stored()).toEqual(before)
 
-  await page.getByRole('button', { name: 'Testar o Starter grátis' }).click()
+  await testStarter.click()
   await dialog.getByRole('button', { name: 'Testar o Starter grátis' }).click()
   await expect(
-    page.getByRole('heading', { name: /^Você está no trial do Starter até / })
+    page.getByRole('heading', { name: 'Você está testando o Starter' })
   ).toBeVisible()
   await expect(
     page.getByRole('status').filter({
@@ -256,20 +256,18 @@ test('trial em vigor: testa outro plano sem cartão, confirma o que perde no men
 
   await page.reload()
   await expect(
-    page.getByRole('heading', { name: /^Você está no trial do Starter até / })
+    page.getByRole('heading', { name: 'Você está testando o Starter' })
   ).toBeVisible()
-  await expect(page.getByRole('radio', { name: /^Starter,/ })).toBeChecked()
   await expect(
-    page.getByRole('button', { name: 'Testando o Starter' })
+    page.getByRole('button', { name: 'Você está testando o Starter' })
   ).toBeDisabled()
   await expect(page.getByText(/Agora você está testando/)).toHaveCount(0)
 
   // Plano maior troca direto, e dá para trocar de novo.
-  await page.getByRole('radio', { name: /^Pro,/ }).check({ force: true })
   await page.getByRole('button', { name: 'Testar o Pro grátis' }).click()
   await expect(dialog).toHaveCount(0)
   await expect(
-    page.getByRole('heading', { name: /^Você está no trial do Pro até / })
+    page.getByRole('heading', { name: 'Você está testando o Pro' })
   ).toBeVisible()
   expect(await stored()).toEqual({ ...before, plan: 'pro', bar_plan: 'pro' })
 })
@@ -291,12 +289,9 @@ test('trial encerrado e trial que já é do Stripe não oferecem testar outro pl
     await page.context().clearCookies()
     await signIn(page, user)
     await page.goto('/plan')
-    // A assinatura chega depois da tela: antes dela o Pro já vem marcado, o
-    // `check` não faz nada e a seleção volta para o plano do bar.
-    await expect(page.getByRole('radio', { name: /^Elite,/ })).toBeChecked()
-    await page.getByRole('radio', { name: /^Pro,/ }).check({ force: true })
+    // Vencido, o cartão contrata; já do Stripe, ele troca de plano.
     await expect(
-      page.getByRole('button', { name: 'Continuar com Pro' })
+      page.getByRole('button', { name: /^(Contratar o Pro|Mudar para o Pro)$/ })
     ).toBeVisible()
     await expect(page.getByRole('button', { name: /^Test/ })).toHaveCount(0)
   }
@@ -316,9 +311,13 @@ test('trial que já é do Stripe: troca de plano, com o plano contratado como at
   await signIn(page, user)
   await page.goto('/plan')
 
-  await expect(page.getByText('Alterar plano')).toBeVisible()
-  await expect(page.getByRole('radio', { name: /^Pro,/ })).toBeChecked()
-  await expect(page.getByRole('button', { name: 'Plano atual' })).toBeDisabled()
+  await expect(page.getByText('Plano e cobrança')).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: 'Seu plano é o Pro' })
+  ).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'Seu plano atual' })
+  ).toBeDisabled()
 })
 
 // WEB-347: depois de contratar no teste, o painel confirma que "pegou" — selo
@@ -368,8 +367,15 @@ test('assinatura paga abre no próprio plano, sem checkout de outro por padrão'
   await signIn(page, user)
   await page.goto('/plan')
 
-  await expect(page.getByRole('radio', { name: /^Starter,/ })).toBeChecked()
-  await expect(page.getByRole('button', { name: 'Plano atual' })).toBeDisabled()
+  await expect(
+    page.getByRole('heading', { name: 'Seu plano é o Starter' })
+  ).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'Seu plano atual' })
+  ).toBeDisabled()
+  await expect(
+    page.getByRole('button', { name: 'Gerenciar pagamento' })
+  ).toBeVisible()
 })
 
 test('/plan/confirmed sem a marca do checkout volta para /plan', async ({
