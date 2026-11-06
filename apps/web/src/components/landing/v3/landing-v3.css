@@ -106,9 +106,12 @@
     box-shadow 0.18s var(--ease),
     background 0.2s;
 }
-.lp3 .btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 0 var(--sh);
+/* Só com mouse: no toque, o botão ficava levantado depois do toque. */
+@media (hover: hover) and (pointer: fine) {
+  .lp3 .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 0 var(--sh);
+  }
 }
 .lp3 .btn:active {
   transform: translateY(3px);
