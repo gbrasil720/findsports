@@ -62,6 +62,7 @@ import {
   recommendPlan
 } from '@/lib/pub-plan-recommendation'
 import { uploadMedia } from '@/lib/upload-media'
+import { PUB_LIVE_PATH } from '@/utils/auth-guards'
 import { getCallbackUrl } from '@/utils/callback-url'
 import { formatStoredPhone } from '@/utils/format-phone'
 import { useTRPC } from '@/utils/trpc'
@@ -244,13 +245,11 @@ function PubOnboarding() {
     // regravar o cache de sessão o guard da rota devolveria o usuário
     // para cá.
     await refreshSessionCache()
-    // Deep link que esperou a liberação volta para ele; sem destino, o plano.
-    // `await`: o botão segue em "salvando" até a próxima tela abrir, em vez
-    // de voltar ao normal com a revisão ainda na tela (WEB-286).
+    // Deep link que esperou a liberação volta para ele; sem destino, a tela
+    // "no ar". `await`: o botão segue em "salvando" até a próxima tela abrir,
+    // em vez de voltar ao normal com a revisão ainda na tela (WEB-286).
     await navigate(
-      callbackUrl === '/dashboard'
-        ? { to: '/plan', search: { trial: 'started' } }
-        : { to: callbackUrl }
+      callbackUrl === '/dashboard' ? { to: PUB_LIVE_PATH } : { to: callbackUrl }
     )
   }
 
@@ -492,8 +491,8 @@ function PubOnboarding() {
 
   const back = () => step > 0 && setStep((s) => s - 1)
 
-  // "Ver meu bar no ar": o destino de sempre, `/plan` com o aviso de que o
-  // teste começou, ou o link de onde o dono veio.
+  // "Ver meu bar no ar": o destino de sempre, a tela "no ar", ou o link de
+  // onde o dono veio.
   const sairDoComprovante = async () => {
     setLeaving(true)
     try {

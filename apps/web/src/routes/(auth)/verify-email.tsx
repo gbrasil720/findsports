@@ -31,6 +31,7 @@ import {
   parsePubOnboardingDraft
 } from '@/lib/pub-onboarding-draft'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
+import { PUB_LIVE_PATH } from '@/utils/auth-guards'
 import { getCallbackUrl, withCallbackUrl } from '@/utils/callback-url'
 import { useTRPC } from '@/utils/trpc'
 
@@ -79,7 +80,7 @@ function VerifyEmailPage() {
   )
   const finishSignup = useFinishPubSignup()
   // Bar criado daqui (WEB-501): o comprovante abre no lugar desta tela, e o
-  // botão dele segue para `/plan`, como seguia antes.
+  // botão dele segue para a tela "no ar", como o do formulário.
   const [receipt, setReceipt] = useState<PubReceiptData | null>(null)
   const [leaving, setLeaving] = useState(false)
 
@@ -138,7 +139,7 @@ function VerifyEmailPage() {
           ? await finishSignup({ ...payload, plan })
           : null
         if (comprovante) setReceipt(comprovante)
-        else navigate({ to: '/plan', search: { trial: 'started' } })
+        else navigate({ to: PUB_LIVE_PATH })
         return
       }
 
@@ -195,7 +196,7 @@ function VerifyEmailPage() {
           continueLabel="Ver meu bar no ar"
           onContinue={() => {
             setLeaving(true)
-            void navigate({ to: '/plan', search: { trial: 'started' } })
+            void navigate({ to: PUB_LIVE_PATH })
           }}
         />
       </PubObShell>
