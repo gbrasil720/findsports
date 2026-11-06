@@ -6,7 +6,7 @@ import { createUser } from '../../fixtures/users'
 
 // WEB-113: o teste grátis do cadastro, regra fixa desde o WEB-233.
 
-test('o bar nasce publicado, com 120 dias de teste do Elite, e o torcedor o abre', async ({
+test('o bar nasce publicado, com 90 dias de teste do Elite, e o torcedor o abre', async ({
   page,
   browser
 }) => {
@@ -30,12 +30,12 @@ test('o bar nasce publicado, com 120 dias de teste do Elite, e o torcedor o abre
     plan: string
     status: string
     external_subscription_id: string | null
-    vence_em_120_dias: boolean
+    vence_em_90_dias: boolean
   }>(
     `SELECT b.id, b.is_active, b.plan AS bar_plan, s.plan, s.status,
             s.external_subscription_id,
-            s.current_period_end BETWEEN now() + interval '120 days' - interval '5 minutes'
-                                     AND now() + interval '120 days' AS vence_em_120_dias
+            s.current_period_end BETWEEN now() + interval '90 days' - interval '5 minutes'
+                                     AND now() + interval '90 days' AS vence_em_90_dias
      FROM bar b LEFT JOIN subscription s ON s.bar_id = b.id
      WHERE b.user_id = $1`,
     [owner.id]
@@ -48,7 +48,7 @@ test('o bar nasce publicado, com 120 dias de teste do Elite, e o torcedor o abre
     status: 'trialing',
     // Trial do cadastro: sem cartão e sem nada no Stripe (WEB-31).
     external_subscription_id: null,
-    vence_em_120_dias: true
+    vence_em_90_dias: true
   })
 
   // O repro do ticket: antes, outra conta recebia "Bar não encontrado.".
@@ -107,7 +107,7 @@ test('o plano escolhido no cadastro vira o do teste, com comprovante, tela "no a
   await expect(page.getByRole('heading', { name: 'Tudo certo?' })).toBeVisible()
   await expect(
     page.getByText(
-      'Confira antes de colocar no ar. Ao continuar, salvamos o cadastro, seu bar entra no ar e o teste grátis do Starter começa: 120 dias, sem cartão.'
+      'Confira antes de colocar no ar. Ao continuar, salvamos o cadastro, seu bar entra no ar e o teste grátis do Starter começa: 90 dias, sem cartão.'
     )
   ).toBeVisible()
   await button('Colocar meu bar no ar').click()

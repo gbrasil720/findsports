@@ -33,7 +33,7 @@ async function stored(t: Awaited<ReturnType<typeof seedBar>>) {
 integrationTest(
   'teste do cadastro em vigor: troca de plano quantas vezes quiser, sem mexer no fim do teste, e o limite do Starter vale na hora',
   async () => {
-    const trialEnd = inDays(120)
+    const trialEnd = inDays(90)
     const t = await seedBar('elite', 'trialing', trialEnd)
     const sportId = crypto.randomUUID()
     try {

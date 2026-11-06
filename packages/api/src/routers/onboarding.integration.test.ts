@@ -81,7 +81,7 @@ integrationTest(
  * "desligado, Starter, 14 dias" para provar que ninguém mais a lê.
  */
 integrationTest(
-  'completePub publica o bar com o teste de 120 dias do Elite, sem ler a chave antiga',
+  'completePub publica o bar com o teste de 90 dias do Elite, sem ler a chave antiga',
   async () => {
     const { db, appRouter } = await load()
     const { appConfigStore } = await import('../lib/app-config')
@@ -145,8 +145,8 @@ integrationTest(
       const { rows } = await db.execute(sql`
         SELECT b.is_active, b.plan AS bar_plan, s.plan, s.status,
                s.external_subscription_id,
-               s.current_period_end BETWEEN now() + interval '120 days' - interval '5 minutes'
-                                        AND now() + interval '120 days' AS vence_em_120_dias
+               s.current_period_end BETWEEN now() + interval '90 days' - interval '5 minutes'
+                                        AND now() + interval '90 days' AS vence_em_90_dias
         FROM bar b LEFT JOIN subscription s ON s.bar_id = b.id
         WHERE b.user_id = ${id}
       `)
@@ -157,7 +157,7 @@ integrationTest(
           plan: 'elite',
           status: 'trialing',
           external_subscription_id: null,
-          vence_em_120_dias: true
+          vence_em_90_dias: true
         }
       ])
     } finally {
