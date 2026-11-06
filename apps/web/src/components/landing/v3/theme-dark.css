@@ -1,0 +1,185 @@
+/* biome-ignore-all lint/style/noDescendingSpecificity: o tema escuro vem por último e só troca cor. */
+/* biome-ignore-all lint/complexity/noImportantStyles: os campos da entrada já usam !important (entrada-v3.css). */
+/*
+ * Tema escuro do redesign (WEB-501): landing, termos, privacidade, guia e
+ * entrada seguem o tema do sistema (decisão do dono, 06/11/2026).
+ *
+ * Como funciona: no escuro, `--ink` e `--paper` trocam de lugar em `.lp3`, e
+ * tudo que era papel vira tinta sem regra nova. O que já é escuro no claro
+ * (topo, passos, telão, fecho, rodapé) e o que fica sobre verde-limão volta
+ * aos valores do claro, então não muda. O resto são as cores escritas à mão
+ * nas folhas, acertadas aqui uma a uma.
+ */
+
+@media (prefers-color-scheme: dark) {
+  html:has(.lp3),
+  html:has(.lp3) body {
+    background: #12120f;
+    color-scheme: dark;
+  }
+
+  .lp3 {
+    --ink: #f1eee6;
+    --paper: #12120f;
+    --white: #1c1c18;
+    --stone: #1c1c18;
+    --sand: #000;
+    --muted: #aaa9a4;
+    --red: #f3421d;
+    --lg-text: #d6d3cb;
+    color-scheme: dark;
+  }
+
+  /* Escuro nos dois temas, ou sobre verde-limão: as cores do claro. */
+  .lp3
+  :is(
+    .hero,
+    .ticker,
+    .how,
+    .ver,
+    .sports,
+    .final,
+    .foot,
+    .lg-hero,
+    .lg-company,
+    .lg-closing,
+    .ent-right,
+    .btn-acid,
+    .occ li.hl,
+    .tag em,
+    .pm,
+    .lg-other,
+    .lg-skip,
+    .ent-mail,
+    .onside-btn-acid,
+    .ent-role button[aria-pressed="true"] .ic,
+    form [data-slot="button"][type="submit"]
+  ) {
+    --ink: #12120f;
+    --paper: #f1eee6;
+    --white: #fbfaf6;
+    --stone: #e7e3db;
+    --sand: #d9d4c8;
+    --muted: #55554f;
+    --red: #e8320c;
+  }
+
+  /* Destaque dos títulos: verde-limão sobre tinta, como nas seções escuras. */
+  .lp3 .h2-2,
+  .lp3 .lg-hero h1 span,
+  .lp3.ent .text-\[var\(--onside-live-text\)\] {
+    color: var(--acid);
+  }
+
+  /* Cabeçalho: sempre tinta, e o texto sempre papel. */
+  .lp3 .nav {
+    color: #f1eee6;
+  }
+
+  /* Cabeçalho sobre as seções que eram papel. */
+  .lp3 .nav.on-paper {
+    background: rgba(18, 18, 15, 0.86);
+    box-shadow:
+      inset 0 0 0 1px rgba(241, 238, 230, 0.1),
+      0 18px 40px -26px rgba(0, 0, 0, 0.8);
+  }
+
+  /* Texto corrido escrito à mão em cinza-escuro. */
+  .lp3 :is(.rev, .occ-grid .lede, .evt, .story-grid p, .pub-head .lede),
+  .lp3.ent :is(.ent-sub, .ent-how li, .ent-help) {
+    color: #d6d3cb;
+  }
+
+  .lp3 .ev-chat .evt {
+    border-color: rgba(241, 238, 230, 0.16);
+  }
+
+  /* Sombras de profundidade: tinta pura no lugar do cinza-papel. */
+  .lp3 :is(.chat, .note, .browser, .ev) {
+    box-shadow:
+      0 3px 0 #000,
+      0 30px 60px -36px rgba(0, 0, 0, 0.9);
+  }
+
+  /* Entrada: campos, cartões e linhas. */
+  .lp3.ent {
+    --onside-ink: #f1eee6;
+    --onside-paper: #12120f;
+    --onside-muted: #aaa9a4;
+    --onside-line: rgba(241, 238, 230, 0.14);
+  }
+
+  .lp3.ent .onside-input-group {
+    background: #1c1c18 !important;
+    box-shadow: inset 0 0 0 1px rgba(241, 238, 230, 0.2) !important;
+  }
+
+  .lp3.ent .onside-input-control {
+    color: #f1eee6;
+  }
+
+  .lp3.ent :is(.ent-role button, .ent-how) {
+    background: #1c1c18;
+    box-shadow: 0 3px 0 #000;
+  }
+
+  .lp3.ent .ent-role button[aria-pressed="true"] {
+    box-shadow:
+      inset 0 0 0 2px #f1eee6,
+      0 3px 0 #000;
+  }
+
+  .lp3.ent .ent-role .ic {
+    background: #26261f;
+  }
+
+  .lp3.ent :is(.ent-or::before, .ent-or::after) {
+    background: rgba(241, 238, 230, 0.2);
+  }
+
+  .lp3.ent .ent-how li + li {
+    border-top-color: rgba(241, 238, 230, 0.1);
+  }
+
+  .lp3.ent :is(.ent-help, .onside-btn-outline, .onside-btn-ghost, .btn-ghost) {
+    box-shadow: inset 0 0 0 1.5px rgba(241, 238, 230, 0.25);
+  }
+
+  .lp3.ent .btn.btn-ghost {
+    box-shadow: inset 0 0 0 1.5px rgba(241, 238, 230, 0.25);
+  }
+
+  .lp3.ent .btn.btn-ghost:hover {
+    box-shadow: inset 0 0 0 1.5px #f1eee6;
+  }
+
+  .lp3.ent .onside-field-error {
+    color: #f3421d;
+  }
+
+  /* Termos e privacidade: texto, atenção, tabela e índice. */
+  .lp3.lg {
+    --lg-text: #d6d3cb;
+  }
+
+  .lp3 .lg-attention {
+    background: #1c1c18;
+    color: #e7e3db;
+    box-shadow:
+      inset 0 0 0 1px #34342d,
+      0 4px 0 #000;
+  }
+
+  .lp3 .lg-table thead tr {
+    background: #26261f;
+    color: #f1eee6;
+  }
+
+  .lp3 .lg-index nav a[aria-current] span:first-child {
+    color: #5b6d0c;
+  }
+
+  .lp3 .lg-index-toggle {
+    box-shadow: 0 12px 30px -16px rgba(0, 0, 0, 0.9);
+  }
+}
