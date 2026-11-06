@@ -58,6 +58,7 @@ export function SiteNav({ home = '' }: ChromeProps) {
           ))}
         </div>
         <div className="right">
+          <ThemeSwitch variant="nav" />
           <a
             className="btn btn-ghost"
             href={BAR_SIGNUP_HREF}

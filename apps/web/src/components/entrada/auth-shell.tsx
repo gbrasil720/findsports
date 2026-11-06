@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import Eye from 'reicon-react/icons/Eye'
 import { Check, Logo } from '@/components/landing/v3/icons'
+import { ThemeSwitch } from '@/components/landing/v3/theme-switch'
 
 /*
  * Casca das telas de entrada no redesign (WEB-501; design no artifact
@@ -94,6 +95,7 @@ export function AuthShell({
                 ONSIDE<i></i>
               </b>
             </Link>
+            <ThemeSwitch variant="nav" />
           </div>
           <div className="ent-form">{children}</div>
         </main>

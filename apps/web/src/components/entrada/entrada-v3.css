@@ -28,6 +28,13 @@
   padding: 28px max(36px, var(--gut)) 40px;
 }
 
+.lp3 .ent-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
 .lp3 .ent-top .logo b {
   font-size: 24px;
 }
