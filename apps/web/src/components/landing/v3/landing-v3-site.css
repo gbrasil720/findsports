@@ -805,3 +805,8 @@ html:has(.lp3),
 html:has(.lp3) body {
   overflow-x: clip;
 }
+
+/* Texto da seção para bares: cinza-escuro no claro (o escuro em theme-dark.css). */
+.lp3 .pub-head .lede {
+  color: #3d3d38;
+}

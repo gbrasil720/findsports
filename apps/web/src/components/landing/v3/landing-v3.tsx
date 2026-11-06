@@ -1009,10 +1009,7 @@ export function LandingV3() {
                 <span className="tag">
                   <em>120 DIAS</em>de Elite grátis, sem cartão
                 </span>
-                <p
-                  className="lede"
-                  style={{ marginTop: '20px', color: '#3d3d38' }}
-                >
+                <p className="lede" style={{ marginTop: '20px' }}>
                   Publique a grade, apareça para quem procura aquele jogo perto
                   de você e veja quem marcou que vai e quem chegou de verdade.
                 </p>
