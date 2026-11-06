@@ -10,8 +10,7 @@ import Check from 'reicon-react/icons/Check'
 import Envelope from 'reicon-react/icons/Envelope'
 import Loader from 'reicon-react/icons/Loader'
 import { toast } from 'sonner'
-import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
-import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
+import { type AuthPanel, AuthShell } from '@/components/entrada/auth-shell'
 import { useTurnstile } from '@/components/turnstile'
 import { authClient, refreshSessionCache } from '@/lib/auth-client'
 import { mensagemOnboardingJaConcluido } from '@/lib/onboarding-concluido'
@@ -28,6 +27,17 @@ import {
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { getCallbackUrl, withCallbackUrl } from '@/utils/callback-url'
 import { useTRPC } from '@/utils/trpc'
+
+const PANEL: AuthPanel = {
+  kind: 'caption',
+  led: 'scarf',
+  title: (
+    <>
+      Quase <span>lá.</span>
+    </>
+  ),
+  items: ['Confirme o e-mail e siga para o próximo passo']
+}
 
 export const Route = createFileRoute('/(auth)/verify-email')({
   head: () =>
@@ -157,16 +167,17 @@ function VerifyEmailPage() {
   }
 
   return (
-    <OnboardingLayout variant="pub">
-      <OnboardingHeader label="Confirmação de e-mail" />
-      <main className="mx-auto grid max-w-3xl gap-8 border border-[var(--onside-line)] bg-[var(--onside-paper)] p-6 text-[var(--onside-ink)] shadow-[8px_8px_0_var(--onside-acid)] sm:p-10 md:grid-cols-[96px_1fr]">
-        <div className="grid size-24 place-items-center border-2 border-[var(--onside-ink)] bg-[var(--onside-acid)]">
-          <Envelope size={42} color="currentColor" aria-hidden="true" />
+    <AuthShell panel={PANEL}>
+      <div className="w-full">
+        <div className="ent-mail">
+          <Envelope size={40} color="currentColor" aria-hidden="true" />
         </div>
         <div>
-          <p className="onside-kicker onside-kicker-live">Última checagem</p>
-          <h1 className="onside-display mb-4 text-4xl sm:text-5xl">
-            CONFIRME O E-MAIL. DEPOIS, É BOLA ROLANDO.
+          <h1 className="onside-display mb-4">
+            Confira sua{' '}
+            <span className="text-[var(--onside-live-text)]">
+              caixa de entrada
+            </span>
           </h1>
           <p className="max-w-xl text-[var(--onside-muted)] leading-relaxed">
             Enviamos um link para{' '}
@@ -184,15 +195,15 @@ function VerifyEmailPage() {
             </li>
             <li className="flex items-center gap-3">
               <Check size={18} color="currentColor" aria-hidden="true" /> Volte
-              aqui para seguir aos planos.
+              aqui para continuar.
             </li>
           </ol>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-col gap-3">
             <button
               type="button"
               onClick={continueVerified}
               disabled={checking}
-              className="onside-btn onside-btn-acid"
+              className="onside-btn onside-btn-acid ent-full"
             >
               {checking ? (
                 <Loader
@@ -208,7 +219,7 @@ function VerifyEmailPage() {
               type="button"
               onClick={resend}
               disabled={resending}
-              className="onside-btn onside-btn-outline"
+              className="onside-btn onside-btn-outline ent-full"
             >
               {resending ? 'Reenviando…' : 'Reenviar link'}
             </button>
@@ -252,7 +263,7 @@ function VerifyEmailPage() {
             e-mail.
           </p>
         </div>
-      </main>
-    </OnboardingLayout>
+      </div>
+    </AuthShell>
   )
 }
