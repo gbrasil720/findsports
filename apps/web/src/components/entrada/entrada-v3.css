@@ -537,3 +537,16 @@
     animation: none;
   }
 }
+
+/* Ícone grande das telas de e-mail enviado. */
+.lp3.ent .ent-mail {
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  margin-bottom: 22px;
+  border-radius: 26px;
+  background: var(--acid);
+  color: var(--ink);
+  box-shadow: 0 4px 0 #7f9a12;
+}

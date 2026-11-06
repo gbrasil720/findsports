@@ -31,7 +31,13 @@ export type AuthPanel =
 function Panel({ panel }: { panel: AuthPanel }) {
   return (
     <aside className="ent-right" aria-hidden="true">
-      <img src={`/landing/v3/led-${panel.led}.webp`} alt="" />
+      {/* biome-ignore lint/performance/noImgElement: pôster estático do telão, de public/landing/v3, com width e height. */}
+      <img
+        src={`/landing/v3/led-${panel.led}.webp`}
+        alt=""
+        width="1920"
+        height="1280"
+      />
       {panel.kind === 'caption' ? (
         <>
           {panel.badge ? <span className="ent-live">{panel.badge}</span> : null}
