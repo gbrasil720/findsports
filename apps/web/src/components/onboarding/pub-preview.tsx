@@ -13,6 +13,7 @@ export function PubPreview({
   city,
   amenities,
   screenCount,
+  photoUrl,
   plan,
   note
 }: {
@@ -21,6 +22,8 @@ export function PubPreview({
   city: string
   amenities: number[]
   screenCount: number | null
+  /** A capa escolhida no passo do estabelecimento, ainda no navegador. */
+  photoUrl?: string | null
   /** Só na revisão: o selo do plano escolhido, que o Starter não tem. */
   plan?: SubscriptionPlan
   note: string
@@ -36,8 +39,13 @@ export function PubPreview({
     <>
       <p className="ob-k">Assim o torcedor vê</p>
       <div className="ob-pcard">
-        <div className="ob-pimg">
-          A foto de capa entra aqui. Você manda depois, no painel do bar.
+        <div className={`ob-pimg${photoUrl ? ' has' : ''}`}>
+          {photoUrl ? (
+            // biome-ignore lint/performance/noImgElement: prévia de um arquivo local (blob:), sem otimizador.
+            <img src={photoUrl} alt="" />
+          ) : (
+            'A foto de capa entra aqui. Você escolhe no passo do estabelecimento ou depois, no painel.'
+          )}
           {plan && plan !== 'starter' ? (
             <span className="ob-pel">{getPlan(plan).name.toUpperCase()}</span>
           ) : null}

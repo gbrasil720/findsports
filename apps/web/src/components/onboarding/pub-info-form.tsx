@@ -1,9 +1,18 @@
+import {
+  PHOTO_CONTENT_TYPES,
+  PHOTO_MAX_BYTES
+} from '@findsports_oficial/api/lib/blob-photo'
 import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { Check } from '@/components/landing/v3/icons'
 import { PhoneInput } from '@/components/phone-input'
 import { UfSelect } from '@/components/uf-select'
-import { type CepStatus, juntarEndereco, separarNumero } from '@/lib/cep'
+import {
+  type CepStatus,
+  type EnderecoDoCep,
+  juntarEndereco,
+  separarNumero
+} from '@/lib/cep'
 
 type FieldName =
   | 'name'
@@ -18,6 +27,8 @@ type Props = {
   name: string
   cep: string
   cepStatus: CepStatus
+  /** O que o CEP trouxe; o campo editado à mão perde o "pelo CEP". */
+  cepFill: EnderecoDoCep | null
   /** Com os oito dígitos, a tela busca no ViaCEP e preenche o endereço. */
   onCepChange: (value: string) => void
   /** Rua e número juntos, "Rua Aspicuelta, 214": a coluna é uma só. */
@@ -31,6 +42,11 @@ type Props = {
   /** Ao sair da cidade, a tela concilia a UF com ela (`uf-select.tsx`). */
   onCityBlur?: () => void
   errors?: Partial<Record<'phone', string>>
+  /** A capa escolhida, ainda só no navegador. */
+  photoUrl: string | null
+  onPhoto: (file: File | null) => void
+  /** Sem e-mail confirmado o cadastro termina em outra tela, sem a foto. */
+  photoLater: boolean
 }
 
 const DESCRIPTION_MAX = 500
@@ -100,6 +116,7 @@ export function PubInfoForm({
   name,
   cep,
   cepStatus,
+  cepFill,
   onCepChange,
   address,
   neighborhood,
@@ -109,8 +126,12 @@ export function PubInfoForm({
   description,
   onChange,
   onCityBlur,
-  errors = {}
+  errors = {},
+  photoUrl,
+  onPhoto,
+  photoLater
 }: Props) {
+  const [photoError, setPhotoError] = useState<string | null>(null)
   // Rua e número em dois campos, gravados juntos. O par fica aqui enquanto o
   // dono digita (o `trim` de `juntarEndereco` comeria o espaço do fim da
   // rua); quando o endereço muda por fora (CEP, rascunho), o par é refeito.
@@ -127,7 +148,8 @@ export function PubInfoForm({
     onChange('address', juntarEndereco(nextRua, nextNumero))
   }
 
-  const auto = cepStatus === 'achou'
+  const fromCep = (value: string, found: string | undefined) =>
+    cepStatus === 'achou' && Boolean(found) && value.trim() === found
   const status = cepStatus === 'idle' ? null : CEP_STATUS[cepStatus]
 
   return (
@@ -191,7 +213,12 @@ export function PubInfoForm({
         </span>
       </div>
 
-      <Field id="pub-street" label="Rua" span="c4" auto={auto}>
+      <Field
+        id="pub-street"
+        label="Rua"
+        span="c4"
+        auto={fromCep(rua, cepFill?.rua)}
+      >
         <input
           id="pub-street"
           name="street"
@@ -217,7 +244,12 @@ export function PubInfoForm({
         />
       </Field>
 
-      <Field id="pub-neighborhood" label="Bairro" span="c2" auto={auto}>
+      <Field
+        id="pub-neighborhood"
+        label="Bairro"
+        span="c2"
+        auto={fromCep(neighborhood, cepFill?.bairro)}
+      >
         <input
           id="pub-neighborhood"
           name="neighborhood"
@@ -230,7 +262,12 @@ export function PubInfoForm({
           className="onside-input"
         />
       </Field>
-      <Field id="pub-city" label="Cidade" span="c2" auto={auto}>
+      <Field
+        id="pub-city"
+        label="Cidade"
+        span="c2"
+        auto={fromCep(city, cepFill?.cidade)}
+      >
         <input
           id="pub-city"
           name="city"
@@ -243,13 +280,73 @@ export function PubInfoForm({
           className="onside-input"
         />
       </Field>
-      <Field id="pub-uf" label="Estado (UF)" span="c2" auto={auto}>
+      <Field
+        id="pub-uf"
+        label="Estado (UF)"
+        span="c2"
+        auto={fromCep(uf, cepFill?.uf)}
+      >
         <UfSelect
           id="pub-uf"
           value={uf}
           onChange={(value) => onChange('uf', value)}
           required
         />
+      </Field>
+
+      <Field
+        id="pub-photo"
+        label="Foto de capa · opcional"
+        span="c6"
+        error={photoError ?? undefined}
+      >
+        <div className="ob-photo">
+          <span className="ob-photo-th" aria-hidden="true">
+            {photoUrl ? (
+              // biome-ignore lint/performance/noImgElement: prévia de um arquivo local (blob:), sem otimizador.
+              <img src={photoUrl} alt="" />
+            ) : null}
+          </span>
+          <span className="ob-photo-tx">
+            {photoLater
+              ? 'A foto entra depois que você confirmar o e-mail, no painel do bar.'
+              : 'JPG, PNG ou WebP, até 5 MB. Aparece no card ao lado.'}
+          </span>
+          <label className="btn btn-ghost ob-sm" htmlFor="pub-photo">
+            {photoUrl ? 'Trocar' : 'Escolher foto'}
+          </label>
+          {photoUrl ? (
+            <button
+              type="button"
+              className="ob-link"
+              onClick={() => onPhoto(null)}
+            >
+              Remover
+            </button>
+          ) : null}
+          <input
+            id="pub-photo"
+            type="file"
+            className="sr-only"
+            accept={PHOTO_CONTENT_TYPES.join(',')}
+            disabled={photoLater}
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              e.target.value = ''
+              if (!file) return
+              // O servidor confere de novo ao assinar o upload.
+              const motivo = !(
+                PHOTO_CONTENT_TYPES as readonly string[]
+              ).includes(file.type)
+                ? 'Formato inválido. Use JPG, PNG ou WebP.'
+                : file.size > PHOTO_MAX_BYTES
+                  ? 'Arquivo muito grande. Máximo 5 MB.'
+                  : null
+              setPhotoError(motivo)
+              if (!motivo) onPhoto(file)
+            }}
+          />
+        </div>
       </Field>
 
       <Field

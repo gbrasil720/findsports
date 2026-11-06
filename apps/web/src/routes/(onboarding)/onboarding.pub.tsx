@@ -34,7 +34,12 @@ import { conciliarUfComCidade } from '@/components/uf-select'
 import { useSession } from '@/hooks/use-session'
 import { analytics } from '@/lib/analytics'
 import { refreshSessionCache } from '@/lib/auth-client'
-import { juntarEndereco, separarNumero, useCep } from '@/lib/cep'
+import {
+  type EnderecoDoCep,
+  juntarEndereco,
+  separarNumero,
+  useCep
+} from '@/lib/cep'
 import { mensagemOnboardingJaConcluido } from '@/lib/onboarding-concluido'
 import { readPendingEmail } from '@/lib/pending-verification'
 import {
@@ -56,6 +61,7 @@ import {
   type Routine,
   recommendPlan
 } from '@/lib/pub-plan-recommendation'
+import { uploadMedia } from '@/lib/upload-media'
 import { getCallbackUrl } from '@/utils/callback-url'
 import { formatStoredPhone } from '@/utils/format-phone'
 import { useTRPC } from '@/utils/trpc'
@@ -151,6 +157,24 @@ function PubOnboarding() {
   const recommendation = recommendPlan(routine)
   const plan = pickedPlan ?? recommendation.plan
   const finishSignup = useFinishPubSignup()
+  // O que o CEP trouxe: o campo só leva "pelo CEP" enquanto o valor é esse.
+  const [cepFill, setCepFill] = useState<EnderecoDoCep | null>(null)
+  // A foto de capa fica no navegador até o bar existir: a rota de upload
+  // assina pelo bar da sessão, e ele só nasce no `completePub`.
+  const [photo, setPhoto] = useState<File | null>(null)
+  const photoUrl = useMemo(
+    () => (photo ? URL.createObjectURL(photo) : null),
+    [photo]
+  )
+  useEffect(
+    () => () => {
+      if (photoUrl) URL.revokeObjectURL(photoUrl)
+    },
+    [photoUrl]
+  )
+  const { mutateAsync: updateMe } = useMutation(
+    trpc.pub.updateMe.mutationOptions({ meta: { errorToast: false } })
+  )
 
   // O número que o dono já digitou fica: o CEP traz só a rua.
   const {
@@ -159,6 +183,7 @@ function PubOnboarding() {
     mudar: mudarCep,
     definir: setCep
   } = useCep((achado) => {
+    setCepFill(achado)
     if (achado.rua) {
       setAddress((atual) => juntarEndereco(achado.rua, separarNumero(atual)[1]))
     }
@@ -234,6 +259,17 @@ function PubOnboarding() {
       onSuccess: async (_, sent) => {
         analytics.onboardingCompleted({ role: 'pub' })
         localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)
+        if (photo) {
+          try {
+            await updateMe({
+              photoUrl: await uploadMedia('/api/bar/photo', photo)
+            })
+          } catch {
+            toast.error(
+              'O bar foi criado, mas a foto não subiu. Mande de novo no painel, em Meu espaço.'
+            )
+          }
+        }
         // O bar já existe: o plano escolhido e o comprovante vêm agora. Sem a
         // assinatura para o comprovante, segue direto, como antes.
         const data = await finishSignup({ ...sent, plan })
@@ -552,6 +588,7 @@ function PubOnboarding() {
             city={city}
             amenities={amenities}
             screenCount={screenCount}
+            photoUrl={photoUrl}
             plan={step === STEPS.length - 1 ? plan : undefined}
             note={
               step === STEPS.length - 1
@@ -627,6 +664,7 @@ function PubOnboarding() {
               name={name}
               cep={cep}
               cepStatus={cepStatus}
+              cepFill={cepFill}
               onCepChange={(value) => void mudarCep(value)}
               address={address}
               neighborhood={neighborhood}
@@ -637,6 +675,9 @@ function PubOnboarding() {
               onChange={handleFieldChange}
               onCityBlur={() => conciliarUfComCidade(city, setUf)}
               errors={phoneError ? { phone: phoneError } : undefined}
+              photoUrl={photoUrl}
+              onPhoto={setPhoto}
+              photoLater={conta?.emailVerified !== true}
             />
           </>
         )}
