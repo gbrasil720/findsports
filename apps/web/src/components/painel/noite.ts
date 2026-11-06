@@ -156,7 +156,8 @@ export function nightRule(
   games: AdminEvent[],
   now: number
 ): {
-  hours: number[]
+  /** Cada hora cheia da régua e a posição dela em %. */
+  hours: { hour: number; at: number }[]
   tracks: NightTrack[]
   lanes: number
   /** Posição do "agora" em %, ou `null` fora da régua. */
@@ -201,10 +202,10 @@ export function nightRule(
 
   const nowMinutes = nightMinutes(new Date(now))
   return {
-    hours: Array.from(
-      { length: width / 60 + 1 },
-      (_, i) => (NIGHT_START_HOUR + from / 60 + i + 24) % 24
-    ),
+    hours: Array.from({ length: width / 60 + 1 }, (_, i) => ({
+      hour: (NIGHT_START_HOUR + from / 60 + i + 24) % 24,
+      at: ((i * 60) / width) * 100
+    })),
     tracks,
     lanes: Math.max(1, laneEnds.length),
     nowAt: nowMinutes >= from && nowMinutes <= to ? at(nowMinutes) : null
