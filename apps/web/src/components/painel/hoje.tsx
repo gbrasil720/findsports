@@ -1,7 +1,7 @@
 import { getEventEnd } from '@findsports_oficial/db/event-window'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { AdminEvent } from '@/components/admin/admin-model'
 import {
   useMyBar,
@@ -441,6 +441,15 @@ function Noite({
 }) {
   const rule = nightRule(games, now)
   const step = 100 / (rule.hours.length - 1)
+  const wrap = useRef<HTMLDivElement>(null)
+  // No celular a régua rola: abre no "agora", como no protótipo.
+  const nowAt = rule.nowAt
+  useEffect(() => {
+    const el = wrap.current
+    if (el && nowAt !== null) {
+      el.scrollLeft = Math.max(0, (nowAt / 100) * el.scrollWidth - 80)
+    }
+  }, [nowAt])
   return (
     <section className="pn-card pn-night" aria-labelledby="pn-night-t">
       <div className="pn-chd">
@@ -451,7 +460,7 @@ function Noite({
           {games.length ? ' · toque num jogo para abrir' : ''}
         </small>
       </div>
-      <div className="pn-rule-wrap">
+      <div className="pn-rule-wrap" ref={wrap}>
         <div
           className="pn-rule"
           style={{
