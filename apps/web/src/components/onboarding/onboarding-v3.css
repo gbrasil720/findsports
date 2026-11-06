@@ -1546,7 +1546,7 @@
   }
 
   /* Empilhados, o recomendado vem antes: a ordem do DOM não é a da tela. */
-  .lp3.ob3 .ob-pgrid .ob-pc {
+  .lp3.ob3 .ob-pgrid .ob-pc:nth-of-type(n) {
     animation-delay: 0ms;
   }
 }
