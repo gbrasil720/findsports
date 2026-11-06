@@ -585,6 +585,11 @@
   color: var(--ink);
 }
 
+.lp3.ob3 .dock .who a {
+  font-weight: 600;
+  text-decoration: underline;
+}
+
 .lp3.ob3 .dock .acts {
   display: flex;
   flex-wrap: wrap;
@@ -731,6 +736,13 @@ html[data-theme="dark"] .lp3.ob3 :is(.pl-pc.on, .placar, .noar-r) .ob-k {
   color: #aaa9a4;
 }
 
+/* O placar é tinta como o fundo escuro: a borda o separa. */
+html[data-theme="dark"] .lp3.ob3 .placar {
+  box-shadow:
+    inset 0 0 0 1px #34342d,
+    var(--shadow);
+}
+
 html[data-theme="dark"] .lp3.ob3 .pl-msg.ok {
   --ink: #12120f;
 }
@@ -820,6 +832,15 @@ html[data-theme="dark"] .lp3.ob3 .pl-msg.ok {
   .lp3.ob3 .dock .acts,
   .lp3.ob3 .dock .acts > * {
     width: 100%;
+  }
+
+  /* Contratar fica preso no pé; voltar vira link, para a faixa não crescer. */
+  .lp3.ob3 .dock .acts .btn-ghost {
+    order: 1;
+    height: 32px;
+    box-shadow: none;
+    font-size: 14px;
+    text-decoration: underline;
   }
 
   .lp3.ob3 .noar-l {
