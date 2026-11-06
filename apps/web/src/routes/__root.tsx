@@ -16,7 +16,13 @@ import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { createServerFn } from '@tanstack/react-start'
 import type { TRPCOptionsProxy } from '@trpc/tanstack-react-query'
 import type { CSSProperties } from 'react'
-import { lazy, Suspense, useEffect, useState } from 'react'
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useState,
+  useSyncExternalStore
+} from 'react'
 import { THEME_HEAD_SCRIPT } from '@/lib/theme'
 import { MinuteTickProvider } from '../components/app/minute-tick'
 import { CookieConsent } from '../components/consent/cookie-consent'
@@ -229,6 +235,7 @@ function RootDocument() {
   const session = Route.useRouteContext({ select: (ctx) => ctx.session })
   const impersonated = session?.session.impersonatedBy ? session : null
   const isDev = import.meta.env.DEV
+  const narrow = useNarrowScreen()
   // WEB-383: o Houdini não mede o admin nem pede consentimento de cookie.
   const inHoudini = useRouterState({
     select: (s) =>
@@ -291,7 +298,7 @@ function RootDocument() {
           <Outlet />
         </div>
       </MinuteTickProvider>
-      <Toaster richColors />
+      <Toaster richColors position={narrow ? 'top-center' : 'bottom-right'} />
       {isDev ? (
         <>
           <TanStackRouterDevtools position="bottom-left" />
@@ -326,5 +333,22 @@ function RootShell({ children }: { children: React.ReactNode }) {
         <Scripts />
       </body>
     </html>
+  )
+}
+
+/**
+ * Celular: o aviso desce no rodapé, onde ficam os botões de ação das telas
+ * (o "Começar" do cadastro ficava coberto). Lá, ele vai para o topo. 600 px é
+ * onde o Sonner já passa a ocupar a largura toda.
+ */
+function useNarrowScreen() {
+  return useSyncExternalStore(
+    (onChange) => {
+      const query = window.matchMedia('(max-width: 600px)')
+      query.addEventListener('change', onChange)
+      return () => query.removeEventListener('change', onChange)
+    },
+    () => window.matchMedia('(max-width: 600px)').matches,
+    () => false
   )
 }
