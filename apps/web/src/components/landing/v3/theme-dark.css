@@ -169,14 +169,11 @@ html[data-theme="dark"] .lp3.ob3 {
   --field: #1c1c18;
   --body-text: #d6d3cb;
   --auto: #c9f135;
-  --shadow:
-    0 3px 0 #000,
-    0 24px 40px -30px rgba(0, 0, 0, 0.8);
+  --shadow: 0 3px 0 #000, 0 24px 40px -30px rgba(0, 0, 0, 0.8);
 }
 /* Sobre verde-limão ou no cartão recomendado: as cores do claro. */
-html[data-theme="dark"]
-  .lp3.ob3
-  :is(.ob-steps li.ok, .ob-cepf.ok, .ob-ben i, .ob-pc.rec, .ob-paper) {
+html[data-theme="dark"] .lp3.ob3
+  :is(.ob-steps li.ok, .ob-cepf.cep-ok, .ob-ben i, .ob-pc.rec, .ob-paper) {
   --ink: #12120f;
   --paper: #f1eee6;
   --muted: #55554f;
@@ -193,7 +190,10 @@ html[data-theme="dark"] .lp3.ob3 .ob-pimg {
     ),
     #26261f;
 }
-html[data-theme="dark"] .lp3.ob3 .ob-fl.auto :is(.onside-input, .onside-select) {
+html[data-theme="dark"]
+  .lp3.ob3
+  .ob-fl.auto
+  :is(.onside-input, .onside-select) {
   background: rgba(201, 241, 53, 0.1);
   box-shadow: inset 0 0 0 1px rgba(201, 241, 53, 0.4);
 }

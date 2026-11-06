@@ -127,6 +127,10 @@
   text-align: right;
 }
 
+.lp3.ob3 .ob-nav-row .btn-acid {
+  margin-left: auto;
+}
+
 .lp3.ob3 .btn.ob-sm {
   height: 48px;
   padding: 0 20px;
@@ -510,6 +514,7 @@
   border-radius: 999px;
   color: var(--muted);
   font: 600 14px / 1 var(--body);
+  white-space: nowrap;
 }
 
 .lp3 .ob-steps li > span {
@@ -661,12 +666,12 @@
   font-size: 14.5px;
 }
 
-.lp3.ob3 .ob-cepf.ok {
+.lp3.ob3 .ob-cepf.cep-ok {
   background: var(--acid);
   color: #12120f;
 }
 
-.lp3.ob3 .ob-cepf.ok .ck {
+.lp3.ob3 .ob-cepf.cep-ok .ck {
   display: grid;
   flex: none;
   place-items: center;
@@ -677,8 +682,8 @@
   color: var(--acid);
 }
 
-.lp3.ob3 .ob-cepf.wait,
-.lp3.ob3 .ob-cepf.no {
+.lp3.ob3 .ob-cepf.cep-wait,
+.lp3.ob3 .ob-cepf.cep-no {
   background: var(--sub);
   color: var(--ink);
 }
@@ -1219,7 +1224,7 @@
   background: #000;
 }
 
-.lp3.ob3 .ob-printer .led {
+.lp3.ob3 .ob-printer .ob-led {
   position: absolute;
   top: 9px;
   right: 16px;
@@ -1275,59 +1280,59 @@
   }
 }
 
-.lp3.ob3 .rl.c {
+.lp3.ob3 .rl.rl-c {
   justify-content: center;
   text-align: center;
 }
 
-.lp3.ob3 .rl.m {
+.lp3.ob3 .rl.rl-m {
   color: #55554f;
 }
 
-.lp3.ob3 .rl.s > span:last-child {
+.lp3.ob3 .rl.rl-s > span:last-child {
   text-decoration: line-through;
 }
 
-.lp3.ob3 .rl.b {
+.lp3.ob3 .rl.rl-b {
   font-weight: 700;
 }
 
-.lp3.ob3 .rl.cut {
+.lp3.ob3 .rl.rl-cut {
   margin: 10px 0;
   border-top: 1.5px dashed rgba(18, 18, 15, 0.35);
 }
 
-.lp3.ob3 .rl.note {
+.lp3.ob3 .rl.rl-note {
   display: block;
   margin-top: 4px;
   color: #55554f;
   font-size: 12px;
 }
 
-.lp3.ob3 .rl.tot {
+.lp3.ob3 .rl.rl-tot {
   margin-top: 2px;
   font: 400 24px / 1.1 var(--display);
 }
 
-.lp3.ob3 .rl.logo {
+.lp3.ob3 .rl.rl-logo {
   align-items: center;
   justify-content: center;
   gap: 8px;
   margin-bottom: 8px;
 }
 
-.lp3.ob3 .rl.logo b {
+.lp3.ob3 .rl.rl-logo b {
   font: 400 24px / 1 var(--display);
 }
 
-.lp3.ob3 .rl.bars {
+.lp3.ob3 .rl.rl-bars {
   justify-content: center;
   gap: 2px;
   height: 38px;
   margin: 14px 0 6px;
 }
 
-.lp3.ob3 .rl.bars i {
+.lp3.ob3 .rl.rl-bars i {
   display: block;
   height: 100%;
   background: #12120f;
@@ -1443,7 +1448,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .lp3.ob3 :is(.ob-step-body, .rl, .ob-printer .led) {
+  .lp3.ob3 :is(.ob-step-body, .rl, .ob-printer .ob-led) {
     animation: none;
   }
 

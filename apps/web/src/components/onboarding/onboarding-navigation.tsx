@@ -67,9 +67,7 @@ export function OnboardingNavigation({
             <ArrowLeft size={18} color="currentColor" aria-hidden="true" />
             Voltar
           </button>
-        ) : (
-          <span />
-        )}
+        ) : null}
         <button
           type="button"
           onClick={onNext}

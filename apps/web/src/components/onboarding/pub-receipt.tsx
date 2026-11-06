@@ -75,18 +75,18 @@ export function PubReceipt({
         {right === undefined ? null : <span>{right}</span>}
       </>
     ])
-  const cut = () => lines.push(['cut', null])
+  const cut = () => lines.push(['rl-cut', null])
 
   lines.push([
-    'logo',
+    'rl-logo',
     <>
       <Logo size={30} />
       <b>ONSIDE</b>
     </>
   ])
-  row('c', 'COMPROVANTE DE CADASTRO')
+  row('rl-c', 'COMPROVANTE DE CADASTRO')
   row(
-    'm',
+    'rl-m',
     date(data.issuedAt),
     data.issuedAt.toLocaleTimeString('pt-BR', {
       hour: '2-digit',
@@ -94,35 +94,36 @@ export function PubReceipt({
     })
   )
   cut()
-  row('b', bar.name.toUpperCase())
-  row('m', bar.address)
-  row('m', `${bar.neighborhood} · ${bar.city}${bar.uf ? `/${bar.uf}` : ''}`)
+  row('rl-b', bar.name.toUpperCase())
+  row('rl-m', bar.address)
+  row('rl-m', `${bar.neighborhood} · ${bar.city}${bar.uf ? `/${bar.uf}` : ''}`)
   cut()
-  row('b', `PLANO ${plan.name.toUpperCase()} · TESTE`, 'R$ 0,00')
-  row('m', `${ONBOARDING_TRIAL.days} dias`, `até ${date(data.until)}`)
-  row('m', 'Cartão', 'não pedido')
+  row('rl-b', `PLANO ${plan.name.toUpperCase()} · TESTE`, 'R$ 0,00')
+  row('rl-m', `${ONBOARDING_TRIAL.days} dias`, `até ${date(data.until)}`)
+  row('rl-m', 'Cartão', 'não pedido')
   cut()
-  row('b', 'DEPOIS DO TESTE')
+  row('rl-b', 'DEPOIS DO TESTE')
   row(
     '',
     charge.listReais ? `${plan.name} · fundador` : plan.name,
     `${reais(charge.chargeReais)}/mês`
   )
-  if (charge.listReais) row('m s', 'Tabela', `${reais(charge.listReais)}/mês`)
+  if (charge.listReais)
+    row('rl-m rl-s', 'Tabela', `${reais(charge.listReais)}/mês`)
   lines.push([
-    'note',
+    'rl-note',
     'Só é cobrado se você contratar. Sem contratar, nada é cobrado e o bar sai do ar quando o teste acaba.'
   ])
   cut()
-  row('tot', 'TOTAL HOJE', 'R$ 0,00')
+  row('rl-tot', 'TOTAL HOJE', 'R$ 0,00')
   lines.push([
-    'bars',
+    'rl-bars',
     BARS.map((width, i) => (
       // biome-ignore lint/suspicious/noArrayIndexKey: código de barras decorativo, fixo.
       <i key={i} style={{ width }} />
     ))
   ])
-  row('c m', 'obrigado por torcer com a gente')
+  row('rl-c rl-m', 'obrigado por torcer com a gente')
 
   return (
     <div className="ob-rcpt">
@@ -132,7 +133,7 @@ export function PubReceipt({
       </h1>
       <div className="ob-printer" aria-hidden="true">
         <span className="slot" />
-        <span className="led" />
+        <span className="ob-led" />
       </div>
       <div
         className="ob-paper"
@@ -145,7 +146,9 @@ export function PubReceipt({
             key={i}
             className={`rl ${cls}`}
             style={{ animationDelay: `${i * 95}ms` }}
-            aria-hidden={cls === 'bars' || cls === 'cut' ? true : undefined}
+            aria-hidden={
+              cls === 'rl-bars' || cls === 'rl-cut' ? true : undefined
+            }
           >
             {content}
           </p>

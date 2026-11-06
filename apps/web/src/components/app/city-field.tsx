@@ -45,13 +45,7 @@ type Props = {
   disabled?: boolean
 }
 
-export function CityField({
-  value,
-  onChange,
-  label,
-  hint,
-  disabled
-}: Props) {
+export function CityField({ value, onChange, label, hint, disabled }: Props) {
   const campoId = useId()
   const listaId = useId()
   const dicaId = useId()
@@ -98,10 +92,7 @@ export function CityField({
 
   return (
     <div className="max-w-md">
-      <label
-        htmlFor={campoId}
-        className="onside-label"
-      >
+      <label htmlFor={campoId} className="onside-label">
         {label}
       </label>
       {/* Só o campo e a lista: ela abre colada nele, por cima da dica. */}

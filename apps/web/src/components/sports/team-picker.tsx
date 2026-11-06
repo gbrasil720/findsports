@@ -60,10 +60,7 @@ export function TeamSearchField({
   const id = useId()
   return (
     <div className="max-w-md">
-      <label
-        htmlFor={id}
-        className="onside-label"
-      >
+      <label htmlFor={id} className="onside-label">
         Buscar time ou atleta
       </label>
       <input
@@ -173,10 +170,7 @@ export function TeamPicker({ sports, selected, onChange }: Props) {
 
   return (
     <div className="space-y-5">
-      <TeamSearchField
-        value={search.text}
-        onChange={search.setText}
-      />
+      <TeamSearchField value={search.text} onChange={search.setText} />
       {search.active ? (
         <div className="space-y-4" aria-live="polite">
           {search.results.isError ? (

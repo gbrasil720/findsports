@@ -81,14 +81,14 @@ const CEP_STATUS: Record<
   Exclude<CepStatus, 'idle'>,
   { tone: string; title: string; text: string }
 > = {
-  buscando: { tone: 'wait', title: 'Buscando o CEP…', text: '' },
+  buscando: { tone: 'cep-wait', title: 'Buscando o CEP…', text: '' },
   achou: {
-    tone: 'ok',
+    tone: 'cep-ok',
     title: 'CEP encontrado',
     text: 'Preenchemos o endereço. Confira e coloque o número.'
   },
   nao: {
-    tone: 'no',
+    tone: 'cep-no',
     title: 'Não achamos esse CEP',
     text: 'Preencha o endereço abaixo.'
   }
@@ -177,10 +177,10 @@ export function PubInfoForm({
       </Field>
       <div
         id="pub-cep-status"
-        className={`ob-cepf c4 ${status?.tone ?? 'wait'}`}
+        className={`ob-cepf c4 ${status?.tone ?? 'cep-wait'}`}
         role="status"
       >
-        {status?.tone === 'ok' ? (
+        {status?.tone === 'cep-ok' ? (
           <span className="ck" aria-hidden="true">
             <Check size={16} />
           </span>
