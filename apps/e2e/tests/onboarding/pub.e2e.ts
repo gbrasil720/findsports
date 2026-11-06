@@ -74,7 +74,7 @@ async function signUpPub(page: Page) {
   const email = `pub-draft-${randomUUID()}@e2e.test`
 
   await page.goto('/signup')
-  await button(page, /Dono de Bar/).click()
+  await button(page, /Tenho um bar/).click()
   await page.getByLabel('Nome completo').fill('Dona do Rascunho')
   await page.getByLabel('E-mail').fill(email)
   await page.getByLabel('Senha', { exact: true }).fill(DEFAULT_PASSWORD)
@@ -82,7 +82,7 @@ async function signUpPub(page: Page) {
     .getByLabel('Confirmar senha', { exact: true })
     .fill(DEFAULT_PASSWORD)
   await acceptTerms(page)
-  await button(page, 'Entrar no time').click()
+  await button(page, 'Criar conta do bar').click()
   await expect(page).toHaveURL(/\/onboarding\/pub$/)
   return email
 }

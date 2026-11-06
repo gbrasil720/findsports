@@ -22,8 +22,8 @@ test('cadastro de torcedor valida a senha e cai em /verify-email', async ({
   await page.goto('/signup')
 
   // Alterna o papel e volta: só um fica marcado.
-  const fan = page.getByRole('button', { name: 'Torcedor' })
-  const pub = page.getByRole('button', { name: 'Dono de Bar' })
+  const fan = page.getByRole('button', { name: 'Sou torcedor' })
+  const pub = page.getByRole('button', { name: 'Tenho um bar' })
   await pub.click()
   await expect(pub).toHaveAttribute('aria-pressed', 'true')
   await expect(fan).toHaveAttribute('aria-pressed', 'false')
@@ -33,7 +33,7 @@ test('cadastro de torcedor valida a senha e cai em /verify-email', async ({
   // Sem o aceite dos Termos e da Política o botão não envia. O aceite vem
   // antes dos campos: marcado depois de um campo inválido, o blur mostra o
   // erro, o formulário desce no meio do clique e o clique se perde.
-  const enviar = page.getByRole('button', { name: 'Entrar no time' })
+  const enviar = page.getByRole('button', { name: /^Criar conta/ })
   await expect(enviar).toBeDisabled()
   await acceptTerms(page)
   await expect(enviar).toBeEnabled()
@@ -91,7 +91,7 @@ test('cadastro de bar cai em /onboarding/pub sem sessão', async ({ page }) => {
   const email = uniqueEmail('signup-pub')
   await page.goto('/signup')
 
-  await page.getByRole('button', { name: 'Dono de Bar' }).click()
+  await page.getByRole('button', { name: 'Tenho um bar' }).click()
   await submitSignup(page, { name: 'Dono E2E', email })
 
   await expect(page).toHaveURL(/\/onboarding\/pub$/)
@@ -106,16 +106,15 @@ test('cadastro de bar cai em /onboarding/pub sem sessão', async ({ page }) => {
 })
 
 // WEB-232: é para onde a landing manda o bar.
-test('/signup?role=pub abre com "Dono de Bar" marcado', async ({ page }) => {
+test('/signup?role=pub abre com "Tenho um bar" marcado', async ({ page }) => {
   await page.goto('/signup?role=pub')
 
   await expect(
-    page.getByRole('button', { name: 'Dono de Bar' })
+    page.getByRole('button', { name: 'Tenho um bar' })
   ).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByRole('button', { name: 'Torcedor' })).toHaveAttribute(
-    'aria-pressed',
-    'false'
-  )
+  await expect(
+    page.getByRole('button', { name: 'Sou torcedor' })
+  ).toHaveAttribute('aria-pressed', 'false')
   await submitSignup(page, {
     name: 'Dono pela Landing',
     email: uniqueEmail('signup-role')

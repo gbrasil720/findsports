@@ -28,7 +28,7 @@ export async function submitSignup(
     .getByLabel('Confirmar senha', { exact: true })
     .fill(DEFAULT_PASSWORD)
   await acceptTerms(page)
-  await page.getByRole('button', { name: 'Entrar no time' }).click()
+  await page.getByRole('button', { name: /^Criar conta/ }).click()
 }
 
 /** Login pela tela. Para só ter sessão, `signIn` de `fixtures/auth`. */

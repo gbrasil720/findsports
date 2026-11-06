@@ -43,7 +43,7 @@ test('a busca de exemplo mostra bares marcados como exemplo e leva ao cadastro',
   await expect(results.locator('[data-cta]')).toHaveAttribute('href', '/signup')
 })
 
-test('o CTA do bar leva ao cadastro com "Dono de Bar" marcado', async ({
+test('o CTA do bar leva ao cadastro com "Tenho um bar" marcado', async ({
   page
 }) => {
   await page.goto('/')
@@ -54,12 +54,11 @@ test('o CTA do bar leva ao cadastro com "Dono de Bar" marcado', async ({
   await cta.click()
   await expect(page).toHaveURL(/\/signup\?role=pub$/)
   await expect(
-    page.getByRole('button', { name: 'Dono de Bar' })
+    page.getByRole('button', { name: 'Tenho um bar' })
   ).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByRole('button', { name: 'Torcedor' })).toHaveAttribute(
-    'aria-pressed',
-    'false'
-  )
+  await expect(
+    page.getByRole('button', { name: 'Sou torcedor' })
+  ).toHaveAttribute('aria-pressed', 'false')
 })
 
 // O nome da chamada diz para onde ela leva, e é ele que o `cta_clicked` manda:
