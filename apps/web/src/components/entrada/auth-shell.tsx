@@ -79,13 +79,16 @@ function Panel({ panel }: { panel: AuthPanel }) {
 
 export function AuthShell({
   panel,
+  className,
   children
 }: {
   panel: AuthPanel
+  /** Classe a mais na raiz: o onboarding do torcedor usa a casca (`ob3`). */
+  className?: string
   children: ReactNode
 }) {
   return (
-    <div className="onside-app lp3 ent">
+    <div className={`onside-app lp3 ent${className ? ` ${className}` : ''}`}>
       <div className="ent-split">
         <main className="ent-left">
           <div className="ent-top">

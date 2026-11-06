@@ -17,8 +17,6 @@ type Props = {
   sports: { id: string; name: string }[]
   selected: FavoriteTeam[]
   onChange: (selected: FavoriteTeam[]) => void
-  /** Fundo escuro (onboarding). */
-  ink?: boolean
 }
 
 function toggleFavoriteTeam(
@@ -54,19 +52,17 @@ export function useTeamSearch(sportIds: string[]) {
 
 export function TeamSearchField({
   value,
-  onChange,
-  ink
+  onChange
 }: {
   value: string
   onChange: (value: string) => void
-  ink?: boolean
 }) {
   const id = useId()
   return (
     <div className="max-w-md">
       <label
         htmlFor={id}
-        className={`onside-label ${ink ? 'onside-label-ink' : ''}`}
+        className="onside-label"
       >
         Buscar time ou atleta
       </label>
@@ -80,7 +76,7 @@ export function TeamSearchField({
         maxLength={60}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className={`onside-input ${ink ? 'onside-input-ink' : ''}`}
+        className="onside-input"
       />
     </div>
   )
@@ -155,7 +151,7 @@ function TeamChip({
  * consulta por esporte, no mesmo cache de catálogo do formulário de evento) e
  * os já escolhidos que não estão entre eles; com busca, o catálogo inteiro.
  */
-export function TeamPicker({ sports, selected, onChange, ink }: Props) {
+export function TeamPicker({ sports, selected, onChange }: Props) {
   const trpc = useTRPC()
   const queries = useQueries({
     queries: sports.map((sport) => ({
@@ -178,7 +174,6 @@ export function TeamPicker({ sports, selected, onChange, ink }: Props) {
   return (
     <div className="space-y-5">
       <TeamSearchField
-        ink={ink}
         value={search.text}
         onChange={search.setText}
       />

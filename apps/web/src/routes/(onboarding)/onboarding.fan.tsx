@@ -4,10 +4,7 @@ import {
   useLocation,
   useNavigate
 } from '@tanstack/react-router'
-import { useEffect, useRef, useState } from 'react'
-import Check from 'reicon-react/icons/Check'
-import Fire from 'reicon-react/icons/Fire'
-import Location from 'reicon-react/icons/Location'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
   CityField,
@@ -15,14 +12,11 @@ import {
   cityLabel,
   isCityPending
 } from '@/components/app/city-field'
-import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
-import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
+import { type AuthPanel, AuthShell } from '@/components/entrada/auth-shell'
+import { People, Pin, Tv } from '@/components/landing/v3/icons'
 import { OnboardingNavigation } from '@/components/onboarding/onboarding-navigation'
-import { OnboardingStep } from '@/components/onboarding/onboarding-step'
 import { RadiusSelector } from '@/components/onboarding/radius-selector'
 import { SportSelector } from '@/components/onboarding/sport-selector'
-import { StepProgress } from '@/components/onboarding/step-progress'
-import { WelcomeStep } from '@/components/onboarding/welcome-step'
 import {
   confirmDroppingTeams,
   type FavoriteTeam,
@@ -52,17 +46,41 @@ export const Route = createFileRoute('/(onboarding)/onboarding/fan')({
   component: FanOnboarding
 })
 
-const STEPS = [
-  'Boas-vindas',
-  'Seus esportes',
-  'Quem você acompanha',
-  'Distância',
-  'Revisão'
-] as const
-const WELCOME_FEATURES = [
-  { icon: Fire, text: 'Veja jogos ao vivo perto de você' },
-  { icon: Location, text: 'Bares dentro do seu raio' },
-  { icon: Check, text: 'Leve a galera junto' }
+const STEPS = ['Boas-vindas', 'Esportes', 'Times', 'Lugar', 'Pronto'] as const
+
+const WELCOME_FEATURES: [ReactNode, string, string][] = [
+  [
+    <Tv key="tv" size={22} />,
+    'Veja jogos ao vivo perto de você',
+    'Com telão, som e o jogo marcado.'
+  ],
+  [
+    <Pin key="pin" size={22} />,
+    'Bares dentro do seu raio',
+    'Você escolhe até onde topa ir.'
+  ],
+  [
+    <People key="people" size={22} />,
+    'Leve a galera junto',
+    'Mande o bar e o jogo pro grupo.'
+  ]
+]
+
+/** O telão à direita, com uma legenda curta por passo (design do torcedor). */
+const PANELS: AuthPanel[] = [
+  { kind: 'caption', led: 'hero', title: 'Onde vai ser o jogo?' },
+  { kind: 'caption', led: 'crowd', title: 'O jogo certo' },
+  { kind: 'caption', led: 'scarf', title: 'No bar certo' },
+  { kind: 'caption', led: 'crowd', title: 'Perto de você' },
+  {
+    kind: 'caption',
+    led: 'hero',
+    title: (
+      <>
+        Bora<span>?</span>
+      </>
+    )
+  }
 ]
 
 function FanOnboarding() {
@@ -70,6 +88,9 @@ function FanOnboarding() {
   const callbackUrl = getCallbackUrl(useLocation().href)
   const trpc = useTRPC()
   const headingRef = useRef<HTMLHeadingElement>(null)
+  const firstName = Route.useRouteContext({
+    select: (context) => context.session?.user.name.trim().split(/\s+/)[0]
+  })
 
   const [step, setStep] = useState(0)
   const [selectedSportIds, setSelectedSportIds] = useState<string[]>([])
@@ -165,40 +186,63 @@ function FanOnboarding() {
     }
   }
 
-  return (
-    <OnboardingLayout variant="fan">
-      <OnboardingHeader label="Conta de torcedor" />
-      <StepProgress step={step} steps={STEPS} />
+  const heading = (content: ReactNode) => (
+    <h1
+      ref={step === 0 ? undefined : headingRef}
+      tabIndex={-1}
+      className="ob-h"
+    >
+      {content}
+    </h1>
+  )
 
-      <OnboardingStep step={step}>
+  return (
+    <AuthShell panel={PANELS[step] ?? PANELS[0]} className="ob3">
+      <ol className="ob-seg" aria-hidden="true">
+        {STEPS.map((name, i) => (
+          <li key={name} className={i <= step ? 'on' : undefined} />
+        ))}
+      </ol>
+      <p className="ob-stepk" aria-live="polite">
+        {step + 1} de {STEPS.length} · {STEPS[step]}
+      </p>
+
+      <div key={step} className="ob-step-body">
         {step === 0 && (
-          <WelcomeStep
-            eyebrow="É torcedor? Chegou no lugar certo."
-            title={
+          <>
+            {heading(
               <>
-                Vamos achar os{' '}
-                <span className="text-[var(--onside-acid)]">
-                  melhores bares
-                </span>{' '}
-                pro seu jogo.
+                Vamos achar os melhores bares{' '}
+                <span className="hl">pra você</span>
               </>
-            }
-            subtitle="Em 3 passos a gente calibra sua busca: esportes favoritos, quem você acompanha e raio de localização."
-            features={WELCOME_FEATURES}
-          />
+            )}
+            <p className="ob-sub">
+              Leva um minuto. Dá para mudar tudo depois no seu perfil.
+            </p>
+            <ul className="ob-ben">
+              {WELCOME_FEATURES.map(([icon, title, text]) => (
+                <li key={title}>
+                  <i aria-hidden="true">{icon}</i>
+                  <span>
+                    <b>{title}</b>
+                    <span>{text}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </>
         )}
 
         {step === 1 && (
-          <div>
-            <h2
-              ref={headingRef}
-              tabIndex={-1}
-              className="onside-display mb-2 text-3xl text-[var(--onside-paper)] outline-none"
-            >
-              Quais esportes você curte?
-            </h2>
-            <p className="onside-text-muted-on-ink mb-6">
-              Marque tudo que você acompanha — a gente filtra os bares pra você.
+          <>
+            {heading('Quais esportes você curte?')}
+            <p className="ob-sub">
+              Escolha pelo menos 1.{' '}
+              <span className="ob-count">
+                {selectedSportIds.length} selecionado
+                {selectedSportIds.length === 1 ? '' : 's'}
+              </span>
+              .
             </p>
             <SportSelector
               sports={sports}
@@ -209,49 +253,34 @@ function FanOnboarding() {
               retryable={isRetryableError(sportsQuery.error)}
               onRetry={() => sportsQuery.refetch()}
             />
-            <p className="onside-text-muted-on-ink mt-6 text-xs">
-              {selectedSportIds.length} selecionado
-              {selectedSportIds.length === 1 ? '' : 's'} — escolha pelo menos 1.
-            </p>
-          </div>
+          </>
         )}
 
         {step === 2 && (
-          <div className="text-[var(--onside-paper)]">
-            <h2
-              ref={headingRef}
-              tabIndex={-1}
-              className="onside-display mb-2 text-3xl outline-none"
-            >
-              Quem você acompanha?
-            </h2>
-            <p className="onside-text-muted-on-ink mb-6">
-              Opcional — marque quantos quiser em cada esporte, ou pule.
+          <>
+            {heading('Quem você acompanha?')}
+            <p className="ob-sub">
+              Times, seleções, pilotos e atletas. Opcional: marque quantos
+              quiser em cada esporte, ou pule.
             </p>
-            <TeamPicker
-              ink
-              sports={selectedSports}
-              selected={selectedTeams}
-              onChange={setSelectedTeams}
-            />
-          </div>
+            <div className="ob-teams">
+              <TeamPicker
+                sports={selectedSports}
+                selected={selectedTeams}
+                onChange={setSelectedTeams}
+              />
+            </div>
+          </>
         )}
 
         {step === 3 && (
-          <div>
-            <h2
-              ref={headingRef}
-              tabIndex={-1}
-              className="onside-display mb-2 text-3xl text-[var(--onside-paper)] outline-none"
-            >
-              Quão longe você topa ir?
-            </h2>
-            <p className="onside-text-muted-on-ink mb-6">
+          <>
+            {heading('Quão longe você topa ir?')}
+            <p className="ob-sub">
               Sua cidade e a distância definem quais bares aparecem pra você.
             </p>
-            <div className="mb-6">
+            <div className="ob-city">
               <CityField
-                ink
                 label="Sua cidade"
                 value={city}
                 onChange={setCity}
@@ -263,49 +292,79 @@ function FanOnboarding() {
               options={SEARCH_RADII}
               onChange={setRadius}
             />
-          </div>
+          </>
         )}
 
         {step === 4 && (
-          <div className="py-4 text-center md:py-6">
-            <div className="onside-panel-acid mx-auto mb-6 grid size-20 place-items-center">
-              <Check size={40} color="currentColor" aria-hidden="true" />
-            </div>
-            <h2
-              ref={headingRef}
-              tabIndex={-1}
-              className="onside-display mb-3 text-4xl text-[var(--onside-paper)] outline-none md:text-5xl"
-            >
-              Pronto para salvar
-            </h2>
-            <p className="onside-text-muted-on-ink mx-auto mb-8 max-w-md">
-              Confira sua seleção. Ao continuar, salvamos preferências e abrimos
-              o mapa de bares.
+          <>
+            {heading(
+              firstName ? (
+                <>
+                  Tudo pronto, <span className="hl">{firstName}</span>
+                </>
+              ) : (
+                'Tudo pronto'
+              )
+            )}
+            <p className="ob-sub">
+              Confira e salve. Em seguida abrimos os bares do seu raio.
             </p>
-            <div className="inline-flex flex-wrap justify-center gap-2">
-              {[...selectedSports, ...selectedTeams].map((s) => (
-                <span key={s.id} className="onside-badge onside-badge-on-ink">
-                  {s.name}
-                </span>
+            <div className="ob-card">
+              {[
+                {
+                  label: 'Esportes',
+                  to: 1,
+                  items: selectedSports.map((s) => ({ id: s.id, name: s.name }))
+                },
+                {
+                  label: 'Times',
+                  to: 2,
+                  items: selectedTeams.map((t) => ({ id: t.id, name: t.name })),
+                  empty: 'Nenhum por enquanto'
+                },
+                {
+                  label: 'Raio',
+                  to: 3,
+                  items: [
+                    { id: 'raio', name: `${radius} km` },
+                    ...(city.city
+                      ? [{ id: 'cidade', name: cityLabel(city.city) }]
+                      : [])
+                  ]
+                }
+              ].map((row) => (
+                <div key={row.label} className="ob-ln">
+                  <span>
+                    <b>{row.label}</b>
+                    {row.items.length ? (
+                      <span className="ob-tags">
+                        {row.items.map((item) => (
+                          <span key={item.id} className="ob-tag">
+                            {item.name}
+                          </span>
+                        ))}
+                      </span>
+                    ) : (
+                      <span>{row.empty}</span>
+                    )}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn btn-ghost ob-sm"
+                    onClick={() => setStep(row.to)}
+                    aria-label={`Editar ${row.label.toLowerCase()}`}
+                  >
+                    Editar
+                  </button>
+                </div>
               ))}
-              <span className="onside-badge onside-badge-on-ink">
-                {radius} km
-              </span>
-              {city.city ? (
-                <span className="onside-badge onside-badge-on-ink">
-                  {cityLabel(city.city)}
-                </span>
-              ) : null}
             </div>
-          </div>
+          </>
         )}
-      </OnboardingStep>
+      </div>
 
       {error && (
-        <p
-          className="mt-4 text-center text-[var(--onside-live-text)] text-sm"
-          role="alert"
-        >
+        <p className="ob-error" role="alert">
           {error}
         </p>
       )}
@@ -322,6 +381,6 @@ function FanOnboarding() {
           step === 2 && selectedTeams.length === 0 ? 'Pular' : undefined
         }
       />
-    </OnboardingLayout>
+    </AuthShell>
   )
 }

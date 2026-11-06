@@ -1,5 +1,3 @@
-import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
-import Check from 'reicon-react/icons/Check'
 import { SportIcon } from '@/components/sports/sport-icon'
 
 type Sport = {
@@ -18,6 +16,7 @@ type Props = {
   retryable?: boolean
 }
 
+/** Esportes do onboarding do torcedor, em cartões de dois em dois (WEB-501). */
 export function SportSelector({
   sports,
   selectedIds,
@@ -29,22 +28,10 @@ export function SportSelector({
 }: Props) {
   if (isLoading) {
     return (
-      <div
-        className="grid grid-cols-2 gap-3 md:grid-cols-3"
-        role="status"
-        aria-busy="true"
-        aria-live="polite"
-      >
+      <div className="ob-sports" role="status" aria-busy="true">
         <span className="sr-only">Carregando esportes…</span>
         {['a', 'b', 'c', 'd', 'e', 'f'].map((id) => (
-          <div
-            key={id}
-            className="onside-choice onside-choice-ink justify-center"
-            aria-hidden="true"
-          >
-            <Skeleton className="mb-2 size-6 bg-[rgb(241_238_230_/_18%)]" />
-            <Skeleton className="h-5 w-24 bg-[rgb(241_238_230_/_18%)]" />
-          </div>
+          <span key={id} className="sk" aria-hidden="true" />
         ))}
       </div>
     )
@@ -52,65 +39,54 @@ export function SportSelector({
 
   if (isError) {
     return (
-      <div className="onside-callout onside-callout-danger" role="alert">
-        <p className="text-sm">Não foi possível carregar os esportes.</p>
-        {onRetry && retryable ? (
-          <button
-            type="button"
-            onClick={onRetry}
-            className="onside-btn onside-btn-outline"
-          >
-            Tentar novamente
-          </button>
-        ) : null}
+      <div className="ob-card" role="alert">
+        <div className="ob-ln">
+          <span>
+            <b>Não foi possível carregar os esportes.</b>
+          </span>
+          {onRetry && retryable ? (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="btn btn-ghost ob-sm"
+            >
+              Tentar novamente
+            </button>
+          ) : null}
+        </div>
       </div>
     )
   }
 
   if (sports.length === 0) {
-    return (
-      <p className="text-sm text-[color-mix(in_srgb,var(--onside-paper)_72%,transparent)]">
-        Nenhum esporte disponível no momento.
-      </p>
-    )
+    return <p className="ob-note">Nenhum esporte disponível no momento.</p>
   }
 
   return (
-    <fieldset className="m-0 border-0 p-0">
+    <fieldset className="ob-cg">
       <legend className="sr-only">Esportes favoritos</legend>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-        {sports.map((s) => {
-          const on = selectedIds.includes(s.id)
-          return (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => onToggle(s.id)}
-              aria-pressed={on}
-              aria-label={s.name}
-              className={`onside-choice onside-choice-ink relative ${on ? 'is-selected' : ''}`}
-            >
+      <div className="ob-sports">
+        {sports.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => onToggle(s.id)}
+            aria-pressed={selectedIds.includes(s.id)}
+            aria-label={s.name}
+          >
+            <span className="e">
               <SportIcon
                 slug={s.slug}
                 name={s.name}
                 presentation="onboarding"
-                size={24}
+                size={22}
                 color="currentColor"
-                className="mb-1 font-[family-name:var(--onside-mono)] text-xs font-bold tracking-[0.12em]"
                 aria-hidden="true"
               />
-              <div className="font-bold text-lg leading-none">{s.name}</div>
-              {on && (
-                <Check
-                  size={16}
-                  color="currentColor"
-                  className="absolute top-3 right-3"
-                  aria-hidden="true"
-                />
-              )}
-            </button>
-          )
-        })}
+            </span>
+            {s.name}
+          </button>
+        ))}
       </div>
     </fieldset>
   )
