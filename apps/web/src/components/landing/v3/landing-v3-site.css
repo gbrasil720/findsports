@@ -832,3 +832,12 @@
     background-size: 1320px auto;
   }
 }
+
+/* O `overflow-x: hidden` global de html e body (globals.css) faz do body um
+   contêiner de rolagem que nunca rola, e o celular dos três passos (`.stick`)
+   subia com a página em vez de ficar fixo. `clip` corta igual sem criar
+   contêiner (o mesmo do Houdini e das páginas legais). */
+html:has(.lp3),
+html:has(.lp3) body {
+  overflow-x: clip;
+}
