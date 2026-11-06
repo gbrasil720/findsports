@@ -1477,6 +1477,7 @@
  * baixo verde-limão, e dá um pulinho ao ser marcado.
  */
 .lp3.ob3 .ob-sports button,
+.lp3.ob3 .ob-radius button,
 .lp3.ob3 .ob-teams .onside-chip {
   position: relative;
   transition:
@@ -1487,6 +1488,7 @@
 }
 
 .lp3.ob3 .ob-sports button[aria-pressed="true"],
+.lp3.ob3 .ob-radius button[aria-pressed="true"],
 .lp3.ob3 .ob-teams .onside-chip[aria-pressed="true"],
 .lp3.ob3 .ob-teams .onside-chip[aria-pressed="true"]:hover:not(:disabled) {
   background: var(--ink);
@@ -1502,6 +1504,7 @@
 }
 
 .lp3.ob3 .ob-sports button[aria-pressed="true"]::after,
+.lp3.ob3 .ob-radius button[aria-pressed="true"]::after,
 .lp3.ob3 .ob-teams .onside-chip[aria-pressed="true"]::before {
   content: "";
   flex: none;
@@ -1514,7 +1517,8 @@
     center / 14px no-repeat;
 }
 
-.lp3.ob3 .ob-sports button[aria-pressed="true"]::after {
+.lp3.ob3 .ob-sports button[aria-pressed="true"]::after,
+.lp3.ob3 .ob-radius button[aria-pressed="true"]::after {
   position: absolute;
   top: 10px;
   right: 10px;
@@ -1535,8 +1539,15 @@
 
 @media (prefers-reduced-motion: reduce) {
   .lp3.ob3 .ob-sports button[aria-pressed="true"],
+  .lp3.ob3 .ob-radius button[aria-pressed="true"],
   .lp3.ob3 .ob-teams .onside-chip[aria-pressed="true"] {
     animation: none;
     transform: none;
   }
+}
+
+/* Distância: o texto de apoio acompanha a inversão. */
+.lp3.ob3 .ob-radius button[aria-pressed="true"] span {
+  color: inherit;
+  opacity: 0.75;
 }
