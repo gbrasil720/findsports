@@ -305,7 +305,7 @@ export function PubInfoForm({
           <span className="ob-photo-th" aria-hidden="true">
             {photoUrl ? (
               // biome-ignore lint/performance/noImgElement: prévia de um arquivo local (blob:), sem otimizador.
-              <img src={photoUrl} alt="" />
+              <img key={photoUrl} src={photoUrl} alt="" />
             ) : null}
           </span>
           <span className="ob-photo-tx">

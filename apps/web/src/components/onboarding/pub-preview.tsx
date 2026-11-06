@@ -56,7 +56,7 @@ export function PubPreview({
         <div className={`ob-pimg${photoUrl ? ' has' : ''}`}>
           {photoUrl ? (
             // biome-ignore lint/performance/noImgElement: prévia de um arquivo local (blob:), sem otimizador.
-            <img src={photoUrl} alt="" />
+            <img key={photoUrl} src={photoUrl} alt="" />
           ) : (
             'A foto de capa entra aqui. Você escolhe no passo do estabelecimento ou depois, no painel.'
           )}
