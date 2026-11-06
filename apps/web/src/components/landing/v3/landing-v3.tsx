@@ -7,6 +7,7 @@ import { CookiePreferencesButton } from '@/components/consent/cookie-consent'
 import { useTRPC } from '@/utils/trpc'
 import {
   DEFINITION_POINTS,
+  FAQ_ITEMS,
   JOURNEY_STEPS,
   LANDING_COPY,
   NAV_ITEMS,
@@ -24,6 +25,7 @@ import {
   Logo,
   People,
   Pin,
+  Plus,
   Search,
   Stars,
   Tv
@@ -1121,158 +1123,32 @@ export function LandingV3() {
         </section>
 
         {/* ================= FAQ ================= */}
-        <section className="sec wrap" id="perguntas" aria-labelledby="h-faq">
+        {/* As mesmas perguntas do JSON-LD `FAQPage` da home (`FAQ_ITEMS`). */}
+        <section className="sec wrap" id="duvidas" aria-labelledby="h-faq">
           <div className="faq-grid">
-            <h2
-              id="h-faq"
-              className="disp rv"
-              style={{ fontSize: 'clamp(46px,5.4vw,84px)' }}
-            >
-              Antes de sair de casa,{' '}
-              <span className="h2-2">tire a dúvida.</span>
-            </h2>
+            <div>
+              <p className="kick rv">{LANDING_COPY.faq.kicker}</p>
+              <h2
+                id="h-faq"
+                className="disp rv"
+                style={{ fontSize: 'clamp(46px,5.4vw,84px)' }}
+              >
+                {LANDING_COPY.faq.title[0]}{' '}
+                <span className="h2-2">{LANDING_COPY.faq.title[1]}</span>
+              </h2>
+            </div>
             <div className="faq">
-              <details open>
-                <summary>
-                  É de graça para torcedor?
-                  <span className="pm" aria-hidden="true">
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                      style={{ color: '#12120f' }}
-                    >
-                      <path
-                        d="M10.75 4h2.5v6.75H20v2.5h-6.75V20h-2.5v-6.75H4v-2.5h6.75z"
-                        fill="currentColor"
-                      />
-                    </svg>
-                  </span>
-                </summary>
-                <p>
-                  Sim. Quem paga plano é o bar. Para você, buscar, marcar
-                  presença e ganhar medalha não custa nada.
-                </p>
-              </details>
-              <details>
-                <summary>
-                  Como sei que o bar vai mesmo passar o jogo?
-                  <span className="pm" aria-hidden="true">
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                      style={{ color: '#12120f' }}
-                    >
-                      <path
-                        d="M10.75 4h2.5v6.75H20v2.5h-6.75V20h-2.5v-6.75H4v-2.5h6.75z"
-                        fill="currentColor"
-                      />
-                    </svg>
-                  </span>
-                </summary>
-                <p>
-                  A grade é publicada pelo próprio bar, partida por partida,
-                  dizendo se tem telão e se o som fica ligado. Quem foi avalia
-                  depois, e a nota mostra se o bar cumpriu.
-                </p>
-              </details>
-              <details>
-                <summary>
-                  Dá para reservar mesa?
-                  <span className="pm" aria-hidden="true">
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                      style={{ color: '#12120f' }}
-                    >
-                      <path
-                        d="M10.75 4h2.5v6.75H20v2.5h-6.75V20h-2.5v-6.75H4v-2.5h6.75z"
-                        fill="currentColor"
-                      />
-                    </svg>
-                  </span>
-                </summary>
-                <p>
-                  Não. “Vou assistir aqui” marca presença e, nos bares Elite,
-                  gera o código do balcão. Mesa continua sendo direto com o bar.
-                </p>
-              </details>
-              <details>
-                <summary>
-                  Só futebol?
-                  <span className="pm" aria-hidden="true">
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                      style={{ color: '#12120f' }}
-                    >
-                      <path
-                        d="M10.75 4h2.5v6.75H20v2.5h-6.75V20h-2.5v-6.75H4v-2.5h6.75z"
-                        fill="currentColor"
-                      />
-                    </svg>
-                  </span>
-                </summary>
-                <p>
-                  Não. NBA, NFL, UFC, Fórmula 1, tênis, vôlei e NBB também. Você
-                  segue os seus times e atletas e vê onde passa cada um.
-                </p>
-              </details>
-              <details>
-                <summary>
-                  Meus amigos veem onde eu fui?
-                  <span className="pm" aria-hidden="true">
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                      style={{ color: '#12120f' }}
-                    >
-                      <path
-                        d="M10.75 4h2.5v6.75H20v2.5h-6.75V20h-2.5v-6.75H4v-2.5h6.75z"
-                        fill="currentColor"
-                      />
-                    </svg>
-                  </span>
-                </summary>
-                <p>
-                  Só se você deixar. Em Privacidade você escolhe se todos, só
-                  amigos ou ninguém vê os bares e jogos. Quem não é seu amigo
-                  nunca vê o seu nome.
-                </p>
-              </details>
-              <details>
-                <summary>
-                  Preciso baixar o app?
-                  <span className="pm" aria-hidden="true">
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                      style={{ color: '#12120f' }}
-                    >
-                      <path
-                        d="M10.75 4h2.5v6.75H20v2.5h-6.75V20h-2.5v-6.75H4v-2.5h6.75z"
-                        fill="currentColor"
-                      />
-                    </svg>
-                  </span>
-                </summary>
-                <p>
-                  Não. Tudo funciona aqui no site, no celular ou no computador:
-                  buscar o jogo, marcar que vai, o código do balcão e a
-                  avaliação. O app para iPhone está chegando, com a mesma conta.
-                </p>
-              </details>
+              {FAQ_ITEMS.map((item, i) => (
+                <details key={item.id} open={i === 0 || undefined}>
+                  <summary>
+                    {item.question}
+                    <span className="pm" aria-hidden="true">
+                      <Plus />
+                    </span>
+                  </summary>
+                  <p>{item.answer}</p>
+                </details>
+              ))}
             </div>
           </div>
         </section>
