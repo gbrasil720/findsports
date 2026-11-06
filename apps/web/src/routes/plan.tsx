@@ -589,13 +589,14 @@ function PlanSelection() {
       : 'o fim do teste'
     who = (
       <>
+        {/* WEB-328: em nome de quem, também no celular. */}
+        {names ? (
+          <>
+            A assinatura sai em nome de {names}. {renameLink}
+            <br />
+          </>
+        ) : null}
         <span className="pl-lg">
-          {names ? (
-            <>
-              A assinatura sai em nome de {names}. {renameLink}
-              <br />
-            </>
-          ) : null}
           Contratar agora não antecipa nada: a primeira cobrança é em{' '}
           {firstCharge}.
         </span>
@@ -617,13 +618,13 @@ function PlanSelection() {
   } else if (currentPlan && subscription) {
     who = (
       <>
+        {names ? <>Cobrado de {names}. </> : null}
+        {cancelNotice
+          ? `${cancelNotice}. `
+          : trialNotice
+            ? `${trialNotice}. `
+            : null}
         <span className="pl-lg">
-          {names ? <>Cobrado de {names}. </> : null}
-          {cancelNotice
-            ? `${cancelNotice}. `
-            : trialNotice
-              ? `${trialNotice}. `
-              : null}
           Faturas e dados da nota ficam em{' '}
           <Link to="/admin/billing">Assinatura e pagamentos</Link>.
         </span>
