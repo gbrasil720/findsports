@@ -6,6 +6,7 @@ import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { CookiePreferencesButton } from '@/components/consent/cookie-consent'
 import { useTRPC } from '@/utils/trpc'
 import {
+  DEFINITION_POINTS,
   LANDING_COPY,
   NAV_ITEMS,
   PROBLEM_ITEMS,
@@ -188,6 +189,17 @@ function ProblemCaption({ i }: { i: number }) {
   )
 }
 
+function DefinitionNote({ i }: { i: number }) {
+  const d = DEFINITION_POINTS[i]
+  if (!d) return null
+  return (
+    <div className="note rv" data-to={i}>
+      <span className="n">{d.number}</span>
+      <b>{d.text}</b>
+    </div>
+  )
+}
+
 type Result = { game: Game; where: string; example: boolean }
 
 function Results({ result, cta }: { result: Result; cta: Cta }) {
@@ -280,6 +292,8 @@ export function LandingV3() {
       ? [t, { key: `bn-${i}`, benefit: TICKER_BENEFITS[(i >> 1) % 4] }]
       : [t]
   )
+
+  const sol = LANDING_COPY.solution
 
   function onSearch(e: FormEvent) {
     e.preventDefault()
@@ -605,6 +619,55 @@ export function LandingV3() {
                 ))}
               </ul>
             </div>
+          </div>
+        </section>
+
+        {/* ================= ESCOLHA COM CONFIANÇA ================= */}
+        <section className="conf" id="bar-por-dentro" aria-labelledby="h-anno">
+          <div className="wrap sec">
+            <p className="kick rv">{sol.kicker}</p>
+            <h2 id="h-anno" className="disp rv">
+              {sol.title[0]}{' '}
+              <span className="h2-2" style={{ display: 'inline' }}>
+                {sol.title[1]}
+              </span>{' '}
+              {sol.title[2]}
+            </h2>
+            <p className="lede rv">
+              {sol.body[0]} <b>{sol.body[1]}</b> {sol.body[2]}
+            </p>
+            {/* As notas apontam para a tela pelo índice (`data-to`). */}
+            <div className="anno" id="lp3-anno">
+              <svg className="lines" id="lp3-lines" aria-hidden="true"></svg>
+              <div className="col l">
+                <DefinitionNote i={0} />
+              </div>
+              <div className="phone" id="lp3-annophone">
+                <img
+                  src="/landing/v3/tela-bar.webp"
+                  alt="Página do Bar do Zé no app: preço médio por pessoa, o jogo de hoje no telão, a infraestrutura do bar e quantas pessoas vão"
+                  width="448"
+                  height="976"
+                  loading="lazy"
+                />
+                <span className="target" style={{ left: '40%', top: '74%' }}>
+                  <span>1</span>
+                </span>
+                <span className="target" style={{ left: '66%', top: '34.6%' }}>
+                  <span>2</span>
+                </span>
+                <span className="target" style={{ left: '86%', top: '72.4%' }}>
+                  <span>3</span>
+                </span>
+              </div>
+              <div className="col r">
+                <DefinitionNote i={1} />
+                <DefinitionNote i={2} />
+              </div>
+            </div>
+            <p className="closing rv">
+              {sol.closing[0]} <b>{sol.closing[1]}</b>
+            </p>
           </div>
         </section>
 
@@ -1196,88 +1259,6 @@ export function LandingV3() {
                     />
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ================= BAR POR DENTRO ================= */}
-        <section
-          className="sec wrap"
-          id="bar-por-dentro"
-          aria-labelledby="h-anno"
-        >
-          <h2 id="h-anno" className="disp rv">
-            O que o bar não conta no Instagram,{' '}
-            <span className="h2-2">a Onside mostra.</span>
-          </h2>
-          <div className="anno" id="lp3-anno">
-            <svg className="lines" id="lp3-lines" aria-hidden="true"></svg>
-            <div className="col l">
-              <div className="note rv" data-to="0">
-                <span className="n">1</span>
-                <b>Quem vai, pelo nome</b>
-                <p>
-                  34 pessoas vão. Amigos aparecem pelo nome; estranhos, nunca.
-                </p>
-              </div>
-              <div className="note rv" data-to="1">
-                <span className="n">2</span>
-                <b>Está no bar? Faça check-in</b>
-                <p>
-                  A até 150 metros, no dia do jogo. Só quem esteve lá entra na
-                  nota.
-                </p>
-              </div>
-              <div className="note rv" data-to="2">
-                <span className="n">3</span>
-                <b>Telão e som, jogo por jogo</b>
-                <p>
-                  Telão, som ligado, Premiere, área externa. Marcado na partida,
-                  não no perfil.
-                </p>
-              </div>
-            </div>
-            <div className="phone" id="lp3-annophone">
-              <img
-                src="/landing/v3/tela-bar2.webp"
-                alt="Página do Bar do Zé no app: jogo de hoje, check-in, características, oferta da casa e próximos jogos"
-                width="448"
-                height="976"
-                loading="lazy"
-              />
-              <span className="target" style={{ left: '86%', top: '17%' }}>
-                <span>1</span>
-              </span>
-              <span className="target" style={{ left: '79%', top: '27.5%' }}>
-                <span>2</span>
-              </span>
-              <span className="target" style={{ left: '50%', top: '38.5%' }}>
-                <span>3</span>
-              </span>
-              <span className="target" style={{ left: '13%', top: '48.5%' }}>
-                <span>4</span>
-              </span>
-              <span className="target" style={{ left: '22%', top: '67%' }}>
-                <span>5</span>
-              </span>
-            </div>
-            <div className="col r">
-              <div className="note rv" data-to="3">
-                <span className="n">4</span>
-                <b>Oferta da casa</b>
-                <p>
-                  Chopp em dobro até o intervalo, liberado pelo código no
-                  balcão.
-                </p>
-              </div>
-              <div className="note rv" data-to="4">
-                <span className="n">5</span>
-                <b>A grade da semana</b>
-                <p>
-                  NBA às 22h, Brasileirão na terça, Fórmula 1 na quarta. Tudo no
-                  mesmo lugar.
-                </p>
               </div>
             </div>
           </div>
