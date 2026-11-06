@@ -526,7 +526,7 @@ textarea.inp{height:88px;padding:14px 16px;resize:none;line-height:1.4}
 .obsteps li.on{background:var(--card);box-shadow:var(--shadow);color:var(--fg)}
 .obsteps li.on span{background:var(--fg);color:var(--bg)}
 .obsteps li.ok span{background:var(--acid);color:#12120f;--spark:#e8320c}
-.obgrid{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 460px}
+.obgrid{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 460px}.obgrid.one{grid-template-columns:1fr}
 .obf{padding:44px max(28px,var(--gl)) 40px;max-width:720px;width:100%;margin:0 auto;display:flex;flex-direction:column}
 .obf h1{font-size:clamp(40px,4vw,58px)}
 .hl2{color:var(--live-text)}
@@ -561,6 +561,88 @@ textarea.inp{height:88px;padding:14px 16px;resize:none;line-height:1.4}
 .cta-r{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:24px}
 @media (max-width:1000px){.obgrid{grid-template-columns:1fr}.obprev{border-left:0;border-top:1px solid var(--line);padding:28px var(--gr) 40px var(--gl)}}
 @media (max-width:760px){.obsteps{flex-wrap:nowrap;margin:0 auto 0 0}.obsteps li:not(.on){display:none}.obsteps li.on::after{content:attr(data-n);font:500 12px var(--mono);color:var(--muted);margin-left:6px}.obh .lg b{display:none}.obh{padding:14px var(--gr) 14px var(--gl);gap:10px}.obf{padding:26px var(--gr) 30px var(--gl)}}
+
+/* rotina, plano e comprovante */
+.calc{margin-top:20px;border-radius:20px;background:var(--card);box-shadow:var(--shadow);padding:2px 18px}
+.calc .sw{padding:12px 0}.calc .sw:first-child{border-top:0}
+.calc .sw>span:first-child{display:flex;flex-direction:column;gap:2px;font-weight:600}
+.calc .sw small{font:500 13px var(--text);color:var(--muted)}
+.calc .step b{font-size:22px;min-width:64px}
+.calc .step button{width:32px;height:32px;font-size:16px}
+.obf.wide{max-width:1120px}
+.obf.wide h1{font-size:clamp(34px,3.4vw,48px);margin-top:8px}
+.rwhy{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:6px 18px;font-size:14.5px;color:var(--body)}
+.rwhy li{display:flex;gap:6px;align-items:center}
+.rwhy svg{color:var(--fg)}
+.linkb{border:0;background:none;padding:0;font:600 14.5px var(--text);color:var(--fg);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.pgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:34px;align-items:stretch}
+.pc{position:relative;display:flex;flex-direction:column;text-align:left;padding:22px;border-radius:24px;border:0;background:var(--card);box-shadow:var(--shadow);cursor:pointer;font:inherit;color:inherit;transition:box-shadow .2s,transform .25s var(--ease)}
+.pc:hover{transform:translateY(-3px)}
+.pc:focus-visible{outline:3px solid var(--fg);outline-offset:3px}
+.pc.on{box-shadow:inset 0 0 0 2px var(--fg),var(--shadow)}
+.pc.rec{background:var(--ink-card);color:#f1eee6;box-shadow:0 5px 0 #000;--spark:#c9f135}
+.pc.rec.on{box-shadow:inset 0 0 0 2px #c9f135,0 5px 0 #000}
+.pc .tagc{position:absolute;right:18px;top:20px;display:inline-flex;gap:5px;align-items:center;font:600 11px/1 var(--mono);letter-spacing:.06em;background:#c9f135;color:#12120f;padding:7px 9px;border-radius:7px;--spark:#e8320c}
+.pc h4{margin:16px 0 0;font:400 34px/1 var(--display);text-transform:uppercase}
+.pc.rec h4{color:#c9f135}
+.pc .pd{margin:8px 0 0;font-size:14px;line-height:1.45;color:var(--muted)}
+.pc.rec .pd,.pc.rec .pcp small,.pc.rec .pcp s{color:#aaa9a4}
+.pcp{margin-top:18px;padding-top:16px;border-top:1px dashed var(--line2)}
+.pc.rec .pcp,.pc.rec .pcf{border-color:rgba(241,238,230,.16)}
+.pcp{display:flex;flex-direction:column}.pcp .pk{margin:0 0 6px;font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase}
+.pcv{display:flex;align-items:baseline;gap:6px}.pcv b{font:400 40px/1 var(--display)}.pcv span{font-size:14px;color:var(--muted)}.pcv s{font-size:14px;color:var(--muted);margin-left:4px}
+.pc.rec .pcv span,.pc.rec .pcv s{color:#aaa9a4}
+.pcp small{display:block;margin-top:6px;font-size:13.5px;color:var(--muted)}
+.pcp small b{display:inline;font:700 13.5px var(--text);text-transform:none;color:inherit}
+.pc.rec .pcp small b{color:#f1eee6}
+.pcf{list-style:none;margin:16px 0 0;padding:16px 0 0;border-top:1px dashed var(--line2);display:flex;flex-direction:column;gap:9px;font-size:14px}
+.pcf li{display:flex;gap:8px;align-items:flex-start}
+.pcf svg{flex:none;margin-top:1px}
+.pcb{margin-top:auto;padding-top:18px}
+.pcb span{display:flex;flex-direction:column;gap:3px;padding:12px 14px;border-radius:14px;background:var(--sub);font-size:13.5px}
+.pcb b{font-size:15px}
+.pcb small{color:var(--muted);font:500 12px var(--mono)}
+.pc.rec .pcb span{background:rgba(241,238,230,.07)}
+.pc.rec .pcb b{color:#c9f135}.pc.rec .pcb small{color:#aaa9a4}
+.pcsel{display:flex;align-items:center;gap:8px;margin-top:14px;font:600 14px var(--text)}
+.pcsel i{width:20px;height:20px;border-radius:50%;box-shadow:inset 0 0 0 2px var(--line2);flex:none}
+.pc.on .pcsel i{box-shadow:inset 0 0 0 6px var(--fg)}
+.pc.rec .pcsel i{box-shadow:inset 0 0 0 2px #55554f}.pc.rec.on .pcsel i{box-shadow:inset 0 0 0 6px #c9f135}
+.rbox{margin-top:16px;padding:16px 18px;border-radius:18px;background:var(--card);box-shadow:var(--shadow);max-width:760px}
+.rbox .k2{display:block;margin-bottom:8px}
+.rbox ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px;font-size:15px}
+.rbox li{display:flex;gap:8px;align-items:flex-start}.rbox li svg{flex:none;margin-top:2px}
+.rbox .linkb{margin-top:10px}
+@media (max-width:1000px){.pgrid{grid-template-columns:1fr;gap:16px}.pc.rec{order:-1}}
+.cepf{align-self:end;display:flex;align-items:center;gap:10px;min-height:52px;padding:8px 14px;border-radius:16px;background:#c9f135;color:#12120f;font-size:14px;line-height:1.3;--spark:#e8320c}
+.cepf b{display:block;font-size:14.5px}
+.cepf .ck{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#12120f;color:#c9f135;flex:none}
+.fl.cepok .inp{box-shadow:inset 0 0 0 2px #12120f;background:var(--field)}
+.fl.auto .inp{background:rgba(201,241,53,.16);box-shadow:inset 0 0 0 1px rgba(127,154,18,.45)}
+.fl.auto>span::after{content:' · pelo CEP';color:#7f9a12}
+.rcpt{max-width:520px;margin:0 auto;padding:44px var(--gr) 60px var(--gl);text-align:center}
+.rtop h1{font-size:clamp(36px,4.2vw,54px);margin-top:10px}
+.printer{position:relative;z-index:2;margin:28px auto 0;width:min(360px,92%);height:34px;border-radius:14px 14px 6px 6px;background:var(--fg);box-shadow:0 4px 0 #000}
+.slot{position:absolute;left:24px;right:24px;bottom:6px;height:5px;border-radius:5px;background:#000}
+.led2{position:absolute;right:16px;top:9px;width:7px;height:7px;border-radius:50%;background:#c9f135;box-shadow:0 0 8px #c9f135;animation:blink2 1s steps(1) 6}
+@keyframes blink2{50%{opacity:.2}}
+.paper{position:relative;z-index:1;width:min(320px,84%);margin:-8px auto 0;padding:18px 18px 26px;background:#fbfaf6;color:#12120f;font:500 13px/1.45 var(--mono);text-align:left;box-shadow:0 18px 30px -18px rgba(0,0,0,.4);
+  -webkit-mask:linear-gradient(#000 0 0) top/100% calc(100% - 8px) no-repeat,conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/12px 8px repeat-x;
+  mask:linear-gradient(#000 0 0) top/100% calc(100% - 8px) no-repeat,conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/12px 8px repeat-x}
+.rl{display:flex;justify-content:space-between;gap:12px;animation:feed .35s var(--ease) both}
+@keyframes feed{from{opacity:0;transform:translateY(-10px);max-height:0}to{opacity:1;transform:none;max-height:80px}}
+.rl.c{justify-content:center;text-align:center}
+.rl.m{color:#55554f}
+.rl.s span:last-child{text-decoration:line-through}
+.rl.b{font-weight:700}
+.rl.cut{border-top:1.5px dashed rgba(18,18,15,.35);margin:10px 0}
+.rl.note{display:block;font-size:12px;color:#55554f;margin-top:4px}
+.rl.tot{font:400 24px/1.1 var(--display);margin-top:2px}
+.rlogo{justify-content:center;align-items:center;gap:8px;margin-bottom:8px}
+.rlogo b{font:400 24px/1 var(--display)}
+.rl.bars{justify-content:center;gap:2px;height:38px;margin:14px 0 6px}
+.rl.bars i{display:block;height:100%;background:#12120f}
+@media (prefers-reduced-motion:reduce){.rl{animation:none}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition-duration:.01ms!important}}
 </style>
 
@@ -910,33 +992,88 @@ function dirty(){S.dirty=true;var s=document.getElementById('savebar');if(s)s.cl
 /* ---------- onboarding do bar ---------- */
 S.bo=0;S.bf={nome:'Bar do Zé',cep:'05433-000',rua:'Rua Aspicuelta',num:'214',bairro:'Vila Madalena',cidade:'São Paulo',uf:'SP',tel:'',desc:'Boteco da Vila Madalena com telão e som do jogo.',telas:3,am:{'Telão / projetor':1,'Som do jogo ligado':1,'Área externa':1,'Chopp':1,'Petiscos':1,'Pix':1,'Cartão':1}};
 var OBAM=[['Para ver o jogo',['Telão / projetor','Som do jogo ligado','Premiere / canais fechados']],['O espaço',['Área externa','Área coberta','Acessível','Pet friendly','Wi-fi']],['Comida e bebida',['Chopp','Petiscos','Cozinha até tarde','Drinks','Opção vegetariana']],['Pagamento',['Pix','Cartão','Vale-refeição']],['Para chegar',['Perto do metrô','Estacionamento próximo','Bicicletário']]];
+/* rotina e plano: a calculadora recomenda, o dono escolhe. Preços da tabela de fundador (plan-catalog.ts), sem promessa de público. */
+S.bc={jogos:12,ticket:80,w:{cardapio:1,quemvai:1}};S.bf.plan=null;
+var OBP={starter:{price:97,tag:'Pra começar a aparecer',f:['Perfil completo com agenda e rota','Contato direto por WhatsApp','Até 5 jogos por mês','Desempenho dos últimos 30 dias']},
+ pro:{price:147,tag:'Pra lotar nos clássicos',f:['Tudo do Starter','Jogos ilimitados na agenda','Destaque na busca por time e liga','Cardápio e preço médio no perfil','Funil de rota, telefone e WhatsApp']},
+ elite:{price:297,tag:'Pra ser referência na cidade',f:['Tudo do Pro','Topo da busca nos clássicos','Quem vai assistir, jogo a jogo','Oferta da casa e código do balcão','Histórico completo']}};
+var FUND=28,ORD=['starter','pro','elite'];
+var WANTS=[['cardapio','Mostrar meu cardápio e preços','pro','beer','Cardápio e preços no perfil aparecem a partir do Pro'],['destaque','Aparecer quando buscam o meu time','pro','search','Destaque na busca por time e liga é do Pro'],['funil','Saber quem pediu rota ou me chamou','pro','ranking','Quem pediu rota, ligou ou chamou no WhatsApp aparece a partir do Pro'],['quemvai','Saber quantos vão vir a cada jogo','elite','people','Saber quem vai assistir, jogo a jogo, só existe no Elite'],['oferta','Dar uma oferta pra quem vem pela Onside','elite','beer','Oferta da casa com código do balcão só existe no Elite'],['classico','Ficar no topo em dia de clássico','elite','fire','Topo da busca nos clássicos só existe no Elite']];
+function brl(n){return 'R$ '+n}
+function rec(){var c=S.bc,r='starter',why=[];
+  if(c.jogos>5){r='pro';why.push('Você passa '+c.jogos+' jogos por mês, e o Starter mostra até 5')}
+  WANTS.forEach(function(w){if(!c.w[w[0]])return;if(ORD.indexOf(w[2])>ORD.indexOf(r))r=w[2];why.push(w[4])});
+  if(!why.length)why.push('Até 5 jogos por mês e sem extras: o Starter dá conta');
+  return {p:r,why:why}}
+function payback(p){var c=S.bc,m=OBP[p].price-FUND,n=Math.max(1,Math.ceil(m/Math.max(1,c.ticket)));return {n:n,per:c.jogos?n/c.jogos:n}}
+function perTxt(pb){var c=S.bc;if(!c.jogos)return '';if(pb.n>=c.jogos)return Math.round(pb.n/c.jogos*10)/10+' por jogo';var k=Math.max(1,Math.round(c.jogos/pb.n));return '1 pessoa a cada '+(k===1?'jogo':k+' jogos')}
+var BCS={jogos:[1,1,60,'Quantos jogos você passa por mês?','Some tudo: Brasileirão, Champions, Libertadores, NBA…'],ticket:[5,10,500,'Quanto cada cliente gasta numa noite de jogo?','Comida e bebida, em média por pessoa']};
+function bcRow(k){var d=BCS[k],v=S.bc[k];return '<div class="sw"><span>'+d[3]+'<small>'+d[4]+'</small></span><span class="step"><button type="button" data-bcs="'+k+':-1" aria-label="Menos">−</button><b aria-live="polite">'+(k==='ticket'?'R$ '+v:v)+'</b><button type="button" data-bcs="'+k+':1" aria-label="Mais">+</button></span></div>'}
 function cadastro(){
-  var P=['Boas-vindas','Estabelecimento','Características','Revisão'],st=S.bo,f=S.bf;
-  if(st===4)return noar();
+  var P=['Boas-vindas','Estabelecimento','Características','Sua rotina','Plano','Revisão'],st=S.bo,f=S.bf,N=P.length;
+  if(st===N)return recibo();
+  if(st===N+1)return noar();
+  var plan=f.plan||rec().p;
   var h='<div class="obb"><header class="obh"><span class="lg">'+'<svg width="26" height="26" viewBox="0 0 30 30" aria-hidden="true"><circle cx="14" cy="14" r="10.5" fill="none" stroke="currentColor" stroke-width="4.2"/><circle cx="22.4" cy="22.6" r="4.6" fill="#e8320c"/></svg><b>ONSIDE</b></span>'+
-    '<ol class="obsteps">'+P.map(function(p,i){return '<li data-n="'+(i+1)+' de 4" class="'+(i<st?'ok':i===st?'on':'')+'"><span>'+(i<st?ic('check',14):i+1)+'</span>'+p+'</li>'}).join('')+'</ol><a class="btn b-ghost sm" href="#hoje">'+(st===2?'Pular':'Sair')+'</a></header><div class="obgrid"><section class="obf">';
-  if(st===0){h+='<h1 class="disp">Vamos lotar sua casa nos <span class="hl2">dias de jogo</span></h1><p class="sub">Coloque seu bar no radar dos torcedores. Leva 1 minuto, e você entra com 120 dias de Elite grátis, sem cartão.</p><ul class="obben">'+[['tv','Divulgue sua programação de jogos','O torcedor procura o jogo e acha o seu bar.'],['pin','Apareça pra torcedores perto de você','Quem está no seu raio vê você primeiro.'],['fire','Lote nos dias de clássico','Elite aparece no topo dos jogos grandes.']].map(function(b){return '<li><span class="i">'+ic(b[0],22)+'</span><span><b>'+b[1]+'</b><span>'+b[2]+'</span></span></li>'}).join('')+'</ul>'}
+    '<ol class="obsteps">'+P.map(function(p,i){return '<li data-n="'+(i+1)+' de '+N+'" class="'+(i<st?'ok':i===st?'on':'')+'"><span>'+(i<st?ic('check',14):i+1)+'</span>'+p+'</li>'}).join('')+'</ol><a class="btn b-ghost sm" href="#hoje">'+(st===2?'Pular':'Sair')+'</a></header><div class="obgrid'+(st===4?' one':'')+'"><section class="obf'+(st===4?' wide':'')+'">';
+  if(st===0){h+='<h1 class="disp">Vamos lotar sua casa nos <span class="hl2">dias de jogo</span></h1><p class="sub">Coloque seu bar no radar dos torcedores. Leva 2 minutos, e você testa 120 dias grátis no plano que escolher, sem cartão.</p><ul class="obben">'+[['tv','Divulgue sua programação de jogos','O torcedor procura o jogo e acha o seu bar.'],['pin','Apareça pra torcedores perto de você','Quem está no seu raio vê você primeiro.'],['fire','Lote nos dias de clássico','Elite aparece no topo dos jogos grandes.']].map(function(b){return '<li><span class="i">'+ic(b[0],22)+'</span><span><b>'+b[1]+'</b><span>'+b[2]+'</span></span></li>'}).join('')+'</ul>'}
   if(st===1){h+='<h1 class="disp">Seu estabelecimento</h1><p class="sub">Conta um pouco do seu bar. O CEP preenche o endereço.</p><div class="form2" style="margin-top:20px">'+
-    fld('c6','Nome do bar','nome',f.nome)+fld('c2','CEP','cep',f.cep,'00000-000')+fld('c3','Rua','rua',f.rua)+fld('c1','Número','num',f.num)+fld('c2','Bairro','bairro',f.bairro)+fld('c2','Cidade','cidade',f.cidade)+fld('c2','UF','uf',f.uf)+fld('c6','Telefone ou WhatsApp · opcional','tel',f.tel,'(11) 91234-5678')+
-    '<label class="fl c6"><span>Descrição · '+f.desc.length+' de 500</span><textarea class="inp" data-bf="desc">'+esc(f.desc)+'</textarea></label></div><p class="hint2">'+ic('check',16)+'CEP encontrado: Rua Aspicuelta, Vila Madalena.</p>'}
+    fld('c6','Nome do bar','nome',f.nome)+fld('c2 cepok','CEP','cep',f.cep,'00000-000')+'<div class="cepf c4" role="status"><span class="ck">'+ic('check',16)+'</span><span><b>CEP encontrado</b>Preenchemos o endereço. Confira e coloque o número.</span></div>'+fld('c4 auto','Rua','rua',f.rua)+fld('c2','Número','num',f.num)+fld('c2 auto','Bairro','bairro',f.bairro)+fld('c2 auto','Cidade','cidade',f.cidade)+fld('c2 auto','UF','uf',f.uf)+fld('c6','Telefone ou WhatsApp · opcional','tel',f.tel,'(11) 91234-5678')+
+    '<label class="fl c6"><span>Descrição · '+f.desc.length+' de 500</span><textarea class="inp" data-bf="desc">'+esc(f.desc)+'</textarea></label></div>'}
   if(st===2){h+='<h1 class="disp">O que o torcedor encontra aí?</h1><p class="sub">É o que ele usa para filtrar a busca. Você muda depois em Meu espaço.</p><div class="sw" style="border:0;margin-top:18px;font-weight:600">'+ic('tv',20)+'Quantas telas?<span class="step"><button type="button" data-bscr="-1" aria-label="Menos uma">−</button><b>'+f.telas+'</b><button type="button" data-bscr="1" aria-label="Mais uma">+</button></span></div>'+
     OBAM.map(function(g){return '<div class="cg"><h4>'+g[0]+'</h4><div class="chips">'+g[1].map(function(a){return '<button type="button" class="tchip" aria-pressed="'+!!f.am[a]+'" data-bam="'+a+'">'+a+'</button>'}).join('')+'</div></div>'}).join('')}
-  if(st===3){h+='<h1 class="disp">Tudo certo?</h1><p class="sub">Confira antes de colocar no ar. Toque para corrigir.</p><div class="card" style="margin-top:20px">'+
-    [['Estabelecimento',f.nome+' · '+f.rua+', '+f.num+' · '+f.bairro,1],['Telefone',f.tel||'Não informado · você preenche depois em Meu espaço',1],['Características',f.telas+' telas · '+Object.keys(f.am).filter(function(k){return f.am[k]}).join(', '),2],['Plano','Elite grátis por 120 dias, até 5 mar. Sem cartão. Depois você escolhe.',3]].map(function(r){return '<div class="ln"><span><b>'+r[0]+'</b><span>'+esc(r[1])+'</span></span>'+(r[2]<3?'<button class="btn b-ghost sm" type="button" data-bgo="'+r[2]+'">Corrigir</button>':medal('elite',44))+'</div>'}).join('')+'</div>'}
-  h+='<div class="obnav2">'+(st?'<button class="btn b-ghost sm" type="button" data-bgo="'+(st-1)+'">'+ic('back',18)+'Voltar</button>':'<span></span>')+'<button class="btn b-acid" type="button" data-bgo="'+(st+1)+'">'+['Começar','Continuar','Continuar','Colocar meu bar no ar'][st]+'</button></div></section>';
-  h+='<aside class="obprev" aria-label="Assim o torcedor vê"><div class="k2">Assim o torcedor vê</div><div class="pcard"><div class="pimg"><img src="a/bar-ze.webp" alt=""><span class="pel">ELITE</span></div><div class="pin2"><b>'+esc(f.nome||'Seu bar')+'</b><span>'+esc(f.bairro)+' · 450 m · aberto até 02:00</span><div class="chips" style="margin-top:10px">'+(f.am['Telão / projetor']?'<span class="chip">'+ic('tv',15)+f.telas+' telões</span>':'')+(f.am['Som do jogo ligado']?'<span class="chip">'+ic('sound',15)+'Som ligado</span>':'')+(f.am['Área externa']?'<span class="chip">'+ic('outdoor',15)+'Área externa</span>':'')+'</div>'+
-    '<div class="pgame"><span class="mono" style="font-size:12px;color:var(--muted)">SEUS JOGOS APARECEM AQUI</span><b>Corinthians × Palmeiras</b><span>hoje 19:30 · 34 vão</span></div><span class="btn b-ink sm" style="width:100%;margin-top:12px">Vou assistir aqui</span></div></div><p class="pnote">A foto de capa você manda depois, em Meu espaço. Bar sem jogo na grade não aparece nas buscas do dia.</p></aside></div></div>';
+  if(st===3){var c=S.bc;h+='<h1 class="disp">Como é a sua <span class="hl2">rotina de jogo?</span></h1><p class="sub">Duas perguntas rápidas e o que você espera da Onside. Com isso a gente mostra o plano que faz mais sentido pro seu bar.</p><div class="calc">'+
+    bcRow('jogos')+bcRow('ticket')+
+    '</div><div class="cg"><h4>O que você espera da Onside? · marque quantos quiser</h4><div class="chips">'+WANTS.map(function(w){var on=!!c.w[w[0]];return '<button type="button" class="tchip" aria-pressed="'+on+'" data-want="'+w[0]+'">'+(on?ic('check',15):'')+w[1]+'</button>'}).join('')+'</div></div>'}
+  if(st===4){var R=rec();h+='<span class="k2">Nossa recomendação</span><h1 class="disp">O <span class="hl2">'+PLANS[R.p].n+'</span> é o plano do '+esc(f.nome)+'</h1>'+
+    '<div class="rbox"><span class="k2">Pelo que você contou</span><ul>'+R.why.map(function(w){return '<li>'+ic('check',16)+esc(w)+'</li>'}).join('')+'</ul><button class="linkb" type="button" data-bgo="3">Mudar minhas respostas</button></div>'+
+    '<div class="pgrid" role="radiogroup" aria-label="Plano do teste">'+ORD.map(function(k){var on=plan===k,isr=R.p===k,pb=payback(k),m=OBP[k].price-FUND;return '<button type="button" role="radio" aria-checked="'+on+'" class="pc'+(on?' on':'')+(isr?' rec':'')+'" data-bplan="'+k+'">'+(isr?'<span class="tagc">'+ic('sparkle',12)+'RECOMENDADO</span>':'')+
+      medal(k,52)+'<h4>'+PLANS[k].n+'</h4><p class="pd">'+PLANS[k].d+'</p>'+
+      '<span class="pcp"><small class="pk">120 dias grátis, depois</small><span class="pcv"><b>'+brl(m)+'</b><span>/mês</span><s>'+brl(OBP[k].price)+'</s></span><small>Preço de fundador. Só cobra se você contratar.</small></span>'+
+      '<ul class="pcf">'+OBP[k].f.map(function(x){return '<li>'+ic('check',15)+x+'</li>'}).join('')+'</ul>'+
+      '<span class="pcb"><span><b>'+(pb.n>1?pb.n+' clientes a mais por mês já pagam':'1 cliente a mais por mês já paga')+' o plano</b><small>'+brl(m)+' ÷ '+brl(S.bc.ticket)+' que cada um gasta</small></span></span>'+
+      '<span class="pcsel"><i aria-hidden="true"></i>'+(on?'Escolhido':'Escolher o '+PLANS[k].n)+'</span></button>'}).join('')+'</div>'+
+    '<p class="pnote">Qualquer plano é grátis por 120 dias, sem cartão, e dá pra trocar durante o teste. Só cobra se você contratar. A conta de clientes usa o gasto que você informou; não é previsão de público.</p>'}
+  if(st===5){h+='<h1 class="disp">Tudo certo?</h1><p class="sub">Confira antes de colocar no ar. Toque para corrigir.</p><div class="card" style="margin-top:20px">'+
+    [['Estabelecimento',f.nome+' · '+f.rua+', '+f.num+' · '+f.bairro,1],['Telefone',f.tel||'Não informado · você preenche depois em Meu espaço',1],['Características',f.telas+' telas · '+Object.keys(f.am).filter(function(k){return f.am[k]}).join(', '),2],['Plano',PLANS[plan].n+' grátis por 120 dias, até 5 mar. Sem cartão. Depois, '+brl(OBP[plan].price-FUND)+'/mês só se você contratar.',4]].map(function(r){return '<div class="ln"><span><b>'+r[0]+'</b><span>'+esc(r[1])+'</span></span>'+(r[2]<4?'<button class="btn b-ghost sm" type="button" data-bgo="'+r[2]+'">Corrigir</button>':'<span style="display:flex;gap:10px;align-items:center">'+medal(plan,44)+'<button class="btn b-ghost sm" type="button" data-bgo="4">Trocar</button></span>')+'</div>'}).join('')+'</div>'}
+  h+='<div class="obnav2">'+(st?'<button class="btn b-ghost sm" type="button" data-bgo="'+(st-1)+'">'+ic('back',18)+'Voltar</button>':'<span></span>')+'<button class="btn b-acid" type="button" data-bgo="'+(st+1)+'"'+(st===4?' data-bpick':'')+'>'+['Começar','Continuar','Continuar','Ver a recomendação','Testar o '+PLANS[plan].n+' grátis','Colocar meu bar no ar'][st]+'</button></div></section>';
+  if(st===4)h+='</div></div>';
+  else h+='<aside class="obprev" aria-label="Assim o torcedor vê"><div class="k2">Assim o torcedor vê</div><div class="pcard"><div class="pimg"><img src="a/bar-ze.webp" alt="">'+(st>=4&&plan!=='starter'?'<span class="pel">'+PLANS[plan].n.toUpperCase()+'</span>':'')+'</div><div class="pin2"><b>'+esc(f.nome||'Seu bar')+'</b><span>'+esc(f.bairro)+' · 450 m · aberto até 02:00</span><div class="chips" style="margin-top:10px">'+prevChips(f)+'</div>'+
+    '<div class="pgame"><span class="mono" style="font-size:12px;color:var(--muted)">SEUS JOGOS APARECEM AQUI</span><b>Corinthians × Palmeiras</b><span>hoje 19:30 · 34 vão</span></div><span class="btn b-ink sm" style="width:100%;margin-top:12px">Vou assistir aqui</span></div></div><p class="pnote">'+(st===5?(plan==='elite'?'No Elite o seu bar sobe pro topo nos clássicos e mostra a oferta da casa.':plan==='pro'?'No Pro o seu bar ganha selo e destaque na busca por time e liga.':'No Starter o bar aparece na busca, sem selo nem destaque.'):'A foto de capa você manda depois, em Meu espaço. Bar sem jogo na grade não aparece nas buscas do dia.')+'</p></aside></div></div>';
   return h;
 }
+var AMIC={'Telão / projetor':'tv','Som do jogo ligado':'sound','Premiere / canais fechados':'premiere','Área externa':'outdoor','Chopp':'beer','Drinks':'beer','Pet friendly':'heart','Perto do metrô':'pin','Estacionamento próximo':'pin'};
+function prevChips(f){var on=[];OBAM.forEach(function(g){g[1].forEach(function(a){if(f.am[a])on.push(a)})});
+  var L=on.map(function(a){var t=a==='Telão / projetor'?(f.telas?f.telas+(f.telas>1?' telões':' telão'):'Telão'):a==='Som do jogo ligado'?'Som ligado':a.replace(' / canais fechados','');return '<span class="chip">'+(AMIC[a]?ic(AMIC[a],15):'')+t+'</span>'});
+  if(!L.length)return '<span class="chip" style="opacity:.6">Marque o que o bar tem</span>';
+  return L.slice(0,8).join('')+(L.length>8?'<span class="chip">+'+(L.length-8)+'</span>':'')}
 function fld(c,l,k,v,ph){return '<label class="fl '+c+'"><span>'+l+'</span><input class="inp" data-bf="'+k+'" value="'+esc(v||'')+'"'+(ph?' placeholder="'+ph+'"':'')+'></label>'}
-function noar(){
+function recibo(){var f=S.bf,p=f.plan||rec().p,L=[];
+  function row(a,b,cls){L.push('<div class="rl '+(cls||'')+'"><span>'+a+'</span>'+(b!=null?'<span>'+b+'</span>':'')+'</div>')}
+  L.push('<div class="rl rlogo"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="14" cy="14" r="10.5" fill="none" stroke="currentColor" stroke-width="4.2"/><circle cx="22.4" cy="22.6" r="4.6" fill="#e8320c"/></svg><b>ONSIDE</b></div>');
+  row('COMPROVANTE DE CADASTRO',null,'c');row('Nº 000214','05/11/2026 · 14:32','m');L.push('<div class="rl cut"></div>');
+  row(esc(f.nome).toUpperCase(),null,'b');row(esc(f.rua)+', '+esc(f.num),null,'m');row(esc(f.bairro)+' · '+esc(f.cidade)+'/'+esc(f.uf),null,'m');L.push('<div class="rl cut"></div>');
+  row('PLANO '+PLANS[p].n.toUpperCase()+' · TESTE','R$ 0,00','b');row('120 dias','até 05/03/2027','m');row('Cartão','não pedido','m');L.push('<div class="rl cut"></div>');
+  row('DEPOIS DO TESTE',null,'b');row(PLANS[p].n+' · fundador',brl(OBP[p].price-FUND)+',00/mês');row('Tabela',brl(OBP[p].price)+',00/mês','m s');
+  L.push('<div class="rl note">Só é cobrado se você contratar. Sem contratar, nada é cobrado e o bar sai do ar quando o teste acaba.</div>');L.push('<div class="rl cut"></div>');
+  row('TOTAL HOJE','R$ 0,00','tot');L.push('<div class="rl bars" aria-hidden="true">'+Array.from({length:38},function(_,i){return '<i style="width:'+[1,2,1,3,1,2,2,1][i%8]+'px"></i>'}).join('')+'</div>');row('obrigado por torcer com a gente',null,'c m');
+  return '<div class="obb"><div class="rcpt"><div class="rtop"><span class="k2">Pronto. Saiu o seu comprovante</span><h1 class="disp">'+esc(f.nome)+' entrou na Onside</h1></div><div class="printer" aria-hidden="true"><span class="slot"></span><span class="led2"></span></div>'+
+    '<div class="paper" role="document" aria-label="Comprovante de cadastro">'+L.map(function(x,i){return x.replace('class="rl','style="animation-delay:'+(i*95)+'ms" class="rl')}).join('')+'</div>'+
+    '<div class="cta-r"><button class="btn b-acid" type="button" data-bgo="7">Ver meu bar no ar</button><button class="btn b-ghost sm" style="height:48px" type="button" data-rcpt>'+ic('doc',18)+'Baixar PDF</button></div><p class="pnote" style="text-align:center">Uma cópia foi para o seu e-mail. Fica também em Plano e cobrança.</p></div></div>'}
+function noar(){var p=S.bf.plan||rec().p;
   return '<div class="obb"><div class="noar"><span class="big">'+ic('check',52)+'</span><h1 class="disp">'+esc(S.bf.nome)+' está no ar</h1><p class="sub">Seu bar já aparece para os torcedores da região. Agora coloque o primeiro jogo: bar sem jogo na grade não aparece nas buscas do dia.</p>'+
     '<div class="nsug"><div class="k2">Sugestões da rodada · jogos que os torcedores perto seguem</div>'+CATALOG.slice(0,3).map(function(c,i){return '<div class="ln"><span><b>'+esc(c[2])+'</b><span>'+c[3]+' · '+c[1]+', '+c[0]+'</span></span><button class="btn '+(i?'b-ghost':'b-acid')+' sm" type="button" data-addfirst="'+i+'">'+ic('plus',16)+'Adicionar</button></div>'}).join('')+'</div>'+
-    '<div class="cta-r"><a class="btn b-ink" href="#jogos" data-newfirst>'+ic('plus',18)+'Cadastrar outro jogo</a><a class="btn b-ghost sm" style="height:48px" href="#hoje">Fazer isso depois</a></div><p class="pnote" style="text-align:center">Elite grátis até 5 mar · sem cartão</p></div></div>';
+    '<div class="cta-r"><a class="btn b-ink" href="#jogos" data-newfirst>'+ic('plus',18)+'Cadastrar outro jogo</a><a class="btn b-ghost sm" style="height:48px" href="#hoje">Fazer isso depois</a></div><p class="pnote" style="text-align:center">'+PLANS[p].n+' grátis até 5 mar · sem cartão</p></div></div>';
 }
+document.addEventListener('click',function(e){var t;
+  if(t=e.target.closest('[data-want]')){var k=t.dataset.want;S.bc.w[k]=!S.bc.w[k];t.setAttribute('aria-pressed',!!S.bc.w[k]);if(!S.bf.picked)S.bf.plan=null;return}
+  if(t=e.target.closest('[data-bcs]')){var q=t.dataset.bcs.split(':'),d=BCS[q[0]];S.bc[q[0]]=Math.min(d[2],Math.max(d[1],S.bc[q[0]]+d[0]*q[1]));if(!S.bf.picked)S.bf.plan=null;render();return}
+  if(t=e.target.closest('[data-bplan]')){S.bf.plan=t.dataset.bplan;S.bf.picked=true;render();return}
+  if(t=e.target.closest('[data-rcpt]')){toast('Comprovante baixado (exemplo).');return}
+});
 document.addEventListener('click',function(e){
   var t;
-  if(t=e.target.closest('[data-bgo]')){S.bo=+t.dataset.bgo;render();scrollTo(0,0);return}
+  if(t=e.target.closest('[data-bgo]')){if(t.hasAttribute('data-bpick')&&!S.bf.plan)S.bf.plan=rec().p;S.bo=+t.dataset.bgo;render();scrollTo(0,0);return}
   if(t=e.target.closest('[data-bam]')){var a=t.dataset.bam;S.bf.am[a]=!S.bf.am[a];render();return}
   if(t=e.target.closest('[data-bscr]')){S.bf.telas=Math.max(0,S.bf.telas+ +t.dataset.bscr);render();return}
   if(t=e.target.closest('[data-addfirst]')){var c=CATALOG[+t.dataset.addfirst];t.outerHTML='<span class="ok">'+ic('check',14)+'Publicado</span>';toast(c[2]+' publicado. Já aparece para quem procura esse jogo.');return}
