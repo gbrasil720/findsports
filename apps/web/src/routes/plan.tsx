@@ -14,8 +14,10 @@ import {
   earnsDowngradeCredit,
   formatPlanPrice,
   founderCouponFromQuery,
+  getCommonPlanItems,
   getDefaultPlanSelection,
   getPlan,
+  getPlanCardLists,
   getPlanExitLink,
   getPlanHeader,
   getPlanPageMode,
@@ -146,14 +148,10 @@ function PlanOptionCard({
   strike: boolean
   action: CardAction | null
 }) {
-  // No celular os outros planos mostram três linhas e "Ver tudo" (CSS).
-  const [open, setOpen] = useState(false)
-  const listId = `plano-${plan.id}-recursos`
+  // Só o que o plano acrescenta ao anterior; o comum fica abaixo dos cartões.
+  const lists = getPlanCardLists(plan)
   return (
-    <li
-      className={`pl-pc${own ? ' on' : ''}${open ? ' open' : ''}`}
-      aria-label={plan.name}
-    >
+    <li className={`pl-pc${own ? ' on' : ''}`} aria-label={plan.name}>
       {badge ? <span className="badge">{badge}</span> : null}
       {/* biome-ignore lint/performance/noImgElement: ilustração estática do plano, de public/, com width e height. */}
       <img
@@ -186,22 +184,23 @@ function PlanOptionCard({
         </div>
         {priceNote ? <p className="fine">{priceNote}</p> : null}
       </div>
-      <div id={listId}>
-        <div className="grp">
-          <p className="ob-k">No painel</p>
-          <ul>
-            {plan.features.map((feature) => (
-              <li key={feature}>
-                <Tick />
-                {feature}
-              </li>
-            ))}
-          </ul>
-        </div>
+      <p className="lead">{lists.lead}</p>
+      <div className="grp">
+        <p className="ob-k">No painel</p>
+        <ul>
+          {lists.panel.map((feature) => (
+            <li key={feature}>
+              <Tick />
+              {feature}
+            </li>
+          ))}
+        </ul>
+      </div>
+      {lists.profile.length > 0 ? (
         <div className="grp">
           <p className="ob-k">No perfil que o torcedor vê</p>
           <ul>
-            {plan.profilePerks.map((perk) =>
+            {lists.profile.map((perk) =>
               perk.status === 'soon' ? (
                 <li key={perk.label} className="soon">
                   <Clock />
@@ -219,18 +218,7 @@ function PlanOptionCard({
             )}
           </ul>
         </div>
-      </div>
-      {own ? null : (
-        <button
-          type="button"
-          className="pl-more"
-          aria-expanded={open}
-          aria-controls={listId}
-          onClick={() => setOpen((value) => !value)}
-        >
-          {open ? 'Ver menos' : `Ver tudo do ${plan.name}`}
-        </button>
-      )}
+      ) : null}
       {action ? (
         <div className="act">
           <button
@@ -774,6 +762,10 @@ function PlanSelection() {
             )
           })}
         </ul>
+        <p className="pl-common">
+          <b>Em todos os planos</b>
+          {getCommonPlanItems().join(' · ')}
+        </p>
 
         {testing ? (
           <p className="pl-msg ok" role="status">
