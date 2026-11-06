@@ -1280,19 +1280,6 @@ export function LandingV3() {
           <span className="st">{LANDING_COPY.footerStatus}</span>
         </div>
       </footer>
-
-      {/* Barra fixa do celular: aparece depois do topo e some no final. */}
-      <div className="sticky" id="lp3-sticky" aria-hidden="true">
-        <span>{LANDING_COPY.sticky}</span>
-        <a
-          className="btn btn-acid"
-          tabIndex={-1}
-          href={cta.href}
-          data-cta={`sticky_${cta.kind}`}
-        >
-          {cta.short}
-        </a>
-      </div>
     </div>
   )
 }

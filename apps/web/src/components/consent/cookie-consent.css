@@ -324,8 +324,7 @@ html[data-consent] .onside-app > aside {
  * Landing nova (WEB-501), o "Placar" do design (artifact NBSYLhfA5wNhtXmpFGNuFp,
  * opção A): cartão de tinta no canto, título em mono com os quadradinhos do
  * telão e botões em pílula do mesmo tamanho. No celular e no tablet em pé vira
- * uma folha presa ao pé da tela, com a barra fixa da landing logo acima
- * (`--onside-consent-space`). Só o texto curto, nas duas larguras.
+ * uma folha presa ao pé da tela. Só o texto curto, nas duas larguras.
  */
 :root:has(.lp3) .onside-consent {
   /* No canto direito: à esquerda, embaixo, fica a busca do topo. */

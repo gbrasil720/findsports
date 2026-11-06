@@ -86,8 +86,7 @@ test('sem sessão, as chamadas principais se chamam *_signup', async ({
     'footer_signup',
     'nav_pub_signup',
     'nav_signup',
-    'pub_pub_signup',
-    'sticky_signup'
+    'pub_pub_signup'
   ])
 })
 
@@ -111,8 +110,7 @@ test.describe('com sessão', () => {
       'footer_pub_signup',
       'nav_app',
       'nav_pub_signup',
-      'pub_pub_signup',
-      'sticky_app'
+      'pub_pub_signup'
     ])
   })
 })

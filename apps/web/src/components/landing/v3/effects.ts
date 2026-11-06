@@ -259,22 +259,6 @@ export function startEffects(root: HTMLElement): Cleanup {
     })
   }
 
-  /* Barra fixa do celular: depois do topo, some quando o final aparece. */
-  const sticky = $('#lp3-sticky')
-  const heroEl = $('#hero')
-  const finalEl = $('#comecar')
-  const stick = () => {
-    if (!sticky || !heroEl || !finalEl) return
-    const show =
-      heroEl.getBoundingClientRect().bottom < 0 &&
-      finalEl.getBoundingClientRect().top >= window.innerHeight
-    sticky.classList.toggle('on', show)
-    sticky.setAttribute('aria-hidden', String(!show))
-    sticky.querySelector('a')?.setAttribute('tabindex', show ? '0' : '-1')
-  }
-  on(window, 'scroll', stick, { passive: true })
-  stick()
-
   return () => {
     for (const cleanup of cleanups) cleanup()
   }
