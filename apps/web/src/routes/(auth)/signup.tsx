@@ -250,7 +250,7 @@ function SignupPage() {
           }}
         >
           <fieldset className="flex flex-col gap-1.5 border-0 p-0">
-            <legend className="onside-label mb-1.5">Quem é você</legend>
+            <legend className="onside-label">Quem é você</legend>
             <div className="ent-role">
               {ROLES.map((r) => (
                 <button
