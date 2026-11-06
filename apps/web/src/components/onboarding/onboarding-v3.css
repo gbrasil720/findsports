@@ -813,6 +813,23 @@
   opacity: 0.4;
 }
 
+/* Cada toque no − e no + afunda o botão: o número muda sem animar. */
+.lp3.ob3 .ob-stepper button {
+  transition:
+    background-color 0.15s ease,
+    transform 0.12s var(--ease);
+}
+
+.lp3.ob3 .ob-stepper button:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .lp3.ob3 .ob-stepper button:hover:not(:disabled) {
+    background: var(--line2);
+  }
+}
+
 .lp3.ob3 .ob-stepper output,
 .lp3.ob3 .ob-stepper input {
   width: 72px;
