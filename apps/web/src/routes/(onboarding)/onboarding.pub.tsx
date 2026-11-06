@@ -584,6 +584,9 @@ function PubOnboarding() {
         ) : (
           <PubPreview
             name={name}
+            address={address}
+            phone={phone}
+            description={description}
             neighborhood={neighborhood}
             city={city}
             amenities={amenities}

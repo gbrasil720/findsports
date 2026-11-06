@@ -1,6 +1,9 @@
 import { findAmenity } from '@findsports_oficial/api/lib/amenities'
 import type { SubscriptionPlan } from '@findsports_oficial/db'
+import Call from 'reicon-react/icons/Call'
+import { Pin } from '@/components/landing/v3/icons'
 import { getPlan } from '@/lib/plan-catalog'
+import { formatStoredPhone } from '@/utils/format-phone'
 
 /**
  * "Assim o torcedor vê" do cadastro do bar (WEB-501): o card do bar desenhado
@@ -9,6 +12,9 @@ import { getPlan } from '@/lib/plan-catalog'
  */
 export function PubPreview({
   name,
+  address = '',
+  phone = '',
+  description = '',
   neighborhood,
   city,
   amenities,
@@ -18,6 +24,10 @@ export function PubPreview({
   note
 }: {
   name: string
+  /** Rua e número, como no cadastro. */
+  address?: string
+  phone?: string
+  description?: string
   neighborhood: string
   city: string
   amenities: number[]
@@ -28,7 +38,11 @@ export function PubPreview({
   plan?: SubscriptionPlan
   note: string
 }) {
-  const where = [neighborhood.trim(), city.trim()].filter(Boolean).join(' · ')
+  const where = [address.trim(), neighborhood.trim(), city.trim()]
+    .filter(Boolean)
+    .join(' · ')
+  const about = description.trim()
+  const contact = phone.trim() ? formatStoredPhone(phone.trim()) : ''
   const tags = [
     ...(screenCount
       ? [screenCount === 1 ? '1 tela' : `${screenCount} telas`]
@@ -52,7 +66,13 @@ export function PubPreview({
         </div>
         <div className="ob-pin">
           <b>{name.trim() || 'Seu bar'}</b>
-          {where ? <p>{where}</p> : null}
+          {where ? (
+            <p className="ob-pwhere">
+              <Pin size={14} />
+              <span>{where}</span>
+            </p>
+          ) : null}
+          {about ? <p className="ob-pabout">{about}</p> : null}
           <div className="ob-tags">
             {tags.length ? (
               tags.map((tag) => (
@@ -64,6 +84,12 @@ export function PubPreview({
               <span className="ob-tag">Marque o que o bar tem</span>
             )}
           </div>
+          {contact ? (
+            <span className="ob-pcall">
+              <Call size={15} aria-hidden="true" />
+              {contact}
+            </span>
+          ) : null}
           <div className="ob-pgame">
             <span className="ob-k">Seus jogos aparecem aqui</span>
             <p>Depois do cadastro, você coloca os jogos que vai passar.</p>

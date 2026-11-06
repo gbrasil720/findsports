@@ -1798,3 +1798,40 @@
   position: absolute;
   inset: 0;
 }
+
+/* ─── Prévia: endereço, descrição e contato vindos do formulário ─── */
+.lp3.ob3 .ob-pin > .ob-pwhere {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+
+.lp3.ob3 .ob-pwhere svg {
+  flex: none;
+  margin-top: 3px;
+}
+
+.lp3.ob3 .ob-pin > .ob-pabout {
+  display: -webkit-box;
+  margin-top: 10px;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.lp3.ob3 .ob-pcall {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: var(--sub);
+  font: 600 13px / 1 var(--body);
+}
