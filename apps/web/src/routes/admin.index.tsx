@@ -4,9 +4,8 @@ import {
   ADMIN_SECTION_ROUTES,
   getAdminSectionFromHash
 } from '@/components/admin/admin-tabs'
-import { OverviewTab } from '@/components/admin/overview-tab'
 import { InstallAppCard } from '@/components/app/install-app-card'
-import { PainelPage, usePainel } from '@/components/painel/painel-shell'
+import { HojePage as Hoje } from '@/components/painel/hoje'
 
 export const Route = createFileRoute('/admin/')({
   component: HojePage
@@ -14,7 +13,6 @@ export const Route = createFileRoute('/admin/')({
 
 function HojePage() {
   const session = Route.useRouteContext({ select: (ctx) => ctx.session })
-  const painel = usePainel()
   const navigate = useNavigate()
 
   // `/admin#admin-espaco` (aba antiga, link de e-mail ou favorito): o hash não
@@ -32,19 +30,13 @@ function HojePage() {
   }, [navigate])
 
   return (
-    <PainelPage title="Hoje">
-      <OverviewTab
-        analyticsRange={painel.analyticsRange}
-        onAnalyticsRangeChange={painel.setAnalyticsRange}
-        analyticsPreset={painel.analyticsPreset}
-        onAnalyticsPresetChange={painel.setAnalyticsPreset}
-        onCreateEvent={() => void navigate({ to: '/admin/jogos' })}
-      />
+    <>
+      <Hoje />
       {session ? (
-        <div className="mt-6">
+        <div className="onside-app pn-install">
           <InstallAppCard userId={session.user.id} surface="admin" />
         </div>
       ) : null}
-    </PainelPage>
+    </>
   )
 }
