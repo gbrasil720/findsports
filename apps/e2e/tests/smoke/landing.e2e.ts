@@ -113,3 +113,27 @@ test.describe('com sessão', () => {
     ])
   })
 })
+
+// Troca de tema no rodapé: vale na hora, fica guardada no aparelho e "Auto"
+// volta a seguir o sistema.
+test('o tema escolhido no rodapé vale para a página e fica guardado', async ({
+  page
+}) => {
+  await page.emulateMedia({ colorScheme: 'light' })
+  await page.goto('/')
+  const html = page.locator('html')
+  await expect(html).toHaveAttribute('data-theme', 'light')
+
+  const tema = page.getByRole('group', { name: 'Tema' })
+  await tema.getByText('Escuro').click()
+  await expect(html).toHaveAttribute('data-theme', 'dark')
+
+  await page.reload()
+  await expect(html).toHaveAttribute('data-theme', 'dark')
+  await expect(tema.getByRole('radio', { name: 'Escuro' })).toBeChecked()
+
+  await tema.getByText('Auto').click()
+  await expect(html).toHaveAttribute('data-theme', 'light')
+  await page.emulateMedia({ colorScheme: 'dark' })
+  await expect(html).toHaveAttribute('data-theme', 'dark')
+})
