@@ -84,13 +84,12 @@ const EXAMPLE_BARS = [
 
 const SPORTS = [
   'Futebol',
-  'NBA',
-  'NFL',
-  'UFC',
-  'Fórmula 1',
-  'Tênis',
+  'Basquete',
   'Vôlei',
-  'NBB'
+  'Automobilismo',
+  'Lutas',
+  'Tênis',
+  'NFL'
 ]
 const TEAMS = [
   'Corinthians',
@@ -859,41 +858,6 @@ export function LandingV3() {
           </div>
         </section>
 
-        {/* ================= ESPORTES ================= */}
-        <section className="sports" aria-label="Esportes na Onside">
-          <div className="row a" aria-hidden="true">
-            {[0, 1].map((copy) =>
-              SPORTS.map((w) => (
-                <span key={`${copy}-${w}`}>
-                  {w}
-                  <Ring />
-                </span>
-              ))
-            )}
-          </div>
-          <div className="row b" aria-hidden="true">
-            {[0, 1].map((copy) =>
-              TEAMS.map((w) => (
-                <span key={`${copy}-${w}`}>
-                  {w}
-                  <Ring />
-                </span>
-              ))
-            )}
-          </div>
-          <p
-            style={{
-              position: 'absolute',
-              width: '1px',
-              height: '1px',
-              overflow: 'hidden',
-              clip: 'rect(0 0 0 0)'
-            }}
-          >
-            Futebol, NBA, NFL, UFC, Fórmula 1, tênis, vôlei e NBB.
-          </p>
-        </section>
-
         {/* ================= VERIFICADA ================= */}
         <section className="ver on-ink" aria-labelledby="h-ver">
           <canvas
@@ -1015,6 +979,41 @@ export function LandingV3() {
               </div>
             </div>
           </div>
+        </section>
+
+        {/* ================= ESPORTES ================= */}
+        <section className="sports" aria-label="Esportes na Onside">
+          <div className="row a" aria-hidden="true">
+            {[0, 1].map((copy) =>
+              SPORTS.map((w) => (
+                <span key={`${copy}-${w}`}>
+                  {w}
+                  <Ring />
+                </span>
+              ))
+            )}
+          </div>
+          <div className="row b" aria-hidden="true">
+            {[0, 1].map((copy) =>
+              TEAMS.map((w) => (
+                <span key={`${copy}-${w}`}>
+                  {w}
+                  <Ring />
+                </span>
+              ))
+            )}
+          </div>
+          <p
+            style={{
+              position: 'absolute',
+              width: '1px',
+              height: '1px',
+              overflow: 'hidden',
+              clip: 'rect(0 0 0 0)'
+            }}
+          >
+            Futebol, basquete, vôlei, automobilismo, lutas e outros eventos.
+          </p>
         </section>
 
         {/* ================= PARA BARES ================= */}
