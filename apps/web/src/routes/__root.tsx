@@ -17,6 +17,7 @@ import { createServerFn } from '@tanstack/react-start'
 import type { TRPCOptionsProxy } from '@trpc/tanstack-react-query'
 import type { CSSProperties } from 'react'
 import { lazy, Suspense, useEffect, useState } from 'react'
+import { THEME_HEAD_SCRIPT } from '@/lib/theme'
 import { MinuteTickProvider } from '../components/app/minute-tick'
 import { CookieConsent } from '../components/consent/cookie-consent'
 import { NOT_FOUND_META } from '../components/not-found/not-found-head'
@@ -303,10 +304,15 @@ function RootDocument() {
 
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
-    // `suppressHydrationWarning`: o script abaixo põe `data-consent` no
-    // `<html>` antes da hidratação, e o React não conhece esse atributo.
+    // `suppressHydrationWarning`: os scripts abaixo põem `data-theme` e
+    // `data-consent` no `<html>` antes da hidratação, e o React não conhece
+    // esses atributos.
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
+        <script
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: texto fixo do próprio app, sem dado de fora
+          dangerouslySetInnerHTML={{ __html: THEME_HEAD_SCRIPT }}
+        />
         {consentBannerEnabled() ? (
           <script
             // biome-ignore lint/security/noDangerouslySetInnerHtml: texto fixo do próprio app, sem dado de fora
