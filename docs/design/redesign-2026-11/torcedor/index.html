@@ -641,6 +641,78 @@ body:not(.logged) .ftab{display:none!important}
   .lvl{grid-template-columns:auto minmax(0,1fr)}
   .lvl .btn{grid-column:1/-1}
 }
+
+/* pra você na web: a rodada como escalação, com mapa */
+.rd-head{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap}
+.rd-prog{display:flex;align-items:center;gap:12px;font:600 15px var(--mono)}
+.rd-bar{display:flex;gap:5px}
+.rd-bar i{width:30px;height:8px;border-radius:8px;background:var(--line2);transition:background .3s}
+.rd-bar i.save{background:var(--acid);box-shadow:inset 0 0 0 1px var(--acid-drop)}
+.rd-bar i.skip{background:var(--muted)}
+.rd-src{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:22px}
+.rd-src span{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 14px;border-radius:999px;background:var(--sub);font-size:14px;color:var(--body)}
+.rd-src span b{color:var(--fg)}
+.rd-src a{font-weight:700;font-size:14px;margin-left:4px}
+.rd-done{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:22px;padding:16px 18px;border-radius:22px;background:var(--acid);color:#12120f;box-shadow:0 4px 0 var(--acid-drop);--spark:#e8320c}
+.rd-done .big{width:48px;height:48px;border-radius:14px;background:#12120f;color:#c9f135;display:grid;place-items:center;flex:none}
+.rd-done>span:nth-child(2){flex:1;min-width:220px;font-size:15.5px}
+.rd-done .b-ink{background:#12120f;color:#f1eee6}
+.rd-done .b-ghost{box-shadow:inset 0 0 0 1.5px rgba(18,18,15,.35)}
+.rd-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,.62fr);gap:28px;align-items:start;margin-top:28px}
+.rd-list{display:flex;flex-direction:column;gap:14px;counter-reset:rd}
+.rd-row{position:relative;display:grid;grid-template-columns:200px minmax(0,1fr);grid-template-areas:"ph in" "ph acts";gap:4px 22px;padding:14px 18px 14px 14px;border-radius:26px;background:var(--card);box-shadow:var(--shadow);transition:transform .3s var(--ease),box-shadow .3s,opacity .3s}
+.rd-row.hot{transform:translateX(4px);box-shadow:0 3px 0 var(--drop),0 0 0 2px var(--fg)}
+.rd-n{position:absolute;z-index:2;left:-12px;top:-12px;width:40px;height:40px;border-radius:50%;background:var(--fg);color:var(--bg);display:grid;place-items:center;font:400 22px/1 var(--display)}
+.rd-top .rd-n{background:var(--acid);color:#12120f;box-shadow:0 3px 0 var(--acid-drop)}
+.rd-ph{grid-area:ph;position:relative;display:block;border-radius:18px;overflow:hidden;align-self:stretch;min-height:150px;background:var(--sub)}
+.rd-ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .5s var(--ease)}
+.rd-row:hover .rd-ph img{transform:scale(1.04)}
+.rd-match{position:absolute;left:10px;bottom:10px;display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 10px;border-radius:999px;background:#c9f135;color:#12120f;font:600 12px var(--mono);--spark:#e8320c}
+.rd-elite{position:absolute;right:10px;top:10px;height:24px;padding:0 9px;border-radius:999px;background:rgba(18,18,15,.82);color:#c9f135;font:600 11.5px/24px var(--mono)}
+.rd-in{grid-area:in;min-width:0;padding-top:4px}
+.rd-hd h3{margin:0;font:400 34px/1 var(--display);text-transform:uppercase}
+.rd-hd h3 a{text-decoration:none}
+.rd-hd h3 a:hover{text-decoration:underline;text-decoration-thickness:2px}
+.rd-m{display:inline-flex;align-items:center;gap:5px;margin-top:6px;font-size:14px;color:var(--muted)}
+.rd-why{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.rd-why li{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px 0 9px;border-radius:999px;background:var(--sub);font-size:13.5px;font-weight:600}
+.rd-why li svg{color:var(--acid-deep)}
+.rd-g{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:6px 12px;margin-top:12px;padding:10px 12px;border-radius:14px;box-shadow:inset 0 0 0 1.5px var(--line)}
+.rd-gl{grid-column:1/-1;font:600 11.5px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.rd-g b{font-size:15.5px;line-height:1.25}
+.rd-gt{font-size:13px;color:var(--muted);white-space:nowrap}
+.rd-acts{grid-area:acts;display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
+.rd-acts .btn.sm{height:42px;padding:0 16px;font-size:14px}
+.rd-alert{width:42px;height:42px;border-radius:50%;border:0;background:var(--sub);display:grid;place-items:center;cursor:pointer;margin-left:auto;transition:background .2s}
+.rd-alert.on{background:var(--fg);color:var(--bg);--spark:#c9f135}
+.rd-st{display:inline-flex;align-items:center;gap:7px;height:42px;padding:0 14px;border-radius:999px;background:var(--sub);font-weight:700;font-size:14px}
+.rd-save .rd-st{background:var(--acid);color:#12120f;--spark:#e8320c}
+.rd-undo{border:0;background:none;padding:0 6px;height:42px;font-weight:700;font-size:14px;text-decoration:underline;text-underline-offset:3px;cursor:pointer;color:var(--muted)}
+.rd-skip{opacity:.55}
+.rd-skip:hover{opacity:.85}
+.rd-map{position:sticky;top:92px}
+.rd-mapw{position:relative;aspect-ratio:1400/1100;border-radius:26px;overflow:hidden;background:var(--sub);box-shadow:var(--shadow)}
+.rd-mapw img{position:absolute;inset:0;width:100%;height:100%;max-width:none}
+.rd-pin{position:absolute;z-index:2;transform:translate(-50%,-50%);width:34px;height:34px;border-radius:50%;border:2px solid #12120f;background:#f1eee6;color:#12120f;padding:0;cursor:pointer;display:grid;place-items:center;font:400 17px/1 var(--display);box-shadow:0 3px 0 #12120f;transition:transform .25s var(--ease),background .2s}
+.rd-pin.first{background:#c9f135}
+.rd-pin.save{background:#c9f135}
+.rd-pin.skip{opacity:.4}
+.rd-pin em{position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);white-space:nowrap;font:700 13px/1 var(--text);font-style:normal;background:#12120f;color:#f1eee6;padding:8px 10px;border-radius:10px;opacity:0;pointer-events:none;transition:opacity .2s}
+.rd-pin.hot{transform:translate(-50%,-50%) scale(1.25);z-index:4}
+.rd-pin.hot em{opacity:1}
+.rd-cap{display:flex;gap:7px;align-items:center;margin:12px 4px 0;font-size:13.5px;color:var(--muted)}
+@media (max-width:1100px){.rd-grid{grid-template-columns:1fr}.rd-map{position:static;order:-1}.rd-mapw{aspect-ratio:16/8}.rd-cap{display:none}}
+@media (max-width:760px){
+  .rd-head{align-items:flex-start}
+  .rd-row{grid-template-columns:96px minmax(0,1fr);grid-template-areas:"ph in" "acts acts";padding:12px;gap:12px 14px}
+  .rd-ph{min-height:96px;align-self:start;aspect-ratio:1}
+  .rd-match{display:none}
+  .rd-hd h3{font-size:26px}
+  .rd-g{grid-template-columns:1fr}.rd-gt{white-space:normal}
+  .rd-acts{margin-top:0}
+  .rd-acts .btn.sm{flex:1}
+  .rd-mapw{aspect-ratio:4/3}
+}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition-duration:.01ms!important}}
 </style>
 
@@ -1017,18 +1089,36 @@ function perfil(){
 }
 /* ---------- Bares pra você ---------- */
 var ROUND=[{id:'sc',why:['Passa os jogos dos Lakers com som','Elite: oferta da casa no balcão','3 amigos já foram'],g:'nf'},{id:'arq',why:['A 700 m de você','Telão em todo jogo do Corinthians','Nota 4,4 de quem foi'],g:'ff'},{id:'gc',why:['Projetor e cozinha até tarde','Bairro novo para você','26 vão no Fla × Pal'],g:'fp'},{id:'rl',why:['Área coberta e drinks','Passa a NBA de madrugada','Perto do metrô'],g:'lc'},{id:'ec',why:['Elite com oferta no intervalo','Lugar na calçada em clássico','A 1,6 km'],g:'cb'}];
-S.ri=0;S.liked=[];
-function pravoce(){
-  var h='<div class="page"><div class="k">Rodada de hoje · vira às 10:00</div><h1 class="disp">Bares pra você</h1><p class="sub">Cinco bares por dia, escolhidos pelos seus times, pelo seu raio e por onde você já foi.</p>';
-  if(S.ri>=ROUND.length)return h+'<div class="rounddone"><span class="big">'+ic('check',48)+'</span><h2 class="disp" style="font-size:40px;margin-top:20px">Rodada completa</h2><p class="sub" style="margin:10px auto 0">'+(S.liked.length?'Você curtiu '+S.liked.length+' e eles foram para Seus bares.':'Nenhum curtido hoje.')+' Amanhã às 10:00 tem outra rodada.</p><div class="cta-row" style="justify-content:center;margin-top:22px"><a class="btn b-ink sm" href="#seus-bares">Seus bares</a><button class="btn b-ghost sm" type="button" data-rr>Ver de novo (exemplo)</button></div></div></div>';
-  h+='<div class="deck" id="deck">';
-  for(var k=Math.min(ROUND.length-1,S.ri+2);k>=S.ri;k--){var r=ROUND[k],b=bar(r.id),g=gameAll(r.g),cls=k===S.ri?'top':k===S.ri+1?'b1':'b2';
-    h+='<article class="sc '+cls+'" data-ri="'+k+'"><div class="im"><img src="a/bar-'+b.id+'.webp" alt="" width="480" height="360"><span class="match">'+ic('sparkle',14)+'Combina com você</span></div><div class="in"><h3>'+esc(b.n)+'</h3><span class="m">'+b.h+' · '+b.km+(b.r?' · '+b.r+' verificada':'')+'</span><ul class="why3">'+r.why.map(function(w){return '<li>'+ic('check',18)+w+'</li>'}).join('')+'</ul>'+(g?'<div class="nextg"><span>Próximo jogo<br><span style="opacity:.75">'+esc(g.g)+'</span></span><b>'+g.h+'</b></div>':'')+'</div></article>'}
-  h+='</div><div class="dacts"><div><button class="rb sm2" type="button" data-undo aria-label="Voltar o anterior"'+(S.ri?'':' disabled style="opacity:.4"')+'>'+ic('back',22)+'</button><small>Voltar</small></div><div><button class="rb" type="button" data-pass aria-label="Passo">'+ic('close',26)+'</button><small>Passo</small></div><div><button class="rb like" type="button" data-like aria-label="Curti">'+ic('heart',32)+'</button><small>Curti</small></div><div><button class="rb sm2" type="button" data-why2 aria-label="Por que este bar">'+ic('sparkle',22)+'</button><small>Por quê?</small></div></div>';
-  h+='<div class="dots">'+ROUND.map(function(_,i){return '<i class="'+(i<=S.ri?'on':'')+'"></i>'}).join('')+'</div></div>';
-  return h;
+S.dec={};S.rdHot=null;
+/* Na web a rodada é uma escalação: os cinco lado a lado com o mapa, decididos em qualquer ordem. O baralho fica no app. */
+function rdRow(r,k){
+  var b=bar(r.id),g=gameAll(r.g),d=S.dec[r.id],top=k===0;
+  var h='<article class="rd-row'+(top?' rd-top':'')+(d?' rd-'+d:'')+(S.rdHot===r.id?' hot':'')+'" data-rdrow="'+r.id+'" id="rd-'+r.id+'">';
+  h+='<span class="rd-n" aria-hidden="true">'+(k+1)+'</span>';
+  h+='<a class="rd-ph" href="#bar-'+b.id+'" aria-label="Abrir '+esc(b.n)+'"><img src="a/bar-'+b.id+'.webp" alt="" width="480" height="360" loading="lazy">'+(top?'<span class="rd-match">'+ic('sparkle',14)+'Mais a sua cara hoje</span>':'')+(b.elite?'<span class="rd-elite">Elite</span>':'')+'</a>';
+  h+='<div class="rd-in"><div class="rd-hd"><h3><a href="#bar-'+b.id+'">'+esc(b.n)+'</a></h3><span class="rd-m">'+b.h+' · '+b.km+(b.r?' · '+ic('star',13)+b.r+' de quem foi':'')+'</span></div>';
+  h+='<ul class="rd-why" aria-label="Por que combina">'+r.why.map(function(w){return '<li>'+ic('check',16)+esc(w)+'</li>'}).join('')+'</ul>';
+  if(g)h+='<div class="rd-g"><span class="rd-gl">Próximo jogo aqui</span><b>'+esc(g.g)+'</b><span class="rd-gt mono">'+(GAMES.hoje.indexOf(g)>=0?'hoje':'amanhã')+' '+g.h+(b.g&&b.g[g.id]?' · '+b.g[g.id]+' vão':'')+'</span></div>';
+  h+='</div><div class="rd-acts">';
+  if(d==='save')h+='<span class="rd-st">'+ic('heart',16)+'Em Seus bares</span><button class="rd-undo" type="button" data-rdundo="'+r.id+'">Desfazer</button>';
+  else if(d==='skip')h+='<span class="rd-st">Fica para outro dia</span><button class="rd-undo" type="button" data-rdundo="'+r.id+'">Desfazer</button>';
+  else h+='<button class="btn b-acid sm" type="button" data-rdsave="'+r.id+'">'+ic('heart',18)+'Salvar</button><button class="btn b-ghost sm" type="button" data-rdskip="'+r.id+'">Agora não</button><button class="rd-alert" type="button" data-rdalert="'+r.id+'" aria-label="Avisar quando '+esc(b.n)+' publicar jogo dos seus times">'+ic('bell',18)+'</button>';
+  return h+'</div></article>';
 }
-function swipe(dir){var c=document.querySelector('.sc.top');if(!c)return;c.classList.add(dir>0?'out-r':'out-l');if(dir>0){var id=ROUND[S.ri].id;S.liked.push(id);if(S.saved.indexOf(id)<0)S.saved.unshift(id);toast(bar(id).n+' foi para Seus bares.')}setTimeout(function(){S.ri++;render()},reduce?0:320)}
+function pravoce(){
+  var n=Object.keys(S.dec).length,saved=ROUND.filter(function(r){return S.dec[r.id]==='save'}).length;
+  var h='<div class="page rd"><div class="rd-head"><div><div class="k">Rodada de hoje · vira às 10:00</div><h1 class="disp">Bares pra você</h1><p class="sub">Cinco bares por dia, escolhidos pelos seus times, pelo seu raio e por onde você já foi.</p></div>';
+  h+='<div class="rd-prog" aria-label="'+n+' de 5 decididos"><span class="mono">'+n+'/5</span><span class="rd-bar">'+ROUND.map(function(r){return '<i class="'+(S.dec[r.id]||'')+'"></i>'}).join('')+'</span></div></div>';
+  h+='<div class="rd-src">'+[['heart','Seus times','Corinthians, Lakers'],['pin','Seu raio',String(S.radiusKm).replace('.',',')+' km de Vila Madalena'],['sparkle','Novidade','bares onde você ainda não foi']].map(function(x){return '<span>'+ic(x[0],16)+'<b>'+x[1]+'</b>'+x[2]+'</span>'}).join('')+'<a href="#preferencias">Ajustar</a></div>';
+  if(n===5)h+='<div class="rd-done"><span class="big">'+ic('check',30)+'</span><span><b>Rodada fechada.</b> '+(saved?saved+(saved>1?' bares foram':' bar foi')+' para Seus bares.':'Nenhum salvo hoje.')+' Amanhã às 10:00 tem outra.</span><a class="btn b-ink sm" href="#seus-bares">Seus bares</a><button class="btn b-ghost sm" type="button" data-rr>Ver de novo (exemplo)</button></div>';
+  h+='<div class="rd-grid"><div class="rd-list">'+ROUND.map(rdRow).join('')+'</div>';
+  h+='<aside class="rd-map" aria-label="Os cinco no mapa"><div class="rd-mapw"><img class="m-l" src="a/mapa-claro.webp" alt="" width="1400" height="1100"><img class="m-d" src="a/mapa-escuro.webp" alt="" width="1400" height="1100"><span class="me" style="left:50%;top:47%"></span>';
+  ROUND.forEach(function(r,k){var p=PIN[r.id],b=bar(r.id),d=S.dec[r.id];
+    h+='<button type="button" class="rd-pin'+(d?' '+d:'')+(S.rdHot===r.id?' hot':'')+(k===0?' first':'')+'" data-rdpin="'+r.id+'" style="left:'+p[0]+'%;top:'+p[1]+'%" aria-label="'+(k+1)+'. '+esc(b.n)+'"><span>'+(k+1)+'</span><em>'+esc(b.n)+' · '+b.km+'</em></button>'});
+  h+='</div><p class="rd-cap">'+ic('pin',14)+'Todos a até 1,6 km de você. Passe o mouse num bar para achar no mapa.</p></aside></div>';
+  return h+'</div>';
+}
+function rdHot(id){S.rdHot=id;document.querySelectorAll('[data-rdrow],[data-rdpin]').forEach(function(el){el.classList.toggle('hot',(el.dataset.rdrow||el.dataset.rdpin)===id)})}
 /* ---------- preferências ---------- */
 function preferencias(){
   var tabs=[['pref','Preferências','fan'],['avisos','Avisos','bell'],['conta','Conta','person'],['priv','Privacidade','lock']];
@@ -1082,11 +1172,12 @@ document.addEventListener('click',function(e){
   if(t=e.target.closest('.tg:not([data-rank]):not([data-name])')){t.setAttribute('aria-checked',t.getAttribute('aria-checked')!=='true');return}
   if(t=e.target.closest('[data-obgo]')){if(t.disabled)return;S.ob=+t.dataset.obgo;render();return}
   if(t=e.target.closest('[data-obend]')){e.preventDefault();S.radius=Math.min(5,S.radiusKm);location.hash='';toast('Preferências salvas. Estes são os bares com jogo no seu raio.');return}
-  if(t=e.target.closest('[data-like]')){swipe(1);return}
-  if(t=e.target.closest('[data-pass]')){swipe(-1);return}
-  if(t=e.target.closest('[data-undo]')){if(S.ri){S.ri--;var id=ROUND[S.ri].id,j=S.liked.indexOf(id);if(j>=0)S.liked.splice(j,1);render()}return}
-  if(t=e.target.closest('[data-why2]')){toast('Escolhido pelos seus times, pelo raio de '+String(S.radiusKm).replace('.',',')+' km e por bares que você ainda não foi.');return}
-  if(t=e.target.closest('[data-rr]')){S.ri=0;S.liked=[];render();return}
+  if(t=e.target.closest('[data-rdsave]')){var id=t.dataset.rdsave;S.dec[id]='save';if(S.saved.indexOf(id)<0)S.saved.unshift(id);toast(bar(id).n+' foi para Seus bares.');render();return}
+  if(t=e.target.closest('[data-rdskip]')){S.dec[t.dataset.rdskip]='skip';render();return}
+  if(t=e.target.closest('[data-rdundo]')){var id2=t.dataset.rdundo;if(S.dec[id2]==='save'){var j=S.saved.indexOf(id2);if(j>=0)S.saved.splice(j,1)}delete S.dec[id2];render();return}
+  if(t=e.target.closest('[data-rdalert]')){t.classList.toggle('on');t.setAttribute('aria-pressed',t.classList.contains('on'));toast(t.classList.contains('on')?'Avisamos quando '+bar(t.dataset.rdalert).n+' publicar jogo dos seus times.':'Aviso desligado.');return}
+  if(t=e.target.closest('[data-rdpin]')){var el=document.getElementById('rd-'+t.dataset.rdpin);if(el){el.scrollIntoView({behavior:reduce?'auto':'smooth',block:'center'});rdHot(t.dataset.rdpin)}return}
+  if(t=e.target.closest('[data-rr]')){S.dec={};render();return}
   if(t=e.target.closest('[data-copylink]')){try{navigator.clipboard.writeText('https://onside.sh/convite/GB-4821').then(function(){toast('Link do seu perfil copiado.')},function(){toast('onside.sh/convite/GB-4821')})}catch(_){toast('onside.sh/convite/GB-4821')}return}
   if(t=e.target.closest('[data-x]')){e.preventDefault();toast('Exemplo: abre o mesmo fluxo do app.');return}
 });
@@ -1121,6 +1212,7 @@ addEventListener('hashchange',render);
 
 /* hover cartão ↔ pino */
 view.addEventListener('mouseover',function(e){
+  var rr=e.target.closest&&e.target.closest('[data-rdrow],[data-rdpin]');if(rr){var rid=rr.dataset.rdrow||rr.dataset.rdpin;if(S.rdHot!==rid)rdHot(rid)}
   var c=e.target.closest('[data-bar].bc,[data-pin]');var id=c?(c.dataset.pin||c.dataset.bar):null;
   if(id===S.hot)return;S.hot=id;
   [].forEach.call(view.querySelectorAll('.pin'),function(p){p.classList.toggle('hot',p.dataset.pin===id)});
