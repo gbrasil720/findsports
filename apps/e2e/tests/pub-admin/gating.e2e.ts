@@ -73,8 +73,11 @@ test('as seções trocam pelo menu, o link antigo por hash vai à rota nova, e C
   ).toBeVisible()
 
   // No celular, Configurações fica em "Mais".
-  if (isMobile)
-    await page.getByRole('link', { name: 'Mais', exact: true }).click()
+  // Pelo teclado: em `vite dev` o botão das devtools fica sobre a aba.
+  if (isMobile) {
+    await page.getByRole('link', { name: 'Mais', exact: true }).focus()
+    await page.keyboard.press('Enter')
+  }
   await page.getByRole('link', { name: 'Configurações', exact: true }).click()
   await expect(page).toHaveURL(/\/admin\/configuracoes$/)
   await expect(
