@@ -65,7 +65,8 @@ html[data-consent] body {
   background: #f1eee6; /* --onside-paper */
 }
 
-html[data-consent]:has(.onside-site-footer) body {
+html[data-consent]:has(.onside-site-footer) body,
+html[data-consent]:has(.lp3) body {
   background: #12120f; /* --onside-ink */
 }
 

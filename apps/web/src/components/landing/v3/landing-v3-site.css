@@ -462,7 +462,12 @@
   z-index: 55;
   left: 12px;
   right: 12px;
-  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  /* Sobe para cima do aviso de cookies enquanto ele está na tela
+     (`--onside-consent-space`, de cookie-consent.css, já soma a área segura). */
+  bottom: calc(
+    12px +
+    var(--onside-consent-space, env(safe-area-inset-bottom, 0px))
+  );
   display: none;
   align-items: center;
   justify-content: space-between;
