@@ -550,3 +550,14 @@
   color: var(--ink);
   box-shadow: 0 4px 0 #7f9a12;
 }
+
+/* Duas etapas usa o Button do shadcn: o mesmo desenho dos outros botões. */
+.lp3.ent form [data-slot="button"][type="submit"] {
+  width: 100%;
+  height: 54px;
+  border-radius: 999px;
+  background: var(--acid);
+  color: var(--ink);
+  font: 700 16px / 1 var(--body);
+  box-shadow: 0 4px 0 #7f9a12;
+}
