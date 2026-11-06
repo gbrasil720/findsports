@@ -15,7 +15,7 @@ const DRAFT_KEY = 'onside:pub-onboarding-draft'
 
 const button = (page: Page, name: string | RegExp) =>
   page.getByRole('button', { name, exact: typeof name === 'string' })
-const progress = (page: Page) => page.getByText(/^Passo \d de 4$/)
+const progress = (page: Page) => page.getByText(/^Passo \d de 6 · /)
 
 /** Endereço único: a rua vai para o stub e para o cache do geocoding. */
 const street = (tag = '') => `Rua E2E ${tag}${randomUUID().slice(0, 8)}, 100`
@@ -36,9 +36,12 @@ type Establishment = {
   phone?: string
 }
 
+/** Rua e número vão em campos separados e são gravados juntos ("Rua X, 100"). */
 async function fillEstablishment(page: Page, data: Establishment) {
   await page.getByLabel('Nome do estabelecimento').fill(data.name)
-  await page.getByLabel('Endereço').fill(data.address)
+  const [rua = '', numero = ''] = data.address.split(/,\s*(?=[^,]+$)/)
+  await page.getByLabel('Rua', { exact: true }).fill(rua)
+  await page.getByLabel('Número', { exact: true }).fill(numero)
   await page.getByLabel('Bairro').fill(data.neighborhood)
   if (data.city !== undefined)
     await page.getByLabel('Cidade', { exact: true }).fill(data.city)
@@ -53,17 +56,34 @@ async function fillEstablishment(page: Page, data: Establishment) {
  */
 const CONCLUIR = /Colocar meu bar no ar|Confirmar meu e-mail/
 
+/** Da rotina à revisão, com o plano recomendado (WEB-501). */
+async function throughRoutineAndPlan(page: Page) {
+  await button(page, 'Ver a recomendação').click()
+  await button(page, /^Testar o (Starter|Pro|Elite) grátis$/).click()
+}
+
 /** Do passo 1 até a revisão, pulando as comodidades. */
 async function reachReview(page: Page, data: Establishment) {
   await button(page, 'Começar').click()
   await fillEstablishment(page, data)
   await button(page, 'Continuar').click()
   await button(page, 'Pular').click()
+  await throughRoutineAndPlan(page)
   await expect(
     page.getByRole('heading', {
-      name: /Pronto para colocar seu bar no ar|Falta só confirmar seu e-mail/
+      name: /Tudo certo\?|Falta só confirmar seu e-mail/
     })
   ).toBeVisible()
+}
+
+/**
+ * Com o e-mail confirmado, o bar entra no ar e o comprovante abre (WEB-501);
+ * o botão dele segue para o destino de sempre.
+ */
+async function concluir(page: Page, seguir = 'Ver meu bar no ar') {
+  await button(page, CONCLUIR).click()
+  await expect(page.getByText('TOTAL HOJE')).toBeVisible()
+  await button(page, seguir).click()
 }
 
 /**
@@ -109,12 +129,12 @@ test('com sessão verificada: passos, completePub e /plan, bar nasce no ar', asy
   const address = street()
 
   // Boas-vindas
-  await expect(progress(page)).toHaveText('Passo 1 de 4')
+  await expect(progress(page)).toHaveText(/^Passo 1 de 6/)
   await button(page, 'Começar').click()
 
   // Estabelecimento
   await expect(
-    page.getByRole('heading', { name: 'Conta um pouco do seu bar.' })
+    page.getByRole('heading', { name: 'Seu estabelecimento' })
   ).toBeVisible()
   await expect(page.getByLabel('Cidade', { exact: true })).toHaveValue(
     'São Paulo'
@@ -127,6 +147,7 @@ test('com sessão verificada: passos, completePub e /plan, bar nasce no ar', asy
     neighborhood: 'Pinheiros',
     phone: '11987654321'
   })
+  await page.getByLabel('Descrição · opcional').fill('Sinuca no fundo')
   await button(page, 'Continuar').click()
 
   // Comodidades e telas
@@ -140,11 +161,11 @@ test('com sessão verificada: passos, completePub e /plan, bar nasce no ar', asy
   // Não é escolha do bar: é o filtro da busca para quem é Elite com oferta.
   await expect(button(page, 'Com oferta da casa')).toHaveCount(0)
   await page.getByLabel('Quantas telas?').fill('4')
-  await page.getByLabel('Mais alguma coisa? (opcional)').fill('Sinuca no fundo')
   await button(page, 'Continuar').click()
+  await throughRoutineAndPlan(page)
 
   // Revisão
-  await expect(progress(page)).toHaveText('Passo 4 de 4')
+  await expect(progress(page)).toHaveText(/^Passo 6 de 6/)
   for (const dado of [
     'Bar do Teste',
     'Pinheiros',
@@ -153,9 +174,11 @@ test('com sessão verificada: passos, completePub e /plan, bar nasce no ar', asy
     '(11) 98765-4321',
     'Sinuca no fundo'
   ]) {
-    await expect(page.getByText(dado, { exact: true })).toBeVisible()
+    await expect(
+      page.getByRole('main').getByText(dado, { exact: true })
+    ).toBeVisible()
   }
-  await button(page, CONCLUIR).click()
+  await concluir(page)
   await expect(page).toHaveURL(/\/plan\?trial=started$/)
 
   const [bar] = await barOf(owner.id)
@@ -191,26 +214,27 @@ test('validações do estabelecimento: nome, bairro, endereço e telefone', asyn
   await expect(continuar).toHaveAccessibleDescription(
     'Para continuar, falta preencher: nome do estabelecimento, endereço, bairro.'
   )
+  // Sem número: a rua sozinha é o endereço, e o limite é o dela.
   const valid = {
     name: 'Bar Válido',
-    address: street(),
+    address: `Rua E2E ${randomUUID().slice(0, 8)}`,
     neighborhood: 'Centro'
   }
   // Cada campo no limite de baixo segura o botão; um caractere a mais solta.
   for (const [label, short, ok] of [
     ['Nome do estabelecimento', 'B', 'Bo'],
     ['Bairro', 'C', 'Ce'],
-    ['Endereço', 'Rua ', 'Rua A']
+    ['Rua', 'Rua ', 'Rua A']
   ] as const) {
     await fillEstablishment(page, valid)
     await expect(continuar).toBeEnabled()
-    await page.getByLabel(label).fill(short)
+    await page.getByLabel(label, { exact: true }).fill(short)
     await expect(continuar).toBeDisabled()
-    await page.getByLabel(label).fill(ok)
+    await page.getByLabel(label, { exact: true }).fill(ok)
     await expect(continuar).toBeEnabled()
   }
   await expect(continuar).toHaveAccessibleDescription('')
-  await page.getByLabel('Endereço').fill('Rua ')
+  await page.getByLabel('Rua', { exact: true }).fill('Rua ')
   await expect(continuar).toHaveAccessibleDescription(
     'Para continuar, falta preencher: endereço (pelo menos 5 caracteres).'
   )
@@ -308,8 +332,11 @@ test('UF acompanha a cidade, vai ao geocoding e é gravada no bar (WEB-270)', as
   await uf.selectOption('RN')
   await continuar.click()
   await button(page, 'Pular').click()
-  await expect(page.getByText('Bom Jesus, RN', { exact: true })).toBeVisible()
-  await button(page, CONCLUIR).click()
+  await throughRoutineAndPlan(page)
+  await expect(
+    page.getByRole('main').getByText('Bom Jesus, RN', { exact: true })
+  ).toBeVisible()
+  await concluir(page)
   await expect(page).toHaveURL(/\/plan\?trial=started$/)
 
   const [bar] = await barOf(owner.id)
@@ -339,18 +366,19 @@ test('CEP preenche o endereço e vai ao geocoding', async ({ page }) => {
   )
   await button(page, 'Começar').click()
   await page.getByLabel('Nome do estabelecimento').fill('Bar do CEP')
-  await page.getByLabel('CEP').fill('09726251')
-  await expect(page.getByText('Preenchido pelo CEP')).toBeVisible()
-  await expect(page.getByLabel('CEP')).toHaveValue('09726-251')
-  await expect(page.getByLabel('Endereço')).toHaveValue(rua)
+  await page.getByLabel('CEP', { exact: true }).fill('09726251')
+  await expect(page.getByText('CEP encontrado')).toBeVisible()
+  await expect(page.getByLabel('CEP', { exact: true })).toHaveValue('09726-251')
+  await expect(page.getByLabel('Rua', { exact: true })).toHaveValue(rua)
   await expect(page.getByLabel('Bairro')).toHaveValue('Jardim do Mar')
   await expect(page.getByLabel('Cidade', { exact: true })).toHaveValue(
     'São Bernardo do Campo'
   )
-  await page.getByLabel('Endereço').fill(`${rua}, 304`)
+  await page.getByLabel('Número', { exact: true }).fill('304')
   await button(page, 'Continuar').click()
   await button(page, 'Pular').click()
-  await button(page, CONCLUIR).click()
+  await throughRoutineAndPlan(page)
+  await concluir(page)
   await expect(page).toHaveURL(/\/plan\?trial=started$/)
 
   const [bar] = await barOf(owner.id)
@@ -411,6 +439,10 @@ test('sem sessão, vindo do signup: rascunho, /verify-email e link do outbox con
     neighborhood: 'Moema',
     phone: '11987654321'
   })
+  // O plano escolhido vai no rascunho e entra depois da confirmação.
+  await button(page, 'Voltar').click()
+  await page.getByText('Escolher o Starter').click()
+  await button(page, 'Testar o Starter grátis').click()
   await button(page, CONCLUIR).click()
 
   await expect(page).toHaveURL(/\/verify-email$/)
@@ -420,12 +452,15 @@ test('sem sessão, vindo do signup: rascunho, /verify-email e link do outbox con
     name: 'Bar do Rascunho',
     address,
     neighborhood: 'Moema',
-    uf: 'SP'
+    uf: 'SP',
+    plan: 'starter'
   })
 
   // Mesmo contexto do navegador: o rascunho está no localStorage dele.
   const verification = await lastEmailTo(email)
   await page.goto(verification.link)
+  await expect(page.getByText('TOTAL HOJE')).toBeVisible()
+  await button(page, 'Ver meu bar no ar').click()
   await expect(page).toHaveURL(/\/plan\?trial=started$/)
 
   const [owner] = await query<{ id: string; onboarding_completed: boolean }>(
@@ -440,6 +475,12 @@ test('sem sessão, vindo do signup: rascunho, /verify-email e link do outbox con
     phone: '+5511987654321',
     is_active: true
   })
+  // A troca de plano feita depois da confirmação, pelo `changeTrialPlan`.
+  const [plano] = await query<{ plan: string }>(
+    'SELECT plan FROM bar WHERE user_id = $1',
+    [owner?.id ?? '']
+  )
+  expect(plano?.plan).toBe('starter')
   expect(
     await page.evaluate((key) => localStorage.getItem(key), DRAFT_KEY)
   ).toBeNull()
@@ -464,7 +505,7 @@ test('aba sem sessão e sem cadastro pede o login antes do wizard, e o bar preen
     address: street(),
     neighborhood: 'Centro'
   })
-  await button(page, CONCLUIR).click()
+  await concluir(page)
   await expect(page).toHaveURL(/\/plan\?trial=started$/)
   expect(await barOf(owner.id)).toHaveLength(1)
 })
@@ -481,33 +522,38 @@ test('recarregar no meio do wizard volta ao passo e aos dados, e concluir apaga 
     neighborhood: 'Lapa',
     phone: '11987654321'
   })
+  await page.getByLabel('Descrição · opcional').fill('Chope gelado')
   await button(page, 'Continuar').click()
   const telao = button(page, 'Telão / projetor')
   await telao.click()
   await page.getByLabel('Quantas telas?').fill('3')
-  await page.getByLabel('Mais alguma coisa? (opcional)').fill('Chope gelado')
   await expect
     .poll(async () => (await storedDraft(page))?.draft)
     .toMatchObject({ description: 'Chope gelado', step: 2 })
 
   // `goto`, e não `reload`: só o `goto` da suíte espera a hidratação.
   await page.goto(page.url())
-  await expect(progress(page)).toHaveText('Passo 3 de 4')
+  await expect(progress(page)).toHaveText(/^Passo 3 de 6/)
   await expect(telao).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByLabel('Quantas telas?')).toHaveValue('3')
-  await expect(page.getByLabel('Mais alguma coisa? (opcional)')).toHaveValue(
-    'Chope gelado'
-  )
   await button(page, 'Voltar').click()
   await expect(page.getByLabel('Nome do estabelecimento')).toHaveValue(
     'Bar Recarregado'
   )
-  await expect(page.getByLabel('Endereço')).toHaveValue(address)
+  const [rua, numero] = address.split(', ')
+  await expect(page.getByLabel('Rua', { exact: true })).toHaveValue(rua ?? '')
+  await expect(page.getByLabel('Número', { exact: true })).toHaveValue(
+    numero ?? ''
+  )
   await expect(page.getByLabel('Bairro')).toHaveValue('Lapa')
+  await expect(page.getByLabel('Descrição · opcional')).toHaveValue(
+    'Chope gelado'
+  )
 
   await button(page, 'Continuar').click()
   await button(page, 'Continuar').click()
-  await button(page, CONCLUIR).click()
+  await throughRoutineAndPlan(page)
+  await concluir(page)
   await expect(page).toHaveURL(/\/plan\?trial=started$/)
   expect(await storedDraft(page)).toBeNull()
   const [bar] = await barOf(owner.id)
@@ -546,7 +592,7 @@ test('rascunho parado no meio do wizard, de outra conta, não aparece (WEB-262)'
 
   await page.goto('/onboarding/pub')
   await expect.poll(() => storedDraft(page)).toBeNull()
-  await expect(progress(page)).toHaveText('Passo 1 de 4')
+  await expect(progress(page)).toHaveText(/^Passo 1 de 6/)
   await button(page, 'Começar').click()
   await expect(page.getByLabel('Nome do estabelecimento')).toHaveValue('')
 })
@@ -579,7 +625,8 @@ test('com sessão de B na aba do cadastro de A, o rascunho e o bar são de B', a
     .toMatchObject({ email: b.email, draft: { name: 'Bar de B', step: 2 } })
 
   await button(page, 'Pular').click()
-  await button(page, CONCLUIR).click()
+  await throughRoutineAndPlan(page)
+  await concluir(page)
   await expect(page).toHaveURL(/\/plan\?trial=started$/)
   expect(await barOf(b.id)).toMatchObject([{ name: 'Bar de B' }])
   expect(
@@ -608,7 +655,7 @@ test('rascunho parado no meio do wizard não é enviado pela confirmação do e-
   const verification = await lastEmailTo(email)
   await page.goto(verification.link)
   await expect(page).toHaveURL(/\/onboarding\/pub$/)
-  await expect(progress(page)).toHaveText('Passo 3 de 4')
+  await expect(progress(page)).toHaveText(/^Passo 3 de 6/)
   expect(
     await query(
       'SELECT 1 FROM bar JOIN "user" u ON u.id = bar.user_id WHERE u.email = $1',
@@ -617,8 +664,11 @@ test('rascunho parado no meio do wizard não é enviado pela confirmação do e-
   ).toHaveLength(0)
 
   await button(page, 'Pular').click()
-  await expect(page.getByText('Bar Pela Metade', { exact: true })).toBeVisible()
-  await button(page, CONCLUIR).click()
+  await throughRoutineAndPlan(page)
+  await expect(
+    page.getByRole('main').getByText('Bar Pela Metade', { exact: true })
+  ).toBeVisible()
+  await concluir(page)
   await expect(page).toHaveURL(/\/plan\?trial=started$/)
   expect(await storedDraft(page)).toBeNull()
 })
@@ -647,7 +697,7 @@ test('o cache da sessão expira na resposta do cadastro, mesmo se o pedido do cl
     neighborhood: 'Centro'
   })
   expect(await cache()).toHaveLength(1)
-  await button(page, CONCLUIR).click()
+  await concluir(page)
   await expect(page).toHaveURL(/\/plan\?trial=started$/)
   expect(await cache()).toHaveLength(0)
 })
@@ -668,6 +718,6 @@ test('link direto sobrevive ao onboarding do bar', async ({ page }) => {
     address: street(),
     neighborhood: 'Pinheiros'
   })
-  await button(page, CONCLUIR).click()
+  await concluir(page, 'Continuar')
   await expect.poll(() => pathOf(page)).toBe(deepLink)
 })
