@@ -21,6 +21,7 @@ import {
   getPlanPageMode,
   getPlanSelectionState,
   getTrialNotice,
+  getTrialProgress,
   isContractedTrial,
   isDowngrade,
   PLAN_CATALOG,
@@ -307,22 +308,22 @@ describe('Plan selection state', () => {
 
 describe('Saída da tela de planos', () => {
   test.each([
-    ['admin', { label: 'Voltar', to: '/admin' }],
-    ['billing', { label: 'Voltar', to: '/admin/billing' }]
+    ['admin', { label: 'Voltar ao painel', to: '/admin' }],
+    ['billing', { label: 'Voltar à assinatura', to: '/admin/billing' }]
   ] as const)('volta para %s quando a origem é conhecida', (origin, link) => {
     expect(getPlanExitLink(origin)).toEqual(link)
   })
 
-  test('mostra Ver planos depois e leva ao admin sem origem', () => {
+  test('volta ao painel sem origem', () => {
     expect(getPlanExitLink(undefined)).toEqual({
-      label: 'Ver planos depois',
+      label: 'Voltar ao painel',
       to: '/admin'
     })
   })
 
   test('trata origem inválida como ausência de origem', () => {
     expect(getPlanExitLink(parsePlanOrigin('https://exemplo.test'))).toEqual({
-      label: 'Ver planos depois',
+      label: 'Voltar ao painel',
       to: '/admin'
     })
   })
@@ -736,8 +737,12 @@ describe('getPlanHeader', () => {
   test('assinatura paga parada manda regularizar, com o nome do plano', () => {
     expect(getPlanHeader(pastDue)).toMatchObject({
       kicker: 'Pagamento pendente',
-      title: 'Regularize seu plano Pro.'
+      title: 'Regularize seu plano Pro'
     })
+    // Plano parado segue no ar com o Starter.
+    expect(getPlanHeader(pastDue).text).toContain(
+      'O bar segue no ar com os recursos do Starter'
+    )
     expect(
       getPlanHeader({ ...endedTrial, externalSubscriptionId: 'sub_1' }).text
     ).toContain('sem contratar de novo')
@@ -746,10 +751,10 @@ describe('getPlanHeader', () => {
   test('trial vencido sem assinatura no provedor chama para contratar', () => {
     const header = getPlanHeader(endedTrial)
     expect(header).toMatchObject({
-      kicker: 'Trial encerrado',
-      title: 'Continue no plano Elite.'
+      kicker: 'Teste encerrado',
+      title: 'Seu teste do Elite acabou'
     })
-    expect(header.text).toContain('Contrate o plano')
+    expect(header.text).toContain('Contrate um plano')
     // Sem contratar, esse bar sai do ar (WEB-357): o que volta é o bar.
     expect(header.text).toContain('voltar às buscas e ao mapa')
     expect(header.text).not.toContain('sem contratar de novo')
@@ -758,20 +763,25 @@ describe('getPlanHeader', () => {
   test('trial em vigor diz até quando vai, que não pede cartão e quando sairia a primeira cobrança (WEB-31)', () => {
     const header = getPlanHeader(liveTrial)
     expect(header).toMatchObject({
-      kicker: 'Trial gratuito',
-      title: 'Você está no trial do Elite até 22 de outubro.'
+      kicker: 'Plano e teste',
+      title: 'Você está testando o Elite'
     })
     expect(header.text).toContain('O teste grátis não pede cartão.')
     // WEB-358: o teste não é só do plano em que o bar nasceu.
-    expect(header.text).toContain('testar qualquer plano abaixo')
+    expect(header.text).toContain(
+      'Até 22 de outubro, teste qualquer plano sem mudar a data.'
+    )
     expect(header.text).toContain('primeira cobrança só sai em 22 de outubro')
     expect(Object.values(header).join(' ')).not.toMatch(
-      /alterar plano|novo plano|ciclo de cobrança/i
+      /alterar plano|novo plano|ciclo de cobrança|trial/i
     )
   })
 
   test('paga em dia troca e encerrada reativa', () => {
-    expect(getPlanHeader(paid).kicker).toBe('Alterar plano')
+    expect(getPlanHeader(paid)).toMatchObject({
+      kicker: 'Plano e cobrança',
+      title: 'Seu plano é o Pro'
+    })
     expect(getPlanHeader(ended).kicker).toBe('Reativar plano')
   })
 
@@ -779,7 +789,7 @@ describe('getPlanHeader', () => {
   test('assinatura paga no Stripe lê que a troca para plano menor vira crédito', () => {
     expect(earnsDowngradeCredit(paid)).toBe(true)
     expect(getPlanHeader(paid).text).toContain(
-      'para um menor, vira crédito na sua conta e abate as próximas mensalidades'
+      'descer vira crédito na sua conta e abate as próximas mensalidades'
     )
   })
 
@@ -788,7 +798,7 @@ describe('getPlanHeader', () => {
     const manual = { ...paid, externalSubscriptionId: null }
     for (const subscription of [contractedTrial, manual]) {
       expect(earnsDowngradeCredit(subscription)).toBe(false)
-      expect(getPlanHeader(subscription).kicker).toBe('Alterar plano')
+      expect(getPlanHeader(subscription).kicker).toBe('Plano e cobrança')
       expect(getPlanHeader(subscription).text).not.toContain('crédito')
     }
   })
@@ -800,9 +810,9 @@ describe('getPlanHeader', () => {
       cancelAt: '2026-11-09T15:00:00.000Z'
     })
     expect(header).toEqual({
-      kicker: 'Cancelamento agendado',
-      title: 'Seu plano Pro cancela em 09/11.',
-      text: 'O plano segue até lá. Para continuar depois dessa data, reative a assinatura.'
+      kicker: 'Cancela em 09/11',
+      title: 'Seu Pro vai até 9 de novembro',
+      text: 'Você pediu o cancelamento, e o plano segue até lá. Mudou de ideia? Dá para manter a assinatura.'
     })
   })
 
@@ -813,7 +823,27 @@ describe('getPlanHeader', () => {
     )
     expect(getPlanHeader({ ...ended, cancelAt }).kicker).toBe('Reativar plano')
     expect(getPlanHeader({ ...paid, cancelAt: null }).kicker).toBe(
-      'Alterar plano'
+      'Plano e cobrança'
+    )
+  })
+})
+
+describe('getTrialProgress', () => {
+  const end = '2026-10-22T15:00:00.000Z'
+
+  test('conta os dias que faltam e quanto do teste já passou', () => {
+    // 120 dias de teste: no começo, nada passou; a 30 dias do fim, 3/4.
+    expect(getTrialProgress(end, new Date('2026-06-24T15:00:00.000Z'))).toEqual(
+      { daysLeft: 120, elapsed: 0 }
+    )
+    expect(getTrialProgress(end, new Date('2026-09-22T15:00:00.000Z'))).toEqual(
+      { daysLeft: 30, elapsed: 0.75 }
+    )
+  })
+
+  test('relógio adiantado não passa do fim nem de zero dias', () => {
+    expect(getTrialProgress(end, new Date('2026-10-23T15:00:00.000Z'))).toEqual(
+      { daysLeft: 1, elapsed: 1 }
     )
   })
 })
