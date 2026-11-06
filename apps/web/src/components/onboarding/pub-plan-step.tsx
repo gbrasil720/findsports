@@ -13,7 +13,7 @@ import {
 import { paybackClients } from '@/lib/pub-plan-recommendation'
 
 /** As ilustrações dos planos: chama, estrela e coroa. */
-const PLAN_ART: Record<SubscriptionPlan, string> = {
+export const PLAN_ART: Record<SubscriptionPlan, string> = {
   starter: '/chama.svg',
   pro: '/estrela.svg',
   elite: '/coroa.svg'

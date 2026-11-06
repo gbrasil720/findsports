@@ -14,6 +14,8 @@ export function PubObShell({
   step = 0,
   aside,
   wide,
+  bleed,
+  pill,
   tv,
   children
 }: {
@@ -22,6 +24,10 @@ export function PubObShell({
   aside?: ReactNode
   /** Página inteira, sem a coluna da direita (o passo "Plano"). */
   wide?: boolean
+  /** Miolo de ponta a ponta, sem largura máxima nem margem (a tela "no ar"). */
+  bleed?: boolean
+  /** No topo, antes da troca de tema: o nome do bar em `/plan`. */
+  pill?: ReactNode
   /** A coluna da direita vira o telão, sem o fundo claro (boas-vindas). */
   tv?: boolean
   children: ReactNode
@@ -63,10 +69,14 @@ export function PubObShell({
         ) : (
           <span className="sp" />
         )}
+        {pill ? <span className="ob-pill">{pill}</span> : null}
         <ThemeSwitch variant="nav" />
       </header>
       <div className={`ob-grid${aside ? '' : ' one'}`}>
-        <main id="onboarding-main" className={`ob-main${wide ? ' wide' : ''}`}>
+        <main
+          id="onboarding-main"
+          className={`ob-main${wide ? ' wide' : ''}${bleed ? ' bleed' : ''}`}
+        >
           {children}
         </main>
         {aside ? (

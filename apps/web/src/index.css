@@ -7,6 +7,7 @@
 @import "./components/entrada/entrada-v3.css";
 @import "./components/onboarding/onboarding-v3.css";
 @import "./components/landing/v3/theme-dark.css";
+@import "./components/onboarding/plan-v3.css";
 @import "./components/legal/legal.css";
 @import "./components/consent/cookie-consent.css";
 @import "./components/impersonation-banner.css";
