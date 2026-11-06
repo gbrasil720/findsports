@@ -1163,41 +1163,34 @@ export function LandingV3() {
             tabIndex={-1}
           ></canvas>
           <div className="wrap sec">
+            <p className="kick rv">{LANDING_COPY.final.kicker}</p>
             <h2 id="h-final" className="disp rv">
-              O jogo
-              <br />é <span className="r">aqui.</span>
+              {LANDING_COPY.final.title[0]}{' '}
+              <span className="r">{LANDING_COPY.final.title[1]}</span>
             </h2>
-            <p className="lede rv">
-              A grade de hoje já está na Onside, com os bares perto de você. Sem
-              baixar nada.
-            </p>
-            <div
-              className="rv"
-              style={{
-                display: 'flex',
-                gap: '12px',
-                justifyContent: 'center',
-                flexWrap: 'wrap',
-                marginTop: '34px'
-              }}
-            >
+            <div className="acts rv">
               <a
                 className="btn btn-acid"
-                style={{ height: '62px', padding: '0 32px', fontSize: '18px' }}
                 href={cta.href}
                 data-cta={`final_${cta.kind}`}
               >
-                Ver os jogos de hoje
+                {cta.short}
               </a>
-              {!cta.session && (
-                <a
-                  className="btn btn-ghost"
-                  style={{ height: '62px', color: 'var(--paper)' }}
-                  href="/login"
-                >
-                  Já tenho conta
-                </a>
-              )}
+              <a
+                className="btn btn-ghost"
+                style={{ color: 'var(--paper)' }}
+                href="#como-funciona"
+              >
+                Como funciona
+              </a>
+            </div>
+            <div className="trigger rv">
+              {LANDING_COPY.final.proof.map((p) => (
+                <span key={p}>
+                  <Check size={16} />
+                  {p}
+                </span>
+              ))}
             </div>
             <p className="alt">
               Tem um bar?{' '}
@@ -1206,7 +1199,7 @@ export function LandingV3() {
                 data-cta="final_pub_signup"
                 style={{ color: 'var(--paper)', fontWeight: '700' }}
               >
-                Comece com 120 dias de Elite
+                Cadastre seu bar
               </a>
             </p>
           </div>
@@ -1214,53 +1207,81 @@ export function LandingV3() {
       </main>
 
       <footer className="foot">
-        <div className="wrap foot-in">
-          <a
-            className="logo"
-            href="#top"
-            aria-label="Onside, início"
-            style={{ color: 'var(--paper)' }}
-          >
-            <svg width="26" height="26" viewBox="0 0 30 30" aria-hidden="true">
-              <circle
-                cx="14"
-                cy="14"
-                r="10.5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="4.2"
-              />
-              <circle cx="22.4" cy="22.6" r="4.6" fill="#e8320c" />
-            </svg>
-            <b style={{ fontSize: '22px' }}>
-              ONSIDE<i></i>
-            </b>
-          </a>
-          <nav aria-label="Rodapé">
-            <a href="/login">Entrar</a>
-            <a href="/signup">Criar conta</a>
-            <a href={BAR_SIGNUP_HREF} data-cta="footer_pub_signup">
-              Cadastre seu bar
+        <div className="wrap foot-grid">
+          <div className="foot-lead">
+            <a
+              className="logo"
+              href="#top"
+              aria-label="Onside, início"
+              style={{ color: 'var(--paper)' }}
+            >
+              <Logo size={26} />
+              <b style={{ fontSize: '22px' }}>
+                ONSIDE<i></i>
+              </b>
             </a>
-            <a href="/guia">Guia</a>
-            <a href="mailto:contato@onside.sh">Contato</a>
-            <a href="/termos">Termos</a>
-            <a href="/privacidade">Privacidade</a>
-            {SOCIAL_LINKS.map((social) => (
-              <a
-                key={social.id}
-                href={social.href}
-                rel="noopener noreferrer"
-                target="_blank"
-              >
-                {social.label}
+            <p>Feito por quem prefere a mesa ao sofá.</p>
+            <a
+              className="btn btn-acid"
+              href={cta.href}
+              data-cta={`footer_${cta.kind}`}
+            >
+              {cta.short}
+            </a>
+          </div>
+          <nav className="foot-cols" aria-label="Rodapé">
+            <div className="foot-col">
+              <p>Produto</p>
+              {NAV_ITEMS.map((item) => (
+                <a key={item.id} href={item.href}>
+                  {item.label}
+                </a>
+              ))}
+              <a href="/guia">Guia</a>
+            </div>
+            <div className="foot-col conta">
+              <p>Conta</p>
+              {cta.session ? (
+                <a href={cta.href}>{cta.short}</a>
+              ) : (
+                <>
+                  <a href="/login">Entrar</a>
+                  <a href="/signup">Criar conta</a>
+                </>
+              )}
+            </div>
+            <div className="foot-col">
+              <p>Para bares</p>
+              <a href={BAR_SIGNUP_HREF} data-cta="footer_pub_signup">
+                Cadastre seu bar
               </a>
-            ))}
-            <CookiePreferencesButton className="ck" />
+              <a href="mailto:contato@onside.sh">Fale com a gente</a>
+            </div>
+            <div className="foot-col">
+              <p>Onside</p>
+              <a href="mailto:contato@onside.sh">Contato</a>
+              <a href="/termos">Termos</a>
+              <a href="/privacidade">Privacidade</a>
+              <CookiePreferencesButton />
+            </div>
+            <div className="foot-col">
+              <p>Redes sociais</p>
+              {SOCIAL_LINKS.map((social) => (
+                <a
+                  key={social.id}
+                  href={social.href}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  {social.label}
+                </a>
+              ))}
+            </div>
           </nav>
-          <span className="mono" style={{ fontSize: '13px' }}>
-            Feito em São Paulo · onside.sh
-          </span>
+        </div>
+        <div className="wrap foot-bar">
+          <span>© 2026 Onside</span>
+          <span className="st">{LANDING_COPY.footerStatus}</span>
         </div>
       </footer>
     </div>
