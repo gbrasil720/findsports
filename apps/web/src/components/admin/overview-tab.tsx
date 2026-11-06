@@ -46,16 +46,21 @@ import { RecommendationQualityStatus } from './recommendation-quality-status'
 const restantes = (n: number) => `${n} ${n === 1 ? 'restante' : 'restantes'}`
 
 export function OverviewTab({
-  active,
   analyticsRange,
   onAnalyticsRangeChange,
-  onCreateEvent
+  analyticsPreset,
+  onAnalyticsPresetChange: setAnalyticsPreset,
+  onCreateEvent,
+  onlyAnalytics = false
 }: {
-  active: boolean
-  // O período escolhido aqui também filtra o desempenho por jogo da aba Grade.
+  // O período escolhido aqui também filtra o desempenho por jogo de Jogos.
   analyticsRange: AnalyticsDateRange
   onAnalyticsRangeChange: (range: AnalyticsDateRange) => void
+  analyticsPreset: AnalyticsPeriodPreset
+  onAnalyticsPresetChange: (preset: AnalyticsPeriodPreset) => void
   onCreateEvent: () => void
+  /** Desempenho (fase 1 do WEB-501): só o período e os números. */
+  onlyAnalytics?: boolean
 }) {
   const trpc = useTRPC()
   const now = useMinuteNow()
@@ -99,8 +104,6 @@ export function OverviewTab({
     refetch: refetchEntitlements
   } = useMyAnalyticsEntitlements()
 
-  const [analyticsPreset, setAnalyticsPreset] =
-    useState<AnalyticsPeriodPreset>('30d')
   const [customAnalyticsDates, setCustomAnalyticsDates] =
     useState<AnalyticsDateRange>(analyticsRange)
   const [customAnalyticsError, setCustomAnalyticsError] = useState<
@@ -234,8 +237,45 @@ export function OverviewTab({
     }
   }, [isAtLimit])
 
+  const analyticsBlock = (
+    <>
+      <AnalyticsPeriodSelector
+        entitlements={analyticsEntitlements}
+        loadingEntitlements={loadingEntitlements}
+        entitlementsError={entitlementsError}
+        retryableEntitlements={isRetryableError(entitlementsQueryError)}
+        onRetryEntitlements={() => {
+          void refetchEntitlements()
+        }}
+        range={analyticsRange}
+        preset={analyticsPreset}
+        customRange={customAnalyticsDates}
+        customError={customAnalyticsError}
+        isFetching={fetchingAnalytics || fetchingEventAnalytics}
+        onPresetChange={handleAnalyticsPresetChange}
+        onCustomRangeChange={handleCustomAnalyticsRangeChange}
+        onApplyCustom={applyCustomAnalyticsRange}
+      />
+      <AnalyticsOverview
+        overviewState={analyticsOverviewState}
+        showComparison={analyticsPreset !== 'all'}
+        planNote={shownPlan?.note}
+        noPlan={planKnown && !subscription}
+        onCreateEvent={onCreateEvent}
+      />
+    </>
+  )
+
+  if (onlyAnalytics) {
+    return (
+      <AdminTabPanel id="admin-visao" className="space-y-4">
+        {analyticsBlock}
+      </AdminTabPanel>
+    )
+  }
+
   return (
-    <AdminTabPanel id="admin-visao" active={active} className="space-y-4">
+    <AdminTabPanel id="admin-visao" className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="onside-display text-2xl">Visão geral</h2>
@@ -486,30 +526,7 @@ export function OverviewTab({
         </div>
       </div>
 
-      <AnalyticsPeriodSelector
-        entitlements={analyticsEntitlements}
-        loadingEntitlements={loadingEntitlements}
-        entitlementsError={entitlementsError}
-        retryableEntitlements={isRetryableError(entitlementsQueryError)}
-        onRetryEntitlements={() => {
-          void refetchEntitlements()
-        }}
-        range={analyticsRange}
-        preset={analyticsPreset}
-        customRange={customAnalyticsDates}
-        customError={customAnalyticsError}
-        isFetching={fetchingAnalytics || fetchingEventAnalytics}
-        onPresetChange={handleAnalyticsPresetChange}
-        onCustomRangeChange={handleCustomAnalyticsRangeChange}
-        onApplyCustom={applyCustomAnalyticsRange}
-      />
-      <AnalyticsOverview
-        overviewState={analyticsOverviewState}
-        showComparison={analyticsPreset !== 'all'}
-        planNote={shownPlan?.note}
-        noPlan={planKnown && !subscription}
-        onCreateEvent={onCreateEvent}
-      />
+      {analyticsBlock}
     </AdminTabPanel>
   )
 }

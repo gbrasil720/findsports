@@ -210,8 +210,6 @@ describe('recorte do manifest', () => {
       '(dashboard)/dashboard_.games.tsx',
       '(dashboard)/dashboard_.profile.tsx',
       'admin.tsx',
-      'admin_.billing.tsx',
-      'admin_.validate.tsx',
       'plan.tsx',
       'plan_.confirmed.tsx'
     ])

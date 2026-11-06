@@ -1,24 +1,17 @@
 import { useQuery } from '@tanstack/react-query'
-import { createFileRoute, Link } from '@tanstack/react-router'
-import ArrowLeft from 'reicon-react/icons/ArrowLeft'
+import { createFileRoute } from '@tanstack/react-router'
 import { CodeValidation } from '@/components/admin/code-validation'
 import { LateCodeEntry } from '@/components/admin/late-code-entry'
-import { AppShell } from '@/components/app/app-shell'
 import { useMinuteNow } from '@/components/app/minute-tick'
-import { PWA_LINKS, PWA_META } from '@/lib/pwa'
+import { PainelPage } from '@/components/painel/painel-shell'
 import { useTRPC, useTRPCClient } from '@/utils/trpc'
 
-export const Route = createFileRoute('/admin_/validate')({
+export const Route = createFileRoute('/admin/validate')({
   // O QR do código no app do torcedor abre aqui com `?code=`.
   validateSearch: (search: Record<string, unknown>): { code?: string } =>
     typeof search.code === 'string' ? { code: search.code } : {},
   head: () => ({
-    meta: [
-      { title: 'Validar código — Onside' },
-      { name: 'robots', content: 'noindex' },
-      ...PWA_META
-    ],
-    links: [...PWA_LINKS]
+    meta: [{ title: 'Validar código — Onside' }]
   }),
   component: ValidatePage
 })
@@ -58,19 +51,10 @@ function ValidatePage() {
   const { reservationValidation } = useTRPCClient()
 
   return (
-    <AppShell variant="pub" userMeta="Validar código">
-      <div className="mb-8">
-        <Link to="/admin" className="onside-btn onside-btn-ghost -ml-3 mb-3">
-          <ArrowLeft size={13} color="currentColor" aria-hidden="true" />
-          Painel do bar
-        </Link>
-        <h1 className="onside-display text-3xl md:text-4xl">Validar código</h1>
-        <p className="mt-2 text-[var(--onside-muted)] text-sm">
-          Valide o código de quem marcou “Vou assistir aqui” e libere a oferta
-          da casa.
-        </p>
-      </div>
-
+    <PainelPage
+      title="Validar código"
+      sub="Valide o código de quem marcou “Vou assistir aqui” e libere a oferta da casa."
+    >
       {confirmsLater ? (
         <LateCodeEntry
           logLate={reservationValidation.logLate.mutate}
@@ -103,6 +87,6 @@ function ValidatePage() {
         undoArrival={reservationValidation.undoArrival.mutate}
         initialCode={code}
       />
-    </AppShell>
+    </PainelPage>
   )
 }

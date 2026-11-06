@@ -8,10 +8,10 @@ import Check from 'reicon-react/icons/Check'
 import CircleInfo from 'reicon-react/icons/CircleInfo'
 import CreditCard from 'reicon-react/icons/CreditCard'
 import Loader from 'reicon-react/icons/Loader'
-import { AppShell } from '@/components/app/app-shell'
 import { CancelSubscriptionButton } from '@/components/billing/cancel-subscription-button'
 import { PlanChangedNotice } from '@/components/billing/plan-change'
 import { ReactivateSubscriptionButton } from '@/components/billing/reactivate-subscription-button'
+import { PainelPage } from '@/components/painel/painel-shell'
 import { BillingBalance } from '@/components/pricing/billing-balance'
 import { PlanMonthlyCharge } from '@/components/pricing/plan-monthly-charge'
 import { analytics } from '@/lib/analytics'
@@ -31,20 +31,14 @@ import {
   planChargeForShowcase,
   TRIAL_NO_CARD_NOTE
 } from '@/lib/plan-catalog'
-import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { canCancelSubscription, getCancelNotice } from '@/lib/scheduled-cancel'
 import { getUserFacingError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
-export const Route = createFileRoute('/admin_/billing')({
+export const Route = createFileRoute('/admin/billing')({
   validateSearch: parsePlanChange,
   head: () => ({
-    meta: [
-      { title: 'Assinatura e pagamentos — Onside' },
-      { name: 'robots', content: 'noindex' },
-      ...PWA_META
-    ],
-    links: [...PWA_LINKS]
+    meta: [{ title: 'Assinatura e pagamentos — Onside' }]
   }),
   component: BillingPage
 })
@@ -169,7 +163,7 @@ function BillingPage() {
     ]
 
   return (
-    <AppShell variant="pub" userMeta="Assinatura">
+    <PainelPage>
       <div className="mb-8">
         <p className="onside-kicker inline-flex items-center gap-2">
           <CreditCard size={12} color="currentColor" aria-hidden="true" />
@@ -512,6 +506,6 @@ function BillingPage() {
           })}
         </aside>
       </div>
-    </AppShell>
+    </PainelPage>
   )
 }

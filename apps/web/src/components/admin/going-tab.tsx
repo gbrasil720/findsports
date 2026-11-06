@@ -27,13 +27,7 @@ function markedAgo(at: Date, now = Date.now()) {
  * Sem `elite`, a aba só existe porque há código em aberto (WEB-341): o bar
  * honra quem já marcou, avisado de que não chega gente nova pela lista.
  */
-export function GoingTab({
-  active,
-  elite
-}: {
-  active: boolean
-  elite: boolean
-}) {
+export function GoingTab({ elite }: { elite: boolean }) {
   const trpc = useTRPC()
   const query = useQuery({
     ...trpc.barReservations.going.queryOptions(),
@@ -42,7 +36,7 @@ export function GoingTab({
   })
 
   return (
-    <AdminTabPanel id="admin-quem-vai" active={active}>
+    <AdminTabPanel id="admin-quem-vai">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="onside-display text-2xl">Quem vai</h2>

@@ -22,13 +22,7 @@ import { PubHeroSection } from './pub-hero-section'
 import { QueryError } from './query-error'
 import { RatingsPanel } from './ratings-panel'
 
-export function SpaceTab({
-  active,
-  onCreateEvent
-}: {
-  active: boolean
-  onCreateEvent: () => void
-}) {
+export function SpaceTab({ onCreateEvent }: { onCreateEvent: () => void }) {
   const trpc = useTRPC()
   const queryClient = useQueryClient()
   const now = useMinuteNow()
@@ -198,7 +192,7 @@ export function SpaceTab({
   }
 
   return (
-    <AdminTabPanel id="admin-espaco" active={active} className="space-y-6">
+    <AdminTabPanel id="admin-espaco" className="space-y-6">
       <ConversionReadiness
         bar={bar}
         hasUpcomingEvent={hasUpcomingEvent}

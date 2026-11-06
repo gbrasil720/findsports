@@ -16,10 +16,8 @@ import { EventPerformance } from './event-performance'
 import { EventsManager } from './events-manager'
 
 export function ScheduleTab({
-  active,
   analyticsRange
 }: {
-  active: boolean
   analyticsRange: AnalyticsDateRange
 }) {
   const trpc = useTRPC()
@@ -138,7 +136,7 @@ export function ScheduleTab({
               : { status: 'empty' }
 
   return (
-    <AdminTabPanel id="admin-grade" active={active} className="space-y-6">
+    <AdminTabPanel id="admin-grade" className="space-y-6">
       <EventsManager eventsState={eventsState} policyState={policyState} />
       <EventPerformance eventAnalyticsState={eventAnalyticsState} />
     </AdminTabPanel>
