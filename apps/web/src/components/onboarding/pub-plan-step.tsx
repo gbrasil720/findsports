@@ -12,6 +12,13 @@ import {
 } from '@/lib/plan-catalog'
 import { paybackClients } from '@/lib/pub-plan-recommendation'
 
+/** As ilustrações dos planos: chama, estrela e coroa. */
+const PLAN_ART: Record<SubscriptionPlan, string> = {
+  starter: '/chama.svg',
+  pro: '/estrela.svg',
+  elite: '/coroa.svg'
+}
+
 /**
  * O que cada cartão lista, em quatro ou cinco linhas: tudo está no catálogo
  * (`plan-catalog.ts`), com o nome curto do design.
@@ -96,7 +103,6 @@ export function PubPlanStep({
         {PLAN_CATALOG.map((plan) => {
           const charge = planChargeForShowcase(plan, founderCoupon)
           const clients = paybackClients(charge.chargeReais, spend)
-          const Icon = plan.icon
           const isRec = plan.id === recommended
           const on = plan.id === selected
           return (
@@ -111,7 +117,8 @@ export function PubPlanStep({
               />
               {isRec ? <span className="tagc">RECOMENDADO</span> : null}
               <span className="ic" aria-hidden="true">
-                <Icon size={26} color="currentColor" />
+                {/* biome-ignore lint/performance/noImgElement: ilustração estática do plano, de public/, com width e height. */}
+                <img src={PLAN_ART[plan.id]} alt="" width="52" height="52" />
               </span>
               <h3>{plan.name}</h3>
               <p className="pd">{plan.tagline}</p>

@@ -1094,12 +1094,15 @@
 }
 
 .lp3.ob3 .ob-pc .ic {
-  display: grid;
-  place-items: center;
+  display: block;
   width: 52px;
   height: 52px;
-  border-radius: 16px;
-  background: var(--sub);
+}
+
+.lp3.ob3 .ob-pc .ic img {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .lp3.ob3 .ob-pc h3 {
@@ -1242,11 +1245,6 @@
 
 .lp3.ob3 .ob-pc.rec h3 {
   color: #c9f135;
-}
-
-.lp3.ob3 .ob-pc.rec .ic {
-  background: #c9f135;
-  color: #12120f;
 }
 
 .lp3.ob3 .ob-pc.rec :is(.pd, .ob-pcp small, .ob-pcv span, .ob-pcv s, .ob-k) {

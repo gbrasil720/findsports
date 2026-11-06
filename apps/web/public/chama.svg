@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title">
+  <title id="title">Chama — Onside Starter</title>
+  <defs>
+    <path id="flame" d="M188 24C143 28 107 50 96 85C90 104 88 119 72 128C66 113 69 99 78 83C43 103 34 131 43 158C47 171 49 178 42 189C31 207 48 228 76 234C118 244 173 227 198 194C225 159 219 126 203 103C204 134 194 146 178 154C183 129 172 112 166 96C154 65 164 43 188 24Z"/>
+  </defs>
+  <use href="#flame" transform="translate(3 5)" fill="#121210" stroke="#121210" stroke-width="10" stroke-linejoin="round"/>
+  <use href="#flame" fill="#C8F52A" stroke="#121210" stroke-width="7" stroke-linejoin="round"/>
+  <path fill="#F2F0E7" d="M165 40C135 53 117 73 109 97C102 117 97 131 81 144C111 133 123 110 128 91C134 68 147 52 165 40Z"/>
+  <path fill="#F2F0E7" d="M202 125C201 142 193 153 181 161C194 160 207 149 202 125Z"/>
+  <path fill="#121210" d="M137 146C137 173 120 178 116 195C124 195 132 191 138 184C143 202 129 221 109 224C88 227 70 216 69 201C68 189 76 179 87 168C83 184 88 192 96 194C97 176 121 166 137 146Z"/>
+  <path fill="#F2F0E7" d="M128 165C123 183 103 187 101 207C92 207 86 202 83 196C78 209 91 219 106 217C121 216 132 205 132 196L116 203C115 192 128 179 128 165Z"/>
+</svg>
