@@ -1664,15 +1664,6 @@
   .lp3 .ob-seg li::after {
     transition: none;
   }
-
-  /* Cadastro do bar: o que subia ou crescia só aparece. */
-  .lp3.ob3 :is(.ob-pgrid .ob-pc, .ob-tv .phone, .ob-pin .ob-tag, .ob-cepf .ck) {
-    animation-name: ob-fade;
-  }
-
-  .lp3.ob3 :is(.ob-tchip, .ob-stepper button, .ob-pc):active {
-    transform: none;
-  }
 }
 
 /*
@@ -2036,4 +2027,23 @@
 
 .lp3.ob3 .ob-cg ~ .ob-note {
   margin-top: 32px;
+}
+
+/*
+ * Movimento reduzido no cadastro do bar: o que subia, crescia ou afundava só
+ * esmaece. No fim do arquivo para vencer as regras de cada peça.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .lp3.ob3 .ob-pgrid .ob-pc,
+  .lp3.ob3 .ob-tv .phone,
+  .lp3.ob3 .ob-pin .ob-tag,
+  .lp3.ob3 .ob-cepf .ck {
+    animation-name: ob-fade;
+  }
+
+  .lp3.ob3 .ob-tchip:active,
+  .lp3.ob3 .ob-stepper button:active:not(:disabled),
+  .lp3.ob3 .ob-pc:active {
+    transform: none;
+  }
 }
