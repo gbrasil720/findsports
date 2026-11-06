@@ -1,17 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { ScheduleTab } from '@/components/admin/schedule-tab'
-import { PainelPage, usePainel } from '@/components/painel/painel-shell'
+import { JogosPage } from '@/components/painel/jogos'
 
 export const Route = createFileRoute('/admin/jogos')({
   head: () => ({ meta: [{ title: 'Jogos — Onside' }] }),
-  component: JogosPage
+  // `?jogo=<id>` abre um jogo (os links de Hoje).
+  validateSearch: (search: Record<string, unknown>): { jogo?: string } =>
+    typeof search.jogo === 'string' ? { jogo: search.jogo } : {},
+  component: Jogos
 })
 
-function JogosPage() {
-  const { analyticsRange } = usePainel()
-  return (
-    <PainelPage title="Jogos">
-      <ScheduleTab analyticsRange={analyticsRange} />
-    </PainelPage>
-  )
+function Jogos() {
+  const { jogo } = Route.useSearch()
+  return <JogosPage key={jogo} initialId={jogo} />
 }
