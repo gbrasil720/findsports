@@ -1847,6 +1847,23 @@
   font-size: 13.5px;
 }
 
+/*
+ * Primeira tela do cadastro: o telão acende, o celular sobe e as legendas
+ * chegam por último. Uma vez por visita; a parte animada é só transform e
+ * opacidade.
+ */
+.lp3.ob3 .ob-tv-bg {
+  animation: ob-fade 0.3s var(--ease) backwards;
+}
+
+.lp3.ob3 .ob-tv .phone {
+  animation: ob-in 0.3s var(--ease) 0.06s backwards;
+}
+
+.lp3.ob3 :is(.ob-tv-k, .ob-tv-cap) {
+  animation: ob-fade 0.3s var(--ease) 0.12s backwards;
+}
+
 /* ─── Foto de capa no cadastro: escolhida aqui, sobe quando o bar nasce ─── */
 .lp3.ob3 .ob-photo {
   display: flex;
