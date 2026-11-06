@@ -5,14 +5,22 @@ import { useRouteContext } from '@tanstack/react-router'
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { CookiePreferencesButton } from '@/components/consent/cookie-consent'
 import { useTRPC } from '@/utils/trpc'
-import { SOCIAL_LINKS } from '../onside-landing-content'
+import {
+  LANDING_COPY,
+  NAV_ITEMS,
+  SOCIAL_LINKS,
+  TICKER_BENEFITS
+} from '../onside-landing-content'
 import { startEffects } from './effects'
+import { Arrow, Check, Logo, Tv } from './icons'
 import { startLeds } from './led'
 
 /*
  * Landing v3 (WEB-501), do protótipo `docs/design/redesign-2026-11/landing`
- * (artifact B4RnhGSsWkr78Fr5SmN6rs). Sistema visual em `DESIGN.md`. O CSS é o do
- * protótipo, preso a `.lp3` (`landing-v3.css`). Os jogos do letreiro e da busca
+ * com a copy do site atual (pedido do marketing, 05/11/2026; artifact
+ * BDRkPQGG2C6DzF54zViB8C). Sistema visual em `DESIGN.md`. O texto vem de
+ * `onside-landing-content.ts`, o mesmo do JSON-LD. O CSS é o do protótipo,
+ * preso a `.lp3` (`landing-v3.css`), mais o do design (`landing-v3-site.css`). Os jogos do letreiro e da busca
  * são os de hoje (`pubs.todayGames`); os bares do resultado são exemplo até o
  * Explorar aberto sem conta (WEB-502/503) existir.
  */
@@ -27,7 +35,12 @@ function usePrimaryCta() {
   })
   return session
     ? { session, href: '/app', kind: 'app', short: 'Ver jogos de hoje' }
-    : { session, href: '/signup', kind: 'signup', short: 'Criar conta grátis' }
+    : {
+        session,
+        href: '/signup',
+        kind: 'signup',
+        short: LANDING_COPY.primaryCta
+      }
 }
 type Cta = ReturnType<typeof usePrimaryCta>
 
@@ -221,25 +234,28 @@ export function LandingV3() {
     }
   }, [])
 
-  const pill = today.length
-    ? `Hoje: ${today.length} ${today.length === 1 ? 'jogo' : 'jogos'} na grade dos bares`
-    : 'A grade de hoje, publicada pelos bares'
-
-  const tickerItems = today.length
-    ? today.map((g) => ({
-        key: g.title + g.time,
-        title: g.title,
-        time: g.time,
-        live: g.live,
-        note: ''
-      }))
-    : SPORTS.map((s) => ({
-        key: s,
-        title: s,
-        time: 'HOJE',
-        live: false,
-        note: 'na grade dos bares'
-      }))
+  // O letreiro intercala os jogos com os benefícios, um a cada dois jogos.
+  const tickerItems = (
+    today.length
+      ? today.map((g) => ({
+          key: g.title + g.time,
+          title: g.title,
+          time: g.time,
+          live: g.live,
+          note: ''
+        }))
+      : SPORTS.map((s) => ({
+          key: s,
+          title: s,
+          time: 'HOJE',
+          live: false,
+          note: 'na grade dos bares'
+        }))
+  ).flatMap((t, i) =>
+    i % 2
+      ? [t, { key: `bn-${i}`, benefit: TICKER_BENEFITS[(i >> 1) % 4] }]
+      : [t]
+  )
 
   function onSearch(e: FormEvent) {
     e.preventDefault()
@@ -259,26 +275,17 @@ export function LandingV3() {
     <div className="lp3" ref={rootRef}>
       <nav className="nav" id="lp3-nav" aria-label="Principal">
         <a className="logo" href="#top" aria-label="Onside, início">
-          <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true">
-            <circle
-              cx="14"
-              cy="14"
-              r="10.5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="4.2"
-            />
-            <circle cx="22.4" cy="22.6" r="4.6" fill="#e8320c" />
-          </svg>
+          <Logo />
           <b>
             ONSIDE<i></i>
           </b>
         </a>
         <div className="links">
-          <a href="#como">Como funciona</a>
-          <a href="#bar-por-dentro">O que o bar mostra</a>
-          <a href="#para-bares">Para bares</a>
-          <a href="#perguntas">Perguntas</a>
+          {NAV_ITEMS.map((item) => (
+            <a key={item.id} href={item.href}>
+              {item.label}
+            </a>
+          ))}
         </div>
         <div className="right">
           <a
@@ -286,7 +293,7 @@ export function LandingV3() {
             href={BAR_SIGNUP_HREF}
             data-cta="nav_pub_signup"
           >
-            Tenho um bar
+            Cadastre seu bar
           </a>
           <a
             className="btn btn-acid"
@@ -300,7 +307,7 @@ export function LandingV3() {
 
       <main id="top">
         {/* ================= HERO ================= */}
-        <section className="hero" aria-labelledby="h1">
+        <section className="hero" id="hero" aria-labelledby="h1">
           <canvas
             className="led"
             data-led="hero"
@@ -312,26 +319,43 @@ export function LandingV3() {
             <div>
               <div className="live-pill">
                 <span className="dot"></span>
-                {pill}
+                {LANDING_COPY.hero.eyebrow}
               </div>
               <h1 id="h1" className="disp">
                 <span className="w" style={{ animationDelay: '.05s' }}>
-                  Onde
+                  “Onde
                 </span>{' '}
-                <span className="w" style={{ animationDelay: '.12s' }}>
+                <span className="w" style={{ animationDelay: '.11s' }}>
                   vai
                 </span>{' '}
-                <span className="w" style={{ animationDelay: '.19s' }}>
-                  ser
+                <span className="w" style={{ animationDelay: '.17s' }}>
+                  passar
                 </span>{' '}
-                <span className="w r" style={{ animationDelay: '.3s' }}>
-                  o jogo?
+                <span className="w" style={{ animationDelay: '.23s' }}>
+                  o
+                </span>{' '}
+                <span className="w" style={{ animationDelay: '.29s' }}>
+                  jogo?”
+                </span>{' '}
+                <span className="w" style={{ animationDelay: '.35s' }}>
+                  finalmente
+                </span>{' '}
+                <span className="w" style={{ animationDelay: '.41s' }}>
+                  tem
+                </span>{' '}
+                <span className="w" style={{ animationDelay: '.47s' }}>
+                  uma
+                </span>{' '}
+                <span className="w r" style={{ animationDelay: '.57s' }}>
+                  (ótima)
+                </span>{' '}
+                <span className="w" style={{ animationDelay: '.67s' }}>
+                  resposta.
                 </span>
               </h1>
-              <p className="lede">
-                A Onside mostra quais bares perto de você vão passar cada
-                partida, com telão, som ligado e quem já vai. Você escolhe o
-                jogo, a gente acha o bar. Direto no navegador, sem baixar nada.
+              <p className="lede">{LANDING_COPY.hero.body}</p>
+              <p className="cta-lead">
+                {LANDING_COPY.hero.ctaLead} <Arrow />
               </p>
 
               <div className="search">
@@ -342,7 +366,9 @@ export function LandingV3() {
                   onSubmit={onSearch}
                 >
                   <div className="field">
-                    <label htmlFor="q-jogo">Qual jogo</label>
+                    <label htmlFor="q-jogo">
+                      {LANDING_COPY.journey.searchPlaceholder}
+                    </label>
                     <div className="sel">
                       <select
                         id="q-jogo"
@@ -375,48 +401,16 @@ export function LandingV3() {
                   </div>
                   <button className="btn btn-acid go" type="submit">
                     Ver bares
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="M8.4 3.4 6.6 5.2 13.4 12l-6.8 6.8 1.8 1.8L17 12z"
-                        fill="currentColor"
-                      />
-                    </svg>
+                    <Arrow />
                   </button>
                 </form>
                 <div className="trigger">
-                  <span>
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="m4.2 12.4 1.8-1.8 4 4 8-8 1.8 1.8-9.8 9.8z"
-                        fill="currentColor"
-                      />
-                    </svg>
-                    Grátis, sem baixar app
-                  </span>
-                  <span>
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="m4.2 12.4 1.8-1.8 4 4 8-8 1.8 1.8-9.8 9.8z"
-                        fill="currentColor"
-                      />
-                    </svg>
-                    Grade publicada pelo próprio bar
-                  </span>
+                  {LANDING_COPY.proof.map((p) => (
+                    <span key={p}>
+                      <Check size={16} />
+                      {p}
+                    </span>
+                  ))}
                 </div>
                 <div aria-live="polite">
                   {result && <Results result={result} cta={cta} />}
@@ -442,41 +436,7 @@ export function LandingV3() {
                   className="av"
                   style={{ background: '#12120f', color: '#c9f135' }}
                 >
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    aria-hidden="true"
-                  >
-                    <rect
-                      x="2.5"
-                      y="4"
-                      width="19"
-                      height="13"
-                      rx="2.5"
-                      fill="currentColor"
-                      opacity="0.3"
-                    />{' '}
-                    <rect
-                      x="8"
-                      y="18.6"
-                      width="8"
-                      height="2.4"
-                      rx="1.2"
-                      fill="currentColor"
-                    />{' '}
-                    <path
-                      d="M4.5 6.5h15v8h-15z"
-                      fill="currentColor"
-                      opacity="0.55"
-                    />{' '}
-                    <circle
-                      cx="18"
-                      cy="8.2"
-                      r="1.7"
-                      fill="var(--spark,#e8320c)"
-                    />
-                  </svg>
+                  <Tv />
                 </span>
                 <span>
                   <b>3 telões, som ligado</b>
@@ -488,13 +448,11 @@ export function LandingV3() {
                   className="av"
                   style={{ background: '#12120f', color: '#c9f135' }}
                 >
-                  34
+                  $$
                 </span>
                 <span>
-                  <b>pessoas vão</b>
-                  <small style={{ color: '#3d3d38' }}>
-                    neste jogo, neste bar
-                  </small>
+                  <b>Preço médio</b>
+                  <small style={{ color: '#3d3d38' }}>R$ 80 por pessoa</small>
                 </span>
               </div>
               <div className="phone">
@@ -511,19 +469,29 @@ export function LandingV3() {
           <div className="ticker" role="marquee" aria-label="Jogos de hoje">
             <div className="track">
               {[0, 1].map((copy) =>
-                tickerItems.map((t) => (
-                  <span
-                    key={`${copy}-${t.key}`}
-                    className="it"
-                    aria-hidden={copy === 1 || undefined}
-                  >
-                    <span className={t.live ? 'lv' : 'tm'}>
-                      {t.live ? '● AO VIVO' : t.time}
+                tickerItems.map((t) =>
+                  'benefit' in t ? (
+                    <span
+                      key={`${copy}-${t.key}`}
+                      className="it bn"
+                      aria-hidden={copy === 1 || undefined}
+                    >
+                      {t.benefit}
                     </span>
-                    {t.title}
-                    {t.note && <span className="n">{t.note}</span>}
-                  </span>
-                ))
+                  ) : (
+                    <span
+                      key={`${copy}-${t.key}`}
+                      className="it"
+                      aria-hidden={copy === 1 || undefined}
+                    >
+                      <span className={t.live ? 'lv' : 'tm'}>
+                        {t.live ? '● AO VIVO' : t.time}
+                      </span>
+                      {t.title}
+                      {t.note && <span className="n">{t.note}</span>}
+                    </span>
+                  )
+                )
               )}
             </div>
           </div>
