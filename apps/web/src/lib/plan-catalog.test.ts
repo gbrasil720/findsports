@@ -803,13 +803,13 @@ describe('getTrialProgress', () => {
   const end = '2026-10-22T15:00:00.000Z'
 
   test('conta os dias que faltam e quanto do teste já passou', () => {
-    // 120 dias de teste: no começo, nada passou; a 30 dias do fim, 3/4.
-    expect(getTrialProgress(end, new Date('2026-06-24T15:00:00.000Z'))).toEqual(
-      { daysLeft: 120, elapsed: 0 }
+    // 90 dias de teste: no começo, nada passou; a 30 dias do fim, 2/3.
+    expect(getTrialProgress(end, new Date('2026-07-24T15:00:00.000Z'))).toEqual(
+      { daysLeft: 90, elapsed: 0 }
     )
-    expect(getTrialProgress(end, new Date('2026-09-22T15:00:00.000Z'))).toEqual(
-      { daysLeft: 30, elapsed: 0.75 }
-    )
+    const late = getTrialProgress(end, new Date('2026-09-22T15:00:00.000Z'))
+    expect(late.daysLeft).toBe(30)
+    expect(late.elapsed).toBeCloseTo(2 / 3)
   })
 
   test('relógio adiantado não passa do fim nem de zero dias', () => {

@@ -8,7 +8,7 @@ describe('revisão do cadastro de bar (WEB-238)', () => {
     ).toEqual({
       titulo: 'Tudo certo?',
       texto:
-        'Confira antes de colocar no ar. Ao continuar, salvamos o cadastro, seu bar entra no ar e o teste grátis do Pro começa: 120 dias, sem cartão.',
+        'Confira antes de colocar no ar. Ao continuar, salvamos o cadastro, seu bar entra no ar e o teste grátis do Pro começa: 90 dias, sem cartão.',
       botao: 'Colocar meu bar no ar'
     })
   })
@@ -21,7 +21,7 @@ describe('revisão do cadastro de bar (WEB-238)', () => {
     expect(review).toEqual({
       titulo: 'Falta só confirmar seu e-mail',
       texto:
-        'Confira os dados do bar. Ao continuar, você confirma seu e-mail. Depois disso salvamos o cadastro, seu bar entra no ar e o teste grátis do Elite começa: 120 dias, sem cartão.',
+        'Confira os dados do bar. Ao continuar, você confirma seu e-mail. Depois disso salvamos o cadastro, seu bar entra no ar e o teste grátis do Elite começa: 90 dias, sem cartão.',
       botao: 'Confirmar meu e-mail'
     })
     expect(review.botao).not.toContain('no ar')
