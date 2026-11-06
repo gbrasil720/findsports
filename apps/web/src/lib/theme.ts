@@ -2,7 +2,8 @@ import { useSyncExternalStore } from 'react'
 
 /*
  * Tema das telas do redesign (WEB-501): landing, termos, privacidade, guia e
- * entrada. A escolha é "system", "light" ou "dark", guardada no aparelho; o
+ * entrada. A escolha é "system", "light" ou "dark", guardada no aparelho; sem
+ * escolha, o claro (decisão do dono, 06/11/2026). O
  * `<html>` sempre leva o tema resolvido em `data-theme`, e o CSS escuro
  * (`landing/v3/theme-dark.css`) pende só desse atributo.
  */
@@ -16,16 +17,16 @@ export const THEME_KEY = 'onside-tema'
  * tema resolvido no `<html>`, sem piscar o claro para quem usa o escuro. No
  * "system", segue o sistema enquanto a página está aberta.
  */
-export const THEME_HEAD_SCRIPT = `(function(){var r=document.documentElement,q=matchMedia('(prefers-color-scheme: dark)');function c(){try{var v=localStorage.getItem(${JSON.stringify(THEME_KEY)});return v==='light'||v==='dark'?v:'system'}catch(e){return 'system'}}function s(){var v=c();r.setAttribute('data-theme',v==='system'?(q.matches?'dark':'light'):v)}s();q.addEventListener('change',s)})()`
+export const THEME_HEAD_SCRIPT = `(function(){var r=document.documentElement,q=matchMedia('(prefers-color-scheme: dark)');function c(){try{var v=localStorage.getItem(${JSON.stringify(THEME_KEY)});return v==='system'||v==='dark'?v:'light'}catch(e){return 'light'}}function s(){var v=c();r.setAttribute('data-theme',v==='system'?(q.matches?'dark':'light'):v)}s();q.addEventListener('change',s)})()`
 
 const listeners = new Set<() => void>()
 
 function readChoice(): ThemeChoice {
   try {
     const value = localStorage.getItem(THEME_KEY)
-    return value === 'light' || value === 'dark' ? value : 'system'
+    return value === 'system' || value === 'dark' ? value : 'light'
   } catch {
-    return 'system'
+    return 'light'
   }
 }
 
@@ -37,7 +38,7 @@ function resolve(choice: ThemeChoice): 'light' | 'dark' {
 /** Grava a escolha e aplica no `<html>`. */
 export function setThemeChoice(choice: ThemeChoice) {
   try {
-    if (choice === 'system') localStorage.removeItem(THEME_KEY)
+    if (choice === 'light') localStorage.removeItem(THEME_KEY)
     else localStorage.setItem(THEME_KEY, choice)
   } catch {
     // Sem armazenamento (aba anônima, bloqueio): vale só nesta página.
@@ -50,7 +51,7 @@ export function resolvedTheme(choice: ThemeChoice) {
   return resolve(choice)
 }
 
-/** A escolha atual. No servidor e na hidratação, "system". */
+/** A escolha atual. No servidor e na hidratação, o claro. */
 export function useThemeChoice(): ThemeChoice {
   return useSyncExternalStore(
     (listener) => {
@@ -58,6 +59,6 @@ export function useThemeChoice(): ThemeChoice {
       return () => listeners.delete(listener)
     },
     readChoice,
-    () => 'system'
+    () => 'light'
   )
 }
