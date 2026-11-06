@@ -8,14 +8,14 @@ test('landing carrega para visitante', async ({ page }) => {
   await page.goto('/')
   await expect(page).toHaveTitle(/Onside/)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-    /Onde vai ser o\s+jogo\?/
+    /“Onde vai passar o jogo\?”\s+finalmente tem uma\s+\(ótima\)\s+resposta\./
   )
 
-  // Landing v3 (WEB-501): a chamada principal leva ao cadastro. A lista de
-  // espera do app só volta com o WEB-511.
+  // Landing v3 (WEB-501), com a copy do site: a chamada principal leva ao
+  // cadastro. A lista de espera do app só volta com o WEB-511.
   const main = page.getByRole('main')
   await expect(
-    main.getByRole('link', { name: 'Ver os jogos de hoje' })
+    main.getByRole('link', { name: 'Entrar / Criar conta' }).first()
   ).toHaveAttribute('href', '/signup')
   await expect(page.locator('#email, #lista, #bar-form')).toHaveCount(0)
 })

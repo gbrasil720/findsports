@@ -15,7 +15,11 @@ test('celular: sem rolagem lateral e com o telão no topo', async ({
   test.skip(!isMobile, 'só no projeto mobile')
   await page.goto('/')
   await expect(page.locator('.lp3 h1')).toBeVisible()
-  expect(await hasLed(page)).toBe(3)
+  expect(await hasLed(page)).toBe(4)
+  // As provas do problema viram carrossel, cada uma com a sua dor embaixo; a
+  // lista do computador fica escondida.
+  await expect(page.locator('#lp3-pile .evt').first()).toBeVisible()
+  await expect(page.locator('.lp3 .pains')).toBeHidden()
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth)
   ).toBeLessThanOrEqual(page.viewportSize()?.width ?? 0)
@@ -73,14 +77,17 @@ test('sem sessão, as chamadas principais se chamam *_signup', async ({
   await page.goto('/')
   const nav = page.locator('.lp3 .nav [data-cta="nav_signup"]')
   await expect(nav).toHaveAttribute('href', '/signup')
-  await expect(nav).toHaveText('Criar conta grátis')
+  await expect(nav).toHaveText('Entrar / Criar conta')
   expect((await ctaNames(page)).sort()).toEqual([
+    'community_signup',
     'final_pub_signup',
     'final_signup',
     'footer_pub_signup',
+    'footer_signup',
     'nav_pub_signup',
     'nav_signup',
-    'pub_pub_signup'
+    'pub_pub_signup',
+    'sticky_signup'
   ])
 })
 
@@ -97,12 +104,15 @@ test.describe('com sessão', () => {
     await expect(nav).toHaveText('Ver jogos de hoje')
     // As do bar continuam sendo cadastro.
     expect((await ctaNames(page)).sort()).toEqual([
+      'community_app',
       'final_app',
       'final_pub_signup',
+      'footer_app',
       'footer_pub_signup',
       'nav_app',
       'nav_pub_signup',
-      'pub_pub_signup'
+      'pub_pub_signup',
+      'sticky_app'
     ])
   })
 })

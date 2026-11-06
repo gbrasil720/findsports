@@ -53,7 +53,8 @@ test('índice leva à seção e marca a seção em leitura', async ({ page }) =>
 })
 
 test('rodapé: colunas do desenho, links de verdade, e o sitemap lista as páginas legais', async ({
-  page
+  page,
+  isMobile
 }) => {
   await page.goto('/')
   // Landing v3 (WEB-501): rodapé próprio. Pela classe: as devtools do router
@@ -61,9 +62,16 @@ test('rodapé: colunas do desenho, links de verdade, e o sitemap lista as págin
   const nav = page
     .locator('.lp3 footer.foot')
     .getByRole('navigation', { name: 'Rodapé' })
+  // No celular a coluna "Conta" sai: entrar e criar conta já estão na barra
+  // fixa e no botão do topo.
+  const account = isMobile
+    ? []
+    : ([
+        ['Entrar', '/login'],
+        ['Criar conta', '/signup']
+      ] as const)
   for (const [label, href] of [
-    ['Entrar', '/login'],
-    ['Criar conta', '/signup'],
+    ...account,
     ['Cadastre seu bar', '/signup?role=pub'],
     ['Contato', 'mailto:contato@onside.sh'],
     ['Termos', '/termos'],
