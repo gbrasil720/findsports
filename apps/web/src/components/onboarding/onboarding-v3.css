@@ -1349,7 +1349,16 @@
   justify-content: space-between;
   gap: 12px;
   margin: 0;
-  animation: ob-feed 0.35s var(--ease) both;
+  /*
+   * `backwards`, e não `both`: o `max-height` do fim do papel não fica preso
+   * na linha depois que ela sai, e endereço comprido não é cortado.
+   */
+  animation: ob-feed 0.35s var(--ease) backwards;
+}
+
+.lp3.ob3 .rl > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 @keyframes ob-feed {
