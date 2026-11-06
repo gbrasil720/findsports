@@ -1,19 +1,15 @@
 /** biome-ignore-all lint/performance/noImgElement: telas e fotos estáticas de public/landing/v3, com width e height. */
 import { getEventEnd } from '@findsports_oficial/db/event-window'
 import { useQuery } from '@tanstack/react-query'
-import { useRouteContext } from '@tanstack/react-router'
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
-import { CookiePreferencesButton } from '@/components/consent/cookie-consent'
 import { useTRPC } from '@/utils/trpc'
 import {
   DEFINITION_POINTS,
   FAQ_ITEMS,
   JOURNEY_STEPS,
   LANDING_COPY,
-  NAV_ITEMS,
   OCCASION_ITEMS,
   PROBLEM_ITEMS,
-  SOCIAL_LINKS,
   TICKER_BENEFITS
 } from '../onside-landing-content'
 import { startEffects } from './effects'
@@ -22,7 +18,6 @@ import {
   Beer,
   Calendar,
   Check,
-  Logo,
   People,
   Pin,
   Plus,
@@ -31,6 +26,13 @@ import {
   Tv
 } from './icons'
 import { startLeds } from './led'
+import {
+  BAR_SIGNUP_HREF,
+  type Cta,
+  SiteFooter,
+  SiteNav,
+  usePrimaryCta
+} from './site-chrome'
 
 /*
  * Landing v3 (WEB-501), do protótipo `docs/design/redesign-2026-11/landing`
@@ -41,25 +43,6 @@ import { startLeds } from './led'
  * são os de hoje (`pubs.todayGames`); os bares do resultado são exemplo até o
  * Explorar aberto sem conta (WEB-502/503) existir.
  */
-
-const BAR_SIGNUP_HREF = '/signup?role=pub'
-
-/** Com sessão, as chamadas levam ao app; sem, ao cadastro (WEB-278). */
-function usePrimaryCta() {
-  const session = useRouteContext({
-    from: '__root__',
-    select: (ctx) => Boolean(ctx.session)
-  })
-  return session
-    ? { session, href: '/app', kind: 'app', short: 'Ver jogos de hoje' }
-    : {
-        session,
-        href: '/signup',
-        kind: 'signup',
-        short: LANDING_COPY.primaryCta
-      }
-}
-type Cta = ReturnType<typeof usePrimaryCta>
 
 /** O título do problema em dois tons: o que os outros são, e o que não mostram. */
 const PROBLEM_SPLIT = LANDING_COPY.problem.title.indexOf('não mostram')
@@ -359,37 +342,7 @@ export function LandingV3() {
 
   return (
     <div className="lp3" ref={rootRef}>
-      <nav className="nav" id="lp3-nav" aria-label="Principal">
-        <a className="logo" href="#top" aria-label="Onside, início">
-          <Logo />
-          <b>
-            ONSIDE<i></i>
-          </b>
-        </a>
-        <div className="links">
-          {NAV_ITEMS.map((item) => (
-            <a key={item.id} href={item.href}>
-              {item.label}
-            </a>
-          ))}
-        </div>
-        <div className="right">
-          <a
-            className="btn btn-ghost"
-            href={BAR_SIGNUP_HREF}
-            data-cta="nav_pub_signup"
-          >
-            Cadastre seu bar
-          </a>
-          <a
-            className="btn btn-acid"
-            href={cta.href}
-            data-cta={`nav_${cta.kind}`}
-          >
-            {cta.short}
-          </a>
-        </div>
-      </nav>
+      <SiteNav />
 
       <main id="top">
         {/* ================= HERO ================= */}
@@ -1202,84 +1155,7 @@ export function LandingV3() {
         </section>
       </main>
 
-      <footer className="foot">
-        <div className="wrap foot-grid">
-          <div className="foot-lead">
-            <a
-              className="logo"
-              href="#top"
-              aria-label="Onside, início"
-              style={{ color: 'var(--paper)' }}
-            >
-              <Logo size={26} />
-              <b style={{ fontSize: '22px' }}>
-                ONSIDE<i></i>
-              </b>
-            </a>
-            <p>Feito por quem prefere a mesa ao sofá.</p>
-            <a
-              className="btn btn-acid"
-              href={cta.href}
-              data-cta={`footer_${cta.kind}`}
-            >
-              {cta.short}
-            </a>
-          </div>
-          <nav className="foot-cols" aria-label="Rodapé">
-            <div className="foot-col">
-              <p>Produto</p>
-              {NAV_ITEMS.map((item) => (
-                <a key={item.id} href={item.href}>
-                  {item.label}
-                </a>
-              ))}
-              <a href="/guia">Guia</a>
-            </div>
-            <div className="foot-col conta">
-              <p>Conta</p>
-              {cta.session ? (
-                <a href={cta.href}>{cta.short}</a>
-              ) : (
-                <>
-                  <a href="/login">Entrar</a>
-                  <a href="/signup">Criar conta</a>
-                </>
-              )}
-            </div>
-            <div className="foot-col">
-              <p>Para bares</p>
-              <a href={BAR_SIGNUP_HREF} data-cta="footer_pub_signup">
-                Cadastre seu bar
-              </a>
-              <a href="mailto:contato@onside.sh">Fale com a gente</a>
-            </div>
-            <div className="foot-col">
-              <p>Onside</p>
-              <a href="mailto:contato@onside.sh">Contato</a>
-              <a href="/termos">Termos</a>
-              <a href="/privacidade">Privacidade</a>
-              <CookiePreferencesButton />
-            </div>
-            <div className="foot-col">
-              <p>Redes sociais</p>
-              {SOCIAL_LINKS.map((social) => (
-                <a
-                  key={social.id}
-                  href={social.href}
-                  rel="noopener noreferrer"
-                  target="_blank"
-                >
-                  {social.label}
-                </a>
-              ))}
-            </div>
-          </nav>
-        </div>
-        <div className="wrap foot-bar">
-          <span>© 2026 Onside</span>
-          <span className="st">{LANDING_COPY.footerStatus}</span>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   )
 }
