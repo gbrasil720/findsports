@@ -48,6 +48,8 @@ type PainelState = {
   /** Plano e códigos em aberto já responderam: `showsGoing` é definitivo. */
   goingKnown: boolean
   elite: boolean
+  /** Abre a caixa "Validar código" da casca. */
+  openValidation: () => void
 }
 
 export const PainelContext = createContext<PainelState | null>(null)

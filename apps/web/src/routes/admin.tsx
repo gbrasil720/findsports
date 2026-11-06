@@ -94,7 +94,8 @@ function AdminLayout() {
         setAnalyticsPreset,
         showsGoing,
         goingKnown,
-        elite
+        elite,
+        openValidation: () => setValidating(true)
       }}
     >
       <PainelShell
