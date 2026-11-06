@@ -314,6 +314,14 @@
   height: 76px;
   border-radius: 20px;
   background: var(--sub);
+  /* Pulsa enquanto carrega: numa rede lenta, cinza parado parece travado. */
+  animation: ob-sk 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes ob-sk {
+  to {
+    opacity: 0.5;
+  }
 }
 
 .lp3.ob3 .ob-count {
@@ -1520,7 +1528,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .lp3.ob3 :is(.ob-step-body, .rl, .ob-printer .ob-led) {
+  .lp3.ob3 :is(.ob-step-body, .rl, .ob-printer .ob-led, .ob-sports .sk) {
     animation: none;
   }
 
