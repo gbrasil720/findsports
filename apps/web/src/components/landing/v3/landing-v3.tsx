@@ -1016,6 +1016,36 @@ export function LandingV3() {
           </p>
         </section>
 
+        {/* ================= O ESPORTE É ENCONTRO ================= */}
+        <section className="ver on-ink" aria-labelledby="h-com">
+          <canvas
+            className="led"
+            data-led="hero"
+            data-mode="soft"
+            aria-hidden="true"
+            tabIndex={-1}
+          ></canvas>
+          <div className="wrap sec">
+            <div className="com">
+              <p className="kick rv">{LANDING_COPY.community.kicker}</p>
+              <h2 id="h-com" className="disp rv">
+                {LANDING_COPY.community.title[0]}{' '}
+                <span className="h2-2" style={{ display: 'inline' }}>
+                  {LANDING_COPY.community.title[1]}
+                </span>
+              </h2>
+              <p className="lede rv">{LANDING_COPY.community.body}</p>
+              <a
+                className="btn btn-acid rv"
+                href={cta.href}
+                data-cta={`community_${cta.kind}`}
+              >
+                {cta.short}
+              </a>
+            </div>
+          </div>
+        </section>
+
         {/* ================= PARA BARES ================= */}
         <section className="pub" id="para-bares" aria-labelledby="h-pub">
           <div className="wrap sec">
