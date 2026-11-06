@@ -203,3 +203,8 @@ html[data-theme="dark"] .lp3.ob3 :is(.ob-error, .onside-field-error) {
 html[data-theme="dark"] .lp3.ob3 .ob-printer {
   background: #26261f;
 }
+
+/* Onboardings: destaque do título em verde-limão no escuro, como no resto. */
+html[data-theme="dark"] .lp3.ob3 .ob-h .hl {
+  color: var(--acid);
+}
