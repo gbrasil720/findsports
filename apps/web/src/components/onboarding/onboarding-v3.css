@@ -65,6 +65,8 @@
   font: 400 clamp(38px, 4vw, 56px) / 1 var(--display);
   text-transform: uppercase;
   text-wrap: balance;
+  /* Nome sem espaço no "Tudo pronto, …" não vaza para o telão. */
+  overflow-wrap: anywhere;
   outline: none;
 }
 
