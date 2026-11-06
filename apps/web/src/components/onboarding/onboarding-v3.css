@@ -456,7 +456,8 @@
   align-items: center;
   min-height: 28px;
   padding: 4px 10px;
-  border-radius: 999px;
+  /* Metade da altura mínima: pílula numa linha, cartão quando o valor quebra. */
+  border-radius: 14px;
   background: var(--sub);
   color: var(--ink);
   font: 600 12.5px / 1.2 var(--body);
