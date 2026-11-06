@@ -161,3 +161,45 @@ html[data-theme="dark"] .lp3 .lg-index nav a[aria-current] span:first-child {
 html[data-theme="dark"] .lp3 .lg-index-toggle {
   box-shadow: 0 12px 30px -16px rgba(0, 0, 0, 0.9);
 }
+/* Onboardings do torcedor e do bar (onboarding-v3.css): superfícies e linhas. */
+html[data-theme="dark"] .lp3.ob3 {
+  --sub: #26261f;
+  --line: rgba(241, 238, 230, 0.1);
+  --line2: rgba(241, 238, 230, 0.18);
+  --field: #1c1c18;
+  --body-text: #d6d3cb;
+  --auto: #c9f135;
+  --shadow:
+    0 3px 0 #000,
+    0 24px 40px -30px rgba(0, 0, 0, 0.8);
+}
+/* Sobre verde-limão ou no cartão recomendado: as cores do claro. */
+html[data-theme="dark"]
+  .lp3.ob3
+  :is(.ob-steps li.ok, .ob-cepf.ok, .ob-ben i, .ob-pc.rec, .ob-paper) {
+  --ink: #12120f;
+  --paper: #f1eee6;
+  --muted: #55554f;
+}
+html[data-theme="dark"] .lp3.ob3 .ob-pc.rec {
+  background: #1c1c18;
+}
+html[data-theme="dark"] .lp3.ob3 .ob-pimg {
+  background:
+    repeating-linear-gradient(
+      135deg,
+      transparent 0 14px,
+      rgba(241, 238, 230, 0.06) 14px 15px
+    ),
+    #26261f;
+}
+html[data-theme="dark"] .lp3.ob3 .ob-fl.auto :is(.onside-input, .onside-select) {
+  background: rgba(201, 241, 53, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(201, 241, 53, 0.4);
+}
+html[data-theme="dark"] .lp3.ob3 :is(.ob-error, .onside-field-error) {
+  color: #f3421d;
+}
+html[data-theme="dark"] .lp3.ob3 .ob-printer {
+  background: #26261f;
+}
