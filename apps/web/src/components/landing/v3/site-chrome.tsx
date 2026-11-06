@@ -6,6 +6,7 @@ import {
   SOCIAL_LINKS
 } from '../onside-landing-content'
 import { Logo } from './icons'
+import { ThemeSwitch } from './theme-switch'
 
 /*
  * Cabeçalho e rodapé do redesign (WEB-501): os da landing, que as páginas de
@@ -164,8 +165,11 @@ export function SiteFooter({
         </nav>
       </div>
       <div className="wrap foot-bar">
-        <span>© 2026 Onside</span>
-        <span className="st">{LANDING_COPY.footerStatus}</span>
+        <div className="foot-meta">
+          <span>© 2026 Onside</span>
+          <span className="st">{LANDING_COPY.footerStatus}</span>
+        </div>
+        <ThemeSwitch />
       </div>
     </footer>
   )

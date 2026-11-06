@@ -810,3 +810,121 @@ html:has(.lp3) body {
 .lp3 .pub-head .lede {
   color: #3d3d38;
 }
+
+/* Rodapé: copyright e situação à esquerda, a troca de tema à direita. */
+.lp3 .foot-bar {
+  align-items: center;
+}
+
+.lp3 .foot-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+}
+
+/* Troca de tema (opção A, "Placar"): o rodapé é tinta nos dois temas. */
+.lp3 .theme-switch {
+  position: relative;
+  margin: 0;
+  border: 0;
+  display: inline-grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 4px;
+  border-radius: 999px;
+  background: #1c1c18;
+  box-shadow: inset 0 0 0 1px var(--ink-line);
+}
+
+.lp3 .theme-switch .thumb {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc((100% - 8px) / 3);
+  border-radius: 999px;
+  background: var(--acid);
+  box-shadow: 0 2px 0 #7f9a12;
+  transition: transform 0.45s var(--ease);
+}
+
+.lp3 .theme-switch label {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted-ink);
+  font: 600 12.5px / 1 var(--mono);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: color 0.3s;
+}
+
+.lp3 .theme-switch label:hover {
+  color: #f1eee6;
+}
+
+.lp3 .theme-switch label[data-on="true"] {
+  color: #12120f;
+}
+
+.lp3 .theme-switch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.lp3 .theme-switch label:has(input:focus-visible) {
+  outline: 3px solid var(--acid);
+  outline-offset: 2px;
+}
+
+.lp3 .theme-switch svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (max-width: 640px) {
+  .lp3 .foot-bar {
+    flex-direction: column-reverse;
+    align-items: flex-start;
+    gap: 18px;
+  }
+
+  .lp3 .theme-switch label {
+    height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp3 .theme-switch .thumb {
+    transition: none;
+  }
+}
+
+/* Na troca, o tema novo abre num círculo a partir do botão (theme-switch.tsx). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+html.vt-theme::view-transition-new(root) {
+  animation: vt-theme 0.7s var(--vt-ease, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+
+@keyframes vt-theme {
+  from {
+    clip-path: circle(0 at var(--vt-x) var(--vt-y));
+  }
+  to {
+    clip-path: circle(var(--vt-r) at var(--vt-x) var(--vt-y));
+  }
+}
