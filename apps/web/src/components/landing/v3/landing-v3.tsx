@@ -403,10 +403,6 @@ export function LandingV3() {
           ></canvas>
           <div className="wrap hero-in">
             <div>
-              <div className="live-pill">
-                <span className="dot"></span>
-                {LANDING_COPY.hero.eyebrow}
-              </div>
               <h1 id="h1" className="disp">
                 <span className="w" style={{ animationDelay: '.05s' }}>
                   “Onde
