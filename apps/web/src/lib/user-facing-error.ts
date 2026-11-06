@@ -34,7 +34,10 @@ function getErrorValues(error: unknown): unknown[] {
     record?.error,
     record?.data,
     asRecord(record?.shape)?.data,
-    asRecord(record?.cause)?.data
+    asRecord(record?.cause)?.data,
+    // O tRPC guarda a resposta HTTP em `meta.response`: é o único lugar com o
+    // status quando o corpo não é JSON (a página de erro de um gateway).
+    asRecord(record?.meta)?.response
   ].filter(Boolean)
 }
 
@@ -87,10 +90,12 @@ export function isRetryableError(error: unknown): boolean {
   const text = getErrorText(error)
 
   if (status !== undefined)
-    return status === 0 || status === 408 || status >= 500
+    return status === 0 || status === 408 || status === 429 || status >= 500
   if (code && RETRYABLE_CODES.has(code)) return true
 
-  return /conexão|connection|econn|failed to fetch|fetch failed|network|offline|\brede\b|server error|temporar|timed out|timeout/i.test(
+  // "não é JSON": o servidor ou o gateway respondeu uma página de erro em HTML,
+  // o que só acontece quando ele está fora do ar ou sobrecarregado.
+  return /conexão|connection|econn|failed to fetch|fetch failed|network|offline|\brede\b|server error|temporar|timed out|timeout|not valid json|unexpected token|unable to transform response/i.test(
     text
   )
 }
