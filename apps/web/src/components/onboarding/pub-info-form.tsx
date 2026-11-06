@@ -205,7 +205,8 @@ export function PubInfoForm({
             <Check size={16} />
           </span>
         ) : null}
-        <span>
+        {/* A chave refaz o texto a cada situação, para ele entrar de novo. */}
+        <span key={cepStatus}>
           <b>{status?.title ?? 'O CEP preenche o endereço'}</b>
           {status
             ? status.text

@@ -772,6 +772,42 @@
   color: var(--ink);
 }
 
+/*
+ * O quadro do CEP troca de tom (cinza ⇄ verde-limão) sem saltar, e o texto
+ * novo aparece por cima do antigo. O check entra uma vez por CEP achado.
+ */
+.lp3.ob3 .ob-cepf {
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.lp3.ob3 .ob-cepf > span:last-child {
+  animation: ob-fade 0.2s var(--ease);
+}
+
+.lp3.ob3 .ob-cepf .ck {
+  animation: ob-badge 0.2s var(--ease);
+}
+
+@keyframes ob-badge {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+/* O campo que o CEP preencheu fica verde-limão aos poucos, e volta ao editar. */
+.lp3.ob3 :is(.onside-input, .onside-select) {
+  transition:
+    background-color 0.2s ease,
+    box-shadow 0.15s ease;
+}
+
+.lp3.ob3 .ob-auto {
+  animation: ob-fade 0.2s var(--ease);
+}
+
 .lp3.ob3 .ob-hint {
   margin: 8px 0 0;
   color: var(--muted);
