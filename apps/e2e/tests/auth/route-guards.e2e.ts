@@ -28,6 +28,7 @@ test.describe('deslogado', () => {
     '/admin',
     '/admin/billing',
     '/admin/validate',
+    '/admin/jogos',
     '/plan',
     '/plan/confirmed',
     '/app',
@@ -114,6 +115,7 @@ test.describe('papel errado cai na casa certa', () => {
     test.use({ storageState: storageState('fan') })
     expectRedirect('/admin', '/dashboard')
     expectRedirect('/admin/billing', '/dashboard')
+    expectRedirect('/admin/meu-espaco', '/dashboard')
     expectRedirect('/plan', '/dashboard')
   })
 

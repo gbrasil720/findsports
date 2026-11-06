@@ -139,7 +139,7 @@ test('bar com assinatura em curso: a confirmação avisa do encerramento e do re
   })
   expect(seeded.ok()).toBe(true)
   await signIn(page, user)
-  await page.goto('/admin#admin-configuracoes')
+  await page.goto('/admin/configuracoes')
 
   await page.getByRole('button', { name: 'Excluir minha conta' }).click()
   const dialog = page.getByRole('dialog', {
@@ -197,7 +197,7 @@ test('Stripe recusa encerrar a assinatura: a conta fica e o dono lê que pode te
     }
   })
   await signIn(page, user)
-  await page.goto('/admin#admin-configuracoes')
+  await page.goto('/admin/configuracoes')
 
   await page.getByRole('button', { name: 'Excluir minha conta' }).click()
   const dialog = page.getByRole('dialog', {
@@ -232,7 +232,7 @@ test('bar que cancelou exclui a conta, mesmo com o período pago no futuro (WEB-
     bar: { is_active: false }
   })
   await signIn(page, user)
-  await page.goto('/admin#admin-configuracoes')
+  await page.goto('/admin/configuracoes')
 
   await expect(
     page.getByRole('button', { name: 'Excluir minha conta' })

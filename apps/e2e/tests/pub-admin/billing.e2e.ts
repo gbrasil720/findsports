@@ -31,14 +31,35 @@ test('o painel leva à cobrança e à validação', async ({ page }) => {
   await signIn(page, pub.user)
   await page.goto('/admin')
 
-  await page.getByRole('link', { name: 'Assinatura e pagamentos' }).click()
+  // O menu do dono existe no trilho e no topo do celular; só um aparece.
+  await page.getByRole('button', { name: /^Menu da conta/ }).click()
+  await page
+    .getByRole('navigation', { name: 'Conta' })
+    .getByRole('link', { name: 'Plano e cobrança' })
+    .click()
   await expect(page).toHaveURL(/\/admin\/billing$/)
   await expect(
     page.getByRole('heading', { level: 1, name: 'Assinatura e pagamentos' })
   ).toBeVisible()
 
   await page.goto('/admin')
-  await page.getByRole('link', { name: 'Validar código' }).click()
+  await page
+    .getByRole('button', { name: 'Validar código', exact: true })
+    .click()
+  const dialog = page.getByRole('dialog', { name: 'Validar código' })
+  await expect(dialog.getByLabel('Letra 1')).toBeFocused()
+  await dialog.getByLabel('Letra 1').fill('A')
+  await expect(dialog.getByLabel('Letra 2')).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+
+  await page
+    .getByRole('button', { name: 'Validar código', exact: true })
+    .click()
+  await page
+    .getByRole('dialog', { name: 'Validar código' })
+    .getByRole('link', { name: 'Abrir a página de validação' })
+    .click()
   await expect(page).toHaveURL(/\/admin\/validate$/)
 })
 

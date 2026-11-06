@@ -21,11 +21,10 @@ async function openSchedule(page: Page, options: PubOptions = {}) {
 }
 
 async function gotoSchedule(page: Page) {
-  await page.goto('/admin#admin-grade')
-  await expect(page.getByRole('tab', { name: 'Minha grade' })).toHaveAttribute(
-    'aria-selected',
-    'true'
-  )
+  await page.goto('/admin/jogos')
+  await expect(
+    page.getByRole('heading', { level: 2, name: 'Minha grade' })
+  ).toBeVisible()
 }
 
 /**
@@ -252,18 +251,15 @@ test('Starter cria até o limite do mês e depois é mandado para os planos', as
 
   // WEB-353: a Visão geral diz até quando o limite vale (o fim do ciclo, não
   // "este mês") e não oferece "Criar evento" como ação disponível.
-  await page.getByRole('tab', { name: 'Visão geral' }).click()
-  const overview = page.getByRole('tabpanel', { name: 'Visão geral' })
+  await page.goto('/admin')
+  const overview = page.locator('#admin-visao')
   await expect(overview).toContainText(LIMIT_REACHED_UNTIL)
   await expect(overview).not.toContainText('este mês')
   await expect(
     overview.getByRole('button', { name: 'Criar evento' })
   ).toHaveCount(0)
   await overview.getByRole('button', { name: 'Ver grade' }).click()
-  await expect(page.getByRole('tab', { name: 'Minha grade' })).toHaveAttribute(
-    'aria-selected',
-    'true'
-  )
+  await expect(page).toHaveURL(/\/admin\/jogos$/)
 })
 
 test('o servidor recusa o sexto jogo do Starter', async ({ page }) => {
@@ -297,7 +293,7 @@ test('Elite com pagamento pendente vê o limite em vigor e é mandado regulariza
 
   // Antes do limite: a Visão geral já diz quantos jogos restam.
   await page.goto('/admin')
-  const overview = page.getByRole('tabpanel', { name: 'Visão geral' })
+  const overview = page.locator('#admin-visao')
   await expect(overview).toContainText(
     `Pagamento pendente — 1 de ${STARTER_LIMIT} jogos restantes`
   )
@@ -310,9 +306,8 @@ test('Elite com pagamento pendente vê o limite em vigor e é mandado regulariza
   ).toHaveAttribute('href', '/admin/billing')
 
   // No limite: a grade explica por que parou e leva à assinatura. O jogo
-  // entrou direto no banco, e trocar só o hash não recarrega a política.
+  // entrou direto no banco: a página nova recarrega a política.
   await createEvent(barId)
-  await page.reload()
   await gotoSchedule(page)
   await expect(page.getByRole('button', { name: 'Novo evento' })).toBeDisabled()
   await expect(
@@ -325,7 +320,7 @@ test('Elite com pagamento pendente vê o limite em vigor e é mandado regulariza
   ).toHaveAttribute('href', '/admin/billing')
   await expect(page.getByRole('link', { name: 'Fazer upgrade' })).toHaveCount(0)
 
-  await page.getByRole('tab', { name: 'Visão geral' }).click()
+  await page.goto('/admin')
   await expect(overview).toContainText(LIMIT_REACHED_UNTIL)
   await expect(
     overview.getByRole('button', { name: 'Ver grade' })

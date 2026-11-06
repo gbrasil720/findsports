@@ -50,7 +50,7 @@ test('diz em nome de quem a assinatura sai, com o caminho para corrigir o bar (W
   ).toBeVisible()
   await expect(
     page.getByRole('link', { name: 'Alterar o nome do bar' })
-  ).toHaveAttribute('href', '/admin#admin-espaco')
+  ).toHaveAttribute('href', '/admin/meu-espaco')
 })
 
 test('pagamento pendente: aviso para regularizar, sem checkout novo', async ({

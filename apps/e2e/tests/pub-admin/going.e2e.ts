@@ -27,11 +27,10 @@ test('lista quem vai por jogo e marca quem já validou', async ({ page }) => {
   )
   expect(registered.ok()).toBe(true)
 
-  await page.goto('/admin#admin-quem-vai')
-  await expect(page.getByRole('tab', { name: 'Quem vai' })).toHaveAttribute(
-    'aria-selected',
-    'true'
-  )
+  await page.goto('/admin/quem-vai')
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Quem vai' })
+  ).toBeVisible()
   const game = page.getByRole('article', { name: championship })
   await expect(game).toContainText('2 vão assistir · 1 validou')
   await expect(
@@ -47,22 +46,24 @@ test('ninguém marcou: a aba diz que está vazia', async ({ page }) => {
   const pub = await createPub()
   await createEvent(pub.barId)
   await signIn(page, pub.user)
-  await page.goto('/admin#admin-quem-vai')
+  await page.goto('/admin/quem-vai')
   await expect(page.getByText('Ninguém marcou ainda.')).toBeVisible()
 })
 
-test('link direto para Quem vai sem Elite cai na Visão geral', async ({
-  page
-}) => {
+test('link direto para Quem vai sem Elite cai em Hoje', async ({ page }) => {
   const pub = await createPub({ subscription: { plan: 'pro' } })
   await createEvent(pub.barId)
   await signIn(page, pub.user)
-  await page.goto('/admin#admin-quem-vai')
-  await expect(page.getByRole('tab', { name: 'Visão geral' })).toHaveAttribute(
-    'aria-selected',
-    'true'
-  )
-  await expect(page.getByRole('tab', { name: 'Quem vai' })).toHaveCount(0)
+  await page.goto('/admin/quem-vai')
+  await expect(page).toHaveURL(/\/admin$/)
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Hoje' })
+  ).toBeVisible()
+  await expect(
+    page
+      .getByRole('navigation', { name: 'Seções do painel' })
+      .getByRole('link', { name: 'Quem vai', exact: true })
+  ).toHaveCount(0)
 })
 
 // WEB-341: o trial vence com código em aberto. O bar não ganha gente nova pela
@@ -79,12 +80,8 @@ test('trial Elite vencido com código em aberto: a aba Quem vai fica e o código
   })
   await signIn(page, pub.user)
 
-  await page.goto('/admin#admin-quem-vai')
-  await expect(page.getByRole('tab', { name: 'Quem vai' })).toHaveAttribute(
-    'aria-selected',
-    'true'
-  )
-  const panel = page.getByRole('tabpanel', { name: 'Quem vai' })
+  await page.goto('/admin/quem-vai')
+  const panel = page.locator('#admin-quem-vai')
   await expect(panel.getByRole('note')).toContainText(
     'A lista de quem vai é um recurso do plano Elite.'
   )
@@ -97,7 +94,10 @@ test('trial Elite vencido com código em aberto: a aba Quem vai fica e o código
     page.getByRole('heading', { level: 3, name: ticket.guestName })
   ).toBeVisible()
   await expect(page.getByText('Chopp em dobro')).toBeVisible()
-  await page.getByRole('button', { name: 'Validar código' }).click()
+  await page
+    .getByRole('main')
+    .getByRole('button', { name: 'Validar código' })
+    .click()
   await page
     .getByRole('dialog', { name: 'Validar o código?' })
     .getByRole('button', { name: 'Sim, validar' })

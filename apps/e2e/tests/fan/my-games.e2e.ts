@@ -303,9 +303,7 @@ test('bar fora do ar: quem marcou lê que ele saiu e que o código vale; os outr
   // "Continua valendo" é verdade: o dono do bar fora do ar ainda valida.
   await page.context().clearCookies()
   await signIn(page, pub.user)
-  await page.goto('/admin')
-  await page.getByRole('link', { name: 'Validar código' }).first().click()
-  await expect(page).toHaveURL(/\/admin\/validate$/)
+  await page.goto('/admin/validate')
   await page.getByLabel('Código', { exact: true }).fill(ticket.code)
   await page.getByRole('button', { name: 'Buscar código' }).click()
   await expect(
