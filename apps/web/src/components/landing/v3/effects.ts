@@ -67,62 +67,32 @@ export function startEffects(root: HTMLElement): Cleanup {
     cleanups.push(() => io.disconnect())
   }
 
-  /* Conversa do grupo, mensagem a mensagem. */
-  const box = $('#lp3-msgs')
-  const msgs = $$('#lp3-msgs .m')
-  let timers: number[] = []
-  const playChat = () => {
-    if (!box) return
-    for (const t of timers) clearTimeout(t)
-    timers = []
-    for (const m of msgs) {
-      m.hidden = true
-      m.classList.remove('pop')
-    }
-    box.querySelector('.typing')?.remove()
-    let t = 300
-    for (const m of msgs) {
-      const mine = m.classList.contains('card')
-      timers.push(
-        window.setTimeout(() => {
-          const typing = document.createElement('div')
-          typing.className = `m typing${mine ? ' me' : ''}`
-          typing.innerHTML = '<i></i><i></i><i></i>'
-          typing.style.alignSelf = mine ? 'flex-end' : 'flex-start'
-          box.appendChild(typing)
-        }, t)
-      )
-      t += mine ? 1100 : 750
-      timers.push(
-        window.setTimeout(() => {
-          box.querySelector('.typing')?.remove()
-          m.hidden = false
-          m.classList.add('pop')
-          box.appendChild(m)
-        }, t)
-      )
-      t += 350
-    }
-  }
-  const chat = $('#lp3-chat')
-  if (canObserve && chat) {
-    let done = false
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (done || !entries.some((e) => e.isIntersecting)) return
-        done = true
-        playChat()
+  /* No celular as provas do problema viram carrossel; os pontos acompanham. */
+  const pile = $('#lp3-pile')
+  const pdots = $$('#lp3-pdots i')
+  if (pile) {
+    on(
+      pile,
+      'scroll',
+      () => {
+        const c = pile.scrollLeft + pile.clientWidth / 2
+        let best = 0
+        let bestDist = Number.POSITIVE_INFINITY
+        ;[...pile.children].forEach((el, j) => {
+          const card = el as HTMLElement
+          const d = Math.abs(card.offsetLeft + card.offsetWidth / 2 - c)
+          if (d < bestDist) {
+            bestDist = d
+            best = j
+          }
+        })
+        pdots.forEach((dot, j) => {
+          dot.classList.toggle('on', j === best)
+        })
       },
-      { threshold: 0.35 }
+      { passive: true }
     )
-    io.observe(chat)
-    cleanups.push(() => io.disconnect())
   }
-  const replay = $('#lp3-replay')
-  if (replay) on(replay, 'click', playChat)
-  cleanups.push(() => {
-    for (const t of timers) clearTimeout(t)
-  })
 
   /* A noite do jogo: o passo aceso é o de título mais perto do meio da tela. */
   const steps = $$('.step')

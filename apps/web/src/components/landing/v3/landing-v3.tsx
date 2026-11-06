@@ -8,11 +8,12 @@ import { useTRPC } from '@/utils/trpc'
 import {
   LANDING_COPY,
   NAV_ITEMS,
+  PROBLEM_ITEMS,
   SOCIAL_LINKS,
   TICKER_BENEFITS
 } from '../onside-landing-content'
 import { startEffects } from './effects'
-import { Arrow, Check, Logo, Tv } from './icons'
+import { Arrow, Check, Logo, Stars, Tv } from './icons'
 import { startLeds } from './led'
 
 /*
@@ -43,6 +44,13 @@ function usePrimaryCta() {
       }
 }
 type Cta = ReturnType<typeof usePrimaryCta>
+
+/** O título do problema em dois tons: o que os outros são, e o que não mostram. */
+const PROBLEM_SPLIT = LANDING_COPY.problem.title.indexOf('não mostram')
+const PROBLEM_TITLE = [
+  LANDING_COPY.problem.title.slice(0, PROBLEM_SPLIT).trim(),
+  LANDING_COPY.problem.title.slice(PROBLEM_SPLIT)
+]
 
 type Game = { title: string; time: string; live: boolean }
 
@@ -161,6 +169,22 @@ function Ring() {
       />
       <circle cx="22.4" cy="22.6" r="4.6" fill="#e8320c" />
     </svg>
+  )
+}
+
+/**
+ * A dor de cada prova, só no celular; no computador ela está na lista ao
+ * lado. Uma das duas está sempre em `display: none`, então o leitor de tela
+ * lê cada dor uma vez.
+ */
+function ProblemCaption({ i }: { i: number }) {
+  const p = PROBLEM_ITEMS[i]
+  if (!p) return null
+  return (
+    <p className="evt">
+      <b>{p.title}</b>
+      {p.body}
+    </p>
   )
 }
 
@@ -497,166 +521,89 @@ export function LandingV3() {
           </div>
         </section>
 
-        {/* ================= PROBLEMA ================= */}
-        <section className="sec wrap" aria-labelledby="h-prob">
+        {/* ================= O PROBLEMA (Google Maps e Instagram) ================= */}
+        <section className="sec wrap" id="produto" aria-labelledby="h-prob">
+          <p className="kick rv">{LANDING_COPY.problem.kicker}</p>
           <h2 id="h-prob" className="disp rv">
-            Toda semana, a mesma conversa no grupo.{' '}
-            <span className="h2-2">E alguém chega num bar sem som.</span>
+            {PROBLEM_TITLE[0]} <span className="h2-2">{PROBLEM_TITLE[1]}</span>
           </h2>
           <div className="prob">
-            <div className="chat rv" id="lp3-chat">
-              <div className="top">
-                <span className="grp">FQ</span>
-                <span>
-                  <b>Futebol de quarta</b>
-                  <small>Lucas, Bia, Rafa, Marina, você</small>
-                </span>
+            {/* No celular vira carrossel, com a dor de cada prova embaixo dela. */}
+            <div className="pile rv" id="lp3-pile">
+              <div className="ev ev-photo">
+                <span className="num">01</span>
+                <div className="ph" aria-hidden="true">
+                  <span className="stamp">Sem jogo na foto</span>
+                </div>
+                <div className="cap" aria-hidden="true">
+                  <b>Bar do Zé</b>
+                  <span>publicada há 2 anos</span>
+                </div>
+                <ProblemCaption i={0} />
               </div>
-              <button className="replay" id="lp3-replay" type="button">
-                Ver de novo
-              </button>
-              <div className="msgs" id="lp3-msgs">
-                <div className="m">
+              <div className="ev ev-rev">
+                <span className="num">02</span>
+                <div aria-hidden="true">
+                  <div className="hd">
+                    <Stars n={4} />
+                    4,4<small>1.284 avaliações</small>
+                  </div>
+                  <div className="rev">
+                    <span className="who">
+                      Carla M.
+                      <Stars n={5} />
+                    </span>
+                    Porção de fritas ótima e garçom muito atencioso. Preço
+                    justo!
+                  </div>
+                  <div className="rev">
+                    <span className="who">
+                      Rodrigo S.
+                      <Stars n={4} />
+                    </span>
+                    Ambiente agradável, chopp gelado. Voltaria com a família.
+                  </div>
+                  <span className="ask">E em dia de jogo?</span>
+                </div>
+                <ProblemCaption i={1} />
+              </div>
+              <div className="ev ev-chat">
+                <span className="num">03</span>
+                <div className="m" aria-hidden="true">
                   <span className="who" style={{ color: '#c4290a' }}>
                     Lucas
                   </span>
-                  clássico hoje 21:30, onde a gente vê?
+                  será que passa o jogo lá?
                 </div>
-                <div className="m">
-                  <span className="who" style={{ color: '#5b6d0c' }}>
-                    Bia
-                  </span>
-                  aquele boteco da esquina? não sei se passa
-                </div>
-                <div className="m">
+                <div className="m" aria-hidden="true">
                   <span className="who" style={{ color: '#2f55c7' }}>
                     Rafa
                   </span>
-                  da última vez a TV tava no outro jogo e sem som
+                  sei lá, e se tiver sem som
                 </div>
-                <div className="m">
-                  <span className="who" style={{ color: '#8a3fb0' }}>
-                    Marina
-                  </span>
-                  alguém liga lá pra perguntar?
+                <div className="m me" aria-hidden="true">
+                  melhor ver em casa de novo
                 </div>
-                <div className="m card">
-                  <div className="in">
-                    <div className="url">
-                      onside.sh/jogo/corinthians-x-palmeiras
-                    </div>
-                    <div className="gm">Cor × Pal hoje, 21:30</div>
-                    <div className="meta">8 bares perto de Vila Madalena</div>
-                  </div>
-                  <div className="bars">
-                    <span className="a">Bar do Zé · 3 telões</span>
-                    <span>Arquibancada · som ligado</span>
-                  </div>
-                </div>
-                <div className="m">
-                  <span className="who" style={{ color: '#c4290a' }}>
-                    Lucas
-                  </span>
-                  Bar do Zé. 34 já marcaram, entre eles a Marina
-                </div>
-                <div className="m">
-                  <span className="who" style={{ color: '#8a3fb0' }}>
-                    Marina
-                  </span>
-                  já to lá kkk
-                </div>
+                <ProblemCaption i={2} />
               </div>
             </div>
-            <div>
+            <div className="rail-dots" id="lp3-pdots" aria-hidden="true">
+              <i className="on"></i>
+              <i></i>
+              <i></i>
+            </div>
+            <div className="pains-wrap">
               <ul className="pains">
-                <li className="rv">
-                  <span className="ic">
-                    <svg
-                      width="26"
-                      height="26"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                      style={{ color: '#12120f' }}
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M12 2a7.5 7.5 0 0 1 7.5 7.5c0 5.5-7.5 12.5-7.5 12.5S4.5 15 4.5 9.5A7.5 7.5 0 0 1 12 2zm0 4.6a2.9 2.9 0 1 0 0 5.8 2.9 2.9 0 0 0 0-5.8z"
-                        fill="currentColor"
-                      />
-                    </svg>
-                  </span>
-                  <span>
-                    <b>O mapa mostra o endereço.</b>
-                    <p>
-                      Não diz se aquele bar vai passar o seu jogo, nem em qual
-                      TV.
-                    </p>
-                  </span>
-                </li>
-                <li className="rv">
-                  <span className="ic">
-                    <svg
-                      width="26"
-                      height="26"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                      style={{ color: '#12120f' }}
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M8.6 4h6.8l1.5 2.4H20a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.4a2 2 0 0 1 2-2h3.1zM12 9a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"
-                        fill="currentColor"
-                      />
-                    </svg>
-                  </span>
-                  <span>
-                    <b>O perfil do bar mostra o chopp.</b>
-                    <p>
-                      A foto é de um sábado qualquer. O som do jogo, ninguém
-                      sabe.
-                    </p>
-                  </span>
-                </li>
-                <li className="rv">
-                  <span className="ic">
-                    <svg
-                      width="26"
-                      height="26"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                      style={{ color: '#12120f' }}
-                    >
-                      <path
-                        d="m12 2.8 2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.6l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z"
-                        fill="currentColor"
-                      />
-                    </svg>
-                  </span>
-                  <span>
-                    <b>A avaliação fala da comida.</b>
-                    <p>
-                      Sobre lotação, telão e som em dia de clássico, quase nada.
-                    </p>
-                  </span>
-                </li>
+                {PROBLEM_ITEMS.map((p) => (
+                  <li key={p.id} className="rv">
+                    <span className="ic">{p.number}</span>
+                    <span>
+                      <b>{p.title}</b>
+                      <p>{p.body}</p>
+                    </span>
+                  </li>
+                ))}
               </ul>
-              <p className="verdict rv">
-                <span className="mark">
-                  <svg
-                    width="26"
-                    height="26"
-                    viewBox="0 0 24 24"
-                    aria-hidden="true"
-                    style={{ color: '#12120f' }}
-                  >
-                    <path
-                      d="m4.2 12.4 1.8-1.8 4 4 8-8 1.8 1.8-9.8 9.8z"
-                      fill="currentColor"
-                    />
-                  </svg>
-                </span>
-                A Onside pergunta antes de você sair. Para o bar, jogo por jogo.
-              </p>
             </div>
           </div>
         </section>
