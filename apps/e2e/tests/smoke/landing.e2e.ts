@@ -21,7 +21,7 @@ test('celular: sem rolagem lateral e com o telão no topo', async ({
   await expect(page.locator('#lp3-pile .evt').first()).toBeVisible()
   await expect(page.locator('.lp3 .pains')).toBeHidden()
   expect(
-    await page.evaluate(() => document.documentElement.scrollWidth)
+    await page.evaluate<number>('document.documentElement.scrollWidth')
   ).toBeLessThanOrEqual(page.viewportSize()?.width ?? 0)
 })
 
