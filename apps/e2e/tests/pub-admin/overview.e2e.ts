@@ -6,7 +6,7 @@ import { createPub, type Plan } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
 
-// Visão geral (analytics comerciais) por plano: Starter vê só aberturas em
+// Desempenho (analytics comerciais) por plano: Starter vê só aberturas em
 // até 30 dias; Pro ganha telefone, WhatsApp e rota em até 365 dias; Elite tem
 // todo o histórico e a atividade diária.
 
@@ -33,7 +33,7 @@ async function openOverview(page: Page, plan: Plan) {
     })
   }
   await signIn(page, pub.user)
-  await page.goto('/admin')
+  await page.goto('/admin/desempenho')
   return pub
 }
 
@@ -107,7 +107,8 @@ test('trial vencido: o Desempenho diz por que o plano em vigor é o Starter', as
   await signIn(page, pub.user)
   await page.goto('/admin')
 
-  await expect(page.locator('#admin-visao')).toContainText('Trial encerrado')
+  await expect(page.locator('#painel-main')).toContainText('Trial encerrado')
+  await page.goto('/admin/desempenho')
   await expect(overview(page)).toContainText(
     'Plano: Starter • Trial do plano Elite encerrado'
   )
@@ -135,7 +136,7 @@ test('trial vencido e bar fora do ar: aviso de bar não visível e o caminho par
   await page.goto('/admin')
   await policy
 
-  const panel = page.locator('#admin-visao')
+  const panel = page.locator('#painel-main')
   await expect(panel).toContainText('Seu bar não está visível na plataforma')
   await expect(panel).toContainText('Trial encerrado')
   await expect(panel).not.toContainText(/restantes?/)
@@ -169,7 +170,7 @@ test('bar sem assinatura: "Sem plano" com o caminho para escolher um', async ({
   await page.goto('/admin')
   await policy
 
-  const panel = page.locator('#admin-visao')
+  const panel = page.locator('#painel-main')
   await expect(panel).toContainText('Sem plano')
   await expect(
     panel.getByRole('link', { name: 'Escolher um plano' })
@@ -180,6 +181,7 @@ test('bar sem assinatura: "Sem plano" com o caminho para escolher um', async ({
   await expect(panel).not.toContainText(/Plano Starter —|no plano Starter/)
   await expect(panel).not.toContainText(/restantes?/)
   // O Desempenho segue o card: não chama de Starter quem não tem plano.
+  await page.goto('/admin/desempenho')
   await expect(panel).toContainText('Sem plano • Nenhuma assinatura ativa')
   await expect(panel).not.toContainText('Plano: Starter')
 })
