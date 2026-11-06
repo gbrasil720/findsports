@@ -1,3 +1,4 @@
+import { ONBOARDING_TRIAL } from '@findsports_oficial/api/lib/plan-limits'
 import { useForm } from '@tanstack/react-form'
 import {
   createFileRoute,
@@ -65,7 +66,7 @@ const ROLES = [
   {
     value: 'pub',
     title: 'Tenho um bar',
-    text: 'Publicar jogos e encher a casa. 120 dias de Elite grátis.',
+    text: `Publicar jogos e encher a casa. ${ONBOARDING_TRIAL.days} dias de Elite grátis.`,
     Icon: Beer
   }
 ] as const
@@ -96,7 +97,7 @@ const FAN_PANEL: AuthPanel = {
 const PUB_PANEL: AuthPanel = {
   kind: 'board',
   led: 'crowd',
-  kicker: 'Conta de bar · 120 dias grátis',
+  kicker: `Conta de bar · ${ONBOARDING_TRIAL.days} dias grátis`,
   title: (
     <>
       Encha a casa <span>em dia de jogo.</span>
@@ -116,7 +117,7 @@ const PUB_PANEL: AuthPanel = {
       'Veja quantos marcaram que vão e quantos códigos o balcão validou.'
     ],
     [
-      '120 dias de Elite',
+      `${ONBOARDING_TRIAL.days} dias de Elite`,
       'Grátis, sem cartão. Depois do teste, você escolhe o plano.'
     ]
   ]

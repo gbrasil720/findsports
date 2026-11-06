@@ -1,3 +1,4 @@
+import { ONBOARDING_TRIAL } from '@findsports_oficial/api/lib/plan-limits'
 /** biome-ignore-all lint/performance/noImgElement: telas e fotos estáticas de public/landing/v3, com width e height. */
 import { getEventEnd } from '@findsports_oficial/db/event-window'
 import { useQuery } from '@tanstack/react-query'
@@ -1007,7 +1008,8 @@ export function LandingV3() {
               </h2>
               <div className="rv">
                 <span className="tag">
-                  <em>120 DIAS</em>de Elite grátis, sem cartão
+                  <em>{ONBOARDING_TRIAL.days} DIAS</em>de Elite grátis, sem
+                  cartão
                 </span>
                 <p className="lede" style={{ marginTop: '20px' }}>
                   Publique a grade, apareça para quem procura aquele jogo perto
