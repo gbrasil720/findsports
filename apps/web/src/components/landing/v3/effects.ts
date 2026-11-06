@@ -12,6 +12,31 @@ function digits(time: string) {
   return `<span>${time[0]}</span><span>${time[1]}</span><span class="c">:</span><span>${time[3]}</span><span>${time[4]}</span>`
 }
 
+/**
+ * Cabeçalho: papel sobre papel, tinta sobre tinta. Seção escura que não é
+ * da landing (as páginas de texto) entra com `data-ink`.
+ */
+export function startNavTone(root: HTMLElement): Cleanup {
+  const nav = root.querySelector<HTMLElement>('#lp3-nav')
+  const inks = [
+    ...root.querySelectorAll<HTMLElement>(
+      '.hero,.how,.ver,.final,.foot,[data-ink]'
+    )
+  ]
+  const tone = () => {
+    if (!nav) return
+    const y = nav.getBoundingClientRect().bottom - 10
+    const ink = inks.some((s) => {
+      const r = s.getBoundingClientRect()
+      return r.top <= y && r.bottom >= y
+    })
+    nav.classList.toggle('on-paper', !ink)
+  }
+  window.addEventListener('scroll', tone, { passive: true })
+  tone()
+  return () => window.removeEventListener('scroll', tone)
+}
+
 export function startEffects(root: HTMLElement): Cleanup {
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const canObserve = 'IntersectionObserver' in window && !reduce
@@ -31,20 +56,7 @@ export function startEffects(root: HTMLElement): Cleanup {
     cleanups.push(() => target.removeEventListener(type, fn, opts))
   }
 
-  /* Cabeçalho: papel sobre papel, tinta sobre tinta. */
-  const nav = $('#lp3-nav')
-  const inks = $$('.hero,.how,.ver,.final,.foot')
-  const navTone = () => {
-    if (!nav) return
-    const y = nav.getBoundingClientRect().bottom - 10
-    const ink = inks.some((s) => {
-      const r = s.getBoundingClientRect()
-      return r.top <= y && r.bottom >= y
-    })
-    nav.classList.toggle('on-paper', !ink)
-  }
-  on(window, 'scroll', navTone, { passive: true })
-  navTone()
+  cleanups.push(startNavTone(root))
 
   /* Entradas: só o que está abaixo da dobra ao abrir. */
   if (canObserve) {
