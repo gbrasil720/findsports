@@ -37,7 +37,7 @@ function PlanLossList({
 
   return (
     <ul
-      className={`mt-3 space-y-2 text-[var(--onside-ink)] text-sm ${className ?? ''}`}
+      className={className ?? 'mt-3 space-y-2 text-[var(--onside-ink)] text-sm'}
     >
       {getPlanLosses(from, to).map((loss) => {
         const note = numbers
@@ -66,7 +66,9 @@ type DialogProps = Change & {
 
 /**
  * Trocar para um plano menor pede confirmação e diz o que o bar perde, antes
- * de o Stripe mostrar só o preço (WEB-351).
+ * de o Stripe mostrar só o preço (WEB-351). Visual do quadro "Antes de descer
+ * de plano" do redesign (WEB-501); o diálogo sai num portal, fora de `.lp3`,
+ * e leva as cores dele em `.pl-dlg` (`plan-v3.css`).
  */
 export function DowngradeConfirmDialog({
   from,
@@ -79,6 +81,7 @@ export function DowngradeConfirmDialog({
 }: DialogProps) {
   // O foco começa em quem não troca nada.
   const cancelRef = useRef<HTMLButtonElement>(null)
+  const barName = useMyBar().data?.name
 
   return (
     <Dialog
@@ -89,12 +92,13 @@ export function DowngradeConfirmDialog({
     >
       <DialogContent
         initialFocus={cancelRef}
-        className="onside-dialog flex max-w-[calc(100vw-2rem)] flex-col p-6 sm:max-w-lg"
+        className="pl-dlg flex max-h-[min(90dvh,900px)] max-w-[calc(100vw-2rem)] flex-col gap-4 rounded-[26px] p-[26px] sm:max-w-[560px]"
       >
-        <DialogTitle className="onside-display text-2xl">
-          Trocar para o {getPlan(to).name}?
+        <p className="pl-dlg-k">{confirmLabel}</p>
+        <DialogTitle className="pl-dlg-h">
+          O que o {barName ?? 'seu bar'} perde
         </DialogTitle>
-        <DialogDescription className="mt-2 text-[var(--onside-ink)] text-sm">
+        <DialogDescription className="sr-only">
           Seu bar sai do {getPlan(from).name} e deixa de ter:
         </DialogDescription>
         {/* Só a lista rola: título, crédito e botões ficam à vista. */}
@@ -102,29 +106,26 @@ export function DowngradeConfirmDialog({
           from={from}
           to={to}
           onTrial={onTrial}
-          className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+          className="pl-loss min-h-0 flex-1 overflow-y-auto overscroll-contain"
         />
-        {earnsCredit ? (
-          <p className="mt-4 text-[var(--onside-ink)] text-sm">
-            A diferença vira crédito na sua conta e abate as próximas
-            mensalidades (não é reembolsada no cartão).
-          </p>
-        ) : null}
-        <div className="mt-6 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={onConfirm}
-            className="onside-btn onside-btn-ink"
-          >
-            {confirmLabel}
-          </button>
+        <p className="pl-dlg-p">
+          {earnsCredit
+            ? 'A troca vale na hora. A diferença vira crédito na sua conta e abate as próximas mensalidades (não é reembolsada no cartão).'
+            : onTrial
+              ? 'A troca vale na hora e não muda a data do fim do teste.'
+              : 'A troca vale na hora.'}
+        </p>
+        <div className="pl-dlg-acts">
           <button
             ref={cancelRef}
             type="button"
             onClick={onCancel}
-            className="onside-btn onside-btn-outline"
+            className="ghost"
           >
-            Manter o {getPlan(from).name}
+            Ficar no {getPlan(from).name}
+          </button>
+          <button type="button" onClick={onConfirm} className="ink">
+            {confirmLabel}
           </button>
         </div>
       </DialogContent>

@@ -4,12 +4,15 @@ import { openBillingPortal } from '@/lib/billing-client'
 /**
  * Desfaz o cancelamento agendado (WEB-335). Quem reativa é o portal do Stripe,
  * o mesmo de "Gerenciar assinatura": o app só leva até lá, e o webhook da
- * reativação limpa o aviso.
+ * reativação limpa o aviso. Com outro `label`, é o mesmo caminho para
+ * cartão e faturas ("Gerenciar pagamento" em `/plan`).
  */
 export function ReactivateSubscriptionButton({
-  className
+  className,
+  label = 'Reativar assinatura'
 }: {
   className: string
+  label?: string
 }) {
   const [opening, setOpening] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -37,7 +40,7 @@ export function ReactivateSubscriptionButton({
         disabled={opening}
         className={className}
       >
-        {opening ? 'Abrindo portal…' : 'Reativar assinatura'}
+        {opening ? 'Abrindo portal…' : label}
       </button>
       {failed ? (
         <span role="alert" className="text-[var(--onside-live-text)]">
