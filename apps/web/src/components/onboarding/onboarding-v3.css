@@ -1605,6 +1605,26 @@
   }
 }
 
+/* Pressão: o cartão afunda um pouco no toque e volta mais devagar. */
+.lp3.ob3
+:is(.ob-sports button, .ob-radius button, .ob-teams .onside-chip):active:not(
+  :disabled
+) {
+  transform: scale(0.97);
+  transition-duration: 0.2s, 0.2s, 0.2s, 0.12s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp3.ob3
+    :is(
+      .ob-sports button,
+      .ob-radius button,
+      .ob-teams .onside-chip
+    ):active:not(:disabled) {
+    transform: none;
+  }
+}
+
 /* Distância: o texto de apoio acompanha a inversão. */
 .lp3.ob3 .ob-radius button[aria-pressed="true"] span {
   color: inherit;
