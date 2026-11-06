@@ -1470,3 +1470,73 @@
     transition: none;
   }
 }
+
+/*
+ * Selecionado em esportes e times: o escolhido inverte as cores (tinta no
+ * claro, papel no escuro), ganha o selo verde-limão com o check e a sombra de
+ * baixo verde-limão, e dá um pulinho ao ser marcado.
+ */
+.lp3.ob3 .ob-sports button,
+.lp3.ob3 .ob-teams .onside-chip {
+  position: relative;
+  transition:
+    background 0.2s,
+    color 0.2s,
+    box-shadow 0.2s,
+    transform 0.25s var(--ease);
+}
+
+.lp3.ob3 .ob-sports button[aria-pressed="true"],
+.lp3.ob3 .ob-teams .onside-chip[aria-pressed="true"],
+.lp3.ob3 .ob-teams .onside-chip[aria-pressed="true"]:hover:not(:disabled) {
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: 0 4px 0 var(--acid);
+  transform: translateY(-2px);
+  animation: ob-pick 0.32s var(--ease);
+}
+
+.lp3.ob3 .ob-sports button[aria-pressed="true"] .e {
+  background: var(--acid);
+  color: #12120f;
+}
+
+.lp3.ob3 .ob-sports button[aria-pressed="true"]::after,
+.lp3.ob3 .ob-teams .onside-chip[aria-pressed="true"]::before {
+  content: "";
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background:
+    #c9f135
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='m5 12.5 4.5 4.5L19 7.5' fill='none' stroke='%2312120f' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>")
+    center / 14px no-repeat;
+}
+
+.lp3.ob3 .ob-sports button[aria-pressed="true"]::after {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.lp3.ob3 .ob-teams .onside-chip[aria-pressed="true"] {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 8px;
+}
+
+@keyframes ob-pick {
+  40% {
+    transform: translateY(-4px) scale(1.03);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp3.ob3 .ob-sports button[aria-pressed="true"],
+  .lp3.ob3 .ob-teams .onside-chip[aria-pressed="true"] {
+    animation: none;
+    transform: none;
+  }
+}
