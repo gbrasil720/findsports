@@ -175,7 +175,7 @@ muda uma chave vai num arquivo `*.serial.e2e.ts`, com
 `setAppConfig(chave, valor)` e `resetAppConfig()` no `afterEach`
 (`fixtures/db.ts`).
 
-Cobrança não tem chave (WEB-233): checkout aberto, teste grátis de 120 dias no
+Cobrança não tem chave (WEB-233): checkout aberto, teste grátis de 90 dias no
 cadastro do bar e cupom de fundador valem em todo teste. O que é global ali é o
 estado do cupom no stub do Stripe: `setFounderCoupon(request, estado)`
 (`fixtures/stripe.ts`) também só em arquivo serial, com `'valid'` de volta no

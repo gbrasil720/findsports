@@ -59,7 +59,7 @@ Os dois lados juntos, o que vizinho nenhum faz honestamente:
   balcão, pós-jogo ("Você foi?", "Voltaria?", estrelas), conquistas, amigos, ranking.
 - Bar: Hoje, Jogos (grade por dia ou semana), Desempenho, Quem vai, Meu espaço (perfil,
   fotos, horário, oferta), Configurações, Plano e cobrança, Validar código.
-- Planos Starter, Pro e Elite (Stripe, BRL); teste de 120 dias no Elite no cadastro, sem
+- Planos Starter, Pro e Elite (Stripe, BRL); teste de 90 dias no Elite no cadastro, sem
   cartão. Recurso pago aparece como tal para quem não tem.
 - Esportes além do futebol: NBA, NFL, UFC, F1, tênis, vôlei, NBB (catálogo de times e
   atletas).

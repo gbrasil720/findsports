@@ -204,7 +204,7 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   dono). O app não lê plano dali.
 - Planos são achados por **lookup key** (`starter_monthly`, `pro_monthly`,
   `elite_monthly`), iguais no sandbox e em produção: `packages/auth/src/stripe-plan.ts`.
-- **Teste grátis nasce no cadastro, sem cartão**: 120 dias no Elite, para todo bar
+- **Teste grátis nasce no cadastro, sem cartão**: 90 dias no Elite, para todo bar
   novo (`ONBOARDING_TRIAL`, em `packages/api/src/lib/plan-limits.ts`). Quem
   contrata antes do fim herda a data: o checkout manda `trial_end` e o Stripe só cobra
   quando o teste acabaria (`packages/auth/src/stripe-checkout.ts`).
