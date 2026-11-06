@@ -36,9 +36,12 @@ export function PubAmenitiesStep({
 
   return (
     <>
-      <div className="ob-sw">
+      <div className="ob-sw ob-sw-card">
         <Tv size={20} />
-        <label htmlFor="onboarding-screen-count">Quantas telas?</label>
+        <span className="ob-sw-tx">
+          <label htmlFor="onboarding-screen-count">Quantas telas?</label>
+          <span>TVs, telão e projetor, somados.</span>
+        </span>
         <span className="ob-stepper">
           <button
             type="button"
