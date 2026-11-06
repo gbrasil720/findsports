@@ -3,6 +3,7 @@ import {
   type AuthSession,
   applyAuthGuards,
   isHashOnlyChange,
+  PUB_LIVE_PATH,
   requiresAuthentication,
   toClientSession
 } from './auth-guards'
@@ -144,6 +145,11 @@ describe('applyAuthGuards', () => {
         '/dashboard'
       )
     }
+  })
+
+  test('bar pronto sai do onboarding, menos da tela "no ar"', () => {
+    expect(() => applyAuthGuards(session('pub'), '/onboarding/pub')).toThrow()
+    expect(() => applyAuthGuards(session('pub'), PUB_LIVE_PATH)).not.toThrow()
   })
 
   test('sends unfinished fans to fan onboarding', () => {

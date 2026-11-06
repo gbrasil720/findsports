@@ -5,6 +5,12 @@ import { getCallbackUrl } from './callback-url'
 
 export type AuthSession = ReturnType<typeof toClientSession>
 
+/**
+ * A tela "no ar" do fim do cadastro do bar (WEB-501): a única `/onboarding/*`
+ * aberta a quem já concluiu. O resto do onboarding manda o bar pronto embora.
+ */
+export const PUB_LIVE_PATH = '/onboarding/pub/no-ar'
+
 const AUTHENTICATED_PREFIXES = [
   '/dashboard',
   '/admin',
@@ -70,7 +76,7 @@ export function applyAuthGuards(
     return
   }
 
-  if (pathname.startsWith('/onboarding')) {
+  if (pathname.startsWith('/onboarding') && pathname !== PUB_LIVE_PATH) {
     throw redirect({
       to: session.user.role === 'pub' ? '/plan' : '/dashboard'
     })
