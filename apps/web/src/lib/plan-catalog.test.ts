@@ -19,7 +19,6 @@ import {
   getPlanLosses,
   getPlanLossNote,
   getPlanPageMode,
-  getPlanSelectionState,
   getTrialNotice,
   getTrialProgress,
   isContractedTrial,
@@ -279,30 +278,6 @@ describe('Tier ordering', () => {
     expect(isDowngrade('starter', 'starter')).toBe(false)
     expect(isDowngrade('pro', 'pro')).toBe(false)
     expect(isDowngrade('elite', 'elite')).toBe(false)
-  })
-})
-
-describe('Plan selection state', () => {
-  test('mantém todos os planos contratáveis sem plano vigente', () => {
-    for (const selected of ['starter', 'pro', 'elite'] as const) {
-      expect(getPlanSelectionState(null, selected)).toEqual({
-        isDowngrade: false,
-        isSamePlan: false
-      })
-    }
-  })
-
-  test('marca apenas o plano vigente como plano atual', () => {
-    for (const current of ['starter', 'pro', 'elite'] as const) {
-      expect(getPlanSelectionState(current, current)).toEqual({
-        isDowngrade: false,
-        isSamePlan: true
-      })
-    }
-  })
-
-  test('permite recontratar após a assinatura ficar inativa', () => {
-    expect(getPlanSelectionState(null, 'pro').isSamePlan).toBe(false)
   })
 })
 
@@ -714,10 +689,6 @@ describe('getDefaultPlanSelection (WEB-249)', () => {
   test('abre no plano da assinatura, nunca abaixo nem em outro', () => {
     for (const plan of ['starter', 'pro', 'elite'] as const) {
       expect(getDefaultPlanSelection({ plan })).toBe(plan)
-      // Selecionado o próprio plano, o botão é "Plano atual", desabilitado.
-      expect(
-        getPlanSelectionState(plan, getDefaultPlanSelection({ plan }))
-      ).toEqual({ isDowngrade: false, isSamePlan: true })
     }
   })
 

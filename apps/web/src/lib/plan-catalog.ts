@@ -494,16 +494,6 @@ export function planChangeReturnUrl(
   return `/admin/billing?planFrom=${from}&planTo=${to}`
 }
 
-export function getPlanSelectionState(
-  current: SubscriptionPlan | null,
-  selected: SubscriptionPlan
-) {
-  return {
-    isDowngrade: current !== null && isDowngrade(current, selected),
-    isSamePlan: current === selected
-  }
-}
-
 export function parsePlanOrigin(value: unknown): PlanOrigin | undefined {
   if (value === 'admin' || value === 'billing') return value
   return undefined
