@@ -23,7 +23,7 @@ import { PubAmenitiesStep } from '@/components/onboarding/pub-amenities-step'
 import { PubInfoForm } from '@/components/onboarding/pub-info-form'
 import { PubObShell } from '@/components/onboarding/pub-ob-shell'
 import { PubPlanStep } from '@/components/onboarding/pub-plan-step'
-import { PubPreview } from '@/components/onboarding/pub-preview'
+import { PubPreview, PubWelcomeTv } from '@/components/onboarding/pub-preview'
 import {
   PubReceipt,
   type PubReceiptData,
@@ -541,8 +541,11 @@ function PubOnboarding() {
       steps={STEPS}
       step={step}
       wide={step === PLAN_STEP}
+      tv={step === 0}
       aside={
-        step === PLAN_STEP ? null : (
+        step === PLAN_STEP ? null : step === 0 ? (
+          <PubWelcomeTv />
+        ) : (
           <PubPreview
             name={name}
             neighborhood={neighborhood}
@@ -559,7 +562,10 @@ function PubOnboarding() {
         )
       }
     >
-      <div key={step} className="ob-step-body">
+      <div
+        key={step}
+        className={`ob-step-body${step === 0 ? ' ob-welcome' : ''}`}
+      >
         {step === 0 && (
           <>
             {heading(
@@ -584,6 +590,14 @@ function PubOnboarding() {
                 </li>
               ))}
             </ul>
+            <div className="ob-need">
+              <p className="ob-k">Tenha à mão</p>
+              <ul>
+                <li>Nome e CEP do bar</li>
+                <li>Telas e o que o bar oferece</li>
+                <li>Jogos por mês e gasto médio</li>
+              </ul>
+            </div>
           </>
         )}
 

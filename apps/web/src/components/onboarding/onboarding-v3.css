@@ -1641,3 +1641,99 @@
   color: inherit;
   opacity: 0.75;
 }
+
+/* ─── Boas-vindas do bar: conteúdo no meio, botão junto, telão à direita ─── */
+.lp3.ob3 .ob-main:has(.ob-welcome) {
+  justify-content: center;
+}
+
+.lp3.ob3 .ob-main:has(.ob-welcome) .ob-nav {
+  margin-top: 0;
+}
+
+.lp3.ob3 .ob-main:has(.ob-welcome) .ob-nav-row .btn-acid {
+  margin-left: 0;
+}
+
+.lp3.ob3 .ob-need {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-top: 22px;
+}
+
+.lp3.ob3 .ob-need ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lp3.ob3 .ob-need li {
+  padding: 7px 12px;
+  border: 1px dashed var(--line);
+  border-radius: 999px;
+  font-size: 13.5px;
+}
+
+.lp3.ob3 .ob-prev.tv {
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+  border-left: 0;
+  background: #12120f;
+}
+
+.lp3.ob3 .ob-prev.tv .ob-prev-in {
+  height: 100%;
+}
+
+.lp3.ob3 .ob-tv {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  min-height: calc(100vh - 77px);
+  padding: 40px 34px;
+  color: #f4efe6;
+  text-align: center;
+}
+
+.lp3.ob3 .ob-tv-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
+  opacity: 0.55;
+}
+
+.lp3.ob3 .ob-tv > :not(.ob-tv-bg) {
+  position: relative;
+}
+
+.lp3.ob3 .ob-tv-k {
+  margin: 0;
+  color: #c9f135;
+  font: 600 12px / 1.3 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.lp3.ob3 .ob-tv .phone {
+  width: auto;
+  height: min(545px, 62vh);
+}
+
+.lp3.ob3 .ob-tv-cap {
+  max-width: 300px;
+  margin: 0;
+  color: rgba(244, 239, 230, 0.75);
+  font-size: 13.5px;
+}
