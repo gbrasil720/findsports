@@ -3,6 +3,7 @@
 @import "./components/landing/onside.css";
 @import "./components/landing/v3/landing-v3.css";
 @import "./components/landing/v3/landing-v3-site.css";
+@import "./components/legal/legal-v3.css";
 @import "./components/legal/legal.css";
 @import "./components/consent/cookie-consent.css";
 @import "./components/impersonation-banner.css";
