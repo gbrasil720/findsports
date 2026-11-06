@@ -204,6 +204,7 @@
 
 .lp3.ob3 .ob-error {
   margin: 18px 0 0;
+  animation: ob-fade 0.2s var(--ease);
   color: #c92b0c;
   font-size: 14.5px;
   text-align: center;
@@ -1528,8 +1529,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .lp3.ob3 :is(.ob-step-body, .rl, .ob-printer .ob-led, .ob-sports .sk) {
+  .lp3.ob3 :is(.rl, .ob-printer .ob-led, .ob-sports .sk) {
     animation: none;
+  }
+
+  /* Sem deslocamento: o passo, a legenda do telão e os cartões só aparecem. */
+  .lp3.ob3 :is(.ob-step-body, .ent-cap, .ob-ben li, .ob-sports button) {
+    animation-name: ob-fade;
   }
 
   .lp3.ob3 .ob-pc,
