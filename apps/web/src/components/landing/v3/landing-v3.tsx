@@ -10,6 +10,7 @@ import {
   JOURNEY_STEPS,
   LANDING_COPY,
   NAV_ITEMS,
+  OCCASION_ITEMS,
   PROBLEM_ITEMS,
   SOCIAL_LINKS,
   TICKER_BENEFITS
@@ -243,6 +244,8 @@ const STEP_EXTRAS = [
     ]
   }
 ] as const
+
+const OCCASION_ICONS = [Beer, Tv, People] as const
 
 type Result = { game: Game; where: string; example: boolean }
 
@@ -820,6 +823,39 @@ export function LandingV3() {
                 </div>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* ================= OCASIÕES ================= */}
+        <section className="sec wrap" aria-labelledby="h-occ">
+          <div className="occ-grid">
+            <div>
+              <p className="kick rv">{LANDING_COPY.variety.kicker}</p>
+              <h2
+                id="h-occ"
+                className="disp rv"
+                style={{ fontSize: 'clamp(44px,5.4vw,84px)' }}
+              >
+                Encontre o espaço certo{' '}
+                <span className="h2-2">para o seu jeito de torcer.</span>
+              </h2>
+              <p className="lede rv">{LANDING_COPY.variety.body}</p>
+            </div>
+            <ul className="occ">
+              {OCCASION_ITEMS.map((o, i) => {
+                const Icon = OCCASION_ICONS[i] ?? Beer
+                return (
+                  <li key={o.id} className={o.highlight ? 'rv hl' : 'rv'}>
+                    <span className="n">{o.number}</span>
+                    <b>{o.title}</b>
+                    <span className="tg">
+                      <Icon />
+                      {o.tag}
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
           </div>
         </section>
 
