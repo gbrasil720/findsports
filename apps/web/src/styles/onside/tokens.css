@@ -110,13 +110,7 @@
   --onside-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --onside-motion-distance: 6px;
 }
-:where(
-  .onside-page,
-  .onside-app,
-  .onside-banner,
-  .onside-dialog,
-  .onside-menu
-) {
+:where(.onside-page, .onside-app, .onside-banner, .onside-menu) {
   --onside-ink: #12120f;
   --onside-paper: #f1eee6;
   --onside-acid: #c9f135;
@@ -177,13 +171,7 @@
  * `overflow` e sobra como duas barras vermelhas soltas. Nesses contextos o
  * anel vira interno (`-3px`) em vez de sumir.
  */
-:where(
-  .onside-page,
-  .onside-app,
-  .onside-banner,
-  .onside-dialog,
-  .onside-menu
-) {
+:where(.onside-page, .onside-app, .onside-banner, .onside-menu) {
   --onside-focus-width: 3px;
   --onside-focus-color: var(--onside-live);
   --onside-focus-offset: 3px;
