@@ -19,7 +19,8 @@ type Plan = keyof typeof PLAN_NAMES
 export const STANDING_LABELS: Record<SubscriptionStanding, string> = {
   current: 'em dia',
   past_due: LAPSED_COPY.past_due.label,
-  trial_ended: LAPSED_COPY.trial_ended.label,
+  // O Houdini é da equipe: segue "Trial"; o dono lê "Teste" (WEB-501).
+  trial_ended: 'Trial encerrado',
   ended: 'encerrada'
 }
 

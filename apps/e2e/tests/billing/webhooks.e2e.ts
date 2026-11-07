@@ -182,11 +182,12 @@ for (const status of ['past_due', 'unpaid'] as const) {
     await page.goto('/admin/meu-espaco')
     await expect(
       page
-        .locator('#admin-espaco')
+        .locator('#painel-main')
         .getByText('Plano Pro com pagamento pendente')
+        .first()
     ).toBeVisible()
     await expect(
-      page.getByRole('link', { name: 'Regularizar assinatura' })
+      page.getByRole('link', { name: 'Regularizar assinatura' }).first()
     ).toBeVisible()
   })
 }
