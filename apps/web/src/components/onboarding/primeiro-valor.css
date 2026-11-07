@@ -294,13 +294,22 @@ html[data-theme="dark"] .lp3.ob3 .ob-free {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .lp3.ob3 .ob-head .ob-onair {
+  /* No celular o topo fica com o passo e "Ir para o painel": sai o selo. */
+  .lp3.ob3 .ob-head .ob-pill:has(.ob-onair) {
     display: none;
   }
 
   .lp3.ob3 .ob-skipto {
+    flex: none;
+    height: 38px;
+    margin-left: 0;
     padding: 0 12px;
-    font-size: 13.5px;
+    font-size: 13px;
+  }
+
+  /* O tema volta no plano, que não tem o botão. */
+  .lp3.ob3 .ob-head:has(.ob-skipto) :is(.ob-steps .of, .theme-switch) {
+    display: none;
   }
 }
 
