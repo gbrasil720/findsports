@@ -148,7 +148,9 @@ function highlights(bar: PageBar): string {
   return parts.join(', ')
 }
 
-const clip = (text: string, max = 158) =>
+const DESCRIPTION_MAX = 158
+
+const clip = (text: string, max = DESCRIPTION_MAX) =>
   text.length <= max ? text : `${text.slice(0, max - 1).trimEnd()}…`
 
 /** `<title>`: o jogo de hoje na frente, a marca no fim (`docs/seo.md`). */
@@ -162,9 +164,13 @@ export function barPageTitle(bar: PageBar, now: Date): string {
 /** Descrição para o Google, com a grade de hoje ou a próxima. */
 export function barPageDescription(bar: PageBar, now: Date): string {
   const today = todayGames(bar.events, now)
-  const where = `${bar.neighborhood}, ${bar.city}`
   const extra = highlights(bar)
-  const tail = `${extra ? `${extra[0]?.toUpperCase()}${extra.slice(1)} em ` : 'Em '}${where}.${bar.opening?.open && bar.opening.closes ? ` Aberto até ${bar.opening.closes}.` : ''}`
+  const place = `${extra ? `${extra[0]?.toUpperCase()}${extra.slice(1)} em ` : 'Em '}${bar.neighborhood}, ${bar.city}.`
+  const open =
+    bar.opening?.open && bar.opening.closes
+      ? ` Aberto até ${bar.opening.closes}.`
+      : ''
+  let lead = `${bar.name}: onde ver o jogo.`
   if (today.length) {
     const games = today
       .slice(0, 3)
@@ -174,14 +180,15 @@ export function barPageDescription(bar: PageBar, now: Date): string {
           : `${game.title} às ${clock(game.startsAt)}`
       )
       .join(', ')
-    return clip(`Hoje no ${bar.name}: ${games}. ${tail}`)
+    lead = `Hoje no ${bar.name}: ${games}.`
+  } else {
+    const next = bar.events.find((game) => gameState(game, now) !== 'ended')
+    if (next)
+      lead = `Próximo jogo no ${bar.name}: ${next.title}, ${dayLabel(next.startsAt, now)} às ${clock(next.startsAt)}.`
   }
-  const next = bar.events.find((game) => gameState(game, now) !== 'ended')
-  if (next)
-    return clip(
-      `Próximo jogo no ${bar.name}: ${next.title}, ${dayLabel(next.startsAt, now)} às ${clock(next.startsAt)}. ${tail}`
-    )
-  return clip(`${bar.name}: onde ver o jogo. ${tail}`)
+  // O horário é o primeiro a sair quando não cabe; o resto corta no fim.
+  const full = `${lead} ${place}${open}`
+  return clip(full.length <= DESCRIPTION_MAX ? full : `${lead} ${place}`)
 }
 
 /** O cartão do link no WhatsApp: curto, com o jogo da vez. */
