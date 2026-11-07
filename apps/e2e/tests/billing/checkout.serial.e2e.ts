@@ -199,7 +199,7 @@ for (const [state, caso] of [
   })
 }
 
-test('/admin/billing: com o cupom esgotado, o card Plano atual do trial mostra a tabela cheia (WEB-343)', async ({
+test('/admin/billing: com o cupom esgotado, o card do plano do trial mostra a tabela cheia (WEB-343)', async ({
   page,
   request
 }) => {
@@ -210,9 +210,7 @@ test('/admin/billing: com o cupom esgotado, o card Plano atual do trial mostra a
   await signIn(page, user)
   await page.goto('/admin/billing')
 
-  const currentPlan = page.locator('section').filter({
-    has: page.getByRole('heading', { name: 'Plano atual' })
-  })
+  const currentPlan = page.getByRole('region', { name: 'Seu plano' })
   await expect(currentPlan).toContainText('R$ 297')
   await expect(currentPlan).not.toContainText('R$ 269')
 })

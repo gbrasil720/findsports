@@ -81,7 +81,7 @@ test('as seções trocam pelo menu, o link antigo por hash vai à rota nova, e C
   await page.getByRole('link', { name: 'Configurações', exact: true }).click()
   await expect(page).toHaveURL(/\/admin\/configuracoes$/)
   await expect(
-    page.getByRole('heading', { name: 'Configurações', level: 2 })
+    page.getByRole('heading', { name: 'Configurações', level: 1 })
   ).toBeVisible()
 
   await page.goto('/admin#admin-grade')
@@ -101,7 +101,7 @@ test('Pro: cardápio liberado e salvo; oferta e Quem vai seguem bloqueadas', asy
   await menu
     .getByLabel(/link do cardápio/i)
     .fill('https://cardapio.e2e.test/menu')
-  await menu.getByRole('button', { name: 'Salvar' }).click()
+  await page.getByRole('button', { name: 'Salvar alterações' }).click()
   await expect
     .poll(async () => {
       const [bar] = await query('SELECT menu_url FROM bar WHERE id = $1', [

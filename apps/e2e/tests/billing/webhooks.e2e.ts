@@ -224,9 +224,7 @@ test('encerrada: grava cancelled, o bar some da busca e a cobrança diz "Cancela
 
   await signIn(page, user)
   await page.goto('/admin/billing')
-  const currentPlan = page.locator('section').filter({
-    has: page.getByRole('heading', { name: 'Plano atual' })
-  })
+  const currentPlan = page.getByRole('region', { name: 'Seu plano' })
   await expect(currentPlan).toContainText('Elite')
   await expect(currentPlan).toContainText('Cancelado')
   await expect(currentPlan).not.toContainText('Próxima cobrança')
@@ -462,9 +460,7 @@ test('cancelamento agendado no portal: o app avisa até quando o plano vale e le
 
   await signIn(page, user)
   await page.goto('/admin/billing')
-  const currentPlan = page.locator('section').filter({
-    has: page.getByRole('heading', { name: 'Plano atual' })
-  })
+  const currentPlan = page.getByRole('region', { name: 'Seu plano' })
   await expect(currentPlan).toContainText('Ativo')
   await expect(currentPlan).toContainText(notice)
   await expect(currentPlan).not.toContainText('Próxima cobrança')

@@ -19,9 +19,7 @@ async function openBilling(page: Page, options: PubOptions = {}) {
 }
 
 const currentPlan = (page: Page) =>
-  page.locator('section').filter({
-    has: page.getByRole('heading', { name: 'Plano atual' })
-  })
+  page.getByRole('region', { name: 'Seu plano' })
 
 const cancelShortcut = (page: Page) =>
   page.getByRole('button', { name: 'Cancelar assinatura' })
@@ -39,7 +37,7 @@ test('o painel leva à cobrança e à validação', async ({ page }) => {
     .click()
   await expect(page).toHaveURL(/\/admin\/billing$/)
   await expect(
-    page.getByRole('heading', { level: 1, name: 'Assinatura e pagamentos' })
+    page.getByRole('heading', { level: 1, name: 'Plano e cobrança' })
   ).toBeVisible()
 
   await page.goto('/admin')
@@ -309,9 +307,9 @@ for (const [status, label] of [
   })
 }
 
-// WEB-344: o plano do card não volta em "Outros planos", e Hoje não
+// WEB-344: o plano do card não volta em "Os planos", e Hoje não
 // chama de "Plano atual" a assinatura que acabou.
-test('assinatura encerrada: "Outros planos", Hoje e o Desempenho seguem o card', async ({
+test('assinatura encerrada: "Os planos", Hoje e o Desempenho seguem o card', async ({
   page
 }) => {
   await openBilling(page, {
@@ -323,9 +321,7 @@ test('assinatura encerrada: "Outros planos", Hoje e o Desempenho seguem o card',
     bar: { is_active: false }
   })
   await expect(currentPlan(page)).toContainText('Starter')
-  const others = page.getByRole('complementary').filter({
-    has: page.getByRole('heading', { name: 'Outros planos' })
-  })
+  const others = page.getByRole('region', { name: 'Os planos' })
   await expect(
     others.getByRole('link', { name: 'Contratar Pro' })
   ).toBeVisible()

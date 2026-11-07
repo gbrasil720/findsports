@@ -49,12 +49,12 @@ for (const { name, subscription, allowed } of cases) {
     await signIn(page, user)
     await page.goto('/admin/meu-espaco')
 
-    const field = page.getByLabel('Link do cardápio (opcional)')
+    const field = page.getByLabel('Link do cardápio')
     if (allowed) {
       await expect(field).toBeVisible()
     } else {
       await expect(
-        page.locator('#admin-espaco').getByText('Teste do plano Pro encerrado')
+        page.locator('#painel-main').getByText('Teste do plano Pro encerrado')
       ).toBeVisible()
       await expect(field).toHaveCount(0)
     }

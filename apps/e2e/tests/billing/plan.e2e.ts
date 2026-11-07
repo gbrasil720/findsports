@@ -337,9 +337,7 @@ test('trial que já é do Stripe: /admin/billing e o painel dizem contratado e q
   await signIn(page, user)
   await page.goto('/admin/billing')
 
-  const currentPlan = page.locator('section').filter({
-    has: page.getByRole('heading', { name: 'Plano atual' })
-  })
+  const currentPlan = page.getByRole('region', { name: 'Seu plano' })
   await expect(currentPlan).toContainText('Contratado · em teste')
   await expect(currentPlan).toContainText(
     /Primeira cobrança de R\$ 269 em \d{2}\/\d{2}\/\d{4}/

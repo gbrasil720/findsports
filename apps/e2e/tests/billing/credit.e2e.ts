@@ -12,9 +12,7 @@ import { expect, test } from '../../fixtures/test'
 // (`stubs/server.ts`).
 
 const currentPlan = (page: Page) =>
-  page.locator('section').filter({
-    has: page.getByRole('heading', { name: 'Plano atual' })
-  })
+  page.getByRole('region', { name: 'Seu plano' })
 
 test('bar com crédito vê o saldo e o valor da próxima cobrança', async ({
   page,

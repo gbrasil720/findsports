@@ -108,9 +108,7 @@ test('plano menor: confirmação com o que o bar perde, portal só depois, e o r
   })
 
   // Voltou do portal sem confirmar: o plano é o mesmo, e nada de aviso.
-  const currentPlan = page.locator('section').filter({
-    has: page.getByRole('heading', { name: 'Plano atual' })
-  })
+  const currentPlan = page.getByRole('region', { name: 'Seu plano' })
   await page.goto(returnUrl)
   await expect(currentPlan).toContainText('Elite')
   await expect(page.getByText(/Plano alterado para/)).toHaveCount(0)
