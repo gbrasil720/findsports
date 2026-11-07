@@ -12,6 +12,7 @@
 @import "./components/painel/painel-telas.css";
 @import "./components/painel/painel-numeros.css";
 @import "./components/painel/painel-conta.css";
+@import "./components/torcedor/torcedor.css";
 @import "./components/legal/legal.css";
 @import "./components/consent/cookie-consent.css";
 @import "./components/impersonation-banner.css";
