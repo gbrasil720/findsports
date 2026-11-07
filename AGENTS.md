@@ -289,6 +289,45 @@ por conta (`rate_limit`, chave `data-export:user:<id>`): o segundo volta
 painel, Configurações → Privacidade → "Pedir arquivo". Testes de integração e E2E não
 mandam e-mail: dublê da API (`fakeEmailApi`) e outbox do E2E.
 
+### Avaliação do bar (WEB-398, WEB-408, WEB-451)
+
+"Voltaria para ver jogo aqui?", presa a um jogo (`bar_rating`, uma por bar, torcedor e
+jogo). Junto vão "O que pesou?" (seis etiquetas de `RATING_REASONS`,
+`packages/api/src/lib/rating-reasons.ts`, id nunca reusado), estrelas de 1 a 5,
+comentário de até 280 e "Mostrar meu nome" (`identified`; limites em
+`@findsports_oficial/db/rating-limits`). Quem pode responder: quem mostrou intenção de ir
+àquele jogo (rota, WhatsApp ou telefone, "Vou assistir aqui" ou check-in), depois do fim
+e por 14 dias. As regras moram em `packages/api/src/lib/post-game.ts` (`postGame.pending`,
+`answer`, `undo`: "Você foi?" e "Voltaria?" numa fila só, a resposta numa transação). No
+web, os cards antigos do `/dashboard` seguem em `ratings.submit` e `attendance.report`,
+que agora são adaptadores dela; o servidor aceita a avaliação sem estrelas (o app novo as
+exige na tela), e o card do web não as pergunta.
+
+- **Só a verificada entra na nota** (WEB-408): código validado no balcão (e não desfeito)
+  ou check-in "Estou aqui" (`attendance.checkIn`, `lib/check-in.ts`: até 150 m do bar, na
+  janela do código, um por jogo; o web não tem tela, quem chama é o app).
+  `bar_rating.verified` é do banco (triggers da migration 0083, a mesma regra de
+  `lib/visits.ts`); `rating_count`, `rating_positive` e `rating_stars_*` do bar contam só
+  as verificadas. A 0083 recontou os bares: quem só tinha avaliação sem código validado
+  ficou sem nota pública.
+- **Piso público: 5 avaliações verificadas** (`RATING_PUBLIC_FLOOR`, `lib/rating.ts`,
+  decisão do dono para não expor o bar com uma única negativa). Abaixo dele nada da nota
+  sai na leitura pública: nem %, nem estrelas, nem "O que pesou?", nem comentários. Vale
+  para `pubs.getById` (`rating`, `ratingReasons`, `reviews`), a busca e a ordenação por
+  nota, e o `app_config` `rating.public_display` continua por cima.
+- **Comentário passa pela revisão da Onside** (`/houdini/revisao`,
+  `adminReview.decideComment`, decisão no Grimório como `bar.rating_comment_*`). Recusado
+  não aparece em lugar nenhum e o torcedor não é avisado; o resto da avaliação vale.
+  Comentário trocado volta à revisão; o mesmo texto reenviado guarda a decisão.
+- **Leitura**: `readRatingList` (`lib/rating-list.ts`). A pública ("O que dizem",
+  `pubs.getById().reviews`) traz os 3 mais recentes verificados e aprovados, com nome só
+  de quem quis. O dono (`pub.getMyRatings`) vê todas desde a primeira, com a nota das
+  verificadas, a média das estrelas, quantas não verificadas ficam fora (`unverified`),
+  o comentário aprovado e `commentPending` (há comentário esperando, sem o texto). No
+  painel são "Avaliações recentes" (Hoje) e "Voltariam pra ver jogo aqui?" (Meu espaço),
+  a mesma linha `ListaDeAvaliacoes` (`components/painel/avaliacao.tsx`), com o selo
+  "Não verificada".
+
 ### Código do balcão pela comanda (WEB-412)
 
 Opção do bar Elite, **desligada por padrão** (`bar.confirms_codes_later`), escolhida
@@ -358,9 +397,10 @@ todo em `components/houdini/houdini.css`, preso a `.houdini`: Anton, Archivo e G
 Mono, acid e sombra dura. O tema segue o do sistema (escuro por padrão), e toda
 diferença entre claro e escuro é token `--hd-*`.
 
-Revisão (`/houdini/revisao`, `adminReview`, WEB-462 e WEB-478): fotos e descrições dos
-bares, aprovar ou recusar com motivo, cada decisão no Grimório (`bar.photo_*`,
-`bar.description_*`). **Toda foto do bar (`bar_photo`, até 12 em todo plano; recusada
+Revisão (`/houdini/revisao`, `adminReview`, WEB-462, WEB-478 e WEB-451): fotos e
+descrições dos bares e comentários das avaliações (ver "Avaliação do bar"), aprovar ou
+recusar com motivo, cada decisão no Grimório (`bar.photo_*`, `bar.description_*`,
+`bar.rating_comment_*`). **Toda foto do bar (`bar_photo`, até 12 em todo plano; recusada
 não conta) e toda descrição passam por ela antes de o torcedor ver**: `pubs.getById`
 só devolve fotos `approved`, e `bar.description` é a última aprovada (o dono escreve
 em `description_pending`; apagar tira do ar na hora). A capa é uma foto da galeria, de
