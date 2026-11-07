@@ -1,4 +1,5 @@
 import { protectedProcedure, publicProcedure, router } from '../index'
+import { accountRouter } from './account'
 import { adminBarsRouter } from './admin-bars'
 import { adminEventsRouter } from './admin-events'
 import { adminReviewRouter } from './admin-review'
@@ -28,6 +29,7 @@ export const appRouter = router({
       user: ctx.session.user
     }
   }),
+  account: accountRouter,
   adminBars: adminBarsRouter,
   adminEvents: adminEventsRouter,
   adminReview: adminReviewRouter,
