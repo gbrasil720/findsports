@@ -8,19 +8,31 @@ import {
   foreignKey,
   index,
   integer,
+  jsonb,
   numeric,
   pgEnum,
   pgTable,
   primaryKey,
   smallint,
   text,
-  timestamp
+  timestamp,
+  unique,
+  uniqueIndex
 } from 'drizzle-orm/pg-core'
+import {
+  LEGACY_GALLERY_MAX_PHOTOS,
+  PHOTO_CAPTION_MAX,
+  PHOTO_CATEGORY_IDS,
+  REVIEW_REASON_MAX
+} from '../bar-gallery'
 import { AVERAGE_SPEND_MAX_CENTS, MENU_URL_MAX_LENGTH } from '../bar-menu'
 import { HOUSE_OFFER_MAX_LENGTH } from '../house-offer'
 import { RESERVATION_CAP_MAX } from '../reservation-limits'
 import { user } from './auth'
 import { barRating } from './rating'
+import { reviewStatusEnum } from './review-status'
+
+export { reviewStatusEnum }
 
 /**
  * PostGIS `geography(Point,4326)`. Requer a extensão `postgis` — criada na
@@ -56,6 +68,12 @@ export type SubscriptionPlan = (typeof subscriptionPlanEnum.enumValues)[number]
  */
 export const teamKindEnum = pgEnum('team_kind', ['team', 'athlete'])
 
+/** As categorias da foto do bar (design 28c), em `bar-gallery.ts`. */
+export const barPhotoCategoryEnum = pgEnum(
+  'bar_photo_category',
+  PHOTO_CATEGORY_IDS
+)
+
 export type TeamKind = (typeof teamKindEnum.enumValues)[number]
 
 const reservationCapRange = (column: AnyPgColumn) =>
@@ -72,7 +90,16 @@ export const bar = pgTable(
       .unique()
       .references(() => user.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
+    // A descrição PUBLICADA: a última que a Onside aprovou (WEB-478). Quem
+    // escreve aqui é a revisão do Houdini; o dono escreve em
+    // `description_pending`. Nula em bar novo até a primeira aprovação.
     description: text('description'),
+    // O texto que o dono mandou e espera revisão, ou que foi recusado
+    // (`description_review`). Nulo quando não há nada além do publicado.
+    descriptionPending: text('description_pending'),
+    descriptionReview: reviewStatusEnum('description_review'),
+    descriptionRejectionReason: text('description_rejection_reason'),
+    descriptionSubmittedAt: timestamp('description_submitted_at'),
     phone: text('phone'),
     phoneAcceptsWhatsapp: boolean('phone_accepts_whatsapp')
       .default(false)
@@ -93,6 +120,9 @@ export const bar = pgTable(
       sql`ST_SetSRID(ST_MakePoint(longitude::double precision, latitude::double precision), 4326)::geography`
     ),
     photoUrl: text('photo_url'),
+    // Galeria antiga (WEB-439). Copiada para `bar_photo` pela migration do
+    // WEB-462, que é de onde tudo lê; a coluna sai num contract depois.
+    galleryPhotos: text('gallery_photos').array().default(sql`'{}'`).notNull(),
     // Ids do vocabulário de `packages/api/src/lib/amenities.ts`. Array em vez
     // de tabela de junção porque o filtro da busca é `@>` — contém todos, que
     // é exatamente o AND que a tela oferece — e o índice GIN entra no mesmo
@@ -125,6 +155,34 @@ export const bar = pgTable(
     // `event.reservation_cap` sobrescreve por jogo; a regra vive em
     // `packages/api/src/lib/reservation-intake.ts`.
     reservationCap: smallint('reservation_cap'),
+    // Avisos por e-mail ao dono (WEB-441), ligados e desligados em
+    // Configurações → Avisos. Os padrões são os do design (2b): resumo da
+    // semana e jogo lotando ligados, grade vazia desligada. Regras e envio em
+    // `packages/api/src/lib/bar-notices.ts`.
+    noticeWeeklySummary: boolean('notice_weekly_summary')
+      .default(true)
+      .notNull(),
+    noticeGameFilling: boolean('notice_game_filling').default(true).notNull(),
+    noticeEmptySchedule: boolean('notice_empty_schedule')
+      .default(false)
+      .notNull(),
+    // Dados da nota (WEB-444), editados em Plano e cobrança e enviados ao
+    // cliente do Stripe: razão social como empresa, CNPJ como `br_cnpj` e o
+    // e-mail como o das faturas (`packages/auth/src/stripe-sync.ts`). Nulos
+    // até o dono preencher. CNPJ só com letras e números, maiúsculas,
+    // conferido pela API (`@findsports_oficial/db/cnpj`). Fora de
+    // `PUBLIC_BAR_COLUMNS`.
+    legalName: text('legal_name'),
+    cnpj: text('cnpj'),
+    invoiceEmail: text('invoice_email'),
+    // Horário de funcionamento (WEB-397): sete faixas, a 0 no domingo, no
+    // relógio de Brasília; dia nulo é fechado e a coluna nula é "não
+    // informado". Validação e "aberto agora" em
+    // `packages/api/src/lib/opening-hours.ts`.
+    openingHours:
+      jsonb('opening_hours').$type<
+        ({ opens: string; closes: string } | null)[]
+      >(),
     // Contadores de avaliação, mantidos por trigger a partir de `bar_rating`
     // (migration 0022). A busca precisa ordenar por nota sem agregar por
     // candidato — que é o mesmo motivo de `plan` viver aqui.
@@ -190,12 +248,94 @@ export const bar = pgTable(
       sql`${table.menuUrl} IS NULL OR (${table.menuUrl} ~ '^https?://' AND char_length(${table.menuUrl}) <= ${sql.raw(String(MENU_URL_MAX_LENGTH))})` // sql-raw-permitido: constante de limite em CHECK
     ),
     check(
+      'bar_gallery_photos_max',
+      sql`cardinality(${table.galleryPhotos}) <= ${sql.raw(String(LEGACY_GALLERY_MAX_PHOTOS))}` // sql-raw-permitido: constante de limite em CHECK
+    ),
+    check(
       'bar_average_spend_cents_range',
       sql`${table.averageSpendCents} IS NULL OR ${table.averageSpendCents} BETWEEN 1 AND ${sql.raw(String(AVERAGE_SPEND_MAX_CENTS))}` // sql-raw-permitido: constante de limite em CHECK
     ),
     check(
       'bar_reservation_cap_range',
       reservationCapRange(table.reservationCap)
+    ),
+    check(
+      'bar_description_pending_length',
+      sql`${table.descriptionPending} IS NULL OR char_length(${table.descriptionPending}) BETWEEN 1 AND 500`
+    )
+  ]
+)
+
+/**
+ * Aviso por e-mail já mandado ao bar (WEB-441): uma linha por bar, tipo e
+ * referência, que é a semana (a segunda-feira, "2026-10-26") no resumo e na
+ * grade vazia e o id do jogo no jogo lotando. Quem envia grava a linha antes
+ * e só manda se ela entrou: cron repetido ou duas marcações ao mesmo tempo não
+ * mandam duas vezes. Envio que falha apaga a linha.
+ */
+export const barNotice = pgTable(
+  'bar_notice',
+  {
+    barId: text('bar_id')
+      .notNull()
+      .references(() => bar.id, { onDelete: 'cascade' }),
+    kind: text('kind', {
+      enum: ['weekly_summary', 'empty_schedule', 'game_filling']
+    }).notNull(),
+    ref: text('ref').notNull(),
+    sentAt: timestamp('sent_at', { withTimezone: true }).defaultNow().notNull()
+  },
+  (table) => [primaryKey({ columns: [table.barId, table.kind, table.ref] })]
+)
+
+/**
+ * Fotos do bar (WEB-462): a capa e a galeria do ambiente, com categoria,
+ * legenda, ordem e a revisão da Onside. O torcedor só vê `approved`; o dono vê
+ * tudo, com o motivo da recusa. Regras em `packages/api/src/lib/bar-photos.ts`.
+ *
+ * A capa pública continua sendo `bar.photo_url`, que todas as listas leem:
+ * a revisão a escreve quando aprova a foto pedida como capa
+ * (`cover_requested`), e escolher uma foto já aprovada a escreve na hora.
+ */
+export const barPhoto = pgTable(
+  'bar_photo',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    barId: text('bar_id')
+      .notNull()
+      .references(() => bar.id, { onDelete: 'cascade' }),
+    url: text('url').notNull(),
+    category: barPhotoCategoryEnum('category').notNull(),
+    caption: text('caption'),
+    /** Ordem do dono; a página agrupa por categoria e ordena por ela. */
+    position: integer('position').notNull(),
+    /** O dono pediu esta foto como capa: vira `bar.photo_url` ao ser aprovada. */
+    coverRequested: boolean('cover_requested').default(false).notNull(),
+    status: reviewStatusEnum('status').default('pending').notNull(),
+    rejectionReason: text('rejection_reason'),
+    reviewedAt: timestamp('reviewed_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull()
+  },
+  (table) => [
+    index('bar_photo_bar_idx').on(table.barId, table.position),
+    unique('bar_photo_bar_url_unique').on(table.barId, table.url),
+    // Um pedido de capa por bar.
+    uniqueIndex('bar_photo_cover_requested_idx')
+      .on(table.barId)
+      .where(sql`cover_requested`),
+    // A fila do Houdini, da mais antiga para a mais nova.
+    index('bar_photo_pending_idx')
+      .on(table.createdAt)
+      .where(sql`status = 'pending'`),
+    check(
+      'bar_photo_caption_length',
+      sql`${table.caption} IS NULL OR char_length(${table.caption}) BETWEEN 1 AND ${sql.raw(String(PHOTO_CAPTION_MAX))}` // sql-raw-permitido: constante de limite em CHECK
+    ),
+    check(
+      'bar_photo_rejection_reason',
+      sql`(${table.status} = 'rejected') = (${table.rejectionReason} IS NOT NULL) AND (${table.rejectionReason} IS NULL OR char_length(${table.rejectionReason}) BETWEEN 1 AND ${sql.raw(String(REVIEW_REASON_MAX))})` // sql-raw-permitido: constante de limite em CHECK
     )
   ]
 )
@@ -267,6 +407,29 @@ export const event = pgTable(
     acceptsReservations: boolean('accepts_reservations')
       .default(false)
       .notNull(),
+    // Telão e som do jogo, por jogo (WEB-399). Nulo herda das características
+    // do bar (`bar.amenities`); o painel grava o que o dono marcou no "Novo
+    // evento". Quem resolve é `packages/api/src/lib/event-screen.ts`.
+    onBigScreen: boolean('on_big_screen'),
+    withSound: boolean('with_sound'),
+    // Quando o jogo foi publicado (WEB-436). Nulo é rascunho: só o painel do
+    // bar vê; fica fora do app, das buscas, do "Vou assistir" e das
+    // analytics. O limite do Starter conta por esta data, não pela criação.
+    // O padrão `now()` mantém publicado o jogo que o código anterior cria.
+    publishedAt: timestamp('published_at').defaultNow(),
+    // "Lista de quem vai" deste jogo (WEB-437, design 1p). Desligada, o app
+    // não mostra "Vou assistir aqui" a quem ainda não marcou, o servidor
+    // recusa marcação nova e o painel não lista quem vai. Quem já marcou
+    // continua marcado, com o código valendo. Regra em `lib/attendance.ts`.
+    attendanceEnabled: boolean('attendance_enabled').default(true).notNull(),
+    // Oferta da casa deste jogo (WEB-422). Nula herda a do bar
+    // (`bar.house_offer`); escrita, substitui a do bar neste jogo.
+    // `no_house_offer` é o "sem oferta neste jogo": desliga a do bar só aqui.
+    // Duas colunas, e não um texto vazio como sinal: vazio continua proibido,
+    // como na do bar, e "herda" e "desligada" ficam distintos no banco.
+    // Quem resolve é `effectiveHouseOffer` (`packages/api/src/lib/house-offer.ts`).
+    houseOffer: text('house_offer'),
+    noHouseOffer: boolean('no_house_offer').default(false).notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull()
   },
   (table) => [
@@ -284,6 +447,16 @@ export const event = pgTable(
     check(
       'event_reservation_cap_range',
       reservationCapRange(table.reservationCap)
+    ),
+    // Mesma regra de `bar_house_offer_length`.
+    check(
+      'event_house_offer_length',
+      sql`${table.houseOffer} IS NULL OR char_length(${table.houseOffer}) BETWEEN 1 AND ${sql.raw(String(HOUSE_OFFER_MAX_LENGTH))}` // sql-raw-permitido: constante de limite em CHECK
+    ),
+    // "Sem oferta neste jogo" não guarda texto: os dois estados se excluem.
+    check(
+      'event_no_house_offer_without_text',
+      sql`NOT ${table.noHouseOffer} OR ${table.houseOffer} IS NULL`
     )
   ]
 )
@@ -410,6 +583,35 @@ export const subscription = pgTable('subscription', {
     .notNull()
 })
 
+/**
+ * "Por que está cancelando?" (WEB-445, 3q): o motivo que o dono escolhe ao
+ * confirmar "Cancelar mesmo assim", antes de o portal do Stripe abrir. É
+ * intenção, não cancelamento feito: quem desiste no portal fica registrado
+ * igual. O id vem de `CANCEL_REASONS` (`packages/db/src/cancel-reasons.ts`)
+ * e nunca é reusado.
+ */
+export const subscriptionCancelReason = pgTable(
+  'subscription_cancel_reason',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    barId: text('bar_id')
+      .notNull()
+      .references(() => bar.id, { onDelete: 'cascade' }),
+    /** O plano que estava sendo cancelado. */
+    plan: subscriptionPlanEnum('plan').notNull(),
+    reason: text('reason').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull()
+  },
+  (table) => [
+    index('subscription_cancel_reason_bar_created_idx').on(
+      table.barId,
+      table.createdAt
+    )
+  ]
+)
+
 // Relations — idênticas ao original
 export const barRelations = relations(bar, ({ one, many }) => ({
   user: one(user, { fields: [bar.userId], references: [user.id] }),
@@ -419,7 +621,12 @@ export const barRelations = relations(bar, ({ one, many }) => ({
     references: [subscription.barId]
   }),
   favoritedBy: many(userFavoriteBars),
-  ratings: many(barRating)
+  ratings: many(barRating),
+  photos: many(barPhoto)
+}))
+
+export const barPhotoRelations = relations(barPhoto, ({ one }) => ({
+  bar: one(bar, { fields: [barPhoto.barId], references: [bar.id] })
 }))
 
 export const sportRelations = relations(sport, ({ many }) => ({

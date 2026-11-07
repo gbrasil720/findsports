@@ -1,4 +1,4 @@
-import { relations } from 'drizzle-orm'
+import { relations, sql } from 'drizzle-orm'
 import {
   boolean,
   index,
@@ -41,6 +41,10 @@ export const barRating = pgTable(
       .notNull()
       .references(() => event.id, { onDelete: 'cascade' }),
     wouldReturn: boolean('would_return').notNull(),
+    // "O que pesou?" (WEB-398): etiquetas opcionais, sem texto livre. Ids do
+    // vocabulário de `packages/api/src/lib/rating-reasons.ts`; a página do
+    // bar só mostra o resumo, sem nome de ninguém.
+    reasons: text('reasons').array().default(sql`'{}'`).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow()
       .notNull(),
