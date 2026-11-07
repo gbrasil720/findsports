@@ -1,10 +1,5 @@
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle
-} from '@findsports_oficial/ui/components/dialog'
-import { useRef } from 'react'
+import { useId, useRef } from 'react'
+import { Dialogo } from '@/components/dialogo/dialogo'
 import type { ValidatedReservation } from '@/domain/reservation-validation'
 
 type Props = {
@@ -27,45 +22,42 @@ export function ArrivalConfirmDialog({
   onCancel,
   undo = false
 }: Props) {
+  const id = useId()
   const confirmRef = useRef<HTMLButtonElement>(null)
 
   return (
-    <Dialog
+    <Dialogo
       open={open}
-      onOpenChange={(next) => {
-        if (!next) onCancel()
-      }}
+      onClose={onCancel}
+      labelledBy={`${id}-t`}
+      describedBy={`${id}-d`}
+      initialFocus={confirmRef}
     >
-      <DialogContent
-        initialFocus={confirmRef}
-        className="onside-dialog max-w-[calc(100vw-2rem)] p-6 sm:max-w-sm"
-      >
-        <DialogTitle className="onside-display text-2xl">
-          {undo ? 'Desfazer a chegada?' : 'Validar o código?'}
-        </DialogTitle>
-        <DialogDescription className="mt-2 text-[var(--onside-ink)] text-sm">
-          {undo
-            ? `${reservation.guestName} volta para a lista de quem ainda não chegou. O código pode ser validado de novo.`
-            : `Código de ${reservation.guestName}. A oferta da casa fica liberada.`}
-        </DialogDescription>
-        <div className="mt-6 flex flex-wrap gap-2">
-          <button
-            ref={confirmRef}
-            type="button"
-            onClick={onConfirm}
-            className="onside-btn onside-btn-acid"
-          >
-            {undo ? 'Sim, desfazer' : 'Sim, validar'}
-          </button>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="onside-btn onside-btn-outline"
-          >
-            Cancelar
-          </button>
-        </div>
-      </DialogContent>
-    </Dialog>
+      <h2 id={`${id}-t`} className="dlg3-t">
+        {undo ? 'Desfazer a chegada?' : 'Validar o código?'}
+      </h2>
+      <p id={`${id}-d`} className="dlg3-p">
+        {undo
+          ? `${reservation.guestName} volta para a lista de quem ainda não chegou. O código pode ser validado de novo.`
+          : `Código de ${reservation.guestName}. A oferta da casa fica liberada.`}
+      </p>
+      <div className="dlg3-a">
+        <button
+          ref={confirmRef}
+          type="button"
+          onClick={onConfirm}
+          className={`pn-btn pn-sm ${undo ? 'pn-ink' : 'pn-acid'}`}
+        >
+          {undo ? 'Sim, desfazer' : 'Sim, validar'}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="pn-btn pn-sm pn-ghost"
+        >
+          Cancelar
+        </button>
+      </div>
+    </Dialogo>
   )
 }
