@@ -214,3 +214,49 @@ export function jogosDaBusca(jogos: JogoDaRegua[], busca: string) {
       )
   )
 }
+
+/** Bar perto sem jogo publicado no dia (`pubs.barsWithoutGame`). */
+export type BarSemJogo = {
+  barId: string
+  name: string
+  neighborhood: string
+  photoUrl: string | null
+  latitude: number
+  longitude: number
+  distanceKm: number
+  amenities: number[]
+  opening: {
+    open: boolean
+    closes: string | null
+    opens: { day: string; time: string } | null
+  } | null
+}
+
+/**
+ * Os sem jogo que seguem os filtros da tela, do mais perto ao mais longe. As
+ * características valem igual; a busca só pelo nome e o bairro (time e
+ * campeonato são de jogo); "Oferta da casa" é de um jogo, então os tira.
+ */
+export function baresSemJogo(
+  bares: BarSemJogo[],
+  filtros: { amenities: number[]; oferta: boolean; busca: string }
+): BarSemJogo[] {
+  if (filtros.oferta) return []
+  const busca = dobrar(filtros.busca.trim())
+  return bares
+    .filter(
+      (bar) =>
+        filtros.amenities.every((id) => bar.amenities.includes(id)) &&
+        (!busca || dobrar(`${bar.name} ${bar.neighborhood}`).includes(busca))
+    )
+    .sort((a, b) => a.distanceKm - b.distanceKm)
+}
+
+/** "Aberto até 02:00", "Abre hoje às 17:00", "Fechado"; nulo sem horário. */
+export function abertoAgora(opening: BarSemJogo['opening']): string | null {
+  if (!opening) return null
+  if (opening.open)
+    return opening.closes ? `Aberto até ${opening.closes}` : 'Aberto agora'
+  if (opening.opens) return `Abre ${opening.opens.day} às ${opening.opens.time}`
+  return 'Fechado'
+}
