@@ -1519,7 +1519,8 @@ html[data-theme="dark"] .tc .m-d {
 }
 .tc .mx {
   position: relative;
-  height: calc(100dvh - 66px - env(safe-area-inset-top, 0px));
+  /* 67: o cabeçalho do celular (66) e a linha de baixo dele. */
+  height: calc(100dvh - 67px - env(safe-area-inset-top, 0px));
   overflow: hidden;
   background: var(--sub);
 }
@@ -4237,7 +4238,7 @@ html[data-consent] .tc .toast {
 html[data-consent] .tc .mx {
   height: calc(
     100dvh -
-    66px -
+    67px -
     env(safe-area-inset-top, 0px) -
     var(--onside-consent-space)
   );
