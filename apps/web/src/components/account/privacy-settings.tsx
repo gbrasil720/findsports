@@ -10,7 +10,10 @@ import { AccountActionRow } from './account-action-row'
 
 type Choice = AnalyticsConsent | 'unset'
 
-const COPY: Record<Choice, { title: string; description: string }> = {
+export const CONSENT_COPY: Record<
+  Choice,
+  { title: string; description: string }
+> = {
   granted: {
     title: 'Cookies de análise aceitos',
     description:
@@ -52,7 +55,7 @@ export function PrivacySettingsSection({
   consent: Choice
   onChange: (value: AnalyticsConsent) => void
 }) {
-  const copy = COPY[consent]
+  const copy = CONSENT_COPY[consent]
 
   return (
     <section className="border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-5 sm:p-6">

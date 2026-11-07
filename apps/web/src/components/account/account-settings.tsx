@@ -128,7 +128,7 @@ function validarTrocaDeSenha(
   }
 }
 
-function PasswordDialog({
+export function PasswordDialog({
   open,
   onOpenChange
 }: {
