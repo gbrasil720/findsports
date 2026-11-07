@@ -343,7 +343,12 @@ function Responsavel({ name }: { name: string }) {
     )
 
   return (
-    <form className="pn-ln pn-ln-ed" onSubmit={salvar} noValidate>
+    <form
+      method="post"
+      className="pn-ln pn-ln-ed"
+      onSubmit={salvar}
+      noValidate
+    >
       <label className="pn-fl" htmlFor="cfg-nome">
         <span className="pn-fl-l">Responsável</span>
         <input
