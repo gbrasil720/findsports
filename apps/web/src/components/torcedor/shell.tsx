@@ -97,9 +97,7 @@ function useAcoes(avisar: (texto: string) => void) {
         }
         if (acao.tipo === 'fav') {
           await salvar.mutateAsync({ barId: acao.id })
-          await queryClient.invalidateQueries({
-            queryKey: trpc.pubs.getFavorites.queryKey()
-          })
+          await queryClient.invalidateQueries()
           avisar('Bar salvo em Seus bares.')
           return
         }
@@ -140,6 +138,7 @@ export function TorcedorShell({ aba, children, busca, onde }: Props) {
   const session = useSession()
   const router = useRouter()
   const trpc = useTRPC()
+  const queryClient = useQueryClient()
   const signOut = useSignOut()
   const logado = Boolean(session?.user)
   const fan = session?.user.role === 'fan'
@@ -422,6 +421,9 @@ export function TorcedorShell({ aba, children, busca, onde }: Props) {
             await router.invalidate()
             if (acao) await concluir(acao)
             else avisar('Você entrou.')
+            // O que a sessão nova liga (favoritos, Meus jogos) pode ter lido
+            // antes de a ação gravar: lê de novo o que está na tela.
+            await queryClient.refetchQueries({ type: 'active' })
           }}
         />
         <div className={`toast${aviso ? ' on' : ''}`} role="status">
