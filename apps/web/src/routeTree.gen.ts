@@ -40,6 +40,7 @@ import { Route as GuiaSlugRouteImport } from './routes/guia.$slug'
 import { Route as HoudiniAppRouteImport } from './routes/houdini/_app'
 import { Route as HoudiniEntrarRouteImport } from './routes/houdini/entrar'
 import { Route as PlanConfirmedRouteImport } from './routes/plan_.confirmed'
+import { Route as dashboardDashboardBemVindoRouteImport } from './routes/(dashboard)/dashboard_.bem-vindo'
 import { Route as dashboardDashboardGamesRouteImport } from './routes/(dashboard)/dashboard_.games'
 import { Route as dashboardDashboardPraVoceRouteImport } from './routes/(dashboard)/dashboard_.pra-voce'
 import { Route as dashboardDashboardPreferenciasRouteImport } from './routes/(dashboard)/dashboard_.preferencias'
@@ -223,6 +224,12 @@ const PlanConfirmedRoute = PlanConfirmedRouteImport.update({
   path: '/plan/confirmed',
   getParentRoute: () => rootRouteImport,
 } as any)
+const dashboardDashboardBemVindoRoute =
+  dashboardDashboardBemVindoRouteImport.update({
+    id: '/(dashboard)/dashboard_/bem-vindo',
+    path: '/dashboard/bem-vindo',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const dashboardDashboardGamesRoute = dashboardDashboardGamesRouteImport.update({
   id: '/(dashboard)/dashboard_/games',
   path: '/dashboard/games',
@@ -402,6 +409,7 @@ export interface FileRoutesByFullPath {
   '/plan/confirmed': typeof PlanConfirmedRoute
   '/admin/': typeof AdminIndexRoute
   '/guia/': typeof GuiaIndexRoute
+  '/dashboard/bem-vindo': typeof dashboardDashboardBemVindoRoute
   '/dashboard/games': typeof dashboardDashboardGamesRoute
   '/dashboard/pra-voce': typeof dashboardDashboardPraVoceRoute
   '/dashboard/preferencias': typeof dashboardDashboardPreferenciasRoute
@@ -461,6 +469,7 @@ export interface FileRoutesByTo {
   '/plan/confirmed': typeof PlanConfirmedRoute
   '/admin': typeof AdminIndexRoute
   '/guia': typeof GuiaIndexRoute
+  '/dashboard/bem-vindo': typeof dashboardDashboardBemVindoRoute
   '/dashboard/games': typeof dashboardDashboardGamesRoute
   '/dashboard/pra-voce': typeof dashboardDashboardPraVoceRoute
   '/dashboard/preferencias': typeof dashboardDashboardPreferenciasRoute
@@ -522,6 +531,7 @@ export interface FileRoutesById {
   '/plan_/confirmed': typeof PlanConfirmedRoute
   '/admin/': typeof AdminIndexRoute
   '/guia/': typeof GuiaIndexRoute
+  '/(dashboard)/dashboard_/bem-vindo': typeof dashboardDashboardBemVindoRoute
   '/(dashboard)/dashboard_/games': typeof dashboardDashboardGamesRoute
   '/(dashboard)/dashboard_/pra-voce': typeof dashboardDashboardPraVoceRoute
   '/(dashboard)/dashboard_/preferencias': typeof dashboardDashboardPreferenciasRoute
@@ -584,6 +594,7 @@ export interface FileRouteTypes {
     | '/plan/confirmed'
     | '/admin/'
     | '/guia/'
+    | '/dashboard/bem-vindo'
     | '/dashboard/games'
     | '/dashboard/pra-voce'
     | '/dashboard/preferencias'
@@ -643,6 +654,7 @@ export interface FileRouteTypes {
     | '/plan/confirmed'
     | '/admin'
     | '/guia'
+    | '/dashboard/bem-vindo'
     | '/dashboard/games'
     | '/dashboard/pra-voce'
     | '/dashboard/preferencias'
@@ -703,6 +715,7 @@ export interface FileRouteTypes {
     | '/plan_/confirmed'
     | '/admin/'
     | '/guia/'
+    | '/(dashboard)/dashboard_/bem-vindo'
     | '/(dashboard)/dashboard_/games'
     | '/(dashboard)/dashboard_/pra-voce'
     | '/(dashboard)/dashboard_/preferencias'
@@ -754,6 +767,7 @@ export interface RootRouteChildren {
   GuiaSlugRoute: typeof GuiaSlugRoute
   PlanConfirmedRoute: typeof PlanConfirmedRoute
   GuiaIndexRoute: typeof GuiaIndexRoute
+  dashboardDashboardBemVindoRoute: typeof dashboardDashboardBemVindoRoute
   dashboardDashboardGamesRoute: typeof dashboardDashboardGamesRoute
   dashboardDashboardPraVoceRoute: typeof dashboardDashboardPraVoceRoute
   dashboardDashboardPreferenciasRoute: typeof dashboardDashboardPreferenciasRoute
@@ -989,6 +1003,13 @@ declare module '@tanstack/react-router' {
       path: '/plan/confirmed'
       fullPath: '/plan/confirmed'
       preLoaderRoute: typeof PlanConfirmedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(dashboard)/dashboard_/bem-vindo': {
+      id: '/(dashboard)/dashboard_/bem-vindo'
+      path: '/dashboard/bem-vindo'
+      fullPath: '/dashboard/bem-vindo'
+      preLoaderRoute: typeof dashboardDashboardBemVindoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(dashboard)/dashboard_/games': {
@@ -1284,6 +1305,7 @@ const rootRouteChildren: RootRouteChildren = {
   GuiaSlugRoute: GuiaSlugRoute,
   PlanConfirmedRoute: PlanConfirmedRoute,
   GuiaIndexRoute: GuiaIndexRoute,
+  dashboardDashboardBemVindoRoute: dashboardDashboardBemVindoRoute,
   dashboardDashboardGamesRoute: dashboardDashboardGamesRoute,
   dashboardDashboardPraVoceRoute: dashboardDashboardPraVoceRoute,
   dashboardDashboardPreferenciasRoute: dashboardDashboardPreferenciasRoute,

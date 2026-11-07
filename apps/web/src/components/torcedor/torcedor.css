@@ -4447,3 +4447,100 @@ html[data-consent] .tc .mx {
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* Conta nova por uma ação (protótipo `.fresh` e `.short`, `conta-nova.tsx`):
+   o card é escuro nos dois temas, e a tela curta das preferências. */
+.tc .fresh {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  margin-top: 24px;
+  padding: 18px 20px;
+  border-radius: 24px;
+  background: #1c1c18;
+  color: #f1eee6;
+  box-shadow:
+    inset 0 0 0 1px rgba(241, 238, 230, 0.1),
+    0 4px 0 #000;
+  text-align: left;
+  width: min(640px, 100%);
+  margin-left: auto;
+  margin-right: auto;
+  animation: tc-in 0.45s var(--ease) both;
+  --spark: #c9f135;
+}
+.tc .page .fresh {
+  width: auto;
+  margin-left: 0;
+  margin-right: 0;
+}
+.tc .fresh .ck {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: #c9f135;
+  color: #12120f;
+  display: grid;
+  place-items: center;
+  --spark: #e8320c;
+}
+.tc .fresh b {
+  display: block;
+  font-size: 16.5px;
+}
+.tc .fresh .tx span {
+  display: block;
+  font-size: 14.5px;
+  color: #c9c7c0;
+  margin-top: 2px;
+}
+.tc .fresh .ac {
+  display: flex;
+  gap: 8px;
+}
+.tc .fresh .gh2 {
+  background: transparent;
+  color: #f1eee6;
+  box-shadow: inset 0 0 0 1.5px rgba(241, 238, 230, 0.3);
+}
+.tc .fresh .btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.tc .short {
+  max-width: 760px;
+}
+.tc .short .box2 {
+  margin-top: 18px;
+}
+.tc .short h1 {
+  margin-top: 14px;
+}
+.tc .short .obnav .btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.tc .feito {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 13px;
+  border-radius: 999px;
+  background: var(--acid);
+  color: #12120f;
+  font: 600 13.5px var(--text);
+  --spark: #e8320c;
+}
+@media (max-width: 760px) {
+  .tc .fresh {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .tc .fresh .ac {
+    grid-column: 1 / -1;
+  }
+  .tc .fresh .ac .btn {
+    flex: 1;
+  }
+}
