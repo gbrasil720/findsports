@@ -339,7 +339,7 @@ test('assinatura encerrada: "Outros planos", Hoje e o Desempenho seguem o card',
   await expect(overview).not.toContainText('Plano atual')
   await page.goto('/admin/desempenho')
   await expect(overview).toContainText(
-    'Plano: Starter • Assinatura do plano Starter encerrada'
+    'Plano Starter · Assinatura do plano Starter encerrada'
   )
 })
 

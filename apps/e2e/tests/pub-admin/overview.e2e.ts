@@ -39,9 +39,11 @@ async function openOverview(page: Page, plan: Plan) {
 
 const periods = (page: Page) =>
   page.getByRole('region', { name: 'Período das analytics' })
-const overview = (page: Page) =>
-  page.getByRole('region', { name: 'Visão geral' })
-const LOCKED = 'Exclusivo do plano superior'
+const overview = (page: Page) => page.locator('#painel-main')
+const channels = (page: Page) =>
+  page.getByRole('region', { name: 'Como te procuraram' })
+const daily = (page: Page) =>
+  page.getByRole('region', { name: 'Atividade diária' })
 
 test('Starter: 30 dias, só aberturas', async ({ page }) => {
   await openOverview(page, 'starter')
@@ -53,10 +55,15 @@ test('Starter: 30 dias, só aberturas', async ({ page }) => {
   for (const name of ['12 meses', 'Tudo']) {
     await expect(periods(page).getByRole('button', { name })).toHaveCount(0)
   }
-  await expect(overview(page)).toContainText('abriram 1 vez no total')
-  // Telefone, WhatsApp e rota: os três canais travados.
-  await expect(overview(page).getByText(LOCKED)).toHaveCount(3)
-  await expect(overview(page)).not.toContainText('Atividade diária')
+  await expect(overview(page)).toContainText('abriram 1 vez a página do bar')
+  // Telefone, WhatsApp e rota: os canais travados, com o caminho do plano.
+  await expect(channels(page)).toContainText(
+    'WhatsApp, rota e telefone, canal a canal, são do Pro e do Elite.'
+  )
+  await expect(daily(page)).toContainText('é do plano Elite')
+  await expect(
+    page.getByRole('button', { name: 'Comparar jogos' })
+  ).toHaveCount(0)
 })
 
 test('Pro: 365 dias e os canais de contato, sem quebra diária', async ({
@@ -71,12 +78,13 @@ test('Pro: 365 dias e os canais de contato, sem quebra diária', async ({
   await expect(periods(page).getByRole('button', { name: 'Tudo' })).toHaveCount(
     0
   )
-  await expect(overview(page).getByText(LOCKED)).toHaveCount(0)
-  await expect(overview(page)).toContainText('Telefone')
-  await expect(overview(page)).not.toContainText('Atividade diária')
+  await expect(channels(page)).toContainText('Telefone')
+  await expect(channels(page)).not.toContainText('são do Pro e do Elite')
+  await expect(daily(page)).toContainText('é do plano Elite')
   // WEB-251: um torcedor com três ações é uma pessoa interessada, não 300%.
-  await expect(overview(page)).toContainText('100.0%')
-  await expect(overview(page)).not.toContainText('300.0%')
+  const summary = page.getByRole('region', { name: 'Resumo do período' })
+  await expect(summary).toContainText('100%')
+  await expect(summary).not.toContainText('300%')
 })
 
 test('Elite: todo o histórico e a atividade diária', async ({ page }) => {
@@ -88,8 +96,13 @@ test('Elite: todo o histórico e a atividade diária', async ({ page }) => {
   await expect(
     periods(page).getByRole('button', { name: 'Tudo' })
   ).toBeVisible()
-  await expect(overview(page).getByText(LOCKED)).toHaveCount(0)
-  await expect(overview(page)).toContainText('Atividade diária')
+  await expect(channels(page)).toContainText('Telefone')
+  await expect(
+    daily(page).getByRole('slider', { name: /Atividade diária/ })
+  ).toBeVisible()
+  await expect(
+    page.getByRole('region', { name: 'Quem foi pela Onside' })
+  ).toContainText('marcaram que iam')
 })
 
 // WEB-344: card de plano e Desempenho contam a mesma história quando o plano
@@ -110,7 +123,7 @@ test('trial vencido: o Desempenho diz por que o plano em vigor é o Starter', as
   await expect(page.locator('#painel-main')).toContainText('Trial encerrado')
   await page.goto('/admin/desempenho')
   await expect(overview(page)).toContainText(
-    'Plano: Starter • Trial do plano Elite encerrado'
+    'Plano Starter · Trial do plano Elite encerrado'
   )
 })
 
@@ -182,6 +195,6 @@ test('bar sem assinatura: "Sem plano" com o caminho para escolher um', async ({
   await expect(panel).not.toContainText(/restantes?/)
   // O Desempenho segue o card: não chama de Starter quem não tem plano.
   await page.goto('/admin/desempenho')
-  await expect(panel).toContainText('Sem plano • Nenhuma assinatura ativa')
-  await expect(panel).not.toContainText('Plano: Starter')
+  await expect(panel).toContainText('Sem plano · Nenhuma assinatura ativa')
+  await expect(panel).not.toContainText('Plano Starter')
 })

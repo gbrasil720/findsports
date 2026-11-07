@@ -32,7 +32,10 @@ test('lista quem vai por jogo e marca quem já validou', async ({ page }) => {
     page.getByRole('heading', { level: 1, name: 'Quem vai' })
   ).toBeVisible()
   const game = page.getByRole('article', { name: championship })
-  await expect(game).toContainText('2 vão assistir · 1 validou')
+  await expect(game).toContainText('1 / 2')
+  await expect(game.getByRole('button', { name: /^Validaram/ })).toHaveText(
+    /Validaram\s*1/
+  )
   await expect(
     game.getByRole('listitem').filter({ hasText: arrived.guestName })
   ).toContainText('Validou')
@@ -40,6 +43,34 @@ test('lista quem vai por jogo e marca quem já validou', async ({ page }) => {
     game.getByRole('listitem').filter({ hasText: coming.guestName })
   ).not.toContainText('Validou')
   await expect(game.getByRole('listitem')).toHaveCount(2)
+
+  // Filtro e busca pelo nome, dentro do jogo.
+  await game.getByRole('button', { name: /^Validaram/ }).click()
+  await expect(game.getByRole('listitem')).toHaveCount(1)
+  await expect(game.getByRole('listitem')).toContainText(arrived.guestName)
+  await game.getByRole('button', { name: /^Todos/ }).click()
+  await game.getByPlaceholder('Buscar pelo nome').fill(coming.guestName)
+  await expect(game.getByRole('listitem')).toHaveCount(1)
+  await expect(game.getByRole('listitem')).toContainText(coming.guestName)
+
+  // "Validar código" abre a caixa da casca.
+  await page
+    .getByRole('main')
+    .getByRole('button', { name: 'Validar código' })
+    .click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+})
+
+test('o link "Ver os N" de Jogos leva ao jogo em Quem vai', async ({
+  page
+}) => {
+  const pub = await createPub()
+  const { eventId, championship } = await createEvent(pub.barId)
+  await createTicket(eventId)
+  await signIn(page, pub.user)
+  await page.goto(`/admin/quem-vai#jogo-${eventId}`)
+  await expect(page.locator(`#jogo-${eventId}`)).toBeInViewport()
+  await expect(page.getByRole('article', { name: championship })).toBeVisible()
 })
 
 test('ninguém marcou: a aba diz que está vazia', async ({ page }) => {
@@ -81,7 +112,7 @@ test('trial Elite vencido com código em aberto: a aba Quem vai fica e o código
   await signIn(page, pub.user)
 
   await page.goto('/admin/quem-vai')
-  const panel = page.locator('#admin-quem-vai')
+  const panel = page.locator('#painel-main')
   await expect(panel.getByRole('note')).toContainText(
     'A lista de quem vai é um recurso do plano Elite.'
   )
