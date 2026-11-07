@@ -40,6 +40,7 @@ import { getAppConfig } from '../lib/app-config'
 import { readFanAttendance, readGoing } from '../lib/attendance'
 import { resolvePublicGallery } from '../lib/bar-gallery'
 import { canShowBarMenu, resolvePublicBarMenu } from '../lib/bar-menu'
+import { readCheckIn } from '../lib/check-in'
 import {
   getCurrentPlan,
   getSubscriptionStanding,
@@ -62,7 +63,6 @@ import {
   type SearchPage
 } from '../lib/pub-search'
 import { PUBLIC_BAR_COLUMNS } from '../lib/public-bar'
-import { readCheckIn } from '../lib/check-in'
 import {
   hasPublicRating,
   RATING_PUBLIC_FLOOR,
@@ -673,7 +673,8 @@ export const pubsRouter = router({
         rating,
         ratingReasons: reasons,
         reviews: reviews.map(
-          ({ verified: _v, createdAt: _c, ...review }) => review
+          ({ verified: _v, createdAt: _c, commentPending: _p, ...review }) =>
+            review
         ),
         checkIn,
         // A padrão do bar. O que vale em cada jogo é `events[].houseOffer`.

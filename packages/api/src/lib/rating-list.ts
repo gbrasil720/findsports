@@ -29,6 +29,7 @@ export async function readRatingList(
       r.verified,
       r.created_at,
       CASE WHEN r.comment_review = 'approved' THEN r.comment END AS comment,
+      r.comment_review = 'pending' AS comment_pending,
       CASE WHEN r.identified THEN u.name END AS name,
       e.championship,
       e.participant_free_text,
@@ -51,6 +52,7 @@ export async function readRatingList(
       verified: boolean
       created_at: string
       comment: string | null
+      comment_pending: boolean | null
       name: string | null
       championship: string
       participant_free_text: string | null
@@ -65,6 +67,8 @@ export async function readRatingList(
     stars: row.stars,
     verified: row.verified,
     comment: row.comment,
+    // O dono sabe que há comentário esperando a Onside, sem ler o texto.
+    commentPending: row.comment_pending === true,
     name: row.name,
     createdAt: utcIso(row.created_at),
     championship: row.championship,
