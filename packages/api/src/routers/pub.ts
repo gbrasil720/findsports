@@ -57,6 +57,7 @@ import { byMatchOrder, participantNames } from '../lib/game-participants'
 import { geocodeAddress } from '../lib/geocode-address'
 import {
   assertCanConfigureHouseOffer,
+  type GameHouseOffer,
   parseHouseOfferInput
 } from '../lib/house-offer'
 import { normalizeOpeningHours, openingHoursSchema } from '../lib/opening-hours'
@@ -218,6 +219,42 @@ export function resolveEventEndsAt(
 }
 
 type EventTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
+
+const gameHouseOfferInput = {
+  // Omitida fica como está (jogo novo herda a do bar); `null` volta a herdar.
+  houseOffer: z
+    .string()
+    .max(HOUSE_OFFER_MAX_LENGTH * 4)
+    .nullable()
+    .optional(),
+  // "Sem oferta neste jogo": desliga a do bar só aqui.
+  noHouseOffer: z.boolean().optional()
+}
+
+/**
+ * O que gravar da oferta do jogo (WEB-422). Mesma regra de `updateHouseOffer`:
+ * só o Elite configura, conferido na assinatura antes de qualquer escrita, e
+ * o painel esconder o campo não impede ninguém de mandar. Sem os campos, nada
+ * muda e o plano nem é lido.
+ */
+async function parseGameHouseOffer(
+  userId: string,
+  input: { houseOffer?: string | null; noHouseOffer?: boolean }
+): Promise<Partial<GameHouseOffer>> {
+  if (input.houseOffer === undefined && input.noHouseOffer === undefined) {
+    return {}
+  }
+  const own = await getBarByUserId(userId)
+  assertCanConfigureHouseOffer(own.subscription ?? null)
+  // "Sem oferta" não guarda texto (CHECK `event_no_house_offer_without_text`).
+  if (input.noHouseOffer) return { houseOffer: null, noHouseOffer: true }
+  return {
+    noHouseOffer: false,
+    ...(input.houseOffer !== undefined && {
+      houseOffer: parseHouseOfferInput(input.houseOffer)
+    })
+  }
+}
 
 async function assertTeamsMatchSport(
   tx: EventTransaction,
@@ -687,8 +724,11 @@ export const pubRouter = router({
         // WEB-399: omitido herda das características do bar.
         onBigScreen: z.boolean().optional(),
         withSound: z.boolean().optional(),
+        // WEB-437: "Lista de quem vai" do jogo; omitido fica como está.
+        attendanceEnabled: z.boolean().optional(),
         // WEB-436: salva sem publicar; fica fora do app e do limite.
-        draft: z.boolean().optional()
+        draft: z.boolean().optional(),
+        ...gameHouseOfferInput
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -700,6 +740,7 @@ export const pubRouter = router({
         input.endsAt ? new Date(input.endsAt) : null
       )
 
+      const offer = await parseGameHouseOffer(userId, input)
       const draftBar = input.draft ? await getBarByUserId(userId) : null
       await db.transaction(async (tx) => {
         const lockedBar = draftBar ?? (await lockBarForPublishing(tx, userId))
@@ -723,6 +764,8 @@ export const pubRouter = router({
             }),
             onBigScreen: input.onBigScreen,
             withSound: input.withSound,
+            attendanceEnabled: input.attendanceEnabled,
+            ...offer,
             ...(input.draft && { publishedAt: null })
           })
           .returning({ id: event.id })
@@ -773,8 +816,11 @@ export const pubRouter = router({
         // WEB-399: omitido herda das características do bar.
         onBigScreen: z.boolean().optional(),
         withSound: z.boolean().optional(),
+        // WEB-437: "Lista de quem vai" do jogo; omitido fica como está.
+        attendanceEnabled: z.boolean().optional(),
         // WEB-436: põe o rascunho no ar. Não existe o caminho de volta.
-        publish: z.literal(true).optional()
+        publish: z.literal(true).optional(),
+        ...gameHouseOfferInput
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -792,6 +838,8 @@ export const pubRouter = router({
           message: 'Evento não encontrado.'
         })
       }
+
+      const offer = await parseGameHouseOffer(userId, input)
 
       // WEB-43: compare the effective pair (input or persisted) on every update —
       // changing only startsAt must not be able to push start past the saved end.
@@ -836,6 +884,10 @@ export const pubRouter = router({
             onBigScreen: input.onBigScreen
           }),
           ...(input.withSound !== undefined && { withSound: input.withSound }),
+          ...(input.attendanceEnabled !== undefined && {
+            attendanceEnabled: input.attendanceEnabled
+          }),
+          ...offer,
           ...(publishing && { publishedAt: new Date() })
         }
         // Só os times mudaram: o Drizzle recusa `set({})` com erro 500.
