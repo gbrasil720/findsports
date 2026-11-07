@@ -160,14 +160,17 @@ function EditarNota({
         if (!problema) salvar.mutate({ [campo]: normalizado })
       }}
     >
-      <label className="pn-fl" htmlFor={id}>
-        <span className="pn-fl-l">{titulo}</span>
+      <div className="pn-fl">
+        <label className="pn-fl-l" htmlFor={id}>
+          {titulo}
+        </label>
         <input
           {...props}
           id={id}
           className="pn-inp"
           value={valor}
           aria-invalid={erro ? true : undefined}
+          aria-describedby={`${id}-msg`}
           // biome-ignore lint/a11y/noAutofocus: abriu para editar este campo.
           autoFocus
           onChange={(e) => setValor(e.target.value)}
@@ -177,15 +180,15 @@ function EditarNota({
           }}
         />
         {erro ? (
-          <span className="pn-ferr" role="alert">
+          <span id={`${id}-msg`} className="pn-ferr" role="alert">
             {erro}
           </span>
         ) : campo === 'invoiceEmail' ? (
-          <span className="pn-hint">
+          <span id={`${id}-msg`} className="pn-hint">
             Sem ele, as faturas vão para o e-mail de acesso.
           </span>
         ) : null}
-      </label>
+      </div>
       <span className="pn-acts">
         <button
           type="button"
