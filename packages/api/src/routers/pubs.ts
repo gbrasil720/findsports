@@ -45,6 +45,7 @@ import {
 } from '../lib/attendance'
 import { resolvePublicGallery } from '../lib/bar-gallery'
 import { canShowBarMenu, resolvePublicBarMenu } from '../lib/bar-menu'
+import { readBarsWithoutGame } from '../lib/bars-without-game'
 import { readCheckIn } from '../lib/check-in'
 import {
   getCurrentPlan,
@@ -399,6 +400,22 @@ export const pubsRouter = router({
       })
     )
     .query(({ input }) => readGameBoard(input)),
+
+  /**
+   * "Sem jogo marcado" do Explorar do web: os bares no ar perto do ponto sem
+   * jogo publicado no dia, para a lista seguir abaixo dos que passam o jogo
+   * (`lib/bars-without-game`). Aberta, como a régua.
+   */
+  barsWithoutGame: publicProcedure
+    .input(
+      z.object({
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        radiusKm: searchRadiusKmSchema.default(5),
+        day: z.string().date()
+      })
+    )
+    .query(({ input }) => readBarsWithoutGame(input)),
 
   search: protectedProcedure
     .input(
