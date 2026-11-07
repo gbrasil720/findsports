@@ -346,6 +346,7 @@ export const pubsRouter = router({
         FROM event e
         JOIN bar b ON b.id = e.bar_id
         WHERE b.is_active
+          AND e.published_at IS NOT NULL
           AND e.starts_at >= ${dayStart}
           AND e.starts_at < ${dayStart} + interval '1 day'
       ) g
@@ -499,10 +500,14 @@ export const pubsRouter = router({
             // `now()` (que é `timestamptz`) faria o Postgres converter usando
             // o fuso da sessão — a janela mudaria de tamanho conforme o
             // servidor. Com os operadores, o valor viaja pelo tipo da coluna.
+            // Rascunho (WEB-436) não sai na página do bar.
             where: (event, { and, gte, isNotNull, isNull, or }) =>
-              or(
-                and(isNotNull(event.endsAt), gte(event.endsAt, now)),
-                and(isNull(event.endsAt), gte(event.startsAt, liveCutoff))
+              and(
+                isNotNull(event.publishedAt),
+                or(
+                  and(isNotNull(event.endsAt), gte(event.endsAt, now)),
+                  and(isNull(event.endsAt), gte(event.startsAt, liveCutoff))
+                )
               ),
             with: {
               sport: true,
@@ -728,10 +733,14 @@ export const pubsRouter = router({
           with: {
             events: {
               // Jogo em andamento continua na lista, como no perfil do bar.
+              // Rascunho (WEB-436) fica fora.
               where: (event, { and, gte, isNotNull, isNull, or }) =>
-                or(
-                  and(isNotNull(event.endsAt), gte(event.endsAt, now)),
-                  and(isNull(event.endsAt), gte(event.startsAt, liveCutoff))
+                and(
+                  isNotNull(event.publishedAt),
+                  or(
+                    and(isNotNull(event.endsAt), gte(event.endsAt, now)),
+                    and(isNull(event.endsAt), gte(event.startsAt, liveCutoff))
+                  )
                 ),
               // Colunas da antiga reserva de mesa: não saem mais.
               columns: { reservationCap: false, acceptsReservations: false },
@@ -902,6 +911,7 @@ export const pubsRouter = router({
           AND EXISTS (
             SELECT 1 FROM event e
             WHERE e.bar_id = b.id
+              AND e.published_at IS NOT NULL
               AND e.starts_at >= ${dayStart}
               AND e.starts_at < ${dayStart} + interval '1 day'
           )

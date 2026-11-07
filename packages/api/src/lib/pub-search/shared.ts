@@ -34,7 +34,8 @@ import { utcIso } from '../utc-timestamp'
 const MAX_LIVE_SPAN_INTERVAL = '24 hours'
 
 /**
- * Jogo que ainda não acabou: o próximo ou o que está rolando agora.
+ * Jogo publicado que ainda não acabou: o próximo ou o que está rolando agora.
+ * Rascunho (`published_at` nulo, WEB-436) nunca entra na busca.
  *
  * A busca filtrava `starts_at >= NOW()`. Um bar cujo único jogo tinha começado
  * cinco minutos antes sumia do resultado, e o pino de "ao vivo" só aparecia
@@ -42,7 +43,8 @@ const MAX_LIVE_SPAN_INTERVAL = '24 hours'
  * perfil público (`@findsports_oficial/db/event-window`).
  */
 export const jogoNaoAcabou = (e: SQL) => sql`
-  ${e}.starts_at >= NOW() - ${MAX_LIVE_SPAN_INTERVAL}::interval
+  ${e}.published_at IS NOT NULL
+  AND ${e}.starts_at >= NOW() - ${MAX_LIVE_SPAN_INTERVAL}::interval
   AND COALESCE(${e}.ends_at, ${e}.starts_at + ${DEFAULT_EVENT_DURATION_INTERVAL}::interval) >= NOW()`
 
 /**
