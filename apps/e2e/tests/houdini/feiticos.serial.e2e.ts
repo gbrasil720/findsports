@@ -217,7 +217,5 @@ test('ligar rating.public_display mostra a ordem por avaliação na busca', asyn
   await page.context().clearCookies()
   await signIn(page, await createUser())
   await page.goto('/dashboard')
-  await expect(
-    page.getByRole('button', { name: 'Melhor avaliados' })
-  ).toBeVisible()
+  await expect(page.getByRole('option', { name: 'Melhor nota' })).toHaveCount(1)
 })
