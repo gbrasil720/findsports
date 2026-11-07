@@ -1,11 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { brasiliaTime, longDayLabel } from '@/components/painel/noite'
-import {
-  estadoDoJogo,
-  type JogoDaRegua,
-  minutoDeJogo,
-  regua
-} from '@/domain/explorar'
+import { estadoDoJogo, type JogoDaRegua, regua } from '@/domain/explorar'
 
 /*
  * A régua da noite do protótipo (`.night`): os jogos do dia em faixas, das
@@ -64,7 +59,7 @@ function Rotulo({
           {estado === 'live' ? (
             <>
               <span className="pulse" />
-              AO VIVO {minutoDeJogo(jogo.startsAt, now)}
+              AO VIVO · começou {brasiliaTime(jogo.startsAt)}
             </>
           ) : (
             brasiliaTime(jogo.startsAt)

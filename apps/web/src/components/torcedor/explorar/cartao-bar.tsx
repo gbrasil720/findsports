@@ -5,8 +5,7 @@ import {
   type BarDoJogo,
   distancia,
   type EstadoDoJogo,
-  type JogoDaRegua,
-  minutoDeJogo
+  type JogoDaRegua
 } from '@/domain/explorar'
 import { Ic, type IconName } from '../icones'
 
@@ -40,10 +39,10 @@ const PILHA = ['#e8320c', '#2f55c7', '#c9b79c']
 export function quando(
   jogo: JogoDaRegua,
   estado: EstadoDoJogo,
-  rotuloDoDia: string,
-  now: number
+  rotuloDoDia: string
 ) {
-  if (estado === 'live') return `● AO VIVO ${minutoDeJogo(jogo.startsAt, now)}`
+  if (estado === 'live')
+    return `● AO VIVO · começou ${brasiliaTime(jogo.startsAt)}`
   if (estado === 'past') return 'encerrado'
   return `${rotuloDoDia.toLowerCase()} ${brasiliaTime(jogo.startsAt)}`
 }
@@ -108,7 +107,7 @@ export function CartaoBar({
           </span>
         )}
         <span className={`when${estado === 'live' ? ' lv' : ''}`}>
-          {quando(jogo, estado, rotuloDoDia, now)}
+          {quando(jogo, estado, rotuloDoDia)}
         </span>
         {bar.elite ? <span className="elite">ELITE</span> : null}
       </Link>

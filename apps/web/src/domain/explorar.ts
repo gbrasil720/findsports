@@ -80,11 +80,6 @@ export function estadoDoJogo(
   return inicio <= now ? 'live' : 'next'
 }
 
-/** Minutos de jogo, para o "AO VIVO 34'". */
-export function minutoDeJogo(startsAt: string, now: number): string {
-  return `${Math.max(1, Math.floor((now - new Date(startsAt).getTime()) / MINUTE))}'`
-}
-
 export type FaixaDaRegua = {
   jogo: JogoDaRegua
   /** Início e largura em % da régua. */
