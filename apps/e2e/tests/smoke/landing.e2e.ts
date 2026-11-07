@@ -129,7 +129,10 @@ test('o tema abre claro e a escolha do rodapé vale e fica guardada', async ({
   await expect(html).toHaveAttribute('data-theme', 'light')
 
   const tema = page.locator('footer.foot').getByRole('group', { name: 'Tema' })
+  // Confere o rádio antes de recarregar: com o sistema escuro, "Auto" também
+  // pinta a página de escuro e mascarava um toque no lugar errado.
   await tema.getByText('Escuro').click()
+  await expect(tema.getByRole('radio', { name: 'Escuro' })).toBeChecked()
   await expect(html).toHaveAttribute('data-theme', 'dark')
 
   await page.reload()
