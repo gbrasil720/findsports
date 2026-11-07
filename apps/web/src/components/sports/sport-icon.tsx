@@ -3,10 +3,10 @@ import Basketball from 'reicon-react/icons/Basketball'
 import Car from 'reicon-react/icons/Car'
 import Flag from 'reicon-react/icons/Flag'
 import Football from 'reicon-react/icons/Football'
-import Lightbulb from 'reicon-react/icons/Lightbulb'
 import Rugby from 'reicon-react/icons/Rugby'
 import Tennis from 'reicon-react/icons/Tennis'
 import Volleyball from 'reicon-react/icons/Volleyball'
+import { MmaGloveIcon } from './mma-glove-icon'
 
 type IconProps = {
   size?: number
@@ -17,8 +17,7 @@ type IconProps = {
 
 type SportPresentation = {
   filter: ComponentType<IconProps>
-  onboarding: ComponentType<IconProps> | 'text'
-  onboardingText?: string
+  onboarding: ComponentType<IconProps>
 }
 
 const SPORT_PRESENTATIONS: Record<string, SportPresentation> = {
@@ -27,11 +26,7 @@ const SPORT_PRESENTATIONS: Record<string, SportPresentation> = {
   volei: { filter: Volleyball, onboarding: Volleyball },
   'futebol-americano': { filter: Rugby, onboarding: Rugby },
   'formula-1': { filter: Flag, onboarding: Car },
-  'mma-ufc': {
-    filter: Lightbulb,
-    onboarding: 'text',
-    onboardingText: 'MMA'
-  },
+  'mma-ufc': { filter: MmaGloveIcon, onboarding: MmaGloveIcon },
   tenis: { filter: Tennis, onboarding: Tennis }
 }
 
@@ -49,7 +44,7 @@ export function SportIcon({
 }: Props) {
   const configured = SPORT_PRESENTATIONS[slug]
   const selected = configured?.[presentation]
-  if (selected && selected !== 'text') {
+  if (selected) {
     const Icon = selected
     return (
       <Icon
@@ -69,7 +64,7 @@ export function SportIcon({
       title={name}
     >
       {presentation === 'onboarding'
-        ? (configured?.onboardingText ?? name.slice(0, 3).toUpperCase())
+        ? name.slice(0, 3).toUpperCase()
         : name.slice(0, 2).toUpperCase()}
     </span>
   )

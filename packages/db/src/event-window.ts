@@ -13,6 +13,74 @@
  * (`@findsports_oficial/db/event-window`) e não pode arrastar driver de banco.
  */
 
+// O dia de Brasília (WEB-441, WEB-449): o resumo da semana e o interesse do
+// dia contam a partir da meia-noite dos bares.
+
+/** O fuso dos bares. O Brasil não tem horário de verão desde 2019, mas o fuso guarda o histórico. */
+export const BRASILIA_TIME_ZONE = 'America/Sao_Paulo'
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/**
+ * O dia de Brasília de um instante, "2026-10-24", mais `plusDays` dias de
+ * calendário. A data AAAA-MM-DD é a que `pubs.search` recebe e a que agrupa
+ * listas por dia.
+ */
+export function brasiliaDay(at: Date | string | number, plusDays = 0): string {
+  // `en-CA` escreve AAAA-MM-DD; é a forma que o app (Hermes), o Worker e o
+  // navegador já usavam.
+  const day = new Date(at).toLocaleDateString('en-CA', {
+    timeZone: BRASILIA_TIME_ZONE
+  })
+  if (!plusDays) return day
+  const noon = new Date(`${day}T12:00:00Z`)
+  noon.setUTCDate(noon.getUTCDate() + plusDays)
+  return noon.toISOString().slice(0, 10)
+}
+
+// Criado no primeiro uso: o app (Hermes) só precisa de `brasiliaDay`.
+let offsetParts: Intl.DateTimeFormat | undefined
+
+/** Quanto o relógio de Brasília está à frente do UTC em `ms` (negativo). */
+function brasiliaOffsetMs(ms: number): number {
+  offsetParts ??= new Intl.DateTimeFormat('en-US', {
+    timeZone: BRASILIA_TIME_ZONE,
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    second: 'numeric',
+    hourCycle: 'h23'
+  })
+  const p = Object.fromEntries(
+    offsetParts
+      .formatToParts(new Date(ms))
+      .map((part) => [part.type, part.value])
+  )
+  const local = Date.UTC(
+    Number(p.year),
+    Number(p.month) - 1,
+    Number(p.day),
+    Number(p.hour),
+    Number(p.minute),
+    Number(p.second)
+  )
+  return local - ms
+}
+
+/**
+ * O instante em que o dia `day` ("2026-10-24") começa em Brasília. No dia em
+ * que o horário de verão começava, a meia-noite não existia: o dia começa no
+ * pulo, como no Postgres (`brasiliaDayStartSql`).
+ */
+export function brasiliaDayStart(day: string): Date {
+  const midnight = Date.parse(`${day}T00:00:00Z`)
+  const start = midnight - brasiliaOffsetMs(midnight + DAY_MS / 2)
+  if (brasiliaDay(start) === day) return new Date(start)
+  return new Date(midnight - brasiliaOffsetMs(midnight - DAY_MS / 2))
+}
+
 /**
  * Duração assumida quando o bar não informou `endsAt`.
  *

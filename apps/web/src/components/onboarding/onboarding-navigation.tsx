@@ -1,6 +1,5 @@
 import { useId } from 'react'
 import ArrowLeft from 'reicon-react/icons/ArrowLeft'
-import ArrowRight from 'reicon-react/icons/ArrowRight'
 import Loader from 'reicon-react/icons/Loader'
 
 type Props = {
@@ -12,9 +11,10 @@ type Props = {
   onNext: () => void
   lastLabel?: string
   /**
-   * Sobrescreve o rótulo do botão no passo atual. Existe para o passo
-   * opcional do bar: sem nada marcado, "Continuar" esconde que dá para
-   * seguir sem preencher, e o dono trava tentando adivinhar o obrigatório.
+   * Sobrescreve o rótulo do botão no passo atual. Existe para os passos
+   * opcionais: sem nada marcado, "Continuar" esconde que dá para seguir sem
+   * preencher, e o dono trava tentando adivinhar o obrigatório. Também dá o
+   * nome do que vem a seguir ("Ver a recomendação").
    */
   nextLabel?: string
   /**
@@ -25,6 +25,10 @@ type Props = {
   blockedHint?: string | null
 }
 
+/**
+ * Pé dos dois onboardings no redesign (WEB-501): "Voltar" à esquerda, que não
+ * existe nas boas-vindas, e o próximo passo em verde-limão à direita.
+ */
 export function OnboardingNavigation({
   step,
   totalSteps,
@@ -37,55 +41,49 @@ export function OnboardingNavigation({
   blockedHint
 }: Props) {
   const hintId = useId()
-  const getNextLabel = () => {
-    if (isPending) return 'Salvando…'
-    if (step === 0) return 'Começar'
-    if (step === totalSteps - 1) return lastLabel
-    return nextLabel ?? 'Continuar'
-  }
+  const label = isPending
+    ? 'Salvando…'
+    : step === 0
+      ? 'Começar'
+      : step === totalSteps - 1
+        ? lastLabel
+        : (nextLabel ?? 'Continuar')
 
   return (
-    <div className="mt-7">
+    <div className="ob-nav">
       {blockedHint ? (
-        <p
-          id={hintId}
-          className="onside-text-muted-on-ink mb-3 text-right text-xs"
-        >
+        <p id={hintId} className="ob-nav-hint">
           {blockedHint}
         </p>
       ) : null}
-      <div className="flex items-center justify-between gap-3">
-        <button
-          type="button"
-          onClick={onBack}
-          disabled={step === 0 || isPending}
-          className="onside-btn onside-btn-outline"
-        >
-          <ArrowLeft size={16} color="currentColor" aria-hidden="true" />
-          Voltar
-        </button>
-
+      <div className="ob-nav-row">
+        {step > 0 ? (
+          <button
+            type="button"
+            onClick={onBack}
+            disabled={isPending}
+            className="btn btn-ghost ob-sm"
+          >
+            <ArrowLeft size={18} color="currentColor" aria-hidden="true" />
+            Voltar
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={onNext}
           disabled={!canAdvance || isPending}
           aria-describedby={blockedHint ? hintId : undefined}
-          className="onside-btn onside-btn-acid"
+          className="btn btn-acid"
         >
           {isPending ? (
             <Loader
-              size={16}
+              size={18}
               color="currentColor"
               className="animate-spin"
               aria-hidden="true"
             />
           ) : null}
-          <span className="inline-flex min-w-[8ch] justify-center">
-            {getNextLabel()}
-          </span>
-          {!isPending && (
-            <ArrowRight size={16} color="currentColor" aria-hidden="true" />
-          )}
+          {label}
         </button>
       </div>
     </div>

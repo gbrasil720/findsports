@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title">
+  <title id="title">Coroa — Onside Elite</title>
+  <defs>
+    <path id="crown" d="M24 78L88 127L128 26L170 124L236 66L207 169L207 213Q127 242 47 218L47 175Z"/>
+  </defs>
+  <use href="#crown" transform="translate(1 6)" fill="#121210" stroke="#121210" stroke-width="10" stroke-linejoin="round"/>
+  <use href="#crown" fill="#C8F52A" stroke="#121210" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M47 175Q125 148 207 169M47 200Q125 174 207 192" fill="none" stroke="#121210" stroke-width="7" stroke-linecap="round"/>
+  <path fill="#F2F0E7" d="M128 47L117 108L98 128Z"/>
+  <path fill="#F2F0E7" d="M37 95L70 128L61 151Z"/>
+  <path fill="#F2F0E7" d="M219 89L207 121L188 126Z"/>
+  <path fill="#F2F0E7" d="M59 179Q106 164 155 169Q105 171 60 189Z"/>
+  <path d="M64 215Q129 232 194 211" fill="none" stroke="#121210" stroke-width="6" stroke-linecap="round"/>
+</svg>

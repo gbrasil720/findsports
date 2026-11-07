@@ -12,7 +12,7 @@ test('a landing fala do produto no ar e não promete lista de espera', () => {
   expect(LANDING_COPY.hero.title.join(' ')).toBe(
     '“Onde vai passar o jogo?” finalmente tem uma (ótima) resposta.'
   )
-  expect(LANDING_COPY.primaryCta).toBe('Entrar / Criar conta')
+  expect(LANDING_COPY.primaryCta).toBe('Ver jogos de hoje')
   expect(copy).not.toMatch(
     /download|app store|playstore|3 mil|lotação|lista de espera|waitlist|no lançamento|ainda não/i
   )

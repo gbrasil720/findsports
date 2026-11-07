@@ -28,7 +28,7 @@ export async function submitSignup(
     .getByLabel('Confirmar senha', { exact: true })
     .fill(DEFAULT_PASSWORD)
   await acceptTerms(page)
-  await page.getByRole('button', { name: 'Entrar no time' }).click()
+  await page.getByRole('button', { name: /^Criar conta/ }).click()
 }
 
 /** Login pela tela. Para só ter sessão, `signIn` de `fixtures/auth`. */
@@ -40,10 +40,9 @@ export async function loginWithForm(
   await page.goto(url)
   await page.getByLabel('E-mail').fill(user.email)
   await page.getByLabel('Senha', { exact: true }).fill(user.password)
-  await page.getByRole('button', { name: 'Acessar minha conta' }).click()
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click()
 }
 
 export async function openAccountSettings(page: Page) {
-  await page.goto('/dashboard/profile')
-  await page.getByRole('tab', { name: 'Configurações' }).click()
+  await page.goto('/dashboard/preferencias?aba=conta')
 }

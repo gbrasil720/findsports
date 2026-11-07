@@ -179,15 +179,15 @@ for (const status of ['past_due', 'unpaid'] as const) {
     })
 
     await signIn(page, user)
-    await page.goto('/admin#admin-espaco')
-    // Só a aba aberta: as outras ficam montadas e podem repetir o texto.
+    await page.goto('/admin/meu-espaco')
     await expect(
       page
-        .getByRole('tabpanel', { name: 'Meu espaço' })
+        .locator('#painel-main')
         .getByText('Plano Pro com pagamento pendente')
+        .first()
     ).toBeVisible()
     await expect(
-      page.getByRole('link', { name: 'Regularizar assinatura' })
+      page.getByRole('link', { name: 'Regularizar assinatura' }).first()
     ).toBeVisible()
   })
 }
@@ -225,9 +225,7 @@ test('encerrada: grava cancelled, o bar some da busca e a cobrança diz "Cancela
 
   await signIn(page, user)
   await page.goto('/admin/billing')
-  const currentPlan = page.locator('section').filter({
-    has: page.getByRole('heading', { name: 'Plano atual' })
-  })
+  const currentPlan = page.getByRole('region', { name: 'Seu plano' })
   await expect(currentPlan).toContainText('Elite')
   await expect(currentPlan).toContainText('Cancelado')
   await expect(currentPlan).not.toContainText('Próxima cobrança')
@@ -463,9 +461,7 @@ test('cancelamento agendado no portal: o app avisa até quando o plano vale e le
 
   await signIn(page, user)
   await page.goto('/admin/billing')
-  const currentPlan = page.locator('section').filter({
-    has: page.getByRole('heading', { name: 'Plano atual' })
-  })
+  const currentPlan = page.getByRole('region', { name: 'Seu plano' })
   await expect(currentPlan).toContainText('Ativo')
   await expect(currentPlan).toContainText(notice)
   await expect(currentPlan).not.toContainText('Próxima cobrança')
@@ -490,17 +486,17 @@ test('cancelamento agendado no portal: o app avisa até quando o plano vale e le
   await page.goto('/plan')
   await expect(page.getByText(notice)).toBeVisible()
   // O cabeçalho acompanha o aviso em vez de convidar a trocar de plano.
-  await expect(page.getByText('Cancelamento agendado')).toBeVisible()
+  await expect(page.getByText(/^Cancela em \d{2}\/\d{2}$/)).toBeVisible()
   await expect(
     page.getByRole('heading', {
       level: 1,
-      name: /^Seu plano Starter cancela em \d{2}\/\d{2}\.$/
+      name: /^Seu Starter vai até \d+ de .+$/
     })
   ).toBeVisible()
   await expect(
-    page.getByRole('heading', { name: 'Escolha seu novo plano.' })
+    page.getByRole('heading', { name: 'Seu plano é o Starter' })
   ).toHaveCount(0)
-  await page.getByRole('button', { name: 'Reativar assinatura' }).click()
+  await page.getByRole('button', { name: 'Manter o Starter' }).click()
   await expect(page).toHaveURL(`${STUB_URL}/stripe/portal/${customerId}`)
 
   // "Não cancelar assinatura" no portal: o Stripe zera o agendamento.

@@ -204,7 +204,7 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   dono). O app não lê plano dali.
 - Planos são achados por **lookup key** (`starter_monthly`, `pro_monthly`,
   `elite_monthly`), iguais no sandbox e em produção: `packages/auth/src/stripe-plan.ts`.
-- **Teste grátis nasce no cadastro, sem cartão**: 120 dias no Elite, para todo bar
+- **Teste grátis nasce no cadastro, sem cartão**: 90 dias no Elite, para todo bar
   novo (`ONBOARDING_TRIAL`, em `packages/api/src/lib/plan-limits.ts`). Quem
   contrata antes do fim herda a data: o checkout manda `trial_end` e o Stripe só cobra
   quando o teste acabaria (`packages/auth/src/stripe-checkout.ts`).
@@ -236,6 +236,97 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   Todo checkout novo sai com ele enquanto o Stripe o der como válido; esgotado,
   expirado ou inexistente na conta, o checkout segue a preço de tabela
   (`usableFounderCoupon`). A oferta acaba no painel do Stripe, não no app.
+- **Dados da nota** (WEB-444): razão social, CNPJ e e-mail para notas em
+  `/admin/billing` (`components/painel/dados-da-nota.tsx`), nas colunas
+  `bar.legal_name`, `cnpj` e `invoice_email`, por `pub.updateInvoiceDetails`. Com
+  cliente no Stripe, ele recebe os três antes do banco (recusa ou Stripe fora do ar
+  não grava nada): a razão social vira a empresa, o CNPJ o único `br_cnpj` e o
+  e-mail o do cliente (vazio volta ao de acesso). CNPJ conferido pelo dígito, com
+  letras ou só números (`@findsports_oficial/db/cnpj`).
+- **Motivo do cancelamento** (WEB-445): "Por que está cancelando?"
+  (`components/painel/cancelar-plano.tsx`) grava em `subscription_cancel_reason` ao
+  abrir o portal (intenção). Só quando o webhook vê a assinatura agendada para acabar
+  ou encerrada o último motivo do dia antes do pedido vai a `cancellation_details` no
+  Stripe (`stripe-sync.ts`), sem sobrescrever o que o portal trouxe. Lista em
+  `packages/db/src/cancel-reasons.ts`.
+
+### Avisos por e-mail do bar (WEB-441)
+
+Em `/admin/configuracoes` → Avisos por e-mail o dono liga e desliga três e-mails
+(`bar.notice_*`, `pub.updateNotices`, interruptores que gravam na hora; padrões do
+design 2b: resumo e jogo lotando ligados, grade vazia desligada). Regras, textos e envio
+em `packages/api/src/lib/bar-notices.ts`, pelo `sendEmail` de sempre:
+- **Resumo da semana** e **grade vazia** saem às segundas pelo cron diário (rotina
+  `bar_notices` em `lib/jobs.ts`, a última do `runScheduledJobs`, 01:00 de Brasília;
+  nos outros dias ela não faz nada). Só bar no ar. Presenças e códigos só no resumo do
+  Elite (`bar.plan`). Com os dois ligados e a semana vazia vai só o resumo.
+- **Jogo lotando** sai na marcação (`setAttendance`) que passa de 20, uma vez por jogo,
+  depois da resposta (`runInBackground`). O e-mail não diz o número exato.
+- `bar_notice` (bar, tipo, semana ou jogo) garante uma vez só; envio recusado apaga a
+  linha e a falha sobe para o `job_run` (Bastidores do Houdini, que roda a rotina na
+  hora e só manda o que faltou).
+- "Notificações no celular" segue "em breve".
+
+### Números do painel para todos os planos (WEB-449)
+
+A série diária do Desempenho e do "Seu bar nos últimos 30 dias" de Hoje é de todos os
+planos: `dailyProfileViews` e `dailyHighIntentActions` (WhatsApp, rota e telefone já
+somados por dia, então o plano sem os canais não vê a divisão). O card "Interesse de
+hoje" de Hoje é `commercialAnalytics.getMyWeekdayInterest`
+(`lib/commercial-analytics/weekday-interest.ts`): pessoas interessadas no dia da casa,
+da meia-noite até agora, contra a média da mesma janela nas quatro semanas antes (cabem
+nos 30 dias do Starter; semana de antes de o bar existir não entra; com menos de duas,
+"—").
+
+### Baixar meus dados (WEB-418)
+
+`account.requestExport` monta o JSON no servidor e o manda de anexo para o e-mail da
+sessão: para o bar, conta, bar (com os dados da nota), plano e jogos, nada de torcedor;
+para quem não é bar, perfil, preferências, bares salvos, jogos e avaliações (o web não
+tem amigos nem conquistas, e o arquivo não inventa essas seções). Um pedido a cada 24 h
+por conta (`rate_limit`, chave `data-export:user:<id>`): o segundo volta
+`TOO_MANY_REQUESTS` com a frase para a tela, e envio que falha devolve o pedido. No
+painel, Configurações → Privacidade → "Pedir arquivo". Testes de integração e E2E não
+mandam e-mail: dublê da API (`fakeEmailApi`) e outbox do E2E.
+
+### Avaliação do bar (WEB-398, WEB-408, WEB-451)
+
+"Voltaria para ver jogo aqui?", presa a um jogo (`bar_rating`, uma por bar, torcedor e
+jogo). Junto vão "O que pesou?" (seis etiquetas de `RATING_REASONS`,
+`packages/api/src/lib/rating-reasons.ts`, id nunca reusado), estrelas de 1 a 5,
+comentário de até 280 e "Mostrar meu nome" (`identified`; limites em
+`@findsports_oficial/db/rating-limits`). Quem pode responder: quem mostrou intenção de ir
+àquele jogo (rota, WhatsApp ou telefone, "Vou assistir aqui" ou check-in), depois do fim
+e por 14 dias. As regras moram em `packages/api/src/lib/post-game.ts` (`postGame.pending`,
+`answer`, `undo`: "Você foi?" e "Voltaria?" numa fila só, a resposta numa transação). No
+web, os cards antigos do `/dashboard` seguem em `ratings.submit` e `attendance.report`,
+que agora são adaptadores dela; o servidor aceita a avaliação sem estrelas (o app novo as
+exige na tela), e o card do web não as pergunta.
+
+- **Só a verificada entra na nota** (WEB-408): código validado no balcão (e não desfeito)
+  ou check-in "Estou aqui" (`attendance.checkIn`, `lib/check-in.ts`: até 150 m do bar, na
+  janela do código, um por jogo; o web não tem tela, quem chama é o app).
+  `bar_rating.verified` é do banco (triggers da migration 0083, a mesma regra de
+  `lib/visits.ts`); `rating_count`, `rating_positive` e `rating_stars_*` do bar contam só
+  as verificadas. A 0083 recontou os bares: quem só tinha avaliação sem código validado
+  ficou sem nota pública.
+- **Piso público: 5 avaliações verificadas** (`RATING_PUBLIC_FLOOR`, `lib/rating.ts`,
+  decisão do dono para não expor o bar com uma única negativa). Abaixo dele nada da nota
+  sai na leitura pública: nem %, nem estrelas, nem "O que pesou?", nem comentários. Vale
+  para `pubs.getById` (`rating`, `ratingReasons`, `reviews`), a busca e a ordenação por
+  nota, e o `app_config` `rating.public_display` continua por cima.
+- **Comentário passa pela revisão da Onside** (`/houdini/revisao`,
+  `adminReview.decideComment`, decisão no Grimório como `bar.rating_comment_*`). Recusado
+  não aparece em lugar nenhum e o torcedor não é avisado; o resto da avaliação vale.
+  Comentário trocado volta à revisão; o mesmo texto reenviado guarda a decisão.
+- **Leitura**: `readRatingList` (`lib/rating-list.ts`). A pública ("O que dizem",
+  `pubs.getById().reviews`) traz os 3 mais recentes verificados e aprovados, com nome só
+  de quem quis. O dono (`pub.getMyRatings`) vê todas desde a primeira, com a nota das
+  verificadas, a média das estrelas, quantas não verificadas ficam fora (`unverified`),
+  o comentário aprovado e `commentPending` (há comentário esperando, sem o texto). No
+  painel são "Avaliações recentes" (Hoje) e "Voltariam pra ver jogo aqui?" (Meu espaço),
+  a mesma linha `ListaDeAvaliacoes` (`components/painel/avaliacao.tsx`), com o selo
+  "Não verificada".
 
 ### Código do balcão pela comanda (WEB-412)
 
@@ -280,6 +371,26 @@ Nome do site no Google (JSON-LD `WebSite`/`Organization` da home), o que é
 indexável, `robots.txt` e favicons: **leia `docs/seo.md` antes de mexer em
 `<title>`, `head`, sitemap ou ícones.**
 
+### Página pública do bar (`/bar/$slug`)
+
+Aberta sem login (decisão do dono, 05/11/2026, que revoga "web só para bares" nesta
+página) e indexável com o bar no ar. Endereço `/bar/<nome-e-bairro>-<8 hex do id>`
+(`packages/db/src/bar-slug.ts`): quem resolve é o prefixo; nome diferente redireciona
+301 para o atual, prefixo que bate em mais de um bar é 404 (teto anotado lá; o caminho
+é uma coluna `slug`). `/pub/<id>` antigo (QR, WhatsApp, app, painel, Houdini) responde
+301 para o canônico. O HTML do servidor sai de `readPublicBarPage`
+(`packages/api/src/lib/public-bar-page.ts`, pela server function `functions/public-bar.ts`),
+sem nada da sessão; presença, código do balcão, salvo e amigos que vão (só amigo aceito
+que deixa ver, `readFriendsGoing`) vêm depois, no cliente, por `pubs.pageViewer`. O que
+grava pede login pela folha da própria página, que leva a ação em `?acao=vou|salvar`
+(com `?jogo=`) e a conclui na volta, inclusive do cadastro, da confirmação de e-mail e
+do 2FA. Nota, "% voltariam" e "O que pesou?" (etiquetas sem número) só acima do piso
+público (`rating`, decidido no servidor); abaixo, a seção diz que as primeiras
+avaliações estão chegando. Bar fora do ar: 200 com `noindex` (o dono vê a prévia).
+Telas e contas em `apps/web/src/components/bar-page/`; título, descrição, cartão do
+WhatsApp e JSON-LD (`BarOrPub` + um `Event` por jogo) em `bar-page-model.ts`. Ver
+`docs/seo.md`.
+
 Performance da home no celular (pôster com `srcset`, prioridade das fontes,
 o que não pode entrar no JavaScript de entrada) e como medir com Lighthouse:
 `docs/perf-home.md`.
@@ -305,6 +416,55 @@ linguagem da Onside (WEB-480, canvas https://claude.ai/artifact/DmzHetdEyDNRP3eW
 todo em `components/houdini/houdini.css`, preso a `.houdini`: Anton, Archivo e Geist
 Mono, acid e sombra dura. O tema segue o do sistema (escuro por padrão), e toda
 diferença entre claro e escuro é token `--hd-*`.
+
+Revisão (`/houdini/revisao`, `adminReview`, WEB-462, WEB-478 e WEB-451): fotos e
+descrições dos bares e comentários das avaliações (ver "Avaliação do bar"), aprovar ou
+recusar com motivo, cada decisão no Grimório (`bar.photo_*`, `bar.description_*`,
+`bar.rating_comment_*`). **Toda foto do bar (`bar_photo`, até 12 em todo plano; recusada
+não conta) e toda descrição passam por ela antes de o torcedor ver**: `pubs.getById`
+só devolve fotos `approved`, e `bar.description` é a última aprovada (o dono escreve
+em `description_pending`; apagar tira do ar na hora). A capa é uma foto da galeria, de
+todo plano: "Usar como capa" numa aprovada grava `bar.photo_url` na hora; numa em
+revisão (`cover_requested`), quando for aprovada. As outras fotos são do Pro e do
+Elite (`lib/bar-gallery.ts`). Upload por `/api/bar/photo?galeria` (`&capa` deixa o
+Starter mandar a capa) e `pub.addPhoto`; `bar.gallery_photos` é a coluna antiga, sem
+leitura. Painel: `components/painel/espaco-fotos.tsx`.
+
+### Web do torcedor (WEB-501)
+
+**Ver sem login, agir com login (dono, 05/11/2026; revoga o "web só para bares" de
+24/10/2026).** O torcedor volta ao web no desenho "O Telão do Bar" (protótipo
+`docs/design/redesign-2026-11/torcedor/index.html`). O Explorar (`/dashboard`) abre
+para visitante; as telas de baixo dele (`/dashboard/*`: Meus jogos, código, Seus bares,
+perfil, Bares pra você, preferências) pedem conta (`applyAuthGuards`). Bar continua
+mandado ao `/admin`.
+
+- **Casca:** `TorcedorShell` (`components/torcedor/shell.tsx`), com o cabeçalho, as
+  abas de baixo no celular, o aviso e a folha de entrar. CSS do protótipo em
+  `components/torcedor/torcedor.css`, preso a `.tc`; ícones em `icones.tsx` (o `IC`
+  do protótipo). O escuro é o `data-theme` do `<html>`, como no painel.
+- **O que grava pede login e volta concluído:** favoritar, "Vou assistir aqui" e o
+  resto passam por `useTorcedor().agir`. Sem sessão abre a folha de entrar com o
+  contexto (o bar, o jogo); entrando por ela a ação sai na hora. Cadastro, e-mail,
+  2FA e onboarding levam a ação na URL, `?acao=<tipo>.<id>` (`components/torcedor/acao.ts`,
+  dentro do `callbackUrl`), e a casca a conclui uma vez ao voltar com sessão. A página
+  do bar usa o mesmo formato.
+
+- **Telas:** Explorar (`/dashboard`, régua do dia por `pubs.gameBoard`, aberta, em
+  `lib/game-board.ts`; mapa `OnsideMap` com a gota, só por `import()`; na ordem
+  padrão o Elite do clássico vai na frente e a tela grava `classic_exposure` e
+  `classic_click`, com as regras da busca antiga), Meus jogos
+  (`/dashboard/games`, ingressos), "Como foi?" (`/dashboard/avaliar/$eventId`, a fila
+  `postGame.pending` numa tela: estrelas obrigatórias, comentário em revisão, nome e a
+  faixa de visita verificada só com código validado ou check-in), o código (`/dashboard/codigo/$eventId`), Seus bares (`/dashboard/seus-bares`,
+  `attendance.visits`), perfil (`/dashboard/profile`, `achievements.mine`), Bares pra
+  você (`/dashboard/pra-voce`, `recommendations.today`, frases de `domain/pra-voce.ts`,
+  as mesmas do app) e Preferências (`/dashboard/preferencias`; conta e privacidade com as
+  peças das Configurações do painel). Link para bar é `/pub/<id>`.
+- **Landing:** sem sessão, a chamada do torcedor ("Ver jogos de hoje") leva ao
+  Explorar; a do bar segue no cadastro.
+- **Em breve no web:** aviso "quando o app chegar", escolher avisos, quem vê onde você
+  foi e ranking (ficam no app), nomes de amigos em "quem vai".
 
 ### App mobile
 

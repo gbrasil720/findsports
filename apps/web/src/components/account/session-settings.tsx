@@ -17,14 +17,14 @@ type AccountSession = NonNullable<
   Awaited<ReturnType<typeof authClient.listSessions>>['data']
 >[number]
 
-function formatDate(value: Date | string) {
+export function formatDate(value: Date | string) {
   return new Intl.DateTimeFormat('pt-BR', {
     dateStyle: 'short',
     timeStyle: 'short'
   }).format(new Date(value))
 }
 
-export function SessionSettings() {
+export function useAccountSessions() {
   const current = useSession()
   const [revoking, setRevoking] = useState<string | null>(null)
   const sessions = useQuery({
@@ -89,6 +89,29 @@ export function SessionSettings() {
     (session) => session.id !== current?.session.id
   ).length
 
+  return {
+    current,
+    sessions,
+    sessionsErrorFeedback,
+    ordered,
+    otherCount,
+    revoking,
+    revoke,
+    revokeOthers
+  }
+}
+
+export function SessionSettings() {
+  const {
+    current,
+    sessions,
+    sessionsErrorFeedback,
+    ordered,
+    otherCount,
+    revoking,
+    revoke,
+    revokeOthers
+  } = useAccountSessions()
   return (
     <section className="border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-5 sm:p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

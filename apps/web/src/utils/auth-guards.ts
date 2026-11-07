@@ -5,8 +5,13 @@ import { getCallbackUrl } from './callback-url'
 
 export type AuthSession = ReturnType<typeof toClientSession>
 
+/**
+ * A tela "no ar" do fim do cadastro do bar (WEB-501): a única `/onboarding/*`
+ * aberta a quem já concluiu. O resto do onboarding manda o bar pronto embora.
+ */
+export const PUB_LIVE_PATH = '/onboarding/pub/no-ar'
+
 const AUTHENTICATED_PREFIXES = [
-  '/dashboard',
   '/admin',
   '/plan',
   // `start_url` do PWA: abrir o ícone da tela inicial sem sessão tem que cair
@@ -17,7 +22,15 @@ const AUTHENTICATED_PREFIXES = [
   '/onboarding/fan'
 ] as const
 
+/**
+ * Ver sem login, agir com login (dono, 05/11/2026): o Explorar do torcedor
+ * (`/dashboard`) abre para visitante; as telas de baixo dele (Meus jogos,
+ * Seus bares, perfil, preferências) são da conta.
+ */
+export const FAN_EXPLORE_PATH = '/dashboard'
+
 export function requiresAuthentication(pathname: string) {
+  if (pathname.startsWith(`${FAN_EXPLORE_PATH}/`)) return true
   return AUTHENTICATED_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
   )
@@ -70,7 +83,7 @@ export function applyAuthGuards(
     return
   }
 
-  if (pathname.startsWith('/onboarding')) {
+  if (pathname.startsWith('/onboarding') && pathname !== PUB_LIVE_PATH) {
     throw redirect({
       to: session.user.role === 'pub' ? '/plan' : '/dashboard'
     })

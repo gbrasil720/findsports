@@ -1,4 +1,4 @@
-import { expect } from 'bun:test'
+import { expect, spyOn } from 'bun:test'
 import { eq, inArray } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
 import {
@@ -7,6 +7,7 @@ import {
   sport,
   subscription
 } from '@findsports_oficial/db/schema/platform'
+import { env } from '@findsports_oficial/env/server'
 import { TRPCError } from '@trpc/server'
 import type { AppRouter } from './index'
 
@@ -80,6 +81,7 @@ export async function seedBar(
   db: Awaited<ReturnType<typeof load>>['db']
   barId: string
   owner: Caller
+  ownerId: string
   fan: Caller
   fanId: string
   /**
@@ -133,6 +135,7 @@ export async function seedBar(
     db,
     barId,
     owner: appRouter.createCaller(contextFor(ownerId, 'pub')),
+    ownerId,
     fan: appRouter.createCaller(contextFor(fanId, 'fan')),
     fanId,
     seedGame: async (fields = {}) => {
@@ -186,4 +189,40 @@ export async function refusal(promise: Promise<unknown>) {
   expect(error).toBeInstanceOf(TRPCError)
   const { code, message } = error as TRPCError
   return { code, message }
+}
+
+export type EmailApiBody = {
+  to: string[]
+  reply_to: string
+  subject: string
+  text: string
+  html: string
+  attachments?: { filename: string; content_type: string; content: string }[]
+}
+
+/**
+ * A API de e-mail como dublê: guarda o corpo de cada envio. As chaves somem
+ * do `.env.test` de propósito, então entram aqui e saem no fim do teste.
+ */
+export function fakeEmailApi(cleanups: (() => unknown)[], status = 200) {
+  const real = globalThis.fetch
+  const sent: EmailApiBody[] = []
+  const keys = env as { EMAIL_API_KEY?: string; EMAIL_FROM?: string }
+  keys.EMAIL_API_KEY = 're_teste'
+  keys.EMAIL_FROM = 'nao-responda@mail.onside.sh'
+  const spy = spyOn(globalThis, 'fetch').mockImplementation(((
+    input: Parameters<typeof fetch>[0],
+    init?: Parameters<typeof fetch>[1]
+  ) => {
+    const url = String(input instanceof Request ? input.url : input)
+    if (url !== `${env.EMAIL_API_URL}/emails`) return real(input, init)
+    sent.push(JSON.parse(String(init?.body)))
+    return Promise.resolve(new Response('{}', { status }))
+  }) as typeof fetch)
+  cleanups.push(() => {
+    spy.mockRestore()
+    keys.EMAIL_API_KEY = undefined
+    keys.EMAIL_FROM = undefined
+  })
+  return sent
 }

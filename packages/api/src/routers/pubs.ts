@@ -37,20 +37,31 @@ import {
   normalizeAmenityIds
 } from '../lib/amenities'
 import { getAppConfig } from '../lib/app-config'
-import { readFanAttendance, readGoing } from '../lib/attendance'
+import {
+  type FanAttendance,
+  readFanAttendance,
+  readFriendsGoing,
+  readGoing
+} from '../lib/attendance'
+import { resolvePublicGallery } from '../lib/bar-gallery'
 import { canShowBarMenu, resolvePublicBarMenu } from '../lib/bar-menu'
+import { readCheckIn } from '../lib/check-in'
 import {
   getCurrentPlan,
   getSubscriptionStanding,
   type SubscriptionStanding
 } from '../lib/current-plan'
 import { EVENT_LIVE_WINDOW_MS } from '../lib/event-profile-window'
+import { resolveEventScreen } from '../lib/event-screen'
 import {
   favoriteTeamIdsSchema,
   replaceFavoriteTeams
 } from '../lib/favorite-teams'
+import { readGameBoard } from '../lib/game-board'
 import { byMatchOrder, gameTitle } from '../lib/game-participants'
+import { effectiveHouseOffer } from '../lib/house-offer'
 import { decodeCursor, encodeCursor } from '../lib/keyset-cursor'
+import { isOpenNow, normalizeOpeningHours } from '../lib/opening-hours'
 import {
   executarBuscaEmCamadas,
   executarBuscaLinear,
@@ -58,7 +69,13 @@ import {
   type SearchPage
 } from '../lib/pub-search'
 import { PUBLIC_BAR_COLUMNS } from '../lib/public-bar'
-import { hasPublicRating, ratingPercentage } from '../lib/rating'
+import {
+  hasPublicRating,
+  RATING_PUBLIC_FLOOR,
+  ratingPercentage
+} from '../lib/rating'
+import { readRatingList, readReasonSummary } from '../lib/rating-list'
+import { starsAverage } from '../lib/rating-review'
 import { chaveBusca, chaveBuscaLocal } from '../lib/search-cache'
 import {
   findSearchCity,
@@ -319,6 +336,15 @@ async function comCaracteristicasEPresenca<
   })
 }
 
+/** Por jogo, o que `pubs.pageViewer` devolve a quem entrou. */
+type ViewerGames = Record<
+  string,
+  {
+    attendance: FanAttendance | null
+    friends: { name: string; image: string | null }[]
+  }
+>
+
 /** Teto da agenda do dia: é cenário de splash, não listagem. */
 const TODAY_GAMES_LIMIT = 30
 
@@ -344,6 +370,7 @@ export const pubsRouter = router({
         FROM event e
         JOIN bar b ON b.id = e.bar_id
         WHERE b.is_active
+          AND e.published_at IS NOT NULL
           AND e.starts_at >= ${dayStart}
           AND e.starts_at < ${dayStart} + interval '1 day'
       ) g
@@ -356,6 +383,22 @@ export const pubsRouter = router({
       startsAt: utcIso(game.starts_at)
     }))
   }),
+
+  /**
+   * A régua do Explorar do web (WEB-501): os jogos de um dia de Brasília
+   * perto de um ponto, cada um com os bares que o passam (`lib/game-board`).
+   * Aberta: ver bares e jogos não pede conta (dono, 05/11/2026).
+   */
+  gameBoard: publicProcedure
+    .input(
+      z.object({
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        radiusKm: searchRadiusKmSchema.default(5),
+        day: z.string().date()
+      })
+    )
+    .query(({ input }) => readGameBoard(input)),
 
   search: protectedProcedure
     .input(
@@ -474,10 +517,13 @@ export const pubsRouter = router({
           isActive: true,
           ratingCount: true,
           ratingPositive: true,
+          ratingStarsCount: true,
+          ratingStarsSum: true,
           houseOffer: true,
           menuUrl: true,
           averageSpendCents: true,
-          confirmsCodesLater: true
+          confirmsCodesLater: true,
+          openingHours: true
         },
         with: {
           // Só para decidir o recebimento de reservas, a oferta da casa, o
@@ -486,6 +532,19 @@ export const pubsRouter = router({
           // atraso no fim do trial.
           subscription: {
             columns: { plan: true, status: true, currentPeriodEnd: true }
+          },
+          // Fotos do bar (WEB-462): só as que a Onside aprovou.
+          photos: {
+            where: (photo, { eq }) => eq(photo.status, 'approved'),
+            columns: {
+              id: true,
+              url: true,
+              category: true,
+              caption: true,
+              position: true,
+              status: true,
+              createdAt: true
+            }
           },
           events: {
             // Jogo ao vivo continua na página: o corte é o fim provável do
@@ -496,10 +555,14 @@ export const pubsRouter = router({
             // `now()` (que é `timestamptz`) faria o Postgres converter usando
             // o fuso da sessão — a janela mudaria de tamanho conforme o
             // servidor. Com os operadores, o valor viaja pelo tipo da coluna.
+            // Rascunho (WEB-436) não sai na página do bar.
             where: (event, { and, gte, isNotNull, isNull, or }) =>
-              or(
-                and(isNotNull(event.endsAt), gte(event.endsAt, now)),
-                and(isNull(event.endsAt), gte(event.startsAt, liveCutoff))
+              and(
+                isNotNull(event.publishedAt),
+                or(
+                  and(isNotNull(event.endsAt), gte(event.endsAt, now)),
+                  and(isNull(event.endsAt), gte(event.startsAt, liveCutoff))
+                )
               ),
             with: {
               sport: true,
@@ -537,34 +600,53 @@ export const pubsRouter = router({
         userId,
         ratingCount,
         ratingPositive,
+        ratingStarsCount,
+        ratingStarsSum,
         houseOffer,
         menuUrl,
         averageSpendCents,
         confirmsCodesLater,
+        openingHours,
+        photos,
         subscription,
         events,
         ...publicBar
       } = result
 
       const notaPublica = await getAppConfig('rating.public_display')
-      const rating =
-        notaPublica && hasPublicRating(ratingCount)
-          ? {
-              positive: ratingPositive,
-              total: ratingCount,
-              percentage: ratingPercentage(ratingPositive, ratingCount)
-            }
-          : null
+      // Abaixo do piso de verificadas não sai nada da nota: nem %, nem
+      // estrelas, nem etiquetas, nem comentários (WEB-408, WEB-451).
+      const showRating = notaPublica && hasPublicRating(ratingCount)
+      const rating = showRating
+        ? {
+            positive: ratingPositive,
+            total: ratingCount,
+            percentage: ratingPercentage(ratingPositive, ratingCount),
+            // Média das estrelas (WEB-451), com o mesmo piso.
+            stars: starsAverage(
+              ratingStarsSum,
+              ratingStarsCount,
+              RATING_PUBLIC_FLOOR
+            )
+          }
+        : null
 
       // O código do balcão, e com ele a oferta da casa, é do Elite: fora
       // dele, anunciar a oferta seria prometer sem caminho (WEB-131).
       const elite = getCurrentPlan(subscription ?? null, now) === 'elite'
       const fan = ctx.session.user.role === 'fan'
-      const [attendance, going] = await Promise.all([
+      const [attendance, going, reasons, reviews, checkIn] = await Promise.all([
         readFanAttendance(ctx.session.user, events, now),
         // A contagem do ingresso, inclusive do jogo ao vivo; como o botão,
         // só para torcedor.
-        fan ? readGoing(events.map((game) => game.id)) : new Map()
+        fan ? readGoing(events.map((game) => game.id)) : new Map(),
+        // "O que pesou?" (WEB-398): o mesmo piso da nota, e só o resumo.
+        showRating ? readReasonSummary(result.id) : null,
+        // Os comentários de "O que dizem" (WEB-451): o mesmo piso, só as
+        // verificadas e aprovadas pela Onside.
+        showRating ? readRatingList(result.id, { public: true, limit: 3 }) : [],
+        // "Estou aqui" (WEB-408): o jogo deste bar com check-in aberto agora.
+        fan ? readCheckIn(ctx.session.user.id, events, now) : null
       ])
       return {
         ...publicBar,
@@ -574,9 +656,21 @@ export const pubsRouter = router({
           ({
             reservationCap: _cap,
             acceptsReservations: _accepts,
+            houseOffer: gameOffer,
+            noHouseOffer,
             ...game
           }) => ({
             ...game,
+            // A oferta que vale neste jogo (WEB-422): a dele substitui a do
+            // bar, e "sem oferta neste jogo" a desliga. Só no Elite.
+            houseOffer: elite
+              ? effectiveHouseOffer(houseOffer, {
+                  houseOffer: gameOffer,
+                  noHouseOffer
+                })
+              : null,
+            // Telão e som deste jogo, já com a herança das características.
+            ...resolveEventScreen(game, publicBar.amenities),
             // `null`: o botão não cabe neste jogo (ADR 0003, "Presença").
             attendance: attendance.get(game.id) ?? null,
             // `null`: abaixo do piso, ou conta que não é de torcedor.
@@ -584,6 +678,13 @@ export const pubsRouter = router({
           })
         ),
         rating,
+        ratingReasons: reasons,
+        reviews: reviews.map(
+          ({ verified: _v, createdAt: _c, commentPending: _p, ...review }) =>
+            review
+        ),
+        checkIn,
+        // A padrão do bar. O que vale em cada jogo é `events[].houseOffer`.
         houseOffer: elite ? houseOffer : null,
         // "Vou assistir aqui" sai com código do balcão (o app escolhe entre
         // "Confirmar e gerar código" e só "Confirmar").
@@ -596,6 +697,16 @@ export const pubsRouter = router({
           subscription ?? null,
           now
         ),
+        // Galeria do ambiente (WEB-439, WEB-462): só as aprovadas, por
+        // categoria e na ordem do dono; vazia sem Pro/Elite. A capa é
+        // `photoUrl`, de todos os planos.
+        photos: resolvePublicGallery(photos, subscription ?? null, now).map(
+          ({ position: _p, status: _s, ...photo }) => photo
+        ),
+        // Horário (WEB-397): `null` sem horário informado, e a página esconde
+        // a seção. "Aberto agora" é decidido aqui, no relógio de Brasília.
+        openingHours: normalizeOpeningHours(openingHours),
+        openNow: isOpenNow(normalizeOpeningHours(openingHours), now),
         isOwner: userId === ctx.session.user.id,
         // Só para o aviso da prévia do dono: bar fora do ar por assinatura
         // encerrada não é bar que nunca foi publicado (WEB-345). Teste do
@@ -606,6 +717,61 @@ export const pubsRouter = router({
           userId === ctx.session.user.id
             ? getSubscriptionStanding(subscription ?? null, now)
             : null
+        )
+      }
+    }),
+
+  /**
+   * O que a página pública do bar (`/bar/...`) mostra a quem entrou, por cima
+   * da leitura sem sessão (`lib/public-bar-page.ts`): se salvou o bar e, por
+   * jogo, a presença com o código do balcão e os amigos que vão (WEB-404:
+   * só amigo aceito que deixa amigos verem). Conta que não é de torcedor não
+   * marca presença nem salva bar: recebe `fan: false` e nada mais.
+   */
+  pageViewer: protectedProcedure
+    .input(z.object({ barId: z.string().min(1).max(64) }))
+    .query(async ({ ctx, input }) => {
+      const viewer = ctx.session.user
+      if (viewer.role !== 'fan') {
+        return { fan: false, favorited: false, games: {} as ViewerGames }
+      }
+      const now = new Date()
+      const liveCutoff = new Date(now.getTime() - EVENT_LIVE_WINDOW_MS)
+      const games = await db.query.event.findMany({
+        where: (game, { and, eq, gte, isNotNull, isNull, or }) =>
+          and(
+            eq(game.barId, input.barId),
+            isNotNull(game.publishedAt),
+            or(
+              and(isNotNull(game.endsAt), gte(game.endsAt, now)),
+              and(isNull(game.endsAt), gte(game.startsAt, liveCutoff))
+            )
+          ),
+        columns: { id: true, startsAt: true, attendanceEnabled: true }
+      })
+      const ids = games.map((game) => game.id)
+      const [attendance, friends, favorite] = await Promise.all([
+        readFanAttendance(viewer, games, now),
+        readFriendsGoing(viewer.id, ids),
+        db.query.userFavoriteBars.findFirst({
+          where: and(
+            eq(userFavoriteBars.userId, viewer.id),
+            eq(userFavoriteBars.barId, input.barId)
+          ),
+          columns: { barId: true }
+        })
+      ])
+      return {
+        fan: true,
+        favorited: Boolean(favorite),
+        games: Object.fromEntries(
+          ids.map((id) => [
+            id,
+            {
+              attendance: attendance.get(id) ?? null,
+              friends: (friends.get(id) ?? []).map(({ id: _i, ...f }) => f)
+            }
+          ])
         )
       }
     }),
@@ -718,13 +884,24 @@ export const pubsRouter = router({
           with: {
             events: {
               // Jogo em andamento continua na lista, como no perfil do bar.
+              // Rascunho (WEB-436) fica fora.
               where: (event, { and, gte, isNotNull, isNull, or }) =>
-                or(
-                  and(isNotNull(event.endsAt), gte(event.endsAt, now)),
-                  and(isNull(event.endsAt), gte(event.startsAt, liveCutoff))
+                and(
+                  isNotNull(event.publishedAt),
+                  or(
+                    and(isNotNull(event.endsAt), gte(event.endsAt, now)),
+                    and(isNull(event.endsAt), gte(event.startsAt, liveCutoff))
+                  )
                 ),
-              // Colunas da antiga reserva de mesa: não saem mais.
-              columns: { reservationCap: false, acceptsReservations: false },
+              // Colunas da antiga reserva de mesa: não saem mais. A oferta
+              // do jogo crua também não: o que vale sai de `getById`, já com o
+              // plano (WEB-422).
+              columns: {
+                reservationCap: false,
+                acceptsReservations: false,
+                houseOffer: false,
+                noHouseOffer: false
+              },
               with: {
                 sport: true,
                 participants: { with: { team: true }, orderBy: byMatchOrder }
@@ -892,6 +1069,7 @@ export const pubsRouter = router({
           AND EXISTS (
             SELECT 1 FROM event e
             WHERE e.bar_id = b.id
+              AND e.published_at IS NOT NULL
               AND e.starts_at >= ${dayStart}
               AND e.starts_at < ${dayStart} + interval '1 day'
           )

@@ -1,8 +1,10 @@
+import { runInBackground } from '@findsports_oficial/auth/background'
 import {
   and,
   db,
   eq,
   inArray,
+  isNotNull,
   isNull,
   type SQL,
   sql
@@ -29,9 +31,19 @@ import {
   reservationCode,
   reservationCodeUse
 } from '@findsports_oficial/db/schema/reservation'
+import { TRPCError } from '@trpc/server'
+import {
+  issueTicket,
+  readTicket,
+  retireTicket,
+  type Tx
+} from './attendance-ticket'
+import { gameFillingDue, notifyGameFilling } from './bar-notices'
 import { getCurrentPlan } from './current-plan'
 import { gameTitle, participantNames } from './game-participants'
+import { effectiveHouseOffer } from './house-offer'
 import { getLateEntryWindow, LATE_ENTRY_HOURS } from './reservation-validation'
+import { visit } from './visits'
 
 /**
  * Presença confirmada (WEB-127, ADR 0003). Os números daqui só saem do
@@ -50,6 +62,134 @@ export const ATTENDANCE_DISPLAY_FLOOR = 15
  * pelo menos uma presença. Valor provisório da ADR.
  */
 export const INTEREST_MIN_HISTORY = 5
+
+/**
+ * O jogo onde "Vou assistir aqui" ainda cabe: existe, está publicado, o bar
+ * está no ar e não começou (jogo começado vira histórico do sinal de
+ * interesse do bar e não muda). É a precondição de marcar e desmarcar.
+ */
+export async function attendableGame(
+  eventId: string,
+  now = new Date(),
+  tx: Tx | typeof db = db
+) {
+  const game = await tx.query.event.findFirst({
+    // Rascunho (WEB-436) é como jogo que não existe para o torcedor.
+    where: and(eq(event.id, eventId), isNotNull(event.publishedAt)),
+    columns: {
+      startsAt: true,
+      barId: true,
+      attendanceEnabled: true,
+      houseOffer: true,
+      noHouseOffer: true
+    },
+    with: {
+      bar: {
+        columns: { isActive: true, houseOffer: true, confirmsCodesLater: true },
+        with: {
+          subscription: {
+            columns: { plan: true, status: true, currentPeriodEnd: true }
+          }
+        }
+      }
+    }
+  })
+  if (!game?.bar.isActive) return { ok: false as const, reason: 'not_found' }
+  if (game.startsAt <= now) return { ok: false as const, reason: 'started' }
+  return { ok: true as const, game }
+}
+
+/** O bar desligou a lista de quem vai deste jogo (WEB-437). */
+export const closedListError = () =>
+  new TRPCError({
+    code: 'PRECONDITION_FAILED',
+    message: 'O bar não abriu a lista de quem vai neste jogo.'
+  })
+
+/**
+ * Marca ou desmarca "Vou assistir aqui" (WEB-127) de `userId`, que quem chama
+ * já autorizou. Vale para bar de qualquer plano (ADR 0003, "Recorte de
+ * plano"); no bar Elite, marcar também emite o código do balcão, que dá a
+ * oferta da casa (`attendance-ticket.ts`), e desmarcar o aposenta. Repetir a
+ * mesma marcação devolve o mesmo estado.
+ */
+export async function setAttendance(
+  input: { userId: string; eventId: string; attending: boolean; now?: Date },
+  tx?: Tx
+): Promise<{
+  attending: boolean
+  barId: string
+  /** O código do balcão, só em bar Elite e ao marcar. */
+  code: string | null
+  offer: string | null
+  confirmsCodesLater: boolean
+}> {
+  if (!tx) return db.transaction((own) => setAttendance(input, own))
+  const { userId, eventId, attending, now = new Date() } = input
+  const found = await attendableGame(eventId, now, tx)
+  if (!found.ok) {
+    throw found.reason === 'not_found'
+      ? new TRPCError({ code: 'NOT_FOUND', message: 'Jogo não encontrado.' })
+      : new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'Este jogo já começou.'
+        })
+  }
+  const { game } = found
+  // Lista desligada neste jogo (WEB-437): quem já marcou fica e pode
+  // desmarcar; marcação nova é recusada, como a de jogo começado.
+  if (attending && !game.attendanceEnabled) {
+    const already = await tx.query.attendance.findFirst({
+      where: and(
+        eq(attendance.userId, userId),
+        eq(attendance.eventId, eventId)
+      ),
+      columns: { userId: true }
+    })
+    if (!already) throw closedListError()
+  }
+  let ticket: { code: string; offer: string | null } | null = null
+  if (attending) {
+    await tx
+      .insert(attendance)
+      .values({ userId, eventId })
+      .onConflictDoUpdate({
+        target: [attendance.userId, attendance.eventId],
+        set: { source: 'manual' }
+      })
+    if (getCurrentPlan(game.bar.subscription ?? null, now) === 'elite') {
+      // A oferta deste jogo (WEB-422): a dele, a do bar ou nenhuma.
+      await issueTicket(
+        tx,
+        userId,
+        eventId,
+        effectiveHouseOffer(game.bar.houseOffer, game)
+      )
+      ticket = await readTicket(tx, userId, eventId)
+    }
+    // "Jogo lotando" (WEB-441): a conta é feita aqui, que já vê esta
+    // marcação; o e-mail sai depois da resposta e grava que saiu.
+    if (await gameFillingDue(eventId, tx)) {
+      runInBackground(notifyGameFilling(eventId))
+    }
+  } else {
+    // O ingresso sai antes da presença: código validado recusa tudo.
+    await retireTicket(tx, userId, eventId)
+    await tx
+      .delete(attendance)
+      .where(
+        and(eq(attendance.userId, userId), eq(attendance.eventId, eventId))
+      )
+  }
+  return {
+    attending,
+    barId: game.barId,
+    code: ticket?.code ?? null,
+    offer: ticket?.offer ?? null,
+    // O diálogo do código fala com o garçom (WEB-412).
+    confirmsCodesLater: ticket ? game.bar.confirmsCodesLater : false
+  }
+}
 
 /**
  * Quem vai a cada jogo, para o card do Explorar e o ingresso da página do
@@ -89,7 +229,50 @@ export async function readGoing(
   )
 }
 
-type FanAttendance = {
+export type GoingFriend = { id: string; name: string; image: string | null }
+
+/**
+ * Os amigos de `viewerId` que marcaram presença em cada jogo (WEB-404, trazido
+ * da branch de integração para a página pública do bar). Só entra quem é amigo
+ * aceito e deixa amigos verem a atividade ("todos" ou "amigos"); "ninguém"
+ * nunca aparece, e quem não é amigo nunca é nomeado, nem com "todos". Ordem:
+ * quem marcou por último primeiro.
+ */
+export async function readFriendsGoing(
+  viewerId: string,
+  eventIds: string[]
+): Promise<Map<string, GoingFriend[]>> {
+  const going = new Map<string, GoingFriend[]>()
+  if (!eventIds.length) return going
+  const rows = await db
+    .select({
+      eventId: attendance.eventId,
+      id: user.id,
+      name: user.name,
+      image: user.image
+    })
+    .from(attendance)
+    .innerJoin(user, eq(user.id, attendance.userId))
+    .where(
+      and(
+        inArray(attendance.eventId, eventIds),
+        inArray(user.activityVisibility, ['everyone', 'friends']),
+        sql`${user.banned} IS NOT TRUE`,
+        sql`EXISTS (
+          SELECT 1 FROM friendship f
+          WHERE f.accepted_at IS NOT NULL
+            AND ((f.requester_id = ${viewerId} AND f.addressee_id = ${user.id})
+              OR (f.addressee_id = ${viewerId} AND f.requester_id = ${user.id}))
+        )`
+      )
+    )
+    .orderBy(sql`${attendance.createdAt} desc`)
+  for (const { eventId, ...friend } of rows)
+    going.set(eventId, [...(going.get(eventId) ?? []), friend])
+  return going
+}
+
+export type FanAttendance = {
   attending: boolean
   /** `null` abaixo do piso. */
   count: number | null
@@ -101,12 +284,13 @@ type FanAttendance = {
 
 /**
  * Estado de "Vou assistir aqui" por jogo, só onde o botão cabe: conta de
- * torcedor e jogo que não começou. Nos demais jogos, e para qualquer outra
+ * torcedor, jogo que não começou e lista de quem vai aberta (ou o torcedor já
+ * marcou). Nos demais jogos, e para qualquer outra
  * conta, não há entrada: nem a prévia do dono recebe a contagem.
  */
 export async function readFanAttendance(
   viewer: { id: string; role: string },
-  games: { id: string; startsAt: Date }[],
+  games: { id: string; startsAt: Date; attendanceEnabled: boolean }[],
   now = new Date()
 ): Promise<Map<string, FanAttendance>> {
   const eventIds = games
@@ -147,21 +331,28 @@ export async function readFanAttendance(
   ])
   const byEvent = new Map(counts.map((row) => [row.eventId, row]))
   const byTicket = new Map(tickets.map((row) => [row.eventId, row]))
+  // Lista desligada (WEB-437): o botão só fica para quem já marcou, que vê o
+  // "Você vai" e o código e ainda pode desmarcar.
+  const closed = new Set(
+    games.filter((game) => !game.attendanceEnabled).map((game) => game.id)
+  )
   return new Map(
-    eventIds.map((id) => {
-      const row = byEvent.get(id)
-      const ticket = byTicket.get(id)
-      const count = row?.count ?? 0
-      return [
-        id,
-        {
-          attending: row?.attending ?? false,
-          count: count >= ATTENDANCE_DISPLAY_FLOOR ? count : null,
-          code: ticket?.code ?? null,
-          validated: (ticket?.usedCount ?? 0) > 0
-        }
-      ]
-    })
+    eventIds
+      .filter((id) => !closed.has(id) || byEvent.get(id)?.attending)
+      .map((id) => {
+        const row = byEvent.get(id)
+        const ticket = byTicket.get(id)
+        const count = row?.count ?? 0
+        return [
+          id,
+          {
+            attending: row?.attending ?? false,
+            count: count >= ATTENDANCE_DISPLAY_FLOOR ? count : null,
+            code: ticket?.code ?? null,
+            validated: (ticket?.usedCount ?? 0) > 0
+          }
+        ]
+      })
   )
 }
 
@@ -173,8 +364,13 @@ const MY_GAMES_LIMIT = 50
  * código do balcão onde há (bar Elite). O código só sai enquanto vale, até a
  * janela de validação fechar; depois, fica só se foi validado.
  */
-export async function readMyGames(userId: string, now = new Date()) {
-  const rows = await db
+export async function readMyGames(
+  userId: string,
+  now = new Date(),
+  /** `null`: todos, para o arquivo de "Baixar meus dados" (WEB-418). */
+  limit: number | null = MY_GAMES_LIMIT
+) {
+  const query = db
     .select({
       eventId: event.id,
       championship: event.championship,
@@ -220,7 +416,7 @@ export async function readMyGames(userId: string, now = new Date()) {
     )
     .where(eq(attendance.userId, userId))
     .orderBy(sql`${event.startsAt} desc`)
-    .limit(MY_GAMES_LIMIT)
+  const rows = await (limit === null ? query : query.limit(limit))
 
   return rows.map(
     ({
@@ -260,6 +456,36 @@ export async function readMyGames(userId: string, now = new Date()) {
       }
     }
   )
+}
+
+/**
+ * "Já fui" e "Bares" de Seus bares (17b, 17e do design): cada visita
+ * (`visits.ts`), do jogo mais recente ao mais antigo. Bar fora do ar segue na
+ * lista, sem perfil para abrir.
+ */
+export async function readVisitedGames(userId: string) {
+  return db
+    .select({
+      eventId: event.id,
+      championship: event.championship,
+      participantFreeText: event.participantFreeText,
+      participants: participantNames(sql`${event.id}`),
+      startsAt: event.startsAt,
+      validatedAt: visit.visitedAt,
+      barId: bar.id,
+      barName: bar.name,
+      neighborhood: bar.neighborhood,
+      // A aba "Bares" (17e) mostra a foto e a distância de quem já foi.
+      photoUrl: bar.photoUrl,
+      latitude: bar.latitude,
+      longitude: bar.longitude,
+      barActive: bar.isActive
+    })
+    .from(visit)
+    .innerJoin(event, eq(event.id, visit.eventId))
+    .innerJoin(bar, eq(bar.id, visit.barId))
+    .where(eq(visit.userId, userId))
+    .orderBy(sql`${event.startsAt} desc`, event.id)
 }
 
 export type InterestSignal =
@@ -344,10 +570,14 @@ export async function readAttendanceQuestions(
       participantFreeText: event.participantFreeText,
       participants: participantNames(sql`${event.id}`),
       startsAt: event.startsAt,
+      barId: bar.id,
       barName: bar.name,
       neighborhood: bar.neighborhood,
+      photoUrl: bar.photoUrl,
       offer: reservation.offerSnapshot,
-      answered: sql<boolean>`${attendanceReport.userId} IS NOT NULL`
+      answered: sql<boolean>`${attendanceReport.userId} IS NOT NULL`,
+      // A resposta gravada: quem disse que não foi não avalia (`post-game.ts`).
+      attended: attendanceReport.attended
     })
     .from(attendance)
     .innerJoin(event, eq(event.id, attendance.eventId))

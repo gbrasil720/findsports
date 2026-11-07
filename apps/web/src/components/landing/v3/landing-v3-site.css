@@ -1,0 +1,1026 @@
+/* biome-ignore-all lint/style/noDescendingSpecificity: segue a ordem do design; tudo preso a .lp3. */
+/* biome-ignore-all lint/complexity/noImportantStyles: o telão e a tela anotada do celular precisam vencer o CSS do protótipo. */
+/* Landing v3 com a copy do site (pedido do marketing, 05/11/2026) e o celular enxuto: o que o design
+   (artifact BDRkPQGG2C6DzF54zViB8C) soma ao CSS do protótipo em landing-v3.css. */
+/* ---------- copy do site (pedido do marketing, 05/11) ---------- */
+.lp3 .kick {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 22px;
+  font: 600 13px / 1 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+.lp3 .kick::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  background: var(--red);
+}
+.lp3 .on-ink .kick,
+.lp3 .hero .kick,
+.lp3 .final .kick {
+  color: var(--muted-ink);
+}
+.lp3 .on-ink .kick::before,
+.lp3 .hero .kick::before,
+.lp3 .final .kick::before {
+  background: var(--acid);
+}
+.lp3 .hero .kick {
+  margin-bottom: 24px;
+}
+.lp3 .hero h1 {
+  font-size: clamp(54px, 6.5vw, 106px);
+  line-height: 1;
+}
+.lp3 .cta-lead {
+  margin: 30px 0 0;
+  max-width: 44ch;
+  font: 600 16px / 1.45 var(--body);
+  color: var(--paper);
+}
+.lp3 .cta-lead svg {
+  display: inline-block;
+  vertical-align: -3px;
+  color: var(--acid);
+  transform: rotate(90deg);
+}
+.lp3 .search {
+  margin-top: 16px;
+}
+.lp3 .ticker .it.bn {
+  color: var(--paper);
+}
+.lp3 .ticker .it.bn::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  background: var(--acid);
+}
+/* o problema: o que o mapa e o perfil mostram */
+.lp3 .pile {
+  position: relative;
+  min-height: 680px;
+}
+.lp3 .ev {
+  position: absolute;
+  background: var(--white);
+  border-radius: 22px;
+  padding: 14px;
+  box-shadow:
+    0 3px 0 var(--sand),
+    0 30px 60px -36px rgba(18, 18, 15, 0.55);
+}
+.lp3 .ev .num {
+  position: absolute;
+  z-index: 2;
+  top: -14px;
+  left: -14px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--red);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font: 700 13px / 1 var(--mono);
+  box-shadow: 0 3px 0 #8f1f07;
+}
+.lp3 .ev-photo {
+  left: 0;
+  top: 0;
+  width: 60%;
+  transform: rotate(-4deg);
+}
+.lp3 .ev-photo .ph {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: 14px;
+  background:
+    #2a2a24 url(/landing/v3/tela-bar.webp) 50% 12% / 220% auto no-repeat;
+  filter: grayscale(0.9) sepia(0.3) brightness(0.92) contrast(0.88);
+}
+.lp3 .ev-photo .cap {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 11px;
+  font: 500 12px / 1.2 var(--mono);
+  color: var(--muted);
+}
+.lp3 .ev-photo .cap b {
+  font: 700 13px / 1.2 var(--body);
+  color: var(--ink);
+}
+.lp3 .stamp {
+  position: absolute;
+  right: 26px;
+  top: 30px;
+  transform: rotate(7deg);
+  padding: 7px 9px;
+  border: 2px solid var(--red);
+  border-radius: 7px;
+  background: rgba(251, 250, 246, 0.9);
+  color: var(--red);
+  font: 700 12px / 1 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.lp3 .ev-rev {
+  right: 0;
+  top: 40%;
+  width: 62%;
+  transform: rotate(2.5deg);
+  padding: 16px 18px 18px;
+}
+.lp3 .ev-rev .hd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 700 15px / 1.2 var(--body);
+}
+.lp3 .ev-rev .hd small {
+  font: 500 12.5px / 1 var(--mono);
+  color: var(--muted);
+  margin-left: auto;
+}
+.lp3 .stars {
+  display: inline-flex;
+  gap: 1px;
+  color: var(--ink);
+}
+.lp3 .rev {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--stone);
+  font-size: 14.5px;
+  line-height: 1.45;
+  color: #3d3d38;
+}
+.lp3 .rev .who {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+  font: 700 13px / 1 var(--body);
+  color: var(--ink);
+}
+.lp3 .ask {
+  position: absolute;
+  right: -10px;
+  bottom: -20px;
+  transform: rotate(-4deg);
+  padding: 9px 13px;
+  border-radius: 14px 14px 4px 14px;
+  background: var(--red);
+  color: #fff;
+  font: 700 14px / 1 var(--body);
+  box-shadow: 0 3px 0 #8f1f07;
+}
+.lp3 .ev-chat {
+  left: 5%;
+  bottom: 0;
+  width: 62%;
+  transform: rotate(-1.5deg);
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 18px 16px 16px;
+  background: var(--stone);
+}
+.lp3 .ev-chat .m {
+  background: var(--white);
+  font-size: 14.5px;
+  max-width: 86%;
+}
+.lp3 .ev-chat .m.me {
+  background: var(--ink);
+}
+.lp3 .pains .ic {
+  background: var(--red);
+  color: #fff;
+  font: 700 15px / 1 var(--mono);
+  box-shadow: 0 3px 0 #8f1f07;
+}
+/* escolha com confiança */
+.lp3 .conf {
+  background: var(--stone);
+}
+.lp3 .conf .lede {
+  margin-top: 26px;
+  font-size: clamp(19px, 1.6vw, 23px);
+  max-width: 44ch;
+}
+.lp3 .conf .lede b {
+  background: linear-gradient(transparent 58%, var(--acid) 58%);
+}
+.lp3 .note {
+  padding: 22px 22px 22px 24px;
+}
+.lp3 .note .n {
+  width: 36px;
+  height: 36px;
+  top: -15px;
+  font-size: 12.5px;
+}
+.lp3 .note b {
+  font: 400 clamp(26px, 2.3vw, 34px) / 1.02 var(--display);
+  text-transform: uppercase;
+}
+.lp3 .closing {
+  margin: 72px auto 0;
+  max-width: 34ch;
+  text-align: center;
+  font: 600 clamp(21px, 1.9vw, 27px) / 1.35 var(--body);
+  text-wrap: balance;
+}
+.lp3 .closing b {
+  font-weight: 800;
+  color: var(--red);
+}
+/* ocasiões */
+.lp3 .occ-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: clamp(40px, 6vw, 96px);
+  align-items: center;
+}
+.lp3 .occ-grid .lede {
+  margin-top: 26px;
+  color: #3d3d38;
+}
+.lp3 .occ {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.lp3 .occ li {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  padding: 22px 24px;
+  border-radius: 26px;
+  background: var(--white);
+  box-shadow: 0 3px 0 var(--sand);
+  transition: transform 0.35s var(--ease);
+}
+.lp3 .occ li:hover {
+  transform: translateY(-3px);
+}
+.lp3 .occ .n {
+  font: 600 14px / 1 var(--mono);
+  color: var(--muted);
+}
+.lp3 .occ b {
+  font: 400 clamp(40px, 4.6vw, 68px) / 1 var(--display);
+  text-transform: uppercase;
+  padding-top: 0.04em;
+}
+.lp3 .occ .tg {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 15px;
+  border-radius: 999px;
+  background: var(--stone);
+  font: 600 14px / 1 var(--body);
+  white-space: nowrap;
+}
+.lp3 .occ li.hl {
+  background: var(--acid);
+  box-shadow: 0 4px 0 #7f9a12;
+  transform: rotate(-1.2deg);
+}
+.lp3 .occ li.hl:hover {
+  transform: rotate(-1.2deg) translateY(-3px);
+}
+.lp3 .occ li.hl .n {
+  color: var(--ink);
+}
+.lp3 .occ li.hl .tg {
+  background: var(--ink);
+  color: var(--acid);
+  --spark: #c9f135;
+}
+/* comunidade e história */
+.lp3 .com {
+  max-width: 1120px;
+}
+.lp3 .com h2 {
+  font-size: clamp(42px, 5.6vw, 88px);
+}
+.lp3 .com .lede {
+  margin-top: 28px;
+  color: var(--soft-ink);
+}
+.lp3 .com .btn {
+  margin-top: 36px;
+}
+.lp3 .story-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  gap: clamp(40px, 7vw, 120px);
+  align-items: center;
+}
+.lp3 .story-grid h2 .r {
+  color: var(--red);
+}
+.lp3 .story-grid p {
+  margin: 24px 0 0;
+  max-width: 56ch;
+  font-size: clamp(17px, 1.3vw, 19px);
+  color: #3d3d38;
+}
+.lp3 .story-grid p.strong {
+  font-weight: 700;
+  color: var(--ink);
+}
+.lp3 .story-grid .btn {
+  margin-top: 34px;
+}
+.lp3 .mark {
+  justify-self: center;
+  width: min(380px, 80%);
+  color: var(--ink);
+}
+.lp3 .mark svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  animation: lp3-spin 40s linear infinite;
+}
+@keyframes lp3-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+/* final */
+.lp3 .final h2 {
+  font-size: clamp(56px, 8.4vw, 136px);
+  line-height: 1;
+}
+.lp3 .final h2 .r {
+  display: block;
+}
+.lp3 .final .acts {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 40px;
+}
+.lp3 .final .acts .btn {
+  height: 62px;
+  padding: 0 32px;
+  font-size: 18px;
+}
+.lp3 .final .trigger {
+  justify-content: center;
+  margin: 26px 0 0;
+}
+/* rodapé do site */
+.lp3 .foot-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 5fr);
+  gap: 32px;
+  padding-block: 64px 40px;
+}
+.lp3 .foot-lead p {
+  margin: 16px 0 22px;
+  max-width: 26ch;
+  color: var(--soft-ink);
+  font-size: 15px;
+}
+.lp3 .foot-lead .btn {
+  height: 46px;
+  font-size: 14.5px;
+  padding: 0 18px;
+  box-shadow: 0 3px 0 #7f9a12;
+}
+.lp3 .foot nav.foot-cols {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 32px;
+  font-size: inherit;
+}
+.lp3 .foot-col p {
+  margin: 0 0 14px;
+  font: 600 12px / 1 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--paper);
+}
+.lp3 .foot-col a,
+.lp3 .foot-col button {
+  display: block;
+  margin: 0 0 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted-ink);
+  font: 500 14.5px / 1.4 var(--body);
+  text-decoration: none;
+  cursor: pointer;
+  text-align: left;
+}
+.lp3 .foot-col a:hover,
+.lp3 .foot-col button:hover {
+  color: var(--paper);
+}
+.lp3 .foot-bar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-block: 22px calc(22px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--ink-line);
+  font: 500 13px / 1 var(--mono);
+}
+.lp3 .foot-bar .st {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+.lp3 .foot-bar .st::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--acid);
+}
+@media (max-width: 1100px) {
+  .lp3 .occ-grid,
+  .lp3 .story-grid {
+    grid-template-columns: 1fr;
+  }
+  .lp3 .mark {
+    width: min(240px, 60%);
+    justify-self: start;
+    order: -1;
+  }
+  .lp3 .foot-grid {
+    grid-template-columns: 1fr;
+  }
+  .lp3 .foot nav.foot-cols {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .lp3 .pile {
+    max-width: 620px;
+    width: 100%;
+    justify-self: center;
+  }
+}
+/* celular dos três passos menor: cabe na tela com folga */
+.lp3 .stick {
+  top: calc(50vh - min(34vh, 320px));
+  height: min(68vh, 640px);
+}
+@media (max-width: 900px) {
+  .lp3 .step .mphone {
+    width: 54%;
+  }
+}
+/* telão no celular: grade fina numa faixa, véu mais leve */
+@media (max-width: 1100px) {
+  .lp3 .hero .led {
+    top: auto;
+    bottom: 58px;
+    height: min(900px, 62%);
+  }
+  .lp3 .hero::before {
+    background: linear-gradient(
+      180deg,
+      rgba(18, 18, 15, 1) 0%,
+      rgba(18, 18, 15, 0.9) 32%,
+      rgba(18, 18, 15, 0.5) 56%,
+      rgba(18, 18, 15, 0.12) 80%,
+      rgba(18, 18, 15, 0.85) 100%
+    );
+  }
+  .lp3 .ver::before {
+    background: linear-gradient(
+      180deg,
+      rgba(18, 18, 15, 0.86) 0%,
+      rgba(18, 18, 15, 0.55) 50%,
+      rgba(18, 18, 15, 0.86) 100%
+    );
+  }
+  .lp3 .final::before {
+    background: linear-gradient(
+      180deg,
+      rgba(18, 18, 15, 0.72) 0%,
+      rgba(18, 18, 15, 0.42) 50%,
+      rgba(18, 18, 15, 0.8) 100%
+    );
+  }
+}
+@media (max-width: 640px) {
+  .lp3 .hero h1 {
+    font-size: clamp(44px, 12.4vw, 64px);
+  }
+  .lp3 .pile {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    padding: 14px 4px 0 14px;
+  }
+  .lp3 .ev {
+    position: relative;
+    left: auto;
+    right: auto;
+    top: auto;
+    bottom: auto;
+    width: 92%;
+  }
+  .lp3 .ev-rev {
+    align-self: flex-end;
+  }
+  .lp3 .ask {
+    right: -4px;
+  }
+  .lp3 .occ li {
+    grid-template-columns: 30px minmax(0, 1fr);
+    gap: 4px 12px;
+    padding: 18px;
+  }
+  .lp3 .occ .tg {
+    grid-column: 2;
+    justify-self: start;
+    margin-top: 8px;
+  }
+  .lp3 .closing {
+    margin-top: 44px;
+  }
+  .lp3 .foot-grid {
+    gap: 28px 20px;
+    padding-top: 48px;
+  }
+  .lp3 .foot nav.foot-cols {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 28px 20px;
+  }
+}
+/* ---------- celular: uma ideia por tela ---------- */
+.lp3 .evt,
+.lp3 .rail-dots {
+  display: none;
+}
+@media (max-width: 640px) {
+  .lp3 .sec {
+    padding-top: 64px;
+    padding-bottom: 64px;
+  }
+  .lp3 .hero-phone,
+  .lp3 .hero .trigger,
+  .lp3 .final .trigger {
+    display: none;
+  }
+  .lp3 .hero .lede {
+    font-size: 16px;
+  }
+  .lp3 .hero .led {
+    height: 260px !important;
+    bottom: 52px;
+  }
+  .lp3 .hero-in {
+    padding-bottom: 150px;
+  }
+  .lp3 .hero::before {
+    background: linear-gradient(
+      180deg,
+      rgba(18, 18, 15, 1) 0%,
+      rgba(18, 18, 15, 0.96) 62%,
+      rgba(18, 18, 15, 0.35) 80%,
+      rgba(18, 18, 15, 0.85) 100%
+    ) !important;
+  }
+  /* o problema vira um carrossel: cada prova com a sua dor embaixo */
+  .lp3 .pile {
+    flex-direction: row;
+    gap: 14px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    margin: 0 calc(var(--gut) * -1) 0 calc(var(--gut) * -1);
+    margin-right: calc(var(--gut-r) * -1);
+    padding: 20px var(--gut-r) 8px var(--gut);
+    scrollbar-width: none;
+    align-items: flex-start;
+  }
+  .lp3 .pile::-webkit-scrollbar {
+    display: none;
+  }
+  .lp3 .ev {
+    flex: 0 0 80%;
+    width: auto;
+    transform: none;
+    scroll-snap-align: center;
+  }
+  .lp3 .ev-rev,
+  .lp3 .ev-chat {
+    transform: none;
+  }
+  .lp3 .ev .num {
+    top: -12px;
+    left: -6px;
+  }
+  .lp3 .ask {
+    right: 8px;
+    bottom: auto;
+    top: -14px;
+    transform: rotate(3deg);
+  }
+  .lp3 .evt {
+    display: block;
+    margin: 14px 2px 2px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--sand);
+    font: 500 14px / 1.45 var(--body);
+    color: #3d3d38;
+  }
+  .lp3 .evt b {
+    display: block;
+    margin-bottom: 3px;
+    font: 700 16px / 1.25 var(--body);
+    color: var(--ink);
+  }
+  .lp3 .ev-chat .evt {
+    border-color: rgba(18, 18, 15, 0.18);
+  }
+  .lp3 .pains-wrap {
+    display: none;
+  }
+  .lp3 .rail-dots {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 12px;
+  }
+  .lp3 .rail-dots i {
+    width: 22px;
+    height: 4px;
+    border-radius: 4px;
+    background: var(--sand);
+    transition:
+      background 0.3s,
+      width 0.3s;
+  }
+  .lp3 .rail-dots i.on {
+    width: 34px;
+    background: var(--ink);
+  }
+  /* escolha com confiança: tela menor, notas curtas */
+  .lp3 .anno .phone {
+    width: 54% !important;
+    margin-inline: auto;
+  }
+  .lp3 .note {
+    padding: 20px 16px 12px 18px;
+  }
+  .lp3 .note b {
+    font-size: 21px;
+  }
+  .lp3 .closing {
+    margin-top: 32px;
+    font-size: 18px;
+  }
+  /* ocasiões em fila */
+  .lp3 .occ {
+    flex-direction: row;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    margin: 0 calc(var(--gut-r) * -1) 0 calc(var(--gut) * -1);
+    padding: 6px var(--gut-r) 10px var(--gut);
+    scrollbar-width: none;
+  }
+  .lp3 .occ::-webkit-scrollbar {
+    display: none;
+  }
+  .lp3 .occ li {
+    flex: 0 0 66%;
+    scroll-snap-align: start;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 18px;
+  }
+  .lp3 .occ li.hl {
+    transform: none;
+  }
+  .lp3 .occ .n {
+    display: none;
+  }
+  .lp3 .occ b {
+    font-size: 36px;
+  }
+  .lp3 .occ .tg {
+    grid-column: 1;
+    margin-top: 0;
+    height: 34px;
+    font-size: 13px;
+  }
+  /* nota e medalha: o essencial */
+  .lp3 .weigh,
+  .lp3 .mpick,
+  .lp3 .medal-cap .lad {
+    display: none;
+  }
+  .lp3 .medal-wrap .stage {
+    height: 300px;
+  }
+  .lp3 .medal-cap p {
+    font-size: 14px;
+  }
+  /* para bares: só os títulos */
+  .lp3 .pts p,
+  .lp3 .pub .browser {
+    display: none;
+  }
+  .lp3 .pts {
+    gap: 10px;
+  }
+  .lp3 .pts > div {
+    padding: 14px 0;
+  }
+  /* rodapé curto */
+  .lp3 .foot-lead p,
+  .lp3 .foot-lead .btn,
+  .lp3 .foot-col.conta {
+    display: none;
+  }
+  .lp3 .foot-grid {
+    gap: 22px 16px;
+    padding-block: 36px 24px;
+  }
+  .lp3 .foot nav.foot-cols {
+    gap: 22px 16px;
+  }
+  .lp3 .foot-col a,
+  .lp3 .foot-col button {
+    margin-bottom: 7px;
+    font-size: 14px;
+  }
+}
+
+/* Telão parado antes do JavaScript: o primeiro quadro de cada grade
+   (docs/design/redesign-2026-11/scripts/led-posters.py), no mesmo enquadramento
+   do canvas. Quando o telão acende, o led.ts tira o fundo. */
+.lp3 canvas.led {
+  background: center / cover no-repeat;
+}
+.lp3 canvas.led[data-led="hero"] {
+  background-image: url(/landing/v3/led-hero.webp);
+}
+.lp3 canvas.led[data-led="hero"][data-mode="soft"] {
+  background-image: url(/landing/v3/led-hero-soft.webp);
+}
+.lp3 canvas.led[data-led="crowd"] {
+  background-image: url(/landing/v3/led-crowd.webp);
+}
+.lp3 canvas.led[data-led="scarf"] {
+  background-image: url(/landing/v3/led-scarf.webp);
+}
+.lp3 canvas.led.on {
+  background: none;
+}
+@media (max-width: 640px) {
+  /* Faixa baixa: o quadrado não fica menor que 5,5 px, como no canvas. */
+  .lp3 .hero canvas.led {
+    background-size: 1320px auto;
+  }
+}
+
+/* O `overflow-x: hidden` global de html e body (globals.css) faz do body um
+   contêiner de rolagem que nunca rola, e o celular dos três passos (`.stick`)
+   subia com a página em vez de ficar fixo. `clip` corta igual sem criar
+   contêiner (o mesmo do Houdini e das páginas legais). */
+html:has(.lp3),
+html:has(.lp3) body {
+  overflow-x: clip;
+}
+
+/* Texto da seção para bares: cinza-escuro no claro (o escuro em theme-dark.css). */
+.lp3 .pub-head .lede {
+  color: #3d3d38;
+}
+
+/* Rodapé: copyright e situação à esquerda, a troca de tema à direita. */
+.lp3 .foot-bar {
+  align-items: center;
+}
+
+.lp3 .foot-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+}
+
+/* Troca de tema (opção A, "Placar"): o rodapé é tinta nos dois temas. */
+.lp3 .theme-switch {
+  position: relative;
+  margin: 0;
+  border: 0;
+  display: inline-grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 4px;
+  border-radius: 999px;
+  background: #1c1c18;
+  box-shadow: inset 0 0 0 1px var(--ink-line);
+}
+
+.lp3 .theme-switch .thumb {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc((100% - 8px) / 3);
+  border-radius: 999px;
+  background: var(--acid);
+  box-shadow: 0 2px 0 #7f9a12;
+  transition: transform 0.45s var(--ease);
+}
+
+.lp3 .theme-switch label {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted-ink);
+  font: 600 12.5px / 1 var(--mono);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: color 0.3s;
+}
+
+.lp3 .theme-switch label:hover {
+  color: #f1eee6;
+}
+
+.lp3 .theme-switch label[data-on="true"] {
+  color: #12120f;
+}
+
+.lp3 .theme-switch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.lp3 .theme-switch label:has(input:focus-visible) {
+  outline: 3px solid var(--acid);
+  outline-offset: 2px;
+}
+
+.lp3 .theme-switch svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (max-width: 640px) {
+  .lp3 .foot-bar {
+    flex-direction: column-reverse;
+    align-items: flex-start;
+    gap: 18px;
+  }
+
+  .lp3 .theme-switch label {
+    height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp3 .theme-switch .thumb {
+    transition: none;
+  }
+}
+
+/* Na troca, o tema novo abre num círculo a partir do botão (theme-switch.tsx). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+html.vt-theme::view-transition-new(root) {
+  animation: vt-theme 0.85s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* A borda verde-limão que corre na frente do círculo. */
+.vt-ring {
+  position: fixed;
+  z-index: 2147483647;
+  border-radius: 50%;
+  pointer-events: none;
+  box-shadow:
+    0 0 0 3px #c9f135,
+    0 0 36px 10px rgba(201, 241, 53, 0.45);
+  view-transition-name: vt-ring;
+}
+
+::view-transition-group(vt-ring) {
+  animation: none;
+}
+
+::view-transition-old(vt-ring) {
+  display: none;
+}
+
+::view-transition-new(vt-ring) {
+  animation: vt-ring 0.85s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes vt-ring {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes vt-theme {
+  from {
+    clip-path: circle(0 at var(--vt-x) var(--vt-y));
+  }
+  to {
+    clip-path: circle(var(--vt-r) at var(--vt-x) var(--vt-y));
+  }
+}
+
+/* No cabeçalho: só os ícones, menor; no celular, o botão de sol e lua. */
+.lp3 .theme-switch.is-compact {
+  padding: 3px;
+  background: rgba(127, 127, 110, 0.16);
+  box-shadow: none;
+}
+
+.lp3 .theme-switch.is-compact .thumb {
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc((100% - 6px) / 3);
+}
+
+.lp3 .theme-switch.is-compact label {
+  width: 36px;
+  height: 38px;
+  padding: 0;
+  color: inherit;
+  opacity: 0.75;
+}
+
+.lp3 .theme-switch.is-compact label:hover,
+.lp3 .theme-switch.is-compact label[data-on="true"] {
+  opacity: 1;
+}
+
+.lp3 .theme-switch.is-compact label[data-on="true"] {
+  color: #12120f;
+}
+
+.lp3 .theme-flip {
+  display: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(127, 127, 110, 0.16);
+  color: inherit;
+  cursor: pointer;
+}
+
+.lp3 .theme-flip svg {
+  width: 20px;
+  height: 20px;
+}
+
+@media (max-width: 640px) {
+  .lp3 :is(.nav, .ent-top) .theme-switch.is-compact {
+    display: none;
+  }
+
+  .lp3 :is(.nav, .ent-top) .theme-flip {
+    display: grid;
+  }
+}

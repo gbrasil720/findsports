@@ -60,15 +60,17 @@ test('listar e revogar sessões: a revogada perde acesso em outro contexto', asy
   try {
     const otherPage = await other.newPage()
     await signIn(otherPage, user)
-    await otherPage.goto('/dashboard')
-    await expect(otherPage).toHaveURL(/\/dashboard$/)
+    await otherPage.goto('/dashboard/games')
+    await expect(otherPage).toHaveURL(/\/dashboard\/games$/)
 
     await openAccountSettings(page)
     const sessions = page
       .locator('section')
-      .filter({ has: page.getByRole('heading', { name: 'Acessos ativos' }) })
+      .filter({ has: page.getByRole('heading', { name: 'Sessões ativas' }) })
     await expect(sessions.getByRole('article')).toHaveCount(2)
-    await expect(sessions.getByText('Este dispositivo')).toHaveCount(1)
+    await expect(
+      sessions.getByText('Este navegador', { exact: true })
+    ).toHaveCount(1)
 
     await sessions
       .getByRole('button', { name: 'Encerrar', exact: true })
@@ -76,11 +78,11 @@ test('listar e revogar sessões: a revogada perde acesso em outro contexto', asy
     await expect(page.getByText('Acesso encerrado.')).toBeVisible()
     await expect(sessions.getByRole('article')).toHaveCount(1)
 
-    await otherPage.goto('/dashboard')
+    await otherPage.goto('/dashboard/games')
     await expect(otherPage).toHaveURL(/\/login\?callbackUrl=/)
     // Quem revogou continua dentro.
-    await page.goto('/dashboard')
-    await expect(page).toHaveURL(/\/dashboard$/)
+    await page.goto('/dashboard/games')
+    await expect(page).toHaveURL(/\/dashboard\/games$/)
   } finally {
     await other.close()
   }
@@ -139,7 +141,7 @@ test('bar com assinatura em curso: a confirmação avisa do encerramento e do re
   })
   expect(seeded.ok()).toBe(true)
   await signIn(page, user)
-  await page.goto('/admin#admin-configuracoes')
+  await page.goto('/admin/configuracoes')
 
   await page.getByRole('button', { name: 'Excluir minha conta' }).click()
   const dialog = page.getByRole('dialog', {
@@ -197,7 +199,7 @@ test('Stripe recusa encerrar a assinatura: a conta fica e o dono lê que pode te
     }
   })
   await signIn(page, user)
-  await page.goto('/admin#admin-configuracoes')
+  await page.goto('/admin/configuracoes')
 
   await page.getByRole('button', { name: 'Excluir minha conta' }).click()
   const dialog = page.getByRole('dialog', {
@@ -232,7 +234,7 @@ test('bar que cancelou exclui a conta, mesmo com o período pago no futuro (WEB-
     bar: { is_active: false }
   })
   await signIn(page, user)
-  await page.goto('/admin#admin-configuracoes')
+  await page.goto('/admin/configuracoes')
 
   await expect(
     page.getByRole('button', { name: 'Excluir minha conta' })

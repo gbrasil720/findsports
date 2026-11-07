@@ -6,9 +6,9 @@ import { createPub, type Plan } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
 
-// Visão geral (analytics comerciais) por plano: Starter vê só aberturas em
+// Desempenho (analytics comerciais) por plano: Starter vê só aberturas em
 // até 30 dias; Pro ganha telefone, WhatsApp e rota em até 365 dias; Elite tem
-// todo o histórico e a atividade diária.
+// todo o histórico. A atividade diária é de todos os planos (WEB-449).
 
 /** Bar do plano com uma abertura de perfil e um clique em cada canal, hoje. */
 async function openOverview(page: Page, plan: Plan) {
@@ -33,15 +33,17 @@ async function openOverview(page: Page, plan: Plan) {
     })
   }
   await signIn(page, pub.user)
-  await page.goto('/admin')
+  await page.goto('/admin/desempenho')
   return pub
 }
 
 const periods = (page: Page) =>
   page.getByRole('region', { name: 'Período das analytics' })
-const overview = (page: Page) =>
-  page.getByRole('region', { name: 'Visão geral' })
-const LOCKED = 'Exclusivo do plano superior'
+const overview = (page: Page) => page.locator('#painel-main')
+const channels = (page: Page) =>
+  page.getByRole('region', { name: 'Como te procuraram' })
+const daily = (page: Page) =>
+  page.getByRole('region', { name: 'Atividade diária' })
 
 test('Starter: 30 dias, só aberturas', async ({ page }) => {
   await openOverview(page, 'starter')
@@ -53,13 +55,21 @@ test('Starter: 30 dias, só aberturas', async ({ page }) => {
   for (const name of ['12 meses', 'Tudo']) {
     await expect(periods(page).getByRole('button', { name })).toHaveCount(0)
   }
-  await expect(overview(page)).toContainText('abriram 1 vez no total')
-  // Telefone, WhatsApp e rota: os três canais travados.
-  await expect(overview(page).getByText(LOCKED)).toHaveCount(3)
-  await expect(overview(page)).not.toContainText('Atividade diária')
+  await expect(overview(page)).toContainText('abriram 1 vez a página do bar')
+  // Telefone, WhatsApp e rota: os canais travados, com o caminho do plano.
+  await expect(channels(page)).toContainText(
+    'WhatsApp, rota e telefone, canal a canal, são do Pro e do Elite.'
+  )
+  // WEB-449: a atividade diária é de todos os planos.
+  await expect(
+    daily(page).getByRole('slider', { name: /Atividade diária/ })
+  ).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'Comparar jogos' })
+  ).toHaveCount(0)
 })
 
-test('Pro: 365 dias e os canais de contato, sem quebra diária', async ({
+test('Pro: 365 dias, os canais de contato e a atividade diária', async ({
   page
 }) => {
   await openOverview(page, 'pro')
@@ -71,12 +81,16 @@ test('Pro: 365 dias e os canais de contato, sem quebra diária', async ({
   await expect(periods(page).getByRole('button', { name: 'Tudo' })).toHaveCount(
     0
   )
-  await expect(overview(page).getByText(LOCKED)).toHaveCount(0)
-  await expect(overview(page)).toContainText('Telefone')
-  await expect(overview(page)).not.toContainText('Atividade diária')
+  await expect(channels(page)).toContainText('Telefone')
+  await expect(channels(page)).not.toContainText('são do Pro e do Elite')
+  await expect(
+    daily(page).getByRole('slider', { name: /Atividade diária/ })
+  ).toBeVisible()
+  await expect(daily(page)).not.toContainText('Elite')
   // WEB-251: um torcedor com três ações é uma pessoa interessada, não 300%.
-  await expect(overview(page)).toContainText('100.0%')
-  await expect(overview(page)).not.toContainText('300.0%')
+  const summary = page.getByRole('region', { name: 'Resumo do período' })
+  await expect(summary).toContainText('100%')
+  await expect(summary).not.toContainText('300%')
 })
 
 test('Elite: todo o histórico e a atividade diária', async ({ page }) => {
@@ -88,8 +102,13 @@ test('Elite: todo o histórico e a atividade diária', async ({ page }) => {
   await expect(
     periods(page).getByRole('button', { name: 'Tudo' })
   ).toBeVisible()
-  await expect(overview(page).getByText(LOCKED)).toHaveCount(0)
-  await expect(overview(page)).toContainText('Atividade diária')
+  await expect(channels(page)).toContainText('Telefone')
+  await expect(
+    daily(page).getByRole('slider', { name: /Atividade diária/ })
+  ).toBeVisible()
+  await expect(
+    page.getByRole('region', { name: 'Quem foi pela Onside' })
+  ).toContainText('marcaram que iam')
 })
 
 // WEB-344: card de plano e Desempenho contam a mesma história quando o plano
@@ -107,9 +126,10 @@ test('trial vencido: o Desempenho diz por que o plano em vigor é o Starter', as
   await signIn(page, pub.user)
   await page.goto('/admin')
 
-  await expect(page.locator('#admin-visao')).toContainText('Trial encerrado')
+  await expect(page.locator('#painel-main')).toContainText('Teste encerrado')
+  await page.goto('/admin/desempenho')
   await expect(overview(page)).toContainText(
-    'Plano: Starter • Trial do plano Elite encerrado'
+    'Plano Starter · Teste do plano Elite encerrado'
   )
 })
 
@@ -135,9 +155,9 @@ test('trial vencido e bar fora do ar: aviso de bar não visível e o caminho par
   await page.goto('/admin')
   await policy
 
-  const panel = page.locator('#admin-visao')
+  const panel = page.locator('#painel-main')
   await expect(panel).toContainText('Seu bar não está visível na plataforma')
-  await expect(panel).toContainText('Trial encerrado')
+  await expect(panel).toContainText('Teste encerrado')
   await expect(panel).not.toContainText(/restantes?/)
   await expect(
     panel.getByRole('link', { name: 'Regularizar assinatura' })
@@ -147,13 +167,13 @@ test('trial vencido e bar fora do ar: aviso de bar não visível e o caminho par
   await expect(plans).toHaveAttribute('href', '/plan?origin=admin')
   await plans.click()
   await expect(
-    page.getByRole('heading', { name: 'Continue no plano Elite.' })
+    page.getByRole('heading', { name: 'Seu teste do Elite acabou' })
   ).toBeVisible()
   await expect(
-    page.getByText('Contrate o plano para o bar voltar às buscas e ao mapa')
+    page.getByText('Contrate um plano para o bar voltar às buscas e ao mapa')
   ).toBeVisible()
   await expect(
-    page.getByRole('button', { name: 'Continuar com Elite' })
+    page.getByRole('button', { name: 'Contratar o Elite' }).first()
   ).toBeVisible()
 })
 
@@ -169,7 +189,7 @@ test('bar sem assinatura: "Sem plano" com o caminho para escolher um', async ({
   await page.goto('/admin')
   await policy
 
-  const panel = page.locator('#admin-visao')
+  const panel = page.locator('#painel-main')
   await expect(panel).toContainText('Sem plano')
   await expect(
     panel.getByRole('link', { name: 'Escolher um plano' })
@@ -180,6 +200,7 @@ test('bar sem assinatura: "Sem plano" com o caminho para escolher um', async ({
   await expect(panel).not.toContainText(/Plano Starter —|no plano Starter/)
   await expect(panel).not.toContainText(/restantes?/)
   // O Desempenho segue o card: não chama de Starter quem não tem plano.
-  await expect(panel).toContainText('Sem plano • Nenhuma assinatura ativa')
-  await expect(panel).not.toContainText('Plano: Starter')
+  await page.goto('/admin/desempenho')
+  await expect(panel).toContainText('Sem plano · Nenhuma assinatura ativa')
+  await expect(panel).not.toContainText('Plano Starter')
 })

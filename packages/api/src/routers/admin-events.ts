@@ -4,6 +4,7 @@ import {
   db,
   eq,
   inArray,
+  isNotNull,
   type SQL,
   sql
 } from '@findsports_oficial/db'
@@ -84,6 +85,7 @@ const isDuplicate = sql<boolean>`EXISTS (
   WHERE o.bar_id = ${event.barId}
     AND o.starts_at = ${event.startsAt}
     AND o.id <> ${event.id}
+    AND o.published_at IS NOT NULL
     AND (
       ${teamKey(sql`o.id`)} = ${teamKey(event.id)}
       OR lower(trim(o.participant_free_text)) = lower(trim(nullif(${event.participantFreeText}, '')))
@@ -101,6 +103,14 @@ const hasWarning = sql`(${isDuplicate} OR ${isFreeText})`
 /** O jogo que ainda não acabou, pelo fim derivado da ADR 0003. */
 const notEnded = sql`coalesce(${event.endsAt}, ${event.startsAt} + ${DEFAULT_EVENT_DURATION_INTERVAL}::interval) > now()`
 
+/**
+ * Rascunho (`published_at` nulo, WEB-436) fica fora de Jogos: a tela conserta
+ * o que o torcedor vê, e o rascunho ninguém vê. Pelo mesmo motivo ele não é
+ * duplicado de ninguém (`isDuplicate`): "apagar duplicado" no publicado
+ * deixaria só o rascunho. A ficha do bar mostra o rascunho, marcado.
+ */
+const published = isNotNull(event.publishedAt)
+
 // As colunas são `timestamp` em UTC; "hoje" é o dia em Brasília.
 const PERIOD: Record<'today' | 'week' | 'all', SQL | undefined> = {
   today: sql`${event.startsAt} < ((((now() AT TIME ZONE 'America/Sao_Paulo')::date + 1)::timestamp AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'UTC')`,
@@ -116,7 +126,10 @@ const title = gameTitle({
 
 type Executor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0]
 
-/** Trava o jogo e devolve o que o Grimório e as regras precisam dele. */
+/**
+ * Trava o jogo e devolve o que o Grimório e as regras precisam dele. Rascunho
+ * é recusado (WEB-459): fica fora da lista, e quem publica ou apaga é o bar.
+ */
 async function lockEvent(tx: Executor, eventId: string) {
   const [row] = await tx
     .select({
@@ -129,6 +142,7 @@ async function lockEvent(tx: Executor, eventId: string) {
       startsAt: event.startsAt,
       endsAt: event.endsAt,
       participantFreeText: event.participantFreeText,
+      publishedAt: event.publishedAt,
       duplicate: isDuplicate,
       freeText: isFreeText
     })
@@ -138,6 +152,12 @@ async function lockEvent(tx: Executor, eventId: string) {
     .for('update', { of: event })
   if (!row) {
     throw new TRPCError({ code: 'NOT_FOUND', message: 'Jogo não encontrado.' })
+  }
+  if (!row.publishedAt) {
+    throw new TRPCError({
+      code: 'PRECONDITION_FAILED',
+      message: 'Jogo em rascunho: só o bar publica ou apaga.'
+    })
   }
   return row
 }
@@ -185,6 +205,7 @@ export const adminEventsRouter = router({
     .query(async ({ input }) => {
       const pattern = input.search ? `%${escapeLike(input.search)}%` : null
       const base = and(
+        published,
         notEnded,
         PERIOD[input.period],
         pattern

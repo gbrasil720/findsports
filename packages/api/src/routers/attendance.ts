@@ -1,10 +1,5 @@
-import { and, db, eq } from '@findsports_oficial/db'
-import {
-  attendance,
-  attendanceReport
-} from '@findsports_oficial/db/schema/attendance'
-import { event } from '@findsports_oficial/db/schema/platform'
-import { TRPCError } from '@trpc/server'
+import { db } from '@findsports_oficial/db'
+import { recommendationEvent } from '@findsports_oficial/db/schema/recommendation'
 import { z } from 'zod'
 
 import { adminProcedure, fanProcedure, router } from '../index'
@@ -12,111 +7,77 @@ import {
   readAttendanceQuestions,
   readMyGames,
   readUnregisteredAlerts,
-  readUnvalidatedCodeAlerts
+  readUnvalidatedCodeAlerts,
+  readVisitedGames,
+  setAttendance
 } from '../lib/attendance'
-import { issueTicket, readTicket, retireTicket } from '../lib/attendance-ticket'
-import { getCurrentPlan } from '../lib/current-plan'
-
-/** A pergunta pós-jogo deste torcedor, se ainda estiver aberta. */
-async function openQuestion(userId: string, eventId: string) {
-  const [question] = await readAttendanceQuestions(userId, eventId)
-  if (!question) {
-    throw new TRPCError({
-      code: 'NOT_FOUND',
-      message: 'Não há pergunta aberta para este jogo.'
-    })
-  }
-  return question
-}
+import { checkIn } from '../lib/check-in'
+import { answerPostGame, undoPostGame } from '../lib/post-game'
 
 /**
  * "Vou assistir aqui" (WEB-127): o torcedor marca e desmarca presença num
- * jogo futuro. Vale para bar de qualquer plano (ADR 0003, "Recorte de
- * plano"); no bar Elite, marcar também emite o código do balcão, que dá a
- * oferta da casa (`attendance-ticket.ts`). Repetir a mesma marcação devolve
- * o mesmo estado.
+ * jogo futuro. A regra é de `setAttendance` (`lib/attendance.ts`).
  */
 export const attendanceRouter = router({
   set: fanProcedure
-    .input(z.object({ eventId: z.string().uuid(), attending: z.boolean() }))
+    .input(
+      z.object({
+        eventId: z.string().uuid(),
+        attending: z.boolean(),
+        // "Vou assistir" a partir do card de "Bares pra você" (WEB-425, 22e).
+        recommendationRunId: z.string().uuid().optional()
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
-      const now = new Date()
-      const game = await db.query.event.findFirst({
-        where: eq(event.id, input.eventId),
-        columns: { startsAt: true },
-        with: {
-          bar: {
-            columns: {
-              isActive: true,
-              houseOffer: true,
-              confirmsCodesLater: true
-            },
-            with: {
-              subscription: {
-                columns: { plan: true, status: true, currentPeriodEnd: true }
-              }
-            }
-          }
-        }
+      const { barId, ...marked } = await setAttendance({
+        userId,
+        eventId: input.eventId,
+        attending: input.attending
       })
-      if (!game?.bar.isActive) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Jogo não encontrado.'
-        })
+      if (input.attending && input.recommendationRunId) {
+        // Atribuição é telemetria: falhar aqui não desfaz a presença.
+        await db
+          .insert(recommendationEvent)
+          .values({
+            actorUserId: userId,
+            barId,
+            runId: input.recommendationRunId,
+            type: 'attend'
+          })
+          .onConflictDoNothing()
+          .catch(() => {})
       }
-      // Jogo encerrado vira histórico do sinal de interesse do bar: não muda.
-      if (game.startsAt <= now) {
-        throw new TRPCError({
-          code: 'PRECONDITION_FAILED',
-          message: 'Este jogo já começou.'
-        })
-      }
-
-      const ticket = await db.transaction(async (tx) => {
-        if (input.attending) {
-          await tx
-            .insert(attendance)
-            .values({ userId, eventId: input.eventId })
-            .onConflictDoUpdate({
-              target: [attendance.userId, attendance.eventId],
-              set: { source: 'manual' }
-            })
-          if (getCurrentPlan(game.bar.subscription ?? null, now) === 'elite') {
-            await issueTicket(tx, userId, input.eventId, game.bar.houseOffer)
-            return readTicket(tx, userId, input.eventId)
-          }
-        } else {
-          // O ingresso sai antes da presença: código validado recusa tudo.
-          await retireTicket(tx, userId, input.eventId)
-          await tx
-            .delete(attendance)
-            .where(
-              and(
-                eq(attendance.userId, userId),
-                eq(attendance.eventId, input.eventId)
-              )
-            )
-        }
-        return null
-      })
       // O código vem na resposta: a tela o mostra sem esperar o perfil recarregar.
-      return {
-        attending: input.attending,
-        code: ticket?.code ?? null,
-        offer: ticket?.offer ?? null,
-        // O diálogo do código fala com o garçom (WEB-412).
-        confirmsCodesLater: ticket ? game.bar.confirmsCodesLater : false
-      }
+      return marked
     }),
 
   /** "Meus jogos": onde o torcedor marcou que vai, com o código. */
   mine: fanProcedure.query(({ ctx }) => readMyGames(ctx.session.user.id)),
+  /** Os jogos com código validado: o "Já fui" de Seus bares. */
+  visits: fanProcedure.query(({ ctx }) =>
+    readVisitedGames(ctx.session.user.id)
+  ),
+
+  /**
+   * "Estou aqui" (WEB-408): check-in por localização durante o jogo. O
+   * cliente só manda a posição; distância e horário são conferidos em
+   * `checkIn`. O web não tem tela: quem chama é o app.
+   */
+  checkIn: fanProcedure
+    .input(
+      z.object({
+        eventId: z.string().uuid(),
+        latitude: z.number().min(-90).max(90),
+        longitude: z.number().min(-180).max(180)
+      })
+    )
+    .mutation(({ ctx, input }) => checkIn(ctx.session.user.id, input)),
 
   /**
    * Perguntas pós-jogo ainda sem resposta (WEB-128). Uma por jogo; a tela
-   * mostra uma de cada vez.
+   * mostra uma de cada vez. O mesmo que os itens com `presence` de
+   * `postGame.pending`, para o card do `/dashboard`.
    */
   pendingReports: fanProcedure.query(async ({ ctx }) =>
     (await readAttendanceQuestions(ctx.session.user.id)).filter(
@@ -124,11 +85,7 @@ export const attendanceRouter = router({
     )
   ),
 
-  /**
-   * Resposta do torcedor: se foi e, só quando a reserva confirmada tinha
-   * oferta congelada, se recebeu. Responder de novo dentro da janela troca a
-   * resposta. Não toca no registro do bar: as fontes ficam separadas.
-   */
+  /** Adaptador do card do `/dashboard`: `postGame.answer` com `attended`. */
   report: fanProcedure
     .input(
       z.object({
@@ -138,47 +95,21 @@ export const attendanceRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const userId = ctx.session.user.id
-      const question = await openQuestion(userId, input.eventId)
-      // Pergunta que não foi feita não tem resposta gravada.
-      const offerReceived =
-        question.offer !== null && input.attended
-          ? (input.offerReceived ?? null)
-          : null
-      await db
-        .insert(attendanceReport)
-        .values({
-          userId,
-          eventId: input.eventId,
-          attended: input.attended,
-          offerReceived
-        })
-        .onConflictDoUpdate({
-          target: [attendanceReport.userId, attendanceReport.eventId],
-          set: { attended: input.attended, offerReceived }
-        })
-      return { attended: input.attended, offerReceived }
+      const { attended, offerReceived } = await answerPostGame(
+        ctx.session.user.id,
+        input
+      )
+      return { attended, offerReceived }
     }),
 
-  /**
-   * "Desfazer" do aviso de confirmação (WEB-321): apaga a resposta do próprio
-   * torcedor e a pergunta volta a `pendingReports`. Vale enquanto `report`
-   * vale. Sem resposta gravada não há o que apagar, e não é erro. Nada é
-   * materializado a partir da resposta: o alerta interno conta na leitura.
-   */
+  /** Adaptador do "Desfazer" do card: `postGame.undo` com `presence`. */
   removeReport: fanProcedure
     .input(z.object({ eventId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      const userId = ctx.session.user.id
-      await openQuestion(userId, input.eventId)
-      await db
-        .delete(attendanceReport)
-        .where(
-          and(
-            eq(attendanceReport.userId, userId),
-            eq(attendanceReport.eventId, input.eventId)
-          )
-        )
+      await undoPostGame(ctx.session.user.id, {
+        eventId: input.eventId,
+        presence: true
+      })
       return { success: true }
     }),
 

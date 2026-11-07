@@ -64,13 +64,15 @@ test('plano menor: confirmação com o que o bar perde, portal só depois, e o r
 
   await signIn(page, user)
   await page.goto('/plan')
-  await expect(page.getByRole('radio', { name: /^Elite,/ })).toBeChecked()
-  await page.getByRole('radio', { name: /^Starter,/ }).check({ force: true })
-  await page.getByRole('button', { name: 'Continuar com Starter' }).click()
+  // Plano menor é botão vazado no próprio cartão, e avisa antes o que perde.
+  const toStarter = page
+    .getByRole('button', { name: 'Mudar para o Starter' })
+    .first()
+  await toStarter.click()
 
   const dialog = page.getByRole('dialog')
   await expect(
-    dialog.getByRole('heading', { name: 'Trocar para o Starter?' })
+    dialog.getByRole('heading', { name: /^O que o Bar E2E .+ perde$/ })
   ).toBeVisible()
   // A lista do catálogo, com os números deste bar.
   await expect(dialog).toContainText('Jogos ilimitados na agenda')
@@ -88,12 +90,12 @@ test('plano menor: confirmação com o que o bar perde, portal só depois, e o r
   expect(await portalSessions()).toHaveLength(0)
 
   // Desistir fecha a confirmação e não abre nada no Stripe.
-  await dialog.getByRole('button', { name: 'Manter o Elite' }).click()
+  await dialog.getByRole('button', { name: 'Ficar no Elite' }).click()
   await expect(dialog).toHaveCount(0)
   expect(await portalSessions()).toHaveLength(0)
 
-  await page.getByRole('button', { name: 'Continuar com Starter' }).click()
-  await dialog.getByRole('button', { name: 'Continuar com Starter' }).click()
+  await toStarter.click()
+  await dialog.getByRole('button', { name: 'Mudar para o Starter' }).click()
   await page.waitForURL(`${STUB_URL}/stripe/portal/**`)
   const [portal] = await portalSessions()
   const returnUrl = `${BASE_URL}/admin/billing?planFrom=elite&planTo=starter`
@@ -106,9 +108,7 @@ test('plano menor: confirmação com o que o bar perde, portal só depois, e o r
   })
 
   // Voltou do portal sem confirmar: o plano é o mesmo, e nada de aviso.
-  const currentPlan = page.locator('section').filter({
-    has: page.getByRole('heading', { name: 'Plano atual' })
-  })
+  const currentPlan = page.getByRole('region', { name: 'Seu plano' })
   await page.goto(returnUrl)
   await expect(currentPlan).toContainText('Elite')
   await expect(page.getByText(/Plano alterado para/)).toHaveCount(0)
@@ -137,7 +137,7 @@ test('plano menor: confirmação com o que o bar perde, portal só depois, e o r
   await expect(page.getByText(/Plano alterado para/)).toHaveCount(0)
 })
 
-test('teste grátis: plano menor também confirma, sem prometer crédito, e segue para o checkout', async ({
+test('teste grátis: plano menor também confirma, sem prometer crédito, e depois contrata o plano testado', async ({
   page
 }) => {
   const { user } = await createPub({
@@ -151,20 +151,24 @@ test('teste grátis: plano menor também confirma, sem prometer crédito, e segu
   await page.goto('/plan')
 
   await expect(
-    page.getByRole('heading', { name: /^Você está no trial do Elite até / })
+    page.getByRole('heading', { name: 'Você está testando o Elite' })
   ).toBeVisible()
-  await page.getByRole('radio', { name: /^Pro,/ }).check({ force: true })
-  await page.getByRole('button', { name: 'Contratar Pro' }).click()
+  // No teste, contratar outro plano é testá-lo antes; o menor confirma.
+  await page.getByRole('button', { name: 'Testar o Pro grátis' }).click()
 
   const dialog = page.getByRole('dialog')
   await expect(
-    dialog.getByRole('heading', { name: 'Trocar para o Pro?' })
+    dialog.getByRole('heading', { name: /^O que o Bar E2E .+ perde$/ })
   ).toBeVisible()
   await expect(dialog).toContainText('Lista de quem vai assistir, jogo a jogo')
   await expect(dialog).not.toContainText('Jogos ilimitados na agenda')
   // Em teste grátis não há o que creditar (WEB-350).
   await expect(page.getByText(CREDIT_NOTICE)).toHaveCount(0)
 
-  await dialog.getByRole('button', { name: 'Contratar Pro' }).click()
+  await dialog.getByRole('button', { name: 'Testar o Pro grátis' }).click()
+  await expect(
+    page.getByRole('heading', { name: 'Você está testando o Pro' })
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Contratar o Pro' }).click()
   await page.waitForURL(`${STUB_URL}/stripe/checkout/**`)
 })

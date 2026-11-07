@@ -98,6 +98,17 @@ describe('rascunho do onboarding de bar', () => {
       )
     ).toBeNull()
   })
+  it('guarda o plano escolhido no passo "Plano", e o que não é plano sai', () => {
+    const ler = (draft: object) =>
+      parsePubOnboardingDraft(
+        JSON.stringify({ draft, email: 'dona', expiresAt: 9_000 }),
+        'dona',
+        2_000
+      )
+    expect(ler({ ...DRAFT, plan: 'starter' })?.plan).toBe('starter')
+    expect(ler({ ...DRAFT, plan: 'vitalicio' })).toEqual(DRAFT)
+    expect(ler(DRAFT)?.plan).toBeUndefined()
+  })
 })
 
 describe('recusa do cadastro do bar', () => {

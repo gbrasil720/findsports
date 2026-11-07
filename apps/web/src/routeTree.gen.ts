@@ -25,15 +25,26 @@ import { Route as authSignupRouteImport } from './routes/(auth)/signup'
 import { Route as authTwoFactorRouteImport } from './routes/(auth)/two-factor'
 import { Route as authVerifyEmailRouteImport } from './routes/(auth)/verify-email'
 import { Route as dashboardDashboardRouteImport } from './routes/(dashboard)/dashboard'
-import { Route as AdminBillingRouteImport } from './routes/admin_.billing'
-import { Route as AdminValidateRouteImport } from './routes/admin_.validate'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminBillingRouteImport } from './routes/admin.billing'
+import { Route as AdminConfiguracoesRouteImport } from './routes/admin.configuracoes'
+import { Route as AdminDesempenhoRouteImport } from './routes/admin.desempenho'
+import { Route as AdminJogosRouteImport } from './routes/admin.jogos'
+import { Route as AdminMaisRouteImport } from './routes/admin.mais'
+import { Route as AdminMeuEspacoRouteImport } from './routes/admin.meu-espaco'
+import { Route as AdminQuemVaiRouteImport } from './routes/admin.quem-vai'
+import { Route as AdminValidateRouteImport } from './routes/admin.validate'
+import { Route as BarSlugRouteImport } from './routes/bar.$slug'
 import { Route as GuiaIndexRouteImport } from './routes/guia.index'
 import { Route as GuiaSlugRouteImport } from './routes/guia.$slug'
 import { Route as HoudiniAppRouteImport } from './routes/houdini/_app'
 import { Route as HoudiniEntrarRouteImport } from './routes/houdini/entrar'
 import { Route as PlanConfirmedRouteImport } from './routes/plan_.confirmed'
 import { Route as dashboardDashboardGamesRouteImport } from './routes/(dashboard)/dashboard_.games'
+import { Route as dashboardDashboardPraVoceRouteImport } from './routes/(dashboard)/dashboard_.pra-voce'
+import { Route as dashboardDashboardPreferenciasRouteImport } from './routes/(dashboard)/dashboard_.preferencias'
 import { Route as dashboardDashboardProfileRouteImport } from './routes/(dashboard)/dashboard_.profile'
+import { Route as dashboardDashboardSeusBaresRouteImport } from './routes/(dashboard)/dashboard_.seus-bares'
 import { Route as onboardingOnboardingFanRouteImport } from './routes/(onboarding)/onboarding.fan'
 import { Route as onboardingOnboardingPubRouteImport } from './routes/(onboarding)/onboarding.pub'
 import { Route as pubPubPubIdRouteImport } from './routes/(pub)/pub.$pubId'
@@ -51,6 +62,10 @@ import { Route as HoudiniAppFeiticosRouteImport } from './routes/houdini/_app/fe
 import { Route as HoudiniAppGrimorioRouteImport } from './routes/houdini/_app/grimorio'
 import { Route as HoudiniAppJogosRouteImport } from './routes/houdini/_app/jogos'
 import { Route as HoudiniAppPessoasRouteImport } from './routes/houdini/_app/pessoas'
+import { Route as HoudiniAppRevisaoRouteImport } from './routes/houdini/_app/revisao'
+import { Route as dashboardDashboardAvaliarEventIdRouteImport } from './routes/(dashboard)/dashboard_.avaliar.$eventId'
+import { Route as dashboardDashboardCodigoEventIdRouteImport } from './routes/(dashboard)/dashboard_.codigo.$eventId'
+import { Route as onboardingOnboardingPubNoArRouteImport } from './routes/(onboarding)/onboarding.pub_.no-ar'
 import { Route as HoudiniAppBaresBarIdRouteImport } from './routes/houdini/_app/bares_.$barId'
 import { Route as HoudiniAppPessoasUserIdRouteImport } from './routes/houdini/_app/pessoas_.$userId'
 
@@ -134,14 +149,54 @@ const dashboardDashboardRoute = dashboardDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminBillingRoute = AdminBillingRouteImport.update({
-  id: '/admin_/billing',
-  path: '/admin/billing',
-  getParentRoute: () => rootRouteImport,
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminConfiguracoesRoute = AdminConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDesempenhoRoute = AdminDesempenhoRouteImport.update({
+  id: '/desempenho',
+  path: '/desempenho',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminJogosRoute = AdminJogosRouteImport.update({
+  id: '/jogos',
+  path: '/jogos',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminMaisRoute = AdminMaisRouteImport.update({
+  id: '/mais',
+  path: '/mais',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminMeuEspacoRoute = AdminMeuEspacoRouteImport.update({
+  id: '/meu-espaco',
+  path: '/meu-espaco',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminQuemVaiRoute = AdminQuemVaiRouteImport.update({
+  id: '/quem-vai',
+  path: '/quem-vai',
+  getParentRoute: () => AdminRoute,
 } as any)
 const AdminValidateRoute = AdminValidateRouteImport.update({
-  id: '/admin_/validate',
-  path: '/admin/validate',
+  id: '/validate',
+  path: '/validate',
+  getParentRoute: () => AdminRoute,
+} as any)
+const BarSlugRoute = BarSlugRouteImport.update({
+  id: '/bar/$slug',
+  path: '/bar/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GuiaIndexRoute = GuiaIndexRouteImport.update({
@@ -173,10 +228,28 @@ const dashboardDashboardGamesRoute = dashboardDashboardGamesRouteImport.update({
   path: '/dashboard/games',
   getParentRoute: () => rootRouteImport,
 } as any)
+const dashboardDashboardPraVoceRoute =
+  dashboardDashboardPraVoceRouteImport.update({
+    id: '/(dashboard)/dashboard_/pra-voce',
+    path: '/dashboard/pra-voce',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const dashboardDashboardPreferenciasRoute =
+  dashboardDashboardPreferenciasRouteImport.update({
+    id: '/(dashboard)/dashboard_/preferencias',
+    path: '/dashboard/preferencias',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const dashboardDashboardProfileRoute =
   dashboardDashboardProfileRouteImport.update({
     id: '/(dashboard)/dashboard_/profile',
     path: '/dashboard/profile',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const dashboardDashboardSeusBaresRoute =
+  dashboardDashboardSeusBaresRouteImport.update({
+    id: '/(dashboard)/dashboard_/seus-bares',
+    path: '/dashboard/seus-bares',
     getParentRoute: () => rootRouteImport,
   } as any)
 const onboardingOnboardingFanRoute = onboardingOnboardingFanRouteImport.update({
@@ -264,6 +337,29 @@ const HoudiniAppPessoasRoute = HoudiniAppPessoasRouteImport.update({
   path: '/pessoas',
   getParentRoute: () => HoudiniAppRoute,
 } as any)
+const HoudiniAppRevisaoRoute = HoudiniAppRevisaoRouteImport.update({
+  id: '/revisao',
+  path: '/revisao',
+  getParentRoute: () => HoudiniAppRoute,
+} as any)
+const dashboardDashboardAvaliarEventIdRoute =
+  dashboardDashboardAvaliarEventIdRouteImport.update({
+    id: '/(dashboard)/dashboard_/avaliar/$eventId',
+    path: '/dashboard/avaliar/$eventId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const dashboardDashboardCodigoEventIdRoute =
+  dashboardDashboardCodigoEventIdRouteImport.update({
+    id: '/(dashboard)/dashboard_/codigo/$eventId',
+    path: '/dashboard/codigo/$eventId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const onboardingOnboardingPubNoArRoute =
+  onboardingOnboardingPubNoArRouteImport.update({
+    id: '/(onboarding)/onboarding/pub_/no-ar',
+    path: '/onboarding/pub/no-ar',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const HoudiniAppBaresBarIdRoute = HoudiniAppBaresBarIdRouteImport.update({
   id: '/bares_/$barId',
   path: '/bares/$barId',
@@ -278,7 +374,7 @@ const HoudiniAppPessoasUserIdRoute = HoudiniAppPessoasUserIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/app': typeof AppRoute
   '/houdini': typeof HoudiniRouteWithChildren
   '/plan': typeof PlanRoute
@@ -293,13 +389,24 @@ export interface FileRoutesByFullPath {
   '/verify-email': typeof authVerifyEmailRoute
   '/dashboard': typeof dashboardDashboardRoute
   '/admin/billing': typeof AdminBillingRoute
+  '/admin/configuracoes': typeof AdminConfiguracoesRoute
+  '/admin/desempenho': typeof AdminDesempenhoRoute
+  '/admin/jogos': typeof AdminJogosRoute
+  '/admin/mais': typeof AdminMaisRoute
+  '/admin/meu-espaco': typeof AdminMeuEspacoRoute
+  '/admin/quem-vai': typeof AdminQuemVaiRoute
   '/admin/validate': typeof AdminValidateRoute
+  '/bar/$slug': typeof BarSlugRoute
   '/guia/$slug': typeof GuiaSlugRoute
   '/houdini/entrar': typeof HoudiniEntrarRoute
   '/plan/confirmed': typeof PlanConfirmedRoute
+  '/admin/': typeof AdminIndexRoute
   '/guia/': typeof GuiaIndexRoute
   '/dashboard/games': typeof dashboardDashboardGamesRoute
+  '/dashboard/pra-voce': typeof dashboardDashboardPraVoceRoute
+  '/dashboard/preferencias': typeof dashboardDashboardPreferenciasRoute
   '/dashboard/profile': typeof dashboardDashboardProfileRoute
+  '/dashboard/seus-bares': typeof dashboardDashboardSeusBaresRoute
   '/onboarding/fan': typeof onboardingOnboardingFanRoute
   '/onboarding/pub': typeof onboardingOnboardingPubRoute
   '/pub/$pubId': typeof pubPubPubIdRoute
@@ -316,14 +423,17 @@ export interface FileRoutesByFullPath {
   '/houdini/grimorio': typeof HoudiniAppGrimorioRoute
   '/houdini/jogos': typeof HoudiniAppJogosRoute
   '/houdini/pessoas': typeof HoudiniAppPessoasRoute
+  '/houdini/revisao': typeof HoudiniAppRevisaoRoute
   '/houdini/': typeof HoudiniAppIndexRoute
+  '/dashboard/avaliar/$eventId': typeof dashboardDashboardAvaliarEventIdRoute
+  '/dashboard/codigo/$eventId': typeof dashboardDashboardCodigoEventIdRoute
+  '/onboarding/pub/no-ar': typeof onboardingOnboardingPubNoArRoute
   '/houdini/bares/$barId': typeof HoudiniAppBaresBarIdRoute
   '/houdini/pessoas/$userId': typeof HoudiniAppPessoasUserIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
-  '/admin': typeof AdminRoute
   '/app': typeof AppRoute
   '/houdini': typeof HoudiniAppIndexRoute
   '/plan': typeof PlanRoute
@@ -338,13 +448,24 @@ export interface FileRoutesByTo {
   '/verify-email': typeof authVerifyEmailRoute
   '/dashboard': typeof dashboardDashboardRoute
   '/admin/billing': typeof AdminBillingRoute
+  '/admin/configuracoes': typeof AdminConfiguracoesRoute
+  '/admin/desempenho': typeof AdminDesempenhoRoute
+  '/admin/jogos': typeof AdminJogosRoute
+  '/admin/mais': typeof AdminMaisRoute
+  '/admin/meu-espaco': typeof AdminMeuEspacoRoute
+  '/admin/quem-vai': typeof AdminQuemVaiRoute
   '/admin/validate': typeof AdminValidateRoute
+  '/bar/$slug': typeof BarSlugRoute
   '/guia/$slug': typeof GuiaSlugRoute
   '/houdini/entrar': typeof HoudiniEntrarRoute
   '/plan/confirmed': typeof PlanConfirmedRoute
+  '/admin': typeof AdminIndexRoute
   '/guia': typeof GuiaIndexRoute
   '/dashboard/games': typeof dashboardDashboardGamesRoute
+  '/dashboard/pra-voce': typeof dashboardDashboardPraVoceRoute
+  '/dashboard/preferencias': typeof dashboardDashboardPreferenciasRoute
   '/dashboard/profile': typeof dashboardDashboardProfileRoute
+  '/dashboard/seus-bares': typeof dashboardDashboardSeusBaresRoute
   '/onboarding/fan': typeof onboardingOnboardingFanRoute
   '/onboarding/pub': typeof onboardingOnboardingPubRoute
   '/pub/$pubId': typeof pubPubPubIdRoute
@@ -361,6 +482,10 @@ export interface FileRoutesByTo {
   '/houdini/grimorio': typeof HoudiniAppGrimorioRoute
   '/houdini/jogos': typeof HoudiniAppJogosRoute
   '/houdini/pessoas': typeof HoudiniAppPessoasRoute
+  '/houdini/revisao': typeof HoudiniAppRevisaoRoute
+  '/dashboard/avaliar/$eventId': typeof dashboardDashboardAvaliarEventIdRoute
+  '/dashboard/codigo/$eventId': typeof dashboardDashboardCodigoEventIdRoute
+  '/onboarding/pub/no-ar': typeof onboardingOnboardingPubNoArRoute
   '/houdini/bares/$barId': typeof HoudiniAppBaresBarIdRoute
   '/houdini/pessoas/$userId': typeof HoudiniAppPessoasUserIdRoute
 }
@@ -368,7 +493,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/app': typeof AppRoute
   '/houdini': typeof HoudiniRouteWithChildren
   '/plan': typeof PlanRoute
@@ -382,15 +507,26 @@ export interface FileRoutesById {
   '/(auth)/two-factor': typeof authTwoFactorRoute
   '/(auth)/verify-email': typeof authVerifyEmailRoute
   '/(dashboard)/dashboard': typeof dashboardDashboardRoute
-  '/admin_/billing': typeof AdminBillingRoute
-  '/admin_/validate': typeof AdminValidateRoute
+  '/admin/billing': typeof AdminBillingRoute
+  '/admin/configuracoes': typeof AdminConfiguracoesRoute
+  '/admin/desempenho': typeof AdminDesempenhoRoute
+  '/admin/jogos': typeof AdminJogosRoute
+  '/admin/mais': typeof AdminMaisRoute
+  '/admin/meu-espaco': typeof AdminMeuEspacoRoute
+  '/admin/quem-vai': typeof AdminQuemVaiRoute
+  '/admin/validate': typeof AdminValidateRoute
+  '/bar/$slug': typeof BarSlugRoute
   '/guia/$slug': typeof GuiaSlugRoute
   '/houdini/_app': typeof HoudiniAppRouteWithChildren
   '/houdini/entrar': typeof HoudiniEntrarRoute
   '/plan_/confirmed': typeof PlanConfirmedRoute
+  '/admin/': typeof AdminIndexRoute
   '/guia/': typeof GuiaIndexRoute
   '/(dashboard)/dashboard_/games': typeof dashboardDashboardGamesRoute
+  '/(dashboard)/dashboard_/pra-voce': typeof dashboardDashboardPraVoceRoute
+  '/(dashboard)/dashboard_/preferencias': typeof dashboardDashboardPreferenciasRoute
   '/(dashboard)/dashboard_/profile': typeof dashboardDashboardProfileRoute
+  '/(dashboard)/dashboard_/seus-bares': typeof dashboardDashboardSeusBaresRoute
   '/(onboarding)/onboarding/fan': typeof onboardingOnboardingFanRoute
   '/(onboarding)/onboarding/pub': typeof onboardingOnboardingPubRoute
   '/(pub)/pub/$pubId': typeof pubPubPubIdRoute
@@ -407,7 +543,11 @@ export interface FileRoutesById {
   '/houdini/_app/grimorio': typeof HoudiniAppGrimorioRoute
   '/houdini/_app/jogos': typeof HoudiniAppJogosRoute
   '/houdini/_app/pessoas': typeof HoudiniAppPessoasRoute
+  '/houdini/_app/revisao': typeof HoudiniAppRevisaoRoute
   '/houdini/_app/': typeof HoudiniAppIndexRoute
+  '/(dashboard)/dashboard_/avaliar/$eventId': typeof dashboardDashboardAvaliarEventIdRoute
+  '/(dashboard)/dashboard_/codigo/$eventId': typeof dashboardDashboardCodigoEventIdRoute
+  '/(onboarding)/onboarding/pub_/no-ar': typeof onboardingOnboardingPubNoArRoute
   '/houdini/_app/bares_/$barId': typeof HoudiniAppBaresBarIdRoute
   '/houdini/_app/pessoas_/$userId': typeof HoudiniAppPessoasUserIdRoute
 }
@@ -431,13 +571,24 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/dashboard'
     | '/admin/billing'
+    | '/admin/configuracoes'
+    | '/admin/desempenho'
+    | '/admin/jogos'
+    | '/admin/mais'
+    | '/admin/meu-espaco'
+    | '/admin/quem-vai'
     | '/admin/validate'
+    | '/bar/$slug'
     | '/guia/$slug'
     | '/houdini/entrar'
     | '/plan/confirmed'
+    | '/admin/'
     | '/guia/'
     | '/dashboard/games'
+    | '/dashboard/pra-voce'
+    | '/dashboard/preferencias'
     | '/dashboard/profile'
+    | '/dashboard/seus-bares'
     | '/onboarding/fan'
     | '/onboarding/pub'
     | '/pub/$pubId'
@@ -454,14 +605,17 @@ export interface FileRouteTypes {
     | '/houdini/grimorio'
     | '/houdini/jogos'
     | '/houdini/pessoas'
+    | '/houdini/revisao'
     | '/houdini/'
+    | '/dashboard/avaliar/$eventId'
+    | '/dashboard/codigo/$eventId'
+    | '/onboarding/pub/no-ar'
     | '/houdini/bares/$barId'
     | '/houdini/pessoas/$userId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/$'
-    | '/admin'
     | '/app'
     | '/houdini'
     | '/plan'
@@ -476,13 +630,24 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/dashboard'
     | '/admin/billing'
+    | '/admin/configuracoes'
+    | '/admin/desempenho'
+    | '/admin/jogos'
+    | '/admin/mais'
+    | '/admin/meu-espaco'
+    | '/admin/quem-vai'
     | '/admin/validate'
+    | '/bar/$slug'
     | '/guia/$slug'
     | '/houdini/entrar'
     | '/plan/confirmed'
+    | '/admin'
     | '/guia'
     | '/dashboard/games'
+    | '/dashboard/pra-voce'
+    | '/dashboard/preferencias'
     | '/dashboard/profile'
+    | '/dashboard/seus-bares'
     | '/onboarding/fan'
     | '/onboarding/pub'
     | '/pub/$pubId'
@@ -499,6 +664,10 @@ export interface FileRouteTypes {
     | '/houdini/grimorio'
     | '/houdini/jogos'
     | '/houdini/pessoas'
+    | '/houdini/revisao'
+    | '/dashboard/avaliar/$eventId'
+    | '/dashboard/codigo/$eventId'
+    | '/onboarding/pub/no-ar'
     | '/houdini/bares/$barId'
     | '/houdini/pessoas/$userId'
   id:
@@ -519,15 +688,26 @@ export interface FileRouteTypes {
     | '/(auth)/two-factor'
     | '/(auth)/verify-email'
     | '/(dashboard)/dashboard'
-    | '/admin_/billing'
-    | '/admin_/validate'
+    | '/admin/billing'
+    | '/admin/configuracoes'
+    | '/admin/desempenho'
+    | '/admin/jogos'
+    | '/admin/mais'
+    | '/admin/meu-espaco'
+    | '/admin/quem-vai'
+    | '/admin/validate'
+    | '/bar/$slug'
     | '/guia/$slug'
     | '/houdini/_app'
     | '/houdini/entrar'
     | '/plan_/confirmed'
+    | '/admin/'
     | '/guia/'
     | '/(dashboard)/dashboard_/games'
+    | '/(dashboard)/dashboard_/pra-voce'
+    | '/(dashboard)/dashboard_/preferencias'
     | '/(dashboard)/dashboard_/profile'
+    | '/(dashboard)/dashboard_/seus-bares'
     | '/(onboarding)/onboarding/fan'
     | '/(onboarding)/onboarding/pub'
     | '/(pub)/pub/$pubId'
@@ -544,7 +724,11 @@ export interface FileRouteTypes {
     | '/houdini/_app/grimorio'
     | '/houdini/_app/jogos'
     | '/houdini/_app/pessoas'
+    | '/houdini/_app/revisao'
     | '/houdini/_app/'
+    | '/(dashboard)/dashboard_/avaliar/$eventId'
+    | '/(dashboard)/dashboard_/codigo/$eventId'
+    | '/(onboarding)/onboarding/pub_/no-ar'
     | '/houdini/_app/bares_/$barId'
     | '/houdini/_app/pessoas_/$userId'
   fileRoutesById: FileRoutesById
@@ -552,7 +736,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SplatRoute: typeof SplatRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   AppRoute: typeof AppRoute
   HoudiniRoute: typeof HoudiniRouteWithChildren
   PlanRoute: typeof PlanRoute
@@ -566,13 +750,15 @@ export interface RootRouteChildren {
   authTwoFactorRoute: typeof authTwoFactorRoute
   authVerifyEmailRoute: typeof authVerifyEmailRoute
   dashboardDashboardRoute: typeof dashboardDashboardRoute
-  AdminBillingRoute: typeof AdminBillingRoute
-  AdminValidateRoute: typeof AdminValidateRoute
+  BarSlugRoute: typeof BarSlugRoute
   GuiaSlugRoute: typeof GuiaSlugRoute
   PlanConfirmedRoute: typeof PlanConfirmedRoute
   GuiaIndexRoute: typeof GuiaIndexRoute
   dashboardDashboardGamesRoute: typeof dashboardDashboardGamesRoute
+  dashboardDashboardPraVoceRoute: typeof dashboardDashboardPraVoceRoute
+  dashboardDashboardPreferenciasRoute: typeof dashboardDashboardPreferenciasRoute
   dashboardDashboardProfileRoute: typeof dashboardDashboardProfileRoute
+  dashboardDashboardSeusBaresRoute: typeof dashboardDashboardSeusBaresRoute
   onboardingOnboardingFanRoute: typeof onboardingOnboardingFanRoute
   onboardingOnboardingPubRoute: typeof onboardingOnboardingPubRoute
   pubPubPubIdRoute: typeof pubPubPubIdRoute
@@ -581,6 +767,9 @@ export interface RootRouteChildren {
   ApiBarPhotoRoute: typeof ApiBarPhotoRoute
   ApiTrpcSplatRoute: typeof ApiTrpcSplatRoute
   ApiUserAvatarRoute: typeof ApiUserAvatarRoute
+  dashboardDashboardAvaliarEventIdRoute: typeof dashboardDashboardAvaliarEventIdRoute
+  dashboardDashboardCodigoEventIdRoute: typeof dashboardDashboardCodigoEventIdRoute
+  onboardingOnboardingPubNoArRoute: typeof onboardingOnboardingPubNoArRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -697,18 +886,74 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof dashboardDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin_/billing': {
-      id: '/admin_/billing'
-      path: '/admin/billing'
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/billing': {
+      id: '/admin/billing'
+      path: '/billing'
       fullPath: '/admin/billing'
       preLoaderRoute: typeof AdminBillingRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AdminRoute
     }
-    '/admin_/validate': {
-      id: '/admin_/validate'
-      path: '/admin/validate'
+    '/admin/configuracoes': {
+      id: '/admin/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/admin/configuracoes'
+      preLoaderRoute: typeof AdminConfiguracoesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/desempenho': {
+      id: '/admin/desempenho'
+      path: '/desempenho'
+      fullPath: '/admin/desempenho'
+      preLoaderRoute: typeof AdminDesempenhoRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/jogos': {
+      id: '/admin/jogos'
+      path: '/jogos'
+      fullPath: '/admin/jogos'
+      preLoaderRoute: typeof AdminJogosRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/mais': {
+      id: '/admin/mais'
+      path: '/mais'
+      fullPath: '/admin/mais'
+      preLoaderRoute: typeof AdminMaisRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/meu-espaco': {
+      id: '/admin/meu-espaco'
+      path: '/meu-espaco'
+      fullPath: '/admin/meu-espaco'
+      preLoaderRoute: typeof AdminMeuEspacoRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/quem-vai': {
+      id: '/admin/quem-vai'
+      path: '/quem-vai'
+      fullPath: '/admin/quem-vai'
+      preLoaderRoute: typeof AdminQuemVaiRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/validate': {
+      id: '/admin/validate'
+      path: '/validate'
       fullPath: '/admin/validate'
       preLoaderRoute: typeof AdminValidateRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/bar/$slug': {
+      id: '/bar/$slug'
+      path: '/bar/$slug'
+      fullPath: '/bar/$slug'
+      preLoaderRoute: typeof BarSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/guia/': {
@@ -753,11 +998,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof dashboardDashboardGamesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/(dashboard)/dashboard_/pra-voce': {
+      id: '/(dashboard)/dashboard_/pra-voce'
+      path: '/dashboard/pra-voce'
+      fullPath: '/dashboard/pra-voce'
+      preLoaderRoute: typeof dashboardDashboardPraVoceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(dashboard)/dashboard_/preferencias': {
+      id: '/(dashboard)/dashboard_/preferencias'
+      path: '/dashboard/preferencias'
+      fullPath: '/dashboard/preferencias'
+      preLoaderRoute: typeof dashboardDashboardPreferenciasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/(dashboard)/dashboard_/profile': {
       id: '/(dashboard)/dashboard_/profile'
       path: '/dashboard/profile'
       fullPath: '/dashboard/profile'
       preLoaderRoute: typeof dashboardDashboardProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(dashboard)/dashboard_/seus-bares': {
+      id: '/(dashboard)/dashboard_/seus-bares'
+      path: '/dashboard/seus-bares'
+      fullPath: '/dashboard/seus-bares'
+      preLoaderRoute: typeof dashboardDashboardSeusBaresRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(onboarding)/onboarding/fan': {
@@ -879,6 +1145,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HoudiniAppPessoasRouteImport
       parentRoute: typeof HoudiniAppRoute
     }
+    '/houdini/_app/revisao': {
+      id: '/houdini/_app/revisao'
+      path: '/revisao'
+      fullPath: '/houdini/revisao'
+      preLoaderRoute: typeof HoudiniAppRevisaoRouteImport
+      parentRoute: typeof HoudiniAppRoute
+    }
+    '/(dashboard)/dashboard_/avaliar/$eventId': {
+      id: '/(dashboard)/dashboard_/avaliar/$eventId'
+      path: '/dashboard/avaliar/$eventId'
+      fullPath: '/dashboard/avaliar/$eventId'
+      preLoaderRoute: typeof dashboardDashboardAvaliarEventIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(dashboard)/dashboard_/codigo/$eventId': {
+      id: '/(dashboard)/dashboard_/codigo/$eventId'
+      path: '/dashboard/codigo/$eventId'
+      fullPath: '/dashboard/codigo/$eventId'
+      preLoaderRoute: typeof dashboardDashboardCodigoEventIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(onboarding)/onboarding/pub_/no-ar': {
+      id: '/(onboarding)/onboarding/pub_/no-ar'
+      path: '/onboarding/pub/no-ar'
+      fullPath: '/onboarding/pub/no-ar'
+      preLoaderRoute: typeof onboardingOnboardingPubNoArRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/houdini/_app/bares_/$barId': {
       id: '/houdini/_app/bares_/$barId'
       path: '/bares/$barId'
@@ -896,6 +1190,32 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdminRouteChildren {
+  AdminBillingRoute: typeof AdminBillingRoute
+  AdminConfiguracoesRoute: typeof AdminConfiguracoesRoute
+  AdminDesempenhoRoute: typeof AdminDesempenhoRoute
+  AdminJogosRoute: typeof AdminJogosRoute
+  AdminMaisRoute: typeof AdminMaisRoute
+  AdminMeuEspacoRoute: typeof AdminMeuEspacoRoute
+  AdminQuemVaiRoute: typeof AdminQuemVaiRoute
+  AdminValidateRoute: typeof AdminValidateRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminBillingRoute: AdminBillingRoute,
+  AdminConfiguracoesRoute: AdminConfiguracoesRoute,
+  AdminDesempenhoRoute: AdminDesempenhoRoute,
+  AdminJogosRoute: AdminJogosRoute,
+  AdminMaisRoute: AdminMaisRoute,
+  AdminMeuEspacoRoute: AdminMeuEspacoRoute,
+  AdminQuemVaiRoute: AdminQuemVaiRoute,
+  AdminValidateRoute: AdminValidateRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 interface HoudiniAppRouteChildren {
   HoudiniAppAmpulhetaRoute: typeof HoudiniAppAmpulhetaRoute
   HoudiniAppBaresRoute: typeof HoudiniAppBaresRoute
@@ -905,6 +1225,7 @@ interface HoudiniAppRouteChildren {
   HoudiniAppGrimorioRoute: typeof HoudiniAppGrimorioRoute
   HoudiniAppJogosRoute: typeof HoudiniAppJogosRoute
   HoudiniAppPessoasRoute: typeof HoudiniAppPessoasRoute
+  HoudiniAppRevisaoRoute: typeof HoudiniAppRevisaoRoute
   HoudiniAppIndexRoute: typeof HoudiniAppIndexRoute
   HoudiniAppBaresBarIdRoute: typeof HoudiniAppBaresBarIdRoute
   HoudiniAppPessoasUserIdRoute: typeof HoudiniAppPessoasUserIdRoute
@@ -919,6 +1240,7 @@ const HoudiniAppRouteChildren: HoudiniAppRouteChildren = {
   HoudiniAppGrimorioRoute: HoudiniAppGrimorioRoute,
   HoudiniAppJogosRoute: HoudiniAppJogosRoute,
   HoudiniAppPessoasRoute: HoudiniAppPessoasRoute,
+  HoudiniAppRevisaoRoute: HoudiniAppRevisaoRoute,
   HoudiniAppIndexRoute: HoudiniAppIndexRoute,
   HoudiniAppBaresBarIdRoute: HoudiniAppBaresBarIdRoute,
   HoudiniAppPessoasUserIdRoute: HoudiniAppPessoasUserIdRoute,
@@ -944,7 +1266,7 @@ const HoudiniRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   AppRoute: AppRoute,
   HoudiniRoute: HoudiniRouteWithChildren,
   PlanRoute: PlanRoute,
@@ -958,13 +1280,15 @@ const rootRouteChildren: RootRouteChildren = {
   authTwoFactorRoute: authTwoFactorRoute,
   authVerifyEmailRoute: authVerifyEmailRoute,
   dashboardDashboardRoute: dashboardDashboardRoute,
-  AdminBillingRoute: AdminBillingRoute,
-  AdminValidateRoute: AdminValidateRoute,
+  BarSlugRoute: BarSlugRoute,
   GuiaSlugRoute: GuiaSlugRoute,
   PlanConfirmedRoute: PlanConfirmedRoute,
   GuiaIndexRoute: GuiaIndexRoute,
   dashboardDashboardGamesRoute: dashboardDashboardGamesRoute,
+  dashboardDashboardPraVoceRoute: dashboardDashboardPraVoceRoute,
+  dashboardDashboardPreferenciasRoute: dashboardDashboardPreferenciasRoute,
   dashboardDashboardProfileRoute: dashboardDashboardProfileRoute,
+  dashboardDashboardSeusBaresRoute: dashboardDashboardSeusBaresRoute,
   onboardingOnboardingFanRoute: onboardingOnboardingFanRoute,
   onboardingOnboardingPubRoute: onboardingOnboardingPubRoute,
   pubPubPubIdRoute: pubPubPubIdRoute,
@@ -973,6 +1297,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiBarPhotoRoute: ApiBarPhotoRoute,
   ApiTrpcSplatRoute: ApiTrpcSplatRoute,
   ApiUserAvatarRoute: ApiUserAvatarRoute,
+  dashboardDashboardAvaliarEventIdRoute: dashboardDashboardAvaliarEventIdRoute,
+  dashboardDashboardCodigoEventIdRoute: dashboardDashboardCodigoEventIdRoute,
+  onboardingOnboardingPubNoArRoute: onboardingOnboardingPubNoArRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

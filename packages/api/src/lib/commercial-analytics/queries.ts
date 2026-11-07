@@ -55,6 +55,7 @@ type DailyRow = {
   directions_opened: number
   phone_clicked: number
   whatsapp_opened: number
+  high_intent: number
   classic_exposure: number
   classic_click: number
 }
@@ -234,6 +235,7 @@ export async function getMyAnalyticsOverview(
         COUNT(*) FILTER (WHERE type = 'directions_opened') AS directions_opened,
         COUNT(*) FILTER (WHERE type = 'phone_clicked')     AS phone_clicked,
         COUNT(*) FILTER (WHERE type = 'whatsapp_opened')   AS whatsapp_opened,
+        COUNT(*) FILTER (WHERE type IN ${HIGH_INTENT})     AS high_intent,
         COUNT(*) FILTER (WHERE type = 'classic_exposure')  AS classic_exposure,
         COUNT(*) FILTER (WHERE type = 'classic_click')      AS classic_click
       FROM eventos
@@ -328,6 +330,8 @@ export async function getMyAnalyticsOverview(
         directions_opened: dia.directions_opened,
         phone_clicked: dia.phone_clicked,
         whatsapp_opened: dia.whatsapp_opened,
+        high_intent:
+          dia.directions_opened + dia.phone_clicked + dia.whatsapp_opened,
         classic_exposure: dia.classic_exposures,
         classic_click: dia.classic_clicks
       })
@@ -338,9 +342,9 @@ export async function getMyAnalyticsOverview(
   const highIntentActionsPrev =
     directionsOpenedPrev + phoneClickedPrev + whatsappOpenedPrev
   const dailyProfileViews = fillGaps(diario, 'profile_view', from, to)
-  const dailyDirectionsOpened = fillGaps(diario, 'directions_opened', from, to)
-  const dailyPhoneClicked = fillGaps(diario, 'phone_clicked', from, to)
-  const dailyWhatsappOpened = fillGaps(diario, 'whatsapp_opened', from, to)
+  // WhatsApp, rota e telefone somados por dia, como o `highIntentActions` do
+  // período: o plano sem os canais vê o total, nunca a divisão (WEB-449).
+  const dailyHighIntentActions = fillGaps(diario, 'high_intent', from, to)
 
   return {
     uniqueVisitors,
@@ -374,9 +378,7 @@ export async function getMyAnalyticsOverview(
     classicExposuresChange: pctChange(classicExposures, classicExposuresPrev),
     classicClicksChange: pctChange(classicClicks, classicClicksPrev),
     dailyProfileViews,
-    dailyDirectionsOpened,
-    dailyPhoneClicked,
-    dailyWhatsappOpened,
+    dailyHighIntentActions,
     from: getCommercialDay(from),
     to: getCommercialDay(to),
     limitations
@@ -487,6 +489,7 @@ async function getEventAnalyticsSnapshots(
     LEFT JOIN bruto ON bruto.event_id = e.id
     LEFT JOIN podado ON podado.event_id = e.id
     WHERE e.bar_id = ${barId}
+      AND e.published_at IS NOT NULL
       AND e.starts_at >= ${from}
       AND e.starts_at <= ${to}
     ORDER BY e.starts_at DESC
@@ -592,4 +595,73 @@ export async function getMyEventAnalytics(
   }
 
   return response
+}
+
+/**
+ * Os números do bar num período `[start, end)` (WEB-441), lidos pelo resumo
+ * da semana por e-mail:
+ * - `going`: presenças marcadas ("Vou assistir aqui") nos jogos do bar, pela
+ *   data do jogo;
+ * - `validatedCodes`: códigos validados no balcão e não desfeitos. O lançado
+ *   depois pela comanda (`late`, WEB-412) conta na data do jogo, como a visita;
+ * - `classicsOnTop`: clássicos em que o bar apareceu no topo da busca;
+ * - `profileViews`: aberturas do perfil (a "Aberturas" do Desempenho).
+ */
+export async function getBarNumbers(
+  barId: string,
+  start: Date,
+  end: Date
+): Promise<{
+  going: number
+  validatedCodes: number
+  classicsOnTop: number
+  profileViews: number
+}> {
+  const from = sql`${start.toISOString()}::timestamptz`
+  const to = sql`${end.toISOString()}::timestamptz`
+  // `starts_at` é `timestamp` guardando UTC: vira instante antes de comparar.
+  const startsAt = sql`(e.starts_at AT TIME ZONE 'UTC')`
+
+  const result = await db.execute(sql`
+    SELECT
+      (
+        SELECT COUNT(*)
+        FROM attendance a
+        JOIN event e ON e.id = a.event_id
+        WHERE e.bar_id = ${barId}
+          AND ${startsAt} >= ${from} AND ${startsAt} < ${to}
+      ) AS going,
+      (
+        SELECT COUNT(*)
+        FROM reservation_code_use u
+        JOIN reservation_code rc ON rc.id = u.code_id
+        JOIN reservation r ON r.id = rc.reservation_id
+        JOIN event e ON e.id = r.event_id
+        WHERE e.bar_id = ${barId}
+          AND u.undone_at IS NULL
+          AND CASE WHEN u.late THEN ${startsAt} ELSE u.used_at END >= ${from}
+          AND CASE WHEN u.late THEN ${startsAt} ELSE u.used_at END < ${to}
+      ) AS validated_codes,
+      (
+        SELECT COUNT(DISTINCT source_event_id)
+        FROM bar_commercial_event
+        WHERE bar_id = ${barId}
+          AND type = 'classic_exposure'
+          AND occurred_at >= ${from} AND occurred_at < ${to}
+      ) AS classics_on_top,
+      (
+        SELECT COUNT(*)
+        FROM bar_commercial_event
+        WHERE bar_id = ${barId}
+          AND type = 'profile_view'
+          AND occurred_at >= ${from} AND occurred_at < ${to}
+      ) AS profile_views
+  `)
+  const row = result.rows[0] as Record<string, string | number>
+  return {
+    going: Number(row.going),
+    validatedCodes: Number(row.validated_codes),
+    classicsOnTop: Number(row.classics_on_top),
+    profileViews: Number(row.profile_views)
+  }
 }

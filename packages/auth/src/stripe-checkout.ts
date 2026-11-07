@@ -1,7 +1,12 @@
 import { db, eq } from '@findsports_oficial/db'
 import { bar } from '@findsports_oficial/db/schema/platform'
 import type Stripe from 'stripe'
-import { customerNamesFor, logBillingError } from './stripe-sync'
+import {
+  customerDetailsFor,
+  type InvoiceDetails,
+  logBillingError,
+  syncCustomerCnpj
+} from './stripe-sync'
 
 type TrialSubscription = {
   status: string
@@ -129,12 +134,13 @@ type BarForCustomer = {
   neighborhood: string
   city: string
   uf: string | null
-}
+} & Partial<InvoiceDetails>
 
 /**
  * O que o cliente do Stripe recebe do cadastro antes do checkout (WEB-328).
  *
- * Nome e empresa são sempre regravados: a fonte é o cadastro. O endereço só
+ * Nome e empresa são sempre regravados: a fonte é o cadastro, com a razão
+ * social e o e-mail para notas do bar quando ele os informou (WEB-444). O endereço só
  * entra quando o cliente ainda não tem um — o dono pode ter posto outro
  * endereço de cobrança no checkout ou no portal, e essa edição fica. Sem CEP:
  * o cadastro não tem. Bar anterior à UF (WEB-270) vai sem estado.
@@ -145,7 +151,7 @@ export function customerPrefillFor(
   ownerBar: BarForCustomer
 ): Stripe.CustomerUpdateParams {
   return {
-    ...customerNamesFor(ownerName, ownerBar.name),
+    ...customerDetailsFor(ownerName, ownerBar),
     ...(customer.address
       ? {}
       : {
@@ -180,12 +186,36 @@ export async function prefillCustomer(
       customerPrefillFor(customer, ownerName, ownerBar),
       QUICK_REQUEST
     )
+    // Só com CNPJ informado: sem ele, o que o dono digitar no checkout fica.
+    if (ownerBar.cnpj) {
+      await syncCustomerCnpj(client, customerId, ownerBar.cnpj, QUICK_REQUEST)
+    }
   } catch (error) {
     logBillingError('stripe_customer_prefill_failed', {
       customerId,
       message: error instanceof Error ? error.message : String(error)
     })
   }
+}
+
+/**
+ * "Dados da nota" salvos no painel (WEB-444): o cliente recebe tudo de uma
+ * vez, com o CNPJ apagado no Stripe quando o dono o apagou aqui e o e-mail de
+ * acesso de volta quando ele apagou o e-mail para notas. Ao contrário do
+ * checkout, o erro do Stripe sobe: quem chama decide o que a tela diz.
+ */
+export async function pushInvoiceDetails(
+  client: Pick<Stripe, 'customers'>,
+  customerId: string,
+  owner: { name: string; email: string },
+  ownerBar: { name: string } & InvoiceDetails
+) {
+  await client.customers.update(
+    customerId,
+    customerDetailsFor(owner.name, ownerBar, owner.email),
+    QUICK_REQUEST
+  )
+  await syncCustomerCnpj(client, customerId, ownerBar.cnpj, QUICK_REQUEST)
 }
 
 /**

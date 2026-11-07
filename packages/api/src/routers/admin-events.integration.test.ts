@@ -149,6 +149,31 @@ integrationTest('avisos: duplicado e texto livre', async () => {
 })
 
 integrationTest(
+  'rascunho fica fora de Jogos e não faz o publicado virar duplicado',
+  async () => {
+    const ctx = await seed()
+    try {
+      const live = await ctx.addGame({}, [ctx.fla, ctx.vasco])
+      await ctx.addGame({ publishedAt: null }, [ctx.fla, ctx.vasco])
+      await ctx.addGame({
+        publishedAt: null,
+        startsAt: new Date(ctx.startsAt.getTime() + 3_600_000),
+        participantFreeText: 'Fla × Vasco'
+      })
+
+      const result = await ctx.admin.adminEvents.list({
+        period: 'all',
+        search: ctx.token
+      })
+      expect(result.games.map((g) => [g.id, g.warnings])).toEqual([[live, []]])
+      expect(result).toMatchObject({ total: 1, warned: 0, matched: 1 })
+    } finally {
+      await ctx.cleanup()
+    }
+  }
+)
+
+integrationTest(
   'conserto: o duplicado sem reserva sai, o com reserva fica',
   async () => {
     const ctx = await seed()

@@ -8,17 +8,17 @@ test('landing carrega para visitante', async ({ page }) => {
   await page.goto('/')
   await expect(page).toHaveTitle(/Onside/)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-    '“Onde vai passar o jogo?” finalmente tem uma (ótima) resposta.'
+    /“Onde vai passar o jogo\?”\s+finalmente tem uma\s+\(ótima\)\s+resposta\./
   )
 
-  // Landing v2 (WEB-333): a chamada principal leva ao cadastro, e a lista de
-  // espera saiu da página.
+  // Landing v3 (WEB-501), com a copy do site: a chamada principal leva ao
+  // Explorar, que abre sem conta. A lista de espera do app só volta com o
+  // WEB-511.
   const main = page.getByRole('main')
   await expect(
-    main.getByRole('link', { name: 'Entrar / Criar conta' }).first()
-  ).toHaveAttribute('href', '/signup')
-  await expect(main.locator('form')).toHaveCount(0)
-  await expect(page.locator('#lista, #bar-form')).toHaveCount(0)
+    main.getByRole('link', { name: 'Ver jogos de hoje' }).first()
+  ).toHaveAttribute('href', '/dashboard')
+  await expect(page.locator('#email, #lista, #bar-form')).toHaveCount(0)
 })
 
 test('torcedor semeado entra pelo /login e chega no /dashboard', async ({
@@ -29,7 +29,7 @@ test('torcedor semeado entra pelo /login e chega no /dashboard', async ({
   await page.goto('/login')
   await page.getByLabel('E-mail').fill(fan.email)
   await page.getByLabel('Senha', { exact: true }).fill(fan.password)
-  await page.getByRole('button', { name: 'Acessar minha conta' }).click()
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click()
 
   await expect(page).toHaveURL(/\/dashboard$/)
 })

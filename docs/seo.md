@@ -75,7 +75,10 @@ das páginas legais.
 | `/`, `/termos`, `/privacidade` | sim | `index, follow`, canônica, no sitemap |
 | `/guia`, `/guia/:slug` | sim | `index, follow`, canônica, no sitemap e no `llms.txt`; slug desconhecido é 404 |
 | `/login`, `/signup`, recuperação de senha, `/verify-email`, `/two-factor` | não | `noindex` |
-| `/pub/:id` | não | `noindex`: a página do bar exige login (ver `sitemap[.xml].ts`). Id que não existe, sem sessão: 404 |
+| `/bar/:slug` (bar no ar) | sim | `index, follow`, canônica, no sitemap; título e descrição mudam com a grade do dia |
+| `/bar/:slug` (bar fora do ar) | não | 200 com `noindex`; o dono logado vê a prévia, também `noindex` |
+| `/bar/:slug` sem bar (prefixo inválido, inexistente ou repetido) | não | 404 de verdade |
+| `/pub/:id` | — | 301 para `/bar/:slug`; id que não existe é 404 |
 | rota que não existe (`/x`, `/termos/x`, `/x.txt`) | não | status 404 de verdade, `noindex, nofollow` |
 | `/llms.txt` | — | texto para assistentes de IA; não é página |
 | `/dashboard`, `/admin`, `/plan`, `/onboarding`, `/app`, `/houdini`, `/api` | não | `Disallow` no `robots.txt` (redirecionam para o login ou dão 404) |
@@ -85,9 +88,34 @@ Fora de `www.onside.sh` (o `workers.dev` do `onside-web`, o preview por PR e
 (`applyHostIndexing`, em `apps/web/src/start.ts`): a mesma home em dois hosts seria conteúdo
 duplicado.
 
-Não existe página pública de bar nem de jogo: a do bar exige login, e jogo não
-tem página própria (cada bar cadastra o seu `event`). Por isso o sitemap tem só
-a home e as páginas legais.
+Jogo não tem página própria (cada bar cadastra o seu `event`): o que é
+indexável dele sai na página do bar, no título, na descrição e no `Event` do
+JSON-LD. O sitemap tem a home, as páginas legais, o guia e um `/bar/:slug` por
+bar no ar (`listLiveBarPaths`), com cache de um dia.
+
+## Página do bar (`/bar/:slug`)
+
+Aberta sem login desde 05/11/2026. O `head` sai de `bar-page-model.ts`
+(`components/bar-page/`), com o `now` do loader, o mesmo no servidor e na
+hidratação:
+
+- **`<title>`**: com jogo hoje (dia de Brasília, ainda não acabado),
+  `Onde assistir <jogo> hoje: <bar>, <bairro> — Onside`; sem,
+  `<bar>, <bairro>: jogos no telão — Onside`.
+- **Descrição**: os jogos de hoje (ou o próximo), o que a casa tem e o bairro;
+  "Aberto até" sai primeiro quando não cabe em 158 caracteres.
+- **Cartão do WhatsApp** (`og:title`/`og:description`): `<bar> · <bairro>` e
+  "Ao vivo agora: X no telão. N pessoas vão." (contagem só acima do piso).
+  `og:image` é a capa aprovada (`bar.photo_url`); sem capa fica a da marca, da
+  raiz.
+- **JSON-LD**: `BarOrPub` (endereço, coordenadas, telefone, horário) e um
+  `Event` por jogo que não acabou, com o bar como `location`.
+  `aggregateRating` (porcentagem de "voltaria", `bestRating` 100) só quando a
+  página mostra a nota, isto é, acima do piso público. A prévia do dono não
+  leva JSON-LD.
+- **H1** = nome do bar e bairro; o jogo vai no `h2` do cartão.
+- Nada da sessão entra no HTML do servidor: presença, código, amigos e salvo
+  vêm de `pubs.pageViewer` depois da hidratação.
 
 As páginas saem renderizadas do servidor (TanStack Start no Worker): o
 crawler recebe o texto da landing sem rodar JavaScript.

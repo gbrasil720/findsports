@@ -22,8 +22,8 @@ test('cadastro de torcedor valida a senha e cai em /verify-email', async ({
   await page.goto('/signup')
 
   // Alterna o papel e volta: só um fica marcado.
-  const fan = page.getByRole('button', { name: 'Torcedor' })
-  const pub = page.getByRole('button', { name: 'Dono de Bar' })
+  const fan = page.getByRole('button', { name: 'Sou torcedor' })
+  const pub = page.getByRole('button', { name: 'Tenho um bar' })
   await pub.click()
   await expect(pub).toHaveAttribute('aria-pressed', 'true')
   await expect(fan).toHaveAttribute('aria-pressed', 'false')
@@ -33,7 +33,7 @@ test('cadastro de torcedor valida a senha e cai em /verify-email', async ({
   // Sem o aceite dos Termos e da Política o botão não envia. O aceite vem
   // antes dos campos: marcado depois de um campo inválido, o blur mostra o
   // erro, o formulário desce no meio do clique e o clique se perde.
-  const enviar = page.getByRole('button', { name: 'Entrar no time' })
+  const enviar = page.getByRole('button', { name: /^Criar conta/ })
   await expect(enviar).toBeDisabled()
   await acceptTerms(page)
   await expect(enviar).toBeEnabled()
@@ -91,7 +91,7 @@ test('cadastro de bar cai em /onboarding/pub sem sessão', async ({ page }) => {
   const email = uniqueEmail('signup-pub')
   await page.goto('/signup')
 
-  await page.getByRole('button', { name: 'Dono de Bar' }).click()
+  await page.getByRole('button', { name: 'Tenho um bar' }).click()
   await submitSignup(page, { name: 'Dono E2E', email })
 
   await expect(page).toHaveURL(/\/onboarding\/pub$/)
@@ -106,16 +106,15 @@ test('cadastro de bar cai em /onboarding/pub sem sessão', async ({ page }) => {
 })
 
 // WEB-232: é para onde a landing manda o bar.
-test('/signup?role=pub abre com "Dono de Bar" marcado', async ({ page }) => {
+test('/signup?role=pub abre com "Tenho um bar" marcado', async ({ page }) => {
   await page.goto('/signup?role=pub')
 
   await expect(
-    page.getByRole('button', { name: 'Dono de Bar' })
+    page.getByRole('button', { name: 'Tenho um bar' })
   ).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByRole('button', { name: 'Torcedor' })).toHaveAttribute(
-    'aria-pressed',
-    'false'
-  )
+  await expect(
+    page.getByRole('button', { name: 'Sou torcedor' })
+  ).toHaveAttribute('aria-pressed', 'false')
   await submitSignup(page, {
     name: 'Dono pela Landing',
     email: uniqueEmail('signup-role')
@@ -125,7 +124,7 @@ test('/signup?role=pub abre com "Dono de Bar" marcado', async ({ page }) => {
 
 // WEB-211: o destino vai no link do e-mail, que abre noutra aba — sem o
 // `sessionStorage` da aba do cadastro — e atravessa o onboarding do torcedor.
-test('cadastro pelo diálogo do bar volta para o bar depois da confirmação', async ({
+test('cadastro pela folha do bar volta para o bar depois da confirmação', async ({
   page,
   context
 }) => {
@@ -133,8 +132,11 @@ test('cadastro pelo diálogo do bar volta para o bar depois da confirmação', a
   const email = uniqueEmail('signup-bar')
 
   await page.goto(`/pub/${barId}`)
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click()
   await page.getByRole('link', { name: 'Criar conta grátis' }).click()
   await expect(page).toHaveURL(/\/signup\?callbackUrl=/)
+  // O link da folha é uma navegação inteira: espera a página nova hidratar.
+  await expect(page.locator('html[data-hydrated]')).toHaveCount(1)
   await submitSignup(page, { name: 'Torcedor do Bar', email })
   await expect(page).toHaveURL(/\/verify-email\?callbackUrl=/)
 
@@ -152,7 +154,9 @@ test('cadastro pelo diálogo do bar volta para o bar depois da confirmação', a
   await button('Continuar').click()
   await button('Salvar e encontrar bares').click()
 
-  await expect(tab).toHaveURL(new RegExp(`/pub/${barId}$`))
+  await expect(tab).toHaveURL(
+    new RegExp(`/bar/[a-z0-9-]+-${barId.slice(0, 8)}$`)
+  )
 })
 
 test('login com e-mail não verificado é recusado e reenvia a verificação', async ({
@@ -236,20 +240,19 @@ test.describe('logout', () => {
     await page.getByRole('menuitem', { name: 'Sair' }).click()
 
     await expect(page).toHaveURL(/\/$/)
-    await page.goto('/dashboard')
+    await page.goto('/dashboard/games')
     await expect(page).toHaveURL(/\/login\?callbackUrl=/)
   })
 
   test('pelas configurações da conta', async ({ page }) => {
     const user = await createUser()
     await signIn(page, user)
-    await page.goto('/dashboard/profile')
-    await page.getByRole('tab', { name: 'Configurações' }).click()
+    await page.goto('/dashboard/preferencias?aba=conta')
 
     await page.getByRole('button', { name: 'Sair da conta' }).click()
 
-    await expect(page).toHaveURL(/\/login$/)
-    await page.goto('/dashboard')
+    await expect(page).toHaveURL(/\/$/)
+    await page.goto('/dashboard/games')
     await expect(page).toHaveURL(/\/login\?callbackUrl=/)
   })
 })

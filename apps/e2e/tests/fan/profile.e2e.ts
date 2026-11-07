@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test'
 import { BASE_URL, MEDIA_PUBLIC_ORIGIN } from '../../env'
-import { insert, query } from '../../fixtures/db'
+import { query } from '../../fixtures/db'
 import {
   createEvent,
   days,
@@ -13,12 +13,11 @@ import {
 import { interceptMediaUploads } from '../../fixtures/media'
 import { expect, test } from '../../fixtures/test'
 
-// `/dashboard/profile` (WEB-178). Cada teste usa um torcedor próprio: todos
-// mudam a conta ou as preferências.
+// Perfil (`/dashboard/profile`) e Preferências (`/dashboard/preferencias`) do
+// web do torcedor (WEB-178, WEB-501). Cada teste usa um torcedor próprio:
+// todos mudam a conta ou as preferências.
 
-const tab = (page: Page, name: string) => page.getByRole('tab', { name })
-
-/** Seção da aba Configurações pelo título. */
+/** Seção das Preferências pelo título. */
 const section = (page: Page, heading: string) =>
   page.locator('section', {
     has: page.getByRole('heading', { name: heading })
@@ -35,36 +34,18 @@ const userRow = (id: string) =>
     [id]
   ).then(([row]) => row)
 
-test('as três abas: visão geral, favoritos e configurações', async ({
-  page
-}) => {
-  const spot = uniqueSpot()
-  const pub = await pubAt(spot)
-  const fan = await signInFanAt(page, spot)
-  await insert('user_favorite_bars', { user_id: fan.id, bar_id: pub.barId })
+test('perfil mostra nível, conquistas e os times', async ({ page }) => {
+  const fan = await signInFanAt(page, uniqueSpot())
+  await setPreferences(fan.id, { sports: ['futebol'], teams: ['arsenal'] })
 
   await page.goto('/dashboard/profile')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(fan.name)
-  await expect(tab(page, 'Visão geral')).toHaveAttribute(
-    'aria-selected',
-    'true'
-  )
-  await expect(page.getByText('Sugestões para você')).toBeVisible()
-
-  await tab(page, 'Favoritos').click()
-  await expect(tab(page, 'Favoritos')).toHaveAttribute('aria-selected', 'true')
-  await expect(
-    page.getByRole('button', { name: `Remover ${pub.name} dos favoritos` })
-  ).toBeVisible()
-
-  await tab(page, 'Configurações').click()
-  await expect(
-    page.getByRole('heading', { name: 'Raio de busca' })
-  ).toBeVisible()
-  await expect(page.getByText('Sugestões para você')).toHaveCount(0)
+  await expect(page.getByText(/· nível 1$/)).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Conquistas' })).toBeVisible()
+  await expect(section(page, 'Seus times')).toContainText('Arsenal')
 })
 
-test('sugestão dispensada some e volta depois de recomeçar', async ({
+test('"Agora não" numa sugestão e recomeçar pelas Preferências', async ({
   page
 }) => {
   const spot = uniqueSpot()
@@ -73,80 +54,59 @@ test('sugestão dispensada some e volta depois de recomeçar', async ({
   const fan = await signInFanAt(page, spot)
   await setPreferences(fan.id, { sports: ['futebol'] })
 
-  await page.goto('/dashboard/profile')
-  const suggestion = page.getByRole('article').filter({ hasText: pub.name })
-  await expect(suggestion).toBeVisible()
-  await suggestion.getByRole('button', { name: 'Não tenho interesse' }).click()
-  await expect(suggestion).toHaveCount(0)
-  await expect(page.getByText('Novas sugestões em breve')).toBeVisible()
+  await page.goto('/dashboard/pra-voce')
+  const linha = page.getByRole('listitem').filter({
+    has: page.getByRole('heading', { name: pub.name })
+  })
+  await linha.getByRole('button', { name: 'Agora não' }).click()
+  await expect(linha.getByText('Fica para outro dia')).toBeVisible()
+  await linha.getByRole('button', { name: 'Desfazer' }).click()
+  await expect(linha.getByRole('button', { name: 'Salvar' })).toBeVisible()
 
-  await tab(page, 'Configurações').click()
-  page.once('dialog', (dialog) => dialog.accept())
-  await page.getByRole('button', { name: 'Recomeçar minhas sugestões' }).click()
-  await expect(
-    page.getByText(
-      'Sugestões recomeçadas. Seus dados do perfil foram preservados.'
-    )
-  ).toBeVisible()
-
-  await tab(page, 'Visão geral').click()
-  await expect(suggestion).toBeVisible()
+  await page.goto('/dashboard/preferencias')
+  page.once('dialog', (dialog) => void dialog.accept())
+  await section(page, 'Sugestões')
+    .getByRole('button', { name: 'Recomeçar' })
+    .click()
+  await expect(page.getByText('Sugestões recomeçadas')).toBeVisible()
 })
 
 test('edita nome, esportes, raio, cidade e times', async ({ page }) => {
   const fan = await signInFanAt(page, uniqueSpot())
   await setPreferences(fan.id, { sports: ['futebol'] })
-  const newName = `Torcedor ${fan.id.slice(0, 6)}`
+  const newName = `Torcedor ${Date.now()}`
 
-  await page.goto('/dashboard/profile')
-
-  // Nome
-  await page.getByRole('button', { name: 'Editar nome' }).click()
-  await page.getByLabel('Nome de exibição').fill(newName)
-  await page.getByRole('button', { name: 'Salvar nome' }).click()
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(newName)
+  await page.goto('/dashboard/preferencias?aba=conta')
+  await page.getByRole('button', { name: 'Editar' }).first().click()
+  await page.getByLabel('Nome', { exact: true }).fill(newName)
+  await page.getByRole('button', { name: 'Salvar' }).click()
   await expect.poll(async () => (await userRow(fan.id))?.name).toBe(newName)
 
-  await tab(page, 'Configurações').click()
-
-  // Esportes
-  const sports = section(page, 'Esportes favoritos')
-  await sports.getByRole('button', { name: 'Editar' }).click()
+  await page.goto('/dashboard/preferencias')
+  const sports = section(page, 'Esportes')
   await sports.getByRole('button', { name: 'Basquete', exact: true }).click()
-  await sports.getByRole('button', { name: 'Salvar' }).click()
-  await expect(sports.getByText('Basquete', { exact: true })).toBeVisible()
-  await expect(sports.getByText('Futebol', { exact: true })).toBeVisible()
-  await expect(sports.getByRole('button', { name: 'Salvar' })).toHaveCount(0)
+  await expect(
+    sports.getByRole('button', { name: 'Basquete', exact: true })
+  ).toHaveAttribute('aria-pressed', 'true')
 
-  // Raio
-  const radius = section(page, 'Raio de busca')
-  // Qualquer km até 50, não só a escala antiga.
-  await radius.getByRole('slider', { name: 'Distância' }).fill('27')
-  await expect(radius.getByText('27 km', { exact: true })).toBeVisible()
+  await section(page, 'Até onde você topa ir')
+    .getByRole('slider', { name: 'Raio em km' })
+    .fill('27')
   await expect
     .poll(async () => (await userRow(fan.id))?.search_radius_km)
     .toBe(27)
 
-  // Cidade (WEB-319): busca sem acento, e escolher na lista já salva.
-  const city = section(page, 'Sua cidade')
+  const city = section(page, 'Até onde você topa ir')
   await city.getByRole('combobox', { name: 'Cidade' }).fill('sao jose dos camp')
   await city.getByRole('option', { name: /^São José dos Campos\s*SP$/ }).click()
+  await city.getByRole('button', { name: 'Salvar cidade' }).click()
   await expect(page.getByText('Cidade salva.')).toBeVisible()
-  await expect(city.getByRole('combobox', { name: 'Cidade' })).toHaveValue(
-    'São José dos Campos, SP'
-  )
   await expect
     .poll(async () => (await userRow(fan.id))?.search_city_name)
     .toBe('São José dos Campos')
 
-  // Times
-  const teams = section(page, 'Quem você acompanha')
-  await expect(teams.getByText('Ninguém escolhido ainda')).toBeVisible()
-  await teams.getByRole('button', { name: 'Editar' }).click()
+  const teams = section(page, 'Seus times')
   await teams.getByRole('button', { name: 'Arsenal', exact: true }).click()
-  await teams.getByRole('button', { name: 'Salvar' }).click()
-  await expect(teams.getByText('Arsenal', { exact: true })).toBeVisible()
-  await expect(teams.getByRole('button', { name: 'Salvar' })).toHaveCount(0)
   await expect
     .poll(async () =>
       (
@@ -178,7 +138,7 @@ test('avatar: upload interceptado e a imagem salva aparece', async ({
   const uploads = await interceptMediaUploads(page)
   const fan = await signInFanAt(page, uniqueSpot())
 
-  await page.goto('/dashboard/profile')
+  await page.goto('/dashboard/preferencias?aba=conta')
   await page.getByLabel('Escolher foto de perfil').setInputFiles({
     name: 'eu.png',
     mimeType: 'image/png',
@@ -195,20 +155,14 @@ test('avatar: upload interceptado e a imagem salva aparece', async ({
       new RegExp(`^${MEDIA_PUBLIC_ORIGIN}/users/${fan.id}/avatar\\?v=\\d+$`)
     )
   const url = (await userRow(fan.id))?.image
-  await expect(page.getByRole('img', { name: fan.name })).toHaveAttribute(
-    'src',
-    url ?? ''
-  )
+  await expect(page.locator('.ava img')).toHaveAttribute('src', url ?? '')
   expect(uploads).toEqual([
     { pathname: `users/${fan.id}/avatar`, contentType: 'image/jpeg' }
   ])
 
   // Volta do servidor, não só do estado local.
   await page.reload()
-  await expect(page.getByRole('img', { name: fan.name })).toHaveAttribute(
-    'src',
-    url ?? ''
-  )
+  await expect(page.locator('.ava img')).toHaveAttribute('src', url ?? '')
 })
 
 test('avatar: a API recusa foto fora do nosso host', async ({ page }) => {

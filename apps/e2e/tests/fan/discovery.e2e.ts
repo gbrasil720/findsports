@@ -1,455 +1,189 @@
 import type { Page } from '@playwright/test'
-import { insert, query } from '../../fixtures/db'
+import { query } from '../../fixtures/db'
 import {
   createEvent,
-  days,
   hours,
   isFavorite,
   north,
   pubAt,
-  setPreferences,
   signInFanAt,
   team,
   uniqueSpot
 } from '../../fixtures/fan'
 import { expect, test } from '../../fixtures/test'
+import { createUser } from '../../fixtures/users'
 
-// `/dashboard` (WEB-178). Cada teste põe o torcedor e os bares num ponto
-// próprio do mapa: a busca é por raio, então os testes paralelos não se veem.
+// O Explorar do web do torcedor (WEB-501): abre sem login, a régua escolhe o
+// jogo e a lista mostra onde ele passa. Cada teste põe os bares num ponto
+// próprio do mapa: a régua é por raio, então os testes paralelos não se veem.
 
-// A sede de São Paulo, de onde a busca parte sem localização nem cidade
-// (`SAO_PAULO_FALLBACK` no web).
-const CENTRO_DE_SAO_PAULO = { latitude: -23.5329, longitude: -46.6395 }
-
-const card = (page: Page, name: string) =>
-  page.getByRole('link', { name: `Ver ${name}` })
-
-const search = (page: Page) =>
-  page.getByRole('searchbox', { name: 'Buscar bar, time ou campeonato' })
-
-test('localização concedida busca em volta do torcedor', async ({ page }) => {
-  const spot = uniqueSpot()
-  const near = await pubAt(north(spot, 0.5))
-  await createEvent({ barId: near.barId, startsAt: days(2) })
-  await signInFanAt(page, spot)
-
-  await page.goto('/dashboard')
-
-  await expect(card(page, near.name)).toBeVisible()
-  await expect(page.getByText('1 bar perto de você')).toBeAttached()
-  await expect(
-    page.getByRole('button', { name: 'Atualizar localização' })
-  ).toBeVisible()
-  await expect(page.getByText('Perto de você', { exact: true })).toBeVisible()
-})
-
-test.describe('localização negada', () => {
-  test.use({ permissions: [] })
-
-  test('cai no centro de São Paulo', async ({ page }) => {
-    // Bar no centro de SP com nome único: a busca pelo nome isola ele dos
-    // outros bares que a suíte cria ali.
-    const central = await pubAt(CENTRO_DE_SAO_PAULO)
-    await createEvent({ barId: central.barId, startsAt: days(2) })
-    await signInFanAt(page, uniqueSpot())
-
-    await page.goto('/dashboard')
-    await page
-      .getByRole('button', { name: 'Usar minha localização' })
-      .first()
-      .click()
-
-    await expect(page.getByText('Localização bloqueada')).toBeVisible()
-    await expect(page.getByText('São Paulo, SP', { exact: true })).toBeVisible()
-    await search(page).fill(central.name)
-    await expect(card(page, central.name)).toBeVisible()
-  })
-
-  test('parte da cidade do perfil, quando o torcedor informou uma', async ({
-    page
-  }) => {
-    // WEB-319. O centro gravado é um ponto próprio, e não a Campinas de
-    // verdade: a busca é por raio, e assim os testes paralelos não se veem.
-    const spot = uniqueSpot()
-    const near = await pubAt(north(spot, 0.5))
-    await createEvent({ barId: near.barId, startsAt: days(2) })
-    const fan = await signInFanAt(page, uniqueSpot())
-    await query(
-      `UPDATE "user" SET search_city_name = 'Campinas', search_city_uf = 'SP',
-              search_city_lat = $2, search_city_lng = $3 WHERE id = $1`,
-      [fan.id, spot.latitude, spot.longitude]
-    )
-
-    await page.goto('/dashboard')
-
-    await expect(card(page, near.name)).toBeVisible()
-    await expect(
-      page.getByText(/^1 bar a até \d+ km do centro de Campinas$/)
-    ).toBeAttached()
-    await expect(page.getByText('Campinas, SP', { exact: true })).toBeVisible()
-  })
-})
-
-test('filtros de texto, esporte, raio, comodidade e time se combinam e saem pelos chips', async ({
-  page
-}) => {
-  const spot = uniqueSpot()
-  const arsenal = await team('arsenal')
-  const football = await pubAt(north(spot, 0.5), { bar: { amenities: [1] } })
-  await createEvent({
-    barId: football.barId,
-    startsAt: days(2),
-    teamIds: [arsenal.id, (await team('argentina')).id]
-  })
-  const basketball = await pubAt(north(spot, 0.8))
-  await createEvent({
-    barId: basketball.barId,
-    sport: 'basquete',
-    championship: 'Liga E2E',
-    startsAt: days(2)
-  })
-  const far = await pubAt(north(spot, 4))
-  await createEvent({ barId: far.barId, startsAt: days(2) })
-  const fan = await signInFanAt(page, spot)
-  await setPreferences(fan.id, { sports: ['futebol'], teams: ['arsenal'] })
-
-  await page.goto('/dashboard')
-  await expect(card(page, football.name)).toBeVisible()
-  await expect(card(page, basketball.name)).toBeVisible()
-  await expect(card(page, far.name)).toHaveCount(0)
-
-  // Raio
-  await page.getByRole('slider', { name: 'Raio' }).fill('5')
-  await expect(card(page, far.name)).toBeVisible()
-  await page.getByRole('button', { name: 'Remover filtro Até 5 km' }).click()
-  await expect(card(page, far.name)).toHaveCount(0)
-
-  // Esporte
-  await page.getByRole('button', { name: 'Basquete', exact: true }).click()
-  await expect(card(page, basketball.name)).toBeVisible()
-  await expect(card(page, football.name)).toHaveCount(0)
-
-  // Texto + esporte: o bar de futebol não passa o basquete
-  await search(page).fill(football.name)
-  await expect(
-    page.getByText('Nenhum bar em até 3 km transmitindo o que você busca.')
-  ).toBeVisible()
-  await page.getByRole('button', { name: 'Remover filtro Basquete' }).click()
-  await expect(card(page, football.name)).toBeVisible()
-  await expect(card(page, basketball.name)).toHaveCount(0)
-  await page
-    .getByRole('button', { name: `Remover filtro ${football.name}` })
-    .click()
-  await expect(card(page, basketball.name)).toBeVisible()
-
-  // Comodidade
-  await page.getByRole('button', { name: 'O que o bar tem' }).click()
-  await page.getByRole('button', { name: 'Telão / projetor' }).click()
-  await expect(card(page, football.name)).toBeVisible()
-  await expect(card(page, basketball.name)).toHaveCount(0)
-  await page.getByRole('button', { name: 'Limpar filtros' }).click()
-  await expect(card(page, basketball.name)).toBeVisible()
-  await expect(
-    page.getByRole('button', { name: /^Remover filtro/ })
-  ).toHaveCount(0)
-
-  // Time que o torcedor acompanha
-  await page.getByRole('button', { name: 'Arsenal', exact: true }).click()
-  await expect(card(page, football.name)).toBeVisible()
-  await expect(card(page, basketball.name)).toHaveCount(0)
-  await expect(
-    page.getByRole('button', { name: 'Remover filtro Arsenal' })
-  ).toBeVisible()
-})
-
-test('filtro "Com oferta da casa" traz só o bar Elite com oferta', async ({
-  page
-}) => {
-  const spot = uniqueSpot()
-  // O Pro guarda a oferta de quando era Elite, e ainda tem o 10 gravado de
-  // quando ele era "Aceita reserva"; o outro Elite não cadastrou oferta.
-  const offering = await pubAt(north(spot, 0.5), {
-    bar: { house_offer: 'Chopp em dobro' }
-  })
-  const pro = await pubAt(north(spot, 0.8), {
-    subscription: { plan: 'pro' },
-    bar: { house_offer: 'Oferta guardada', amenities: [10] }
-  })
-  const noOffer = await pubAt(north(spot, 0.6))
-  for (const { barId } of [offering, pro, noOffer]) {
-    await createEvent({ barId, startsAt: days(2) })
-  }
-  await signInFanAt(page, spot)
-
-  await page.goto('/dashboard')
-  await expect(card(page, offering.name)).toBeVisible()
-  await expect(card(page, pro.name)).toBeVisible()
-  await expect(card(page, noOffer.name)).toBeVisible()
-
-  await page.getByRole('button', { name: 'O que o bar tem' }).click()
-  await page.getByRole('button', { name: 'Com oferta da casa' }).click()
-  await expect(card(page, offering.name)).toBeVisible()
-  await expect(card(page, pro.name)).toHaveCount(0)
-  await expect(card(page, noOffer.name)).toHaveCount(0)
-})
-
-test('sem jogo na região e sem filtro, mostra os bares próximos', async ({
-  page
-}) => {
-  const spot = uniqueSpot()
-  const quiet = await pubAt(north(spot, 0.5))
-  await signInFanAt(page, spot)
-
-  await page.goto('/dashboard')
-  await expect(card(page, quiet.name)).toBeVisible()
-  await expect(
-    page.getByText(
-      'Nenhum evento programado na região. Mostrando todos os bares próximos.'
-    )
-  ).toBeVisible()
-
-  // Com um pedido explícito, "todos os bares por perto" não responde.
-  await search(page).fill(quiet.name)
-  await expect(card(page, quiet.name)).toHaveCount(0)
-  await expect(
-    page.getByText('Nenhum bar em até 3 km transmitindo o que você busca.')
-  ).toBeVisible()
-})
-
-test('"jogos de hoje" deixa só quem tem jogo hoje', async ({ page }) => {
-  const spot = uniqueSpot()
-  const startsAt = hours(1)
-  // O card compara o dia no fuso do navegador (São Paulo). Perto da
-  // meia-noite o jogo "de hoje" daqui a uma hora já é amanhã.
-  const day = (date: Date) =>
-    date.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
-  test.skip(
-    day(startsAt) !== day(new Date()) || day(hours(4)) !== day(new Date()),
-    'perto da meia-noite em São Paulo'
+/** O dia de Brasília de `date`, como a URL do Explorar (`?dia=`). */
+const brasiliaDay = (date: Date) =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(
+    date
   )
-  const today = await pubAt(north(spot, 0.5))
-  await createEvent({
-    barId: today.barId,
-    championship: 'Brasileirão',
-    startsAt
-  })
-  const later = await pubAt(north(spot, 0.8))
-  await createEvent({
-    barId: later.barId,
-    championship: 'Brasileirão',
-    startsAt: days(3)
-  })
-  await signInFanAt(page, spot)
 
-  await page.goto('/dashboard')
-  await expect(card(page, later.name)).toBeVisible()
-  await page
-    .getByRole('button', { name: 'Bares transmitindo Brasileirão hoje' })
+const cartao = (page: Page, nome: string) =>
+  page
+    .locator('article.bc')
+    .filter({ has: page.getByRole('heading', { name: nome }) })
+
+/** Bar no ponto, com um jogo daqui a duas horas; o navegador fica nele. */
+async function barComJogo(
+  page: Page,
+  options: Parameters<typeof pubAt>[1] = {}
+) {
+  const spot = uniqueSpot()
+  const pub = await pubAt(north(spot, 0.5), options)
+  const startsAt = hours(2)
+  const freeText = `Final ${pub.name}`
+  const eventId = await createEvent({ barId: pub.barId, startsAt, freeText })
+  await page.context().setGeolocation(spot)
+  return { pub, spot, eventId, freeText, startsAt, dia: brasiliaDay(startsAt) }
+}
+
+test('visitante vê o jogo e os bares sem conta', async ({ page }) => {
+  const { pub, freeText, dia } = await barComJogo(page)
+
+  await page.goto(`/dashboard?dia=${dia}`)
+
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(freeText)
+  await expect(cartao(page, pub.name)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Entrar' })).toBeVisible()
+})
+
+test('visitante marca "Vou assistir aqui", entra pela folha e o código abre', async ({
+  page
+}) => {
+  const { pub, eventId, dia } = await barComJogo(page)
+  const fan = await createUser({ role: 'fan' })
+
+  await page.goto(`/dashboard?dia=${dia}`)
+  await cartao(page, pub.name)
+    .getByRole('button', { name: 'Vou assistir aqui' })
     .click()
 
-  await expect(card(page, today.name)).toBeVisible()
-  await expect(card(page, later.name)).toHaveCount(0)
-  await page.getByRole('button', { name: 'Remover filtro Jogos hoje' }).click()
-  await expect(card(page, later.name)).toBeVisible()
-})
+  const folha = page.getByRole('dialog', { name: 'Entre para marcar presença' })
+  await expect(folha).toBeVisible()
+  await expect(folha.getByText(pub.name, { exact: true })).toBeVisible()
+  await folha.getByLabel('E-mail').fill(fan.email)
+  await folha.getByLabel('Senha').fill(fan.password)
+  await folha.getByRole('button', { name: 'Entrar e marcar presença' }).click()
 
-test('"só favoritos" deixa só os bares favoritados', async ({ page }) => {
-  const spot = uniqueSpot()
-  const favorite = await pubAt(north(spot, 0.5))
-  const other = await pubAt(north(spot, 0.8))
-  await createEvent({ barId: favorite.barId, startsAt: days(2) })
-  await createEvent({ barId: other.barId, startsAt: days(2) })
-  const fan = await signInFanAt(page, spot)
-  // `exact`: o chip do filtro ligado é "Remover filtro Só favoritos".
-  const onlyFavorites = page.getByRole('button', {
-    name: 'Só favoritos',
-    exact: true
-  })
-
-  // Sem favorito o controle não liga: a lista viria vazia sem explicação.
-  await page.goto('/dashboard')
-  await expect(card(page, other.name)).toBeVisible()
-  await expect(onlyFavorites).toBeDisabled()
-  await expect(
-    page.getByText('Favorite um bar para filtrar por ele.')
-  ).toBeVisible()
-
-  await insert('user_favorite_bars', {
-    user_id: fan.id,
-    bar_id: favorite.barId
-  })
-  await page.goto('/dashboard')
-  await expect(card(page, other.name)).toBeVisible()
-  await onlyFavorites.click()
-
-  await expect(onlyFavorites).toHaveAttribute('aria-pressed', 'true')
-  await expect(card(page, favorite.name)).toBeVisible()
-  await expect(card(page, other.name)).toHaveCount(0)
-  await page
-    .getByRole('button', { name: 'Remover filtro Só favoritos' })
-    .click()
-  await expect(card(page, other.name)).toBeVisible()
-  await expect(onlyFavorites).toHaveAttribute('aria-pressed', 'false')
-})
-
-test('favoritar e desfavoritar pela lista', async ({ page }) => {
-  const spot = uniqueSpot()
-  const pub = await pubAt(north(spot, 0.5))
-  await createEvent({ barId: pub.barId, startsAt: days(2) })
-  const fan = await signInFanAt(page, spot)
-  const favorited = () => isFavorite(fan.id, pub.barId)
-
-  await page.goto('/dashboard')
-  await expect(page.getByText('1 bar perto de você')).toBeAttached()
-  const row = page.locator('.onside-bar-card', { has: card(page, pub.name) })
-  // Hover antes do clique: o `mouseenter` do card re-renderiza o dashboard, e
-  // o React 19 regrava o `dangerouslySetInnerHTML` do ícone (reicon) a cada
-  // render. Se isso cai entre o mousedown e o mouseup do clique sintético, o
-  // `<path>` sob o ponteiro é trocado e o Chrome não dispara o `click`.
-  const press = async (name: string) => {
-    const button = row.getByRole('button', { name })
-    await button.hover()
-    await expect(row).toHaveClass(/shadow/)
-    await button.click()
-  }
-  await press('Adicionar aos favoritos')
-  await expect(
-    row.getByRole('button', { name: 'Remover dos favoritos' })
-  ).toHaveAttribute('aria-pressed', 'true')
-  await expect.poll(favorited).toBe(true)
-
-  // Volta à tela do zero: o favorito vem do servidor, não do estado local.
-  await page.goto('/dashboard')
-  await expect(page.getByText('1 bar perto de você')).toBeAttached()
-  await press('Remover dos favoritos')
-  await expect(
-    row.getByRole('button', { name: 'Adicionar aos favoritos' })
-  ).toHaveAttribute('aria-pressed', 'false')
-  await expect.poll(favorited).toBe(false)
-})
-
-test('o mapa marca os bares e o marcador abre a página do bar', async ({
-  page
-}) => {
-  const spot = uniqueSpot()
-  const pub = await pubAt(north(spot, 0.5))
-  const eventId = await createEvent({ barId: pub.barId, startsAt: days(2) })
-  await signInFanAt(page, spot)
-
-  await page.goto('/dashboard')
-  const marker = page
-    .locator('.maplibregl-marker')
-    .and(page.getByRole('button', { name: pub.name, exact: true }))
-  await expect(marker).toBeVisible()
-  await marker.click()
-  // WEB-258: o ponto leva o jogo que o card do bar mostra.
-  await expect(page).toHaveURL(
-    new RegExp(`/pub/${pub.barId}\\?eventId=${eventId}$`)
-  )
-})
-
-// WEB-332: cada plano tem o seu pino. A cor é lida do SVG já pintado, e não da
-// variável: é o que prova que o navegador resolveu `var()` no `fill`.
-test('o pino muda com o plano vigente e com o jogo ao vivo, e o Elite fica por cima', async ({
-  page
-}) => {
-  const INK = 'rgb(18, 18, 15)'
-  const ACID = 'rgb(201, 241, 53)'
-  const LIVE = 'rgb(232, 50, 12)'
-  const CREME = 'rgb(241, 238, 230)'
-  const spot = uniqueSpot()
-  const plano = (plan: 'starter' | 'pro' | 'elite') => ({
-    subscription: { plan }
-  })
-  const starter = await pubAt(north(spot, 1.6), plano('starter'))
-  const pro = await pubAt(north(spot, 0.8), plano('pro'))
-  const elite = await pubAt(spot, plano('elite'))
-  // No mesmo endereço do Elite. A busca devolve o Elite antes, então o
-  // marcador do Starter entra depois no DOM e ficaria por cima sem a ordem.
-  const vizinho = await pubAt(spot, plano('starter'))
-  const eliteComJogo = await pubAt(north(spot, -0.8), plano('elite'))
-  // Plano parado (WEB-129): Elite com pagamento atrasado é Starter no mapa.
-  const parado = await pubAt(north(spot, -1.6), {
-    subscription: { plan: 'elite', status: 'past_due' }
-  })
-  for (const pub of [starter, elite, vizinho, parado]) {
-    await createEvent({ barId: pub.barId, startsAt: days(2) })
-  }
-  // A busca só devolve jogo que ainda não começou: o pino fica vermelho
-  // quando o jogo começa com a tela aberta.
-  for (const pub of [pro, eliteComJogo]) {
-    await createEvent({ barId: pub.barId, startsAt: hours(0.5) })
-  }
-  await signInFanAt(page, spot)
-
-  await page.goto('/dashboard')
-  const pin = (pub: { name: string }) =>
-    page
-      .locator('.maplibregl-marker')
-      .and(page.getByRole('button', { name: pub.name, exact: true }))
-  const temCores = async (
-    pub: { name: string },
-    [corpo, miolo, estrela]: [string, string, string]
-  ) => {
-    await expect(pin(pub).locator('path').first()).toHaveCSS('fill', corpo)
-    await expect(pin(pub).locator('circle')).toHaveCSS('fill', miolo)
-    await expect(pin(pub).locator('path').last()).toHaveCSS('fill', estrela)
-  }
-
-  // Corpo, miolo, estrela.
-  await temCores(starter, [INK, CREME, 'none'])
-  await temCores(pro, [INK, ACID, 'none'])
-  await temCores(elite, [ACID, 'none', INK])
-  await temCores(parado, [INK, CREME, 'none'])
-
-  // `trial` só passa se o clique no meio do pino chegar nele: com o Starter
-  // por cima, quem receberia o clique seria o vizinho.
-  await expect(pin(vizinho)).toBeVisible()
-  await pin(elite).click({ trial: true })
-
-  // O jogo começa: o relógio do navegador passa da hora, e o foco no pino
-  // redesenha o mapa.
-  await page.clock.setFixedTime(hours(1))
-  await pin(starter).focus()
-  await temCores(pro, [LIVE, CREME, 'none'])
-  await temCores(eliteComJogo, [LIVE, 'none', INK])
-})
-
-// WEB-258: "Aberturas" por jogo só conta quem chegou pelo jogo. O card leva o
-// `eventId`, e a volta devolve os filtros que estavam no hash (WEB-293).
-test('o card abre o perfil pelo jogo e voltar restaura os filtros', async ({
-  page
-}) => {
-  const spot = uniqueSpot()
-  const pub = await pubAt(north(spot, 4))
-  const eventId = await createEvent({ barId: pub.barId, startsAt: days(2) })
-  const fan = await signInFanAt(page, spot)
-
-  await page.goto('/dashboard')
-  await page.getByRole('slider', { name: 'Raio' }).fill('5')
-  await card(page, pub.name).click()
-  await expect(page).toHaveURL(
-    new RegExp(`/pub/${pub.barId}\\?eventId=${eventId}$`)
-  )
+  // Bar Elite: a presença sai com o código do balcão.
+  await expect(page).toHaveURL(new RegExp(`/dashboard/codigo/${eventId}$`))
   await expect
     .poll(
       async () =>
         (
           await query(
-            `SELECT 1 FROM bar_commercial_event
-             WHERE actor_user_id = $1 AND source_event_id = $2 AND type = 'profile_view'`,
+            'SELECT 1 FROM attendance WHERE user_id = $1 AND event_id = $2',
             [fan.id, eventId]
           )
         ).length
     )
     .toBe(1)
+})
 
-  await page.goBack()
-  await expect(page).toHaveURL(/\/dashboard#/)
+test('visitante salva o bar pela folha e ele fica salvo', async ({ page }) => {
+  const { pub, dia } = await barComJogo(page)
+  const fan = await createUser({ role: 'fan' })
+
+  await page.goto(`/dashboard?dia=${dia}`)
+  await cartao(page, pub.name)
+    .getByRole('button', { name: `Salvar ${pub.name}` })
+    .click()
+  const folha = page.getByRole('dialog', { name: 'Entre para salvar este bar' })
+  await folha.getByLabel('E-mail').fill(fan.email)
+  await folha.getByLabel('Senha').fill(fan.password)
+  await folha.getByRole('button', { name: 'Entrar e salvar' }).click()
+
+  await expect.poll(() => isFavorite(fan.id, pub.barId)).toBe(true)
   await expect(
-    page.getByRole('button', { name: 'Remover filtro Até 5 km' })
+    cartao(page, pub.name).getByRole('button', {
+      name: `Tirar ${pub.name} de Seus bares`
+    })
   ).toBeVisible()
-  await expect(card(page, pub.name)).toBeVisible()
+})
+
+test('a ação volta pela URL depois do cadastro e sai uma vez', async ({
+  page
+}) => {
+  const { pub, spot, dia } = await barComJogo(page)
+  const fan = await signInFanAt(page, spot)
+
+  await page.goto(`/dashboard?dia=${dia}&acao=fav.${pub.barId}`)
+
+  await expect.poll(() => isFavorite(fan.id, pub.barId)).toBe(true)
+  await expect(page).not.toHaveURL(/acao=/)
+})
+
+test('filtro e busca deixam só o bar que casa', async ({ page }) => {
+  const { pub, spot, dia, freeText, startsAt } = await barComJogo(page, {
+    bar: { amenities: [] }
+  })
+  const outro = await pubAt(north(spot, 0.8), { bar: { amenities: [1] } })
+  await createEvent({ barId: outro.barId, startsAt, freeText })
+
+  await page.goto(`/dashboard?dia=${dia}`)
+  await expect(cartao(page, pub.name)).toBeVisible()
+  await expect(cartao(page, outro.name)).toBeVisible()
+
+  await page.getByRole('button', { name: 'Telão', exact: true }).click()
+  await expect(cartao(page, pub.name)).toBeHidden()
+  await expect(cartao(page, outro.name)).toBeVisible()
+  await page.getByRole('button', { name: 'Telão', exact: true }).click()
+
+  // O título do jogo leva o nome do primeiro bar; o segundo só casa pelo dele.
+  await page.getByRole('searchbox').fill(outro.name)
+  await expect(cartao(page, pub.name)).toBeHidden()
+  await expect(cartao(page, outro.name)).toBeVisible()
+})
+
+test('Elite no clássico vai na frente e registra exposição e clique', async ({
+  page
+}) => {
+  const spot = uniqueSpot()
+  const startsAt = hours(2)
+  const [fla, pal] = [await team('flamengo'), await team('palmeiras')]
+  const perto = await pubAt(north(spot, 0.3), {
+    subscription: { plan: 'starter' }
+  })
+  const elite = await pubAt(north(spot, 1.5))
+  const ids: Record<string, string> = {}
+  for (const pub of [perto, elite]) {
+    ids[pub.barId] = await createEvent({
+      barId: pub.barId,
+      startsAt,
+      teamIds: [fla.id, pal.id]
+    })
+  }
+  const fan = await signInFanAt(page, spot)
+  const eventos = (type: string) =>
+    query(
+      `SELECT 1 FROM bar_commercial_event
+        WHERE actor_user_id = $1 AND bar_id = $2 AND type = $3`,
+      [fan.id, elite.barId, type]
+    ).then((rows) => rows.length)
+
+  await page.goto(`/dashboard?dia=${brasiliaDay(startsAt)}`)
+  await expect
+    .poll(() => page.locator('article.bc h3').allTextContents())
+    .toEqual([elite.name, perto.name])
+  await expect.poll(() => eventos('classic_exposure')).toBe(1)
+
+  await cartao(page, elite.name)
+    .getByRole('link', { name: `Abrir ${elite.name}` })
+    .click()
+  await expect.poll(() => eventos('classic_click')).toBe(1)
+})
+
+test('"Continuar como visitante" do login leva ao Explorar', async ({
+  page
+}) => {
+  await page.goto('/login')
+  await page.getByRole('link', { name: 'Continuar como visitante' }).click()
+  await expect(page).toHaveURL(/\/dashboard$/)
 })
 
 test('sem VITE_MAP_TILES_URL o mapa mostra o erro e a lista segue', async ({
@@ -465,15 +199,11 @@ test('sem VITE_MAP_TILES_URL o mapa mostra o erro e a lista segue', async ({
     )
     await route.fulfill({ response, body })
   })
-  const spot = uniqueSpot()
-  const pub = await pubAt(north(spot, 0.5))
-  await createEvent({ barId: pub.barId, startsAt: days(2) })
-  await signInFanAt(page, spot)
+  const { pub, dia } = await barComJogo(page)
 
-  await page.goto('/dashboard')
+  await page.goto(`/dashboard?dia=${dia}`)
   const error = page.getByRole('alert').filter({ hasText: 'Mapa indisponível' })
   await expect(error).toBeVisible()
-  // Sem arquivo de tiles não há o que tentar de novo.
   await expect(error.getByRole('button')).toHaveCount(0)
-  await expect(card(page, pub.name)).toBeVisible()
+  await expect(cartao(page, pub.name)).toBeVisible()
 })

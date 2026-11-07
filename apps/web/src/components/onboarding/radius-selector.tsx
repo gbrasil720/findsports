@@ -1,4 +1,3 @@
-import Check from 'reicon-react/icons/Check'
 import type { RadiusKm } from '@/domain/discovery'
 
 const RADIUS_LABELS: Record<number, string> = {
@@ -18,35 +17,19 @@ type Props = {
 
 export function RadiusSelector({ value, options, onChange }: Props) {
   return (
-    <fieldset className="border-0 p-0 m-0">
+    <fieldset className="ob-radius">
       <legend className="sr-only">Raio de busca em quilômetros</legend>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-        {options.map((km) => {
-          const on = value === km
-          return (
-            <button
-              key={km}
-              type="button"
-              aria-pressed={on}
-              onClick={() => onChange(km)}
-              className={`onside-choice onside-choice-ink relative ${on ? 'is-selected' : ''}`}
-            >
-              <div className="onside-display text-3xl tabular-nums">{km}</div>
-              <div className="font-[family-name:var(--onside-mono)] text-[10px] uppercase tracking-[0.12em] opacity-80">
-                km · {RADIUS_LABELS[km] ?? ''}
-              </div>
-              {on && (
-                <Check
-                  size={14}
-                  color="currentColor"
-                  className="absolute top-3 right-3"
-                  aria-hidden="true"
-                />
-              )}
-            </button>
-          )
-        })}
-      </div>
+      {options.map((km) => (
+        <button
+          key={km}
+          type="button"
+          aria-pressed={value === km}
+          onClick={() => onChange(km)}
+        >
+          <b>{km} km</b>
+          <span>{RADIUS_LABELS[km] ?? ''}</span>
+        </button>
+      ))}
     </fieldset>
   )
 }

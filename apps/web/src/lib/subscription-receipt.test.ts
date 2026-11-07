@@ -238,7 +238,7 @@ describe('formatação do recibo', () => {
   })
 
   test('carimbo de trial não afirma pagamento', () => {
-    expect(receiptStampLabel('trialing')).toBe('Trial liberado')
+    expect(receiptStampLabel('trialing')).toBe('Teste liberado')
     expect(receiptStampLabel('active')).toBe('Pago e liberado')
   })
 

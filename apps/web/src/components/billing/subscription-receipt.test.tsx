@@ -38,16 +38,16 @@ describe('situação no comprovante', () => {
       externalSubscriptionId: 'sub_123'
     })
     expect(markup).toContain('Contratado · em teste')
-    expect(markup).not.toContain('Trial gratuito')
+    expect(markup).not.toContain('Teste grátis')
   })
 
-  test('teste do cadastro, sem assinatura no Stripe, segue "Trial gratuito"', () => {
+  test('teste do cadastro, sem assinatura no Stripe, segue "Teste grátis"', () => {
     const markup = receipt({
       status: 'trialing',
       standing: 'current',
       externalSubscriptionId: null
     })
-    expect(markup).toContain('Trial gratuito')
+    expect(markup).toContain('Teste grátis')
     expect(markup).not.toContain('Contratado')
   })
 

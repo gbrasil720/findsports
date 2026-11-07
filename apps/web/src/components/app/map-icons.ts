@@ -6,18 +6,17 @@ const COLORS = {
 } as const
 
 /**
- * Os pinos que existem (WEB-332): um por plano, e os dois de jogo ao vivo.
- *
- * O desenho é o mesmo; muda a cor do corpo e o que vai no meio. `none` apaga a
- * peça que o pino não usa: o Elite troca o miolo redondo pela estrela, e a
- * estrela continua quando o jogo ao vivo pinta o corpo de vermelho.
+ * Os pinos que existem: a gota da família do app (Rodada 21, 21a), no
+ * desenho do web do torcedor (WEB-501): corpo de tinta com o copo, acid no
+ * Elite e vermelho com o jogo ao vivo. O desenho é um só; muda a cor do corpo
+ * e a do copo. Starter e Pro têm o mesmo pino desde o redesenho.
  */
 const PINOS = {
-  starter: { cor: COLORS.ink, miolo: COLORS.creme, estrela: 'none' },
-  pro: { cor: COLORS.ink, miolo: COLORS.acid, estrela: 'none' },
-  elite: { cor: COLORS.acid, miolo: 'none', estrela: COLORS.ink },
-  live: { cor: COLORS.live, miolo: COLORS.creme, estrela: 'none' },
-  'elite-live': { cor: COLORS.live, miolo: 'none', estrela: COLORS.ink }
+  starter: { cor: COLORS.ink, copo: COLORS.creme },
+  pro: { cor: COLORS.ink, copo: COLORS.creme },
+  elite: { cor: COLORS.acid, copo: COLORS.ink },
+  live: { cor: COLORS.live, copo: COLORS.ink },
+  'elite-live': { cor: COLORS.live, copo: COLORS.ink }
 } as const
 
 export type MapPin = keyof typeof PINOS
@@ -49,8 +48,8 @@ export function ordemDoPino(pin: MapPin, large: boolean): string {
 const ESCALA_DESTAQUE = 42 / 36
 
 /**
- * A marcação do pino. Uma só, para todos: o miolo e a estrela estão sempre
- * no SVG, e a variável de cada um decide qual dos dois aparece.
+ * A marcação do pino. Uma só, para todos: o corpo e o copo estão sempre
+ * no SVG, e a variável de cada um decide a cor.
  *
  * Duas escolhas aqui são de desempenho, e as duas vêm do fato de o pino ter
  * deixado de ser imagem (`data:` URI num `google.maps.Icon`) e passado a ser
@@ -67,9 +66,9 @@ const ESCALA_DESTAQUE = 42 / 36
  */
 const MARCACAO_DO_PINO = `
 <svg xmlns="http://www.w3.org/2000/svg" width="36" height="46" viewBox="0 0 36 46">
-  <path d="M18 1c8.8 0 16 7.1 16 15.9 0 11.4-14.2 26.4-15 27.2a1.4 1.4 0 0 1-2 0C16.2 43.3 2 28.3 2 16.9 2 8.1 9.2 1 18 1z" fill="var(--pino-cor)" stroke="#12120F" stroke-width="2"/>
-  <circle cx="18" cy="17" r="6.5" fill="var(--pino-miolo)"/>
-  <path d="M18 9l1.88 5.41 5.73.12-4.57 3.46 1.66 5.48L18 20.2l-4.7 3.27 1.66-5.48-4.57-3.46 5.73-.12z" fill="var(--pino-estrela)"/>
+  <path d="M3 2h30a1 1 0 0 1 1 1v27a2 2 0 0 1-.7 1.5L18 44 2.7 31.5A2 2 0 0 1 2 30V3a1 1 0 0 1 1-1z" fill="var(--pino-cor)" stroke="#12120F" stroke-width="2"/>
+  <path d="M12 10h12l-1.6 14h-8.8z" fill="var(--pino-copo)"/>
+  <path d="M12.6 15h10.8" stroke="var(--pino-cor)" stroke-width="1.6"/>
 </svg>`
 
 /**
@@ -136,11 +135,12 @@ export function aplicarPino(
   pin: MapPin,
   large: boolean
 ): void {
-  const { cor, miolo, estrela } = PINOS[pin]
+  const { cor, copo } = PINOS[pin]
   pintura.style.setProperty('--pino-cor', cor)
-  pintura.style.setProperty('--pino-miolo', miolo)
-  pintura.style.setProperty('--pino-estrela', estrela)
+  pintura.style.setProperty('--pino-copo', copo)
   pintura.style.transform = large ? `scale(${ESCALA_DESTAQUE})` : ''
+  // O nome aparece no pino em destaque (`.pino-nome` no CSS do torcedor).
+  pintura.toggleAttribute('data-destaque', large)
 }
 
 /**

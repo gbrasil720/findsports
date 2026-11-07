@@ -43,18 +43,9 @@ type Props = {
   label: string
   hint: string
   disabled?: boolean
-  /** Sobre o painel ink do onboarding. */
-  ink?: boolean
 }
 
-export function CityField({
-  value,
-  onChange,
-  label,
-  hint,
-  disabled,
-  ink
-}: Props) {
+export function CityField({ value, onChange, label, hint, disabled }: Props) {
   const campoId = useId()
   const listaId = useId()
   const dicaId = useId()
@@ -101,10 +92,7 @@ export function CityField({
 
   return (
     <div className="max-w-md">
-      <label
-        htmlFor={campoId}
-        className={`onside-label ${ink ? 'onside-label-ink' : ''}`}
-      >
+      <label htmlFor={campoId} className="onside-label">
         {label}
       </label>
       {/* Só o campo e a lista: ela abre colada nele, por cima da dica. */}
@@ -144,7 +132,7 @@ export function CityField({
           // foco é sempre sair do controle: Tab, clique fora, teclado fechado.
           onBlur={() => setAberto(false)}
           onKeyDown={aoTeclar}
-          className={`onside-input ${ink ? 'onside-input-ink' : ''}`}
+          className="onside-input"
         />
         {mostrandoLista ? (
           <div
@@ -182,9 +170,7 @@ export function CityField({
       <p
         id={dicaId}
         role="status"
-        className={`mt-2 text-xs ${
-          ink ? 'onside-text-muted-on-ink' : 'text-[var(--onside-muted)]'
-        }`}
+        className="mt-2 text-[var(--onside-muted)] text-xs"
       >
         {!pendente
           ? hint

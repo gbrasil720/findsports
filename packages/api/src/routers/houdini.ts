@@ -13,6 +13,7 @@ import { appConfig } from '@findsports_oficial/db/schema/config'
 import { adminAction } from '@findsports_oficial/db/schema/houdini'
 import {
   bar,
+  barPhoto,
   event,
   subscription
 } from '@findsports_oficial/db/schema/platform'
@@ -63,6 +64,7 @@ const spDaysUntilEnd = sql<number>`(((${subscription.currentPeriodEnd} AT TIME Z
 const upcomingGames = sql<number>`(
   SELECT count(*)::int FROM ${event}
   WHERE ${event.barId} = ${bar.id} AND ${event.startsAt} > now()
+    AND ${event.publishedAt} IS NOT NULL
 )`
 
 // ponytail: teto fixo nas listas da Ampulheta; paginar se passar disso.
@@ -81,6 +83,21 @@ async function failedJobs() {
   )
 }
 
+/** Fila da Revisão (WEB-462, WEB-478): fotos e descrições à espera. */
+async function reviewQueue() {
+  const [[photos], [descriptions]] = await Promise.all([
+    db
+      .select({ n: count() })
+      .from(barPhoto)
+      .where(eq(barPhoto.status, 'pending')),
+    db
+      .select({ n: count() })
+      .from(bar)
+      .where(eq(bar.descriptionReview, 'pending'))
+  ])
+  return { photos: photos?.n ?? 0, descriptions: descriptions?.n ?? 0 }
+}
+
 /**
  * WEB-391: o Início do Houdini e o ⌘K. Só leitura, montado com o que as
  * tabelas já registram.
@@ -97,7 +114,8 @@ export const houdiniRouter = router({
       [newBars],
       [games],
       [spells],
-      failed
+      failed,
+      review
     ] = await Promise.all([
       db
         .select({
@@ -141,7 +159,8 @@ export const houdiniRouter = router({
         .where(
           sql`${appConfig.expiresAt} IS NULL OR ${appConfig.expiresAt} > now()`
         ),
-      failedJobs()
+      failedJobs(),
+      reviewQueue()
     ])
     return {
       people: { total: people?.total ?? 0, novas: people?.novas ?? 0 },
@@ -155,7 +174,8 @@ export const houdiniRouter = router({
       fantasmas: new Set([...ghosts, ...silentGames].map((g) => g.barId)).size,
       jogosFuturos: games?.n ?? 0,
       feiticosLancados: spells?.n ?? 0,
-      rotinasFalhando: failed.length
+      rotinasFalhando: failed.length,
+      revisao: review.photos + review.descriptions
     }
   }),
 

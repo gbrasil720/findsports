@@ -7,33 +7,47 @@ import {
   ehUf,
   motivoTelefoneInvalido
 } from '@findsports_oficial/api/lib/bar-profile-validation'
-import { useMutation } from '@tanstack/react-query'
+import { ONBOARDING_TRIAL } from '@findsports_oficial/api/lib/plan-limits'
+import type { SubscriptionPlan } from '@findsports_oficial/db'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import {
   createFileRoute,
   useLocation,
   useNavigate
 } from '@tanstack/react-router'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import Check from 'reicon-react/icons/Check'
-import Location from 'reicon-react/icons/Location'
-import Search from 'reicon-react/icons/Search'
-import Store from 'reicon-react/icons/Store'
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
-import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
+import { Pin, Star, Tv } from '@/components/landing/v3/icons'
 import { OnboardingNavigation } from '@/components/onboarding/onboarding-navigation'
-import { OnboardingStep } from '@/components/onboarding/onboarding-step'
 import { PubAmenitiesStep } from '@/components/onboarding/pub-amenities-step'
 import { PubInfoForm } from '@/components/onboarding/pub-info-form'
-import { StepProgress } from '@/components/onboarding/step-progress'
-import { WelcomeStep } from '@/components/onboarding/welcome-step'
+import { PubObShell } from '@/components/onboarding/pub-ob-shell'
+import { PubPlanStep } from '@/components/onboarding/pub-plan-step'
+import { PubPreview, PubWelcomeTv } from '@/components/onboarding/pub-preview'
+import {
+  PubReceipt,
+  type PubReceiptData,
+  useFinishPubSignup
+} from '@/components/onboarding/pub-receipt'
+import { PubRoutineStep } from '@/components/onboarding/pub-routine-step'
 import { conciliarUfComCidade } from '@/components/uf-select'
 import { useSession } from '@/hooks/use-session'
 import { analytics } from '@/lib/analytics'
 import { refreshSessionCache } from '@/lib/auth-client'
-import { juntarEndereco, separarNumero, useCep } from '@/lib/cep'
+import {
+  type EnderecoDoCep,
+  juntarEndereco,
+  separarNumero,
+  useCep
+} from '@/lib/cep'
 import { mensagemOnboardingJaConcluido } from '@/lib/onboarding-concluido'
 import { readPendingEmail } from '@/lib/pending-verification'
+import {
+  formatPlanPrice,
+  founderCouponFromQuery,
+  getPlan,
+  planChargeForShowcase
+} from '@/lib/plan-catalog'
 import {
   mensagemFalhaCadastroBar,
   PUB_ONBOARDING_DRAFT_KEY,
@@ -42,7 +56,13 @@ import {
   serializePubOnboardingDraft
 } from '@/lib/pub-onboarding-draft'
 import { getPubOnboardingReview } from '@/lib/pub-onboarding-review'
-import { roleAccountLabel } from '@/lib/roles'
+import {
+  DEFAULT_ROUTINE,
+  type Routine,
+  recommendPlan
+} from '@/lib/pub-plan-recommendation'
+import { uploadMedia } from '@/lib/upload-media'
+import { PUB_LIVE_PATH } from '@/utils/auth-guards'
 import { getCallbackUrl } from '@/utils/callback-url'
 import { formatStoredPhone } from '@/utils/format-phone'
 import { useTRPC } from '@/utils/trpc'
@@ -64,16 +84,39 @@ export const Route = createFileRoute('/(onboarding)/onboarding/pub')({
 
 const STEPS = [
   'Boas-vindas',
-  'Seu estabelecimento',
-  'O que seu bar oferece',
+  'Estabelecimento',
+  'Características',
+  'Sua rotina',
+  'Plano',
   'Revisão'
 ] as const
+const PLAN_STEP = 4
 
-const WELCOME_FEATURES = [
-  { icon: Store, text: 'Divulgue sua programação de jogos' },
-  { icon: Search, text: 'Apareça pra torcedores perto de você' },
-  { icon: Check, text: 'Lote nos dias de clássico' }
+const WELCOME_FEATURES: [ReactNode, string, string][] = [
+  [
+    <Tv key="tv" size={22} />,
+    'Divulgue sua programação de jogos',
+    'O torcedor procura o jogo e acha o seu bar.'
+  ],
+  [
+    <Pin key="pin" size={22} />,
+    'Apareça pra torcedores perto de você',
+    'Quem está por perto encontra você na busca.'
+  ],
+  [
+    <Star key="star" />,
+    'Lote nos dias de clássico',
+    'No Elite, seu bar fica no topo da busca nos clássicos.'
+  ]
 ]
+
+/** A nota abaixo da prévia: na revisão, o que o plano escolhido muda nela. */
+const PREVIEW_NOTE: Record<SubscriptionPlan, string> = {
+  starter: 'No Starter o bar aparece na busca, sem selo nem destaque.',
+  pro: 'No Pro o seu bar ganha selo e destaque na busca por time e liga.',
+  elite:
+    'No Elite o seu bar sobe pro topo nos clássicos e pode mostrar a oferta da casa.'
+}
 
 function PubOnboarding() {
   const navigate = useNavigate()
@@ -106,6 +149,33 @@ function PubOnboarding() {
   const [error, setError] = useState<string | null>(null)
   const [phoneError, setPhoneError] = useState<string | null>(null)
   const [draftRestored, setDraftRestored] = useState(false)
+  // Rotina e plano (WEB-501): a rotina só recomenda e não é gravada; o plano
+  // fica no rascunho e, com o bar criado, vira `pub.changeTrialPlan`.
+  const [routine, setRoutine] = useState<Routine>(DEFAULT_ROUTINE)
+  const [pickedPlan, setPickedPlan] = useState<SubscriptionPlan | null>(null)
+  const [receipt, setReceipt] = useState<PubReceiptData | null>(null)
+  const [leaving, setLeaving] = useState(false)
+  const recommendation = recommendPlan(routine)
+  const plan = pickedPlan ?? recommendation.plan
+  const finishSignup = useFinishPubSignup()
+  // O que o CEP trouxe: o campo só leva "pelo CEP" enquanto o valor é esse.
+  const [cepFill, setCepFill] = useState<EnderecoDoCep | null>(null)
+  // A foto de capa fica no navegador até o bar existir: a rota de upload
+  // assina pelo bar da sessão, e ele só nasce no `completePub`.
+  const [photo, setPhoto] = useState<File | null>(null)
+  const photoUrl = useMemo(
+    () => (photo ? URL.createObjectURL(photo) : null),
+    [photo]
+  )
+  useEffect(
+    () => () => {
+      if (photoUrl) URL.revokeObjectURL(photoUrl)
+    },
+    [photoUrl]
+  )
+  const { mutateAsync: addPhoto } = useMutation(
+    trpc.pub.addPhoto.mutationOptions({ meta: { errorToast: false } })
+  )
 
   // O número que o dono já digitou fica: o CEP traz só a rua.
   const {
@@ -114,6 +184,7 @@ function PubOnboarding() {
     mudar: mudarCep,
     definir: setCep
   } = useCep((achado) => {
+    setCepFill(achado)
     if (achado.rua) {
       setAddress((atual) => juntarEndereco(achado.rua, separarNumero(atual)[1]))
     }
@@ -153,8 +224,20 @@ function PubOnboarding() {
   // teste é o `completePub`.
   const revisao = getPubOnboardingReview({
     emailVerified: conta?.emailVerified === true,
-    goesToPlan: callbackUrl === '/dashboard'
+    plan
   })
+
+  // Preço de fundador: com sessão, o que o Stripe diz do cupom; sem ela (antes
+  // de confirmar o e-mail) a consulta não abre, e vale o preço de fundador da
+  // tabela, o mesmo da landing.
+  const couponQuery = useQuery({
+    ...trpc.pub.getFounderCouponAvailable.queryOptions(),
+    enabled: Boolean(user?.email),
+    meta: { errorToast: false }
+  })
+  const founderCoupon = user?.email
+    ? (founderCouponFromQuery(couponQuery) ?? true)
+    : true
 
   const seguirParaPlano = async () => {
     localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)
@@ -162,21 +245,39 @@ function PubOnboarding() {
     // regravar o cache de sessão o guard da rota devolveria o usuário
     // para cá.
     await refreshSessionCache()
-    // Deep link que esperou a liberação volta para ele; sem destino, o plano.
-    // `await`: o botão segue em "salvando" até a próxima tela abrir, em vez
-    // de voltar ao normal com a revisão ainda na tela (WEB-286).
+    // Deep link que esperou a liberação volta para ele; sem destino, a tela
+    // "no ar". `await`: o botão segue em "salvando" até a próxima tela abrir,
+    // em vez de voltar ao normal com a revisão ainda na tela (WEB-286).
     await navigate(
-      callbackUrl === '/dashboard'
-        ? { to: '/plan', search: { trial: 'started' } }
-        : { to: callbackUrl }
+      callbackUrl === '/dashboard' ? { to: PUB_LIVE_PATH } : { to: callbackUrl }
     )
   }
 
   const completeMutation = useMutation(
     trpc.onboarding.completePub.mutationOptions({
-      onSuccess: async () => {
+      onSuccess: async (_, sent) => {
         analytics.onboardingCompleted({ role: 'pub' })
-        await seguirParaPlano()
+        localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)
+        if (photo) {
+          try {
+            // A capa entra na revisão da Onside como as outras fotos
+            // (WEB-462); `?capa` deixa o upload passar em todo plano.
+            await addPhoto({
+              url: await uploadMedia('/api/bar/photo?capa', photo),
+              category: 'fachada',
+              cover: true
+            })
+          } catch {
+            toast.error(
+              'O bar foi criado, mas a foto não subiu. Mande de novo no painel, em Meu espaço.'
+            )
+          }
+        }
+        // O bar já existe: o plano escolhido e o comprovante vêm agora. Sem a
+        // assinatura para o comprovante, segue direto, como antes.
+        const data = await finishSignup({ ...sent, plan })
+        if (data) setReceipt(data)
+        else await seguirParaPlano()
       },
       onError: async (err, draft) => {
         const concluido = mensagemOnboardingJaConcluido(err)
@@ -229,6 +330,7 @@ function PubOnboarding() {
     setAmenities(declaredAmenityIds(salvo.amenities ?? []))
     setScreenCount(salvo.screenCount ?? null)
     setPhoneError(motivoTelefoneInvalido(salvo.phone))
+    setPickedPlan(salvo.plan ?? null)
     setDraftRestored(true)
     setStep(Math.min(salvo.step ?? 1, STEPS.length - 1))
   }, [contaEmail, setCep])
@@ -250,9 +352,12 @@ function PubOnboarding() {
     }
     localStorage.setItem(
       PUB_ONBOARDING_DRAFT_KEY,
-      serializePubOnboardingDraft({ ...draft, step }, email)
+      serializePubOnboardingDraft(
+        { ...draft, step, plan: pickedPlan ?? undefined },
+        email
+      )
     )
-  }, [contaEmail, step, draft])
+  }, [contaEmail, step, draft, pickedPlan])
 
   // WEB-349: a rota é pública por causa de quem acabou de se cadastrar nesta
   // aba. Em aba sem sessão e sem esse cadastro (aba nova, link direto) não há
@@ -287,6 +392,7 @@ function PubOnboarding() {
     setScreenCount(null)
     setPhoneError(null)
     setError(null)
+    setPickedPlan(null)
     setDraftRestored(false)
   }
 
@@ -314,6 +420,9 @@ function PubOnboarding() {
       case 'phone':
         setPhone(value)
         setPhoneError(null)
+        break
+      case 'description':
+        setDescription(value)
         break
     }
   }
@@ -377,7 +486,7 @@ function PubOnboarding() {
       if (email) {
         localStorage.setItem(
           PUB_ONBOARDING_DRAFT_KEY,
-          serializePubOnboardingDraft(draft, email)
+          serializePubOnboardingDraft({ ...draft, plan }, email)
         )
       }
       navigate({ to: '/verify-email' })
@@ -386,55 +495,172 @@ function PubOnboarding() {
 
   const back = () => step > 0 && setStep((s) => s - 1)
 
-  return (
-    <OnboardingLayout variant="pub">
-      <OnboardingHeader label={roleAccountLabel('pub')} />
-      <StepProgress step={step} steps={STEPS} />
+  // "Ver meu bar no ar": o destino de sempre, a tela "no ar", ou o link de
+  // onde o dono veio.
+  const sairDoComprovante = async () => {
+    setLeaving(true)
+    try {
+      await seguirParaPlano()
+    } finally {
+      setLeaving(false)
+    }
+  }
 
-      <OnboardingStep step={step}>
+  if (receipt) {
+    return (
+      <PubObShell>
+        <PubReceipt
+          data={receipt}
+          pending={leaving}
+          onContinue={() => void sairDoComprovante()}
+          continueLabel={
+            callbackUrl === '/dashboard' ? 'Ver meu bar no ar' : 'Continuar'
+          }
+        />
+      </PubObShell>
+    )
+  }
+
+  const heading = (content: ReactNode) => (
+    <h1
+      ref={step === 0 ? undefined : headingRef}
+      tabIndex={-1}
+      className="ob-h"
+    >
+      {content}
+    </h1>
+  )
+  const planName = getPlan(plan).name
+  const planPrice = planChargeForShowcase(getPlan(plan), founderCoupon)
+  const characteristics = [
+    ...(screenCount === null
+      ? []
+      : [screenCount === 1 ? '1 tela' : `${screenCount} telas`]),
+    ...amenities.flatMap((id) => findAmenity(id)?.label ?? [])
+  ]
+  const reviewRows: {
+    label: string
+    to: number
+    values: string[]
+    empty?: string
+  }[] = [
+    {
+      label: 'Estabelecimento',
+      to: 1,
+      values: [name.trim(), address.trim(), neighborhood.trim()].filter(Boolean)
+    },
+    // WEB-281: cidade vazia aparece como o servidor vai gravar.
+    {
+      label: 'Cidade',
+      to: 1,
+      values: [`${city.trim() || 'São Paulo'}, ${uf}`]
+    },
+    {
+      label: 'Telefone',
+      to: 1,
+      values: phone ? [formatStoredPhone(phone)] : [],
+      empty: 'Não informado · você preenche depois no painel'
+    },
+    {
+      label: 'Descrição',
+      to: 1,
+      values: description.trim() ? [description.trim()] : [],
+      empty: 'Sem descrição'
+    },
+    {
+      label: 'Características',
+      to: 2,
+      values: characteristics,
+      empty: 'Nada marcado · você marca depois no painel'
+    }
+  ]
+
+  return (
+    <PubObShell
+      steps={STEPS}
+      step={step}
+      wide={step === PLAN_STEP}
+      tv={step === 0}
+      aside={
+        step === PLAN_STEP ? null : step === 0 ? (
+          <PubWelcomeTv />
+        ) : (
+          <PubPreview
+            name={name}
+            address={address}
+            phone={phone}
+            description={description}
+            neighborhood={neighborhood}
+            city={city}
+            amenities={amenities}
+            screenCount={screenCount}
+            photoUrl={photoUrl}
+            plan={step === STEPS.length - 1 ? plan : undefined}
+            note={
+              step === STEPS.length - 1
+                ? PREVIEW_NOTE[plan]
+                : 'Prévia do card do seu bar. Ela muda enquanto você preenche.'
+            }
+          />
+        )
+      }
+    >
+      <div
+        key={step}
+        className={`ob-step-body${step === 0 ? ' ob-welcome' : ''}`}
+      >
         {step === 0 && (
-          <WelcomeStep
-            eyebrow="Seu bar no radar dos torcedores."
-            title={
+          <>
+            {heading(
               <>
                 Vamos lotar sua casa nos{' '}
-                <span className="text-[var(--onside-acid)]">
-                  próximos clássicos
-                </span>
-                .
+                <span className="hl">dias de jogo</span>
               </>
-            }
-            subtitle="Cadastre seu bar em 1 minuto. Torcedores da região já podem te encontrar."
-            features={WELCOME_FEATURES}
-          />
+            )}
+            <p className="ob-sub">
+              Coloque seu bar no radar dos torcedores. Leva 2 minutos, e você
+              testa {ONBOARDING_TRIAL.days} dias grátis no plano que escolher,
+              sem cartão.
+            </p>
+            <ul className="ob-ben">
+              {WELCOME_FEATURES.map(([icon, title, text]) => (
+                <li key={title}>
+                  <i aria-hidden="true">{icon}</i>
+                  <span>
+                    <b>{title}</b>
+                    <span>{text}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div className="ob-need">
+              <p className="ob-k">Tenha à mão</p>
+              <ul>
+                <li>Nome e CEP do bar</li>
+                <li>Telas e o que o bar oferece</li>
+                <li>Jogos por mês e gasto médio</li>
+              </ul>
+            </div>
+          </>
         )}
 
         {step === 1 && (
-          <div>
-            <h2
-              ref={headingRef}
-              tabIndex={-1}
-              className="onside-display mb-2 text-3xl text-[var(--onside-paper)] outline-none"
-            >
-              Conta um pouco do seu bar.
-            </h2>
-            <p className="onside-text-muted-on-ink mb-6">
-              Essas informações aparecem para torcedores que buscam bares perto
-              deles.
+          <>
+            {heading('Seu estabelecimento')}
+            <p className="ob-sub">
+              Conta um pouco do seu bar. O CEP preenche o endereço.
             </p>
             {draftRestored ? (
-              <div
-                className="onside-callout onside-callout-stone mb-6"
-                role="status"
-              >
-                <p className="text-sm">
+              <div className="ob-recall" role="status">
+                <span>
                   Recuperamos o cadastro que você começou neste navegador.
-                  Confira os dados deste passo e do próximo antes de continuar.
-                </p>
+                  Confira os dados deste passo e dos próximos antes de
+                  continuar.
+                </span>
                 <button
                   type="button"
                   onClick={discardDraft}
-                  className="font-semibold text-sm underline underline-offset-2"
+                  className="ob-link"
                 >
                   Descartar e começar do zero
                 </button>
@@ -444,112 +670,126 @@ function PubOnboarding() {
               name={name}
               cep={cep}
               cepStatus={cepStatus}
+              cepFill={cepFill}
               onCepChange={(value) => void mudarCep(value)}
               address={address}
               neighborhood={neighborhood}
               city={city}
               uf={uf}
               phone={phone}
+              description={description}
               onChange={handleFieldChange}
               onCityBlur={() => conciliarUfComCidade(city, setUf)}
               errors={phoneError ? { phone: phoneError } : undefined}
+              photoUrl={photoUrl}
+              onPhoto={setPhoto}
+              photoLater={conta?.emailVerified !== true}
             />
-          </div>
+          </>
         )}
 
         {step === 2 && (
-          <div>
-            <h2
-              ref={headingRef}
-              tabIndex={-1}
-              className="onside-display mb-2 text-3xl text-[var(--onside-paper)] outline-none"
-            >
-              O que o torcedor encontra aí?
-            </h2>
-            <p className="onside-text-muted-on-ink mb-6">
-              Marque o que o seu bar tem. É isso que aparece no seu perfil e o
-              que o torcedor usa para filtrar a busca. Dá para pular e preencher
-              depois.
+          <>
+            {heading('O que o torcedor encontra aí?')}
+            <p className="ob-sub">
+              É o que ele usa para filtrar a busca. Dá para pular e marcar
+              depois, no painel do bar.
             </p>
             <PubAmenitiesStep
               amenities={amenities}
               onToggleAmenity={toggleAmenity}
               screenCount={screenCount}
               onScreenCountChange={setScreenCount}
-              description={description}
-              onDescriptionChange={setDescription}
             />
-          </div>
+          </>
         )}
 
         {step === 3 && (
-          <div className="py-4 text-center md:py-6">
-            <div className="onside-panel-acid mx-auto mb-6 grid size-20 place-items-center">
-              <Check size={40} color="currentColor" aria-hidden="true" />
-            </div>
-            <h2
-              ref={headingRef}
-              tabIndex={-1}
-              className="onside-display mb-3 text-4xl text-[var(--onside-paper)] outline-none md:text-5xl"
-            >
-              {revisao.titulo}
-            </h2>
-            <p className="onside-text-muted-on-ink mx-auto mb-8 max-w-md">
-              {revisao.texto}
+          <>
+            {heading(
+              <>
+                Como é a sua <span className="hl">rotina de jogo?</span>
+              </>
+            )}
+            <p className="ob-sub">
+              Duas perguntas rápidas e o que você espera da Onside. Com isso a
+              gente mostra o plano que faz mais sentido pro seu bar. Nada disso
+              aparece no perfil.
             </p>
-            <div className="inline-flex flex-wrap justify-center gap-2">
-              <span className="onside-badge onside-badge-on-ink">
-                {name.trim() || '…'}
-              </span>
-              <span className="onside-badge onside-badge-on-ink">
-                <Location size={12} color="currentColor" aria-hidden="true" />
-                {neighborhood.trim() || '…'}
-              </span>
-              {amenities.map((id) => {
-                const amenity = findAmenity(id)
-                if (!amenity) return null
-
-                return (
-                  <span
-                    key={amenity.id}
-                    className="onside-badge onside-badge-acid-on-ink"
-                  >
-                    {amenity.label}
-                  </span>
-                )
-              })}
-            </div>
-            {/* WEB-281: o que os selos não mostram. Opcional vazio não entra;
-                cidade vazia aparece como o servidor vai gravar. */}
-            <dl className="mx-auto mt-6 grid max-w-md gap-3 text-left text-sm">
-              {[
-                ['Endereço', address.trim()],
-                ['Cidade', `${city.trim() || 'São Paulo'}, ${uf}`],
-                ['Telefone', formatStoredPhone(phone)],
-                ['Telas', screenCount === null ? '' : String(screenCount)],
-                ['Descrição', description.trim()]
-              ]
-                .filter(([, value]) => value)
-                .map(([label, value]) => (
-                  <div key={label}>
-                    <dt className="font-[family-name:var(--onside-mono)] text-[10px] text-[color-mix(in_srgb,var(--onside-paper)_55%,transparent)] uppercase tracking-[0.16em]">
-                      {label}
-                    </dt>
-                    <dd className="whitespace-pre-line break-words text-[var(--onside-paper)]">
-                      {value}
-                    </dd>
-                  </div>
-                ))}
-            </dl>
-          </div>
+            <PubRoutineStep routine={routine} onChange={setRoutine} />
+          </>
         )}
-      </OnboardingStep>
+
+        {step === PLAN_STEP && (
+          <PubPlanStep
+            barName={name}
+            recommended={recommendation.plan}
+            reasons={recommendation.reasons}
+            selected={plan}
+            onSelect={setPickedPlan}
+            spend={routine.spend}
+            founderCoupon={founderCoupon}
+            onEditRoutine={() => setStep(3)}
+            heading={heading}
+          />
+        )}
+
+        {step === 5 && (
+          <>
+            {heading(revisao.titulo)}
+            <p className="ob-sub">{revisao.texto}</p>
+            <div className="ob-card">
+              {reviewRows.map((row) => (
+                <div key={row.label} className="ob-ln">
+                  <span>
+                    <b>{row.label}</b>
+                    {row.values.length ? (
+                      <span className="ob-tags">
+                        {row.values.map((value) => (
+                          <span key={value} className="ob-tag">
+                            {value}
+                          </span>
+                        ))}
+                      </span>
+                    ) : (
+                      <span>{row.empty}</span>
+                    )}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn btn-ghost ob-sm"
+                    onClick={() => setStep(row.to)}
+                    aria-label={`Corrigir ${row.label.toLowerCase()}`}
+                  >
+                    Corrigir
+                  </button>
+                </div>
+              ))}
+              <div className="ob-ln">
+                <span>
+                  <b>Plano</b>
+                  <span>
+                    {planName} grátis por {ONBOARDING_TRIAL.days} dias, sem
+                    cartão. Depois, {formatPlanPrice(planPrice.chargeReais)}
+                    /mês só se você contratar.
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-ghost ob-sm"
+                  onClick={() => setStep(PLAN_STEP)}
+                  aria-label="Trocar o plano"
+                >
+                  Trocar
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
 
       {error && (
-        <p
-          className="mt-4 text-center text-[var(--onside-live-text)] text-sm"
-          role="alert"
-        >
+        <p className="ob-error" role="alert">
           {error}
         </p>
       )}
@@ -563,15 +803,16 @@ function PubOnboarding() {
         onBack={back}
         onNext={next}
         nextLabel={
-          step === 2 &&
-          amenities.length === 0 &&
-          screenCount === null &&
-          !description.trim()
+          step === 2 && amenities.length === 0 && screenCount === null
             ? 'Pular'
-            : undefined
+            : step === 3
+              ? 'Ver a recomendação'
+              : step === PLAN_STEP
+                ? `Testar o ${planName} grátis`
+                : undefined
         }
         lastLabel={revisao.botao}
       />
-    </OnboardingLayout>
+    </PubObShell>
   )
 }

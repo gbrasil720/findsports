@@ -18,7 +18,7 @@ describe('e-mail de redefinição de senha', () => {
     expect(email.html).toContain('#c9f135')
     expect(email.html).toContain('Definir nova senha')
     expect(email.html).toContain('alt="Onside"')
-    expect(email.html).toContain('copie e cole este endereço')
+    expect(email.html).toContain('copie este endereço no navegador')
     expect(email.text).toContain(
       'https://onside.app/api/auth/reset-password/abc'
     )
@@ -35,6 +35,12 @@ describe('e-mail de redefinição de senha', () => {
     expect(email.text).toContain('uso único')
     expect(email.text).toContain('expira em 30 minutos')
     expect(email.text).toContain('sessões abertas são encerradas')
+    // Os selos repetem o que o texto diz (resetPasswordTokenExpiresIn: 30 min).
+    for (const selo of ['USO ÚNICO', '30 MINUTOS', 'ENCERRA AS SESSÕES']) {
+      expect(email.html).toContain(selo)
+    }
+    // Segurança: botão em tinta, não em acid.
+    expect(email.html).toContain('background:#12120f;border-radius:999px')
     // Quem não pediu a redefinição precisa saber que ignorar basta.
     expect(email.text).toContain('Se você não pediu para redefinir sua senha')
   })
@@ -72,11 +78,13 @@ describe('e-mail de redefinição de senha', () => {
         'http://localhost:3001'
       )
     })
-    const urls = [...email.html.matchAll(/\b(?:href|src)="([^"]+)"/g)].map(
-      (match) => (match[1] ?? '').replaceAll('&amp;', '&')
-    )
+    // A folha de fontes do Google é o único endereço de fora (só o Apple
+    // Mail a usa); o resto é do host público.
+    const urls = [...email.html.matchAll(/\b(?:href|src)="([^"]+)"/g)]
+      .map((match) => (match[1] ?? '').replaceAll('&amp;', '&'))
+      .filter((value) => !value.startsWith('https://fonts.googleapis.com/'))
 
-    expect(urls).toHaveLength(3)
+    expect(urls).toHaveLength(4)
     expect(email.html).not.toContain('localhost')
     for (const value of urls) {
       expect(new URL(value).hostname).toBe(publicHost)

@@ -57,8 +57,8 @@ test('trial vencido sem assinatura no provedor: o botão padrão contrata o plan
   await signIn(page, user)
   await page.goto('/plan')
 
-  // Sem escolher nada: a tela abre no plano do trial.
-  await page.getByRole('button', { name: 'Continuar com Elite' }).click()
+  // O plano do teste vencido é o que o cartão escuro e a faixa contratam.
+  await page.getByRole('button', { name: 'Contratar o Elite' }).last().click()
   await page.waitForURL(`${STUB_URL}/stripe/checkout/**`)
 
   const session = await checkoutSessionOf(page, user.id)
@@ -86,8 +86,8 @@ test('o clique abre a sessão e redireciona para o Stripe, com o cupom de fundad
     }
   })
 
-  await page.getByRole('radio', { name: /^Elite,/ }).check({ force: true })
-  await page.getByRole('button', { name: 'Continuar com Elite' }).click()
+  // Cada cartão contrata o próprio plano.
+  await page.getByRole('button', { name: 'Contratar o Elite' }).click()
 
   await page.waitForURL(`${STUB_URL}/stripe/checkout/**`)
   await expect(page).toHaveTitle('Stripe (stub)')
@@ -152,8 +152,9 @@ test('teste grátis em vigor: contrata já, e a primeira cobrança fica para o f
   await signIn(page, user)
   await page.goto('/plan')
 
-  await expect(page.getByText('O teste grátis não pede cartão.')).toBeVisible()
-  await page.getByRole('button', { name: 'Contratar Elite' }).click()
+  // No celular a versão longa do subtítulo fica oculta; o texto continua na página.
+  await expect(page.getByText('O teste grátis não pede cartão.')).toBeAttached()
+  await page.getByRole('button', { name: 'Contratar o Elite' }).click()
   await page.waitForURL(`${STUB_URL}/stripe/checkout/**`)
 
   const session = await checkoutSessionOf(page, user.id)
@@ -181,12 +182,13 @@ for (const [state, caso] of [
     await signIn(page, user)
     await page.goto('/plan')
 
-    await expect(
-      page.getByRole('radio', { name: /^Elite, R\$ 297\/mês\./ })
-    ).toBeVisible()
-    await expect(page.getByRole('radio', { name: /R\$ 269/ })).toHaveCount(0)
+    const elite = page.locator('.pl-pc').filter({
+      has: page.getByRole('heading', { name: 'Elite', exact: true })
+    })
+    await expect(elite).toContainText('R$ 297')
+    await expect(page.getByText('R$ 269')).toHaveCount(0)
 
-    await page.getByRole('button', { name: 'Continuar com Pro' }).click()
+    await page.getByRole('button', { name: 'Contratar o Pro' }).first().click()
     await page.waitForURL(`${STUB_URL}/stripe/checkout/**`)
     const session = await checkoutSessionOf(page, user.id)
     expect(session).toMatchObject({
@@ -197,7 +199,7 @@ for (const [state, caso] of [
   })
 }
 
-test('/admin/billing: com o cupom esgotado, o card Plano atual do trial mostra a tabela cheia (WEB-343)', async ({
+test('/admin/billing: com o cupom esgotado, o card do plano do trial mostra a tabela cheia (WEB-343)', async ({
   page,
   request
 }) => {
@@ -208,9 +210,7 @@ test('/admin/billing: com o cupom esgotado, o card Plano atual do trial mostra a
   await signIn(page, user)
   await page.goto('/admin/billing')
 
-  const currentPlan = page.locator('section').filter({
-    has: page.getByRole('heading', { name: 'Plano atual' })
-  })
+  const currentPlan = page.getByRole('region', { name: 'Seu plano' })
   await expect(currentPlan).toContainText('R$ 297')
   await expect(currentPlan).not.toContainText('R$ 269')
 })
@@ -225,7 +225,7 @@ test('checkout concluído: o bar fica ativo no plano pago, e contratar de novo v
   })
   await signIn(page, user)
   await page.goto('/plan')
-  await page.getByRole('button', { name: 'Continuar com Pro' }).click()
+  await page.getByRole('button', { name: 'Contratar o Pro' }).first().click()
   await page.waitForURL(`${STUB_URL}/stripe/checkout/**`)
   const session = await checkoutSessionOf(page, user.id)
   if (!session) throw new Error('sessão de checkout não foi criada')
@@ -293,11 +293,11 @@ test('checkout concluído: o bar fica ativo no plano pago, e contratar de novo v
 
   // Quem já paga e escolhe outro plano confirma a troca no portal do Stripe.
   await page.goto('/plan')
-  // Só depois de a assinatura carregar a tela abre no plano pago; clicar antes
-  // disso, com a página ainda hidratando, não troca a seleção.
-  await expect(page.getByRole('radio', { name: /^Pro,/ })).toBeChecked()
-  await page.getByRole('radio', { name: /^Elite,/ }).check({ force: true })
-  await page.getByRole('button', { name: 'Continuar com Elite' }).click()
+  // Só depois de a assinatura carregar o cartão do Elite troca de plano.
+  await expect(
+    page.getByRole('button', { name: 'Seu plano atual' })
+  ).toBeDisabled()
+  await page.getByRole('button', { name: 'Mudar para o Elite' }).click()
   await page.waitForURL(`${STUB_URL}/stripe/portal/**`)
 
   const calls = (await (

@@ -482,3 +482,125 @@ integrationTest(
     expect(await stateOf(owner.barId)).toEqual(before)
   }
 )
+
+integrationTest(
+  'motivo do cancelamento vai ao Stripe só com o cancelamento feito, uma vez e sem sobrescrever o do portal (WEB-445)',
+  async () => {
+    const { syncStripeEvent, createBar } = ready()
+    const { db } = await import('@findsports_oficial/db')
+    const { subscriptionCancelReason } = await import(
+      '@findsports_oficial/db/schema/platform'
+    )
+    const owner = await createBar(null)
+    const id = `sub_${owner.barId}`
+    const requestedAt = new Date()
+    const minutes = (n: number) => new Date(requestedAt.getTime() + n * 60_000)
+    // Um de semanas atrás (de outra tentativa), o desta vez, e um escolhido
+    // depois do pedido, que não é deste cancelamento.
+    await db.insert(subscriptionCancelReason).values([
+      {
+        barId: owner.barId,
+        plan: 'pro',
+        reason: 'too_expensive',
+        createdAt: minutes(-60 * 24 * 20)
+      },
+      {
+        barId: owner.barId,
+        plan: 'pro',
+        reason: 'low_traffic',
+        createdAt: minutes(-2)
+      },
+      {
+        barId: owner.barId,
+        plan: 'pro',
+        reason: 'paused',
+        createdAt: minutes(30)
+      }
+    ])
+
+    // O dublê do Stripe: devolve o estado atual e guarda o que se grava nele.
+    let current: Record<string, unknown> = {}
+    const updates: { id: string; params: Record<string, unknown> }[] = []
+    const client = {
+      subscriptions: {
+        retrieve: async () => current,
+        update: async (subId: string, params: Record<string, unknown>) => {
+          updates.push({ id: subId, params })
+          current = { ...current, ...params }
+          return current
+        }
+      },
+      customers: { update: async () => ({}) }
+    } as unknown as Stripe
+    const deliver = (state: Record<string, unknown>) => {
+      current = {
+        ...stripeSubscription({
+          id,
+          status: 'active',
+          lookupKey: 'pro_monthly',
+          customerId: owner.customerId,
+          userId: owner.userId
+        }),
+        cancellation_details: { feedback: null, comment: null, reason: null },
+        canceled_at: null,
+        ...state
+      }
+      return syncStripeEvent(
+        {
+          type: 'customer.subscription.updated',
+          data: { object: current }
+        } as unknown as Stripe.Event,
+        client
+      )
+    }
+    const cancelAt = Math.floor(periodEnd.getTime() / 1000)
+    const canceledAt = Math.floor(requestedAt.getTime() / 1000)
+
+    // Abriu o portal e desistiu: nada vai ao Stripe.
+    await deliver({})
+    expect(updates).toEqual([])
+
+    // Cancelou no portal: vai o motivo desta vez, com o texto da tela.
+    await deliver({ cancel_at: cancelAt, canceled_at: canceledAt })
+    expect(updates).toEqual([
+      {
+        id,
+        params: {
+          cancellation_details: {
+            feedback: 'other',
+            comment: 'Motivo escolhido no app: Pouco movimento'
+          }
+        }
+      }
+    ])
+
+    // O mesmo evento de novo, e o que a nossa gravação dispara: nada novo.
+    await syncStripeEvent(
+      {
+        type: 'customer.subscription.updated',
+        data: { object: current }
+      } as unknown as Stripe.Event,
+      client
+    )
+    expect(updates).toHaveLength(1)
+
+    // O portal trouxe o motivo dele: não sobrescreve.
+    updates.length = 0
+    await deliver({
+      cancel_at_period_end: true,
+      canceled_at: canceledAt,
+      cancellation_details: { feedback: 'unused', comment: null, reason: null }
+    })
+    expect(updates).toEqual([])
+
+    // Encerrada de vez também conta; motivo de semanas antes do pedido, não.
+    await deliver({ status: 'canceled', canceled_at: canceledAt })
+    expect(updates).toHaveLength(1)
+    updates.length = 0
+    await deliver({
+      status: 'canceled',
+      canceled_at: canceledAt - 60 * 60 * 24 * 10
+    })
+    expect(updates).toEqual([])
+  }
+)

@@ -27,13 +27,15 @@ test('lista quem vai por jogo e marca quem já validou', async ({ page }) => {
   )
   expect(registered.ok()).toBe(true)
 
-  await page.goto('/admin#admin-quem-vai')
-  await expect(page.getByRole('tab', { name: 'Quem vai' })).toHaveAttribute(
-    'aria-selected',
-    'true'
-  )
+  await page.goto('/admin/quem-vai')
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Quem vai' })
+  ).toBeVisible()
   const game = page.getByRole('article', { name: championship })
-  await expect(game).toContainText('2 vão assistir · 1 validou')
+  await expect(game).toContainText('1 / 2')
+  await expect(game.getByRole('button', { name: /^Validaram/ })).toHaveText(
+    /Validaram\s*1/
+  )
   await expect(
     game.getByRole('listitem').filter({ hasText: arrived.guestName })
   ).toContainText('Validou')
@@ -41,28 +43,58 @@ test('lista quem vai por jogo e marca quem já validou', async ({ page }) => {
     game.getByRole('listitem').filter({ hasText: coming.guestName })
   ).not.toContainText('Validou')
   await expect(game.getByRole('listitem')).toHaveCount(2)
+
+  // Filtro e busca pelo nome, dentro do jogo.
+  await game.getByRole('button', { name: /^Validaram/ }).click()
+  await expect(game.getByRole('listitem')).toHaveCount(1)
+  await expect(game.getByRole('listitem')).toContainText(arrived.guestName)
+  await game.getByRole('button', { name: /^Todos/ }).click()
+  await game.getByPlaceholder('Buscar pelo nome').fill(coming.guestName)
+  await expect(game.getByRole('listitem')).toHaveCount(1)
+  await expect(game.getByRole('listitem')).toContainText(coming.guestName)
+
+  // "Validar código" abre a caixa da casca.
+  await page
+    .getByRole('main')
+    .getByRole('button', { name: 'Validar código' })
+    .click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+})
+
+test('o link "Ver os N" de Jogos leva ao jogo em Quem vai', async ({
+  page
+}) => {
+  const pub = await createPub()
+  const { eventId, championship } = await createEvent(pub.barId)
+  await createTicket(eventId)
+  await signIn(page, pub.user)
+  await page.goto(`/admin/quem-vai#jogo-${eventId}`)
+  await expect(page.locator(`#jogo-${eventId}`)).toBeInViewport()
+  await expect(page.getByRole('article', { name: championship })).toBeVisible()
 })
 
 test('ninguém marcou: a aba diz que está vazia', async ({ page }) => {
   const pub = await createPub()
   await createEvent(pub.barId)
   await signIn(page, pub.user)
-  await page.goto('/admin#admin-quem-vai')
+  await page.goto('/admin/quem-vai')
   await expect(page.getByText('Ninguém marcou ainda.')).toBeVisible()
 })
 
-test('link direto para Quem vai sem Elite cai na Visão geral', async ({
-  page
-}) => {
+test('link direto para Quem vai sem Elite cai em Hoje', async ({ page }) => {
   const pub = await createPub({ subscription: { plan: 'pro' } })
   await createEvent(pub.barId)
   await signIn(page, pub.user)
-  await page.goto('/admin#admin-quem-vai')
-  await expect(page.getByRole('tab', { name: 'Visão geral' })).toHaveAttribute(
-    'aria-selected',
-    'true'
-  )
-  await expect(page.getByRole('tab', { name: 'Quem vai' })).toHaveCount(0)
+  await page.goto('/admin/quem-vai')
+  await expect(page).toHaveURL(/\/admin$/)
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Hoje' })
+  ).toBeVisible()
+  await expect(
+    page
+      .getByRole('navigation', { name: 'Seções do painel' })
+      .getByRole('link', { name: 'Quem vai', exact: true })
+  ).toHaveCount(0)
 })
 
 // WEB-341: o trial vence com código em aberto. O bar não ganha gente nova pela
@@ -79,12 +111,8 @@ test('trial Elite vencido com código em aberto: a aba Quem vai fica e o código
   })
   await signIn(page, pub.user)
 
-  await page.goto('/admin#admin-quem-vai')
-  await expect(page.getByRole('tab', { name: 'Quem vai' })).toHaveAttribute(
-    'aria-selected',
-    'true'
-  )
-  const panel = page.getByRole('tabpanel', { name: 'Quem vai' })
+  await page.goto('/admin/quem-vai')
+  const panel = page.locator('#painel-main')
   await expect(panel.getByRole('note')).toContainText(
     'A lista de quem vai é um recurso do plano Elite.'
   )
@@ -97,7 +125,10 @@ test('trial Elite vencido com código em aberto: a aba Quem vai fica e o código
     page.getByRole('heading', { level: 3, name: ticket.guestName })
   ).toBeVisible()
   await expect(page.getByText('Chopp em dobro')).toBeVisible()
-  await page.getByRole('button', { name: 'Validar código' }).click()
+  await page
+    .getByRole('main')
+    .getByRole('button', { name: 'Validar código' })
+    .click()
   await page
     .getByRole('dialog', { name: 'Validar o código?' })
     .getByRole('button', { name: 'Sim, validar' })
@@ -105,4 +136,37 @@ test('trial Elite vencido com código em aberto: a aba Quem vai fica e o código
   await expect(
     page.getByText('Código validado. Libere a oferta da casa.')
   ).toBeVisible()
+})
+
+test('chegada recém-validada se desfaz no Quem vai, com confirmação', async ({
+  page
+}) => {
+  const pub = await createPub()
+  const { eventId, championship } = await createEvent(pub.barId)
+  const arrived = await createTicket(eventId)
+  await signIn(page, pub.user)
+
+  const found = await page.request.post(
+    '/api/trpc/reservationValidation.lookup',
+    { data: { code: arrived.code } }
+  )
+  const { codeId } = (await found.json()).result.data
+  const registered = await page.request.post(
+    '/api/trpc/reservationValidation.registerArrival',
+    { data: { codeId, requestId: randomUUID() } }
+  )
+  expect(registered.ok()).toBe(true)
+
+  await page.goto('/admin/quem-vai')
+  const game = page.getByRole('article', { name: championship })
+  await expect(game).toContainText('1 / 1')
+  await game
+    .getByRole('button', { name: `Desfazer a chegada de ${arrived.guestName}` })
+    .click()
+  const confirm = page.getByRole('dialog', { name: 'Desfazer a chegada?' })
+  await confirm.getByRole('button', { name: 'Sim, desfazer' }).click()
+  await expect(game).toContainText('0 / 1')
+  await expect(
+    game.getByRole('listitem').filter({ hasText: arrived.guestName })
+  ).not.toContainText('Validou')
 })

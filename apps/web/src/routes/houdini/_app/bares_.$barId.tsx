@@ -1,5 +1,6 @@
 import { PLAN_NAMES } from '@findsports_oficial/api/lib/plan-limits'
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
+import { cancelReasonLabel } from '@findsports_oficial/db/cancel-reasons'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import type { inferRouterOutputs } from '@trpc/server'
@@ -49,6 +50,9 @@ type Tab = (typeof TABS)[number]['id']
 
 const DAY = 24 * 3_600_000
 
+/** Rascunho (WEB-436) só na aba Jogos, marcado: as contagens são do que está publicado. */
+const publishedGames = (ficha: Ficha) => ficha.games.filter((g) => !g.draft)
+
 function FichaPage() {
   const { env, admin } = Route.useRouteContext()
   const { barId } = Route.useParams()
@@ -84,7 +88,7 @@ function FichaPage() {
 function FichaBody({ ficha }: { ficha: Ficha }) {
   const [tab, setTab] = useState<Tab>('resumo')
   const counts: Partial<Record<Tab, number>> = {
-    jogos: ficha.games.length,
+    jogos: publishedGames(ficha).length,
     reservas: ficha.reservations.length,
     avaliacoes: ficha.ratingCount,
     grimorio: ficha.grimorio.length
@@ -163,6 +167,7 @@ function FichaBody({ ficha }: { ficha: Ficha }) {
             rows={ficha.games.map((g) => ({
               id: g.id,
               main: g.title,
+              tag: g.draft ? 'Rascunho' : undefined,
               sub: g.championship,
               right: `${formatDateTime(g.startsAt)} · ${countLabel(g.reservations, 'código', 'códigos')}`
             }))}
@@ -242,7 +247,8 @@ function Card({
 
 function Resumo({ ficha }: { ficha: Ficha }) {
   const sub = ficha.subscription
-  const next = ficha.games[0]
+  const games = publishedGames(ficha)
+  const next = games[0]
   const daysToNext = next
     ? Math.max(
         0,
@@ -252,7 +258,7 @@ function Resumo({ ficha }: { ficha: Ficha }) {
   const stats = [
     {
       label: 'Jogos futuros',
-      value: String(ficha.games.length),
+      value: String(games.length),
       sub:
         daysToNext === null
           ? 'nenhum marcado'
@@ -360,6 +366,19 @@ function Resumo({ ficha }: { ficha: Ficha }) {
                   <dd>{formatDateTime(sub.cancelAt)}</dd>
                 </div>
               ) : null}
+              {ficha.cancelReason ? (
+                <div>
+                  <dt>Motivo do cancelamento</dt>
+                  <dd>
+                    {cancelReasonLabel(ficha.cancelReason.reason)}
+                    <span className="hd-mono hd-small" style={{ fontSize: 11 }}>
+                      {' '}
+                      · {PLAN_NAMES[ficha.cancelReason.plan]} ·{' '}
+                      {formatDateTime(ficha.cancelReason.createdAt)}
+                    </span>
+                  </dd>
+                </div>
+              ) : null}
             </dl>
             {searchDrift(ficha) ? (
               <SearchDriftAlert key={ficha.id} bar={ficha} />
@@ -372,9 +391,9 @@ function Resumo({ ficha }: { ficha: Ficha }) {
           </Card>
 
           <Card title="Próximos jogos" gap={4}>
-            {ficha.games.length ? (
+            {games.length ? (
               <div>
-                {ficha.games.slice(0, 3).map((g) => (
+                {games.slice(0, 3).map((g) => (
                   <div
                     key={g.id}
                     className="hd-row"
@@ -470,7 +489,13 @@ function Rows({
   rows,
   empty
 }: {
-  rows: Array<{ id: string; main: string; sub: string; right: string }>
+  rows: Array<{
+    id: string
+    main: string
+    sub: string
+    right: string
+    tag?: string
+  }>
   empty: string
 }) {
   if (!rows.length) return <p className="hd-empty">{empty}</p>
@@ -501,7 +526,21 @@ function Rows({
               gap: 2
             }}
           >
-            <span style={{ fontSize: 14, fontWeight: 600 }}>{r.main}</span>
+            {/* Flex com gap, e não margem: quando a etiqueta desce de linha,
+                ela começa rente ao título, sem recuo. */}
+            <span
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: '4px 8px',
+                fontSize: 14,
+                fontWeight: 600
+              }}
+            >
+              <span style={{ minWidth: 0 }}>{r.main}</span>
+              {r.tag ? <span className="hd-pill">{r.tag}</span> : null}
+            </span>
             <span style={{ fontSize: 12, color: 'var(--hd-muted)' }}>
               {r.sub}
             </span>

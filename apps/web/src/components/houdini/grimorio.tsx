@@ -46,7 +46,8 @@ function duration(seconds: unknown) {
 
 const JOB_LABELS: Record<string, string> = {
   bar_plans: 'a reconciliação dos planos',
-  analytics_retention: 'a limpeza dos analytics'
+  analytics_retention: 'a limpeza dos analytics',
+  bar_notices: 'os avisos da semana dos bares'
 }
 
 const EVENT_FIELDS: Record<string, string> = {
@@ -252,6 +253,48 @@ export function describe(entry: GrimorioEntry): {
         tone: 'stone',
         text: `religou ${label}`,
         detail: null
+      }
+    case 'bar.photo_approve':
+      return {
+        icon: 'check',
+        tone: 'acid',
+        text: `aprovou uma foto de ${label}`,
+        detail: detail.cover ? 'virou a capa' : null
+      }
+    case 'bar.photo_reject':
+      return {
+        icon: 'warn',
+        tone: 'live',
+        text: `recusou uma foto de ${label}`,
+        detail: typeof detail.reason === 'string' ? detail.reason : null
+      }
+    case 'bar.description_approve':
+      return {
+        icon: 'check',
+        tone: 'acid',
+        text: `aprovou a descrição de ${label}`,
+        detail: null
+      }
+    case 'bar.description_reject':
+      return {
+        icon: 'warn',
+        tone: 'live',
+        text: `recusou a descrição de ${label}`,
+        detail: typeof detail.reason === 'string' ? detail.reason : null
+      }
+    case 'bar.rating_comment_approve':
+      return {
+        icon: 'check',
+        tone: 'acid',
+        text: `aprovou um comentário sobre ${label}`,
+        detail: null
+      }
+    case 'bar.rating_comment_reject':
+      return {
+        icon: 'warn',
+        tone: 'live',
+        text: `recusou um comentário sobre ${label}`,
+        detail: typeof detail.reason === 'string' ? detail.reason : null
       }
     default:
       return {

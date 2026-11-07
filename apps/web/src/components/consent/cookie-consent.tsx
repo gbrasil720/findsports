@@ -77,7 +77,21 @@ export function CookieConsent() {
       data-testid="cookie-consent"
     >
       <div>
-        <p className="onside-consent-kicker">Cookies</p>
+        {/* Os quadradinhos, o "de análise" e a nota só aparecem na landing
+            nova (o "Placar", em cookie-consent.css); nas outras telas o
+            título continua "Cookies". */}
+        <p className="onside-consent-kicker">
+          <span className="onside-consent-leds" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+            <i />
+            <i />
+            <i />
+          </span>
+          Cookies<span className="onside-consent-kind"> de análise</span>
+          <span className="onside-consent-note">só com a sua permissão</span>
+        </p>
         <p className="onside-consent-long">
           Usamos cookies essenciais para a Onside funcionar. Com a sua
           permissão, usamos também cookies de análise para entender o uso e

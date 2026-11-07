@@ -22,6 +22,10 @@ import { SAO_PAULO, STUB_PORT, STUB_URL } from '../env'
  *   cliente em `POST /v1/customers` (`cus_e2e_` + hash do e-mail);
  * - `GET` e `POST /v1/customers/{id}`: cliente sem endereço — o checkout
  *   manda o do cadastro do bar, e os nomes (WEB-328);
+ * - `GET`, `POST` e `DELETE /v1/customers/{id}/tax_ids[/{txi}]`: os
+ *   documentos do cliente, guardados aqui (o CNPJ dos dados da nota, WEB-444).
+ *   `99.999.999/0001-91` (dígito certo) é recusado com 400, como o Stripe
+ *   recusa o documento que não aceita;
  * - `GET /v1/prices?lookup_keys[]=`: um preço mensal com a lookup key pedida;
  * - `GET /v1/subscriptions?customer=`: as assinaturas semeadas daquele
  *   cliente — vazia para quem ainda não passou pelo checkout;
@@ -32,6 +36,8 @@ import { SAO_PAULO, STUB_PORT, STUB_URL } from '../env'
  *   centavos; crédito é saldo negativo) ou zero (WEB-350). A forma de
  *   pagamento semeada (`default_payment_method`) só vem como objeto com
  *   `expand[]=default_payment_method`; sem ele, só o id, como no Stripe;
+ * - `POST /v1/subscriptions/{id}`: só `cancellation_details` (o motivo do
+ *   cancelamento, WEB-445), gravado na assinatura semeada, ou 404;
  * - `DELETE /v1/subscriptions/{id}`: encerra a assinatura semeada (passa a
  *   `canceled`, que é o que as leituras seguintes devolvem), ou 404 — é o que
  *   a exclusão da conta chama (WEB-336);
@@ -73,6 +79,12 @@ const stripeSubscriptions = new Map<string, unknown>()
 const stripeBalances = new Map<
   string,
   { balance: number; nextAmountDue: number }
+>()
+
+/** Documentos (`tax_ids`) de cada cliente (WEB-444). */
+const stripeTaxIds = new Map<
+  string,
+  { id: string; object: 'tax_id'; type: string; value: string }[]
 >()
 
 /** O que o "Stripe" diz do cupom de fundador. Global: só teste serial troca. */
@@ -219,6 +231,31 @@ async function stripe(request: Request, url: URL) {
     })
   }
 
+  const taxIds = /^\/customers\/(cus_[^/]+)\/tax_ids(?:\/([^/]+))?$/.exec(path)
+  if (taxIds) {
+    const [, owner = '', taxId] = taxIds
+    const current = stripeTaxIds.get(owner) ?? []
+    if (request.method === 'GET') return list(current)
+    if (request.method === 'POST') {
+      if (body.value === '99.999.999/0001-91') {
+        return stripeError(400, 'Invalid value for br_cnpj.')
+      }
+      const created = {
+        id: `txi_e2e_${crypto.randomUUID()}`,
+        object: 'tax_id' as const,
+        type: body.type ?? '',
+        value: body.value ?? ''
+      }
+      stripeTaxIds.set(owner, [...current, created])
+      return Response.json(created)
+    }
+    stripeTaxIds.set(
+      owner,
+      current.filter((item) => item.id !== taxId)
+    )
+    return Response.json({ id: taxId, object: 'tax_id', deleted: true })
+  }
+
   // Cliente lido e atualizado com os dados do cadastro: sempre "sem
   // endereço", para o app mandar o do bar.
   const customer = /^\/customers\/(cus_[^/]+)$/.exec(path)
@@ -243,6 +280,22 @@ async function stripe(request: Request, url: URL) {
     const canceled = { ...found, status: 'canceled' }
     stripeSubscriptions.set(subscription[1] ?? '', canceled)
     return Response.json(canceled)
+  }
+  if (request.method === 'POST' && subscription) {
+    const found = stripeSubscriptions.get(subscription[1] ?? '')
+    if (!found) {
+      return stripeError(404, `No such subscription: ${subscription[1]}`)
+    }
+    const updated = {
+      ...found,
+      cancellation_details: {
+        reason: null,
+        feedback: body['cancellation_details[feedback]'] ?? null,
+        comment: body['cancellation_details[comment]'] ?? null
+      }
+    }
+    stripeSubscriptions.set(subscription[1] ?? '', updated)
+    return Response.json(updated)
   }
   if (request.method === 'GET' && subscription) {
     const found = stripeSubscriptions.get(subscription[1] ?? '') as

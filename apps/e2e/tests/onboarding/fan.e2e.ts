@@ -8,7 +8,7 @@ import { createUser } from '../../fixtures/users'
 // WEB-177: onboarding do torcedor (`routes/(onboarding)/onboarding.fan.tsx`).
 // Cada teste cria o próprio usuário: concluir o onboarding muda a conta.
 
-const progress = (page: Page) => page.getByText(/^Passo \d de 5$/)
+const progress = (page: Page) => page.getByText(/^\d de 5 · /)
 const button = (page: Page, name: string | RegExp) =>
   page.getByRole('button', { name, exact: typeof name === 'string' })
 const back = (page: Page) => button(page, 'Voltar')
@@ -49,8 +49,9 @@ test('percorre os passos, pula os times e cai no dashboard com as preferências'
   await page.route('**/api/auth/expire-session-cache', (route) => route.abort())
 
   // Boas-vindas
-  await expect(progress(page)).toHaveText('Passo 1 de 5')
-  await expect(back(page)).toBeDisabled()
+  await expect(progress(page)).toHaveText('1 de 5 · Boas-vindas')
+  // Nas boas-vindas não há para onde voltar.
+  await expect(back(page)).toHaveCount(0)
   await button(page, 'Começar').click()
 
   // Esportes: pelo menos um
@@ -94,9 +95,9 @@ test('percorre os passos, pula os times e cai no dashboard com as preferências'
 
   // Revisão
   await expect(
-    page.getByRole('heading', { name: 'Pronto para salvar' })
+    page.getByRole('heading', { name: /^Tudo pronto/ })
   ).toBeVisible()
-  await expect(progress(page)).toHaveText('Passo 5 de 5')
+  await expect(progress(page)).toHaveText('5 de 5 · Pronto')
   for (const badge of [
     'Futebol',
     'Basquete',
@@ -109,7 +110,7 @@ test('percorre os passos, pula os times e cai no dashboard com as preferências'
   // A busca do dashboard já sai com o raio escolhido.
   const search = page.waitForRequest(
     (r) =>
-      r.url().includes('pubs.search') &&
+      r.url().includes('pubs.gameBoard') &&
       decodeURIComponent(r.url()).includes('"radiusKm":25')
   )
   await button(page, /Salvar e encontrar bares/).click()
@@ -182,7 +183,7 @@ test('voltar entre passos preserva esportes, times e raio', async ({
     'false'
   )
   await back(page).click()
-  await expect(progress(page)).toHaveText('Passo 1 de 5')
+  await expect(progress(page)).toHaveText('1 de 5 · Boas-vindas')
 
   // E avança de novo sem refazer nada.
   await button(page, 'Começar').click()

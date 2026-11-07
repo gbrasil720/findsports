@@ -5,7 +5,7 @@ import type {
   PlaywrightWorkerArgs
 } from '@playwright/test'
 import { BASE_URL } from '../../env'
-import { signIn, storageState } from '../../fixtures/auth'
+import { signIn } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
 import {
   createEvent,
@@ -94,17 +94,12 @@ test('bar Elite: marcar dá o código na hora, Meus jogos o mostra e desmarcar o
   const fan = await signInFanAt(page, spot)
 
   await page.goto(`/pub/${pub.barId}`)
-  const game = page.getByRole('group', { name: freeText })
+  const game = page.locator('#today')
+  await expect(game).toContainText(freeText)
   await game.getByRole('button', { name: 'Vou assistir aqui' }).click()
-  // O código abre num diálogo; fechado, segue na linha do jogo.
-  const dialog = page.getByRole('dialog', { name: 'Seu código para o balcão' })
-  await expect(dialog).toBeVisible()
-  await dialog.getByRole('button', { name: 'Fechar' }).click()
-  await expect(dialog).toHaveCount(0)
-  await expect(
-    game.getByText('Você vai assistir aqui', { exact: true })
-  ).toBeVisible()
-  await expect(game).toContainText('Seu código:')
+  // O código sai na hora, no próprio cartão do jogo.
+  await expect(game).toContainText('VOCÊ VAI')
+  await expect(game).toContainText('SEU CÓDIGO')
 
   await expect
     .poll(() => ticketOf(fan.id, eventId))
@@ -116,19 +111,23 @@ test('bar Elite: marcar dá o código na hora, Meus jogos o mostra e desmarcar o
     })
   const ticket = await ticketOf(fan.id, eventId)
   if (!ticket) throw new Error('código não emitido')
-  await expect(game).toContainText(shown(ticket.code))
+  await expect(game).toContainText(
+    `${ticket.code.slice(0, 3)} ${ticket.code.slice(3)}`
+  )
 
+  // A página do bar não tem o menu da conta do app: ele está no dashboard.
+  await page.goto('/dashboard')
   await openMyGames(page)
   const card = page.getByRole('article', { name: pub.name })
-  await expect(card).toContainText('Você vai')
   await expect(card).toContainText(shown(ticket.code))
-  await expect(card).toContainText('Chopp em dobro no intervalo')
+  // A oferta do jogo vai no ingresso do balcão.
+  await card.getByRole('link', { name: 'Mostrar no balcão' }).click()
+  await expect(page.getByText('Chopp em dobro no intervalo')).toBeVisible()
+  await page.getByRole('link', { name: 'Meus jogos' }).last().click()
 
   await card.getByRole('button', { name: 'Desmarcar' }).click()
   await expect(card).toHaveCount(0)
-  await expect(
-    page.getByText('Você ainda não marcou nenhum jogo.')
-  ).toBeVisible()
+  await expect(page.getByText('Nenhum jogo marcado')).toBeVisible()
   expect(await ticketOf(fan.id, eventId)).toMatchObject({
     status: 'cancelled',
     retired: true
@@ -151,21 +150,22 @@ test('fora do Elite, marcar não dá código', async ({ page }) => {
   const fan = await signInFanAt(page, spot)
 
   await page.goto(`/pub/${pub.barId}`)
-  const game = page.getByRole('group', { name: freeText })
+  const game = page.locator('#today')
+  await expect(game).toContainText(freeText)
   await game.getByRole('button', { name: 'Vou assistir aqui' }).click()
-  await expect(
-    game.getByText('Você vai assistir aqui', { exact: true })
-  ).toBeVisible()
-  await expect(game).not.toContainText('Seu código')
+  await expect(game).toContainText('VOCÊ VAI')
+  await expect(game).not.toContainText('SEU CÓDIGO')
   await expect.poll(() => attendanceOf(fan.id, eventId)).toBe(1)
   expect(
     await query('SELECT 1 FROM reservation WHERE user_id = $1', [fan.id])
   ).toEqual([])
 
+  // A página do bar não tem o menu da conta do app: ele está no dashboard.
+  await page.goto('/dashboard')
   await openMyGames(page)
   const card = page.getByRole('article', { name: pub.name })
-  await expect(card).toContainText('Você vai')
-  await expect(card).not.toContainText('Código')
+  await expect(card).toContainText('Faça check-in quando chegar')
+  await expect(card).not.toContainText('CÓDIGO')
   await expect(card).not.toContainText('Oferta guardada')
 })
 
@@ -207,9 +207,11 @@ test('código validado aparece em Meus jogos e não deixa desmarcar', async ({
   await expect(card.getByRole('button', { name: 'Desmarcar' })).toHaveCount(0)
 
   await page.goto(`/pub/${pub.barId}`)
-  const game = page.getByRole('group', { name: freeText })
-  await expect(game).toContainText('validado no balcão')
-  await expect(game.getByRole('button')).toHaveCount(0)
+  const game = page.locator('#today')
+  await expect(game).toContainText('VALIDADO NO BALCÃO')
+  await expect(game.getByRole('button', { name: 'Não vou mais' })).toHaveCount(
+    0
+  )
 
   // O servidor recusa mesmo sem o botão.
   const refused = await page.request.post('/api/trpc/attendance.set', {
@@ -226,7 +228,7 @@ test('código validado aparece em Meus jogos e não deixa desmarcar', async ({
 
 // WEB-360: bar fora do ar (teste vencido ou assinatura encerrada). O código
 // continua valendo, e só quem marcou jogo lá lê que o bar saiu da Onside.
-test('bar fora do ar: quem marcou lê que ele saiu e que o código vale; os outros, "Bar não encontrado."', async ({
+test('bar fora do ar: Meus jogos diz que o código vale, e a página do bar diz que ele saiu', async ({
   page,
   browser
 }) => {
@@ -262,50 +264,34 @@ test('bar fora do ar: quem marcou lê que ele saiu e que o código vale; os outr
   await page.goto('/dashboard/games')
   await expect(card).toContainText(shown(ticket.code))
   await expect(card).toContainText(OFF_AIR)
-  await expect(card.getByRole('link')).toHaveCount(0)
+  await expect(card.getByRole('link', { name: pub.name })).toHaveCount(0)
 
-  // Link antigo para o perfil: a mesma explicação, sem voltar ao painel.
+  // Link antigo para o perfil: a página diz que o bar saiu e onde o código
+  // está.
   await page.goto(`/pub/${pub.barId}`)
   await expect(
-    page.getByRole('heading', { level: 1, name: pub.name })
+    page.getByRole('heading', { level: 1, name: /Este bar saiu/ })
   ).toBeVisible()
-  await expect(page.getByText(OFF_AIR)).toBeVisible()
-  await expect(page.getByText('Bar não encontrado.')).toHaveCount(0)
-  await expect(page).toHaveURL(new RegExp(`/pub/${pub.barId}$`))
-  await page.getByRole('link', { name: 'Ver meus jogos' }).click()
+  await expect(page.getByText('O seu código continua valendo')).toBeVisible()
+  await page.getByRole('link', { name: 'Meus jogos' }).last().click()
   await expect(page).toHaveURL(/\/dashboard\/games$/)
 
-  // Torcedor que não marcou nada lá: igual a bar que não existe.
-  const stranger = await browser.newContext({
-    baseURL: BASE_URL,
-    storageState: storageState('fan')
-  })
-  await answerCookieConsent(stranger)
-  const strangerPage = await stranger.newPage()
-  await strangerPage.goto(`/pub/${pub.barId}`)
-  await expect(strangerPage.getByText('Bar não encontrado.')).toBeVisible()
-  await expect(strangerPage).toHaveURL(/\/dashboard$/)
-  await expect(strangerPage.getByText(pub.name)).toHaveCount(0)
-  await stranger.close()
-
-  // Sem sessão: o portão de login, sem nome de bar nem no título.
+  // Sem sessão: a mesma página, sem o nome do bar no título.
   const anonymous = await browser.newContext({ baseURL: BASE_URL })
   await answerCookieConsent(anonymous)
   const anonymousPage = await anonymous.newPage()
   await anonymousPage.goto(`/pub/${pub.barId}`)
   await expect(
-    anonymousPage.getByRole('dialog', { name: 'Autenticação obrigatória' })
+    anonymousPage.getByRole('heading', { level: 1, name: /Este bar saiu/ })
   ).toBeVisible()
-  await expect(anonymousPage).toHaveTitle('Bar — Onside')
+  await expect(anonymousPage).toHaveTitle('Bar fora do ar — Onside')
   await expect(anonymousPage.getByText(pub.name)).toHaveCount(0)
   await anonymous.close()
 
   // "Continua valendo" é verdade: o dono do bar fora do ar ainda valida.
   await page.context().clearCookies()
   await signIn(page, pub.user)
-  await page.goto('/admin')
-  await page.getByRole('link', { name: 'Validar código' }).first().click()
-  await expect(page).toHaveURL(/\/admin\/validate$/)
+  await page.goto('/admin/validate')
   await page.getByLabel('Código', { exact: true }).fill(ticket.code)
   await page.getByRole('button', { name: 'Buscar código' }).click()
   await expect(
@@ -341,24 +327,24 @@ test('jogo encerrado com avaliação aberta: Avaliar leva ao card daquele jogo',
     ])
   }
 
-  await page.goto('/dashboard/games')
+  await page.goto('/dashboard/games?aba=ant')
   const row = page.getByRole('listitem').filter({ hasText: older })
   await row.getByRole('link', { name: `Avaliar o ${pub.name}` }).click()
-  await expect(page).toHaveURL(new RegExp(`/dashboard\\?avaliar=${olderId}`))
+  await expect(page).toHaveURL(new RegExp(`/dashboard/avaliar/${olderId}$`))
+  await expect(page.getByText(older)).toBeVisible()
 
-  const rating = page.getByRole('region', {
-    name: `Voltaria pra ver jogo no ${pub.name}?`
-  })
-  await expect(rating).toContainText(older)
-  await rating.getByRole('button', { name: 'Voltaria', exact: true }).click()
+  await page.getByRole('button', { name: 'Fui', exact: true }).click()
+  await page.getByRole('button', { name: 'Voltaria', exact: true }).click()
+  await page.getByRole('radio', { name: '4 estrelas' }).click()
+  await page.getByRole('button', { name: 'Enviar avaliação' }).click()
   await expect
     .poll(async () =>
       (
-        await query<{ would_return: boolean }>(
-          'SELECT would_return FROM bar_rating WHERE actor_user_id = $1 AND event_id = $2',
+        await query<{ would_return: boolean; stars: number }>(
+          'SELECT would_return, stars FROM bar_rating WHERE actor_user_id = $1 AND event_id = $2',
           [fan.id, olderId]
         )
-      ).map((r) => r.would_return)
+      ).map((r) => [r.would_return, r.stars])
     )
-    .toEqual([true])
+    .toEqual([[true, 4]])
 })

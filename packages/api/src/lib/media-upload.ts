@@ -1,11 +1,8 @@
 import { avatarPathname } from '@findsports_oficial/auth/session-image'
 import { env } from '@findsports_oficial/env/server'
 import { AwsClient } from 'aws4fetch'
-import {
-  PHOTO_CONTENT_TYPES,
-  PHOTO_MAX_BYTES,
-  photoPathname
-} from './blob-photo'
+import { barPhotoKey } from './bar-gallery'
+import { PHOTO_CONTENT_TYPES, PHOTO_MAX_BYTES } from './blob-photo'
 
 /**
  * Upload de foto de bar e avatar direto do navegador para o R2 (WEB-202).
@@ -130,15 +127,15 @@ export async function deleteAvatar(
 }
 
 /**
- * Apaga do bucket a foto do bar de quem está na sessão.
- *
- * Mesma regra do avatar: a chave sai do bar que a rota achou pela sessão,
- * nunca do pedido. A conferência de dono fica aqui, e não só na consulta da
- * rota, para a regra valer para qualquer chamador.
+ * Apaga do bucket uma foto do bar da sessão (WEB-439, WEB-462). Quem acha a
+ * linha em `bar_photo` é a rota, pelo bar da sessão: a URL do pedido só
+ * escolhe qual. Foto que não está no nosso armazenamento não tem arquivo a
+ * apagar.
  */
-export async function deleteBarPhoto(
+export async function deleteBarGalleryPhoto(
   session: { user: { id: string } } | null,
   bar: { id: string; userId: string } | null | undefined,
+  photo: { url: string } | null | undefined,
   config: MediaConfig = env
 ): Promise<void> {
   if (!session) throw new MediaUploadError(401, 'Não autorizado.')
@@ -146,11 +143,10 @@ export async function deleteBarPhoto(
   if (bar.userId !== session.user.id) {
     throw new MediaUploadError(403, 'Este bar não pertence à sua conta.')
   }
-  await deleteMediaObject(
-    photoPathname(bar.id),
-    'bar_photo_delete_failed',
-    config
-  )
+  if (!photo) throw new MediaUploadError(404, 'Foto não encontrada.')
+  const key = barPhotoKey(photo.url, bar.id, config)
+  if (!key) return
+  await deleteMediaObject(key, 'bar_gallery_photo_delete_failed', config)
 }
 
 async function deleteMediaObject(

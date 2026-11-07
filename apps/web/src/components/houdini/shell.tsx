@@ -31,7 +31,13 @@ export const HOUDINI_NAV_GROUPS = [
         icon: 'hourglass',
         hint: 'testes acabando'
       },
-      { to: '/houdini/fantasmas', label: 'Fantasmas', icon: 'ghost' }
+      { to: '/houdini/fantasmas', label: 'Fantasmas', icon: 'ghost' },
+      {
+        to: '/houdini/revisao',
+        label: 'Revisão',
+        icon: 'check',
+        hint: 'fotos e descrições dos bares'
+      }
     ]
   },
   {
@@ -110,6 +116,7 @@ function useNavCounts(): Partial<Record<NavTo, Count>> {
     '/houdini/feiticos': o.feiticosLancados
       ? { text: `${o.feiticosLancados} no ar` }
       : undefined,
+    '/houdini/revisao': alert(o.revisao, 'acid'),
     '/houdini/bastidores': alert(o.rotinasFalhando, 'live')
   }
 }

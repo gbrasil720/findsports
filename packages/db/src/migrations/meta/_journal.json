@@ -442,6 +442,153 @@
       "when": 1792453647981,
       "tag": "0063_codes_confirmed_later",
       "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1792596246554,
+      "tag": "0064_friends",
+      "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1792623781686,
+      "tag": "0065_event_screen_sound",
+      "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1792624027799,
+      "tag": "0066_bar_opening_hours",
+      "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1792624073718,
+      "tag": "0067_rating_reasons",
+      "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1792637032196,
+      "tag": "0068_ai_run",
+      "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1792638577327,
+      "tag": "0069_bares_pra_voce",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1792688464181,
+      "tag": "0070_friend_call",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1792691325206,
+      "tag": "0071_ai_proposal",
+      "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1792697493871,
+      "tag": "0072_reminder_before",
+      "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1792871994967,
+      "tag": "0073_subscription_cancel_reason",
+      "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1792879451403,
+      "tag": "0074_event_published_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1792883704536,
+      "tag": "0075_pix_e_cartao_separados",
+      "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1792893310131,
+      "tag": "0076_event_attendance_enabled",
+      "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1792898562005,
+      "tag": "0077_bar_gallery_photos",
+      "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1792942574482,
+      "tag": "0078_bar_email_notices",
+      "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1792944965834,
+      "tag": "0079_bar_invoice_details",
+      "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "7",
+      "when": 1793220114576,
+      "tag": "0080_bar_photo_review",
+      "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1793223830199,
+      "tag": "0081_user_ranking_global",
+      "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1793224372609,
+      "tag": "0082_event_house_offer",
+      "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1793285731095,
+      "tag": "0083_rating_stars_comment_verified",
+      "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1793296552102,
+      "tag": "0084_event_search_text_trgm",
+      "breakpoints": true
     }
   ]
 }

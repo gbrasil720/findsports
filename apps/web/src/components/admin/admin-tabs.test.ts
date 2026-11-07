@@ -1,54 +1,24 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, it } from 'bun:test'
+import { ADMIN_SECTION_ROUTES, getAdminSectionFromHash } from './admin-tabs'
 
-import {
-  getAdminSectionFromHash,
-  getAdminSections,
-  getNextAdminSection
-} from './admin-tabs'
-
-describe('admin tabs keyboard navigation', () => {
-  test('moves through adjacent tabs and wraps at both ends', () => {
-    expect(getNextAdminSection('admin-visao', 'ArrowRight')).toBe('admin-grade')
-    expect(getNextAdminSection('admin-grade', 'ArrowDown')).toBe('admin-espaco')
-    expect(getNextAdminSection('admin-espaco', 'ArrowRight')).toBe(
-      'admin-quem-vai'
-    )
-    expect(getNextAdminSection('admin-quem-vai', 'ArrowRight')).toBe(
-      'admin-configuracoes'
-    )
-    expect(getNextAdminSection('admin-configuracoes', 'ArrowRight')).toBe(
-      'admin-visao'
-    )
-    expect(getNextAdminSection('admin-visao', 'ArrowLeft')).toBe(
-      'admin-configuracoes'
-    )
-  })
-
-  test('recognizes the settings hash as a real admin tab', () => {
-    expect(getAdminSectionFromHash('#admin-configuracoes')).toBe(
-      'admin-configuracoes'
-    )
-  })
-
-  test('supports Home and End without intercepting unrelated keys', () => {
-    expect(getNextAdminSection('admin-grade', 'Home')).toBe('admin-visao')
-    expect(getNextAdminSection('admin-grade', 'End')).toBe(
-      'admin-configuracoes'
-    )
-    expect(getNextAdminSection('admin-grade', 'Tab')).toBeNull()
-  })
-
-  test('restores valid deep links and rejects unrelated hashes', () => {
+describe('links antigos do painel por hash', () => {
+  it('reconhece a aba com ou sem #', () => {
     expect(getAdminSectionFromHash('#admin-grade')).toBe('admin-grade')
     expect(getAdminSectionFromHash('admin-espaco')).toBe('admin-espaco')
-    expect(getAdminSectionFromHash('#configuracoes')).toBeNull()
   })
 
-  test('shows the reservations tab only to bars that receive or still owe reservations', () => {
-    const ids = (shows: boolean) =>
-      getAdminSections(shows).map((section) => section.id)
-    expect(ids(true)).toContain('admin-quem-vai')
-    expect(ids(false)).not.toContain('admin-quem-vai')
-    expect(ids(false)).toContain('admin-configuracoes')
+  it('ignora hash que não é de aba', () => {
+    expect(getAdminSectionFromHash('#reviews')).toBeNull()
+    expect(getAdminSectionFromHash('')).toBeNull()
+    expect(getAdminSectionFromHash('#constructor')).toBeNull()
+  })
+
+  it('cada aba vai para a rota nova', () => {
+    expect(ADMIN_SECTION_ROUTES['admin-espaco']).toBe('/admin/meu-espaco')
+    expect(ADMIN_SECTION_ROUTES['admin-grade']).toBe('/admin/jogos')
+    expect(ADMIN_SECTION_ROUTES['admin-quem-vai']).toBe('/admin/quem-vai')
+    expect(ADMIN_SECTION_ROUTES['admin-configuracoes']).toBe(
+      '/admin/configuracoes'
+    )
   })
 })

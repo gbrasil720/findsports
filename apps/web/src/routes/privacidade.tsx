@@ -11,5 +11,7 @@ export const Route = createFileRoute('/privacidade')({
       description:
         'Quais dados a Onside coleta, por quê, com quem compartilha, por quanto tempo guarda e como você exerce seus direitos.'
     }),
-  component: () => <LegalPage document={POLITICA_DE_PRIVACIDADE} />
+  component: () => (
+    <LegalPage document={POLITICA_DE_PRIVACIDADE} current="/privacidade" />
+  )
 })

@@ -12,6 +12,7 @@ import { TRPCError } from '@trpc/server'
 
 import { pubProcedure, router } from '../index'
 import { participantNames } from '../lib/game-participants'
+import { effectiveHouseOffer } from '../lib/house-offer'
 import {
   assertCanEnableReservations,
   canManageReservations,
@@ -86,9 +87,16 @@ export const barReservationsRouter = router({
         participantFreeText: event.participantFreeText,
         participants: participantNames(sql`${event.id}`),
         startsAt: event.startsAt,
+        houseOffer: event.houseOffer,
+        noHouseOffer: event.noHouseOffer,
         name: user.name,
         markedAt: attendance.createdAt,
-        validatedAt: sql<Date | null>`max(${reservationCodeUse.usedAt})`
+        validatedAt: sql<Date | null>`max(${reservationCodeUse.usedAt})`,
+        // A chegada que vale, para o "Desfazer" do Quem vai
+        // (`reservationValidation.undoArrival`, que confere o prazo).
+        useId: sql<
+          string | null
+        >`(array_agg(${reservationCodeUse.id} ORDER BY ${reservationCodeUse.usedAt} DESC, ${reservationCodeUse.id} DESC) FILTER (WHERE ${reservationCodeUse.id} IS NOT NULL))[1]`
       })
       .from(attendance)
       .innerJoin(event, eq(event.id, attendance.eventId))
@@ -115,7 +123,15 @@ export const barReservationsRouter = router({
           isNull(reservationCodeUse.undoneAt)
         )
       )
-      .where(and(eq(event.barId, ctx.barId), validationOpen))
+      // Lista desligada no jogo (WEB-437): o painel não lista quem vai nele;
+      // os códigos já emitidos continuam valendo no "Validar código".
+      .where(
+        and(
+          eq(event.barId, ctx.barId),
+          eq(event.attendanceEnabled, true),
+          validationOpen
+        )
+      )
       .groupBy(event.id, user.id, attendance.createdAt)
       .orderBy(event.startsAt, event.id)
 
@@ -127,20 +143,44 @@ export const barReservationsRouter = router({
         participantFreeText: string | null
         participants: string[]
         startsAt: Date
-        people: { name: string; markedAt: Date; validatedAt: Date | null }[]
+        houseOffer: string | null
+        noHouseOffer: boolean
+        people: {
+          name: string
+          markedAt: Date
+          validatedAt: Date | null
+          useId: string | null
+        }[]
       }
     >()
-    for (const { eventId, name, markedAt, validatedAt, ...game } of rows) {
+    for (const {
+      eventId,
+      name,
+      markedAt,
+      validatedAt,
+      useId,
+      ...game
+    } of rows) {
       const entry = games.get(eventId) ?? { id: eventId, ...game, people: [] }
       entry.people.push({
         name,
         markedAt,
-        validatedAt: validatedAt ? new Date(validatedAt) : null
+        validatedAt: validatedAt ? new Date(validatedAt) : null,
+        useId
       })
       games.set(eventId, entry)
     }
-    return [...games.values()].map((game) => ({
+    // A oferta que vale em cada jogo (WEB-422): a do jogo, senão a padrão.
+    const [own] = await db
+      .select({ houseOffer: bar.houseOffer })
+      .from(bar)
+      .where(eq(bar.id, ctx.barId))
+    return [...games.values()].map(({ noHouseOffer, ...game }) => ({
       ...game,
+      houseOffer: effectiveHouseOffer(own?.houseOffer ?? null, {
+        houseOffer: game.houseOffer,
+        noHouseOffer
+      }),
       people: game.people.sort(
         (a, b) =>
           Number(b.validatedAt !== null) - Number(a.validatedAt !== null) ||

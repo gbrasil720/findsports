@@ -12,10 +12,11 @@ import { z } from 'zod'
 
 import { fanProcedure, pubProcedure, router } from '../index'
 import {
-  AMENITIES,
+  MAX_AMENITY_IDS,
   MAX_SCREEN_COUNT,
   writableAmenityIds
 } from '../lib/amenities'
+import { descriptionSubmission } from '../lib/bar-description'
 import {
   motivoTelefoneInvalido,
   UF_SIGLAS
@@ -98,7 +99,7 @@ export const onboardingRouter = router({
         // Ids desconhecidos são descartados por `normalizeAmenityIds`, não
         // recusados: um cliente desatualizado não pode derrubar o cadastro
         // inteiro do bar por causa de uma característica aposentada.
-        amenities: z.array(z.number().int()).max(AMENITIES.length).optional(),
+        amenities: z.array(z.number().int()).max(MAX_AMENITY_IDS).optional(),
         screenCount: z.number().int().min(0).max(MAX_SCREEN_COUNT).optional()
       })
     )
@@ -148,7 +149,9 @@ export const onboardingRouter = router({
             uf: input.uf ?? null,
             address: input.address,
             phone: input.phone ?? null,
-            description: input.description ?? null,
+            // Em revisão até a Onside aprovar (WEB-478): o bar nasce sem
+            // descrição no ar.
+            ...descriptionSubmission(null, input.description ?? ''),
             amenities: writableAmenityIds(input.amenities ?? []),
             screenCount: input.screenCount ?? null,
             latitude,

@@ -1,6 +1,9 @@
 import { protectedProcedure, publicProcedure, router } from '../index'
+import { accountRouter } from './account'
+import { achievementsRouter } from './achievements'
 import { adminBarsRouter } from './admin-bars'
 import { adminEventsRouter } from './admin-events'
+import { adminReviewRouter } from './admin-review'
 import { adminUsersRouter } from './admin-users'
 import { appConfigRouter } from './app-config'
 import { attendanceRouter } from './attendance'
@@ -11,6 +14,7 @@ import { feedbackRouter } from './feedback'
 import { grimorioRouter } from './grimorio'
 import { houdiniRouter } from './houdini'
 import { onboardingRouter } from './onboarding'
+import { postGameRouter } from './post-game'
 import { pubRouter } from './pub'
 import { pubsRouter } from './pubs'
 import { ratingsRouter } from './ratings'
@@ -27,8 +31,11 @@ export const appRouter = router({
       user: ctx.session.user
     }
   }),
+  achievements: achievementsRouter,
+  account: accountRouter,
   adminBars: adminBarsRouter,
   adminEvents: adminEventsRouter,
+  adminReview: adminReviewRouter,
   adminUsers: adminUsersRouter,
   appConfig: appConfigRouter,
   bastidores: bastidoresRouter,
@@ -38,6 +45,7 @@ export const appRouter = router({
   recommendations: recommendationsRouter,
   commercialAnalytics: commercialAnalyticsRouter,
   ratings: ratingsRouter,
+  postGame: postGameRouter,
   reservationValidation: reservationValidationRouter,
   barReservations: barReservationsRouter,
   attendance: attendanceRouter,

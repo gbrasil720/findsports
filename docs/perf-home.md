@@ -15,7 +15,7 @@ Regras que valem para não perder o que foi ganho:
   `srcSet` no `hero-posters.json`; não suba só a imagem grande.
 - **Wordmark por densidade.** `OnsideBrand` serve
   `onside-wordmark-paper-{32,64,96}.png` (1x, 2x, 3x). O
-  `onside-wordmark-paper.png` cheio fica para o `src` e para o logo dos e-mails.
+  `onside-wordmark-paper.png` cheio fica para o `src`; os e-mails usam `onside-wordmark-ink.png`.
   Trocou a arte, regere as três.
 - **Prioridade das fontes.** Só a Anton (título) é pré-carregada com
   `fetchPriority: 'high'`; Archivo e Geist Mono vão com `'low'`. Fonte nova

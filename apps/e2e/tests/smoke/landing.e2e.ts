@@ -2,95 +2,51 @@ import type { Page } from '@playwright/test'
 import { storageState } from '../../fixtures/auth'
 import { expect, test } from '../../fixtures/test'
 
-// WEB-333: a cena 3D da landing só existe no desktop. Fora dele — e no desktop
-// sem WebGL — quem aparece é o pôster, e o three nem é baixado no celular.
+// WEB-501: landing v3 ("O Telão do Bar"). O telão de LED é enfeite: carrega a
+// grade depois da página e não pode empurrar nada para o lado no celular.
 
-/** O módulo das cenas e o three, em `vite dev` e no build. */
-const THREE_CHUNK = /onside-scenes|[/_.-]three[/_.-]/
+const hasLed = (page: Page) =>
+  page.locator('.lp3 canvas[data-led]').evaluateAll((list) => list.length)
 
-const stage = (page: Page) => page.locator('.onside-hero-stage')
-
-test('celular: pôster com os cards, sem pedir o three', async ({
+test('celular: sem rolagem lateral e com o telão no topo', async ({
   page,
   isMobile
 }) => {
   test.skip(!isMobile, 'só no projeto mobile')
-  const requested: string[] = []
-  page.on('request', (request) => requested.push(request.url()))
-
   await page.goto('/')
-  await expect(stage(page)).toHaveAttribute('data-scene', 'poster')
-  await expect(stage(page).locator('img')).toBeVisible()
-  // A imagem é a do retrato, e chegou.
-  const image = stage(page).locator('img')
-  await expect(image).toHaveJSProperty('complete', true)
-  expect(await image.evaluate((img) => img.currentSrc)).toContain(
-    'hero-mapa-retrato'
-  )
-  expect(await image.evaluate((img) => img.naturalWidth)).toBeGreaterThan(0)
-
-  // O ciclo é CSS: sempre há um card de bar à mostra (fora o meio segundo da
-  // troca), e é um dos do conjunto em retrato.
-  const cards = stage(page).locator(
-    '.onside-hero-spots.is-portrait .onside-map-card'
-  )
-  await expect(cards).toHaveCount(6)
-  // (`ownerDocument.defaultView`: a suíte compila sem os tipos do DOM.)
-  await expect
-    .poll(() =>
-      cards.evaluateAll((list) =>
-        Math.max(
-          ...list.map((card) =>
-            Number(
-              card.ownerDocument.defaultView?.getComputedStyle(
-                card.parentElement ?? card
-              ).opacity
-            )
-          )
-        )
-      )
-    )
-    .toBeGreaterThan(0.9)
-  await expect(cards.first()).toBeInViewport()
-
-  // Tempo de sobra para o `import()` do desktop ter saído, se fosse sair.
-  await page.waitForTimeout(1500)
-  expect(requested.filter((url) => THREE_CHUNK.test(url))).toEqual([])
-  await expect(stage(page)).toHaveAttribute('data-scene', 'poster')
+  await expect(page.locator('.lp3 h1')).toBeVisible()
+  expect(await hasLed(page)).toBe(4)
+  // As provas do problema viram carrossel, cada uma com a sua dor embaixo; a
+  // lista do computador fica escondida.
+  await expect(page.locator('#lp3-pile .evt').first()).toBeVisible()
+  await expect(page.locator('.lp3 .pains')).toBeHidden()
+  expect(
+    await page.evaluate<number>('document.documentElement.scrollWidth')
+  ).toBeLessThanOrEqual(page.viewportSize()?.width ?? 0)
 })
 
-test('desktop sem WebGL: o pôster fica, sem erro no console', async ({
-  page,
-  isMobile
+test('a busca de exemplo mostra bares marcados como exemplo e leva ao cadastro', async ({
+  page
 }) => {
-  test.skip(isMobile, 'só no projeto desktop')
-  const errors: string[] = []
-  page.on('console', (message) => {
-    if (message.type() === 'error') errors.push(message.text())
-  })
-  page.on('pageerror', (error) => errors.push(error.message))
-  await page.addInitScript(`
-    const getContext = HTMLCanvasElement.prototype.getContext
-    HTMLCanvasElement.prototype.getContext = function (type, ...rest) {
-      return type.includes('webgl') ? null : getContext.call(this, type, ...rest)
-    }
-  `)
-
-  // O desktop pede as cenas; é a criação do contexto que falha.
-  const scenes = page.waitForResponse((response) =>
-    THREE_CHUNK.test(response.url())
-  )
   await page.goto('/')
-  await scenes
-  await page.waitForTimeout(1500)
-
-  await expect(stage(page)).toHaveAttribute('data-scene', 'poster')
-  await expect(stage(page).locator('img')).toBeVisible()
-  await expect(stage(page).locator('canvas')).toHaveCSS('opacity', '0')
-  expect(errors).toEqual([])
+  await page
+    .locator('#busca')
+    .getByRole('button', { name: 'Ver bares' })
+    .click()
+  const results = page.locator('.lp3 .results')
+  await expect(results).toBeVisible()
+  await expect(results).toContainText('EXEMPLO')
+  await expect(results.locator('[data-cta]')).toHaveAttribute(
+    'data-cta',
+    'results_explore'
+  )
+  await expect(results.locator('[data-cta]')).toHaveAttribute(
+    'href',
+    '/dashboard'
+  )
 })
 
-test('o CTA do bar leva ao cadastro com "Dono de Bar" marcado', async ({
+test('o CTA do bar leva ao cadastro com "Tenho um bar" marcado', async ({
   page
 }) => {
   await page.goto('/')
@@ -101,16 +57,16 @@ test('o CTA do bar leva ao cadastro com "Dono de Bar" marcado', async ({
   await cta.click()
   await expect(page).toHaveURL(/\/signup\?role=pub$/)
   await expect(
-    page.getByRole('button', { name: 'Dono de Bar' })
+    page.getByRole('button', { name: 'Tenho um bar' })
   ).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByRole('button', { name: 'Torcedor' })).toHaveAttribute(
-    'aria-pressed',
-    'false'
-  )
+  await expect(
+    page.getByRole('button', { name: 'Sou torcedor' })
+  ).toHaveAttribute('aria-pressed', 'false')
 })
 
 // O nome da chamada diz para onde ela leva, e é ele que o `cta_clicked` manda:
-// `_signup` para quem vai criar conta, `_app` para quem já tem sessão (WEB-278).
+// `_explore` para quem vai ver os jogos sem conta (WEB-501), `_app` para quem
+// já tem sessão (WEB-278) e `_pub_signup` para o bar.
 const ctaNames = (page: Page) =>
   page
     .locator('[data-cta]')
@@ -118,22 +74,22 @@ const ctaNames = (page: Page) =>
       ...new Set(list.map((el) => el.getAttribute('data-cta')))
     ])
 
-test('sem sessão, as chamadas principais se chamam *_signup', async ({
+test('sem sessão, as chamadas do torcedor levam ao Explorar', async ({
   page
 }) => {
   await page.goto('/')
-  const hero = page.locator('.onside-hero [data-cta]')
-  await expect(hero).toHaveAttribute('data-cta', 'hero_signup')
-  await expect(hero).toHaveAttribute('href', '/signup')
+  const nav = page.locator('.lp3 .nav [data-cta="nav_explore"]')
+  await expect(nav).toHaveAttribute('href', '/dashboard')
+  await expect(nav).toHaveText('Ver jogos de hoje')
   expect((await ctaNames(page)).sort()).toEqual([
-    'community_signup',
-    'final_signup',
+    'community_explore',
+    'final_explore',
+    'final_pub_signup',
+    'footer_explore',
     'footer_pub_signup',
-    'footer_signup',
-    'hero_signup',
-    'nav_signup',
-    'sticky_signup',
-    'story_signup'
+    'nav_explore',
+    'nav_pub_signup',
+    'pub_pub_signup'
   ])
 })
 
@@ -145,19 +101,51 @@ test.describe('com sessão', () => {
   }) => {
     // `?public=1`: sem ele o guard manda o torcedor logado para o dashboard.
     await page.goto('/?public=1')
-    const hero = page.locator('.onside-hero [data-cta]')
-    await expect(hero).toHaveAttribute('data-cta', 'hero_app')
-    await expect(hero).toHaveAttribute('href', '/app')
-    // A do bar continua sendo um cadastro.
+    const nav = page.locator('.lp3 .nav [data-cta="nav_app"]')
+    await expect(nav).toHaveAttribute('href', '/app')
+    await expect(nav).toHaveText('Ver jogos de hoje')
+    // As do bar continuam sendo cadastro.
     expect((await ctaNames(page)).sort()).toEqual([
       'community_app',
       'final_app',
+      'final_pub_signup',
       'footer_app',
       'footer_pub_signup',
-      'hero_app',
       'nav_app',
-      'sticky_app',
-      'story_app'
+      'nav_pub_signup',
+      'pub_pub_signup'
     ])
   })
+})
+
+// Troca de tema: sem escolha, o claro (mesmo com o sistema no escuro); a
+// escolha do rodapé vale na hora e fica guardada; "Auto" segue o sistema.
+test('o tema abre claro e a escolha do rodapé vale e fica guardada', async ({
+  page
+}) => {
+  await page.emulateMedia({ colorScheme: 'dark' })
+  await page.goto('/')
+  const html = page.locator('html')
+  await expect(html).toHaveAttribute('data-theme', 'light')
+
+  const tema = page.locator('footer.foot').getByRole('group', { name: 'Tema' })
+  // Confere o rádio antes de recarregar: com o sistema escuro, "Auto" também
+  // pinta a página de escuro e mascarava um toque no lugar errado.
+  await tema.getByText('Escuro').click()
+  await expect(tema.getByRole('radio', { name: 'Escuro' })).toBeChecked()
+  await expect(html).toHaveAttribute('data-theme', 'dark')
+
+  // Abre a página de novo por navegação, não por `reload`: no projeto mobile
+  // do CI (vite dev) o `reload` abortava os módulos e a página voltava sem
+  // hidratar (o `<html>` escuro do script do head, mas nada respondia).
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await expect(html).toHaveAttribute('data-theme', 'dark')
+  await expect(tema.getByRole('radio', { name: 'Escuro' })).toBeChecked({
+    timeout: 15_000
+  })
+
+  await tema.getByText('Auto').click()
+  await expect(html).toHaveAttribute('data-theme', 'dark')
+  await page.emulateMedia({ colorScheme: 'light' })
+  await expect(html).toHaveAttribute('data-theme', 'light')
 })

@@ -18,7 +18,8 @@ import type {
  * - current-period channel metrics: the channel entitlement
  * - comparison fields: `canViewComparison`, plus the channel entitlement for
  *   channel-specific comparisons (you can't compare what you can't see)
- * - daily series: `canViewDailyBreakdown`, plus the channel entitlement
+ * - daily series: every plan (WEB-449); channels go summed, like
+ *   `highIntentActions`, so no per-channel split leaks
  */
 export function applyOverviewEntitlements(
   overview: AnalyticsOverview,
@@ -100,21 +101,8 @@ export function applyOverviewEntitlements(
       ? overview.classicClicksChange
       : null,
 
-    dailyProfileViews: e.canViewDailyBreakdown
-      ? overview.dailyProfileViews
-      : null,
-    dailyDirectionsOpened:
-      e.canViewDailyBreakdown && e.canViewDirectionsOpened
-        ? overview.dailyDirectionsOpened
-        : null,
-    dailyPhoneClicked:
-      e.canViewDailyBreakdown && e.canViewPhoneClicked
-        ? overview.dailyPhoneClicked
-        : null,
-    dailyWhatsappOpened:
-      e.canViewDailyBreakdown && e.canViewWhatsappOpened
-        ? overview.dailyWhatsappOpened
-        : null,
+    dailyProfileViews: overview.dailyProfileViews,
+    dailyHighIntentActions: overview.dailyHighIntentActions,
 
     from: overview.from,
     to: overview.to,

@@ -5,12 +5,22 @@ import Key from 'reicon-react/icons/Key'
 import Loader from 'reicon-react/icons/Loader'
 import { toast } from 'sonner'
 
-import { AuthBrandPanel } from '@/components/auth-brand-panel'
 import { revalidateShownError } from '@/components/auth-field-change'
 import { AuthPasswordField } from '@/components/auth-password-field'
-import { OnsideBrand } from '@/components/brand/onside-brand'
+import { type AuthPanel, AuthShell } from '@/components/entrada/auth-shell'
 import { authClient } from '@/lib/auth-client'
 import { pageHead } from '@/lib/page-head'
+
+const PANEL: AuthPanel = {
+  kind: 'caption',
+  led: 'hero',
+  title: (
+    <>
+      Senha <span>nova.</span>
+    </>
+  ),
+  items: ['Escolha uma senha nova e sua conta volta a ser só sua']
+}
 
 export const Route = createFileRoute('/(auth)/reset-password')({
   // O better-auth redireciona para cá com `?token=...` quando o link ainda
@@ -63,44 +73,15 @@ function ResetPasswordPage() {
   const { token, error } = Route.useSearch()
 
   return (
-    <div className="onside-app flex">
-      <AuthBrandPanel variant="login">
-        <div className="mb-3 flex items-center gap-2 font-[family-name:var(--onside-mono)] text-[10px] text-[var(--onside-acid)] uppercase tracking-[0.16em]">
-          <span className="onside-live-dot" aria-hidden="true" />
-          Recuperação de acesso
-        </div>
-        <p className="onside-display mb-6 text-balance text-4xl text-[var(--onside-paper)] xl:text-5xl">
-          ÚLTIMO PASSO{' '}
-          <span className="text-[var(--onside-acid)]">ANTES DO APITO.</span>
-        </p>
-        <p className="onside-text-muted-on-ink max-w-xs text-base leading-relaxed">
-          Escolha uma senha nova e sua conta volta a ser só sua.
-        </p>
-      </AuthBrandPanel>
-
-      <main className="flex flex-1 flex-col items-center justify-center bg-[var(--onside-paper)] px-4 py-10 sm:px-10 lg:px-16">
-        <div className="mb-8 w-full max-w-[420px] border-[var(--onside-ink)] border-b pb-6 lg:hidden">
-          <Link to="/" aria-label="Onside — página inicial">
-            <OnsideBrand />
-          </Link>
-          <p className="mt-4 max-w-[28ch] text-sm text-[var(--onside-muted)]">
-            Defina a nova senha e{' '}
-            <span className="font-semibold text-[var(--onside-ink)]">
-              volte a jogar
-            </span>
-            .
-          </p>
-        </div>
-
-        <div className="w-full max-w-[420px]">
-          {token && !error ? (
-            <FormularioDeNovaSenha token={token} />
-          ) : (
-            <LinkInvalido />
-          )}
-        </div>
-      </main>
-    </div>
+    <AuthShell panel={PANEL}>
+      <div className="w-full">
+        {token && !error ? (
+          <FormularioDeNovaSenha token={token} />
+        ) : (
+          <LinkInvalido />
+        )}
+      </div>
+    </AuthShell>
   )
 }
 

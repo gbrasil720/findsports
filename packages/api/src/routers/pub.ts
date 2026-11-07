@@ -1,8 +1,17 @@
 import { liveStripeSubscriptionId } from '@findsports_oficial/auth/account-deletion-policy'
-import { founderCouponUsable } from '@findsports_oficial/auth/stripe-checkout'
+import {
+  founderCouponUsable,
+  pushInvoiceDetails
+} from '@findsports_oficial/auth/stripe-checkout'
 import { stripeClient } from '@findsports_oficial/auth/stripe-client'
-import { and, db, eq, inArray, isNull, sql } from '@findsports_oficial/db'
+import { logBillingError } from '@findsports_oficial/auth/stripe-sync'
+import { and, asc, db, eq, inArray, isNull, sql } from '@findsports_oficial/db'
+import {
+  PHOTO_CAPTION_MAX,
+  PHOTO_CATEGORY_IDS
+} from '@findsports_oficial/db/bar-gallery'
 import { MENU_URL_MAX_LENGTH } from '@findsports_oficial/db/bar-menu'
+import { cancelReasonSchema } from '@findsports_oficial/db/cancel-reasons'
 import {
   EVENT_CHAMPIONSHIP_MAX_LENGTH,
   EVENT_CHAMPIONSHIP_MIN_LENGTH,
@@ -13,24 +22,36 @@ import {
   getEventStartProblem
 } from '@findsports_oficial/db/event-window'
 import { HOUSE_OFFER_MAX_LENGTH } from '@findsports_oficial/db/house-offer'
+import { user } from '@findsports_oficial/db/schema/auth'
 import {
   bar,
+  barPhoto,
   event,
   eventParticipants,
   subscription,
+  subscriptionCancelReason,
   subscriptionPlanEnum,
   team
 } from '@findsports_oficial/db/schema/platform'
+import { barRating } from '@findsports_oficial/db/schema/rating'
 import { env } from '@findsports_oficial/env/server'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 import { pubProcedure, router } from '../index'
 import {
-  AMENITIES,
+  MAX_AMENITY_IDS,
   MAX_SCREEN_COUNT,
   writableAmenityIds
 } from '../lib/amenities'
 import { readInterestSignal } from '../lib/attendance'
+import { descriptionSubmission } from '../lib/bar-description'
+import {
+  assertCanAddPhoto,
+  GALLERY_FULL_MESSAGE,
+  GALLERY_MAX_PHOTOS,
+  isOwnGalleryPhotoUrl,
+  occupiedSlots
+} from '../lib/bar-gallery'
 import {
   assertCanConfigureBarMenu,
   parseAverageSpendCentsInput,
@@ -41,7 +62,6 @@ import {
   UF_SIGLAS
 } from '../lib/bar-profile-validation'
 import { readBillingBalance } from '../lib/billing-balance'
-import { isOwnPhotoUrl } from '../lib/blob-photo'
 import {
   canCancelSubscription,
   getCurrentPlan,
@@ -53,21 +73,30 @@ import {
   getEventDeletionBlock,
   readEventDeletionImpact
 } from '../lib/event-deletion'
-import { byMatchOrder, participantNames } from '../lib/game-participants'
+import { byMatchOrder } from '../lib/game-participants'
 import { geocodeAddress } from '../lib/geocode-address'
 import {
   assertCanConfigureHouseOffer,
+  type GameHouseOffer,
   parseHouseOfferInput
 } from '../lib/house-offer'
+import {
+  INVOICE_FIELDS,
+  type InvoiceField,
+  invoiceFieldProblem,
+  normalizeInvoiceField
+} from '../lib/invoice-details'
+import { normalizeOpeningHours, openingHoursSchema } from '../lib/opening-hours'
 import { PLAN_NAMES, STARTER_EVENT_LIMIT } from '../lib/plan-limits'
 import {
   hasPublicRating,
   RATING_PUBLIC_FLOOR,
   ratingPercentage
 } from '../lib/rating'
+import { readRatingList } from '../lib/rating-list'
+import { starsAverage } from '../lib/rating-review'
 import { assertCanValidateReservations } from '../lib/reservation-validation'
 import { createSubscriptionCancelUrl } from '../lib/subscription-cancel'
-import { utcIso } from '../lib/utc-timestamp'
 
 /**
  * Resolve the effective phoneAcceptsWhatsapp value given the input and
@@ -218,6 +247,60 @@ export function resolveEventEndsAt(
 
 type EventTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
 
+const gameHouseOfferInput = {
+  // Omitida fica como está (jogo novo herda a do bar); `null` volta a herdar.
+  houseOffer: z
+    .string()
+    .max(HOUSE_OFFER_MAX_LENGTH * 4)
+    .nullable()
+    .optional(),
+  // "Sem oferta neste jogo": desliga a do bar só aqui.
+  noHouseOffer: z.boolean().optional()
+}
+
+/**
+ * O que gravar da oferta do jogo (WEB-422). Mesma regra de `updateHouseOffer`:
+ * só o Elite configura, conferido na assinatura antes de qualquer escrita, e
+ * o painel esconder o campo não impede ninguém de mandar. Sem os campos, nada
+ * muda e o plano nem é lido.
+ */
+async function parseGameHouseOffer(
+  userId: string,
+  input: { houseOffer?: string | null; noHouseOffer?: boolean }
+): Promise<Partial<GameHouseOffer>> {
+  if (input.houseOffer === undefined && input.noHouseOffer === undefined) {
+    return {}
+  }
+  const own = await getBarByUserId(userId)
+  assertCanConfigureHouseOffer(own.subscription ?? null)
+  // "Sem oferta" não guarda texto (CHECK `event_no_house_offer_without_text`).
+  if (input.noHouseOffer) return { houseOffer: null, noHouseOffer: true }
+  return {
+    noHouseOffer: false,
+    ...(input.houseOffer !== undefined && {
+      houseOffer: parseHouseOfferInput(input.houseOffer)
+    })
+  }
+}
+
+/**
+ * Fechar a lista de quem vai de um jogo (WEB-437) é do Elite, como no painel.
+ * Abrir passa sempre: o bar que saiu do Elite reabre o que tinha fechado.
+ */
+async function assertCanCloseAttendance(
+  userId: string,
+  input: { attendanceEnabled?: boolean }
+): Promise<void> {
+  if (input.attendanceEnabled !== false) return
+  const own = await getBarByUserId(userId)
+  if (getCurrentPlan(own.subscription ?? null) !== 'elite') {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: 'Fechar a lista de quem vai é um recurso do plano Elite.'
+    })
+  }
+}
+
 async function assertTeamsMatchSport(
   tx: EventTransaction,
   sportId: string,
@@ -239,6 +322,54 @@ async function assertTeamsMatchSport(
   }
 }
 
+/**
+ * Trava o bar do dono e confere se ele pode pôr mais um jogo no ar: bar fora
+ * do ar não publica, e o Starter para no limite de jogos. A trava na linha do
+ * bar serializa duas publicações ao mesmo tempo no último jogo do limite.
+ * Rascunho não passa por aqui (WEB-436): conta só quando é publicado.
+ */
+async function lockBarForPublishing(tx: EventTransaction, userId: string) {
+  const [lockedBar] = await tx
+    .select()
+    .from(bar)
+    .where(eq(bar.userId, userId))
+    .for('update')
+    .limit(1)
+
+  if (!lockedBar) {
+    throw new TRPCError({
+      code: 'NOT_FOUND',
+      message: 'Bar não encontrado para este usuário.'
+    })
+  }
+
+  const existingSubscription = await tx.query.subscription.findFirst({
+    where: eq(subscription.barId, lockedBar.id)
+  })
+  const policy = await getEventCreationPolicy(tx, {
+    id: lockedBar.id,
+    isActive: lockedBar.isActive,
+    subscription: existingSubscription ?? null
+  })
+
+  if (policy.status === 'inactive') {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message:
+        'Seu bar precisa ter uma assinatura ativa para cadastrar eventos.'
+    })
+  }
+
+  if (policy.status === 'limited' && !policy.canCreate) {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: eventLimitMessage(existingSubscription ?? null, policy.periodEnd)
+    })
+  }
+
+  return lockedBar
+}
+
 async function getBarByUserId(userId: string) {
   const result = await db.query.bar.findFirst({
     where: eq(bar.userId, userId),
@@ -256,6 +387,22 @@ async function getBarByUserId(userId: string) {
 
   return result
 }
+
+/** O que o dono vê de cada foto (WEB-462), com a revisão. */
+const OWNER_PHOTO_COLUMNS = {
+  id: barPhoto.id,
+  url: barPhoto.url,
+  category: barPhoto.category,
+  caption: barPhoto.caption,
+  position: barPhoto.position,
+  coverRequested: barPhoto.coverRequested,
+  status: barPhoto.status,
+  rejectionReason: barPhoto.rejectionReason,
+  createdAt: barPhoto.createdAt
+}
+
+const photoNotFound = () =>
+  new TRPCError({ code: 'NOT_FOUND', message: 'Foto não encontrada.' })
 
 export const pubRouter = router({
   getMe: pubProcedure.query(({ ctx }) => getBarByUserId(ctx.session.user.id)),
@@ -280,12 +427,12 @@ export const pubRouter = router({
           .string()
           .regex(/^\d{5}-?\d{3}$/)
           .optional(),
-        photoUrl: z.string().url().optional(),
         // Lista completa, não incremental: o formulário manda o estado final
         // das características. Array vazio desmarca tudo, e `undefined` não
-        // toca no que já está gravado — a foto e a descrição seguem a mesma
-        // convenção nesta mutation.
-        amenities: z.array(z.number().int()).max(AMENITIES.length).optional(),
+        // toca no que já está gravado — a descrição segue a mesma convenção
+        // nesta mutation. A capa saiu daqui (WEB-462): passa pela revisão,
+        // em `addPhoto` e `setPhotoCover`.
+        amenities: z.array(z.number().int()).max(MAX_AMENITY_IDS).optional(),
         screenCount: z
           .number()
           .int()
@@ -299,19 +446,6 @@ export const pubRouter = router({
       const userId = ctx.session.user.id
 
       const existingBar = await getBarByUserId(userId)
-
-      // ESC-15: com o upload indo direto do navegador para o armazenamento,
-      // quem informa a URL da foto é o cliente. Aceitar qualquer string
-      // deixaria um bar apontar a própria foto para um endereço arbitrário.
-      if (
-        input.photoUrl &&
-        !isOwnPhotoUrl(input.photoUrl, existingBar.id, env)
-      ) {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: 'URL de foto inválida.'
-        })
-      }
 
       const motivoTelefone = motivoTelefoneInvalido(
         input.phone,
@@ -358,15 +492,14 @@ export const pubRouter = router({
         .update(bar)
         .set({
           ...(input.name && { name: input.name }),
-          ...(input.description !== undefined && {
-            description: input.description
-          }),
+          // A descrição espera a revisão da Onside (WEB-478).
+          ...(input.description !== undefined &&
+            descriptionSubmission(existingBar.description, input.description)),
           ...(input.phone !== undefined && { phone: input.phone }),
           ...(input.address && { address: input.address }),
           ...(input.neighborhood && { neighborhood: input.neighborhood }),
           ...(input.city && { city: input.city }),
           ...(input.uf && { uf: input.uf }),
-          ...(input.photoUrl && { photoUrl: input.photoUrl }),
           ...(input.amenities !== undefined && {
             amenities: writableAmenityIds(input.amenities)
           }),
@@ -448,6 +581,63 @@ export const pubRouter = router({
     }),
 
   /**
+   * Avisos por e-mail ao dono (WEB-441): resumo da semana, jogo lotando e
+   * grade vazia. Cada interruptor grava sozinho, sem "Salvar". Recurso de
+   * todo plano; quem decide o conteúdo de cada e-mail é `lib/bar-notices.ts`.
+   */
+  updateNotices: pubProcedure
+    .input(
+      z
+        .object({
+          weeklySummary: z.boolean(),
+          gameFilling: z.boolean(),
+          emptySchedule: z.boolean()
+        })
+        .partial()
+        .refine((notices) =>
+          Object.values(notices).some((v) => v !== undefined)
+        )
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [updated] = await db
+        .update(bar)
+        .set({
+          noticeWeeklySummary: input.weeklySummary,
+          noticeGameFilling: input.gameFilling,
+          noticeEmptySchedule: input.emptySchedule
+        })
+        .where(eq(bar.userId, ctx.session.user.id))
+        .returning({
+          noticeWeeklySummary: bar.noticeWeeklySummary,
+          noticeGameFilling: bar.noticeGameFilling,
+          noticeEmptySchedule: bar.noticeEmptySchedule
+        })
+      if (!updated) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Bar não encontrado para este usuário.'
+        })
+      }
+      return updated
+    }),
+
+  /**
+   * Horário de funcionamento (WEB-397): a semana inteira de uma vez, ou
+   * `null` para tirar a seção da página. Recurso de todo plano.
+   */
+  updateOpeningHours: pubProcedure
+    .input(z.object({ openingHours: openingHoursSchema.nullable() }))
+    .mutation(async ({ ctx, input }) => {
+      const existingBar = await getBarByUserId(ctx.session.user.id)
+      const [updated] = await db
+        .update(bar)
+        .set({ openingHours: normalizeOpeningHours(input.openingHours) })
+        .where(eq(bar.id, existingBar.id))
+        .returning({ openingHours: bar.openingHours })
+      return { openingHours: updated?.openingHours ?? null }
+    }),
+
+  /**
    * Cardápio e gasto médio por pessoa (WEB-39). Update parcial: campo
    * omitido não muda; `null` (ou link em branco) remove.
    *
@@ -504,34 +694,236 @@ export const pubRouter = router({
     }),
 
   /**
-   * As avaliações do próprio bar, cruas.
+   * As fotos do bar, com a revisão (WEB-462): o dono vê em revisão e
+   * recusada, com o motivo. Na ordem do dono; o painel agrupa por categoria.
+   */
+  photos: pubProcedure.query(async ({ ctx }) => {
+    const existingBar = await getBarByUserId(ctx.session.user.id)
+    return db
+      .select(OWNER_PHOTO_COLUMNS)
+      .from(barPhoto)
+      .where(eq(barPhoto.barId, existingBar.id))
+      .orderBy(asc(barPhoto.position), asc(barPhoto.createdAt))
+  }),
+
+  /**
+   * Põe a foto que acabou de subir pela rota `/api/bar/photo?galeria`, já em
+   * revisão: o torcedor só a vê depois que a Onside aprovar. O teto conta com
+   * o bar travado, então dois envios ao mesmo tempo não passam de
+   * `GALLERY_MAX_PHOTOS`. `cover` pede a foto como capa: ela vira a capa
+   * quando for aprovada.
+   */
+  addPhoto: pubProcedure
+    .input(
+      z.object({
+        url: z.string().max(2048),
+        category: z.enum(PHOTO_CATEGORY_IDS),
+        caption: z
+          .string()
+          .max(PHOTO_CAPTION_MAX * 2)
+          .optional(),
+        cover: z.boolean().default(false)
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const existingBar = await getBarByUserId(ctx.session.user.id)
+      assertCanAddPhoto(existingBar.subscription ?? null, input.cover)
+      if (!isOwnGalleryPhotoUrl(input.url, existingBar.id, env)) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'URL de foto inválida.'
+        })
+      }
+      const caption = input.caption?.trim() || null
+      if (caption && caption.length > PHOTO_CAPTION_MAX) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: `A legenda aceita até ${PHOTO_CAPTION_MAX} caracteres.`
+        })
+      }
+
+      return db.transaction(async (tx) => {
+        await tx
+          .select({ id: bar.id })
+          .from(bar)
+          .where(eq(bar.id, existingBar.id))
+          .for('update')
+        const current = await tx
+          .select({ status: barPhoto.status, position: barPhoto.position })
+          .from(barPhoto)
+          .where(eq(barPhoto.barId, existingBar.id))
+        if (occupiedSlots(current) >= GALLERY_MAX_PHOTOS) {
+          throw new TRPCError({
+            code: 'CONFLICT',
+            message: GALLERY_FULL_MESSAGE
+          })
+        }
+        if (input.cover) {
+          await tx
+            .update(barPhoto)
+            .set({ coverRequested: false })
+            .where(eq(barPhoto.barId, existingBar.id))
+        }
+        const [added] = await tx
+          .insert(barPhoto)
+          .values({
+            barId: existingBar.id,
+            url: input.url,
+            category: input.category,
+            caption,
+            position: Math.max(-1, ...current.map((p) => p.position)) + 1,
+            coverRequested: input.cover
+          })
+          .onConflictDoNothing()
+          .returning(OWNER_PHOTO_COLUMNS)
+        if (!added) {
+          throw new TRPCError({
+            code: 'CONFLICT',
+            message: 'Esta foto já foi enviada.'
+          })
+        }
+        return added
+      })
+    }),
+
+  /** Troca a categoria. Não volta à revisão: a categoria não é texto livre. */
+  setPhotoCategory: pubProcedure
+    .input(z.object({ id: z.string(), category: z.enum(PHOTO_CATEGORY_IDS) }))
+    .mutation(async ({ ctx, input }) => {
+      const existingBar = await getBarByUserId(ctx.session.user.id)
+      const [updated] = await db
+        .update(barPhoto)
+        .set({ category: input.category })
+        .where(
+          and(eq(barPhoto.id, input.id), eq(barPhoto.barId, existingBar.id))
+        )
+        .returning(OWNER_PHOTO_COLUMNS)
+      if (!updated) throw photoNotFound()
+      return updated
+    }),
+
+  /**
+   * Usar como capa. Foto aprovada vira a capa na hora (`bar.photo_url`, que
+   * as listas leem); foto em revisão fica pedida e vira capa ao ser aprovada.
+   * Recusada não pode.
+   */
+  setPhotoCover: pubProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const existingBar = await getBarByUserId(ctx.session.user.id)
+      return db.transaction(async (tx) => {
+        const [photo] = await tx
+          .select({ url: barPhoto.url, status: barPhoto.status })
+          .from(barPhoto)
+          .where(
+            and(eq(barPhoto.id, input.id), eq(barPhoto.barId, existingBar.id))
+          )
+          .for('update')
+        if (!photo) throw photoNotFound()
+        if (photo.status === 'rejected') {
+          throw new TRPCError({
+            code: 'PRECONDITION_FAILED',
+            message: 'Foto recusada não pode ser a capa.'
+          })
+        }
+        await tx
+          .update(barPhoto)
+          .set({ coverRequested: false })
+          .where(eq(barPhoto.barId, existingBar.id))
+        if (photo.status === 'approved') {
+          await tx
+            .update(bar)
+            .set({ photoUrl: photo.url })
+            .where(eq(bar.id, existingBar.id))
+        } else {
+          await tx
+            .update(barPhoto)
+            .set({ coverRequested: true })
+            .where(eq(barPhoto.id, input.id))
+        }
+        return { cover: photo.status === 'approved' ? 'now' : 'on_approval' }
+      })
+    }),
+
+  /**
+   * Nova ordem: as mesmas fotos, cada uma uma vez. A conferência é com o bar
+   * travado, então uma foto que entrou ou saiu no meio recusa a ordem velha.
+   */
+  reorderPhotos: pubProcedure
+    .input(
+      z.object({
+        ids: z
+          .array(z.string())
+          .min(1)
+          .max(GALLERY_MAX_PHOTOS * 3)
+          .refine((ids) => new Set(ids).size === ids.length, {
+            message: 'Foto repetida na ordem.'
+          })
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const existingBar = await getBarByUserId(ctx.session.user.id)
+      await db.transaction(async (tx) => {
+        await tx
+          .select({ id: bar.id })
+          .from(bar)
+          .where(eq(bar.id, existingBar.id))
+          .for('update')
+        const current = await tx
+          .select({ id: barPhoto.id })
+          .from(barPhoto)
+          .where(eq(barPhoto.barId, existingBar.id))
+        const known = new Set(current.map((p) => p.id))
+        if (
+          current.length !== input.ids.length ||
+          !input.ids.every((id) => known.has(id))
+        ) {
+          throw new TRPCError({
+            code: 'CONFLICT',
+            message: 'As fotos mudaram. Recarregue a página e tente de novo.'
+          })
+        }
+        await tx
+          .update(barPhoto)
+          .set({
+            position: sql`array_position(ARRAY[${sql.join(
+              input.ids.map((id) => sql`${id}`),
+              sql`, `
+            )}]::text[], ${barPhoto.id})`
+          })
+          .where(eq(barPhoto.barId, existingBar.id))
+      })
+    }),
+
+  /**
+   * As avaliações do próprio bar.
    *
    * O piso público (`RATING_PUBLIC_FLOOR`) e a flag de exibição NÃO se
    * aplicam aqui: eles existem para proteger o bar de ter uma amostra
    * minúscula exibida ao torcedor, não para esconder do dono o que estão
    * dizendo do espaço dele. Ele vê desde a primeira.
    *
-   * Não devolve quem avaliou. A resposta é binária e a base é pequena — um
-   * nome ao lado de um "não voltaria" transformaria avaliação em conflito
-   * pessoal, e o dono tem o telefone dessa pessoa.
+   * A nota (`total`, `percentage`, `stars`) é a pública: só as verificadas
+   * (WEB-408). As outras vêm na lista com `verified: false` e em
+   * `unverified`, para o dono ler sem confundir com a nota. Nome só de quem
+   * escolheu se identificar, e comentário só depois da revisão da Onside
+   * (WEB-451, `readRatingList`).
    */
   getMyRatings: pubProcedure.query(async ({ ctx }) => {
     const existingBar = await getBarByUserId(ctx.session.user.id)
 
-    const rows = await db.execute(sql`
-      SELECT
-        r.would_return,
-        r.created_at,
-        e.championship,
-        e.participant_free_text,
-        ${participantNames(sql`e.id`)} AS participants,
-        e.starts_at
-      FROM bar_rating r
-      JOIN event e ON e.id = r.event_id
-      WHERE r.bar_id = ${existingBar.id}
-      ORDER BY r.created_at DESC
-      LIMIT 50
-    `)
+    const [recent, [counts]] = await Promise.all([
+      readRatingList(existingBar.id, { public: false, limit: 50 }),
+      db
+        .select({ unverified: sql<number>`count(*)::int` })
+        .from(barRating)
+        .where(
+          and(
+            eq(barRating.barId, existingBar.id),
+            eq(barRating.verified, false)
+          )
+        )
+    ])
 
     const total = existingBar.ratingCount
     const positive = existingBar.ratingPositive
@@ -540,25 +932,16 @@ export const pubRouter = router({
       total,
       positive,
       percentage: ratingPercentage(positive, total),
+      // O dono vê a média desde a primeira estrela, como a porcentagem.
+      stars: starsAverage(
+        existingBar.ratingStarsSum,
+        existingBar.ratingStarsCount,
+        1
+      ),
+      unverified: counts?.unverified ?? 0,
       isPublic: hasPublicRating(total),
       floor: RATING_PUBLIC_FLOOR,
-      recent: (
-        rows.rows as {
-          would_return: boolean
-          created_at: string
-          championship: string
-          participant_free_text: string | null
-          participants: string[]
-          starts_at: string
-        }[]
-      ).map((row) => ({
-        wouldReturn: row.would_return,
-        createdAt: row.created_at,
-        championship: row.championship,
-        participantFreeText: row.participant_free_text,
-        participants: row.participants,
-        startsAt: utcIso(row.starts_at)
-      }))
+      recent
     }
   }),
 
@@ -618,7 +1001,15 @@ export const pubRouter = router({
         participantFreeText: z
           .string()
           .max(EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH)
-          .optional()
+          .optional(),
+        // WEB-399: omitido herda das características do bar.
+        onBigScreen: z.boolean().optional(),
+        withSound: z.boolean().optional(),
+        // WEB-437: "Lista de quem vai" do jogo; omitido fica como está.
+        attendanceEnabled: z.boolean().optional(),
+        // WEB-436: salva sem publicar; fica fora do app e do limite.
+        draft: z.boolean().optional(),
+        ...gameHouseOfferInput
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -630,47 +1021,11 @@ export const pubRouter = router({
         input.endsAt ? new Date(input.endsAt) : null
       )
 
+      const offer = await parseGameHouseOffer(userId, input)
+      await assertCanCloseAttendance(userId, input)
+      const draftBar = input.draft ? await getBarByUserId(userId) : null
       await db.transaction(async (tx) => {
-        const [lockedBar] = await tx
-          .select()
-          .from(bar)
-          .where(eq(bar.userId, userId))
-          .for('update')
-          .limit(1)
-
-        if (!lockedBar) {
-          throw new TRPCError({
-            code: 'NOT_FOUND',
-            message: 'Bar não encontrado para este usuário.'
-          })
-        }
-
-        const existingSubscription = await tx.query.subscription.findFirst({
-          where: eq(subscription.barId, lockedBar.id)
-        })
-        const policy = await getEventCreationPolicy(tx, {
-          id: lockedBar.id,
-          isActive: lockedBar.isActive,
-          subscription: existingSubscription ?? null
-        })
-
-        if (policy.status === 'inactive') {
-          throw new TRPCError({
-            code: 'FORBIDDEN',
-            message:
-              'Seu bar precisa ter uma assinatura ativa para cadastrar eventos.'
-          })
-        }
-
-        if (policy.status === 'limited' && !policy.canCreate) {
-          throw new TRPCError({
-            code: 'FORBIDDEN',
-            message: eventLimitMessage(
-              existingSubscription ?? null,
-              policy.periodEnd
-            )
-          })
-        }
+        const lockedBar = draftBar ?? (await lockBarForPublishing(tx, userId))
 
         await assertTeamsMatchSport(
           tx,
@@ -688,7 +1043,12 @@ export const pubRouter = router({
             ...(input.endsAt && { endsAt: new Date(input.endsAt) }),
             ...(input.participantFreeText && {
               participantFreeText: input.participantFreeText
-            })
+            }),
+            onBigScreen: input.onBigScreen,
+            withSound: input.withSound,
+            attendanceEnabled: input.attendanceEnabled,
+            ...offer,
+            ...(input.draft && { publishedAt: null })
           })
           .returning({ id: event.id })
 
@@ -734,7 +1094,15 @@ export const pubRouter = router({
         participantFreeText: z
           .string()
           .max(EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH)
-          .optional()
+          .optional(),
+        // WEB-399: omitido herda das características do bar.
+        onBigScreen: z.boolean().optional(),
+        withSound: z.boolean().optional(),
+        // WEB-437: "Lista de quem vai" do jogo; omitido fica como está.
+        attendanceEnabled: z.boolean().optional(),
+        // WEB-436: põe o rascunho no ar. Não existe o caminho de volta.
+        publish: z.literal(true).optional(),
+        ...gameHouseOfferInput
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -753,6 +1121,9 @@ export const pubRouter = router({
         })
       }
 
+      const offer = await parseGameHouseOffer(userId, input)
+      await assertCanCloseAttendance(userId, input)
+
       // WEB-43: compare the effective pair (input or persisted) on every update —
       // changing only startsAt must not be able to push start past the saved end.
       const resolvedEndsAt = resolveEventEndsAt(input.endsAt)
@@ -763,11 +1134,17 @@ export const pubRouter = router({
 
       // Só o início que mudou passa pela regra: editar o nome de um jogo que
       // já acabou não pode ser recusado pela data que ninguém mexeu.
+      // Publicar o rascunho também: jogo que já começou não entra no ar.
+      const publishing = !!input.publish && existingEvent.publishedAt === null
       if (
-        input.startsAt &&
-        new Date(input.startsAt).getTime() !== existingEvent.startsAt.getTime()
+        (input.startsAt &&
+          new Date(input.startsAt).getTime() !==
+            existingEvent.startsAt.getTime()) ||
+        publishing
       ) {
-        assertEventStartInRange(new Date(input.startsAt))
+        assertEventStartInRange(
+          input.startsAt ? new Date(input.startsAt) : existingEvent.startsAt
+        )
       }
       assertEventIntervalValid(
         input.startsAt ? new Date(input.startsAt) : existingEvent.startsAt,
@@ -775,6 +1152,7 @@ export const pubRouter = router({
       )
 
       await db.transaction(async (tx) => {
+        if (publishing) await lockBarForPublishing(tx, userId)
         await assertTeamsMatchSport(tx, effectiveSportId, participantIds ?? [])
 
         const changes = {
@@ -784,7 +1162,16 @@ export const pubRouter = router({
           ...(resolvedEndsAt !== undefined && { endsAt: resolvedEndsAt }),
           ...(input.participantFreeText !== undefined && {
             participantFreeText: input.participantFreeText || null
-          })
+          }),
+          ...(input.onBigScreen !== undefined && {
+            onBigScreen: input.onBigScreen
+          }),
+          ...(input.withSound !== undefined && { withSound: input.withSound }),
+          ...(input.attendanceEnabled !== undefined && {
+            attendanceEnabled: input.attendanceEnabled
+          }),
+          ...offer,
+          ...(publishing && { publishedAt: new Date() })
         }
         // Só os times mudaram: o Drizzle recusa `set({})` com erro 500.
         if (Object.keys(changes).length > 0) {
@@ -891,32 +1278,123 @@ export const pubRouter = router({
     )
   }),
 
-  // "Cancelar assinatura" de `/admin/billing` (WEB-339): só a URL do portal,
-  // sem escrita no banco. Mutation porque cria uma sessão no Stripe.
-  openSubscriptionCancel: pubProcedure.mutation(async ({ ctx }) => {
-    const { subscription: current } = await getBarByUserId(ctx.session.user.id)
-    const subscriptionId = current?.externalSubscriptionId
-    if (
-      !current ||
-      !subscriptionId ||
-      !canCancelSubscription({
-        ...current,
-        standing: getSubscriptionStanding(current)
+  // "Dados da nota" de `/admin/billing` (WEB-444). Cada "Editar" manda o seu
+  // campo; vazio apaga. Com cliente no Stripe, ele recebe os três antes do
+  // banco: se o Stripe recusar ou não responder, nada muda aqui, e a tela não
+  // mostra o que as faturas não têm. Repetir grava o mesmo estado.
+  updateInvoiceDetails: pubProcedure
+    .input(
+      z.object({
+        legalName: z.string().max(300).nullable().optional(),
+        cnpj: z.string().max(40).nullable().optional(),
+        invoiceEmail: z.string().max(300).nullable().optional()
       })
-    ) {
-      throw new TRPCError({
-        code: 'PRECONDITION_FAILED',
-        message: 'Não há assinatura em vigor para cancelar.'
+    )
+    .mutation(async ({ ctx, input }) => {
+      const changes: Partial<Record<InvoiceField, string | null>> = {}
+      for (const field of INVOICE_FIELDS) {
+        if (input[field] === undefined) continue
+        const value = normalizeInvoiceField(field, input[field])
+        const problem = invoiceFieldProblem(field, value)
+        if (problem)
+          throw new TRPCError({ code: 'BAD_REQUEST', message: problem })
+        changes[field] = value
+      }
+
+      const userId = ctx.session.user.id
+      const { id, name, legalName, cnpj, invoiceEmail } =
+        await getBarByUserId(userId)
+      const current = { id, name, legalName, cnpj, invoiceEmail }
+      const next = { ...current, ...changes }
+      const owner = await db.query.user.findFirst({
+        where: eq(user.id, userId),
+        columns: { name: true, email: true, stripeCustomerId: true }
       })
-    }
-    return {
-      url: await createSubscriptionCancelUrl(
+      if (owner?.stripeCustomerId) {
+        try {
+          await pushInvoiceDetails(
+            stripeClient,
+            owner.stripeCustomerId,
+            owner,
+            next
+          )
+        } catch (error) {
+          const stripeError = error as { type?: string; code?: string }
+          logBillingError('stripe_invoice_details_failed', {
+            customerId: owner.stripeCustomerId,
+            code: stripeError.code ?? null,
+            message: error instanceof Error ? error.message : String(error)
+          })
+          // Cliente apagado no Stripe: não há onde gravar, e o painel não
+          // pode ficar travado por isso. O próximo checkout cria outro.
+          if (stripeError.code !== 'resource_missing') {
+            throw new TRPCError(
+              stripeError.type === 'StripeInvalidRequestError'
+                ? {
+                    code: 'BAD_REQUEST',
+                    message:
+                      'O Stripe não aceitou estes dados. Confira e tente de novo.'
+                  }
+                : {
+                    code: 'SERVICE_UNAVAILABLE',
+                    message:
+                      'Não foi possível falar com o Stripe agora. Tente de novo.'
+                  }
+            )
+          }
+        }
+      }
+      if (Object.keys(changes).length) {
+        await db.update(bar).set(changes).where(eq(bar.id, current.id))
+      }
+      return {
+        legalName: next.legalName,
+        cnpj: next.cnpj,
+        invoiceEmail: next.invoiceEmail
+      }
+    }),
+
+  // "Cancelar assinatura" de `/admin/billing` (WEB-339): a URL do portal. A
+  // assinatura não muda aqui; o único registro é o motivo, quando o dono
+  // escolheu um (WEB-445), gravado depois de o portal abrir, para tentativa
+  // que falhou no Stripe não contar duas vezes. Mutation porque cria uma
+  // sessão no Stripe.
+  openSubscriptionCancel: pubProcedure
+    .input(z.object({ reason: cancelReasonSchema.optional() }).optional())
+    .mutation(async ({ ctx, input }) => {
+      const { id: barId, subscription: current } = await getBarByUserId(
+        ctx.session.user.id
+      )
+      const subscriptionId = current?.externalSubscriptionId
+      if (
+        !current ||
+        !subscriptionId ||
+        !canCancelSubscription({
+          ...current,
+          standing: getSubscriptionStanding(current)
+        })
+      ) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'Não há assinatura em vigor para cancelar.'
+        })
+      }
+      const url = await createSubscriptionCancelUrl(
         stripeClient,
         subscriptionId,
         new URL('/admin/billing', env.BETTER_AUTH_URL).href
       )
-    }
-  }),
+      if (input?.reason) {
+        // O motivo é opcional: falhar ao gravá-lo não segura o cancelamento.
+        await db
+          .insert(subscriptionCancelReason)
+          .values({ barId, plan: current.plan, reason: input.reason })
+          .catch((error: unknown) =>
+            console.error('subscription_cancel_reason_insert_failed', error)
+          )
+      }
+      return { url }
+    }),
 
   // Troca o plano do teste grátis do cadastro, sem cartão e sem Stripe
   // (WEB-358). A regra vai no próprio UPDATE, e não numa leitura antes: o

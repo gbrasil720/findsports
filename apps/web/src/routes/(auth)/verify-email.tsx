@@ -10,8 +10,13 @@ import Check from 'reicon-react/icons/Check'
 import Envelope from 'reicon-react/icons/Envelope'
 import Loader from 'reicon-react/icons/Loader'
 import { toast } from 'sonner'
-import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
-import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
+import { type AuthPanel, AuthShell } from '@/components/entrada/auth-shell'
+import { PubObShell } from '@/components/onboarding/pub-ob-shell'
+import {
+  PubReceipt,
+  type PubReceiptData,
+  useFinishPubSignup
+} from '@/components/onboarding/pub-receipt'
 import { useTurnstile } from '@/components/turnstile'
 import { authClient, refreshSessionCache } from '@/lib/auth-client'
 import { mensagemOnboardingJaConcluido } from '@/lib/onboarding-concluido'
@@ -26,8 +31,20 @@ import {
   parsePubOnboardingDraft
 } from '@/lib/pub-onboarding-draft'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
+import { PUB_LIVE_PATH } from '@/utils/auth-guards'
 import { getCallbackUrl, withCallbackUrl } from '@/utils/callback-url'
 import { useTRPC } from '@/utils/trpc'
+
+const PANEL: AuthPanel = {
+  kind: 'caption',
+  led: 'scarf',
+  title: (
+    <>
+      Quase <span>lá.</span>
+    </>
+  ),
+  items: ['Confirme o e-mail e siga para o próximo passo']
+}
 
 export const Route = createFileRoute('/(auth)/verify-email')({
   head: () =>
@@ -61,6 +78,11 @@ function VerifyEmailPage() {
   const { mutateAsync: completePub } = useMutation(
     trpc.onboarding.completePub.mutationOptions()
   )
+  const finishSignup = useFinishPubSignup()
+  // Bar criado daqui (WEB-501): o comprovante abre no lugar desta tela, e o
+  // botão dele segue para a tela "no ar", como o do formulário.
+  const [receipt, setReceipt] = useState<PubReceiptData | null>(null)
+  const [leaving, setLeaving] = useState(false)
 
   const continueVerified = useCallback(async () => {
     if (continuing.current) return
@@ -94,8 +116,13 @@ function VerifyEmailPage() {
           navigate({ to: '/onboarding/pub' })
           return
         }
+        // O plano escolhido não vai ao `completePub`: entra depois, por
+        // `changeTrialPlan`, em `finishSignup`.
+        const { plan, ...payload } = draft
+        let created = false
         try {
-          await completePub(draft)
+          await completePub(payload)
+          created = true
         } catch (err) {
           const concluido = mensagemOnboardingJaConcluido(err)
           if (!concluido) {
@@ -108,7 +135,11 @@ function VerifyEmailPage() {
         }
         localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)
         await refreshSessionCache()
-        navigate({ to: '/plan', search: { trial: 'started' } })
+        const comprovante = created
+          ? await finishSignup({ ...payload, plan })
+          : null
+        if (comprovante) setReceipt(comprovante)
+        else navigate({ to: PUB_LIVE_PATH })
         return
       }
 
@@ -121,7 +152,7 @@ function VerifyEmailPage() {
       continuing.current = false
       setChecking(false)
     }
-  }, [callbackUrl, completePub, navigate])
+  }, [callbackUrl, completePub, finishSignup, navigate])
 
   useEffect(() => {
     setEmail(readPendingEmail())
@@ -156,17 +187,34 @@ function VerifyEmailPage() {
     toast.success('Se o endereço estiver cadastrado, um novo link foi enviado.')
   }
 
+  if (receipt) {
+    return (
+      <PubObShell>
+        <PubReceipt
+          data={receipt}
+          pending={leaving}
+          continueLabel="Ver meu bar no ar"
+          onContinue={() => {
+            setLeaving(true)
+            void navigate({ to: PUB_LIVE_PATH })
+          }}
+        />
+      </PubObShell>
+    )
+  }
+
   return (
-    <OnboardingLayout variant="pub">
-      <OnboardingHeader label="Confirmação de e-mail" />
-      <main className="mx-auto grid max-w-3xl gap-8 border border-[var(--onside-line)] bg-[var(--onside-paper)] p-6 text-[var(--onside-ink)] shadow-[8px_8px_0_var(--onside-acid)] sm:p-10 md:grid-cols-[96px_1fr]">
-        <div className="grid size-24 place-items-center border-2 border-[var(--onside-ink)] bg-[var(--onside-acid)]">
-          <Envelope size={42} color="currentColor" aria-hidden="true" />
+    <AuthShell panel={PANEL}>
+      <div className="w-full">
+        <div className="ent-mail">
+          <Envelope size={40} color="currentColor" aria-hidden="true" />
         </div>
         <div>
-          <p className="onside-kicker onside-kicker-live">Última checagem</p>
-          <h1 className="onside-display mb-4 text-4xl sm:text-5xl">
-            CONFIRME O E-MAIL. DEPOIS, É BOLA ROLANDO.
+          <h1 className="onside-display mb-4">
+            Confira sua{' '}
+            <span className="text-[var(--onside-live-text)]">
+              caixa de entrada
+            </span>
           </h1>
           <p className="max-w-xl text-[var(--onside-muted)] leading-relaxed">
             Enviamos um link para{' '}
@@ -184,15 +232,15 @@ function VerifyEmailPage() {
             </li>
             <li className="flex items-center gap-3">
               <Check size={18} color="currentColor" aria-hidden="true" /> Volte
-              aqui para seguir aos planos.
+              aqui para continuar.
             </li>
           </ol>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-col gap-3">
             <button
               type="button"
               onClick={continueVerified}
               disabled={checking}
-              className="onside-btn onside-btn-acid"
+              className="onside-btn onside-btn-acid ent-full"
             >
               {checking ? (
                 <Loader
@@ -208,7 +256,7 @@ function VerifyEmailPage() {
               type="button"
               onClick={resend}
               disabled={resending}
-              className="onside-btn onside-btn-outline"
+              className="onside-btn onside-btn-outline ent-full"
             >
               {resending ? 'Reenviando…' : 'Reenviar link'}
             </button>
@@ -252,7 +300,7 @@ function VerifyEmailPage() {
             e-mail.
           </p>
         </div>
-      </main>
-    </OnboardingLayout>
+      </div>
+    </AuthShell>
   )
 }

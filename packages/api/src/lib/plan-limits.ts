@@ -20,7 +20,7 @@ export const STARTER_EVENT_LIMIT = 5
  * Vence sozinho: `getCurrentPlan` deixa de reconhecer o plano na data, e sem
  * contratação o bar sai do ar no cron diário (WEB-357).
  */
-export const ONBOARDING_TRIAL = { plan: 'elite', days: 120 } as const
+export const ONBOARDING_TRIAL = { plan: 'elite', days: 90 } as const
 
 /**
  * Nome de exibição de cada plano. Mensagem de erro do servidor e catálogo da

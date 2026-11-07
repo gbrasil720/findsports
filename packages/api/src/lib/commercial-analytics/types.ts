@@ -109,9 +109,8 @@ export interface AnalyticsOverview {
 
   // Daily time-series (current period)
   dailyProfileViews: DailyDataPoint[]
-  dailyDirectionsOpened: DailyDataPoint[]
-  dailyPhoneClicked: DailyDataPoint[]
-  dailyWhatsappOpened: DailyDataPoint[]
+  /** WhatsApp, rota e telefone somados por dia. */
+  dailyHighIntentActions: DailyDataPoint[]
 
   // Date range used
   from: string
@@ -163,12 +162,11 @@ export interface AnalyticsOverviewResponse {
   classicExposuresChange: number | null
   classicClicksChange: number | null
 
-  // Daily time-series (current period) — `canViewDailyBreakdown`, plus the
-  // metric entitlement for channel-specific series
-  dailyProfileViews: DailyDataPoint[] | null
-  dailyDirectionsOpened: DailyDataPoint[] | null
-  dailyPhoneClicked: DailyDataPoint[] | null
-  dailyWhatsappOpened: DailyDataPoint[] | null
+  // Daily time-series (current period) — todos os planos (WEB-449). Os
+  // canais vão somados, como o `highIntentActions`: a divisão por canal fica
+  // nos totais, que seguem o entitlement de cada um.
+  dailyProfileViews: DailyDataPoint[]
+  dailyHighIntentActions: DailyDataPoint[]
 
   // Date range used
   from: string
@@ -301,7 +299,6 @@ export interface AnalyticsEntitlements {
   canViewComparison: boolean
   /** Comparison capability sold by the plan; the server is authoritative. */
   comparison: AnalyticsComparisonMode
-  canViewDailyBreakdown: boolean
   /**
    * Per-event (por jogo) analytics level:
    * - `basic` — per-game breakdown with the plan's base metrics (profile views)

@@ -14,7 +14,8 @@ import { adminAction } from '@findsports_oficial/db/schema/houdini'
 import {
   bar,
   event,
-  subscription
+  subscription,
+  subscriptionCancelReason
 } from '@findsports_oficial/db/schema/platform'
 import { barRating } from '@findsports_oficial/db/schema/rating'
 import { reservation } from '@findsports_oficial/db/schema/reservation'
@@ -168,6 +169,7 @@ export const adminBarsRouter = router({
             upcomingGames: sql<number>`(
               SELECT count(*)::int FROM ${event}
               WHERE ${event.barId} = ${bar.id} AND ${event.startsAt} > now()
+                AND ${event.publishedAt} IS NOT NULL
             )`
           })
           .from(bar)
@@ -410,7 +412,7 @@ export const adminBarsRouter = router({
     // Código do balcão em vigor (ou pedido antigo ainda aberto).
     const seated = sql`${reservation.status} IN ('pending', 'confirmed')`
     // ponytail: listas com teto fixo, sem paginação; paginar quando um bar passar disso.
-    const [games, reservations, ratings, grimorio, [recent]] =
+    const [games, reservations, ratings, grimorio, [recent], [cancelReason]] =
       await Promise.all([
         db
           .select({
@@ -418,6 +420,9 @@ export const adminBarsRouter = router({
             title,
             championship: event.championship,
             startsAt: event.startsAt,
+            // Rascunho (WEB-436) aparece na aba Jogos, marcado, para o
+            // suporte achar o "publiquei e não aparece"; fora das contagens.
+            draft: sql<boolean>`${event.publishedAt} IS NULL`,
             reservations: sql<number>`(
               SELECT count(*)::int FROM ${reservation}
               WHERE ${reservation.eventId} = ${event.id} AND ${seated}
@@ -496,7 +501,18 @@ export const adminBarsRouter = router({
               seated,
               sql`${reservation.createdAt} > now() - interval '30 days'`
             )
-          )
+          ),
+        // O último "Por que está cancelando?" (WEB-445).
+        db
+          .select({
+            reason: subscriptionCancelReason.reason,
+            plan: subscriptionCancelReason.plan,
+            createdAt: subscriptionCancelReason.createdAt
+          })
+          .from(subscriptionCancelReason)
+          .where(eq(subscriptionCancelReason.barId, input.barId))
+          .orderBy(sql`${subscriptionCancelReason.createdAt} DESC`)
+          .limit(1)
       ])
 
     const sub = row.subscription
@@ -513,7 +529,8 @@ export const adminBarsRouter = router({
       reservations,
       reservations30d: recent ?? { n: 0, people: 0 },
       ratings,
-      grimorio
+      grimorio,
+      cancelReason: cancelReason ?? null
     }
   })
 })

@@ -1,6 +1,12 @@
 import type { Page } from '@playwright/test'
 import { signIn, storageState } from '../../fixtures/auth'
-import { createEvent, days, north, pubAt, uniqueSpot } from '../../fixtures/fan'
+import {
+  createEvent,
+  hours,
+  north,
+  pubAt,
+  uniqueSpot
+} from '../../fixtures/fan'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
 import { loginWithForm } from './forms'
@@ -18,13 +24,16 @@ const openAccountMenu = (page: Page) =>
 test.describe('sessão de admin', () => {
   test.use({ storageState: storageState('admin') })
 
-  test('abre a landing, e "Ir para o app" leva à busca', async ({ page }) => {
+  test('abre a landing, e "Ver jogos de hoje" leva à busca', async ({
+    page
+  }) => {
     const response = await page.goto('/')
     expect(response?.status()).toBe(200)
     await expect(page).toHaveURL(/\/$/)
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
 
-    await page.getByRole('link', { name: 'Ir para o app' }).first().click()
+    // Landing v3 (WEB-501): com sessão, a chamada é "Ver jogos de hoje".
+    await page.getByRole('link', { name: 'Ver jogos de hoje' }).first().click()
     await expect(page).toHaveURL(/\/dashboard$/)
   })
 
@@ -45,16 +54,20 @@ test('admin busca bares no /dashboard sem erro de torcedor', async ({
 }) => {
   const spot = uniqueSpot()
   const near = await pubAt(north(spot, 0.5))
-  await createEvent({ barId: near.barId, startsAt: days(2) })
+  const startsAt = hours(2)
+  await createEvent({ barId: near.barId, startsAt })
   await signIn(page, await createUser({ role: 'admin' }))
   await page.context().setGeolocation(spot)
+  const dia = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo'
+  }).format(startsAt)
 
-  const response = await page.goto('/dashboard')
+  const response = await page.goto(`/dashboard?dia=${dia}`)
   expect(response?.status()).toBe(200)
 
-  await expect(page).toHaveURL(/\/dashboard$/)
+  await expect(page).toHaveURL(/\/dashboard\?dia=/)
   await expect(
-    page.getByRole('link', { name: `Ver ${near.name}` })
+    page.getByRole('heading', { name: near.name, exact: true })
   ).toBeVisible()
   // Favoritos, times, cidade e avaliações são de torcedor: para admin as
   // leituras nem saem, e nada vira toast.
@@ -86,7 +99,7 @@ test.describe('sessão de torcedor', () => {
     await page.goto('/dashboard')
     await openAccountMenu(page)
     await expect(
-      page.getByRole('menuitem', { name: 'Perfil e configurações' })
+      page.getByRole('menuitem', { name: 'Perfil', exact: true })
     ).toBeVisible()
     await expect(page.getByRole('menuitem', { name: 'Houdini' })).toHaveCount(0)
 

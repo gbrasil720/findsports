@@ -11,11 +11,10 @@ import { expect, test } from '../../fixtures/test'
 async function openSpace(page: Page, options: PubOptions) {
   const pub = await createPub(options)
   await signIn(page, pub.user)
-  await page.goto('/admin#admin-espaco')
-  await expect(page.getByRole('tab', { name: 'Meu espaço' })).toHaveAttribute(
-    'aria-selected',
-    'true'
-  )
+  await page.goto('/admin/meu-espaco')
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Meu espaço' })
+  ).toBeVisible()
   return pub
 }
 
@@ -39,7 +38,11 @@ test('Starter: cardápio, oferta e Quem vai bloqueados, com link para os planos'
       name: 'Ver planos'
     })
   ).toHaveAttribute('href', /\/plan\?origin=admin/)
-  await expect(page.getByRole('tab', { name: 'Quem vai' })).toHaveCount(0)
+  await expect(
+    page
+      .getByRole('navigation', { name: 'Seções do painel' })
+      .getByRole('link', { name: 'Quem vai', exact: true })
+  ).toHaveCount(0)
 })
 
 test('sem assinatura: tudo bloqueado, como no Starter', async ({ page }) => {
@@ -51,29 +54,40 @@ test('sem assinatura: tudo bloqueado, como no Starter', async ({ page }) => {
   await expect(card(page, 'Oferta da casa')).toContainText(
     'Disponível no plano Elite'
   )
-  await expect(page.getByRole('tab', { name: 'Quem vai' })).toHaveCount(0)
+  await expect(
+    page
+      .getByRole('navigation', { name: 'Seções do painel' })
+      .getByRole('link', { name: 'Quem vai', exact: true })
+  ).toHaveCount(0)
 })
 
-test('as abas trocam pelo clique e pelo hash, e Configurações renderiza', async ({
-  page
+test('as seções trocam pelo menu, o link antigo por hash vai à rota nova, e Configurações renderiza', async ({
+  page,
+  isMobile
 }) => {
   const pub = await createPub()
   await signIn(page, pub.user)
   await page.goto('/admin')
-  await expect(page.getByRole('tab', { name: 'Visão geral' })).toHaveAttribute(
-    'aria-selected',
-    'true'
-  )
-
-  await page.getByRole('tab', { name: 'Configurações' }).click()
-  await expect(page).toHaveURL(/#admin-configuracoes$/)
   await expect(
-    page.getByRole('heading', { name: 'Configurações', level: 2 })
+    page.getByRole('heading', { level: 1, name: 'Hoje' })
+  ).toBeVisible()
+
+  // No celular, Configurações fica em "Mais".
+  // Pelo teclado: em `vite dev` o botão das devtools fica sobre a aba.
+  if (isMobile) {
+    await page.getByRole('link', { name: 'Mais', exact: true }).focus()
+    await page.keyboard.press('Enter')
+  }
+  await page.getByRole('link', { name: 'Configurações', exact: true }).click()
+  await expect(page).toHaveURL(/\/admin\/configuracoes$/)
+  await expect(
+    page.getByRole('heading', { name: 'Configurações', level: 1 })
   ).toBeVisible()
 
   await page.goto('/admin#admin-grade')
+  await expect(page).toHaveURL(/\/admin\/jogos$/)
   await expect(
-    page.getByRole('heading', { name: 'Minha grade', level: 2 })
+    page.getByRole('heading', { name: 'Jogos', level: 1 })
   ).toBeVisible()
 })
 
@@ -87,7 +101,7 @@ test('Pro: cardápio liberado e salvo; oferta e Quem vai seguem bloqueadas', asy
   await menu
     .getByLabel(/link do cardápio/i)
     .fill('https://cardapio.e2e.test/menu')
-  await menu.getByRole('button', { name: 'Salvar' }).click()
+  await page.getByRole('button', { name: 'Salvar alterações' }).click()
   await expect
     .poll(async () => {
       const [bar] = await query('SELECT menu_url FROM bar WHERE id = $1', [
@@ -106,10 +120,19 @@ test('Elite tem a aba Quem vai, e o jogo novo não pergunta de reserva', async (
   page
 }) => {
   await openSpace(page, { subscription: { plan: 'elite' } })
-  await expect(page.getByRole('tab', { name: 'Quem vai' })).toBeVisible()
-  await page.goto('/admin#admin-grade')
-  await page.getByRole('button', { name: 'Novo evento' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Novo evento' })
+  await expect(
+    page
+      .getByRole('navigation', { name: 'Seções do painel' })
+      .getByRole('link', { name: 'Quem vai', exact: true })
+  ).toBeVisible()
+  await page.goto('/admin/jogos')
+  // O cabeçalho e a grade vazia têm cada um o seu "Novo jogo" (como em
+  // `schedule.e2e.ts`).
+  await page
+    .getByRole('button', { name: 'Novo jogo', exact: true })
+    .first()
+    .click()
+  const dialog = page.getByRole('dialog', { name: 'Novo jogo' })
   await expect(dialog.getByLabel('Campeonato')).toBeVisible()
   await expect(dialog).not.toContainText(/reserva/i)
 })
@@ -127,7 +150,11 @@ test('Elite com pagamento atrasado vê "Regularizar assinatura", não os planos'
   ).toHaveAttribute('href', '/admin/billing')
   await expect(offer.getByRole('link', { name: 'Ver planos' })).toHaveCount(0)
   // Sem código em aberto, a lista de quem vai some com o plano.
-  await expect(page.getByRole('tab', { name: 'Quem vai' })).toHaveCount(0)
+  await expect(
+    page
+      .getByRole('navigation', { name: 'Seções do painel' })
+      .getByRole('link', { name: 'Quem vai', exact: true })
+  ).toHaveCount(0)
 })
 
 test('o servidor recusa recurso pago fora do plano', async ({ page }) => {

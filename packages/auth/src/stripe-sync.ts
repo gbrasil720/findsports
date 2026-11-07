@@ -1,6 +1,12 @@
-import { db, eq } from '@findsports_oficial/db'
+import { and, db, desc, eq, gte, lte } from '@findsports_oficial/db'
+import { CANCEL_REASONS } from '@findsports_oficial/db/cancel-reasons'
+import { formatCnpj, normalizeCnpj } from '@findsports_oficial/db/cnpj'
 import { user } from '@findsports_oficial/db/schema/auth'
-import { bar, subscription } from '@findsports_oficial/db/schema/platform'
+import {
+  bar,
+  subscription,
+  subscriptionCancelReason
+} from '@findsports_oficial/db/schema/platform'
 import type Stripe from 'stripe'
 import { monthlyDiscountReaisFromStripe } from './stripe-discount'
 import { planForLookupKey } from './stripe-plan'
@@ -132,9 +138,9 @@ function scheduledCancelOf(
  */
 export async function applyStripeSubscription(
   stripeSubscription: Stripe.Subscription
-) {
+): Promise<string | null> {
   const status = localStatusFor(stripeSubscription.status)
-  if (!status) return
+  if (!status) return null
 
   const item = stripeSubscription.items.data[0]
   const plan = planForLookupKey(item?.price.lookup_key)
@@ -144,7 +150,7 @@ export async function applyStripeSubscription(
       priceId: item?.price.id ?? null,
       lookupKey: item?.price.lookup_key ?? null
     })
-    return
+    return null
   }
 
   const foundBar = await findBarOf(stripeSubscription)
@@ -153,7 +159,7 @@ export async function applyStripeSubscription(
       subscriptionId: stripeSubscription.id,
       plan
     })
-    return
+    return null
   }
 
   const existing = await db.query.subscription.findFirst({
@@ -168,7 +174,7 @@ export async function applyStripeSubscription(
     existing?.externalSubscriptionId &&
     existing.externalSubscriptionId !== stripeSubscription.id
   ) {
-    return
+    return null
   }
 
   const values = {
@@ -185,18 +191,145 @@ export async function applyStripeSubscription(
     .values({ barId: foundBar.id, ...values })
     .onConflictDoUpdate({ target: subscription.barId, set: values })
   await db.update(bar).set({ isActive: !offAir }).where(eq(bar.id, foundBar.id))
+  return foundBar.id
+}
+
+/** O motivo vale para o cancelamento pedido até um dia depois de escolhido. */
+const CANCEL_REASON_WINDOW_MS = 24 * 3_600_000
+/** Folga para o relógio do Stripe e o do banco. */
+const CLOCK_SLACK_MS = 60_000
+
+/**
+ * "Por que está cancelando?" (WEB-445) chega ao Stripe só quando o
+ * cancelamento se confirma: o motivo é gravado ao abrir o portal, e quem
+ * desiste lá não cancelou. Com a assinatura agendada para acabar (ou
+ * encerrada), o último motivo do bar escolhido no dia que antecede o pedido
+ * (`canceled_at`) vai para `cancellation_details`.
+ *
+ * Não sobrescreve: se o portal já trouxe motivo ou comentário (ou se já
+ * mandamos), não faz nada, e por isso evento repetido não muda nada. Recusa
+ * do Stripe só vai para o log, como os nomes do cliente.
+ */
+async function sendCancelReason(
+  stripeSubscription: Stripe.Subscription,
+  barId: string,
+  client: Stripe
+) {
+  const cancelling =
+    stripeSubscription.status === 'canceled' ||
+    stripeSubscription.cancel_at !== null ||
+    stripeSubscription.cancel_at_period_end
+  const details = stripeSubscription.cancellation_details
+  if (!cancelling || details?.feedback || details?.comment) return
+
+  const requestedAt = stripeSubscription.canceled_at
+    ? stripeSubscription.canceled_at * 1000
+    : Date.now()
+  const [chosen] = await db
+    .select({ reason: subscriptionCancelReason.reason })
+    .from(subscriptionCancelReason)
+    .where(
+      and(
+        eq(subscriptionCancelReason.barId, barId),
+        gte(
+          subscriptionCancelReason.createdAt,
+          new Date(requestedAt - CANCEL_REASON_WINDOW_MS)
+        ),
+        lte(
+          subscriptionCancelReason.createdAt,
+          new Date(requestedAt + CLOCK_SLACK_MS)
+        )
+      )
+    )
+    .orderBy(desc(subscriptionCancelReason.createdAt))
+    .limit(1)
+  if (!chosen) return
+
+  const reason = CANCEL_REASONS.find((r) => r.id === chosen.reason)
+  await client.subscriptions
+    .update(stripeSubscription.id, {
+      cancellation_details: {
+        feedback: reason?.stripeFeedback ?? 'other',
+        comment: `Motivo escolhido no app: ${reason?.label ?? chosen.reason}`
+      }
+    })
+    .catch((error: unknown) =>
+      logBillingError('stripe_cancel_reason_failed', {
+        subscriptionId: stripeSubscription.id,
+        message: error instanceof Error ? error.message : String(error)
+      })
+    )
 }
 
 /**
  * Nome de quem paga e nome da empresa no cliente do Stripe (WEB-328): sempre
- * os do cadastro, o dono e o bar. É o que sai em recibo, fatura e portal. Os
- * dois campos próprios aceitam até 150 caracteres.
+ * os do cadastro, o dono e o bar (ou a razão social, quando o bar a informou:
+ * ver `customerDetailsFor`). É o que sai em recibo, fatura e portal. Os dois
+ * campos próprios aceitam até 150 caracteres.
  */
-export function customerNamesFor(ownerName: string, barName: string) {
+export function customerNamesFor(ownerName: string, company: string) {
   return {
     name: ownerName,
     individual_name: ownerName.slice(0, 150),
-    business_name: barName.slice(0, 150)
+    business_name: company.slice(0, 150)
+  }
+}
+
+/** "Dados da nota" do bar (WEB-444), como estão nas colunas de `bar`. */
+export type InvoiceDetails = {
+  legalName: string | null
+  cnpj: string | null
+  invoiceEmail: string | null
+}
+
+/**
+ * Nomes e e-mail do cliente com os dados da nota (WEB-444): a razão social
+ * vira a empresa, no lugar do nome do bar, e o e-mail para notas vira o do
+ * cliente, que é para onde o Stripe manda fatura e recibo. Sem e-mail para
+ * notas vai `fallbackEmail` (o de acesso, quando o dono apagou o campo) ou
+ * nada, e o cliente fica com o e-mail que tem.
+ */
+export function customerDetailsFor(
+  ownerName: string,
+  ownerBar: { name: string } & Partial<InvoiceDetails>,
+  fallbackEmail?: string
+) {
+  const email = ownerBar.invoiceEmail ?? fallbackEmail
+  return {
+    ...customerNamesFor(ownerName, ownerBar.legalName ?? ownerBar.name),
+    ...(email ? { email } : {})
+  }
+}
+
+/**
+ * O CNPJ do bar como o único `br_cnpj` do cliente (WEB-444), que o Stripe
+ * imprime nas faturas. `null` tira o que houver. Outros documentos (um CPF
+ * digitado no checkout) ficam. Repetir não muda nada: o que já está certo
+ * não é apagado nem criado de novo.
+ */
+export async function syncCustomerCnpj(
+  client: Pick<Stripe, 'customers'>,
+  customerId: string,
+  cnpj: string | null,
+  request?: Stripe.RequestOptions
+) {
+  const { data } = await client.customers.listTaxIds(
+    customerId,
+    { limit: 100 },
+    request
+  )
+  const current = data.filter((taxId) => taxId.type === 'br_cnpj')
+  for (const taxId of current) {
+    if (normalizeCnpj(taxId.value) !== cnpj) {
+      await client.customers.deleteTaxId(customerId, taxId.id, {}, request)
+    }
+  }
+  if (cnpj && !current.some((taxId) => normalizeCnpj(taxId.value) === cnpj)) {
+    await client.customers.createTaxId(
+      customerId,
+      { type: 'br_cnpj', value: formatCnpj(cnpj) },
+      request
+    )
   }
 }
 
@@ -204,7 +337,9 @@ export function customerNamesFor(ownerName: string, barName: string) {
  * Fim do checkout: nome e empresa do cliente voltam a ser os do cadastro
  * (WEB-328). A sessão vai com `customer_update.name: 'auto'` (ver
  * `stripe-checkout.ts`), então o Stripe pode ter gravado ali o nome do cartão
- * ou a razão social digitada junto do CNPJ.
+ * ou a razão social digitada junto do CNPJ. Os dados da nota que o bar
+ * informou no painel (WEB-444) voltam junto: e-mail e CNPJ só quando
+ * preenchidos, para não apagar o CNPJ que o dono digitou no checkout.
  *
  * Recusa do Stripe só vai para o log: a assinatura já está gravada, e webhook
  * respondendo erro por causa de um nome não conserta nada.
@@ -226,25 +361,31 @@ async function restoreCustomerNames(
     where: eq(bar.userId, owner.id)
   })
   if (!ownerBar) return
-  await client.customers
-    .update(customerId, customerNamesFor(owner.name, ownerBar.name))
-    .catch((error: unknown) =>
-      logBillingError('stripe_customer_names_failed', {
-        customerId,
-        message: error instanceof Error ? error.message : String(error)
-      })
+  try {
+    await client.customers.update(
+      customerId,
+      customerDetailsFor(owner.name, ownerBar)
     )
+    if (ownerBar.cnpj) {
+      await syncCustomerCnpj(client, customerId, ownerBar.cnpj)
+    }
+  } catch (error) {
+    logBillingError('stripe_customer_names_failed', {
+      customerId,
+      message: error instanceof Error ? error.message : String(error)
+    })
+  }
 }
 
 /** O que o plugin entrega em `onEvent`: todo evento já com a assinatura conferida. */
 export async function syncStripeEvent(event: Stripe.Event, client: Stripe) {
   const subscriptionId = subscriptionIdOf(event)
   if (!subscriptionId) return
-  await applyStripeSubscription(
-    await client.subscriptions.retrieve(subscriptionId, {
-      expand: ['discounts.source.coupon']
-    })
-  )
+  const current = await client.subscriptions.retrieve(subscriptionId, {
+    expand: ['discounts.source.coupon']
+  })
+  const barId = await applyStripeSubscription(current)
+  if (barId) await sendCancelReason(current, barId, client)
   if (event.type === 'checkout.session.completed') {
     await restoreCustomerNames(event.data.object, client)
   }

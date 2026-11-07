@@ -16,6 +16,7 @@ import {
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 
 import { encodeCursor } from '../lib/keyset-cursor'
+import { RATING_PUBLIC_FLOOR } from '../lib/rating'
 import { contextFor, load } from './integration-seed'
 
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
@@ -31,7 +32,9 @@ integrationTest(
 
     const now = new Date()
     const fanId = crypto.randomUUID()
-    const raterIds = Array.from({ length: 3 }, () => crypto.randomUUID())
+    const raterIds = Array.from({ length: RATING_PUBLIC_FLOOR }, () =>
+      crypto.randomUUID()
+    )
     const sportId = crypto.randomUUID()
     const teamIds = {
       flamengo: crypto.randomUUID(),
@@ -193,6 +196,12 @@ integrationTest(
       }
 
       for (const raterId of raterIds) {
+        // Check-in antes: só a avaliação verificada entra na nota (WEB-408).
+        await db.execute(sql`
+          INSERT INTO attendance_checkin
+            (user_id, event_id, latitude, longitude, distance_m)
+          VALUES (${raterId}, ${proClassic.eventId}, 0, 0, 0)
+        `)
         await db.execute(sql`
           INSERT INTO bar_rating
             (id, bar_id, actor_user_id, event_id, would_return)
