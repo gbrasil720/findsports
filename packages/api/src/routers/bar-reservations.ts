@@ -88,7 +88,12 @@ export const barReservationsRouter = router({
         startsAt: event.startsAt,
         name: user.name,
         markedAt: attendance.createdAt,
-        validatedAt: sql<Date | null>`max(${reservationCodeUse.usedAt})`
+        validatedAt: sql<Date | null>`max(${reservationCodeUse.usedAt})`,
+        // A chegada que vale, para o "Desfazer" do Quem vai
+        // (`reservationValidation.undoArrival`, que confere o prazo).
+        useId: sql<
+          string | null
+        >`(array_agg(${reservationCodeUse.id} ORDER BY ${reservationCodeUse.usedAt} DESC, ${reservationCodeUse.id} DESC) FILTER (WHERE ${reservationCodeUse.id} IS NOT NULL))[1]`
       })
       .from(attendance)
       .innerJoin(event, eq(event.id, attendance.eventId))
@@ -115,7 +120,15 @@ export const barReservationsRouter = router({
           isNull(reservationCodeUse.undoneAt)
         )
       )
-      .where(and(eq(event.barId, ctx.barId), validationOpen))
+      // Lista desligada no jogo (WEB-437): o painel não lista quem vai nele;
+      // os códigos já emitidos continuam valendo no "Validar código".
+      .where(
+        and(
+          eq(event.barId, ctx.barId),
+          eq(event.attendanceEnabled, true),
+          validationOpen
+        )
+      )
       .groupBy(event.id, user.id, attendance.createdAt)
       .orderBy(event.startsAt, event.id)
 
@@ -127,15 +140,28 @@ export const barReservationsRouter = router({
         participantFreeText: string | null
         participants: string[]
         startsAt: Date
-        people: { name: string; markedAt: Date; validatedAt: Date | null }[]
+        people: {
+          name: string
+          markedAt: Date
+          validatedAt: Date | null
+          useId: string | null
+        }[]
       }
     >()
-    for (const { eventId, name, markedAt, validatedAt, ...game } of rows) {
+    for (const {
+      eventId,
+      name,
+      markedAt,
+      validatedAt,
+      useId,
+      ...game
+    } of rows) {
       const entry = games.get(eventId) ?? { id: eventId, ...game, people: [] }
       entry.people.push({
         name,
         markedAt,
-        validatedAt: validatedAt ? new Date(validatedAt) : null
+        validatedAt: validatedAt ? new Date(validatedAt) : null,
+        useId
       })
       games.set(eventId, entry)
     }
