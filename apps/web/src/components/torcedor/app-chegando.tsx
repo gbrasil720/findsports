@@ -64,7 +64,7 @@ export function AppChegando() {
         </b>
         <span>
           {naLista
-            ? `Um e-mail só, para ${status.data?.email}, no dia em que sair na App Store. Sua conta é a mesma.`
+            ? `Um e-mail só, para ${status.data?.email}, no dia em que sair nas lojas. Sua conta é a mesma.`
             : 'Tudo o que você faz aqui continua lá, com a mesma conta. Quer saber no dia?'}
         </span>
         {erro ? (
