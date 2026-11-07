@@ -466,8 +466,15 @@ mandado ao `/admin`.
   peças das Configurações do painel). Link para bar é `/pub/<id>`.
 - **Landing:** sem sessão, a chamada do torcedor ("Ver jogos de hoje") leva ao
   Explorar; a do bar segue no cadastro.
-- **Em breve no web:** aviso "quando o app chegar", escolher avisos, quem vê onde você
-  foi e ranking (ficam no app), nomes de amigos em "quem vai".
+- **"Me avise quando o app chegar"** (`AppChegando`, em Meus jogos e no perfil): tabela
+  `app_waitlist`, um e-mail único em minúsculas por linha, com `user_id` opcional (cascade
+  na exclusão), `source` (`landing` ou `web`), `notified_at` e `unsubscribed_at`; o web
+  grava o e-mail da sessão por `appWaitlist.join` (visitante passa pela folha de entrar) e
+  "Não quero mais" (`leave`) marca `unsubscribed_at` em vez de apagar, o registro da
+  recusa para o envio do lançamento. Nenhum e-mail sai ainda; a linha entra em "Baixar
+  meus dados".
+- **Em breve no web:** escolher avisos, quem vê onde você foi e ranking (ficam no app),
+  nomes de amigos em "quem vai".
 
 ### App mobile
 

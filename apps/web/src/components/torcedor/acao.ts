@@ -7,17 +7,19 @@
  */
 
 export type TipoAcao = 'vou' | 'fav' | 'lembrar'
-export type Acao = { tipo: TipoAcao; id: string }
+/** `app`: entrar na lista do "Me avise quando o app chegar", sem id. */
+export type Acao = { tipo: TipoAcao; id: string } | { tipo: 'app' }
 
 const TIPOS: readonly TipoAcao[] = ['vou', 'fav', 'lembrar']
 const UUID = /^[0-9a-f-]{36}$/i
 
 export function acaoTexto(acao: Acao): string {
-  return `${acao.tipo}.${acao.id}`
+  return acao.tipo === 'app' ? 'app' : `${acao.tipo}.${acao.id}`
 }
 
 export function lerAcao(texto: unknown): Acao | null {
   if (typeof texto !== 'string') return null
+  if (texto === 'app') return { tipo: 'app' }
   const [tipo, id] = texto.split('.')
   if (!TIPOS.includes(tipo as TipoAcao) || !id || !UUID.test(id)) return null
   return { tipo: tipo as TipoAcao, id }

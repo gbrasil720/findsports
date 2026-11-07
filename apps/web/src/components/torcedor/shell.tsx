@@ -72,10 +72,19 @@ function useAcoes(avisar: (texto: string) => void) {
   const marcar = useMutation(trpc.attendance.set.mutationOptions())
   const salvar = useMutation(trpc.pubs.favorite.mutationOptions())
   const lembrar = useMutation(trpc.recommendations.remind.mutationOptions())
+  const avisarApp = useMutation(trpc.appWaitlist.join.mutationOptions())
 
   return useCallback(
     async (acao: Acao) => {
       try {
+        if (acao.tipo === 'app') {
+          const { email } = await avisarApp.mutateAsync()
+          await queryClient.invalidateQueries(
+            trpc.appWaitlist.status.queryFilter()
+          )
+          avisar(`Combinado. Avisamos ${email} no dia em que o app sair.`)
+          return
+        }
         if (acao.tipo === 'vou') {
           const feito = await marcar.mutateAsync({
             eventId: acao.id,
@@ -114,7 +123,7 @@ function useAcoes(avisar: (texto: string) => void) {
         )
       }
     },
-    [avisar, marcar, salvar, lembrar, navigate, queryClient]
+    [avisar, marcar, salvar, lembrar, avisarApp, navigate, queryClient, trpc]
   )
 }
 
