@@ -12,6 +12,8 @@ import { ThemeSwitch } from '@/components/landing/v3/theme-switch'
 export function PubObShell({
   steps,
   step = 0,
+  done,
+  action,
   aside,
   wide,
   bleed,
@@ -21,6 +23,14 @@ export function PubObShell({
 }: {
   steps?: readonly string[]
   step?: number
+  /**
+   * Quais passos foram feitos, quando pular é permitido (depois do "no ar"):
+   * o passo pulado não ganha o visto. Sem isto, todo passo antes do atual é
+   * feito.
+   */
+  done?: readonly boolean[]
+  /** No topo, depois da troca de tema: "Ir para o painel". */
+  action?: ReactNode
   aside?: ReactNode
   /** Página inteira, sem a coluna da direita (o passo "Plano"). */
   wide?: boolean
@@ -50,20 +60,23 @@ export function PubObShell({
               Passo {step + 1} de {steps.length} · {steps[step]}
             </p>
             <ol className="ob-steps" aria-hidden="true">
-              {steps.map((name, i) => (
-                <li
-                  key={name}
-                  className={i < step ? 'ok' : i === step ? 'on' : undefined}
-                >
-                  <span>{i < step ? <Check size={14} /> : i + 1}</span>
-                  {name}
-                  {i === step ? (
-                    <em className="of">
-                      {i + 1} de {steps.length}
-                    </em>
-                  ) : null}
-                </li>
-              ))}
+              {steps.map((name, i) => {
+                const ok = i !== step && (done ? done[i] : i < step)
+                return (
+                  <li
+                    key={name}
+                    className={ok ? 'ok' : i === step ? 'on' : undefined}
+                  >
+                    <span>{ok ? <Check size={14} /> : i + 1}</span>
+                    {name}
+                    {i === step ? (
+                      <em className="of">
+                        {i + 1} de {steps.length}
+                      </em>
+                    ) : null}
+                  </li>
+                )
+              })}
             </ol>
           </>
         ) : (
@@ -71,6 +84,7 @@ export function PubObShell({
         )}
         {pill ? <span className="ob-pill">{pill}</span> : null}
         <ThemeSwitch variant="nav" />
+        {action}
       </header>
       <div className={`ob-grid${aside ? '' : ' one'}`}>
         <main

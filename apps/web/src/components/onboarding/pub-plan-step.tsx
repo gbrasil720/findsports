@@ -2,6 +2,7 @@ import {
   ONBOARDING_TRIAL,
   STARTER_EVENT_LIMIT
 } from '@findsports_oficial/api/lib/plan-limits'
+import { paybackClients } from '@findsports_oficial/api/lib/pub-routine'
 import type { SubscriptionPlan } from '@findsports_oficial/db'
 import type { ReactNode } from 'react'
 import { Check } from '@/components/landing/v3/icons'
@@ -10,7 +11,6 @@ import {
   PLAN_CATALOG,
   planChargeForShowcase
 } from '@/lib/plan-catalog'
-import { paybackClients } from '@findsports_oficial/api/lib/pub-routine'
 
 /** As ilustrações dos planos: chama, estrela e coroa. */
 export const PLAN_ART: Record<SubscriptionPlan, string> = {
@@ -47,9 +47,10 @@ const CARD_FEATURES: Record<SubscriptionPlan, string[]> = {
 }
 
 /**
- * "Plano" do cadastro do bar (WEB-501): a recomendação da rotina, os motivos
- * e os três planos lado a lado, com o recomendado escuro e já escolhido. O
- * teste do cadastro vale para qualquer um (WEB-358).
+ * "Plano do teste" (WEB-501; protótipo `planoOb`): depois do primeiro jogo e
+ * antes do painel, a recomendação da rotina, os motivos e os três planos lado
+ * a lado, com o recomendado escuro e já marcado. O teste vale para qualquer
+ * um (WEB-358) e a data de fim não muda com a escolha.
  */
 export function PubPlanStep({
   barName,
@@ -60,6 +61,7 @@ export function PubPlanStep({
   spend,
   founderCoupon,
   onEditRoutine,
+  trialEnd,
   heading
 }: {
   barName: string
@@ -70,19 +72,28 @@ export function PubPlanStep({
   spend: number
   founderCoupon: boolean
   onEditRoutine: () => void
+  /** "5 fev": o fim do teste, como o servidor gravou. */
+  trialEnd: string | null
   /** O título do passo, com o foco de quem troca de passo. */
   heading: (content: ReactNode) => ReactNode
 }) {
   const recName = PLAN_CATALOG.find((p) => p.id === recommended)?.name
   return (
     <>
-      <span className="ob-k">Nossa recomendação</span>
+      <span className="ob-k">Nossa recomendação, pela sua rotina</span>
       {heading(
         <>
           O <span className="hl">{recName}</span> é o plano do{' '}
           {barName.trim() || 'seu bar'}
         </>
       )}
+      <p className="ob-sub">
+        Escolha o plano do teste para entrar no painel. Vale o que você
+        escolher: qualquer plano é grátis, sem cartão, por{' '}
+        {ONBOARDING_TRIAL.days} dias contados desde que o bar foi ao ar
+        {trialEnd ? ` (até ${trialEnd})` : ''}. Durante o teste, dá para trocar
+        de plano quando quiser, e a data de fim não muda.
+      </p>
       <div className="ob-rbox">
         <span className="ob-k">Pelo que você contou</span>
         <ul>
@@ -166,9 +177,8 @@ export function PubPlanStep({
         })}
       </fieldset>
       <p className="ob-note">
-        Qualquer plano é grátis por {ONBOARDING_TRIAL.days} dias, sem cartão, e
-        dá pra trocar durante o teste. Só cobra se você contratar. A conta de
-        clientes usa o gasto que você informou; não é previsão de público.
+        A conta de clientes usa o gasto que você informou; não é previsão de
+        público.
       </p>
     </>
   )

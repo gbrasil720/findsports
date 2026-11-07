@@ -21,6 +21,7 @@ export function PubPreview({
   screenCount,
   photoUrl,
   plan,
+  game,
   note
 }: {
   name: string
@@ -36,6 +37,11 @@ export function PubPreview({
   photoUrl?: string | null
   /** Só na revisão: o selo do plano escolhido, que o Starter não tem. */
   plan?: SubscriptionPlan
+  /**
+   * Depois do "no ar" ("Seu primeiro jogo"): o jogo publicado, ou `null`
+   * enquanto não há. Ausente no cadastro, que ainda não tem jogo.
+   */
+  game?: { when: string; title: string } | null
   note: string
 }) {
   const where = [address.trim(), neighborhood.trim(), city.trim()]
@@ -91,8 +97,24 @@ export function PubPreview({
             </span>
           ) : null}
           <div className="ob-pgame">
-            <span className="ob-k">Seus jogos aparecem aqui</span>
-            <p>Depois do cadastro, você coloca os jogos que vai passar.</p>
+            {game ? (
+              <>
+                <span className="ob-k">{game.when}</span>
+                <p>
+                  <b>{game.title}</b>
+                </p>
+              </>
+            ) : game === null ? (
+              <>
+                <span className="ob-k">Seu primeiro jogo aparece aqui</span>
+                <p>Escolha uma sugestão ou escreva o jogo.</p>
+              </>
+            ) : (
+              <>
+                <span className="ob-k">Seus jogos aparecem aqui</span>
+                <p>Depois do cadastro, você coloca os jogos que vai passar.</p>
+              </>
+            )}
           </div>
           <span className="ob-pbtn" aria-hidden="true">
             Vou assistir aqui
