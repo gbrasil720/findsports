@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { CodeValidation } from '@/components/admin/code-validation'
 import { useMinuteNow } from '@/components/app/minute-tick'
-import { PainelPage } from '@/components/painel/painel-shell'
 import { useTRPC, useTRPCClient } from '@/utils/trpc'
 
 export const Route = createFileRoute('/admin/validate')({
@@ -45,20 +44,28 @@ function ValidatePage() {
   const { reservationValidation } = useTRPCClient()
 
   return (
-    <PainelPage
-      title="Validar código"
-      sub="Valide o código de quem marcou “Vou assistir aqui” e libere a oferta da casa."
-    >
+    <>
+      <div className="pn-head">
+        <div>
+          <p className="pn-k">O código de quem marcou “Vou assistir aqui”</p>
+          <h1 className="pn-disp">Validar código</h1>
+          <p className="pn-sub">
+            Valide o código e libere a oferta da casa. O QR do torcedor abre
+            esta página já buscando.
+          </p>
+        </div>
+      </div>
+
       {confirmsLater ? (
-        <div className="onside-callout onside-callout-stone mb-6" role="note">
-          <p className="flex-1 text-sm">
+        <div className="pn-lock pn-cv-comanda" role="note">
+          <span>
             Os códigos anotados na comanda você lança em Quem vai, até 48 h
             depois do jogo.
-          </p>
+          </span>
           <Link
             to="/admin/quem-vai"
             hash="comanda"
-            className="onside-btn onside-btn-ink shrink-0"
+            className="pn-btn pn-ink pn-sm"
           >
             Lançar códigos da comanda
           </Link>
@@ -89,6 +96,6 @@ function ValidatePage() {
         undoArrival={reservationValidation.undoArrival.mutate}
         initialCode={code}
       />
-    </PainelPage>
+    </>
   )
 }

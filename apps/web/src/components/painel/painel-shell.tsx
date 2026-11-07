@@ -35,7 +35,7 @@ import { ValidarCodigo } from './validar-codigo'
  * `docs/design/redesign-2026-11/painel`, `drawNav` e `mais`): barra de tinta
  * com o bar, as seções e "Validar código"; trilho de ícones até 1180 px; no
  * celular, o topo com o bar e as abas embaixo, com "Mais". CSS em
- * `painel.css`, preso a `.pn3`. As telas antigas entram em `PainelPage`.
+ * `painel.css`, preso a `.pn3`.
  */
 
 type PainelState = {
@@ -370,33 +370,6 @@ function DonoMenu({
         </nav>
       ) : null}
     </div>
-  )
-}
-
-/**
- * Uma tela do painel: o título no letreiro e, por enquanto, a seção do painel
- * antigo numa folha `.onside-app` (fase 1: nada muda dentro dela). No escuro
- * a folha fica clara, para o que ainda não foi redesenhado continuar legível.
- */
-export function PainelPage({
-  title,
-  sub,
-  children
-}: {
-  title?: string
-  sub?: string
-  children: ReactNode
-}) {
-  return (
-    <>
-      {title ? (
-        <div className="pn-ph">
-          <h1 className="pn-disp">{title}</h1>
-          {sub ? <p>{sub}</p> : null}
-        </div>
-      ) : null}
-      <div className="onside-app pn-legado">{children}</div>
-    </>
   )
 }
 

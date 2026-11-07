@@ -1,6 +1,4 @@
 import type { ReactNode, Ref } from 'react'
-import Check from 'reicon-react/icons/Check'
-import CircleInfo from 'reicon-react/icons/CircleInfo'
 import { formatGameSubtitle } from '@/domain/pub-profile'
 import {
   formatDateTime,
@@ -34,91 +32,66 @@ export function ReservationSummary({
   const isFull = reservation.usedCount >= reservation.maxUses
 
   return (
-    <section
-      aria-labelledby={titleId}
-      className="border-[var(--onside-ink)] border-t-[1.5px] pt-5"
-    >
-      <p className="onside-kicker">
-        Código{' '}
-        <span className="font-[family-name:var(--onside-mono)] tracking-[0.18em]">
-          {reservation.code}
-        </span>
+    <section aria-labelledby={titleId} className="pn-cv-res">
+      <p className="pn-k">
+        Código <span className="pn-mono pn-cv-code">{reservation.code}</span>
       </p>
-      <h3
-        ref={titleRef}
-        id={titleId}
-        tabIndex={-1}
-        className="onside-display text-2xl [overflow-wrap:anywhere]"
-      >
+      <h3 ref={titleRef} id={titleId} tabIndex={-1} className="pn-cv-who">
         {reservation.guestName}
       </h3>
 
-      <dl className="mt-4 grid grid-cols-1 gap-x-8 gap-y-3 text-sm sm:grid-cols-2">
+      <dl className="pn-cv-dl">
         <div>
-          <dt className="text-[var(--onside-muted)] text-xs">Jogo</dt>
-          <dd className="font-semibold [overflow-wrap:anywhere]">
-            {getGameTitle(reservation.event)}
+          <dt>Jogo</dt>
+          <dd>
+            <b>{getGameTitle(reservation.event)}</b>
           </dd>
-          <dd className="text-[var(--onside-muted)]">
+          <dd>
             {formatGameSubtitle(getGameTitle(reservation.event), [
               reservation.event.championship,
               formatDateTime(reservation.event.startsAt)
             ])}
           </dd>
         </div>
-        <div className="sm:col-span-2">
-          <dt className="text-[var(--onside-muted)] text-xs">Oferta da casa</dt>
-          <dd className="font-semibold [overflow-wrap:anywhere]">
-            {reservation.offerSnapshot ??
-              'O bar não tinha oferta quando a pessoa marcou.'}
+        <div>
+          <dt>Oferta da casa</dt>
+          <dd>
+            <b>
+              {reservation.offerSnapshot ??
+                'O bar não tinha oferta quando a pessoa marcou.'}
+            </b>
           </dd>
         </div>
       </dl>
 
-      <p className="onside-display mt-5 text-4xl tabular-nums">
-        {/* Chegada registrada é resultado; "0 de N" ainda não é. */}
-        <span className={reservation.usedCount > 0 ? 'onside-mark' : undefined}>
-          {getCounterLabel(reservation.usedCount, reservation.maxUses)}
-        </span>
+      {/* Chegada registrada é resultado; "0 de N" ainda não é. */}
+      <p
+        className={`pn-disp pn-cv-n${reservation.usedCount > 0 ? ' is-on' : ''}`}
+      >
+        {getCounterLabel(reservation.usedCount, reservation.maxUses)}
       </p>
 
       {blocker ? (
-        <div className="onside-callout onside-callout-warn mt-4">
-          <CircleInfo
-            size={20}
-            color="currentColor"
-            className="mt-0.5 shrink-0"
-            aria-hidden="true"
-          />
-          <div className="min-w-0 flex-1">
-            <p className="mb-0.5 font-semibold text-sm">{blocker.title}</p>
-            <p className="text-sm opacity-90">{blocker.detail}</p>
-          </div>
+        <div className="pn-lock">
+          <span>
+            <b>{blocker.title}</b>
+            {blocker.detail}
+          </span>
         </div>
       ) : isFull ? (
-        <div className="onside-callout onside-callout-acid mt-4">
-          <Check
-            size={20}
-            color="currentColor"
-            className="mt-0.5 shrink-0"
-            aria-hidden="true"
-          />
-          <div className="min-w-0 flex-1">
-            <p className="mb-0.5 font-semibold text-sm">Código validado</p>
-            <p className="text-sm opacity-90">
-              {getAllValidatedMessage(reservation.maxUses)}
-            </p>
-          </div>
+        <div className="pn-aviso-ok">
+          <b>Código validado</b>
+          <p>{getAllValidatedMessage(reservation.maxUses)}</p>
         </div>
       ) : null}
 
       {error ? (
-        <div className="onside-callout onside-callout-danger mt-4" role="alert">
-          <p className="font-semibold text-sm">{error}</p>
+        <div className="pn-err" role="alert">
+          <p>{error}</p>
         </div>
       ) : null}
 
-      <div className="mt-5 flex flex-wrap items-center gap-2">{children}</div>
+      <div className="pn-acts pn-cv-acts">{children}</div>
     </section>
   )
 }

@@ -10,7 +10,6 @@ import {
   type AnalyticsPeriodPreset,
   getAnalyticsRange
 } from '@/components/admin/analytics-period'
-import { QueryError } from '@/components/admin/query-error'
 import { useMinuteNow } from '@/components/app/minute-tick'
 import { PainelContext, PainelShell } from '@/components/painel/painel-shell'
 import { getEventTemporalState } from '@/domain/events'
@@ -118,17 +117,22 @@ function AdminLayout() {
             <i />
           </div>
         ) : barQuery.isError || !bar ? (
-          <div className="onside-app pn-legado">
-            <QueryError
-              message={getUserFacingMessage(
+          <div className="pn-err" role="alert">
+            <p>
+              {getUserFacingMessage(
                 barQuery.error,
                 'Não foi possível carregar os dados do bar.'
               )}
-              retryable={isRetryableError(barQuery.error)}
-              onRetry={() => {
-                void barQuery.refetch()
-              }}
-            />
+            </p>
+            {isRetryableError(barQuery.error) ? (
+              <button
+                type="button"
+                className="pn-btn pn-ghost pn-sm"
+                onClick={() => void barQuery.refetch()}
+              >
+                Tentar de novo
+              </button>
+            ) : null}
           </div>
         ) : (
           <Outlet />
