@@ -179,7 +179,9 @@ function Gosto() {
     }
     salvarEsportes.mutate({ sportIds: novos })
   }
-  const salvarRaio = async () => {
+  const espera = useRef<ReturnType<typeof setTimeout>>(undefined)
+  useEffect(() => () => clearTimeout(espera.current), [])
+  const salvarRaio = async (raio: number) => {
     const { error } = await authClient.updateUser({ searchRadiusKm: raio })
     if (error) {
       avisar(getUserFacingMessage(error, 'Não deu para salvar o raio.'))
@@ -241,9 +243,13 @@ function Gosto() {
           step={1}
           value={raio}
           aria-label="Raio em km"
-          onChange={(e) => setRaio(Number(e.target.value))}
-          onPointerUp={() => void salvarRaio()}
-          onKeyUp={() => void salvarRaio()}
+          onChange={(e) => {
+            // Grava quando a pessoa para de arrastar.
+            const novo = Number(e.target.value)
+            setRaio(novo)
+            clearTimeout(espera.current)
+            espera.current = setTimeout(() => void salvarRaio(novo), 500)
+          }}
         />
         <div className="rngl">
           <span>1 km</span>
@@ -541,6 +547,7 @@ function Foto() {
             type="file"
             accept="image/*"
             className="sr-only"
+            aria-label="Escolher foto de perfil"
             disabled={enviando}
             onChange={(e) => void trocar(e)}
           />
