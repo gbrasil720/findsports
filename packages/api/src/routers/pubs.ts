@@ -62,7 +62,15 @@ import {
   type SearchPage
 } from '../lib/pub-search'
 import { PUBLIC_BAR_COLUMNS } from '../lib/public-bar'
-import { hasPublicRating, ratingPercentage } from '../lib/rating'
+import { readCheckIn } from '../lib/check-in'
+import {
+  hasPublicRating,
+  RATING_PUBLIC_FLOOR,
+  ratingPercentage
+} from '../lib/rating'
+import { readRatingList } from '../lib/rating-list'
+import { summarizeReasons } from '../lib/rating-reasons'
+import { starsAverage } from '../lib/rating-review'
 import { chaveBusca, chaveBuscaLocal } from '../lib/search-cache'
 import {
   findSearchCity,
@@ -100,6 +108,29 @@ const TEAM_COLUMNS = {
   isNationalTeam: team.isNationalTeam
 }
 const TEAM_SEARCH_LIMIT = 30
+
+/**
+ * Quantas vezes cada etiqueta de "O que pesou?" foi citada no bar, de quem
+ * voltaria e de quem não voltaria (WEB-398). Só as avaliações verificadas
+ * (código validado ou check-in, WEB-408), como a nota.
+ */
+async function readReasonSummary(barId: string) {
+  const rows = await db.execute(sql`
+    SELECT r.would_return, reason, COUNT(*)::int AS count
+    FROM bar_rating r, unnest(r.reasons) AS reason
+    WHERE r.bar_id = ${barId} AND r.verified
+    GROUP BY r.would_return, reason
+  `)
+  return summarizeReasons(
+    (
+      rows.rows as { would_return: boolean; reason: string; count: number }[]
+    ).map((row) => ({
+      wouldReturn: row.would_return,
+      reason: row.reason,
+      count: Number(row.count)
+    }))
+  )
+}
 
 /**
  * Por que o bar do dono saiu do ar, para a prévia dele dizer a verdade: quem
@@ -479,6 +510,8 @@ export const pubsRouter = router({
           isActive: true,
           ratingCount: true,
           ratingPositive: true,
+          ratingStarsCount: true,
+          ratingStarsSum: true,
           houseOffer: true,
           menuUrl: true,
           averageSpendCents: true,
@@ -560,6 +593,8 @@ export const pubsRouter = router({
         userId,
         ratingCount,
         ratingPositive,
+        ratingStarsCount,
+        ratingStarsSum,
         houseOffer,
         menuUrl,
         averageSpendCents,
@@ -572,24 +607,39 @@ export const pubsRouter = router({
       } = result
 
       const notaPublica = await getAppConfig('rating.public_display')
-      const rating =
-        notaPublica && hasPublicRating(ratingCount)
-          ? {
-              positive: ratingPositive,
-              total: ratingCount,
-              percentage: ratingPercentage(ratingPositive, ratingCount)
-            }
-          : null
+      // Abaixo do piso de verificadas não sai nada da nota: nem %, nem
+      // estrelas, nem etiquetas, nem comentários (WEB-408, WEB-451).
+      const showRating = notaPublica && hasPublicRating(ratingCount)
+      const rating = showRating
+        ? {
+            positive: ratingPositive,
+            total: ratingCount,
+            percentage: ratingPercentage(ratingPositive, ratingCount),
+            // Média das estrelas (WEB-451), com o mesmo piso.
+            stars: starsAverage(
+              ratingStarsSum,
+              ratingStarsCount,
+              RATING_PUBLIC_FLOOR
+            )
+          }
+        : null
 
       // O código do balcão, e com ele a oferta da casa, é do Elite: fora
       // dele, anunciar a oferta seria prometer sem caminho (WEB-131).
       const elite = getCurrentPlan(subscription ?? null, now) === 'elite'
       const fan = ctx.session.user.role === 'fan'
-      const [attendance, going] = await Promise.all([
+      const [attendance, going, reasons, reviews, checkIn] = await Promise.all([
         readFanAttendance(ctx.session.user, events, now),
         // A contagem do ingresso, inclusive do jogo ao vivo; como o botão,
         // só para torcedor.
-        fan ? readGoing(events.map((game) => game.id)) : new Map()
+        fan ? readGoing(events.map((game) => game.id)) : new Map(),
+        // "O que pesou?" (WEB-398): o mesmo piso da nota, e só o resumo.
+        showRating ? readReasonSummary(result.id) : null,
+        // Os comentários de "O que dizem" (WEB-451): o mesmo piso, só as
+        // verificadas e aprovadas pela Onside.
+        showRating ? readRatingList(result.id, { public: true, limit: 3 }) : [],
+        // "Estou aqui" (WEB-408): o jogo deste bar com check-in aberto agora.
+        fan ? readCheckIn(ctx.session.user.id, events, now) : null
       ])
       return {
         ...publicBar,
@@ -621,6 +671,11 @@ export const pubsRouter = router({
           })
         ),
         rating,
+        ratingReasons: reasons,
+        reviews: reviews.map(
+          ({ verified: _v, createdAt: _c, ...review }) => review
+        ),
+        checkIn,
         // A padrão do bar. O que vale em cada jogo é `events[].houseOffer`.
         houseOffer: elite ? houseOffer : null,
         // "Vou assistir aqui" sai com código do balcão (o app escolhe entre
