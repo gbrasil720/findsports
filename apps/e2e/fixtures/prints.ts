@@ -19,14 +19,12 @@ export async function print(
   if (settleMs) await page.waitForTimeout(settleMs)
   mkdirSync(dir, { recursive: true })
   const project = testInfo.project.name
-  const tema = await page.evaluate(
-    () => document.documentElement.getAttribute('data-theme') ?? 'light'
-  )
+  const html = page.locator('html')
+  const tema = (await html.getAttribute('data-theme')) ?? 'light'
+  const pintar = (t: string) =>
+    page.evaluate(`document.documentElement.setAttribute('data-theme', '${t}')`)
   for (const theme of ['light', 'dark'] as const) {
-    await page.evaluate(
-      (t) => document.documentElement.setAttribute('data-theme', t),
-      theme
-    )
+    await pintar(theme)
     // As transições de cor do tema assentam antes do print.
     await page.waitForTimeout(250)
     await page.screenshot({
@@ -34,8 +32,5 @@ export async function print(
       fullPage: false
     })
   }
-  await page.evaluate(
-    (t) => document.documentElement.setAttribute('data-theme', t),
-    tema
-  )
+  await pintar(tema)
 }

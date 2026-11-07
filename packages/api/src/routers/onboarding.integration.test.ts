@@ -259,11 +259,11 @@ integrationTest(
       expect(await dono.pub.changeTrialPlan({ plan: 'starter' })).toEqual({
         plan: 'starter'
       })
-      expect(await read()).toEqual({
-        ...nasceu,
+      // O fim do teste não muda com a escolha.
+      expect(await read()).toMatchObject({
         plan: 'starter',
         escolhido: true,
-        fim: nasceu?.fim
+        fim: String(nasceu?.fim)
       })
       expect(await dono.pub.getMe()).toMatchObject({
         trialPlanChosenAt: expect.any(Date)

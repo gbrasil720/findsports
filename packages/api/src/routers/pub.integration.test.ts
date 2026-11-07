@@ -58,8 +58,9 @@ integrationTest(
         status: 'active',
         currentPeriodEnd
       })
+      // Cinco publicados: o primeiro é por conta da Onside, sobra uma vaga.
       await db.insert(event).values(
-        Array.from({ length: 4 }, (_, index) => ({
+        Array.from({ length: 5 }, (_, index) => ({
           barId,
           sportId,
           championship: `Evento existente ${index + 1}`,
@@ -91,7 +92,7 @@ integrationTest(
       const finalEvents = await db.query.event.findMany({
         where: eq(event.barId, barId)
       })
-      expect(finalEvents).toHaveLength(5)
+      expect(finalEvents).toHaveLength(6)
       const policy = await caller.pub.getMyEventCreationPolicy()
       expect(policy).toMatchObject({
         status: 'limited',
