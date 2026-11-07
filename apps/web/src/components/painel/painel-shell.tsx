@@ -60,6 +60,34 @@ export function usePainel(): PainelState {
   return state
 }
 
+/**
+ * Interruptor do painel (protótipo `.tg`): botão com `role="switch"`. Quem
+ * chama grava; `ocupado` trava o toque enquanto o servidor responde.
+ */
+export function Interruptor({
+  ligado,
+  onChange,
+  rotulo,
+  disabled
+}: {
+  ligado: boolean
+  onChange: (ligado: boolean) => void
+  rotulo: string
+  disabled?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      className="pn-tg"
+      aria-checked={ligado}
+      aria-label={rotulo}
+      disabled={disabled}
+      onClick={() => onChange(!ligado)}
+    />
+  )
+}
+
 export function initials(name: string): string {
   return (
     name

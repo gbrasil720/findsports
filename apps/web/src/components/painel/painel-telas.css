@@ -1804,3 +1804,70 @@ html[data-theme="dark"] .pn3 {
   margin: 0;
   border: 0;
 }
+
+/* Interruptor (protótipo `.tg`): Telão, Som, Lista e Oferta do jogo, Horário. */
+.pn3 .pn-tg {
+  position: relative;
+  flex: none;
+  width: 52px;
+  height: 30px;
+  margin-left: auto;
+  border: 0;
+  border-radius: 999px;
+  background: var(--line2);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.pn3 .pn-tg::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #f1eee6;
+  transition: transform 0.25s var(--ease);
+}
+
+.pn3 .pn-tg[aria-checked="true"] {
+  background: #c9f135;
+}
+
+.pn3 .pn-tg[aria-checked="true"]::after {
+  transform: translateX(22px);
+  background: #12120f;
+}
+
+.pn3 .pn-tg:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.pn3 .pn-badge.is-draft {
+  border: 1.5px dashed var(--muted);
+  background: transparent;
+}
+
+.pn3 .pn-wg.is-draft {
+  outline: 1.5px dashed var(--muted);
+  outline-offset: -1.5px;
+}
+
+.pn3 .pn-sw > span:not(.pn-sw-v) {
+  min-width: 0;
+}
+
+.pn3 .pn-sw small {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pn3 .pn-tg,
+  .pn3 .pn-tg::after {
+    transition: none;
+  }
+}

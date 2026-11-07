@@ -1,3 +1,4 @@
+import { gameHouseOfferFromForm } from '@findsports_oficial/api/lib/house-offer'
 import {
   EVENT_CHAMPIONSHIP_MAX_LENGTH,
   EVENT_CHAMPIONSHIP_MIN_LENGTH,
@@ -7,8 +8,12 @@ import {
   EVENT_START_PROBLEM_MESSAGE,
   getEventStartProblem
 } from '@findsports_oficial/db/event-window'
+import {
+  HOUSE_OFFER_MAX_LENGTH,
+  houseOfferLength,
+  normalizeHouseOffer
+} from '@findsports_oficial/db/house-offer'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link } from '@tanstack/react-router'
 import { useEffect, useId, useRef, useState } from 'react'
 import type { AdminEvent } from '@/components/admin/admin-model'
 import { useMyBar } from '@/components/admin/admin-queries'
@@ -17,14 +22,23 @@ import {
   maskDateTime,
   parseDateTime
 } from '@/components/admin/date-time-input'
-import { Check, Close, Search } from '@/components/landing/v3/icons'
+import {
+  Beer,
+  Check,
+  Close,
+  People,
+  Search,
+  Sound,
+  Tv
+} from '@/components/landing/v3/icons'
 import { groupTeamsByKind } from '@/components/sports/team-groups'
 import { useTeamSearch } from '@/components/sports/team-picker'
 import { analytics } from '@/lib/analytics'
 import { CATALOG_QUERY } from '@/lib/query-cache'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
-import { barScreen } from './dados'
+import { gameOffer, gameScreen, isDraft } from './dados'
+import { Interruptor, usePainel } from './painel-shell'
 
 /*
  * "Novo jogo" (WEB-501, fase 2; protótipo `openSheet`, `drawPick`): a folha
@@ -32,8 +46,10 @@ import { barScreen } from './dados'
  * antigo (`event-form.tsx`): esporte, times do catálogo pela busca (WEB-381),
  * campeonato, dia e hora com máscara (WEB-306) e o "falta preencher"
  * (WEB-270). Não existe catálogo de jogos: o jogo é montado pelos times.
- * Telão, som, lista e oferta por jogo não existem no servidor; a folha diz que
- * vêm do cadastro do bar.
+ * "No bar" traz telão e som deste jogo (WEB-399, nascem das características),
+ * a lista de quem vai (WEB-437) e a oferta deste jogo (WEB-422), as duas só
+ * no Elite. Jogo novo e rascunho salvam como rascunho ou publicam (WEB-436);
+ * o publicado não volta a rascunho.
  */
 
 // Tênis entra pelo jogo de simples (um contra um); dupla vai no texto livre.
@@ -158,7 +174,33 @@ function Formulario({
   const queryClient = useQueryClient()
   const ids = useId()
   const { data: bar } = useMyBar()
+  const { elite } = usePainel()
   const [initial] = useState(() => initialOf(mode))
+  // O que o jogo tem no bar: o do jogo aberto, senão o padrão do cadastro.
+  const [noBar] = useState(() => {
+    const source = mode.kind === 'new' ? null : mode.event
+    const screen = gameScreen(
+      source ?? { onBigScreen: null, withSound: null },
+      { amenities: bar?.amenities ?? [] }
+    )
+    const offer = source
+      ? gameOffer(source, { houseOffer: bar?.houseOffer ?? null }, true)
+      : (bar?.houseOffer ?? null)
+    return {
+      ...screen,
+      attendanceEnabled: source?.attendanceEnabled ?? true,
+      ofertaLigada: offer !== null,
+      oferta: offer ?? ''
+    }
+  })
+  const [onBigScreen, setOnBigScreen] = useState(noBar.onBigScreen)
+  const [withSound, setWithSound] = useState(noBar.withSound)
+  const [attendanceEnabled, setAttendanceEnabled] = useState(
+    noBar.attendanceEnabled
+  )
+  const [ofertaLigada, setOfertaLigada] = useState(noBar.ofertaLigada)
+  const [ofertaTexto, setOfertaTexto] = useState(noBar.oferta)
+  const [publicando, setPublicando] = useState(true)
   const [sportId, setSportId] = useState(initial.sportId)
   const [championship, setChampionship] = useState(initial.championship)
   const [participantIds, setParticipantIds] = useState(initial.participantIds)
@@ -197,6 +239,10 @@ function Formulario({
       }),
       queryClient.invalidateQueries({ queryKey: trpc.pub.getMe.queryKey() }),
       queryClient.invalidateQueries({ queryKey: trpc.pubs.getById.pathKey() }),
+      // A lista de quem vai do jogo muda o que Quem vai mostra (WEB-437).
+      queryClient.invalidateQueries({
+        queryKey: trpc.barReservations.going.queryKey()
+      }),
       policy
         ? queryClient.invalidateQueries({
             queryKey: trpc.pub.getMyEventCreationPolicy.queryKey()
@@ -214,7 +260,8 @@ function Formulario({
   const update = useMutation(
     trpc.pub.updateEvent.mutationOptions({
       onSuccess: () => {
-        void invalidate(false)
+        // Publicar o rascunho passa a contar no limite (WEB-436).
+        void invalidate(true)
         onDone()
       }
     })
@@ -328,16 +375,48 @@ function Formulario({
       !timeProblem &&
       'dia e horário'
   ].filter(Boolean)
+  const ofertaTamanho = houseOfferLength(normalizeHouseOffer(ofertaTexto))
+  const ofertaPassou =
+    elite && ofertaLigada ? ofertaTamanho - HOUSE_OFFER_MAX_LENGTH : 0
   const canSave =
     missing.length === 0 &&
     !!start.value &&
     !startProblem &&
     !endProblem &&
     !championshipTooLong &&
-    !freeTextTooLong
+    !freeTextTooLong &&
+    ofertaPassou <= 0
+  // Jogo novo e rascunho escolhem entre rascunho e publicar (WEB-436).
+  const comRascunho = mode.kind !== 'edit' || isDraft(mode.event)
 
-  const save = () => {
+  /**
+   * O que vai do "No bar". Jogo novo manda só o que difere do cadastro (o
+   * resto herda); editar manda o que mudou; duplicar copia tudo.
+   */
+  const noBarInput = () => {
+    const sends = <T,>(value: T, before: T) =>
+      mode.kind === 'duplicate' || value !== before
+    const offerChanged =
+      ofertaLigada !== noBar.ofertaLigada || ofertaTexto !== noBar.oferta
+    return {
+      ...(sends(onBigScreen, noBar.onBigScreen) && { onBigScreen }),
+      ...(sends(withSound, noBar.withSound) && { withSound }),
+      ...(elite &&
+        sends(attendanceEnabled, noBar.attendanceEnabled) && {
+          attendanceEnabled
+        }),
+      ...(elite &&
+        (mode.kind === 'duplicate' || offerChanged) &&
+        gameHouseOfferFromForm(bar?.houseOffer ?? null, {
+          ligada: ofertaLigada,
+          texto: ofertaTexto
+        }))
+    }
+  }
+
+  const save = (publicar: boolean) => {
     if (!canSave || !start.value) return
+    setPublicando(publicar)
     const startsAt = new Date(start.value).toISOString()
     const endsAt = endValue && 'endsAt' in endValue ? endValue.endsAt : null
     if (mode.kind === 'edit') {
@@ -348,7 +427,9 @@ function Formulario({
         startsAt,
         endsAt,
         participantIds,
-        participantFreeText: freeText
+        participantFreeText: freeText,
+        ...noBarInput(),
+        ...(publicar && isDraft(mode.event) && { publish: true as const })
       })
       return
     }
@@ -359,20 +440,25 @@ function Formulario({
         startsAt,
         endsAt: endsAt ?? undefined,
         participantIds,
-        participantFreeText: freeText || undefined
+        participantFreeText: freeText || undefined,
+        ...noBarInput(),
+        ...(!publicar && { draft: true })
       },
       {
         onSuccess: () =>
-          analytics.eventCreated({
-            championship,
-            sport: selectedSport?.name ?? sportId,
-            has_teams: participantIds.length > 0
-          })
+          publicar
+            ? analytics.eventCreated({
+                championship,
+                sport: selectedSport?.name ?? sportId,
+                has_teams: participantIds.length > 0
+              })
+            : undefined
       }
     )
   }
 
-  const screen = bar ? barScreen(bar) : null
+  const padrao = normalizeHouseOffer(bar?.houseOffer ?? null)
+  const ofertaDoJogo = ofertaLigada ? normalizeHouseOffer(ofertaTexto) : null
   const missingId = `${ids}-missing`
 
   return (
@@ -628,28 +714,111 @@ function Formulario({
           <p className="pn-hint">Sem término, o jogo dura 3 horas.</p>
         )}
 
-        {screen ? (
-          <div className="pn-fl">
-            <span className="pn-fl-l">No bar</span>
-            <p className="pn-note">
-              {[
-                screen.tv
-                  ? screen.screens && screen.screens > 1
-                    ? `${screen.screens} telões`
-                    : 'Telão'
-                  : null,
-                screen.sound ? 'som do jogo ligado' : null
-              ]
-                .filter(Boolean)
-                .join(' · ') || 'Sem telão nem som marcados'}
-              . Vale para todos os jogos e muda em{' '}
-              <Link to="/admin/meu-espaco" className="pn-lnk">
-                Meu espaço
-              </Link>
-              .
-            </p>
+        <div className="pn-fl">
+          <span className="pn-fl-l">No bar</span>
+          <div className="pn-sws">
+            <div className="pn-sw">
+              <Tv size={20} />
+              <span>Passa no telão</span>
+              <Interruptor
+                ligado={onBigScreen}
+                onChange={setOnBigScreen}
+                rotulo="Passa no telão"
+              />
+            </div>
+            <div className="pn-sw">
+              <Sound size={20} />
+              <span>Som do jogo ligado</span>
+              <Interruptor
+                ligado={withSound}
+                onChange={setWithSound}
+                rotulo="Som do jogo ligado"
+              />
+            </div>
+            {elite ? (
+              <div className="pn-sw">
+                <People size={20} />
+                <span>
+                  Lista de quem vai
+                  {/* Desligar não apaga quem já marcou: o código continua
+                    valendo no balcão, só não entra ninguém novo. */}
+                  <small aria-live="polite">
+                    {attendanceEnabled
+                      ? 'Torcedores marcam “Vou assistir aqui” e recebem um código.'
+                      : 'O app não mostra “Vou assistir aqui” neste jogo. Quem já marcou continua com o código.'}
+                  </small>
+                </span>
+                <Interruptor
+                  ligado={attendanceEnabled}
+                  onChange={setAttendanceEnabled}
+                  rotulo="Lista de quem vai neste jogo"
+                />
+              </div>
+            ) : null}
+            {elite ? (
+              <div className="pn-sw">
+                <Beer size={20} />
+                <span>
+                  Oferta da casa neste jogo
+                  <small aria-live="polite">
+                    {!ofertaDoJogo
+                      ? 'Sem oferta neste jogo.'
+                      : ofertaDoJogo === padrao
+                        ? 'A mesma do seu espaço.'
+                        : padrao
+                          ? 'Só neste jogo. Os outros seguem com a do seu espaço.'
+                          : 'Só neste jogo.'}
+                  </small>
+                </span>
+                <Interruptor
+                  ligado={ofertaLigada}
+                  onChange={(ligado) => {
+                    setOfertaLigada(ligado)
+                    // Religar em branco volta à padrão, como nasce.
+                    if (ligado && !ofertaTexto.trim())
+                      setOfertaTexto(padrao ?? '')
+                  }}
+                  rotulo="Oferta da casa neste jogo"
+                />
+              </div>
+            ) : null}
           </div>
-        ) : null}
+          {elite && ofertaLigada ? (
+            <>
+              <textarea
+                className="pn-inp"
+                rows={2}
+                value={ofertaTexto}
+                onChange={(event) => setOfertaTexto(event.target.value)}
+                aria-label="Oferta da casa neste jogo"
+                placeholder="Ex.: chopp em dobro até o intervalo"
+                aria-invalid={ofertaPassou > 0 || undefined}
+              />
+              <div className="pn-limit">
+                <p className="pn-hint">
+                  Quem marca “Vou assistir aqui” ganha ao mostrar o código no
+                  balcão.
+                </p>
+                <span
+                  className={ofertaPassou > 0 ? 'is-over' : undefined}
+                  aria-hidden="true"
+                >
+                  {ofertaTamanho}/{HOUSE_OFFER_MAX_LENGTH}
+                </span>
+              </div>
+              {ofertaPassou > 0 ? (
+                <p className="pn-ferr" role="alert">
+                  A oferta aceita até {HOUSE_OFFER_MAX_LENGTH} caracteres. Tire{' '}
+                  {ofertaPassou}.
+                </p>
+              ) : null}
+            </>
+          ) : null}
+          <p className="pn-hint">
+            Telão e som nascem das características do bar. Desmarque o que este
+            jogo não tem.
+          </p>
+        </div>
       </div>
 
       <footer className="pn-sheet-f">
@@ -669,27 +838,41 @@ function Formulario({
             </p>
           ) : null}
         </div>
-        <button
-          type="button"
-          className="pn-btn pn-ghost pn-sm"
-          onClick={onDone}
-        >
-          Cancelar
-        </button>
+        {/* Com os dois botões, o X do topo é o cancelar. */}
+        {comRascunho ? null : (
+          <button
+            type="button"
+            className="pn-btn pn-ghost pn-sm"
+            onClick={onDone}
+          >
+            Cancelar
+          </button>
+        )}
+        {comRascunho ? (
+          <button
+            type="button"
+            className="pn-btn pn-ghost pn-sm"
+            onClick={() => save(false)}
+            disabled={!canSave || saving}
+            aria-describedby={missing.length ? missingId : undefined}
+          >
+            {saving && !publicando ? 'Salvando…' : 'Salvar rascunho'}
+          </button>
+        ) : null}
         <button
           type="button"
           className="pn-btn pn-acid pn-sm"
-          onClick={save}
+          onClick={() => save(true)}
           disabled={!canSave || saving}
           aria-describedby={missing.length ? missingId : undefined}
         >
-          {saving
+          {saving && publicando
             ? 'Salvando…'
             : mutationError && isRetryableError(mutationError)
               ? 'Tentar de novo'
-              : mode.kind === 'edit'
-                ? 'Salvar alterações'
-                : 'Publicar jogo'}
+              : comRascunho
+                ? 'Publicar jogo'
+                : 'Salvar alterações'}
         </button>
       </footer>
     </>

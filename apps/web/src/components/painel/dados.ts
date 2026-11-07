@@ -1,4 +1,10 @@
 import type { EventComparisonTarget } from '@findsports_oficial/api/lib/commercial-analytics/types'
+import {
+  resolveEventScreen,
+  SCREEN_AMENITY_ID,
+  SOUND_AMENITY_ID
+} from '@findsports_oficial/api/lib/event-screen'
+import { effectiveHouseOffer } from '@findsports_oficial/api/lib/house-offer'
 import { useQuery } from '@tanstack/react-query'
 import { useRouterState } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
@@ -60,17 +66,41 @@ export function interestLabel(ratio: number): string {
   return `Interesse: ${ratio.toLocaleString('pt-BR')}x a média deste bar`
 }
 
-/** Telão e som são do cadastro do bar: não existe a escolha por jogo. */
+/** Telas e som declarados no cadastro do bar (Meu espaço). */
 export function barScreen(bar: {
   amenities: number[]
   screenCount: number | null
 }) {
   return {
-    tv: bar.amenities.includes(1),
+    tv: bar.amenities.includes(SCREEN_AMENITY_ID),
     screens: bar.screenCount,
-    sound: bar.amenities.includes(2)
+    sound: bar.amenities.includes(SOUND_AMENITY_ID)
   }
 }
+
+/** Telão e som deste jogo (WEB-399): nulo herda das características do bar. */
+export function gameScreen(
+  event: { onBigScreen: boolean | null; withSound: boolean | null },
+  bar: { amenities: number[] }
+) {
+  return resolveEventScreen(event, bar.amenities)
+}
+
+/**
+ * A oferta que vale neste jogo (WEB-422): a dele, a padrão do bar ou nenhuma.
+ * Só o Elite mostra oferta, como na página do bar.
+ */
+export function gameOffer(
+  event: { houseOffer: string | null; noHouseOffer: boolean },
+  bar: { houseOffer: string | null },
+  elite: boolean
+): string | null {
+  return elite ? effectiveHouseOffer(bar.houseOffer, event) : null
+}
+
+/** Jogo em rascunho (WEB-436): só o painel vê. */
+export const isDraft = (event: { publishedAt: string | Date | null }) =>
+  event.publishedAt === null
 
 /** O desempenho por jogo do período (o mesmo pedido da aba Grade antiga). */
 export function useEventAnalytics(
