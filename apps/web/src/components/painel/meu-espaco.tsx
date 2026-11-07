@@ -34,7 +34,6 @@ import {
   Beer,
   Calendar,
   Check,
-  Close,
   Doc,
   Pin,
   Tv
@@ -48,6 +47,7 @@ import { getPlan, PLAN_TIER_ORDER } from '@/lib/plan-catalog'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { formatPhone } from '@/utils/format-phone'
 import { useTRPC } from '@/utils/trpc'
+import { LinhaDeAvaliacao } from './avaliacao'
 import {
   FotosDoBar,
   type GaleriaBloqueada,
@@ -68,7 +68,6 @@ import {
   perfilMudou,
   type Rascunho
 } from './espaco-rascunho'
-import { dayLabel, houseDay } from './noite'
 import { Interruptor } from './painel-shell'
 
 /*
@@ -1438,8 +1437,10 @@ function imprimirRecado(recado: string) {
 
 /**
  * O que os torcedores responderam (o dono vê tudo desde a primeira resposta,
- * antes de a nota ficar pública). Sem quem respondeu: um nome ao lado de "não
- * voltaria" viraria conflito pessoal, não melhoria.
+ * antes de a nota ficar pública). O número é a nota pública, só com as
+ * verificadas (WEB-408); a lista traz também as outras, com o selo. Nome só
+ * de quem quis aparecer, e comentário só depois da revisão da Onside
+ * (WEB-451).
  */
 const AVALIACOES_VISIVEIS = 5
 
@@ -1478,7 +1479,7 @@ function Avaliacoes() {
         <p className="pn-note" role="status">
           Carregando avaliações…
         </p>
-      ) : r.total === 0 ? (
+      ) : r.recent.length === 0 ? (
         <p className="pn-note">
           Ninguém avaliou ainda. A pergunta aparece para quem marcou que ia, no
           dia seguinte ao jogo: quanto mais jogos na sua grade, mais gente
@@ -1486,36 +1487,36 @@ function Avaliacoes() {
         </p>
       ) : (
         <>
-          <p className="pn-av-n">
-            <b className="pn-disp">{r.percentage}%</b> voltariam
-          </p>
+          {r.total > 0 ? (
+            <p className="pn-av-n">
+              <b className="pn-disp">{r.percentage}%</b> voltariam
+              {r.stars != null ? (
+                <span>· {r.stars.toLocaleString('pt-BR')} de 5 estrelas</span>
+              ) : null}
+            </p>
+          ) : null}
           {r.isPublic ? null : (
             <p className="pn-note">
               Ainda não aparece para o torcedor. A nota fica pública a partir de{' '}
-              {r.floor} avaliações —{' '}
+              {r.floor} avaliações verificadas —{' '}
               {r.floor - r.total === 1
                 ? 'falta 1'
                 : `faltam ${r.floor - r.total}`}
               .
             </p>
           )}
+          {r.unverified > 0 ? (
+            <p className="pn-note">
+              {r.unverified === 1
+                ? '1 avaliação não verificada fica'
+                : `${r.unverified} avaliações não verificadas ficam`}{' '}
+              fora da nota: só conta quem teve o código validado no balcão ou
+              fez check-in no bar durante o jogo.
+            </p>
+          ) : null}
           {(todas ? r.recent : r.recent.slice(0, AVALIACOES_VISIVEIS)).map(
             (item) => (
-              <div
-                className="pn-rev"
-                key={`${item.createdAt}-${item.startsAt}-${item.championship}`}
-              >
-                <span className={`pn-v${item.wouldReturn ? '' : ' is-no'}`}>
-                  {item.wouldReturn ? <Check size={18} /> : <Close size={16} />}
-                </span>
-                <span>
-                  <b>{item.wouldReturn ? 'Voltaria' : 'Não voltaria'}</b> ·{' '}
-                  {item.participants.join(' × ') ||
-                    item.participantFreeText ||
-                    item.championship}
-                  <p>{dayLabel(houseDay(item.createdAt))}</p>
-                </span>
-              </div>
+              <LinhaDeAvaliacao key={item.id} item={item} />
             )
           )}
           {r.recent.length > AVALIACOES_VISIVEIS ? (

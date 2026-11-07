@@ -1882,3 +1882,32 @@ html[data-theme="dark"] .pn3 {
 .pn3 .pn-pp-m .pn-lnk-b {
   margin-left: 8px;
 }
+
+/* A linha da avaliação (WEB-451): estrelas, selo de não verificada e o
+   comentário aprovado, que pode ser longo. */
+.pn3 .pn-rev-stars {
+  display: inline-flex;
+  gap: 1px;
+  margin-left: 8px;
+  vertical-align: -1px;
+  color: var(--fg);
+}
+
+.pn3 .pn-rev-stars .is-off {
+  color: var(--line);
+}
+
+.pn3 .pn-rev-nv {
+  height: 20px;
+  margin-left: 8px;
+  padding: 0 7px;
+  font-size: 10.5px;
+  vertical-align: 2px;
+}
+
+.pn3 .pn-rev .pn-rev-q {
+  color: var(--fg);
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}

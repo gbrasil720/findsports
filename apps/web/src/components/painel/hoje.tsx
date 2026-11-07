@@ -15,7 +15,6 @@ import {
   Arrow,
   Beer,
   Check,
-  Close,
   People,
   Qr,
   Share,
@@ -24,6 +23,7 @@ import {
 } from '@/components/landing/v3/icons'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
+import { LinhaDeAvaliacao } from './avaliacao'
 import { Avisos, PlanoCard } from './avisos'
 import {
   barScreen,
@@ -850,25 +850,12 @@ function Avaliacoes() {
       ) : r?.recent.length ? (
         <>
           {r.recent.slice(0, 3).map((item) => (
-            <div
-              className="pn-rev"
-              key={`${item.createdAt}-${item.startsAt}-${item.championship}`}
-            >
-              <span className={`pn-v${item.wouldReturn ? '' : ' is-no'}`}>
-                {item.wouldReturn ? <Check size={18} /> : <Close size={16} />}
-              </span>
-              <span>
-                <b>{item.wouldReturn ? 'Voltaria' : 'Não voltaria'}</b> ·{' '}
-                {item.participants.join(' × ') ||
-                  item.participantFreeText ||
-                  item.championship}
-                <p>{dayLabel(houseDay(item.createdAt))}</p>
-              </span>
-            </div>
+            <LinhaDeAvaliacao key={item.id} item={item} />
           ))}
           {!r.isPublic ? (
             <p className="pn-note">
-              A nota aparece para o torcedor a partir de {r.floor} avaliações.
+              A nota aparece para o torcedor a partir de {r.floor} avaliações
+              verificadas.
             </p>
           ) : null}
         </>
