@@ -33,7 +33,7 @@ import {
 } from '@/lib/analytics-consent'
 import { authClient } from '@/lib/auth-client'
 import { describeDevice } from '@/lib/describe-device'
-import { getUserFacingMessage } from '@/lib/user-facing-error'
+import { getErrorCode, getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import { Interruptor } from './painel-shell'
 
@@ -197,16 +197,7 @@ export function ConfiguracoesPage() {
             </div>
             <div className="pn-lines">
               <Cookies />
-              <div className="pn-ln">
-                <span>
-                  <b>Baixar meus dados</b>
-                  <span>
-                    Um arquivo com os dados da conta e do bar, enviado por
-                    e-mail.
-                  </span>
-                </span>
-                <span className="pn-badge">EM BREVE</span>
-              </div>
+              <BaixarDados />
             </div>
           </section>
 
@@ -360,6 +351,51 @@ function Avisos() {
         </span>
         <span className="pn-badge">EM BREVE</span>
       </div>
+    </div>
+  )
+}
+
+/**
+ * "Baixar meus dados" (WEB-418): o servidor manda o arquivo para o e-mail da
+ * sessão, um pedido a cada 24 h. A recusa do limite já chega escrita para a
+ * tela.
+ */
+function BaixarDados() {
+  const trpc = useTRPC()
+  const pedir = useMutation(
+    trpc.account.requestExport.mutationOptions({
+      onSuccess: ({ email }) =>
+        toast.success(
+          `Arquivo enviado para ${email}. Pode levar alguns minutos para chegar.`
+        ),
+      onError: (err) =>
+        toast.error(
+          getErrorCode(err) === 'TOO_MANY_REQUESTS'
+            ? err.message
+            : getUserFacingMessage(
+                err,
+                'Não conseguimos enviar o arquivo agora. Tente de novo em instantes.'
+              )
+        )
+    })
+  )
+  return (
+    <div className="pn-ln">
+      <span>
+        <b>Baixar meus dados</b>
+        <span>
+          Um arquivo com os dados da conta e do bar, enviado por e-mail. Um
+          pedido a cada 24 h.
+        </span>
+      </span>
+      <button
+        type="button"
+        className="pn-btn pn-ghost pn-sm"
+        disabled={pedir.isPending}
+        onClick={() => pedir.mutate()}
+      >
+        {pedir.isPending ? 'Enviando…' : 'Pedir arquivo'}
+      </button>
     </div>
   )
 }
