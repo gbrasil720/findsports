@@ -1392,8 +1392,48 @@ html[data-theme="dark"] .pn3 .pn-savebar {
 }
 
 .pn3 .pn-pl .pn-pl-price {
-  color: var(--fg);
-  font: 600 13.5px var(--mono);
+  align-self: stretch;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+}
+
+.pn3 .pn-pl .pn-pl-k {
+  color: var(--muted);
+  font: 500 11.5px var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pn3 .pn-pl .pn-pl-pv {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 34px;
+  margin-top: 4px;
+}
+
+.pn3 .pn-pl .pn-pl-pv b {
+  font: 400 34px / 1 var(--display);
+  font-variant-numeric: tabular-nums;
+}
+
+.pn3 .pn-pl .pn-pl-pv span,
+.pn3 .pn-pl .pn-pl-pv s {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.pn3 .pn-pl .pn-pl-pv s {
+  font-size: 13px;
+}
+
+.pn3 .pn-pl .pn-pl-pv.is-load {
+  width: 110px;
+  height: 34px;
+  border-radius: 8px;
+  background: var(--sub);
 }
 
 .pn3 .pn-pl .pn-btn {

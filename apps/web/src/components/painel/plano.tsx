@@ -13,7 +13,6 @@ import { openBillingPortal } from '@/lib/billing-client'
 import { isLapsed, LAPSED_COPY } from '@/lib/lapsed-plan'
 import {
   CONTRACTED_TRIAL_LABEL,
-  formatPlanChargeLine,
   formatPlanPrice,
   founderCouponFromQuery,
   getPlan,
@@ -395,11 +394,29 @@ export function PlanoPage({
                 </span>
                 <h4 className="pn-disp">{info.name}</h4>
                 <p>{info.tagline}</p>
-                <p className="pn-pl-price">
-                  {showcase
-                    ? formatPlanChargeLine(showcase, info.period)
-                    : 'Carregando preço…'}
-                </p>
+                {/* O preço como nos cartões de /plan: grande, com a tabela
+                    cheia riscada quem ainda contrata pelo checkout. */}
+                <div className="pn-pl-price">
+                  <span className="pn-pl-k">
+                    {showcase?.listReais ? 'Preço de fundador' : 'Por mês'}
+                  </span>
+                  {showcase ? (
+                    <span className="pn-pl-pv">
+                      <b>{formatPlanPrice(showcase.chargeReais)}</b>
+                      <span>{info.period}</span>
+                      {showcase.listReais &&
+                      !subscription?.externalSubscriptionId ? (
+                        <s>{formatPlanPrice(showcase.listReais)}</s>
+                      ) : null}
+                    </span>
+                  ) : (
+                    <span
+                      className="pn-pl-pv is-load"
+                      role="status"
+                      aria-label="Carregando preço"
+                    />
+                  )}
+                </div>
                 {own ? null : (
                   <Link
                     to="/plan"
