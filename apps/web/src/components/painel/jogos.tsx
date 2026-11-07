@@ -489,16 +489,7 @@ export function JogosPage({
                 onOpen={open}
               />
             )}
-            {tab === 'rasc' ? null : tab === 'prox' ? (
-              <div className="pn-soon">
-                <Sparkle size={20} />
-                <span>
-                  <b>Sugestões da rodada</b> · jogos que os torcedores perto do
-                  bar seguem e não estão na sua grade.
-                </span>
-                <em>EM BREVE</em>
-              </div>
-            ) : (
+            {tab === 'rasc' || tab === 'prox' ? null : (
               <Link
                 to="/admin/desempenho"
                 hash="como-cada-jogo"
