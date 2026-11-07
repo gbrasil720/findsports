@@ -114,7 +114,7 @@ function useAcoes(avisar: (texto: string) => void) {
         )
       }
     },
-    [avisar, marcar, salvar, lembrar, navigate, queryClient, trpc]
+    [avisar, marcar, salvar, lembrar, navigate, queryClient]
   )
 }
 
