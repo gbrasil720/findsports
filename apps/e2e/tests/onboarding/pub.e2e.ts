@@ -15,7 +15,7 @@ const DRAFT_KEY = 'onside:pub-onboarding-draft'
 
 const button = (page: Page, name: string | RegExp) =>
   page.getByRole('button', { name, exact: typeof name === 'string' })
-const progress = (page: Page) => page.getByText(/^Passo \d de 6 · /)
+const progress = (page: Page) => page.getByText(/^Passo \d de 5 · /)
 
 /** Endereço único: a rua vai para o stub e para o cache do geocoding. */
 const street = (tag = '') => `Rua E2E ${tag}${randomUUID().slice(0, 8)}, 100`
@@ -56,10 +56,12 @@ async function fillEstablishment(page: Page, data: Establishment) {
  */
 const CONCLUIR = /Colocar meu bar no ar|Confirmar meu e-mail/
 
-/** Da rotina à revisão, com o plano recomendado (WEB-501). */
-async function throughRoutineAndPlan(page: Page) {
-  await button(page, 'Ver a recomendação').click()
-  await button(page, /^Testar o (Starter|Pro|Elite) grátis$/).click()
+/**
+ * Da rotina à revisão (WEB-501). O plano não é deste cadastro: o dono
+ * escolhe depois do primeiro jogo (`pub-primeiro-valor.e2e.ts`).
+ */
+async function throughRoutine(page: Page) {
+  await button(page, 'Continuar').click()
 }
 
 /** Do passo 1 até a revisão, pulando as comodidades. */
@@ -68,7 +70,7 @@ async function reachReview(page: Page, data: Establishment) {
   await fillEstablishment(page, data)
   await button(page, 'Continuar').click()
   await button(page, 'Pular').click()
-  await throughRoutineAndPlan(page)
+  await throughRoutine(page)
   await expect(
     page.getByRole('heading', {
       name: /Tudo certo\?|Falta só confirmar seu e-mail/
@@ -80,7 +82,7 @@ async function reachReview(page: Page, data: Establishment) {
  * Com o e-mail confirmado, o bar entra no ar e o comprovante abre (WEB-501);
  * o botão dele segue para o destino de sempre.
  */
-async function concluir(page: Page, seguir = 'Ver meu bar no ar') {
+async function concluir(page: Page, seguir = 'Publicar o primeiro jogo') {
   await button(page, CONCLUIR).click()
   await expect(page.getByText('TOTAL HOJE')).toBeVisible()
   await button(page, seguir).click()
@@ -123,14 +125,14 @@ async function barOf(userId: string) {
   )
 }
 
-test('com sessão verificada: passos, completePub e /plan, bar nasce no ar', async ({
+test('com sessão verificada: passos, completePub e a tela "no ar", bar nasce no ar', async ({
   page
 }) => {
   const owner = await signInPendingPub(page)
   const address = street()
 
   // Boas-vindas
-  await expect(progress(page)).toHaveText(/^Passo 1 de 6/)
+  await expect(progress(page)).toHaveText(/^Passo 1 de 5/)
   await button(page, 'Começar').click()
 
   // Estabelecimento
@@ -163,10 +165,10 @@ test('com sessão verificada: passos, completePub e /plan, bar nasce no ar', asy
   await expect(button(page, 'Com oferta da casa')).toHaveCount(0)
   await page.getByLabel('Quantas telas?').fill('4')
   await button(page, 'Continuar').click()
-  await throughRoutineAndPlan(page)
+  await throughRoutine(page)
 
   // Revisão
-  await expect(progress(page)).toHaveText(/^Passo 6 de 6/)
+  await expect(progress(page)).toHaveText(/^Passo 5 de 5/)
   for (const dado of [
     'Bar do Teste',
     'Pinheiros',
@@ -336,7 +338,7 @@ test('UF acompanha a cidade, vai ao geocoding e é gravada no bar (WEB-270)', as
   await uf.selectOption('RN')
   await continuar.click()
   await button(page, 'Pular').click()
-  await throughRoutineAndPlan(page)
+  await throughRoutine(page)
   await expect(
     page.getByRole('main').getByText('Bom Jesus, RN', { exact: true })
   ).toBeVisible()
@@ -381,7 +383,7 @@ test('CEP preenche o endereço e vai ao geocoding', async ({ page }) => {
   await page.getByLabel('Número', { exact: true }).fill('304')
   await button(page, 'Continuar').click()
   await button(page, 'Pular').click()
-  await throughRoutineAndPlan(page)
+  await throughRoutine(page)
   await concluir(page)
   await expect(page).toHaveURL(/\/onboarding\/pub\/no-ar$/)
 
@@ -429,7 +431,7 @@ test('rascunho de antes da UF não é enviado: abre no formulário pedindo o est
   expect(await barOf(owner.id)).toHaveLength(0)
 })
 
-test('sem sessão, vindo do signup: rascunho, /verify-email e link do outbox concluem em /plan', async ({
+test('sem sessão, vindo do signup: rascunho, /verify-email e link do outbox concluem na tela "no ar"', async ({
   page
 }) => {
   const email = await signUpPub(page)
@@ -443,10 +445,10 @@ test('sem sessão, vindo do signup: rascunho, /verify-email e link do outbox con
     neighborhood: 'Moema',
     phone: '11987654321'
   })
-  // O plano escolhido vai no rascunho e entra depois da confirmação.
+  // A rotina vai no rascunho e entra no `completePub` da confirmação.
   await button(page, 'Voltar').click()
-  await page.getByText('Escolher o Starter').click()
-  await button(page, 'Testar o Starter grátis').click()
+  await button(page, /cardápio/).click()
+  await button(page, 'Continuar').click()
   await button(page, CONCLUIR).click()
 
   await expect(page).toHaveURL(/\/verify-email$/)
@@ -457,14 +459,14 @@ test('sem sessão, vindo do signup: rascunho, /verify-email e link do outbox con
     address,
     neighborhood: 'Moema',
     uf: 'SP',
-    plan: 'starter'
+    routine: { games: 12, spend: 80, wants: ['cardapio'] }
   })
 
   // Mesmo contexto do navegador: o rascunho está no localStorage dele.
   const verification = await lastEmailTo(email)
   await page.goto(verification.link)
   await expect(page.getByText('TOTAL HOJE')).toBeVisible()
-  await button(page, 'Ver meu bar no ar').click()
+  await button(page, 'Publicar o primeiro jogo').click()
   await expect(page).toHaveURL(/\/onboarding\/pub\/no-ar$/)
 
   const [owner] = await query<{ id: string; onboarding_completed: boolean }>(
@@ -479,12 +481,13 @@ test('sem sessão, vindo do signup: rascunho, /verify-email e link do outbox con
     phone: '+5511987654321',
     is_active: true
   })
-  // A troca de plano feita depois da confirmação, pelo `changeTrialPlan`.
-  const [plano] = await query<{ plan: string }>(
-    'SELECT plan FROM bar WHERE user_id = $1',
+  // O teste nasce no plano que a rotina do rascunho recomenda (12 jogos e o
+  // cardápio pedem o Pro), ainda a escolher.
+  const [plano] = await query<{ plan: string; escolhido: boolean }>(
+    'SELECT plan, trial_plan_chosen_at IS NOT NULL AS escolhido FROM bar WHERE user_id = $1',
     [owner?.id ?? '']
   )
-  expect(plano?.plan).toBe('starter')
+  expect(plano).toEqual({ plan: 'pro', escolhido: false })
   expect(
     await page.evaluate((key) => localStorage.getItem(key), DRAFT_KEY)
   ).toBeNull()
@@ -537,7 +540,7 @@ test('recarregar no meio do wizard volta ao passo e aos dados, e concluir apaga 
 
   // `goto`, e não `reload`: só o `goto` da suíte espera a hidratação.
   await page.goto(page.url())
-  await expect(progress(page)).toHaveText(/^Passo 3 de 6/)
+  await expect(progress(page)).toHaveText(/^Passo 3 de 5/)
   await expect(telao).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByLabel('Quantas telas?')).toHaveValue('3')
   await button(page, 'Voltar').click()
@@ -556,7 +559,7 @@ test('recarregar no meio do wizard volta ao passo e aos dados, e concluir apaga 
 
   await button(page, 'Continuar').click()
   await button(page, 'Continuar').click()
-  await throughRoutineAndPlan(page)
+  await throughRoutine(page)
   await concluir(page)
   await expect(page).toHaveURL(/\/onboarding\/pub\/no-ar$/)
   expect(await storedDraft(page)).toBeNull()
@@ -596,7 +599,7 @@ test('rascunho parado no meio do wizard, de outra conta, não aparece (WEB-262)'
 
   await page.goto('/onboarding/pub')
   await expect.poll(() => storedDraft(page)).toBeNull()
-  await expect(progress(page)).toHaveText(/^Passo 1 de 6/)
+  await expect(progress(page)).toHaveText(/^Passo 1 de 5/)
   await button(page, 'Começar').click()
   await expect(page.getByLabel('Nome do estabelecimento')).toHaveValue('')
 })
@@ -629,7 +632,7 @@ test('com sessão de B na aba do cadastro de A, o rascunho e o bar são de B', a
     .toMatchObject({ email: b.email, draft: { name: 'Bar de B', step: 2 } })
 
   await button(page, 'Pular').click()
-  await throughRoutineAndPlan(page)
+  await throughRoutine(page)
   await concluir(page)
   await expect(page).toHaveURL(/\/onboarding\/pub\/no-ar$/)
   expect(await barOf(b.id)).toMatchObject([{ name: 'Bar de B' }])
@@ -659,7 +662,7 @@ test('rascunho parado no meio do wizard não é enviado pela confirmação do e-
   const verification = await lastEmailTo(email)
   await page.goto(verification.link)
   await expect(page).toHaveURL(/\/onboarding\/pub$/)
-  await expect(progress(page)).toHaveText(/^Passo 3 de 6/)
+  await expect(progress(page)).toHaveText(/^Passo 3 de 5/)
   expect(
     await query(
       'SELECT 1 FROM bar JOIN "user" u ON u.id = bar.user_id WHERE u.email = $1',
@@ -668,7 +671,7 @@ test('rascunho parado no meio do wizard não é enviado pela confirmação do e-
   ).toHaveLength(0)
 
   await button(page, 'Pular').click()
-  await throughRoutineAndPlan(page)
+  await throughRoutine(page)
   await expect(
     page.getByRole('main').getByText('Bar Pela Metade', { exact: true })
   ).toBeVisible()
@@ -711,7 +714,11 @@ const pathOf = (page: Page) => {
   return url.pathname + url.search
 }
 
-test('link direto sobrevive ao onboarding do bar', async ({ page }) => {
+// O link segue até o painel, e o painel pede antes o plano do teste: é o
+// único passo do cadastro que não dá para pular.
+test('link direto do painel sobrevive ao cadastro e passa pela escolha do plano', async ({
+  page
+}) => {
   const deepLink = '/admin/billing?ref=email'
   const owner = await createUser({ role: 'pub', onboardingCompleted: false })
   await signIn(page, owner)
@@ -723,5 +730,7 @@ test('link direto sobrevive ao onboarding do bar', async ({ page }) => {
     neighborhood: 'Pinheiros'
   })
   await concluir(page, 'Continuar')
-  await expect.poll(() => pathOf(page)).toBe(deepLink)
+  await expect
+    .poll(() => pathOf(page))
+    .toBe('/onboarding/pub/no-ar?passo=plano')
 })
