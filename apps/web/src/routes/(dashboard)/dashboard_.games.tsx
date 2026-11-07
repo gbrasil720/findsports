@@ -1,8 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState } from 'react'
-import { AttendanceReportCard } from '@/components/dashboard/attendance-report-card'
-import { PendingRatingCard } from '@/components/dashboard/pending-rating-card'
 import { brasiliaDay, brasiliaTime, dayLabel } from '@/components/painel/noite'
 import { AppChegando } from '@/components/torcedor/app-chegando'
 import { Ic } from '@/components/torcedor/icones'
@@ -31,14 +29,9 @@ export const Route = createFileRoute('/(dashboard)/dashboard_/games')({
     ],
     links: [...PWA_LINKS]
   }),
-  // "Avaliar" abre aqui com `?avaliar=<jogo>`: os cards do pós-jogo trazem
-  // esse jogo na frente. `?aba=ant` abre nos anteriores.
-  validateSearch: (
-    search: Record<string, unknown>
-  ): { avaliar?: string; aba?: Aba } => ({
-    ...(typeof search.avaliar === 'string' ? { avaliar: search.avaliar } : {}),
-    ...(search.aba === 'ant' ? { aba: 'ant' as const } : {})
-  }),
+  // `?aba=ant` abre nos anteriores.
+  validateSearch: (search: Record<string, unknown>): { aba?: Aba } =>
+    search.aba === 'ant' ? { aba: 'ant' as const } : {},
   component: MeusJogos
 })
 
@@ -46,7 +39,7 @@ export const Route = createFileRoute('/(dashboard)/dashboard_/games')({
  * "Meus jogos" do web do torcedor (WEB-501, protótipo `#meus-jogos`): os
  * jogos marcados em "Vou assistir aqui", em ingressos, com o código do balcão
  * nos bares Elite e o "Estou aqui" nos outros. Os anteriores levam ao
- * pós-jogo, que por ora é o card antigo (a avaliação nova é a fase 6).
+ * pós-jogo, "Como foi?" (`/dashboard/avaliar/$eventId`).
  */
 function MeusJogos() {
   return (
@@ -60,29 +53,21 @@ function Conteudo() {
   const trpc = useTRPC()
   const session = useSession()
   const search = Route.useSearch()
-  const aba: Aba = search.aba ?? (search.avaliar ? 'ant' : 'prox')
+  const aba: Aba = search.aba ?? 'prox'
   const query = useQuery({
     ...trpc.attendance.mine.queryOptions(),
     meta: { errorToast: false }
   })
-  // Jogo que ainda tem "Você foi?" ou "Voltaria?" ganha o "Avaliar".
-  const ratings = useQuery({
-    ...trpc.ratings.getPending.queryOptions(),
-    meta: { errorToast: false }
-  })
-  const reports = useQuery({
-    ...trpc.attendance.pendingReports.queryOptions(),
+  // Jogo com pergunta do pós-jogo aberta ganha o "Avaliar" ("Como foi?").
+  const posJogo = useQuery({
+    ...trpc.postGame.pending.queryOptions(),
     meta: { errorToast: false }
   })
   const cidade = useQuery({
     ...trpc.pubs.getMyCity.queryOptions(),
     meta: { errorToast: false }
   })
-  const toRate = new Set(
-    [...(ratings.data ?? []), ...(reports.data ?? [])].map(
-      (item) => item.eventId
-    )
-  )
+  const toRate = new Set((posJogo.data ?? []).map((item) => item.eventId))
   const games = query.data ?? []
   // O servidor manda do mais recente para o mais antigo; as próximas vão do
   // mais perto ao mais longe.
@@ -164,8 +149,8 @@ function Conteudo() {
               </span>
               <Link
                 className="btn b-acid sm"
-                to="/dashboard/games"
-                search={{ avaliar: pendente.eventId }}
+                to="/dashboard/avaliar/$eventId"
+                params={{ eventId: pendente.eventId }}
               >
                 Avaliar
               </Link>
@@ -185,15 +170,6 @@ function Conteudo() {
         </>
       ) : (
         <>
-          {/* O pós-jogo antigo, até a avaliação nova (fase 6). */}
-          {/* A chave remonta os cards: o jogo pedido vem para a frente. */}
-          <div className="pos-jogo" key={search.avaliar ?? 'todos'}>
-            <AttendanceReportCard first={search.avaliar} />
-            <PendingRatingCard
-              pending={ratings.data ?? []}
-              first={search.avaliar}
-            />
-          </div>
           {past.length ? (
             <ul className="pastl">
               {past.map((game) => (
@@ -211,8 +187,8 @@ function Conteudo() {
                   {toRate.has(game.eventId) ? (
                     <Link
                       className="btn b-acid sm"
-                      to="/dashboard/games"
-                      search={{ avaliar: game.eventId }}
+                      to="/dashboard/avaliar/$eventId"
+                      params={{ eventId: game.eventId }}
                       aria-label={`Avaliar o ${game.barName}`}
                     >
                       <Ic n="star" s={18} />
