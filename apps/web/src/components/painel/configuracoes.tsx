@@ -1,3 +1,4 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { PasswordDialog } from '@/components/account/account-settings'
@@ -33,6 +34,8 @@ import {
 import { authClient } from '@/lib/auth-client'
 import { describeDevice } from '@/lib/describe-device'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
+import { useTRPC } from '@/utils/trpc'
+import { Interruptor } from './painel-shell'
 
 /*
  * Configurações do painel novo (WEB-501, fase 4; protótipo `config`): conta,
@@ -179,26 +182,9 @@ export function ConfiguracoesPage() {
             aria-labelledby="cfg-av-t"
           >
             <div className="pn-chd">
-              <h3 id="cfg-av-t">Avisos</h3>
+              <h3 id="cfg-av-t">Avisos por e-mail</h3>
             </div>
-            <div className="pn-lines">
-              <div className="pn-ln">
-                <span>
-                  <b>Avisos por e-mail</b>
-                  <span>
-                    Resumo da semana, jogo lotando e grade vazia, no seu e-mail.
-                  </span>
-                </span>
-                <span className="pn-badge">EM BREVE</span>
-              </div>
-              <div className="pn-ln">
-                <span>
-                  <b>Notificações no celular</b>
-                  <span>Pelo app Onside, quando ele abrir por link.</span>
-                </span>
-                <span className="pn-badge">EM BREVE</span>
-              </div>
-            </div>
+            <Avisos />
           </section>
 
           <section
@@ -287,6 +273,94 @@ export function ConfiguracoesPage() {
         onFailed={() => void del.eligibility.refetch()}
       />
     </>
+  )
+}
+
+const AVISOS = [
+  {
+    campo: 'weeklySummary',
+    coluna: 'noticeWeeklySummary',
+    titulo: 'Resumo da semana',
+    sub: 'Toda segunda: quem foi, códigos validados e jogos da semana.'
+  },
+  {
+    campo: 'gameFilling',
+    coluna: 'noticeGameFilling',
+    titulo: 'Jogo lotando',
+    sub: 'Quando mais de 20 pessoas marcarem que vão a um jogo.'
+  },
+  {
+    campo: 'emptySchedule',
+    coluna: 'noticeEmptySchedule',
+    titulo: 'Grade vazia',
+    sub: 'Às segundas, se a semana estiver sem jogos.'
+  }
+] as const
+
+/**
+ * Avisos por e-mail (WEB-441): cada interruptor grava na hora. A tela troca
+ * antes da resposta e volta se o servidor recusar. O celular segue "em breve":
+ * o app ainda não abre por link do site.
+ */
+function Avisos() {
+  const trpc = useTRPC()
+  const queryClient = useQueryClient()
+  const { data: bar } = useMyBar()
+  const barKey = trpc.pub.getMe.queryKey()
+  const salvar = useMutation(
+    trpc.pub.updateNotices.mutationOptions({
+      onMutate: async (input) => {
+        await queryClient.cancelQueries({ queryKey: barKey })
+        const antes = queryClient.getQueryData(barKey)
+        queryClient.setQueryData(barKey, (old) => {
+          if (!old) return old
+          const novo = { ...old }
+          for (const aviso of AVISOS) {
+            const valor = input[aviso.campo]
+            if (valor !== undefined) novo[aviso.coluna] = valor
+          }
+          return novo
+        })
+        return { antes }
+      },
+      onError: (err, _input, context) => {
+        queryClient.setQueryData(barKey, context?.antes)
+        toast.error(
+          getUserFacingMessage(
+            err,
+            'Não foi possível salvar o aviso. Tente de novo.'
+          )
+        )
+      },
+      onSuccess: (salvo) =>
+        queryClient.setQueryData(barKey, (old) => old && { ...old, ...salvo })
+    })
+  )
+
+  return (
+    <div className="pn-lines">
+      {AVISOS.map((aviso) => (
+        <div className="pn-ln" key={aviso.campo}>
+          <span>
+            <b>{aviso.titulo}</b>
+            <span>{aviso.sub}</span>
+          </span>
+          <Interruptor
+            ligado={bar?.[aviso.coluna] ?? false}
+            onChange={(ligado) => salvar.mutate({ [aviso.campo]: ligado })}
+            disabled={!bar}
+            rotulo={aviso.titulo}
+          />
+        </div>
+      ))}
+      <div className="pn-ln">
+        <span>
+          <b>Notificações no celular</b>
+          <span>Pelo app Onside, quando ele abrir por link.</span>
+        </span>
+        <span className="pn-badge">EM BREVE</span>
+      </div>
+    </div>
   )
 }
 
