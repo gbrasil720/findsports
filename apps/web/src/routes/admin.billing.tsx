@@ -61,7 +61,7 @@ const STATUS_LABEL: Record<string, { label: string; className: string }> = {
     className: 'onside-badge onside-badge-acid'
   },
   trialing: {
-    label: 'Trial gratuito',
+    label: 'Teste grátis',
     className: 'onside-badge onside-badge-ink'
   },
   // Trial que já é do Stripe: contratou antes do fim (WEB-347).

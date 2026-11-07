@@ -120,10 +120,10 @@ test('trial vencido: o Desempenho diz por que o plano em vigor é o Starter', as
   await signIn(page, pub.user)
   await page.goto('/admin')
 
-  await expect(page.locator('#painel-main')).toContainText('Trial encerrado')
+  await expect(page.locator('#painel-main')).toContainText('Teste encerrado')
   await page.goto('/admin/desempenho')
   await expect(overview(page)).toContainText(
-    'Plano Starter · Trial do plano Elite encerrado'
+    'Plano Starter · Teste do plano Elite encerrado'
   )
 })
 
@@ -151,7 +151,7 @@ test('trial vencido e bar fora do ar: aviso de bar não visível e o caminho par
 
   const panel = page.locator('#painel-main')
   await expect(panel).toContainText('Seu bar não está visível na plataforma')
-  await expect(panel).toContainText('Trial encerrado')
+  await expect(panel).toContainText('Teste encerrado')
   await expect(panel).not.toContainText(/restantes?/)
   await expect(
     panel.getByRole('link', { name: 'Regularizar assinatura' })

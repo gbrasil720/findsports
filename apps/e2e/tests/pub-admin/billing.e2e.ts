@@ -221,12 +221,12 @@ test('pagamento atrasado mostra o plano parado e manda regularizar', async ({
   )
 })
 
-test('trial vigente mostra "Trial gratuito" e até quando', async ({ page }) => {
+test('trial vigente mostra "Teste grátis" e até quando', async ({ page }) => {
   await openBilling(page, {
     subscription: { plan: 'pro', status: 'trialing' }
   })
   await expect(currentPlan(page)).toContainText('Pro')
-  await expect(currentPlan(page)).toContainText('Trial gratuito até')
+  await expect(currentPlan(page)).toContainText('Teste grátis até')
   await expect(currentPlan(page)).toContainText(/faltam \d+ dias/)
   // WEB-343: o card mostra o preço de fundador que /plan promete. O cupom
   // esgotado, com a tabela cheia, está em `checkout.serial.e2e.ts`.
@@ -252,7 +252,7 @@ test('trial vigente mostra "Trial gratuito" e até quando', async ({ page }) => 
   ).toHaveAttribute('href', '/plan?origin=billing')
 })
 
-test('trial vencido sem pagamento mostra "Trial encerrado"', async ({
+test('trial vencido sem pagamento mostra "Teste encerrado"', async ({
   page
 }) => {
   await openBilling(page, {
@@ -263,9 +263,9 @@ test('trial vencido sem pagamento mostra "Trial encerrado"', async ({
     }
   })
   await expect(currentPlan(page)).toContainText('Elite')
-  await expect(currentPlan(page)).toContainText('Trial encerrado')
+  await expect(currentPlan(page)).toContainText('Teste encerrado')
   await expect(currentPlan(page)).toContainText(
-    'O trial gratuito terminou sem pagamento confirmado.'
+    'O teste grátis terminou sem pagamento confirmado.'
   )
   // WEB-357: sem contratar, esse bar sai do ar; não são só os recursos.
   await expect(currentPlan(page)).toContainText(

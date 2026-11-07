@@ -176,7 +176,7 @@ describe('BarMenuEditor', () => {
       null
     )
     expect(doc.querySelector('a[href="/admin/billing"]')).not.toBeNull()
-    expect(doc.body.textContent).toContain('Trial do plano Elite encerrado')
+    expect(doc.body.textContent).toContain('Teste do plano Elite encerrado')
   })
 
   // A falha é anunciada uma vez só, pela aba (WEB-142).

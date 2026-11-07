@@ -21,7 +21,7 @@ import {
 
 const STATUS_LABEL: Record<string, string> = {
   active: 'Ativa',
-  trialing: 'Trial gratuito'
+  trialing: 'Teste grátis'
 }
 
 /**

@@ -54,7 +54,7 @@ for (const { name, subscription, allowed } of cases) {
       await expect(field).toBeVisible()
     } else {
       await expect(
-        page.locator('#admin-espaco').getByText('Trial do plano Pro encerrado')
+        page.locator('#admin-espaco').getByText('Teste do plano Pro encerrado')
       ).toBeVisible()
       await expect(field).toHaveCount(0)
     }

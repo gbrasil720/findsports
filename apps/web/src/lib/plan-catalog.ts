@@ -809,7 +809,7 @@ export function getTrialNotice(
     month: 'long',
     year: 'numeric'
   })
-  return `Trial gratuito até ${until} · ${days === 1 ? 'falta 1 dia' : `faltam ${days} dias`}`
+  return `Teste grátis até ${until} · ${days === 1 ? 'falta 1 dia' : `faltam ${days} dias`}`
 }
 
 export function formatHistoryWindow(a: PlanAnalytics): string {

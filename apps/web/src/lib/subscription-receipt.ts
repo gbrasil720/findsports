@@ -233,7 +233,7 @@ export function receiptChargeLabel(status: string, cancelling = false): string {
  * foi pago.
  */
 export function receiptStampLabel(status: string): string {
-  return status === 'trialing' ? 'Trial liberado' : 'Pago e liberado'
+  return status === 'trialing' ? 'Teste liberado' : 'Pago e liberado'
 }
 
 /**

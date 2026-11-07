@@ -831,14 +831,14 @@ describe('getTrialNotice (WEB-260)', () => {
 
   test('diz até quando vai e quantos dias faltam', () => {
     expect(getTrialNotice(trial, now)).toBe(
-      'Trial gratuito até 22 de outubro de 2026 · faltam 14 dias'
+      'Teste grátis até 22 de outubro de 2026 · faltam 14 dias'
     )
     expect(
       getTrialNotice(
         { ...trial, currentPeriodEnd: new Date('2026-10-08T20:00:00.000Z') },
         now
       )
-    ).toBe('Trial gratuito até 8 de outubro de 2026 · falta 1 dia')
+    ).toBe('Teste grátis até 8 de outubro de 2026 · falta 1 dia')
   })
 
   test('quem já contratou no Stripe lê a primeira cobrança, não o trial (WEB-347)', () => {
@@ -861,7 +861,7 @@ describe('getTrialNotice (WEB-260)', () => {
     const local = { ...contracted, externalSubscriptionId: null }
     expect(isContractedTrial(local)).toBe(false)
     expect(getTrialNotice(local, now)).toBe(
-      'Trial gratuito até 22 de outubro de 2026 · faltam 14 dias'
+      'Teste grátis até 22 de outubro de 2026 · faltam 14 dias'
     )
 
     // Paga em dia ou trial vencido não são trial contratado.

@@ -15,8 +15,8 @@ describe('getShownPlan', () => {
   test('trial vencido segue com o plano gravado e diz que o trial acabou', () => {
     expect(getShownPlan({ plan: 'elite', standing: 'trial_ended' })).toEqual({
       name: 'Elite',
-      label: 'Trial encerrado',
-      note: 'Trial do plano Elite encerrado'
+      label: 'Teste encerrado',
+      note: 'Teste do plano Elite encerrado'
     })
   })
 
