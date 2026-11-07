@@ -111,8 +111,13 @@ integrationTest(
       expect(below.rating).toBeNull()
       expect(below.ratingReasons).toBeNull()
 
-      // Sem etiqueta também vale; no piso o resumo aparece separado.
-      await rate(2, true)
+      // Sem etiqueta também vale; um a menos que o piso ainda não mostra nada.
+      for (let i = 2; i < RATING_PUBLIC_FLOOR - 1; i++) await rate(i, true)
+      const almost = await seeded.fan.pubs.getById({ id: seeded.barId })
+      expect(almost.rating).toBeNull()
+      expect(almost.ratingReasons).toBeNull()
+      // No piso, o resumo aparece separado.
+      await rate(RATING_PUBLIC_FLOOR - 1, true)
       const public_ = await seeded.fan.pubs.getById({ id: seeded.barId })
       expect(public_.rating?.total).toBe(RATING_PUBLIC_FLOOR)
       expect(public_.ratingReasons).toEqual({
@@ -132,7 +137,7 @@ integrationTest(
       // saber quem marcou ("Meu espaço").
       const doDono = await seeded.owner.pub.getMyRatings()
       expect(doDono.recent.map((item) => item.reasons).sort()).toEqual([
-        [],
+        ...Array.from({ length: RATING_PUBLIC_FLOOR - 2 }, () => []),
         ['food'],
         ['sound', 'screen']
       ])
