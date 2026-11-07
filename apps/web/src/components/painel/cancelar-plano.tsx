@@ -4,6 +4,7 @@ import {
 } from '@findsports_oficial/db/cancel-reasons'
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Close } from '@/components/landing/v3/icons'
 import { useTRPC } from '@/utils/trpc'
 
@@ -36,13 +37,18 @@ export function CancelarPlano({
       >
         Cancelar assinatura
       </button>
-      {aberto ? (
-        <Dialogo
-          planName={planName}
-          until={until}
-          onClose={() => setAberto(false)}
-        />
-      ) : null}
+      {/* Fora do card escuro do plano, que repinta título e botões: o
+          diálogo vai para a raiz do painel. Só monta depois do clique. */}
+      {aberto
+        ? createPortal(
+            <Dialogo
+              planName={planName}
+              until={until}
+              onClose={() => setAberto(false)}
+            />,
+            document.querySelector('.pn3') ?? document.body
+          )
+        : null}
     </>
   )
 }
