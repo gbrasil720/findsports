@@ -643,14 +643,59 @@ test('painel de avaliações e prévia de como o torcedor vê', async ({
   const { eventId } = await createEvent(pub.barId, {
     startsAt: new Date(Date.now() - 2 * 86_400_000)
   })
-  for (const wouldReturn of [true, false]) {
-    const fan = await createUser()
+  // Duas verificadas (check-in no jogo, WEB-408) e uma sem prova (WEB-451:
+  // estrelas, comentário aprovado e nome só de quem quis).
+  const avaliacoes = [
+    {
+      name: 'Marina Costa',
+      wouldReturn: true,
+      stars: 5,
+      identified: true,
+      comment: 'Som alto e telão enorme.',
+      reasons: ['screen', 'sound'],
+      verified: true
+    },
+    {
+      name: 'Pedro Okada',
+      wouldReturn: false,
+      stars: 4,
+      identified: false,
+      comment: 'Demorou para servir.',
+      reasons: [],
+      verified: true
+    },
+    {
+      name: 'Bia Torres',
+      wouldReturn: false,
+      stars: 1,
+      identified: true,
+      comment: null,
+      reasons: ['screen', 'sound'],
+      verified: false
+    }
+  ]
+  for (const r of avaliacoes) {
+    const fan = await createUser({ name: r.name })
+    if (r.verified) {
+      await insert('attendance_checkin', {
+        user_id: fan.id,
+        event_id: eventId,
+        latitude: 0,
+        longitude: 0,
+        distance_m: 0
+      })
+    }
     await insert('bar_rating', {
       id: randomUUID(),
       bar_id: pub.barId,
       actor_user_id: fan.id,
       event_id: eventId,
-      would_return: wouldReturn
+      would_return: r.wouldReturn,
+      reasons: r.reasons,
+      stars: r.stars,
+      identified: r.identified,
+      comment: r.comment,
+      comment_review: r.comment ? 'approved' : null
     })
   }
   await signIn(page, pub.user)
@@ -659,11 +704,31 @@ test('painel de avaliações e prévia de como o torcedor vê', async ({
   const ratings = page.getByRole('region', {
     name: 'Voltariam pra ver jogo aqui?'
   })
-  await expect(ratings).toContainText('50%')
-  // Duas avaliações, abaixo do piso público de 3: o dono é avisado.
+  // A nota é das verificadas: 1 de 2 voltaria, 4,5 estrelas.
+  await expect(ratings).toContainText('50% voltariam')
+  await expect(ratings).toContainText('4,5 de 5 estrelas')
+  // Duas verificadas, abaixo do piso público de 5: o dono é avisado.
   await expect(ratings).toContainText('Ainda não aparece para o torcedor')
-  await expect(ratings).toContainText('falta 1')
-  await expect(ratings.getByRole('listitem')).toHaveCount(2)
+  await expect(ratings).toContainText('5 avaliações verificadas')
+  await expect(ratings).toContainText('faltam 3')
+  await expect(ratings).toContainText('1 avaliação não verificada fica')
+  const rows = ratings.getByRole('listitem')
+  await expect(rows).toHaveCount(3)
+  // Nome só de quem escolheu; o resto é "Anônimo".
+  await expect(ratings).toContainText('Marina Costa')
+  await expect(ratings).toContainText('Som alto e telão enorme.')
+  await expect(ratings).not.toContainText('Pedro Okada')
+  await expect(ratings).toContainText('Anônimo')
+  await expect(
+    rows.filter({ hasText: 'Marina Costa' }).getByRole('img', {
+      name: '5 de 5 estrelas'
+    })
+  ).toBeVisible()
+  // A sem prova aparece para o dono, com o selo, e fora da nota; sem
+  // comentário, a linha diz o que pesou (WEB-398).
+  const semProva = rows.filter({ hasText: 'Bia Torres' })
+  await expect(semProva).toContainText('NÃO VERIFICADA')
+  await expect(semProva).toContainText('O que pesou: Telão, Som do jogo')
 
   // A prévia fica ao lado do formulário; abaixo de 1100 px ela some.
   if (!isMobile) {
