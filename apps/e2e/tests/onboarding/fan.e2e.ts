@@ -110,7 +110,7 @@ test('percorre os passos, pula os times e cai no dashboard com as preferências'
   // A busca do dashboard já sai com o raio escolhido.
   const search = page.waitForRequest(
     (r) =>
-      r.url().includes('pubs.search') &&
+      r.url().includes('pubs.gameBoard') &&
       decodeURIComponent(r.url()).includes('"radiusKm":25')
   )
   await button(page, /Salvar e encontrar bares/).click()

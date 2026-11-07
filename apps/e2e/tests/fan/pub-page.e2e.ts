@@ -284,22 +284,21 @@ test('jogo único fica só no destaque, e os times saem na ordem do card', async
   const arsenal = await team('arsenal')
   const argentina = await team('argentina')
   // Gravados fora da ordem alfabética.
+  const startsAt = days(2)
   await createEvent({
     barId: pub.barId,
-    startsAt: days(2),
+    startsAt,
     teamIds: [arsenal.id, argentina.id]
   })
   await signInFanAt(page, spot)
   const matchup = `${argentina.name} × ${arsenal.name}`
+  const dia = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo'
+  }).format(startsAt)
 
-  await page.goto('/dashboard')
-  await expect(
-    page
-      .locator('.onside-bar-card', {
-        has: page.getByRole('link', { name: `Ver ${pub.name}` })
-      })
-      .getByTitle(matchup)
-  ).toBeVisible()
+  // O Explorar escolhe o jogo e o título sai na ordem do card (WEB-501).
+  await page.goto(`/dashboard?dia=${dia}`)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(matchup)
 
   await page.goto(`/pub/${pub.barId}`)
   await expect(page.getByText(matchup).first()).toBeVisible()
