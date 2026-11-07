@@ -173,8 +173,8 @@ function PubOnboarding() {
     },
     [photoUrl]
   )
-  const { mutateAsync: updateMe } = useMutation(
-    trpc.pub.updateMe.mutationOptions({ meta: { errorToast: false } })
+  const { mutateAsync: addPhoto } = useMutation(
+    trpc.pub.addPhoto.mutationOptions({ meta: { errorToast: false } })
   )
 
   // O número que o dono já digitou fica: o CEP traz só a rua.
@@ -260,8 +260,12 @@ function PubOnboarding() {
         localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)
         if (photo) {
           try {
-            await updateMe({
-              photoUrl: await uploadMedia('/api/bar/photo', photo)
+            // A capa entra na revisão da Onside como as outras fotos
+            // (WEB-462); `?capa` deixa o upload passar em todo plano.
+            await addPhoto({
+              url: await uploadMedia('/api/bar/photo?capa', photo),
+              category: 'fachada',
+              cover: true
             })
           } catch {
             toast.error(

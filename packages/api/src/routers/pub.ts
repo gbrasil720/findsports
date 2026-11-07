@@ -61,7 +61,6 @@ import {
   UF_SIGLAS
 } from '../lib/bar-profile-validation'
 import { readBillingBalance } from '../lib/billing-balance'
-import { isOwnPhotoUrl } from '../lib/blob-photo'
 import {
   canCancelSubscription,
   getCurrentPlan,
@@ -408,11 +407,11 @@ export const pubRouter = router({
           .string()
           .regex(/^\d{5}-?\d{3}$/)
           .optional(),
-        photoUrl: z.string().url().optional(),
         // Lista completa, não incremental: o formulário manda o estado final
         // das características. Array vazio desmarca tudo, e `undefined` não
-        // toca no que já está gravado — a foto e a descrição seguem a mesma
-        // convenção nesta mutation.
+        // toca no que já está gravado — a descrição segue a mesma convenção
+        // nesta mutation. A capa saiu daqui (WEB-462): passa pela revisão,
+        // em `addPhoto` e `setPhotoCover`.
         amenities: z.array(z.number().int()).max(MAX_AMENITY_IDS).optional(),
         screenCount: z
           .number()
@@ -427,19 +426,6 @@ export const pubRouter = router({
       const userId = ctx.session.user.id
 
       const existingBar = await getBarByUserId(userId)
-
-      // ESC-15: com o upload indo direto do navegador para o armazenamento,
-      // quem informa a URL da foto é o cliente. Aceitar qualquer string
-      // deixaria um bar apontar a própria foto para um endereço arbitrário.
-      if (
-        input.photoUrl &&
-        !isOwnPhotoUrl(input.photoUrl, existingBar.id, env)
-      ) {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: 'URL de foto inválida.'
-        })
-      }
 
       const motivoTelefone = motivoTelefoneInvalido(
         input.phone,
@@ -494,7 +480,6 @@ export const pubRouter = router({
           ...(input.neighborhood && { neighborhood: input.neighborhood }),
           ...(input.city && { city: input.city }),
           ...(input.uf && { uf: input.uf }),
-          ...(input.photoUrl && { photoUrl: input.photoUrl }),
           ...(input.amenities !== undefined && {
             amenities: writableAmenityIds(input.amenities)
           }),
@@ -1263,13 +1248,8 @@ export const pubRouter = router({
       }
 
       const userId = ctx.session.user.id
-      const {
-        id,
-        name,
-        legalName,
-        cnpj,
-        invoiceEmail
-      } = await getBarByUserId(userId)
+      const { id, name, legalName, cnpj, invoiceEmail } =
+        await getBarByUserId(userId)
       const current = { id, name, legalName, cnpj, invoiceEmail }
       const next = { ...current, ...changes }
       const owner = await db.query.user.findFirst({
