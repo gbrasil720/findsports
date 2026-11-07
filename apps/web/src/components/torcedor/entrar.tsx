@@ -216,7 +216,7 @@ export function FolhaEntrar({ pedido, onFechar, onEntrou }: Props) {
             </li>
           ))}
         </ul>
-        <form className="form" noValidate onSubmit={entrar}>
+        <form method="post" className="form" noValidate onSubmit={entrar}>
           <label htmlFor="sh-e">
             E-mail
             <input

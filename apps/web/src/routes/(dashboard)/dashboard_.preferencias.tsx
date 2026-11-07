@@ -256,6 +256,7 @@ function Gosto() {
           <span>50 km</span>
         </div>
         <form
+          method="post"
           className="row2"
           noValidate
           onSubmit={(e) => {
