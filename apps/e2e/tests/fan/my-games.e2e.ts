@@ -330,23 +330,21 @@ test('jogo encerrado com avaliação aberta: Avaliar leva ao card daquele jogo',
   await page.goto('/dashboard/games?aba=ant')
   const row = page.getByRole('listitem').filter({ hasText: older })
   await row.getByRole('link', { name: `Avaliar o ${pub.name}` }).click()
-  await expect(page).toHaveURL(
-    new RegExp(`/dashboard/games\\?avaliar=${olderId}`)
-  )
+  await expect(page).toHaveURL(new RegExp(`/dashboard/avaliar/${olderId}$`))
+  await expect(page.getByText(older)).toBeVisible()
 
-  const rating = page.getByRole('region', {
-    name: `Voltaria pra ver jogo no ${pub.name}?`
-  })
-  await expect(rating).toContainText(older)
-  await rating.getByRole('button', { name: 'Voltaria', exact: true }).click()
+  await page.getByRole('button', { name: 'Fui', exact: true }).click()
+  await page.getByRole('button', { name: 'Voltaria', exact: true }).click()
+  await page.getByRole('radio', { name: '4 estrelas' }).click()
+  await page.getByRole('button', { name: 'Enviar avaliação' }).click()
   await expect
     .poll(async () =>
       (
-        await query<{ would_return: boolean }>(
-          'SELECT would_return FROM bar_rating WHERE actor_user_id = $1 AND event_id = $2',
+        await query<{ would_return: boolean; stars: number }>(
+          'SELECT would_return, stars FROM bar_rating WHERE actor_user_id = $1 AND event_id = $2',
           [fan.id, olderId]
         )
-      ).map((r) => r.would_return)
+      ).map((r) => [r.would_return, r.stars])
     )
-    .toEqual([true])
+    .toEqual([[true, 4]])
 })
