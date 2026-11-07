@@ -124,7 +124,7 @@ test('/signup?role=pub abre com "Tenho um bar" marcado', async ({ page }) => {
 
 // WEB-211: o destino vai no link do e-mail, que abre noutra aba — sem o
 // `sessionStorage` da aba do cadastro — e atravessa o onboarding do torcedor.
-test('cadastro pelo diálogo do bar volta para o bar depois da confirmação', async ({
+test('cadastro pela folha do bar volta para o bar depois da confirmação', async ({
   page,
   context
 }) => {
@@ -132,8 +132,11 @@ test('cadastro pelo diálogo do bar volta para o bar depois da confirmação', a
   const email = uniqueEmail('signup-bar')
 
   await page.goto(`/pub/${barId}`)
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click()
   await page.getByRole('link', { name: 'Criar conta grátis' }).click()
   await expect(page).toHaveURL(/\/signup\?callbackUrl=/)
+  // O link da folha é uma navegação inteira: espera a página nova hidratar.
+  await expect(page.locator('html[data-hydrated]')).toHaveCount(1)
   await submitSignup(page, { name: 'Torcedor do Bar', email })
   await expect(page).toHaveURL(/\/verify-email\?callbackUrl=/)
 
@@ -151,7 +154,9 @@ test('cadastro pelo diálogo do bar volta para o bar depois da confirmação', a
   await button('Continuar').click()
   await button('Salvar e encontrar bares').click()
 
-  await expect(tab).toHaveURL(new RegExp(`/pub/${barId}$`))
+  await expect(tab).toHaveURL(
+    new RegExp(`/bar/[a-z0-9-]+-${barId.slice(0, 8)}$`)
+  )
 })
 
 test('login com e-mail não verificado é recusado e reenvia a verificação', async ({

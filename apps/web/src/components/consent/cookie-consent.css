@@ -66,22 +66,24 @@ html[data-consent] body {
 }
 
 html[data-consent]:has(.onside-site-footer) body,
-html[data-consent]:has(.lp3) body {
+html[data-consent]:has(.lp3) body,
+html[data-consent]:has(.bp) body {
   background: #12120f; /* --onside-ink */
 }
 
 /*
  * O que é fixo no pé da janela sobe para cima do aviso enquanto ele aparece,
- * pelo mesmo espaço (WEB-370): a barra de ação da página do bar e os toasts.
+ * pelo mesmo espaço (WEB-370): a barra do jogo da página do bar (`/bar/$slug`,
+ * só no celular) e os toasts.
  * A chamada fixa da landing faz o mesmo em `onside.css`. Elemento novo preso
  * ao pé da tela entra aqui.
  *
  * A barra de ação deixa de somar a área segura: o aviso, embaixo dela, já a
  * ocupa.
  */
-html[data-consent] .onside-app .onside-pub-actionbar {
+html[data-consent] .bp-layer.mcta {
   bottom: var(--onside-consent-space);
-  padding-bottom: 10px;
+  padding-bottom: 12px;
 }
 
 html[data-consent] [data-sonner-toaster][data-y-position="bottom"] {

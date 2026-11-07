@@ -228,7 +228,50 @@ export async function readGoing(
   )
 }
 
-type FanAttendance = {
+export type GoingFriend = { id: string; name: string; image: string | null }
+
+/**
+ * Os amigos de `viewerId` que marcaram presença em cada jogo (WEB-404, trazido
+ * da branch de integração para a página pública do bar). Só entra quem é amigo
+ * aceito e deixa amigos verem a atividade ("todos" ou "amigos"); "ninguém"
+ * nunca aparece, e quem não é amigo nunca é nomeado, nem com "todos". Ordem:
+ * quem marcou por último primeiro.
+ */
+export async function readFriendsGoing(
+  viewerId: string,
+  eventIds: string[]
+): Promise<Map<string, GoingFriend[]>> {
+  const going = new Map<string, GoingFriend[]>()
+  if (!eventIds.length) return going
+  const rows = await db
+    .select({
+      eventId: attendance.eventId,
+      id: user.id,
+      name: user.name,
+      image: user.image
+    })
+    .from(attendance)
+    .innerJoin(user, eq(user.id, attendance.userId))
+    .where(
+      and(
+        inArray(attendance.eventId, eventIds),
+        inArray(user.activityVisibility, ['everyone', 'friends']),
+        sql`${user.banned} IS NOT TRUE`,
+        sql`EXISTS (
+          SELECT 1 FROM friendship f
+          WHERE f.accepted_at IS NOT NULL
+            AND ((f.requester_id = ${viewerId} AND f.addressee_id = ${user.id})
+              OR (f.addressee_id = ${viewerId} AND f.requester_id = ${user.id}))
+        )`
+      )
+    )
+    .orderBy(sql`${attendance.createdAt} desc`)
+  for (const { eventId, ...friend } of rows)
+    going.set(eventId, [...(going.get(eventId) ?? []), friend])
+  return going
+}
+
+export type FanAttendance = {
   attending: boolean
   /** `null` abaixo do piso. */
   count: number | null

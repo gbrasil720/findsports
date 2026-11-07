@@ -9,12 +9,12 @@ import {
 import { Input } from '@findsports_oficial/ui/components/input'
 import { Spinner } from '@findsports_oficial/ui/components/spinner'
 import { useRef, useState } from 'react'
-import QRCodeModule from 'react-qr-code'
 import Copy from 'reicon-react/icons/Copy'
 import Download from 'reicon-react/icons/Download'
 import Shield from 'reicon-react/icons/Shield'
 import { toast } from 'sonner'
 import { Modal } from '@/components/admin/modal'
+import { QRCode } from '@/components/qr-code'
 import { TwoFactorCodeInput } from '@/components/two-factor-code-input'
 import { useSession } from '@/hooks/use-session'
 import { authClient } from '@/lib/auth-client'
@@ -23,14 +23,6 @@ import {
   getUserFacingMessage
 } from '@/lib/user-facing-error'
 import { AccountActionRow } from './account-action-row'
-
-const qrCodeModule = QRCodeModule as unknown
-const QRCode =
-  typeof qrCodeModule === 'object' &&
-  qrCodeModule !== null &&
-  'default' in qrCodeModule
-    ? (qrCodeModule.default as typeof QRCodeModule)
-    : QRCodeModule
 
 export type DialogMode = 'enable' | 'regenerate' | 'disable' | null
 

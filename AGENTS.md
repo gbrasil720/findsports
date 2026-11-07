@@ -371,6 +371,26 @@ Nome do site no Google (JSON-LD `WebSite`/`Organization` da home), o que é
 indexável, `robots.txt` e favicons: **leia `docs/seo.md` antes de mexer em
 `<title>`, `head`, sitemap ou ícones.**
 
+### Página pública do bar (`/bar/$slug`)
+
+Aberta sem login (decisão do dono, 05/11/2026, que revoga "web só para bares" nesta
+página) e indexável com o bar no ar. Endereço `/bar/<nome-e-bairro>-<8 hex do id>`
+(`packages/db/src/bar-slug.ts`): quem resolve é o prefixo; nome diferente redireciona
+301 para o atual, prefixo que bate em mais de um bar é 404 (teto anotado lá; o caminho
+é uma coluna `slug`). `/pub/<id>` antigo (QR, WhatsApp, app, painel, Houdini) responde
+301 para o canônico. O HTML do servidor sai de `readPublicBarPage`
+(`packages/api/src/lib/public-bar-page.ts`, pela server function `functions/public-bar.ts`),
+sem nada da sessão; presença, código do balcão, salvo e amigos que vão (só amigo aceito
+que deixa ver, `readFriendsGoing`) vêm depois, no cliente, por `pubs.pageViewer`. O que
+grava pede login pela folha da própria página, que leva a ação em `?acao=vou|salvar`
+(com `?jogo=`) e a conclui na volta, inclusive do cadastro, da confirmação de e-mail e
+do 2FA. Nota, "% voltariam" e "O que pesou?" (etiquetas sem número) só acima do piso
+público (`rating`, decidido no servidor); abaixo, a seção diz que as primeiras
+avaliações estão chegando. Bar fora do ar: 200 com `noindex` (o dono vê a prévia).
+Telas e contas em `apps/web/src/components/bar-page/`; título, descrição, cartão do
+WhatsApp e JSON-LD (`BarOrPub` + um `Event` por jogo) em `bar-page-model.ts`. Ver
+`docs/seo.md`.
+
 Performance da home no celular (pôster com `srcset`, prioridade das fontes,
 o que não pode entrar no JavaScript de entrada) e como medir com Lighthouse:
 `docs/perf-home.md`.

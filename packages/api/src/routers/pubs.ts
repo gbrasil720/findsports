@@ -37,7 +37,12 @@ import {
   normalizeAmenityIds
 } from '../lib/amenities'
 import { getAppConfig } from '../lib/app-config'
-import { readFanAttendance, readGoing } from '../lib/attendance'
+import {
+  type FanAttendance,
+  readFanAttendance,
+  readFriendsGoing,
+  readGoing
+} from '../lib/attendance'
 import { resolvePublicGallery } from '../lib/bar-gallery'
 import { canShowBarMenu, resolvePublicBarMenu } from '../lib/bar-menu'
 import { readCheckIn } from '../lib/check-in'
@@ -353,6 +358,15 @@ async function comCaracteristicasEPresenca<
     }
   })
 }
+
+/** Por jogo, o que `pubs.pageViewer` devolve a quem entrou. */
+type ViewerGames = Record<
+  string,
+  {
+    attendance: FanAttendance | null
+    friends: { name: string; image: string | null }[]
+  }
+>
 
 /** Teto da agenda do dia: é cenário de splash, não listagem. */
 const TODAY_GAMES_LIMIT = 30
@@ -710,6 +724,61 @@ export const pubsRouter = router({
           userId === ctx.session.user.id
             ? getSubscriptionStanding(subscription ?? null, now)
             : null
+        )
+      }
+    }),
+
+  /**
+   * O que a página pública do bar (`/bar/...`) mostra a quem entrou, por cima
+   * da leitura sem sessão (`lib/public-bar-page.ts`): se salvou o bar e, por
+   * jogo, a presença com o código do balcão e os amigos que vão (WEB-404:
+   * só amigo aceito que deixa amigos verem). Conta que não é de torcedor não
+   * marca presença nem salva bar: recebe `fan: false` e nada mais.
+   */
+  pageViewer: protectedProcedure
+    .input(z.object({ barId: z.string().min(1).max(64) }))
+    .query(async ({ ctx, input }) => {
+      const viewer = ctx.session.user
+      if (viewer.role !== 'fan') {
+        return { fan: false, favorited: false, games: {} as ViewerGames }
+      }
+      const now = new Date()
+      const liveCutoff = new Date(now.getTime() - EVENT_LIVE_WINDOW_MS)
+      const games = await db.query.event.findMany({
+        where: (game, { and, eq, gte, isNotNull, isNull, or }) =>
+          and(
+            eq(game.barId, input.barId),
+            isNotNull(game.publishedAt),
+            or(
+              and(isNotNull(game.endsAt), gte(game.endsAt, now)),
+              and(isNull(game.endsAt), gte(game.startsAt, liveCutoff))
+            )
+          ),
+        columns: { id: true, startsAt: true, attendanceEnabled: true }
+      })
+      const ids = games.map((game) => game.id)
+      const [attendance, friends, favorite] = await Promise.all([
+        readFanAttendance(viewer, games, now),
+        readFriendsGoing(viewer.id, ids),
+        db.query.userFavoriteBars.findFirst({
+          where: and(
+            eq(userFavoriteBars.userId, viewer.id),
+            eq(userFavoriteBars.barId, input.barId)
+          ),
+          columns: { barId: true }
+        })
+      ])
+      return {
+        fan: true,
+        favorited: Boolean(favorite),
+        games: Object.fromEntries(
+          ids.map((id) => [
+            id,
+            {
+              attendance: attendance.get(id) ?? null,
+              friends: (friends.get(id) ?? []).map(({ id: _i, ...f }) => f)
+            }
+          ])
         )
       }
     }),

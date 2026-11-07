@@ -18,4 +18,5 @@
 @import "./components/billing/subscription-receipt.css";
 @import "./components/not-found/not-found-page.css";
 @import "./components/onboarding/invite-state-page.css";
+@import "./components/bar-page/bar-page.css";
 @source "./**/*.{ts,tsx}";

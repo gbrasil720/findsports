@@ -126,7 +126,12 @@ test('Elite tem a aba Quem vai, e o jogo novo não pergunta de reserva', async (
       .getByRole('link', { name: 'Quem vai', exact: true })
   ).toBeVisible()
   await page.goto('/admin/jogos')
-  await page.getByRole('button', { name: 'Novo jogo', exact: true }).click()
+  // O cabeçalho e a grade vazia têm cada um o seu "Novo jogo" (como em
+  // `schedule.e2e.ts`).
+  await page
+    .getByRole('button', { name: 'Novo jogo', exact: true })
+    .first()
+    .click()
   const dialog = page.getByRole('dialog', { name: 'Novo jogo' })
   await expect(dialog.getByLabel('Campeonato')).toBeVisible()
   await expect(dialog).not.toContainText(/reserva/i)
