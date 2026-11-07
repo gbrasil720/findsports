@@ -186,7 +186,8 @@ function Conteudo() {
       ) : (
         <>
           {/* O pós-jogo antigo, até a avaliação nova (fase 6). */}
-          <div className="pos-jogo">
+          {/* A chave remonta os cards: o jogo pedido vem para a frente. */}
+          <div className="pos-jogo" key={search.avaliar ?? 'todos'}>
             <AttendanceReportCard first={search.avaliar} />
             <PendingRatingCard
               pending={ratings.data ?? []}
