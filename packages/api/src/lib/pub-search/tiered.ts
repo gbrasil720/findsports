@@ -132,7 +132,9 @@ export async function executarBuscaEmCamadas(
         agg.next_sport_slug,
         agg.next_participant_free_text,
         agg.next_classic_rule_version,
-        agg.next_classic_rule_reason
+        agg.next_classic_rule_reason,
+        agg.next_on_big_screen,
+        agg.next_with_sound
       FROM bar b
       JOIN LATERAL (
         SELECT ${proximoJogo(sql`b`)}

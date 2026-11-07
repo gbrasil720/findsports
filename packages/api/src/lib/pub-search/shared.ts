@@ -4,6 +4,7 @@ import { z } from 'zod'
 
 import { declaredAmenityIds, HOUSE_OFFER_AMENITY_ID } from '../amenities'
 import { classicRuleLateral } from '../classics'
+import { SCREEN_AMENITY_ID, SOUND_AMENITY_ID } from '../event-screen'
 import { encodeCursor } from '../keyset-cursor'
 import { hasPublicRating, ratingPercentage } from '../rating'
 import { utcIso } from '../utc-timestamp'
@@ -117,6 +118,9 @@ export type SearchBar = {
         participants: { team: { name: string; logoUrl: string | null } }[]
         participantFreeText: string | null
         classic: { reason: string; ruleVersion: number } | null
+        /** Telão e som deste jogo, já com a herança do bar (WEB-399). */
+        onBigScreen: boolean
+        withSound: boolean
       }
     | undefined
 }
@@ -203,6 +207,8 @@ export type LinhaBusca = {
   next_participant_free_text: string | null
   next_classic_rule_version: number | string | null
   next_classic_rule_reason: string | null
+  next_on_big_screen: boolean | null
+  next_with_sound: boolean | null
   next_participants: { name: string; logoUrl: string | null }[]
 }
 
@@ -316,6 +322,9 @@ export function montarFiltrosBusca(input: SearchInput): FiltrosBusca {
       s.name AS next_sport_name,
       s.slug AS next_sport_slug,
       e.participant_free_text AS next_participant_free_text,
+      -- WEB-399: nulo herda das características (1 telão, 2 som).
+      COALESCE(e.on_big_screen, ${SCREEN_AMENITY_ID} = ANY(${barAlias}.amenities)) AS next_on_big_screen,
+      COALESCE(e.with_sound, ${SOUND_AMENITY_ID} = ANY(${barAlias}.amenities)) AS next_with_sound,
       classic.classic_rule_id,
       classic.classic_rule_version AS next_classic_rule_version,
       classic.classic_rule_reason AS next_classic_rule_reason
@@ -394,7 +403,9 @@ export function montarPaginaBusca(
                     reason: row.next_classic_rule_reason,
                     ruleVersion: Number(row.next_classic_rule_version)
                   }
-                : null
+                : null,
+            onBigScreen: Boolean(row.next_on_big_screen),
+            withSound: Boolean(row.next_with_sound)
           }
         : undefined
   }))

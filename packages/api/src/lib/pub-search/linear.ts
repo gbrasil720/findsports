@@ -84,6 +84,8 @@ export async function executarBuscaLinear(
         b.rating_count,
         b.rating_positive,
         b.rating_score,
+        -- O próximo jogo herda telão e som daqui (WEB-399).
+        b.amenities,
         subscription_current_plan(s.plan, s.status, s.current_period_end) AS plan,
         ST_Distance(b.geo, ${origin}) / 1000 AS distance_km
       FROM bar b
@@ -108,6 +110,8 @@ export async function executarBuscaLinear(
       agg.next_participant_free_text,
       agg.next_classic_rule_version,
       agg.next_classic_rule_reason,
+      agg.next_on_big_screen,
+      agg.next_with_sound,
       ${participantTeams(sql`agg.next_event_id`)} AS next_participants
     FROM nearby n
     JOIN LATERAL (
