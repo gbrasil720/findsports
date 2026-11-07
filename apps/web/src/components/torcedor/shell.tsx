@@ -1,10 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  Link,
-  useNavigate,
-  useRouter,
-  useRouterState
-} from '@tanstack/react-router'
+import { Link, useNavigate, useRouter } from '@tanstack/react-router'
 import {
   createContext,
   type ReactNode,
@@ -76,7 +71,10 @@ function iniciais(nome: string) {
  */
 let avisoPendente: string | null = null
 
-/** O aviso para a tela seguinte, mostrado pela casca que montar nela. */
+/**
+ * O aviso para a tela seguinte, mostrado pela casca que montar nela. Só para
+ * a troca de rota: na mesma rota a casca não remonta, e o aviso é o `avisar`.
+ */
 export function avisarNaProxima(texto: string) {
   avisoPendente = texto
 }
@@ -98,7 +96,10 @@ function useAcoes(avisar: (texto: string) => void) {
   return useCallback(
     async (acao: Acao, nova = false) => {
       const irPara = async (texto: string, to: string) => {
-        avisarNaProxima(texto)
+        const mesmaRota =
+          new URL(to, 'http://local').pathname === window.location.pathname
+        if (mesmaRota) avisar(texto)
+        else avisarNaProxima(texto)
         await navigate({ to })
       }
       try {
@@ -202,14 +203,13 @@ export function TorcedorShell({ aba, children, busca, onde, semAbas }: Props) {
     return () => clearTimeout(fim)
   }, [aviso])
 
-  // O aviso dado pela tela de antes (`avisarNaProxima`), também quando a
-  // troca é na mesma rota e a casca não remonta.
-  const endereco = useRouterState({ select: (s) => s.location.href })
+  // O aviso dado pela tela de antes (`avisarNaProxima`), na montagem: a
+  // casca de antes ainda vê o endereço novo antes de sair, e o levaria junto.
   useEffect(() => {
-    if (!endereco || !avisoPendente) return
+    if (!avisoPendente) return
     avisar(avisoPendente)
     avisoPendente = null
-  }, [avisar, endereco])
+  }, [avisar])
 
   const concluir = useAcoes(avisar)
   // Conta sem onboarding: a ação primeiro, as preferências depois.
