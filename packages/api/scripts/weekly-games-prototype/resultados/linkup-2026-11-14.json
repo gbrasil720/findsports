@@ -1,0 +1,364 @@
+{
+  "report": {
+    "provider": "linkup",
+    "semana": [
+      "2026-11-14",
+      "2026-11-15",
+      "2026-11-16",
+      "2026-11-17",
+      "2026-11-18",
+      "2026-11-19",
+      "2026-11-20"
+    ],
+    "buscas": 1,
+    "paginas": 0,
+    "paginasPuladas": [],
+    "browserMs": 0,
+    "chamadasLuna": 18,
+    "tokensIn": 98932,
+    "tokensOut": 2069,
+    "custoBuscasUsd": 0.005,
+    "custoLunaUsd": 0.01093,
+    "custoTotalUsd": 0.0159,
+    "acumuladoUsd": 0.6851,
+    "segundos": 47.6,
+    "jogos": 26,
+    "semCanal": 14,
+    "parouNoTeto": null,
+    "log": [
+      {
+        "etapa": "campeonato",
+        "query": "Brasileirão Série A jogos desta semana onde assistir 14/11 a 20/11 2026",
+        "urls": [
+          "https://www.flashscore.com.br/futebol/brasil/brasileirao-serie-a/",
+          "https://guiadejogos.com.br/campeonato/brasileirao-serie-a"
+        ],
+        "jogos": 21
+      },
+      {
+        "etapa": "campeonato",
+        "query": "Brasileirão Série B jogos desta semana onde assistir 14/11 a 20/11 2026",
+        "urls": [
+          "https://futebol.news/campeonato/brasileirao-serie-b/rodada/38",
+          "https://futebol.news/jogo/crb-x-ceara-brasileirao-serie-b-2026-rodada-38"
+        ],
+        "jogos": 11
+      },
+      {
+        "etapa": "campeonato",
+        "query": "Seleção Brasileira amistoso jogos desta semana onde assistir 14/11 a 20/11 2026",
+        "urls": [
+          "https://futebol.news/time/brasil",
+          "https://ge.globo.com/futebol/selecao-brasileira/jogo/14-11-2026/japao-brasil.ghtml"
+        ],
+        "jogos": 3
+      },
+      {
+        "etapa": "sem canal",
+        "query": "Corinthians x Botafogo 19/11 onde assistir ao vivo",
+        "urls": [
+          "https://informa1.com.br/2024/11/05/botafogo-x-uniao-corinthians-assistir-ao-vivo-com-imagens-nbb-hoje-06-11/"
+        ],
+        "jogos": 0
+      },
+      {
+        "etapa": "sem canal",
+        "query": "Grêmio x Bahia 19/11 onde assistir ao vivo",
+        "urls": [
+          "https://www.uol.com.br/esporte/ultimas-noticias/2025/10/19/onde-vai-passar-bahia-x-gremio-pelo-brasileirao-como-assistir-ao-vivo.htm"
+        ],
+        "jogos": 0
+      },
+      {
+        "etapa": "sem canal",
+        "query": "Vitória x Red Bull Bragantino 19/11 onde assistir ao vivo",
+        "urls": [
+          "https://futebol.news/jogo/vitoria-x-rb-bragantino-brasileirao-serie-a-2026-rodada-35"
+        ],
+        "jogos": 0
+      },
+      {
+        "etapa": "sem canal",
+        "query": "Fortaleza x Vila Nova 14/11 onde assistir ao vivo",
+        "urls": [
+          "https://futebol.news/jogo/fortaleza-ec-x-vila-nova-brasileirao-serie-b-2026-rodada-38"
+        ],
+        "jogos": 0
+      },
+      {
+        "etapa": "sem canal",
+        "query": "América MG x Avaí 14/11 onde assistir ao vivo",
+        "urls": [
+          "https://futebol.news/jogo/america-mineiro-x-avai-brasileirao-serie-b-2026-rodada-38"
+        ],
+        "jogos": 0
+      },
+      {
+        "etapa": "sem canal",
+        "query": "Ponte Preta x Operário-PR 14/11 onde assistir ao vivo",
+        "urls": [
+          "https://futebol.news/jogo/ponte-preta-x-operario-pr-brasileirao-serie-b-2026-rodada-38"
+        ],
+        "jogos": 0
+      },
+      {
+        "etapa": "sem canal",
+        "query": "Sport Recife x Goiás 14/11 onde assistir ao vivo",
+        "urls": [
+          "https://futebol.news/jogo/sport-recife-x-goias-brasileirao-serie-b-2026-rodada-38"
+        ],
+        "jogos": 0
+      },
+      {
+        "etapa": "sem canal",
+        "query": "Criciúma x Novorizontino 14/11 onde assistir ao vivo",
+        "urls": [
+          "https://futebol.news/jogo/criciuma-x-novorizontino-brasileirao-serie-b-2026-rodada-38"
+        ],
+        "jogos": 0
+      },
+      {
+        "etapa": "sem canal",
+        "query": "Juventude x Botafogo SP 14/11 onde assistir ao vivo",
+        "urls": [
+          "https://futebol.news/jogo/juventude-x-botafogo-sp-brasileirao-serie-b-2026-rodada-38"
+        ],
+        "jogos": 0
+      },
+      {
+        "etapa": "sem canal",
+        "query": "Atlético GO x Cuiabá 14/11 onde assistir ao vivo",
+        "urls": [
+          "https://futebol.news/jogo/atletico-goianiense-x-cuiaba-brasileirao-serie-b-2026-rodada-38"
+        ],
+        "jogos": 0
+      },
+      {
+        "etapa": "sem canal",
+        "query": "CRB x Ceará 14/11 onde assistir ao vivo",
+        "urls": [
+          "https://futebol.news/jogo/crb-x-ceara-brasileirao-serie-b-2026-rodada-38"
+        ],
+        "jogos": 0
+      },
+      {
+        "etapa": "sem canal",
+        "query": "Londrina x Náutico 14/11 onde assistir ao vivo",
+        "urls": [
+          "https://futebol.news/jogo/londrina-x-nautico-brasileirao-serie-b-2026-rodada-38"
+        ],
+        "jogos": 0
+      }
+    ]
+  },
+  "games": [
+    {
+      "jogo": "Japão x Brasil",
+      "campeonato": "Amistosos da Seleção Brasileira",
+      "data": "2026-11-14",
+      "hora": "07:15",
+      "canais": [],
+      "fonte": "https://futebol.news/time/brasil"
+    },
+    {
+      "jogo": "São Bernardo x Athletic Club",
+      "campeonato": "Brasileirão Série B",
+      "data": "2026-11-14",
+      "hora": "16:30",
+      "canais": ["GE", "Premiere"],
+      "fonte": "https://futebol.news/campeonato/brasileirao-serie-b/rodada/38"
+    },
+    {
+      "jogo": "Fortaleza x Vila Nova",
+      "campeonato": "Brasileirão Série B",
+      "data": "2026-11-14",
+      "hora": "16:30",
+      "canais": [],
+      "fonte": "https://futebol.news/campeonato/brasileirao-serie-b/rodada/38"
+    },
+    {
+      "jogo": "América MG x Avaí",
+      "campeonato": "Brasileirão Série B",
+      "data": "2026-11-14",
+      "hora": "16:30",
+      "canais": [],
+      "fonte": "https://futebol.news/campeonato/brasileirao-serie-b/rodada/38"
+    },
+    {
+      "jogo": "Ponte Preta x Operário-PR",
+      "campeonato": "Brasileirão Série B",
+      "data": "2026-11-14",
+      "hora": "16:30",
+      "canais": [],
+      "fonte": "https://futebol.news/campeonato/brasileirao-serie-b/rodada/38"
+    },
+    {
+      "jogo": "Sport Recife x Goiás",
+      "campeonato": "Brasileirão Série B",
+      "data": "2026-11-14",
+      "hora": "16:30",
+      "canais": [],
+      "fonte": "https://futebol.news/campeonato/brasileirao-serie-b/rodada/38"
+    },
+    {
+      "jogo": "Criciúma x Novorizontino",
+      "campeonato": "Brasileirão Série B",
+      "data": "2026-11-14",
+      "hora": "16:30",
+      "canais": [],
+      "fonte": "https://futebol.news/campeonato/brasileirao-serie-b/rodada/38"
+    },
+    {
+      "jogo": "Juventude x Botafogo SP",
+      "campeonato": "Brasileirão Série B",
+      "data": "2026-11-14",
+      "hora": "16:30",
+      "canais": [],
+      "fonte": "https://futebol.news/campeonato/brasileirao-serie-b/rodada/38"
+    },
+    {
+      "jogo": "Atlético GO x Cuiabá",
+      "campeonato": "Brasileirão Série B",
+      "data": "2026-11-14",
+      "hora": "16:30",
+      "canais": [],
+      "fonte": "https://futebol.news/campeonato/brasileirao-serie-b/rodada/38"
+    },
+    {
+      "jogo": "CRB x Ceará",
+      "campeonato": "Brasileirão Série B",
+      "data": "2026-11-14",
+      "hora": "16:30",
+      "canais": [],
+      "fonte": "https://futebol.news/campeonato/brasileirao-serie-b/rodada/38"
+    },
+    {
+      "jogo": "Londrina x Náutico",
+      "campeonato": "Brasileirão Série B",
+      "data": "2026-11-14",
+      "hora": "16:30",
+      "canais": [],
+      "fonte": "https://futebol.news/campeonato/brasileirao-serie-b/rodada/38"
+    },
+    {
+      "jogo": "Mirassol x Atlético-MG",
+      "campeonato": "Brasileirão Série A",
+      "data": "2026-11-14",
+      "hora": "18:30",
+      "canais": ["Prime Video"],
+      "fonte": "https://guiadejogos.com.br/campeonato/brasileirao-serie-a"
+    },
+    {
+      "jogo": "Chapecoense x Vasco",
+      "campeonato": "Brasileirão Série A",
+      "data": "2026-11-14",
+      "hora": "20:30",
+      "canais": ["Premiere"],
+      "fonte": "https://guiadejogos.com.br/campeonato/brasileirao-serie-a"
+    },
+    {
+      "jogo": "Singapura x Brasil",
+      "campeonato": "Amistosos da Seleção Brasileira",
+      "data": "2026-11-17",
+      "hora": "07:00",
+      "canais": [],
+      "fonte": "https://futebol.news/time/brasil"
+    },
+    {
+      "jogo": "Coritiba x Santos",
+      "campeonato": "Brasileirão Série A",
+      "data": "2026-11-18",
+      "hora": "19:30",
+      "canais": ["Premiere", "Record", "CazéTV"],
+      "fonte": "https://guiadejogos.com.br/campeonato/brasileirao-serie-a"
+    },
+    {
+      "jogo": "Remo x Chapecoense",
+      "campeonato": "Brasileirão Série A",
+      "data": "2026-11-18",
+      "hora": "20:00",
+      "canais": ["Premiere"],
+      "fonte": "https://guiadejogos.com.br/campeonato/brasileirao-serie-a"
+    },
+    {
+      "jogo": "Cruzeiro x Palmeiras",
+      "campeonato": "Brasileirão Série A",
+      "data": "2026-11-18",
+      "hora": "20:30",
+      "canais": ["Premiere"],
+      "fonte": "https://guiadejogos.com.br/campeonato/brasileirao-serie-a"
+    },
+    {
+      "jogo": "Flamengo x Athletico-PR",
+      "campeonato": "Brasileirão Série A",
+      "data": "2026-11-18",
+      "hora": "20:30",
+      "canais": ["SporTV", "Premiere"],
+      "fonte": "https://guiadejogos.com.br/campeonato/brasileirao-serie-a"
+    },
+    {
+      "jogo": "Grêmio x Bahia",
+      "campeonato": "Brasileirão Série A",
+      "data": "2026-11-18",
+      "hora": "21:30",
+      "canais": ["Premiere"],
+      "fonte": "https://guiadejogos.com.br/campeonato/brasileirao-serie-a"
+    },
+    {
+      "jogo": "Corinthians x Botafogo",
+      "campeonato": "Brasileirão Série A",
+      "data": "2026-11-18",
+      "hora": "21:30",
+      "canais": ["Premiere"],
+      "fonte": "https://guiadejogos.com.br/campeonato/brasileirao-serie-a"
+    },
+    {
+      "jogo": "Corinthians x Botafogo",
+      "campeonato": "Brasileirão Série A",
+      "data": "2026-11-19",
+      "hora": "00:30",
+      "canais": [],
+      "fonte": "https://www.flashscore.com.br/futebol/brasil/brasileirao-serie-a/"
+    },
+    {
+      "jogo": "Grêmio x Bahia",
+      "campeonato": "Brasileirão Série A",
+      "data": "2026-11-19",
+      "hora": "00:30",
+      "canais": [],
+      "fonte": "https://www.flashscore.com.br/futebol/brasil/brasileirao-serie-a/"
+    },
+    {
+      "jogo": "Vasco x Internacional",
+      "campeonato": "Brasileirão Série A",
+      "data": "2026-11-19",
+      "hora": "19:30",
+      "canais": ["SporTV", "Premiere"],
+      "fonte": "https://guiadejogos.com.br/campeonato/brasileirao-serie-a"
+    },
+    {
+      "jogo": "Vitória x RB Bragantino",
+      "campeonato": "Brasileirão Série A",
+      "data": "2026-11-19",
+      "hora": "19:30",
+      "canais": ["Premiere"],
+      "fonte": "https://guiadejogos.com.br/campeonato/brasileirao-serie-a"
+    },
+    {
+      "jogo": "São Paulo x Fluminense",
+      "campeonato": "Brasileirão Série A",
+      "data": "2026-11-19",
+      "hora": "21:30",
+      "canais": ["Globo", "Premiere", "GE TV"],
+      "fonte": "https://guiadejogos.com.br/campeonato/brasileirao-serie-a"
+    },
+    {
+      "jogo": "Vitória x Red Bull Bragantino",
+      "campeonato": "Brasileirão Série A",
+      "data": "2026-11-19",
+      "hora": "22:30",
+      "canais": [],
+      "fonte": "https://www.flashscore.com.br/futebol/brasil/brasileirao-serie-a/"
+    }
+  ]
+}

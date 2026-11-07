@@ -1,0 +1,191 @@
+{
+  "report": {
+    "provider": "linkup",
+    "semana": [
+      "2026-11-07",
+      "2026-11-08",
+      "2026-11-09",
+      "2026-11-10",
+      "2026-11-11",
+      "2026-11-12",
+      "2026-11-13"
+    ],
+    "buscas": 0,
+    "paginas": 0,
+    "paginasPuladas": [],
+    "browserMs": 0,
+    "chamadasLuna": 17,
+    "tokensIn": 120187,
+    "tokensOut": 1083,
+    "custoBuscasUsd": 0,
+    "custoLunaUsd": 0.01256,
+    "custoTotalUsd": 0.0126,
+    "acumuladoUsd": 0.6692,
+    "segundos": 35.7,
+    "jogos": 8,
+    "semCanal": 2,
+    "parouNoTeto": null,
+    "log": [
+      {
+        "etapa": "campeonato",
+        "query": "Brasileirão Série A jogos desta semana onde assistir 07/11 a 13/11 2026",
+        "urls": [
+          "https://guiadejogos.com.br/campeonato/brasileirao-serie-a",
+          "https://www.claro.com.br/blog/tv/brasileirao"
+        ],
+        "jogos": 0
+      },
+      {
+        "etapa": "campeonato",
+        "query": "Libertadores jogos desta semana onde assistir 07/11 a 13/11 2026",
+        "urls": [
+          "https://www.netflu.com.br/apostas/libertadores-onde-assistir/",
+          "https://nossopalestra.com.br/noticias/palmeiras-x-cerro-porteno-onde-assistir-jogo-pela-libertadores-2/"
+        ],
+        "jogos": 0
+      },
+      {
+        "etapa": "campeonato",
+        "query": "Copa do Brasil jogos desta semana onde assistir 07/11 a 13/11 2026",
+        "urls": [
+          "https://futebol.news/campeonato/copa-do-brasil",
+          "https://futebol.news/campeonato/copa-do-brasil/rodada/8"
+        ],
+        "jogos": 4
+      },
+      {
+        "etapa": "campeonato",
+        "query": "Copa Sul-Americana jogos desta semana onde assistir 07/11 a 13/11 2026",
+        "urls": [
+          "https://gcmais.com.br/noticias/2026/09/15/futebol-na-tv-hoje-veja-onde-assistir-aos-jogos-desta-terca-feira-15",
+          "https://www.365scores.com/pt-br/news/magazine/sul-americana-2026-onde-assistir-jogos/"
+        ],
+        "jogos": 0
+      },
+      {
+        "etapa": "campeonato",
+        "query": "Brasileirão Série B jogos desta semana onde assistir 07/11 a 13/11 2026",
+        "urls": [
+          "https://boca.com.br/esportes/nautico-x-crb-onde-assistir-hoje-pelo-brasileirao-serie-b-2026",
+          "https://www.tvpop.com.br/402348/serie-b-assista-ao-vivo-e-de-graca-ao-jogo-novorizontino-x-fortaleza/"
+        ],
+        "jogos": 2
+      },
+      {
+        "etapa": "campeonato",
+        "query": "Premier League jogos desta semana onde assistir 07/11 a 13/11 2026",
+        "urls": [
+          "https://www.goal.com/en-us/sports-events/soccer/c/premier-league/2kwbbcootiqqgmrzs6o5inle5",
+          "https://www.goal.com/en-us/news/watch-live-stream-english-premier-league-soccer/bltae11a6f392df209c"
+        ],
+        "jogos": 10
+      },
+      {
+        "etapa": "sem canal",
+        "query": "Ipswich Town x AFC Bournemouth 08/11 onde assistir ao vivo",
+        "urls": [
+          "https://futebol.news/jogo/ipswich-x-bournemouth-premier-league-2026-2027-rodada-10"
+        ],
+        "jogos": 0
+      },
+      {
+        "etapa": "sem canal",
+        "query": "Sunderland x Chelsea 08/11 onde assistir ao vivo",
+        "urls": [
+          "https://futebol.news/jogo/sunderland-x-chelsea-premier-league-2026-2027-rodada-10"
+        ],
+        "jogos": 1
+      },
+      {
+        "etapa": "sem canal",
+        "query": "Brighton & Hove Albion x Brentford 08/11 onde assistir ao vivo",
+        "urls": [
+          "https://www.aiscore.com/live/football-brentford-vs-brighton-hove-albion"
+        ],
+        "jogos": 0
+      },
+      {
+        "etapa": "sem canal",
+        "query": "Crystal Palace x Liverpool 08/11 onde assistir ao vivo",
+        "urls": [
+          "https://futebol.news/jogo/crystal-palace-x-liverpool-premier-league-2026-2027-rodada-10"
+        ],
+        "jogos": 1
+      },
+      {
+        "etapa": "sem canal",
+        "query": "Manchester United x Aston Villa 08/11 onde assistir ao vivo",
+        "urls": [
+          "https://futebol.news/jogo/manchester-united-x-aston-villa-premier-league-2026-2027-rodada-10"
+        ],
+        "jogos": 1
+      }
+    ]
+  },
+  "games": [
+    {
+      "jogo": "Novorizontino x Fortaleza",
+      "campeonato": "Brasileirão Série B",
+      "data": "2026-11-07",
+      "hora": "16:10",
+      "canais": ["Disney+", "RedeTV!", "ESPN4", "GOAT"],
+      "fonte": "https://www.tvpop.com.br/402348/serie-b-assista-ao-vivo-e-de-graca-ao-jogo-novorizontino-x-fortaleza/"
+    },
+    {
+      "jogo": "Náutico x CRB",
+      "campeonato": "Brasileirão Série B",
+      "data": "2026-11-07",
+      "hora": "21:30",
+      "canais": ["GE TV", "Premiere", "SporTV"],
+      "fonte": "https://boca.com.br/esportes/nautico-x-crb-onde-assistir-hoje-pelo-brasileirao-serie-b-2026"
+    },
+    {
+      "jogo": "Ipswich Town x AFC Bournemouth",
+      "campeonato": "Premier League",
+      "data": "2026-11-08",
+      "hora": "09:00",
+      "canais": [],
+      "fonte": "https://www.goal.com/en-us/sports-events/soccer/c/premier-league/2kwbbcootiqqgmrzs6o5inle5"
+    },
+    {
+      "jogo": "Sunderland x Chelsea",
+      "campeonato": "Premier League",
+      "data": "2026-11-08",
+      "hora": "09:00",
+      "canais": ["ESPN", "Disney+"],
+      "fonte": "https://futebol.news/jogo/sunderland-x-chelsea-premier-league-2026-2027-rodada-10"
+    },
+    {
+      "jogo": "Brighton & Hove Albion x Brentford",
+      "campeonato": "Premier League",
+      "data": "2026-11-08",
+      "hora": "09:00",
+      "canais": [],
+      "fonte": "https://www.goal.com/en-us/sports-events/soccer/c/premier-league/2kwbbcootiqqgmrzs6o5inle5"
+    },
+    {
+      "jogo": "Crystal Palace x Liverpool",
+      "campeonato": "Premier League",
+      "data": "2026-11-08",
+      "hora": "09:00",
+      "canais": ["Disney+", "CazéTV"],
+      "fonte": "https://futebol.news/jogo/crystal-palace-x-liverpool-premier-league-2026-2027-rodada-10"
+    },
+    {
+      "jogo": "Manchester United x Aston Villa",
+      "campeonato": "Premier League",
+      "data": "2026-11-08",
+      "hora": "11:30",
+      "canais": ["ESPN", "Disney+"],
+      "fonte": "https://futebol.news/jogo/manchester-united-x-aston-villa-premier-league-2026-2027-rodada-10"
+    },
+    {
+      "jogo": "Palmeiras x Vasco da Gama",
+      "campeonato": "Copa do Brasil",
+      "data": "2026-11-08",
+      "hora": "17:00",
+      "canais": ["Globo", "Premiere", "SporTV", "Prime Video"],
+      "fonte": "https://futebol.news/campeonato/copa-do-brasil"
+    }
+  ]
+}
