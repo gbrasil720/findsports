@@ -2,6 +2,8 @@ import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState } from 'react'
+import { AttendanceReportCard } from '@/components/dashboard/attendance-report-card'
+import { PendingRatingCard } from '@/components/dashboard/pending-rating-card'
 import { TorcedorShell } from '@/components/torcedor/shell'
 import {
   formatCode,
@@ -24,6 +26,10 @@ export const Route = createFileRoute('/(dashboard)/dashboard_/games')({
     ],
     links: [...PWA_LINKS]
   }),
+  // "Avaliar" abre aqui com `?avaliar=<jogo>`: os cards do pós-jogo trazem
+  // esse jogo na frente.
+  validateSearch: (search: Record<string, unknown>): { avaliar?: string } =>
+    typeof search.avaliar === 'string' ? { avaliar: search.avaliar } : {},
   component: MyGamesPage
 })
 
@@ -35,6 +41,7 @@ export const Route = createFileRoute('/(dashboard)/dashboard_/games')({
  */
 function MyGamesPage() {
   const trpc = useTRPC()
+  const { avaliar } = Route.useSearch()
   const query = useQuery({
     ...trpc.attendance.mine.queryOptions(),
     meta: { errorToast: false }
@@ -64,6 +71,8 @@ function MyGamesPage() {
     <TorcedorShell aba="meus-jogos">
       <div className="mx-auto w-full max-w-2xl space-y-4">
         <h1 className="onside-display text-3xl">Meus jogos</h1>
+        <AttendanceReportCard first={avaliar} />
+        <PendingRatingCard pending={ratings.data ?? []} first={avaliar} />
         <p className="sr-only" role="status" aria-live="polite">
           {announcement}
         </p>
@@ -139,7 +148,7 @@ function MyGamesPage() {
                       </div>
                       {toRate.has(game.eventId) ? (
                         <Link
-                          to="/dashboard"
+                          to="/dashboard/games"
                           search={{ avaliar: game.eventId }}
                           className="onside-btn onside-btn-ink"
                           aria-label={`Avaliar o ${game.barName}`}
