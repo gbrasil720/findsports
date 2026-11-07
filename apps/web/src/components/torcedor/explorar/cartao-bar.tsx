@@ -2,7 +2,9 @@ import { Link } from '@tanstack/react-router'
 import type { CSSProperties } from 'react'
 import { brasiliaTime } from '@/components/painel/noite'
 import {
+  abertoAgora,
   type BarDoJogo,
+  type BarSemJogo,
   distancia,
   type EstadoDoJogo,
   type JogoDaRegua
@@ -212,6 +214,57 @@ export function CartaoBar({
           </Link>
         )}
       </div>
+    </article>
+  )
+}
+
+/**
+ * O cartão do bar sem jogo no dia, abaixo dos que passam o jogo: mais
+ * discreto, sem a faixa do jogo nem as ações. Nome, bairro, distância e se
+ * está aberto agora; o cartão todo abre o bar.
+ */
+export function CartaoSemJogo({
+  bar,
+  quente,
+  onQuente
+}: {
+  bar: BarSemJogo
+  quente?: boolean
+  onQuente?: (id: string | null) => void
+}) {
+  const aberto = abertoAgora(bar.opening)
+  return (
+    <article
+      className={`bq${quente ? ' hot' : ''}`}
+      data-bar={bar.barId}
+      onMouseEnter={() => onQuente?.(bar.barId)}
+      onMouseLeave={() => onQuente?.(null)}
+    >
+      <Link to="/pub/$pubId" params={{ pubId: bar.barId }}>
+        {bar.photoUrl ? (
+          <img
+            src={bar.photoUrl}
+            alt=""
+            loading="lazy"
+            width={72}
+            height={72}
+          />
+        ) : (
+          <span className="ph-vazio">
+            <Ic n="beer" s={26} />
+          </span>
+        )}
+        <div className="bq-bd">
+          <h3>{bar.name}</h3>
+          <p className="meta">
+            {bar.neighborhood} ·{' '}
+            <span className="mono">{distancia(bar.distanceKm)}</span>
+          </p>
+          {aberto ? (
+            <p className={`hr${bar.opening?.open ? ' on' : ''}`}>{aberto}</p>
+          ) : null}
+        </div>
+      </Link>
     </article>
   )
 }
