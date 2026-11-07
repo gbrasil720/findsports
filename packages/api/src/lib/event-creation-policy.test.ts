@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 
 import {
   buildEventCreationPolicy,
+  countedTowardsLimit,
   type EventPolicyBar,
   getEventCreationPeriod,
   subtractUtcMonthClamped
@@ -139,5 +140,53 @@ describe('event creation policy', () => {
         now: NOW
       })
     ).toEqual({ status: 'inactive', canCreate: false, plan: 'elite' })
+  })
+})
+
+describe('primeiro jogo por conta da Onside', () => {
+  const periodStart = new Date('2026-08-01T00:00:00.000Z')
+
+  test('o primeiro jogo publicado, no período, não conta', () => {
+    expect(
+      countedTowardsLimit({
+        inPeriod: 6,
+        firstPublishedAt: new Date('2026-08-02T00:00:00.000Z'),
+        periodStart
+      })
+    ).toBe(5)
+    expect(
+      countedTowardsLimit({
+        inPeriod: 1,
+        firstPublishedAt: periodStart,
+        periodStart
+      })
+    ).toBe(0)
+  })
+
+  test('primeiro jogo de um período anterior: todos os do período contam', () => {
+    expect(
+      countedTowardsLimit({
+        inPeriod: 3,
+        firstPublishedAt: new Date('2026-07-10T00:00:00.000Z'),
+        periodStart
+      })
+    ).toBe(3)
+  })
+
+  test('sem jogo publicado, nada conta', () => {
+    expect(
+      countedTowardsLimit({ inPeriod: 0, firstPublishedAt: null, periodStart })
+    ).toBe(0)
+  })
+
+  test('o primeiro e mais cinco: o Starter ainda cria no limite exato', () => {
+    const used = countedTowardsLimit({
+      inPeriod: 5,
+      firstPublishedAt: new Date('2026-08-02T00:00:00.000Z'),
+      periodStart
+    })
+    expect(
+      buildEventCreationPolicy({ bar: makeBar('starter'), used, now: NOW })
+    ).toMatchObject({ canCreate: true, remaining: 1 })
   })
 })

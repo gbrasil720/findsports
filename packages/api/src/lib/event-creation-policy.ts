@@ -1,5 +1,5 @@
 import type { db } from '@findsports_oficial/db'
-import { and, count, eq, gte } from '@findsports_oficial/db'
+import { and, eq, isNotNull, sql } from '@findsports_oficial/db'
 import { event } from '@findsports_oficial/db/schema/platform'
 import { getCurrentPlan, type SubscriptionForPlan } from './current-plan'
 import { STARTER_EVENT_LIMIT } from './plan-limits'
@@ -151,17 +151,48 @@ export async function getEventCreationPolicy(
     now
   )
   const [result] = await executor
-    .select({ value: count() })
+    .select({
+      // `published_at` é `timestamp` sem fuso, em UTC: o ISO com `Z` vira a
+      // mesma hora no `::timestamp` (um `Date` cru sairia no fuso do processo).
+      inPeriod: sql<number>`count(*) filter (where ${event.publishedAt} >= ${period.start.toISOString()}::timestamp)::int`,
+      firstPublishedAt: sql<Date | null>`min(${event.publishedAt})`.mapWith(
+        event.publishedAt
+      )
+    })
     .from(event)
     .where(
-      // Conta o que foi publicado no período: rascunho (nulo) fica de fora
-      // até ir ao ar (WEB-436).
-      and(eq(event.barId, barSnapshot.id), gte(event.publishedAt, period.start))
+      // Conta o que foi publicado: rascunho (nulo) fica de fora até ir ao ar
+      // (WEB-436).
+      and(eq(event.barId, barSnapshot.id), isNotNull(event.publishedAt))
     )
 
   return buildEventCreationPolicy({
     bar: barSnapshot,
-    used: result?.value ?? 0,
+    used: countedTowardsLimit({
+      inPeriod: result?.inPeriod ?? 0,
+      firstPublishedAt: result?.firstPublishedAt ?? null,
+      periodStart: period.start
+    }),
     now
   })
+}
+
+/**
+ * "Primeiro jogo por conta da Onside": o primeiro jogo que o bar publicou na
+ * vida não conta no limite do Starter. Se ele caiu no período, sai da conta;
+ * apagá-lo faz do seguinte o primeiro, como apagar qualquer jogo devolve a
+ * vaga dele.
+ */
+export function countedTowardsLimit({
+  inPeriod,
+  firstPublishedAt,
+  periodStart
+}: {
+  inPeriod: number
+  firstPublishedAt: Date | null
+  periodStart: Date
+}): number {
+  const firstInPeriod =
+    firstPublishedAt !== null && firstPublishedAt >= periodStart
+  return Math.max(inPeriod - (firstInPeriod ? 1 : 0), 0)
 }
