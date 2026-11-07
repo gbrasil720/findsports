@@ -465,3 +465,31 @@ test('painel de avaliações e prévia de como o torcedor vê', async ({
     await expect(preview).toContainText('Página')
   }
 })
+
+test('Horário: liga a sexta, vira a meia-noite e salva com a barra', async ({
+  page
+}) => {
+  const { barId } = await openProfile(page)
+  const hours = page.getByRole('region', { name: 'Horário' })
+  await hours.getByRole('switch', { name: 'Aberto sexta' }).click()
+  await hours.getByLabel('Sexta abre').fill('17:00')
+  await hours.getByLabel('Sexta fecha').fill('02:00')
+  const saved = page.waitForResponse(/pub\.updateOpeningHours/)
+  await page.getByRole('button', { name: 'Salvar alterações' }).click()
+  expect((await saved).ok()).toBe(true)
+  await expect(page.getByText('Alterações salvas.')).toBeVisible()
+
+  const [bar] = await query<{ opening_hours: unknown }>(
+    'SELECT opening_hours FROM bar WHERE id = $1',
+    [barId]
+  )
+  expect(bar?.opening_hours).toEqual([
+    null,
+    null,
+    null,
+    null,
+    null,
+    { opens: '17:00', closes: '02:00' },
+    null
+  ])
+})

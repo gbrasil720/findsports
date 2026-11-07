@@ -137,3 +137,36 @@ test('trial Elite vencido com código em aberto: a aba Quem vai fica e o código
     page.getByText('Código validado. Libere a oferta da casa.')
   ).toBeVisible()
 })
+
+test('chegada recém-validada se desfaz no Quem vai, com confirmação', async ({
+  page
+}) => {
+  const pub = await createPub()
+  const { eventId, championship } = await createEvent(pub.barId)
+  const arrived = await createTicket(eventId)
+  await signIn(page, pub.user)
+
+  const found = await page.request.post(
+    '/api/trpc/reservationValidation.lookup',
+    { data: { code: arrived.code } }
+  )
+  const { codeId } = (await found.json()).result.data
+  const registered = await page.request.post(
+    '/api/trpc/reservationValidation.registerArrival',
+    { data: { codeId, requestId: randomUUID() } }
+  )
+  expect(registered.ok()).toBe(true)
+
+  await page.goto('/admin/quem-vai')
+  const game = page.getByRole('article', { name: championship })
+  await expect(game).toContainText('1 / 1')
+  await game
+    .getByRole('button', { name: `Desfazer a chegada de ${arrived.guestName}` })
+    .click()
+  const confirm = page.getByRole('dialog', { name: 'Desfazer a chegada?' })
+  await confirm.getByRole('button', { name: 'Sim, desfazer' }).click()
+  await expect(game).toContainText('0 / 1')
+  await expect(
+    game.getByRole('listitem').filter({ hasText: arrived.guestName })
+  ).not.toContainText('Validou')
+})

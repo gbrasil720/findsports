@@ -441,3 +441,137 @@ test('sem histórico, a grade avisa que ainda reúne dados de interesse', async 
     })
   ).toBeVisible()
 })
+
+// Rascunho (WEB-436): só o painel vê. Fica fora do perfil público e de
+// Próximos, aparece em Rascunhos e vai ao ar pelo "Publicar" do jogo aberto.
+test('rascunho fica fora do perfil público e vai ao ar pelo Publicar', async ({
+  page
+}) => {
+  const { barId } = await openSchedule(page)
+  await gotoSchedule(page)
+
+  const dialog = await fillNewGame(page, 'Rascunho E2E')
+  await press(page, dialog.getByRole('button', { name: 'Salvar rascunho' }))
+  await expect(dialog).toBeHidden()
+
+  const [draft] = await query<{ published_at: Date | null }>(
+    'SELECT published_at FROM event WHERE bar_id = $1',
+    [barId]
+  )
+  expect(draft?.published_at).toBeNull()
+  await expect(
+    page.getByRole('listitem').filter({ hasText: 'Rascunho E2E' })
+  ).toHaveCount(0)
+
+  // O perfil do bar (o que o torcedor vê) não mostra o rascunho.
+  await page.goto(`/pub/${barId}`)
+  await expect(page.locator('body')).not.toContainText('Rascunho E2E')
+  const profile = await page.request.get(
+    `/api/trpc/pubs.getById?input=${encodeURIComponent(JSON.stringify({ id: barId }))}`
+  )
+  expect(JSON.stringify(await profile.json())).not.toContain('Rascunho E2E')
+
+  await gotoSchedule(page)
+  await page.getByRole('tab', { name: /^Rascunhos/ }).click()
+  const row = page.getByRole('listitem').filter({ hasText: 'Rascunho E2E' })
+  await expect(row).toContainText('RASCUNHO')
+  const game = await openGame(page, 'Rascunho E2E')
+  await game.getByRole('button', { name: 'Publicar', exact: true }).click()
+  await expect
+    .poll(
+      async () =>
+        (
+          await query<{ published_at: Date | null }>(
+            'SELECT published_at FROM event WHERE bar_id = $1',
+            [barId]
+          )
+        )[0]?.published_at ?? null
+    )
+    .not.toBeNull()
+
+  await page.goto(`/pub/${barId}`)
+  await expect(page.getByText('Rascunho E2E').first()).toBeVisible()
+})
+
+// Oferta, telão, som e lista por jogo (WEB-422, WEB-399, WEB-437): a folha
+// troca a oferta só deste jogo e o jogo aberto desliga na hora.
+test('oferta da casa trocada e desligada por jogo, e telão e lista no jogo aberto', async ({
+  page
+}) => {
+  const { barId } = await openSchedule(page, {
+    bar: { house_offer: 'Chopp em dobro', amenities: [1, 2] }
+  })
+  await gotoSchedule(page)
+
+  const dialog = await fillNewGame(page, 'Oferta E2E')
+  await expect(
+    dialog.getByRole('textbox', { name: 'Oferta da casa neste jogo' })
+  ).toHaveValue('Chopp em dobro')
+  await dialog
+    .getByRole('textbox', { name: 'Oferta da casa neste jogo' })
+    .fill('Batata grátis')
+  await press(page, dialog.getByRole('button', { name: 'Publicar jogo' }))
+  await expect(dialog).toBeHidden()
+
+  const gameRow = async () =>
+    (
+      await query<{
+        house_offer: string | null
+        no_house_offer: boolean
+        on_big_screen: boolean | null
+        attendance_enabled: boolean
+      }>(
+        `SELECT house_offer, no_house_offer, on_big_screen, attendance_enabled
+         FROM event WHERE bar_id = $1`,
+        [barId]
+      )
+    )[0]
+  expect(await gameRow()).toEqual({
+    house_offer: 'Batata grátis',
+    no_house_offer: false,
+    // Telão sem mexer herda das características.
+    on_big_screen: null,
+    attendance_enabled: true
+  })
+
+  // O torcedor vê a oferta deste jogo, não a padrão.
+  const offerOnProfile = async () => {
+    const response = await page.request.get(
+      `/api/trpc/pubs.getById?input=${encodeURIComponent(JSON.stringify({ id: barId }))}`
+    )
+    const body = await response.json()
+    return body.result.data.events[0]?.houseOffer ?? null
+  }
+  expect(await offerOnProfile()).toBe('Batata grátis')
+
+  const game = await openGame(page, 'Oferta E2E')
+  await game.getByRole('switch', { name: 'Oferta da casa neste jogo' }).click()
+  await expect.poll(async () => (await gameRow())?.no_house_offer).toBe(true)
+  expect(await offerOnProfile()).toBeNull()
+
+  await game.getByRole('switch', { name: 'Passa no telão' }).click()
+  await expect.poll(async () => (await gameRow())?.on_big_screen).toBe(false)
+  await game
+    .getByRole('switch', { name: 'Lista de quem vai neste jogo' })
+    .click()
+  await expect
+    .poll(async () => (await gameRow())?.attendance_enabled)
+    .toBe(false)
+})
+
+test('fora do Elite a folha não tem oferta nem lista por jogo', async ({
+  page
+}) => {
+  await openSchedule(page, { subscription: { plan: 'pro' } })
+  await gotoSchedule(page)
+  const dialog = await fillNewGame(page, 'Pro E2E')
+  await expect(
+    dialog.getByRole('switch', { name: 'Passa no telão' })
+  ).toBeVisible()
+  await expect(
+    dialog.getByRole('switch', { name: 'Oferta da casa neste jogo' })
+  ).toHaveCount(0)
+  await expect(
+    dialog.getByRole('switch', { name: 'Lista de quem vai neste jogo' })
+  ).toHaveCount(0)
+})
