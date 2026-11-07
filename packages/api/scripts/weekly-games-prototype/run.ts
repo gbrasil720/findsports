@@ -104,7 +104,8 @@ async function cf(
       'content-type': 'application/json',
       ...headers
     },
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(120_000)
   })
   const json = (await res.json().catch(() => ({}))) as Record<string, unknown>
   if (!res.ok || json.success === false)
