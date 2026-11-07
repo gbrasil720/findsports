@@ -819,6 +819,12 @@ html[data-theme="dark"] .pn3 {
   margin-top: 20px;
 }
 
+.pn3 .pn-int-v {
+  margin: 14px 0 0;
+  font: 400 40px / 0.9 var(--display);
+  font-variant-numeric: tabular-nums;
+}
+
 .pn3 .pn-rev {
   display: grid;
   grid-template-columns: 40px minmax(0, 1fr);

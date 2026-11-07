@@ -218,6 +218,7 @@ export function HojePage() {
         ) : null}
         <TrintaDias />
         <Avaliacoes />
+        <InteresseHoje day={today} />
         <PlanoCard />
       </div>
 
@@ -881,3 +882,67 @@ function Avaliacoes() {
     </section>
   )
 }
+
+/**
+ * Interesse de hoje (protótipo `ptit`; WEB-449): quem se interessou pelo bar
+ * (WhatsApp, rota ou telefone) desde a meia-noite do dia da casa, contra a
+ * média da mesma janela nas quatro semanas antes. Todos os planos.
+ */
+function InteresseHoje({ day }: { day: string }) {
+  const trpc = useTRPC()
+  const q = useQuery({
+    ...trpc.commercialAnalytics.getMyWeekdayInterest.queryOptions({ day }),
+    refetchInterval: 60_000,
+    meta: { errorToast: false }
+  })
+  const weekday = longDayLabel(day).split(',')[0]
+  const d = q.data
+  const change = d?.changePercent ?? null
+  return (
+    <section className="pn-card" aria-labelledby="pn-int-t">
+      <div className="pn-chd">
+        <h3 id="pn-int-t">Interesse de hoje</h3>
+        <small>{weekday}, até agora</small>
+      </div>
+      {q.isError ? (
+        <div className="pn-err" role="alert">
+          <p>
+            {getUserFacingMessage(
+              q.error,
+              'Não foi possível carregar o interesse de hoje.'
+            )}
+          </p>
+          {isRetryableError(q.error) ? (
+            <button
+              type="button"
+              className="pn-btn pn-ghost pn-sm"
+              onClick={() => void q.refetch()}
+            >
+              Tentar novamente
+            </button>
+          ) : null}
+        </div>
+      ) : !d ? (
+        <p className="pn-note">Carregando…</p>
+      ) : (
+        <>
+          <p className="pn-int-v">
+            {change === null
+              ? '—'
+              : `${change > 0 ? '+' : change < 0 ? '−' : ''}${Math.abs(change).toLocaleString('pt-BR')}%`}
+          </p>
+          <p className="pn-note">
+            {d.normal === null
+              ? `Seu bar tem menos de duas ${weekday}s de histórico. Na próxima semana, este número compara hoje com o seu normal de ${weekday}.`
+              : change === null
+                ? `${interestedText(d.interestedPeople)} hoje. Nas últimas ${weekday}s, ninguém até esta hora.`
+                : `Interesse ${change < 0 ? 'abaixo' : change > 0 ? 'acima' : 'igual ao'}${change === 0 ? '' : ' do'} seu normal de ${weekday}: ${interestedText(d.interestedPeople)} até agora, contra ${d.normal.toLocaleString('pt-BR')} em média.`}
+          </p>
+        </>
+      )}
+    </section>
+  )
+}
+
+const interestedText = (n: number) =>
+  `${n.toLocaleString('pt-BR')} ${n === 1 ? 'pessoa se interessou' : 'pessoas se interessaram'}`
