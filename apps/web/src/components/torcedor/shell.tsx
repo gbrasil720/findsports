@@ -360,6 +360,10 @@ export function TorcedorShell({ aba, children, busca, onde }: Props) {
                           Houdini
                         </MenuLink>
                       ) : null}
+                      <Link role="menuitem" to="/" search={{ public: '1' }}>
+                        <Ic n="map" s={19} />
+                        Ver a landing
+                      </Link>
                       <button
                         role="menuitem"
                         type="button"
