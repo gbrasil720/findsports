@@ -23,8 +23,13 @@ import {
   openingStatus
 } from './opening-hours'
 import { PUBLIC_BAR_COLUMNS } from './public-bar'
-import { hasPublicRating, ratingPercentage } from './rating'
-import { summarizeReasons } from './rating-reasons'
+import {
+  hasPublicRating,
+  RATING_PUBLIC_FLOOR,
+  ratingPercentage
+} from './rating'
+import { readRatingList, readReasonSummary } from './rating-list'
+import { starsAverage } from './rating-review'
 import { utcIso } from './utc-timestamp'
 
 /*
@@ -49,29 +54,6 @@ export async function resolveBarRef(ref: string): Promise<string | null> {
     .where(sql`${bar.id} LIKE ${`${ref}-%`}`)
     .limit(2)
   return rows.length === 1 ? (rows[0]?.id ?? null) : null
-}
-
-/**
- * Quantas vezes cada etiqueta de "O que pesou?" foi citada no bar, de quem
- * voltaria e de quem não voltaria (WEB-398). Todas as avaliações, como a nota
- * desta branch; a de integração passa a contar só as verificadas (WEB-408).
- */
-async function readReasonSummary(barId: string) {
-  const rows = await db.execute(sql`
-    SELECT r.would_return, reason, COUNT(*)::int AS count
-    FROM bar_rating r, unnest(r.reasons) AS reason
-    WHERE r.bar_id = ${barId}
-    GROUP BY r.would_return, reason
-  `)
-  return summarizeReasons(
-    (
-      rows.rows as { would_return: boolean; reason: string; count: number }[]
-    ).map((row) => ({
-      wouldReturn: row.would_return,
-      reason: row.reason,
-      count: Number(row.count)
-    }))
-  )
 }
 
 /** O jogo como a página o lê: sem o que é da sessão. */
@@ -123,6 +105,8 @@ async function readLiveBar(barId: string, now: Date) {
       isActive: true,
       ratingCount: true,
       ratingPositive: true,
+      ratingStarsCount: true,
+      ratingStarsSum: true,
       houseOffer: true,
       menuUrl: true,
       averageSpendCents: true,
@@ -171,6 +155,8 @@ async function readLiveBar(barId: string, now: Date) {
     isActive,
     ratingCount,
     ratingPositive,
+    ratingStarsCount,
+    ratingStarsSum,
     houseOffer,
     menuUrl,
     averageSpendCents,
@@ -190,10 +176,13 @@ async function readLiveBar(barId: string, now: Date) {
   const elite = plan === 'elite'
   const amenities = declaredAmenityIds(publicBar.amenities)
   const hours = normalizeOpeningHours(openingHours)
-  const [going, reasons] = await Promise.all([
+  // Abaixo do piso de verificadas não sai nada da nota (WEB-408, WEB-451):
+  // nem %, nem estrelas, nem etiquetas, nem comentários. A mesma regra de
+  // `pubs.getById`.
+  const [going, reasons, reviews] = await Promise.all([
     readGoing(events.map((game) => game.id)),
-    // "O que pesou?": o mesmo piso da nota, só as etiquetas, sem contagem.
-    showRating ? readReasonSummary(row.id) : null
+    showRating ? readReasonSummary(row.id) : null,
+    showRating ? readRatingList(row.id, { public: true, limit: 3 }) : []
   ])
 
   const games: PublicGame[] = events.map((game) => ({
@@ -222,10 +211,30 @@ async function readLiveBar(barId: string, now: Date) {
     rating: showRating
       ? {
           total: ratingCount,
-          percentage: ratingPercentage(ratingPositive, ratingCount)
+          percentage: ratingPercentage(ratingPositive, ratingCount),
+          // Média das estrelas com o mesmo piso (`null` sem estrelas que
+          // bastem) e quantas a formam.
+          stars: starsAverage(
+            ratingStarsSum,
+            ratingStarsCount,
+            RATING_PUBLIC_FLOOR
+          ),
+          starsCount: ratingStarsCount
         }
       : null,
     ratingReasons: reasons,
+    // "O que dizem": os três comentários aprovados mais recentes das
+    // verificadas; nome só de quem quis aparecer.
+    reviews: reviews.map((review) => ({
+      id: review.id,
+      stars: review.stars,
+      comment: review.comment,
+      name: review.name,
+      game: review.participants.length
+        ? review.participants.join(' × ')
+        : review.participantFreeText || review.championship,
+      startsAt: new Date(review.startsAt)
+    })),
     ...resolvePublicBarMenu(
       { menuUrl, averageSpendCents },
       subscription ?? null,

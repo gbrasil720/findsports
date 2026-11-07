@@ -1,6 +1,9 @@
 import { expect, test } from 'bun:test'
 import { inArray } from '@findsports_oficial/db'
-import { attendance } from '@findsports_oficial/db/schema/attendance'
+import {
+  attendance,
+  attendanceCheckin
+} from '@findsports_oficial/db/schema/attendance'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { bar } from '@findsports_oficial/db/schema/platform'
 import { barRating } from '@findsports_oficial/db/schema/rating'
@@ -119,19 +122,15 @@ integrationTest('prefixo que bate em dois bares não resolve', async () => {
 })
 
 integrationTest(
-  '"O que pesou?" só acima do piso da nota, só as etiquetas, sem número',
+  'nota, estrelas, "O que pesou?" e comentários só com 5 verificadas; comentário só aprovado',
   async () => {
     const ctx = await seedBar('pro', 'active', null)
     const { setAppConfig, resetAppConfig } = await import('../lib/app-config')
-    const raters = [
-      crypto.randomUUID(),
-      crypto.randomUUID(),
-      crypto.randomUUID()
-    ]
+    const raters = Array.from({ length: 6 }, () => crypto.randomUUID())
     await ctx.db.insert(user).values(
-      raters.map((id) => ({
+      raters.map((id, index) => ({
         id,
-        name: 'Avaliador',
+        name: `Avaliador ${index}`,
         email: `${id}@integration.invalid`,
         emailVerified: true,
         role: 'fan' as const
@@ -141,32 +140,108 @@ integrationTest(
       await setAppConfig('rating.public_display', true, null)
       const { readPublicBarPage } = await lib()
       const gameId = await ctx.seedGame({
-        startsAt: new Date(Date.now() - 48 * 3_600_000)
+        startsAt: new Date(Date.now() - 48 * 3_600_000),
+        participantFreeText: 'Jogo avaliado'
       })
-      const rate = (id: string, wouldReturn: boolean, reasons: string[]) =>
+      // Verificada é quem fez check-in (ou teve o código validado): o banco
+      // decide pelo trigger, na gravação da avaliação.
+      const verify = (id: string) =>
+        ctx.db.insert(attendanceCheckin).values({
+          userId: id,
+          eventId: gameId,
+          latitude: -23.55,
+          longitude: -46.63,
+          distanceM: 10
+        })
+      const rate = (
+        id: string,
+        fields: Partial<typeof barRating.$inferInsert> = {}
+      ) =>
         ctx.db.insert(barRating).values({
           barId: ctx.barId,
           actorUserId: id,
           eventId: gameId,
-          wouldReturn,
-          reasons
+          wouldReturn: true,
+          stars: 5,
+          ...fields
         })
-      await rate(raters[0] ?? '', true, ['sound', 'screen'])
-      await rate(raters[1] ?? '', true, ['sound'])
+      const page = async () => {
+        const read = await readPublicBarPage(ctx.barId)
+        if (read?.kind !== 'live') throw new Error('esperava o bar no ar')
+        return read.bar
+      }
+      const [a, b, c, d, e, stranger] = raters as [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+      for (const id of [a, b, c, d]) await verify(id)
+      await rate(a, {
+        reasons: ['sound', 'screen'],
+        comment: 'Som alto e telão de qualquer mesa.',
+        commentReview: 'approved',
+        identified: true
+      })
+      await rate(b, { reasons: ['sound'], stars: 4 })
+      await rate(c, {
+        wouldReturn: false,
+        reasons: ['crowded'],
+        stars: 3,
+        comment: 'Ainda em revisão.',
+        commentReview: 'pending'
+      })
+      await rate(d, {
+        stars: 4,
+        comment: 'Anônimo.',
+        commentReview: 'approved'
+      })
+      // Não verificada: não conta para o piso nem aparece.
+      await rate(stranger, {
+        wouldReturn: false,
+        reasons: ['price'],
+        stars: 1,
+        comment: 'Nunca fui.',
+        commentReview: 'approved'
+      })
 
-      const below = await readPublicBarPage(ctx.barId)
-      if (below?.kind !== 'live') throw new Error('esperava o bar no ar')
-      expect(below.bar.rating).toBeNull()
-      expect(below.bar.ratingReasons).toBeNull()
+      // Quatro verificadas, abaixo do piso de 5: nada da nota.
+      const below = await page()
+      expect(below.rating).toBeNull()
+      expect(below.ratingReasons).toBeNull()
+      expect(below.reviews).toEqual([])
 
-      await rate(raters[2] ?? '', false, ['crowded'])
-      const above = await readPublicBarPage(ctx.barId)
-      if (above?.kind !== 'live') throw new Error('esperava o bar no ar')
-      expect(above.bar.rating).toEqual({ total: 3, percentage: 67 })
-      expect(above.bar.ratingReasons).toEqual({
+      await verify(e)
+      await rate(e, { stars: 5, reasons: ['screen'] })
+      const above = await page()
+      expect(above.rating).toEqual({
+        total: 5,
+        percentage: 80,
+        stars: 4.2,
+        starsCount: 5
+      })
+      // Só das verificadas, sem contagem: "price" da não verificada fica fora.
+      expect(above.ratingReasons).toEqual({
         positive: ['sound', 'screen'],
         negative: ['crowded']
       })
+      // Só comentário aprovado de verificada; nome só de quem quis.
+      expect(
+        above.reviews.map(({ comment, name, game }) => ({
+          comment,
+          name,
+          game
+        }))
+      ).toEqual([
+        { comment: 'Anônimo.', name: null, game: 'Jogo avaliado' },
+        {
+          comment: 'Som alto e telão de qualquer mesa.',
+          name: 'Avaliador 0',
+          game: 'Jogo avaliado'
+        }
+      ])
     } finally {
       await resetAppConfig('rating.public_display')
       await ctx.cleanup()
