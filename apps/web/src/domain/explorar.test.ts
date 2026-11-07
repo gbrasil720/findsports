@@ -29,6 +29,7 @@ const bar = (over: Partial<BarDoJogo>): BarDoJogo => ({
   closes: null,
   attendanceEnabled: true,
   going: null,
+  classic: null,
   ...over
 })
 // 21:30 e 23:00 de Brasília em 7/11/2026 (UTC-3).
@@ -114,6 +115,20 @@ describe('explorar', () => {
     expect(ids({ ...base, busca: 'fla' })).toHaveLength(3)
     expect(jogosDaBusca([j], 'palmeiras')).toHaveLength(0)
     expect(jogosDaBusca([j], 'zé')).toHaveLength(1)
+  })
+
+  test('na ordem padrão o Elite do clássico vem antes', () => {
+    const classic = { reason: 'Fla × Pal', ruleVersion: 1 }
+    const j = jogo('Fla × Pal', '2026-11-08T00:30:00Z', [
+      bar({ barId: 'perto', distanceKm: 0.2 }),
+      bar({ barId: 'pro', distanceKm: 0.5, classic }),
+      bar({ barId: 'elite', distanceKm: 3, elite: true, classic })
+    ])
+    const base = { amenities: [], oferta: false, busca: '' }
+    expect(
+      baresDoJogo(j, { ...base, ordem: 'perto' }).map((b) => b.barId)
+    ).toEqual(['elite', 'perto', 'pro'])
+    expect(baresDoJogo(j, { ...base, ordem: 'gente' })[0]?.barId).toBe('perto')
   })
 
   test('distância em metros ou km', () => {

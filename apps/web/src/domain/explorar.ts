@@ -36,7 +36,12 @@ export type BarDoJogo = {
   closes: string | null
   attendanceEnabled: boolean
   going: { count: number; initials: string[] } | null
+  classic: { reason: string; ruleVersion: number } | null
 }
+
+/** Elite num clássico: vai na frente na ordem padrão e conta como entrega. */
+export const eliteNoClassico = (bar: BarDoJogo) =>
+  bar.elite && bar.classic !== null
 
 const WEEKDAY = new Intl.DateTimeFormat('pt-BR', {
   timeZone: 'UTC',
@@ -183,7 +188,12 @@ export function baresDoJogo(
         (b.rating?.stars ?? 0) - (a.rating?.stars ?? 0) || porPerto(a, b)
     )
   }
-  return lista.sort(porPerto)
+  // "Entrega nos clássicos" (WEB-130), como na busca: na ordem padrão o
+  // Elite do clássico vem antes, e entre eles vale a distância.
+  return lista.sort(
+    (a, b) =>
+      Number(eliteNoClassico(b)) - Number(eliteNoClassico(a)) || porPerto(a, b)
+  )
 }
 
 /** "450 m" ou "1,2 km". */
