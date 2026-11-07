@@ -185,9 +185,14 @@ export const bar = pgTable(
       >(),
     // Contadores de avaliação, mantidos por trigger a partir de `bar_rating`
     // (migration 0022). A busca precisa ordenar por nota sem agregar por
-    // candidato — que é o mesmo motivo de `plan` viver aqui.
+    // candidato — que é o mesmo motivo de `plan` viver aqui. Contam só a
+    // avaliação verificada (WEB-408): código validado ou check-in.
     ratingCount: integer('rating_count').default(0).notNull(),
     ratingPositive: integer('rating_positive').default(0).notNull(),
+    // Estrelas das verificadas que deram estrelas (WEB-451): a média pública
+    // é `ratingStarsSum / ratingStarsCount`. Mesmo trigger.
+    ratingStarsCount: integer('rating_stars_count').default(0).notNull(),
+    ratingStarsSum: integer('rating_stars_sum').default(0).notNull(),
     // Limite inferior de Wilson, DERIVADO pelo próprio Postgres a partir dos
     // dois contadores acima. Coluna gerada, não trigger: a fórmula é
     // aritmética imutável, então não há o que dessincronizar. A mesma conta
