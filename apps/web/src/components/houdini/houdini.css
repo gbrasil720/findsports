@@ -587,6 +587,12 @@ html[data-consent]:has(.houdini) body {
   color: var(--hd-muted);
 }
 
+/* Fila da Revisão: o cartão com o recusar aberto cresce sozinho; o vizinho
+ * da mesma linha fica na altura dele. */
+.hd-grid.is-fila {
+  align-items: start;
+}
+
 .hd-grid {
   display: grid;
   gap: 14px;

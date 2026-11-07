@@ -253,6 +253,34 @@ export function describe(entry: GrimorioEntry): {
         text: `religou ${label}`,
         detail: null
       }
+    case 'bar.photo_approve':
+      return {
+        icon: 'check',
+        tone: 'acid',
+        text: `aprovou uma foto de ${label}`,
+        detail: detail.cover ? 'virou a capa' : null
+      }
+    case 'bar.photo_reject':
+      return {
+        icon: 'warn',
+        tone: 'live',
+        text: `recusou uma foto de ${label}`,
+        detail: typeof detail.reason === 'string' ? detail.reason : null
+      }
+    case 'bar.description_approve':
+      return {
+        icon: 'check',
+        tone: 'acid',
+        text: `aprovou a descrição de ${label}`,
+        detail: null
+      }
+    case 'bar.description_reject':
+      return {
+        icon: 'warn',
+        tone: 'live',
+        text: `recusou a descrição de ${label}`,
+        detail: typeof detail.reason === 'string' ? detail.reason : null
+      }
     default:
       return {
         icon: 'book',
