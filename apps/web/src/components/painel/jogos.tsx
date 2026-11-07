@@ -1,21 +1,13 @@
-import type { EventComparisonTarget } from '@findsports_oficial/api/lib/commercial-analytics/types'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import type {
-  AdminEvent,
-  EventAnalyticsState,
-  PolicyState
-} from '@/components/admin/admin-model'
+import type { AdminEvent, PolicyState } from '@/components/admin/admin-model'
 import {
-  useMyAnalyticsEntitlements,
   useMyBar,
   useMyEventCreationPolicy,
   useMyEvents
 } from '@/components/admin/admin-queries'
-import type { AnalyticsDateRange } from '@/components/admin/analytics-period'
 import { EventDeleteDialog } from '@/components/admin/event-delete-dialog'
-import { EventPerformance } from '@/components/admin/event-performance'
 import {
   getCreateBlockReason,
   getDeleteErrorMessage
@@ -27,6 +19,7 @@ import {
   Beer,
   Check,
   Close,
+  Ranking,
   Search,
   Share,
   Sound,
@@ -34,14 +27,16 @@ import {
   Tv
 } from '@/components/landing/v3/icons'
 import { getLapsedPaidPlan } from '@/lib/lapsed-plan'
-import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
+import { isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import { Avisos, usePlanStatus } from './avisos'
 import {
+  AVATAR_COLORS,
   barScreen,
   type GoingGame,
   goingCount,
   interestLabel,
+  useEventAnalytics,
   useGoing,
   useInterest
 } from './dados'
@@ -66,18 +61,9 @@ import { initials, usePainel } from './painel-shell'
  * Passados, busca, lista por dia ou semana (domingo a sábado) e o jogo aberto
  * à direita, ou numa folha abaixo de 1100 px. Rascunho, oferta, telão e som
  * por jogo não existem no servidor: telão e som são os do bar, só leitura.
- * "Como cada jogo foi" e "Comparar jogos" ficam em Passados, com a tela
- * antiga (`event-performance.tsx`).
+ * "Como cada jogo foi" e "Comparar jogos" moram em Desempenho; Passados
+ * leva para lá.
  */
-
-const AVATAR_COLORS = [
-  '#c9f135',
-  '#f6b8a6',
-  '#b8d2f0',
-  '#e7d3a8',
-  '#cfe3b0',
-  '#e3c0e8'
-]
 
 const WIDE = '(min-width: 1101px)'
 function useWide(): boolean {
@@ -92,82 +78,16 @@ function useWide(): boolean {
   )
 }
 
-/** O desempenho por jogo do período (o mesmo pedido da aba Grade antiga). */
-function useEventAnalytics(range: AnalyticsDateRange, events: AdminEvent[]) {
-  const trpc = useTRPC()
-  const [target, setTarget] = useState<EventComparisonTarget | undefined>()
-  const entitlements = useMyAnalyticsEntitlements()
-  const from = Date.parse(range.from)
-  const to = Date.parse(range.to)
-  const defaultIds = events
-    .filter((event) => {
-      const startsAt = Date.parse(event.startsAt)
-      return startsAt >= from && startsAt <= to
-    })
-    .map((event) => event.id)
-    .slice(0, 3)
-  const requested =
-    target ??
-    (entitlements.data?.comparison !== 'previous_period' && defaultIds.length
-      ? { type: 'events' as const, eventIds: defaultIds }
-      : undefined)
-  const blocked = entitlements.data?.eventBreakdown === 'none'
-  const q = useQuery({
-    ...trpc.commercialAnalytics.getMyEventAnalytics.queryOptions({
-      from: range.from,
-      to: range.to,
-      ...(requested ? { comparisonTarget: requested } : {})
-    }),
-    enabled: entitlements.isSuccess && !blocked,
-    meta: { errorToast: false }
-  })
-
-  // O entitlement (não o plano) é autoritativo.
-  const state: EventAnalyticsState = entitlements.isLoading
-    ? { status: 'loading' }
-    : entitlements.isError || !entitlements.data
-      ? {
-          status: 'error',
-          retryable: isRetryableError(entitlements.error),
-          retry: () => void entitlements.refetch()
-        }
-      : blocked
-        ? { status: 'blocked' }
-        : q.isLoading
-          ? { status: 'loading' }
-          : q.isError
-            ? {
-                status: 'error',
-                message: getUserFacingMessage(
-                  q.error,
-                  'Não foi possível carregar o desempenho dos jogos. Tente novamente.'
-                ),
-                retryable: isRetryableError(q.error),
-                retry: () => void q.refetch()
-              }
-            : q.data?.events.length
-              ? {
-                  status: 'ready',
-                  items: q.data.events,
-                  comparisonMode: entitlements.data.comparison,
-                  comparisonTarget: requested,
-                  comparison: q.data.comparison,
-                  comparisonLoading: q.isFetching && !!requested,
-                  onComparisonTargetChange: setTarget,
-                  from: q.data.from,
-                  to: q.data.to
-                }
-              : { status: 'empty' }
-
-  return {
-    state,
-    byEvent: new Map((q.data?.events ?? []).map((row) => [row.eventId, row]))
-  }
-}
-
 type Tab = 'prox' | 'pass'
 
-export function JogosPage({ initialId }: { initialId?: string }) {
+export function JogosPage({
+  initialId,
+  passados = false
+}: {
+  initialId?: string
+  /** `?passados=1`: abre em Passados (o link de Desempenho). */
+  passados?: boolean
+}) {
   const trpc = useTRPC()
   const queryClient = useQueryClient()
   const now = useMinuteNow()
@@ -183,7 +103,9 @@ export function JogosPage({ initialId }: { initialId?: string }) {
   const all = events.data ?? []
   const initial = all.find((event) => event.id === initialId)
   const [tab, setTab] = useState<Tab>(() =>
-    initial && eventState(initial, now) === 'past' ? 'pass' : 'prox'
+    passados || (initial && eventState(initial, now) === 'past')
+      ? 'pass'
+      : 'prox'
   )
   const [mode, setMode] = useState<'lista' | 'semana'>('lista')
   const [query, setQuery] = useState('')
@@ -487,11 +409,18 @@ export function JogosPage({ initialId }: { initialId?: string }) {
                 <em>EM BREVE</em>
               </div>
             ) : (
-              <section className="pn-perf" aria-label="Como cada jogo foi">
-                <div className="onside-app pn-legado">
-                  <EventPerformance eventAnalyticsState={analytics.state} />
-                </div>
-              </section>
+              <Link
+                to="/admin/desempenho"
+                hash="como-cada-jogo"
+                className="pn-soon pn-soon-go"
+              >
+                <Ranking size={20} />
+                <span>
+                  <b>Como cada jogo foi</b> · quem viu e quem se interessou em
+                  cada jogo do período, e “Comparar jogos”, em Desempenho.
+                </span>
+                <Arrow size={18} />
+              </Link>
             )}
           </div>
           {wide && detail ? (
