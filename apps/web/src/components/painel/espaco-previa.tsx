@@ -148,8 +148,8 @@ export function EspacoPrevia({
         </div>
       </div>
       <p>
-        A prévia acompanha o que você digita. O torcedor vê depois de salvar; a
-        foto muda na hora.
+        A prévia acompanha o que você digita. O torcedor vê depois de salvar;
+        fotos e descrição novas, depois da revisão da Onside.
       </p>
     </aside>
   )

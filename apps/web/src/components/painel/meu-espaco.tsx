@@ -10,10 +10,6 @@ import {
   mensagemEnderecoNaoEncontrado,
   motivoTelefoneInvalido
 } from '@findsports_oficial/api/lib/bar-profile-validation'
-import {
-  PHOTO_CONTENT_TYPES,
-  PHOTO_MAX_BYTES
-} from '@findsports_oficial/api/lib/blob-photo'
 import type { SubscriptionStanding } from '@findsports_oficial/api/lib/current-plan'
 import type { SubscriptionPlan } from '@findsports_oficial/db'
 import {
@@ -23,7 +19,7 @@ import {
 import { HOUSE_OFFER_MAX_LENGTH } from '@findsports_oficial/db/house-offer'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { type ReactNode, useRef, useState } from 'react'
+import { type ReactNode, useState } from 'react'
 import { toast } from 'sonner'
 import type { AdminBar } from '@/components/admin/admin-model'
 import {
@@ -37,12 +33,9 @@ import {
   Arrow,
   Beer,
   Calendar,
-  Camera,
   Check,
   Doc,
   Pin,
-  Plus,
-  Star,
   Tv
 } from '@/components/landing/v3/icons'
 import { conciliarUfComCidade, UfSelect } from '@/components/uf-select'
@@ -51,10 +44,14 @@ import { getEventTemporalState } from '@/domain/events'
 import { type EnderecoDoCep, useCep } from '@/lib/cep'
 import { isLapsed, LAPSED_COPY } from '@/lib/lapsed-plan'
 import { getPlan, PLAN_TIER_ORDER } from '@/lib/plan-catalog'
-import { uploadMedia } from '@/lib/upload-media'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { formatPhone } from '@/utils/format-phone'
 import { useTRPC } from '@/utils/trpc'
+import {
+  FotosDoBar,
+  type GaleriaBloqueada,
+  useEnvioDeFoto
+} from './espaco-fotos'
 import { EspacoPrevia } from './espaco-previa'
 import {
   cardapio,
@@ -76,8 +73,9 @@ import { Interruptor } from './painel-shell'
  * e a barra de salvar). Um formulário só, com rascunho até "Salvar
  * alterações", que manda cada parte à sua mutation só se ela mudou: perfil e
  * características (`updateMe`), horário (`updateOpeningHours`, WEB-397),
- * oferta (`updateHouseOffer`, Elite) e cardápio (`updateMenuInfo`, Pro). Foto, WhatsApp e "como o código é
- * conferido" gravam na hora. Recurso pago só entra com o plano em dia; o
+ * oferta (`updateHouseOffer`, Elite) e cardápio (`updateMenuInfo`, Pro). Fotos
+ * (WEB-462), WhatsApp e "como o código é conferido" gravam na hora. A
+ * descrição e as fotos passam pela revisão da Onside antes do torcedor ver. Recurso pago só entra com o plano em dia; o
  * servidor confere de novo.
  */
 
@@ -155,6 +153,14 @@ function Espaco({ bar }: { bar: AdminBar }) {
         : { status: 'loading' }
   const proOk = liberado(plano, 'pro')
   const eliteOk = liberado(plano, 'elite')
+  const galeriaBloqueada: GaleriaBloqueada = proOk
+    ? null
+    : plano.status !== 'ready'
+      ? 'carregando'
+      : alcanca(plano, 'pro') && isLapsed(plano.standing)
+        ? 'pagamento'
+        : 'plano'
+  const envio = useEnvioDeFoto()
 
   /* ─── Rascunho ─── */
   const [rascunho, setRascunho] = useState<Rascunho>(() => doBar(bar))
@@ -223,12 +229,9 @@ function Espaco({ bar }: { bar: AdminBar }) {
   const updateOffer = useMutation(trpc.pub.updateHouseOffer.mutationOptions())
   const updateMenu = useMutation(trpc.pub.updateMenuInfo.mutationOptions())
   const updateHours = useMutation(trpc.pub.updateOpeningHours.mutationOptions())
-  // WhatsApp e foto gravam na hora, cada um com a sua mutation: a falha de um
-  // não vira erro do formulário (WEB-212).
+  // WhatsApp grava na hora, com a sua mutation: a falha dele não vira erro
+  // do formulário (WEB-212).
   const whatsapp = useMutation(
-    trpc.pub.updateMe.mutationOptions({ onSuccess: () => void invalidateBar() })
-  )
-  const foto = useMutation(
     trpc.pub.updateMe.mutationOptions({ onSuccess: () => void invalidateBar() })
   )
   const codigo = useMutation(
@@ -371,7 +374,6 @@ function Espaco({ bar }: { bar: AdminBar }) {
   )
   const prontidao = buildReadiness(bar, temProximo)
   const faltam = prontidao.total - prontidao.score
-  const capaRef = useRef<HTMLInputElement>(null)
   const ir = (id: string) => {
     const el = document.getElementById(id)
     el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -493,7 +495,7 @@ function Espaco({ bar }: { bar: AdminBar }) {
                       className="pn-btn pn-ghost pn-sm"
                       onClick={() =>
                         c.key === 'photo'
-                          ? capaRef.current?.click()
+                          ? envio.escolher({ capa: true })
                           : ir(
                               c.key === 'name'
                                 ? 'esp-nome'
@@ -526,12 +528,12 @@ function Espaco({ bar }: { bar: AdminBar }) {
           </section>
 
           {/* ─── Fotos ─── */}
-          <Capa
-            name={bar.name}
-            photoUrl={bar.photoUrl ?? null}
-            inputRef={capaRef}
-            onUploaded={(url) => foto.mutateAsync({ photoUrl: url })}
-            onRemoved={invalidateBar}
+          <FotosDoBar
+            nome={bar.name}
+            capaUrl={bar.photoUrl ?? null}
+            bloqueio={galeriaBloqueada}
+            envio={envio}
+            onMudou={invalidateBar}
           />
 
           {/* ─── Informações ─── */}
@@ -1268,142 +1270,6 @@ function Bloqueio({
         Ver planos
       </Link>
     </div>
-  )
-}
-
-const ACEITOS: readonly string[] = PHOTO_CONTENT_TYPES
-
-/** Foto de capa: sobe direto para o armazenamento (ESC-15) e grava na hora. */
-function Capa({
-  name,
-  photoUrl,
-  inputRef,
-  onUploaded,
-  onRemoved
-}: {
-  name: string
-  photoUrl: string | null
-  inputRef: React.RefObject<HTMLInputElement | null>
-  /** Grava a URL; rejeitar cai no erro da foto (WEB-212). */
-  onUploaded: (url: string) => Promise<unknown>
-  onRemoved: () => Promise<unknown>
-}) {
-  const [busy, setBusy] = useState<'up' | 'rm' | null>(null)
-  const [erro, setErro] = useState<string | null>(null)
-
-  const escolher = async (file: File | undefined) => {
-    if (inputRef.current) inputRef.current.value = ''
-    if (!file) return
-    // O servidor confere de novo ao assinar; aqui é para o erro vir na hora.
-    if (!ACEITOS.includes(file.type)) {
-      setErro('Formato inválido. Use JPG, PNG ou WebP.')
-      return
-    }
-    if (file.size > PHOTO_MAX_BYTES) {
-      setErro('Arquivo muito grande. Máximo 5MB.')
-      return
-    }
-    setErro(null)
-    setBusy('up')
-    try {
-      await onUploaded(await uploadMedia('/api/bar/photo', file))
-      toast.success('Foto de capa trocada.')
-    } catch (error) {
-      setErro('Erro ao fazer upload. Tente novamente.')
-      console.error(error)
-    } finally {
-      setBusy(null)
-    }
-  }
-
-  const remover = async () => {
-    if (!window.confirm('Remover a foto do bar?')) return
-    setErro(null)
-    setBusy('rm')
-    try {
-      // A rota apaga o arquivo e zera a referência do bar da sessão.
-      const res = await fetch('/api/bar/photo', { method: 'DELETE' })
-      if (!res.ok) throw new Error(`remoção ${res.status}`)
-      await onRemoved()
-    } catch (error) {
-      setErro('Não foi possível remover a foto. Tente novamente.')
-      console.error(error)
-    } finally {
-      setBusy(null)
-    }
-  }
-
-  return (
-    <section
-      id="esp-fotos"
-      className="pn-card pn-sec2"
-      aria-labelledby="esp-ft"
-    >
-      <div className="pn-chd">
-        <h3 id="esp-ft">
-          <Camera size={20} />
-          Fotos
-        </h3>
-        <small>{photoUrl ? 'capa publicada' : 'sem foto de capa'}</small>
-      </div>
-      <div className="pn-photos">
-        {photoUrl ? (
-          <div className="pn-photo">
-            {/* biome-ignore lint/performance/noImgElement: foto do armazenamento do bar, sem otimizador. */}
-            <img src={photoUrl} alt={`Capa do ${name}`} />
-            <span className="pn-photo-cap">CAPA</span>
-          </div>
-        ) : null}
-        <button
-          type="button"
-          className="pn-addph"
-          disabled={busy !== null}
-          onClick={() => inputRef.current?.click()}
-        >
-          {photoUrl ? <Camera size={22} /> : <Plus />}
-          {busy === 'up'
-            ? 'Enviando…'
-            : photoUrl
-              ? 'Trocar a capa'
-              : 'Adicionar foto de capa'}
-        </button>
-        <div className="pn-addph is-soon">
-          <Star />
-          Galeria de fotos
-          <em>EM BREVE</em>
-        </div>
-      </div>
-      <div className="pn-photo-f">
-        <p className="pn-hint">
-          JPG, PNG ou WebP, até 5 MB. A capa aparece no card e na página do bar
-          assim que sobe.
-        </p>
-        {photoUrl ? (
-          <button
-            type="button"
-            className="pn-lnk-b pn-rm"
-            disabled={busy !== null}
-            onClick={() => void remover()}
-          >
-            {busy === 'rm' ? 'Removendo…' : 'Remover foto'}
-          </button>
-        ) : null}
-      </div>
-      {erro ? (
-        <p className="pn-ferr" role="alert">
-          {erro}
-        </p>
-      ) : null}
-      <input
-        ref={inputRef}
-        type="file"
-        className="sr-only"
-        tabIndex={-1}
-        aria-label="Escolher foto de capa"
-        accept={PHOTO_CONTENT_TYPES.join(',')}
-        onChange={(e) => void escolher(e.target.files?.[0])}
-      />
-    </section>
   )
 }
 
