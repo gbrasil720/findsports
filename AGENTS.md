@@ -497,14 +497,30 @@ mandado ao `/admin`.
   do protótipo). O escuro é o `data-theme` do `<html>`, como no painel.
 - **O que grava pede login e volta concluído:** favoritar, "Vou assistir aqui" e o
   resto passam por `useTorcedor().agir`. Sem sessão abre a folha de entrar com o
-  contexto (o bar, o jogo); entrando por ela a ação sai na hora. Cadastro, e-mail,
-  2FA e onboarding levam a ação na URL, `?acao=<tipo>.<id>` (`vou.<jogo>`, `fav.<bar>`,
-  `lembrar.<jogo>`; `components/torcedor/acao.ts`, dentro do `callbackUrl`), e quem a
+  contexto (o bar, o jogo); entrando por ela a ação sai na hora. Cadastro, e-mail
+  e 2FA levam a ação na URL, `?acao=<tipo>.<id>` (`vou.<jogo>`, `fav.<bar>`,
+  `lembrar.<jogo>`, `app`; `components/torcedor/acao.ts`, dentro do `callbackUrl`), e quem a
   recebe com sessão a conclui uma vez: a casca do torcedor e a página do bar
   (`/bar/$slug`; `/pub/<id>` repassa a `acao`), pelo mesmo módulo. O formato antigo da
   página do bar (`?acao=vou` com `?jogo=`, `?acao=salvar`) continua aceito na leitura
-  (`lerAcao` com o bar e o jogo da página). Torcedor sem onboarding que entra com ação
-  no destino vai ao `/onboarding/fan` com ela no `callbackUrl` (`applyAuthGuards`).
+  (`lerAcao` com o bar e o jogo da página).
+- **Conta nova por uma ação: a ação primeiro, as preferências depois** (protótipo
+  `bem-vindo-curto`). Torcedor sem onboarding com `?acao=` no destino não vai ao
+  onboarding (`applyAuthGuards`, `acaoPulaOnboarding`; a confirmação do e-mail e a
+  folha de entrar fazem o mesmo): a ação é concluída e ele cai na tela dela com o card
+  escuro "Conta criada e presença marcada / bar salvo / lembrete marcado", pela URL
+  `?novo=vou|vouc|fav` (`destinoContaNova`): o código (Elite) ou Meus jogos, e Seus
+  bares › Favoritos; o lembrete vai direto à tela curta. "Escolher agora" abre
+  `/dashboard/bem-vindo` (esportes, times e raio numa página, tudo opcional, com a
+  tag do que já foi feito; `components/torcedor/conta-nova.tsx`). "Depois" (no card ou
+  na tela) e "Salvar" chamam `onboarding.completeFan`, que aceita vir vazio: o
+  "Depois" grava só `onboardingCompleted` (raio padrão da coluna, 3 km, nenhum
+  esporte), e o app, que lê o mesmo `onboardingCompleted`, não pede o onboarding
+  dele. Sem onboarding, a guarda só deixa a tela da ação, a do card (`?novo=`) e a
+  curta (`contaNovaPodeVer`); fora delas, o onboarding de 5 passos. A ação `app` ("Me
+  avise") e o cadastro sem ação seguem pelo onboarding de 5 passos, com a ação no
+  `callbackUrl`. O aviso (`.toast`) que precisa sobreviver à troca de rota usa
+  `avisarNaProxima` (cada rota monta a sua casca).
 - **Aviso de cookies:** um só em todo o site, o "Placar" (`consent/cookie-consent.css`):
   cartão no canto no desktop, folha no pé no celular. O que é preso ao pé da janela sobe
   por `--onside-consent-space`; no Explorar, as abas, o aviso da casca e o mapa do
