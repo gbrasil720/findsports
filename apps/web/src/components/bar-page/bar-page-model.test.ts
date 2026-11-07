@@ -10,7 +10,9 @@ import {
   gameState,
   goingText,
   type PageBar,
-  pickGame
+  pickGame,
+  shortDate,
+  starsLabel
 } from './bar-page-model'
 
 /** Sábado, 07/11/2026, 19:40 em Brasília. */
@@ -187,9 +189,33 @@ describe('JSON-LD', () => {
       ratingCount: 38
     })
   })
+  test('com estrelas, a nota é a média de 1 a 5', () => {
+    const data = barJsonLd(
+      bar([], {
+        rating: { total: 38, percentage: 92, stars: 4.6, starsCount: 36 }
+      }),
+      URL,
+      NOW
+    )
+    expect(
+      (data['@graph'][0] as Record<string, unknown>).aggregateRating
+    ).toEqual({
+      '@type': 'AggregateRating',
+      ratingValue: 4.6,
+      bestRating: 5,
+      worstRating: 1,
+      ratingCount: 36
+    })
+  })
   test('ISO no fuso de Brasília', () => {
     expect(brasiliaIso(at('2026-11-07T23:30:00'))).toBe(
       '2026-11-07T23:30:00-03:00'
     )
   })
+})
+
+test('rótulos da nota e da data do comentário', () => {
+  expect(starsLabel(4.6)).toBe('4,6')
+  expect(starsLabel(5)).toBe('5,0')
+  expect(shortDate(at('2026-10-25T21:00:00'))).toBe('25 out')
 })

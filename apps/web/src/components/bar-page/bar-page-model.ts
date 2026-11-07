@@ -30,7 +30,13 @@ export type PageBar = {
   photoUrl: string | null
   screenCount: number | null
   amenities: number[]
-  rating: { total: number; percentage: number } | null
+  rating: {
+    total: number
+    percentage: number
+    /** Média das estrelas, `null` abaixo do piso de estrelas. */
+    stars?: number | null
+    starsCount?: number
+  } | null
   openingHours: ({ opens: string; closes: string } | null)[] | null
   opening: {
     open: boolean
@@ -39,6 +45,25 @@ export type PageBar = {
     today: string
   } | null
   events: PublicGame[]
+}
+
+/** "4,6": uma casa, vírgula. */
+export const starsLabel = (stars: number) =>
+  stars.toLocaleString('pt-BR', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1
+  })
+
+/** "25 out", o dia de Brasília. */
+export function shortDate(at: Date): string {
+  return new Date(at)
+    .toLocaleDateString('pt-BR', {
+      timeZone: BRASILIA_TIME_ZONE,
+      day: 'numeric',
+      month: 'short'
+    })
+    .replace('.', '')
+    .replace(' de ', ' ')
 }
 
 /** "21:30" no relógio de Brasília, seja qual for o fuso de quem lê. */
@@ -276,14 +301,24 @@ export function barJsonLd(bar: PageBar, url: string, now: Date) {
       : {}),
     ...(bar.rating
       ? {
-          // "Voltaria?" é sim ou não: a nota é a porcentagem de sim.
-          aggregateRating: {
-            '@type': 'AggregateRating',
-            ratingValue: bar.rating.percentage,
-            bestRating: 100,
-            worstRating: 0,
-            ratingCount: bar.rating.total
-          }
+          // As estrelas (1 a 5) são a nota que o schema.org espera; sem
+          // estrelas que bastem, a porcentagem de "voltaria", de 0 a 100.
+          aggregateRating:
+            bar.rating.stars != null
+              ? {
+                  '@type': 'AggregateRating',
+                  ratingValue: bar.rating.stars,
+                  bestRating: 5,
+                  worstRating: 1,
+                  ratingCount: bar.rating.starsCount ?? bar.rating.total
+                }
+              : {
+                  '@type': 'AggregateRating',
+                  ratingValue: bar.rating.percentage,
+                  bestRating: 100,
+                  worstRating: 0,
+                  ratingCount: bar.rating.total
+                }
         }
       : {})
   }
