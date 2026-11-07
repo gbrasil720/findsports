@@ -138,7 +138,11 @@ export function NovoJogo({
       ref={ref}
       className="pn-sheet"
       aria-labelledby="pn-sheet-t"
-      onClose={onClose}
+      // Só o fechamento desta folha: o React repassa o `close` de um
+      // `<dialog>` de dentro (uma confirmação) para cá.
+      onClose={(event) => {
+        if (event.target === ref.current) onClose()
+      }}
       onClick={(event) => {
         if (event.target === ref.current) onClose()
       }}

@@ -63,7 +63,11 @@ export function ValidarCodigo({
       ref={ref}
       className="pn-val"
       aria-labelledby="pn-val-t"
-      onClose={onClose}
+      // Só o fechamento desta folha: o React repassa o `close` de um
+      // `<dialog>` de dentro (uma confirmação) para cá.
+      onClose={(event) => {
+        if (event.target === ref.current) onClose()
+      }}
       // Clique no fundo (fora da caixa) fecha, como no protótipo.
       onClick={(event) => {
         if (event.target === ref.current) onClose()

@@ -1161,7 +1161,11 @@ function DetalheFolha({
       ref={ref}
       className="pn-sheet pn-detsheet"
       aria-label="Jogo aberto"
-      onClose={onClose}
+      // O React repassa o `close` de um `<dialog>` de dentro (a confirmação
+      // do "Desfazer") para este: só fecha a folha o fechamento dela mesma.
+      onClose={(event) => {
+        if (event.target === ref.current) onClose()
+      }}
       onClick={(event) => {
         if (event.target === ref.current) onClose()
       }}

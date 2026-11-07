@@ -69,12 +69,15 @@ export function Dialogo({
       className={wide ? 'dlg3 dlg3-lg' : 'dlg3'}
       aria-labelledby={labelledBy}
       aria-describedby={describedBy}
+      // `cancel` e `close` de um `<dialog>` aninhado chegam aqui pela árvore do
+      // React: só vale o deste.
       onCancel={(event) => {
+        if (event.target !== ref.current) return
         event.preventDefault()
         onClose()
       }}
-      onClose={() => {
-        if (open) {
+      onClose={(event) => {
+        if (event.target === ref.current && open) {
           onClose()
           rerender()
         }
