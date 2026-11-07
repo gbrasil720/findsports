@@ -20,8 +20,9 @@
 export const AMENITY_GROUPS = [
   { key: 'watch', label: 'Para ver o jogo' },
   { key: 'space', label: 'O espaço' },
-  { key: 'food', label: 'Comer e beber' },
-  { key: 'practical', label: 'Chegar e ficar' }
+  { key: 'food', label: 'Comida e bebida' },
+  { key: 'payment', label: 'Pagamento' },
+  { key: 'practical', label: 'Para chegar' }
 ] as const
 
 export type AmenityGroupKey = (typeof AMENITY_GROUPS)[number]['key']
@@ -33,6 +34,12 @@ export type Amenity = {
   group: AmenityGroupKey
 }
 
+/*
+ * Grupos e ordem são os do design (2c, 4p). O que existe e o design não
+ * mostra vai no fim do grupo que faz sentido (WEB-455): Wi-fi em "O espaço",
+ * Estacionamento no local em "Para chegar" e "Com oferta da casa", que não se
+ * marca, em "Comida e bebida".
+ */
 export const AMENITIES: readonly Amenity[] = [
   {
     id: 1,
@@ -51,37 +58,43 @@ export const AMENITIES: readonly Amenity[] = [
   { id: 5, slug: 'covered_area', label: 'Área coberta', group: 'space' },
   { id: 6, slug: 'accessible', label: 'Acessível', group: 'space' },
   { id: 7, slug: 'pet_friendly', label: 'Pet friendly', group: 'space' },
-  // 12 a 14 entraram com a página do bar do app (design 2g, "O que tem").
+  { id: 15, slug: 'wifi', label: 'Wi-fi', group: 'space' },
   // A posição na lista é a ordem de exibição; o id só cresce.
-  { id: 12, slug: 'snacks', label: 'Petiscos', group: 'food' },
   { id: 13, slug: 'draft_beer', label: 'Chopp', group: 'food' },
+  { id: 12, slug: 'snacks', label: 'Petiscos', group: 'food' },
   {
-    id: 8,
-    slug: 'parking_onsite',
-    label: 'Estacionamento no local',
-    group: 'practical'
+    id: 11,
+    slug: 'late_kitchen',
+    label: 'Cozinha até tarde',
+    group: 'food'
   },
+  { id: 20, slug: 'vegetarian', label: 'Opção vegetariana', group: 'food' },
+  { id: 21, slug: 'drinks', label: 'Drinks', group: 'food' },
+  {
+    id: 10,
+    slug: 'house_offer',
+    label: 'Com oferta da casa',
+    group: 'food'
+  },
+  { id: 16, slug: 'pix', label: 'Pix', group: 'payment' },
+  { id: 17, slug: 'card', label: 'Cartão', group: 'payment' },
+  { id: 18, slug: 'meal_voucher', label: 'Vale-refeição', group: 'payment' },
+  // "Cobra couvert": é informação, e o filtro traz quem cobra (dono, 24/10/2026).
+  { id: 19, slug: 'cover_charge', label: 'Couvert', group: 'payment' },
   {
     id: 9,
     slug: 'parking_nearby',
     label: 'Estacionamento próximo',
     group: 'practical'
   },
+  { id: 22, slug: 'near_subway', label: 'Perto do metrô', group: 'practical' },
+  { id: 23, slug: 'bike_rack', label: 'Bicicletário', group: 'practical' },
   {
-    id: 10,
-    slug: 'house_offer',
-    label: 'Com oferta da casa',
+    id: 8,
+    slug: 'parking_onsite',
+    label: 'Estacionamento no local',
     group: 'practical'
-  },
-  {
-    id: 11,
-    slug: 'late_kitchen',
-    label: 'Cozinha até tarde',
-    group: 'practical'
-  },
-  { id: 15, slug: 'wifi', label: 'Wi-fi', group: 'practical' },
-  { id: 16, slug: 'pix', label: 'Pix', group: 'practical' },
-  { id: 17, slug: 'card', label: 'Cartão', group: 'practical' }
+  }
 ] as const
 
 /**

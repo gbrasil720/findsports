@@ -32,6 +32,19 @@ describe('vocabulário de características', () => {
     expect(MAX_AMENITY_IDS).toBe(AMENITIES.length + HIDDEN_AMENITY_IDS.length)
   })
 
+  it('segue os grupos do design (2c)', () => {
+    expect(AMENITY_GROUPS.map((group) => group.label)).toEqual([
+      'Para ver o jogo',
+      'O espaço',
+      'Comida e bebida',
+      'Pagamento',
+      'Para chegar'
+    ])
+    expect(
+      AMENITIES.filter((a) => a.group === 'payment').map((a) => a.label)
+    ).toEqual(['Pix', 'Cartão', 'Vale-refeição', 'Couvert'])
+  })
+
   it('só usa grupos que existem', () => {
     const grupos = new Set(AMENITY_GROUPS.map((group) => group.key))
 
