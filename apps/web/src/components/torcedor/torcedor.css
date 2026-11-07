@@ -2686,8 +2686,10 @@ html[data-theme="dark"] .tc .m-d {
   font-size: 14.5px;
   color: var(--muted);
 }
-.tc .appc.ok .btn {
-  display: none;
+.tc .appc .tk-aviso {
+  display: block;
+  margin-top: 6px;
+  color: var(--live-text);
 }
 @media (max-width: 760px) {
   .tc .appc {
@@ -4161,9 +4163,6 @@ html[data-theme="dark"] .tc .m-d {
   margin-top: 18px;
   display: grid;
   gap: 12px;
-}
-.tc .appc .soonb {
-  justify-self: start;
 }
 .tc .ticket .top {
   position: static;
