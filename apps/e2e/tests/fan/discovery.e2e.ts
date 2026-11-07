@@ -344,7 +344,7 @@ test('o mapa marca os bares e o marcador abre a página do bar', async ({
   await marker.click()
   // WEB-258: o ponto leva o jogo que o card do bar mostra.
   await expect(page).toHaveURL(
-    new RegExp(`/pub/${pub.barId}\\?eventId=${eventId}$`)
+    new RegExp(`/bar/[a-z0-9-]+-${pub.barId.slice(0, 8)}\\?jogo=${eventId}$`)
   )
 })
 
@@ -429,7 +429,7 @@ test('o card abre o perfil pelo jogo e voltar restaura os filtros', async ({
   await page.getByRole('slider', { name: 'Raio' }).fill('5')
   await card(page, pub.name).click()
   await expect(page).toHaveURL(
-    new RegExp(`/pub/${pub.barId}\\?eventId=${eventId}$`)
+    new RegExp(`/bar/[a-z0-9-]+-${pub.barId.slice(0, 8)}\\?jogo=${eventId}$`)
   )
   await expect
     .poll(

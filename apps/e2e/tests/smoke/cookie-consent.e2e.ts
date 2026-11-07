@@ -1,5 +1,6 @@
 import type { Locator } from '@playwright/test'
 import { signIn } from '../../fixtures/auth'
+import { createEvent, days } from '../../fixtures/fan'
 import { createPub } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
@@ -83,18 +84,18 @@ test.describe('sem escolha feita', () => {
     await expect(page.locator('html')).not.toHaveAttribute('data-consent')
   })
 
-  // WEB-370. O que é fixo no pé da janela sobe para cima do aviso. A barra de
-  // ação do bar, além disso, nem ficava presa à janela: o `transform` que a
-  // animação de entrada deixava no `main` a mandava para o fim da página.
-  test('celular: a barra de ação e o toast ficam acima do aviso, e a barra desce quando ele some', async ({
+  // WEB-370. O que é fixo no pé da janela sobe para cima do aviso: na página
+  // do bar, a barra do jogo, que aparece quando o cartão passou para cima.
+  test('celular: a barra do jogo e o toast ficam acima do aviso, e a barra desce quando ele some', async ({
     page,
     isMobile
   }) => {
     test.skip(!isMobile, 'só no projeto mobile')
     const { barId } = await createPub()
-    // Torcedor próprio: o teste favorita o bar.
+    await createEvent({ barId, startsAt: days(2) })
+    // Torcedor próprio: o teste salva o bar.
     await signIn(page, await createUser())
-    const actions = page.locator('.onside-pub-actionbar')
+    const actions = page.locator('.mcta')
     // Quanto o elemento passa do topo do aviso: até 0 ele está livre.
     const under = (locator: Locator) => async () => {
       const bar = await box(banner(page))
@@ -104,32 +105,32 @@ test.describe('sem escolha feita', () => {
 
     await page.goto(`/pub/${barId}`)
     await expect(banner(page)).toBeVisible()
+    await page.evaluate('scrollTo(0, 1600)')
+    await expect(actions).toHaveClass(/\bon\b/)
     await expect(actions).toBeInViewport({ ratio: 1 })
-    // E é o único "Como chegar": o botão do painel some onde a barra existe.
-    await expect(page.getByRole('link', { name: 'Como chegar' })).toHaveCount(1)
-    await expect(
-      actions.getByRole('link', { name: 'Como chegar' })
-    ).toBeVisible()
-    await expect.poll(under(actions), 'barra de ação').toBeLessThanOrEqual(0)
+    await expect.poll(under(actions), 'barra do jogo').toBeLessThanOrEqual(0)
 
-    await page.getByRole('button', { name: 'Adicionar aos favoritos' }).click()
+    await page.evaluate('scrollTo(0, 0)')
+    await page
+      .getByRole('button', { name: `Salvar o Bar E2E ${barId.slice(0, 8)}` })
+      .click()
     const toast = page.locator('[data-sonner-toast]')
     await expect(toast).toBeVisible()
     await expect.poll(under(toast), 'toast').toBeLessThanOrEqual(0)
 
     await banner(page).getByRole('button', { name: 'Recusar' }).press('Enter')
     await expect(banner(page)).toBeHidden()
-    // Sem o aviso ela volta para o pé da janela, e continua presa a ele.
+    // Sem o aviso ela volta para o pé da janela.
     const viewport = page.viewportSize()
     if (!viewport) throw new Error('sem viewport')
-    const atBottom = async () => {
-      const found = await box(actions)
-      return Math.round(found.y + found.height)
-    }
-    await expect.poll(atBottom).toBe(viewport.height)
-    await page.evaluate('scrollTo(0, 600)')
-    await expect.poll(() => page.evaluate('scrollY')).toBeGreaterThan(0)
-    await expect.poll(atBottom).toBe(viewport.height)
+    await page.evaluate('scrollTo(0, 1600)')
+    await expect(actions).toHaveClass(/\bon\b/)
+    await expect
+      .poll(async () => {
+        const found = await box(actions)
+        return Math.round(found.y + found.height)
+      })
+      .toBe(viewport.height)
   })
 
   // Em 320x568 o "Entrar" do login cai na faixa do aviso. O

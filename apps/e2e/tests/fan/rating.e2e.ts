@@ -58,7 +58,7 @@ test('quem abriu a rota de um jogo que acabou responde "voltaria?"', async ({
   const popup = page.waitForEvent('popup')
   // Bar sem WhatsApp nem telefone: a ação é só a rota, no painel ou, no
   // celular, na barra fixa.
-  await page.getByRole('link', { name: 'Como chegar' }).click()
+  await page.getByRole('link', { name: 'Como chegar' }).first().click()
   await (await popup).close()
   await expect
     .poll(

@@ -61,13 +61,14 @@ test.describe('deslogado', () => {
     await expect(page).toHaveURL(/\/dashboard\/profile\?ref=email$/)
   })
 
-  test('/pub/$pubId abre sem sessão', async ({ page }) => {
+  test('a página do bar abre sem sessão', async ({ page }) => {
     const { barId } = await createPub()
     await page.goto(`/pub/${barId}`)
-    await expect(page).toHaveURL(new RegExp(`/pub/${barId}$`))
-    await expect(
-      page.getByRole('dialog', { name: 'Autenticação obrigatória' })
-    ).toBeVisible()
+    await expect(page).toHaveURL(
+      new RegExp(`/bar/[a-z0-9-]+-${barId.slice(0, 8)}$`)
+    )
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
   })
 
   expectRedirect('/', '/')
