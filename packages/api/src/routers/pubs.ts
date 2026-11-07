@@ -38,6 +38,7 @@ import {
 } from '../lib/amenities'
 import { getAppConfig } from '../lib/app-config'
 import { readFanAttendance, readGoing } from '../lib/attendance'
+import { resolvePublicGallery } from '../lib/bar-gallery'
 import { canShowBarMenu, resolvePublicBarMenu } from '../lib/bar-menu'
 import {
   getCurrentPlan,
@@ -492,6 +493,19 @@ export const pubsRouter = router({
           subscription: {
             columns: { plan: true, status: true, currentPeriodEnd: true }
           },
+          // Fotos do bar (WEB-462): só as que a Onside aprovou.
+          photos: {
+            where: (photo, { eq }) => eq(photo.status, 'approved'),
+            columns: {
+              id: true,
+              url: true,
+              category: true,
+              caption: true,
+              position: true,
+              status: true,
+              createdAt: true
+            }
+          },
           events: {
             // Jogo ao vivo continua na página: o corte é o fim provável do
             // jogo, não o início. Ver `event-profile-window.ts`.
@@ -551,6 +565,7 @@ export const pubsRouter = router({
         averageSpendCents,
         confirmsCodesLater,
         openingHours,
+        photos,
         subscription,
         events,
         ...publicBar
@@ -618,6 +633,12 @@ export const pubsRouter = router({
           { menuUrl, averageSpendCents },
           subscription ?? null,
           now
+        ),
+        // Galeria do ambiente (WEB-439, WEB-462): só as aprovadas, por
+        // categoria e na ordem do dono; vazia sem Pro/Elite. A capa é
+        // `photoUrl`, de todos os planos.
+        photos: resolvePublicGallery(photos, subscription ?? null, now).map(
+          ({ position: _p, status: _s, ...photo }) => photo
         ),
         // Horário (WEB-397): `null` sem horário informado, e a página esconde
         // a seção. "Aberto agora" é decidido aqui, no relógio de Brasília.

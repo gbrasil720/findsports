@@ -1,7 +1,11 @@
 import { liveStripeSubscriptionId } from '@findsports_oficial/auth/account-deletion-policy'
 import { founderCouponUsable } from '@findsports_oficial/auth/stripe-checkout'
 import { stripeClient } from '@findsports_oficial/auth/stripe-client'
-import { and, db, eq, inArray, isNull, sql } from '@findsports_oficial/db'
+import { and, asc, db, eq, inArray, isNull, sql } from '@findsports_oficial/db'
+import {
+  PHOTO_CAPTION_MAX,
+  PHOTO_CATEGORY_IDS
+} from '@findsports_oficial/db/bar-gallery'
 import { MENU_URL_MAX_LENGTH } from '@findsports_oficial/db/bar-menu'
 import {
   EVENT_CHAMPIONSHIP_MAX_LENGTH,
@@ -15,6 +19,7 @@ import {
 import { HOUSE_OFFER_MAX_LENGTH } from '@findsports_oficial/db/house-offer'
 import {
   bar,
+  barPhoto,
   event,
   eventParticipants,
   subscription,
@@ -31,6 +36,13 @@ import {
   writableAmenityIds
 } from '../lib/amenities'
 import { readInterestSignal } from '../lib/attendance'
+import {
+  assertCanAddPhoto,
+  GALLERY_FULL_MESSAGE,
+  GALLERY_MAX_PHOTOS,
+  isOwnGalleryPhotoUrl,
+  occupiedSlots
+} from '../lib/bar-gallery'
 import {
   assertCanConfigureBarMenu,
   parseAverageSpendCentsInput,
@@ -343,6 +355,22 @@ async function getBarByUserId(userId: string) {
   return result
 }
 
+/** O que o dono vê de cada foto (WEB-462), com a revisão. */
+const OWNER_PHOTO_COLUMNS = {
+  id: barPhoto.id,
+  url: barPhoto.url,
+  category: barPhoto.category,
+  caption: barPhoto.caption,
+  position: barPhoto.position,
+  coverRequested: barPhoto.coverRequested,
+  status: barPhoto.status,
+  rejectionReason: barPhoto.rejectionReason,
+  createdAt: barPhoto.createdAt
+}
+
+const photoNotFound = () =>
+  new TRPCError({ code: 'NOT_FOUND', message: 'Foto não encontrada.' })
+
 export const pubRouter = router({
   getMe: pubProcedure.query(({ ctx }) => getBarByUserId(ctx.session.user.id)),
 
@@ -603,6 +631,208 @@ export const pubRouter = router({
         menuUrl: updated?.menuUrl ?? null,
         averageSpendCents: updated?.averageSpendCents ?? null
       }
+    }),
+
+  /**
+   * As fotos do bar, com a revisão (WEB-462): o dono vê em revisão e
+   * recusada, com o motivo. Na ordem do dono; o painel agrupa por categoria.
+   */
+  photos: pubProcedure.query(async ({ ctx }) => {
+    const existingBar = await getBarByUserId(ctx.session.user.id)
+    return db
+      .select(OWNER_PHOTO_COLUMNS)
+      .from(barPhoto)
+      .where(eq(barPhoto.barId, existingBar.id))
+      .orderBy(asc(barPhoto.position), asc(barPhoto.createdAt))
+  }),
+
+  /**
+   * Põe a foto que acabou de subir pela rota `/api/bar/photo?galeria`, já em
+   * revisão: o torcedor só a vê depois que a Onside aprovar. O teto conta com
+   * o bar travado, então dois envios ao mesmo tempo não passam de
+   * `GALLERY_MAX_PHOTOS`. `cover` pede a foto como capa: ela vira a capa
+   * quando for aprovada.
+   */
+  addPhoto: pubProcedure
+    .input(
+      z.object({
+        url: z.string().max(2048),
+        category: z.enum(PHOTO_CATEGORY_IDS),
+        caption: z
+          .string()
+          .max(PHOTO_CAPTION_MAX * 2)
+          .optional(),
+        cover: z.boolean().default(false)
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const existingBar = await getBarByUserId(ctx.session.user.id)
+      assertCanAddPhoto(existingBar.subscription ?? null, input.cover)
+      if (!isOwnGalleryPhotoUrl(input.url, existingBar.id, env)) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'URL de foto inválida.'
+        })
+      }
+      const caption = input.caption?.trim() || null
+      if (caption && caption.length > PHOTO_CAPTION_MAX) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: `A legenda aceita até ${PHOTO_CAPTION_MAX} caracteres.`
+        })
+      }
+
+      return db.transaction(async (tx) => {
+        await tx
+          .select({ id: bar.id })
+          .from(bar)
+          .where(eq(bar.id, existingBar.id))
+          .for('update')
+        const current = await tx
+          .select({ status: barPhoto.status, position: barPhoto.position })
+          .from(barPhoto)
+          .where(eq(barPhoto.barId, existingBar.id))
+        if (occupiedSlots(current) >= GALLERY_MAX_PHOTOS) {
+          throw new TRPCError({
+            code: 'CONFLICT',
+            message: GALLERY_FULL_MESSAGE
+          })
+        }
+        if (input.cover) {
+          await tx
+            .update(barPhoto)
+            .set({ coverRequested: false })
+            .where(eq(barPhoto.barId, existingBar.id))
+        }
+        const [added] = await tx
+          .insert(barPhoto)
+          .values({
+            barId: existingBar.id,
+            url: input.url,
+            category: input.category,
+            caption,
+            position: Math.max(-1, ...current.map((p) => p.position)) + 1,
+            coverRequested: input.cover
+          })
+          .onConflictDoNothing()
+          .returning(OWNER_PHOTO_COLUMNS)
+        if (!added) {
+          throw new TRPCError({
+            code: 'CONFLICT',
+            message: 'Esta foto já foi enviada.'
+          })
+        }
+        return added
+      })
+    }),
+
+  /** Troca a categoria. Não volta à revisão: a categoria não é texto livre. */
+  setPhotoCategory: pubProcedure
+    .input(z.object({ id: z.string(), category: z.enum(PHOTO_CATEGORY_IDS) }))
+    .mutation(async ({ ctx, input }) => {
+      const existingBar = await getBarByUserId(ctx.session.user.id)
+      const [updated] = await db
+        .update(barPhoto)
+        .set({ category: input.category })
+        .where(
+          and(eq(barPhoto.id, input.id), eq(barPhoto.barId, existingBar.id))
+        )
+        .returning(OWNER_PHOTO_COLUMNS)
+      if (!updated) throw photoNotFound()
+      return updated
+    }),
+
+  /**
+   * Usar como capa. Foto aprovada vira a capa na hora (`bar.photo_url`, que
+   * as listas leem); foto em revisão fica pedida e vira capa ao ser aprovada.
+   * Recusada não pode.
+   */
+  setPhotoCover: pubProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const existingBar = await getBarByUserId(ctx.session.user.id)
+      return db.transaction(async (tx) => {
+        const [photo] = await tx
+          .select({ url: barPhoto.url, status: barPhoto.status })
+          .from(barPhoto)
+          .where(
+            and(eq(barPhoto.id, input.id), eq(barPhoto.barId, existingBar.id))
+          )
+          .for('update')
+        if (!photo) throw photoNotFound()
+        if (photo.status === 'rejected') {
+          throw new TRPCError({
+            code: 'PRECONDITION_FAILED',
+            message: 'Foto recusada não pode ser a capa.'
+          })
+        }
+        await tx
+          .update(barPhoto)
+          .set({ coverRequested: false })
+          .where(eq(barPhoto.barId, existingBar.id))
+        if (photo.status === 'approved') {
+          await tx
+            .update(bar)
+            .set({ photoUrl: photo.url })
+            .where(eq(bar.id, existingBar.id))
+        } else {
+          await tx
+            .update(barPhoto)
+            .set({ coverRequested: true })
+            .where(eq(barPhoto.id, input.id))
+        }
+        return { cover: photo.status === 'approved' ? 'now' : 'on_approval' }
+      })
+    }),
+
+  /**
+   * Nova ordem: as mesmas fotos, cada uma uma vez. A conferência é com o bar
+   * travado, então uma foto que entrou ou saiu no meio recusa a ordem velha.
+   */
+  reorderPhotos: pubProcedure
+    .input(
+      z.object({
+        ids: z
+          .array(z.string())
+          .min(1)
+          .max(GALLERY_MAX_PHOTOS * 3)
+          .refine((ids) => new Set(ids).size === ids.length, {
+            message: 'Foto repetida na ordem.'
+          })
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const existingBar = await getBarByUserId(ctx.session.user.id)
+      await db.transaction(async (tx) => {
+        await tx
+          .select({ id: bar.id })
+          .from(bar)
+          .where(eq(bar.id, existingBar.id))
+          .for('update')
+        const current = await tx
+          .select({ id: barPhoto.id })
+          .from(barPhoto)
+          .where(eq(barPhoto.barId, existingBar.id))
+        const known = new Set(current.map((p) => p.id))
+        if (
+          current.length !== input.ids.length ||
+          !input.ids.every((id) => known.has(id))
+        ) {
+          throw new TRPCError({
+            code: 'CONFLICT',
+            message: 'As fotos mudaram. Recarregue a página e tente de novo.'
+          })
+        }
+        await tx
+          .update(barPhoto)
+          .set({
+            position: sql`array_position(ARRAY[${sql.join(
+              input.ids.map((id) => sql`${id}`),
+              sql`, `
+            )}]::text[], ${barPhoto.id})`
+          })
+          .where(eq(barPhoto.barId, existingBar.id))
+      })
     }),
 
   /**
