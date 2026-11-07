@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import { PHOTO_MAX_BYTES, photoPathname } from './blob-photo'
 import {
   deleteAvatar,
-  deleteBarPhoto,
+  deleteBarGalleryPhoto,
   MediaUploadError,
   signMediaUpload
 } from './media-upload'
@@ -117,11 +117,15 @@ describe('remoção de foto no R2 (WEB-320)', () => {
   }
   const status = (...args: Parameters<typeof deleteAvatar>) =>
     statusDe(deleteAvatar(...args))
-  const statusDoBar = (...args: Parameters<typeof deleteBarPhoto>) =>
-    statusDe(deleteBarPhoto(...args))
-
   const DONO = { user: { id: 'user-123' } }
   const BAR = { id: 'bar-123', userId: 'user-123' }
+  // A capa de antes do WEB-462, que a migration pôs em `bar_photo`.
+  const CAPA = { url: 'https://media.onside.sh/bars/bar-123/photo' }
+  const statusDoBar = (
+    session: typeof DONO | null,
+    bar: typeof BAR | null,
+    config: Parameters<typeof deleteBarGalleryPhoto>[3]
+  ) => statusDe(deleteBarGalleryPhoto(session, bar, CAPA, config))
 
   it('foto do bar: sem sessão responde 401 e não toca no bucket', async () => {
     expect(await statusDoBar(null, BAR, CONFIG)).toBe(401)
@@ -192,5 +196,65 @@ describe('remoção de foto no R2 (WEB-320)', () => {
       )
     ).toBe(503)
     expect(pedidos).toHaveLength(0)
+  })
+
+  describe('foto da galeria (WEB-439)', () => {
+    const FOTO =
+      'https://media.onside.sh/bars/bar-123/gallery/0b8e1c52-3f4a-4c1e-9d2b-7a6f5e4d3c2b?v=1'
+    const COM_FOTO = BAR
+    const statusDaGaleria = (
+      ...args: Parameters<typeof deleteBarGalleryPhoto>
+    ) => statusDe(deleteBarGalleryPhoto(...args))
+
+    it('apaga a chave da foto que está na galeria do bar da sessão', async () => {
+      expect(await statusDaGaleria(DONO, COM_FOTO, { url: FOTO }, CONFIG)).toBe(
+        204
+      )
+      const [pedido] = pedidos as [Request]
+      expect(pedido.method).toBe('DELETE')
+      expect(pedido.url).toBe(
+        'https://conta123.r2.cloudflarestorage.com/onside-media/bars/bar-123/gallery/0b8e1c52-3f4a-4c1e-9d2b-7a6f5e4d3c2b'
+      )
+    })
+
+    it('foto que não é do bar, bar de outro dono ou sem sessão não tocam no bucket', async () => {
+      expect(await statusDaGaleria(DONO, BAR, null, CONFIG)).toBe(404)
+      expect(
+        await statusDaGaleria(
+          DONO,
+          { ...COM_FOTO, userId: 'outro-dono' },
+          { url: FOTO },
+          CONFIG
+        )
+      ).toBe(403)
+      expect(await statusDaGaleria(null, COM_FOTO, { url: FOTO }, CONFIG)).toBe(
+        401
+      )
+      // Foto de outro bar ou de fora do nosso host: não há arquivo nosso.
+      expect(
+        await statusDaGaleria(
+          DONO,
+          BAR,
+          { url: 'https://media.onside.sh/bars/bar-999/photo' },
+          CONFIG
+        )
+      ).toBe(204)
+      expect(pedidos).toHaveLength(0)
+    })
+
+    it('sem as variáveis do R2 responde 503, como a capa', async () => {
+      expect(
+        await statusDaGaleria(
+          DONO,
+          COM_FOTO,
+          { url: FOTO },
+          {
+            ...CONFIG,
+            CF_ACCOUNT_ID: undefined
+          }
+        )
+      ).toBe(503)
+      expect(pedidos).toHaveLength(0)
+    })
   })
 })
