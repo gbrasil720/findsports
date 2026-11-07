@@ -25,7 +25,9 @@ export const ADMIN_ACTION_KINDS = [
   'bar.photo_approve',
   'bar.photo_reject',
   'bar.description_approve',
-  'bar.description_reject'
+  'bar.description_reject',
+  'bar.rating_comment_approve',
+  'bar.rating_comment_reject'
 ] as const
 
 export type AdminActionKind = (typeof ADMIN_ACTION_KINDS)[number]
