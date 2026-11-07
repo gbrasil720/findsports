@@ -419,25 +419,21 @@ function Numeros({
 
 type Dia = { date: string; views: number; actions: number }
 
-/** As aberturas por dia e, no mesmo dia, WhatsApp, rota e telefone somados. */
+/**
+ * As aberturas por dia e, no mesmo dia, WhatsApp, rota e telefone somados
+ * (`dailyHighIntentActions`, de todos os planos; WEB-449).
+ */
 export function dailySeries(d: {
-  dailyProfileViews: { date: string; value: number }[] | null
-  dailyWhatsappOpened: { date: string; value: number }[] | null
-  dailyDirectionsOpened: { date: string; value: number }[] | null
-  dailyPhoneClicked: { date: string; value: number }[] | null
-}): Dia[] | null {
-  if (!d.dailyProfileViews) return null
-  const byDate = (list: { date: string; value: number }[] | null) =>
-    new Map(list?.map((point) => [point.date, point.value]))
-  const series = [
-    byDate(d.dailyWhatsappOpened),
-    byDate(d.dailyDirectionsOpened),
-    byDate(d.dailyPhoneClicked)
-  ]
+  dailyProfileViews: { date: string; value: number }[]
+  dailyHighIntentActions: { date: string; value: number }[]
+}): Dia[] {
+  const actions = new Map(
+    d.dailyHighIntentActions.map((point) => [point.date, point.value])
+  )
   return d.dailyProfileViews.map(({ date, value }) => ({
     date,
     views: value,
-    actions: series.reduce((sum, map) => sum + (map.get(date) ?? 0), 0)
+    actions: actions.get(date) ?? 0
   }))
 }
 
@@ -488,24 +484,6 @@ function Atividade({
   const [show, setShow] = useState({ views: true, actions: true })
   const [hover, setHover] = useState<number | null>(null)
   const days = dailySeries(d)
-
-  if (!days) {
-    return (
-      <section className="pn-card pn-sec" aria-labelledby="pn-atv-t">
-        <div className="pn-chd">
-          <h3 id="pn-atv-t">Atividade diária</h3>
-          <small>só no Elite</small>
-        </div>
-        <p className="pn-note">
-          A atividade dia a dia (aberturas da página, WhatsApp, rota e telefone)
-          é do plano Elite. Os totais do período estão acima.
-        </p>
-        <Link to="/plan" search={{ origin: 'admin' }} className="pn-go">
-          Ver planos <Arrow size={16} />
-        </Link>
-      </section>
-    )
-  }
 
   const count = days.length
   const totalViews = days.reduce((sum, day) => sum + day.views, 0)

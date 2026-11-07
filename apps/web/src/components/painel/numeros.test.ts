@@ -39,23 +39,15 @@ describe('Desempenho e Quem vai', () => {
           { date: '2026-11-01', value: 5 },
           { date: '2026-11-02', value: 0 }
         ],
-        dailyWhatsappOpened: [{ date: '2026-11-01', value: 2 }],
-        dailyDirectionsOpened: [{ date: '2026-11-02', value: 1 }],
-        dailyPhoneClicked: [{ date: '2026-11-01', value: 1 }]
+        dailyHighIntentActions: [
+          { date: '2026-11-01', value: 3 },
+          { date: '2026-11-02', value: 1 }
+        ]
       })
     ).toEqual([
       { date: '2026-11-01', views: 5, actions: 3 },
       { date: '2026-11-02', views: 0, actions: 1 }
     ])
-    // Sem a quebra diária no plano, não há série.
-    expect(
-      dailySeries({
-        dailyProfileViews: null,
-        dailyWhatsappOpened: null,
-        dailyDirectionsOpened: null,
-        dailyPhoneClicked: null
-      })
-    ).toBeNull()
   })
 
   test('variação com sinal e sem base', () => {

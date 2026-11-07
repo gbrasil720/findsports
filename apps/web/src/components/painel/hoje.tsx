@@ -640,13 +640,9 @@ function TrintaDias() {
     d?.uniqueVisitorsPrev && d.interestedPeoplePrev !== null
       ? d.interestedPeoplePrev / d.uniqueVisitorsPrev
       : null
-  const daily = d?.dailyProfileViews
-    ? sumDaily([
-        d.dailyProfileViews,
-        d.dailyDirectionsOpened,
-        d.dailyPhoneClicked,
-        d.dailyWhatsappOpened
-      ])
+  // Aberturas e contatos por dia, de todos os planos (WEB-449).
+  const daily = d
+    ? sumDaily([d.dailyProfileViews, d.dailyHighIntentActions])
     : null
 
   return (
@@ -716,14 +712,7 @@ function TrintaDias() {
               />
             </div>
           </div>
-          {daily ? (
-            <Chart points={daily} />
-          ) : (
-            <p className="pn-note">
-              A atividade dia a dia (perfil, rota, telefone e WhatsApp) é do
-              plano Elite.
-            </p>
-          )}
+          {daily ? <Chart points={daily} /> : null}
         </>
       )}
       <Link to="/admin/desempenho" className="pn-go">
@@ -733,12 +722,12 @@ function TrintaDias() {
   )
 }
 
-type Daily = { date: string; value: number }[] | null
+type Daily = { date: string; value: number }[]
 
 function sumDaily(series: Daily[]): number[] {
   const byDate = new Map<string, number>()
   for (const points of series) {
-    for (const point of points ?? []) {
+    for (const point of points) {
       byDate.set(point.date, (byDate.get(point.date) ?? 0) + point.value)
     }
   }
