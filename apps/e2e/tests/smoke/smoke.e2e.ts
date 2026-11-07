@@ -12,11 +12,12 @@ test('landing carrega para visitante', async ({ page }) => {
   )
 
   // Landing v3 (WEB-501), com a copy do site: a chamada principal leva ao
-  // cadastro. A lista de espera do app só volta com o WEB-511.
+  // Explorar, que abre sem conta. A lista de espera do app só volta com o
+  // WEB-511.
   const main = page.getByRole('main')
   await expect(
-    main.getByRole('link', { name: 'Entrar / Criar conta' }).first()
-  ).toHaveAttribute('href', '/signup')
+    main.getByRole('link', { name: 'Ver jogos de hoje' }).first()
+  ).toHaveAttribute('href', '/dashboard')
   await expect(page.locator('#email, #lista, #bar-form')).toHaveCount(0)
 })
 

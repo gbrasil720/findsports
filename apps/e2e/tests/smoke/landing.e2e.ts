@@ -38,9 +38,12 @@ test('a busca de exemplo mostra bares marcados como exemplo e leva ao cadastro',
   await expect(results).toContainText('EXEMPLO')
   await expect(results.locator('[data-cta]')).toHaveAttribute(
     'data-cta',
-    'results_signup'
+    'results_explore'
   )
-  await expect(results.locator('[data-cta]')).toHaveAttribute('href', '/signup')
+  await expect(results.locator('[data-cta]')).toHaveAttribute(
+    'href',
+    '/dashboard'
+  )
 })
 
 test('o CTA do bar leva ao cadastro com "Tenho um bar" marcado', async ({
@@ -62,7 +65,8 @@ test('o CTA do bar leva ao cadastro com "Tenho um bar" marcado', async ({
 })
 
 // O nome da chamada diz para onde ela leva, e é ele que o `cta_clicked` manda:
-// `_signup` para quem vai criar conta, `_app` para quem já tem sessão (WEB-278).
+// `_explore` para quem vai ver os jogos sem conta (WEB-501), `_app` para quem
+// já tem sessão (WEB-278) e `_pub_signup` para o bar.
 const ctaNames = (page: Page) =>
   page
     .locator('[data-cta]')
@@ -70,21 +74,21 @@ const ctaNames = (page: Page) =>
       ...new Set(list.map((el) => el.getAttribute('data-cta')))
     ])
 
-test('sem sessão, as chamadas principais se chamam *_signup', async ({
+test('sem sessão, as chamadas do torcedor levam ao Explorar', async ({
   page
 }) => {
   await page.goto('/')
-  const nav = page.locator('.lp3 .nav [data-cta="nav_signup"]')
-  await expect(nav).toHaveAttribute('href', '/signup')
-  await expect(nav).toHaveText('Entrar / Criar conta')
+  const nav = page.locator('.lp3 .nav [data-cta="nav_explore"]')
+  await expect(nav).toHaveAttribute('href', '/dashboard')
+  await expect(nav).toHaveText('Ver jogos de hoje')
   expect((await ctaNames(page)).sort()).toEqual([
-    'community_signup',
+    'community_explore',
+    'final_explore',
     'final_pub_signup',
-    'final_signup',
+    'footer_explore',
     'footer_pub_signup',
-    'footer_signup',
+    'nav_explore',
     'nav_pub_signup',
-    'nav_signup',
     'pub_pub_signup'
   ])
 })
