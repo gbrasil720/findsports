@@ -1,9 +1,15 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { ARRIVAL_UNDO_WINDOW_MS } from '@findsports_oficial/db/reservation-code'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useMyBar } from '@/components/admin/admin-queries'
+import { ArrivalConfirmDialog } from '@/components/admin/arrival-confirm-dialog'
+import { useUndoCountdown } from '@/components/admin/use-undo-countdown'
 import { useMinuteNow } from '@/components/app/minute-tick'
 import { Check, Qr, Search } from '@/components/landing/v3/icons'
-import { getGameTitle } from '@/domain/reservation-validation'
+import {
+  getGameTitle,
+  getUndoErrorMessage
+} from '@/domain/reservation-validation'
 import { isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC, useTRPCClient } from '@/utils/trpc'
 import { Comanda } from './comanda'
@@ -22,7 +28,8 @@ import { initials, usePainel } from './painel-shell'
  * validação aberta, quem validou, quem está a caminho e quem chegou depois do
  * início, com filtro e busca pelo nome. O bar Elite que confirma pela comanda
  * lança os códigos aqui (WEB-412). Sem Elite, a seção só existe por código em
- * aberto (WEB-341): honra quem já marcou.
+ * aberto (WEB-341): honra quem já marcou. Chegada recém-validada se desfaz
+ * aqui também, no mesmo prazo curto do "Validar código" (`undoArrival`).
  */
 
 type Filtro = 'todos' | 'val' | 'cam'
@@ -324,6 +331,16 @@ function Pessoa({
             ? `chegou ${brasiliaTime(person.validatedAt)}${arrivedLate(person, startsAt) ? ' · depois do início' : ''}`
             : markedAgo(person.markedAt, now)}
         </span>
+        {validated && person.useId ? (
+          <Desfazer
+            useId={person.useId}
+            name={person.name}
+            until={
+              new Date(person.validatedAt as Date | string).getTime() +
+              ARRIVAL_UNDO_WINDOW_MS
+            }
+          />
+        ) : null}
       </span>
       {validated ? (
         <span className="pn-ok">
@@ -334,5 +351,66 @@ function Pessoa({
         <span className="pn-badge">{started ? 'NÃO CHEGOU' : 'A CAMINHO'}</span>
       )}
     </li>
+  )
+}
+
+/**
+ * "Desfazer" da chegada recém-validada: o servidor só desfaz a última, de
+ * quem validou, até `ARRIVAL_UNDO_WINDOW_MS` depois. Some quando o prazo acaba.
+ */
+function Desfazer({
+  useId,
+  name,
+  until
+}: {
+  useId: string
+  name: string
+  until: number
+}) {
+  const trpc = useTRPC()
+  const queryClient = useQueryClient()
+  const [expired, setExpired] = useState(() => until <= Date.now())
+  const [asking, setAsking] = useState(false)
+  const secondsLeft = useUndoCountdown(expired ? null : until, () =>
+    setExpired(true)
+  )
+  const undo = useMutation(
+    trpc.reservationValidation.undoArrival.mutationOptions({
+      onSettled: () =>
+        queryClient.invalidateQueries({
+          queryKey: trpc.barReservations.going.queryKey()
+        })
+    })
+  )
+  if (expired && !undo.error) return null
+  return (
+    <>
+      {expired ? null : (
+        <button
+          type="button"
+          className="pn-lnk pn-lnk-b"
+          disabled={undo.isPending}
+          onClick={() => setAsking(true)}
+          aria-label={`Desfazer a chegada de ${name}`}
+        >
+          {undo.isPending ? 'Desfazendo…' : `Desfazer · ${secondsLeft}s`}
+        </button>
+      )}
+      {undo.error ? (
+        <span className="pn-ferr" role="alert">
+          {getUndoErrorMessage(undo.error)}
+        </span>
+      ) : null}
+      <ArrivalConfirmDialog
+        open={asking}
+        undo
+        reservation={{ guestName: name }}
+        onCancel={() => setAsking(false)}
+        onConfirm={() => {
+          setAsking(false)
+          undo.mutate({ useId })
+        }}
+      />
+    </>
   )
 }

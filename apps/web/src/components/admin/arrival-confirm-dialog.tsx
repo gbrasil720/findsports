@@ -9,9 +9,11 @@ import type { ValidatedReservation } from '@/domain/reservation-validation'
 
 type Props = {
   open: boolean
-  reservation: ValidatedReservation
+  reservation: Pick<ValidatedReservation, 'guestName'>
   onConfirm: () => void
   onCancel: () => void
+  /** O mesmo diálogo desfaz a chegada no Quem vai do painel. */
+  undo?: boolean
 }
 
 /**
@@ -22,7 +24,8 @@ export function ArrivalConfirmDialog({
   open,
   reservation,
   onConfirm,
-  onCancel
+  onCancel,
+  undo = false
 }: Props) {
   const confirmRef = useRef<HTMLButtonElement>(null)
 
@@ -38,10 +41,12 @@ export function ArrivalConfirmDialog({
         className="onside-dialog max-w-[calc(100vw-2rem)] p-6 sm:max-w-sm"
       >
         <DialogTitle className="onside-display text-2xl">
-          Validar o código?
+          {undo ? 'Desfazer a chegada?' : 'Validar o código?'}
         </DialogTitle>
         <DialogDescription className="mt-2 text-[var(--onside-ink)] text-sm">
-          Código de {reservation.guestName}. A oferta da casa fica liberada.
+          {undo
+            ? `${reservation.guestName} volta para a lista de quem ainda não chegou. O código pode ser validado de novo.`
+            : `Código de ${reservation.guestName}. A oferta da casa fica liberada.`}
         </DialogDescription>
         <div className="mt-6 flex flex-wrap gap-2">
           <button
@@ -50,7 +55,7 @@ export function ArrivalConfirmDialog({
             onClick={onConfirm}
             className="onside-btn onside-btn-acid"
           >
-            Sim, validar
+            {undo ? 'Sim, desfazer' : 'Sim, validar'}
           </button>
           <button
             type="button"
