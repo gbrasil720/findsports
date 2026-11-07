@@ -33,7 +33,7 @@ export function MetricHint({
       <PopoverTrigger
         aria-label={`O que significa "${label}"`}
         className={
-          'relative ml-1.5 inline-flex size-6 shrink-0 cursor-pointer items-center justify-center align-middle text-[var(--onside-ink)] opacity-50 transition-opacity after:absolute after:-inset-2.5 after:content-[""] hover:opacity-100' +
+          'relative ml-1.5 inline-flex size-6 shrink-0 cursor-pointer items-center justify-center align-middle text-current opacity-50 transition-opacity after:absolute after:-inset-2.5 after:content-[""] hover:opacity-100' +
           (className ? ` ${className}` : '')
         }
       >

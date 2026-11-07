@@ -1,5 +1,15 @@
+import type { EventComparisonTarget } from '@findsports_oficial/api/lib/commercial-analytics/types'
 import { useQuery } from '@tanstack/react-query'
+import { useRouterState } from '@tanstack/react-router'
+import { useEffect, useRef, useState } from 'react'
+import type {
+  AdminEvent,
+  EventAnalyticsState
+} from '@/components/admin/admin-model'
+import { useMyAnalyticsEntitlements } from '@/components/admin/admin-queries'
+import type { AnalyticsDateRange } from '@/components/admin/analytics-period'
 import { BAR_RESERVATIONS_QUERY } from '@/lib/query-cache'
+import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import { usePainel } from './painel-shell'
 
@@ -61,3 +71,111 @@ export function barScreen(bar: {
     sound: bar.amenities.includes(2)
   }
 }
+
+/** O desempenho por jogo do período (o mesmo pedido da aba Grade antiga). */
+export function useEventAnalytics(
+  range: AnalyticsDateRange,
+  events: AdminEvent[]
+) {
+  const trpc = useTRPC()
+  const [target, setTarget] = useState<EventComparisonTarget | undefined>()
+  const entitlements = useMyAnalyticsEntitlements()
+  const from = Date.parse(range.from)
+  const to = Date.parse(range.to)
+  const defaultIds = events
+    .filter((event) => {
+      const startsAt = Date.parse(event.startsAt)
+      return startsAt >= from && startsAt <= to
+    })
+    .map((event) => event.id)
+    .slice(0, 3)
+  const requested =
+    target ??
+    (entitlements.data?.comparison !== 'previous_period' && defaultIds.length
+      ? { type: 'events' as const, eventIds: defaultIds }
+      : undefined)
+  const blocked = entitlements.data?.eventBreakdown === 'none'
+  const q = useQuery({
+    ...trpc.commercialAnalytics.getMyEventAnalytics.queryOptions({
+      from: range.from,
+      to: range.to,
+      ...(requested ? { comparisonTarget: requested } : {})
+    }),
+    enabled: entitlements.isSuccess && !blocked,
+    meta: { errorToast: false }
+  })
+
+  // O entitlement (não o plano) é autoritativo.
+  const state: EventAnalyticsState = entitlements.isLoading
+    ? { status: 'loading' }
+    : entitlements.isError || !entitlements.data
+      ? {
+          status: 'error',
+          retryable: isRetryableError(entitlements.error),
+          retry: () => void entitlements.refetch()
+        }
+      : blocked
+        ? { status: 'blocked' }
+        : q.isLoading
+          ? { status: 'loading' }
+          : q.isError
+            ? {
+                status: 'error',
+                message: getUserFacingMessage(
+                  q.error,
+                  'Não foi possível carregar o desempenho dos jogos. Tente novamente.'
+                ),
+                retryable: isRetryableError(q.error),
+                retry: () => void q.refetch()
+              }
+            : q.data?.events.length
+              ? {
+                  status: 'ready',
+                  items: q.data.events,
+                  comparisonMode: entitlements.data.comparison,
+                  comparisonTarget: requested,
+                  comparison: q.data.comparison,
+                  comparisonLoading: q.isFetching && !!requested,
+                  onComparisonTargetChange: setTarget,
+                  from: q.data.from,
+                  to: q.data.to
+                }
+              : { status: 'empty' }
+
+  return {
+    state,
+    byEvent: new Map((q.data?.events ?? []).map((row) => [row.eventId, row]))
+  }
+}
+
+/**
+ * Rola até o `#id` da URL quando a tela termina de carregar (`ready`): o
+ * roteador só rola no clique, antes de o bloco existir.
+ */
+export function useHashScroll(ready: boolean) {
+  const hash = useRouterState({
+    select: (state) => state.location.hash.replace(/^#/, '')
+  })
+  const done = useRef('')
+  useEffect(() => {
+    if (!ready || !hash || done.current === hash) return
+    const target = document.getElementById(hash)
+    if (!target) return
+    done.current = hash
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    target.scrollIntoView({
+      block: 'start',
+      behavior: reduce ? 'auto' : 'smooth'
+    })
+  }, [ready, hash])
+}
+
+/** Cor do avatar de quem ainda não validou (a primeira, acid, é de quem validou). */
+export const AVATAR_COLORS = [
+  '#c9f135',
+  '#f6b8a6',
+  '#b8d2f0',
+  '#e7d3a8',
+  '#cfe3b0',
+  '#e3c0e8'
+]
