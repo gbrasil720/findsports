@@ -151,6 +151,9 @@ function Espaco({ bar }: { bar: AdminBar }) {
   const [tentou, setTentou] = useState(false)
   const [salvando, setSalvando] = useState(false)
   const [erros, setErros] = useState<Partial<Record<Parte, string>>>({})
+  // Recusa ou falha do servidor (não a conferência antes de mandar): o botão
+  // vira "Tentar de novo".
+  const [falhou, setFalhou] = useState(false)
 
   const {
     cep,
@@ -223,6 +226,7 @@ function Espaco({ bar }: { bar: AdminBar }) {
     definirCep('')
     setCepFill(null)
     setErros({})
+    setFalhou(false)
     setTentou(false)
     setVersao((v) => v + 1)
   }
@@ -322,6 +326,7 @@ function Espaco({ bar }: { bar: AdminBar }) {
       setVersao((v) => v + 1)
     }
     setErros(falhas)
+    setFalhou(Object.keys(falhas).length > 0)
     setSalvando(false)
     if (Object.keys(falhas).length === 0) {
       setTentou(false)
@@ -814,7 +819,10 @@ function Espaco({ bar }: { bar: AdminBar }) {
             <div className="pn-chd">
               <h3 id="esp-of">
                 <Beer size={20} />
-                Oferta da casa <span className="pn-elite">ELITE</span>
+                Oferta da casa{' '}
+                <span className="pn-elite" aria-hidden="true">
+                  ELITE
+                </span>
               </h3>
               {eliteOk ? (
                 <small aria-hidden="true" className={of.erro ? 'is-over' : ''}>
@@ -912,7 +920,10 @@ function Espaco({ bar }: { bar: AdminBar }) {
             <div className="pn-chd">
               <h3 id="esp-cdp">
                 <Doc size={20} />
-                Cardápio e preço médio <span className="pn-elite">PRO</span>
+                Cardápio e preço médio{' '}
+                <span className="pn-elite" aria-hidden="true">
+                  PRO
+                </span>
               </h3>
             </div>
             {proOk ? (
@@ -1006,7 +1017,7 @@ function Espaco({ bar }: { bar: AdminBar }) {
       {algoSujo ? (
         <div className="pn-savebar" role="status">
           <span>
-            {Object.keys(erros).length && !salvando
+            {falhou && !salvando
               ? 'Algumas alterações não foram salvas. Confira os avisos.'
               : 'Alterações não salvas no seu espaço'}
           </span>
@@ -1026,7 +1037,7 @@ function Espaco({ bar }: { bar: AdminBar }) {
           >
             {salvando
               ? 'Salvando…'
-              : Object.keys(erros).length
+              : falhou
                 ? 'Tentar de novo'
                 : 'Salvar alterações'}
           </button>
