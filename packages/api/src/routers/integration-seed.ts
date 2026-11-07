@@ -80,6 +80,7 @@ export async function seedBar(
   db: Awaited<ReturnType<typeof load>>['db']
   barId: string
   owner: Caller
+  ownerId: string
   fan: Caller
   fanId: string
   /**
@@ -133,6 +134,7 @@ export async function seedBar(
     db,
     barId,
     owner: appRouter.createCaller(contextFor(ownerId, 'pub')),
+    ownerId,
     fan: appRouter.createCaller(contextFor(fanId, 'fan')),
     fanId,
     seedGame: async (fields = {}) => {
