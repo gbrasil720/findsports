@@ -19,7 +19,7 @@ import { Ic, type IconName } from './icones'
  * na URL (`acao.ts`).
  */
 
-export type TipoPedido = 'vou' | 'fav' | 'lembrar' | 'entrar'
+export type TipoPedido = 'vou' | 'fav' | 'lembrar' | 'app' | 'entrar'
 
 export type Pedido = {
   tipo: TipoPedido
@@ -36,12 +36,14 @@ const TITULO: Record<TipoPedido, string> = {
   vou: 'Entre para marcar presença',
   fav: 'Entre para salvar este bar',
   lembrar: 'Entre para receber o lembrete',
+  app: 'Entre para saber quando o app chegar',
   entrar: 'Entre na Onside'
 }
 const BOTAO: Record<TipoPedido, string> = {
   vou: 'Entrar e marcar presença',
   fav: 'Entrar e salvar',
   lembrar: 'Entrar e me lembrar',
+  app: 'Entrar e me avisar',
   entrar: 'Entrar'
 }
 const ICONES: IconName[] = ['ticket', 'people', 'star']
@@ -63,6 +65,11 @@ const PORQUE: Record<TipoPedido, [string, string][]> = {
     ['Aviso 3 h antes', 'Com os bares que vão passar o jogo.'],
     ['Sem perder o horário', 'Você escolhe o bar na hora.'],
     ['Funciona no web e no app', 'A mesma conta nos dois.']
+  ],
+  app: [
+    ['Um e-mail só', 'No dia em que o app sair, para o e-mail da conta.'],
+    ['A mesma conta', 'Tudo o que você fez aqui continua no app.'],
+    ['Sai quando quiser', 'Um toque em "Não quero mais".']
   ],
   entrar: [
     ['Vou assistir aqui', 'Marque presença e pegue o código do balcão.'],
