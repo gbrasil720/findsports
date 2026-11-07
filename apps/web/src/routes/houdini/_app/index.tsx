@@ -68,7 +68,8 @@ const NEW_ACCOUNT: Record<string, string> = {
 /** Os mesmos títulos dos cartões do Bastidores. */
 const JOB_TITLES: Record<string, string> = {
   bar_plans: 'Reconciliação diária',
-  analytics_retention: 'Limpeza dos analytics'
+  analytics_retention: 'Limpeza dos analytics',
+  bar_notices: 'Avisos da semana dos bares'
 }
 
 /**
