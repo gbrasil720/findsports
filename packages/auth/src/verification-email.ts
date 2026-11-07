@@ -1,6 +1,6 @@
 import { appendFile } from 'node:fs/promises'
 import { env } from '@findsports_oficial/env/server'
-import { createOnsideEmailTemplate } from './email-layout'
+import { chips, createOnsideEmailTemplate } from './email-layout'
 
 export { escapeHtml } from './email-layout'
 
@@ -28,8 +28,13 @@ export function createVerificationEmail({
   verificationUrl
 }: VerificationEmailInput) {
   const template = createOnsideEmailTemplate({
-    heading: 'Confirme seu e-mail',
+    heading: 'Confirme seu',
+    headingAccent: 'e-mail',
+    tag: 'CONTA',
     intro: `Olá, ${name.trim() || 'torcedor'}. Falta um passo para entrar em campo: confirme que este endereço é seu para ativar sua conta na Onside.`,
+    // O prazo é o `emailVerification.expiresIn` (60 min) de `index.ts`.
+    blocks: [chips([['EXPIRA EM 1 HORA', true]])],
+    numberedSteps: true,
     steps: [
       // Vale para os dois: pelo app o link volta para o app; pelo site, o
       // rascunho do cadastro de bar fica no navegador em que foi começado.
@@ -39,6 +44,7 @@ export function createVerificationEmail({
     ],
     action: 'Confirmar meu e-mail',
     actionUrl: verificationUrl,
+    noteLabel: 'Não foi você?',
     note: 'Se você não criou uma conta na Onside, ignore esta mensagem. Sem abrir o link, nenhuma conta é confirmada.',
     reason:
       'Você recebeu este e-mail porque este endereço foi usado em um cadastro na Onside.'

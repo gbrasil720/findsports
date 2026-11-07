@@ -28,14 +28,19 @@ describe('e-mail de verificação Onside', () => {
     expect(email.html).toContain('#c9f135')
     expect(email.html).toContain('alt="Onside"')
     expect(email.html).toContain('Confirmar meu e-mail')
-    expect(email.html).toContain('copie e cole este endereço')
+    expect(email.html).toContain('copie este endereço no navegador')
     expect(email.text).toContain(
       'Olá, Ana. Falta um passo para entrar em campo'
     )
     expect(email.text).toContain(
       'Confirmar meu e-mail:\nhttps://onside.app/api/auth/verify-email?token=abc'
     )
-    expect(email.text).toContain('• Por segurança, este link expira em 1 hora.')
+    expect(email.text).toContain(
+      '3. Por segurança, este link expira em 1 hora.'
+    )
+    // O selo repete o prazo do `emailVerification.expiresIn` (1 h).
+    expect(email.html).toContain('EXPIRA EM 1 HORA')
+    expect(email.text).toStartWith('ONSIDE · CONTA\n\nConfirme seu e-mail\n\n')
     // Serve a quem se cadastrou pelo app e pelo site.
     expect(email.text).toContain('pelo app, ele volta para o app')
   })
@@ -58,12 +63,14 @@ describe('e-mail de verificação Onside', () => {
       name: 'Ana',
       verificationUrl: new URL('/verify?token=abc', publicBaseUrl).toString()
     })
-    const urls = [...email.html.matchAll(/\b(?:href|src)="([^"]+)"/g)].map(
-      (match) => (match[1] ?? '').replaceAll('&amp;', '&')
-    )
+    // A folha de fontes do Google é o único endereço de fora (só o Apple
+    // Mail a usa); o resto é do host público.
+    const urls = [...email.html.matchAll(/\b(?:href|src)="([^"]+)"/g)]
+      .map((match) => (match[1] ?? '').replaceAll('&amp;', '&'))
+      .filter((value) => !value.startsWith('https://fonts.googleapis.com/'))
 
-    // Wordmark, botão e link em texto: nenhum outro destino.
-    expect(urls).toHaveLength(3)
+    // Wordmark, botão, link em texto e o site no rodapé: nenhum outro destino.
+    expect(urls).toHaveLength(4)
     expect(email.html).not.toContain('localhost')
     for (const value of urls) {
       expect(new URL(value).hostname).toBe(publicHost)
