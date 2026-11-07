@@ -453,7 +453,10 @@ mandado ao `/admin`.
 - **Telas:** Explorar (`/dashboard`, régua do dia por `pubs.gameBoard`, aberta, em
   `lib/game-board.ts`; mapa `OnsideMap` com a gota, só por `import()`; na ordem
   padrão o Elite do clássico vai na frente e a tela grava `classic_exposure` e
-  `classic_click`, com as regras da busca antiga), Meus jogos
+  `classic_click`, com as regras da busca antiga; abaixo dos bares do jogo vem
+  sempre "Sem jogo marcado", os bares do raio sem jogo publicado no dia, por
+  `pubs.barsWithoutGame` (aberta, `lib/bars-without-game.ts`), que somem com a
+  "Oferta da casa" e no mapa são o ponto oco `quiet`), Meus jogos
   (`/dashboard/games`, ingressos), "Como foi?" (`/dashboard/avaliar/$eventId`, a fila
   `postGame.pending` numa tela: estrelas obrigatórias, comentário em revisão, nome e a
   faixa de visita verificada só com código validado ou check-in), o código (`/dashboard/codigo/$eventId`), Seus bares (`/dashboard/seus-bares`,
