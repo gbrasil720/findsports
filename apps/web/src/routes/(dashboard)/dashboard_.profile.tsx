@@ -1,54 +1,12 @@
-import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import ArrowLeft from 'reicon-react/icons/ArrowLeft'
-import { toast } from 'sonner'
-import { ProfileFavorites } from '@/components/profile/profile-favorites'
-import { ProfileHeader } from '@/components/profile/profile-header'
-import { compressProfileImage } from '@/components/profile/profile-image'
-import {
-  type Favorite,
-  type FavoriteSort,
-  type FavoriteView,
-  getProfileTabFromHash,
-  type ProfileTab,
-  profileTabHash,
-  profileTabId,
-  profileTabPanelId
-} from '@/components/profile/profile-model'
-import { ProfileOverview } from '@/components/profile/profile-overview'
-import {
-  createFavoriteMapBars,
-  getCompletionItems,
-  getCompletionScore,
-  getProfileInitials,
-  groupFavoritesByCity,
-  selectUpcomingFavoriteEvents,
-  sortAndFilterFavorites
-} from '@/components/profile/profile-selectors'
-import { ProfileSettings } from '@/components/profile/profile-settings'
-import { ProfileTabs } from '@/components/profile/profile-tabs'
-import { persistProfileUser } from '@/components/profile/profile-user-update'
-import {
-  confirmDroppingTeams,
-  type FavoriteTeam
-} from '@/components/sports/team-picker'
+import { useQuery } from '@tanstack/react-query'
+import { createFileRoute, Link } from '@tanstack/react-router'
+import { AppChegando } from '@/components/torcedor/app-chegando'
+import { Ic } from '@/components/torcedor/icones'
 import { TorcedorShell } from '@/components/torcedor/shell'
-import {
-  normalizeRadiusKm,
-  type RadiusKm,
-  resolveSearchCenter
-} from '@/domain/discovery'
-import { authClient } from '@/lib/auth-client'
+import { maisVisitados, visitasDoAno } from '@/domain/seus-bares'
+import { useSession } from '@/hooks/use-session'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
-import { CATALOG_QUERY } from '@/lib/query-cache'
-import { uploadMedia } from '@/lib/upload-media'
-import {
-  getUserFacingError,
-  getUserFacingMessage,
-  isRetryableError
-} from '@/lib/user-facing-error'
+import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/(dashboard)/dashboard_/profile')({
@@ -60,640 +18,231 @@ export const Route = createFileRoute('/(dashboard)/dashboard_/profile')({
     ],
     links: [...PWA_LINKS]
   }),
-  component: ProfilePage
+  component: Perfil
 })
 
-function ProfilePage() {
-  const trpc = useTRPC()
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const impressionRunIdRef = useRef<string | null>(null)
-  const [tab, setTab] = useState<ProfileTab>('Visão geral')
-  const [editingName, setEditingName] = useState(false)
-  const [nameInput, setNameInput] = useState('')
-  const [editingSports, setEditingSports] = useState(false)
-  const [savingRadius, setSavingRadius] = useState(false)
-  const [radiusError, setRadiusError] = useState<string | null>(null)
-  const [selectedSportIds, setSelectedSportIds] = useState<string[]>([])
-  const [uploadingImage, setUploadingImage] = useState(false)
-  const [imageError, setImageError] = useState<string | null>(null)
-  const [nameError, setNameError] = useState<string | null>(null)
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
-    null
-  )
-  const [viewMode, setViewMode] = useState<FavoriteView>('list')
-  const [sortBy, setSortBy] = useState<FavoriteSort>('upcoming')
-  const [filterWithEvents, setFilterWithEvents] = useState(false)
-  const [hoveredBarId, setHoveredBarId] = useState<string | null>(null)
-
-  // Mesmo mecanismo das abas do `/admin`: o hash é lido depois da hidratação,
-  // porque o servidor não o recebe.
-  useEffect(() => {
-    const syncTabFromHash = () => {
-      const { hash } = window.location
-      const nextTab = getProfileTabFromHash(hash)
-      if (nextTab) setTab(nextTab)
-      // Voltar até a entrada sem hash é voltar à aba inicial.
-      else if (!hash) setTab('Visão geral')
-    }
-
-    syncTabFromHash()
-    // `popstate` cobre Voltar/Avançar entre as entradas do `pushState` de
-    // `handleTabChange`; `hashchange`, o hash digitado na barra de endereço.
-    window.addEventListener('popstate', syncTabFromHash)
-    window.addEventListener('hashchange', syncTabFromHash)
-    return () => {
-      window.removeEventListener('popstate', syncTabFromHash)
-      window.removeEventListener('hashchange', syncTabFromHash)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!navigator.geolocation) return
-    navigator.geolocation.getCurrentPosition(
-      (position) =>
-        setCoords({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude
-        }),
-      () => {}
-    )
-  }, [])
-
-  const sessionQuery = useQuery({
-    queryKey: ['session'],
-    queryFn: () => authClient.getSession()
-  })
-  const sportsQuery = useQuery({
-    ...trpc.pubs.getSports.queryOptions(),
-    ...CATALOG_QUERY
-  })
-  const preferencesQuery = useQuery({
-    ...trpc.pubs.getMyPreferences.queryOptions(),
-    meta: { errorToast: false }
-  })
-  const favoritesQuery = useQuery({
-    ...trpc.pubs.getFavorites.queryOptions(),
-    meta: { errorToast: false }
-  })
-  const user = sessionQuery.data?.data?.user
-  const favorites = favoritesQuery.data ?? []
-  const preferences = preferencesQuery.data ?? []
-  const sports = sportsQuery.data ?? []
-  const favoritesErrorFeedback = favoritesQuery.error
-    ? getUserFacingError(
-        favoritesQuery.error,
-        'Não foi possível carregar seus favoritos. Tente novamente.'
-      )
-    : null
-  const preferencesErrorFeedback = preferencesQuery.error
-    ? getUserFacingError(
-        preferencesQuery.error,
-        'Não foi possível carregar seus esportes. Tente novamente.'
-      )
-    : null
-  // Mesmo centro da busca do dashboard (WEB-319): navegador, cidade do
-  // perfil, São Paulo. Trocar a cidade em Configurações refaz as sugestões.
-  const cityQuery = useQuery({
-    ...trpc.pubs.getMyCity.queryOptions(),
-    meta: { errorToast: false }
-  })
-  const recommendationsQuery = useQuery({
-    ...trpc.recommendations.get.queryOptions(
-      resolveSearchCenter(coords, cityQuery.data)
-    ),
-    enabled: tab === 'Visão geral' && (coords !== null || !cityQuery.isPending),
-    meta: { errorToast: false }
-  })
-
-  const recordImpressions = useMutation(
-    trpc.recommendations.recordImpressions.mutationOptions()
-  )
-  const recordRecommendationOpen = useMutation(
-    trpc.recommendations.recordOpen.mutationOptions()
-  )
-  const dismissRecommendation = useMutation(
-    trpc.recommendations.dismiss.mutationOptions({
-      onSuccess: () =>
-        queryClient.invalidateQueries({
-          queryKey: trpc.recommendations.get.queryKey()
-        })
-    })
-  )
-  const resetRecommendations = useMutation(
-    trpc.recommendations.reset.mutationOptions({
-      onSuccess: () =>
-        queryClient.invalidateQueries({
-          queryKey: trpc.recommendations.get.queryKey()
-        })
-    })
-  )
-
-  useEffect(() => {
-    const result = recommendationsQuery.data
-    if (!result || result.recommendations.length === 0) return
-    if (impressionRunIdRef.current === result.runId) return
-    impressionRunIdRef.current = result.runId
-    recordImpressions.mutate({
-      runId: result.runId,
-      items: result.recommendations.map((recommendation, index) => ({
-        barId: recommendation.bar.id,
-        position: index + 1,
-        reason: recommendation.reason,
-        expandedRadius: recommendation.isExpandedRadius
-      }))
-    })
-  }, [recommendationsQuery.data, recordImpressions.mutate])
-
-  const updatePreferences = useMutation(
-    trpc.pubs.updateMyPreferences.mutationOptions({
-      onSuccess: () => {
-        void queryClient.invalidateQueries({
-          queryKey: trpc.pubs.getMyPreferences.queryKey()
-        })
-        // Esporte desmarcado leva seus times junto no servidor.
-        void queryClient.invalidateQueries({
-          queryKey: trpc.pubs.getMyTeams.queryKey()
-        })
-        void queryClient.invalidateQueries({
-          queryKey: trpc.recommendations.get.queryKey()
-        })
-        setEditingSports(false)
-        toast.success('Esportes salvos.')
-      }
-    })
-  )
-  const favoritesQueryKey = trpc.pubs.getFavorites.queryKey()
-  const unfavorite = useMutation(
-    trpc.pubs.unfavorite.mutationOptions({
-      onMutate: async ({ barId }) => {
-        await queryClient.cancelQueries({ queryKey: favoritesQueryKey })
-        const previous = queryClient.getQueryData<Favorite[]>(favoritesQueryKey)
-        queryClient.setQueryData<Favorite[]>(
-          favoritesQueryKey,
-          (current = []) =>
-            current.filter((favorite) => favorite.barId !== barId)
-        )
-        return {
-          previous,
-          query: queryClient
-            .getQueryCache()
-            .find({ queryKey: favoritesQueryKey })
-        }
-      },
-      onError: (error, _variables, context) => {
-        if (
-          context?.previous &&
-          context.query ===
-            queryClient.getQueryCache().find({ queryKey: favoritesQueryKey })
-        ) {
-          queryClient.setQueryData(favoritesQueryKey, context.previous)
-        }
-        toast.error(
-          getUserFacingMessage(
-            error,
-            'Não foi possível remover o bar dos favoritos. Tente novamente.'
-          )
-        )
-      },
-      onSettled: () => {
-        void queryClient.invalidateQueries({ queryKey: favoritesQueryKey })
-        void queryClient.invalidateQueries({
-          queryKey: trpc.recommendations.get.queryKey()
-        })
-      }
-    })
-  )
-
-  const completionItems = useMemo(
-    () => getCompletionItems(user, preferences, favorites),
-    [user, preferences, favorites]
-  )
-  const upcomingEvents = useMemo(
-    () => selectUpcomingFavoriteEvents(favorites),
-    [favorites]
-  )
-  const sortedFavorites = useMemo(
-    () => sortAndFilterFavorites(favorites, sortBy, filterWithEvents),
-    [favorites, sortBy, filterWithEvents]
-  )
-  const favoritesByCity = useMemo(
-    () => (sortBy === 'city' ? groupFavoritesByCity(sortedFavorites) : null),
-    [sortBy, sortedFavorites]
-  )
-  const mapBars = useMemo(() => createFavoriteMapBars(favorites), [favorites])
-
-  const handleTabChange = (nextTab: ProfileTab) => {
-    setTab(nextTab)
-    const nextHash = profileTabHash(nextTab)
-    if (window.location.hash !== nextHash) {
-      // `pushState`, como nas abas do `/admin`: cada aba entra no histórico
-      // e o Voltar do navegador retorna à anterior.
-      window.history.pushState(null, '', nextHash)
-    }
-  }
-  const handleSaveName = async () => {
-    if (!nameInput.trim()) {
-      setNameError('Informe seu nome.')
-      return
-    }
-    setNameError(null)
-    try {
-      await persistProfileUser(authClient.updateUser, {
-        name: nameInput.trim()
-      })
-      void queryClient.invalidateQueries({ queryKey: ['session'] })
-      setEditingName(false)
-      toast.success('Nome salvo.')
-    } catch {
-      setNameError('Não foi possível salvar o nome. Tente de novo.')
-    }
-  }
-  const handleImageChange = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-    setImageError(null)
-    if (file.size > 5 * 1024 * 1024) {
-      setImageError('Imagem muito grande. Máximo 5 MB.')
-      return
-    }
-    if (!user?.id) {
-      setImageError('Entre na conta para alterar a foto.')
-      return
-    }
-    setUploadingImage(true)
-    try {
-      const compressed = await compressProfileImage(file)
-      const image = await uploadMedia('/api/user/avatar', compressed)
-      await persistProfileUser(authClient.updateUser, { image })
-      void queryClient.invalidateQueries({ queryKey: ['session'] })
-    } catch {
-      setImageError('Erro ao processar imagem. Tente novamente.')
-    } finally {
-      setUploadingImage(false)
-      if (fileInputRef.current) fileInputRef.current.value = ''
-    }
-  }
-  const handleRemoveImage = async () => {
-    if (!window.confirm('Remover sua foto de perfil?')) return
-    setImageError(null)
-    setUploadingImage(true)
-    try {
-      // Arquivo primeiro: se a segunda etapa falhar, repetir a ação conserta
-      // (apagar de novo é inofensivo). Na ordem inversa, a falha deixaria o
-      // arquivo no ar sem nenhum botão que o alcance.
-      const removed = await fetch('/api/user/avatar', { method: 'DELETE' })
-      if (!removed.ok) throw new Error(`remoção ${removed.status}`)
-      await persistProfileUser(authClient.updateUser, { image: null })
-      void queryClient.invalidateQueries({ queryKey: ['session'] })
-      toast.success('Foto removida.')
-    } catch {
-      setImageError('Não foi possível remover a foto. Tente novamente.')
-    } finally {
-      setUploadingImage(false)
-    }
-  }
-  const openEditSports = () => {
-    setSelectedSportIds(preferences.map((preference) => preference.sportId))
-    setEditingSports(true)
-  }
-  const toggleSport = (sportId: string) => {
-    setSelectedSportIds((current) =>
-      current.includes(sportId)
-        ? current.filter((id) => id !== sportId)
-        : [...current, sportId]
-    )
-  }
-  const saveSports = async () => {
-    if (selectedSportIds.length === 0) return
-    // Esporte desmarcado leva seus times junto: sem a lista não dá para
-    // avisar quais, então não salva às cegas.
-    let myTeams: FavoriteTeam[]
-    try {
-      // Clique de salvar: falhou, avisa na hora em vez de insistir por
-      // segundos com o retry padrão das queries.
-      myTeams = await queryClient.fetchQuery({
-        ...trpc.pubs.getMyTeams.queryOptions(),
-        retry: false
-      })
-    } catch (error) {
-      toast.error(
-        getUserFacingMessage(
-          error,
-          'Não foi possível conferir quem você acompanha. Tente novamente.'
-        )
-      )
-      return
-    }
-    const dropped = myTeams.filter(
-      (team) => !selectedSportIds.includes(team.sportId)
-    )
-    if (!confirmDroppingTeams(dropped)) return
-    updatePreferences.mutate({ sportIds: selectedSportIds })
-  }
-  const saveRadius = async (radiusKm: RadiusKm) => {
-    setSavingRadius(true)
-    setRadiusError(null)
-    try {
-      await persistProfileUser(authClient.updateUser, {
-        searchRadiusKm: radiusKm
-      })
-      void queryClient.invalidateQueries({ queryKey: ['session'] })
-      void queryClient.invalidateQueries({
-        queryKey: trpc.recommendations.get.queryKey()
-      })
-      toast.success('Raio de busca salvo.')
-    } catch {
-      setRadiusError('Não foi possível salvar o raio. Tente de novo.')
-    } finally {
-      setSavingRadius(false)
-    }
-  }
-  if (sessionQuery.isLoading) {
-    return (
-      <TorcedorShell aba="perfil">
-        <ProfilePageSkeleton />
-      </TorcedorShell>
-    )
-  }
-
-  const memberSince = user?.createdAt
-    ? new Date(user.createdAt).toLocaleDateString('pt-BR', {
-        month: 'long',
-        year: 'numeric'
-      })
-    : null
-
+/**
+ * O perfil do torcedor no web (WEB-501, protótipo `#perfil`): nível e
+ * conquistas (`achievements.mine`), os números do ano, os times e os bares
+ * mais visitados. Amigos e ranking ficam no app.
+ */
+function Perfil() {
   return (
     <TorcedorShell aba="perfil">
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        className="sr-only"
-        onChange={handleImageChange}
-        aria-label="Escolher foto de perfil"
-      />
-      <Link
-        to="/dashboard"
-        className="mb-4 inline-flex items-center gap-2 font-bold text-[var(--onside-muted)] text-sm hover:text-[var(--onside-ink)]"
-      >
-        <ArrowLeft size={16} color="currentColor" /> Voltar
-      </Link>
-      <ProfileHeader
-        user={user}
-        initials={getProfileInitials(user)}
-        memberSince={memberSince}
-        editingName={editingName}
-        nameInput={nameInput}
-        uploadingImage={uploadingImage}
-        imageError={imageError}
-        nameError={nameError}
-        onNameInputChange={(value) => {
-          setNameError(null)
-          setNameInput(value)
-        }}
-        onStartEditingName={() => {
-          setNameInput(user?.name ?? '')
-          setNameError(null)
-          setEditingName(true)
-        }}
-        onCancelEditingName={() => {
-          setNameError(null)
-          setEditingName(false)
-        }}
-        onSaveName={() => void handleSaveName()}
-        onChooseImage={() => fileInputRef.current?.click()}
-        onRemoveImage={() => void handleRemoveImage()}
-      />
-      <ProfileTabs activeTab={tab} onChange={handleTabChange} />
-
-      <div
-        id={profileTabPanelId('Visão geral')}
-        role="tabpanel"
-        aria-labelledby={profileTabId('Visão geral')}
-        hidden={tab !== 'Visão geral'}
-      >
-        {tab === 'Visão geral' ? (
-          <ProfileOverview
-            completionItems={completionItems}
-            completionScore={getCompletionScore(completionItems)}
-            favoritesCount={favorites.length}
-            preferencesCount={preferences.length}
-            loadingPreferences={preferencesQuery.isLoading}
-            preferencesError={preferencesErrorFeedback?.message ?? null}
-            preferencesRetryable={preferencesErrorFeedback?.retryable ?? false}
-            onRetryPreferences={() => void preferencesQuery.refetch()}
-            radiusKm={normalizeRadiusKm(user?.searchRadiusKm)}
-            loadingFavorites={favoritesQuery.isLoading}
-            favoritesError={favoritesErrorFeedback?.message ?? null}
-            favoritesRetryable={favoritesErrorFeedback?.retryable ?? false}
-            onRetryFavorites={() => void favoritesQuery.refetch()}
-            upcomingEvents={upcomingEvents}
-            recommendations={recommendationsQuery.data?.recommendations ?? []}
-            // `isPending`, e não `isLoading`: enquanto a consulta espera a
-            // cidade do perfil ela ainda não está buscando, e "sem sugestões"
-            // piscaria na tela.
-            loadingRecommendations={recommendationsQuery.isPending}
-            recommendationsError={recommendationsQuery.isError}
-            recommendationsRetryable={isRetryableError(
-              recommendationsQuery.error
-            )}
-            dismissingRecommendation={dismissRecommendation.isPending}
-            onRetryRecommendations={() => void recommendationsQuery.refetch()}
-            onOpenRecommendation={(barId) => {
-              const runId = recommendationsQuery.data?.runId
-              if (runId) {
-                sessionStorage.setItem(`onside:recommendation:${barId}`, runId)
-                recordRecommendationOpen.mutate({ runId, barId })
-              }
-            }}
-            onDismissRecommendation={(barId) => {
-              const runId = recommendationsQuery.data?.runId
-              if (runId) dismissRecommendation.mutate({ runId, barId })
-            }}
-            onSelectTab={handleTabChange}
-          />
-        ) : null}
-      </div>
-
-      <div
-        id={profileTabPanelId('Favoritos')}
-        role="tabpanel"
-        aria-labelledby={profileTabId('Favoritos')}
-        hidden={tab !== 'Favoritos'}
-      >
-        {tab === 'Favoritos' ? (
-          <ProfileFavorites
-            favorites={favorites}
-            sortedFavorites={sortedFavorites}
-            favoritesByCity={favoritesByCity}
-            mapBars={mapBars}
-            coords={coords}
-            loading={favoritesQuery.isLoading}
-            error={favoritesErrorFeedback?.message ?? null}
-            retryable={favoritesErrorFeedback?.retryable ?? false}
-            onRetry={() => void favoritesQuery.refetch()}
-            sortBy={sortBy}
-            viewMode={viewMode}
-            filterWithEvents={filterWithEvents}
-            hoveredBarId={hoveredBarId}
-            unfavoritePending={unfavorite.isPending}
-            onSortChange={setSortBy}
-            onViewModeChange={setViewMode}
-            onToggleEventsFilter={() =>
-              setFilterWithEvents((current) => !current)
-            }
-            onHoverBar={setHoveredBarId}
-            onSelectBar={(barId) =>
-              navigate({ to: '/pub/$pubId', params: { pubId: barId } })
-            }
-            onUnfavorite={(barId) => unfavorite.mutate({ barId })}
-          />
-        ) : null}
-      </div>
-
-      <div
-        id={profileTabPanelId('Configurações')}
-        role="tabpanel"
-        aria-labelledby={profileTabId('Configurações')}
-        hidden={tab !== 'Configurações'}
-      >
-        {tab === 'Configurações' ? (
-          <ProfileSettings
-            user={user}
-            sports={sports}
-            preferences={preferences}
-            loadingPreferences={preferencesQuery.isLoading}
-            preferencesError={preferencesErrorFeedback?.message ?? null}
-            preferencesRetryable={preferencesErrorFeedback?.retryable ?? false}
-            onRetryPreferences={() => void preferencesQuery.refetch()}
-            editingSports={editingSports}
-            selectedSportIds={selectedSportIds}
-            savingSports={updatePreferences.isPending}
-            sportsError={
-              updatePreferences.error
-                ? getUserFacingMessage(
-                    updatePreferences.error,
-                    'Não foi possível salvar seus esportes. Tente novamente.'
-                  )
-                : null
-            }
-            savingRadius={savingRadius}
-            radiusError={radiusError}
-            resettingRecommendations={resetRecommendations.isPending}
-            recommendationsReset={resetRecommendations.isSuccess}
-            recommendationsResetError={
-              resetRecommendations.error
-                ? getUserFacingMessage(
-                    resetRecommendations.error,
-                    'Não foi possível recomeçar suas sugestões. Tente novamente.'
-                  )
-                : null
-            }
-            onStartEditingSports={openEditSports}
-            onCancelEditingSports={() => setEditingSports(false)}
-            onToggleSport={toggleSport}
-            onSaveSports={() => void saveSports()}
-            onRadiusChange={(radiusKm) => void saveRadius(radiusKm)}
-            onResetRecommendations={() => {
-              if (
-                window.confirm(
-                  'Recomeçar somente suas sugestões personalizadas? Seus esportes, raio, favoritos e avaliações serão preservados.'
-                )
-              ) {
-                resetRecommendations.mutate()
-              }
-            }}
-          />
-        ) : null}
-      </div>
+      <Conteudo />
     </TorcedorShell>
   )
 }
 
-function ProfilePageSkeleton() {
+function iniciais(nome: string) {
+  return nome
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((p) => p[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+}
+
+function Conteudo() {
+  const trpc = useTRPC()
+  const session = useSession()
+  const conquistas = useQuery({
+    ...trpc.achievements.mine.queryOptions(),
+    meta: { errorToast: false }
+  })
+  const visitas = useQuery({
+    ...trpc.attendance.visits.queryOptions(),
+    meta: { errorToast: false }
+  })
+  const times = useQuery({
+    ...trpc.pubs.getMyTeams.queryOptions(),
+    meta: { errorToast: false }
+  })
+  const cidade = useQuery({
+    ...trpc.pubs.getMyCity.queryOptions(),
+    meta: { errorToast: false }
+  })
+  const nome = session?.user.name ?? ''
+  const ano = new Date().getFullYear()
+  const doAno = visitasDoAno(visitas.data ?? [], ano)
+  const topo = maisVisitados(visitas.data ?? []).slice(0, 4)
+  const nivel = conquistas.data?.level
+  const medalhas = conquistas.data?.achievements ?? []
+  const ganhas = medalhas.filter((m) => m.unlockedAt).length
+  const falta = nivel?.nextAt != null ? nivel.nextAt - nivel.unlocked : null
+
   return (
-    <div
-      className="space-y-6"
-      role="status"
-      aria-busy="true"
-      aria-live="polite"
-    >
-      <span className="sr-only">Carregando perfil…</span>
-      <Skeleton className="h-5 w-20" />
-      <section className="onside-panel-ink onside-shadow-acid p-8 md:p-10">
-        <div className="flex flex-col gap-6 md:flex-row md:items-center">
-          <Skeleton className="size-24 shrink-0 bg-[var(--onside-paper)]/20" />
-          <div className="min-w-0 flex-1 space-y-3">
-            <Skeleton className="h-3 w-32 bg-[var(--onside-paper)]/20" />
-            <Skeleton className="h-10 w-64 max-w-full bg-[var(--onside-paper)]/20" />
-            <Skeleton className="h-4 w-52 max-w-full bg-[var(--onside-paper)]/20" />
+    <div className="page">
+      <div className="prof">
+        <span className="pic">
+          {session?.user.image ? (
+            <img src={session.user.image} alt="" />
+          ) : (
+            iniciais(nome)
+          )}
+        </span>
+        <div>
+          <div className="hd">
+            {cidade.data
+              ? `${cidade.data.name}, ${cidade.data.uf}`
+              : 'Torcedor'}
           </div>
-          <Skeleton className="h-11 w-28 bg-[var(--onside-paper)]/20" />
+          <h1 className="disp">{nome}</h1>
         </div>
-      </section>
-      <div className="flex gap-2" aria-hidden="true">
-        <Skeleton className="h-11 w-28" />
-        <Skeleton className="h-11 w-24" />
-        <Skeleton className="h-11 w-32" />
+        <div className="pa cta-row">
+          <Link className="btn b-ghost sm" to="/dashboard/preferencias">
+            <Ic n="gear" s={18} />
+            Preferências
+          </Link>
+        </div>
       </div>
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-        {[1, 2, 3].map((item) => (
-          <div
-            key={item}
-            className="rounded-none border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-5"
-            aria-hidden="true"
+
+      {conquistas.isError ? (
+        <div className="empty" role="alert" style={{ marginTop: 24 }}>
+          <b>Não carregou</b>
+          <p>
+            {getUserFacingMessage(
+              conquistas.error,
+              'Não deu para abrir suas conquistas agora.'
+            )}
+          </p>
+          <button
+            type="button"
+            className="btn b-ink sm"
+            onClick={() => void conquistas.refetch()}
           >
-            <Skeleton className="mb-3 size-5" />
-            <Skeleton className="h-9 w-14" />
-            <Skeleton className="mt-2 h-3 w-20" />
-          </div>
-        ))}
+            Tentar de novo
+          </button>
+        </div>
+      ) : nivel ? (
+        <div className="lvl">
+          <span className="n">{nivel.level}</span>
+          <span>
+            <b>
+              {nivel.name} · nível {nivel.level}
+            </b>
+            <span>
+              {falta === null
+                ? 'Você chegou ao último nível.'
+                : `Mais ${falta} ${falta === 1 ? 'conquista' : 'conquistas'} para o nível ${nivel.level + 1}.`}
+            </span>
+            <span className="bar2">
+              <i
+                style={{
+                  width: `${nivel.nextAt ? Math.min(100, (nivel.unlocked / nivel.nextAt) * 100) : 100}%`
+                }}
+              />
+            </span>
+          </span>
+          <Link className="btn b-acid sm" to="/dashboard/pra-voce">
+            Achar bar novo
+          </Link>
+        </div>
+      ) : null}
+
+      <div className="stats3" style={{ marginTop: 22 }}>
+        <div>
+          <b>{doAno.jogos}</b>
+          <span>jogos vistos em bar em {ano}</span>
+        </div>
+        <div>
+          <b>{doAno.bares}</b>
+          <span>bares diferentes</span>
+        </div>
+        <div>
+          <b>{doAno.bairros}</b>
+          <span>bairros</span>
+        </div>
       </div>
-      <section
-        className="rounded-none border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-6"
-        aria-hidden="true"
-      >
-        <Skeleton className="mb-4 h-6 w-56" />
-        <div className="divide-y divide-[var(--onside-line)]">
-          {[1, 2, 3].map((item) => (
-            <div key={item} className="flex items-center gap-3 py-3">
-              <Skeleton className="size-9 shrink-0" />
-              <div className="min-w-0 flex-1 space-y-2">
-                <Skeleton className="h-4 w-3/4 max-w-full" />
-                <Skeleton className="h-3 w-1/2 max-w-full" />
-              </div>
-              <div className="space-y-2">
-                <Skeleton className="h-3 w-16" />
-                <Skeleton className="h-2.5 w-12" />
-              </div>
-            </div>
-          ))}
+
+      <section className="secx" aria-labelledby="t-conq">
+        <div className="hdx">
+          <h2 id="t-conq">Conquistas</h2>
+          <span className="muted">
+            {ganhas} de {medalhas.length}
+          </span>
         </div>
-      </section>
-      <section
-        className="rounded-none border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-6"
-        aria-hidden="true"
-      >
-        <Skeleton className="mb-2 h-6 w-48" />
-        <Skeleton className="mb-4 h-3 w-72 max-w-full" />
-        <div className="grid gap-3 sm:grid-cols-3">
-          {[1, 2, 3].map((item) => (
-            <div
-              key={item}
-              className="space-y-3 border border-[var(--onside-line)] p-4"
-            >
-              <Skeleton className="h-4 w-3/4" />
-              <Skeleton className="h-3 w-1/2" />
-              <Skeleton className="h-11 w-full" />
-            </div>
+        <ul className="medals">
+          {medalhas.map((m) => (
+            <li key={m.id} className={`medal2${m.unlockedAt ? '' : ' lock'}`}>
+              <img
+                src={`/torcedor/medalhas/${m.id}${m.unlockedAt ? '' : '-locked'}.webp`}
+                alt=""
+                width={288}
+                height={288}
+                loading="lazy"
+              />
+              <b>{m.name}</b>
+              <span>
+                {m.unlockedAt
+                  ? 'conquistada'
+                  : `${Math.min(m.progress, m.target)} de ${m.target}`}
+              </span>
+            </li>
           ))}
-        </div>
+        </ul>
       </section>
+
+      <section className="secx" aria-labelledby="t-times">
+        <div className="hdx">
+          <h2 id="t-times">Seus times</h2>
+          <Link to="/dashboard/preferencias">Editar</Link>
+        </div>
+        {times.data?.length ? (
+          <div className="teams">
+            {times.data.map((t) => (
+              <span key={t.id} className="team">
+                <span className="cr" style={{ background: '#12120f' }}>
+                  {iniciais(t.name) || t.name.slice(0, 3)}
+                </span>
+                {t.name}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="muted">
+            Nenhum time ainda. Escolha em Preferências para ver os jogos deles
+            primeiro.
+          </p>
+        )}
+      </section>
+
+      <section className="secx" aria-labelledby="t-top">
+        <div className="hdx">
+          <h2 id="t-top">Bares mais visitados</h2>
+          <Link to="/dashboard/seus-bares">Seus bares</Link>
+        </div>
+        {topo.length ? (
+          <ul className="toplist">
+            {topo.map(({ visita, n }, i) => (
+              <li key={visita.barId}>
+                <span className="p">{i + 1}</span>
+                {visita.photoUrl ? (
+                  <img src={visita.photoUrl} alt="" />
+                ) : (
+                  <span className="top-vazio" />
+                )}
+                <span>
+                  <b>{visita.barName}</b>
+                  <span>{visita.neighborhood}</span>
+                </span>
+                <span className="vchip n">
+                  {n} {n === 1 ? 'visita' : 'visitas'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted">
+            Ainda sem visitas. Conta o código validado no balcão ou o check-in
+            no bar.
+          </p>
+        )}
+      </section>
+
+      <AppChegando />
+      <p className="pastnote">Amigos e ranking ficam no app.</p>
     </div>
   )
 }
