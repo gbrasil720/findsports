@@ -250,6 +250,45 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   Stripe (`stripe-sync.ts`), sem sobrescrever o que o portal trouxe. Lista em
   `packages/db/src/cancel-reasons.ts`.
 
+### Avisos por e-mail do bar (WEB-441)
+
+Em `/admin/configuracoes` → Avisos por e-mail o dono liga e desliga três e-mails
+(`bar.notice_*`, `pub.updateNotices`, interruptores que gravam na hora; padrões do
+design 2b: resumo e jogo lotando ligados, grade vazia desligada). Regras, textos e envio
+em `packages/api/src/lib/bar-notices.ts`, pelo `sendEmail` de sempre:
+- **Resumo da semana** e **grade vazia** saem às segundas pelo cron diário (rotina
+  `bar_notices` em `lib/jobs.ts`, a última do `runScheduledJobs`, 01:00 de Brasília;
+  nos outros dias ela não faz nada). Só bar no ar. Presenças e códigos só no resumo do
+  Elite (`bar.plan`). Com os dois ligados e a semana vazia vai só o resumo.
+- **Jogo lotando** sai na marcação (`setAttendance`) que passa de 20, uma vez por jogo,
+  depois da resposta (`runInBackground`). O e-mail não diz o número exato.
+- `bar_notice` (bar, tipo, semana ou jogo) garante uma vez só; envio recusado apaga a
+  linha e a falha sobe para o `job_run` (Bastidores do Houdini, que roda a rotina na
+  hora e só manda o que faltou).
+- "Notificações no celular" segue "em breve".
+
+### Números do painel para todos os planos (WEB-449)
+
+A série diária do Desempenho e do "Seu bar nos últimos 30 dias" de Hoje é de todos os
+planos: `dailyProfileViews` e `dailyHighIntentActions` (WhatsApp, rota e telefone já
+somados por dia, então o plano sem os canais não vê a divisão). O card "Interesse de
+hoje" de Hoje é `commercialAnalytics.getMyWeekdayInterest`
+(`lib/commercial-analytics/weekday-interest.ts`): pessoas interessadas no dia da casa,
+da meia-noite até agora, contra a média da mesma janela nas quatro semanas antes (cabem
+nos 30 dias do Starter; semana de antes de o bar existir não entra; com menos de duas,
+"—").
+
+### Baixar meus dados (WEB-418)
+
+`account.requestExport` monta o JSON no servidor e o manda de anexo para o e-mail da
+sessão: para o bar, conta, bar (com os dados da nota), plano e jogos, nada de torcedor;
+para quem não é bar, perfil, preferências, bares salvos, jogos e avaliações (o web não
+tem amigos nem conquistas, e o arquivo não inventa essas seções). Um pedido a cada 24 h
+por conta (`rate_limit`, chave `data-export:user:<id>`): o segundo volta
+`TOO_MANY_REQUESTS` com a frase para a tela, e envio que falha devolve o pedido. No
+painel, Configurações → Privacidade → "Pedir arquivo". Testes de integração e E2E não
+mandam e-mail: dublê da API (`fakeEmailApi`) e outbox do E2E.
+
 ### Código do balcão pela comanda (WEB-412)
 
 Opção do bar Elite, **desligada por padrão** (`bar.confirms_codes_later`), escolhida
