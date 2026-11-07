@@ -443,6 +443,18 @@ export const event = pgTable(
     index('event_startsAt_idx').on(table.startsAt),
     // Padrão real de acesso da busca: próximo jogo de um bar específico.
     index('event_barId_startsAt_idx').on(table.barId, table.startsAt),
+    // Busca com texto raro (migration 0084, trazida da integração para o
+    // journal ser o mesmo): acha os jogos que casam sem ir bar a bar. A
+    // consulta que o usa (`texto_jogos`) ainda não chegou a esta busca.
+    // `fastupdate` desligado: cada gravação paga o índice na hora (+0,08 ms)
+    // em vez de uma fila que, ao esvaziar, segurava uma gravação por 16 ms.
+    index('event_search_text_trgm_idx')
+      .using(
+        'gin',
+        sql`search_normalize(coalesce(${table.championship}, '') || ' ' || coalesce(${table.participantFreeText}, '')) gin_trgm_ops`
+      )
+      .where(sql`published_at IS NOT NULL`)
+      .with({ fastupdate: false }),
     // WEB-43: invariante de intervalo — fim efetivo sempre após o início.
     // `ends_at` é opcional, então a restrição só vale quando ele existe.
     check(
