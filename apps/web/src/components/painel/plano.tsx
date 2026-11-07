@@ -29,6 +29,7 @@ import {
 import { canCancelSubscription, getCancelNotice } from '@/lib/scheduled-cancel'
 import { getUserFacingError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
+import { DadosDaNota } from './dados-da-nota'
 
 /*
  * "Plano e cobrança" do painel novo (WEB-501, fase 4; protótipo `plano`):
@@ -452,18 +453,7 @@ export function PlanoPage({
           </div>
         </section>
 
-        <section className="pn-card" aria-labelledby="pn-nota">
-          <div className="pn-chd">
-            <h3 id="pn-nota">Dados da nota</h3>
-          </div>
-          <div className="pn-soon">
-            <span>
-              <b>Razão social, CNPJ e e-mail para notas</b> para a nota sair no
-              nome da empresa.
-            </span>
-            <em>EM BREVE</em>
-          </div>
-        </section>
+        <DadosDaNota />
       </div>
 
       <div className="pn-duo">
