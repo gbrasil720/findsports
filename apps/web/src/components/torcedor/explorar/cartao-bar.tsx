@@ -52,7 +52,6 @@ type Props = {
   jogo: JogoDaRegua
   estado: EstadoDoJogo
   rotuloDoDia: string
-  now: number
   salvo: boolean
   vou: boolean
   quente?: boolean
@@ -68,7 +67,6 @@ export function CartaoBar({
   jogo,
   estado,
   rotuloDoDia,
-  now,
   salvo,
   vou,
   quente,

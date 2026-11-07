@@ -352,7 +352,6 @@ function ExplorarConteudo({ busca }: { busca: string }) {
             jogo={jogo}
             estado={estado}
             rotuloDoDia={rotuloDoDia}
-            now={now}
             salvo={salvos.has(bar.barId)}
             vou={vou.has(bar.eventId)}
             quente={quente === bar.barId}
