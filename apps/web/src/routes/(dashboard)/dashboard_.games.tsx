@@ -2,7 +2,7 @@ import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState } from 'react'
-import { AppShell } from '@/components/app/app-shell'
+import { TorcedorShell } from '@/components/torcedor/shell'
 import {
   formatCode,
   getOffAirNotice,
@@ -61,7 +61,7 @@ function MyGamesPage() {
   const past = games.filter((game) => game.ended)
 
   return (
-    <AppShell variant="fan">
+    <TorcedorShell aba="meus-jogos">
       <div className="mx-auto w-full max-w-2xl space-y-4">
         <h1 className="onside-display text-3xl">Meus jogos</h1>
         <p className="sr-only" role="status" aria-live="polite">
@@ -174,7 +174,7 @@ function MyGamesPage() {
           </div>
         )}
       </div>
-    </AppShell>
+    </TorcedorShell>
   )
 }
 

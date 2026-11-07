@@ -4,7 +4,6 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import ArrowLeft from 'reicon-react/icons/ArrowLeft'
 import { toast } from 'sonner'
-import { AppShell } from '@/components/app/app-shell'
 import { ProfileFavorites } from '@/components/profile/profile-favorites'
 import { ProfileHeader } from '@/components/profile/profile-header'
 import { compressProfileImage } from '@/components/profile/profile-image'
@@ -35,6 +34,7 @@ import {
   confirmDroppingTeams,
   type FavoriteTeam
 } from '@/components/sports/team-picker'
+import { TorcedorShell } from '@/components/torcedor/shell'
 import {
   normalizeRadiusKm,
   type RadiusKm,
@@ -414,9 +414,9 @@ function ProfilePage() {
   }
   if (sessionQuery.isLoading) {
     return (
-      <AppShell variant="fan">
+      <TorcedorShell aba="perfil">
         <ProfilePageSkeleton />
-      </AppShell>
+      </TorcedorShell>
     )
   }
 
@@ -428,7 +428,7 @@ function ProfilePage() {
     : null
 
   return (
-    <AppShell variant="fan">
+    <TorcedorShell aba="perfil">
       <input
         ref={fileInputRef}
         type="file"
@@ -611,7 +611,7 @@ function ProfilePage() {
           />
         ) : null}
       </div>
-    </AppShell>
+    </TorcedorShell>
   )
 }
 

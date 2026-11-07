@@ -40,7 +40,10 @@ import { Route as HoudiniAppRouteImport } from './routes/houdini/_app'
 import { Route as HoudiniEntrarRouteImport } from './routes/houdini/entrar'
 import { Route as PlanConfirmedRouteImport } from './routes/plan_.confirmed'
 import { Route as dashboardDashboardGamesRouteImport } from './routes/(dashboard)/dashboard_.games'
+import { Route as dashboardDashboardPraVoceRouteImport } from './routes/(dashboard)/dashboard_.pra-voce'
+import { Route as dashboardDashboardPreferenciasRouteImport } from './routes/(dashboard)/dashboard_.preferencias'
 import { Route as dashboardDashboardProfileRouteImport } from './routes/(dashboard)/dashboard_.profile'
+import { Route as dashboardDashboardSeusBaresRouteImport } from './routes/(dashboard)/dashboard_.seus-bares'
 import { Route as onboardingOnboardingFanRouteImport } from './routes/(onboarding)/onboarding.fan'
 import { Route as onboardingOnboardingPubRouteImport } from './routes/(onboarding)/onboarding.pub'
 import { Route as pubPubPubIdRouteImport } from './routes/(pub)/pub.$pubId'
@@ -59,6 +62,7 @@ import { Route as HoudiniAppGrimorioRouteImport } from './routes/houdini/_app/gr
 import { Route as HoudiniAppJogosRouteImport } from './routes/houdini/_app/jogos'
 import { Route as HoudiniAppPessoasRouteImport } from './routes/houdini/_app/pessoas'
 import { Route as HoudiniAppRevisaoRouteImport } from './routes/houdini/_app/revisao'
+import { Route as dashboardDashboardCodigoEventIdRouteImport } from './routes/(dashboard)/dashboard_.codigo.$eventId'
 import { Route as onboardingOnboardingPubNoArRouteImport } from './routes/(onboarding)/onboarding.pub_.no-ar'
 import { Route as HoudiniAppBaresBarIdRouteImport } from './routes/houdini/_app/bares_.$barId'
 import { Route as HoudiniAppPessoasUserIdRouteImport } from './routes/houdini/_app/pessoas_.$userId'
@@ -217,10 +221,28 @@ const dashboardDashboardGamesRoute = dashboardDashboardGamesRouteImport.update({
   path: '/dashboard/games',
   getParentRoute: () => rootRouteImport,
 } as any)
+const dashboardDashboardPraVoceRoute =
+  dashboardDashboardPraVoceRouteImport.update({
+    id: '/(dashboard)/dashboard_/pra-voce',
+    path: '/dashboard/pra-voce',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const dashboardDashboardPreferenciasRoute =
+  dashboardDashboardPreferenciasRouteImport.update({
+    id: '/(dashboard)/dashboard_/preferencias',
+    path: '/dashboard/preferencias',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const dashboardDashboardProfileRoute =
   dashboardDashboardProfileRouteImport.update({
     id: '/(dashboard)/dashboard_/profile',
     path: '/dashboard/profile',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const dashboardDashboardSeusBaresRoute =
+  dashboardDashboardSeusBaresRouteImport.update({
+    id: '/(dashboard)/dashboard_/seus-bares',
+    path: '/dashboard/seus-bares',
     getParentRoute: () => rootRouteImport,
   } as any)
 const onboardingOnboardingFanRoute = onboardingOnboardingFanRouteImport.update({
@@ -313,6 +335,12 @@ const HoudiniAppRevisaoRoute = HoudiniAppRevisaoRouteImport.update({
   path: '/revisao',
   getParentRoute: () => HoudiniAppRoute,
 } as any)
+const dashboardDashboardCodigoEventIdRoute =
+  dashboardDashboardCodigoEventIdRouteImport.update({
+    id: '/(dashboard)/dashboard_/codigo/$eventId',
+    path: '/dashboard/codigo/$eventId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const onboardingOnboardingPubNoArRoute =
   onboardingOnboardingPubNoArRouteImport.update({
     id: '/(onboarding)/onboarding/pub_/no-ar',
@@ -361,7 +389,10 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/guia/': typeof GuiaIndexRoute
   '/dashboard/games': typeof dashboardDashboardGamesRoute
+  '/dashboard/pra-voce': typeof dashboardDashboardPraVoceRoute
+  '/dashboard/preferencias': typeof dashboardDashboardPreferenciasRoute
   '/dashboard/profile': typeof dashboardDashboardProfileRoute
+  '/dashboard/seus-bares': typeof dashboardDashboardSeusBaresRoute
   '/onboarding/fan': typeof onboardingOnboardingFanRoute
   '/onboarding/pub': typeof onboardingOnboardingPubRoute
   '/pub/$pubId': typeof pubPubPubIdRoute
@@ -380,6 +411,7 @@ export interface FileRoutesByFullPath {
   '/houdini/pessoas': typeof HoudiniAppPessoasRoute
   '/houdini/revisao': typeof HoudiniAppRevisaoRoute
   '/houdini/': typeof HoudiniAppIndexRoute
+  '/dashboard/codigo/$eventId': typeof dashboardDashboardCodigoEventIdRoute
   '/onboarding/pub/no-ar': typeof onboardingOnboardingPubNoArRoute
   '/houdini/bares/$barId': typeof HoudiniAppBaresBarIdRoute
   '/houdini/pessoas/$userId': typeof HoudiniAppPessoasUserIdRoute
@@ -414,7 +446,10 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/guia': typeof GuiaIndexRoute
   '/dashboard/games': typeof dashboardDashboardGamesRoute
+  '/dashboard/pra-voce': typeof dashboardDashboardPraVoceRoute
+  '/dashboard/preferencias': typeof dashboardDashboardPreferenciasRoute
   '/dashboard/profile': typeof dashboardDashboardProfileRoute
+  '/dashboard/seus-bares': typeof dashboardDashboardSeusBaresRoute
   '/onboarding/fan': typeof onboardingOnboardingFanRoute
   '/onboarding/pub': typeof onboardingOnboardingPubRoute
   '/pub/$pubId': typeof pubPubPubIdRoute
@@ -432,6 +467,7 @@ export interface FileRoutesByTo {
   '/houdini/jogos': typeof HoudiniAppJogosRoute
   '/houdini/pessoas': typeof HoudiniAppPessoasRoute
   '/houdini/revisao': typeof HoudiniAppRevisaoRoute
+  '/dashboard/codigo/$eventId': typeof dashboardDashboardCodigoEventIdRoute
   '/onboarding/pub/no-ar': typeof onboardingOnboardingPubNoArRoute
   '/houdini/bares/$barId': typeof HoudiniAppBaresBarIdRoute
   '/houdini/pessoas/$userId': typeof HoudiniAppPessoasUserIdRoute
@@ -469,7 +505,10 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/guia/': typeof GuiaIndexRoute
   '/(dashboard)/dashboard_/games': typeof dashboardDashboardGamesRoute
+  '/(dashboard)/dashboard_/pra-voce': typeof dashboardDashboardPraVoceRoute
+  '/(dashboard)/dashboard_/preferencias': typeof dashboardDashboardPreferenciasRoute
   '/(dashboard)/dashboard_/profile': typeof dashboardDashboardProfileRoute
+  '/(dashboard)/dashboard_/seus-bares': typeof dashboardDashboardSeusBaresRoute
   '/(onboarding)/onboarding/fan': typeof onboardingOnboardingFanRoute
   '/(onboarding)/onboarding/pub': typeof onboardingOnboardingPubRoute
   '/(pub)/pub/$pubId': typeof pubPubPubIdRoute
@@ -488,6 +527,7 @@ export interface FileRoutesById {
   '/houdini/_app/pessoas': typeof HoudiniAppPessoasRoute
   '/houdini/_app/revisao': typeof HoudiniAppRevisaoRoute
   '/houdini/_app/': typeof HoudiniAppIndexRoute
+  '/(dashboard)/dashboard_/codigo/$eventId': typeof dashboardDashboardCodigoEventIdRoute
   '/(onboarding)/onboarding/pub_/no-ar': typeof onboardingOnboardingPubNoArRoute
   '/houdini/_app/bares_/$barId': typeof HoudiniAppBaresBarIdRoute
   '/houdini/_app/pessoas_/$userId': typeof HoudiniAppPessoasUserIdRoute
@@ -525,7 +565,10 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/guia/'
     | '/dashboard/games'
+    | '/dashboard/pra-voce'
+    | '/dashboard/preferencias'
     | '/dashboard/profile'
+    | '/dashboard/seus-bares'
     | '/onboarding/fan'
     | '/onboarding/pub'
     | '/pub/$pubId'
@@ -544,6 +587,7 @@ export interface FileRouteTypes {
     | '/houdini/pessoas'
     | '/houdini/revisao'
     | '/houdini/'
+    | '/dashboard/codigo/$eventId'
     | '/onboarding/pub/no-ar'
     | '/houdini/bares/$barId'
     | '/houdini/pessoas/$userId'
@@ -578,7 +622,10 @@ export interface FileRouteTypes {
     | '/admin'
     | '/guia'
     | '/dashboard/games'
+    | '/dashboard/pra-voce'
+    | '/dashboard/preferencias'
     | '/dashboard/profile'
+    | '/dashboard/seus-bares'
     | '/onboarding/fan'
     | '/onboarding/pub'
     | '/pub/$pubId'
@@ -596,6 +643,7 @@ export interface FileRouteTypes {
     | '/houdini/jogos'
     | '/houdini/pessoas'
     | '/houdini/revisao'
+    | '/dashboard/codigo/$eventId'
     | '/onboarding/pub/no-ar'
     | '/houdini/bares/$barId'
     | '/houdini/pessoas/$userId'
@@ -632,7 +680,10 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/guia/'
     | '/(dashboard)/dashboard_/games'
+    | '/(dashboard)/dashboard_/pra-voce'
+    | '/(dashboard)/dashboard_/preferencias'
     | '/(dashboard)/dashboard_/profile'
+    | '/(dashboard)/dashboard_/seus-bares'
     | '/(onboarding)/onboarding/fan'
     | '/(onboarding)/onboarding/pub'
     | '/(pub)/pub/$pubId'
@@ -651,6 +702,7 @@ export interface FileRouteTypes {
     | '/houdini/_app/pessoas'
     | '/houdini/_app/revisao'
     | '/houdini/_app/'
+    | '/(dashboard)/dashboard_/codigo/$eventId'
     | '/(onboarding)/onboarding/pub_/no-ar'
     | '/houdini/_app/bares_/$barId'
     | '/houdini/_app/pessoas_/$userId'
@@ -677,7 +729,10 @@ export interface RootRouteChildren {
   PlanConfirmedRoute: typeof PlanConfirmedRoute
   GuiaIndexRoute: typeof GuiaIndexRoute
   dashboardDashboardGamesRoute: typeof dashboardDashboardGamesRoute
+  dashboardDashboardPraVoceRoute: typeof dashboardDashboardPraVoceRoute
+  dashboardDashboardPreferenciasRoute: typeof dashboardDashboardPreferenciasRoute
   dashboardDashboardProfileRoute: typeof dashboardDashboardProfileRoute
+  dashboardDashboardSeusBaresRoute: typeof dashboardDashboardSeusBaresRoute
   onboardingOnboardingFanRoute: typeof onboardingOnboardingFanRoute
   onboardingOnboardingPubRoute: typeof onboardingOnboardingPubRoute
   pubPubPubIdRoute: typeof pubPubPubIdRoute
@@ -686,6 +741,7 @@ export interface RootRouteChildren {
   ApiBarPhotoRoute: typeof ApiBarPhotoRoute
   ApiTrpcSplatRoute: typeof ApiTrpcSplatRoute
   ApiUserAvatarRoute: typeof ApiUserAvatarRoute
+  dashboardDashboardCodigoEventIdRoute: typeof dashboardDashboardCodigoEventIdRoute
   onboardingOnboardingPubNoArRoute: typeof onboardingOnboardingPubNoArRoute
 }
 
@@ -908,11 +964,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof dashboardDashboardGamesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/(dashboard)/dashboard_/pra-voce': {
+      id: '/(dashboard)/dashboard_/pra-voce'
+      path: '/dashboard/pra-voce'
+      fullPath: '/dashboard/pra-voce'
+      preLoaderRoute: typeof dashboardDashboardPraVoceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(dashboard)/dashboard_/preferencias': {
+      id: '/(dashboard)/dashboard_/preferencias'
+      path: '/dashboard/preferencias'
+      fullPath: '/dashboard/preferencias'
+      preLoaderRoute: typeof dashboardDashboardPreferenciasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/(dashboard)/dashboard_/profile': {
       id: '/(dashboard)/dashboard_/profile'
       path: '/dashboard/profile'
       fullPath: '/dashboard/profile'
       preLoaderRoute: typeof dashboardDashboardProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(dashboard)/dashboard_/seus-bares': {
+      id: '/(dashboard)/dashboard_/seus-bares'
+      path: '/dashboard/seus-bares'
+      fullPath: '/dashboard/seus-bares'
+      preLoaderRoute: typeof dashboardDashboardSeusBaresRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(onboarding)/onboarding/fan': {
@@ -1041,6 +1118,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HoudiniAppRevisaoRouteImport
       parentRoute: typeof HoudiniAppRoute
     }
+    '/(dashboard)/dashboard_/codigo/$eventId': {
+      id: '/(dashboard)/dashboard_/codigo/$eventId'
+      path: '/dashboard/codigo/$eventId'
+      fullPath: '/dashboard/codigo/$eventId'
+      preLoaderRoute: typeof dashboardDashboardCodigoEventIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/(onboarding)/onboarding/pub_/no-ar': {
       id: '/(onboarding)/onboarding/pub_/no-ar'
       path: '/onboarding/pub/no-ar'
@@ -1159,7 +1243,10 @@ const rootRouteChildren: RootRouteChildren = {
   PlanConfirmedRoute: PlanConfirmedRoute,
   GuiaIndexRoute: GuiaIndexRoute,
   dashboardDashboardGamesRoute: dashboardDashboardGamesRoute,
+  dashboardDashboardPraVoceRoute: dashboardDashboardPraVoceRoute,
+  dashboardDashboardPreferenciasRoute: dashboardDashboardPreferenciasRoute,
   dashboardDashboardProfileRoute: dashboardDashboardProfileRoute,
+  dashboardDashboardSeusBaresRoute: dashboardDashboardSeusBaresRoute,
   onboardingOnboardingFanRoute: onboardingOnboardingFanRoute,
   onboardingOnboardingPubRoute: onboardingOnboardingPubRoute,
   pubPubPubIdRoute: pubPubPubIdRoute,
@@ -1168,6 +1255,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiBarPhotoRoute: ApiBarPhotoRoute,
   ApiTrpcSplatRoute: ApiTrpcSplatRoute,
   ApiUserAvatarRoute: ApiUserAvatarRoute,
+  dashboardDashboardCodigoEventIdRoute: dashboardDashboardCodigoEventIdRoute,
   onboardingOnboardingPubNoArRoute: onboardingOnboardingPubNoArRoute,
 }
 export const routeTree = rootRouteImport

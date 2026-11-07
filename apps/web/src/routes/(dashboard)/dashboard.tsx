@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { AppShell } from '@/components/app/app-shell'
 import { InstallAppCard } from '@/components/app/install-app-card'
 import { AttendanceReportCard } from '@/components/dashboard/attendance-report-card'
 import { DashboardHero } from '@/components/dashboard/dashboard-hero'
@@ -17,6 +16,7 @@ import {
   SearchFilterBar,
   type SearchSort
 } from '@/components/dashboard/search-filter-bar'
+import { TorcedorShell } from '@/components/torcedor/shell'
 import {
   deriveDiscoveryResultState,
   type FavoriteOverrides,
@@ -616,7 +616,7 @@ function FanDashboard() {
     }
   }
   return (
-    <AppShell variant="fan">
+    <TorcedorShell aba="explorar">
       <DashboardHero
         isLoading={resultState.status === 'loading'}
         count={displayedBars.length}
@@ -734,6 +734,6 @@ function FanDashboard() {
       {session ? (
         <InstallAppCard userId={session.user.id} surface="dashboard" />
       ) : null}
-    </AppShell>
+    </TorcedorShell>
   )
 }
