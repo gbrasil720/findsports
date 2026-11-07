@@ -140,6 +140,37 @@ test('filtro e busca deixam só o bar que casa', async ({ page }) => {
   await expect(cartao(page, outro.name)).toBeVisible()
 })
 
+test('bares perto sem jogo vêm abaixo dos que passam o jogo', async ({
+  page
+}) => {
+  const { pub, spot, dia } = await barComJogo(page)
+  // Mais perto que o do jogo, e mesmo assim depois dele.
+  const quieto = await pubAt(north(spot, 0.2))
+
+  await page.goto(`/dashboard?dia=${dia}`)
+  await expect(
+    page.getByRole('heading', { name: /Sem jogo marcado/ })
+  ).toBeVisible()
+  await expect
+    .poll(() =>
+      page
+        .locator('article.bc, article.bq')
+        .evaluateAll((els) => els.map((el) => el.getAttribute('data-bar')))
+    )
+    .toEqual([pub.barId, quieto.barId])
+  await expect(
+    page
+      .locator('article.bq')
+      .getByRole('link', { name: new RegExp(quieto.name) })
+  ).toHaveAttribute('href', `/pub/${quieto.barId}`)
+
+  // A oferta da casa é de um jogo: sem jogo, o bar sai da lista.
+  await page
+    .getByRole('button', { name: 'Oferta da casa', exact: true })
+    .click()
+  await expect(page.locator('article.bq')).toHaveCount(0)
+})
+
 test('Elite no clássico vai na frente e registra exposição e clique', async ({
   page
 }) => {
