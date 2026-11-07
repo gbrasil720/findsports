@@ -135,8 +135,14 @@ integrationTest(
         // portão de elegibilidade só acrescentaria montagem sem cobrir nada
         // que `ratings.integration.test.ts` já não cubra. A trigger dos
         // contadores continua sendo exercitada, que é o que importa para o
-        // Wilson da coluna gerada.
+        // Wilson da coluna gerada. O check-in antes torna a avaliação
+        // verificada (WEB-408), a única que entra na nota.
         for (let i = 0; i < fixture.total; i++) {
+          await db.execute(sql`
+            INSERT INTO attendance_checkin
+              (user_id, event_id, latitude, longitude, distance_m)
+            VALUES (${raterIds[i]}, ${jogoPassado?.id}, 0, 0, 0)
+          `)
           await db.execute(sql`
             INSERT INTO bar_rating
               (id, bar_id, actor_user_id, event_id, would_return)
