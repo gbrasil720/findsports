@@ -170,3 +170,39 @@ test('chegada recém-validada se desfaz no Quem vai, com confirmação', async (
     game.getByRole('listitem').filter({ hasText: arrived.guestName })
   ).not.toContainText('Validou')
 })
+
+test('chegada recém-validada se desfaz também no jogo aberto de Jogos', async ({
+  page
+}) => {
+  const pub = await createPub()
+  const { eventId } = await createEvent(pub.barId)
+  const arrived = await createTicket(eventId)
+  await signIn(page, pub.user)
+
+  const found = await page.request.post(
+    '/api/trpc/reservationValidation.lookup',
+    { data: { code: arrived.code } }
+  )
+  const { codeId } = (await found.json()).result.data
+  const registered = await page.request.post(
+    '/api/trpc/reservationValidation.registerArrival',
+    { data: { codeId, requestId: randomUUID() } }
+  )
+  expect(registered.ok()).toBe(true)
+
+  await page.goto(`/admin/jogos?jogo=${eventId}`)
+  const open = page.getByLabel('Jogo aberto')
+  const person = open
+    .getByRole('listitem')
+    .filter({ hasText: arrived.guestName })
+  await expect(person).toContainText('Validou')
+  await open
+    .getByRole('button', { name: `Desfazer a chegada de ${arrived.guestName}` })
+    .click()
+  await page
+    .getByRole('dialog', { name: 'Desfazer a chegada?' })
+    .getByRole('button', { name: 'Sim, desfazer' })
+    .click()
+  await expect(person).toContainText('A CAMINHO')
+  await expect(person).not.toContainText('Validou')
+})

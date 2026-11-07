@@ -357,7 +357,7 @@ function Pessoa({
  * "Desfazer" da chegada recém-validada: o servidor só desfaz a última, de
  * quem validou, até `ARRIVAL_UNDO_WINDOW_MS` depois. Some quando o prazo acaba.
  */
-function Desfazer({
+export function Desfazer({
   useId,
   name,
   until

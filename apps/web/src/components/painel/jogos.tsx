@@ -1,3 +1,5 @@
+import { ARRIVAL_UNDO_WINDOW_MS } from '@findsports_oficial/db/reservation-code'
+import { PortalProvider } from '@findsports_oficial/ui/components/portal'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
@@ -59,6 +61,7 @@ import {
 } from './noite'
 import { NovoJogo, type NovoJogoMode } from './novo-jogo'
 import { Interruptor, initials, usePainel } from './painel-shell'
+import { Desfazer } from './quem-vai'
 
 /*
  * Jogos (WEB-501, fase 2; protótipo `jogos`, `detail`): Próximos,
@@ -1036,6 +1039,16 @@ function Detalhe({
                           ? `chegou ${brasiliaTime(person.validatedAt)}`
                           : `marcou ${dayLabel(brasiliaDay(person.markedAt))}`}
                       </span>
+                      {person.validatedAt && person.useId ? (
+                        <Desfazer
+                          useId={person.useId}
+                          name={person.name}
+                          until={
+                            new Date(person.validatedAt).getTime() +
+                            ARRIVAL_UNDO_WINDOW_MS
+                          }
+                        />
+                      ) : null}
                     </span>
                     {person.validatedAt ? (
                       <span className="pn-ok">
@@ -1135,6 +1148,9 @@ function DetalheFolha({
   onClose: () => void
 }) {
   const ref = useRef<HTMLDialogElement>(null)
+  // A folha é modal nativa (camada de cima): a confirmação do "Desfazer"
+  // precisa abrir dentro dela, senão fica por baixo e não recebe o toque.
+  const portal = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const dialog = ref.current
     if (dialog && !dialog.open) dialog.showModal()
@@ -1162,8 +1178,11 @@ function DetalheFolha({
             <Close size={18} />
           </button>
         </header>
-        <div className="pn-sheet-body">{children}</div>
+        <div className="pn-sheet-body">
+          <PortalProvider container={portal}>{children}</PortalProvider>
+        </div>
       </div>
+      <div ref={portal} className="onside-app pn-portal" />
     </dialog>
   )
 }
