@@ -1,5 +1,16 @@
 import { describe, expect, test } from 'bun:test'
-import { comAcao, lerAcao, semAcao, temAcao } from './acao'
+import {
+  acaoPulaOnboarding,
+  BEM_VINDO_PATH,
+  comAcao,
+  contaNovaPodeVer,
+  destinoContaNova,
+  lerAcao,
+  lerNovo,
+  semAcao,
+  semNovo,
+  temAcao
+} from './acao'
 
 const ID = '0b6c6f2e-9d3a-4c41-8f0e-2a6b1d7c9e10'
 const JOGO = '7f1e2d3c-4b5a-4968-8776-655443322110'
@@ -28,5 +39,53 @@ describe('acao', () => {
     expect(temAcao(com)).toBe(true)
     expect(semAcao(`${com}#a`)).toBe('/bar/x?jogo=1#a')
     expect(temAcao('/dashboard')).toBe(false)
+  })
+})
+
+describe('conta nova por uma ação', () => {
+  test('toda ação pula o onboarding, menos a do app', () => {
+    expect(acaoPulaOnboarding(`/bar/x?acao=fav.${ID}`)).toBe(true)
+    expect(acaoPulaOnboarding(`/dashboard?acao=lembrar.${ID}`)).toBe(true)
+    // O formato antigo da página do bar também: ela conclui com o contexto.
+    expect(acaoPulaOnboarding('/bar/x?jogo=1&acao=vou')).toBe(true)
+    expect(acaoPulaOnboarding('/dashboard?acao=app')).toBe(false)
+    expect(acaoPulaOnboarding('/dashboard')).toBe(false)
+  })
+
+  test('a ação concluída leva à tela dela com o card', () => {
+    expect(destinoContaNova({ tipo: 'vou', id: JOGO }, true)).toBe(
+      `/dashboard/codigo/${JOGO}?novo=vou`
+    )
+    expect(destinoContaNova({ tipo: 'vou', id: JOGO }, false)).toBe(
+      '/dashboard/games?novo=vouc'
+    )
+    expect(destinoContaNova({ tipo: 'fav', id: ID })).toBe(
+      '/dashboard/seus-bares?aba=salvos&novo=fav'
+    )
+    // O lembrete não tem tela: vai direto às preferências curtas.
+    expect(destinoContaNova({ tipo: 'lembrar', id: JOGO })).toBe(
+      `${BEM_VINDO_PATH}?feito=lembrar`
+    )
+  })
+
+  test('o card só aparece com um `?novo=` conhecido, e sai da URL', () => {
+    expect(lerNovo('vou')).toBe('vou')
+    expect(lerNovo('vouc')).toBe('vouc')
+    expect(lerNovo('app')).toBeNull()
+    expect(lerNovo(undefined)).toBeNull()
+    expect(semNovo('/dashboard/seus-bares?aba=salvos&novo=fav')).toBe(
+      '/dashboard/seus-bares?aba=salvos'
+    )
+  })
+
+  test('sem onboarding, só as telas da ação, do card e as preferências curtas', () => {
+    expect(contaNovaPodeVer(BEM_VINDO_PATH, BEM_VINDO_PATH)).toBe(true)
+    expect(
+      contaNovaPodeVer('/dashboard/games', '/dashboard/games?novo=vouc')
+    ).toBe(true)
+    expect(contaNovaPodeVer('/bar/x', `/bar/x?acao=fav.${ID}`)).toBe(true)
+    expect(contaNovaPodeVer('/dashboard/games', '/dashboard/games')).toBe(false)
+    expect(contaNovaPodeVer('/dashboard', '/dashboard?novo=outro')).toBe(false)
+    expect(contaNovaPodeVer('/dashboard', '/dashboard?acao=app')).toBe(false)
   })
 })

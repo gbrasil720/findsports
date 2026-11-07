@@ -59,3 +59,65 @@ export function semAcao(href: string): string {
 export function temAcao(href: string): boolean {
   return new URL(href, 'http://local').searchParams.has('acao')
 }
+
+/*
+ * Conta nova por uma ação (WEB-501, protótipo `bem-vindo-curto`): a ação vem
+ * primeiro e as preferências depois, num card ("Conta criada e…") na tela
+ * onde a ação foi parar. O "Me avise do app" não tem tela de ação e segue
+ * pelo onboarding de 5 passos, como no protótipo.
+ */
+
+/** O card da conta nova: `vouc` é a presença sem código (bar fora do Elite). */
+export type Novo = 'vou' | 'vouc' | 'fav' | 'lembrar'
+
+const NOVOS: readonly Novo[] = ['vou', 'vouc', 'fav', 'lembrar']
+
+export function lerNovo(texto: unknown): Novo | null {
+  return NOVOS.includes(texto as Novo) ? (texto as Novo) : null
+}
+
+/** Torcedor sem onboarding com esta ação no destino pula o onboarding. */
+export function acaoPulaOnboarding(href: string): boolean {
+  const texto = new URL(href, 'http://local').searchParams.get('acao')
+  return Boolean(texto) && texto !== 'app'
+}
+
+/** As preferências curtas da conta nova, depois da ação. */
+export const BEM_VINDO_PATH = '/dashboard/bem-vindo'
+
+/**
+ * Onde a conta nova cai depois da ação concluída, com o card na URL
+ * (`?novo=`): o código (bar Elite) ou Meus jogos, Seus bares › Favoritos, e o
+ * lembrete, que não tem tela, direto nas preferências curtas.
+ */
+export function destinoContaNova(
+  acao: Exclude<Acao, { tipo: 'app' }>,
+  comCodigo = false
+): string {
+  if (acao.tipo === 'vou')
+    return comCodigo
+      ? `/dashboard/codigo/${acao.id}?novo=vou`
+      : '/dashboard/games?novo=vouc'
+  if (acao.tipo === 'fav') return '/dashboard/seus-bares?aba=salvos&novo=fav'
+  return `${BEM_VINDO_PATH}?feito=lembrar`
+}
+
+/** O endereço sem o card da conta nova (`?novo=`). */
+export function semNovo(href: string): string {
+  const url = new URL(href, 'http://local')
+  url.searchParams.delete('novo')
+  return url.pathname + url.search + url.hash
+}
+
+/**
+ * Torcedor sem onboarding pode ficar aqui: com a ação ainda por concluir, com
+ * o card da conta nova, ou nas preferências curtas. O resto o leva ao
+ * onboarding de 5 passos (`applyAuthGuards`).
+ */
+export function contaNovaPodeVer(pathname: string, href: string): boolean {
+  return (
+    pathname === BEM_VINDO_PATH ||
+    acaoPulaOnboarding(href) ||
+    lerNovo(new URL(href, 'http://local').searchParams.get('novo')) !== null
+  )
+}
