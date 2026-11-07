@@ -4106,3 +4106,71 @@ html[data-theme="dark"] .tc .m-d {
   padding: 0;
   min-inline-size: 0;
 }
+/* Meus jogos e código no web */
+.tc .tabsx a {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font: 600 14.5px var(--text);
+  white-space: nowrap;
+  text-decoration: none;
+}
+.tc .tabsx a.on {
+  background: var(--fg);
+  color: var(--bg);
+}
+.tc .tabsx a .n {
+  font: 600 12px var(--mono);
+  opacity: 0.6;
+  margin-left: 6px;
+}
+.tc .tk .ph .ph-vazio {
+  position: absolute;
+}
+.tc .tk .at {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.tc .tk .at a {
+  color: inherit;
+}
+.tc .tk-aviso {
+  margin: 0;
+  font-size: 14px;
+  color: var(--live-text);
+}
+.tc .tk .code.code-txt {
+  font: 600 16px / 1.25 var(--text);
+  letter-spacing: 0;
+}
+.tc .pastl {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+}
+.tc .pastnote {
+  margin: 18px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+.tc .pos-jogo {
+  margin-top: 18px;
+  display: grid;
+  gap: 12px;
+}
+.tc .appc .soonb {
+  justify-self: start;
+}
+.tc .ticket .top {
+  position: static;
+  border: 0;
+  background: none;
+}
+.tc .qrw .q2 svg {
+  width: 192px;
+  height: 192px;
+}
