@@ -6,6 +6,7 @@ import {
   readMyGames,
   readUnregisteredAlerts,
   readUnvalidatedCodeAlerts,
+  readVisitedGames,
   setAttendance
 } from '../lib/attendance'
 import { checkIn } from '../lib/check-in'
@@ -30,6 +31,10 @@ export const attendanceRouter = router({
 
   /** "Meus jogos": onde o torcedor marcou que vai, com o código. */
   mine: fanProcedure.query(({ ctx }) => readMyGames(ctx.session.user.id)),
+  /** Os jogos com código validado: o "Já fui" de Seus bares. */
+  visits: fanProcedure.query(({ ctx }) =>
+    readVisitedGames(ctx.session.user.id)
+  ),
 
   /**
    * "Estou aqui" (WEB-408): check-in por localização durante o jogo. O
