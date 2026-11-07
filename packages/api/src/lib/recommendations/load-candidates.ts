@@ -1,9 +1,11 @@
 import { db, sql } from '@findsports_oficial/db'
+import { utcNowSql } from '@findsports_oficial/db/event-window-sql'
 
 import { utcIso } from '../utc-timestamp'
 import {
   DAY_MS,
   jaccard,
+  RECOMMENDATION_DISMISS_COOLDOWN_DAYS,
   RECOMMENDATION_INTENT_KINDS,
   RECOMMENDATION_QUALITY_WINDOW_DAYS,
   RECOMMENDATION_UNFAVORITE_COOLDOWN_DAYS,
@@ -81,12 +83,19 @@ export async function loadRecommendationCandidates(input: {
   lng: number
   radiusKm: number
   now: Date
+  /** Bares que já estão na rodada do dia (completar a rodada não os repete). */
+  excludeBarIds?: string[]
 }): Promise<RecommendationCandidate[]> {
+  // Em JSON: o `sql` do Drizzle abre um array em vários parâmetros.
+  const excluded = JSON.stringify(input.excludeBarIds ?? [])
   const sixtyDaysAgo = new Date(
     input.now.getTime() - RECOMMENDATION_QUALITY_WINDOW_DAYS * DAY_MS
   )
   const thirtyDaysAgo = new Date(
     input.now.getTime() - RECOMMENDATION_UNFAVORITE_COOLDOWN_DAYS * DAY_MS
+  )
+  const dismissCutoff = new Date(
+    input.now.getTime() - RECOMMENDATION_DISMISS_COOLDOWN_DAYS * DAY_MS
   )
   const expandedRadiusMeters = input.radiusKm * 1.5 * 1000
 
@@ -145,7 +154,7 @@ export async function loadRecommendationCandidates(input: {
       CROSS JOIN params p
       WHERE b.is_active
         AND e.published_at IS NOT NULL
-        AND e.starts_at >= ${input.now}
+        AND e.starts_at >= ${utcNowSql(input.now)}
         AND ST_DWithin(b.geo, p.origin, p.expanded_radius)
       GROUP BY b.id
       ORDER BY MIN(e.starts_at), b.id
@@ -247,6 +256,7 @@ export async function loadRecommendationCandidates(input: {
       CROSS JOIN params p
       CROSS JOIN reset_boundary rb
       WHERE b.is_active
+        AND b.id NOT IN (SELECT jsonb_array_elements_text(${excluded}::jsonb))
         AND NOT EXISTS (
           SELECT 1 FROM user_favorite_bars favorite
           WHERE favorite.user_id = ${input.userId} AND favorite.bar_id = b.id
@@ -256,7 +266,7 @@ export async function loadRecommendationCandidates(input: {
           WHERE re.actor_user_id = ${input.userId}
             AND re.bar_id = b.id
             AND (
-              (re.type = 'dismiss' AND re.occurred_at >= GREATEST(rb.starts_at, ${sixtyDaysAgo}::timestamptz))
+              (re.type = 'dismiss' AND re.occurred_at >= GREATEST(rb.starts_at, ${dismissCutoff}::timestamptz))
               OR
               (re.type = 'unfavorite' AND re.occurred_at >= GREATEST(rb.starts_at, ${thirtyDaysAgo}::timestamptz))
             )
@@ -329,7 +339,7 @@ export async function loadRecommendationCandidates(input: {
       LEFT JOIN event_participants ep ON ep.event_id = e.id
       LEFT JOIN recent_teams recent_team ON recent_team.team_id = ep.team_id
       WHERE e.bar_id = eligible.id AND e.published_at IS NOT NULL
-        AND e.starts_at >= ${input.now}
+        AND e.starts_at >= ${utcNowSql(input.now)}
     ) event_info ON true
     LEFT JOIN LATERAL (
       SELECT sport.name
@@ -337,7 +347,7 @@ export async function loadRecommendationCandidates(input: {
       JOIN sport ON sport.id = e.sport_id
       JOIN preferences pref ON pref.sport_id = e.sport_id
       WHERE e.bar_id = eligible.id AND e.published_at IS NOT NULL
-        AND e.starts_at >= ${input.now}
+        AND e.starts_at >= ${utcNowSql(input.now)}
       ORDER BY e.starts_at, e.id
       LIMIT 1
     ) matched_sport ON true
@@ -352,7 +362,7 @@ export async function loadRecommendationCandidates(input: {
       FROM event e
       JOIN sport ON sport.id = e.sport_id
       WHERE e.bar_id = eligible.id AND e.published_at IS NOT NULL
-        AND e.starts_at >= ${input.now}
+        AND e.starts_at >= ${utcNowSql(input.now)}
       ORDER BY e.starts_at, e.id
       LIMIT 1
     ) next_event ON true
@@ -375,6 +385,15 @@ export async function loadRecommendationCandidates(input: {
           AND ce.bar_id = eligible.id
           AND ce.type <> 'classic_exposure'
           AND ce.occurred_at >= rb.starts_at
+        UNION ALL
+        -- "Curti" na rodada do app conta como intenção forte (23g).
+        SELECT 'high_intent' AS kind, re.occurred_at
+        FROM recommendation_event re
+        CROSS JOIN reset_boundary rb
+        WHERE re.actor_user_id = ${input.userId}
+          AND re.bar_id = eligible.id
+          AND re.type = 'favorite'
+          AND re.occurred_at >= rb.starts_at
         UNION ALL
         SELECT 'positive_rating' AS kind, r.updated_at AS occurred_at
         FROM bar_rating r
