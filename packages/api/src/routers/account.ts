@@ -1,4 +1,7 @@
-import { createOnsideEmailTemplate } from '@findsports_oficial/auth/email-layout'
+import {
+  createOnsideEmailTemplate,
+  fileCard
+} from '@findsports_oficial/auth/email-layout'
 import { sendEmail } from '@findsports_oficial/auth/verification-email'
 import { db, eq, sql } from '@findsports_oficial/db'
 import { attendanceReport } from '@findsports_oficial/db/schema/attendance'
@@ -49,14 +52,19 @@ export function dataExportLimitKey(userId: string): string {
 export function createDataExportEmail(input: {
   name: string
   role: 'fan' | 'pub' | 'admin'
+  /** Nome do anexo, mostrado no corpo. */
+  filename: string
 }): { subject: string; html: string; text: string } {
   const contents =
     input.role === 'pub'
       ? 'Ele traz a conta, o bar, o plano e os jogos cadastrados. De torcedor não vem nada, nem quem marcou presença.'
       : 'Ele traz a conta, as preferências, os bares salvos, os jogos e as avaliações. De outra pessoa não vem nada.'
   const template = createOnsideEmailTemplate({
-    heading: 'Seus dados na Onside',
+    heading: 'Seus dados',
+    headingAccent: 'na Onside',
+    tag: 'PRIVACIDADE',
     intro: `Olá, ${input.name.trim() || 'torcedor'}. Como você pediu, o arquivo com os dados da sua conta na Onside está anexado a este e-mail.`,
+    blocks: [fileCard(input.filename, 'JSON · anexado a este e-mail')],
     steps: [
       contents,
       'O arquivo é JSON, um formato de texto aberto: abre em qualquer editor e pode ser levado para outro serviço.',
@@ -68,6 +76,9 @@ export function createDataExportEmail(input: {
       env.PUBLIC_APP_URL ?? env.BETTER_AUTH_URL
     ).toString(),
     actionTone: 'secondary',
+    // A política é página pública, não link de token.
+    linkFallback: false,
+    noteLabel: 'Não foi você?',
     note: 'Se não foi você quem pediu, troque a senha da conta e escreva para contato@onside.sh.',
     reason:
       'Você recebeu este e-mail porque alguém pediu, de dentro da sua conta, uma cópia dos seus dados na Onside.'
@@ -281,20 +292,21 @@ export const accountRouter = router({
     try {
       const data =
         user.role === 'pub' ? await barData(user.id) : await fanData(user.id)
+      const filename = `onside-meus-dados-${data.exportedAt.slice(0, 10)}.json`
       await sendEmail({
         apiKey: env.EMAIL_API_KEY,
         fromEmail: env.EMAIL_FROM,
         to: user.email,
         attachments: [
           {
-            filename: `onside-meus-dados-${data.exportedAt.slice(0, 10)}.json`,
+            filename,
             contentType: 'application/json',
             content: Buffer.from(JSON.stringify(data, null, 2)).toString(
               'base64'
             )
           }
         ],
-        ...createDataExportEmail({ name: user.name, role: user.role })
+        ...createDataExportEmail({ name: user.name, role: user.role, filename })
       })
     } catch (error) {
       // Pedido que não saiu não conta: a pessoa vai tentar de novo.

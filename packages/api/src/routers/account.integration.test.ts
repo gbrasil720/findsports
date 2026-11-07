@@ -88,6 +88,12 @@ integrationTest('torcedor recebe os dados por e-mail', async () => {
       to: [`${me}@integration.invalid`],
       subject: 'Seus dados da Onside'
     })
+    // O corpo mostra o anexo pelo nome (WEB-477).
+    const [file] = sent[0]?.attachments ?? []
+    expect(file?.filename).toMatch(
+      /^onside-meus-dados-\d{4}-\d{2}-\d{2}\.json$/
+    )
+    expect(sent[0]?.html).toContain(file?.filename ?? '-')
     const data = attached(sent[0])
     expect(data.profile?.id).toBe(me)
     expect(data.profile?.email).toBe(`${me}@integration.invalid`)
