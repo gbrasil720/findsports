@@ -63,6 +63,7 @@ import { Route as HoudiniAppGrimorioRouteImport } from './routes/houdini/_app/gr
 import { Route as HoudiniAppJogosRouteImport } from './routes/houdini/_app/jogos'
 import { Route as HoudiniAppPessoasRouteImport } from './routes/houdini/_app/pessoas'
 import { Route as HoudiniAppRevisaoRouteImport } from './routes/houdini/_app/revisao'
+import { Route as dashboardDashboardAvaliarEventIdRouteImport } from './routes/(dashboard)/dashboard_.avaliar.$eventId'
 import { Route as dashboardDashboardCodigoEventIdRouteImport } from './routes/(dashboard)/dashboard_.codigo.$eventId'
 import { Route as onboardingOnboardingPubNoArRouteImport } from './routes/(onboarding)/onboarding.pub_.no-ar'
 import { Route as HoudiniAppBaresBarIdRouteImport } from './routes/houdini/_app/bares_.$barId'
@@ -341,6 +342,12 @@ const HoudiniAppRevisaoRoute = HoudiniAppRevisaoRouteImport.update({
   path: '/revisao',
   getParentRoute: () => HoudiniAppRoute,
 } as any)
+const dashboardDashboardAvaliarEventIdRoute =
+  dashboardDashboardAvaliarEventIdRouteImport.update({
+    id: '/(dashboard)/dashboard_/avaliar/$eventId',
+    path: '/dashboard/avaliar/$eventId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const dashboardDashboardCodigoEventIdRoute =
   dashboardDashboardCodigoEventIdRouteImport.update({
     id: '/(dashboard)/dashboard_/codigo/$eventId',
@@ -418,6 +425,7 @@ export interface FileRoutesByFullPath {
   '/houdini/pessoas': typeof HoudiniAppPessoasRoute
   '/houdini/revisao': typeof HoudiniAppRevisaoRoute
   '/houdini/': typeof HoudiniAppIndexRoute
+  '/dashboard/avaliar/$eventId': typeof dashboardDashboardAvaliarEventIdRoute
   '/dashboard/codigo/$eventId': typeof dashboardDashboardCodigoEventIdRoute
   '/onboarding/pub/no-ar': typeof onboardingOnboardingPubNoArRoute
   '/houdini/bares/$barId': typeof HoudiniAppBaresBarIdRoute
@@ -475,6 +483,7 @@ export interface FileRoutesByTo {
   '/houdini/jogos': typeof HoudiniAppJogosRoute
   '/houdini/pessoas': typeof HoudiniAppPessoasRoute
   '/houdini/revisao': typeof HoudiniAppRevisaoRoute
+  '/dashboard/avaliar/$eventId': typeof dashboardDashboardAvaliarEventIdRoute
   '/dashboard/codigo/$eventId': typeof dashboardDashboardCodigoEventIdRoute
   '/onboarding/pub/no-ar': typeof onboardingOnboardingPubNoArRoute
   '/houdini/bares/$barId': typeof HoudiniAppBaresBarIdRoute
@@ -536,6 +545,7 @@ export interface FileRoutesById {
   '/houdini/_app/pessoas': typeof HoudiniAppPessoasRoute
   '/houdini/_app/revisao': typeof HoudiniAppRevisaoRoute
   '/houdini/_app/': typeof HoudiniAppIndexRoute
+  '/(dashboard)/dashboard_/avaliar/$eventId': typeof dashboardDashboardAvaliarEventIdRoute
   '/(dashboard)/dashboard_/codigo/$eventId': typeof dashboardDashboardCodigoEventIdRoute
   '/(onboarding)/onboarding/pub_/no-ar': typeof onboardingOnboardingPubNoArRoute
   '/houdini/_app/bares_/$barId': typeof HoudiniAppBaresBarIdRoute
@@ -597,6 +607,7 @@ export interface FileRouteTypes {
     | '/houdini/pessoas'
     | '/houdini/revisao'
     | '/houdini/'
+    | '/dashboard/avaliar/$eventId'
     | '/dashboard/codigo/$eventId'
     | '/onboarding/pub/no-ar'
     | '/houdini/bares/$barId'
@@ -654,6 +665,7 @@ export interface FileRouteTypes {
     | '/houdini/jogos'
     | '/houdini/pessoas'
     | '/houdini/revisao'
+    | '/dashboard/avaliar/$eventId'
     | '/dashboard/codigo/$eventId'
     | '/onboarding/pub/no-ar'
     | '/houdini/bares/$barId'
@@ -714,6 +726,7 @@ export interface FileRouteTypes {
     | '/houdini/_app/pessoas'
     | '/houdini/_app/revisao'
     | '/houdini/_app/'
+    | '/(dashboard)/dashboard_/avaliar/$eventId'
     | '/(dashboard)/dashboard_/codigo/$eventId'
     | '/(onboarding)/onboarding/pub_/no-ar'
     | '/houdini/_app/bares_/$barId'
@@ -754,6 +767,7 @@ export interface RootRouteChildren {
   ApiBarPhotoRoute: typeof ApiBarPhotoRoute
   ApiTrpcSplatRoute: typeof ApiTrpcSplatRoute
   ApiUserAvatarRoute: typeof ApiUserAvatarRoute
+  dashboardDashboardAvaliarEventIdRoute: typeof dashboardDashboardAvaliarEventIdRoute
   dashboardDashboardCodigoEventIdRoute: typeof dashboardDashboardCodigoEventIdRoute
   onboardingOnboardingPubNoArRoute: typeof onboardingOnboardingPubNoArRoute
 }
@@ -1138,6 +1152,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HoudiniAppRevisaoRouteImport
       parentRoute: typeof HoudiniAppRoute
     }
+    '/(dashboard)/dashboard_/avaliar/$eventId': {
+      id: '/(dashboard)/dashboard_/avaliar/$eventId'
+      path: '/dashboard/avaliar/$eventId'
+      fullPath: '/dashboard/avaliar/$eventId'
+      preLoaderRoute: typeof dashboardDashboardAvaliarEventIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/(dashboard)/dashboard_/codigo/$eventId': {
       id: '/(dashboard)/dashboard_/codigo/$eventId'
       path: '/dashboard/codigo/$eventId'
@@ -1276,6 +1297,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiBarPhotoRoute: ApiBarPhotoRoute,
   ApiTrpcSplatRoute: ApiTrpcSplatRoute,
   ApiUserAvatarRoute: ApiUserAvatarRoute,
+  dashboardDashboardAvaliarEventIdRoute: dashboardDashboardAvaliarEventIdRoute,
   dashboardDashboardCodigoEventIdRoute: dashboardDashboardCodigoEventIdRoute,
   onboardingOnboardingPubNoArRoute: onboardingOnboardingPubNoArRoute,
 }

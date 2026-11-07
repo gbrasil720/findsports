@@ -4317,3 +4317,25 @@ html[data-theme="dark"]:has(.tc) body {
   font: 500 15.5px var(--text);
   color: var(--fg);
 }
+/* "Como foi?" no web: as perguntas são fieldsets. */
+.tc fieldset.q3 {
+  border: 0;
+  margin-inline: 0;
+  padding: 0;
+  min-inline-size: 0;
+}
+.tc fieldset.q3 legend {
+  padding: 0;
+}
+.tc .q3 h2 label {
+  cursor: text;
+}
+.tc .rv-nota {
+  margin: 24px 0 0;
+  color: var(--muted);
+  font-size: 14.5px;
+}
+.tc .sendrow .btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
