@@ -1,0 +1,1 @@
+ALTER TABLE "bar_rating" ADD COLUMN "reasons" text[] DEFAULT '{}' NOT NULL;
