@@ -3,6 +3,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { brasiliaDay, brasiliaTime, dayLabel } from '@/components/painel/noite'
 import { AppChegando } from '@/components/torcedor/app-chegando'
+import { CartaoContaNova } from '@/components/torcedor/conta-nova'
 import { Ic } from '@/components/torcedor/icones'
 import { TorcedorShell, useTorcedor } from '@/components/torcedor/shell'
 import { baixarAgenda } from '@/domain/agenda'
@@ -86,6 +87,7 @@ function Conteudo() {
         Os jogos que você marcou, com o código do balcão. Depois do jogo, conte
         como foi.
       </p>
+      <CartaoContaNova />
       <div className="tabsx" role="tablist" aria-label="Jogos">
         {(
           [
