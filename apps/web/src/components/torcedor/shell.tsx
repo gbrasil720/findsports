@@ -1,5 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useNavigate, useRouter } from '@tanstack/react-router'
+import {
+  Link,
+  useNavigate,
+  useRouter,
+  useRouterState
+} from '@tanstack/react-router'
 import {
   createContext,
   type ReactNode,
@@ -14,7 +19,7 @@ import { useSession } from '@/hooks/use-session'
 import { useSignOut } from '@/hooks/use-sign-out'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
-import { type Acao, lerAcao, semAcao } from './acao'
+import { type Acao, destinoContaNova, lerAcao, semAcao } from './acao'
 import { FolhaEntrar, type Pedido } from './entrar'
 import { Ic, type IconName } from './icones'
 
@@ -64,7 +69,23 @@ function iniciais(nome: string) {
   )
 }
 
-/** Conclui uma ação que pedia conta: marcar presença, salvar o bar. */
+/*
+ * Cada rota monta a sua casca: o aviso dado antes de trocar de tela se
+ * perderia com a casca de antes. Só o cliente o grava (num clique ou numa
+ * ação), então não vaza entre pedidos do servidor.
+ */
+let avisoPendente: string | null = null
+
+/** O aviso para a tela seguinte, mostrado pela casca que montar nela. */
+export function avisarNaProxima(texto: string) {
+  avisoPendente = texto
+}
+
+/**
+ * Conclui uma ação que pedia conta: marcar presença, salvar o bar. `nova`:
+ * conta sem onboarding, que vai à tela da ação com o card da conta nova
+ * (`destinoContaNova`) e escolhe as preferências depois.
+ */
 function useAcoes(avisar: (texto: string) => void) {
   const trpc = useTRPC()
   const queryClient = useQueryClient()
@@ -75,7 +96,11 @@ function useAcoes(avisar: (texto: string) => void) {
   const avisarApp = useMutation(trpc.appWaitlist.join.mutationOptions())
 
   return useCallback(
-    async (acao: Acao) => {
+    async (acao: Acao, nova = false) => {
+      const irPara = async (texto: string, to: string) => {
+        avisarNaProxima(texto)
+        await navigate({ to })
+      }
       try {
         if (acao.tipo === 'app') {
           const { email } = await avisarApp.mutateAsync()
@@ -91,22 +116,27 @@ function useAcoes(avisar: (texto: string) => void) {
             attending: true
           })
           await queryClient.invalidateQueries()
-          if (feito.code) {
-            avisar('Pronto: você vai assistir aqui. Este é o seu código.')
-            await navigate({
-              to: '/dashboard/codigo/$eventId',
-              params: { eventId: acao.id }
-            })
-          } else {
-            avisar(
-              'Pronto: você vai assistir aqui. Faça check-in quando chegar.'
+          const comCodigo = Boolean(feito.code)
+          if (nova)
+            return irPara(
+              comCodigo
+                ? 'Pronto: você vai assistir aqui. Este é o seu código.'
+                : 'Pronto: você vai assistir aqui.',
+              destinoContaNova(acao, comCodigo)
             )
-          }
+          if (comCodigo)
+            return irPara(
+              'Pronto: você vai assistir aqui. Este é o seu código.',
+              `/dashboard/codigo/${acao.id}`
+            )
+          avisar('Pronto: você vai assistir aqui. Faça check-in quando chegar.')
           return
         }
         if (acao.tipo === 'fav') {
           await salvar.mutateAsync({ barId: acao.id })
           await queryClient.invalidateQueries()
+          if (nova)
+            return irPara('Bar salvo em Seus bares.', destinoContaNova(acao))
           avisar('Bar salvo em Seus bares.')
           return
         }
@@ -116,7 +146,9 @@ function useAcoes(avisar: (texto: string) => void) {
           on: true,
           beforeMinutes: 180
         })
-        avisar('Lembrete salvo: 3 h antes do jogo, em Avisos no app.')
+        const lembrete = 'Lembrete salvo: 3 h antes do jogo, em Avisos no app.'
+        if (nova) return irPara(lembrete, destinoContaNova(acao))
+        avisar(lembrete)
       } catch (error) {
         avisar(
           getUserFacingMessage(error, 'Não deu para concluir. Tente de novo.')
@@ -141,9 +173,11 @@ type Props = {
   busca?: { valor: string; onMudar: (valor: string) => void }
   /** Ex.: "Vila Madalena, SP", ao lado da busca. */
   onde?: ReactNode
+  /** Sem as abas de baixo do celular (as preferências da conta nova). */
+  semAbas?: boolean
 }
 
-export function TorcedorShell({ aba, children, busca, onde }: Props) {
+export function TorcedorShell({ aba, children, busca, onde, semAbas }: Props) {
   const session = useSession()
   const router = useRouter()
   const trpc = useTRPC()
@@ -168,7 +202,18 @@ export function TorcedorShell({ aba, children, busca, onde }: Props) {
     return () => clearTimeout(fim)
   }, [aviso])
 
+  // O aviso dado pela tela de antes (`avisarNaProxima`), também quando a
+  // troca é na mesma rota e a casca não remonta.
+  const endereco = useRouterState({ select: (s) => s.location.href })
+  useEffect(() => {
+    if (!endereco || !avisoPendente) return
+    avisar(avisoPendente)
+    avisoPendente = null
+  }, [avisar, endereco])
+
   const concluir = useAcoes(avisar)
+  // Conta sem onboarding: a ação primeiro, as preferências depois.
+  const nova = fan && session?.user.onboardingCompleted === false
 
   // A ação que voltou do cadastro, do 2FA ou do onboarding na URL.
   const feita = useRef(false)
@@ -186,17 +231,17 @@ export function TorcedorShell({ aba, children, busca, onde }: Props) {
         window.location.pathname + window.location.search + window.location.hash
       )
     )
-    void concluir(acao)
-  }, [fan, concluir])
+    void concluir(acao, nova)
+  }, [fan, nova, concluir])
 
   const agir = useCallback(
     (p: Pedido & { acao: Acao }) => {
-      if (fan) void concluir(p.acao)
+      if (fan) void concluir(p.acao, nova)
       else if (logado)
         avisar('Só conta de torcedor marca presença e salva bares.')
       else setPedido(p)
     },
-    [fan, logado, concluir, avisar]
+    [fan, nova, logado, concluir, avisar]
   )
   const fechar = useCallback(() => setPedido(null), [])
 
@@ -406,7 +451,7 @@ export function TorcedorShell({ aba, children, busca, onde }: Props) {
 
         <main id="main-content">{children}</main>
 
-        {fan ? (
+        {fan && !semAbas ? (
           <nav className="ftab" aria-label="Sua conta">
             {ABAS.map(([id, rotulo, icone, para]) => (
               <Link
@@ -430,9 +475,9 @@ export function TorcedorShell({ aba, children, busca, onde }: Props) {
         <FolhaEntrar
           pedido={pedido}
           onFechar={fechar}
-          onEntrou={async (acao) => {
+          onEntrou={async (acao, novaConta) => {
             await router.invalidate()
-            if (acao) await concluir(acao)
+            if (acao) await concluir(acao, novaConta)
             else avisar('Você entrou.')
             // O que a sessão nova liga (favoritos, Meus jogos) pode ter lido
             // antes de a ação gravar: lê de novo o que está na tela.
