@@ -120,6 +120,8 @@ export function groupOpeningHours(hours: OpeningHours) {
     const last = run.at(-1) ?? first
     const day = hours[first] ?? null
     return {
+      /** Os dias da linha (0 = domingo), para a página marcar "hoje". */
+      dayIndexes: run,
       days:
         run.length === 1
           ? (FULL[first] ?? '')
@@ -127,4 +129,66 @@ export function groupOpeningHours(hours: OpeningHours) {
       hours: day ? `${day.opens} – ${day.closes}` : null
     }
   })
+}
+
+export type OpeningStatus = {
+  open: boolean
+  /** Aberto: a hora de fechar ("02:00"). */
+  closes: string | null
+  /** Fechado: quando abre de novo; `day` é "hoje", "amanhã" ou "seg". */
+  opens: { day: string; time: string } | null
+  /** A faixa de hoje, "sáb 12:00–02:00" ou "sáb fechado". */
+  today: string
+}
+
+/**
+ * Aberto ou fechado agora, com a hora seguinte (estado sem jogo da página
+ * do bar: "Até 02:00 · sáb 12:00–02:00", "Abre hoje às 17:00"). Mesma regra
+ * de `isOpenNow`; `null` sem horário informado.
+ */
+export function openingStatus(
+  hours: OpeningHours | null,
+  now: Date
+): OpeningStatus | null {
+  if (!hours) return null
+  const { weekday, minute } = brasiliaClock(now)
+  const todayHours = hours[weekday] ?? null
+  const yesterday = hours[(weekday + 6) % 7] ?? null
+  const today = `${SHORT[weekday]} ${todayHours ? `${todayHours.opens}–${todayHours.closes}` : 'fechado'}`
+  if (todayHours) {
+    const opens = minutes(todayHours.opens)
+    const closes = minutes(todayHours.closes)
+    const inside =
+      closes > opens ? minute >= opens && minute < closes : minute >= opens
+    if (inside)
+      return { open: true, closes: todayHours.closes, opens: null, today }
+  }
+  if (
+    yesterday &&
+    minutes(yesterday.closes) <= minutes(yesterday.opens) &&
+    minute < minutes(yesterday.closes)
+  )
+    return { open: true, closes: yesterday.closes, opens: null, today }
+  if (todayHours && minute < minutes(todayHours.opens))
+    return {
+      open: false,
+      closes: null,
+      opens: { day: 'hoje', time: todayHours.opens },
+      today
+    }
+  for (let ahead = 1; ahead <= 7; ahead++) {
+    const day = (weekday + ahead) % 7
+    const next = hours[day]
+    if (next)
+      return {
+        open: false,
+        closes: null,
+        opens: {
+          day: ahead === 1 ? 'amanhã' : (SHORT[day] ?? ''),
+          time: next.opens
+        },
+        today
+      }
+  }
+  return { open: false, closes: null, opens: null, today }
 }

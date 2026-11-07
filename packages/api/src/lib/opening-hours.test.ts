@@ -4,7 +4,8 @@ import {
   isOpenNow,
   normalizeOpeningHours,
   type OpeningHours,
-  openingHoursSchema
+  openingHoursSchema,
+  openingStatus
 } from './opening-hours'
 
 const day = (opens: string, closes: string) => ({ opens, closes })
@@ -69,7 +70,7 @@ describe('isOpenNow', () => {
 
 describe('groupOpeningHours', () => {
   test('dias seguidos iguais viram uma linha, como no design', () => {
-    expect(groupOpeningHours(ZE)).toEqual([
+    expect(groupOpeningHours(ZE)).toMatchObject([
       { days: 'Seg a qui', hours: '17:00 – 00:00' },
       { days: 'Sex e sáb', hours: '17:00 – 02:00' },
       { days: 'Domingo', hours: '12:00 – 22:00' }
@@ -79,7 +80,7 @@ describe('groupOpeningHours', () => {
   test('dia fechado entra como fechado e quebra a sequência', () => {
     const hours: OpeningHours = [...ZE]
     hours[3] = null
-    expect(groupOpeningHours(hours)).toEqual([
+    expect(groupOpeningHours(hours)).toMatchObject([
       { days: 'Seg e ter', hours: '17:00 – 00:00' },
       { days: 'Quarta', hours: null },
       { days: 'Quinta', hours: '17:00 – 00:00' },
@@ -90,7 +91,7 @@ describe('groupOpeningHours', () => {
 
   test('semana inteira igual', () => {
     const hours = Array.from({ length: 7 }, () => day('11:00', '23:00'))
-    expect(groupOpeningHours(hours)).toEqual([
+    expect(groupOpeningHours(hours)).toMatchObject([
       { days: 'Seg a dom', hours: '11:00 – 23:00' }
     ])
   })
@@ -111,5 +112,50 @@ describe('openingHoursSchema', () => {
   test('semana toda fechada é não informar', () => {
     expect(normalizeOpeningHours(Array(7).fill(null))).toBeNull()
     expect(normalizeOpeningHours(ZE)).toBe(ZE)
+  })
+})
+
+describe('openingStatus', () => {
+  // 24/10/2026 é sábado.
+  test('aberto, com a hora de fechar e a faixa de hoje', () => {
+    expect(openingStatus(ZE, brt('2026-10-24T20:00:00'))).toEqual({
+      open: true,
+      closes: '02:00',
+      opens: null,
+      today: 'sáb 17:00–02:00'
+    })
+  })
+  test('madrugada da faixa de ontem fecha na hora de ontem', () => {
+    expect(openingStatus(ZE, brt('2026-10-24T01:00:00'))).toMatchObject({
+      open: true,
+      closes: '02:00'
+    })
+  })
+  test('fechado antes de abrir: abre hoje', () => {
+    expect(openingStatus(ZE, brt('2026-10-24T10:00:00'))).toMatchObject({
+      open: false,
+      opens: { day: 'hoje', time: '17:00' }
+    })
+  })
+  test('fechado depois de fechar: abre amanhã', () => {
+    // Domingo 23h: fechou às 22h, segunda abre às 17h.
+    expect(openingStatus(ZE, brt('2026-10-25T23:00:00'))).toMatchObject({
+      open: false,
+      opens: { day: 'amanhã', time: '17:00' }
+    })
+  })
+  test('pula os dias fechados', () => {
+    const soDomingo: OpeningHours = [
+      day('12:00', '22:00'),
+      ...Array(6).fill(null)
+    ]
+    expect(openingStatus(soDomingo, brt('2026-10-26T10:00:00'))).toMatchObject({
+      open: false,
+      opens: { day: 'dom', time: '12:00' },
+      today: 'seg fechado'
+    })
+  })
+  test('sem horário, nada', () => {
+    expect(openingStatus(null, new Date())).toBeNull()
   })
 })
