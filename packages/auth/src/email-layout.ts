@@ -83,9 +83,9 @@ const TB =
 const T = `${TB} style="width:100%;border-collapse:collapse"`
 const TI =
   'role="presentation" cellspacing="0" cellpadding="0" border="0" style="border-collapse:separate"'
-// Proporção do PNG (211×64) em 32 px de altura.
-const LOGO_WIDTH = 106
-const LOGO_HEIGHT = 32
+// Proporção do PNG (238×72) em 36 px de altura.
+const LOGO_WIDTH = 119
+const LOGO_HEIGHT = 36
 
 export function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (character) => {

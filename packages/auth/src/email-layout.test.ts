@@ -40,7 +40,7 @@ describe('layout dos e-mails Onside', () => {
     expect(images).toHaveLength(1)
     expect(images[0]).toContain(`src="${EMAIL_LOGO_URL}"`)
     expect(images[0]).toContain('alt="Onside"')
-    expect(images[0]).toContain('width="106" height="32"')
+    expect(images[0]).toContain('width="119" height="36"')
     expect(html).not.toContain('display:none')
     expect(html).not.toContain('<style')
     expect(html).toContain('content="light only"')
