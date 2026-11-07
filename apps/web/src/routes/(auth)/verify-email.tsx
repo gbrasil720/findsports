@@ -17,6 +17,7 @@ import {
   type PubReceiptData,
   useFinishPubSignup
 } from '@/components/onboarding/pub-receipt'
+import { acaoPulaOnboarding } from '@/components/torcedor/acao'
 import { useTurnstile } from '@/components/turnstile'
 import { authClient, refreshSessionCache } from '@/lib/auth-client'
 import { mensagemOnboardingJaConcluido } from '@/lib/onboarding-concluido'
@@ -142,7 +143,10 @@ function VerifyEmailPage() {
       }
 
       if (data.user.role === 'pub') navigate({ to: '/plan' })
-      else if (data.user.onboardingCompleted) navigate({ to: callbackUrl })
+      // Conta nova por uma ação (WEB-501): a ação primeiro, as preferências
+      // depois (`components/torcedor/acao.ts`).
+      else if (data.user.onboardingCompleted || acaoPulaOnboarding(callbackUrl))
+        navigate({ to: callbackUrl })
       else navigate({ to: withCallbackUrl('/onboarding/fan', callbackUrl) })
     } catch {
       toast.error('Não foi possível concluir a confirmação. Tente novamente.')
