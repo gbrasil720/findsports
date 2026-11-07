@@ -1,5 +1,6 @@
-import { db, sql } from '@findsports_oficial/db'
+import { and, db, eq, sql } from '@findsports_oficial/db'
 import {
+  gameReminder,
   recommendationEvent,
   recommendationReset
 } from '@findsports_oficial/db/schema/recommendation'
@@ -187,6 +188,46 @@ export const recommendationsRouter = router({
     })
     return { success: true }
   }),
+
+  /** "Lembrar" (23c): o aviso aparece em Avisos no dia do jogo. */
+  remind: fanProcedure
+    .input(
+      z.object({
+        eventId: z.string().uuid(),
+        on: z.boolean(),
+        runId: z.string().uuid().optional(),
+        /** Sem ele, o lembrete vale o dia do jogo inteiro. */
+        beforeMinutes: z.number().int().min(1).max(1440).optional()
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id
+      if (input.on) {
+        const remindBeforeMinutes = input.beforeMinutes ?? null
+        await db
+          .insert(gameReminder)
+          .values({
+            userId,
+            eventId: input.eventId,
+            runId: input.runId,
+            remindBeforeMinutes
+          })
+          .onConflictDoUpdate({
+            target: [gameReminder.userId, gameReminder.eventId],
+            set: { remindBeforeMinutes }
+          })
+      } else {
+        await db
+          .delete(gameReminder)
+          .where(
+            and(
+              eq(gameReminder.userId, userId),
+              eq(gameReminder.eventId, input.eventId)
+            )
+          )
+      }
+      return { success: true }
+    }),
 
   getMyBarQualityStatus: pubProcedure.query(async ({ ctx }) => {
     const rows = await db.execute(sql`
