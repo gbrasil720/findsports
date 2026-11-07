@@ -1871,3 +1871,8 @@ html[data-theme="dark"] .pn3 {
     transition: none;
   }
 }
+
+/* "Desfazer" da chegada, ao lado do "chegou 21:40" (Quem vai). */
+.pn3 .pn-pp-m .pn-lnk-b {
+  margin-left: 8px;
+}
