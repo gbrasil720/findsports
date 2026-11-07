@@ -240,6 +240,54 @@ async function assertTeamsMatchSport(
   }
 }
 
+/**
+ * Trava o bar do dono e confere se ele pode pôr mais um jogo no ar: bar fora
+ * do ar não publica, e o Starter para no limite de jogos. A trava na linha do
+ * bar serializa duas publicações ao mesmo tempo no último jogo do limite.
+ * Rascunho não passa por aqui (WEB-436): conta só quando é publicado.
+ */
+async function lockBarForPublishing(tx: EventTransaction, userId: string) {
+  const [lockedBar] = await tx
+    .select()
+    .from(bar)
+    .where(eq(bar.userId, userId))
+    .for('update')
+    .limit(1)
+
+  if (!lockedBar) {
+    throw new TRPCError({
+      code: 'NOT_FOUND',
+      message: 'Bar não encontrado para este usuário.'
+    })
+  }
+
+  const existingSubscription = await tx.query.subscription.findFirst({
+    where: eq(subscription.barId, lockedBar.id)
+  })
+  const policy = await getEventCreationPolicy(tx, {
+    id: lockedBar.id,
+    isActive: lockedBar.isActive,
+    subscription: existingSubscription ?? null
+  })
+
+  if (policy.status === 'inactive') {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message:
+        'Seu bar precisa ter uma assinatura ativa para cadastrar eventos.'
+    })
+  }
+
+  if (policy.status === 'limited' && !policy.canCreate) {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: eventLimitMessage(existingSubscription ?? null, policy.periodEnd)
+    })
+  }
+
+  return lockedBar
+}
+
 async function getBarByUserId(userId: string) {
   const result = await db.query.bar.findFirst({
     where: eq(bar.userId, userId),
@@ -638,7 +686,9 @@ export const pubRouter = router({
           .optional(),
         // WEB-399: omitido herda das características do bar.
         onBigScreen: z.boolean().optional(),
-        withSound: z.boolean().optional()
+        withSound: z.boolean().optional(),
+        // WEB-436: salva sem publicar; fica fora do app e do limite.
+        draft: z.boolean().optional()
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -650,47 +700,9 @@ export const pubRouter = router({
         input.endsAt ? new Date(input.endsAt) : null
       )
 
+      const draftBar = input.draft ? await getBarByUserId(userId) : null
       await db.transaction(async (tx) => {
-        const [lockedBar] = await tx
-          .select()
-          .from(bar)
-          .where(eq(bar.userId, userId))
-          .for('update')
-          .limit(1)
-
-        if (!lockedBar) {
-          throw new TRPCError({
-            code: 'NOT_FOUND',
-            message: 'Bar não encontrado para este usuário.'
-          })
-        }
-
-        const existingSubscription = await tx.query.subscription.findFirst({
-          where: eq(subscription.barId, lockedBar.id)
-        })
-        const policy = await getEventCreationPolicy(tx, {
-          id: lockedBar.id,
-          isActive: lockedBar.isActive,
-          subscription: existingSubscription ?? null
-        })
-
-        if (policy.status === 'inactive') {
-          throw new TRPCError({
-            code: 'FORBIDDEN',
-            message:
-              'Seu bar precisa ter uma assinatura ativa para cadastrar eventos.'
-          })
-        }
-
-        if (policy.status === 'limited' && !policy.canCreate) {
-          throw new TRPCError({
-            code: 'FORBIDDEN',
-            message: eventLimitMessage(
-              existingSubscription ?? null,
-              policy.periodEnd
-            )
-          })
-        }
+        const lockedBar = draftBar ?? (await lockBarForPublishing(tx, userId))
 
         await assertTeamsMatchSport(
           tx,
@@ -710,7 +722,8 @@ export const pubRouter = router({
               participantFreeText: input.participantFreeText
             }),
             onBigScreen: input.onBigScreen,
-            withSound: input.withSound
+            withSound: input.withSound,
+            ...(input.draft && { publishedAt: null })
           })
           .returning({ id: event.id })
 
@@ -759,7 +772,9 @@ export const pubRouter = router({
           .optional(),
         // WEB-399: omitido herda das características do bar.
         onBigScreen: z.boolean().optional(),
-        withSound: z.boolean().optional()
+        withSound: z.boolean().optional(),
+        // WEB-436: põe o rascunho no ar. Não existe o caminho de volta.
+        publish: z.literal(true).optional()
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -788,11 +803,17 @@ export const pubRouter = router({
 
       // Só o início que mudou passa pela regra: editar o nome de um jogo que
       // já acabou não pode ser recusado pela data que ninguém mexeu.
+      // Publicar o rascunho também: jogo que já começou não entra no ar.
+      const publishing = !!input.publish && existingEvent.publishedAt === null
       if (
-        input.startsAt &&
-        new Date(input.startsAt).getTime() !== existingEvent.startsAt.getTime()
+        (input.startsAt &&
+          new Date(input.startsAt).getTime() !==
+            existingEvent.startsAt.getTime()) ||
+        publishing
       ) {
-        assertEventStartInRange(new Date(input.startsAt))
+        assertEventStartInRange(
+          input.startsAt ? new Date(input.startsAt) : existingEvent.startsAt
+        )
       }
       assertEventIntervalValid(
         input.startsAt ? new Date(input.startsAt) : existingEvent.startsAt,
@@ -800,6 +821,7 @@ export const pubRouter = router({
       )
 
       await db.transaction(async (tx) => {
+        if (publishing) await lockBarForPublishing(tx, userId)
         await assertTeamsMatchSport(tx, effectiveSportId, participantIds ?? [])
 
         const changes = {
@@ -813,7 +835,8 @@ export const pubRouter = router({
           ...(input.onBigScreen !== undefined && {
             onBigScreen: input.onBigScreen
           }),
-          ...(input.withSound !== undefined && { withSound: input.withSound })
+          ...(input.withSound !== undefined && { withSound: input.withSound }),
+          ...(publishing && { publishedAt: new Date() })
         }
         // Só os times mudaram: o Drizzle recusa `set({})` com erro 500.
         if (Object.keys(changes).length > 0) {
