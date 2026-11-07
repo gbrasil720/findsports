@@ -12,6 +12,7 @@ import { pinDoPlano } from '@/components/app/map-icons'
 import { Logo } from '@/components/landing/v3/icons'
 import { ThemeSwitch } from '@/components/landing/v3/theme-switch'
 import { QRCode } from '@/components/qr-code'
+import { lerAcao } from '@/components/torcedor/acao'
 import { canRecordCommercialEvents } from '@/domain/viewer'
 import { analytics } from '@/lib/analytics'
 import { trackCommercialEvent } from '@/lib/commercial-tracking'
@@ -77,7 +78,7 @@ export type Nearby = {
   endsAt: Date | null
 }
 
-export type BarPageSearch = { jogo?: string; acao?: 'vou' | 'salvar' }
+export type BarPageSearch = { jogo?: string; acao?: string }
 
 type Props = {
   bar: LiveBar
@@ -280,34 +281,31 @@ export function BarPage({
   }
 
   /*
-   * A ação pedida antes de entrar (`?acao=`): a folha de login, o cadastro e
-   * o 2FA voltam para cá com ela, e ela acontece uma vez só.
+   * A ação pedida antes de entrar (`?acao=`, `torcedor/acao.ts`): a folha de
+   * login, o cadastro, o e-mail, o 2FA e o onboarding voltam para cá com ela,
+   * e ela acontece uma vez só. O formato antigo (`vou`, `salvar`) vale com o
+   * bar da página e o jogo do cartão.
    */
   const pending = useRef(false)
   useEffect(() => {
     if (!search.acao || !session || !viewer.data || pending.current) return
     pending.current = true
-    const { acao, ...rest } = search
+    const { acao: texto, ...rest } = search
     void navigate({ to: '.', search: rest, replace: true, resetScroll: false })
+    const acao = lerAcao(texto, { barId: bar.id, eventId: game?.id })
+    if (!acao || acao.tipo === 'lembrar') return
     if (!viewer.data.fan) {
       toast.info('Marcar presença e salvar bar são para conta de torcedor.')
       return
     }
-    if (acao === 'salvar' && !viewer.data.favorited)
-      favorite.mutate({ barId: bar.id })
-    if (acao === 'vou' && game && !attending)
-      attend.mutate({ eventId: game.id, attending: true })
-  }, [
-    search,
-    session,
-    viewer.data,
-    navigate,
-    favorite,
-    attend,
-    bar.id,
-    game,
-    attending
-  ])
+    if (acao.tipo === 'fav' && !(acao.id === bar.id && viewer.data.favorited))
+      favorite.mutate({ barId: acao.id })
+    if (
+      acao.tipo === 'vou' &&
+      !viewer.data.games[acao.id]?.attendance?.attending
+    )
+      attend.mutate({ eventId: acao.id, attending: true })
+  }, [search, session, viewer.data, navigate, favorite, attend, bar.id, game])
 
   const share = async () => {
     const text = shareText(bar, game, now)

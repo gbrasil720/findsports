@@ -2,6 +2,7 @@ import type { PublicGame } from '@findsports_oficial/api/lib/public-bar-page'
 import { useNavigate, useRouter } from '@tanstack/react-router'
 import { useState } from 'react'
 
+import { acaoTexto } from '@/components/torcedor/acao'
 import { useTurnstile } from '@/components/turnstile'
 import { authClient } from '@/lib/auth-client'
 import { PENDING_VERIFICATION_KEY } from '@/lib/pending-verification'
@@ -78,7 +79,8 @@ function why(kind: LoginKind, bar: LiveBar): [IconName, string, string][] {
 
 /**
  * A folha de login da página do bar: entra sem sair dela e conclui o que a
- * pessoa pediu. O pedido viaja como `?acao=` (e `?jogo=`) na própria URL da
+ * pessoa pediu. O pedido viaja como `?acao=<tipo>.<id>` (`torcedor/acao.ts`,
+ * o mesmo da casca do torcedor), e o jogo em `?jogo=`, na própria URL da
  * página, que é também o destino do cadastro, da confirmação de e-mail e do
  * 2FA: quem volta por qualquer um deles encontra a ação feita (`BarPage`).
  */
@@ -134,8 +136,8 @@ function Sheet({
 
   const search: Record<string, string> = {}
   if (game) search.jogo = game.id
-  if (kind === 'vou') search.acao = 'vou'
-  if (kind === 'salvar') search.acao = 'salvar'
+  if (kind === 'vou' && game) search.acao = acaoTexto({ tipo: 'vou', id: game.id })
+  if (kind === 'salvar') search.acao = acaoTexto({ tipo: 'fav', id: bar.id })
   const back = `${path}${Object.keys(search).length ? `?${new URLSearchParams(search)}` : ''}`
   const showGame = Boolean(game) && (kind === 'vou' || kind === 'amigos')
 
