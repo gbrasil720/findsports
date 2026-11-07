@@ -1,10 +1,10 @@
-import { Check } from '@/components/landing/v3/icons'
 import {
   ROUTINE_STEPS,
   type Routine,
   WANTS,
   type Want
 } from '@findsports_oficial/api/lib/pub-routine'
+import { Check } from '@/components/landing/v3/icons'
 
 const QUESTIONS = {
   games: {
