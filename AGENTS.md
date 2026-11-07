@@ -370,6 +370,26 @@ Elite (`lib/bar-gallery.ts`). Upload por `/api/bar/photo?galeria` (`&capa` deixa
 Starter mandar a capa) e `pub.addPhoto`; `bar.gallery_photos` é a coluna antiga, sem
 leitura. Painel: `components/painel/espaco-fotos.tsx`.
 
+### Web do torcedor (WEB-501)
+
+**Ver sem login, agir com login (dono, 05/11/2026; revoga o "web só para bares" de
+24/10/2026).** O torcedor volta ao web no desenho "O Telão do Bar" (protótipo
+`docs/design/redesign-2026-11/torcedor/index.html`). O Explorar (`/dashboard`) abre
+para visitante; as telas de baixo dele (`/dashboard/*`: Meus jogos, código, Seus bares,
+perfil, Bares pra você, preferências) pedem conta (`applyAuthGuards`). Bar continua
+mandado ao `/admin`.
+
+- **Casca:** `TorcedorShell` (`components/torcedor/shell.tsx`), com o cabeçalho, as
+  abas de baixo no celular, o aviso e a folha de entrar. CSS do protótipo em
+  `components/torcedor/torcedor.css`, preso a `.tc`; ícones em `icones.tsx` (o `IC`
+  do protótipo). O escuro é o `data-theme` do `<html>`, como no painel.
+- **O que grava pede login e volta concluído:** favoritar, "Vou assistir aqui" e o
+  resto passam por `useTorcedor().agir`. Sem sessão abre a folha de entrar com o
+  contexto (o bar, o jogo); entrando por ela a ação sai na hora. Cadastro, e-mail,
+  2FA e onboarding levam a ação na URL, `?acao=<tipo>.<id>` (`components/torcedor/acao.ts`,
+  dentro do `callbackUrl`), e a casca a conclui uma vez ao voltar com sessão. A página
+  do bar usa o mesmo formato.
+
 ### App mobile
 
 `apps/mobile` (pacote `mobile`), montado como o Better-T-Stack monta `native-uniwind`, sem a
