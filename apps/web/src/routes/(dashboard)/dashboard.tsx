@@ -10,16 +10,21 @@ import {
   useState
 } from 'react'
 import { useMinuteNow } from '@/components/app/minute-tick'
-import { OnsideMap } from '@/components/app/onside-map'
+import { type MapBar, OnsideMap } from '@/components/app/onside-map'
 import { brasiliaTime } from '@/components/painel/noite'
-import { CartaoBar } from '@/components/torcedor/explorar/cartao-bar'
+import {
+  CartaoBar,
+  CartaoSemJogo
+} from '@/components/torcedor/explorar/cartao-bar'
 import { Carrossel, Dias, Regua } from '@/components/torcedor/explorar/regua'
 import { Ic } from '@/components/torcedor/icones'
 import { TorcedorShell, useTorcedor } from '@/components/torcedor/shell'
 import { normalizeRadiusKm, SAO_PAULO_CITY } from '@/domain/discovery'
 import {
   type BarDoJogo,
+  type BarSemJogo,
   baresDoJogo,
+  baresSemJogo,
   diasDaRegua,
   distancia,
   eliteNoClassico,
@@ -170,6 +175,19 @@ function ExplorarConteudo({ busca }: { busca: string }) {
     placeholderData: (anterior) => anterior,
     meta: { errorToast: false }
   })
+  // Os bares perto sem jogo no dia vão abaixo dos que passam o jogo (dono,
+  // 07/11/2026): o mesmo centro, raio e dia da régua.
+  const semJogoQuery = useQuery({
+    ...trpc.pubs.barsWithoutGame.queryOptions({
+      lat: centro.lat,
+      lng: centro.lng,
+      radiusKm: raio,
+      day: dia
+    }),
+    enabled: !esperandoCidade,
+    placeholderData: (anterior) => anterior,
+    meta: { errorToast: false }
+  })
   const config = useQuery(trpc.appConfig.getPublic.queryOptions())
   const notaPublica = config.data?.['rating.public_display'] === true
 
@@ -214,6 +232,15 @@ function ExplorarConteudo({ busca }: { busca: string }) {
     ordem
   })
   const total = jogo?.bars.length ?? 0
+  // Com a régua por carregar ou em erro a tela é o aviso; os sem jogo esperam.
+  const semJogo =
+    quadro.isSuccess && semJogoQuery.data
+      ? baresSemJogo(semJogoQuery.data, {
+          amenities,
+          oferta: ligados.includes('offer'),
+          busca
+        })
+      : []
 
   /*
    * "Entrega nos clássicos" (WEB-130), com as regras da busca antiga: só
@@ -404,6 +431,27 @@ function ExplorarConteudo({ busca }: { busca: string }) {
         ))
       : null
 
+  const cartoesSemJogo = (curto: boolean) =>
+    semJogo.length ? (
+      <>
+        <div className="semjogo">
+          <h2>Sem jogo marcado {rotuloDoDia.toLowerCase()}</h2>
+          <p>
+            Bares até {raio} km que ainda não publicaram jogo para{' '}
+            {rotuloDoDia.toLowerCase()}.
+          </p>
+        </div>
+        {semJogo.map((bar) => (
+          <CartaoSemJogo
+            key={bar.barId}
+            bar={bar}
+            quente={!curto && quente === bar.barId}
+            onQuente={curto ? undefined : setQuente}
+          />
+        ))}
+      </>
+    ) : null
+
   const proximoRaio = RAIOS[RAIOS.indexOf(raio) + 1]
   const vazio = quadro.isError ? (
     <div className="empty" role="alert">
@@ -464,7 +512,7 @@ function ExplorarConteudo({ busca }: { busca: string }) {
     </div>
   ) : null
 
-  const pinos = lista.map((bar) => ({
+  const pinos: MapBar[] = lista.map((bar) => ({
     id: bar.barId,
     name: bar.name,
     lat: bar.latitude,
@@ -478,6 +526,15 @@ function ExplorarConteudo({ busca }: { busca: string }) {
           ? ('elite' as const)
           : ('starter' as const)
   }))
+  for (const bar of semJogo) {
+    pinos.push({
+      id: bar.barId,
+      name: bar.name,
+      lat: bar.latitude,
+      lng: bar.longitude,
+      pin: 'quiet'
+    })
+  }
   const abrirBar = (id: string) => {
     const bar = lista.find((b) => b.barId === id)
     medirClique(bar)
@@ -505,7 +562,9 @@ function ExplorarConteudo({ busca }: { busca: string }) {
   )
 
   if (celular) {
-    const escolhido = lista.find((b) => b.barId === tocado)
+    const escolhido: Escolhido | undefined =
+      lista.find((b) => b.barId === tocado) ??
+      semJogo.find((b) => b.barId === tocado)
     return (
       <Celular
         topo={
@@ -529,7 +588,7 @@ function ExplorarConteudo({ busca }: { busca: string }) {
         mapa={mapa}
         escolhido={escolhido}
         onSoltar={() => setTocado(null)}
-        onAbrir={() => medirClique(escolhido)}
+        onAbrir={() => medirClique(lista.find((b) => b.barId === tocado))}
         cabeca={
           <>
             <h1 className="disp">{titulo}</h1>
@@ -554,6 +613,7 @@ function ExplorarConteudo({ busca }: { busca: string }) {
               Mandar este jogo pro grupo
             </button>
           ) : null}
+          {cartoesSemJogo(true)}
         </div>
       </Celular>
     )
@@ -605,14 +665,17 @@ function ExplorarConteudo({ busca }: { busca: string }) {
             ) : null}
           </div>
           {chips('rad-d')}
-          <div className="cards">{vazio ?? cartoes(false)}</div>
+          <div className="cards">
+            {vazio ?? cartoes(false)}
+            {cartoesSemJogo(false)}
+          </div>
         </section>
         <div className="mapcol">
           <div className="map">
             {mapa}
             <div className="mapbar">
               <span className="chip" style={{ cursor: 'default' }}>
-                {lista.length} no mapa · até {raio} km
+                {pinos.length} no mapa · até {raio} km
               </span>
               {aparelho ? null : (
                 <button
@@ -643,6 +706,12 @@ function ExplorarConteudo({ busca }: { busca: string }) {
                 <i style={{ background: '#e8320c' }} />
                 ao vivo
               </span>
+              {semJogo.length ? (
+                <span>
+                  <i className="oco" />
+                  sem jogo
+                </span>
+              ) : null}
             </div>
           </div>
         </div>
@@ -670,6 +739,9 @@ function TituloDoJogo({ titulo }: { titulo: string }) {
 
 type Snap = 'full' | 'half' | 'peek'
 
+/** O bar tocado no mapa do celular: com o jogo ou sem jogo no dia. */
+type Escolhido = BarDoJogo | BarSemJogo
+
 /**
  * O celular do protótipo (`.mx`): o mapa inteiro, os jogos em cima e a folha
  * de bares, que se arrasta em três alturas. Bar tocado no mapa ganha o cartão
@@ -687,7 +759,7 @@ function Celular({
 }: {
   topo: ReactNode
   mapa: ReactNode
-  escolhido: BarDoJogo | undefined
+  escolhido: Escolhido | undefined
   onSoltar: () => void
   onAbrir: () => void
   cabeca: ReactNode
@@ -705,11 +777,15 @@ function Celular({
     const t = mtop.current?.offsetHeight ?? 120
     return { full: t - 14, half: Math.round(H * 0.46), peek: H - 150 }
   }
+  // Pela caixa, não pela janela: o aviso de cookies encolhe o mapa ao
+  // aparecer e o devolve ao sumir (`torcedor.css`).
   useEffect(() => {
     const medir = () => setMedida((n) => n + 1)
     medir()
-    window.addEventListener('resize', medir)
-    return () => window.removeEventListener('resize', medir)
+    if (!mx.current || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(medir)
+    observer.observe(mx.current)
+    return () => observer.disconnect()
   }, [])
   useEffect(() => {
     if (escolhido) setSnap('peek')
@@ -767,7 +843,11 @@ function Celular({
           <Link
             to="/pub/$pubId"
             params={{ pubId: escolhido.barId }}
-            search={{ eventId: escolhido.eventId }}
+            search={
+              'eventId' in escolhido
+                ? { eventId: escolhido.eventId }
+                : undefined
+            }
             onClick={onAbrir}
             className="mpick-a"
           >
@@ -780,7 +860,9 @@ function Celular({
               <b>{escolhido.name}</b>
               <span>
                 {distancia(escolhido.distanceKm)}
-                {escolhido.going ? ` · ${escolhido.going.count} vão` : ''}
+                {'going' in escolhido && escolhido.going
+                  ? ` · ${escolhido.going.count} vão`
+                  : ''}
               </span>
             </span>
           </Link>

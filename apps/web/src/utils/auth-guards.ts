@@ -1,6 +1,7 @@
 import type { auth } from '@findsports_oficial/auth'
 import { impersonationModeFrom } from '@findsports_oficial/auth/impersonation-mode'
 import { redirect } from '@tanstack/react-router'
+import { temAcao } from '../components/torcedor/acao'
 import { getCallbackUrl } from './callback-url'
 
 export type AuthSession = ReturnType<typeof toClientSession>
@@ -78,7 +79,18 @@ export function applyAuthGuards(
       session.user.role === 'pub' ? '/onboarding/pub' : '/onboarding/fan'
 
     if (!pathname.startsWith(onboardingRoute)) {
-      throw redirect({ to: onboardingRoute })
+      // A ação pedida antes de entrar (`?acao=`, `components/torcedor/acao.ts`)
+      // atravessa o onboarding do torcedor e volta concluída no fim dele.
+      const destino =
+        pathname === '/login' || pathname === '/signup'
+          ? getCallbackUrl(href)
+          : href
+      throw redirect({
+        to: onboardingRoute,
+        ...(session.user.role !== 'pub' && temAcao(destino)
+          ? { search: { callbackUrl: destino } }
+          : {})
+      })
     }
     return
   }

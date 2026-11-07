@@ -282,3 +282,96 @@ test('sem jogo marcado: o estado vazio e o salvar pede login', async ({
     page.getByRole('dialog', { name: 'Entre para salvar o bar' })
   ).toBeVisible()
 })
+
+// Um formato de ação só (`?acao=<tipo>.<id>`, `components/torcedor/acao.ts`),
+// e o antigo da página do bar (`?acao=vou` com `?jogo=`, `?acao=salvar`)
+// segue valendo para os links já mandados. A ação vai no `callbackUrl` do
+// login e volta concluída.
+test.describe('ação pela URL depois do login', () => {
+  async function entrarPeloLogin(
+    page: Page,
+    fan: { email: string; password: string },
+    destino: string
+  ) {
+    await page.goto(`/login?callbackUrl=${encodeURIComponent(destino)}`)
+    await page.getByLabel('E-mail').fill(fan.email)
+    await page.getByLabel('Senha', { exact: true }).fill(fan.password)
+    await page.getByRole('button', { name: 'Entrar', exact: true }).click()
+  }
+
+  async function barComJogo() {
+    const pub = await pubAt(uniqueSpot(), {
+      bar: { neighborhood: 'Vila Madalena' }
+    })
+    const eventId = await createEvent({ barId: pub.barId, startsAt: days(2) })
+    return {
+      ...pub,
+      eventId,
+      path: barUrl(pub.name, 'Vila Madalena', pub.barId)
+    }
+  }
+
+  test('formato antigo: ?acao=vou com o jogo e ?acao=salvar', async ({
+    page
+  }) => {
+    const bar = await barComJogo()
+    const fan = await createUser()
+
+    await entrarPeloLogin(page, fan, `${bar.path}?jogo=${bar.eventId}&acao=vou`)
+    await expect.poll(() => attendanceOf(fan.id, bar.eventId)).toBe(1)
+    await expect(card(page)).toContainText('VOCÊ VAI')
+    await expect(page).not.toHaveURL(/acao=/)
+
+    await page.goto(`${bar.path}?acao=salvar`)
+    await expect.poll(() => isFavorite(fan.id, bar.barId)).toBe(true)
+    await expect(page).not.toHaveURL(/acao=/)
+  })
+
+  test('formato novo: vou.<jogo> no bar e fav.<bar> pelo /pub antigo', async ({
+    page
+  }) => {
+    const bar = await barComJogo()
+    const fan = await createUser()
+
+    await entrarPeloLogin(
+      page,
+      fan,
+      `${bar.path}?jogo=${bar.eventId}&acao=vou.${bar.eventId}`
+    )
+    await expect.poll(() => attendanceOf(fan.id, bar.eventId)).toBe(1)
+    await expect(page).not.toHaveURL(/acao=/)
+
+    await page.goto(`/pub/${bar.barId}?acao=fav.${bar.barId}`)
+    await expect(page).toHaveURL(new RegExp(bar.path))
+    await expect.poll(() => isFavorite(fan.id, bar.barId)).toBe(true)
+    await expect(page).not.toHaveURL(/acao=/)
+  })
+
+  test('torcedor sem onboarding: a ação atravessa o onboarding', async ({
+    page
+  }) => {
+    const bar = await barComJogo()
+    const fan = await createUser({ onboardingCompleted: false })
+
+    await entrarPeloLogin(page, fan, `${bar.path}?acao=fav.${bar.barId}`)
+    await expect(page).toHaveURL(/\/onboarding\/fan\?callbackUrl=.*acao/)
+    const botao = (name: string | RegExp) =>
+      page.getByRole('button', { name, exact: typeof name === 'string' })
+    await botao('Começar').click()
+    await botao('Futebol').click()
+    await botao('Continuar').click()
+    await botao('Pular').click()
+    await page
+      .getByRole('combobox', { name: 'Sua cidade' })
+      .fill('sao jose dos camp')
+    await page
+      .getByRole('option', { name: /^São José dos Campos\s*SP$/ })
+      .click()
+    await botao('Continuar').click()
+    await botao(/Salvar e encontrar bares/).click()
+
+    await expect(page).toHaveURL(new RegExp(bar.path))
+    await expect.poll(() => isFavorite(fan.id, bar.barId)).toBe(true)
+    await expect(page).not.toHaveURL(/acao=/)
+  })
+})

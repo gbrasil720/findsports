@@ -4,6 +4,7 @@ import {
 } from '@findsports_oficial/auth/email-layout'
 import { sendEmail } from '@findsports_oficial/auth/verification-email'
 import { db, eq, sql } from '@findsports_oficial/db'
+import { appWaitlist } from '@findsports_oficial/db/schema/app-waitlist'
 import { attendanceReport } from '@findsports_oficial/db/schema/attendance'
 import { user } from '@findsports_oficial/db/schema/auth'
 import {
@@ -88,69 +89,88 @@ export function createDataExportEmail(input: {
 
 /** O arquivo do torcedor (e de quem não é bar). */
 export async function fanData(me: string) {
-  const [[profile], sports, teams, favorites, games, reports, ratings] =
-    await Promise.all([
-      db
-        .select({
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          emailVerified: user.emailVerified,
-          image: user.image,
-          city: user.searchCityName,
-          uf: user.searchCityUf,
-          searchRadiusKm: user.searchRadiusKm,
-          twoFactorEnabled: user.twoFactorEnabled,
-          createdAt: user.createdAt
-        })
-        .from(user)
-        .where(eq(user.id, me)),
-      db
-        .select({ name: sport.name })
-        .from(userPreferenceSports)
-        .innerJoin(sport, eq(sport.id, userPreferenceSports.sportId))
-        .where(eq(userPreferenceSports.userId, me))
-        .orderBy(sport.name),
-      db
-        .select({ name: team.name, sport: sport.name })
-        .from(userFavoriteTeams)
-        .innerJoin(team, eq(team.id, userFavoriteTeams.teamId))
-        .innerJoin(sport, eq(sport.id, userFavoriteTeams.sportId))
-        .where(eq(userFavoriteTeams.userId, me))
-        .orderBy(team.name),
-      db
-        .select({
-          bar: bar.name,
-          neighborhood: bar.neighborhood,
-          city: bar.city,
-          savedAt: userFavoriteBars.createdAt
-        })
-        .from(userFavoriteBars)
-        .innerJoin(bar, eq(bar.id, userFavoriteBars.barId))
-        .where(eq(userFavoriteBars.userId, me))
-        .orderBy(sql`${userFavoriteBars.createdAt} desc`),
-      readMyGames(me, new Date(), null),
-      db
-        .select({
-          eventId: attendanceReport.eventId,
-          attended: attendanceReport.attended
-        })
-        .from(attendanceReport)
-        .where(eq(attendanceReport.userId, me)),
-      db
-        .select({
-          bar: bar.name,
-          championship: event.championship,
-          startsAt: event.startsAt,
-          wouldReturn: barRating.wouldReturn,
-          createdAt: barRating.createdAt
-        })
-        .from(barRating)
-        .innerJoin(bar, eq(bar.id, barRating.barId))
-        .innerJoin(event, eq(event.id, barRating.eventId))
-        .where(eq(barRating.actorUserId, me))
-        .orderBy(sql`${barRating.createdAt} desc`)
-    ])
+  const [
+    [profile],
+    sports,
+    teams,
+    favorites,
+    games,
+    reports,
+    ratings,
+    waitlist
+  ] = await Promise.all([
+    db
+      .select({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        emailVerified: user.emailVerified,
+        image: user.image,
+        city: user.searchCityName,
+        uf: user.searchCityUf,
+        searchRadiusKm: user.searchRadiusKm,
+        twoFactorEnabled: user.twoFactorEnabled,
+        createdAt: user.createdAt
+      })
+      .from(user)
+      .where(eq(user.id, me)),
+    db
+      .select({ name: sport.name })
+      .from(userPreferenceSports)
+      .innerJoin(sport, eq(sport.id, userPreferenceSports.sportId))
+      .where(eq(userPreferenceSports.userId, me))
+      .orderBy(sport.name),
+    db
+      .select({ name: team.name, sport: sport.name })
+      .from(userFavoriteTeams)
+      .innerJoin(team, eq(team.id, userFavoriteTeams.teamId))
+      .innerJoin(sport, eq(sport.id, userFavoriteTeams.sportId))
+      .where(eq(userFavoriteTeams.userId, me))
+      .orderBy(team.name),
+    db
+      .select({
+        bar: bar.name,
+        neighborhood: bar.neighborhood,
+        city: bar.city,
+        savedAt: userFavoriteBars.createdAt
+      })
+      .from(userFavoriteBars)
+      .innerJoin(bar, eq(bar.id, userFavoriteBars.barId))
+      .where(eq(userFavoriteBars.userId, me))
+      .orderBy(sql`${userFavoriteBars.createdAt} desc`),
+    readMyGames(me, new Date(), null),
+    db
+      .select({
+        eventId: attendanceReport.eventId,
+        attended: attendanceReport.attended
+      })
+      .from(attendanceReport)
+      .where(eq(attendanceReport.userId, me)),
+    db
+      .select({
+        bar: bar.name,
+        championship: event.championship,
+        startsAt: event.startsAt,
+        wouldReturn: barRating.wouldReturn,
+        createdAt: barRating.createdAt
+      })
+      .from(barRating)
+      .innerJoin(bar, eq(bar.id, barRating.barId))
+      .innerJoin(event, eq(event.id, barRating.eventId))
+      .where(eq(barRating.actorUserId, me))
+      .orderBy(sql`${barRating.createdAt} desc`),
+    // "Me avise quando o app chegar": as linhas presas à conta.
+    db
+      .select({
+        email: appWaitlist.email,
+        source: appWaitlist.source,
+        createdAt: appWaitlist.createdAt,
+        notifiedAt: appWaitlist.notifiedAt,
+        unsubscribedAt: appWaitlist.unsubscribedAt
+      })
+      .from(appWaitlist)
+      .where(eq(appWaitlist.userId, me))
+  ])
   const went = new Map(reports.map((r) => [r.eventId, r.attended]))
   return {
     exportedAt: new Date().toISOString(),
@@ -178,6 +198,12 @@ export async function fanData(me: string) {
       ...r,
       startsAt: iso(r.startsAt),
       createdAt: iso(r.createdAt)
+    })),
+    appWaitlist: waitlist.map((w) => ({
+      ...w,
+      createdAt: iso(w.createdAt),
+      notifiedAt: iso(w.notifiedAt),
+      unsubscribedAt: iso(w.unsubscribedAt)
     }))
   }
 }

@@ -1,7 +1,10 @@
 import { describe, expect, test } from 'bun:test'
 import {
+  abertoAgora,
   type BarDoJogo,
+  type BarSemJogo,
   baresDoJogo,
+  baresSemJogo,
   diasDaRegua,
   distancia,
   estadoDoJogo,
@@ -134,5 +137,53 @@ describe('explorar', () => {
   test('distância em metros ou km', () => {
     expect(distancia(0.45)).toBe('450 m')
     expect(distancia(1.234)).toBe('1,2 km')
+  })
+
+  test('sem jogo: filtros da tela, perto primeiro, e a oferta os tira', () => {
+    const quieto = (over: Partial<BarSemJogo>): BarSemJogo => ({
+      barId: 'q',
+      name: 'Bar',
+      neighborhood: 'Pinheiros',
+      photoUrl: null,
+      latitude: 0,
+      longitude: 0,
+      distanceKm: 1,
+      amenities: [],
+      opening: null,
+      ...over
+    })
+    const bares = [
+      quieto({ barId: 'longe', distanceKm: 2, amenities: [1] }),
+      quieto({ barId: 'perto', distanceKm: 0.3, name: 'Boteco do Zé' })
+    ]
+    const base = { amenities: [], oferta: false, busca: '' }
+    expect(baresSemJogo(bares, base).map((b) => b.barId)).toEqual([
+      'perto',
+      'longe'
+    ])
+    expect(
+      baresSemJogo(bares, { ...base, amenities: [1] }).map((b) => b.barId)
+    ).toEqual(['longe'])
+    expect(
+      baresSemJogo(bares, { ...base, busca: 'boteco ze' }).map((b) => b.barId)
+    ).toEqual([])
+    expect(
+      baresSemJogo(bares, { ...base, busca: 'do zé' }).map((b) => b.barId)
+    ).toEqual(['perto'])
+    expect(baresSemJogo(bares, { ...base, oferta: true })).toEqual([])
+  })
+
+  test('aberto agora pelo horário do bar', () => {
+    expect(abertoAgora(null)).toBeNull()
+    expect(abertoAgora({ open: true, closes: '02:00', opens: null })).toBe(
+      'Aberto até 02:00'
+    )
+    expect(
+      abertoAgora({
+        open: false,
+        closes: null,
+        opens: { day: 'hoje', time: '17:00' }
+      })
+    ).toBe('Abre hoje às 17:00')
   })
 })

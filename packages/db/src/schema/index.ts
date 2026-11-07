@@ -1,5 +1,6 @@
 export * from './ai'
 export * from './analytics'
+export * from './app-waitlist'
 export * from './attendance'
 export * from './auth'
 export * from './classic'

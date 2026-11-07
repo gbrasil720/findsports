@@ -788,6 +788,85 @@ html[data-theme="dark"] .tc {
   color: var(--muted);
   margin: 10px 0 18px;
 }
+/* "Sem jogo marcado": os bares perto sem jogo no dia, abaixo dos com jogo. */
+.tc .semjogo {
+  grid-column: 1 / -1;
+  margin-top: 12px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+.tc .semjogo h2 {
+  margin: 0;
+  font: 400 26px / 1 var(--display);
+  text-transform: uppercase;
+}
+.tc .semjogo p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 14.5px;
+}
+.tc .bq {
+  border-radius: 18px;
+  box-shadow: inset 0 0 0 1.5px var(--line2);
+  transition:
+    background 0.2s,
+    box-shadow 0.2s;
+  animation: tc-in 0.45s var(--ease) both;
+}
+.tc .bq:hover,
+.tc .bq.hot {
+  background: var(--card);
+  box-shadow: inset 0 0 0 1.5px var(--fg);
+}
+.tc .bq a {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  padding: 12px;
+  color: inherit;
+  text-decoration: none;
+}
+.tc .bq img,
+.tc .bq .ph-vazio {
+  position: static;
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+.tc .bq h3 {
+  margin: 0;
+  font: 700 17px / 1.2 var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tc .bq .meta,
+.tc .bq .hr {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+.tc .bq .hr {
+  font: 500 12.5px / 1.2 var(--mono);
+}
+.tc .bq .hr.on::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--acid);
+  box-shadow: 0 0 0 1.5px var(--fg);
+  vertical-align: 1px;
+}
+.tc .legend i.oco {
+  border-radius: 50%;
+  background: #f1eee6;
+  box-shadow: inset 0 0 0 2px #12120f;
+}
 .tc .mapcol {
   position: relative;
   border-left: 1px solid var(--line);
@@ -1519,7 +1598,8 @@ html[data-theme="dark"] .tc .m-d {
 }
 .tc .mx {
   position: relative;
-  height: calc(100dvh - 66px - env(safe-area-inset-top, 0px));
+  /* 67: o cabeçalho do celular (66) e a linha de baixo dele. */
+  height: calc(100dvh - 67px - env(safe-area-inset-top, 0px));
   overflow: hidden;
   background: var(--sub);
 }
@@ -2686,8 +2766,10 @@ html[data-theme="dark"] .tc .m-d {
   font-size: 14.5px;
   color: var(--muted);
 }
-.tc .appc.ok .btn {
-  display: none;
+.tc .appc .tk-aviso {
+  display: block;
+  margin-top: 6px;
+  color: var(--live-text);
 }
 @media (max-width: 760px) {
   .tc .appc {
@@ -4162,9 +4244,6 @@ html[data-theme="dark"] .tc .m-d {
   display: grid;
   gap: 12px;
 }
-.tc .appc .soonb {
-  justify-self: start;
-}
 .tc .ticket .top {
   position: static;
   border: 0;
@@ -4220,6 +4299,35 @@ html[data-theme="dark"] .tc .m-d {
 /* Abaixo da casca (rolagem elástica, devtools) o fundo segue o tema. */
 html[data-theme="dark"]:has(.tc) body {
   background: #12120f;
+}
+/*
+ * O aviso de cookies (`consent/cookie-consent.css`) enquanto a escolha está
+ * pendente: o que é preso ao pé da janela sobe para cima dele, e o mapa do
+ * celular (com a folha de bares) encolhe para acabar onde ele começa. A folha
+ * de entrar, quando abre, fica por cima dele.
+ */
+html[data-consent] .tc .ftab {
+  bottom: var(--onside-consent-space);
+  padding-bottom: 8px;
+}
+html[data-consent] .tc .toast {
+  bottom: calc(24px + var(--onside-consent-space));
+}
+html[data-consent] .tc .mx {
+  height: calc(
+    100dvh -
+    67px -
+    env(safe-area-inset-top, 0px) -
+    var(--onside-consent-space)
+  );
+}
+@media (max-width: 1100px) {
+  html[data-consent] .tc .mapbtn {
+    bottom: calc(22px + var(--onside-consent-space));
+  }
+}
+:root:has(.tc.open) .onside-consent {
+  z-index: 70;
 }
 /* Bares pra você no web */
 .tc .rd-list {

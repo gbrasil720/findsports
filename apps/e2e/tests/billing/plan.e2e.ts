@@ -355,7 +355,7 @@ test('trial que já é do Stripe: /admin/billing e o painel dizem contratado e q
       /Contratado · em teste · Primeira cobrança de R\$ 269 em \d{2}\/\d{2}\/\d{4}/
     )
   ).toBeVisible()
-  await expect(page.getByText(/Trial gratuito até/)).toHaveCount(0)
+  await expect(page.getByText(/Teste grátis até/)).toHaveCount(0)
 })
 
 test('assinatura paga abre no próprio plano, sem checkout de outro por padrão', async ({

@@ -33,7 +33,7 @@ function HojePage() {
     <>
       <Hoje />
       {session ? (
-        <div className="onside-app pn-install">
+        <div className="pn-install">
           <InstallAppCard userId={session.user.id} surface="admin" />
         </div>
       ) : null}

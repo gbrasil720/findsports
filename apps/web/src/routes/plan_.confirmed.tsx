@@ -8,13 +8,11 @@ import {
   countReceiptLines,
   SubscriptionReceipt
 } from '@/components/billing/subscription-receipt'
-import { OnboardingHeader } from '@/components/onboarding/onboarding-header'
-import { OnboardingLayout } from '@/components/onboarding/onboarding-layout'
+import { PubObShell } from '@/components/onboarding/pub-ob-shell'
 import { analytics } from '@/lib/analytics'
 import { openBillingPortal } from '@/lib/billing-client'
 import { getPlan, isContractedTrial } from '@/lib/plan-catalog'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
-import { roleAccountLabel } from '@/lib/roles'
 import { getScheduledCancelAt } from '@/lib/scheduled-cancel'
 import {
   clearCheckoutIntent,
@@ -218,9 +216,7 @@ function SubscriptionConfirmed() {
   }
 
   return (
-    <OnboardingLayout variant="pub">
-      <OnboardingHeader label={roleAccountLabel('pub')} mb="mb-8" />
-
+    <PubObShell pill={barQuery.data?.name}>
       <SubscriptionReceipt
         stage={stage}
         plan={plan}
@@ -300,13 +296,13 @@ function SubscriptionConfirmed() {
         }
         actions={
           stage === 'processing' ? (
-            <Link to="/admin" className="onside-btn onside-btn-outline">
+            <Link to="/admin" className="btn btn-ghost">
               Ir para o painel
               <ArrowRight size={16} color="currentColor" aria-hidden="true" />
             </Link>
           ) : stage === 'delayed' ? (
             <>
-              <Link to="/admin/billing" className="onside-btn onside-btn-ink">
+              <Link to="/admin/billing" className="btn btn-ink">
                 Assinatura e pagamentos
                 <ArrowRight size={16} color="currentColor" aria-hidden="true" />
               </Link>
@@ -314,7 +310,7 @@ function SubscriptionConfirmed() {
                 type="button"
                 onClick={handleOpenPortal}
                 disabled={openingPortal}
-                className="onside-btn onside-btn-outline"
+                className="btn btn-ghost"
               >
                 {openingPortal ? 'Abrindo…' : 'Portal da operadora'}
                 <ExternalLink
@@ -323,29 +319,26 @@ function SubscriptionConfirmed() {
                   aria-hidden="true"
                 />
               </button>
-              <Link to="/admin" className="onside-btn onside-btn-ghost">
+              <Link to="/admin" className="onside-receipt-retry">
                 Ir para o painel
               </Link>
             </>
           ) : (
             <>
-              <Link to="/admin" className="onside-btn onside-btn-acid">
+              <Link to="/admin" className="btn btn-acid">
                 Ir para o painel
                 <ArrowRight size={16} color="currentColor" aria-hidden="true" />
               </Link>
-              <Link
-                to="/admin/billing"
-                className="onside-btn onside-btn-outline"
-              >
+              <Link to="/admin/billing" className="btn btn-ghost">
                 Assinatura e pagamentos
               </Link>
               {scheduledCancelAt ? (
-                <ReactivateSubscriptionButton className="onside-btn onside-btn-outline" />
+                <ReactivateSubscriptionButton className="btn btn-ghost" />
               ) : null}
             </>
           )
         }
       />
-    </OnboardingLayout>
+    </PubObShell>
   )
 }

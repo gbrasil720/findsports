@@ -16,7 +16,10 @@ const PINOS = {
   pro: { cor: COLORS.ink, copo: COLORS.creme },
   elite: { cor: COLORS.acid, copo: COLORS.ink },
   live: { cor: COLORS.live, copo: COLORS.ink },
-  'elite-live': { cor: COLORS.live, copo: COLORS.ink }
+  'elite-live': { cor: COLORS.live, copo: COLORS.ink },
+  // Bar sem jogo no dia (Explorar do web): o ponto oco pequeno, abaixo das
+  // gotas; em destaque vira a gota de tinta.
+  quiet: { cor: COLORS.ink, copo: COLORS.creme }
 } as const
 
 export type MapPin = keyof typeof PINOS
@@ -41,6 +44,7 @@ export function pinDoPlano(
  */
 export function ordemDoPino(pin: MapPin, large: boolean): string {
   if (large) return '999'
+  if (pin === 'quiet') return '5'
   return pin === 'elite' || pin === 'elite-live' ? '20' : '10'
 }
 
@@ -69,7 +73,7 @@ const MARCACAO_DO_PINO = `
   <path d="M3 2h30a1 1 0 0 1 1 1v27a2 2 0 0 1-.7 1.5L18 44 2.7 31.5A2 2 0 0 1 2 30V3a1 1 0 0 1 1-1z" fill="var(--pino-cor)" stroke="#12120F" stroke-width="2"/>
   <path d="M12 10h12l-1.6 14h-8.8z" fill="var(--pino-copo)"/>
   <path d="M12.6 15h10.8" stroke="var(--pino-cor)" stroke-width="1.6"/>
-</svg>`
+</svg><span style="display:none;width:9px;height:9px;border-radius:50%;background:#F1EEE6;border:2.5px solid #12120F"></span>`
 
 /**
  * Um pino: a raiz que o MapLibre posiciona, e o nó que a gente pinta.
@@ -139,6 +143,13 @@ export function aplicarPino(
   pintura.style.setProperty('--pino-cor', cor)
   pintura.style.setProperty('--pino-copo', copo)
   pintura.style.transform = large ? `scale(${ESCALA_DESTAQUE})` : ''
+  // O ponto oco no lugar da gota: o SVG e o ponto já estão na marcação.
+  const oco = pin === 'quiet' && !large
+  const [gota, ponto] = pintura.children as unknown as HTMLElement[]
+  if (gota && ponto) {
+    gota.style.display = oco ? 'none' : ''
+    ponto.style.display = oco ? 'block' : 'none'
+  }
   // O nome aparece no pino em destaque (`.pino-nome` no CSS do torcedor).
   pintura.toggleAttribute('data-destaque', large)
 }

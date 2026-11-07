@@ -446,14 +446,25 @@ mandado ao `/admin`.
 - **O que grava pede login e volta concluído:** favoritar, "Vou assistir aqui" e o
   resto passam por `useTorcedor().agir`. Sem sessão abre a folha de entrar com o
   contexto (o bar, o jogo); entrando por ela a ação sai na hora. Cadastro, e-mail,
-  2FA e onboarding levam a ação na URL, `?acao=<tipo>.<id>` (`components/torcedor/acao.ts`,
-  dentro do `callbackUrl`), e a casca a conclui uma vez ao voltar com sessão. A página
-  do bar usa o mesmo formato.
+  2FA e onboarding levam a ação na URL, `?acao=<tipo>.<id>` (`vou.<jogo>`, `fav.<bar>`,
+  `lembrar.<jogo>`; `components/torcedor/acao.ts`, dentro do `callbackUrl`), e quem a
+  recebe com sessão a conclui uma vez: a casca do torcedor e a página do bar
+  (`/bar/$slug`; `/pub/<id>` repassa a `acao`), pelo mesmo módulo. O formato antigo da
+  página do bar (`?acao=vou` com `?jogo=`, `?acao=salvar`) continua aceito na leitura
+  (`lerAcao` com o bar e o jogo da página). Torcedor sem onboarding que entra com ação
+  no destino vai ao `/onboarding/fan` com ela no `callbackUrl` (`applyAuthGuards`).
+- **Aviso de cookies:** um só em todo o site, o "Placar" (`consent/cookie-consent.css`):
+  cartão no canto no desktop, folha no pé no celular. O que é preso ao pé da janela sobe
+  por `--onside-consent-space`; no Explorar, as abas, o aviso da casca e o mapa do
+  celular (com a folha de bares) acabam onde ele começa (`torcedor.css`).
 
 - **Telas:** Explorar (`/dashboard`, régua do dia por `pubs.gameBoard`, aberta, em
   `lib/game-board.ts`; mapa `OnsideMap` com a gota, só por `import()`; na ordem
   padrão o Elite do clássico vai na frente e a tela grava `classic_exposure` e
-  `classic_click`, com as regras da busca antiga), Meus jogos
+  `classic_click`, com as regras da busca antiga; abaixo dos bares do jogo vem
+  sempre "Sem jogo marcado", os bares do raio sem jogo publicado no dia, por
+  `pubs.barsWithoutGame` (aberta, `lib/bars-without-game.ts`), que somem com a
+  "Oferta da casa" e no mapa são o ponto oco `quiet`), Meus jogos
   (`/dashboard/games`, ingressos), "Como foi?" (`/dashboard/avaliar/$eventId`, a fila
   `postGame.pending` numa tela: estrelas obrigatórias, comentário em revisão, nome e a
   faixa de visita verificada só com código validado ou check-in), o código (`/dashboard/codigo/$eventId`), Seus bares (`/dashboard/seus-bares`,
@@ -463,8 +474,15 @@ mandado ao `/admin`.
   peças das Configurações do painel). Link para bar é `/pub/<id>`.
 - **Landing:** sem sessão, a chamada do torcedor ("Ver jogos de hoje") leva ao
   Explorar; a do bar segue no cadastro.
-- **Em breve no web:** aviso "quando o app chegar", escolher avisos, quem vê onde você
-  foi e ranking (ficam no app), nomes de amigos em "quem vai".
+- **"Me avise quando o app chegar"** (`AppChegando`, em Meus jogos e no perfil): tabela
+  `app_waitlist`, um e-mail único em minúsculas por linha, com `user_id` opcional (cascade
+  na exclusão), `source` (`landing` ou `web`), `notified_at` e `unsubscribed_at`; o web
+  grava o e-mail da sessão por `appWaitlist.join` (visitante passa pela folha de entrar) e
+  "Não quero mais" (`leave`) marca `unsubscribed_at` em vez de apagar, o registro da
+  recusa para o envio do lançamento. Nenhum e-mail sai ainda; a linha entra em "Baixar
+  meus dados".
+- **Em breve no web:** escolher avisos, quem vê onde você foi e ranking (ficam no app),
+  nomes de amigos em "quem vai".
 
 ### App mobile
 

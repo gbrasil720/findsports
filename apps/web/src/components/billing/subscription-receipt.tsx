@@ -3,6 +3,8 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import Check from 'reicon-react/icons/Check'
 import Clock from 'reicon-react/icons/Clock'
 import Loader from 'reicon-react/icons/Loader'
+import { Logo } from '@/components/landing/v3/icons'
+import { PLAN_ART } from '@/components/onboarding/pub-plan-step'
 import {
   CONTRACTED_TRIAL_LABEL,
   formatPlanChargeLine,
@@ -25,7 +27,7 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 /**
- * O que o visor da máquina mostra — e o que o leitor de tela anuncia. Antes da
+ * O que a linha de cima diz — e o que o leitor de tela anuncia. Antes da
  * confirmação a situação é desconhecida, e quem está em trial passa por
  * `processing` enquanto a consulta carrega: o texto não pode falar em pagamento.
  */
@@ -84,13 +86,13 @@ type Props = {
 }
 
 /**
- * Recibo de assinatura saindo de uma impressora térmica (WEB-59).
- *
- * A máquina é um objeto: corpo ink com sombra dura, visor de status e a fenda
- * no rasgo de baixo. O papel não "cresce" embaixo dela — ele já existe inteiro
- * e **desliza para fora da fenda**, em passos de motor, com a borda serrilhada
- * à frente. Enquanto ele não existe (webhook não chegou) a máquina trabalha
- * com o visor ligado e nada sai, que é a verdade do estado.
+ * Recibo de assinatura saindo de uma impressora térmica (WEB-59), no desenho
+ * do comprovante do cadastro (`recibo()` do protótipo do painel, WEB-501): a
+ * linha de estado e o título em cima, a impressora como uma barra com fenda e
+ * luz, e o papel saindo dela. O papel não "cresce" embaixo da máquina — ele já
+ * existe inteiro e **desliza para fora da fenda**, em passos de motor, com a
+ * borda serrilhada à frente. Enquanto ele não existe (webhook não chegou) a
+ * luz pisca e nada sai, que é a verdade do estado.
  *
  * Tudo é CSS: a referência do ticket usa Framer Motion, mas o app inteiro
  * anima em CSS com `prefers-reduced-motion` (ver `app-motion.css`), e uma rota
@@ -128,41 +130,34 @@ export function SubscriptionReceipt({
       }
       aria-labelledby="onside-receipt-title"
     >
-      <h1 id="onside-receipt-title" className="sr-only">
+      {/*
+       * A linha de estado é o que o leitor de tela anuncia: um `status`
+       * visível vale mais que um texto escondido dizendo a mesma coisa duas
+       * vezes.
+       */}
+      <p
+        className="ob-k onside-receipt-screen"
+        role="status"
+        aria-live="polite"
+      >
+        <StageIcon stage={stage} />
+        <span>{STAGE_SCREEN[stage]}</span>
+        <span className="onside-receipt-screen-dots" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </span>
+      </p>
+      <h1 id="onside-receipt-title" className="ob-h">
         Comprovante de assinatura
       </h1>
 
-      <div className="onside-receipt-machine">
-        <div className="onside-receipt-machine-face">
-          <p className="onside-receipt-plate" aria-hidden="true">
-            <span className="onside-receipt-plate-brand">Onside</span>
-            <span className="onside-receipt-plate-model">Term-01</span>
-          </p>
-
-          {/*
-           * O visor é o estado da máquina em texto, e é ele que o leitor de
-           * tela anuncia: um `status` visível vale mais que um texto escondido
-           * dizendo a mesma coisa duas vezes.
-           */}
-          <p className="onside-receipt-screen" role="status" aria-live="polite">
-            <StageIcon stage={stage} />
-            <span className="onside-receipt-screen-text">
-              {STAGE_SCREEN[stage]}
-            </span>
-            <span className="onside-receipt-screen-dots" aria-hidden="true">
-              <span />
-              <span />
-              <span />
-            </span>
-          </p>
-        </div>
-
-        {/* Lábio da fenda: a boca por onde o papel sai. */}
-        <div className="onside-receipt-lip" aria-hidden="true">
-          <span className="onside-receipt-slot">
-            <span className="onside-receipt-feed" />
-          </span>
-        </div>
+      {/* A impressora: a fenda por onde o papel sai e a luz do estágio. */}
+      <div className="onside-receipt-machine" aria-hidden="true">
+        <span className="onside-receipt-slot">
+          <span className="onside-receipt-feed" />
+        </span>
+        <span className="onside-receipt-led" />
       </div>
 
       {hasPaper ? (
@@ -337,6 +332,10 @@ function PaperContent({
       }}
     >
       <header className="onside-receipt-paper-head">
+        <p className="onside-receipt-logo" aria-hidden="true">
+          <Logo size={26} />
+          <b>ONSIDE</b>
+        </p>
         <p className="onside-receipt-title">Comprovante de assinatura</p>
         <p className="onside-receipt-meta">
           {barName ? `${barName} • ` : ''}
@@ -377,10 +376,15 @@ function PaperContent({
          * papel ainda está preso na máquina, e carimbo em papel preso é
          * promessa, não comprovante. O texto é o da situação: trial não pagou.
          */}
-        <p className="onside-receipt-stamp" data-printed={printed}>
-          <Check size={14} color="currentColor" aria-hidden="true" />
-          {receiptStampLabel(status)}
-        </p>
+        <div className="onside-receipt-seal">
+          <p className="onside-receipt-stamp" data-printed={printed}>
+            <Check size={14} color="currentColor" aria-hidden="true" />
+            {receiptStampLabel(status)}
+          </p>
+          {/* A medalha do plano, a mesma de `/plan` e do painel. */}
+          {/* biome-ignore lint/performance/noImgElement: ilustração estática do plano, de public/, com width e height. */}
+          <img src={PLAN_ART[plan.id]} alt="" width="44" height="44" />
+        </div>
       </footer>
     </article>
   )

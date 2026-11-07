@@ -16,18 +16,16 @@ export function MapLoadError({
 }) {
   return (
     <div
-      className="absolute inset-0 grid place-items-center bg-[var(--onside-stone)] p-6 text-center"
+      className="absolute inset-0 grid place-items-center bg-[color-mix(in_srgb,currentColor_6%,transparent)] p-6 text-center"
       role="alert"
     >
       <div>
-        <div className="font-bold text-[var(--onside-ink)] text-sm">
-          Mapa indisponível
-        </div>
-        <div className="mt-1 text-[var(--onside-muted)] text-xs">{message}</div>
+        <div className="font-bold text-sm">Mapa indisponível</div>
+        <div className="mt-1 text-xs opacity-70">{message}</div>
         {onRetry ? (
           <button
             type="button"
-            className="onside-btn onside-btn-outline mt-4"
+            className="mt-4 min-h-11 rounded-full border border-current px-5 font-bold text-sm"
             onClick={onRetry}
           >
             Tentar novamente

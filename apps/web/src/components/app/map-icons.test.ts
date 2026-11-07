@@ -132,7 +132,8 @@ describe('pinos do mapa (ESC-16, WEB-73)', () => {
       pro: [INK, CREME],
       elite: [ACID, INK],
       live: [LIVE, INK],
-      'elite-live': [LIVE, INK]
+      'elite-live': [LIVE, INK],
+      quiet: [INK, CREME]
     }
 
     for (const [pin, cores] of Object.entries(esperado)) {
@@ -169,6 +170,20 @@ describe('pinos do mapa (ESC-16, WEB-73)', () => {
         expect(ordem(outro, true)).toBeGreaterThan(ordem(elite))
       }
     }
+  })
+
+  test('bar sem jogo é o ponto oco abaixo das gotas, e em destaque vira a gota', () => {
+    const { pintura } = criarConteudoDePino()
+    const [gota, ponto] = pintura.children as unknown as HTMLElement[]
+    aplicarPino(pintura, 'quiet', false)
+    expect(gota?.style.display).toBe('none')
+    expect(ponto?.style.display).toBe('block')
+    aplicarPino(pintura, 'quiet', true)
+    expect(gota?.style.display).toBe('')
+    expect(ponto?.style.display).toBe('none')
+    expect(Number(ordemDoPino('quiet', false))).toBeLessThan(
+      Number(ordemDoPino('starter', false))
+    )
   })
 
   /**

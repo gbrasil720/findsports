@@ -23,7 +23,7 @@ test('o bar vai para o cadastro, sem formulário na landing', async () => {
     new URL('./onside-landing.tsx', import.meta.url)
   ).text()
 
-  expect(landing).toContain("href: '/signup'")
+  expect(landing).toContain("href: '/dashboard'")
   expect(landing).toContain("BAR_SIGNUP_HREF = '/signup?role=pub'")
   expect(landing).not.toMatch(/id="(lista|bar-form)"|Waitlist/)
 })
