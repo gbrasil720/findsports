@@ -54,6 +54,7 @@ import {
 } from './espaco-fotos'
 import { EspacoPrevia } from './espaco-previa'
 import {
+  avisoDaDescricao,
   cardapio,
   DIA_PADRAO,
   doBar,
@@ -395,6 +396,8 @@ function Espaco({ bar }: { bar: AdminBar }) {
   const fromCep = (value: string, found: string | undefined) =>
     cepStatus === 'achou' && Boolean(found) && value.trim() === found
   const telefoneMudou = p.phone !== gravado.perfil.phone
+  // O aviso é do que está gravado: some ao editar só depois de salvar.
+  const descricao = avisoDaDescricao(bar)
 
   return (
     <>
@@ -713,9 +716,20 @@ function Espaco({ bar }: { bar: AdminBar }) {
                 label="Descrição"
                 span="c6"
                 extra={
-                  <span aria-hidden="true">
-                    {p.description.length} de {DESCRICAO_MAX}
-                  </span>
+                  <>
+                    {descricao.selo ? (
+                      <span
+                        className={`pn-badge${descricao.selo === 'recusada' ? ' is-live' : ''}`}
+                      >
+                        {descricao.selo === 'recusada'
+                          ? 'RECUSADA'
+                          : 'EM REVISÃO'}
+                      </span>
+                    ) : null}
+                    <span aria-hidden="true">
+                      {p.description.length} de {DESCRICAO_MAX}
+                    </span>
+                  </>
                 }
               >
                 <textarea
@@ -725,8 +739,17 @@ function Espaco({ bar }: { bar: AdminBar }) {
                   maxLength={DESCRICAO_MAX}
                   rows={3}
                   placeholder="Ex: mesa de sinuca no fundo e happy hour até as 20h nos dias de jogo"
+                  aria-describedby="esp-desc-rev"
                   onChange={(e) => setPerfil({ description: e.target.value })}
                 />
+                <span
+                  id="esp-desc-rev"
+                  className={
+                    descricao.selo === 'recusada' ? 'pn-ferr' : 'pn-hint'
+                  }
+                >
+                  {descricao.texto}
+                </span>
               </Campo>
             </div>
             {erros.perfil ? (

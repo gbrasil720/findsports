@@ -33,6 +33,8 @@ type Bar = {
   uf: string | null
   phone: string | null
   description: string | null
+  /** O texto mandado à revisão (WEB-478), em revisão ou recusado. */
+  descriptionPending?: string | null
   amenities: number[]
   screenCount: number | null
   houseOffer: string | null
@@ -78,7 +80,8 @@ export function doBar(bar: Bar): Rascunho {
       city: bar.city ?? '',
       uf: bar.uf ?? '',
       phone: bar.phone ?? '',
-      description: bar.description ?? '',
+      // O dono edita o que mandou por último, não o publicado (WEB-478).
+      description: bar.descriptionPending ?? bar.description ?? '',
       amenities: bar.amenities ?? [],
       screenCount: bar.screenCount ?? null
     },
@@ -199,5 +202,35 @@ export function cardapio(
     erroGasto: gasto.ok ? null : gasto.error,
     url: url.ok ? url.url : null,
     gasto: gasto.ok ? gasto.cents : null
+  }
+}
+
+/**
+ * A linha embaixo da descrição (WEB-478): em revisão, recusada com o motivo,
+ * ou o aviso do prazo da revisão da Onside.
+ */
+export function avisoDaDescricao(bar: {
+  description: string | null
+  descriptionReview: 'pending' | 'approved' | 'rejected' | null
+  descriptionRejectionReason: string | null
+}): { texto: string; selo: 'revisao' | 'recusada' | null } {
+  if (bar.descriptionReview === 'pending') {
+    return {
+      texto: bar.description
+        ? 'Em revisão. Até a Onside aprovar, o torcedor vê a descrição anterior.'
+        : 'Em revisão. A descrição aparece para o torcedor quando a Onside aprovar.',
+      selo: 'revisao'
+    }
+  }
+  if (bar.descriptionReview === 'rejected') {
+    return {
+      texto: `Recusada: ${bar.descriptionRejectionReason ?? ''} Mude o texto e salve para mandar de novo.`,
+      selo: 'recusada'
+    }
+  }
+  return {
+    texto:
+      'A Onside revisa a descrição em até 24 h antes de ela aparecer para o torcedor.',
+    selo: null
   }
 }

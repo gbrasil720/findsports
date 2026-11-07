@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import {
+  avisoDaDescricao,
   cardapio,
   doBar,
   entradaDoPerfil,
@@ -99,5 +100,49 @@ describe('horário de Meu espaço (WEB-397)', () => {
     const semana = [null, null, null, null, null, sexta, null]
     semana[6] = { opens: '18:00', closes: '18:00' }
     expect(horario(semana, null).erro).not.toBeNull()
+  })
+})
+
+describe('descrição em revisão (WEB-478)', () => {
+  test('o rascunho parte do texto mandado, não do publicado', () => {
+    expect(
+      doBar({ ...bar, description: 'Antiga', descriptionPending: 'Nova' })
+        .perfil.description
+    ).toBe('Nova')
+    expect(doBar({ ...bar, description: 'Antiga' }).perfil.description).toBe(
+      'Antiga'
+    )
+  })
+
+  test('em revisão, recusada com o motivo, ou o prazo', () => {
+    expect(
+      avisoDaDescricao({
+        description: 'Antiga',
+        descriptionReview: 'pending',
+        descriptionRejectionReason: null
+      })
+    ).toEqual({
+      texto:
+        'Em revisão. Até a Onside aprovar, o torcedor vê a descrição anterior.',
+      selo: 'revisao'
+    })
+    expect(
+      avisoDaDescricao({
+        description: null,
+        descriptionReview: 'rejected',
+        descriptionRejectionReason: 'Tem telefone no texto.'
+      })
+    ).toEqual({
+      texto:
+        'Recusada: Tem telefone no texto. Mude o texto e salve para mandar de novo.',
+      selo: 'recusada'
+    })
+    expect(
+      avisoDaDescricao({
+        description: 'X',
+        descriptionReview: null,
+        descriptionRejectionReason: null
+      }).selo
+    ).toBeNull()
   })
 })
