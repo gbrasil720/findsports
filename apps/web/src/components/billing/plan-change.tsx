@@ -173,21 +173,21 @@ export function PlanChangedNotice({ pending }: { pending: Change | null }) {
   const hasLosses = getPlanLosses(changed.from, changed.to).length > 0
 
   return (
-    <div className="onside-callout onside-callout-acid mb-6" role="status">
-      <div>
-        <p className="font-semibold text-sm">
-          Plano alterado para {getPlan(changed.to).name}.
-        </p>
-        {hasLosses ? (
-          <>
-            <p className="mt-1 text-sm">
-              Com a troca, seu bar deixa de ter os recursos do{' '}
-              {getPlan(changed.from).name}:
-            </p>
-            <PlanLossList from={changed.from} to={changed.to} />
-          </>
-        ) : null}
-      </div>
+    <div className="pn-aviso-ok" role="status">
+      <b>Plano alterado para {getPlan(changed.to).name}.</b>
+      {hasLosses ? (
+        <>
+          <p>
+            Com a troca, seu bar deixa de ter os recursos do{' '}
+            {getPlan(changed.from).name}:
+          </p>
+          <PlanLossList
+            from={changed.from}
+            to={changed.to}
+            className="pn-aviso-ok-l"
+          />
+        </>
+      ) : null}
     </div>
   )
 }
