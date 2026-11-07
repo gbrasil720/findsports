@@ -51,8 +51,6 @@ function makeFavorite({
         withSound: null,
         publishedAt: '2026-08-01T00:00:00.000Z',
         attendanceEnabled: true,
-        houseOffer: null,
-        noHouseOffer: false,
         createdAt: '2026-08-01T00:00:00.000Z',
         sport: {
           id: 'sport-1',
