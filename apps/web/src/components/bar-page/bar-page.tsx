@@ -210,7 +210,9 @@ export function BarPage({
           : action === 'whatsapp'
             ? 'whatsapp_opened'
             : 'phone_clicked',
-      sourceEventId: game?.id
+      // O jogo de origem: o do cartão, senão o pedido no link (um jogo que
+      // já acabou, vindo da avaliação do pós-jogo).
+      sourceEventId: game?.id ?? search.jogo
     })
   }
 
@@ -880,7 +882,9 @@ function TodayCard({
             <QRCode value={codeUrl(attendance.code)} size={44} />
           </span>
           <span>
-            <span className="lb">SEU CÓDIGO</span>
+            <span className="lb">
+              {attendance.validated ? 'VALIDADO NO BALCÃO' : 'SEU CÓDIGO'}
+            </span>
             <span className="cd" aria-hidden="true">
               {attendance.code.slice(0, 3)} {attendance.code.slice(3)}
             </span>

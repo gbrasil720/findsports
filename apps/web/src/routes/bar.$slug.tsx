@@ -47,8 +47,9 @@ export const Route = createFileRoute('/bar/$slug')({
     if (page.kind === 'off_air') {
       return pageHead({
         path: page.path,
-        title: `${page.name} saiu do ar — Onside`,
-        description: `${page.name} não está mostrando jogos na Onside agora.`,
+        // Sem o nome: o bar saiu, e a página não o anuncia.
+        title: 'Bar fora do ar — Onside',
+        description: 'Este bar não está mostrando jogos na Onside agora.',
         indexable: false
       })
     }

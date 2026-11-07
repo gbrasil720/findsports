@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useRouteContext } from '@tanstack/react-router'
 
 import { useTRPC } from '@/utils/trpc'
 import { Footer, TopBar } from './bar-page'
@@ -11,6 +12,10 @@ import { clock, gameState } from './bar-page-model'
  */
 export function BarGone({ invalid }: { invalid: boolean }) {
   const trpc = useTRPC()
+  const fan = useRouteContext({
+    from: '__root__',
+    select: (ctx) => ctx.session?.user.role === 'fan'
+  })
   const today = useQuery({
     ...trpc.pubs.todayGames.queryOptions(),
     meta: { errorToast: false }
@@ -47,6 +52,12 @@ export function BarGone({ invalid }: { invalid: boolean }) {
             ? 'Pode ter vindo cortado no WhatsApp. Veja onde tem jogo hoje.'
             : 'Ele não está mostrando jogos na Onside agora. Se voltar, este mesmo link volta a funcionar. Enquanto isso, veja onde tem jogo hoje.'}
         </p>
+        {fan && !invalid ? (
+          <p>
+            Marcou jogo aqui? O seu código continua valendo: ele está em{' '}
+            <a href="/dashboard/games">Meus jogos</a>.
+          </p>
+        ) : null}
         {games.length ? (
           <ul className="tl" aria-label="Jogos de hoje">
             {games.slice(0, 6).map((game) => (
