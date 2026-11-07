@@ -20,8 +20,11 @@ import type {
  *              basic per-game
  * - Pro:      + directions opened, phone clicked, whatsapp opened, 365d
  *              retention, cross-game comparison
- * - Elite:    + daily breakdown, complete per-game, unlimited retention,
- *              advanced comparison and insights
+ * - Elite:    + classics, reservations, unlimited retention, advanced
+ *              comparison and insights
+ *
+ * A série diária (aberturas e contatos somados) é de todos os planos, como no
+ * design (1r, 1x; WEB-449): não há entitlement para ela.
  */
 
 const ENTITLEMENTS: Record<SubscriptionPlan, AnalyticsEntitlements> = {
@@ -34,7 +37,6 @@ const ENTITLEMENTS: Record<SubscriptionPlan, AnalyticsEntitlements> = {
     canViewReservations: false,
     canViewComparison: true,
     comparison: 'previous_period',
-    canViewDailyBreakdown: false,
     eventBreakdown: 'basic',
     maxDaysRetention: 30,
     plan: 'starter'
@@ -48,7 +50,6 @@ const ENTITLEMENTS: Record<SubscriptionPlan, AnalyticsEntitlements> = {
     canViewReservations: false,
     canViewComparison: true,
     comparison: 'cross_game',
-    canViewDailyBreakdown: false,
     eventBreakdown: 'complete',
     maxDaysRetention: 365,
     plan: 'pro'
@@ -62,7 +63,6 @@ const ENTITLEMENTS: Record<SubscriptionPlan, AnalyticsEntitlements> = {
     canViewReservations: true,
     canViewComparison: true,
     comparison: 'advanced',
-    canViewDailyBreakdown: true,
     eventBreakdown: 'complete',
     maxDaysRetention: null,
     plan: 'elite'
