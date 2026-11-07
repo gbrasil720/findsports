@@ -119,15 +119,15 @@ test('bar Elite: marcar dá o código na hora, Meus jogos o mostra e desmarcar o
   await page.goto('/dashboard')
   await openMyGames(page)
   const card = page.getByRole('article', { name: pub.name })
-  await expect(card).toContainText('Você vai')
   await expect(card).toContainText(shown(ticket.code))
-  await expect(card).toContainText('Chopp em dobro no intervalo')
+  // A oferta do jogo vai no ingresso do balcão.
+  await card.getByRole('link', { name: 'Mostrar no balcão' }).click()
+  await expect(page.getByText('Chopp em dobro no intervalo')).toBeVisible()
+  await page.getByRole('link', { name: 'Meus jogos' }).last().click()
 
   await card.getByRole('button', { name: 'Desmarcar' }).click()
   await expect(card).toHaveCount(0)
-  await expect(
-    page.getByText('Você ainda não marcou nenhum jogo.')
-  ).toBeVisible()
+  await expect(page.getByText('Nenhum jogo marcado')).toBeVisible()
   expect(await ticketOf(fan.id, eventId)).toMatchObject({
     status: 'cancelled',
     retired: true
@@ -164,8 +164,8 @@ test('fora do Elite, marcar não dá código', async ({ page }) => {
   await page.goto('/dashboard')
   await openMyGames(page)
   const card = page.getByRole('article', { name: pub.name })
-  await expect(card).toContainText('Você vai')
-  await expect(card).not.toContainText('Código')
+  await expect(card).toContainText('Faça check-in quando chegar')
+  await expect(card).not.toContainText('CÓDIGO')
   await expect(card).not.toContainText('Oferta guardada')
 })
 
@@ -264,7 +264,7 @@ test('bar fora do ar: Meus jogos diz que o código vale, e a página do bar diz 
   await page.goto('/dashboard/games')
   await expect(card).toContainText(shown(ticket.code))
   await expect(card).toContainText(OFF_AIR)
-  await expect(card.getByRole('link')).toHaveCount(0)
+  await expect(card.getByRole('link', { name: pub.name })).toHaveCount(0)
 
   // Link antigo para o perfil: a página diz que o bar saiu e onde o código
   // está.
@@ -327,10 +327,12 @@ test('jogo encerrado com avaliação aberta: Avaliar leva ao card daquele jogo',
     ])
   }
 
-  await page.goto('/dashboard/games')
+  await page.goto('/dashboard/games?aba=ant')
   const row = page.getByRole('listitem').filter({ hasText: older })
   await row.getByRole('link', { name: `Avaliar o ${pub.name}` }).click()
-  await expect(page).toHaveURL(new RegExp(`/dashboard\\?avaliar=${olderId}`))
+  await expect(page).toHaveURL(
+    new RegExp(`/dashboard/games\\?avaliar=${olderId}`)
+  )
 
   const rating = page.getByRole('region', {
     name: `Voltaria pra ver jogo no ${pub.name}?`

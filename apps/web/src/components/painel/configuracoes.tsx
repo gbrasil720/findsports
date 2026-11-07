@@ -360,7 +360,12 @@ function Avisos() {
  * sessão, um pedido a cada 24 h. A recusa do limite já chega escrita para a
  * tela.
  */
-function BaixarDados() {
+/** Também no web do torcedor (Preferências › Privacidade), com o texto dele. */
+export function BaixarDados({
+  descricao = 'Um arquivo com os dados da conta e do bar, enviado por e-mail. Um pedido a cada 24 h.'
+}: {
+  descricao?: string
+}) {
   const trpc = useTRPC()
   const pedir = useMutation(
     trpc.account.requestExport.mutationOptions({
@@ -383,10 +388,7 @@ function BaixarDados() {
     <div className="pn-ln">
       <span>
         <b>Baixar meus dados</b>
-        <span>
-          Um arquivo com os dados da conta e do bar, enviado por e-mail. Um
-          pedido a cada 24 h.
-        </span>
+        <span>{descricao}</span>
       </span>
       <button
         type="button"
@@ -400,8 +402,16 @@ function BaixarDados() {
   )
 }
 
-/** O nome de quem administra: edita na própria linha. */
-function Responsavel({ name }: { name: string }) {
+/** O nome de quem administra (ou do torcedor): edita na própria linha. */
+export function Responsavel({
+  name,
+  rotulo = 'Responsável',
+  vazio = 'Informe o nome de quem administra o bar.'
+}: {
+  name: string
+  rotulo?: string
+  vazio?: string
+}) {
   const [editando, setEditando] = useState(false)
   const [valor, setValor] = useState(name)
   const [salvando, setSalvando] = useState(false)
@@ -411,7 +421,7 @@ function Responsavel({ name }: { name: string }) {
     e.preventDefault()
     const novo = valor.trim()
     if (novo.length < 2) {
-      setErro('Informe o nome de quem administra o bar.')
+      setErro(vazio)
       return
     }
     setSalvando(true)
@@ -435,7 +445,7 @@ function Responsavel({ name }: { name: string }) {
     return (
       <div className="pn-ln">
         <span>
-          <b>Responsável</b>
+          <b>{rotulo}</b>
           <span>{name || '—'}</span>
         </span>
         <button
@@ -455,7 +465,7 @@ function Responsavel({ name }: { name: string }) {
   return (
     <form method="post" className="pn-ln pn-ln-ed" onSubmit={salvar} noValidate>
       <label className="pn-fl" htmlFor="cfg-nome">
-        <span className="pn-fl-l">Responsável</span>
+        <span className="pn-fl-l">{rotulo}</span>
         <input
           id="cfg-nome"
           className="pn-inp"
@@ -493,7 +503,7 @@ function Responsavel({ name }: { name: string }) {
   )
 }
 
-function Sessoes() {
+export function Sessoes() {
   const {
     current,
     sessions,
@@ -592,7 +602,7 @@ function Sessoes() {
 }
 
 /** Cookies de análise (WEB-244): a mesma escolha do aviso das páginas públicas. */
-function Cookies() {
+export function Cookies() {
   const consent = useAnalyticsConsent()
   // Só há o que escolher onde a análise existe, e a escolha mora no navegador.
   if (!analyticsConfigured() || consent === 'ssr') return null

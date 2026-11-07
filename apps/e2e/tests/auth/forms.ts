@@ -44,6 +44,5 @@ export async function loginWithForm(
 }
 
 export async function openAccountSettings(page: Page) {
-  await page.goto('/dashboard/profile')
-  await page.getByRole('tab', { name: 'Configurações' }).click()
+  await page.goto('/dashboard/preferencias?aba=conta')
 }

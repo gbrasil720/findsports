@@ -10,7 +10,7 @@ import {
 } from '../../fixtures/fan'
 import { expect, test } from '../../fixtures/test'
 
-// Avaliação "voltaria?" e "você foi?" no dashboard (WEB-178).
+// Avaliação "voltaria?" e "você foi?" em Meus jogos, nos anteriores (WEB-178, WEB-501).
 //
 // Os jogos daqui terminam dias antes ou depois de agora, nunca horas: o
 // servidor de dev lê `timestamp` sem fuso no fuso local em parte das
@@ -73,7 +73,7 @@ test('quem abriu a rota de um jogo que acabou responde "voltaria?"', async ({
     )
     .toBe(1)
 
-  await page.goto('/dashboard')
+  await page.goto('/dashboard/games?aba=ant')
   await expect(
     page.getByRole('heading', { name: question(pub.name) })
   ).toBeVisible()
@@ -131,7 +131,7 @@ test('sem intenção, antes do fim ou depois de 14 dias não há avaliação', a
     expect((await response.json()).error.message).toBe(item.reason)
   }
 
-  await page.goto('/dashboard')
+  await page.goto('/dashboard/games?aba=ant')
   // Só o jogo de 13 dias atrás, e ele sozinho (sem "1 de N").
   await expect(
     page.getByRole('heading', { name: question(eligible.name) })
@@ -148,7 +148,7 @@ test('"você foi?" pergunta depois do jogo marcado e grava a resposta', async ({
   const fan = await signInFanAt(page, spot)
   await insert('attendance', { user_id: fan.id, event_id: eventId })
 
-  await page.goto('/dashboard')
+  await page.goto('/dashboard/games?aba=ant')
   const card = page.getByRole('region', { name: `Você foi ao ${pub.name}?` })
   await expect(card).toBeVisible()
   await card.getByRole('button', { name: 'Fui', exact: true }).click()
@@ -182,7 +182,7 @@ test('"Desfazer" no aviso apaga a resposta e devolve a pergunta', async ({
       eventId
     ])
 
-  await page.goto('/dashboard')
+  await page.goto('/dashboard/games?aba=ant')
   const went = page.getByRole('region', { name: `Você foi ao ${pub.name}?` })
   await went.getByRole('button', { name: 'Não fui' }).click()
   await expect(went).toHaveCount(0)

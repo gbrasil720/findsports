@@ -1,19 +1,26 @@
-import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState } from 'react'
-import { AppShell } from '@/components/app/app-shell'
+import { AttendanceReportCard } from '@/components/dashboard/attendance-report-card'
+import { PendingRatingCard } from '@/components/dashboard/pending-rating-card'
+import { brasiliaDay, brasiliaTime, dayLabel } from '@/components/painel/noite'
+import { AppChegando } from '@/components/torcedor/app-chegando'
+import { Ic } from '@/components/torcedor/icones'
+import { TorcedorShell, useTorcedor } from '@/components/torcedor/shell'
+import { baixarAgenda } from '@/domain/agenda'
 import {
   formatCode,
   getOffAirNotice,
   type MyGame,
   pastLabel
 } from '@/domain/my-games'
-import { formatDayLabel, formatEventTime } from '@/domain/pub-profile'
 import { getGameTitle } from '@/domain/reservation-validation'
+import { useSession } from '@/hooks/use-session'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
-import { getUserFacingMessage } from '@/lib/user-facing-error'
+import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
+
+type Aba = 'prox' | 'ant'
 
 export const Route = createFileRoute('/(dashboard)/dashboard_/games')({
   head: () => ({
@@ -24,17 +31,36 @@ export const Route = createFileRoute('/(dashboard)/dashboard_/games')({
     ],
     links: [...PWA_LINKS]
   }),
-  component: MyGamesPage
+  // "Avaliar" abre aqui com `?avaliar=<jogo>`: os cards do pós-jogo trazem
+  // esse jogo na frente. `?aba=ant` abre nos anteriores.
+  validateSearch: (
+    search: Record<string, unknown>
+  ): { avaliar?: string; aba?: Aba } => ({
+    ...(typeof search.avaliar === 'string' ? { avaliar: search.avaliar } : {}),
+    ...(search.aba === 'ant' ? { aba: 'ant' as const } : {})
+  }),
+  component: MeusJogos
 })
 
 /**
- * "Meus jogos" (3e do design): onde o torcedor marcou "Vou assistir aqui".
- * Nos bares Elite, cada jogo traz o código que ele mostra no balcão para
- * ganhar a oferta da casa. Continua legível mesmo se o bar perder o plano ou
- * sair do ar: o código vale até a janela de validação fechar.
+ * "Meus jogos" do web do torcedor (WEB-501, protótipo `#meus-jogos`): os
+ * jogos marcados em "Vou assistir aqui", em ingressos, com o código do balcão
+ * nos bares Elite e o "Estou aqui" nos outros. Os anteriores levam ao
+ * pós-jogo, que por ora é o card antigo (a avaliação nova é a fase 6).
  */
-function MyGamesPage() {
+function MeusJogos() {
+  return (
+    <TorcedorShell aba="meus-jogos">
+      <Conteudo />
+    </TorcedorShell>
+  )
+}
+
+function Conteudo() {
   const trpc = useTRPC()
+  const session = useSession()
+  const search = Route.useSearch()
+  const aba: Aba = search.aba ?? (search.avaliar ? 'ant' : 'prox')
   const query = useQuery({
     ...trpc.attendance.mine.queryOptions(),
     meta: { errorToast: false }
@@ -48,256 +74,334 @@ function MyGamesPage() {
     ...trpc.attendance.pendingReports.queryOptions(),
     meta: { errorToast: false }
   })
+  const cidade = useQuery({
+    ...trpc.pubs.getMyCity.queryOptions(),
+    meta: { errorToast: false }
+  })
   const toRate = new Set(
     [...(ratings.data ?? []), ...(reports.data ?? [])].map(
       (item) => item.eventId
     )
   )
-  const [announcement, setAnnouncement] = useState('')
   const games = query.data ?? []
   // O servidor manda do mais recente para o mais antigo; as próximas vão do
   // mais perto ao mais longe.
   const upcoming = games.filter((game) => !game.ended).reverse()
   const past = games.filter((game) => game.ended)
+  const pendente = past.find((game) => toRate.has(game.eventId))
 
   return (
-    <AppShell variant="fan">
-      <div className="mx-auto w-full max-w-2xl space-y-4">
-        <h1 className="onside-display text-3xl">Meus jogos</h1>
-        <p className="sr-only" role="status" aria-live="polite">
-          {announcement}
-        </p>
+    <div className="page">
+      <div className="k">
+        {session?.user.name}
+        {cidade.data ? ` · ${cidade.data.name}` : ''}
+      </div>
+      <h1 className="disp">Meus jogos</h1>
+      <p className="sub">
+        Os jogos que você marcou, com o código do balcão. Depois do jogo, conte
+        como foi.
+      </p>
+      <div className="tabsx" role="tablist" aria-label="Jogos">
+        {(
+          [
+            ['prox', 'Próximos', upcoming.length],
+            ['ant', 'Anteriores', past.length]
+          ] as const
+        ).map(([id, rotulo, n]) => (
+          <Link
+            key={id}
+            to="/dashboard/games"
+            search={id === 'ant' ? { aba: 'ant' } : {}}
+            replace
+            role="tab"
+            aria-selected={aba === id}
+            className={aba === id ? 'on' : undefined}
+          >
+            {rotulo}
+            <span className="n">{n}</span>
+          </Link>
+        ))}
+      </div>
 
-        {query.isLoading ? (
-          <div role="status" aria-busy="true" className="space-y-3">
-            <span className="sr-only">Carregando seus jogos…</span>
-            <Skeleton className="h-40 w-full" />
-            <Skeleton className="h-40 w-full" />
-          </div>
-        ) : query.isError ? (
-          <div className="onside-panel p-5" role="alert">
-            <p className="text-sm">
-              {getUserFacingMessage(
-                query.error,
-                'Não foi possível carregar seus jogos. Tente novamente.'
-              )}
-            </p>
+      {query.isError ? (
+        <div className="empty" role="alert" style={{ marginTop: 18 }}>
+          <b>Não carregou</b>
+          <p>
+            {getUserFacingMessage(
+              query.error,
+              'Não foi possível carregar seus jogos. Tente novamente.'
+            )}
+          </p>
+          {isRetryableError(query.error) ? (
             <button
               type="button"
+              className="btn b-ink sm"
               onClick={() => void query.refetch()}
-              className="onside-btn onside-btn-outline mt-3"
             >
-              Tentar novamente
+              Tentar de novo
             </button>
+          ) : null}
+        </div>
+      ) : query.isPending ? (
+        <div
+          className="empty"
+          role="status"
+          aria-busy="true"
+          style={{ marginTop: 18 }}
+        >
+          <b>Carregando seus jogos</b>
+        </div>
+      ) : aba === 'prox' ? (
+        <>
+          {pendente ? (
+            <div className="notice">
+              <Ic n="star" s={24} />
+              <span>
+                <b>
+                  Como foi {getGameTitle(pendente)} no {pendente.barName}?
+                </b>
+                <span>Leva 20 segundos. Conte se você foi e se voltaria.</span>
+              </span>
+              <Link
+                className="btn b-acid sm"
+                to="/dashboard/games"
+                search={{ avaliar: pendente.eventId }}
+              >
+                Avaliar
+              </Link>
+            </div>
+          ) : null}
+          {upcoming.length ? (
+            upcoming.map((game) => <Ingresso key={game.eventId} game={game} />)
+          ) : (
+            <div className="empty" style={{ marginTop: 18 }}>
+              <b>Nenhum jogo marcado</b>
+              <p>Escolha um jogo e toque em “Vou assistir aqui” no bar.</p>
+              <Link className="btn b-ink sm" to="/dashboard">
+                Ver jogos de hoje
+              </Link>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          {/* O pós-jogo antigo, até a avaliação nova (fase 6). */}
+          {/* A chave remonta os cards: o jogo pedido vem para a frente. */}
+          <div className="pos-jogo" key={search.avaliar ?? 'todos'}>
+            <AttendanceReportCard first={search.avaliar} />
+            <PendingRatingCard
+              pending={ratings.data ?? []}
+              first={search.avaliar}
+            />
           </div>
-        ) : games.length ? (
-          <>
-            <section aria-labelledby="games-upcoming" className="space-y-3">
-              <h2 id="games-upcoming" className="onside-kicker">
-                Próximos · {upcoming.length}
-              </h2>
-              {upcoming.length ? (
-                <ul className="space-y-3">
-                  {upcoming.map((game) => (
-                    <li key={game.eventId}>
-                      <UpcomingCard game={game} onAnnounce={setAnnouncement} />
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-[var(--onside-muted)] text-sm">
-                  Nenhum jogo marcado daqui para a frente.
-                </p>
-              )}
-              {upcoming.some((game) => game.code) ? (
-                <p className="text-[var(--onside-muted)] text-xs">
-                  O código vale só no dia do jogo, no bar que você marcou.
-                </p>
-              ) : null}
-            </section>
-            {past.length ? (
-              <section aria-labelledby="games-past" className="space-y-3">
-                <h2 id="games-past" className="onside-kicker">
-                  Anteriores
-                </h2>
-                <ul className="onside-panel divide-y divide-[var(--onside-line)]">
-                  {past.map((game) => (
-                    <li
-                      key={game.eventId}
-                      className="flex items-center justify-between gap-3 p-4"
+          {past.length ? (
+            <ul className="pastl">
+              {past.map((game) => (
+                <li key={game.eventId} className="past">
+                  <span className="h">
+                    {brasiliaTime(game.startsAt)}
+                    <small>{dayLabel(brasiliaDay(game.startsAt))}</small>
+                  </span>
+                  <span>
+                    <b>{getGameTitle(game)}</b>
+                    <p>
+                      {game.barName} · {game.championship}
+                    </p>
+                  </span>
+                  {toRate.has(game.eventId) ? (
+                    <Link
+                      className="btn b-acid sm"
+                      to="/dashboard/games"
+                      search={{ avaliar: game.eventId }}
+                      aria-label={`Avaliar o ${game.barName}`}
                     >
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold">{game.barName}</p>
-                        <p className="truncate text-[var(--onside-muted)] text-sm">
-                          {getGameTitle(game)} ·{' '}
-                          {new Date(game.startsAt).toLocaleDateString('pt-BR', {
-                            day: 'numeric',
-                            month: 'short',
-                            timeZone: 'America/Sao_Paulo'
-                          })}
-                        </p>
-                      </div>
-                      {toRate.has(game.eventId) ? (
-                        <Link
-                          to="/dashboard"
-                          search={{ avaliar: game.eventId }}
-                          className="onside-btn onside-btn-ink"
-                          aria-label={`Avaliar o ${game.barName}`}
-                        >
-                          Avaliar
-                        </Link>
-                      ) : (
-                        <span
-                          className={`onside-badge ${game.validated ? 'onside-badge-acid' : 'onside-badge-stone'}`}
-                        >
-                          {pastLabel(game)}
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ) : null}
-          </>
-        ) : (
-          <div className="onside-panel p-6 text-center">
-            <p className="font-semibold text-sm">
-              Você ainda não marcou nenhum jogo.
-            </p>
-            <p className="mt-1 text-[var(--onside-muted)] text-sm">
-              Na página de um bar, toque em “Vou assistir aqui”. Nos bares Elite
-              você recebe um código na hora e ganha a oferta da casa no balcão.
-            </p>
-            <Link to="/dashboard" className="onside-btn onside-btn-acid mt-4">
-              Procurar bares
-            </Link>
-          </div>
-        )}
-      </div>
-    </AppShell>
+                      <Ic n="star" s={18} />
+                      Avaliar
+                    </Link>
+                  ) : (
+                    <span className={`vchip${game.validated ? '' : ' n'}`}>
+                      {game.validated ? <Ic n="check" s={14} /> : null}
+                      {game.validated ? 'Visita verificada' : pastLabel(game)}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="empty" style={{ marginTop: 18 }}>
+              <b>Nenhum jogo ainda</b>
+              <p>Os jogos que você marcou aparecem aqui depois que acabam.</p>
+            </div>
+          )}
+          <p className="pastnote">Jogo desmarcado não fica no histórico.</p>
+        </>
+      )}
+      <AppChegando />
+    </div>
   )
 }
 
-function UpcomingCard({
-  game,
-  onAnnounce
-}: {
-  game: MyGame
-  onAnnounce: (message: string) => void
-}) {
+function Ingresso({ game }: { game: MyGame }) {
   const trpc = useTRPC()
   const queryClient = useQueryClient()
-  const [error, setError] = useState<string | null>(null)
-  const startsAt = new Date(game.startsAt)
-  const titleId = `game-${game.eventId}`
-  const offAirNotice = getOffAirNotice(game)
-  const live = startsAt.getTime() <= Date.now()
+  const { avisar } = useTorcedor()
+  const [erro, setErro] = useState<string | null>(null)
+  const titulo = getGameTitle(game)
+  const offAir = getOffAirNotice(game)
+  const comecou = new Date(game.startsAt).getTime() <= Date.now()
+  const hoje = brasiliaDay(game.startsAt) === brasiliaDay(new Date())
+  const [a, b] = titulo.split(' × ')
 
-  const unmark = useMutation(
+  const desmarcar = useMutation(
     trpc.attendance.set.mutationOptions({
       onSuccess: () => {
-        onAnnounce('Marcação desfeita.')
-        void queryClient.invalidateQueries({
-          queryKey: trpc.pubs.getById.queryKey()
-        })
-        return queryClient.invalidateQueries({
-          queryKey: trpc.attendance.mine.queryKey()
-        })
+        avisar('Desmarcado. O bar não conta mais você.')
+        return queryClient.invalidateQueries()
       },
-      onError: (err) =>
-        setError(
+      onError: (e) =>
+        setErro(
           getUserFacingMessage(
-            err,
+            e,
             'Não foi possível desmarcar. Tente novamente.'
           )
         )
     })
   )
+  const checkIn = useMutation(
+    trpc.attendance.checkIn.mutationOptions({
+      onSuccess: () => avisar('Check-in feito: a visita conta.'),
+      onError: (e) =>
+        setErro(getUserFacingMessage(e, 'Não deu para fazer o check-in.'))
+    })
+  )
+  const estouAqui = () => {
+    setErro(null)
+    navigator.geolocation?.getCurrentPosition(
+      (p) =>
+        checkIn.mutate({
+          eventId: game.eventId,
+          latitude: p.coords.latitude,
+          longitude: p.coords.longitude
+        }),
+      () => setErro('O check-in precisa da sua localização.'),
+      { enableHighAccuracy: true, timeout: 10_000 }
+    )
+  }
 
   return (
-    <article className="onside-panel p-5" aria-labelledby={titleId}>
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="onside-kicker">
-            {formatDayLabel(startsAt)} · {formatEventTime(startsAt)}
-          </p>
-          <h3 id={titleId} className="font-bold text-lg">
-            {/* Bar fora do ar não tem perfil para abrir (WEB-360). */}
-            {offAirNotice ? (
-              game.barName
-            ) : (
-              <Link
-                to="/pub/$pubId"
-                params={{ pubId: game.barId }}
-                className="underline"
-              >
-                {game.barName}
-              </Link>
-            )}
-          </h3>
-          <p className="text-[var(--onside-muted)] text-sm">
-            {getGameTitle(game)} · {game.championship}
-          </p>
-        </div>
-        <span
-          className={`onside-badge ${game.validated ? 'onside-badge-ink' : 'onside-badge-acid'}`}
-        >
-          {game.validated ? 'Validado' : 'Você vai'}
+    <article className="tk" aria-label={game.barName}>
+      <span className="ph">
+        {game.photoUrl ? (
+          <img src={game.photoUrl} alt="" width={480} height={360} />
+        ) : (
+          <span className="ph-vazio">
+            <Ic n="beer" s={40} />
+          </span>
+        )}
+      </span>
+      <div className="bd">
+        <span className="when2">
+          {hoje ? 'HOJE' : dayLabel(brasiliaDay(game.startsAt)).toUpperCase()} ·{' '}
+          {brasiliaTime(game.startsAt)} · {game.championship.toUpperCase()}
         </span>
-      </div>
-
-      {offAirNotice ? (
-        <p className="onside-callout onside-callout-warn mt-3 text-sm">
-          {offAirNotice}
-        </p>
-      ) : null}
-
-      {game.code ? (
-        <div className="mt-3 border-[1.5px] border-[var(--onside-line)] p-3">
-          <p className="onside-kicker">
-            {/* Bar que confirma pela comanda (WEB-412). */}
-            {game.confirmsCodesLater
-              ? 'Para o garçom: anote na comanda'
-              : 'Código'}
+        <h3>
+          {b === undefined ? (
+            titulo
+          ) : (
+            <>
+              {a} <span className="hl">×</span> {b}
+            </>
+          )}
+        </h3>
+        <span className="at">
+          <Ic n="pin" s={16} />{' '}
+          {offAir ? (
+            game.barName
+          ) : (
+            <Link to="/pub/$pubId" params={{ pubId: game.barId }}>
+              {game.barName}
+            </Link>
+          )}{' '}
+          · {game.neighborhood}
+        </span>
+        {offAir ? <p className="tk-aviso">{offAir}</p> : null}
+        {erro ? (
+          <p className="tk-aviso" role="alert">
+            {erro}
           </p>
-          <p className="font-[family-name:var(--onside-mono)] font-bold text-2xl tracking-[0.2em]">
-            {formatCode(game.code)}
-          </p>
-          {game.window ? (
-            <p className="text-[var(--onside-muted)] text-xs">
-              Vale das {formatEventTime(new Date(game.window.opensAt))} às{' '}
-              {formatEventTime(new Date(game.window.closesAt))}, uma vez só.
-            </p>
+        ) : null}
+        <div className="cta-row">
+          <button
+            className="btn b-ghost sm"
+            type="button"
+            onClick={() =>
+              baixarAgenda({
+                titulo,
+                bar: game.barName,
+                lugar: game.neighborhood,
+                inicio: game.startsAt
+              })
+            }
+          >
+            <Ic n="calendar" s={18} />
+            Pôr na agenda
+          </button>
+          {/* O servidor recusa desmarcar jogo começado ou código validado. */}
+          {!comecou && !game.validated ? (
+            <button
+              className="btn b-ghost sm"
+              type="button"
+              disabled={desmarcar.isPending}
+              onClick={() => {
+                setErro(null)
+                desmarcar.mutate({ eventId: game.eventId, attending: false })
+              }}
+            >
+              {desmarcar.isPending ? 'Desmarcando…' : 'Desmarcar'}
+            </button>
           ) : null}
         </div>
-      ) : null}
-
-      {game.offer ? (
-        <p className="mt-3 text-sm [overflow-wrap:anywhere]">
-          <span className="font-semibold">Oferta da casa:</span> {game.offer}
-        </p>
-      ) : null}
-
-      {error ? (
-        <p className="onside-field-error" role="alert">
-          {error}
-        </p>
-      ) : null}
-
-      {/* O servidor recusa desmarcar jogo começado ou código validado. */}
-      {!live && !game.validated ? (
-        <button
-          type="button"
-          onClick={() => {
-            setError(null)
-            unmark.mutate({ eventId: game.eventId, attending: false })
-          }}
-          disabled={unmark.isPending}
-          className="onside-btn onside-btn-ghost mt-3"
-        >
-          {unmark.isPending ? 'Desmarcando…' : 'Desmarcar'}
-        </button>
-      ) : null}
+      </div>
+      <div className="side">
+        {game.code ? (
+          <>
+            <div className="code">
+              <small>
+                {game.validated
+                  ? 'CÓDIGO VALIDADO'
+                  : game.confirmsCodesLater
+                    ? 'PARA A COMANDA'
+                    : 'CÓDIGO DO BALCÃO'}
+              </small>
+              {formatCode(game.code)}
+            </div>
+            <Link
+              className="btn b-acid sm"
+              to="/dashboard/codigo/$eventId"
+              params={{ eventId: game.eventId }}
+            >
+              <Ic n="qr" s={18} />
+              Mostrar no balcão
+            </Link>
+          </>
+        ) : (
+          <>
+            <div className="code code-txt">
+              <small>NO BAR</small>
+              Faça check-in quando chegar
+            </div>
+            <button
+              className="btn b-ink sm"
+              type="button"
+              disabled={checkIn.isPending}
+              onClick={estouAqui}
+            >
+              <Ic n="pin" s={18} />
+              {checkIn.isPending ? 'Conferindo…' : 'Estou aqui'}
+            </button>
+          </>
+        )}
+      </div>
     </article>
   )
 }

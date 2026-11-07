@@ -214,3 +214,111 @@ describe('recommendation reranking', () => {
     )
   })
 })
+
+describe('recommendation round of five', () => {
+  const pool = () => [
+    candidate('top', {
+      neighborhood: 'Centro',
+      amenities: [1, 2],
+      sportIds: ['football'],
+      preferredSportMatch: true,
+      hasUpcomingEvent: true,
+      intentActions: [{ kind: 'positive_rating', occurredAt: NOW }]
+    }),
+    candidate('near-clone', {
+      neighborhood: 'Centro',
+      amenities: [1, 2],
+      sportIds: ['football'],
+      preferredSportMatch: true,
+      hasUpcomingEvent: true,
+      intentActions: [{ kind: 'high_intent', occurredAt: NOW }]
+    }),
+    candidate('other-hood', {
+      neighborhood: 'Pinheiros',
+      amenities: [3],
+      sportIds: ['football'],
+      preferredSportMatch: true,
+      hasUpcomingEvent: true,
+      intentActions: [{ kind: 'game_view', occurredAt: NOW }]
+    }),
+    candidate('far-different', {
+      neighborhood: 'Moema',
+      amenities: [7, 8],
+      sportIds: ['volleyball'],
+      distanceKm: 2.5
+    }),
+    candidate('mid', {
+      neighborhood: 'Lapa',
+      amenities: [1],
+      sportIds: ['football'],
+      preferredSportMatch: true,
+      intentActions: [{ kind: 'direct_view', occurredAt: NOW }]
+    }),
+    candidate('weak-different', {
+      neighborhood: 'Tatuapé',
+      amenities: [9],
+      sportIds: ['mma'],
+      distanceKm: 4
+    })
+  ]
+
+  test('keeps three positions by default (web profile)', () => {
+    const ranked = rankRecommendations(pool(), { now: NOW, radiusKm: 3 })
+    expect(ranked.map((item) => item.slot)).toEqual([
+      'sua_cara',
+      'pra_variar',
+      'vale_arriscar'
+    ])
+  })
+
+  test('fills five positions with the 22e rules repeated', () => {
+    const ranked = rankRecommendations(pool(), { now: NOW, radiusKm: 3 }, 5)
+    expect(ranked).toHaveLength(5)
+    expect(ranked.map((item) => item.slot)).toEqual([
+      'sua_cara',
+      'pra_variar',
+      'vale_arriscar',
+      'pra_variar',
+      'vale_arriscar'
+    ])
+    expect(ranked[0]?.bar.id).toBe('top')
+    expect(new Set(ranked.map((item) => item.bar.id)).size).toBe(5)
+  })
+
+  test('positions 3 and 5 stay above 70% of the first when possible', () => {
+    const ranked = rankRecommendations(pool(), { now: NOW, radiusKm: 3 }, 5)
+    const floor = (ranked[0]?.score ?? 0) * 0.7
+    const scored = pool().map((item) =>
+      scoreRecommendationCandidate(item, { now: NOW, radiusKm: 3 })
+    )
+    const takenBefore = (index: number) =>
+      new Set(ranked.slice(0, index).map((item) => item.bar.id))
+    for (const index of [2, 4]) {
+      const anyAbove = scored.some(
+        (item) => !takenBefore(index).has(item.bar.id) && item.score >= floor
+      )
+      if (anyAbove) expect(ranked[index]?.score).toBeGreaterThanOrEqual(floor)
+    }
+  })
+
+  test('returns fewer than five without inventing results', () => {
+    const ranked = rankRecommendations(
+      pool().slice(0, 2),
+      { now: NOW, radiusKm: 3 },
+      5
+    )
+    expect(ranked.map((item) => item.bar.id)).toEqual(['top', 'near-clone'])
+  })
+
+  test('is deterministic for five positions', () => {
+    const first = rankRecommendations(pool(), { now: NOW, radiusKm: 3 }, 5)
+    const second = rankRecommendations(
+      pool().reverse(),
+      { now: NOW, radiusKm: 3 },
+      5
+    )
+    expect(first.map((item) => item.bar.id)).toEqual(
+      second.map((item) => item.bar.id)
+    )
+  })
+})

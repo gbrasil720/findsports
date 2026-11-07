@@ -43,6 +43,7 @@ import { getCurrentPlan } from './current-plan'
 import { gameTitle, participantNames } from './game-participants'
 import { effectiveHouseOffer } from './house-offer'
 import { getLateEntryWindow, LATE_ENTRY_HOURS } from './reservation-validation'
+import { visit } from './visits'
 
 /**
  * Presença confirmada (WEB-127, ADR 0003). Os números daqui só saem do
@@ -455,6 +456,36 @@ export async function readMyGames(
       }
     }
   )
+}
+
+/**
+ * "Já fui" e "Bares" de Seus bares (17b, 17e do design): cada visita
+ * (`visits.ts`), do jogo mais recente ao mais antigo. Bar fora do ar segue na
+ * lista, sem perfil para abrir.
+ */
+export async function readVisitedGames(userId: string) {
+  return db
+    .select({
+      eventId: event.id,
+      championship: event.championship,
+      participantFreeText: event.participantFreeText,
+      participants: participantNames(sql`${event.id}`),
+      startsAt: event.startsAt,
+      validatedAt: visit.visitedAt,
+      barId: bar.id,
+      barName: bar.name,
+      neighborhood: bar.neighborhood,
+      // A aba "Bares" (17e) mostra a foto e a distância de quem já foi.
+      photoUrl: bar.photoUrl,
+      latitude: bar.latitude,
+      longitude: bar.longitude,
+      barActive: bar.isActive
+    })
+    .from(visit)
+    .innerJoin(event, eq(event.id, visit.eventId))
+    .innerJoin(bar, eq(bar.id, visit.barId))
+    .where(eq(visit.userId, userId))
+    .orderBy(sql`${event.startsAt} desc`, event.id)
 }
 
 export type InterestSignal =

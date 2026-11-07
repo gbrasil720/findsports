@@ -21,9 +21,10 @@ function expectRedirect(from: string, to: string) {
 }
 
 test.describe('deslogado', () => {
+  // `/dashboard` (o Explorar) abre sem login desde 05/11/2026 (WEB-501).
   for (const path of [
-    '/dashboard',
     '/dashboard/profile',
+    '/dashboard/seus-bares',
     '/dashboard/games',
     '/admin',
     '/admin/billing',

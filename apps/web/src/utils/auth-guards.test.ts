@@ -37,8 +37,8 @@ function session(role: 'fan' | 'pub' | 'admin', onboardingCompleted = true) {
 
 describe('requiresAuthentication', () => {
   test('protects known app surfaces and their nested paths', () => {
-    expect(requiresAuthentication('/dashboard')).toBe(true)
     expect(requiresAuthentication('/dashboard/profile')).toBe(true)
+    expect(requiresAuthentication('/dashboard/games')).toBe(true)
     expect(requiresAuthentication('/admin')).toBe(true)
     expect(requiresAuthentication('/admin/billing')).toBe(true)
     expect(requiresAuthentication('/admin/validate')).toBe(true)
@@ -49,6 +49,8 @@ describe('requiresAuthentication', () => {
 
   test('leaves marketing, auth, pubs, pub onboarding and unknown URLs public', () => {
     expect(requiresAuthentication('/')).toBe(false)
+    // Explorar do torcedor: ver sem login (05/11/2026).
+    expect(requiresAuthentication('/dashboard')).toBe(false)
     expect(requiresAuthentication('/login')).toBe(false)
     expect(requiresAuthentication('/signup')).toBe(false)
     expect(requiresAuthentication('/pub/abc')).toBe(false)
@@ -65,8 +67,9 @@ describe('requiresAuthentication', () => {
 
 describe('applyAuthGuards', () => {
   test('sends visitors on protected routes to login', () => {
-    expect(() => applyAuthGuards(null, '/dashboard')).toThrow()
+    expect(() => applyAuthGuards(null, '/dashboard/games')).toThrow()
     expect(() => applyAuthGuards(null, '/admin')).toThrow()
+    expect(() => applyAuthGuards(null, '/dashboard')).not.toThrow()
   })
 
   // WEB-210: o destino original volta como callbackUrl, com a query.

@@ -12,7 +12,6 @@ export type AuthSession = ReturnType<typeof toClientSession>
 export const PUB_LIVE_PATH = '/onboarding/pub/no-ar'
 
 const AUTHENTICATED_PREFIXES = [
-  '/dashboard',
   '/admin',
   '/plan',
   // `start_url` do PWA: abrir o ícone da tela inicial sem sessão tem que cair
@@ -23,7 +22,15 @@ const AUTHENTICATED_PREFIXES = [
   '/onboarding/fan'
 ] as const
 
+/**
+ * Ver sem login, agir com login (dono, 05/11/2026): o Explorar do torcedor
+ * (`/dashboard`) abre para visitante; as telas de baixo dele (Meus jogos,
+ * Seus bares, perfil, preferências) são da conta.
+ */
+export const FAN_EXPLORE_PATH = '/dashboard'
+
 export function requiresAuthentication(pathname: string) {
+  if (pathname.startsWith(`${FAN_EXPLORE_PATH}/`)) return true
   return AUTHENTICATED_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
   )

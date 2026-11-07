@@ -240,20 +240,19 @@ test.describe('logout', () => {
     await page.getByRole('menuitem', { name: 'Sair' }).click()
 
     await expect(page).toHaveURL(/\/$/)
-    await page.goto('/dashboard')
+    await page.goto('/dashboard/games')
     await expect(page).toHaveURL(/\/login\?callbackUrl=/)
   })
 
   test('pelas configurações da conta', async ({ page }) => {
     const user = await createUser()
     await signIn(page, user)
-    await page.goto('/dashboard/profile')
-    await page.getByRole('tab', { name: 'Configurações' }).click()
+    await page.goto('/dashboard/preferencias?aba=conta')
 
     await page.getByRole('button', { name: 'Sair da conta' }).click()
 
-    await expect(page).toHaveURL(/\/login$/)
-    await page.goto('/dashboard')
+    await expect(page).toHaveURL(/\/$/)
+    await page.goto('/dashboard/games')
     await expect(page).toHaveURL(/\/login\?callbackUrl=/)
   })
 })

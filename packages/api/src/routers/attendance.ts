@@ -1,3 +1,5 @@
+import { db } from '@findsports_oficial/db'
+import { recommendationEvent } from '@findsports_oficial/db/schema/recommendation'
 import { z } from 'zod'
 
 import { adminProcedure, fanProcedure, router } from '../index'
@@ -6,6 +8,7 @@ import {
   readMyGames,
   readUnregisteredAlerts,
   readUnvalidatedCodeAlerts,
+  readVisitedGames,
   setAttendance
 } from '../lib/attendance'
 import { checkIn } from '../lib/check-in'
@@ -17,19 +20,44 @@ import { answerPostGame, undoPostGame } from '../lib/post-game'
  */
 export const attendanceRouter = router({
   set: fanProcedure
-    .input(z.object({ eventId: z.string().uuid(), attending: z.boolean() }))
+    .input(
+      z.object({
+        eventId: z.string().uuid(),
+        attending: z.boolean(),
+        // "Vou assistir" a partir do card de "Bares pra você" (WEB-425, 22e).
+        recommendationRunId: z.string().uuid().optional()
+      })
+    )
     .mutation(async ({ ctx, input }) => {
-      const { barId: _barId, ...marked } = await setAttendance({
-        userId: ctx.session.user.id,
+      const userId = ctx.session.user.id
+      const { barId, ...marked } = await setAttendance({
+        userId,
         eventId: input.eventId,
         attending: input.attending
       })
+      if (input.attending && input.recommendationRunId) {
+        // Atribuição é telemetria: falhar aqui não desfaz a presença.
+        await db
+          .insert(recommendationEvent)
+          .values({
+            actorUserId: userId,
+            barId,
+            runId: input.recommendationRunId,
+            type: 'attend'
+          })
+          .onConflictDoNothing()
+          .catch(() => {})
+      }
       // O código vem na resposta: a tela o mostra sem esperar o perfil recarregar.
       return marked
     }),
 
   /** "Meus jogos": onde o torcedor marcou que vai, com o código. */
   mine: fanProcedure.query(({ ctx }) => readMyGames(ctx.session.user.id)),
+  /** Os jogos com código validado: o "Já fui" de Seus bares. */
+  visits: fanProcedure.query(({ ctx }) =>
+    readVisitedGames(ctx.session.user.id)
+  ),
 
   /**
    * "Estou aqui" (WEB-408): check-in por localização durante o jogo. O
