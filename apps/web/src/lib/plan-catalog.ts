@@ -290,7 +290,7 @@ export const PLAN_CATALOG: Plan[] = [
         status: 'live',
         key: 'menu'
       },
-      { label: 'Galeria de fotos do ambiente', status: 'soon' },
+      { label: 'Galeria de fotos do ambiente', status: 'live' },
       { label: 'Promoções no perfil', status: 'soon' }
     ],
     analytics: {
@@ -337,7 +337,7 @@ export const PLAN_CATALOG: Plan[] = [
         status: 'live',
         key: 'house_offer'
       },
-      { label: 'Galeria de fotos do ambiente', status: 'soon' },
+      { label: 'Galeria de fotos do ambiente', status: 'live' },
       { label: 'Promoções no perfil', status: 'soon' }
     ],
     analytics: {
