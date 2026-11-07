@@ -1655,8 +1655,13 @@ html[data-theme="dark"] .pn3 .pn-savebar {
     gap: 10px;
   }
 
-  .pn3 .pn-ln > :last-child:empty {
+  /* O interruptor é um botão vazio: fica, ao lado do texto. */
+  .pn3 .pn-ln > :last-child:empty:not(.pn-tg) {
     display: none;
+  }
+
+  .pn3 .pn-ln:has(> .pn-tg) {
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
   .pn3 .pn-ln > .pn-btn,
