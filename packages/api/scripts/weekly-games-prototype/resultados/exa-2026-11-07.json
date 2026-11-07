@@ -1,0 +1,367 @@
+{
+  "report": {
+    "provider": "exa",
+    "semana": [
+      "2026-11-07",
+      "2026-11-08",
+      "2026-11-09",
+      "2026-11-10",
+      "2026-11-11",
+      "2026-11-12",
+      "2026-11-13"
+    ],
+    "buscas": 15,
+    "paginas": 21,
+    "paginasPuladas": [],
+    "browserMs": 172481.46337890625,
+    "chamadasLuna": 21,
+    "tokensIn": 179268,
+    "tokensOut": 1888,
+    "custoBuscasUsd": 0.105,
+    "custoLunaUsd": 0.01887,
+    "custoTotalUsd": 0.1239,
+    "acumuladoUsd": 0.3943,
+    "segundos": 338.5,
+    "jogos": 20,
+    "semCanal": 2,
+    "parouNoTeto": null,
+    "log": [
+      {
+        "etapa": "campeonato",
+        "query": "Brasileirão Série A jogos desta semana onde assistir 07/11 a 13/11 2026",
+        "urls": [
+          "https://ge.globo.com/ba/futebol/brasileirao-serie-a/noticia/2026/11/02/brasileirao-2026-veja-onde-assistir-ao-vivo-aos-jogos-da-34a-rodada.ghtml",
+          "https://guiadejogos.com.br/campeonato/brasileirao-serie-a"
+        ],
+        "jogos": 0
+      },
+      {
+        "etapa": "campeonato",
+        "query": "Libertadores jogos desta semana onde assistir 07/11 a 13/11 2026",
+        "urls": [
+          "https://tabelinha.tec.br/libertadores/",
+          "https://ondeassistir.net.br/libertadores-onde-assistir-as-semifinais-e-grande-final-14-10-a-28-11-2026/"
+        ],
+        "jogos": 0
+      },
+      {
+        "etapa": "campeonato",
+        "query": "Copa do Brasil jogos desta semana onde assistir 07/11 a 13/11 2026",
+        "urls": [
+          "https://www.abcdoabc.com.br/semifinais-da-copa-do-brasil-2026/",
+          "https://tabelinha.tec.br/copa-do-brasil/"
+        ],
+        "jogos": 4
+      },
+      {
+        "etapa": "campeonato",
+        "query": "Copa Sul-Americana jogos desta semana onde assistir 07/11 a 13/11 2026",
+        "urls": [
+          "https://guiadejogos.com.br/campeonato/sul-americana",
+          "https://canaisaovivo.com.br/campeonato/copa-sul-americana"
+        ],
+        "jogos": 0
+      },
+      {
+        "etapa": "campeonato",
+        "query": "Brasileirão Série B jogos desta semana onde assistir 07/11 a 13/11 2026",
+        "urls": [
+          "https://ondeassistir.net.br/serie-b-onde-assistir-novorizontino-x-fortaleza-vila-nova-x-criciuma-e-muito-mais-05-a-08-11-2026/",
+          "https://sports.ncnews.com.br/2026/11/03/jogos-da-rodada-37-brasileirao-serie-b-2026/"
+        ],
+        "jogos": 15
+      },
+      {
+        "etapa": "campeonato",
+        "query": "Premier League jogos desta semana onde assistir 07/11 a 13/11 2026",
+        "urls": [
+          "https://www.band.com.br/esportes/futebol/futebol-internacional/futebol-ingles/premier-league-horario-e-onde-assistir-aos-jogos-da-10a-rodada",
+          "https://www.espn.com.br/futebol/calendario/_/liga/eng.1"
+        ],
+        "jogos": 9
+      },
+      {
+        "etapa": "sem canal",
+        "query": "Leeds United x Tottenham Hotspur 07/11 onde assistir ao vivo",
+        "urls": [
+          "https://www.sportingnews.com/br/futebol/noticias/leeds-x-tottenham-ao-vivo-assistir-07-11/df0f1762265b7f7fbff36888"
+        ],
+        "jogos": 1
+      },
+      {
+        "etapa": "sem canal",
+        "query": "Arsenal x Hull City 07/11 onde assistir ao vivo",
+        "urls": [
+          "https://www.estadao.com.br/esportes/futebol/arsenal-x-hull-city-pela-premier-league-onde-assistir-ao-vivo-horario-escalacao/"
+        ],
+        "jogos": 1
+      },
+      {
+        "etapa": "sem canal",
+        "query": "Fulham x Newcastle United 07/11 onde assistir ao vivo",
+        "urls": [
+          "https://www.goal.com/br/not%C3%ADcias/onde-assistir-a-fulham-x-newcastle-united-ao-vivo-hoje-quem-transmite-o-jogo-na-tv-e-por-streaming/blte85a63fac6fc0cda"
+        ],
+        "jogos": 1
+      },
+      {
+        "etapa": "sem canal",
+        "query": "Nottingham Forest x Manchester City 07/11 onde assistir ao vivo",
+        "urls": [
+          "https://www.estadao.com.br/esportes/futebol/nottingham-forest-x-manchester-city-pela-premier-league-onde-assistir-ao-vivo-horario-escalacao/"
+        ],
+        "jogos": 1
+      },
+      {
+        "etapa": "sem canal",
+        "query": "Brighton & Hove Albion x Brentford 08/11 onde assistir ao vivo",
+        "urls": [
+          "https://www.goal.com/br/not%C3%ADcias/assista-a-brighton-and-hove-albion-x-brentford-ao-vivo-hoje-quem-transmite-a-partida-na-tv-e-por-streaming/blt35dbc556df74ce94"
+        ],
+        "jogos": 1
+      },
+      {
+        "etapa": "sem canal",
+        "query": "Crystal Palace x Liverpool 08/11 onde assistir ao vivo",
+        "urls": [
+          "https://www.cpfc.co.uk/news/information/tv-information-how-to-follow-crystal-palace-vs-liverpool/"
+        ],
+        "jogos": 0
+      },
+      {
+        "etapa": "sem canal",
+        "query": "Ipswich Town x AFC Bournemouth 08/11 onde assistir ao vivo",
+        "urls": [
+          "https://www.goal.com/br/not%C3%ADcias/assista-a-ipswich-town-x-afc-bournemouth-ao-vivo-hoje-onde-o-jogo-sera-transmitido-na-tv-e-por-streaming/blt0f4c8317b177bea2"
+        ],
+        "jogos": 0
+      },
+      {
+        "etapa": "sem canal",
+        "query": "Sunderland x Chelsea 08/11 onde assistir ao vivo",
+        "urls": [
+          "https://www.goal.com/br/not%C3%ADcias/assista-a-sunderland-x-chelsea-ao-vivo-hoje-onde-o-jogo-sera-transmitido-na-tv-e-por-streaming/blt5199c3c4cc87e540"
+        ],
+        "jogos": 1
+      },
+      {
+        "etapa": "sem canal",
+        "query": "Manchester United x Aston Villa 08/11 onde assistir ao vivo",
+        "urls": [
+          "https://www.sofutebol.com.br/futebol/premier-league/2026/11/08/manchester-united-x-aston-villa"
+        ],
+        "jogos": 1
+      }
+    ]
+  },
+  "games": [
+    {
+      "jogo": "Leeds United x Tottenham Hotspur",
+      "campeonato": "Premier League",
+      "data": "2026-11-07",
+      "hora": "09:30",
+      "canais": ["ESPN", "Disney+"],
+      "fonte": "https://www.sportingnews.com/br/futebol/noticias/leeds-x-tottenham-ao-vivo-assistir-07-11/df0f1762265b7f7fbff36888"
+    },
+    {
+      "jogo": "Fulham x Newcastle United",
+      "campeonato": "Premier League",
+      "data": "2026-11-07",
+      "hora": "10:00",
+      "canais": ["ESPN", "Disney+"],
+      "fonte": "https://www.goal.com/br/not%C3%ADcias/onde-assistir-a-fulham-x-newcastle-united-ao-vivo-hoje-quem-transmite-o-jogo-na-tv-e-por-streaming/blte85a63fac6fc0cda"
+    },
+    {
+      "jogo": "Arsenal x Hull City",
+      "campeonato": "Premier League",
+      "data": "2026-11-07",
+      "hora": "12:00",
+      "canais": ["ESPN", "Disney+"],
+      "fonte": "https://www.estadao.com.br/esportes/futebol/arsenal-x-hull-city-pela-premier-league-onde-assistir-ao-vivo-horario-escalacao/"
+    },
+    {
+      "jogo": "Nottingham Forest x Manchester City",
+      "campeonato": "Premier League",
+      "data": "2026-11-07",
+      "hora": "14:30",
+      "canais": ["ESPN", "Disney+"],
+      "fonte": "https://www.estadao.com.br/esportes/futebol/nottingham-forest-x-manchester-city-pela-premier-league-onde-assistir-ao-vivo-horario-escalacao/"
+    },
+    {
+      "jogo": "Avaí x São Bernardo",
+      "campeonato": "Brasileirão Série B",
+      "data": "2026-11-07",
+      "hora": "16:00",
+      "canais": ["Disney+"],
+      "fonte": "https://ondeassistir.net.br/serie-b-onde-assistir-novorizontino-x-fortaleza-vila-nova-x-criciuma-e-muito-mais-05-a-08-11-2026/"
+    },
+    {
+      "jogo": "Novorizontino x Fortaleza",
+      "campeonato": "Brasileirão Série B",
+      "data": "2026-11-07",
+      "hora": "16:10",
+      "canais": ["RedeTV!", "Canal GOAT", "ESPN4"],
+      "fonte": "https://ondeassistir.net.br/serie-b-onde-assistir-novorizontino-x-fortaleza-vila-nova-x-criciuma-e-muito-mais-05-a-08-11-2026/"
+    },
+    {
+      "jogo": "Atlético-MG x Grêmio",
+      "campeonato": "Copa do Brasil",
+      "data": "2026-11-07",
+      "hora": "18:00",
+      "canais": ["SporTV", "Prime Video", "Premiere"],
+      "fonte": "https://www.abcdoabc.com.br/semifinais-da-copa-do-brasil-2026/",
+      "outras": [
+        {
+          "canais": ["SporTV", "Premiere", "Prime Video"],
+          "fonte": "https://tabelinha.tec.br/copa-do-brasil/"
+        }
+      ]
+    },
+    {
+      "jogo": "Cuiabá x Juventude",
+      "campeonato": "Brasileirão Série B",
+      "data": "2026-11-07",
+      "hora": "20:00",
+      "canais": ["Disney+"],
+      "fonte": "https://ondeassistir.net.br/serie-b-onde-assistir-novorizontino-x-fortaleza-vila-nova-x-criciuma-e-muito-mais-05-a-08-11-2026/",
+      "outras": [
+        {
+          "canais": ["ESPN", "Disney+"],
+          "fonte": "https://sports.ncnews.com.br/2026/11/03/jogos-da-rodada-37-brasileirao-serie-b-2026/"
+        }
+      ]
+    },
+    {
+      "jogo": "Vila Nova x Criciúma",
+      "campeonato": "Brasileirão Série B",
+      "data": "2026-11-07",
+      "hora": "20:00",
+      "canais": ["Disney+"],
+      "fonte": "https://ondeassistir.net.br/serie-b-onde-assistir-novorizontino-x-fortaleza-vila-nova-x-criciuma-e-muito-mais-05-a-08-11-2026/",
+      "outras": [
+        {
+          "canais": ["ESPN", "Disney+"],
+          "fonte": "https://sports.ncnews.com.br/2026/11/03/jogos-da-rodada-37-brasileirao-serie-b-2026/"
+        }
+      ]
+    },
+    {
+      "jogo": "Náutico x CRB",
+      "campeonato": "Brasileirão Série B",
+      "data": "2026-11-07",
+      "hora": "21:30",
+      "canais": ["Ge TV", "Premiere"],
+      "fonte": "https://ondeassistir.net.br/serie-b-onde-assistir-novorizontino-x-fortaleza-vila-nova-x-criciuma-e-muito-mais-05-a-08-11-2026/",
+      "outras": [
+        {
+          "canais": ["GE TV", "Premiere", "SporTV"],
+          "fonte": "https://sports.ncnews.com.br/2026/11/03/jogos-da-rodada-37-brasileirao-serie-b-2026/"
+        }
+      ]
+    },
+    {
+      "jogo": "Brighton & Hove Albion x Brentford",
+      "campeonato": "Premier League",
+      "data": "2026-11-08",
+      "hora": "11:00",
+      "canais": ["Disney+"],
+      "fonte": "https://www.goal.com/br/not%C3%ADcias/assista-a-brighton-and-hove-albion-x-brentford-ao-vivo-hoje-quem-transmite-a-partida-na-tv-e-por-streaming/blt35dbc556df74ce94"
+    },
+    {
+      "jogo": "Crystal Palace x Liverpool",
+      "campeonato": "Premier League",
+      "data": "2026-11-08",
+      "hora": "11:00",
+      "canais": [],
+      "fonte": "https://www.espn.com.br/futebol/calendario/_/liga/eng.1"
+    },
+    {
+      "jogo": "Ipswich Town x AFC Bournemouth",
+      "campeonato": "Premier League",
+      "data": "2026-11-08",
+      "hora": "11:00",
+      "canais": [],
+      "fonte": "https://www.espn.com.br/futebol/calendario/_/liga/eng.1"
+    },
+    {
+      "jogo": "Sunderland x Chelsea",
+      "campeonato": "Premier League",
+      "data": "2026-11-08",
+      "hora": "11:00",
+      "canais": ["ESPN", "Disney+"],
+      "fonte": "https://www.goal.com/br/not%C3%ADcias/assista-a-sunderland-x-chelsea-ao-vivo-hoje-onde-o-jogo-sera-transmitido-na-tv-e-por-streaming/blt5199c3c4cc87e540"
+    },
+    {
+      "jogo": "Manchester United x Aston Villa",
+      "campeonato": "Premier League",
+      "data": "2026-11-08",
+      "hora": "13:30",
+      "canais": ["Disney+", "ESPN"],
+      "fonte": "https://www.sofutebol.com.br/futebol/premier-league/2026/11/08/manchester-united-x-aston-villa"
+    },
+    {
+      "jogo": "Athletic Club x Atlético/GO",
+      "campeonato": "Brasileirão Série B",
+      "data": "2026-11-08",
+      "hora": "16:00",
+      "canais": ["ESPN"],
+      "fonte": "https://ondeassistir.net.br/serie-b-onde-assistir-novorizontino-x-fortaleza-vila-nova-x-criciuma-e-muito-mais-05-a-08-11-2026/",
+      "outras": [
+        {
+          "canais": ["ESPN", "Disney+"],
+          "fonte": "https://sports.ncnews.com.br/2026/11/03/jogos-da-rodada-37-brasileirao-serie-b-2026/"
+        }
+      ]
+    },
+    {
+      "jogo": "Vasco x Palmeiras",
+      "campeonato": "Copa do Brasil",
+      "data": "2026-11-08",
+      "hora": "17:00",
+      "canais": ["Globo", "SporTV", "Prime Video", "Premiere"],
+      "fonte": "https://www.abcdoabc.com.br/semifinais-da-copa-do-brasil-2026/",
+      "outras": [
+        {
+          "canais": ["Globo", "SporTV", "Premiere", "Prime Video", "Ge TV"],
+          "fonte": "https://tabelinha.tec.br/copa-do-brasil/"
+        }
+      ]
+    },
+    {
+      "jogo": "Ceará x América/MG",
+      "campeonato": "Brasileirão Série B",
+      "data": "2026-11-08",
+      "hora": "19:15",
+      "canais": ["XSports", "SportyNet", "Disney+"],
+      "fonte": "https://ondeassistir.net.br/serie-b-onde-assistir-novorizontino-x-fortaleza-vila-nova-x-criciuma-e-muito-mais-05-a-08-11-2026/",
+      "outras": [
+        {
+          "canais": ["ESPN", "Disney+", "SportyNet", "X Sports"],
+          "fonte": "https://sports.ncnews.com.br/2026/11/03/jogos-da-rodada-37-brasileirao-serie-b-2026/"
+        }
+      ]
+    },
+    {
+      "jogo": "Goiás x Ponte Preta",
+      "campeonato": "Brasileirão Série B",
+      "data": "2026-11-08",
+      "hora": "19:15",
+      "canais": ["Disney+"],
+      "fonte": "https://ondeassistir.net.br/serie-b-onde-assistir-novorizontino-x-fortaleza-vila-nova-x-criciuma-e-muito-mais-05-a-08-11-2026/",
+      "outras": [
+        {
+          "canais": ["ESPN", "Disney+"],
+          "fonte": "https://sports.ncnews.com.br/2026/11/03/jogos-da-rodada-37-brasileirao-serie-b-2026/"
+        }
+      ]
+    },
+    {
+      "jogo": "Londrina x Náutico",
+      "campeonato": "Brasileirão Série B",
+      "data": "2026-11-11",
+      "hora": "19:00",
+      "canais": ["Disney+"],
+      "fonte": "https://ondeassistir.net.br/serie-b-onde-assistir-novorizontino-x-fortaleza-vila-nova-x-criciuma-e-muito-mais-05-a-08-11-2026/"
+    }
+  ]
+}
