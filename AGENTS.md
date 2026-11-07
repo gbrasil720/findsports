@@ -390,6 +390,17 @@ mandado ao `/admin`.
   dentro do `callbackUrl`), e a casca a conclui uma vez ao voltar com sessão. A página
   do bar usa o mesmo formato.
 
+- **Telas:** Explorar (`/dashboard`, régua do dia por `pubs.gameBoard`, aberta, em
+  `lib/game-board.ts`; mapa `OnsideMap` com a gota, só por `import()`), Meus jogos
+  (`/dashboard/games`, ingressos; o pós-jogo antigo fica em Anteriores até a avaliação
+  nova), o código (`/dashboard/codigo/$eventId`), Seus bares (`/dashboard/seus-bares`,
+  `attendance.visits`), perfil (`/dashboard/profile`, `achievements.mine`), Bares pra
+  você (`/dashboard/pra-voce`, `recommendations.today`, frases de `domain/pra-voce.ts`,
+  as mesmas do app) e Preferências (`/dashboard/preferencias`; conta e privacidade com as
+  peças das Configurações do painel). Link para bar é `/pub/<id>`.
+- **Em breve no web:** aviso "quando o app chegar", escolher avisos, quem vê onde você
+  foi e ranking (ficam no app), nomes de amigos em "quem vai".
+
 ### App mobile
 
 `apps/mobile` (pacote `mobile`), montado como o Better-T-Stack monta `native-uniwind`, sem a
