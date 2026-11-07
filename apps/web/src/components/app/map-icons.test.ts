@@ -118,37 +118,34 @@ describe('pinos do mapa (ESC-16, WEB-73)', () => {
   })
 
   /**
-   * WEB-332: cada plano tem o seu pino, sem cor nova. O corpo, o miolo e a
-   * estrela leem uma variável cada; `none` apaga a peça que o pino não usa.
+   * A gota do redesenho (WEB-501): tinta com copo de papel, acid no Elite e
+   * vermelho no ao vivo, com o copo de tinta.
    */
-  test('cada plano e o jogo ao vivo pintam o seu pino', () => {
+  test('cada plano e o jogo ao vivo pintam a sua gota', () => {
     const { raiz, pintura } = criarConteudoDePino()
     const INK = '#12120F'
     const ACID = '#C9F135'
     const LIVE = '#E8320C'
     const CREME = '#F1EEE6'
-    const esperado: Record<MapPin, [string, string, string]> = {
-      starter: [INK, CREME, 'none'],
-      pro: [INK, ACID, 'none'],
-      elite: [ACID, 'none', INK],
-      live: [LIVE, CREME, 'none'],
-      'elite-live': [LIVE, 'none', INK]
+    const esperado: Record<MapPin, [string, string]> = {
+      starter: [INK, CREME],
+      pro: [INK, CREME],
+      elite: [ACID, INK],
+      live: [LIVE, INK],
+      'elite-live': [LIVE, INK]
     }
 
     for (const [pin, cores] of Object.entries(esperado)) {
       aplicarPino(pintura, pin as MapPin, false)
       expect(
-        ['--pino-cor', '--pino-miolo', '--pino-estrela'].map((nome) =>
+        ['--pino-cor', '--pino-copo'].map((nome) =>
           pintura.style.getPropertyValue(nome)
         )
       ).toEqual(cores)
     }
 
-    expect(raiz.querySelector('circle')?.getAttribute('fill')).toBe(
-      'var(--pino-miolo)'
-    )
     expect(raiz.querySelectorAll('path')[1]?.getAttribute('fill')).toBe(
-      'var(--pino-estrela)'
+      'var(--pino-copo)'
     )
   })
 
