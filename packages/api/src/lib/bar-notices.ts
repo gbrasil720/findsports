@@ -1,4 +1,12 @@
-import { createOnsideEmailTemplate } from '@findsports_oficial/auth/email-layout'
+import {
+  agenda,
+  band,
+  createOnsideEmailTemplate,
+  emptyWeek,
+  paragraph,
+  scoreboard,
+  ticket
+} from '@findsports_oficial/auth/email-layout'
 import { sendEmail } from '@findsports_oficial/auth/verification-email'
 import { and, db, eq, sql } from '@findsports_oficial/db'
 import {
@@ -33,7 +41,13 @@ import { gameTitle } from './game-participants'
 export const GAME_FILLING_THRESHOLD = 20
 
 type Email = { subject: string; html: string; text: string }
-type Game = { id: string; title: string; startsAt: Date }
+type Game = {
+  id: string
+  title: string
+  startsAt: Date
+  /** Vai na linha do jogo, na agenda e no ingresso. */
+  championship: string
+}
 
 const appUrl = (path: string) =>
   new URL(path, env.PUBLIC_APP_URL ?? env.BETTER_AUTH_URL).toString()
@@ -42,6 +56,11 @@ const hello = (name: string) => (name.trim() ? `Olá, ${name.trim()}.` : 'Olá.'
 
 const plural = (n: number, one: string, many: string) =>
   `${n} ${n === 1 ? one : many}`
+
+const upper = (value: string) => value.toLocaleUpperCase('pt-BR')
+
+/** "1.204": número do placar, no formato daqui. */
+const count = (n: number) => n.toLocaleString('pt-BR')
 
 const DAY = new Intl.DateTimeFormat('pt-BR', {
   timeZone: BRASILIA_TIME_ZONE,
@@ -59,8 +78,38 @@ const WHEN = new Intl.DateTimeFormat('pt-BR', {
   minute: '2-digit'
 })
 
+const PARTS = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: BRASILIA_TIME_ZONE,
+  weekday: 'short',
+  day: '2-digit',
+  month: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23'
+})
+
+/** As peças de uma data em Brasília: "QUA", "28", "28/10", "21:30". */
+function dateParts(date: Date) {
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    PARTS.formatToParts(date).find((p) => p.type === type)?.value ?? ''
+  return {
+    weekday: upper(part('weekday').replace('.', '')),
+    day: part('day'),
+    dayMonth: `${part('day')}/${part('month')}`,
+    time: `${part('hour')}:${part('minute')}`
+  }
+}
+
 const OPT_OUT =
   'desligue em Configurações, na parte de Avisos, no painel do bar.'
+
+/** O link do rodapé, para a seção Avisos de Configurações. */
+const optOut = () => ({
+  label: 'Desligar em Configurações › Avisos',
+  url: appUrl('/admin/configuracoes#cfg-av')
+})
+
+const TAG = 'PAINEL DO BAR'
 
 /**
  * A semana de Brasília de `now`, de segunda a domingo: a segunda ("2026-10-26",
@@ -97,16 +146,27 @@ function range(start: Date, end: Date) {
   return `de ${DAY.format(start)} a ${DAY.format(new Date(end.getTime() - 1))}`
 }
 
-/** Até quatro jogos por extenso, e o resto contado. */
-function gameList(games: Game[]) {
-  const shown = games
-    .slice(0, 4)
-    .map((game) => `${game.title} (${WHEN.format(game.startsAt)})`)
-  const rest = games.length - shown.length
-  if (rest > 0) shown.push(plural(rest, 'outro jogo', 'outros jogos'))
-  if (shown.length === 1) return shown[0]
-  return `${shown.slice(0, -1).join('; ')} e ${shown.at(-1)}`
+/** Os sete dias da semana que começa em `start`, para a semana em branco. */
+function weekDays(start: Date) {
+  return Array.from({ length: 7 }, (_, i) =>
+    dateParts(new Date(start.getTime() + (i * 24 + 12) * 3_600_000))
+  )
 }
+
+/** A semana em branco: a faixa e as caixas dos dias, sem jogo nenhum. */
+function blankWeek(start: Date) {
+  const days = weekDays(start)
+  return {
+    band: band(
+      days.map((d) => `${d.weekday} ${d.day} —`),
+      { separator: 'middot' }
+    ),
+    block: emptyWeek(days.map((d) => [d.weekday, d.day]))
+  }
+}
+
+/** Jogos mostrados por extenso; o resto é contado. */
+const SHOWN_GAMES = 4
 
 export function createWeeklySummaryEmail(input: {
   owner: string
@@ -120,31 +180,92 @@ export function createWeeklySummaryEmail(input: {
   games: Game[]
 }): Email {
   const { numbers } = input
-  const steps = [
-    ...(input.elite
-      ? [
-          `${plural(numbers.going, 'pessoa marcou', 'pessoas marcaram')} que ia${numbers.going === 1 ? '' : 'm'} aos seus jogos.`,
-          `${plural(numbers.validatedCodes, 'código validado', 'códigos validados')} no balcão.`
-        ]
-      : []),
-    `O perfil do bar foi aberto ${plural(numbers.profileViews, 'vez', 'vezes')}.`,
-    input.games.length
-      ? `Nesta semana, ${range(input.current.start, input.current.end)}: ${gameList(input.games)}.`
-      : `Nenhum jogo na agenda desta semana, ${range(input.current.start, input.current.end)}.`
-  ]
+  const thisWeek = range(input.current.start, input.current.end)
+  const shown = input.games.slice(0, SHOWN_GAMES).map((game) => ({
+    game,
+    when: dateParts(game.startsAt)
+  }))
+  const rest = input.games.length - shown.length
+  const score = scoreboard(
+    `${input.barName} · ${range(input.previous.start, input.previous.end)}`,
+    [
+      ...(input.elite
+        ? ([
+            [
+              count(numbers.going),
+              numbers.going === 1
+                ? 'pessoa marcou que ia aos seus jogos'
+                : 'pessoas marcaram que iam aos seus jogos'
+            ],
+            [
+              count(numbers.validatedCodes),
+              numbers.validatedCodes === 1
+                ? 'código validado no balcão'
+                : 'códigos validados no balcão'
+            ]
+          ] as [string, string][])
+        : []),
+      [
+        count(numbers.profileViews),
+        numbers.profileViews === 1
+          ? 'vez que o perfil do bar foi aberto'
+          : 'vezes que o perfil do bar foi aberto'
+      ]
+    ]
+  )
+  const blank = blankWeek(input.current.start)
   const template = createOnsideEmailTemplate({
-    heading: 'Resumo da semana',
-    intro: `${hello(input.owner)} Veja como foi a semana ${range(input.previous.start, input.previous.end)} na Onside e o que vem pela frente.`,
-    steps,
+    tag: TAG,
+    band: shown.length
+      ? band(
+          shown.map(
+            ({ game, when }) =>
+              `${when.weekday} ${when.day} ${game.title} ${when.time}`
+          )
+        )
+      : blank.band,
+    heading: 'Resumo da',
+    headingAccent: 'semana',
+    intro: `${hello(input.owner)} Veja como foi a semana ${range(input.previous.start, input.previous.end)} no ${input.barName}, na Onside, e o que vem pela frente.`,
+    blocks: shown.length
+      ? [
+          score,
+          // Os jogos que o bar publicou, não sugestões.
+          agenda(
+            `Na sua agenda · ${thisWeek}`,
+            shown.map(({ game, when }) => ({
+              weekday: when.weekday,
+              day: when.dayMonth,
+              title: game.title,
+              detail: [when.time, upper(game.championship)]
+                .filter(Boolean)
+                .join(' · ')
+            })),
+            rest > 0
+              ? `e mais ${plural(rest, 'outro jogo', 'outros jogos')}.`
+              : undefined
+          )
+        ]
+      : [
+          score,
+          blank.block,
+          paragraph(
+            `Nenhum jogo na agenda desta semana, ${thisWeek}. Com jogo na agenda, o bar aparece para quem procura onde assistir àquele jogo.`
+          )
+        ],
+    steps: [],
     ...(input.games.length
       ? { action: 'Abrir o painel', actionUrl: appUrl('/admin') }
       : {
           action: 'Cadastrar jogos',
           actionUrl: appUrl('/admin/jogos')
         }),
+    linkFallback: false,
+    noteLabel: 'Avisos',
     note: `Para não receber mais este resumo, ${OPT_OUT}`,
     reason:
-      'Você recebeu este e-mail porque o resumo semanal está ligado na conta do bar na Onside.'
+      'Você recebeu este e-mail porque o resumo semanal está ligado na conta do bar na Onside.',
+    optOut: optOut()
   })
   return { subject: `Resumo da semana: ${input.barName}`, ...template }
 }
@@ -153,34 +274,68 @@ export function createEmptyScheduleEmail(input: {
   owner: string
   current: { start: Date; end: Date }
 }): Email {
+  const blank = blankWeek(input.current.start)
   const template = createOnsideEmailTemplate({
-    heading: 'Semana sem jogos',
+    tag: TAG,
+    band: blank.band,
+    heading: 'Semana',
+    headingAccent: 'sem jogos',
     intro: `${hello(input.owner)} Seu bar não tem nenhum jogo na agenda desta semana, ${range(input.current.start, input.current.end)}.`,
-    steps: [
-      'Com jogo na agenda, o bar aparece para quem procura onde assistir àquele jogo.'
+    blocks: [
+      blank.block,
+      paragraph(
+        'Com jogo na agenda, o bar aparece para quem procura onde assistir àquele jogo.'
+      )
     ],
+    steps: [],
     action: 'Cadastrar jogos',
     actionUrl: appUrl('/admin/jogos'),
+    linkFallback: false,
+    noteLabel: 'Avisos',
     note: `Para não receber mais este lembrete, ${OPT_OUT}`,
     reason:
-      'Você recebeu este e-mail porque o aviso de grade vazia está ligado na conta do bar na Onside.'
+      'Você recebeu este e-mail porque o aviso de grade vazia está ligado na conta do bar na Onside.',
+    optOut: optOut()
   })
   return { subject: 'Nenhum jogo na agenda desta semana', ...template }
 }
 
 export function createGameFillingEmail(input: {
   owner: string
+  barName: string
   game: Game
 }): Email {
+  const when = dateParts(input.game.startsAt)
   const template = createOnsideEmailTemplate({
-    heading: 'Jogo lotando',
+    tag: TAG,
+    band: band([WHEN.format(input.game.startsAt)], {
+      separator: 'middot',
+      lead: input.barName
+    }),
+    heading: 'Jogo',
+    headingAccent: 'lotando',
     intro: `${hello(input.owner)} Mais de ${GAME_FILLING_THRESHOLD} pessoas marcaram na Onside que vão assistir a ${input.game.title} no seu bar, ${WHEN.format(input.game.startsAt)}.`,
+    blocks: [
+      ticket({
+        tag: [upper(input.game.championship), 'NO SEU BAR']
+          .filter(Boolean)
+          .join(' · '),
+        title: input.game.title,
+        when: `${when.weekday} ${when.dayMonth} · ${when.time}`,
+        // Nunca o número exato: o aviso sai na marcação que passa do limite.
+        number: `${GAME_FILLING_THRESHOLD}+`,
+        label: 'pessoas marcaram que vão assistir aqui'
+      })
+    ],
     steps: [],
     action: 'Ver o jogo no painel',
     actionUrl: appUrl(`/admin/jogos?jogo=${input.game.id}`),
+    linkFallback: false,
+    noteLabel: 'Avisos',
     note: `Avisamos uma vez por jogo. Para não receber mais este aviso, ${OPT_OUT}`,
     reason:
-      'Você recebeu este e-mail porque o aviso de jogo lotando está ligado na conta do bar na Onside.'
+      'Você recebeu este e-mail porque o aviso de jogo lotando está ligado na conta do bar na Onside.',
+    optOut: optOut()
   })
   return { subject: `Jogo lotando: ${input.game.title}`, ...template }
 }
@@ -259,9 +414,10 @@ export async function sendWeeklyBarNotices(now = new Date()) {
     bar_id: string
     id: string
     title: string
+    championship: string
     starts_at: string | Date
   }>(sql`
-    SELECT e.bar_id, e.id, ${titleSql} AS title,
+    SELECT e.bar_id, e.id, ${titleSql} AS title, e.championship,
       (e.starts_at AT TIME ZONE 'UTC') AS starts_at
     FROM event e
     JOIN bar b ON b.id = e.bar_id
@@ -277,6 +433,7 @@ export async function sendWeeklyBarNotices(now = new Date()) {
     list.push({
       id: row.id,
       title: row.title,
+      championship: row.championship,
       startsAt: new Date(row.starts_at)
     })
     gamesByBar.set(row.bar_id, list)
@@ -366,12 +523,14 @@ export async function notifyGameFilling(eventId: string) {
   try {
     const result = await db.execute<{
       bar_id: string
+      bar_name: string
       title: string
+      championship: string
       starts_at: string | Date
       email: string
       owner: string
     }>(sql`
-      SELECT e.bar_id, ${titleSql} AS title,
+      SELECT e.bar_id, b.name AS bar_name, ${titleSql} AS title, e.championship,
         (e.starts_at AT TIME ZONE 'UTC') AS starts_at,
         u.email, u.name AS owner
       FROM event e
@@ -386,9 +545,11 @@ export async function notifyGameFilling(eventId: string) {
       row.email,
       createGameFillingEmail({
         owner: row.owner,
+        barName: row.bar_name,
         game: {
           id: eventId,
           title: row.title,
+          championship: row.championship,
           startsAt: new Date(row.starts_at)
         }
       })
