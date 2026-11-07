@@ -248,6 +248,28 @@ export function PlanoPage({
                 <p className="pn-ph-hint">{charge.hint}</p>
               ) : null}
               <div className="pn-ph-note">{notice}</div>
+              {balance &&
+              (balance.nextChargeReais !== null ||
+                balance.creditReais !== null ||
+                balance.card) ? (
+                <div className="pn-ph-bal">
+                  {balance.nextChargeReais !== null ? (
+                    <p>
+                      Valor da próxima cobrança:{' '}
+                      <b>{reais(balance.nextChargeReais)}</b>
+                    </p>
+                  ) : null}
+                  {balance.creditReais !== null ? (
+                    <p>
+                      Você tem <b>{reais(balance.creditReais)}</b> de crédito;
+                      as próximas cobranças serão descontadas dele.
+                    </p>
+                  ) : null}
+                  {balance.card ? (
+                    <p>Cartão •••• {balance.card.last4} salvo</p>
+                  ) : null}
+                </div>
+              ) : null}
 
               <div className="pn-acts pn-ph-acts">
                 {contractInPlan ? (
@@ -399,7 +421,7 @@ export function PlanoPage({
                 <b>Cartão</b>
                 <span>
                   {balance?.card
-                    ? `Cartão •••• ${balance.card.last4} salvo`
+                    ? `Final ${balance.card.last4}, no portal do Stripe`
                     : hasProviderCustomer
                       ? 'O cartão da assinatura fica no portal do Stripe'
                       : 'Pedido no checkout, quando você contratar'}
@@ -418,29 +440,6 @@ export function PlanoPage({
                 <span />
               )}
             </div>
-            {balance?.nextChargeReais != null ? (
-              <div className="pn-ln">
-                <span>
-                  <b>Próxima cobrança</b>
-                  <span>
-                    Valor da próxima cobrança: {reais(balance.nextChargeReais)}
-                  </span>
-                </span>
-                <span />
-              </div>
-            ) : null}
-            {balance?.creditReais != null ? (
-              <div className="pn-ln">
-                <span>
-                  <b>Crédito</b>
-                  <span>
-                    Você tem {reais(balance.creditReais)} de crédito; as
-                    próximas cobranças serão descontadas dele.
-                  </span>
-                </span>
-                <span />
-              </div>
-            ) : null}
             <div className="pn-ln">
               <span>
                 <b>

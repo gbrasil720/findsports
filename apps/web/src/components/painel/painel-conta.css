@@ -1064,6 +1064,22 @@ html[data-theme="dark"] .pn3 .pn-savebar {
   line-height: 1.45;
 }
 
+.pn3 .pn-ph-bal {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(241, 238, 230, 0.08);
+  font-size: 14px;
+}
+
+.pn3 .pn-ph-bal p {
+  margin: 0;
+}
+
+.pn3 .pn-ph-bal p + p {
+  margin-top: 4px;
+}
+
 .pn3 .pn-ph-r .pn-cd {
   color: rgba(241, 238, 230, 0.7);
   font: 600 13px var(--mono);
