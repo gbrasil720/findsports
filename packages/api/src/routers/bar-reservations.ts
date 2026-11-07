@@ -12,6 +12,7 @@ import { TRPCError } from '@trpc/server'
 
 import { pubProcedure, router } from '../index'
 import { participantNames } from '../lib/game-participants'
+import { effectiveHouseOffer } from '../lib/house-offer'
 import {
   assertCanEnableReservations,
   canManageReservations,
@@ -86,6 +87,8 @@ export const barReservationsRouter = router({
         participantFreeText: event.participantFreeText,
         participants: participantNames(sql`${event.id}`),
         startsAt: event.startsAt,
+        houseOffer: event.houseOffer,
+        noHouseOffer: event.noHouseOffer,
         name: user.name,
         markedAt: attendance.createdAt,
         validatedAt: sql<Date | null>`max(${reservationCodeUse.usedAt})`,
@@ -140,6 +143,8 @@ export const barReservationsRouter = router({
         participantFreeText: string | null
         participants: string[]
         startsAt: Date
+        houseOffer: string | null
+        noHouseOffer: boolean
         people: {
           name: string
           markedAt: Date
@@ -165,8 +170,17 @@ export const barReservationsRouter = router({
       })
       games.set(eventId, entry)
     }
-    return [...games.values()].map((game) => ({
+    // A oferta que vale em cada jogo (WEB-422): a do jogo, senão a padrão.
+    const [own] = await db
+      .select({ houseOffer: bar.houseOffer })
+      .from(bar)
+      .where(eq(bar.id, ctx.barId))
+    return [...games.values()].map(({ noHouseOffer, ...game }) => ({
       ...game,
+      houseOffer: effectiveHouseOffer(own?.houseOffer ?? null, {
+        houseOffer: game.houseOffer,
+        noHouseOffer
+      }),
       people: game.people.sort(
         (a, b) =>
           Number(b.validatedAt !== null) - Number(a.validatedAt !== null) ||

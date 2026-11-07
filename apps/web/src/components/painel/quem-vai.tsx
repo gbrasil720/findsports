@@ -73,7 +73,6 @@ export function QuemVaiPage() {
   // Cliente direto: repetir o lançamento é decisão do dono, nunca automática.
   const { reservationValidation } = useTRPCClient()
   useHashScroll(going.isSuccess)
-  const offer = elite ? (bar?.houseOffer ?? null) : null
 
   return (
     <>
@@ -150,7 +149,7 @@ export function QuemVaiPage() {
             game={game}
             now={now}
             today={today}
-            offer={offer}
+            offer={elite ? game.houseOffer : null}
           />
         ))
       ) : (
