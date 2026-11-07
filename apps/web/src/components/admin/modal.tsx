@@ -1,10 +1,6 @@
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogTitle
-} from '@findsports_oficial/ui/components/dialog'
-import type { ReactNode } from 'react'
+import { type ReactNode, useId } from 'react'
+import Close from 'reicon-react/icons/Xmark'
+import { Dialogo } from '@/components/dialogo/dialogo'
 
 type Props = {
   title: string
@@ -14,20 +10,23 @@ type Props = {
 }
 
 export function Modal({ title, children, open, onClose }: Props) {
+  const id = useId()
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="onside-dialog max-w-[calc(100vw-2rem)] overflow-hidden overscroll-contain p-0 sm:max-w-lg">
-        <div className="flex items-center justify-between border-[var(--onside-line)] border-b p-6 pb-4">
-          <DialogTitle className="onside-display text-2xl">{title}</DialogTitle>
-          <DialogClose
-            onClick={onClose}
-            className="grid min-h-11 min-w-11 place-items-center"
-          />
-        </div>
-        <div className="max-h-[calc(90dvh-5rem)] overflow-y-auto overscroll-contain px-6 pb-6">
-          {children}
-        </div>
-      </DialogContent>
-    </Dialog>
+    <Dialogo open={open} onClose={onClose} labelledBy={id} wide>
+      <div className="dlg3-h">
+        <h2 id={id} className="dlg3-t">
+          {title}
+        </h2>
+        <button
+          type="button"
+          className="pn-btn pn-ghost pn-ic"
+          aria-label="Fechar"
+          onClick={onClose}
+        >
+          <Close size={18} color="currentColor" aria-hidden="true" />
+        </button>
+      </div>
+      {children}
+    </Dialogo>
   )
 }
