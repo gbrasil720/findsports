@@ -19,6 +19,7 @@ import {
   Beer,
   Check,
   Close,
+  People,
   Ranking,
   Search,
   Share,
@@ -27,15 +28,18 @@ import {
   Tv
 } from '@/components/landing/v3/icons'
 import { getLapsedPaidPlan } from '@/lib/lapsed-plan'
-import { isRetryableError } from '@/lib/user-facing-error'
+import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import { Avisos, usePlanStatus } from './avisos'
 import {
   AVATAR_COLORS,
   barScreen,
   type GoingGame,
+  gameOffer,
+  gameScreen,
   goingCount,
   interestLabel,
+  isDraft,
   useEventAnalytics,
   useGoing,
   useInterest
@@ -54,13 +58,14 @@ import {
   weekdayShort
 } from './noite'
 import { NovoJogo, type NovoJogoMode } from './novo-jogo'
-import { initials, usePainel } from './painel-shell'
+import { Interruptor, initials, usePainel } from './painel-shell'
 
 /*
- * Jogos (WEB-501, fase 2; protótipo `jogos`, `detail`): Próximos e
- * Passados, busca, lista por dia ou semana (domingo a sábado) e o jogo aberto
- * à direita, ou numa folha abaixo de 1100 px. Rascunho, oferta, telão e som
- * por jogo não existem no servidor: telão e som são os do bar, só leitura.
+ * Jogos (WEB-501, fase 2; protótipo `jogos`, `detail`): Próximos,
+ * Rascunhos (WEB-436) e Passados, busca, lista por dia ou semana (domingo a
+ * sábado) e o jogo aberto à direita, ou numa folha abaixo de 1100 px. O jogo
+ * aberto liga e desliga na hora telão, som (WEB-399), a lista de quem vai
+ * (WEB-437) e a oferta do jogo (WEB-422), e publica o rascunho.
  * "Como cada jogo foi" e "Comparar jogos" moram em Desempenho; Passados
  * leva para lá.
  */
@@ -78,7 +83,7 @@ function useWide(): boolean {
   )
 }
 
-type Tab = 'prox' | 'pass'
+type Tab = 'prox' | 'rasc' | 'pass'
 
 export function JogosPage({
   initialId,
@@ -103,9 +108,11 @@ export function JogosPage({
   const all = events.data ?? []
   const initial = all.find((event) => event.id === initialId)
   const [tab, setTab] = useState<Tab>(() =>
-    passados || (initial && eventState(initial, now) === 'past')
-      ? 'pass'
-      : 'prox'
+    initial && isDraft(initial)
+      ? 'rasc'
+      : passados || (initial && eventState(initial, now) === 'past')
+        ? 'pass'
+        : 'prox'
   )
   const [mode, setMode] = useState<'lista' | 'semana'>('lista')
   const [query, setQuery] = useState('')
@@ -115,20 +122,31 @@ export function JogosPage({
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const analytics = useEventAnalytics(analyticsRange, all)
   // Jogo passado aberto por link (`?jogo=`) antes de a grade carregar.
-  const initialPast = initial ? eventState(initial, now) === 'past' : false
+  const initialTab: Tab | null = !initial
+    ? null
+    : isDraft(initial)
+      ? 'rasc'
+      : eventState(initial, now) === 'past'
+        ? 'pass'
+        : null
   useEffect(() => {
-    if (initialPast) setTab('pass')
-  }, [initialPast])
+    if (initialTab) setTab(initialTab)
+  }, [initialTab])
 
-  const upcoming = all
+  const published = all.filter((event) => !isDraft(event))
+  const upcoming = published
     .filter((event) => eventState(event, now) !== 'past')
     .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))
-  const past = all
+  const past = published
     .filter((event) => eventState(event, now) === 'past')
     .sort((a, b) => Date.parse(b.startsAt) - Date.parse(a.startsAt))
-  const list = (tab === 'prox' ? upcoming : past).filter((event) =>
-    matchesSearch(event, query)
-  )
+  // Rascunho (WEB-436): só aqui, fora de Próximos e de Passados.
+  const drafts = all
+    .filter(isDraft)
+    .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))
+  const list = (
+    tab === 'prox' ? upcoming : tab === 'rasc' ? drafts : past
+  ).filter((event) => matchesSearch(event, query))
   const goingById = new Map((going.data ?? []).map((g) => [g.id, g]))
   const today = brasiliaDay(now)
   const week = weekDays(today)
@@ -191,6 +209,27 @@ export function JogosPage({
   )
   const deleting = deletingId ? all.find((e) => e.id === deletingId) : null
 
+  // O jogo aberto grava na hora: telão, som, lista, oferta e publicar.
+  const patch = useMutation(
+    trpc.pub.updateEvent.mutationOptions({
+      onSettled: () =>
+        Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: trpc.pub.getMyEvents.queryKey()
+          }),
+          queryClient.invalidateQueries({
+            queryKey: trpc.pubs.getById.pathKey()
+          }),
+          queryClient.invalidateQueries({
+            queryKey: trpc.barReservations.going.queryKey()
+          }),
+          queryClient.invalidateQueries({
+            queryKey: trpc.pub.getMyEventCreationPolicy.queryKey()
+          })
+        ])
+    })
+  )
+
   const open = (id: string) => setSelected(id)
   // No computador o jogo aberto é o escolhido, senão o primeiro da lista.
   const shown =
@@ -208,6 +247,27 @@ export function JogosPage({
       row={analytics.byEvent.get(shown.id)}
       interest={interest.ratio.get(shown.id)}
       canCreate={canCreate}
+      saving={patch.isPending && patch.variables?.eventId === shown.id}
+      patchError={
+        patch.error && patch.variables?.eventId === shown.id
+          ? getUserFacingMessage(
+              patch.error,
+              'Não foi possível salvar. Tente novamente.'
+            )
+          : null
+      }
+      onPatch={(changes) => {
+        patch.reset()
+        patch.mutate(
+          { eventId: shown.id, ...changes },
+          {
+            // Publicado sai de Rascunhos: a lista segue o jogo.
+            onSuccess: () => {
+              if (changes.publish) setTab('prox')
+            }
+          }
+        )
+      }}
       onEdit={() => setSheet({ kind: 'edit', event: shown })}
       onDuplicate={() => setSheet({ kind: 'duplicate', event: shown })}
       onDelete={() => {
@@ -278,6 +338,7 @@ export function JogosPage({
           {(
             [
               ['prox', 'Próximos', upcoming.length],
+              ['rasc', 'Rascunhos', drafts.length],
               ['pass', 'Passados', past.length]
             ] as const
           ).map(([id, label, count]) => (
@@ -357,6 +418,7 @@ export function JogosPage({
           days={weekDays(today, weekOffset)}
           today={today}
           events={all.filter((event) => matchesSearch(event, query))}
+          // O rascunho aparece tracejado na semana (WEB-436).
           offset={weekOffset}
           onOffset={setWeekOffset}
           canCreate={canCreate}
@@ -399,7 +461,7 @@ export function JogosPage({
                 onOpen={open}
               />
             )}
-            {tab === 'prox' ? (
+            {tab === 'rasc' ? null : tab === 'prox' ? (
               <div className="pn-soon">
                 <Sparkle size={20} />
                 <span>
@@ -468,6 +530,20 @@ function Vazio({
       <div className="pn-card pn-empty">
         <p className="pn-disp">Nada com “{query.trim()}”</p>
         <p>Tente o nome de um time ou do campeonato.</p>
+      </div>
+    )
+  }
+  if (tab === 'rasc') {
+    return (
+      <div className="pn-card pn-empty">
+        <p className="pn-disp">Nenhum rascunho</p>
+        <p>Jogo salvo sem publicar aparece aqui. O torcedor não vê.</p>
+        {canCreate ? (
+          <button type="button" className="pn-btn pn-ink pn-sm" onClick={onNew}>
+            <Add size={18} />
+            Novo jogo
+          </button>
+        ) : null}
       </div>
     )
   }
@@ -557,7 +633,10 @@ function Linha({
   const counts = goingCount(goingById.get(event.id))
   const row = byEvent.get(event.id)
   const ratio = interest.get(event.id)
-  const screen = bar ? barScreen(bar) : null
+  const screen = bar ? gameScreen(event, bar) : null
+  const offer = bar ? gameOffer(event, bar, elite) : null
+  const draft = isDraft(event)
+  const ahead = tab !== 'pass'
   return (
     <li>
       <button
@@ -591,33 +670,25 @@ function Linha({
             <span className="pn-m">{interestLabel(ratio)}</span>
           ) : null}
           <span className="pn-chips">
-            {tab === 'prox' && screen?.tv ? (
+            {ahead && screen?.onBigScreen ? (
               <span className="pn-chip">
                 <Tv size={15} />
                 Telão
               </span>
             ) : null}
-            {tab === 'prox' && screen?.sound ? (
+            {ahead && screen?.withSound ? (
               <span className="pn-chip">
                 <Sound size={15} />
                 Som
               </span>
             ) : null}
-            {tab === 'prox' && elite && bar?.houseOffer ? (
+            {ahead && offer ? (
               <span className="pn-chip">
                 <Beer size={15} />
                 Oferta
               </span>
             ) : null}
-            <span
-              className={`pn-badge ${state === 'live' ? 'is-live' : state === 'past' ? '' : 'is-pub'}`}
-            >
-              {state === 'live'
-                ? 'AO VIVO'
-                : state === 'past'
-                  ? 'ENCERRADO'
-                  : 'PUBLICADO'}
-            </span>
+            <Selo state={state} draft={draft} />
           </span>
         </span>
         {tab === 'prox' && showsGoing ? (
@@ -725,11 +796,14 @@ function Semana({
                 <button
                   key={event.id}
                   type="button"
-                  className="pn-wg"
+                  className={`pn-wg${isDraft(event) ? ' is-draft' : ''}`}
                   onClick={() => onOpen(event.id)}
                 >
                   <b>{brasiliaTime(event.startsAt)}</b>
                   {eventTitle(event)}
+                  {isDraft(event) ? (
+                    <span className="sr-only"> (rascunho)</span>
+                  ) : null}
                 </button>
               ))}
               {canCreate && day >= today ? (
@@ -760,6 +834,9 @@ function Detalhe({
   row,
   interest,
   canCreate,
+  saving,
+  patchError,
+  onPatch,
   onEdit,
   onDuplicate,
   onDelete
@@ -773,6 +850,15 @@ function Detalhe({
   row: { uniqueVisitors: number; arrivals: number | null } | undefined
   interest: number | undefined
   canCreate: boolean
+  saving: boolean
+  patchError: string | null
+  onPatch: (changes: {
+    onBigScreen?: boolean
+    withSound?: boolean
+    attendanceEnabled?: boolean
+    noHouseOffer?: boolean
+    publish?: true
+  }) => void
   onEdit: () => void
   onDuplicate: () => void
   onDelete: () => void
@@ -781,7 +867,13 @@ function Detalhe({
   const day = brasiliaDay(event.startsAt)
   const today = brasiliaDay(now)
   const counts = goingCount(game)
-  const screen = bar ? barScreen(bar) : null
+  const screens = bar ? barScreen(bar).screens : null
+  const screen = bar ? gameScreen(event, bar) : null
+  const draft = isDraft(event)
+  // Jogo encerrado não muda mais o que o torcedor vê: só leitura.
+  const locked = state === 'past' || saving
+  // A oferta que o jogo herda ou tem; "sem oferta neste jogo" a desliga.
+  const offerText = event.houseOffer ?? bar?.houseOffer ?? null
   const people = [...(game?.people ?? [])].sort(
     (a, b) =>
       Number(Boolean(b.validatedAt)) - Number(Boolean(a.validatedAt)) ||
@@ -790,15 +882,7 @@ function Detalhe({
   return (
     <>
       <div className="pn-det-top">
-        <span
-          className={`pn-badge ${state === 'live' ? 'is-live' : state === 'past' ? '' : 'is-pub'}`}
-        >
-          {state === 'live'
-            ? 'AO VIVO'
-            : state === 'past'
-              ? 'ENCERRADO'
-              : 'PUBLICADO'}
-        </span>
+        <Selo state={state} draft={draft} />
         {bar ? (
           <Link
             to="/pub/$pubId"
@@ -848,18 +932,25 @@ function Detalhe({
         <p className="pn-note">{interestLabel(interest)}.</p>
       ) : null}
 
-      {elite && bar?.houseOffer ? (
+      {elite && offerText ? (
         <div className="pn-offer">
           <span className="pn-ib">
             <Beer size={20} />
           </span>
           <span>
-            <b>Oferta da casa</b>
-            <span>{bar.houseOffer}</span>
+            <b>Oferta da casa neste jogo</b>
+            <span>
+              {event.noHouseOffer
+                ? 'Desligada neste jogo. O torcedor não vê a oferta.'
+                : offerText}
+            </span>
           </span>
-          <Link to="/admin/meu-espaco" className="pn-offer-ed">
-            Editar
-          </Link>
+          <Interruptor
+            ligado={!event.noHouseOffer}
+            onChange={(ligado) => onPatch({ noHouseOffer: !ligado })}
+            rotulo="Oferta da casa neste jogo"
+            disabled={locked}
+          />
         </div>
       ) : null}
 
@@ -867,32 +958,57 @@ function Detalhe({
         <div className="pn-sws">
           <div className="pn-sw">
             <Tv size={20} />
-            {screen.tv
-              ? screen.screens && screen.screens > 1
-                ? `Passa nos ${screen.screens} telões`
-                : 'Passa no telão'
-              : 'Sem telão marcado'}
-            <span className="pn-sw-v">
-              {screen.tv ? <Check size={16} /> : '—'}
+            <span>
+              {screens && screens > 1
+                ? `Passa nos ${screens} telões`
+                : 'Passa no telão'}
             </span>
+            <Interruptor
+              ligado={screen.onBigScreen}
+              onChange={(onBigScreen) => onPatch({ onBigScreen })}
+              rotulo="Passa no telão"
+              disabled={locked}
+            />
           </div>
           <div className="pn-sw">
             <Sound size={20} />
-            {screen.sound ? 'Som do jogo ligado' : 'Sem som do jogo'}
-            <span className="pn-sw-v">
-              {screen.sound ? <Check size={16} /> : '—'}
-            </span>
+            <span>Som do jogo ligado</span>
+            <Interruptor
+              ligado={screen.withSound}
+              onChange={(withSound) => onPatch({ withSound })}
+              rotulo="Som do jogo ligado"
+              disabled={locked}
+            />
           </div>
-          <p className="pn-hint">
-            Do cadastro do bar, para todos os jogos.{' '}
-            <Link to="/admin/meu-espaco" className="pn-lnk">
-              Mudar em Meu espaço
-            </Link>
-          </p>
+          {elite ? (
+            <div className="pn-sw">
+              <People size={20} />
+              <span>
+                Lista de quem vai
+                {event.attendanceEnabled ? null : (
+                  <small>
+                    Fechada: ninguém novo marca. Quem já marcou segue com o
+                    código.
+                  </small>
+                )}
+              </span>
+              <Interruptor
+                ligado={event.attendanceEnabled}
+                onChange={(attendanceEnabled) => onPatch({ attendanceEnabled })}
+                rotulo="Lista de quem vai neste jogo"
+                disabled={locked}
+              />
+            </div>
+          ) : null}
         </div>
       ) : null}
+      {patchError ? (
+        <p className="pn-ferr" role="alert">
+          {patchError}
+        </p>
+      ) : null}
 
-      {showsGoing ? (
+      {showsGoing && !draft && event.attendanceEnabled ? (
         <>
           <div className="pn-chd pn-det-who">
             <h3>Quem vai</h3>
@@ -951,6 +1067,16 @@ function Detalhe({
       ) : null}
 
       <div className="pn-det-acts">
+        {draft ? (
+          <button
+            type="button"
+            className="pn-btn pn-acid pn-sm"
+            disabled={saving || state === 'past'}
+            onClick={() => onPatch({ publish: true })}
+          >
+            {saving ? 'Publicando…' : 'Publicar'}
+          </button>
+        ) : null}
         <button
           type="button"
           className="pn-btn pn-ghost pn-sm"
@@ -976,6 +1102,28 @@ function Detalhe({
         </button>
       </div>
     </>
+  )
+}
+
+/** Publicado, rascunho (tracejado), ao vivo ou encerrado. */
+function Selo({
+  state,
+  draft
+}: {
+  state: ReturnType<typeof eventState>
+  draft: boolean
+}) {
+  if (draft) return <span className="pn-badge is-draft">RASCUNHO</span>
+  return (
+    <span
+      className={`pn-badge ${state === 'live' ? 'is-live' : state === 'past' ? '' : 'is-pub'}`}
+    >
+      {state === 'live'
+        ? 'AO VIVO'
+        : state === 'past'
+          ? 'ENCERRADO'
+          : 'PUBLICADO'}
+    </span>
   )
 }
 
