@@ -1,6 +1,6 @@
 import { db, sql } from '@findsports_oficial/db'
 import { participantNames } from './game-participants'
-import type { RatingReasonId } from './rating-reasons'
+import { type RatingReasonId, summarizeReasons } from './rating-reasons'
 import { utcIso } from './utc-timestamp'
 
 /**
@@ -76,4 +76,29 @@ export async function readRatingList(
     participants: row.participants,
     startsAt: utcIso(row.starts_at)
   }))
+}
+
+/**
+ * Quantas vezes cada etiqueta de "O que pesou?" foi citada no bar, de quem
+ * voltaria e de quem não voltaria (WEB-398), resumida em até três de cada
+ * lado, sem contagem. Só as avaliações verificadas (código validado ou
+ * check-in, WEB-408), como a nota. Lida por `pubs.getById` e pela página
+ * pública do bar.
+ */
+export async function readReasonSummary(barId: string) {
+  const rows = await db.execute(sql`
+    SELECT r.would_return, reason, COUNT(*)::int AS count
+    FROM bar_rating r, unnest(r.reasons) AS reason
+    WHERE r.bar_id = ${barId} AND r.verified
+    GROUP BY r.would_return, reason
+  `)
+  return summarizeReasons(
+    (
+      rows.rows as { would_return: boolean; reason: string; count: number }[]
+    ).map((row) => ({
+      wouldReturn: row.would_return,
+      reason: row.reason,
+      count: Number(row.count)
+    }))
+  )
 }

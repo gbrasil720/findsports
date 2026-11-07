@@ -73,8 +73,7 @@ import {
   RATING_PUBLIC_FLOOR,
   ratingPercentage
 } from '../lib/rating'
-import { readRatingList } from '../lib/rating-list'
-import { summarizeReasons } from '../lib/rating-reasons'
+import { readRatingList, readReasonSummary } from '../lib/rating-list'
 import { starsAverage } from '../lib/rating-review'
 import { chaveBusca, chaveBuscaLocal } from '../lib/search-cache'
 import {
@@ -113,29 +112,6 @@ const TEAM_COLUMNS = {
   isNationalTeam: team.isNationalTeam
 }
 const TEAM_SEARCH_LIMIT = 30
-
-/**
- * Quantas vezes cada etiqueta de "O que pesou?" foi citada no bar, de quem
- * voltaria e de quem não voltaria (WEB-398). Só as avaliações verificadas
- * (código validado ou check-in, WEB-408), como a nota.
- */
-async function readReasonSummary(barId: string) {
-  const rows = await db.execute(sql`
-    SELECT r.would_return, reason, COUNT(*)::int AS count
-    FROM bar_rating r, unnest(r.reasons) AS reason
-    WHERE r.bar_id = ${barId} AND r.verified
-    GROUP BY r.would_return, reason
-  `)
-  return summarizeReasons(
-    (
-      rows.rows as { would_return: boolean; reason: string; count: number }[]
-    ).map((row) => ({
-      wouldReturn: row.would_return,
-      reason: row.reason,
-      count: Number(row.count)
-    }))
-  )
-}
 
 /**
  * Por que o bar do dono saiu do ar, para a prévia dele dizer a verdade: quem
