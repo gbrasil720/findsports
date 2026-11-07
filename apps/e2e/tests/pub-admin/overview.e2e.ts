@@ -8,7 +8,7 @@ import { createUser } from '../../fixtures/users'
 
 // Desempenho (analytics comerciais) por plano: Starter vê só aberturas em
 // até 30 dias; Pro ganha telefone, WhatsApp e rota em até 365 dias; Elite tem
-// todo o histórico e a atividade diária.
+// todo o histórico. A atividade diária é de todos os planos (WEB-449).
 
 /** Bar do plano com uma abertura de perfil e um clique em cada canal, hoje. */
 async function openOverview(page: Page, plan: Plan) {
@@ -60,13 +60,16 @@ test('Starter: 30 dias, só aberturas', async ({ page }) => {
   await expect(channels(page)).toContainText(
     'WhatsApp, rota e telefone, canal a canal, são do Pro e do Elite.'
   )
-  await expect(daily(page)).toContainText('é do plano Elite')
+  // WEB-449: a atividade diária é de todos os planos.
+  await expect(
+    daily(page).getByRole('slider', { name: /Atividade diária/ })
+  ).toBeVisible()
   await expect(
     page.getByRole('button', { name: 'Comparar jogos' })
   ).toHaveCount(0)
 })
 
-test('Pro: 365 dias e os canais de contato, sem quebra diária', async ({
+test('Pro: 365 dias, os canais de contato e a atividade diária', async ({
   page
 }) => {
   await openOverview(page, 'pro')
@@ -80,7 +83,10 @@ test('Pro: 365 dias e os canais de contato, sem quebra diária', async ({
   )
   await expect(channels(page)).toContainText('Telefone')
   await expect(channels(page)).not.toContainText('são do Pro e do Elite')
-  await expect(daily(page)).toContainText('é do plano Elite')
+  await expect(
+    daily(page).getByRole('slider', { name: /Atividade diária/ })
+  ).toBeVisible()
+  await expect(daily(page)).not.toContainText('Elite')
   // WEB-251: um torcedor com três ações é uma pessoa interessada, não 300%.
   const summary = page.getByRole('region', { name: 'Resumo do período' })
   await expect(summary).toContainText('100%')
