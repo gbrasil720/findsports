@@ -122,7 +122,7 @@ test.describe('com sessão', () => {
 // escolha do rodapé vale na hora e fica guardada; "Auto" segue o sistema.
 test('o tema abre claro e a escolha do rodapé vale e fica guardada', async ({
   page
-}, testInfo) => {
+}) => {
   await page.emulateMedia({ colorScheme: 'dark' })
   await page.goto('/')
   const html = page.locator('html')
@@ -135,15 +135,14 @@ test('o tema abre claro e a escolha do rodapé vale e fica guardada', async ({
   await expect(tema.getByRole('radio', { name: 'Escuro' })).toBeChecked()
   await expect(html).toHaveAttribute('data-theme', 'dark')
 
-  await page.reload({ waitUntil: 'networkidle' })
+  // Abre a página de novo por navegação, não por `reload`: no projeto mobile
+  // do CI (vite dev) o `reload` abortava os módulos e a página voltava sem
+  // hidratar (o `<html>` escuro do script do head, mas nada respondia).
+  await page.goto('/', { waitUntil: 'networkidle' })
   await expect(html).toHaveAttribute('data-theme', 'dark')
-  // ponytail: no projeto mobile do CI (vite dev, Pixel 7) o rádio não marca a
-  // escolha guardada depois de recarregar, embora o `<html>` venha escuro; não
-  // reproduz local nem no build de produção (conferido no celular e no
-  // computador em 07/11/2026). Fica só no desktop até achar a causa.
-  if (testInfo.project.name !== 'mobile') {
-    await expect(tema.getByRole('radio', { name: 'Escuro' })).toBeChecked()
-  }
+  await expect(tema.getByRole('radio', { name: 'Escuro' })).toBeChecked({
+    timeout: 15_000
+  })
 
   await tema.getByText('Auto').click()
   await expect(html).toHaveAttribute('data-theme', 'dark')
