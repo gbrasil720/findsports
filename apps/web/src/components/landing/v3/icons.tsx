@@ -379,3 +379,94 @@ export function Add({ size }: IconProps) {
     </Svg>
   )
 }
+
+/* Do conjunto do app (`ICONS` em `apps/mobile/components/ui.tsx`). */
+export function Person({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path d="M3.5 21a8.5 8.5 0 0 1 17 0z" fill="currentColor" opacity="0.3" />
+      <circle cx="12" cy="8" r="4.6" fill="currentColor" />
+    </Svg>
+  )
+}
+
+export function Lock({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <rect
+        x="4"
+        y="10"
+        width="16"
+        height="11.5"
+        rx="2.5"
+        fill="currentColor"
+        opacity="0.3"
+      />
+      <path
+        d="M7.5 10V7.5a4.5 4.5 0 0 1 9 0V10h-2.4V7.5a2.1 2.1 0 0 0-4.2 0V10z"
+        fill="currentColor"
+      />
+      <circle cx="12" cy="15.6" r="2" fill="var(--spark,#e8320c)" />
+    </Svg>
+  )
+}
+
+export function Shield({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path
+        d="M12 2.5 20 5.5v6c0 5-3.4 8.6-8 10.2z"
+        fill="currentColor"
+        opacity="0.35"
+      />
+      <path d="M12 2.5 4 5.5v6c0 5 3.4 8.6 8 10.2z" fill="currentColor" />
+    </Svg>
+  )
+}
+
+export function Bell({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path
+        d="M5 17V11a7 7 0 0 1 14 0v6l1.6 2H3.4z"
+        fill="currentColor"
+        opacity="0.3"
+      />
+      <path d="M9.4 20a2.6 2.6 0 0 0 5.2 0z" fill="currentColor" />
+      <path d="M3.4 19 5 17h14l1.6 2z" fill="currentColor" />
+      <circle cx="18" cy="5.5" r="3.2" fill="var(--spark,#e8320c)" />
+    </Svg>
+  )
+}
+
+export function Camera({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <rect
+        x="2.5"
+        y="6"
+        width="19"
+        height="14"
+        rx="3"
+        fill="currentColor"
+        opacity="0.3"
+      />
+      <path d="M8 6l1.6-2.5h4.8L16 6z" fill="currentColor" />
+      <circle cx="12" cy="13" r="4" fill="currentColor" />
+      <circle cx="18" cy="9" r="1.3" fill="var(--spark,#e8320c)" />
+    </Svg>
+  )
+}
+
+export function Doc({ size }: IconProps) {
+  return (
+    <Svg size={size}>
+      <path d="M5 2.5h9.5L19 7v14.5H5z" fill="currentColor" opacity="0.3" />
+      <path
+        d="M8 11h8v1.8H8zm0 3.6h8v1.8H8zm0-7.2h4.5v1.8H8z"
+        fill="currentColor"
+      />
+      <path d="M14.5 2.5V7H19z" fill="var(--spark,#e8320c)" />
+    </Svg>
+  )
+}
