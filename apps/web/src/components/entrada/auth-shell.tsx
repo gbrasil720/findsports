@@ -112,8 +112,7 @@ export function AuthShell({
 
 /**
  * Ver sem conta, agir com conta (decisão de 05/11/2026): quem só quer olhar a
- * grade de hoje não precisa criar conta. Leva à landing, com os jogos de
- * hoje, até o Explorar aberto sem conta existir.
+ * grade de hoje não precisa criar conta. Leva ao Explorar, que abre sem conta.
  */
 export function VisitorLink() {
   return (
@@ -121,7 +120,7 @@ export function VisitorLink() {
       <div className="ent-or">
         <span>ou</span>
       </div>
-      <Link className="btn btn-ghost ent-full" to="/">
+      <Link className="btn btn-ghost ent-full" to="/dashboard">
         <Eye size={20} color="currentColor" aria-hidden="true" />
         Continuar como visitante
       </Link>
