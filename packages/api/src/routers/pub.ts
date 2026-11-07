@@ -74,6 +74,10 @@ import {
   readEventDeletionImpact
 } from '../lib/event-deletion'
 import { byMatchOrder } from '../lib/game-participants'
+import {
+  GAME_SUGGESTION_LIMIT,
+  gameSuggestionSource
+} from '../lib/game-suggestions'
 import { geocodeAddress } from '../lib/geocode-address'
 import {
   assertCanConfigureHouseOffer,
@@ -984,6 +988,21 @@ export const pubRouter = router({
 
     const existingBar = await getBarByUserId(userId)
     return getEventCreationPolicy(db, existingBar)
+  }),
+
+  /**
+   * Jogos para publicar com um toque ("Seu primeiro jogo" e o passeio). Um
+   * toque é um `createEvent` com o que vem aqui; telão e som ficam de fora e
+   * herdam das características do bar (WEB-399).
+   */
+  gameSuggestions: pubProcedure.query(async ({ ctx }) => {
+    const existingBar = await getBarByUserId(ctx.session.user.id)
+    return gameSuggestionSource.suggest({
+      barId: existingBar.id,
+      city: existingBar.city,
+      now: new Date(),
+      limit: GAME_SUGGESTION_LIMIT
+    })
   }),
 
   createEvent: pubProcedure
