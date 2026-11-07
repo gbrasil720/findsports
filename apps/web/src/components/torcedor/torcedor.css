@@ -4236,8 +4236,10 @@ html[data-consent] .tc .toast {
 }
 html[data-consent] .tc .mx {
   height: calc(
-    100dvh - 66px - env(safe-area-inset-top, 0px) -
-      var(--onside-consent-space)
+    100dvh -
+    66px -
+    env(safe-area-inset-top, 0px) -
+    var(--onside-consent-space)
   );
 }
 @media (max-width: 1100px) {

@@ -136,7 +136,8 @@ function Sheet({
 
   const search: Record<string, string> = {}
   if (game) search.jogo = game.id
-  if (kind === 'vou' && game) search.acao = acaoTexto({ tipo: 'vou', id: game.id })
+  if (kind === 'vou' && game)
+    search.acao = acaoTexto({ tipo: 'vou', id: game.id })
   if (kind === 'salvar') search.acao = acaoTexto({ tipo: 'fav', id: bar.id })
   const back = `${path}${Object.keys(search).length ? `?${new URLSearchParams(search)}` : ''}`
   const showGame = Boolean(game) && (kind === 'vou' || kind === 'amigos')
