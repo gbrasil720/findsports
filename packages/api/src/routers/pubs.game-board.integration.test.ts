@@ -65,3 +65,70 @@ integrationTest(
     }
   }
 )
+
+integrationTest(
+  'jogo clássico sai marcado na régua, para o Elite ir na frente',
+  async () => {
+    const { db, appRouter } = await load()
+    const { sport, team, eventParticipants } = await import(
+      '@findsports_oficial/db/schema/platform'
+    )
+    const { inArray } = await import('@findsports_oficial/db')
+    const startsAt = new Date(Date.now() + 90 * 60_000)
+    const sportId = crypto.randomUUID()
+    const elite = await seedBar('elite', 'active', inAMonth())
+    try {
+      await db.insert(sport).values({
+        id: sportId,
+        name: `Futebol ${sportId}`,
+        slug: `game-board-${sportId}`
+      })
+      await db
+        .insert(team)
+        .values([
+          { sportId, name: 'Flamengo', slug: 'flamengo', country: 'BR' },
+          { sportId, name: 'Palmeiras', slug: 'palmeiras', country: 'BR' }
+        ])
+        .onConflictDoNothing()
+      const times = await db.query.team.findMany({
+        where: (t, { inArray: dentro }) =>
+          dentro(t.slug, ['flamengo', 'palmeiras']),
+        columns: { id: true }
+      })
+      const classico = await elite.seedGame({ startsAt })
+      const comum = await elite.seedGame({
+        startsAt,
+        participantFreeText: `Treino ${crypto.randomUUID().slice(0, 6)}`
+      })
+      await db
+        .insert(eventParticipants)
+        .values(times.map((t) => ({ eventId: classico, teamId: t.id })))
+
+      const caller = appRouter.createCaller({
+        auth: null,
+        session: null,
+        clientIp: '127.0.0.1'
+      })
+      const board = await caller.pubs.gameBoard({
+        lat: -23.55052,
+        lng: -46.633308,
+        // Outro raio: a régua guarda 60 s por ponto e raio, e o teste de cima
+        // já leu este ponto.
+        radiusKm: 2,
+        day: brasiliaDay(startsAt)
+      })
+      const bares = board.games.flatMap((game) => game.bars)
+      expect(
+        bares.find((bar) => bar.eventId === classico)?.classic
+      ).toMatchObject({ reason: expect.any(String) })
+      expect(bares.find((bar) => bar.eventId === comum)?.classic).toBeNull()
+      await db
+        .delete(eventParticipants)
+        .where(inArray(eventParticipants.eventId, [classico]))
+    } finally {
+      await elite.cleanup()
+      const { eq } = await import('@findsports_oficial/db')
+      await db.delete(sport).where(eq(sport.id, sportId))
+    }
+  }
+)

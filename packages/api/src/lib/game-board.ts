@@ -7,6 +7,7 @@ import {
 import { declaredAmenityIds } from './amenities'
 import { getAppConfig } from './app-config'
 import { readGoing } from './attendance'
+import { classicRuleLateral, currentClassicRulesCte } from './classics'
 import { getCurrentPlan, type SubscriptionForPlan } from './current-plan'
 import { resolveEventScreen } from './event-screen'
 import { gameTitle } from './game-participants'
@@ -70,6 +71,8 @@ type BoardRow = {
   current_period_end: string | null
   distance_km: number
   weekday: number
+  classic_rule_reason: string | null
+  classic_rule_version: number | null
 }
 
 const cache = createSharedCache<BoardRow[]>({
@@ -85,6 +88,7 @@ function readRows(input: BoardInput) {
   // hora sem fuso no `::timestamp`.
   return db
     .execute<BoardRow>(sql`
+      WITH ${currentClassicRulesCte}
       SELECT
         e.id AS event_id, e.bar_id, e.starts_at, e.ends_at, e.championship,
         s.slug AS sport_slug, s.name AS sport_name,
@@ -100,11 +104,13 @@ function readRows(input: BoardInput) {
         b.rating_stars_count, b.rating_stars_sum, b.opening_hours,
         sub.plan, sub.status AS plan_status, sub.current_period_end,
         ST_Distance(b.geo, ${origin}) / 1000 AS distance_km,
+        classic.classic_rule_reason, classic.classic_rule_version,
         EXTRACT(DOW FROM (e.starts_at AT TIME ZONE 'UTC') AT TIME ZONE ${BRASILIA_TIME_ZONE})::int AS weekday
       FROM event e
       JOIN bar b ON b.id = e.bar_id
       JOIN sport s ON s.id = e.sport_id
       LEFT JOIN subscription sub ON sub.bar_id = b.id
+      ${classicRuleLateral(sql`e`)}
       WHERE b.is_active
         AND e.published_at IS NOT NULL
         AND e.starts_at >= ${start}::timestamp
@@ -194,6 +200,15 @@ export async function readGameBoard(input: BoardInput, now = new Date()) {
         : null,
       closes: hours?.[row.weekday]?.closes ?? null,
       attendanceEnabled: row.attendance_enabled,
+      // Clássico do jogo (WEB-130): o Elite vai na frente e a tela registra a
+      // entrega (`classic_exposure`, `classic_click`), como na busca.
+      classic:
+        row.classic_rule_reason && row.classic_rule_version != null
+          ? {
+              reason: row.classic_rule_reason,
+              ruleVersion: Number(row.classic_rule_version)
+            }
+          : null,
       going: vao ? { count: vao.count, initials: vao.initials } : null
     }
   }
