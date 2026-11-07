@@ -4232,3 +4232,88 @@ html[data-theme="dark"]:has(.tc) body {
   position: absolute;
   inset: 0;
 }
+/* Preferências no web: a navegação é link, e as peças do painel entram aqui. */
+.tc .pnav a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 46px;
+  padding: 0 14px;
+  border-radius: 14px;
+  font: 600 15px var(--text);
+  color: var(--body);
+  text-decoration: none;
+}
+.tc .pnav a.on {
+  background: var(--card);
+  box-shadow: var(--shadow);
+  color: var(--fg);
+}
+.tc .tc-pn {
+  min-height: 0;
+  background: transparent;
+}
+.tc .box2 .soonb {
+  display: inline-block;
+}
+.tc .chips2 button:disabled {
+  opacity: 0.6;
+}
+.tc .tc-cidade {
+  min-width: 0;
+}
+@media (max-width: 900px) {
+  .tc .pnav a {
+    flex: none;
+  }
+}
+/* O TeamPicker (peça do onboarding) nas Preferências, com as fichas do protótipo. */
+.tc .tc-picker {
+  margin-top: 12px;
+}
+.tc .tc-picker .onside-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--sub);
+  color: var(--fg);
+  font: 600 14px var(--text);
+  cursor: pointer;
+}
+.tc .tc-picker .onside-chip[aria-pressed="true"] {
+  background: var(--fg);
+  color: var(--bg);
+}
+.tc .tc-picker .onside-input {
+  width: 100%;
+  height: 46px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--field);
+  box-shadow: inset 0 0 0 1px var(--line2);
+  padding: 0 14px;
+  font: 500 15.5px var(--text);
+  color: var(--fg);
+}
+.tc .tc-picker .onside-label,
+.tc .tc-cidade .onside-label {
+  font: 600 12px var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.tc .tc-cidade .onside-input,
+.tc .tc-cidade input {
+  width: 100%;
+  height: 46px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--field);
+  box-shadow: inset 0 0 0 1px var(--line2);
+  padding: 0 14px;
+  font: 500 15.5px var(--text);
+  color: var(--fg);
+}
