@@ -1872,3 +1872,24 @@ html[data-theme="dark"] .pn3 .pn-savebar {
     font-size: 13.5px;
   }
 }
+
+/* Meu espaço › "Voltariam pra ver jogo aqui?": o número e a lista usam a
+   mesma linha das "Avaliações recentes" de Hoje (`.pn-rev`). */
+.pn3 .pn-av-n {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 12px 0 0;
+  color: var(--muted);
+}
+
+.pn3 .pn-av-n b {
+  color: var(--fg);
+  font-size: 56px;
+  line-height: 0.9;
+  font-variant-numeric: tabular-nums;
+}
+
+.pn3 .pn-av-mais {
+  margin-top: 6px;
+}

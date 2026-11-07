@@ -34,6 +34,7 @@ import {
   Beer,
   Calendar,
   Check,
+  Close,
   Doc,
   Pin,
   Tv
@@ -67,6 +68,7 @@ import {
   perfilMudou,
   type Rascunho
 } from './espaco-rascunho'
+import { dayLabel, houseDay } from './noite'
 import { Interruptor } from './painel-shell'
 
 /*
@@ -1439,6 +1441,8 @@ function imprimirRecado(recado: string) {
  * antes de a nota ficar pública). Sem quem respondeu: um nome ao lado de "não
  * voltaria" viraria conflito pessoal, não melhoria.
  */
+const AVALIACOES_VISIVEIS = 5
+
 function Avaliacoes() {
   const trpc = useTRPC()
   const q = useQuery({
@@ -1446,6 +1450,7 @@ function Avaliacoes() {
     meta: { errorToast: false }
   })
   const r = q.data
+  const [todas, setTodas] = useState(false)
   return (
     <section className="pn-card pn-sec2" aria-labelledby="esp-av">
       <div className="pn-chd">
@@ -1494,29 +1499,35 @@ function Avaliacoes() {
               .
             </p>
           )}
-          <ul className="pn-av">
-            {r.recent.map((item) => (
-              <li key={`${item.startsAt}-${item.createdAt}`}>
-                <span className={`pn-av-v${item.wouldReturn ? '' : ' is-no'}`}>
-                  {item.wouldReturn ? 'SIM' : 'NÃO'}
+          {(todas ? r.recent : r.recent.slice(0, AVALIACOES_VISIVEIS)).map(
+            (item) => (
+              <div
+                className="pn-rev"
+                key={`${item.createdAt}-${item.startsAt}-${item.championship}`}
+              >
+                <span className={`pn-v${item.wouldReturn ? '' : ' is-no'}`}>
+                  {item.wouldReturn ? <Check size={18} /> : <Close size={16} />}
                 </span>
                 <span>
-                  <b>
-                    {item.participants.join(' × ') ||
-                      item.participantFreeText ||
-                      item.championship}
-                  </b>
-                  <span>
-                    {new Date(item.startsAt).toLocaleDateString('pt-BR', {
-                      day: 'numeric',
-                      month: 'short'
-                    })}{' '}
-                    · {item.wouldReturn ? 'Voltaria' : 'Não voltaria'}
-                  </span>
+                  <b>{item.wouldReturn ? 'Voltaria' : 'Não voltaria'}</b> ·{' '}
+                  {item.participants.join(' × ') ||
+                    item.participantFreeText ||
+                    item.championship}
+                  <p>{dayLabel(houseDay(item.createdAt))}</p>
                 </span>
-              </li>
-            ))}
-          </ul>
+              </div>
+            )
+          )}
+          {r.recent.length > AVALIACOES_VISIVEIS ? (
+            <button
+              type="button"
+              className="pn-btn pn-ghost pn-sm pn-av-mais"
+              aria-expanded={todas}
+              onClick={() => setTodas((v) => !v)}
+            >
+              {todas ? 'Mostrar menos' : `Ver todas (${r.recent.length})`}
+            </button>
+          ) : null}
         </>
       )}
     </section>
