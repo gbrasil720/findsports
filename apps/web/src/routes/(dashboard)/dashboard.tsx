@@ -777,11 +777,15 @@ function Celular({
     const t = mtop.current?.offsetHeight ?? 120
     return { full: t - 14, half: Math.round(H * 0.46), peek: H - 150 }
   }
+  // Pela caixa, não pela janela: o aviso de cookies encolhe o mapa ao
+  // aparecer e o devolve ao sumir (`torcedor.css`).
   useEffect(() => {
     const medir = () => setMedida((n) => n + 1)
     medir()
-    window.addEventListener('resize', medir)
-    return () => window.removeEventListener('resize', medir)
+    if (!mx.current || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(medir)
+    observer.observe(mx.current)
+    return () => observer.disconnect()
   }, [])
   useEffect(() => {
     if (escolhido) setSnap('peek')

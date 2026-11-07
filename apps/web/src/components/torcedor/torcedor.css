@@ -1598,7 +1598,8 @@ html[data-theme="dark"] .tc .m-d {
 }
 .tc .mx {
   position: relative;
-  height: calc(100dvh - 66px - env(safe-area-inset-top, 0px));
+  /* 67: o cabeçalho do celular (66) e a linha de baixo dele. */
+  height: calc(100dvh - 67px - env(safe-area-inset-top, 0px));
   overflow: hidden;
   background: var(--sub);
 }
@@ -4298,6 +4299,35 @@ html[data-theme="dark"] .tc .m-d {
 /* Abaixo da casca (rolagem elástica, devtools) o fundo segue o tema. */
 html[data-theme="dark"]:has(.tc) body {
   background: #12120f;
+}
+/*
+ * O aviso de cookies (`consent/cookie-consent.css`) enquanto a escolha está
+ * pendente: o que é preso ao pé da janela sobe para cima dele, e o mapa do
+ * celular (com a folha de bares) encolhe para acabar onde ele começa. A folha
+ * de entrar, quando abre, fica por cima dele.
+ */
+html[data-consent] .tc .ftab {
+  bottom: var(--onside-consent-space);
+  padding-bottom: 8px;
+}
+html[data-consent] .tc .toast {
+  bottom: calc(24px + var(--onside-consent-space));
+}
+html[data-consent] .tc .mx {
+  height: calc(
+    100dvh -
+    67px -
+    env(safe-area-inset-top, 0px) -
+    var(--onside-consent-space)
+  );
+}
+@media (max-width: 1100px) {
+  html[data-consent] .tc .mapbtn {
+    bottom: calc(22px + var(--onside-consent-space));
+  }
+}
+:root:has(.tc.open) .onside-consent {
+  z-index: 70;
 }
 /* Bares pra você no web */
 .tc .rd-list {

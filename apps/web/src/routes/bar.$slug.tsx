@@ -27,9 +27,8 @@ import { SITE_URL } from '@/lib/site'
 export const Route = createFileRoute('/bar/$slug')({
   validateSearch: (search: Record<string, unknown>): BarPageSearch => ({
     ...(typeof search.jogo === 'string' ? { jogo: search.jogo } : {}),
-    ...(search.acao === 'vou' || search.acao === 'salvar'
-      ? { acao: search.acao }
-      : {})
+    // Lida pela página (`lerAcao`), que aceita também o formato antigo.
+    ...(typeof search.acao === 'string' ? { acao: search.acao } : {})
   }),
   loader: async ({ params, location }) => {
     const page = await getPublicBar({ data: params.slug })

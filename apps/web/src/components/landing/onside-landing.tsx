@@ -65,7 +65,8 @@ const BAR_SIGNUP_HREF = '/signup?role=pub'
 const REDUCED_MOTION = '(prefers-reduced-motion: reduce)'
 
 /**
- * WEB-278: com sessão, as chamadas levam ao app em vez do cadastro.
+ * WEB-278: com sessão, as chamadas levam ao app; sem, ao Explorar, que abre
+ * sem conta (WEB-501). O guia ainda usa este cabeçalho.
  * Lê a sessão que o `beforeLoad` da raiz já põe no contexto da rota: igual no
  * SSR e na hidratação, sem requisição a mais na página pública. `/app`
  * escolhe o destino pelo papel.
@@ -75,15 +76,15 @@ function usePrimaryCta() {
     from: '__root__',
     select: (ctx) => Boolean(ctx.session)
   })
-  // `kind` é o destino no nome do `data-cta` (`hero_app`, `hero_signup`), para
-  // o `cta_clicked` separar quem foi para o app de quem foi criar conta.
+  // `kind` é o destino no nome do `data-cta` (`hero_app`, `hero_explore`), para
+  // o `cta_clicked` separar quem foi para o app de quem foi ao Explorar.
   return hasSession
     ? { hasSession, href: '/app', label: 'Ir para o app', kind: 'app' }
     : {
         hasSession,
-        href: '/signup',
+        href: '/dashboard',
         label: LANDING_COPY.primaryCta,
-        kind: 'signup'
+        kind: 'explore'
       }
 }
 

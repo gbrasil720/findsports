@@ -446,9 +446,17 @@ mandado ao `/admin`.
 - **O que grava pede login e volta concluído:** favoritar, "Vou assistir aqui" e o
   resto passam por `useTorcedor().agir`. Sem sessão abre a folha de entrar com o
   contexto (o bar, o jogo); entrando por ela a ação sai na hora. Cadastro, e-mail,
-  2FA e onboarding levam a ação na URL, `?acao=<tipo>.<id>` (`components/torcedor/acao.ts`,
-  dentro do `callbackUrl`), e a casca a conclui uma vez ao voltar com sessão. A página
-  do bar usa o mesmo formato.
+  2FA e onboarding levam a ação na URL, `?acao=<tipo>.<id>` (`vou.<jogo>`, `fav.<bar>`,
+  `lembrar.<jogo>`; `components/torcedor/acao.ts`, dentro do `callbackUrl`), e quem a
+  recebe com sessão a conclui uma vez: a casca do torcedor e a página do bar
+  (`/bar/$slug`; `/pub/<id>` repassa a `acao`), pelo mesmo módulo. O formato antigo da
+  página do bar (`?acao=vou` com `?jogo=`, `?acao=salvar`) continua aceito na leitura
+  (`lerAcao` com o bar e o jogo da página). Torcedor sem onboarding que entra com ação
+  no destino vai ao `/onboarding/fan` com ela no `callbackUrl` (`applyAuthGuards`).
+- **Aviso de cookies:** um só em todo o site, o "Placar" (`consent/cookie-consent.css`):
+  cartão no canto no desktop, folha no pé no celular. O que é preso ao pé da janela sobe
+  por `--onside-consent-space`; no Explorar, as abas, o aviso da casca e o mapa do
+  celular (com a folha de bares) acabam onde ele começa (`torcedor.css`).
 
 - **Telas:** Explorar (`/dashboard`, régua do dia por `pubs.gameBoard`, aberta, em
   `lib/game-board.ts`; mapa `OnsideMap` com a gota, só por `import()`; na ordem

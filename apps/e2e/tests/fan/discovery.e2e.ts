@@ -209,12 +209,22 @@ test('Elite no clássico vai na frente e registra exposição e clique', async (
   await expect.poll(() => eventos('classic_click')).toBe(1)
 })
 
-test('"Continuar como visitante" do login leva ao Explorar', async ({
+test('"Continuar como visitante" e "Ver jogos de hoje" levam ao Explorar', async ({
   page
 }) => {
-  await page.goto('/login')
-  await page.getByRole('link', { name: 'Continuar como visitante' }).click()
-  await expect(page).toHaveURL(/\/dashboard$/)
+  for (const path of ['/login', '/signup', '/forgot-password']) {
+    await page.goto(path)
+    await page.getByRole('link', { name: 'Continuar como visitante' }).click()
+    await expect(page, path).toHaveURL(/\/dashboard$/)
+  }
+  // O cabeçalho do guia, o da landing antiga.
+  await page.goto('/guia')
+  const links = await page
+    .getByRole('link', { name: /Ver jogos de hoje/, includeHidden: true })
+    .all()
+  expect(links.length).toBeGreaterThan(0)
+  for (const link of links)
+    await expect(link).toHaveAttribute('href', '/dashboard')
 })
 
 test('sem VITE_MAP_TILES_URL o mapa mostra o erro e a lista segue', async ({
