@@ -7,6 +7,16 @@
  * `.danger`) com prefixo `pn-`, presas a `.pn3`.
  */
 
+/*
+ * O `overflow-x: hidden` global no html e no body faz do body um contêiner de
+ * rolagem que nunca rola, e o `sticky` (a barra de salvar, a prévia) não pega.
+ * `clip` corta igual sem criar contêiner.
+ */
+html:has(.pn3),
+html:has(.pn3) body {
+  overflow-x: clip;
+}
+
 /* ─── Peças ─── */
 .pn3 textarea.pn-inp {
   height: 96px;
