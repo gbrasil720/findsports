@@ -3,6 +3,7 @@ import {
   cardapio,
   doBar,
   entradaDoPerfil,
+  horario,
   oferta,
   perfilMudou
 } from './espaco-rascunho'
@@ -70,5 +71,33 @@ describe('rascunho de Meu espaço', () => {
     expect(
       cardapio({ url: 'cardapio.bar', gasto: '' }, gravado).mudancas
     ).toEqual({ menuUrl: 'https://cardapio.bar/', averageSpendCents: null })
+  })
+})
+
+describe('horário de Meu espaço (WEB-397)', () => {
+  const sexta = { opens: '17:00', closes: '02:00' }
+
+  test('sem horário gravado, a semana nasce fechada e não muda nada', () => {
+    const r = doBar(bar)
+    expect(r.horario).toEqual([null, null, null, null, null, null, null])
+    expect(horario(r.horario, null)).toEqual({
+      valor: null,
+      erro: null,
+      mudou: false
+    })
+  })
+
+  test('ligar um dia muda; desligar tudo volta a "não informado"', () => {
+    const semana = [null, null, null, null, null, sexta, null]
+    expect(horario(semana, null)).toMatchObject({ valor: semana, mudou: true })
+    expect(horario([null, null, null, null, null, null, null], semana)).toEqual(
+      { valor: null, erro: null, mudou: true }
+    )
+  })
+
+  test('abre e fecha na mesma hora é erro', () => {
+    const semana = [null, null, null, null, null, sexta, null]
+    semana[6] = { opens: '18:00', closes: '18:00' }
+    expect(horario(semana, null).erro).not.toBeNull()
   })
 })

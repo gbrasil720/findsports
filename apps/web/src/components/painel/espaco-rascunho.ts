@@ -3,6 +3,11 @@ import {
   type Uf
 } from '@findsports_oficial/api/lib/bar-profile-validation'
 import {
+  dayHoursSchema,
+  normalizeOpeningHours,
+  type OpeningHours
+} from '@findsports_oficial/api/lib/opening-hours'
+import {
   averageSpendInputValue,
   parseAverageSpendInput,
   parseMenuUrl
@@ -33,6 +38,7 @@ type Bar = {
   houseOffer: string | null
   menuUrl: string | null
   averageSpendCents: number | null
+  openingHours?: OpeningHours | null
 }
 
 export type Perfil = {
@@ -53,11 +59,13 @@ export type Rascunho = {
   perfil: Perfil
   oferta: string
   cardapio: { url: string; gasto: string }
+  /** Sete dias, 0 no domingo; `null` é fechado (WEB-397). */
+  horario: OpeningHours
 }
 
 export type Parte = keyof Rascunho
 
-export const PARTES: Parte[] = ['perfil', 'oferta', 'cardapio']
+export const PARTES: Parte[] = ['perfil', 'horario', 'oferta', 'cardapio']
 
 export function doBar(bar: Bar): Rascunho {
   const [rua, numero] = separarNumero(bar.address ?? '')
@@ -78,7 +86,34 @@ export function doBar(bar: Bar): Rascunho {
     cardapio: {
       url: bar.menuUrl ?? '',
       gasto: averageSpendInputValue(bar.averageSpendCents)
-    }
+    },
+    horario: bar.openingHours ?? semHorario()
+  }
+}
+
+const semHorario = (): OpeningHours => Array.from({ length: 7 }, () => null)
+
+/** O dia que o dono liga sem faixa nenhuma ainda: a noite de jogo. */
+export const DIA_PADRAO = { opens: '18:00', closes: '00:00' }
+
+/**
+ * O horário do rascunho no formato de `pub.updateOpeningHours`: a semana toda
+ * fechada é "não informado" (`null`), como o servidor grava. Abre e fecha na
+ * mesma hora não serve; fechar antes de abrir é virar a meia-noite.
+ */
+export function horario(
+  rascunho: OpeningHours,
+  gravado: OpeningHours | null | undefined
+) {
+  const valor = normalizeOpeningHours(rascunho)
+  const antes = normalizeOpeningHours(gravado ?? null)
+  const erro = rascunho.some((dia) => !dayHoursSchema.safeParse(dia).success)
+    ? 'Confira os horários: cada dia abre e fecha em horas diferentes.'
+    : null
+  return {
+    valor,
+    erro,
+    mudou: JSON.stringify(valor) !== JSON.stringify(antes)
   }
 }
 

@@ -1555,3 +1555,61 @@ html[data-theme="dark"] .pn3 .pn-savebar {
     grid-template-columns: 1fr;
   }
 }
+
+/* Horário de Meu espaço (WEB-397; protótipo `.hrs`, `.hr`). */
+.pn3 .pn-hrs {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pn3 .pn-hrs li {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.pn3 .pn-hr-d {
+  font: 400 20px / 1 var(--display);
+}
+
+.pn3 .pn-hr-t {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--muted);
+}
+
+.pn3 .pn-hr-t .pn-inp {
+  width: auto;
+  height: 42px;
+  min-width: 0;
+  padding: 0 10px;
+  border-radius: 12px;
+  font: 500 15px var(--mono);
+}
+
+@media (max-width: 560px) {
+  .pn3 .pn-hrs li {
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  .pn3 .pn-hr-d {
+    font-size: 17px;
+  }
+
+  .pn3 .pn-hr-t {
+    gap: 4px;
+  }
+
+  .pn3 .pn-hr-t .pn-inp {
+    width: 100%;
+    padding: 0 6px;
+    font-size: 13.5px;
+  }
+}

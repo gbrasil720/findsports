@@ -58,8 +58,10 @@ import { useTRPC } from '@/utils/trpc'
 import { EspacoPrevia } from './espaco-previa'
 import {
   cardapio,
+  DIA_PADRAO,
   doBar,
   entradaDoPerfil,
+  horario,
   oferta,
   PARTES,
   type Parte,
@@ -67,13 +69,14 @@ import {
   perfilMudou,
   type Rascunho
 } from './espaco-rascunho'
+import { Interruptor } from './painel-shell'
 
 /*
  * "Meu espaço" do painel novo (WEB-501, fase 4; protótipo `espaco`, `dirty`
  * e a barra de salvar). Um formulário só, com rascunho até "Salvar
  * alterações", que manda cada parte à sua mutation só se ela mudou: perfil e
- * características (`updateMe`), oferta (`updateHouseOffer`, Elite) e
- * cardápio (`updateMenuInfo`, Pro). Foto, WhatsApp e "como o código é
+ * características (`updateMe`), horário (`updateOpeningHours`, WEB-397),
+ * oferta (`updateHouseOffer`, Elite) e cardápio (`updateMenuInfo`, Pro). Foto, WhatsApp e "como o código é
  * conferido" gravam na hora. Recurso pago só entra com o plano em dia; o
  * servidor confere de novo.
  */
@@ -97,6 +100,17 @@ const SUGESTOES = [
 ]
 
 const DESCRICAO_MAX = 500
+
+/** Segunda primeiro, como se lê a semana de um bar; o índice é o do servidor. */
+const SEMANA = [
+  [1, 'Seg', 'Segunda'],
+  [2, 'Ter', 'Terça'],
+  [3, 'Qua', 'Quarta'],
+  [4, 'Qui', 'Quinta'],
+  [5, 'Sex', 'Sexta'],
+  [6, 'Sáb', 'Sábado'],
+  [0, 'Dom', 'Domingo']
+] as const
 
 function alcanca(plano: Plano, tier: 'pro' | 'elite') {
   return (
@@ -177,6 +191,7 @@ function Espaco({ bar }: { bar: AdminBar }) {
   const gravado = doBar(base)
   const sujo: Record<Parte, boolean> = {
     perfil: perfilMudou(rascunho.perfil, gravado.perfil, cep),
+    horario: horario(rascunho.horario, base.openingHours).mudou,
     oferta: eliteOk && oferta(rascunho.oferta, base.houseOffer).mudou,
     cardapio: proOk && cardapio(rascunho.cardapio, base).mudou
   }
@@ -187,6 +202,7 @@ function Espaco({ bar }: { bar: AdminBar }) {
     const novo = doBar(bar)
     setRascunho((r) => ({
       perfil: sujo.perfil ? r.perfil : novo.perfil,
+      horario: sujo.horario ? r.horario : novo.horario,
       oferta: sujo.oferta ? r.oferta : novo.oferta,
       cardapio: sujo.cardapio ? r.cardapio : novo.cardapio
     }))
@@ -206,6 +222,7 @@ function Espaco({ bar }: { bar: AdminBar }) {
   const updateMe = useMutation(trpc.pub.updateMe.mutationOptions())
   const updateOffer = useMutation(trpc.pub.updateHouseOffer.mutationOptions())
   const updateMenu = useMutation(trpc.pub.updateMenuInfo.mutationOptions())
+  const updateHours = useMutation(trpc.pub.updateOpeningHours.mutationOptions())
   // WhatsApp e foto gravam na hora, cada um com a sua mutation: a falha de um
   // não vira erro do formulário (WEB-212).
   const whatsapp = useMutation(
@@ -260,8 +277,10 @@ function Espaco({ bar }: { bar: AdminBar }) {
       : null
     const of = oferta(rascunho.oferta, base.houseOffer)
     const cd = cardapio(rascunho.cardapio, base)
+    const hr = horario(rascunho.horario, base.openingHours)
     const bloqueio: Partial<Record<Parte, string>> = {}
     if (motivo) bloqueio.perfil = motivo
+    if (sujo.horario && hr.erro) bloqueio.horario = hr.erro
     if (sujo.oferta && of.erro) bloqueio.oferta = of.erro
     if (sujo.cardapio && (cd.erroUrl || cd.erroGasto))
       bloqueio.cardapio = 'Confira o link e o preço médio.'
@@ -275,6 +294,11 @@ function Espaco({ bar }: { bar: AdminBar }) {
     const entrada = entradaDoPerfil(p, gravado.perfil, cep)
     const tarefas: [Parte, Promise<unknown>][] = []
     if (sujo.perfil) tarefas.push(['perfil', updateMe.mutateAsync(entrada)])
+    if (sujo.horario)
+      tarefas.push([
+        'horario',
+        updateHours.mutateAsync({ openingHours: hr.valor })
+      ])
     if (sujo.oferta)
       tarefas.push([
         'oferta',
@@ -298,15 +322,20 @@ function Espaco({ bar }: { bar: AdminBar }) {
       falhas[parte] =
         parte === 'perfil'
           ? erroPerfil(err, entrada)
-          : parte === 'oferta'
+          : parte === 'horario'
             ? getUserFacingMessage(
                 err,
-                'Não foi possível salvar a oferta. Tente novamente.'
+                'Não foi possível salvar o horário. Tente novamente.'
               )
-            : getUserFacingMessage(
-                err,
-                'Não foi possível salvar o cardápio e o preço médio. Tente novamente.'
-              )
+            : parte === 'oferta'
+              ? getUserFacingMessage(
+                  err,
+                  'Não foi possível salvar a oferta. Tente novamente.'
+                )
+              : getUserFacingMessage(
+                  err,
+                  'Não foi possível salvar o cardápio e o preço médio. Tente novamente.'
+                )
     })
 
     await invalidateBar()
@@ -316,6 +345,7 @@ function Espaco({ bar }: { bar: AdminBar }) {
     const salvas = tarefas.map(([parte]) => parte).filter((k) => !falhas[k])
     setRascunho((r) => ({
       perfil: salvas.includes('perfil') ? novo.perfil : r.perfil,
+      horario: salvas.includes('horario') ? novo.horario : r.horario,
       oferta: salvas.includes('oferta') ? novo.oferta : r.oferta,
       cardapio: salvas.includes('cardapio') ? novo.cardapio : r.cardapio
     }))
@@ -357,6 +387,9 @@ function Espaco({ bar }: { bar: AdminBar }) {
   const telasErro = motivoTelasInvalido(p.screenCount)
   const of = oferta(rascunho.oferta, base.houseOffer)
   const cd = cardapio(rascunho.cardapio, base)
+  const horarioErro = tentou
+    ? horario(rascunho.horario, base.openingHours).erro
+    : null
   const fromCep = (value: string, found: string | undefined) =>
     cepStatus === 'achou' && Boolean(found) && value.trim() === found
   const telefoneMudou = p.phone !== gravado.perfil.phone
@@ -709,13 +742,69 @@ function Espaco({ bar }: { bar: AdminBar }) {
                 Horário
               </h3>
             </div>
-            <div className="pn-soon">
-              <span>
-                <b>Horário de funcionamento</b> para o torcedor saber se o bar
-                está aberto antes de sair de casa.
-              </span>
-              <em>EM BREVE</em>
-            </div>
+            <p className="pn-note">
+              O torcedor vê se o bar está aberto antes de sair de casa. Fechar
+              antes de abrir vira a meia-noite: 17:00 – 02:00 vai até as 2h.
+            </p>
+            <ul className="pn-hrs">
+              {SEMANA.map(([dia, curto, nome]) => {
+                const faixa = rascunho.horario[dia] ?? null
+                const mudar = (nova: typeof faixa) =>
+                  setRascunho((r) => ({
+                    ...r,
+                    horario: r.horario.map((d, i) => (i === dia ? nova : d))
+                  }))
+                return (
+                  <li key={dia} className={faixa ? undefined : 'is-off'}>
+                    <span className="pn-hr-d" title={nome}>
+                      {curto}
+                    </span>
+                    {faixa ? (
+                      <span className="pn-hr-t">
+                        <input
+                          type="time"
+                          className="pn-inp"
+                          value={faixa.opens}
+                          aria-label={`${nome} abre`}
+                          onChange={(e) =>
+                            mudar({ ...faixa, opens: e.target.value })
+                          }
+                        />
+                        –
+                        <input
+                          type="time"
+                          className="pn-inp"
+                          value={faixa.closes}
+                          aria-label={`${nome} fecha`}
+                          onChange={(e) =>
+                            mudar({ ...faixa, closes: e.target.value })
+                          }
+                        />
+                      </span>
+                    ) : (
+                      <span className="pn-hr-t">Fechado</span>
+                    )}
+                    <Interruptor
+                      ligado={Boolean(faixa)}
+                      onChange={(ligado) =>
+                        // Religado, volta à faixa do dia anterior aberto.
+                        mudar(
+                          ligado
+                            ? (rascunho.horario.find(Boolean) ?? DIA_PADRAO)
+                            : null
+                        )
+                      }
+                      rotulo={`Aberto ${nome.toLowerCase()}`}
+                    />
+                  </li>
+                )
+              })}
+            </ul>
+            {horarioErro || erros.horario ? (
+              <p className="pn-ferr" role="alert">
+                {horarioErro ?? erros.horario}
+              </p>
+            ) : null}
           </section>
 
           {/* ─── Características ─── */}
