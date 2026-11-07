@@ -16,7 +16,11 @@ import { ThemeSwitch } from './theme-switch'
 
 export const BAR_SIGNUP_HREF = '/signup?role=pub'
 
-/** Com sessão, as chamadas levam ao app; sem, ao cadastro (WEB-278). */
+/**
+ * Com sessão, as chamadas levam ao app (WEB-278); sem, ao Explorar, que abre
+ * sem conta ("ver sem login, agir com login", 05/11/2026, WEB-501). O bar
+ * segue para o cadastro (`BAR_SIGNUP_HREF`).
+ */
 export function usePrimaryCta() {
   const session = useRouteContext({
     from: '__root__',
@@ -26,8 +30,8 @@ export function usePrimaryCta() {
     ? { session, href: '/app', kind: 'app', short: 'Ver jogos de hoje' }
     : {
         session,
-        href: '/signup',
-        kind: 'signup',
+        href: '/dashboard',
+        kind: 'explore',
         short: LANDING_COPY.primaryCta
       }
 }

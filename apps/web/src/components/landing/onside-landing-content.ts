@@ -30,7 +30,7 @@ export type HeroBar = {
  * Título com trecho em destaque fica em pedaços: `[antes, destaque, depois]`.
  */
 export const LANDING_COPY = {
-  primaryCta: 'Entrar / Criar conta',
+  primaryCta: 'Ver jogos de hoje',
   proof: [
     'Grátis para torcedores',
     'Sem e-mails promocionais',
