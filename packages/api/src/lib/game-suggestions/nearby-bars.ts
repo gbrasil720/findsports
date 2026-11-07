@@ -61,7 +61,8 @@ export function groupSuggestions(
   return [...games.values()]
     .filter((game) => !own.has(game.key))
     .sort(
-      (a, b) => b.bars.size - a.bars.size || a.startsAt.localeCompare(b.startsAt)
+      (a, b) =>
+        b.bars.size - a.bars.size || a.startsAt.localeCompare(b.startsAt)
     )
     .slice(0, limit)
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
