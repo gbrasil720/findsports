@@ -347,31 +347,20 @@ test.describe('ação pela URL depois do login', () => {
     await expect(page).not.toHaveURL(/acao=/)
   })
 
-  test('torcedor sem onboarding: a ação atravessa o onboarding', async ({
+  // WEB-501: a ação primeiro, as preferências depois (`conta-nova.e2e.ts`).
+  test('torcedor sem onboarding: a ação sai antes, e o card leva às preferências', async ({
     page
   }) => {
     const bar = await barComJogo()
     const fan = await createUser({ onboardingCompleted: false })
 
     await entrarPeloLogin(page, fan, `${bar.path}?acao=fav.${bar.barId}`)
-    await expect(page).toHaveURL(/\/onboarding\/fan\?callbackUrl=.*acao/)
-    const botao = (name: string | RegExp) =>
-      page.getByRole('button', { name, exact: typeof name === 'string' })
-    await botao('Começar').click()
-    await botao('Futebol').click()
-    await botao('Continuar').click()
-    await botao('Pular').click()
-    await page
-      .getByRole('combobox', { name: 'Sua cidade' })
-      .fill('sao jose dos camp')
-    await page
-      .getByRole('option', { name: /^São José dos Campos\s*SP$/ })
-      .click()
-    await botao('Continuar').click()
-    await botao(/Salvar e encontrar bares/).click()
-
-    await expect(page).toHaveURL(new RegExp(bar.path))
+    await expect(page).toHaveURL(
+      /\/dashboard\/seus-bares\?aba=salvos&novo=fav$/
+    )
     await expect.poll(() => isFavorite(fan.id, bar.barId)).toBe(true)
-    await expect(page).not.toHaveURL(/acao=/)
+    await expect(page.locator('section.fresh')).toContainText(
+      'Conta criada e bar salvo'
+    )
   })
 })
