@@ -4221,3 +4221,14 @@ html[data-theme="dark"] .tc .m-d {
 html[data-theme="dark"]:has(.tc) body {
   background: #12120f;
 }
+/* Bares pra você no web */
+.tc .rd-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.tc .rd-mapw .maplibregl-map,
+.tc .rd-mapw > div {
+  position: absolute;
+  inset: 0;
+}
