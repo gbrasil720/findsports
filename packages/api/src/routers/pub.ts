@@ -1405,20 +1405,33 @@ export const pubRouter = router({
     .input(z.object({ plan: z.enum(subscriptionPlanEnum.enumValues) }))
     .mutation(async ({ ctx, input }) => {
       const existingBar = await getBarByUserId(ctx.session.user.id)
-      const [changed] = await db
-        .update(subscription)
-        .set({ plan: input.plan })
-        .where(
-          and(
-            eq(subscription.barId, existingBar.id),
-            eq(subscription.status, 'trialing'),
-            isNull(subscription.externalSubscriptionId),
-            // `timestamp` sem fuso, lido como UTC: a mesma comparação de
-            // `subscription_current_plan`.
-            sql`${subscription.currentPeriodEnd} > (now() AT TIME ZONE 'UTC')`
+      // A escolha do passo "Plano do teste" do cadastro é esta mesma troca:
+      // ela marca o plano como escolhido, e o painel deixa de levar até lá.
+      const changed = await db.transaction(async (tx) => {
+        const [row] = await tx
+          .update(subscription)
+          .set({ plan: input.plan })
+          .where(
+            and(
+              eq(subscription.barId, existingBar.id),
+              eq(subscription.status, 'trialing'),
+              isNull(subscription.externalSubscriptionId),
+              // `timestamp` sem fuso, lido como UTC: a mesma comparação de
+              // `subscription_current_plan`.
+              sql`${subscription.currentPeriodEnd} > (now() AT TIME ZONE 'UTC')`
+            )
           )
-        )
-        .returning({ plan: subscription.plan })
+          .returning({ plan: subscription.plan })
+        if (row) {
+          await tx
+            .update(bar)
+            .set({ trialPlanChosenAt: sql`now()` })
+            .where(
+              and(eq(bar.id, existingBar.id), isNull(bar.trialPlanChosenAt))
+            )
+        }
+        return row
+      })
       if (!changed) {
         throw new TRPCError({
           code: 'PRECONDITION_FAILED',

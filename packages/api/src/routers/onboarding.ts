@@ -27,6 +27,7 @@ import {
 } from '../lib/favorite-teams'
 import { geocodeAddress } from '../lib/geocode-address'
 import { ONBOARDING_TRIAL } from '../lib/plan-limits'
+import { recommendPlan, routineSchema } from '../lib/pub-routine'
 import {
   findSearchCity,
   searchCityColumns,
@@ -100,13 +101,22 @@ export const onboardingRouter = router({
         // recusados: um cliente desatualizado não pode derrubar o cadastro
         // inteiro do bar por causa de uma característica aposentada.
         amenities: z.array(z.number().int()).max(MAX_AMENITY_IDS).optional(),
-        screenCount: z.number().int().min(0).max(MAX_SCREEN_COUNT).optional()
+        screenCount: z.number().int().min(0).max(MAX_SCREEN_COUNT).optional(),
+        // "Sua rotina": o teste nasce no plano que ela recomenda, e o dono
+        // escolhe o dele no passo "Plano do teste", depois do primeiro jogo.
+        // Opcional: aba e rascunho de antes do campo não a mandam, e esse bar
+        // nasce como antes, no Elite e com o plano dado como escolhido (o
+        // cliente antigo troca por `changeTrialPlan` logo em seguida).
+        routine: routineSchema.optional()
       })
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
 
       await assertOnboardingPending(userId)
+      const trialPlan = input.routine
+        ? recommendPlan(input.routine).plan
+        : ONBOARDING_TRIAL.plan
 
       const motivoTelefone = motivoTelefoneInvalido(input.phone)
       if (motivoTelefone) {
@@ -157,7 +167,11 @@ export const onboardingRouter = router({
             latitude,
             longitude,
             // WEB-113: o bar nasce publicado, com o teste grátis abaixo.
-            isActive: true
+            isActive: true,
+            routine: input.routine ?? null,
+            // Nulo: o painel leva à escolha do plano do teste. Sem a rotina
+            // vale o padrão do banco (já escolhido), como no código anterior.
+            ...(input.routine && { trialPlanChosenAt: null })
           })
           .returning({ id: bar.id })
 
@@ -173,7 +187,7 @@ export const onboardingRouter = router({
         // fuso, e um `Date` do JS entraria no fuso do processo que grava.
         await tx.insert(subscription).values({
           barId: newBar.id,
-          plan: ONBOARDING_TRIAL.plan,
+          plan: trialPlan,
           status: 'trialing',
           currentPeriodEnd: sql`now() + make_interval(days => ${ONBOARDING_TRIAL.days}::int)`
         })
