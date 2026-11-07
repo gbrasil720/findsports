@@ -589,6 +589,19 @@ body:not(.logged) .ftab{display:none!important}
 .dz2{box-shadow:inset 0 0 0 1.5px var(--live)}
 .dz2 h3{color:var(--live-text)}
 .soonb{font:600 11px var(--mono);background:var(--sub);padding:4px 7px;border-radius:6px;letter-spacing:.05em}
+/* conta nova por uma ação */
+.fresh{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:16px;align-items:center;margin-top:24px;padding:18px 20px;border-radius:24px;background:#1c1c18;color:#f1eee6;box-shadow:inset 0 0 0 1px rgba(241,238,230,.1),0 4px 0 #000;text-align:left;width:min(640px,100%);margin-left:auto;margin-right:auto;animation:in .45s var(--ease) both;--spark:#c9f135}
+.page .fresh{width:auto;margin-left:0;margin-right:0}
+.fresh .ck{width:44px;height:44px;border-radius:14px;background:#c9f135;color:#12120f;display:grid;place-items:center;--spark:#e8320c}
+.fresh b{display:block;font-size:16.5px}
+.fresh .tx span{display:block;font-size:14.5px;color:#c9c7c0;margin-top:2px}
+.fresh .ac{display:flex;gap:8px}
+.fresh .gh2{background:transparent;color:#f1eee6;box-shadow:inset 0 0 0 1.5px rgba(241,238,230,.3)}
+.short{max-width:760px}
+.short .box2{margin-top:18px}
+.done2{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 13px;border-radius:999px;background:var(--acid);color:#12120f;font:600 13.5px var(--text);--spark:#e8320c}
+.short h1{margin-top:14px}
+@media (max-width:760px){.fresh{grid-template-columns:auto minmax(0,1fr)}.fresh .ac{grid-column:1/-1}.fresh .ac .btn{flex:1}}
 /* onboarding torcedor */
 .ob{min-height:calc(100vh - 76px);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .ob .l{padding:36px max(28px,var(--gl)) 40px max(28px,var(--gl));display:flex;flex-direction:column;max-width:640px;width:100%;margin-left:auto}
@@ -988,7 +1001,7 @@ function bar(id){return BARS.filter(function(b){return b.id===id})[0]}
 function gameAll(id){return GAMES.hoje.concat(GAMES.amanha).filter(function(x){return x.id===id})[0]}
 function setLogged(v){S.logged=v;document.body.classList.toggle('logged',v)}
 function meusjogos(){
-  var h='<div class="page"><div class="k">Lucas Andrade · Vila Madalena</div><h1 class="disp">Meus jogos</h1><p class="sub">Os jogos que você marcou, com o código do balcão. Depois do jogo, conte como foi.</p>';
+  var h='<div class="page"><div class="k">Lucas Andrade · Vila Madalena</div><h1 class="disp">Meus jogos</h1><p class="sub">Os jogos que você marcou, com o código do balcão. Depois do jogo, conte como foi.</p>'+freshCard();
   h+='<div class="tabsx" role="tablist">'+[['prox','Próximos',S.going.length],['ant','Anteriores',PASTV.length]].map(function(t){return '<button type="button" role="tab" aria-selected="'+(S.mj===t[0])+'" class="'+(S.mj===t[0]?'on':'')+'" data-mj="'+t[0]+'">'+t[1]+'<span class="n">'+t[2]+'</span></button>'}).join('')+'</div>';
   if(S.mj==='prox'){
     if(PASTV.some(function(p){return p.st==='avaliar'}))h+='<div class="notice">'+ic('star',24)+'<span><b>Como foi Corinthians × Santos no Bar do Zé?</b><span>Leva 20 segundos. Sua nota vale porque você validou o código.</span></span><a class="btn b-acid sm" href="#avaliar-ze">Avaliar</a></div>';
@@ -1012,10 +1025,10 @@ function codigo(i){
     '<div class="qrw"><div class="q2" id="qr" role="img" aria-label="QR do código '+x.code+'"></div></div><div class="big" aria-label="Código '+x.code.split('').join(' ')+'">'+x.code.slice(0,3)+'·'+x.code.slice(3)+'</div><p class="hint">Mostre ao garçom ou no balcão. Vale para este jogo, neste bar.</p>'+
     '<div class="cut" aria-hidden="true"></div><div class="of"><span class="ib">'+ic('beer',22)+'</span><span><b>Oferta da casa</b><span>'+esc(b.offer||'Sem oferta neste jogo')+'</span></span></div></div>'+
     '<div class="codeacts"><a class="btn b-ghost sm" href="#meus-jogos">'+ic('back',18)+'Meus jogos</a><button class="btn b-ghost sm" type="button" data-cal="'+i+'">'+ic('calendar',18)+'Pôr na agenda</button></div>'+
-    '<p class="note">Aumente o brilho da tela. Sem internet no bar? O código fica salvo neste aparelho.</p></div></div>';
+    '<p class="note">Aumente o brilho da tela. Sem internet no bar? O código fica salvo neste aparelho.</p>'+freshCard()+'</div></div>';
 }
 function seusbares(){
-  var h='<div class="page"><div class="k">'+S.saved.length+' bares favoritos · 9 visitas em 2026</div><h1 class="disp">Seus bares</h1><p class="sub">A semana de jogos dos bares que você salvou, e onde você já foi.</p>';
+  var h='<div class="page"><div class="k">'+S.saved.length+' bares favoritos · 9 visitas em 2026</div><h1 class="disp">Seus bares</h1><p class="sub">A semana de jogos dos bares que você salvou, e onde você já foi.</p>'+freshCard();
   h+='<div class="tabsx" role="tablist">'+[['semana','Esta semana'],['salvos','Favoritos'],['fui','Já fui']].map(function(t){return '<button type="button" role="tab" aria-selected="'+(S.sb===t[0])+'" class="'+(S.sb===t[0]?'on':'')+'" data-sb="'+t[0]+'">'+t[1]+'</button>'}).join('')+'</div>';
   if(S.sb==='semana'){
     var days=[['qui','5','hoje',['fp','lc']],['sex','6','',['nf','ff']],['sáb','7','',['sp']],['dom','8','',[]],['seg','9','',[]],['ter','10','',['ws']],['qua','11','',[]]];
@@ -1185,6 +1198,24 @@ document.addEventListener('input',function(e){
   if(e.target.id==='rr'){S.radiusKm=+e.target.value;var rk=document.getElementById('rk');if(rk)rk.textContent=String(S.radiusKm).replace('.',',')+' km';var r=document.getElementById('rad');if(r){r.style.width=r.style.height=(S.radiusKm*38)+'px';document.getElementById('rcnt').textContent=cntFor(S.radiusKm)+' bares com jogo hoje'}}
   if(e.target.id==='tq'){document.getElementById('tgrid').innerHTML=teamBtns(e.target.value.trim().toLowerCase())}
 });
+/* ---------- conta nova por uma ação: a ação primeiro, as preferências depois ---------- */
+S.fresh=null;
+var FRESH={vou:['Conta criada e presença marcada','Seu código está aqui e em Meus jogos.'],vouc:['Conta criada e presença marcada','Quando chegar ao bar, faça check-in em Meus jogos.'],fav:['Conta criada e bar salvo','Ele está em Seus bares, com a semana de jogos.'],lembrar:['Conta criada e lembrete marcado','Avisamos 3 h antes do jogo.']};
+function freshCard(){if(!S.fresh)return '';var f=FRESH[S.fresh.kind];
+  return '<section class="fresh" aria-labelledby="fr-t"><span class="ck">'+ic('check',22)+'</span><span class="tx"><b id="fr-t">'+f[0]+'</b><span>'+f[1]+' Quer que a Onside mostre primeiro o que você curte? Esportes, times e até onde você vai: leva 30 segundos.</span></span>'+
+    '<span class="ac"><a class="btn b-acid sm" href="#bem-vindo-curto">Escolher agora</a><button class="btn sm gh2" type="button" data-freshlater>Depois</button></span></section>'}
+function bemvindoCurto(){var f=S.fresh?FRESH[S.fresh.kind]:FRESH.fav,km=String(S.radiusKm).replace('.',',');
+  var h='<div class="page short"><span class="done2">'+ic('check',16)+f[0]+'</span><h1 class="disp">Do que você <span class="hl">gosta?</span></h1><p class="sub">Assim os jogos e os bares que importam pra você aparecem primeiro. Tudo opcional, e dá para mudar em Preferências.</p>';
+  h+='<div class="box2"><h3>Esportes</h3><div class="chips2">'+SPORTS.map(function(s){return '<button type="button" aria-pressed="'+!!S.mySports[s[0]]+'" data-sp="'+s[0]+'">'+ic(s[3],18)+s[1]+'</button>'}).join('')+'</div></div>';
+  h+='<div class="box2"><h3>Seus times</h3><p class="d">Avisamos quando um bar perto passar o jogo deles.</p><div class="chips2">'+TEAMS.map(function(t){return '<button type="button" aria-pressed="'+(S.myTeams.indexOf(t[0])>=0)+'" data-team="'+t[0]+'"><span style="width:22px;height:22px;border-radius:50%;background:'+t[2]+'"></span>'+t[0]+'</button>'}).join('')+'</div></div>';
+  h+='<div class="box2"><h3>Até onde você topa ir</h3><p class="d">A partir de Vila Madalena, São Paulo: <b id="rk">'+km+' km</b></p><input class="rng" type="range" min="0.5" max="10" step="0.5" value="'+S.radiusKm+'" id="rr" aria-label="Raio em km"><div class="rngl"><span>500 m</span><span>10 km</span></div></div>';
+  h+='<div class="obnav"><button class="btn b-ghost sm" type="button" data-freshlater>Depois</button><button class="btn b-acid" type="button" data-freshsave>Salvar</button></div></div>';
+  return h}
+function freshBack(){var b=S.fresh?S.fresh.back:'';S.fresh=null;location.hash=b}
+document.addEventListener('click',function(e){var t;
+  if(t=e.target.closest('[data-freshlater]')){var onShort=location.hash==='#bem-vindo-curto';if(onShort)freshBack();else{S.fresh=null;render()}toast('Tudo bem. Esportes, times e raio ficam em Preferências.');return}
+  if(t=e.target.closest('[data-freshsave]')){freshBack();toast('Pronto. Os seus jogos e bares aparecem primeiro.');return}
+});
 /* ---------- render ---------- */
 var view=document.getElementById('view');
 function render(){
@@ -1193,7 +1224,7 @@ function render(){
   [].forEach.call(document.querySelectorAll('[data-ic2]'),function(e){e.outerHTML=ic(e.dataset.ic2,19)});
   if(acc&&!S.logged){setLogged(true)}
   [].forEach.call(document.querySelectorAll('[data-nav]'),function(a){a.classList.toggle('cur',r.indexOf(a.dataset.nav)===0)});
-  if(acc){var V2={'meus-jogos':meusjogos,'seus-bares':seusbares,perfil:perfil,'pra-voce':pravoce,preferencias:preferencias,'bem-vindo':onboarding};view.innerHTML=(V2[r]?V2[r]():r.indexOf('codigo-')===0?codigo(r.slice(7)):avaliar(r.slice(8)))+(r==='bem-vindo'?'':fanTabs(r.indexOf('seus')===0||r==='perfil'||r==='preferencias'?'perfil':r==='pra-voce'?'pra-voce':'meus-jogos'));scrollTo(0,0);return}
+  if(acc){var V2={'meus-jogos':meusjogos,'seus-bares':seusbares,perfil:perfil,'pra-voce':pravoce,preferencias:preferencias,'bem-vindo':onboarding,'bem-vindo-curto':bemvindoCurto};view.innerHTML=(V2[r]?V2[r]():r.indexOf('codigo-')===0?codigo(r.slice(7)):avaliar(r.slice(8)))+(r.indexOf('bem-vindo')===0?'':fanTabs(r.indexOf('seus')===0||r==='perfil'||r==='preferencias'?'perfil':r==='pra-voce'?'pra-voce':'meus-jogos'));scrollTo(0,0);return}
   view.innerHTML=isBar?barpage(r.slice(4))+mbarHtml(r.slice(4)):(MQ.matches?explorarMobile():explorar());
   if(isBar)scrollTo(0,0);
   fitMap();
@@ -1265,7 +1296,12 @@ document.getElementById('sh-demo').addEventListener('click',function(){document.
 document.getElementById('sh-new').addEventListener('click',function(e){e.preventDefault();S.newAcct=true;document.getElementById('sh-go').textContent='Criar conta e continuar';document.getElementById('sh-p').setAttribute('autocomplete','new-password');document.getElementById('sh-t').textContent='Crie sua conta grátis';});
 document.getElementById('sh-form').addEventListener('submit',function(e){
   e.preventDefault();var p=pend;closeSheet();setLogged(true);
-  if(S.newAcct){S.newAcct=false;S.ob=0;location.hash='bem-vindo';return}
+  if(S.newAcct){S.newAcct=false;
+    if(p.kind==='entrar'||!(p.b||p.kind==='lembrar')){S.ob=0;location.hash='bem-vindo';return}
+    S.mySports={};S.myTeams=[];
+    if(p.kind==='vou'){var gi0=p.g.id;S.going=S.going.filter(function(x){return !(x.bar===p.b.id&&x.game===gi0)});S.going.unshift({bar:p.b.id,game:gi0,code:'GRTGVX'});S.fresh={kind:p.b.elite?'vou':'vouc',back:p.b.elite?'codigo-0':'meus-jogos'};location.hash=S.fresh.back;toast(p.b.elite?'Pronto: você vai assistir aqui. Este é o seu código.':'Pronto: você vai assistir aqui.');return}
+    if(p.kind==='fav'){if(S.saved.indexOf(p.b.id)<0)S.saved.unshift(p.b.id);S.sb='salvos';S.fresh={kind:'fav',back:'seus-bares'};location.hash='seus-bares';toast(p.b.n+' salvo em Seus bares.');return}
+    S.fresh={kind:'lembrar',back:''};location.hash='bem-vindo-curto';toast('Lembrete de '+p.g.g+' marcado, 3 h antes.');return}
   if(p.kind==='vou'&&p.b){var gi=p.g.id;S.going=S.going.filter(function(x){return !(x.bar===p.b.id&&x.game===gi)});S.going.unshift({bar:p.b.id,game:gi,code:'GRTGVX'});location.hash=p.b.elite?'codigo-0':'meus-jogos';toast(p.b.elite?'Pronto: você vai assistir aqui. Este é o seu código.':'Pronto: você vai assistir aqui. Faça check-in quando chegar.');return}
   if(p.kind==='fav'&&p.b){if(S.saved.indexOf(p.b.id)<0)S.saved.unshift(p.b.id);toast(p.b.n+' salvo em Seus bares.');render();return}
   if(p.kind==='entrar'){location.hash='meus-jogos';return}
