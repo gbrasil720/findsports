@@ -236,6 +236,19 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   Todo checkout novo sai com ele enquanto o Stripe o der como válido; esgotado,
   expirado ou inexistente na conta, o checkout segue a preço de tabela
   (`usableFounderCoupon`). A oferta acaba no painel do Stripe, não no app.
+- **Dados da nota** (WEB-444): razão social, CNPJ e e-mail para notas em
+  `/admin/billing` (`components/painel/dados-da-nota.tsx`), nas colunas
+  `bar.legal_name`, `cnpj` e `invoice_email`, por `pub.updateInvoiceDetails`. Com
+  cliente no Stripe, ele recebe os três antes do banco (recusa ou Stripe fora do ar
+  não grava nada): a razão social vira a empresa, o CNPJ o único `br_cnpj` e o
+  e-mail o do cliente (vazio volta ao de acesso). CNPJ conferido pelo dígito, com
+  letras ou só números (`@findsports_oficial/db/cnpj`).
+- **Motivo do cancelamento** (WEB-445): "Por que está cancelando?"
+  (`components/painel/cancelar-plano.tsx`) grava em `subscription_cancel_reason` ao
+  abrir o portal (intenção). Só quando o webhook vê a assinatura agendada para acabar
+  ou encerrada o último motivo do dia antes do pedido vai a `cancellation_details` no
+  Stripe (`stripe-sync.ts`), sem sobrescrever o que o portal trouxe. Lista em
+  `packages/db/src/cancel-reasons.ts`.
 
 ### Código do balcão pela comanda (WEB-412)
 
@@ -305,6 +318,18 @@ linguagem da Onside (WEB-480, canvas https://claude.ai/artifact/DmzHetdEyDNRP3eW
 todo em `components/houdini/houdini.css`, preso a `.houdini`: Anton, Archivo e Geist
 Mono, acid e sombra dura. O tema segue o do sistema (escuro por padrão), e toda
 diferença entre claro e escuro é token `--hd-*`.
+
+Revisão (`/houdini/revisao`, `adminReview`, WEB-462 e WEB-478): fotos e descrições dos
+bares, aprovar ou recusar com motivo, cada decisão no Grimório (`bar.photo_*`,
+`bar.description_*`). **Toda foto do bar (`bar_photo`, até 12 em todo plano; recusada
+não conta) e toda descrição passam por ela antes de o torcedor ver**: `pubs.getById`
+só devolve fotos `approved`, e `bar.description` é a última aprovada (o dono escreve
+em `description_pending`; apagar tira do ar na hora). A capa é uma foto da galeria, de
+todo plano: "Usar como capa" numa aprovada grava `bar.photo_url` na hora; numa em
+revisão (`cover_requested`), quando for aprovada. As outras fotos são do Pro e do
+Elite (`lib/bar-gallery.ts`). Upload por `/api/bar/photo?galeria` (`&capa` deixa o
+Starter mandar a capa) e `pub.addPhoto`; `bar.gallery_photos` é a coluna antiga, sem
+leitura. Painel: `components/painel/espaco-fotos.tsx`.
 
 ### App mobile
 
