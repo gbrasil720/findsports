@@ -32,7 +32,9 @@ import {
   goingText,
   type PageBar,
   pickGame,
-  screensLabel
+  screensLabel,
+  shortDate,
+  starsLabel
 } from './bar-page-model'
 import { type LoginKind, LoginSheet } from './login-sheet'
 
@@ -48,6 +50,14 @@ export type LiveBar = PageBar & {
   menuUrl: string | null
   averageSpendCents: number | null
   ratingReasons: { positive: string[]; negative: string[] } | null
+  reviews: {
+    id: string
+    stars: number | null
+    comment: string | null
+    name: string | null
+    game: string
+    startsAt: Date
+  }[]
   photos: {
     id: string
     url: string
@@ -386,6 +396,12 @@ export function BarPage({
                 ) : null}
                 {bar.rating ? (
                   <span className="pill">
+                    {bar.rating.stars != null ? (
+                      <>
+                        <Icon name="star" size={14} />
+                        {starsLabel(bar.rating.stars)} ·{' '}
+                      </>
+                    ) : null}
                     {bar.rating.percentage}% voltariam
                   </span>
                 ) : null}
@@ -1265,6 +1281,24 @@ function Amenities({ bar }: { bar: LiveBar }) {
   )
 }
 
+/** Cinco estrelas, cheias até a média arredondada. */
+function Stars({ value, size = 15 }: { value: number; size?: number }) {
+  const full = Math.round(value)
+  return (
+    <span
+      className="stars"
+      role="img"
+      aria-label={`${starsLabel(value)} de 5 estrelas`}
+    >
+      {[1, 2, 3, 4, 5].map((n) => (
+        <span key={n} className={n <= full ? undefined : 'off'}>
+          <Icon name="star" size={size} />
+        </span>
+      ))}
+    </span>
+  )
+}
+
 function Rating({ bar }: { bar: LiveBar }) {
   const reasons = bar.ratingReasons
   return (
@@ -1281,7 +1315,16 @@ function Rating({ bar }: { bar: LiveBar }) {
             </span>
             <p>
               <b>voltariam</b>
-              de {bar.rating.total} avaliações
+              de {bar.rating.total} avaliações verificadas
+              {bar.rating.stars != null ? (
+                <>
+                  {' · '}
+                  <span className="nowrap">
+                    <Stars value={bar.rating.stars} />{' '}
+                    <span className="mono">{starsLabel(bar.rating.stars)}</span>
+                  </span>
+                </>
+              ) : null}
             </p>
           </div>
           {reasons && (reasons.positive.length || reasons.negative.length) ? (
@@ -1302,8 +1345,30 @@ function Rating({ bar }: { bar: LiveBar }) {
               </ul>
             </div>
           ) : null}
+          {bar.reviews.length ? (
+            <div className="quotes">
+              {bar.reviews.map((review) => (
+                <blockquote key={review.id}>
+                  {review.stars ? (
+                    <Stars value={review.stars} size={14} />
+                  ) : null}
+                  <span>“{review.comment}”</span>
+                  <footer>
+                    <span>
+                      {review.name
+                        ? firstName(review.name)
+                        : 'Visita verificada'}{' '}
+                      · {review.game}
+                    </span>
+                    <span className="mono">{shortDate(review.startsAt)}</span>
+                  </footer>
+                </blockquote>
+              ))}
+            </div>
+          ) : null}
           <p className="verif">
-            Avalia quem mostrou que ia ao jogo, depois do apito final.
+            Só entra na nota quem foi: código validado no balcão ou check-in no
+            bar.
           </p>
         </>
       ) : (
