@@ -22,14 +22,17 @@ import {
   baresDoJogo,
   diasDaRegua,
   distancia,
+  eliteNoClassico,
   estadoDoJogo,
   type JogoDaRegua,
   jogoInicial,
   jogosDaBusca,
   type Ordem
 } from '@/domain/explorar'
+import { canRecordCommercialEvents } from '@/domain/viewer'
 import { useSession } from '@/hooks/use-session'
 import { analytics } from '@/lib/analytics'
+import { trackCommercialEvent } from '@/lib/commercial-tracking'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
@@ -212,6 +215,42 @@ function ExplorarConteudo({ busca }: { busca: string }) {
   })
   const total = jogo?.bars.length ?? 0
 
+  /*
+   * "Entrega nos clássicos" (WEB-130), com as regras da busca antiga: só
+   * torcedor de verdade (sem impersonação), só na ordem padrão (onde o Elite
+   * do clássico vai na frente) e só com a régua assentada. A exposição sai
+   * uma vez por jogo nesta tela; o clique, a cada abertura.
+   */
+  const entregaGarantida =
+    canRecordCommercialEvents(
+      session?.user.role,
+      session?.session.impersonatedBy
+    ) &&
+    ordem === 'perto' &&
+    quadro.isSuccess &&
+    !quadro.isPlaceholderData
+  const expostos = useRef(new Set<string>())
+  useEffect(() => {
+    if (!entregaGarantida) return
+    for (const bar of lista) {
+      if (!eliteNoClassico(bar) || expostos.current.has(bar.eventId)) continue
+      expostos.current.add(bar.eventId)
+      trackCommercialEvent({
+        pubId: bar.barId,
+        type: 'classic_exposure',
+        sourceEventId: bar.eventId
+      })
+    }
+  }, [entregaGarantida, lista])
+  const medirClique = (bar: BarDoJogo | undefined) => {
+    if (!bar || !entregaGarantida || !eliteNoClassico(bar)) return
+    trackCommercialEvent({
+      pubId: bar.barId,
+      type: 'classic_click',
+      sourceEventId: bar.eventId
+    })
+  }
+
   const irPara = (mudar: Busca) =>
     navigate({
       to: '/dashboard',
@@ -360,6 +399,7 @@ function ExplorarConteudo({ busca }: { busca: string }) {
             onSalvar={() => salvar(bar)}
             onVou={() => marcar(bar)}
             onQuente={celular ? undefined : setQuente}
+            onAbrir={() => medirClique(bar)}
           />
         ))
       : null
@@ -440,6 +480,7 @@ function ExplorarConteudo({ busca }: { busca: string }) {
   }))
   const abrirBar = (id: string) => {
     const bar = lista.find((b) => b.barId === id)
+    medirClique(bar)
     analytics.barOpened({
       bar_id: id,
       source: 'map',
@@ -488,6 +529,7 @@ function ExplorarConteudo({ busca }: { busca: string }) {
         mapa={mapa}
         escolhido={escolhido}
         onSoltar={() => setTocado(null)}
+        onAbrir={() => medirClique(escolhido)}
         cabeca={
           <>
             <h1 className="disp">{titulo}</h1>
@@ -638,6 +680,7 @@ function Celular({
   mapa,
   escolhido,
   onSoltar,
+  onAbrir,
   cabeca,
   chips,
   children
@@ -646,6 +689,7 @@ function Celular({
   mapa: ReactNode
   escolhido: BarDoJogo | undefined
   onSoltar: () => void
+  onAbrir: () => void
   cabeca: ReactNode
   chips: ReactNode
   children: ReactNode
@@ -724,6 +768,7 @@ function Celular({
             to="/pub/$pubId"
             params={{ pubId: escolhido.barId }}
             search={{ eventId: escolhido.eventId }}
+            onClick={onAbrir}
             className="mpick-a"
           >
             {escolhido.photoUrl ? (

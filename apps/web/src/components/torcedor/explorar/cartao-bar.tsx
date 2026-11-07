@@ -60,6 +60,8 @@ type Props = {
   onSalvar: () => void
   onVou: () => void
   onQuente?: (id: string | null) => void
+  /** Abriu o bar pelo cartão (mede o clique no clássico). */
+  onAbrir?: () => void
 }
 
 export function CartaoBar({
@@ -74,13 +76,15 @@ export function CartaoBar({
   curto,
   onSalvar,
   onVou,
-  onQuente
+  onQuente,
+  onAbrir
 }: Props) {
   const aberto = estado === 'next' && bar.attendanceEnabled
   const linkDoBar = {
     to: '/pub/$pubId' as const,
     params: { pubId: bar.barId },
-    search: { eventId: bar.eventId }
+    search: { eventId: bar.eventId },
+    onClick: onAbrir
   }
   return (
     <article
