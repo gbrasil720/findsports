@@ -14,7 +14,7 @@ import {
   normalizeHouseOffer
 } from '@findsports_oficial/db/house-offer'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useId, useRef, useState } from 'react'
+import { useContext, useEffect, useId, useRef, useState } from 'react'
 import type { AdminEvent } from '@/components/admin/admin-model'
 import { useMyBar } from '@/components/admin/admin-queries'
 import {
@@ -38,7 +38,7 @@ import { CATALOG_QUERY } from '@/lib/query-cache'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import { gameOffer, gameScreen, isDraft } from './dados'
-import { Interruptor, usePainel } from './painel-shell'
+import { Interruptor, PainelContext } from './painel-shell'
 
 /*
  * "Novo jogo" (WEB-501, fase 2; protótipo `openSheet`, `drawPick`): a folha
@@ -119,10 +119,16 @@ function initialOf(mode: NovoJogoMode) {
 
 export function NovoJogo({
   mode,
-  onClose
+  onClose,
+  elite
 }: {
   mode: NovoJogoMode
   onClose: () => void
+  /**
+   * Fora do painel (o "Seu primeiro jogo" do cadastro) não há o contexto do
+   * layout: quem abre diz se o bar é Elite. Sem isso, vale o do painel.
+   */
+  elite?: boolean
 }) {
   const ref = useRef<HTMLDialogElement>(null)
 
@@ -161,7 +167,7 @@ export function NovoJogo({
             <Close size={18} />
           </button>
         </header>
-        <Formulario mode={mode} onDone={onClose} />
+        <Formulario mode={mode} onDone={onClose} elite={elite} />
       </div>
     </dialog>
   )
@@ -169,16 +175,19 @@ export function NovoJogo({
 
 function Formulario({
   mode,
-  onDone
+  onDone,
+  elite: eliteProp
 }: {
   mode: NovoJogoMode
   onDone: () => void
+  elite?: boolean
 }) {
   const trpc = useTRPC()
   const queryClient = useQueryClient()
   const ids = useId()
   const { data: bar } = useMyBar()
-  const { elite } = usePainel()
+  const painel = useContext(PainelContext)
+  const elite = eliteProp ?? painel?.elite ?? false
   const [initial] = useState(() => initialOf(mode))
   // O que o jogo tem no bar: o do jogo aberto, senão o padrão do cadastro.
   const [noBar] = useState(() => {
