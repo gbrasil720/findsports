@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { CancelSubscriptionButton } from '@/components/billing/cancel-subscription-button'
 import { PlanChangedNotice } from '@/components/billing/plan-change'
 import { ReactivateSubscriptionButton } from '@/components/billing/reactivate-subscription-button'
 import { Check } from '@/components/landing/v3/icons'
@@ -29,6 +28,7 @@ import {
 import { canCancelSubscription, getCancelNotice } from '@/lib/scheduled-cancel'
 import { getUserFacingError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
+import { CancelarPlano } from './cancelar-plano'
 import { DadosDaNota } from './dados-da-nota'
 
 /*
@@ -318,7 +318,15 @@ export function PlanoPage({
                 ) : null}
                 {/* Ação secundária, sem cara de botão (WEB-339). */}
                 {canCancel ? (
-                  <CancelSubscriptionButton className="pn-lnk-b pn-u pn-ph-cancel" />
+                  <CancelarPlano
+                    planName={planInfo.name}
+                    until={
+                      subscription?.currentPeriodEnd
+                        ? new Date(subscription.currentPeriodEnd)
+                        : null
+                    }
+                    className="pn-lnk-b pn-u pn-ph-cancel"
+                  />
                 ) : null}
               </div>
               {portalError ? (
@@ -330,7 +338,7 @@ export function PlanoPage({
                 {ended && hasProviderCustomer
                   ? 'As faturas e os recibos da assinatura encerrada continuam no portal de gerenciamento.'
                   : canCancel
-                    ? 'Para trocar de plano ou atualizar o método de pagamento, use o portal de gerenciamento. “Cancelar assinatura” abre o portal direto no cancelamento.'
+                    ? 'Para trocar de plano ou atualizar o método de pagamento, use o portal de gerenciamento. “Cancelar assinatura” pergunta o motivo e abre o portal direto no cancelamento.'
                     : hasProviderCustomer
                       ? 'Para cancelar, trocar de plano ou atualizar o método de pagamento, use o portal de gerenciamento.'
                       : onLocalTrial

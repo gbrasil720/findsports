@@ -644,6 +644,25 @@ html[data-theme="dark"]:has(.pn3) body {
   padding: 28px;
 }
 
+.pn3 .pn-cancel-why {
+  margin: 22px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.pn3 .pn-cancel-why legend {
+  margin-bottom: 8px;
+}
+
+.pn3 .pn-cancel-acts {
+  flex-wrap: wrap;
+  margin-top: 22px;
+}
+
+.pn3 .pn-cancel-acts .pn-btn {
+  flex: 1 1 180px;
+}
+
 .pn3 .pn-val-top {
   display: flex;
   align-items: flex-start;
