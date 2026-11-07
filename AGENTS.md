@@ -451,13 +451,18 @@ mandado ao `/admin`.
   do bar usa o mesmo formato.
 
 - **Telas:** Explorar (`/dashboard`, régua do dia por `pubs.gameBoard`, aberta, em
-  `lib/game-board.ts`; mapa `OnsideMap` com a gota, só por `import()`), Meus jogos
-  (`/dashboard/games`, ingressos; o pós-jogo antigo fica em Anteriores até a avaliação
-  nova), o código (`/dashboard/codigo/$eventId`), Seus bares (`/dashboard/seus-bares`,
+  `lib/game-board.ts`; mapa `OnsideMap` com a gota, só por `import()`; na ordem
+  padrão o Elite do clássico vai na frente e a tela grava `classic_exposure` e
+  `classic_click`, com as regras da busca antiga), Meus jogos
+  (`/dashboard/games`, ingressos), "Como foi?" (`/dashboard/avaliar/$eventId`, a fila
+  `postGame.pending` numa tela: estrelas obrigatórias, comentário em revisão, nome e a
+  faixa de visita verificada só com código validado ou check-in), o código (`/dashboard/codigo/$eventId`), Seus bares (`/dashboard/seus-bares`,
   `attendance.visits`), perfil (`/dashboard/profile`, `achievements.mine`), Bares pra
   você (`/dashboard/pra-voce`, `recommendations.today`, frases de `domain/pra-voce.ts`,
   as mesmas do app) e Preferências (`/dashboard/preferencias`; conta e privacidade com as
   peças das Configurações do painel). Link para bar é `/pub/<id>`.
+- **Landing:** sem sessão, a chamada do torcedor ("Ver jogos de hoje") leva ao
+  Explorar; a do bar segue no cadastro.
 - **Em breve no web:** aviso "quando o app chegar", escolher avisos, quem vê onde você
   foi e ranking (ficam no app), nomes de amigos em "quem vai".
 
