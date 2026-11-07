@@ -1,6 +1,3 @@
-import { and, db, eq } from '@findsports_oficial/db'
-import { attendanceReport } from '@findsports_oficial/db/schema/attendance'
-import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
 import { adminProcedure, fanProcedure, router } from '../index'
@@ -11,18 +8,8 @@ import {
   readUnvalidatedCodeAlerts,
   setAttendance
 } from '../lib/attendance'
-
-/** A pergunta pós-jogo deste torcedor, se ainda estiver aberta. */
-async function openQuestion(userId: string, eventId: string) {
-  const [question] = await readAttendanceQuestions(userId, eventId)
-  if (!question) {
-    throw new TRPCError({
-      code: 'NOT_FOUND',
-      message: 'Não há pergunta aberta para este jogo.'
-    })
-  }
-  return question
-}
+import { checkIn } from '../lib/check-in'
+import { answerPostGame, undoPostGame } from '../lib/post-game'
 
 /**
  * "Vou assistir aqui" (WEB-127): o torcedor marca e desmarca presença num
@@ -45,8 +32,24 @@ export const attendanceRouter = router({
   mine: fanProcedure.query(({ ctx }) => readMyGames(ctx.session.user.id)),
 
   /**
+   * "Estou aqui" (WEB-408): check-in por localização durante o jogo. O
+   * cliente só manda a posição; distância e horário são conferidos em
+   * `checkIn`. O web não tem tela: quem chama é o app.
+   */
+  checkIn: fanProcedure
+    .input(
+      z.object({
+        eventId: z.string().uuid(),
+        latitude: z.number().min(-90).max(90),
+        longitude: z.number().min(-180).max(180)
+      })
+    )
+    .mutation(({ ctx, input }) => checkIn(ctx.session.user.id, input)),
+
+  /**
    * Perguntas pós-jogo ainda sem resposta (WEB-128). Uma por jogo; a tela
-   * mostra uma de cada vez.
+   * mostra uma de cada vez. O mesmo que os itens com `presence` de
+   * `postGame.pending`, para o card do `/dashboard`.
    */
   pendingReports: fanProcedure.query(async ({ ctx }) =>
     (await readAttendanceQuestions(ctx.session.user.id)).filter(
@@ -54,11 +57,7 @@ export const attendanceRouter = router({
     )
   ),
 
-  /**
-   * Resposta do torcedor: se foi e, só quando a reserva confirmada tinha
-   * oferta congelada, se recebeu. Responder de novo dentro da janela troca a
-   * resposta. Não toca no registro do bar: as fontes ficam separadas.
-   */
+  /** Adaptador do card do `/dashboard`: `postGame.answer` com `attended`. */
   report: fanProcedure
     .input(
       z.object({
@@ -68,47 +67,21 @@ export const attendanceRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const userId = ctx.session.user.id
-      const question = await openQuestion(userId, input.eventId)
-      // Pergunta que não foi feita não tem resposta gravada.
-      const offerReceived =
-        question.offer !== null && input.attended
-          ? (input.offerReceived ?? null)
-          : null
-      await db
-        .insert(attendanceReport)
-        .values({
-          userId,
-          eventId: input.eventId,
-          attended: input.attended,
-          offerReceived
-        })
-        .onConflictDoUpdate({
-          target: [attendanceReport.userId, attendanceReport.eventId],
-          set: { attended: input.attended, offerReceived }
-        })
-      return { attended: input.attended, offerReceived }
+      const { attended, offerReceived } = await answerPostGame(
+        ctx.session.user.id,
+        input
+      )
+      return { attended, offerReceived }
     }),
 
-  /**
-   * "Desfazer" do aviso de confirmação (WEB-321): apaga a resposta do próprio
-   * torcedor e a pergunta volta a `pendingReports`. Vale enquanto `report`
-   * vale. Sem resposta gravada não há o que apagar, e não é erro. Nada é
-   * materializado a partir da resposta: o alerta interno conta na leitura.
-   */
+  /** Adaptador do "Desfazer" do card: `postGame.undo` com `presence`. */
   removeReport: fanProcedure
     .input(z.object({ eventId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      const userId = ctx.session.user.id
-      await openQuestion(userId, input.eventId)
-      await db
-        .delete(attendanceReport)
-        .where(
-          and(
-            eq(attendanceReport.userId, userId),
-            eq(attendanceReport.eventId, input.eventId)
-          )
-        )
+      await undoPostGame(ctx.session.user.id, {
+        eventId: input.eventId,
+        presence: true
+      })
       return { success: true }
     }),
 

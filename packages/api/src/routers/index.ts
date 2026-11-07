@@ -13,6 +13,7 @@ import { feedbackRouter } from './feedback'
 import { grimorioRouter } from './grimorio'
 import { houdiniRouter } from './houdini'
 import { onboardingRouter } from './onboarding'
+import { postGameRouter } from './post-game'
 import { pubRouter } from './pub'
 import { pubsRouter } from './pubs'
 import { ratingsRouter } from './ratings'
@@ -42,6 +43,7 @@ export const appRouter = router({
   recommendations: recommendationsRouter,
   commercialAnalytics: commercialAnalyticsRouter,
   ratings: ratingsRouter,
+  postGame: postGameRouter,
   reservationValidation: reservationValidationRouter,
   barReservations: barReservationsRouter,
   attendance: attendanceRouter,
