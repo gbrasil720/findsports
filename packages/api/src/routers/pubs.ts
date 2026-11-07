@@ -52,6 +52,7 @@ import {
   favoriteTeamIdsSchema,
   replaceFavoriteTeams
 } from '../lib/favorite-teams'
+import { readGameBoard } from '../lib/game-board'
 import { byMatchOrder, gameTitle } from '../lib/game-participants'
 import { effectiveHouseOffer } from '../lib/house-offer'
 import { decodeCursor, encodeCursor } from '../lib/keyset-cursor'
@@ -392,6 +393,22 @@ export const pubsRouter = router({
       startsAt: utcIso(game.starts_at)
     }))
   }),
+
+  /**
+   * A régua do Explorar do web (WEB-501): os jogos de um dia de Brasília
+   * perto de um ponto, cada um com os bares que o passam (`lib/game-board`).
+   * Aberta: ver bares e jogos não pede conta (dono, 05/11/2026).
+   */
+  gameBoard: publicProcedure
+    .input(
+      z.object({
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        radiusKm: searchRadiusKmSchema.default(5),
+        day: z.string().date()
+      })
+    )
+    .query(({ input }) => readGameBoard(input)),
 
   search: protectedProcedure
     .input(
