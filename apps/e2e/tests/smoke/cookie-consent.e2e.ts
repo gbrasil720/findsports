@@ -133,6 +133,78 @@ test.describe('sem escolha feita', () => {
       .toBe(viewport.height)
   })
 
+  // Um aviso só, o "Placar", em todo o site: o Explorar mostrava o antigo,
+  // centrado embaixo, e a página do bar o novo, no canto.
+  test('um aviso só no DOM, o mesmo no Explorar, na página do bar e no login', async ({
+    page,
+    isMobile
+  }) => {
+    const { barId } = await createPub()
+    await createEvent({ barId, startsAt: days(2) })
+    const aparencia = async () => {
+      await expect(banner(page)).toHaveCount(1)
+      await expect(banner(page)).toBeVisible()
+      await expect(page.locator('.onside-consent')).toHaveCount(1)
+      // Texto, e não função: a suíte compila sem os tipos do DOM.
+      return page.evaluate(
+        "(() => { const c = getComputedStyle(document.querySelector('.onside-consent')); return [c.borderRadius, c.backgroundColor, c.width] })()"
+      )
+    }
+
+    await page.goto('/dashboard')
+    const explorar = await aparencia()
+    if (!isMobile) {
+      // No canto direito, não centrado.
+      const viewport = page.viewportSize()
+      const bar = await box(banner(page))
+      if (!viewport) throw new Error('sem viewport')
+      expect(Math.round(viewport.width - bar.x - bar.width)).toBe(32)
+    }
+    await page.goto(`/pub/${barId}`)
+    expect(await aparencia()).toEqual(explorar)
+    await page.goto('/login')
+    expect(await aparencia()).toEqual(explorar)
+  })
+
+  // No celular, logado, o Explorar tem as abas de baixo e a folha de bares:
+  // as duas acabam acima do aviso, que não as cobre.
+  test('celular: no Explorar o aviso não cobre as abas nem a folha', async ({
+    page,
+    isMobile
+  }) => {
+    test.skip(!isMobile, 'só no projeto mobile')
+    await signIn(page, await createUser())
+    await page.goto('/dashboard')
+    await expect(banner(page)).toBeVisible()
+    const abas = page.getByRole('navigation', { name: 'Sua conta' })
+    const folha = page.getByRole('region', { name: 'Bares' })
+    await expect(abas).toBeVisible()
+    await expect(folha).toBeVisible()
+    await expect
+      .poll(async () => {
+        const bar = await box(banner(page))
+        const tabs = await box(abas)
+        const mapa = await box(page.locator('.mx'))
+        return [
+          Math.round(tabs.y + tabs.height - bar.y),
+          Math.round(mapa.y + mapa.height - bar.y)
+        ]
+      })
+      .toEqual([0, 0])
+
+    // Sem o aviso, as abas voltam ao pé da janela.
+    await banner(page).getByRole('button', { name: 'Recusar' }).press('Enter')
+    await expect(banner(page)).toBeHidden()
+    const viewport = page.viewportSize()
+    if (!viewport) throw new Error('sem viewport')
+    await expect
+      .poll(async () => {
+        const tabs = await box(abas)
+        return Math.round(tabs.y + tabs.height)
+      })
+      .toBe(viewport.height)
+  })
+
   // Em 320x568 o "Entrar" do login cai na faixa do aviso. O
   // navegador o dava por visível e não rolava ao receber o foco.
   test('celular: botão que recebe o foco debaixo do aviso rola para cima dele', async ({
