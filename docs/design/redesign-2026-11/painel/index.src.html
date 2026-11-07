@@ -761,6 +761,47 @@ textarea.inp{height:88px;padding:14px 16px;resize:none;line-height:1.4}
 .tdots i{width:22px;height:4px;border-radius:4px;background:var(--line2)}
 .tdots i.on{background:var(--fg)}
 @media (max-width:860px){.tip2{width:auto}}
+/* passeio pelo painel: o furo no escuro deixa tocar no que está em destaque */
+.tour{pointer-events:none}
+.tour .blk{position:fixed;inset:0;pointer-events:auto}
+.tour .spot{border-radius:30px}
+.tip2{pointer-events:auto;z-index:1}
+.tip2 .thint{display:flex;gap:8px;align-items:center;margin:12px 0 0;font:600 14px var(--text);color:var(--fg)}
+.toast{z-index:130}
+.gproto .gsep{width:1px;height:20px;background:var(--line2);margin:0 4px}
+.sugw h3,#t-capa h3{display:flex;align-items:center;gap:10px}
+.sugw .sgs{margin-top:14px}
+.lockn{display:flex;gap:10px;align-items:flex-start;margin:16px 0 0;padding:14px 16px;border-radius:16px;background:var(--sub);font-size:14px;line-height:1.45;color:var(--body)}
+.lockn b{color:var(--fg)}
+.esp.one{grid-template-columns:minmax(0,1fr)}
+.cpg{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,380px);gap:28px;align-items:start}
+.cpg .ln:first-of-type{margin-top:6px}
+.cprev{display:grid;grid-template-columns:128px minmax(0,1fr);margin-top:10px}
+.cprev .ph3{aspect-ratio:auto;height:100%;min-height:136px}
+.cprev .nof{position:absolute;inset:0;display:grid;place-items:center;align-content:center;gap:6px;padding:8px;text-align:center;color:var(--muted);font:600 12.5px var(--text)}
+.cprev .rvw{position:absolute;left:8px;top:8px;font:600 10.5px/1 var(--mono);letter-spacing:.05em;padding:5px 6px;border-radius:6px;background:#f1eee6;color:#12120f}
+.cprev .bd3{padding:14px 16px;gap:10px}
+.cprev .nm{font-size:17px}
+.cprev .gm3{font-size:13.5px;padding:9px 11px}
+.trg{display:grid;grid-template-columns:260px minmax(0,1fr);gap:26px;align-items:center;margin-top:16px}
+.tkt{display:flex;flex-direction:column;gap:8px;padding:20px;border-radius:22px;background:#12120f;color:#f1eee6;box-shadow:0 4px 0 #000}
+.tkt .mono{font-size:11.5px;letter-spacing:.08em;color:#aaa9a4}
+.tkt b{font:600 34px/1 var(--mono);color:#c9f135;letter-spacing:.04em}
+.tkt>span:last-child{font-size:13.5px;color:#c9c7c0}
+.trp{margin:0;color:var(--body);font-size:15px}
+#trbox{margin-top:12px}
+#trbox input{pointer-events:none}
+@media (max-width:1100px){.cpg{grid-template-columns:minmax(0,1fr);gap:14px}}
+@media (max-width:860px){
+  .tip2{left:0!important;right:0!important;top:auto!important;bottom:0!important;width:100%;border-radius:28px 28px 0 0;padding:18px var(--gr) calc(18px + env(safe-area-inset-bottom,0px)) var(--gl)}
+  .tip2 h3{font-size:26px}
+  .tip2 p{font-size:14.5px}
+  .tdots{display:none}
+  .trg{grid-template-columns:minmax(0,1fr);gap:14px}
+  .tkt b{font-size:28px}
+  .cprev{grid-template-columns:104px minmax(0,1fr)}
+  .gproto .gsep{display:none}
+}
 @media (prefers-reduced-motion:reduce){.rl{animation:none}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition-duration:.01ms!important}}
 </style>
@@ -806,7 +847,7 @@ textarea.inp{height:88px;padding:14px 16px;resize:none;line-height:1.4}
   <div class="vres" id="vres" role="status"></div>
   <div style="display:flex;gap:10px;margin-top:18px"><button class="btn b-ghost sm" type="button" id="v-ex">Usar exemplo GRT-GVX</button><span style="flex:1"></span><button class="btn b-acid sm" type="button" id="v-go">Validar</button></div>
 </div>
-<div class="tour" id="tour" aria-hidden="true"><div class="spot"></div><div class="tip2" role="dialog" aria-modal="true" aria-labelledby="tour-t"></div></div>
+<div class="tour" id="tour" aria-hidden="true"><div class="blk"></div><div class="spot"></div><div class="tip2" role="dialog" aria-modal="false" aria-labelledby="tour-t"></div></div>
 <div class="toast" id="toast" role="status"></div>
 
 <script>
@@ -840,14 +881,21 @@ var S={view:location.hash.slice(1)||'hoje',sel:'cp',tab:'prox',mode:'lista',pick
 /* ---------- navegação ---------- */
 var NAV=[['hoje','Hoje','tv'],['jogos','Jogos','calendar',3],['desempenho','Desempenho','ranking'],['quem-vai','Quem vai','people',34],['meu-espaco','Meu espaço','bar'],['plano','Plano e cobrança','medal'],['config','Configurações','gear']];
 function drawNav(){
-  document.getElementById('nav').innerHTML=NAV.map(function(n){return '<a href="#'+n[0]+'" class="'+(S.view===n[0]?'on':'')+'"'+(S.view===n[0]?' aria-current="page"':'')+'>'+ic(n[2],20)+n[1]+(n[3]?'<span class="n">'+n[3]+'</span>':'')+'</a>'}).join('');
-  var T=[['hoje','Hoje','tv'],['jogos','Jogos','calendar'],null,['quem-vai','Quem vai','people'],['mais','Mais','gear']];
+  var fr=fresh(),pk=planK(),el=pk==='elite',pn=fr?PLANS[pk].n:'Elite';
+  var NV=NAV.filter(function(n){return !(fr&&!el&&n[0]==='quem-vai')}).map(function(n){return !fr?n:n[0]==='jogos'?[n[0],n[1],n[2],freshGames().length]:n[0]==='quem-vai'?[n[0],n[1],n[2]]:n});
+  document.querySelector('.barcard em').textContent=pn.toUpperCase();
+  document.querySelector('.planmini').innerHTML='<span id="railmedal">'+medal(fr?pk:'elite',38)+'</span><span><b>'+pn.toUpperCase()+'</b><br>'+(fr?'Teste grátis até 5 mar':'Ativo · próxima cobrança 2 mar')+'</span>';
+  document.querySelector('.rail .vbtn').style.display=fr&&!el?'none':'';
+  document.querySelector('.mtop>span:nth-child(2)>span').textContent=pn+' · Vila Madalena';
+  document.getElementById('nav').innerHTML=NV.map(function(n){return '<a href="#'+n[0]+'" class="'+(S.view===n[0]?'on':'')+'"'+(S.view===n[0]?' aria-current="page"':'')+'>'+ic(n[2],20)+n[1]+(n[3]?'<span class="n">'+n[3]+'</span>':'')+'</a>'}).join('');
+  var T=fr&&!el?[['hoje','Hoje','tv'],['jogos','Jogos','calendar'],['desempenho','Desempenho','ranking'],['meu-espaco','Meu espaço','bar'],['mais','Mais','gear']]:[['hoje','Hoje','tv'],['jogos','Jogos','calendar'],null,['quem-vai','Quem vai','people'],['mais','Mais','gear']];
   document.getElementById('tabbar').innerHTML=T.map(function(t){if(!t)return '<button type="button" class="vb" data-val aria-label="Validar código"><span>'+ic('qr',26)+'</span>Validar</button>';return '<a href="#'+t[0]+'" class="'+(S.view===t[0]?'on':'')+'">'+ic(t[2],22)+t[1]+'</a>'}).join('');
 }
 
 /* ---------- Hoje ---------- */
 function minsTo(g){return Math.round((g.t*60)-(NOW.h*60+NOW.m))}
 function hoje(){
+  if(fresh())return hojeNovo();
   var g=GAMES[0],m=minsTo(g),hh=Math.floor(m/60),mm=m%60;
   var h='<div class="ph"><div><div class="k">quinta, 5 nov · Vila Madalena · agora '+NOW.label+'</div><h1 class="disp">Hoje na casa</h1><p class="sub">2 jogos hoje · 34 vão assistir · 7 já chegaram</p></div>'+
     '<div class="acts"><a class="btn b-ghost sm gh" href="#">'+ic('share',18)+'Ver no app</a><button class="btn b-ink sm" type="button" data-new>'+ic('plus',18)+'Novo jogo</button></div></div>';
@@ -898,6 +946,7 @@ function chart(){
 
 /* ---------- Jogos ---------- */
 function jogos(){
+  if(fresh())return jogosNovo();
   var h='<div class="ph"><div><h1 class="disp">Jogos</h1><p class="sub">Elite · jogos ilimitados · 3 publicados na semana</p></div><div class="acts"><button class="btn b-ink sm" type="button" data-new>'+ic('plus',18)+'Novo jogo</button></div></div>';
   h+='<div class="jbar"><div class="tabs" role="tablist">'+[['prox','Próximos',3],['rasc','Rascunhos',0],['pass','Passados',6]].map(function(t){return '<button type="button" role="tab" aria-selected="'+(S.tab===t[0])+'" class="'+(S.tab===t[0]?'on':'')+'" data-tab="'+t[0]+'">'+t[1]+'<span class="n">'+t[2]+'</span></button>'}).join('')+'</div>'+
     '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><label class="q"><span class="sr">Buscar</span>'+ic('search',18)+'<input id="jq" placeholder="Buscar jogo ou time"></label>'+
@@ -947,6 +996,7 @@ var OPEN=[4,6,3,9,5,7,12,6,4,8,5,14,9,6,10,7,5,11,18,8,6,9,13,7,10,22,9,8,12,15]
 var WAP=[1,2,1,3,2,2,4,2,1,3,2,5,3,2,4,3,2,4,7,3,2,3,5,2,4,8,3,3,4,6];
 var GAMESP=[['Final da Libertadores','11 out',47,9],['Brasil × Argentina','20 out',44,9],['Flamengo × Palmeiras','28 out',45,8],['Corinthians × Santos','27 out',38,6],['Real Madrid × Barcelona','21 out',29,4],['McLaren no GP de São Paulo','4 nov',31,5]];
 function desempenho(){
+  if(fresh())return desempenhoNovo();
   var h='<div class="ph"><div><div class="k">7 out — 5 nov 2026 · Plano Elite</div><h1 class="disp">Desempenho</h1></div><div class="seg" role="tablist" aria-label="Período">'+
     [['30','30 dias'],['12m','12 meses'],['tudo','Tudo'],['pers','Personalizado']].map(function(p){return '<button type="button" role="tab" aria-selected="'+(S.per===p[0])+'" class="'+(S.per===p[0]?'on':'')+'" data-per="'+p[0]+'">'+p[1]+'</button>'}).join('')+'</div></div>';
   h+='<section class="big3" aria-label="Resumo do período">'+
@@ -991,6 +1041,7 @@ function wireChart(){
 var ALLP=['Ana Beatriz','Bruno Souza','Camila Rocha','Diego Martins','Eduarda Lopes','Felipe Nunes','Gabi Teixeira','Henrique Melo','Isabela Prado','Jonas Ribeiro','Karina Alves','Leandro Reis','Mariana Teles','Nicolas Faria','Olívia Campos','Paulo Vieira','Queila Santos','Rodrigo Braga','Sofia Mendes','Thiago Moura','Úrsula Pinto','Vinícius Cruz','Wesley Ramos','Yasmin Duarte','Zeca Barros','Amanda Freitas','Caio Lemos','Daniela Paz','Enzo Carvalho','Fernanda Lima','Gustavo Sá','João Pedro','Rafael Lima','Marina Costa'];
 function initials(n){return n.split(' ').map(function(p){return p[0]}).join('').slice(0,2).toUpperCase()}
 function quemvai(){
+  if(fresh())return quemvaiNovo();
   var g=GAMES[0],val=g.arr;
   var list=ALLP.map(function(n,i){return {n:n,v:i<val,t:'19:'+(function(m){return m<10?'0'+m:''+m})(2+i*2)}}).filter(function(p){return (S.qf==='todos'||(S.qf==='val'?p.v:!p.v))&&(!S.qq||p.n.toLowerCase().indexOf(S.qq)>=0)});
   var h='<div class="ph"><div><h1 class="disp">Quem vai</h1><p class="sub">Quem marcou "Vou assistir aqui" recebe um código. A oferta da casa sai quando você valida.</p></div><div class="acts"><button class="btn b-acid sm" type="button" data-val>'+ic('qr',18)+'Validar código</button></div></div>';
@@ -1009,10 +1060,11 @@ var HRS=[['SEG','17:00','00:00',1],['TER','17:00','00:00',1],['QUA','17:00','00:
 S.screens=6;
 function espaco(){
   var h='<div class="ph"><div><div class="k">Tudo o que o torcedor vê no app e no site</div><h1 class="disp">Meu espaço</h1></div><div class="acts"><a class="btn b-ghost sm" href="#" onclick="return false">'+ic('eye',18)+'Ver como torcedor</a></div></div>';
-  h+='<div class="esp"><div>';
-  h+='<section class="card sec2" aria-labelledby="pf"><div class="chd"><h3 id="pf">Perfil 4 de 6</h3><small>faltam 2</small></div><div class="prog"><i style="width:66%"></i></div><ul class="todo">'+
+  var fr=fresh();h+='<div class="esp'+(fr?' one':'')+'"><div>';
+  if(fr)h+=capaHtml();
+  if(!fr)h+='<section class="card sec2" aria-labelledby="pf"><div class="chd"><h3 id="pf">Perfil 4 de 6</h3><small>faltam 2</small></div><div class="prog"><i style="width:66%"></i></div><ul class="todo">'+
     [['Cadastrar o bar',1],['Cadastrar o próximo jogo',1],['Foto de capa',1],['Marcar as características',1],['Telefone do bar',0,'Para o torcedor ligar antes de sair de casa.','Adicionar'],['Confirmar WhatsApp',0,'O botão de WhatsApp só aparece no perfil depois da confirmação.','Confirmar']].map(function(t){return '<li><span class="c'+(t[1]?'':' no')+'">'+(t[1]?ic('check',16):'')+'</span><span><b>'+t[0]+'</b>'+(t[2]?'<span>'+t[2]+'</span>':'')+'</span>'+(t[3]?'<button class="btn b-ghost sm" type="button" data-edit>'+t[3]+'</button>':'')+'</li>'}).join('')+'</ul></section>';
-  h+='<section class="card sec2" aria-labelledby="ft"><div class="chd"><h3 id="ft">'+ic('camera',20)+'Fotos</h3><small>4 publicadas · 1 em revisão · até 12</small></div><div class="photos">'+
+  if(!fr)h+='<section class="card sec2" aria-labelledby="ft"><div class="chd"><h3 id="ft">'+ic('camera',20)+'Fotos</h3><small>4 publicadas · 1 em revisão · até 12</small></div><div class="photos">'+
     [['ze-g0','Salão','cap'],['ze-g1','Chopp'],['ze-g2','Galera'],['ze-g3','Telão','rev']].map(function(p){return '<div class="photo"><img src="a/'+p[0]+'.webp" alt="'+p[1]+'" loading="lazy" width="900" height="700">'+(p[2]==='rev'?'<span class="st rev">EM REVISÃO</span>':'<span class="st">'+p[1].toUpperCase()+'</span>')+(p[2]==='cap'?'<span class="cap">CAPA</span>':'')+'</div>'}).join('')+
     '<button class="addph" type="button" data-edit>'+ic('plus',22)+'Adicionar foto</button></div><p style="margin:12px 0 0;color:var(--muted);font-size:13.5px">A Onside revisa cada foto em até 24 h antes de aparecer para o torcedor.</p></section>';
   h+='<section class="card sec2" aria-labelledby="inf"><div class="chd"><h3 id="inf">'+ic('pin',20)+'Informações</h3></div><div class="form2">'+
@@ -1026,13 +1078,13 @@ function espaco(){
   h+='<section class="card sec2 cg" aria-labelledby="car"><div class="chd"><h3 id="car">'+ic('tv',20)+'Características</h3><small>o torcedor usa para filtrar</small></div>'+
     '<div class="sw" style="border:0;padding-top:16px">Quantas telas?<span class="step"><button type="button" data-scr="-1" aria-label="Menos uma tela">−</button><b>'+S.screens+'</b><button type="button" data-scr="1" aria-label="Mais uma tela">+</button></span></div>'+
     AMEN.map(function(g){return '<h4>'+g[0]+'</h4><div class="chips">'+g[1].map(function(a){return '<button type="button" class="tchip" aria-pressed="'+!!a[1]+'" data-am>'+(a[2]?ic(a[2],16):'')+a[0]+'</button>'}).join('')+'</div>'}).join('')+'</section>';
-  h+='<section class="card sec2" aria-labelledby="ofc"><div class="chd"><h3 id="ofc">'+ic('beer',20)+'Oferta da casa <span class="elite">ELITE</span></h3><small>68 de 140</small></div>'+
+  if(isElite())h+='<section class="card sec2" aria-labelledby="ofc"><div class="chd"><h3 id="ofc">'+ic('beer',20)+'Oferta da casa <span class="elite">ELITE</span></h3><small>68 de 140</small></div>'+
     '<div class="offerprev"><span class="ib">'+ic('beer',22)+'</span><span><small>PRÉVIA · O QUE O TORCEDOR VÊ</small><b>Chopp em dobro até o intervalo para quem mostrar o código da Onside.</b></span></div>'+
     '<label class="fl"><span>A oferta</span><textarea class="inp" data-edit-input>Chopp em dobro até o intervalo para quem mostrar o código da Onside.</textarea></label>'+
     '<div class="sugg">'+['Chopp em dobro','10% no primeiro pedido','Porção de batata grátis','Caipirinha pela metade'].map(function(s){return '<button type="button" class="tchip" data-edit>'+s+'</button>'}).join('')+'</div>'+
     '<div class="fl" style="margin-top:22px"><span>Como o código é conferido</span></div><div class="radio">'+[['hora','Na hora','Quem atende digita o código em Validar código.'],['comanda','Depois do jogo, pela comanda','O garçom anota e você lança até 48 h depois.']].map(function(r){return '<button type="button" aria-pressed="'+(S.code===r[0])+'" data-code="'+r[0]+'"><b>'+r[1]+'</b><span>'+r[2]+'</span></button>'}).join('')+'</div></section>';
-  h+='<section class="card sec2" aria-labelledby="cdp"><div class="chd"><h3 id="cdp">'+ic('doc',20)+'Cardápio e preço <span class="elite">PRO</span></h3></div><div class="form2"><label class="fl c4"><span>Link do cardápio</span><input class="inp" data-edit-input placeholder="https://"></label><label class="fl c2"><span>Gasto médio por pessoa</span><input class="inp" data-edit-input value="R$ 80,00"></label></div></section>';
-  h+='</div><aside class="prev" aria-label="Prévia"><div class="seg" role="tablist" style="margin:0 auto"><button type="button" class="on">Página</button><button type="button" data-soon>Card · em breve</button><button type="button" data-soon>Mapa · em breve</button></div><div class="phone"><img src="a/tela-bar.webp" alt="Prévia da página do Bar do Zé no app" width="448" height="976"></div><p>A prévia acompanha o que você salva. Fotos e descrição em revisão aparecem só aqui.</p></aside></div>';
+  if(planK()!=='starter')h+='<section class="card sec2" aria-labelledby="cdp"><div class="chd"><h3 id="cdp">'+ic('doc',20)+'Cardápio e preço <span class="elite">PRO</span></h3></div><div class="form2"><label class="fl c4"><span>Link do cardápio</span><input class="inp" data-edit-input placeholder="https://"></label><label class="fl c2"><span>Gasto médio por pessoa</span><input class="inp" data-edit-input value="R$ 80,00"></label></div></section>';
+  h+='</div>'+(fr?'':'<aside class="prev" aria-label="Prévia"><div class="seg" role="tablist" style="margin:0 auto"><button type="button" class="on">Página</button><button type="button" data-soon>Card · em breve</button><button type="button" data-soon>Mapa · em breve</button></div><div class="phone"><img src="a/tela-bar.webp" alt="Prévia da página do Bar do Zé no app" width="448" height="976"></div><p>A prévia acompanha o que você salva. Fotos e descrição em revisão aparecem só aqui.</p></aside>')+'</div>';
   h+='<div class="savebar'+(S.dirty?' on':'')+'" id="savebar" role="status"><span>Alterações não salvas no seu espaço</span><button class="btn b-ghost sm" type="button" data-discard>Descartar</button><button class="btn b-acid sm" type="button" data-save>Salvar alterações</button></div>';
   return h;
 }
@@ -1254,70 +1306,206 @@ document.addEventListener('click',function(e){
 });
 document.addEventListener('input',function(e){var g=e.target.getAttribute&&e.target.getAttribute('data-fg');if(!g)return;S.fg[g]=e.target.value;S.fg.sg=-1;var pv=document.getElementById('fgprev');if(pv)pv.innerHTML=pgameHtml();var pb=document.querySelector('[data-fgpub]');if(pb)pb.disabled=!fgName();[].forEach.call(document.querySelectorAll('.sgb.on'),function(b){b.classList.remove('on');b.setAttribute('aria-pressed','false')})});
 document.addEventListener('input',function(e){var k=e.target.getAttribute&&e.target.getAttribute('data-bf');if(!k)return;S.bf[k]=e.target.value;var pv=document.querySelector('.obprev .pin2 b');if(pv&&k==='nome')pv.textContent=e.target.value||'Seu bar'});
-/* ---------- primeira entrada: primeiros passos e tour ---------- */
-S.guide='off';S.gd={jogo:1,plano:0,ver:0,foto:0,link:0,semana:0};
-function GUIDE(){var pl=PLANS[S.bf.plan||rec().p].n,fg=fgName()||'Corinthians × Palmeiras';return [
-  ['jogo','Publicar o primeiro jogo',fg+', '+fgDay()+' '+S.fg.h+' · por conta da Onside, fora do limite do plano',''],
-  ['plano','Escolher o plano do teste',S.gd.plano?pl+' grátis até 5 mar, sem cartão':'Seu teste está no '+pl+', o recomendado pela sua rotina. Grátis até 5 mar, sem cartão.','<a class="btn b-ink sm" href="#plano" data-gdo="plano">Escolher</a>'],
-  ['ver','Ver como o torcedor vê','Seu bar no Explorar e na página do bar, com o jogo publicado.','<a class="btn b-ghost sm" href="#meu-espaco" data-gdo="ver">Ver a prévia</a>'],
-  ['foto','Foto de capa e horário','Com foto e horário, o card do bar sai completo na busca. A foto passa pela revisão da Onside.','<a class="btn b-ghost sm" href="#meu-espaco" data-gdo="foto">Abrir Meu espaço</a>'],
-  ['link','Mandar o link do bar para os clientes','No grupo do WhatsApp, na bio do Instagram ou o QR no balcão.','<span class="gsh"><button class="btn b-ghost sm" type="button" data-share="wa">WhatsApp</button><button class="btn b-ghost sm" type="button" data-share="ig">Instagram</button><button class="btn b-ghost sm" type="button" data-share="qr">'+ic('qr',16)+'QR</button></span>'],
-  ['semana','Cadastrar os jogos da semana','Cada jogo na grade é mais uma busca em que o bar aparece.','<button class="btn b-ghost sm" type="button" data-gdo="semana" data-new>'+ic('plus',16)+'Ver sugestões</button>']]}
-function guideHtml(){
-  var proto='<div class="gproto" role="group" aria-label="Estado do guia no protótipo"><span class="k2">Protótipo · primeira entrada</span>'+[['off','Sem guia'],['ini','Início'],['meio','No meio'],['fim','Completo']].map(function(o){return '<button type="button" data-gst="'+o[0]+'" aria-pressed="'+(guideSt()===o[0])+'">'+o[1]+'</button>'}).join('')+'<button type="button" data-tour>'+ic('sparkle',14)+'Ver o tour</button></div>';
-  if(S.guide==='off')return proto;
+/* ---------- bar novo: o painel logo depois do cadastro, primeiros passos e passeio ---------- */
+/* Com o guia ligado, o painel é o do bar que acabou de entrar: só o primeiro jogo, tudo em zero, o plano escolhido. "Sem guia" volta ao bar com histórico. */
+function fresh(){return S.guide!=='off'}
+function planK(){return fresh()?(S.bf.plan||rec().p):'elite'}
+function isElite(){return planK()==='elite'}
+function isM(){return matchMedia('(max-width:860px)').matches}
+var WD={'2026-11-05':['Hoje · qui, 5 nov','hoje','hoje'],'2026-11-06':['Amanhã · sex, 6 nov','amanhã','sexta'],'2026-11-07':['Sáb, 7 nov','sáb, 7 nov','sábado'],'2026-11-08':['Dom, 8 nov','dom, 8 nov','domingo']};
+function wd(iso,i){var w=WD[iso];return w?w[i]:iso.split('-').reverse().slice(0,2).join('/')}
+S.fx=[];S.capa=0;S.hrs=0;S.treino=0;
+function mk(id,iso,h,name,c,tv,snd){var p=h.split(':');return {id:id,iso:iso,h:h,t:+p[0]+(+p[1])/60,g:name,c:c||'',tv:tv,snd:snd,going:0,arr:0,saw:0,today:iso==='2026-11-05'}}
+function firstGame(){var n=fgName(),s=SUGG[0],g=S.fg;if(!n)return mk('f0',s[1],s[2],s[3]+' × '+s[4],s[5],fgTv(),fgSnd());return mk('f0',g.d,g.h,n,g.mode==='x'?g.camp:'',fgTv(),fgSnd())}
+function freshGames(){return [firstGame()].concat(S.fx).sort(function(a,b){return (a.iso+a.h)<(b.iso+b.h)?-1:1})}
+function sugName(x){return x[3]?x[3]+' × '+x[4]:x[5]}
+function freshSugg(){var have=freshGames().map(function(g){return g.g});return SUGG.map(function(x,i){return {i:i,n:sugName(x),x:x}}).filter(function(s){return have.indexOf(s.n)<0}).slice(0,4)}
+function addSugg(i){var x=SUGG[i];S.fx.push(mk('s'+i,x[1],x[2],sugName(x),x[3]?x[5]:'',!!S.bf.am['Telão / projetor'],!!S.bf.am['Som do jogo ligado']));S.gd.semana=1}
+function lockCard(id,t,pl,txt){return '<section class="card" id="'+id+'"><div class="chd"><h3>'+t+' <span class="elite">'+pl.toUpperCase()+'</span></h3></div><p class="lockn">'+ic('lock',18)+'<span>'+txt+'</span></p><a class="lnk" href="#plano">Ver o '+pl+' '+ic('next',16)+'</a></section>'}
+
+function hojeNovo(){var G=freshGames(),g=G[0],el=isElite(),today=G.filter(function(x){return x.today}),m=minsTo(g),days=+g.iso.slice(8)-5,tv=S.bf.telas>1?S.bf.telas+' telões':'Telão';
+  var h='<div class="ph"><div><div class="k">quinta, 5 nov · Vila Madalena · agora '+NOW.label+'</div><h1 class="disp">Hoje na casa</h1><p class="sub">'+(today.length?today.length+(today.length>1?' jogos hoje':' jogo hoje')+' · '+(el?'ninguém marcou ainda':'o bar acabou de entrar no ar'):'Nenhum jogo hoje · o próximo é '+esc(wd(g.iso,1))+', '+g.h)+'</p></div><div class="acts"><button class="btn b-ink sm" type="button" data-new>'+ic('plus',18)+'Novo jogo</button></div></div>';
+  h+=guideHtml();
+  h+='<section class="now" id="t-now" aria-label="Próximo jogo"><div class="l"><span class="tag"><i></i>'+(g.id==='f0'?'SEU PRIMEIRO JOGO':'PRÓXIMO JOGO')+' · '+esc(wd(g.iso,1).toUpperCase())+' '+g.h+(g.c?' · '+esc(g.c.toUpperCase()):'')+'</span>'+
+    '<h2 class="disp">'+esc(g.g).replace(' × ',' <span>×</span> ')+'</h2>'+
+    '<ul class="meta">'+(g.tv?'<li>'+ic('tv',16)+tv+'</li>':'')+(g.snd?'<li>'+ic('sound',16)+'Som ligado</li>':'')+(el?'<li>'+ic('people',16)+'Lista aberta</li>':'')+'<li>'+ic('check',16)+'Publicado</li></ul>'+
+    (el?'<div class="offer"><span class="ib">'+ic('beer',20)+'</span><span><b>Oferta da casa</b><span>Chopp em dobro até o intervalo</span></span></div>':'')+
+    '<div class="acts">'+(el?'<button class="btn b-acid" type="button" data-val>'+ic('qr',20)+'Validar código</button>':'<button class="btn b-acid" type="button" data-share="wa">'+ic('share',20)+'Mandar o link do jogo</button>')+'<a class="btn b-ghost sm" style="height:48px;color:inherit" href="#jogos">Ver na grade</a></div></div>'+
+    '<div class="r"><div class="cd">'+(g.today?'A BOLA ROLA EM':days>1?'FALTAM':'FALTA')+'<b>'+(g.today?(Math.floor(m/60)?Math.floor(m/60)+'h'+(m%60<10?'0':''):'')+(m%60)+'min':days+(days>1?' dias':' dia'))+'</b></div>'+
+    (el?'<div class="trio"><div><b>0</b><span>vão assistir</span></div><div><b>0</b><span>já chegaram</span></div><div><b>0</b><span>ainda a caminho</span></div></div><div><div class="cd" style="display:flex;justify-content:space-between"><span>CHEGADAS</span><span>0 DE 0</span></div><div class="bar"><i style="width:0"></i></div></div>'
+      :'<div class="trio"><div><b>0</b><span>viram o bar</span></div><div><b>0</b><span>se interessaram</span></div><div><b>—</b><span>taxa de interesse</span></div></div><span class="cd" style="font-size:12.5px">Conta a partir de hoje. Interesse é quem toca em WhatsApp, rota ou telefone.</span>')+'</div></section>';
+  if(today.length){
+    h+='<section class="card night" aria-labelledby="ntit"><div class="chd"><h3 id="ntit">A noite</h3><small>18h → 2h · toque num jogo para abrir</small></div><div class="rule-wrap"><div class="rule"><div class="hours">';
+    for(var i=0;i<=8;i++){var hr=(18+i)%24;h+='<span style="left:'+(i*12.5)+'%">'+(hr<10?'0':'')+hr+'h</span>'}
+    h+='</div><div class="grid"></div><div class="nowline" style="left:'+((NOW.h+NOW.m/60-18)*12.5)+'%"></div>';
+    today.forEach(function(x,i){h+='<button type="button" class="trk'+(i===0?' hot':'')+'" data-open="'+x.id+'" style="left:calc('+((x.t-18)*12.5)+'% + 3px);width:calc(25% + 60px);top:'+(40+i*72)+'px"><span class="t1"><span>'+x.h+(x.c?' · '+esc(x.c):'')+'</span><span>'+(el?'ninguém marcou ainda':'publicado')+'</span></span><b>'+esc(x.g)+'</b></button>'});
+    h+='</div></div></section>';
+  }
+  h+='<div class="duo">'+(el?'<section class="card" aria-labelledby="ctit"><div class="chd"><h3 id="ctit">Chegaram agora</h3><small>0 validados hoje</small></div><p class="empty2" style="text-align:left;padding:16px 0 0">Quem mostrar o código no balcão aparece aqui na hora, com a oferta liberada.</p></section>'
+      :'<section class="card" aria-labelledby="rtit"><div class="chd"><h3 id="rtit">Avaliações recentes</h3><small>nenhuma ainda</small></div><p class="empty2" style="text-align:left;padding:16px 0 0">Depois do jogo, quem foi ao bar avalia. As avaliações aparecem aqui, e os comentários passam pela revisão da Onside.</p></section>')+
+    '<section class="card" aria-labelledby="dtit"><div class="chd"><h3 id="dtit">Seu bar nos últimos 30 dias</h3><small>desde 5 nov</small></div><div class="nums"><div><b>0</b><span>pessoas viram seu bar</span></div><div><b>0</b><span>se interessaram por um jogo</span></div><div><b>—</b><span>taxa de interesse</span></div></div><p style="margin:14px 0 0;color:var(--muted);font-size:14px">Os números começam com o primeiro jogo.</p><a class="lnk" href="#desempenho">Ver desempenho '+ic('next',16)+'</a></section></div>';
+  return h}
+
+function rowNovo(g,sel){var el=isElite();return '<button type="button" class="row'+(g.id===sel.id?' on':'')+'" data-open="'+g.id+'" aria-pressed="'+(g.id===sel.id)+'"><span class="h">'+g.h+'<small>'+(g.today?'em '+fmtIn(g):esc(wd(g.iso,1)))+'</small></span>'+
+  '<span><b>'+esc(g.g)+'</b><span class="m">'+esc(g.c||'Evento')+'</span><span class="chips">'+(g.tv?'<span class="chip">'+ic('tv',15)+'Telão</span>':'')+(g.snd?'<span class="chip">'+ic('sound',15)+'Som</span>':'')+(g.id==='f0'?'<span class="chip">'+ic('sparkle',15)+'Por conta da Onside</span>':'')+'<span class="badge pub">PUBLICADO</span></span></span>'+
+  '<span class="st"><b>0</b><span>'+(el?'ninguém marcou ainda':'viram o bar')+'</span>'+(el?'<div class="bar"><i style="width:0"></i></div>':'')+'</span></button>'}
+function detailNovo(g){var el=isElite();
+  return '<div class="top"><span class="badge pub">PUBLICADO</span><button class="btn b-ghost ic" type="button" aria-label="Copiar o link do jogo" data-share="link">'+ic('share',18)+'</button></div>'+
+    '<h2 class="disp">'+esc(g.g)+'</h2><p class="m">'+esc((g.c?g.c+' · ':'')+wd(g.iso,1)+', '+g.h)+'</p>'+
+    '<div class="trio">'+(el?'<div><b>0</b><span>vão assistir</span></div><div><b>0</b><span>validaram</span></div><div><b>0</b><span>viram o jogo</span></div>':'<div><b>0</b><span>viram o bar</span></div><div><b>0</b><span>se interessaram</span></div><div><b>—</b><span>taxa</span></div>')+'</div>'+
+    (el?'<div class="offer"><span class="ib">'+ic('beer',20)+'</span><span><b>Oferta da casa neste jogo</b><span>Chopp em dobro até o intervalo</span></span></div>':'')+
+    '<div style="margin-top:10px"><div class="sw">'+ic('tv',20)+'Passa no telão<button class="tg" type="button" role="switch" aria-checked="'+g.tv+'" aria-label="Passa no telão"></button></div><div class="sw">'+ic('sound',20)+'Som do jogo ligado<button class="tg" type="button" role="switch" aria-checked="'+g.snd+'" aria-label="Som ligado"></button></div></div>'+
+    (el?'<div class="chd" style="margin-top:14px"><h3>Quem vai</h3><small>0 marcaram</small></div><p style="color:var(--muted);margin:10px 0 0;font-size:14.5px">Ninguém marcou ainda. Quem marcar “Vou assistir aqui” aparece aqui, com o código para validar.</p>'
+      :'<p class="lockn">'+ic('people',18)+'<span><b>Quem vai, jogo a jogo</b> é do Elite: quem marcou e quem chegou, com o código do balcão.</span></p>')+
+    '<div class="acts"><button class="btn b-ghost sm" type="button" data-new>Editar</button><button class="btn b-ghost sm" type="button" data-dup>Duplicar</button></div>'}
+function jogosNovo(){var G=freshGames(),pk=planK(),lim=pk==='starter',used=S.fx.length;
+  var h='<div class="ph"><div><h1 class="disp">Jogos</h1><p class="sub">'+(lim?'Starter · '+used+' de 5 jogos do mês · o primeiro foi por conta da Onside':PLANS[pk].n+' · jogos ilimitados · '+G.length+(G.length>1?' publicados':' publicado'))+'</p></div><div class="acts"><button class="btn b-ink sm" type="button" data-new>'+ic('plus',18)+'Novo jogo</button></div></div>';
+  h+='<div class="jbar"><div class="tabs" role="tablist">'+[['prox','Próximos',G.length],['rasc','Rascunhos',0],['pass','Passados',0]].map(function(t){return '<button type="button" role="tab" aria-selected="'+(S.tab===t[0])+'" class="'+(S.tab===t[0]?'on':'')+'" data-tab="'+t[0]+'">'+t[1]+'<span class="n">'+t[2]+'</span></button>'}).join('')+'</div>'+
+    '<div class="tabs">'+[['lista','Lista'],['semana','Semana']].map(function(t){return '<button type="button" class="'+(S.mode===t[0]?'on':'')+'" data-mode="'+t[0]+'">'+t[1]+'</button>'}).join('')+'</div></div>';
+  if(S.tab!=='prox')return h+'<div class="card" style="margin-top:22px;text-align:center;padding:48px 24px"><p class="disp" style="font-size:30px">'+(S.tab==='rasc'?'Nenhum rascunho':'Nenhum jogo passado')+'</p><p style="color:var(--muted);margin:10px 0 0">'+(S.tab==='rasc'?'Jogo salvo sem publicar aparece aqui. O torcedor não vê.':'Depois de '+esc(G[0].g)+', ele aparece aqui com quantos viram o bar.')+'</p></div>';
+  if(S.mode==='semana'){
+    var days=[['dom','1'],['seg','2'],['ter','3'],['qua','4'],['qui','5'],['sex','6'],['sáb','7']];
+    return h+'<div class="week">'+days.map(function(d){var gs=G.filter(function(g){return +g.iso.slice(8)===+d[1]});return '<div class="wd'+(d[1]==='5'?' today':'')+'"><h4>'+d[0]+'<b>'+d[1]+' nov</b></h4>'+gs.map(function(g){return '<button type="button" class="wg" data-open="'+g.id+'"><b>'+g.h+'</b>'+esc(g.g)+'</button>'}).join('')+'<button type="button" class="add" data-new>+ jogo</button></div>'}).join('')+'</div>';
+  }
+  var sg=freshSugg(),sel=G.filter(function(g){return g.id===S.sel})[0]||G[0];
+  h+='<div class="jl"><div>';
+  if(sg.length&&!(lim&&used>=5))h+='<section class="card sec2 sugw" id="t-sug" aria-labelledby="sgt"><div class="chd"><h3 id="sgt">'+ic('sparkle',20)+'Mais jogos desta semana</h3><small>que os torcedores perto da '+esc(S.bf.bairro)+' seguem</small></div><div class="sgs">'+
+    sg.map(function(s){var x=s.x;return '<button type="button" class="sgb" data-fadd="'+s.i+'"><span class="d">'+x[2]+'</span><span><b>'+esc(s.n)+'</b><span>'+esc((x[3]?x[5]+' · ':'')+DAYN[x[1]])+'</span></span>'+ic('plus',18)+'</button>'}).join('')+
+    '</div><p class="hint2">'+ic('check',16)+'Um toque publica, com o telão e o som do bar. '+(lim?'Cada um conta nos 5 jogos do mês.':'Dá para editar depois.')+'</p></section>';
+  var byDay={};G.forEach(function(g){(byDay[g.iso]=byDay[g.iso]||[]).push(g)});
+  Object.keys(byDay).sort().forEach(function(d){h+='<div class="day">'+esc(wd(d,0))+'</div>'+byDay[d].map(function(g){return rowNovo(g,sel)}).join('')});
+  h+='</div><aside class="det" aria-label="Jogo aberto">'+detailNovo(sel)+'</aside></div>';
+  return h}
+function quemvaiNovo(){var G=freshGames(),g=G[0];
+  var h='<div class="ph"><div><h1 class="disp">Quem vai</h1><p class="sub">Quem marca "Vou assistir aqui" recebe um código. A oferta da casa sai quando você valida.</p></div>'+(isElite()?'<div class="acts"><button class="btn b-acid sm" type="button" data-val>'+ic('qr',18)+'Validar código</button></div>':'')+'</div>';
+  if(!isElite())return h+'<div style="margin-top:24px">'+lockCard('qv-lock','Quem vai, jogo a jogo','Elite','Quem marcou que vai assistir no bar e quem chegou, com o código do balcão e a oferta da casa. Faz parte do Elite.')+'</div>';
+  h+='<section class="card qv" id="t-treino" aria-labelledby="trt"><div class="chd"><h3 id="trt">Treine o balcão</h3><small>exemplo · não conta nas visitas</small></div><div class="trg"><div class="tkt"><span class="mono">CÓDIGO DO BALCÃO</span><b>GRT-GVX</b><span>Torcedor de exemplo · '+esc(g.g)+'</span></div>'+
+    '<div><p class="trp">É o que o torcedor mostra no celular. No balcão, você digita as 6 letras.</p><div class="boxes" id="trbox" aria-hidden="true">'+'GRTGVX'.split('').map(function(c){return '<input readonly tabindex="-1" value="'+(S.treino?c:'')+'">'}).join('')+'</div>'+
+    (S.treino?'<div class="vres on" role="status"><b>Código validado</b><p style="margin:8px 0 0;font-size:15px">Exemplo · '+esc(g.g)+'. Num código de verdade, aqui você libera a oferta: chopp em dobro até o intervalo.</p></div>':'<button class="btn b-acid" type="button" data-treino style="margin-top:16px">'+ic('qr',18)+'Validar o código de exemplo</button>')+'</div></div></section>';
+  G.forEach(function(x){h+='<section class="card qv"><div class="gh"><span class="h">'+x.h+'</span><span><b>'+esc(x.g)+'</b><span>'+esc(wd(x.iso,1)+(x.c?' · '+x.c:''))+' · oferta: chopp em dobro</span></span><span class="cnt"><b>0</b><span>marcaram</span></span></div><p class="empty2" style="padding-bottom:6px">Ninguém marcou ainda. Quando alguém marcar, aparece aqui com o código para validar.</p></section>'});
+  return h}
+function desempenhoNovo(){var pk=planK(),g=firstGame(),dia=wd(g.iso,2);
+  var h='<div class="ph"><div><div class="k">desde 5 nov 2026 · Plano '+PLANS[pk].n+'</div><h1 class="disp">Desempenho</h1></div><div class="seg" role="tablist" aria-label="Período">'+(pk==='starter'?[['30','30 dias']]:[['30','30 dias'],['12m','12 meses'],['tudo','Tudo']]).map(function(p,i){return '<button type="button" role="tab" aria-selected="'+!i+'" class="'+(i?'':'on')+'">'+p[1]+'</button>'}).join('')+'</div></div>';
+  h+='<div class="later" style="max-width:none"><span class="ib">'+ic('calendar',20)+'</span><span><b>Depois do jogo de '+esc(dia)+', aparece aqui</b>'+esc(g.g)+', '+esc(wd(g.iso,1))+' às '+g.h+', é o primeiro jogo do '+esc(S.bf.nome)+'. Até lá os números ficam em zero: nada aqui é estimativa.</span></div>';
+  h+='<section class="big3" id="t-big3" aria-label="Resumo do período"><div><span class="l">Pessoas que viram seu bar</span><b>0</b><p>abriram a página do bar</p></div><div><span class="l">Se interessaram</span><b>0</b><p>tocaram em WhatsApp, rota ou telefone</p></div><div><span class="l">Taxa de interesse</span><b>—</b><p>de quem viu o bar, quantos quiseram ir</p></div></section>';
+  h+='<div class="duo">'+(pk==='elite'?'<section class="card" id="t-quemfoi" aria-labelledby="qfo"><div class="chd"><h3 id="qfo">Quem foi pela Onside</h3><small>visita verificada</small></div><div class="funnel"><div><b>0</b><span>marcaram que iam</span></div><span class="arrow">'+ic('next',22)+'</span><div><b>0</b><span>validaram no balcão</span></div></div><div class="prog" style="margin-top:18px"><i style="width:0"></i></div><p style="margin:12px 0 0;color:var(--muted);font-size:14px">Quem marcou "Vou assistir aqui" e quem mostrou o código. O código de exemplo não entra.</p></section>'
+      :lockCard('t-quemfoi','Quem foi pela Onside','Elite','Quem marcou que ia e quem validou o código no balcão: a visita verificada. Faz parte do Elite.'))+
+    (pk!=='starter'?'<section class="card" id="t-canais" aria-labelledby="ctp"><div class="chd"><h3 id="ctp">Como te procuraram</h3><small>a partir do Pro</small></div><div class="hbars">'+['WhatsApp','Rota','Telefone'].map(function(x){return '<div class="hb"><div class="t"><span>'+x+'</span><span><b>0</b></span></div><div class="tr"><i style="width:0"></i></div></div>'}).join('')+'</div><p style="margin:14px 0 0;color:var(--muted);font-size:14px">Depois do jogo, o canal mais usado aparece no topo.</p></section>'
+      :lockCard('t-canais','Como te procuraram','Pro','Por onde o torcedor chamou o bar: WhatsApp, rota ou telefone, jogo a jogo. Faz parte do Pro.'))+'</div>';
+  return h}
+function cardPrev(){var f=S.bf,g=freshGames()[0];
+  return '<article class="fbc cprev" aria-label="Prévia do card do bar na busca"><div class="ph3">'+(S.capa?'<img src="a/bar-ze.webp" alt=""><span class="rvw">EM REVISÃO</span>':'<span class="nof">'+ic('camera',26)+'Sem foto de capa</span>')+'</div>'+
+    '<div class="bd3"><div><b class="nm">'+esc(f.nome)+'</b><span class="mt">'+esc(f.bairro)+' · <span class="mono">450 m</span> · '+(S.hrs?'aberto até 02:00':'<span style="color:var(--live-text)">horário não informado</span>')+'</span></div><div class="gm3">'+ic('tv',16)+'<span><b>'+esc(g.g)+'</b> · '+esc(wd(g.iso,1))+' '+g.h+'</span></div></div></article>'}
+function capaHtml(){var pk=planK(),n=(S.capa?1:0)+(S.hrs?1:0);
+  return '<section class="card sec2" id="t-capa" aria-labelledby="cpt"><div class="cpg"><div><div class="chd"><h3 id="cpt">'+ic('camera',20)+'Foto de capa e horário</h3><small>'+n+' de 2</small></div>'+
+    '<div class="ln"><span><b>Foto de capa</b><span>'+(S.capa?'Enviada. Entra no card depois da revisão da Onside, em até 24 h.':'A primeira coisa que o torcedor vê na busca.'+(pk==='starter'?' No Starter vai a capa; a galeria é do Pro.':''))+'</span></span>'+(S.capa?'<span class="ok">'+ic('check',14)+'Enviada</span>':'<button class="btn b-ink sm" type="button" data-capa="capa">'+ic('camera',18)+'Escolher foto</button>')+'</div>'+
+    '<div class="ln"><span><b>Horário</b><span>'+(S.hrs?'Todo dia, 17:00 às 02:00. Ajuste os dias em Horário, abaixo.':'Sem horário, o card não diz se o bar está aberto.')+'</span></span>'+(S.hrs?'<span class="ok">'+ic('check',14)+'Salvo</span>':'<button class="btn b-ghost sm" type="button" data-capa="hrs">Usar 17:00 às 02:00</button>')+'</div></div>'+
+    '<div><span class="k2">Prévia · o card na busca</span>'+cardPrev()+'</div></div></section>'}
+
+/* primeiros passos: os itens marcam pelo que o dono fez, inclusive no passeio */
+S.guide='off';S.gd={jogo:1,plano:0,passeio:0,semana:0,foto:0,codigo:0,link:0};S.seen={};S.steps=[];
+function GUIDE(){var pk=planK(),pl=PLANS[pk].n,g=firstGame(),bar=esc(S.bf.nome),el=pk==='elite',rest=tourSteps().filter(function(k){return !S.seen[k]}).length,paused=Object.keys(S.seen).length&&!S.gd.passeio;
+  var G=[
+  ['jogo','Publicar o primeiro jogo',esc(g.g+', '+wd(g.iso,1)+' '+g.h)+' · por conta da Onside, fora do limite do plano','','publicar o primeiro jogo'],
+  ['plano','Escolher o plano do teste',S.gd.plano?pl+' grátis até 5 mar, sem cartão':'Seu teste está no '+pl+', o recomendado pela sua rotina. Grátis até 5 mar, sem cartão.','<a class="btn b-ghost sm" href="#plano" data-gdo="plano">Escolher</a>','escolher o plano'],
+  ['passeio','Conhecer o painel',S.gd.passeio?'Passeio feito: Hoje, Jogos, Meu espaço'+(el?', Quem vai':'')+' e Desempenho.':paused?'Você parou no meio. Falta'+(rest>1?'m '+rest+' telas':' 1 tela')+', com os dados do '+bar+'.':'Um passeio pelas telas que você vai usar, com o seu jogo e os números do '+bar+'.','<button class="btn b-ink sm" type="button" data-tour="'+(paused?'resume':'')+'">'+ic('sparkle',16)+(paused?'Continuar o passeio':'Fazer o passeio')+'</button>','conhecer o painel'],
+  ['semana','Pôr mais um jogo na grade',S.fx.length?esc(S.fx.map(function(x){return x.g}).join(', '))+' na grade':'Cada jogo na grade é mais uma busca em que o bar aparece.','<a class="btn b-ghost sm" href="#jogos">'+ic('plus',16)+'Ver sugestões</a>','pôr mais um jogo na grade'],
+  ['foto','Foto de capa e horário',S.gd.foto?'Capa em revisão e horário no card do bar.':'Com foto e horário, o card do bar sai completo na busca. A foto passa pela revisão da Onside.','<a class="btn b-ghost sm" href="#meu-espaco">Abrir Meu espaço</a>','a foto de capa e o horário']];
+  if(el)G.push(['codigo','Validar um código de teste',S.gd.codigo?'Código de exemplo validado. O próximo é de um torcedor de verdade.':'Treine o balcão com um código de exemplo antes do primeiro torcedor chegar.','<a class="btn b-ghost sm" href="#quem-vai">'+ic('qr',16)+'Treinar</a>','validar um código de teste']);
+  G.push(['link','Mandar o link do bar para os clientes','No grupo do WhatsApp, na bio do Instagram ou o QR no balcão.','<span class="gsh"><button class="btn b-ghost sm" type="button" data-share="wa">WhatsApp</button><button class="btn b-ghost sm" type="button" data-share="ig">Instagram</button><button class="btn b-ghost sm" type="button" data-share="qr">'+ic('qr',16)+'QR</button></span>','mandar o link para os clientes']);
+  return G}
+function guideHtml(){var st=guideSt();
+  var proto='<div class="gproto" role="group" aria-label="Estado do protótipo"><span class="k2">Protótipo · bar novo</span>'+[['off','Sem guia'],['ini','Início'],['meio','No meio'],['fim','Completo']].map(function(o){return '<button type="button" data-gst="'+o[0]+'" aria-pressed="'+(st===o[0])+'">'+o[1]+'</button>'}).join('')+
+    '<span class="gsep" aria-hidden="true"></span><span class="k2">Plano</span>'+ORD.map(function(p){return '<button type="button" data-gpl="'+p+'" aria-pressed="'+(fresh()&&planK()===p)+'">'+PLANS[p].n+'</button>'}).join('')+'<button type="button" data-tour>'+ic('sparkle',14)+'Ver o passeio</button></div>';
+  if(!fresh())return proto;
   var G=GUIDE(),n=G.filter(function(g){return S.gd[g[0]]}).length;
-  if(n===G.length)return proto+'<section class="gdone" aria-labelledby="gdt" id="guide"><span class="big">'+ic('check',34)+'</span><span><h3 id="gdt" class="disp">Casa pronta pro dia de jogo</h3><p>Os 6 primeiros passos estão feitos. Daqui pra frente, é manter a grade cheia.</p></span><button class="btn b-acid sm" type="button" data-gst="off">Fechar</button></section>';
+  if(n===G.length)return proto+'<section class="gdone" aria-labelledby="gdt" id="guide"><span class="big">'+ic('check',34)+'</span><span><h3 id="gdt" class="disp">Casa pronta pro dia de jogo</h3><p>Os '+G.length+' primeiros passos estão feitos. Daqui pra frente, é manter a grade cheia.</p></span><button class="btn b-acid sm" type="button" data-gst="off">Fechar</button></section>';
   var next=G.filter(function(g){return !S.gd[g[0]]})[0][0];
   return proto+'<section class="card guide" aria-labelledby="gt" id="guide"><div class="ghd"><span><span class="k2">'+n+' de '+G.length+' feitos</span><h3 id="gt">Primeiros passos do '+esc(S.bf.nome)+'</h3></span><button class="linkb" type="button" data-gst="off">Esconder</button></div>'+
-    '<div class="prog"><i style="width:'+Math.round(n/G.length*100)+'%"></i></div><ol class="gl">'+G.map(function(g){var ok=!!S.gd[g[0]];return '<li class="'+(ok?'dn':'')+(g[0]===next?' nx':'')+'"><span class="c" aria-hidden="true">'+(ok?ic('check',16):'')+'</span><span><b>'+g[1]+'<span class="sr">'+(ok?' · feito':' · falta')+'</span></b><span>'+esc(g[2])+'</span></span>'+(ok?'<span class="ok">'+ic('check',14)+'Feito</span>':g[3])+'</li>'}).join('')+'</ol></section>';
+    '<div class="prog"><i style="width:'+Math.round(n/G.length*100)+'%"></i></div><ol class="gl">'+G.map(function(g){var ok=!!S.gd[g[0]];return '<li class="'+(ok?'dn':'')+(g[0]===next?' nx':'')+'"><span class="c" aria-hidden="true">'+(ok?ic('check',16):'')+'</span><span><b>'+g[1]+'<span class="sr">'+(ok?' · feito':' · falta')+'</span></b><span>'+g[2]+'</span></span>'+(ok?'<span class="ok">'+ic('check',14)+'Feito</span>':g[3])+'</li>'}).join('')+'</ol></section>';
 }
-function guideSt(){if(S.guide==='off')return 'off';var n=Object.keys(S.gd).filter(function(k){return S.gd[k]}).length;return n===6?'fim':n>=4?'meio':'ini'}
-function guideMark(k){if(S.guide==='off'||S.gd[k])return;S.gd[k]=1;setTimeout(render,0)}
-var GST={ini:{jogo:1,plano:0,ver:0,foto:0,link:0,semana:0},meio:{jogo:1,plano:1,ver:1,foto:0,link:1,semana:0},fim:{jogo:1,plano:1,ver:1,foto:1,link:1,semana:1}};
+function guideSt(){if(!fresh())return 'off';var G=GUIDE(),n=G.filter(function(g){return S.gd[g[0]]}).length;return n===G.length?'fim':n>=4?'meio':'ini'}
+function guideMark(k){if(!fresh()||S.gd[k])return;S.gd[k]=1;setTimeout(render,0)}
+var GST={ini:{jogo:1,plano:1,passeio:0,semana:0,foto:0,codigo:0,link:0},meio:{jogo:1,plano:1,passeio:0,semana:1,foto:1,codigo:0,link:0},fim:{jogo:1,plano:1,passeio:1,semana:1,foto:1,codigo:1,link:1}};
+function preset(v){S.guide='on';S.gd=JSON.parse(JSON.stringify(GST[v]));S.capa=S.hrs=S.gd.foto;S.treino=S.gd.codigo;S.fx=[];if(S.gd.semana){var s=freshSugg()[0];if(s)addSugg(s.i)}S.seen={};if(S.gd.passeio)['hoje','jogos','espaco','codigo','desempenho','fim'].forEach(function(k){S.seen[k]=1})}
 document.addEventListener('click',function(e){var t;
-  if(t=e.target.closest('[data-gst]')){var v=t.dataset.gst;if(v==='off'){S.guide='off';if(t.closest('.guide'))toast('Primeiros passos escondido. Você retoma pelos botões do protótipo.')}else{S.guide='on';S.gd=JSON.parse(JSON.stringify(GST[v]))}render();return}
+  if(t=e.target.closest('[data-gst]')){var v=t.dataset.gst;if(v==='off'){S.guide='off';if(t.closest('.guide'))toast('Primeiros passos escondido. Você retoma pelos botões do protótipo.')}else preset(v);render();return}
+  if(t=e.target.closest('[data-gpl]')){if(!fresh())preset('ini');S.bf.plan=t.dataset.gpl;S.bf.picked=true;S.gd.plano=1;render();return}
   if(t=e.target.closest('[data-gdo]')){guideMark(t.dataset.gdo);return}
-  if(t=e.target.closest('[data-tour]')){tourStart();return}
+  if(t=e.target.closest('[data-tour]')){tourStart(t.dataset.tour==='resume');return}
+  if(t=e.target.closest('[data-fadd]')){var i=+t.dataset.fadd;addSugg(i);toast(sugName(SUGG[i])+' publicado. Já aparece para quem procura esse jogo perto do bar.');render();if(tourI>=0&&S.steps[tourI]==='jogos'){clearTimeout(S.tat);S.tat=setTimeout(tourNext,1500)}return}
+  if(t=e.target.closest('[data-capa]')){S[t.dataset.capa]=1;if(S.capa&&S.hrs)S.gd.foto=1;toast(t.dataset.capa==='capa'?'Foto enviada. Entra no card depois da revisão da Onside.':'Horário salvo: todo dia, 17:00 às 02:00.');render();return}
+  if(t=e.target.closest('[data-treino]')){t.disabled=true;var bx=document.querySelectorAll('#trbox input');'GRTGVX'.split('').forEach(function(c,k){setTimeout(function(){bx[k].value=c},reduce?0:k*110)});setTimeout(function(){S.treino=1;S.gd.codigo=1;render()},reduce?0:760);return}
 });
-/* tour: balão com destaque, 4 passos */
-var TOUR=[['hoje','Hoje','O dia da casa: o próximo jogo, quem vai e quem já chegou. O painel abre aqui.'],['jogos','Jogos','A grade do bar, por dia ou semana. Publique, edite e duplique os jogos.'],['quem-vai','Quem vai · Elite','Quem marcou “Vou assistir aqui” em cada jogo, com o código para conferir.'],['val','Validar código','O torcedor mostra o código no balcão e você digita aqui. A visita conta para o bar.']];
+
+/* passeio: cada passo leva à tela de verdade, destaca o que importa ali e explica com os dados do bar */
 var tourI=-1;
-function tourEl(k){var m=matchMedia('(max-width:860px)').matches;if(k==='val')return document.querySelector(m?'.tabbar .vb':'.rail .vbtn');return document.querySelector((m?'.tabbar':'.nav')+' a[href="#'+k+'"]')}
-function tourStart(){document.getElementById('toast').classList.remove('on');if(location.hash!=='#hoje'&&location.hash){location.hash='hoje'}tourI=0;tourDraw()}
-function tourDraw(){var o=document.getElementById('tour');if(tourI<0){o.classList.remove('on');o.setAttribute('aria-hidden','true');return}
-  var st=TOUR[tourI],el=tourEl(st[0]);if(!el)return;var r=el.getBoundingClientRect(),m=matchMedia('(max-width:860px)').matches,pad=6;
-  var sp=o.querySelector('.spot');sp.style.left=(r.left-pad)+'px';sp.style.top=(r.top-pad)+'px';sp.style.width=(r.width+pad*2)+'px';sp.style.height=(r.height+pad*2)+'px';
-  var tp=o.querySelector('.tip2');
-  tp.innerHTML='<div class="tt2"><span class="mono">'+(tourI+1)+' de '+TOUR.length+'</span><button type="button" class="linkb" data-tskip>Pular</button></div><h3 id="tour-t" class="disp">'+st[1]+'</h3><p>'+st[2]+'</p><div class="ta">'+(tourI?'<button class="btn b-ghost sm" type="button" data-tback>Voltar</button>':'<span></span>')+'<button class="btn b-acid sm" type="button" data-tnext>'+(tourI===TOUR.length-1?'Começar a usar':'Próximo')+'</button></div><div class="tdots" aria-hidden="true">'+TOUR.map(function(_,i){return '<i class="'+(i===tourI?'on':'')+'"></i>'}).join('')+'</div>';
-  if(m){tp.style.left='16px';tp.style.right='16px';tp.style.top='auto';tp.style.bottom=(innerHeight-r.top+18)+'px'}
-  else{tp.style.right='auto';tp.style.bottom='auto';tp.style.left=(r.right+22)+'px';tp.style.top=Math.max(16,Math.min(innerHeight-260,r.top-12))+'px'}
-  o.classList.add('on');o.setAttribute('aria-hidden','false');setTimeout(function(){var b=tp.querySelector('[data-tnext]');if(b)b.focus()},0)}
-function tourEnd(){tourI=-1;tourDraw();var g=document.getElementById('guide');if(g)g.scrollIntoView({behavior:reduce?'auto':'smooth',block:'center'})}
+function tourSteps(){var pk=planK();return ['hoje',S.gd.semana?0:'jogos',S.gd.foto?0:'espaco',pk==='elite'&&!S.gd.codigo?'codigo':0,'desempenho','fim'].filter(Boolean)}
+function andList(a){return a.length>1?a.slice(0,-1).join(', ')+' e '+a[a.length-1]:a[0]}
+function TS(k){var f=S.bf,g=firstGame(),pk=planK(),nm='<b>'+esc(g.g)+'</b>',quando=esc(wd(g.iso,1).replace('Hoje · ','hoje, ').replace('Amanhã · ','amanhã, '))+' às '+g.h,bar=esc(f.nome),dia=esc(wd(g.iso,2));
+  if(k==='hoje')return {v:'hoje',el:['#t-now','#t-now .r'],t:'Seu jogo já está no ar',p:nm+', '+quando+', é o próximo jogo do '+bar+(pk==='elite'?'. Ninguém marcou ainda: cada “Vou assistir aqui” soma em <b>vão assistir</b>, e quem mostrar o código no balcão entra em <b>já chegaram</b>.':'. Ninguém abriu a página do bar ainda: cada visita soma em <b>viram o bar</b>, e cada toque em WhatsApp, rota ou telefone, em <b>se interessaram</b>.')};
+  if(k==='jogos'){var add=S.fx.length;return {v:'jogos',el:['.jl>div:first-child','#t-sug'],t:add?'Mais um na grade':'Ponha mais um jogo',p:add?'<b>'+esc(S.fx[add-1].g)+'</b> entrou na grade do '+bar+' e já aparece para quem procura esse jogo perto do bar.':'A grade tem 1 jogo, '+nm+'. Estes são jogos desta semana que os torcedores perto da '+esc(f.bairro)+' seguem e o bar ainda não tem. Cada jogo na grade é mais uma busca em que o bar aparece.'+(pk==='starter'?' No Starter são 5 por mês; o primeiro não contou.':''),hint:add?'':'Toque num jogo para publicar',next:add?'Próximo':'Agora não'}}
+  if(k==='espaco'){var both=S.capa&&S.hrs;return {v:'meu-espaco',el:['#t-capa','#t-capa'],t:'Foto de capa e horário',p:both?'Pronto. Veja na prévia: o card do '+bar+' já sai com foto e com “aberto até 02:00”. A foto aparece para o torcedor depois da revisão da Onside.':'Hoje o card do '+bar+' sai na busca sem foto e sem horário. Ponha os dois e veja a prévia mudar: é o que o torcedor olha antes de escolher o bar. Dá para fazer agora ou depois.'+(pk==='starter'?' No Starter entra a capa; a galeria de fotos é do Pro.':''),hint:both?'':'Toque em Escolher foto e em Usar 17:00 às 02:00',next:S.capa||S.hrs?'Próximo':'Fazer depois'}}
+  if(k==='codigo')return {v:'quem-vai',el:['#t-treino','#t-treino'],pl:'SÓ NO ELITE',t:'O código do balcão',p:S.treino?'É isso: no balcão, digitou, validou, liberou a oferta. A visita conta para o '+bar+' e entra em Desempenho. Este, de exemplo, não conta.':'Quem marca “Vou assistir aqui” em '+nm+' recebe um código de 6 letras. No balcão, você digita em <b>Validar código</b>, libera a oferta da casa e a visita conta para o bar. Teste com o código de exemplo.',hint:S.treino?'':'Toque em Validar o código de exemplo',next:S.treino?'Próximo':'Agora não'};
+  if(k==='desempenho'){
+    if(pk==='starter')return {v:'desempenho',el:['#t-big3','#t-big3'],t:'Onde o jogo vira número',p:'Depois do jogo de '+dia+', aparece aqui quantas pessoas viram o '+bar+', quantas se interessaram e a taxa, nos últimos 30 dias. Hoje está tudo em zero: nada aqui é estimativa.'};
+    if(pk==='pro')return {v:'desempenho',el:['#t-canais','#t-canais'],pl:'NO PRO',t:'Por onde te procuraram',p:'Depois do jogo de '+dia+', o Pro mostra por onde o torcedor chamou o '+bar+': WhatsApp, rota ou telefone. É assim que você vê se a grade está trazendo gente.'};
+    return {v:'desempenho',el:['#t-quemfoi','#t-quemfoi'],pl:'NO ELITE',t:'Quem foi de verdade',p:'Depois do jogo de '+dia+', aparece aqui quem marcou que ia e quem validou o código no balcão'+(S.treino?' (o de exemplo não entra)':'')+'. É a visita verificada, o número que mostra o retorno do Elite.'}}
+  var G=GUIDE(),done=G.filter(function(x){return S.gd[x[0]]}).length,miss=G.filter(function(x){return !S.gd[x[0]]}).map(function(x){return x[4]});
+  return {v:'hoje',el:['#guide','#guide'],t:'Passeio feito',p:'O que você fez agora já está marcado em Primeiros passos: <b>'+done+' de '+G.length+'</b>. '+(miss.length?'Falta '+andList(miss)+'.':'Está tudo feito.')}}
+function tourTip(st){var n=S.steps.length,last=tourI===n-1;
+  return '<div class="tt2"><span class="mono">'+(tourI+1)+' DE '+n+(st.pl?' · '+st.pl:'')+'</span><button type="button" class="linkb" data-tskip>Pular o passeio</button></div><h3 id="tour-t" class="disp">'+st.t+'</h3><p>'+st.p+'</p>'+(st.hint?'<p class="thint">'+ic('next',16)+st.hint+'</p>':'')+
+    '<div class="ta">'+(tourI?'<button class="btn b-ghost sm" type="button" data-tback>Voltar</button>':'<span></span>')+'<button class="btn b-acid sm" type="button" data-tnext>'+(last?'Começar a usar':st.next||'Próximo')+'</button></div><div class="tdots" aria-hidden="true">'+S.steps.map(function(_,i){return '<i class="'+(i===tourI?'on':'')+'"></i>'}).join('')+'</div>'}
+function tourStart(resume){document.getElementById('toast').classList.remove('on');closeAll();if(!fresh())preset('ini');if(!resume)S.seen={};var L=tourSteps();if(resume){var r=L.filter(function(k){return !S.seen[k]});if(r.length)L=r}S.steps=L;tourI=0;tourGo()}
+function tourGo(){clearTimeout(S.tat);var k=S.steps[tourI];S.seen[k]=1;if(k==='fim')S.gd.passeio=1;S.tipNew=true;if(S.view!==TS(k).v)location.hash=TS(k).v;else render()}
+function tourNext(){clearTimeout(S.tat);if(tourI<0)return;if(tourI>=S.steps.length-1)tourEnd(true);else{tourI++;tourGo()}}
+function tourSync(){if(tourI<0)return;var o=document.getElementById('tour'),st=TS(S.steps[tourI]);if(S.view!==st.v){location.hash=st.v;return}
+  var m=isM(),el=document.querySelector(st.el[m?1:0]);if(!el){tourEnd();return}
+  var tp=o.querySelector('.tip2');tp.innerHTML=tourTip(st);o.classList.add('on');o.setAttribute('aria-hidden','false');o.querySelector('.spot').style.transition='';
+  scrollTo(0,Math.max(0,el.getBoundingClientRect().top+scrollY-(m?78:96)));
+  if(S.tipNew){S.tipNew=false;tp.style.animation='none';void tp.offsetWidth;tp.style.animation='';setTimeout(function(){var b=tp.querySelector('[data-tnext]');if(b)b.focus({preventScroll:true})},0)}
+  requestAnimationFrame(tourPlace)}
+function tourPlace(){if(tourI<0)return;var o=document.getElementById('tour'),st=TS(S.steps[tourI]),m=isM(),el=document.querySelector(st.el[m?1:0]);if(!el)return;
+  var r=el.getBoundingClientRect(),pad=8,L=r.left-pad,T=r.top-pad,W=r.width+pad*2,H=r.height+pad*2,sp=o.querySelector('.spot');
+  sp.style.left=L+'px';sp.style.top=T+'px';sp.style.width=W+'px';sp.style.height=H+'px';
+  /* o furo deixa tocar no que está em destaque; o resto da tela fica bloqueado */
+  o.querySelector('.blk').style.clipPath='polygon(evenodd,0 0,100% 0,100% 100%,0 100%,0 0,'+L+'px '+T+'px,'+(L+W)+'px '+T+'px,'+(L+W)+'px '+(T+H)+'px,'+L+'px '+(T+H)+'px,'+L+'px '+T+'px)';
+  var tp=o.querySelector('.tip2');if(m)return;
+  var tw=tp.offsetWidth,th=tp.offsetHeight,vw=innerWidth,vh=innerHeight,x,y;
+  if(vw-(L+W)>tw+28){x=L+W+16;y=Math.max(16,Math.min(vh-th-16,T))}
+  else if(vh-(T+H)>th+28){y=T+H+16;x=Math.min(Math.max(16,L),vw-tw-16)}
+  else if(T>th+28){y=T-th-16;x=Math.min(Math.max(16,L),vw-tw-16)}
+  else{x=vw-tw-24;y=Math.max(16,vh-th-88)}
+  tp.style.left=x+'px';tp.style.top=y+'px'}
+function tourEnd(done){clearTimeout(S.tat);if(tourI<0)return;tourI=-1;var o=document.getElementById('tour');o.classList.remove('on');o.setAttribute('aria-hidden','true');render();
+  if(done){var g=document.getElementById('guide');if(g)g.scrollIntoView({behavior:reduce?'auto':'smooth',block:'center'});toast('Bom jogo. O painel é seu.')}
+  else toast('Passeio pausado. Continue pelo Primeiros passos, em Hoje.')}
 document.addEventListener('click',function(e){var t;
-  if(t=e.target.closest('[data-tnext]')){if(tourI>=TOUR.length-1)tourEnd();else{tourI++;tourDraw()}return}
-  if(t=e.target.closest('[data-tback]')){tourI=Math.max(0,tourI-1);tourDraw();return}
-  if(t=e.target.closest('[data-tskip]')){tourEnd();return}
+  if(t=e.target.closest('[data-tnext]')){tourNext();return}
+  if(t=e.target.closest('[data-tback]')){clearTimeout(S.tat);tourI=Math.max(0,tourI-1);tourGo();return}
+  if(t=e.target.closest('[data-tskip]')){tourEnd(false);return}
 });
-document.addEventListener('keydown',function(e){if(e.key==='Escape'&&tourI>=0)tourEnd()});
-addEventListener('resize',function(){if(tourI>=0)tourDraw()});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&tourI>=0)tourEnd(false)});
+addEventListener('resize',function(){if(tourI>=0)tourSync()});
+addEventListener('scroll',function(){if(tourI<0)return;document.querySelector('#tour .spot').style.transition='none';tourPlace()},{passive:true});
 /* ---------- render ---------- */
 var main=document.getElementById('main');
 function render(){
   S.view=location.hash.slice(1)||'hoje';
+  if(S.needPlan&&S.view!=='cadastro'){S.bo=8;location.hash='cadastro';toast('Antes do painel, escolha o plano do teste.');return}
   document.documentElement.classList.toggle('obmode',S.view==='cadastro');
   var V={cadastro:cadastro,hoje:hoje,jogos:jogos,desempenho:desempenho,'quem-vai':quemvai,'meu-espaco':espaco,plano:plano,config:config,mais:mais};
   main.innerHTML=(V[S.view]||hoje)();
   drawNav();wireChart();
-  var rm=document.getElementById('railmedal');if(rm&&!rm.firstChild)rm.innerHTML=medal('elite',38);
   if(S.tourGo&&S.view==='hoje'){S.tourGo=false;setTimeout(tourStart,reduce?0:450)}
   var rw=main.querySelector('.rule-wrap');if(rw){var nl=main.querySelector('.nowline');rw.scrollLeft=Math.max(0,nl.offsetLeft-80)}
+  if(tourI>=0)tourSync();
 }
-addEventListener('hashchange',function(){render();scrollTo(0,0)});
+addEventListener('hashchange',function(){scrollTo(0,0);render()});
 
 /* ações */
 var root=document.documentElement,last=null;
-function openSheet(){last=document.activeElement;root.classList.add('sh-open');document.getElementById('sheet').setAttribute('aria-hidden','false');drawPick();setTimeout(function(){document.getElementById('ng-q').focus()},reduce?0:350)}
+function openSheet(){var el=isElite();document.getElementById('ng-o').closest('label').style.display=el?'':'none';document.querySelector('#sheet [aria-label="Lista de quem vai"]').closest('.sw').style.display=el?'':'none';last=document.activeElement;root.classList.add('sh-open');document.getElementById('sheet').setAttribute('aria-hidden','false');drawPick();setTimeout(function(){document.getElementById('ng-q').focus()},reduce?0:350)}
 function openVal(){last=document.activeElement;root.classList.add('val-open');document.getElementById('val').setAttribute('aria-hidden','false');resetVal();setTimeout(function(){document.querySelector('#boxes input').focus()},reduce?0:300)}
 function closeAll(){root.classList.remove('sh-open','val-open');document.getElementById('sheet').setAttribute('aria-hidden','true');document.getElementById('val').setAttribute('aria-hidden','true');if(last)last.focus()}
 document.addEventListener('click',function(e){
@@ -1340,7 +1528,7 @@ function drawPick(){
   document.getElementById('ng-pick').innerHTML=CATALOG.map(function(c,i){if(q&&c[2].toLowerCase().indexOf(q)<0)return '';return '<button type="button" role="option" aria-selected="'+(S.pick===i)+'" class="'+(S.pick===i?'on':'')+'" data-i="'+i+'"><span class="d">'+c[0]+'</span><span><b>'+esc(c[2])+'</b><span>'+c[3]+' · '+c[1]+'</span></span>'+(S.pick===i?ic('check',20):'')+'</button>'}).join('')||'<p style="color:var(--muted);margin:6px 0 0">Nenhum jogo do catálogo com esse nome. Tente o time ou o campeonato.</p>';
 }
 document.getElementById('ng-q').addEventListener('input',drawPick);
-document.getElementById('ng-go').addEventListener('click',function(){var c=CATALOG[S.pick];closeAll();guideMark('semana');toast(c[2]+' publicado para '+c[1]+', '+c[0]+'. Já aparece para quem procura esse jogo.')});
+document.getElementById('ng-go').addEventListener('click',function(){var c=CATALOG[S.pick];closeAll();if(fresh()){S.fx.push(mk('c'+S.pick+'_'+S.fx.length,{'sáb 7':'2026-11-07','dom 8':'2026-11-08'}[c[1]]||'2026-11-07',c[0],c[2],c[3],true,true));S.gd.semana=1;render()}toast(c[2]+' publicado para '+c[1]+', '+c[0]+'. Já aparece para quem procura esse jogo.')});
 
 /* validar */
 var ALPH='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -1354,6 +1542,8 @@ function doVal(){
   var c=all(),r=document.getElementById('vres');
   if(c.length<6){r.className='vres on';r.style.background='var(--sub)';r.style.color='var(--fg)';r.innerHTML='Faltam '+(6-c.length)+' letras. O código tem 6, sem O, 0, I, 1 nem L.';return}
   r.style.background='';r.style.color='';r.className='vres on';
+  if(fresh()){if(c!=='GRTGVX'){r.style.background='var(--sub)';r.style.color='var(--fg)';r.innerHTML='Código não encontrado. Ninguém marcou presença ainda; teste com o exemplo GRT-GVX.';return}
+    r.innerHTML='<b>Código validado</b><p style="margin:8px 0 0;font-size:15px">Torcedor de exemplo · '+esc(firstGame().g)+' · não conta nas visitas</p><p style="margin:12px 0 0;display:flex;gap:8px;align-items:center;font-weight:700">'+ic('beer',20)+'Num código de verdade: libere a oferta, chopp em dobro.</p>';S.treino=1;guideMark('codigo');return}
   r.innerHTML='<b>Código validado</b><p style="margin:8px 0 0;font-size:15px">Lucas Andrade · Corinthians × Palmeiras · '+NOW.label+'</p><p style="margin:12px 0 0;display:flex;gap:8px;align-items:center;font-weight:700">'+ic('beer',20)+'Libere a oferta: chopp em dobro até o intervalo.</p>';
   GAMES[0].arr=Math.min(GAMES[0].going,GAMES[0].arr+1);setTimeout(render,200);
 }
