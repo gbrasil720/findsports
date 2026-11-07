@@ -110,6 +110,27 @@ describe('applyAuthGuards', () => {
     expect(() => applyAuthGuards(null, '/login')).not.toThrow()
   })
 
+  test('torcedor sem onboarding leva a ação pedida (`?acao=`) pelo onboarding', () => {
+    const bar = '/bar/x-12345678?jogo=1&acao=vou.1'
+    for (const [pathname, href, callbackUrl] of [
+      ['/bar/x-12345678', bar, bar],
+      ['/login', `/login?callbackUrl=${encodeURIComponent(bar)}`, bar],
+      ['/dashboard', '/dashboard', undefined]
+    ] as const) {
+      let thrown: unknown
+      try {
+        applyAuthGuards(session('fan', false), pathname, {}, href)
+      } catch (error) {
+        thrown = error
+      }
+      expect(thrown).toMatchObject({ options: { to: '/onboarding/fan' } })
+      expect(
+        (thrown as { options: { search?: { callbackUrl?: string } } }).options
+          .search?.callbackUrl
+      ).toBe(callbackUrl)
+    }
+  })
+
   test('lets visitors stay on unknown URLs so the 404 can render', () => {
     expect(() => applyAuthGuards(null, '/pagina-que-nao-existe')).not.toThrow()
   })
