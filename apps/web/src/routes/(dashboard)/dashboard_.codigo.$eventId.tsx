@@ -1,12 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { brasiliaDay, brasiliaTime, dayLabel } from '@/components/painel/noite'
+import { QRCode } from '@/components/qr-code'
 import { Ic } from '@/components/torcedor/icones'
 import { TorcedorShell } from '@/components/torcedor/shell'
 import { baixarAgenda } from '@/domain/agenda'
 import { formatCode } from '@/domain/my-games'
 import { getGameTitle } from '@/domain/reservation-validation'
-import { QRCode } from '@/lib/qr-code'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 

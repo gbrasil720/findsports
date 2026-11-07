@@ -18,7 +18,6 @@ import { QRCode } from '@/components/qr-code'
 import { TwoFactorCodeInput } from '@/components/two-factor-code-input'
 import { useSession } from '@/hooks/use-session'
 import { authClient } from '@/lib/auth-client'
-import { QRCode } from '@/lib/qr-code'
 import {
   getUserFacingError,
   getUserFacingMessage
