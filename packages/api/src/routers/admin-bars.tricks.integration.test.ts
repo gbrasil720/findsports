@@ -1,7 +1,11 @@
 import { expect, test } from 'bun:test'
 import { and, eq } from '@findsports_oficial/db'
 import { adminAction } from '@findsports_oficial/db/schema/houdini'
-import { bar, subscription } from '@findsports_oficial/db/schema/platform'
+import {
+  bar,
+  subscription,
+  subscriptionCancelReason
+} from '@findsports_oficial/db/schema/platform'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 import { contextFor, load, refusal, seedBar } from './integration-seed'
 
@@ -290,10 +294,24 @@ integrationTest(
         partySize: 4,
         status: 'confirmed'
       })
+      // WEB-445: dois motivos; a ficha mostra o último.
+      await seeded.db.insert(subscriptionCancelReason).values([
+        {
+          barId: seeded.barId,
+          plan: 'pro',
+          reason: 'too_expensive',
+          createdAt: new Date(Date.now() - DAY)
+        },
+        { barId: seeded.barId, plan: 'elite', reason: 'low_traffic' }
+      ])
       const caller = await admin()
       await caller.adminBars.setActive({ barId: seeded.barId, active: false })
 
       const ficha = await caller.adminBars.ficha({ barId: seeded.barId })
+      expect(ficha.cancelReason).toMatchObject({
+        plan: 'elite',
+        reason: 'low_traffic'
+      })
       expect(ficha).toMatchObject({
         id: seeded.barId,
         isActive: false,
