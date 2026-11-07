@@ -29,8 +29,11 @@ function PlanLossList({
 }: Change & { onTrial?: boolean; className?: string }) {
   const bar = useMyBar().data
   const events = useMyEvents().data
+  // Rascunho (WEB-436) não está no ar: não conta como jogo publicado.
   const upcoming = events?.filter(
-    (item) => getEventTemporalState(item.startsAt, item.endsAt) !== 'past'
+    (item) =>
+      item.publishedAt !== null &&
+      getEventTemporalState(item.startsAt, item.endsAt) !== 'past'
   )
   const numbers =
     bar && upcoming ? { ...bar, upcomingEvents: upcoming.length } : null

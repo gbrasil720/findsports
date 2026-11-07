@@ -77,6 +77,7 @@ function AdminLayout() {
   const upcomingGames = events
     ? events.filter(
         (event) =>
+          event.publishedAt !== null &&
           getEventTemporalState(event.startsAt, event.endsAt, now) !== 'past'
       ).length
     : null

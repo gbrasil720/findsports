@@ -16,6 +16,7 @@ import {
   Beer,
   Check,
   Close,
+  People,
   Qr,
   Share,
   Sound,
@@ -27,8 +28,11 @@ import { Avisos, PlanoCard } from './avisos'
 import {
   barScreen,
   type GoingGame,
+  gameOffer,
+  gameScreen,
   goingCount,
   interestLabel,
+  isDraft,
   useGoing,
   useInterest
 } from './dados'
@@ -48,8 +52,9 @@ import { initials, usePainel } from './painel-shell'
 /*
  * Hoje (WEB-501, fase 2; protótipo `hoje`, `chart`, `smooth`): o jogo de
  * agora em destaque, a régua da noite, quem chegou, os 30 dias do bar, as
- * avaliações e o plano. Lista aberta e oferta por jogo não existem neste
- * branch: o herói mostra a oferta do bar, só leitura.
+ * avaliações e o plano. O herói mostra telão, som e lista deste jogo
+ * (WEB-399, WEB-437) e a oferta que vale nele (WEB-422). Rascunho (WEB-436)
+ * fica fora: Hoje é o que o torcedor vê.
  */
 
 const AVATAR_COLORS = [
@@ -73,7 +78,7 @@ export function HojePage() {
 
   if (!bar) return null
   const today = houseDay(now)
-  const all = events.data ?? []
+  const all = (events.data ?? []).filter((event) => !isDraft(event))
   const todays = all
     .filter(
       (event) =>
@@ -279,7 +284,9 @@ function Agora({
   const isToday = houseDay(hero.startsAt) === today
   const title = eventTitle(hero)
   const [home, away] = title.split(' × ')
-  const screen = barScreen(bar)
+  const screens = barScreen(bar).screens
+  const screen = gameScreen(hero, bar)
+  const offer = gameOffer(hero, bar, elite)
   const counts = goingCount(game)
   const startsIn = Date.parse(hero.startsAt) - now
 
@@ -306,34 +313,40 @@ function Agora({
             title
           )}
         </h2>
-        {screen.tv || screen.sound ? (
-          <ul className="pn-meta">
-            {screen.tv ? (
-              <li>
-                <Tv size={16} />
-                {screen.screens && screen.screens > 1
-                  ? `${screen.screens} telões`
-                  : 'Telão'}
-              </li>
-            ) : null}
-            {screen.sound ? (
-              <li>
-                <Sound size={16} />
-                Som ligado
-              </li>
-            ) : null}
-          </ul>
-        ) : null}
-        {elite && bar.houseOffer ? (
+        <ul className="pn-meta">
+          {screen.onBigScreen ? (
+            <li>
+              <Tv size={16} />
+              {screens && screens > 1 ? `${screens} telões` : 'Telão'}
+            </li>
+          ) : null}
+          {screen.withSound ? (
+            <li>
+              <Sound size={16} />
+              Som ligado
+            </li>
+          ) : null}
+          {elite ? (
+            <li>
+              <People size={16} />
+              {hero.attendanceEnabled ? 'Lista aberta' : 'Lista fechada'}
+            </li>
+          ) : null}
+        </ul>
+        {offer ? (
           <div className="pn-offer">
             <span className="pn-ib">
               <Beer size={20} />
             </span>
             <span>
               <b>Oferta da casa</b>
-              <span>{bar.houseOffer}</span>
+              <span>{offer}</span>
             </span>
-            <Link to="/admin/meu-espaco" className="pn-offer-ed">
+            <Link
+              to="/admin/jogos"
+              search={{ jogo: hero.id }}
+              className="pn-offer-ed"
+            >
               Editar
             </Link>
           </div>

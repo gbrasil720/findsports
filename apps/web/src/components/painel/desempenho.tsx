@@ -26,7 +26,7 @@ import { getPlan } from '@/lib/plan-catalog'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import { ComoCadaJogo } from './como-cada-jogo'
-import { useEventAnalytics, useHashScroll } from './dados'
+import { isDraft, useEventAnalytics, useHashScroll } from './dados'
 import { dayLabel } from './noite'
 import { usePainel } from './painel-shell'
 
@@ -143,7 +143,10 @@ export function DesempenhoPage() {
     ...trpc.commercialAnalytics.getMyAnalyticsOverview.queryOptions(range),
     meta: { errorToast: false }
   })
-  const analytics = useEventAnalytics(range, events.data ?? [])
+  const analytics = useEventAnalytics(
+    range,
+    (events.data ?? []).filter((e) => !isDraft(e))
+  )
   const fetchingEvents =
     useIsFetching(trpc.commercialAnalytics.getMyEventAnalytics.pathFilter()) > 0
   useHashScroll(overview.isSuccess && analytics.state.status !== 'loading')
