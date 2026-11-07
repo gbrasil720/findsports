@@ -141,9 +141,7 @@ export function SubscriptionReceipt({
         aria-live="polite"
       >
         <StageIcon stage={stage} />
-        <span className="onside-receipt-screen-text">
-          {STAGE_SCREEN[stage]}
-        </span>
+        <span>{STAGE_SCREEN[stage]}</span>
         <span className="onside-receipt-screen-dots" aria-hidden="true">
           <span />
           <span />
