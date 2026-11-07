@@ -98,16 +98,18 @@ describe('rascunho do onboarding de bar', () => {
       )
     ).toBeNull()
   })
-  it('guarda o plano escolhido no passo "Plano", e o que não é plano sai', () => {
+  it('guarda a rotina; a que não serve e o plano do rascunho antigo saem', () => {
     const ler = (draft: object) =>
       parsePubOnboardingDraft(
         JSON.stringify({ draft, email: 'dona', expiresAt: 9_000 }),
         'dona',
         2_000
       )
-    expect(ler({ ...DRAFT, plan: 'starter' })?.plan).toBe('starter')
-    expect(ler({ ...DRAFT, plan: 'vitalicio' })).toEqual(DRAFT)
-    expect(ler(DRAFT)?.plan).toBeUndefined()
+    const routine = { games: 8, spend: 60, wants: ['funil' as const] }
+    expect(ler({ ...DRAFT, routine })?.routine).toEqual(routine)
+    expect(ler({ ...DRAFT, routine: { games: 0 } })).toEqual(DRAFT)
+    // O passo "Plano" saiu do cadastro: o plano gravado antes não volta.
+    expect(ler({ ...DRAFT, plan: 'starter' })).toEqual(DRAFT)
   })
 })
 
