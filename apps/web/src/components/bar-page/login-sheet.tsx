@@ -235,7 +235,7 @@ function Sheet({
           </li>
         ))}
       </ul>
-      <form className="form" onSubmit={submit} noValidate>
+      <form method="post" className="form" onSubmit={submit} noValidate>
         <label htmlFor="bp-email">
           E-mail
           <input
