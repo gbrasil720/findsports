@@ -295,6 +295,11 @@ export async function readNearbyGamesToday(barId: string, now = new Date()) {
     ) g
     WHERE b.is_active
       AND b.id <> ${barId}
+      -- Prefixo repetido dá 404 (resolveBarRef): não vira link aqui.
+      AND NOT EXISTS (
+        SELECT 1 FROM bar o
+        WHERE o.id <> b.id AND left(o.id, 8) = left(b.id, 8)
+      )
       AND ST_DWithin(b.geo, (SELECT geo FROM bar WHERE id = ${barId}), 5000)
     ORDER BY b.geo <-> (SELECT geo FROM bar WHERE id = ${barId})
     LIMIT 3
