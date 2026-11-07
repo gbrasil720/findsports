@@ -328,19 +328,18 @@ function ExplorarConteudo({ busca }: { busca: string }) {
           </button>
         )
       })}
-      {celular ? null : (
-        <label className="sort">
-          <span>Ordenar</span>
-          <select
-            value={ordem}
-            onChange={(e) => setOrdem(e.target.value as Ordem)}
-          >
-            <option value="perto">Mais perto</option>
-            <option value="gente">Mais gente indo</option>
-            {notaPublica ? <option value="nota">Melhor nota</option> : null}
-          </select>
-        </label>
-      )}
+      {/* No celular o protótipo não tem ordem; aqui ela vai no fim da fileira. */}
+      <label className="sort">
+        <span>Ordenar</span>
+        <select
+          value={ordem}
+          onChange={(e) => setOrdem(e.target.value as Ordem)}
+        >
+          <option value="perto">Mais perto</option>
+          <option value="gente">Mais gente indo</option>
+          {notaPublica ? <option value="nota">Melhor nota</option> : null}
+        </select>
+      </label>
     </fieldset>
   )
 
