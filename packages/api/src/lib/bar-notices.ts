@@ -140,7 +140,7 @@ export function createWeeklySummaryEmail(input: {
       ? { action: 'Abrir o painel', actionUrl: appUrl('/admin') }
       : {
           action: 'Cadastrar jogos',
-          actionUrl: appUrl('/admin/jogos?novo=1')
+          actionUrl: appUrl('/admin/jogos')
         }),
     note: `Para não receber mais este resumo, ${OPT_OUT}`,
     reason:
@@ -160,7 +160,7 @@ export function createEmptyScheduleEmail(input: {
       'Com jogo na agenda, o bar aparece para quem procura onde assistir àquele jogo.'
     ],
     action: 'Cadastrar jogos',
-    actionUrl: appUrl('/admin/jogos?novo=1'),
+    actionUrl: appUrl('/admin/jogos'),
     note: `Para não receber mais este lembrete, ${OPT_OUT}`,
     reason:
       'Você recebeu este e-mail porque o aviso de grade vazia está ligado na conta do bar na Onside.'

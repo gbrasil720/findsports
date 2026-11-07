@@ -112,7 +112,7 @@ describe('resumo da semana', () => {
       'Nenhum jogo na agenda desta semana, de 26/10 a 01/11.'
     )
     expect(email.text).toMatch(
-      /Cadastrar jogos:\nhttps?:\/\/\S+\/admin\/jogos\?novo=1/
+      /Cadastrar jogos:\nhttps?:\/\/\S+\/admin\/jogos$/m
     )
   })
 
@@ -145,7 +145,7 @@ test('grade vazia', () => {
     'Olá. Seu bar não tem nenhum jogo na agenda desta semana, de 26/10 a 01/11.'
   )
   expect(email.text).toMatch(
-    /Cadastrar jogos:\nhttps?:\/\/\S+\/admin\/jogos\?novo=1/
+    /Cadastrar jogos:\nhttps?:\/\/\S+\/admin\/jogos$/m
   )
 })
 
