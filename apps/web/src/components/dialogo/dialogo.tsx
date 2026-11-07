@@ -3,8 +3,10 @@ import {
   type RefObject,
   useEffect,
   useReducer,
-  useRef
+  useRef,
+  useState
 } from 'react'
+import { createPortal } from 'react-dom'
 
 type Props = {
   open: boolean
@@ -25,7 +27,9 @@ type Props = {
  * Diálogo do redesign (`dialogo.css`), o mesmo no painel e no torcedor. É um
  * `<dialog>` nativo aberto por `showModal`: vai para o top layer, então fica
  * por cima até de outra folha `<dialog>` (o jogo aberto no celular) e recebe
- * o toque. O conteúdo só existe aberto, então cada abertura começa do zero.
+ * o toque. Vai num portal no `<body>`: dentro de `.tc` as classes curtas do
+ * torcedor (`.grid`, `.btn`…) pegariam no conteúdo. O conteúdo só existe
+ * aberto, então cada abertura começa do zero.
  */
 export function Dialogo({
   open,
@@ -41,6 +45,9 @@ export function Dialogo({
   // O navegador pode fechar sozinho (Esc repetido); se quem chama não fechou,
   // a renderização seguinte abre de novo.
   const [, rerender] = useReducer((n: number) => n + 1, 0)
+  // O `<body>` só existe no navegador: no servidor não sai nada.
+  const [host, setHost] = useState<HTMLElement | null>(null)
+  useEffect(() => setHost(document.body), [])
 
   useEffect(() => {
     const dialog = ref.current
@@ -54,7 +61,8 @@ export function Dialogo({
     }
   })
 
-  return (
+  if (!host) return null
+  return createPortal(
     // biome-ignore lint/a11y/useKeyWithClickEvents: o Esc já fecha o `<dialog>` nativo; o clique é só o do fundo.
     <dialog
       ref={ref}
@@ -76,6 +84,7 @@ export function Dialogo({
       }}
     >
       {open ? <div className="dlg3-in">{children}</div> : null}
-    </dialog>
+    </dialog>,
+    host
   )
 }
