@@ -204,9 +204,13 @@ export function PainelShell({
               {avatar}
               <span className="pn-l">
                 <b>{barName}</b>
-                <span>{neighborhood}</span>
+                {/* O selo vai na linha do bairro: ao lado do nome ele
+                    cortava os dois, e o "Starter" é o mais largo. */}
+                <span className="pn-bc-sub">
+                  <span>{neighborhood}</span>
+                  {planName ? <em>{planName}</em> : null}
+                </span>
               </span>
-              {planName ? <em>{planName}</em> : null}
             </div>
             <nav className="pn-nav" aria-label="Seções do painel">
               {nav.map((item) => (
