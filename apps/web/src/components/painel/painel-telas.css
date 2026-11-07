@@ -28,13 +28,13 @@ html[data-theme="dark"] .pn3 {
 }
 
 /* ─── Peças ─── */
-.pn3 .pn-danger {
+:is(.pn3, .dlg3) .pn-danger {
   background: transparent;
   color: var(--live-text);
   box-shadow: inset 0 0 0 1.5px var(--line2);
 }
 
-.pn3 .pn-danger:hover:not(:disabled) {
+:is(.pn3, .dlg3) .pn-danger:hover:not(:disabled) {
   box-shadow: inset 0 0 0 1.5px currentColor;
 }
 
@@ -87,7 +87,7 @@ html[data-theme="dark"] .pn3 {
   line-height: 1.4;
 }
 
-.pn3 .pn-ferr {
+:is(.pn3, .dlg3) .pn-ferr {
   margin: 8px 0 0;
   color: var(--live-text);
   font-size: 14px;
@@ -1403,7 +1403,7 @@ html[data-theme="dark"] .pn3 {
   margin-bottom: 0;
 }
 
-.pn3 .pn-inp {
+:is(.pn3, .dlg3) .pn-inp {
   width: 100%;
   height: 52px;
   padding: 0 16px;
@@ -1416,15 +1416,15 @@ html[data-theme="dark"] .pn3 {
   font: 500 16px var(--text);
 }
 
-.pn3 .pn-inp::placeholder {
+:is(.pn3, .dlg3) .pn-inp::placeholder {
   color: var(--muted);
 }
 
-.pn3 .pn-inp:focus {
+:is(.pn3, .dlg3) .pn-inp:focus {
   box-shadow: inset 0 0 0 2px var(--fg);
 }
 
-.pn3 .pn-inp[aria-invalid="true"] {
+:is(.pn3, .dlg3) .pn-inp[aria-invalid="true"] {
   box-shadow: inset 0 0 0 2px var(--live-text);
 }
 

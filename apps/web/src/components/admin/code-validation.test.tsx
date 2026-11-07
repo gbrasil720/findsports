@@ -24,32 +24,6 @@ mock.module('@tanstack/react-router', () => ({
   )
 }))
 
-// O diálogo do base-ui decide na carga do módulo se existe DOM, e aqui o
-// JSDOM só nasce depois: ele não renderiza nada. O que estes testes travam é
-// o fluxo — pedir confirmação antes de gravar —, não o diálogo em si; foco,
-// Escape e fundo são do componente compartilhado e foram conferidos no
-// navegador.
-type DialogPart = { children?: ReactNode }
-mock.module('@findsports_oficial/ui/components/dialog', () => ({
-  Dialog: ({ open, children }: DialogPart & { open?: boolean }) =>
-    open ? (
-      <div role="dialog" aria-modal="true">
-        {children}
-      </div>
-    ) : null,
-  DialogContent: ({ children }: DialogPart) => <div>{children}</div>,
-  DialogTitle: ({ children }: DialogPart) => <h2>{children}</h2>,
-  DialogDescription: ({ children }: DialogPart) => <p>{children}</p>,
-  DialogClose: ({ children }: DialogPart) => (
-    <button type="button">{children}</button>
-  ),
-  DialogBackdrop: () => null,
-  DialogPortal: ({ children }: DialogPart) => <>{children}</>,
-  DialogTrigger: ({ children }: DialogPart) => (
-    <button type="button">{children}</button>
-  )
-}))
-
 // Mesmo caso do campo de casas: o `input-otp` mede a tela com APIs que o
 // JSDOM não tem (`elementFromPoint`, `ResizeObserver`). Por baixo ele é um
 // `<input>` só, e é isso que o dublê entrega; as casas foram conferidas no
@@ -147,6 +121,16 @@ beforeEach(() => {
   Object.assign(dom.window.HTMLInputElement.prototype, {
     attachEvent() {},
     detachEvent() {}
+  })
+  // O JSDOM tem `<dialog>` sem `showModal`: abrir e fechar viram o atributo.
+  // Foco, Esc e fundo são do navegador e foram conferidos nele.
+  Object.assign(dom.window.HTMLDialogElement.prototype, {
+    showModal(this: HTMLDialogElement) {
+      this.setAttribute('open', '')
+    },
+    close(this: HTMLDialogElement) {
+      this.removeAttribute('open')
+    }
   })
 })
 
@@ -408,7 +392,7 @@ describe('confirmação da chegada', () => {
     await click('Validar código')
 
     expect(api.registerArrival).not.toHaveBeenCalled()
-    const dialog = document.querySelector('[role="dialog"]')
+    const dialog = document.querySelector('dialog[open]')
     expect(dialog?.textContent).toContain('Validar o código?')
     expect(dialog?.textContent).toContain('Código de Marina Souza')
     expect(dialog?.textContent).toContain('A oferta da casa fica liberada')
@@ -422,7 +406,7 @@ describe('confirmação da chegada', () => {
     await click('Cancelar')
 
     expect(api.registerArrival).not.toHaveBeenCalled()
-    expect(document.querySelector('[role="dialog"]')).toBeNull()
+    expect(document.querySelector('dialog[open]')).toBeNull()
     expect(document.body.textContent).toContain('0 de 3 validados')
   })
 
@@ -432,7 +416,7 @@ describe('confirmação da chegada', () => {
     await arrive()
 
     expect(api.registerArrival).toHaveBeenCalledTimes(1)
-    expect(document.querySelector('[role="dialog"]')).toBeNull()
+    expect(document.querySelector('dialog[open]')).toBeNull()
   })
 })
 

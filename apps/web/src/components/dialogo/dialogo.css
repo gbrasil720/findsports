@@ -1,0 +1,271 @@
+/*
+ * Diálogo do redesign (WEB-501), o mesmo no painel do bar e no web do
+ * torcedor: um `<dialog>` nativo (`dialogo.tsx`) com a caixa do `.val` do
+ * protótipo. Leva as próprias cores, então vale fora de `.pn3` e `.tc`; o
+ * escuro é o `data-theme` do `<html>`. Botões e campos são os do painel
+ * (`.pn-btn`, `.pn-inp`, que também valem dentro de `.dlg3`), e as peças do
+ * `@findsports_oficial/ui` que os formulários de conta usam ganham o mesmo
+ * desenho aqui dentro. Os `--onside-*` apontam para as cores novas, para as
+ * classes antigas que sobraram nos formulários seguirem o tema.
+ */
+
+.dlg3 {
+  --bg: #f1eee6;
+  --fg: #12120f;
+  --card: #faf8f3;
+  --sub: #e7e3db;
+  --line: rgba(18, 18, 15, 0.1);
+  --line2: rgba(18, 18, 15, 0.18);
+  --muted: #55554f;
+  --body: #3a3a35;
+  --drop: #d9d4c8;
+  --field: #fff;
+  --acid: #c9f135;
+  --acid-drop: #7f9a12;
+  --live-text: #c92b0c;
+  --warn: #f5e6c8;
+  --display: "Anton", "Impact", "Arial Narrow", sans-serif;
+  --text: "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --mono: "Geist Mono", ui-monospace, Menlo, monospace;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --onside-ink: var(--fg);
+  --onside-paper: var(--bg);
+  --onside-stone: var(--sub);
+  --onside-muted: var(--muted);
+  --onside-line: var(--line2);
+  --onside-live: var(--live-text);
+  --onside-live-text: var(--live-text);
+  --onside-display: var(--display);
+  --onside-mono: var(--mono);
+
+  width: min(440px, calc(100% - 32px));
+  max-width: none;
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 26px;
+  background: var(--bg);
+  color: var(--fg);
+  font: 400 16px / 1.5 var(--text);
+  -webkit-font-smoothing: antialiased;
+  box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.5);
+  color-scheme: light;
+}
+
+html[data-theme="dark"] .dlg3 {
+  --bg: #12120f;
+  --fg: #f1eee6;
+  --card: #1c1c18;
+  --sub: #26261f;
+  --line: rgba(241, 238, 230, 0.1);
+  --line2: rgba(241, 238, 230, 0.18);
+  --muted: #aaa9a4;
+  --body: #d6d3cb;
+  --drop: #000;
+  --field: #1c1c18;
+  --live-text: #f3421d;
+  --warn: #3a3320;
+  /* No escuro a caixa tem a cor da página: o fio a separa do fundo. */
+  box-shadow:
+    inset 0 0 0 1px var(--line2),
+    0 40px 80px -20px rgba(0, 0, 0, 0.8);
+  color-scheme: dark;
+}
+
+html:has(.dlg3[open]) {
+  overflow: hidden;
+}
+
+.dlg3.dlg3-lg {
+  width: min(520px, calc(100% - 32px));
+}
+
+.dlg3[open] {
+  animation: pn-val-in 0.35s var(--ease);
+}
+
+.dlg3::backdrop {
+  background: rgba(18, 18, 15, 0.5);
+}
+
+.dlg3 *,
+.dlg3 *::before,
+.dlg3 *::after {
+  box-sizing: border-box;
+}
+
+.dlg3 :focus-visible {
+  outline: 3px solid var(--acid);
+  outline-offset: 2px;
+}
+
+/* Campo mostra o foco pelo próprio contorno, sem o anel por cima. */
+.dlg3 :is(input, textarea):focus-visible {
+  outline: none;
+}
+
+/* A caixa rola por dentro (o 2FA com o QR passa da altura do celular). */
+.dlg3 .dlg3-in {
+  max-height: calc(100dvh - 32px);
+  padding: 26px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Título com o fechar ao lado, que fica no topo enquanto o resto rola. */
+.dlg3 .dlg3-h {
+  position: sticky;
+  top: -26px;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin: -26px -26px 0;
+  padding: 26px 26px 6px;
+  background: var(--bg);
+}
+
+.dlg3 .dlg3-t {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 30px;
+  font-weight: 400;
+  line-height: 0.95;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.dlg3 .dlg3-p {
+  margin: 10px 0 0;
+  color: var(--body);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.dlg3 .dlg3-a {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.dlg3 .dlg3-a-end {
+  justify-content: flex-end;
+}
+
+.dlg3 a {
+  color: inherit;
+}
+
+/* ─── Peças do @findsports_oficial/ui nos formulários de conta ─── */
+.dlg3 [data-slot="field-label"],
+.dlg3 .dlg3-l {
+  color: var(--muted);
+  font: 600 12px var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dlg3
+  [data-slot="field"][data-orientation="horizontal"]
+  [data-slot="field-label"] {
+  color: var(--fg);
+  font: 600 14px / 1.35 var(--text);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.dlg3 [data-slot="field-error"] {
+  color: var(--live-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.dlg3 [data-slot="field-description"] {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.dlg3 [data-slot="input"] {
+  width: 100%;
+  height: 52px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 16px;
+  outline: none;
+  background: var(--field);
+  color: var(--fg);
+  box-shadow: inset 0 0 0 1px var(--line2);
+  font: 500 16px var(--text);
+}
+
+.dlg3 [data-slot="input"]:focus {
+  box-shadow: inset 0 0 0 2px var(--fg);
+}
+
+.dlg3 [data-slot="input"][aria-invalid="true"] {
+  box-shadow: inset 0 0 0 2px var(--live-text);
+}
+
+.dlg3 [data-slot="input-otp-slot"] {
+  border: 0;
+  border-radius: 14px;
+  background: var(--field);
+  color: var(--fg);
+  box-shadow: inset 0 0 0 1px var(--line2);
+}
+
+.dlg3 [data-slot="input-otp-slot"][data-active="true"] {
+  box-shadow: inset 0 0 0 2px var(--fg);
+}
+
+.dlg3 [data-slot="input-otp-slot"][aria-invalid="true"] {
+  box-shadow: inset 0 0 0 2px var(--live-text);
+}
+
+.dlg3 [data-slot="checkbox"] {
+  width: 20px;
+  height: 20px;
+  border-color: var(--line2);
+  border-radius: 6px;
+}
+
+.dlg3 [data-slot="checkbox"][data-checked] {
+  border-color: var(--fg);
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.dlg3 .onside-callout {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--sub);
+  color: var(--fg);
+  font-size: 14.5px;
+  line-height: 1.45;
+}
+
+.dlg3 .onside-callout-warn {
+  background: var(--warn);
+}
+
+.dlg3 .onside-callout-danger {
+  background: color-mix(in srgb, var(--live-text) 14%, var(--bg));
+}
+
+.dlg3 textarea.pn-inp {
+  height: auto;
+  padding: 14px 16px;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dlg3[open] {
+    animation: none;
+  }
+}

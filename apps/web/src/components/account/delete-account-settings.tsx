@@ -183,18 +183,21 @@ export function DeleteAccountDialog({
           </Field>
         </FieldGroup>
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button type="button" variant="outline" size="lg" onClick={close}>
+          <button
+            type="button"
+            className="pn-btn pn-sm pn-ghost"
+            onClick={close}
+          >
             Manter minha conta
-          </Button>
-          <Button
+          </button>
+          <button
             type="submit"
-            variant="destructive"
-            size="lg"
+            className="pn-btn pn-sm pn-danger"
             disabled={deleting || confirmation !== CONFIRMATION}
           >
             {deleting ? <Spinner data-icon="inline-start" /> : null}
             {deleting ? 'Excluindo…' : 'Excluir permanentemente'}
-          </Button>
+          </button>
         </div>
       </form>
     </Modal>
