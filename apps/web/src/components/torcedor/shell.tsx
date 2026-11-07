@@ -71,6 +71,7 @@ function useAcoes(avisar: (texto: string) => void) {
   const navigate = useNavigate()
   const marcar = useMutation(trpc.attendance.set.mutationOptions())
   const salvar = useMutation(trpc.pubs.favorite.mutationOptions())
+  const lembrar = useMutation(trpc.recommendations.remind.mutationOptions())
 
   return useCallback(
     async (acao: Acao) => {
@@ -102,14 +103,20 @@ function useAcoes(avisar: (texto: string) => void) {
           avisar('Bar salvo em Seus bares.')
           return
         }
-        avisar('Lembrete de jogo chega em breve no web.')
+        // O "Me lembrar 3 h antes" do app (`beforeMinutes: 180`).
+        await lembrar.mutateAsync({
+          eventId: acao.id,
+          on: true,
+          beforeMinutes: 180
+        })
+        avisar('Lembrete salvo: 3 h antes do jogo, em Avisos no app.')
       } catch (error) {
         avisar(
           getUserFacingMessage(error, 'Não deu para concluir. Tente de novo.')
         )
       }
     },
-    [avisar, marcar, salvar, navigate, queryClient, trpc]
+    [avisar, marcar, salvar, lembrar, navigate, queryClient, trpc]
   )
 }
 
