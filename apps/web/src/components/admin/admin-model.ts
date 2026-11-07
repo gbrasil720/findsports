@@ -69,18 +69,6 @@ export type ProfileState =
 /* Analytics state machines                                            */
 /* ------------------------------------------------------------------ */
 
-export type AnalyticsOverviewState =
-  | { status: 'loading' }
-  | {
-      status: 'error'
-      message?: string
-      retry: () => void
-      retryable: boolean
-    }
-  | { status: 'empty' }
-  | { status: 'partial'; data: AnalyticsOverviewData }
-  | { status: 'ready'; data: AnalyticsOverviewData }
-
 export type EventAnalyticsState =
   | { status: 'loading' }
   | {
@@ -137,20 +125,6 @@ export function getInterestRate(
 ): number | null {
   if (uniqueVisitors <= 0) return null
   return Math.min(interestedPeople, uniqueVisitors) / uniqueVisitors
-}
-
-export function formatInterestRate(
-  interestedPeople: number,
-  uniqueVisitors: number
-): string {
-  const rate = getInterestRate(interestedPeople, uniqueVisitors)
-  return rate === null ? '—' : `${(rate * 100).toFixed(1)}%`
-}
-
-export const LOCKED_ANALYTICS_VALUE = 'Exclusivo do plano superior'
-
-export function formatAnalyticsValue(value: number | null): string {
-  return value === null ? LOCKED_ANALYTICS_VALUE : value.toLocaleString('pt-BR')
 }
 
 export function sumAnalyticsActions(data: {
