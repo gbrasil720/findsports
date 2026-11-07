@@ -300,7 +300,8 @@ html[data-theme="dark"] .onside-receipt-machine {
 
 .onside-receipt-paper .onside-receipt-legal {
   margin-top: 4px;
-  text-wrap: pretty;
+  /* O `pretty` herdado encurtava as quatro linhas a dois terços da folha. */
+  text-wrap: wrap;
 }
 
 .onside-receipt-seal {
@@ -414,6 +415,11 @@ a.onside-receipt-retry {
 
 .onside-receipt-actions > .btn {
   flex: 1 1 220px;
+}
+
+/* A ação de texto fica sozinha na linha de baixo, centrada. */
+.onside-receipt-actions > .onside-receipt-retry {
+  flex-basis: 100%;
 }
 
 /* ─── Movimento ─── */
