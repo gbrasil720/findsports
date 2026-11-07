@@ -60,7 +60,7 @@ import {
   DEFAULT_ROUTINE,
   type Routine,
   recommendPlan
-} from '@/lib/pub-plan-recommendation'
+} from '@findsports_oficial/api/lib/pub-routine'
 import { uploadMedia } from '@/lib/upload-media'
 import { PUB_LIVE_PATH } from '@/utils/auth-guards'
 import { getCallbackUrl } from '@/utils/callback-url'

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { paybackClients, recommendPlan } from './pub-plan-recommendation'
+import { paybackClients, readRoutine, recommendPlan } from './pub-routine'
 
 describe('recomendação de plano do cadastro do bar', () => {
   test('até 5 jogos e nada marcado: Starter', () => {
@@ -37,5 +37,19 @@ describe('recomendação de plano do cadastro do bar', () => {
     expect(paybackClients(269, 80)).toBe(4)
     expect(paybackClients(69, 500)).toBe(1)
     expect(paybackClients(120, 60)).toBe(2)
+  })
+})
+
+describe('rotina gravada no bar', () => {
+  test('a que serve volta, sem escolha repetida', () => {
+    expect(
+      readRoutine({ games: 8, spend: 60, wants: ['funil', 'funil'] })
+    ).toEqual({ games: 8, spend: 60, wants: ['funil'] })
+  })
+
+  test('nula, fora dos limites ou com escolha que saiu: nula', () => {
+    expect(readRoutine(null)).toBeNull()
+    expect(readRoutine({ games: 0, spend: 60, wants: [] })).toBeNull()
+    expect(readRoutine({ games: 8, spend: 60, wants: ['reserva'] })).toBeNull()
   })
 })

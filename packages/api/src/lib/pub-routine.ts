@@ -1,16 +1,19 @@
-import {
-  PLAN_NAMES,
-  STARTER_EVENT_LIMIT
-} from '@findsports_oficial/api/lib/plan-limits'
 import type { SubscriptionPlan } from '@findsports_oficial/db'
-import { PLAN_TIER_ORDER } from './plan-catalog'
+import { z } from 'zod'
+import { PLAN_NAMES, STARTER_EVENT_LIMIT } from './plan-limits'
 
 /*
- * "Sua rotina" e "Plano" do cadastro do bar (WEB-501; design no protótipo do
- * painel, `cadastro()`): a rotina só recomenda, não é gravada em lugar nenhum,
- * e quem escolhe o plano do teste é o dono. Cada motivo diz o recurso pelo
- * nome que ele tem no catálogo (`plan-catalog.ts`).
+ * "Sua rotina" do cadastro do bar (WEB-501; protótipo do painel, `cadastro()`
+ * e `rec()`): jogos por mês, gasto por cliente e o que o dono espera. Vai ao
+ * `completePub` e fica no bar (`bar.routine`): o teste nasce no plano que ela
+ * recomenda, e o passo "Plano do teste" a lê de lá, em qualquer aparelho.
+ * Nunca aparece no perfil. Quem escolhe o plano é o dono.
+ *
+ * Sem banco: o cadastro (cliente) e o servidor usam a mesma regra. Cada motivo
+ * diz o recurso pelo nome que ele tem no catálogo (`plan-catalog.ts` do web).
  */
+
+const TIER: Record<SubscriptionPlan, number> = { starter: 0, pro: 1, elite: 2 }
 
 export type Want =
   | 'cardapio'
@@ -76,6 +79,32 @@ export type Routine = { games: number; spend: number; wants: Want[] }
 /** Ponto de partida dos dois números; o que o dono espera começa vazio. */
 export const DEFAULT_ROUTINE: Routine = { games: 12, spend: 80, wants: [] }
 
+const WANT_IDS = WANTS.map((want) => want.id) as [Want, ...Want[]]
+
+/** A rotina como o servidor aceita: os limites da tela, e cada escolha uma vez. */
+export const routineSchema = z.object({
+  games: z
+    .number()
+    .int()
+    .min(ROUTINE_STEPS.games.min)
+    .max(ROUTINE_STEPS.games.max),
+  spend: z
+    .number()
+    .int()
+    .min(ROUTINE_STEPS.spend.min)
+    .max(ROUTINE_STEPS.spend.max),
+  wants: z
+    .array(z.enum(WANT_IDS))
+    .max(WANT_IDS.length)
+    .transform((wants) => [...new Set(wants)])
+})
+
+/** A rotina gravada no bar, ou nula se o que está lá não serve mais. */
+export function readRoutine(value: unknown): Routine | null {
+  const parsed = routineSchema.safeParse(value)
+  return parsed.success ? parsed.data : null
+}
+
 /**
  * O maior plano que a rotina pede: mais jogos que o Starter cria por mês pede
  * o Pro, e cada coisa marcada pede o plano em que ela existe. Sem nada, o
@@ -88,7 +117,7 @@ export function recommendPlan(routine: Routine): {
   let plan: SubscriptionPlan = 'starter'
   const reasons: string[] = []
   const atLeast = (target: SubscriptionPlan) => {
-    if (PLAN_TIER_ORDER[target] > PLAN_TIER_ORDER[plan]) plan = target
+    if (TIER[target] > TIER[plan]) plan = target
   }
   if (routine.games > STARTER_EVENT_LIMIT) {
     atLeast('pro')

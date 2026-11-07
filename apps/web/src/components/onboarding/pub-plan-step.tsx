@@ -10,7 +10,7 @@ import {
   PLAN_CATALOG,
   planChargeForShowcase
 } from '@/lib/plan-catalog'
-import { paybackClients } from '@/lib/pub-plan-recommendation'
+import { paybackClients } from '@findsports_oficial/api/lib/pub-routine'
 
 /** As ilustrações dos planos: chama, estrela e coroa. */
 export const PLAN_ART: Record<SubscriptionPlan, string> = {

@@ -4,7 +4,7 @@ import {
   type Routine,
   WANTS,
   type Want
-} from '@/lib/pub-plan-recommendation'
+} from '@findsports_oficial/api/lib/pub-routine'
 
 const QUESTIONS = {
   games: {
