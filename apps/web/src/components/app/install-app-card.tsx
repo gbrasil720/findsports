@@ -120,24 +120,20 @@ export function InstallAppCard({
   }
 
   return (
-    <section
-      aria-labelledby="convite-instalacao"
-      className="onside-panel onside-shadow relative flex flex-col gap-3 p-5"
-    >
-      <button
-        type="button"
-        onClick={dispensar}
-        aria-label="Dispensar convite de instalação"
-        className="absolute top-2 right-2 grid min-h-11 min-w-11 place-items-center border border-transparent transition-colors hover:border-[var(--onside-ink)]"
-      >
-        <Xmark size={14} color="currentColor" aria-hidden="true" />
-      </button>
+    <section aria-labelledby="convite-instalacao" className="pn-card pn-inst">
+      <div className="pn-chd">
+        <h3 id="convite-instalacao">Deixe o Onside a um toque</h3>
+        <button
+          type="button"
+          onClick={dispensar}
+          aria-label="Dispensar convite de instalação"
+          className="pn-btn pn-ghost pn-sm pn-ic"
+        >
+          <Xmark size={14} color="currentColor" aria-hidden="true" />
+        </button>
+      </div>
 
-      <h2 id="convite-instalacao" className="onside-heading pr-11 text-base">
-        Deixe o Onside a um toque
-      </h2>
-
-      <p className="max-w-prose text-sm leading-relaxed text-[var(--onside-muted)]">
+      <p>
         O app nativo ainda não saiu. Até lá, dá para pôr o ícone do Onside na
         tela inicial e abrir direto — sem digitar endereço com o jogo prestes a
         começar.
@@ -147,13 +143,13 @@ export function InstallAppCard({
         <button
           type="button"
           onClick={() => void instalar()}
-          className="onside-btn onside-btn-acid self-start"
+          className="pn-btn pn-acid pn-sm"
         >
           <Download size={14} color="currentColor" aria-hidden="true" />
           Instalar o Onside
         </button>
       ) : (
-        <p className="flex items-center gap-2 text-sm">
+        <p className="pn-inst-ios">
           <Share size={16} color="currentColor" aria-hidden="true" />
           <span>
             Toque em <strong>Compartilhar</strong> e depois em{' '}

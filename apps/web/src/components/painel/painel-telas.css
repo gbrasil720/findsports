@@ -1585,6 +1585,36 @@ html[data-theme="dark"] .pn3 {
   padding-bottom: 0;
 }
 
+/* Convite para pôr o PWA na tela inicial, abaixo de Hoje (só celular). */
+.pn3 .pn-install {
+  margin-top: 18px;
+}
+
+.pn3 .pn-inst {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+}
+
+.pn3 .pn-inst .pn-chd {
+  width: 100%;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.pn3 .pn-inst p {
+  margin: 0;
+  color: var(--body);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.pn3 .pn-inst-ios {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* Confirmação de exclusão */
 .pn3 .pn-confirm {
   width: min(440px, calc(100% - 32px));
