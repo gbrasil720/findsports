@@ -281,6 +281,24 @@ async function parseGameHouseOffer(
   }
 }
 
+/**
+ * Fechar a lista de quem vai de um jogo (WEB-437) é do Elite, como no painel.
+ * Abrir passa sempre: o bar que saiu do Elite reabre o que tinha fechado.
+ */
+async function assertCanCloseAttendance(
+  userId: string,
+  input: { attendanceEnabled?: boolean }
+): Promise<void> {
+  if (input.attendanceEnabled !== false) return
+  const own = await getBarByUserId(userId)
+  if (getCurrentPlan(own.subscription ?? null) !== 'elite') {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: 'Fechar a lista de quem vai é um recurso do plano Elite.'
+    })
+  }
+}
+
 async function assertTeamsMatchSport(
   tx: EventTransaction,
   sportId: string,
@@ -1011,6 +1029,7 @@ export const pubRouter = router({
       )
 
       const offer = await parseGameHouseOffer(userId, input)
+      await assertCanCloseAttendance(userId, input)
       const draftBar = input.draft ? await getBarByUserId(userId) : null
       await db.transaction(async (tx) => {
         const lockedBar = draftBar ?? (await lockBarForPublishing(tx, userId))
@@ -1110,6 +1129,7 @@ export const pubRouter = router({
       }
 
       const offer = await parseGameHouseOffer(userId, input)
+      await assertCanCloseAttendance(userId, input)
 
       // WEB-43: compare the effective pair (input or persisted) on every update —
       // changing only startsAt must not be able to push start past the saved end.
