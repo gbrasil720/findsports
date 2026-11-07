@@ -51,6 +51,7 @@ import {
   replaceFavoriteTeams
 } from '../lib/favorite-teams'
 import { byMatchOrder, gameTitle } from '../lib/game-participants'
+import { effectiveHouseOffer } from '../lib/house-offer'
 import { decodeCursor, encodeCursor } from '../lib/keyset-cursor'
 import { isOpenNow, normalizeOpeningHours } from '../lib/opening-hours'
 import {
@@ -583,9 +584,19 @@ export const pubsRouter = router({
           ({
             reservationCap: _cap,
             acceptsReservations: _accepts,
+            houseOffer: gameOffer,
+            noHouseOffer,
             ...game
           }) => ({
             ...game,
+            // A oferta que vale neste jogo (WEB-422): a dele substitui a do
+            // bar, e "sem oferta neste jogo" a desliga. Só no Elite.
+            houseOffer: elite
+              ? effectiveHouseOffer(houseOffer, {
+                  houseOffer: gameOffer,
+                  noHouseOffer
+                })
+              : null,
             // Telão e som deste jogo, já com a herança das características.
             ...resolveEventScreen(game, publicBar.amenities),
             // `null`: o botão não cabe neste jogo (ADR 0003, "Presença").
@@ -595,6 +606,7 @@ export const pubsRouter = router({
           })
         ),
         rating,
+        // A padrão do bar. O que vale em cada jogo é `events[].houseOffer`.
         houseOffer: elite ? houseOffer : null,
         // "Vou assistir aqui" sai com código do balcão (o app escolhe entre
         // "Confirmar e gerar código" e só "Confirmar").
@@ -742,8 +754,15 @@ export const pubsRouter = router({
                     and(isNull(event.endsAt), gte(event.startsAt, liveCutoff))
                   )
                 ),
-              // Colunas da antiga reserva de mesa: não saem mais.
-              columns: { reservationCap: false, acceptsReservations: false },
+              // Colunas da antiga reserva de mesa: não saem mais. A oferta
+              // do jogo crua também não: o que vale sai de `getById`, já com o
+              // plano (WEB-422).
+              columns: {
+                reservationCap: false,
+                acceptsReservations: false,
+                houseOffer: false,
+                noHouseOffer: false
+              },
               with: {
                 sport: true,
                 participants: { with: { team: true }, orderBy: byMatchOrder }
