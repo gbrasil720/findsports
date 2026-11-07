@@ -1098,6 +1098,7 @@ var PLANS={
 function medal(pl,s){s=s||56;var r=Math.round(s*.28);return '<span class="md md-'+pl+'" style="width:'+s+'px;height:'+s+'px;border-radius:'+r+'px" role="img" aria-label="Plano '+PLANS[pl].n+'"><svg width="'+Math.round(s*.66)+'" height="'+Math.round(s*.66)+'" viewBox="0 0 24 24" aria-hidden="true">'+PLANS[pl].ic+'</svg></span>'}
 
 function plano(){
+  if(fresh())return planoNovo();
   var h='<div class="ph"><div><div class="k">Assinatura e pagamentos</div><h1 class="disp">Plano e cobrança</h1></div><div class="acts"><a class="btn b-ghost sm" href="#" onclick="return false">Ver todos os planos</a></div></div>';
   h+='<section class="planhero" aria-label="Seu plano"><div class="l">'+medal('elite',68)+'<h2 class="disp">Elite</h2><div class="price"><s>R$ 297</s><b>R$ 269</b><span>por mês · renova 2 mar</span></div><span class="fund">PREÇO DE FUNDADOR</span>'+
     '<div class="acts" style="margin-top:22px"><button class="btn b-acid" type="button" data-edit>Trocar plano</button><button class="btn b-ghost sm" style="height:48px" type="button" data-edit>Ver benefícios</button></div></div>'+
@@ -1113,6 +1114,19 @@ function plano(){
     '<section class="card" aria-labelledby="aj"><div class="chd"><h3 id="aj">Dúvidas sobre cobrança</h3></div><div class="lines"><div class="ln"><span><b>Fale com a gente</b><span class="mono">contato@onside.sh</span></span><button class="btn b-ghost sm" type="button" data-copy="contato@onside.sh">Copiar e-mail</button></div></div></section></div>';
   return h;
 }
+
+/* plano no teste: o dono troca quando quiser, e o fim do teste (120 dias desde que o bar foi ao ar) não muda */
+function planoNovo(){var pk=planK(),P=PLANS[pk],m=OBP[pk].price-FUND;
+  var h='<div class="ph"><div><div class="k">Teste grátis · sem cartão</div><h1 class="disp">Plano e cobrança</h1></div></div>';
+  h+='<section class="planhero" aria-label="Seu plano"><div class="l">'+medal(pk,68)+'<h2 class="disp">'+P.n+'</h2><div class="price"><b>R$ 0</b><span>no teste · até 5 mar</span></div><span class="fund">TESTE GRÁTIS · 120 DIAS</span>'+
+    '<p style="margin:16px 0 0;color:#c9c7c0;font-size:15px;max-width:46ch">Os 120 dias contam desde que o '+esc(S.bf.nome)+' foi ao ar, em 5 nov. Troque de plano quando quiser durante o teste: o fim continua em 5 mar.</p></div>'+
+    '<div class="r"><span class="cd">DEPOIS DO TESTE</span><div class="price"><s>R$ '+OBP[pk].price+'</s><b>R$ '+m+'</b><span>por mês · preço de fundador</span></div><span class="cd" style="font-size:12.5px">Só cobra se você contratar. Sem contratar até 5 mar, o bar sai do ar.</span><div class="acts"><button class="btn b-acid" type="button" data-edit>Contratar o '+P.n+'</button></div></div></section>';
+  var F={starter:['Grade de jogos','Perfil e foto de capa','Desempenho do mês'],pro:['Tudo do Starter','Cardápio e galeria','Desempenho por canal'],elite:['Tudo do Pro','Código do balcão e oferta','Topo nos clássicos']};
+  h+='<div class="chd" style="margin-top:34px"><h3 style="font:700 21px var(--text)">Trocar o plano do teste</h3><small>sem cartão · o fim continua em 5 mar</small></div><div class="plans">'+ORD.map(function(k){var c=k===pk;return '<div class="pl'+(c?' cur':'')+'">'+(c?'<span class="tagc">NO TESTE</span>':'')+medal(k,60)+'<h4>'+PLANS[k].n+'</h4><p>'+PLANS[k].d+'</p><ul>'+F[k].map(function(f){return '<li>'+ic('check',16)+f+'</li>'}).join('')+'</ul>'+(c?'':'<button class="btn b-ghost sm" type="button" data-trial="'+k+'">Testar o '+PLANS[k].n+'</button>')+'</div>'}).join('')+'</div>';
+  h+='<div class="duo"><section class="card" aria-labelledby="fat"><div class="chd"><h3 id="fat">Faturas</h3></div><p class="empty2" style="text-align:left;padding:18px 0 4px">Nenhum pagamento. O teste vai até 5 mar; se você contratar, a primeira fatura aparece aqui.</p></section>'+
+    '<section class="card" aria-labelledby="aj"><div class="chd"><h3 id="aj">Dúvidas sobre cobrança</h3></div><div class="lines"><div class="ln"><span><b>Fale com a gente</b><span class="mono">contato@onside.sh</span></span><button class="btn b-ghost sm" type="button" data-copy="contato@onside.sh">Copiar e-mail</button></div></div></section></div>';
+  return h}
+document.addEventListener('click',function(e){var t=e.target.closest('[data-trial]');if(!t)return;S.bf.plan=t.dataset.trial;S.bf.picked=true;render();scrollTo(0,0);toast('Teste trocado para o '+PLANS[S.bf.plan].n+'. O fim continua em 5 mar.')});
 
 /* ---------- Configurações ---------- */
 function config(){
@@ -1200,7 +1214,7 @@ function cadastro(){
     bcRow('jogos')+bcRow('ticket')+
     '</div><div class="cg"><h4>O que você espera da Onside? · marque quantos quiser</h4><div class="chips">'+WANTS.map(function(w){var on=!!c.w[w[0]];return '<button type="button" class="tchip" aria-pressed="'+on+'" data-want="'+w[0]+'">'+(on?ic('check',15):'')+w[1]+'</button>'}).join('')+'</div></div>'}
   if(st===4){h+='<h1 class="disp">Tudo certo?</h1><p class="sub">Confira antes de colocar no ar. Toque para corrigir.</p><div class="card" style="margin-top:20px">'+
-    [['Estabelecimento',f.nome+' · '+f.rua+', '+f.num+' · '+f.bairro,1],['Telefone',f.tel||'Não informado · você preenche depois em Meu espaço',1],['Características',f.telas+' telas · '+Object.keys(f.am).filter(function(k){return f.am[k]}).join(', '),2],['Sua rotina',S.bc.jogos+' jogos por mês · R$ '+S.bc.ticket+' por cliente',3],['Teste grátis','120 dias, até 5 mar, sem cartão. O plano você escolhe depois de publicar o primeiro jogo.']].map(function(r){return '<div class="ln"><span><b>'+r[0]+'</b><span>'+esc(r[1])+'</span></span>'+(r[2]?'<button class="btn b-ghost sm" type="button" data-bgo="'+r[2]+'">Corrigir</button>':'<span></span>')+'</div>'}).join('')+'</div>'}
+    [['Estabelecimento',f.nome+' · '+f.rua+', '+f.num+' · '+f.bairro,1],['Telefone',f.tel||'Não informado · você preenche depois em Meu espaço',1],['Características',f.telas+' telas · '+Object.keys(f.am).filter(function(k){return f.am[k]}).join(', '),2],['Sua rotina',S.bc.jogos+' jogos por mês · R$ '+S.bc.ticket+' por cliente',3],['Teste grátis','120 dias, até 5 mar, sem cartão. O plano você escolhe logo depois do primeiro jogo, antes de entrar no painel.']].map(function(r){return '<div class="ln"><span><b>'+r[0]+'</b><span>'+esc(r[1])+'</span></span>'+(r[2]?'<button class="btn b-ghost sm" type="button" data-bgo="'+r[2]+'">Corrigir</button>':'<span></span>')+'</div>'}).join('')+'</div>'}
   h+='<div class="obnav2">'+(st?'<button class="btn b-ghost sm" type="button" data-bgo="'+(st-1)+'">'+ic('back',18)+'Voltar</button>':'<span></span>')+'<button class="btn b-acid" type="button" data-bgo="'+(S.live&&st===3?8:st+1)+'">'+(S.live&&st===3?'Ver a recomendação':['Começar','Continuar','Continuar','Continuar','Colocar meu bar no ar'][st])+'</button></div></section>';
   h+='<aside class="obprev" aria-label="Assim o torcedor vê"><div class="k2">Assim o torcedor vê</div><div class="pcard"><div class="pimg"><img src="a/bar-ze.webp" alt=""></div><div class="pin2"><b>'+esc(f.nome||'Seu bar')+'</b><span>'+esc(f.bairro)+' · 450 m · aberto até 02:00</span><div class="chips" style="margin-top:10px">'+prevChips(f)+'</div>'+
     '<div class="pgame"><span class="mono" style="font-size:12px;color:var(--muted)">SEUS JOGOS APARECEM AQUI</span><b>Corinthians × Palmeiras</b><span>hoje 19:30 · 34 vão</span></div><span class="btn b-ink sm" style="width:100%;margin-top:12px">Vou assistir aqui</span></div></div><p class="pnote">'+(st===4?'Logo depois de ir ao ar, você publica o primeiro jogo e vê o bar assim, com o jogo, no Explorar e na página do bar.':'A foto de capa você manda depois, em Meu espaço. Bar sem jogo na grade não aparece nas buscas do dia.')+'</p></aside></div></div>';
@@ -1212,14 +1226,14 @@ function prevChips(f){var on=[];OBAM.forEach(function(g){g[1].forEach(function(a
   if(!L.length)return '<span class="chip" style="opacity:.6">Marque o que o bar tem</span>';
   return L.slice(0,8).join('')+(L.length>8?'<span class="chip">+'+(L.length-8)+'</span>':'')}
 function fld(c,l,k,v,ph){return '<label class="fl '+c+'"><span>'+l+'</span><input class="inp" data-bf="'+k+'" value="'+esc(v||'')+'"'+(ph?' placeholder="'+ph+'"':'')+'></label>'}
-function recibo(){var f=S.bf,L=[];S.live=true;
+function recibo(){var f=S.bf,L=[];S.live=true;S.needPlan=true;
   function row(a,b,cls){L.push('<div class="rl '+(cls||'')+'"><span>'+a+'</span>'+(b!=null?'<span>'+b+'</span>':'')+'</div>')}
   L.push('<div class="rl rlogo"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="14" cy="14" r="10.5" fill="none" stroke="currentColor" stroke-width="4.2"/><circle cx="22.4" cy="22.6" r="4.6" fill="#e8320c"/></svg><b>ONSIDE</b></div>');
   row('COMPROVANTE DE CADASTRO',null,'c');row('Nº 000214','05/11/2026 · 14:32','m');L.push('<div class="rl cut"></div>');
   row(esc(f.nome).toUpperCase(),null,'b');row(esc(f.rua)+', '+esc(f.num),null,'m');row(esc(f.bairro)+' · '+esc(f.cidade)+'/'+esc(f.uf),null,'m');L.push('<div class="rl cut"></div>');
-  row('TESTE GRÁTIS','R$ 0,00','b');row('120 dias','até 05/03/2027','m');row('Cartão','não pedido','m');row('Plano','você escolhe depois','m');L.push('<div class="rl cut"></div>');
+  row('TESTE GRÁTIS','R$ 0,00','b');row('120 dias','até 05/03/2027','m');row('Cartão','não pedido','m');row('Plano','você escolhe já já','m');row('','depois do primeiro jogo','m');L.push('<div class="rl cut"></div>');
   row('PRIMEIRO JOGO','por conta da Onside','b');row('Não conta no limite','de nenhum plano','m');
-  L.push('<div class="rl note">Nada é cobrado no teste. O plano você escolhe depois do primeiro jogo; só cobra se você contratar.</div>');L.push('<div class="rl cut"></div>');
+  L.push('<div class="rl note">Nada é cobrado no teste. O plano você escolhe logo depois do primeiro jogo, antes de entrar no painel; só cobra se você contratar.</div>');L.push('<div class="rl cut"></div>');
   row('TOTAL HOJE','R$ 0,00','tot');L.push('<div class="rl bars" aria-hidden="true">'+Array.from({length:38},function(_,i){return '<i style="width:'+[1,2,1,3,1,2,2,1][i%8]+'px"></i>'}).join('')+'</div>');row('obrigado por torcer com a gente',null,'c m');
   return '<div class="obb"><div class="rcpt"><div class="rtop"><span class="k2">Pronto. Saiu o seu comprovante</span><h1 class="disp">'+esc(f.nome)+' está no ar</h1></div><div class="printer" aria-hidden="true"><span class="slot"></span><span class="led2"></span></div>'+
     '<div class="paper" role="document" aria-label="Comprovante de cadastro">'+L.map(function(x,i){return x.replace('class="rl','style="animation-delay:'+(i*95)+'ms" class="rl')}).join('')+'</div>'+
@@ -1235,7 +1249,7 @@ function fgSnd(){return S.fg.snd==null?!!S.bf.am['Som do jogo ligado']:S.fg.snd}
 function fgTags(){var t=[];if(fgTv())t.push('<span class="chip">'+ic('tv',15)+(S.bf.telas>1?S.bf.telas+' telões':'Telão')+'</span>');if(fgSnd())t.push('<span class="chip">'+ic('sound',15)+'Som ligado</span>');return t.join('')}
 function postHead(i){var P=['Primeiro jogo','Assim o torcedor vê','Plano do teste'];
   return '<header class="obh"><span class="lg"><svg width="26" height="26" viewBox="0 0 30 30" aria-hidden="true"><circle cx="14" cy="14" r="10.5" fill="none" stroke="currentColor" stroke-width="4.2"/><circle cx="22.4" cy="22.6" r="4.6" fill="#e8320c"/></svg><b>ONSIDE</b></span><span class="onair"><i></i>NO AR</span>'+
-  '<ol class="obsteps">'+P.map(function(p,k){return '<li data-n="'+(k+1)+' de 3" class="'+(k<i?'ok':k===i?'on':'')+'"><span>'+(k<i?ic('check',14):k+1)+'</span>'+p+'</li>'}).join('')+'</ol><button class="btn b-ghost sm" type="button" data-obdone="later">Ir para o painel</button></header>'}
+  '<ol class="obsteps">'+P.map(function(p,k){return '<li data-n="'+(k+1)+' de 3" class="'+(k<i?'ok':k===i?'on':'')+'"><span>'+(k<i?ic('check',14):k+1)+'</span>'+p+'</li>'}).join('')+'</ol>'+(i<2?'<button class="btn b-ghost sm" type="button" data-bgo="8" data-skipto>Ir para o painel</button>':'')+'</header>'}
 function pgameHtml(){var n=fgName();if(!n)return '<span class="mono" style="font-size:12px;color:var(--muted)">SEU PRIMEIRO JOGO APARECE AQUI</span><b style="color:var(--muted)">Escolha uma sugestão ou escreva o jogo</b>';
   return '<span class="mono" style="font-size:12px;color:var(--muted)">'+esc(fgDay().toUpperCase())+' · '+S.fg.h+(S.fg.mode==='x'&&S.fg.camp?' · '+esc(S.fg.camp.toUpperCase()):'')+'</span><b>'+esc(n)+'</b><div class="chips" style="margin-top:8px">'+fgTags()+'</div>'}
 function primeiro(){var g=S.fg,f=S.bf,groups={};
@@ -1274,7 +1288,7 @@ function torcedorVe(){var f=S.bf,n=fgName()||'Corinthians × Palmeiras',url='ons
 function planoOb(){var f=S.bf,R=rec(),plan=f.plan||R.p;
   var h='<div class="obb">'+postHead(2)+'<div class="obgrid one"><section class="obf wide">';
   h+='<span class="k2">Nossa recomendação, pela sua rotina</span><h1 class="disp">O <span class="hl2">'+PLANS[R.p].n+'</span> é o plano do '+esc(f.nome)+'</h1>'+
-    '<p class="sub">Vale o que você escolher. Qualquer plano é grátis por 120 dias, sem cartão, e dá pra trocar depois em Plano e cobrança.</p>'+
+    '<p class="sub">Escolha o plano do teste para entrar no painel. Vale o que você escolher: qualquer plano é grátis, sem cartão, por 120 dias contados desde que o bar foi ao ar (até 5 mar). Durante o teste, dá para trocar de plano quando quiser, e a data de fim não muda.</p>'+
     '<div class="rbox"><span class="k2">Pelo que você contou</span><ul>'+R.why.map(function(w){return '<li>'+ic('check',16)+esc(w)+'</li>'}).join('')+'</ul><button class="linkb" type="button" data-bgo="3">Mudar minhas respostas</button></div>'+
     '<div class="pgrid" role="radiogroup" aria-label="Plano do teste">'+ORD.map(function(k){var on=plan===k,isr=R.p===k,pb=payback(k),m=OBP[k].price-FUND;return '<button type="button" role="radio" aria-checked="'+on+'" class="pc'+(on?' on':'')+(isr?' rec':'')+'" data-bplan="'+k+'">'+(isr?'<span class="tagc">'+ic('sparkle',12)+'RECOMENDADO</span>':'')+
       medal(k,52)+'<h4>'+PLANS[k].n+'</h4><p class="pd">'+PLANS[k].d+'</p>'+
@@ -1283,8 +1297,7 @@ function planoOb(){var f=S.bf,R=rec(),plan=f.plan||R.p;
       '<span class="pcb"><span><b>'+(pb.n>1?pb.n+' clientes a mais por mês já pagam':'1 cliente a mais por mês já paga')+' o plano</b><small>'+brl(m)+' ÷ '+brl(S.bc.ticket)+' que cada um gasta</small></span></span>'+
       '<span class="pcsel"><i aria-hidden="true"></i>'+(on?'Escolhido':'Escolher o '+PLANS[k].n)+'</span></button>'}).join('')+'</div>'+
     '<p class="pnote">A conta de clientes usa o gasto que você informou; não é previsão de público.</p>'+
-    '<div class="later"><span class="ib">'+ic('calendar',20)+'</span><span><b>Prefere escolher depois?</b>O teste segue no '+PLANS[R.p].n+', o recomendado pela sua rotina, até 5 mar. Você escolhe ou troca em Plano e cobrança quando quiser, sem cartão.</span></div>'+
-    '<div class="obnav2"><button class="btn b-ghost sm" type="button" data-obdone="later">Escolher depois</button><button class="btn b-acid" type="button" data-obdone="pick">Testar o '+PLANS[plan].n+' grátis</button></div></section></div></div>';
+    '<div class="obnav2"><span></span><button class="btn b-acid" type="button" data-obdone="pick">Testar o '+PLANS[plan].n+' grátis</button></div></section></div></div>';
   return h}
 document.addEventListener('click',function(e){var t;
   if(t=e.target.closest('[data-want]')){var k=t.dataset.want;S.bc.w[k]=!S.bc.w[k];t.setAttribute('aria-pressed',!!S.bc.w[k]);if(!S.bf.picked)S.bf.plan=null;return}
@@ -1294,7 +1307,7 @@ document.addEventListener('click',function(e){var t;
 });
 document.addEventListener('click',function(e){
   var t;
-  if(t=e.target.closest('[data-bgo]')){if(t.hasAttribute('data-bpick')&&!S.bf.plan)S.bf.plan=rec().p;S.bo=+t.dataset.bgo;render();scrollTo(0,0);return}
+  if(t=e.target.closest('[data-bgo]')){if(t.hasAttribute('data-bpick')&&!S.bf.plan)S.bf.plan=rec().p;S.bo=+t.dataset.bgo;render();scrollTo(0,0);if(t.hasAttribute('data-skipto'))toast('Falta só o plano do teste. Depois dele, o painel.');return}
   if(t=e.target.closest('[data-bam]')){var a=t.dataset.bam;S.bf.am[a]=!S.bf.am[a];render();return}
   if(t=e.target.closest('[data-bscr]')){S.bf.telas=Math.max(0,S.bf.telas+ +t.dataset.bscr);render();return}
   if(t=e.target.closest('[data-fgs]')){var x=SUGG[+t.dataset.fgs];S.fg.sg=+t.dataset.fgs;S.fg.mode=x[3]?'x':'c';S.fg.a=x[3];S.fg.b=x[4];S.fg.camp=x[5];S.fg.d=x[1];S.fg.h=x[2];render();return}
@@ -1302,7 +1315,7 @@ document.addEventListener('click',function(e){
   if(t=e.target.closest('[data-fgt]')){var k2=t.dataset.fgt;S.fg[k2]=!(k2==='tv'?fgTv():fgSnd());t.setAttribute('aria-checked',S.fg[k2]);var pv=document.getElementById('fgprev');if(pv)pv.innerHTML=pgameHtml();return}
   if(t=e.target.closest('[data-fgpub]')){if(t.disabled)return;S.gd.jogo=1;S.bo=7;render();scrollTo(0,0);toast(fgName()+' publicado. Já aparece para quem procura esse jogo.');return}
   if(t=e.target.closest('[data-share]')){var k3=t.dataset.share;if(k3==='link'||k3==='ig'){try{navigator.clipboard.writeText('https://onside.sh/bar/bar-do-ze')}catch(_){}}toast({wa:'Abre o WhatsApp com a mensagem pronta (exemplo).',link:'Link copiado: onside.sh/bar/bar-do-ze',qr:'QR baixado em PDF para imprimir (exemplo).',ig:'Link copiado. Cole na bio do Instagram.'}[k3]);if(S.view==='hoje')guideMark('link');return}
-  if(t=e.target.closest('[data-obdone]')){var pick=t.dataset.obdone==='pick',pl=pick?(S.bf.plan||rec().p):rec().p;S.bf.plan=pl;S.gd.plano=pick?1:0;S.guide='on';S.bo=0;S.live=false;S.tourGo=true;location.hash='hoje';toast(pick?'Teste do '+PLANS[pl].n+' ligado até 5 mar. Bem-vindo ao painel.':'Seu teste segue no '+PLANS[pl].n+', o recomendado. Escolha quando quiser.');return}
+  if(t=e.target.closest('[data-obdone]')){var pl=S.bf.plan||rec().p;S.bf.plan=pl;S.bf.picked=true;S.needPlan=false;S.gd.plano=1;S.guide='on';S.bo=0;S.live=false;S.tourGo=true;location.hash='hoje';toast('Teste do '+PLANS[pl].n+' ligado até 5 mar. Bem-vindo ao painel.');return}
 });
 document.addEventListener('input',function(e){var g=e.target.getAttribute&&e.target.getAttribute('data-fg');if(!g)return;S.fg[g]=e.target.value;S.fg.sg=-1;var pv=document.getElementById('fgprev');if(pv)pv.innerHTML=pgameHtml();var pb=document.querySelector('[data-fgpub]');if(pb)pb.disabled=!fgName();[].forEach.call(document.querySelectorAll('.sgb.on'),function(b){b.classList.remove('on');b.setAttribute('aria-pressed','false')})});
 document.addEventListener('input',function(e){var k=e.target.getAttribute&&e.target.getAttribute('data-bf');if(!k)return;S.bf[k]=e.target.value;var pv=document.querySelector('.obprev .pin2 b');if(pv&&k==='nome')pv.textContent=e.target.value||'Seu bar'});
@@ -1403,11 +1416,11 @@ function capaHtml(){var pk=planK(),n=(S.capa?1:0)+(S.hrs?1:0);
     '<div><span class="k2">Prévia · o card na busca</span>'+cardPrev()+'</div></div></section>'}
 
 /* primeiros passos: os itens marcam pelo que o dono fez, inclusive no passeio */
-S.guide='off';S.gd={jogo:1,plano:0,passeio:0,semana:0,foto:0,codigo:0,link:0};S.seen={};S.steps=[];
+S.guide='off';S.gd={jogo:1,plano:1,passeio:0,semana:0,foto:0,codigo:0,link:0};S.seen={};S.steps=[];
 function GUIDE(){var pk=planK(),pl=PLANS[pk].n,g=firstGame(),bar=esc(S.bf.nome),el=pk==='elite',rest=tourSteps().filter(function(k){return !S.seen[k]}).length,paused=Object.keys(S.seen).length&&!S.gd.passeio;
   var G=[
   ['jogo','Publicar o primeiro jogo',esc(g.g+', '+wd(g.iso,1)+' '+g.h)+' · por conta da Onside, fora do limite do plano','','publicar o primeiro jogo'],
-  ['plano','Escolher o plano do teste',S.gd.plano?pl+' grátis até 5 mar, sem cartão':'Seu teste está no '+pl+', o recomendado pela sua rotina. Grátis até 5 mar, sem cartão.','<a class="btn b-ghost sm" href="#plano" data-gdo="plano">Escolher</a>','escolher o plano'],
+  ['plano','Escolher o plano do teste',pl+' grátis até 5 mar, sem cartão. Troque quando quiser; o fim do teste não muda.','','escolher o plano'],
   ['passeio','Conhecer o painel',S.gd.passeio?'Passeio feito: Hoje, Jogos, Meu espaço'+(el?', Quem vai':'')+' e Desempenho.':paused?'Você parou no meio. Falta'+(rest>1?'m '+rest+' telas':' 1 tela')+', com os dados do '+bar+'.':'Um passeio pelas telas que você vai usar, com o seu jogo e os números do '+bar+'.','<button class="btn b-ink sm" type="button" data-tour="'+(paused?'resume':'')+'">'+ic('sparkle',16)+(paused?'Continuar o passeio':'Fazer o passeio')+'</button>','conhecer o painel'],
   ['semana','Pôr mais um jogo na grade',S.fx.length?esc(S.fx.map(function(x){return x.g}).join(', '))+' na grade':'Cada jogo na grade é mais uma busca em que o bar aparece.','<a class="btn b-ghost sm" href="#jogos">'+ic('plus',16)+'Ver sugestões</a>','pôr mais um jogo na grade'],
   ['foto','Foto de capa e horário',S.gd.foto?'Capa em revisão e horário no card do bar.':'Com foto e horário, o card do bar sai completo na busca. A foto passa pela revisão da Onside.','<a class="btn b-ghost sm" href="#meu-espaco">Abrir Meu espaço</a>','a foto de capa e o horário']];
@@ -1452,7 +1465,7 @@ function TS(k){var f=S.bf,g=firstGame(),pk=planK(),nm='<b>'+esc(g.g)+'</b>',quan
     if(pk==='pro')return {v:'desempenho',el:['#t-canais','#t-canais'],pl:'NO PRO',t:'Por onde te procuraram',p:'Depois do jogo de '+dia+', o Pro mostra por onde o torcedor chamou o '+bar+': WhatsApp, rota ou telefone. É assim que você vê se a grade está trazendo gente.'};
     return {v:'desempenho',el:['#t-quemfoi','#t-quemfoi'],pl:'NO ELITE',t:'Quem foi de verdade',p:'Depois do jogo de '+dia+', aparece aqui quem marcou que ia e quem validou o código no balcão'+(S.treino?' (o de exemplo não entra)':'')+'. É a visita verificada, o número que mostra o retorno do Elite.'}}
   var G=GUIDE(),done=G.filter(function(x){return S.gd[x[0]]}).length,miss=G.filter(function(x){return !S.gd[x[0]]}).map(function(x){return x[4]});
-  return {v:'hoje',el:['#guide','#guide'],t:'Passeio feito',p:'O que você fez agora já está marcado em Primeiros passos: <b>'+done+' de '+G.length+'</b>. '+(miss.length?'Falta '+andList(miss)+'.':'Está tudo feito.')}}
+  return {v:'hoje',el:['#guide','#guide'],t:'Passeio feito',p:'O que você fez agora já está marcado em Primeiros passos: <b>'+done+' de '+G.length+'</b>. '+(miss.length?'Falta '+andList(miss)+'.':'Está tudo feito.')+' Seu teste no '+PLANS[pk].n+' vai até 5 mar; trocar de plano em Plano e cobrança não muda essa data.'}}
 function tourTip(st){var n=S.steps.length,last=tourI===n-1;
   return '<div class="tt2"><span class="mono">'+(tourI+1)+' DE '+n+(st.pl?' · '+st.pl:'')+'</span><button type="button" class="linkb" data-tskip>Pular o passeio</button></div><h3 id="tour-t" class="disp">'+st.t+'</h3><p>'+st.p+'</p>'+(st.hint?'<p class="thint">'+ic('next',16)+st.hint+'</p>':'')+
     '<div class="ta">'+(tourI?'<button class="btn b-ghost sm" type="button" data-tback>Voltar</button>':'<span></span>')+'<button class="btn b-acid sm" type="button" data-tnext>'+(last?'Começar a usar':st.next||'Próximo')+'</button></div><div class="tdots" aria-hidden="true">'+S.steps.map(function(_,i){return '<i class="'+(i===tourI?'on':'')+'"></i>'}).join('')+'</div>'}
