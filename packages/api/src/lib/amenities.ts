@@ -13,7 +13,8 @@
  * REGRA QUE NÃO PODE SER QUEBRADA: `id` nunca é reusado. Os ids estão
  * gravados na coluna `bar.amenities` de todo bar cadastrado — reciclar um id
  * aposentado renomeia silenciosamente o que os bares já declararam. Para
- * remover uma característica, tire-a desta lista e nunca mais use o número.
+ * remover uma característica, tire-a desta lista e nunca mais use o número;
+ * se os bares devem guardá-la, ela vai para `HIDDEN_AMENITY_IDS`.
  */
 
 export const AMENITY_GROUPS = [
@@ -79,8 +80,19 @@ export const AMENITIES: readonly Amenity[] = [
     group: 'practical'
   },
   { id: 15, slug: 'wifi', label: 'Wi-fi', group: 'practical' },
-  { id: 14, slug: 'pix_and_card', label: 'Pix e cartão', group: 'practical' }
+  { id: 16, slug: 'pix', label: 'Pix', group: 'practical' },
+  { id: 17, slug: 'card', label: 'Cartão', group: 'practical' }
 ] as const
+
+/**
+ * Ids que os bares ainda têm gravados e nenhuma tela mostra. A busca e a
+ * escrita os aceitam (o bar não perde o que tinha ao salvar), mas eles não
+ * estão em `AMENITIES`, então não aparecem em checklist, página nem filtro.
+ *
+ * 14 era "Pix e cartão": virou Pix (16) e Cartão (17), e a migration 0075 deu
+ * os dois a quem o tinha marcado (WEB-455). O 14 continua gravado, escondido.
+ */
+export const HIDDEN_AMENITY_IDS: readonly number[] = [14]
 
 /** Quantas características a busca aceita de uma vez. */
 export const MAX_AMENITY_FILTER = 6
@@ -106,21 +118,28 @@ export function motivoTelasInvalido(
 }
 
 const BY_ID = new Map(AMENITIES.map((amenity) => [amenity.id, amenity]))
+const KNOWN_IDS = new Set([...BY_ID.keys(), ...HIDDEN_AMENITY_IDS])
 
+/** Quantos ids a escrita aceita: todos os conhecidos, escondidos inclusive. */
+export const MAX_AMENITY_IDS = KNOWN_IDS.size
+
+/** A característica que se mostra; id escondido ou desconhecido dá `undefined`. */
 export function findAmenity(id: number): Amenity | undefined {
   return BY_ID.get(id)
 }
 
 /**
  * Normaliza a lista que veio do cliente: descarta id desconhecido (ou
- * aposentado), remove repetido e ordena.
+ * aposentado), remove repetido e ordena. Id escondido fica: é conhecido.
  *
  * A ordenação não é estética — a lista entra na chave do cache da busca, e
  * `[1,4]` e `[4,1]` são o mesmo filtro. Sem ordenar, seriam duas entradas
  * para o mesmo resultado.
  */
 export function normalizeAmenityIds(ids: readonly number[]): number[] {
-  return [...new Set(ids.filter((id) => BY_ID.has(id)))].sort((a, b) => a - b)
+  return [...new Set(ids.filter((id) => KNOWN_IDS.has(id)))].sort(
+    (a, b) => a - b
+  )
 }
 
 export const HOUSE_OFFER_AMENITY_ID = 10
