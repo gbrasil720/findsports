@@ -1,5 +1,6 @@
 <title>Onside · painel do bar</title>
 <meta name="claude:viewport-fit-sides" content="cover">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap">
@@ -642,6 +643,124 @@ textarea.inp{height:88px;padding:14px 16px;resize:none;line-height:1.4}
 .rlogo b{font:400 24px/1 var(--display)}
 .rl.bars{justify-content:center;gap:2px;height:38px;margin:14px 0 6px}
 .rl.bars i{display:block;height:100%;background:#12120f}
+/* depois do ar: primeiro jogo, assim o torcedor vê, plano */
+.onair{display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 10px;border-radius:8px;background:var(--acid);color:#12120f;font:600 11.5px/1 var(--mono);letter-spacing:.06em}
+.onair i{width:7px;height:7px;border-radius:50%;background:#12120f;animation:pl 1.6s infinite}
+.free{display:flex;gap:14px;align-items:center;margin-top:22px;padding:16px 18px;border-radius:20px;background:var(--ink-card);color:#f1eee6;box-shadow:0 4px 0 #000;font-size:14.5px;line-height:1.4;--spark:#c9f135}
+.free .ib{flex:none;width:40px;height:40px;border-radius:12px;background:#c9f135;color:#12120f;display:grid;place-items:center;--spark:#e8320c}
+.free b{display:block;font-size:16px;color:#c9f135}
+.free span span,.free>span:last-child{color:#c9c7c0}
+.obf .cg{margin-top:24px}
+.obf .cg h4,.cg h4{margin:0 0 10px;font:600 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.sgl{display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;align-items:start;margin-top:10px}
+.sgk{font:600 12.5px var(--mono);color:var(--fg);padding-top:14px}
+.sgs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.sgb{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 12px;border:0;border-radius:16px;background:var(--card);box-shadow:0 2px 0 var(--drop);text-align:left;cursor:pointer;transition:transform .18s var(--ease)}
+.sgb:hover{transform:translateY(-2px)}
+.sgb:active{transform:translateY(2px)}
+.sgb .d{font:400 20px/1 var(--display);min-width:50px}
+.sgb b{display:block;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sgb span span{font-size:12.5px;color:var(--muted)}
+.sgb.on{box-shadow:inset 0 0 0 2px var(--fg)}
+.sgb.on svg{color:var(--fg)}
+.fgm{margin-top:4px}
+.vs{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:12px;align-items:end}
+.vs>b{font:700 24px/52px var(--text);color:var(--muted)}
+.obf .sw .tg{margin-left:auto}
+.btn[disabled]{opacity:.45;cursor:not-allowed;transform:none!important}
+.tvw{max-width:1180px}
+.tvg{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.9fr) minmax(0,1fr);gap:24px;margin-top:28px;align-items:start}
+.tvg>div{min-width:0}
+.tvg>div>.k2{margin-bottom:12px}
+.fbc{background:var(--card);border-radius:24px;box-shadow:var(--shadow);overflow:hidden;animation:pop .5s var(--ease) both}
+.ph3{position:relative;aspect-ratio:16/10;background:var(--sub)}
+.ph3 img{width:100%;height:100%;object-fit:cover}
+.ph3 .when{position:absolute;left:14px;top:14px;display:inline-flex;align-items:center;height:30px;padding:0 11px;border-radius:999px;background:rgba(18,18,15,.82);color:#f1eee6;font:600 12.5px/1 var(--mono)}
+.bd3{padding:18px 20px 20px;display:flex;flex-direction:column;gap:12px}
+.bd3 .nm{display:block;font:700 21px/1.2 var(--text)}
+.bd3 .mt{font-size:14px;color:var(--muted)}
+.gm3{display:flex;gap:10px;align-items:center;padding:11px 13px;border-radius:14px;background:rgba(201,241,53,.22);font-size:14.5px;line-height:1.35}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.ft3{padding-top:12px;border-top:1px solid var(--line);font-size:13.5px;color:var(--muted)}
+.tvp{width:min(290px,100%);margin:0 auto;aspect-ratio:9/18.5;border-radius:44px;padding:9px;background:#0a0a08;box-shadow:inset 0 0 0 1.5px #3a3a33,0 40px 70px -30px rgba(0,0,0,.6);animation:pop .5s .08s var(--ease) both}
+.tvp .scr{width:100%;height:100%;border-radius:36px;overflow:hidden;background:var(--bg);color:var(--fg)}
+.hero3{position:relative;height:38%}
+.hero3 img{width:100%;height:100%;object-fit:cover}
+.hero3::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(18,18,15,0) 35%,rgba(18,18,15,.85))}
+.hero3 b{position:absolute;left:14px;bottom:10px;z-index:1;font-size:30px;color:#f1eee6}
+.in3{padding:10px 12px}
+.in3 .mt{font-size:12px;color:var(--muted)}
+.tod{margin-top:10px;padding:14px;border-radius:20px;background:var(--fg);color:var(--bg);box-shadow:0 3px 0 #000;display:flex;flex-direction:column;gap:9px;--spark:#c9f135}
+.tod .mono{font-size:11px;opacity:.7}
+.tod b{font-size:26px;line-height:.95}
+.tod b i{font:700 .8em var(--text);color:var(--acid)}
+.tod .chip{background:rgba(127,127,110,.25);height:24px;font-size:11.5px}
+.tod .btn{height:38px;font-size:13.5px;align-self:flex-start}
+.in3 .chips .chip{height:24px;font-size:11.5px;padding:0 8px}
+.shr{padding:20px;display:flex;flex-direction:column;gap:14px;animation:pop .5s .16s var(--ease) both}
+.wa{margin:0;padding:14px 16px;border-radius:18px 18px 18px 6px;background:var(--sub);font-size:14.5px;line-height:1.45}
+.wa .mono{font-size:13px}
+.lnk2{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:8px 8px 8px 14px;border-radius:999px;box-shadow:inset 0 0 0 1px var(--line2)}
+.lnk2 .mono{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qrb{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:center;padding-top:14px;border-top:1px solid var(--line)}
+.q3{display:grid;place-items:center;width:124px;height:124px;border-radius:14px;background:#fff;padding:8px}
+.q3 img,.q3 canvas{width:108px!important;height:108px!important}
+.qrb .btn{padding:0 12px;white-space:normal;text-align:left}
+.qrb b{display:block;font-size:15.5px}
+.qrb>span>span{display:block;font-size:13.5px;color:var(--muted);margin:3px 0 10px}
+.later{display:flex;gap:14px;align-items:center;margin-top:22px;padding:16px 18px;border-radius:20px;box-shadow:inset 0 0 0 1.5px var(--line2);font-size:14.5px;line-height:1.45;color:var(--body);max-width:760px}
+.later .ib{flex:none;width:40px;height:40px;border-radius:12px;background:var(--sub);display:grid;place-items:center}
+.later b{display:block;font-size:15.5px;color:var(--fg)}
+@media (max-width:1100px){.tvg{grid-template-columns:repeat(2,minmax(0,1fr))}.tvg>div:last-child{grid-column:1/-1}}
+@media (max-width:760px){.tvg{grid-template-columns:1fr}.sgl{grid-template-columns:1fr;gap:6px}.sgk{padding-top:4px}.sgs{grid-template-columns:1fr}.obh .onair{display:none}.obh .btn{padding:0 12px;font-size:13.5px}}
+
+/* primeiros passos */
+.gproto{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:20px;padding:8px 10px;border-radius:16px;border:1.5px dashed var(--line2)}
+.gproto .k2{margin-right:6px;font-size:11px}
+.gproto button{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border:0;border-radius:999px;background:var(--sub);font:600 13px var(--text);cursor:pointer}
+.gproto button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.gproto [data-tour]{margin-left:auto}
+.guide{margin-top:14px}
+.ghd{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.ghd h3{margin-top:4px}
+.gl{list-style:none;margin:10px 0 0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:28px}
+.gl li{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:12px;align-items:center;padding:13px 0;border-top:1px solid var(--line)}
+.gl .c{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:transparent;box-shadow:inset 0 0 0 1.5px var(--line2)}
+.gl li.dn .c{background:var(--acid);color:#12120f;box-shadow:none;--spark:#e8320c}
+.gl li.dn b{color:var(--muted);text-decoration:line-through;text-decoration-thickness:1.5px}
+.gl li.nx .c{box-shadow:inset 0 0 0 2px var(--fg)}
+.gl b{display:block;font-size:15px}
+.gl li>span:nth-child(2)>span{font-size:13.5px;color:var(--muted);line-height:1.35;display:block}
+.gl .gsh{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.gl .gsh .btn{padding:0 12px}
+.gdone{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:20px;align-items:center;margin-top:14px;padding:22px 26px;border-radius:28px;background:var(--ink-card);color:#f1eee6;box-shadow:0 5px 0 #000;animation:pop .5s var(--ease)}
+.gdone .big{width:68px;height:68px;border-radius:20px;background:#c9f135;color:#12120f;display:grid;place-items:center;box-shadow:0 4px 0 #7f9a12;--spark:#e8320c}
+.gdone h3{font-size:34px;color:#c9f135}
+.gdone p{margin:6px 0 0;color:#c9c7c0;font-size:15px}
+@media (max-width:1100px){.gl{grid-template-columns:1fr}}
+@media (max-width:860px){
+  .gl li{grid-template-columns:30px minmax(0,1fr)}
+  .gl li>.btn,.gl li>.ok,.gl li>.gsh{grid-column:2;justify-self:start}
+  .gl .gsh{justify-content:flex-start}
+  .gdone{grid-template-columns:auto minmax(0,1fr);padding:20px}
+  .gdone .btn{grid-column:1/-1}
+  .gdone h3{font-size:28px}
+  .gproto [data-tour]{margin-left:0}
+}
+
+/* tour */
+.tour{position:fixed;inset:0;z-index:120;display:none}
+.tour.on{display:block}
+.tour .spot{position:fixed;border-radius:16px;box-shadow:0 0 0 2px #c9f135,0 0 0 200vmax rgba(10,10,8,.66);pointer-events:none;transition:left .4s var(--ease),top .4s var(--ease),width .4s var(--ease),height .4s var(--ease)}
+.tip2{position:fixed;width:min(340px,calc(100vw - 32px));padding:20px;border-radius:24px;background:var(--bg);color:var(--fg);box-shadow:0 4px 0 var(--drop),0 30px 60px -20px rgba(0,0,0,.6);animation:pop .35s var(--ease)}
+.tt2{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--muted)}
+.tip2 h3{font-size:30px;margin-top:10px}
+.tip2 p{margin:8px 0 0;font-size:15px;color:var(--body)}
+.ta{display:flex;justify-content:space-between;gap:10px;margin-top:16px}
+.tdots{display:flex;gap:5px;justify-content:center;margin-top:14px}
+.tdots i{width:22px;height:4px;border-radius:4px;background:var(--line2)}
+.tdots i.on{background:var(--fg)}
+@media (max-width:860px){.tip2{width:auto}}
 @media (prefers-reduced-motion:reduce){.rl{animation:none}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition-duration:.01ms!important}}
 </style>
@@ -687,6 +806,7 @@ textarea.inp{height:88px;padding:14px 16px;resize:none;line-height:1.4}
   <div class="vres" id="vres" role="status"></div>
   <div style="display:flex;gap:10px;margin-top:18px"><button class="btn b-ghost sm" type="button" id="v-ex">Usar exemplo GRT-GVX</button><span style="flex:1"></span><button class="btn b-acid sm" type="button" id="v-go">Validar</button></div>
 </div>
+<div class="tour" id="tour" aria-hidden="true"><div class="spot"></div><div class="tip2" role="dialog" aria-modal="true" aria-labelledby="tour-t"></div></div>
 <div class="toast" id="toast" role="status"></div>
 
 <script>
@@ -731,6 +851,7 @@ function hoje(){
   var g=GAMES[0],m=minsTo(g),hh=Math.floor(m/60),mm=m%60;
   var h='<div class="ph"><div><div class="k">quinta, 5 nov · Vila Madalena · agora '+NOW.label+'</div><h1 class="disp">Hoje na casa</h1><p class="sub">2 jogos hoje · 34 vão assistir · 7 já chegaram</p></div>'+
     '<div class="acts"><a class="btn b-ghost sm gh" href="#">'+ic('share',18)+'Ver no app</a><button class="btn b-ink sm" type="button" data-new>'+ic('plus',18)+'Novo jogo</button></div></div>';
+  h+=guideHtml();
   h+='<section class="now" aria-label="Próximo jogo"><div class="l"><span class="tag"><i></i>PRÓXIMO JOGO · '+g.h+' · '+g.c.toUpperCase()+'</span>'+
     '<h2 class="disp">'+esc(g.g).replace(' × ',' <span>×</span> ')+'</h2>'+
     '<ul class="meta"><li>'+ic('tv',16)+'3 telões</li><li>'+ic('sound',16)+'Som ligado</li><li>'+ic('people',16)+'Lista aberta</li></ul>'+
@@ -1010,36 +1131,27 @@ function perTxt(pb){var c=S.bc;if(!c.jogos)return '';if(pb.n>=c.jogos)return Mat
 var BCS={jogos:[1,1,60,'Quantos jogos você passa por mês?','Some tudo: Brasileirão, Champions, Libertadores, NBA…'],ticket:[5,10,500,'Quanto cada cliente gasta numa noite de jogo?','Comida e bebida, em média por pessoa']};
 function bcRow(k){var d=BCS[k],v=S.bc[k];return '<div class="sw"><span>'+d[3]+'<small>'+d[4]+'</small></span><span class="step"><button type="button" data-bcs="'+k+':-1" aria-label="Menos">−</button><b aria-live="polite">'+(k==='ticket'?'R$ '+v:v)+'</b><button type="button" data-bcs="'+k+':1" aria-label="Mais">+</button></span></div>'}
 function cadastro(){
-  var P=['Boas-vindas','Estabelecimento','Características','Sua rotina','Plano','Revisão'],st=S.bo,f=S.bf,N=P.length;
+  var P=['Boas-vindas','Estabelecimento','Características','Sua rotina','Revisão'],st=S.bo,f=S.bf,N=P.length;
   if(st===N)return recibo();
-  if(st===N+1)return noar();
-  var plan=f.plan||rec().p;
+  if(st===N+1)return primeiro();
+  if(st===N+2)return torcedorVe();
+  if(st===N+3)return planoOb();
   var h='<div class="obb"><header class="obh"><span class="lg">'+'<svg width="26" height="26" viewBox="0 0 30 30" aria-hidden="true"><circle cx="14" cy="14" r="10.5" fill="none" stroke="currentColor" stroke-width="4.2"/><circle cx="22.4" cy="22.6" r="4.6" fill="#e8320c"/></svg><b>ONSIDE</b></span>'+
-    '<ol class="obsteps">'+P.map(function(p,i){return '<li data-n="'+(i+1)+' de '+N+'" class="'+(i<st?'ok':i===st?'on':'')+'"><span>'+(i<st?ic('check',14):i+1)+'</span>'+p+'</li>'}).join('')+'</ol><a class="btn b-ghost sm" href="#hoje">'+(st===2?'Pular':'Sair')+'</a></header><div class="obgrid'+(st===4?' one':'')+'"><section class="obf'+(st===4?' wide':'')+'">';
-  if(st===0){h+='<h1 class="disp">Vamos lotar sua casa nos <span class="hl2">dias de jogo</span></h1><p class="sub">Coloque seu bar no radar dos torcedores. Leva 2 minutos, e você testa 120 dias grátis no plano que escolher, sem cartão.</p><ul class="obben">'+[['tv','Divulgue sua programação de jogos','O torcedor procura o jogo e acha o seu bar.'],['pin','Apareça pra torcedores perto de você','Quem está no seu raio vê você primeiro.'],['fire','Lote nos dias de clássico','Elite aparece no topo dos jogos grandes.']].map(function(b){return '<li><span class="i">'+ic(b[0],22)+'</span><span><b>'+b[1]+'</b><span>'+b[2]+'</span></span></li>'}).join('')+'</ul>'}
+    '<ol class="obsteps">'+P.map(function(p,i){return '<li data-n="'+(i+1)+' de '+N+'" class="'+(i<st?'ok':i===st?'on':'')+'"><span>'+(i<st?ic('check',14):i+1)+'</span>'+p+'</li>'}).join('')+'</ol>'+(S.live?'<button class="btn b-ghost sm" type="button" data-bgo="8">Voltar ao plano</button>':'<a class="btn b-ghost sm" href="#hoje">'+(st===2?'Pular':'Sair')+'</a>')+'</header><div class="obgrid"><section class="obf">';
+  if(st===0){h+='<h1 class="disp">Vamos lotar sua casa nos <span class="hl2">dias de jogo</span></h1><p class="sub">Coloque seu bar no radar dos torcedores. Leva 2 minutos: você cadastra o bar, publica o primeiro jogo e vê como o torcedor encontra. Teste grátis de 120 dias, sem cartão.</p><ul class="obben">'+[['tv','Divulgue sua programação de jogos','O torcedor procura o jogo e acha o seu bar.'],['pin','Apareça pra torcedores perto de você','Quem está no seu raio vê você primeiro.'],['fire','Lote nos dias de clássico','Elite aparece no topo dos jogos grandes.']].map(function(b){return '<li><span class="i">'+ic(b[0],22)+'</span><span><b>'+b[1]+'</b><span>'+b[2]+'</span></span></li>'}).join('')+'</ul>'}
   if(st===1){h+='<h1 class="disp">Seu estabelecimento</h1><p class="sub">Conta um pouco do seu bar. O CEP preenche o endereço.</p><div class="form2" style="margin-top:20px">'+
     fld('c6','Nome do bar','nome',f.nome)+fld('c2 cepok','CEP','cep',f.cep,'00000-000')+'<div class="cepf c4" role="status"><span class="ck">'+ic('check',16)+'</span><span><b>CEP encontrado</b>Preenchemos o endereço. Confira e coloque o número.</span></div>'+fld('c4 auto','Rua','rua',f.rua)+fld('c2','Número','num',f.num)+fld('c2 auto','Bairro','bairro',f.bairro)+fld('c2 auto','Cidade','cidade',f.cidade)+fld('c2 auto','UF','uf',f.uf)+fld('c6','Telefone ou WhatsApp · opcional','tel',f.tel,'(11) 91234-5678')+
     '<label class="fl c6"><span>Descrição · '+f.desc.length+' de 500</span><textarea class="inp" data-bf="desc">'+esc(f.desc)+'</textarea></label></div>'}
   if(st===2){h+='<h1 class="disp">O que o torcedor encontra aí?</h1><p class="sub">É o que ele usa para filtrar a busca. Você muda depois em Meu espaço.</p><div class="sw" style="border:0;margin-top:18px;font-weight:600">'+ic('tv',20)+'Quantas telas?<span class="step"><button type="button" data-bscr="-1" aria-label="Menos uma">−</button><b>'+f.telas+'</b><button type="button" data-bscr="1" aria-label="Mais uma">+</button></span></div>'+
     OBAM.map(function(g){return '<div class="cg"><h4>'+g[0]+'</h4><div class="chips">'+g[1].map(function(a){return '<button type="button" class="tchip" aria-pressed="'+!!f.am[a]+'" data-bam="'+a+'">'+a+'</button>'}).join('')+'</div></div>'}).join('')}
-  if(st===3){var c=S.bc;h+='<h1 class="disp">Como é a sua <span class="hl2">rotina de jogo?</span></h1><p class="sub">Duas perguntas rápidas e o que você espera da Onside. Com isso a gente mostra o plano que faz mais sentido pro seu bar.</p><div class="calc">'+
+  if(st===3){var c=S.bc;h+='<h1 class="disp">Como é a sua <span class="hl2">rotina de jogo?</span></h1><p class="sub">Duas perguntas rápidas e o que você espera da Onside. Depois do seu primeiro jogo, a gente usa isso para recomendar o plano que faz mais sentido pro seu bar.</p><div class="calc">'+
     bcRow('jogos')+bcRow('ticket')+
     '</div><div class="cg"><h4>O que você espera da Onside? · marque quantos quiser</h4><div class="chips">'+WANTS.map(function(w){var on=!!c.w[w[0]];return '<button type="button" class="tchip" aria-pressed="'+on+'" data-want="'+w[0]+'">'+(on?ic('check',15):'')+w[1]+'</button>'}).join('')+'</div></div>'}
-  if(st===4){var R=rec();h+='<span class="k2">Nossa recomendação</span><h1 class="disp">O <span class="hl2">'+PLANS[R.p].n+'</span> é o plano do '+esc(f.nome)+'</h1>'+
-    '<div class="rbox"><span class="k2">Pelo que você contou</span><ul>'+R.why.map(function(w){return '<li>'+ic('check',16)+esc(w)+'</li>'}).join('')+'</ul><button class="linkb" type="button" data-bgo="3">Mudar minhas respostas</button></div>'+
-    '<div class="pgrid" role="radiogroup" aria-label="Plano do teste">'+ORD.map(function(k){var on=plan===k,isr=R.p===k,pb=payback(k),m=OBP[k].price-FUND;return '<button type="button" role="radio" aria-checked="'+on+'" class="pc'+(on?' on':'')+(isr?' rec':'')+'" data-bplan="'+k+'">'+(isr?'<span class="tagc">'+ic('sparkle',12)+'RECOMENDADO</span>':'')+
-      medal(k,52)+'<h4>'+PLANS[k].n+'</h4><p class="pd">'+PLANS[k].d+'</p>'+
-      '<span class="pcp"><small class="pk">120 dias grátis, depois</small><span class="pcv"><b>'+brl(m)+'</b><span>/mês</span><s>'+brl(OBP[k].price)+'</s></span><small>Preço de fundador. Só cobra se você contratar.</small></span>'+
-      '<ul class="pcf">'+OBP[k].f.map(function(x){return '<li>'+ic('check',15)+x+'</li>'}).join('')+'</ul>'+
-      '<span class="pcb"><span><b>'+(pb.n>1?pb.n+' clientes a mais por mês já pagam':'1 cliente a mais por mês já paga')+' o plano</b><small>'+brl(m)+' ÷ '+brl(S.bc.ticket)+' que cada um gasta</small></span></span>'+
-      '<span class="pcsel"><i aria-hidden="true"></i>'+(on?'Escolhido':'Escolher o '+PLANS[k].n)+'</span></button>'}).join('')+'</div>'+
-    '<p class="pnote">Qualquer plano é grátis por 120 dias, sem cartão, e dá pra trocar durante o teste. Só cobra se você contratar. A conta de clientes usa o gasto que você informou; não é previsão de público.</p>'}
-  if(st===5){h+='<h1 class="disp">Tudo certo?</h1><p class="sub">Confira antes de colocar no ar. Toque para corrigir.</p><div class="card" style="margin-top:20px">'+
-    [['Estabelecimento',f.nome+' · '+f.rua+', '+f.num+' · '+f.bairro,1],['Telefone',f.tel||'Não informado · você preenche depois em Meu espaço',1],['Características',f.telas+' telas · '+Object.keys(f.am).filter(function(k){return f.am[k]}).join(', '),2],['Plano',PLANS[plan].n+' grátis por 120 dias, até 5 mar. Sem cartão. Depois, '+brl(OBP[plan].price-FUND)+'/mês só se você contratar.',4]].map(function(r){return '<div class="ln"><span><b>'+r[0]+'</b><span>'+esc(r[1])+'</span></span>'+(r[2]<4?'<button class="btn b-ghost sm" type="button" data-bgo="'+r[2]+'">Corrigir</button>':'<span style="display:flex;gap:10px;align-items:center">'+medal(plan,44)+'<button class="btn b-ghost sm" type="button" data-bgo="4">Trocar</button></span>')+'</div>'}).join('')+'</div>'}
-  h+='<div class="obnav2">'+(st?'<button class="btn b-ghost sm" type="button" data-bgo="'+(st-1)+'">'+ic('back',18)+'Voltar</button>':'<span></span>')+'<button class="btn b-acid" type="button" data-bgo="'+(st+1)+'"'+(st===4?' data-bpick':'')+'>'+['Começar','Continuar','Continuar','Ver a recomendação','Testar o '+PLANS[plan].n+' grátis','Colocar meu bar no ar'][st]+'</button></div></section>';
-  if(st===4)h+='</div></div>';
-  else h+='<aside class="obprev" aria-label="Assim o torcedor vê"><div class="k2">Assim o torcedor vê</div><div class="pcard"><div class="pimg"><img src="a/bar-ze.webp" alt="">'+(st>=4&&plan!=='starter'?'<span class="pel">'+PLANS[plan].n.toUpperCase()+'</span>':'')+'</div><div class="pin2"><b>'+esc(f.nome||'Seu bar')+'</b><span>'+esc(f.bairro)+' · 450 m · aberto até 02:00</span><div class="chips" style="margin-top:10px">'+prevChips(f)+'</div>'+
-    '<div class="pgame"><span class="mono" style="font-size:12px;color:var(--muted)">SEUS JOGOS APARECEM AQUI</span><b>Corinthians × Palmeiras</b><span>hoje 19:30 · 34 vão</span></div><span class="btn b-ink sm" style="width:100%;margin-top:12px">Vou assistir aqui</span></div></div><p class="pnote">'+(st===5?(plan==='elite'?'No Elite o seu bar sobe pro topo nos clássicos e mostra a oferta da casa.':plan==='pro'?'No Pro o seu bar ganha selo e destaque na busca por time e liga.':'No Starter o bar aparece na busca, sem selo nem destaque.'):'A foto de capa você manda depois, em Meu espaço. Bar sem jogo na grade não aparece nas buscas do dia.')+'</p></aside></div></div>';
+  if(st===4){h+='<h1 class="disp">Tudo certo?</h1><p class="sub">Confira antes de colocar no ar. Toque para corrigir.</p><div class="card" style="margin-top:20px">'+
+    [['Estabelecimento',f.nome+' · '+f.rua+', '+f.num+' · '+f.bairro,1],['Telefone',f.tel||'Não informado · você preenche depois em Meu espaço',1],['Características',f.telas+' telas · '+Object.keys(f.am).filter(function(k){return f.am[k]}).join(', '),2],['Sua rotina',S.bc.jogos+' jogos por mês · R$ '+S.bc.ticket+' por cliente',3],['Teste grátis','120 dias, até 5 mar, sem cartão. O plano você escolhe depois de publicar o primeiro jogo.']].map(function(r){return '<div class="ln"><span><b>'+r[0]+'</b><span>'+esc(r[1])+'</span></span>'+(r[2]?'<button class="btn b-ghost sm" type="button" data-bgo="'+r[2]+'">Corrigir</button>':'<span></span>')+'</div>'}).join('')+'</div>'}
+  h+='<div class="obnav2">'+(st?'<button class="btn b-ghost sm" type="button" data-bgo="'+(st-1)+'">'+ic('back',18)+'Voltar</button>':'<span></span>')+'<button class="btn b-acid" type="button" data-bgo="'+(S.live&&st===3?8:st+1)+'">'+(S.live&&st===3?'Ver a recomendação':['Começar','Continuar','Continuar','Continuar','Colocar meu bar no ar'][st])+'</button></div></section>';
+  h+='<aside class="obprev" aria-label="Assim o torcedor vê"><div class="k2">Assim o torcedor vê</div><div class="pcard"><div class="pimg"><img src="a/bar-ze.webp" alt=""></div><div class="pin2"><b>'+esc(f.nome||'Seu bar')+'</b><span>'+esc(f.bairro)+' · 450 m · aberto até 02:00</span><div class="chips" style="margin-top:10px">'+prevChips(f)+'</div>'+
+    '<div class="pgame"><span class="mono" style="font-size:12px;color:var(--muted)">SEUS JOGOS APARECEM AQUI</span><b>Corinthians × Palmeiras</b><span>hoje 19:30 · 34 vão</span></div><span class="btn b-ink sm" style="width:100%;margin-top:12px">Vou assistir aqui</span></div></div><p class="pnote">'+(st===4?'Logo depois de ir ao ar, você publica o primeiro jogo e vê o bar assim, com o jogo, no Explorar e na página do bar.':'A foto de capa você manda depois, em Meu espaço. Bar sem jogo na grade não aparece nas buscas do dia.')+'</p></aside></div></div>';
   return h;
 }
 var AMIC={'Telão / projetor':'tv','Som do jogo ligado':'sound','Premiere / canais fechados':'premiere','Área externa':'outdoor','Chopp':'beer','Drinks':'beer','Pet friendly':'heart','Perto do metrô':'pin','Estacionamento próximo':'pin'};
@@ -1048,23 +1160,80 @@ function prevChips(f){var on=[];OBAM.forEach(function(g){g[1].forEach(function(a
   if(!L.length)return '<span class="chip" style="opacity:.6">Marque o que o bar tem</span>';
   return L.slice(0,8).join('')+(L.length>8?'<span class="chip">+'+(L.length-8)+'</span>':'')}
 function fld(c,l,k,v,ph){return '<label class="fl '+c+'"><span>'+l+'</span><input class="inp" data-bf="'+k+'" value="'+esc(v||'')+'"'+(ph?' placeholder="'+ph+'"':'')+'></label>'}
-function recibo(){var f=S.bf,p=f.plan||rec().p,L=[];
+function recibo(){var f=S.bf,L=[];S.live=true;
   function row(a,b,cls){L.push('<div class="rl '+(cls||'')+'"><span>'+a+'</span>'+(b!=null?'<span>'+b+'</span>':'')+'</div>')}
   L.push('<div class="rl rlogo"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="14" cy="14" r="10.5" fill="none" stroke="currentColor" stroke-width="4.2"/><circle cx="22.4" cy="22.6" r="4.6" fill="#e8320c"/></svg><b>ONSIDE</b></div>');
   row('COMPROVANTE DE CADASTRO',null,'c');row('Nº 000214','05/11/2026 · 14:32','m');L.push('<div class="rl cut"></div>');
   row(esc(f.nome).toUpperCase(),null,'b');row(esc(f.rua)+', '+esc(f.num),null,'m');row(esc(f.bairro)+' · '+esc(f.cidade)+'/'+esc(f.uf),null,'m');L.push('<div class="rl cut"></div>');
-  row('PLANO '+PLANS[p].n.toUpperCase()+' · TESTE','R$ 0,00','b');row('120 dias','até 05/03/2027','m');row('Cartão','não pedido','m');L.push('<div class="rl cut"></div>');
-  row('DEPOIS DO TESTE',null,'b');row(PLANS[p].n+' · fundador',brl(OBP[p].price-FUND)+',00/mês');row('Tabela',brl(OBP[p].price)+',00/mês','m s');
-  L.push('<div class="rl note">Só é cobrado se você contratar. Sem contratar, nada é cobrado e o bar sai do ar quando o teste acaba.</div>');L.push('<div class="rl cut"></div>');
+  row('TESTE GRÁTIS','R$ 0,00','b');row('120 dias','até 05/03/2027','m');row('Cartão','não pedido','m');row('Plano','você escolhe depois','m');L.push('<div class="rl cut"></div>');
+  row('PRIMEIRO JOGO','por conta da Onside','b');row('Não conta no limite','de nenhum plano','m');
+  L.push('<div class="rl note">Nada é cobrado no teste. O plano você escolhe depois do primeiro jogo; só cobra se você contratar.</div>');L.push('<div class="rl cut"></div>');
   row('TOTAL HOJE','R$ 0,00','tot');L.push('<div class="rl bars" aria-hidden="true">'+Array.from({length:38},function(_,i){return '<i style="width:'+[1,2,1,3,1,2,2,1][i%8]+'px"></i>'}).join('')+'</div>');row('obrigado por torcer com a gente',null,'c m');
-  return '<div class="obb"><div class="rcpt"><div class="rtop"><span class="k2">Pronto. Saiu o seu comprovante</span><h1 class="disp">'+esc(f.nome)+' entrou na Onside</h1></div><div class="printer" aria-hidden="true"><span class="slot"></span><span class="led2"></span></div>'+
+  return '<div class="obb"><div class="rcpt"><div class="rtop"><span class="k2">Pronto. Saiu o seu comprovante</span><h1 class="disp">'+esc(f.nome)+' está no ar</h1></div><div class="printer" aria-hidden="true"><span class="slot"></span><span class="led2"></span></div>'+
     '<div class="paper" role="document" aria-label="Comprovante de cadastro">'+L.map(function(x,i){return x.replace('class="rl','style="animation-delay:'+(i*95)+'ms" class="rl')}).join('')+'</div>'+
-    '<div class="cta-r"><button class="btn b-acid" type="button" data-bgo="7">Ver meu bar no ar</button><button class="btn b-ghost sm" style="height:48px" type="button" data-rcpt>'+ic('doc',18)+'Baixar PDF</button></div><p class="pnote" style="text-align:center">Uma cópia foi para o seu e-mail. Fica também em Plano e cobrança.</p></div></div>'}
-function noar(){var p=S.bf.plan||rec().p;
-  return '<div class="obb"><div class="noar"><span class="big">'+ic('check',52)+'</span><h1 class="disp">'+esc(S.bf.nome)+' está no ar</h1><p class="sub">Seu bar já aparece para os torcedores da região. Agora coloque o primeiro jogo: bar sem jogo na grade não aparece nas buscas do dia.</p>'+
-    '<div class="nsug"><div class="k2">Sugestões da rodada · jogos que os torcedores perto seguem</div>'+CATALOG.slice(0,3).map(function(c,i){return '<div class="ln"><span><b>'+esc(c[2])+'</b><span>'+c[3]+' · '+c[1]+', '+c[0]+'</span></span><button class="btn '+(i?'b-ghost':'b-acid')+' sm" type="button" data-addfirst="'+i+'">'+ic('plus',16)+'Adicionar</button></div>'}).join('')+'</div>'+
-    '<div class="cta-r"><a class="btn b-ink" href="#jogos" data-newfirst>'+ic('plus',18)+'Cadastrar outro jogo</a><a class="btn b-ghost sm" style="height:48px" href="#hoje">Fazer isso depois</a></div><p class="pnote" style="text-align:center">'+PLANS[p].n+' grátis até 5 mar · sem cartão</p></div></div>';
-}
+    '<div class="cta-r"><button class="btn b-acid" type="button" data-bgo="6">'+ic('plus',18)+'Publicar o primeiro jogo</button><button class="btn b-ghost sm" style="height:48px" type="button" data-rcpt>'+ic('doc',18)+'Baixar PDF</button></div><p class="pnote" style="text-align:center">Uma cópia foi para o seu e-mail e fica em Plano e cobrança. O bar já está no mapa; com um jogo na grade, aparece nas buscas do dia.</p></div></div>'}
+/* ---------- depois do ar: primeiro jogo, assim o torcedor vê, plano do teste ---------- */
+var SUGG=[['Hoje','2026-11-05','19:30','Corinthians','Palmeiras','Brasileirão'],['Hoje','2026-11-05','22:00','Lakers','Celtics','NBA'],['Esta semana','2026-11-07','16:00','São Paulo','Grêmio','Brasileirão'],['Esta semana','2026-11-07','18:30','Flamengo','Botafogo','Brasileirão'],['Esta semana','2026-11-08','10:00','','','GP de Las Vegas · F1'],['Esta semana','2026-11-07','23:00','','','UFC 322 · card principal']];
+var DAYN={'2026-11-05':'hoje','2026-11-06':'sex, 6 nov','2026-11-07':'sáb, 7 nov','2026-11-08':'dom, 8 nov'};
+S.fg={mode:'x',a:'',b:'',camp:'',d:'2026-11-05',h:'19:30',tv:null,snd:null,sg:-1};
+function fgName(){var g=S.fg;return g.mode==='x'?(g.a&&g.b?g.a+' × '+g.b:''):g.camp}
+function fgDay(){return DAYN[S.fg.d]||S.fg.d.split('-').reverse().slice(0,2).join('/')}
+function fgTv(){return S.fg.tv==null?!!S.bf.am['Telão / projetor']:S.fg.tv}
+function fgSnd(){return S.fg.snd==null?!!S.bf.am['Som do jogo ligado']:S.fg.snd}
+function fgTags(){var t=[];if(fgTv())t.push('<span class="chip">'+ic('tv',15)+(S.bf.telas>1?S.bf.telas+' telões':'Telão')+'</span>');if(fgSnd())t.push('<span class="chip">'+ic('sound',15)+'Som ligado</span>');return t.join('')}
+function postHead(i){var P=['Primeiro jogo','Assim o torcedor vê','Plano do teste'];
+  return '<header class="obh"><span class="lg"><svg width="26" height="26" viewBox="0 0 30 30" aria-hidden="true"><circle cx="14" cy="14" r="10.5" fill="none" stroke="currentColor" stroke-width="4.2"/><circle cx="22.4" cy="22.6" r="4.6" fill="#e8320c"/></svg><b>ONSIDE</b></span><span class="onair"><i></i>NO AR</span>'+
+  '<ol class="obsteps">'+P.map(function(p,k){return '<li data-n="'+(k+1)+' de 3" class="'+(k<i?'ok':k===i?'on':'')+'"><span>'+(k<i?ic('check',14):k+1)+'</span>'+p+'</li>'}).join('')+'</ol><button class="btn b-ghost sm" type="button" data-obdone="later">Ir para o painel</button></header>'}
+function pgameHtml(){var n=fgName();if(!n)return '<span class="mono" style="font-size:12px;color:var(--muted)">SEU PRIMEIRO JOGO APARECE AQUI</span><b style="color:var(--muted)">Escolha uma sugestão ou escreva o jogo</b>';
+  return '<span class="mono" style="font-size:12px;color:var(--muted)">'+esc(fgDay().toUpperCase())+' · '+S.fg.h+(S.fg.mode==='x'&&S.fg.camp?' · '+esc(S.fg.camp.toUpperCase()):'')+'</span><b>'+esc(n)+'</b><div class="chips" style="margin-top:8px">'+fgTags()+'</div>'}
+function primeiro(){var g=S.fg,f=S.bf,groups={};
+  SUGG.forEach(function(x,i){(groups[x[0]]=groups[x[0]]||[]).push(i)});
+  var h='<div class="obb">'+postHead(0)+'<div class="obgrid"><section class="obf">';
+  h+='<span class="k2">'+esc(f.nome)+' está no ar</span><h1 class="disp" style="margin-top:8px">Seu primeiro <span class="hl2">jogo</span></h1><p class="sub">Bar sem jogo na grade não aparece nas buscas do dia. Coloque o próximo jogo que vai passar: leva 20 segundos.</p>';
+  h+='<div class="free"><span class="ib">'+ic('sparkle',20)+'</span><span><b>Este é por conta da Onside</b>O primeiro jogo não conta no limite de jogos de nenhum plano.</span></div>';
+  h+='<div class="cg"><h4>Um toque preenche · jogos que os torcedores perto seguem</h4>'+Object.keys(groups).map(function(k){return '<div class="sgl"><span class="sgk">'+k+'</span><div class="sgs">'+groups[k].map(function(i){var x=SUGG[i],on=g.sg===i;return '<button type="button" class="sgb'+(on?' on':'')+'" aria-pressed="'+on+'" data-fgs="'+i+'"><span class="d">'+x[2]+'</span><span><b>'+esc(x[3]?x[3]+' × '+x[4]:x[5])+'</b><span>'+esc((x[3]?x[5]+' · ':'')+DAYN[x[1]])+'</span></span>'+(on?ic('check',18):ic('plus',18))+'</button>'}).join('')+'</div></div>'}).join('')+'</div>';
+  h+='<div class="fl"><span>Qual jogo</span></div><div class="tabs fgm" role="tablist"><button type="button" role="tab" aria-selected="'+(g.mode==='x')+'" class="'+(g.mode==='x'?'on':'')+'" data-fgm="x">Time × time</button><button type="button" role="tab" aria-selected="'+(g.mode==='c')+'" class="'+(g.mode==='c'?'on':'')+'" data-fgm="c">Campeonato ou evento</button></div>';
+  if(g.mode==='x')h+='<div class="vs"><label class="fl"><span>Time da casa</span><input class="inp" data-fg="a" value="'+esc(g.a)+'" placeholder="Corinthians"></label><b aria-hidden="true">×</b><label class="fl"><span>Visitante</span><input class="inp" data-fg="b" value="'+esc(g.b)+'" placeholder="Palmeiras"></label></div><label class="fl"><span>Campeonato · opcional</span><input class="inp" data-fg="camp" value="'+esc(g.camp)+'" placeholder="Brasileirão"></label>';
+  else h+='<label class="fl"><span>Campeonato ou evento</span><input class="inp" data-fg="camp" value="'+esc(g.camp)+'" placeholder="GP de Las Vegas · F1"></label>';
+  h+='<div class="two"><label class="fl"><span>Dia</span><input class="inp" type="date" data-fg="d" value="'+g.d+'"></label><label class="fl"><span>Hora</span><input class="inp" type="time" data-fg="h" value="'+g.h+'"></label></div>';
+  h+='<div class="fl"><span>No bar</span></div><div class="sw">'+ic('tv',20)+'Passa no telão<button class="tg" type="button" role="switch" data-fgt="tv" aria-checked="'+fgTv()+'" aria-label="Passa no telão"></button></div><div class="sw">'+ic('sound',20)+'Som do jogo ligado<button class="tg" type="button" role="switch" data-fgt="snd" aria-checked="'+fgSnd()+'" aria-label="Som do jogo ligado"></button></div><p class="hint2">'+ic('check',16)+'Já vem marcado pelas características do bar. Mude aqui só para este jogo.</p>';
+  h+='<div class="obnav2"><button class="btn b-ghost sm" type="button" data-bgo="8">Fazer depois</button><button class="btn b-acid" type="button" data-fgpub'+(fgName()?'':' disabled')+'>Publicar o primeiro jogo</button></div></section>';
+  h+='<aside class="obprev" aria-label="Assim vai aparecer"><div class="k2">Assim vai aparecer</div><div class="pcard"><div class="pimg"><img src="a/bar-ze.webp" alt=""></div><div class="pin2"><b>'+esc(f.nome)+'</b><span>'+esc(f.bairro)+' · 450 m · aberto até 02:00</span><div class="pgame" id="fgprev">'+pgameHtml()+'</div><span class="btn b-ink sm" style="width:100%;margin-top:12px">Vou assistir aqui</span></div></div><p class="pnote">Publicado, o jogo aparece para quem procura por ele perto do bar, já hoje.</p></aside></div></div>';
+  return h}
+function tvCard(){var f=S.bf,n=fgName()||'Corinthians × Palmeiras';
+  return '<article class="fbc"><div class="ph3"><img src="a/bar-ze.webp" alt=""><span class="when">'+esc(fgDay())+' '+S.fg.h+'</span></div><div class="bd3"><div><b class="nm">'+esc(f.nome)+'</b><span class="mt">'+esc(f.bairro)+' · <span class="mono">450 m</span> · até 02:00</span></div>'+
+    '<div class="gm3">'+ic('tv',16)+'<span><b>'+esc(n)+'</b> · '+esc(fgDay())+' '+S.fg.h+'</span></div><div class="chips">'+fgTags()+'</div>'+
+    '<div class="ft3"><span>Ninguém marcou ainda. Mande o link e seja o primeiro da lista.</span></div><span class="btn b-ink sm" style="width:100%">Vou assistir aqui</span></div></article>'}
+function tvPhone(){var f=S.bf,n=fgName()||'Corinthians × Palmeiras';
+  return '<div class="tvp" role="img" aria-label="Página do bar no celular"><div class="scr"><div class="hero3"><img src="a/bar-ze.webp" alt=""><b class="disp">'+esc(f.nome)+'</b></div><div class="in3"><span class="mt">● aberto agora · '+esc(f.bairro)+'</span>'+
+    '<div class="tod"><span class="mono">'+esc(fgDay().toUpperCase())+' · '+S.fg.h+'</span><b class="disp">'+esc(n).replace(' × ',' <i>×</i> ')+'</b><div class="chips">'+fgTags()+'</div><span class="btn b-acid sm">Vou assistir aqui</span></div>'+
+    '<span class="k2" style="display:block;margin-top:14px">Em dia de jogo</span><div class="chips" style="margin-top:8px">'+prevChips(f)+'</div></div></div></div>'}
+function torcedorVe(){var f=S.bf,n=fgName()||'Corinthians × Palmeiras',url='onside.sh/bar/bar-do-ze';
+  setTimeout(function(){var el=document.getElementById('obqr');if(el&&window.QRCode){el.innerHTML='';new QRCode(el,{text:'https://'+url,width:132,height:132,colorDark:'#12120f',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M})}},0);
+  var h='<div class="obb">'+postHead(1)+'<div class="obf tvw">';
+  h+='<span class="k2">Publicado agora · '+esc(n)+'</span><h1 class="disp" style="margin-top:8px">Funcionou. Seu jogo <span class="hl2">já aparece</span></h1><p class="sub">É assim que o torcedor encontra o '+esc(f.nome)+' agora: no Explorar, quando procura o jogo perto, e na página do bar.</p>';
+  h+='<div class="tvg"><div><div class="k2">No Explorar</div>'+tvCard()+'</div><div><div class="k2">Na página do bar</div>'+tvPhone()+'</div>';
+  h+='<div><div class="k2">Mande para os seus clientes</div><div class="card shr"><p class="wa">'+(S.fg.d==='2026-11-05'?'Hoje':'Dia '+esc(fgDay()))+' tem <b>'+esc(n)+'</b> às '+S.fg.h+' aqui no '+esc(f.nome)+(fgTv()?', no telão':'')+(fgSnd()?' e com som':'')+'. Diz que vai: <span class="mono">'+url+'</span></p>'+
+    '<button class="btn b-acid" type="button" data-share="wa" style="width:100%">'+ic('share',18)+'Mandar no WhatsApp</button>'+
+    '<div class="lnk2"><span class="mono">'+url+'</span><button class="btn b-ghost sm" type="button" data-share="link">'+ic('link',16)+'Copiar link</button></div>'+
+    '<div class="qrb"><span class="q3" id="obqr" role="img" aria-label="QR da página do bar"></span><span><b>QR para o balcão</b><span>Cole na mesa ou no caixa. Abre a página do bar com os jogos.</span><button class="btn b-ghost sm" type="button" data-share="qr">'+ic('doc',16)+'Baixar para imprimir</button></span></div></div></div></div>';
+  h+='<div class="obnav2"><button class="btn b-ghost sm" type="button" data-bgo="6">'+ic('back',18)+'Editar o jogo</button><button class="btn b-acid" type="button" data-bgo="8">Continuar</button></div></div></div>';
+  return h}
+function planoOb(){var f=S.bf,R=rec(),plan=f.plan||R.p;
+  var h='<div class="obb">'+postHead(2)+'<div class="obgrid one"><section class="obf wide">';
+  h+='<span class="k2">Nossa recomendação, pela sua rotina</span><h1 class="disp">O <span class="hl2">'+PLANS[R.p].n+'</span> é o plano do '+esc(f.nome)+'</h1>'+
+    '<p class="sub">Vale o que você escolher. Qualquer plano é grátis por 120 dias, sem cartão, e dá pra trocar depois em Plano e cobrança.</p>'+
+    '<div class="rbox"><span class="k2">Pelo que você contou</span><ul>'+R.why.map(function(w){return '<li>'+ic('check',16)+esc(w)+'</li>'}).join('')+'</ul><button class="linkb" type="button" data-bgo="3">Mudar minhas respostas</button></div>'+
+    '<div class="pgrid" role="radiogroup" aria-label="Plano do teste">'+ORD.map(function(k){var on=plan===k,isr=R.p===k,pb=payback(k),m=OBP[k].price-FUND;return '<button type="button" role="radio" aria-checked="'+on+'" class="pc'+(on?' on':'')+(isr?' rec':'')+'" data-bplan="'+k+'">'+(isr?'<span class="tagc">'+ic('sparkle',12)+'RECOMENDADO</span>':'')+
+      medal(k,52)+'<h4>'+PLANS[k].n+'</h4><p class="pd">'+PLANS[k].d+'</p>'+
+      '<span class="pcp"><small class="pk">120 dias grátis, depois</small><span class="pcv"><b>'+brl(m)+'</b><span>/mês</span><s>'+brl(OBP[k].price)+'</s></span><small>Preço de fundador. Só cobra se você contratar.</small></span>'+
+      '<ul class="pcf">'+OBP[k].f.map(function(x){return '<li>'+ic('check',15)+x+'</li>'}).join('')+'</ul>'+
+      '<span class="pcb"><span><b>'+(pb.n>1?pb.n+' clientes a mais por mês já pagam':'1 cliente a mais por mês já paga')+' o plano</b><small>'+brl(m)+' ÷ '+brl(S.bc.ticket)+' que cada um gasta</small></span></span>'+
+      '<span class="pcsel"><i aria-hidden="true"></i>'+(on?'Escolhido':'Escolher o '+PLANS[k].n)+'</span></button>'}).join('')+'</div>'+
+    '<p class="pnote">A conta de clientes usa o gasto que você informou; não é previsão de público.</p>'+
+    '<div class="later"><span class="ib">'+ic('calendar',20)+'</span><span><b>Prefere escolher depois?</b>O teste segue no '+PLANS[R.p].n+', o recomendado pela sua rotina, até 5 mar. Você escolhe ou troca em Plano e cobrança quando quiser, sem cartão.</span></div>'+
+    '<div class="obnav2"><button class="btn b-ghost sm" type="button" data-obdone="later">Escolher depois</button><button class="btn b-acid" type="button" data-obdone="pick">Testar o '+PLANS[plan].n+' grátis</button></div></section></div></div>';
+  return h}
 document.addEventListener('click',function(e){var t;
   if(t=e.target.closest('[data-want]')){var k=t.dataset.want;S.bc.w[k]=!S.bc.w[k];t.setAttribute('aria-pressed',!!S.bc.w[k]);if(!S.bf.picked)S.bf.plan=null;return}
   if(t=e.target.closest('[data-bcs]')){var q=t.dataset.bcs.split(':'),d=BCS[q[0]];S.bc[q[0]]=Math.min(d[2],Math.max(d[1],S.bc[q[0]]+d[0]*q[1]));if(!S.bf.picked)S.bf.plan=null;render();return}
@@ -1076,10 +1245,62 @@ document.addEventListener('click',function(e){
   if(t=e.target.closest('[data-bgo]')){if(t.hasAttribute('data-bpick')&&!S.bf.plan)S.bf.plan=rec().p;S.bo=+t.dataset.bgo;render();scrollTo(0,0);return}
   if(t=e.target.closest('[data-bam]')){var a=t.dataset.bam;S.bf.am[a]=!S.bf.am[a];render();return}
   if(t=e.target.closest('[data-bscr]')){S.bf.telas=Math.max(0,S.bf.telas+ +t.dataset.bscr);render();return}
-  if(t=e.target.closest('[data-addfirst]')){var c=CATALOG[+t.dataset.addfirst];t.outerHTML='<span class="ok">'+ic('check',14)+'Publicado</span>';toast(c[2]+' publicado. Já aparece para quem procura esse jogo.');return}
-  if(t=e.target.closest('[data-newfirst]')){setTimeout(function(){document.querySelector('.ph [data-new]')&&document.querySelector('.ph [data-new]').click()},300);return}
+  if(t=e.target.closest('[data-fgs]')){var x=SUGG[+t.dataset.fgs];S.fg.sg=+t.dataset.fgs;S.fg.mode=x[3]?'x':'c';S.fg.a=x[3];S.fg.b=x[4];S.fg.camp=x[5];S.fg.d=x[1];S.fg.h=x[2];render();return}
+  if(t=e.target.closest('[data-fgm]')){S.fg.mode=t.dataset.fgm;S.fg.sg=-1;render();return}
+  if(t=e.target.closest('[data-fgt]')){var k2=t.dataset.fgt;S.fg[k2]=!(k2==='tv'?fgTv():fgSnd());t.setAttribute('aria-checked',S.fg[k2]);var pv=document.getElementById('fgprev');if(pv)pv.innerHTML=pgameHtml();return}
+  if(t=e.target.closest('[data-fgpub]')){if(t.disabled)return;S.gd.jogo=1;S.bo=7;render();scrollTo(0,0);toast(fgName()+' publicado. Já aparece para quem procura esse jogo.');return}
+  if(t=e.target.closest('[data-share]')){var k3=t.dataset.share;if(k3==='link'||k3==='ig'){try{navigator.clipboard.writeText('https://onside.sh/bar/bar-do-ze')}catch(_){}}toast({wa:'Abre o WhatsApp com a mensagem pronta (exemplo).',link:'Link copiado: onside.sh/bar/bar-do-ze',qr:'QR baixado em PDF para imprimir (exemplo).',ig:'Link copiado. Cole na bio do Instagram.'}[k3]);if(S.view==='hoje')guideMark('link');return}
+  if(t=e.target.closest('[data-obdone]')){var pick=t.dataset.obdone==='pick',pl=pick?(S.bf.plan||rec().p):rec().p;S.bf.plan=pl;S.gd.plano=pick?1:0;S.guide='on';S.bo=0;S.live=false;S.tourGo=true;location.hash='hoje';toast(pick?'Teste do '+PLANS[pl].n+' ligado até 5 mar. Bem-vindo ao painel.':'Seu teste segue no '+PLANS[pl].n+', o recomendado. Escolha quando quiser.');return}
 });
+document.addEventListener('input',function(e){var g=e.target.getAttribute&&e.target.getAttribute('data-fg');if(!g)return;S.fg[g]=e.target.value;S.fg.sg=-1;var pv=document.getElementById('fgprev');if(pv)pv.innerHTML=pgameHtml();var pb=document.querySelector('[data-fgpub]');if(pb)pb.disabled=!fgName();[].forEach.call(document.querySelectorAll('.sgb.on'),function(b){b.classList.remove('on');b.setAttribute('aria-pressed','false')})});
 document.addEventListener('input',function(e){var k=e.target.getAttribute&&e.target.getAttribute('data-bf');if(!k)return;S.bf[k]=e.target.value;var pv=document.querySelector('.obprev .pin2 b');if(pv&&k==='nome')pv.textContent=e.target.value||'Seu bar'});
+/* ---------- primeira entrada: primeiros passos e tour ---------- */
+S.guide='off';S.gd={jogo:1,plano:0,ver:0,foto:0,link:0,semana:0};
+function GUIDE(){var pl=PLANS[S.bf.plan||rec().p].n,fg=fgName()||'Corinthians × Palmeiras';return [
+  ['jogo','Publicar o primeiro jogo',fg+', '+fgDay()+' '+S.fg.h+' · por conta da Onside, fora do limite do plano',''],
+  ['plano','Escolher o plano do teste',S.gd.plano?pl+' grátis até 5 mar, sem cartão':'Seu teste está no '+pl+', o recomendado pela sua rotina. Grátis até 5 mar, sem cartão.','<a class="btn b-ink sm" href="#plano" data-gdo="plano">Escolher</a>'],
+  ['ver','Ver como o torcedor vê','Seu bar no Explorar e na página do bar, com o jogo publicado.','<a class="btn b-ghost sm" href="#meu-espaco" data-gdo="ver">Ver a prévia</a>'],
+  ['foto','Foto de capa e horário','Com foto e horário, o card do bar sai completo na busca. A foto passa pela revisão da Onside.','<a class="btn b-ghost sm" href="#meu-espaco" data-gdo="foto">Abrir Meu espaço</a>'],
+  ['link','Mandar o link do bar para os clientes','No grupo do WhatsApp, na bio do Instagram ou o QR no balcão.','<span class="gsh"><button class="btn b-ghost sm" type="button" data-share="wa">WhatsApp</button><button class="btn b-ghost sm" type="button" data-share="ig">Instagram</button><button class="btn b-ghost sm" type="button" data-share="qr">'+ic('qr',16)+'QR</button></span>'],
+  ['semana','Cadastrar os jogos da semana','Cada jogo na grade é mais uma busca em que o bar aparece.','<button class="btn b-ghost sm" type="button" data-gdo="semana" data-new>'+ic('plus',16)+'Ver sugestões</button>']]}
+function guideHtml(){
+  var proto='<div class="gproto" role="group" aria-label="Estado do guia no protótipo"><span class="k2">Protótipo · primeira entrada</span>'+[['off','Sem guia'],['ini','Início'],['meio','No meio'],['fim','Completo']].map(function(o){return '<button type="button" data-gst="'+o[0]+'" aria-pressed="'+(guideSt()===o[0])+'">'+o[1]+'</button>'}).join('')+'<button type="button" data-tour>'+ic('sparkle',14)+'Ver o tour</button></div>';
+  if(S.guide==='off')return proto;
+  var G=GUIDE(),n=G.filter(function(g){return S.gd[g[0]]}).length;
+  if(n===G.length)return proto+'<section class="gdone" aria-labelledby="gdt" id="guide"><span class="big">'+ic('check',34)+'</span><span><h3 id="gdt" class="disp">Casa pronta pro dia de jogo</h3><p>Os 6 primeiros passos estão feitos. Daqui pra frente, é manter a grade cheia.</p></span><button class="btn b-acid sm" type="button" data-gst="off">Fechar</button></section>';
+  var next=G.filter(function(g){return !S.gd[g[0]]})[0][0];
+  return proto+'<section class="card guide" aria-labelledby="gt" id="guide"><div class="ghd"><span><span class="k2">'+n+' de '+G.length+' feitos</span><h3 id="gt">Primeiros passos do '+esc(S.bf.nome)+'</h3></span><button class="linkb" type="button" data-gst="off">Esconder</button></div>'+
+    '<div class="prog"><i style="width:'+Math.round(n/G.length*100)+'%"></i></div><ol class="gl">'+G.map(function(g){var ok=!!S.gd[g[0]];return '<li class="'+(ok?'dn':'')+(g[0]===next?' nx':'')+'"><span class="c" aria-hidden="true">'+(ok?ic('check',16):'')+'</span><span><b>'+g[1]+'<span class="sr">'+(ok?' · feito':' · falta')+'</span></b><span>'+esc(g[2])+'</span></span>'+(ok?'<span class="ok">'+ic('check',14)+'Feito</span>':g[3])+'</li>'}).join('')+'</ol></section>';
+}
+function guideSt(){if(S.guide==='off')return 'off';var n=Object.keys(S.gd).filter(function(k){return S.gd[k]}).length;return n===6?'fim':n>=4?'meio':'ini'}
+function guideMark(k){if(S.guide==='off'||S.gd[k])return;S.gd[k]=1;setTimeout(render,0)}
+var GST={ini:{jogo:1,plano:0,ver:0,foto:0,link:0,semana:0},meio:{jogo:1,plano:1,ver:1,foto:0,link:1,semana:0},fim:{jogo:1,plano:1,ver:1,foto:1,link:1,semana:1}};
+document.addEventListener('click',function(e){var t;
+  if(t=e.target.closest('[data-gst]')){var v=t.dataset.gst;if(v==='off'){S.guide='off';if(t.closest('.guide'))toast('Primeiros passos escondido. Você retoma pelos botões do protótipo.')}else{S.guide='on';S.gd=JSON.parse(JSON.stringify(GST[v]))}render();return}
+  if(t=e.target.closest('[data-gdo]')){guideMark(t.dataset.gdo);return}
+  if(t=e.target.closest('[data-tour]')){tourStart();return}
+});
+/* tour: balão com destaque, 4 passos */
+var TOUR=[['hoje','Hoje','O dia da casa: o próximo jogo, quem vai e quem já chegou. O painel abre aqui.'],['jogos','Jogos','A grade do bar, por dia ou semana. Publique, edite e duplique os jogos.'],['quem-vai','Quem vai · Elite','Quem marcou “Vou assistir aqui” em cada jogo, com o código para conferir.'],['val','Validar código','O torcedor mostra o código no balcão e você digita aqui. A visita conta para o bar.']];
+var tourI=-1;
+function tourEl(k){var m=matchMedia('(max-width:860px)').matches;if(k==='val')return document.querySelector(m?'.tabbar .vb':'.rail .vbtn');return document.querySelector((m?'.tabbar':'.nav')+' a[href="#'+k+'"]')}
+function tourStart(){document.getElementById('toast').classList.remove('on');if(location.hash!=='#hoje'&&location.hash){location.hash='hoje'}tourI=0;tourDraw()}
+function tourDraw(){var o=document.getElementById('tour');if(tourI<0){o.classList.remove('on');o.setAttribute('aria-hidden','true');return}
+  var st=TOUR[tourI],el=tourEl(st[0]);if(!el)return;var r=el.getBoundingClientRect(),m=matchMedia('(max-width:860px)').matches,pad=6;
+  var sp=o.querySelector('.spot');sp.style.left=(r.left-pad)+'px';sp.style.top=(r.top-pad)+'px';sp.style.width=(r.width+pad*2)+'px';sp.style.height=(r.height+pad*2)+'px';
+  var tp=o.querySelector('.tip2');
+  tp.innerHTML='<div class="tt2"><span class="mono">'+(tourI+1)+' de '+TOUR.length+'</span><button type="button" class="linkb" data-tskip>Pular</button></div><h3 id="tour-t" class="disp">'+st[1]+'</h3><p>'+st[2]+'</p><div class="ta">'+(tourI?'<button class="btn b-ghost sm" type="button" data-tback>Voltar</button>':'<span></span>')+'<button class="btn b-acid sm" type="button" data-tnext>'+(tourI===TOUR.length-1?'Começar a usar':'Próximo')+'</button></div><div class="tdots" aria-hidden="true">'+TOUR.map(function(_,i){return '<i class="'+(i===tourI?'on':'')+'"></i>'}).join('')+'</div>';
+  if(m){tp.style.left='16px';tp.style.right='16px';tp.style.top='auto';tp.style.bottom=(innerHeight-r.top+18)+'px'}
+  else{tp.style.right='auto';tp.style.bottom='auto';tp.style.left=(r.right+22)+'px';tp.style.top=Math.max(16,Math.min(innerHeight-260,r.top-12))+'px'}
+  o.classList.add('on');o.setAttribute('aria-hidden','false');setTimeout(function(){var b=tp.querySelector('[data-tnext]');if(b)b.focus()},0)}
+function tourEnd(){tourI=-1;tourDraw();var g=document.getElementById('guide');if(g)g.scrollIntoView({behavior:reduce?'auto':'smooth',block:'center'})}
+document.addEventListener('click',function(e){var t;
+  if(t=e.target.closest('[data-tnext]')){if(tourI>=TOUR.length-1)tourEnd();else{tourI++;tourDraw()}return}
+  if(t=e.target.closest('[data-tback]')){tourI=Math.max(0,tourI-1);tourDraw();return}
+  if(t=e.target.closest('[data-tskip]')){tourEnd();return}
+});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&tourI>=0)tourEnd()});
+addEventListener('resize',function(){if(tourI>=0)tourDraw()});
 /* ---------- render ---------- */
 var main=document.getElementById('main');
 function render(){
@@ -1089,6 +1310,7 @@ function render(){
   main.innerHTML=(V[S.view]||hoje)();
   drawNav();wireChart();
   var rm=document.getElementById('railmedal');if(rm&&!rm.firstChild)rm.innerHTML=medal('elite',38);
+  if(S.tourGo&&S.view==='hoje'){S.tourGo=false;setTimeout(tourStart,reduce?0:450)}
   var rw=main.querySelector('.rule-wrap');if(rw){var nl=main.querySelector('.nowline');rw.scrollLeft=Math.max(0,nl.offsetLeft-80)}
 }
 addEventListener('hashchange',function(){render();scrollTo(0,0)});
@@ -1118,7 +1340,7 @@ function drawPick(){
   document.getElementById('ng-pick').innerHTML=CATALOG.map(function(c,i){if(q&&c[2].toLowerCase().indexOf(q)<0)return '';return '<button type="button" role="option" aria-selected="'+(S.pick===i)+'" class="'+(S.pick===i?'on':'')+'" data-i="'+i+'"><span class="d">'+c[0]+'</span><span><b>'+esc(c[2])+'</b><span>'+c[3]+' · '+c[1]+'</span></span>'+(S.pick===i?ic('check',20):'')+'</button>'}).join('')||'<p style="color:var(--muted);margin:6px 0 0">Nenhum jogo do catálogo com esse nome. Tente o time ou o campeonato.</p>';
 }
 document.getElementById('ng-q').addEventListener('input',drawPick);
-document.getElementById('ng-go').addEventListener('click',function(){var c=CATALOG[S.pick];closeAll();toast(c[2]+' publicado para '+c[1]+', '+c[0]+'. Já aparece para quem procura esse jogo.')});
+document.getElementById('ng-go').addEventListener('click',function(){var c=CATALOG[S.pick];closeAll();guideMark('semana');toast(c[2]+' publicado para '+c[1]+', '+c[0]+'. Já aparece para quem procura esse jogo.')});
 
 /* validar */
 var ALPH='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
