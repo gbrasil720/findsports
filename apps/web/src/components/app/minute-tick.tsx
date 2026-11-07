@@ -22,6 +22,7 @@ import {
  */
 
 const MinuteContext = createContext<number>(0)
+const MARCADOR = 'onside-minuto'
 
 /** Milissegundos até a virada do próximo minuto. */
 export function msUntilNextMinute(now: number): number {
@@ -37,9 +38,19 @@ export function currentMinute(now: number): number {
 }
 
 export function MinuteTickProvider({ children }: { children: ReactNode }) {
-  const [minute, setMinute] = useState(() => currentMinute(Date.now()))
+  // A hidratação parte do minuto em que o servidor desenhou (o `data-m` do
+  // marcador abaixo): se o minuto vira entre o servidor e o navegador, o
+  // texto não diverge. Logo depois de montar, o efeito traz o minuto de agora.
+  const [minute, setMinute] = useState(() => {
+    const doServidor =
+      typeof document === 'undefined'
+        ? Number.NaN
+        : Number(document.getElementById(MARCADOR)?.dataset.m)
+    return Number.isFinite(doServidor) ? doServidor : currentMinute(Date.now())
+  })
 
   useEffect(() => {
+    setMinute(currentMinute(Date.now()))
     let timeout: ReturnType<typeof setTimeout> | undefined
 
     const agendar = () => {
@@ -73,7 +84,10 @@ export function MinuteTickProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <MinuteContext.Provider value={minute}>{children}</MinuteContext.Provider>
+    <MinuteContext.Provider value={minute}>
+      <span id={MARCADOR} data-m={minute} hidden />
+      {children}
+    </MinuteContext.Provider>
   )
 }
 
