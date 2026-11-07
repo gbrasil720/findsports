@@ -34,6 +34,7 @@ import { Route as AdminMaisRouteImport } from './routes/admin.mais'
 import { Route as AdminMeuEspacoRouteImport } from './routes/admin.meu-espaco'
 import { Route as AdminQuemVaiRouteImport } from './routes/admin.quem-vai'
 import { Route as AdminValidateRouteImport } from './routes/admin.validate'
+import { Route as BarSlugRouteImport } from './routes/bar.$slug'
 import { Route as GuiaIndexRouteImport } from './routes/guia.index'
 import { Route as GuiaSlugRouteImport } from './routes/guia.$slug'
 import { Route as HoudiniAppRouteImport } from './routes/houdini/_app'
@@ -187,6 +188,11 @@ const AdminValidateRoute = AdminValidateRouteImport.update({
   id: '/validate',
   path: '/validate',
   getParentRoute: () => AdminRoute,
+} as any)
+const BarSlugRoute = BarSlugRouteImport.update({
+  id: '/bar/$slug',
+  path: '/bar/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const GuiaIndexRoute = GuiaIndexRouteImport.update({
   id: '/guia/',
@@ -355,6 +361,7 @@ export interface FileRoutesByFullPath {
   '/admin/meu-espaco': typeof AdminMeuEspacoRoute
   '/admin/quem-vai': typeof AdminQuemVaiRoute
   '/admin/validate': typeof AdminValidateRoute
+  '/bar/$slug': typeof BarSlugRoute
   '/guia/$slug': typeof GuiaSlugRoute
   '/houdini/entrar': typeof HoudiniEntrarRoute
   '/plan/confirmed': typeof PlanConfirmedRoute
@@ -408,6 +415,7 @@ export interface FileRoutesByTo {
   '/admin/meu-espaco': typeof AdminMeuEspacoRoute
   '/admin/quem-vai': typeof AdminQuemVaiRoute
   '/admin/validate': typeof AdminValidateRoute
+  '/bar/$slug': typeof BarSlugRoute
   '/guia/$slug': typeof GuiaSlugRoute
   '/houdini/entrar': typeof HoudiniEntrarRoute
   '/plan/confirmed': typeof PlanConfirmedRoute
@@ -462,6 +470,7 @@ export interface FileRoutesById {
   '/admin/meu-espaco': typeof AdminMeuEspacoRoute
   '/admin/quem-vai': typeof AdminQuemVaiRoute
   '/admin/validate': typeof AdminValidateRoute
+  '/bar/$slug': typeof BarSlugRoute
   '/guia/$slug': typeof GuiaSlugRoute
   '/houdini/_app': typeof HoudiniAppRouteWithChildren
   '/houdini/entrar': typeof HoudiniEntrarRoute
@@ -519,6 +528,7 @@ export interface FileRouteTypes {
     | '/admin/meu-espaco'
     | '/admin/quem-vai'
     | '/admin/validate'
+    | '/bar/$slug'
     | '/guia/$slug'
     | '/houdini/entrar'
     | '/plan/confirmed'
@@ -572,6 +582,7 @@ export interface FileRouteTypes {
     | '/admin/meu-espaco'
     | '/admin/quem-vai'
     | '/admin/validate'
+    | '/bar/$slug'
     | '/guia/$slug'
     | '/houdini/entrar'
     | '/plan/confirmed'
@@ -625,6 +636,7 @@ export interface FileRouteTypes {
     | '/admin/meu-espaco'
     | '/admin/quem-vai'
     | '/admin/validate'
+    | '/bar/$slug'
     | '/guia/$slug'
     | '/houdini/_app'
     | '/houdini/entrar'
@@ -673,6 +685,7 @@ export interface RootRouteChildren {
   authTwoFactorRoute: typeof authTwoFactorRoute
   authVerifyEmailRoute: typeof authVerifyEmailRoute
   dashboardDashboardRoute: typeof dashboardDashboardRoute
+  BarSlugRoute: typeof BarSlugRoute
   GuiaSlugRoute: typeof GuiaSlugRoute
   PlanConfirmedRoute: typeof PlanConfirmedRoute
   GuiaIndexRoute: typeof GuiaIndexRoute
@@ -865,6 +878,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/validate'
       preLoaderRoute: typeof AdminValidateRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/bar/$slug': {
+      id: '/bar/$slug'
+      path: '/bar/$slug'
+      fullPath: '/bar/$slug'
+      preLoaderRoute: typeof BarSlugRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/guia/': {
       id: '/guia/'
@@ -1155,6 +1175,7 @@ const rootRouteChildren: RootRouteChildren = {
   authTwoFactorRoute: authTwoFactorRoute,
   authVerifyEmailRoute: authVerifyEmailRoute,
   dashboardDashboardRoute: dashboardDashboardRoute,
+  BarSlugRoute: BarSlugRoute,
   GuiaSlugRoute: GuiaSlugRoute,
   PlanConfirmedRoute: PlanConfirmedRoute,
   GuiaIndexRoute: GuiaIndexRoute,
