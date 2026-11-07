@@ -86,7 +86,7 @@ export function CookieConsent() {
             <i />
             <i />
           </span>
-          Cookies<span className="onside-consent-kind"> de análise</span>
+          Cookies de análise
           <span className="onside-consent-note">só com a sua permissão</span>
         </p>
         <p>
