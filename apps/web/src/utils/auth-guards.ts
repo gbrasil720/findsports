@@ -1,7 +1,11 @@
 import type { auth } from '@findsports_oficial/auth'
 import { impersonationModeFrom } from '@findsports_oficial/auth/impersonation-mode'
 import { redirect } from '@tanstack/react-router'
-import { temAcao } from '../components/torcedor/acao'
+import {
+  acaoPulaOnboarding,
+  contaNovaPodeVer,
+  temAcao
+} from '../components/torcedor/acao'
 import { getCallbackUrl } from './callback-url'
 
 export type AuthSession = ReturnType<typeof toClientSession>
@@ -79,12 +83,17 @@ export function applyAuthGuards(
       session.user.role === 'pub' ? '/onboarding/pub' : '/onboarding/fan'
 
     if (!pathname.startsWith(onboardingRoute)) {
-      // A ação pedida antes de entrar (`?acao=`, `components/torcedor/acao.ts`)
-      // atravessa o onboarding do torcedor e volta concluída no fim dele.
-      const destino =
-        pathname === '/login' || pathname === '/signup'
-          ? getCallbackUrl(href)
-          : href
+      const entrada = pathname === '/login' || pathname === '/signup'
+      const destino = entrada ? getCallbackUrl(href) : href
+      // Conta nova por uma ação (`?acao=`, `components/torcedor/acao.ts`): a
+      // ação é concluída primeiro e as preferências vêm depois, no card e na
+      // tela curta (`/dashboard/bem-vindo`).
+      if (session.user.role !== 'pub') {
+        if (entrada && acaoPulaOnboarding(destino))
+          throw redirect({ to: destino })
+        if (!entrada && contaNovaPodeVer(pathname, href)) return
+      }
+      // A do app ("Me avise") atravessa o onboarding e volta concluída.
       throw redirect({
         to: onboardingRoute,
         ...(session.user.role !== 'pub' && temAcao(destino)

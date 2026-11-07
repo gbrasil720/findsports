@@ -110,11 +110,43 @@ describe('applyAuthGuards', () => {
     expect(() => applyAuthGuards(null, '/login')).not.toThrow()
   })
 
-  test('torcedor sem onboarding leva a ação pedida (`?acao=`) pelo onboarding', () => {
+  test('torcedor sem onboarding com uma ação: ela primeiro, o onboarding depois', () => {
     const bar = '/bar/x-12345678?jogo=1&acao=vou.1'
+    const thrownBy = (pathname: string, href: string) => {
+      try {
+        applyAuthGuards(session('fan', false), pathname, {}, href)
+      } catch (error) {
+        return error
+      }
+      return undefined
+    }
+    // Na página da ação, no card e nas preferências curtas fica.
+    expect(thrownBy('/bar/x-12345678', bar)).toBeUndefined()
+    expect(
+      thrownBy('/dashboard/games', '/dashboard/games?novo=vouc')
+    ).toBeUndefined()
+    expect(
+      thrownBy('/dashboard/bem-vindo', '/dashboard/bem-vindo?feito=fav')
+    ).toBeUndefined()
+    // Vindo do login ou do cadastro, vai direto à ação.
+    expect(
+      thrownBy('/login', `/login?callbackUrl=${encodeURIComponent(bar)}`)
+    ).toMatchObject({ options: { to: bar } })
+    // Sem a ação, o onboarding de 5 passos.
+    expect(thrownBy('/dashboard/games', '/dashboard/games')).toMatchObject({
+      options: { to: '/onboarding/fan' }
+    })
+    // Bar sem onboarding não usa nada disso.
+    expect(() =>
+      applyAuthGuards(session('pub', false), '/bar/x-12345678', {}, bar)
+    ).toThrow()
+  })
+
+  test('torcedor sem onboarding leva a ação do app pelo onboarding', () => {
+    const app = '/dashboard/profile?acao=app'
     for (const [pathname, href, callbackUrl] of [
-      ['/bar/x-12345678', bar, bar],
-      ['/login', `/login?callbackUrl=${encodeURIComponent(bar)}`, bar],
+      ['/dashboard/profile', app, app],
+      ['/login', `/login?callbackUrl=${encodeURIComponent(app)}`, app],
       ['/dashboard', '/dashboard', undefined]
     ] as const) {
       let thrown: unknown
