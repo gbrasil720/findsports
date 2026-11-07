@@ -7,6 +7,7 @@ import {
   north,
   pubAt,
   signInFanAt,
+  team,
   uniqueSpot
 } from '../../fixtures/fan'
 import { expect, test } from '../../fixtures/test'
@@ -137,6 +138,44 @@ test('filtro e busca deixam só o bar que casa', async ({ page }) => {
   await page.getByRole('searchbox').fill(outro.name)
   await expect(cartao(page, pub.name)).toBeHidden()
   await expect(cartao(page, outro.name)).toBeVisible()
+})
+
+test('Elite no clássico vai na frente e registra exposição e clique', async ({
+  page
+}) => {
+  const spot = uniqueSpot()
+  const startsAt = hours(2)
+  const [fla, pal] = [await team('flamengo'), await team('palmeiras')]
+  const perto = await pubAt(north(spot, 0.3), {
+    subscription: { plan: 'starter' }
+  })
+  const elite = await pubAt(north(spot, 1.5))
+  const ids: Record<string, string> = {}
+  for (const pub of [perto, elite]) {
+    ids[pub.barId] = await createEvent({
+      barId: pub.barId,
+      startsAt,
+      teamIds: [fla.id, pal.id]
+    })
+  }
+  const fan = await signInFanAt(page, spot)
+  const eventos = (type: string) =>
+    query(
+      `SELECT 1 FROM bar_commercial_event
+        WHERE actor_user_id = $1 AND bar_id = $2 AND type = $3`,
+      [fan.id, elite.barId, type]
+    ).then((rows) => rows.length)
+
+  await page.goto(`/dashboard?dia=${brasiliaDay(startsAt)}`)
+  await expect
+    .poll(() => page.locator('article.bc h3').allTextContents())
+    .toEqual([elite.name, perto.name])
+  await expect.poll(() => eventos('classic_exposure')).toBe(1)
+
+  await cartao(page, elite.name)
+    .getByRole('link', { name: `Abrir ${elite.name}` })
+    .click()
+  await expect.poll(() => eventos('classic_click')).toBe(1)
 })
 
 test('"Continuar como visitante" do login leva ao Explorar', async ({
