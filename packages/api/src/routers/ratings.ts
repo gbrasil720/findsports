@@ -71,6 +71,7 @@ async function checkEligibility(input: {
       ) AS has_intent
     FROM event e
     WHERE e.id = ${input.eventId} AND e.bar_id = ${input.barId}
+      AND e.published_at IS NOT NULL
   `)
 
   const row = rows.rows[0] as
