@@ -12,7 +12,7 @@ import { pinDoPlano } from '@/components/app/map-icons'
 import { Logo } from '@/components/landing/v3/icons'
 import { ThemeSwitch } from '@/components/landing/v3/theme-switch'
 import { QRCode } from '@/components/qr-code'
-import { lerAcao } from '@/components/torcedor/acao'
+import { destinoContaNova, lerAcao } from '@/components/torcedor/acao'
 import { canRecordCommercialEvents } from '@/domain/viewer'
 import { analytics } from '@/lib/analytics'
 import { trackCommercialEvent } from '@/lib/commercial-tracking'
@@ -298,13 +298,33 @@ export function BarPage({
       toast.info('Marcar presença e salvar bar são para conta de torcedor.')
       return
     }
+    // Conta nova (sem onboarding): depois da ação, a tela dela com o card da
+    // conta nova, como no web do torcedor (`destinoContaNova`).
+    const nova = session.user.onboardingCompleted === false
     if (acao.tipo === 'fav' && !(acao.id === bar.id && viewer.data.favorited))
-      favorite.mutate({ barId: acao.id })
+      favorite.mutate(
+        { barId: acao.id },
+        {
+          onSuccess: () => {
+            if (nova) void navigate({ to: destinoContaNova(acao) })
+          }
+        }
+      )
     if (
       acao.tipo === 'vou' &&
       !viewer.data.games[acao.id]?.attendance?.attending
     )
-      attend.mutate({ eventId: acao.id, attending: true })
+      attend.mutate(
+        { eventId: acao.id, attending: true },
+        {
+          onSuccess: (result) => {
+            if (nova)
+              void navigate({
+                to: destinoContaNova(acao, Boolean(result.code))
+              })
+          }
+        }
+      )
   }, [search, session, viewer.data, navigate, favorite, attend, bar.id, game])
 
   const share = async () => {
