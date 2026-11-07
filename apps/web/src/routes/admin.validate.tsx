@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { CodeValidation } from '@/components/admin/code-validation'
-import { LateCodeEntry } from '@/components/admin/late-code-entry'
 import { useMinuteNow } from '@/components/app/minute-tick'
 import { PainelPage } from '@/components/painel/painel-shell'
 import { useTRPC, useTRPCClient } from '@/utils/trpc'
@@ -34,17 +33,12 @@ function ValidatePage() {
     meta: { errorToast: false }
   })
   const elite = subscriptionQuery.data?.currentPlan === 'elite'
-  // Bar que confirma pela comanda lança aqui o que a equipe anotou (WEB-412).
+  // Bar que confirma pela comanda lança em Quem vai (WEB-412, WEB-501).
   const barQuery = useQuery({
     ...trpc.pub.getMe.queryOptions(),
     meta: { errorToast: false }
   })
   const confirmsLater = elite && barQuery.data?.confirmsCodesLater === true
-  const notLoggedQuery = useQuery({
-    ...trpc.reservationValidation.notLogged.queryOptions(),
-    enabled: confirmsLater,
-    meta: { errorToast: false }
-  })
 
   // Cliente direto, sem `useMutation`: o painel já guarda pendência e erro, e
   // repetir é decisão de quem está no balcão, nunca retry automático.
@@ -56,11 +50,19 @@ function ValidatePage() {
       sub="Valide o código de quem marcou “Vou assistir aqui” e libere a oferta da casa."
     >
       {confirmsLater ? (
-        <LateCodeEntry
-          logLate={reservationValidation.logLate.mutate}
-          missing={notLoggedQuery.data}
-          onLogged={() => void notLoggedQuery.refetch()}
-        />
+        <div className="onside-callout onside-callout-stone mb-6" role="note">
+          <p className="flex-1 text-sm">
+            Os códigos anotados na comanda você lança em Quem vai, até 48 h
+            depois do jogo.
+          </p>
+          <Link
+            to="/admin/quem-vai"
+            hash="comanda"
+            className="onside-btn onside-btn-ink shrink-0"
+          >
+            Lançar códigos da comanda
+          </Link>
+        </div>
       ) : null}
 
       <CodeValidation
