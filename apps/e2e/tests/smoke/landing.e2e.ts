@@ -134,7 +134,11 @@ test('o tema abre claro e a escolha do rodapé vale e fica guardada', async ({
 
   await page.reload()
   await expect(html).toHaveAttribute('data-theme', 'dark')
-  await expect(tema.getByRole('radio', { name: 'Escuro' })).toBeChecked()
+  // O `data-theme` vem do script do head, antes do React; o rádio só marca a
+  // escolha guardada depois da hidratação, que no CI carregado passa de 5 s.
+  await expect(tema.getByRole('radio', { name: 'Escuro' })).toBeChecked({
+    timeout: 15_000
+  })
 
   await tema.getByText('Auto').click()
   await expect(html).toHaveAttribute('data-theme', 'dark')
