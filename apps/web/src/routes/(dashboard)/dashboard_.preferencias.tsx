@@ -393,11 +393,16 @@ function Conta() {
           <div className="pn-ln">
             <span>
               <b>Duas etapas</b>
-              <span>Código do app autenticador ao entrar.</span>
+              <span>
+                {ligado
+                  ? '2FA ativado: o login pede o código do app autenticador.'
+                  : '2FA desativado. Liga o código do app autenticador ao entrar.'}
+              </span>
             </span>
             <button
               type="button"
               className={`pn-btn pn-sm ${ligado ? 'pn-ghost' : 'pn-ink'}`}
+              aria-label={ligado ? 'Gerenciar 2FA' : 'Ativar 2FA'}
               onClick={() => setTwoFactor(ligado ? 'regenerate' : 'enable')}
             >
               {ligado ? 'Gerenciar' : 'Ativar'}
@@ -430,7 +435,7 @@ function Conta() {
           disabled={del.blocked}
           onClick={() => setExcluir(true)}
         >
-          Excluir conta
+          Excluir minha conta
         </button>
       </section>
       <PasswordDialog open={senha} onOpenChange={setSenha} />
