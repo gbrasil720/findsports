@@ -132,7 +132,8 @@ describe('pinos do mapa (ESC-16, WEB-73)', () => {
       pro: [INK, CREME],
       elite: [ACID, INK],
       live: [LIVE, INK],
-      'elite-live': [LIVE, INK]
+      'elite-live': [LIVE, INK],
+      quiet: [INK, CREME]
     }
 
     for (const [pin, cores] of Object.entries(esperado)) {
