@@ -333,3 +333,35 @@ integrationTest(
     }
   }
 )
+
+integrationTest(
+  'completeFan sem nada (o "Depois" da conta nova) conclui com o raio padrão',
+  async () => {
+    const { db, appRouter } = await load()
+    const id = crypto.randomUUID()
+    await db.insert(user).values({
+      id,
+      name: 'Conta nova por uma ação',
+      email: `${id}@integration.invalid`,
+      emailVerified: true,
+      role: 'fan',
+      onboardingCompleted: false
+    })
+    try {
+      await appRouter
+        .createCaller(
+          contextFor(id, 'fan', new Date(), { onboardingCompleted: false })
+        )
+        .onboarding.completeFan({})
+      const { rows } = await db.execute(sql`
+        SELECT u.onboarding_completed AS feito, u.search_radius_km AS raio,
+               (SELECT count(*)::int FROM user_preference_sports p
+                 WHERE p.user_id = u.id) AS esportes
+        FROM "user" u WHERE u.id = ${id}
+      `)
+      expect(rows).toEqual([{ feito: true, raio: 3, esportes: 0 }])
+    } finally {
+      await db.delete(user).where(eq(user.id, id))
+    }
+  }
+)

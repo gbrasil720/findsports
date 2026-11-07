@@ -205,10 +205,12 @@ export const onboardingRouter = router({
   completeFan: fanProcedure
     .input(
       z.object({
-        sportIds: z
-          .array(z.string().uuid())
-          .min(1, 'Selecione pelo menos 1 esporte.'),
-        searchRadiusKm: searchRadiusKmSchema,
+        // WEB-501: a conta nova por uma ação escolhe as preferências depois,
+        // numa tela curta em que tudo é opcional, e o "Depois" conclui sem
+        // nada: fica o raio padrão da coluna (3 km) e nenhum esporte. O
+        // onboarding de 5 passos (web e app) segue exigindo um esporte na tela.
+        sportIds: z.array(z.string().uuid()).default([]),
+        searchRadiusKm: searchRadiusKmSchema.optional(),
         // WEB-68: opcional — o passo de times pode ser pulado.
         teamIds: favoriteTeamIdsSchema.default([]),
         // WEB-319: opcional — a tela deixa seguir sem cidade, e um app aberto
@@ -225,17 +227,20 @@ export const onboardingRouter = router({
       await assertOnboardingPending(userId)
 
       await db.transaction(async (tx) => {
-        await tx
-          .insert(userPreferenceSports)
-          .values(input.sportIds.map((sportId) => ({ userId, sportId })))
-          .onConflictDoNothing()
+        if (input.sportIds.length)
+          await tx
+            .insert(userPreferenceSports)
+            .values(input.sportIds.map((sportId) => ({ userId, sportId })))
+            .onConflictDoNothing()
 
         await replaceFavoriteTeams(tx, userId, input.teamIds)
 
         await tx
           .update(user)
           .set({
-            searchRadiusKm: input.searchRadiusKm,
+            ...(input.searchRadiusKm
+              ? { searchRadiusKm: input.searchRadiusKm }
+              : {}),
             ...(city ? searchCityColumns(city) : {}),
             onboardingCompleted: true
           })
