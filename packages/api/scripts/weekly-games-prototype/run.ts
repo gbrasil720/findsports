@@ -297,8 +297,11 @@ function merge(into: Map<string, Game>, games: Game[]) {
     else {
       prev.hora ??= g.hora
       if (!prev.canais.length && g.canais.length) {
+        // A fonte que tem canal vale para o jogo inteiro: misturar a hora de
+        // uma com o canal da outra atribuía à fonte uma hora que ela não deu.
         prev.canais = g.canais
         prev.fonte = g.fonte
+        prev.hora = g.hora ?? prev.hora
       } else if (g.canais.length && g.canais.join() !== prev.canais.join())
         prev.outras = [
           ...(prev.outras ?? []),
