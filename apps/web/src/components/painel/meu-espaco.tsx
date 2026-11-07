@@ -47,7 +47,7 @@ import { getPlan, PLAN_TIER_ORDER } from '@/lib/plan-catalog'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { formatPhone } from '@/utils/format-phone'
 import { useTRPC } from '@/utils/trpc'
-import { LinhaDeAvaliacao } from './avaliacao'
+import { ListaDeAvaliacoes } from './avaliacao'
 import {
   FotosDoBar,
   type GaleriaBloqueada,
@@ -1514,11 +1514,9 @@ function Avaliacoes() {
               fez check-in no bar durante o jogo.
             </p>
           ) : null}
-          {(todas ? r.recent : r.recent.slice(0, AVALIACOES_VISIVEIS)).map(
-            (item) => (
-              <LinhaDeAvaliacao key={item.id} item={item} />
-            )
-          )}
+          <ListaDeAvaliacoes
+            items={todas ? r.recent : r.recent.slice(0, AVALIACOES_VISIVEIS)}
+          />
           {r.recent.length > AVALIACOES_VISIVEIS ? (
             <button
               type="button"

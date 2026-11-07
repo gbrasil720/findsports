@@ -1911,3 +1911,9 @@ html[data-theme="dark"] .pn3 {
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
+
+.pn3 .pn-revs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

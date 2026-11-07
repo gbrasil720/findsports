@@ -23,7 +23,7 @@ import {
 } from '@/components/landing/v3/icons'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
-import { LinhaDeAvaliacao } from './avaliacao'
+import { ListaDeAvaliacoes } from './avaliacao'
 import { Avisos, PlanoCard } from './avisos'
 import {
   barScreen,
@@ -849,9 +849,7 @@ function Avaliacoes() {
         </div>
       ) : r?.recent.length ? (
         <>
-          {r.recent.slice(0, 3).map((item) => (
-            <LinhaDeAvaliacao key={item.id} item={item} />
-          ))}
+          <ListaDeAvaliacoes items={r.recent.slice(0, 3)} />
           {!r.isPublic ? (
             <p className="pn-note">
               A nota aparece para o torcedor a partir de {r.floor} avaliações

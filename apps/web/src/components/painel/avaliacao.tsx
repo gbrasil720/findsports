@@ -28,7 +28,17 @@ export type AvaliacaoDoBar = {
  * o dia (WEB-451). Nome só de quem quis aparecer. A não verificada leva o
  * selo: o dono a lê, mas ela não entra na nota (WEB-408).
  */
-export function LinhaDeAvaliacao({ item }: { item: AvaliacaoDoBar }) {
+export function ListaDeAvaliacoes({ items }: { items: AvaliacaoDoBar[] }) {
+  return (
+    <ul className="pn-revs">
+      {items.map((item) => (
+        <LinhaDeAvaliacao key={item.id} item={item} />
+      ))}
+    </ul>
+  )
+}
+
+function LinhaDeAvaliacao({ item }: { item: AvaliacaoDoBar }) {
   const jogo =
     item.participants.join(' × ') ||
     item.participantFreeText ||
@@ -42,7 +52,7 @@ export function LinhaDeAvaliacao({ item }: { item: AvaliacaoDoBar }) {
     dayLabel(houseDay(item.createdAt))
   ].filter(Boolean)
   return (
-    <div className="pn-rev">
+    <li className="pn-rev">
       <span className={`pn-v${item.wouldReturn ? '' : ' is-no'}`}>
         {item.wouldReturn ? <Check size={18} /> : <Close size={16} />}
       </span>
@@ -55,7 +65,7 @@ export function LinhaDeAvaliacao({ item }: { item: AvaliacaoDoBar }) {
         {item.comment ? <p className="pn-rev-q">“{item.comment}”</p> : null}
         <p>{meta.join(' · ')}</p>
       </span>
-    </div>
+    </li>
   )
 }
 
