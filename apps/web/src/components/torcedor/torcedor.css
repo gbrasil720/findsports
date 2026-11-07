@@ -4044,3 +4044,65 @@ html[data-theme="dark"] .tc .m-d {
 .tc .sheet .alt a + a {
   font-weight: 600;
 }
+.tc .fav[aria-pressed="true"] {
+  background: var(--acid);
+  color: #12120f;
+  --spark: #e8320c;
+}
+.tc .muted {
+  color: var(--muted);
+}
+.tc .ph-vazio {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--sub);
+  color: var(--muted);
+}
+.tc .stack span {
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font: 700 11px / 1 var(--text);
+}
+.tc .mpick {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.tc .mpick-a {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  text-decoration: none;
+  min-width: 0;
+}
+.tc .mpick .ph-vazio {
+  position: static;
+  width: 72px;
+  height: 72px;
+  border-radius: 14px;
+}
+.tc .mapbar .chip {
+  border: 0;
+}
+.tc .toast:not(.on) {
+  visibility: hidden;
+  transition:
+    transform 0.45s var(--ease),
+    visibility 0s 0.45s;
+}
+.tc .map .maplibregl-ctrl-bottom-right {
+  bottom: 60px;
+}
+/* Os pinos do MapLibre têm z-index próprio: ficam dentro do mapa. */
+.tc .map {
+  isolation: isolate;
+}
+/* O grupo de filtros é um fieldset: zera o do navegador e deixa o protótipo mandar. */
+.tc :where(fieldset.chips) {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-inline-size: 0;
+}
