@@ -204,16 +204,22 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   dono). O app não lê plano dali.
 - Planos são achados por **lookup key** (`starter_monthly`, `pro_monthly`,
   `elite_monthly`), iguais no sandbox e em produção: `packages/auth/src/stripe-plan.ts`.
-- **Teste grátis nasce no cadastro, sem cartão**: 90 dias no Elite, para todo bar
-  novo (`ONBOARDING_TRIAL`, em `packages/api/src/lib/plan-limits.ts`). Quem
-  contrata antes do fim herda a data: o checkout manda `trial_end` e o Stripe só cobra
-  quando o teste acabaria (`packages/auth/src/stripe-checkout.ts`).
-- **O teste do cadastro vale para qualquer plano** (WEB-358): o bar nasce no Elite
-  e troca em `/plan` ("Testar o X grátis"), sem cartão e quantas vezes quiser,
-  por `pub.changeTrialPlan`. Só `subscription.plan` muda; o fim do teste é o mesmo.
-  Com assinatura no Stripe ou teste vencido a troca é recusada: o caminho é contratar.
+- **Teste grátis nasce no cadastro, sem cartão**: 90 dias para todo bar novo,
+  contados de quando ele vai ao ar no `completePub` (`ONBOARDING_TRIAL`, em
+  `packages/api/src/lib/plan-limits.ts`), no plano que a rotina do cadastro recomenda
+  (`recommendPlan`, `packages/api/src/lib/pub-routine.ts`; ver "Cadastro do bar e
+  primeiro valor"). Cliente anterior, sem rotina, nasce no Elite. Quem contrata antes
+  do fim herda a data: o checkout manda `trial_end` e o Stripe só cobra quando o teste
+  acabaria (`packages/auth/src/stripe-checkout.ts`).
+- **O teste do cadastro vale para qualquer plano** (WEB-358): o dono escolhe o do teste
+  depois do primeiro jogo e troca em `/plan` ("Testar o X grátis"), sem cartão e
+  quantas vezes quiser, por `pub.changeTrialPlan`. Só `subscription.plan` muda (e
+  `bar.trial_plan_chosen_at`, a primeira vez); o fim do teste é o mesmo. Com
+  assinatura no Stripe ou teste vencido a troca é recusada: o caminho é contratar.
   No Starter o limite de jogos conta por mês, de trás para frente a partir do fim do
-  teste (`getEventCreationPeriod`).
+  teste (`getEventCreationPeriod`), e **o primeiro jogo que o bar publicou na vida não
+  conta** ("por conta da Onside", `countedTowardsLimit` em
+  `lib/event-creation-policy.ts`).
 - **Teste do cadastro vencido tira o bar do ar** (WEB-357): sem assinatura no Stripe e
   com o período encerrado, a reconciliação diária (`reconcileBarPlans`, em
   `packages/api/src/lib/bar-plan-sync.ts`) desliga `bar.is_active` junto com o
@@ -429,6 +435,52 @@ revisão (`cover_requested`), quando for aprovada. As outras fotos são do Pro e
 Elite (`lib/bar-gallery.ts`). Upload por `/api/bar/photo?galeria` (`&capa` deixa o
 Starter mandar a capa) e `pub.addPhoto`; `bar.gallery_photos` é a coluna antiga, sem
 leitura. Painel: `components/painel/espaco-fotos.tsx`.
+
+### Cadastro do bar e primeiro valor (WEB-501)
+
+Protótipo `docs/design/redesign-2026-11/painel/index.src.html` (branch do guia
+navegável). Duas partes:
+
+- **Cadastro** (`routes/(onboarding)/onboarding.pub.tsx`): Boas-vindas,
+  Estabelecimento, Características, Sua rotina e Revisão, sem passo de plano. A rotina
+  (jogos por mês, gasto por cliente, o que o dono espera; `routineSchema`) vai no
+  rascunho e no `completePub`, que a grava em `bar.routine` e começa o teste no plano
+  que ela recomenda, com `bar.trial_plan_chosen_at` nulo. O comprovante não tem plano
+  ("você escolhe já já") e traz "Primeiro jogo por conta da Onside".
+- **Depois do "no ar"** (`/onboarding/pub/no-ar`, `PUB_LIVE_PATH`, `?passo=`):
+  "Seu primeiro jogo" (sugestões abaixo e o "Novo jogo" do painel), "Assim o torcedor
+  vê" (o `CartaoBar` de verdade do Explorar, a página `/bar/<slug>` num iframe, e
+  WhatsApp, copiar link e QR para imprimir) e "Plano do teste" (`PubPlanStep`, o
+  recomendado marcado; escolher é o `pub.changeTrialPlan`). Os dois primeiros dá para
+  pular ("Ir para o painel", "Fazer depois"); o passo pulado não ganha o visto no topo
+  (`PubObShell` com `done`). O plano não: enquanto `precisaEscolherPlano`
+  (`lib/trial-plan-choice.ts`: data nula, teste do cadastro em vigor e sem Stripe), o
+  layout de `/admin` leva à escolha. A rotina fica no bar, então a escolha abre igual
+  em outro aparelho; "Mudar minhas respostas" ali só muda a recomendação da tela.
+  Bar de antes da coluna e o criado pelo código anterior contam como escolhidos (o
+  padrão da coluna é `now()`).
+- **Sugestões de jogo** (`packages/api/src/lib/game-suggestions/`): a tela só conhece
+  `pub.gameSuggestions` e `GameSuggestion`; a fonte é trocável (`GameSuggestionSource`
+  em `index.ts`). Hoje há uma, `nearby-bars.ts`: jogos publicados (sem rascunho) por
+  outros bares no ar da mesma cidade (`search_normalize`) nos próximos 7 dias, um por
+  jogo (início + título), até 6, os mais marcados primeiro, sem os que o bar já tem. O
+  catálogo semanal do WEB-433 entra como outra fonte ali. Um toque é um `createEvent`
+  com campeonato, times, texto livre e horário; telão e som herdam das
+  características. Mesma peça em "Seu primeiro jogo" e em Jogos (`SugestoesDeJogo`).
+- **Passeio e Primeiros passos** (`components/painel/passeio.tsx`): só para o bar do
+  cadastro novo (`bar.routine`); o de antes não vê nada sozinho. A volta do plano do
+  teste abre `/admin?passeio=1`, que começa o passeio: troca de rota de verdade (Hoje,
+  Jogos, Meu espaço, Quem vai só no Elite, Desempenho, fim em Hoje), destaque com furo
+  no elemento (`data-passeio="…"` nas telas), "N de M", Voltar/Próximo e "Pular o
+  passeio". Starter e Pro têm 5 telas, Elite 6, sem as do que já está feito. **Nenhum
+  passo anda sozinho**: a ação do passo (publicar a sugestão, validar o código de
+  exemplo) só troca o texto e o botão; Esc e "Pular" pausam, e "Continuar o passeio"
+  no card segue das telas não vistas. O card "Primeiros passos" em Hoje marca pelo dado
+  real (jogos publicados, capa ou capa pedida e horário, plano escolhido) e, o que não
+  tem dado (passeio, link mandado, código de exemplo, card escondido), por conta no
+  `localStorage` (`primeiros-passos-local.ts`, leitura e escrita em `try`). Some ao
+  completar ou com "Esconder". O código de exemplo ("Treine o balcão", em Quem vai) é
+  só na tela: não grava código nem visita.
 
 ### Web do torcedor (WEB-501)
 
