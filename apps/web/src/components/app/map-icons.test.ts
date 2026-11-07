@@ -171,6 +171,20 @@ describe('pinos do mapa (ESC-16, WEB-73)', () => {
     }
   })
 
+  test('bar sem jogo é o ponto oco abaixo das gotas, e em destaque vira a gota', () => {
+    const { pintura } = criarConteudoDePino()
+    const [gota, ponto] = pintura.children as unknown as HTMLElement[]
+    aplicarPino(pintura, 'quiet', false)
+    expect(gota?.style.display).toBe('none')
+    expect(ponto?.style.display).toBe('block')
+    aplicarPino(pintura, 'quiet', true)
+    expect(gota?.style.display).toBe('')
+    expect(ponto?.style.display).toBe('none')
+    expect(Number(ordemDoPino('quiet', false))).toBeLessThan(
+      Number(ordemDoPino('starter', false))
+    )
+  })
+
   /**
    * O ponto do usuário marca uma posição exata. Com `anchor: 'center'` no
    * `maplibregl.Marker` ele fica centrado nela sem compensação em CSS — o
