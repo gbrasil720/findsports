@@ -437,7 +437,11 @@ function Espaco({ bar }: { bar: AdminBar }) {
       <div className="pn-esp">
         <div>
           {/* ─── Perfil N de 7 ─── */}
-          <section className="pn-card pn-sec2" aria-labelledby="esp-pf">
+          <section
+            className="pn-card pn-sec2"
+            aria-labelledby="esp-pf"
+            data-passeio="espaco"
+          >
             <div className="pn-chd">
               <h3 id="esp-pf">
                 Perfil {prontidao.score} de {prontidao.total}

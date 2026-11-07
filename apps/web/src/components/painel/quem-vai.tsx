@@ -22,6 +22,7 @@ import {
 } from './dados'
 import { brasiliaDay, brasiliaTime, relativeDayLabel } from './noite'
 import { initials, usePainel } from './painel-shell'
+import { TreineOBalcao } from './passeio'
 
 /*
  * Quem vai (WEB-501, fase 3; protótipo `quemvai`): um cartão por jogo com a
@@ -95,6 +96,8 @@ export function QuemVaiPage() {
           </button>
         </div>
       </header>
+
+      <TreineOBalcao />
 
       {elite ? null : (
         <div className="pn-avisos">

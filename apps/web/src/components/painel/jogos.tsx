@@ -62,6 +62,7 @@ import {
 import { NovoJogo, type NovoJogoMode } from './novo-jogo'
 import { Interruptor, initials, usePainel } from './painel-shell'
 import { Desfazer } from './quem-vai'
+import { SugestoesDeJogo } from './sugestoes-de-jogo'
 
 /*
  * Jogos (WEB-501, fase 2; protótipo `jogos`, `detail`): Próximos,
@@ -433,7 +434,31 @@ export function JogosPage({
         />
       ) : (
         <div className="pn-jl">
-          <div>
+          <div data-passeio="jogos">
+            {tab === 'prox' ? (
+              <SugestoesDeJogo
+                className="pn-card pn-sgj"
+                alvo="jogos-sugestoes"
+                disabled={!canCreate}
+                title={
+                  <div className="pn-chd">
+                    <h3>
+                      <Sparkle size={20} />
+                      Jogos que outros bares perto já marcaram
+                    </h3>
+                    <small>nos próximos 7 dias</small>
+                  </div>
+                }
+                hint={
+                  <p className="pn-note">
+                    Um toque publica, com o telão e o som do bar.{' '}
+                    {policy.data?.status === 'limited'
+                      ? `Cada um conta nos ${policy.data.limit} jogos do mês.`
+                      : 'Dá para editar depois.'}
+                  </p>
+                }
+              />
+            ) : null}
             {tab === 'prox' && interest.gathering && upcoming.length ? (
               <p className="pn-note pn-gather">
                 Estamos reunindo dados sobre o interesse no seu bar. O sinal
