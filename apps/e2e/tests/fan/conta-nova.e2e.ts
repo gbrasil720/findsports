@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test'
+import { signIn } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
 import { lastEmailTo } from '../../fixtures/email'
 import {
@@ -11,6 +12,7 @@ import {
 } from '../../fixtures/fan'
 import { print } from '../../fixtures/prints'
 import { expect, test } from '../../fixtures/test'
+import { createUser } from '../../fixtures/users'
 import { submitSignup, uniqueEmail, VERIFICATION_SUBJECT } from '../auth/forms'
 
 // Conta nova por uma ação (WEB-501, protótipo `bem-vindo-curto`): quem cria
@@ -43,6 +45,17 @@ const contaDe = (email: string) =>
        FROM "user" u WHERE u.email = $1`,
     [email]
   ).then((rows) => rows[0])
+
+const aviso = (page: Page) => page.locator('.toast')
+
+/** O aviso à vista sem o card; ele sai, e o card entra. */
+async function emSequencia(page: Page, texto: string) {
+  await expect(aviso(page)).toBeVisible()
+  await expect(aviso(page)).toHaveText(texto)
+  await expect(card(page)).toHaveCount(0)
+  await expect(aviso(page)).toBeHidden()
+  await expect(card(page)).toBeVisible()
+}
 
 /** Bar Elite com um jogo daqui a duas horas; o navegador fica perto dele. */
 async function barComJogo(page: Page) {
@@ -88,6 +101,11 @@ test('cadastro pelo "Vou assistir aqui": código, card e a tela curta', async ({
     new RegExp(`/dashboard/codigo/${eventId}\\?novo=vou$`)
   )
   await expect(page.getByLabel(/^QR do código/)).toBeVisible()
+  // Um por vez: o aviso da ação, e só depois que ele sai, o card.
+  await emSequencia(
+    page,
+    'Pronto: você vai assistir aqui. Este é o seu código.'
+  )
   await expect(card(page)).toContainText('Conta criada e presença marcada')
   await expect(card(page)).toContainText(
     'Seu código está aqui e em Meus jogos.'
@@ -100,7 +118,7 @@ test('cadastro pelo "Vou assistir aqui": código, card e a tela curta', async ({
   )
   expect(presenca).toBeDefined()
   await card(page).scrollIntoViewIfNeeded()
-  await print(page, testInfo, 'conta-nova-codigo', 500)
+  await print(page, testInfo, 'conta-nova-v2-codigo', 500)
 
   // As preferências depois, numa página só.
   await card(page).getByRole('link', { name: 'Escolher agora' }).click()
@@ -109,7 +127,7 @@ test('cadastro pelo "Vou assistir aqui": código, card e a tela curta', async ({
     page.getByRole('heading', { name: 'Do que você gosta?' })
   ).toBeVisible()
   await expect(page.getByText('Conta criada e presença marcada')).toBeVisible()
-  await print(page, testInfo, 'conta-nova-bem-vindo-topo', 500)
+  await print(page, testInfo, 'conta-nova-v2-bem-vindo-topo', 500)
   // Sem as abas de baixo: a tela é só a escolha.
   await expect(page.getByRole('navigation', { name: 'Sua conta' })).toHaveCount(
     0
@@ -123,7 +141,7 @@ test('cadastro pelo "Vou assistir aqui": código, card e a tela curta', async ({
   await page
     .getByRole('button', { name: 'Salvar', exact: true })
     .scrollIntoViewIfNeeded()
-  await print(page, testInfo, 'conta-nova-bem-vindo-fim', 500)
+  await print(page, testInfo, 'conta-nova-v2-bem-vindo-fim', 500)
   await page.getByRole('button', { name: 'Salvar', exact: true }).click()
 
   // Volta ao código, sem o card, com o onboarding concluído.
@@ -155,10 +173,14 @@ test('cadastro por favoritar na página do bar: Seus bares, card e "Depois"', as
   await criarContaPelaFolha(page, 'Entre para salvar o bar', email)
 
   await expect(page).toHaveURL(/\/dashboard\/seus-bares\?aba=salvos&novo=fav$/)
+  // O aviso da página do bar vem para a fila daqui: nenhum toast dela por
+  // cima, e o card só depois que ele sai.
+  await expect(page.locator('[data-sonner-toast]')).toHaveCount(0)
+  await emSequencia(page, `${pub.name} salvo em Seus bares.`)
   await expect(card(page)).toContainText('Conta criada e bar salvo')
   const conta = await contaDe(email)
   await expect.poll(() => isFavorite(conta?.id ?? '', pub.barId)).toBe(true)
-  await print(page, testInfo, 'conta-nova-seus-bares', 500)
+  await print(page, testInfo, 'conta-nova-v2-seus-bares', 500)
 
   await card(page).getByRole('button', { name: 'Depois' }).click()
   await expect(card(page)).toHaveCount(0)
@@ -191,4 +213,31 @@ test('cadastro sem ação segue pelo onboarding de 5 passos', async ({
 
   await expect(page).toHaveURL(/\/onboarding\/fan$/)
   await expect(page.getByText('1 de 5 · Boas-vindas')).toBeVisible()
+})
+
+test('conta antiga sem onboarding vê o card sem "Conta criada"', async ({
+  page
+}, testInfo) => {
+  const { pub } = await barComJogo(page)
+  const fan = await createUser({ onboardingCompleted: false })
+  await query(
+    `UPDATE "user" SET created_at = now() - interval '3 days' WHERE id = $1`,
+    [fan.id]
+  )
+  await signIn(page, fan)
+
+  await page.goto(`/dashboard?acao=fav.${pub.barId}`)
+  await expect(page).toHaveURL(/\/dashboard\/seus-bares\?aba=salvos&novo=fav$/)
+  await emSequencia(page, 'Bar salvo em Seus bares.')
+  await expect.poll(() => isFavorite(fan.id, pub.barId)).toBe(true)
+  await expect(page.getByText(/^1 bar salvo/)).toBeVisible()
+  await expect(card(page).locator('b')).toHaveText('Bar salvo')
+  await expect(card(page)).not.toContainText('Conta criada')
+  await expect(card(page)).toContainText(
+    'Ele está em Seus bares, com a semana de jogos.'
+  )
+  await print(page, testInfo, 'conta-nova-v2-conta-antiga', 500)
+
+  await card(page).getByRole('link', { name: 'Escolher agora' }).click()
+  await expect(page.locator('.feito')).toHaveText('Bar salvo')
 })
