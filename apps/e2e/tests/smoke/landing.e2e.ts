@@ -123,6 +123,10 @@ test.describe('com sessão', () => {
 test('o tema abre claro e a escolha do rodapé vale e fica guardada', async ({
   page
 }) => {
+  // ponytail: no mobile do CI (vite dev, sem GPU) a segunda abertura da landing
+  // levou 45 s para hidratar (o fundo em WebGL trava o navegador) e estourava
+  // os 60 s do teste. Prazo triplo até a landing ficar leve no CI.
+  test.slow()
   await page.emulateMedia({ colorScheme: 'dark' })
   await page.goto('/')
   const html = page.locator('html')
@@ -141,7 +145,7 @@ test('o tema abre claro e a escolha do rodapé vale e fica guardada', async ({
   await page.goto('/', { waitUntil: 'networkidle' })
   await expect(html).toHaveAttribute('data-theme', 'dark')
   await expect(tema.getByRole('radio', { name: 'Escuro' })).toBeChecked({
-    timeout: 15_000
+    timeout: 30_000
   })
 
   await tema.getByText('Auto').click()
