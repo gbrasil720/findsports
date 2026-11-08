@@ -51,8 +51,7 @@ html[data-theme="dark"] .lp3
     .lg-skip,
     .ent-mail,
     .onside-btn-acid,
-    .ent-role button[aria-pressed="true"] .ic,
-    form [data-slot="button"][type="submit"]
+    .ent-role button[aria-pressed="true"] .ic
   ) {
   --ink: #12120f;
   --paper: #f1eee6;
@@ -136,6 +135,18 @@ html[data-theme="dark"] .lp3.ent .btn.btn-ghost {
 }
 html[data-theme="dark"] .lp3.ent .btn.btn-ghost:hover {
   box-shadow: inset 0 0 0 1.5px #f1eee6;
+}
+html[data-theme="dark"] .lp3.ent .ent-seg {
+  background: #26261f;
+}
+html[data-theme="dark"]
+  .lp3.ent
+  .ent-boxes
+  [data-slot="input-otp-slot"]:not(
+    [data-active="true"],
+    [aria-invalid="true"]
+  ) {
+  box-shadow: inset 0 0 0 1.5px rgba(241, 238, 230, 0.2);
 }
 html[data-theme="dark"] .lp3.ent .onside-field-error {
   color: #f3421d;
