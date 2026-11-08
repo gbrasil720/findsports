@@ -879,7 +879,15 @@ function Celular({
       <section
         className={`msheet${y !== null ? ' drag' : ''}`}
         aria-label="Bares"
-        style={{ transform: `translateY(${posicao}px)` }}
+        style={
+          {
+            transform: `translateY(${posicao}px)`,
+            // A folha tem a altura do mapa e desce por `translateY`: o que
+            // passa da borda de baixo fica escondido. A lista desconta isso
+            // no fim, senão os últimos bares nunca chegam à tela.
+            '--msheet-fora': `${alturas()[snap]}px`
+          } as React.CSSProperties
+        }
       >
         <div className="grab" {...alca}>
           <span />

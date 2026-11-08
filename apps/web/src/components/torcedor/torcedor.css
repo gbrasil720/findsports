@@ -1740,7 +1740,8 @@ html[data-theme="dark"] .tc .m-d {
   flex: 1;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 16px var(--gr) calc(28px + env(safe-area-inset-bottom, 0px))
+  padding: 16px var(--gr)
+    calc(28px + env(safe-area-inset-bottom, 0px) + var(--msheet-fora, 0px))
     var(--gl);
   touch-action: pan-y;
 }
