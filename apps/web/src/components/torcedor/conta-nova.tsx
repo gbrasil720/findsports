@@ -1,10 +1,18 @@
 import { useMutation } from '@tanstack/react-query'
 import { Link, useLocation, useNavigate } from '@tanstack/react-router'
+import { useEffect, useState } from 'react'
+import { useSession } from '@/hooks/use-session'
 import { refreshSessionCache } from '@/lib/auth-client'
 import { mensagemOnboardingJaConcluido } from '@/lib/onboarding-concluido'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
-import { BEM_VINDO_PATH, lerNovo, type Novo, semNovo } from './acao'
+import {
+  BEM_VINDO_PATH,
+  contaRecente,
+  lerNovo,
+  type Novo,
+  semNovo
+} from './acao'
 import { Ic } from './icones'
 import { useTorcedor } from './shell'
 
@@ -29,6 +37,23 @@ export const CONTA_NOVA: Record<Novo, [string, string]> = {
     'Ele está em Seus bares, com a semana de jogos.'
   ],
   lembrar: ['Conta criada e lembrete marcado', 'Avisamos 3 h antes do jogo.']
+}
+
+/** Conta de antes (mais de um dia) sem onboarding: o mesmo card, sem "Conta criada". */
+const SO_A_ACAO: Record<Novo, string> = {
+  vou: 'Presença marcada',
+  vouc: 'Presença marcada',
+  fav: 'Bar salvo',
+  lembrar: 'Lembrete marcado'
+}
+
+/** O título do card e da tag da tela curta, pela idade da conta da sessão. */
+export function tituloContaNova(
+  novo: Novo,
+  criadaEm: Date | string | undefined,
+  agora = new Date()
+): string {
+  return contaRecente(criadaEm, agora) ? CONTA_NOVA[novo][0] : SO_A_ACAO[novo]
 }
 
 export const DEPOIS_AVISO =
@@ -61,11 +86,18 @@ export async function concluirOnboarding(
 export function CartaoContaNova() {
   const { href, search } = useLocation()
   const navigate = useNavigate()
-  const { avisar } = useTorcedor()
+  const session = useSession()
+  const { avisar, avisando } = useTorcedor()
   const concluir = useConcluirOnboarding()
   const novo = lerNovo((search as Record<string, unknown>).novo)
-  if (!novo) return null
-  const [titulo, frase] = CONTA_NOVA[novo]
+  // Um por vez: o card entra quando o último aviso da ação sai, e fica.
+  const [pronto, setPronto] = useState<Novo | null>(null)
+  useEffect(() => {
+    if (novo && !avisando) setPronto(novo)
+  }, [novo, avisando])
+  if (!novo || pronto !== novo) return null
+  const titulo = tituloContaNova(novo, session?.user.createdAt)
+  const frase = CONTA_NOVA[novo][1]
   const volta = semNovo(href)
 
   const depois = async () => {

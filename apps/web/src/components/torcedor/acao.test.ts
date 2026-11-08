@@ -4,6 +4,7 @@ import {
   BEM_VINDO_PATH,
   comAcao,
   contaNovaPodeVer,
+  contaRecente,
   destinoContaNova,
   lerAcao,
   lerNovo,
@@ -87,5 +88,13 @@ describe('conta nova por uma ação', () => {
     expect(contaNovaPodeVer('/dashboard/games', '/dashboard/games')).toBe(false)
     expect(contaNovaPodeVer('/dashboard', '/dashboard?novo=outro')).toBe(false)
     expect(contaNovaPodeVer('/dashboard', '/dashboard?acao=app')).toBe(false)
+  })
+
+  test('conta de até um dia é "criada"; a de antes não', () => {
+    const agora = new Date('2026-11-07T12:00:00Z')
+    expect(contaRecente('2026-11-07T01:00:00Z', agora)).toBe(true)
+    expect(contaRecente(new Date('2026-11-06T12:00:00Z'), agora)).toBe(true)
+    expect(contaRecente('2026-11-06T11:59:00Z', agora)).toBe(false)
+    expect(contaRecente(undefined, agora)).toBe(true)
   })
 })

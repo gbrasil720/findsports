@@ -102,6 +102,19 @@ export function destinoContaNova(
   return `${BEM_VINDO_PATH}?feito=lembrar`
 }
 
+/**
+ * Conta criada há até um dia: o card diz "Conta criada e…". A de antes, sem
+ * onboarding, vê o mesmo card só com a ação ("Bar salvo").
+ */
+export function contaRecente(
+  criadaEm: Date | string | undefined,
+  agora = new Date()
+): boolean {
+  if (!criadaEm) return true
+  const ms = agora.getTime() - new Date(criadaEm).getTime()
+  return ms <= 24 * 60 * 60 * 1000
+}
+
 /** O endereço sem o card da conta nova (`?novo=`). */
 export function semNovo(href: string): string {
   const url = new URL(href, 'http://local')
