@@ -8,6 +8,10 @@ import { InstallAppCard } from '@/components/app/install-app-card'
 import { HojePage as Hoje } from '@/components/painel/hoje'
 
 export const Route = createFileRoute('/admin/')({
+  // `?passeio=1`: a primeira entrada depois do plano do teste abre o passeio
+  // pelo painel (`components/painel/passeio.tsx`).
+  validateSearch: (search: Record<string, unknown>): { passeio?: 1 } =>
+    search.passeio === 1 || search.passeio === '1' ? { passeio: 1 } : {},
   component: HojePage
 })
 

@@ -363,7 +363,11 @@ function Numeros({
         </p>
       ) : null}
 
-      <section className="pn-big3" aria-label="Resumo do período">
+      <section
+        className="pn-big3"
+        aria-label="Resumo do período"
+        data-passeio="numeros"
+      >
         <div>
           <span className="pn-l">
             Pessoas que viram seu bar
@@ -701,7 +705,11 @@ function QuemFoi({ state }: { state: EventAnalyticsState }) {
   const share = marked ? Math.round((arrived / marked) * 100) : null
 
   return (
-    <section className="pn-card" aria-labelledby="pn-qfo-t">
+    <section
+      className="pn-card"
+      aria-labelledby="pn-qfo-t"
+      data-passeio="quemfoi"
+    >
       <div className="pn-chd">
         <h3 id="pn-qfo-t">Quem foi pela Onside</h3>
         {share !== null ? <small>{share}% chegaram ao bar</small> : null}
@@ -780,7 +788,11 @@ function Canais({
   )
 
   return (
-    <section className="pn-card" aria-labelledby="pn-ctp-t">
+    <section
+      className="pn-card"
+      aria-labelledby="pn-ctp-t"
+      data-passeio="canais"
+    >
       <div className="pn-chd">
         <h3 id="pn-ctp-t">
           Como te procuraram

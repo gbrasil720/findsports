@@ -12,7 +12,8 @@ import { pinDoPlano } from '@/components/app/map-icons'
 import { Logo } from '@/components/landing/v3/icons'
 import { ThemeSwitch } from '@/components/landing/v3/theme-switch'
 import { QRCode } from '@/components/qr-code'
-import { lerAcao } from '@/components/torcedor/acao'
+import { destinoContaNova, lerAcao } from '@/components/torcedor/acao'
+import { avisarNaProxima } from '@/components/torcedor/avisos'
 import { canRecordCommercialEvents } from '@/domain/viewer'
 import { analytics } from '@/lib/analytics'
 import { trackCommercialEvent } from '@/lib/commercial-tracking'
@@ -228,12 +229,18 @@ export function BarPage({
   }
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: viewerKey })
+  // Conta sem onboarding que chega por uma ação vai à tela dela no web do
+  // torcedor: o aviso segue para a fila de lá, antes do card da conta nova,
+  // em vez de um toast daqui por cima dele.
+  const contaNova = useRef(false)
+  const sucesso = (texto: string) =>
+    contaNova.current ? avisarNaProxima(texto) : toast.success(texto)
   const attend = useMutation(
     trpc.attendance.set.mutationOptions({
       onSuccess: async (result) => {
         await refresh()
         if (result.attending) {
-          toast.success(
+          sucesso(
             result.code
               ? 'Pronto: você vai assistir aqui. Este é o seu código.'
               : 'Pronto: você vai assistir aqui.'
@@ -250,7 +257,7 @@ export function BarPage({
     trpc.pubs.favorite.mutationOptions({
       onSuccess: async () => {
         await refresh()
-        toast.success(`${bar.name} salvo em Seus bares.`)
+        sucesso(`${bar.name} salvo em Seus bares.`)
       },
       onError: (error) =>
         toast.error(getUserFacingMessage(error, 'Não deu para salvar.'))
@@ -298,13 +305,34 @@ export function BarPage({
       toast.info('Marcar presença e salvar bar são para conta de torcedor.')
       return
     }
+    // Conta nova (sem onboarding): depois da ação, a tela dela com o card da
+    // conta nova, como no web do torcedor (`destinoContaNova`).
+    const nova = session.user.onboardingCompleted === false
+    contaNova.current = nova
     if (acao.tipo === 'fav' && !(acao.id === bar.id && viewer.data.favorited))
-      favorite.mutate({ barId: acao.id })
+      favorite.mutate(
+        { barId: acao.id },
+        {
+          onSuccess: () => {
+            if (nova) void navigate({ to: destinoContaNova(acao) })
+          }
+        }
+      )
     if (
       acao.tipo === 'vou' &&
       !viewer.data.games[acao.id]?.attendance?.attending
     )
-      attend.mutate({ eventId: acao.id, attending: true })
+      attend.mutate(
+        { eventId: acao.id, attending: true },
+        {
+          onSuccess: (result) => {
+            if (nova)
+              void navigate({
+                to: destinoContaNova(acao, Boolean(result.code))
+              })
+          }
+        }
+      )
   }, [search, session, viewer.data, navigate, favorite, attend, bar.id, game])
 
   const share = async () => {

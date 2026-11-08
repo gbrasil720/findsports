@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import type { Page } from '@playwright/test'
 import { signIn } from '../../fixtures/auth'
 import { insert, query } from '../../fixtures/db'
@@ -15,7 +16,12 @@ const STARTER_LIMIT = 5
 const LIMIT_REACHED_UNTIL = /Limite de jogos atingido até \d{1,2} de [a-zç]+/
 
 async function openSchedule(page: Page, options: PubOptions = {}) {
-  const pub = await createPub(options)
+  // Cidade própria: Jogos sugere os jogos dos outros bares da cidade, e os dos
+  // testes paralelos viravam linhas com o mesmo nome.
+  const pub = await createPub({
+    ...options,
+    bar: { city: `Cidade E2E ${randomUUID().slice(0, 8)}`, ...options.bar }
+  })
   await signIn(page, pub.user)
   return pub
 }
@@ -261,7 +267,8 @@ test('Starter cria até o limite do mês e depois é mandado para os planos', as
   const { barId } = await openSchedule(page, {
     subscription: { plan: 'starter' }
   })
-  for (let i = 0; i < STARTER_LIMIT - 1; i++) await createEvent(barId)
+  // O primeiro jogo do bar é por conta da Onside e não conta.
+  for (let i = 0; i < STARTER_LIMIT; i++) await createEvent(barId)
   await gotoSchedule(page)
 
   // Falta um: ainda cria.
@@ -291,7 +298,8 @@ test('o servidor recusa o sexto jogo do Starter', async ({ page }) => {
   const { barId } = await openSchedule(page, {
     subscription: { plan: 'starter' }
   })
-  for (let i = 0; i < STARTER_LIMIT; i++) await createEvent(barId)
+  // O primeiro jogo do bar é por conta da Onside e não conta.
+  for (let i = 0; i <= STARTER_LIMIT; i++) await createEvent(barId)
 
   const response = await page.request.post('/api/trpc/pub.createEvent', {
     data: {
@@ -303,7 +311,7 @@ test('o servidor recusa o sexto jogo do Starter', async ({ page }) => {
   expect(response.status()).toBe(403)
   expect(
     (await query('SELECT id FROM event WHERE bar_id = $1', [barId])).length
-  ).toBe(STARTER_LIMIT)
+  ).toBe(STARTER_LIMIT + 1)
 })
 
 // WEB-331: Elite parado cai no limite do Starter (WEB-129), mas o que resolve
@@ -314,7 +322,8 @@ test('Elite com pagamento pendente vê o limite em vigor e é mandado regulariza
   const { barId } = await openSchedule(page, {
     subscription: { plan: 'elite', status: 'past_due' }
   })
-  for (let i = 0; i < STARTER_LIMIT - 1; i++) await createEvent(barId)
+  // O primeiro jogo do bar é por conta da Onside e não conta.
+  for (let i = 0; i < STARTER_LIMIT; i++) await createEvent(barId)
 
   // Antes do limite: Hoje já diz quantos jogos restam.
   await page.goto('/admin')

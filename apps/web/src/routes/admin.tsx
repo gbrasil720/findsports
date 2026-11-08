@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
-import { createFileRoute, Outlet } from '@tanstack/react-router'
-import { useState } from 'react'
+import { createFileRoute, Outlet, useNavigate } from '@tanstack/react-router'
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import {
   useMyBar,
   useMyEvents,
@@ -12,11 +13,14 @@ import {
 } from '@/components/admin/analytics-period'
 import { useMinuteNow } from '@/components/app/minute-tick'
 import { PainelContext, PainelShell } from '@/components/painel/painel-shell'
+import { PasseioProvider } from '@/components/painel/passeio'
 import { getEventTemporalState } from '@/domain/events'
 import { getShownPlan } from '@/lib/lapsed-plan'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { BAR_RESERVATIONS_QUERY } from '@/lib/query-cache'
+import { precisaEscolherPlano } from '@/lib/trial-plan-choice'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
+import { PUB_LIVE_PATH } from '@/utils/auth-guards'
 import { useTRPC } from '@/utils/trpc'
 
 /*
@@ -74,6 +78,22 @@ function AdminLayout() {
   })
 
   const bar = barQuery.data
+  // O bar do cadastro que ainda não escolheu o plano do teste vai à escolha
+  // antes do painel: é o único passo do cadastro que não dá para pular.
+  const navigate = useNavigate()
+  const escolherPlano =
+    bar !== undefined &&
+    subscription !== undefined &&
+    precisaEscolherPlano(bar, subscription)
+  useEffect(() => {
+    if (!escolherPlano) return
+    toast.info('Antes do painel, escolha o plano do teste.')
+    void navigate({
+      to: PUB_LIVE_PATH,
+      search: { passo: 'plano' },
+      replace: true
+    })
+  }, [escolherPlano, navigate])
   const upcomingGames = events
     ? events.filter(
         (event) =>
@@ -98,47 +118,49 @@ function AdminLayout() {
         openValidation: () => setValidating(true)
       }}
     >
-      <PainelShell
-        barName={bar?.name ?? ''}
-        neighborhood={bar?.neighborhood ?? ''}
-        planName={
-          subscription !== undefined ? getShownPlan(subscription).name : null
-        }
-        upcomingGames={upcomingGames}
-        goingCount={goingCount}
-        validating={validating}
-        onValidate={() => setValidating(true)}
-        onCloseValidation={() => setValidating(false)}
-      >
-        {barQuery.isLoading ? (
-          <div className="pn-skel" role="status" aria-busy="true">
-            <span className="sr-only">Carregando painel do bar…</span>
-            <i />
-            <i />
-            <i />
-          </div>
-        ) : barQuery.isError || !bar ? (
-          <div className="pn-err" role="alert">
-            <p>
-              {getUserFacingMessage(
-                barQuery.error,
-                'Não foi possível carregar os dados do bar.'
-              )}
-            </p>
-            {isRetryableError(barQuery.error) ? (
-              <button
-                type="button"
-                className="pn-btn pn-ghost pn-sm"
-                onClick={() => void barQuery.refetch()}
-              >
-                Tentar de novo
-              </button>
-            ) : null}
-          </div>
-        ) : (
-          <Outlet />
-        )}
-      </PainelShell>
+      <PasseioProvider>
+        <PainelShell
+          barName={bar?.name ?? ''}
+          neighborhood={bar?.neighborhood ?? ''}
+          planName={
+            subscription !== undefined ? getShownPlan(subscription).name : null
+          }
+          upcomingGames={upcomingGames}
+          goingCount={goingCount}
+          validating={validating}
+          onValidate={() => setValidating(true)}
+          onCloseValidation={() => setValidating(false)}
+        >
+          {barQuery.isLoading || escolherPlano ? (
+            <div className="pn-skel" role="status" aria-busy="true">
+              <span className="sr-only">Carregando painel do bar…</span>
+              <i />
+              <i />
+              <i />
+            </div>
+          ) : barQuery.isError || !bar ? (
+            <div className="pn-err" role="alert">
+              <p>
+                {getUserFacingMessage(
+                  barQuery.error,
+                  'Não foi possível carregar os dados do bar.'
+                )}
+              </p>
+              {isRetryableError(barQuery.error) ? (
+                <button
+                  type="button"
+                  className="pn-btn pn-ghost pn-sm"
+                  onClick={() => void barQuery.refetch()}
+                >
+                  Tentar de novo
+                </button>
+              ) : null}
+            </div>
+          ) : (
+            <Outlet />
+          )}
+        </PainelShell>
+      </PasseioProvider>
     </PainelContext.Provider>
   )
 }

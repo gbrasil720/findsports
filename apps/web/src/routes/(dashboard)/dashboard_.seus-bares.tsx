@@ -6,6 +6,7 @@ import {
   shiftDay,
   weekdayShort
 } from '@/components/painel/noite'
+import { CartaoContaNova } from '@/components/torcedor/conta-nova'
 import { Ic } from '@/components/torcedor/icones'
 import { TorcedorShell } from '@/components/torcedor/shell'
 import { getGameTitle } from '@/domain/reservation-validation'
@@ -85,6 +86,7 @@ function Conteudo() {
       <p className="sub">
         A semana de jogos dos bares que você salvou, e onde você já foi.
       </p>
+      <CartaoContaNova />
       <div className="tabsx" role="tablist" aria-label="Seus bares">
         {(
           [

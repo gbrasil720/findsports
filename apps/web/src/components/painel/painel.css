@@ -295,7 +295,24 @@ html[data-theme="dark"]:has(.pn3) body {
   white-space: nowrap;
 }
 
-.pn3 .pn-barcard .pn-l span {
+.pn3 .pn-barcard .pn-l {
+  flex: 1;
+}
+
+.pn3 .pn-barcard .pn-bc-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin-top: 2px;
+}
+
+.pn3 .pn-barcard .pn-bc-sub em {
+  flex: none;
+  margin-left: auto;
+}
+
+.pn3 .pn-barcard .pn-l span span {
   display: block;
   overflow: hidden;
   color: var(--rail-mute);

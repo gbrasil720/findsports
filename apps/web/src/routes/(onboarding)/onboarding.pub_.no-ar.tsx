@@ -1,21 +1,60 @@
-import { createFileRoute, Link, redirect } from '@tanstack/react-router'
-import { useEffect, useRef } from 'react'
-import { useMyBar, useMySubscription } from '@/components/admin/admin-queries'
+import { PLAN_NAMES } from '@findsports_oficial/api/lib/plan-limits'
+import {
+  DEFAULT_ROUTINE,
+  type Routine,
+  readRoutine,
+  recommendPlan
+} from '@findsports_oficial/api/lib/pub-routine'
+import type { SubscriptionPlan } from '@findsports_oficial/db'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
+import Loader from 'reicon-react/icons/Loader'
+import { toast } from 'sonner'
+import type { AdminEvent } from '@/components/admin/admin-model'
+import {
+  useMyBar,
+  useMyEvents,
+  useMySubscription
+} from '@/components/admin/admin-queries'
+import { PrimeiroJogo } from '@/components/onboarding/primeiro-jogo'
 import { PubObShell } from '@/components/onboarding/pub-ob-shell'
-import { PLAN_ART } from '@/components/onboarding/pub-plan-step'
-import { getPlan, getPlanPageMode, getTrialProgress } from '@/lib/plan-catalog'
+import { PubPlanStep } from '@/components/onboarding/pub-plan-step'
+import { PubPreview } from '@/components/onboarding/pub-preview'
+import { PubRoutineStep } from '@/components/onboarding/pub-routine-step'
+import { TorcedorVe } from '@/components/onboarding/torcedor-ve'
+import {
+  brasiliaDay,
+  brasiliaTime,
+  dayLabel,
+  eventTitle
+} from '@/components/painel/noite'
+import { NovoJogo } from '@/components/painel/novo-jogo'
+import { founderCouponFromQuery } from '@/lib/plan-catalog'
+import { getUserFacingMessage } from '@/lib/user-facing-error'
+import { useTRPC } from '@/utils/trpc'
 
 /**
- * "Está no ar" (WEB-501; design "Plano e aviso do teste", seção 1, opção A):
- * a tela depois do comprovante do cadastro. O teste já começou e o
- * comprovante já disse plano, data e "sem cartão"; o que falta é o primeiro
- * jogo, porque bar sem jogo na grade não aparece na busca do dia. Substitui o
- * aviso que abria por cima de `/plan`.
+ * Depois do "no ar" (WEB-501; protótipo `primeiro`, `torcedorVe`, `planoOb`):
+ * o primeiro jogo, como o torcedor vê o bar e o plano do teste. Os dois
+ * primeiros dá para pular; o plano não: o painel leva até ele enquanto o bar
+ * do cadastro não escolheu (`precisaEscolherPlano`, em `routes/admin.tsx`).
+ * O teste já começou quando o bar foi ao ar; escolher o plano é o
+ * `pub.changeTrialPlan`, que não mexe no fim dele.
  *
  * Só para bar com o cadastro feito; o guard deixa esta passar entre as
  * `/onboarding/*` (`PUB_LIVE_PATH`).
  */
+
+const PASSOS = ['Primeiro jogo', 'Assim o torcedor vê', 'Plano do teste']
+const ORDEM = ['jogo', 'torcedor', 'plano'] as const
+type Passo = (typeof ORDEM)[number]
+
 export const Route = createFileRoute('/(onboarding)/onboarding/pub_/no-ar')({
+  validateSearch: (search: Record<string, unknown>): { passo?: Passo } =>
+    search.passo === 'torcedor' || search.passo === 'plano'
+      ? { passo: search.passo }
+      : {},
   beforeLoad: ({ context, location }) => {
     const user = context.session?.user
     if (!user) {
@@ -38,148 +77,355 @@ export const Route = createFileRoute('/(onboarding)/onboarding/pub_/no-ar')({
   component: NoAr
 })
 
-function Tick({ size = 16 }: { size?: number }) {
+/** O jogo que o cadastro mostra: o próximo publicado, senão o último. */
+function primeiroJogo(events: AdminEvent[] | undefined, now = Date.now()) {
+  const publicados = (events ?? [])
+    .filter((event) => event.publishedAt !== null)
+    .sort(
+      (a, b) => Date.parse(String(a.startsAt)) - Date.parse(String(b.startsAt))
+    )
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M5 12.5l4.5 4.5L19 7.5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={size > 20 ? 2.6 : 2.4}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    publicados.find((event) => Date.parse(String(event.startsAt)) > now) ??
+    publicados.at(-1)
   )
 }
 
-const NEXT_STEPS = [
-  {
-    title: 'Cadastre o primeiro jogo',
-    text: 'Escolha no catálogo, marque telão e som.',
-    go: 'Cadastrar',
-    to: '/admin/jogos'
-  },
-  {
-    title: 'Mande a foto de capa',
-    text: 'Bar com foto recebe mais cliques.',
-    go: 'Mandar',
-    to: '/admin/meu-espaco'
-  },
-  {
-    title: 'Compare os planos',
-    text: 'Troque quantas vezes quiser durante o teste.',
-    go: 'Ver planos',
-    to: '/plan'
-  }
-] as const
-
 function NoAr() {
+  const navigate = useNavigate()
+  const { passo = 'jogo' } = Route.useSearch()
   const bar = useMyBar().data
+  const events = useMyEvents()
   const subscription = useMySubscription().data
   const headingRef = useRef<HTMLHeadingElement>(null)
+  const [vistos, setVistos] = useState<Set<Passo>>(() => new Set())
+  const [escrevendo, setEscrevendo] = useState(false)
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: o foco vai ao título a cada passo.
   useEffect(() => {
     headingRef.current?.focus({ preventScroll: true })
-  }, [])
+    window.scrollTo(0, 0)
+  }, [passo])
 
-  const plan = subscription ? getPlan(subscription.plan) : null
-  const trialEnd =
-    getPlanPageMode(subscription) === 'trial'
-      ? subscription?.currentPeriodEnd
-      : null
-  const daysLeft = trialEnd ? getTrialProgress(trialEnd).daysLeft : 0
+  const ir = (proximo: Passo) => {
+    setVistos((atual) => new Set(atual).add(passo))
+    void navigate({
+      to: '.',
+      search: proximo === 'jogo' ? {} : { passo: proximo }
+    })
+  }
+
+  const jogo = primeiroJogo(events.data)
+  const elite = subscription?.currentPlan === 'elite'
+  const step = ORDEM.indexOf(passo)
+  const done = [Boolean(jogo), vistos.has('torcedor'), false]
+
+  const heading = (content: ReactNode) => (
+    <h1 ref={headingRef} tabIndex={-1} className="ob-h">
+      {content}
+    </h1>
+  )
+
+  const action =
+    passo === 'plano' ? null : (
+      <button
+        type="button"
+        className="btn btn-ghost ob-sm ob-skipto"
+        onClick={() => {
+          toast.info('Falta só o plano do teste. Depois dele, o painel.')
+          ir('plano')
+        }}
+      >
+        Ir para o painel
+      </button>
+    )
+
+  if (!bar || events.isLoading) {
+    return (
+      <PubObShell steps={PASSOS} step={step} done={done}>
+        <div className="ob-load" role="status" aria-busy="true">
+          <Loader size={22} color="currentColor" className="animate-spin" />
+          <span className="sr-only">Carregando o seu bar…</span>
+        </div>
+      </PubObShell>
+    )
+  }
+
+  const pill = (
+    <span className="ob-onair">
+      <i aria-hidden="true" />
+      NO AR
+    </span>
+  )
+
+  if (passo === 'torcedor') {
+    return (
+      <PubObShell
+        steps={PASSOS}
+        step={step}
+        done={done}
+        pill={pill}
+        action={action}
+        wide
+      >
+        <TorcedorVe
+          bar={bar}
+          jogo={jogo}
+          elite={elite}
+          heading={heading}
+          nav={
+            <div className="ob-nav">
+              <div className="ob-nav-row">
+                <button
+                  type="button"
+                  className="btn btn-ghost ob-sm"
+                  onClick={() => ir('jogo')}
+                >
+                  {jogo ? 'Editar o jogo' : 'Pôr o primeiro jogo'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-acid"
+                  onClick={() => ir('plano')}
+                >
+                  Continuar
+                </button>
+              </div>
+            </div>
+          }
+        />
+      </PubObShell>
+    )
+  }
+
+  if (passo === 'plano') {
+    return (
+      <PubObShell steps={PASSOS} step={step} done={done} pill={pill} wide>
+        <PlanoDoTeste
+          barName={bar.name}
+          routine={readRoutine(bar.routine) ?? DEFAULT_ROUTINE}
+          trialEnd={subscription?.currentPeriodEnd ?? null}
+          heading={heading}
+          onEscolhido={() =>
+            void navigate({ to: '/admin', search: { passeio: 1 } })
+          }
+        />
+      </PubObShell>
+    )
+  }
 
   return (
-    <PubObShell bleed>
-      <div className="noar">
-        <div className="noar-l">
-          <span className="noar-big" aria-hidden="true">
-            <Tick size={34} />
-          </span>
-          <div>
-            <p className="ob-k">Teste grátis começou</p>
-            <h1 ref={headingRef} tabIndex={-1} className="ob-h">
-              {bar?.name ?? 'Seu bar'} <span className="hl">está no ar</span>
-            </h1>
-            <p className="ob-sub">
-              Os torcedores da região já acham seu bar. Falta o principal: bar
-              sem jogo na grade não aparece na busca do dia.
-            </p>
-          </div>
-          <ol className="noar-next">
-            {NEXT_STEPS.map((step, i) => (
-              <li key={step.title}>
-                <Link
-                  to={step.to}
-                  className={`noar-nx${i === 0 ? ' first' : ''}`}
+    <PubObShell
+      steps={PASSOS}
+      step={step}
+      done={done}
+      pill={pill}
+      action={action}
+      aside={
+        <PubPreview
+          name={bar.name}
+          address={bar.address}
+          neighborhood={bar.neighborhood}
+          city={bar.city}
+          amenities={bar.amenities}
+          screenCount={bar.screenCount}
+          photoUrl={bar.photoUrl}
+          game={
+            jogo
+              ? {
+                  when: `${dayLabel(brasiliaDay(String(jogo.startsAt)))} · ${brasiliaTime(jogo.startsAt)}`,
+                  title: eventTitle(jogo)
+                }
+              : null
+          }
+          note="Publicado, o jogo aparece para quem procura por ele perto do bar, já hoje."
+        />
+      }
+    >
+      <PrimeiroJogo
+        barName={bar.name}
+        heading={heading}
+        onPublicado={() => ir('torcedor')}
+        nav={
+          <div className="ob-nav">
+            <div className="ob-nav-row">
+              <button
+                type="button"
+                className="btn btn-ghost ob-sm"
+                onClick={() => ir('plano')}
+              >
+                Fazer depois
+              </button>
+              {jogo ? (
+                <button
+                  type="button"
+                  className="btn btn-acid"
+                  onClick={() => ir('torcedor')}
                 >
-                  <i aria-hidden="true">{i + 1}</i>
-                  <span>
-                    <b>{step.title}</b>
-                    <small>{step.text}</small>
-                  </span>
-                  <span className="go" aria-hidden="true">
-                    {step.go} →
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ol>
-          <div className="noar-acts">
-            <Link to="/admin/jogos" className="btn btn-acid">
-              Cadastrar o primeiro jogo
-            </Link>
-            <Link to="/admin" className="btn btn-ghost">
-              Ir para o painel
-            </Link>
+                  Ver como o torcedor vê
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-acid"
+                  onClick={() => setEscrevendo(true)}
+                >
+                  Escrever o jogo
+                </button>
+              )}
+            </div>
+          </div>
+        }
+      />
+      {escrevendo ? (
+        // O "Novo jogo" é o do painel: a folha dele mora no `.pn3`.
+        <div className="pn3 ob-pn3">
+          <NovoJogo
+            mode={{ kind: 'new' }}
+            elite={elite}
+            onClose={() => {
+              setEscrevendo(false)
+              void events.refetch().then(({ data }) => {
+                if (primeiroJogo(data)) ir('torcedor')
+              })
+            }}
+          />
+        </div>
+      ) : null}
+    </PubObShell>
+  )
+}
+
+function PlanoDoTeste({
+  barName,
+  routine: salva,
+  trialEnd,
+  heading,
+  onEscolhido
+}: {
+  barName: string
+  routine: Routine
+  trialEnd: string | Date | null
+  heading: (content: ReactNode) => ReactNode
+  onEscolhido: () => void
+}) {
+  const trpc = useTRPC()
+  const queryClient = useQueryClient()
+  // Mudar as respostas aqui só muda a recomendação desta tela: a escolha é
+  // o que vale, e é ela que vai ao servidor.
+  const [routine, setRoutine] = useState(salva)
+  const [editando, setEditando] = useState(false)
+  const [escolhido, setEscolhido] = useState<SubscriptionPlan | null>(null)
+  const recomendacao = recommendPlan(routine)
+  const plan = escolhido ?? recomendacao.plan
+  const coupon = useQuery({
+    ...trpc.pub.getFounderCouponAvailable.queryOptions(),
+    meta: { errorToast: false }
+  })
+  const founderCoupon = founderCouponFromQuery(coupon) ?? true
+  const fim = trialEnd
+    ? new Date(trialEnd).toLocaleDateString('pt-BR', {
+        day: 'numeric',
+        month: 'long'
+      })
+    : null
+  const escolher = useMutation(
+    trpc.pub.changeTrialPlan.mutationOptions({
+      meta: { errorToast: false },
+      onSuccess: async () => {
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: trpc.pub.getMe.queryKey()
+          }),
+          queryClient.invalidateQueries({
+            queryKey: trpc.pub.getMySubscription.queryKey()
+          }),
+          queryClient.invalidateQueries({
+            queryKey: trpc.pub.getMyEventCreationPolicy.queryKey()
+          })
+        ])
+        toast.success(
+          `Teste do ${PLAN_NAMES[plan]} ligado${fim ? ` até ${fim}` : ''}. Bem-vindo ao painel.`
+        )
+        onEscolhido()
+      }
+    })
+  )
+
+  if (editando) {
+    return (
+      <>
+        {heading(
+          <>
+            Como é a sua <span className="hl">rotina de jogo?</span>
+          </>
+        )}
+        <p className="ob-sub">
+          Mude o que quiser: a recomendação acompanha. Nada disso aparece no
+          perfil.
+        </p>
+        <PubRoutineStep routine={routine} onChange={setRoutine} />
+        <div className="ob-nav">
+          <div className="ob-nav-row">
+            <span />
+            <button
+              type="button"
+              className="btn btn-acid"
+              onClick={() => {
+                setEscolhido(null)
+                setEditando(false)
+              }}
+            >
+              Ver a recomendação
+            </button>
           </div>
         </div>
+      </>
+    )
+  }
 
-        <section className="noar-r" aria-label="Seu teste grátis">
-          {plan ? (
-            <>
-              <p className="tv-k">
-                {trialEnd
-                  ? `Seu teste do ${plan.name}`
-                  : `Seu plano ${plan.name}`}
-              </p>
-              {/* biome-ignore lint/performance/noImgElement: ilustração estática do plano, de public/, com width e height. */}
-              <img src={PLAN_ART[plan.id]} alt="" width="84" height="84" />
-            </>
-          ) : null}
-          {trialEnd ? (
-            <>
-              <p className="tv-n">
-                {daysLeft}
-                <small>{daysLeft === 1 ? 'dia' : 'dias'}</small>
-              </p>
-              <p className="tv-l">
-                Grátis até{' '}
-                {new Date(trialEnd).toLocaleDateString('pt-BR', {
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric'
-                })}
-                . Sem cartão e sem cobrança.
-              </p>
-              <ul className="tv-chk">
-                <li>
-                  <Tick />
-                  Troque de plano quantas vezes quiser
-                </li>
-                <li>
-                  <Tick />
-                  Contratar só é preciso para seguir depois
-                </li>
-                <li>
-                  <Tick />
-                  Sem contratar, o bar sai do ar no fim do teste
-                </li>
-              </ul>
-            </>
-          ) : null}
-        </section>
+  return (
+    <>
+      <PubPlanStep
+        barName={barName}
+        recommended={recomendacao.plan}
+        reasons={recomendacao.reasons}
+        selected={plan}
+        onSelect={setEscolhido}
+        spend={routine.spend}
+        founderCoupon={founderCoupon}
+        onEditRoutine={() => setEditando(true)}
+        trialEnd={fim}
+        heading={heading}
+      />
+      {escolher.error ? (
+        <p className="ob-error" role="alert">
+          {getUserFacingMessage(
+            escolher.error,
+            'Não deu para ligar o teste agora. Tente de novo.'
+          )}
+        </p>
+      ) : null}
+      <div className="ob-nav">
+        <div className="ob-nav-row">
+          <span />
+          <button
+            type="button"
+            className="btn btn-acid"
+            disabled={escolher.isPending}
+            onClick={() => escolher.mutate({ plan })}
+          >
+            {escolher.isPending ? (
+              <Loader
+                size={18}
+                color="currentColor"
+                className="animate-spin"
+                aria-hidden="true"
+              />
+            ) : null}
+            Testar o {PLAN_NAMES[plan]} grátis
+          </button>
+        </div>
       </div>
-    </PubObShell>
+    </>
   )
 }

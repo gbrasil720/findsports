@@ -1,17 +1,9 @@
 import { ONBOARDING_TRIAL } from '@findsports_oficial/api/lib/plan-limits'
-import type { SubscriptionPlan } from '@findsports_oficial/db'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import Loader from 'reicon-react/icons/Loader'
-import { toast } from 'sonner'
-import { Logo } from '@/components/landing/v3/icons'
-import {
-  formatPlanPrice,
-  getPlan,
-  planChargeForShowcase
-} from '@/lib/plan-catalog'
+import { Add, Logo } from '@/components/landing/v3/icons'
 import type { PubOnboardingDraft } from '@/lib/pub-onboarding-draft'
-import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
 export type PubReceiptData = {
@@ -22,10 +14,8 @@ export type PubReceiptData = {
     city: string
     uf?: string
   }
-  plan: SubscriptionPlan
   /** Fim do teste, como o servidor gravou na assinatura. */
   until: string | Date
-  founderCoupon: boolean
   issuedAt: Date
 }
 
@@ -41,12 +31,11 @@ const date = (value: string | Date) =>
     year: 'numeric'
   })
 
-const reais = (value: number) => `${formatPlanPrice(value)},00`
-
 /**
  * Comprovante do cadastro do bar (WEB-501; `recibo()` do protótipo do painel):
  * a impressora térmica solta o papel linha a linha, com os dados reais do bar
- * e do teste. Não é documento fiscal, e nada é cobrado hoje.
+ * e do teste. Não é documento fiscal, e nada é cobrado hoje. Sem plano: o
+ * dono escolhe o do teste logo depois do primeiro jogo, que vem em seguida.
  */
 export function PubReceipt({
   data,
@@ -66,8 +55,6 @@ export function PubReceipt({
   useEffect(() => {
     headingRef.current?.focus({ preventScroll: true })
   }, [])
-  const plan = getPlan(data.plan)
-  const charge = planChargeForShowcase(plan, data.founderCoupon)
   const { bar } = data
   const lines: [string, ReactNode][] = []
   const row = (cls: string, left: ReactNode, right?: ReactNode) =>
@@ -101,21 +88,17 @@ export function PubReceipt({
   row('rl-m', bar.address)
   row('rl-m', `${bar.neighborhood} · ${bar.city}${bar.uf ? `/${bar.uf}` : ''}`)
   cut()
-  row('rl-b', `PLANO ${plan.name.toUpperCase()} · TESTE`, 'R$ 0,00')
+  row('rl-b', 'TESTE GRÁTIS', 'R$ 0,00')
   row('rl-m', `${ONBOARDING_TRIAL.days} dias`, `até ${date(data.until)}`)
   row('rl-m', 'Cartão', 'não pedido')
+  row('rl-m', 'Plano', 'você escolhe já já')
+  row('rl-m', '', 'depois do primeiro jogo')
   cut()
-  row('rl-b', 'DEPOIS DO TESTE')
-  row(
-    '',
-    charge.listReais ? `${plan.name} · fundador` : plan.name,
-    `${reais(charge.chargeReais)}/mês`
-  )
-  if (charge.listReais)
-    row('rl-m rl-s', 'Tabela', `${reais(charge.listReais)}/mês`)
+  row('rl-b', 'PRIMEIRO JOGO', 'por conta da Onside')
+  row('rl-m', 'Não conta no limite', 'de nenhum plano')
   lines.push([
     'rl-note',
-    'Só é cobrado se você contratar. Sem contratar, nada é cobrado e o bar sai do ar quando o teste acaba.'
+    'Nada é cobrado no teste. O plano você escolhe logo depois do primeiro jogo, antes de entrar no painel; só cobra se você contratar.'
   ])
   cut()
   row('rl-tot', 'TOTAL HOJE', 'R$ 0,00')
@@ -132,7 +115,7 @@ export function PubReceipt({
     <div className="ob-rcpt">
       <span className="ob-k">Pronto. Saiu o seu comprovante</span>
       <h1 ref={headingRef} className="ob-h" tabIndex={-1}>
-        {bar.name} entrou na Onside
+        {bar.name} está no ar
       </h1>
       <div
         key={`printer-${printRun}`}
@@ -183,53 +166,36 @@ export function PubReceipt({
               className="animate-spin"
               aria-hidden="true"
             />
-          ) : null}
+          ) : (
+            <Add size={18} />
+          )}
           {continueLabel}
         </button>
       </div>
       <p className="ob-note">
-        O plano e o fim do teste ficam também em Assinatura e pagamentos, no
-        painel do bar.
+        O bar já está no mapa; com um jogo na grade, aparece nas buscas do dia.
+        O fim do teste fica também em Plano e cobrança, no painel.
       </p>
     </div>
   )
 }
 
 /**
- * Depois do `completePub`: o bar nasce no teste do Elite, então o plano
- * escolhido no cadastro entra por `pub.changeTrialPlan` (no Elite, nada a
- * fazer). O comprovante sai do que o servidor gravou, não do rascunho: se a
- * troca falhar, ele mostra o Elite, que é o plano de verdade.
+ * Depois do `completePub`: o comprovante sai do que o servidor gravou (o fim
+ * do teste), não do rascunho. Sem a assinatura não há comprovante de verdade:
+ * devolve `null` e quem chamou segue sem ele.
  */
 export function useFinishPubSignup() {
   const trpc = useTRPC()
   const queryClient = useQueryClient()
-  const { mutateAsync: changeTrialPlan } = useMutation(
-    trpc.pub.changeTrialPlan.mutationOptions({ meta: { errorToast: false } })
-  )
   // Estável: entra nas dependências do `continueVerified` de `/verify-email`,
   // que roda num efeito.
   return useCallback(
     async (draft: PubOnboardingDraft): Promise<PubReceiptData | null> => {
-      if (draft.plan && draft.plan !== 'elite') {
-        try {
-          await changeTrialPlan({ plan: draft.plan })
-        } catch (error) {
-          toast.error(
-            getUserFacingMessage(
-              error,
-              'Não deu para trocar o plano do teste agora. Você troca depois, em Plano.'
-            )
-          )
-        }
-      }
       try {
-        const [subscription, coupon] = await Promise.all([
-          queryClient.fetchQuery(trpc.pub.getMySubscription.queryOptions()),
-          queryClient
-            .fetchQuery(trpc.pub.getFounderCouponAvailable.queryOptions())
-            .catch(() => ({ available: false }))
-        ])
+        const subscription = await queryClient.fetchQuery(
+          trpc.pub.getMySubscription.queryOptions()
+        )
         if (!subscription?.currentPeriodEnd) return null
         return {
           bar: {
@@ -239,16 +205,13 @@ export function useFinishPubSignup() {
             city: draft.city ?? 'São Paulo',
             uf: draft.uf
           },
-          plan: subscription.plan,
           until: subscription.currentPeriodEnd,
-          founderCoupon: coupon.available,
           issuedAt: new Date()
         }
       } catch {
-        // Sem a assinatura não há comprovante de verdade: segue sem ele.
         return null
       }
     },
-    [changeTrialPlan, queryClient, trpc]
+    [queryClient, trpc]
   )
 }

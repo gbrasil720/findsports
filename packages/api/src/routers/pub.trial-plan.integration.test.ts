@@ -43,7 +43,7 @@ integrationTest(
         slug: `integration-${sportId}`
       })
       await t.db.insert(event).values(
-        Array.from({ length: 5 }, (_, index) => ({
+        Array.from({ length: 6 }, (_, index) => ({
           barId: t.barId,
           sportId,
           championship: `Jogo do teste ${index + 1}`,
@@ -70,7 +70,8 @@ integrationTest(
         standing: 'current'
       })
 
-      // Os cinco jogos criados no Elite já contam: o sexto é recusado.
+      // Os seis jogos criados no Elite já contam, menos o primeiro, que é por
+      // conta da Onside: o sétimo é recusado.
       expect(await t.owner.pub.getMyEventCreationPolicy()).toMatchObject({
         status: 'limited',
         canCreate: false,
@@ -80,7 +81,7 @@ integrationTest(
         await refusal(
           t.owner.pub.createEvent({
             sportId,
-            championship: 'Sexto jogo',
+            championship: 'Sétimo jogo',
             startsAt: inDays(10).toISOString()
           })
         )
@@ -147,3 +148,47 @@ integrationTest('só o dono troca, e só para um plano que existe', async () => 
     await t.cleanup()
   }
 })
+
+integrationTest(
+  'primeiro jogo por conta da Onside: o Starter publica o primeiro e mais cinco, e só então para',
+  async () => {
+    const t = await seedBar('starter', 'active', inDays(20))
+    const sportId = crypto.randomUUID()
+    try {
+      await t.db.insert(sport).values({
+        id: sportId,
+        name: `Esporte ${sportId}`,
+        slug: `integration-${sportId}`
+      })
+      const create = (n: number) =>
+        t.owner.pub.createEvent({
+          sportId,
+          championship: `Jogo ${n}`,
+          startsAt: inDays(n).toISOString()
+        })
+      await create(1)
+      expect(await t.owner.pub.getMyEventCreationPolicy()).toMatchObject({
+        status: 'limited',
+        used: 0,
+        remaining: 5
+      })
+      // Rascunho não conta nem vira o primeiro (WEB-436).
+      await t.owner.pub.createEvent({
+        sportId,
+        championship: 'Rascunho',
+        startsAt: inDays(2).toISOString(),
+        draft: true
+      })
+      for (const n of [2, 3, 4, 5, 6]) await create(n)
+      expect(await t.owner.pub.getMyEventCreationPolicy()).toMatchObject({
+        used: 5,
+        remaining: 0,
+        canCreate: false
+      })
+      expect(await refusal(create(7))).toMatchObject({ code: 'FORBIDDEN' })
+    } finally {
+      await t.cleanup()
+      await t.db.delete(sport).where(eq(sport.id, sportId))
+    }
+  }
+)

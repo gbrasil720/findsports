@@ -16,9 +16,10 @@ integrationTest(
   async () => {
     const seed = await seedBar('starter', 'active', inAMonth())
     try {
-      // Cinco jogos publicados: o Starter está no limite.
+      // Seis jogos publicados (o primeiro é por conta da Onside): o Starter
+      // está no limite.
       const games = []
-      for (let i = 0; i < 5; i++) games.push(await seed.seedGame())
+      for (let i = 0; i < 6; i++) games.push(await seed.seedGame())
       const [first] = await seed.db
         .select({ sportId: event.sportId })
         .from(event)

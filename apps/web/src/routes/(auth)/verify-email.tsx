@@ -17,6 +17,7 @@ import {
   type PubReceiptData,
   useFinishPubSignup
 } from '@/components/onboarding/pub-receipt'
+import { acaoPulaOnboarding } from '@/components/torcedor/acao'
 import { useTurnstile } from '@/components/turnstile'
 import { authClient, refreshSessionCache } from '@/lib/auth-client'
 import { mensagemOnboardingJaConcluido } from '@/lib/onboarding-concluido'
@@ -116,9 +117,9 @@ function VerifyEmailPage() {
           navigate({ to: '/onboarding/pub' })
           return
         }
-        // O plano escolhido não vai ao `completePub`: entra depois, por
-        // `changeTrialPlan`, em `finishSignup`.
-        const { plan, ...payload } = draft
+        // `step` é só do wizard e não sai daqui (ver acima): o rascunho vai
+        // inteiro, com a rotina.
+        const { step: _step, ...payload } = draft
         let created = false
         try {
           await completePub(payload)
@@ -135,16 +136,17 @@ function VerifyEmailPage() {
         }
         localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)
         await refreshSessionCache()
-        const comprovante = created
-          ? await finishSignup({ ...payload, plan })
-          : null
+        const comprovante = created ? await finishSignup(payload) : null
         if (comprovante) setReceipt(comprovante)
         else navigate({ to: PUB_LIVE_PATH })
         return
       }
 
       if (data.user.role === 'pub') navigate({ to: '/plan' })
-      else if (data.user.onboardingCompleted) navigate({ to: callbackUrl })
+      // Conta nova por uma ação (WEB-501): a ação primeiro, as preferências
+      // depois (`components/torcedor/acao.ts`).
+      else if (data.user.onboardingCompleted || acaoPulaOnboarding(callbackUrl))
+        navigate({ to: callbackUrl })
       else navigate({ to: withCallbackUrl('/onboarding/fan', callbackUrl) })
     } catch {
       toast.error('Não foi possível concluir a confirmação. Tente novamente.')
@@ -193,7 +195,7 @@ function VerifyEmailPage() {
         <PubReceipt
           data={receipt}
           pending={leaving}
-          continueLabel="Ver meu bar no ar"
+          continueLabel="Publicar o primeiro jogo"
           onContinue={() => {
             setLeaving(true)
             void navigate({ to: PUB_LIVE_PATH })

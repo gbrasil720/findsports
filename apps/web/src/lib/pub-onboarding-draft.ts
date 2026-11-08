@@ -5,7 +5,10 @@ import {
   motivoTelefoneInvalido,
   type Uf
 } from '@findsports_oficial/api/lib/bar-profile-validation'
-import type { SubscriptionPlan } from '@findsports_oficial/db'
+import {
+  type Routine,
+  readRoutine
+} from '@findsports_oficial/api/lib/pub-routine'
 import { getErrorCode, getUserFacingMessage } from '@/lib/user-facing-error'
 
 export const PUB_ONBOARDING_DRAFT_KEY = 'onside:pub-onboarding-draft'
@@ -34,14 +37,11 @@ export type PubOnboardingDraft = {
    */
   step?: number
   /**
-   * Plano do teste escolhido no passo "Plano". Não vai ao `completePub`: o bar
-   * nasce no teste do Elite, e quem envia o rascunho troca depois por
-   * `pub.changeTrialPlan`.
+   * "Sua rotina". Vai ao `completePub`, que grava no bar e começa o teste no
+   * plano que ela recomenda; o dono escolhe o plano depois do primeiro jogo.
    */
-  plan?: SubscriptionPlan
+  routine?: Routine
 }
-
-const PLANOS: readonly SubscriptionPlan[] = ['starter', 'pro', 'elite']
 
 const mesmoEmail = (a: string, b: string) =>
   a.trim().toLowerCase() === b.trim().toLowerCase()
@@ -90,15 +90,19 @@ export function parsePubOnboardingDraft(
       return null
     }
     // UF que não é sigla e passo que não é número saem sozinhos, sem derrubar
-    // o resto do rascunho.
-    const { step } = parsed.draft
+    // o resto do rascunho. O plano do passo "Plano", que saiu, também.
+    const {
+      step,
+      plan: _plan,
+      ...draft
+    } = parsed.draft as PubOnboardingDraft & {
+      plan?: unknown
+    }
     return {
-      ...parsed.draft,
+      ...draft,
       uf: ehUf(parsed.draft.uf) ? parsed.draft.uf : undefined,
       step: Number.isInteger(step) && Number(step) > 0 ? step : undefined,
-      plan: PLANOS.includes(parsed.draft.plan as SubscriptionPlan)
-        ? parsed.draft.plan
-        : undefined
+      routine: readRoutine(parsed.draft.routine) ?? undefined
     }
   } catch {
     return null

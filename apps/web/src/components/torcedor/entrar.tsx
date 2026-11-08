@@ -9,7 +9,7 @@ import {
 } from '@/lib/two-factor-challenge'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { withCallbackUrl } from '@/utils/callback-url'
-import { type Acao, comAcao } from './acao'
+import { type Acao, acaoPulaOnboarding, comAcao } from './acao'
 import { Ic, type IconName } from './icones'
 
 /*
@@ -81,8 +81,8 @@ const PORQUE: Record<TipoPedido, [string, string][]> = {
 type Props = {
   pedido: Pedido | null
   onFechar: () => void
-  /** Entrou como torcedor pronto: a casca conclui a ação. */
-  onEntrou: (acao: Acao | undefined) => Promise<void>
+  /** Entrou como torcedor: a casca conclui a ação (`nova`: sem onboarding). */
+  onEntrou: (acao: Acao | undefined, nova: boolean) => Promise<void>
 }
 
 export function FolhaEntrar({ pedido, onFechar, onEntrou }: Props) {
@@ -164,13 +164,15 @@ export function FolhaEntrar({ pedido, onFechar, onEntrou }: Props) {
     setSenha('')
     setEnviando(false)
     onFechar()
-    // Bar e admin seguem para a casa deles; torcedor sem onboarding passa por
-    // ele e volta com a ação.
-    if (papel === 'fan' && pronto === false) {
+    // Bar e admin seguem para a casa deles. Torcedor sem onboarding conclui
+    // a ação e escolhe as preferências depois (`destinoContaNova`); sem ação,
+    // ou com a do app, passa pelo onboarding e volta com ela.
+    const nova = papel === 'fan' && pronto === false
+    if (nova && !acaoPulaOnboarding(destino)) {
       await navigate({ to: withCallbackUrl('/onboarding/fan', destino) })
       return
     }
-    await onEntrou(papel === 'fan' ? mostrado?.acao : undefined)
+    await onEntrou(papel === 'fan' ? mostrado?.acao : undefined, nova)
   }
 
   return (

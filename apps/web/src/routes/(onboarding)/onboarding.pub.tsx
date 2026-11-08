@@ -8,8 +8,11 @@ import {
   motivoTelefoneInvalido
 } from '@findsports_oficial/api/lib/bar-profile-validation'
 import { ONBOARDING_TRIAL } from '@findsports_oficial/api/lib/plan-limits'
-import type { SubscriptionPlan } from '@findsports_oficial/db'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import {
+  DEFAULT_ROUTINE,
+  type Routine
+} from '@findsports_oficial/api/lib/pub-routine'
+import { useMutation } from '@tanstack/react-query'
 import {
   createFileRoute,
   useLocation,
@@ -22,7 +25,6 @@ import { OnboardingNavigation } from '@/components/onboarding/onboarding-navigat
 import { PubAmenitiesStep } from '@/components/onboarding/pub-amenities-step'
 import { PubInfoForm } from '@/components/onboarding/pub-info-form'
 import { PubObShell } from '@/components/onboarding/pub-ob-shell'
-import { PubPlanStep } from '@/components/onboarding/pub-plan-step'
 import { PubPreview, PubWelcomeTv } from '@/components/onboarding/pub-preview'
 import {
   PubReceipt,
@@ -43,12 +45,6 @@ import {
 import { mensagemOnboardingJaConcluido } from '@/lib/onboarding-concluido'
 import { readPendingEmail } from '@/lib/pending-verification'
 import {
-  formatPlanPrice,
-  founderCouponFromQuery,
-  getPlan,
-  planChargeForShowcase
-} from '@/lib/plan-catalog'
-import {
   mensagemFalhaCadastroBar,
   PUB_ONBOARDING_DRAFT_KEY,
   type PubOnboardingDraft,
@@ -56,11 +52,6 @@ import {
   serializePubOnboardingDraft
 } from '@/lib/pub-onboarding-draft'
 import { getPubOnboardingReview } from '@/lib/pub-onboarding-review'
-import {
-  DEFAULT_ROUTINE,
-  type Routine,
-  recommendPlan
-} from '@/lib/pub-plan-recommendation'
 import { uploadMedia } from '@/lib/upload-media'
 import { PUB_LIVE_PATH } from '@/utils/auth-guards'
 import { getCallbackUrl } from '@/utils/callback-url'
@@ -82,15 +73,16 @@ export const Route = createFileRoute('/(onboarding)/onboarding/pub')({
   component: PubOnboarding
 })
 
+// O plano do teste não é daqui: o dono escolhe depois do primeiro jogo, na
+// tela "no ar" (`onboarding.pub_.no-ar.tsx`).
 const STEPS = [
   'Boas-vindas',
   'Estabelecimento',
   'Características',
   'Sua rotina',
-  'Plano',
   'Revisão'
 ] as const
-const PLAN_STEP = 4
+const REVIEW_STEP = 4
 
 const WELCOME_FEATURES: [ReactNode, string, string][] = [
   [
@@ -109,14 +101,6 @@ const WELCOME_FEATURES: [ReactNode, string, string][] = [
     'No Elite, seu bar fica no topo da busca nos clássicos.'
   ]
 ]
-
-/** A nota abaixo da prévia: na revisão, o que o plano escolhido muda nela. */
-const PREVIEW_NOTE: Record<SubscriptionPlan, string> = {
-  starter: 'No Starter o bar aparece na busca, sem selo nem destaque.',
-  pro: 'No Pro o seu bar ganha selo e destaque na busca por time e liga.',
-  elite:
-    'No Elite o seu bar sobe pro topo nos clássicos e pode mostrar a oferta da casa.'
-}
 
 function PubOnboarding() {
   const navigate = useNavigate()
@@ -149,14 +133,11 @@ function PubOnboarding() {
   const [error, setError] = useState<string | null>(null)
   const [phoneError, setPhoneError] = useState<string | null>(null)
   const [draftRestored, setDraftRestored] = useState(false)
-  // Rotina e plano (WEB-501): a rotina só recomenda e não é gravada; o plano
-  // fica no rascunho e, com o bar criado, vira `pub.changeTrialPlan`.
+  // A rotina vai no rascunho e no `completePub`: o bar a guarda, e o passo
+  // "Plano do teste" recomenda por ela, mesmo aberto em outro aparelho.
   const [routine, setRoutine] = useState<Routine>(DEFAULT_ROUTINE)
-  const [pickedPlan, setPickedPlan] = useState<SubscriptionPlan | null>(null)
   const [receipt, setReceipt] = useState<PubReceiptData | null>(null)
   const [leaving, setLeaving] = useState(false)
-  const recommendation = recommendPlan(routine)
-  const plan = pickedPlan ?? recommendation.plan
   const finishSignup = useFinishPubSignup()
   // O que o CEP trouxe: o campo só leva "pelo CEP" enquanto o valor é esse.
   const [cepFill, setCepFill] = useState<EnderecoDoCep | null>(null)
@@ -204,7 +185,8 @@ function PubOnboarding() {
       phone: phone.trim() || undefined,
       description: description.trim() || undefined,
       amenities: amenities.length > 0 ? amenities : undefined,
-      screenCount: screenCount ?? undefined
+      screenCount: screenCount ?? undefined,
+      routine
     }),
     [
       name,
@@ -216,30 +198,18 @@ function PubOnboarding() {
       phone,
       description,
       amenities,
-      screenCount
+      screenCount,
+      routine
     ]
   )
 
   // WEB-238: a revisão diz o que acontece de fato ao continuar. Quem decide o
   // teste é o `completePub`.
   const revisao = getPubOnboardingReview({
-    emailVerified: conta?.emailVerified === true,
-    plan
+    emailVerified: conta?.emailVerified === true
   })
 
-  // Preço de fundador: com sessão, o que o Stripe diz do cupom; sem ela (antes
-  // de confirmar o e-mail) a consulta não abre, e vale o preço de fundador da
-  // tabela, o mesmo da landing.
-  const couponQuery = useQuery({
-    ...trpc.pub.getFounderCouponAvailable.queryOptions(),
-    enabled: Boolean(user?.email),
-    meta: { errorToast: false }
-  })
-  const founderCoupon = user?.email
-    ? (founderCouponFromQuery(couponQuery) ?? true)
-    : true
-
-  const seguirParaPlano = async () => {
+  const seguirParaNoAr = async () => {
     localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)
     // `onboardingCompleted` mudou no banco por fora do better-auth; sem
     // regravar o cache de sessão o guard da rota devolveria o usuário
@@ -273,11 +243,11 @@ function PubOnboarding() {
             )
           }
         }
-        // O bar já existe: o plano escolhido e o comprovante vêm agora. Sem a
-        // assinatura para o comprovante, segue direto, como antes.
-        const data = await finishSignup({ ...sent, plan })
+        // O bar já existe: o comprovante vem agora. Sem a assinatura para
+        // ele, segue direto, como antes.
+        const data = await finishSignup(sent)
         if (data) setReceipt(data)
-        else await seguirParaPlano()
+        else await seguirParaNoAr()
       },
       onError: async (err, draft) => {
         const concluido = mensagemOnboardingJaConcluido(err)
@@ -286,7 +256,7 @@ function PubOnboarding() {
           return
         }
         toast.info(concluido)
-        await seguirParaPlano()
+        await seguirParaNoAr()
       }
     })
   )
@@ -330,14 +300,14 @@ function PubOnboarding() {
     setAmenities(declaredAmenityIds(salvo.amenities ?? []))
     setScreenCount(salvo.screenCount ?? null)
     setPhoneError(motivoTelefoneInvalido(salvo.phone))
-    setPickedPlan(salvo.plan ?? null)
+    setRoutine(salvo.routine ?? DEFAULT_ROUTINE)
     setDraftRestored(true)
     setStep(Math.min(salvo.step ?? 1, STEPS.length - 1))
   }, [contaEmail, setCep])
 
   // Recarregar a página no meio do wizard zerava os quatro passos: o rascunho
   // só era gravado ao concluir a revisão. Agora ele acompanha o preenchimento,
-  // com o passo, pela mesma regra da WEB-262 (só com dono); `seguirParaPlano`
+  // com o passo, pela mesma regra da WEB-262 (só com dono); `seguirParaNoAr`
   // o apaga quando o bar é criado. Vem depois do efeito acima de propósito: se
   // a conta mudou, aquele tira o rascunho da anterior e este grava o da atual.
   //
@@ -352,12 +322,9 @@ function PubOnboarding() {
     }
     localStorage.setItem(
       PUB_ONBOARDING_DRAFT_KEY,
-      serializePubOnboardingDraft(
-        { ...draft, step, plan: pickedPlan ?? undefined },
-        email
-      )
+      serializePubOnboardingDraft({ ...draft, step }, email)
     )
-  }, [contaEmail, step, draft, pickedPlan])
+  }, [contaEmail, step, draft])
 
   // WEB-349: a rota é pública por causa de quem acabou de se cadastrar nesta
   // aba. Em aba sem sessão e sem esse cadastro (aba nova, link direto) não há
@@ -392,7 +359,7 @@ function PubOnboarding() {
     setScreenCount(null)
     setPhoneError(null)
     setError(null)
-    setPickedPlan(null)
+    setRoutine(DEFAULT_ROUTINE)
     setDraftRestored(false)
   }
 
@@ -486,7 +453,7 @@ function PubOnboarding() {
       if (email) {
         localStorage.setItem(
           PUB_ONBOARDING_DRAFT_KEY,
-          serializePubOnboardingDraft({ ...draft, plan }, email)
+          serializePubOnboardingDraft(draft, email)
         )
       }
       navigate({ to: '/verify-email' })
@@ -500,7 +467,7 @@ function PubOnboarding() {
   const sairDoComprovante = async () => {
     setLeaving(true)
     try {
-      await seguirParaPlano()
+      await seguirParaNoAr()
     } finally {
       setLeaving(false)
     }
@@ -514,7 +481,9 @@ function PubOnboarding() {
           pending={leaving}
           onContinue={() => void sairDoComprovante()}
           continueLabel={
-            callbackUrl === '/dashboard' ? 'Ver meu bar no ar' : 'Continuar'
+            callbackUrl === '/dashboard'
+              ? 'Publicar o primeiro jogo'
+              : 'Continuar'
           }
         />
       </PubObShell>
@@ -530,8 +499,10 @@ function PubOnboarding() {
       {content}
     </h1>
   )
-  const planName = getPlan(plan).name
-  const planPrice = planChargeForShowcase(getPlan(plan), founderCoupon)
+  // O fim como o `completePub` vai gravar: os dias do teste contados de hoje.
+  const trialEnd = new Date(
+    Date.now() + ONBOARDING_TRIAL.days * 86_400_000
+  ).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })
   const characteristics = [
     ...(screenCount === null
       ? []
@@ -572,6 +543,14 @@ function PubOnboarding() {
       to: 2,
       values: characteristics,
       empty: 'Nada marcado · você marca depois no painel'
+    },
+    {
+      label: 'Sua rotina',
+      to: 3,
+      values: [
+        `${routine.games} ${routine.games === 1 ? 'jogo' : 'jogos'} por mês`,
+        `R$ ${routine.spend} por cliente`
+      ]
     }
   ]
 
@@ -579,10 +558,9 @@ function PubOnboarding() {
     <PubObShell
       steps={STEPS}
       step={step}
-      wide={step === PLAN_STEP}
       tv={step === 0}
       aside={
-        step === PLAN_STEP ? null : step === 0 ? (
+        step === 0 ? (
           <PubWelcomeTv />
         ) : (
           <PubPreview
@@ -595,10 +573,9 @@ function PubOnboarding() {
             amenities={amenities}
             screenCount={screenCount}
             photoUrl={photoUrl}
-            plan={step === STEPS.length - 1 ? plan : undefined}
             note={
-              step === STEPS.length - 1
-                ? PREVIEW_NOTE[plan]
+              step === REVIEW_STEP
+                ? 'Logo depois de ir ao ar, você publica o primeiro jogo e vê o bar assim, com o jogo, no Explorar e na página do bar.'
                 : 'Prévia do card do seu bar. Ela muda enquanto você preenche.'
             }
           />
@@ -618,9 +595,10 @@ function PubOnboarding() {
               </>
             )}
             <p className="ob-sub">
-              Coloque seu bar no radar dos torcedores. Leva 2 minutos, e você
-              testa {ONBOARDING_TRIAL.days} dias grátis no plano que escolher,
-              sem cartão.
+              Coloque seu bar no radar dos torcedores. Leva 2 minutos: você
+              cadastra o bar, publica o primeiro jogo e vê como o torcedor
+              encontra. Teste grátis de {ONBOARDING_TRIAL.days} dias, sem
+              cartão.
             </p>
             <ul className="ob-ben">
               {WELCOME_FEATURES.map(([icon, title, text]) => (
@@ -712,29 +690,15 @@ function PubOnboarding() {
               </>
             )}
             <p className="ob-sub">
-              Duas perguntas rápidas e o que você espera da Onside. Com isso a
-              gente mostra o plano que faz mais sentido pro seu bar. Nada disso
-              aparece no perfil.
+              Duas perguntas rápidas e o que você espera da Onside. Depois do
+              seu primeiro jogo, a gente usa isso para recomendar o plano que
+              faz mais sentido pro seu bar. Nada disso aparece no perfil.
             </p>
             <PubRoutineStep routine={routine} onChange={setRoutine} />
           </>
         )}
 
-        {step === PLAN_STEP && (
-          <PubPlanStep
-            barName={name}
-            recommended={recommendation.plan}
-            reasons={recommendation.reasons}
-            selected={plan}
-            onSelect={setPickedPlan}
-            spend={routine.spend}
-            founderCoupon={founderCoupon}
-            onEditRoutine={() => setStep(3)}
-            heading={heading}
-          />
-        )}
-
-        {step === 5 && (
+        {step === REVIEW_STEP && (
           <>
             {heading(revisao.titulo)}
             <p className="ob-sub">{revisao.texto}</p>
@@ -767,21 +731,13 @@ function PubOnboarding() {
               ))}
               <div className="ob-ln">
                 <span>
-                  <b>Plano</b>
+                  <b>Teste grátis</b>
                   <span>
-                    {planName} grátis por {ONBOARDING_TRIAL.days} dias, sem
-                    cartão. Depois, {formatPlanPrice(planPrice.chargeReais)}
-                    /mês só se você contratar.
+                    {ONBOARDING_TRIAL.days} dias, até {trialEnd}, sem cartão. O
+                    plano você escolhe logo depois do primeiro jogo, antes de
+                    entrar no painel.
                   </span>
                 </span>
-                <button
-                  type="button"
-                  className="btn btn-ghost ob-sm"
-                  onClick={() => setStep(PLAN_STEP)}
-                  aria-label="Trocar o plano"
-                >
-                  Trocar
-                </button>
               </div>
             </div>
           </>
@@ -805,11 +761,7 @@ function PubOnboarding() {
         nextLabel={
           step === 2 && amenities.length === 0 && screenCount === null
             ? 'Pular'
-            : step === 3
-              ? 'Ver a recomendação'
-              : step === PLAN_STEP
-                ? `Testar o ${planName} grátis`
-                : undefined
+            : undefined
         }
         lastLabel={revisao.botao}
       />

@@ -48,6 +48,7 @@ import {
 } from './noite'
 import { NovoJogo, type NovoJogoMode } from './novo-jogo'
 import { initials, usePainel } from './painel-shell'
+import { PrimeirosPassos } from './passeio'
 
 /*
  * Hoje (WEB-501, fase 2; protótipo `hoje`, `chart`, `smooth`): o jogo de
@@ -158,6 +159,8 @@ export function HojePage() {
 
       <Avisos />
 
+      <PrimeirosPassos />
+
       {events.isError ? (
         <div className="pn-aviso is-error" role="alert">
           <div className="pn-aviso-t">
@@ -254,7 +257,11 @@ function Agora({
 }) {
   if (!hero) {
     return (
-      <section className="pn-now is-empty" aria-label="Próximo jogo">
+      <section
+        className="pn-now is-empty"
+        aria-label="Próximo jogo"
+        data-passeio="hoje"
+      >
         <div className="pn-now-l">
           <span className="pn-tag">SEM JOGO MARCADO</span>
           <h2 className="pn-disp">
@@ -295,6 +302,7 @@ function Agora({
     <section
       className={`pn-now${live ? ' is-live' : ''}`}
       aria-label={live ? 'Jogo ao vivo' : 'Próximo jogo'}
+      data-passeio="hoje"
     >
       <div className="pn-now-l">
         <span className="pn-tag">

@@ -8,10 +8,12 @@
 @import "./components/onboarding/onboarding-v3.css";
 @import "./components/landing/v3/theme-dark.css";
 @import "./components/onboarding/plan-v3.css";
+@import "./components/onboarding/primeiro-valor.css";
 @import "./components/painel/painel.css";
 @import "./components/painel/painel-telas.css";
 @import "./components/painel/painel-numeros.css";
 @import "./components/painel/painel-conta.css";
+@import "./components/painel/passeio.css";
 @import "./components/torcedor/torcedor.css";
 @import "./components/dialogo/dialogo.css";
 @import "./components/legal/legal.css";

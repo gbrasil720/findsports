@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { brasiliaDay, brasiliaTime, dayLabel } from '@/components/painel/noite'
 import { QRCode } from '@/components/qr-code'
+import { CartaoContaNova } from '@/components/torcedor/conta-nova'
 import { Ic } from '@/components/torcedor/icones'
 import { TorcedorShell } from '@/components/torcedor/shell'
 import { baixarAgenda } from '@/domain/agenda'
@@ -148,6 +149,7 @@ function Ticket() {
           Aumente o brilho da tela. O código vale só no dia do jogo, no bar que
           você marcou.
         </p>
+        <CartaoContaNova />
       </div>
     </div>
   )
