@@ -109,7 +109,7 @@ test.describe('login com 2FA', () => {
     await expect(page).toHaveURL(/\/two-factor$/)
     await typeCode(page, 'two-factor-login-code', totp(secret))
     await page
-      .getByRole('checkbox', { name: 'Confiar neste dispositivo por 30 dias' })
+      .getByRole('checkbox', { name: 'Confiar neste aparelho por 30 dias' })
       .check()
     await page.getByRole('button', { name: 'Confirmar e entrar' }).click()
     await expect(page).toHaveURL(/\/dashboard$/)
