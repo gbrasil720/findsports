@@ -7,18 +7,15 @@ import {
   TeamPicker
 } from '@/components/sports/team-picker'
 import { lerNovo, type Novo } from '@/components/torcedor/acao'
+import { avisarNaProxima } from '@/components/torcedor/avisos'
 import {
-  CONTA_NOVA,
   concluirOnboarding,
   DEPOIS_AVISO,
+  tituloContaNova,
   useConcluirOnboarding
 } from '@/components/torcedor/conta-nova'
 import { Ic } from '@/components/torcedor/icones'
-import {
-  avisarNaProxima,
-  TorcedorShell,
-  useTorcedor
-} from '@/components/torcedor/shell'
+import { TorcedorShell, useTorcedor } from '@/components/torcedor/shell'
 import { normalizeRadiusKm } from '@/domain/discovery'
 import { useSession } from '@/hooks/use-session'
 import { analytics } from '@/lib/analytics'
@@ -68,7 +65,7 @@ function Conteudo() {
   const { avisar } = useTorcedor()
   const search = Route.useSearch()
   const volta = getSafeCallbackUrl(search.callbackUrl ?? '/dashboard')
-  const [titulo] = CONTA_NOVA[search.feito ?? 'fav']
+  const titulo = tituloContaNova(search.feito ?? 'fav', session?.user.createdAt)
   const concluir = useConcluirOnboarding()
   const [salvando, setSalvando] = useState<'depois' | 'salvar' | null>(null)
 

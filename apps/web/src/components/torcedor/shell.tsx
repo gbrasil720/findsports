@@ -15,6 +15,11 @@ import { useSignOut } from '@/hooks/use-sign-out'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import { type Acao, destinoContaNova, lerAcao, semAcao } from './acao'
+import {
+  avisarNaProxima,
+  avisosPendentes,
+  limparAvisosPendentes
+} from './avisos'
 import { FolhaEntrar, type Pedido } from './entrar'
 import { Ic, type IconName } from './icones'
 
@@ -39,6 +44,8 @@ type Torcedor = {
   fan: boolean
   logado: boolean
   avisar: (texto: string) => void
+  /** Há aviso à vista ou na fila (o card da conta nova espera por ele). */
+  avisando: boolean
   /** Sem sessão de torcedor abre a folha; com, conclui na hora. */
   agir: (pedido: Pedido & { acao: Acao }) => void
   pedirLogin: (pedido: Pedido) => void
@@ -62,21 +69,6 @@ function iniciais(nome: string) {
       .slice(0, 2)
       .toUpperCase() || '…'
   )
-}
-
-/*
- * Cada rota monta a sua casca: o aviso dado antes de trocar de tela se
- * perderia com a casca de antes. Só o cliente o grava (num clique ou numa
- * ação), então não vaza entre pedidos do servidor.
- */
-let avisoPendente: string | null = null
-
-/**
- * O aviso para a tela seguinte, mostrado pela casca que montar nela. Só para
- * a troca de rota: na mesma rota a casca não remonta, e o aviso é o `avisar`.
- */
-export function avisarNaProxima(texto: string) {
-  avisoPendente = texto
 }
 
 /**
@@ -188,28 +180,36 @@ export function TorcedorShell({ aba, children, busca, onde, semAbas }: Props) {
   const fan = session?.user.role === 'fan'
   const admin = session?.user.role === 'admin'
   const [pedido, setPedido] = useState<Pedido | null>(null)
-  const [aviso, setAviso] = useState<{ texto: string; n: number } | null>(null)
   const [menu, setMenu] = useState(false)
   const [feedback, setFeedback] = useState(false)
   const menuBotao = useRef<HTMLButtonElement>(null)
 
+  // Avisos em fila, um por vez: o próximo entra quando o de antes sai. O da
+  // tela de antes (`avisarNaProxima`) já nasce na fila, para o card da conta
+  // nova saber, desde o primeiro desenho, que tem de esperar.
+  const [fila, setFila] = useState<string[]>(avisosPendentes)
+  const [fase, setFase] = useState<'entra' | 'sai' | null>(null)
+  useEffect(() => limparAvisosPendentes(), [])
   const avisar = useCallback(
-    (texto: string) => setAviso((atual) => ({ texto, n: (atual?.n ?? 0) + 1 })),
+    (texto: string) => setFila((atual) => [...atual, texto]),
     []
   )
   useEffect(() => {
-    if (!aviso) return
-    const fim = setTimeout(() => setAviso(null), 3600)
+    if (fase === null) {
+      if (fila.length) setFase('entra')
+      return
+    }
+    // 3,6 s à vista; 0,45 s é a saída do `.toast` (torcedor.css).
+    const fim = setTimeout(
+      () => {
+        if (fase === 'entra') return setFase('sai')
+        setFila((atual) => atual.slice(1))
+        setFase(null)
+      },
+      fase === 'entra' ? 3600 : 450
+    )
     return () => clearTimeout(fim)
-  }, [aviso])
-
-  // O aviso dado pela tela de antes (`avisarNaProxima`), na montagem: a
-  // casca de antes ainda vê o endereço novo antes de sair, e o levaria junto.
-  useEffect(() => {
-    if (!avisoPendente) return
-    avisar(avisoPendente)
-    avisoPendente = null
-  }, [avisar])
+  }, [fase, fila.length])
 
   const concluir = useAcoes(avisar)
   // Conta sem onboarding: a ação primeiro, as preferências depois.
@@ -276,6 +276,7 @@ export function TorcedorShell({ aba, children, busca, onde, semAbas }: Props) {
     fan,
     logado,
     avisar,
+    avisando: fila.length > 0,
     agir,
     pedirLogin: setPedido
   }
@@ -484,11 +485,11 @@ export function TorcedorShell({ aba, children, busca, onde, semAbas }: Props) {
             await queryClient.refetchQueries({ type: 'active' })
           }}
         />
-        <div className={`toast${aviso ? ' on' : ''}`} role="status">
+        <div className={`toast${fase === 'entra' ? ' on' : ''}`} role="status">
           <i>
             <Ic n="check" s={16} />
           </i>
-          <span>{aviso?.texto}</span>
+          <span>{fila[0]}</span>
         </div>
         <FeedbackDialog
           open={feedback}
