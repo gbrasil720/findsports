@@ -519,8 +519,12 @@ mandado ao `/admin`.
   dele. Sem onboarding, a guarda só deixa a tela da ação, a do card (`?novo=`) e a
   curta (`contaNovaPodeVer`); fora delas, o onboarding de 5 passos. A ação `app` ("Me
   avise") e o cadastro sem ação seguem pelo onboarding de 5 passos, com a ação no
-  `callbackUrl`. O aviso (`.toast`) que precisa sobreviver à troca de rota usa
-  `avisarNaProxima` (cada rota monta a sua casca).
+  `callbackUrl`. Conta de mais de um dia (`user.createdAt`, `contaRecente`) vê o
+  mesmo card sem "Conta criada" ("Presença marcada", "Bar salvo", "Lembrete marcado").
+  Os avisos (`.toast`) da casca são uma fila, um por vez, e o card só entra quando o
+  último sai (`avisando` do `useTorcedor`). O aviso que precisa sobreviver à troca de
+  rota usa `avisarNaProxima` (`components/torcedor/avisos.ts`; cada rota monta a sua
+  casca), inclusive o da página do bar quando ela leva a conta nova ao web do torcedor.
 - **Aviso de cookies:** um só em todo o site, o "Placar" (`consent/cookie-consent.css`):
   cartão no canto no desktop, folha no pé no celular. O que é preso ao pé da janela sobe
   por `--onside-consent-space`; no Explorar, as abas, o aviso da casca e o mapa do
