@@ -558,13 +558,78 @@
   box-shadow: 0 4px 0 #7f9a12;
 }
 
-/* Duas etapas usa o Button do shadcn: o mesmo desenho dos outros botões. */
-.lp3.ent form [data-slot="button"][type="submit"] {
-  width: 100%;
-  height: 54px;
+/* ─── Duas etapas: forma de confirmação, caixas do código e "confiar" ─── */
+.lp3.ent .ent-seg {
+  display: flex;
+  gap: 4px;
+  margin-top: 22px;
+  padding: 4px;
   border-radius: 999px;
-  background: var(--acid);
+  background: var(--stone);
+}
+
+.lp3.ent .ent-seg button {
+  flex: 1;
+  height: 40px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
   color: var(--ink);
-  font: 700 16px / 1 var(--body);
-  box-shadow: 0 4px 0 #7f9a12;
+  font: 600 14.5px var(--body);
+  cursor: pointer;
+}
+
+.lp3.ent .ent-seg button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.lp3.ent .ent-boxes {
+  margin-top: 22px;
+}
+
+.lp3.ent .ent-boxes [data-slot="input-otp-group"] {
+  gap: 8px;
+}
+
+.lp3.ent .ent-boxes [data-slot="input-otp-slot"] {
+  height: 64px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--white);
+  color: var(--ink);
+  font: 600 28px var(--mono);
+  box-shadow: inset 0 0 0 1.5px rgba(18, 18, 15, 0.2);
+  transition: box-shadow 0.15s;
+}
+
+.lp3.ent .ent-boxes [data-slot="input-otp-slot"][data-active="true"] {
+  background: var(--white);
+  box-shadow: inset 0 0 0 2.5px var(--ink);
+}
+
+.lp3.ent .ent-boxes [data-slot="input-otp-slot"][aria-invalid="true"] {
+  box-shadow: inset 0 0 0 2px var(--red);
+}
+
+.lp3.ent .ent-trust {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  font-size: 14.5px;
+  cursor: pointer;
+}
+
+.lp3.ent .ent-trust input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--ink);
+}
+
+@media (max-width: 480px) {
+  .lp3.ent .ent-boxes [data-slot="input-otp-slot"] {
+    height: 56px;
+    font-size: 24px;
+  }
 }
