@@ -43,12 +43,14 @@ function InvitePage() {
   const { code } = Route.useParams()
   const appLink = `${APP_SCHEME}://convite/${encodeURIComponent(code)}`
   // A URL do QR é a da página aberta; no servidor ainda não há `location`.
+  // No celular não há QR: a página já tenta abrir o app.
   const [qr, setQr] = useState<string | null>(null)
   useEffect(() => {
-    setQr(window.location.href.split('#')[0] ?? null)
     if (window.matchMedia('(pointer: coarse)').matches) {
       window.location.href = appLink
+      return
     }
+    setQr(window.location.href.split('#')[0] ?? null)
   }, [appLink])
 
   return (
@@ -75,6 +77,8 @@ function InvitePage() {
         {qr ? (
           <div className="mt-8 flex items-center gap-4">
             <div
+              role="img"
+              aria-label="QR code: abre esta página no celular"
               className="shrink-0 rounded-xl bg-white p-2"
               style={{ width: 112, height: 112 }}
             >
