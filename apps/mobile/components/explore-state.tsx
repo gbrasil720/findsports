@@ -73,6 +73,12 @@ type ExploreState = {
    */
   localCity: City | null
   setLocalCity: (city: City) => void
+  /**
+   * O jogo escolhido na fileira (chave da régua, `início|título`); `null`, o
+   * primeiro. Vem também de "O jogo de hoje" (`?jogo=`).
+   */
+  game: string | null
+  setGame: (key: string | null) => void
 }
 
 export type City = Coordinates & { name: string; uf: string }
@@ -114,6 +120,7 @@ export function ExploreStateProvider({ children }: { children: ReactNode }) {
     saveFocus(next)
     if (next) setAnswer(bars ?? null)
   }
+  const [game, setGame] = useState<string | null>(null)
   const [localCity, saveLocalCity] = useState<City | null>(null)
   const setLocalCity = (city: City) => {
     saveLocalCity(city)
@@ -193,7 +200,9 @@ export function ExploreStateProvider({ children }: { children: ReactNode }) {
         setBeside,
         locate,
         localCity,
-        setLocalCity
+        setLocalCity,
+        game,
+        setGame
       }}
     >
       {children}
