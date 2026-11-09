@@ -66,6 +66,7 @@ import {
   text,
   useStatusBar
 } from '@/components/ui'
+import { useFan, useWithAccount } from '@/lib/account'
 import { answerPins } from '@/lib/ai-chat'
 import type { ChatBar } from '@/lib/ai-events'
 import { authClient } from '@/lib/auth-client'
@@ -163,15 +164,20 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   const state = useExploreState()
   const shotSource = useShotSource('explore', capture)
   const { device, district, liveOnly, filters } = state
-  const city = useQuery(trpc.pubs.getMyCity.queryOptions())
-  const center = searchCenter(device, city.data)
+  // Sem conta: sem cidade do perfil nem preferências (o app abre aberto).
+  const fan = useFan()
+  const withAccount = useWithAccount()
+  const city = useQuery({ ...trpc.pubs.getMyCity.queryOptions(), enabled: fan })
+  // Sem conta, a cidade escolhida no aparelho (O jogo de hoje).
+  const cityData = fan ? city.data : state.localCity
+  const center = searchCenter(device, cityData)
   const radiusKm = searchRadius(filters, session.data?.user.searchRadiusKm ?? 3)
   // "Ampliar" dobra o raio só nesta visita; o do perfil não muda.
   const wider = Math.min(radiusKm * 2, SEARCH_RADIUS_MAX_KM)
 
   const search = useQuery({
     ...trpc.pubs.search.queryOptions(searchInput(filters, center, radiusKm)),
-    enabled: device !== null || !city.isPending,
+    enabled: device !== null || !fan || !city.isPending,
     // Trocar um filtro mantém a lista e os pinos de antes até chegar a nova,
     // em vez de piscar "Buscando bares…".
     placeholderData: keepPreviousData
@@ -232,7 +238,10 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   // Atalhos do topo do mapa (19e): os da pessoa, ou os padrão com o esporte
   // principal dela.
   const sportList = useQuery(trpc.pubs.getSports.queryOptions())
-  const prefs = useQuery(trpc.pubs.getMyPreferences.queryOptions())
+  const prefs = useQuery({
+    ...trpc.pubs.getMyPreferences.queryOptions(),
+    enabled: fan
+  })
   const sports = sportList.data ?? []
   const shortcuts =
     state.shortcuts ?? defaultShortcuts(prefs.data?.[0]?.sport.slug ?? null)
@@ -257,10 +266,12 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   // "Vou assistir aqui" no próximo jogo do bar (o card ao lado no 13″, a
   // tela de fora do Flip).
   const go = (bar: SearchBar) =>
-    router.push({
-      pathname: '/vou/[barId]',
-      params: { barId: bar.id, eventId: bar.nextEvent?.id }
-    })
+    withAccount(() =>
+      router.push({
+        pathname: '/vou/[barId]',
+        params: { barId: bar.id, eventId: bar.nextEvent?.id }
+      })
+    )
   // Bar da resposta da busca com IA que a busca daqui não tem: sem o card da
   // folha (ele é da busca), o toque na gota abre a página dele direto.
   const openAnswer = (bar: ChatBar) =>
@@ -642,7 +653,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   const user = session.data?.user
   const firstName = user?.name.split(' ')[0] ?? ''
   const initials = initialsOf(user?.name ?? '')
-  const place = district ?? city.data?.name ?? 'São Paulo'
+  const place = district ?? cityData?.name ?? 'São Paulo'
 
   const title = chosen
     ? chosen.name
@@ -727,14 +738,16 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   const topRow = (
     <View style={styles.topRow}>
       <View style={styles.who}>
-        <View
-          style={[
-            styles.avatar,
-            { shadowColor: palette.dark ? 'rgba(201,241,53,.35)' : ACID }
-          ]}
-        >
-          <Text style={styles.avatarText}>{initials}</Text>
-        </View>
+        {user ? (
+          <View
+            style={[
+              styles.avatar,
+              { shadowColor: palette.dark ? 'rgba(201,241,53,.35)' : ACID }
+            ]}
+          >
+            <Text style={styles.avatarText}>{initials}</Text>
+          </View>
+        ) : null}
         <View style={{ flexShrink: 1 }}>
           <Text
             style={[text(15, 'SemiBold', 1.3), { color: palette.ink }]}
@@ -771,20 +784,37 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
             <Icon name="search" size={19} color={palette.ink} />
           </Glass>
         </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Avisos"
-          onPress={() => router.push('/avisos')}
-        >
-          <Glass tone={glassTone} interactive style={styles.round}>
-            <Icon
-              name="bell"
-              size={19}
-              color={palette.ink}
-              accent={palette.dark ? ACID : LIVE}
-            />
-          </Glass>
-        </Pressable>
+        {/* Sem conta, "Entrar" no lugar dos avisos (rodada 1 do redesign). */}
+        {fan ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Avisos"
+            onPress={() => router.push('/avisos')}
+          >
+            <Glass tone={glassTone} interactive style={styles.round}>
+              <Icon
+                name="bell"
+                size={19}
+                color={palette.ink}
+                accent={palette.dark ? ACID : LIVE}
+              />
+            </Glass>
+          </Pressable>
+        ) : (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/sign-in')}
+          >
+            <Glass tone={glassTone} interactive style={styles.enter}>
+              <Text
+                style={[text(14, 'SemiBold', 1.3), { color: palette.ink }]}
+                maxFontSizeMultiplier={HEAD_FONT_SCALE}
+              >
+                Entrar
+              </Text>
+            </Glass>
+          </Pressable>
+        )}
       </View>
     </View>
   )
@@ -1974,6 +2004,14 @@ const styles = StyleSheet.create({
     marginVertical: -5
   },
   place: { flexDirection: 'row', gap: 4, alignItems: 'center' },
+  enter: {
+    height: 42,
+    paddingHorizontal: 16,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden'
+  },
   round: {
     width: 42,
     height: 42,

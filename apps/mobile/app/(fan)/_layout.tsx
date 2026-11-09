@@ -14,6 +14,7 @@ import { useSoon } from '@/components/soon'
 import { type MenuItem, YouMenu } from '@/components/tab-bar'
 import { usePalette } from '@/components/theme'
 import { YouPanel } from '@/components/you-panel'
+import { useFan, useWithAccount } from '@/lib/account'
 import { authClient } from '@/lib/auth-client'
 import { freshCount } from '@/lib/suggestions'
 import { trpc } from '@/lib/trpc'
@@ -81,8 +82,13 @@ export default function FanTabs() {
     aba?: SettingsTab
   }>()
   const coach = useCoachPending(forceCoach === '1')
+  // Sem conta (o app abre no Explorar): Bares, Você e a IA levam ao
+  // "Entrar", e nada só do torcedor é consultado.
+  const fan = useFan()
+  const withAccount = useWithAccount()
   const pending = useQuery({
     ...trpc.postGame.pending.queryOptions(),
+    enabled: fan,
     retry: false
   })
   // "Bares pra você · N novos" (2c): a rodada de hoje, criada aqui mesmo se
@@ -90,7 +96,7 @@ export default function FanTabs() {
   const { device, beside } = useExploreState()
   const suggestions = useQuery({
     ...trpc.recommendations.today.queryOptions({ where: device }),
-    enabled: menuOpen,
+    enabled: fan && menuOpen,
     retry: false
   })
   const fresh = suggestions.data?.round ? freshCount(suggestions.data.round) : 0
@@ -216,7 +222,14 @@ export default function FanTabs() {
         </NativeTabs.Trigger>
         {/* Sem o recuo automático: a aba somava o topo seguro ao
             `paddingTop` da tela, e o título descia 48 pt. */}
-        <NativeTabs.Trigger name="favoritos" disableAutomaticContentInsets>
+        <NativeTabs.Trigger
+          name="favoritos"
+          disableAutomaticContentInsets
+          disabled={!fan}
+          listeners={
+            fan ? undefined : { tabPress: () => router.push('/sign-in') }
+          }
+        >
           <NativeTabs.Trigger.Icon src={icons.fan} renderingMode="original" />
           <NativeTabs.Trigger.Label hidden>Bares</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
@@ -228,9 +241,11 @@ export default function FanTabs() {
           // ao começo da pilha (`disablePopToTop` impede). Vindo de outra
           // aba, a pilha já voltou ao menu (`voce/_layout.tsx`).
           disablePopToTop
+          disabled={!fan}
           listeners={{
             tabPress: () => {
-              if (menuOpen) closeMenu()
+              if (!fan) router.push('/sign-in')
+              else if (menuOpen) closeMenu()
               else if (pathname.startsWith('/voce/')) setOver(true)
             }
           }}
@@ -244,7 +259,9 @@ export default function FanTabs() {
           disabled
           accessibilityLabel="Busca com IA"
           // A busca com IA (2h) é uma folha por cima da aba atual.
-          listeners={{ tabPress: () => router.push('/busca-ia') }}
+          listeners={{
+            tabPress: () => withAccount(() => router.push('/busca-ia'))
+          }}
         >
           <NativeTabs.Trigger.Icon
             src={icons.sparkle}
@@ -277,15 +294,21 @@ export default function FanTabs() {
                 : 'explore'
           }
           onTab={(tab) =>
-            tab === 'voce' ? pressYou() : router.navigate(`/${tab}`)
-          }
-          onAi={() => router.push('/busca-ia')}
-          onShortcut={(to) =>
-            to === 'avisos'
-              ? router.push('/avisos')
-              : router.navigate(
-                  to === 'jogos' ? '/voce/meus-jogos' : `/voce/${to}`
+            tab === 'explore'
+              ? router.navigate('/explore')
+              : withAccount(() =>
+                  tab === 'voce' ? pressYou() : router.navigate(`/${tab}`)
                 )
+          }
+          onAi={() => withAccount(() => router.push('/busca-ia'))}
+          onShortcut={(to) =>
+            withAccount(() =>
+              to === 'avisos'
+                ? router.push('/avisos')
+                : router.navigate(
+                    to === 'jogos' ? '/voce/meus-jogos' : `/voce/${to}`
+                  )
+            )
           }
           initials={initials(user?.name ?? '')}
           left={
