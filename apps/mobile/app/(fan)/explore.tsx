@@ -2,8 +2,8 @@ import { brasiliaDay } from '@findsports_oficial/db/event-window'
 import { SEARCH_RADIUS_MAX_KM } from '@findsports_oficial/db/search-radius'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { LinearGradient } from 'expo-linear-gradient'
-import { useRouter } from 'expo-router'
-import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react'
+import { useLocalSearchParams, useRouter } from 'expo-router'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 import {
   BackHandler,
   Platform,
@@ -30,24 +30,30 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { scheduleOnRN } from 'react-native-worklets'
 import { BarDetail } from '@/app/bar/[id]'
-import { RadiusEmpty } from '@/components/empty-states'
 import {
-  BarLine,
-  BarRow,
-  BarTicket,
-  Chip,
   dayLabel,
   dropBox,
   HardShadow,
-  initials as initialsOf,
   MapDrop,
   MapGroup,
   MeDot,
   Photo,
   QuietDot,
-  RadiusCircle,
-  type SearchBar
+  RadiusCircle
 } from '@/components/explore'
+import {
+  AccountNudge,
+  BoardCard,
+  DayRow,
+  GameRow,
+  GameTitle,
+  LiveGameCard,
+  QuietCard,
+  QuietDivider,
+  SheetChip,
+  sheetLine,
+  WidenBlock
+} from '@/components/explore-board'
 import { useExploreState, useShotSource } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
 import { useLayout, useNavInsets } from '@/components/layout'
@@ -70,22 +76,23 @@ import { useFan, useWithAccount } from '@/lib/account'
 import { answerPins } from '@/lib/ai-chat'
 import type { ChatBar } from '@/lib/ai-events'
 import { authClient } from '@/lib/auth-client'
+import { formatTime, searchCenter } from '@/lib/explore'
 import {
-  coverBars,
-  coverKicker,
-  formatKm,
-  formatTime,
-  greeting,
-  isLive,
-  searchCenter
-} from '@/lib/explore'
+  type BoardBar,
+  barsOfGame,
+  chosenGame,
+  dayChoices,
+  distance,
+  gameRow,
+  type QuietBar,
+  quietBars,
+  type RowGame
+} from '@/lib/explore-board'
 import { useFavorites } from '@/lib/favorites'
 import {
   activeCount,
   applyShortcut,
-  dayKey,
   defaultShortcuts,
-  searchInput,
   searchRadius,
   shortcutLabel,
   shortcutOn
@@ -111,8 +118,11 @@ import { trpc } from '@/lib/trpc'
  * no Android (`lib/map-style.ts`).
  */
 
-/** O dia de hoje em Brasília, como `pubs.search` recebe (`AAAA-MM-DD`). */
+/** O dia de hoje em Brasília, como a régua recebe (`AAAA-MM-DD`). */
 const today = () => brasiliaDay(Date.now())
+
+/** Um bar da lista: com o jogo (régua) ou sem jogo marcado. */
+type AnyBar = BoardBar | QuietBar
 
 /**
  * `capture`: esta é a tela que a aba "Você" fotografa para pôr sob o menu.
@@ -164,6 +174,12 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   const state = useExploreState()
   const shotSource = useShotSource('explore', capture)
   const { device, district, liveOnly, filters } = state
+  // O jogo tocado em "O jogo de hoje" chega pela URL (`?jogo=`).
+  const { jogo } = useLocalSearchParams<{ jogo?: string }>()
+  const { setGame } = state
+  useEffect(() => {
+    if (jogo) setGame(jogo)
+  }, [jogo, setGame])
   // Sem conta: sem cidade do perfil nem preferências (o app abre aberto).
   const fan = useFan()
   const withAccount = useWithAccount()
@@ -174,65 +190,6 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   const radiusKm = searchRadius(filters, session.data?.user.searchRadiusKm ?? 3)
   // "Ampliar" dobra o raio só nesta visita; o do perfil não muda.
   const wider = Math.min(radiusKm * 2, SEARCH_RADIUS_MAX_KM)
-
-  const search = useQuery({
-    ...trpc.pubs.search.queryOptions(searchInput(filters, center, radiusKm)),
-    enabled: device !== null || !fan || !city.isPending,
-    // Trocar um filtro mantém a lista e os pinos de antes até chegar a nova,
-    // em vez de piscar "Buscando bares…".
-    placeholderData: keepPreviousData
-  })
-  const now = Date.now()
-  const found = search.data?.bars ?? []
-  const liveCount = found.filter(
-    (bar) => bar.nextEvent && isLive(bar.nextEvent, now)
-  ).length
-  const bars = liveOnly
-    ? found.filter((bar) => bar.nextEvent && isLive(bar.nextEvent, now))
-    : found
-  // Com poucos bares com jogo, a lista se completa com bares perto sem jogo
-  // marcado, para não terminar vazia (decisão do dono em 21/10/2026). Só no
-  // fim da busca, fora do "Ao vivo" e sem "Só bares com jogo publicado".
-  const few =
-    !!search.data &&
-    !search.data.nextCursor &&
-    !liveOnly &&
-    !filters.gamesOnly &&
-    found.length < FEW_BARS
-  const nearby = useQuery({
-    ...trpc.pubs.nearbyWithoutGames.queryOptions({
-      ...center,
-      radiusKm,
-      amenities: filters.amenities.length ? filters.amenities : undefined
-    }),
-    enabled: few,
-    placeholderData: keepPreviousData
-  })
-  // As duas consultas vêm de momentos diferentes (cache, `keepPreviousData`):
-  // um jogo que começa ou acaba entre elas punha o mesmo bar nas duas listas,
-  // e a chave repetia. Quem já está na busca não entra como "sem jogo".
-  const foundIds = new Set(found.map((bar) => bar.id))
-  const quiet = few
-    ? (nearby.data ?? []).filter((bar) => !foundIds.has(bar.id))
-    : []
-  // Nada no raio, fora do celular: quantos bares com jogo o raio maior
-  // traria ("Ampliar para 6 km · 8 bares", o vazio da Rodada 14).
-  const widerSearch = useQuery({
-    ...trpc.pubs.search.queryOptions(searchInput(filters, center, wider)),
-    enabled:
-      layout.kind !== 'phone' &&
-      Boolean(search.data) &&
-      bars.length === 0 &&
-      quiet.length === 0 &&
-      wider > radiusKm
-  })
-  const todayCount = bars.filter(
-    // Jogo que começou ontem à noite e ainda rola também é "hoje".
-    (bar) =>
-      bar.nextEvent &&
-      (isLive(bar.nextEvent, now) ||
-        brasiliaDay(bar.nextEvent.startsAt) === today())
-  ).length
 
   const favorites = useFavorites()
   // Atalhos do topo do mapa (19e): os da pessoa, ou os padrão com o esporte
@@ -247,29 +204,78 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
     state.shortcuts ?? defaultShortcuts(prefs.data?.[0]?.sport.slug ?? null)
   const active = activeCount(filters)
 
-  const open = (bar: SearchBar) => {
+  // A busca começa pelo jogo (rodada 1 do redesign): a régua do dia traz os
+  // jogos perto e os bares de cada um, como no web do torcedor
+  // (`lib/explore-board.ts`). O dia vem dos filtros; sem dia, hoje.
+  const day = filters.date ?? today()
+  const ready = device !== null || !fan || !city.isPending
+  const boardInput = { ...center, radiusKm, day }
+  const board = useQuery({
+    ...trpc.pubs.gameBoard.queryOptions(boardInput),
+    enabled: ready,
+    // Trocar um filtro mantém a lista e os pinos de antes até chegar a nova,
+    // em vez de piscar "Buscando bares…".
+    placeholderData: keepPreviousData
+  })
+  const now = Date.now()
+  const sportSlug =
+    sports.find((sport) => sport.id === filters.sportId)?.slug ?? null
+  const row = gameRow(board.data?.games ?? [], sportSlug, now)
+  const liveGames = row.filter((game) => game.live)
+  const liveCount = liveGames.length
+  const game = chosenGame(row, state.game)
+  // "Ao vivo" (3c): um cartão escuro por jogo rolando, com os bares dele.
+  const bars = liveOnly
+    ? liveGames.flatMap((live) => barsOfGame(live, filters.amenities))
+    : barsOfGame(game, filters.amenities)
+  // Com menos de cinco bares no jogo, a lista continua com os bares perto
+  // sem jogo marcado (decisão do dono em 21/10/2026), fora do "Ao vivo" e
+  // sem "Só bares com jogo publicado".
+  const few =
+    !!board.data && !liveOnly && !filters.gamesOnly && bars.length < FEW_BARS
+  const nearby = useQuery({
+    ...trpc.pubs.barsWithoutGame.queryOptions(boardInput),
+    enabled: ready && few,
+    placeholderData: keepPreviousData
+  })
+  const quiet = few ? quietBars(nearby.data ?? [], filters.amenities, bars) : []
+  // O ganho do "Ampliar", em número: quantos bares a mais passam o jogo.
+  const widerBoard = useQuery({
+    ...trpc.pubs.gameBoard.queryOptions({ ...boardInput, radiusKm: wider }),
+    enabled: ready && few && wider > radiusKm
+  })
+  const widerGame = widerBoard.data?.games.find((g) => g.key === game?.key)
+  const widerGain =
+    widerBoard.data && game
+      ? Math.max(
+          0,
+          barsOfGame(widerGame, filters.amenities).length - bars.length
+        )
+      : null
+
+  const open = (bar: AnyBar) => {
     // Nome e foto vão junto: a página desenha o topo antes da resposta.
     const params = {
-      id: bar.id,
-      km: String(bar.distance_km),
+      id: bar.barId,
+      km: String(bar.distanceKm),
       name: bar.name,
-      photo: bar.photo_url ?? undefined,
+      photo: bar.photoUrl ?? undefined,
       // Distância do aparelho, não do centro da cidade: vale "N min a pé".
       walk: device ? '1' : undefined
     }
     if (!besideList) return router.push({ pathname: '/bar/[id]', params })
     // Tocar de novo no bar aberto volta ao mapa.
-    if (state.beside?.id === bar.id) return state.setBeside(null)
+    if (state.beside?.id === bar.barId) return state.setBeside(null)
     haptic.select()
     state.setBeside(params)
   }
   // "Vou assistir aqui" no próximo jogo do bar (o card ao lado no 13″, a
   // tela de fora do Flip).
-  const go = (bar: SearchBar) =>
+  const go = (bar: BoardBar) =>
     withAccount(() =>
       router.push({
         pathname: '/vou/[barId]',
-        params: { barId: bar.id, eventId: bar.nextEvent?.id }
+        params: { barId: bar.barId, eventId: bar.eventId }
       })
     )
   // Bar da resposta da busca com IA que a busca daqui não tem: sem o card da
@@ -327,7 +333,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   // cima da mola. No `split`, entre a barra de status e a barra flutuante.
   const padding =
     phone || cover
-      ? { top: insets.top + 154, bottom: height - (top + snaps[1]) }
+      ? { top: insets.top + HEAD, bottom: height - (top + snaps[1]) }
       : table
         ? // Os chips passam por cima do mapa, no topo.
           { top: insets.top + 64, bottom: 16 }
@@ -373,19 +379,25 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   const [indexOf] = useState(indexCache)
   // Os sem jogo entram no mapa como ponto oco, fora dos grupos e dos rótulos.
   const listed = [...bars, ...quiet]
-  const chosen = listed.find((bar) => bar.id === selected) ?? null
-  const toMapBar = (bar: SearchBar): MapBar => {
-    const game = bar.nextEvent
-    const live = game ? isLive(game, now) : false
+  const chosen = listed.find((bar) => bar.barId === selected) ?? null
+  // O jogo de cada bar da lista: o escolhido, ou no "Ao vivo" o dele.
+  const gameOf = (bar: AnyBar) =>
+    'eventId' in bar
+      ? liveOnly
+        ? liveGames.find((g) => g.bars.some((b) => b.eventId === bar.eventId))
+        : game
+      : undefined
+  const toMapBar = (bar: AnyBar): MapBar => {
+    const its = gameOf(bar)
     return {
-      id: bar.id,
+      id: bar.barId,
       name: bar.name,
-      lat: Number(bar.latitude),
-      lng: Number(bar.longitude),
-      live,
-      elite: bar.plan === 'elite',
-      distanceKm: bar.distance_km,
-      next: game ? Date.parse(game.startsAt) : Number.POSITIVE_INFINITY,
+      lat: bar.latitude,
+      lng: bar.longitude,
+      live: its?.live ?? false,
+      elite: 'elite' in bar && bar.elite,
+      distanceKm: bar.distanceKm,
+      next: its ? Date.parse(its.startsAt) : Number.POSITIVE_INFINITY,
       // A pílula do ao vivo leva o nome (21a).
       label: bar.name
     }
@@ -394,19 +406,19 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   // até a pessoa mexer na busca ou voltar ao raio (`answer`).
   const mapBars = [
     ...bars.map(toMapBar),
-    ...answerPins(state.answer ?? [], new Set(listed.map((bar) => bar.id)))
+    ...answerPins(state.answer ?? [], new Set(listed.map((bar) => bar.barId)))
   ]
-  const quietBars = quiet.map(toMapBar)
+  const quietPins = quiet.map(toMapBar)
   // O índice dos grupos sem o bar tocado: ele nunca entra em grupo.
   const index = indexOf(mapBars.filter((b) => b.id !== selected))
   const chosenBar =
-    [...mapBars, ...quietBars].find((b) => b.id === selected) ?? null
+    [...mapBars, ...quietPins].find((b) => b.id === selected) ?? null
   const layers = mapLayers(
     index,
     chosenBar,
     view,
     mapBox,
-    phone ? insets.top + 194 : padding.top,
+    phone ? insets.top + HEAD + 20 : padding.top,
     phone ? top + snaps[1] : mapBox.height - padding.bottom
   )
   // 13″ e Tab S11 Ultra deitados: o bar tocado vai num card ao lado da lista,
@@ -422,23 +434,24 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   } => {
     if (layer.kind === 'label') return { live: true, label: layer.bar.name }
     if (layer.kind !== 'selected' || detail) return { live: layer.bar.live }
-    const game = bars.find((b) => b.id === layer.id)?.nextEvent
-    // "HOJE 21:30", "AMANHÃ 21:30", "SÁB 21:30" ou "AO VIVO" (21a).
-    const day = game
-      ? dayLabel(game.startsAt, now)
+    const tapped = listed.find((b) => b.barId === layer.id)
+    const its = tapped ? gameOf(tapped) : undefined
+    // "HOJE 21:30 · 450 m", "SÁB 21:30 · 1,2 km" ou "AO VIVO" (21a, 3b).
+    const when = its
+      ? `${dayLabel(its.startsAt, now)
           .split(',')[0]
           ?.replace('.', '')
-          .toLocaleUpperCase('pt-BR')
+          .toLocaleUpperCase('pt-BR')} ${formatTime(its.startsAt)}`
       : null
     return {
       live: layer.bar.live,
       callout: {
         name: layer.bar.name,
-        when: !game
+        when: !its
           ? null
           : layer.bar.live
             ? 'AO VIVO'
-            : `${day} ${formatTime(game.startsAt)}`
+            : `${when} · ${distance(layer.bar.distanceKm)}`
       }
     }
   }
@@ -456,23 +469,23 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
         reduced ? 0 : 350
       )
     }
-    const bar = listed.find((b) => b.id === layer.id)
+    const bar = listed.find((b) => b.barId === layer.id)
     if (!bar) {
       const answered = state.answer?.find((b) => b.id === layer.id)
       if (answered) openAnswer(answered)
       return
     }
     if (layer.kind === 'selected') return open(bar)
-    setSelected(bar.id)
+    setSelected(bar.barId)
     // A folha sobe 40 pt com o card (20c): bar perto da borda dela, ou do
     // cabeçalho, ficaria coberto. A câmera desliza só o bastante para ele
     // cair no meio da faixa livre, junto com a folha.
     const y =
-      ((view.latitude + view.latitudeDelta / 2 - Number(bar.latitude)) /
+      ((view.latitude + view.latitudeDelta / 2 - bar.latitude) /
         view.latitudeDelta) *
       mapBox.height
     // Abaixo dos chips sobra lugar para a gota grande e o balão (105 pt).
-    const ceiling = (phone ? insets.top + 218 : padding.top) + 105
+    const ceiling = (phone ? insets.top + HEAD + 24 : padding.top) + 105
     const floor = phone
       ? height - 336 - 24
       : mapBox.height - padding.bottom - 24
@@ -494,7 +507,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   // Enquadra quando o mapa fica pronto, quando o centro muda e quando chega a
   // primeira resposta; não a cada filtro, que desfaria o arrasto que a
   // pessoa fez no mapa.
-  const framed = search.data !== undefined
+  const framed = board.data !== undefined
   // biome-ignore lint/correctness/useExhaustiveDependencies: só centro, mapa pronto e primeira resposta
   useEffect(() => {
     if (mapReady) frameRadius()
@@ -513,15 +526,15 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   const framedRadius = useRef(radiusKm)
   // biome-ignore lint/correctness/useExhaustiveDependencies: só quando a resposta do raio novo chega
   useEffect(() => {
-    if (!mapReady || search.isPlaceholderData) return
+    if (!mapReady || board.isPlaceholderData) return
     if (framedRadius.current === radiusKm) return
     framedRadius.current = radiusKm
     frameRadius()
-  }, [mapReady, search.data, radiusKm])
+  }, [mapReady, board.data, radiusKm])
 
   // Enquanto a busca nova não chega, a lista de antes fica esmaecida: diz que
   // vai mudar sem piscar "Buscando bares…".
-  const stale = search.isPlaceholderData
+  const stale = board.isPlaceholderData
   const fresh = useSharedValue(1)
   useEffect(() => {
     fresh.set(withTiming(stale ? 0.5 : 1, { duration: 150, easing: EASE }))
@@ -650,20 +663,9 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
     ]
   }))
 
-  const user = session.data?.user
-  const firstName = user?.name.split(' ')[0] ?? ''
-  const initials = initialsOf(user?.name ?? '')
   const place = district ?? cityData?.name ?? 'São Paulo'
+  const days = dayChoices(today())
 
-  const title = chosen
-    ? chosen.name
-    : todayCount > 0
-      ? `${todayCount} ${todayCount === 1 ? 'bar' : 'bares'} com jogo hoje`
-      : bars.length > 0
-        ? `${bars.length} ${bars.length === 1 ? 'bar' : 'bares'} com jogo`
-        : quiet.length > 0
-          ? 'Bares perto de você'
-          : 'Bares com jogo'
   const glassTone = palette.dark ? 'dark' : 'light'
   const fade = palette.dark ? '18,18,15' : '241,238,230'
 
@@ -678,15 +680,12 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
     : layout.wide
       ? 44
       : 34
-  const narrow = !stack && layout.split - 2 * pad < 350
   const column = (mapBox.width - 12) / 2
   // Em pé, o mapa fica no espaço que a coluna reserva para ele, medido.
   const [mapTop, setMapTop] = useState(0)
 
-  // Os cards fora do celular: o primeiro com jogo em ingresso; numa coluna
-  // estreita (iPad mini deitado, Fold aberto) e na mesa, todos na linha
-  // compacta. Em pé e na mesa, em duas colunas (`columns` é a largura de uma).
-  // Com um bar aberto ao lado, a lista vira linhas, com ele marcado (a02).
+  // Em pé e na mesa, os cards em duas colunas (`columns` é a largura de
+  // uma). Com um bar aberto ao lado, ele fica marcado na lista (a02).
   const beside = besideList ? state.beside : null
   // O voltar do Android fecha o bar aberto ao lado antes de sair da aba.
   const { setBeside } = state
@@ -698,129 +697,170 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
     })
     return () => sub.remove()
   }, [beside, setBeside])
-  const compactRows = narrow || table || !!beside
   const columns = stack ? column : table ? (width - 40 - 12) / 2 : 0
-  const gridCards = listed.map((bar, index) => {
-    const ticket = index === 0 && bars.length > 0 && !compactRows
-    return (
-      <Fragment key={bar.id}>
-        {index === bars.length ? (
-          <View style={styles.full}>
-            <QuietHead alone={bars.length === 0} radiusKm={radiusKm} />
-          </View>
-        ) : null}
-        <View style={columns && !ticket ? { width: columns } : styles.full}>
-          {ticket ? (
-            <BarTicket
-              bar={bar}
-              now={now}
-              favorite={favorites.ids.has(bar.id)}
-              onFavorite={() => favorites.toggle(bar.id)}
-              onPress={() => open(bar)}
-            />
-          ) : compactRows ? (
-            <BarLine
-              bar={bar}
-              now={now}
-              chosen={beside?.id === bar.id}
-              onPress={() => open(bar)}
-            />
-          ) : (
-            <BarRow bar={bar} now={now} onPress={() => open(bar)} />
-          )}
+  // A lista (telas 3 e 3c): os bares do jogo em cartões compactos, os sem
+  // jogo depois do corte e, no "Ao vivo", um cartão escuro por jogo.
+  const boardCard = (bar: BoardBar) => (
+    <BoardCard
+      bar={bar}
+      live={gameOf(bar)?.live ?? false}
+      favorite={favorites.ids.has(bar.barId)}
+      chosen={beside?.id === bar.barId}
+      onFavorite={() => favorites.toggle(bar.barId)}
+      onPress={() => open(bar)}
+    />
+  )
+  const quietCard = (bar: QuietBar) => (
+    <QuietCard
+      bar={bar}
+      favorite={favorites.ids.has(bar.barId)}
+      onFavorite={() => favorites.toggle(bar.barId)}
+      onPress={() => open(bar)}
+    />
+  )
+  const cell = columns ? { width: columns } : styles.full
+  const cards = liveOnly
+    ? liveGames.map((live) => (
+        <View key={live.key} style={styles.full}>
+          <LiveGameCard
+            game={live}
+            bars={barsOfGame(live, filters.amenities)}
+            onOpen={open}
+          />
         </View>
-      </Fragment>
-    )
-  })
+      ))
+    : [
+        ...bars.map((bar) => (
+          <View key={bar.eventId} style={cell}>
+            {boardCard(bar)}
+          </View>
+        )),
+        ...(quiet.length
+          ? [
+              <View key="corte" style={styles.full}>
+                <QuietDivider alone={bars.length === 0} />
+              </View>
+            ]
+          : []),
+        ...quiet.map((bar) => (
+          <View key={`sem:${bar.barId}`} style={cell}>
+            {quietCard(bar)}
+          </View>
+        ))
+      ]
 
-  // O que o celular e o tablet dividem: a saudação com busca e avisos, os
-  // chips de filtro e o miolo da lista (erro, vazio, cards, "Ampliar").
+  // O topo (tela 3): a marca, a busca e "Entrar" (com conta, o sino); embaixo,
+  // o dia e a fileira de jogos.
   const topRow = (
     <View style={styles.topRow}>
-      <View style={styles.who}>
-        {user ? (
-          <View
-            style={[
-              styles.avatar,
-              { shadowColor: palette.dark ? 'rgba(201,241,53,.35)' : ACID }
-            ]}
-          >
-            <Text style={styles.avatarText}>{initials}</Text>
-          </View>
-        ) : null}
-        <View style={{ flexShrink: 1 }}>
-          <Text
-            style={[text(15, 'SemiBold', 1.3), { color: palette.ink }]}
-            numberOfLines={1}
-            maxFontSizeMultiplier={HEAD_FONT_SCALE}
-          >
-            {greeting()}
-            {firstName ? `, ${firstName}` : ''}
-          </Text>
-          <View style={styles.place}>
-            <Icon name="pin" size={13} color={palette.dark ? ACID : LIVE} />
-            <Text
-              style={[
-                text(12.5, 'Regular', 1.3),
-                { color: palette.muted, flexShrink: 1 }
-              ]}
-              numberOfLines={1}
-              maxFontSizeMultiplier={HEAD_FONT_SCALE}
-            >
-              {place}
-            </Text>
-            {/* Sem as setas do design (⇅): escolher outro lugar de busca
-                ainda não existe. */}
-          </View>
-        </View>
+      <View
+        accessible
+        accessibilityRole="image"
+        accessibilityLabel="Onside"
+        style={styles.mark}
+      >
+        <View style={[styles.ring, { borderColor: palette.ink }]} />
+        <View style={[styles.ball, { backgroundColor: palette.live }]} />
       </View>
-      <View style={{ flexDirection: 'row', gap: 8 }}>
+      <Pressable
+        accessibilityRole="search"
+        accessibilityLabel="Buscar time, bar ou bairro"
+        onPress={() => router.push('/busca')}
+        style={[
+          styles.search,
+          { backgroundColor: palette.card, shadowColor: palette.shadow }
+        ]}
+      >
+        <Icon name="search" size={17} color={palette.muted} />
+        <Text
+          numberOfLines={1}
+          style={[text(14.5, 'Regular', 1.3), { color: palette.muted }]}
+          maxFontSizeMultiplier={HEAD_FONT_SCALE}
+        >
+          Time, bar ou bairro
+        </Text>
+      </Pressable>
+      {fan ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Buscar"
-          onPress={() => router.push('/busca')}
+          accessibilityLabel="Avisos"
+          onPress={() => router.push('/avisos')}
+          style={[styles.round, { backgroundColor: palette.card }]}
         >
-          <Glass tone={glassTone} interactive style={styles.round}>
-            <Icon name="search" size={19} color={palette.ink} />
-          </Glass>
+          <Icon
+            name="bell"
+            size={19}
+            color={palette.ink}
+            accent={palette.dark ? ACID : LIVE}
+          />
         </Pressable>
-        {/* Sem conta, "Entrar" no lugar dos avisos (rodada 1 do redesign). */}
-        {fan ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Avisos"
-            onPress={() => router.push('/avisos')}
+      ) : (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/sign-in')}
+          style={[styles.enter, { backgroundColor: palette.ink }]}
+        >
+          <Text
+            style={[text(14, 'Bold', 1.3), { color: palette.bg }]}
+            maxFontSizeMultiplier={HEAD_FONT_SCALE}
           >
-            <Glass tone={glassTone} interactive style={styles.round}>
-              <Icon
-                name="bell"
-                size={19}
-                color={palette.ink}
-                accent={palette.dark ? ACID : LIVE}
-              />
-            </Glass>
-          </Pressable>
-        ) : (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push('/sign-in')}
-          >
-            <Glass tone={glassTone} interactive style={styles.enter}>
-              <Text
-                style={[text(14, 'SemiBold', 1.3), { color: palette.ink }]}
-                maxFontSizeMultiplier={HEAD_FONT_SCALE}
-              >
-                Entrar
-              </Text>
-            </Glass>
-          </Pressable>
-        )}
-      </View>
+            Entrar
+          </Text>
+        </Pressable>
+      )}
     </View>
   )
+  const dayRow = (
+    <DayRow
+      days={days}
+      value={day}
+      onChange={(next) => {
+        state.setGame(null)
+        state.setFilters({ ...filters, date: next === today() ? null : next })
+      }}
+    />
+  )
+  const gameStrip = (
+    <GameRow
+      games={liveOnly ? liveGames : row}
+      chosen={liveOnly ? undefined : game?.key}
+      onChoose={(key) => {
+        if (liveOnly) state.setLiveOnly(false)
+        setSelected(null)
+        state.setGame(key)
+      }}
+    />
+  )
+
+  // O título da folha: o jogo em Anton, ou "Rolando agora" no "Ao vivo".
+  const sheetTitle = liveOnly ? (
+    <Text numberOfLines={1} style={[styles.sheetTitle, { color: palette.ink }]}>
+      ROLANDO <Text style={{ color: palette.live }}>AGORA</Text>
+    </Text>
+  ) : game ? (
+    <GameTitle
+      title={game.title}
+      size={30}
+      color={palette.ink}
+      accent={palette.dark ? ACID : palette.live}
+    />
+  ) : (
+    <Text numberOfLines={1} style={[styles.sheetTitle, { color: palette.ink }]}>
+      {quiet.length ? 'BARES PERTO DE VOCÊ' : 'NENHUM JOGO'}
+    </Text>
+  )
+  const sheetLineText = liveOnly
+    ? `${liveGames.length} ${liveGames.length === 1 ? 'jogo' : 'jogos'} · ${bars.length} ${bars.length === 1 ? 'bar' : 'bares'} até ${radiusKm} km`
+    : game
+      ? sheetLine(game, bars.length, radiusKm)
+      : board.data
+        ? `nenhum jogo ${day === today() ? 'hoje' : 'neste dia'} até ${radiusKm} km`
+        : 'buscando os jogos…'
+
+  // Os filtros moram depois do resultado (tela 3): todos, o raio, "Ao vivo"
+  // (só com jogo rolando) e os atalhos.
   const chipItems = (
     <>
-      {/* Todos os filtros (19d), com quantos estão ligados. */}
       <ScalePress
         accessibilityRole="button"
         accessibilityLabel={active ? `Filtros, ${active} ligados` : 'Filtros'}
@@ -856,21 +896,38 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
           </Animated.View>
         ) : null}
       </ScalePress>
-      {/* "Ao vivo" é fixo, e só aparece com jogo rolando (19e). */}
+      <SheetChip
+        icon="pin"
+        label={`Até ${radiusKm.toLocaleString('pt-BR')} km`}
+        on
+        onPress={() => router.push('/filtros')}
+      />
+      {/* Sem a localização, a busca parte da cidade: "Trocar cidade". */}
+      {device ? null : (
+        <SheetChip
+          icon="map"
+          label={`${place} · trocar`}
+          on={false}
+          onPress={() => router.push('/cidade')}
+        />
+      )}
       {liveCount || liveOnly ? (
-        // Sem fade de entrada: vidro com transparência animada some no iOS.
-        <Chip
+        <SheetChip
           live
           label={liveCount ? `Ao vivo · ${liveCount}` : 'Ao vivo'}
           on={liveOnly}
-          onPress={() => state.setLiveOnly(!liveOnly)}
+          onPress={() => {
+            setSelected(null)
+            state.setLiveOnly(!liveOnly)
+          }}
         />
       ) : null}
       {shortcuts.map((key) => {
         const shown = shortcutLabel(key, sports)
-        if (!shown) return null
+        // O dia já tem a fileira dele.
+        if (!shown || key === 'hoje' || key === 'amanha') return null
         return (
-          <Chip
+          <SheetChip
             key={key}
             icon={shown.icon}
             label={shown.label}
@@ -883,14 +940,19 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
       })}
     </>
   )
-  const listBody = (cards: ReactNode, grid?: object) => (
+  const empty = liveOnly
+    ? 'Nenhum jogo ao vivo agora por perto.'
+    : row.length === 0
+      ? `Nenhum jogo ${day === today() ? 'hoje' : 'neste dia'} num raio de ${radiusKm} km.`
+      : 'Nenhum bar deste jogo com esses filtros.'
+  const listBody = (content: ReactNode, grid?: object) => (
     <>
-      {search.isError ? (
+      {board.isError ? (
         <View style={styles.note}>
           <Text style={[text(14), { color: palette.muted }]}>
-            Não deu para buscar os bares.
+            Não deu para buscar os jogos.
           </Text>
-          <Pressable onPress={() => search.refetch()} hitSlop={10}>
+          <Pressable onPress={() => board.refetch()} hitSlop={10}>
             <Text
               style={[text(14, 'Bold'), styles.link, { color: palette.ink }]}
             >
@@ -898,38 +960,17 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
             </Text>
           </Pressable>
         </View>
-      ) : !search.data ? (
+      ) : !board.data ? (
         <Text style={[text(14), styles.note, { color: palette.muted }]}>
-          Buscando bares…
+          Buscando os jogos…
         </Text>
-      ) : bars.length === 0 &&
-        quiet.length === 0 &&
-        (liveOnly || layout.kind === 'phone') ? (
+      ) : (liveOnly ? liveGames.length : bars.length + quiet.length) === 0 ? (
         <Text style={[text(14), styles.note, { color: palette.muted }]}>
-          {liveOnly
-            ? 'Nenhum jogo ao vivo agora por perto.'
-            : `Nenhum bar com jogo num raio de ${radiusKm} km.`}
+          {empty}
         </Text>
-      ) : bars.length === 0 && quiet.length === 0 ? (
-        // Fora do celular, o vazio do design (Rodada 14): ampliar ou ver
-        // amanhã. No celular, a frase de sempre.
-        <RadiusEmpty
-          radiusKm={radiusKm}
-          wider={wider > radiusKm ? wider : null}
-          widerCount={
-            widerSearch.data?.bars.filter((bar) => bar.nextEvent).length
-          }
-          onWiden={() => {
-            haptic.select()
-            state.setFilters({ ...filters, radius: wider })
-          }}
-          onTomorrow={() =>
-            state.setFilters({ ...filters, date: dayKey(now, 1) })
-          }
-        />
       ) : (
         <Animated.View style={[{ gap: 12 }, grid, listFade]}>
-          {cards}
+          {content}
         </Animated.View>
       )}
       {stale ? (
@@ -942,32 +983,16 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
         >
           Buscando no raio de {radiusKm} km…
         </Text>
-      ) : search.data &&
-        bars.length + quiet.length > 0 &&
-        !search.data.nextCursor ? (
-        // Só no fim de verdade: com página seguinte, ampliar traria os
-        // mesmos bares mais perto.
-        <View style={styles.endRow}>
-          <Text style={[text(13.5, 'Regular', 1.3), { color: palette.muted }]}>
-            Fim da lista no raio de {radiusKm} km
-            {wider > radiusKm ? ' · ' : ''}
-          </Text>
-          {wider > radiusKm ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Ampliar para ${wider} km`}
-              hitSlop={12}
-              onPress={() => {
-                haptic.select()
-                state.setFilters({ ...filters, radius: wider })
-              }}
-            >
-              <Text style={[text(13.5, 'Bold', 1.3), { color: palette.ink }]}>
-                Ampliar
-              </Text>
-            </Pressable>
-          ) : null}
-        </View>
+      ) : few && board.data && wider > radiusKm && widerGain !== 0 ? (
+        // "Ampliar" (3c): o ganho em número, não um link.
+        <WidenBlock
+          km={wider}
+          gain={widerGain}
+          onWiden={() => state.setFilters({ ...filters, radius: wider })}
+        />
+      ) : null}
+      {!fan && board.data ? (
+        <AccountNudge onPress={() => router.push('/profile')} />
       ) : null}
     </>
   )
@@ -1081,13 +1106,13 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
             {hoodNames(
               bars.map((bar) => ({
                 neighborhood: bar.neighborhood,
-                lat: Number(bar.latitude),
-                lng: Number(bar.longitude)
+                lat: bar.latitude,
+                lng: bar.longitude
               })),
               layers,
               view,
               mapBox,
-              phone ? insets.top + 194 : padding.top
+              phone ? insets.top + HEAD + 20 : padding.top
             ).map((hood) => (
               <MapMarker
                 key={`hood:${hood.name}`}
@@ -1111,7 +1136,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
                 </Text>
               </MapMarker>
             ))}
-            {quietBars
+            {quietPins
               .filter((bar) => bar.id !== selected)
               .map((bar) => (
                 <MapMarker
@@ -1244,21 +1269,15 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
           // "Vou assistir aqui", sem sair do mapa. Entra deslizando, sem
           // fade: o card tem vidro.
           <Animated.View
-            key={detail.id}
+            key={detail.barId}
             entering={reduced ? undefined : DETAIL_IN}
             style={[
               styles.detail,
               { top: insets.top + 6, right: navInsets.right + 20 }
             ]}
           >
-            <BarTicket
-              bar={detail}
-              now={now}
-              favorite={favorites.ids.has(detail.id)}
-              onFavorite={() => favorites.toggle(detail.id)}
-              onPress={() => open(detail)}
-            />
-            {detail.nextEvent ? (
+            {'eventId' in detail ? boardCard(detail) : quietCard(detail)}
+            {'eventId' in detail ? (
               <PillButton
                 label="Vou assistir aqui"
                 leading="ticket"
@@ -1283,36 +1302,26 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
               `rgba(${fade},0)`
             ]}
             locations={[0, 0.4545, 0.697, 1]}
-            style={[styles.fade, { height: insets.top + 241 }]}
+            style={[styles.fade, { height: insets.top + HEAD + 70 }]}
           />
 
           <View
             style={[
               styles.head,
-              { top: insets.top + 13, right: 16 + navInsets.right }
+              { top: insets.top + 8, right: 16 + navInsets.right }
             ]}
           >
             {topRow}
-            <Text
-              style={[styles.title, { color: palette.ink }]}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-            >
-              ONDE VAI SER <Text style={{ color: palette.live }}>O JOGO?</Text>
-            </Text>
+            {dayRow}
           </View>
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
+          <View
             style={[
               styles.chips,
-              { top: insets.top + 117, right: navInsets.right }
+              { top: insets.top + 110, right: navInsets.right }
             ]}
-            contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}
           >
-            {chipItems}
-          </ScrollView>
+            {gameStrip}
+          </View>
 
           <Animated.View
             style={[
@@ -1354,12 +1363,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
                   style={[styles.grabber, { backgroundColor: palette.grabber }]}
                 />
                 <View style={styles.sheetHead}>
-                  <Text
-                    style={[styles.sheetTitle, { color: palette.ink }]}
-                    numberOfLines={1}
-                  >
-                    {title.toUpperCase()}
-                  </Text>
+                  <View style={{ flex: 1, minWidth: 0 }}>{sheetTitle}</View>
                   <Pressable
                     accessibilityRole="button"
                     hitSlop={10}
@@ -1380,6 +1384,15 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
                     </Animated.View>
                   </Pressable>
                 </View>
+                <Text
+                  numberOfLines={1}
+                  style={[
+                    styles.sheetLine,
+                    { color: palette.muted, paddingHorizontal: 16 }
+                  ]}
+                >
+                  {sheetLineText}
+                </Text>
               </View>
             </GestureDetector>
             <GestureDetector gesture={listPan}>
@@ -1400,44 +1413,29 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
                   }}
                   showsVerticalScrollIndicator={false}
                 >
+                  {chosen ? null : (
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      style={{ marginHorizontal: -16, flexGrow: 0 }}
+                      contentContainerStyle={styles.sheetChips}
+                    >
+                      {chipItems}
+                    </ScrollView>
+                  )}
                   {listBody(
                     // Bar tocado no mapa (20c): a folha troca para o card dele.
-                    // Sem fade: o card tem vidro, e vidro com transparência animada some.
-                    chosen ? (
-                      <BarTicket
-                        key={chosen.id}
-                        bar={chosen}
-                        now={now}
-                        favorite={favorites.ids.has(chosen.id)}
-                        onFavorite={() => favorites.toggle(chosen.id)}
-                        onPress={() => open(chosen)}
-                      />
-                    ) : (
-                      // Fora da lista aberta, os cards vão sem a hora (20a). Os
-                      // sem jogo vêm depois, com um título.
-                      [...bars, ...quiet].map((bar, index) => (
-                        <View key={bar.id} style={{ gap: 12 }}>
-                          {index === bars.length ? (
-                            <QuietHead
-                              alone={bars.length === 0}
-                              radiusKm={radiusKm}
-                            />
-                          ) : null}
-                          <BarRow
-                            bar={bar}
-                            now={now}
-                            compact={!expanded}
-                            onPress={() => open(bar)}
-                          />
-                        </View>
-                      ))
-                    )
+                    chosen
+                      ? 'eventId' in chosen
+                        ? boardCard(chosen)
+                        : quietCard(chosen)
+                      : cards
                   )}
                 </Animated.ScrollView>
               </GestureDetector>
             </GestureDetector>
             {/* Só com mais de um card: sozinho, o degradê cobriria o fim da lista. */}
-            {!chosen && bars.length + quiet.length > 1 ? (
+            {!chosen && cards.length > 1 ? (
               <Animated.View
                 pointerEvents="none"
                 style={[
@@ -1463,8 +1461,8 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
       ) : cover ? (
         <Cover
           bars={bars}
-          now={now}
-          searching={!search.data}
+          game={game}
+          searching={!board.data}
           onOpen={open}
           onGo={go}
         />
@@ -1472,14 +1470,9 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
         // Meio dobrado na mesa (a01d, a01g): os chips sobre o mapa, e a
         // lista em duas colunas na metade de baixo.
         <>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={[styles.chips, { top: insets.top + 12 }]}
-            contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}
-          >
-            {chipItems}
-          </ScrollView>
+          <View style={[styles.chips, { top: insets.top + 12 }]}>
+            {gameStrip}
+          </View>
           <View
             style={[
               styles.pane,
@@ -1490,25 +1483,21 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
               }
             ]}
           >
-            <View style={styles.section}>
-              <Text
-                style={[
-                  styles.title,
-                  { color: palette.ink, fontSize: 26, marginVertical: -6.5 }
-                ]}
-                numberOfLines={1}
-              >
-                ONDE VAI SER{' '}
-                <Text style={{ color: palette.live }}>O JOGO?</Text>
-              </Text>
-              {listed.length ? (
-                <Text
-                  style={[text(13, 'Regular', 1.3), { color: palette.muted }]}
-                >
-                  {listed.length} {listed.length === 1 ? 'bar' : 'bares'}
-                </Text>
-              ) : null}
-            </View>
+            {sheetTitle}
+            <Text style={[styles.sheetLine, { color: palette.muted }]}>
+              {sheetLineText}
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ flexGrow: 0, marginHorizontal: -20 }}
+              contentContainerStyle={[
+                styles.sheetChips,
+                { paddingHorizontal: 20 }
+              ]}
+            >
+              {chipItems}
+            </ScrollView>
             <ScrollView
               style={{ flex: 1, marginHorizontal: -20 }}
               contentContainerStyle={{
@@ -1519,7 +1508,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
               }}
               showsVerticalScrollIndicator={false}
             >
-              {listBody(gridCards, styles.grid)}
+              {listBody(cards, styles.grid)}
             </ScrollView>
           </View>
         </>
@@ -1541,28 +1530,8 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
           ]}
         >
           {topRow}
-          <Text
-            style={[
-              styles.title,
-              {
-                color: palette.ink,
-                fontSize: titleSize,
-                marginVertical: -titleSize / 4
-              }
-            ]}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-          >
-            ONDE VAI SER <Text style={{ color: palette.live }}>O JOGO?</Text>
-          </Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={{ flexGrow: 0, marginHorizontal: -pad }}
-            contentContainerStyle={{ gap: 8, paddingHorizontal: pad }}
-          >
-            {chipItems}
-          </ScrollView>
+          {dayRow}
+          <View style={{ marginHorizontal: -pad }}>{gameStrip}</View>
           {stack ? (
             <View
               pointerEvents="none"
@@ -1570,18 +1539,30 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
               onLayout={(e) => setMapTop(e.nativeEvent.layout.y)}
             />
           ) : null}
-          <View style={styles.section}>
-            <Text style={[text(16, 'Bold', 1.3), { color: palette.ink }]}>
-              Agora e hoje
+          <View style={{ gap: 8 }}>
+            <GameTitle
+              title={
+                liveOnly ? 'Rolando agora' : (game?.title ?? 'Nenhum jogo')
+              }
+              size={titleSize}
+              color={palette.ink}
+              accent={palette.dark ? ACID : palette.live}
+            />
+            <Text style={[styles.sheetLine, { color: palette.muted }]}>
+              {sheetLineText}
             </Text>
-            {listed.length ? (
-              <Text
-                style={[text(13, 'Regular', 1.3), { color: palette.muted }]}
-              >
-                {listed.length} {listed.length === 1 ? 'bar' : 'bares'}
-              </Text>
-            ) : null}
           </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ flexGrow: 0, marginHorizontal: -pad }}
+            contentContainerStyle={[
+              styles.sheetChips,
+              { paddingHorizontal: pad }
+            ]}
+          >
+            {chipItems}
+          </ScrollView>
           <ScrollView
             style={{ flex: 1, marginHorizontal: -pad }}
             contentContainerStyle={{
@@ -1594,7 +1575,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
             showsVerticalScrollIndicator={false}
           >
             {/* Em pé, duas colunas (a01k, a01m, a01o). */}
-            {listBody(gridCards, stack ? styles.grid : undefined)}
+            {listBody(cards, stack ? styles.grid : undefined)}
           </ScrollView>
         </View>
       )}
@@ -1634,50 +1615,30 @@ const TALL = 1350
 /** Abaixo disso, a lista do Explorar se completa com bares sem jogo. */
 const FEW_BARS = 5
 
-/** O título dos bares sem jogo no fim da lista. */
-function QuietHead({
-  alone,
-  radiusKm
-}: {
-  /** Nenhum bar com jogo: o título diz isso antes. */
-  alone: boolean
-  radiusKm: number
-}) {
-  const palette = usePalette()
-  return (
-    <View style={{ gap: 2, paddingTop: alone ? 0 : 8 }}>
-      <Text style={[text(13, 'Bold', 1.3), { color: palette.ink }]}>
-        {alone
-          ? `Nenhum bar com jogo num raio de ${radiusKm} km`
-          : 'Sem jogo marcado'}
-      </Text>
-      <Text style={[text(12.5, 'Regular', 1.3), { color: palette.muted }]}>
-        {alone
-          ? 'Mas estes bares ficam perto de você.'
-          : 'Bares perto de você que ainda não publicaram jogo.'}
-      </Text>
-    </View>
-  )
-}
+/**
+ * O topo do celular (marca, busca, dias e jogos) mede isto abaixo da área
+ * segura: a faixa livre do mapa começa depois dele.
+ */
+const HEAD = 172
 
 /**
- * A tela de fora do Z Flip 8 (a01j, regra 07): o bar com jogo mais perto em
+ * A tela de fora do Z Flip 8 (a01j, regra 07): o bar mais perto com o jogo em
  * tela cheia e o "Vou" à direita, longe das câmeras (embaixo à esquerda).
  * Desliza para o próximo, até cinco. O mapa fica por baixo, para abrir o
  * celular e encontrá-lo como estava.
  */
 function Cover({
   bars,
-  now,
+  game,
   searching,
   onOpen,
   onGo
 }: {
-  bars: SearchBar[]
-  now: number
+  bars: BoardBar[]
+  game: RowGame | undefined
   searching: boolean
-  onOpen: (bar: SearchBar) => void
-  onGo: (bar: SearchBar) => void
+  onOpen: (bar: BoardBar) => void
+  onGo: (bar: BoardBar) => void
 }) {
   // A medida da própria tela (no emulador e na capa, a janela diz outra).
   const window = useWindowDimensions()
@@ -1687,18 +1648,18 @@ function Cover({
   })
   const insets = useSafeAreaInsets()
   const [page, setPage] = useState(0)
-  const shown = coverBars(bars)
+  const shown = bars.slice(0, 5)
   const bar = shown[Math.min(page, shown.length - 1)]
-  if (!bar?.nextEvent)
+  if (!bar || !game)
     return (
       <View style={[StyleSheet.absoluteFill, styles.coverEmpty]}>
         <Text style={[text(14, 'Regular', 1.4), styles.coverEmptyText]}>
-          {searching ? 'Buscando bares…' : 'Nenhum bar com jogo por perto.'}
+          {searching ? 'Buscando os jogos…' : 'Nenhum bar com jogo por perto.'}
         </Text>
       </View>
     )
-  const live = isLive(bar.nextEvent, now)
-  const where = `${live ? 'Ao vivo' : formatTime(bar.nextEvent.startsAt)} · ${formatKm(bar.distance_km)}`
+  const live = game.live
+  const where = `${live ? 'Ao vivo' : formatTime(game.startsAt)} · ${distance(bar.distanceKm)}`
   return (
     <View
       style={[StyleSheet.absoluteFill, { backgroundColor: '#2a2a25' }]}
@@ -1714,14 +1675,14 @@ function Cover({
       >
         {shown.map((item) => (
           <Pressable
-            key={item.id}
+            key={item.eventId}
             accessibilityRole="button"
             accessibilityLabel={item.name}
             onPress={() => onOpen(item)}
             style={{ width, height }}
           >
             <Photo
-              uri={item.photo_url}
+              uri={item.photoUrl}
               name={item.name}
               style={StyleSheet.absoluteFill}
               big
@@ -1736,11 +1697,9 @@ function Cover({
               style={StyleSheet.absoluteFill}
             />
             <View style={styles.coverText}>
-              {item.nextEvent ? (
-                <Text style={styles.coverKicker} numberOfLines={1}>
-                  {coverKicker(item.nextEvent, now)}
-                </Text>
-              ) : null}
+              <Text style={styles.coverKicker} numberOfLines={1}>
+                {game.title.toLocaleUpperCase('pt-BR')}
+              </Text>
               <Text
                 style={styles.coverName}
                 numberOfLines={1}
@@ -1748,7 +1707,20 @@ function Cover({
               >
                 {item.name}
               </Text>
-              <CoverLine bar={item} />
+              <Text
+                style={[text(13, 'Regular', 1.3), { color: '#d6d3cb' }]}
+                numberOfLines={1}
+              >
+                {[
+                  item.going ? `${item.going.count} vão` : item.neighborhood,
+                  item.offer
+                    ? item.offer.charAt(0).toLocaleLowerCase('pt-BR') +
+                      item.offer.slice(1)
+                    : null
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </Text>
             </View>
           </Pressable>
         ))}
@@ -1774,10 +1746,10 @@ function Cover({
           <View style={styles.coverDots}>
             {shown.map((item) => (
               <View
-                key={item.id}
+                key={item.eventId}
                 style={[
                   styles.coverPage,
-                  item.id === bar.id && styles.coverPageOn
+                  item.eventId === bar.eventId && styles.coverPageOn
                 ]}
               />
             ))}
@@ -1807,29 +1779,6 @@ function Cover({
         </View>
       </ScalePress>
     </View>
-  )
-}
-
-/**
- * "34 vão · chopp em dobro até o intervalo…": quem vai e a oferta da casa
- * neste jogo (só no Elite), que a busca não traz e a página do bar traz.
- */
-function CoverLine({ bar }: { bar: SearchBar }) {
-  const page = useQuery(trpc.pubs.getById.queryOptions({ id: bar.id }))
-  const offer =
-    page.data?.events.find((game) => game.id === bar.nextEvent?.id)
-      ?.houseOffer ?? null
-  const parts = [
-    bar.goingCount ? `${bar.goingCount} vão` : bar.neighborhood,
-    offer ? offer.charAt(0).toLocaleLowerCase('pt-BR') + offer.slice(1) : null
-  ].filter(Boolean)
-  return (
-    <Text
-      style={[text(13, 'Regular', 1.3), { color: '#d6d3cb' }]}
-      numberOfLines={1}
-    >
-      {parts.join(' · ')}
-    </Text>
   )
 }
 
@@ -1975,9 +1924,45 @@ const styles = StyleSheet.create({
   head: { position: 'absolute', left: 16, right: 16, gap: 12 },
   topRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center'
+    alignItems: 'center',
+    gap: 10
   },
+  mark: { width: 28, height: 28 },
+  ring: {
+    position: 'absolute',
+    top: 2,
+    left: 2,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 4.5
+  },
+  ball: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    width: 10,
+    height: 10,
+    borderRadius: 5
+  },
+  search: {
+    flex: 1,
+    height: 44,
+    borderRadius: 22,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
+  },
+  sheetLine: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 12,
+    paddingBottom: 12
+  },
+  sheetChips: { gap: 8, paddingHorizontal: 16, paddingBottom: 4 },
   // Encolhe com nome longo em vez de empurrar a busca e o sino para fora.
   who: {
     flex: 1,
@@ -2056,10 +2041,10 @@ const styles = StyleSheet.create({
   sheetHead: {
     paddingTop: 10,
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingBottom: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     gap: 12
   },
   sheetTitle: {
