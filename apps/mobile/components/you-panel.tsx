@@ -29,6 +29,7 @@ import {
   text,
   useStatusBar
 } from '@/components/ui'
+import { useFan } from '@/lib/account'
 import { APP_VERSION, HELP_URL } from '@/lib/env'
 import { markedToday, yourBarCount } from '@/lib/profile'
 import { trpc } from '@/lib/trpc'
@@ -96,7 +97,10 @@ export function YouPanel({
   const insets = useSafeAreaInsets()
   const nav = useNavInsets()
   const layout = useLayout()
-  const level = useQuery(trpc.achievements.mine.queryOptions()).data?.level
+  const level = useQuery({
+    ...trpc.achievements.mine.queryOptions(),
+    enabled: useFan()
+  }).data?.level
   const [tab, setTab] = useState<SettingsTab>(asked ?? 'preferencias')
   // Pedida de novo com outra seção.
   const [seen, setSeen] = useState(asked)
@@ -113,10 +117,23 @@ export function YouPanel({
   const column = Math.min(780, right - (fold ? 32 : 56))
   // Os números do design ao lado de cada item: Seus bares, jogos de hoje,
   // amigos. Comunidades não existem: "em breve".
-  const visits = useQuery(trpc.attendance.visits.queryOptions())
-  const saved = useQuery(trpc.pubs.getFavorites.queryOptions())
-  const mine = useQuery(trpc.attendance.mine.queryOptions())
-  const friends = useQuery(trpc.friends.overview.queryOptions())
+  const fan = useFan()
+  const visits = useQuery({
+    ...trpc.attendance.visits.queryOptions(),
+    enabled: fan
+  })
+  const saved = useQuery({
+    ...trpc.pubs.getFavorites.queryOptions(),
+    enabled: fan
+  })
+  const mine = useQuery({
+    ...trpc.attendance.mine.queryOptions(),
+    enabled: fan
+  })
+  const friends = useQuery({
+    ...trpc.friends.overview.queryOptions(),
+    enabled: fan
+  })
   const today = markedToday(
     (mine.data ?? []).filter((game) => !game.ended),
     Date.now()

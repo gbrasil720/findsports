@@ -54,6 +54,7 @@ import {
   type VisitRow,
   VisitsMap
 } from '@/components/your-bars'
+import { useFan } from '@/lib/account'
 import { authClient } from '@/lib/auth-client'
 import { distanceKm, formatKm, searchCenter } from '@/lib/explore'
 import { useFavorites } from '@/lib/favorites'
@@ -101,8 +102,17 @@ export default function YourBars() {
   const layout = useLayout()
   const nav = useNavInsets()
   useStatusBar('auto')
-  const visits = useQuery(trpc.attendance.visits.queryOptions())
-  const saved = useQuery(trpc.pubs.getFavorites.queryOptions())
+  // Sem conta a aba leva ao "Entrar", mas fica montada: nada da conta é
+  // consultado.
+  const fan = useFan()
+  const visits = useQuery({
+    ...trpc.attendance.visits.queryOptions(),
+    enabled: fan
+  })
+  const saved = useQuery({
+    ...trpc.pubs.getFavorites.queryOptions(),
+    enabled: fan
+  })
   const favorites = useFavorites()
   // "Ver os 3 que você curtiu" (23j) abre direto nos salvos.
   const { aba } = useLocalSearchParams<{ aba?: Tab }>()
@@ -136,7 +146,10 @@ export default function YourBars() {
   const { device } = useExploreState()
   // A aba "Você" mostra esta tela sob o menu quando se vem daqui.
   const shotSource = useShotSource('bars')
-  const city = useQuery(trpc.pubs.getMyCity.queryOptions())
+  const city = useQuery({
+    ...trpc.pubs.getMyCity.queryOptions(),
+    enabled: useFan()
+  })
   const from = searchCenter(device, city.data)
   const mine = yourBars(visits.data ?? [], saved.data ?? [], from, distanceKm)
   const barRows = mine.bars.filter((b) => hit(b.name, b.neighborhood))
