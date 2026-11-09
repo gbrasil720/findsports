@@ -1453,7 +1453,13 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
             <View
               style={[
                 styles.floatSpot,
-                { bottom: tabSpace + 12, right: 12 + navInsets.right }
+                {
+                  // No celular, 104 do pé (`.qbt9`): 20 acima da barra de abas.
+                  // O `insets.bottom` aqui já conta a barra nativa, então vai
+                  // a medida do desenho.
+                  bottom: phone ? 104 : tabSpace + 12,
+                  right: 12 + navInsets.right
+                }
               ]}
             >
               <BarFloat

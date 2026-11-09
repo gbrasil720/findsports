@@ -809,24 +809,25 @@ export function BarFloat({
             : ''}
         </Text>
         {withGame && game ? (
-          <View style={[styles.floatGame, { backgroundColor: palette.bg }]}>
-            <View style={{ alignItems: 'center', minWidth: 62 }}>
+          // `.gm9`: o dia em mono e a hora em Anton.
+          <View style={[styles.floatGame, { backgroundColor: palette.mark }]}>
+            <View style={{ alignItems: 'center', minWidth: 52 }}>
               <Text
                 style={[
-                  styles.mono10,
-                  { color: game.live ? palette.live : palette.muted }
+                  styles.floatDay,
+                  { color: game.live ? palette.live : palette.ink }
                 ]}
               >
                 {game.live ? 'AO VIVO' : 'HOJE'}
               </Text>
-              <Text style={[styles.goingNumber, { color: palette.ink }]}>
+              <Text style={[styles.floatTime, { color: palette.ink }]}>
                 {formatTime(game.startsAt)}
               </Text>
             </View>
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text
                 numberOfLines={1}
-                style={[text(14.5, 'Bold', 1.2), { color: palette.ink }]}
+                style={[text(14, 'Bold', 1.25), { color: palette.ink }]}
               >
                 {game.title}
               </Text>
@@ -852,7 +853,15 @@ export function BarFloat({
           <Pressable
             accessibilityRole="button"
             onPress={onOpen}
-            style={[styles.floatButton, { borderColor: palette.ink }]}
+            // `.b-ghost`: borda da cor do texto a 22%.
+            style={[
+              styles.floatButton,
+              {
+                borderColor: palette.dark
+                  ? 'rgba(241,238,230,.22)'
+                  : 'rgba(18,18,15,.22)'
+              }
+            ]}
           >
             <Text style={[text(14.5, 'Bold', 1.2), { color: palette.ink }]}>
               Ver o bar
@@ -890,14 +899,16 @@ export function sheetLine(
 
 const styles = StyleSheet.create({
   float: {
-    borderRadius: 22,
+    borderRadius: 26,
     overflow: 'hidden',
-    shadowOpacity: 0.28,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
     elevation: 12
   },
-  floatPhoto: { height: 116 },
+  floatPhoto: { height: 118 },
+  floatDay: { fontFamily: MONO, fontSize: 13, marginBottom: -2 },
+  floatTime: { fontFamily: 'Anton', fontSize: 22, marginVertical: -5.3 },
   floatTags: {
     position: 'absolute',
     top: 12,
@@ -928,19 +939,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    padding: 10,
-    borderRadius: 14
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 16
   },
-  floatActions: { flexDirection: 'row', gap: 10, marginTop: 2 },
+  floatActions: { flexDirection: 'row', gap: 8, marginTop: 2 },
+  // `.rw9`: 1fr e 1,3fr, 8 entre eles; `.b-sm` de 40.
   floatButton: {
     flex: 1,
-    height: 46,
-    borderRadius: 23,
+    height: 40,
+    borderRadius: 20,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center'
   },
-  floatGo: { backgroundColor: ACID, borderColor: ACID },
+  floatGo: {
+    flex: 1.3,
+    backgroundColor: ACID,
+    borderColor: ACID,
+    shadowColor: '#7f9a12',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  },
   days: {
     flexDirection: 'row',
     alignSelf: 'flex-start',
