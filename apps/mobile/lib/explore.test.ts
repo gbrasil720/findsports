@@ -1,13 +1,10 @@
 /// <reference types="bun-types" />
 import { expect, test } from 'bun:test'
 import {
-  coverBars,
-  coverKicker,
   distanceKm,
   formatKm,
   formatTime,
   goingSummary,
-  greeting,
   isLive,
   matchPeriod,
   searchCenter,
@@ -44,8 +41,6 @@ test('textos como o design escreve', () => {
   expect(formatTime('2026-10-16T00:30:00Z')).toBe('21:30')
   expect(teamMark('Corinthians')).toBe('COR')
   expect(teamMark('Grêmio')).toBe('GRÊ')
-  expect(greeting(new Date('2026-10-16T00:30:00Z'))).toBe('Boa noite')
-  expect(greeting(new Date('2026-10-16T13:00:00Z'))).toBe('Bom dia')
 })
 
 test('distância de um quarteirão a outro', () => {
@@ -96,48 +91,6 @@ test('quem vai: contagem, amigos pelo primeiro nome e a pilha', () => {
   expect(
     goingSummary({ count: null, initials: [], friends: friends('🦁 Leo Dias') })
   ).toMatchObject({ faces: ['L'], lead: 'Leo vai' })
-})
-
-test('tela de fora do Flip: só bares com jogo, do mais perto, até cinco', () => {
-  const bar = (id: string, km: number, game = true) => ({
-    id,
-    distance_km: km,
-    nextEvent: game ? {} : undefined
-  })
-  const bars = [bar('a', 2), bar('b', 0.8), bar('c', 0.5, false), bar('d', 1)]
-  expect(coverBars(bars).map((b) => b.id)).toEqual(['b', 'd', 'a'])
-  const many = Array.from({ length: 8 }, (_, i) => bar(String(i), 8 - i))
-  expect(coverBars(many).map((b) => b.id)).toEqual(['7', '6', '5', '4', '3'])
-})
-
-test('tela de fora do Flip: o jogo em siglas, ao vivo ou com a hora', () => {
-  const game = {
-    startsAt: '2026-10-15T22:00:00Z',
-    endsAt: null,
-    championship: 'Brasileirão',
-    participantFreeText: null,
-    participants: [
-      { team: { name: 'Corinthians' } },
-      { team: { name: 'Palmeiras' } }
-    ]
-  }
-  const at = (iso: string) => new Date(iso).getTime()
-  expect(coverKicker(game, at('2026-10-15T23:00:00Z'))).toBe(
-    'COR × PAL · AO VIVO'
-  )
-  const futebol = { ...game, sport: { slug: 'futebol' } }
-  expect(coverKicker(futebol, at('2026-10-15T23:10:00Z'))).toBe(
-    'COR × PAL · 2º TEMPO'
-  )
-  expect(coverKicker(game, at('2026-10-15T20:00:00Z'))).toBe(
-    'COR × PAL · 19:00'
-  )
-  expect(
-    coverKicker(
-      { ...game, participants: [], participantFreeText: 'GP de Interlagos' },
-      at('2026-10-15T20:00:00Z')
-    )
-  ).toBe('GP DE INTERLAGOS · 19:00')
 })
 
 test('parte do jogo de futebol pelo relógio', () => {

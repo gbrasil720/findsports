@@ -2,11 +2,6 @@ import {
   isEventLive,
   BRASILIA_TIME_ZONE as TZ
 } from '@findsports_oficial/db/event-window'
-import {
-  gameTitle,
-  matchSides,
-  type TitledGame
-} from '@findsports_oficial/db/game-title'
 
 /*
  * Contas do Explorar ("07" do design) que não dependem de tela: de onde a
@@ -68,20 +63,6 @@ export function distanceKm(a: Coordinates, b: Coordinates) {
   return 2 * 6371 * Math.asin(Math.sqrt(h))
 }
 
-/** "Bom dia", "Boa tarde", "Boa noite" pela hora de Brasília. */
-export function greeting(now = new Date()) {
-  const hour = Number(
-    now.toLocaleString('en-US', {
-      hour: 'numeric',
-      hourCycle: 'h23',
-      timeZone: TZ
-    })
-  )
-  if (hour >= 5 && hour < 12) return 'Bom dia'
-  if (hour >= 12 && hour < 18) return 'Boa tarde'
-  return 'Boa noite'
-}
-
 /**
  * O primeiro nome, como a folha e os avisos chamam um amigo: a primeira
  * palavra com letra ("🦁 Leo" vira "Leo").
@@ -138,19 +119,6 @@ export function goingSummary(going: {
 }
 
 /**
- * A tela de fora do Z Flip 8 (regra 07 da T1): só os bares com jogo, do mais
- * perto para o mais longe, um por página. Cinco bastam para deslizar.
- */
-export function coverBars<
-  T extends { distance_km: number; nextEvent?: unknown }
->(bars: T[]): T[] {
-  return bars
-    .filter((bar) => bar.nextEvent)
-    .sort((a, b) => a.distance_km - b.distance_km)
-    .slice(0, 5)
-}
-
-/**
  * Em que parte do jogo de futebol estamos, pelo relógio desde o início
  * (aproximado: 45 + 2 de acréscimo, 15 de intervalo, 45 + 3). Os outros
  * esportes e o fim da janela ficam "Ao vivo"; antes de começar, `null`.
@@ -166,24 +134,4 @@ export function matchPeriod(
   if (minutes < 62) return 'Intervalo'
   if (minutes < 110) return '2º tempo'
   return 'Ao vivo'
-}
-
-/**
- * O jogo na tela de fora: "COR × PAL · 2º TEMPO" (ou "AO VIVO") e
- * "COR × PAL · 21:30" antes de começar; fora do confronto, o título.
- */
-export function coverKicker(
-  game: TitledGame & {
-    startsAt: string
-    endsAt: string | null
-    sport?: { slug: string }
-  },
-  now: number
-) {
-  const sides = matchSides(game)
-  const what = sides
-    ? sides.map(teamMark).join(' × ')
-    : gameTitle(game).toLocaleUpperCase('pt-BR')
-  const when = matchPeriod(game, now)?.toLocaleUpperCase('pt-BR')
-  return `${what} · ${when ?? formatTime(game.startsAt)}`
 }
