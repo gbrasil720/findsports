@@ -3,7 +3,8 @@ import { BAR_REF_LENGTH, barPath } from '@findsports_oficial/db/bar-slug'
 import {
   brasiliaDay,
   brasiliaDayStart,
-  DEFAULT_EVENT_DURATION_INTERVAL
+  DEFAULT_EVENT_DURATION_INTERVAL,
+  DEFAULT_EVENT_DURATION_MS
 } from '@findsports_oficial/db/event-window'
 import { bar } from '@findsports_oficial/db/schema/platform'
 
@@ -13,7 +14,6 @@ import { readGoing } from './attendance'
 import { resolvePublicGallery } from './bar-gallery'
 import { resolvePublicBarMenu } from './bar-menu'
 import { getCurrentPlan } from './current-plan'
-import { EVENT_LIVE_WINDOW_MS } from './event-profile-window'
 import { resolveEventScreen } from './event-screen'
 import { byMatchOrder } from './game-participants'
 import { effectiveHouseOffer } from './house-offer'
@@ -95,7 +95,7 @@ function titleOf(game: {
 }
 
 async function readLiveBar(barId: string, now: Date) {
-  const liveCutoff = new Date(now.getTime() - EVENT_LIVE_WINDOW_MS)
+  const liveCutoff = new Date(now.getTime() - DEFAULT_EVENT_DURATION_MS)
   const row = await db.query.bar.findFirst({
     where: eq(bar.id, barId),
     columns: {

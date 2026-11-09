@@ -7,7 +7,7 @@ import {
   type OpeningHours,
   openingStatus
 } from './opening-hours'
-import { createSharedCache } from './shared-cache'
+import { createTtlCache } from './ttl-cache'
 
 /*
  * "Sem jogo marcado" do Explorar do web (dono, 07/11/2026): os bares no ar
@@ -40,8 +40,7 @@ type Row = {
   distance_km: number
 }
 
-const cache = createSharedCache<Row[]>({
-  prefix: 'pubs.barsWithoutGame',
+const cache = createTtlCache<Row[]>({
   ttlMs: 60_000,
   maxEntries: 200
 })
