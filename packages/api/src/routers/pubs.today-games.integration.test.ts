@@ -120,6 +120,8 @@ integrationTest(
       ])
       for (const game of games) {
         expect(game.startsAt).toBe(now.toISOString())
+        // Começou agora e não tem fim: ao vivo, pelo relógio do jogo.
+        expect(game.live).toBe(true)
       }
       // Quantos bares no ar passam cada jogo: o do bar fora do ar não conta.
       expect(

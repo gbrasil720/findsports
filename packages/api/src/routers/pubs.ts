@@ -19,7 +19,8 @@ import {
   brasiliaDaySql,
   brasiliaTodaySql,
   eventNotEndedSql,
-  onBrasiliaDaysSql
+  onBrasiliaDaysSql,
+  utcNowSql
 } from '@findsports_oficial/db/event-window-sql'
 import { user } from '@findsports_oficial/db/schema/auth'
 import {
@@ -366,16 +367,19 @@ export const pubsRouter = router({
    * Os jogos de hoje nos bares no ar, para a splash do app (`apps/mobile`).
    * Aberta: aparece antes do login. Sai só o título e a hora do jogo, sem
    * identificar bar nenhum, e o mesmo jogo em vários bares conta uma vez,
-   * com quantos bares o passam (a marca das telas de entrar do tablet).
-   * "Hoje" é o dia de Brasília; `starts_at` é `timestamp` sem fuso, em UTC.
+   * com quantos bares o passam (a marca das telas de entrar do tablet) e se
+   * está ao vivo em algum deles (o "● N ao vivo" da splash), pelo relógio do
+   * jogo. "Hoje" é o dia de Brasília; `starts_at` é `timestamp` sem fuso, em UTC.
    */
   todayGames: publicProcedure.query(async () => {
     const games = await db.execute<{
       title: string
       starts_at: string
       bars: number
+      live: boolean
     }>(sql`
-      SELECT g.title, g.starts_at, count(DISTINCT g.bar_id)::int AS bars
+      SELECT g.title, g.starts_at, count(DISTINCT g.bar_id)::int AS bars,
+        bool_or(g.live) AS live
       FROM (
         SELECT
           ${gameTitle({
@@ -384,7 +388,8 @@ export const pubsRouter = router({
             championship: sql`e.championship`
           })} AS title,
           e.starts_at,
-          e.bar_id
+          e.bar_id,
+          e.starts_at <= ${utcNowSql()} AND ${eventNotEndedSql('e')} AS live
         FROM event e
         JOIN bar b ON b.id = e.bar_id
         WHERE b.is_active
@@ -398,7 +403,8 @@ export const pubsRouter = router({
     return games.rows.map((game) => ({
       title: game.title,
       startsAt: utcIso(game.starts_at),
-      bars: Number(game.bars)
+      bars: Number(game.bars),
+      live: Boolean(game.live)
     }))
   }),
 
