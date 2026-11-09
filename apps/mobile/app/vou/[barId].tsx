@@ -6,38 +6,42 @@ import { useEffect, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Card, OfferCard } from '@/components/card'
 import { dayLabel } from '@/components/explore'
-import { Glass } from '@/components/glass'
 import { ErrorText, haptic, SWAP } from '@/components/motion'
+import { AcidButton, ObTitle } from '@/components/ob-frame'
 import { usePalette } from '@/components/theme'
 import {
   ACID,
   BackButton,
   ErrorState,
   errorMessage,
+  Icon,
   INK,
   LIVE,
-  PAPER,
-  PillButton,
   phaseBusy,
   phaseLabel,
   Text,
   TextLink,
   text
 } from '@/components/ui'
-import { formatTime, goingSummary } from '@/lib/explore'
+import { authClient } from '@/lib/auth-client'
+import { formatTime, goingSummary, isLive } from '@/lib/explore'
 import { trpc } from '@/lib/trpc'
 
 /*
- * "Vou assistir aqui" (3d do design): a folha que confirma o jogo. No bar
- * Elite o servidor já devolve o código do balcão e a folha dá lugar a ele
- * (3f); nos outros, a presença fica marcada e a folha fecha. Não há pedido
- * nem resposta do bar (decisão do dono, 16/10/2026).
+ * "Vou assistir aqui" (rodada 3 do redesign, tela 1): folha sólida do
+ * sistema por cima da página do bar. Os jogos viram linhas de placar (a hora
+ * em mono, o jogo, telão ou som), o escolhido em tinta; quem vai; os amigos
+ * para chamar (tela 5); a oferta deste jogo no Elite, antes do botão, que é o
+ * motivo do código; sem código, o convite ao check-in. O botão diz o que
+ * acontece. No Elite o código abre por cima (`/codigo`, fade); nos outros a
+ * folha fecha. Não há pedido nem resposta do bar (dono, 16/10/2026).
  */
 
 // ponytail: seis jogos; a página do bar lista o resto.
 const MAX_GAMES = 6
+// Os amigos da fileira (rola de lado depois do quinto).
+const MAX_FRIENDS = 8
 
 export default function GoingSheet() {
   const { barId, eventId, runId } = useLocalSearchParams<{
@@ -50,11 +54,16 @@ export default function GoingSheet() {
   const insets = useSafeAreaInsets()
   const palette = usePalette()
   const queryClient = useQueryClient()
+  const fan = authClient.useSession().data?.user.role === 'fan'
   // Sem bar (link quebrado, amigo sem jogo), a folha fecha em vez de pedir
   // ao servidor um id vazio (erro do zod).
   const bar = useQuery({
     ...trpc.pubs.getById.queryOptions({ id: barId ?? '' }),
     enabled: !!barId
+  })
+  const friends = useQuery({
+    ...trpc.friends.overview.queryOptions(),
+    enabled: fan
   })
   // Aberta direto (link, recarga), não há tela por baixo para voltar: o
   // Explorar entra no lugar ("GO_BACK was not handled").
@@ -65,11 +74,13 @@ export default function GoingSheet() {
     if (!barId) close()
   }, [barId])
   const data = bar.data
-  // Só os jogos em que o botão cabe: o servidor manda `attendance` neles.
+  // Só os jogos em que o botão cabe: o servidor manda `attendance` neles (a
+  // lista desligada pelo bar, WEB-437, não vem).
   const games = (data?.events ?? [])
     .filter((game) => game.attendance)
     .slice(0, MAX_GAMES)
   const [picked, setPicked] = useState(eventId)
+  const [calling, setCalling] = useState<string[]>([])
   const game = games.find((item) => item.id === picked) ?? games[0]
   const mine = game?.attendance
   const going = game?.going ? goingSummary(game.going) : null
@@ -86,6 +97,9 @@ export default function GoingSheet() {
             queryKey: trpc.attendance.mine.queryKey()
           }),
           queryClient.invalidateQueries({
+            queryKey: trpc.attendance.sentCalls.queryKey({ eventId: id })
+          }),
+          queryClient.invalidateQueries({
             queryKey: trpc.recommendations.today.queryKey()
           })
         ])
@@ -100,7 +114,13 @@ export default function GoingSheet() {
   // O bar não abriu: a folha diz o que houve em vez de ficar em branco.
   if (!data && bar.isError) {
     return (
-      <View style={[styles.sheet, styles.body, styles.head]}>
+      <View
+        style={[
+          styles.body,
+          styles.head,
+          { flex: 1, backgroundColor: palette.bg }
+        ]}
+      >
         <ErrorState
           style={{ flex: 1, gap: 16 }}
           title="Não deu para abrir os jogos deste bar."
@@ -113,8 +133,22 @@ export default function GoingSheet() {
     )
   }
   if (!data || !game || !mine) {
-    return <View style={[styles.sheet]} />
+    return <View style={{ flex: 1, backgroundColor: palette.bg }} />
   }
+
+  // Os amigos da fileira: quem já vai aparece marcado "vai" e não se chama;
+  // o jogo começado não chama ninguém (a regra do chamado).
+  const goingIds = new Set(game.going?.friends.map((f) => f.id) ?? [])
+  const started = new Date(game.startsAt).getTime() <= now
+  const all = friends.data?.friends ?? []
+  const callable =
+    !mine.attending && !started
+      ? [
+          ...all.filter((f) => goingIds.has(f.id)),
+          ...all.filter((f) => !goingIds.has(f.id))
+        ].slice(0, MAX_FRIENDS)
+      : []
+  const chosen = calling.filter((id) => !goingIds.has(id))
 
   const confirm = () =>
     mine.attending && mine.code
@@ -122,10 +156,11 @@ export default function GoingSheet() {
       : set.mutate({
           eventId: game.id,
           attending: true,
-          recommendationRunId: runId
+          recommendationRunId: runId,
+          callFriendIds: chosen.length ? chosen : undefined
         })
-  // O botão conta a ação (WEB-460): "Confirmando…", "Esperando a rede…",
-  // "Tentando de novo…" (a presença é segura de repetir) e, se as
+  // O botão conta a ação (WEB-460): "Gerando código…", "Esperando a
+  // rede…", "Tentando de novo…" (a presença é segura de repetir) e, se as
   // tentativas acabarem, "Tentar de novo" com o motivo acima.
   const phase = actionPhase([set])
   const label = phaseLabel(phase, {
@@ -133,9 +168,11 @@ export default function GoingSheet() {
       ? mine.code
         ? 'Ver código'
         : 'Você vai'
-      : data.issuesCode
-        ? 'Confirmar e gerar código'
-        : 'Confirmar',
+      : chosen.length
+        ? `Confirmar e chamar ${chosen.length}`
+        : data.issuesCode
+          ? 'Confirmar e gerar código'
+          : 'Confirmar presença',
     sending: data.issuesCode ? 'Gerando código…' : 'Confirmando…'
   })
 
@@ -146,91 +183,131 @@ export default function GoingSheet() {
   return (
     <>
       <ScrollView
-        style={{
-          flex: 1,
-          // O papel do design, um pouco translúcido: o vidro do iOS 26 fica
-          // na borda da folha e o que está atrás não atrapalha a leitura.
-          backgroundColor: palette.dark
-            ? 'rgba(18,18,15,.86)'
-            : 'rgba(241,238,230,.86)'
-        }}
-        contentContainerStyle={[styles.body, { paddingBottom: 120 }]}
+        style={{ flex: 1, backgroundColor: palette.bg }}
+        contentContainerStyle={[
+          styles.body,
+          { paddingBottom: insets.bottom + 96 }
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.head}>
           <View style={{ flex: 1 }}>
-            <Text
-              accessibilityRole="header"
-              style={[styles.title, { color: palette.ink }]}
-            >
-              Vou assistir aqui
-            </Text>
-            <Text style={[text(14), { color: palette.muted }]}>
+            <ObTitle plain="Vou assistir" hot="aqui" size={36} breakLine />
+            <Text style={[text(14), { color: palette.muted, marginTop: 8 }]}>
               {[data.name, data.neighborhood].filter(Boolean).join(' · ')}
             </Text>
           </View>
-          <BackButton icon="close" onPress={close} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Fechar"
+            hitSlop={8}
+            onPress={close}
+            style={[styles.close, { backgroundColor: palette.mark }]}
+          >
+            <Icon name="close" size={20} color={palette.ink} />
+          </Pressable>
         </View>
-        <Text
+
+        <View
+          accessibilityRole="radiogroup"
           style={[
-            text(13, 'SemiBold'),
-            { color: palette.muted, marginBottom: -6 }
+            styles.list,
+            { backgroundColor: palette.card, shadowColor: palette.drop }
           ]}
         >
-          Jogo
-        </Text>
-        <View accessibilityRole="radiogroup" style={styles.games}>
-          {games.map((item) => (
-            <GameOption
-              key={item.id}
-              selected={item.id === game.id}
-              title={gameTitle(item)}
-              detail={`${dayLabel(item.startsAt, now)} · ${item.championship}${item.attendance?.attending ? ' · você vai' : ''}`}
-              time={formatTime(item.startsAt)}
-              onPress={() => {
-                if (item.id === game.id) return
-                haptic.select()
-                set.reset()
-                setPicked(item.id)
-              }}
-            />
-          ))}
+          {games.map((item) => {
+            const live = isLive(item, now)
+            return (
+              <GameRow
+                key={item.id}
+                selected={item.id === game.id}
+                live={live}
+                time={formatTime(item.startsAt)}
+                day={live ? 'ao vivo' : shortDay(item.startsAt, now)}
+                title={gameTitle(item)}
+                detail={
+                  item.attendance?.attending
+                    ? `${item.championship} · você vai`
+                    : item.championship
+                }
+                tag={item.onBigScreen ? 'Telão' : item.withSound ? 'Som' : null}
+                onPress={() => {
+                  if (item.id === game.id) return
+                  haptic.select()
+                  set.reset()
+                  setPicked(item.id)
+                }}
+              />
+            )
+          })}
         </View>
 
         {going ? (
-          <Card soft>
-            <View style={styles.going}>
-              <Faces faces={going.faces} more={going.more} />
-              <Text
-                style={[
-                  text(13.5, 'Regular', 1.35),
-                  { color: palette.ink, flex: 1 }
-                ]}
-              >
-                <Text style={{ fontFamily: 'Archivo-Bold' }}>{going.lead}</Text>
-                {going.tail}
+          <View style={styles.who}>
+            <Faces faces={going.faces} more={going.more} />
+            <Text
+              style={[
+                text(14, 'Regular', 1.35),
+                { color: palette.muted, flex: 1 }
+              ]}
+            >
+              <Text style={{ fontFamily: 'Archivo-Bold', color: palette.ink }}>
+                {going.lead}
               </Text>
-            </View>
-          </Card>
+              {going.tail}
+            </Text>
+          </View>
         ) : null}
 
-        {/* A oferta deste jogo (WEB-422): a dele, a padrão do bar ou
-            nenhuma. Troca com o jogo escolhido: texto novo entra de novo. */}
-        {game.houseOffer ? (
-          <Animated.View key={game.houseOffer} entering={SWAP}>
-            <OfferCard
-              offer={game.houseOffer}
-              note="Vale com o seu código."
-              compact
-            />
-          </Animated.View>
+        {callable.length ? (
+          <View style={{ gap: 8 }}>
+            <Text style={[styles.label, { color: palette.muted }]}>
+              CHAMAR PARA O JOGO
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 12 }}
+            >
+              {callable.map((friend) => (
+                <FriendPick
+                  key={friend.id}
+                  name={friend.name}
+                  going={goingIds.has(friend.id)}
+                  on={calling.includes(friend.id)}
+                  onPress={() => {
+                    haptic.select()
+                    setCalling((list) =>
+                      list.includes(friend.id)
+                        ? list.filter((id) => id !== friend.id)
+                        : [...list, friend.id]
+                    )
+                  }}
+                />
+              ))}
+            </ScrollView>
+          </View>
         ) : null}
 
-        <Text style={[text(12.5, 'Regular', 1.45), { color: palette.muted }]}>
-          {data.issuesCode
-            ? 'Não precisa de confirmação do bar. O código sai na hora e fica em Meus jogos.'
-            : 'Não precisa de confirmação do bar. O jogo fica em Meus jogos.'}
-        </Text>
+        {/* No Elite, a oferta deste jogo (WEB-422) antes do botão: é o
+            motivo do código. Sem código, o convite ao check-in. */}
+        {data.issuesCode ? (
+          game.houseOffer ? (
+            <Animated.View key={game.houseOffer} entering={SWAP}>
+              <Note
+                icon="ticket"
+                label="COM O CÓDIGO, NESTE JOGO"
+                body={game.houseOffer}
+              />
+            </Animated.View>
+          ) : null
+        ) : (
+          <Note
+            icon="pin"
+            label="CHEGANDO LÁ"
+            body="Faça o check-in em “Estou aqui” e sua avaliação conta na nota do bar."
+          />
+        )}
 
         <ErrorText style={[text(13.5, 'SemiBold'), { color: LIVE }]}>
           {set.error
@@ -251,132 +328,133 @@ export default function GoingSheet() {
         ) : null}
       </ScrollView>
 
-      {/* A cápsula de vidro do design: mais branca que o papel e com
-          sombra, senão some sobre ele. */}
       <View
-        style={[styles.dockShadow, { bottom: Math.max(insets.bottom - 6, 14) }]}
+        style={[
+          styles.dock,
+          {
+            backgroundColor: palette.bg,
+            paddingBottom: Math.max(insets.bottom - 6, 16)
+          }
+        ]}
       >
-        <Glass
-          tone={palette.dark ? 'dark' : 'light'}
-          tint={palette.dark ? undefined : 'rgba(255,255,255,.62)'}
-          style={styles.dock}
-        >
-          <View style={{ flex: 1 }}>
-            <PillButton
-              label={label}
-              height={52}
-              // "Tentar de novo" repete o que falhou (marcar ou desmarcar).
-              onPress={() =>
-                phase === 'failed' && set.variables
-                  ? set.mutate(set.variables)
-                  : confirm()
-              }
-              busy={phaseBusy(phase)}
-              disabled={phase === 'idle' && mine.attending && !mine.code}
-            />
-          </View>
-        </Glass>
+        <AcidButton
+          label={label}
+          // "Tentar de novo" repete o que falhou (marcar ou desmarcar).
+          onPress={() =>
+            phase === 'failed' && set.variables
+              ? set.mutate(set.variables)
+              : confirm()
+          }
+          busy={phaseBusy(phase)}
+          disabled={phase === 'idle' && mine.attending && !mine.code}
+        />
       </View>
     </>
   )
 }
 
-/** Uma linha do "Jogo": rádio, o jogo e a hora, como no design. */
-function GameOption({
+/** "hoje", "qua 11": o dia embaixo da hora, no fuso de Brasília. */
+function shortDay(startsAt: string, now: number) {
+  if (dayLabel(startsAt, now) === 'Hoje') return 'hoje'
+  const part = (options: Intl.DateTimeFormatOptions) =>
+    new Date(startsAt).toLocaleDateString('pt-BR', {
+      ...options,
+      timeZone: 'America/Sao_Paulo'
+    })
+  return `${part({ weekday: 'short' }).replace('.', '')} ${part({ day: 'numeric' })}`
+}
+
+/** Uma linha de placar (`.gr`): hora e dia, o jogo, telão ou som. */
+function GameRow({
   selected,
+  live,
+  time,
+  day,
   title,
   detail,
-  time,
+  tag,
   onPress
 }: {
   selected: boolean
+  live: boolean
+  time: string
+  day: string
   title: string
   detail: string
-  time: string
+  tag: string | null
   onPress: () => void
 }) {
   const palette = usePalette()
+  const fg = selected ? palette.bg : palette.ink
+  const soft = selected
+    ? { color: palette.bg, opacity: 0.7 }
+    : { color: palette.muted }
   return (
     <Pressable
       accessibilityRole="radio"
       accessibilityState={{ selected }}
-      accessibilityLabel={`${title}, ${detail}, ${time}`}
+      accessibilityLabel={`${title}, ${day} ${time}, ${detail}`}
       onPress={onPress}
+      // Dezenas de toques: só o estado, sem deslizar.
+      style={[styles.row, selected && { backgroundColor: palette.ink }]}
     >
-      <View
-        style={[
-          styles.optionShadow,
-          { backgroundColor: selected ? ACID : palette.mark }
-        ]}
-      />
-      <View
-        style={[
-          styles.option,
-          {
-            backgroundColor: selected
-              ? palette.dark
-                ? '#22221d'
-                : '#ffffff'
-              : palette.card,
-            borderColor: selected ? palette.ink : palette.ring,
-            borderWidth: selected ? 1.5 : 1
-          }
-        ]}
-      >
-        <View
+      <View style={{ width: 62 }}>
+        <Text
           style={[
-            styles.radio,
-            selected
-              ? { backgroundColor: palette.ink, borderColor: palette.ink }
-              : {
-                  borderColor: palette.dark
-                    ? 'rgba(241,238,230,.3)'
-                    : 'rgba(18,18,15,.3)'
-                }
+            styles.time,
+            { color: live ? (selected ? '#f3421d' : palette.live) : fg }
           ]}
         >
-          {selected ? (
-            <Animated.View entering={SWAP} style={styles.radioDot} />
-          ) : null}
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text
-            style={[text(15, 'Bold', 1.3), { color: palette.ink }]}
-            numberOfLines={1}
-          >
-            {title}
-          </Text>
-          <Text
-            style={[text(12.5, 'Regular', 1.4), { color: palette.muted }]}
-            numberOfLines={1}
-          >
-            {detail}
-          </Text>
-        </View>
-        <Text style={[styles.time, { color: palette.ink }]}>{time}</Text>
+          {time}
+        </Text>
+        <Text style={[styles.day, soft]}>{day.toLocaleUpperCase('pt-BR')}</Text>
       </View>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text
+          numberOfLines={1}
+          style={[text(15.5, 'Bold', 1.2), { color: fg }]}
+        >
+          {title}
+        </Text>
+        <Text numberOfLines={1} style={[text(12.5, 'Regular', 1.3), soft]}>
+          {detail}
+        </Text>
+      </View>
+      {tag ? (
+        <View
+          style={[
+            styles.tag,
+            {
+              backgroundColor: selected ? 'rgba(127,127,120,.3)' : palette.mark
+            }
+          ]}
+        >
+          <Text style={[styles.tagText, { color: fg }]}>
+            {tag.toLocaleUpperCase('pt-BR')}
+          </Text>
+        </View>
+      ) : null}
     </Pressable>
   )
 }
 
-/** "M R +32": as letras (amigos primeiro) e o resto num círculo de tinta. */
+/** "M R +32" (`.av`): as letras (amigos primeiro) e o resto num círculo. */
 function Faces({ faces, more }: { faces: string[]; more: number }) {
   const palette = usePalette()
   const shown = [
     ...faces.map((label, index) => ({
       key: `face${index}`,
       label,
-      bg: index ? LIVE : ACID,
-      fg: INK
+      bg: index ? palette.ink : ACID,
+      fg: index ? palette.bg : INK
     })),
-    // No escuro, tinta e papel trocam: o "+32" de tinta sumiria no cartão.
     ...(more > 0
       ? [
           {
             key: 'more',
             label: `+${more.toLocaleString('pt-BR')}`,
-            bg: palette.dark ? PAPER : INK,
-            fg: palette.dark ? INK : PAPER
+            bg: palette.ink,
+            fg: palette.bg
           }
         ]
       : [])
@@ -389,14 +467,17 @@ function Faces({ faces, more }: { faces: string[]; more: number }) {
           style={[
             styles.face,
             {
-              marginLeft: index ? -9 : 0,
+              marginLeft: index ? -6 : 0,
               backgroundColor: bg,
-              borderColor: palette.card
+              borderColor: palette.bg
             }
           ]}
         >
           <Text
-            style={[text(12, 'Bold', 1.2), { color: fg }]}
+            style={[
+              text(label.length > 2 ? 10 : 12, 'Bold', 1.2),
+              { color: fg }
+            ]}
             maxFontSizeMultiplier={1}
           >
             {label}
@@ -407,89 +488,192 @@ function Faces({ faces, more }: { faces: string[]; more: number }) {
   )
 }
 
+/** Um amigo na fileira "Chamar para o jogo" (`.fr`): anel acid e marca. */
+function FriendPick({
+  name,
+  going,
+  on,
+  onPress
+}: {
+  name: string
+  going: boolean
+  on: boolean
+  onPress: () => void
+}) {
+  const palette = usePalette()
+  const first = name.trim().split(/\s+/)[0] ?? name
+  return (
+    <Pressable
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: on, disabled: going }}
+      accessibilityLabel={going ? `${first}, já vai` : `Chamar ${first}`}
+      disabled={going}
+      onPress={onPress}
+      style={styles.friend}
+    >
+      <View
+        style={[
+          styles.ring,
+          { borderColor: on ? ACID : 'transparent' },
+          going && { opacity: 0.55 }
+        ]}
+      >
+        <View
+          style={[styles.avatar, { backgroundColor: on ? ACID : palette.mark }]}
+        >
+          <Text
+            style={[text(18, 'Bold', 1.2), { color: on ? INK : palette.ink }]}
+          >
+            {(Array.from(first)[0] ?? '').toLocaleUpperCase('pt-BR')}
+          </Text>
+        </View>
+        {on ? (
+          <View style={[styles.check, { borderColor: palette.bg }]}>
+            <Icon name="check" size={12} color={INK} />
+          </View>
+        ) : null}
+      </View>
+      <Text
+        numberOfLines={1}
+        style={[text(12, 'SemiBold', 1.2), { color: palette.ink }]}
+      >
+        {first}
+      </Text>
+      {going ? (
+        <Text style={[styles.goes, { color: palette.muted }]}>VAI</Text>
+      ) : null}
+    </Pressable>
+  )
+}
+
+/** A faixa de baixo (`.offr`): a oferta do código ou o convite ao check-in. */
+function Note({
+  icon,
+  label,
+  body
+}: {
+  icon: 'ticket' | 'pin'
+  label: string
+  body: string
+}) {
+  const palette = usePalette()
+  return (
+    <View style={[styles.note, { backgroundColor: palette.mark }]}>
+      <Icon name={icon} size={22} color={palette.ink} />
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.label, { color: palette.muted, marginBottom: 4 }]}>
+          {label}
+        </Text>
+        <Text style={[text(14, 'Regular', 1.35), { color: palette.ink }]}>
+          {body}
+        </Text>
+      </View>
+    </View>
+  )
+}
+
 const styles = StyleSheet.create({
-  sheet: { flex: 1 },
-  body: { paddingHorizontal: 18, gap: 14 },
-  // O topo do título fica a 31 pt da borda da folha, como no design.
+  // `.fs`: 18 dos lados, 12 entre as peças.
+  body: { paddingHorizontal: 18, gap: 12 },
   head: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
-    paddingTop: 31
+    paddingTop: 26
   },
-  // Anton 34 do design, sem `lineHeight` (corta no iOS): margem negativa.
-  title: {
-    fontFamily: 'Anton',
-    fontSize: 34,
-    letterSpacing: -0.68,
-    textTransform: 'uppercase',
-    marginTop: -8,
-    marginBottom: -6
+  close: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
-  games: { gap: 14 },
-  optionShadow: {
-    ...StyleSheet.absoluteFill,
-    top: 4,
-    left: 4,
-    right: -4,
-    bottom: -4,
-    borderRadius: 6
+  // `.gl`: raio 22, 4 de respiro e a sombra dura de 3.
+  list: {
+    borderRadius: 22,
+    padding: 4,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
   },
-  option: {
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 11,
+    paddingHorizontal: 12,
+    borderRadius: 18
+  },
+  // A Geist Mono tem 1,3em de altura natural: margem negativa no lugar do 1em.
+  time: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 20,
+    fontVariant: ['tabular-nums'],
+    marginVertical: -3
+  },
+  day: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 10,
+    letterSpacing: 0.6,
+    marginTop: 4
+  },
+  tag: { paddingVertical: 5, paddingHorizontal: 7, borderRadius: 6 },
+  tagText: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 10.5,
+    letterSpacing: 0.5
+  },
+  who: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  face: {
+    minWidth: 28,
+    height: 28,
+    paddingHorizontal: 2,
+    borderRadius: 14,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  label: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 10.5,
+    letterSpacing: 0.84
+  },
+  friend: { width: 56, alignItems: 'center', gap: 5 },
+  ring: { padding: 3, borderRadius: 31, borderWidth: 2.5 },
+  avatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  check: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    backgroundColor: ACID,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  goes: { fontFamily: 'GeistMono-SemiBold', fontSize: 10, letterSpacing: 0.4 },
+  note: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     paddingVertical: 12,
     paddingHorizontal: 14,
-    borderRadius: 6
-  },
-  radio: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  radioDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: ACID },
-  time: {
-    fontFamily: 'Anton',
-    fontSize: 22,
-    marginVertical: -5.5,
-    fontVariant: ['tabular-nums']
-  },
-  going: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 11,
-    paddingHorizontal: 12
-  },
-  // "+1.282" cresce para o lado em vez de cortar.
-  face: {
-    minWidth: 32,
-    paddingHorizontal: 3,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 2.5,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  dockShadow: {
-    position: 'absolute',
-    left: 14,
-    right: 14,
-    borderRadius: 35,
-    backgroundColor: 'rgba(255,255,255,.01)',
-    shadowColor: INK,
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-    shadowOffset: { width: 0, height: 12 }
+    borderRadius: 18
   },
   dock: {
-    borderRadius: 35,
-    padding: 9,
-    flexDirection: 'row',
-    overflow: 'hidden'
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 18,
+    paddingTop: 10
   }
 })

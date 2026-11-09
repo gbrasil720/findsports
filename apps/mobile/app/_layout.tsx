@@ -137,21 +137,23 @@ export default function Layout() {
                     // meio da tela: lá ela é a folha de página, alta.
                     phone || Platform.OS !== 'ios'
                       ? {
+                          // Folha sólida do sistema (rodada 3): paradas
+                          // [.75, 1], sem o vidro.
                           presentation: 'formSheet',
-                          sheetAllowedDetents: [0.88],
-                          sheetGrabberVisible: true,
-                          contentStyle: { backgroundColor: 'transparent' }
+                          sheetAllowedDetents: [0.75, 1],
+                          sheetGrabberVisible: true
                         }
-                      : {
-                          presentation: 'pageSheet',
-                          contentStyle: { backgroundColor: 'transparent' }
-                        }
+                      : { presentation: 'pageSheet' }
                   }
                 />
                 {/* O código no balcão cobre tudo, no escuro (3f). */}
                 <Stack.Screen
                   name="codigo/[eventId]"
-                  options={{ presentation: 'fullScreenModal' }}
+                  // O ingresso é outro lugar, de tela cheia: abre por fade.
+                  options={{
+                    presentation: 'fullScreenModal',
+                    animation: 'fade'
+                  }}
                 />
                 <Stack.Screen
                   name="pos-jogo/[eventId]"
