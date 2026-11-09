@@ -251,8 +251,10 @@ export default function Teams() {
       (team) => team.kind !== 'race' && !before.some((b) => b.id === team.id)
     )
   ]
+  // Na busca entra tudo do catálogo, GP também ("las vegas"); sem busca, os
+  // GPs ficam nos blocos de baixo.
   const pool = searching
-    ? (results.data ?? []).filter((team) => team.kind !== 'race')
+    ? (results.data ?? [])
     : all.filter((team) => team.kind !== 'race')
   const hints = useQuery(
     trpc.pubs.onboardingHints.queryOptions({

@@ -1350,7 +1350,9 @@ export const pubsRouter = router({
    * apelido, sem acento. Quem começa com o termo vem antes; depois, o mais
    * conhecido.
    */
-  searchTeams: protectedProcedure
+  // Aberta como `getTeamsBySport`: o catálogo é público e o onboarding do
+  // app roda antes de a sessão existir (a busca voltava UNAUTHORIZED).
+  searchTeams: publicProcedure
     .input(
       z.object({
         sportIds: z.array(z.string().uuid()).min(1).max(20),
