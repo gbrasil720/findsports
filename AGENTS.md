@@ -731,14 +731,15 @@ invente layout que o projeto não tem.
   versão à mão: `bunx expo install --check` diz o que o SDK aceita.
 - `EXPO_PUBLIC_*` vai embutida no bundle: nunca é lugar de segredo.
 - Tokens da Onside em `apps/mobile/global.css` (`bg-ink`, `text-paper`, `bg-acid`...).
-- **Splash:** `apps/mobile/components/splash.tsx`, a tela "02 Splash" do design (agenda do dia
-  em faixas atrás do "ON / SIDE"), clara ou escura pelo tema do sistema. A splash nativa
-  (`app.json`) é só a cor de fundo e fica até as fontes carregarem (`app/_layout.tsx`). As
-  letras grandes são vetor (`splash-letters.ts`), não texto.
-- **Agenda da splash:** os jogos de hoje vêm de `pubs.todayGames` (pública: bares no ar, dia de
-  Brasília, o mesmo jogo em vários bares conta uma vez). A abertura espera a resposta por até
-  600 ms; sem jogo hoje, ou sem resposta, usa a agenda de exemplo do design e **esconde a
-  contagem** "N jogos hoje".
+- **Splash:** `apps/mobile/components/splash.tsx`, a splash B do redesign ("marca primeiro"):
+  a torcida em pontos de LED atrás da marca, com quantos jogos há hoje e quantos ao vivo.
+  A marca é a mesma imagem da splash nativa (`app.json`, tinta nos dois temas), no mesmo
+  centro, e não se mexe; o telão acende em 320 ms e 18% dos pontos piscam devagar. Telão,
+  pisca e marca são imagens geradas por `bun apps/mobile/scripts/splash/generate.ts` (grade
+  `hero` da landing, `apps/web/public/landing/v3/led.json`).
+- **Jogos de hoje da splash:** `pubs.todayGames` (pública: bares no ar, dia de Brasília, o
+  mesmo jogo em vários bares conta uma vez; `live` pelo relógio do jogo). A abertura espera
+  a resposta por até 600 ms; sem jogo hoje, ou sem resposta, diz "O jogo é aqui".
 - **Apresentação:** `app/intro.tsx` (+ `components/intro-art.tsx`), a seção "03 Apresentação"
   do design. Quem abre sem sessão cai nela (`app/index.tsx`). O mapa da primeira tela (4b) é o do Explorar de hoje, parado: o
   `MapView` nativo, as gotas da Rodada 21 (`MapDrop`), o raio tracejado e o seu ponto
