@@ -8,6 +8,7 @@ import * as SplashScreen from 'expo-splash-screen'
 import { useCallback, useEffect, useState } from 'react'
 import { Platform } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { ActionDone } from '@/components/action-done'
 import { DevTab } from '@/components/dev-tab'
 import { ExploreStateProvider } from '@/components/explore-state'
 import {
@@ -112,6 +113,20 @@ export default function Layout() {
                 {/* "O jogo de hoje" troca para o Explorar sem volta: é troca,
                 não avanço, então fade em vez de deslizar (rodada 1). */}
                 <Stack.Screen name="hoje" options={{ animation: 'fade' }} />
+                {/* A folha de entrar (rodada 2, tela 1): por cima de onde a
+                pessoa estava, que fica visível e apagada atrás. */}
+                <Stack.Screen
+                  name="gostos"
+                  options={{ presentation: 'modal' }}
+                />
+                <Stack.Screen
+                  name="entrar"
+                  options={{
+                    presentation: 'formSheet',
+                    sheetAllowedDetents: [0.78, 1],
+                    sheetGrabberVisible: true
+                  }}
+                />
                 <Stack.Screen name="(fan)" options={{ animation: 'fade' }} />
                 {/* "Vou assistir aqui" (3d): folha nativa do iOS, quase alta. Fundo
                 transparente: é o que deixa o iOS 26 desenhar o vidro dela. */}
@@ -251,6 +266,8 @@ export default function Layout() {
           cheia nativa, abre por cima dela. */}
           <MaintenanceGate />
           <OfflineBanner />
+          {/* O que a folha de entrar fez (rodada 2, tela 3), sobre qualquer tela. */}
+          <ActionDone />
           <DevTab />
           {splashDone ? null : (
             <Splash today={today ?? undefined} onDone={endSplash} />

@@ -156,14 +156,19 @@ export function AttendDock({
   game,
   now,
   attending,
+  code,
   bottom,
-  onPress
+  onPress,
+  onCode
 }: {
   game: CardGame
   now: number
   attending: boolean
+  /** O código do balcão (Elite): marcado, o botão vira "Ver código". */
+  code: string | null
   bottom: number
   onPress: () => void
+  onCode: () => void
 }) {
   const palette = usePalette()
   const press = usePress(0, 3)
@@ -182,42 +187,67 @@ export function AttendDock({
         }
       ]}
     >
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Text
-          numberOfLines={1}
-          style={[text(14.5, 'Bold', 1.25), { color: palette.ink }]}
-        >
-          {gameTitle(game)}
-        </Text>
+      {/* Marcado (rodada 2, tela 3), o rodapé diz o estado; é troca, não
+          deslizamento: crossfade de 150 ms. */}
+      <Animated.View
+        key={attending ? 'marcado' : 'livre'}
+        entering={SWAP}
+        style={{ flex: 1, minWidth: 0 }}
+      >
+        <View style={styles.dockTitle}>
+          {attending ? (
+            <Icon name="check" size={14} color={palette.ink} />
+          ) : null}
+          <Text
+            numberOfLines={1}
+            style={[text(14.5, 'Bold', 1.25), { color: palette.ink }]}
+          >
+            {attending ? 'Presença marcada' : gameTitle(game)}
+          </Text>
+        </View>
         <Text
           numberOfLines={1}
           style={[styles.mono11, { color: palette.muted }]}
         >
+          {attending ? `${gameTitle(game)} · ` : ''}
           {when}
-          {count ? ` · ${count.toLocaleString('pt-BR')} vão` : ''}
+          {!attending && count ? ` · ${count.toLocaleString('pt-BR')} vão` : ''}
         </Text>
-      </View>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ selected: attending }}
-        onPressIn={press.onPressIn}
-        onPressOut={press.onPressOut}
-        onPress={onPress}
-      >
-        <View style={styles.goEdge} />
-        <Animated.View style={[styles.go, press.style]}>
-          {attending ? <Icon name="check" size={16} color={INK} /> : null}
-          <Animated.Text
-            key={attending ? 'vai' : 'vou'}
-            entering={SWAP}
-            numberOfLines={1}
-            maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
-            style={[text(15, 'Bold', 1.2), { color: INK }]}
-          >
-            {attending ? 'Você vai' : 'Vou assistir aqui'}
-          </Animated.Text>
-        </Animated.View>
-      </Pressable>
+      </Animated.View>
+      {attending && code ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={onCode}
+          style={[styles.codeButton, { backgroundColor: palette.ink }]}
+        >
+          <Icon name="qr" size={16} color={palette.bg} />
+          <Text style={[text(14.5, 'Bold', 1.2), { color: palette.bg }]}>
+            Ver código
+          </Text>
+        </Pressable>
+      ) : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ selected: attending }}
+          onPressIn={press.onPressIn}
+          onPressOut={press.onPressOut}
+          onPress={onPress}
+        >
+          <View style={styles.goEdge} />
+          <Animated.View style={[styles.go, press.style]}>
+            {attending ? <Icon name="check" size={16} color={INK} /> : null}
+            <Animated.Text
+              key={attending ? 'vai' : 'vou'}
+              entering={SWAP}
+              numberOfLines={1}
+              maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
+              style={[text(15, 'Bold', 1.2), { color: INK }]}
+            >
+              {attending ? 'Você vai' : 'Vou assistir aqui'}
+            </Animated.Text>
+          </Animated.View>
+        </Pressable>
+      )}
     </View>
   )
 }
@@ -277,6 +307,15 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingHorizontal: 16,
     borderTopWidth: StyleSheet.hairlineWidth
+  },
+  dockTitle: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  codeButton: {
+    height: 46,
+    paddingHorizontal: 18,
+    borderRadius: 23,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
   },
   goEdge: {
     position: 'absolute',
