@@ -785,8 +785,16 @@ invente layout que o projeto não tem.
   `lib/explore.ts`. O mapa é o nativo, pelo `react-native-maps` (decisão do dono em
   15/10/2026): Apple Maps na versão apagada (`mutedStandard`, sem pontos de interesse) no
   iOS, Google Maps com `customMapStyle` nas cores da Onside (`lib/map-style.ts`) no Android.
-  Roda no Expo Go. Os pinos, o raio e os cards são nossos. A busca é `pubs.search` a partir
-  do aparelho, senão da cidade do perfil (`pubs.getMyCity`), senão São Paulo; o fim do jogo
+  Roda no Expo Go. Os pinos, o raio e os cards são nossos. **A busca começa pelo jogo**
+  (rodada 1 do redesign): a régua do dia, `pubs.gameBoard` (a mesma do web do torcedor),
+  traz os jogos perto e os bares de cada um; a fileira de dias e a de jogos ficam no topo, a
+  folha mostra o jogo escolhido em Anton, os filtros depois do resultado e o cartão
+  compacto (`components/explore-board.tsx`, contas em `lib/explore-board.ts`). "Ao vivo" é
+  um cartão escuro por jogo; o bar tocado no mapa vira um cartão flutuante no lugar da
+  folha (3b), com os outros pinos a 45%; grupo com Elite dentro vai em acid. A folha de
+  filtros conta pela mesma régua. A régua parte
+  do aparelho, senão da cidade do perfil (`pubs.getMyCity`; sem conta, a escolhida no
+  aparelho), senão São Paulo; o fim do jogo
   ("ao vivo") vem de `@findsports_oficial/db/event-window`, a mesma fonte do servidor. A
   página do bar registra `profile_view` em `/api/bar/commercial-event`, como o web. A página do bar segue
   o design até "O que dizem", menos "Ver todas": entram a média das estrelas e os três
@@ -803,7 +811,7 @@ invente layout que o projeto não tem.
   até três etiquetas de quem voltaria e de quem não voltaria, sem nome, pelo piso da nota. "Ampliar", no fim da
   lista, dobra o raio só na visita. Com menos de cinco bares com jogo (e fora do "Ao
   vivo"), a lista se completa com os bares perto sem jogo marcado, sob "Sem jogo
-  marcado" (`pubs.nearbyWithoutGames`; decisão do dono e sócios em 21/10/2026). No
+  marcado" (`pubs.barsWithoutGame`; decisão do dono e sócios em 21/10/2026). No
   mapa eles são um ponto oco pequeno (`QuietDot`), abaixo das gotas e fora de grupos e
   rótulos, para os com jogo continuarem na frente; tocado, vira a gota grande como os
   outros. **Não existe reserva de mesa** (decisão do
