@@ -14,13 +14,15 @@ import {
 } from 'react-native'
 import { Circle } from 'react-native-maps'
 import Animated, {
+  type EntryExitAnimationFunction,
   useAnimatedStyle,
   useSharedValue,
-  withSpring
+  withSpring,
+  withTiming
 } from 'react-native-reanimated'
 import Svg, { Line } from 'react-native-svg'
 import { Glass } from '@/components/glass'
-import { haptic, popFrom, usePressScale } from '@/components/motion'
+import { haptic, usePressScale } from '@/components/motion'
 import { usePalette } from '@/components/theme'
 import { ACID, Icon, INK, LIVE, PAPER, Text, text } from '@/components/ui'
 import { formatKm, formatTime, isLive, teamMark } from '@/lib/explore'
@@ -289,7 +291,18 @@ export function MapGroup({
   )
 }
 
-const DROP_IN = popFrom(0.8)
+// Um toque não leva impulso: o tocado assenta sem quique (rodada 1 do
+// redesign), de 0,95 a 1 com a opacidade.
+const DROP_IN: EntryExitAnimationFunction = () => {
+  'worklet'
+  return {
+    initialValues: { opacity: 0, transform: [{ scale: 0.95 }] },
+    animations: {
+      opacity: withTiming(1, { duration: 150 }),
+      transform: [{ scale: withSpring(1, { duration: 300, dampingRatio: 1 }) }]
+    }
+  }
+}
 
 /**
  * O raio de busca no mapa: o mesmo círculo no Explorar, nos filtros e nos
