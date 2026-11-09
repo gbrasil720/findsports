@@ -197,8 +197,15 @@ export function Ambiente({
   return (
     <View style={styles.ambiente}>
       <View style={styles.heading}>
-        <Text style={[text(16, 'Bold', 1.4), { color: palette.ink }]}>
-          O ambiente
+        <Text
+          style={{
+            fontFamily: 'Anton',
+            fontSize: 26,
+            marginVertical: -6.3,
+            color: palette.ink
+          }}
+        >
+          O AMBIENTE
         </Text>
         {photos.length > 1 ? (
           <Pressable

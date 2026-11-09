@@ -11,7 +11,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import type { inferRouterOutputs } from '@trpc/server'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { type ReactNode, useEffect, useState } from 'react'
+import { Fragment, type ReactNode, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -141,7 +141,7 @@ const BODY_IN: EntryExitAnimationFunction = () => {
 /** Quantos próximos jogos a página lista: três, como o design. */
 const MORE_GAMES = 3
 /** A foto do celular; a dos tablets sai da medida da tela. */
-const HERO = 340
+const HERO = 420
 /** A foto e o nome no tablet, pela altura da tela (gen/adapt02.js). */
 const HERO_PORTRAIT: [number, number][] = [
   [1133, 320],
@@ -216,10 +216,12 @@ function gameDay(startsAt: string, now: number) {
 /** A sombra do topo da foto fora do celular (coverB): só sob os botões. */
 const COVER_SHADE = ['rgba(18,18,15,.45)', 'rgba(18,18,15,0)'] as const
 
+/** `.hero::after` do redesign: escurece o topo e o pé, limpo no meio. */
 const HERO_SHADE = [
-  'rgba(18,18,15,.3)',
-  'rgba(18,18,15,0)',
-  'rgba(18,18,15,.82)'
+  'rgba(12,12,10,.35)',
+  'rgba(12,12,10,0)',
+  'rgba(12,12,10,0)',
+  'rgba(12,12,10,.92)'
 ] as const
 
 type BarParams = {
@@ -449,19 +451,39 @@ export function BarDetail({
 
   // A linha da foto (2g): bairro, distância "de você" e a nota verificada.
   const turn = data ? openingTurn(data.openingHours, new Date(now)) : null
-  const heroInfo = data
+  // "Vila Madalena · **450 m** de você · **★ 4,6** com 42 avaliações
+  // verificadas": o número em papel, o resto apagado (`.hero .ln b`).
+  const strong = { color: PAPER, fontFamily: 'Archivo-Bold' }
+  const heroParts = data
     ? [
         data.neighborhood,
-        km ? `${distance(Number(km))}${walk ? ' de você' : ''}` : null,
-        data.rating?.stars
-          ? `★ ${data.rating.stars.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} com ${data.rating.total} ${data.rating.total === 1 ? 'avaliação verificada' : 'avaliações verificadas'}`
-          : data.rating
-            ? `${data.rating.percentage}% voltariam`
-            : null
-      ]
-        .filter(Boolean)
-        .join(' · ')
-    : ''
+        km ? (
+          <Fragment key="km">
+            <Text style={strong}>{distance(Number(km))}</Text>
+            {walk ? ' de você' : ''}
+          </Fragment>
+        ) : null,
+        data.rating?.stars ? (
+          <Fragment key="nota">
+            <Text style={strong}>
+              ★{' '}
+              {data.rating.stars.toLocaleString('pt-BR', {
+                maximumFractionDigits: 1
+              })}
+            </Text>{' '}
+            com {data.rating.total}{' '}
+            {data.rating.total === 1
+              ? 'avaliação verificada'
+              : 'avaliações verificadas'}
+          </Fragment>
+        ) : data.rating ? (
+          `${data.rating.percentage}% voltariam`
+        ) : null
+      ].filter(Boolean)
+    : []
+  const heroInfo = heroParts.length
+    ? heroParts.flatMap((part, i) => (i ? [' · ', part] : [part]))
+    : null
 
   const pinLive = next ? isLive(next, now) : false
   const pinCallout = {
@@ -945,7 +967,7 @@ export function BarDetail({
         ) : null}
         <LinearGradient
           colors={wide ? COVER_SHADE : HERO_SHADE}
-          locations={wide ? [0, 0.42] : [0, 0.35, 1]}
+          locations={wide ? [0, 0.42] : [0, 0.24, 0.38, 0.86]}
           style={StyleSheet.absoluteFill}
         />
       </Animated.View>
@@ -963,7 +985,16 @@ export function BarDetail({
                 "Elite" ficava quase invisível sobre a foto). */}
           {data?.plan === 'elite' ? (
             <View style={styles.eliteTag}>
-              <Text style={[text(11, 'Bold', 1.2), { color: INK }]}>ELITE</Text>
+              <Text
+                style={{
+                  fontFamily: 'GeistMono-SemiBold',
+                  fontSize: 11,
+                  letterSpacing: 0.77,
+                  color: INK
+                }}
+              >
+                ELITE
+              </Text>
             </View>
           ) : null}
           <Text
@@ -991,7 +1022,7 @@ export function BarDetail({
           <Animated.Text
             key={data ? 'info' : 'wait'}
             entering={SWAP}
-            style={[text(14, 'Regular', 1.4), styles.info]}
+            style={[text(15, 'Regular', 1.4), styles.info]}
             numberOfLines={2}
             maxFontSizeMultiplier={MAX_FONT_SCALE}
           >
@@ -1688,13 +1719,16 @@ function Heading({
   const palette = usePalette()
   return (
     <View style={styles.heading}>
+      {/* No celular, o `h6` do redesign: Anton 26 em caixa alta. */}
       <Text
         style={[
-          text(small ? 15 : 16, 'Bold', small ? 1.3 : 1.4),
+          small
+            ? text(15, 'Bold', 1.3)
+            : { fontFamily: 'Anton', fontSize: 26, marginVertical: -6.3 },
           { color: palette.ink, flexShrink: 1 }
         ]}
       >
-        {title}
+        {small ? title : title.toLocaleUpperCase('pt-BR')}
       </Text>
       {aside ? (
         <Text style={[text(12.5, 'Regular', 1.4), { color: palette.muted }]}>
@@ -1765,28 +1799,29 @@ const styles = StyleSheet.create({
     backgroundColor: '#2a2a25',
     transformOrigin: 'top'
   },
-  heroText: { padding: 18 },
+  // `.hero .info`: 20 dos lados, 22 do pé, 8 entre as linhas.
+  heroText: { paddingHorizontal: 20, paddingBottom: 22 },
   eliteTag: {
     alignSelf: 'flex-start',
     backgroundColor: ACID,
-    paddingVertical: 3,
-    paddingHorizontal: 7,
-    borderRadius: 3,
-    marginBottom: 10
+    height: 24,
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    marginBottom: 8
   },
   turn: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 12,
+    fontSize: 13,
     marginTop: 6
   },
   name: {
     fontFamily: 'Anton',
     fontSize: 52,
     color: PAPER,
-    letterSpacing: -1,
-    marginVertical: -12
+    marginVertical: -12.6
   },
-  info: { color: '#e2dfd7', marginTop: 4 },
+  info: { color: '#c9c7c0', marginTop: 6 },
   body: { padding: 16, gap: 14 },
   tiles: { flexDirection: 'row', gap: 8 },
   tile: {
