@@ -59,7 +59,7 @@ import {
 import { useExploreState, useShotSource } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
 import { useLayout, useNavInsets } from '@/components/layout'
-import { EASE, haptic, POP_FAST, ScalePress, SWAP } from '@/components/motion'
+import { EASE, haptic, ScalePress, SWAP } from '@/components/motion'
 import { useSoon } from '@/components/soon'
 import { useTabBarSpace } from '@/components/tab-bar'
 import { usePalette } from '@/components/theme'
@@ -92,7 +92,6 @@ import {
 } from '@/lib/explore-board'
 import { useFavorites } from '@/lib/favorites'
 import {
-  activeCount,
   applyShortcut,
   defaultShortcuts,
   searchRadius,
@@ -198,7 +197,6 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   const sports = sportList.data ?? []
   const shortcuts =
     state.shortcuts ?? defaultShortcuts(prefs.data?.[0]?.sport.slug ?? null)
-  const active = activeCount(filters)
 
   // A busca começa pelo jogo (rodada 1 do redesign): a régua do dia traz os
   // jogos perto e os bares de cada um, como no web do torcedor
@@ -291,8 +289,10 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
     })
 
   // A folha: alta (lista inteira), no meio (como abre: só o título e um
-  // card, para sobrar mapa, 20d) e baixa (só o título).
-  const top = insets.top + 8
+  // card, para sobrar mapa, 20d) e baixa (só o título). A alta para 20 pt
+  // abaixo da fileira de jogos (`.sheet` alta do redesign, top 250): o dia e
+  // os jogos continuam à mão.
+  const top = insets.top + HEAD + 20
   const [selected, setSelected] = useState<string | null>(null)
   // O jogo tocado em "O jogo de hoje" chega pela URL (`?jogo=`).
   const { jogo, de } = useLocalSearchParams<{ jogo?: string; de?: string }>()
@@ -688,14 +688,6 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
     if (showsFloat) settle(height - top)
     else if (!expanded) settle(snaps[1])
   }, [showsFloat])
-  // A seta de "Lista" vira com a folha, não depois dela.
-  const arrow = useAnimatedStyle(() => ({
-    transform: [
-      {
-        rotate: `${interpolate(y.get(), [0, snaps[1]], [180, 0], Extrapolation.CLAMP)}deg`
-      }
-    ]
-  }))
 
   const place = district ?? cityData?.name ?? 'São Paulo'
   const days = dayChoices(today())
@@ -802,13 +794,13 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
         onPress={() => router.push('/busca')}
         style={[
           styles.search,
-          { backgroundColor: palette.card, shadowColor: palette.shadow }
+          { backgroundColor: palette.card, shadowColor: palette.drop }
         ]}
       >
-        <Icon name="search" size={17} color={palette.muted} />
+        <Icon name="search" size={20} color={palette.muted} />
         <Text
           numberOfLines={1}
-          style={[text(14.5, 'Regular', 1.3), { color: palette.muted }]}
+          style={[text(15.5, 'Regular', 1.3), { color: palette.muted }]}
           maxFontSizeMultiplier={HEAD_FONT_SCALE}
         >
           Time, bar ou bairro
@@ -835,7 +827,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
           style={[styles.enter, { backgroundColor: palette.ink }]}
         >
           <Text
-            style={[text(14, 'Bold', 1.3), { color: palette.bg }]}
+            style={[text(14.5, 'Bold', 1.3), { color: palette.bg }]}
             maxFontSizeMultiplier={HEAD_FONT_SCALE}
           >
             Entrar
@@ -874,7 +866,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   ) : game ? (
     <GameTitle
       title={game.title}
-      size={30}
+      size={34}
       color={palette.ink}
       accent={palette.dark ? ACID : palette.live}
     />
@@ -904,43 +896,9 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   // (só com jogo rolando) e os atalhos.
   const chipItems = (
     <>
-      <ScalePress
-        accessibilityRole="button"
-        accessibilityLabel={active ? `Filtros, ${active} ligados` : 'Filtros'}
-        onPress={() => {
-          haptic.select()
-          router.push('/filtros')
-        }}
-        // No escuro o acid assume o destaque, como no design (19i).
-        style={[styles.filterButton, palette.dark && { backgroundColor: ACID }]}
-      >
-        <Icon
-          name="sliders"
-          size={19}
-          color={palette.dark ? INK : PAPER}
-          accent={palette.dark ? INK : ACID}
-        />
-        {active ? (
-          <Animated.View
-            entering={POP_FAST}
-            style={[
-              styles.filterBadge,
-              palette.dark && { backgroundColor: INK, borderColor: ACID }
-            ]}
-          >
-            <Text
-              style={[
-                text(10.5, 'Bold', 1.1),
-                { color: palette.dark ? ACID : INK }
-              ]}
-            >
-              {active}
-            </Text>
-          </Animated.View>
-        ) : null}
-      </ScalePress>
       <SheetChip
         icon="pin"
+        // Abre os filtros (o desenho não tem o botão próprio).
         label={`Até ${radiusKm.toLocaleString('pt-BR')} km`}
         on
         onPress={() => router.push('/filtros')}
@@ -1139,7 +1097,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
                 tracksViewChanges
                 // Por baixo dos bares, como no design.
                 zIndex={0}
-                // O halo é largo (74 pt): tocar nele passa para o mapa, que solta
+                // O halo é largo (46 pt): tocar nele passa para o mapa, que solta
                 // o bar tocado, em vez de engolir o toque.
                 onPress={() => setSelected(null)}
               >
@@ -1340,18 +1298,13 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
 
       {phone ? (
         <>
-          {/* O papel cobre o topo e se desfaz até o mapa, como no design: opaco
-              até 150, 60% em 230, nada em 330. */}
+          {/* O papel cobre o topo e se desfaz até o mapa, como no design
+              (`.ex-top`): opaco até 74% do topo, nada no pé dos jogos. */}
           <LinearGradient
             pointerEvents="none"
-            colors={[
-              `rgba(${fade},1)`,
-              `rgba(${fade},.96)`,
-              `rgba(${fade},.6)`,
-              `rgba(${fade},0)`
-            ]}
-            locations={[0, 0.4545, 0.697, 1]}
-            style={[styles.fade, { height: insets.top + HEAD + 70 }]}
+            colors={[`rgba(${fade},1)`, `rgba(${fade},1)`, `rgba(${fade},0)`]}
+            locations={[0, 0.74, 1]}
+            style={[styles.fade, { height: insets.top + HEAD + 14 }]}
           />
 
           <View
@@ -1366,7 +1319,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
           <View
             style={[
               styles.chips,
-              { top: insets.top + 110, right: navInsets.right }
+              { top: insets.top + 116, right: navInsets.right }
             ]}
           >
             {gameStrip}
@@ -1408,30 +1361,20 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
             )}
             <GestureDetector gesture={pan}>
               <View>
+                {/* O desenho não tem "Lista": quem não arrasta abre e fecha
+                    pela alça, com o leitor de tela. */}
                 <View
+                  accessible
+                  accessibilityRole="button"
+                  accessibilityLabel={expanded ? 'Ver o mapa' : 'Abrir a lista'}
+                  onAccessibilityTap={() => {
+                    if (chosen) setSelected(null)
+                    settle(expanded ? snaps[1] : 0)
+                  }}
                   style={[styles.grabber, { backgroundColor: palette.grabber }]}
                 />
                 <View style={styles.sheetHead}>
                   <View style={{ flex: 1, minWidth: 0 }}>{sheetTitle}</View>
-                  <Pressable
-                    accessibilityRole="button"
-                    hitSlop={10}
-                    onPress={() => {
-                      // Com um bar tocado, "Lista" volta para todos.
-                      if (chosen) setSelected(null)
-                      settle(expanded ? snaps[1] : 0)
-                    }}
-                    style={styles.listButton}
-                  >
-                    <Text
-                      style={[text(13, 'Bold', 1.2), { color: palette.ink }]}
-                    >
-                      {expanded ? 'Mapa' : 'Lista'}
-                    </Text>
-                    <Animated.View style={arrow}>
-                      <Icon name="arrowUp" size={14} color={palette.ink} />
-                    </Animated.View>
-                  </Pressable>
                 </View>
                 <Text
                   numberOfLines={1}
@@ -1687,7 +1630,7 @@ const FEW_BARS = 5
  * O topo do celular (marca, busca, dias e jogos) mede isto abaixo da área
  * segura: a faixa livre do mapa começa depois dele.
  */
-const HEAD = 172
+const HEAD = 180
 
 /** O fade da troca de "O jogo de hoje" para o Explorar. */
 const FADE_MS = 300
@@ -1970,69 +1913,47 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5
   },
-  filterButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: INK,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  filterBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    paddingHorizontal: 4,
-    backgroundColor: ACID,
-    borderWidth: 1.5,
-    borderColor: INK,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
   fade: { position: 'absolute', top: 0, left: 0, right: 0 },
-  head: { position: 'absolute', left: 16, right: 16, gap: 12 },
+  head: { position: 'absolute', left: 16, right: 16, gap: 10 },
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10
   },
-  mark: { width: 28, height: 28 },
+  mark: { width: 34, height: 34 },
   ring: {
     position: 'absolute',
-    top: 2,
-    left: 2,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 4.5
+    top: 3,
+    left: 3,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 5
   },
   ball: {
     position: 'absolute',
-    right: 0,
-    bottom: 0,
-    width: 10,
-    height: 10,
-    borderRadius: 5
+    right: 1,
+    bottom: 1,
+    width: 11,
+    height: 11,
+    borderRadius: 5.5
   },
   search: {
     flex: 1,
-    height: 44,
-    borderRadius: 22,
-    paddingHorizontal: 14,
+    height: 48,
+    borderRadius: 24,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
     shadowOpacity: 1,
     shadowRadius: 0,
     shadowOffset: { width: 0, height: 3 }
   },
   sheetLine: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 12,
-    paddingBottom: 12
+    fontSize: 13.5,
+    paddingBottom: 14
   },
   sheetChips: { gap: 8, paddingHorizontal: 16, paddingBottom: 4 },
   // Encolhe com nome longo em vez de empurrar a busca e o sino para fora.
@@ -2061,18 +1982,22 @@ const styles = StyleSheet.create({
     marginVertical: -5
   },
   place: { flexDirection: 'row', gap: 4, alignItems: 'center' },
+  // `.b-ink.b-sm`: 40 de altura e a sombra preta de 4.
   enter: {
-    height: 42,
+    height: 40,
     paddingHorizontal: 16,
-    borderRadius: 21,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden'
+    shadowColor: '#000',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
   },
   round: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden'
@@ -2113,7 +2038,7 @@ const styles = StyleSheet.create({
   sheetHead: {
     paddingTop: 10,
     paddingHorizontal: 16,
-    paddingBottom: 10,
+    paddingBottom: 6,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -2121,16 +2046,10 @@ const styles = StyleSheet.create({
   },
   sheetTitle: {
     fontFamily: 'Anton',
-    fontSize: 26,
+    fontSize: 34,
     letterSpacing: -0.5,
     flexShrink: 1,
-    marginVertical: -6
-  },
-  listButton: {
-    flexDirection: 'row',
-    gap: 4,
-    alignItems: 'center',
-    paddingBottom: 3
+    marginVertical: -8.2
   },
   note: {
     paddingVertical: 24,
