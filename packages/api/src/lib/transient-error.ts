@@ -38,7 +38,10 @@ function getErrorValues(error: unknown): unknown[] {
     record?.error,
     record?.data,
     asRecord(record?.shape)?.data,
-    asRecord(record?.cause)?.data
+    asRecord(record?.cause)?.data,
+    // O tRPC guarda a resposta HTTP em `meta.response`: é o único lugar com o
+    // status quando o corpo não é JSON (a página de 502 da borda).
+    asRecord(record?.meta)?.response
   ].filter(Boolean)
 }
 
@@ -82,7 +85,7 @@ export function isTransientError(error: unknown): boolean {
   // Chrome, "Load failed" no Safari, "Network request failed" no React
   // Native), ou a resposta não veio da API (a página de 502 da Cloudflare,
   // que o cliente do tRPC tenta ler como JSON).
-  return /conexão|connection|econn|failed to fetch|fetch failed|load failed|network|offline|\brede\b|server error|temporar|timed out|timeout|not valid json|json parse|unexpected token|unrecognized token/i.test(
+  return /conexão|connection|econn|failed to fetch|fetch failed|load failed|network|offline|\brede\b|server error|temporar|timed out|timeout|not valid json|json parse|unexpected token|unrecognized token|unable to transform response/i.test(
     getErrorText(error)
   )
 }
