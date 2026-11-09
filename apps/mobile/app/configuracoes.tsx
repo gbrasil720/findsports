@@ -967,7 +967,7 @@ export function LeaveAccount() {
         style: 'destructive',
         onPress: async () => {
           await authClient.signOut()
-          router.replace('/intro')
+          router.replace('/explore')
         }
       }
     ])
@@ -992,7 +992,7 @@ export function LeaveAccount() {
                     'Não foi possível excluir',
                     result.error.message ?? 'Confira a senha e tente de novo.'
                   )
-                router.replace('/intro')
+                router.replace('/explore')
               },
               'secure-text'
             )
