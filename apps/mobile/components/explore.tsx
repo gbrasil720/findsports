@@ -335,15 +335,24 @@ export function RadiusCircle({
     <Circle
       center={center}
       radius={km * 1000}
-      strokeWidth={strong ? 2 : 1.5}
-      strokeColor={dark ? ACID : INK}
-      fillColor={strong ? 'rgba(201,241,53,.2)' : 'rgba(201,241,53,.1)'}
-      lineDashPattern={strong ? undefined : [6, 6]}
+      // O tracejado do redesign (`.radius`): a cor do texto a 55%, sem miolo.
+      strokeWidth={strong ? 2 : 1.25}
+      strokeColor={
+        strong
+          ? dark
+            ? ACID
+            : INK
+          : dark
+            ? 'rgba(241,238,230,.55)'
+            : 'rgba(18,18,15,.55)'
+      }
+      fillColor={strong ? 'rgba(201,241,53,.2)' : 'transparent'}
+      lineDashPattern={strong ? undefined : [5, 5]}
     />
   )
 }
 
-/** Você no mapa: o ponto acid com dois halos. */
+/** Você no mapa: o ponto azul do redesign (`.me`), anel branco e halo. */
 export function MeDot() {
   return (
     <View style={styles.meHalo2}>
@@ -1224,28 +1233,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   meHalo2: {
-    width: 74,
-    height: 74,
-    borderRadius: 37,
-    backgroundColor: 'rgba(201,241,53,.10)',
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: 'rgba(47,107,255,.18)',
     alignItems: 'center',
     justifyContent: 'center'
   },
   meHalo1: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(201,241,53,.25)',
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center'
   },
   me: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: ACID,
-    borderWidth: 3,
-    borderColor: INK
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#2f6bff'
   },
   chipLiveOn: { borderWidth: 1.5, borderColor: INK },
   chip: {
