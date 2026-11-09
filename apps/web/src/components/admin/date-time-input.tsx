@@ -1,6 +1,4 @@
 import { useId, useState } from 'react'
-import { Icone } from '../painel'
-import { dataCurta } from './hoje-model'
 
 /**
  * Data e hora com máscara `dd/mm/aaaa hh:mm` (WEB-306).
@@ -96,38 +94,6 @@ const PROBLEM_MESSAGE: Record<DateTimeProblem, string> = {
   time: 'O horário vai de 00:00 a 23:59.'
 }
 
-/** "21:30" de um valor `aaaa-mm-ddThh:mm`; `null` sem hora completa. */
-export function timeOf(datetimeLocal: string | undefined): string | null {
-  return datetimeLocal ? (datetimeLocal.split('T')[1] ?? null) : null
-}
-
-/**
- * "Sáb, 17 out · 16:00" de um valor `aaaa-mm-ddThh:mm`, como o "Começa" do
- * design. O valor já é o relógio de Brasília que o dono digitou.
- */
-export function dateTimeByName(datetimeLocal: string): string {
-  const [date = '', time = ''] = datetimeLocal.split('T')
-  return `${dataCurta(date)} · ${time}`
-}
-
-/**
- * Só a hora do término ("18:00", como o "Termina" do 1p) quando ele cai no
- * mesmo dia do início ou na madrugada seguinte (dia seguinte, hora antes da
- * do início: menos de 24 h de jogo). Fora disso, `null`: o dia precisa
- * aparecer. Os dois valores são `aaaa-mm-ddThh:mm`.
- */
-export function horaDoTermino(inicio: string, fim: string): string | null {
-  const [diaInicio = '', horaInicio = ''] = inicio.split('T')
-  const [diaFim = '', horaFim = ''] = fim.split('T')
-  if (!diaInicio || !horaFim) return null
-  if (diaFim === diaInicio) return horaFim
-  const seguinte = new Date(`${diaInicio}T12:00:00Z`)
-  seguinte.setUTCDate(seguinte.getUTCDate() + 1)
-  return diaFim === seguinte.toISOString().slice(0, 10) && horaFim < horaInicio
-    ? horaFim
-    : null
-}
-
 type Props = {
   label: string
   /** Texto com máscara, como está no campo — não o valor convertido. */
@@ -136,16 +102,6 @@ type Props = {
   required?: boolean
   /** Erro que só o formulário conhece (ex.: término antes do início). */
   error?: string
-  /** Linha de ajuda; o padrão explica o formato. */
-  hint?: string
-  /** Ícone de calendário à esquerda, como o "Começa" do design. */
-  icone?: boolean
-  /**
-   * Como o valor completo aparece fora do foco ("Sáb, 17 out · 16:00", ou só
-   * "18:00"); no foco volta a máscara inteira, que é o que se edita e o que
-   * o leitor de tela lê ao entrar no campo.
-   */
-  mostrar?: (valor: string) => string
 }
 
 export function DateTimeInput({
@@ -153,21 +109,15 @@ export function DateTimeInput({
   value,
   onChange,
   required,
-  error,
-  hint = `Dia, mês, ano e horário de 24 h: ${DATE_TIME_PLACEHOLDER}.`,
-  icone = false,
-  mostrar
+  error
 }: Props) {
   const ids = useId()
-  const inputId = `${ids}-input`
   const hintId = `${ids}-hint`
   const errorId = `${ids}-error`
   // "Incompleto" só vira erro ao sair do campo: antes disso é só digitação.
   const [left, setLeft] = useState(false)
-  const [focused, setFocused] = useState(false)
 
-  const { problem, value: parsed } = parseDateTime(value)
-  const shown = mostrar && !focused && parsed ? mostrar(parsed) : value
+  const { problem } = parseDateTime(value)
   const message =
     problem && (problem !== 'incomplete' || left)
       ? PROBLEM_MESSAGE[problem]
@@ -197,40 +147,29 @@ export function DateTimeInput({
     onChange(next)
   }
 
-  // As classes do `Campo` do painel, com o texto de ajuda e o erro próprios.
   return (
-    <div className="painel-campo">
-      <div className="painel-campo-topo">
-        <label htmlFor={inputId}>{label}</label>
-      </div>
-      <div
-        className="painel-campo-caixa"
-        data-invalido={message ? true : undefined}
-      >
-        {icone ? <Icone nome="cal" tamanho={18} /> : null}
+    <div>
+      <label className="block">
+        <span className="onside-label">{label}</span>
         <input
-          id={inputId}
           type="text"
           inputMode="numeric"
           autoComplete="off"
-          value={shown}
+          value={value}
           onChange={handleChange}
-          onFocus={() => setFocused(true)}
-          onBlur={() => {
-            setLeft(true)
-            setFocused(false)
-          }}
+          onBlur={() => setLeft(true)}
+          className="onside-input font-semibold"
           placeholder={DATE_TIME_PLACEHOLDER}
           required={required}
           aria-invalid={message ? true : undefined}
           aria-describedby={message ? `${hintId} ${errorId}` : hintId}
         />
-      </div>
-      <span id={hintId} className="painel-campo-dica">
-        {hint}
-      </span>
+      </label>
+      <p id={hintId} className="mt-1 text-[10px] text-[var(--onside-muted)]">
+        Dia, mês, ano e horário de 24 h: {DATE_TIME_PLACEHOLDER}.
+      </p>
       {message ? (
-        <p id={errorId} className="jogos-erro" role="alert">
+        <p id={errorId} className="onside-field-error" role="alert">
           {message}
         </p>
       ) : null}

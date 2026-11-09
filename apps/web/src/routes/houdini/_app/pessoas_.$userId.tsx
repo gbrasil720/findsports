@@ -5,6 +5,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import type { inferRouterOutputs } from '@trpc/server'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { refusalMessage } from '@/components/houdini/errors'
 import {
   formatDate,
   formatDateTime,
@@ -17,7 +18,6 @@ import { authClient } from '@/lib/auth-client'
 import { appHref } from '@/lib/houdini-host'
 import { type AppRole, roleLabel } from '@/lib/roles'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
-import { FAN_HOME } from '@/utils/auth-guards'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/houdini/_app/pessoas_/$userId')({
@@ -98,7 +98,7 @@ function FichaBody({ ficha, isSelf }: { ficha: Ficha; isSelf: boolean }) {
     }
     // Recarga inteira: o próximo pedido já leva o cookie da outra conta.
     window.location.href = appHref(
-      account.role === 'pub' ? '/admin' : FAN_HOME,
+      account.role === 'pub' ? '/admin' : '/dashboard',
       new URL(window.location.href)
     )
   }
@@ -430,7 +430,7 @@ function Emails({ account }: { account: Ficha['account'] }) {
     })
   }
   const onError = (fallback: string) => (error: unknown) =>
-    toast.error(getUserFacingMessage(error, fallback))
+    toast.error(refusalMessage(error, fallback))
 
   const verification = useMutation(
     trpc.adminUsers.resendVerification.mutationOptions({

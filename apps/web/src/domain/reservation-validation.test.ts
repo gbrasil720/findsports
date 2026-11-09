@@ -4,6 +4,7 @@ import {
   getArrivalBlocker,
   getArrivalErrorMessage,
   getCounterLabel,
+  getGameTitle,
   getLookupErrorMessage,
   getUndoErrorMessage,
   getWindowMessage,
@@ -75,6 +76,23 @@ describe('getArrivalBlocker', () => {
     expect(blocker('pending', at(window.closesAt) + 1)?.title).toBe(
       'Este código é de um pedido antigo'
     )
+  })
+})
+
+describe('getGameTitle', () => {
+  const game = {
+    championship: 'Brasileirão',
+    participants: ['Corinthians', 'Palmeiras'],
+    participantFreeText: 'Final do amador',
+    startsAt: '2026-09-12T19:00:00.000Z'
+  }
+
+  test('times cadastrados vêm antes do texto livre e do campeonato', () => {
+    expect(getGameTitle(game)).toBe('Corinthians × Palmeiras')
+    expect(getGameTitle({ ...game, participants: [] })).toBe('Final do amador')
+    expect(
+      getGameTitle({ ...game, participants: [], participantFreeText: null })
+    ).toBe('Brasileirão')
   })
 })
 

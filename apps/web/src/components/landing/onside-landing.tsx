@@ -38,7 +38,6 @@ import {
   TICKER_BENEFITS
 } from './onside-landing-content'
 import { OnsideFinalStage, OnsideHeroStage } from './onside-scene-stage'
-import './onside.css'
 
 type OnsideChromeProps = {
   /**

@@ -36,6 +36,7 @@
     "@trpc/tanstack-react-query": "^11.16.0",
     "better-auth": "catalog:",
     "maplibre-gl": "^6.7.0",
+    "pmtiles": "^4.5.0",
     "posthog-js": "^1.387.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
@@ -48,6 +49,7 @@
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.62.5",
+    "@maplibre/maplibre-gl-style-spec": "^26.4.1",
     "@playwright/test": "1.63.0",
     "@tanstack/react-query-devtools": "^5.104.1",
     "@tanstack/react-router-devtools": "^1.167.2",
