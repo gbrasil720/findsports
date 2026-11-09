@@ -156,7 +156,7 @@ export function YouMenu({
           {visitor ? (
             <View style={styles.guard}>
               <Text style={styles.guardTitle}>SUA CONTA GUARDA TUDO</Text>
-              <Text style={[text(13.5, 'Regular', 1.4), { color: '#cfccc4' }]}>
+              <Text style={[text(14.5, 'Regular', 1.45), { color: '#c9c7c0' }]}>
                 Bares salvos, os jogos que você vai ver, o código do balcão e as
                 conquistas de cada visita.
               </Text>
@@ -164,7 +164,11 @@ export function YouMenu({
                 <Pressable
                   accessibilityRole="button"
                   onPress={visitor.onCreate}
-                  style={[styles.guardButton, { backgroundColor: ACID }]}
+                  style={[
+                    styles.guardButton,
+                    styles.guardAcid,
+                    { backgroundColor: ACID }
+                  ]}
                 >
                   <Text style={[text(14, 'Bold', 1.2), { color: INK }]}>
                     Criar conta grátis
@@ -337,28 +341,36 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     elevation: 12
   },
+  // `.acc` do redesign: 26 de raio, 20 de respiro, 12 entre as linhas.
   guard: {
     backgroundColor: INK,
-    borderRadius: 24,
-    padding: 16,
-    gap: 10,
+    borderRadius: 26,
+    padding: 20,
+    gap: 12,
     marginBottom: 6
   },
   guardTitle: {
     fontFamily: 'Anton',
-    fontSize: 24,
+    fontSize: 28,
     color: '#f1eee6',
-    marginVertical: -6
+    marginVertical: -6.8
   },
-  guardActions: { flexDirection: 'row', gap: 8, marginTop: 2 },
+  guardActions: { flexDirection: 'row', gap: 8 },
   guardButton: {
     flex: 1,
-    height: 42,
-    borderRadius: 21,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center'
   },
-  guardOutline: { borderWidth: 1.5, borderColor: 'rgba(241,238,230,.35)' },
+  // `.b-acid`: a sombra oliva de 4.
+  guardAcid: {
+    shadowColor: '#7f9a12',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  },
+  guardOutline: { borderWidth: 1.5, borderColor: 'rgba(241,238,230,.3)' },
   accountTag: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 4 },
   accountText: { fontFamily: 'GeistMono-SemiBold', fontSize: 10.5 },
   menuHead: {
