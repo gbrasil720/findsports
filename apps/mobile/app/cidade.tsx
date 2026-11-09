@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
 import { Platform, Pressable, StyleSheet, View } from 'react-native'
 import MapView from 'react-native-maps'
 import Animated from 'react-native-reanimated'
+import { useExploreState } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
 import { haptic, SWAP } from '@/components/motion'
 import { usePalette } from '@/components/theme'
@@ -23,12 +24,15 @@ import {
   themed,
   useAccountSheet
 } from '@/components/ui'
+import { useFan } from '@/lib/account'
+import { leaveFirstOpen } from '@/lib/first-open'
 import { MAP_STYLE } from '@/lib/map-style'
 import { trpc } from '@/lib/trpc'
 
 /*
  * A cidade das Configurações (11h, "Cidade"): de onde a busca parte quando o
- * celular não dá a localização. A mesma lista do onboarding (4l).
+ * celular não dá a localização. A mesma lista do onboarding (4l). Sem conta
+ * ("escolher a cidade" de O jogo de hoje, `?de=hoje`), fica no aparelho.
  */
 
 export default function City() {
@@ -40,7 +44,11 @@ export default function City() {
     const timer = setTimeout(() => setQuery(typed.trim()), 200)
     return () => clearTimeout(timer)
   }, [typed])
-  const current = useQuery(trpc.pubs.getMyCity.queryOptions())
+  const fan = useFan()
+  const { localCity, setLocalCity } = useExploreState()
+  const { de } = useLocalSearchParams<{ de?: string }>()
+  const mine = useQuery({ ...trpc.pubs.getMyCity.queryOptions(), enabled: fan })
+  const current = fan ? mine.data : localCity
   const suggestions = useQuery({
     ...trpc.pubs.searchCities.queryOptions({ query }),
     enabled: query.length >= 2
@@ -68,22 +76,27 @@ export default function City() {
       }
     })
   )
+  const pick = (city: City) => {
+    if (fan) return save.mutate(city)
+    haptic.success()
+    setLocalCity(city)
+    if (de === 'hoje') leaveFirstOpen()
+    else router.back()
+  }
 
   return (
     <Screen
       gap={14}
       padding={18}
       sheet={{
-        onDone: chosen ? () => save.mutate(chosen) : undefined,
+        onDone: chosen ? () => pick(chosen) : undefined,
         busy: save.isPending
       }}
     >
       <BackButton />
       <Title lines={[['Sua cidade']]} size={36} />
       <Text style={[text(15, 'Regular', 1.45), { color: SUB, marginTop: -4 }]}>
-        {current.data
-          ? `Hoje é ${current.data.name}, ${current.data.uf}. `
-          : ''}
+        {current ? `Hoje é ${current.name}, ${current.uf}. ` : ''}
         Sem a localização do celular, a busca parte do centro dela.
       </Text>
       <Field
@@ -103,7 +116,7 @@ export default function City() {
               accessibilityRole="button"
               disabled={save.isPending}
               accessibilityState={{ selected: chosen === city }}
-              onPress={() => (asSheet ? setChosen(city) : save.mutate(city))}
+              onPress={() => (asSheet ? setChosen(city) : pick(city))}
               style={({ pressed }) => [
                 styles.suggestion,
                 pressed && { backgroundColor: PRESSED },

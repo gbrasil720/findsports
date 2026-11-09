@@ -65,7 +65,17 @@ type ExploreState = {
    */
   beside: BesideBar | null
   setBeside: (bar: BesideBar | null) => void
+  /** Lê a localização de novo: depois de a pessoa dar a permissão no toque. */
+  locate: () => Promise<void>
+  /**
+   * A cidade escolhida sem conta ("escolher a cidade" de O jogo de hoje),
+   * guardada no aparelho. Com conta, a cidade é a do perfil.
+   */
+  localCity: City | null
+  setLocalCity: (city: City) => void
 }
+
+export type City = Coordinates & { name: string; uf: string }
 
 /** O que a página do bar desenha antes da resposta (os parâmetros dela). */
 export type BesideBar = {
@@ -77,6 +87,7 @@ export type BesideBar = {
 }
 
 const SHORTCUTS_KEY = 'onside.atalhos-do-mapa'
+const CITY_KEY = 'onside.cidade'
 
 const Context = createContext<ExploreState | null>(null)
 
@@ -103,6 +114,18 @@ export function ExploreStateProvider({ children }: { children: ReactNode }) {
     saveFocus(next)
     if (next) setAnswer(bars ?? null)
   }
+  const [localCity, saveLocalCity] = useState<City | null>(null)
+  const setLocalCity = (city: City) => {
+    saveLocalCity(city)
+    SecureStore.setItemAsync(CITY_KEY, JSON.stringify(city)).catch(() => {})
+  }
+  useEffect(() => {
+    SecureStore.getItemAsync(CITY_KEY)
+      .then((raw) => {
+        if (raw) saveLocalCity(JSON.parse(raw))
+      })
+      .catch(() => {})
+  }, [])
   useEffect(() => {
     SecureStore.getItemAsync(SHORTCUTS_KEY)
       .then((raw) => {
@@ -119,7 +142,9 @@ export function ExploreStateProvider({ children }: { children: ReactNode }) {
   const [resting, setResting] = useState<number | null>(null)
   const [beside, setBeside] = useState<BesideBar | null>(null)
 
-  useEffect(() => {
+  // Só lê se a permissão já foi dada: quem pede é o toque em "Ver bares
+  // perto de mim" (O jogo de hoje) ou o onboarding.
+  const locate = () =>
     Location.getForegroundPermissionsAsync()
       .then(({ granted }) =>
         granted
@@ -142,6 +167,9 @@ export function ExploreStateProvider({ children }: { children: ReactNode }) {
         setDistrict(place?.district ?? place?.subregion ?? place?.city ?? null)
       })
       .catch(() => {})
+  // biome-ignore lint/correctness/useExhaustiveDependencies: só ao montar
+  useEffect(() => {
+    locate()
   }, [])
 
   return (
@@ -162,7 +190,10 @@ export function ExploreStateProvider({ children }: { children: ReactNode }) {
         resting,
         setResting,
         beside,
-        setBeside
+        setBeside,
+        locate,
+        localCity,
+        setLocalCity
       }}
     >
       {children}
