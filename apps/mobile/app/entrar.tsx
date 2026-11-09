@@ -241,11 +241,13 @@ export default function Entrar() {
   const muted = palette.muted
 
   return (
+    // A folha tem a altura do conteúdo (`fitToContents`): cada passo do
+    // desenho ocupa o que precisa, do "Confira seu e-mail" ao criar conta.
     <ScrollView
-      style={{ flex: 1, backgroundColor: palette.sheet }}
+      style={{ flexGrow: 0, backgroundColor: palette.sheet }}
       contentContainerStyle={[
         styles.page,
-        { paddingBottom: insets.bottom + 24 }
+        { paddingBottom: Math.max(insets.bottom, 34) }
       ]}
       keyboardShouldPersistTaps="handled"
       automaticallyAdjustKeyboardInsets
@@ -481,8 +483,8 @@ export default function Entrar() {
           </>
         ) : mode === 'confirmar' ? (
           <>
-            <View style={[styles.mailIcon, { backgroundColor: palette.card }]}>
-              <Icon name="mail" size={22} color={ink} />
+            <View style={[styles.mailIcon, { backgroundColor: palette.mark }]}>
+              <Icon name="mail" size={32} color={ink} />
             </View>
             <Title
               lines={[['Confira'], ['', 'seu e-mail']]}
@@ -490,14 +492,35 @@ export default function Entrar() {
               color={ink}
               accentColor={palette.dark ? palette.accent : LIVE}
             />
-            <Text style={[text(15, 'Regular', 1.45), { color: ink }]}>
+            <Text style={[text(15.5, 'Regular', 1.5), { color: ink }]}>
               Mandamos um link para{' '}
-              <Text style={text(15, 'Bold', 1.45)}>{email.trim()}</Text>.
-              {acao === 'vou'
-                ? ` Toque nele e você volta aqui com a presença${bar.data ? ` no ${bar.data.name}` : ''} marcada. Ela fica guardada até lá.`
-                : acao === 'fav'
-                  ? ` Toque nele e você volta aqui com o ${bar.data?.name ?? 'bar'} salvo. Ele fica guardado até lá.`
-                  : ' Toque nele e você volta aqui com a conta pronta.'}
+              <Text style={text(15.5, 'Bold', 1.5)}>{email.trim()}</Text>.
+              {acao === 'vou' ? (
+                <>
+                  {' '}
+                  Toque nele e você volta aqui com a presença
+                  {bar.data ? (
+                    <>
+                      {' no '}
+                      <Text style={text(15.5, 'Bold', 1.5)}>
+                        {bar.data.name}
+                      </Text>
+                    </>
+                  ) : null}{' '}
+                  marcada. Ela fica guardada até lá.
+                </>
+              ) : acao === 'fav' ? (
+                <>
+                  {' '}
+                  Toque nele e você volta aqui com o{' '}
+                  <Text style={text(15.5, 'Bold', 1.5)}>
+                    {bar.data?.name ?? 'bar'}
+                  </Text>{' '}
+                  salvo. Ele fica guardado até lá.
+                </>
+              ) : (
+                ' Toque nele e você volta aqui com a conta pronta.'
+              )}
             </Text>
             {error ? (
               <ErrorText
@@ -514,7 +537,7 @@ export default function Entrar() {
             />
             <View style={styles.between}>
               {countdown.left > 0 ? (
-                <Text style={[styles.mono, { color: muted }]}>
+                <Text style={[styles.mono, styles.mono13, { color: muted }]}>
                   Reenviar em {countdown.label}
                 </Text>
               ) : (
@@ -535,7 +558,9 @@ export default function Entrar() {
                 hitSlop={8}
                 onPress={() => setMode('criar')}
               >
-                <Text style={[text(13.5, 'Bold'), styles.link, { color: ink }]}>
+                <Text
+                  style={[text(15, 'SemiBold'), styles.link, { color: ink }]}
+                >
                   Corrigir e-mail
                 </Text>
               </Pressable>
@@ -569,7 +594,7 @@ export default function Entrar() {
               <CodeBoxes
                 code={code}
                 shake={boxes}
-                tone="theme"
+                tone="sheet"
                 onChange={(digits) => {
                   setCode(digits)
                   if (digits.length === 6) verify(digits)
@@ -698,7 +723,8 @@ const styles = StyleSheet.create({
     fontFamily: 'Archivo-SemiBold',
     fontSize: 17
   },
-  page: { padding: 20, paddingTop: 24, gap: 16 },
+  // `.fs`: 20 dos lados, 14 entre as peças.
+  page: { paddingHorizontal: 20, paddingTop: 22, gap: 14 },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -734,10 +760,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   rule: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  mono13: { fontSize: 13, letterSpacing: 0 },
   mailIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
+    width: 64,
+    height: 64,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center'
   },

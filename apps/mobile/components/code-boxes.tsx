@@ -2,6 +2,7 @@ import { forwardRef, useState } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { useBlink, type useShake } from '@/components/motion'
+import { usePalette } from '@/components/theme'
 import {
   ACID,
   FG,
@@ -56,14 +57,30 @@ export const CodeBoxes = forwardRef<
   {
     code: string
     onChange: (digits: string) => void
-    tone: 'dark' | 'theme'
+    /** `sheet`: as caixas da folha de entrar (`.boxes` da rodada 2). */
+    tone: 'dark' | 'theme' | 'sheet'
     shake: ReturnType<typeof useShake>
     /** O login (11s) abre com o teclado; ligar a verificação, não. */
     autoFocus?: boolean
   }
 >(function CodeBoxes({ code, onChange, tone, shake, autoFocus = true }, ref) {
   const [focused, setFocused] = useState(autoFocus)
-  const c = tone === 'dark' ? DARK : THEMED
+  const palette = usePalette()
+  const sheet = tone === 'sheet'
+  const c =
+    tone === 'dark'
+      ? DARK
+      : sheet
+        ? {
+            box: palette.card,
+            border: palette.line,
+            active: palette.ink,
+            shadow: palette.drop,
+            glow: palette.drop,
+            digit: palette.ink,
+            caret: palette.ink
+          }
+        : THEMED
   const focus = () =>
     (ref as { current: TextInput | null } | null)?.current?.focus()
   return (
@@ -81,14 +98,19 @@ export const CodeBoxes = forwardRef<
               <View
                 style={[
                   styles.shadow,
+                  sheet && styles.sheetShadow,
                   { backgroundColor: active ? c.glow : c.shadow }
                 ]}
               />
               <View
                 style={[
                   styles.box,
+                  sheet && styles.sheetBox,
                   { backgroundColor: c.box, borderColor: c.border },
-                  active && { borderWidth: 2, borderColor: c.active }
+                  active && {
+                    borderWidth: sheet ? 2.5 : 2,
+                    borderColor: c.active
+                  }
                 ]}
               >
                 {code[index] ? (
@@ -140,6 +162,8 @@ const styles = StyleSheet.create({
     bottom: -3,
     borderRadius: 6
   },
+  sheetBox: { borderRadius: 16, borderWidth: 1.5 },
+  sheetShadow: { left: 0, right: 0, top: 3, bottom: -3, borderRadius: 16 },
   digit: { fontFamily: 'GeistMono-SemiBold', fontSize: 26 },
   caret: { width: 2, height: 26 },
   // O teclado digita aqui; as caixas só mostram.

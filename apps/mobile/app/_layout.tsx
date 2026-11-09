@@ -123,7 +123,7 @@ export default function Layout() {
                   name="entrar"
                   options={{
                     presentation: 'formSheet',
-                    sheetAllowedDetents: [0.78, 1],
+                    sheetAllowedDetents: 'fitToContents',
                     sheetGrabberVisible: true
                   }}
                 />
