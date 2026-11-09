@@ -1,8 +1,5 @@
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
-import {
-  hasEventEnded,
-  isEventLive
-} from '@findsports_oficial/db/event-window'
+import { hasEventEnded, isEventLive } from '@findsports_oficial/db/event-window'
 import type { inferRouterOutputs } from '@trpc/server'
 
 type Outputs = inferRouterOutputs<AppRouter>
@@ -58,7 +55,7 @@ export function chosenGame(
  * web: o Elite do clássico na frente (WEB-130), depois o mais perto.
  */
 export function barsOfGame(
-  game: RowGame | undefined,
+  game: BoardGame | undefined,
   amenities: number[]
 ): BoardBar[] {
   if (!game) return []
@@ -95,4 +92,24 @@ export function barCount(row: RowGame[], amenities: number[]): number {
 export function distance(km: number): string {
   if (km < 1) return `${Math.max(10, Math.round((km * 1000) / 10) * 10)} m`
   return `${km.toFixed(1).replace('.', ',')} km`
+}
+
+const WEEKDAY = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: 'UTC',
+  weekday: 'short'
+})
+
+/** A fileira de dias: hoje e os três seguintes ("Hoje", "Seg 9", "Ter 10"). */
+export function dayChoices(today: string): { day: string; label: string }[] {
+  return [0, 1, 2, 3].map((n) => {
+    const at = new Date(`${today}T12:00:00.000Z`)
+    at.setUTCDate(at.getUTCDate() + n)
+    const day = at.toISOString().slice(0, 10)
+    if (n === 0) return { day, label: 'Hoje' }
+    const week = WEEKDAY.format(at).replace('.', '')
+    return {
+      day,
+      label: `${week.charAt(0).toUpperCase()}${week.slice(1, 3)} ${at.getUTCDate()}`
+    }
+  })
 }

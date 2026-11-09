@@ -6,6 +6,7 @@ import {
   barCount,
   barsOfGame,
   chosenGame,
+  dayChoices,
   distance,
   gameRow,
   type QuietBar,
@@ -109,4 +110,14 @@ test('distância como o web', () => {
   expect(distance(0.45)).toBe('450 m')
   expect(distance(0.001)).toBe('10 m')
   expect(distance(1.25)).toBe('1,3 km')
+})
+
+test('dias da fileira: hoje e os três seguintes', () => {
+  expect(dayChoices('2026-11-08')).toEqual([
+    { day: '2026-11-08', label: 'Hoje' },
+    { day: '2026-11-09', label: 'Seg 9' },
+    { day: '2026-11-10', label: 'Ter 10' },
+    { day: '2026-11-11', label: 'Qua 11' }
+  ])
+  expect(dayChoices('2026-12-31')[1]?.day).toBe('2027-01-01')
 })
