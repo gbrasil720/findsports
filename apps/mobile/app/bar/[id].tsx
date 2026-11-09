@@ -11,7 +11,13 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import type { inferRouterOutputs } from '@trpc/server'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { Fragment, type ReactNode, useEffect, useState } from 'react'
+import {
+  type ComponentProps,
+  Fragment,
+  type ReactNode,
+  useEffect,
+  useState
+} from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -189,29 +195,24 @@ const gameTag = (game: {
         ? 'Som ligado'
         : null
 
+/** "HOJE", "QUA 11": o dia embaixo da hora na lista de jogos (`.nx`). */
+function shortDay(startsAt: string, now: number) {
+  if (dayLabel(startsAt, now) === 'Hoje') return 'HOJE'
+  const date = new Date(startsAt)
+  const part = (options: Intl.DateTimeFormatOptions) =>
+    date.toLocaleDateString('pt-BR', {
+      ...options,
+      timeZone: 'America/Sao_Paulo'
+    })
+  return `${part({ weekday: 'short' }).replace('.', '')} ${part({ day: 'numeric' })}`.toLocaleUpperCase(
+    'pt-BR'
+  )
+}
+
 const directions = (lat: number, lng: number) =>
   Platform.OS === 'ios'
     ? `http://maps.apple.com/?daddr=${lat},${lng}`
     : `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
-
-/** A coluna grande da lista: a hora hoje, o dia da semana nesta semana. */
-function gameDay(startsAt: string, now: number) {
-  if (dayLabel(startsAt, now) === 'Hoje') return formatTime(startsAt)
-  const date = new Date(startsAt)
-  if (date.getTime() - now < 6 * 86_400_000)
-    return date
-      .toLocaleDateString('pt-BR', {
-        weekday: 'short',
-        timeZone: 'America/Sao_Paulo'
-      })
-      .replace('.', '')
-      .toUpperCase()
-  return date.toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    timeZone: 'America/Sao_Paulo'
-  })
-}
 
 /** A sombra do topo da foto fora do celular (coverB): só sob os botões. */
 const COVER_SHADE = ['rgba(18,18,15,.45)', 'rgba(18,18,15,0)'] as const
@@ -425,15 +426,19 @@ export function BarDetail({
     games.find((game) => game.attendance)
   const mine = going?.attendance
   const amenities = data?.amenities ?? []
-  const tiles = TILES.filter((tile) => amenities.includes(tile.id))
   const features = AMENITIES.filter((item) =>
     amenities.includes(item.id)
-  ).flatMap((item) =>
+  ).flatMap((item) => {
+    const icon: ComponentProps<typeof Icon>['name'] =
+      TILES.find((tile) => tile.id === item.id)?.icon ?? 'check'
     // O número de telas entra logo depois do telão, como no design.
-    item.id === 1 && data?.screenCount && data.screenCount > 1
-      ? [chipLabel(item), `${data.screenCount} telas`]
-      : [chipLabel(item)]
-  )
+    return item.id === 1 && data?.screenCount && data.screenCount > 1
+      ? [
+          { label: chipLabel(item), icon },
+          { label: `${data.screenCount} telas`, icon }
+        ]
+      : [{ label: chipLabel(item), icon }]
+  })
   const week = games.filter(
     (game) => new Date(game.startsAt).getTime() < now + WEEK
   ).length
@@ -565,38 +570,21 @@ export function BarDetail({
       <Ambiente barId={data.id} photos={data.photos} />
     </>
   ) : null
-  const sTiles = data ? (
-    tiles.length ? (
-      <View style={styles.tiles}>
-        {tiles.map((tile) => (
-          <Card key={tile.id} style={styles.tile}>
-            <Icon
-              name={tile.icon}
-              size={26}
-              color={palette.ink}
-              accent={palette.accent}
-            />
-            <Text
-              style={[
-                text(11.5, 'SemiBold', 1.4),
-                { color: palette.ink, textAlign: 'center' }
-              ]}
-              numberOfLines={2}
-            >
-              {tile.label}
-            </Text>
-          </Card>
-        ))}
-      </View>
-    ) : null
-  ) : null
   const sNext = data ? (
     games.length > 1 ? (
       <>
         <Heading title="Próximos jogos aqui" aside={`${week} esta semana`} />
-        <Card soft>
-          <View style={styles.list}>
-            {games.slice(1, 1 + MORE_GAMES).map((game, index) => (
+        {/* `.nx`: a hora em mono com o dia embaixo, o jogo, o campeonato e
+            a etiqueta do jogo à direita. */}
+        <View
+          style={[
+            styles.nx,
+            { backgroundColor: palette.card, shadowColor: palette.drop }
+          ]}
+        >
+          {games.slice(1, 1 + MORE_GAMES).map((game, index) => {
+            const live = isLive(game, now)
+            return (
               <View
                 key={game.id}
                 style={[
@@ -607,64 +595,67 @@ export function BarDetail({
                   }
                 ]}
               >
-                <Text style={[styles.when, { color: palette.ink }]}>
-                  {gameDay(game.startsAt, now)}
-                </Text>
+                <View style={{ width: 64 }}>
+                  <Text
+                    style={[
+                      styles.nxTime,
+                      { color: live ? palette.live : palette.ink }
+                    ]}
+                  >
+                    {formatTime(game.startsAt)}
+                  </Text>
+                  <Text style={[styles.nxDay, { color: palette.muted }]}>
+                    {live ? 'AO VIVO' : shortDay(game.startsAt, now)}
+                  </Text>
+                </View>
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text
-                    style={[text(14.5, 'Bold', 1.4), { color: palette.ink }]}
+                    style={[text(15.5, 'Bold', 1.2), { color: palette.ink }]}
                     numberOfLines={2}
                   >
                     {gameTitle(game)}
                   </Text>
-                  {/* A hora não pode sumir com campeonato longo: o
-                            campeonato encolhe, a hora fica. */}
-                  <View style={styles.sub}>
-                    {gameTitle(game) === game.championship ? null : (
-                      <Text
-                        style={[
-                          text(12, 'Regular', 1.4),
-                          { color: palette.muted, flexShrink: 1 }
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {game.championship} ·{' '}
-                      </Text>
-                    )}
+                  {gameTitle(game) === game.championship ? null : (
                     <Text
                       style={[
-                        text(12, 'Regular', 1.4),
+                        text(13, 'Regular', 1.4),
                         { color: palette.muted }
                       ]}
+                      numberOfLines={1}
                     >
-                      {dayLabel(game.startsAt, now) === 'Hoje'
-                        ? 'hoje'
-                        : formatTime(game.startsAt)}
+                      {game.championship}
                     </Text>
-                  </View>
+                  )}
                 </View>
                 {gameTag(game) ? <Label>{gameTag(game) ?? ''}</Label> : null}
               </View>
-            ))}
-          </View>
-        </Card>
+            )
+          })}
+        </View>
       </>
     ) : null
   ) : null
   const sFeatures = data ? (
     features.length ? (
       <>
-        <Heading title="O que tem" />
-        <View style={styles.chips}>
-          {features.map((label) => (
-            <View
-              key={label}
-              style={[styles.chip, { backgroundColor: palette.mark }]}
-            >
+        <Heading title="Em dia de jogo" />
+        {/* `.amen`: duas colunas, ícone e nome. */}
+        <View style={styles.amen}>
+          {features.map((item) => (
+            <View key={item.label} style={styles.amenItem}>
+              <Icon
+                name={item.icon}
+                size={18}
+                color={palette.ink}
+                accent={palette.accent}
+              />
               <Text
-                style={[text(11.5, 'SemiBold', 1.4), { color: palette.ink }]}
+                style={[
+                  text(14.5, 'Regular', 1.3),
+                  { color: palette.ink, flex: 1 }
+                ]}
               >
-                {label}
+                {item.label}
               </Text>
             </View>
           ))}
@@ -1539,7 +1530,6 @@ export function BarDetail({
             {sCheck}
             {sPhotos}
             {sNext}
-            {sTiles}
             {sFeatures}
             {sRating}
             {sWhere}
@@ -1744,8 +1734,16 @@ function Label({ children }: { children: string }) {
   const palette = usePalette()
   return (
     <View style={[styles.label, { backgroundColor: palette.mark }]}>
-      <Text style={[text(10.5, 'Bold', 1.2), { color: palette.ink }]}>
-        {children}
+      {/* `.nx .e`: mono 11 em caixa alta. */}
+      <Text
+        style={{
+          fontFamily: 'GeistMono-SemiBold',
+          fontSize: 11,
+          letterSpacing: 0.55,
+          color: palette.ink
+        }}
+      >
+        {children.toLocaleUpperCase('pt-BR')}
       </Text>
     </View>
   )
@@ -1841,11 +1839,37 @@ const styles = StyleSheet.create({
   },
   sub: { flexDirection: 'row', minWidth: 0 },
   list: { paddingHorizontal: 14 },
+  nx: {
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
+  },
+  nxTime: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 19,
+    marginVertical: -2.8
+  },
+  nxDay: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 10,
+    letterSpacing: 0.6,
+    marginTop: 5
+  },
+  amen: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 10, columnGap: 14 },
+  amenItem: {
+    width: '46%',
+    flexGrow: 1,
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center'
+  },
   game: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingVertical: 11
+    paddingVertical: 13
   },
   // Anton 22/1 do design, sem `lineHeight` (corta no iOS): margem negativa.
   when: {
@@ -1855,7 +1879,7 @@ const styles = StyleSheet.create({
     marginVertical: -5.5,
     fontVariant: ['tabular-nums']
   },
-  label: { paddingVertical: 3, paddingHorizontal: 6, borderRadius: 3 },
+  label: { paddingVertical: 5, paddingHorizontal: 8, borderRadius: 6 },
   hours: {
     flexDirection: 'row',
     justifyContent: 'space-between',
