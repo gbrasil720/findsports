@@ -6,19 +6,16 @@ import {
   useNavigate
 } from '@tanstack/react-router'
 import { useRef, useState } from 'react'
+import Envelope from 'reicon-react/icons/Envelope'
+import Loader from 'reicon-react/icons/Loader'
 import { toast } from 'sonner'
 
-import {
-  AuthSplit,
-  CampoForm,
-  CampoSenha,
-  CardTorcedor,
-  Disp,
-  entradaHead
-} from '@/components/entrada/auth'
-import { Botao } from '@/components/painel'
+import { AuthInputField } from '@/components/auth-input-field'
+import { AuthPasswordField } from '@/components/auth-password-field'
+import { AuthShell, VisitorLink } from '@/components/entrada/auth-shell'
 import { useTurnstile } from '@/components/turnstile'
 import { authClient } from '@/lib/auth-client'
+import { pageHead } from '@/lib/page-head'
 import { PENDING_VERIFICATION_KEY } from '@/lib/pending-verification'
 import {
   createTwoFactorChallenge,
@@ -29,11 +26,11 @@ import { useCallbackUrl, withCallbackUrl } from '@/utils/callback-url'
 
 export const Route = createFileRoute('/(auth)/login')({
   head: () =>
-    entradaHead({
+    pageHead({
       path: '/login',
       title: 'Entrar — Onside',
       description:
-        'Entre no painel do seu bar na Onside: jogos, quem vai e o código no balcão.',
+        'Entre na sua conta Onside e encontre o bar certo pro seu jogo.',
       indexable: false
     }),
   component: LoginPage
@@ -55,6 +52,7 @@ function validatePassword({ value }: { value: string }) {
 function LoginPage() {
   const navigate = useNavigate()
   const { href } = useLocation()
+  const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
   const captcha = useTurnstile()
@@ -127,107 +125,128 @@ function LoginPage() {
   }
 
   return (
-    <AuthSplit
-      foto={
-        <>
-          <Disp
-            nivel={0}
-            tamanho={64}
-            linhas={[
-              { texto: 'Seu bar no' },
-              { texto: 'radar dos torcedores.', tint: true }
-            ]}
-            className="entrada-foto-titulo"
-          />
-          <p>
-            Programe os jogos, veja quem vai assistir e valide o código no
-            balcão, daqui ou do app.
-          </p>
-        </>
-      }
+    <AuthShell
+      panel={{
+        kind: 'caption',
+        led: 'hero',
+        badge: 'A grade de hoje, publicada pelos bares',
+        title: (
+          <>
+            O jogo <span>é aqui.</span>
+          </>
+        ),
+        items: [
+          'Veja quem vai e marque que vai também',
+          'Seu código do balcão fica em Meus jogos'
+        ]
+      }}
     >
-      <p className="entrada-kicker">Onside para bares</p>
-      <Disp tamanho={64} linhas={[{ texto: 'Entrar' }]} />
-      <p className="entrada-linha">
-        Ainda não cadastrou o bar?{' '}
-        <Link
-          to="/signup"
-          search={callbackUrl === '/admin' ? {} : { callbackUrl }}
-          className="entrada-link"
+      <div className="w-full">
+        <div className="mb-8">
+          <h1 className="onside-display">
+            Bem-vindo{' '}
+            <span className="text-[var(--onside-live-text)]">de volta</span>
+          </h1>
+          <p className="ent-sub">
+            Entre para marcar que vai, ver seu código e, se você tem um bar, o
+            seu painel.
+          </p>
+        </div>
+
+        <form
+          method="post"
+          ref={formRef}
+          className="flex flex-col gap-4"
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault()
+            form.handleSubmit()
+          }}
         >
-          Cadastrar meu bar
-        </Link>
-      </p>
+          {/*
+           * O formulário é `noValidate`, então o navegador não valida nada;
+           * e os validadores só rodavam no `blur`. Enviar vazio sem tocar
+           * em campo nenhum não acendia erro em lugar algum da tela — só um
+           * toast, que some. Validar também no envio é o que faz a mensagem
+           * aparecer sob o campo e `aria-invalid` ir junto.
+           */}
+          <form.Field
+            name="email"
+            validators={{
+              onBlur: validateEmail,
+              onSubmit: validateEmail
+            }}
+          >
+            {(field) => (
+              <AuthInputField
+                label="E-mail"
+                icon={Envelope}
+                field={field}
+                id="email"
+                type="email"
+                inputMode="email"
+                spellCheck={false}
+                placeholder="seu@email.com"
+                autoComplete="email"
+                required
+              />
+            )}
+          </form.Field>
 
-      <form
-        method="post"
-        ref={formRef}
-        noValidate
-        style={{ marginTop: 6 }}
-        onSubmit={(e) => {
-          e.preventDefault()
-          form.handleSubmit()
-        }}
-      >
-        {/*
-         * O formulário é `noValidate`, então o navegador não valida nada.
-         * Validar também no envio é o que faz a mensagem aparecer sob o campo
-         * e `aria-invalid` ir junto (os validadores só rodavam no `blur`).
-         */}
-        <form.Field
-          name="email"
-          validators={{ onBlur: validateEmail, onSubmit: validateEmail }}
-        >
-          {(field) => (
-            <CampoForm
-              field={field}
-              rotulo="E-mail"
-              id="email"
-              type="email"
-              inputMode="email"
-              spellCheck={false}
-              placeholder="seu@email.com"
-              autoComplete="email"
-              required
-            />
-          )}
-        </form.Field>
+          <form.Field
+            name="password"
+            validators={{
+              onBlur: validatePassword,
+              onSubmit: validatePassword
+            }}
+          >
+            {(field) => (
+              <AuthPasswordField
+                label="Senha"
+                field={field}
+                id="password"
+                placeholder="••••••••"
+                autoComplete="current-password"
+                required
+                showPassword={showPassword}
+                onToggle={() => setShowPassword((v) => !v)}
+                extraLabel={
+                  <Link to="/forgot-password" className="ent-link text-sm">
+                    Esqueceu?
+                  </Link>
+                }
+              />
+            )}
+          </form.Field>
 
-        <form.Field
-          name="password"
-          validators={{ onBlur: validatePassword, onSubmit: validatePassword }}
-        >
-          {(field) => (
-            <CampoSenha
-              field={field}
-              rotulo="Senha"
-              id="password"
-              placeholder="••••••••"
-              autoComplete="current-password"
-              required
-              aside={
-                <Link to="/forgot-password" className="entrada-link">
-                  Esqueci a senha
-                </Link>
-              }
-            />
-          )}
-        </form.Field>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="onside-btn onside-btn-acid onside-btn-full ent-full mt-2"
+          >
+            {isLoading ? (
+              <>
+                <Loader
+                  size={16}
+                  color="currentColor"
+                  className="animate-spin"
+                  aria-hidden="true"
+                />
+                Acessando…
+              </>
+            ) : (
+              'Entrar'
+            )}
+          </button>
 
-        <Botao
-          type="submit"
-          variante="acid"
-          disabled={isLoading}
-          className="entrada-cta"
-          style={{ marginTop: 4 }}
-        >
-          {isLoading ? 'Entrando…' : 'Entrar'}
-        </Botao>
+          <p className="ent-alt">
+            Primeira vez? <Link to="/signup">Criar conta grátis</Link>
+          </p>
 
-        {captcha.widget}
-      </form>
-
-      <CardTorcedor />
-    </AuthSplit>
+          {captcha.widget}
+        </form>
+        <VisitorLink />
+      </div>
+    </AuthShell>
   )
 }

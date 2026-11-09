@@ -1,5 +1,8 @@
+import { getAnalyticsEntitlements } from '@findsports_oficial/api/lib/commercial-analytics/entitlements'
+import type { AnalyticsComparisonMode } from '@findsports_oficial/api/lib/commercial-analytics/types'
 import type { SubscriptionStanding } from '@findsports_oficial/api/lib/current-plan'
 import {
+  ONBOARDING_TRIAL,
   PLAN_NAMES,
   STARTER_EVENT_LIMIT
 } from '@findsports_oficial/api/lib/plan-limits'
@@ -14,7 +17,9 @@ import Star from 'reicon-react/icons/Star'
 import Trophy from 'reicon-react/icons/Trophy'
 import { LAPSED_COPY } from './lapsed-plan'
 import { countLabel, plural } from './plural'
-import { getCancelDay } from './scheduled-cancel'
+import { getScheduledCancelAt } from './scheduled-cancel'
+
+const DAY_MS = 24 * 60 * 60 * 1000
 
 export type PlanFeature = string
 
@@ -39,6 +44,25 @@ export interface PlanProfilePerk {
  * que muda de plano para plano, e os que têm dado do próprio bar para citar.
  */
 export type PlanPerkKey = 'badge' | 'events' | 'menu' | 'going' | 'house_offer'
+
+export interface PlanAnalytics {
+  historyDays: number | null
+  perGame: 'basic' | 'complete'
+  comparison: AnalyticsComparisonMode
+}
+
+function analyticsForPlan(id: SubscriptionPlan): PlanAnalytics {
+  const entitlements = getAnalyticsEntitlements(id)
+  if (entitlements.eventBreakdown === 'none') {
+    throw new Error(`Plan ${id} has no per-game analytics entitlement`)
+  }
+
+  return {
+    historyDays: entitlements.maxDaysRetention,
+    perGame: entitlements.eventBreakdown,
+    comparison: entitlements.comparison
+  }
+}
 
 /**
  * Desconto de fundador, em reais por mês: valor fixo, igual em todos os
@@ -183,6 +207,9 @@ export function formatPlanChargeLine(
   return `${charge} (tabela cheia ${formatPlanPrice(display.listReais)}${period})`
 }
 
+/** @deprecated Só para textos legais; preferir {@link formatPlanChargeLine}. */
+export const FOUNDER_DISCOUNT_NOTE = `Com o desconto de fundador aplicado na contratação, ${formatPlanPrice(FOUNDER_DISCOUNT)} por mês a menos que a tabela cheia.`
+
 export interface Plan {
   id: SubscriptionPlan
   name: string
@@ -196,12 +223,16 @@ export interface Plan {
   icon: React.ComponentType<{ size?: number | string; color?: string }>
   features: PlanFeature[]
   profilePerks: PlanProfilePerk[]
+  analytics: PlanAnalytics
   highlight?: boolean
   badge?: string
 }
 
 /** Sem limite de jogos: o que o Starter troca por `STARTER_EVENT_LIMIT`. */
 const UNLIMITED_EVENTS_FEATURE = 'Jogos ilimitados na agenda'
+
+/** Todo plano tem; a página de planos a cobre com "Perfil completo com agenda e rota". */
+const BAR_PROFILE_FEATURE = 'Perfil do bar no Onside'
 
 export const PLAN_CATALOG: Plan[] = [
   {
@@ -213,7 +244,7 @@ export const PLAN_CATALOG: Plan[] = [
     period: '/mês',
     icon: Fire,
     features: [
-      'Perfil do bar no Onside',
+      BAR_PROFILE_FEATURE,
       `Até ${STARTER_EVENT_LIMIT} jogos por ciclo de cobrança na agenda`,
       'Aparece nas buscas básicas',
       'Suporte por e-mail',
@@ -225,7 +256,10 @@ export const PLAN_CATALOG: Plan[] = [
       { label: 'Perfil completo com agenda e rota', status: 'live' },
       { label: 'Contato direto por WhatsApp', status: 'live' },
       { label: 'Foto de capa', status: 'live' }
-    ]
+    ],
+    analytics: {
+      ...analyticsForPlan('starter')
+    }
   },
   {
     id: 'pro',
@@ -237,7 +271,7 @@ export const PLAN_CATALOG: Plan[] = [
     icon: Star,
     highlight: true,
     features: [
-      'Perfil do bar no Onside',
+      BAR_PROFILE_FEATURE,
       UNLIMITED_EVENTS_FEATURE,
       'Destaque na busca por time e liga',
       'Pin destacado no mapa',
@@ -258,7 +292,10 @@ export const PLAN_CATALOG: Plan[] = [
       },
       { label: 'Galeria de fotos do ambiente', status: 'live' },
       { label: 'Promoções no perfil', status: 'soon' }
-    ]
+    ],
+    analytics: {
+      ...analyticsForPlan('pro')
+    }
   },
   {
     id: 'elite',
@@ -269,7 +306,7 @@ export const PLAN_CATALOG: Plan[] = [
     period: '/mês',
     icon: Trophy,
     features: [
-      'Perfil do bar no Onside',
+      BAR_PROFILE_FEATURE,
       UNLIMITED_EVENTS_FEATURE,
       'Destaque na busca por time e liga',
       'Pin exclusivo Elite no mapa',
@@ -302,7 +339,10 @@ export const PLAN_CATALOG: Plan[] = [
       },
       { label: 'Galeria de fotos do ambiente', status: 'live' },
       { label: 'Promoções no perfil', status: 'soon' }
-    ]
+    ],
+    analytics: {
+      ...analyticsForPlan('elite')
+    }
   }
 ]
 
@@ -314,10 +354,67 @@ export const PLAN_TIER_ORDER: Record<SubscriptionPlan, number> = {
 
 export type PlanOrigin = 'admin' | 'billing'
 
+/**
+ * O que todos os planos têm, numa linha só abaixo dos cartões da página de
+ * planos: o perfil do Starter e os itens do painel que os três repetem.
+ */
+export function getCommonPlanItems(): string[] {
+  const [first, ...rest] = PLAN_CATALOG
+  if (!first) return []
+  return [
+    ...livePerks(first.id).map((perk) => perk.label),
+    ...first.features.filter(
+      (feature) =>
+        feature !== BAR_PROFILE_FEATURE &&
+        rest.every((plan) => plan.features.includes(feature))
+    )
+  ]
+}
+
+/**
+ * O que o cartão de um plano lista na página de planos: só o que ele
+ * acrescenta ao plano anterior, sem o que todos têm (`getCommonPlanItems`).
+ * Assim nenhum item some e nenhum aparece três vezes.
+ */
+export function getPlanCardLists(plan: Plan): {
+  lead: string
+  panel: string[]
+  profile: PlanProfilePerk[]
+} {
+  const index = PLAN_CATALOG.findIndex((item) => item.id === plan.id)
+  const previous = index > 0 ? PLAN_CATALOG[index - 1] : undefined
+  const common = new Set([...getCommonPlanItems(), BAR_PROFILE_FEATURE])
+  const before = new Set([
+    ...(previous?.features ?? []),
+    ...(previous?.profilePerks.map((perk) => perk.label) ?? [])
+  ])
+  return {
+    lead: previous ? `Tudo do ${previous.name}, e mais` : 'O essencial',
+    panel: plan.features.filter(
+      (feature) => !common.has(feature) && !before.has(feature)
+    ),
+    profile: plan.profilePerks.filter(
+      (perk) =>
+        !perk.includes && !common.has(perk.label) && !before.has(perk.label)
+    )
+  }
+}
+
 export function getPlan(id: SubscriptionPlan): Plan {
   const entry = PLAN_CATALOG.find((p) => p.id === id)
   if (!entry) throw new Error(`Plan ${id} not found in catalog`)
   return entry
+}
+
+/** Os dois preços de um plano à venda, no vocabulário dos Termos de Uso. */
+export function formatPlanPricing(
+  plan: Pick<Plan, 'tablePrice' | 'founderPrice' | 'period'>
+): string {
+  return `${formatPlanPrice(plan.founderPrice)}${plan.period} com desconto de fundador · tabela cheia ${formatPlanPrice(plan.tablePrice)}${plan.period}`
+}
+
+export function getAnalyticsEntitlement(id: SubscriptionPlan): PlanAnalytics {
+  return getPlan(id).analytics
 }
 
 export function isDowngrade(
@@ -446,16 +543,6 @@ export function planChangeReturnUrl(
   return `/admin/billing?planFrom=${from}&planTo=${to}`
 }
 
-export function getPlanSelectionState(
-  current: SubscriptionPlan | null,
-  selected: SubscriptionPlan
-) {
-  return {
-    isDowngrade: current !== null && isDowngrade(current, selected),
-    isSamePlan: current === selected
-  }
-}
-
 export function parsePlanOrigin(value: unknown): PlanOrigin | undefined {
   if (value === 'admin' || value === 'billing') return value
   return undefined
@@ -463,12 +550,12 @@ export function parsePlanOrigin(value: unknown): PlanOrigin | undefined {
 
 export function getPlanExitLink(origin: PlanOrigin | undefined) {
   switch (origin) {
-    case 'admin':
-      return { label: 'Voltar', to: '/admin' as const }
     case 'billing':
-      return { label: 'Voltar', to: '/admin/billing' as const }
+      return { label: 'Voltar à assinatura', to: '/admin/billing' as const }
+    // O cadastro termina na tela "no ar", não aqui: quem chega sem origem
+    // veio do painel ou de um link, e volta para ele.
     default:
-      return { label: 'Ver planos depois', to: '/admin' as const }
+      return { label: 'Voltar ao painel', to: '/admin' as const }
   }
 }
 
@@ -563,24 +650,27 @@ export function getPlanHeader(subscription: PlanSubscription): {
   kicker: string
   title: string
   text: string
+  /** A frase do celular, quando a de cima é longa demais para ele. */
+  short?: string
 } {
   const name = subscription ? getPlan(subscription.plan).name : ''
   const mode = getPlanPageMode(subscription)
   switch (subscription?.standing) {
     case 'past_due':
+      // O bar segue no ar com os recursos do Starter (WEB-357 não vale aqui).
       return {
         kicker: LAPSED_COPY.past_due.label,
-        title: `Regularize seu plano ${name}.`,
-        text: `${LAPSED_COPY.past_due.cause} Atualize o método de pagamento na sua assinatura e os recursos do plano voltam, sem contratar de novo.`
+        title: `Regularize seu plano ${name}`,
+        text: `${LAPSED_COPY.past_due.cause} O bar segue no ar com os recursos do ${PLAN_NAMES.starter} até você atualizar o pagamento na sua assinatura; aí os do ${name} voltam, sem contratar de novo.`
       }
     case 'trial_ended':
       return {
-        kicker: LAPSED_COPY.trial_ended.label,
-        title: `Continue no plano ${name}.`,
+        kicker: 'Teste encerrado',
+        title: `Seu teste do ${name} acabou`,
         text:
           mode === 'regularize'
-            ? `${LAPSED_COPY.trial_ended.cause} Confirme o pagamento na sua assinatura e os recursos do plano voltam, sem contratar de novo.`
-            : `${LAPSED_COPY.trial_ended.cause} Contrate o plano para o bar voltar às buscas e ao mapa, ou escolha outro abaixo.`
+            ? 'O teste grátis terminou sem pagamento confirmado. Confirme o pagamento na sua assinatura e os recursos do plano voltam, sem contratar de novo.'
+            : 'O teste grátis terminou sem plano contratado. Contrate um plano para o bar voltar às buscas e ao mapa; a grade e os dados continuam guardados.'
       }
     case 'current':
       if (mode === 'trial' && subscription.currentPeriodEnd) {
@@ -588,32 +678,34 @@ export function getPlanHeader(subscription: PlanSubscription): {
           subscription.currentPeriodEnd
         ).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })
         return {
-          kicker: 'Trial gratuito',
-          title: `Você está no trial do ${name} até ${until}.`,
+          kicker: 'Plano e teste',
+          title: `Você está testando o ${name}`,
           // WEB-358: o teste vale para qualquer plano, com a mesma data.
-          text: `${TRIAL_NO_CARD_NOTE} Até lá você pode testar qualquer plano abaixo, sem mudar a data. Se quiser garantir o plano desde já, contrate: o cartão fica guardado e a primeira cobrança só sai em ${until}.`
+          text: `${TRIAL_NO_CARD_NOTE} Até ${until}, teste qualquer plano sem mudar a data. Quer garantir o plano desde já? Contrate: o cartão fica guardado e a primeira cobrança só sai em ${until}.`,
+          short: 'Teste qualquer plano sem mudar a data.'
         }
       }
       {
-        const cancelDay = getCancelDay({
+        const cancelAt = getScheduledCancelAt({
           standing: subscription.standing,
           cancelAt: subscription.cancelAt ?? null
         })
-        if (cancelDay) {
+        if (cancelAt) {
           return {
-            kicker: 'Cancelamento agendado',
-            title: `Seu plano ${name} cancela em ${cancelDay}.`,
-            text: 'O plano segue até lá. Para continuar depois dessa data, reative a assinatura.'
+            kicker: `Cancela em ${cancelAt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`,
+            title: `Seu ${name} vai até ${cancelAt.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })}`,
+            text: 'Você pediu o cancelamento, e o plano segue até lá. Mudou de ideia? Dá para manter a assinatura.'
           }
         }
       }
       return {
-        kicker: 'Alterar plano',
-        title: 'Escolha seu novo plano.',
-        // O mesmo crédito que o aviso de plano inferior de `/plan` anuncia.
+        kicker: 'Plano e cobrança',
+        title: `Seu plano é o ${name}`,
+        // O mesmo crédito que a confirmação de plano menor anuncia.
         text: earnsDowngradeCredit(subscription)
-          ? 'A troca vale na hora. Para um plano maior, a diferença do mês é cobrada de forma proporcional; para um menor, vira crédito na sua conta e abate as próximas mensalidades.'
-          : 'A troca vale na hora, e a diferença de preço do mês é acertada de forma proporcional.'
+          ? 'Troque quando quiser, vale na hora. Subir cobra a diferença do mês, proporcional; descer vira crédito na sua conta e abate as próximas mensalidades.'
+          : 'Troque quando quiser, vale na hora, e a diferença de preço do mês é acertada de forma proporcional.',
+        short: 'Troque quando quiser.'
       }
     case 'ended':
       return {
@@ -629,6 +721,23 @@ export function getPlanHeader(subscription: PlanSubscription): {
         // fonte nenhuma (WEB-261). Qual prometer é assunto da WEB-114.
         text: 'Você pode trocar ou cancelar quando quiser.'
       }
+  }
+}
+
+/**
+ * O teste do cadastro no placar de `/plan`: os dias que faltam, com o mesmo
+ * piso de `getTrialNotice`, e quanto dele já passou. O começo é o fim menos
+ * `ONBOARDING_TRIAL.days`; quem contratou no teste herda a mesma data.
+ */
+export function getTrialProgress(
+  currentPeriodEnd: string | Date,
+  now = new Date()
+): { daysLeft: number; elapsed: number } {
+  const end = new Date(currentPeriodEnd).getTime()
+  const length = ONBOARDING_TRIAL.days * DAY_MS
+  return {
+    daysLeft: Math.max(1, Math.ceil((end - now.getTime()) / DAY_MS)),
+    elapsed: Math.min(1, Math.max(0, 1 - (end - now.getTime()) / length))
   }
 }
 
@@ -694,14 +803,34 @@ export function getTrialNotice(
     return `Primeira cobrança de ${formatPlanPrice(chargeReais)} em ${end.toLocaleDateString('pt-BR')}`
   }
   // `standing` vem do relógio do servidor; o piso cobre o do navegador adiantado.
-  const days = Math.max(
-    1,
-    Math.ceil((end.getTime() - now.getTime()) / (24 * 60 * 60 * 1000))
-  )
+  const days = Math.max(1, Math.ceil((end.getTime() - now.getTime()) / DAY_MS))
   const until = end.toLocaleDateString('pt-BR', {
     day: 'numeric',
     month: 'long',
     year: 'numeric'
   })
-  return `Trial gratuito até ${until} · ${days === 1 ? 'falta 1 dia' : `faltam ${days} dias`}`
+  return `Teste grátis até ${until} · ${days === 1 ? 'falta 1 dia' : `faltam ${days} dias`}`
+}
+
+export function formatHistoryWindow(a: PlanAnalytics): string {
+  if (a.historyDays === null) return 'Histórico completo'
+  if (a.historyDays >= 365) return '12 meses'
+  return `${a.historyDays} dias`
+}
+
+export function formatPerGame(a: PlanAnalytics): string {
+  return a.perGame === 'basic'
+    ? 'Desempenho básico por jogo'
+    : 'Analytics completa por jogo'
+}
+
+export function formatComparison(a: PlanAnalytics): string {
+  switch (a.comparison) {
+    case 'previous_period':
+      return 'Comparação com período anterior'
+    case 'cross_game':
+      return 'Comparação entre jogos e períodos'
+    case 'advanced':
+      return 'Comparação avançada'
+  }
 }

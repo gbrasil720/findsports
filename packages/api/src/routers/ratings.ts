@@ -9,17 +9,20 @@ import {
 import { ratingReasonsSchema } from '../lib/rating-reasons'
 
 /**
- * @deprecated A avaliação mora em `postGame` (`lib/post-game.ts`), junto do
- * "Você foi?". Estes três são adaptadores para o web publicado antes da troca
- * (aba aberta com o bundle anterior); saem quando ele não os chamar mais.
+ * Adaptadores dos cards do `/dashboard`. A avaliação mora em `postGame`
+ * (`lib/post-game.ts`), junto do "Você foi?"; estes três saem quando o web
+ * do torcedor for refeito sobre ela.
  */
 export const ratingsRouter = router({
-  /** @deprecated `postGame.pending`, itens com `rating`. */
+  /** `postGame.pending`, itens com `rating`. */
   getPending: fanProcedure.query(({ ctx }) =>
     readPendingRatings(ctx.session.user.id)
   ),
 
-  /** @deprecated `postGame.answer` com `rating`. */
+  /**
+   * `postGame.answer` com `rating`. Sem estrelas, comentário nem nome: elas
+   * são opcionais no servidor, e o card antigo não as pergunta.
+   */
   submit: fanProcedure
     .input(
       z.object({
@@ -35,7 +38,7 @@ export const ratingsRouter = router({
       return { success: true }
     }),
 
-  /** @deprecated `postGame.undo` com `rating`. */
+  /** `postGame.undo` com `rating`. */
   remove: fanProcedure
     .input(z.object({ barId: z.string().uuid(), eventId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {

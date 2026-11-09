@@ -1,18 +1,20 @@
 import { useForm } from '@tanstack/react-form'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useRef, useState } from 'react'
+import Envelope from 'reicon-react/icons/Envelope'
 import EnvelopeCheck from 'reicon-react/icons/EnvelopeCheck'
+import Loader from 'reicon-react/icons/Loader'
 import { toast } from 'sonner'
 
+import { AuthInputField } from '@/components/auth-input-field'
 import {
-  AuthSplit,
-  CampoForm,
-  Disp,
-  entradaHead
-} from '@/components/entrada/auth'
-import { Botao, propsBotao } from '@/components/painel'
+  type AuthPanel,
+  AuthShell,
+  VisitorLink
+} from '@/components/entrada/auth-shell'
 import { useTurnstile } from '@/components/turnstile'
 import { authClient } from '@/lib/auth-client'
+import { pageHead } from '@/lib/page-head'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 
 /**
@@ -23,9 +25,30 @@ import { getUserFacingMessage } from '@/lib/user-facing-error'
  */
 const REDIRECT_APOS_TOKEN = '/reset-password'
 
+const PANEL: AuthPanel = {
+  kind: 'board',
+  led: 'scarf',
+  kicker: 'Enquanto isso',
+  title: (
+    <>
+      Bora <span>voltar.</span>
+    </>
+  ),
+  cards: [
+    [
+      'A grade de hoje continua aberta',
+      'Os jogos e os bares estão aí, mesmo sem entrar na conta.'
+    ],
+    [
+      'Nada se perde',
+      'Jogos marcados, medalhas e avaliações continuam na sua conta.'
+    ]
+  ]
+}
+
 export const Route = createFileRoute('/(auth)/forgot-password')({
   head: () =>
-    entradaHead({
+    pageHead({
       path: '/forgot-password',
       title: 'Recuperar senha — Onside',
       description:
@@ -95,92 +118,126 @@ function ForgotPasswordPage() {
   }
 
   return (
-    <AuthSplit
-      foto={
-        <>
-          <Disp
-            nivel={0}
-            tamanho={64}
-            linhas={[
-              { texto: 'Esqueceu?' },
-              { texto: 'Sem drama.', tint: true }
-            ]}
-          />
-          <p>
-            Mandamos um link no seu e-mail e você volta a campo em um minuto.
-          </p>
-        </>
-      }
-    >
-      {emailEnviado ? (
-        <EmailEnviado
-          email={emailEnviado}
-          onTentarOutro={() => {
-            setEmailEnviado(null)
-            form.reset()
-          }}
-        />
-      ) : (
-        <>
-          <p className="entrada-kicker">Recuperar senha</p>
-          <Disp tamanho={56} linhas={[{ texto: 'Vamos de nova senha' }]} />
-          <p className="entrada-linha">
-            Informe o e-mail da sua conta. Se ele estiver cadastrado, enviamos
-            um link para você definir uma nova senha.
-          </p>
-
-          <form
-            method="post"
-            ref={formRef}
-            noValidate
-            style={{ marginTop: 6 }}
-            onSubmit={(e) => {
-              e.preventDefault()
-              form.handleSubmit()
+    <AuthShell panel={PANEL}>
+      <div className="w-full">
+        {emailEnviado ? (
+          <EmailEnviado
+            email={emailEnviado}
+            onTentarOutro={() => {
+              setEmailEnviado(null)
+              form.reset()
             }}
-          >
-            <form.Field
-              name="email"
-              validators={{ onBlur: validateEmail, onSubmit: validateEmail }}
+          />
+        ) : (
+          <>
+            <div className="mb-8">
+              <h1 className="onside-display">
+                Esqueceu{' '}
+                <span className="text-[var(--onside-live-text)]">a senha?</span>
+              </h1>
+              <p className="ent-sub">
+                Acontece. Informe o e-mail da sua conta e mandamos um link para
+                você definir uma nova.
+              </p>
+            </div>
+
+            <form
+              method="post"
+              ref={formRef}
+              className="flex flex-col gap-4"
+              noValidate
+              onSubmit={(e) => {
+                e.preventDefault()
+                form.handleSubmit()
+              }}
             >
-              {(field) => (
-                <CampoForm
-                  field={field}
-                  rotulo="E-mail da conta"
-                  id="email"
-                  type="email"
-                  inputMode="email"
-                  spellCheck={false}
-                  placeholder="seu@email.com"
-                  autoComplete="email"
-                  maxLength={255}
-                  required
-                />
-              )}
-            </form.Field>
+              <form.Field
+                name="email"
+                validators={{
+                  onBlur: validateEmail,
+                  onSubmit: validateEmail
+                }}
+              >
+                {(field) => (
+                  <AuthInputField
+                    label="E-mail da conta"
+                    icon={Envelope}
+                    field={field}
+                    id="email"
+                    type="email"
+                    inputMode="email"
+                    spellCheck={false}
+                    placeholder="seu@email.com"
+                    autoComplete="email"
+                    maxLength={255}
+                    required
+                  />
+                )}
+              </form.Field>
 
-            <Botao
-              type="submit"
-              variante="acid"
-              disabled={isLoading}
-              className="entrada-cta"
-              style={{ marginTop: 4 }}
-            >
-              {isLoading ? 'Enviando…' : 'Enviar link de recuperação'}
-            </Botao>
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="onside-btn onside-btn-acid onside-btn-full ent-full mt-2"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader
+                      size={16}
+                      color="currentColor"
+                      className="animate-spin"
+                      aria-hidden="true"
+                    />
+                    Enviando…
+                  </>
+                ) : (
+                  'Enviar link de recuperação'
+                )}
+              </button>
 
-            <p className="entrada-nota">
-              Lembrou a senha?{' '}
-              <Link to="/login" className="entrada-link">
-                Voltar ao login
-              </Link>
-            </p>
+              <p className="ent-alt">
+                Lembrou? <Link to="/login">Entrar</Link>
+              </p>
 
-            {captcha.widget}
-          </form>
-        </>
-      )}
-    </AuthSplit>
+              {captcha.widget}
+            </form>
+
+            <div className="ent-how">
+              <p>Como funciona</p>
+              <ol>
+                <li>
+                  <i>1</i>
+                  <span>
+                    Chega um e-mail da Onside com o link para a senha nova.
+                  </span>
+                </li>
+                <li>
+                  <i>2</i>
+                  <span>O link vale por 30 minutos e só funciona uma vez.</span>
+                </li>
+                <li>
+                  <i>3</i>
+                  <span>
+                    Até lá, sua senha atual continua valendo. Com a nova salva,
+                    você entra de novo.
+                  </span>
+                </li>
+              </ol>
+            </div>
+            <div className="ent-help">
+              <Envelope size={22} color="currentColor" aria-hidden="true" />
+              <span>
+                <b>Não usa mais esse e-mail?</b>
+                Escreva para{' '}
+                <a href="mailto:contato@onside.sh">contato@onside.sh</a> do
+                e-mail que você usa hoje, e a gente ajuda a recuperar a conta.
+              </span>
+            </div>
+            <VisitorLink />
+          </>
+        )}
+      </div>
+    </AuthShell>
   )
 }
 
@@ -197,29 +254,45 @@ function EmailEnviado({
   onTentarOutro: () => void
 }) {
   return (
-    <div aria-live="polite" className="entrada-form">
-      <span className="entrada-selo" aria-hidden="true">
-        <EnvelopeCheck size={30} color="currentColor" />
-      </span>
-      <p className="entrada-kicker">Link a caminho</p>
-      <Disp tamanho={48} linhas={[{ texto: 'Confira sua caixa de entrada' }]} />
-      <p className="entrada-linha">
-        Se <strong>{email}</strong> estiver cadastrado na Onside, o link para
-        definir uma nova senha já saiu.
+    <div aria-live="polite">
+      <div className="ent-mail">
+        <EnvelopeCheck size={30} color="currentColor" aria-hidden="true" />
+      </div>
+      <p className="onside-kicker">Link a caminho</p>
+      <h1 className="onside-display mb-3">
+        CONFIRA SUA{' '}
+        <span className="text-[var(--onside-live-text)]">
+          CAIXA DE ENTRADA.
+        </span>
+      </h1>
+      <p className="text-sm text-[var(--onside-muted)] leading-relaxed">
+        Se <strong className="text-[var(--onside-ink)]">{email}</strong> estiver
+        cadastrado na Onside, o link para definir uma nova senha já saiu.
       </p>
-      <ul className="entrada-lista">
-        <li>
-          O link vale por <strong>30 minutos</strong> e só pode ser usado uma
-          vez.
+      <ul className="my-7 grid gap-3 text-sm text-[var(--onside-muted)]">
+        <li className="border-[var(--onside-line)] border-l-2 pl-3">
+          O link vale por{' '}
+          <strong className="text-[var(--onside-ink)]">30 minutos</strong> e só
+          pode ser usado uma vez.
         </li>
-        <li>Não achou? Procure em spam ou promoções antes de pedir outro.</li>
-        <li>Sua senha atual continua valendo enquanto o link não for usado.</li>
+        <li className="border-[var(--onside-line)] border-l-2 pl-3">
+          Não achou? Procure em spam ou promoções antes de pedir outro.
+        </li>
+        <li className="border-[var(--onside-line)] border-l-2 pl-3">
+          Sua senha atual continua valendo enquanto o link não for usado.
+        </li>
       </ul>
-      <div className="entrada-botoes">
-        <Link to="/login" {...propsBotao({ variante: 'acid' })}>
+      <div className="flex flex-col gap-3">
+        <Link to="/login" className="onside-btn onside-btn-acid ent-full">
           Voltar ao login
         </Link>
-        <Botao onClick={onTentarOutro}>Usar outro e-mail</Botao>
+        <button
+          type="button"
+          onClick={onTentarOutro}
+          className="onside-btn onside-btn-outline ent-full"
+        >
+          Usar outro e-mail
+        </button>
       </div>
     </div>
   )

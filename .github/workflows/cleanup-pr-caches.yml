@@ -1,0 +1,33 @@
+name: Cleanup PR caches
+
+# Apaga os caches de um PR quando ele fecha (merge ou não). Mesmo com o save
+# restrito à master (setup-monorepo/setup-playwright), qualquer cache criado em
+# refs/pull/<N>/merge só ocupa cota depois do fechamento. Padrão da doc do
+# GitHub, "Force deleting cache entries".
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  actions: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete caches of the PR merge ref
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          BRANCH: refs/pull/${{ github.event.pull_request.number }}/merge
+        run: |
+          echo "Fetching list of cache keys for $BRANCH"
+          cacheKeysForPR=$(gh cache list --ref "$BRANCH" --limit 100 --json id --jq '.[].id')
+
+          # Não falha o job se um cache já tiver sido apagado.
+          set +e
+          echo "Deleting caches..."
+          for cacheKey in $cacheKeysForPR; do
+            gh cache delete "$cacheKey"
+          done
+          echo "Done"

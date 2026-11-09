@@ -1,7 +1,12 @@
+import type {
+  AnalyticsComparisonMode,
+  EventComparisonTarget
+} from '@findsports_oficial/api/lib/commercial-analytics/types'
 import type { SubscriptionStanding } from '@findsports_oficial/api/lib/current-plan'
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import type { SubscriptionPlan as DbSubscriptionPlan } from '@findsports_oficial/db'
 import type { inferRouterOutputs } from '@trpc/server'
+import type { PubOutput } from '@/domain/pub-profile'
 
 type RouterOutputs = inferRouterOutputs<AppRouter>
 
@@ -9,6 +14,7 @@ export type AdminBar = RouterOutputs['pub']['getMe']
 export type AdminEvent = RouterOutputs['pub']['getMyEvents'][number]
 export type EventCreationPolicy =
   RouterOutputs['pub']['getMyEventCreationPolicy']
+export type Subscription = RouterOutputs['pub']['getMySubscription']
 export type SubscriptionPlan = DbSubscriptionPlan
 
 /* ------------------------------------------------------------------ */
@@ -50,6 +56,59 @@ export type PlanState =
       standing: SubscriptionStanding | null
     }
 
+/**
+ * O perfil público do próprio bar (`pubs.getById`), com as regras de plano e
+ * de recebimento já resolvidas pelo servidor. É o que a prévia mostra.
+ */
+export type ProfileState =
+  | { status: 'loading' }
+  | { status: 'error' }
+  | { status: 'ready'; profile: PubOutput }
+
+/* ------------------------------------------------------------------ */
+/* Analytics state machines                                            */
+/* ------------------------------------------------------------------ */
+
+export type EventAnalyticsState =
+  | { status: 'loading' }
+  | {
+      status: 'error'
+      message?: string
+      retry: () => void
+      retryable: boolean
+    }
+  | { status: 'blocked' }
+  | { status: 'empty' }
+  | {
+      status: 'ready'
+      items: EventAnalyticsRow[]
+      comparisonMode?: AnalyticsComparisonMode
+      comparisonTarget?: EventComparisonTarget
+      comparison?: EventComparisonData
+      comparisonLoading?: boolean
+      onComparisonTargetChange?: (
+        target: EventComparisonTarget | undefined
+      ) => void
+      from: string
+      to: string
+    }
+
+/* ------------------------------------------------------------------ */
+/* Readiness diagnostics                                               */
+/* ------------------------------------------------------------------ */
+
+export type ReadinessCheck = {
+  key: string
+  label: string
+  done: boolean
+}
+
+export type ProfileReadiness = {
+  checks: ReadinessCheck[]
+  score: number
+  total: number
+}
+
 /* ------------------------------------------------------------------ */
 /* Formatting helpers                                                  */
 /* ------------------------------------------------------------------ */
@@ -68,18 +127,17 @@ export function getInterestRate(
   return Math.min(interestedPeople, uniqueVisitors) / uniqueVisitors
 }
 
-export function formatInterestRate(
-  interestedPeople: number,
-  uniqueVisitors: number
-): string {
-  const rate = getInterestRate(interestedPeople, uniqueVisitors)
-  return rate === null ? '—' : `${(rate * 100).toFixed(1)}%`
-}
-
-export const LOCKED_ANALYTICS_VALUE = 'Exclusivo do plano superior'
-
-export function formatAnalyticsValue(value: number | null): string {
-  return value === null ? LOCKED_ANALYTICS_VALUE : value.toLocaleString('pt-BR')
+export function sumAnalyticsActions(data: {
+  directionsOpened: number | null
+  phoneClicked: number | null
+  whatsappOpened: number | null
+}): number | null {
+  return [data.directionsOpened, data.whatsappOpened, data.phoneClicked].reduce<
+    number | null
+  >(
+    (total, value) => (total === null || value === null ? null : total + value),
+    0
+  )
 }
 
 /**

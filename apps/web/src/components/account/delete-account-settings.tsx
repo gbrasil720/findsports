@@ -23,10 +23,7 @@ import { useTRPC } from '@/utils/trpc'
 const CONFIRMATION = 'EXCLUIR MINHA CONTA'
 const SUPPORT_EMAIL = 'contato@onside.sh'
 
-/**
- * Se a exclusão encerra uma assinatura no Stripe (WEB-336). Só o bar tem; a
- * falha de leitura deixa a exclusão indisponível por segurança.
- */
+/** Se a exclusão encerra a assinatura no Stripe (WEB-336); sem resposta, fica travada. */
 export function useDeletionEligibility(surface: 'fan' | 'pub') {
   const trpc = useTRPC()
   const eligibility = useQuery({
@@ -38,18 +35,17 @@ export function useDeletionEligibility(surface: 'fan' | 'pub') {
     eligibility,
     endsSubscription:
       surface === 'pub' && eligibility.data?.endsSubscription === true,
-    loading: surface === 'pub' && eligibility.isLoading,
-    error:
-      surface === 'pub' && eligibility.error
-        ? getUserFacingError(
-            eligibility.error,
-            'Não foi possível verificar a assinatura. A exclusão permanece indisponível por segurança.'
-          )
-        : null
+    blocked:
+      surface === 'pub' && (eligibility.isLoading || eligibility.isError),
+    errorFeedback: eligibility.error
+      ? getUserFacingError(
+          eligibility.error,
+          'Não foi possível verificar a assinatura. A exclusão permanece indisponível por segurança.'
+        )
+      : null
   }
 }
 
-/** A confirmação da exclusão: senha, a frase e o aviso da assinatura. */
 export function DeleteAccountDialog({
   open,
   onClose,
@@ -59,8 +55,8 @@ export function DeleteAccountDialog({
   open: boolean
   onClose: () => void
   endsSubscription: boolean
-  /** A recusa pode ter mudado a assinatura: quem abriu relê a elegibilidade. */
-  onFailed?: () => void
+  /** A recusa pode ter mudado a assinatura: quem chama relê a elegibilidade. */
+  onFailed: () => void
 }) {
   const navigate = useNavigate()
   const router = useRouter()
@@ -106,7 +102,7 @@ export function DeleteAccountDialog({
               'Não foi possível excluir a conta.'
             )
       )
-      onFailed?.()
+      onFailed()
       return
     }
     close()
@@ -190,18 +186,21 @@ export function DeleteAccountDialog({
           </Field>
         </FieldGroup>
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button type="button" variant="outline" size="lg" onClick={close}>
+          <button
+            type="button"
+            className="pn-btn pn-sm pn-ghost"
+            onClick={close}
+          >
             Manter minha conta
-          </Button>
-          <Button
+          </button>
+          <button
             type="submit"
-            variant="destructive"
-            size="lg"
+            className="pn-btn pn-sm pn-danger"
             disabled={deleting || confirmation !== CONFIRMATION}
           >
             {deleting ? <Spinner data-icon="inline-start" /> : null}
             {deleting ? 'Excluindo…' : 'Excluir permanentemente'}
-          </Button>
+          </button>
         </div>
       </form>
     </Modal>
@@ -210,12 +209,9 @@ export function DeleteAccountDialog({
 
 export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
   const [open, setOpen] = useState(false)
-  const {
-    eligibility,
-    endsSubscription,
-    loading,
-    error: eligibilityErrorFeedback
-  } = useDeletionEligibility(surface)
+  const { eligibility, endsSubscription, blocked, errorFeedback } =
+    useDeletionEligibility(surface)
+
   return (
     <section className="border border-[var(--onside-live)] bg-[var(--onside-paper)] p-5 sm:p-6">
       <p className="font-[family-name:var(--onside-mono)] font-bold text-[10px] text-[var(--onside-live-text)] uppercase tracking-[0.14em]">
@@ -223,7 +219,9 @@ export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
       </p>
       <div
         className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
-        aria-busy={loading || undefined}
+        aria-busy={
+          surface === 'pub' && eligibility.isLoading ? true : undefined
+        }
       >
         <div className="flex min-w-0 gap-3">
           <Trash
@@ -242,14 +240,14 @@ export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
         <Button
           variant="destructive"
           size="lg"
-          disabled={loading || (surface === 'pub' && eligibility.isError)}
+          disabled={blocked}
           onClick={() => setOpen(true)}
         >
           Excluir minha conta
         </Button>
       </div>
 
-      {loading ? (
+      {surface === 'pub' && eligibility.isLoading ? (
         <p className="sr-only" role="status" aria-live="polite">
           Verificando a assinatura antes de liberar a exclusão da conta…
         </p>
@@ -257,8 +255,8 @@ export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
 
       {surface === 'pub' && eligibility.isError ? (
         <div className="onside-callout onside-callout-danger mt-4" role="alert">
-          <p>{eligibilityErrorFeedback?.message}</p>
-          {eligibilityErrorFeedback?.retryable ? (
+          <p>{errorFeedback?.message}</p>
+          {errorFeedback?.retryable ? (
             <Button
               variant="outline"
               onClick={() => void eligibility.refetch()}

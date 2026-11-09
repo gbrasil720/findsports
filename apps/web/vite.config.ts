@@ -30,7 +30,14 @@ export default defineConfig(({ mode }) => ({
      * (WEB-333). Sem ele aqui o `vite dev` o descobre no meio da visita,
      * reempacota as dependências e recarrega a página.
      */
-    include: ['three'],
+    /**
+     * As telas importam regras puras de `packages/api/src/lib`, e alguns
+     * desses módulos puxam `@t3-oss/env-core`, `zod/mini` e `@trpc/server`.
+     * Sem eles aqui o `vite dev` de cache vazio (o do CI) só os acha numa
+     * segunda página, reempacota tudo com outro hash e a página aberta fica
+     * com duas cópias dos pacotes: o React não hidrata.
+     */
+    include: ['three', '@t3-oss/env-core', 'zod/mini', '@trpc/server'],
     /**
      * WEB-73/456: pré-empacotado, o worker do MapLibre e a página carregam
      * duas cópias do módulo compartilhado e o handshake trava, sem erro: o

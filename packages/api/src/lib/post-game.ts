@@ -93,6 +93,7 @@ async function checkEligibility(input: {
     FROM event e
     JOIN bar b ON b.id = e.bar_id
     WHERE e.id = ${input.eventId}
+      AND e.published_at IS NOT NULL
       ${input.barId ? sql`AND e.bar_id = ${input.barId}` : sql``}
   `)
 

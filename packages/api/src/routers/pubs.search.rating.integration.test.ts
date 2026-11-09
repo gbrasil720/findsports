@@ -154,7 +154,7 @@ integrationTest(
         }
       }
 
-      // `semNota` tem 1 avaliação e o piso é 3 — abaixo dele.
+      // `semNota` tem 1 avaliação, abaixo do piso (`RATING_PUBLIC_FLOOR`).
       const contagens = await db.query.bar.findMany({
         where: inArray(
           bar.id,

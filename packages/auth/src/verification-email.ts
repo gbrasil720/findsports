@@ -1,6 +1,6 @@
 import { appendFile } from 'node:fs/promises'
 import { env } from '@findsports_oficial/env/server'
-import { createOnsideEmailTemplate } from './email-layout'
+import { chips, createOnsideEmailTemplate } from './email-layout'
 
 export { escapeHtml } from './email-layout'
 
@@ -28,25 +28,23 @@ export function createVerificationEmail({
   verificationUrl
 }: VerificationEmailInput) {
   const template = createOnsideEmailTemplate({
-    tag: 'CONTA',
     heading: 'Confirme seu',
     headingAccent: 'e-mail',
+    tag: 'CONTA',
     intro: `Olá, ${name.trim() || 'torcedor'}. Falta um passo para entrar em campo: confirme que este endereço é seu para ativar sua conta na Onside.`,
-    blocks: [
-      {
-        kind: 'steps',
-        items: [
-          // Vale para os dois: pelo app o link volta para o app; pelo site, o
-          // rascunho do cadastro de bar fica no navegador em que foi começado.
-          'Abra o link no aparelho em que começou o cadastro: pelo app, ele volta para o app; pelo site, use o mesmo navegador.',
-          'Depois da confirmação, você entra automaticamente e continua de onde parou.',
-          'Por segurança, este link expira em 1 hora.'
-        ]
-      },
-      { kind: 'chips', items: [{ label: 'EXPIRA EM 1 HORA', strong: true }] }
+    // O prazo é o `emailVerification.expiresIn` (60 min) de `index.ts`.
+    blocks: [chips([['EXPIRA EM 1 HORA', true]])],
+    numberedSteps: true,
+    steps: [
+      // Vale para os dois: pelo app o link volta para o app; pelo site, o
+      // rascunho do cadastro de bar fica no navegador em que foi começado.
+      'Abra o link no aparelho em que começou o cadastro: pelo app, ele volta para o app; pelo site, use o mesmo navegador.',
+      'Depois da confirmação, você entra automaticamente e continua de onde parou.',
+      'Por segurança, este link expira em 1 hora.'
     ],
     action: 'Confirmar meu e-mail',
     actionUrl: verificationUrl,
+    noteLabel: 'Não foi você?',
     note: 'Se você não criou uma conta na Onside, ignore esta mensagem. Sem abrir o link, nenhuma conta é confirmada.',
     reason:
       'Você recebeu este e-mail porque este endereço foi usado em um cadastro na Onside.'

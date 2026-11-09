@@ -80,6 +80,15 @@ integrationTest(
       })
       expect(marcarSem.code).not.toBeNull()
       expect(marcarSem.offer).toBeNull()
+      await ctx.fan.attendance.set({ eventId: herda, attending: true })
+
+      // Quem vai do painel mostra a oferta de cada jogo, não só a padrão.
+      const quemVai = await ctx.owner.barReservations.going()
+      const ofertaNoPainel = (id: string) =>
+        quemVai.find((game) => game.id === id)?.houseOffer
+      expect(ofertaNoPainel(herda)).toBe('Chopp em dobro')
+      expect(ofertaNoPainel(propria)).toBe('Porção grátis')
+      expect(ofertaNoPainel(sem)).toBeNull()
 
       // O dono troca depois: o código já emitido segura o que prometeu.
       await ctx.owner.pub.updateEvent({
@@ -202,6 +211,41 @@ for (const plan of ['starter', 'pro'] as const) {
           eventId: jogo.id,
           championship: 'Outro nome'
         })
+      } finally {
+        await drop()
+        await ctx.cleanup()
+      }
+    }
+  )
+}
+
+for (const plan of ['starter', 'pro'] as const) {
+  integrationTest(
+    `bar ${plan} não fecha a lista de quem vai do jogo, mas reabre`,
+    async () => {
+      const ctx = await seedBar(plan, 'active', inAMonth())
+      const { sportId, drop } = await withSport(ctx)
+      try {
+        await expect(
+          ctx.owner.pub.createEvent({
+            ...novoJogo(sportId),
+            attendanceEnabled: false
+          })
+        ).rejects.toMatchObject({ code: 'FORBIDDEN' })
+        const jogo = await ctx.seedGame()
+        await expect(
+          ctx.owner.pub.updateEvent({ eventId: jogo, attendanceEnabled: false })
+        ).rejects.toMatchObject({ code: 'FORBIDDEN' })
+        // Fechada no Elite, antes de trocar de plano: reabrir passa.
+        await ctx.db
+          .update(event)
+          .set({ attendanceEnabled: false })
+          .where(eq(event.id, jogo))
+        await ctx.owner.pub.updateEvent({
+          eventId: jogo,
+          attendanceEnabled: true
+        })
+        await ctx.fan.attendance.set({ eventId: jogo, attending: true })
       } finally {
         await drop()
         await ctx.cleanup()

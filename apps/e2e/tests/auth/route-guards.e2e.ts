@@ -21,13 +21,19 @@ function expectRedirect(from: string, to: string) {
 }
 
 test.describe('deslogado', () => {
+  // `/dashboard` (o Explorar) abre sem login desde 05/11/2026 (WEB-501).
   for (const path of [
+    '/dashboard/profile',
+    '/dashboard/seus-bares',
+    '/dashboard/games',
     '/admin',
     '/admin/billing',
     '/admin/validate',
+    '/admin/jogos',
     '/plan',
     '/plan/confirmed',
     '/app',
+    '/onboarding/fan',
     // Pública só para quem acabou de se cadastrar na aba (WEB-349); esse
     // caminho está em `signup-login.e2e.ts` e `onboarding/pub.e2e.ts`.
     '/onboarding/pub'
@@ -48,26 +54,32 @@ test.describe('deslogado', () => {
     page
   }) => {
     // `loginWithForm` abre o link protegido; o guard leva ao formulário.
-    const { user } = await createPub()
-    await loginWithForm(page, user, '/admin/jogos?ref=email')
-    await expect(page).toHaveURL(/\/admin\/jogos\?ref=email$/)
+    await loginWithForm(
+      page,
+      await createUser(),
+      '/dashboard/profile?ref=email'
+    )
+    await expect(page).toHaveURL(/\/dashboard\/profile\?ref=email$/)
   })
 
-  // O painel do torcedor saiu do web: `/dashboard` é uma URL que não existe.
-  test('/dashboard é 404', async ({ page }) => {
-    const response = await page.goto('/dashboard')
-    expect(response?.status()).toBe(404)
+  test('a página do bar abre sem sessão', async ({ page }) => {
+    const { barId } = await createPub()
+    await page.goto(`/pub/${barId}`)
+    await expect(page).toHaveURL(
+      new RegExp(`/bar/[a-z0-9-]+-${barId.slice(0, 8)}$`)
+    )
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
   })
 
   expectRedirect('/', '/')
-  expectRedirect('/torcedor', '/torcedor')
 })
 
-/** Torcedor e admin no web vão à página do app; o bar, ao painel. */
 const HOME: Record<Role, string> = {
-  fan: '/torcedor',
+  fan: '/dashboard',
   pub: '/admin',
-  admin: '/torcedor'
+  // O Houdini só abre quando pedido; a casa do admin no app é a busca.
+  admin: '/dashboard'
 }
 
 for (const role of ['fan', 'pub', 'admin'] as const) {
@@ -79,12 +91,26 @@ for (const role of ['fan', 'pub', 'admin'] as const) {
     expectRedirect('/?public=1', '/?public=1')
     // Start page do PWA.
     expectRedirect('/app', HOME[role])
-    // Onboarding concluído (ou que não é do web) volta para casa.
-    expectRedirect('/onboarding/fan', HOME[role])
-    expectRedirect('/onboarding/pub', HOME[role])
-    expectRedirect('/login', HOME[role])
+    // Concluído no onboarding volta para casa (pub vai escolher plano). Admin
+    // fica no /dashboard, sem ser mandado ao Houdini.
+    expectRedirect('/onboarding/fan', role === 'pub' ? '/plan' : HOME[role])
+    expectRedirect('/onboarding/pub', role === 'pub' ? '/plan' : HOME[role])
   })
 }
+
+test.describe('"Ver a landing" do menu não redireciona', () => {
+  test.use({ storageState: storageState('fan') })
+
+  test('fan', async ({ page }) => {
+    await page.goto('/dashboard')
+    await page.getByRole('button', { name: /^Menu da conta de / }).click()
+    await page.getByRole('menuitem', { name: 'Ver a landing' }).click()
+
+    await expect(page).toHaveURL(/\/\?public=/)
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    await expect(page).toHaveURL(/\/\?public=/)
+  })
+})
 
 // WEB-473: o guard roda no SSR, onde a origem é a da requisição. Link
 // absoluto do próprio site (e-mail, favorito) leva ao destino, não a /admin.
@@ -107,48 +133,41 @@ test.describe('bar logado com callbackUrl absoluto', () => {
 })
 
 test.describe('papel errado cai na casa certa', () => {
-  for (const role of ['fan', 'admin'] as const) {
-    test.describe(role, () => {
-      test.use({ storageState: storageState(role) })
-      expectRedirect('/admin', '/torcedor')
-      expectRedirect('/admin/billing', '/torcedor')
-      expectRedirect('/plan', '/torcedor')
+  test.describe('fan', () => {
+    test.use({ storageState: storageState('fan') })
+    expectRedirect('/admin', '/dashboard')
+    expectRedirect('/admin/billing', '/dashboard')
+    expectRedirect('/admin/meu-espaco', '/dashboard')
+    expectRedirect('/plan', '/dashboard')
+  })
+
+  test.describe('pub', () => {
+    test.use({ storageState: storageState('pub') })
+    expectRedirect('/dashboard', '/admin')
+    expectRedirect('/dashboard/profile', '/admin')
+  })
+
+  test.describe('admin', () => {
+    test.use({ storageState: storageState('admin') })
+    // Admin navega pelo app; o Houdini só abre quando pedido.
+    expectRedirect('/dashboard', '/dashboard')
+    expectRedirect('/dashboard/games', '/dashboard/games')
+    expectRedirect('/plan', '/dashboard')
+  })
+})
+
+test.describe('onboarding pendente força /onboarding/{papel}', () => {
+  for (const role of ['fan', 'pub'] as const) {
+    test(role, async ({ page }) => {
+      const user = await createUser({ role, onboardingCompleted: false })
+      await signIn(page, user)
+
+      for (const path of [HOME[role], '/', '/app']) {
+        await page.goto(path)
+        await expect(page).toHaveURL(new RegExp(`/onboarding/${role}$`))
+      }
     })
   }
-})
-
-test.describe('a página do app abre para o torcedor', () => {
-  test.use({ storageState: storageState('fan') })
-
-  test('fan', async ({ page }) => {
-    await page.goto('/torcedor')
-    await expect(
-      page.getByRole('heading', { level: 1, name: /está no app/i })
-    ).toBeVisible()
-  })
-})
-
-test.describe('onboarding pendente', () => {
-  test('bar vai para /onboarding/pub', async ({ page }) => {
-    const user = await createUser({ role: 'pub', onboardingCompleted: false })
-    await signIn(page, user)
-
-    for (const path of ['/admin', '/', '/app']) {
-      await page.goto(path)
-      await expect(page).toHaveURL(/\/onboarding\/pub$/)
-    }
-  })
-
-  // O onboarding do torcedor é só do app.
-  test('torcedor vai para a página do app', async ({ page }) => {
-    const user = await createUser({ role: 'fan', onboardingCompleted: false })
-    await signIn(page, user)
-
-    for (const path of ['/', '/app', '/onboarding/fan']) {
-      await page.goto(path)
-      await expect(page).toHaveURL(/\/torcedor$/)
-    }
-  })
 })
 
 test('rota inexistente renderiza 404 com noindex', async ({ page }) => {

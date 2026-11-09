@@ -1,4 +1,4 @@
-import { createOnsideEmailTemplate } from './email-layout'
+import { chips, createOnsideEmailTemplate } from './email-layout'
 import { sendEmail } from './verification-email'
 
 type ResetPasswordEmailInput = {
@@ -20,24 +20,25 @@ export function createResetPasswordEmail({
   resetUrl
 }: ResetPasswordEmailInput) {
   const template = createOnsideEmailTemplate({
-    tag: 'SEGURANÇA',
     heading: 'Defina uma',
     headingAccent: 'nova senha',
-    shadow: 'ink',
+    tag: 'SEGURANÇA',
     intro: `Olá, ${name.trim() || 'torcedor'}. Recebemos um pedido para redefinir a senha da sua conta Onside. Use o link abaixo para escolher uma nova.`,
+    // `resetPasswordTokenExpiresIn` (30 min) e `revokeSessionsOnPasswordReset`
+    // de `index.ts`; o better-auth apaga o token quando a senha é trocada.
     blocks: [
-      {
-        kind: 'chips',
-        items: [{ label: 'USO ÚNICO', strong: true }, { label: '30 MINUTOS' }]
-      }
+      chips([['USO ÚNICO', true], ['30 MINUTOS'], ['ENCERRA AS SESSÕES']])
     ],
     steps: [
       'O link é de uso único: depois que a senha for definida, ele deixa de valer.',
       'Por segurança, este link expira em 30 minutos.',
-      'Ao concluir, as sessões abertas são encerradas — entre de novo com a senha nova.'
+      'Ao concluir, as sessões abertas são encerradas. Entre de novo com a senha nova.'
     ],
     action: 'Definir nova senha',
     actionUrl: resetUrl,
+    // Segurança: a ação não é convite, o acid fica para o que a pessoa quer fazer.
+    actionTone: 'secondary',
+    noteLabel: 'Não pediu?',
     note: 'Se você não pediu para redefinir sua senha, ignore esta mensagem. Sua senha atual continua valendo enquanto o link não for usado.',
     reason:
       'Você recebeu este e-mail porque alguém pediu a redefinição de senha desta conta na Onside.'

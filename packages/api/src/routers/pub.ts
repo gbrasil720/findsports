@@ -75,6 +75,10 @@ import {
   readEventDeletionImpact
 } from '../lib/event-deletion'
 import { byMatchOrder } from '../lib/game-participants'
+import {
+  GAME_SUGGESTION_LIMIT,
+  gameSuggestionSource
+} from '../lib/game-suggestions'
 import { geocodeAddress } from '../lib/geocode-address'
 import {
   assertCanConfigureHouseOffer,
@@ -248,10 +252,6 @@ export function resolveEventEndsAt(
 
 type EventTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
 
-/**
- * Oferta deste jogo no "Novo jogo" e no "Editar jogo" (WEB-422). Teto de
- * payload, não a regra: o limite vale sobre o texto normalizado.
- */
 const gameHouseOfferInput = {
   // Omitida fica como está (jogo novo herda a do bar); `null` volta a herdar.
   houseOffer: z
@@ -264,9 +264,9 @@ const gameHouseOfferInput = {
 }
 
 /**
- * O que gravar da oferta do jogo. Mesma regra de `updateHouseOffer`: só o
- * Elite configura, conferido na assinatura antes de qualquer escrita, e o
- * painel esconder o campo não impede ninguém de mandar. Sem os campos, nada
+ * O que gravar da oferta do jogo (WEB-422). Mesma regra de `updateHouseOffer`:
+ * só o Elite configura, conferido na assinatura antes de qualquer escrita, e
+ * o painel esconder o campo não impede ninguém de mandar. Sem os campos, nada
  * muda e o plano nem é lido.
  */
 async function parseGameHouseOffer(
@@ -284,6 +284,24 @@ async function parseGameHouseOffer(
     noHouseOffer: false,
     ...(input.houseOffer !== undefined && {
       houseOffer: parseHouseOfferInput(input.houseOffer)
+    })
+  }
+}
+
+/**
+ * Fechar a lista de quem vai de um jogo (WEB-437) é do Elite, como no painel.
+ * Abrir passa sempre: o bar que saiu do Elite reabre o que tinha fechado.
+ */
+async function assertCanCloseAttendance(
+  userId: string,
+  input: { attendanceEnabled?: boolean }
+): Promise<void> {
+  if (input.attendanceEnabled !== false) return
+  const own = await getOwnBar(userId)
+  if (getCurrentPlan(own.subscription ?? null) !== 'elite') {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: 'Fechar a lista de quem vai é um recurso do plano Elite.'
     })
   }
 }
@@ -996,6 +1014,21 @@ export const pubRouter = router({
     return getEventCreationPolicy(db, existingBar)
   }),
 
+  /**
+   * Jogos para publicar com um toque ("Seu primeiro jogo" e o passeio). Um
+   * toque é um `createEvent` com o que vem aqui; telão e som ficam de fora e
+   * herdam das características do bar (WEB-399).
+   */
+  gameSuggestions: pubProcedure.query(async ({ ctx }) => {
+    const existingBar = await getBarByUserId(ctx.session.user.id)
+    return gameSuggestionSource.suggest({
+      barId: existingBar.id,
+      city: existingBar.city,
+      now: new Date(),
+      limit: GAME_SUGGESTION_LIMIT
+    })
+  }),
+
   createEvent: pubProcedure
     .input(
       z.object({
@@ -1032,6 +1065,7 @@ export const pubRouter = router({
       )
 
       const offer = await parseGameHouseOffer(userId, input)
+      await assertCanCloseAttendance(userId, input)
       const draftBar = input.draft ? await getOwnBar(userId) : null
       await db.transaction(async (tx) => {
         const lockedBar = draftBar ?? (await lockBarForPublishing(tx, userId))
@@ -1131,6 +1165,7 @@ export const pubRouter = router({
       }
 
       const offer = await parseGameHouseOffer(userId, input)
+      await assertCanCloseAttendance(userId, input)
 
       // WEB-43: compare the effective pair (input or persisted) on every update —
       // changing only startsAt must not be able to push start past the saved end.
@@ -1432,20 +1467,33 @@ export const pubRouter = router({
     .input(z.object({ plan: z.enum(subscriptionPlanEnum.enumValues) }))
     .mutation(async ({ ctx, input }) => {
       const existingBar = await getOwnBar(ctx.session.user.id)
-      const [changed] = await db
-        .update(subscription)
-        .set({ plan: input.plan })
-        .where(
-          and(
-            eq(subscription.barId, existingBar.id),
-            eq(subscription.status, 'trialing'),
-            isNull(subscription.externalSubscriptionId),
-            // `timestamp` sem fuso, lido como UTC: a mesma comparação de
-            // `subscription_current_plan`.
-            sql`${subscription.currentPeriodEnd} > (now() AT TIME ZONE 'UTC')`
+      // A escolha do passo "Plano do teste" do cadastro é esta mesma troca:
+      // ela marca o plano como escolhido, e o painel deixa de levar até lá.
+      const changed = await db.transaction(async (tx) => {
+        const [row] = await tx
+          .update(subscription)
+          .set({ plan: input.plan })
+          .where(
+            and(
+              eq(subscription.barId, existingBar.id),
+              eq(subscription.status, 'trialing'),
+              isNull(subscription.externalSubscriptionId),
+              // `timestamp` sem fuso, lido como UTC: a mesma comparação de
+              // `subscription_current_plan`.
+              sql`${subscription.currentPeriodEnd} > (now() AT TIME ZONE 'UTC')`
+            )
           )
-        )
-        .returning({ plan: subscription.plan })
+          .returning({ plan: subscription.plan })
+        if (row) {
+          await tx
+            .update(bar)
+            .set({ trialPlanChosenAt: sql`now()` })
+            .where(
+              and(eq(bar.id, existingBar.id), isNull(bar.trialPlanChosenAt))
+            )
+        }
+        return row
+      })
       if (!changed) {
         throw new TRPCError({
           code: 'PRECONDITION_FAILED',

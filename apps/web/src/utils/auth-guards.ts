@@ -2,29 +2,41 @@ import { isTransientError } from '@findsports_oficial/api/lib/transient-error'
 import type { auth } from '@findsports_oficial/auth'
 import { impersonationModeFrom } from '@findsports_oficial/auth/impersonation-mode'
 import { redirect } from '@tanstack/react-router'
+import {
+  acaoPulaOnboarding,
+  contaNovaPodeVer,
+  temAcao
+} from '../components/torcedor/acao'
 import { getCallbackUrl } from './callback-url'
 
-/** A tela "Seu bar está no ar" (4r), depois do cadastro do bar. */
-export const PUB_LIVE_PATH = '/onboarding/pub/no-ar'
-
 export type AuthSession = ReturnType<typeof toClientSession>
+
+/**
+ * A tela "no ar" do fim do cadastro do bar (WEB-501): a única `/onboarding/*`
+ * aberta a quem já concluiu. O resto do onboarding manda o bar pronto embora.
+ */
+export const PUB_LIVE_PATH = '/onboarding/pub/no-ar'
 
 const AUTHENTICATED_PREFIXES = [
   '/admin',
   '/plan',
   // `start_url` do PWA: abrir o ícone da tela inicial sem sessão tem que cair
   // no login, e não numa tela em branco.
-  '/app'
+  '/app',
+  // O onboarding de torcedor chama `pubs.getSports` e `onboarding.completeFan`,
+  // ambos protegidos — visitante precisa criar sessão antes de entrar.
+  '/onboarding/fan'
 ] as const
 
 /**
- * O web é só para bares (decisão do dono, 24/10/2026): torcedor logado que
- * abre o web cai na página que leva ao app. Admin também, fora do Houdini e
- * da landing: o web não tem mais tela de torcedor para ele navegar.
+ * Ver sem login, agir com login (dono, 05/11/2026): o Explorar do torcedor
+ * (`/dashboard`) abre para visitante; as telas de baixo dele (Meus jogos,
+ * Seus bares, perfil, preferências) são da conta.
  */
-export const FAN_HOME = '/torcedor'
+export const FAN_EXPLORE_PATH = '/dashboard'
 
 export function requiresAuthentication(pathname: string) {
+  if (pathname.startsWith(`${FAN_EXPLORE_PATH}/`)) return true
   return AUTHENTICATED_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
   )
@@ -70,57 +82,75 @@ export function applyAuthGuards(
     return
   }
 
-  const pub = session.user.role === 'pub'
-
-  // O onboarding de torcedor é só do app: no web, quem não é bar vai à
-  // página do app, com ou sem onboarding feito.
-  if (!pub) {
-    if (
-      requiresAuthentication(pathname) ||
-      pathname.startsWith('/onboarding')
-    ) {
-      throw redirect({ to: FAN_HOME })
-    }
-    // WEB-278: sessão pronta não fica olhando o formulário de login; segue o
-    // destino pedido (o do admin para o Houdini) ou vai à página do app.
-    if (pathname === '/login' || pathname === '/signup') {
-      const destino = getCallbackUrl(href, origin)
-      throw redirect({ to: destino === '/admin' ? FAN_HOME : destino })
-    }
-    // Landing: o torcedor vai ao app; admin fica (é o "Ir para o site" dele).
-    // `String()`: o router faz JSON.parse da query, e `/?public=1` digitado
-    // chega como número; só o link interno é string.
-    if (
-      pathname === '/' &&
-      session.user.role === 'fan' &&
-      String(search.public) !== '1'
-    ) {
-      throw redirect({ to: FAN_HOME })
-    }
-    return
-  }
-
   if (!session.user.onboardingCompleted) {
-    if (!pathname.startsWith('/onboarding/pub')) {
-      throw redirect({ to: '/onboarding/pub' })
+    const onboardingRoute =
+      session.user.role === 'pub' ? '/onboarding/pub' : '/onboarding/fan'
+
+    if (!pathname.startsWith(onboardingRoute)) {
+      const entrada = pathname === '/login' || pathname === '/signup'
+      const destino = entrada ? getCallbackUrl(href, origin) : href
+      // Conta nova por uma ação (`?acao=`, `components/torcedor/acao.ts`): a
+      // ação é concluída primeiro e as preferências vêm depois, no card e na
+      // tela curta (`/dashboard/bem-vindo`).
+      if (session.user.role !== 'pub') {
+        if (entrada && acaoPulaOnboarding(destino))
+          throw redirect({ to: destino })
+        if (!entrada && contaNovaPodeVer(pathname, href)) return
+      }
+      // A do app ("Me avise") atravessa o onboarding e volta concluída.
+      throw redirect({
+        to: onboardingRoute,
+        ...(session.user.role !== 'pub' && temAcao(destino)
+          ? { search: { callbackUrl: destino } }
+          : {})
+      })
     }
     return
   }
 
-  // "No ar" (4r) é a tela depois do cadastro: só existe com o bar criado.
   if (pathname.startsWith('/onboarding') && pathname !== PUB_LIVE_PATH) {
-    throw redirect({ to: '/admin' })
+    throw redirect({
+      to: session.user.role === 'pub' ? '/plan' : '/dashboard'
+    })
   }
 
   // WEB-278: quem já tem sessão não vê o formulário de login nem o de
-  // cadastro; segue para o destino que a URL levava (`/admin` por padrão).
+  // cadastro; segue para o destino que a URL levava. `/dashboard` é o padrão
+  // de `getCallbackUrl`, e o guard abaixo leva o bar à casa dele.
   if (pathname === '/login' || pathname === '/signup') {
     throw redirect({ to: getCallbackUrl(href, origin) })
   }
 
-  // Landing é para visitantes: o bar vai ao painel.
+  // Landing é exclusiva para visitantes — sessão pronta vai para a superfície do papel.
+  // Admin permanece na landing.
+  // `String()`: o router faz JSON.parse da query, e `/?public=1` digitado
+  // chega como número; só o link interno (`search={{ public: '1' }}`) é string.
   if (pathname === '/' && String(search.public) !== '1') {
+    if (session.user.role === 'fan') {
+      throw redirect({ to: '/dashboard' })
+    }
+    if (session.user.role === 'pub') {
+      throw redirect({ to: '/admin' })
+    }
+  }
+
+  // Fan tentando acessar área do bar
+  if (session.user.role === 'fan' && pathname.startsWith('/admin')) {
+    throw redirect({ to: '/dashboard' })
+  }
+
+  // Bar tentando acessar área do fan
+  if (session.user.role === 'pub' && pathname.startsWith('/dashboard')) {
     throw redirect({ to: '/admin' })
+  }
+
+  // Admin navega pelo app como qualquer conta: a busca do /dashboard é a casa
+  // dele aqui. O Houdini só abre quando pedido (link, `callbackUrl`); mandar
+  // para lá a cada rota deixava o admin sem home nem dashboard.
+
+  // /plan é exclusivo para pub — fan vai pro dashboard, não autenticado vai pro sign-in
+  if (pathname.startsWith('/plan') && session.user.role !== 'pub') {
+    throw redirect({ to: '/dashboard' })
   }
 }
 

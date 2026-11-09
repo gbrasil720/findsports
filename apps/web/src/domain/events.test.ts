@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { DEFAULT_EVENT_DURATION_MS } from '@findsports_oficial/db/event-window'
-import { getEventTemporalState } from './events'
+import { getEventTemporalState, LIVE_WINDOW_MS } from './events'
 
 const START = new Date('2026-08-13T12:00:00.000Z')
 
@@ -12,24 +11,16 @@ describe('getEventTemporalState', () => {
     )
   })
 
-  test('is live from the start until the three-hour boundary', () => {
+  test('is live from the start through the existing three-hour boundary', () => {
     expect(getEventTemporalState(START, null, START)).toBe('live')
     expect(
-      getEventTemporalState(
-        START,
-        null,
-        START.getTime() + DEFAULT_EVENT_DURATION_MS - 1
-      )
+      getEventTemporalState(START, null, START.getTime() + LIVE_WINDOW_MS)
     ).toBe('live')
   })
 
-  test('is past at the three-hour boundary, like the server', () => {
+  test('is past after the three-hour boundary', () => {
     expect(
-      getEventTemporalState(
-        START,
-        null,
-        START.getTime() + DEFAULT_EVENT_DURATION_MS
-      )
+      getEventTemporalState(START, null, START.getTime() + LIVE_WINDOW_MS + 1)
     ).toBe('past')
   })
 
@@ -37,17 +28,17 @@ describe('getEventTemporalState', () => {
     const shortEnd = new Date(START.getTime() + 60 * 60 * 1000)
     const longEnd = new Date(START.getTime() + 5 * 60 * 60 * 1000)
 
-    expect(getEventTemporalState(START, shortEnd, shortEnd.getTime() - 1)).toBe(
+    expect(getEventTemporalState(START, shortEnd, shortEnd.getTime())).toBe(
       'live'
     )
-    expect(getEventTemporalState(START, shortEnd, shortEnd.getTime())).toBe(
+    expect(getEventTemporalState(START, shortEnd, shortEnd.getTime() + 1)).toBe(
       'past'
     )
     expect(
       getEventTemporalState(
         START,
         longEnd,
-        START.getTime() + DEFAULT_EVENT_DURATION_MS + 1
+        START.getTime() + LIVE_WINDOW_MS + 1
       )
     ).toBe('live')
   })

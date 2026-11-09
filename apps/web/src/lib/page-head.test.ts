@@ -122,13 +122,14 @@ describe('o que cada página herda da raiz', () => {
       '../routes/(auth)/login.tsx',
       '../routes/(auth)/forgot-password.tsx',
       '../routes/(auth)/reset-password.tsx',
-      '../routes/(auth)/two-factor.tsx'
+      '../routes/(auth)/two-factor.tsx',
+      '../components/entrada/auth-shell.tsx'
     ]) {
       const fonte = await ler(arquivo)
       expect(fonte).not.toContain('<h2 className="onside-display mb-6')
-      // `entradaHead` é o `pageHead` com os estilos das telas de entrada.
-      if (arquivo.includes('routes'))
-        expect(fonte).toMatch(/\b(pageHead|entradaHead)\(/)
+      // O painel do telão é decoração: legenda e quadro, nunca título.
+      if (arquivo.includes('auth-shell')) expect(fonte).not.toMatch(/<h[1-6]/)
+      if (arquivo.includes('routes')) expect(fonte).toContain('pageHead(')
     }
   })
 })

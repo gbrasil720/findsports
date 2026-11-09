@@ -2,17 +2,25 @@ import { useForm } from '@tanstack/react-form'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useRef, useState } from 'react'
 import Key from 'reicon-react/icons/Key'
+import Loader from 'reicon-react/icons/Loader'
 import { toast } from 'sonner'
 
 import { revalidateShownError } from '@/components/auth-field-change'
-import {
-  AuthSplit,
-  CampoSenha,
-  Disp,
-  entradaHead
-} from '@/components/entrada/auth'
-import { Botao, propsBotao } from '@/components/painel'
+import { AuthPasswordField } from '@/components/auth-password-field'
+import { type AuthPanel, AuthShell } from '@/components/entrada/auth-shell'
 import { authClient } from '@/lib/auth-client'
+import { pageHead } from '@/lib/page-head'
+
+const PANEL: AuthPanel = {
+  kind: 'caption',
+  led: 'hero',
+  title: (
+    <>
+      Senha <span>nova.</span>
+    </>
+  ),
+  items: ['Escolha uma senha nova e sua conta volta a ser só sua']
+}
 
 export const Route = createFileRoute('/(auth)/reset-password')({
   // O better-auth redireciona para cá com `?token=...` quando o link ainda
@@ -31,7 +39,7 @@ export const Route = createFileRoute('/(auth)/reset-password')({
     }
   },
   head: () =>
-    entradaHead({
+    pageHead({
       path: '/reset-password',
       title: 'Definir nova senha — Onside',
       description: 'Defina uma nova senha para a sua conta Onside.',
@@ -65,27 +73,15 @@ function ResetPasswordPage() {
   const { token, error } = Route.useSearch()
 
   return (
-    <AuthSplit
-      foto={
-        <>
-          <Disp
-            nivel={0}
-            tamanho={64}
-            linhas={[
-              { texto: 'Último passo' },
-              { texto: 'antes do apito.', tint: true }
-            ]}
-          />
-          <p>Escolha uma senha nova e sua conta volta a ser só sua.</p>
-        </>
-      }
-    >
-      {token && !error ? (
-        <FormularioDeNovaSenha token={token} />
-      ) : (
-        <LinkInvalido />
-      )}
-    </AuthSplit>
+    <AuthShell panel={PANEL}>
+      <div className="w-full">
+        {token && !error ? (
+          <FormularioDeNovaSenha token={token} />
+        ) : (
+          <LinkInvalido />
+        )}
+      </div>
+    </AuthShell>
   )
 }
 
@@ -96,31 +92,36 @@ function ResetPasswordPage() {
  */
 function LinkInvalido() {
   return (
-    <>
-      <p className="entrada-kicker">Link inválido</p>
-      <Disp tamanho={56} linhas={[{ texto: 'Esse link não vale mais' }]} />
-      <p className="entrada-linha">
+    <div>
+      <p className="onside-kicker">Link inválido</p>
+      <h1 className="onside-display mb-3 text-[38px] sm:text-[44px]">
+        ESSE LINK NÃO{' '}
+        <span className="text-[var(--onside-live-text)]">VALE MAIS.</span>
+      </h1>
+      <p className="text-sm text-[var(--onside-muted)] leading-relaxed">
         Links de redefinição valem por 30 minutos e só funcionam uma vez. Este
         expirou, já foi usado ou chegou quebrado pelo cliente de e-mail.
       </p>
-      <p className="entrada-linha">
+      <p className="mt-4 text-sm text-[var(--onside-muted)] leading-relaxed">
         Peça um novo — leva alguns segundos e sua senha atual continua valendo
         até você definir a nova.
       </p>
-      <div className="entrada-botoes">
-        <Link to="/forgot-password" {...propsBotao({ variante: 'acid' })}>
+      <div className="mt-7 flex flex-wrap gap-3">
+        <Link to="/forgot-password" className="onside-btn onside-btn-acid">
           Pedir novo link
         </Link>
-        <Link to="/login" {...propsBotao()}>
+        <Link to="/login" className="onside-btn onside-btn-outline">
           Voltar ao login
         </Link>
       </div>
-    </>
+    </div>
   )
 }
 
 function FormularioDeNovaSenha({ token }: { token: string }) {
   const navigate = useNavigate()
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [tokenRecusado, setTokenRecusado] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
@@ -171,19 +172,25 @@ function FormularioDeNovaSenha({ token }: { token: string }) {
 
   return (
     <>
-      <span className="entrada-selo" aria-hidden="true">
-        <Key size={30} color="currentColor" />
-      </span>
-      <p className="entrada-kicker">Nova senha</p>
-      <Disp tamanho={56} linhas={[{ texto: 'Defina sua nova senha' }]} />
-      <p className="entrada-linha">
-        Escolha uma senha de pelo menos 8 caracteres. Ao concluir, as sessões
-        abertas nesta conta são encerradas.
-      </p>
+      <div className="mb-8">
+        <div className="mb-6 grid size-16 place-items-center border-2 border-[var(--onside-ink)] bg-[var(--onside-acid)]">
+          <Key size={30} color="currentColor" aria-hidden="true" />
+        </div>
+        <p className="onside-kicker">Nova senha</p>
+        <h1 className="onside-display mb-3 text-[42px] sm:text-5xl md:text-[56px]">
+          DEFINA SUA{' '}
+          <span className="text-[var(--onside-live-text)]">NOVA SENHA.</span>
+        </h1>
+        <p className="text-sm text-[var(--onside-muted)]">
+          Escolha uma senha de pelo menos 8 caracteres. Ao concluir, as sessões
+          abertas nesta conta são encerradas.
+        </p>
+      </div>
 
       <form
         method="post"
         ref={formRef}
+        className="flex flex-col gap-4"
         noValidate
         onSubmit={(e) => {
           e.preventDefault()
@@ -197,13 +204,15 @@ function FormularioDeNovaSenha({ token }: { token: string }) {
           listeners={{ onChange: () => revalidateShownError(form, 'confirm') }}
         >
           {(field) => (
-            <CampoSenha
+            <AuthPasswordField
+              label="Nova senha"
               field={field}
-              rotulo="Nova senha"
               id="password"
               placeholder="Mínimo 8 caracteres"
               autoComplete="new-password"
               required
+              showPassword={showPassword}
+              onToggle={() => setShowPassword((v) => !v)}
             />
           )}
         </form.Field>
@@ -213,30 +222,45 @@ function FormularioDeNovaSenha({ token }: { token: string }) {
           validators={{ onBlur: validateConfirm, onSubmit: validateConfirm }}
         >
           {(field) => (
-            <CampoSenha
+            <AuthPasswordField
+              label="Confirmar nova senha"
               field={field}
-              rotulo="Confirmar nova senha"
               id="confirm"
               placeholder="Repita a nova senha"
               autoComplete="new-password"
               required
+              showPassword={showConfirm}
+              onToggle={() => setShowConfirm((v) => !v)}
             />
           )}
         </form.Field>
 
-        <Botao
+        <button
           type="submit"
-          variante="acid"
           disabled={isLoading}
-          className="entrada-cta"
-          style={{ marginTop: 4 }}
+          className="onside-btn onside-btn-acid onside-btn-full mt-2"
         >
-          {isLoading ? 'Salvando…' : 'Salvar nova senha'}
-        </Botao>
+          {isLoading ? (
+            <>
+              <Loader
+                size={16}
+                color="currentColor"
+                className="animate-spin"
+                aria-hidden="true"
+              />
+              Salvando…
+            </>
+          ) : (
+            'Salvar nova senha'
+          )}
+        </button>
 
-        <p className="entrada-nota">
+        <p className="text-center text-sm text-[var(--onside-muted)]">
           Mudou de ideia?{' '}
-          <Link to="/login" className="entrada-link">
+          <Link
+            to="/login"
+            className="font-semibold text-[var(--onside-ink)] underline underline-offset-2 transition-colors hover:text-[var(--onside-live-text)]"
+          >
             Voltar ao login
           </Link>
         </p>

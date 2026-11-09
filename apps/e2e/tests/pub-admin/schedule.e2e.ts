@@ -1,45 +1,75 @@
+import { randomUUID } from 'node:crypto'
 import type { Page } from '@playwright/test'
 import { signIn } from '../../fixtures/auth'
 import { insert, query } from '../../fixtures/db'
 import { createEvent, createTicket, soccerSportId } from '../../fixtures/going'
-import {
-  LARGURAS_CELULAR,
-  painelLink,
-  vazamentoLateral
-} from '../../fixtures/painel'
 import { createPub, type PubOptions } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
 
-// Jogos do painel: criar, editar, duplicar e excluir jogo, limite de jogos
-// por plano e sinal de interesse dos torcedores.
+// Jogos (painel novo, WEB-501): criar pela folha "Novo jogo", editar e
+// excluir pelo jogo aberto, limite de jogos por plano e sinal de interesse.
 
 const STARTER_LIMIT = 5
 
+/** Título do aviso no limite, com o fim do ciclo de cobrança (WEB-353). */
+const LIMIT_REACHED_UNTIL = /Limite de jogos atingido até \d{1,2} de [a-zç]+/
+
 async function openSchedule(page: Page, options: PubOptions = {}) {
-  const pub = await createPub(options)
+  // Cidade própria: Jogos sugere os jogos dos outros bares da cidade, e os dos
+  // testes paralelos viravam linhas com o mesmo nome.
+  const pub = await createPub({
+    ...options,
+    bar: { city: `Cidade E2E ${randomUUID().slice(0, 8)}`, ...options.bar }
+  })
   await signIn(page, pub.user)
   return pub
 }
 
 async function gotoSchedule(page: Page) {
   await page.goto('/admin/jogos')
-  await expect(painelLink(page, 'Jogos')).toHaveAttribute(
-    'aria-current',
-    'page'
-  )
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Jogos' })
+  ).toBeVisible()
+}
+
+/** Amanhã no campo "Dia" (`dd/mm/aaaa`), no fuso do navegador (São Paulo). */
+function tomorrow(): string {
+  return new Date(Date.now() + 86_400_000).toLocaleDateString('pt-BR', {
+    timeZone: 'America/Sao_Paulo'
+  })
+}
+
+// O do cabeçalho; com a grade vazia, o vazio repete o botão.
+const newGame = (page: Page) =>
+  page.getByRole('button', { name: 'Novo jogo', exact: true }).first()
+
+/** A folha "Novo jogo" com esporte, campeonato e amanhã às `hour`h. */
+async function fillNewGame(page: Page, championship: string, hour = 21) {
+  await newGame(page).click()
+  const dialog = page.getByRole('dialog', { name: 'Novo jogo' })
+  await dialog.getByRole('radio', { name: 'Futebol', exact: true }).check()
+  await dialog.getByLabel('Campeonato').fill(championship)
+  await dialog.getByLabel('Dia', { exact: true }).fill(tomorrow())
+  await dialog
+    .getByLabel('Horário', { exact: true })
+    .fill(`${String(hour).padStart(2, '0')}:00`)
+  return dialog
 }
 
 /**
- * Amanhã às `hour`h no formato do campo com máscara (`dd/mm/aaaa hh:mm`), no
- * fuso do navegador (São Paulo).
+ * Botão do rodapé da folha pelo teclado: em `vite dev` o botão das devtools
+ * fica sobre o canto de baixo no celular.
  */
-function tomorrowAt(hour: number): string {
-  const date = new Date(Date.now() + 86_400_000)
-  const day = date.toLocaleDateString('pt-BR', {
-    timeZone: 'America/Sao_Paulo'
-  })
-  return `${day} ${String(hour).padStart(2, '0')}:00`
+async function press(page: Page, button: ReturnType<Page['getByRole']>) {
+  await button.focus()
+  await page.keyboard.press('Enter')
+}
+
+/** Abre o jogo: à direita no computador, numa folha no celular. */
+async function openGame(page: Page, text: string) {
+  await page.getByRole('listitem').filter({ hasText: text }).click()
+  return page.getByLabel('Jogo aberto')
 }
 
 /** Três times de futebol semeados, em ordem alfabética. */
@@ -49,16 +79,6 @@ async function soccerTeams(): Promise<string[]> {
      WHERE s.slug = 'futebol' AND t.featured ORDER BY t.name LIMIT 3`
   )
   return rows.map((row) => row.name)
-}
-
-/** Abre o jogo da lista; o detalhe aparece à direita. */
-async function openGame(page: Page, text: string) {
-  await page
-    .getByRole('listitem')
-    .filter({ hasText: text })
-    .getByRole('button')
-    .click()
-  return page.getByRole('region', { name: /^Jogo aberto/ })
 }
 
 async function participantsOf(barId: string): Promise<string[]> {
@@ -71,49 +91,6 @@ async function participantsOf(barId: string): Promise<string[]> {
   return rows.map((row) => row.name)
 }
 
-test('jogo fora do horário do bar avisa e publica mesmo assim (WEB-463)', async ({
-  page
-}) => {
-  const { barId } = await openSchedule(page, {
-    bar: {
-      opening_hours: JSON.stringify(
-        Array.from({ length: 7 }, () => ({ opens: '17:00', closes: '00:00' }))
-      )
-    }
-  })
-  await gotoSchedule(page)
-  await page.getByRole('button', { name: 'Novo jogo' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Novo jogo' })
-  await dialog.getByRole('button', { name: 'Futebol', exact: true }).click()
-  await dialog
-    .getByLabel('Campeonato', { exact: true })
-    .fill('Fora de hora E2E')
-  const aviso = dialog.getByRole('status').filter({ hasText: 'horário' })
-
-  await dialog.getByLabel('Começa').fill(tomorrowAt(21))
-  await expect(dialog.getByText(/Fora do horário/)).toHaveCount(0)
-
-  await dialog.getByLabel('Começa').fill(tomorrowAt(15))
-  const amanha = new Date(Date.now() + 86_400_000)
-    .toLocaleDateString('pt-BR', {
-      weekday: 'long',
-      timeZone: 'America/Sao_Paulo'
-    })
-    .replace('-feira', '')
-  await expect(aviso).toHaveText(
-    `Fora do horário de funcionamento (${amanha}, 17:00 – 00:00). Dá para publicar mesmo assim.`
-  )
-
-  // Só avisa: publicar segue liberado.
-  await dialog.getByRole('button', { name: 'Publicar jogo' }).click()
-  await expect(dialog).toBeHidden()
-  const [row] = await query<{ published_at: Date | null }>(
-    `SELECT published_at FROM event WHERE bar_id = $1`,
-    [barId]
-  )
-  expect(row?.published_at).not.toBeNull()
-})
-
 test('cria, edita e exclui um jogo da grade com o seletor de times', async ({
   page
 }) => {
@@ -121,38 +98,30 @@ test('cria, edita e exclui um jogo da grade com o seletor de times', async ({
   const [home = '', away = '', other = ''] = await soccerTeams()
   await gotoSchedule(page)
 
-  await page.getByRole('button', { name: 'Novo jogo' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Novo jogo' })
-  await dialog.getByRole('button', { name: 'Futebol', exact: true }).click()
-  await dialog.getByLabel('Campeonato', { exact: true }).fill('Brasileirão E2E')
-  await dialog.getByLabel('Começa').fill(tomorrowAt(21))
+  const dialog = await fillNewGame(page, 'Brasileirão E2E')
   await dialog.getByRole('button', { name: home, exact: true }).click()
   await dialog.getByRole('button', { name: away, exact: true }).click()
-  // Futebol é confronto direto: fechado o confronto, a lista recolhe para os
-  // dois marcados.
+  // Futebol é confronto direto: o terceiro time fica travado.
   await expect(
     dialog.getByRole('button', { name: other, exact: true })
-  ).toHaveCount(0)
-  await dialog.getByRole('button', { name: 'Publicar jogo' }).click()
+  ).toBeDisabled()
+  await press(page, dialog.getByRole('button', { name: 'Publicar jogo' }))
   await expect(dialog).toBeHidden()
 
   const row = page.getByRole('listitem').filter({ hasText: 'Brasileirão E2E' })
   await expect(row).toContainText(home)
   await expect(row).toContainText(away)
-  await expect(row).toContainText('Publicado')
+  await expect(row).toContainText('PUBLICADO')
   expect(await participantsOf(barId)).toEqual([home, away])
 
-  await (await openGame(page, 'Brasileirão E2E'))
-    .getByRole('button', { name: 'Editar' })
-    .click()
+  let game = await openGame(page, 'Brasileirão E2E')
+  await game.getByRole('button', { name: 'Editar', exact: true }).click()
   const edit = page.getByRole('dialog', { name: 'Editar jogo' })
-  await expect(edit.getByLabel('Campeonato', { exact: true })).toHaveValue(
-    'Brasileirão E2E'
-  )
-  await edit.getByLabel('Campeonato', { exact: true }).fill('Copa E2E')
+  await expect(edit.getByLabel('Campeonato')).toHaveValue('Brasileirão E2E')
+  await edit.getByLabel('Campeonato').fill('Copa E2E')
   await edit.getByRole('button', { name: away, exact: true }).click()
   await edit.getByRole('button', { name: other, exact: true }).click()
-  await edit.getByRole('button', { name: 'Salvar', exact: true }).click()
+  await press(page, edit.getByRole('button', { name: 'Salvar alterações' }))
   await expect(edit).toBeHidden()
 
   const edited = page.getByRole('listitem').filter({ hasText: 'Copa E2E' })
@@ -161,18 +130,15 @@ test('cria, edita e exclui um jogo da grade com o seletor de times', async ({
   expect(await participantsOf(barId)).toEqual([home, other])
 
   // Excluir pede confirmação: cancelar não apaga nada.
-  await (await openGame(page, 'Copa E2E'))
-    .getByRole('button', { name: 'Excluir' })
-    .click()
+  game = page.getByLabel('Jogo aberto')
+  await game.getByRole('button', { name: 'Excluir', exact: true }).click()
   const confirm = page.getByRole('dialog', { name: 'Excluir este jogo?' })
   await expect(confirm).toContainText('sai da sua grade e do seu perfil')
   await confirm.getByRole('button', { name: 'Cancelar' }).click()
   await expect(confirm).toBeHidden()
   await expect(edited).toHaveCount(1)
 
-  await (await openGame(page, 'Copa E2E'))
-    .getByRole('button', { name: 'Excluir' })
-    .click()
+  await game.getByRole('button', { name: 'Excluir', exact: true }).click()
   await confirm.getByRole('button', { name: 'Excluir jogo' }).click()
   await expect(edited).toHaveCount(0)
   await expect
@@ -193,15 +159,11 @@ test('a ordem em que os times são marcados é a do confronto, e dá para invert
   await gotoSchedule(page)
 
   // Marcados fora da ordem alfabética: `second` joga em casa.
-  await page.getByRole('button', { name: 'Novo jogo' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Novo jogo' })
-  await dialog.getByRole('button', { name: 'Futebol', exact: true }).click()
-  await dialog.getByLabel('Campeonato', { exact: true }).fill('Ordem E2E')
-  await dialog.getByLabel('Começa').fill(tomorrowAt(21))
+  const dialog = await fillNewGame(page, 'Ordem E2E')
   await dialog.getByRole('button', { name: second, exact: true }).click()
   await dialog.getByRole('button', { name: first, exact: true }).click()
   await expect(dialog).toContainText(`Confronto: ${second} × ${first}`)
-  await dialog.getByRole('button', { name: 'Publicar jogo' }).click()
+  await press(page, dialog.getByRole('button', { name: 'Publicar jogo' }))
   await expect(dialog).toBeHidden()
 
   const row = page.getByRole('listitem').filter({ hasText: 'Ordem E2E' })
@@ -211,63 +173,18 @@ test('a ordem em que os times são marcados é a do confronto, e dá para invert
 
   // Editar abre na ordem gravada; inverter troca mandante e visitante.
   await gotoSchedule(page)
-  await (await openGame(page, 'Ordem E2E'))
-    .getByRole('button', { name: 'Editar' })
-    .click()
+  const game = await openGame(page, 'Ordem E2E')
+  await game.getByRole('button', { name: 'Editar', exact: true }).click()
   const edit = page.getByRole('dialog', { name: 'Editar jogo' })
   await expect(edit).toContainText(`Confronto: ${second} × ${first}`)
   await edit.getByRole('button', { name: 'Inverter' }).click()
   await expect(edit).toContainText(`Confronto: ${first} × ${second}`)
-  await edit.getByRole('button', { name: 'Salvar', exact: true }).click()
+  await press(page, edit.getByRole('button', { name: 'Salvar alterações' }))
   await expect(edit).toBeHidden()
 
   await expect(row).toContainText(`${first} × ${second}`)
   await page.goto(`/pub/${barId}`)
   await expect(page.getByText(`${first} × ${second}`).first()).toBeVisible()
-})
-
-// Duplicar abre o formulário de jogo novo com o mesmo jogo uma semana depois.
-test('duplica um jogo para a semana seguinte', async ({ page }) => {
-  const { barId } = await openSchedule(page)
-  const startsAt = new Date(Date.now() + 86_400_000)
-  await createEvent(barId, { championship: 'Duplicado E2E', startsAt })
-  await gotoSchedule(page)
-
-  await (await openGame(page, 'Duplicado E2E'))
-    .getByRole('button', { name: 'Duplicar' })
-    .click()
-  const dialog = page.getByRole('dialog', { name: 'Novo jogo' })
-  await expect(dialog.getByLabel('Campeonato', { exact: true })).toHaveValue(
-    'Duplicado E2E'
-  )
-  const nextWeek = new Date(startsAt.getTime() + 7 * 86_400_000)
-  const day = nextWeek.toLocaleDateString('pt-BR', {
-    timeZone: 'America/Sao_Paulo'
-  })
-  // Fora do foco, por extenso ("Sáb, 17 out · 21:00", 1p); no foco, a máscara.
-  const comeca = dialog.getByLabel('Começa')
-  await expect(comeca).toHaveValue(
-    new RegExp(
-      `^\\p{L}{3}, ${nextWeek.toLocaleDateString('pt-BR', { day: 'numeric', timeZone: 'America/Sao_Paulo' })} \\p{L}{3} · \\d{2}:\\d{2}$`,
-      'u'
-    )
-  )
-  await comeca.focus()
-  expect(await comeca.inputValue()).toMatch(new RegExp(`^${day} `))
-  await dialog.getByRole('button', { name: 'Publicar jogo' }).click()
-  await expect(dialog).toBeHidden()
-
-  await expect
-    .poll(
-      async () =>
-        (
-          await query<{ id: string }>(
-            "SELECT id FROM event WHERE bar_id = $1 AND championship = 'Duplicado E2E'",
-            [barId]
-          )
-        ).length
-    )
-    .toBe(2)
 })
 
 test('jogo com código de quem vai não é excluído, e o desmarcado vai junto', async ({
@@ -280,9 +197,8 @@ test('jogo com código de quem vai não é excluído, e o desmarcado vai junto',
   await createTicket(free.eventId, { unmarked: true })
   await gotoSchedule(page)
 
-  await (await openGame(page, 'Bloqueado E2E'))
-    .getByRole('button', { name: 'Excluir' })
-    .click()
+  let game = await openGame(page, 'Bloqueado E2E')
+  await game.getByRole('button', { name: 'Excluir', exact: true }).click()
   const refusal = page.getByRole('dialog', {
     name: 'Este jogo não pode ser excluído'
   })
@@ -291,6 +207,9 @@ test('jogo com código de quem vai não é excluído, e o desmarcado vai junto',
     refusal.getByRole('button', { name: 'Excluir jogo' })
   ).toHaveCount(0)
   await refusal.getByRole('button', { name: 'Entendi' }).click()
+  await expect(refusal).toBeHidden()
+  // No celular o jogo aberto é uma folha: fecha antes do próximo.
+  await page.keyboard.press('Escape')
 
   // A tela esconder o botão não é a regra: o servidor recusa também.
   const response = await page.request.post('/api/trpc/pub.deleteEvent', {
@@ -298,9 +217,8 @@ test('jogo com código de quem vai não é excluído, e o desmarcado vai junto',
   })
   expect(response.status()).toBe(412)
 
-  await (await openGame(page, 'Liberado E2E'))
-    .getByRole('button', { name: 'Excluir' })
-    .click()
+  game = await openGame(page, 'Liberado E2E')
+  await game.getByRole('button', { name: 'Excluir', exact: true }).click()
   const confirm = page.getByRole('dialog', { name: 'Excluir este jogo?' })
   await expect(confirm).toContainText('Também apaga 1 código desmarcado')
   await confirm.getByRole('button', { name: 'Excluir jogo' }).click()
@@ -315,158 +233,12 @@ test('jogo com código de quem vai não é excluído, e o desmarcado vai junto',
     .toEqual([blocked.eventId])
 })
 
-// WEB-437: o Elite desliga a lista de quem vai num jogo. Quem já marcou fica
-// com o código; o painel deixa de listar o jogo em Quem vai.
-test('desliga a lista de quem vai num jogo, avisando quem já marcou', async ({
-  page
-}) => {
-  const { barId } = await openSchedule(page)
-  const { eventId } = await createEvent(barId, { championship: 'Lista E2E' })
-  const ticket = await createTicket(eventId)
-  await gotoSchedule(page)
-
-  const aberto = await openGame(page, 'Lista E2E')
-  await expect(aberto).toContainText(ticket.guestName)
-  await aberto.getByRole('button', { name: 'Editar' }).click()
-  const edit = page.getByRole('dialog', { name: 'Editar jogo' })
-  const lista = edit.getByRole('switch', {
-    name: 'Lista de quem vai neste jogo'
-  })
-  await expect(lista).toHaveAttribute('aria-checked', 'true')
-  await lista.click()
-  await expect(lista).toHaveAttribute('aria-checked', 'false')
-  await expect(edit).toContainText(
-    '1 pessoa já marcou: o código continua valendo. Ninguém novo entra.'
-  )
-  await edit.getByRole('button', { name: 'Salvar', exact: true }).click()
-  await expect(edit).toBeHidden()
-
-  await expect
-    .poll(async () =>
-      (
-        await query<{ attendance_enabled: boolean }>(
-          'SELECT attendance_enabled FROM event WHERE id = $1',
-          [eventId]
-        )
-      ).map((row) => row.attendance_enabled)
-    )
-    .toEqual([false])
-  // A presença e o código continuam; só a lista some do painel.
-  expect(
-    await query('SELECT 1 FROM attendance WHERE event_id = $1', [eventId])
-  ).toHaveLength(1)
-  // A contagem do menu sai junto, sem esperar a próxima consulta.
-  await expect(painelLink(page, 'Quem vai')).not.toContainText('1')
-  const fechado = await openGame(page, 'Lista E2E')
-  await expect(fechado).toContainText('lista de quem vai desligada')
-  await expect(fechado).not.toContainText(ticket.guestName)
-
-  await page.goto('/admin/quem-vai')
-  await expect(page.getByText('Ninguém marcou ainda.')).toBeVisible()
-  await expect(page.getByText(ticket.guestName)).toHaveCount(0)
-})
-
-test('Starter não tem o interruptor da lista de quem vai nem a oferta do jogo', async ({
-  page
-}) => {
-  await openSchedule(page, { subscription: { plan: 'starter' } })
-  await gotoSchedule(page)
-  await page.getByRole('button', { name: 'Novo jogo' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Novo jogo' })
-  await expect(dialog.getByLabel('Campeonato', { exact: true })).toBeVisible()
-  await expect(dialog.getByText('Oferta da casa neste jogo')).toHaveCount(0)
-  await expect(
-    dialog.getByRole('switch', { name: 'Lista de quem vai neste jogo' })
-  ).toHaveCount(0)
-})
-
-// WEB-422/WEB-464: a oferta padrão do bar vale em todo jogo, e o Elite troca
-// ou desliga num jogo só. O código do balcão leva a deste jogo.
-test('Elite troca a oferta de um jogo e desliga em outro', async ({ page }) => {
-  const { barId } = await openSchedule(page, {
-    bar: { house_offer: 'Chopp em dobro' }
-  })
-  const { eventId: desligar } = await createEvent(barId, {
-    championship: 'Sem oferta E2E'
-  })
-  await gotoSchedule(page)
-
-  await page.getByRole('button', { name: 'Novo jogo' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Novo jogo' })
-  await dialog.getByRole('button', { name: 'Futebol', exact: true }).click()
-  await dialog.getByLabel('Campeonato', { exact: true }).fill('Oferta E2E')
-  await dialog.getByLabel('Começa').fill(tomorrowAt(21))
-  const oferta = dialog.getByRole('switch', {
-    name: 'Oferta da casa neste jogo'
-  })
-  await expect(oferta).toHaveAttribute('aria-checked', 'true')
-  const texto = dialog.getByRole('textbox', {
-    name: 'Oferta da casa neste jogo'
-  })
-  // Nasce com a padrão do bar.
-  await expect(texto).toHaveValue('Chopp em dobro')
-  await expect(dialog).toContainText('A mesma do seu espaço.')
-  await texto.fill('Porção de batata grátis')
-  await expect(dialog).toContainText(
-    'Só neste jogo. Os outros seguem com a do seu espaço.'
-  )
-  await dialog.getByRole('button', { name: 'Publicar jogo' }).click()
-  await expect(dialog).toBeHidden()
-  await expect
-    .poll(async () =>
-      query(
-        'SELECT house_offer, no_house_offer FROM event WHERE bar_id = $1 AND championship = $2',
-        [barId, 'Oferta E2E']
-      )
-    )
-    .toEqual([
-      { house_offer: 'Porção de batata grátis', no_house_offer: false }
-    ])
-
-  // No jogo aberto, o interruptor desliga a oferta só neste jogo.
-  const aberto = await openGame(page, 'Sem oferta E2E')
-  await expect(aberto).toContainText('Chopp em dobro')
-  const interruptor = aberto.getByRole('switch', {
-    name: 'Oferta da casa neste jogo'
-  })
-  await interruptor.click()
-  await expect(interruptor).toHaveAttribute('aria-checked', 'false')
-  await expect(aberto).toContainText('Sem oferta neste jogo.')
-  await expect
-    .poll(async () =>
-      query('SELECT house_offer, no_house_offer FROM event WHERE id = $1', [
-        desligar
-      ])
-    )
-    .toEqual([{ house_offer: null, no_house_offer: true }])
-
-  // O formulário de edição abre como o jogo está.
-  await aberto.getByRole('button', { name: 'Editar' }).click()
-  const edit = page.getByRole('dialog', { name: 'Editar jogo' })
-  await expect(
-    edit.getByRole('switch', { name: 'Oferta da casa neste jogo' })
-  ).toHaveAttribute('aria-checked', 'false')
-  await expect(edit).toContainText('Sem oferta neste jogo.')
-
-  // A linha da grade avisa o jogo sem oferta (1n). No celular o jogo abre em
-  // folha, que esconde a lista: fecha antes.
-  await page.keyboard.press('Escape')
-  await expect(edit).toBeHidden()
-  await expect(
-    page.getByRole('listitem').filter({ hasText: 'Sem oferta E2E' })
-  ).toContainText('sem oferta da casa')
-})
-
 test('término antes do início não deixa salvar', async ({ page }) => {
   await openSchedule(page)
   await gotoSchedule(page)
 
-  await page.getByRole('button', { name: 'Novo jogo' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Novo jogo' })
-  await dialog.getByRole('button', { name: 'Futebol', exact: true }).click()
-  await dialog.getByLabel('Campeonato', { exact: true }).fill('Brasileirão E2E')
-  await dialog.getByLabel('Começa').fill(tomorrowAt(21))
-  await dialog.getByLabel('Termina').fill(tomorrowAt(20))
+  const dialog = await fillNewGame(page, 'Brasileirão E2E', 21)
+  await dialog.getByLabel('Termina às · opcional').fill('20:00')
   await expect(
     dialog.getByText('Término deve ser posterior ao início.')
   ).toBeVisible()
@@ -475,31 +247,18 @@ test('término antes do início não deixa salvar', async ({ page }) => {
   ).toBeDisabled()
 })
 
-test('"Termina" mostra só a hora na mesma noite e a data inteira para editar (1p)', async ({
-  page
-}) => {
+test('o que falta preencher trava o publicar e é dito', async ({ page }) => {
   await openSchedule(page)
   await gotoSchedule(page)
 
-  await page.getByRole('button', { name: 'Novo jogo' }).click()
+  await newGame(page).click()
   const dialog = page.getByRole('dialog', { name: 'Novo jogo' })
-  const termina = dialog.getByLabel('Termina')
-  await dialog.getByLabel('Começa').fill(tomorrowAt(21))
-  await termina.fill(tomorrowAt(23))
-  await termina.blur()
-  await expect(termina).toHaveValue('23:00')
-  // No foco volta a data inteira, que é o que se edita.
-  await termina.focus()
-  await expect(termina).toHaveValue(tomorrowAt(23))
-
-  // A madrugada seguinte também é "a mesma noite".
-  const depois = new Date(Date.now() + 2 * 86_400_000).toLocaleDateString(
-    'pt-BR',
-    { timeZone: 'America/Sao_Paulo' }
+  await expect(dialog).toContainText(
+    'Para salvar, falta preencher: esporte, campeonato (pelo menos 2 caracteres), dia e horário.'
   )
-  await termina.fill(`${depois} 01:30`)
-  await termina.blur()
-  await expect(termina).toHaveValue('01:30')
+  await expect(
+    dialog.getByRole('button', { name: 'Publicar jogo' })
+  ).toBeDisabled()
 })
 
 test('Starter cria até o limite do mês e depois é mandado para os planos', async ({
@@ -508,39 +267,39 @@ test('Starter cria até o limite do mês e depois é mandado para os planos', as
   const { barId } = await openSchedule(page, {
     subscription: { plan: 'starter' }
   })
-  for (let i = 0; i < STARTER_LIMIT - 1; i++) await createEvent(barId)
+  // O primeiro jogo do bar é por conta da Onside e não conta.
+  for (let i = 0; i < STARTER_LIMIT; i++) await createEvent(barId)
   await gotoSchedule(page)
 
   // Falta um: ainda cria.
-  await page.getByRole('button', { name: 'Novo jogo' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Novo jogo' })
-  await dialog.getByRole('button', { name: 'Futebol', exact: true }).click()
-  await dialog.getByLabel('Campeonato', { exact: true }).fill('Quinto jogo E2E')
-  await dialog.getByLabel('Começa').fill(tomorrowAt(21))
-  await dialog.getByRole('button', { name: 'Publicar jogo' }).click()
+  const dialog = await fillNewGame(page, 'Quinto jogo E2E')
+  await press(page, dialog.getByRole('button', { name: 'Publicar jogo' }))
   await expect(dialog).toBeHidden()
 
-  // No limite (1ab): botão com cadeado, o aviso e o caminho para o upgrade,
-  // e à direita o card do plano no limite com o que o Pro libera.
-  await expect(page.getByRole('button', { name: 'Novo jogo' })).toBeDisabled()
-  const aviso = page.getByRole('region', { name: 'Aviso do plano' })
-  await expect(aviso).toContainText('Limite de jogos atingido até')
+  // No limite: botão travado, motivo e caminho para o upgrade.
+  await expect(newGame(page)).toBeDisabled()
+  await expect(page.getByText('Limite do plano atingido.')).toBeVisible()
   await expect(
-    aviso.getByRole('link', { name: 'Fazer upgrade' })
-  ).toHaveAttribute('href', '/plan?origin=admin')
-  const plano = page.getByRole('region', { name: 'Seu plano' })
-  await expect(plano).toContainText('Limite atingido')
-  await expect(plano).toContainText('5 de 5 jogos usados')
-  await expect(page.getByRole('region', { name: 'No Pro' })).toContainText(
-    'Jogos ilimitados'
-  )
+    page.getByRole('link', { name: 'Fazer upgrade' }).first()
+  ).toHaveAttribute('href', '/plan')
+
+  // WEB-353: Hoje diz até quando o limite vale (o fim do ciclo, não "este
+  // mês") e não oferece "Novo jogo" como ação disponível.
+  await page.goto('/admin')
+  const hoje = page.locator('#painel-main')
+  await expect(hoje).toContainText(LIMIT_REACHED_UNTIL)
+  await expect(hoje).not.toContainText('este mês')
+  await expect(newGame(page)).toHaveCount(0)
+  await hoje.getByRole('link', { name: 'Ver grade' }).first().click()
+  await expect(page).toHaveURL(/\/admin\/jogos$/)
 })
 
 test('o servidor recusa o sexto jogo do Starter', async ({ page }) => {
   const { barId } = await openSchedule(page, {
     subscription: { plan: 'starter' }
   })
-  for (let i = 0; i < STARTER_LIMIT; i++) await createEvent(barId)
+  // O primeiro jogo do bar é por conta da Onside e não conta.
+  for (let i = 0; i <= STARTER_LIMIT; i++) await createEvent(barId)
 
   const response = await page.request.post('/api/trpc/pub.createEvent', {
     data: {
@@ -552,7 +311,7 @@ test('o servidor recusa o sexto jogo do Starter', async ({ page }) => {
   expect(response.status()).toBe(403)
   expect(
     (await query('SELECT id FROM event WHERE bar_id = $1', [barId])).length
-  ).toBe(STARTER_LIMIT)
+  ).toBe(STARTER_LIMIT + 1)
 })
 
 // WEB-331: Elite parado cai no limite do Starter (WEB-129), mas o que resolve
@@ -563,22 +322,43 @@ test('Elite com pagamento pendente vê o limite em vigor e é mandado regulariza
   const { barId } = await openSchedule(page, {
     subscription: { plan: 'elite', status: 'past_due' }
   })
-  for (let i = 0; i < STARTER_LIMIT - 1; i++) await createEvent(barId)
+  // O primeiro jogo do bar é por conta da Onside e não conta.
+  for (let i = 0; i < STARTER_LIMIT; i++) await createEvent(barId)
+
+  // Antes do limite: Hoje já diz quantos jogos restam.
+  await page.goto('/admin')
+  const hoje = page.locator('#painel-main')
+  await expect(hoje).toContainText(
+    `Pagamento pendente — 1 de ${STARTER_LIMIT} jogos restantes`
+  )
+  await expect(hoje).toContainText('Pagamento pendente · 1 restante')
+  await expect(newGame(page)).toBeVisible()
+  await expect(
+    hoje.getByRole('link', { name: 'Regularizar assinatura' })
+  ).toHaveAttribute('href', '/admin/billing')
 
   // No limite: a grade explica por que parou e leva à assinatura. O jogo
-  // entrou direto no banco, e trocar só o hash não recarrega a política.
+  // entrou direto no banco: a página nova recarrega a política.
   await createEvent(barId)
-  await page.reload()
   await gotoSchedule(page)
-  await expect(page.getByRole('button', { name: 'Novo jogo' })).toBeDisabled()
-  const aviso = page.getByRole('region', { name: 'Aviso do plano' })
-  await expect(aviso).toContainText(
-    'Pagamento pendente — 0 de 5 jogos restantes'
-  )
+  await expect(newGame(page)).toBeDisabled()
   await expect(
-    aviso.getByRole('link', { name: 'Regularizar assinatura' })
+    page.getByText(
+      'Plano Elite com pagamento pendente: limite de jogos atingido.'
+    )
+  ).toBeVisible()
+  await expect(
+    page.getByRole('link', { name: 'Regularizar assinatura' }).first()
   ).toHaveAttribute('href', '/admin/billing')
   await expect(page.getByRole('link', { name: 'Fazer upgrade' })).toHaveCount(0)
+
+  await page.goto('/admin')
+  await expect(hoje).toContainText(LIMIT_REACHED_UNTIL)
+  await expect(
+    hoje.getByRole('link', { name: 'Ver grade' }).first()
+  ).toBeVisible()
+  await expect(hoje).toContainText('Pagamento pendente · 0 restantes')
+  await expect(hoje.getByRole('link', { name: 'Fazer upgrade' })).toHaveCount(0)
 
   // E a recusa do servidor não o chama de Starter.
   const response = await page.request.post('/api/trpc/pub.createEvent', {
@@ -600,10 +380,8 @@ for (const plan of ['pro', 'elite'] as const) {
     for (let i = 0; i < STARTER_LIMIT + 1; i++) await createEvent(barId)
     await gotoSchedule(page)
 
-    await expect(page.getByRole('button', { name: 'Novo jogo' })).toBeEnabled()
-    await expect(
-      page.getByRole('region', { name: 'Aviso do plano' })
-    ).toHaveCount(0)
+    await expect(newGame(page)).toBeEnabled()
+    await expect(page.getByText('Limite do plano atingido.')).toHaveCount(0)
   })
 }
 
@@ -613,10 +391,10 @@ test('bar inativo não cria jogo, nem pela tela nem pela API', async ({
   const { barId } = await openSchedule(page, { bar: { is_active: false } })
   await gotoSchedule(page)
 
-  await expect(page.getByRole('button', { name: 'Novo jogo' })).toBeDisabled()
+  await expect(newGame(page)).toBeDisabled()
   await expect(
-    page.getByRole('region', { name: 'Aviso do plano' })
-  ).toContainText('Seu bar não está visível na plataforma')
+    page.getByText('Ative um plano para adicionar eventos.').first()
+  ).toBeVisible()
 
   const response = await page.request.post('/api/trpc/pub.createEvent', {
     data: {
@@ -631,13 +409,10 @@ test('bar inativo não cria jogo, nem pela tela nem pela API', async ({
   ).toEqual([])
 })
 
-// O Elite vê quantos vão (Quem vai); o sinal relativo é dos outros planos.
 test('o interesse dos torcedores aparece no jogo depois de 5 jogos com presença', async ({
   page
 }) => {
-  const { barId } = await openSchedule(page, {
-    subscription: { plan: 'pro' }
-  })
+  const { barId } = await openSchedule(page)
   const attend = async (eventId: string, fans: number) => {
     for (let i = 0; i < fans; i++) {
       const fan = await createUser()
@@ -676,79 +451,136 @@ test('sem histórico, a grade avisa que ainda reúne dados de interesse', async 
   ).toBeVisible()
 })
 
-// Rascunho (WEB-436): salva sem publicar, fica só no painel e vai ao ar pelo
-// "Publicar" da linha.
-test('salva um jogo em rascunho, fora do perfil, e publica depois', async ({
+// Rascunho (WEB-436): só o painel vê. Fica fora do perfil público e de
+// Próximos, aparece em Rascunhos e vai ao ar pelo "Publicar" do jogo aberto.
+test('rascunho fica fora do perfil público e vai ao ar pelo Publicar', async ({
   page
 }) => {
   const { barId } = await openSchedule(page)
   await gotoSchedule(page)
 
-  await page.getByRole('button', { name: 'Novo jogo' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Novo jogo' })
-  await dialog.getByRole('button', { name: 'Futebol', exact: true }).click()
-  await dialog.getByLabel('Campeonato', { exact: true }).fill('Rascunho E2E')
-  await dialog.getByLabel('Começa').fill(tomorrowAt(21))
-  await dialog.getByRole('button', { name: 'Salvar rascunho' }).click()
+  const dialog = await fillNewGame(page, 'Rascunho E2E')
+  await press(page, dialog.getByRole('button', { name: 'Salvar rascunho' }))
   await expect(dialog).toBeHidden()
 
-  const row = page.getByRole('listitem').filter({ hasText: 'Rascunho E2E' })
-  await expect(row).toContainText('Rascunho E2E · rascunho')
-  await page.getByRole('button', { name: 'Rascunhos · 1' }).click()
-  await expect(row).toHaveCount(1)
-  expect(
-    await query(
-      'SELECT id FROM event WHERE bar_id = $1 AND published_at IS NULL',
-      [barId]
-    )
-  ).toHaveLength(1)
+  const [draft] = await query<{ published_at: Date | null }>(
+    'SELECT published_at FROM event WHERE bar_id = $1',
+    [barId]
+  )
+  expect(draft?.published_at).toBeNull()
+  await expect(
+    page.getByRole('listitem').filter({ hasText: 'Rascunho E2E' })
+  ).toHaveCount(0)
 
-  // O perfil público não mostra o rascunho.
+  // O perfil do bar (o que o torcedor vê) não mostra o rascunho.
   await page.goto(`/pub/${barId}`)
-  await expect(page.getByText('Rascunho E2E')).toHaveCount(0)
+  await expect(page.locator('body')).not.toContainText('Rascunho E2E')
+  const profile = await page.request.get(
+    `/api/trpc/pubs.getById?input=${encodeURIComponent(JSON.stringify({ id: barId }))}`
+  )
+  expect(JSON.stringify(await profile.json())).not.toContain('Rascunho E2E')
 
   await gotoSchedule(page)
-  await row.getByRole('button', { name: /^Publicar/ }).click()
-  await expect(row).toContainText('Publicado')
-  await expect(
-    page.getByRole('button', { name: 'Rascunhos · 0' })
-  ).toBeVisible()
+  await page.getByRole('tab', { name: /^Rascunhos/ }).click()
+  const row = page.getByRole('listitem').filter({ hasText: 'Rascunho E2E' })
+  await expect(row).toContainText('RASCUNHO')
+  const game = await openGame(page, 'Rascunho E2E')
+  await game.getByRole('button', { name: 'Publicar', exact: true }).click()
+  await expect
+    .poll(
+      async () =>
+        (
+          await query<{ published_at: Date | null }>(
+            'SELECT published_at FROM event WHERE bar_id = $1',
+            [barId]
+          )
+        )[0]?.published_at ?? null
+    )
+    .not.toBeNull()
 
   await page.goto(`/pub/${barId}`)
   await expect(page.getByText('Rascunho E2E').first()).toBeVisible()
 })
 
-test('no celular a linha do jogo não espreme o nome, e nada rola de lado', async ({
+// Oferta, telão, som e lista por jogo (WEB-422, WEB-399, WEB-437): a folha
+// troca a oferta só deste jogo e o jogo aberto desliga na hora.
+test('oferta da casa trocada e desligada por jogo, e telão e lista no jogo aberto', async ({
   page
 }) => {
-  const pub = await openSchedule(page)
-  const { eventId } = await createEvent(pub.barId, {
-    startsAt: new Date(Date.now() + 3 * 3_600_000),
-    championship: 'Copa Libertadores da América'
+  const { barId } = await openSchedule(page, {
+    bar: { house_offer: 'Chopp em dobro', amenities: [1, 2] }
   })
-  await query('UPDATE event SET participant_free_text = $2 WHERE id = $1', [
-    eventId,
-    'São Paulo × Red Bull Bragantino'
-  ])
   await gotoSchedule(page)
-  const linha = page
-    .getByRole('listitem')
-    .filter({ hasText: 'Red Bull Bragantino' })
-    .getByRole('button')
 
-  for (const largura of [...LARGURAS_CELULAR, 360]) {
-    await page.setViewportSize({ width: largura, height: 800 })
-    expect(await vazamentoLateral(page), `${largura} px`).toEqual([])
-    const [caixaLinha, caixaNome, caixaHora] = await Promise.all([
-      linha.boundingBox(),
-      linha.locator('b').boundingBox(),
-      linha.getByText(/^\d\d:\d\d$/).boundingBox()
-    ])
-    // O nome ocupa quase a linha toda, embaixo da hora; antes cabia uma
-    // palavra por linha numa coluna de ~100 px.
-    expect(caixaNome?.width ?? 0).toBeGreaterThan(
-      (caixaLinha?.width ?? 0) * 0.6
+  const dialog = await fillNewGame(page, 'Oferta E2E')
+  await expect(
+    dialog.getByRole('textbox', { name: 'Oferta da casa neste jogo' })
+  ).toHaveValue('Chopp em dobro')
+  await dialog
+    .getByRole('textbox', { name: 'Oferta da casa neste jogo' })
+    .fill('Batata grátis')
+  await press(page, dialog.getByRole('button', { name: 'Publicar jogo' }))
+  await expect(dialog).toBeHidden()
+
+  const gameRow = async () =>
+    (
+      await query<{
+        house_offer: string | null
+        no_house_offer: boolean
+        on_big_screen: boolean | null
+        attendance_enabled: boolean
+      }>(
+        `SELECT house_offer, no_house_offer, on_big_screen, attendance_enabled
+         FROM event WHERE bar_id = $1`,
+        [barId]
+      )
+    )[0]
+  expect(await gameRow()).toEqual({
+    house_offer: 'Batata grátis',
+    no_house_offer: false,
+    // Telão sem mexer herda das características.
+    on_big_screen: null,
+    attendance_enabled: true
+  })
+
+  // O torcedor vê a oferta deste jogo, não a padrão.
+  const offerOnProfile = async () => {
+    const response = await page.request.get(
+      `/api/trpc/pubs.getById?input=${encodeURIComponent(JSON.stringify({ id: barId }))}`
     )
-    expect(caixaNome?.y ?? 0).toBeGreaterThan(caixaHora?.y ?? 0)
+    const body = await response.json()
+    return body.result.data.events[0]?.houseOffer ?? null
   }
+  expect(await offerOnProfile()).toBe('Batata grátis')
+
+  const game = await openGame(page, 'Oferta E2E')
+  await game.getByRole('switch', { name: 'Oferta da casa neste jogo' }).click()
+  await expect.poll(async () => (await gameRow())?.no_house_offer).toBe(true)
+  expect(await offerOnProfile()).toBeNull()
+
+  await game.getByRole('switch', { name: 'Passa no telão' }).click()
+  await expect.poll(async () => (await gameRow())?.on_big_screen).toBe(false)
+  await game
+    .getByRole('switch', { name: 'Lista de quem vai neste jogo' })
+    .click()
+  await expect
+    .poll(async () => (await gameRow())?.attendance_enabled)
+    .toBe(false)
+})
+
+test('fora do Elite a folha não tem oferta nem lista por jogo', async ({
+  page
+}) => {
+  await openSchedule(page, { subscription: { plan: 'pro' } })
+  await gotoSchedule(page)
+  const dialog = await fillNewGame(page, 'Pro E2E')
+  await expect(
+    dialog.getByRole('switch', { name: 'Passa no telão' })
+  ).toBeVisible()
+  await expect(
+    dialog.getByRole('switch', { name: 'Oferta da casa neste jogo' })
+  ).toHaveCount(0)
+  await expect(
+    dialog.getByRole('switch', { name: 'Lista de quem vai neste jogo' })
+  ).toHaveCount(0)
 })

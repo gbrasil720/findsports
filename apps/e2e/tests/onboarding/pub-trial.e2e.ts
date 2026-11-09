@@ -6,7 +6,7 @@ import { createUser } from '../../fixtures/users'
 
 // WEB-113: o teste grátis do cadastro, regra fixa desde o WEB-233.
 
-test('o bar nasce publicado, com 120 dias de teste do Elite, e o torcedor o abre', async ({
+test('o bar nasce publicado, com 90 dias de teste do Elite, e o torcedor o abre', async ({
   page,
   browser
 }) => {
@@ -30,12 +30,12 @@ test('o bar nasce publicado, com 120 dias de teste do Elite, e o torcedor o abre
     plan: string
     status: string
     external_subscription_id: string | null
-    vence_em_120_dias: boolean
+    vence_em_90_dias: boolean
   }>(
     `SELECT b.id, b.is_active, b.plan AS bar_plan, s.plan, s.status,
             s.external_subscription_id,
-            s.current_period_end BETWEEN now() + interval '120 days' - interval '5 minutes'
-                                     AND now() + interval '120 days' AS vence_em_120_dias
+            s.current_period_end BETWEEN now() + interval '90 days' - interval '5 minutes'
+                                     AND now() + interval '90 days' AS vence_em_90_dias
      FROM bar b LEFT JOIN subscription s ON s.bar_id = b.id
      WHERE b.user_id = $1`,
     [owner.id]
@@ -48,7 +48,7 @@ test('o bar nasce publicado, com 120 dias de teste do Elite, e o torcedor o abre
     status: 'trialing',
     // Trial do cadastro: sem cartão e sem nada no Stripe (WEB-31).
     external_subscription_id: null,
-    vence_em_120_dias: true
+    vence_em_90_dias: true
   })
 
   // O repro do ticket: antes, outra conta recebia "Bar não encontrado.".
@@ -61,52 +61,9 @@ test('o bar nasce publicado, com 120 dias de teste do Elite, e o torcedor o abre
     const fanPage = await fanContext.newPage()
     await fanPage.goto(`/pub/${bar?.id}`)
     await expect(
-      fanPage.getByRole('heading', { name: 'Bar do Trial', exact: true })
+      fanPage.getByRole('heading', { name: 'Bar do Trial' })
     ).toBeVisible()
   } finally {
     await fanContext.close()
   }
-})
-
-// WEB-238: a revisão prometia só "escolher o plano".
-test('a revisão avisa que o bar entra no ar com o plano grátis, e o "no ar" leva aos planos', async ({
-  page
-}) => {
-  const owner = await createUser({ role: 'pub', onboardingCompleted: false })
-  await signIn(page, owner)
-  await page.goto('/onboarding/pub')
-
-  await page.getByRole('button', { name: 'Começar', exact: true }).click()
-  await page.getByLabel('Nome do estabelecimento').fill('Bar da Revisão')
-  await page
-    .getByLabel('Rua *', { exact: true })
-    .fill(`Rua da Revisão ${owner.id}`)
-  await page.getByLabel('Número *', { exact: true }).fill('1')
-  await page.getByLabel('Bairro *', { exact: true }).fill('Pinheiros')
-  await page.getByRole('button', { name: 'Continuar', exact: true }).click()
-  await page.getByRole('button', { name: 'Pular', exact: true }).click()
-
-  await expect(
-    page.getByRole('heading', { name: 'Pronto para colocar seu bar no ar' })
-  ).toBeVisible()
-  await expect(
-    page.getByText(
-      'Revise os dados do bar. Ao continuar, salvamos o cadastro, seu bar entra no ar e você ganha o plano Elite grátis por 120 dias, sem cartão. Em seguida você conhece os planos.'
-    )
-  ).toBeVisible()
-  await page.getByRole('button', { name: 'Colocar meu bar no ar' }).click()
-
-  // "Seu bar está no ar" (4r): o teste grátis e o caminho para os planos.
-  await expect(page).toHaveURL(/\/onboarding\/pub\/no-ar$/)
-  await expect(page.getByText('Elite grátis por 120 dias')).toBeVisible()
-  await page.getByRole('link', { name: 'Conhecer os planos →' }).click()
-  await expect(page).toHaveURL(/\/plan$/)
-  await expect(
-    page.getByRole('heading', { name: /^Você está no Elite até / })
-  ).toBeVisible()
-  const [bar] = await query<{ is_active: boolean; plan: string }>(
-    'SELECT is_active, plan FROM bar WHERE user_id = $1',
-    [owner.id]
-  )
-  expect(bar).toMatchObject({ is_active: true, plan: 'elite' })
 })

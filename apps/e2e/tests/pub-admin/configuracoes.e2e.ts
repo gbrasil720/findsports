@@ -1,18 +1,17 @@
+import { randomUUID } from 'node:crypto'
 import type { Page } from '@playwright/test'
-import { BASE_URL } from '../../env'
 import { signIn } from '../../fixtures/auth'
-import { query } from '../../fixtures/db'
+import { insert, query } from '../../fixtures/db'
 import { lastEmailTo } from '../../fixtures/email'
 import { trpc } from '../../fixtures/fan'
 import { createEvent } from '../../fixtures/going'
 import { createPub } from '../../fixtures/pubs'
-import { answerCookieConsent, expect, test } from '../../fixtures/test'
-import { base32Decode, totp } from '../../fixtures/two-factor'
+import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
 
-// Configurações do painel do bar (2e/2f): conta, segurança, avisos por
-// e-mail, privacidade e exclusão. A exclusão com assinatura está em
-// `tests/auth/account.e2e.ts`.
+// Configurações do painel (avisos por e-mail, WEB-441; cópia dos dados,
+// WEB-418) e o "Interesse de hoje" de Hoje (WEB-449). Nenhum e-mail sai: o
+// servidor do E2E grava no outbox.
 
 async function open(page: Page) {
   const pub = await createPub()
@@ -24,111 +23,9 @@ async function open(page: Page) {
 const secao = (page: Page, name: string) =>
   page.getByRole('region', { name, exact: true })
 
-test('edita o nome do responsável', async ({ page }) => {
-  const { user } = await open(page)
-  const conta = secao(page, 'Conta e acesso')
-
-  await expect(conta).toContainText(user.email)
-  await expect(conta).toContainText('Somente leitura')
-  await conta.getByRole('button', { name: 'Editar' }).click()
-  await conta.getByLabel('Responsável').fill('Zé Carvalho')
-  await conta.getByRole('button', { name: 'Salvar' }).click()
-
-  await expect(conta).toContainText('Zé Carvalho')
-  await expect(conta.getByRole('button', { name: 'Editar' })).toBeVisible()
-  const [row] = await query('SELECT name FROM "user" WHERE id = $1', [user.id])
-  expect(row?.name).toBe('Zé Carvalho')
-})
-
-test('troca a senha pelo diálogo', async ({ page }) => {
-  const { user } = await open(page)
-
-  await secao(page, 'Conta e acesso')
-    .getByRole('button', { name: 'Alterar senha' })
-    .click()
-  const dialog = page.getByRole('dialog', { name: 'Alterar senha' })
-  await dialog.getByLabel('Senha atual').fill(user.password)
-  await dialog.getByLabel('Nova senha', { exact: true }).fill('outra-senha-123')
-  await dialog.getByLabel('Confirmar nova senha').fill('outra-senha-123')
-  await dialog.getByRole('button', { name: 'Salvar nova senha' }).click()
-
-  await expect(
-    page.getByText('Senha alterada. Os outros acessos foram encerrados.')
-  ).toBeVisible()
-  const old = await page.request.post('/api/auth/sign-in/email', {
-    data: { email: user.email, password: user.password },
-    headers: { origin: BASE_URL }
-  })
-  expect(old.ok()).toBe(false)
-})
-
-test('ativa a verificação em duas etapas', async ({ page }) => {
-  const { user } = await open(page)
-  const seguranca = secao(page, 'Segurança')
-
-  await expect(seguranca).toContainText('Desativada')
-  await seguranca.getByRole('button', { name: 'Ativar' }).click()
-  const dialog = page.getByRole('dialog', {
-    name: 'Ativar autenticação em dois fatores'
-  })
-  await dialog.getByLabel('Senha atual').fill(user.password)
-  await dialog.getByRole('button', { name: 'Continuar' }).click()
-  const key = (await dialog.locator('code').textContent())?.trim() ?? ''
-  await page
-    .locator('#two-factor-code')
-    .pressSequentially(totp(base32Decode(key)))
-  await dialog
-    .getByRole('checkbox', { name: 'Guardei meus códigos em um lugar seguro' })
-    .check()
-  await dialog.getByRole('button', { name: 'Concluir' }).click()
-
-  await expect(seguranca).toContainText('Ativada')
-  await expect(
-    seguranca.getByRole('button', { name: 'Gerenciar' })
-  ).toBeVisible()
-  const [row] = await query(
-    'SELECT two_factor_enabled FROM "user" WHERE id = $1',
-    [user.id]
-  )
-  expect(row?.two_factor_enabled).toBe(true)
-})
-
-test('encerra a outra sessão, e ela perde o acesso', async ({
-  page,
-  browser,
-  extraHTTPHeaders
-}) => {
-  const { user } = await open(page)
-  const other = await browser.newContext({
-    baseURL: BASE_URL,
-    extraHTTPHeaders
-  })
-  await answerCookieConsent(other)
-  try {
-    const otherPage = await other.newPage()
-    await signIn(otherPage, user)
-    await page.reload()
-
-    const seguranca = secao(page, 'Segurança')
-    await expect(seguranca).toContainText('2 dispositivos')
-    await expect(seguranca.getByText('Este navegador')).toHaveCount(1)
-    await seguranca.getByRole('button', { name: /^Encerrar (?!todas)/ }).click()
-    await expect(page.getByText('Acesso encerrado.')).toBeVisible()
-    await expect(seguranca).toContainText('1 dispositivo')
-    await expect(
-      seguranca.getByRole('button', { name: 'Encerrar todas as outras' })
-    ).toHaveCount(0)
-
-    await otherPage.goto('/admin')
-    await expect(otherPage).toHaveURL(/\/login\?callbackUrl=/)
-  } finally {
-    await other.close()
-  }
-})
-
 test('avisos por e-mail: cada interruptor grava na hora', async ({ page }) => {
   const { barId } = await open(page)
-  const avisos = secao(page, 'Avisos')
+  const avisos = secao(page, 'Avisos por e-mail')
   const chave = (name: string) => avisos.getByRole('switch', { name })
   const gravado = async () =>
     (
@@ -139,17 +36,16 @@ test('avisos por e-mail: cada interruptor grava na hora', async ({ page }) => {
     )[0]
 
   // Os padrões do design (2b): resumo e jogo lotando ligados.
-  await expect(avisos).toContainText('Novo')
-  await expect(chave('Resumo semanal por e-mail')).toBeChecked()
+  await expect(chave('Resumo da semana')).toBeChecked()
   await expect(chave('Jogo lotando')).toBeChecked()
   await expect(chave('Grade vazia')).not.toBeChecked()
   // O celular segue para depois: o app ainda não abre por link.
-  await expect(avisos).toContainText('em breve')
+  await expect(avisos).toContainText('EM BREVE')
 
   await chave('Grade vazia').click()
-  await chave('Resumo semanal por e-mail').click()
+  await chave('Resumo da semana').click()
   await expect(chave('Grade vazia')).toBeChecked()
-  await expect(chave('Resumo semanal por e-mail')).not.toBeChecked()
+  await expect(chave('Resumo da semana')).not.toBeChecked()
   await expect.poll(gravado).toEqual({
     notice_weekly_summary: false,
     notice_game_filling: true,
@@ -158,7 +54,7 @@ test('avisos por e-mail: cada interruptor grava na hora', async ({ page }) => {
 
   await page.reload()
   await expect(chave('Grade vazia')).toBeChecked()
-  await expect(chave('Resumo semanal por e-mail')).not.toBeChecked()
+  await expect(chave('Resumo da semana')).not.toBeChecked()
 })
 
 test('jogo lotando: quem passa de 20 manda o e-mail ao dono', async ({
@@ -166,14 +62,13 @@ test('jogo lotando: quem passa de 20 manda o e-mail ao dono', async ({
 }) => {
   const { user, barId } = await createPub()
   const { eventId } = await createEvent(barId, {
-    startsAt: new Date(Date.now() + 2 * 86_400_000),
-    championship: 'Final E2E'
+    startsAt: new Date(Date.now() + 2 * 86_400_000)
   })
   // Vinte já marcaram, direto no banco.
   for (let i = 0; i < 20; i++) {
-    const fan = await createUser({ role: 'fan' })
+    const other = await createUser({ role: 'fan' })
     await query('INSERT INTO attendance (user_id, event_id) VALUES ($1, $2)', [
-      fan.id,
+      other.id,
       eventId
     ])
   }
@@ -181,12 +76,8 @@ test('jogo lotando: quem passa de 20 manda o e-mail ao dono', async ({
   await signIn(page, fan)
   await trpc(page.request, 'attendance.set', { eventId, attending: true })
 
-  const email = await lastEmailTo(user.email, {
-    subject: 'Jogo lotando: Final E2E'
-  })
-  expect(email.text).toContain(
-    'Mais de 20 pessoas marcaram na Onside que vão assistir a Final E2E no seu bar'
-  )
+  const email = await lastEmailTo(user.email, { subject: /^Jogo lotando: / })
+  expect(email.text).toContain('Mais de 20 pessoas marcaram na Onside')
   expect(email.link).toContain(`/admin/jogos?jogo=${eventId}`)
 })
 
@@ -221,21 +112,64 @@ test('pede o arquivo e ele chega por e-mail, um por dia', async ({ page }) => {
   ).toBeVisible()
 })
 
-test('excluir conta e bar pede senha e a frase', async ({ page }) => {
-  const { user } = await open(page)
-
-  await page.getByRole('button', { name: 'Excluir conta', exact: true }).click()
-  const dialog = page.getByRole('dialog', {
-    name: 'Excluir conta permanentemente'
+/** O dia da casa (vira às 6h de Brasília), como o Hoje do painel. */
+function houseDay(now = Date.now()) {
+  return new Date(now - 6 * 3_600_000).toLocaleDateString('sv-SE', {
+    timeZone: 'America/Sao_Paulo'
   })
-  await dialog.getByLabel('Senha atual').fill(user.password)
-  await dialog
-    .getByLabel('Digite EXCLUIR MINHA CONTA')
-    .fill('EXCLUIR MINHA CONTA')
-  await dialog.getByRole('button', { name: 'Excluir permanentemente' }).click()
+}
 
-  await expect(page.getByText('Sua conta foi excluída.')).toBeVisible()
-  expect(
-    await query('SELECT 1 FROM "user" WHERE id = $1', [user.id])
-  ).toHaveLength(0)
+test('interesse de hoje contra o normal do mesmo dia da semana', async ({
+  page
+}) => {
+  const pub = await createPub({
+    subscription: { plan: 'pro' },
+    bar: { created_at: new Date(Date.now() - 60 * 86_400_000) }
+  })
+  const day = houseDay()
+  const start = new Date(`${day}T00:00:30-03:00`).getTime()
+  const interest = async (weeksAgo: number) => {
+    const fan = await createUser()
+    const at = new Date(start - weeksAgo * 7 * 86_400_000)
+    await insert('bar_commercial_event', {
+      id: randomUUID(),
+      bar_id: pub.barId,
+      actor_user_id: fan.id,
+      type: 'whatsapp_opened',
+      occurred_at: at,
+      commercial_day: at.toLocaleDateString('sv-SE', {
+        timeZone: 'America/Sao_Paulo'
+      })
+    })
+  }
+  // Hoje 2 pessoas; uma em cada um dos quatro mesmos dias de antes.
+  for (const weeksAgo of [0, 0, 1, 2, 3, 4]) await interest(weeksAgo)
+  const weekday = [
+    'domingo',
+    'segunda',
+    'terça',
+    'quarta',
+    'quinta',
+    'sexta',
+    'sábado'
+  ][new Date(`${day}T12:00:00Z`).getUTCDay()]
+
+  await signIn(page, pub.user)
+  await page.goto('/admin')
+  const card = page.getByRole('region', { name: 'Interesse de hoje' })
+  await expect(card).toContainText('+100%')
+  await expect(card).toContainText(
+    `Interesse acima do seu normal de ${weekday}`
+  )
+})
+
+test('bar novo: sem duas semanas, o interesse de hoje ainda não compara', async ({
+  page
+}) => {
+  const pub = await createPub()
+  await signIn(page, pub.user)
+  await page.goto('/admin')
+  const card = page.getByRole('region', { name: 'Interesse de hoje' })
+  await expect(card).toContainText('—')
+  await expect(card).toContainText('menos de duas')
 })

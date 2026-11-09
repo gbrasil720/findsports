@@ -45,9 +45,9 @@ import {
 } from './attendance-ticket'
 import { gameFillingDue, notifyGameFilling } from './bar-notices'
 import { issuesCounterCode } from './current-plan'
-import { participantNames } from './game-participants'
+import { gameTitle, participantNames } from './game-participants'
 import { effectiveHouseOffer } from './house-offer'
-import { getLateEntryWindow } from './reservation-validation'
+import { getLateEntryWindow, LATE_ENTRY_HOURS } from './reservation-validation'
 import { visit } from './visits'
 
 /**
@@ -299,7 +299,7 @@ export async function readFriendsGoing(
   return going
 }
 
-type FanAttendance = {
+export type FanAttendance = {
   attending: boolean
   /** `null` abaixo do piso. */
   count: number | null
@@ -395,6 +395,7 @@ const MY_GAMES_LIMIT = 50
 export async function readMyGames(
   userId: string,
   now = new Date(),
+  /** `null`: todos, para o arquivo de "Baixar meus dados" (WEB-418). */
   limit: number | null = MY_GAMES_LIMIT
 ) {
   const query = db
@@ -585,6 +586,13 @@ export const ATTENDANCE_REPORT_WINDOW_DAYS = 14
 export const UNREGISTERED_ALERT_MIN_GAMES = 3
 
 /**
+ * Códigos em vigor que um jogo precisa ter, nenhum validado, para entrar no
+ * alerta de códigos sem validar. Palpite: abaixo disso, um bar pequeno pode só
+ * não ter recebido quem marcou.
+ */
+export const UNVALIDATED_CODES_ALERT_MIN = 5
+
+/**
  * Perguntas pós-jogo que o torcedor ainda pode responder: jogos em que ele
  * marcou presença (reserva também marca), já encerrados e dentro da janela.
  * `offer` vem da reserva confirmada com oferta congelada; sem ela, só se
@@ -686,4 +694,56 @@ export function readUnregisteredAlerts() {
     .groupBy(bar.id)
     .having(sql`${unregisteredGames} >= ${UNREGISTERED_ALERT_MIN_GAMES}`)
     .orderBy(sql`${unregisteredGames} desc`, bar.name)
+}
+
+/**
+ * Jogos encerrados com vários códigos em vigor e nenhum validado. Ao contrário
+ * de `readUnregisteredAlerts`, não depende de o torcedor responder ao pós-jogo
+ * nem de repetição: um jogo basta. Só entra com o prazo do bar vencido, que é
+ * maior no bar que lança os códigos pela comanda.
+ *
+ * ponytail: a lista cresce com os jogos, sem corte de data. Com muitos bares,
+ * cortar por período.
+ */
+export function readUnvalidatedCodeAlerts() {
+  const codes = sql<number>`count(*)::int`
+  const deadline = sql`(case when ${bar.confirmsCodesLater}
+    then ${`${LATE_ENTRY_HOURS} hours`}
+    else ${`${VALIDATION_WINDOW_MARGIN_HOURS} hours`} end)::interval`
+  return db
+    .select({
+      eventId: event.id,
+      barId: bar.id,
+      barName: bar.name,
+      game: gameTitle({
+        id: sql`${event.id}`,
+        participantFreeText: sql`${event.participantFreeText}`,
+        championship: sql`${event.championship}`
+      }),
+      startsAt: event.startsAt,
+      codes
+    })
+    .from(reservationCode)
+    .innerJoin(reservation, eq(reservation.id, reservationCode.reservationId))
+    .innerJoin(event, eq(event.id, reservation.eventId))
+    .innerJoin(bar, eq(bar.id, event.barId))
+    .leftJoin(
+      reservationCodeUse,
+      and(
+        eq(reservationCodeUse.codeId, reservationCode.id),
+        isNull(reservationCodeUse.undoneAt)
+      )
+    )
+    .where(
+      and(
+        eq(reservation.status, 'confirmed'),
+        isNull(reservationCode.retiredAt),
+        sql`${eventEnd} + ${deadline} < (now() at time zone 'utc')`
+      )
+    )
+    .groupBy(event.id, bar.id)
+    .having(
+      sql`${codes} >= ${UNVALIDATED_CODES_ALERT_MIN} and count(${reservationCodeUse.id}) = 0`
+    )
+    .orderBy(sql`${event.startsAt} desc`)
 }

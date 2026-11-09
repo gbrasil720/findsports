@@ -1,29 +1,9 @@
-import { describe, expect, mock, test } from 'bun:test'
+import { describe, expect, test } from 'bun:test'
 import { JSDOM } from 'jsdom'
-import type { ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 
 import type { AdminEvent } from './admin-model'
 import { EventDeleteDialog } from './event-delete-dialog'
-
-// Mesmo dublê de `code-validation.test.tsx`: o diálogo do base-ui não
-// renderiza sem DOM na carga do módulo. Aqui se trava o texto, não o diálogo.
-type DialogPart = { children?: ReactNode }
-mock.module('@findsports_oficial/ui/components/dialog', () => ({
-  Dialog: ({ open, children }: DialogPart & { open?: boolean }) =>
-    open ? <div role="dialog">{children}</div> : null,
-  DialogContent: ({ children }: DialogPart) => <div>{children}</div>,
-  DialogTitle: ({ children }: DialogPart) => <h2>{children}</h2>,
-  DialogDescription: ({ children }: DialogPart) => <p>{children}</p>,
-  DialogClose: ({ children }: DialogPart) => (
-    <button type="button">{children}</button>
-  ),
-  DialogBackdrop: () => null,
-  DialogPortal: ({ children }: DialogPart) => <>{children}</>,
-  DialogTrigger: ({ children }: DialogPart) => (
-    <button type="button">{children}</button>
-  )
-}))
 
 type Deletion = NonNullable<AdminEvent['deletion']>
 

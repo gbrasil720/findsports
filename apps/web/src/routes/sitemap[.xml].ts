@@ -7,21 +7,23 @@ import { buildSitemap, type SitemapEntry } from '@/lib/sitemap'
 /**
  * Sitemap.
  *
- * Lista apenas o que é público. As páginas de bar NÃO entram: elas exigem
- * login, porque o registro de analytics depende de um fã identificado
- * (`actor_user_id`). Anunciá-las na busca levaria o visitante a um portão de
- * login e, pior, traria tráfego que o painel do bar não consegue contabilizar.
- *
- * Se um dia as páginas de bar puderem ser públicas — o que exige antes
- * resolver como atribuir visita anônima —, basta acrescentar uma entrada por
- * bar ativo aqui; a montagem já trata escape e formato.
+ * Lista apenas o que é público: home, páginas legais, guia e a página de
+ * cada bar no ar (`/bar/$slug`, aberta desde 05/11/2026). Bar fora do ar sai
+ * `noindex` e não entra; prefixo de id repetido também não (a página dá 404,
+ * ver `bar-slug.ts`). O cache de um dia é o atraso de bar novo aparecer aqui.
  */
 const CACHE_SEGUNDOS = 60 * 60 * 24
 
 export const Route = createFileRoute('/sitemap.xml')({
   server: {
     handlers: {
-      GET: () => {
+      GET: async () => {
+        // Import dentro do handler: o banco não pode ir para o bundle do
+        // navegador junto com a árvore de rotas.
+        const { listLiveBarPaths } = await import(
+          '@findsports_oficial/api/lib/public-bar-page'
+        )
+        const bares = await listLiveBarPaths()
         const entradas: SitemapEntry[] = [
           { path: '/', changeFrequency: 'daily', priority: 1 },
           { path: '/termos', changeFrequency: 'monthly', priority: 0.3 },
@@ -33,6 +35,14 @@ export const Route = createFileRoute('/sitemap.xml')({
               lastModified: article.modified,
               changeFrequency: 'monthly',
               priority: 0.6
+            })
+          ),
+          ...bares.map(
+            (bar): SitemapEntry => ({
+              path: bar.path,
+              lastModified: bar.updatedAt.toISOString().slice(0, 10),
+              changeFrequency: 'daily',
+              priority: 0.7
             })
           )
         ]

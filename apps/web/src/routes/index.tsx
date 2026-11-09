@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { OnsideLanding } from '@/components/landing/onside-landing'
+import { LandingV3 } from '@/components/landing/v3/landing-v3'
 import { pageHead } from '@/lib/page-head'
 import { HOME_STRUCTURED_DATA, jsonLd } from '@/lib/structured-data'
 
@@ -32,6 +32,13 @@ export const Route = createFileRoute('/')({
 
     links: [
       ...HOME_HEAD.links,
+      // O telão parado do topo (10 KB): sem esperar o CSS achar o fundo.
+      {
+        rel: 'preload',
+        href: '/landing/v3/led-hero.webp',
+        as: 'image',
+        type: 'image/webp'
+      },
       // A Anton é a do título, que disputa o LCP com o pôster: vai na frente.
       // Archivo e Geist Mono continuam pré-carregadas, mas sem tirar banda do
       // pôster e da Anton no celular.
@@ -78,7 +85,7 @@ function Landing() {
   return (
     <>
       <StructuredData schema={HOME_STRUCTURED_DATA} />
-      <OnsideLanding />
+      <LandingV3 />
     </>
   )
 }

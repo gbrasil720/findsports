@@ -1,0 +1,406 @@
+/* biome-ignore-all lint/style/noDescendingSpecificity: segue a ordem da tela; tudo preso a .pn3. */
+/*
+ * Bar novo no painel (WEB-501; protótipo `guideHtml`, `tour*`, `quemvaiNovo`):
+ * o card "Primeiros passos" em Hoje, as sugestões de jogo em Jogos, o código
+ * de exemplo em Quem vai e o passeio, com o furo no escuro que deixa tocar no
+ * que está em destaque. Tokens do painel (`painel.css`); claro e escuro.
+ */
+
+/* ─── Primeiros passos ─── */
+.pn3 .pn-guia {
+  margin-top: 14px;
+}
+
+.pn3 .pn-guia-h {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pn3 .pn-guia-h h3 {
+  margin-top: 4px;
+}
+
+.pn3 .pn-guia-h .pn-lnk-b {
+  font: 600 14.5px var(--text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.pn3 .pn-guia .pn-prog {
+  margin-top: 14px;
+}
+
+.pn3 .pn-guia-l {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 28px;
+}
+
+.pn3 .pn-guia-l li.is-dn b {
+  color: var(--muted);
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+
+.pn3 .pn-guia-l li.is-nx .pn-c.is-no {
+  box-shadow: inset 0 0 0 2px var(--fg);
+}
+
+.pn3 .pn-guia-l li.is-sh {
+  grid-template-columns: 30px minmax(0, 1fr);
+}
+
+.pn3 .pn-guia-l li.is-sh > .pn-guia-sh {
+  grid-column: 2;
+  justify-content: flex-start;
+}
+
+.pn3 .pn-guia-sh {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.pn3 .pn-guia-sh .pn-btn {
+  padding: 0 12px;
+}
+
+/* ─── Sugestões em Jogos ─── */
+.pn3 .pn-sgj {
+  margin-bottom: 18px;
+}
+
+.pn3 .pn-sgj h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pn3 .pn-sgj .sgj-l {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pn3 .pn-sgj .sgj-b {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--sub);
+  color: var(--fg);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.18s var(--ease);
+}
+
+.pn3 .pn-sgj .sgj-b:active {
+  transform: translateY(2px);
+}
+
+.pn3 .pn-sgj .sgj-b:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.pn3 .pn-sgj .sgj-h {
+  min-width: 50px;
+  font: 400 20px / 1 var(--display);
+}
+
+.pn3 .pn-sgj .sgj-t b {
+  display: block;
+  overflow: hidden;
+  font-size: 14.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pn3 .pn-sgj .sgj-t span {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .pn3 .pn-sgj .sgj-b:not(:disabled):hover {
+    transform: translateY(-2px);
+  }
+}
+
+/* ─── Treine o balcão ─── */
+.pn3 .pn-treino {
+  margin-top: 22px;
+}
+
+.pn3 .pn-treino-g {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  align-items: center;
+  gap: 26px;
+  margin-top: 16px;
+}
+
+.pn3 .pn-tkt {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px;
+  border-radius: 22px;
+  background: #12120f;
+  box-shadow: 0 4px 0 #000;
+  color: #f1eee6;
+}
+
+.pn3 .pn-tkt .mono {
+  color: #aaa9a4;
+  font: 500 11.5px var(--mono);
+  letter-spacing: 0.08em;
+}
+
+.pn3 .pn-tkt b {
+  color: #c9f135;
+  font: 600 34px / 1 var(--mono);
+  letter-spacing: 0.04em;
+}
+
+.pn3 .pn-tkt > span:last-child {
+  color: #c9c7c0;
+  font-size: 13.5px;
+}
+
+.pn3 .pn-treino-p {
+  margin: 0;
+  color: var(--body);
+  font-size: 15px;
+}
+
+.pn3 .pn-treino-box {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0 16px;
+}
+
+.pn3 .pn-treino-box span {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  height: 58px;
+  border-radius: 16px;
+  background: var(--field);
+  box-shadow: inset 0 0 0 1.5px var(--line2);
+  font: 700 26px var(--mono);
+}
+
+.pn3 .pn-treino-ok {
+  padding: 18px;
+  border-radius: 20px;
+  background: var(--acid);
+  color: #12120f;
+}
+
+.pn3 .pn-treino-ok b {
+  display: block;
+  font: 400 30px / 1 var(--display);
+  text-transform: uppercase;
+}
+
+.pn3 .pn-treino-ok p {
+  margin: 8px 0 0;
+  font-size: 15px;
+}
+
+/* ─── O passeio ─── */
+.pn3.pn-tour-host {
+  min-height: 0;
+  background: none;
+}
+
+.pn3 .pn-tour {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  pointer-events: none;
+}
+
+/* O furo (clip-path) deixa tocar no destaque; o resto fica parado. */
+.pn3 .pn-tour-blk {
+  position: fixed;
+  inset: 0;
+  pointer-events: auto;
+}
+
+.pn3 .pn-tour-spot {
+  position: fixed;
+  border-radius: 30px;
+  box-shadow:
+    0 0 0 2px #c9f135,
+    0 0 0 200vmax rgba(10, 10, 8, 0.66);
+  pointer-events: none;
+  transition:
+    left 0.4s var(--ease),
+    top 0.4s var(--ease),
+    width 0.4s var(--ease),
+    height 0.4s var(--ease);
+}
+
+.pn3 .pn-tour-tip {
+  position: fixed;
+  z-index: 1;
+  width: min(340px, calc(100vw - 32px));
+  padding: 20px;
+  border-radius: 24px;
+  background: var(--bg);
+  box-shadow:
+    0 4px 0 var(--drop),
+    0 30px 60px -20px rgba(0, 0, 0, 0.6);
+  color: var(--fg);
+  pointer-events: auto;
+  animation: pn-tour-in 0.35s var(--ease);
+}
+
+@keyframes pn-tour-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+.pn3 .pn-tour-k {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.pn3 .pn-tour-k .mono {
+  font: 600 12px var(--mono);
+  letter-spacing: 0.06em;
+}
+
+.pn3 .pn-tour-k .pn-lnk-b {
+  font: 600 14px var(--text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.pn3 .pn-tour-tip h3 {
+  margin-top: 10px;
+  font-size: 30px;
+}
+
+.pn3 .pn-tour-tip p {
+  margin: 8px 0 0;
+  color: var(--body);
+  font-size: 15px;
+}
+
+.pn3 .pn-tour-tip p b {
+  color: var(--fg);
+}
+
+.pn3 .pn-tour-tip .pn-tour-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  color: var(--fg);
+  font: 600 14px var(--text);
+}
+
+.pn3 .pn-tour-a {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.pn3 .pn-tour-dots {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 14px;
+}
+
+.pn3 .pn-tour-dots i {
+  width: 22px;
+  height: 4px;
+  border-radius: 4px;
+  background: var(--line2);
+}
+
+.pn3 .pn-tour-dots i.on {
+  background: var(--fg);
+}
+
+@media (max-width: 1100px) {
+  .pn3 .pn-guia-l {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 860px) {
+  .pn3 .pn-guia-l li {
+    grid-template-columns: 30px minmax(0, 1fr);
+  }
+
+  .pn3 .pn-guia-l li > :last-child:not(:nth-child(2)) {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .pn3 .pn-guia-sh {
+    justify-content: flex-start;
+  }
+
+  .pn3 .pn-sgj .sgj-l,
+  .pn3 .pn-treino-g {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* No celular a dica é uma folha embaixo, por cima das abas. */
+  .pn3 .pn-tour-tip {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 18px var(--gr) calc(18px + env(safe-area-inset-bottom, 0px))
+      var(--gl);
+    border-radius: 28px 28px 0 0;
+  }
+
+  .pn3 .pn-tour-tip h3 {
+    font-size: 26px;
+  }
+
+  .pn3 .pn-tour-tip p {
+    font-size: 14.5px;
+  }
+
+  .pn3 .pn-tour-dots {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pn3 .pn-tour-spot,
+  .pn3 .pn-sgj .sgj-b {
+    transition: none;
+  }
+
+  .pn3 .pn-tour-tip {
+    animation: none;
+  }
+}

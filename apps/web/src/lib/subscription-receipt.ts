@@ -204,7 +204,8 @@ export function formatReceiptDate(date: Date | string | null): string {
   return parsed.toLocaleDateString('pt-BR', {
     day: '2-digit',
     month: 'long',
-    year: 'numeric'
+    year: 'numeric',
+    timeZone: 'America/Sao_Paulo'
   })
 }
 
@@ -214,7 +215,8 @@ export function formatReceiptTimestamp(date: Date): string {
     month: '2-digit',
     year: 'numeric',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
+    timeZone: 'America/Sao_Paulo'
   })
 }
 
@@ -233,7 +235,7 @@ export function receiptChargeLabel(status: string, cancelling = false): string {
  * foi pago.
  */
 export function receiptStampLabel(status: string): string {
-  return status === 'trialing' ? 'Trial liberado' : 'Pago e liberado'
+  return status === 'trialing' ? 'Teste liberado' : 'Pago e liberado'
 }
 
 /**

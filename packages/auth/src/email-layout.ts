@@ -1,99 +1,91 @@
 /**
- * Layout único dos e-mails transacionais da Onside (desenho do dono, WEB-477:
- * `gen/emails.js` do projeto 5185ab40, telas 1a–1g).
+ * Layout único dos e-mails da Onside (desenho do WEB-477): cabeçalho em
+ * tinta com o wordmark e uma etiqueta mono, faixa-ticker opcional, título
+ * Anton em duas linhas (a segunda em vermelho), corpo em cartão sobre papel,
+ * botão à prova de bala e rodapé com o motivo do envio.
  *
  * Feito para passar em filtro de conteúdo (o Outlook mandava para o lixo
  * eletrônico com SPF/DKIM/DMARC passando): uma só imagem, o wordmark
- * hospedado no próprio domínio, pequeno e com `alt`; HTML em tabelas com estilo
- * inline, sem `<style>`, fonte web nem preheader escondido, porque a primeira
- * frase visível já faz esse papel; um só botão, com o mesmo link em texto logo
- * abaixo; e a versão `text/plain` montada da mesma copy, com os blocos como
- * linhas na mesma ordem, para as duas partes dizerem a mesma coisa.
+ * hospedado no próprio domínio, pequeno e com `alt`; HTML em tabelas com
+ * estilo inline, sem `<style>` nem preheader escondido; um só botão; e a
+ * versão `text/plain` montada da mesma copy, para as duas partes dizerem a
+ * mesma coisa. A web font só pega no Apple Mail: toda família tem fallback.
  *
- * Títulos em Impact (com as condensadas de sistema atrás), corpo em Arial,
- * números e etiquetas em Courier. A sombra do card são células de 6 px, que
- * o Outlook desenha; o `border-radius` ele ignora, e o card fica reto.
+ * As peças (`chips`, `scoreboard`, `agenda`...) escapam o que recebem e
+ * devolvem HTML e texto; o template as põe no corpo, na ordem dada, antes
+ * da lista de passos.
  */
 
-import { EMAIL_LOGO_URL } from '@findsports_oficial/config/site'
+import { EMAIL_LOGO_URL, SITE_URL } from '@findsports_oficial/config/site'
 
-/** Partes do corpo, na ordem em que vêm depois da introdução. */
-export type EmailBlock =
-  /** Passos numerados. */
-  | { kind: 'steps'; items: string[] }
-  /** Etiquetas curtas ("USO ÚNICO"); `strong` é a escura com texto acid. */
-  | { kind: 'chips'; items: { label: string; strong?: boolean }[] }
-  /** Números grandes lado a lado ("486" / "pessoas marcaram..."). */
-  | { kind: 'stats'; items: { value: string; label: string }[] }
-  /** Agenda: dia na caixa escura, jogo e detalhe ao lado. */
-  | {
-      kind: 'games'
-      label: string
-      items: { weekday: string; day: string; title: string; detail: string }[]
-      more?: string
-    }
-  /** O jogo como ingresso, com o número em destaque embaixo do picote. */
-  | {
-      kind: 'ticket'
-      tag: string
-      title: string
-      when: string
-      number: string
-      label: string
-    }
-  /** A semana em branco: sete dias tracejados. */
-  | {
-      kind: 'week'
-      label?: string
-      days: { weekday: string; day: string }[]
-      note?: string
-    }
-  /** O anexo. */
-  | { kind: 'file'; name: string; detail: string }
+/** Uma peça do corpo: o HTML e o que ela diz na versão texto ('' = nada). */
+export type EmailBlock = { html: string; text: string }
 
 export type OnsideEmailInput = {
-  /** Título do e-mail, no `<title>` e no topo da mensagem. */
+  /** Primeira linha do título, no `<title>` e no topo da mensagem. */
   heading: string
-  /** Fim do título, em vermelho: "Confirme seu" + "e-mail". */
+  /** Segunda linha do título, em vermelho. */
   headingAccent?: string
-  /** Etiqueta do topo, à direita do wordmark: CONTA, SEGURANÇA... */
+  /** Etiqueta à direita do logo: CONTA, SEGURANÇA, PAINEL DO BAR... */
   tag?: string
-  /** Linha pequena acima do título ("BAR DO ZÉ · DE 19/10 A 25/10"). */
-  eyebrow?: string
-  /** Primeira frase do corpo: é ela que a caixa de entrada mostra de prévia. */
+  /** Faixa-ticker sob o cabeçalho, montada por `band`. */
+  band?: string
+  /** Primeira frase do corpo. */
   intro: string
-  /** Passos numerados depois dos blocos. */
-  steps?: string[]
+  /** Peças entre a introdução e os passos. */
   blocks?: EmailBlock[]
-  action: string
-  actionUrl: string
+  /** O que a pessoa precisa saber antes de clicar. Pode ser vazio. */
+  steps: string[]
+  /** Passos numerados (uma ordem de verdade) ou lista com fio. */
+  numberedSteps?: boolean
+  /** Sem `action`, o e-mail não tem botão. */
+  action?: string
+  actionUrl?: string
+  /** `primary` (acid) convida a agir; `secondary` (tinta) é segurança e privacidade. */
+  actionTone?: 'primary' | 'secondary'
+  /** Repete o link em texto sob o botão: vale para link de token. */
+  linkFallback?: boolean
   /** Fecho: o que fazer se a mensagem não for para você. */
-  note: string
-  /** Etiqueta do fecho. Padrão: SEGURANÇA. */
-  noteTag?: string
+  note?: string
+  noteLabel?: string
   /** Rodapé: por que este endereço recebeu o e-mail. */
   reason: string
   /** Link do rodapé para desligar o aviso. */
   optOut?: { label: string; url: string }
-  actionTone?: 'primary' | 'secondary'
-  /** Cor da sombra do card. Padrão: acid. */
-  shadow?: 'acid' | 'ink'
 }
 
-const INK = '#12120f'
-const MUTED = '#55554f'
-const LIME = '#c9f135'
-const PAPER = '#f1eee6'
-const RED = '#c92b0c'
-const LINE = '#d9d5cc'
-const SOFT = '#f7f5ef'
-const DARK_LINE = '#3a3a34'
-const FONT = 'Arial,Helvetica,sans-serif'
-const HEAD = "Impact,'Arial Narrow Bold','Arial Black',Arial,sans-serif"
-const MONO = "'Courier New',Courier,monospace"
-// Proporção do PNG (845×256) em 112px de largura.
-const LOGO_WIDTH = 112
-const LOGO_HEIGHT = 34
+const C = {
+  ink: '#12120f',
+  raised: '#1c1c18',
+  well: '#2a2a24',
+  line: '#34342d',
+  paper: '#f1eee6',
+  card: '#faf8f3',
+  sand: '#d9d4c8',
+  stone: '#e7e3db',
+  acid: '#c9f135',
+  drop: '#7f9a12',
+  red: '#e8320c',
+  body: '#3a3a35',
+  muted: '#55554f',
+  mutedInk: '#aaa9a4',
+  softInk: '#c9c7c0'
+}
+const F = {
+  display: "Anton,Impact,'Arial Narrow',sans-serif",
+  body: 'Archivo,Arial,Helvetica,sans-serif',
+  mono: "'Geist Mono',Menlo,Consolas,'Courier New',monospace"
+}
+export const EMAIL_FONTS_URL =
+  'https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;600;700&family=Geist+Mono:wght@500;600&display=swap'
+const TB =
+  'role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"'
+const T = `${TB} style="width:100%;border-collapse:collapse"`
+const TI =
+  'role="presentation" cellspacing="0" cellpadding="0" border="0" style="border-collapse:separate"'
+// Proporção do PNG (238×72) em 36 px de altura.
+const LOGO_WIDTH = 119
+const LOGO_HEIGHT = 36
 
 export function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (character) => {
@@ -110,207 +102,276 @@ export function escapeHtml(value: string): string {
 
 const e = escapeHtml
 
-const table = (inner: string, style = '') =>
-  `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:separate;${style}">${inner}</table>`
+const label = (text: string, color = C.muted) =>
+  `<span style="font-family:${F.mono};font-size:11.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:${color}">${e(text)}</span>`
 
-const row = (padding: string, content: string, style = '') =>
-  `<tr><td style="padding:${padding};font-family:${FONT};${style}">${content}</td></tr>`
+/** Número grande em mono acid, do placar e do ingresso. */
+const bigNumber = (size: number) =>
+  `font-family:${F.mono};font-size:${size}px;font-weight:600;line-height:1.1;color:${C.acid};letter-spacing:-.03em;white-space:nowrap`
 
-const label = (text: string, color = RED) =>
-  `<div style="font:700 11px/1 ${MONO};letter-spacing:.08em;color:${color};margin:0 0 10px">${e(text)}</div>`
+/** Selos em pílula; os marcados saem em acid. Repetem o texto: não vão à versão texto. */
+export function chips(items: [text: string, strong?: boolean][]): EmailBlock {
+  // inline-block para quebrar linha no celular; no Outlook vira texto com fundo.
+  const html = `<div style="line-height:0">${items
+    .map(
+      ([text, strong]) =>
+        `<span style="display:inline-block;margin:0 6px 6px 0;background:${strong ? C.acid : C.stone};border-radius:999px;padding:8px 13px;font-family:${F.mono};font-size:11.5px;font-weight:600;line-height:1.2;letter-spacing:.08em;color:${C.ink};white-space:nowrap">${e(text)}</span>`
+    )
+    .join('')}</div>`
+  return { html, text: '' }
+}
 
-const chip = ({ label, strong }: { label: string; strong?: boolean }) =>
-  `<span style="display:inline-block;padding:6px 10px;border-radius:4px;background:${strong ? INK : SOFT};color:${strong ? LIME : INK};font:700 11px/1 ${MONO};letter-spacing:.06em">${e(label)}</span>`
-
-function blockHtml(block: EmailBlock): string {
-  switch (block.kind) {
-    case 'steps':
-      return table(
-        block.items
-          .map((step, k) => {
-            const top = k ? '12px' : '0'
-            return `<tr><td width="30" valign="top" style="padding:${top} 0 0"><table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr><td width="26" height="26" align="center" bgcolor="${LIME}" style="width:26px;height:26px;background:${LIME};border-radius:4px;font:400 15px/26px ${HEAD};color:${INK}">${k + 1}</td></tr></table></td><td style="padding:${top} 0 0 12px;font:15px/1.55 ${FONT};color:${INK}">${e(step)}</td></tr>`
-          })
-          .join('')
-      )
-    case 'chips':
-      return block.items.map(chip).join(' ')
-    case 'stats':
-      return table(
-        `<tr>${block.items
+/**
+ * Placar em tinta: números em mono acid. Com um número só, ele ocupa a
+ * linha com o rótulo ao lado, em vez de uma coluna estreita sobrando.
+ */
+export function scoreboard(
+  head: string,
+  items: [value: string, label: string][]
+): EmailBlock {
+  const width = Math.floor(100 / items.length)
+  const [single] = items
+  const cells =
+    items.length === 1 && single
+      ? `<td style="padding:10px 18px 20px"><table ${TI}><tr><td valign="middle" style="padding-right:16px;${bigNumber(40)}">${e(single[0])}</td><td valign="middle" style="font-family:${F.body};font-size:15px;line-height:1.35;color:${C.softInk}">${e(single[1])}</td></tr></table></td>`
+      : items
           .map(
-            ({ value, label }, k) =>
-              `${k ? '<td width="8" style="width:8px"></td>' : ''}<td valign="top" bgcolor="${SOFT}" style="background:${SOFT};border-radius:6px;padding:14px 14px 13px;font-family:${FONT}"><div style="font:400 32px/1 ${HEAD};color:${INK}">${e(value)}</div><div style="font-size:12.5px;line-height:1.4;color:${MUTED};margin-top:6px">${e(label)}</div></td>`
+            ([value, text], i) =>
+              `<td valign="top" width="${width}%" style="width:${width}%;padding:10px 10px 18px ${i ? 12 : 18}px;${i ? `border-left:1px solid ${C.line};` : ''}"><div style="${bigNumber(26)}">${e(value)}</div><div style="padding-top:6px;font-family:${F.body};font-size:13px;line-height:1.35;color:${C.softInk}">${e(text)}</div></td>`
           )
-          .join('')}</tr>`
-      )
-    case 'games':
-      return (
-        label(block.label) +
-        table(
-          block.items
-            .map(({ weekday, day, title, detail }, k) => {
-              const top = k ? 10 : 0
-              return `<tr><td width="58" valign="middle" style="padding:${top}px 0 0"><table role="presentation" width="58" cellspacing="0" cellpadding="0" border="0"><tr><td align="center" bgcolor="${INK}" style="background:${INK};border-radius:6px;padding:8px 0 7px"><div style="font:700 10px/1 ${MONO};letter-spacing:.06em;color:${LIME}">${e(weekday)}</div><div style="font:400 20px/1 ${HEAD};color:${PAPER};margin-top:4px">${e(day)}</div></td></tr></table></td><td valign="middle" style="padding:${top}px 0 0 14px;font-family:${FONT}"><div style="font-size:15px;font-weight:700;color:${INK}">${e(title)}</div><div style="font-size:13px;color:${MUTED};margin-top:2px">${e(detail)}</div></td></tr>`
-            })
-            .join('') +
-            (block.more
-              ? `<tr><td colspan="2" style="padding:12px 0 0;font:13px/1.4 ${FONT};color:${MUTED}">${e(block.more)}</td></tr>`
-              : '')
-        )
-      )
-    case 'ticket':
-      return table(
-        `<tr><td bgcolor="${INK}" style="background:${INK};border-radius:8px 8px 0 0;padding:18px 20px 16px;font-family:${FONT}"><div style="font:700 11px/1 ${MONO};letter-spacing:.1em;color:${LIME}">${e(block.tag)}</div><div style="font:400 30px/1.05 ${HEAD};text-transform:uppercase;color:${PAPER};margin-top:10px">${e(block.title)}</div><div style="font:700 13px/1 ${MONO};color:#aaa9a4;margin-top:8px">${e(block.when)}</div></td></tr><tr><td bgcolor="${INK}" style="background:${INK};padding:0 20px"><div style="border-top:2px dashed ${DARK_LINE};height:0;line-height:0;font-size:0">&nbsp;</div></td></tr><tr><td bgcolor="${INK}" style="background:${INK};border-radius:0 0 8px 8px;padding:14px 20px 18px;font-family:${FONT}">${table(`<tr><td width="1" style="font:400 56px/1 ${HEAD};color:${LIME};white-space:nowrap;padding-right:14px">${e(block.number)}</td><td style="font:15px/1.4 ${FONT};color:${PAPER}">${e(block.label)}</td></tr>`)}</td></tr>`
-      )
-    case 'week':
-      return (
-        (block.label ? label(block.label) : '') +
-        table(
-          `<tr>${block.days
-            .map(
-              ({ weekday, day }, k) =>
-                `${k ? '<td width="6" style="width:6px"></td>' : ''}<td align="center" style="border:1.5px dashed #c9c4b8;border-radius:6px;padding:9px 0 8px;font-family:${FONT}"><div style="font:700 9.5px/1 ${MONO};letter-spacing:.05em;color:${MUTED}">${e(weekday)}</div><div style="font:400 18px/1 ${HEAD};color:#b9b4a8;margin-top:5px">${e(day)}</div></td>`
-            )
-            .join('')}</tr>`
-        ) +
-        (block.note
-          ? `<div style="font:14px/1.5 ${FONT};color:${INK};margin-top:10px">${e(block.note)}</div>`
-          : '')
-      )
-    case 'file':
-      return table(
-        `<tr><td style="border:1.5px solid ${INK};border-radius:6px;padding:0">${table(`<tr><td width="56" align="center" bgcolor="${LIME}" style="background:${LIME};border-radius:5px 0 0 5px;border-right:1.5px dashed ${INK};font:400 20px/1 ${HEAD};color:${INK};padding:16px 0">{ }</td><td style="padding:12px 14px;font-family:${FONT}"><div style="font:700 13px/1.3 ${MONO};color:${INK};word-break:break-all">${e(block.name)}</div><div style="font-size:12.5px;color:${MUTED};margin-top:4px">${e(block.detail)}</div></td></tr>`)}</td></tr>`
-      )
+          .join('')
+  const html = `<table ${TB} bgcolor="${C.ink}" style="width:100%;border-collapse:separate;table-layout:fixed;background:${C.ink};border-radius:20px;border-bottom:4px solid #000000">
+<tr><td colspan="${items.length}" style="padding:16px 18px 4px">${label(head, C.mutedInk)}</td></tr>
+<tr>${cells}</tr></table>`
+  return {
+    html,
+    text: [head, ...items.map(([value, text]) => `${value} ${text}`)].join('\n')
   }
 }
 
-function blockText(block: EmailBlock): string {
-  switch (block.kind) {
-    case 'steps':
-      return block.items.map((step, k) => `${k + 1}. ${step}`).join('\n')
-    case 'chips':
-      return block.items.map(({ label }) => `[${label}]`).join(' ')
-    case 'stats':
-      return block.items
-        .map(({ value, label }) => `${value} ${label}`)
-        .join('\n')
-    case 'games':
-      return [
-        block.label,
-        ...block.items.map(
-          ({ weekday, day, title, detail }) =>
-            `${weekday} ${day} · ${title} · ${detail}`
-        ),
-        ...(block.more ? [block.more] : [])
-      ].join('\n')
-    case 'ticket':
-      return [
-        block.tag,
-        block.title,
-        block.when,
-        `${block.number} ${block.label}`
-      ].join('\n')
-    case 'week':
-      // Os sete dias vazios são desenho; no texto, só o que eles dizem.
-      return [block.label, block.note].filter(Boolean).join('\n')
-    case 'file':
-      return `Anexo: ${block.name} (${block.detail})`
+export type AgendaGame = {
+  /** "QUA" */
+  weekday: string
+  /** "11/11" */
+  day: string
+  title: string
+  /** "21:30 · BRASILEIRÃO" */
+  detail: string
+}
+
+/** Agenda com a caixa do dia, como no painel. */
+export function agenda(
+  head: string,
+  games: AgendaGame[],
+  more?: string
+): EmailBlock {
+  const rows = games
+    .map(
+      (game) =>
+        `<tr><td valign="top" width="58" style="width:58px;padding:12px 12px 12px 0;border-top:1px solid ${C.sand}"><table ${TI}><tr><td align="center" width="50" bgcolor="${C.stone}" style="width:50px;background:${C.stone};border-radius:12px;padding:7px 0;font-family:${F.mono};line-height:1.15"><span style="font-size:10.5px;font-weight:600;letter-spacing:.08em;color:${C.muted}">${e(game.weekday)}</span><br><span style="font-size:15px;font-weight:600;color:${C.ink}">${e(game.day)}</span></td></tr></table></td><td valign="middle" style="padding:12px 0;border-top:1px solid ${C.sand}"><div style="font-family:${F.body};font-size:16px;font-weight:700;line-height:1.3;color:${C.ink}">${e(game.title)}</div><div style="padding-top:3px;font-family:${F.mono};font-size:12.5px;font-weight:500;color:${C.muted};letter-spacing:.02em">${e(game.detail)}</div></td></tr>`
+    )
+    .join('')
+  const tail = more
+    ? `<tr><td colspan="2" style="padding:12px 0 0;border-top:1px solid ${C.sand};font-family:${F.body};font-size:14.5px;color:${C.muted}">${e(more)}</td></tr>`
+    : ''
+  return {
+    html: `${label(head)}<table ${TB} style="width:100%;border-collapse:collapse;margin-top:10px">${rows}${tail}</table>`,
+    text: [
+      head,
+      ...games.map(
+        (game) =>
+          `• ${game.weekday} ${game.day} · ${game.title} · ${game.detail}`
+      ),
+      ...(more ? [more] : [])
+    ].join('\n')
   }
+}
+
+/** A semana em branco, dia a dia. Não diz nada a mais em texto. */
+export function emptyWeek(days: [weekday: string, day: string][]): EmailBlock {
+  const html = `<table ${TB} style="width:100%;border-collapse:separate;border-spacing:4px 0;table-layout:fixed"><tr>${days
+    .map(
+      ([weekday, day]) =>
+        `<td align="center" bgcolor="${C.stone}" style="background:${C.stone};border-radius:12px;padding:10px 0 12px;font-family:${F.mono};line-height:1.2"><span style="font-size:10px;font-weight:600;letter-spacing:.06em;color:${C.muted}">${e(weekday)}</span><br><span style="font-size:15px;font-weight:600;color:${C.ink}">${e(day)}</span><br><span style="font-size:15px;color:${C.muted}">&mdash;</span></td>`
+    )
+    .join('')}</tr></table>`
+  return { html, text: '' }
+}
+
+/** Ingresso do jogo em tinta, com picote. */
+export function ticket(input: {
+  tag: string
+  title: string
+  when: string
+  number: string
+  label: string
+}): EmailBlock {
+  const html = `<table ${TB} bgcolor="${C.ink}" style="width:100%;border-collapse:separate;background:${C.ink};border-radius:24px;border-bottom:4px solid #000000">
+<tr><td style="padding:20px 22px 0">${label(input.tag, C.mutedInk)}</td></tr>
+<tr><td style="padding:10px 22px 0;font-family:${F.display};font-size:34px;line-height:1.05;color:${C.paper};text-transform:uppercase;letter-spacing:.005em">${e(input.title)}</td></tr>
+<tr><td style="padding:10px 22px 20px"><table ${TI}><tr><td bgcolor="${C.well}" style="background:${C.well};border-radius:8px;padding:7px 10px;font-family:${F.mono};font-size:13px;font-weight:600;color:${C.acid};letter-spacing:.06em">${e(input.when)}</td></tr></table></td></tr>
+<tr><td style="padding:0 22px"><div style="border-top:2px dashed ${C.line};height:0;line-height:0;font-size:0">&nbsp;</div></td></tr>
+<tr><td style="padding:18px 22px 22px"><table ${TI}><tr><td valign="middle" style="padding-right:16px;${bigNumber(44)};line-height:1">${e(input.number)}</td><td valign="middle" style="font-family:${F.body};font-size:15px;line-height:1.35;color:${C.softInk}">${e(input.label)}</td></tr></table></td></tr></table>`
+  return {
+    html,
+    text: [
+      input.tag,
+      input.title,
+      input.when,
+      `${input.number} ${input.label}`
+    ].join('\n')
+  }
+}
+
+/** O anexo à vista, com o nome do arquivo. */
+export function fileCard(name: string, detail: string): EmailBlock {
+  const html = `<table ${TB} bgcolor="${C.stone}" style="width:100%;border-collapse:separate;background:${C.stone};border-radius:16px"><tr><td width="64" style="width:64px;padding:16px 0 16px 16px"><table ${TI}><tr><td width="44" height="44" align="center" bgcolor="${C.ink}" style="width:44px;height:44px;background:${C.ink};border-radius:12px;font-family:${F.mono};font-size:15px;font-weight:600;color:${C.acid}">{&nbsp;}</td></tr></table></td><td style="padding:16px 16px 16px 4px"><div style="font-family:${F.mono};font-size:14px;font-weight:600;color:${C.ink};word-break:break-all">${e(name)}</div><div style="padding-top:4px">${label(detail)}</div></td></tr></table>`
+  return { html, text: `Anexo: ${name} (${detail})` }
+}
+
+/** Texto de quem escreveu, escapado e com as quebras de linha dele. */
+export function quote(text: string): EmailBlock {
+  const html = `<table ${TB} bgcolor="${C.stone}" style="width:100%;border-collapse:separate;background:${C.stone};border-radius:16px"><tr><td style="padding:18px 20px;font-family:${F.body};font-size:16px;line-height:1.55;color:${C.ink};white-space:pre-wrap">${e(text)}</td></tr></table>`
+  return { html, text }
+}
+
+/** Tabela de dados: rótulo mono à esquerda, valor à direita. */
+export function metaTable(rows: [key: string, value: string][]): EmailBlock {
+  const html = `<table ${T}>${rows
+    .map(
+      ([key, value]) =>
+        `<tr><td valign="top" width="120" style="width:120px;padding:8px 12px 8px 0;border-top:1px solid ${C.sand}">${label(key)}</td><td style="padding:8px 0;border-top:1px solid ${C.sand};font-family:${F.mono};font-size:13px;line-height:1.45;color:${C.ink};word-break:break-word">${e(value)}</td></tr>`
+    )
+    .join('')}</table>`
+  return {
+    html,
+    text: rows.map(([key, value]) => `${key}: ${value}`).join('\n')
+  }
+}
+
+export function paragraph(text: string): EmailBlock {
+  return {
+    html: `<p style="margin:0;font-family:${F.body};font-size:16px;line-height:1.55;color:${C.body}">${e(text)}</p>`,
+    text
+  }
+}
+
+/**
+ * A faixa-ticker (estática: e-mail não anima). `lead` sai em papel antes dos
+ * itens; os itens se separam por bola vermelha (`dot`) ou ponto médio.
+ */
+export function band(
+  items: string[],
+  options: { separator?: 'dot' | 'middot'; lead?: string } = {}
+): string {
+  const separator =
+    options.separator === 'middot'
+      ? ' &nbsp;·&nbsp; '
+      : ` &nbsp;<span style="color:${C.red}">●</span>&nbsp; `
+  const lead = options.lead
+    ? `<span style="color:${C.paper}">${e(options.lead)}</span>${separator}`
+    : ''
+  return `${lead}${items.map(e).join(separator)}`
+}
+
+function stepRows(items: string[], numbered: boolean) {
+  if (numbered) {
+    return `<table ${T}>${items
+      .map(
+        (step, i) =>
+          `<tr><td valign="top" width="34" style="padding:0 0 12px;width:34px"><table ${TI}><tr><td width="24" height="24" align="center" bgcolor="${C.ink}" style="width:24px;height:24px;background:${C.ink};border-radius:999px;font-family:${F.mono};font-size:12px;font-weight:600;color:${C.acid};line-height:24px">${i + 1}</td></tr></table></td><td valign="top" style="padding:2px 0 12px;font-family:${F.body};font-size:15.5px;line-height:1.5;color:${C.body}">${e(step)}</td></tr>`
+      )
+      .join('')}</table>`
+  }
+  return `<table ${T}>${items
+    .map(
+      (step) =>
+        `<tr><td style="padding:11px 0;border-top:1px solid ${C.sand};font-family:${F.body};font-size:15.5px;line-height:1.5;color:${C.body}">${e(step)}</td></tr>`
+    )
+    .join('')}</table>`
+}
+
+function button(text: string, url: string, tone: 'primary' | 'secondary') {
+  const [background, color, shadow] =
+    tone === 'primary' ? [C.acid, C.ink, C.drop] : [C.ink, C.paper, '#000000']
+  return `<table ${TI}><tr><td bgcolor="${background}" style="background:${background};border-radius:999px;border-bottom:4px solid ${shadow};mso-padding-alt:17px 28px"><a href="${e(url)}" style="display:inline-block;padding:17px 28px;font-family:${F.body};font-size:16px;font-weight:700;line-height:1;color:${color};text-decoration:none;border-radius:999px">${e(text)}&nbsp;&rarr;</a></td></tr></table>`
 }
 
 export function createOnsideEmailTemplate({
   heading,
   headingAccent,
   tag,
-  eyebrow,
+  band: bandHtml,
   intro,
-  steps = [],
   blocks = [],
+  steps,
+  numberedSteps = false,
   action,
   actionUrl,
-  note,
-  noteTag = 'SEGURANÇA',
-  reason,
-  optOut,
   actionTone = 'primary',
-  shadow = 'acid'
+  linkFallback = true,
+  note,
+  noteLabel,
+  reason,
+  optOut
 }: OnsideEmailInput): { html: string; text: string } {
   const title = headingAccent ? `${heading} ${headingAccent}` : heading
-  const body: EmailBlock[] = [
-    ...blocks,
-    ...(steps.length ? [{ kind: 'steps', items: steps } as const] : [])
-  ]
-  const url = e(actionUrl)
-  const shade = shadow === 'ink' ? INK : LIME
-  const buttonBackground = actionTone === 'primary' ? LIME : '#ffffff'
+  const cta = action && actionUrl ? { action, url: actionUrl } : null
+  const row = (padding: string, content: string) =>
+    `<tr><td bgcolor="${C.card}" style="background:${C.card};padding:${padding}">${content}</td></tr>`
 
   const text = [
     tag ? `ONSIDE · ${tag}` : 'ONSIDE',
-    ...(eyebrow ? [eyebrow] : []),
     title,
     intro,
-    ...body.map(blockText).filter(Boolean),
-    `${action}:\n${actionUrl}`,
-    `${noteTag}\n${note}`,
-    `--\nOnside · O jogo começa aqui.\n${reason}${optOut ? `\n${optOut.label}: ${optOut.url}` : ''}`
+    ...blocks.map((block) => block.text).filter(Boolean),
+    ...(steps.length
+      ? [
+          steps
+            .map((step, i) => `${numberedSteps ? `${i + 1}.` : '•'} ${step}`)
+            .join('\n')
+        ]
+      : []),
+    ...(cta ? [`${cta.action}:\n${cta.url}`] : []),
+    ...(note ? [note] : []),
+    [
+      '--',
+      'Onside · O jogo começa aqui.',
+      reason,
+      ...(optOut ? [`${optOut.label}: ${optOut.url}`] : [])
+    ].join('\n')
   ].join('\n\n')
-
-  // Etiquetas grudam no bloco vizinho (16 px), o resto respira 22 px.
-  const blockRows = body
-    .map((block, k) => {
-      const tight = block.kind === 'chips' || body[k - 1]?.kind === 'chips'
-      return row(`${tight ? 16 : 22}px 28px 0`, blockHtml(block))
-    })
-    .join('')
-
-  const card = [
-    `<tr><td bgcolor="#ffffff" style="background:#ffffff;border-radius:8px 8px 0 0;padding:20px 28px 18px;border-bottom:4px solid ${LIME}">${table(`<tr><td><img src="${EMAIL_LOGO_URL}" width="${LOGO_WIDTH}" height="${LOGO_HEIGHT}" alt="Onside" style="display:block;width:${LOGO_WIDTH}px;height:${LOGO_HEIGHT}px;border:0"></td>${tag ? `<td align="right"><span style="display:inline-block;padding:6px 9px;border-radius:4px;background:${INK};color:${LIME};font:700 10.5px/1 ${MONO};letter-spacing:.12em">${e(tag)}</span></td>` : ''}</tr>`)}</td></tr>`,
-    eyebrow
-      ? row(
-          '28px 28px 0',
-          `<div style="font:700 11px/1.4 ${MONO};letter-spacing:.08em;color:${MUTED}">${e(eyebrow)}</div>`
-        )
-      : '',
-    row(
-      `${eyebrow ? 10 : 28}px 28px 0`,
-      `<h1 style="margin:0;font:400 38px/1.02 ${HEAD};text-transform:uppercase;letter-spacing:.2px;color:${INK}">${e(heading)}${headingAccent ? ` <span style="color:${RED}">${e(headingAccent)}</span>` : ''}</h1>`
-    ),
-    row('14px 28px 0', e(intro), `font-size:16px;line-height:1.6;color:${INK}`),
-    blockRows,
-    row(
-      '26px 28px 0',
-      `<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="border-collapse:separate"><tr><td bgcolor="${buttonBackground}" style="background:${buttonBackground};border:2px solid ${INK};border-right-width:5px;border-bottom-width:5px;border-radius:6px"><a href="${url}" style="display:inline-block;padding:14px 24px;font:700 16px/1 ${FONT};color:${INK};text-decoration:none">${e(action)} &rarr;</a></td></tr></table>`
-    ),
-    row(
-      '16px 28px 0',
-      `Se o botão não funcionar, copie e cole este endereço no navegador:<br><a href="${url}" style="color:${INK};word-break:break-all">${url}</a>`,
-      `font-size:12.5px;line-height:1.6;color:${MUTED}`
-    ),
-    row(
-      '22px 28px 28px',
-      table(
-        `<tr><td bgcolor="${SOFT}" style="background:${SOFT};border-radius:6px;padding:13px 16px;font-family:${FONT}"><div style="font:700 10.5px/1 ${MONO};letter-spacing:.1em;color:${RED}">${e(noteTag)}</div><div style="font-size:13px;line-height:1.55;color:${INK};margin-top:6px">${e(note)}</div></td></tr>`
-      )
-    )
-  ].join('')
-
-  const shadowed = `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse"><tr><td bgcolor="#ffffff" style="background:#ffffff;border:1px solid ${LINE};border-radius:8px">${table(card)}</td><td width="6" bgcolor="${shade}" style="width:6px;background:${shade};border-top:6px solid ${PAPER};border-radius:0 0 4px 0"></td></tr><tr><td height="6" bgcolor="${shade}" style="height:6px;line-height:6px;font-size:0;background:${shade};border-left:6px solid ${PAPER};border-radius:0 0 0 4px">&nbsp;</td><td height="6" bgcolor="${shade}" style="height:6px;background:${shade};border-radius:0 0 4px 0"></td></tr></table>`
-
-  const footer = `<tr><td style="padding:18px 6px 0;font:12px/1.6 ${FONT};color:${MUTED}"><b style="color:${INK}">Onside · O jogo começa aqui.</b><br>${e(reason)}${optOut ? `<br><a href="${e(optOut.url)}" style="color:${INK}">${e(optOut.label)}</a>` : ''}</td></tr>`
 
   const html = `<!doctype html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="color-scheme" content="light">
+<meta name="color-scheme" content="light only">
+<meta name="supported-color-schemes" content="light only">
+<link href="${EMAIL_FONTS_URL}" rel="stylesheet">
 <title>${e(title)}</title>
 </head>
-<body style="margin:0;padding:0;background:${PAPER};color:${INK}">
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;background:${PAPER};border-collapse:collapse"><tr><td align="center" style="padding:28px 14px 32px">
-<!--[if mso]><table role="presentation" width="566" cellspacing="0" cellpadding="0" border="0"><tr><td><![endif]-->
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:566px;border-collapse:collapse"><tr><td>${shadowed}</td></tr>${footer}</table>
+<body style="margin:0;padding:0;background:${C.paper};color:${C.ink}">
+<table ${T} bgcolor="${C.paper}"><tr><td align="center" style="padding:24px 12px 32px">
+<!--[if mso]><table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0"><tr><td><![endif]-->
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:600px;border-collapse:separate;table-layout:fixed">
+<tr><td bgcolor="${C.ink}" style="background:${C.ink};border-radius:24px 24px 0 0;padding:22px 28px">
+<table ${T}><tr><td valign="middle"><img src="${EMAIL_LOGO_URL}" width="${LOGO_WIDTH}" height="${LOGO_HEIGHT}" alt="Onside" style="display:block;width:${LOGO_WIDTH}px;height:${LOGO_HEIGHT}px;border:0"></td>${tag ? `<td valign="middle" align="right">${label(tag, C.softInk)}</td>` : ''}</tr></table>
+</td></tr>
+${bandHtml ? `<tr><td bgcolor="${C.raised}" style="background:${C.raised};border-top:1px solid ${C.line};padding:11px 28px"><div style="white-space:nowrap;overflow:hidden;font-family:${F.mono};font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:${C.acid}">${bandHtml}</div></td></tr>` : ''}
+${row('36px 28px 0', `<h1 style="margin:0;font-family:${F.display};font-size:46px;font-weight:400;line-height:1;letter-spacing:-.005em;text-transform:uppercase;color:${C.ink}">${e(heading)}${headingAccent ? `<br><span style="color:${C.red}">${e(headingAccent)}</span>` : ''}</h1>`)}
+${row('18px 28px 0', `<p style="margin:0;font-family:${F.body};font-size:17px;line-height:1.55;color:${C.body}">${e(intro)}</p>`)}
+${blocks.map((block) => row('24px 28px 0', block.html)).join('\n')}
+${steps.length ? row('24px 28px 0', stepRows(steps, numberedSteps)) : ''}
+${cta ? row('28px 28px 0', button(cta.action, cta.url, actionTone)) : ''}
+${cta && linkFallback ? row('18px 28px 0', `<p style="margin:0;font-family:${F.body};font-size:13px;line-height:1.55;color:${C.muted}">Se o botão não abrir, copie este endereço no navegador:<br><a href="${e(cta.url)}" style="font-family:${F.mono};font-size:12.5px;color:${C.ink};word-break:break-all">${e(cta.url)}</a></p>`) : ''}
+${note ? row('24px 28px 0', `<table ${T}><tr><td style="padding-top:18px;border-top:1px solid ${C.sand}">${noteLabel ? label(noteLabel) : ''}<p style="margin:${noteLabel ? '6px' : '0'} 0 0;font-family:${F.body};font-size:14px;line-height:1.55;color:${C.muted}">${e(note)}</p></td></tr></table>`) : ''}
+<tr><td bgcolor="${C.card}" style="background:${C.card};padding:28px 28px 26px;border-radius:0 0 24px 24px;border-bottom:3px solid ${C.sand}">
+<table ${T}><tr><td style="padding-top:16px;border-top:1px solid ${C.sand};font-family:${F.body};font-size:12.5px;line-height:1.6;color:${C.muted}">${e(reason)}${optOut ? `<br><a href="${e(optOut.url)}" style="display:inline-block;margin-top:8px;font-family:${F.mono};font-size:12px;font-weight:600;letter-spacing:.04em;color:${C.ink};text-decoration:underline">${e(optOut.label)}&nbsp;&rarr;</a>` : ''}</td></tr></table>
+</td></tr>
+<tr><td align="center" style="padding:20px 28px 0;font-family:${F.mono};font-size:11px;font-weight:600;letter-spacing:.1em;color:${C.muted}">ONSIDE · O JOGO COMEÇA AQUI · <a href="${SITE_URL}" style="color:${C.muted}">ONSIDE.SH</a></td></tr>
+</table>
 <!--[if mso]></td></tr></table><![endif]-->
 </td></tr></table>
 </body>

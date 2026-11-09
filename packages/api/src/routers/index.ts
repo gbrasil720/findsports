@@ -7,6 +7,7 @@ import { adminReviewRouter } from './admin-review'
 import { adminUsersRouter } from './admin-users'
 import { aiRouter } from './ai'
 import { appConfigRouter } from './app-config'
+import { appWaitlistRouter } from './app-waitlist'
 import { attendanceRouter } from './attendance'
 import { barReservationsRouter } from './bar-reservations'
 import { bastidoresRouter } from './bastidores'
@@ -34,12 +35,15 @@ export const appRouter = router({
       user: ctx.session.user
     }
   }),
+  achievements: achievementsRouter,
+  account: accountRouter,
   adminBars: adminBarsRouter,
   ai: aiRouter,
   adminEvents: adminEventsRouter,
   adminReview: adminReviewRouter,
   adminUsers: adminUsersRouter,
   appConfig: appConfigRouter,
+  appWaitlist: appWaitlistRouter,
   bastidores: bastidoresRouter,
   onboarding: onboardingRouter,
   pub: pubRouter,
@@ -51,8 +55,6 @@ export const appRouter = router({
   reservationValidation: reservationValidationRouter,
   barReservations: barReservationsRouter,
   attendance: attendanceRouter,
-  achievements: achievementsRouter,
-  account: accountRouter,
   friends: friendsRouter,
   ranking: rankingRouter,
   feedback: feedbackRouter,

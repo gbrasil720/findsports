@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test'
+import { describe, expect, test } from 'bun:test'
 
 import {
   getUserFacingError,
@@ -177,4 +177,26 @@ test('recusa de regra da nossa API (400, 409, 412) mostra o motivo', () => {
   expect(
     getUserFacingError({ status: 409, message: 'Conflict' }, 'Não foi.').message
   ).toBe('Não foi.')
+})
+
+describe('isRetryableError: falhas passageiras sem JSON', () => {
+  test('página de erro do gateway (502 em HTML) pelo status da resposta', () => {
+    const error = Object.assign(
+      new Error('Unable to transform response from server'),
+      { meta: { response: { status: 502 } } }
+    )
+    expect(isRetryableError(error)).toBe(true)
+  })
+
+  test('corpo HTML lido como JSON, sem status', () => {
+    const error = new Error(
+      `Unexpected token '<', "<!DOCTYPE "... is not valid JSON`
+    )
+    expect(isRetryableError(error)).toBe(true)
+  })
+
+  test('429 é passageiro; 404 não', () => {
+    expect(isRetryableError({ status: 429 })).toBe(true)
+    expect(isRetryableError({ status: 404 })).toBe(false)
+  })
 })

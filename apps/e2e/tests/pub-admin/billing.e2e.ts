@@ -3,14 +3,10 @@ import type { Page } from '@playwright/test'
 import { BASE_URL, STUB_URL } from '../../env'
 import { signIn } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
-import { createEvent, createTicket } from '../../fixtures/going'
-import { painelLink } from '../../fixtures/painel'
 import { createPub, inDays, type PubOptions } from '../../fixtures/pubs'
 import {
   deliverSubscription,
-  seedStripeInvoices,
   sendStripeWebhook,
-  stripeInvoice,
   stripeSubscription
 } from '../../fixtures/stripe'
 import { expect, test } from '../../fixtures/test'
@@ -30,21 +26,42 @@ const currentPlan = (page: Page) =>
   page.getByRole('region', { name: 'Seu plano' })
 
 const cancelShortcut = (page: Page) =>
-  page.getByRole('button', { name: 'Cancelar plano' })
+  page.getByRole('button', { name: 'Cancelar assinatura' })
 
 test('o painel leva à cobrança e à validação', async ({ page }) => {
   const pub = await createPub()
   await signIn(page, pub.user)
   await page.goto('/admin')
 
-  await painelLink(page, 'Plano e cobrança').click()
+  // O menu do dono existe no trilho e no topo do celular; só um aparece.
+  await page.getByRole('button', { name: /^Menu da conta/ }).click()
+  await page
+    .getByRole('navigation', { name: 'Conta' })
+    .getByRole('link', { name: 'Plano e cobrança' })
+    .click()
   await expect(page).toHaveURL(/\/admin\/billing$/)
   await expect(
     page.getByRole('heading', { level: 1, name: 'Plano e cobrança' })
   ).toBeVisible()
 
   await page.goto('/admin')
-  await page.getByRole('link', { name: 'Validar código' }).click()
+  await page
+    .getByRole('button', { name: 'Validar código', exact: true })
+    .click()
+  const dialog = page.getByRole('dialog', { name: 'Validar código' })
+  await expect(dialog.getByLabel('Letra 1')).toBeFocused()
+  await dialog.getByLabel('Letra 1').fill('A')
+  await expect(dialog.getByLabel('Letra 2')).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+
+  await page
+    .getByRole('button', { name: 'Validar código', exact: true })
+    .click()
+  await page
+    .getByRole('dialog', { name: 'Validar código' })
+    .getByRole('link', { name: 'Abrir a página de validação' })
+    .click()
   await expect(page).toHaveURL(/\/admin\/validate$/)
 })
 
@@ -66,18 +83,12 @@ test('a assinatura aparece sem esperar a consulta do cupom ao Stripe (WEB-348)',
   await page.unrouteAll({ behavior: 'ignoreErrors' })
 })
 
-const faturas = (page: Page) => page.getByRole('region', { name: 'Faturas' })
-
-test('Elite ativo: plano, faturas e portal do Stripe', async ({
-  page,
-  request
-}) => {
+test('Elite ativo: plano e portal do Stripe', async ({ page }) => {
   // O portal só existe para quem tem cliente no Stripe (WEB-264): o id da
   // assinatura e o do cliente são o rastro de quem já passou pelo checkout.
-  const subscriptionId = `sub_e2e_${randomUUID()}`
   const pub = await createPub({
     subscription: {
-      externalSubscriptionId: subscriptionId,
+      externalSubscriptionId: `sub_e2e_${randomUUID()}`,
       monthlyDiscountReais: 28
     }
   })
@@ -86,82 +97,20 @@ test('Elite ativo: plano, faturas e portal do Stripe', async ({
     customerId,
     pub.user.id
   ])
-  // O mês do bar (WEB-446): dois marcaram que iam a um jogo de agora, um
-  // código validado no balcão.
-  const { eventId } = await createEvent(pub.barId, { startsAt: new Date() })
-  const [ticket] = await Promise.all([
-    createTicket(eventId),
-    createTicket(eventId)
-  ])
-  await query(
-    `INSERT INTO reservation_code_use (id, code_id)
-     SELECT gen_random_uuid()::text, id FROM reservation_code WHERE reservation_id = $1`,
-    [ticket.reservationId]
-  )
-  // Faturas do Stripe (WEB-443, 3o): a paga de outubro e a de R$ 0 que o
-  // Stripe emitiu ao abrir o teste. Rascunho não aparece.
-  await seedStripeInvoices(
-    request,
-    { id: subscriptionId, customer: customerId },
-    [
-      stripeInvoice({
-        id: `in_draft_${subscriptionId}`,
-        customer: customerId,
-        status: 'draft',
-        total: 26900,
-        created: new Date('2026-11-12T15:00:00Z')
-      }),
-      stripeInvoice({
-        id: `in_out_${subscriptionId}`,
-        customer: customerId,
-        status: 'paid',
-        total: 26900,
-        created: new Date('2026-10-12T15:00:00Z')
-      }),
-      stripeInvoice({
-        id: `in_teste_${subscriptionId}`,
-        customer: customerId,
-        status: 'paid',
-        total: 0,
-        created: new Date('2026-08-20T15:00:00Z'),
-        trialEnd: new Date('2026-10-12T15:00:00Z')
-      })
-    ]
-  )
   await signIn(page, pub.user)
   await page.goto('/admin/billing')
 
   await expect(currentPlan(page)).toContainText('Elite')
   await expect(currentPlan(page)).toContainText('R$ 269')
   await expect(currentPlan(page)).toContainText('R$ 297')
-  await expect(currentPlan(page)).toContainText('Preço de fundador')
-  await expect(currentPlan(page)).toContainText(/por mês · renova \d+ /)
-  // O que o plano rendeu no mês (3o).
-  const kpi = (label: string) =>
-    currentPlan(page).locator('dl > div', { hasText: label })
-  await expect(kpi('marcaram que iam este mês')).toContainText('2')
-  await expect(kpi('clássicos no topo este mês')).toContainText('0')
-  await expect(kpi('código validado este mês')).toContainText('1')
-  const rows = faturas(page).getByRole('listitem')
-  await expect(rows).toHaveCount(2)
-  await expect(rows.nth(0)).toContainText('Outubro 2026')
-  await expect(rows.nth(0)).toContainText('Pago em 12 out')
-  await expect(rows.nth(0)).toContainText('R$ 269')
-  await expect(rows.nth(0)).toContainText('Pago')
+  await expect(currentPlan(page)).toContainText('Ativo')
+  await expect(currentPlan(page)).toContainText('Próxima cobrança em')
   await expect(
-    rows.nth(0).getByRole('link', { name: /^Baixar PDF/ })
-  ).toHaveAttribute(
-    'href',
-    `https://pay.stripe.com/invoice/in_out_${subscriptionId}/pdf`
-  )
-  await expect(rows.nth(1)).toContainText('Agosto 2026')
-  await expect(rows.nth(1)).toContainText('Elite grátis até 12 out')
-  await expect(rows.nth(1)).toContainText('R$ 0')
-  await expect(rows.nth(1)).toContainText('Teste')
-  await expect(rows.nth(1).getByRole('link')).toHaveCount(0)
-  await expect(faturas(page).getByText('em breve')).toHaveCount(0)
-  // PIX ainda não existe: aparece "em breve".
-  await expect(page.getByRole('button', { name: 'Usar PIX' })).toBeDisabled()
+    currentPlan(page).getByRole('link', { name: 'Fazer upgrade' })
+  ).toHaveCount(0)
+  await expect(
+    page.getByText(/faturas e os recibos de cada cobrança ficam no portal/)
+  ).toBeVisible()
 
   const navigations: string[] = []
   page.on('request', (request) => {
@@ -178,109 +127,10 @@ test('Elite ativo: plano, faturas e portal do Stripe', async ({
   expect(navigations).toHaveLength(1)
 })
 
-// WEB-444: "Dados da nota" (3o) grava no bar e no cliente do Stripe, que põe
-// a razão social, o CNPJ e o e-mail nas faturas.
-test('Dados da nota: razão social, CNPJ e e-mail vão para o bar e para o Stripe (WEB-444)', async ({
-  page
-}) => {
-  const pub = await createPub()
-  const customerId = `cus_e2e_${randomUUID()}`
-  await query('UPDATE "user" SET stripe_customer_id = $1 WHERE id = $2', [
-    customerId,
-    pub.user.id
-  ])
-  await signIn(page, pub.user)
-  await page.goto('/admin/billing')
-
-  const nota = page.getByRole('region', { name: 'Dados da nota' })
-  await expect(nota.getByText('em breve')).toHaveCount(0)
-  await expect(nota.getByText('Não informado')).toHaveCount(3)
-
-  await nota.getByRole('button', { name: 'Editar Razão social' }).click()
-  await nota
-    .getByLabel('Razão social')
-    .fill('Bar do Zé Comércio de Bebidas Ltda.')
-  await nota.getByRole('button', { name: 'Salvar' }).click()
-  await expect(
-    nota.getByText('Bar do Zé Comércio de Bebidas Ltda.')
-  ).toBeVisible()
-
-  await nota.getByRole('button', { name: 'Editar CNPJ' }).click()
-  const cnpj = nota.getByLabel('CNPJ', { exact: true })
-  await cnpj.fill('11.222.333/0001-82')
-  await nota.getByRole('button', { name: 'Salvar' }).click()
-  await expect(nota.getByRole('alert')).toHaveText(
-    'CNPJ inválido. Confira os números.'
-  )
-  // Dígito certo, mas o Stripe recusa (o dublê recusa este): nada é gravado.
-  await cnpj.fill('99.999.999/0001-91')
-  await nota.getByRole('button', { name: 'Salvar' }).click()
-  await expect(nota.getByRole('alert')).toHaveText(
-    'O Stripe não aceitou estes dados. Confira e tente de novo.'
-  )
-  await cnpj.fill('11222333000181')
-  await nota.getByRole('button', { name: 'Salvar' }).click()
-  await expect(nota.getByText('11.222.333/0001-81')).toBeVisible()
-
-  await nota.getByRole('button', { name: 'Editar E-mail para notas' }).click()
-  await nota.getByLabel('E-mail para notas').fill('financeiro@bardoze.com.br')
-  await nota.getByRole('button', { name: 'Salvar' }).click()
-  await expect(nota.getByText('financeiro@bardoze.com.br')).toBeVisible()
-  await expect(nota.getByText('Não informado')).toHaveCount(0)
-  // O foco volta ao "Editar" da linha; Esc fecha o campo sem salvar.
-  const editarEmail = nota.getByRole('button', {
-    name: 'Editar E-mail para notas'
-  })
-  await expect(editarEmail).toBeFocused()
-  await editarEmail.click()
-  await nota.getByLabel('E-mail para notas').fill('outro@bardoze.com.br')
-  await page.keyboard.press('Escape')
-  await expect(
-    nota.getByLabel('E-mail para notas', { exact: true })
-  ).toHaveCount(0)
-  await expect(editarEmail).toBeFocused()
-  await expect(nota.getByText('financeiro@bardoze.com.br')).toBeVisible()
-
-  const [row] = await query(
-    'SELECT legal_name, cnpj, invoice_email FROM bar WHERE id = $1',
-    [pub.barId]
-  )
-  expect(row).toEqual({
-    legal_name: 'Bar do Zé Comércio de Bebidas Ltda.',
-    cnpj: '11222333000181',
-    invoice_email: 'financeiro@bardoze.com.br'
-  })
-
-  const calls = (
-    (await (await page.request.get(`${STUB_URL}/stripe/calls`)).json()) as {
-      method: string
-      path: string
-      body: Record<string, string>
-    }[]
-  ).filter((call) => call.path.startsWith(`/customers/${customerId}`))
-  const updates = calls.filter(
-    (call) => call.method === 'POST' && call.path === `/customers/${customerId}`
-  )
-  expect(updates.at(-1)?.body).toMatchObject({
-    business_name: 'Bar do Zé Comércio de Bebidas Ltda.',
-    email: 'financeiro@bardoze.com.br'
-  })
-  expect(
-    calls
-      .filter(
-        (call) => call.method === 'POST' && call.path.endsWith('/tax_ids')
-      )
-      .map((call) => call.body)
-  ).toEqual([
-    { type: 'br_cnpj', value: '99.999.999/0001-91' },
-    { type: 'br_cnpj', value: '11.222.333/0001-81' }
-  ])
-})
-
 // WEB-339: o atalho abre o portal já no cancelamento, em português, pela
 // rota do app (`pub.openSubscriptionCancel`), que antes confere a assinatura
 // no Stripe.
-test('assinatura ativa: "Cancelar assinatura" abre o portal no fluxo de cancelamento (WEB-339)', async ({
+test('assinatura ativa: "Cancelar assinatura" pergunta o motivo e abre o portal no fluxo de cancelamento (WEB-339, WEB-445)', async ({
   page,
   request
 }) => {
@@ -311,25 +161,19 @@ test('assinatura ativa: "Cancelar assinatura" abre o portal no fluxo de cancelam
   await signIn(page, pub.user)
   await page.goto('/admin/billing')
 
+  await expect(currentPlan(page)).toContainText(
+    '“Cancelar assinatura” pergunta o motivo e abre o portal direto no cancelamento.'
+  )
+  // Ação secundária: "Gerenciar assinatura" segue sendo o botão do card.
   await expect(
-    page.getByRole('button', { name: 'Gerenciar assinatura' })
+    currentPlan(page).getByRole('button', { name: 'Gerenciar assinatura' })
   ).toBeVisible()
-  // Fora do Elite o card segue com as visitas do mês (WEB-446).
-  await expect(currentPlan(page)).toContainText('viram o bar este mês')
-  await expect(currentPlan(page)).toContainText('se interessaram este mês')
-  await expect(currentPlan(page)).not.toContainText('marcaram que iam')
-  // Antes do portal, a retenção (3q): o que se perde e a troca para baixo.
+  // Fechar sem confirmar não abre o portal nem grava motivo (WEB-445).
   await cancelShortcut(page).click()
-  const dialog = page.getByRole('dialog')
+  const dialog = page.getByRole('dialog', { name: 'Cancelar o Pro?' })
   await expect(
-    dialog.getByRole('heading', { name: /Cancelar\s*o Pro\?/ })
-  ).toBeVisible()
-  await expect(dialog).toContainText('Mudar para o Starter')
-  // Presenças e clássicos são do Elite: o Pro vê quem viu o bar.
-  await expect(dialog).toContainText('pessoas que viram o bar este mês')
-  await expect(dialog).not.toContainText('marcaram que iam')
-  await expect(dialog).not.toContainText('clássicos')
-  // Fechar sem confirmar não grava motivo (WEB-445).
+    dialog.getByRole('button', { name: 'Manter o Pro' })
+  ).toBeFocused()
   await dialog.getByRole('button', { name: 'Muito caro' }).click()
   await dialog.getByRole('button', { name: 'Manter o Pro' }).click()
   await expect(dialog).toHaveCount(0)
@@ -347,7 +191,7 @@ test('assinatura ativa: "Cancelar assinatura" abre o portal no fluxo de cancelam
   ).toHaveLength(0)
 
   await cancelShortcut(page).click()
-  // Um motivo só: escolher outro troca (3q).
+  // Um motivo só: escolher outro troca.
   const muitoCaro = dialog.getByRole('button', { name: 'Muito caro' })
   const poucoMovimento = dialog.getByRole('button', { name: 'Pouco movimento' })
   await muitoCaro.click()
@@ -429,6 +273,105 @@ test('assinatura ativa: "Cancelar assinatura" abre o portal no fluxo de cancelam
   ])
 })
 
+// WEB-444: "Dados da nota" grava no bar e no cliente do Stripe, que põe a
+// razão social, o CNPJ e o e-mail nas faturas.
+test('Dados da nota: razão social, CNPJ e e-mail vão para o bar e para o Stripe (WEB-444)', async ({
+  page
+}) => {
+  const pub = await createPub()
+  const customerId = `cus_e2e_${randomUUID()}`
+  await query('UPDATE "user" SET stripe_customer_id = $1 WHERE id = $2', [
+    customerId,
+    pub.user.id
+  ])
+  await signIn(page, pub.user)
+  await page.goto('/admin/billing')
+
+  const nota = page.getByRole('region', { name: 'Dados da nota' })
+  await expect(nota.getByText('EM BREVE')).toHaveCount(0)
+  await expect(nota.getByText(/^Não informado/)).toHaveCount(3)
+
+  await nota.getByRole('button', { name: 'Editar Razão social' }).click()
+  await nota
+    .getByLabel('Razão social')
+    .fill('Bar do Zé Comércio de Bebidas Ltda.')
+  await nota.getByRole('button', { name: 'Salvar' }).click()
+  await expect(
+    nota.getByText('Bar do Zé Comércio de Bebidas Ltda.')
+  ).toBeVisible()
+
+  await nota.getByRole('button', { name: 'Editar CNPJ' }).click()
+  const cnpj = nota.getByLabel('CNPJ', { exact: true })
+  await cnpj.fill('11.222.333/0001-82')
+  await nota.getByRole('button', { name: 'Salvar' }).click()
+  await expect(nota.getByRole('alert')).toHaveText(
+    'CNPJ inválido. Confira os números.'
+  )
+  // Dígito certo, mas o Stripe recusa (o dublê recusa este): nada é gravado.
+  await cnpj.fill('99.999.999/0001-91')
+  await nota.getByRole('button', { name: 'Salvar' }).click()
+  await expect(nota.getByRole('alert')).toHaveText(
+    'O Stripe não aceitou estes dados. Confira e tente de novo.'
+  )
+  await cnpj.fill('11222333000181')
+  await nota.getByRole('button', { name: 'Salvar' }).click()
+  await expect(nota.getByText('11.222.333/0001-81')).toBeVisible()
+
+  await nota.getByRole('button', { name: 'Editar E-mail para notas' }).click()
+  await nota.getByLabel('E-mail para notas').fill('financeiro@bardoze.com.br')
+  await nota.getByRole('button', { name: 'Salvar' }).click()
+  await expect(nota.getByText('financeiro@bardoze.com.br')).toBeVisible()
+  await expect(nota.getByText(/^Não informado/)).toHaveCount(0)
+  // O foco volta ao "Editar" da linha; Esc fecha o campo sem salvar.
+  const editarEmail = nota.getByRole('button', {
+    name: 'Editar E-mail para notas'
+  })
+  await expect(editarEmail).toBeFocused()
+  await editarEmail.click()
+  await nota.getByLabel('E-mail para notas').fill('outro@bardoze.com.br')
+  await page.keyboard.press('Escape')
+  await expect(
+    nota.getByLabel('E-mail para notas', { exact: true })
+  ).toHaveCount(0)
+  await expect(editarEmail).toBeFocused()
+  await expect(nota.getByText('financeiro@bardoze.com.br')).toBeVisible()
+
+  const [row] = await query(
+    'SELECT legal_name, cnpj, invoice_email FROM bar WHERE id = $1',
+    [pub.barId]
+  )
+  expect(row).toEqual({
+    legal_name: 'Bar do Zé Comércio de Bebidas Ltda.',
+    cnpj: '11222333000181',
+    invoice_email: 'financeiro@bardoze.com.br'
+  })
+
+  const calls = (
+    (await (await page.request.get(`${STUB_URL}/stripe/calls`)).json()) as {
+      method: string
+      path: string
+      body: Record<string, string>
+    }[]
+  ).filter((call) => call.path.startsWith(`/customers/${customerId}`))
+  const updates = calls.filter(
+    (call) => call.method === 'POST' && call.path === `/customers/${customerId}`
+  )
+  expect(updates.at(-1)?.body).toMatchObject({
+    business_name: 'Bar do Zé Comércio de Bebidas Ltda.',
+    email: 'financeiro@bardoze.com.br'
+  })
+  expect(
+    calls
+      .filter(
+        (call) => call.method === 'POST' && call.path.endsWith('/tax_ids')
+      )
+      .map((call) => call.body)
+  ).toEqual([
+    { type: 'br_cnpj', value: '99.999.999/0001-91' },
+    { type: 'br_cnpj', value: '11.222.333/0001-81' }
+  ])
+})
+
 test('Elite ativo sem desconto gravado: mostra só a tabela cheia', async ({
   page
 }) => {
@@ -447,7 +390,7 @@ test('Starter vê o caminho para o upgrade', async ({ page }) => {
   await openBilling(page, { subscription: { plan: 'starter' } })
   await expect(currentPlan(page)).toContainText('Starter')
   await expect(
-    currentPlan(page).getByRole('link', { name: 'Trocar plano' })
+    currentPlan(page).getByRole('link', { name: 'Fazer upgrade' })
   ).toHaveAttribute('href', '/plan?origin=billing')
 })
 
@@ -459,78 +402,24 @@ test('pagamento atrasado mostra o plano parado e manda regularizar', async ({
   })
   await expect(currentPlan(page)).toContainText('Pro')
   await expect(currentPlan(page)).toContainText('Pagamento pendente')
-  await expect(currentPlan(page)).toContainText('cobrança não confirmada')
-  // O motivo sobe para o aviso do topo (3s).
-  const aviso = page.getByRole('region', { name: 'Aviso do plano' })
-  await expect(aviso).toContainText('Plano Pro com pagamento pendente')
-  await expect(aviso).toContainText('O último pagamento não foi confirmado.')
-  await expect(aviso).toContainText('o cardápio no perfil')
-})
-
-// WEB-443 (3s): a fatura do mês fica pendente, com a data em que o cartão
-// foi recusado, e o card diz de que dia é a cobrança não confirmada.
-test('pagamento pendente: fatura pendente com a data da recusa', async ({
-  page,
-  request
-}) => {
-  const subscriptionId = `sub_e2e_${randomUUID()}`
-  const customerId = `cus_e2e_${randomUUID()}`
-  await seedStripeInvoices(
-    request,
-    { id: subscriptionId, customer: customerId },
-    [
-      stripeInvoice({
-        id: `in_out_${subscriptionId}`,
-        customer: customerId,
-        status: 'open',
-        total: 26900,
-        created: new Date('2026-10-12T12:00:00Z'),
-        attempts: 2
-      })
-    ],
-    [
-      { status: 'failed', created: new Date('2026-10-14T15:00:00Z') },
-      { status: 'failed', created: new Date('2026-10-12T13:00:00Z') }
-    ]
-  )
-  await openBilling(page, {
-    subscription: {
-      plan: 'elite',
-      status: 'past_due',
-      externalSubscriptionId: subscriptionId
-    }
-  })
-
   await expect(currentPlan(page)).toContainText(
-    'por mês · cobrança de 14 out não confirmada'
+    'O último pagamento não foi confirmado.'
   )
-  const row = faturas(page).getByRole('listitem')
-  await expect(row).toContainText('Outubro 2026')
-  await expect(row).toContainText('Cartão recusado em 14 out')
-  await expect(row).toContainText('Pendente')
-  await expect(row.getByRole('link', { name: /^Baixar PDF/ })).toBeVisible()
 })
 
-test('assinatura no Stripe sem fatura emitida', async ({ page }) => {
-  await openBilling(page, {
-    subscription: { externalSubscriptionId: `sub_e2e_${randomUUID()}` }
-  })
-  await expect(
-    faturas(page).getByText('Nenhuma fatura emitida ainda.')
-  ).toBeVisible()
-})
-
-test('trial vigente mostra "Trial gratuito" e até quando', async ({ page }) => {
+test('trial vigente mostra "Teste grátis" e até quando', async ({ page }) => {
   await openBilling(page, {
     subscription: { plan: 'pro', status: 'trialing' }
   })
   await expect(currentPlan(page)).toContainText('Pro')
-  await expect(currentPlan(page)).toContainText('Trial gratuito até')
+  await expect(currentPlan(page)).toContainText('Teste grátis até')
   await expect(currentPlan(page)).toContainText(/faltam \d+ dias/)
   // WEB-343: o card mostra o preço de fundador que /plan promete. O cupom
   // esgotado, com a tabela cheia, está em `checkout.serial.e2e.ts`.
   await expect(currentPlan(page)).toContainText('R$ 119')
-  await expect(currentPlan(page)).toContainText('Preço de fundador')
+  await expect(currentPlan(page)).toContainText(
+    'Com desconto de fundador no checkout'
+  )
   // WEB-264: trial do cadastro não tem cliente no Stripe — sem portal para
   // abrir e sem pagamento; o caminho é contratar em `/plan` (WEB-31).
   await expect(
@@ -549,7 +438,7 @@ test('trial vigente mostra "Trial gratuito" e até quando', async ({ page }) => 
   ).toHaveAttribute('href', '/plan?origin=billing')
 })
 
-test('trial vencido sem pagamento mostra "Trial encerrado"', async ({
+test('trial vencido sem pagamento mostra "Teste encerrado"', async ({
   page
 }) => {
   await openBilling(page, {
@@ -560,9 +449,9 @@ test('trial vencido sem pagamento mostra "Trial encerrado"', async ({
     }
   })
   await expect(currentPlan(page)).toContainText('Elite')
-  await expect(currentPlan(page)).toContainText('Trial encerrado')
+  await expect(currentPlan(page)).toContainText('Teste encerrado')
   await expect(currentPlan(page)).toContainText(
-    'O trial gratuito terminou sem pagamento confirmado.'
+    'O teste grátis terminou sem pagamento confirmado.'
   )
   // WEB-357: sem contratar, esse bar sai do ar; não são só os recursos.
   await expect(currentPlan(page)).toContainText(
@@ -598,7 +487,7 @@ for (const [status, label] of [
     await expect(currentPlan(page)).toContainText('Pro')
     await expect(currentPlan(page)).toContainText(label)
     await expect(currentPlan(page)).toContainText('Assinatura encerrada')
-    await expect(currentPlan(page)).not.toContainText('renova')
+    await expect(currentPlan(page)).not.toContainText('Próxima cobrança')
     await expect(cancelShortcut(page)).toHaveCount(0)
     await expect(
       currentPlan(page).getByRole('link', { name: 'Contratar plano' })
@@ -606,9 +495,9 @@ for (const [status, label] of [
   })
 }
 
-// WEB-344: o card mostra o plano encerrado; os outros planos ficam em `/plan`
-// ("Ver todos os planos").
-test('assinatura encerrada: o card segue o plano encerrado', async ({
+// WEB-344: o plano do card não volta em "Os planos", e Hoje não
+// chama de "Plano atual" a assinatura que acabou.
+test('assinatura encerrada: "Os planos", Hoje e o Desempenho seguem o card', async ({
   page
 }) => {
   await openBilling(page, {
@@ -620,9 +509,22 @@ test('assinatura encerrada: o card segue o plano encerrado', async ({
     bar: { is_active: false }
   })
   await expect(currentPlan(page)).toContainText('Starter')
+  const others = page.getByRole('region', { name: 'Os planos' })
   await expect(
-    page.getByRole('link', { name: 'Ver todos os planos' })
-  ).toHaveAttribute('href', '/plan?origin=billing')
+    others.getByRole('link', { name: 'Contratar Pro' })
+  ).toBeVisible()
+  await expect(others.getByRole('link', { name: /Starter/ })).toHaveCount(0)
+
+  await page.goto('/admin')
+  const overview = page.locator('#painel-main')
+  await expect(
+    overview.getByText('Assinatura encerrada', { exact: true })
+  ).toBeVisible()
+  await expect(overview).not.toContainText('Plano atual')
+  await page.goto('/admin/desempenho')
+  await expect(overview).toContainText(
+    'Plano Starter · Assinatura do plano Starter encerrada'
+  )
 })
 
 test('bar sem assinatura', async ({ page }) => {

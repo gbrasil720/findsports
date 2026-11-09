@@ -1,9 +1,4 @@
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
-import {
-  BRASILIA_TIME_ZONE,
-  brasiliaDay
-} from '@findsports_oficial/db/event-window'
-import { gameTitle } from '@findsports_oficial/db/game-title'
 import type { inferRouterOutputs } from '@trpc/server'
 import { buildDirectionsUrl } from '@/lib/maps-link'
 import { buildWhatsAppLink } from '@/lib/whatsapp-link'
@@ -84,7 +79,7 @@ export function resolveProfileActions(
       acceptsWhatsapp: pub.phoneAcceptsWhatsapp,
       event: heroEvent
         ? {
-            matchup: gameTitle(heroEvent),
+            matchup: formatMatchup(heroEvent),
             when: `${formatDayLabel(heroEvent.startsAt).toLowerCase()} às ${formatEventTime(heroEvent.startsAt)}`
           }
         : null
@@ -130,51 +125,53 @@ export function resolveHeroEvent<T extends ProfileEvent>(
 }
 
 /**
+ * Rótulo do confronto. Times cadastrados ganham `×`; sem times, vale o texto
+ * livre que o bar escreveu; sem nada disso, o campeonato carrega sozinho.
+ */
+export function formatMatchup(event: ProfileEvent): string {
+  const teams = event.participants
+    .map((item) => item.team?.name)
+    .filter((name): name is string => Boolean(name))
+
+  if (teams.length > 0) return teams.join(' × ')
+  if (event.participantFreeText) return event.participantFreeText
+  return event.championship
+}
+
+/**
  * Linha de apoio de um jogo: as partes juntas por " · ", menos a que já é o
  * título. Jogo sem times nem texto livre tem o campeonato como título
- * (`gameTitle`), e repetido embaixo o card dizia
+ * (`formatMatchup`, `getGameTitle`), e repetido embaixo o card dizia
  * "Brasileirão / Brasileirão" (WEB-307).
  */
 export function formatGameSubtitle(title: string, parts: string[]): string {
   return parts.filter((part) => part !== title).join(' · ')
 }
 
-/**
- * "Hoje" e "Amanhã" antes de qualquer data — é assim que se fala de jogo.
- * Dia e hora saem sempre no relógio de Brasília, onde os bares estão, e não
- * no fuso do navegador de quem lê: o jogo das 22:30 de quarta não vira
- * "quinta, 01:30" para quem abre o app de fora do Brasil.
- * `short` é a forma dos cards ("qua., 26 de ago."); `long`, a do perfil
- * ("quarta-feira, 26 de ago.").
- */
-export function formatDayLabel(
-  date: Date,
-  now: Date = new Date(),
-  weekday: 'long' | 'short' = 'long'
-): string {
-  const day = brasiliaDay(date)
+/** "Hoje" e "Amanhã" antes de qualquer data — é assim que se fala de jogo. */
+export function formatDayLabel(date: Date, now: Date = new Date()): string {
+  const tomorrow = new Date(now)
+  tomorrow.setDate(now.getDate() + 1)
 
-  if (day === brasiliaDay(now)) return 'Hoje'
-  if (day === brasiliaDay(now, 1)) return 'Amanhã'
+  if (date.toDateString() === now.toDateString()) return 'Hoje'
+  if (date.toDateString() === tomorrow.toDateString()) return 'Amanhã'
 
   return date.toLocaleDateString('pt-BR', {
-    weekday,
-    day: weekday === 'long' ? '2-digit' : 'numeric',
-    month: 'short',
-    timeZone: BRASILIA_TIME_ZONE
+    weekday: 'long',
+    day: '2-digit',
+    month: 'short'
   })
 }
 
 export function formatEventTime(date: Date): string {
   return date.toLocaleTimeString('pt-BR', {
     hour: '2-digit',
-    minute: '2-digit',
-    timeZone: BRASILIA_TIME_ZONE
+    minute: '2-digit'
   })
 }
 
 export type EventDayGroup<T extends ProfileEvent> = {
-  /** Dia em Brasília (`AAAA-MM-DD`) — chave estável para `key` de lista. */
+  /** `toDateString()` do dia — chave estável para `key` de lista. */
   key: string
   label: string
   events: T[]
@@ -193,7 +190,7 @@ export function groupEventsByDay<T extends ProfileEvent>(
   for (const event of [...events].sort(
     (a, b) => a.startsAt.getTime() - b.startsAt.getTime()
   )) {
-    const key = brasiliaDay(event.startsAt)
+    const key = event.startsAt.toDateString()
     const group = groups.get(key)
 
     if (group) {

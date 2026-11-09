@@ -1,6 +1,5 @@
 import { describe, expect, test } from 'bun:test'
 import {
-  formatComparisonPeriod,
   getAnalyticsRange,
   getAvailableAnalyticsPeriods,
   getPeriodDays
@@ -46,11 +45,5 @@ describe('analytics period selector', () => {
 
   test('derives comparison copy from the effective range', () => {
     expect(getPeriodDays('2026-08-10', '2026-09-08')).toBe(30)
-    expect(formatComparisonPeriod('2026-08-10', '2026-09-08')).toBe(
-      '30 dias anteriores'
-    )
-    expect(formatComparisonPeriod('2026-09-08', '2026-09-08')).toBe(
-      '1 dia anterior'
-    )
   })
 })

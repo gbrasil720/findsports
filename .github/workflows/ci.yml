@@ -153,7 +153,7 @@ jobs:
           path: |
             apps/e2e/playwright-report
             apps/e2e/test-results
-          retention-days: 14
+          retention-days: 3
 
   e2e-worker:
     # Bundle real do Worker em workerd (docs/e2e.md, "Suíte do Worker"). A

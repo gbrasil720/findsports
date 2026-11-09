@@ -1,5 +1,9 @@
 import type { Locator } from '@playwright/test'
+import { signIn } from '../../fixtures/auth'
+import { createEvent, days } from '../../fixtures/fan'
+import { createPub } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
+import { createUser } from '../../fixtures/users'
 
 // Aviso de cookies (WEB-243). Em `vite dev` não há análise; a suíte liga só o
 // aviso (`VITE_E2E_CONSENT_BANNER` em `env.ts`), e todo teste nasce com ele
@@ -17,15 +21,14 @@ const box = async (locator: Locator) => {
 test.describe('sem escolha feita', () => {
   test.use({ cookieConsent: 'pending' })
 
-  // No celular o aviso é uma barra no pé da tela, bem onde a chamada do hero
-  // termina. Enquanto a escolha está pendente a arte do hero cede a altura.
-  test('celular: a barra não cobre a chamada principal da landing, e aceitar a tira', async ({
+  // No celular o aviso é uma barra no pé da tela. A busca do topo (a ação da
+  // primeira dobra) não pode ficar embaixo dela, e aceitar tira a barra.
+  test('celular: a barra não cobre a busca da landing, e aceitar a tira', async ({
     page,
     isMobile
   }) => {
     test.skip(!isMobile, 'só no projeto mobile')
-    const hero = page.locator('.onside-hero [data-cta]')
-    const stage = page.locator('.onside-hero-stage')
+    const go = page.locator('#busca button[type="submit"]')
 
     for (const viewport of [
       { width: 360, height: 740 },
@@ -39,24 +42,17 @@ test.describe('sem escolha feita', () => {
       await expect(banner(page)).toContainText(
         'Usamos cookies de análise com a sua permissão.'
       )
-      // `poll`: a entrada do hero anima a chamada até o lugar dela.
-      await expect
-        .poll(async () => {
-          const bar = await box(banner(page))
-          const cta = await box(hero)
-          return Math.round(cta.y + cta.height - bar.y)
-        }, `chamada acima da barra em ${viewport.width}x${viewport.height}`)
-        .toBeLessThanOrEqual(0)
-      await expect(hero).toBeInViewport({ ratio: 1 })
+      await go.scrollIntoViewIfNeeded()
+      const bar = await box(banner(page))
+      const button = await box(go)
+      expect(
+        button.y + button.height <= bar.y || button.y >= bar.y + bar.height,
+        `busca livre da barra em ${viewport.width}x${viewport.height}`
+      ).toBe(true)
     }
 
-    const pending = (await box(stage)).height
     await banner(page).getByRole('button', { name: 'Aceitar' }).click()
     await expect(banner(page)).toBeHidden()
-    // O hero volta ao normal: a arte recupera a altura que tinha cedido.
-    await expect
-      .poll(async () => (await box(stage)).height)
-      .toBeGreaterThan(pending)
 
     // A escolha fica: recarregar não traz o aviso de volta.
     await page.reload()
@@ -86,6 +82,127 @@ test.describe('sem escolha feita', () => {
     await banner(page).getByRole('button', { name: 'Recusar' }).press('Enter')
     await expect(banner(page)).toBeHidden()
     await expect(page.locator('html')).not.toHaveAttribute('data-consent')
+  })
+
+  // WEB-370. O que é fixo no pé da janela sobe para cima do aviso: na página
+  // do bar, a barra do jogo, que aparece quando o cartão passou para cima.
+  test('celular: a barra do jogo e o toast ficam acima do aviso, e a barra desce quando ele some', async ({
+    page,
+    isMobile
+  }) => {
+    test.skip(!isMobile, 'só no projeto mobile')
+    const { barId } = await createPub()
+    await createEvent({ barId, startsAt: days(2) })
+    // Torcedor próprio: o teste salva o bar.
+    await signIn(page, await createUser())
+    const actions = page.locator('.mcta')
+    // Quanto o elemento passa do topo do aviso: até 0 ele está livre.
+    const under = (locator: Locator) => async () => {
+      const bar = await box(banner(page))
+      const found = await box(locator)
+      return Math.round(found.y + found.height - bar.y)
+    }
+
+    await page.goto(`/pub/${barId}`)
+    await expect(banner(page)).toBeVisible()
+    await page.evaluate('scrollTo(0, 1600)')
+    await expect(actions).toHaveClass(/\bon\b/)
+    await expect(actions).toBeInViewport({ ratio: 1 })
+    await expect.poll(under(actions), 'barra do jogo').toBeLessThanOrEqual(0)
+
+    await page.evaluate('scrollTo(0, 0)')
+    await page
+      .getByRole('button', { name: `Salvar o Bar E2E ${barId.slice(0, 8)}` })
+      .click()
+    const toast = page.locator('[data-sonner-toast]')
+    await expect(toast).toBeVisible()
+    await expect.poll(under(toast), 'toast').toBeLessThanOrEqual(0)
+
+    await banner(page).getByRole('button', { name: 'Recusar' }).press('Enter')
+    await expect(banner(page)).toBeHidden()
+    // Sem o aviso ela volta para o pé da janela.
+    const viewport = page.viewportSize()
+    if (!viewport) throw new Error('sem viewport')
+    await page.evaluate('scrollTo(0, 1600)')
+    await expect(actions).toHaveClass(/\bon\b/)
+    await expect
+      .poll(async () => {
+        const found = await box(actions)
+        return Math.round(found.y + found.height)
+      })
+      .toBe(viewport.height)
+  })
+
+  // Um aviso só, o "Placar", em todo o site: o Explorar mostrava o antigo,
+  // centrado embaixo, e a página do bar o novo, no canto.
+  test('um aviso só no DOM, o mesmo no Explorar, na página do bar e no login', async ({
+    page,
+    isMobile
+  }) => {
+    const { barId } = await createPub()
+    await createEvent({ barId, startsAt: days(2) })
+    const aparencia = async () => {
+      await expect(banner(page)).toHaveCount(1)
+      await expect(banner(page)).toBeVisible()
+      await expect(page.locator('.onside-consent')).toHaveCount(1)
+      // Texto, e não função: a suíte compila sem os tipos do DOM.
+      return page.evaluate(
+        "(() => { const c = getComputedStyle(document.querySelector('.onside-consent')); return [c.borderRadius, c.backgroundColor, c.width] })()"
+      )
+    }
+
+    await page.goto('/dashboard')
+    const explorar = await aparencia()
+    if (!isMobile) {
+      // No canto direito, não centrado.
+      const viewport = page.viewportSize()
+      const bar = await box(banner(page))
+      if (!viewport) throw new Error('sem viewport')
+      expect(Math.round(viewport.width - bar.x - bar.width)).toBe(32)
+    }
+    await page.goto(`/pub/${barId}`)
+    expect(await aparencia()).toEqual(explorar)
+    await page.goto('/login')
+    expect(await aparencia()).toEqual(explorar)
+  })
+
+  // No celular, logado, o Explorar tem as abas de baixo e a folha de bares:
+  // as duas acabam acima do aviso, que não as cobre.
+  test('celular: no Explorar o aviso não cobre as abas nem a folha', async ({
+    page,
+    isMobile
+  }) => {
+    test.skip(!isMobile, 'só no projeto mobile')
+    await signIn(page, await createUser())
+    await page.goto('/dashboard')
+    await expect(banner(page)).toBeVisible()
+    const abas = page.getByRole('navigation', { name: 'Sua conta' })
+    const folha = page.getByRole('region', { name: 'Bares' })
+    await expect(abas).toBeVisible()
+    await expect(folha).toBeVisible()
+    await expect
+      .poll(async () => {
+        const bar = await box(banner(page))
+        const tabs = await box(abas)
+        const mapa = await box(page.locator('.mx'))
+        return [
+          Math.round(tabs.y + tabs.height - bar.y),
+          Math.round(mapa.y + mapa.height - bar.y)
+        ]
+      })
+      .toEqual([0, 0])
+
+    // Sem o aviso, as abas voltam ao pé da janela.
+    await banner(page).getByRole('button', { name: 'Recusar' }).press('Enter')
+    await expect(banner(page)).toBeHidden()
+    const viewport = page.viewportSize()
+    if (!viewport) throw new Error('sem viewport')
+    await expect
+      .poll(async () => {
+        const tabs = await box(abas)
+        return Math.round(tabs.y + tabs.height)
+      })
+      .toBe(viewport.height)
   })
 
   // Em 320x568 o "Entrar" do login cai na faixa do aviso. O

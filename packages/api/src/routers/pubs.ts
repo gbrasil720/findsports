@@ -11,7 +11,10 @@ import {
   sql
 } from '@findsports_oficial/db'
 import { fold } from '@findsports_oficial/db/catalog/fold'
-import { brasiliaDay } from '@findsports_oficial/db/event-window'
+import {
+  brasiliaDay,
+  DEFAULT_EVENT_DURATION_MS
+} from '@findsports_oficial/db/event-window'
 import {
   brasiliaDaySql,
   brasiliaTodaySql,
@@ -46,9 +49,16 @@ import {
   normalizeAmenityIds
 } from '../lib/amenities'
 import { getAppConfig } from '../lib/app-config'
-import { type Going, readFanAttendance, readGoing } from '../lib/attendance'
+import {
+  type FanAttendance,
+  type Going,
+  readFanAttendance,
+  readFriendsGoing,
+  readGoing
+} from '../lib/attendance'
 import { resolvePublicGallery } from '../lib/bar-gallery'
 import { canShowBarMenu, resolvePublicBarMenu } from '../lib/bar-menu'
+import { readBarsWithoutGame } from '../lib/bars-without-game'
 import { readCheckIn } from '../lib/check-in'
 import {
   getSubscriptionStanding,
@@ -60,6 +70,7 @@ import {
   favoriteTeamIdsSchema,
   replaceFavoriteTeams
 } from '../lib/favorite-teams'
+import { readGameBoard } from '../lib/game-board'
 import { byMatchOrder, gameTitle } from '../lib/game-participants'
 import { effectiveHouseOffer } from '../lib/house-offer'
 import { decodeCursor, encodeCursor } from '../lib/keyset-cursor'
@@ -80,8 +91,7 @@ import {
   RATING_PUBLIC_FLOOR,
   ratingPercentage
 } from '../lib/rating'
-import { readRatingList } from '../lib/rating-list'
-import { summarizeReasons } from '../lib/rating-reasons'
+import { readRatingList, readReasonSummary } from '../lib/rating-list'
 import { starsAverage } from '../lib/rating-review'
 import { chaveBusca, chaveBuscaLocal } from '../lib/search-cache'
 import {
@@ -119,29 +129,6 @@ const TEAM_COLUMNS = {
   isNationalTeam: team.isNationalTeam
 }
 const TEAM_SEARCH_LIMIT = 30
-
-/**
- * Quantas vezes cada etiqueta de "O que pesou?" foi citada no bar, de quem
- * voltaria e de quem não voltaria (WEB-398). Só as avaliações verificadas
- * (código validado ou check-in, WEB-408), como a nota.
- */
-async function readReasonSummary(barId: string) {
-  const rows = await db.execute(sql`
-    SELECT r.would_return, reason, COUNT(*)::int AS count
-    FROM bar_rating r, unnest(r.reasons) AS reason
-    WHERE r.bar_id = ${barId} AND r.verified
-    GROUP BY r.would_return, reason
-  `)
-  return summarizeReasons(
-    (
-      rows.rows as { would_return: boolean; reason: string; count: number }[]
-    ).map((row) => ({
-      wouldReturn: row.would_return,
-      reason: row.reason,
-      count: Number(row.count)
-    }))
-  )
-}
 
 /**
  * Por que o bar do dono saiu do ar, para a prévia dele dizer a verdade: quem
@@ -362,6 +349,15 @@ async function toBarCards<
   })
 }
 
+/** Por jogo, o que `pubs.pageViewer` devolve a quem entrou. */
+type ViewerGames = Record<
+  string,
+  {
+    attendance: FanAttendance | null
+    friends: { name: string; image: string | null }[]
+  }
+>
+
 /** Teto da agenda do dia: é cenário de splash, não listagem. */
 const TODAY_GAMES_LIMIT = 30
 
@@ -405,6 +401,38 @@ export const pubsRouter = router({
       bars: Number(game.bars)
     }))
   }),
+
+  /**
+   * A régua do Explorar do web (WEB-501): os jogos de um dia de Brasília
+   * perto de um ponto, cada um com os bares que o passam (`lib/game-board`).
+   * Aberta: ver bares e jogos não pede conta (dono, 05/11/2026).
+   */
+  gameBoard: publicProcedure
+    .input(
+      z.object({
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        radiusKm: searchRadiusKmSchema.default(5),
+        day: z.string().date()
+      })
+    )
+    .query(({ input }) => readGameBoard(input)),
+
+  /**
+   * "Sem jogo marcado" do Explorar do web: os bares no ar perto do ponto sem
+   * jogo publicado no dia, para a lista seguir abaixo dos que passam o jogo
+   * (`lib/bars-without-game`). Aberta, como a régua.
+   */
+  barsWithoutGame: publicProcedure
+    .input(
+      z.object({
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        radiusKm: searchRadiusKmSchema.default(5),
+        day: z.string().date()
+      })
+    )
+    .query(({ input }) => readBarsWithoutGame(input)),
 
   search: protectedProcedure
     .input(
@@ -593,6 +621,8 @@ export const pubsRouter = router({
       } = result
 
       const notaPublica = await getAppConfig('rating.public_display')
+      // Abaixo do piso de verificadas não sai nada da nota: nem %, nem
+      // estrelas, nem etiquetas, nem comentários (WEB-408, WEB-451).
       const showRating = notaPublica && hasPublicRating(ratingCount)
       const rating = showRating
         ? {
@@ -663,7 +693,8 @@ export const pubsRouter = router({
         rating,
         ratingReasons: reasons,
         reviews: reviews.map(
-          ({ verified: _v, createdAt: _c, ...review }) => review
+          ({ verified: _v, createdAt: _c, commentPending: _p, ...review }) =>
+            review
         ),
         checkIn,
         // A padrão do bar. O que vale em cada jogo é `events[].houseOffer`;
@@ -700,6 +731,61 @@ export const pubsRouter = router({
           userId === ctx.session.user.id
             ? getSubscriptionStanding(subscription ?? null, now)
             : null
+        )
+      }
+    }),
+
+  /**
+   * O que a página pública do bar (`/bar/...`) mostra a quem entrou, por cima
+   * da leitura sem sessão (`lib/public-bar-page.ts`): se salvou o bar e, por
+   * jogo, a presença com o código do balcão e os amigos que vão (WEB-404:
+   * só amigo aceito que deixa amigos verem). Conta que não é de torcedor não
+   * marca presença nem salva bar: recebe `fan: false` e nada mais.
+   */
+  pageViewer: protectedProcedure
+    .input(z.object({ barId: z.string().min(1).max(64) }))
+    .query(async ({ ctx, input }) => {
+      const viewer = ctx.session.user
+      if (viewer.role !== 'fan') {
+        return { fan: false, favorited: false, games: {} as ViewerGames }
+      }
+      const now = new Date()
+      const liveCutoff = new Date(now.getTime() - DEFAULT_EVENT_DURATION_MS)
+      const games = await db.query.event.findMany({
+        where: (game, { and, eq, gte, isNotNull, isNull, or }) =>
+          and(
+            eq(game.barId, input.barId),
+            isNotNull(game.publishedAt),
+            or(
+              and(isNotNull(game.endsAt), gte(game.endsAt, now)),
+              and(isNull(game.endsAt), gte(game.startsAt, liveCutoff))
+            )
+          ),
+        columns: { id: true, startsAt: true, attendanceEnabled: true }
+      })
+      const ids = games.map((game) => game.id)
+      const [attendance, friends, favorite] = await Promise.all([
+        readFanAttendance(viewer, games, now),
+        readFriendsGoing(viewer.id, ids),
+        db.query.userFavoriteBars.findFirst({
+          where: and(
+            eq(userFavoriteBars.userId, viewer.id),
+            eq(userFavoriteBars.barId, input.barId)
+          ),
+          columns: { barId: true }
+        })
+      ])
+      return {
+        fan: true,
+        favorited: Boolean(favorite),
+        games: Object.fromEntries(
+          ids.map((id) => [
+            id,
+            {
+              attendance: attendance.get(id) ?? null,
+              friends: (friends.get(id) ?? []).map(({ id: _i, ...f }) => f)
+            }
+          ])
         )
       }
     }),

@@ -206,7 +206,9 @@ describe('recorte do manifest', () => {
       .sort()
 
     expect(declaram).toEqual([
-      // As filhas de `/admin` (billing, validate, jogos…) herdam do layout.
+      '(dashboard)/dashboard.tsx',
+      '(dashboard)/dashboard_.games.tsx',
+      '(dashboard)/dashboard_.profile.tsx',
       'admin.tsx',
       'plan.tsx',
       'plan_.confirmed.tsx'

@@ -163,6 +163,11 @@ describe('e-mail de feedback', () => {
     )
     expect(email.text).toContain('\nPapel: bar\nBar: Bar do Zé\n')
     expect(email.text).toEndWith('\nImagens anexadas: 2')
+    // A casca da marca abre dizendo quem escreveu e de onde.
+    expect(email.html).toContain(
+      'Feedback<br><span style="color:#e8320c">de bar</span>'
+    )
+    expect(email.html).toContain('(Bar do Zé) escreveu de dentro do painel.')
   })
 
   test('assunto fica em uma linha e corta em palavra inteira', () => {
@@ -182,10 +187,13 @@ describe('e-mail de feedback', () => {
       message: 'Olha: <img src=x onerror=alert(1)> & <b>isto</b>',
       name: '<script>alert(1)</script>'
     })
-    expect(html).not.toContain('<img')
+    // A única imagem é o wordmark da casca.
+    expect(html.match(/<img /g)).toHaveLength(1)
+    expect(html).not.toContain('<img src=x')
     expect(html).not.toContain('<script>')
     expect(html).toContain('&lt;img src=x onerror=alert(1)&gt; &amp; &lt;b&gt;')
-    expect(html).toContain('Nome: &lt;script&gt;alert(1)&lt;/script&gt;')
+    expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;')
+    expect(html).toContain('INTERNO · FEEDBACK')
     // O texto simples vai como foi escrito.
     expect(text).toContain('<img src=x onerror=alert(1)>')
   })

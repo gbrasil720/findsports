@@ -1,20 +1,24 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, it } from 'bun:test'
+import { ADMIN_SECTION_ROUTES, getAdminSectionFromHash } from './admin-tabs'
 
-import { getAdminRouteFromHash } from './admin-tabs'
-
-describe('hash das abas antigas do /admin', () => {
-  test('cada aba antiga leva à rota nova do painel', () => {
-    expect(getAdminRouteFromHash('#admin-visao')).toBe('/admin')
-    expect(getAdminRouteFromHash('#admin-grade')).toBe('/admin/jogos')
-    expect(getAdminRouteFromHash('admin-espaco')).toBe('/admin/meu-espaco')
-    expect(getAdminRouteFromHash('#admin-quem-vai')).toBe('/admin/quem-vai')
-    expect(getAdminRouteFromHash('#admin-configuracoes')).toBe(
-      '/admin/configuracoes'
-    )
+describe('links antigos do painel por hash', () => {
+  it('reconhece a aba com ou sem #', () => {
+    expect(getAdminSectionFromHash('#admin-grade')).toBe('admin-grade')
+    expect(getAdminSectionFromHash('admin-espaco')).toBe('admin-espaco')
   })
 
-  test('hash que não é de aba fica onde está', () => {
-    expect(getAdminRouteFromHash('#configuracoes')).toBeNull()
-    expect(getAdminRouteFromHash('')).toBeNull()
+  it('ignora hash que não é de aba', () => {
+    expect(getAdminSectionFromHash('#reviews')).toBeNull()
+    expect(getAdminSectionFromHash('')).toBeNull()
+    expect(getAdminSectionFromHash('#constructor')).toBeNull()
+  })
+
+  it('cada aba vai para a rota nova', () => {
+    expect(ADMIN_SECTION_ROUTES['admin-espaco']).toBe('/admin/meu-espaco')
+    expect(ADMIN_SECTION_ROUTES['admin-grade']).toBe('/admin/jogos')
+    expect(ADMIN_SECTION_ROUTES['admin-quem-vai']).toBe('/admin/quem-vai')
+    expect(ADMIN_SECTION_ROUTES['admin-configuracoes']).toBe(
+      '/admin/configuracoes'
+    )
   })
 })

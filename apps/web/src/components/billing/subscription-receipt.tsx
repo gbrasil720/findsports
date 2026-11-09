@@ -1,76 +1,57 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { useLayoutEffect, useRef, useState } from 'react'
-import { Icone, Medalha } from '@/components/painel'
+import Check from 'reicon-react/icons/Check'
+import Clock from 'reicon-react/icons/Clock'
+import Loader from 'reicon-react/icons/Loader'
+import { Logo } from '@/components/landing/v3/icons'
+import { PLAN_ART } from '@/components/onboarding/pub-plan-step'
 import {
   CONTRACTED_TRIAL_LABEL,
+  formatPlanChargeLine,
   type Plan,
   planChargeFromSubscription
 } from '@/lib/plan-catalog'
 import {
   formatReceiptDate,
+  formatReceiptTimestamp,
   formatSubscriptionRef,
   type ReceiptStage,
   receiptChargeLabel,
   receiptCycleLabel,
   receiptStampLabel
 } from '@/lib/subscription-receipt'
-import './subscription-receipt.css'
 
 const STATUS_LABEL: Record<string, string> = {
   active: 'Ativa',
-  trialing: 'Trial gratuito'
+  trialing: 'Teste grátis'
 }
 
 /**
- * O que o visor da máquina mostra — e o que o leitor de tela anuncia. Antes da
+ * O que a linha de cima diz — e o que o leitor de tela anuncia. Antes da
  * confirmação a situação é desconhecida, e quem está em trial passa por
  * `processing` enquanto a consulta carrega: o texto não pode falar em pagamento.
  */
 const STAGE_SCREEN: Record<ReceiptStage, string> = {
   processing: 'Confirmando a assinatura',
-  printing: 'Imprimindo o comprovante',
-  done: 'Assinatura confirmada',
+  printing: 'Imprimindo comprovante',
+  done: 'Comprovante impresso',
   delayed: 'Confirmação demorando'
 }
 
 /**
- * Linhas fixas do papel: cabeçalho, preço, total, os detalhes, o título dos
- * benefícios e o rodapé. As variáveis são os benefícios do plano.
+ * Linhas fixas do papel: título, meta, as cinco linhas do plano, o título da
+ * seção de benefícios e o rodapé. As variáveis são os benefícios do plano.
  *
  * O número manda no avanço do motor: são os passos em que o papel sai da
  * fenda, e a duração da impressão é contada a partir dele.
  */
-const RECEIPT_STATIC_LINES = 14
+const RECEIPT_STATIC_LINES = 9
 
 /** Nome do keyframe que empurra a folha para fora — ver o CSS ao lado. */
 const PAPER_FEED_ANIMATION = 'onside-receipt-feed-out'
 
 export function countReceiptLines(plan: Plan): number {
   return RECEIPT_STATIC_LINES + plan.features.length
-}
-
-/** "R$ 269,00", como no papel do design. */
-const centavos = (reais: number) =>
-  reais.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-
-/** "17 OUT 2026 · 21:52". */
-function carimboDeHora(date: Date) {
-  const dia = date
-    .toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      timeZone: 'America/Sao_Paulo'
-    })
-    .replaceAll(' de ', ' ')
-    .replace('.', '')
-    .toUpperCase()
-  const hora = date.toLocaleTimeString('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'America/Sao_Paulo'
-  })
-  return `${dia} · ${hora}`
 }
 
 type Props = {
@@ -87,8 +68,6 @@ type Props = {
   cancelAt: Date | null
   subscriptionRef: string | null
   barName: string | null
-  /** Cartão salvo no Stripe (WEB-350); a linha some sem ele. */
-  cardLast4?: string | null
   issuedAt: Date
   /** Duração da saída do papel, em ms. Zero com `prefers-reduced-motion`. */
   printDurationMs: number
@@ -102,21 +81,22 @@ type Props = {
   onPrinted: () => void
   /** Saídas da tela. Mudam por estágio; quem monta é a rota. */
   actions: ReactNode
+  /** Bloco de texto do estágio sem recibo (processando ou demora). */
+  waitingSlot: ReactNode
 }
 
 /**
- * Recibo de assinatura saindo de uma impressora térmica (WEB-59; telas 3l–3n
- * do painel do bar).
+ * Recibo de assinatura saindo de uma impressora térmica (WEB-59), no desenho
+ * do comprovante do cadastro (`recibo()` do protótipo do painel, WEB-501): a
+ * linha de estado e o título em cima, a impressora como uma barra com fenda e
+ * luz, e o papel saindo dela. O papel não "cresce" embaixo da máquina — ele já
+ * existe inteiro e **desliza para fora da fenda**, em passos de motor, com a
+ * borda serrilhada à frente. Enquanto ele não existe (webhook não chegou) a
+ * luz pisca e nada sai, que é a verdade do estado.
  *
- * A máquina é um objeto: corpo de plástico arredondado, visor afundado e a
- * fenda fina embaixo. O papel não "cresce" embaixo dela — ele já existe
- * inteiro e **desliza para fora da fenda**, em passos de motor, com a borda
- * serrilhada à frente. Enquanto ele não existe (webhook não chegou) a máquina
- * trabalha com o visor ligado e nada sai, que é a verdade do estado.
- *
- * Tudo é CSS: o app inteiro anima em CSS com `prefers-reduced-motion` (ver
- * `app-motion.css`), e uma rota que roda uma vez por assinatura não paga uma
- * dependência de runtime.
+ * Tudo é CSS: a referência do ticket usa Framer Motion, mas o app inteiro
+ * anima em CSS com `prefers-reduced-motion` (ver `app-motion.css`), e uma rota
+ * que roda uma vez por assinatura não paga uma dependência de runtime.
  */
 export function SubscriptionReceipt({
   stage,
@@ -128,18 +108,15 @@ export function SubscriptionReceipt({
   cancelAt,
   subscriptionRef,
   barName,
-  cardLast4 = null,
   issuedAt,
   printDurationMs,
   feedSteps,
   onPrinted,
-  actions
+  actions,
+  waitingSlot
 }: Props) {
   const printed = stage === 'done'
   const hasPaper = (stage === 'printing' || stage === 'done') && plan !== null
-  const charge = plan
-    ? planChargeFromSubscription(plan, monthlyDiscountReais)
-    : null
 
   return (
     <section
@@ -153,49 +130,34 @@ export function SubscriptionReceipt({
       }
       aria-labelledby="onside-receipt-title"
     >
-      <h2 id="onside-receipt-title" className="sr-only">
+      {/*
+       * A linha de estado é o que o leitor de tela anuncia: um `status`
+       * visível vale mais que um texto escondido dizendo a mesma coisa duas
+       * vezes.
+       */}
+      <p
+        className="ob-k onside-receipt-screen"
+        role="status"
+        aria-live="polite"
+      >
+        <StageIcon stage={stage} />
+        <span>{STAGE_SCREEN[stage]}</span>
+        <span className="onside-receipt-screen-dots" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </span>
+      </p>
+      <h1 id="onside-receipt-title" className="ob-h">
         Comprovante de assinatura
-      </h2>
+      </h1>
 
-      <div className="onside-receipt-machine">
-        {/* O plano só aparece no corpo quando é o confirmado pelo Stripe. */}
-        <div className="onside-receipt-machine-head">
-          <div>
-            <b>{hasPaper && plan ? `Plano ${plan.name}` : 'Assinatura'}</b>
-            <span>
-              Mensal
-              {barName && hasPaper ? ` · ${barName}` : ''}
-            </span>
-          </div>
-          {hasPaper && charge ? (
-            <div className="onside-receipt-machine-total">
-              <span>Total</span>
-              <b>{centavos(charge.chargeReais)}</b>
-            </div>
-          ) : null}
-        </div>
-
-        {/*
-         * O visor é o estado da máquina em texto, e é ele que o leitor de
-         * tela anuncia: um `status` visível vale mais que um texto escondido
-         * dizendo a mesma coisa duas vezes.
-         */}
-        <p className="onside-receipt-screen" role="status" aria-live="polite">
-          <span className="onside-receipt-screen-icon" aria-hidden="true">
-            {printed ? (
-              <Icone nome="check" tamanho={13} acento="currentColor" />
-            ) : null}
-          </span>
-          <span className="onside-receipt-screen-text">
-            {STAGE_SCREEN[stage]}
-          </span>
-          <span className="onside-receipt-screen-tag" aria-hidden="true">
-            {printed ? (status === 'active' ? 'PAGO' : 'LIBERADO') : '···'}
-          </span>
-        </p>
-
-        {/* A fenda: a boca por onde o papel sai. */}
-        <span className="onside-receipt-slot" aria-hidden="true" />
+      {/* A impressora: a fenda por onde o papel sai e a luz do estágio. */}
+      <div className="onside-receipt-machine" aria-hidden="true">
+        <span className="onside-receipt-slot">
+          <span className="onside-receipt-feed" />
+        </span>
+        <span className="onside-receipt-led" />
       </div>
 
       {hasPaper ? (
@@ -208,33 +170,46 @@ export function SubscriptionReceipt({
           cancelAt={cancelAt}
           subscriptionRef={subscriptionRef}
           barName={barName}
-          cardLast4={cardLast4}
           issuedAt={issuedAt}
           printed={printed}
           onPrinted={onPrinted}
         />
-      ) : null}
+      ) : (
+        <div className="onside-receipt-waiting">{waitingSlot}</div>
+      )}
 
-      <div className="onside-receipt-actions" data-ready={printed}>
-        {actions}
-      </div>
+      <div className="onside-receipt-actions">{actions}</div>
     </section>
   )
 }
 
-type PaperProps = {
-  plan: Plan
-  monthlyDiscountReais: number | null
-  status: string
-  contractedTrial: boolean
-  currentPeriodEnd: Date | string | null
-  cancelAt: Date | null
-  subscriptionRef: string | null
-  barName: string | null
-  cardLast4: string | null
-  issuedAt: Date
-  printed: boolean
-  onPrinted: () => void
+function StageIcon({ stage }: { stage: ReceiptStage }) {
+  if (stage === 'done') {
+    return (
+      <span className="onside-receipt-screen-icon is-done">
+        <Check size={14} color="currentColor" aria-hidden="true" />
+      </span>
+    )
+  }
+
+  if (stage === 'delayed') {
+    return (
+      <span className="onside-receipt-screen-icon is-waiting">
+        <Clock size={14} color="currentColor" aria-hidden="true" />
+      </span>
+    )
+  }
+
+  return (
+    <span className="onside-receipt-screen-icon">
+      <Loader
+        size={14}
+        color="currentColor"
+        className="animate-spin"
+        aria-hidden="true"
+      />
+    </span>
+  )
 }
 
 /**
@@ -248,7 +223,19 @@ type PaperProps = {
  * janela e folha andam em pixels, no mesmo número de passos, e a borda
  * serrilhada fica colada na saída do começo ao fim.
  */
-function PaperOutput(props: PaperProps) {
+function PaperOutput(props: {
+  plan: Plan
+  monthlyDiscountReais: number | null
+  status: string
+  contractedTrial: boolean
+  currentPeriodEnd: Date | string | null
+  cancelAt: Date | null
+  subscriptionRef: string | null
+  barName: string | null
+  issuedAt: Date
+  printed: boolean
+  onPrinted: () => void
+}) {
   const paperRef = useRef<HTMLElement | null>(null)
   const [paperHeight, setPaperHeight] = useState<number | null>(null)
 
@@ -289,39 +276,45 @@ function PaperOutput(props: PaperProps) {
 
 function PaperContent({
   plan,
-  monthlyDiscountReais,
+  monthlyDiscountReais = null,
   status,
-  contractedTrial,
+  contractedTrial = false,
   currentPeriodEnd,
   cancelAt,
   subscriptionRef,
   barName,
-  cardLast4,
   issuedAt,
   printed,
   onPrinted,
   paperRef
-}: PaperProps & { paperRef: React.RefObject<HTMLElement | null> }) {
+}: {
+  plan: Plan
+  monthlyDiscountReais: number | null
+  status: string
+  contractedTrial: boolean
+  currentPeriodEnd: Date | string | null
+  cancelAt: Date | null
+  subscriptionRef: string | null
+  barName: string | null
+  issuedAt: Date
+  printed: boolean
+  onPrinted: () => void
+  paperRef: React.RefObject<HTMLElement | null>
+}) {
   const charge = planChargeFromSubscription(plan, monthlyDiscountReais)
-  const paid = status === 'active'
-  const details = [
-    { label: 'Assinatura', value: formatSubscriptionRef(subscriptionRef) },
+  const rows = [
+    { label: 'Plano', value: `${plan.name} — ${plan.tagline}` },
+    {
+      label: 'Valor',
+      value: formatPlanChargeLine(charge, plan.period)
+    },
+    { label: 'Ciclo', value: receiptCycleLabel(plan.period, !cancelAt) },
     {
       label: 'Situação',
       value: contractedTrial
         ? CONTRACTED_TRIAL_LABEL
         : (STATUS_LABEL[status] ?? status)
     },
-    ...(cardLast4
-      ? [
-          {
-            label: paid ? 'Pago com' : 'Cartão',
-            value: `Cartão •••• ${cardLast4}`
-          }
-        ]
-      : []),
-    { label: 'Data', value: carimboDeHora(issuedAt) },
-    { label: 'Ciclo', value: receiptCycleLabel(plan.period, !cancelAt) },
     {
       label: receiptChargeLabel(status, cancelAt !== null),
       value: cancelAt
@@ -329,8 +322,6 @@ function PaperContent({
         : formatReceiptDate(currentPeriodEnd)
     }
   ]
-  // O número grande do pé: o fim do id da assinatura no Stripe.
-  const ref = subscriptionRef?.slice(-4).toUpperCase()
 
   return (
     <article
@@ -341,38 +332,19 @@ function PaperContent({
       }}
     >
       <header className="onside-receipt-paper-head">
-        <div>
-          <p className="onside-receipt-title">Plano {plan.name}</p>
-          <p className="onside-receipt-meta">
-            Mensal{barName ? ` · ${barName}` : ''}
-          </p>
-        </div>
-        <Medalha plano={plan.id} tamanho={34} />
+        <p className="onside-receipt-logo" aria-hidden="true">
+          <Logo size={26} />
+          <b>ONSIDE</b>
+        </p>
+        <p className="onside-receipt-title">Comprovante de assinatura</p>
+        <p className="onside-receipt-meta">
+          {barName ? `${barName} • ` : ''}
+          {formatReceiptTimestamp(issuedAt)}
+        </p>
       </header>
 
       <dl className="onside-receipt-rows">
-        <div className="onside-receipt-row">
-          <dt>{plan.name} · mensal</dt>
-          <dd>{centavos(charge.listReais ?? charge.chargeReais)}</dd>
-        </div>
-        {charge.listReais != null ? (
-          <div className="onside-receipt-row" data-desconto>
-            <dt>Desconto de fundador</dt>
-            <dd>−{centavos(charge.listReais - charge.chargeReais)}</dd>
-          </div>
-        ) : null}
-      </dl>
-      <dl className="onside-receipt-rows">
-        <div className="onside-receipt-row" data-total>
-          <dt>{paid ? 'Total pago' : 'Total por mês'}</dt>
-          <dd>
-            {centavos(charge.chargeReais)}
-            {paid ? '' : '/mês'}
-          </dd>
-        </div>
-      </dl>
-      <dl className="onside-receipt-rows" data-miudo>
-        {details.map((row) => (
+        {rows.map((row) => (
           <div key={row.label} className="onside-receipt-row">
             <dt>{row.label}</dt>
             <dd>{row.value}</dd>
@@ -380,7 +352,8 @@ function PaperContent({
         ))}
       </dl>
 
-      <p className="onside-receipt-section">Já está ligado</p>
+      <p className="onside-receipt-section">O que este plano libera</p>
+
       <ul className="onside-receipt-features">
         {plan.features.map((feature) => (
           <li key={feature} className="onside-receipt-feature">
@@ -391,25 +364,28 @@ function PaperContent({
       </ul>
 
       <footer className="onside-receipt-foot">
-        {ref ? (
-          <p className="onside-receipt-ref" aria-hidden="true">
-            SUB {ref}
-          </p>
-        ) : null}
+        <p className="onside-receipt-ref">
+          Assinatura {formatSubscriptionRef(subscriptionRef)}
+        </p>
+        <p className="onside-receipt-legal">
+          Comprovante de contratação, não é documento fiscal. O histórico de
+          pagamentos fica em Assinatura e pagamentos.
+        </p>
         {/*
          * O carimbo só bate quando a folha termina de sair: antes disso o
          * papel ainda está preso na máquina, e carimbo em papel preso é
          * promessa, não comprovante. O texto é o da situação: trial não pagou.
          */}
-        <p className="onside-receipt-stamp" data-printed={printed}>
-          <Icone nome="check" tamanho={12} acento="currentColor" />
-          {receiptStampLabel(status)}
-        </p>
+        <div className="onside-receipt-seal">
+          <p className="onside-receipt-stamp" data-printed={printed}>
+            <Check size={14} color="currentColor" aria-hidden="true" />
+            {receiptStampLabel(status)}
+          </p>
+          {/* A medalha do plano, a mesma de `/plan` e do painel. */}
+          {/* biome-ignore lint/performance/noImgElement: ilustração estática do plano, de public/, com width e height. */}
+          <img src={PLAN_ART[plan.id]} alt="" width="44" height="44" />
+        </div>
       </footer>
-      <p className="onside-receipt-legal">
-        Comprovante de contratação, não é documento fiscal. As faturas ficam em
-        Plano e cobrança.
-      </p>
     </article>
   )
 }

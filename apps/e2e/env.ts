@@ -45,6 +45,7 @@ export const SERVER_ENV: Record<string, string> = {
   BETTER_AUTH_SECRET: 'e2e-only-secret-000000000000000000000000',
   BETTER_AUTH_URL: BASE_URL,
   PUBLIC_APP_URL: BASE_URL,
+  CORS_ORIGIN: BASE_URL,
   AUTH_DEV_TRUSTED_ORIGIN: '',
   E2E_EMAIL_OUTBOX: OUTBOX_FILE,
   E2E_DISABLE_CACHES: '1',
@@ -62,12 +63,13 @@ export const SERVER_ENV: Record<string, string> = {
   STRIPE_WEBHOOK_SECRET,
   // O SDK do Stripe fala com o stub (`/v1/*` em `stubs/server.ts`).
   STRIPE_API_BASE_URL: STUB_URL,
+  UPSTASH_REDIS_REST_URL: '',
+  UPSTASH_REDIS_REST_TOKEN: '',
+  VITE_MAP_TILES_URL: `${STUB_URL}/tiles.json`,
   VITE_POSTHOG_KEY: '',
   // Sem análise em `vite dev` o aviso de cookies não existiria. Isto liga só
   // o aviso; `fixtures/test.ts` já o deixa respondido em todo teste.
   VITE_E2E_CONSENT_BANNER: '1',
-  // Sem os devtools do `vite dev`: o botão flutuante cobre o que o teste clica.
-  VITE_E2E_NO_DEVTOOLS: '1',
   // Turnstile desligado: o navegador da suíte não alcança a Cloudflare. O
   // alcance do plugin é coberto por `packages/auth/src/captcha-scope.test.ts`.
   TURNSTILE_SECRET_KEY: '',

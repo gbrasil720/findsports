@@ -28,7 +28,7 @@ values ('b0b0b0b0-0000-4000-8000-000000000e01', 'ze-dono', 'Bar do Zé',
 
 insert into subscription (id, bar_id, plan, status, current_period_end)
 values (gen_random_uuid()::text, 'b0b0b0b0-0000-4000-8000-000000000e01', 'elite', 'trialing',
-  now() + interval '120 days');
+  now() + interval '90 days');
 
 -- Ids em UUID: `attendance.set` recusa outro formato.
 -- Horários em UTC (a coluna é sem fuso): Brasília = UTC - 3.

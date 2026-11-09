@@ -1,6 +1,5 @@
 import { randomInt } from 'node:crypto'
 import { type BrowserContext, test as base, expect } from '@playwright/test'
-import { stubTiles } from './tiles'
 
 /**
  * O aviso de cookies aparece para quem ainda não escolheu, e no celular é uma
@@ -34,8 +33,6 @@ export const test = base.extend<Options>({
 
   context: async ({ context, cookieConsent }, use) => {
     if (cookieConsent === 'answered') await answerCookieConsent(context)
-    // O mapa da prévia (WEB-456) não sai para a rede.
-    await stubTiles(context)
     await use(context)
   },
 

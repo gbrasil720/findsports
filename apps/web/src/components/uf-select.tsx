@@ -13,9 +13,11 @@ type Props = {
   value: string
   onChange: (uf: string) => void
   required?: boolean
+  /** No painel novo o campo é o `pn-inp`, no lugar do campo de tinta antigo. */
+  className?: string
 }
 
-export function UfSelect({ id, value, onChange, required }: Props) {
+export function UfSelect({ id, value, onChange, required, className }: Props) {
   return (
     <select
       id={id}
@@ -26,7 +28,10 @@ export function UfSelect({ id, value, onChange, required }: Props) {
       required={required}
       // As opções abrem na lista do sistema: sem cor própria herdariam o texto
       // claro do campo ink sobre fundo claro.
-      className="onside-select onside-input-ink [&>option]:bg-[var(--onside-paper)] [&>option]:text-[var(--onside-ink)]"
+      className={
+        className ??
+        'onside-select onside-input-ink [&>option]:bg-[var(--onside-paper)] [&>option]:text-[var(--onside-ink)]'
+      }
     >
       <option value="">Estado (UF)</option>
       {Object.entries(UFS).map(([uf, nome]) => (

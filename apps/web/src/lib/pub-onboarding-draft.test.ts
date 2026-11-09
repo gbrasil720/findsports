@@ -98,33 +98,18 @@ describe('rascunho do onboarding de bar', () => {
       )
     ).toBeNull()
   })
-
-  it('leva o horário e a oferta da revisão; o que o servidor recusaria sai (WEB-448)', () => {
+  it('guarda a rotina; a que não serve e o plano do rascunho antigo saem', () => {
     const ler = (draft: object) =>
       parsePubOnboardingDraft(
         JSON.stringify({ draft, email: 'dona', expiresAt: 9_000 }),
         'dona',
         2_000
       )
-    const openingHours = [
-      { opens: '12:00', closes: '22:00' },
-      null,
-      null,
-      null,
-      null,
-      { opens: '17:00', closes: '02:00' },
-      { opens: '17:00', closes: '02:00' }
-    ]
-    const completo = { ...DRAFT, openingHours, houseOffer: 'Chopp em dobro' }
-    expect(ler(completo)).toEqual(completo)
-    for (const ruim of [
-      [{ opens: '17:00', closes: '17:00' }, null, null, null, null, null, null],
-      [null],
-      'seg a sex'
-    ]) {
-      expect(ler({ ...DRAFT, openingHours: ruim })).toEqual(DRAFT)
-    }
-    expect(ler({ ...DRAFT, houseOffer: 42 })).toEqual(DRAFT)
+    const routine = { games: 8, spend: 60, wants: ['funil' as const] }
+    expect(ler({ ...DRAFT, routine })?.routine).toEqual(routine)
+    expect(ler({ ...DRAFT, routine: { games: 0 } })).toEqual(DRAFT)
+    // O passo "Plano" saiu do cadastro: o plano gravado antes não volta.
+    expect(ler({ ...DRAFT, plan: 'starter' })).toEqual(DRAFT)
   })
 })
 
