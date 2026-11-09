@@ -93,7 +93,7 @@ export default function FanTabs() {
   })
   // "Bares pra você · N novos" (2c): a rodada de hoje, criada aqui mesmo se
   // ainda não existe e o aparelho sabe onde está.
-  const { device, beside } = useExploreState()
+  const { device, beside, localCity, filters } = useExploreState()
   const suggestions = useQuery({
     ...trpc.recommendations.today.queryOptions({ where: device }),
     enabled: fan && menuOpen,
@@ -105,7 +105,8 @@ export default function FanTabs() {
   const layout = useLayout()
   // Tablet deitado e dobrável aberto: o "Você" é uma tela (menu e seção lado
   // a lado, `YouPanel`), não o menu de vidro; tocar de novo não fecha.
-  const panel = layout.kind === 'split'
+  // Sem conta, o menu (com o cartão da conta), também no tablet.
+  const panel = layout.kind === 'split' && fan
   const panelOpen = panel && (menuOpen || (!inTabs && tabPath === '/voce'))
   // O mesmo toque da aba "Você" na barra nativa.
   const pressYou = () => {
@@ -197,6 +198,79 @@ export default function FanTabs() {
       }
     }
   ]
+  // Sem conta (rodada 2, tela 5): os itens que precisam de conta ficam à
+  // vista com "com conta" e abrem a folha de entrar; cidade, raio e termos
+  // funcionam sem conta.
+  const ask = (what: string) => () => {
+    closeMenu()
+    withAccount(() => {}, { kind: 'conta', what })
+  }
+  const visitorItems: MenuItem[] = [
+    {
+      key: 'jogos',
+      icon: 'ticket',
+      label: 'Meus jogos',
+      soon: '',
+      account: true,
+      open: ask('ver seus jogos')
+    },
+    {
+      key: 'conquistas',
+      icon: 'medal',
+      label: 'Conquistas',
+      soon: '',
+      account: true,
+      open: ask('ver suas conquistas')
+    },
+    {
+      key: 'ranking',
+      icon: 'ranking',
+      label: 'Ranking',
+      soon: '',
+      account: true,
+      open: ask('ver o ranking')
+    },
+    {
+      key: 'amigos',
+      icon: 'people',
+      label: 'Amigos',
+      soon: '',
+      account: true,
+      open: ask('ver seus amigos')
+    },
+    {
+      key: 'cidade',
+      icon: 'pin',
+      label: 'Cidade',
+      soon: '',
+      meta: localCity?.name ?? 'São Paulo',
+      open: () => {
+        closeMenu()
+        router.push('/cidade')
+      }
+    },
+    {
+      key: 'raio',
+      icon: 'map',
+      label: 'Raio de busca',
+      soon: '',
+      meta: `${filters.radius ?? 3} km`,
+      open: () => {
+        closeMenu()
+        router.push('/filtros')
+      }
+    },
+    {
+      key: 'termos',
+      icon: 'doc',
+      label: 'Termos e Privacidade',
+      soon: '',
+      open: () => {
+        closeMenu()
+        router.push('/legal')
+      }
+    }
+  ]
   // As Configurações (11f–11i) abrem por cima, sem a barra.
   const settings = () => {
     closeMenu()
@@ -249,12 +323,9 @@ export default function FanTabs() {
           // ao começo da pilha (`disablePopToTop` impede). Vindo de outra
           // aba, a pilha já voltou ao menu (`voce/_layout.tsx`).
           disablePopToTop
-          disabled={!fan}
           listeners={{
             tabPress: () => {
-              if (!fan)
-                withAccount(() => {}, { kind: 'conta', what: 'ver sua conta' })
-              else if (menuOpen) closeMenu()
+              if (menuOpen) closeMenu()
               else if (pathname.startsWith('/voce/')) setOver(true)
             }
           }}
@@ -353,7 +424,24 @@ export default function FanTabs() {
           name={user?.name ?? ''}
           initials={initials(user?.name ?? '')}
           image={user?.image}
-          items={items}
+          items={fan ? items : visitorItems}
+          visitor={
+            fan
+              ? undefined
+              : {
+                  onCreate: () => {
+                    closeMenu()
+                    router.push({
+                      pathname: '/entrar',
+                      params: { modo: 'criar' }
+                    })
+                  },
+                  onEnter: () => {
+                    closeMenu()
+                    router.push('/entrar')
+                  }
+                }
+          }
           // Destaca a tela de baixo; sobre o Explorar, nenhum item, para não
           // sugerir um toque.
           current={MENU_SCREENS[pathname]}
@@ -364,7 +452,7 @@ export default function FanTabs() {
             item.open()
           }}
           onChat={() => soon.show('A conversa com a Onside chega em breve')}
-          onSettings={settings}
+          onSettings={fan ? settings : ask('ver as configurações')}
         />
       ) : null}
       {/* Na tela de fora do Flip não há botão da IA para apontar. Sem conta,

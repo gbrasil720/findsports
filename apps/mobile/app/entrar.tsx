@@ -75,6 +75,8 @@ export default function Entrar() {
     bar?: string
     jogo?: string
     item?: string
+    /** `criar`: abre direto em criar conta ("Criar conta grátis" do Você). */
+    modo?: string
   }>()
   const acao = params.acao ?? 'conta'
   const bar = useQuery({
@@ -84,7 +86,9 @@ export default function Entrar() {
   const game = bar.data?.events.find((event) => event.id === params.jogo)
   const say = verbs(acao, bar.data?.name, params.item)
 
-  const [mode, setMode] = useState<Mode>('entrar')
+  const [mode, setMode] = useState<Mode>(
+    params.modo === 'criar' ? 'criar' : 'entrar'
+  )
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')

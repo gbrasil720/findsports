@@ -38,8 +38,13 @@ export type MenuItem = {
     | 'ranking'
     | 'star'
     | 'sliders'
+    | 'pin'
+    | 'map'
+    | 'doc'
   label: string
   meta?: string
+  /** Sem conta (rodada 2, tela 5): o item fica à vista com "com conta". */
+  account?: boolean
   /** O selo acid do design ("5 novos"). */
   badge?: string
   /** O aviso enquanto a tela não existe. */
@@ -76,7 +81,8 @@ export function YouMenu({
   onClose,
   onItem,
   onChat,
-  onSettings
+  onSettings,
+  visitor
 }: {
   name: string
   initials: string
@@ -89,6 +95,8 @@ export function YouMenu({
   onItem: (item: MenuItem) => void
   onChat: () => void
   onSettings: () => void
+  /** Sem conta (rodada 2, tela 5): o cartão "Sua conta guarda tudo" no topo. */
+  visitor?: { onCreate: () => void; onEnter: () => void }
 }) {
   const palette = usePalette()
   const nav = useNavInsets()
@@ -133,45 +141,92 @@ export function YouMenu({
           }
         ]}
       >
-        <Glass
-          tone={tone}
-          tint={palette.dark ? 'rgba(30,30,27,.55)' : 'rgba(255,255,255,.55)'}
-          style={styles.menu}
+        {/* Peça sólida, não vidro (decisão do vidro, rodada 2): o vidro é
+            só do sistema, a barra de abas. */}
+        <View
+          style={[
+            styles.menu,
+            {
+              backgroundColor: palette.card,
+              borderColor: palette.line,
+              shadowColor: '#000'
+            }
+          ]}
         >
-          <View style={[styles.menuHead, { borderBottomColor: palette.line }]}>
-            <View style={styles.menuAvatar}>
-              {/* A foto cobre as iniciais quando carrega. */}
-              <Text style={styles.menuAvatarText}>{initials}</Text>
-              {image ? (
-                <Image
-                  accessibilityIgnoresInvertColors
-                  source={{ uri: image }}
-                  style={StyleSheet.absoluteFill}
-                />
-              ) : null}
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text
-                style={[text(16, 'Bold', 1.25), { color: palette.ink }]}
-                numberOfLines={1}
-              >
-                {name}
+          {visitor ? (
+            <View style={styles.guard}>
+              <Text style={styles.guardTitle}>SUA CONTA GUARDA TUDO</Text>
+              <Text style={[text(13.5, 'Regular', 1.4), { color: '#cfccc4' }]}>
+                Bares salvos, os jogos que você vai ver, o código do balcão e as
+                conquistas de cada visita.
               </Text>
-              {/* Sem as setas do design (⇅): trocar para o perfil de bar não
+              <View style={styles.guardActions}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={visitor.onCreate}
+                  style={[styles.guardButton, { backgroundColor: ACID }]}
+                >
+                  <Text style={[text(14, 'Bold', 1.2), { color: INK }]}>
+                    Criar conta grátis
+                  </Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={visitor.onEnter}
+                  style={[styles.guardButton, styles.guardOutline]}
+                >
+                  <Text style={[text(14, 'Bold', 1.2), { color: '#f1eee6' }]}>
+                    Já tenho conta
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : (
+            <View
+              style={[styles.menuHead, { borderBottomColor: palette.line }]}
+            >
+              <View style={styles.menuAvatar}>
+                {/* A foto cobre as iniciais quando carrega. */}
+                <Text style={styles.menuAvatarText}>{initials}</Text>
+                {image ? (
+                  <Image
+                    accessibilityIgnoresInvertColors
+                    source={{ uri: image }}
+                    style={StyleSheet.absoluteFill}
+                  />
+                ) : null}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={[text(16, 'Bold', 1.25), { color: palette.ink }]}
+                  numberOfLines={1}
+                >
+                  {name}
+                </Text>
+                {/* Sem as setas do design (⇅): trocar para o perfil de bar não
                   existe no app, o lado do bar é só no site. */}
-              <Text
-                style={[text(13, 'Regular', 1.3), { color: palette.muted }]}
+                <Text
+                  style={[text(13, 'Regular', 1.3), { color: palette.muted }]}
+                >
+                  Torcedor
+                </Text>
+              </View>
+              <RoundButton
+                label="Fale com a gente"
+                tone={tone}
+                onPress={onChat}
               >
-                Torcedor
-              </Text>
+                <Icon name="chat" size={19} color={palette.ink} />
+              </RoundButton>
+              <RoundButton
+                label="Configurações"
+                tone={tone}
+                onPress={onSettings}
+              >
+                <Icon name="gear" size={19} color={palette.ink} />
+              </RoundButton>
             </View>
-            <RoundButton label="Fale com a gente" tone={tone} onPress={onChat}>
-              <Icon name="chat" size={19} color={palette.ink} />
-            </RoundButton>
-            <RoundButton label="Configurações" tone={tone} onPress={onSettings}>
-              <Icon name="gear" size={19} color={palette.ink} />
-            </RoundButton>
-          </View>
+          )}
           {items.map((item) => {
             const on = item.key === current
             return (
@@ -203,7 +258,20 @@ export function YouMenu({
                 >
                   {item.label}
                 </Text>
-                {item.badge ? (
+                {item.account ? (
+                  <View
+                    style={[
+                      styles.accountTag,
+                      { backgroundColor: palette.mark }
+                    ]}
+                  >
+                    <Text
+                      style={[styles.accountText, { color: palette.muted }]}
+                    >
+                      COM CONTA
+                    </Text>
+                  </View>
+                ) : item.badge ? (
                   <View style={styles.badge}>
                     <Text style={[text(12.5, 'Bold', 1.2), { color: INK }]}>
                       {item.badge}
@@ -222,7 +290,7 @@ export function YouMenu({
               </Pressable>
             )
           })}
-        </Glass>
+        </View>
       </Animated.View>
     </>
   )
@@ -260,7 +328,39 @@ const styles = StyleSheet.create({
     zIndex: 30,
     transformOrigin: '62% 100%'
   },
-  menu: { borderRadius: 32, padding: 8, overflow: 'hidden' },
+  menu: {
+    borderRadius: 32,
+    padding: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 12
+  },
+  guard: {
+    backgroundColor: INK,
+    borderRadius: 24,
+    padding: 16,
+    gap: 10,
+    marginBottom: 6
+  },
+  guardTitle: {
+    fontFamily: 'Anton',
+    fontSize: 24,
+    color: '#f1eee6',
+    marginVertical: -6
+  },
+  guardActions: { flexDirection: 'row', gap: 8, marginTop: 2 },
+  guardButton: {
+    flex: 1,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  guardOutline: { borderWidth: 1.5, borderColor: 'rgba(241,238,230,.35)' },
+  accountTag: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 4 },
+  accountText: { fontFamily: 'GeistMono-SemiBold', fontSize: 10.5 },
   menuHead: {
     flexDirection: 'row',
     alignItems: 'center',
