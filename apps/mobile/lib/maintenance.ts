@@ -75,7 +75,9 @@ export type SavedCode = Pick<
   | 'eventId'
   | 'code'
   | 'validated'
+  | 'validatedAt'
   | 'window'
+  | 'endsAt'
   | 'barName'
   | 'startsAt'
   | 'championship'
@@ -110,7 +112,9 @@ function keepTodayCode(userId: string, games: readonly MyGame[]) {
     eventId: game.eventId,
     code: game.code,
     validated: game.validated,
+    validatedAt: game.validatedAt,
     window: game.window,
+    endsAt: game.endsAt,
     barName: game.barName,
     startsAt: game.startsAt,
     championship: game.championship,

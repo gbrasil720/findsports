@@ -108,7 +108,7 @@ function Dots() {
  */
 const STAMP_DELAY = 260
 
-function useStamp() {
+export function useStamp() {
   const reduced = useReducedMotion()
   const stamp = useSharedValue(0)
   const issued = useSharedValue(0)
@@ -133,8 +133,25 @@ function useStamp() {
   return { stamp, issued, reduced }
 }
 
-/** O selo: disco acid, o texto em volta, o tracejado e o anel da marca. */
-function Seal({ stamp, reduced }: ReturnType<typeof useStamp>) {
+/**
+ * O selo: disco acid, o texto em volta, o tracejado e o anel da marca. A
+ * carteirinha usa o de 80 ("Torcedor validado"); o ingresso, o de 108
+ * ("Validado no balcão · Bar do Zé").
+ */
+export function Seal({
+  stamp,
+  reduced,
+  size = 80,
+  label = 'TORCEDOR VALIDADO · ONSIDE · 2026 ·',
+  fontSize = 9.6,
+  style: place
+}: Pick<ReturnType<typeof useStamp>, 'stamp' | 'reduced'> & {
+  size?: number
+  label?: string
+  /** O texto da volta: 9,6 na carteirinha, 8,6 no ingresso (mais longo). */
+  fontSize?: number
+  style?: object
+}) {
   const style = useAnimatedStyle(() =>
     reduced
       ? { opacity: stamp.get(), transform: [{ rotate: '-14deg' }] }
@@ -147,8 +164,11 @@ function Seal({ stamp, reduced }: ReturnType<typeof useStamp>) {
         }
   )
   return (
-    <Animated.View style={[styles.seal, style]} pointerEvents="none">
-      <Svg width={80} height={80} viewBox="0 0 100 100">
+    <Animated.View
+      style={[styles.seal, { width: size, height: size }, place, style]}
+      pointerEvents="none"
+    >
+      <Svg width={size} height={size} viewBox="0 0 100 100">
         <Defs>
           <Path
             id="volta"
@@ -167,12 +187,12 @@ function Seal({ stamp, reduced }: ReturnType<typeof useStamp>) {
         />
         <SvgText
           fill={INK}
-          fontSize={9.6}
+          fontSize={fontSize}
           fontFamily={MONO}
-          letterSpacing={1.06}
+          letterSpacing={fontSize * 0.11}
         >
           <TextPath href="#volta" startOffset="0">
-            TORCEDOR VALIDADO · ONSIDE · 2026 ·
+            {label}
           </TextPath>
         </SvgText>
         <Circle
