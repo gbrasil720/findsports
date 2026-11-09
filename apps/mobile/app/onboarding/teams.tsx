@@ -1,10 +1,12 @@
+import { F1_TRACKS } from '@findsports_oficial/db/f1-tracks'
 import { useMutation, useQueries, useQuery } from '@tanstack/react-query'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
-import { Pressable, View } from 'react-native'
+import { Pressable, ScrollView, View } from 'react-native'
 import {
   OnboardingCard,
   OnboardingTop,
+  RaceTile,
   SportBadge,
   StepFooter,
   type Team,
@@ -37,11 +39,21 @@ function countLabel(teams: Team[]) {
   if (teams.every((team) => team.kind === 'athlete')) {
     return `${count} ${count === 1 ? 'atleta' : 'atletas'}`
   }
+  if (teams.every((team) => team.kind === 'race')) {
+    return `${count} ${count === 1 ? 'GP' : 'GPs'}`
+  }
   if (teams.every((team) => team.kind === 'team')) {
     return `${count} ${count === 1 ? 'time' : 'times'}`
   }
+  // "Flamengo e 2 GPs", como no desenho.
+  const races = teams.filter((team) => team.kind === 'race').length
+  const others = teams.filter((team) => team.kind !== 'race')
+  if (races && others.length === 1)
+    return `${others[0]?.name} e ${races} ${races === 1 ? 'GP' : 'GPs'}`
   return `${count} escolhidos`
 }
+
+const CALENDAR = Object.keys(F1_TRACKS)
 
 export default function Teams() {
   // Na mesa a pergunta já está na metade de cima (Adaptativo 09).
@@ -106,9 +118,28 @@ export default function Teams() {
     const extra = choices.teams.filter(
       (team) => team.sportId === sportId && !ids.has(team.id)
     )
+    // WEB-520: a F1 é por GP; os pilotos e escuderias antigos ficam fora.
+    if (list.some((team) => team.kind === 'race'))
+      return {
+        sport,
+        sections: [
+          {
+            label: 'Por GP',
+            // Na ordem do calendário, não por nome.
+            teams: list
+              .filter((team) => team.kind === 'race')
+              .sort(
+                (a, b) =>
+                  CALENDAR.indexOf(a.catalogKey ?? '') -
+                  CALENDAR.indexOf(b.catalogKey ?? '')
+              ),
+            races: true
+          }
+        ]
+      }
     const teams = list.filter((team) => team.kind !== 'athlete')
     const athletes = list.filter((team) => team.kind === 'athlete')
-    // Na F1, escuderias e pilotos: com os dois, cada um com seu subtítulo.
+    // Times e atletas no mesmo esporte: cada um com seu subtítulo.
     const both = teams.length > 0 && athletes.length > 0
     return {
       sport,
@@ -198,11 +229,31 @@ export default function Teams() {
                       {section.label}
                     </Text>
                   ) : null}
-                  <View
-                    style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}
-                  >
-                    {section.teams.map(chip)}
-                  </View>
+                  {'races' in section && section.races ? (
+                    // Os GPs em ladrilhos com o traçado, em fila que rola.
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      style={{ marginHorizontal: -18, flexGrow: 0 }}
+                      contentContainerStyle={{ gap: 8, paddingHorizontal: 18 }}
+                    >
+                      {section.teams.map((team) => (
+                        <RaceTile
+                          key={team.id}
+                          name={team.name}
+                          catalogKey={team.catalogKey}
+                          selected={selected(team.id)}
+                          onPress={() => toggle(team)}
+                        />
+                      ))}
+                    </ScrollView>
+                  ) : (
+                    <View
+                      style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}
+                    >
+                      {section.teams.map(chip)}
+                    </View>
+                  )}
                 </View>
               ) : null
             )}

@@ -1,3 +1,4 @@
+import { f1Track } from '@findsports_oficial/db/f1-tracks'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { File, Paths } from 'expo-file-system'
 import {
@@ -23,6 +24,7 @@ import Animated, {
   useSharedValue,
   withTiming
 } from 'react-native-reanimated'
+import Svg, { Path } from 'react-native-svg'
 import { useExploreState } from '@/components/explore-state'
 import { type CardField, FanCard } from '@/components/fan-card'
 import { Glass } from '@/components/glass'
@@ -65,8 +67,10 @@ export type Team = {
   id: string
   name: string
   sportId: string
-  /** WEB-381: piloto e lutador são "atleta"; o resto, "time". */
-  kind: 'team' | 'athlete'
+  /** WEB-381: lutador e tenista são "atleta"; WEB-520: o GP da F1, "race". */
+  kind: 'team' | 'athlete' | 'race'
+  /** A chave do catálogo: o GP desenha o traçado por ela (`f1-tracks`). */
+  catalogKey?: string | null
 }
 
 type Choices = {
@@ -300,7 +304,10 @@ export function OnboardingCard({
   return (
     <FanCard
       name={name || 'Torcedor'}
-      teams={choices.teams.map((team) => team.name)}
+      // O GP vale para o aviso, não para "Torce para" (WEB-520).
+      teams={choices.teams
+        .filter((team) => team.kind !== 'race')
+        .map((team) => team.name)}
       sports={(sports.data ?? [])
         .filter((sport) => choices.sportIds.includes(sport.id))
         .map((sport) => sportMark(sport.name))}
@@ -542,6 +549,80 @@ export function TableTile({
 }
 
 /** Um time (4k): tinta com sombra acid quando escolhido. */
+/**
+ * Um GP da F1 (WEB-520, rodada 2, tela 4c): o traçado da pista, o nome em
+ * Anton e o check quando escolhido. Escolhido, tinta com o traçado em acid.
+ */
+export function RaceTile({
+  name,
+  catalogKey,
+  selected,
+  onPress
+}: {
+  name: string
+  catalogKey: string | null | undefined
+  selected: boolean
+  onPress: () => void
+}) {
+  const { idle, ink, dark } = useIdle()
+  const track = f1Track(catalogKey)
+  const bg = selected ? (dark ? PAPER : INK) : idle
+  const fg = selected ? (dark ? INK : PAPER) : ink
+  const stroke = selected ? (dark ? INK : ACID) : ink
+  return (
+    <Pressable
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: selected }}
+      accessibilityLabel={name}
+      onPress={() => {
+        haptic.select()
+        onPress()
+      }}
+      style={[styles.race, { backgroundColor: bg }]}
+    >
+      <View style={styles.raceTop}>
+        {track ? (
+          <Svg width={40} height={40} viewBox="0 0 24 24">
+            <Path
+              d={track.d}
+              fill="none"
+              stroke={stroke}
+              strokeWidth={1.6}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+          </Svg>
+        ) : (
+          <View style={{ height: 40 }} />
+        )}
+        {selected ? (
+          <View style={[styles.raceCheck, { backgroundColor: ACID }]}>
+            <Icon name="check" size={12} color={INK} />
+          </View>
+        ) : null}
+      </View>
+      <Text
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        maxFontSizeMultiplier={MAX_FONT_SCALE}
+        style={[styles.raceName, { color: fg }]}
+      >
+        {(
+          track?.gp ?? name.replace(/^GP (da|do|de|dos) /, '')
+        ).toLocaleUpperCase('pt-BR')}
+      </Text>
+      {track ? (
+        <Text
+          numberOfLines={1}
+          style={[text(11, 'Regular', 1.2), { color: fg, opacity: 0.7 }]}
+        >
+          {track.circuit}
+        </Text>
+      ) : null}
+    </Pressable>
+  )
+}
+
 export function TeamChip({
   name,
   selected,
@@ -654,6 +735,25 @@ export function RadiusTile({
 }
 
 const styles = StyleSheet.create({
+  race: {
+    width: 108,
+    padding: 10,
+    borderRadius: 16,
+    gap: 4
+  },
+  raceTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start'
+  },
+  raceCheck: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  raceName: { fontFamily: 'Anton', fontSize: 17, marginVertical: -4 },
   top: { flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 40 },
   segments: { flex: 1, flexDirection: 'row', gap: 5 },
   segment: {
