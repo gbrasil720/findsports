@@ -34,14 +34,9 @@ const SECTIONS: { title: string; items: Item[] }[] = [
     ]
   },
   {
-    title: '03 Apresentação',
-    items: [1, 2, 3, 4].map((page) => ({
-      code: `4${'bcde'[page - 1]}`,
-      label: ['O jogo é aqui', 'Quem vai', 'Mesa garantida', 'Busca com IA'][
-        page - 1
-      ],
-      href: { pathname: '/intro', params: { page } }
-    }))
+    // As quatro páginas da apresentação (4b–4e) saíram no redesign.
+    title: 'Redesign · rodada 1',
+    items: [{ code: 'R1 2', label: 'O jogo de hoje', href: '/hoje' }]
   },
   {
     title: '04 Conta',

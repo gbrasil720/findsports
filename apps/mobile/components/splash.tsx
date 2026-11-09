@@ -14,7 +14,7 @@ import { Text } from '@/components/ui'
 
 /**
  * Se a splash já saiu. A tela de baixo espera por isso para animar a
- * entrada, que senão tocaria escondida (`app/intro.tsx`). Fora do provedor,
+ * entrada, que senão tocaria escondida (`app/hoje.tsx`). Fora do provedor,
  * vale como saída.
  */
 export const SplashDone = createContext(true)
