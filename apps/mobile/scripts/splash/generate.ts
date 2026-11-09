@@ -173,19 +173,19 @@ const images = await page.evaluate(
 
 // A caixa da marca: a mesma medida em `components/splash.tsx` (MARK_BOX) e
 // no `imageWidth` do `app.json`.
-const MARK_BOX = { width: 150, height: 136 }
+const MARK_BOX = { width: 200, height: 164 }
 const anton = (
   await readFile(join(app, 'assets/fonts/Anton-Regular.ttf'))
 ).toString('base64')
 await page.setContent(`<style>
 @font-face{font-family:Anton;src:url(data:font/ttf;base64,${anton})}
 html,body{margin:0;background:transparent}
-#m{width:${MARK_BOX.width}px;height:${MARK_BOX.height}px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:#f1eee6}
-.ring{width:70px;height:70px;position:relative}
-.ring::before{content:"";position:absolute;inset:6px;border-radius:50%;box-shadow:inset 0 0 0 11px currentColor}
-.ring::after{content:"";position:absolute;right:1px;bottom:1px;width:23px;height:23px;border-radius:50%;background:#e8320c}
-.wm{font:400 43px/.9 Anton;display:flex;align-items:flex-end}
-.wm i{width:8px;height:8px;background:#e8320c;margin:0 0 5px 3px}
+#m{width:${MARK_BOX.width}px;height:${MARK_BOX.height}px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;color:#f1eee6}
+.ring{width:92px;height:92px;position:relative}
+.ring::before{content:"";position:absolute;inset:8px;border-radius:50%;box-shadow:inset 0 0 0 14px currentColor}
+.ring::after{content:"";position:absolute;right:2px;bottom:2px;width:30px;height:30px;border-radius:50%;background:#e8320c}
+.wm{font:400 56px/.9 Anton;display:flex;align-items:flex-end}
+.wm i{width:10px;height:10px;background:#e8320c;margin:0 0 7px 4px}
 </style><div id="m"><span class="ring"></span><div class="wm">ONSIDE<i></i></div></div>`)
 await page.evaluate(() => document.fonts.ready)
 await page

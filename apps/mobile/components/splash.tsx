@@ -31,7 +31,7 @@ export const SplashDone = createContext(true)
  */
 
 /** A caixa da `mark.png`, em pt: a mesma do gerador e do `imageWidth` do `app.json`. */
-const MARK_BOX = { width: 150, height: 136 }
+const MARK_BOX = { width: 200, height: 164 }
 /** O telão foi desenhado na tela do design (iPhone 16e). */
 const LED = { width: 390, height: 844 }
 
@@ -181,10 +181,12 @@ const styles = StyleSheet.create({
   sub: {
     position: 'absolute',
     top: '50%',
-    marginTop: MARK_BOX.height / 2 + 14,
+    // O conteúdo da caixa tem 160 pt (anel 92, 18, nome 50): 18 + 4 abaixo
+    // do nome, menos a sobra da caixa e a da Geist Mono (1,3em).
+    marginTop: MARK_BOX.height / 2 + 18 + 4 - 2 - 2,
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 9.5,
-    letterSpacing: 0.95,
+    fontSize: 12,
+    letterSpacing: 1.2,
     color: MUTED
   },
   strong: { color: PAPER },
