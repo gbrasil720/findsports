@@ -6,6 +6,7 @@ import Animated, {
   withSpring,
   withTiming
 } from 'react-native-reanimated'
+import Svg, { Circle, Defs, Pattern, Rect } from 'react-native-svg'
 import { HardShadow, Photo, Tag } from '@/components/explore'
 import { EASE, haptic, usePressScale } from '@/components/motion'
 import { usePalette } from '@/components/theme'
@@ -160,15 +161,21 @@ export function GameRow({
             <View
               style={[
                 styles.game,
-                {
-                  backgroundColor: on ? palette.ink : palette.card,
-                  shadowColor: palette.shadow
-                }
+                on
+                  ? {
+                      backgroundColor: palette.ink,
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 4 }
+                    }
+                  : { backgroundColor: palette.card, shadowColor: palette.drop }
               ]}
             >
               <Text
                 numberOfLines={1}
-                style={[styles.gameKicker, { color: on ? fg : palette.muted }]}
+                style={[
+                  styles.gameKicker,
+                  on ? { color: fg, opacity: 0.7 } : { color: palette.muted }
+                ]}
               >
                 {game.live ? (
                   <Text style={{ color: palette.live }}>● ao vivo</Text>
@@ -180,7 +187,7 @@ export function GameRow({
               <View style={styles.gameLine}>
                 <Text
                   numberOfLines={1}
-                  style={[text(14.5, 'Bold', 1.2), { color: fg, flex: 1 }]}
+                  style={[text(15, 'Bold', 1.15), { color: fg, flex: 1 }]}
                 >
                   {game.title}
                 </Text>
@@ -197,19 +204,22 @@ export function GameRow({
 }
 
 /** Largura de um jogo na fileira mais o espaço entre eles. */
-const GAME_STEP = 190
+const GAME_STEP = 216
 
 /** "FLAMENGO × PALMEIRAS": o × em vermelho (acid no escuro). */
 export function GameTitle({
   title,
   size = 34,
   color,
-  accent
+  accent,
+  cross = 0.75
 }: {
   title: string
   size?: number
   color: string
   accent: string
+  /** O tamanho do ×, em em (o placar ao vivo usa um menor, cinza). */
+  cross?: number
 }) {
   const sides = title.split(' × ')
   return (
@@ -221,7 +231,8 @@ export function GameTitle({
       {sides.length === 2 ? (
         <>
           {sides[0]}
-          <Text style={{ color: accent }}> × </Text>
+          {/* O × menor, na cor de destaque. */}
+          <Text style={{ color: accent, fontSize: size * cross }}> × </Text>
           {sides[1]}
         </>
       ) : (
@@ -289,13 +300,13 @@ function Screens({ bar, color }: { bar: BoardBar; color: string }) {
     <View style={styles.screens}>
       {bar.onBigScreen ? (
         <View style={styles.screen}>
-          <Icon name="tv" size={13} color={color} />
+          <Icon name="tv" size={14} color={color} />
           <Text style={[styles.mono11, { color }]}>Telão</Text>
         </View>
       ) : null}
       {bar.withSound ? (
         <View style={styles.screen}>
-          <Icon name="sound" size={13} color={color} />
+          <Icon name="sound" size={14} color={color} />
           <Text style={[styles.mono11, { color }]}>Som</Text>
         </View>
       ) : null}
@@ -334,7 +345,7 @@ function Heart({ on, onPress }: { on: boolean; onPress: () => void }) {
       <Animated.View style={style}>
         <Icon
           name="fan"
-          size={18}
+          size={22}
           color={on ? palette.live : palette.muted}
           accent={on ? palette.live : palette.accent}
         />
@@ -345,12 +356,13 @@ function Heart({ on, onPress }: { on: boolean; onPress: () => void }) {
 
 /** "34 / VÃO" à direita do cartão, em mono. */
 function GoingCount({ count, color }: { count: number; color: string }) {
+  const palette = usePalette()
   return (
-    <View style={{ alignItems: 'flex-end' }}>
+    <View style={{ alignItems: 'flex-end', gap: 4 }}>
       <Text style={[styles.goingNumber, { color }]}>
         {count.toLocaleString('pt-BR')}
       </Text>
-      <Text style={[styles.mono10, { color }]}>
+      <Text style={[styles.goingLabel, { color: palette.muted }]}>
         {count === 1 ? 'VAI' : 'VÃO'}
       </Text>
     </View>
@@ -389,39 +401,57 @@ export function BoardCard({
     >
       <Animated.View style={press.style}>
         <HardShadow
-          color={chosen ? 'rgba(201,241,53,.85)' : palette.shadow}
+          color={chosen ? 'rgba(201,241,53,.85)' : palette.drop}
           offset={3}
-          radius={18}
+          radius={20}
         />
-        <View
-          style={[
-            styles.card,
-            { backgroundColor: palette.card, borderColor: palette.ring }
-          ]}
-        >
+        <View style={[styles.card, { backgroundColor: palette.card }]}>
           <Photo uri={bar.photoUrl} name={bar.name} style={styles.photo} />
-          <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+          <View style={{ flex: 1, minWidth: 0 }}>
             {live || bar.elite ? (
-              <View style={styles.tags}>
+              <View style={[styles.tags, { marginBottom: 6 }]}>
                 {live ? (
-                  <View style={[styles.liveTag, { backgroundColor: LIVE }]}>
-                    <Text style={[styles.mono10, { color: PAPER }]}>
-                      ● AO VIVO
+                  <View
+                    style={[styles.boardTag, { backgroundColor: palette.live }]}
+                  >
+                    <View style={styles.boardTagDot} />
+                    <Text style={[styles.boardTagText, { color: INK }]}>
+                      AO VIVO
                     </Text>
                   </View>
                 ) : null}
-                {bar.elite ? <Tag>ELITE</Tag> : null}
+                {bar.elite ? (
+                  // `.tag.elite`: tinta e acid no claro, acid e tinta no escuro.
+                  <View
+                    style={[
+                      styles.boardTag,
+                      { backgroundColor: palette.dark ? ACID : INK }
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.boardTagText,
+                        { color: palette.dark ? INK : ACID }
+                      ]}
+                    >
+                      ELITE
+                    </Text>
+                  </View>
+                ) : null}
               </View>
             ) : null}
             <Text
-              numberOfLines={1}
-              style={[text(16.5, 'Bold', 1.2), { color: palette.ink }]}
+              numberOfLines={2}
+              style={[text(17, 'Bold', 1.2), { color: palette.ink }]}
             >
               {bar.name}
             </Text>
             <Text
               numberOfLines={1}
-              style={[text(13, 'Regular', 1.3), { color: palette.muted }]}
+              style={[
+                text(13.5, 'Regular', 1.3),
+                { color: palette.muted, marginTop: 3 }
+              ]}
             >
               {bar.neighborhood} · {distance(bar.distanceKm)}
             </Text>
@@ -558,9 +588,24 @@ export function LiveGameCard({
 }) {
   return (
     <View style={styles.liveCard}>
+      {/* A trama de pontos do placar (`.qlv`). */}
+      <Svg style={styles.liveDots} pointerEvents="none">
+        <Defs>
+          <Pattern
+            id="placar"
+            width={7}
+            height={7}
+            patternUnits="userSpaceOnUse"
+          >
+            <Circle cx={3.5} cy={3.5} r={1.2} fill="rgba(241,238,230,.07)" />
+          </Pattern>
+        </Defs>
+        <Rect width="100%" height="100%" fill="url(#placar)" />
+      </Svg>
       <View style={styles.liveHead}>
-        <View style={[styles.liveTag, { backgroundColor: LIVE }]}>
-          <Text style={[styles.mono10, { color: PAPER }]}>● AO VIVO</Text>
+        <View style={[styles.boardTag, { backgroundColor: '#f3421d' }]}>
+          <View style={styles.boardTagDot} />
+          <Text style={[styles.boardTagText, { color: INK }]}>AO VIVO</Text>
         </View>
         <Text style={[styles.mono11, { color: '#aaa9a4', flex: 1 }]}>
           começou {formatTime(game.startsAt)}
@@ -572,7 +617,13 @@ export function LiveGameCard({
           {game.championship.toUpperCase()}
         </Text>
       </View>
-      <GameTitle title={game.title} size={30} color={PAPER} accent={ACID} />
+      <GameTitle
+        title={game.title}
+        size={32}
+        color={PAPER}
+        accent="#6a6a63"
+        cross={0.625}
+      />
       {bars.map((bar) => (
         <Pressable
           key={bar.barId}
@@ -585,19 +636,39 @@ export function LiveGameCard({
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text
               numberOfLines={1}
-              style={[text(14.5, 'Bold', 1.2), { color: PAPER }]}
+              style={[text(14, 'Bold', 1.25), { color: PAPER }]}
             >
               {bar.name}
             </Text>
             <Text
               numberOfLines={1}
-              style={[text(12.5, 'Regular', 1.3), { color: '#aaa9a4' }]}
+              style={[text(12, 'Regular', 1.3), { color: '#aaa9a4' }]}
             >
-              {bar.neighborhood} · {distance(bar.distanceKm)}
+              {[
+                bar.neighborhood,
+                distance(bar.distanceKm),
+                bar.onBigScreen && bar.withSound
+                  ? 'telão e som'
+                  : bar.onBigScreen
+                    ? 'telão'
+                    : bar.withSound
+                      ? 'som'
+                      : null
+              ]
+                .filter(Boolean)
+                .join(' · ')}
             </Text>
           </View>
           {bar.going ? (
-            <GoingCount count={bar.going.count} color={ACID} />
+            // `.qn`: o número em Anton acid e o rótulo em duas linhas.
+            <View style={styles.liveCount}>
+              <Text style={styles.liveNumber}>
+                {bar.going.count.toLocaleString('pt-BR')}
+              </Text>
+              <Text style={styles.liveLabel}>
+                {bar.going.count === 1 ? 'VAI' : 'VÃO'}
+              </Text>
+            </View>
           ) : null}
         </Pressable>
       ))}
@@ -888,18 +959,19 @@ const styles = StyleSheet.create({
   dayStretch: { flex: 1, alignItems: 'center' },
   gameRow: { gap: 8, paddingHorizontal: 16 },
   game: {
-    width: 182,
+    width: 208,
+    height: 64,
     paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 14,
-    gap: 4,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    justifyContent: 'space-between',
     shadowOpacity: 1,
     shadowRadius: 0,
     shadowOffset: { width: 0, height: 3 }
   },
-  gameKicker: { fontFamily: MONO, fontSize: 11 },
-  gameLine: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  gameCount: { fontFamily: MONO, fontSize: 13 },
+  gameKicker: { fontFamily: MONO, fontSize: 11.5, marginVertical: -1.7 },
+  gameLine: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
+  gameCount: { fontFamily: MONO, fontSize: 12 },
   anton: {
     fontFamily: 'Anton',
     textTransform: 'uppercase',
@@ -915,26 +987,42 @@ const styles = StyleSheet.create({
     gap: 7
   },
   liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: LIVE },
-  screens: { flexDirection: 'row', gap: 10, marginTop: 2 },
+  screens: { flexDirection: 'row', gap: 6, marginTop: 7 },
   screen: { flexDirection: 'row', gap: 4, alignItems: 'center' },
   mono11: { fontFamily: MONO, fontSize: 11 },
   mono10: { fontFamily: MONO, fontSize: 10, letterSpacing: 0.5 },
   goingNumber: {
     fontFamily: MONO,
-    fontSize: 18,
+    fontSize: 14,
     fontVariant: ['tabular-nums'],
-    marginBottom: -2
+    marginVertical: -2
+  },
+  goingLabel: {
+    fontFamily: MONO,
+    fontSize: 10.5,
+    letterSpacing: 0.63,
+    marginVertical: -1.6
   },
   card: {
     flexDirection: 'row',
     gap: 12,
-    padding: 10,
-    borderRadius: 18,
-    borderWidth: StyleSheet.hairlineWidth,
+    padding: 12,
+    borderRadius: 20,
     alignItems: 'center'
   },
-  photo: { width: 76, height: 76, borderRadius: 12 },
+  photo: { width: 84, height: 84, borderRadius: 14 },
   tags: { flexDirection: 'row', gap: 6 },
+  // `.tag` do redesign: 24 de altura, mono 11 em caixa alta.
+  boardTag: {
+    height: 24,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6
+  },
+  boardTagDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: INK },
+  boardTagText: { fontFamily: MONO, fontSize: 11, letterSpacing: 0.77 },
   liveTag: {
     alignSelf: 'flex-start',
     paddingVertical: 3,
@@ -980,14 +1068,44 @@ const styles = StyleSheet.create({
   },
   liveCard: {
     backgroundColor: '#1c1c18',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(232,50,12,.55)',
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: 'rgba(243,66,29,.5)',
     padding: 14,
-    gap: 14
+    gap: 10,
+    shadowColor: '#000',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  },
+  // A trama dentro da borda arredondada (o card fica sem `overflow`, pela sombra).
+  liveDots: {
+    ...StyleSheet.absoluteFill,
+    borderRadius: 22.5,
+    overflow: 'hidden'
   },
   liveHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  liveBar: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  liveBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(241,238,230,.1)'
+  },
+  liveCount: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  liveNumber: {
+    fontFamily: 'Anton',
+    fontSize: 32,
+    color: ACID,
+    marginVertical: -7.8
+  },
+  liveLabel: {
+    fontFamily: MONO,
+    fontSize: 9.5,
+    letterSpacing: 0.57,
+    color: '#aaa9a4'
+  },
   nudge: {
     flexDirection: 'row',
     alignItems: 'center',
