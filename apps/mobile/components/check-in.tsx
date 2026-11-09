@@ -23,6 +23,7 @@ import {
   Text,
   text
 } from '@/components/ui'
+import { useWithAccount } from '@/lib/account'
 import { trpc } from '@/lib/trpc'
 
 /*
@@ -49,8 +50,10 @@ export function CheckInCard({
   const [phase, setPhase] = useState<Phase>('idle')
   const [error, setError] = useState<string | null>(null)
   const checkIn = useMutation(trpc.attendance.checkIn.mutationOptions())
+  // Sem conta, o check-in leva ao "Entrar" (o app abre aberto).
+  const withAccount = useWithAccount()
 
-  const run = async () => {
+  const check = async () => {
     setError(null)
     setPhase('locating')
     try {
@@ -128,7 +131,7 @@ export function CheckInCard({
             accessibilityRole="button"
             accessibilityState={{ busy: phase !== 'idle' }}
             disabled={phase !== 'idle'}
-            onPress={run}
+            onPress={() => withAccount(check)}
             style={[
               styles.button,
               { backgroundColor: palette.dark ? ACID : INK }
