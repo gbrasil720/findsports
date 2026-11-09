@@ -61,6 +61,7 @@ import { resolvePublicGallery } from '../lib/bar-gallery'
 import { canShowBarMenu, resolvePublicBarMenu } from '../lib/bar-menu'
 import { readBarsWithoutGame } from '../lib/bars-without-game'
 import { readCheckIn } from '../lib/check-in'
+import { normalizarCidade } from '../lib/city-match'
 import {
   getSubscriptionStanding,
   issuesCounterCode,
@@ -146,6 +147,10 @@ const ownerOffAirReason = (standing: SubscriptionStanding | null) =>
       : null
 
 const cacheEsportes = createTtlCache<(typeof sport.$inferSelect)[]>({
+  ttlMs: CATALOGO_TTL_MS
+})
+/** Bares no ar por cidade (nome normalizado e UF), para ordenar as sugestões. */
+const cacheBaresPorCidade = createTtlCache<Map<string, number>>({
   ttlMs: CATALOGO_TTL_MS
 })
 const cacheTimes = createTtlCache<
@@ -416,6 +421,81 @@ export const pubsRouter = router({
       live: Boolean(game.live)
     }))
   }),
+
+  /**
+   * O que o onboarding do app mostra em cada escolha (rodada 2 do redesign):
+   * por esporte, quantos jogos há nos próximos 7 dias nos bares no ar (e o
+   * próximo, para a F1 dizer o GP); por time, o próximo jogo e quantos na
+   * semana. Aberta e sem localização: o onboarding pede onde só depois.
+   */
+  onboardingHints: publicProcedure
+    .input(
+      z.object({
+        teamIds: z.array(z.string().uuid()).max(60).default([])
+      })
+    )
+    .query(async ({ input }) => {
+      const week = sql`(${eventNotEndedSql('e')} AND e.starts_at < ${utcNowSql()} + interval '7 days')`
+      const sports = await db.execute<{
+        sport_id: string
+        games: number
+        next_title: string | null
+      }>(sql`
+        SELECT g.sport_id, count(*)::int AS games,
+          (array_agg(g.title ORDER BY g.starts_at))[1] AS next_title
+        FROM (
+          SELECT DISTINCT e.sport_id, e.starts_at,
+            ${gameTitle({
+              id: sql`e.id`,
+              participantFreeText: sql`e.participant_free_text`,
+              championship: sql`e.championship`
+            })} AS title
+          FROM event e JOIN bar b ON b.id = e.bar_id
+          WHERE b.is_active AND e.published_at IS NOT NULL AND ${week}
+        ) g
+        GROUP BY g.sport_id
+      `)
+      const teams = input.teamIds.length
+        ? await db.execute<{
+            team_id: string
+            games: number
+            next_at: string
+            next_title: string
+          }>(sql`
+            SELECT g.team_id, count(*)::int AS games, min(g.starts_at) AS next_at,
+              (array_agg(g.title ORDER BY g.starts_at))[1] AS next_title
+            FROM (
+              SELECT DISTINCT ep.team_id, e.starts_at,
+                ${gameTitle({
+                  id: sql`e.id`,
+                  participantFreeText: sql`e.participant_free_text`,
+                  championship: sql`e.championship`
+                })} AS title
+              FROM event e
+              JOIN bar b ON b.id = e.bar_id
+              JOIN event_participants ep ON ep.event_id = e.id
+              WHERE b.is_active AND e.published_at IS NOT NULL AND ${week}
+                AND ep.team_id IN (${sql.join(
+                  input.teamIds.map((id) => sql`${id}`),
+                  sql`, `
+                )})
+            ) g
+            GROUP BY g.team_id
+          `)
+        : { rows: [] }
+      return {
+        sports: sports.rows.map((row) => ({
+          sportId: row.sport_id,
+          games: Number(row.games),
+          next: row.next_title
+        })),
+        teams: teams.rows.map((row) => ({
+          teamId: row.team_id,
+          games: Number(row.games),
+          next: { title: row.next_title, startsAt: utcIso(row.next_at) }
+        }))
+      }
+    }),
 
   /**
    * A régua do Explorar do web (WEB-501): os jogos de um dia de Brasília
@@ -984,7 +1064,14 @@ export const pubsRouter = router({
 
   getMyTeams: fanProcedure.query(async ({ ctx }) => {
     const teams = await db
-      .select({ id: team.id, name: team.name, sportId: team.sportId })
+      .select({
+        id: team.id,
+        name: team.name,
+        sportId: team.sportId,
+        // WEB-520: o GP da F1 vale para o aviso, não para "Torce para".
+        kind: team.kind,
+        catalogKey: team.catalogKey
+      })
       .from(userFavoriteTeams)
       .innerJoin(team, eq(team.id, userFavoriteTeams.teamId))
       .where(eq(userFavoriteTeams.userId, ctx.session.user.id))
@@ -1060,10 +1147,43 @@ export const pubsRouter = router({
       return { ...pagina, bars: await toBarCards(pagina.bars) }
     }),
 
-  /** Sugestões de cidade para o onboarding do app (ver `suggestSearchCities`). */
+  /**
+   * Sugestões de cidade para o onboarding do app (ver `suggestSearchCities`),
+   * com quantos bares no ar cada uma tem: as que têm mais vêm antes ("sao"
+   * traz São Paulo, não São Benedito), como a lista do desenho (rodada 2).
+   */
   searchCities: publicProcedure
     .input(z.object({ query: z.string().trim().min(1).max(100) }))
-    .query(({ input }) => suggestSearchCities(input.query)),
+    .query(async ({ input }) => {
+      const [candidates, counts] = await Promise.all([
+        suggestSearchCities(input.query, 400),
+        cacheBaresPorCidade.get('todos', async () => {
+          const rows = await db.execute<{
+            city: string
+            uf: string | null
+            bars: number
+          }>(sql`
+            SELECT city, uf, count(*)::int AS bars FROM bar
+            WHERE is_active GROUP BY city, uf
+          `)
+          const map = new Map<string, number>()
+          for (const row of rows.rows) {
+            const key = `${normalizarCidade(row.city)}|${row.uf ?? ''}`
+            map.set(key, (map.get(key) ?? 0) + Number(row.bars))
+          }
+          return map
+        })
+      ])
+      const barsOf = (city: { name: string; uf: string }) =>
+        counts.get(`${normalizarCidade(city.name)}|${city.uf}`) ??
+        counts.get(`${normalizarCidade(city.name)}|`) ??
+        0
+      return candidates
+        .map((city, order) => ({ ...city, bars: barsOf(city), order }))
+        .sort((a, b) => b.bars - a.bars || a.order - b.order)
+        .slice(0, 8)
+        .map(({ order: _order, ...city }) => city)
+    }),
 
   /**
    * Quantos bares no ar, dentro do raio, têm jogo hoje (dia de Brasília). É
