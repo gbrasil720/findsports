@@ -807,116 +807,67 @@ export function BarDetail({
       </>
     ) : null
   ) : null
+  // "O que dizem" (`.nota`, `.pos`, `.quote` do redesign): a nota grande em
+  // Anton, o que pesou em pílulas (acid quem voltaria, cinza quem não) e os
+  // comentários.
   const sRating = data ? (
     data.rating ? (
       <>
-        <Heading
-          small={wide}
-          title="O que dizem"
-          aside={`${data.rating.stars !== null ? `★ ${data.rating.stars.toLocaleString('pt-BR', { minimumFractionDigits: 1 })} · ` : ''}${data.rating.total} ${data.rating.total === 1 ? 'avaliação' : 'avaliações'}`}
-        />
-        <View>
-          <View
-            style={[
-              styles.scoreShadow,
-              { backgroundColor: palette.dark ? '#000' : INK }
-            ]}
-          />
-          <View style={styles.score}>
-            <Text style={styles.scoreNumber}>{data.rating.percentage}%</Text>
-            <Text style={[text(13.5, 'SemiBold', 1.35), styles.scoreText]}>
-              dos torcedores voltariam para ver outro jogo aqui
+        <Heading small={wide} title="O que dizem" />
+        <View style={styles.nota}>
+          <Text style={[styles.notaBig, { color: palette.ink }]}>
+            {data.rating.stars !== null
+              ? data.rating.stars.toLocaleString('pt-BR', {
+                  minimumFractionDigits: 1,
+                  maximumFractionDigits: 1
+                })
+              : `${data.rating.percentage}%`}
+          </Text>
+          <View style={{ flex: 1, paddingBottom: 4 }}>
+            <Text style={[text(15.5, 'Bold', 1.3), { color: palette.ink }]}>
+              {data.rating.stars !== null
+                ? `${data.rating.total} ${data.rating.total === 1 ? 'avaliação verificada' : 'avaliações verificadas'}`
+                : 'voltariam para ver outro jogo aqui'}
+            </Text>
+            <Text style={[text(14, 'Regular', 1.4), { color: palette.muted }]}>
+              Só conta quem validou o código ou fez check-in.
             </Text>
           </View>
         </View>
+        {data.ratingReasons &&
+        (data.ratingReasons.positive.length ||
+          data.ratingReasons.negative.length) ? (
+          <View style={styles.pos}>
+            {[
+              ...data.ratingReasons.positive.map((id) => [true, id] as const),
+              ...data.ratingReasons.negative.map((id) => [false, id] as const)
+            ].map(([back, id]) => (
+              <View
+                key={`${back}:${id}`}
+                accessibilityLabel={`${back ? 'Quem voltaria' : 'Quem não voltaria'}: ${reasonLabel(id)}`}
+                style={[
+                  styles.posPill,
+                  { backgroundColor: back ? ACID : palette.mark }
+                ]}
+              >
+                <Text
+                  style={[
+                    text(13, 'SemiBold', 1.2),
+                    { color: back ? INK : palette.ink }
+                  ]}
+                >
+                  {reasonLabel(id)}
+                </Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
         {data.reviews.length ? (
           <Card soft>
             <View style={styles.list}>
               {data.reviews.map((review, index) => (
                 <Review key={review.id} review={review} divided={index > 0} />
               ))}
-            </View>
-          </Card>
-        ) : null}
-        {data.ratingReasons &&
-        (data.ratingReasons.positive.length ||
-          data.ratingReasons.negative.length) ? (
-          <Card soft>
-            <View style={styles.list}>
-              {(
-                [
-                  [true, data.ratingReasons.positive],
-                  [false, data.ratingReasons.negative]
-                ] as const
-              )
-                .filter(([, ids]) => ids.length)
-                .map(([back, ids], index) => (
-                  <View
-                    key={String(back)}
-                    style={[
-                      styles.said,
-                      index > 0 && {
-                        borderTopWidth: 1,
-                        borderTopColor: palette.line
-                      }
-                    ]}
-                  >
-                    <View style={styles.saidHead}>
-                      <View
-                        style={[
-                          styles.saidMark,
-                          {
-                            backgroundColor: back ? ACID : palette.mark
-                          }
-                        ]}
-                      >
-                        <Icon
-                          name={back ? 'fan' : 'close'}
-                          size={15}
-                          color={back ? INK : palette.ink}
-                          accent={back ? INK : palette.accent}
-                        />
-                      </View>
-                      <Text
-                        style={[
-                          text(15, 'Bold', 1.3),
-                          { color: palette.ink, flex: 1 }
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {back ? 'Quem voltaria' : 'Quem não voltaria'}
-                      </Text>
-                      <Text
-                        style={[
-                          text(12.5, 'Regular', 1.4),
-                          { color: palette.muted }
-                        ]}
-                      >
-                        mais citados
-                      </Text>
-                    </View>
-                    <View style={styles.chips}>
-                      {ids.map((id) => (
-                        <View
-                          key={id}
-                          style={[
-                            styles.reason,
-                            { backgroundColor: palette.mark }
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              text(12.5, 'Bold', 1.3),
-                              { color: palette.ink }
-                            ]}
-                          >
-                            {reasonLabel(id)}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                ))}
             </View>
           </Card>
         ) : null}
@@ -1880,6 +1831,15 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums']
   },
   label: { paddingVertical: 5, paddingHorizontal: 8, borderRadius: 6 },
+  nota: { flexDirection: 'row', alignItems: 'flex-end', gap: 14 },
+  notaBig: { fontFamily: 'Anton', fontSize: 72, marginVertical: -17.5 },
+  pos: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  posPill: {
+    height: 30,
+    paddingHorizontal: 11,
+    borderRadius: 15,
+    justifyContent: 'center'
+  },
   hours: {
     flexDirection: 'row',
     justifyContent: 'space-between',
