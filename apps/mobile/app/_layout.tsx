@@ -109,6 +109,10 @@ export default function Layout() {
           <SplashDone value={splashDone}>
             <ExploreStateProvider>
               <Stack screenOptions={{ headerShown: false }}>
+                {/* "O jogo de hoje" troca para o Explorar sem volta: é troca,
+                não avanço, então fade em vez de deslizar (rodada 1). */}
+                <Stack.Screen name="hoje" options={{ animation: 'fade' }} />
+                <Stack.Screen name="(fan)" options={{ animation: 'fade' }} />
                 {/* "Vou assistir aqui" (3d): folha nativa do iOS, quase alta. Fundo
                 transparente: é o que deixa o iOS 26 desenhar o vidro dela. */}
                 <Stack.Screen

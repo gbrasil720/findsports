@@ -24,6 +24,7 @@ import Animated, {
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
+  withDelay,
   withSpring,
   withTiming
 } from 'react-native-reanimated'
@@ -292,7 +293,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   const top = insets.top + 8
   const [selected, setSelected] = useState<string | null>(null)
   // O jogo tocado em "O jogo de hoje" chega pela URL (`?jogo=`).
-  const { jogo } = useLocalSearchParams<{ jogo?: string }>()
+  const { jogo, de } = useLocalSearchParams<{ jogo?: string; de?: string }>()
   const { setGame } = state
   useEffect(() => {
     if (!jogo) return
@@ -540,10 +541,30 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   }, [stale, fresh])
   const listFade = useAnimatedStyle(() => ({ opacity: fresh.get() }))
 
-  const y = useSharedValue(resting)
+  // Vindo de "O jogo de hoje", a folha sobe de baixo, a borda por onde é
+  // arrastada (mola sem passo além); com menos movimento, já parada.
+  const [arriving] = useState(de === 'hoje' && phone && !reduced)
+  const y = useSharedValue(arriving ? height - top : resting)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: só na chegada
+  useEffect(() => {
+    // Depois do fade da troca, para a subida ser vista.
+    if (arriving)
+      y.set(
+        withDelay(
+          FADE_MS,
+          withSpring(resting, { duration: 300, dampingRatio: 1 })
+        )
+      )
+  }, [])
   // A outra aba pode ter movido a folha: esta acompanha ao voltar.
   // biome-ignore lint/correctness/useExhaustiveDependencies: só quando a folha assenta
+  // Na chegada a mola da subida é quem leva a folha ao lugar.
+  const synced = useRef(arriving)
   useEffect(() => {
+    if (synced.current) {
+      synced.current = false
+      return
+    }
     if (Math.abs(y.get() - resting) > 1) y.set(resting)
   }, [resting])
   const start = useSharedValue(0)
@@ -653,7 +674,13 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   // Segue o bar que está na lista: escolhido num jogo que saiu da tela
   // (outro jogo, outro dia) não esconde a folha.
   const showsFloat = phone && chosen !== null
+  const placed = useRef(arriving)
   useEffect(() => {
+    // Na chegada, a subida já leva a folha ao meio.
+    if (placed.current) {
+      placed.current = false
+      return
+    }
     if (showsFloat) settle(height - top)
     else if (!expanded) settle(snaps[1])
   }, [showsFloat])
@@ -1642,6 +1669,9 @@ const FEW_BARS = 5
  * segura: a faixa livre do mapa começa depois dele.
  */
 const HEAD = 172
+
+/** O fade da troca de "O jogo de hoje" para o Explorar. */
+const FADE_MS = 300
 
 /**
  * A tela de fora do Z Flip 8 (a01j, regra 07): o bar mais perto com o jogo em

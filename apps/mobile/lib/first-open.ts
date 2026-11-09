@@ -19,5 +19,6 @@ export const firstOpenSeen = () =>
 export function leaveFirstOpen(params?: Record<string, string>) {
   SecureStore.setItemAsync(KEY, '1').catch(() => {})
   if (router.canDismiss()) router.dismissAll()
-  router.replace({ pathname: '/explore', params })
+  // `de=hoje`: o Explorar faz a folha subir de baixo, na chegada.
+  router.replace({ pathname: '/explore', params: { ...params, de: 'hoje' } })
 }
