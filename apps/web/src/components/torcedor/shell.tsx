@@ -94,6 +94,15 @@ function useAcoes(avisar: (texto: string) => void) {
         else avisarNaProxima(texto)
         await navigate({ to })
       }
+      // A ação roda logo que a tela monta, junto com as leituras dela (os
+      // favoritos, os meus jogos). Uma leitura que saiu antes da gravação volta
+      // com o dado velho depois da invalidação e fica como novo por 60 s: Seus
+      // bares abria com "Nenhum bar salvo". Cancelar antes de invalidar descarta
+      // essa resposta, e a próxima tela busca de novo.
+      const recarregar = async () => {
+        await queryClient.cancelQueries()
+        await queryClient.invalidateQueries()
+      }
       try {
         if (acao.tipo === 'app') {
           const { email } = await avisarApp.mutateAsync()
@@ -108,7 +117,7 @@ function useAcoes(avisar: (texto: string) => void) {
             eventId: acao.id,
             attending: true
           })
-          await queryClient.invalidateQueries()
+          await recarregar()
           const comCodigo = Boolean(feito.code)
           if (nova)
             return irPara(
@@ -127,7 +136,7 @@ function useAcoes(avisar: (texto: string) => void) {
         }
         if (acao.tipo === 'fav') {
           await salvar.mutateAsync({ barId: acao.id })
-          await queryClient.invalidateQueries()
+          await recarregar()
           if (nova)
             return irPara('Bar salvo em Seus bares.', destinoContaNova(acao))
           avisar('Bar salvo em Seus bares.')
