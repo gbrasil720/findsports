@@ -28,42 +28,44 @@ export const FLOW: Step[] = [
   {
     route: '',
     name: 'Boas-vindas',
-    hint: 'O que a Onside faz',
-    ask: 'Vamos achar os melhores bares pro seu jogo.'
+    hint: 'A sua carteirinha',
+    ask: 'Sua carteirinha de torcedor'
   },
   {
     route: 'sports',
     name: 'Esportes',
     hint: 'O que você acompanha',
-    ask: 'Quais esportes você curte?'
+    ask: 'O que mais assiste?'
   },
   {
     route: 'teams',
     name: 'Times',
     hint: 'Para avisar dos jogos',
-    ask: 'Quem você acompanha?',
-    // Times são opcionais: o "Pular" do passo leva à distância.
-    skip: { to: '/onboarding/distance', replace: false }
+    ask: 'E pra quem torce?',
+    // Times são opcionais: o "Pular" do passo leva ao onde.
+    skip: { to: '/onboarding/location', replace: false }
+  },
+  {
+    // Rodada 2 (revenue-centric-design): a localização, o pedido mais caro,
+    // vem depois do investimento, com a carteirinha quase cheia.
+    route: 'location',
+    name: 'Onde',
+    hint: 'Para achar os mais perto',
+    ask: 'Onde você assiste?',
+    // "Prefiro escolher a cidade": segue sem a localização.
+    skip: { to: '/onboarding/distance', replace: true }
   },
   {
     route: 'distance',
     name: 'Distância',
     hint: 'Até onde você vai',
-    ask: 'Quão longe você topa ir?'
-  },
-  {
-    route: 'location',
-    name: 'Localização',
-    hint: 'Para achar os mais perto',
-    ask: 'Usar sua localização?',
-    // O "Agora não" do passo: segue sem a localização.
-    skip: { to: '/onboarding/review', replace: true }
+    ask: 'Até onde você vai?'
   },
   {
     route: 'review',
     name: 'Revisão',
-    hint: 'Confira e comece',
-    ask: 'Pronto para salvar'
+    hint: 'Confira e valide',
+    ask: 'Confere e valida'
   }
 ]
 

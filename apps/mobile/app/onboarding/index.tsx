@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router'
 import { StyleSheet, View } from 'react-native'
 import {
+  OnboardingCard,
   OnboardingTop,
   StepFooter,
   useFrameKind,
@@ -10,7 +11,6 @@ import {
   CARD,
   DROP,
   FG,
-  HOT,
   Icon,
   LINE,
   PillButton,
@@ -28,9 +28,9 @@ import {
  */
 
 const FEATURES = [
-  { icon: 'fire', label: 'Veja jogos ao vivo perto de você' },
-  { icon: 'map', label: 'Bares dentro do seu raio' },
-  { icon: 'people', label: 'Leve a galera junto' }
+  { icon: 'calendar', label: 'Os jogos dos seus times aparecem primeiro' },
+  { icon: 'bell', label: 'Aviso quando um bar perto passar o jogo deles' },
+  { icon: 'medal', label: 'Conquistas e ranking com o seu nome' }
 ] as const
 
 export default function Welcome() {
@@ -39,11 +39,8 @@ export default function Welcome() {
   // Fora do celular, com coluna larga, o título corre como no design
   // ("Vamos achar os melhores / bares pro seu jogo.").
   const title = useStepTitle(
-    [
-      ['Vamos achar os ', 'melhores'],
-      ['', 'bares', ' pro seu jogo.']
-    ],
-    [['Vamos achar os'], ['', 'melhores bares'], ['pro seu jogo.']]
+    [['Sua carteirinha ', 'de torcedor']],
+    [['Sua carteirinha'], ['', 'de torcedor']]
   )
   const router = useRouter()
   return (
@@ -61,16 +58,12 @@ export default function Welcome() {
       }
     >
       <OnboardingTop step={1} />
-      <View style={{ marginTop: 20, gap: 6 }}>
-        <Text style={[text(14, 'Bold'), { color: HOT }]}>
-          É torcedor? Chegou no lugar certo.
-        </Text>
-        {table ? null : <Title lines={title} size={42} />}
-      </View>
-      <Text style={[text(16.5, 'Regular', 1.48), { color: SUB }]}>
-        Em 3 passos a gente calibra sua busca: esportes favoritos, quem você
-        acompanha e raio de localização.
-      </Text>
+      {table ? null : (
+        <View style={{ marginTop: 8 }}>
+          <Title lines={title} size={40} />
+        </View>
+      )}
+      {table ? null : <OnboardingCard lit={null} step={1} />}
       <View style={{ gap: 8, marginTop: 6 }}>
         {FEATURES.map((feature, index) => (
           <View key={feature.label}>
@@ -95,6 +88,14 @@ export default function Welcome() {
           </View>
         ))}
       </View>
+      <Text
+        style={[
+          text(12.5),
+          { color: SUB, textAlign: 'center', fontFamily: 'GeistMono-SemiBold' }
+        ]}
+      >
+        3 perguntas · 30 segundos
+      </Text>
     </Screen>
   )
 }

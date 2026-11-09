@@ -12,8 +12,14 @@ import MapView from 'react-native-maps'
 import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { MeDot, RadiusCircle } from '@/components/explore'
+import { useExploreState } from '@/components/explore-state'
 import { EASE, haptic } from '@/components/motion'
-import { useFrameKind, useOnboarding, usePane } from '@/components/onboarding'
+import {
+  OnboardingCard,
+  useFrameKind,
+  useOnboarding,
+  usePane
+} from '@/components/onboarding'
 import {
   ACID,
   BG,
@@ -69,10 +75,16 @@ export default function LocationAsk() {
   const middle = insets.top + height / 2
   const span = ((choices.radius * 2) / 111) * (height / RING)
 
-  const proceed = () => router.replace('/onboarding/review')
+  // Com ou sem a localização, segue para o raio; sem ela, a distância pede
+  // a cidade.
+  const { locate } = useExploreState()
+  const proceed = () => router.replace('/onboarding/distance')
   const allow = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync()
-    if (status === 'granted') haptic.success()
+    if (status === 'granted') {
+      haptic.success()
+      await locate()
+    }
     proceed()
   }
 
@@ -109,6 +121,19 @@ export default function LocationAsk() {
       <View style={styles.area} pointerEvents="none">
         <MeDot />
       </View>
+      {/* A carteirinha com a Base acesa, por cima do mapa (rodada 2). */}
+      {card ? null : (
+        <View
+          style={{
+            position: 'absolute',
+            top: insets.top + 12,
+            left: 18,
+            right: 18
+          }}
+        >
+          <OnboardingCard lit="base" step={4} />
+        </View>
+      )}
       <Animated.View
         entering={SHEET_IN}
         style={[
@@ -127,25 +152,30 @@ export default function LocationAsk() {
             </View>
           </View>
           <View style={{ flex: 1 }}>
-            <Title lines={[['Usar sua localização?']]} size={30} />
+            <Title lines={[['Onde você'], ['', 'assiste?']]} size={30} />
           </View>
         </View>
         <Text style={[text(15.5, 'Regular', 1.48), { color: SUB }]}>
-          Com ela, a distância conta a partir de onde você está. Sem ela, a
-          busca parte do centro {center}.
+          Com ela, os bares perto aparecem pela distância de onde você está. Sem
+          ela, a busca parte do centro {center}.
         </Text>
         <View style={{ gap: 6 }}>
-          {['Só enquanto você usa o app', 'Nunca aparece para os bares'].map(
-            (line) => (
-              <View key={line} style={styles.point}>
-                <Icon name="check" size={15} />
-                <Text style={[text(13.5), { color: FG }]}>{line}</Text>
-              </View>
-            )
-          )}
+          {[
+            'Fica no aparelho. Não aparece no perfil nem para amigos.',
+            'Só para medir a distância até o bar e montar o mapa.'
+          ].map((line) => (
+            <View key={line} style={styles.point}>
+              <Icon name="check" size={15} />
+              <Text style={[text(13.5), { color: FG }]}>{line}</Text>
+            </View>
+          ))}
         </View>
         <View style={{ marginTop: 6 }}>
-          <PillButton label="Permitir localização" onPress={allow} />
+          <PillButton
+            label="Usar minha localização"
+            leading="pin"
+            onPress={allow}
+          />
         </View>
         <Pressable
           accessibilityRole="button"
@@ -156,7 +186,7 @@ export default function LocationAsk() {
           <Text
             style={[text(14.5, 'Bold'), { color: FG, textAlign: 'center' }]}
           >
-            Agora não
+            Prefiro escolher a cidade
           </Text>
         </Pressable>
       </Animated.View>

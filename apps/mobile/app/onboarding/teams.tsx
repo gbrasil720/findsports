@@ -1,8 +1,9 @@
 import { useMutation, useQueries, useQuery } from '@tanstack/react-query'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
 import { Pressable, View } from 'react-native'
 import {
+  OnboardingCard,
   OnboardingTop,
   SportBadge,
   StepFooter,
@@ -123,6 +124,8 @@ export default function Teams() {
   )
 
   const count = choices.teams.length
+  // Veio do "Trocar" da revisão: "Continuar" devolve para lá.
+  const { volta } = useLocalSearchParams<{ volta?: string }>()
   return (
     <Screen
       gap={14}
@@ -142,13 +145,16 @@ export default function Teams() {
                   ? 'Pular'
                   : `Continuar · ${countLabel(choices.teams)}`
               }
-              onPress={() => router.push('/onboarding/distance')}
+              onPress={() =>
+                volta ? router.back() : router.push('/onboarding/location')
+              }
             />
           )}
         </StepFooter>
       }
     >
       {edit.back ?? <OnboardingTop step={3} />}
+      {edit.editing || table ? null : <OnboardingCard lit="teams" step={3} />}
       {edit.failed ? (
         <Text style={[text(13.5), { color: LIVE }]}>
           Não foi possível salvar. Tente de novo.
@@ -156,11 +162,11 @@ export default function Teams() {
       ) : null}
       {table ? null : (
         <View style={{ marginTop: 8 }}>
-          <Title lines={[['Quem você acompanha?']]} size={36} />
+          <Title lines={[['E pra quem'], ['', 'torce?']]} size={36} />
         </View>
       )}
       <Text style={[text(15), { color: SUB, marginTop: -4 }]}>
-        Opcional — marque quantos quiser em cada esporte, ou pule.
+        Opcional. Avisamos quando um bar perto marcar jogo deles.
       </Text>
       <Field
         bare

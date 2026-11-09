@@ -23,6 +23,8 @@ import Animated, {
   useSharedValue,
   withTiming
 } from 'react-native-reanimated'
+import { useExploreState } from '@/components/explore-state'
+import { type CardField, FanCard } from '@/components/fan-card'
 import { Glass } from '@/components/glass'
 import { EASE, haptic, POP } from '@/components/motion'
 import {
@@ -146,7 +148,8 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     }
   }, [userId, draft])
   useEffect(() => {
-    if (editing || !userId) return
+    // A carteirinha validada (`pronto`) vem depois do envio: sem rascunho.
+    if (editing || !userId || pathname.endsWith('/pronto')) return
     writeDraft({ userId, route: FLOW[stepOf(pathname)].route, choices })
   }, [editing, userId, pathname, choices])
   return (
@@ -263,7 +266,7 @@ export function useStepTitle(
   return pane.width - 2 * pane.side - 36 >= 400 ? one : two
 }
 
-/** "FU", "BA", "F1", "MMA": a sigla grande atrás do nome do esporte. */
+/** "FUT", "BAS", "F1", "MMA": a sigla do esporte (tiles e carteirinha). */
 export function sportMark(name: string) {
   const acronym = name.match(/\b[A-Z]{2,}\b/)
   if (acronym) return acronym[0]
@@ -275,7 +278,39 @@ export function sportMark(name: string) {
       .map((w) => w[0])
       .join('')
       .toUpperCase()
-  return name.slice(0, 2).toUpperCase()
+  return name.slice(0, 3).toUpperCase()
+}
+
+/**
+ * A carteirinha do onboarding B (rodada 2): preenche-se com as escolhas, e o
+ * campo do passo acende. O raio só entra no passo dele; a base é o bairro
+ * com a localização, senão a cidade escolhida.
+ */
+export function OnboardingCard({
+  lit,
+  step
+}: {
+  lit: CardField
+  step: number
+}) {
+  const { choices } = useOnboarding()
+  const name = authClient.useSession().data?.user.name ?? ''
+  const sports = useQuery(trpc.pubs.getSports.queryOptions())
+  const { device, district } = useExploreState()
+  return (
+    <FanCard
+      name={name || 'Torcedor'}
+      teams={choices.teams.map((team) => team.name)}
+      sports={(sports.data ?? [])
+        .filter((sport) => choices.sportIds.includes(sport.id))
+        .map((sport) => sportMark(sport.name))}
+      radius={step >= 5 || lit === 'radius' ? choices.radius : null}
+      base={
+        step >= 4 ? (device && district) || choices.city?.name || null : null
+      }
+      lit={lit}
+    />
+  )
 }
 
 // --- Topo -------------------------------------------------------------------

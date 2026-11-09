@@ -1,6 +1,5 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import * as Location from 'expo-location'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
 import {
   Platform,
@@ -12,16 +11,17 @@ import {
 import MapView from 'react-native-maps'
 import Animated from 'react-native-reanimated'
 import { MeDot, RadiusCircle } from '@/components/explore'
+import { useExploreState } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
 import { SWAP } from '@/components/motion'
 import {
+  OnboardingCard,
   OnboardingTop,
   type Radius,
   RadiusTile,
   StepFooter,
   useFrameKind,
-  useOnboarding,
-  useStepTitle
+  useOnboarding
 } from '@/components/onboarding'
 import {
   DROP,
@@ -72,11 +72,12 @@ export default function Distance() {
   // Na mesa a pergunta já está na metade de cima (Adaptativo 09).
   const table = useFrameKind() === 'table'
   // Na coluna estreita (dobrável aberto), quebra onde o design quebra.
-  const title = useStepTitle(
-    [['Quão longe você topa ir?']],
-    [['Quão longe'], ['você topa ir?']],
-    [['Quão longe você topa ir?']]
-  )
+  // Com a localização, o raio conta de onde a pessoa está e a base é o
+  // bairro; sem ela, primeiro a cidade (rodada 2, tela 4b).
+  const { device } = useExploreState()
+  const title: [string, string?, string?][] = device
+    ? [['Até onde'], ['', 'você vai?']]
+    : [['Qual'], ['', 'cidade?']]
   const router = useRouter()
   const dark = useColorScheme() === 'dark'
   const { choices, set } = useOnboarding()
@@ -92,16 +93,16 @@ export default function Distance() {
   })
   const count = useQuery({
     ...trpc.pubs.countTodayNear.queryOptions({
-      lat: choices.city?.lat ?? 0,
-      lng: choices.city?.lng ?? 0,
+      lat: device?.lat ?? choices.city?.lat ?? 0,
+      lng: device?.lng ?? choices.city?.lng ?? 0,
       radiusKm: choices.radius
     }),
-    enabled: !!choices.city,
+    enabled: !!device || !!choices.city,
     // Trocar o raio não apaga a pílula enquanto a contagem nova chega.
     placeholderData: keepPreviousData
   })
 
-  const center = choices.city ?? SAO_PAULO
+  const center = device ?? choices.city ?? SAO_PAULO
   // Graus de latitude na altura do mapa para o círculo sair com `CIRCLE`.
   const span =
     ((choices.radius * 2) / 111) * (MAP_HEIGHT / CIRCLE[choices.radius])
@@ -109,12 +110,9 @@ export default function Distance() {
   // Texto que não é uma cidade da lista não vale: segue sem cidade.
   const pending = typed.trim().length > 0 && picking
 
-  const next = async () => {
-    const { status } = await Location.getForegroundPermissionsAsync()
-    router.push(
-      status === 'undetermined' ? '/onboarding/location' : '/onboarding/review'
-    )
-  }
+  // Veio do "Trocar" da revisão: "Continuar" devolve para lá.
+  const { volta } = useLocalSearchParams<{ volta?: string }>()
+  const next = () => (volta ? router.back() : router.push('/onboarding/review'))
 
   return (
     <Screen
@@ -128,55 +126,60 @@ export default function Distance() {
     >
       <OnboardingTop step={4} />
       {table ? null : (
+        <OnboardingCard
+          lit={device || choices.city ? 'radius' : 'base'}
+          step={4}
+        />
+      )}
+      {table ? null : (
         <View style={{ marginTop: 8 }}>
           <Title lines={title} size={36} />
         </View>
       )}
-      <Text style={[text(15, 'Regular', 1.45), { color: SUB, marginTop: -4 }]}>
-        Sua cidade e a distância definem quais bares aparecem pra você.
-      </Text>
-      <View style={{ gap: 6 }}>
-        <Field
-          label="Sua cidade"
-          icon="pin"
-          placeholder="Ex: São Paulo"
-          autoCorrect={false}
-          value={typed}
-          onChangeText={(value) => {
-            setTyped(value)
-            if (choices.city && value !== label(choices.city))
-              set({ city: null })
-          }}
-        />
-        {picking && (suggestions.data?.length ?? 0) > 0 ? (
-          <Animated.View entering={SWAP} style={styles.suggestions}>
-            {suggestions.data?.map((city) => (
-              <Pressable
-                key={`${city.name}-${city.uf}`}
-                accessibilityRole="button"
-                onPress={() => {
-                  set({ city })
-                  setTyped(label(city))
-                }}
-                style={({ pressed }) => [
-                  styles.suggestion,
-                  pressed && { backgroundColor: PRESSED }
-                ]}
-              >
-                <Text style={[text(15, 'SemiBold'), { color: FG }]}>
-                  {city.name}
-                </Text>
-                <Text style={[text(13), { color: SUB }]}>{city.uf}</Text>
-              </Pressable>
-            ))}
-          </Animated.View>
-        ) : null}
-        <Text style={[text(12.5), { color: SUB }]}>
-          {pending
-            ? 'Escolha a cidade na lista, ou apague para seguir sem ela.'
-            : 'Opcional. Sem a localização do celular, a busca parte do centro dela.'}
-        </Text>
-      </View>
+      {device ? null : (
+        <View style={{ gap: 6 }}>
+          <Field
+            label="Sua cidade"
+            icon="pin"
+            placeholder="Ex: São Paulo"
+            autoCorrect={false}
+            value={typed}
+            onChangeText={(value) => {
+              setTyped(value)
+              if (choices.city && value !== label(choices.city))
+                set({ city: null })
+            }}
+          />
+          {picking && (suggestions.data?.length ?? 0) > 0 ? (
+            <Animated.View entering={SWAP} style={styles.suggestions}>
+              {suggestions.data?.map((city) => (
+                <Pressable
+                  key={`${city.name}-${city.uf}`}
+                  accessibilityRole="button"
+                  onPress={() => {
+                    set({ city })
+                    setTyped(label(city))
+                  }}
+                  style={({ pressed }) => [
+                    styles.suggestion,
+                    pressed && { backgroundColor: PRESSED }
+                  ]}
+                >
+                  <Text style={[text(15, 'SemiBold'), { color: FG }]}>
+                    {city.name}
+                  </Text>
+                  <Text style={[text(13), { color: SUB }]}>{city.uf}</Text>
+                </Pressable>
+              ))}
+            </Animated.View>
+          ) : null}
+          <Text style={[text(12.5), { color: SUB }]}>
+            {pending
+              ? 'Escolha a cidade na lista, ou apague para seguir sem ela.'
+              : 'O mapa abre no centro da cidade.'}
+          </Text>
+        </View>
+      )}
       <View style={styles.mapWrap}>
         <View style={styles.mapShadow} />
         <View style={styles.map}>

@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { View } from 'react-native'
 import { ErrorText } from '@/components/motion'
 import {
+  OnboardingCard,
   OnboardingTop,
   SportTile,
   StepFooter,
@@ -43,12 +44,14 @@ export default function Sports() {
   const router = useRouter()
   const { choices, set } = useOnboarding()
   const edit = useEditing()
+  // Veio do "Trocar" da revisão: "Continuar" devolve para lá.
+  const { volta } = useLocalSearchParams<{ volta?: string }>()
   // Na mesa a pergunta já está na metade de cima (Adaptativo 09).
   const table = useFrameKind() === 'table'
   // Numa linha só quando cabe (fora do celular, coluna larga).
   const title = useStepTitle(
-    [['Quais esportes você curte?']],
-    [['Quais esportes'], ['você curte?']]
+    [['O que mais ', 'assiste?']],
+    [['O que mais'], ['', 'assiste?']]
   )
   const query = useQuery(trpc.pubs.getSports.queryOptions())
   const sports = [...(query.data ?? [])].sort(
@@ -88,20 +91,23 @@ export default function Sports() {
             }
             disabled={chosen === 0}
             onPress={() =>
-              router.push(
-                edit.editing
-                  ? {
-                      pathname: '/onboarding/teams',
-                      params: { edit: '1', from: 'sports' }
-                    }
-                  : '/onboarding/teams'
-              )
+              volta
+                ? router.back()
+                : router.push(
+                    edit.editing
+                      ? {
+                          pathname: '/onboarding/teams',
+                          params: { edit: '1', from: 'sports' }
+                        }
+                      : '/onboarding/teams'
+                  )
             }
           />
         </StepFooter>
       }
     >
       {edit.back ?? <OnboardingTop step={2} />}
+      {edit.editing || table ? null : <OnboardingCard lit="sports" step={2} />}
       {table ? null : (
         <View style={{ marginTop: 8 }}>
           <Title lines={title} size={36} />
@@ -111,7 +117,7 @@ export default function Sports() {
         <Text
           style={[text(15, 'Regular', 1.45), { color: SUB, marginTop: -4 }]}
         >
-          Marque tudo que você acompanha — a gente filtra os bares pra você.
+          Vale para os avisos e para a ordem dos jogos.
         </Text>
       )}
       {query.isError ? (
