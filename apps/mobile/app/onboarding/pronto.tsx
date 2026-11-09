@@ -7,7 +7,7 @@ import { dayLabel, Photo } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { cardNumber, FanCard } from '@/components/fan-card'
 import { AcidButton, ObPage } from '@/components/ob-frame'
-import { sportMark } from '@/components/onboarding'
+import { sportMark, useOnboarding } from '@/components/onboarding'
 import { usePalette } from '@/components/theme'
 import { Icon, Text, text } from '@/components/ui'
 import { authClient } from '@/lib/auth-client'
@@ -32,6 +32,9 @@ export default function Pronto() {
   const router = useRouter()
   const palette = usePalette()
   const user = authClient.useSession().data?.user
+  // O que acabou de ser enviado vale antes do servidor: o cache das
+  // preferências podia vir da abertura do app, ainda vazio.
+  const { choices } = useOnboarding()
   const { device, district, localCity } = useExploreState()
   const teams = useQuery({
     ...trpc.pubs.getMyTeams.queryOptions(),
@@ -46,7 +49,8 @@ export default function Pronto() {
     enabled: !!user
   })
   const center = device ?? city.data ?? localCity ?? SAO_PAULO
-  const radius = user?.searchRadiusKm ?? 3
+  const radius = choices.radius || user?.searchRadiusKm || 3
+  const sportList = useQuery(trpc.pubs.getSports.queryOptions())
   const [now] = useState(() => Date.now())
   const board = useQuery(
     trpc.pubs.gameBoard.queryOptions({
@@ -57,10 +61,14 @@ export default function Pronto() {
     })
   )
 
-  const all = teams.data ?? []
+  const all = choices.teams.length ? choices.teams : (teams.data ?? [])
   const clubs = all.filter((team) => team.kind !== 'race').map((t) => t.name)
   const gps = all.filter((team) => team.kind === 'race').map((t) => t.name)
-  const slugs = (prefs.data ?? []).map((pref) => pref.sport.slug)
+  const slugs = choices.sportIds.length
+    ? choices.sportIds.flatMap(
+        (id) => sportList.data?.find((item) => item.id === id)?.slug ?? []
+      )
+    : (prefs.data ?? []).map((pref) => pref.sport.slug)
   const mine = (title: string) => clubs.some((name) => title.includes(name))
   // Os jogos dos times primeiro, depois os dos esportes; até três.
   const row = gameRow(board.data?.games ?? [], null, now)
@@ -112,7 +120,14 @@ export default function Pronto() {
       <FanCard
         name={user?.name ?? 'Torcedor'}
         teams={clubs}
-        sports={(prefs.data ?? []).map((pref) => sportMark(pref.sport.name))}
+        sports={
+          choices.sportIds.length
+            ? choices.sportIds.flatMap((id) => {
+                const sport = sportList.data?.find((item) => item.id === id)
+                return sport ? [sportMark(sport.name)] : []
+              })
+            : (prefs.data ?? []).map((pref) => sportMark(pref.sport.name))
+        }
         radius={`${radius} km`}
         base={(device && district) || city.data?.name || null}
         validated
