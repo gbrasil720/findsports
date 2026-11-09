@@ -2,14 +2,14 @@ import { brasiliaDay } from '@findsports_oficial/db/event-window'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
 import { useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Photo } from '@/components/explore'
+import { Pressable, StyleSheet, View } from 'react-native'
+import { dayLabel, Photo } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { cardNumber, FanCard } from '@/components/fan-card'
+import { AcidButton, ObPage } from '@/components/ob-frame'
 import { sportMark } from '@/components/onboarding'
 import { usePalette } from '@/components/theme'
-import { BlockButton, Icon, Text, text, useStatusBar } from '@/components/ui'
+import { Icon, Text, text } from '@/components/ui'
 import { authClient } from '@/lib/auth-client'
 import { formatTime, SAO_PAULO } from '@/lib/explore'
 import { distance, gameRow } from '@/lib/explore-board'
@@ -17,9 +17,9 @@ import { trpc } from '@/lib/trpc'
 
 /*
  * A carteirinha validada (rodada 2 do redesign, fim do onboarding B): o selo
- * carimbado, o número e "Hoje pra você", os jogos de hoje dos times e
- * esportes escolhidos nos bares perto. Sem jogo, "Nada marcado pros seus
- * times ainda" e o aviso ligado; nada some e nada mostra zero.
+ * carimbado, o número e "Hoje pra você", os jogos de hoje dos times (e dos
+ * esportes) nos bares do raio. Sem jogo, "Nada marcado pros seus times
+ * ainda" e o aviso ligado: nada some e nada mostra zero.
  */
 
 const SINCE = new Date()
@@ -30,9 +30,7 @@ const SINCE = new Date()
 
 export default function Pronto() {
   const router = useRouter()
-  const insets = useSafeAreaInsets()
   const palette = usePalette()
-  useStatusBar(palette.dark ? 'light' : 'dark')
   const user = authClient.useSession().data?.user
   const { device, district, localCity } = useExploreState()
   const teams = useQuery({
@@ -59,187 +57,240 @@ export default function Pronto() {
     })
   )
 
-  const teamNames = (teams.data ?? []).map((team) => team.name)
-  const sportSlugs = (prefs.data ?? []).map((pref) => pref.sport.slug)
-  // Os jogos dos times primeiro; depois os dos esportes; até três.
+  const all = teams.data ?? []
+  const clubs = all.filter((team) => team.kind !== 'race').map((t) => t.name)
+  const gps = all.filter((team) => team.kind === 'race').map((t) => t.name)
+  const slugs = (prefs.data ?? []).map((pref) => pref.sport.slug)
+  const mine = (title: string) => clubs.some((name) => title.includes(name))
+  // Os jogos dos times primeiro, depois os dos esportes; até três.
   const row = gameRow(board.data?.games ?? [], null, now)
-  const mine = [
-    ...row.filter((game) =>
-      teamNames.some((name) => game.title.includes(name))
-    ),
+  const games = [
+    ...row.filter((game) => mine(game.title)),
     ...row.filter(
-      (game) =>
-        sportSlugs.includes(game.sport.slug) &&
-        !teamNames.some((name) => game.title.includes(name))
+      (game) => !mine(game.title) && slugs.includes(game.sport.slug)
     )
   ].slice(0, 3)
-
   const finish = () => {
     if (router.canDismiss()) router.dismissAll()
     router.replace('/explore')
   }
+  // "do Flamengo ou um dos GPs que você escolheu".
+  const who = [
+    ...clubs.map((name) => `do ${name}`),
+    ...(gps.length
+      ? [
+          gps.length === 1
+            ? 'do GP que você escolheu'
+            : 'de um dos GPs que você escolheu'
+        ]
+      : [])
+  ]
+  // "o Flamengo e os GPs de Las Vegas e do Catar".
+  const gpNames = gps.map((name) => name.replace(/^GP /, ''))
+  const alerted = [
+    ...clubs.map((name) => `o ${name}`),
+    ...(gpNames.length === 1
+      ? [`o GP ${gpNames[0]}`]
+      : gpNames.length
+        ? [
+            `os GPs ${gpNames.slice(0, -1).join(', ')} e ${gpNames[gpNames.length - 1]}`
+          ]
+        : [])
+  ]
 
   return (
-    <View style={{ flex: 1, backgroundColor: palette.bg }}>
-      <ScrollView
-        contentContainerStyle={[
-          styles.page,
-          { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 110 }
-        ]}
-      >
-        <FanCard
-          name={user?.name ?? 'Torcedor'}
-          teams={teamNames}
-          sports={(prefs.data ?? []).map((pref) => sportMark(pref.sport.name))}
-          radius={radius}
-          base={(device && district) || city.data?.name || null}
-          validated
-          number={user ? cardNumber(user.id) : undefined}
-          since={SINCE}
-        />
-        {mine.length ? (
-          <>
-            <Text style={[styles.kicker, { color: palette.muted }]}>
-              HOJE PRA VOCÊ
-            </Text>
-            <View style={[styles.list, { backgroundColor: palette.card }]}>
-              {mine.map((game, i) => {
-                const bar = game.bars[0]
-                return (
-                  <Pressable
-                    key={game.key}
-                    accessibilityRole="button"
-                    onPress={() => {
-                      if (!bar) return
-                      if (router.canDismiss()) router.dismissAll()
-                      router.replace('/explore')
-                      router.push({
-                        pathname: '/bar/[id]',
-                        params: { id: bar.barId }
-                      })
-                    }}
-                    style={[
-                      styles.game,
-                      i > 0 && {
-                        borderTopWidth: StyleSheet.hairlineWidth,
-                        borderTopColor: palette.line
-                      }
-                    ]}
-                  >
-                    <View style={{ width: 56 }}>
-                      <Text
-                        style={[
-                          styles.time,
-                          { color: game.live ? palette.live : palette.ink }
-                        ]}
-                      >
-                        {formatTime(game.startsAt)}
-                      </Text>
-                      <Text style={[styles.mono10, { color: palette.muted }]}>
-                        {game.live ? 'AO VIVO' : 'HOJE'}
-                      </Text>
-                    </View>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text
-                        numberOfLines={1}
-                        style={[text(15, 'Bold', 1.25), { color: palette.ink }]}
-                      >
-                        {game.title}
-                      </Text>
-                      {bar ? (
-                        <Text
-                          numberOfLines={1}
-                          style={[
-                            text(12.5, 'Regular', 1.3),
-                            { color: palette.muted }
-                          ]}
-                        >
-                          {bar.name} · {distance(bar.distanceKm)}
-                          {bar.going ? ` · ${bar.going.count} vão` : ''}
-                        </Text>
-                      ) : null}
-                    </View>
-                    {bar ? (
-                      <Photo
-                        uri={bar.photoUrl}
-                        name={bar.name}
-                        style={styles.photo}
-                      />
-                    ) : null}
-                  </Pressable>
-                )
-              })}
-            </View>
-          </>
-        ) : board.data ? (
-          <>
-            <View style={[styles.empty, { backgroundColor: palette.card }]}>
-              <Text style={[styles.emptyTitle, { color: palette.ink }]}>
-                NADA MARCADO PROS SEUS TIMES AINDA
-              </Text>
-              <Text
-                style={[text(13.5, 'Regular', 1.45), { color: palette.muted }]}
-              >
-                Assim que um bar até {radius} km marcar jogo
-                {teamNames.length
-                  ? ` do ${teamNames.join(', ')}`
-                  : ' dos seus esportes'}
-                , ele aparece em Avisos e no topo do Explorar.
-              </Text>
-            </View>
-            {teamNames.length ? (
-              <View style={[styles.note, { backgroundColor: palette.card }]}>
-                <Icon name="bell" size={16} color={palette.ink} />
-                <Text
-                  style={[
-                    text(13, 'Regular', 1.4),
-                    { color: palette.ink, flex: 1 }
-                  ]}
-                >
-                  <Text style={text(13, 'Bold', 1.4)}>Aviso ligado</Text> para
-                  {` ${teamNames.join(', ')}`}. Dá para desligar em
-                  Preferências.
-                </Text>
-              </View>
-            ) : null}
-          </>
-        ) : null}
-      </ScrollView>
-      <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
-        <BlockButton
-          label={mine.length ? 'Ver os bares de hoje' : 'Ver bares perto'}
+    <ObPage
+      step={5}
+      back={false}
+      cta={
+        <AcidButton
+          label={games.length ? 'Ver os bares de hoje' : 'Ver bares perto'}
           onPress={finish}
         />
-      </View>
-    </View>
+      }
+    >
+      <FanCard
+        name={user?.name ?? 'Torcedor'}
+        teams={clubs}
+        sports={(prefs.data ?? []).map((pref) => sportMark(pref.sport.name))}
+        radius={`${radius} km`}
+        base={(device && district) || city.data?.name || null}
+        validated
+        number={user ? cardNumber(user.id) : undefined}
+        since={SINCE}
+      />
+      {games.length ? (
+        <>
+          <Text style={[styles.kicker, { color: palette.muted }]}>
+            HOJE PRA VOCÊ
+          </Text>
+          <View
+            style={[
+              styles.list,
+              { backgroundColor: palette.card, shadowColor: palette.drop }
+            ]}
+          >
+            {games.map((game, i) => {
+              const bar = game.bars[0]
+              return (
+                <Pressable
+                  key={game.key}
+                  accessibilityRole="button"
+                  onPress={() => {
+                    if (!bar) return
+                    finish()
+                    router.push({
+                      pathname: '/bar/[id]',
+                      params: { id: bar.barId }
+                    })
+                  }}
+                  style={[
+                    styles.game,
+                    i > 0 && {
+                      borderTopWidth: StyleSheet.hairlineWidth,
+                      borderTopColor: palette.line
+                    }
+                  ]}
+                >
+                  <View style={{ width: 54 }}>
+                    <Text style={[styles.time, { color: palette.ink }]}>
+                      {formatTime(game.startsAt)}
+                    </Text>
+                    <Text style={[styles.day, { color: palette.muted }]}>
+                      {game.live
+                        ? 'AO VIVO'
+                        : dayLabel(game.startsAt, now)
+                            .replace('.', '')
+                            .toLocaleUpperCase('pt-BR')}
+                    </Text>
+                  </View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text
+                      numberOfLines={1}
+                      style={[text(15, 'Bold', 1.2), { color: palette.ink }]}
+                    >
+                      {game.title}
+                    </Text>
+                    {bar ? (
+                      <Text
+                        numberOfLines={1}
+                        style={[
+                          text(12.5, 'Regular', 1.3),
+                          { color: palette.muted }
+                        ]}
+                      >
+                        {bar.name} · {distance(bar.distanceKm)}
+                        {bar.going ? ` · ${bar.going.count} vão` : ''}
+                      </Text>
+                    ) : null}
+                  </View>
+                  {bar ? (
+                    <Photo
+                      uri={bar.photoUrl}
+                      name={bar.name}
+                      style={styles.photo}
+                    />
+                  ) : null}
+                </Pressable>
+              )
+            })}
+          </View>
+        </>
+      ) : board.data ? (
+        <>
+          <View
+            style={[
+              styles.empty,
+              { backgroundColor: palette.card, shadowColor: palette.drop }
+            ]}
+          >
+            {/* Duas linhas fixas: Anton em várias linhas fica com o
+                entrelinha natural, maior que o 1em do desenho. */}
+            <View accessible accessibilityRole="header">
+              <Text style={[styles.emptyTitle, { color: palette.ink }]}>
+                NADA MARCADO PROS SEUS TIMES
+              </Text>
+              <Text style={[styles.emptyTitle, { color: palette.ink }]}>
+                AINDA
+              </Text>
+            </View>
+            <Text style={[text(14, 'Regular', 1.45), { color: palette.muted }]}>
+              Assim que um bar até {radius} km marcar jogo
+              {who.length ? ` ${who.join(' ou ')}` : ' dos seus esportes'}, ele
+              aparece em Avisos e no topo do Explorar.
+            </Text>
+          </View>
+          {all.length ? (
+            <View style={[styles.note, { backgroundColor: palette.mark }]}>
+              <Icon name="bell" size={20} color={palette.ink} />
+              <Text
+                style={[
+                  text(13.5, 'Regular', 1.4),
+                  { color: palette.ink, flex: 1 }
+                ]}
+              >
+                <Text style={text(13.5, 'Bold', 1.4)}>Aviso ligado</Text> para{' '}
+                {alerted.join(' e ')}. Dá para desligar em Preferências.
+              </Text>
+            </View>
+          ) : null}
+        </>
+      ) : null}
+    </ObPage>
   )
 }
 
 const styles = StyleSheet.create({
-  page: { paddingHorizontal: 18, gap: 16 },
-  kicker: { fontFamily: 'GeistMono-SemiBold', fontSize: 11, marginTop: 4 },
-  list: { borderRadius: 20, paddingHorizontal: 14 },
+  kicker: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11,
+    letterSpacing: 0.88
+  },
+  list: {
+    borderRadius: 22,
+    paddingHorizontal: 14,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
+  },
   game: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingVertical: 12
+    paddingVertical: 11
   },
   time: {
     fontFamily: 'GeistMono-SemiBold',
     fontSize: 16,
     fontVariant: ['tabular-nums']
   },
-  mono10: { fontFamily: 'GeistMono-SemiBold', fontSize: 10 },
-  photo: { width: 44, height: 44, borderRadius: 10 },
-  empty: { borderRadius: 20, padding: 16, gap: 8 },
-  emptyTitle: { fontFamily: 'Anton', fontSize: 22, marginVertical: -5 },
+  day: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 10,
+    letterSpacing: 0.6,
+    marginTop: 4
+  },
+  photo: { width: 50, height: 50, borderRadius: 12 },
+  empty: {
+    borderRadius: 22,
+    padding: 16,
+    gap: 8,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
+  },
+  // Anton sem `lineHeight` menor que o natural (cortava o topo).
+  emptyTitle: {
+    fontFamily: 'Anton',
+    fontSize: 24,
+    marginVertical: -5.8
+  },
   note: {
     flexDirection: 'row',
     gap: 10,
-    borderRadius: 16,
-    padding: 14,
-    alignItems: 'flex-start'
-  },
-  footer: { position: 'absolute', left: 18, right: 18, bottom: 0 }
+    alignItems: 'flex-start',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 18
+  }
 })

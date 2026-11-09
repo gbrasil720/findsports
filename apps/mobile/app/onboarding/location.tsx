@@ -1,259 +1,255 @@
+import { brasiliaDay } from '@findsports_oficial/db/event-window'
+import { useQuery } from '@tanstack/react-query'
 import * as Location from 'expo-location'
 import { useRouter } from 'expo-router'
-import {
-  Platform,
-  Pressable,
-  StyleSheet,
-  useColorScheme,
-  useWindowDimensions,
-  View
-} from 'react-native'
-import MapView from 'react-native-maps'
-import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { MeDot, RadiusCircle } from '@/components/explore'
+import { useEffect, useState } from 'react'
+import { Platform, Pressable, StyleSheet, View } from 'react-native'
+import MapView, { Marker } from 'react-native-maps'
+import { MapDrop } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
-import { EASE, haptic } from '@/components/motion'
-import {
-  OnboardingCard,
-  useFrameKind,
-  useOnboarding,
-  usePane
-} from '@/components/onboarding'
-import {
-  ACID,
-  BG,
-  EDGE,
-  FG,
-  Icon,
-  INK,
-  LIVE,
-  PillButton,
-  SUB,
-  Text,
-  Title,
-  text,
-  themed,
-  useStatusBar
-} from '@/components/ui'
+import { haptic } from '@/components/motion'
+import { AcidButton, ObPage, ObTitle } from '@/components/ob-frame'
+import { OnboardingCard, useOnboarding } from '@/components/onboarding'
+import { usePalette } from '@/components/theme'
+import { Icon, Text, text } from '@/components/ui'
 import { SAO_PAULO } from '@/lib/explore'
 import { MAP_STYLE } from '@/lib/map-style'
+import { trpc } from '@/lib/trpc'
 
 /*
- * 4m, "Localização": o pedido do sistema, explicado antes. Só aparece se o
- * aparelho ainda não respondeu (ver `distance.tsx`). Com ou sem permissão,
- * segue para a revisão: a localização não é salva, só usada na busca.
+ * 4 · Onde (rodada 2 do redesign, tela 4b "pedir a localização"): a
+ * carteirinha com a Base acesa e o mapa apagado com as gotas de verdade e
+ * quantos bares perto passam hoje o que a pessoa escolheu, antes do pedido.
+ * O alerta do sistema só abre no toque de "Usar minha localização". Negar ou
+ * "Prefiro escolher a cidade" leva à cidade, sem tela de erro. Com a permissão
+ * já dada, segue direto para o raio.
  */
 
-// A folha sobe como as do iOS; o mapa atrás só escurece.
-const SHEET_IN = SlideInDown.duration(380).easing(EASE)
-const DIM_IN = FadeIn.duration(260)
-// O raio em volta de você, acima da folha: centro a 300 do topo, 230 de
-// diâmetro, como no design.
-const RING_Y = 300
-const RING = 230
+/** "Flamengo, F1 ou NBA". */
+const either = (names: string[]) =>
+  names.length <= 1
+    ? (names[0] ?? 'o seu jogo')
+    : `${names.slice(0, -1).join(', ')} ou ${names[names.length - 1]}`
 
-export default function LocationAsk() {
+export default function Where() {
   const router = useRouter()
-  const insets = useSafeAreaInsets()
+  const palette = usePalette()
   const { choices } = useOnboarding()
-  useStatusBar('auto')
-  const dark = useColorScheme() === 'dark'
-  // Fora do celular o mapa ocupa a área do passo, e a folha vira um card
-  // no meio dela (Adaptativo 09, "localização").
-  const window = useWindowDimensions()
-  const pane = usePane()
-  const frame = useFrameKind()
-  const card = frame !== 'phone' && frame !== 'cover'
-  const { width, height: screen } = card && pane ? pane : window
-  const center = choices.city ? `de ${choices.city.name}` : 'da sua cidade'
-  const { lat, lng } = choices.city ?? SAO_PAULO
-  // O Apple Maps encaixa a região na área segura, não na tela toda: a conta
-  // usa a altura e o meio dela. Graus de latitude nessa altura para o raio
-  // sair com `RING`; o centro do mapa desce para a cidade ficar em `RING_Y`.
-  const height = screen - insets.top - insets.bottom
-  const middle = insets.top + height / 2
-  const span = ((choices.radius * 2) / 111) * (height / RING)
+  const { device, locate } = useExploreState()
+  const sports = useQuery(trpc.pubs.getSports.queryOptions())
+  const center = choices.city ?? SAO_PAULO
+  const [day] = useState(() => brasiliaDay(Date.now()))
+  const board = useQuery(
+    trpc.pubs.gameBoard.queryOptions({ ...center, radiusKm: 10, day })
+  )
+  // Os bares com jogo hoje (um por bar), as gotas do mapa.
+  const bars = [
+    ...new Map(
+      (board.data?.games ?? []).flatMap((game) =>
+        game.bars.map((bar) => [bar.barId, bar] as const)
+      )
+    ).values()
+  ]
+  // Os times e os esportes sem time escolhido (o time já diz o esporte):
+  // "Flamengo, F1 ou Basquete".
+  const clubs = choices.teams.filter((t) => t.kind !== 'race')
+  const names = [
+    ...clubs.map((t) => t.name),
+    ...choices.sportIds.flatMap((id) => {
+      if (clubs.some((t) => t.sportId === id)) return []
+      const sport = sports.data?.find((item) => item.id === id)
+      return sport ? [sport.slug === 'formula-1' ? 'F1' : sport.name] : []
+    })
+  ].slice(0, 3)
+  // O mapa no meio dos bares com jogo, perto como o de um bairro.
+  const focus = bars.length
+    ? {
+        lat: bars.reduce((sum, bar) => sum + bar.latitude, 0) / bars.length,
+        lng: bars.reduce((sum, bar) => sum + bar.longitude, 0) / bars.length
+      }
+    : center
 
-  // Com ou sem a localização, segue para o raio; sem ela, a distância pede
-  // a cidade.
-  const { locate } = useExploreState()
-  const proceed = () => router.replace('/onboarding/distance')
+  // Já com a permissão, este passo não pergunta nada.
+  useEffect(() => {
+    if (device) router.replace('/onboarding/distance')
+  }, [device, router])
+
+  const city = () =>
+    router.replace({
+      pathname: '/onboarding/distance',
+      params: { cidade: '1' }
+    })
   const allow = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync()
-    if (status === 'granted') {
-      haptic.success()
-      await locate()
-    }
-    proceed()
+    if (status !== 'granted') return city()
+    haptic.success()
+    await locate()
+    router.replace('/onboarding/distance')
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: BG }}>
-      {/* O mapa do Explorar, parado, com o raio escolhido na distância. */}
-      <MapView
-        style={StyleSheet.absoluteFill}
-        initialRegion={{
-          latitude: lat - ((middle - RING_Y) / height) * span,
-          longitude: lng,
-          latitudeDelta: span,
-          longitudeDelta: (span * width) / height
-        }}
-        mapType={Platform.OS === 'ios' ? 'mutedStandard' : 'standard'}
-        customMapStyle={dark ? MAP_STYLE.dark : MAP_STYLE.light}
-        userInterfaceStyle={dark ? 'dark' : 'light'}
-        showsPointsOfInterests={false}
-        showsCompass={false}
-        scrollEnabled={false}
-        zoomEnabled={false}
-        rotateEnabled={false}
-        pitchEnabled={false}
-        toolbarEnabled={false}
-        pointerEvents="none"
-      >
-        <RadiusCircle
-          center={{ latitude: lat, longitude: lng }}
-          km={choices.radius}
-          dark={dark}
-        />
-      </MapView>
-      <Animated.View entering={DIM_IN} style={styles.dim} />
-      <View style={styles.area} pointerEvents="none">
-        <MeDot />
-      </View>
-      {/* A carteirinha com a Base acesa, por cima do mapa (rodada 2). */}
-      {card ? null : (
-        <View
-          style={{
-            position: 'absolute',
-            top: insets.top + 12,
-            left: 18,
-            right: 18
-          }}
-        >
-          <OnboardingCard lit="base" step={4} />
-        </View>
-      )}
-      <Animated.View
-        entering={SHEET_IN}
-        style={[
-          styles.sheet,
-          card
-            ? [styles.card, { maxWidth: width - 32, paddingBottom: 24 }]
-            : { paddingBottom: Math.max(insets.bottom, 16) + 8 }
-        ]}
-      >
-        <View style={styles.grabber} />
-        <View style={styles.head}>
-          <View>
-            <View style={styles.badgeShadow} />
-            <View style={styles.badge}>
-              <Icon name="pin" size={26} color={INK} accent={LIVE} />
-            </View>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Title lines={[['Onde você'], ['', 'assiste?']]} size={30} />
-          </View>
-        </View>
-        <Text style={[text(15.5, 'Regular', 1.48), { color: SUB }]}>
-          Com ela, os bares perto aparecem pela distância de onde você está. Sem
-          ela, a busca parte do centro {center}.
-        </Text>
-        <View style={{ gap: 6 }}>
-          {[
-            'Fica no aparelho. Não aparece no perfil nem para amigos.',
-            'Só para medir a distância até o bar e montar o mapa.'
-          ].map((line) => (
-            <View key={line} style={styles.point}>
-              <Icon name="check" size={15} />
-              <Text style={[text(13.5), { color: FG }]}>{line}</Text>
-            </View>
-          ))}
-        </View>
-        <View style={{ marginTop: 6 }}>
-          <PillButton
-            label="Usar minha localização"
-            leading="pin"
-            onPress={allow}
-          />
-        </View>
+    <ObPage
+      step={4}
+      onSkip={city}
+      action={
         <Pressable
           accessibilityRole="button"
-          onPress={proceed}
           hitSlop={10}
-          style={{ paddingVertical: 4 }}
+          onPress={city}
+          style={{ alignSelf: 'center' }}
         >
           <Text
-            style={[text(14.5, 'Bold'), { color: FG, textAlign: 'center' }]}
+            style={[
+              styles.link,
+              { color: palette.muted, textDecorationColor: palette.muted }
+            ]}
           >
             Prefiro escolher a cidade
           </Text>
         </Pressable>
-      </Animated.View>
-    </View>
+      }
+      cta={
+        <AcidButton
+          label="Usar minha localização"
+          leading="pin"
+          onPress={allow}
+        />
+      }
+    >
+      <OnboardingCard lit="base" />
+      <ObTitle plain="Onde você" hot="assiste?" size={32} />
+      <View
+        style={[
+          styles.map,
+          { backgroundColor: palette.mark, borderColor: palette.line }
+        ]}
+      >
+        <MapView
+          style={StyleSheet.absoluteFill}
+          region={{
+            // O cartão da contagem cobre o pé: as gotas ficam no alto.
+            latitude: focus.lat - 0.006,
+            longitude: focus.lng,
+            latitudeDelta: 0.03,
+            longitudeDelta: 0.03
+          }}
+          mapType={Platform.OS === 'ios' ? 'mutedStandard' : 'standard'}
+          customMapStyle={palette.dark ? MAP_STYLE.dark : MAP_STYLE.light}
+          userInterfaceStyle={palette.dark ? 'dark' : 'light'}
+          showsPointsOfInterests={false}
+          scrollEnabled={false}
+          zoomEnabled={false}
+          rotateEnabled={false}
+          pitchEnabled={false}
+          toolbarEnabled={false}
+          pointerEvents="none"
+        >
+          {bars.slice(0, 8).map((bar) => (
+            <Marker
+              key={bar.barId}
+              coordinate={{ latitude: bar.latitude, longitude: bar.longitude }}
+              tracksViewChanges={false}
+            >
+              <View style={{ opacity: 0.9 }}>
+                <MapDrop live={false} elite={bar.elite} dark={palette.dark} />
+              </View>
+            </Marker>
+          ))}
+        </MapView>
+        {/* O desenho desfoca o mapa: sem desfoque nativo no Expo Go, um véu
+            da cor do fundo o apaga. */}
+        <View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: palette.dark
+                ? 'rgba(18,18,15,.35)'
+                : 'rgba(241,238,230,.35)'
+            }
+          ]}
+        />
+        {board.data ? (
+          <View
+            style={[
+              styles.count,
+              { backgroundColor: palette.bg, shadowColor: palette.drop }
+            ]}
+          >
+            <Text
+              style={[
+                styles.countNumber,
+                { color: palette.dark ? '#c9f135' : '#e8320c' }
+              ]}
+            >
+              {bars.length}
+            </Text>
+            <Text
+              style={[
+                text(13, 'Regular', 1.35),
+                { color: palette.ink, flex: 1 }
+              ]}
+            >
+              {bars.length
+                ? `${bars.length === 1 ? 'bar perto passa' : 'bares perto passam'} hoje ${either(names)}.`
+                : 'Nenhum bar perto marcou jogo hoje ainda.'}
+              {'\n'}
+              <Text style={{ color: palette.muted }}>
+                A gente mostra quando souber onde.
+              </Text>
+            </Text>
+          </View>
+        ) : null}
+      </View>
+      <View style={{ gap: 8 }}>
+        {[
+          ['lock', 'Fica no aparelho. Não aparece no perfil nem para amigos.'],
+          ['pin', 'Só para medir a distância até o bar e montar o mapa.']
+        ].map(([icon, line]) => (
+          <View key={line} style={styles.why}>
+            <Icon name={icon as 'lock' | 'pin'} size={18} color={palette.ink} />
+            <Text
+              style={[
+                text(13.5, 'Regular', 1.4),
+                { color: palette.ink, flex: 1, opacity: 0.85 }
+              ]}
+            >
+              {line}
+            </Text>
+          </View>
+        ))}
+      </View>
+    </ObPage>
   )
 }
 
 const styles = StyleSheet.create({
-  dim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(18,18,15,.28)' },
-  area: {
+  map: {
+    height: 196,
+    borderRadius: 22,
+    overflow: 'hidden',
+    borderWidth: 1.5
+  },
+  count: {
     position: 'absolute',
-    top: RING_Y - RING / 2,
-    alignSelf: 'center',
-    width: RING,
-    height: RING,
+    left: 12,
+    right: 12,
+    bottom: 12,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center'
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
   },
-  sheet: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    backgroundColor: BG,
-    paddingTop: 12,
-    paddingHorizontal: 20,
-    gap: 12
-  },
-  card: {
-    left: undefined,
-    right: undefined,
-    bottom: 28,
-    width: 520,
-    alignSelf: 'center',
-    borderRadius: 32,
-    shadowColor: '#000',
-    shadowOpacity: 0.4,
-    shadowRadius: 25,
-    shadowOffset: { width: 0, height: 20 }
-  },
-  grabber: {
-    alignSelf: 'center',
-    width: 38,
-    height: 5,
-    borderRadius: 3,
-    marginTop: 8,
-    backgroundColor: themed('rgba(18,18,15,.18)', 'rgba(241,238,230,.2)')
-  },
-  head: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 6 },
-  badge: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: ACID,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  badgeShadow: {
-    position: 'absolute',
-    top: 3,
-    left: 3,
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: EDGE
-  },
-  point: { flexDirection: 'row', alignItems: 'center', gap: 8 }
+  countNumber: { fontFamily: 'Anton', fontSize: 26, marginVertical: -6 },
+  why: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
+  link: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 13,
+    textDecorationLine: 'underline'
+  }
 })

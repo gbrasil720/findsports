@@ -1,126 +1,89 @@
+import { useMutation } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
 import { StyleSheet, View } from 'react-native'
-import {
-  OnboardingCard,
-  OnboardingTop,
-  StepFooter,
-  useFrameKind,
-  useStepTitle
-} from '@/components/onboarding'
-import {
-  CARD,
-  DROP,
-  FG,
-  Icon,
-  LINE,
-  PillButton,
-  Screen,
-  SUB,
-  Text,
-  Title,
-  text,
-  themed
-} from '@/components/ui'
+import { AcidButton, ObPage, ObTitle } from '@/components/ob-frame'
+import { clearDraft, OnboardingCard } from '@/components/onboarding'
+import { usePalette } from '@/components/theme'
+import { Icon, Text, text } from '@/components/ui'
+import { refreshSession } from '@/lib/auth-client'
+import { queryClient, trpc } from '@/lib/trpc'
 
 /*
- * 4i, "Boas-vindas" do onboarding do torcedor: o primeiro passo depois de
- * confirmar o e-mail, para quem ainda não escolheu esportes e distância.
+ * 1 · Boas-vindas do onboarding B (rodada 2 do redesign): a carteirinha vazia
+ * com o nome, o que ela dá e "3 perguntas · 30 segundos". "Pular" conclui sem
+ * escolher nada (`completeFan` aceita vazio).
  */
 
-const FEATURES = [
+const USES = [
   { icon: 'calendar', label: 'Os jogos dos seus times aparecem primeiro' },
   { icon: 'bell', label: 'Aviso quando um bar perto passar o jogo deles' },
   { icon: 'medal', label: 'Conquistas e ranking com o seu nome' }
 ] as const
 
 export default function Welcome() {
-  // Na mesa a pergunta já está na metade de cima (Adaptativo 09).
-  const table = useFrameKind() === 'table'
-  // Fora do celular, com coluna larga, o título corre como no design
-  // ("Vamos achar os melhores / bares pro seu jogo.").
-  const title = useStepTitle(
-    [['Sua carteirinha ', 'de torcedor']],
-    [['Sua carteirinha'], ['', 'de torcedor']]
-  )
   const router = useRouter()
+  const palette = usePalette()
+  const skip = useMutation(
+    trpc.onboarding.completeFan.mutationOptions({
+      onSuccess: async () => {
+        clearDraft()
+        await refreshSession()
+        await queryClient.invalidateQueries()
+        router.dismissAll()
+        router.replace('/explore')
+      }
+    })
+  )
   return (
-    <Screen
-      gap={16}
-      padding={18}
-      footer={
-        <StepFooter back={false}>
-          <PillButton
-            label="Começar"
-            trailing
-            onPress={() => router.push('/onboarding/sports')}
-          />
-        </StepFooter>
+    <ObPage
+      step={1}
+      back={false}
+      onSkip={() => skip.mutate({})}
+      note="3 perguntas · 30 segundos"
+      cta={
+        <AcidButton
+          label="Começar"
+          onPress={() => router.push('/onboarding/sports')}
+        />
       }
     >
-      <OnboardingTop step={1} />
-      {table ? null : (
-        <View style={{ marginTop: 8 }}>
-          <Title lines={title} size={40} />
-        </View>
-      )}
-      {table ? null : <OnboardingCard lit={null} step={1} />}
-      <View style={{ gap: 8, marginTop: 6 }}>
-        {FEATURES.map((feature, index) => (
-          <View key={feature.label}>
-            <View
+      <ObTitle plain="Sua carteirinha" hot="de torcedor" size={38} breakLine />
+      <OnboardingCard lit={null} />
+      <View style={{ gap: 8 }}>
+        {USES.map((use) => (
+          <View
+            key={use.label}
+            style={[
+              styles.use,
+              { backgroundColor: palette.card, shadowColor: palette.drop }
+            ]}
+          >
+            <Icon name={use.icon} size={20} color={palette.ink} />
+            <Text
               style={[
-                styles.shadow,
-                index === 0 && {
-                  top: 5,
-                  left: 5,
-                  right: -5,
-                  bottom: -5,
-                  backgroundColor: FIRST_DROP
-                }
+                text(14.5, 'SemiBold', 1.3),
+                { color: palette.ink, flex: 1 }
               ]}
-            />
-            <View style={styles.feature}>
-              <Icon name={feature.icon} size={26} />
-              <Text style={[text(15, 'Bold'), { color: FG }]}>
-                {feature.label}
-              </Text>
-            </View>
+            >
+              {use.label}
+            </Text>
           </View>
         ))}
       </View>
-      <Text
-        style={[
-          text(12.5),
-          { color: SUB, textAlign: 'center', fontFamily: 'GeistMono-SemiBold' }
-        ]}
-      >
-        3 perguntas · 30 segundos
-      </Text>
-    </Screen>
+    </ObPage>
   )
 }
 
-// O primeiro item ganha a sombra do destaque: vermelho no claro, acid no escuro.
-const FIRST_DROP = themed('rgba(232,50,12,.28)', 'rgba(201,241,53,.28)')
-
 const styles = StyleSheet.create({
-  feature: {
+  use: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    padding: 14,
-    borderRadius: 6,
-    backgroundColor: CARD,
-    borderWidth: 1,
-    borderColor: LINE
-  },
-  shadow: {
-    position: 'absolute',
-    top: 4,
-    left: 4,
-    right: -4,
-    bottom: -4,
-    borderRadius: 6,
-    backgroundColor: DROP
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
   }
 })

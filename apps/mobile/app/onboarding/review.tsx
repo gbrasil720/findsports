@@ -1,157 +1,85 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
-import { useEffect } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
-import Animated, {
-  cancelAnimation,
-  Easing,
-  useAnimatedStyle,
-  useReducedMotion,
-  useSharedValue,
-  withTiming
-} from 'react-native-reanimated'
-import { scheduleOnRN } from 'react-native-worklets'
 import { useExploreState } from '@/components/explore-state'
-import { EASE, ErrorText, haptic } from '@/components/motion'
+import { ErrorText, haptic } from '@/components/motion'
+import { AcidButton, ObPage, ObTitle } from '@/components/ob-frame'
 import {
   clearDraft,
   OnboardingCard,
-  OnboardingTop,
-  StepFooter,
-  useFrameKind,
+  type Team,
   useOnboarding
 } from '@/components/onboarding'
 import { usePalette } from '@/components/theme'
-import {
-  ACID,
-  CARD,
-  EDGE,
-  FG,
-  Icon,
-  INK,
-  LINE,
-  LIVE,
-  Screen,
-  SUB,
-  Text,
-  Title,
-  text,
-  themed
-} from '@/components/ui'
+import { ACID, Icon, INK, LIVE, Text, text } from '@/components/ui'
 import { refreshSession } from '@/lib/auth-client'
 import { queryClient, trpc } from '@/lib/trpc'
 
 /*
- * "Confere e valida" (rodada 2 do redesign, onboarding B): a carteirinha
- * inteira, cada linha com "Trocar", e o botão de segurar. Segurar é lento e
- * honesto (a barra enche em 1,2 s, linear); soltar antes volta rápido (200
- * ms). Cheia, o envio único (`onboarding.completeFan`) e o selo carimba a
- * carteirinha na tela seguinte (`pronto`). Com menos movimento, segurar vira
- * toque.
+ * 5 · "Confere e valida" (rodada 2 do redesign, tela 4b "Revisão"): a
+ * carteirinha inteira e uma linha por escolha, cada uma com "Trocar" (volta
+ * ao passo; o "Continuar" de lá devolve aqui). O aviso do jogo dos seus times
+ * já vem ligado (é o que os times escolhidos dão em Avisos). O botão é de
+ * segurar (`AcidButton hold`): cheio, o envio único (`completeFan`) e a
+ * carteirinha validada (`pronto`).
  */
 
-const HOLD_MS = 1200
-/** O trilho do botão antes de encher: o acid apagado, nos dois temas. */
-const HOLD_TRACK = themed('#e3f1a6', '#4d5a1c')
+/** "Flamengo · GPs de Las Vegas e do Catar". */
+function teamsLine(teams: Team[]) {
+  const names = teams.filter((t) => t.kind !== 'race').map((t) => t.name)
+  const gps = teams
+    .filter((t) => t.kind === 'race')
+    .map((t) => t.name.replace(/^GP /, ''))
+  const gpLine = gps.length
+    ? `${gps.length === 1 ? 'GP' : 'GPs'} ${gps.length === 1 ? gps[0] : `${gps.slice(0, -1).join(', ')} e ${gps[gps.length - 1]}`}`
+    : ''
+  return [...names, gpLine].filter(Boolean).join(' · ')
+}
 
 function Row({
   icon,
   title,
   sub,
-  onChange
+  first,
+  right
 }: {
   icon: 'tv' | 'fan' | 'pin' | 'bell'
   title: string
   sub: string
-  onChange?: () => void
+  first?: boolean
+  right: React.ReactNode
 }) {
+  const palette = usePalette()
   return (
-    <View style={[styles.row, { borderTopColor: LINE }]}>
-      <Icon name={icon} size={17} />
+    <View
+      style={[
+        styles.row,
+        !first && {
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: palette.line
+        }
+      ]}
+    >
+      <Icon name={icon} size={20} color={palette.ink} />
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text
-          numberOfLines={2}
-          style={[text(14.5, 'Bold', 1.25), { color: FG }]}
-        >
+        <Text style={[text(15, 'SemiBold', 1.25), { color: palette.ink }]}>
           {title}
         </Text>
-        <Text style={[text(12.5, 'Regular', 1.3), { color: SUB }]}>{sub}</Text>
+        <Text
+          style={[
+            text(12.5, 'Regular', 1.3),
+            { color: palette.muted, marginTop: 2 }
+          ]}
+        >
+          {sub}
+        </Text>
       </View>
-      {onChange ? (
-        <Pressable accessibilityRole="button" hitSlop={8} onPress={onChange}>
-          <Text style={[text(13, 'Bold'), styles.change, { color: FG }]}>
-            Trocar
-          </Text>
-        </Pressable>
-      ) : (
-        <Icon name="check" size={16} color={FG} />
-      )}
+      {right}
     </View>
   )
 }
 
-/** "Segure para validar": a barra enche enquanto o dedo fica. */
-function HoldButton({
-  busy,
-  disabled,
-  onDone
-}: {
-  busy: boolean
-  disabled: boolean
-  onDone: () => void
-}) {
-  const reduced = useReducedMotion()
-  const fill = useSharedValue(0)
-  const style = useAnimatedStyle(() => ({
-    transform: [{ scaleX: fill.get() }]
-  }))
-  const start = () => {
-    if (disabled || busy || reduced) return
-    fill.set(
-      withTiming(1, { duration: HOLD_MS, easing: Easing.linear }, (done) => {
-        if (done) scheduleOnRN(onDone)
-      })
-    )
-  }
-  // O envio falhou: a barra volta, para segurar de novo.
-  useEffect(() => {
-    if (!busy && fill.get() >= 1)
-      fill.set(withTiming(0, { duration: 200, easing: EASE }))
-  }, [busy, fill])
-  const stop = () => {
-    if (fill.get() >= 1) return
-    cancelAnimation(fill)
-    fill.set(withTiming(0, { duration: 200, easing: EASE }))
-  }
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityHint={reduced ? undefined : 'Segure até a barra encher'}
-      accessibilityState={{ disabled, busy }}
-      disabled={disabled || busy}
-      onPressIn={start}
-      onPressOut={stop}
-      // Com menos movimento, um toque basta.
-      onPress={reduced ? onDone : undefined}
-    >
-      <View style={styles.holdEdge} />
-      <View style={[styles.hold, disabled && { opacity: 0.45 }]}>
-        <Animated.View style={[styles.holdFill, style]} />
-        <Text style={[text(15.5, 'Bold', 1.2), { color: INK }]}>
-          {busy
-            ? 'Validando…'
-            : reduced
-              ? 'Toque para validar'
-              : 'Segure para validar'}
-        </Text>
-      </View>
-    </Pressable>
-  )
-}
-
 export default function Review() {
-  // Na mesa a pergunta já está na metade de cima (Adaptativo 09).
-  const table = useFrameKind() === 'table'
   const router = useRouter()
   const palette = usePalette()
   const { choices } = useOnboarding()
@@ -178,10 +106,6 @@ export default function Review() {
       onError: () => haptic.error()
     })
   )
-
-  const chosenSports = (sports.data ?? []).filter((sport) =>
-    choices.sportIds.includes(sport.id)
-  )
   const save = () =>
     complete.mutate({
       sportIds: choices.sportIds,
@@ -192,77 +116,98 @@ export default function Review() {
         : undefined
     })
   // "Trocar" volta ao passo; o "Continuar" de lá devolve aqui.
-  const change = (route: 'sports' | 'teams' | 'distance') => () =>
-    router.push({ pathname: `/onboarding/${route}`, params: { volta: '1' } })
-  const place = (device && district) || choices.city?.name
-
-  return (
-    <Screen
-      gap={14}
-      padding={18}
-      footer={
-        <StepFooter>
-          <View style={{ gap: 8 }}>
-            <Text style={[styles.hint, { color: SUB }]}>
-              Segure o botão: o selo carimba a carteirinha
-            </Text>
-            <HoldButton
-              busy={complete.isPending}
-              disabled={choices.sportIds.length === 0}
-              onDone={save}
-            />
-          </View>
-        </StepFooter>
+  const change = (route: 'sports' | 'teams' | 'distance') => (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Trocar ${route === 'sports' ? 'esportes' : route === 'teams' ? 'times' : 'distância'}`}
+      hitSlop={10}
+      onPress={() =>
+        router.push({
+          pathname: `/onboarding/${route}`,
+          params: { volta: '1' }
+        })
       }
     >
-      <OnboardingTop step={5} />
-      {table ? null : <OnboardingCard lit={null} step={5} />}
-      {table ? null : (
-        <Title
-          lines={[['Confere ', 'e valida']]}
-          size={34}
-          accentColor={palette.dark ? ACID : LIVE}
+      <Text style={[text(13, 'SemiBold'), styles.link, { color: palette.ink }]}>
+        Trocar
+      </Text>
+    </Pressable>
+  )
+  const place = (device && district) || choices.city?.name
+  // Na ordem em que a pessoa escolheu.
+  const sportNames = choices.sportIds.flatMap(
+    (id) => sports.data?.find((sport) => sport.id === id)?.name ?? []
+  )
+  const n = count.data?.bars
+
+  return (
+    <ObPage
+      step={5}
+      note="Segure o botão: o selo carimba a carteirinha"
+      cta={
+        <AcidButton
+          hold
+          label={complete.isPending ? 'Validando…' : 'Segure para validar'}
+          busy={complete.isPending}
+          disabled={choices.sportIds.length === 0}
+          onPress={save}
         />
-      )}
-      <View style={[styles.list, { backgroundColor: CARD }]}>
+      }
+    >
+      <OnboardingCard lit={null} radius base />
+      <ObTitle plain="Confere" hot="e valida" size={30} />
+      <View
+        style={[
+          styles.list,
+          { backgroundColor: palette.card, shadowColor: palette.drop }
+        ]}
+      >
         <Row
+          first
           icon="tv"
-          title={
-            chosenSports.map((sport) => sport.name).join(' · ') ||
-            'Nenhum esporte'
-          }
+          title={sportNames.join(' · ') || 'Nenhum esporte'}
           sub="os outros esportes aparecem depois"
-          onChange={change('sports')}
+          right={change('sports')}
         />
         <Row
           icon="fan"
-          title={
-            choices.teams.map((team) => team.name).join(' · ') ||
-            'Nenhum time por enquanto'
-          }
+          title={teamsLine(choices.teams) || 'Nenhum time por enquanto'}
           sub="avisamos quando um bar perto marcar"
-          onChange={change('teams')}
+          right={change('teams')}
         />
         <Row
           icon="pin"
-          title={`${choices.radius} km${place ? ` · ${place}` : ''}`}
+          title={`${choices.radius} km${place ? ` de ${place}` : ''}`}
           sub={
-            count.data
-              ? `${count.data.bars} ${count.data.bars === 1 ? 'bar' : 'bares'} com jogo hoje no raio`
-              : 'o raio do Explorar'
+            n === undefined
+              ? 'o raio do Explorar'
+              : `${n} ${n === 1 ? 'bar' : 'bares'} com jogo hoje no raio`
           }
-          onChange={change('distance')}
+          right={change('distance')}
         />
         {choices.teams.length ? (
           <Row
             icon="bell"
             title="Aviso do jogo dos seus times"
-            sub="quando um bar perto marcar, em Avisos"
+            sub="quando um bar perto marcar"
+            right={
+              <View
+                accessible
+                accessibilityRole="switch"
+                accessibilityState={{ checked: true }}
+                accessibilityLabel="Aviso ligado"
+                style={styles.switch}
+              >
+                <View style={styles.knob} />
+              </View>
+            }
           />
         ) : null}
       </View>
       {choices.sportIds.length === 0 ? (
-        <Text style={[text(13.5), { color: SUB, textAlign: 'center' }]}>
+        <Text
+          style={[text(13.5), { color: palette.muted, textAlign: 'center' }]}
+        >
           Volte e escolha pelo menos um esporte.
         </Text>
       ) : null}
@@ -271,46 +216,41 @@ export default function Review() {
           {complete.error.message || 'Não foi possível salvar. Tente de novo.'}
         </ErrorText>
       ) : null}
-    </Screen>
+    </ObPage>
   )
 }
 
 const styles = StyleSheet.create({
-  list: { borderRadius: 18, paddingHorizontal: 14, paddingVertical: 2 },
+  list: {
+    borderRadius: 20,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingVertical: 12,
-    borderTopWidth: StyleSheet.hairlineWidth
+    paddingVertical: 13,
+    paddingHorizontal: 14,
+    minHeight: 52
   },
-  change: { textDecorationLine: 'underline' },
-  hint: {
-    fontFamily: 'GeistMono-SemiBold',
-    fontSize: 12,
-    textAlign: 'center'
-  },
-  holdEdge: {
-    position: 'absolute',
-    top: 3,
-    left: 0,
-    right: 0,
-    bottom: -3,
-    borderRadius: 28,
-    backgroundColor: EDGE
-  },
-  hold: {
-    height: 56,
-    borderRadius: 28,
-    // Sólida: translúcida, a sombra de tinta aparecia através.
-    backgroundColor: HOLD_TRACK,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden'
-  },
-  holdFill: {
-    ...StyleSheet.absoluteFill,
+  link: { textDecorationLine: 'underline' },
+  switch: {
+    width: 51,
+    height: 31,
+    borderRadius: 16,
     backgroundColor: ACID,
-    transformOrigin: 'left'
+    borderWidth: 1,
+    borderColor: INK
+  },
+  knob: {
+    position: 'absolute',
+    left: 21,
+    top: 1,
+    width: 27,
+    height: 27,
+    borderRadius: 14,
+    backgroundColor: INK
   }
 })
