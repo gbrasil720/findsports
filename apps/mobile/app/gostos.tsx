@@ -64,13 +64,17 @@ export default function Gostos() {
     ...trpc.pubs.searchTeams.queryOptions({ sportIds, query }),
     enabled: searching && query.length >= 2
   })
-  const shownTeams: Team[] = [
-    ...teams,
-    ...(searching && query.length >= 2
+  // A lista não muda de ordem ao escolher (dezenas de toques: só a cor);
+  // o escolhido que veio da busca entra no fim.
+  const listed = (
+    searching && query.length >= 2
       ? (found.data ?? [])
       : featured.flatMap((q) => q.data ?? [])
-    ).filter((team) => !teams.some((t) => t.id === team.id))
-  ].slice(0, 12)
+  ).slice(0, 12)
+  const shownTeams: Team[] = [
+    ...listed,
+    ...teams.filter((team) => !listed.some((t) => t.id === team.id))
+  ]
 
   const save = useMutation(
     trpc.onboarding.completeFan.mutationOptions({
