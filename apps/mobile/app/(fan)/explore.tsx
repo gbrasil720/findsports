@@ -557,9 +557,9 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
       )
   }, [])
   // A outra aba pode ter movido a folha: esta acompanha ao voltar.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: só quando a folha assenta
   // Na chegada a mola da subida é quem leva a folha ao lugar.
   const synced = useRef(arriving)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: só quando a folha assenta
   useEffect(() => {
     if (synced.current) {
       synced.current = false
@@ -670,11 +670,11 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   }))
   // Tocar num bar no celular (3b): a folha desce e dá lugar ao cartão
   // flutuante dele; soltar a traz de volta ao meio.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: só quando a escolha muda
   // Segue o bar que está na lista: escolhido num jogo que saiu da tela
   // (outro jogo, outro dia) não esconde a folha.
   const showsFloat = phone && chosen !== null
   const placed = useRef(arriving)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: só quando a escolha muda
   useEffect(() => {
     // Na chegada, a subida já leva a folha ao meio.
     if (placed.current) {
