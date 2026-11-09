@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router'
-import { type ReactNode, useEffect } from 'react'
+import { type ComponentProps, type ReactNode, useEffect } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import Animated, {
   cancelAnimation,
@@ -81,7 +81,7 @@ export function AcidButton({
   hold
 }: {
   label: string
-  leading?: 'pin'
+  leading?: ComponentProps<typeof Icon>['name']
   disabled?: boolean
   busy?: boolean
   onPress: () => void

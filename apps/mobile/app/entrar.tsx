@@ -1,26 +1,26 @@
 import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useQuery } from '@tanstack/react-query'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useEffect, useRef, useState } from 'react'
+import { type ComponentProps, useEffect, useRef, useState } from 'react'
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { CodeBoxes } from '@/components/code-boxes'
 import { dayLabel, Photo } from '@/components/explore'
 import { ErrorText, haptic, SWAP, useShake } from '@/components/motion'
+import { AcidButton } from '@/components/ob-frame'
 import { usePalette } from '@/components/theme'
 import { useTurnstile } from '@/components/turnstile'
 import {
   ACID,
   authErrorMessage,
-  BlockButton,
-  Field,
   Icon,
   LIVE,
   MIN_PASSWORD,
   phaseBusy,
   phaseLabel,
   Text,
+  TextInput,
   Title,
   text,
   useCountdown
@@ -269,7 +269,12 @@ export default function Entrar() {
 
       {/* O que a pessoa estava fazendo: o bar e o jogo. */}
       {bar.data && mode !== 'confirmar' ? (
-        <View style={[styles.context, { backgroundColor: palette.card }]}>
+        <View
+          style={[
+            styles.context,
+            { backgroundColor: palette.card, shadowColor: palette.drop }
+          ]}
+        >
           <Photo
             uri={bar.data.photoUrl}
             name={bar.data.name}
@@ -302,9 +307,8 @@ export default function Entrar() {
               color={ink}
               accentColor={palette.dark ? palette.accent : LIVE}
             />
-            <Field
+            <SheetField
               label="E-mail"
-              icon="mail"
               autoCapitalize="none"
               autoComplete="email"
               keyboardType="email-address"
@@ -312,12 +316,12 @@ export default function Entrar() {
               value={email}
               onChangeText={setEmail}
             />
-            <Field
+            <SheetField
               label="Senha"
-              icon="lock"
               autoComplete="current-password"
               textContentType="password"
               secureTextEntry
+              placeholder="Sua senha"
               value={password}
               onChangeText={setPassword}
               onSubmitEditing={signIn}
@@ -330,7 +334,7 @@ export default function Entrar() {
                 {error}
               </ErrorText>
             ) : null}
-            <BlockButton
+            <AcidButton
               label={phaseLabel(phase, {
                 idle: `Entrar ${say.button}`.trim(),
                 sending: 'Entrando…'
@@ -366,7 +370,15 @@ export default function Entrar() {
                 setError(null)
                 setMode('criar')
               }}
-              style={[styles.outline, { borderColor: ink }]}
+              // `.b-ghost`: a borda é a cor do texto a 22%.
+              style={[
+                styles.outline,
+                {
+                  borderColor: palette.dark
+                    ? 'rgba(241,238,230,.22)'
+                    : 'rgba(18,18,15,.22)'
+                }
+              ]}
             >
               <Text style={[text(15, 'Bold', 1.2), { color: ink }]}>
                 Criar conta grátis
@@ -384,17 +396,15 @@ export default function Entrar() {
               color={ink}
               accentColor={palette.dark ? palette.accent : LIVE}
             />
-            <Field
+            <SheetField
               label="Nome"
-              icon="person"
               autoComplete="name"
               textContentType="name"
               value={name}
               onChangeText={setName}
             />
-            <Field
+            <SheetField
               label="E-mail"
-              icon="mail"
               autoCapitalize="none"
               autoComplete="email"
               keyboardType="email-address"
@@ -403,9 +413,8 @@ export default function Entrar() {
               onChangeText={setEmail}
             />
             <View style={{ gap: 7 }}>
-              <Field
+              <SheetField
                 label="Senha"
-                icon="lock"
                 autoComplete="new-password"
                 textContentType="newPassword"
                 secureTextEntry
@@ -438,7 +447,7 @@ export default function Entrar() {
                 {error}
               </ErrorText>
             ) : null}
-            <BlockButton
+            <AcidButton
               label={phaseLabel(phase, {
                 idle: `Criar conta ${say.button}`.trim(),
                 sending: 'Criando a conta…'
@@ -498,7 +507,7 @@ export default function Entrar() {
                 {error}
               </ErrorText>
             ) : null}
-            <BlockButton
+            <AcidButton
               label="Abrir o Mail"
               leading="mail"
               onPress={() => Linking.openURL('message://').catch(() => {})}
@@ -549,9 +558,8 @@ export default function Entrar() {
                 : 'Digite o código de 6 dígitos do seu app autenticador.'}
             </Text>
             {backup ? (
-              <Field
+              <SheetField
                 label="Código de recuperação"
-                icon="lock"
                 autoCapitalize="none"
                 value={code}
                 onChangeText={setCode}
@@ -576,7 +584,7 @@ export default function Entrar() {
                 {error}
               </ErrorText>
             ) : null}
-            <BlockButton
+            <AcidButton
               label={phaseLabel(phase, {
                 idle: `Confirmar ${say.button}`.trim(),
                 sending: 'Confirmando…'
@@ -611,7 +619,85 @@ export default function Entrar() {
   )
 }
 
+/**
+ * O campo da folha (`.fld` e `.inp` do redesign): rótulo em mono, caixa em
+ * pílula de 54 com a borda que escurece no foco e, na senha, o olho.
+ */
+function SheetField({
+  label,
+  secureTextEntry,
+  ...input
+}: ComponentProps<typeof TextInput> & { label: string }) {
+  const palette = usePalette()
+  const [focused, setFocused] = useState(false)
+  const [shown, setShown] = useState(false)
+  return (
+    <View style={{ gap: 7 }}>
+      <Text style={[styles.fieldLabel, { color: palette.muted }]}>
+        {label.toLocaleUpperCase('pt-BR')}
+      </Text>
+      <View
+        style={[
+          styles.field,
+          {
+            backgroundColor: palette.card,
+            borderColor: focused ? palette.ink : palette.line,
+            borderWidth: focused ? 2.5 : 1.5,
+            paddingHorizontal: focused ? 17 : 18
+          }
+        ]}
+      >
+        <TextInput
+          accessibilityLabel={label}
+          placeholderTextColor={palette.muted}
+          selectionColor={palette.ink}
+          cursorColor={palette.ink}
+          secureTextEntry={secureTextEntry && !shown}
+          style={[styles.fieldText, { color: palette.ink }]}
+          {...input}
+          onFocus={(event) => {
+            setFocused(true)
+            input.onFocus?.(event)
+          }}
+          onBlur={(event) => {
+            setFocused(false)
+            input.onBlur?.(event)
+          }}
+        />
+        {secureTextEntry ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={shown ? 'Esconder a senha' : 'Mostrar a senha'}
+            hitSlop={10}
+            onPress={() => setShown((value) => !value)}
+          >
+            <Icon name="eye" size={20} color={palette.muted} />
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
+  )
+}
+
 const styles = StyleSheet.create({
+  fieldLabel: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11,
+    letterSpacing: 0.88
+  },
+  field: {
+    height: 54,
+    borderRadius: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10
+  },
+  fieldText: {
+    flex: 1,
+    height: '100%',
+    fontFamily: 'Archivo-SemiBold',
+    fontSize: 17
+  },
   page: { padding: 20, paddingTop: 24, gap: 16 },
   row: {
     flexDirection: 'row',
@@ -625,18 +711,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
-  mono: { fontFamily: 'GeistMono-SemiBold', fontSize: 11.5 },
+  mono: { fontFamily: 'GeistMono-SemiBold', fontSize: 11, letterSpacing: 0.88 },
   context: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     padding: 10,
-    borderRadius: 16
+    borderRadius: 18,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
   },
-  contextPhoto: { width: 44, height: 44, borderRadius: 10 },
+  contextPhoto: { width: 52, height: 52, borderRadius: 12 },
   link: { textDecorationLine: 'underline' },
   divider: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  line: { flex: 1, height: StyleSheet.hairlineWidth },
+  line: { flex: 1, height: 1 },
   outline: {
     height: 54,
     borderRadius: 27,
