@@ -749,9 +749,18 @@ invente layout que o projeto não tem.
   (`pubs.search`, `getById`, `nearbyWithoutGames`, `gameDays`, `getSports`, `getTeamsBySport`,
   `searchCities`, `countTodayNear`) são abertas; `getById` trata o visitante como torcedor sem
   presença. O que é só do torcedor espera `useFan()`, e o que grava passa por
-  `useWithAccount()` (`lib/account.ts`), que leva ao "Entrar" (a folha de entrar é da rodada
-  2). Bares, Você e a IA levam ao "Entrar" para o visitante. As quatro páginas da
-  apresentação antiga saíram.
+  `useWithAccount()` (`lib/account.ts`). As quatro páginas da apresentação antiga saíram.
+- **Folha de entrar (rodada 2):** sem conta, `useWithAccount(acao, contexto)` guarda a ação
+  (`lib/pending-action.ts`, no SecureStore: vou, fav, checkin, conta) e abre `app/entrar.tsx`,
+  uma `formSheet` por cima de onde a pessoa estava, com o bar e o jogo no topo e o título da
+  ação. Entrar, criar conta (sempre torcedor; termos aceitos pelo texto), confirmar e-mail e
+  duas etapas trocam na mesma folha. Com a sessão, `finishPending` faz a ação e o cartão
+  `ActionDone` (layout raiz) diz o que foi feito; conta nova sem preferências ganha o convite
+  para "Do que você gosta?" (`app/gostos.tsx`, `onboarding.completeFan`, que aceita vazio).
+  Pelo link do e-mail, `/verified` fecha a folha, conclui a ação e volta ao bar sem o
+  onboarding na frente. Fechar a folha sem conta descarta a ação. A aba Você sem conta mostra
+  "Sua conta guarda tudo" e os itens "com conta"; cidade, raio e termos são livres. "Entrar com
+  a Apple" espera a conta de desenvolvedor paga.
 - **Conta ("04 Conta"):** `profile` (torcedor ou bar, vira `role` no cadastro), `sign-up`,
   `verify-email`, `sign-in`, `forgot-password`, `reset-sent`, `reset-password`, `two-factor`;
   peças em `components/ui.tsx`. O link de confirmação abre no navegador; o servidor entra e
