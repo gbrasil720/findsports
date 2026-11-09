@@ -227,7 +227,15 @@ export default function FanTabs() {
           disableAutomaticContentInsets
           disabled={!fan}
           listeners={
-            fan ? undefined : { tabPress: () => router.push('/sign-in') }
+            fan
+              ? undefined
+              : {
+                  tabPress: () =>
+                    withAccount(() => {}, {
+                      kind: 'conta',
+                      what: 'ver seus bares'
+                    })
+                }
           }
         >
           <NativeTabs.Trigger.Icon src={icons.fan} renderingMode="original" />
@@ -244,7 +252,8 @@ export default function FanTabs() {
           disabled={!fan}
           listeners={{
             tabPress: () => {
-              if (!fan) router.push('/sign-in')
+              if (!fan)
+                withAccount(() => {}, { kind: 'conta', what: 'ver sua conta' })
               else if (menuOpen) closeMenu()
               else if (pathname.startsWith('/voce/')) setOver(true)
             }
@@ -260,7 +269,11 @@ export default function FanTabs() {
           accessibilityLabel="Busca com IA"
           // A busca com IA (2h) é uma folha por cima da aba atual.
           listeners={{
-            tabPress: () => withAccount(() => router.push('/busca-ia'))
+            tabPress: () =>
+              withAccount(() => router.push('/busca-ia'), {
+                kind: 'conta',
+                what: 'buscar com a IA'
+              })
           }}
         >
           <NativeTabs.Trigger.Icon
@@ -300,7 +313,12 @@ export default function FanTabs() {
                   tab === 'voce' ? pressYou() : router.navigate(`/${tab}`)
                 )
           }
-          onAi={() => withAccount(() => router.push('/busca-ia'))}
+          onAi={() =>
+            withAccount(() => router.push('/busca-ia'), {
+              kind: 'conta',
+              what: 'buscar com a IA'
+            })
+          }
           onShortcut={(to) =>
             withAccount(() =>
               to === 'avisos'

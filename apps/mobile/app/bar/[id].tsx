@@ -1064,16 +1064,19 @@ export function BarDetail({
     data ? <PhotoGrid barId={data.id} photos={photos} cols={n} /> : null
 
   // "Vou assistir aqui": a folha marca a presença e mostra o código. Sem
-  // conta, leva ao "Entrar" (a folha de entrar com o bar é da rodada 2).
+  // conta, a folha de entrar com o bar e o jogo; a presença sai marcada.
   const attend = () =>
     going &&
-    withAccount(() => {
-      fromAi('going')
-      router.push({
-        pathname: '/vou/[barId]',
-        params: { barId: id, eventId: going.id }
-      })
-    })
+    withAccount(
+      () => {
+        fromAi('going')
+        router.push({
+          pathname: '/vou/[barId]',
+          params: { barId: id, eventId: going.id }
+        })
+      },
+      { kind: 'vou', barId: id, eventId: going.id }
+    )
   // "Vou assistir aqui": no vidro preso embaixo; na mesa, embaixo da oferta.
   const attendButton =
     going && mine ? (
@@ -1567,8 +1570,15 @@ export function BarDetail({
           game={going}
           now={now}
           attending={mine.attending}
+          code={mine.code}
           bottom={Math.max(insets.bottom, 12)}
           onPress={attend}
+          onCode={() =>
+            router.push({
+              pathname: '/codigo/[eventId]',
+              params: { eventId: going.id }
+            })
+          }
         />
       ) : null}
       {soon.toast}

@@ -55,8 +55,10 @@ export function useFavorites() {
     ids,
     count: favorites.data?.length ?? 0,
     toggle: (barId: string) =>
-      withAccount(() =>
-        ids.has(barId) ? remove.mutate({ barId }) : add.mutate({ barId })
+      withAccount(
+        () =>
+          ids.has(barId) ? remove.mutate({ barId }) : add.mutate({ barId }),
+        { kind: 'fav', barId }
       )
   }
 }

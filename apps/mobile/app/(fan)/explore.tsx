@@ -268,11 +268,13 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   // "Vou assistir aqui" no próximo jogo do bar (o card ao lado no 13″, a
   // tela de fora do Flip).
   const go = (bar: BoardBar) =>
-    withAccount(() =>
-      router.push({
-        pathname: '/vou/[barId]',
-        params: { barId: bar.barId, eventId: bar.eventId }
-      })
+    withAccount(
+      () =>
+        router.push({
+          pathname: '/vou/[barId]',
+          params: { barId: bar.barId, eventId: bar.eventId }
+        }),
+      { kind: 'vou', barId: bar.barId, eventId: bar.eventId }
     )
   // Bar da resposta da busca com IA que a busca daqui não tem: sem o card da
   // folha (ele é da busca), o toque na gota abre a página dele direto.
@@ -829,7 +831,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
       ) : (
         <Pressable
           accessibilityRole="button"
-          onPress={() => router.push('/sign-in')}
+          onPress={() => withAccount(() => {})}
           style={[styles.enter, { backgroundColor: palette.ink }]}
         >
           <Text

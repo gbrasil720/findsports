@@ -114,7 +114,7 @@ export default function Today() {
           <Pressable
             accessibilityRole="button"
             hitSlop={12}
-            onPress={() => router.push('/sign-in')}
+            onPress={() => router.push('/entrar')}
           >
             <Text
               style={[

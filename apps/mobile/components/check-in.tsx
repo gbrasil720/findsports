@@ -131,7 +131,9 @@ export function CheckInCard({
             accessibilityRole="button"
             accessibilityState={{ busy: phase !== 'idle' }}
             disabled={phase !== 'idle'}
-            onPress={() => withAccount(check)}
+            onPress={() =>
+              withAccount(check, { kind: 'checkin', barId, eventId })
+            }
             style={[
               styles.button,
               { backgroundColor: palette.dark ? ACID : INK }

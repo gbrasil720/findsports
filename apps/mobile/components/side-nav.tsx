@@ -129,7 +129,12 @@ export function StackRail({ current }: { current: NavTab }) {
               router.navigate(tab === 'voce' ? '/voce/perfil' : `/${tab}`)
             )
       }
-      onAi={() => withAccount(() => router.push('/busca-ia'))}
+      onAi={() =>
+        withAccount(() => router.push('/busca-ia'), {
+          kind: 'conta',
+          what: 'buscar com a IA'
+        })
+      }
       onShortcut={(to) =>
         withAccount(() =>
           router.navigate(
