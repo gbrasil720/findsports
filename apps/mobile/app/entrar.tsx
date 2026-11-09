@@ -11,6 +11,7 @@ import { ErrorText, haptic, SWAP, useShake } from '@/components/motion'
 import { usePalette } from '@/components/theme'
 import { useTurnstile } from '@/components/turnstile'
 import {
+  ACID,
   authErrorMessage,
   BlockButton,
   Field,
@@ -417,12 +418,12 @@ export default function Entrar() {
                 <Icon
                   name="check"
                   size={13}
-                  color={passwordOk ? palette.accent : muted}
+                  color={passwordOk ? (palette.dark ? ACID : ink) : muted}
                 />
                 <Text
                   style={[
                     styles.mono,
-                    { color: passwordOk ? palette.accent : muted }
+                    { color: passwordOk ? (palette.dark ? ACID : ink) : muted }
                   ]}
                 >
                   {MIN_PASSWORD} caracteres ou mais
@@ -483,9 +484,11 @@ export default function Entrar() {
             <Text style={[text(15, 'Regular', 1.45), { color: ink }]}>
               Mandamos um link para{' '}
               <Text style={text(15, 'Bold', 1.45)}>{email.trim()}</Text>.
-              {acao === 'vou' || acao === 'fav'
-                ? ` Toque nele e você volta aqui com ${acao === 'vou' ? 'a presença' : 'o bar salvo'}${bar.data ? ` no ${bar.data.name}` : ''}. Fica guardado até lá.`
-                : ' Toque nele e você volta aqui com a conta pronta.'}
+              {acao === 'vou'
+                ? ` Toque nele e você volta aqui com a presença${bar.data ? ` no ${bar.data.name}` : ''} marcada. Ela fica guardada até lá.`
+                : acao === 'fav'
+                  ? ` Toque nele e você volta aqui com o ${bar.data?.name ?? 'bar'} salvo. Ele fica guardado até lá.`
+                  : ' Toque nele e você volta aqui com a conta pronta.'}
             </Text>
             {error ? (
               <ErrorText
