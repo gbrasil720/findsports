@@ -17,54 +17,49 @@ import {
 } from '@/components/layout'
 import { MaintenanceGate } from '@/components/maintenance'
 import { OfflineBanner } from '@/components/offline-banner'
-import { Splash, SplashDone } from '@/components/splash'
+import { Splash, SplashDone, type TodayGames } from '@/components/splash'
 import { PaletteProvider } from '@/components/theme'
 import { useAccountSheet } from '@/components/ui'
 import { queryClient, trpc } from '@/lib/trpc'
 
-// A splash nativa (cor chapada, `app.json`) fica até as fontes da marca
-// carregarem; aí a splash animada assume, já com a tipografia certa.
+// A splash nativa (a marca sobre a tinta, `app.json`) fica até as fontes
+// carregarem e os jogos de hoje chegarem; aí a animada assume, com a marca
+// no mesmo lugar.
 SplashScreen.preventAutoHideAsync()
 
-/** Quanto a abertura espera pelos jogos de hoje antes de seguir com a agenda de exemplo. */
+/** Quanto a abertura espera pelos jogos de hoje antes de seguir sem eles. */
 const AGENDA_WAIT_MS = 600
 
-const kickoff = (startsAt: string) =>
-  new Date(startsAt).toLocaleTimeString('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-
 /**
- * Os jogos de hoje para as faixas da splash, como `pubs.todayGames` os dá.
- * `undefined` enquanto espera; `null` se não há jogo hoje ou a API não
- * respondeu a tempo (a splash usa então o exemplo, sem contagem).
+ * Quantos jogos há hoje e quantos estão ao vivo, para a splash, pelo
+ * `pubs.todayGames`. `undefined` enquanto espera; `null` se não há jogo hoje
+ * ou a API não respondeu a tempo (a splash diz então "O jogo é aqui").
  */
-function useTodayAgenda() {
-  const [agenda, setAgenda] = useState<string[] | null>()
+function useTodayGames() {
+  const [today, setToday] = useState<TodayGames | null>()
   useEffect(() => {
     let settled = false
-    const settle = (value: string[] | null) => {
+    const settle = (value: TodayGames | null) => {
       if (settled) return
       settled = true
-      setAgenda(value)
+      setToday(value)
     }
     const timer = setTimeout(() => settle(null), AGENDA_WAIT_MS)
     queryClient.fetchQuery(trpc.pubs.todayGames.queryOptions()).then(
       (games) =>
         settle(
           games.length > 0
-            ? games.map(
-                (game) =>
-                  `${game.title.toLocaleUpperCase('pt-BR')} ${kickoff(game.startsAt)}`
-              )
+            ? {
+                games: games.length,
+                live: games.filter((game) => game.live).length
+              }
             : null
         ),
       () => settle(null)
     )
     return () => clearTimeout(timer)
   }, [])
-  return agenda
+  return today
 }
 
 export default function Layout() {
@@ -76,7 +71,7 @@ export default function Layout() {
     'GeistMono-SemiBold': require('../assets/fonts/GeistMono-SemiBold.ttf'),
     'GeistMono-Bold': require('../assets/fonts/GeistMono-Bold.ttf')
   })
-  const agenda = useTodayAgenda()
+  const today = useTodayGames()
   usePortraitLock()
   useWindowBackground()
   // A busca com IA é folha no celular e tela cheia fora dele (WEB-488): no
@@ -97,7 +92,7 @@ export default function Layout() {
   const accountSheet = useAccountSheet()
     ? { presentation: 'transparentModal' as const, animation: 'fade' as const }
     : undefined
-  const ready = fontsLoaded && agenda !== undefined
+  const ready = fontsLoaded && today !== undefined
   const [splashDone, setSplashDone] = useState(false)
   const endSplash = useCallback(() => setSplashDone(true), [])
 
@@ -254,7 +249,7 @@ export default function Layout() {
           <OfflineBanner />
           <DevTab />
           {splashDone ? null : (
-            <Splash agenda={agenda ?? undefined} onDone={endSplash} />
+            <Splash today={today ?? undefined} onDone={endSplash} />
           )}
         </GestureHandlerRootView>
       </PaletteProvider>
