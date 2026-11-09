@@ -127,7 +127,9 @@ const TEAM_COLUMNS = {
   sportId: team.sportId,
   name: team.name,
   kind: team.kind,
-  isNationalTeam: team.isNationalTeam
+  isNationalTeam: team.isNationalTeam,
+  // WEB-520: o GP da F1 desenha o traçado da pista pela chave do catálogo.
+  catalogKey: team.catalogKey
 }
 const TEAM_SEARCH_LIMIT = 30
 
@@ -153,6 +155,7 @@ const cacheTimes = createTtlCache<
     name: string
     kind: TeamKind
     isNationalTeam: boolean
+    catalogKey: string | null
   }[]
 >({
   ttlMs: CATALOGO_TTL_MS,
