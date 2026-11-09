@@ -1,3 +1,4 @@
+import { brasiliaDay } from '@findsports_oficial/db/event-window'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
 import { useState } from 'react'
@@ -18,8 +19,10 @@ import { Glass } from '@/components/glass'
 import { haptic, ScalePress } from '@/components/motion'
 import { usePalette } from '@/components/theme'
 import { ACID, Icon, INK, PAPER, PillButton, Text, text } from '@/components/ui'
+import { useFan } from '@/lib/account'
 import { authClient } from '@/lib/auth-client'
 import { searchCenter } from '@/lib/explore'
+import { barCount, gameRow } from '@/lib/explore-board'
 import {
   activeCount,
   BAR_ITEMS,
@@ -30,7 +33,6 @@ import {
   NO_FILTERS,
   RADII,
   type Shortcut,
-  searchInput,
   searchRadius,
   shortcutLabel,
   sportCode,
@@ -64,8 +66,14 @@ export default function FiltersSheet() {
   const col2 = (width - 36 - 8) / 2
   const session = authClient.useSession()
   const sports = useQuery(trpc.pubs.getSports.queryOptions())
-  const prefs = useQuery(trpc.pubs.getMyPreferences.queryOptions())
-  const city = useQuery(trpc.pubs.getMyCity.queryOptions())
+  // Sem conta (o Explorar abre aberto): sem preferências nem cidade do
+  // perfil; a cidade é a escolhida no aparelho.
+  const fan = useFan()
+  const prefs = useQuery({
+    ...trpc.pubs.getMyPreferences.queryOptions(),
+    enabled: fan
+  })
+  const city = useQuery({ ...trpc.pubs.getMyCity.queryOptions(), enabled: fan })
   const mine = (prefs.data ?? []).map((p) => p.sportId)
   const sportList = sportsMineFirst(sports.data ?? [], mine)
   const [draft, setDraft] = useState<Filters>(state.filters)
@@ -79,7 +87,7 @@ export default function FiltersSheet() {
     setSeen(state.shortcuts)
     if (state.shortcuts) setPins(state.shortcuts)
   }
-  const center = searchCenter(state.device, city.data)
+  const center = searchCenter(state.device, fan ? city.data : state.localCity)
   const profileRadius = session.data?.user.searchRadiusKm ?? 3
   const radiusKm = searchRadius(draft, profileRadius)
 
@@ -92,13 +100,23 @@ export default function FiltersSheet() {
     }),
     placeholderData: keepPreviousData
   })
-  // Quantos bares o rascunho traria: o número do botão.
+  // Quantos bares o rascunho traria: os que passam algum jogo do dia na
+  // régua, a mesma conta do Explorar (`lib/explore-board.ts`).
   const preview = useQuery({
-    ...trpc.pubs.search.queryOptions(searchInput(draft, center, radiusKm)),
+    ...trpc.pubs.gameBoard.queryOptions({
+      ...center,
+      radiusKm,
+      day: draft.date ?? brasiliaDay(Date.now())
+    }),
     placeholderData: keepPreviousData
   })
-  const count = preview.data?.bars.length ?? 0
-  const more = Boolean(preview.data?.nextCursor)
+  const sportSlug =
+    sports.data?.find((sport) => sport.id === draft.sportId)?.slug ?? null
+  const count = barCount(
+    gameRow(preview.data?.games ?? [], sportSlug, Date.now()),
+    draft.amenities
+  )
+  const more = false
 
   const pin = (key: Shortcut) => {
     haptic.select()
