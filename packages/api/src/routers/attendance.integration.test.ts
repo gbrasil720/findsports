@@ -276,6 +276,10 @@ integrationTest(
         ended: false,
         missed: false
       })
+      // A hora do balcão, em UTC, para o "validado 21:47" do ingresso.
+      expect(listed?.validatedAt).toMatch(
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/
+      )
       expect(
         (await refusal(api.set({ eventId: future, attending: false }))).code
       ).toBe('CONFLICT')

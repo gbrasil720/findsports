@@ -422,6 +422,13 @@ export async function readMyGames(
       offer: reservation.offerSnapshot,
       code: reservationCode.code,
       usedCount: reservationCode.usedCount,
+      // A hora em que o balcão validou (o "validado 21:47" do ingresso): o
+      // uso mais recente que não foi desfeito.
+      validatedAt: sql<string | null>`(
+        SELECT to_char(max(u.used_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+        FROM reservation_code_use u
+        WHERE u.code_id = ${reservationCode.id} AND u.undone_at IS NULL
+      )`,
       // Presença confirmada (WEB-408): código validado ou check-in "Estou aqui".
       visited: sql<boolean>`${visit.eventId} is not null`
     })
@@ -490,6 +497,7 @@ export async function readMyGames(
         code: code && (validated || window.closesAt >= now) ? code : null,
         window: code ? window : null,
         validated,
+        validatedAt: validated ? row.validatedAt : null,
         // Bar Elite que emitiu código e o jogo passou sem validação.
         missed: code !== null && !validated && lastChance < now
       }
