@@ -4,7 +4,7 @@ import Animated, {
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
-  withSpring,
+  withDelay,
   withTiming
 } from 'react-native-reanimated'
 import Svg, {
@@ -19,6 +19,8 @@ import Svg, {
   Text as SvgText,
   TextPath
 } from 'react-native-svg'
+import { scheduleOnRN } from 'react-native-worklets'
+import { EASE, haptic } from '@/components/motion'
 import { usePalette } from '@/components/theme'
 import { ACID, INK, LIVE, PAPER, Text } from '@/components/ui'
 
@@ -98,25 +100,49 @@ function Dots() {
   )
 }
 
-/** O selo: disco acid, o texto em volta, o tracejado e o anel da marca. */
-function Seal() {
+/**
+ * O carimbo (rodada 2, "Selo final"): espera a tela trocar e assenta como
+ * carimbo, escala 1,12 → 1, gira −20° → −14° e aparece, 240 ms EASE, com o
+ * háptico médio no quadro em que encosta. Depois o código de barras e o número
+ * saem juntos (`issued`, 200 ms). Movimento reduzido: só a opacidade.
+ */
+const STAMP_DELAY = 260
+
+function useStamp() {
   const reduced = useReducedMotion()
   const stamp = useSharedValue(0)
+  const issued = useSharedValue(0)
   useEffect(() => {
+    const show = () =>
+      issued.set(withTiming(1, { duration: 200, easing: EASE }))
     stamp.set(
-      reduced
-        ? withTiming(1, { duration: 200 })
-        : withSpring(1, { duration: 350, dampingRatio: 0.8 })
+      withDelay(
+        STAMP_DELAY,
+        withTiming(
+          1,
+          { duration: reduced ? 200 : 240, easing: EASE },
+          (done) => {
+            if (!done) return
+            if (!reduced) scheduleOnRN(haptic.stamp)
+            scheduleOnRN(show)
+          }
+        )
+      )
     )
-  }, [stamp, reduced])
+  }, [stamp, issued, reduced])
+  return { stamp, issued, reduced }
+}
+
+/** O selo: disco acid, o texto em volta, o tracejado e o anel da marca. */
+function Seal({ stamp, reduced }: ReturnType<typeof useStamp>) {
   const style = useAnimatedStyle(() =>
     reduced
       ? { opacity: stamp.get(), transform: [{ rotate: '-14deg' }] }
       : {
-          opacity: Math.min(1, stamp.get() * 2),
+          opacity: Math.min(1, stamp.get() * 1.6),
           transform: [
-            { rotate: '-14deg' },
-            { scale: 1.25 - 0.25 * stamp.get() }
+            { rotate: `${-20 + 6 * stamp.get()}deg` },
+            { scale: 1.12 - 0.12 * stamp.get() }
           ]
         }
   )
@@ -168,6 +194,67 @@ const BARS = [
   2, 1, 1, 3, 1, 2, 1, 1, 2, 3, 1, 1, 2, 1, 3, 1, 2, 2, 1, 1, 3, 1, 1, 2, 1, 2,
   1, 3, 1, 1, 2, 1, 1, 2, 3, 1
 ]
+
+/** O pé da carteirinha: o código de barras e o número (ou "A EMITIR"). */
+function Foot({
+  validated,
+  number,
+  since
+}: {
+  validated: boolean
+  number?: string
+  since?: string
+}) {
+  return (
+    <View style={styles.foot}>
+      <View style={styles.bars}>
+        {BARS.map((w, i) => (
+          <View
+            // biome-ignore lint/suspicious/noArrayIndexKey: traços fixos
+            key={i}
+            style={{
+              width: w,
+              marginRight: i % 3 ? 1 : 2,
+              backgroundColor: validated ? PAPER : 'rgba(241,238,230,.14)'
+            }}
+          />
+        ))}
+      </View>
+      <View style={{ alignItems: 'flex-end' }}>
+        <Text style={styles.numLabel}>
+          {validated ? `DESDE ${since ?? ''}`.trim() : 'A EMITIR'}
+        </Text>
+        <Text style={styles.num}>
+          {validated && number ? `Nº ${number}` : 'Nº ·····'}
+        </Text>
+      </View>
+    </View>
+  )
+}
+
+/**
+ * A carteirinha validada: o pé "A EMITIR" continua até o selo encostar, e
+ * então o código e o número aparecem por cima dele.
+ */
+function Issued({ number, since }: { number?: string; since?: string }) {
+  const motion = useStamp()
+  const { issued } = motion
+  const before = useAnimatedStyle(() => ({ opacity: 1 - issued.get() }))
+  const after = useAnimatedStyle(() => ({ opacity: issued.get() }))
+  return (
+    <>
+      <View>
+        <Animated.View style={before}>
+          <Foot validated={false} />
+        </Animated.View>
+        <Animated.View style={[StyleSheet.absoluteFill, after]}>
+          <Foot validated number={number} since={since} />
+        </Animated.View>
+      </View>
+      <Seal {...motion} />
+    </>
+  )
+}
 
 /** A marca pequena: o anel com a bola vermelha. */
 export function MarkSmall() {
@@ -325,30 +412,11 @@ export function FanCard({
           />
         </View>
 
-        <View style={styles.foot}>
-          <View style={styles.bars}>
-            {BARS.map((w, i) => (
-              <View
-                // biome-ignore lint/suspicious/noArrayIndexKey: traços fixos
-                key={i}
-                style={{
-                  width: w,
-                  marginRight: i % 3 ? 1 : 2,
-                  backgroundColor: validated ? PAPER : 'rgba(241,238,230,.14)'
-                }}
-              />
-            ))}
-          </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.numLabel}>
-              {validated ? `DESDE ${since ?? ''}`.trim() : 'A EMITIR'}
-            </Text>
-            <Text style={styles.num}>
-              {validated && number ? `Nº ${number}` : 'Nº ·····'}
-            </Text>
-          </View>
-        </View>
-        {validated ? <Seal /> : null}
+        {validated ? (
+          <Issued number={number} since={since} />
+        ) : (
+          <Foot validated={false} />
+        )}
       </View>
     </View>
   )

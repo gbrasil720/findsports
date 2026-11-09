@@ -29,6 +29,12 @@ function Steps() {
           : undefined
       }}
     >
+      {/* A carteirinha fica onde estava (mesmo lugar na revisão e no fim):
+          a tela troca por fade, e o selo carimba depois (`Issued`). */}
+      <Stack.Screen
+        name="pronto"
+        options={{ animation: 'fade', animationDuration: 200 }}
+      />
       <Stack.Screen
         name="location"
         options={{ contentStyle: side ? { backgroundColor: BG } : undefined }}

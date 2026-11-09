@@ -48,7 +48,10 @@ export const haptic = {
   error: () =>
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(
       quiet
-    )
+    ),
+  /** O selo da carteirinha encostando no papel. */
+  stamp: () =>
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(quiet)
 }
 
 // Entradas prontas. Constantes de propósito: o Reanimated 4 recomeça a
