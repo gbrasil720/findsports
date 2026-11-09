@@ -12,6 +12,7 @@ import {
   setAttendance
 } from '../lib/attendance'
 import { checkIn } from '../lib/check-in'
+import { createFriendCall, readSentCalls } from '../lib/friend-calls'
 import { answerPostGame, undoPostGame } from '../lib/post-game'
 
 /**
@@ -26,7 +27,11 @@ export const attendanceRouter = router({
         eventId: z.string().uuid(),
         attending: z.boolean(),
         // "Vou assistir" a partir do card de "Bares pra você" (WEB-425, 22e).
-        recommendationRunId: z.string().uuid().optional()
+        recommendationRunId: z.string().uuid().optional(),
+        // "Chamar para o jogo" da folha (rodada 3): os amigos saem junto com
+        // a confirmação, pela regra do chamado de sempre (só amigo aceito,
+        // só antes do jogo, um por amigo e jogo).
+        callFriendIds: z.array(z.string().min(1).max(64)).max(12).optional()
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -49,9 +54,29 @@ export const attendanceRouter = router({
           .onConflictDoNothing()
           .catch(() => {})
       }
+      // Chamado que não sai (amizade desfeita, repetido) não desfaz a
+      // presença: só fica de fora da frase do ingresso.
+      const called: string[] = []
+      if (input.attending)
+        for (const toUserId of input.callFriendIds ?? []) {
+          const sent = await createFriendCall({
+            fromUserId: userId,
+            toUserId,
+            eventId: input.eventId,
+            barId
+          }).catch(() => null)
+          if (sent?.ok) called.push(sent.friendName)
+        }
       // O código vem na resposta: a tela o mostra sem esperar o perfil recarregar.
-      return marked
+      return { ...marked, called }
     }),
+
+  /** Os amigos que a pessoa chamou para este jogo (o ingresso, rodada 3). */
+  sentCalls: fanProcedure
+    .input(z.object({ eventId: z.string().uuid() }))
+    .query(({ ctx, input }) =>
+      readSentCalls(ctx.session.user.id, input.eventId)
+    ),
 
   /**
    * "Estou aqui" (WEB-408): check-in por localização durante o jogo. O app

@@ -173,7 +173,8 @@ integrationTest(
         attending: true,
         code: null,
         offer: null,
-        confirmsCodesLater: false
+        confirmsCodesLater: false,
+        called: []
       })
       await api.set({ eventId: future, attending: true })
       expect(await ctx.presences(future)).toHaveLength(1)

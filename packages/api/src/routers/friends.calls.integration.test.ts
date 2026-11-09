@@ -133,6 +133,31 @@ integrationTest('chamado de amigo de ponta a ponta', async () => {
       [marina.id, 'going']
     ])
 
+    // O ingresso de Gabriel: Marina vai também; Rafa ("Agora não") segue
+    // como chamado, sem dizer que recusou.
+    const attendanceOf = (id: string) =>
+      appRouter.createCaller(contextFor(id, 'fan')).attendance
+    expect(await attendanceOf(gabriel).sentCalls({ eventId: game })).toEqual([
+      { name: marina.name, status: 'going' },
+      { name: rafa.name, status: 'pending' }
+    ])
+
+    // "Chamar para o jogo" da folha: sai junto com a presença; não-amigo
+    // fica de fora sem desfazer nada.
+    const second = await elite.seedGame({
+      startsAt: new Date(Date.now() + 26 * 3_600_000)
+    })
+    const marked2 = await attendanceOf(gabriel).set({
+      eventId: second,
+      attending: true,
+      callFriendIds: [marina.id, estranho.id]
+    })
+    expect(marked2.attending).toBe(true)
+    expect(marked2.called).toEqual([marina.name])
+    expect(
+      (await as(marina.id).notices()).calls.map((c) => c.eventId)
+    ).toContain(second)
+
     // Bar que não emite código: presença sem código.
     const plain = await starter.seedGame()
     const other = await createFriendCall({

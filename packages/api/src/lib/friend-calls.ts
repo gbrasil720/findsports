@@ -162,3 +162,34 @@ export async function readCallNotices(me: string, days: number) {
     callsAccepted: accepted.rows.map(shape)
   }
 }
+
+/** Um chamado que a pessoa fez para um jogo, como o ingresso mostra. */
+export type SentCall = {
+  name: string
+  status: 'pending' | 'going' | 'not_now'
+}
+
+/**
+ * Os chamados que `me` fez para o jogo (rodada 3, ingresso): "Marina e
+ * Rafael foram chamados", e "Marina vai também" quando ela aceita com a
+ * presença de pé. "Agora não" não chega a quem chamou: volta como pendente.
+ */
+export async function readSentCalls(
+  me: string,
+  eventId: string
+): Promise<SentCall[]> {
+  const rows = await db.execute<{ name: string; status: SentCall['status'] }>(
+    sql`
+      SELECT u.name,
+        CASE WHEN c.status = 'going' AND EXISTS (
+          SELECT 1 FROM attendance a
+          WHERE a.user_id = c.to_user_id AND a.event_id = c.event_id
+        ) THEN 'going' ELSE 'pending' END AS status
+      FROM friend_call c
+      JOIN "user" u ON u.id = c.to_user_id AND u.banned IS NOT TRUE
+      WHERE c.from_user_id = ${me} AND c.event_id = ${eventId}
+      ORDER BY c.created_at
+    `
+  )
+  return rows.rows.map((row) => ({ name: row.name, status: row.status }))
+}
