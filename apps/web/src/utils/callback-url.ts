@@ -1,6 +1,6 @@
 import { useLocation, useRouter } from '@tanstack/react-router'
 
-export function getSafeCallbackUrl(url: string, fallback = '/admin') {
+export function getSafeCallbackUrl(url: string, fallback = '/dashboard') {
   if (!url.startsWith('/') || url.startsWith('//') || url.includes('\\')) {
     return fallback
   }
@@ -17,11 +17,13 @@ export function getCallbackUrl(
 ): string {
   try {
     const url = new URL(locationHref, origin).searchParams.get('callbackUrl')
-    if (!url) return '/admin'
+    if (!url) return '/dashboard'
     const parsed = new URL(url, origin)
-    return parsed.origin === origin ? parsed.pathname + parsed.search : '/admin'
+    return parsed.origin === origin
+      ? parsed.pathname + parsed.search
+      : '/dashboard'
   } catch {
-    return '/admin'
+    return '/dashboard'
   }
 }
 
@@ -35,10 +37,10 @@ export function useCallbackUrl(): string {
 }
 
 // WEB-211: o destino do cadastro viaja na URL, e não no `sessionStorage`: o
-// link do e-mail de verificação abre em outra aba. `/admin` é o padrão de
+// link do e-mail de verificação abre em outra aba. `/dashboard` é o padrão de
 // `getCallbackUrl`, então nem vai junto.
 export function withCallbackUrl(path: string, callbackUrl: string): string {
-  if (callbackUrl === '/admin') return path
+  if (callbackUrl === '/dashboard') return path
   const separator = path.includes('?') ? '&' : '?'
   return `${path}${separator}callbackUrl=${encodeURIComponent(callbackUrl)}`
 }
