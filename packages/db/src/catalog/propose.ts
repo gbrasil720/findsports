@@ -367,89 +367,9 @@ async function tennisPlayers(): Promise<Proposal[]> {
 }
 
 // --------------------------------------------------------------------------
-// F1: a Wikidata não diz quem corre a temporada; a Jolpica-F1 diz.
+// F1 (WEB-520): um item por GP do calendário, à mão, como vôlei e NBB. A
+// Jolpica-F1 (pilotos e escuderias) saiu: sem licença para usar a fonte.
 // --------------------------------------------------------------------------
-
-const JOLPICA = 'https://api.jolpi.ca/ergast/f1/current'
-
-const NATIONALITY: Record<string, string> = {
-  American: 'US',
-  Argentine: 'AR',
-  Australian: 'AU',
-  Austrian: 'AT',
-  Brazilian: 'BR',
-  British: 'GB',
-  Canadian: 'CA',
-  Danish: 'DK',
-  Dutch: 'NL',
-  Finnish: 'FI',
-  French: 'FR',
-  German: 'DE',
-  Italian: 'IT',
-  Japanese: 'JP',
-  Mexican: 'MX',
-  Monegasque: 'MC',
-  'New Zealander': 'NZ',
-  Spanish: 'ES',
-  Swiss: 'CH',
-  Thai: 'TH'
-}
-
-/** Nome da Jolpica → nome que a tela já usava. */
-const CONSTRUCTOR_NAMES: Record<string, string> = {
-  'Alpine F1 Team': 'Alpine',
-  'Cadillac F1 Team': 'Cadillac',
-  'Haas F1 Team': 'Haas',
-  'RB F1 Team': 'Racing Bulls',
-  'Red Bull': 'Red Bull Racing',
-  Sauber: 'Kick Sauber'
-}
-
-async function jolpica<T>(path: string, table: string, list: string) {
-  const response = await fetch(`${JOLPICA}/${path}.json?limit=100`, {
-    headers: { 'User-Agent': USER_AGENT }
-  })
-  if (!response.ok) throw new Error(`Jolpica respondeu ${response.status}`)
-  const body = (await response.json()) as {
-    MRData: Record<string, Record<string, T[]>>
-  }
-  return body.MRData[table]?.[list] ?? []
-}
-
-async function formulaOne(): Promise<Proposal[]> {
-  const drivers = await jolpica<{
-    driverId: string
-    givenName: string
-    familyName: string
-    nationality?: string
-  }>('drivers', 'DriverTable', 'Drivers')
-  const constructors = await jolpica<{
-    constructorId: string
-    name: string
-    nationality?: string
-  }>('constructors', 'ConstructorTable', 'Constructors')
-  return [
-    ...constructors.map((team) => ({
-      key: `f1:${team.constructorId}`,
-      name: CONSTRUCTOR_NAMES[team.name] ?? team.name,
-      kind: 'team' as const,
-      country: NATIONALITY[team.nationality ?? ''] ?? null,
-      relevance: 0,
-      aliases: [team.name]
-    })),
-    // Sem nacionalidade são reservas e pilotos de treino livre.
-    ...drivers
-      .filter((driver) => driver.nationality)
-      .map((driver) => ({
-        key: `f1:${driver.driverId}`,
-        name: `${driver.givenName} ${driver.familyName}`,
-        kind: 'athlete' as const,
-        country: NATIONALITY[driver.nationality ?? ''] ?? null,
-        relevance: 0,
-        aliases: [driver.familyName]
-      }))
-  ]
-}
 
 /** Uma consulta por vez: a Wikidata limita quem consulta em paralelo. */
 export const SOURCES: Record<CatalogSport, (() => Promise<Proposal[]>)[]> = {
@@ -457,7 +377,7 @@ export const SOURCES: Record<CatalogSport, (() => Promise<Proposal[]>)[]> = {
   basquete: [() => leagueTeams('Q155223')],
   volei: [],
   'futebol-americano': [() => leagueTeams('Q1215884')],
-  'formula-1': [formulaOne],
+  'formula-1': [],
   'mma-ufc': [ufcFighters],
   tenis: [tennisPlayers]
 }
