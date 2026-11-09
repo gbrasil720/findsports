@@ -79,18 +79,23 @@ export function ActionDone() {
   return (
     <Animated.View
       accessibilityRole="alert"
-      style={[styles.spot, { bottom: insets.bottom + 92 }, style]}
+      style={[styles.spot, { bottom: insets.bottom + 78 }, style]}
     >
       <View style={styles.card}>
         <View style={styles.head}>
           <View style={styles.check}>
-            <Icon name="check" size={16} color={INK} />
+            <Icon name="check" size={20} color={INK} />
           </View>
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={[text(16, 'Bold', 1.25), { color: PAPER }]}>
+            <Text style={[text(17, 'Bold', 1.25), { color: PAPER }]}>
               {heading}
             </Text>
-            <Text style={[text(13, 'Regular', 1.4), { color: '#cfccc4' }]}>
+            <Text
+              style={[
+                text(14, 'Regular', 1.45),
+                { color: '#c9c7c0', marginTop: 3 }
+              ]}
+            >
               {line}
               {done.invite ? ` ${INVITE}` : ''}
             </Text>
@@ -104,7 +109,7 @@ export function ActionDone() {
                 close()
                 router.push({ pathname: '/gostos', params: { tag: heading } })
               }}
-              style={[styles.button, { backgroundColor: ACID }]}
+              style={[styles.button, styles.acid]}
             >
               <Text style={[text(14, 'Bold', 1.2), { color: INK }]}>
                 Escolher agora
@@ -130,34 +135,44 @@ export function ActionDone() {
 }
 
 const styles = StyleSheet.create({
+  // 112 do pé, como `.fresh` (a barra de início dentro).
   spot: { position: 'absolute', left: 12, right: 12 },
+  // `.fresh`: raio 26, 18 de respiro e a sombra dura de 4 (a funda some no
+  // RN sem duas camadas; fica a dura, que é a que se lê).
   card: {
     backgroundColor: INK,
-    borderRadius: 20,
-    padding: 14,
+    borderRadius: 26,
+    padding: 18,
     gap: 12,
     shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 },
     elevation: 10
   },
-  head: { flexDirection: 'row', gap: 12 },
+  head: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
   check: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: ACID,
     alignItems: 'center',
     justifyContent: 'center'
   },
-  actions: { flexDirection: 'row', gap: 10 },
+  actions: { flexDirection: 'row', gap: 8 },
   button: {
     flex: 1,
-    height: 44,
-    borderRadius: 22,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center'
   },
-  outline: { borderWidth: 1.5, borderColor: 'rgba(241,238,230,.35)' }
+  acid: {
+    backgroundColor: ACID,
+    shadowColor: '#7f9a12',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  },
+  outline: { borderWidth: 1.5, borderColor: 'rgba(241,238,230,.3)' }
 })
