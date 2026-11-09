@@ -61,12 +61,13 @@ export const subscriptionPlanEnum = pgEnum('subscription_plan', [
 export type SubscriptionPlan = (typeof subscriptionPlanEnum.enumValues)[number]
 
 /**
- * WEB-381: quem o torcedor acompanha é um time (clube, seleção, escuderia da
- * F1) ou um atleta (piloto, lutador). A interface diz "time" ou "atleta"; o
- * resto do sistema (favoritos, participantes do jogo, busca) trata os dois
- * pela mesma tabela.
+ * WEB-381: quem o torcedor acompanha é um time (clube, seleção) ou um atleta
+ * (lutador, tenista). WEB-520: na F1, um GP (`race`), um por corrida do
+ * calendário, no lugar de piloto e escuderia. A interface diz "time",
+ * "atleta" ou "GP"; o resto do sistema (favoritos, participantes do jogo,
+ * busca) trata todos pela mesma tabela.
  */
-export const teamKindEnum = pgEnum('team_kind', ['team', 'athlete'])
+export const teamKindEnum = pgEnum('team_kind', ['team', 'athlete', 'race'])
 
 /** As categorias da foto do bar (design 28c), em `bar-gallery.ts`. */
 export const barPhotoCategoryEnum = pgEnum(
