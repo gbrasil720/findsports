@@ -796,7 +796,12 @@ invente layout que o projeto não tem.
   do aparelho, senão da cidade do perfil (`pubs.getMyCity`; sem conta, a escolhida no
   aparelho), senão São Paulo; o fim do jogo
   ("ao vivo") vem de `@findsports_oficial/db/event-window`, a mesma fonte do servidor. A
-  página do bar registra `profile_view` em `/api/bar/commercial-event`, como o web. A página do bar segue
+  página do bar registra `profile_view` em `/api/bar/commercial-event`, como o web. No
+  celular, a página é a 2g da rodada 1 do redesign (`components/bar-page.tsx`): foto com o
+  nome, "aberto agora · até" (`openingTurn`) e a nota verificada; o jogo de hoje num cartão
+  de tinta com telão, som, a oferta e quantos vão; o rodapé fixo com "Vou assistir aqui";
+  círculos sólidos sobre a foto e a faixa com o nome ao passar dela. Sem conta, "Vou
+  assistir", "Estou aqui" e o coração levam ao "Entrar". A página do bar segue
   o design até "O que dizem", menos "Ver todas": entram a média das estrelas e os três
   comentários mais recentes aprovados (WEB-451, `readRatingList` em
   `packages/api/src/lib/rating-list.ts`), só das avaliações verificadas. No dia do jogo,
