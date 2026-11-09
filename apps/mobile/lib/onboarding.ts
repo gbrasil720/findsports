@@ -154,3 +154,30 @@ export function coverNote(sports: string[], step: number) {
   ][step]
   return `${saved}${missing}`
 }
+
+/** A ordem dos esportes nas pílulas de "Do que você gosta?" (rodada 2). */
+const SPORT_ORDER = [
+  'futebol',
+  'basquete',
+  'formula-1',
+  'mma-ufc',
+  'futebol-americano',
+  'tenis',
+  'volei'
+]
+
+/** O nome curto da pílula: "F1", "UFC", "NFL"; o resto, o do catálogo. */
+export const sportChip = (sport: { slug: string; name: string }) =>
+  ({ 'formula-1': 'F1', 'mma-ufc': 'UFC', 'futebol-americano': 'NFL' })[
+    sport.slug
+  ] ?? sport.name
+
+/** Os esportes na ordem do desenho; esporte novo do catálogo vai no fim. */
+export const bySportOrder = <T extends { slug: string }>(sports: T[]) =>
+  [...sports].sort((a, b) => {
+    const rank = (slug: string) =>
+      SPORT_ORDER.includes(slug)
+        ? SPORT_ORDER.indexOf(slug)
+        : SPORT_ORDER.length
+    return rank(a.slug) - rank(b.slug)
+  })

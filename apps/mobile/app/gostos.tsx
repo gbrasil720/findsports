@@ -5,10 +5,10 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { DayRow } from '@/components/explore-board'
 import { haptic } from '@/components/motion'
+import { AcidButton } from '@/components/ob-frame'
 import { usePalette } from '@/components/theme'
 import {
   ACID,
-  BlockButton,
   Icon,
   INK,
   Text,
@@ -18,6 +18,7 @@ import {
   useStatusBar
 } from '@/components/ui'
 import { refreshSession } from '@/lib/auth-client'
+import { bySportOrder, sportChip } from '@/lib/onboarding'
 import { queryClient, trpc } from '@/lib/trpc'
 
 /*
@@ -85,7 +86,7 @@ export default function Gostos() {
 
   const chip = (on: boolean) => [
     styles.chip,
-    { backgroundColor: on ? palette.ink : palette.bg }
+    { backgroundColor: on ? palette.ink : palette.mark }
   ]
   const chipText = (on: boolean) => [
     text(14, 'SemiBold', 1.2),
@@ -118,12 +119,17 @@ export default function Gostos() {
         opcional.
       </Text>
 
-      <View style={[styles.card, { backgroundColor: palette.card }]}>
-        <Text style={[text(15, 'Bold', 1.3), { color: palette.ink }]}>
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: palette.card, shadowColor: palette.drop }
+        ]}
+      >
+        <Text style={[text(16, 'Bold', 1.3), { color: palette.ink }]}>
           Esportes
         </Text>
         <View style={styles.chips}>
-          {(sports.data ?? []).map((sport) => {
+          {bySportOrder(sports.data ?? []).map((sport) => {
             const on = sportIds.includes(sport.id)
             return (
               <Pressable
@@ -140,18 +146,28 @@ export default function Gostos() {
                 }}
                 style={chip(on)}
               >
-                <Text style={chipText(on)}>{sport.name}</Text>
+                <Text style={chipText(on)}>{sportChip(sport)}</Text>
               </Pressable>
             )
           })}
         </View>
       </View>
 
-      <View style={[styles.card, { backgroundColor: palette.card }]}>
-        <Text style={[text(15, 'Bold', 1.3), { color: palette.ink }]}>
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: palette.card, shadowColor: palette.drop }
+        ]}
+      >
+        <Text style={[text(16, 'Bold', 1.3), { color: palette.ink }]}>
           Seus times
         </Text>
-        <Text style={[text(13, 'Regular', 1.35), { color: palette.muted }]}>
+        <Text
+          style={[
+            text(13, 'Regular', 1.35),
+            { color: palette.muted, marginTop: -6 }
+          ]}
+        >
           Avisamos quando um bar perto passar o jogo deles.
         </Text>
         {searching ? (
@@ -202,18 +218,24 @@ export default function Gostos() {
         </View>
       </View>
 
-      <View style={[styles.card, { backgroundColor: palette.card }]}>
-        <Text style={[text(15, 'Bold', 1.3), { color: palette.ink }]}>
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: palette.card, shadowColor: palette.drop }
+        ]}
+      >
+        <Text style={[text(16, 'Bold', 1.3), { color: palette.ink }]}>
           Até onde você vai
         </Text>
         <DayRow
           days={RADII.map((km) => ({ day: String(km), label: `${km} km` }))}
           value={String(radius)}
           onChange={(km) => setRadius(Number(km))}
+          stretch
         />
       </View>
 
-      <BlockButton
+      <AcidButton
         label={save.isPending ? 'Salvando…' : 'Salvar'}
         busy={save.isPending}
         onPress={() =>
@@ -250,7 +272,15 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: ACID
   },
-  card: { borderRadius: 20, padding: 16, gap: 12 },
+  // `.box2`: raio 22, sombra dura de 3, 10 entre as linhas.
+  card: {
+    borderRadius: 22,
+    padding: 16,
+    gap: 10,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
+  },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     height: 38,
