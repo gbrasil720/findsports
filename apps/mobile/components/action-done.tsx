@@ -52,6 +52,7 @@ export function ActionDone() {
     )
   }
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: um cartão por ação
   useEffect(() => {
     if (!done) return
     haptic.success()
@@ -64,7 +65,6 @@ export function ActionDone() {
     if (done.invite) return
     const timer = setTimeout(close, 3500)
     return () => clearTimeout(timer)
-    // biome-ignore lint/correctness/useExhaustiveDependencies: um cartão por ação
   }, [done])
 
   const style = useAnimatedStyle(() =>
