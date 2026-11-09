@@ -59,7 +59,7 @@ import {
 import { useExploreState, useShotSource } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
 import { useLayout, useNavInsets } from '@/components/layout'
-import { EASE, haptic, POP_FAST, ScalePress } from '@/components/motion'
+import { EASE, haptic, POP_FAST, ScalePress, SWAP } from '@/components/motion'
 import { useSoon } from '@/components/soon'
 import { useTabBarSpace } from '@/components/tab-bar'
 import { usePalette } from '@/components/theme'
@@ -454,6 +454,8 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
       }
     }
   }
+  const dimmed = (layer: Layer) =>
+    selected !== null && layer.kind !== 'selected'
   const tapLayer = (layer: Layer) => {
     haptic.select()
     if (layer.kind === 'group') {
@@ -863,7 +865,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   )
 
   // O título da folha: o jogo em Anton, ou "Rolando agora" no "Ao vivo".
-  const sheetTitle = liveOnly ? (
+  const sheetTitleNow = liveOnly ? (
     <Text numberOfLines={1} style={[styles.sheetTitle, { color: palette.ink }]}>
       ROLANDO <Text style={{ color: palette.live }}>AGORA</Text>
     </Text>
@@ -878,6 +880,15 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
     <Text numberOfLines={1} style={[styles.sheetTitle, { color: palette.ink }]}>
       {quiet.length ? 'BARES PERTO DE VOCÊ' : 'NENHUM JOGO'}
     </Text>
+  )
+  // Trocar o jogo é só estado: o título faz crossfade (150 ms).
+  const sheetTitle = (
+    <Animated.View
+      key={liveOnly ? 'ao-vivo' : (game?.key ?? 'nada')}
+      entering={SWAP}
+    >
+      {sheetTitleNow}
+    </Animated.View>
   )
   const sheetLineText = liveOnly
     ? `${liveGames.length} ${liveGames.length === 1 ? 'jogo' : 'jogos'} · ${bars.length} ${bars.length === 1 ? 'bar' : 'bares'} até ${radiusKm} km`
@@ -1184,17 +1195,20 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
               layer.kind === 'group' ? (
                 <MapMarker
                   key={layer.id}
-                  draw={`${layer.count}:${layer.live}`}
+                  draw={`${layer.count}:${layer.live}:${layer.elite}:${dimmed(layer)}`}
                   coordinate={{ latitude: layer.lat, longitude: layer.lng }}
                   anchor={{ x: 0.5, y: 0.5 }}
                   zIndex={2}
                   onPress={() => tapLayer(layer)}
                 >
-                  <MapGroup
-                    count={layer.count}
-                    live={layer.live}
-                    dark={palette.dark}
-                  />
+                  <View style={dimmed(layer) && { opacity: 0.45 }}>
+                    <MapGroup
+                      count={layer.count}
+                      live={layer.live}
+                      elite={layer.elite > 0}
+                      dark={palette.dark}
+                    />
+                  </View>
                 </MapMarker>
               ) : (
                 <MapMarker
@@ -1204,7 +1218,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
                   // na criação (o tocado precisa ficar por cima de tudo).
                   key={`${layer.kind}:${layer.id}`}
                   // Mudou o desenho (gota virou rótulo, o tema): redesenha.
-                  draw={`${layer.kind}:${layer.bar.live}:${layer.bar.elite}:${palette.dark}`}
+                  draw={`${layer.kind}:${layer.bar.live}:${layer.bar.elite}:${palette.dark}:${dimmed(layer)}`}
                   coordinate={{
                     latitude: layer.bar.lat,
                     longitude: layer.bar.lng
@@ -1220,11 +1234,14 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
                   }
                   onPress={() => tapLayer(layer)}
                 >
-                  <MapDrop
-                    elite={layer.bar.elite}
-                    dark={palette.dark}
-                    {...dropProps(layer)}
-                  />
+                  {/* Com um bar tocado, os outros apagam para 45% (3b). */}
+                  <View style={dimmed(layer) && { opacity: 0.45 }}>
+                    <MapDrop
+                      elite={layer.bar.elite}
+                      dark={palette.dark}
+                      {...dropProps(layer)}
+                    />
+                  </View>
                 </MapMarker>
               )
             )}
