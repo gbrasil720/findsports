@@ -31,11 +31,14 @@ const MONO = 'GeistMono-SemiBold'
 export function DayRow({
   days,
   value,
-  onChange
+  onChange,
+  stretch
 }: {
   days: { day: string; label: string }[]
   value: string
   onChange: (day: string) => void
+  /** O seletor do desenho (`.seg`): a largura toda, opções iguais, em mono. */
+  stretch?: boolean
 }) {
   const palette = usePalette()
   const widths = useRef<{ x: number; width: number }[]>([])
@@ -60,9 +63,20 @@ export function DayRow({
     transform: [{ translateX: x.get() }]
   }))
   return (
-    <View style={[styles.days, { backgroundColor: palette.card }]}>
+    <View
+      style={[
+        styles.days,
+        { backgroundColor: stretch ? palette.mark : palette.card },
+        stretch && styles.daysStretch
+      ]}
+    >
       <Animated.View
-        style={[styles.dayPill, { backgroundColor: palette.ink }, pill]}
+        style={[
+          styles.dayPill,
+          { backgroundColor: palette.ink },
+          stretch && { top: 4, bottom: 4, borderRadius: 999 },
+          pill
+        ]}
       />
       {days.map((d, i) => {
         const on = i === index
@@ -80,11 +94,13 @@ export function DayRow({
               haptic.select()
               onChange(d.day)
             }}
-            style={styles.day}
+            style={[styles.day, stretch && styles.dayStretch]}
           >
             <Text
               style={[
-                text(13.5, 'Bold', 1.2),
+                stretch
+                  ? { fontFamily: MONO, fontSize: 13.5 }
+                  : text(13.5, 'Bold', 1.2),
                 { color: on ? palette.bg : palette.ink }
               ]}
             >
@@ -868,6 +884,8 @@ const styles = StyleSheet.create({
     borderRadius: 17
   },
   day: { height: 34, paddingHorizontal: 13, justifyContent: 'center' },
+  daysStretch: { alignSelf: 'stretch', padding: 4, borderRadius: 999 },
+  dayStretch: { flex: 1, alignItems: 'center' },
   gameRow: { gap: 8, paddingHorizontal: 16 },
   game: {
     width: 182,
