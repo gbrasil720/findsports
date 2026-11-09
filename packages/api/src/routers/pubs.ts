@@ -359,6 +359,12 @@ type ViewerGames = Record<
   }
 >
 
+/**
+ * Quem abre o bar sem conta: um torcedor sem presença nem id. Nenhuma linha
+ * tem `user_id` vazio, então nada dele é achado (presença, código, dono).
+ */
+const VISITOR = { id: '', role: 'fan' } as const
+
 /** Teto da agenda do dia: é cenário de splash, não listagem. */
 const TODAY_GAMES_LIMIT = 30
 
@@ -440,7 +446,7 @@ export const pubsRouter = router({
     )
     .query(({ input }) => readBarsWithoutGame(input)),
 
-  search: protectedProcedure
+  search: publicProcedure
     .input(
       z.object({
         lat: z.number().min(-90).max(90),
@@ -521,15 +527,19 @@ export const pubsRouter = router({
    * encontrado." até alguém ativar o bar. O dono precisa ver o que o cadastro
    * dele produz antes de ele ir ao ar; ninguém mais vê.
    */
-  getById: protectedProcedure
+  getById: publicProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       const now = new Date()
+      // Aberta (app sem conta, rodada 1 do redesign): quem não entrou vê o
+      // bar como um torcedor sem presença, com a contagem e o botão; marcar
+      // pede conta no app.
+      const viewer = ctx.session?.user ?? VISITOR
 
       const result = await db.query.bar.findFirst({
         where: and(
           eq(bar.id, input.id),
-          or(eq(bar.isActive, true), eq(bar.userId, ctx.session.user.id))
+          or(eq(bar.isActive, true), eq(bar.userId, viewer.id))
         ),
         // `geo` só serve ao índice espacial. `userId` é lido para reconhecer o
         // dono e descartado antes da resposta — quem visita não precisa saber
@@ -647,15 +657,15 @@ export const pubsRouter = router({
       // O código do balcão, e com ele a oferta da casa, é do Elite: fora
       // dele, anunciar a oferta seria prometer sem caminho (WEB-131).
       const elite = issuesCounterCode(subscription ?? null, now)
-      const fan = ctx.session.user.role === 'fan'
+      const fan = viewer.role === 'fan'
       const [attendance, going, reasons, reviews, checkIn] = await Promise.all([
-        readFanAttendance(ctx.session.user, events, now),
+        readFanAttendance(viewer, events, now),
         // A contagem do ingresso, inclusive do jogo ao vivo; como o botão,
         // só para torcedor.
         fan
           ? readGoing(
               events.map((game) => game.id),
-              ctx.session.user.id
+              viewer.id
             )
           : new Map<string, Going>(),
         // "O que pesou?" (WEB-398): o mesmo piso da nota, e só o resumo.
@@ -664,7 +674,7 @@ export const pubsRouter = router({
         // verificadas e aprovadas pela Onside.
         showRating ? readRatingList(result.id, { public: true, limit: 3 }) : [],
         // "Estou aqui" (WEB-408): o jogo deste bar com check-in aberto agora.
-        fan ? readCheckIn(ctx.session.user.id, events, now) : null
+        fan ? readCheckIn(viewer.id, events, now) : null
       ])
       return {
         ...publicBar,
@@ -727,14 +737,14 @@ export const pubsRouter = router({
         // a seção. "Aberto agora" é decidido aqui, no relógio de Brasília.
         openingHours: normalizeOpeningHours(openingHours),
         openNow: isOpenNow(normalizeOpeningHours(openingHours), now),
-        isOwner: userId === ctx.session.user.id,
+        isOwner: userId === viewer.id,
         // Só para o aviso da prévia do dono: bar fora do ar por assinatura
         // encerrada não é bar que nunca foi publicado (WEB-345). Teste do
         // cadastro vencido também tira o bar do ar (WEB-357), e quem só teve
         // o teste não tinha assinatura para terminar: o aviso diz qual dos
         // dois foi.
         offAirReason: ownerOffAirReason(
-          userId === ctx.session.user.id
+          userId === viewer.id
             ? getSubscriptionStanding(subscription ?? null, now)
             : null
         )
@@ -1048,7 +1058,7 @@ export const pubsRouter = router({
     }),
 
   /** Sugestões de cidade para o onboarding do app (ver `suggestSearchCities`). */
-  searchCities: protectedProcedure
+  searchCities: publicProcedure
     .input(z.object({ query: z.string().trim().min(1).max(100) }))
     .query(({ input }) => suggestSearchCities(input.query)),
 
@@ -1057,7 +1067,7 @@ export const pubsRouter = router({
    * o "12 bares com jogo hoje" do passo de distância do onboarding do app:
    * mostra o que a escolha do raio muda antes de salvar.
    */
-  countTodayNear: protectedProcedure
+  countTodayNear: publicProcedure
     .input(
       z.object({
         lat: z.number().min(-90).max(90),
@@ -1094,7 +1104,7 @@ export const pubsRouter = router({
    * (decisão do dono em 21/10/2026). Mesmo formato dos bares da busca, sem
    * `nextEvent`; as características filtram como lá.
    */
-  nearbyWithoutGames: protectedProcedure
+  nearbyWithoutGames: publicProcedure
     .input(
       z.object({
         lat: z.number().min(-90).max(90),
@@ -1148,7 +1158,7 @@ export const pubsRouter = router({
    * raio. Esporte e características são os da busca, para a contagem bater
    * com o que a busca devolveria naquele dia.
    */
-  gameDays: protectedProcedure
+  gameDays: publicProcedure
     .input(
       z.object({
         lat: z.number().min(-90).max(90),
@@ -1189,7 +1199,7 @@ export const pubsRouter = router({
       })
     }),
 
-  getSports: protectedProcedure.query(async () => {
+  getSports: publicProcedure.query(async () => {
     return cacheEsportes.get('todos', () => db.select().from(sport))
   }),
 
@@ -1197,7 +1207,7 @@ export const pubsRouter = router({
    * Os times em destaque do esporte (WEB-381): a lista curta que a tela mostra
    * sem busca. O resto do catálogo vem por `searchTeams`.
    */
-  getTeamsBySport: protectedProcedure
+  getTeamsBySport: publicProcedure
     .input(z.object({ sportId: z.string().uuid() }))
     .query(async ({ input }) => {
       return cacheTimes.get(input.sportId, async () =>
