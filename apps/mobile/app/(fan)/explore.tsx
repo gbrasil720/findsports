@@ -175,12 +175,6 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   const state = useExploreState()
   const shotSource = useShotSource('explore', capture)
   const { device, district, liveOnly, filters } = state
-  // O jogo tocado em "O jogo de hoje" chega pela URL (`?jogo=`).
-  const { jogo } = useLocalSearchParams<{ jogo?: string }>()
-  const { setGame } = state
-  useEffect(() => {
-    if (jogo) setGame(jogo)
-  }, [jogo, setGame])
   // Sem conta: sem cidade do perfil nem preferências (o app abre aberto).
   const fan = useFan()
   const withAccount = useWithAccount()
@@ -297,6 +291,14 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   // card, para sobrar mapa, 20d) e baixa (só o título).
   const top = insets.top + 8
   const [selected, setSelected] = useState<string | null>(null)
+  // O jogo tocado em "O jogo de hoje" chega pela URL (`?jogo=`).
+  const { jogo } = useLocalSearchParams<{ jogo?: string }>()
+  const { setGame } = state
+  useEffect(() => {
+    if (!jogo) return
+    setGame(jogo)
+    setSelected(null)
+  }, [jogo, setGame])
   // No meio, a borda da folha fica a 296 pt do pé da tela (20a, 20b).
   const snaps = [0, height - top - 296, height - top - 150 - tabSpace]
   const resting = state.resting ?? snaps[1]
@@ -648,10 +650,13 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   // Tocar num bar no celular (3b): a folha desce e dá lugar ao cartão
   // flutuante dele; soltar a traz de volta ao meio.
   // biome-ignore lint/correctness/useExhaustiveDependencies: só quando a escolha muda
+  // Segue o bar que está na lista: escolhido num jogo que saiu da tela
+  // (outro jogo, outro dia) não esconde a folha.
+  const showsFloat = phone && chosen !== null
   useEffect(() => {
-    if (phone && selected) settle(height - top)
+    if (showsFloat) settle(height - top)
     else if (!expanded) settle(snaps[1])
-  }, [selected])
+  }, [showsFloat])
   // A seta de "Lista" vira com a folha, não depois dela.
   const arrow = useAnimatedStyle(() => ({
     transform: [

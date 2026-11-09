@@ -108,9 +108,18 @@ export function GameRow({
   onChoose: (key: string) => void
 }) {
   const palette = usePalette()
+  // O escolhido fora da tela (vindo de "O jogo de hoje", de outro dia) fica
+  // à vista: a fileira rola até ele.
+  const scroller = useRef<ScrollView>(null)
+  const at = games.findIndex((game) => game.key === chosen)
+  useEffect(() => {
+    if (at > 0)
+      scroller.current?.scrollTo({ x: at * GAME_STEP, animated: true })
+  }, [at])
   if (!games.length) return null
   return (
     <ScrollView
+      ref={scroller}
       horizontal
       showsHorizontalScrollIndicator={false}
       style={{ flexGrow: 0 }}
@@ -170,6 +179,9 @@ export function GameRow({
     </ScrollView>
   )
 }
+
+/** Largura de um jogo na fileira mais o espaço entre eles. */
+const GAME_STEP = 190
 
 /** "FLAMENGO × PALMEIRAS": o × em vermelho (acid no escuro). */
 export function GameTitle({
