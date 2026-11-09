@@ -7,7 +7,8 @@
     }
   },
   "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"],
-  // Gerador das medalhas: roda com bun e o Playwright de apps/e2e, que o CI
-  // não instala para o app (mobile#check-types quebrava sem o módulo).
-  "exclude": ["scripts/medals/**"]
+  // Geradores das medalhas e da splash: rodam com bun e o Playwright de
+  // apps/e2e, que o CI não instala para o app (mobile#check-types quebrava
+  // sem o módulo).
+  "exclude": ["scripts/medals/**", "scripts/splash/**"]
 }
