@@ -74,6 +74,8 @@ export type Layer =
       lng: number
       count: number
       live: number
+      /** Quantos Elite no grupo: com algum, o círculo vai em acid (3b). */
+      elite: number
     }
   | { kind: 'point' | 'label' | 'selected'; id: string; bar: MapBar }
 
@@ -110,7 +112,7 @@ export const zoomOf = (r: Region, width: number) =>
   Math.log2((360 * width) / (256 * r.longitudeDelta))
 
 type Props = { bar: MapBar }
-type GroupProps = { live: number }
+type GroupProps = { live: number; elite: number }
 
 export type BarIndex = Supercluster<Props, GroupProps>
 
@@ -123,9 +125,13 @@ export function buildIndex(bars: MapBar[]): BarIndex {
     radius: GROUP_PT * 2,
     extent: 512,
     maxZoom: 19,
-    map: (props) => ({ live: props.bar.live ? 1 : 0 }),
+    map: (props) => ({
+      live: props.bar.live ? 1 : 0,
+      elite: props.bar.elite ? 1 : 0
+    }),
     reduce: (acc, props) => {
       acc.live += props.live
+      acc.elite += props.elite
     }
   })
   index.load(
@@ -242,7 +248,8 @@ export function mapLayers(
         lat,
         lng,
         count: f.properties.point_count,
-        live: f.properties.live
+        live: f.properties.live,
+        elite: f.properties.elite
       })
     } else singles.push((f.properties as Props).bar)
   }

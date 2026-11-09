@@ -262,10 +262,13 @@ export function QuietDot({ dark }: { dark: boolean }) {
 export function MapGroup({
   count,
   live,
+  elite,
   dark
 }: {
   count: number
   live: number
+  /** Com algum Elite dentro, o círculo vai em acid (3b). */
+  elite?: boolean
   dark: boolean
 }) {
   return (
@@ -276,8 +279,16 @@ export function MapGroup({
           dark && { backgroundColor: 'rgba(0,0,0,.25)' }
         ]}
       >
-        <View style={[styles.group, { borderColor: dark ? '#1c1c18' : PAPER }]}>
-          <Text style={styles.groupText}>{count}</Text>
+        <View
+          style={[
+            styles.group,
+            { borderColor: dark ? '#1c1c18' : PAPER },
+            elite && { backgroundColor: ACID }
+          ]}
+        >
+          <Text style={[styles.groupText, elite && { color: INK }]}>
+            {count}
+          </Text>
         </View>
       </View>
       {live ? (

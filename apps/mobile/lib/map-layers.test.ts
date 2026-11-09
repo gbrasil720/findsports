@@ -82,7 +82,7 @@ describe('mapa sem amontoado (20d)', () => {
       FAR
     )
     const group = layers.find((l) => l.kind === 'group')
-    expect(group).toMatchObject({ count: 2, live: 1 })
+    expect(group).toMatchObject({ count: 2, live: 1, elite: 0 })
     // Longe não tem rótulo: o que sobra é ponto.
     expect(layers.find((l) => l.id === 'c')?.kind).toBe('point')
   })
