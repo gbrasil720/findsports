@@ -1,13 +1,7 @@
 import { useMutation, useQueries, useQuery } from '@tanstack/react-query'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  View
-} from 'react-native'
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { DayRow } from '@/components/explore-board'
 import { haptic } from '@/components/motion'
@@ -18,6 +12,7 @@ import {
   Icon,
   INK,
   Text,
+  TextInput,
   Title,
   text,
   useStatusBar
