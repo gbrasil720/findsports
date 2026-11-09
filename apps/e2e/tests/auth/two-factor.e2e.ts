@@ -2,9 +2,9 @@ import type { Page } from '@playwright/test'
 import { BASE_URL } from '../../env'
 import { signIn } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
-import { createPub } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
-import { seedTwoFactor, totp } from '../../fixtures/two-factor'
+import { base32Decode, seedTwoFactor, totp } from '../../fixtures/two-factor'
+import { createUser } from '../../fixtures/users'
 import { loginWithForm, openAccountSettings } from './forms'
 
 // WEB-175 — autenticação em dois fatores: ativação, login e gestão.
@@ -16,12 +16,49 @@ async function typeCode(page: Page, id: string, code: string) {
   await page.locator(`#${id}`).pressSequentially(code)
 }
 
-/** O web é do bar: as contas destes testes são de bar. */
-const pubUser = async () => (await createPub()).user
+test('ativar: senha, QR, código do totpURI e códigos de recuperação', async ({
+  page
+}) => {
+  const user = await createUser()
+  await signIn(page, user)
+  await openAccountSettings(page)
+
+  await page.getByRole('button', { name: 'Ativar 2FA' }).click()
+  const dialog = page.getByRole('dialog', {
+    name: 'Ativar autenticação em dois fatores'
+  })
+  await dialog.getByLabel('Senha atual').fill(user.password)
+  await dialog.getByRole('button', { name: 'Continuar' }).click()
+
+  await expect(
+    dialog.getByRole('img', { name: 'QR code para configurar o autenticador' })
+  ).toBeVisible()
+  const manualKey = (await dialog.locator('code').textContent())?.trim() ?? ''
+  expect(manualKey).toMatch(/^[A-Z2-7]+$/)
+  await typeCode(page, 'two-factor-code', totp(base32Decode(manualKey)))
+
+  await expect(
+    dialog.getByText('Estes códigos aparecem somente agora.')
+  ).toBeVisible()
+  await expect(dialog.getByRole('listitem')).toHaveCount(10)
+  const done = dialog.getByRole('button', { name: 'Concluir' })
+  await expect(done).toBeDisabled()
+  await dialog
+    .getByRole('checkbox', { name: 'Guardei meus códigos em um lugar seguro' })
+    .check()
+  await done.click()
+
+  await expect(page.getByText('2FA ativado')).toBeVisible()
+  const [row] = await query<{ two_factor_enabled: boolean }>(
+    'SELECT two_factor_enabled FROM "user" WHERE id = $1',
+    [user.id]
+  )
+  expect(row?.two_factor_enabled).toBe(true)
+})
 
 test.describe('login com 2FA', () => {
   test('código TOTP', async ({ page }) => {
-    const user = await pubUser()
+    const user = await createUser()
     const { secret } = await seedTwoFactor(user.id)
 
     await loginWithForm(page, user)
@@ -29,11 +66,11 @@ test.describe('login com 2FA', () => {
     await typeCode(page, 'two-factor-login-code', totp(secret))
     await page.getByRole('button', { name: 'Confirmar e entrar' }).click()
 
-    await expect(page).toHaveURL(/\/admin$/)
+    await expect(page).toHaveURL(/\/dashboard$/)
   })
 
   test('código errado mostra erro e não entra', async ({ page }) => {
-    const user = await pubUser()
+    const user = await createUser()
     const { secret } = await seedTwoFactor(user.id)
 
     await loginWithForm(page, user)
@@ -50,7 +87,7 @@ test.describe('login com 2FA', () => {
   })
 
   test('código de recuperação', async ({ page }) => {
-    const user = await pubUser()
+    const user = await createUser()
     const { backupCodes } = await seedTwoFactor(user.id)
 
     await loginWithForm(page, user)
@@ -59,13 +96,13 @@ test.describe('login com 2FA', () => {
     await page.getByLabel('Código de recuperação').fill(backupCodes[0] ?? '')
     await page.getByRole('button', { name: 'Confirmar e entrar' }).click()
 
-    await expect(page).toHaveURL(/\/admin$/)
+    await expect(page).toHaveURL(/\/dashboard$/)
   })
 
   test('"confiar neste dispositivo" pula o código no login seguinte', async ({
     page
   }) => {
-    const user = await pubUser()
+    const user = await createUser()
     const { secret } = await seedTwoFactor(user.id)
 
     await loginWithForm(page, user)
@@ -75,7 +112,7 @@ test.describe('login com 2FA', () => {
       .getByRole('checkbox', { name: 'Confiar neste aparelho por 30 dias' })
       .check()
     await page.getByRole('button', { name: 'Confirmar e entrar' }).click()
-    await expect(page).toHaveURL(/\/admin$/)
+    await expect(page).toHaveURL(/\/dashboard$/)
 
     // Sai só da sessão: o cookie de dispositivo confiável fica no contexto.
     // `data: {}` e a conferência do status: sem corpo JSON o better-auth
@@ -87,7 +124,7 @@ test.describe('login com 2FA', () => {
     })
     expect(signOut.status(), await signOut.text()).toBe(200)
     await loginWithForm(page, user)
-    await expect(page).toHaveURL(/\/admin$/)
+    await expect(page).toHaveURL(/\/dashboard$/)
   })
 })
 
@@ -102,7 +139,7 @@ test.describe('/two-factor sem desafio válido volta para /login', () => {
       ([key, startedAt]) => {
         sessionStorage.setItem(
           key as string,
-          JSON.stringify({ callbackUrl: '/admin', startedAt })
+          JSON.stringify({ callbackUrl: '/dashboard', startedAt })
         )
       },
       [CHALLENGE_KEY, Date.now() - 11 * 60 * 1000] as const
@@ -113,15 +150,14 @@ test.describe('/two-factor sem desafio válido volta para /login', () => {
 })
 
 test('regenerar códigos e desativar 2FA', async ({ page }) => {
-  const user = await pubUser()
+  const user = await createUser()
   // Entra antes de ligar o 2FA: com ele ligado o login pede o código.
   await signIn(page, user)
   const { backupCodes } = await seedTwoFactor(user.id)
   await openAccountSettings(page)
 
-  const seguranca = page.getByRole('region', { name: 'Segurança', exact: true })
-  await expect(seguranca).toContainText('Ativada')
-  await seguranca.getByRole('button', { name: 'Gerenciar' }).click()
+  await expect(page.getByText('2FA ativado')).toBeVisible()
+  await page.getByRole('button', { name: 'Gerenciar 2FA' }).click()
   const manage = page.getByRole('dialog', {
     name: 'Gerenciar códigos de recuperação'
   })
@@ -138,7 +174,7 @@ test('regenerar códigos e desativar 2FA', async ({ page }) => {
   await manage.getByRole('button', { name: 'Concluir' }).click()
   await expect(manage).toBeHidden()
 
-  await seguranca.getByRole('button', { name: 'Gerenciar' }).click()
+  await page.getByRole('button', { name: 'Gerenciar 2FA' }).click()
   await manage
     .getByRole('button', { name: 'Desativar autenticação em dois fatores' })
     .click()
@@ -149,7 +185,7 @@ test('regenerar códigos e desativar 2FA', async ({ page }) => {
   await expect(
     page.getByText('Autenticação em dois fatores desativada.')
   ).toBeVisible()
-  await expect(seguranca).toContainText('Desativada')
+  await expect(page.getByText('2FA desativado')).toBeVisible()
   const [row] = await query<{ two_factor_enabled: boolean }>(
     'SELECT two_factor_enabled FROM "user" WHERE id = $1',
     [user.id]

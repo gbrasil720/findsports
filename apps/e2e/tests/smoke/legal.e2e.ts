@@ -127,11 +127,11 @@ test('formulário que coleta dado pessoal aponta para os documentos', async ({
 }) => {
   // A landing não coleta mais nada: quem coleta é o cadastro.
   await page.goto('/')
-  await expect(page.locator('.entrada-aceite')).toHaveCount(0)
+  await expect(page.locator('.onside-legal-consent')).toHaveCount(0)
 
   // Cadastro cria conta: termos e política.
   await page.goto('/signup')
-  const noCadastro = page.locator('.entrada-aceite')
+  const noCadastro = page.locator('.onside-legal-consent')
   await expect(noCadastro.locator('a[href="/termos"]')).toHaveCount(1)
   await expect(noCadastro.locator('a[href="/privacidade"]')).toHaveCount(1)
 })
