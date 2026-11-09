@@ -12,12 +12,12 @@ import Animated, { FadeInDown } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useExploreState } from '@/components/explore-state'
 import { EASE } from '@/components/motion'
+import { AcidButton } from '@/components/ob-frame'
 import { SplashDone } from '@/components/splash'
 import { usePalette } from '@/components/theme'
 import {
   ErrorState,
   Icon,
-  PillButton,
   Text,
   Title,
   text,
@@ -187,7 +187,7 @@ export default function Today() {
                   style={({ pressed }) => [
                     styles.row,
                     i > 0 && {
-                      borderTopWidth: StyleSheet.hairlineWidth,
+                      borderTopWidth: 1,
                       borderTopColor: palette.line
                     },
                     pressed && { backgroundColor: palette.mark }
@@ -240,7 +240,7 @@ export default function Today() {
         ) : null}
 
         <View style={styles.cta}>
-          <PillButton
+          <AcidButton
             label={locating ? 'Procurando você…' : 'Ver bares perto de mim'}
             leading="pin"
             busy={locating}
