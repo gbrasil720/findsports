@@ -740,17 +740,18 @@ invente layout que o projeto não tem.
 - **Jogos de hoje da splash:** `pubs.todayGames` (pública: bares no ar, dia de Brasília, o
   mesmo jogo em vários bares conta uma vez; `live` pelo relógio do jogo). A abertura espera
   a resposta por até 600 ms; sem jogo hoje, ou sem resposta, diz "O jogo é aqui".
-- **Apresentação:** `app/intro.tsx` (+ `components/intro-art.tsx`), a seção "03 Apresentação"
-  do design. Quem abre sem sessão cai nela (`app/index.tsx`). O mapa da primeira tela (4b) é o do Explorar de hoje, parado: o
-  `MapView` nativo, as gotas da Rodada 21 (`MapDrop`), o raio tracejado e o seu ponto
-  (`MeDot`), por cima em posições fixas para a entrada animar. A distância e a
-  localização do onboarding usam o mesmo mapa (WEB-420), centrado na cidade escolhida
-  (senão São Paulo), com `RadiusCircle` no raio escolhido: na distância o zoom sai do
-  raio para o círculo crescer na tela. O Apple Maps encaixa a região na área segura, não
-  na tela toda (conta em `onboarding/location.tsx`). O "Nada no raio" (23i) de Bares pra
-  você usa o mesmo mapa; a imagem antiga (`intro/map.jpg`) saiu do repositório.
-  O design só desenha o claro; a apresentação segue o tema do sistema com tinta e papel
-  trocados e o acid no lugar do vermelho (a regra da tab bar do design).
+- **Abertura sem conta (rodada 1 do redesign):** ver sem conta, agir com conta, como no web
+  do torcedor. Sem sessão, `app/index.tsx` manda à "O jogo de hoje" (`app/hoje.tsx`) na
+  primeira abertura e ao Explorar depois (`lib/first-open.ts`, guardado no aparelho). A tela
+  lista os jogos de hoje na cidade por `pubs.gameBoard`, cada um com quantos bares; a
+  localização só é pedida no "Ver bares perto de mim", e "escolher a cidade" sem conta fica
+  no aparelho (`localCity` em `explore-state`). As leituras do Explorar e do bar
+  (`pubs.search`, `getById`, `nearbyWithoutGames`, `gameDays`, `getSports`, `getTeamsBySport`,
+  `searchCities`, `countTodayNear`) são abertas; `getById` trata o visitante como torcedor sem
+  presença. O que é só do torcedor espera `useFan()`, e o que grava passa por
+  `useWithAccount()` (`lib/account.ts`), que leva ao "Entrar" (a folha de entrar é da rodada
+  2). Bares, Você e a IA levam ao "Entrar" para o visitante. As quatro páginas da
+  apresentação antiga saíram.
 - **Conta ("04 Conta"):** `profile` (torcedor ou bar, vira `role` no cadastro), `sign-up`,
   `verify-email`, `sign-in`, `forgot-password`, `reset-sent`, `reset-password`, `two-factor`;
   peças em `components/ui.tsx`. O link de confirmação abre no navegador; o servidor entra e
