@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test'
 import { eq } from '@findsports_oficial/db'
-import { event } from '@findsports_oficial/db/schema/platform'
+import { event, userFavoriteBars } from '@findsports_oficial/db/schema/platform'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 import { inAMonth, refusal, seedBar } from './integration-seed'
 
@@ -16,9 +16,10 @@ integrationTest(
   async () => {
     const seed = await seedBar('starter', 'active', inAMonth())
     try {
-      // Cinco jogos publicados: o Starter está no limite.
+      // Seis jogos publicados (o primeiro é por conta da Onside): o Starter
+      // está no limite.
       const games = []
-      for (let i = 0; i < 5; i++) games.push(await seed.seedGame())
+      for (let i = 0; i < 6; i++) games.push(await seed.seedGame())
       const [first] = await seed.db
         .select({ sportId: event.sportId })
         .from(event)
@@ -118,3 +119,43 @@ integrationTest('bar só com rascunho não aparece na busca', async () => {
     await seed.cleanup()
   }
 })
+
+integrationTest(
+  'rascunho de hoje fica fora da agenda do dia, da contagem perto e dos favoritos',
+  async () => {
+    const lat = -9.234_56
+    const lng = -50.789_12
+    const seed = await seedBar('elite', 'active', inAMonth(), {
+      latitude: lat.toFixed(8),
+      longitude: lng.toFixed(8)
+    })
+    try {
+      const championship = `Rascunho de hoje ${seed.barId}`
+      const draftId = await seed.seedGame({
+        championship,
+        // Daqui a um minuto: ainda hoje em Brasília, salvo à meia-noite.
+        startsAt: new Date(Date.now() + 60_000),
+        publishedAt: null
+      })
+      await seed.db
+        .insert(userFavoriteBars)
+        .values({ userId: seed.fanId, barId: seed.barId })
+
+      const titles = (await seed.fan.pubs.todayGames()).map((g) => g.title)
+      expect(titles).not.toContain(championship)
+      expect(
+        await seed.fan.pubs.countTodayNear({ lat, lng, radiusKm: 1 })
+      ).toEqual({ bars: 0 })
+      const favorites = await seed.fan.pubs.getFavorites()
+      const favorite = favorites.find((item) => item.barId === seed.barId)
+      expect(favorite?.bar.events.map((item) => item.id)).toEqual([])
+
+      await seed.owner.pub.updateEvent({ eventId: draftId, publish: true })
+      expect((await seed.fan.pubs.todayGames()).map((g) => g.title)).toContain(
+        championship
+      )
+    } finally {
+      await seed.cleanup()
+    }
+  }
+)

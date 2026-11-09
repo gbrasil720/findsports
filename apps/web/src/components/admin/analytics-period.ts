@@ -15,6 +15,9 @@ export const ANALYTICS_PERIOD_OPTIONS = [
   { id: 'all', label: 'Tudo', maxDays: null }
 ] as const
 
+/** O dia de Brasília (`brasiliaDay`), com o nome que o painel usa. */
+export const toCommercialDate = (date: Date): string => brasiliaDay(date)
+
 function shiftDate(date: string, days: number): string {
   const shifted = new Date(`${date}T12:00:00.000Z`)
   shifted.setUTCDate(shifted.getUTCDate() + days)
@@ -55,9 +58,4 @@ export function getPeriodDays(from: string, to: string): number {
   const start = Date.parse(`${from}T00:00:00.000Z`)
   const end = Date.parse(`${to}T00:00:00.000Z`)
   return Math.max(1, Math.round((end - start) / DAY_MS) + 1)
-}
-
-export function formatComparisonPeriod(from: string, to: string): string {
-  const days = getPeriodDays(from, to)
-  return days === 1 ? '1 dia anterior' : `${days} dias anteriores`
 }

@@ -2,7 +2,6 @@ import { describe, expect, test } from 'bun:test'
 import {
   type AuthSession,
   applyAuthGuards,
-  FAN_HOME,
   isHashOnlyChange,
   PUB_LIVE_PATH,
   requiresAuthentication,
@@ -37,33 +36,26 @@ function session(role: 'fan' | 'pub' | 'admin', onboardingCompleted = true) {
   } satisfies NonNullable<AuthSession>
 }
 
-function redirectOf(fn: () => void): string | undefined {
-  try {
-    fn()
-  } catch (error) {
-    return (error as { options?: { to?: string } }).options?.to
-  }
-  return undefined
-}
-
 describe('requiresAuthentication', () => {
   test('protects known app surfaces and their nested paths', () => {
+    expect(requiresAuthentication('/dashboard/profile')).toBe(true)
+    expect(requiresAuthentication('/dashboard/games')).toBe(true)
     expect(requiresAuthentication('/admin')).toBe(true)
     expect(requiresAuthentication('/admin/billing')).toBe(true)
     expect(requiresAuthentication('/admin/validate')).toBe(true)
     expect(requiresAuthentication('/plan')).toBe(true)
     expect(requiresAuthentication('/plan/confirmed')).toBe(true)
-    expect(requiresAuthentication('/app')).toBe(true)
+    expect(requiresAuthentication('/onboarding/fan')).toBe(true)
   })
 
   test('leaves marketing, auth, pubs, pub onboarding and unknown URLs public', () => {
     expect(requiresAuthentication('/')).toBe(false)
+    // Explorar do torcedor: ver sem login (05/11/2026).
+    expect(requiresAuthentication('/dashboard')).toBe(false)
     expect(requiresAuthentication('/login')).toBe(false)
     expect(requiresAuthentication('/signup')).toBe(false)
     expect(requiresAuthentication('/pub/abc')).toBe(false)
-    expect(requiresAuthentication(FAN_HOME)).toBe(false)
-    // O painel do torcedor saiu do web: `/dashboard` é URL desconhecida.
-    expect(requiresAuthentication('/dashboard')).toBe(false)
+    // WEB-393: o painel antigo saiu; `/internal` é URL desconhecida, o 404.
     expect(requiresAuthentication('/internal')).toBe(false)
     expect(requiresAuthentication('/verify-email')).toBe(false)
     expect(requiresAuthentication('/forgot-password')).toBe(false)
@@ -76,8 +68,9 @@ describe('requiresAuthentication', () => {
 
 describe('applyAuthGuards', () => {
   test('sends visitors on protected routes to login', () => {
-    expect(redirectOf(() => applyAuthGuards(null, '/admin'))).toBe('/login')
-    expect(redirectOf(() => applyAuthGuards(null, '/plan'))).toBe('/login')
+    expect(() => applyAuthGuards(null, '/dashboard/games')).toThrow()
+    expect(() => applyAuthGuards(null, '/admin')).toThrow()
+    expect(() => applyAuthGuards(null, '/dashboard')).not.toThrow()
   })
 
   // WEB-210: o destino original volta como callbackUrl, com a query.
@@ -94,33 +87,89 @@ describe('applyAuthGuards', () => {
   })
 
   // WEB-278: sessão pronta não fica olhando o formulário de login.
-  test('sends signed-in bars away from login and signup', () => {
+  test('sends signed-in users away from login and signup', () => {
+    // O último caso: sem onboarding, o destino continua sendo o onboarding.
     for (const [onboarded, href, to] of [
-      [true, '/login', '/admin'],
-      [true, '/signup', '/admin'],
-      [true, '/login?callbackUrl=%2Fadmin%2Fjogos', '/admin/jogos'],
-      [false, '/login', '/onboarding/pub']
+      [true, '/login', '/dashboard'],
+      [true, '/signup', '/dashboard'],
+      [true, '/login?callbackUrl=%2Fpub%2Fabc', '/pub/abc'],
+      [false, '/login', '/onboarding/fan']
     ] as const) {
-      expect(
-        redirectOf(() =>
-          applyAuthGuards(
-            session('pub', onboarded),
-            href.split('?')[0] ?? href,
-            {},
-            href
-          )
+      let thrown: unknown
+      try {
+        applyAuthGuards(
+          session('fan', onboarded),
+          href.split('?')[0] ?? href,
+          {},
+          href
         )
-      ).toBe(to)
+      } catch (error) {
+        thrown = error
+      }
+      expect(thrown).toMatchObject({ options: { to } })
     }
     expect(() => applyAuthGuards(null, '/login')).not.toThrow()
+  })
+
+  test('torcedor sem onboarding com uma ação: ela primeiro, o onboarding depois', () => {
+    const bar = '/bar/x-12345678?jogo=1&acao=vou.1'
+    const thrownBy = (pathname: string, href: string) => {
+      try {
+        applyAuthGuards(session('fan', false), pathname, {}, href)
+      } catch (error) {
+        return error
+      }
+      return undefined
+    }
+    // Na página da ação, no card e nas preferências curtas fica.
+    expect(thrownBy('/bar/x-12345678', bar)).toBeUndefined()
+    expect(
+      thrownBy('/dashboard/games', '/dashboard/games?novo=vouc')
+    ).toBeUndefined()
+    expect(
+      thrownBy('/dashboard/bem-vindo', '/dashboard/bem-vindo?feito=fav')
+    ).toBeUndefined()
+    // Vindo do login ou do cadastro, vai direto à ação.
+    expect(
+      thrownBy('/login', `/login?callbackUrl=${encodeURIComponent(bar)}`)
+    ).toMatchObject({ options: { to: bar } })
+    // Sem a ação, o onboarding de 5 passos.
+    expect(thrownBy('/dashboard/games', '/dashboard/games')).toMatchObject({
+      options: { to: '/onboarding/fan' }
+    })
+    // Bar sem onboarding não usa nada disso.
+    expect(() =>
+      applyAuthGuards(session('pub', false), '/bar/x-12345678', {}, bar)
+    ).toThrow()
+  })
+
+  test('torcedor sem onboarding leva a ação do app pelo onboarding', () => {
+    const app = '/dashboard/profile?acao=app'
+    for (const [pathname, href, callbackUrl] of [
+      ['/dashboard/profile', app, app],
+      ['/login', `/login?callbackUrl=${encodeURIComponent(app)}`, app],
+      ['/dashboard', '/dashboard', undefined]
+    ] as const) {
+      let thrown: unknown
+      try {
+        applyAuthGuards(session('fan', false), pathname, {}, href)
+      } catch (error) {
+        thrown = error
+      }
+      expect(thrown).toMatchObject({ options: { to: '/onboarding/fan' } })
+      expect(
+        (thrown as { options: { search?: { callbackUrl?: string } } }).options
+          .search?.callbackUrl
+      ).toBe(callbackUrl)
+    }
   })
 
   // WEB-473: no SSR não há `location`; a origem do router decide se o
   // `callbackUrl` absoluto é do próprio site.
   test('segue o callbackUrl absoluto de mesma origem com a origem do router', () => {
     const origin = 'https://onside.sh'
-    const login = (callbackUrl: string, role: 'pub' | 'admin' = 'pub') =>
-      redirectOf(() =>
+    const login = (callbackUrl: string, role: 'pub' | 'admin' = 'pub') => {
+      try {
         applyAuthGuards(
           session(role),
           '/login',
@@ -128,73 +177,63 @@ describe('applyAuthGuards', () => {
           `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`,
           origin
         )
-      )
+      } catch (error) {
+        return (error as { options?: { to?: string } }).options?.to
+      }
+      return undefined
+    }
     expect(login('https://onside.sh/admin/jogos?x=1')).toBe('/admin/jogos?x=1')
-    expect(login('https://outro.site/admin/jogos')).toBe('/admin')
+    expect(login('https://outro.site/admin/jogos')).not.toContain('outro.site')
     expect(login('https://onside.sh/houdini', 'admin')).toBe('/houdini')
   })
 
-  test('lets visitors stay on public pages and unknown URLs', () => {
-    for (const path of ['/pagina-que-nao-existe', '/pub/bar-1', FAN_HOME]) {
-      expect(() => applyAuthGuards(null, path)).not.toThrow()
-    }
+  test('lets visitors stay on unknown URLs so the 404 can render', () => {
+    expect(() => applyAuthGuards(null, '/pagina-que-nao-existe')).not.toThrow()
+  })
+
+  test('sends visitors from fan onboarding to login', () => {
+    expect(() => applyAuthGuards(null, '/onboarding/fan')).toThrow()
   })
 
   test('keeps pub onboarding reachable without a session', () => {
     expect(() => applyAuthGuards(null, '/onboarding/pub')).not.toThrow()
   })
 
-  test('torcedor logado no web vai à página do app', () => {
-    for (const onboarded of [true, false]) {
-      for (const path of [
-        '/admin',
-        '/admin/validate',
-        '/plan',
-        '/plan/confirmed',
-        '/app',
-        '/login',
-        '/signup',
-        '/',
-        '/onboarding/pub',
-        '/onboarding/fan'
-      ]) {
-        expect(
-          redirectOf(() => applyAuthGuards(session('fan', onboarded), path)),
-          path
-        ).toBe(FAN_HOME)
-      }
-    }
-    expect(
-      redirectOf(() =>
-        applyAuthGuards(
-          session('admin'),
-          '/login',
-          {},
-          '/login?callbackUrl=%2Fhoudini'
-        )
-      )
-    ).toBe('/houdini')
-    for (const path of [FAN_HOME, '/pub/bar-123', '/termos']) {
-      expect(() => applyAuthGuards(session('fan'), path), path).not.toThrow()
-    }
-  })
-
-  test('encaminha o bar sem onboarding para o onboarding do bar', () => {
-    for (const path of ['/admin', '/plan', '/', '/onboarding/fan']) {
-      expect(
-        redirectOf(() => applyAuthGuards(session('pub', false), path))
-      ).toBe('/onboarding/pub')
-    }
+  test('mantém o torcedor logado no onboarding do fan enquanto não conclui', () => {
     expect(() =>
-      applyAuthGuards(session('pub', false), '/onboarding/pub')
+      applyAuthGuards(session('fan', false), '/onboarding/fan')
     ).not.toThrow()
   })
 
-  test('bar pronto sai do onboarding, menos da tela "No ar"', () => {
-    expect(
-      redirectOf(() => applyAuthGuards(session('pub'), '/onboarding/pub'))
-    ).toBe('/admin')
+  test('encaminha o pub logado sem onboarding para o onboarding do pub', () => {
+    try {
+      applyAuthGuards(session('pub', false), '/onboarding/fan')
+      throw new Error('pub deveria ser redirecionado')
+    } catch (error) {
+      expect((error as { options?: { to?: string } }).options?.to).toBe(
+        '/onboarding/pub'
+      )
+    }
+  })
+
+  test('desvia da rota de onboarding quem já concluiu', () => {
+    try {
+      applyAuthGuards(session('fan'), '/onboarding/fan')
+      throw new Error('fan pronto deveria sair do onboarding')
+    } catch (error) {
+      expect((error as { options?: { to?: string } }).options?.to).toBe(
+        '/dashboard'
+      )
+    }
+  })
+
+  test('bar pronto sai do onboarding, menos da tela "no ar"', () => {
+    expect(() => applyAuthGuards(session('pub'), '/onboarding/pub')).toThrow()
     expect(() => applyAuthGuards(session('pub'), PUB_LIVE_PATH)).not.toThrow()
+  })
+
+  test('sends unfinished fans to fan onboarding', () => {
+    expect(() => applyAuthGuards(session('fan', false), '/dashboard')).toThrow()
   })
 
   test('keeps verification reachable before onboarding finishes', () => {
@@ -216,31 +255,63 @@ describe('applyAuthGuards', () => {
     }
   })
 
-  test('bar pronto entra no painel e no plano', () => {
+  test('separa as superfícies de fan, bar e admin por papel', () => {
+    expect(() => applyAuthGuards(session('fan'), '/admin')).toThrow()
+    expect(() => applyAuthGuards(session('fan'), '/admin/validate')).toThrow()
+    expect(() => applyAuthGuards(session('fan'), '/plan')).toThrow()
+    // WEB-59: o recibo mora sob `/plan` justamente para herdar este corte.
+    expect(() => applyAuthGuards(session('fan'), '/plan/confirmed')).toThrow()
+    expect(() =>
+      applyAuthGuards(session('pub'), '/plan/confirmed')
+    ).not.toThrow()
+    expect(() => applyAuthGuards(session('pub'), '/dashboard')).toThrow()
+  })
+
+  test('admin navega pelo app sem ser mandado ao Houdini', () => {
     for (const path of [
-      '/admin',
-      '/admin/validate',
-      '/plan',
-      '/plan/confirmed'
+      '/',
+      '/dashboard',
+      '/dashboard/profile',
+      '/dashboard/games',
+      '/pub/bar-123'
     ]) {
-      expect(() => applyAuthGuards(session('pub'), path), path).not.toThrow()
+      expect(() => applyAuthGuards(session('admin'), path), path).not.toThrow()
     }
   })
 
-  test('admin fica na landing e vai à página do app fora dela', () => {
-    expect(() => applyAuthGuards(session('admin'), '/')).not.toThrow()
-    expect(() =>
-      applyAuthGuards(session('admin'), '/pub/bar-123')
-    ).not.toThrow()
-    expect(redirectOf(() => applyAuthGuards(session('admin'), '/plan'))).toBe(
-      FAN_HOME
-    )
+  test('admin no /plan vai para o /dashboard, não para o Houdini', () => {
+    try {
+      applyAuthGuards(session('admin'), '/plan')
+      throw new Error('admin deveria ser redirecionado')
+    } catch (error) {
+      expect((error as { options?: { to?: string } }).options?.to).toBe(
+        '/dashboard'
+      )
+    }
   })
 
-  test('redireciona o bar pronto da landing para o painel', () => {
-    expect(redirectOf(() => applyAuthGuards(session('pub'), '/'))).toBe(
-      '/admin'
-    )
+  test('mantém o perfil público do bar acessível a qualquer papel', () => {
+    expect(() => applyAuthGuards(session('fan'), '/pub/bar-123')).not.toThrow()
+  })
+
+  test('redireciona sessão pronta da landing para a superfície do papel', () => {
+    try {
+      applyAuthGuards(session('fan'), '/')
+      throw new Error('fan deveria ser redirecionado')
+    } catch (error) {
+      expect((error as { options?: { to?: string } }).options?.to).toBe(
+        '/dashboard'
+      )
+    }
+
+    try {
+      applyAuthGuards(session('pub'), '/')
+      throw new Error('pub deveria ser redirecionado')
+    } catch (error) {
+      expect((error as { options?: { to?: string } }).options?.to).toBe(
+        '/admin'
+      )
+    }
   })
 
   test('mantém a landing quando a intenção pública está explícita', () => {
@@ -256,14 +327,22 @@ describe('applyAuthGuards', () => {
     ).not.toThrow()
   })
 
-  test('o marcador público não ignora o onboarding do bar', () => {
+  test('o marcador público não ignora as guardas de acesso', () => {
     expect(() =>
-      applyAuthGuards(session('pub', false), '/', { public: '1' })
+      applyAuthGuards(session('fan', false), '/', { public: '1' })
     ).toThrow()
+  })
+
+  test('mantém admin pronto na landing', () => {
+    expect(() => applyAuthGuards(session('admin'), '/')).not.toThrow()
   })
 
   test('mantém visitante na landing', () => {
     expect(() => applyAuthGuards(null, '/')).not.toThrow()
+  })
+
+  test('sem onboarding na landing vai para o onboarding do papel', () => {
+    expect(() => applyAuthGuards(session('fan', false), '/')).toThrow()
   })
 })
 

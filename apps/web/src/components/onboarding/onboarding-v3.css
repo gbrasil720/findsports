@@ -1,0 +1,2047 @@
+/* biome-ignore-all lint/style/noDescendingSpecificity: segue a ordem da tela (casca, passos, peças); tudo preso a .lp3.ob3. */
+/*
+ * Onboardings no redesign (WEB-501): torcedor (dentro da casca da entrada,
+ * `AuthShell`) e bar (`PubObShell`, com os passos no topo e a prévia "Assim o
+ * torcedor vê" ao lado). Design: `docs/design/redesign-2026-11/torcedor`
+ * (`onboarding()`) e `painel` (`cadastro()`, `recibo()`). Tokens da landing
+ * (`.lp3`); aqui só as superfícies que o onboarding soma a eles. O escuro
+ * troca essas superfícies em `theme-dark.css`.
+ */
+
+.lp3.ob3 {
+  --card: var(--white);
+  --sub: var(--stone);
+  --line: rgba(18, 18, 15, 0.1);
+  --line2: rgba(18, 18, 15, 0.18);
+  --field: #fff;
+  --body-text: #3d3d38;
+  --auto: #5b6d0c;
+  --shadow: 0 3px 0 var(--sand), 0 24px 40px -32px rgba(18, 18, 15, 0.45);
+}
+
+/* ─── Torcedor: o miolo da casca da entrada vira o passo ─── */
+.lp3.ob3 .ent-left {
+  max-width: 660px;
+}
+
+.lp3.ob3 .ent-form {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  max-width: none;
+  margin: 0;
+  padding: 32px 0 0;
+}
+
+/* ─── Progresso e título ─── */
+.lp3 .ob-seg {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lp3 .ob-seg li {
+  flex: 1;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 5px;
+  background: var(--line2);
+}
+
+/* O trecho enche da esquerda ao avançar e esvazia ao voltar (só transform). */
+.lp3 .ob-seg li::after {
+  content: "";
+  display: block;
+  height: 100%;
+  background: var(--ink);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s var(--ease);
+}
+
+.lp3 .ob-seg li.on::after {
+  transform: scaleX(1);
+}
+
+.lp3 .ob-stepk {
+  margin: 22px 0 0;
+  color: var(--muted);
+  font: 500 13px / 1.3 var(--mono);
+}
+
+.lp3.ob3 .ob-h {
+  margin: 8px 0 0;
+  font: 400 clamp(38px, 4vw, 56px) / 1 var(--display);
+  text-transform: uppercase;
+  text-wrap: balance;
+  /* Nome sem espaço no "Tudo pronto, …" não vaza para o telão. */
+  overflow-wrap: anywhere;
+  outline: none;
+}
+
+.lp3.ob3 .ob-h .hl {
+  color: var(--red);
+}
+
+.lp3.ob3 .ob-sub {
+  max-width: 56ch;
+  margin: 12px 0 0;
+  color: var(--body-text);
+  font-size: 16.5px;
+  line-height: 1.5;
+}
+
+.lp3.ob3 .ob-k {
+  display: block;
+  margin: 0;
+  color: var(--muted);
+  font: 600 12px / 1.3 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.lp3.ob3 .ob-note {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.lp3.ob3 .ob-step-body {
+  animation: ob-in 0.3s var(--ease) both;
+}
+
+@keyframes ob-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes ob-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Telão: a imagem nova clareia sobre o fundo escuro e a legenda sobe junto. */
+@keyframes ob-dim {
+  from {
+    opacity: 0.3;
+  }
+}
+
+.lp3.ob3 .ent-right img {
+  animation: ob-dim 0.3s var(--ease) both;
+}
+
+.lp3.ob3 .ent-cap {
+  animation: ob-in 0.3s var(--ease) 0.06s both;
+}
+
+/*
+ * Cartões das boas-vindas e dos esportes entram em cascata, 40 ms um do outro.
+ * `backwards`, e não `both`: depois de entrar o cartão volta às transições do
+ * selecionado e da pressão.
+ */
+.lp3.ob3 :is(.ob-ben li, .ob-sports button) {
+  animation: ob-in 0.3s var(--ease) backwards;
+}
+
+.lp3.ob3 :is(.ob-ben li, .ob-sports button):nth-child(2) {
+  animation-delay: 40ms;
+}
+
+.lp3.ob3 :is(.ob-ben li, .ob-sports button):nth-child(3) {
+  animation-delay: 80ms;
+}
+
+.lp3.ob3 :is(.ob-ben li, .ob-sports button):nth-child(4) {
+  animation-delay: 120ms;
+}
+
+.lp3.ob3 :is(.ob-ben li, .ob-sports button):nth-child(n + 5) {
+  animation-delay: 160ms;
+}
+
+/* ─── Navegação do pé ─── */
+.lp3.ob3 .ob-nav {
+  margin-top: auto;
+  padding-top: 32px;
+}
+
+.lp3.ob3 .ob-nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.lp3.ob3 .ob-nav-hint {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 13.5px;
+  text-align: right;
+}
+
+.lp3.ob3 .ob-nav-row .btn-acid {
+  margin-left: auto;
+}
+
+.lp3.ob3 .btn.ob-sm {
+  height: 48px;
+  padding: 0 20px;
+  font-size: 15px;
+}
+
+.lp3.ob3 .btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  transform: none;
+}
+
+.lp3.ob3 .ob-error {
+  margin: 18px 0 0;
+  animation: ob-fade 0.2s var(--ease);
+  color: #c92b0c;
+  font-size: 14.5px;
+  text-align: center;
+}
+
+.lp3.ob3 .ob-link {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: 700 14.5px / 1.3 var(--body);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* ─── Boas-vindas: os três motivos ─── */
+.lp3.ob3 .ob-ben {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 30px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lp3.ob3 .ob-ben li {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  padding: 16px;
+  border-radius: 20px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.lp3.ob3 .ob-ben i {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: var(--acid);
+  color: #12120f;
+}
+
+.lp3.ob3 .ob-ben b {
+  display: block;
+  font-size: 17px;
+}
+
+.lp3.ob3 .ob-ben span span {
+  color: var(--muted);
+  font-size: 14.5px;
+}
+
+/* ─── Torcedor: esportes, times e raio ─── */
+.lp3.ob3 .ob-sports {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.lp3.ob3 .ob-sports button {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 76px;
+  padding: 16px;
+  border: 0;
+  border-radius: 20px;
+  background: var(--card);
+  color: var(--ink);
+  font: 700 16px / 1.2 var(--body);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: box-shadow 0.2s;
+}
+
+.lp3.ob3 .ob-sports .e {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  background: var(--sub);
+  font: 700 11px / 1 var(--mono);
+}
+
+.lp3.ob3 .ob-sports button[aria-pressed="true"] {
+  box-shadow:
+    inset 0 0 0 2px var(--ink),
+    var(--shadow);
+}
+
+.lp3.ob3 .ob-sports button[aria-pressed="true"] .e {
+  background: var(--acid);
+  color: #12120f;
+}
+
+.lp3.ob3 .ob-sports .sk {
+  display: block;
+  height: 76px;
+  border-radius: 20px;
+  background: var(--sub);
+  /* Pulsa enquanto carrega: numa rede lenta, cinza parado parece travado. */
+  animation: ob-sk 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes ob-sk {
+  to {
+    opacity: 0.5;
+  }
+}
+
+.lp3.ob3 .ob-count {
+  font-weight: 700;
+}
+
+/* Busca e escolha de times (`TeamPicker`, o mesmo do perfil). */
+.lp3.ob3 .ob-teams {
+  margin-top: 22px;
+}
+
+.lp3.ob3 .ob-teams legend {
+  color: var(--ink);
+}
+
+.lp3.ob3 .onside-chip {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  font: 600 15px / 1.2 var(--body);
+  letter-spacing: 0;
+  text-transform: none;
+  box-shadow: var(--shadow);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .lp3.ob3 .onside-chip:hover:not(:disabled) {
+    background: var(--card);
+    box-shadow:
+      inset 0 0 0 1.5px var(--line2),
+      var(--shadow);
+  }
+}
+
+.lp3.ob3 .onside-chip[aria-pressed="true"],
+.lp3.ob3 .onside-chip[aria-pressed="true"]:hover:not(:disabled) {
+  background: var(--card);
+  box-shadow:
+    inset 0 0 0 2px var(--ink),
+    var(--shadow);
+}
+
+.lp3.ob3 .ob-radius {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 22px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.lp3.ob3 .ob-radius button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-height: 84px;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: 18px;
+  background: var(--sub);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.lp3.ob3 .ob-radius b {
+  font: 400 32px / 1 var(--display);
+}
+
+.lp3.ob3 .ob-radius span {
+  color: var(--muted);
+  font: 500 13px / 1.3 var(--body);
+}
+
+.lp3.ob3 .ob-radius button[aria-pressed="true"] {
+  background: var(--card);
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+
+.lp3.ob3 .ob-city {
+  margin-top: 22px;
+}
+
+/* Resumo do "Pronto", com o Editar de cada linha. */
+.lp3.ob3 .ob-card {
+  margin-top: 22px;
+  padding: 4px 22px;
+  border-radius: 24px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.lp3.ob3 .ob-ln {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 16px 0;
+}
+
+.lp3.ob3 .ob-ln + .ob-ln {
+  border-top: 1px solid var(--line);
+}
+
+.lp3.ob3 .ob-ln > span > b {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 15.5px;
+}
+
+.lp3.ob3 .ob-ln > span > span {
+  color: var(--muted);
+  font-size: 14.5px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.lp3.ob3 .ob-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.lp3.ob3 .ob-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 10px;
+  /* Metade da altura mínima: pílula numa linha, cartão quando o valor quebra. */
+  border-radius: 14px;
+  background: var(--sub);
+  color: var(--ink);
+  font: 600 12.5px / 1.2 var(--body);
+}
+
+/* ─── Campos: os do app (`onside-input`) no desenho da landing ─── */
+.lp3.ob3 :is(.onside-input, .onside-textarea, .onside-select) {
+  min-height: 52px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--field);
+  color: var(--ink);
+  font: 500 16px / 1.4 var(--body);
+  box-shadow: inset 0 0 0 1px var(--line2);
+}
+
+.lp3.ob3 .onside-textarea {
+  min-height: 96px;
+  padding: 14px 16px;
+  resize: vertical;
+}
+
+.lp3.ob3 :is(.onside-input, .onside-textarea, .onside-select):focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+
+.lp3.ob3
+  :is(.onside-input, .onside-textarea, .onside-select)[aria-invalid="true"] {
+  box-shadow: inset 0 0 0 2px var(--red);
+}
+
+.lp3.ob3 .onside-field-composite {
+  min-height: 52px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--field);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--line2);
+}
+
+.lp3.ob3 .onside-field-composite:focus-within {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+
+.lp3.ob3 .onside-field-composite[data-invalid="true"] {
+  box-shadow: inset 0 0 0 2px var(--red);
+}
+
+.lp3.ob3 .onside-field-part {
+  min-height: 52px;
+  font: 500 16px / 1.4 var(--body);
+}
+
+.lp3.ob3 .onside-field-part-lead {
+  border-right: 1px solid var(--line2);
+  color: var(--muted);
+}
+
+.lp3.ob3 .onside-label {
+  margin-bottom: 8px;
+}
+
+.lp3.ob3 .onside-field-error {
+  color: #c92b0c;
+  font-size: 13.5px;
+}
+
+/* Lista de cidades do `CityField`: o cartão da landing, e o destaque em verde-limão com tinta. */
+.lp3.ob3 [role="listbox"] {
+  border: 0;
+  border-radius: 16px;
+  background: var(--card);
+  color: var(--ink);
+  box-shadow:
+    inset 0 0 0 1px var(--line2),
+    var(--shadow);
+}
+
+.lp3.ob3 [role="option"][aria-selected="true"] {
+  color: #12120f;
+}
+
+.lp3.ob3 [role="option"][aria-selected="true"] span {
+  color: #3d3d38;
+}
+
+/* ─── Bar: casca com os passos no topo ─── */
+.lp3.ob3.obb {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--paper);
+}
+
+.lp3 .ob-head {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 16px max(28px, var(--gut));
+  border-bottom: 1px solid var(--line);
+}
+
+.lp3 .ob-head .logo b {
+  font-size: 22px;
+}
+
+.lp3 .ob-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+}
+
+.lp3 .ob-steps li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px 0 6px;
+  border-radius: 999px;
+  color: var(--muted);
+  font: 600 14px / 1 var(--body);
+  white-space: nowrap;
+}
+
+.lp3 .ob-steps li > span {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--sub);
+  color: var(--ink);
+  font: 600 12px / 1 var(--mono);
+}
+
+/* Avançar e voltar pinta o passo em vez de trocar a cor de uma vez. */
+.lp3 .ob-steps li,
+.lp3 .ob-steps li > span {
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.lp3 .ob-steps li.on {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+.lp3 .ob-steps li.on > span {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.lp3 .ob-steps li.ok {
+  background: var(--acid);
+  color: #12120f;
+}
+
+.lp3 .ob-steps li.ok > span {
+  background: transparent;
+  color: #12120f;
+}
+
+.lp3 .ob-steps .of {
+  display: none;
+  font-style: normal;
+}
+
+.lp3 .ob-head .sp {
+  margin-left: auto;
+}
+
+.lp3 .ob-grid {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr) 440px;
+}
+
+.lp3 .ob-grid.one {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.lp3.ob3 .ob-main {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 44px max(28px, var(--gut)) 40px;
+}
+
+.lp3.ob3 .ob-main.wide {
+  max-width: 1120px;
+}
+
+.lp3.ob3 .ob-main.wide .ob-h {
+  font-size: clamp(34px, 3.4vw, 48px);
+}
+
+.lp3.ob3 .ob-recall {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin-top: 18px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: var(--sub);
+  font-size: 14px;
+}
+
+/* Estabelecimento: grade de seis colunas, o CEP preenche o resto. */
+.lp3.ob3 .ob-form {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 16px 14px;
+  margin-top: 24px;
+}
+
+.lp3.ob3 .ob-form > * {
+  min-width: 0;
+}
+
+.lp3.ob3 .c6 {
+  grid-column: span 6;
+}
+
+.lp3.ob3 .c4 {
+  grid-column: span 4;
+}
+
+.lp3.ob3 .c3 {
+  grid-column: span 3;
+}
+
+.lp3.ob3 .c2 {
+  grid-column: span 2;
+}
+
+.lp3.ob3 .ob-fl-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.lp3.ob3 .ob-fl-head .onside-label {
+  display: inline;
+  margin: 0;
+}
+
+.lp3.ob3 .ob-fl-name {
+  font: 600 12px / 1.2 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.lp3.ob3 .ob-fl-head > :is(a, span:not(.ob-fl-name)) {
+  padding: 6px 0;
+  color: var(--ink);
+  font: 600 12px / 1 var(--body);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.lp3.ob3 .ob-fl.auto :is(.onside-input, .onside-select) {
+  background: rgba(201, 241, 53, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(127, 154, 18, 0.45);
+}
+
+.lp3.ob3 .ob-auto {
+  color: var(--auto);
+  font-style: normal;
+}
+
+.lp3.ob3 .ob-cepf {
+  display: flex;
+  align-items: center;
+  align-self: end;
+  gap: 10px;
+  min-height: 52px;
+  padding: 8px 14px;
+  border-radius: 16px;
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.lp3.ob3 .ob-cepf b {
+  display: block;
+  font-size: 14.5px;
+}
+
+.lp3.ob3 .ob-cepf.cep-ok {
+  background: var(--acid);
+  color: #12120f;
+}
+
+.lp3.ob3 .ob-cepf.cep-ok .ck {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #12120f;
+  color: var(--acid);
+}
+
+.lp3.ob3 .ob-cepf.cep-wait,
+.lp3.ob3 .ob-cepf.cep-no {
+  background: var(--sub);
+  color: var(--ink);
+}
+
+/*
+ * O quadro do CEP troca de tom (cinza ⇄ verde-limão) sem saltar, e o texto
+ * novo aparece por cima do antigo. O check entra uma vez por CEP achado.
+ */
+.lp3.ob3 .ob-cepf {
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.lp3.ob3 .ob-cepf > span:last-child {
+  animation: ob-fade 0.2s var(--ease);
+}
+
+.lp3.ob3 .ob-cepf .ck {
+  animation: ob-badge 0.2s var(--ease);
+}
+
+@keyframes ob-badge {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+/* O campo que o CEP preencheu fica verde-limão aos poucos, e volta ao editar. */
+.lp3.ob3 :is(.onside-input, .onside-select) {
+  transition:
+    background-color 0.2s ease,
+    box-shadow 0.15s ease;
+}
+
+.lp3.ob3 .ob-auto {
+  animation: ob-fade 0.2s var(--ease);
+}
+
+.lp3.ob3 .ob-hint {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* Características: telas e grupos de chips. */
+.lp3.ob3 .ob-sw {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 22px;
+  font-weight: 600;
+}
+
+.lp3.ob3 .ob-stepper {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.lp3.ob3 .ob-stepper button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--sub);
+  color: var(--ink);
+  font: 700 20px / 1 var(--body);
+  cursor: pointer;
+}
+
+.lp3.ob3 .ob-stepper button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+/* Cada toque no − e no + afunda o botão: o número muda sem animar. */
+.lp3.ob3 .ob-stepper button {
+  transition:
+    background-color 0.15s ease,
+    transform 0.12s var(--ease);
+}
+
+.lp3.ob3 .ob-stepper button:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .lp3.ob3 .ob-stepper button:hover:not(:disabled) {
+    background: var(--line2);
+  }
+}
+
+.lp3.ob3 .ob-stepper output,
+.lp3.ob3 .ob-stepper input {
+  width: 72px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: 400 24px / 44px var(--display);
+  text-align: center;
+  appearance: textfield;
+}
+
+.lp3.ob3 .ob-stepper input::-webkit-inner-spin-button,
+.lp3.ob3 .ob-stepper input::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.lp3.ob3 .ob-stepper input:focus-visible {
+  border-radius: 10px;
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+
+.lp3.ob3 .ob-cg {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.lp3.ob3 .ob-cg legend,
+.lp3.ob3 .ob-cg h2 {
+  margin: 20px 0 10px;
+  padding: 0;
+  color: var(--muted);
+  font: 600 12px / 1.3 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.lp3.ob3 .ob-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lp3.ob3 .ob-tchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--sub);
+  color: var(--ink);
+  font: 600 14.5px / 1.2 var(--body);
+  text-align: left;
+  cursor: pointer;
+}
+
+.lp3.ob3 .ob-tchip[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/*
+ * Marcar e desmarcar é transição, não keyframe: clicar duas vezes seguidas
+ * retoma do meio. A pressão afunda o chip como nos do torcedor.
+ */
+.lp3.ob3 .ob-tchip {
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.12s var(--ease);
+}
+
+.lp3.ob3 .ob-tchip:active {
+  transform: scale(0.97);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .lp3.ob3 .ob-tchip:not([aria-pressed="true"]):hover {
+    box-shadow: inset 0 0 0 1.5px var(--line2);
+  }
+}
+
+/* Rotina: os dois números num cartão. */
+.lp3.ob3 .ob-calc {
+  margin-top: 22px;
+  padding: 2px 18px;
+  border-radius: 20px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.lp3.ob3 .ob-calc .ob-sw {
+  margin: 0;
+  padding: 14px 0;
+}
+
+.lp3.ob3 .ob-calc .ob-sw + .ob-sw {
+  border-top: 1px solid var(--line);
+}
+
+.lp3.ob3 .ob-calc .ob-sw > span:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lp3.ob3 .ob-calc small {
+  color: var(--muted);
+  font: 500 13px / 1.35 var(--body);
+}
+
+/* Plano: recomendação e os três cartões. */
+.lp3.ob3 .ob-rbox {
+  max-width: 760px;
+  margin-top: 16px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.lp3.ob3 .ob-rbox ul {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 8px 0 0;
+  padding: 0;
+  font-size: 15px;
+  list-style: none;
+}
+
+.lp3.ob3 .ob-rbox li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.lp3.ob3 .ob-rbox li svg {
+  flex: none;
+  margin-top: 3px;
+}
+
+.lp3.ob3 .ob-pgrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
+  margin: 30px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.lp3.ob3 .ob-pc {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 22px;
+  border-radius: 24px;
+  background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition:
+    box-shadow 0.2s,
+    transform 0.25s var(--ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .lp3.ob3 .ob-pc:hover {
+    transform: translateY(-3px);
+  }
+}
+
+/* O cartão inteiro é o botão: afunda um pouco ao escolher. */
+.lp3.ob3 .ob-pc:active {
+  transform: scale(0.98);
+  transition-duration: 0.2s, 0.12s;
+}
+
+/* Os três entram em cascata, como os cartões das boas-vindas. */
+.lp3.ob3 .ob-pgrid .ob-pc {
+  animation: ob-in 0.3s var(--ease) backwards;
+}
+
+.lp3.ob3 .ob-pgrid .ob-pc:nth-of-type(2) {
+  animation-delay: 40ms;
+}
+
+.lp3.ob3 .ob-pgrid .ob-pc:nth-of-type(3) {
+  animation-delay: 80ms;
+}
+
+.lp3.ob3 .ob-pc:has(input:checked) {
+  box-shadow:
+    inset 0 0 0 2px var(--ink),
+    var(--shadow);
+}
+
+.lp3.ob3 .ob-pc:has(input:focus-visible) {
+  outline: 3px solid var(--acid);
+  outline-offset: 3px;
+}
+
+.lp3.ob3 .ob-pc input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.lp3.ob3 .ob-pc .ic {
+  display: block;
+  width: 52px;
+  height: 52px;
+}
+
+.lp3.ob3 .ob-pc .ic img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.lp3.ob3 .ob-pc h3 {
+  margin: 16px 0 0;
+  font: 400 34px / 1 var(--display);
+  text-transform: uppercase;
+}
+
+.lp3.ob3 .ob-pc .pd {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.lp3.ob3 .ob-pc .tagc {
+  position: absolute;
+  top: 20px;
+  right: 18px;
+  padding: 7px 9px;
+  border-radius: 7px;
+  background: var(--acid);
+  color: #12120f;
+  font: 600 11px / 1 var(--mono);
+  letter-spacing: 0.06em;
+}
+
+.lp3.ob3 .ob-pcp {
+  display: flex;
+  flex-direction: column;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--line2);
+}
+
+.lp3.ob3 .ob-pcp .ob-k {
+  margin-bottom: 6px;
+  font-size: 11px;
+}
+
+.lp3.ob3 .ob-pcv {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.lp3.ob3 .ob-pcv b {
+  font: 400 40px / 1 var(--display);
+}
+
+.lp3.ob3 .ob-pcv span,
+.lp3.ob3 .ob-pcv s,
+.lp3.ob3 .ob-pcp small {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.lp3.ob3 .ob-pcp small {
+  display: block;
+  margin-top: 6px;
+  font-size: 13.5px;
+}
+
+.lp3.ob3 .ob-pcf {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 16px 0 0;
+  padding: 16px 0 0;
+  margin-bottom: 18px;
+  border-top: 1px dashed var(--line2);
+  font-size: 14px;
+  list-style: none;
+}
+
+.lp3.ob3 .ob-pcf li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.lp3.ob3 .ob-pcf svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.lp3.ob3 .ob-pcb {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: auto;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--sub);
+  font-size: 13.5px;
+}
+
+.lp3.ob3 .ob-pcb b {
+  font-size: 15px;
+}
+
+.lp3.ob3 .ob-pcb small {
+  color: var(--muted);
+  font: 500 12px / 1.3 var(--mono);
+}
+
+.lp3.ob3 .ob-pcsel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  font: 600 14px / 1 var(--body);
+}
+
+.lp3.ob3 .ob-pcsel i {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px var(--line2);
+  transition: box-shadow 0.15s ease;
+}
+
+.lp3.ob3 .ob-pc:has(input:checked) .ob-pcsel i {
+  box-shadow: inset 0 0 0 6px var(--ink);
+}
+
+/* O recomendado é tinta nos dois temas, com o verde-limão por cima. */
+.lp3.ob3 .ob-pc.rec {
+  background: #12120f;
+  color: #f1eee6;
+  box-shadow: 0 5px 0 #000;
+}
+
+.lp3.ob3 .ob-pc.rec:has(input:checked) {
+  box-shadow:
+    inset 0 0 0 2px #c9f135,
+    0 5px 0 #000;
+}
+
+.lp3.ob3 .ob-pc.rec h3 {
+  color: #c9f135;
+}
+
+.lp3.ob3 .ob-pc.rec :is(.pd, .ob-pcp small, .ob-pcv span, .ob-pcv s, .ob-k) {
+  color: #aaa9a4;
+}
+
+.lp3.ob3 .ob-pc.rec :is(.ob-pcp, .ob-pcf) {
+  border-color: rgba(241, 238, 230, 0.16);
+}
+
+.lp3.ob3 .ob-pc.rec .ob-pcb {
+  background: rgba(241, 238, 230, 0.07);
+}
+
+.lp3.ob3 .ob-pc.rec .ob-pcb b {
+  color: #c9f135;
+}
+
+.lp3.ob3 .ob-pc.rec .ob-pcb small {
+  color: #aaa9a4;
+}
+
+.lp3.ob3 .ob-pc.rec .ob-pcsel i {
+  box-shadow: inset 0 0 0 2px #55554f;
+}
+
+.lp3.ob3 .ob-pc.rec:has(input:checked) .ob-pcsel i {
+  box-shadow: inset 0 0 0 6px #c9f135;
+}
+
+/* Revisão: o plano escolhido com o Trocar. */
+.lp3.ob3 .ob-ln .ob-act {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ─── Prévia "Assim o torcedor vê" ─── */
+.lp3.ob3 .ob-prev {
+  padding: 44px 34px;
+  border-left: 1px solid var(--line);
+  background: var(--sub);
+}
+
+.lp3.ob3 .ob-prev-in {
+  position: sticky;
+  top: 24px;
+}
+
+.lp3.ob3 .ob-pcard {
+  margin-top: 16px;
+  overflow: hidden;
+  border-radius: 24px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.lp3.ob3 .ob-pimg {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 9;
+  padding: 16px;
+  background:
+    repeating-linear-gradient(
+      135deg,
+      transparent 0 14px,
+      rgba(127, 127, 110, 0.12) 14px 15px
+    ),
+    var(--stone);
+  color: var(--muted);
+  font: 500 13px / 1.4 var(--body);
+  text-align: center;
+}
+
+.lp3.ob3 .ob-pel {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 5px 7px;
+  border-radius: 6px;
+  background: #12120f;
+  color: #c9f135;
+  font: 600 11px / 1 var(--mono);
+  letter-spacing: 0.06em;
+}
+
+.lp3.ob3 .ob-pin {
+  padding: 16px 18px 18px;
+}
+
+.lp3.ob3 .ob-pin > b {
+  display: block;
+  font-size: 20px;
+  overflow-wrap: anywhere;
+}
+
+.lp3.ob3 .ob-pin > p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.lp3.ob3 .ob-pin .ob-tags {
+  margin-top: 10px;
+}
+
+.lp3.ob3 .ob-pgame {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--sub);
+}
+
+.lp3.ob3 .ob-pgame p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+.lp3.ob3 .ob-pbtn {
+  display: grid;
+  place-items: center;
+  height: 44px;
+  margin-top: 12px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font: 700 15px / 1 var(--body);
+  box-shadow: 0 3px 0 #000;
+}
+
+/* ─── Comprovante: a impressora solta o papel linha a linha ─── */
+.lp3.ob3 .ob-rcpt {
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 44px max(16px, var(--gut)) 60px;
+  text-align: center;
+}
+
+.lp3.ob3 .ob-rcpt .ob-h {
+  font-size: clamp(36px, 4.2vw, 54px);
+}
+
+.lp3.ob3 .ob-printer {
+  position: relative;
+  z-index: 2;
+  width: min(360px, 92%);
+  height: 34px;
+  margin: 28px auto 0;
+  border-radius: 14px 14px 6px 6px;
+  background: #12120f;
+  box-shadow: 0 4px 0 #000;
+}
+
+.lp3.ob3 .ob-printer .slot {
+  position: absolute;
+  right: 24px;
+  bottom: 6px;
+  left: 24px;
+  height: 5px;
+  border-radius: 5px;
+  background: #000;
+}
+
+.lp3.ob3 .ob-printer .ob-led {
+  position: absolute;
+  top: 9px;
+  right: 16px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #c9f135;
+  box-shadow: 0 0 8px #c9f135;
+  animation: ob-blink 1s steps(1) 6;
+}
+
+@keyframes ob-blink {
+  50% {
+    opacity: 0.2;
+  }
+}
+
+.lp3.ob3 .ob-paper {
+  position: relative;
+  z-index: 1;
+  width: min(340px, 88%);
+  margin: -8px auto 0;
+  padding: 18px 18px 26px;
+  background: #fbfaf6;
+  color: #12120f;
+  font: 500 13px / 1.45 var(--mono);
+  text-align: left;
+  box-shadow: 0 18px 30px -18px rgba(0, 0, 0, 0.4);
+  mask:
+    linear-gradient(#000 0 0) top / 100% calc(100% - 8px) no-repeat,
+    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg)
+    bottom / 12px 8px repeat-x;
+}
+
+.lp3.ob3 .rl {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  /*
+   * `backwards`, e não `both`: o `max-height` do fim do papel não fica preso
+   * na linha depois que ela sai, e endereço comprido não é cortado.
+   */
+  animation: ob-feed 0.35s var(--ease) backwards;
+}
+
+.lp3.ob3 .rl > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@keyframes ob-feed {
+  from {
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    max-height: 120px;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.lp3.ob3 .rl.rl-c {
+  justify-content: center;
+  text-align: center;
+}
+
+.lp3.ob3 .rl.rl-m {
+  color: #55554f;
+}
+
+.lp3.ob3 .rl.rl-s > span:last-child {
+  text-decoration: line-through;
+}
+
+.lp3.ob3 .rl.rl-b {
+  font-weight: 700;
+}
+
+.lp3.ob3 .rl.rl-cut {
+  margin: 10px 0;
+  border-top: 1.5px dashed rgba(18, 18, 15, 0.35);
+}
+
+.lp3.ob3 .rl.rl-note {
+  display: block;
+  margin-top: 4px;
+  color: #55554f;
+  font-size: 12px;
+}
+
+.lp3.ob3 .rl.rl-tot {
+  margin-top: 2px;
+  font: 400 24px / 1.1 var(--display);
+}
+
+.lp3.ob3 .rl.rl-logo {
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.lp3.ob3 .rl.rl-logo b {
+  font: 400 24px / 1 var(--display);
+}
+
+.lp3.ob3 .rl.rl-bars {
+  justify-content: center;
+  gap: 2px;
+  height: 38px;
+  margin: 14px 0 6px;
+}
+
+.lp3.ob3 .rl.rl-bars i {
+  display: block;
+  height: 100%;
+  background: #12120f;
+}
+
+.lp3.ob3 .ob-cta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 26px;
+}
+
+/* ─── Celular e tablet ─── */
+@media (max-width: 1000px) {
+  .lp3.ob3 .ob-pgrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lp3.ob3 .ob-pc.rec {
+    order: -1;
+  }
+
+  /* Empilhados, o recomendado vem antes: a ordem do DOM não é a da tela. */
+  .lp3.ob3 .ob-pgrid .ob-pc:nth-of-type(n) {
+    animation-delay: 0ms;
+  }
+}
+
+@media (max-width: 900px) {
+  .lp3 .ob-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lp3.ob3 .ob-prev {
+    display: none;
+  }
+
+  .lp3.ob3 .ent-form {
+    padding-top: 20px;
+  }
+}
+
+@media (max-width: 760px) {
+  .lp3 .ob-head {
+    gap: 10px;
+    padding: 12px var(--gut-r) 12px var(--gut);
+  }
+
+  .lp3 .ob-head .logo b {
+    display: none;
+  }
+
+  .lp3 .ob-steps {
+    flex-wrap: nowrap;
+    margin: 0 auto 0 0;
+  }
+
+  .lp3 .ob-steps li:not(.on) {
+    display: none;
+  }
+
+  .lp3 .ob-steps .of {
+    display: inline;
+    margin-left: 4px;
+    color: var(--muted);
+    font: 500 12px / 1 var(--mono);
+  }
+
+  .lp3.ob3 .ob-main {
+    padding: 24px var(--gut-r) 32px var(--gut);
+  }
+
+  .lp3.ob3 .ob-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lp3.ob3 :is(.c6, .c4) {
+    grid-column: span 2;
+  }
+
+  .lp3.ob3 :is(.c3, .c2) {
+    grid-column: span 1;
+  }
+
+  .lp3.ob3 .ob-sports {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lp3.ob3 .ob-radius {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lp3.ob3 .ob-calc .ob-sw {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .lp3.ob3 .ob-calc .ob-stepper {
+    margin: 4px 0 0;
+  }
+
+  .lp3.ob3 .ob-ln {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .lp3.ob3 .ob-ln .ob-act {
+    justify-content: flex-start;
+  }
+
+  .lp3.ob3 .ob-nav-row .btn-acid {
+    flex: 1;
+    min-width: 0;
+    white-space: normal;
+    line-height: 1.15;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp3.ob3 :is(.rl, .ob-printer .ob-led, .ob-sports .sk) {
+    animation: none;
+  }
+
+  /* Sem deslocamento: o passo, a legenda do telão e os cartões só aparecem. */
+  .lp3.ob3 :is(.ob-step-body, .ent-cap, .ob-ben li, .ob-sports button) {
+    animation-name: ob-fade;
+  }
+
+  .lp3.ob3 .ob-pc,
+  .lp3 .ob-seg li::after {
+    transition: none;
+  }
+}
+
+/*
+ * Selecionado em esportes e times: o escolhido inverte as cores (tinta no
+ * claro, papel no escuro), ganha o selo verde-limão com o check e a sombra de
+ * baixo verde-limão, e dá um pulinho ao ser marcado.
+ */
+.lp3.ob3 .ob-sports button,
+.lp3.ob3 .ob-radius button,
+.lp3.ob3 .ob-teams .onside-chip {
+  position: relative;
+  transition:
+    background 0.2s,
+    color 0.2s,
+    box-shadow 0.2s,
+    transform 0.25s var(--ease);
+}
+
+.lp3.ob3 .ob-sports button[aria-pressed="true"],
+.lp3.ob3 .ob-radius button[aria-pressed="true"],
+.lp3.ob3 .ob-teams .onside-chip[aria-pressed="true"],
+.lp3.ob3 .ob-teams .onside-chip[aria-pressed="true"]:hover:not(:disabled) {
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: 0 4px 0 var(--acid);
+  transform: translateY(-2px);
+}
+
+.lp3.ob3 .ob-sports button[aria-pressed="true"] .e {
+  background: var(--acid);
+  color: #12120f;
+}
+
+.lp3.ob3 .ob-sports button[aria-pressed="true"]::after,
+.lp3.ob3 .ob-radius button[aria-pressed="true"]::after,
+.lp3.ob3 .ob-teams .onside-chip[aria-pressed="true"]::before {
+  content: "";
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background:
+    #c9f135
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='m5 12.5 4.5 4.5L19 7.5' fill='none' stroke='%2312120f' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>")
+    center / 14px no-repeat;
+}
+
+.lp3.ob3 .ob-sports button[aria-pressed="true"]::after,
+.lp3.ob3 .ob-radius button[aria-pressed="true"]::after {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.lp3.ob3 .ob-teams .onside-chip[aria-pressed="true"] {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp3.ob3 .ob-sports button[aria-pressed="true"],
+  .lp3.ob3 .ob-radius button[aria-pressed="true"],
+  .lp3.ob3 .ob-teams .onside-chip[aria-pressed="true"] {
+    animation: none;
+    transform: none;
+  }
+}
+
+/* Pressão: o cartão afunda um pouco no toque e volta mais devagar. */
+.lp3.ob3
+:is(.ob-sports button, .ob-radius button, .ob-teams .onside-chip):active:not(
+  :disabled
+) {
+  transform: scale(0.97);
+  transition-duration: 0.2s, 0.2s, 0.2s, 0.12s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp3.ob3
+    :is(
+      .ob-sports button,
+      .ob-radius button,
+      .ob-teams .onside-chip
+    ):active:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* Distância: o texto de apoio acompanha a inversão. */
+.lp3.ob3 .ob-radius button[aria-pressed="true"] span {
+  color: inherit;
+  opacity: 0.75;
+}
+
+/* ─── Boas-vindas do bar: conteúdo no meio, botão junto, telão à direita ─── */
+.lp3.ob3 .ob-main:has(.ob-welcome) {
+  justify-content: center;
+}
+
+.lp3.ob3 .ob-main:has(.ob-welcome) .ob-nav {
+  margin-top: 0;
+}
+
+.lp3.ob3 .ob-main:has(.ob-welcome) .ob-nav-row .btn-acid {
+  margin-left: 0;
+}
+
+.lp3.ob3 .ob-need {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-top: 22px;
+}
+
+.lp3.ob3 .ob-need ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lp3.ob3 .ob-need li {
+  padding: 7px 12px;
+  border: 1px dashed var(--line);
+  border-radius: 999px;
+  font-size: 13.5px;
+}
+
+.lp3.ob3 .ob-prev.tv {
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+  border-left: 0;
+  background: #12120f;
+}
+
+.lp3.ob3 .ob-prev.tv .ob-prev-in {
+  height: 100%;
+}
+
+.lp3.ob3 .ob-tv {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  min-height: calc(100vh - 77px);
+  padding: 40px 34px;
+  color: #f4efe6;
+  text-align: center;
+}
+
+.lp3.ob3 .ob-tv-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
+  opacity: 0.55;
+}
+
+.lp3.ob3 .ob-tv > :not(.ob-tv-bg) {
+  position: relative;
+}
+
+.lp3.ob3 .ob-tv-k {
+  margin: 0;
+  color: #c9f135;
+  font: 600 12px / 1.3 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.lp3.ob3 .ob-tv .phone {
+  width: auto;
+  height: min(545px, 62vh);
+}
+
+.lp3.ob3 .ob-tv-cap {
+  max-width: 300px;
+  margin: 0;
+  color: rgba(244, 239, 230, 0.75);
+  font-size: 13.5px;
+}
+
+/*
+ * Primeira tela do cadastro: o telão acende, o celular sobe e as legendas
+ * chegam por último. Uma vez por visita; a parte animada é só transform e
+ * opacidade.
+ */
+.lp3.ob3 .ob-tv-bg {
+  animation: ob-fade 0.3s var(--ease) backwards;
+}
+
+.lp3.ob3 .ob-tv .phone {
+  animation: ob-in 0.3s var(--ease) 0.06s backwards;
+}
+
+.lp3.ob3 :is(.ob-tv-k, .ob-tv-cap) {
+  animation: ob-fade 0.3s var(--ease) 0.12s backwards;
+}
+
+/* ─── Foto de capa no cadastro: escolhida aqui, sobe quando o bar nasce ─── */
+.lp3.ob3 .ob-photo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 12px;
+  border: 1px dashed var(--line);
+  border-radius: 18px;
+}
+
+.lp3.ob3 .ob-photo-th {
+  flex: none;
+  width: 88px;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 10px;
+  background:
+    repeating-linear-gradient(
+      135deg,
+      transparent 0 8px,
+      rgba(127, 127, 110, 0.14) 8px 9px
+    ),
+    var(--stone);
+}
+
+.lp3.ob3 .ob-photo-th img,
+.lp3.ob3 .ob-pimg.has img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.lp3.ob3 .ob-photo-tx {
+  flex: 1 1 180px;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+.lp3.ob3 .ob-photo label.btn {
+  cursor: pointer;
+}
+
+.lp3.ob3 .ob-photo:has(input:disabled) label.btn {
+  display: none;
+}
+
+.lp3.ob3 .ob-photo:has(input:focus-visible) label.btn {
+  outline: 2px solid var(--acid);
+  outline-offset: 2px;
+}
+
+.lp3.ob3 .ob-pimg.has {
+  padding: 0;
+}
+
+.lp3.ob3 .ob-pimg.has img {
+  position: absolute;
+  inset: 0;
+}
+
+/*
+ * A prévia acompanha o formulário: o que entra (foto, endereço, descrição,
+ * telefone, uma característica, o selo do plano) aparece em 200 ms em vez de
+ * surgir de uma vez. A etiqueta sai do 90%, não do nada. Sair é instantâneo.
+ */
+.lp3.ob3
+:is(
+  .ob-pimg.has img,
+  .ob-photo-th img,
+  .ob-pwhere,
+  .ob-pabout,
+  .ob-pcall,
+  .ob-pel
+) {
+  animation: ob-fade 0.2s var(--ease);
+}
+
+.lp3.ob3 .ob-pin .ob-tag {
+  animation: ob-badge 0.2s var(--ease);
+}
+
+/* ─── Prévia: endereço, descrição e contato vindos do formulário ─── */
+.lp3.ob3 .ob-pin > .ob-pwhere {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+
+.lp3.ob3 .ob-pwhere svg {
+  flex: none;
+  margin-top: 3px;
+}
+
+.lp3.ob3 .ob-pin > .ob-pabout {
+  display: -webkit-box;
+  margin-top: 10px;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.lp3.ob3 .ob-pcall {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: var(--sub);
+  font: 600 13px / 1 var(--body);
+}
+
+/* ─── Características: ar entre o contador e os grupos ─── */
+.lp3.ob3 .ob-sw-card {
+  margin-top: 28px;
+  padding: 14px 14px 14px 18px;
+  border-radius: 20px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.lp3.ob3 .ob-sw-tx {
+  display: grid;
+  gap: 2px;
+}
+
+.lp3.ob3 .ob-sw-tx > span {
+  color: var(--muted);
+  font-size: 13.5px;
+  font-weight: 400;
+}
+
+/* A margem de cima do legend não vale dentro do fieldset: o espaço vai nele. */
+.lp3.ob3 .ob-cg {
+  margin-top: 30px;
+}
+
+.lp3.ob3 .ob-cg legend {
+  margin: 0 0 12px;
+}
+
+.lp3.ob3 .ob-cg .ob-chips {
+  gap: 10px;
+}
+
+.lp3.ob3 .ob-cg ~ .ob-note {
+  margin-top: 32px;
+}
+
+/*
+ * Movimento reduzido no cadastro do bar: o que subia, crescia ou afundava só
+ * esmaece. No fim do arquivo para vencer as regras de cada peça.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .lp3.ob3 .ob-pgrid .ob-pc,
+  .lp3.ob3 .ob-tv .phone,
+  .lp3.ob3 .ob-pin .ob-tag,
+  .lp3.ob3 .ob-cepf .ck {
+    animation-name: ob-fade;
+  }
+
+  .lp3.ob3 .ob-tchip:active,
+  .lp3.ob3 .ob-stepper button:active:not(:disabled),
+  .lp3.ob3 .ob-pc:active {
+    transform: none;
+  }
+}

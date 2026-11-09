@@ -1,1468 +1,1066 @@
+/* biome-ignore-all lint/style/noDescendingSpecificity: segue a ordem do protótipo (casca, trilho, celular); tudo preso a .pn3. */
 /*
- * Painel do bar (`/admin/*`): tokens, peças e shell do design "Bar Web"
- * (Rodada 2). Valores tirados de `w-core.js` do projeto: `L` (claro), `D`
- * (escuro) e as sombras `sh`. O painel segue o tema do sistema
- * (`prefers-color-scheme`); o resto do site continua só no claro.
- *
- * Só carrega nas rotas do painel (link no `head` de `routes/admin.tsx`), e
- * tudo vive dentro de `.painel`: landing, Houdini e páginas públicas não veem
- * nada daqui. As fontes são as de `styles/onside/tokens.css`
- * (`--onside-display`, `--onside-body`, `--onside-mono`), que valem porque a
- * raiz do painel também é `.onside-app`.
+ * Painel do bar no redesign (WEB-501, fase 1): a casca do protótipo
+ * `docs/design/redesign-2026-11/painel` (`.shell`, `.rail`, `.mtop`,
+ * `.tabbar`, `.val`, `.more`), com as cores dele. Preso a `.pn3`, sem `.lp3`
+ * por cima: as telas antigas entram aqui dentro e as classes curtas da landing
+ * (`.nav`, `.row`, `.field`…) pegariam nelas. O escuro é o `data-theme` do
+ * `<html>` (`lib/theme.ts`), como no resto do redesign.
  */
 
-.painel {
-  --painel-acid: #c9f135;
-  --painel-ink: #12120f;
-  --painel-paper: #f1eee6;
-  --painel-live-fill: #e8320c;
+.pn3 {
+  --bg: #f1eee6;
+  --fg: #12120f;
+  --card: #faf8f3;
+  --sub: #e7e3db;
+  --line: rgba(18, 18, 15, 0.1);
+  --line2: rgba(18, 18, 15, 0.18);
+  --muted: #55554f;
+  --body: #3a3a35;
+  --drop: #d9d4c8;
+  --field: #fff;
+  --acid: #c9f135;
+  --acid-drop: #7f9a12;
+  --live-text: #c92b0c;
+  --spark: #e8320c;
+  --rail: #12120f;
+  --rail-fg: #f1eee6;
+  --rail-mute: #aaa9a4;
+  --rail-on: #26261f;
+  --shadow: 0 3px 0 var(--drop), 0 24px 40px -32px rgba(18, 18, 15, 0.45);
+  --display: "Anton", "Impact", "Arial Narrow", sans-serif;
+  --text: "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --mono: "Geist Mono", ui-monospace, Menlo, monospace;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --gl: max(16px, env(safe-area-inset-left, 0px));
+  --gr: max(16px, env(safe-area-inset-right, 0px));
 
-  --painel-bg: #f1eee6;
-  --painel-fg: #12120f;
-  --painel-card: #faf8f3;
-  --painel-card2: #f1eee6;
-  --painel-line: rgb(18 18 15 / 10%);
-  --painel-line2: rgb(18 18 15 / 16%);
-  --painel-muted: #55554f;
-  --painel-body: #3a3a35;
-  /* Fundo de bloco dentro de card (`sub`) e de painel lateral (`panel`). */
-  --painel-sub: #e7e3db;
-  --painel-panel: #e7e3db;
-  /* Texto de destaque (`tint`), acento dos ícones (`acc`), "ao vivo" em texto. */
-  --painel-tint: #c92b0c;
-  --painel-acc: #e8320c;
-  --painel-live: #c92b0c;
-  --painel-field: #fff;
-  /* Superfície "ink" (faixa escura): tinta no claro, cartão no escuro. */
-  --painel-surface-ink: #12120f;
-
-  --painel-icone-base: 0.3;
-  --painel-av: #e7e3db;
-  --painel-track: rgb(18 18 15 / 10%);
-  --painel-prog-fill: #12120f;
-  --painel-badge-pub-bg: #e7e3db;
-  --painel-badge-pub-fg: #12120f;
-  --painel-badge-ink-bg: #12120f;
-  --painel-badge-ink-fg: #c9f135;
-  --painel-draft-line: rgb(18 18 15 / 35%);
-  --painel-btn-ink-bg: #12120f;
-  --painel-btn-ink-fg: #f1eee6;
-  --painel-toggle-on: #12120f;
-  --painel-toggle-knob-on: #c9f135;
-  --painel-toggle-off: #cfcbc2;
-  --painel-hover: rgb(18 18 15 / 5%);
-  --painel-nav-on-bg: #faf8f3;
-  --painel-focus-ring:
-    inset 0 0 0 1.5px #12120f, 0 0 0 3px rgb(201 241 53 / 60%);
-
-  /* Sombras: deslocamento sólido + contorno + sombra longa (`sh` do design). */
-  --painel-sh-tail:
-    inset 0 0 0 1px rgb(18 18 15 / 8%), 0 20px 34px -22px rgb(18 18 15 / 45%);
-  --painel-sh: 4px 4px 0 rgb(18 18 15 / 9%), var(--painel-sh-tail);
-  --painel-sh-hero: 5px 5px 0 rgb(201 241 53 / 85%), var(--painel-sh-tail);
-  --painel-sh-live: 5px 5px 0 rgb(232 50 12 / 28%), var(--painel-sh-tail);
-  --painel-sh-acid: 5px 5px 0 rgb(201 241 53 / 85%), var(--painel-sh-tail);
-  --painel-sh-ink: 5px 5px 0 #12120f, var(--painel-sh-tail);
-  /* Sombra dura do botão acid e do chip ligado. */
-  --painel-sh-btn: 3px 3px 0 #12120f;
-
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--fg);
+  font: 400 16px / 1.5 var(--text);
+  -webkit-font-smoothing: antialiased;
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  .painel {
-    --painel-bg: #12120f;
-    --painel-fg: #f1eee6;
-    --painel-card: #1c1c18;
-    --painel-card2: #1c1c18;
-    --painel-line: rgb(241 238 230 / 10%);
-    --painel-line2: rgb(241 238 230 / 16%);
-    --painel-muted: #aaa9a4;
-    --painel-body: #d6d3cb;
-    --painel-sub: #262621;
-    --painel-panel: #0c0c0a;
-    --painel-tint: #c9f135;
-    --painel-acc: #c9f135;
-    --painel-live: #f3421d;
-    --painel-field: #22221e;
-    --painel-surface-ink: #1c1c18;
-
-    --painel-icone-base: 0.35;
-    --painel-av: #34342e;
-    --painel-track: #2c2c27;
-    --painel-badge-pub-bg: #2e2e29;
-    --painel-badge-pub-fg: #f1eee6;
-    --painel-badge-ink-bg: #f1eee6;
-    --painel-badge-ink-fg: #12120f;
-    --painel-draft-line: rgb(241 238 230 / 35%);
-    --painel-btn-ink-bg: #f1eee6;
-    --painel-btn-ink-fg: #12120f;
-    --painel-toggle-on: #c9f135;
-    --painel-toggle-knob-on: #12120f;
-    --painel-toggle-off: #3a3a34;
-    --painel-hover: rgb(241 238 230 / 6%);
-    --painel-nav-on-bg: rgb(241 238 230 / 8%);
-    --painel-focus-ring:
-      inset 0 0 0 1.5px #c9f135, 0 0 0 3px rgb(201 241 53 / 18%);
-
-    --painel-sh-tail:
-      inset 0 0 0 1px rgb(241 238 230 / 9%), 0 20px 34px -22px rgb(0 0 0 / 90%);
-    --painel-sh: 4px 4px 0 rgb(0 0 0 / 60%), var(--painel-sh-tail);
-    --painel-sh-hero: 5px 5px 0 rgb(201 241 53 / 22%), var(--painel-sh-tail);
-    --painel-sh-live: 5px 5px 0 rgb(232 50 12 / 30%), var(--painel-sh-tail);
-    --painel-sh-acid: 5px 5px 0 rgb(201 241 53 / 85%), var(--painel-sh-tail);
-    --painel-sh-ink: var(--painel-sh);
-    --painel-sh-btn: 3px 3px 0 #000;
-
-    color-scheme: dark;
-  }
+html[data-theme="dark"] .pn3 {
+  --bg: #12120f;
+  --fg: #f1eee6;
+  --card: #1c1c18;
+  --sub: #26261f;
+  --line: rgba(241, 238, 230, 0.1);
+  --line2: rgba(241, 238, 230, 0.18);
+  --muted: #aaa9a4;
+  --body: #d6d3cb;
+  --drop: #000;
+  --field: #1c1c18;
+  --live-text: #f3421d;
+  --spark: #c9f135;
+  --rail: #0b0b09;
+  --rail-on: #1c1c18;
+  --shadow: 0 3px 0 #000, 0 24px 40px -30px rgba(0, 0, 0, 0.8);
+  color-scheme: dark;
 }
 
-/* `.onside-app` pinta papel e tinta; o painel troca pelos tokens do tema. */
-.onside-app.painel {
-  background: var(--painel-bg);
-  color: var(--painel-fg);
-  font-family: var(--onside-body);
+html:has(.pn3),
+html:has(.pn3) body {
+  background: #f1eee6;
 }
 
-/* ─── Texto ─── */
-
-.painel .painel-disp {
-  font: 400 var(--painel-disp-size, 40px) / 1.04 var(--onside-display);
-  text-transform: uppercase;
-  letter-spacing: -0.01em;
-  word-spacing: 0.08em;
-  margin: 0;
+html[data-theme="dark"]:has(.pn3),
+html[data-theme="dark"]:has(.pn3) body {
+  background: #12120f;
 }
 
-.painel .painel-mono {
-  font: 600 13px / 1 var(--onside-mono);
-  font-variant-numeric: tabular-nums;
+.pn3 *,
+.pn3 *::before,
+.pn3 *::after {
+  box-sizing: border-box;
 }
 
-.painel .painel-muted {
-  color: var(--painel-muted);
+.pn3 a {
+  color: inherit;
 }
 
-.painel-icone {
-  display: block;
+.pn3 :focus-visible {
+  outline: 3px solid var(--acid);
+  outline-offset: 2px;
+}
+
+.pn3 svg {
   flex: none;
 }
 
-/* ─── Card ─── */
-
-.painel .painel-card {
-  border-radius: 7px;
-  background: var(--painel-card);
-  color: var(--painel-fg);
-  box-shadow: var(--painel-sh);
-  padding: 18px 20px;
-  min-width: 0;
-}
-.painel .painel-card[data-kind="hero"] {
-  box-shadow: var(--painel-sh-hero);
-}
-.painel .painel-card[data-kind="live"] {
-  box-shadow: var(--painel-sh-live);
-}
-.painel .painel-card[data-kind="acid"] {
-  box-shadow: var(--painel-sh-acid);
-}
-.painel .painel-card[data-kind="ink"] {
-  box-shadow: var(--painel-sh-ink);
+.pn3 .pn-disp {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  line-height: 0.95;
+  letter-spacing: 0;
+  text-transform: uppercase;
 }
 
-/* ─── Botão ─── */
+.pn3 .pn-mono {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
 
-.painel .painel-btn {
+.pn3 .pn-sp {
+  flex: 1;
+}
+
+/* ─── Botões ─── */
+:is(.pn3, .dlg3) .pn-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  height: var(--painel-btn-h, 44px);
-  padding: 0 18px;
+  gap: 9px;
+  height: 48px;
+  padding: 0 22px;
   border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: var(--painel-fg);
-  font: 700 14px / 1 var(--onside-body);
+  border-radius: 999px;
+  font: 700 15px / 1 var(--text);
   white-space: nowrap;
-  flex: none;
-  cursor: pointer;
   text-decoration: none;
+  cursor: pointer;
   transition:
-    transform var(--onside-motion-fast) var(--onside-ease-out),
-    background-color var(--onside-motion-fast) var(--onside-ease-out);
+    transform 0.18s var(--ease),
+    box-shadow 0.18s var(--ease),
+    background 0.2s;
 }
-.painel .painel-btn:active:not(:disabled) {
-  transform: translate(1px, 1px);
+
+:is(.pn3, .dlg3) .pn-btn:active {
+  transform: translateY(3px);
 }
-.painel .painel-btn:disabled,
-.painel .painel-btn[aria-disabled="true"] {
-  opacity: 0.5;
-  cursor: not-allowed;
+
+:is(.pn3, .dlg3) .pn-btn:disabled {
+  cursor: default;
+  opacity: 0.6;
 }
-.painel .painel-btn[data-variante="acid"] {
-  background: var(--painel-acid);
-  color: var(--painel-ink);
-  box-shadow: var(--painel-sh-btn);
+
+:is(.pn3, .dlg3) .pn-acid {
+  --spark: #e8320c;
+  background: var(--acid);
+  color: #12120f;
+  box-shadow: 0 4px 0 var(--acid-drop);
 }
-.painel .painel-btn[data-variante="ink"] {
-  background: var(--painel-btn-ink-bg);
-  color: var(--painel-btn-ink-fg);
+
+:is(.pn3, .dlg3) .pn-ink {
+  background: var(--fg);
+  color: var(--bg);
+  box-shadow: 0 4px 0 #000;
 }
-.painel .painel-btn[data-variante="sec"] {
-  box-shadow: inset 0 0 0 1px var(--painel-line2);
-}
-.painel .painel-btn[data-variante="danger"] {
-  color: var(--painel-live);
-  box-shadow: inset 0 0 0 1px var(--painel-line2);
-}
-@media (hover: hover) {
-  .painel .painel-btn[data-variante="sec"]:hover:not(:disabled),
-  .painel .painel-btn[data-variante="danger"]:hover:not(:disabled),
-  .painel .painel-icon-btn:hover:not(:disabled) {
-    background: var(--painel-hover);
+
+@media (hover: hover) and (pointer: fine) {
+  :is(.pn3, .dlg3) .pn-acid:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 0 var(--acid-drop);
+  }
+
+  :is(.pn3, .dlg3) .pn-ink:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 0 #000;
   }
 }
 
-.painel .painel-icon-btn {
-  position: relative;
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: var(--painel-icon-btn, 40px);
-  height: var(--painel-icon-btn, 40px);
-  border: 0;
-  border-radius: 20px;
+:is(.pn3, .dlg3) .pn-acid:active {
+  box-shadow: 0 1px 0 var(--acid-drop);
+}
+
+:is(.pn3, .dlg3) .pn-ghost {
   background: transparent;
-  color: var(--painel-fg);
-  box-shadow: inset 0 0 0 1px var(--painel-line2);
-  cursor: pointer;
-}
-.painel .painel-icon-btn[data-quadrado] {
-  border-radius: 6px;
-}
-.painel .painel-icon-btn-ponto {
-  position: absolute;
-  top: 8px;
-  right: 9px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--painel-live-fill);
-  box-shadow: 0 0 0 2px var(--painel-bg);
+  color: inherit;
+  box-shadow: inset 0 0 0 1.5px var(--line2);
 }
 
-/* ─── Badge ─── */
-
-.painel .painel-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  flex: none;
-  padding: 3px 7px;
-  border-radius: 3px;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1.25;
-  white-space: nowrap;
-}
-.painel .painel-badge[data-tipo="live"] {
-  background: var(--painel-live-fill);
-  color: #fff;
-}
-.painel .painel-badge[data-tipo="pub"] {
-  background: var(--painel-badge-pub-bg);
-  color: var(--painel-badge-pub-fg);
-}
-.painel .painel-badge[data-tipo="draft"] {
-  color: var(--painel-fg);
-  box-shadow: inset 0 0 0 1px var(--painel-draft-line);
-}
-.painel .painel-badge[data-tipo="acid"] {
-  background: var(--painel-acid);
-  color: var(--painel-ink);
-}
-.painel .painel-badge[data-tipo="ink"] {
-  background: var(--painel-badge-ink-bg);
-  color: var(--painel-badge-ink-fg);
-}
-.painel .painel-badge[data-tipo="muted"] {
-  color: var(--painel-muted);
-  box-shadow: inset 0 0 0 1px var(--painel-line2);
+:is(.pn3, .dlg3) .pn-ghost:hover {
+  box-shadow: inset 0 0 0 1.5px currentColor;
 }
 
-/* ─── Chip e Seg ─── */
+:is(.pn3, .dlg3) .pn-sm {
+  height: 42px;
+  padding: 0 17px;
+  font-size: 14.5px;
+}
 
-.painel .painel-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex: none;
-  height: var(--painel-chip-h, 34px);
-  padding: 0 12px;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: var(--painel-fg);
-  box-shadow: inset 0 0 0 1px var(--painel-line2);
-  font: 600 13px / 1 var(--onside-body);
-  white-space: nowrap;
-  cursor: pointer;
-}
-.painel .painel-chip[aria-pressed="true"],
-.painel .painel-chip[aria-checked="true"] {
-  background: var(--painel-acid);
-  color: var(--painel-ink);
-  box-shadow: var(--painel-sh-btn);
-}
-.painel .painel-chip:disabled,
-.painel .painel-chip[aria-disabled="true"] {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.painel .painel-seg {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  min-inline-size: 0;
-  margin: 0;
+:is(.pn3, .dlg3) .pn-ic {
+  width: 42px;
+  height: 42px;
   padding: 0;
-  border: 0;
-}
-
-/* ─── Toggle ─── */
-
-.painel .painel-toggle {
-  display: flex;
-  align-items: center;
-  flex: none;
-  width: 46px;
-  height: 28px;
-  padding: 3px;
-  border: 0;
-  border-radius: 14px;
-  background: var(--painel-toggle-off);
-  cursor: pointer;
-  transition: background-color var(--onside-motion-base) var(--onside-ease-out);
-}
-.painel .painel-toggle > span {
-  width: 22px;
-  height: 22px;
   border-radius: 50%;
-  background: #fff;
-  transition:
-    transform var(--onside-motion-base) var(--onside-ease-out),
-    background-color var(--onside-motion-base) var(--onside-ease-out);
-}
-.painel .painel-toggle[aria-checked="true"] {
-  background: var(--painel-toggle-on);
-}
-.painel .painel-toggle[aria-checked="true"] > span {
-  transform: translateX(18px);
-  background: var(--painel-toggle-knob-on);
-}
-/* Movimento reduzido: o botão troca de lado na hora; a cor ainda transiciona. */
-@media (prefers-reduced-motion: reduce) {
-  .painel .painel-toggle > span {
-    transition: background-color var(--onside-motion-base)
-      var(--onside-ease-out);
-  }
-}
-.painel .painel-toggle:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
-/* ─── Campo ─── */
-
-.painel .painel-campo {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-.painel .painel-campo-topo {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 13px;
-  font-weight: 600;
-}
-.painel .painel-campo-topo > :last-child:not(:first-child),
-.painel .painel-campo-dica {
-  font-size: 12.5px;
-  font-weight: 400;
-  line-height: 1.4;
-  color: var(--painel-muted);
-}
-.painel .painel-campo-caixa {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: var(--painel-campo-h, 46px);
-  padding: 0 14px;
-  border-radius: 5px;
-  background: var(--painel-field);
-  box-shadow: inset 0 0 0 1px var(--painel-line2);
-  font-size: 15px;
-  color: var(--painel-muted);
-}
-.painel .painel-campo-caixa[data-area] {
-  align-items: flex-start;
-  padding: 12px 14px;
-}
-.painel .painel-campo-caixa:focus-within {
-  box-shadow: var(--painel-focus-ring);
-}
-.painel .painel-campo-caixa :is(input, textarea, select) {
-  flex: 1;
-  min-width: 0;
-  border: 0;
-  background: transparent;
-  color: var(--painel-fg);
-  font: inherit;
-  line-height: 1.45;
-}
-.painel .painel-campo-caixa textarea {
-  resize: vertical;
-}
-.painel .painel-campo-caixa :is(input, textarea)::placeholder {
-  color: var(--painel-muted);
-}
-/* A caixa mostra o foco; o contorno do controle sobraria por dentro dela. */
-.painel .painel-campo-caixa :is(input, textarea, select):focus-visible {
-  outline: none;
+.pn3 .pn-lnk {
+  font: 700 14.5px var(--text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
-/* ─── Avatar de iniciais ─── */
+/* ─── Casca ─── */
+.pn3 .pn-skip {
+  position: fixed;
+  z-index: 1000;
+  top: 12px;
+  left: 12px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: var(--acid);
+  color: #12120f;
+  font: 700 14px var(--text);
+  text-decoration: none;
+  translate: 0 calc(-100% - 16px);
+}
 
-.painel .painel-avatar {
+.pn3 .pn-skip:focus-visible {
+  translate: 0 0;
+}
+
+.pn3 .pn-shell {
+  --rail-w: 256px;
   display: grid;
-  place-items: center;
-  flex: none;
-  width: var(--painel-avatar, 32px);
-  height: var(--painel-avatar, 32px);
-  border-radius: 6px;
-  background: var(--painel-av);
-  color: var(--painel-fg);
-  font-size: calc(var(--painel-avatar, 32px) * 0.36);
-  font-weight: 700;
-  line-height: 1;
-}
-.painel .painel-avatar[data-ativo] {
-  background: var(--painel-acid);
-  color: var(--painel-ink);
-}
-
-/* ─── Barra de progresso ─── */
-
-.painel .painel-prog {
-  height: var(--painel-prog-h, 6px);
-  border-radius: calc(var(--painel-prog-h, 6px) / 2);
-  background: var(--painel-track);
-  overflow: hidden;
-}
-.painel .painel-prog > span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--painel-prog-fill);
-}
-@media (prefers-color-scheme: dark) {
-  .painel .painel-prog > span {
-    background: var(--painel-prog-cor, var(--painel-acid));
-  }
-  .painel .painel-kpi-valor[data-destaque] {
-    color: var(--painel-acid);
-  }
-}
-
-/* ─── KPI ─── */
-
-.painel .painel-kpi {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 16px 18px;
-}
-.painel .painel-kpi-valor {
-  font: 400 var(--painel-kpi-size, 42px) / 1 var(--onside-display);
-}
-.painel .painel-kpi-rotulo {
-  font-size: 13px;
-  line-height: 1.3;
-  color: var(--painel-muted);
-}
-
-/* ─── Cabeçalhos ─── */
-
-.painel .painel-page-head {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 20px;
-  /* O `100cqi` do título (`CabecalhoPagina`) é a largura daqui. */
-  container-type: inline-size;
-}
-.painel .painel-page-head-texto {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-}
-.painel .painel-page-head-kicker,
-.painel .painel-page-head-linha {
-  margin: 0;
-  font-size: 14px;
-  color: var(--painel-muted);
-}
-.painel .painel-page-head-linha {
-  font-size: 15px;
-}
-.painel .painel-page-head-linha b {
-  color: var(--painel-fg);
-}
-.painel .painel-page-head-acoes {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  /* Sem isto a caixa fica do tamanho da maior ação e passa da tela estreita. */
-  min-width: 0;
-}
-
-.painel .painel-hd {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 12px;
-}
-.painel .painel-hd > :first-child {
-  margin: 0;
-  font-size: var(--painel-hd-size, 16px);
-  font-weight: 700;
-  line-height: 1.3;
-}
-.painel .painel-hd > :last-child:not(:first-child) {
-  font-size: 13px;
-  color: var(--painel-muted);
-  white-space: nowrap;
-}
-
-/* ─── Diálogos `.onside-dialog` dentro do painel ───
- * Senha, duas etapas e exclusão (`components/account`, pelo `admin/modal`) e
- * o feedback do menu do dono são a superfície do resto do app, só clara. No
- * painel, o cartão é o dos diálogos daqui (`.pl-modal`) e os tokens
- * `--onside-*` e os do shadcn (campo, botão) passam a ser os do painel, que
- * seguem o tema. O `!important` é para ganhar o de `.onside-dialog`. */
-.painel .onside-dialog {
-  --onside-paper: var(--painel-card2);
-  --onside-ink: var(--painel-fg);
-  --onside-stone: var(--painel-sub);
-  --onside-line: var(--painel-line2);
-  --onside-muted: var(--painel-muted);
-  --onside-live-text: var(--painel-live);
-  --background: var(--painel-field);
-  --foreground: var(--painel-fg);
-  --input: var(--painel-line2);
-  --border: var(--painel-line2);
-  --primary: var(--painel-btn-ink-bg);
-  --primary-foreground: var(--painel-btn-ink-fg);
-  --muted: var(--painel-hover);
-  --muted-foreground: var(--painel-muted);
-  --ring: var(--painel-fg);
-
-  border: 0 !important;
-  border-radius: 10px !important;
-  background: var(--painel-card2) !important;
-  color: var(--painel-fg);
-  box-shadow:
-    8px 8px 0 var(--painel-ink),
-    0 40px 80px -30px rgb(0 0 0 / 60%) !important;
-}
-.painel .onside-dialog [data-slot="input"] {
-  background: var(--painel-field);
-}
-@media (prefers-color-scheme: dark) {
-  .painel .onside-dialog {
-    box-shadow:
-      8px 8px 0 #000,
-      0 40px 80px -30px rgb(0 0 0 / 60%),
-      inset 0 0 0 1px rgb(241 238 230 / 9%) !important;
-  }
-  .painel .onside-dialog .onside-callout-warn {
-    background: color-mix(in srgb, #e0a82e 18%, var(--painel-card2));
-  }
-}
-
-/* Avisos antigos fora do `painel-legado` (validar código, configurações):
- * no escuro, papel e tinta viram os do painel, e o botão tinta inverte
- * junto. */
-@media (prefers-color-scheme: dark) {
-  .painel .onside-callout:not(.painel-legado *) {
-    --onside-paper: var(--painel-card);
-    --onside-ink: var(--painel-fg);
-  }
-  .painel .onside-callout-warn:not(.painel-legado *) {
-    background: color-mix(in srgb, #e0a82e 18%, var(--painel-card));
-  }
-}
-
-/* ─── Conteúdo antigo dentro do shell novo ───
- * As telas de antes só têm o tema claro. Enquanto não são refeitas, ficam
- * numa folha clara, para não sair tinta sobre tinta no escuro. */
-@media (prefers-color-scheme: dark) {
-  .painel .painel-legado {
-    padding: 20px;
-    border-radius: 8px;
-    background: var(--onside-paper);
-    color: var(--onside-ink);
-    color-scheme: light;
-  }
-}
-
-/* ─── Shell: barra lateral + conteúdo ─── */
-
-.painel {
-  display: flex;
+  grid-template-columns: var(--rail-w) minmax(0, 1fr);
   min-height: 100dvh;
+  /* O trilho é fixo na tela: a faixa de tinta segue a página inteira. */
+  background: linear-gradient(
+    90deg,
+    var(--rail) var(--rail-w),
+    var(--bg) var(--rail-w)
+  );
 }
 
-/*
- * Fundo de fora do shell. O aviso de cookies reserva espaço no fim do `body`
- * e o pinta de papel (`cookie-consent.css`), e o `html` é branco: no escuro
- * isso sobrava como faixa clara depois do painel. Literais, porque os tokens
- * vivem em `.painel` e não chegam ao `body`.
- */
-html:has(.painel),
-html[data-consent]:has(.painel) body {
-  background: #f1eee6;
-}
-@media (prefers-color-scheme: dark) {
-  html:has(.painel),
-  html:has(.painel) body,
-  html[data-consent]:has(.painel) body {
-    background: #12120f;
-  }
-}
-
-/* A faixa de tinta que o aviso põe sob o `aside` das telas de login não é da
- * barra lateral do painel. */
-html[data-consent] .painel .painel-lateral {
-  box-shadow: none;
-}
-
-.painel .painel-lateral {
+.pn3 .pn-rail {
+  --spark: #c9f135;
   position: sticky;
   top: 0;
+  z-index: 30;
   display: flex;
-  flex: none;
   flex-direction: column;
-  gap: 22px;
-  width: 252px;
   height: 100dvh;
-  padding: 22px 16px;
-  overflow-y: auto;
-  background: var(--painel-bg);
-  border-right: 1px solid var(--painel-line);
+  padding: 22px 16px 18px;
+  background: var(--rail);
+  color: var(--rail-fg);
 }
 
-.painel .painel-logo {
+.pn3 .pn-logo {
   display: flex;
+  align-items: center;
+  gap: 9px;
   padding: 0 8px;
-}
-.painel .painel-logo img {
-  display: block;
-  width: auto;
-  height: 24px;
-}
-.painel .painel-logo .painel-logo-icone {
-  display: none;
-  width: 34px;
-  height: 34px;
-}
-@media (prefers-color-scheme: dark) {
-  .painel .painel-logo img {
-    filter: invert(1) brightness(1.05);
-  }
-}
-
-.painel .painel-bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border-radius: 8px;
-  background: var(--painel-card);
-  box-shadow: var(--painel-sh);
-}
-.painel .painel-bar-texto {
-  flex: 1;
-  min-width: 0;
-  line-height: 1.3;
-}
-.painel .painel-bar-texto b {
-  display: block;
-  font-size: 15px;
-}
-.painel .painel-bar-texto span {
-  display: block;
-  font-size: 12.5px;
-  color: var(--painel-muted);
-}
-.painel .painel-dono-texto :is(b, span) {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-/* Nome e bairro do bar quebram linha ao lado do selo (1v), até duas linhas. */
-.painel .painel-bar-texto :is(b, span) {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-  overflow-wrap: anywhere;
-}
-
-.painel .painel-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.painel .painel-nav a {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  height: 44px;
-  padding: 0 12px;
-  border-radius: 7px;
-  color: var(--painel-muted);
   text-decoration: none;
-  --painel-acc-nav: var(--painel-muted);
-}
-.painel .painel-nav a > span:first-of-type {
-  flex: 1;
-  font-size: 14.5px;
-  font-weight: 500;
-}
-.painel .painel-nav-n {
-  font: 600 11.5px / 1 var(--onside-mono);
-  font-variant-numeric: tabular-nums;
-  color: var(--painel-muted);
-}
-@media (hover: hover) {
-  .painel .painel-nav a:hover {
-    color: var(--painel-fg);
-  }
-}
-.painel .painel-nav a[aria-current="page"] {
-  background: var(--painel-nav-on-bg);
-  box-shadow: var(--painel-sh);
-  color: var(--painel-fg);
-  --painel-acc-nav: var(--painel-acc);
-}
-.painel .painel-nav a[aria-current="page"] > span:first-of-type {
-  font-weight: 700;
-}
-@media (prefers-color-scheme: dark) {
-  .painel .painel-nav a[aria-current="page"] {
-    box-shadow: inset 0 0 0 1px rgb(241 238 230 / 10%);
-  }
 }
 
-.painel .painel-lateral-pe {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  margin-top: auto;
-}
-.painel .painel-lateral-pe > .painel-btn {
-  width: 100%;
-  --painel-btn-h: 48px;
+.pn3 .pn-logo b {
+  font: 400 23px / 1 var(--display);
 }
 
-.painel .painel-dono {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 10px 6px 0;
-  border: 0;
-  border-top: 1px solid var(--painel-line);
-  background: transparent;
-  color: var(--painel-fg);
-  text-align: left;
-  cursor: pointer;
-}
-.painel .painel-dono-texto {
-  flex: 1;
-  min-width: 0;
-  line-height: 1.3;
-}
-.painel .painel-dono-texto b {
-  display: block;
-  font-size: 13.5px;
-}
-.painel .painel-dono-texto span {
-  display: block;
-  font-size: 12px;
-  color: var(--painel-muted);
+.pn3 .pn-logo i {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 2px;
+  background: #e8320c;
 }
 
-.painel .painel-main {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 22px;
-  min-width: 0;
-  padding: 32px 36px 44px;
-}
-
-/* Trilho de ícones (tablet, tela 1l): até 1180 px. */
-@media (max-width: 1180px) {
-  .painel .painel-lateral {
-    width: 76px;
-    padding: 20px 12px;
-    align-items: center;
-  }
-  .painel .painel-logo {
-    padding: 0;
-  }
-  .painel .painel-logo .painel-logo-marca {
-    display: none;
-  }
-  .painel .painel-logo .painel-logo-icone {
-    display: block;
-  }
-  .painel .painel-bar {
-    padding: 0;
-    background: none;
-    box-shadow: none;
-  }
-  .painel .painel-nav a {
-    justify-content: center;
-    width: 52px;
-    padding: 0;
-  }
-  .painel .painel-lateral-pe {
-    align-items: center;
-  }
-  .painel .painel-lateral-pe > .painel-btn {
-    width: 48px;
-    padding: 0;
-  }
-  .painel .painel-dono {
-    justify-content: center;
-    padding: 0;
-    border-top: 0;
-  }
-  .painel :is(.painel-bar, .painel-dono) > :not(.painel-avatar),
-  .painel .painel-nav a > :not(.painel-icone),
-  .painel .painel-lateral-pe > .painel-btn > :not(.painel-icone) {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-  .painel .painel-main {
-    gap: 18px;
-    padding: 24px 26px;
-  }
-}
-
-/* Celular: o design não tem; o trilho encolhe e o conteúdo ganha a largura. */
-@media (max-width: 640px) {
-  .painel .painel-lateral {
-    width: 60px;
-    padding: 16px 6px;
-  }
-  .painel .painel-nav a {
-    width: 44px;
-  }
-  .painel .painel-lateral-pe > .painel-btn {
-    width: 44px;
-    --painel-btn-h: 44px;
-  }
-  .painel .painel-main {
-    padding: 20px 16px 32px;
-  }
-}
-
-/* ─── Medalha do plano (`medal` de `w-p3.js`, Rodada 3) ─── */
-
-.painel .painel-medalha {
-  --md-bg: #e7e3db;
-  --md-fg: var(--painel-fg);
-  --md-ring: rgb(18 18 15 / 14%);
-  --md-sombra: 0 0 #0000;
-  display: grid;
-  flex: none;
-  place-items: center;
-  background: var(--md-bg);
-  box-shadow:
-    inset 0 0 0 1.5px var(--md-ring),
-    var(--md-sombra);
-}
-.painel .painel-medalha svg {
-  display: block;
-  fill: var(--md-fg);
-}
-.painel .painel-medalha[data-plano="pro"] {
-  --md-bg: #12120f;
-  --md-fg: #c9f135;
-  --md-ring: #12120f;
-}
-.painel .painel-medalha[data-plano="elite"] {
-  --md-bg: #c9f135;
-  --md-fg: #12120f;
-  --md-ring: #12120f;
-  --md-sombra: 2px 2px 0 #12120f;
-}
-/* Escuro, e sobre a superfície de tinta nos dois temas (o design usa `D`). */
-@media (prefers-color-scheme: dark) {
-  .painel .painel-medalha {
-    --md-bg: #2e2e29;
-    --md-ring: rgb(241 238 230 / 12%);
-  }
-  .painel .painel-medalha[data-plano="pro"] {
-    --md-ring: rgb(241 238 230 / 20%);
-  }
-  .painel .painel-medalha[data-plano="elite"] {
-    --md-ring: #c9f135;
-    --md-sombra: 0 0 #0000;
-  }
-}
-.painel .painel-medalha[data-sobre-tinta] {
-  --md-bg: #2e2e29;
-  --md-fg: #f1eee6;
-  --md-ring: rgb(241 238 230 / 12%);
-}
-.painel .painel-medalha[data-sobre-tinta][data-plano="pro"] {
-  --md-bg: #12120f;
-  --md-fg: #c9f135;
-  --md-ring: rgb(241 238 230 / 20%);
-}
-.painel .painel-medalha[data-sobre-tinta][data-plano="elite"] {
-  --md-bg: #c9f135;
-  --md-fg: #12120f;
-  --md-ring: #c9f135;
-  --md-sombra: 0 0 #0000;
-}
-
-/* ─── Horário de funcionamento (28a, 28e; WEB-463) ─── */
-
-.painel .painel-horario-situacao {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 10px;
-  padding: 12px 14px;
-  border-radius: 7px;
-  background: var(--painel-card2);
-  box-shadow: var(--painel-sh);
-  font-size: 14px;
-}
-.painel .painel-horario-situacao > span[aria-hidden] {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--painel-muted);
-}
-.painel .painel-horario-situacao[data-aberto="true"] {
-  box-shadow: var(--painel-sh-live);
-}
-.painel .painel-horario-situacao[data-aberto="true"] > span[aria-hidden] {
-  background: var(--painel-live-fill);
-  box-shadow: 0 0 0 3px rgb(232 50 12 / 25%);
-}
-.painel .painel-horario-situacao[data-aberto="true"] > b {
-  color: var(--painel-live);
-}
-
-/* Dia, as duas horas e o interruptor numa linha. Estreito (celular), as horas
- * descem para a linha de baixo: espremidas, "05:00 PM" perdia o PM e o 17:00
- * do relógio de 24 h cortava a 360 px. */
-.painel .painel-horario-lista {
-  container-type: inline-size;
-}
-.painel .painel-horario-dia {
-  position: relative;
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) auto;
-  grid-template-areas: "dia horas toggle";
-  align-items: center;
-  gap: 8px 12px;
-  min-height: 56px;
-  padding: 8px 0;
-}
-.painel .painel-horario-dia > :first-child {
-  grid-area: dia;
-}
-.painel .painel-horario-dia > :nth-child(2) {
-  grid-area: horas;
-}
-.painel .painel-horario-dia > :last-child {
-  grid-area: toggle;
-}
-@container (max-width: 340px) {
-  .painel .painel-horario-dia {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: "dia toggle" "horas horas";
-  }
-}
-/* O brilho de quando um atalho muda a linha (WAAPI anima a opacidade). */
-.painel .painel-horario-dia::before {
-  content: "";
-  position: absolute;
-  inset: 2px -10px;
-  border-radius: 6px;
-  background: rgb(201 241 53 / 28%);
-  opacity: 0;
-  pointer-events: none;
-}
-
-.painel .painel-horario-aviso {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
-  border-radius: 7px;
-  background: #fbe9e4;
-  font-size: 13.5px;
-  line-height: 1.4;
-  --painel-acc: var(--painel-live-fill);
-  animation: painel-horario-entra 220ms var(--onside-ease-out);
-}
-.painel .painel-horario-aviso[data-fora] {
-  box-shadow: inset 0 0 0 1.5px var(--painel-live-fill);
-}
-.painel .painel-horario-aviso > .painel-icone {
-  flex: none;
-}
-@media (prefers-color-scheme: dark) {
-  .painel .painel-horario-aviso {
-    background: #2a1510;
-  }
-}
-@keyframes painel-horario-entra {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-}
-/* Movimento reduzido: só aparece, sem subir. */
-@keyframes painel-horario-aparece {
-  from {
-    opacity: 0;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .painel .painel-horario-aviso {
-    animation-name: painel-horario-aparece;
-  }
-}
-
-/* ─── Oferta da casa: prévia e sugestões (28f, WEB-464) ─── */
-
-/* O canhoto do ingresso, como o torcedor vê no app: papel nos dois temas. */
-.painel .painel-oferta-previa {
-  display: flex;
-  overflow: hidden;
-  border-radius: 7px;
-  background: var(--painel-paper);
-  color: var(--painel-ink);
-  box-shadow: 5px 5px 0 rgb(201 241 53 / 85%);
-}
-.painel .painel-oferta-canhoto {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 62px;
-  border-right: 1.5px dashed rgb(18 18 15 / 25%);
-  background: var(--painel-acid);
-  --painel-acc: var(--painel-ink);
-}
-.painel .painel-oferta-previa > div:last-child {
-  min-width: 0;
-  padding: 12px 14px;
-}
-.painel .painel-oferta-previa .painel-mono {
-  display: block;
-  margin-bottom: 4px;
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #55554f;
-}
-.painel .painel-oferta-previa b {
-  display: block;
-  font-size: 15px;
-  line-height: 1.3;
-  overflow-wrap: anywhere;
-}
-.painel .painel-oferta-previa span:last-child {
-  font-size: 13px;
-  color: #55554f;
-}
-
-/* ─── Avisos do painel e card do plano (1t/1u, Rodada 3) ─── */
-
-.painel .painel-aviso {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px 18px;
-  border-radius: 7px;
-  background: var(--painel-card);
-  box-shadow: var(--painel-sh);
-}
-.painel .painel-aviso[data-tom="perigo"] {
-  background: #fbe9e4;
-  box-shadow: inset 0 0 0 1.5px var(--painel-live-fill);
-}
-.painel .painel-aviso[data-tom="atencao"] {
-  box-shadow: var(--painel-sh-live);
-}
-.painel .painel-aviso[data-tom="trial"] {
-  box-shadow: var(--painel-sh-hero);
-}
-@media (prefers-color-scheme: dark) {
-  .painel .painel-aviso[data-tom="perigo"] {
-    background: #2a1510;
-  }
-}
-.painel .painel-aviso > .painel-icone {
-  flex: none;
-}
-.painel .painel-aviso-alerta {
-  color: var(--painel-live);
-  --painel-acc: var(--painel-live);
-}
-.painel .painel-aviso-texto {
-  flex: 1;
-  min-width: 0;
-}
-.painel .painel-aviso-texto b {
-  display: block;
-  font-size: 14.5px;
-}
-.painel .painel-aviso-texto span {
-  font-size: 13.5px;
-  line-height: 1.45;
-  color: var(--painel-muted);
-}
-.painel .painel-aviso-botao {
-  flex: none;
-  font-size: 13.5px;
-}
-@media (max-width: 640px) {
-  .painel .painel-aviso {
-    flex-wrap: wrap;
-  }
-  .painel .painel-aviso-botao {
-    margin-left: auto;
-  }
-}
-
-.painel .painel-plano {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 18px 20px;
-}
-.painel .painel-plano-topo {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.painel .painel-plano-topo > div {
-  flex: 1;
-  min-width: 0;
-}
-.painel .painel-plano-topo .painel-muted {
-  font-size: 12.5px;
-}
-.painel .painel-plano-sem {
+.pn3 .pn-av {
   display: grid;
   flex: none;
   place-items: center;
   width: 44px;
   height: 44px;
-  border-radius: 10px;
-  background: var(--painel-sub);
-}
-.painel .painel-plano-situacao {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-}
-.painel .painel-plano-linha {
-  font-size: 13.5px;
-  line-height: 1.45;
-  color: var(--painel-muted);
-}
-.painel .painel-plano-uso {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-.painel .painel-plano-uso > span:last-child {
-  font-size: 12.5px;
-  color: var(--painel-muted);
-}
-.painel .painel-plano-uso[data-cheio] > span:last-child {
-  font-weight: 700;
-  color: var(--painel-live);
-}
-.painel .painel-plano-segs {
-  display: flex;
-  gap: 4px;
-}
-.painel .painel-plano-segs > span {
-  flex: 1;
-  height: 8px;
-  border-radius: 2px;
-  background: var(--painel-line2);
-}
-.painel .painel-plano-segs > span[data-usado] {
-  background: var(--painel-prog-fill);
-}
-.painel .painel-plano-uso[data-cheio] .painel-plano-segs > span[data-usado] {
-  background: var(--painel-live-fill);
-}
-@media (prefers-color-scheme: dark) {
-  .painel .painel-plano-segs > span[data-usado] {
-    background: var(--painel-acid);
-  }
-}
-.painel .painel-plano-botao {
-  width: 100%;
-}
-.painel .painel-plano-link {
-  width: fit-content;
-  font-size: 13.5px;
-  font-weight: 700;
-  color: var(--painel-fg);
-  text-decoration: none;
+  border-radius: 12px;
+  background: #c9f135;
+  color: #12120f;
+  font: 400 18px / 1 var(--display);
 }
 
-.painel .painel-nopro {
-  padding: 18px 20px;
-}
-.painel .painel-nopro > b {
-  font-size: 15px;
-}
-.painel .painel-nopro ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.painel .painel-nopro li {
+.pn3 .pn-barcard {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-top: 10px;
-  font-size: 14px;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 12px;
+  border-radius: 18px;
+  background: var(--rail-on);
 }
-.painel .painel-nopro > .painel-muted {
+
+.pn3 .pn-barcard .pn-l {
+  min-width: 0;
+}
+
+.pn3 .pn-barcard b {
   display: block;
-  margin-top: 14px;
-  font-size: 13.5px;
+  overflow: hidden;
+  font-size: 15.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* Número de resultado com marca-texto (`mk` do design): no escuro, em acid. */
-.painel .painel-marca {
-  padding: 0 4px;
-  margin-left: -4px;
-  background: linear-gradient(180deg, transparent 52%, var(--painel-acid) 52%);
-}
-@media (prefers-color-scheme: dark) {
-  .painel .painel-marca {
-    padding: 0;
-    margin-left: 0;
-    background: none;
-    color: var(--painel-acid);
-  }
+.pn3 .pn-barcard .pn-l {
+  flex: 1;
 }
 
-/* ─── Rede (WEB-460) ───
- * A faixa de "sem conexão": pílula de tinta presa embaixo, por cima do
- * conteúdo (no topo cobria o título da página). Entra subindo um pouco e
- * sai mais rápido do que entrou. */
-.painel .painel-faixa-rede {
-  position: fixed;
-  bottom: 20px;
-  /* Centrada sem `left: 50%`, que limitava a largura à metade da tela e
-   * quebrava o texto em quatro linhas no celular. */
-  left: 0;
-  right: 0;
-  /* Abaixo de menus e diálogos (z 50): eles cobrem a faixa, não o contrário. */
-  z-index: 40;
+.pn3 .pn-barcard .pn-bc-sub {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: max-content;
-  max-width: calc(100vw - 32px);
-  margin-inline: auto;
-  padding: 9px 16px;
-  border-radius: 20px;
-  background: var(--painel-btn-ink-bg);
-  color: var(--painel-btn-ink-fg);
-  font: 600 13.5px / 1.3 var(--onside-body);
-  box-shadow: 0 8px 24px rgb(18 18 15 / 18%);
-  pointer-events: none;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(8px);
-  transition:
-    opacity 150ms var(--onside-ease-out),
-    transform 150ms var(--onside-ease-out),
-    visibility 0s 150ms;
+  min-width: 0;
+  margin-top: 2px;
 }
-.painel .painel-faixa-rede[data-visivel="true"] {
-  opacity: 1;
-  visibility: visible;
-  transform: none;
-  transition:
-    opacity 220ms var(--onside-ease-out),
-    transform 220ms var(--onside-ease-out);
-}
-.painel .painel-faixa-rede-ponto {
+
+.pn3 .pn-barcard .pn-bc-sub em {
   flex: none;
-  width: 8px;
-  height: 8px;
+  margin-left: auto;
+}
+
+.pn3 .pn-barcard .pn-l span span {
+  display: block;
+  overflow: hidden;
+  color: var(--rail-mute);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pn3 .pn-barcard em {
+  margin-left: auto;
+  padding: 5px 7px;
+  border-radius: 6px;
+  background: #c9f135;
+  color: #12120f;
+  font: 600 11px / 1 var(--mono);
+  font-style: normal;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.pn3 .pn-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 22px;
+}
+
+.pn3 .pn-nav a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 46px;
+  padding: 0 12px;
+  border-radius: 14px;
+  color: var(--rail-mute);
+  font: 600 15px var(--text);
+  text-decoration: none;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+
+.pn3 .pn-nav a:hover {
+  background: rgba(241, 238, 230, 0.06);
+  color: var(--rail-fg);
+}
+
+.pn3 .pn-nav a[aria-current="page"] {
+  background: var(--rail-on);
+  color: var(--rail-fg);
+}
+
+.pn3 .pn-nav .pn-n {
+  margin-left: auto;
+  color: var(--rail-mute);
+  font: 600 12.5px var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.pn3 .pn-nav a[aria-current="page"] .pn-n {
+  color: #c9f135;
+}
+
+.pn3 .pn-vbtn {
+  flex: none;
+  width: 100%;
+  height: 54px;
+  margin-top: 16px;
+}
+
+/* Dono: o rodapé do trilho e o menu dele. */
+.pn3 .pn-dono {
+  position: relative;
+}
+
+.pn3 .pn-me {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 14px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 14px;
+  background: none;
+  color: var(--rail-mute);
+  font: 400 13.5px / 1.35 var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.pn3 .pn-me:hover,
+.pn3 .pn-me[aria-expanded="true"] {
+  background: rgba(241, 238, 230, 0.06);
+}
+
+.pn3 .pn-me .pn-l {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pn3 .pn-me b {
+  display: block;
+  overflow: hidden;
+  color: var(--rail-fg);
+  font-size: 14px;
+  text-overflow: ellipsis;
+}
+
+.pn3 .pn-a {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  background: var(--painel-live-fill);
+  background: var(--rail-on);
+  color: var(--rail-fg);
+  font: 700 12px var(--text);
 }
-@media (prefers-reduced-motion: reduce) {
-  .painel .painel-faixa-rede {
-    transform: none;
-  }
+
+.pn3 .pn-pop {
+  position: absolute;
+  z-index: 60;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  width: 264px;
+  padding: 8px;
+  border-radius: 20px;
+  background: #1c1c18;
+  color: #f1eee6;
+  box-shadow:
+    0 4px 0 rgba(0, 0, 0, 0.55),
+    0 24px 40px -18px rgba(0, 0, 0, 0.7);
+  animation: pn-pop 0.25s var(--ease);
 }
-/* Com a faixa à vista, o fim da página ganha a altura dela (WEB-470): o
- * último botão rola para cima dela em vez de ficar por baixo. */
-.painel[data-sem-rede] .painel-main {
-  padding-bottom: calc(var(--painel-faixa-h, 40px) + 20px + 16px);
+
+.pn3 .is-up .pn-pop {
+  bottom: calc(100% + 8px);
 }
-/* Com o trilho de ícones, a faixa centra na coluna do conteúdo: no meio da
- * tela ela passava por cima de "Validar código" e do menu da conta. */
-@media (max-width: 1180px) {
-  .painel .painel-faixa-rede {
-    left: 76px;
-    max-width: calc(100vw - 76px - 32px);
-  }
+
+.pn3 .is-down .pn-pop {
+  top: calc(100% + 8px);
+  right: 0;
+  left: auto;
 }
-@media (max-width: 640px) {
-  .painel .painel-faixa-rede {
-    left: 60px;
-    max-width: calc(100vw - 60px - 32px);
+
+@keyframes pn-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
   }
 }
 
-/* O bloco que não carregou (`ErroBloco`): contorno vermelho, como o erro de
- * salvar do Meu espaço; o compacto é só a linha, no tom do vazio. */
-.painel .painel-erro {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 10px 12px;
-  padding: 14px 16px;
-  border-radius: 7px;
-  color: var(--painel-live);
-  box-shadow: inset 0 0 0 1.5px rgb(201 43 12 / 45%);
-  animation: painel-erro-entra 150ms var(--onside-ease-out);
+.pn3 .pn-pop-h {
+  padding: 8px 10px 12px;
+  border-bottom: 1px solid rgba(241, 238, 230, 0.12);
+  overflow-wrap: anywhere;
 }
-.painel .painel-erro-texto {
-  display: flex;
-  flex: 1 1 220px;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  font-size: 14px;
-  line-height: 1.4;
-}
-.painel .painel-erro-texto b {
-  color: var(--painel-fg);
-}
-.painel .painel-erro-texto span {
-  color: var(--painel-muted);
-}
-.painel .painel-erro[data-compacto] {
+
+.pn3 .pn-pop-h b {
   display: block;
-  margin: 12px 0 10px;
-  padding: 0;
-  box-shadow: none;
-  font-size: 13.5px;
-  color: var(--painel-muted);
+  font-size: 15px;
 }
-.painel .painel-erro-tentar {
-  align-self: center;
-  font-weight: 700;
-  color: var(--painel-fg);
-  text-decoration: underline;
-  text-underline-offset: 2px;
+
+.pn3 .pn-pop-h span {
+  color: #aaa9a4;
+  font-size: 13px;
+}
+
+.pn3 .pn-pop-tema {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px;
+  border-bottom: 1px solid rgba(241, 238, 230, 0.12);
+  color: #aaa9a4;
+  font: 600 12px var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pn3 .pn-pop > a,
+.pn3 .pn-pop > button {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: inherit;
+  font: 600 14.5px var(--text);
+  text-align: left;
+  text-decoration: none;
   cursor: pointer;
 }
-.painel .painel-erro-tentar:disabled {
-  cursor: progress;
-  text-decoration: none;
-  color: var(--painel-muted);
+
+.pn3 .pn-pop > a:hover,
+.pn3 .pn-pop > button:hover {
+  background: rgba(241, 238, 230, 0.08);
 }
-@keyframes painel-erro-entra {
-  from {
-    opacity: 0;
+
+.pn3 .pn-pop .pn-sair {
+  color: #f3421d;
+}
+
+/* O `.lp3` da troca de tema não pinta nada aqui. */
+.pn3 .pn-lp3 {
+  overflow: visible;
+  background: none;
+  color: inherit;
+  font-size: inherit;
+}
+
+/* ─── Miolo ─── */
+.pn3 .pn-col {
+  min-width: 0;
+}
+
+.pn3 .pn-main {
+  min-width: 0;
+  padding: 30px 40px 80px;
+}
+
+.pn3 .pn-ph {
+  margin-bottom: 22px;
+}
+
+.pn3 .pn-ph h1 {
+  font-size: clamp(40px, 4vw, 56px);
+}
+
+.pn3 .pn-ph p {
+  margin: 8px 0 0;
+  color: var(--body);
+  font-size: 16px;
+}
+
+/* Onde os diálogos das telas antigas abrem: só os estilos, sem caixa. */
+.pn3 .pn-portal {
+  min-height: 0;
+  background: none;
+}
+
+.pn3 .pn-skel {
+  display: grid;
+  gap: 16px;
+}
+
+.pn3 .pn-skel i {
+  display: block;
+  height: 120px;
+  border-radius: 24px;
+  background: var(--sub);
+  animation: pn-pulse 1.4s ease-in-out infinite;
+}
+
+.pn3 .pn-skel i:nth-child(2) {
+  width: 260px;
+  height: 52px;
+  border-radius: 12px;
+}
+
+@keyframes pn-pulse {
+  50% {
+    opacity: 0.55;
   }
 }
-/* `BotaoAcao`: os rótulos empilhados na mesma célula (a largura é a do maior).
- * O que entra vem do lado da fase seguinte; o que sai vai para o da anterior,
- * com um desfoque curto que costura as duas palavras. */
-.painel .painel-btn-rotulos {
-  display: inline-grid;
+
+/* ─── Mais (celular) ─── */
+.pn3 .pn-more {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
-.painel .painel-btn-rotulos > span {
-  grid-area: 1 / 1;
-  display: inline-flex;
+
+.pn3 .pn-more a {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  transition:
-    opacity 180ms var(--onside-ease-out),
-    transform 180ms var(--onside-ease-out),
-    filter 180ms var(--onside-ease-out);
+  gap: 14px;
+  padding: 18px;
+  border-radius: 20px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+  font: 700 17px var(--text);
+  text-decoration: none;
 }
-.painel .painel-btn-rotulos > span[data-lado] {
-  opacity: 0;
-  filter: blur(2px);
-  visibility: hidden;
-  transition:
-    opacity 120ms var(--onside-ease-out),
-    transform 120ms var(--onside-ease-out),
-    filter 120ms var(--onside-ease-out),
-    visibility 0s 120ms;
+
+.pn3 .pn-more a span {
+  margin-left: auto;
+  color: var(--muted);
 }
-.painel .painel-btn-rotulos > span[data-lado="antes"] {
-  transform: translateY(-0.6em);
+
+.pn3 .pn-more-tema {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 22px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: var(--ink-card, #12120f);
+  color: #f1eee6;
+  font: 600 12px var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
-.painel .painel-btn-rotulos > span[data-lado="depois"] {
-  transform: translateY(0.6em);
+
+/* ─── Validar código ─── */
+.pn3 .pn-val {
+  width: min(520px, calc(100% - 32px));
+  max-width: none;
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 28px;
+  background: var(--bg);
+  color: var(--fg);
+  box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.5);
 }
-.painel .painel-btn[data-fase]:not([data-fase="idle"]):disabled {
-  opacity: 1;
-  cursor: progress;
+
+.pn3 .pn-val[open] {
+  animation: pn-val-in 0.4s var(--ease);
 }
-.painel .painel-btn[data-fase="done"]:disabled {
-  cursor: default;
+
+.pn3 .pn-val::backdrop {
+  background: rgba(18, 18, 15, 0.5);
 }
+
+@keyframes pn-val-in {
+  from {
+    opacity: 0;
+    transform: translateY(4%) scale(0.97);
+  }
+}
+
+.pn3 .pn-val-in {
+  padding: 28px;
+}
+
+.pn3 .pn-cancel-why {
+  margin: 22px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.pn3 .pn-cancel-why legend {
+  margin-bottom: 8px;
+}
+
+.pn3 .pn-cancel-acts {
+  flex-wrap: wrap;
+  margin-top: 22px;
+}
+
+.pn3 .pn-cancel-acts .pn-btn {
+  flex: 1 1 180px;
+}
+
+.pn3 .pn-val-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pn3 .pn-val h2 {
+  font-size: 38px;
+}
+
+.pn3 .pn-val-top p {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+.pn3 .pn-boxes {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  margin: 22px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.pn3 .pn-boxes input {
+  width: 100%;
+  min-width: 0;
+  height: 68px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--field);
+  color: var(--fg);
+  box-shadow: inset 0 0 0 1.5px var(--line2);
+  font: 700 30px var(--mono);
+  text-align: center;
+  text-transform: uppercase;
+  outline: none;
+}
+
+.pn3 .pn-boxes input:focus {
+  box-shadow: inset 0 0 0 2.5px var(--fg);
+}
+
+.pn3 .pn-boxes input[aria-invalid="true"] {
+  box-shadow: inset 0 0 0 2px var(--live-text);
+}
+
+.pn3 .pn-val-msg {
+  min-height: 1.5em;
+  margin: 12px 0 0;
+  color: var(--live-text);
+  font-size: 14.5px;
+  font-weight: 600;
+}
+
+.pn3 .pn-val-acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.pn3 .pn-val-note {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 18px;
+  border-radius: 20px;
+  background: var(--sub);
+}
+
+.pn3 .pn-val-note p {
+  margin: 0;
+}
+
+.pn3 .pn-vres {
+  margin-top: 18px;
+  padding: 18px;
+  border-radius: 20px;
+  background: var(--sub);
+  animation: pn-vres 0.45s var(--ease);
+}
+
+.pn3 .pn-vres.is-ok {
+  --spark: #e8320c;
+  --line2: rgba(18, 18, 15, 0.3);
+  background: var(--acid);
+  color: #12120f;
+}
+
+@keyframes pn-vres {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+.pn3 .pn-vres-t {
+  display: block;
+  font: 400 30px / 1 var(--display);
+  text-transform: uppercase;
+}
+
+.pn3 .pn-vres-code {
+  font: 600 13px var(--mono);
+  letter-spacing: 0.18em;
+}
+
+.pn3 .pn-vres p {
+  margin: 8px 0 0;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.pn3 .pn-vres p.pn-vres-offer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-weight: 700;
+}
+
+.pn3 .pn-vres p.pn-vres-n {
+  font: 600 13px var(--mono);
+}
+
+.pn3 .pn-vres-warn,
+.pn3 .pn-vres-err {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.pn3 .pn-vres-err {
+  color: var(--live-text);
+  font-weight: 600;
+}
+
+.pn3 .pn-vres.is-ok .pn-ink {
+  background: #12120f;
+  color: #f1eee6;
+}
+
+/* ─── Abas e topo do celular ─── */
+.pn3 .pn-mtop,
+.pn3 .pn-tabbar {
+  display: none;
+}
+
+/* Trilho de ícones até 1180 px (como o painel antigo). */
+@media (max-width: 1180px) and (min-width: 861px) {
+  .pn3 .pn-shell {
+    --rail-w: 84px;
+  }
+
+  .pn3 .pn-rail {
+    align-items: center;
+    padding: 22px 12px 18px;
+  }
+
+  .pn3 .pn-rail .pn-l {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .pn3 .pn-logo {
+    padding: 0;
+  }
+
+  .pn3 .pn-logo b,
+  .pn3 .pn-barcard em {
+    display: none;
+  }
+
+  .pn3 .pn-barcard {
+    padding: 6px;
+    background: none;
+  }
+
+  .pn3 .pn-nav a {
+    position: relative;
+    justify-content: center;
+    width: 52px;
+    padding: 0;
+  }
+
+  .pn3 .pn-nav .pn-n {
+    position: absolute;
+    top: 4px;
+    right: 2px;
+    font-size: 10.5px;
+  }
+
+  .pn3 .pn-vbtn {
+    width: 54px;
+    padding: 0;
+    border-radius: 50%;
+  }
+
+  .pn3 .pn-me {
+    justify-content: center;
+    padding: 6px;
+  }
+
+  .pn3 .pn-main {
+    padding: 28px 28px 80px;
+  }
+}
+
+@media (max-width: 860px) {
+  .pn3 .pn-shell {
+    display: block;
+    background: var(--bg);
+  }
+
+  .pn3 .pn-rail {
+    display: none;
+  }
+
+  .pn3 .pn-mtop {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 62px;
+    padding: 0 var(--gr) 0 var(--gl);
+    border-bottom: 1px solid var(--line);
+    background: var(--bg);
+  }
+
+  .pn3 .pn-mtop .pn-av {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+    font-size: 16px;
+  }
+
+  .pn3 .pn-mtop-t {
+    min-width: 0;
+  }
+
+  .pn3 .pn-mtop-t b {
+    display: block;
+    overflow: hidden;
+    font-size: 15.5px;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .pn3 .pn-mtop-t span {
+    color: var(--muted);
+    font-size: 12.5px;
+  }
+
+  .pn3 .pn-mtop .pn-me {
+    width: auto;
+    margin: 0;
+    padding: 0;
+  }
+
+  .pn3 .pn-mtop .pn-me .pn-l {
+    display: none;
+  }
+
+  .pn3 .pn-mtop .pn-a {
+    width: 40px;
+    height: 40px;
+    background: var(--sub);
+    color: var(--fg);
+  }
+
+  .pn3 .pn-main {
+    padding: 20px var(--gr) calc(110px + env(safe-area-inset-bottom, 0px))
+      var(--gl);
+  }
+
+  .pn3 .pn-ph h1 {
+    font-size: 40px;
+  }
+
+  .pn3 .pn-tabbar {
+    position: fixed;
+    z-index: 50;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    padding: 8px var(--gr) calc(8px + env(safe-area-inset-bottom, 0px))
+      var(--gl);
+    background: var(--bg);
+    box-shadow:
+      0 -1px 0 var(--line),
+      0 -14px 30px -18px rgba(18, 18, 15, 0.35);
+  }
+
+  .pn3 .pn-tabbar a,
+  .pn3 .pn-tabbar button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    padding: 6px 0;
+    border: 0;
+    background: none;
+    color: var(--muted);
+    font: 600 11.5px var(--text);
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .pn3 .pn-tabbar [aria-current="page"] {
+    color: var(--fg);
+  }
+
+  .pn3 .pn-tabbar .pn-vb {
+    margin-top: -24px;
+  }
+
+  .pn3 .pn-tabbar .pn-vb span {
+    --spark: #e8320c;
+    display: grid;
+    place-items: center;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: var(--acid);
+    color: #12120f;
+    box-shadow: 0 4px 0 var(--acid-drop);
+  }
+
+  .pn3 .pn-val {
+    width: 100%;
+    max-height: 94dvh;
+    margin: auto 0 0;
+    border-radius: 28px 28px 0 0;
+  }
+
+  .pn3 .pn-val[open] {
+    animation-name: pn-sheet-in;
+  }
+
+  @keyframes pn-sheet-in {
+    from {
+      transform: translateY(100%);
+    }
+  }
+
+  .pn3 .pn-val-in {
+    padding: 24px var(--gr) calc(24px + env(safe-area-inset-bottom, 0px))
+      var(--gl);
+  }
+
+  .pn3 .pn-boxes input {
+    height: 58px;
+    font-size: 24px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .painel .painel-btn-rotulos > span[data-lado] {
-    filter: none;
-    transform: none;
+  .pn3 .pn-val[open],
+  .pn3 .pn-vres,
+  .pn3 .pn-pop,
+  .pn3 .pn-skel i {
+    animation: none;
+  }
+
+  :is(.pn3, .dlg3) .pn-btn {
+    transition: none;
   }
 }

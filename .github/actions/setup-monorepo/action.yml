@@ -1,5 +1,5 @@
 name: Setup monorepo (Bun + deps)
-description: Pin Bun, restore install cache, and run bun install --frozen-lockfile
+description: Pin Bun, restore install cache, run bun install --frozen-lockfile, and save the cache on master only
 
 inputs:
   bun-version:
@@ -13,7 +13,9 @@ runs:
     - uses: oven-sh/setup-bun@v2
       with:
         bun-version: ${{ inputs.bun-version }}
-    - uses: actions/cache@v4
+    # PRs só leem o cache da master: salvar por PR (refs/pull/N/merge) criava
+    # uma cópia de ~440 MB por PR e estourava a cota de 10 GB do repositório.
+    - uses: actions/cache/restore@v4
       id: bun-cache
       with:
         path: |
@@ -26,3 +28,12 @@ runs:
           ${{ runner.os }}-bun-
     - shell: bash
       run: bun install --frozen-lockfile
+    - if: github.ref == 'refs/heads/master' && steps.bun-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          ~/.bun/install/cache
+          node_modules
+          apps/*/node_modules
+          packages/*/node_modules
+        key: ${{ steps.bun-cache.outputs.cache-primary-key }}

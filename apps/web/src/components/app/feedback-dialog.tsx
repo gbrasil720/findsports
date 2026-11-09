@@ -7,12 +7,6 @@ import {
   FEEDBACK_MAX_LENGTH,
   FEEDBACK_MIN_LENGTH
 } from '@findsports_oficial/api/lib/feedback'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle
-} from '@findsports_oficial/ui/components/dialog'
 import { useMutation } from '@tanstack/react-query'
 import {
   type FormEvent,
@@ -24,6 +18,7 @@ import {
 } from 'react'
 import ImagePlus from 'reicon-react/icons/ImagePlus'
 import Xmark from 'reicon-react/icons/Xmark'
+import { Dialogo } from '@/components/dialogo/dialogo'
 import { analytics } from '@/lib/analytics'
 import { getErrorCode, getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
@@ -108,25 +103,25 @@ function formatSize(bytes: number): string {
 
 /**
  * Feedback de dentro do app: vira um e-mail para a Onside (`feedback.send`).
- * O formulário mora dentro do `DialogContent`, que só existe com o diálogo
- * aberto: cada abertura começa do zero.
+ * O formulário só existe com o diálogo aberto: cada abertura começa do zero.
  */
 export function FeedbackDialog({ open, onClose, returnFocus }: Props) {
+  const ids = useId()
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent
-        finalFocus={returnFocus}
-        className="onside-dialog max-w-[calc(100vw-2rem)] overflow-y-auto p-5 sm:max-w-lg sm:p-6"
-      >
-        <FeedbackForm onClose={onClose} />
-      </DialogContent>
-    </Dialog>
+    <Dialogo
+      open={open}
+      onClose={onClose}
+      labelledBy={`${ids}-title`}
+      returnFocus={returnFocus}
+      wide
+    >
+      <FeedbackForm ids={ids} onClose={onClose} />
+    </Dialogo>
   )
 }
 
-function FeedbackForm({ onClose }: { onClose: () => void }) {
+function FeedbackForm({ ids, onClose }: { ids: string; onClose: () => void }) {
   const trpc = useTRPC()
-  const ids = useId()
   const fileInput = useRef<HTMLInputElement>(null)
   const [message, setMessage] = useState('')
   const [images, setImages] = useState<Attached[]>([])
@@ -214,30 +209,32 @@ function FeedbackForm({ onClose }: { onClose: () => void }) {
   if (sent) {
     return (
       <div role="status">
-        <DialogTitle className="onside-display text-2xl">
+        <h2 id={`${ids}-title`} className="dlg3-t">
           Feedback enviado
-        </DialogTitle>
-        <p className="mt-3 text-sm">Recebemos. Obrigado por contar.</p>
-        <button
-          type="button"
-          onClick={onClose}
-          className="onside-btn onside-btn-acid onside-btn-full mt-5"
-        >
-          Fechar
-        </button>
+        </h2>
+        <p className="dlg3-p">Recebemos. Obrigado por contar.</p>
+        <div className="dlg3-a">
+          <button
+            type="button"
+            onClick={onClose}
+            className="pn-btn pn-sm pn-acid"
+          >
+            Fechar
+          </button>
+        </div>
       </div>
     )
   }
 
   return (
     <>
-      <DialogTitle className="onside-display text-2xl">
+      <h2 id={`${ids}-title`} className="dlg3-t">
         Enviar feedback
-      </DialogTitle>
-      <DialogDescription className="mt-1 text-[var(--onside-muted)] text-sm">
+      </h2>
+      <p className="dlg3-p">
         Sua mensagem chega direto à equipe da Onside, com seu nome, e-mail e a
         página em que você está.
-      </DialogDescription>
+      </p>
 
       <form
         method="post"
@@ -246,7 +243,7 @@ function FeedbackForm({ onClose }: { onClose: () => void }) {
         className="mt-4 space-y-4"
       >
         <div>
-          <label htmlFor={`${ids}-message`} className="onside-label">
+          <label htmlFor={`${ids}-message`} className="dlg3-l mb-2 block">
             O que você quer contar pra gente?
           </label>
           <textarea
@@ -254,7 +251,7 @@ function FeedbackForm({ onClose }: { onClose: () => void }) {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             rows={6}
-            className="onside-textarea"
+            className="pn-inp"
             aria-invalid={tooLong ? true : undefined}
             aria-describedby={`${ids}-hint ${ids}-count`}
           />
@@ -291,7 +288,7 @@ function FeedbackForm({ onClose }: { onClose: () => void }) {
               disabled={full}
               onClick={() => fileInput.current?.click()}
               aria-describedby={`${ids}-images-hint`}
-              className="onside-btn onside-btn-outline"
+              className="pn-btn pn-sm pn-ghost"
             >
               <ImagePlus size={16} color="currentColor" aria-hidden="true" />
               Adicionar imagem
@@ -311,12 +308,12 @@ function FeedbackForm({ onClose }: { onClose: () => void }) {
               {images.map((image) => (
                 <li
                   key={image.id}
-                  className="flex items-center gap-3 border-[1.5px] border-[var(--onside-line)] p-2"
+                  className="flex items-center gap-3 rounded-2xl bg-[var(--sub)] p-2"
                 >
                   <img
                     src={image.url}
                     alt=""
-                    className="size-12 shrink-0 border border-[var(--onside-line)] object-cover"
+                    className="size-12 shrink-0 rounded-xl object-cover"
                   />
                   <div className="min-w-0 flex-1 text-sm">
                     <p className="truncate font-semibold">{image.name}</p>
@@ -338,30 +335,30 @@ function FeedbackForm({ onClose }: { onClose: () => void }) {
           )}
 
           {imageError ? (
-            <p className="onside-field-error" role="alert">
+            <p className="pn-ferr" role="alert">
               {imageError}
             </p>
           ) : null}
         </div>
 
         {error ? (
-          <p className="onside-field-error" role="alert">
+          <p className="pn-ferr" role="alert">
             {error}
           </p>
         ) : null}
 
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <div className="dlg3-a dlg3-a-end">
           <button
             type="button"
             onClick={onClose}
-            className="onside-btn onside-btn-ghost"
+            className="pn-btn pn-sm pn-ghost"
           >
             Cancelar
           </button>
           <button
             type="submit"
             disabled={!valid || sending}
-            className="onside-btn onside-btn-acid"
+            className="pn-btn pn-sm pn-acid"
           >
             {sending ? 'Enviando…' : 'Enviar'}
           </button>

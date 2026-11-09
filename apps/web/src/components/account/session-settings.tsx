@@ -13,21 +13,17 @@ import {
   getUserFacingMessage
 } from '@/lib/user-facing-error'
 
-export type AccountSession = NonNullable<
+type AccountSession = NonNullable<
   Awaited<ReturnType<typeof authClient.listSessions>>['data']
 >[number]
 
-function formatDate(value: Date | string) {
+export function formatDate(value: Date | string) {
   return new Intl.DateTimeFormat('pt-BR', {
     dateStyle: 'short',
     timeStyle: 'short'
   }).format(new Date(value))
 }
 
-/**
- * Acessos ativos da conta, o atual primeiro, e as ações de encerrar. Usado
- * pela lista do perfil e pelas Configurações do painel do bar.
- */
 export function useAccountSessions() {
   const current = useSession()
   const [revoking, setRevoking] = useState<string | null>(null)
@@ -94,11 +90,12 @@ export function useAccountSessions() {
   ).length
 
   return {
+    current,
+    currentId: current?.session.id,
     sessions,
     sessionsErrorFeedback,
     ordered,
     otherCount,
-    currentId: current?.session.id,
     revoking,
     revoke,
     revokeOthers
@@ -107,16 +104,15 @@ export function useAccountSessions() {
 
 export function SessionSettings() {
   const {
+    current,
     sessions,
     sessionsErrorFeedback,
     ordered,
     otherCount,
-    currentId,
     revoking,
     revoke,
     revokeOthers
   } = useAccountSessions()
-
   return (
     <section className="border border-[var(--onside-ink)] bg-[var(--onside-paper)] p-5 sm:p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -176,7 +172,7 @@ export function SessionSettings() {
           </p>
         ) : (
           ordered.map((session) => {
-            const isCurrent = session.id === currentId
+            const isCurrent = session.id === current?.session.id
             const device = describeDevice(session.userAgent)
             return (
               <article

@@ -1,6 +1,10 @@
 import {
+  createOnsideEmailTemplate,
+  metaTable,
+  quote
+} from '@findsports_oficial/auth/email-layout'
+import {
   type EmailAttachment,
-  escapeHtml,
   sendEmail
 } from '@findsports_oficial/auth/verification-email'
 import { db, eq } from '@findsports_oficial/db'
@@ -73,25 +77,54 @@ export function createFeedbackEmail(input: {
     input.role === 'pub' && input.barName
       ? `bar (${oneLine(input.barName, 60)})`
       : ROLE_LABEL[input.role]
+  const fields: [string, string][] = [
+    ['Nome', oneLine(input.name, 120)],
+    ['E-mail', oneLine(input.email, 320)],
+    ['Papel', ROLE_LABEL[input.role]],
+    ...(input.barName
+      ? ([['Bar', oneLine(input.barName, 120)]] as [string, string][])
+      : []),
+    ['Página', oneLine(input.pageUrl, 500)],
+    ['Navegador', oneLine(input.userAgent, 300)],
+    [
+      'Enviado em',
+      `${input.sentAt.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })} (horário de Brasília)`
+    ],
+    ...(input.imageCount
+      ? ([['Imagens anexadas', String(input.imageCount)]] as [string, string][])
+      : [])
+  ]
   const text = [
     input.message,
     '',
     '--',
-    `Nome: ${oneLine(input.name, 120)}`,
-    `E-mail: ${oneLine(input.email, 320)}`,
-    `Papel: ${ROLE_LABEL[input.role]}`,
-    ...(input.barName ? [`Bar: ${oneLine(input.barName, 120)}`] : []),
-    `Página: ${oneLine(input.pageUrl, 500)}`,
-    `Navegador: ${oneLine(input.userAgent, 300)}`,
-    `Enviado em: ${input.sentAt.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })} (horário de Brasília)`,
-    ...(input.imageCount ? [`Imagens anexadas: ${input.imageCount}`] : [])
+    ...fields.map(([key, value]) => `${key}: ${value}`)
   ].join('\n')
+  const author = input.barName
+    ? `${oneLine(input.name, 120)} (${oneLine(input.barName, 120)})`
+    : oneLine(input.name, 120)
+  const where =
+    input.role === 'pub'
+      ? 'do painel'
+      : input.role === 'fan'
+        ? 'do app'
+        : 'da Onside'
+
+  // As peças escapam tudo: nada do que a pessoa escreveu vira marcação.
+  const { html } = createOnsideEmailTemplate({
+    tag: 'INTERNO · FEEDBACK',
+    heading: 'Feedback',
+    headingAccent: `de ${ROLE_LABEL[input.role]}`,
+    intro: `${author} escreveu de dentro ${where}. Responder a este e-mail vai direto para quem escreveu.`,
+    blocks: [quote(input.message), metaTable(fields)],
+    steps: [],
+    reason: `E-mail interno: sai do botão "Enviar feedback" do app e do painel para ${FEEDBACK_TO}, com resposta para quem escreveu.`
+  })
 
   return {
     subject: `Feedback de ${from}: ${oneLine(input.message, 60)}`,
     text,
-    // O corpo inteiro passa pelo escape: nada do que a pessoa escreveu vira marcação.
-    html: `<pre style="font:inherit;white-space:pre-wrap">${escapeHtml(text)}</pre>`
+    html
   }
 }
 

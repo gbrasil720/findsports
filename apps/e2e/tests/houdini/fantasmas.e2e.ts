@@ -78,3 +78,45 @@ test('bar que não registra os códigos aparece no alerta', async ({ page }) => 
     page.getByRole('heading', { name: below, exact: true })
   ).toHaveCount(0)
 })
+
+test('jogo com códigos e nenhum validado aparece sem resposta do torcedor', async ({
+  page
+}) => {
+  const name = `Bar Sem Validar ${randomUUID().slice(0, 8)}`
+  const { barId } = await createPub({ bar: { name } })
+  const [sport] = await query<{ id: string }>('SELECT id FROM sport LIMIT 1')
+  const eventId = randomUUID()
+  const startsAt = daysAgo(5)
+  await insert('event', {
+    id: eventId,
+    bar_id: barId,
+    sport_id: sport?.id,
+    championship: 'Jogo sem validar',
+    starts_at: startsAt,
+    ends_at: new Date(startsAt.getTime() + 2 * 3_600_000)
+  })
+  for (let n = 0; n < 5; n++) {
+    const fan = await createUser()
+    const reservationId = randomUUID()
+    await insert('reservation', {
+      id: reservationId,
+      event_id: eventId,
+      user_id: fan.id,
+      party_size: 1,
+      status: 'confirmed'
+    })
+    await insert('reservation_code', {
+      id: randomUUID(),
+      code: randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase(),
+      reservation_id: reservationId,
+      max_uses: 1
+    })
+  }
+
+  await page.goto('/houdini/fantasmas')
+  const alert = page.getByRole('article').filter({
+    has: page.getByRole('heading', { name, exact: true })
+  })
+  await expect(alert).toContainText('Jogo sem validar')
+  await expect(alert).toContainText('5 códigos, nenhum validado')
+})

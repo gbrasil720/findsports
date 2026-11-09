@@ -11,5 +11,5 @@ export const Route = createFileRoute('/termos')({
       description:
         'As regras da Onside para torcedores e estabelecimentos: conta, benefícios, avaliações, planos e responsabilidades.'
     }),
-  component: () => <LegalPage document={TERMOS_DE_USO} />
+  component: () => <LegalPage document={TERMOS_DE_USO} current="/termos" />
 })

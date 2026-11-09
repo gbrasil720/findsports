@@ -51,8 +51,8 @@ const PRIVACY_LINK = (
  * diante é o efeito abaixo. Assim o aviso não surge depois da hidratação nem
  * pisca para quem já respondeu.
  *
- * Os dois textos também saem sempre: o CSS mostra o curto na barra do celular
- * e o completo no desktop, sem esperar JavaScript para saber a largura.
+ * Um aviso só, o "Placar", em todo o site (`cookie-consent.css`): no canto no
+ * desktop, folha no pé da tela no celular.
  */
 export function CookieConsent() {
   const consent = useAnalyticsConsent()
@@ -79,13 +79,19 @@ export function CookieConsent() {
       data-testid="cookie-consent"
     >
       <div>
-        <p className="onside-consent-kicker">Cookies</p>
-        <p className="onside-consent-long">
-          Usamos cookies essenciais para a Onside funcionar. Com a sua
-          permissão, usamos também cookies de análise para entender o uso e
-          melhorar o produto. Detalhes na {PRIVACY_LINK}.
+        <p className="onside-consent-kicker">
+          <span className="onside-consent-leds" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+            <i />
+            <i />
+            <i />
+          </span>
+          Cookies de análise
+          <span className="onside-consent-note">só com a sua permissão</span>
         </p>
-        <p className="onside-consent-short">
+        <p>
           Usamos cookies de análise com a sua permissão. Detalhes na{' '}
           {PRIVACY_LINK}.
         </p>

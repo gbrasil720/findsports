@@ -183,6 +183,22 @@ export const bar = pgTable(
       jsonb('opening_hours').$type<
         ({ opens: string; closes: string } | null)[]
       >(),
+    // "Sua rotina" do cadastro (jogos por mês, gasto por cliente e o que o
+    // dono espera): o plano do teste recomendado sai dela, aqui e no passo
+    // "Plano do teste", que pode abrir em outro aparelho. Nula em bar de
+    // antes do campo. Nunca aparece no perfil. Forma e regra em
+    // `packages/api/src/lib/pub-routine.ts`.
+    routine: jsonb('routine').$type<{
+      games: number
+      spend: number
+      wants: string[]
+    }>(),
+    // Quando o dono escolheu o plano do teste (`pub.changeTrialPlan`). Nulo
+    // é o bar que acabou de ir ao ar e ainda não escolheu: o painel o leva à
+    // escolha. O padrão `now()` conta como escolhido o bar de antes da
+    // coluna e o que o código anterior cria; só o `completePub` novo grava
+    // nulo.
+    trialPlanChosenAt: timestamp('trial_plan_chosen_at').defaultNow(),
     // Contadores de avaliação, mantidos por trigger a partir de `bar_rating`
     // (migration 0022). A busca precisa ordenar por nota sem agregar por
     // candidato — que é o mesmo motivo de `plan` viver aqui. Contam só a

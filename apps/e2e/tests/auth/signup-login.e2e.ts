@@ -15,39 +15,84 @@ import {
 // WEB-175 — cadastro e login. O cadastro é aberto: e-mail novo cria conta sem
 // lista nem convite (WEB-232).
 
-test('cadastro de bar valida a senha e cai em /onboarding/pub', async ({
+test('cadastro de torcedor valida a senha e cai em /verify-email', async ({
   page
 }) => {
-  const email = uniqueEmail('signup-pub')
+  const email = uniqueEmail('signup-fan')
   await page.goto('/signup')
 
-  // Sem escolha de perfil: o cadastro do web é sempre de bar.
-  await expect(page.getByRole('button', { name: 'Torcedor' })).toHaveCount(0)
+  // Alterna o papel e volta: só um fica marcado.
+  const fan = page.getByRole('button', { name: 'Sou torcedor' })
+  const pub = page.getByRole('button', { name: 'Tenho um bar' })
+  await pub.click()
+  await expect(pub).toHaveAttribute('aria-pressed', 'true')
+  await expect(fan).toHaveAttribute('aria-pressed', 'false')
+  await fan.click()
+  await expect(fan).toHaveAttribute('aria-pressed', 'true')
 
   // Sem o aceite dos Termos e da Política o botão não envia. O aceite vem
   // antes dos campos: marcado depois de um campo inválido, o blur mostra o
   // erro, o formulário desce no meio do clique e o clique se perde.
-  const enviar = page.getByRole('button', { name: 'Criar conta do bar' })
+  const enviar = page.getByRole('button', { name: /^Criar conta/ })
   await expect(enviar).toBeDisabled()
   await acceptTerms(page)
   await expect(enviar).toBeEnabled()
 
-  await page.getByLabel('Seu nome').fill('Dono E2E')
-  await page.getByLabel('E-mail do responsável').fill(email)
+  await page.getByLabel('Nome completo').fill('Torcedor E2E')
+  await page.getByLabel('E-mail').fill(email)
   await page.getByLabel('Senha', { exact: true }).fill('curta')
+  await page.getByLabel('Confirmar senha', { exact: true }).fill('outra')
   await enviar.click()
   await expect(
     page.getByText('A senha deve ter pelo menos 8 caracteres.')
   ).toBeVisible()
+  await expect(page.getByText('As senhas não coincidem.')).toBeVisible()
   await expect(page).toHaveURL(/\/signup$/)
 
-  // O clique vem direto do campo corrigido, sem blur: o erro some enquanto a
-  // pessoa digita, então o botão não sobe no meio do clique.
+  // Nome e e-mail já estão preenchidos. O clique vem direto do campo
+  // corrigido, sem blur: o erro some enquanto a pessoa digita, então o botão
+  // não sobe no meio do clique.
   await page.getByLabel('Senha', { exact: true }).fill(DEFAULT_PASSWORD)
-  await expect(
-    page.getByText('A senha deve ter pelo menos 8 caracteres.')
-  ).toBeHidden()
+  await page
+    .getByLabel('Confirmar senha', { exact: true })
+    .fill(DEFAULT_PASSWORD)
+  await expect(page.getByText('As senhas não coincidem.')).toBeHidden()
   await enviar.click()
+
+  await expect(page).toHaveURL(/\/verify-email$/)
+  await expect(page.getByText(email)).toBeVisible()
+  await lastEmailTo(email, { subject: VERIFICATION_SUBJECT })
+})
+
+// O erro fica embaixo da confirmação, mas quem digitou errado pode ter sido a
+// Senha: corrigi-la tem de apagar o aviso, sem esperar o blur da confirmação.
+test('corrigir a Senha apaga "As senhas não coincidem." da confirmação', async ({
+  page
+}) => {
+  await page.goto('/signup')
+  const senha = page.getByLabel('Senha', { exact: true })
+  const confirm = page.getByLabel('Confirmar senha', { exact: true })
+  const erro = page.getByText('As senhas não coincidem.')
+
+  await senha.fill('senha-com-erro')
+  await confirm.fill(DEFAULT_PASSWORD)
+  await confirm.blur()
+  await expect(erro).toBeVisible()
+
+  await senha.fill(DEFAULT_PASSWORD)
+  await expect(erro).toBeHidden()
+  // Senha diferente de novo, com a confirmação limpa: não acusa enquanto a
+  // pessoa digita.
+  await senha.fill('outra-senha-123')
+  await expect(erro).toBeHidden()
+})
+
+test('cadastro de bar cai em /onboarding/pub sem sessão', async ({ page }) => {
+  const email = uniqueEmail('signup-pub')
+  await page.goto('/signup')
+
+  await page.getByRole('button', { name: 'Tenho um bar' }).click()
+  await submitSignup(page, { name: 'Dono E2E', email })
 
   await expect(page).toHaveURL(/\/onboarding\/pub$/)
   // `autoSignIn: false`: o cadastro não abre sessão antes da verificação.
@@ -58,12 +103,18 @@ test('cadastro de bar valida a senha e cai em /onboarding/pub', async ({
     [email]
   )
   expect(user?.role).toBe('pub')
-  await lastEmailTo(email, { subject: VERIFICATION_SUBJECT })
 })
 
-// WEB-232: os links antigos da landing e do guia levam `?role=pub`.
-test('/signup?role=pub segue abrindo o cadastro do bar', async ({ page }) => {
+// WEB-232: é para onde a landing manda o bar.
+test('/signup?role=pub abre com "Tenho um bar" marcado', async ({ page }) => {
   await page.goto('/signup?role=pub')
+
+  await expect(
+    page.getByRole('button', { name: 'Tenho um bar' })
+  ).toHaveAttribute('aria-pressed', 'true')
+  await expect(
+    page.getByRole('button', { name: 'Sou torcedor' })
+  ).toHaveAttribute('aria-pressed', 'false')
   await submitSignup(page, {
     name: 'Dono pela Landing',
     email: uniqueEmail('signup-role')
@@ -71,12 +122,41 @@ test('/signup?role=pub segue abrindo o cadastro do bar', async ({ page }) => {
   await expect(page).toHaveURL(/\/onboarding\/pub$/)
 })
 
-test('o card "É torcedor?" leva à página do app', async ({ page }) => {
-  for (const path of ['/login', '/signup']) {
-    await page.goto(path)
-    await page.getByRole('link', { name: /É torcedor\?/ }).click()
-    await expect(page).toHaveURL(/\/torcedor$/)
-  }
+// WEB-211: o destino vai no link do e-mail, que abre noutra aba — sem o
+// `sessionStorage` da aba do cadastro — e atravessa o onboarding do torcedor.
+test('cadastro pela folha do bar volta para o bar depois da confirmação', async ({
+  page,
+  context
+}) => {
+  const { barId } = await createPub()
+  const email = uniqueEmail('signup-bar')
+
+  await page.goto(`/pub/${barId}`)
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click()
+  await page.getByRole('link', { name: 'Criar conta grátis' }).click()
+  await expect(page).toHaveURL(/\/signup\?callbackUrl=/)
+  // O link da folha é uma navegação inteira: espera a página nova hidratar.
+  await expect(page.locator('html[data-hydrated]')).toHaveCount(1)
+  await submitSignup(page, { name: 'Torcedor do Bar', email })
+  await expect(page).toHaveURL(/\/verify-email\?callbackUrl=/)
+
+  const { link } = await lastEmailTo(email, { subject: VERIFICATION_SUBJECT })
+  const tab = await context.newPage()
+  await tab.goto(link)
+  await expect(tab).toHaveURL(/\/onboarding\/fan\?callbackUrl=/)
+
+  const button = (name: string) =>
+    tab.getByRole('button', { name, exact: true })
+  await button('Começar').click()
+  await button('Futebol').click()
+  await button('Continuar').click()
+  await button('Pular').click()
+  await button('Continuar').click()
+  await button('Salvar e encontrar bares').click()
+
+  await expect(tab).toHaveURL(
+    new RegExp(`/bar/[a-z0-9-]+-${barId.slice(0, 8)}$`)
+  )
 })
 
 test('login com e-mail não verificado é recusado e reenvia a verificação', async ({
@@ -111,99 +191,68 @@ test('login com credenciais erradas mostra erro e fica no /login', async ({
 
 test.describe('callbackUrl do login', () => {
   // WEB-182: o router entrega `href` relativo; o callback tem de sobreviver
-  // nas duas formas, relativa e absoluta de mesma origem.
-  for (const callback of ['/admin/jogos', 'BASE/admin/jogos']) {
+  // nas duas formas, relativa (a do diálogo do bar) e absoluta de mesma origem.
+  for (const callback of ['/dashboard/profile', 'BASE/dashboard/profile']) {
     test(`respeita callbackUrl de mesma origem: ${callback}`, async ({
       page,
       baseURL
     }) => {
-      const { user } = await createPub()
+      const user = await createUser()
       const url = callback.replace('BASE', baseURL ?? '')
       await loginWithForm(
         page,
         user,
         `/login?callbackUrl=${encodeURIComponent(url)}`
       )
-      await expect(page).toHaveURL(/\/admin\/jogos$/)
+      await expect(page).toHaveURL(/\/dashboard\/profile$/)
     })
   }
 
   // O caminho é o mesmo da mesma origem acima: se a checagem de origem sumir
-  // e só o `pathname` for aproveitado, o login cai em `/admin/jogos`.
+  // e só o `pathname` for aproveitado, o login cai em `/dashboard/profile`.
   for (const callback of [
-    'https://evil.example/admin/jogos',
-    '//evil.example/admin/jogos'
+    'https://evil.example/dashboard/profile',
+    '//evil.example/dashboard/profile'
   ]) {
     test(`ignora callbackUrl de outra origem: ${callback}`, async ({
       page
     }) => {
-      const { user } = await createPub()
+      const user = await createUser()
       await loginWithForm(
         page,
         user,
         `/login?callbackUrl=${encodeURIComponent(callback)}`
       )
-      await expect(page).toHaveURL(/\/admin$/)
+      await expect(page).toHaveURL(/\/dashboard$/)
     })
   }
-
-  // WEB-472: o link "Cadastrar meu bar" leva o destino adiante igual no HTML
-  // do servidor e depois da hidratação. Com o absoluto, o servidor comparava
-  // com uma origem fictícia e mandava `/signup` puro; o `page` da suíte
-  // também falha se o React avisar de atributo diferente.
-  for (const callback of ['/admin/jogos', 'BASE/admin/jogos']) {
-    test(`"Cadastrar meu bar" leva o callbackUrl no SSR e no navegador: ${callback}`, async ({
-      page,
-      request,
-      baseURL
-    }) => {
-      const login = `/login?callbackUrl=${encodeURIComponent(
-        callback.replace('BASE', baseURL ?? '')
-      )}`
-      const esperado = '/signup?callbackUrl=%2Fadmin%2Fjogos'
-
-      const html = await (await request.get(login)).text()
-      const ssr = html.match(/<a [^>]*href="([^"]*)"[^>]*>Cadastrar meu bar</)
-      expect(ssr?.[1]).toBe(esperado)
-
-      await page.goto(login)
-      await expect(
-        page.getByRole('link', { name: 'Cadastrar meu bar' })
-      ).toHaveAttribute('href', esperado)
-    })
-  }
-
-  test('torcedor que entra pela tela vai à página do app', async ({ page }) => {
-    await loginWithForm(page, await createUser())
-    await expect(page).toHaveURL(/\/torcedor$/)
-  })
 })
 
 test.describe('logout', () => {
-  test('pelo menu do painel', async ({ page }) => {
-    const { user } = await createPub({ user: { name: 'Saída Painel' } })
+  test('pelo menu do shell do app', async ({ page }) => {
+    const user = await createUser({ name: 'Saída Shell' })
     await signIn(page, user)
-    await page.goto('/admin')
+    await page.goto('/dashboard')
 
     await page
-      .getByRole('button', { name: 'Menu da conta de Saída Painel' })
+      .getByRole('button', { name: 'Menu da conta de Saída Shell' })
       .click()
     await page.getByRole('menuitem', { name: 'Sair' }).click()
 
     await expect(page).toHaveURL(/\/$/)
-    await page.goto('/admin')
+    await page.goto('/dashboard/games')
     await expect(page).toHaveURL(/\/login\?callbackUrl=/)
   })
 
   test('pelas configurações da conta', async ({ page }) => {
-    const { user } = await createPub()
+    const user = await createUser()
     await signIn(page, user)
-    await page.goto('/admin/configuracoes')
+    await page.goto('/dashboard/preferencias?aba=conta')
 
     await page.getByRole('button', { name: 'Sair da conta' }).click()
 
-    await expect(page).toHaveURL(/\/login$/)
-    await page.goto('/admin')
+    await expect(page).toHaveURL(/\/$/)
+    await page.goto('/dashboard/games')
     await expect(page).toHaveURL(/\/login\?callbackUrl=/)
   })
 })

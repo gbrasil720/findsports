@@ -1,0 +1,172 @@
+<title>Onside · entrar</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap">
+<style>
+/* Entrada (login, conta, duas etapas, senha): registro de uso, formulário à esquerda e a casa cheia à direita. */
+:root{
+  --bg:#f1eee6; --fg:#12120f; --card:#faf8f3; --sub:#e7e3db; --line:rgba(18,18,15,.1); --line2:rgba(18,18,15,.2);
+  --muted:#55554f; --body:#3a3a35; --drop:#d9d4c8; --field:#fff; --err:#c92b0c; --errbg:rgba(232,50,12,.08);
+  --acid:#c9f135; --acid-drop:#7f9a12; --live:#e8320c; --hl:#e8320c; --spark:#e8320c;
+  --display:"Anton","Impact","Arial Narrow",sans-serif; --text:"Archivo",ui-sans-serif,system-ui,sans-serif; --mono:"Geist Mono",ui-monospace,Menlo,monospace;
+  --ease:cubic-bezier(.16,1,.3,1); --gl:max(16px,env(safe-area-inset-left,0px)); --gr:max(16px,env(safe-area-inset-right,0px));
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12120f;--fg:#f1eee6;--card:#1c1c18;--sub:#26261f;--line:rgba(241,238,230,.1);--line2:rgba(241,238,230,.2);--muted:#aaa9a4;--body:#d6d3cb;--drop:#000;--field:#1c1c18;--err:#f3421d;--errbg:rgba(243,66,29,.12);--hl:#c9f135;--spark:#c9f135;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#12120f;--fg:#f1eee6;--card:#1c1c18;--sub:#26261f;--line:rgba(241,238,230,.1);--line2:rgba(241,238,230,.2);--muted:#aaa9a4;--body:#d6d3cb;--drop:#000;--field:#1c1c18;--err:#f3421d;--errbg:rgba(243,66,29,.12);--hl:#c9f135;--spark:#c9f135;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font:400 16px/1.5 var(--text);-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}img{max-width:100%;height:auto;display:block}svg{flex:none}a{color:inherit}button,input{font:inherit;color:inherit}
+::selection{background:var(--acid);color:#12120f}:focus-visible{outline:3px solid var(--acid);outline-offset:2px;border-radius:8px}
+.disp{font-family:var(--display);font-weight:400;text-transform:uppercase;line-height:1;margin:0;text-wrap:balance}
+.mono{font-family:var(--mono)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;height:54px;padding:0 24px;border-radius:999px;border:0;font:700 16px/1 var(--text);cursor:pointer;text-decoration:none;white-space:nowrap;transition:transform .18s var(--ease),box-shadow .18s var(--ease)}
+.btn:active{transform:translateY(3px)}
+.b-acid{background:var(--acid);color:#12120f;box-shadow:0 4px 0 var(--acid-drop);--spark:#e8320c}.b-acid:hover{transform:translateY(-2px);box-shadow:0 6px 0 var(--acid-drop)}
+.b-ghost{background:transparent;box-shadow:inset 0 0 0 1.5px var(--line2)}.b-ghost:hover{box-shadow:inset 0 0 0 1.5px var(--fg)}
+.btn[aria-busy="true"]{opacity:.75;pointer-events:none}
+.full{width:100%}
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);min-height:100vh}
+.left{display:flex;flex-direction:column;padding:28px max(36px,var(--gl)) 32px;max-width:620px;width:100%;margin-left:auto}
+.top{display:flex;justify-content:space-between;align-items:center}
+.logo{display:flex;align-items:center;gap:9px;text-decoration:none}.logo b{font:400 24px/1 var(--display)}.logo i{display:inline-block;width:6px;height:6px;background:#e8320c;margin-left:2px}
+.form{margin:auto 0;padding:40px 0;max-width:440px;width:100%;animation:in .5s var(--ease)}
+@keyframes in{from{opacity:0;transform:translateY(10px)}}
+.form h1{font-size:clamp(42px,4.4vw,60px)}
+.form .sub{margin:12px 0 0;color:var(--body);font-size:16.5px}
+.fl{display:flex;flex-direction:column;gap:7px;margin-top:16px}
+.fl>span{display:flex;justify-content:space-between;font:600 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.fl>span a{text-transform:none;letter-spacing:0;font:600 13.5px var(--text);color:var(--fg)}
+.inp{position:relative}
+.inp input{width:100%;height:54px;border-radius:16px;border:0;background:var(--field);box-shadow:inset 0 0 0 1px var(--line2);padding:0 16px;font:500 16px var(--text);outline:none;transition:box-shadow .15s}
+.inp input:focus{box-shadow:inset 0 0 0 2px var(--fg)}
+.inp.bad input{box-shadow:inset 0 0 0 2px var(--err)}
+.inp .eye{position:absolute;right:6px;top:7px;height:40px;padding:0 12px;border:0;border-radius:12px;background:var(--sub);font:600 13px var(--text);cursor:pointer}
+.msg{display:none;margin-top:8px;font-size:14px;color:var(--err)}
+.bad+.msg,.msg.on{display:block}
+.alert{display:flex;gap:10px;align-items:flex-start;margin-top:18px;padding:12px 14px;border-radius:14px;background:var(--errbg);color:var(--err);font-size:14.5px}
+.role{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:22px}
+.role button{display:flex;flex-direction:column;gap:6px;align-items:flex-start;padding:16px;border:0;border-radius:20px;background:var(--card);box-shadow:0 3px 0 var(--drop);cursor:pointer;text-align:left}
+.role button b{font-size:16px}.role button span{font-size:13.5px;color:var(--muted);line-height:1.35}
+.role .ic{width:40px;height:40px;border-radius:12px;background:var(--sub);display:grid;place-items:center}
+.role button[aria-pressed="true"]{box-shadow:inset 0 0 0 2px var(--fg),0 3px 0 var(--drop)}
+.role button[aria-pressed="true"] .ic{background:var(--acid);color:#12120f;--spark:#e8320c}
+.meter{display:flex;gap:4px;margin-top:8px}.meter i{flex:1;height:4px;border-radius:4px;background:var(--line2)}.meter i.on{background:var(--fg)}
+.hint{font-size:13px;color:var(--muted);margin-top:6px}
+.go{margin-top:24px}
+.alt{margin-top:18px;text-align:center;font-size:15px;color:var(--muted)}.alt a{color:var(--fg);font-weight:700}
+.legal{margin-top:16px;font-size:13px;color:var(--muted);text-align:center}
+.boxes{display:flex;gap:8px;margin-top:22px}
+.boxes input{width:100%;height:64px;border-radius:16px;border:0;background:var(--field);box-shadow:inset 0 0 0 1.5px var(--line2);text-align:center;font:600 28px var(--mono);outline:none}
+.boxes input:focus{box-shadow:inset 0 0 0 2.5px var(--fg)}
+.boxes.bad input{box-shadow:inset 0 0 0 2px var(--err);animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.seg{display:flex;gap:4px;background:var(--sub);padding:4px;border-radius:999px;margin-top:22px}
+.seg button{flex:1;border:0;background:transparent;height:40px;border-radius:999px;font:600 14.5px var(--text);cursor:pointer}
+.seg button.on{background:var(--fg);color:var(--bg)}
+.trust{display:flex;align-items:center;gap:10px;margin-top:16px;font-size:14.5px;cursor:pointer}
+.trust input{width:20px;height:20px;accent-color:#12120f}
+.mail{width:84px;height:84px;border-radius:26px;background:var(--acid);display:grid;place-items:center;color:#12120f;box-shadow:0 4px 0 var(--acid-drop);--spark:#e8320c;margin-bottom:22px}
+.mail.err{background:var(--sub);color:var(--fg);box-shadow:0 4px 0 var(--drop)}
+.addr{display:inline-flex;margin-top:16px;padding:10px 14px;border-radius:12px;background:var(--sub);font:600 15px var(--mono)}
+.tips{margin:22px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px;font-size:14.5px;color:var(--body)}
+.tips li{display:flex;gap:10px}
+.right{position:relative;overflow:hidden;background:#12120f;color:#f1eee6}
+.right img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.75}
+.right::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(18,18,15,.1) 0%,rgba(18,18,15,.25) 45%,rgba(18,18,15,.92) 100%)}
+.cap{position:absolute;left:40px;right:40px;bottom:96px;z-index:1;--spark:#c9f135}
+.cap b{display:block;font:400 clamp(40px,4vw,60px)/1 var(--display);text-transform:uppercase}
+.cap b span{color:#c9f135}
+.cap ul{list-style:none;margin:18px 0 0;padding:0;display:flex;flex-direction:column;gap:10px;font-size:15.5px}
+.cap li{display:flex;gap:10px;align-items:center}
+.live{position:absolute;left:40px;top:40px;z-index:1;display:inline-flex;gap:8px;align-items:center;height:34px;padding:0 14px;border-radius:999px;background:rgba(18,18,15,.7);font:600 12.5px var(--mono);backdrop-filter:blur(6px)}
+.live i{width:8px;height:8px;border-radius:50%;background:#f3421d;animation:pl 1.6s infinite}@keyframes pl{50%{opacity:.3}}
+.steps{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:50;display:flex;gap:4px;padding:6px;border-radius:999px;background:#12120f;box-shadow:0 4px 0 #000,0 20px 40px -14px rgba(0,0,0,.5);max-width:calc(100% - 24px);overflow-x:auto}
+.steps button{border:0;background:transparent;color:#aaa9a4;height:36px;padding:0 13px;border-radius:999px;font:600 13px var(--text);cursor:pointer;white-space:nowrap}
+.steps button.on{background:#c9f135;color:#12120f}
+@media (max-width:900px){
+  .split{grid-template-columns:1fr}
+  .right{display:none}
+  .left{margin:0;max-width:none;padding:18px var(--gr) 100px var(--gl)}
+  .form{padding:18px 0 0;margin:0}
+  .role{grid-template-columns:1fr 1fr}
+  .role button span:last-child{display:none}
+  .boxes input{height:56px;font-size:24px}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition-duration:.01ms!important}}
+</style>
+<div class="split">
+  <section class="left">
+    <div class="top"><a class="logo" href="#entrar" aria-label="Onside"><svg width="28" height="28" viewBox="0 0 30 30" aria-hidden="true"><circle cx="14" cy="14" r="10.5" fill="none" stroke="currentColor" stroke-width="4.2"/><circle cx="22.4" cy="22.6" r="4.6" fill="#e8320c"/></svg><b>ONSIDE<i></i></b></a><a class="btn b-ghost" style="height:42px;padding:0 16px;font-size:14.5px" href="#" id="toplink">Ver jogos sem conta</a></div>
+    <div id="view"></div>
+  </section>
+  <aside class="right" aria-hidden="true"><img id="pic" src="a/r1.webp" alt=""><span class="live"><i></i>AO VIVO · 34 pessoas no Bar do Zé</span><div class="cap" id="cap"></div></aside>
+</div>
+<nav class="steps" aria-label="Telas deste protótipo" id="steps"></nav>
+<script>
+(function(){
+var IC=/*IC*/;
+function ic(n,s){s=s||20;return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" aria-hidden="true">'+IC[n]+'</svg>'}
+var S={role:'fan',tfa:'app',err:false};
+var SCREENS=[['entrar','Entrar'],['criar','Criar conta'],['confirme','Confirmar e-mail'],['2fa','Duas etapas'],['esqueci','Esqueci a senha'],['enviado','Link enviado'],['nova','Nova senha'],['expirado','Link vencido']];
+function pw(id,ph,auto){return '<div class="inp"><input id="'+id+'" type="password" placeholder="'+ph+'" autocomplete="'+auto+'" required><button class="eye" type="button" data-eye="'+id+'">Mostrar</button></div>'}
+var V={
+ entrar:function(){return '<form class="form" data-form="entrar" novalidate><h1 class="disp">Bem-vindo <span style="color:var(--hl)">de volta</span></h1><p class="sub">Entre para marcar que vai, ver seu código e, se você tem um bar, o seu painel.</p>'+
+  (S.err?'<div class="alert" role="alert">'+ic('close',18)+'<span>E-mail ou senha não conferem. Confira e tente de novo.</span></div>':'')+
+  '<label class="fl"><span>E-mail</span><div class="inp"><input id="e" type="email" placeholder="voce@email.com" autocomplete="email" required></div></label><p class="msg" id="e-m">Informe um e-mail válido.</p>'+
+  '<label class="fl"><span>Senha <a href="#esqueci">Esqueceu?</a></span>'+pw('p','Sua senha','current-password')+'</label><p class="msg" id="p-m">Informe sua senha.</p>'+
+  '<button class="btn b-acid full go" type="submit" data-busy="Entrando…">Entrar</button><p class="alt">Primeira vez? <a href="#criar">Criar conta grátis</a></p><p class="legal"><a href="#" data-errdemo>Ver o erro de senha (exemplo)</a></p></form>'},
+ criar:function(){var fan=S.role==='fan';return '<form class="form" data-form="criar" novalidate><h1 class="disp">Crie sua <span style="color:var(--hl)">conta</span></h1><p class="sub">Grátis. Leva menos de um minuto.</p>'+
+  '<div class="role" role="group" aria-label="Quem é você">'+[['fan','Sou torcedor','Achar bar, marcar que vai e ganhar a oferta da casa.','fan'],['pub','Tenho um bar','Publicar jogos e encher a casa. 120 dias de Elite grátis.','bar']].map(function(r){return '<button type="button" aria-pressed="'+(S.role===r[0])+'" data-role="'+r[0]+'"><span class="ic">'+ic(r[3],20)+'</span><b>'+r[1]+'</b><span>'+r[2]+'</span></button>'}).join('')+'</div>'+
+  '<label class="fl"><span>'+(fan?'Seu nome':'Seu nome (responsável)')+'</span><div class="inp"><input id="n" placeholder="'+(fan?'Como seus amigos te chamam':'Nome completo')+'" autocomplete="name" required></div></label><p class="msg" id="n-m">Informe seu nome completo.</p>'+
+  '<label class="fl"><span>E-mail</span><div class="inp"><input id="e" type="email" placeholder="voce@email.com" autocomplete="email" required></div></label><p class="msg" id="e-m">Informe um e-mail válido.</p>'+
+  '<label class="fl"><span>Senha</span>'+pw('p','Pelo menos 8 caracteres','new-password')+'</label><div class="meter" aria-hidden="true"><i></i><i></i><i></i><i></i></div><p class="hint" id="ph">Use 8 ou mais caracteres. Uma frase fácil de lembrar vale.</p><p class="msg" id="p-m">A senha deve ter pelo menos 8 caracteres.</p>'+
+  '<button class="btn b-acid full go" type="submit" data-busy="Criando conta…">'+(fan?'Criar conta':'Criar conta do bar')+'</button><p class="legal">Ao criar, você aceita os <a href="#">Termos</a> e a <a href="#">Privacidade</a>.</p><p class="alt">Já tem conta? <a href="#entrar">Entrar</a></p></form>'},
+ confirme:function(){return '<div class="form"><div class="mail">'+ic('mail',40)+'</div><h1 class="disp">Confira sua <span style="color:var(--hl)">caixa de entrada</span></h1><p class="sub">Enviamos um link de confirmação para</p><span class="addr">lucas@exemplo.com</span><ul class="tips"><li>'+ic('check',18)+'Abra o e-mail “Confirme sua conta Onside” e toque no link.</li><li>'+ic('check',18)+'Não chegou em 2 minutos? Olhe em Promoções e Spam.</li></ul><button class="btn b-acid full go" type="button" data-next="'+(S.role==='pub'?'cadastro':'onboarding')+'">Já confirmei meu e-mail</button><button class="btn b-ghost full" style="margin-top:10px" type="button" data-resend data-busy="Reenviando…">Reenviar link</button><p class="alt">E-mail errado? <a href="#criar">Voltar e corrigir</a></p></div>'},
+ '2fa':function(){var app=S.tfa==='app';return '<form class="form" data-form="2fa" novalidate><h1 class="disp">Confirme que <span style="color:var(--hl)">é você</span></h1><p class="sub">'+(app?'Digite o código de 6 números do seu app autenticador.':'Digite um dos códigos de recuperação que você guardou ao ativar.')+'</p>'+
+  '<div class="seg" role="tablist"><button type="button" role="tab" class="'+(app?'on':'')+'" data-tfa="app">Autenticador</button><button type="button" role="tab" class="'+(app?'':'on')+'" data-tfa="rec">Recuperação</button></div>'+
+  (app?'<div class="boxes" id="boxes">'+[0,1,2,3,4,5].map(function(i){return '<input inputmode="numeric" maxlength="1" aria-label="Número '+(i+1)+'" autocomplete="'+(i?'off':'one-time-code')+'">'}).join('')+'</div>':'<label class="fl"><span>Código de recuperação</span><div class="inp"><input id="rc" class="mono" placeholder="xxxx-xxxx" autocomplete="off"></div></label>')+
+  '<p class="msg" id="tfa-m">Código inválido. Digite o código atual do autenticador.</p><label class="trust"><input type="checkbox" checked> Confiar neste aparelho por 30 dias</label><button class="btn b-acid full go" type="submit" data-busy="Confirmando…">Confirmar e entrar</button><p class="alt"><a href="#entrar">Voltar para o login</a></p></form>'},
+ esqueci:function(){return '<form class="form" data-form="esqueci" novalidate><h1 class="disp">Esqueceu <span style="color:var(--hl)">a senha?</span></h1><p class="sub">Acontece. Mandamos um link para você definir uma nova.</p><label class="fl"><span>E-mail da conta</span><div class="inp"><input id="e" type="email" placeholder="voce@email.com" autocomplete="email" required></div></label><p class="msg" id="e-m">Informe um e-mail válido.</p><button class="btn b-acid full go" type="submit" data-busy="Enviando…">Enviar link de recuperação</button><p class="alt">Lembrou? <a href="#entrar">Entrar</a></p></form>'},
+ enviado:function(){return '<div class="form"><div class="mail">'+ic('mail',40)+'</div><h1 class="disp">Link <span style="color:var(--hl)">enviado</span></h1><p class="sub">Se existir uma conta com este e-mail, o link chega em instantes. Ele vale por 1 hora.</p><span class="addr">lucas@exemplo.com</span><button class="btn b-ghost full go" type="button" data-resend data-busy="Reenviando…">Reenviar link</button><p class="alt"><a href="#entrar">Voltar para o login</a></p></div>'},
+ nova:function(){return '<form class="form" data-form="nova" novalidate><h1 class="disp">Defina sua <span style="color:var(--hl)">nova senha</span></h1><p class="sub">Ao salvar, os outros aparelhos saem da conta.</p><label class="fl"><span>Nova senha</span>'+pw('p','Pelo menos 8 caracteres','new-password')+'</label><div class="meter" aria-hidden="true"><i></i><i></i><i></i><i></i></div><p class="msg" id="p-m">A senha deve ter pelo menos 8 caracteres.</p><label class="fl"><span>Repita a senha</span>'+pw('p2','A mesma senha','new-password')+'</label><p class="msg" id="p2-m">As senhas não coincidem.</p><button class="btn b-acid full go" type="submit" data-busy="Salvando…">Salvar e entrar</button></form>'},
+ expirado:function(){return '<div class="form"><div class="mail err">'+ic('lock',40)+'</div><h1 class="disp">Esse link <span style="color:var(--hl)">não vale mais</span></h1><p class="sub">Links de senha valem por 1 hora e só uma vez. Peça um novo; leva um minuto.</p><a class="btn b-acid full go" href="#esqueci">Pedir um link novo</a><p class="alt"><a href="#entrar">Voltar para o login</a></p></div>'}
+};
+var CAP={entrar:['r1','O jogo <span>é aqui.</span>',['34 pessoas vão ver Fla × Pal no Bar do Zé','Seu código já está em Meus jogos']],criar:['r2','Escolha o jogo. <span>A gente acha o bar.</span>',['Grátis para torcedor','Bar entra com 120 dias de Elite, sem cartão']],confirme:['r3','Quase <span>lá.</span>',['Confirme o e-mail e escolha seus times']],'2fa':['r1','Conta <span>protegida.</span>',['Duas etapas ligadas']],esqueci:['r2','Bora <span>voltar.</span>',['A grade de hoje continua aberta, sem conta']],enviado:['r3','Confira o <span>e-mail.</span>',[]],nova:['r1','Senha <span>nova.</span>',[]],expirado:['r2','Sem <span>stress.</span>',[]]};
+var view=document.getElementById('view');
+function render(){var r=location.hash.slice(1)||'entrar';if(!V[r])r='entrar';view.innerHTML=V[r]();var c=CAP[r];document.getElementById('pic').src='a/'+c[0]+'.webp';document.getElementById('cap').innerHTML='<b>'+c[1]+'</b><ul>'+c[2].map(function(x){return '<li>'+ic('check',18)+x+'</li>'}).join('')+'</ul>';
+  document.getElementById('steps').innerHTML=SCREENS.map(function(s){return '<button type="button" class="'+(s[0]===r?'on':'')+'" data-go="'+s[0]+'">'+s[1]+'</button>'}).join('');
+  var b=document.getElementById('boxes');if(b)b.querySelector('input').focus({preventScroll:true});}
+addEventListener('hashchange',function(){S.err=false;render();scrollTo(0,0)});
+function bad(id,on){var el=document.getElementById(id);if(!el)return;el.parentNode.classList.toggle('bad',on);var m=document.getElementById(id+'-m');if(m)m.classList.toggle('on',on)}
+function busy(f,cb){var b=f.querySelector('[type=submit]');var t=b.textContent;b.setAttribute('aria-busy','true');b.textContent=b.dataset.busy;setTimeout(function(){b.removeAttribute('aria-busy');b.textContent=t;cb()},900)}
+document.addEventListener('submit',function(e){e.preventDefault();var f=e.target,k=f.dataset.form,ok=true;
+  var E=document.getElementById('e'),P=document.getElementById('p'),N=document.getElementById('n'),P2=document.getElementById('p2');
+  if(E){var v=/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(E.value);bad('e',!v);ok=ok&&v}
+  if(N){var vn=N.value.trim().length>1;bad('n',!vn);ok=ok&&vn}
+  if(P){var vp=k==='entrar'?P.value.length>0:P.value.length>=8;bad('p',!vp);ok=ok&&vp}
+  if(P2){var v2=P2.value===P.value;bad('p2',!v2);ok=ok&&v2}
+  if(k==='2fa'){var code=[].map.call(f.querySelectorAll('#boxes input'),function(i){return i.value}).join('');var rc=document.getElementById('rc');var v3=rc?rc.value.trim().length>=8:code.length===6;var bx=document.getElementById('boxes');if(bx)bx.classList.toggle('bad',!v3);document.getElementById('tfa-m').classList.toggle('on',!v3);ok=ok&&v3}
+  if(!ok){var first=f.querySelector('.bad input,.boxes.bad input');if(first)first.focus();return}
+  busy(f,function(){location.hash={entrar:'2fa',criar:'confirme','2fa':'entrar',esqueci:'enviado',nova:'entrar'}[k];if(k==='2fa'||k==='nova')toast(k==='nova'?'Senha nova salva. Você entrou.':'Pronto, você entrou.')});
+});
+document.addEventListener('click',function(e){var t;
+  if(t=e.target.closest('[data-go]')){location.hash=t.dataset.go;return}
+  if(t=e.target.closest('[data-role]')){S.role=t.dataset.role;var keep={};['n','e','p'].forEach(function(i){var el=document.getElementById(i);if(el)keep[i]=el.value});render();for(var i in keep)document.getElementById(i).value=keep[i];return}
+  if(t=e.target.closest('[data-tfa]')){S.tfa=t.dataset.tfa;render();return}
+  if(t=e.target.closest('[data-eye]')){var i=document.getElementById(t.dataset.eye),sh=i.type==='password';i.type=sh?'text':'password';t.textContent=sh?'Ocultar':'Mostrar';t.setAttribute('aria-label',sh?'Ocultar senha':'Mostrar senha');return}
+  if(t=e.target.closest('[data-errdemo]')){e.preventDefault();S.err=true;render();return}
+  if(t=e.target.closest('[data-resend]')){var tx=t.textContent;t.setAttribute('aria-busy','true');t.textContent=t.dataset.busy;setTimeout(function(){t.removeAttribute('aria-busy');t.textContent='Link reenviado';setTimeout(function(){t.textContent=tx},2400)},800);return}
+  if(t=e.target.closest('[data-next]')){toast(t.dataset.next==='cadastro'?'Próximo passo: o cadastro do bar, no painel.':'Próximo passo: escolher esportes, times e raio.');return}
+  if(e.target.id==='toplink'){e.preventDefault();toast('Leva ao Explorar, aberto sem conta.')}
+});
+document.addEventListener('input',function(e){var t=e.target;
+  if(t.closest('#boxes')){t.value=t.value.replace(/\D/g,'');if(t.value&&t.nextElementSibling)t.nextElementSibling.focus();var all=[].map.call(document.querySelectorAll('#boxes input'),function(i){return i.value}).join('');if(all.length===6)t.form.requestSubmit();return}
+  if(t.id==='p'){var s=t.value.length,sc=s>=14?4:s>=10?3:s>=8?2:s>0?1:0;[].forEach.call(document.querySelectorAll('.meter i'),function(i,k){i.classList.toggle('on',k<sc)});var ph=document.getElementById('ph');if(ph)ph.textContent=['Use 8 ou mais caracteres. Uma frase fácil de lembrar vale.','Curta demais: faltam '+(8-s)+'.','Boa. Mais alguns caracteres deixam ainda melhor.','Forte.','Muito forte.'][sc];if(t.parentNode.classList.contains('bad')&&s>=8)bad('p',false)}
+});
+document.addEventListener('keydown',function(e){if(e.key==='Backspace'&&e.target.closest&&e.target.closest('#boxes')&&!e.target.value&&e.target.previousElementSibling)e.target.previousElementSibling.focus()});
+document.addEventListener('paste',function(e){var t=e.target;if(!t.closest||!t.closest('#boxes'))return;var d=(e.clipboardData.getData('text')||'').replace(/\D/g,'').slice(0,6);if(d.length<2)return;e.preventDefault();[].forEach.call(document.querySelectorAll('#boxes input'),function(i,k){i.value=d[k]||''});if(d.length===6)t.form.requestSubmit()});
+var tt,to=document.createElement('div');to.setAttribute('role','status');to.style.cssText='position:fixed;left:50%;top:20px;transform:translate(-50%,-160%);z-index:90;background:#12120f;color:#f1eee6;border-radius:16px;padding:13px 18px;box-shadow:0 4px 0 #000;transition:transform .4s cubic-bezier(.16,1,.3,1);font-size:15px;max-width:calc(100% - 32px)';document.body.appendChild(to);
+function toast(s){to.textContent=s;to.style.transform='translate(-50%,0)';clearTimeout(tt);tt=setTimeout(function(){to.style.transform='translate(-50%,-160%)'},3200)}
+render();
+})();
+</script>

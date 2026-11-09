@@ -262,6 +262,13 @@ export function describe(entry: GrimorioEntry): {
         text: `aprovou uma foto de ${label}`,
         detail: detail.cover ? 'virou a capa' : null
       }
+    case 'bar.photo_reject':
+      return {
+        icon: 'warn',
+        tone: 'live',
+        text: `recusou uma foto de ${label}`,
+        detail: typeof detail.reason === 'string' ? detail.reason : null
+      }
     case 'bar.description_approve':
       return {
         icon: 'check',
@@ -288,13 +295,6 @@ export function describe(entry: GrimorioEntry): {
         icon: 'warn',
         tone: 'live',
         text: `recusou um comentário sobre ${label}`,
-        detail: typeof detail.reason === 'string' ? detail.reason : null
-      }
-    case 'bar.photo_reject':
-      return {
-        icon: 'warn',
-        tone: 'live',
-        text: `recusou uma foto de ${label}`,
         detail: typeof detail.reason === 'string' ? detail.reason : null
       }
     default:

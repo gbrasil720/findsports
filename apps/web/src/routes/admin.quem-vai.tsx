@@ -1,17 +1,16 @@
 import { createFileRoute, Navigate } from '@tanstack/react-router'
-import { useShowsGoing } from '@/components/admin/admin-queries'
-import { QuemVaiPage } from '@/components/painel-jogos/quem-vai-page'
+import { usePainel } from '@/components/painel/painel-shell'
+import { QuemVaiPage } from '@/components/painel/quem-vai'
 
 export const Route = createFileRoute('/admin/quem-vai')({
-  head: () => ({
-    meta: [{ title: 'Quem vai — Painel do Bar — Onside' }]
-  }),
-  component: QuemVaiRoute
+  head: () => ({ meta: [{ title: 'Quem vai — Onside' }] }),
+  component: QuemVai
 })
 
-function QuemVaiRoute() {
-  const showsGoing = useShowsGoing()
-  // Sem Elite e sem código em aberto a seção não existe: cai em Hoje.
-  if (showsGoing === false) return <Navigate to="/admin" replace />
-  return showsGoing ? <QuemVaiPage /> : null
+function QuemVai() {
+  const { showsGoing, goingKnown } = usePainel()
+  // Sem Elite e sem código em aberto a seção não existe: volta a Hoje, depois
+  // de o plano e os códigos em aberto responderem.
+  if (showsGoing) return <QuemVaiPage />
+  return goingKnown ? <Navigate to="/admin" replace /> : null
 }

@@ -6,6 +6,7 @@ import {
   amenitiesByGroup,
   findAmenity,
   HIDDEN_AMENITY_IDS,
+  MAX_AMENITY_IDS,
   MAX_SCREEN_COUNT,
   motivoTelasInvalido,
   normalizeAmenityIds,
@@ -25,6 +26,10 @@ describe('vocabulário de características', () => {
     for (const id of HIDDEN_AMENITY_IDS) {
       expect(AMENITIES.some((amenity) => amenity.id === id)).toBe(false)
     }
+  })
+
+  it('a escrita aceita todos os ids conhecidos, escondidos inclusive', () => {
+    expect(MAX_AMENITY_IDS).toBe(AMENITIES.length + HIDDEN_AMENITY_IDS.length)
   })
 
   it('segue os grupos do design (2c)', () => {

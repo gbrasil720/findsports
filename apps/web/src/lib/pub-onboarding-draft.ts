@@ -6,9 +6,9 @@ import {
   type Uf
 } from '@findsports_oficial/api/lib/bar-profile-validation'
 import {
-  type OpeningHours,
-  openingHoursSchema
-} from '@findsports_oficial/api/lib/opening-hours'
+  type Routine,
+  readRoutine
+} from '@findsports_oficial/api/lib/pub-routine'
 import { getErrorCode, getUserFacingMessage } from '@/lib/user-facing-error'
 
 export const PUB_ONBOARDING_DRAFT_KEY = 'onside:pub-onboarding-draft'
@@ -30,15 +30,17 @@ export type PubOnboardingDraft = {
   description?: string
   amenities?: number[]
   screenCount?: number
-  /** Da Revisão (WEB-448); opcionais, como no Meu espaço. */
-  openingHours?: OpeningHours | null
-  houseOffer?: string
   /**
    * Passo do wizard em que o dono parou, gravado enquanto ele preenche. Ausente
    * no rascunho que passou pela revisão — o formato de antes, e o único que
    * `/verify-email` envia sozinho. Não vai ao servidor.
    */
   step?: number
+  /**
+   * "Sua rotina". Vai ao `completePub`, que grava no bar e começa o teste no
+   * plano que ela recomenda; o dono escolhe o plano depois do primeiro jogo.
+   */
+  routine?: Routine
 }
 
 const mesmoEmail = (a: string, b: string) =>
@@ -88,18 +90,19 @@ export function parsePubOnboardingDraft(
       return null
     }
     // UF que não é sigla e passo que não é número saem sozinhos, sem derrubar
-    // o resto do rascunho.
-    // Horário fora do formato e oferta que não é texto também: o servidor
-    // recusaria o cadastro inteiro por eles.
-    const { step, openingHours, houseOffer } = parsed.draft
+    // o resto do rascunho. O plano do passo "Plano", que saiu, também.
+    const {
+      step,
+      plan: _plan,
+      ...draft
+    } = parsed.draft as PubOnboardingDraft & {
+      plan?: unknown
+    }
     return {
-      ...parsed.draft,
+      ...draft,
       uf: ehUf(parsed.draft.uf) ? parsed.draft.uf : undefined,
       step: Number.isInteger(step) && Number(step) > 0 ? step : undefined,
-      openingHours: openingHoursSchema.safeParse(openingHours).success
-        ? openingHours
-        : undefined,
-      houseOffer: typeof houseOffer === 'string' ? houseOffer : undefined
+      routine: readRoutine(parsed.draft.routine) ?? undefined
     }
   } catch {
     return null

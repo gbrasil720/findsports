@@ -1,0 +1,895 @@
+<title>Onside · onde vai ser o jogo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: a noite do jogo. Telão de LED (pontos) como mundo, telas reais do app como prova, papel e tinta alternando como dia e noite. */
+:root{
+  --ink:#12120f; --ink-2:#1c1c18; --ink-3:#2a2a24; --ink-line:#34342d;
+  --paper:#f1eee6; --stone:#e7e3db; --sand:#d9d4c8; --white:#fbfaf6;
+  --acid:#c9f135; --acid-2:#b4dc1c; --acid-deep:#5b6d0c;
+  --red:#e8320c; --red-ink:#f3421d; --spark:#e8320c;
+  --muted:#55554f; --muted-ink:#aaa9a4; --soft-ink:#c9c7c0;
+  --display:"Anton","Impact","Arial Narrow",sans-serif;
+  --body:"Archivo",ui-sans-serif,system-ui,-apple-system,sans-serif;
+  --mono:"Geist Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  --ease:cubic-bezier(.16,1,.3,1);
+  --gut:max(16px,env(safe-area-inset-left,0px));
+  --gut-r:max(16px,env(safe-area-inset-right,0px));
+  color-scheme:light;
+}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.55;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;overflow-x:hidden}
+*{box-sizing:border-box}
+img{max-width:100%;display:block}
+::selection{background:var(--acid);color:var(--ink)}
+a{color:inherit;text-underline-offset:3px;text-decoration-thickness:1.5px}
+:focus-visible{outline:3px solid var(--acid);outline-offset:3px;border-radius:6px}
+::-webkit-scrollbar{width:11px;height:11px}
+::-webkit-scrollbar-track{background:var(--ink)}
+::-webkit-scrollbar-thumb{background:var(--ink-3);border-radius:8px;border:3px solid var(--ink)}
+::-webkit-scrollbar-thumb:hover{background:var(--acid-deep)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:60;background:var(--ink)}
+
+.wrap{max-width:1320px;margin:0 auto;padding-left:max(24px,var(--gut));padding-right:max(24px,var(--gut-r))}
+.disp{font-family:var(--display);font-weight:400;text-transform:uppercase;line-height:.98;letter-spacing:-.005em;margin:0;text-wrap:balance}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+h2.disp{font-size:clamp(46px,6.2vw,96px)}
+.lede{font-size:clamp(17px,1.35vw,20px);line-height:1.55;max-width:52ch;margin:0}
+
+/* ---------- botões (sombra sólida da marca, como no app) ---------- */
+.btn{--sh:var(--ink);display:inline-flex;align-items:center;justify-content:center;gap:10px;height:56px;padding:0 26px;border-radius:999px;border:0;font:700 16px/1 var(--body);cursor:pointer;text-decoration:none;white-space:nowrap;box-shadow:0 4px 0 var(--sh);transition:transform .18s var(--ease),box-shadow .18s var(--ease),background .2s}
+.btn:hover{transform:translateY(-2px);box-shadow:0 6px 0 var(--sh)}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--sh)}
+.btn-acid{background:var(--acid);color:var(--ink);--sh:#7f9a12}
+.btn-ink{background:var(--ink);color:var(--paper);--sh:#000}
+.btn-paper{background:var(--paper);color:var(--ink);--sh:#9c9889}
+.btn-ghost{background:transparent;color:inherit;box-shadow:inset 0 0 0 1.5px currentColor}
+.btn-ghost:hover{box-shadow:inset 0 0 0 1.5px currentColor;background:rgba(127,127,110,.12)}
+.btn svg{flex:none}
+
+/* ---------- navegação ---------- */
+.nav{position:fixed;z-index:50;top:calc(env(safe-area-inset-top,0px) + 14px);left:50%;transform:translateX(-50%);width:min(1240px,calc(100% - 32px));display:flex;align-items:center;justify-content:space-between;gap:16px;padding:8px 8px 8px 20px;border-radius:999px;background:rgba(18,18,15,.82);backdrop-filter:blur(14px) saturate(1.3);-webkit-backdrop-filter:blur(14px) saturate(1.3);box-shadow:inset 0 0 0 1px rgba(241,238,230,.08),0 18px 40px -24px rgba(0,0,0,.8);color:var(--paper);transition:background .35s,color .35s,box-shadow .35s}
+.nav.on-paper{background:rgba(241,238,230,.86);color:var(--ink);box-shadow:inset 0 0 0 1px rgba(18,18,15,.08),0 18px 40px -26px rgba(18,18,15,.45)}
+.nav .links{display:flex;gap:4px}
+.nav .links a{font:600 14.5px/1 var(--body);text-decoration:none;padding:11px 14px;border-radius:999px;transition:background .2s}
+.nav .links a:hover,.nav .links a.cur{background:rgba(127,127,110,.18)}
+.nav .right{display:flex;gap:6px;align-items:center}
+.nav .btn{height:44px;padding:0 18px;font-size:14.5px;box-shadow:0 3px 0 var(--sh)}
+.logo{display:flex;align-items:center;gap:9px;text-decoration:none;color:inherit}
+.logo svg{display:block}
+.logo b{font:400 25px/1 var(--display);letter-spacing:.01em}
+.logo i{display:inline-block;width:6px;height:6px;background:var(--red);margin-left:2px;vertical-align:baseline}
+
+/* ---------- telão de LED ---------- */
+.led{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+/* ---------- hero ---------- */
+.hero{--spark:#c9f135;position:relative;background:var(--ink);color:var(--paper);overflow:hidden;isolation:isolate}
+.hero .led{z-index:-2}
+.hero::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,rgba(18,18,15,.96) 0%,rgba(18,18,15,.84) 36%,rgba(18,18,15,.2) 64%,rgba(18,18,15,0) 100%),linear-gradient(0deg,rgba(18,18,15,1) 0%,rgba(18,18,15,0) 28%)}
+.hero-in{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:40px;align-items:center;padding-top:132px;padding-bottom:72px}
+.hero h1{font-size:clamp(68px,9.6vw,150px)}
+.hero h1 .r{color:var(--red-ink)}
+.hero h1 .w{display:inline-block}
+.hero .lede{color:var(--soft-ink);margin-top:26px}
+.live-pill{display:inline-flex;align-items:center;gap:10px;height:34px;padding:0 14px 0 10px;border-radius:999px;background:rgba(241,238,230,.08);box-shadow:inset 0 0 0 1px rgba(241,238,230,.14);font:500 13.5px/1 var(--mono);color:var(--paper);margin-bottom:26px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--red-ink);box-shadow:0 0 0 0 rgba(243,66,29,.6);animation:pulse 1.8s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(243,66,29,.55)}70%{box-shadow:0 0 0 9px rgba(243,66,29,0)}100%{box-shadow:0 0 0 0 rgba(243,66,29,0)}}
+
+/* busca */
+.search{position:relative;margin-top:34px;max-width:640px}
+.search form{display:flex;align-items:stretch;background:var(--paper);color:var(--ink);border-radius:26px;padding:7px;box-shadow:0 6px 0 #000,0 30px 60px -20px rgba(0,0,0,.6)}
+.field{flex:1 1 0;min-width:0;display:flex;flex-direction:column;justify-content:center;padding:8px 16px;border-radius:19px;transition:background .2s}
+.field:focus-within{background:var(--white)}
+.field+.field{border-left:1px solid var(--sand)}
+.field label{font:600 11.5px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px}
+.field select{padding-right:26px!important}
+.field select,.field input{appearance:none;-webkit-appearance:none;border:0;background:transparent;font:700 18px/1.2 var(--body);color:var(--ink);padding:0;width:100%;min-width:0;outline:none;cursor:pointer;text-overflow:ellipsis}
+.field .sel{position:relative}
+.field .sel::after{content:"";position:absolute;right:2px;top:50%;width:8px;height:8px;border-right:2px solid var(--ink);border-bottom:2px solid var(--ink);transform:translateY(-70%) rotate(45deg);pointer-events:none}
+.search .go{height:auto;min-height:62px;border-radius:20px;padding:0 24px;font-size:17px;box-shadow:0 4px 0 #7f9a12}
+.trigger{display:flex;gap:18px;flex-wrap:wrap;margin:16px 0 0 6px;font:500 13.5px/1.4 var(--mono);color:var(--muted-ink)}
+.trigger span{display:inline-flex;gap:7px;align-items:center}
+.trigger svg{color:var(--acid)}
+
+.results{margin-top:14px;background:var(--paper);color:var(--ink);border-radius:24px;overflow:hidden;box-shadow:0 30px 60px -20px rgba(0,0,0,.7);transform-origin:top center;animation:drop .5s var(--ease) both}
+@keyframes drop{from{opacity:0;transform:translateY(-8px) scale(.98)}to{opacity:1;transform:none}}
+.results header{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:16px 20px 10px}
+.results header b{font:400 22px/1 var(--display);text-transform:uppercase}
+.results header span{font:500 12.5px/1 var(--mono);color:var(--muted)}
+.rbar{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:14px;align-items:center;padding:12px 20px;border-top:1px solid var(--stone);animation:drop .5s var(--ease) both}
+.rbar .thumb{width:48px;height:48px;border-radius:12px;background:var(--ink);display:grid;place-items:center;font:400 17px/1 var(--display);color:var(--acid);overflow:hidden}
+.rbar b{display:block;font-size:16px;line-height:1.2}
+.rbar small{display:block;font-size:13px;color:var(--muted);line-height:1.35;margin-top:3px}
+.rbar .t{font:400 22px/1 var(--display);text-align:right}
+.rbar .t small{font:500 11px/1 var(--mono);margin-top:4px}
+.results footer{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px 12px 20px;background:var(--stone);font-size:14px}
+.results footer .btn{height:42px;font-size:14px;padding:0 16px}
+
+/* telefone */
+.phone{position:relative;width:100%;aspect-ratio:448/976;border-radius:15.5%/7.2%;padding:2.6%;background:#0a0a08;box-shadow:inset 0 0 0 1.5px #3a3a33,inset 0 0 0 4px #0a0a08,inset 0 0 0 5px #24241f,0 50px 90px -30px rgba(0,0,0,.75),0 20px 40px -20px rgba(0,0,0,.6)}
+.phone>img,.phone .screens{width:100%;height:100%;border-radius:13.4%/6.2%;object-fit:cover;overflow:hidden;position:relative;background:var(--paper)}
+.phone .screens img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transform:scale(1.04);transition:opacity .55s var(--ease),transform .8s var(--ease)}
+.phone .screens img.on{opacity:1;transform:none}
+.hero-phone{position:relative;justify-self:center;width:min(360px,100%);transform:rotate(-3.5deg);margin-top:20px}
+.float{--spark:#e8320c;position:absolute;z-index:3;display:flex;align-items:center;gap:10px;background:var(--paper);color:var(--ink);border-radius:18px;padding:10px 14px 10px 10px;box-shadow:0 4px 0 rgba(0,0,0,.55),0 24px 40px -18px rgba(0,0,0,.7);font-size:14px;line-height:1.3;white-space:nowrap;transform:rotate(3.5deg)}
+.float b{display:block;font-size:14px}
+.float small{color:var(--muted);font-size:12.5px}
+.float .av{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font:700 13px/1 var(--body);flex:none}
+.f1{left:-24%;top:20%;animation:bob 6s ease-in-out infinite}
+.f2{right:-16%;top:52%;animation:bob 7s ease-in-out -2s infinite}
+.f3{left:-10%;bottom:9%;background:var(--acid);animation:bob 6.5s ease-in-out -4s infinite}
+@keyframes bob{0%,100%{translate:0 0}50%{translate:0 -10px}}
+
+/* ticker */
+.ticker{position:relative;border-top:1px solid var(--ink-line);background:#0d0d0b;overflow:hidden;color:var(--acid);height:58px;display:flex;align-items:center}
+.ticker .track{display:flex;gap:0;white-space:nowrap;animation:marq 48s linear infinite;will-change:transform}
+.ticker .it{display:inline-flex;align-items:center;gap:14px;padding:0 28px;font:600 15px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;border-right:1px dashed rgba(201,241,53,.25)}
+.ticker .it .tm{color:var(--paper)}
+.ticker .it .lv{color:var(--red-ink)}
+.ticker .it .n{color:var(--muted-ink)}
+.ticker::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle,rgba(13,13,11,0) 0 1px,rgba(13,13,11,.55) 1.4px) 0 0/4px 4px}
+@keyframes marq{to{transform:translateX(-50%)}}
+
+/* ---------- seção problema (papel) ---------- */
+.sec{padding-top:clamp(88px,10vw,140px);padding-bottom:clamp(88px,10vw,140px)}
+.h2-2{display:block;color:var(--red)}
+.on-ink .h2-2{color:var(--acid)}
+.prob{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(40px,6vw,96px);align-items:center;margin-top:64px}
+.chat{position:relative;background:var(--white);border-radius:32px;padding:0 0 18px;box-shadow:0 2px 0 var(--sand),0 40px 80px -50px rgba(18,18,15,.45);overflow:hidden}
+.chat .top{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--stone)}
+.chat .grp{width:42px;height:42px;border-radius:50%;background:var(--ink);color:var(--acid);display:grid;place-items:center;font:400 16px/1 var(--display)}
+.chat .top b{display:block;font-size:16px}
+.chat .top small{font-size:13px;color:var(--muted)}
+.msgs{display:flex;flex-direction:column;gap:8px;padding:18px 18px 4px;min-height:470px}
+.m{max-width:78%;padding:9px 14px 10px;border-radius:20px 20px 20px 6px;background:var(--stone);font-size:15.5px;line-height:1.4;transform-origin:bottom left}
+.m .who{display:block;font:700 12.5px/1.2 var(--body);margin-bottom:3px}
+.m.me{align-self:flex-end;background:var(--ink);color:var(--paper);border-radius:20px 20px 6px 20px;transform-origin:bottom right}
+.m.typing{display:inline-flex;gap:4px;padding:14px 16px;width:auto}
+.m.typing i{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:typ 1s infinite}
+.m.typing i:nth-child(2){animation-delay:.15s}.m.typing i:nth-child(3){animation-delay:.3s}
+@keyframes typ{0%,60%,100%{opacity:.3;transform:none}30%{opacity:1;transform:translateY(-3px)}}
+.m.card{padding:0;overflow:hidden;background:var(--ink);color:var(--paper);max-width:86%;align-self:flex-end;border-radius:20px 20px 6px 20px}
+.m.card .in{padding:14px 16px}
+.m.card .url{font:500 11.5px/1 var(--mono);color:var(--acid)}
+.m.card .gm{font:400 26px/1 var(--display);text-transform:uppercase;margin-top:8px}
+.m.card .meta{font-size:13.5px;color:var(--soft-ink);margin-top:6px}
+.m.card .bars{display:flex;gap:6px;padding:0 16px 14px;flex-wrap:wrap}
+.m.card .bars span{font:600 12px/1 var(--body);padding:7px 10px;border-radius:999px;background:var(--ink-3)}
+.m.card .bars span.a{background:var(--acid);color:var(--ink)}
+.pop{animation:pop .5s var(--ease) both}
+@keyframes pop{from{opacity:0;transform:translateY(10px) scale(.92)}to{opacity:1;transform:none}}
+.replay{position:absolute;right:14px;top:14px;border:0;background:var(--stone);border-radius:999px;height:36px;padding:0 14px;font:600 13px/1 var(--body);cursor:pointer;color:var(--ink)}
+
+.pains{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.pains li{display:grid;grid-template-columns:52px minmax(0,1fr);gap:18px;align-items:start;padding:22px 0;border-top:1.5px solid var(--ink)}
+.pains li:last-child{border-bottom:1.5px solid var(--ink)}
+.pains .ic{width:52px;height:52px;border-radius:16px;background:var(--stone);display:grid;place-items:center}
+.pains b{display:block;font-size:20px;line-height:1.25}
+.pains p{margin:6px 0 0;color:var(--muted);font-size:16px}
+.verdict{margin-top:30px;display:flex;gap:16px;align-items:center;font:700 clamp(19px,1.6vw,22px)/1.35 var(--body)}
+.verdict .mark{--spark:#e8320c;flex:none;width:52px;height:52px;border-radius:16px;background:var(--acid);display:grid;place-items:center;box-shadow:0 4px 0 #7f9a12}
+
+/* ---------- como funciona (sticky) ---------- */
+.how{--spark:#c9f135;background:var(--ink);color:var(--paper);position:relative}
+.how-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,440px);gap:clamp(40px,7vw,120px);margin-top:72px}
+.steps{display:flex;flex-direction:column}
+.step{min-height:max(340px,44vh);display:flex;flex-direction:column;justify-content:center;padding:24px 0;opacity:.3;transition:opacity .5s var(--ease)}
+.step.on{opacity:1}
+.step .clock{font:600 15px/1 var(--mono);color:var(--acid);display:flex;align-items:center;gap:12px}
+.step .clock::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,rgba(201,241,53,.5),transparent)}
+.step h3{font:400 clamp(40px,4.6vw,68px)/.95 var(--display);text-transform:uppercase;margin:18px 0 0;text-wrap:balance}
+.step p{margin:20px 0 0;font-size:clamp(17px,1.3vw,19px);color:var(--soft-ink);max-width:46ch}
+.step .q{display:inline-block;align-self:flex-start;margin-top:20px;padding:12px 18px;border-radius:20px 20px 6px 20px;background:var(--paper);color:var(--ink);font-weight:600}
+.step .mphone{display:none}
+.facts{list-style:none;margin:26px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+.facts li{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 15px 0 12px;border-radius:999px;background:var(--ink-2);box-shadow:inset 0 0 0 1px var(--ink-line);font:600 14px/1 var(--body);color:var(--paper);--spark:var(--acid)}
+.facts li svg{color:var(--soft-ink)}
+
+.stick{position:sticky;top:calc(50vh - min(43vh,410px));height:min(86vh,820px);display:flex;flex-direction:column;align-items:center;gap:18px}
+.stick .phone{height:calc(100% - 64px);width:auto}
+.board{display:flex;align-items:center;gap:14px;font:600 13px/1 var(--mono);color:var(--muted-ink)}
+.digits{display:flex;gap:3px}
+.digits span{font:700 26px/1 var(--mono);color:var(--acid);background:#0b0b09;border-radius:6px;padding:7px 6px 6px;min-width:28px;text-align:center;box-shadow:inset 0 0 0 1px #2a2a24;text-shadow:0 0 12px rgba(201,241,53,.55)}
+.digits .c{background:none;box-shadow:none;padding:0;min-width:0;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:.2}}
+.mnav{display:none;align-items:center;justify-content:space-between;gap:14px;margin-top:26px}
+.mnav .digits span{font-size:20px;min-width:22px;padding:6px 5px 5px}
+.mnav .mhint{font:500 13px var(--mono);color:var(--muted-ink);display:flex;gap:8px;align-items:center}
+.mnav .prog i{width:16px}
+.mnav .prog i.on{width:30px}
+.rail{position:absolute;left:max(24px,var(--gut));top:0;bottom:0;width:2px}
+.prog{display:flex;gap:6px;margin-top:2px}
+.prog i{width:22px;height:4px;border-radius:4px;background:var(--ink-3);transition:background .3s,width .4s var(--ease)}
+.prog i.on{background:var(--acid);width:40px}
+
+/* ---------- anotado ---------- */
+.anno{position:relative;margin-top:72px;display:grid;grid-template-columns:minmax(0,1fr) 340px minmax(0,1fr);gap:56px;align-items:center}
+.anno .col{display:flex;flex-direction:column;gap:clamp(34px,6vw,92px)}
+.anno .col.l{text-align:right;align-items:flex-end}
+.note{position:relative;max-width:300px;padding:18px 20px;background:var(--white);border-radius:20px;box-shadow:0 3px 0 var(--sand),0 24px 40px -30px rgba(18,18,15,.5)}
+.note .n{position:absolute;top:-12px;width:28px;height:28px;border-radius:50%;background:var(--ink);color:var(--acid);display:grid;place-items:center;font:700 13px/1 var(--mono)}
+.col.l .note .n{right:16px}.col.r .note .n{left:16px}
+.note b{display:block;font-size:17px;line-height:1.25}
+.note p{margin:6px 0 0;font-size:14.5px;color:var(--muted);line-height:1.5}
+.anno svg.lines{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.anno svg.lines path{fill:none;stroke:var(--ink);stroke-width:1.5;stroke-dasharray:4 5}
+.anno svg.lines circle{fill:var(--acid);stroke:var(--ink);stroke-width:2}
+.anno .phone{z-index:1}
+.target{position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;z-index:2;pointer-events:none}
+.target::before,.target::after{content:"";position:absolute;inset:0;border-radius:50%;border:2px solid var(--acid);background:rgba(201,241,53,.25)}
+.target::after{animation:ring 2.4s var(--ease) infinite}
+@keyframes ring{from{transform:scale(.6);opacity:1}to{transform:scale(1.8);opacity:0}}
+.target span{position:absolute;inset:7px;border-radius:50%;background:var(--ink);color:var(--acid);display:grid;place-items:center;font:700 10px/1 var(--mono);z-index:1}
+
+/* ---------- esportes ---------- */
+.sports{background:var(--acid);color:var(--ink);overflow:hidden;padding:44px 0;border-block:2px solid var(--ink)}
+.row{display:flex;white-space:nowrap;width:max-content}
+.row.a{animation:marq 38s linear infinite}
+.row.b{animation:marq 46s linear infinite reverse;margin-top:6px}
+.row span{display:inline-flex;align-items:center;gap:30px;padding-right:30px;font:400 clamp(56px,8vw,120px)/1.02 var(--display);text-transform:uppercase}
+.row.b span{color:transparent;-webkit-text-stroke:2px var(--ink)}
+.row svg{flex:none}
+
+/* ---------- verificada ---------- */
+.ver{position:relative;background:var(--ink);color:var(--paper);overflow:hidden;isolation:isolate}
+.ver .led{z-index:-2;opacity:.9}
+.ver::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,rgba(18,18,15,.96) 0%,rgba(18,18,15,.82) 48%,rgba(18,18,15,.55) 100%)}
+.ver-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:clamp(40px,7vw,110px);align-items:center}
+.score{margin-top:44px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 28px;align-items:end;max-width:560px}
+.score .big{font:400 clamp(110px,12vw,170px)/.8 var(--display);letter-spacing:-.01em}
+.score .sub b{display:block;font:700 19px/1.3 var(--body)}
+.score .sub span{color:var(--muted-ink);font-size:15px}
+.bars5{grid-column:1/-1;display:flex;flex-direction:column;gap:7px;margin-top:22px}
+.bars5 div{display:grid;grid-template-columns:22px minmax(0,1fr) 40px;gap:10px;align-items:center;font:500 13px/1 var(--mono);color:var(--muted-ink)}
+.bars5 i{height:8px;border-radius:8px;background:var(--ink-3);overflow:hidden;position:relative}
+.bars5 i::after{content:"";position:absolute;inset:0;width:var(--w);background:var(--acid);border-radius:8px;transform-origin:left;transition:transform 1.2s var(--ease)}
+.bars5.pre i::after{transform:scaleX(0)}
+.weigh{grid-column:1/-1;margin-top:26px}
+.weigh p{margin:0 0 10px;font:600 12px/1 var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--muted-ink)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 15px;border-radius:999px;font:600 14px/1 var(--body);background:var(--acid);color:var(--ink)}
+.chip.neg{background:var(--ink-3);color:var(--paper)}
+.medal-wrap{position:relative;justify-self:center;width:min(440px,100%)}
+.stage{position:relative;width:100%;aspect-ratio:1/1.08;border-radius:50%;background:radial-gradient(circle at 50% 46%,rgba(201,241,53,.28) 0%,rgba(201,241,53,.08) 38%,rgba(18,18,15,0) 66%)}
+.stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:transparent;color-scheme:normal}
+.hint{position:absolute;left:50%;bottom:-2%;white-space:nowrap;transform:translateX(-50%);display:inline-flex;gap:8px;align-items:center;height:34px;padding:0 14px;border-radius:999px;background:rgba(241,238,230,.1);box-shadow:inset 0 0 0 1px rgba(241,238,230,.18);font:500 13px/1 var(--mono);color:var(--soft-ink);pointer-events:none;animation:nudge 2.6s ease-in-out infinite}
+@keyframes nudge{0%,100%{translate:0 0}50%{translate:6px 0}}
+.mpick{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:26px}
+.mpick button{height:40px;padding:0 15px;border-radius:999px;border:0;background:var(--ink-3);color:var(--paper);font:600 14px/1 var(--body);cursor:pointer;transition:background .2s,transform .2s var(--ease)}
+.mpick button:hover{transform:translateY(-1px)}
+.mpick button.on{background:var(--acid);color:var(--ink)}
+.confetti{position:absolute;inset:-12% -20%;pointer-events:none;z-index:2}
+.confetti i{position:absolute;width:12px;height:12px;animation:fall 7s linear infinite}
+@keyframes fall{0%{transform:translateY(-30px) rotate(0)}100%{transform:translateY(120px) rotate(320deg);opacity:0}}
+.medal-cap{position:relative;margin:18px auto 0;z-index:3;width:min(330px,100%);text-align:center;background:var(--paper);color:var(--ink);border-radius:20px;padding:16px 18px;box-shadow:0 4px 0 #000,0 30px 50px -20px rgba(0,0,0,.7);transform:rotate(-2deg)}
+.medal-cap b{display:block;font:400 22px/1 var(--display);text-transform:uppercase}
+.medal-cap p{margin:6px 0 0;font-size:13.5px;color:var(--muted);line-height:1.45}
+.medal-cap .lad{display:flex;gap:5px;margin-top:12px}
+.medal-cap .lad span{transition:background .4s}
+.medal-cap .lad span{flex:1;height:6px;border-radius:6px;background:var(--stone)}
+.medal-cap .lad span.on{background:var(--ink)}
+
+/* ---------- bares ---------- */
+.pub{background:var(--stone)}
+.pub-head{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:56px;align-items:end}
+.pub-head .tag{display:inline-flex;gap:10px;align-items:center;background:var(--ink);color:var(--paper);border-radius:999px;padding:8px 14px 8px 8px;font:600 14px/1 var(--body)}
+.pub-head .tag em{font-style:normal;background:var(--acid);color:var(--ink);border-radius:999px;padding:6px 10px;font:700 12px/1 var(--mono)}
+.browser{margin-top:64px;border-radius:22px;background:var(--ink);padding:0 0 0;box-shadow:0 6px 0 #000,0 60px 100px -50px rgba(18,18,15,.7);overflow:hidden;transform:perspective(1800px) rotateX(10deg) scale(.96);transform-origin:50% 0;transition:transform 1.2s var(--ease)}
+.browser.flat{transform:none}
+.browser .bar{display:flex;align-items:center;gap:8px;height:44px;padding:0 16px}
+.browser .bar i{width:11px;height:11px;border-radius:50%;background:#3a3a33}
+.browser .bar span{margin-left:14px;flex:0 1 380px;height:26px;border-radius:8px;background:#22221d;color:var(--muted-ink);font:500 12px/26px var(--mono);padding-left:12px;overflow:hidden}
+.browser img{width:100%;height:auto;aspect-ratio:1440/900}
+.pts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin-top:56px;border-top:1.5px solid var(--ink)}
+.pts div{padding:26px 28px 0 0}
+.pts div+div{padding-left:28px;border-left:1px solid var(--sand)}
+.pts b{display:block;font:400 30px/1 var(--display);text-transform:uppercase}
+.pts p{margin:12px 0 0;color:var(--muted);font-size:16px;max-width:36ch}
+.pub-cta{margin-top:56px;display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+.pub-cta small{font:500 14px/1.4 var(--mono);color:var(--muted)}
+
+/* ---------- FAQ ---------- */
+.faq-grid{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:clamp(40px,6vw,96px);align-items:start}
+.faq details{border-top:1.5px solid var(--ink)}
+.faq details:last-child{border-bottom:1.5px solid var(--ink)}
+.faq summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:24px;padding:24px 0;font:700 clamp(18px,1.5vw,21px)/1.3 var(--body)}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary .pm{flex:none;width:36px;height:36px;border-radius:50%;background:var(--stone);display:grid;place-items:center;transition:transform .35s var(--ease),background .2s}
+.faq details[open] summary .pm{transform:rotate(45deg);background:var(--acid)}
+.faq details p{margin:0 0 26px;max-width:62ch;color:var(--muted);font-size:17px}
+
+/* ---------- final ---------- */
+.final{position:relative;background:var(--ink);color:var(--paper);overflow:hidden;isolation:isolate;text-align:center}
+.final .led{z-index:-2}
+.final::before{content:"";position:absolute;inset:0;z-index:-1;background:radial-gradient(ellipse at center,rgba(18,18,15,.55) 0%,rgba(18,18,15,.9) 70%)}
+.final h2{font-size:clamp(84px,15vw,240px);line-height:1.02;padding-top:.06em}
+.final h2 .r{color:var(--red-ink)}
+.final .lede{margin:28px auto 0;color:var(--soft-ink)}
+.wait{margin:40px auto 0;display:flex;gap:8px;max-width:520px;background:var(--paper);border-radius:999px;padding:7px;box-shadow:0 5px 0 #000}
+.wait input{flex:1;min-width:0;border:0;background:transparent;padding:0 18px;font:600 17px var(--body);color:var(--ink);outline:none}
+.wait input::placeholder{color:#8a887f}
+.wait .btn{height:52px;box-shadow:0 3px 0 #7f9a12}
+.done{margin-top:16px;font:500 14px/1.4 var(--mono);color:var(--acid);min-height:20px}
+.final .alt{margin-top:22px;font-size:15px;color:var(--muted-ink)}
+
+footer.foot{background:var(--ink);color:var(--muted-ink);border-top:1px solid var(--ink-line)}
+.foot-in{display:flex;justify-content:space-between;align-items:center;gap:24px;flex-wrap:wrap;padding-block:34px calc(34px + env(safe-area-inset-bottom,0px))}
+.foot nav{display:flex;gap:24px;flex-wrap:wrap;font-size:14.5px}
+.foot nav a{text-decoration:none}.foot nav a:hover{color:var(--paper)}
+
+/* revelar */
+.rv{transition:opacity .9s var(--ease),transform .9s var(--ease)}
+.rv.pre{opacity:0;transform:translateY(28px)}
+.hero .w{animation:rise 1s var(--ease) both}
+@keyframes rise{from{opacity:0;transform:translateY(40%)}to{opacity:1;transform:none}}
+
+@media (max-width:1100px){
+  .nav .links{display:none}
+  .hero-in{grid-template-columns:1fr;padding-top:120px}
+  .hero::before{background:linear-gradient(180deg,rgba(18,18,15,.9) 0%,rgba(18,18,15,.78) 55%,rgba(18,18,15,.35) 80%,rgba(18,18,15,1) 100%)}
+  .hero-phone{width:min(300px,78%);margin-top:30px}
+  .f1{left:-30%}.f2{right:-22%}
+  .prob,.ver-grid,.pub-head,.faq-grid{grid-template-columns:1fr}
+  .anno{grid-template-columns:1fr;gap:28px}
+  .anno .phone{width:min(320px,100%);justify-self:center;order:-1}
+  .anno .col,.anno .col.l{text-align:left;align-items:stretch;gap:22px}
+  .anno svg.lines,.target{display:none}
+  .note{max-width:none}
+  .col.l .note .n{right:auto;left:16px}
+}
+@media (max-width:900px){
+  .how-grid{grid-template-columns:1fr;margin-top:30px}
+  .stick{display:none}
+  .how .sec{padding-bottom:64px!important}
+  .steps{flex-direction:row;overflow-x:auto;scroll-snap-type:x mandatory;gap:12px;margin:0 calc(-1*var(--gut-r)) 0 calc(-1*var(--gut));padding:4px var(--gut-r) 8px var(--gut);scrollbar-width:none;overscroll-behavior-x:contain}
+  .steps::-webkit-scrollbar{display:none}
+  .step{flex:0 0 86%;scroll-snap-align:center;min-height:0;opacity:1;padding:18px 18px 22px;border-radius:28px;background:var(--ink-2);box-shadow:inset 0 0 0 1px var(--ink-line);justify-content:flex-start}
+  .step .mphone{display:block;order:-1;width:68%;margin:0 auto 18px;box-shadow:inset 0 0 0 1.5px #3a3a33,0 30px 50px -24px rgba(0,0,0,.8)}
+  .step h3{font-size:30px;margin-top:12px}
+  .step p{font-size:15.5px;margin-top:10px}
+  .step .q{margin-top:12px;font-size:14px;padding:9px 14px}
+  .facts{margin-top:16px;gap:6px}
+  .facts li{height:34px;font-size:13px;background:var(--ink-3)}
+  .mnav{display:flex!important}
+  .pts{grid-template-columns:1fr}
+  .pts div,.pts div+div{padding:22px 0;border-left:0;border-bottom:1px solid var(--sand)}
+}
+@media (max-width:640px){
+  body{font-size:16px}
+  .wrap{padding-left:var(--gut);padding-right:var(--gut-r)}
+  .nav{width:calc(100% - 24px);padding-left:14px}
+  .nav .btn-ghost{display:none}
+  .hero h1{font-size:clamp(58px,17vw,84px)}
+  .search form{flex-direction:column;border-radius:24px}
+  .field+.field{border-left:0;border-top:1px solid var(--sand)}
+  .field{padding:12px 14px}
+  .search .go{min-height:56px;margin-top:6px}
+  .float{font-size:12.5px;padding:8px 12px 8px 8px}
+  .f1{left:-12%;top:8%}.f2{right:-8%;top:56%}.f3{left:-6%}
+  .msgs{min-height:430px}
+  .wait{flex-direction:column;border-radius:24px}
+  .wait input{height:52px}
+  .browser{transform:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+  .ticker .track,.row{animation:none!important}
+}
+</style>
+
+<nav class="nav" id="nav" aria-label="Principal">
+  <a class="logo" href="#top" aria-label="Onside, início">
+    <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="14" cy="14" r="10.5" fill="none" stroke="currentColor" stroke-width="4.2"/><circle cx="22.4" cy="22.6" r="4.6" fill="#e8320c"/></svg>
+    <b>ONSIDE<i></i></b>
+  </a>
+  <div class="links">
+    <a href="#como">Como funciona</a>
+    <a href="#bar-por-dentro">O que o bar mostra</a>
+    <a href="#para-bares">Para bares</a>
+    <a href="#perguntas">Perguntas</a>
+  </div>
+  <div class="right">
+    <a class="btn btn-ghost" href="#para-bares">Tenho um bar</a>
+    <a class="btn btn-acid" href="https://claude.ai/artifact/Xp9wkyzJTbs3SDNbw9Jeme" target="_blank" rel="noopener">Ver jogos de hoje</a>
+  </div>
+</nav>
+
+<main id="top">
+<!-- ================= HERO ================= -->
+<section class="hero" aria-labelledby="h1">
+  <canvas class="led" data-led="hero" data-mode="hero" aria-hidden="true"></canvas>
+  <div class="wrap hero-in">
+    <div>
+      <div class="live-pill"><span class="dot"></span>Hoje: 6 jogos com bar perto de você</div>
+      <h1 id="h1" class="disp"><span class="w" style="animation-delay:.05s">Onde</span> <span class="w" style="animation-delay:.12s">vai</span> <span class="w" style="animation-delay:.19s">ser</span> <span class="w r" style="animation-delay:.3s">o&nbsp;jogo?</span></h1>
+      <p class="lede">A Onside mostra quais bares perto de você vão passar cada partida, com telão, som ligado e quem já vai. Você escolhe o jogo, a gente acha o bar. Direto no navegador, sem baixar nada.</p>
+
+      <div class="search">
+        <form id="busca" role="search" aria-label="Buscar bares por jogo">
+          <div class="field">
+            <label for="q-jogo">Qual jogo</label>
+            <div class="sel"><select id="q-jogo"></select></div>
+          </div>
+          <div class="field">
+            <label for="q-onde">Onde</label>
+            <div class="sel"><select id="q-onde">
+              <option>Vila Madalena</option><option>Pinheiros</option><option>Moema</option><option>Tatuapé</option><option>Botafogo, Rio</option>
+            </select></div>
+          </div>
+          <button class="btn btn-acid go" type="submit">Ver bares
+            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.4 3.4 6.6 5.2 13.4 12l-6.8 6.8 1.8 1.8L17 12z" fill="currentColor" /></svg>
+          </button>
+        </form>
+        <div class="trigger">
+          <span><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="m4.2 12.4 1.8-1.8 4 4 8-8 1.8 1.8-9.8 9.8z" fill="currentColor" /></svg>Grátis, sem baixar app</span>
+          <span><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="m4.2 12.4 1.8-1.8 4 4 8-8 1.8 1.8-9.8 9.8z" fill="currentColor" /></svg>Grade publicada pelo próprio bar</span>
+        </div>
+        <div id="res" aria-live="polite"></div>
+      </div>
+    </div>
+
+    <div class="hero-phone">
+      <div class="float f1"><span class="av" style="background:#e8320c;color:#fff">M</span><span><b>Marina vai assistir</b><small>Bar do Zé · 21:30</small></span></div>
+      <div class="float f2"><span class="av" style="background:#12120f;color:#c9f135"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2.5" fill="currentColor" opacity="0.3" /> <rect x="8" y="18.6" width="8" height="2.4" rx="1.2" fill="currentColor" /> <path d="M4.5 6.5h15v8h-15z" fill="currentColor" opacity="0.55" /> <circle cx="18" cy="8.2" r="1.7" fill="var(--spark,#e8320c)" /></svg></span><span><b>3 telões, som ligado</b><small>informado pelo bar</small></span></div>
+      <div class="float f3"><span class="av" style="background:#12120f;color:#c9f135">34</span><span><b>pessoas vão</b><small style="color:#3d3d38">neste jogo, neste bar</small></span></div>
+      <div class="phone"><img src="a/tela-explorar.webp" alt="Tela Explorar do app Onside: mapa de Vila Madalena e Pinheiros com 8 bares com jogo hoje" width="448" height="976" fetchpriority="high"></div>
+    </div>
+  </div>
+  <div class="ticker" aria-label="Jogos de hoje">
+    <div class="track" id="ticker"></div>
+  </div>
+</section>
+
+<!-- ================= PROBLEMA ================= -->
+<section class="sec wrap" aria-labelledby="h-prob">
+  <h2 id="h-prob" class="disp rv">Toda semana, a mesma conversa no grupo. <span class="h2-2">E alguém chega num bar sem som.</span></h2>
+  <div class="prob">
+    <div class="chat rv" id="chat">
+      <div class="top"><span class="grp">FQ</span><span><b>Futebol de quarta</b><small>Lucas, Bia, Rafa, Marina, você</small></span></div>
+      <button class="replay" id="replay" type="button">Ver de novo</button>
+      <div class="msgs" id="msgs">
+        <div class="m"><span class="who" style="color:#c4290a">Lucas</span>clássico hoje 21:30, onde a gente vê?</div>
+        <div class="m"><span class="who" style="color:#5b6d0c">Bia</span>aquele boteco da esquina? não sei se passa</div>
+        <div class="m"><span class="who" style="color:#2f55c7">Rafa</span>da última vez a TV tava no outro jogo e sem som</div>
+        <div class="m"><span class="who" style="color:#8a3fb0">Marina</span>alguém liga lá pra perguntar?</div>
+        <div class="m card"><div class="in"><div class="url">onside.sh/jogo/corinthians-x-palmeiras</div><div class="gm">Cor × Pal hoje, 21:30</div><div class="meta">8 bares perto de Vila Madalena</div></div><div class="bars"><span class="a">Bar do Zé · 3 telões</span><span>Arquibancada · som ligado</span></div></div>
+        <div class="m"><span class="who" style="color:#c4290a">Lucas</span>Bar do Zé. 34 já marcaram, entre eles a Marina</div>
+        <div class="m"><span class="who" style="color:#8a3fb0">Marina</span>já to lá kkk</div>
+      </div>
+    </div>
+    <div>
+      <ul class="pains">
+        <li class="rv"><span class="ic"><svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" style="color:#12120f"><path fill-rule="evenodd" d="M12 2a7.5 7.5 0 0 1 7.5 7.5c0 5.5-7.5 12.5-7.5 12.5S4.5 15 4.5 9.5A7.5 7.5 0 0 1 12 2zm0 4.6a2.9 2.9 0 1 0 0 5.8 2.9 2.9 0 0 0 0-5.8z" fill="currentColor" /></svg></span><span><b>O mapa mostra o endereço.</b><p>Não diz se aquele bar vai passar o seu jogo, nem em qual TV.</p></span></li>
+        <li class="rv"><span class="ic"><svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" style="color:#12120f"><path fill-rule="evenodd" d="M8.6 4h6.8l1.5 2.4H20a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.4a2 2 0 0 1 2-2h3.1zM12 9a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" fill="currentColor" /></svg></span><span><b>O perfil do bar mostra o chopp.</b><p>A foto é de um sábado qualquer. O som do jogo, ninguém sabe.</p></span></li>
+        <li class="rv"><span class="ic"><svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" style="color:#12120f"><path d="m12 2.8 2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.6l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z" fill="currentColor" /></svg></span><span><b>A avaliação fala da comida.</b><p>Sobre lotação, telão e som em dia de clássico, quase nada.</p></span></li>
+      </ul>
+      <p class="verdict rv"><span class="mark"><svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" style="color:#12120f"><path d="m4.2 12.4 1.8-1.8 4 4 8-8 1.8 1.8-9.8 9.8z" fill="currentColor" /></svg></span>A Onside pergunta antes de você sair. Para o bar, jogo por jogo.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= COMO FUNCIONA ================= -->
+<section class="how on-ink" id="como" aria-labelledby="h-how">
+  <div class="wrap sec" style="padding-bottom:12vh">
+    <h2 id="h-how" class="disp rv">A noite do jogo, <span class="h2-2">das 18h ao balcão.</span></h2>
+    <div class="mnav" aria-hidden="true"><div class="digits" id="mdigits"><span>1</span><span>8</span><span class="c">:</span><span>0</span><span>0</span></div><div class="prog" id="mprog"><i class="on"></i><i></i><i></i><i></i><i></i></div><span class="mhint">deslize<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.4 3.4 6.6 5.2 13.4 12l-6.8 6.8 1.8 1.8L17 12z" fill="currentColor" /></svg></span></div>
+    <div class="how-grid">
+      <div class="steps" id="steps">
+        <article class="step on" data-i="0" data-t="18:00">
+          <div class="clock">18:00</div>
+          <h3>Veja o que passa hoje, perto de você</h3>
+          <p>O mapa abre no seu raio com os bares que publicaram jogo hoje. Vermelho é ao vivo. Toque e veja a grade da casa.</p>
+          <ul class="facts"><li><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M12 2a7.5 7.5 0 0 1 7.5 7.5c0 5.5-7.5 12.5-7.5 12.5S4.5 15 4.5 9.5A7.5 7.5 0 0 1 12 2zm0 4.6a2.9 2.9 0 1 0 0 5.8 2.9 2.9 0 0 0 0-5.8z" fill="currentColor" /></svg>Raio de 500 m a 5 km</li><li><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2.5" fill="currentColor" opacity="0.3" /> <rect x="8" y="18.6" width="8" height="2.4" rx="1.2" fill="currentColor" /> <path d="M4.5 6.5h15v8h-15z" fill="currentColor" opacity="0.55" /> <circle cx="18" cy="8.2" r="1.7" fill="var(--spark,#e8320c)" /></svg>Telão e som por jogo</li><li><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a7 7 0 0 1-7-7c0-4.6 3.5-6 3.5-10.5 3.5 2.3 4.7 4.7 4.7 7 1.2-1.2 1.7-2.3 1.7-3.5C17.2 10.3 19 12.6 19 15a7 7 0 0 1-7 7z" fill="currentColor" opacity="0.3" /> <path d="M12 22a3.6 3.6 0 0 1-3.6-3.6c0-2.4 1.8-3.4 2.4-5.4 2.6 1.5 4.8 3 4.8 5.4A3.6 3.6 0 0 1 12 22z" fill="currentColor" /></svg>Ao vivo em vermelho</li></ul>
+          <div class="mphone phone"><img src="a/tela-explorar.webp" alt="" loading="lazy" width="448" height="976"></div>
+        </article>
+        <article class="step" data-i="1" data-t="18:40">
+          <div class="clock">18:40</div>
+          <h3>Peça do seu jeito</h3>
+          <span class="q">Corinthians hoje com telão perto</span>
+          <p>A busca com IA entende o pedido, procura só nas grades dos bares e mostra de onde tirou cada resposta. Bar que ela não achou não aparece.</p>
+          <ul class="facts"><li><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M18.6 1.7Q19.3 4.7 22.3 5.4Q19.3 6.1 18.6 9.1Q17.9 6.1 14.9 5.4Q17.9 4.7 18.6 1.7Z" fill="currentColor" opacity="0.3" /> <path d="M10 5.4Q11.35 11.85 17.8 13.2Q11.35 14.55 10 21Q8.65 14.55 2.2 13.2Q8.65 11.85 10 5.4Z" fill="currentColor" /> <path d="M19.2 15.1Q19.7 17.3 21.9 17.8Q19.7 18.3 19.2 20.5Q18.7 18.3 16.5 17.8Q18.7 17.3 19.2 15.1Z" fill="var(--spark,#e8320c)" /></svg>Entende time, dia e lugar</li><li><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 2.5h9.5L19 7v14.5H5z" fill="currentColor" opacity="0.35" /> <path d="M14.5 2.5V7H19zM8 11h8v2H8zM8 15h6v2H8z" fill="currentColor" /></svg>Mostra de onde tirou</li><li><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="m4.2 12.4 1.8-1.8 4 4 8-8 1.8 1.8-9.8 9.8z" fill="currentColor" /></svg>Nada de bar inventado</li></ul>
+          <div class="mphone phone"><img src="a/tela-ia.webp" alt="" loading="lazy" width="448" height="976"></div>
+        </article>
+        <article class="step" data-i="2" data-t="19:10">
+          <div class="clock">19:10</div>
+          <h3>Confira o bar antes de sair</h3>
+          <p>Telão, som ligado, Premiere, área externa, oferta da casa e quem já vai. O próprio bar informa, para aquele jogo.</p>
+          <ul class="facts"><li><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2.5" fill="currentColor" opacity="0.3" /> <rect x="8" y="18.6" width="8" height="2.4" rx="1.2" fill="currentColor" /> <path d="M4.5 6.5h15v8h-15z" fill="currentColor" opacity="0.55" /> <circle cx="18" cy="8.2" r="1.7" fill="var(--spark,#e8320c)" /></svg>Telão, som, Premiere</li><li><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h11v13.5a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 5 19.5z" fill="currentColor" opacity="0.3" /> <path d="M16 9h2.2a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H16v-2h2v-4h-2z" fill="currentColor" opacity="0.3" /> <path d="M5 11h11v8.5a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 5 19.5z" fill="currentColor" /> <circle cx="7.4" cy="5.6" r="2.6" fill="var(--spark,#e8320c)" /> <circle cx="11" cy="4.6" r="2.9" fill="var(--spark,#e8320c)" /> <circle cx="14.2" cy="5.8" r="2.3" fill="var(--spark,#e8320c)" /></svg>Oferta da casa</li><li><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><g fill="currentColor" opacity="0.3"> <circle cx="16.5" cy="8" r="3.4" /> <path d="M12.5 20a5 5 0 0 1 9.5-1.8V20z" /> </g> <circle cx="9" cy="8" r="4" fill="currentColor" /> <path d="M2 20.5a7 7 0 0 1 14 0z" fill="currentColor" /></svg>Quem já vai</li></ul>
+          <div class="mphone phone"><img src="a/tela-bar.webp" alt="" loading="lazy" width="448" height="976"></div>
+        </article>
+        <article class="step" data-i="3" data-t="19:30">
+          <div class="clock">19:30</div>
+          <h3>Marque que vai</h3>
+          <p>“Vou assistir aqui” avisa os amigos e conta para o bar. Não é reserva de mesa: é você dizendo que vai estar lá.</p>
+          <ul class="facts"><li><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><g fill="currentColor" opacity="0.3"> <circle cx="16.5" cy="8" r="3.4" /> <path d="M12.5 20a5 5 0 0 1 9.5-1.8V20z" /> </g> <circle cx="9" cy="8" r="4" fill="currentColor" /> <path d="M2 20.5a7 7 0 0 1 14 0z" fill="currentColor" /></svg>Amigos veem que você vai</li><li><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 17V11a7 7 0 0 1 14 0v6l1.6 2H3.4z" fill="currentColor" opacity="0.3" /> <path d="M9.4 20a2.6 2.6 0 0 0 5.2 0z" fill="currentColor" /> <path d="M3.4 19 5 17h14l1.6 2z" fill="currentColor" /> <circle cx="18" cy="5.5" r="3.2" fill="var(--spark,#e8320c)" /></svg>Lembrete 3 h antes</li><li><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2.5" fill="currentColor" opacity="0.3" /> <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h13A2.5 2.5 0 0 1 21 7.5V10H3z" fill="currentColor" /> <rect x="7" y="2.5" width="2.4" height="5" rx="1.2" fill="currentColor" /> <rect x="14.6" y="2.5" width="2.4" height="5" rx="1.2" fill="currentColor" /> <rect x="13" y="13.5" width="4.5" height="4.5" rx="1" fill="var(--spark,#e8320c)" /></svg>Vai para a sua agenda</li></ul>
+          <div class="mphone phone"><img src="a/tela-vou.webp" alt="" loading="lazy" width="448" height="976"></div>
+        </article>
+        <article class="step" data-i="4" data-t="21:30">
+          <div class="clock">21:30</div>
+          <h3>Mostre o código no balcão</h3>
+          <p>Nos bares Elite, o código libera a oferta da casa. O garçom confere, a visita conta e a sua nota passa a valer.</p>
+          <ul class="facts"><li><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 6.5h19v3.2a2.3 2.3 0 0 0 0 4.6v3.2h-19v-3.2a2.3 2.3 0 0 0 0-4.6z" fill="currentColor" opacity="0.25" /> <path d="M15.5 6.5h6v3.2a2.3 2.3 0 0 0 0 4.6v3.2h-6z" fill="currentColor" /> <circle cx="8.6" cy="12" r="2" fill="var(--spark,#e8320c)" /></svg>Código de 6 letras</li><li><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h11v13.5a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 5 19.5z" fill="currentColor" opacity="0.3" /> <path d="M16 9h2.2a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H16v-2h2v-4h-2z" fill="currentColor" opacity="0.3" /> <path d="M5 11h11v8.5a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 5 19.5z" fill="currentColor" /> <circle cx="7.4" cy="5.6" r="2.6" fill="var(--spark,#e8320c)" /> <circle cx="11" cy="4.6" r="2.9" fill="var(--spark,#e8320c)" /> <circle cx="14.2" cy="5.8" r="2.3" fill="var(--spark,#e8320c)" /></svg>Oferta liberada na hora</li><li><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.8 2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.6l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z" fill="currentColor" /></svg>Sua nota passa a valer</li></ul>
+          <div class="mphone phone"><img src="a/tela-codigo.webp" alt="" loading="lazy" width="448" height="976"></div>
+        </article>
+      </div>
+      <div class="stick" aria-hidden="true">
+        <div class="board"><div class="digits" id="digits"><span>1</span><span>8</span><span class="c">:</span><span>0</span><span>0</span></div><div class="prog" id="prog"><i class="on"></i><i></i><i></i><i></i><i></i></div></div>
+        <div class="phone"><div class="screens" id="screens">
+          <img class="on" src="a/tela-explorar.webp" alt="" width="448" height="976">
+          <img src="a/tela-ia.webp" alt="" width="448" height="976" loading="lazy">
+          <img src="a/tela-bar.webp" alt="" width="448" height="976" loading="lazy">
+          <img src="a/tela-vou.webp" alt="" width="448" height="976" loading="lazy">
+          <img src="a/tela-codigo.webp" alt="" width="448" height="976" loading="lazy">
+        </div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= BAR POR DENTRO ================= -->
+<section class="sec wrap" id="bar-por-dentro" aria-labelledby="h-anno">
+  <h2 id="h-anno" class="disp rv">O que o bar não conta no Instagram, <span class="h2-2">a Onside mostra.</span></h2>
+  <div class="anno" id="anno">
+    <svg class="lines" id="lines" aria-hidden="true"></svg>
+    <div class="col l">
+      <div class="note rv" data-to="0"><span class="n">1</span><b>Quem vai, pelo nome</b><p>34 pessoas vão. Amigos aparecem pelo nome; estranhos, nunca.</p></div>
+      <div class="note rv" data-to="1"><span class="n">2</span><b>Está no bar? Faça check-in</b><p>A até 150 metros, no dia do jogo. Só quem esteve lá entra na nota.</p></div>
+      <div class="note rv" data-to="2"><span class="n">3</span><b>Telão e som, jogo por jogo</b><p>Telão, som ligado, Premiere, área externa. Marcado na partida, não no perfil.</p></div>
+    </div>
+    <div class="phone" id="annophone"><img src="a/tela-bar2.webp" alt="Página do Bar do Zé no app: jogo de hoje, check-in, características, oferta da casa e próximos jogos" width="448" height="976" loading="lazy">
+      <span class="target" style="left:86%;top:17%"><span>1</span></span>
+      <span class="target" style="left:79%;top:27.5%"><span>2</span></span>
+      <span class="target" style="left:50%;top:38.5%"><span>3</span></span>
+      <span class="target" style="left:13%;top:48.5%"><span>4</span></span>
+      <span class="target" style="left:22%;top:67%"><span>5</span></span>
+    </div>
+    <div class="col r">
+      <div class="note rv" data-to="3"><span class="n">4</span><b>Oferta da casa</b><p>Chopp em dobro até o intervalo, liberado pelo código no balcão.</p></div>
+      <div class="note rv" data-to="4"><span class="n">5</span><b>A grade da semana</b><p>NBA às 22h, Brasileirão na terça, Fórmula 1 na quarta. Tudo no mesmo lugar.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ESPORTES ================= -->
+<section class="sports" aria-label="Esportes na Onside">
+  <div class="row a" aria-hidden="true" id="rowA"></div>
+  <div class="row b" aria-hidden="true" id="rowB"></div>
+  <p style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Futebol, NBA, NFL, UFC, Fórmula 1, tênis, vôlei e NBB.</p>
+</section>
+
+<!-- ================= VERIFICADA ================= -->
+<section class="ver on-ink" aria-labelledby="h-ver">
+  <canvas class="led" data-led="crowd" data-mode="soft" aria-hidden="true"></canvas>
+  <div class="wrap sec ver-grid">
+    <div>
+      <h2 id="h-ver" class="disp rv">Nota de quem foi. <span class="h2-2">Não de quem passou na porta.</span></h2>
+      <p class="lede rv" style="color:var(--soft-ink);margin-top:26px">Só entra na nota quem validou o código no balcão ou fez check-in no bar. E a avaliação pergunta o que importa em dia de jogo: som, telão, lotação.</p>
+      <div class="score rv">
+        <div class="big">4,6</div>
+        <div class="sub"><b>Bar do Zé em dia de jogo</b><span>42 avaliações verificadas · 88% voltariam</span></div>
+        <div class="bars5 pre" id="bars5">
+          <div><span>5</span><i style="--w:68%"></i><span>68%</span></div>
+          <div><span>4</span><i style="--w:21%"></i><span>21%</span></div>
+          <div><span>3</span><i style="--w:7%"></i><span>7%</span></div>
+          <div><span>2</span><i style="--w:2%"></i><span>2%</span></div>
+          <div><span>1</span><i style="--w:2%"></i><span>2%</span></div>
+        </div>
+        <div class="weigh"><p>O que pesou</p><div class="chips"><span class="chip">Som do jogo</span><span class="chip">Telão</span><span class="chip">Atendimento</span><span class="chip neg">Lotado</span></div></div>
+      </div>
+    </div>
+    <div class="medal-wrap rv">
+      <div class="confetti" id="confetti" aria-hidden="true"></div>
+      <div class="stage">
+        <iframe id="medal3d" src="a/medalha.html#bar1" title="Medalha Primeira Rodada em 3D. Arraste para girar." loading="lazy"></iframe>
+        <span class="hint" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 12h16M8 8l-4 4 4 4M16 8l4 4-4 4"/></svg>Arraste para girar</span>
+      </div>
+      <div class="mpick" role="group" aria-label="Escolher medalha" id="mpick">
+        <button type="button" class="on" aria-pressed="true" data-id="bar1" data-n="Primeira Rodada" data-d="O primeiro jogo num bar pela Onside. O balcão validou, a medalha é sua." data-s="1">1 bar</button>
+        <button type="button" aria-pressed="false" data-id="bar5" data-n="Desbravador" data-d="Cinco bares diferentes. Cada um com a data e o lugar gravados no verso." data-s="2">5 bares</button>
+        <button type="button" aria-pressed="false" data-id="bar10" data-n="Rato de bar" data-d="Dez bares diferentes. Aqui já tem gente pedindo indicação para você." data-s="3">10 bares</button>
+        <button type="button" aria-pressed="false" data-id="bar25" data-n="Lenda do bairro" data-d="Vinte e cinco bares. Conta no ranking do mês com os amigos." data-s="4">25 bares</button>
+      </div>
+      <div class="medal-cap"><b id="mname">Primeira Rodada</b><p id="mdesc">O primeiro jogo num bar pela Onside. O balcão validou, a medalha é sua.</p><div class="lad" id="mlad"><span class="on"></span><span></span><span></span><span></span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PARA BARES ================= -->
+<section class="pub" id="para-bares" aria-labelledby="h-pub">
+  <div class="wrap sec">
+    <div class="pub-head">
+      <h2 id="h-pub" class="disp rv">Tem um bar? <span class="h2-2">Encha a casa em dia de jogo.</span></h2>
+      <div class="rv">
+        <span class="tag"><em>120 DIAS</em>de Elite grátis, sem cartão</span>
+        <p class="lede" style="margin-top:20px;color:#3d3d38">Publique a grade, apareça para quem procura aquele jogo perto de você e veja quem marcou que vai e quem chegou de verdade.</p>
+      </div>
+    </div>
+    <div class="browser rv" id="browser">
+      <div class="bar"><i></i><i></i><i></i><span>onside.sh/admin</span></div>
+      <img src="a/painel.webp" alt="Painel do bar na Onside: Hoje na casa, com jogos, quem vai assistir, códigos validados, a noite, oferta da casa e desempenho" width="2880" height="1800" loading="lazy">
+    </div>
+    <div class="pts">
+      <div class="rv"><b>Grade em minutos</b><p>Escolha o jogo no catálogo, marque telão e som e publique. Oferta da casa por jogo no Elite.</p></div>
+      <div class="rv"><b>Quem vai, quem chegou</b><p>Veja quantos marcaram que vão e quantos códigos o balcão validou, jogo a jogo.</p></div>
+      <div class="rv"><b>Público que se prova</b><p>Desempenho dos últimos 30 dias, comparado com o normal da sua casa naquele dia da semana.</p></div>
+    </div>
+    <div class="pub-cta rv">
+      <a class="btn btn-ink" href="#">Cadastrar meu bar</a>
+      <a href="#" style="font-weight:700">Ver planos Starter, Pro e Elite</a>
+      <small>Sem cartão no cadastro. Depois do teste, você escolhe.</small>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FAQ ================= -->
+<section class="sec wrap" id="perguntas" aria-labelledby="h-faq">
+  <div class="faq-grid">
+    <h2 id="h-faq" class="disp rv" style="font-size:clamp(46px,5.4vw,84px)">Antes de sair de casa, <span class="h2-2">tire a dúvida.</span></h2>
+    <div class="faq">
+      <details open><summary>É de graça para torcedor?<span class="pm" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style="color:#12120f"><path d="M10.75 4h2.5v6.75H20v2.5h-6.75V20h-2.5v-6.75H4v-2.5h6.75z" fill="currentColor" /></svg></span></summary><p>Sim. Quem paga plano é o bar. Para você, buscar, marcar presença e ganhar medalha não custa nada.</p></details>
+      <details><summary>Como sei que o bar vai mesmo passar o jogo?<span class="pm" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style="color:#12120f"><path d="M10.75 4h2.5v6.75H20v2.5h-6.75V20h-2.5v-6.75H4v-2.5h6.75z" fill="currentColor" /></svg></span></summary><p>A grade é publicada pelo próprio bar, partida por partida, dizendo se tem telão e se o som fica ligado. Quem foi avalia depois, e a nota mostra se o bar cumpriu.</p></details>
+      <details><summary>Dá para reservar mesa?<span class="pm" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style="color:#12120f"><path d="M10.75 4h2.5v6.75H20v2.5h-6.75V20h-2.5v-6.75H4v-2.5h6.75z" fill="currentColor" /></svg></span></summary><p>Não. “Vou assistir aqui” marca presença e, nos bares Elite, gera o código do balcão. Mesa continua sendo direto com o bar.</p></details>
+      <details><summary>Só futebol?<span class="pm" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style="color:#12120f"><path d="M10.75 4h2.5v6.75H20v2.5h-6.75V20h-2.5v-6.75H4v-2.5h6.75z" fill="currentColor" /></svg></span></summary><p>Não. NBA, NFL, UFC, Fórmula 1, tênis, vôlei e NBB também. Você segue os seus times e atletas e vê onde passa cada um.</p></details>
+      <details><summary>Meus amigos veem onde eu fui?<span class="pm" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style="color:#12120f"><path d="M10.75 4h2.5v6.75H20v2.5h-6.75V20h-2.5v-6.75H4v-2.5h6.75z" fill="currentColor" /></svg></span></summary><p>Só se você deixar. Em Privacidade você escolhe se todos, só amigos ou ninguém vê os bares e jogos. Quem não é seu amigo nunca vê o seu nome.</p></details>
+      <details><summary>Preciso baixar o app?<span class="pm" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style="color:#12120f"><path d="M10.75 4h2.5v6.75H20v2.5h-6.75V20h-2.5v-6.75H4v-2.5h6.75z" fill="currentColor" /></svg></span></summary><p>Não. Tudo funciona aqui no site, no celular ou no computador: buscar o jogo, marcar que vai, o código do balcão e a avaliação. O app para iPhone está chegando, com a mesma conta. Se quiser, avisamos no dia.</p></details>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FINAL ================= -->
+<section class="final" id="comecar" aria-labelledby="h-final">
+  <canvas class="led" data-led="scarf" data-mode="soft" aria-hidden="true"></canvas>
+  <div class="wrap sec">
+    <h2 id="h-final" class="disp rv">O jogo<br>é <span class="r">aqui.</span></h2>
+    <p class="lede rv">Os jogos de hoje já estão no site, com os bares perto de você. Sem baixar nada.</p>
+    <div class="rv" style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:34px"><a class="btn btn-acid" style="height:62px;padding:0 32px;font-size:18px" href="https://claude.ai/artifact/Xp9wkyzJTbs3SDNbw9Jeme" target="_blank" rel="noopener">Ver os jogos de hoje</a><a class="btn btn-ghost" style="height:62px;color:var(--paper)" href="https://claude.ai/artifact/Xp9wkyzJTbs3SDNbw9Jeme" target="_blank" rel="noopener">Criar conta grátis</a></div>
+    <p class="rv" style="margin:44px auto 0;max-width:46ch;color:var(--soft-ink);font-size:16px">O app para iPhone está chegando, com a mesma conta. Quer saber no dia? Um e-mail só.</p>
+    <form class="wait rv" id="wait" style="margin-top:16px">
+      <label for="email" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Seu e-mail</label>
+      <input id="email" type="email" required placeholder="seu@email.com" autocomplete="email">
+      <button class="btn btn-acid" type="submit">Me avise</button>
+    </form>
+    <p class="done" id="done" aria-live="polite"></p>
+    <p class="alt">Tem um bar? <a href="#para-bares" style="color:var(--paper);font-weight:700">Comece com 120 dias de Elite</a></p>
+  </div>
+</section>
+</main>
+
+<footer class="foot">
+  <div class="wrap foot-in">
+    <a class="logo" href="#top" aria-label="Onside, início" style="color:var(--paper)">
+      <svg width="26" height="26" viewBox="0 0 30 30" aria-hidden="true"><circle cx="14" cy="14" r="10.5" fill="none" stroke="currentColor" stroke-width="4.2"/><circle cx="22.4" cy="22.6" r="4.6" fill="#e8320c"/></svg>
+      <b style="font-size:22px">ONSIDE<i></i></b>
+    </a>
+    <nav aria-label="Rodapé"><a href="#">Guia</a><a href="#para-bares">Para bares</a><a href="#">Termos</a><a href="#">Privacidade</a></nav>
+    <span class="mono" style="font-size:13px">Feito em São Paulo · onside.sh</span>
+  </div>
+</footer>
+
+<script>
+window.LED=/*LED_DATA*/;
+(function(){
+  var reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- dados de exemplo ---------- */
+  var GAMES=[
+    {id:'cp',t:'21:30',g:'Corinthians × Palmeiras',c:'Brasileirão',live:false,n:8},
+    {id:'lc',t:'22:00',g:'Lakers × Celtics',c:'NBA',live:false,n:3},
+    {id:'ff',t:'AO VIVO',g:'Flamengo × Fluminense',c:'Brasileirão',live:true,n:11},
+    {id:'mc',t:'QUA 14:00',g:'McLaren no GP de São Paulo',c:'Fórmula 1',live:false,n:5},
+    {id:'ufc',t:'SÁB 23:00',g:'UFC 322 · card principal',c:'UFC',live:false,n:4},
+    {id:'sm',t:'SEX 19:00',g:'Sesi Bauru × Minas',c:'Superliga',live:false,n:2}
+  ];
+  var BARS={
+    cp:[['Bar do Zé','BZ','3 telões · som ligado · chopp em dobro','34 vão'],['Arquibancada Bar','AB','telão · área externa · Pix','19 vão'],['Casa da Torcida','CT','projetor · cozinha até tarde','12 vão']],
+    lc:[['Sports Central','SC','telão · NBA League Pass','9 vão'],['The Red Lion','RL','TVs · drinks · área coberta','6 vão'],['Bar do Zé','BZ','3 telões · som ligado','4 vão']],
+    ff:[['Espaço Central','EC','ao vivo agora · 2º tempo','27 lá'],['Arquibancada Bar','AB','ao vivo · som ligado','15 lá'],['Casa da Torcida','CT','ao vivo · telão','9 lá']],
+    mc:[['Bar do Zé','BZ','café da manhã · som ligado','14 vão'],['Sports Central','SC','telão · Premiere','8 vão'],['The Red Lion','RL','TVs · área externa','3 vão']],
+    ufc:[['Sports Central','SC','telão · card completo','21 vão'],['Casa da Torcida','CT','projetor · petiscos','10 vão'],['Bar do Zé','BZ','3 telões','7 vão']],
+    sm:[['Espaço Central','EC','telão · área coberta','6 vão'],['Bar do Zé','BZ','TV · som ligado','3 vão'],['Arquibancada Bar','AB','TV','2 vão']]
+  };
+
+  /* busca */
+  var sel=document.getElementById('q-jogo');
+  GAMES.forEach(function(g){var o=document.createElement('option');o.value=g.id;o.textContent=g.g;sel.appendChild(o)});
+  var res=document.getElementById('res');
+  document.getElementById('busca').addEventListener('submit',function(e){
+    e.preventDefault();
+    var g=GAMES.filter(function(x){return x.id===sel.value})[0];
+    var onde=document.getElementById('q-onde').value;
+    var h='<div class="results"><header><b>'+g.g+'</b><span>'+g.n+' bares perto de '+onde+'</span></header>';
+    BARS[g.id].forEach(function(b,i){
+      h+='<div class="rbar" style="animation-delay:'+(.08+i*.07)+'s"><span class="thumb">'+b[1]+'</span><span><b>'+b[0]+'</b><small>'+b[2]+' · '+b[3]+'</small></span><span class="t">'+(g.live?'<span style="color:#e8320c">AO VIVO</span>':g.t.replace(/^[A-ZÁ]+ /,''))+'<small>'+(g.live?'agora':(/^[A-ZÁ]/.test(g.t)?g.t.split(' ')[0].toLowerCase():'hoje'))+'</small></span></div>';
+    });
+    h+='<footer><span>Dados de exemplo. No site, a grade real de hoje.</span><a class="btn btn-ink" href="https://claude.ai/artifact/Xp9wkyzJTbs3SDNbw9Jeme" target="_blank" rel="noopener">Ver todos os bares</a></footer></div>';
+    res.innerHTML=h;
+  });
+
+  /* ticker */
+  var tk=document.getElementById('ticker'),th='';
+  for(var k=0;k<2;k++)GAMES.forEach(function(g){th+='<span class="it"><span class="'+(g.live?'lv':'tm')+'">'+(g.live?'● ':'')+g.t+'</span>'+g.g+'<span class="n">'+g.n+' bares</span></span>'});
+  tk.innerHTML=th;
+
+  /* esportes */
+  var ring='<svg width="0.7em" height="0.7em" viewBox="0 0 30 30" aria-hidden="true" style="width:.62em;height:.62em"><circle cx="14" cy="14" r="10.5" fill="none" stroke="#12120f" stroke-width="4.2"/><circle cx="22.4" cy="22.6" r="4.6" fill="#e8320c"/></svg>';
+  function rowHtml(list){var s='';for(var k=0;k<2;k++)list.forEach(function(w){s+='<span>'+w+ring+'</span>'});return s}
+  document.getElementById('rowA').innerHTML=rowHtml(['Futebol','NBA','NFL','UFC','Fórmula 1','Tênis','Vôlei','NBB']);
+  document.getElementById('rowB').innerHTML=rowHtml(['Corinthians','Flamengo','Palmeiras','São Paulo','Lakers','Celtics','McLaren','Ferrari','Sesi Bauru','Franca']);
+
+  /* nav sobre papel/tinta */
+  var nav=document.getElementById('nav');
+  var inks=[].slice.call(document.querySelectorAll('.hero,.how,.ver,.final,.foot'));
+  function navTone(){var y=nav.getBoundingClientRect().bottom-10,ink=false;inks.forEach(function(s){var r=s.getBoundingClientRect();if(r.top<=y&&r.bottom>=y)ink=true});nav.classList.toggle('on-paper',!ink)}
+  addEventListener('scroll',navTone,{passive:true});navTone();
+
+  /* revelar: só o que está abaixo da dobra ao carregar */
+  var io=('IntersectionObserver' in window)&&!reduce;
+  if(io){
+    var ro=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.remove('pre');ro.unobserve(e.target)}})},{rootMargin:'0px 0px -8% 0px'});
+    [].slice.call(document.querySelectorAll('.rv')).forEach(function(el,i){if(el.getBoundingClientRect().top>innerHeight){el.classList.add('pre');el.style.transitionDelay=((i%3)*.08)+'s';ro.observe(el)}});
+  }
+
+  /* chat em sequência */
+  var msgs=[].slice.call(document.querySelectorAll('#msgs .m')),box=document.getElementById('msgs'),timers=[];
+  function playChat(){
+    timers.forEach(clearTimeout);timers=[];
+    msgs.forEach(function(m){m.hidden=true;m.classList.remove('pop')});
+    var old=box.querySelector('.typing');if(old)old.remove();
+    var t=300;
+    msgs.forEach(function(m){
+      var me=m.classList.contains('card');
+      timers.push(setTimeout(function(){var ty=document.createElement('div');ty.className='m typing'+(me?' me':'');ty.innerHTML='<i></i><i></i><i></i>';ty.style.alignSelf=me?'flex-end':'flex-start';box.appendChild(ty)},t));
+      t+=me?1100:750;
+      timers.push(setTimeout(function(){var ty=box.querySelector('.typing');if(ty)ty.remove();m.hidden=false;m.classList.add('pop');box.appendChild(m)},t));
+      t+=350;
+    });
+  }
+  if(io){var chatDone=false;new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting&&!chatDone){chatDone=true;playChat()}})},{threshold:.35}).observe(document.getElementById('chat'))}
+  document.getElementById('replay').addEventListener('click',playChat);
+
+  /* passos com telefone fixo */
+  var steps=[].slice.call(document.querySelectorAll('.step')),scr=[].slice.call(document.querySelectorAll('#screens img')),prog=[].slice.call(document.querySelectorAll('#prog i')),dig=document.getElementById('digits');
+  function setStep(i){
+    steps.forEach(function(s,j){s.classList.toggle('on',j===i)});
+    scr.forEach(function(s,j){s.classList.toggle('on',j===i)});
+    prog.forEach(function(s,j){s.classList.toggle('on',j<=i)});
+    var t=steps[i].dataset.t;dig.innerHTML='<span>'+t[0]+'</span><span>'+t[1]+'</span><span class="c">:</span><span>'+t[3]+'</span><span>'+t[4]+'</span>';
+  }
+  /* o passo aceso é o que tem o título mais perto do meio da tela (rootMargin não vale dentro de iframe) */
+  var cur=0,ticking=false,heads=steps.map(function(s){return s.querySelector('h3')});
+  function pick(){ticking=false;var mid=innerHeight*.5,best=cur,bd=1e9;
+    heads.forEach(function(h,j){var r=h.getBoundingClientRect(),d=Math.abs(r.top+r.height/2-mid);if(d<bd){bd=d;best=j}});
+    if(best!==cur){cur=best;setStep(cur)}}
+  addEventListener('scroll',function(){if(!ticking){ticking=true;requestAnimationFrame(pick)}},{passive:true});
+  addEventListener('resize',pick);pick();
+  var stepsEl=document.getElementById('steps'),mdig=document.getElementById('mdigits'),mprog=[].slice.call(document.querySelectorAll('#mprog i')),mcur=-1;
+  function mpick(){if(getComputedStyle(stepsEl).flexDirection!=='row')return;var c=stepsEl.scrollLeft+stepsEl.clientWidth/2,best=0,bd=1e9;
+    steps.forEach(function(s,j){var d=Math.abs(s.offsetLeft+s.offsetWidth/2-c);if(d<bd){bd=d;best=j}});
+    if(best===mcur)return;mcur=best;var t=steps[best].dataset.t;mdig.innerHTML='<span>'+t[0]+'</span><span>'+t[1]+'</span><span class="c">:</span><span>'+t[3]+'</span><span>'+t[4]+'</span>';
+    mprog.forEach(function(s,j){s.classList.toggle('on',j<=best)})}
+  stepsEl.addEventListener('scroll',function(){requestAnimationFrame(mpick)},{passive:true});mpick();
+
+  /* linhas do anotado */
+  var anno=document.getElementById('anno'),svg=document.getElementById('lines'),ph=document.getElementById('annophone');
+  var targets=[].slice.call(ph.querySelectorAll('.target')),notes=[].slice.call(anno.querySelectorAll('.note'));
+  function drawLines(){
+    if(getComputedStyle(svg).display==='none')return;
+    var A=anno.getBoundingClientRect(),h='';
+    notes.forEach(function(n){
+      var tr=targets[+n.dataset.to].getBoundingClientRect(),nr=n.getBoundingClientRect(),left=n.parentNode.classList.contains('l');
+      var x1=(left?nr.right:nr.left)-A.left,y1=nr.top+nr.height/2-A.top,x2=tr.left+tr.width/2-A.left,y2=tr.top+tr.height/2-A.top,mx=x1+(left?28:-28);
+      h+='<path d="M'+x1+' '+y1+' L'+mx+' '+y1+' L'+x2+' '+y2+'"/><circle cx="'+x1+'" cy="'+y1+'" r="4.5"/>';
+    });
+    svg.innerHTML=h;
+  }
+  addEventListener('resize',drawLines);setTimeout(drawLines,300);addEventListener('load',drawLines);
+  if('IntersectionObserver' in window)new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting)setTimeout(drawLines,950)})}).observe(anno);
+
+  /* barras de nota e painel */
+  if(io){
+    new IntersectionObserver(function(es,o){es.forEach(function(e){if(e.isIntersecting){e.target.classList.remove('pre');o.disconnect()}})},{threshold:.4}).observe(document.getElementById('bars5'));
+    new IntersectionObserver(function(es,o){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('flat');o.disconnect()}})},{threshold:.25}).observe(document.getElementById('browser'));
+  } else {document.getElementById('bars5').classList.remove('pre');document.getElementById('browser').classList.add('flat')}
+
+  /* confete */
+  var cf=document.getElementById('confetti'),cols=['#c9f135','#e8320c','#12120f','#c9f135','#f1eee6'];
+  for(var c=0;c<16;c++){var i=document.createElement('i');i.style.left=(Math.random()*100)+'%';i.style.top=(Math.random()*60)+'%';i.style.background=cols[c%5];i.style.animationDelay=(-Math.random()*7)+'s';i.style.width=i.style.height=(6+Math.random()*8)+'px';cf.appendChild(i)}
+
+  /* medalha */
+  var mf=document.getElementById('medal3d'),mb=[].slice.call(document.querySelectorAll('#mpick button')),ml=[].slice.call(document.querySelectorAll('#mlad span'));
+  mb.forEach(function(b){b.addEventListener('click',function(){
+    mb.forEach(function(x){x.classList.toggle('on',x===b);x.setAttribute('aria-pressed',x===b)});
+    document.getElementById('mname').textContent=b.dataset.n;document.getElementById('mdesc').textContent=b.dataset.d;
+    ml.forEach(function(s,j){s.classList.toggle('on',j<+b.dataset.s)});
+    mf.title='Medalha '+b.dataset.n+' em 3D. Arraste para girar.';
+    try{mf.contentWindow.postMessage({medal:{id:b.dataset.id}},'*')}catch(e){mf.src='a/medalha.html#'+b.dataset.id}
+  })});
+
+  /* e-mail */
+  document.getElementById('wait').addEventListener('submit',function(e){e.preventDefault();var v=document.getElementById('email').value;document.getElementById('done').textContent='Anotado: '+v+'. Avisamos no dia em que sair.';this.reset()});
+
+  /* ---------- telão de LED ---------- */
+  function dec(b){var s=atob(b),a=new Uint8Array(s.length);for(var i=0;i<s.length;i++)a[i]=s.charCodeAt(i);return a}
+  var LV=10;
+  function Led(cv){
+    var d=window.LED[cv.dataset.led];this.cv=cv;this.ctx=cv.getContext('2d');this.c=d.c;this.r=d.r;this.l=dec(d.l);this.f=dec(d.f);this.soft=cv.dataset.mode==='soft';
+    var n=this.c*this.r;this.ph=new Float32Array(n);this.sp=new Float32Array(n);
+    for(var i=0;i<n;i++){this.ph[i]=Math.random()*6.28;this.sp[i]=Math.random()<.18?1.6+Math.random()*2.4:0}
+    this.mx=-9999;this.my=-9999;this.on=false;this.t0=performance.now();var me=this;
+    cv.parentNode.addEventListener('pointermove',function(e){var r=cv.getBoundingClientRect();me.mx=e.clientX-r.left;me.my=e.clientY-r.top});
+    cv.parentNode.addEventListener('pointerleave',function(){me.mx=me.my=-9999});
+    this.size();
+  }
+  Led.prototype.size=function(){
+    var dpr=Math.min(devicePixelRatio||1,2),W=this.cv.clientWidth,H=this.cv.clientHeight;
+    this.cv.width=W*dpr;this.cv.height=H*dpr;this.ctx.setTransform(dpr,0,0,dpr,0,0);this.W=W;this.H=H;
+    var p=Math.max(W/this.c,H/this.r);this.p=Math.max(p,5.5);this.ox=(W-this.c*this.p)/2;this.oy=(H-this.r*this.p)/2;
+  };
+  Led.prototype.draw=function(now){
+    var x=this.ctx,c=this.c,r=this.r,p=this.p,t=(now-this.t0)/1000,s=p*.78,o=(p-s)/2;
+    x.clearRect(0,0,this.W,this.H);
+    var bk=[],ba=[];for(var q=0;q<LV;q++){bk.push([]);ba.push([])}
+    var scan=((t*0.12)%1.4-.2)*this.H,mx=this.mx,my=this.my,R2=150*150,soft=this.soft;
+    for(var j=0;j<r;j++){var y=this.oy+j*p;if(y<-p||y>this.H)continue;
+      for(var i=0;i<c;i++){var k=j*c+i,xx=this.ox+i*p;if(xx<-p||xx>this.W)continue;
+        var v=this.l[k]/255;v=Math.pow(v,.9);
+        if(this.sp[k])v*=.75+.25*Math.sin(t*this.sp[k]+this.ph[k]);
+        var dy=y-scan;if(dy>-60&&dy<60)v+= .18*(1-Math.abs(dy)/60);
+        var dx=xx-mx,dd=dx*dx+(y-my)*(y-my);if(dd<R2)v+=.45*(1-dd/R2);
+        if(soft)v*=.72;
+        var lv=Math.min(LV-1,Math.floor(v*LV));if(lv<1)continue;
+        (this.f[k]||v>.93?ba:bk)[lv].push(xx+o,y+o);
+      }}
+    for(var q=1;q<LV;q++){
+      var a=q/(LV-1);
+      if(bk[q].length){x.fillStyle='rgba(241,238,230,'+(a*.82).toFixed(3)+')';x.beginPath();for(var m=0;m<bk[q].length;m+=2)x.rect(bk[q][m],bk[q][m+1],s,s);x.fill()}
+      if(ba[q].length){x.fillStyle='rgba(201,241,53,'+Math.min(1,a*1.05+.1).toFixed(3)+')';x.beginPath();for(var m2=0;m2<ba[q].length;m2+=2)x.rect(ba[q][m2],ba[q][m2+1],s,s);x.fill()}
+    }
+  };
+  var leds=[].slice.call(document.querySelectorAll('canvas[data-led]')).map(function(cv){return new Led(cv)});
+  var last=0;
+  function loop(now){requestAnimationFrame(loop);if(now-last<33)return;last=now;leds.forEach(function(l){if(l.on)l.draw(now)})}
+  leds.forEach(function(l){l.draw(performance.now())});
+  if(!reduce){
+    if('IntersectionObserver' in window){var lo=new IntersectionObserver(function(es){es.forEach(function(e){leds.forEach(function(l){if(l.cv===e.target)l.on=e.isIntersecting})})});leds.forEach(function(l){lo.observe(l.cv)})}else leds.forEach(function(l){l.on=true});
+    requestAnimationFrame(loop);
+  }
+  var rt;addEventListener('resize',function(){clearTimeout(rt);rt=setTimeout(function(){leds.forEach(function(l){l.size();l.draw(performance.now())})},120)});
+})();
+</script>
+
+<style>
+.pv-btn{position:fixed;right:max(20px,env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:200;display:flex;gap:9px;align-items:center;height:48px;padding:0 20px 0 16px;border-radius:999px;border:0;background:#12120f;color:#f1eee6;font:700 14.5px/1 Archivo,system-ui,sans-serif;box-shadow:0 4px 0 #000,0 18px 30px -12px rgba(0,0,0,.5);cursor:pointer;transition:transform .18s cubic-bezier(.16,1,.3,1)}
+.pv-btn:hover{transform:translateY(-2px)}
+@media (max-width:900px){.pv-btn{display:none}}
+.pv{position:fixed;inset:0;z-index:300;background:rgba(18,18,15,.72);display:flex;align-items:center;justify-content:center;gap:28px;animation:pvin .35s cubic-bezier(.16,1,.3,1)}
+@keyframes pvin{from{opacity:0}}
+.pv-frame{flex:none;width:414px;height:868px;border-radius:58px;background:#0a0a08;padding:12px;box-shadow:inset 0 0 0 2px #3a3a33,0 60px 120px -30px rgba(0,0,0,.8);transform-origin:center}
+.pv-frame iframe{display:block;width:390px;height:844px;border:0;border-radius:46px;background:#f1eee6}
+.pv-side{color:#f1eee6;font:500 14px/1.5 Archivo,system-ui,sans-serif;max-width:220px}
+.pv-side b{display:block;font:400 30px/1 Anton,Impact,sans-serif;text-transform:uppercase;margin-bottom:10px}
+.pv-x{margin-top:18px;height:44px;padding:0 18px;border-radius:999px;border:0;background:#c9f135;color:#12120f;font:700 14px Archivo,sans-serif;box-shadow:0 4px 0 #7f9a12;cursor:pointer}
+</style>
+<script>
+(function(){
+  var framed=false;try{framed=window.parent!==window&&!!window.parent.__ONS_PV}catch(e){}
+  if(framed)return;
+  var b=document.createElement('button');b.type='button';b.className='pv-btn';
+  b.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></svg>Ver no celular';
+  document.body.appendChild(b);
+  b.addEventListener('click',function(){
+    window.__ONS_PV=true;
+    var o=document.createElement('div');o.className='pv';o.setAttribute('role','dialog');o.setAttribute('aria-label','Prévia no celular');
+    o.innerHTML='<div class="pv-frame"><iframe title="Página em 390 px" src="'+location.href.split('#')[0]+(location.hash||'')+'"></iframe></div><div class="pv-side"><b>No celular</b>390 × 844, como num iPhone. Role, toque e arraste dentro da moldura.<br><button type="button" class="pv-x">Fechar prévia</button></div>';
+    document.body.appendChild(o);
+    var f=o.querySelector('.pv-frame');function fit(){var s=Math.min(1,(innerHeight-40)/868);f.style.transform='scale('+s+')';f.style.margin=(-(868*(1-s))/2)+'px '+(-(414*(1-s))/2)+'px'}fit();addEventListener('resize',fit);
+    function close(){o.remove();removeEventListener('resize',fit);document.removeEventListener('keydown',k);b.focus()}
+    function k(e){if(e.key==='Escape')close()}
+    o.querySelector('.pv-x').addEventListener('click',close);o.addEventListener('click',function(e){if(e.target===o)close()});document.addEventListener('keydown',k);
+    o.querySelector('.pv-x').focus();
+  });
+})();
+</script>

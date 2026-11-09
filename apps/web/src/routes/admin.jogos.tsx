@@ -1,38 +1,21 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useCallback } from 'react'
-import { JogosPage } from '@/components/painel-jogos/jogos-page'
+import { JogosPage } from '@/components/painel/jogos'
 
 export const Route = createFileRoute('/admin/jogos')({
-  // `?jogo=<id>` abre o jogo; `?novo=1` abre o formulário de jogo novo
-  // ("Novo jogo" do Hoje, fim do onboarding); `?passados=1` abre a aba
-  // Passados (o "Ver os jogos" do Desempenho).
+  head: () => ({ meta: [{ title: 'Jogos — Onside' }] }),
+  // `?jogo=<id>` abre um jogo (os links de Hoje); `?passados=1`, Passados.
   validateSearch: (
     search: Record<string, unknown>
-  ): { jogo?: string; novo?: 1; passados?: 1 } => ({
+  ): { jogo?: string; passados?: 1 } => ({
     ...(typeof search.jogo === 'string' ? { jogo: search.jogo } : {}),
-    ...(String(search.novo) === '1' ? { novo: 1 as const } : {}),
-    ...(String(search.passados) === '1' ? { passados: 1 as const } : {})
+    ...(search.passados === 1 || search.passados === '1'
+      ? { passados: 1 as const }
+      : {})
   }),
-  head: () => ({
-    meta: [{ title: 'Jogos — Painel do Bar — Onside' }]
-  }),
-  component: JogosRoute
+  component: Jogos
 })
 
-function JogosRoute() {
-  const { jogo, novo, passados } = Route.useSearch()
-  const navigate = Route.useNavigate()
-  const tirarNovo = useCallback(
-    () =>
-      void navigate({ search: ({ novo: _, ...rest }) => rest, replace: true }),
-    [navigate]
-  )
-  return (
-    <JogosPage
-      jogoInicial={jogo}
-      novo={novo === 1}
-      onNovoAberto={tirarNovo}
-      passados={passados === 1}
-    />
-  )
+function Jogos() {
+  const { jogo, passados } = Route.useSearch()
+  return <JogosPage key={jogo} initialId={jogo} passados={passados === 1} />
 }

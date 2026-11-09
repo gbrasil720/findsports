@@ -5,7 +5,7 @@ import type { LegalDocument } from './legal-types'
 export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
   kicker: 'Legal · Política de Privacidade',
   title: 'Política de privacidade',
-  updated: '29 de outubro de 2026',
+  updated: '7 de novembro de 2026',
   reading: '17 seções · ~18 min',
   intro: [
     'Privacidade não é página de rodapé para a gente. Esta Política explica, em português claro, quais dados a plataforma Onside coleta, por que coleta, com quem compartilha, por quanto tempo guarda e o que você pode exigir de nós a qualquer momento. Ela integra os nossos Termos de Uso e segue a Lei Geral de Proteção de Dados (Lei nº 13.709/2018).',

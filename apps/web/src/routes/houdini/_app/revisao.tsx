@@ -341,6 +341,7 @@ function PhotoCard({ photo }: { photo: Queue['photos'][number] }) {
           background: 'var(--hd-sub)'
         }}
       >
+        {/* biome-ignore lint/performance/noImgElement: foto do armazenamento do bar, sem otimizador. */}
         <img
           src={photo.url}
           alt={`Foto enviada por ${photo.barName}`}

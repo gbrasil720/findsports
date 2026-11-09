@@ -6,7 +6,8 @@ import {
   normalizeOpeningHours,
   type OpeningHours,
   openingHoursSchema,
-  openingStatus
+  openingStatus,
+  openingTurn
 } from './opening-hours'
 
 const day = (opens: string, closes: string) => ({ opens, closes })
@@ -71,7 +72,7 @@ describe('isOpenNow', () => {
 
 describe('groupOpeningHours', () => {
   test('dias seguidos iguais viram uma linha, como no design', () => {
-    expect(groupOpeningHours(ZE)).toEqual([
+    expect(groupOpeningHours(ZE)).toMatchObject([
       { days: 'Seg a qui', hours: '17:00 – 00:00' },
       { days: 'Sex e sáb', hours: '17:00 – 02:00' },
       { days: 'Domingo', hours: '12:00 – 22:00' }
@@ -81,7 +82,7 @@ describe('groupOpeningHours', () => {
   test('dia fechado entra como fechado e quebra a sequência', () => {
     const hours: OpeningHours = [...ZE]
     hours[3] = null
-    expect(groupOpeningHours(hours)).toEqual([
+    expect(groupOpeningHours(hours)).toMatchObject([
       { days: 'Seg e ter', hours: '17:00 – 00:00' },
       { days: 'Quarta', hours: null },
       { days: 'Quinta', hours: '17:00 – 00:00' },
@@ -92,7 +93,7 @@ describe('groupOpeningHours', () => {
 
   test('semana inteira igual', () => {
     const hours = Array.from({ length: 7 }, () => day('11:00', '23:00'))
-    expect(groupOpeningHours(hours)).toEqual([
+    expect(groupOpeningHours(hours)).toMatchObject([
       { days: 'Seg a dom', hours: '11:00 – 23:00' }
     ])
   })
@@ -143,26 +144,71 @@ describe('isGameWithinHours', () => {
 })
 
 describe('openingStatus', () => {
-  test('aberto diz quando fecha, inclusive na faixa de ontem', () => {
-    expect(openingStatus(ZE, brt('2026-10-23T18:00:00'))).toEqual({
+  // 24/10/2026 é sábado.
+  test('aberto, com a hora de fechar e a faixa de hoje', () => {
+    expect(openingStatus(ZE, brt('2026-10-24T20:00:00'))).toEqual({
+      open: true,
+      closes: '02:00',
+      opens: null,
+      today: 'sáb 17:00–02:00'
+    })
+  })
+  test('madrugada da faixa de ontem fecha na hora de ontem', () => {
+    expect(openingStatus(ZE, brt('2026-10-24T01:00:00'))).toMatchObject({
       open: true,
       closes: '02:00'
     })
-    expect(openingStatus(ZE, brt('2026-10-24T01:00:00'))).toEqual({
+  })
+  test('fechado antes de abrir: abre hoje', () => {
+    expect(openingStatus(ZE, brt('2026-10-24T10:00:00'))).toMatchObject({
+      open: false,
+      opens: { day: 'hoje', time: '17:00' }
+    })
+  })
+  test('fechado depois de fechar: abre amanhã', () => {
+    // Domingo 23h: fechou às 22h, segunda abre às 17h.
+    expect(openingStatus(ZE, brt('2026-10-25T23:00:00'))).toMatchObject({
+      open: false,
+      opens: { day: 'amanhã', time: '17:00' }
+    })
+  })
+  test('pula os dias fechados', () => {
+    const soDomingo: OpeningHours = [
+      day('12:00', '22:00'),
+      ...Array(6).fill(null)
+    ]
+    expect(openingStatus(soDomingo, brt('2026-10-26T10:00:00'))).toMatchObject({
+      open: false,
+      opens: { day: 'dom', time: '12:00' },
+      today: 'seg fechado'
+    })
+  })
+  test('sem horário, nada', () => {
+    expect(openingStatus(null, new Date())).toBeNull()
+  })
+})
+
+describe('openingTurn', () => {
+  test('aberto diz quando fecha, inclusive na faixa de ontem', () => {
+    expect(openingTurn(ZE, brt('2026-10-23T18:00:00'))).toEqual({
+      open: true,
+      closes: '02:00'
+    })
+    expect(openingTurn(ZE, brt('2026-10-24T01:00:00'))).toEqual({
       open: true,
       closes: '02:00'
     })
   })
 
   test('fechado diz quando abre: hoje, amanhã ou adiante', () => {
-    expect(openingStatus(ZE, brt('2026-10-23T10:00:00'))).toEqual({
+    expect(openingTurn(ZE, brt('2026-10-23T10:00:00'))).toEqual({
       open: false,
       opens: '17:00',
       inDays: 0,
       day: 5
     })
     // Domingo 23:00: fechou às 22h, abre segunda.
-    expect(openingStatus(ZE, brt('2026-10-25T23:00:00'))).toEqual({
+    expect(openingTurn(ZE, brt('2026-10-25T23:00:00'))).toEqual({
       open: false,
       opens: '17:00',
       inDays: 1,
@@ -171,7 +217,7 @@ describe('openingStatus', () => {
     const sexta: OpeningHours = Array(7).fill(null)
     sexta[5] = day('18:00', '23:00')
     // Sexta 23:30: só abre na sexta seguinte.
-    expect(openingStatus(sexta, brt('2026-10-23T23:30:00'))).toEqual({
+    expect(openingTurn(sexta, brt('2026-10-23T23:30:00'))).toEqual({
       open: false,
       opens: '18:00',
       inDays: 7,
@@ -180,7 +226,7 @@ describe('openingStatus', () => {
   })
 
   test('sem horário não diz nada', () => {
-    expect(openingStatus(null, new Date())).toBeNull()
-    expect(openingStatus(Array(7).fill(null), new Date())).toBeNull()
+    expect(openingTurn(null, new Date())).toBeNull()
+    expect(openingTurn(Array(7).fill(null), new Date())).toBeNull()
   })
 })

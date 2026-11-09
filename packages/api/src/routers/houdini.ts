@@ -27,7 +27,10 @@ import {
 import { z } from 'zod'
 
 import { adminProcedure, router } from '../index'
-import { readUnregisteredAlerts } from '../lib/attendance'
+import {
+  readUnregisteredAlerts,
+  readUnvalidatedCodeAlerts
+} from '../lib/attendance'
 import { getCurrentPlan } from '../lib/current-plan'
 import { escapeLike } from '../lib/escape-like'
 import { JOB_NAMES, lastJobRun } from '../lib/jobs'
@@ -136,6 +139,7 @@ export const houdiniRouter = router({
       [people],
       [bars],
       ghosts,
+      silentGames,
       [newBars],
       [games],
       [spells],
@@ -168,6 +172,7 @@ export const houdiniRouter = router({
         .leftJoin(subscription, eq(subscription.barId, bar.id))
         .where(eq(bar.isActive, true)),
       readUnregisteredAlerts(),
+      readUnvalidatedCodeAlerts(),
       db
         .select({ n: count() })
         .from(bar)
@@ -192,7 +197,7 @@ export const houdiniRouter = router({
         novos: newBars?.n ?? 0
       },
       testesAcabando: bars?.testesAcabando ?? 0,
-      fantasmas: ghosts.length,
+      fantasmas: new Set([...ghosts, ...silentGames].map((g) => g.barId)).size,
       jogosFuturos: games?.n ?? 0,
       feiticosLancados: spells?.n ?? 0,
       rotinasFalhando: failed.length,

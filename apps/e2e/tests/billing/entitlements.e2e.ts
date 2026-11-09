@@ -53,11 +53,8 @@ for (const { name, subscription, allowed } of cases) {
     if (allowed) {
       await expect(field).toBeVisible()
     } else {
-      // Só a seção da tela: o cabeçalho e o resto podem repetir o texto.
       await expect(
-        page
-          .getByRole('region', { name: 'Cardápio e preço' })
-          .getByText('Trial do plano Pro encerrado')
+        page.locator('#painel-main').getByText('Teste do plano Pro encerrado')
       ).toBeVisible()
       await expect(field).toHaveCount(0)
     }

@@ -21,6 +21,7 @@ import { TRPCError } from '@trpc/server'
 
 import { pubProcedure, router } from '../index'
 import { participantNames } from '../lib/game-participants'
+import { effectiveHouseOffer } from '../lib/house-offer'
 import {
   assertCanEnableReservations,
   canManageReservations,
@@ -122,13 +123,20 @@ export const barReservationsRouter = router({
         participantFreeText: event.participantFreeText,
         participants: participantNames(sql`${event.id}`),
         startsAt: event.startsAt,
+        houseOffer: event.houseOffer,
+        noHouseOffer: event.noHouseOffer,
         name: user.name,
         markedAt: attendance.createdAt,
         validatedAt: sql<Date | null>`max(${reservationCodeUse.usedAt})`,
         // O código levava oferta (copiada na emissão), não a oferta de agora.
         offer: sql<boolean>`coalesce(bool_or(${reservation.offerSnapshot} IS NOT NULL), false)`,
         visits: visitsHere(sql`true`),
-        visitsThisMonth: visitsHere(sameMonth)
+        visitsThisMonth: visitsHere(sameMonth),
+        // A chegada que vale, para o "Desfazer" do Quem vai
+        // (`reservationValidation.undoArrival`, que confere o prazo).
+        useId: sql<
+          string | null
+        >`(array_agg(${reservationCodeUse.id} ORDER BY ${reservationCodeUse.usedAt} DESC, ${reservationCodeUse.id} DESC) FILTER (WHERE ${reservationCodeUse.id} IS NOT NULL))[1]`
       })
       .from(attendance)
       .innerJoin(event, eq(event.id, attendance.eventId))
@@ -175,10 +183,13 @@ export const barReservationsRouter = router({
         participantFreeText: string | null
         participants: string[]
         startsAt: Date
+        houseOffer: string | null
+        noHouseOffer: boolean
         people: {
           name: string
           markedAt: Date
           validatedAt: Date | null
+          useId: string | null
           arrival: Arrival | null
         }[]
       }
@@ -191,6 +202,7 @@ export const barReservationsRouter = router({
       offer,
       visits,
       visitsThisMonth,
+      useId,
       ...game
     } of rows) {
       const entry = games.get(eventId) ?? { id: eventId, ...game, people: [] }
@@ -198,6 +210,7 @@ export const barReservationsRouter = router({
         name,
         markedAt,
         validatedAt: validatedAt ? new Date(validatedAt) : null,
+        useId,
         // Só de quem validou: de quem só marcou, o bar não vê histórico.
         arrival: validatedAt
           ? { offer, firstVisit: visits === 1, visitsThisMonth }
@@ -205,8 +218,17 @@ export const barReservationsRouter = router({
       })
       games.set(eventId, entry)
     }
-    return [...games.values()].map((game) => ({
+    // A oferta que vale em cada jogo (WEB-422): a do jogo, senão a padrão.
+    const [own] = await db
+      .select({ houseOffer: bar.houseOffer })
+      .from(bar)
+      .where(eq(bar.id, ctx.barId))
+    return [...games.values()].map(({ noHouseOffer, ...game }) => ({
       ...game,
+      houseOffer: effectiveHouseOffer(own?.houseOffer ?? null, {
+        houseOffer: game.houseOffer,
+        noHouseOffer
+      }),
       people: game.people.sort(
         (a, b) =>
           Number(b.validatedAt !== null) - Number(a.validatedAt !== null) ||

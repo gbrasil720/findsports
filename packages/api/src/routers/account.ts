@@ -1,6 +1,10 @@
-import { createOnsideEmailTemplate } from '@findsports_oficial/auth/email-layout'
+import {
+  createOnsideEmailTemplate,
+  fileCard
+} from '@findsports_oficial/auth/email-layout'
 import { sendEmail } from '@findsports_oficial/auth/verification-email'
 import { db, eq, sql } from '@findsports_oficial/db'
+import { appWaitlist } from '@findsports_oficial/db/schema/app-waitlist'
 import { attendanceReport } from '@findsports_oficial/db/schema/attendance'
 import { user } from '@findsports_oficial/db/schema/auth'
 import {
@@ -29,7 +33,7 @@ import {
 } from '../lib/rate-limit-store'
 
 /*
- * "Baixar meus dados" (Privacidade, 11i do app e 2e do painel do bar;
+ * "Baixar meus dados" (Privacidade, 11i do app e Configurações do painel;
  * WEB-418): o servidor monta o JSON e manda de anexo para o e-mail da conta,
  * um pedido por dia. Só sai o que é da própria conta: de outra pessoa, só o
  * nome e o `@` de quem é seu amigo ou trocou pedido com você, que a pessoa já
@@ -53,7 +57,7 @@ export function dataExportLimitKey(userId: string): string {
 export function createDataExportEmail(input: {
   name: string
   role: 'fan' | 'pub' | 'admin'
-  /** Nome do anexo, que o e-mail mostra. */
+  /** Nome do anexo, mostrado no corpo. */
   filename: string
 }): { subject: string; html: string; text: string } {
   const contents =
@@ -61,18 +65,11 @@ export function createDataExportEmail(input: {
       ? 'Ele traz a conta, o bar, o plano e os jogos cadastrados. De torcedor não vem nada, nem quem marcou presença.'
       : 'Ele traz a conta, as preferências, os bares salvos, os jogos, as avaliações, os amigos e as conquistas. De outra pessoa, só o nome e o @ de quem é seu amigo.'
   const template = createOnsideEmailTemplate({
-    tag: 'PRIVACIDADE',
     heading: 'Seus dados',
     headingAccent: 'na Onside',
-    shadow: 'ink',
+    tag: 'PRIVACIDADE',
     intro: `Olá, ${input.name.trim() || 'torcedor'}. Como você pediu, o arquivo com os dados da sua conta na Onside está anexado a este e-mail.`,
-    blocks: [
-      {
-        kind: 'file',
-        name: input.filename,
-        detail: 'JSON · anexado a este e-mail'
-      }
-    ],
+    blocks: [fileCard(input.filename, 'JSON · anexado a este e-mail')],
     steps: [
       contents,
       'O arquivo é JSON, um formato de texto aberto: abre em qualquer editor e pode ser levado para outro serviço.',
@@ -84,9 +81,12 @@ export function createDataExportEmail(input: {
       env.PUBLIC_APP_URL ?? env.BETTER_AUTH_URL
     ).toString(),
     actionTone: 'secondary',
+    // A política é página pública, não link de token.
+    linkFallback: false,
+    noteLabel: 'Não foi você?',
     note: 'Se não foi você quem pediu, troque a senha da conta e escreva para contato@onside.sh.',
     reason:
-      'Você recebeu este e-mail porque um arquivo com os dados desta conta foi pedido na Onside.'
+      'Você recebeu este e-mail porque alguém pediu, de dentro da sua conta, uma cópia dos seus dados na Onside.'
   })
   return { subject: 'Seus dados da Onside', ...template }
 }
@@ -101,6 +101,7 @@ export async function fanData(me: string) {
     games,
     reports,
     ratings,
+    waitlist,
     friends,
     achievements
   ] = await Promise.all([
@@ -169,6 +170,17 @@ export async function fanData(me: string) {
       .innerJoin(event, eq(event.id, barRating.eventId))
       .where(eq(barRating.actorUserId, me))
       .orderBy(sql`${barRating.createdAt} desc`),
+    // "Me avise quando o app chegar": as linhas presas à conta.
+    db
+      .select({
+        email: appWaitlist.email,
+        source: appWaitlist.source,
+        createdAt: appWaitlist.createdAt,
+        notifiedAt: appWaitlist.notifiedAt,
+        unsubscribedAt: appWaitlist.unsubscribedAt
+      })
+      .from(appWaitlist)
+      .where(eq(appWaitlist.userId, me)),
     db
       .select({
         name: user.name,
@@ -216,6 +228,12 @@ export async function fanData(me: string) {
       ...r,
       startsAt: iso(r.startsAt),
       createdAt: iso(r.createdAt)
+    })),
+    appWaitlist: waitlist.map((w) => ({
+      ...w,
+      createdAt: iso(w.createdAt),
+      notifiedAt: iso(w.notifiedAt),
+      unsubscribedAt: iso(w.unsubscribedAt)
     })),
     friends: friends.map((f) => ({
       name: f.name,
@@ -309,6 +327,10 @@ export async function barData(me: string) {
           confirmsCodesLater: own.confirmsCodesLater,
           menuUrl: own.menuUrl,
           averageSpendCents: own.averageSpendCents,
+          // Dados da nota (WEB-444): são do próprio bar.
+          legalName: own.legalName,
+          cnpj: own.cnpj,
+          invoiceEmail: own.invoiceEmail,
           isActive: own.isActive,
           ratings: { total: own.ratingCount, positive: own.ratingPositive },
           createdAt: iso(own.createdAt)
@@ -361,11 +383,7 @@ export const accountRouter = router({
             )
           }
         ],
-        ...createDataExportEmail({
-          name: user.name,
-          role: user.role,
-          filename
-        })
+        ...createDataExportEmail({ name: user.name, role: user.role, filename })
       })
     } catch (error) {
       // Pedido que não saiu não conta: a pessoa vai tentar de novo.

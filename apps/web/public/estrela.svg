@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title">
+  <title id="title">Estrela — Onside Pro</title>
+  <defs>
+    <path id="star" d="M133 28L153 98L234 89L177 142L196 220L128 182L65 239L76 154L20 119L106 107Z"/>
+  </defs>
+  <g fill="#C8F52A" stroke="#121210" stroke-width="7" stroke-linejoin="round">
+    <path d="M69 35L85 25L100 64L87 70Z"/>
+    <path d="M53 72L61 61L82 79L75 90Z"/>
+  </g>
+  <use href="#star" transform="translate(2 6)" fill="#121210" stroke="#121210" stroke-width="9" stroke-linejoin="round"/>
+  <use href="#star" fill="#C8F52A" stroke="#121210" stroke-width="7" stroke-linejoin="round"/>
+  <path fill="#F2F0E7" d="M134 50L144 112L208 99L150 123Z"/>
+  <path fill="#F2F0E7" d="M91 180L82 209L111 186L95 191Z"/>
+</svg>

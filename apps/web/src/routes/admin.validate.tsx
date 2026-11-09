@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import ArrowLeft from 'reicon-react/icons/ArrowLeft'
 import { CodeValidation } from '@/components/admin/code-validation'
 import { useMinuteNow } from '@/components/app/minute-tick'
 import { useTRPC, useTRPCClient } from '@/utils/trpc'
@@ -10,10 +9,7 @@ export const Route = createFileRoute('/admin/validate')({
   validateSearch: (search: Record<string, unknown>): { code?: string } =>
     typeof search.code === 'string' ? { code: search.code } : {},
   head: () => ({
-    meta: [
-      { title: 'Validar código — Onside' },
-      { name: 'robots', content: 'noindex' }
-    ]
+    meta: [{ title: 'Validar código — Onside' }]
   }),
   component: ValidatePage
 })
@@ -36,23 +32,45 @@ function ValidatePage() {
     meta: { errorToast: false }
   })
   const elite = subscriptionQuery.data?.currentPlan === 'elite'
+  // Bar que confirma pela comanda lança em Quem vai (WEB-412, WEB-501).
+  const barQuery = useQuery({
+    ...trpc.pub.getMe.queryOptions(),
+    meta: { errorToast: false }
+  })
+  const confirmsLater = elite && barQuery.data?.confirmsCodesLater === true
+
   // Cliente direto, sem `useMutation`: o painel já guarda pendência e erro, e
   // repetir é decisão de quem está no balcão, nunca retry automático.
   const { reservationValidation } = useTRPCClient()
 
   return (
-    <div className="painel-legado">
-      <div className="mb-8">
-        <Link to="/admin" className="onside-btn onside-btn-ghost -ml-3 mb-3">
-          <ArrowLeft size={13} color="currentColor" aria-hidden="true" />
-          Painel do bar
-        </Link>
-        <h1 className="onside-display text-3xl md:text-4xl">Validar código</h1>
-        <p className="mt-2 text-[var(--onside-muted)] text-sm">
-          Valide o código de quem marcou “Vou assistir aqui” e libere a oferta
-          da casa.
-        </p>
+    <>
+      <div className="pn-head">
+        <div>
+          <p className="pn-k">O código de quem marcou “Vou assistir aqui”</p>
+          <h1 className="pn-disp">Validar código</h1>
+          <p className="pn-sub">
+            Valide o código e libere a oferta da casa. O QR do torcedor abre
+            esta página já buscando.
+          </p>
+        </div>
       </div>
+
+      {confirmsLater ? (
+        <div className="pn-lock pn-cv-comanda" role="note">
+          <span>
+            Os códigos anotados na comanda você lança em Quem vai, até 48 h
+            depois do jogo.
+          </span>
+          <Link
+            to="/admin/quem-vai"
+            hash="comanda"
+            className="pn-btn pn-ink pn-sm"
+          >
+            Lançar códigos da comanda
+          </Link>
+        </div>
+      ) : null}
 
       <CodeValidation
         access={
@@ -78,6 +96,6 @@ function ValidatePage() {
         undoArrival={reservationValidation.undoArrival.mutate}
         initialCode={code}
       />
-    </div>
+    </>
   )
 }

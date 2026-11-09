@@ -105,7 +105,7 @@ describe('event create availability', () => {
       'Plano Elite com pagamento pendente: limite de jogos atingido.'
     )
     expect(getCreateBlockReason(atLimit, lapsed('pro', 'trial_ended'))).toBe(
-      'Trial do plano Pro encerrado: limite de jogos atingido.'
+      'Teste do plano Pro encerrado: limite de jogos atingido.'
     )
     // Starter parado continua no próprio limite; assinatura encerrada
     // contrata de novo. Nenhum dos dois é caso de regularizar.

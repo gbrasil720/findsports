@@ -5,7 +5,7 @@ import type { LegalDocument } from './legal-types'
 export const TERMOS_DE_USO: LegalDocument = {
   kicker: 'Legal · Termos de Uso',
   title: 'Termos de uso',
-  updated: '10 de outubro de 2026',
+  updated: '6 de novembro de 2026',
   reading: '19 seções · ~26 min',
   intro: [
     'Estes Termos de Uso (“Termos”) regulam o acesso e o uso da plataforma Onside (“Onside”, “plataforma”, “nós”), operada por Onside Tecnologia da Informação Ltda., inscrita no CNPJ sob o nº 69.032.124/0001-55, com sede na Rua Cláudio Soares, 72, sala 1418, Pinheiros, São Paulo/SP, CEP 05422-030.',
@@ -430,7 +430,7 @@ export const TERMOS_DE_USO: LegalDocument = {
         {
           type: 'p',
           content:
-            'A fase sem mensalidade dura 120 dias corridos, contados da data em que o estabelecimento conclui o cadastro na plataforma. A data de término fica visível para o parceiro na página de plano. Ao fim do prazo não há cobrança automática: a cobrança só começa se o parceiro contratar um plano, e na data informada no momento da contratação. Sem contratação, o estabelecimento deixa de ser exibido na plataforma após o fim do prazo.'
+            'A fase sem mensalidade dura 90 dias corridos, contados da data em que o estabelecimento conclui o cadastro na plataforma. A data de término fica visível para o parceiro na página de plano. Ao fim do prazo não há cobrança automática: a cobrança só começa se o parceiro contratar um plano, e na data informada no momento da contratação. Sem contratação, o estabelecimento deixa de ser exibido na plataforma após o fim do prazo.'
         },
         {
           type: 'p',

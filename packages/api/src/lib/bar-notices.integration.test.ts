@@ -106,6 +106,14 @@ integrationTest(
       expect(to(sent, ownerEmail).map((body) => body.subject)).toEqual([
         'Jogo lotando: Final'
       ])
+      const [filling] = to(sent, ownerEmail)
+      expect(filling?.text).toContain(
+        'CAMPEONATO DE INTEGRAÇÃO · NO SEU BAR\nFinal'
+      )
+      expect(filling?.text).toContain(
+        `${GAME_FILLING_THRESHOLD}+ pessoas marcaram que vão assistir aqui`
+      )
+      expect(filling?.html).toContain('Bar de integração')
 
       // Mais gente marcando não repete.
       await ctx.db
@@ -190,13 +198,13 @@ integrationTest(
       const [summary] = to(sent, email(elite))
       expect(summary?.subject).toBe('Resumo da semana: Bar de integração')
       expect(summary?.text).toContain(
-        'Veja como foi a semana de 22/02 a 28/02 na Onside'
+        'Veja como foi a semana de 22/02 a 28/02 no Bar de integração, na Onside'
       )
       expect(summary?.text).toContain('1 pessoa marcou que ia aos seus jogos')
       expect(summary?.text).toContain('0 códigos validados no balcão')
-      // O campeonato vem do banco para o detalhe do jogo (WEB-477).
+      // O campeonato vem do jogo (WEB-477).
       expect(summary?.text).toContain(
-        'NESTA SEMANA · DE 01/03 A 07/03\nQUA 03/03 · Clássico · 20:30 · Campeonato de integração'
+        'Na sua agenda · de 01/03 a 07/03\n• QUA 03/03 · Clássico · 20:30 · CAMPEONATO DE INTEGRAÇÃO'
       )
       expect(to(sent, email(quiet)).map((body) => body.subject)).toEqual([
         'Nenhum jogo na agenda desta semana'

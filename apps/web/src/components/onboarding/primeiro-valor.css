@@ -1,0 +1,324 @@
+/* biome-ignore-all lint/style/noDescendingSpecificity: segue a ordem da tela; tudo preso a .lp3.ob3. */
+/*
+ * Depois do "no ar" (WEB-501; protótipo do painel, `primeiro`, `torcedorVe`,
+ * `planoOb`): primeiro jogo, "Assim o torcedor vê" e o plano do teste. Tokens
+ * da landing (`.lp3`) e do onboarding (`onboarding-v3.css`); o escuro troca
+ * `--ink` e `--paper` (`theme-dark.css`), e o que fica sobre tinta ou
+ * verde-limão leva as cores escritas aqui.
+ */
+
+.lp3.ob3 .ob-onair {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: var(--acid);
+  color: #12120f;
+  font: 600 11.5px / 1 var(--mono);
+  letter-spacing: 0.06em;
+}
+
+.lp3.ob3 .ob-onair i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #12120f;
+  animation: ob-pulse 1.6s infinite;
+}
+
+@keyframes ob-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.lp3.ob3 .ob-skipto {
+  margin-left: 6px;
+}
+
+.lp3.ob3 .ob-load {
+  display: grid;
+  place-items: center;
+  min-height: 40vh;
+  color: var(--muted);
+}
+
+/* "Este é por conta da Onside": cartão de tinta nos dois temas. */
+.lp3.ob3 .ob-free {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 22px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: #12120f;
+  box-shadow: 0 4px 0 #000;
+  color: #c9c7c0;
+  font-size: 14.5px;
+  line-height: 1.4;
+}
+
+.lp3.ob3 .ob-free .ib {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--acid);
+  color: #12120f;
+}
+
+.lp3.ob3 .ob-free b {
+  display: block;
+  color: var(--acid);
+  font-size: 16px;
+}
+
+html[data-theme="dark"] .lp3.ob3 .ob-free {
+  background: #1c1c18;
+}
+
+/* Sugestões: um toque publica. */
+.lp3.ob3 .ob-sgj {
+  margin-top: 26px;
+}
+
+.lp3.ob3 .ob-sgj > h2 {
+  margin: 0 0 10px;
+}
+
+.lp3.ob3 .sgj-l {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lp3.ob3 .sgj-b {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: 0 2px 0 var(--sand);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.18s var(--ease);
+}
+
+.lp3.ob3 .sgj-b:active {
+  transform: translateY(2px);
+}
+
+.lp3.ob3 .sgj-b:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.lp3.ob3 .sgj-h {
+  min-width: 50px;
+  font: 400 20px / 1 var(--display);
+}
+
+.lp3.ob3 .sgj-t b {
+  display: block;
+  overflow: hidden;
+  font-size: 14.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lp3.ob3 .sgj-t span {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .lp3.ob3 .sgj-b:not(:disabled):hover {
+    transform: translateY(-2px);
+  }
+}
+
+.lp3.ob3 .ob-pgame p b {
+  color: var(--ink);
+  font-size: 16px;
+}
+
+/* "Assim o torcedor vê": card, celular e o link, lado a lado. */
+.lp3.ob3 .ob-tvg {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 24px;
+  margin-top: 28px;
+}
+
+.lp3.ob3 .ob-tvg > div {
+  min-width: 0;
+}
+
+.lp3.ob3 .ob-tvg > div > .ob-k {
+  margin: 0 0 12px;
+}
+
+/* O card do Explorar (`torcedor.css`) sem a casca da página do torcedor. */
+.lp3.ob3 .tc.ob-tc {
+  min-height: 0;
+  background: none;
+}
+
+.lp3.ob3 .ob-phone {
+  width: min(290px, 100%);
+  margin: 0 auto;
+  padding: 9px;
+  overflow: hidden;
+  border-radius: 44px;
+  background: #0a0a08;
+  box-shadow:
+    inset 0 0 0 1.5px #3a3a33,
+    0 40px 70px -30px rgba(0, 0, 0, 0.6);
+  aspect-ratio: 9 / 18.5;
+}
+
+/* A página tem 390 de largura no celular; o iframe a encolhe para caber. */
+.lp3.ob3 .ob-phone iframe {
+  display: block;
+  width: 390px;
+  height: calc(100% / 0.7);
+  border: 0;
+  border-radius: 50px;
+  background: var(--paper);
+  transform: scale(0.7);
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
+.lp3.ob3 .ob-shr {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 20px;
+}
+
+.lp3.ob3 .ob-wa {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 18px 18px 18px 6px;
+  background: var(--sub);
+  font-size: 14.5px;
+  line-height: 1.45;
+}
+
+.lp3.ob3 .ob-lnk {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 8px 8px 14px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--line2);
+}
+
+.lp3.ob3 .ob-lnk .mono {
+  overflow: hidden;
+  font: 500 13.5px var(--mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lp3.ob3 .ob-qrb {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.lp3.ob3 .ob-q {
+  display: grid;
+  place-items: center;
+  width: 124px;
+  height: 124px;
+  padding: 8px;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.lp3.ob3 .ob-qrb b {
+  display: block;
+  font-size: 15.5px;
+}
+
+.lp3.ob3 .ob-qrb > span > span {
+  display: block;
+  margin: 3px 0 10px;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+.lp3.ob3 .ob-qrb .btn {
+  white-space: normal;
+}
+
+/* O "Novo jogo" do painel aberto daqui: só a folha, sem a página do painel. */
+.pn3.ob-pn3 {
+  min-height: 0;
+  background: none;
+}
+
+@media (max-width: 1100px) {
+  .lp3.ob3 .ob-tvg {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lp3.ob3 .ob-tvg > div:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .lp3.ob3 .ob-tvg,
+  .lp3.ob3 .sgj-l {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* No celular o topo fica com o passo e "Ir para o painel": sai o selo. */
+  .lp3.ob3 .ob-head .ob-pill:has(.ob-onair) {
+    display: none;
+  }
+
+  .lp3.ob3 .ob-skipto {
+    flex: none;
+    height: 38px;
+    margin-left: 0;
+    padding: 0 12px;
+    font-size: 13px;
+  }
+
+  /* O tema volta no plano, que não tem o botão. */
+  .lp3.ob3 .ob-head:has(.ob-skipto) :is(.ob-steps .of, .theme-switch) {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp3.ob3 .ob-onair i {
+    animation: none;
+  }
+
+  .lp3.ob3 .sgj-b {
+    transition: none;
+  }
+}

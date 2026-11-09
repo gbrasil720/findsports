@@ -21,7 +21,12 @@ const menuButton = (page: Page) =>
 
 async function openFeedback(page: Page) {
   await menuButton(page).click()
-  await page.getByRole('menuitem', { name: 'Enviar feedback' }).click()
+  // O app do torcedor usa um menu; o painel do bar, um painel com botões.
+  await page
+    .getByRole('menuitem', { name: 'Enviar feedback' })
+    .or(page.getByRole('button', { name: 'Enviar feedback' }))
+    .first()
+    .click()
   const dialog = page.getByRole('dialog', { name: 'Enviar feedback' })
   await expect(dialog).toBeVisible()
   return dialog

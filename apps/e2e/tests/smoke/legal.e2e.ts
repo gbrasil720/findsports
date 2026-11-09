@@ -1,9 +1,28 @@
+import type { Page } from '@playwright/test'
 import { expect, test } from '../../fixtures/test'
 
 // WEB-240: páginas públicas de termos e de privacidade. Sem sessão.
 
+// No celular o índice é uma pílula presa no alto: a lista abre pelo botão.
+// `toPass`: o clique antes da hidratação não abre nada, e o teste tenta de novo.
+async function openIndex(page: Page, isMobile: boolean) {
+  const toggle = page.locator('.lg-index-toggle')
+  if (isMobile) {
+    await expect(async () => {
+      if ((await toggle.getAttribute('aria-expanded')) !== 'true') {
+        await toggle.click()
+      }
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true', {
+        timeout: 1000
+      })
+    }).toPass()
+  }
+  return page.getByRole('navigation', { name: 'Seções' })
+}
+
 test('termos: título, índice, contato e ida para a política', async ({
-  page
+  page,
+  isMobile
 }) => {
   await page.goto('/termos')
   await expect(page).toHaveTitle('Termos de uso — Onside')
@@ -11,8 +30,9 @@ test('termos: título, índice, contato e ida para a política', async ({
     page.getByRole('heading', { level: 1, name: 'Termos de uso' })
   ).toBeVisible()
 
-  const index = page.getByRole('navigation', { name: 'Seções' })
+  const index = await openIndex(page, isMobile)
   await expect(index.getByRole('link')).toHaveCount(19)
+  if (isMobile) await page.locator('.lg-index-toggle').click()
   await expect(
     page.getByRole('heading', { level: 2, name: 'Quem pode usar' })
   ).toBeVisible()
@@ -33,17 +53,20 @@ test('termos: título, índice, contato e ida para a política', async ({
   await expect(
     page.getByRole('heading', { level: 1, name: 'Política de privacidade' })
   ).toBeVisible()
-  await expect(
-    page.getByRole('navigation', { name: 'Seções' }).getByRole('link')
-  ).toHaveCount(17)
+  await expect((await openIndex(page, isMobile)).getByRole('link')).toHaveCount(
+    17
+  )
   await expect(page.getByRole('main')).not.toContainText(
     'privacidade@onside.sh'
   )
 })
 
-test('índice leva à seção e marca a seção em leitura', async ({ page }) => {
+test('índice leva à seção e marca a seção em leitura', async ({
+  page,
+  isMobile
+}) => {
   await page.goto('/privacidade')
-  const index = page.getByRole('navigation', { name: 'Seções' })
+  const index = await openIndex(page, isMobile)
   const link = index.getByRole('link', { name: /Quais dados coletamos/ })
   await link.click()
   await expect(page).toHaveURL(/#s-4$/)
@@ -53,19 +76,28 @@ test('índice leva à seção e marca a seção em leitura', async ({ page }) =>
 })
 
 test('rodapé: colunas do desenho, links de verdade, e o sitemap lista as páginas legais', async ({
-  page
+  page,
+  isMobile
 }) => {
   await page.goto('/')
-  // Pela classe: as devtools do router também renderizam um <footer>.
-  const footer = page.locator('footer.onside-site-footer')
-  const nav = footer.getByRole('navigation', { name: 'Rodapé' })
+  // Landing v3 (WEB-501): rodapé próprio. Pela classe: as devtools do router
+  // também renderizam um <footer>.
+  const nav = page
+    .locator('.lp3 footer.foot')
+    .getByRole('navigation', { name: 'Rodapé' })
+  // No celular a coluna "Conta" sai: entrar e criar conta já estão na barra
+  // fixa e no botão do topo.
+  const account = isMobile
+    ? []
+    : ([
+        ['Entrar', '/login'],
+        ['Criar conta', '/signup']
+      ] as const)
   for (const [label, href] of [
-    ['A Onside', '#produto'],
-    ['Entrar', '/login'],
-    ['Criar conta', '/signup'],
+    ...account,
     ['Cadastre seu bar', '/signup?role=pub'],
-    ['Fale com a gente', 'mailto:contato@onside.sh'],
     ['Contato', 'mailto:contato@onside.sh'],
+    ['Termos', '/termos'],
     ['Privacidade', '/privacidade'],
     ['Instagram', 'https://www.instagram.com/onside.sh/'],
     ['X', 'https://x.com/onside_sh'],
@@ -75,18 +107,13 @@ test('rodapé: colunas do desenho, links de verdade, e o sitemap lista as págin
       nav.getByRole('link', { name: label, exact: true })
     ).toHaveAttribute('href', href)
   }
-  // Fora da navegação, a chamada do rodapé também leva ao cadastro.
-  await expect(footer.locator('a.onside-footer-cta')).toHaveAttribute(
-    'href',
-    '/signup'
-  )
 
   await nav.getByRole('link', { name: 'Termos', exact: true }).click()
   await expect(page).toHaveURL(/\/termos$/)
   // Fora da landing as âncoras voltam para ela.
   await expect(
     page
-      .locator('footer.onside-site-footer')
+      .locator('.lp3 footer.foot')
       .getByRole('link', { name: 'A Onside', exact: true })
   ).toHaveAttribute('href', '/#produto')
 

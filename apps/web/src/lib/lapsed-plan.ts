@@ -27,9 +27,9 @@ export const LAPSED_COPY: Record<
     cause: 'O último pagamento não foi confirmado.'
   },
   trial_ended: {
-    label: 'Trial encerrado',
-    title: (planName) => `Trial do plano ${planName} encerrado`,
-    cause: 'O trial gratuito terminou sem pagamento confirmado.'
+    label: 'Teste encerrado',
+    title: (planName) => `Teste do plano ${planName} encerrado`,
+    cause: 'O teste grátis terminou sem pagamento confirmado.'
   }
 }
 

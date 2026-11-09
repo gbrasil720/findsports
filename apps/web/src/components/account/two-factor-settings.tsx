@@ -9,12 +9,12 @@ import {
 import { Input } from '@findsports_oficial/ui/components/input'
 import { Spinner } from '@findsports_oficial/ui/components/spinner'
 import { useRef, useState } from 'react'
-import QRCodeModule from 'react-qr-code'
 import Copy from 'reicon-react/icons/Copy'
 import Download from 'reicon-react/icons/Download'
 import Shield from 'reicon-react/icons/Shield'
 import { toast } from 'sonner'
 import { Modal } from '@/components/admin/modal'
+import { QRCode } from '@/components/qr-code'
 import { TwoFactorCodeInput } from '@/components/two-factor-code-input'
 import { useSession } from '@/hooks/use-session'
 import { authClient } from '@/lib/auth-client'
@@ -23,14 +23,6 @@ import {
   getUserFacingMessage
 } from '@/lib/user-facing-error'
 import { AccountActionRow } from './account-action-row'
-
-const qrCodeModule = QRCodeModule as unknown
-const QRCode =
-  typeof qrCodeModule === 'object' &&
-  qrCodeModule !== null &&
-  'default' in qrCodeModule
-    ? (qrCodeModule.default as typeof QRCodeModule)
-    : QRCodeModule
 
 export type DialogMode = 'enable' | 'regenerate' | 'disable' | null
 
@@ -242,13 +234,13 @@ export function EnableTwoFactorDialog({
             manual. Depois digite o código atual para concluir.
           </p>
           <div
-            className="mx-auto bg-white p-4"
+            className="mx-auto rounded-2xl bg-white p-4"
             role="img"
             aria-label="QR code para configurar o autenticador"
           >
             <QRCode value={totpUri} size={184} />
           </div>
-          <div className="border border-[var(--onside-line)] bg-[var(--onside-stone)] p-3">
+          <div className="rounded-2xl bg-[var(--onside-stone)] p-3">
             <p className="font-bold text-[10px] uppercase tracking-[0.1em]">
               Chave manual
             </p>
@@ -417,13 +409,13 @@ export function ManageTwoFactorDialog({
             onCancel={close}
           />
           {mode === 'regenerate' ? (
-            <Button
+            <button
               type="button"
-              variant="destructive"
+              className="pn-btn pn-sm pn-danger"
               onClick={() => onModeChange('disable')}
             >
               Desativar autenticação em dois fatores
-            </Button>
+            </button>
           ) : null}
         </form>
       )}
@@ -465,23 +457,26 @@ function RecoveryCodes({
       <div className="onside-callout onside-callout-warn" role="status">
         Estes códigos aparecem somente agora. Cada código funciona uma vez.
       </div>
-      <ul className="grid grid-cols-1 gap-2 border border-[var(--onside-ink)] bg-[var(--onside-stone)] p-4 font-[family-name:var(--onside-mono)] text-sm sm:grid-cols-2">
+      <ul className="grid grid-cols-1 gap-2 rounded-2xl bg-[var(--onside-stone)] p-4 font-[family-name:var(--onside-mono)] text-sm sm:grid-cols-2">
         {codes.map((code) => (
           <li key={code}>{code}</li>
         ))}
       </ul>
       <div className="flex flex-col gap-2 sm:flex-row">
-        <Button
+        <button
           type="button"
-          variant="outline"
-          size="lg"
+          className="pn-btn pn-sm pn-ghost"
           onClick={() => void copy()}
         >
-          <Copy data-icon="inline-start" /> Copiar
-        </Button>
-        <Button type="button" variant="outline" size="lg" onClick={download}>
-          <Download data-icon="inline-start" /> Baixar
-        </Button>
+          <Copy size={18} aria-hidden="true" /> Copiar
+        </button>
+        <button
+          type="button"
+          className="pn-btn pn-sm pn-ghost"
+          onClick={download}
+        >
+          <Download size={18} aria-hidden="true" /> Baixar
+        </button>
       </div>
       <Field orientation="horizontal">
         <Checkbox
@@ -493,9 +488,14 @@ function RecoveryCodes({
           Guardei meus códigos em um lugar seguro
         </FieldLabel>
       </Field>
-      <Button type="button" size="lg" disabled={!acknowledged} onClick={onDone}>
+      <button
+        type="button"
+        className="pn-btn pn-sm pn-acid"
+        disabled={!acknowledged}
+        onClick={onDone}
+      >
         Concluir
-      </Button>
+      </button>
       <FieldDescription>
         Se perder o autenticador e todos os códigos, procure o suporte.
         Recuperar a senha por e-mail não libera esta etapa.
@@ -517,18 +517,21 @@ function DialogActions({
 }) {
   return (
     <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-      <Button type="button" variant="outline" size="lg" onClick={onCancel}>
+      <button
+        type="button"
+        className="pn-btn pn-sm pn-ghost"
+        onClick={onCancel}
+      >
         Cancelar
-      </Button>
-      <Button
+      </button>
+      <button
         type="submit"
-        variant={destructive ? 'destructive' : 'default'}
-        size="lg"
+        className={`pn-btn pn-sm ${destructive ? 'pn-danger' : 'pn-acid'}`}
         disabled={saving}
       >
         {saving ? <Spinner data-icon="inline-start" /> : null}
         {saving ? 'Processando…' : submitLabel}
-      </Button>
+      </button>
     </div>
   )
 }

@@ -1,0 +1,635 @@
+/* biome-ignore-all lint/style/noDescendingSpecificity: segue a ordem da tela (casca, formulário, painel); tudo preso a .lp3.ent. */
+/* biome-ignore-all lint/complexity/noImportantStyles: o campo das telas antigas (app-primitives.css) usa !important; o redesign só vence com ele. */
+/*
+ * Telas de entrada no redesign (WEB-501): login, cadastro, confirmação de
+ * e-mail, duas etapas e senha (`auth-shell.tsx`). Tokens e botões vêm da
+ * landing (`.lp3`); aqui a casca e o restilo das peças que as telas já usam
+ * (`onside-kicker`, `onside-display`, `onside-btn`, os campos), mais
+ * específico que o `.onside-app` delas.
+ */
+
+.lp3.ent {
+  min-height: 100vh;
+  background: var(--paper);
+}
+
+.lp3 .ent-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.lp3 .ent-left {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 620px;
+  margin-left: auto;
+  padding: 28px max(36px, var(--gut)) 40px;
+}
+
+.lp3 .ent-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.lp3 .ent-top .logo b {
+  font-size: 24px;
+}
+
+.lp3 .ent-form {
+  width: 100%;
+  max-width: 440px;
+  margin: auto 0;
+  padding: 40px 0;
+  animation: ent-in 0.5s var(--ease) both;
+}
+
+@keyframes ent-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* ─── Título e texto ─── */
+.lp3.ent .onside-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 16px;
+  color: var(--muted);
+  font: 600 12.5px / 1 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.lp3.ent .onside-kicker::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  background: var(--red);
+}
+
+.lp3.ent .onside-display {
+  font-family: var(--display);
+  font-weight: 400;
+  line-height: 1;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+.lp3.ent h1.onside-display {
+  font-size: clamp(42px, 4.4vw, 60px);
+}
+
+.lp3.ent .ent-sub {
+  margin: 12px 0 0;
+  color: #3d3d38;
+  font-size: 16.5px;
+  line-height: 1.5;
+}
+
+.lp3.ent .ent-full {
+  width: 100%;
+}
+
+.lp3.ent .ent-alt {
+  margin: 18px 0 0;
+  color: var(--muted);
+  font-size: 15px;
+  text-align: center;
+}
+
+.lp3.ent .ent-alt a,
+.lp3.ent .ent-link {
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.lp3.ent .ent-hint {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.lp3.ent .ent-or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 22px 0 14px;
+  color: var(--muted);
+  font: 600 12px / 1 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.lp3.ent .ent-or::before,
+.lp3.ent .ent-or::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(18, 18, 15, 0.2);
+}
+
+/* ─── Botões: as pílulas da landing ─── */
+.lp3.ent .onside-btn {
+  min-height: 54px;
+  padding: 0 24px;
+  border: 0;
+  border-radius: 999px;
+  font: 700 16px / 1 var(--body);
+  letter-spacing: 0;
+  text-transform: none;
+  box-shadow: inset 0 0 0 1.5px rgba(18, 18, 15, 0.25);
+}
+
+.lp3.ent .onside-btn-acid {
+  background: var(--acid);
+  color: var(--ink);
+  box-shadow: 0 4px 0 #7f9a12;
+}
+
+.lp3.ent .onside-btn-ink {
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: 0 4px 0 #000;
+}
+
+.lp3.ent .onside-btn-outline,
+.lp3.ent .onside-btn-ghost,
+.lp3.ent .onside-btn-outline-ink {
+  background: transparent;
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1.5px rgba(18, 18, 15, 0.25);
+}
+
+.lp3.ent .onside-btn-outline:hover,
+.lp3.ent .onside-btn-ghost:hover {
+  box-shadow: inset 0 0 0 1.5px var(--ink);
+}
+
+.lp3.ent .btn.btn-ghost {
+  height: 54px;
+  box-shadow: inset 0 0 0 1.5px rgba(18, 18, 15, 0.25);
+}
+
+.lp3.ent .btn.btn-ghost:hover {
+  box-shadow: inset 0 0 0 1.5px var(--ink);
+}
+
+/* ─── Campos ─── */
+.lp3.ent .onside-label {
+  color: var(--muted);
+  font: 600 12px / 1.2 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.lp3.ent .onside-input-group {
+  min-height: 54px;
+  border: 0 !important;
+  border-radius: 16px !important;
+  background: #fff !important;
+  box-shadow: inset 0 0 0 1px rgba(18, 18, 15, 0.2) !important;
+  transition: box-shadow 0.15s;
+}
+
+.lp3.ent .onside-input-group:focus-within {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--ink) !important;
+}
+
+.lp3.ent .onside-input-group:has([aria-invalid="true"]) {
+  box-shadow: inset 0 0 0 2px var(--red) !important;
+}
+
+.lp3.ent .onside-input-control {
+  font: 500 16px var(--body);
+}
+
+.lp3.ent .onside-field-error {
+  margin-top: 4px;
+  color: #c92b0c;
+  font-size: 14px;
+}
+
+/* ─── Quem é você (cadastro) ─── */
+.lp3.ent .ent-role {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.lp3.ent .ent-role button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 16px;
+  border: 0;
+  border-radius: 20px;
+  background: #faf8f3;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--sand);
+  transition: box-shadow 0.2s;
+}
+
+.lp3.ent .ent-role button b {
+  font-size: 16px;
+}
+
+.lp3.ent .ent-role button span:last-child {
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.35;
+}
+
+.lp3.ent .ent-role .ic {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--stone);
+}
+
+.lp3.ent .ent-role button[aria-pressed="true"] {
+  box-shadow:
+    inset 0 0 0 2px var(--ink),
+    0 3px 0 var(--sand);
+}
+
+.lp3.ent .ent-role button[aria-pressed="true"] .ic {
+  background: var(--acid);
+}
+
+/* ─── Esqueci a senha: como funciona e ajuda ─── */
+.lp3.ent .ent-how {
+  margin-top: 28px;
+  padding: 18px 18px 6px;
+  border-radius: 20px;
+  background: #faf8f3;
+  box-shadow: 0 3px 0 var(--sand);
+}
+
+.lp3.ent .ent-how p {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font: 600 12px / 1 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.lp3.ent .ent-how ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lp3.ent .ent-how li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 0;
+  color: #3d3d38;
+  font-size: 14.5px;
+  line-height: 1.45;
+}
+
+.lp3.ent .ent-how li + li {
+  border-top: 1px solid rgba(18, 18, 15, 0.1);
+}
+
+.lp3.ent .ent-how li i {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--paper);
+  font: 600 12px / 1 var(--mono);
+  font-style: normal;
+}
+
+.lp3.ent .ent-help {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  box-shadow: inset 0 0 0 1px rgba(18, 18, 15, 0.2);
+  color: #3d3d38;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.lp3.ent .ent-help b {
+  display: block;
+  color: var(--ink);
+  font-size: 14.5px;
+}
+
+.lp3.ent .ent-help a {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+/* ─── Painel: o telão parado ─── */
+.lp3 .ent-right {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.lp3 .ent-right img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
+}
+
+.lp3 .ent-right::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(18, 18, 15, 0.15) 0%,
+    rgba(18, 18, 15, 0.35) 50%,
+    rgba(18, 18, 15, 0.95) 100%
+  );
+}
+
+.lp3 .ent-live {
+  position: absolute;
+  z-index: 1;
+  top: 40px;
+  left: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(18, 18, 15, 0.7);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  font: 600 12.5px / 1 var(--mono);
+}
+
+.lp3 .ent-live::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--red-ink);
+}
+
+.lp3 .ent-cap {
+  position: absolute;
+  z-index: 1;
+  right: 40px;
+  bottom: 56px;
+  left: 40px;
+}
+
+.lp3 .ent-cap b {
+  display: block;
+  font: 400 clamp(40px, 4vw, 60px) / 1 var(--display);
+  text-transform: uppercase;
+}
+
+.lp3 .ent-cap b span,
+.lp3 .ent-bt span {
+  color: var(--acid);
+}
+
+.lp3 .ent-cap ul {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 18px 0 0;
+  padding: 0;
+  font-size: 15.5px;
+  list-style: none;
+}
+
+.lp3 .ent-cap li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lp3 .ent-cap li svg {
+  color: var(--acid);
+}
+
+.lp3 .ent-board {
+  position: absolute;
+  z-index: 1;
+  inset: 40px 40px 56px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 32px;
+}
+
+.lp3 .ent-bk {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: var(--soft-ink);
+  font: 600 12.5px / 1 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.lp3 .ent-bk::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  background: var(--acid);
+}
+
+.lp3 .ent-bt {
+  max-width: 12ch;
+  margin: 16px 0 0;
+  font: 400 clamp(44px, 4.6vw, 72px) / 0.95 var(--display);
+  text-transform: uppercase;
+}
+
+.lp3 .ent-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.lp3 .ent-cards div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(18, 18, 15, 0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: inset 0 0 0 1px rgba(241, 238, 230, 0.12);
+}
+
+.lp3 .ent-cards i {
+  color: var(--acid);
+  font: 600 12px / 1 var(--mono);
+  font-style: normal;
+}
+
+.lp3 .ent-cards b {
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.lp3 .ent-cards span {
+  color: var(--soft-ink);
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+
+/* ─── Celular e tablet: só o formulário ─── */
+@media (max-width: 900px) {
+  .lp3 .ent-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lp3 .ent-right {
+    display: none;
+  }
+
+  .lp3 .ent-left {
+    max-width: none;
+    margin: 0;
+    padding: 18px var(--gut-r) 48px var(--gut);
+  }
+
+  .lp3 .ent-form {
+    margin: 0;
+    padding: 24px 0 0;
+  }
+
+  .lp3.ent .ent-role button span:last-child {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp3 .ent-form {
+    animation: none;
+  }
+}
+
+/* Ícone grande das telas de e-mail enviado. */
+.lp3.ent .ent-mail {
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  margin-bottom: 22px;
+  border-radius: 26px;
+  background: var(--acid);
+  color: var(--ink);
+  box-shadow: 0 4px 0 #7f9a12;
+}
+
+/* ─── Duas etapas: forma de confirmação, caixas do código e "confiar" ─── */
+.lp3.ent .ent-seg {
+  display: flex;
+  gap: 4px;
+  margin-top: 22px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--stone);
+}
+
+.lp3.ent .ent-seg button {
+  flex: 1;
+  height: 40px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: 600 14.5px var(--body);
+  cursor: pointer;
+}
+
+.lp3.ent .ent-seg button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.lp3.ent .ent-boxes {
+  margin-top: 22px;
+}
+
+.lp3.ent .ent-boxes [data-slot="input-otp-group"] {
+  gap: 8px;
+}
+
+.lp3.ent .ent-boxes [data-slot="input-otp-slot"] {
+  height: 64px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--white);
+  color: var(--ink);
+  font: 600 28px var(--mono);
+  box-shadow: inset 0 0 0 1.5px rgba(18, 18, 15, 0.2);
+  transition: box-shadow 0.15s;
+}
+
+.lp3.ent .ent-boxes [data-slot="input-otp-slot"][data-active="true"] {
+  background: var(--white);
+  box-shadow: inset 0 0 0 2.5px var(--ink);
+}
+
+.lp3.ent .ent-boxes [data-slot="input-otp-slot"][aria-invalid="true"] {
+  box-shadow: inset 0 0 0 2px var(--red);
+}
+
+.lp3.ent .ent-trust {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  font-size: 14.5px;
+  cursor: pointer;
+}
+
+.lp3.ent .ent-trust input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--ink);
+}
+
+@media (max-width: 480px) {
+  .lp3.ent .ent-boxes [data-slot="input-otp-slot"] {
+    height: 56px;
+    font-size: 24px;
+  }
+}

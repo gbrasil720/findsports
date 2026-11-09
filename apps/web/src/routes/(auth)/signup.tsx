@@ -1,41 +1,33 @@
-import {
-  ONBOARDING_TRIAL,
-  PLAN_NAMES
-} from '@findsports_oficial/api/lib/plan-limits'
+import { ONBOARDING_TRIAL } from '@findsports_oficial/api/lib/plan-limits'
 import { useForm } from '@tanstack/react-form'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useRef, useState } from 'react'
+import Envelope from 'reicon-react/icons/Envelope'
+import Loader from 'reicon-react/icons/Loader'
+import User from 'reicon-react/icons/User'
 import { toast } from 'sonner'
 
+import { revalidateShownError } from '@/components/auth-field-change'
+import { AuthInputField } from '@/components/auth-input-field'
+import { AuthPasswordField } from '@/components/auth-password-field'
 import {
-  AuthSplit,
-  CampoForm,
-  CampoSenha,
-  CardTorcedor,
-  Disp,
-  entradaHead,
-  ForcaSenha,
-  ItensFoto
-} from '@/components/entrada/auth'
-import { Botao } from '@/components/painel'
+  type AuthPanel,
+  AuthShell,
+  VisitorLink
+} from '@/components/entrada/auth-shell'
+import { Beer, People } from '@/components/landing/v3/icons'
+import { LegalConsent } from '@/components/legal/legal-consent'
 import { useTurnstile } from '@/components/turnstile'
 import { analytics } from '@/lib/analytics'
 import { authClient } from '@/lib/auth-client'
+import { pageHead } from '@/lib/page-head'
 import { PENDING_VERIFICATION_KEY } from '@/lib/pending-verification'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useCallbackUrl, withCallbackUrl } from '@/utils/callback-url'
 
-const ITENS_FOTO = [
-  ['cal', 'Divulgue sua programação de jogos'],
-  ['map', 'Apareça pra torcedores perto de você'],
-  ['people', 'Veja quem vai assistir, jogo a jogo'],
-  ['ticket', 'Ofereça algo a quem chega pela Onside']
-] as const
-
 export const Route = createFileRoute('/(auth)/signup')({
-  // O cadastro do web é sempre de bar (decisão do dono, 24/10/2026).
-  // `?role=pub` dos links antigos da landing e do guia segue aceito e não
-  // muda nada. O destino pós-cadastro segue na URL.
+  // `?role=pub` abre o cadastro com "Tenho um bar" marcado: é para onde a
+  // landing manda o bar (WEB-232). O destino pós-cadastro segue na URL.
   validateSearch: (search: Record<string, unknown>) => ({
     ...(search.role === 'pub' ? { role: 'pub' as const } : {}),
     ...(typeof search.callbackUrl === 'string'
@@ -43,11 +35,11 @@ export const Route = createFileRoute('/(auth)/signup')({
       : {})
   }),
   head: () =>
-    entradaHead({
+    pageHead({
       path: '/signup',
-      title: 'Cadastrar meu bar — Onside',
+      title: 'Criar conta — Onside',
       description:
-        'Cadastre seu bar na Onside em 1 minuto e apareça para os torcedores perto de você.',
+        'Crie sua conta no Onside e nunca mais perca o apito inicial.',
       indexable: false
     }),
   component: SignupPage
@@ -59,6 +51,73 @@ export const Route = createFileRoute('/(auth)/signup')({
  * o `blur`, e outra dentro do `onSubmit`, que só sabia produzir toast. Enviar
  * o formulário vazio não acendia nenhum erro sob os campos.
  */
+const ROLES = [
+  {
+    value: 'fan',
+    title: 'Sou torcedor',
+    text: 'Achar bar, marcar que vai e ganhar a oferta da casa.',
+    Icon: People
+  },
+  {
+    value: 'pub',
+    title: 'Tenho um bar',
+    text: `Publicar jogos e encher a casa. ${ONBOARDING_TRIAL.days} dias de Elite grátis.`,
+    Icon: Beer
+  }
+] as const
+
+const FAN_PANEL: AuthPanel = {
+  kind: 'board',
+  led: 'crowd',
+  kicker: 'Conta de torcedor · grátis',
+  title: (
+    <>
+      Escolha o jogo. <span>A gente acha o bar.</span>
+    </>
+  ),
+  cards: [
+    [
+      'Ache o bar do jogo',
+      'Busque o time ou a liga e veja quem vai passar, perto de você.'
+    ],
+    [
+      'Marque que vai',
+      'Seus amigos veem, e o bar se prepara pra receber a galera.'
+    ],
+    ['Oferta da casa', 'Nos bares Elite, o código do balcão libera a oferta.'],
+    ['Medalhas', 'Cada bar novo vira uma medalha na sua estante.']
+  ]
+}
+
+const PUB_PANEL: AuthPanel = {
+  kind: 'board',
+  led: 'crowd',
+  kicker: `Conta de bar · ${ONBOARDING_TRIAL.days} dias grátis`,
+  title: (
+    <>
+      Encha a casa <span>em dia de jogo.</span>
+    </>
+  ),
+  cards: [
+    [
+      'Grade em minutos',
+      'Escolha o jogo no catálogo, marque telão e som e publique.'
+    ],
+    [
+      'Apareça pra quem procura',
+      'Quem busca o jogo perto de você encontra o seu bar.'
+    ],
+    [
+      'Quem vai, quem chegou',
+      'Veja quantos marcaram que vão e quantos códigos o balcão validou.'
+    ],
+    [
+      `${ONBOARDING_TRIAL.days} dias de Elite`,
+      'Grátis, sem cartão. Depois do teste, você escolhe o plano.'
+    ]
+  ]
+}
+
 function validateName({ value }: { value: string }) {
   return value.trim() ? undefined : 'Informe seu nome completo.'
 }
@@ -78,17 +137,36 @@ function validatePassword({ value }: { value: string }) {
   return undefined
 }
 
+function validateConfirm({
+  value,
+  fieldApi
+}: {
+  value: string
+  fieldApi: { form: { getFieldValue: (name: 'password') => string } }
+}) {
+  if (!value) return 'Confirme sua senha.'
+  if (value !== fieldApi.form.getFieldValue('password')) {
+    return 'As senhas não coincidem.'
+  }
+  return undefined
+}
+
 function SignupPage() {
   const navigate = useNavigate()
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [acceptedTerms, setAcceptedTerms] = useState(false)
+  const [role, setRole] = useState<'fan' | 'pub'>(
+    Route.useSearch().role ?? 'fan'
+  )
   const formRef = useRef<HTMLFormElement>(null)
   const captcha = useTurnstile()
 
   const callbackUrl = useCallbackUrl()
 
   const form = useForm({
-    defaultValues: { name: '', email: '', password: '' },
+    defaultValues: { name: '', email: '', password: '', confirm: '' },
     // Envio inválido leva o foco ao primeiro campo com erro. As regras vivem
     // nos validadores dos campos, que rodam no `blur` e no envio — assim a
     // mensagem aparece embaixo do campo em vez de só passar num toast.
@@ -103,7 +181,7 @@ function SignupPage() {
         name,
         email,
         password,
-        role: 'pub',
+        role,
         callbackURL: withCallbackUrl('/verify-email?confirmed=1', callbackUrl),
         fetchOptions: captcha.fetchOptions
       })
@@ -118,13 +196,18 @@ function SignupPage() {
         )
         return
       }
-      analytics.signupCompleted('pub', data.user.id)
+      analytics.signupCompleted(role, data.user.id)
       sessionStorage.setItem(
         PENDING_VERIFICATION_KEY,
-        JSON.stringify({ email, role: 'pub' })
+        JSON.stringify({ email, role })
       )
       toast.success('Enviamos um link de confirmação para o seu e-mail.')
-      navigate({ to: withCallbackUrl('/onboarding/pub', callbackUrl) })
+      navigate({
+        to:
+          role === 'pub'
+            ? '/onboarding/pub'
+            : withCallbackUrl('/verify-email', callbackUrl)
+      })
     }
   })
 
@@ -138,140 +221,168 @@ function SignupPage() {
   }
 
   return (
-    <AuthSplit
-      foto={
-        <>
-          <ItensFoto itens={ITENS_FOTO} />
-          <Disp
-            nivel={0}
-            tamanho={60}
-            linhas={[
-              { texto: 'Vamos lotar sua casa' },
-              { texto: 'nos próximos clássicos.', tint: true }
-            ]}
-          />
-        </>
-      }
-    >
-      <p className="entrada-kicker">Conta de bar · 1 minuto</p>
-      <Disp tamanho={56} linhas={[{ texto: 'Cadastrar meu bar' }]} />
-      <p className="entrada-linha">
-        Já tem conta?{' '}
-        <Link
-          to="/login"
-          search={callbackUrl === '/admin' ? {} : { callbackUrl }}
-          className="entrada-link"
-        >
-          Entrar
-        </Link>
-      </p>
+    <AuthShell panel={role === 'pub' ? PUB_PANEL : FAN_PANEL}>
+      <div className="w-full">
+        <div className="mb-8">
+          <h1 className="onside-display">
+            Crie sua{' '}
+            <span className="text-[var(--onside-live-text)]">conta</span>
+          </h1>
+          <p className="ent-sub">
+            Grátis, pelo navegador, sem baixar nada. Leva menos de um minuto.
+          </p>
+        </div>
 
-      <form
-        method="post"
-        ref={formRef}
-        noValidate
-        style={{ marginTop: 6 }}
-        onSubmit={(e) => {
-          e.preventDefault()
-          form.handleSubmit()
-        }}
-      >
-        <form.Field
-          name="name"
-          validators={{ onBlur: validateName, onSubmit: validateName }}
+        <form
+          method="post"
+          ref={formRef}
+          className="flex flex-col gap-4"
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault()
+            form.handleSubmit()
+          }}
         >
-          {(field) => (
-            <CampoForm
-              field={field}
-              rotulo="Seu nome"
-              id="name"
-              type="text"
-              placeholder="Seu nome completo"
-              autoComplete="name"
-              maxLength={100}
-              required
-            />
-          )}
-        </form.Field>
+          <fieldset className="flex flex-col gap-1.5 border-0 p-0">
+            <legend className="onside-label">Quem é você</legend>
+            <div className="ent-role">
+              {ROLES.map((r) => (
+                <button
+                  key={r.value}
+                  type="button"
+                  aria-pressed={role === r.value}
+                  onClick={() => setRole(r.value)}
+                >
+                  <span className="ic">
+                    <r.Icon />
+                  </span>
+                  <b>{r.title}</b>
+                  <span>{r.text}</span>
+                </button>
+              ))}
+            </div>
+          </fieldset>
 
-        <form.Field
-          name="email"
-          validators={{ onBlur: validateEmail, onSubmit: validateEmail }}
-        >
-          {(field) => (
-            <CampoForm
-              field={field}
-              rotulo="E-mail do responsável"
-              id="email"
-              type="email"
-              inputMode="email"
-              spellCheck={false}
-              placeholder="voce@seubar.com.br"
-              autoComplete="email"
-              maxLength={255}
-              required
-            />
-          )}
-        </form.Field>
-
-        <form.Field
-          name="password"
-          validators={{ onBlur: validatePassword, onSubmit: validatePassword }}
-        >
-          {(field) => (
-            <>
-              <CampoSenha
+          <form.Field
+            name="name"
+            validators={{ onBlur: validateName, onSubmit: validateName }}
+          >
+            {(field) => (
+              <AuthInputField
+                label="Nome completo"
+                icon={User}
                 field={field}
-                rotulo="Senha"
+                id="name"
+                type="text"
+                placeholder="Seu nome completo"
+                autoComplete="name"
+                maxLength={100}
+                required
+              />
+            )}
+          </form.Field>
+
+          <form.Field
+            name="email"
+            validators={{ onBlur: validateEmail, onSubmit: validateEmail }}
+          >
+            {(field) => (
+              <AuthInputField
+                label="E-mail"
+                icon={Envelope}
+                field={field}
+                id="email"
+                type="email"
+                inputMode="email"
+                spellCheck={false}
+                placeholder="seu@email.com"
+                autoComplete="email"
+                maxLength={255}
+                required
+              />
+            )}
+          </form.Field>
+
+          <form.Field
+            name="password"
+            validators={{
+              onBlur: validatePassword,
+              onSubmit: validatePassword
+            }}
+            // "As senhas não coincidem." também se corrige por aqui.
+            listeners={{
+              onChange: () => revalidateShownError(form, 'confirm')
+            }}
+          >
+            {(field) => (
+              <AuthPasswordField
+                label="Senha"
+                field={field}
                 id="password"
                 placeholder="Mínimo 8 caracteres"
                 autoComplete="new-password"
                 required
+                showPassword={showPassword}
+                onToggle={() => setShowPassword((v) => !v)}
               />
-              <ForcaSenha senha={field.state.value} />
-            </>
-          )}
-        </form.Field>
+            )}
+          </form.Field>
 
-        <label className="entrada-aceite">
-          <input
-            type="checkbox"
+          <form.Field
+            name="confirm"
+            validators={{
+              onBlur: validateConfirm,
+              onSubmit: validateConfirm
+            }}
+          >
+            {(field) => (
+              <AuthPasswordField
+                label="Confirmar senha"
+                field={field}
+                id="confirm"
+                placeholder="Repita a senha"
+                autoComplete="new-password"
+                required
+                showPassword={showConfirm}
+                onToggle={() => setShowConfirm((v) => !v)}
+              />
+            )}
+          </form.Field>
+
+          <LegalConsent
             checked={acceptedTerms}
-            onChange={(e) => setAcceptedTerms(e.target.checked)}
+            onCheckedChange={setAcceptedTerms}
           />
-          {/* O design diz "Termos para Estabelecimentos": o documento é um
-              só, os Termos de Uso, que valem para torcedor e bar. */}
-          <span>
-            Li e aceito os{' '}
-            <Link to="/termos" target="_blank" rel="noopener">
-              Termos de Uso
-            </Link>{' '}
-            e a{' '}
-            <Link to="/privacidade" target="_blank" rel="noopener">
-              Política de Privacidade
-            </Link>
-            .
-          </span>
-        </label>
 
-        <Botao
-          type="submit"
-          variante="acid"
-          disabled={isLoading || !acceptedTerms}
-          className="entrada-cta"
-        >
-          {isLoading ? 'Criando conta…' : 'Criar conta do bar'}
-        </Botao>
+          <button
+            type="submit"
+            disabled={isLoading || !acceptedTerms}
+            className="onside-btn onside-btn-acid onside-btn-full ent-full mt-2"
+          >
+            {isLoading ? (
+              <>
+                <Loader
+                  size={16}
+                  color="currentColor"
+                  className="animate-spin"
+                  aria-hidden="true"
+                />
+                Criando conta…
+              </>
+            ) : role === 'pub' ? (
+              'Criar conta do bar'
+            ) : (
+              'Criar conta'
+            )}
+          </button>
 
-        <p className="entrada-nota">
-          Depois disso: dados do bar, características e o bar no ar com{' '}
-          {PLAN_NAMES[ONBOARDING_TRIAL.plan]} grátis por {ONBOARDING_TRIAL.days}{' '}
-          dias.
-        </p>
-        {captcha.widget}
-      </form>
-
-      <CardTorcedor />
-    </AuthSplit>
+          <p className="ent-alt">
+            Já tem conta? <Link to="/login">Entrar</Link>
+          </p>
+          {captcha.widget}
+        </form>
+        <VisitorLink />
+      </div>
+    </AuthShell>
   )
 }

@@ -62,7 +62,8 @@ export function useEventsState(): EventsState {
             void refetch()
           }
         }
-      : { status: 'ready', events: data }
+      : // Rascunho (WEB-436) fica fora da prévia do perfil: o torcedor não vê.
+        { status: 'ready', events: data.filter((e) => e.publishedAt !== null) }
 }
 
 /**

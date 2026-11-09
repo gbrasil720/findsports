@@ -1,6 +1,11 @@
 /*
- * Aviso de cookies (WEB-243). `.onside-banner` traz os tokens: o aviso fica
- * na raiz do documento, fora de qualquer casca de página.
+ * Aviso de cookies (WEB-243), o "Placar" do design (artifact
+ * NBSYLhfA5wNhtXmpFGNuFp, opção A): cartão de tinta no canto, título em mono
+ * com os quadradinhos do telão e botões em pílula do mesmo tamanho. No celular
+ * e no tablet em pé vira uma folha presa ao pé da tela. Um aviso só, igual em
+ * todo o site: landing, entrada, painel, página do bar e Explorar.
+ * `.onside-banner` traz os tokens: o aviso fica na raiz do documento, fora de
+ * qualquer casca de página.
  *
  * Ele está sempre no HTML e nasce escondido. Quem o mostra é o `data-consent`
  * do `<html>`: `pending` para quem ainda não escolheu (posto por um script no
@@ -8,22 +13,23 @@
  * `cookie-consent.tsx`.
  */
 .onside-consent {
+  /* No canto direito: à esquerda, embaixo, fica a busca do topo da landing. */
   position: fixed;
-  right: 16px;
-  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-  left: 16px;
+  right: 32px;
+  bottom: calc(32px + env(safe-area-inset-bottom, 0px));
   z-index: 200;
   display: none;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 20px 32px;
-  align-items: center;
-  width: min(calc(100% - 32px), 920px);
-  margin-inline: auto;
-  padding: 20px 22px;
-  border: 1.5px solid var(--onside-paper);
-  background: var(--onside-ink);
-  color: var(--onside-paper);
-  box-shadow: 6px 6px 0 var(--onside-acid);
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  width: min(calc(100% - 64px), 452px);
+  padding: 20px 20px 18px;
+  border-radius: 24px;
+  background: #12120f;
+  color: #f1eee6;
+  box-shadow:
+    inset 0 0 0 1px #34342d,
+    0 4px 0 #000,
+    0 30px 60px -30px rgba(0, 0, 0, 0.9);
   font-family: var(--onside-body);
 }
 
@@ -34,16 +40,16 @@ html[data-consent] .onside-consent {
 /*
  * O aviso não ocupa lugar no fluxo, então o fim da página ficava debaixo
  * dele. Enquanto ele aparece, o documento ganha no fim a altura do aviso (que
- * o componente mede) mais o respiro de baixo e um de cima. Some junto com o
- * aviso; como é espaço depois do conteúdo, nada acima se desloca.
+ * o componente mede) mais o respiro de baixo. Some junto com o aviso; como é
+ * espaço depois do conteúdo, nada acima se desloca.
  *
  * O espaço é do `body`, que é branco, e quem pinta o fundo é a casca de cada
- * tela (`.onside-app` e `.onside-page`, as duas em `--onside-paper`): sem cor
- * aqui ele aparecia como uma faixa branca depois da página. O `body` pinta a
- * faixa com a cor da página — literal, porque os tokens não chegam até ele —
- * e, onde a página termina no rodapé escuro (landing e páginas legais), com a
- * do rodapé. O fundo no `:root` segura o do `body` dentro da caixa dele: sem
- * isso ele vaza para a tela inteira e muda a cor de fora da página também.
+ * tela: sem cor aqui ele aparecia como uma faixa branca depois da página. O
+ * `body` pinta a faixa com a cor da página — literal, porque os tokens não
+ * chegam até ele — e, onde a página termina no rodapé escuro (landing e
+ * páginas legais), com a do rodapé. O fundo no `:root` segura o do `body`
+ * dentro da caixa dele: sem isso ele vaza para a tela inteira e muda a cor de
+ * fora da página também.
  */
 html[data-consent] {
   --onside-consent-space: calc(
@@ -65,22 +71,25 @@ html[data-consent] body {
   background: #f1eee6; /* --onside-paper */
 }
 
-html[data-consent]:has(.onside-site-footer) body {
+html[data-consent]:has(.onside-site-footer) body,
+html[data-consent]:has(.lp3) body,
+html[data-consent]:has(.bp) body {
   background: #12120f; /* --onside-ink */
 }
 
 /*
  * O que é fixo no pé da janela sobe para cima do aviso enquanto ele aparece,
- * pelo mesmo espaço (WEB-370): a barra de ação da página do bar e os toasts.
- * A chamada fixa da landing faz o mesmo em `onside.css`. Elemento novo preso
- * ao pé da tela entra aqui.
+ * pelo mesmo espaço (WEB-370): a barra do jogo da página do bar (`/bar/$slug`,
+ * só no celular) e os toasts. A chamada fixa da landing faz o mesmo em
+ * `onside.css`, e o Explorar (abas, folha, aviso e "Ver mapa") em
+ * `torcedor.css`. Elemento novo preso ao pé da tela entra aqui.
  *
  * A barra de ação deixa de somar a área segura: o aviso, embaixo dela, já a
  * ocupa.
  */
-html[data-consent] .onside-app .onside-pub-actionbar {
+html[data-consent] .bp-layer.mcta {
   bottom: var(--onside-consent-space);
-  padding-bottom: 10px;
+  padding-bottom: 12px;
 }
 
 html[data-consent] [data-sonner-toaster][data-y-position="bottom"] {
@@ -96,25 +105,58 @@ html[data-consent] .onside-app > aside {
   box-shadow: 0 var(--onside-consent-space) 0 var(--onside-ink);
 }
 
+/*
+ * Na landing antiga (o cabeçalho do guia) ele fica atrás do menu do
+ * cabeçalho (`z-index: 99`), que em tela baixa abre por cima de onde o aviso
+ * está.
+ */
+:root:has(.onside-landing) .onside-consent {
+  z-index: 98;
+}
+
 .onside-consent p {
   margin: 0;
-  font-size: 14px;
+  font-size: 15.5px;
   line-height: 1.5;
 }
 
-/* O texto curto é o da barra do celular, mais abaixo. */
-.onside-consent .onside-consent-short {
-  display: none;
+.onside-consent .onside-consent-kicker {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 14px;
+  color: #aaa9a4;
+  font-family: var(--onside-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
-.onside-consent .onside-consent-kicker {
-  margin-bottom: 6px;
-  color: var(--onside-acid);
-  font-family: var(--onside-mono);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+.onside-consent-note {
+  margin-left: auto;
+  color: #8a8983;
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Seis quadradinhos do telão, acesos e meio apagados. */
+.onside-consent-leds {
+  display: grid;
+  grid-template-columns: repeat(3, 4px);
+  gap: 2px;
+}
+
+.onside-consent-leds i {
+  width: 4px;
+  height: 4px;
+  background: #c9f135;
+}
+
+.onside-consent-leds i:nth-child(even) {
+  opacity: 0.5;
 }
 
 .onside-consent .onside-consent-current {
@@ -125,28 +167,32 @@ html[data-consent] .onside-app > aside {
 
 .onside-consent a {
   color: inherit;
+  font-weight: 700;
   text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.onside-consent-actions {
-  display: flex;
-  gap: 10px;
+  text-decoration-color: #c9f135;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
 }
 
 /* Recusar e aceitar com o mesmo tamanho: recusar não pode ser mais difícil. */
+.onside-consent-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .onside-consent-actions button {
-  min-width: 124px;
+  min-width: 0;
   min-height: 48px;
   padding: 0 20px;
-  border: 1.5px solid var(--onside-paper);
+  border: 0;
+  border-radius: 999px;
   background: transparent;
-  color: var(--onside-paper);
+  box-shadow: inset 0 0 0 1.5px #f1eee6;
+  color: #f1eee6;
   font: inherit;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
-  letter-spacing: 0.035em;
-  text-transform: uppercase;
   cursor: pointer;
   transition:
     background-color var(--onside-motion-base) ease,
@@ -154,115 +200,74 @@ html[data-consent] .onside-app > aside {
 }
 
 .onside-consent-actions button.is-accept {
-  border-color: var(--onside-acid);
-  background: var(--onside-acid);
-  color: var(--onside-ink);
+  background: #c9f135;
+  box-shadow: 0 3px 0 #7f9a12;
+  color: #12120f;
 }
 
 .onside-consent :focus-visible {
-  outline: 3px solid var(--onside-acid);
+  outline: 3px solid #c9f135;
   outline-offset: 3px;
 }
 
 @media (hover: hover) and (pointer: fine) {
   .onside-consent-actions button:hover {
-    background: var(--onside-paper);
-    color: var(--onside-ink);
+    background: #f1eee6;
+    color: #12120f;
+  }
+
+  .onside-consent-actions button.is-accept:hover {
+    background: #d4f55a;
+    color: #12120f;
   }
 }
 
 /*
- * Landing: a primeira tela é o hero, e o aviso largo no pé da janela ficava
- * por cima da chamada principal. Com o hero em paisagem (a condição é a de
- * `onside.css`, "Hero em retrato", ao contrário) a chamada fica embaixo, à
- * esquerda, e o aviso vira um cartão estreito no canto direito: com 420px a
- * borda esquerda dele passa do botão em qualquer largura. A chamada fixa
- * continua subindo para cima dele por `--onside-consent-space`.
- *
- * Na landing ele fica atrás do menu do cabeçalho (`z-index: 99`), que em tela
- * baixa abre por cima de onde o aviso está.
- */
-:root:has(.onside-landing) .onside-consent {
-  z-index: 98;
-}
-
-@media (min-width: 761px) and (orientation: landscape), (min-width: 1101px) {
-  :root:has(.onside-landing) .onside-consent {
-    left: auto;
-    grid-template-columns: minmax(0, 1fr);
-    width: min(calc(100% - 32px), 420px);
-  }
-
-  :root:has(.onside-landing) .onside-consent-actions button {
-    flex: 1;
-    min-width: 0;
-  }
-}
-
-/*
- * Celular e tablet em pé, em todas as telas: barra compacta colada ao pé da
- * janela, na largura inteira, com o texto curto e os dois botões lado a lado.
- * O cartão flutuante ocupava um quarto da tela do celular.
- *
- * A reserva no fim do documento passa a ser só a altura da barra, que já
- * inclui a área segura. Na landing o hero cede esse espaço enquanto a escolha
- * está pendente (`onside.css`, "Hero em retrato").
+ * Celular e tablet em pé, em todas as telas: folha colada ao pé da janela, na
+ * largura inteira. A reserva no fim do documento passa a ser só a altura da
+ * folha, que já inclui a área segura. Na landing o hero cede esse espaço
+ * enquanto a escolha está pendente (`onside.css`, "Hero em retrato").
  */
 @media (max-width: 760px), (max-width: 1100px) and (orientation: portrait) {
   .onside-consent {
     right: 0;
     bottom: 0;
     left: 0;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 8px;
+    gap: 12px;
     width: auto;
-    padding: 8px 16px calc(8px + env(safe-area-inset-bottom, 0px));
-    border-width: 1.5px 0 0;
-    box-shadow: none;
+    padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+    border-radius: 26px 26px 0 0;
+    box-shadow:
+      0 -1px 0 #34342d,
+      0 -24px 50px -30px rgba(0, 0, 0, 0.7);
   }
 
   html[data-consent] {
     --onside-consent-space: var(--onside-consent-h, 0px);
   }
 
-  .onside-consent .onside-consent-kicker,
-  .onside-consent .onside-consent-long {
-    display: none;
+  .onside-consent .onside-consent-kicker {
+    margin-bottom: 12px;
+    font-size: 11.5px;
   }
 
-  .onside-consent .onside-consent-short {
-    display: block;
-    font-size: 13px;
-    line-height: 1.3;
+  .onside-consent p {
+    font-size: 15px;
   }
 
   .onside-consent .onside-consent-current {
     margin-top: 2px;
   }
 
-  .onside-consent-actions {
-    gap: 8px;
-  }
-
   .onside-consent-actions button {
-    flex: 1;
-    min-width: 0;
-    min-height: 44px;
+    min-height: 50px;
   }
 }
 
-/* Tablet em pé: cabe tudo numa linha, texto à esquerda e botões à direita. */
-@media (min-width: 600px) and (max-width: 760px),
-  (min-width: 600px) and (max-width: 1100px) and (orientation: portrait) {
-  .onside-consent {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 16px;
-    padding-inline: 24px;
-  }
-
-  .onside-consent-actions button {
-    flex: none;
-    min-width: 112px;
+/* Celular estreito: a nota não cabe ao lado do título. */
+@media (max-width: 380px) {
+  .onside-consent-note {
+    display: none;
   }
 }
 

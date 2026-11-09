@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-05T13:40:00Z",
+  "title": "Design System: Onside",
+  "extensions": {
+    "colorMeta": {
+      "ink": { "role": "neutral", "displayName": "Tinta de Bar", "tonalRamp": ["#0b0b09", "#12120f", "#1c1c18", "#2a2a24", "#34342d", "#55554f", "#aaa9a4", "#c9c7c0"] },
+      "paper": { "role": "neutral", "displayName": "Papel de Comanda", "tonalRamp": ["#9c9889", "#cfcabf", "#d9d4c8", "#e7e3db", "#ece8df", "#f1eee6", "#faf8f3", "#fbfaf6"] },
+      "acid": { "role": "primary", "displayName": "Acid de Refletor", "tonalRamp": ["#2d3606", "#5b6d0c", "#7f9a12", "#9bbb1f", "#b4dc1c", "#c9f135", "#d6f75c", "#ebfbb0"] },
+      "live": { "role": "secondary", "displayName": "Vermelho Ao Vivo", "tonalRamp": ["#5a1404", "#8f1f07", "#c92b0c", "#e8320c", "#f3421d", "#f76b4d", "#fba18c", "#fdd5cb"] }
+    },
+    "typographyMeta": {
+      "display-hero": { "displayName": "Display Hero", "purpose": "Só o título da landing." },
+      "display": { "displayName": "Display", "purpose": "Título de seção na vitrine; 40–56 px em telas de uso." },
+      "headline": { "displayName": "Headline", "purpose": "Nome do jogo, do bar, número de KPI." },
+      "data": { "displayName": "Data", "purpose": "Horário, contagem, distância, código." }
+    },
+    "shadows": [
+      { "name": "drop-acid", "value": "0 4px 0 #7f9a12", "purpose": "Botão acid em repouso; hover 0 6px 0, pressionado 0 1px 0." },
+      { "name": "drop-ink", "value": "0 4px 0 #000", "purpose": "Botão tinta e campo de busca sobre tinta." },
+      { "name": "card-paper", "value": "0 3px 0 #d9d4c8, 0 24px 40px -30px rgba(18,18,15,.5)", "purpose": "Cartão sobre papel." },
+      { "name": "float", "value": "0 4px 0 rgba(0,0,0,.55), 0 24px 40px -18px rgba(0,0,0,.7)", "purpose": "Cartões flutuantes e resultado da busca." },
+      { "name": "device", "value": "inset 0 0 0 1.5px #3a3a33, 0 50px 90px -30px rgba(0,0,0,.75)", "purpose": "Moldura do celular." }
+    ],
+    "motion": [
+      { "name": "ease-out", "value": "cubic-bezier(.16,1,.3,1)", "purpose": "Toda entrada e mudança de estado." },
+      { "name": "press", "value": "180ms", "purpose": "Botão subindo e descendo." },
+      { "name": "swap", "value": "550ms", "purpose": "Troca de tela no telefone fixo." },
+      { "name": "reveal", "value": "900ms", "purpose": "Entrada de bloco abaixo da dobra, de 28 px." },
+      { "name": "led-frame", "value": "33ms", "purpose": "Quadro do telão de LED (30 fps), pausado fora da tela." }
+    ],
+    "breakpoints": [
+      { "name": "phone", "value": "640px" },
+      { "name": "stack-steps", "value": "900px" },
+      { "name": "one-column", "value": "1100px" },
+      { "name": "rail", "value": "1180px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Botão acid",
+      "kind": "button",
+      "refersTo": "button-acid",
+      "description": "Ação principal, uma por tela.",
+      "html": "<button class=\"ds-btn-acid\">Ver bares</button>",
+      "css": ".ds-btn-acid{display:inline-flex;align-items:center;gap:10px;height:56px;padding:0 26px;border:0;border-radius:999px;background:#c9f135;color:#12120f;font:700 16px/1 Archivo,system-ui,sans-serif;box-shadow:0 4px 0 #7f9a12;cursor:pointer;transition:transform .18s cubic-bezier(.16,1,.3,1),box-shadow .18s cubic-bezier(.16,1,.3,1)}.ds-btn-acid:hover{transform:translateY(-2px);box-shadow:0 6px 0 #7f9a12}.ds-btn-acid:active{transform:translateY(3px);box-shadow:0 1px 0 #7f9a12}.ds-btn-acid:focus-visible{outline:3px solid #c9f135;outline-offset:3px}"
+    },
+    {
+      "name": "Botão tinta",
+      "kind": "button",
+      "refersTo": "button-ink",
+      "description": "Ação forte sobre papel.",
+      "html": "<button class=\"ds-btn-ink\">Cadastrar meu bar</button>",
+      "css": ".ds-btn-ink{display:inline-flex;align-items:center;height:56px;padding:0 26px;border:0;border-radius:999px;background:#12120f;color:#f1eee6;font:700 16px/1 Archivo,system-ui,sans-serif;box-shadow:0 4px 0 #000;cursor:pointer;transition:transform .18s cubic-bezier(.16,1,.3,1),box-shadow .18s}.ds-btn-ink:hover{transform:translateY(-2px);box-shadow:0 6px 0 #000}.ds-btn-ink:active{transform:translateY(3px);box-shadow:0 1px 0 #000}.ds-btn-ink:focus-visible{outline:3px solid #c9f135;outline-offset:3px}"
+    },
+    {
+      "name": "Botão contorno",
+      "kind": "button",
+      "refersTo": "button-compact",
+      "description": "Ação secundária.",
+      "html": "<button class=\"ds-btn-ghost\">Tenho um bar</button>",
+      "css": ".ds-btn-ghost{height:44px;padding:0 18px;border:0;border-radius:999px;background:transparent;color:#12120f;box-shadow:inset 0 0 0 1.5px currentColor;font:700 14.5px/1 Archivo,system-ui,sans-serif;cursor:pointer}.ds-btn-ghost:hover{background:rgba(127,127,110,.12)}.ds-btn-ghost:focus-visible{outline:3px solid #c9f135;outline-offset:3px}"
+    },
+    {
+      "name": "Busca do jogo",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "Barra pílula com jogo, lugar e ação.",
+      "html": "<form class=\"ds-search\"><label class=\"ds-f\"><span>Qual jogo</span><input value=\"Corinthians × Palmeiras\"></label><label class=\"ds-f\"><span>Onde</span><input value=\"Vila Madalena\"></label><button type=\"button\">Ver bares</button></form>",
+      "css": ".ds-search{display:flex;background:#f1eee6;border-radius:26px;padding:7px;box-shadow:0 6px 0 #000;max-width:620px}.ds-f{flex:1;display:flex;flex-direction:column;padding:8px 16px;border-radius:19px}.ds-f+.ds-f{border-left:1px solid #d9d4c8}.ds-f:focus-within{background:#faf8f3}.ds-f span{font:600 11.5px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:#55554f;margin-bottom:6px}.ds-f input{border:0;background:transparent;font:700 18px/1.2 Archivo,sans-serif;color:#12120f;outline:none;min-width:0}.ds-search button{border:0;border-radius:20px;padding:0 24px;background:#c9f135;color:#12120f;font:700 17px Archivo,sans-serif;box-shadow:0 4px 0 #7f9a12;cursor:pointer}"
+    },
+    {
+      "name": "Chips",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Filtro, característica, o que pesou.",
+      "html": "<div class=\"ds-chips\"><span class=\"ds-chip ds-on\">Telão</span><span class=\"ds-chip\">Som ligado</span><span class=\"ds-chip ds-pos\">Atendimento</span></div>",
+      "css": ".ds-chips{display:flex;gap:8px;flex-wrap:wrap}.ds-chip{display:inline-flex;align-items:center;height:36px;padding:0 15px;border-radius:999px;background:#e7e3db;color:#12120f;font:600 14px/1 Archivo,sans-serif}.ds-on{background:#12120f;color:#f1eee6}.ds-pos{background:#c9f135}"
+    },
+    {
+      "name": "Linha de bar",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Bar no resultado: sigla, nome, meta, horário.",
+      "html": "<div class=\"ds-row\"><span class=\"ds-th\">BZ</span><span><b>Bar do Zé</b><small>3 telões · som ligado · 34 vão</small></span><span class=\"ds-t\">21:30<small>hoje</small></span></div>",
+      "css": ".ds-row{display:grid;grid-template-columns:48px 1fr auto;gap:14px;align-items:center;padding:14px 18px;background:#faf8f3;border-radius:20px;box-shadow:0 3px 0 #d9d4c8;max-width:460px;font-family:Archivo,sans-serif}.ds-th{width:48px;height:48px;border-radius:12px;background:#12120f;color:#c9f135;display:grid;place-items:center;font:400 17px Anton,sans-serif}.ds-row b{display:block;font-size:16px}.ds-row small{display:block;font-size:13px;color:#55554f;margin-top:3px}.ds-t{font:400 22px/1 Anton,sans-serif;text-align:right}.ds-t small{font:500 11px 'Geist Mono',monospace}"
+    },
+    {
+      "name": "Navegação flutuante",
+      "kind": "nav",
+      "description": "Pílula fixa da vitrine; tinta sobre tinta, papel sobre papel.",
+      "html": "<nav class=\"ds-nav\"><b>ONSIDE<i></i></b><span><a>Como funciona</a><a>Para bares</a></span><button>Quero o app</button></nav>",
+      "css": ".ds-nav{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:8px 8px 8px 20px;border-radius:999px;background:#12120f;color:#f1eee6;max-width:720px}.ds-nav b{font:400 24px Anton,sans-serif}.ds-nav i{display:inline-block;width:6px;height:6px;background:#e8320c;margin-left:2px}.ds-nav a{font:600 14.5px Archivo,sans-serif;padding:11px 14px;border-radius:999px;cursor:pointer}.ds-nav a:hover{background:rgba(127,127,110,.18)}.ds-nav button{height:44px;padding:0 18px;border:0;border-radius:999px;background:#c9f135;color:#12120f;font:700 14.5px Archivo,sans-serif;box-shadow:0 3px 0 #7f9a12}"
+    },
+    {
+      "name": "Etiqueta ao vivo",
+      "kind": "custom",
+      "refersTo": "tag-live",
+      "description": "Jogo rolando agora.",
+      "html": "<span class=\"ds-live\"><i></i>AO VIVO 12'</span>",
+      "css": ".ds-live{display:inline-flex;align-items:center;gap:7px;padding:4px 8px;border-radius:6px;background:#e8320c;color:#12120f;font:600 11.5px/1 'Geist Mono',monospace;letter-spacing:.06em}.ds-live i{width:7px;height:7px;border-radius:50%;background:#12120f;animation:ds-p 1.8s infinite}@keyframes ds-p{50%{opacity:.35}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "O Telão do Bar",
+    "overview": "Tudo na Onside é visto como num telão de LED em noite de jogo. A tinta é a sala escura, a luz acid aparece onde a pessoa tem de olhar ou agir, o vermelho acende só para o que está ao vivo, e o produto real sempre aparece em quadro. O sistema tem dois registros com a mesma pele: vitrine, com telão de LED e movimento, e uso, onde o espetáculo recolhe e a primeira dobra entrega o valor com pouco.",
+    "keyCharacteristics": ["Tinta e papel quentes, acid como luz, vermelho só para \"ao vivo\".", "Anton caixa-alta em títulos, Geist Mono em dado, Archivo no texto.", "Sombra sólida embaixo dos botões, como peça apoiada no balcão.", "Telas reais do produto em moldura de celular ou navegador.", "Telão de LED (foto em pontos) como textura da marca, só na vitrine."],
+    "rules": [
+      { "name": "The Live Red Rule", "body": "Vermelho só para o que acontece agora e para o destaque do título no claro. Nunca decoração, nunca erro genérico.", "section": "colors" },
+      { "name": "The Acid Light Rule", "body": "Acid é luz, não tinta: botão, seleção, dado bom, destaque sobre tinta. Nunca texto acid sobre papel.", "section": "colors" },
+      { "name": "The Letreiro Rule", "body": "Anton é sempre caixa-alta, nunca em texto corrido nem abaixo de 22 px.", "section": "typography" },
+      { "name": "The Mono Is Data Rule", "body": "Geist Mono só para hora, contagem, código, distância, rótulo.", "section": "typography" },
+      { "name": "The Little Chrome Rule", "body": "Em tela de uso, a primeira dobra já entrega o valor com no máximo uma faixa de cabeçalho.", "section": "layout" },
+      { "name": "The Solid Drop Rule", "body": "Toda peça clicável tem sombra sólida embaixo e reage ao toque descendo.", "section": "elevation" }
+    ],
+    "dos": ["Do mostrar o produto real: tela do app, do painel, o código do balcão. Dado de exemplo é marcado como exemplo.", "Do usar acid para uma ação por tela e para o que está selecionado ou bom.", "Do dar a horário, contagem, distância e código a Geist Mono com algarismos tabulares.", "Do manter a primeira dobra das telas de uso respondendo \"qual jogo, onde, quem vai\" ou o número do dia do bar.", "Do animar com cubic-bezier(.16,1,.3,1) a partir de um estado visível, e respeitar prefers-reduced-motion.", "Do seguir o tema do sistema nas telas de uso: tinta e papel trocam, acid substitui o vermelho no destaque do título."],
+    "donts": ["Don't pôr o telão de LED, faixas que correm ou títulos acima de 56 px dentro de telas de uso.", "Don't usar vermelho para nada que não seja ao vivo, agora ou a marca.", "Don't escrever texto acid sobre papel, nem texto cinza puro.", "Don't usar vidro como enfeite, gradiente em texto, faixa lateral colorida em cartão, emoji como ícone, ou rótulo pequeno em cima de título.", "Don't desenhar uma tela do produto à mão quando existe a tela real para enquadrar.", "Don't chamar presença de reserva em nenhum texto de interface."]
+  }
+}

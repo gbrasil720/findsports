@@ -1,15 +1,18 @@
 import type { SubscriptionPlan } from '@findsports_oficial/db'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle
+} from '@findsports_oficial/ui/components/dialog'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { useMyBar, useMyEvents } from '@/components/admin/admin-queries'
-import { Botao, Card, Medalha, propsBotao } from '@/components/painel'
 import { getEventTemporalState } from '@/domain/events'
-import { ehRascunho } from '@/domain/painel-jogos'
 import { getPlan, getPlanLosses, getPlanLossNote } from '@/lib/plan-catalog'
 import { RECEIPT_POLL_INTERVAL_MS } from '@/lib/subscription-receipt'
 import { useTRPC } from '@/utils/trpc'
-import { PainelModal } from './planos'
 
 type Change = { from: SubscriptionPlan; to: SubscriptionPlan }
 
@@ -26,17 +29,19 @@ function PlanLossList({
 }: Change & { onTrial?: boolean; className?: string }) {
   const bar = useMyBar().data
   const events = useMyEvents().data
-  // Rascunho (WEB-436) não está nas buscas: não se perde.
+  // Rascunho (WEB-436) não está no ar: não conta como jogo publicado.
   const upcoming = events?.filter(
     (item) =>
-      !ehRascunho(item) &&
+      item.publishedAt !== null &&
       getEventTemporalState(item.startsAt, item.endsAt) !== 'past'
   )
   const numbers =
     bar && upcoming ? { ...bar, upcomingEvents: upcoming.length } : null
 
   return (
-    <ul className={`mt-3 space-y-2 text-sm ${className ?? ''}`}>
+    <ul
+      className={className ?? 'mt-3 space-y-2 text-[var(--onside-ink)] text-sm'}
+    >
       {getPlanLosses(from, to).map((loss) => {
         const note = numbers
           ? getPlanLossNote(loss.key, numbers, onTrial)
@@ -64,7 +69,9 @@ type DialogProps = Change & {
 
 /**
  * Trocar para um plano menor pede confirmação e diz o que o bar perde, antes
- * de o Stripe mostrar só o preço (WEB-351).
+ * de o Stripe mostrar só o preço (WEB-351). Visual do quadro "Antes de descer
+ * de plano" do redesign (WEB-501); o diálogo sai num portal, fora de `.lp3`,
+ * e leva as cores dele em `.pl-dlg` (`plan-v3.css`).
  */
 export function DowngradeConfirmDialog({
   from,
@@ -77,45 +84,55 @@ export function DowngradeConfirmDialog({
 }: DialogProps) {
   // O foco começa em quem não troca nada.
   const cancelRef = useRef<HTMLButtonElement>(null)
+  const barName = useMyBar().data?.name
 
   return (
-    <PainelModal
-      titulo={`Trocar para o ${getPlan(to).name}?`}
-      icone={<Medalha plano={to} tamanho={52} />}
-      inicio={cancelRef}
-      onClose={onCancel}
+    <Dialog
+      open
+      onOpenChange={(next) => {
+        if (!next) onCancel()
+      }}
     >
-      <div>
-        <p className="text-[15px] text-[var(--painel-muted)]">
+      <DialogContent
+        initialFocus={cancelRef}
+        className="pl-dlg flex max-h-[min(90dvh,900px)] max-w-[calc(100vw-2rem)] flex-col gap-4 rounded-[26px] p-[26px] sm:max-w-[560px]"
+      >
+        <p className="pl-dlg-k">{confirmLabel}</p>
+        <DialogTitle className="pl-dlg-h">
+          O que o {barName ?? 'seu bar'} perde
+        </DialogTitle>
+        <DialogDescription className="sr-only">
           Seu bar sai do {getPlan(from).name} e deixa de ter:
+        </DialogDescription>
+        {/* Só a lista rola: título, crédito e botões ficam à vista. */}
+        <PlanLossList
+          from={from}
+          to={to}
+          onTrial={onTrial}
+          className="pl-loss min-h-0 flex-1 overflow-y-auto overscroll-contain"
+        />
+        <p className="pl-dlg-p">
+          {earnsCredit
+            ? 'A troca vale na hora. A diferença vira crédito na sua conta e abate as próximas mensalidades (não é reembolsada no cartão).'
+            : onTrial
+              ? 'A troca vale na hora e não muda a data do fim do teste.'
+              : 'A troca vale na hora.'}
         </p>
-        <PlanLossList from={from} to={to} onTrial={onTrial} />
-      </div>
-      {earnsCredit ? (
-        <p className="text-sm">
-          A diferença vira crédito na sua conta e abate as próximas mensalidades
-          (não é reembolsada no cartão).
-        </p>
-      ) : null}
-      <div className="flex flex-wrap gap-2.5">
-        <Botao
-          variante="ink"
-          altura={48}
-          className="!flex-1"
-          onClick={onConfirm}
-        >
-          {confirmLabel}
-        </Botao>
-        <button
-          ref={cancelRef}
-          type="button"
-          {...propsBotao({ variante: 'acid', altura: 48 }, '!flex-1')}
-          onClick={onCancel}
-        >
-          Manter o {getPlan(from).name}
-        </button>
-      </div>
-    </PainelModal>
+        <div className="pl-dlg-acts">
+          <button
+            ref={cancelRef}
+            type="button"
+            onClick={onCancel}
+            className="ghost"
+          >
+            Ficar no {getPlan(from).name}
+          </button>
+          <button type="button" onClick={onConfirm} className="ink">
+            {confirmLabel}
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -159,21 +176,21 @@ export function PlanChangedNotice({ pending }: { pending: Change | null }) {
   const hasLosses = getPlanLosses(changed.from, changed.to).length > 0
 
   return (
-    <Card kind="acid" role="status">
-      <div>
-        <p className="font-bold text-[15px]">
-          Plano alterado para {getPlan(changed.to).name}.
-        </p>
-        {hasLosses ? (
-          <>
-            <p className="mt-1 text-sm">
-              Com a troca, seu bar deixa de ter os recursos do{' '}
-              {getPlan(changed.from).name}:
-            </p>
-            <PlanLossList from={changed.from} to={changed.to} />
-          </>
-        ) : null}
-      </div>
-    </Card>
+    <div className="pn-aviso-ok" role="status">
+      <b>Plano alterado para {getPlan(changed.to).name}.</b>
+      {hasLosses ? (
+        <>
+          <p>
+            Com a troca, seu bar deixa de ter os recursos do{' '}
+            {getPlan(changed.from).name}:
+          </p>
+          <PlanLossList
+            from={changed.from}
+            to={changed.to}
+            className="pn-aviso-ok-l"
+          />
+        </>
+      ) : null}
+    </div>
   )
 }

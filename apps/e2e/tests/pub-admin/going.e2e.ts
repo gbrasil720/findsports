@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { signIn } from '../../fixtures/auth'
 import { createEvent, createTicket } from '../../fixtures/going'
-import { painelLink } from '../../fixtures/painel'
 import { createPub, inDays } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
 
@@ -29,12 +28,14 @@ test('lista quem vai por jogo e marca quem já validou', async ({ page }) => {
   expect(registered.ok()).toBe(true)
 
   await page.goto('/admin/quem-vai')
-  await expect(painelLink(page, 'Quem vai')).toHaveAttribute(
-    'aria-current',
-    'page'
-  )
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Quem vai' })
+  ).toBeVisible()
   const game = page.getByRole('article', { name: championship })
-  await expect(game).toContainText('2 vão assistir · 1 validou')
+  await expect(game).toContainText('1 / 2')
+  await expect(game.getByRole('button', { name: /^Validaram/ })).toHaveText(
+    /Validaram\s*1/
+  )
   await expect(
     game.getByRole('listitem').filter({ hasText: arrived.guestName })
   ).toContainText('Validou')
@@ -42,6 +43,34 @@ test('lista quem vai por jogo e marca quem já validou', async ({ page }) => {
     game.getByRole('listitem').filter({ hasText: coming.guestName })
   ).not.toContainText('Validou')
   await expect(game.getByRole('listitem')).toHaveCount(2)
+
+  // Filtro e busca pelo nome, dentro do jogo.
+  await game.getByRole('button', { name: /^Validaram/ }).click()
+  await expect(game.getByRole('listitem')).toHaveCount(1)
+  await expect(game.getByRole('listitem')).toContainText(arrived.guestName)
+  await game.getByRole('button', { name: /^Todos/ }).click()
+  await game.getByPlaceholder('Buscar pelo nome').fill(coming.guestName)
+  await expect(game.getByRole('listitem')).toHaveCount(1)
+  await expect(game.getByRole('listitem')).toContainText(coming.guestName)
+
+  // "Validar código" abre a caixa da casca.
+  await page
+    .getByRole('main')
+    .getByRole('button', { name: 'Validar código' })
+    .click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+})
+
+test('o link "Ver os N" de Jogos leva ao jogo em Quem vai', async ({
+  page
+}) => {
+  const pub = await createPub()
+  const { eventId, championship } = await createEvent(pub.barId)
+  await createTicket(eventId)
+  await signIn(page, pub.user)
+  await page.goto(`/admin/quem-vai#jogo-${eventId}`)
+  await expect(page.locator(`#jogo-${eventId}`)).toBeInViewport()
+  await expect(page.getByRole('article', { name: championship })).toBeVisible()
 })
 
 test('ninguém marcou: a aba diz que está vazia', async ({ page }) => {
@@ -58,8 +87,14 @@ test('link direto para Quem vai sem Elite cai em Hoje', async ({ page }) => {
   await signIn(page, pub.user)
   await page.goto('/admin/quem-vai')
   await expect(page).toHaveURL(/\/admin$/)
-  await expect(painelLink(page, 'Hoje')).toHaveAttribute('aria-current', 'page')
-  await expect(painelLink(page, 'Quem vai')).toHaveCount(0)
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Hoje' })
+  ).toBeVisible()
+  await expect(
+    page
+      .getByRole('navigation', { name: 'Seções do painel' })
+      .getByRole('link', { name: 'Quem vai', exact: true })
+  ).toHaveCount(0)
 })
 
 // WEB-341: o trial vence com código em aberto. O bar não ganha gente nova pela
@@ -77,11 +112,7 @@ test('trial Elite vencido com código em aberto: a aba Quem vai fica e o código
   await signIn(page, pub.user)
 
   await page.goto('/admin/quem-vai')
-  await expect(painelLink(page, 'Quem vai')).toHaveAttribute(
-    'aria-current',
-    'page'
-  )
-  const panel = page.getByRole('main')
+  const panel = page.locator('#painel-main')
   await expect(panel.getByRole('note')).toContainText(
     'A lista de quem vai é um recurso do plano Elite.'
   )
@@ -94,7 +125,10 @@ test('trial Elite vencido com código em aberto: a aba Quem vai fica e o código
     page.getByRole('heading', { level: 3, name: ticket.guestName })
   ).toBeVisible()
   await expect(page.getByText('Chopp em dobro')).toBeVisible()
-  await page.getByRole('button', { name: 'Validar código' }).click()
+  await page
+    .getByRole('main')
+    .getByRole('button', { name: 'Validar código' })
+    .click()
   await page
     .getByRole('dialog', { name: 'Validar o código?' })
     .getByRole('button', { name: 'Sim, validar' })
@@ -104,32 +138,71 @@ test('trial Elite vencido com código em aberto: a aba Quem vai fica e o código
   ).toBeVisible()
 })
 
-// WEB-412: o bar Elite que confirma pela comanda lança em Quem vai os códigos
-// anotados; "Faltou lançar?" diz quem ainda falta.
-test('bar que confirma pela comanda lança o código anotado em Quem vai', async ({
+test('chegada recém-validada se desfaz no Quem vai, com confirmação', async ({
   page
 }) => {
-  const pub = await createPub({ bar: { confirms_codes_later: true } })
-  const { eventId, championship } = await createEvent(pub.barId, {
-    startsAt: new Date(Date.now() - 3_600_000)
-  })
-  const ticket = await createTicket(eventId)
+  const pub = await createPub()
+  const { eventId, championship } = await createEvent(pub.barId)
+  const arrived = await createTicket(eventId)
   await signIn(page, pub.user)
 
+  const found = await page.request.post(
+    '/api/trpc/reservationValidation.lookup',
+    { data: { code: arrived.code } }
+  )
+  const { codeId } = (await found.json()).result.data
+  const registered = await page.request.post(
+    '/api/trpc/reservationValidation.registerArrival',
+    { data: { codeId, requestId: randomUUID() } }
+  )
+  expect(registered.ok()).toBe(true)
+
   await page.goto('/admin/quem-vai')
-  const comanda = page.getByRole('region', {
-    name: 'Lançar códigos da comanda'
-  })
-  await expect(comanda).toContainText('Faltou lançar?')
-  await expect(comanda).toContainText(ticket.guestName)
-
-  await comanda.getByLabel('Códigos anotados').fill(ticket.code.toLowerCase())
-  await comanda.getByRole('button', { name: 'Lançar código' }).click()
-  await expect(comanda).toContainText('1 código lançado')
-  await expect(comanda).not.toContainText('Faltou lançar?')
-
   const game = page.getByRole('article', { name: championship })
+  await expect(game).toContainText('1 / 1')
+  await game
+    .getByRole('button', { name: `Desfazer a chegada de ${arrived.guestName}` })
+    .click()
+  const confirm = page.getByRole('dialog', { name: 'Desfazer a chegada?' })
+  await confirm.getByRole('button', { name: 'Sim, desfazer' }).click()
+  await expect(game).toContainText('0 / 1')
   await expect(
-    game.getByRole('listitem').filter({ hasText: ticket.guestName })
-  ).toContainText('Validou')
+    game.getByRole('listitem').filter({ hasText: arrived.guestName })
+  ).not.toContainText('Validou')
+})
+
+test('chegada recém-validada se desfaz também no jogo aberto de Jogos', async ({
+  page
+}) => {
+  const pub = await createPub()
+  const { eventId } = await createEvent(pub.barId)
+  const arrived = await createTicket(eventId)
+  await signIn(page, pub.user)
+
+  const found = await page.request.post(
+    '/api/trpc/reservationValidation.lookup',
+    { data: { code: arrived.code } }
+  )
+  const { codeId } = (await found.json()).result.data
+  const registered = await page.request.post(
+    '/api/trpc/reservationValidation.registerArrival',
+    { data: { codeId, requestId: randomUUID() } }
+  )
+  expect(registered.ok()).toBe(true)
+
+  await page.goto(`/admin/jogos?jogo=${eventId}`)
+  const open = page.getByLabel('Jogo aberto')
+  const person = open
+    .getByRole('listitem')
+    .filter({ hasText: arrived.guestName })
+  await expect(person).toContainText('Validou')
+  await open
+    .getByRole('button', { name: `Desfazer a chegada de ${arrived.guestName}` })
+    .click()
+  await page
+    .getByRole('dialog', { name: 'Desfazer a chegada?' })
+    .getByRole('button', { name: 'Sim, desfazer' })
+    .click()
+  await expect(person).toContainText('A CAMINHO')
+  await expect(person).not.toContainText('Validou')
 })

@@ -5,8 +5,8 @@ import { signIn } from '../../fixtures/auth'
 import { query } from '../../fixtures/db'
 import { lastEmailTo } from '../../fixtures/email'
 import { expect, test } from '../../fixtures/test'
-import { createUser } from '../../fixtures/users'
-import { submitSignup } from '../auth/forms'
+import { createUser, DEFAULT_PASSWORD } from '../../fixtures/users'
+import { acceptTerms } from '../auth/forms'
 
 // WEB-177: onboarding do bar (`routes/(onboarding)/onboarding.pub.tsx`). O
 // `completePub` geocodifica no servidor, contra o stub da LocationIQ.
@@ -15,12 +15,7 @@ const DRAFT_KEY = 'onside:pub-onboarding-draft'
 
 const button = (page: Page, name: string | RegExp) =>
   page.getByRole('button', { name, exact: typeof name === 'string' })
-/** O passo marcado no topo ("1. Boas-vindas" … "4. Revisão"). */
-const progress = (page: Page) => page.locator('li[aria-current="step"]')
-/** Depois do cadastro, a tela "Seu bar está no ar" (4r). */
-const NO_AR = /\/onboarding\/pub\/no-ar$/
-const telas = (page: Page) =>
-  page.getByRole('group', { name: 'Quantas telas?' })
+const progress = (page: Page) => page.getByText(/^Passo \d de 5 · /)
 
 /** Endereço único: a rua vai para o stub e para o cache do geocoding. */
 const street = (tag = '') => `Rua E2E ${tag}${randomUUID().slice(0, 8)}, 100`
@@ -41,20 +36,15 @@ type Establishment = {
   phone?: string
 }
 
-/** "Rua E2E x, 100" → rua e número, que o formulário pede separados. */
-const splitAddress = (address: string) => {
-  const at = address.lastIndexOf(', ')
-  return at < 0 ? [address, ''] : [address.slice(0, at), address.slice(at + 2)]
-}
-
+/** Rua e número vão em campos separados e são gravados juntos ("Rua X, 100"). */
 async function fillEstablishment(page: Page, data: Establishment) {
-  const [rua, numero] = splitAddress(data.address)
   await page.getByLabel('Nome do estabelecimento').fill(data.name)
-  await page.getByLabel('Rua *', { exact: true }).fill(rua ?? '')
-  await page.getByLabel('Número *', { exact: true }).fill(numero ?? '')
-  await page.getByLabel('Bairro *', { exact: true }).fill(data.neighborhood)
+  const [rua = '', numero = ''] = data.address.split(/,\s*(?=[^,]+$)/)
+  await page.getByLabel('Rua', { exact: true }).fill(rua)
+  await page.getByLabel('Número', { exact: true }).fill(numero)
+  await page.getByLabel('Bairro').fill(data.neighborhood)
   if (data.city !== undefined)
-    await page.getByLabel('Cidade *', { exact: true }).fill(data.city)
+    await page.getByLabel('Cidade', { exact: true }).fill(data.city)
   if (data.phone !== undefined) {
     await page.getByLabel('Telefone').fill(data.phone)
   }
@@ -66,17 +56,36 @@ async function fillEstablishment(page: Page, data: Establishment) {
  */
 const CONCLUIR = /Colocar meu bar no ar|Confirmar meu e-mail/
 
+/**
+ * Da rotina à revisão (WEB-501). O plano não é deste cadastro: o dono
+ * escolhe depois do primeiro jogo (`pub-primeiro-valor.e2e.ts`).
+ */
+async function throughRoutine(page: Page) {
+  await button(page, 'Continuar').click()
+}
+
 /** Do passo 1 até a revisão, pulando as comodidades. */
 async function reachReview(page: Page, data: Establishment) {
   await button(page, 'Começar').click()
   await fillEstablishment(page, data)
   await button(page, 'Continuar').click()
   await button(page, 'Pular').click()
+  await throughRoutine(page)
   await expect(
     page.getByRole('heading', {
-      name: /Pronto para colocar seu bar no ar|Falta só confirmar seu e-mail/
+      name: /Tudo certo\?|Falta só confirmar seu e-mail/
     })
   ).toBeVisible()
+}
+
+/**
+ * Com o e-mail confirmado, o bar entra no ar e o comprovante abre (WEB-501);
+ * o botão dele segue para o destino de sempre.
+ */
+async function concluir(page: Page, seguir = 'Publicar o primeiro jogo') {
+  await button(page, CONCLUIR).click()
+  await expect(page.getByText('TOTAL HOJE')).toBeVisible()
+  await button(page, seguir).click()
 }
 
 /**
@@ -87,7 +96,15 @@ async function signUpPub(page: Page) {
   const email = `pub-draft-${randomUUID()}@e2e.test`
 
   await page.goto('/signup')
-  await submitSignup(page, { name: 'Dona do Rascunho', email })
+  await button(page, /Tenho um bar/).click()
+  await page.getByLabel('Nome completo').fill('Dona do Rascunho')
+  await page.getByLabel('E-mail').fill(email)
+  await page.getByLabel('Senha', { exact: true }).fill(DEFAULT_PASSWORD)
+  await page
+    .getByLabel('Confirmar senha', { exact: true })
+    .fill(DEFAULT_PASSWORD)
+  await acceptTerms(page)
+  await button(page, 'Criar conta do bar').click()
   await expect(page).toHaveURL(/\/onboarding\/pub$/)
   return email
 }
@@ -102,27 +119,27 @@ async function barOf(userId: string) {
   return query(
     `SELECT name, address, neighborhood, city, uf, phone, description,
             description_pending, description_review, amenities,
-            screen_count, is_active, opening_hours, house_offer
+            screen_count, is_active
      FROM bar WHERE user_id = $1`,
     [userId]
   )
 }
 
-test('com sessão verificada: passos, completePub e "no ar", bar nasce no ar', async ({
+test('com sessão verificada: passos, completePub e a tela "no ar", bar nasce no ar', async ({
   page
 }) => {
   const owner = await signInPendingPub(page)
   const address = street()
 
   // Boas-vindas
-  await expect(progress(page)).toHaveText('1. Boas-vindas')
+  await expect(progress(page)).toHaveText(/^Passo 1 de 5/)
   await button(page, 'Começar').click()
 
   // Estabelecimento
   await expect(
-    page.getByRole('heading', { name: 'Conta um pouco do seu bar.' })
+    page.getByRole('heading', { name: 'Seu estabelecimento' })
   ).toBeVisible()
-  await expect(page.getByLabel('Cidade *', { exact: true })).toHaveValue(
+  await expect(page.getByLabel('Cidade', { exact: true })).toHaveValue(
     'São Paulo'
   )
   // WEB-270: a UF nasce com a da cidade que já vem preenchida.
@@ -133,6 +150,7 @@ test('com sessão verificada: passos, completePub e "no ar", bar nasce no ar', a
     neighborhood: 'Pinheiros',
     phone: '11987654321'
   })
+  await page.getByLabel('Descrição · opcional').fill('Sinuca no fundo')
   await button(page, 'Continuar').click()
 
   // Comodidades e telas
@@ -145,76 +163,26 @@ test('com sessão verificada: passos, completePub e "no ar", bar nasce no ar', a
   await expect(telao).toHaveAttribute('aria-pressed', 'true')
   // Não é escolha do bar: é o filtro da busca para quem é Elite com oferta.
   await expect(button(page, 'Com oferta da casa')).toHaveCount(0)
-  for (let i = 0; i < 4; i++) await button(page, 'Mais uma tela').click()
-  await expect(telas(page)).toContainText('4')
-  await page.getByLabel('Mais alguma coisa? (opcional)').fill('Sinuca no fundo')
-  // A prévia "Assim o torcedor vê" acompanha o formulário.
-  await expect(page.locator('aside')).toContainText('4 telas')
+  await page.getByLabel('Quantas telas?').fill('4')
   await button(page, 'Continuar').click()
+  await throughRoutine(page)
 
-  // Revisão: a lista e a prévia ao lado.
-  await expect(progress(page)).toHaveText('4. Revisão')
+  // Revisão
+  await expect(progress(page)).toHaveText(/^Passo 5 de 5/)
   for (const dado of [
     'Bar do Teste',
     'Pinheiros',
     'Telão / projetor',
     address,
-    '(11) 98765-4321'
+    '(11) 98765-4321',
+    'Sinuca no fundo'
   ]) {
-    await expect(page.locator('body')).toContainText(dado)
+    await expect(
+      page.getByRole('main').getByText(dado, { exact: true })
+    ).toBeVisible()
   }
-
-  // WEB-448: horário e oferta se preenchem aqui, no painel do "Editar".
-  const revisao = page.locator('.entrada-ob-revisao')
-  await button(page, 'Editar horário').click()
-  const horario = page.getByRole('region', { name: 'Horário' })
-  await horario.getByRole('button', { name: 'Informar horário' }).click()
-  await horario.getByLabel('Domingo, abre').fill('12:00')
-  await horario.getByLabel('Domingo, fecha').fill('22:00')
-  for (const dia of ['Sexta', 'Sábado']) {
-    await horario.getByLabel(`${dia}, fecha`).fill('02:00')
-  }
-  await expect(revisao).toContainText(
-    'Seg a qui 17–00 · Sex e sáb 17–02 · Dom 12–22'
-  )
-  // Abre e fecha na mesma hora: o servidor recusaria, o botão segura.
-  await horario.getByLabel('Domingo, fecha').fill('12:00')
-  await expect(horario.getByRole('alert')).toHaveText(
-    'Abre e fecha no mesmo horário: ajuste o dia marcado.'
-  )
-  await expect(button(page, CONCLUIR)).toBeDisabled()
-  await horario.getByLabel('Domingo, fecha').fill('22:00')
-  await horario.getByRole('button', { name: 'Pronto' }).click()
-  await expect(horario).toHaveCount(0)
-  await expect(button(page, 'Editar horário')).toBeFocused()
-
-  await button(page, 'Editar oferta da casa').click()
-  const oferta = page.getByRole('region', { name: 'Oferta da casa' })
-  // 28f (WEB-464): a sugestão pronta preenche e a prévia mostra o canhoto.
-  await oferta.getByRole('button', { name: 'Caipirinha pela metade' }).click()
-  await expect(oferta.getByLabel('A oferta')).toHaveValue(
-    'Caipirinha pela metade'
-  )
-  await expect(oferta).toContainText('Prévia · o que o torcedor vê')
-  await expect(
-    oferta.getByRole('button', { name: 'Caipirinha pela metade' })
-  ).toHaveCount(0)
-  await oferta.getByLabel('A oferta').fill('Chopp em dobro até o intervalo')
-  // A prévia mostra a oferta como o torcedor vê.
-  await expect(page.locator('aside')).toContainText(
-    'Chopp em dobro até o intervalo'
-  )
-  await expect(revisao).toContainText('Chopp em dobro até o intervalo')
-
-  await button(page, CONCLUIR).click()
-  await expect(page).toHaveURL(NO_AR)
-  await expect(
-    page.getByRole('heading', { level: 1, name: 'Seu bar está no ar.' })
-  ).toBeVisible()
-  await expect(page.getByText('Bar do Teste já aparece no mapa')).toBeVisible()
-  await expect(
-    page.getByRole('link', { name: 'Cadastrar o primeiro jogo' })
-  ).toHaveAttribute('href', '/admin/jogos?novo=1')
+  await concluir(page)
+  await expect(page).toHaveURL(/\/onboarding\/pub\/no-ar$/)
 
   const [bar] = await barOf(owner.id)
   expect(bar).toMatchObject({
@@ -231,14 +199,7 @@ test('com sessão verificada: passos, completePub e "no ar", bar nasce no ar', a
     // 1 = "Telão / projetor" em `packages/api/src/lib/amenities.ts`.
     amenities: [1],
     screen_count: 4,
-    is_active: true,
-    opening_hours: [
-      { opens: '12:00', closes: '22:00' },
-      ...Array(4).fill({ opens: '17:00', closes: '00:00' }),
-      { opens: '17:00', closes: '02:00' },
-      { opens: '17:00', closes: '02:00' }
-    ],
-    house_offer: 'Chopp em dobro até o intervalo'
+    is_active: true
   })
   const [user] = await query(
     'SELECT onboarding_completed FROM "user" WHERE id = $1',
@@ -257,18 +218,19 @@ test('validações do estabelecimento: nome, bairro, endereço e telefone', asyn
   await expect(continuar).toBeDisabled()
   // WEB-270: o botão desabilitado diz o que falta.
   await expect(continuar).toHaveAccessibleDescription(
-    'Para continuar, falta preencher: nome do estabelecimento, rua, número, bairro.'
+    'Para continuar, falta preencher: nome do estabelecimento, endereço, bairro.'
   )
+  // Sem número: a rua sozinha é o endereço, e o limite é o dela.
   const valid = {
     name: 'Bar Válido',
-    address: street(),
+    address: `Rua E2E ${randomUUID().slice(0, 8)}`,
     neighborhood: 'Centro'
   }
   // Cada campo no limite de baixo segura o botão; um caractere a mais solta.
   for (const [label, short, ok] of [
-    ['Nome do estabelecimento *', 'B', 'Bo'],
-    ['Bairro *', 'C', 'Ce'],
-    ['Rua *', 'Ru ', 'Rua']
+    ['Nome do estabelecimento', 'B', 'Bo'],
+    ['Bairro', 'C', 'Ce'],
+    ['Rua', 'Rua ', 'Rua A']
   ] as const) {
     await fillEstablishment(page, valid)
     await expect(continuar).toBeEnabled()
@@ -278,14 +240,9 @@ test('validações do estabelecimento: nome, bairro, endereço e telefone', asyn
     await expect(continuar).toBeEnabled()
   }
   await expect(continuar).toHaveAccessibleDescription('')
-  await page.getByLabel('Rua *', { exact: true }).fill('Ru ')
+  await page.getByLabel('Rua', { exact: true }).fill('Rua ')
   await expect(continuar).toHaveAccessibleDescription(
-    'Para continuar, falta preencher: rua (pelo menos 3 caracteres).'
-  )
-  await page.getByLabel('Rua *', { exact: true }).fill('Rua A')
-  await page.getByLabel('Número *', { exact: true }).fill('')
-  await expect(continuar).toHaveAccessibleDescription(
-    'Para continuar, falta preencher: número.'
+    'Para continuar, falta preencher: endereço (pelo menos 5 caracteres).'
   )
 
   // Telefone: conferido ao avançar, com a mesma regra do servidor.
@@ -293,8 +250,8 @@ test('validações do estabelecimento: nome, bairro, endereço e telefone', asyn
   await continuar.click()
   await expect(page.getByRole('alert')).toHaveText(/Telefone incompleto/)
   await expect(page.getByLabel('Telefone')).toHaveAttribute(
-    'aria-invalid',
-    'true'
+    'aria-describedby',
+    'pub-phone-error'
   )
   await page.getByLabel('Telefone').fill('2098765432')
   await continuar.click()
@@ -361,7 +318,7 @@ test('UF acompanha a cidade, vai ao geocoding e é gravada no bar (WEB-270)', as
     address,
     neighborhood: 'Centro'
   })
-  const cidade = page.getByLabel('Cidade *', { exact: true })
+  const cidade = page.getByLabel('Cidade', { exact: true })
   const uf = page.getByLabel('Estado (UF)')
   const continuar = button(page, 'Continuar')
 
@@ -381,9 +338,12 @@ test('UF acompanha a cidade, vai ao geocoding e é gravada no bar (WEB-270)', as
   await uf.selectOption('RN')
   await continuar.click()
   await button(page, 'Pular').click()
-  await expect(page.getByText(/Bom Jesus, RN/)).toBeVisible()
-  await button(page, CONCLUIR).click()
-  await expect(page).toHaveURL(NO_AR)
+  await throughRoutine(page)
+  await expect(
+    page.getByRole('main').getByText('Bom Jesus, RN', { exact: true })
+  ).toBeVisible()
+  await concluir(page)
+  await expect(page).toHaveURL(/\/onboarding\/pub\/no-ar$/)
 
   const [bar] = await barOf(owner.id)
   expect(bar).toMatchObject({ city: 'Bom Jesus', uf: 'RN' })
@@ -413,22 +373,22 @@ test('CEP preenche o endereço e vai ao geocoding', async ({ page }) => {
   await button(page, 'Começar').click()
   await page.getByLabel('Nome do estabelecimento').fill('Bar do CEP')
   await page.getByLabel('CEP', { exact: true }).fill('09726251')
-  await expect(page.getByLabel('Rua *', { exact: true })).toHaveValue(rua)
-  await expect(page.getByLabel('Bairro *', { exact: true })).toHaveValue(
-    'Jardim do Mar'
+  await expect(page.getByText('CEP encontrado')).toBeVisible()
+  await expect(page.getByLabel('CEP', { exact: true })).toHaveValue('09726-251')
+  await expect(page.getByLabel('Rua', { exact: true })).toHaveValue(rua)
+  await expect(page.getByLabel('Bairro')).toHaveValue('Jardim do Mar')
+  await expect(page.getByLabel('Cidade', { exact: true })).toHaveValue(
+    'São Bernardo do Campo'
   )
-  await page.getByLabel('Número *', { exact: true }).fill('304')
+  await page.getByLabel('Número', { exact: true }).fill('304')
   await button(page, 'Continuar').click()
   await button(page, 'Pular').click()
-  await button(page, CONCLUIR).click()
-  await expect(page).toHaveURL(NO_AR)
+  await throughRoutine(page)
+  await concluir(page)
+  await expect(page).toHaveURL(/\/onboarding\/pub\/no-ar$/)
 
   const [bar] = await barOf(owner.id)
-  expect(bar).toMatchObject({
-    address: `${rua}, 304`,
-    city: 'São Bernardo do Campo',
-    uf: 'SP'
-  })
+  expect(bar).toMatchObject({ city: 'São Bernardo do Campo', uf: 'SP' })
   const calls = (await (
     await page.request.get(`${STUB_URL}/locationiq/calls`)
   ).json()) as { street: string; postalcode: string | null }[]
@@ -471,7 +431,7 @@ test('rascunho de antes da UF não é enviado: abre no formulário pedindo o est
   expect(await barOf(owner.id)).toHaveLength(0)
 })
 
-test('sem sessão, vindo do signup: rascunho, /verify-email e link do outbox concluem no "no ar"', async ({
+test('sem sessão, vindo do signup: rascunho, /verify-email e link do outbox concluem na tela "no ar"', async ({
   page
 }) => {
   const email = await signUpPub(page)
@@ -485,6 +445,10 @@ test('sem sessão, vindo do signup: rascunho, /verify-email e link do outbox con
     neighborhood: 'Moema',
     phone: '11987654321'
   })
+  // A rotina vai no rascunho e entra no `completePub` da confirmação.
+  await button(page, 'Voltar').click()
+  await button(page, /cardápio/).click()
+  await button(page, 'Continuar').click()
   await button(page, CONCLUIR).click()
 
   await expect(page).toHaveURL(/\/verify-email$/)
@@ -494,13 +458,16 @@ test('sem sessão, vindo do signup: rascunho, /verify-email e link do outbox con
     name: 'Bar do Rascunho',
     address,
     neighborhood: 'Moema',
-    uf: 'SP'
+    uf: 'SP',
+    routine: { games: 12, spend: 80, wants: ['cardapio'] }
   })
 
   // Mesmo contexto do navegador: o rascunho está no localStorage dele.
   const verification = await lastEmailTo(email)
   await page.goto(verification.link)
-  await expect(page).toHaveURL(NO_AR)
+  await expect(page.getByText('TOTAL HOJE')).toBeVisible()
+  await button(page, 'Publicar o primeiro jogo').click()
+  await expect(page).toHaveURL(/\/onboarding\/pub\/no-ar$/)
 
   const [owner] = await query<{ id: string; onboarding_completed: boolean }>(
     'SELECT id, onboarding_completed FROM "user" WHERE email = $1',
@@ -514,6 +481,13 @@ test('sem sessão, vindo do signup: rascunho, /verify-email e link do outbox con
     phone: '+5511987654321',
     is_active: true
   })
+  // O teste nasce no plano que a rotina do rascunho recomenda (12 jogos e o
+  // cardápio pedem o Pro), ainda a escolher.
+  const [plano] = await query<{ plan: string; escolhido: boolean }>(
+    'SELECT plan, trial_plan_chosen_at IS NOT NULL AS escolhido FROM bar WHERE user_id = $1',
+    [owner?.id ?? '']
+  )
+  expect(plano).toEqual({ plan: 'pro', escolhido: false })
   expect(
     await page.evaluate((key) => localStorage.getItem(key), DRAFT_KEY)
   ).toBeNull()
@@ -538,8 +512,8 @@ test('aba sem sessão e sem cadastro pede o login antes do wizard, e o bar preen
     address: street(),
     neighborhood: 'Centro'
   })
-  await button(page, CONCLUIR).click()
-  await expect(page).toHaveURL(NO_AR)
+  await concluir(page)
+  await expect(page).toHaveURL(/\/onboarding\/pub\/no-ar$/)
   expect(await barOf(owner.id)).toHaveLength(1)
 })
 
@@ -555,38 +529,39 @@ test('recarregar no meio do wizard volta ao passo e aos dados, e concluir apaga 
     neighborhood: 'Lapa',
     phone: '11987654321'
   })
+  await page.getByLabel('Descrição · opcional').fill('Chope gelado')
   await button(page, 'Continuar').click()
   const telao = button(page, 'Telão / projetor')
   await telao.click()
-  for (let i = 0; i < 3; i++) await button(page, 'Mais uma tela').click()
-  await page.getByLabel('Mais alguma coisa? (opcional)').fill('Chope gelado')
+  await page.getByLabel('Quantas telas?').fill('3')
   await expect
     .poll(async () => (await storedDraft(page))?.draft)
     .toMatchObject({ description: 'Chope gelado', step: 2 })
 
   // `goto`, e não `reload`: só o `goto` da suíte espera a hidratação.
   await page.goto(page.url())
-  await expect(progress(page)).toHaveText('3. Características')
+  await expect(progress(page)).toHaveText(/^Passo 3 de 5/)
   await expect(telao).toHaveAttribute('aria-pressed', 'true')
-  await expect(telas(page)).toContainText('3')
-  await expect(page.getByLabel('Mais alguma coisa? (opcional)')).toHaveValue(
-    'Chope gelado'
-  )
+  await expect(page.getByLabel('Quantas telas?')).toHaveValue('3')
   await button(page, 'Voltar').click()
   await expect(page.getByLabel('Nome do estabelecimento')).toHaveValue(
     'Bar Recarregado'
   )
-  const [rua, numero] = splitAddress(address)
-  await expect(page.getByLabel('Rua *', { exact: true })).toHaveValue(rua ?? '')
-  await expect(page.getByLabel('Número *', { exact: true })).toHaveValue(
+  const [rua, numero] = address.split(', ')
+  await expect(page.getByLabel('Rua', { exact: true })).toHaveValue(rua ?? '')
+  await expect(page.getByLabel('Número', { exact: true })).toHaveValue(
     numero ?? ''
   )
-  await expect(page.getByLabel('Bairro *', { exact: true })).toHaveValue('Lapa')
+  await expect(page.getByLabel('Bairro')).toHaveValue('Lapa')
+  await expect(page.getByLabel('Descrição · opcional')).toHaveValue(
+    'Chope gelado'
+  )
 
   await button(page, 'Continuar').click()
   await button(page, 'Continuar').click()
-  await button(page, CONCLUIR).click()
-  await expect(page).toHaveURL(NO_AR)
+  await throughRoutine(page)
+  await concluir(page)
+  await expect(page).toHaveURL(/\/onboarding\/pub\/no-ar$/)
   expect(await storedDraft(page)).toBeNull()
   const [bar] = await barOf(owner.id)
   expect(bar).toMatchObject({
@@ -624,7 +599,7 @@ test('rascunho parado no meio do wizard, de outra conta, não aparece (WEB-262)'
 
   await page.goto('/onboarding/pub')
   await expect.poll(() => storedDraft(page)).toBeNull()
-  await expect(progress(page)).toHaveText('1. Boas-vindas')
+  await expect(progress(page)).toHaveText(/^Passo 1 de 5/)
   await button(page, 'Começar').click()
   await expect(page.getByLabel('Nome do estabelecimento')).toHaveValue('')
 })
@@ -657,8 +632,9 @@ test('com sessão de B na aba do cadastro de A, o rascunho e o bar são de B', a
     .toMatchObject({ email: b.email, draft: { name: 'Bar de B', step: 2 } })
 
   await button(page, 'Pular').click()
-  await button(page, CONCLUIR).click()
-  await expect(page).toHaveURL(NO_AR)
+  await throughRoutine(page)
+  await concluir(page)
+  await expect(page).toHaveURL(/\/onboarding\/pub\/no-ar$/)
   expect(await barOf(b.id)).toMatchObject([{ name: 'Bar de B' }])
   expect(
     await query(
@@ -686,7 +662,7 @@ test('rascunho parado no meio do wizard não é enviado pela confirmação do e-
   const verification = await lastEmailTo(email)
   await page.goto(verification.link)
   await expect(page).toHaveURL(/\/onboarding\/pub$/)
-  await expect(progress(page)).toHaveText('3. Características')
+  await expect(progress(page)).toHaveText(/^Passo 3 de 5/)
   expect(
     await query(
       'SELECT 1 FROM bar JOIN "user" u ON u.id = bar.user_id WHERE u.email = $1',
@@ -695,9 +671,12 @@ test('rascunho parado no meio do wizard não é enviado pela confirmação do e-
   ).toHaveLength(0)
 
   await button(page, 'Pular').click()
-  await expect(page.getByText('Bar Pela Metade', { exact: true })).toBeVisible()
-  await button(page, CONCLUIR).click()
-  await expect(page).toHaveURL(NO_AR)
+  await throughRoutine(page)
+  await expect(
+    page.getByRole('main').getByText('Bar Pela Metade', { exact: true })
+  ).toBeVisible()
+  await concluir(page)
+  await expect(page).toHaveURL(/\/onboarding\/pub\/no-ar$/)
   expect(await storedDraft(page)).toBeNull()
 })
 
@@ -725,8 +704,8 @@ test('o cache da sessão expira na resposta do cadastro, mesmo se o pedido do cl
     neighborhood: 'Centro'
   })
   expect(await cache()).toHaveLength(1)
-  await button(page, CONCLUIR).click()
-  await expect(page).toHaveURL(NO_AR)
+  await concluir(page)
+  await expect(page).toHaveURL(/\/onboarding\/pub\/no-ar$/)
   expect(await cache()).toHaveLength(0)
 })
 
@@ -735,7 +714,11 @@ const pathOf = (page: Page) => {
   return url.pathname + url.search
 }
 
-test('link direto sobrevive ao onboarding do bar', async ({ page }) => {
+// O link segue até o painel, e o painel pede antes o plano do teste: é o
+// único passo do cadastro que não dá para pular.
+test('link direto do painel sobrevive ao cadastro e passa pela escolha do plano', async ({
+  page
+}) => {
   const deepLink = '/admin/billing?ref=email'
   const owner = await createUser({ role: 'pub', onboardingCompleted: false })
   await signIn(page, owner)
@@ -746,6 +729,8 @@ test('link direto sobrevive ao onboarding do bar', async ({ page }) => {
     address: street(),
     neighborhood: 'Pinheiros'
   })
-  await button(page, CONCLUIR).click()
-  await expect.poll(() => pathOf(page)).toBe(deepLink)
+  await concluir(page, 'Continuar')
+  await expect
+    .poll(() => pathOf(page))
+    .toBe('/onboarding/pub/no-ar?passo=plano')
 })

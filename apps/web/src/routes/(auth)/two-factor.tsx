@@ -1,10 +1,10 @@
-import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
-import { AuthSplit, Disp, entradaHead } from '@/components/entrada/auth'
-import { Botao, Campo, Seg } from '@/components/painel'
+import Loader from 'reicon-react/icons/Loader'
+import { type AuthPanel, AuthShell } from '@/components/entrada/auth-shell'
 import { TwoFactorCodeInput } from '@/components/two-factor-code-input'
 import { authClient } from '@/lib/auth-client'
+import { pageHead } from '@/lib/page-head'
 import {
   isTwoFactorChallengeCurrent,
   TWO_FACTOR_CHALLENGE_KEY,
@@ -12,9 +12,20 @@ import {
 } from '@/lib/two-factor-challenge'
 import { getUserFacingError } from '@/lib/user-facing-error'
 
+const PANEL: AuthPanel = {
+  kind: 'caption',
+  led: 'hero',
+  title: (
+    <>
+      Conta <span>protegida.</span>
+    </>
+  ),
+  items: ['Sua senha passou. Falta o código que só você tem']
+}
+
 export const Route = createFileRoute('/(auth)/two-factor')({
   head: () =>
-    entradaHead({
+    pageHead({
       path: '/two-factor',
       title: 'Confirmar acesso — Onside',
       description:
@@ -87,69 +98,53 @@ function TwoFactorPage() {
   }
 
   return (
-    <AuthSplit
-      foto={
-        <>
-          <Disp
-            nivel={0}
-            tamanho={64}
-            linhas={[{ texto: 'Proteção' }, { texto: 'em campo.', tint: true }]}
-            className="entrada-foto-titulo"
-          />
-          <p>Sua senha passou. Agora confirme o código que só você possui.</p>
-        </>
-      }
-    >
-      <p className="entrada-kicker">Confirmar acesso</p>
-      <Disp
-        tamanho={56}
-        linhas={[{ texto: 'Falta um' }, { texto: 'código.', tint: true }]}
-      />
-      <p className="entrada-linha">
-        Use o autenticador ou um dos códigos de recuperação guardados.
-      </p>
+    <AuthShell panel={PANEL}>
+      <div className="w-full">
+        <h1 className="onside-display">
+          Confirme que{' '}
+          <span className="text-[var(--onside-live-text)]">é você</span>
+        </h1>
+        <p className="ent-sub">
+          {method === 'totp'
+            ? 'Digite o código de 6 números do seu app autenticador.'
+            : 'Digite um dos códigos de recuperação que você guardou ao ativar.'}
+        </p>
 
-      {checking ? (
-        <div
-          className="entrada-campos"
-          role="status"
-          aria-busy="true"
-          aria-live="polite"
-        >
-          <span className="sr-only">Verificando desafio…</span>
-          <Skeleton className="h-11 w-full bg-[var(--painel-sub)]" />
-          <Skeleton className="h-14 w-full bg-[var(--painel-sub)]" />
-          <Skeleton className="h-12 w-full bg-[var(--painel-sub)]" />
-        </div>
-      ) : (
-        <form
-          method="post"
-          style={{ marginTop: 6 }}
-          onSubmit={submit}
-          noValidate
-        >
-          <Seg
-            rotulo="Forma de confirmação"
-            valor={method}
-            onChange={(selected) => {
-              setMethod(selected)
-              setCode('')
-              setError(null)
-            }}
-            itens={[
-              { valor: 'totp', rotulo: 'Autenticador' },
-              { valor: 'backup', rotulo: 'Recuperação' }
-            ]}
-          />
+        {checking ? null : (
+          <form
+            method="post"
+            className="flex flex-col"
+            onSubmit={submit}
+            noValidate
+          >
+            <fieldset className="ent-seg">
+              <legend className="sr-only">Forma de confirmação</legend>
+              {(
+                [
+                  ['totp', 'Autenticador'],
+                  ['backup', 'Recuperação']
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={method === value}
+                  onClick={() => {
+                    setMethod(value)
+                    setCode('')
+                    setError(null)
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </fieldset>
 
-          {method === 'totp' ? (
-            <div className="painel-campo">
-              <div className="painel-campo-topo">
-                <label htmlFor="two-factor-login-code">
+            {method === 'totp' ? (
+              <div className="ent-boxes">
+                <label htmlFor="two-factor-login-code" className="sr-only">
                   Código de 6 dígitos
                 </label>
-              </div>
-              <div className="entrada-codigo">
                 <TwoFactorCodeInput
                   id="two-factor-login-code"
                   value={code}
@@ -162,59 +157,80 @@ function TwoFactorPage() {
                   disabled={submitting}
                 />
               </div>
-            </div>
-          ) : (
-            <Campo
-              id="two-factor-login-code"
-              rotulo="Código de recuperação"
-              className={error ? 'entrada-campo-erro' : undefined}
-              inputMode="text"
-              autoComplete="one-time-code"
-              aria-invalid={Boolean(error)}
-              aria-describedby={
-                error ? 'two-factor-login-code-error' : undefined
-              }
-              value={code}
-              onChange={(event) => setCode(event.target.value)}
-              required
-              autoFocus
-            />
-          )}
-          {error ? (
-            <span
+            ) : (
+              <div className="mt-[22px] flex flex-col gap-1.5">
+                <label htmlFor="two-factor-login-code" className="onside-label">
+                  Código de recuperação
+                </label>
+                <div className="onside-input-group flex items-center px-4">
+                  <input
+                    id="two-factor-login-code"
+                    className="onside-input-control w-full bg-transparent font-[family-name:var(--mono)] outline-none"
+                    placeholder="xxxx-xxxx"
+                    inputMode="text"
+                    autoComplete="one-time-code"
+                    spellCheck={false}
+                    aria-invalid={Boolean(error)}
+                    aria-describedby={
+                      error ? 'two-factor-login-code-error' : undefined
+                    }
+                    value={code}
+                    onChange={(event) => setCode(event.target.value)}
+                    required
+                    // biome-ignore lint/a11y/noAutofocus: a tela só pede este campo.
+                    autoFocus
+                  />
+                </div>
+              </div>
+            )}
+            <p
               id="two-factor-login-code-error"
-              className="entrada-erro"
+              className="onside-field-error"
               role="alert"
             >
               {error}
-            </span>
-          ) : null}
+            </p>
 
-          <label className="entrada-aceite">
-            <input
-              type="checkbox"
-              checked={trustDevice}
-              onChange={(event) => setTrustDevice(event.target.checked)}
-            />
-            <span>Confiar neste dispositivo por 30 dias</span>
-          </label>
+            <label className="ent-trust">
+              <input
+                type="checkbox"
+                checked={trustDevice}
+                onChange={(event) => setTrustDevice(event.target.checked)}
+              />
+              Confiar neste aparelho por 30 dias
+            </label>
 
-          <Botao
-            type="submit"
-            variante="acid"
-            className="entrada-cta"
-            disabled={
-              submitting ||
-              (method === 'totp' ? code.length !== 6 : !code.trim())
-            }
-          >
-            {submitting ? 'Confirmando…' : 'Confirmar e entrar'}
-          </Botao>
-          <p className="entrada-nota">
-            Perdeu o autenticador e todos os códigos? Procure o suporte.
-          </p>
-        </form>
-      )}
-    </AuthSplit>
+            <button
+              type="submit"
+              className="onside-btn onside-btn-acid onside-btn-full ent-full mt-6"
+              disabled={
+                submitting ||
+                (method === 'totp' ? code.length !== 6 : !code.trim())
+              }
+            >
+              {submitting ? (
+                <>
+                  <Loader
+                    size={16}
+                    color="currentColor"
+                    className="animate-spin"
+                    aria-hidden="true"
+                  />
+                  Confirmando…
+                </>
+              ) : (
+                'Confirmar e entrar'
+              )}
+            </button>
+            <p className="ent-hint mt-4 text-center">
+              Perdeu o autenticador e todos os códigos? Procure o suporte.
+            </p>
+            <p className="ent-alt">
+              <Link to="/login">Voltar para o login</Link>
+            </p>
+          </form>
+        )}
+      </div>
+    </AuthShell>
   )
 }

@@ -26,7 +26,7 @@ import { contextFor, load, refusal, seedBar } from './integration-seed'
  * - só a avaliação verificada (check-in ou código validado e não desfeito)
  *   entra nos contadores do bar, e a prova que chega depois da avaliação
  *   (ou o código desfeito) refaz a conta;
- * - estrelas somam na média pública, com o piso;
+ * - estrelas somam na média pública, com o piso de 5 verificadas;
  * - o comentário passa pela revisão do Houdini, o nome só aparece para quem
  *   escolheu, e o recusado não aparece em lugar nenhum.
  */
@@ -50,12 +50,14 @@ integrationTest(
       ])
     const seeded = await seedBar('elite', 'active', null)
     const { db } = seeded
-    const [b, c, d, e] = Array.from({ length: 4 }, () => crypto.randomUUID())
-    const others = [b, c, d, e] as string[]
+    const [b, c, d, e, f, g] = Array.from({ length: 6 }, () =>
+      crypto.randomUUID()
+    )
+    const others = [b, c, d, e, f, g] as string[]
     await db.insert(user).values(
       others.map((id, index) => ({
         id,
-        name: `Torcedor ${'BCDE'[index]}`,
+        name: `Torcedor ${'BCDEFG'[index]}`,
         email: `${id}@integration.invalid`,
         emailVerified: true,
         role: 'fan' as const,
@@ -137,7 +139,7 @@ integrationTest(
         ).message
       ).toBe('O check-in deste jogo já fechou.')
       const during = new Date(startsAt.getTime() + HOUR)
-      for (const id of [a, c, d] as string[]) {
+      for (const id of [a, c, d, f, g] as string[]) {
         await checkIn(id, { eventId: past, ...BAR }, during)
       }
       await db
@@ -195,14 +197,30 @@ integrationTest(
         starsSum: 13
       })
 
-      // Nota pública: 2 de 3 voltariam, 13/3 estrelas; o comentário de A
+      // Abaixo do piso de verificadas (5), nada da nota sai: nem %, nem
+      // estrelas, nem etiquetas, nem comentários.
+      const below = await fan(e as string).pubs.getById({ id: seeded.barId })
+      expect(below.rating).toBeNull()
+      expect(below.ratingReasons).toBeNull()
+      expect(below.reviews).toEqual([])
+
+      await answer(f as string, { wouldReturn: true, stars: 4 })
+      await answer(g as string, { wouldReturn: true, stars: 5 })
+      expect(await counters()).toEqual({
+        count: 5,
+        positive: 4,
+        starsCount: 5,
+        starsSum: 22
+      })
+
+      // Nota pública: 4 de 5 voltariam, 22/5 estrelas; o comentário de A
       // ainda está em revisão, então nada em "O que dizem".
       const before = await fan(e as string).pubs.getById({ id: seeded.barId })
       expect(before.rating).toEqual({
-        positive: 2,
-        total: 3,
-        percentage: 67,
-        stars: 4.3
+        positive: 4,
+        total: 5,
+        percentage: 80,
+        stars: 4.4
       })
       expect(before.reviews).toEqual([])
 
@@ -262,12 +280,12 @@ integrationTest(
       // comentário só o aprovado.
       const owner = await seeded.owner.pub.getMyRatings()
       expect(owner).toMatchObject({
-        total: 3,
+        total: 5,
         unverified: 1,
-        stars: 4.3,
-        percentage: 67
+        stars: 4.4,
+        percentage: 80
       })
-      expect(owner.recent).toHaveLength(4)
+      expect(owner.recent).toHaveLength(6)
       const ofBForOwner = owner.recent.find((item) => !item.verified)
       expect(ofBForOwner).toMatchObject({ name: null, comment: null, stars: 1 })
       expect(
@@ -299,16 +317,16 @@ integrationTest(
       // B faz check-in (ainda na janela): a avaliação dele passa a contar.
       await checkIn(b as string, { eventId: past, ...BAR }, during)
       expect(await counters()).toEqual({
-        count: 4,
-        positive: 2,
-        starsCount: 4,
-        starsSum: 14
+        count: 6,
+        positive: 4,
+        starsCount: 6,
+        starsSum: 23
       })
 
       // E avalia sem prova; o código validado depois a verifica, e
       // desfazer a validação a tira de novo.
       await answer(e as string, { wouldReturn: true, stars: 3 })
-      expect((await counters())?.count).toBe(4)
+      expect((await counters())?.count).toBe(6)
       const [created] = await db
         .insert(reservation)
         .values({
@@ -331,16 +349,16 @@ integrationTest(
         .values({ codeId: code?.id as string })
         .returning({ id: reservationCodeUse.id })
       expect(await counters()).toEqual({
-        count: 5,
-        positive: 3,
-        starsCount: 5,
-        starsSum: 17
+        count: 7,
+        positive: 5,
+        starsCount: 7,
+        starsSum: 26
       })
       await db
         .update(reservationCodeUse)
         .set({ undoneAt: new Date(Date.now() + 1000) })
         .where(eq(reservationCodeUse.id, use?.id as string))
-      expect((await counters())?.count).toBe(4)
+      expect((await counters())?.count).toBe(6)
 
       // A marca do banco é a mesma visita do TypeScript (`visits.ts`).
       const { visit } = await import('../lib/visits')
@@ -362,7 +380,7 @@ integrationTest(
         .update(barRating)
         .set({ verified: true })
         .where(eq(barRating.actorUserId, e as string))
-      expect((await counters())?.count).toBe(4)
+      expect((await counters())?.count).toBe(6)
       expect(
         await db.execute(
           sql`SELECT verified FROM bar_rating WHERE actor_user_id = ${e}`

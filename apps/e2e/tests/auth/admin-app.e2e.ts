@@ -1,16 +1,30 @@
-import { storageState } from '../../fixtures/auth'
+import type { Page } from '@playwright/test'
+import { signIn, storageState } from '../../fixtures/auth'
+import {
+  createEvent,
+  hours,
+  north,
+  pubAt,
+  uniqueSpot
+} from '../../fixtures/fan'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
 import { loginWithForm } from './forms'
 
-// O web é só para bares: admin fora do Houdini é como torcedor e vai à página
-// do app. O Houdini só abre quando pedido (o endereço, o `callbackUrl` da
-// Entrada).
+// Admin navega pelo app como qualquer conta: landing, busca e o resto. O
+// Houdini só abre quando pedido (o item do menu, o `callbackUrl` da Entrada);
+// antes o guard mandava todo /dashboard para lá, e com ele o login.
+
+const errorToast = (page: Page) =>
+  page.locator('[data-sonner-toast][data-type="error"]')
+
+const openAccountMenu = (page: Page) =>
+  page.getByRole('button', { name: /^Menu da conta de / }).click()
 
 test.describe('sessão de admin', () => {
   test.use({ storageState: storageState('admin') })
 
-  test('abre a landing, e "Ir para o app" leva à página do app', async ({
+  test('abre a landing, e "Ver jogos de hoje" leva à busca', async ({
     page
   }) => {
     const response = await page.goto('/')
@@ -18,14 +32,51 @@ test.describe('sessão de admin', () => {
     await expect(page).toHaveURL(/\/$/)
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
 
-    await page.getByRole('link', { name: 'Ir para o app' }).first().click()
-    await expect(page).toHaveURL(/\/torcedor$/)
+    // Landing v3 (WEB-501): com sessão, a chamada é "Ver jogos de hoje".
+    await page.getByRole('link', { name: 'Ver jogos de hoje' }).first().click()
+    await expect(page).toHaveURL(/\/dashboard$/)
+  })
+
+  test('o menu da conta leva ao Houdini', async ({ page }) => {
+    await page.goto('/dashboard')
+    await openAccountMenu(page)
+    await page.getByRole('menuitem', { name: 'Houdini' }).click()
+
+    await expect(page).toHaveURL(/\/houdini$/)
+    await expect(
+      page.getByRole('heading', { level: 1, name: /^Bo[am] / })
+    ).toBeVisible()
   })
 })
 
-test('login de admin pela tela cai na página do app', async ({ page }) => {
+test('admin busca bares no /dashboard sem erro de torcedor', async ({
+  page
+}) => {
+  const spot = uniqueSpot()
+  const near = await pubAt(north(spot, 0.5))
+  const startsAt = hours(2)
+  await createEvent({ barId: near.barId, startsAt })
+  await signIn(page, await createUser({ role: 'admin' }))
+  await page.context().setGeolocation(spot)
+  const dia = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo'
+  }).format(startsAt)
+
+  const response = await page.goto(`/dashboard?dia=${dia}`)
+  expect(response?.status()).toBe(200)
+
+  await expect(page).toHaveURL(/\/dashboard\?dia=/)
+  await expect(
+    page.getByRole('heading', { name: near.name, exact: true })
+  ).toBeVisible()
+  // Favoritos, times, cidade e avaliações são de torcedor: para admin as
+  // leituras nem saem, e nada vira toast.
+  await expect(errorToast(page)).toHaveCount(0)
+})
+
+test('login de admin pela tela cai na busca', async ({ page }) => {
   await loginWithForm(page, await createUser({ role: 'admin' }))
-  await expect(page).toHaveURL(/\/torcedor$/)
+  await expect(page).toHaveURL(/\/dashboard$/)
 })
 
 test('login de admin pedindo o Houdini cai no Houdini', async ({ page }) => {
@@ -44,7 +95,14 @@ test('login de admin pedindo o Houdini cai no Houdini', async ({ page }) => {
 test.describe('sessão de torcedor', () => {
   test.use({ storageState: storageState('fan') })
 
-  test('não abre o Houdini pelo endereço', async ({ page }) => {
+  test('não vê o Houdini no menu nem no endereço', async ({ page }) => {
+    await page.goto('/dashboard')
+    await openAccountMenu(page)
+    await expect(
+      page.getByRole('menuitem', { name: 'Perfil', exact: true })
+    ).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: 'Houdini' })).toHaveCount(0)
+
     const response = await page.goto('/houdini')
     expect(response?.status()).toBe(404)
   })

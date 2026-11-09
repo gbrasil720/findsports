@@ -1,9 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { Desempenho } from '@/components/admin/desempenho'
+import { DesempenhoPage } from '@/components/painel/desempenho'
 
 export const Route = createFileRoute('/admin/desempenho')({
-  head: () => ({
-    meta: [{ title: 'Desempenho — Painel do Bar — Onside' }]
-  }),
-  component: Desempenho
+  head: () => ({ meta: [{ title: 'Desempenho — Onside' }] }),
+  component: DesempenhoPage
 })

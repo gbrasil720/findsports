@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 
+import { formatDate } from '@/components/houdini/format'
 import { Icon } from '@/components/houdini/icons'
 import { HoudiniShell, PageHead } from '@/components/houdini/shell'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
@@ -47,6 +48,10 @@ function FantasmasPage() {
     ...trpc.attendance.unregisteredAlerts.queryOptions(),
     meta: { errorToast: false }
   })
+  const silent = useQuery({
+    ...trpc.attendance.unvalidatedCodeAlerts.queryOptions(),
+    meta: { errorToast: false }
+  })
 
   return (
     <HoudiniShell env={env} user={admin}>
@@ -54,9 +59,42 @@ function FantasmasPage() {
         <PageHead
           overline="Pede atenção"
           title="Fantasmas"
-          summary="Bares em que o torcedor disse que foi e o bar não registrou o código em vários jogos. Só entram jogos com a janela de validação encerrada. As duas fontes são declaradas: o cruzamento aponta padrão, não prova."
+          summary="Bares que não registram os códigos: em vários jogos o torcedor disse que foi e o bar não registrou, ou um jogo teve vários códigos e nenhum validado. Só entram jogos com a janela de validação encerrada. O cruzamento aponta padrão, não prova."
         />
 
+        <section style={{ display: 'grid', gap: 12 }}>
+          <h2 className="hd-h2">Códigos sem validar</h2>
+          {silent.isError ? (
+            <div className="hd-card" role="alert">
+              <p style={{ margin: 0 }}>
+                {getUserFacingMessage(
+                  silent.error,
+                  'Não foi possível carregar os códigos sem validar.'
+                )}
+              </p>
+            </div>
+          ) : silent.isLoading ? (
+            <div className="hd-skeleton" style={{ height: 88 }} />
+          ) : !silent.data?.length ? (
+            <p className="hd-empty is-dashed">Nenhum jogo por aqui.</p>
+          ) : (
+            <div className="hd-grid" style={{ '--hd-min': '360px' } as never}>
+              {silent.data.map((game) => (
+                <article key={game.eventId} className="hd-card is-live">
+                  <h3 className="hd-h2">{game.barName}</h3>
+                  <span style={{ fontSize: 13, color: 'var(--hd-muted)' }}>
+                    {game.game} · {formatDate(game.startsAt)}
+                  </span>
+                  <span style={{ fontSize: 13, color: 'var(--hd-body)' }}>
+                    {game.codes} códigos, nenhum validado
+                  </span>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <h2 className="hd-h2">Foi, mas não registrou</h2>
         <div
           style={{
             display: 'flex',

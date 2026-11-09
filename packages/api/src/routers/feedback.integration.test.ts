@@ -14,8 +14,8 @@ import {
 
 /**
  * `feedback.send` contra o banco de verdade (o limite por usuário mora na
- * tabela `rate_limit`) e até a requisição que a API de e-mail receberia. Nenhum
- * e-mail sai: o `fetch` para a API de e-mail é dublê.
+ * tabela `rate_limit`) e até a requisição que a API de e-mail receberia.
+ * Nenhum e-mail sai: o `fetch` para a API de e-mail é dublê.
  */
 
 const integrationTest = isDisposableTestDatabase() ? test : test.skip

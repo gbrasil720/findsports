@@ -281,13 +281,21 @@ export function PasswordDialog({
           </p>
         ) : null}
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button type="button" variant="outline" size="lg" onClick={close}>
+          <button
+            type="button"
+            className="pn-btn pn-sm pn-ghost"
+            onClick={close}
+          >
             Cancelar
-          </Button>
-          <Button type="submit" size="lg" disabled={saving}>
+          </button>
+          <button
+            type="submit"
+            className="pn-btn pn-sm pn-acid"
+            disabled={saving}
+          >
             {saving ? <Spinner data-icon="inline-start" /> : null}
             {saving ? 'Salvando…' : 'Salvar nova senha'}
-          </Button>
+          </button>
         </div>
       </form>
     </Modal>

@@ -1,13 +1,6 @@
 import { gameTitle } from '@findsports_oficial/db/game-title'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle
-} from '@findsports_oficial/ui/components/dialog'
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { countLabel } from '@/lib/plural'
-import { Botao, propsBotao } from '../painel'
 import type { AdminEvent } from './admin-model'
 
 type Deletion = AdminEvent['deletion']
@@ -91,6 +84,7 @@ type Props = {
 /**
  * Excluir jogo pede confirmação e diz o que vai junto. Jogo com código ativo
  * ou avaliação não é excluído: o diálogo explica o motivo em vez de confirmar.
+ * Caixa do painel novo (`.pn-confirm`, WEB-501), um `<dialog>` nativo.
  */
 export function EventDeleteDialog({
   event,
@@ -99,6 +93,7 @@ export function EventDeleteDialog({
   onConfirm,
   onCancel
 }: Props) {
+  const ref = useRef<HTMLDialogElement>(null)
   // Ação destrutiva: o foco começa em quem não apaga nada.
   const cancelRef = useRef<HTMLButtonElement>(null)
   const block = getDeleteBlock(event.deletion)
@@ -108,55 +103,64 @@ export function EventDeleteDialog({
     participants: event.participants.map((item) => item.team.name)
   })
 
+  useEffect(() => {
+    const dialog = ref.current
+    if (dialog && !dialog.open) {
+      dialog.showModal()
+      cancelRef.current?.focus()
+    }
+  }, [])
+
   return (
-    <Dialog
-      open
-      onOpenChange={(next) => {
-        if (!next) onCancel()
-      }}
+    <dialog
+      ref={ref}
+      className="pn-confirm"
+      aria-labelledby="pn-confirm-t"
+      aria-describedby="pn-confirm-d"
+      onClose={onCancel}
     >
-      <DialogContent initialFocus={cancelRef} className="jogos-dialogo">
-        <DialogTitle
-          className="painel-disp"
-          style={{ ['--painel-disp-size' as string]: '28px' }}
-        >
-          {block ? 'Este jogo não pode ser excluído' : 'Excluir este jogo?'}
-        </DialogTitle>
-        <DialogDescription className="mt-2">
-          {block
-            ? `${title}. ${block.reason}`
-            : `${title} sai da sua grade e do seu perfil. Não dá para desfazer.`}
-        </DialogDescription>
-        {block ? (
-          <ul className="mt-3 space-y-1">
-            {block.wayOut.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
-        ) : (
-          consequences && <p className="mt-3">{consequences}</p>
-        )}
-        {!block && error ? (
-          <p className="jogos-erro mt-3" role="alert">
-            {error}
-          </p>
-        ) : null}
-        <div className="mt-6 flex flex-wrap gap-2">
-          {block ? null : (
-            <Botao variante="danger" onClick={onConfirm} disabled={isDeleting}>
-              {isDeleting ? 'Excluindo…' : 'Excluir jogo'}
-            </Botao>
-          )}
+      <h2 id="pn-confirm-t" className="pn-disp">
+        {block ? 'Este jogo não pode ser excluído' : 'Excluir este jogo?'}
+      </h2>
+      <p id="pn-confirm-d">
+        {block
+          ? `${title}. ${block.reason}`
+          : `${title} sai da sua grade e do seu perfil. Não dá para desfazer.`}
+      </p>
+      {block ? (
+        <ul>
+          {block.wayOut.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+      ) : consequences ? (
+        <p>{consequences}</p>
+      ) : null}
+      {!block && error ? (
+        <p className="pn-ferr" role="alert">
+          {error}
+        </p>
+      ) : null}
+      <div className="pn-confirm-a">
+        {block ? null : (
           <button
-            ref={cancelRef}
             type="button"
-            onClick={onCancel}
-            {...propsBotao()}
+            onClick={onConfirm}
+            disabled={isDeleting}
+            className="pn-btn pn-danger pn-sm"
           >
-            {block ? 'Entendi' : 'Cancelar'}
+            {isDeleting ? 'Excluindo…' : 'Excluir jogo'}
           </button>
-        </div>
-      </DialogContent>
-    </Dialog>
+        )}
+        <button
+          ref={cancelRef}
+          type="button"
+          onClick={onCancel}
+          className="pn-btn pn-ghost pn-sm"
+        >
+          {block ? 'Entendi' : 'Cancelar'}
+        </button>
+      </div>
+    </dialog>
   )
 }

@@ -222,6 +222,7 @@ export type EmailApiBody = {
   reply_to: string
   subject: string
   text: string
+  html: string
   attachments?: { filename: string; content_type: string; content: string }[]
 }
 

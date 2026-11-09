@@ -65,16 +65,16 @@ export function ReservationCodeInput({
       aria-invalid={invalid || undefined}
       aria-describedby={describedBy}
       disabled={disabled}
-      containerClassName="gap-3"
+      containerClassName="pn-slots"
     >
       {GROUPS.map((group) => (
-        <InputOTPGroup key={group[0]?.id} className="gap-1.5">
+        <InputOTPGroup key={group[0]?.id} className="pn-slotg">
           {group.map((slot) => (
             <InputOTPSlot
               key={slot.id}
               index={slot.index}
               aria-invalid={invalid || undefined}
-              className="size-12 border-[1.5px] border-[var(--onside-ink)] bg-[var(--onside-paper)] font-[family-name:var(--onside-mono)] font-bold text-xl uppercase shadow-none first:border-l-[1.5px] aria-invalid:border-[var(--onside-live)] data-[active=true]:border-[var(--onside-ink)] data-[active=true]:bg-[var(--onside-acid)] data-[active=true]:shadow-[3px_3px_0_var(--onside-ink)] data-[active=true]:ring-0 sm:size-14 sm:text-2xl"
+              className="pn-slot"
             />
           ))}
         </InputOTPGroup>

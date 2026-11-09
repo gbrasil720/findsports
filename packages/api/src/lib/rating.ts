@@ -12,12 +12,15 @@
  */
 
 /**
- * Quantas avaliações um bar precisa para ter nota PÚBLICA.
+ * Quantas avaliações VERIFICADAS um bar precisa para ter nota PÚBLICA
+ * (`bar.rating_count` só conta as verificadas desde a migration 0083).
  *
  * Existe porque média com amostra minúscula não é informação: um bar com uma
  * avaliação positiva marca 100% e passaria na frente de um com quarenta
- * avaliações e 85%. Abaixo do piso ninguém vê a nota — nem boa, nem ruim, e
- * a regra vale igual para todo bar. Não é escolha do dono: um interruptor de
+ * avaliações e 85%, e o bar que recebeu uma única avaliação negativa não
+ * merece carregar 0% na vitrine. Abaixo do piso ninguém vê nada da nota —
+ * nem %, nem estrelas, nem "O que pesou?", nem comentários — e a regra vale
+ * igual para todo bar (decisão do dono: 5). Não é escolha do dono: um interruptor de
  * "mostrar minhas notas" faria todo bar bem avaliado mostrar e todo bar mal
  * avaliado esconder, até que "não mostra" virasse, publicamente, "as notas
  * são ruins".
@@ -26,7 +29,7 @@
  * usa `rating_count > 0`, que cobre qualquer piso maior ou igual a 1. O
  * painel do dono ignora o piso — ele vê tudo desde a primeira avaliação.
  */
-export const RATING_PUBLIC_FLOOR = 3
+export const RATING_PUBLIC_FLOOR = 5
 
 /**
  * Por quanto tempo, depois do jogo, o torcedor ainda pode avaliar.

@@ -1,0 +1,818 @@
+/* biome-ignore-all lint/style/noDescendingSpecificity: segue a ordem do protótipo (Desempenho, Quem vai, celular); tudo preso a .pn3. */
+/*
+ * Desempenho e Quem vai do painel novo (WEB-501, fase 3): as classes do
+ * protótipo `docs/design/redesign-2026-11/painel` (`.big3`, `.legend`,
+ * `.chartbox`, `.funnel`, `.hbars`, `.tbl`, `.qv`, `.people`) com prefixo
+ * `pn-`, presas a `.pn3` como a casca.
+ */
+
+.pn3 .pn-sec {
+  margin-top: 22px;
+}
+
+.pn3 .pn-soon-go {
+  color: var(--fg);
+  text-decoration: none;
+}
+
+.pn3 .pn-soon-go > svg:last-child {
+  flex: none;
+  margin-left: auto;
+}
+
+.pn3 .pn-soon-go:hover {
+  border-color: var(--fg);
+}
+
+/* ─── Período ─── */
+.pn3 .pn-per {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.pn3 .pn-per .pn-tabs {
+  overflow-x: auto;
+}
+
+.pn3 .pn-per .pn-hint {
+  margin: 0;
+  text-align: right;
+}
+
+.pn3 .pn-custom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.pn3 .pn-custom .pn-fl {
+  flex: 1 1 180px;
+  margin: 0;
+}
+
+.pn3 .pn-custom .pn-ferr {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.pn3 .pn-limit-note {
+  margin: 22px 0 0;
+  font-size: 14.5px;
+}
+
+/* ─── Os três números ─── */
+.pn3 .pn-big3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 24px;
+  overflow: hidden;
+  border-radius: 26px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.pn3 .pn-big3 > div {
+  min-width: 0;
+  padding: 24px 26px;
+}
+
+.pn3 .pn-big3 > div + div {
+  border-left: 1px solid var(--line);
+}
+
+.pn3 .pn-big3 .pn-l {
+  color: var(--body);
+  font: 600 14.5px var(--text);
+}
+
+.pn3 .pn-big3 b {
+  display: block;
+  margin-top: 12px;
+  font: 400 64px / 0.9 var(--display);
+  font-variant-numeric: tabular-nums;
+}
+
+.pn3 .pn-big3 p {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.pn3 .pn-delta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  color: var(--muted);
+  font: 500 12.5px var(--mono);
+}
+
+.pn3 .pn-delta em,
+.pn3 .pn-hb-t em {
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: var(--acid);
+  color: #12120f;
+  font: 600 12px var(--mono);
+  font-style: normal;
+}
+
+.pn3 .pn-delta em.is-down,
+.pn3 .pn-hb-t em.is-down {
+  background: var(--sub);
+  color: var(--fg);
+}
+
+.pn3 .pn-big3-skel {
+  margin-top: 24px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.pn3 .pn-big3-skel i {
+  height: 180px;
+}
+
+/* ─── Atividade diária ─── */
+.pn3 .pn-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-top: 14px;
+}
+
+.pn3 .pn-legend button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--sub);
+  color: var(--fg);
+  text-align: left;
+  cursor: pointer;
+}
+
+.pn3 .pn-legend button[aria-pressed="false"] {
+  opacity: 0.45;
+}
+
+.pn3 .pn-legend i {
+  flex: none;
+  width: 22px;
+  height: 4px;
+  border-radius: 4px;
+  background: var(--chart-line);
+}
+
+.pn3 .pn-legend i.is-d {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--fg) 0 5px,
+    transparent 5px 9px
+  );
+}
+
+.pn3 .pn-legend b {
+  font: 400 30px / 1 var(--display);
+  font-variant-numeric: tabular-nums;
+}
+
+.pn3 .pn-legend small {
+  display: block;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.pn3 .pn-chartbox {
+  position: relative;
+  margin-top: 16px;
+  outline: none;
+  touch-action: pan-y;
+  cursor: crosshair;
+}
+
+.pn3 .pn-chartbox:focus-visible {
+  border-radius: 8px;
+  box-shadow: 0 0 0 3px var(--acid);
+}
+
+.pn3 .pn-chartbox svg {
+  display: block;
+  width: 100%;
+  height: 260px;
+}
+
+.pn3 .pn-ytop {
+  position: absolute;
+  top: 0;
+  right: 0;
+  color: var(--muted);
+  font: 500 11px var(--mono);
+}
+
+.pn3 .pn-dot {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 3px solid var(--card);
+  border-radius: 50%;
+  background: var(--chart-line);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.pn3 .pn-dot.is-d {
+  background: var(--fg);
+}
+
+.pn3 .pn-tip {
+  position: absolute;
+  top: 0;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: #12120f;
+  color: #f1eee6;
+  font: 500 12.5px / 1.5 var(--mono);
+  white-space: nowrap;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+html[data-theme="dark"] .pn3 .pn-tip {
+  background: #f1eee6;
+  color: #12120f;
+}
+
+.pn3 .pn-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  color: var(--muted);
+  font: 500 12px var(--mono);
+}
+
+/* ─── Quem foi e canais ─── */
+.pn3 .pn-funnel {
+  display: flex;
+  align-items: flex-end;
+  gap: 22px;
+  margin-top: 18px;
+}
+
+.pn3 .pn-funnel b {
+  display: block;
+  font: 400 52px / 0.9 var(--display);
+  font-variant-numeric: tabular-nums;
+}
+
+.pn3 .pn-funnel span {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.pn3 .pn-funnel .pn-arrow {
+  padding-bottom: 16px;
+}
+
+.pn3 .pn-prog {
+  height: 10px;
+  margin-top: 18px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--sub);
+}
+
+.pn3 .pn-prog i {
+  display: block;
+  height: 100%;
+  border-radius: 10px;
+  background: var(--acid);
+  box-shadow: inset 0 0 0 1.5px #12120f;
+}
+
+.pn3 .pn-hbars {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.pn3 .pn-hb-t {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 15px;
+}
+
+.pn3 .pn-hb-t em {
+  margin-left: 8px;
+}
+
+.pn3 .pn-hb-t b {
+  font: 400 24px / 1 var(--display);
+}
+
+.pn3 .pn-hb-p {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.pn3 .pn-hb-tr {
+  height: 12px;
+  margin-top: 8px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--sub);
+}
+
+.pn3 .pn-hb-tr i {
+  display: block;
+  height: 100%;
+  border-radius: 12px;
+  background: var(--fg);
+}
+
+.pn3 .pn-hb.is-top .pn-hb-tr i {
+  background: var(--acid);
+  box-shadow: inset 0 0 0 1.5px #12120f;
+}
+
+.pn3 .pn-elite {
+  display: inline-flex;
+  margin-left: 8px;
+  padding: 5px 7px;
+  border-radius: 6px;
+  background: #12120f;
+  color: #c9f135;
+  font: 600 11px / 1 var(--mono);
+  letter-spacing: 0.06em;
+  vertical-align: 2px;
+}
+
+/* ─── Como cada jogo foi ─── */
+.pn3 .pn-scroll {
+  overflow-x: auto;
+}
+
+.pn3 .pn-tbl {
+  width: 100%;
+  margin-top: 14px;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.pn3 .pn-tbl thead th {
+  padding: 10px 12px;
+  border-bottom: 1.5px solid var(--fg);
+  color: var(--muted);
+  font: 600 12px var(--mono);
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.pn3 .pn-tbl thead button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.pn3 .pn-tbl tbody th,
+.pn3 .pn-tbl td {
+  padding: 14px 12px;
+  border-bottom: 1px solid var(--line);
+  font-weight: 400;
+  text-align: left;
+}
+
+.pn3 .pn-tbl .is-r {
+  text-align: right;
+}
+
+.pn3 .pn-tbl .is-rule {
+  border-left: 1px solid var(--line);
+}
+
+.pn3 .pn-tbl b {
+  font-weight: 700;
+}
+
+.pn3 .pn-tbl-g {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pn3 .pn-tbl-g:hover b {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.pn3 .pn-tbl-g small {
+  margin-left: 6px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.pn3 .pn-tbl .pn-num {
+  font: 400 22px / 1 var(--display);
+  font-variant-numeric: tabular-nums;
+}
+
+.pn3 .pn-tbl-x td {
+  padding-top: 4px;
+  background: var(--sub);
+}
+
+.pn3 .pn-tbl-x dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+  margin: 8px 0 4px;
+}
+
+.pn3 .pn-tbl-x dt {
+  color: var(--muted);
+  font: 600 11.5px var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pn3 .pn-tbl-x dd {
+  margin: 2px 0 0;
+  font-weight: 700;
+}
+
+.pn3 .pn-tbl-skel i {
+  height: 220px;
+  margin-top: 14px;
+}
+
+.pn3 .pn-ccj-f {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  margin-top: 4px;
+}
+
+.pn3 .pn-ccj-f .pn-hint {
+  margin: 14px 0 0;
+}
+
+/* ─── Comparar jogos ─── */
+.pn3 .pn-cmp {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1.5px solid var(--fg);
+}
+
+.pn3 .pn-cmp-h {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.pn3 .pn-cmp-h h4 {
+  margin: 0;
+  font: 700 17px var(--text);
+}
+
+.pn3 .pn-cmp .pn-tchip {
+  background: var(--sub);
+  box-shadow: none;
+}
+
+.pn3 .pn-cmp .pn-tchip[aria-pressed="true"] {
+  background: var(--acid);
+  box-shadow: 0 2px 0 var(--acid-drop);
+}
+
+.pn3 .pn-cmp .pn-tchip small {
+  opacity: 0.7;
+  font: 500 12px var(--mono);
+}
+
+.pn3 .pn-cmp-jogos {
+  min-width: 0;
+  margin: 16px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.pn3 .pn-cmp-alvo {
+  max-width: 28rem;
+}
+
+.pn3 .pn-tbl-cmp {
+  min-width: 620px;
+}
+
+.pn3 .pn-cmp-duo {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+  margin-top: 18px;
+}
+
+.pn3 .pn-cmp-duo ul,
+.pn3 .pn-cmp-duo ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pn3 .pn-cmp-duo li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px 12px;
+  padding: 9px 0;
+  border-top: 1px solid var(--line);
+  font-size: 14.5px;
+}
+
+.pn3 .pn-cmp-duo li span {
+  color: var(--muted);
+}
+
+/* ─── Comanda ─── */
+.pn3 .pn-comanda .pn-fl {
+  max-width: 34rem;
+}
+
+.pn3 .pn-codes {
+  height: auto;
+  padding: 14px 16px;
+  font: 600 16px / 1.6 var(--mono);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  resize: vertical;
+}
+
+.pn3 .pn-faltou {
+  margin-top: 16px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: var(--sub);
+}
+
+.pn3 .pn-faltou ul,
+.pn3 .pn-lancados ul {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pn3 .pn-faltou li,
+.pn3 .pn-lancados li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+  font-size: 14.5px;
+}
+
+.pn3 .pn-faltou-n {
+  overflow-wrap: anywhere;
+}
+
+.pn3 .pn-faltou .pn-hint,
+.pn3 .pn-lancados .pn-hint {
+  margin: 0;
+}
+
+.pn3 .pn-lancados {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.pn3 .pn-lancados > p {
+  margin: 0;
+}
+
+.pn3 .pn-lancados .pn-ferr {
+  margin: 0;
+}
+
+.pn3 .pn-code {
+  font-weight: 700;
+  letter-spacing: 0.15em;
+}
+
+/* ─── Quem vai ─── */
+.pn3 .pn-qv {
+  margin-top: 24px;
+}
+
+.pn3 .pn-qgh {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 20px;
+}
+
+.pn3 .pn-qh {
+  font: 400 44px / 0.9 var(--display);
+  font-variant-numeric: tabular-nums;
+}
+
+.pn3 .pn-qgh b {
+  display: block;
+  font: 700 20px var(--text);
+}
+
+.pn3 .pn-qgh > span > span {
+  color: var(--muted);
+  font-size: 14.5px;
+}
+
+.pn3 .pn-qcnt {
+  text-align: right;
+}
+
+.pn3 .pn-qcnt b {
+  font: 400 40px / 0.9 var(--display);
+  font-variant-numeric: tabular-nums;
+}
+
+.pn3 .pn-qbar {
+  height: 10px;
+  margin-top: 18px;
+  background: var(--sub);
+}
+
+.pn3 .pn-qtools {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.pn3 .pn-people {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 28px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pn3 .pn-pp {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.pn3 .pn-pp .pn-pa {
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+}
+
+.pn3 .pn-pp-m {
+  min-width: 0;
+}
+
+.pn3 .pn-pp-m b {
+  display: block;
+  overflow: hidden;
+  font-size: 15.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pn3 .pn-pp-m span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.pn3 .pn-empty2 {
+  margin: 0;
+  padding: 36px 10px;
+  color: var(--muted);
+  text-align: center;
+}
+
+@media (max-width: 1100px) {
+  .pn3 .pn-people {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .pn3 .pn-per {
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .pn3 .pn-per .pn-hint {
+    text-align: left;
+  }
+
+  .pn3 .pn-per .pn-tabs {
+    flex-wrap: wrap;
+    border-radius: 24px;
+  }
+
+  .pn3 .pn-per .pn-tabs button {
+    padding: 0 13px;
+  }
+
+  .pn3 .pn-big3,
+  .pn3 .pn-big3-skel {
+    grid-template-columns: 1fr;
+  }
+
+  .pn3 .pn-big3 > div + div {
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .pn3 .pn-big3 > div {
+    padding: 22px;
+  }
+
+  .pn3 .pn-big3 b {
+    font-size: 52px;
+  }
+
+  .pn3 .pn-legend {
+    gap: 10px;
+  }
+
+  .pn3 .pn-chartbox svg {
+    height: 200px;
+  }
+
+  .pn3 .pn-axis-odd {
+    display: none;
+  }
+
+  .pn3 .pn-funnel b {
+    font-size: 40px;
+  }
+
+  .pn3 .pn-cmp-duo {
+    grid-template-columns: 1fr;
+  }
+
+  .pn3 .pn-people {
+    grid-template-columns: 1fr;
+  }
+
+  .pn3 .pn-qgh {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .pn3 .pn-qh {
+    font-size: 36px;
+  }
+
+  .pn3 .pn-qcnt {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
+
+  .pn3 .pn-qtools .pn-tabs {
+    flex-wrap: wrap;
+    width: 100%;
+    border-radius: 24px;
+  }
+
+  .pn3 .pn-qtools .pn-tabs button {
+    padding: 0 12px;
+  }
+
+  .pn3 .pn-qtools .pn-q {
+    flex: 1;
+    min-width: 0;
+  }
+}

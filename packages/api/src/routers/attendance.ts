@@ -7,6 +7,7 @@ import {
   readAttendanceQuestions,
   readMyGames,
   readUnregisteredAlerts,
+  readUnvalidatedCodeAlerts,
   readVisitedGames,
   setAttendance
 } from '../lib/attendance'
@@ -73,14 +74,18 @@ export const attendanceRouter = router({
     readVisitedGames(ctx.session.user.id)
   ),
 
-  /** @deprecated `postGame.pending`, itens com `presence` (web publicado antes da troca). */
+  /**
+   * Perguntas pós-jogo ainda sem resposta (WEB-128). Uma por jogo; a tela
+   * mostra uma de cada vez. O mesmo que os itens com `presence` de
+   * `postGame.pending`, para o card do `/dashboard`.
+   */
   pendingReports: fanProcedure.query(async ({ ctx }) =>
     (await readAttendanceQuestions(ctx.session.user.id)).filter(
       (question) => !question.answered
     )
   ),
 
-  /** @deprecated `postGame.answer` com `attended`. */
+  /** Adaptador do card do `/dashboard`: `postGame.answer` com `attended`. */
   report: fanProcedure
     .input(
       z.object({
@@ -97,7 +102,7 @@ export const attendanceRouter = router({
       return { attended, offerReceived }
     }),
 
-  /** @deprecated `postGame.undo` com `presence`. */
+  /** Adaptador do "Desfazer" do card: `postGame.undo` com `presence`. */
   removeReport: fanProcedure
     .input(z.object({ eventId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
@@ -109,5 +114,8 @@ export const attendanceRouter = router({
     }),
 
   /** Alerta interno de "foi, mas o bar não registrou" repetido. */
-  unregisteredAlerts: adminProcedure.query(() => readUnregisteredAlerts())
+  unregisteredAlerts: adminProcedure.query(() => readUnregisteredAlerts()),
+
+  /** Alerta interno de jogo encerrado com códigos e nenhum validado. */
+  unvalidatedCodeAlerts: adminProcedure.query(() => readUnvalidatedCodeAlerts())
 })
