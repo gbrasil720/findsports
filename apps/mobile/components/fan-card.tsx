@@ -10,7 +10,12 @@ import Animated, {
 import Svg, {
   Circle,
   Defs,
+  Mask,
   Path,
+  Pattern,
+  RadialGradient,
+  Rect,
+  Stop,
   Text as SvgText,
   TextPath
 } from 'react-native-svg'
@@ -18,17 +23,21 @@ import { usePalette } from '@/components/theme'
 import { ACID, INK, LIVE, PAPER, Text } from '@/components/ui'
 
 /*
- * A carteirinha do torcedor (rodada 2 do redesign, onboarding B): ingresso,
- * crachá e placar. Peça de tinta com a sombra sólida dos cartões; o nome em
- * Anton, "Torce para" em acid, o que assiste, o raio e a base. Campo vazio é
- * tracejado; o do passo atual acende em acid. Depois do picote, o canhoto com
- * o código de barras e o número, que só aparecem validada, e o selo de clube
- * carimbado no fim. Sem escudos: times só pelo nome.
+ * A carteirinha do torcedor (rodada 2 do redesign, onboarding B), com as
+ * medidas do desenho (`.cart2`): peça de tinta, raio 24, sombra sólida de 4.
+ * Em cima a marca e "TORCEDOR / TEMPORADA 26", com a trama de pontos do placar
+ * no canto; o nome em Anton; "Torce para" com os times em acid; o que assiste
+ * (siglas em mono), o raio e a base. Campo vazio é tracejado; o do passo
+ * acende em acid. Depois do picote, o canhoto com o código de barras e o
+ * número, nítidos só validada, e o selo de clube carimbado.
  */
 
 export type CardField = 'teams' | 'sports' | 'radius' | 'base' | null
 
 const MONO = 'GeistMono-SemiBold'
+const MUTED = '#aaa9a4'
+const DASH = '#6b6a63'
+const HOT_LABEL = '#3d4a06'
 
 /** Nº 0.128.441: um número fixo por conta, tirado do id. */
 export function cardNumber(id: string) {
@@ -37,43 +46,59 @@ export function cardNumber(id: string) {
   return `0.${String(Math.floor(n / 1000)).padStart(3, '0')}.${String(n % 1000).padStart(3, '0')}`
 }
 
-function Label({ children, on }: { children: string; on: boolean }) {
+/** O tracejado de campo vazio ("Escolha um time", "—"). */
+function Dash({ children }: { children: string }) {
   return (
-    <Text style={[styles.label, { color: on ? INK : '#8f8d87' }]}>
-      {children}
-    </Text>
-  )
-}
-
-/** Um campo da carteirinha: acende em acid quando é o do passo. */
-function Field({
-  label,
-  on,
-  empty,
-  children,
-  style
-}: {
-  label: string
-  on: boolean
-  empty: boolean
-  children: React.ReactNode
-  style?: object
-}) {
-  return (
-    <View style={[styles.field, on && styles.fieldOn, style]}>
-      <Label on={on}>{label}</Label>
-      {empty ? (
-        <View style={[styles.dashed, on && { borderColor: INK }]}>
-          <Text style={[styles.mono, { color: on ? INK : '#8f8d87' }]}>–</Text>
-        </View>
-      ) : (
-        children
-      )}
+    <View style={styles.dash}>
+      <Text style={styles.dashText}>{children}</Text>
     </View>
   )
 }
 
-/** O selo: disco acid com o texto em volta e o anel da marca no meio. */
+/** Um campo: rótulo em mono e o valor; aceso, fundo acid. */
+function Field({
+  label,
+  hot,
+  children,
+  style
+}: {
+  label: string
+  hot: boolean
+  children: React.ReactNode
+  style?: object
+}) {
+  return (
+    <View style={[styles.field, hot && { backgroundColor: ACID }, style]}>
+      <Text style={[styles.label, { color: hot ? HOT_LABEL : MUTED }]}>
+        {label}
+      </Text>
+      {children}
+    </View>
+  )
+}
+
+/** A trama de pontos do placar, só no canto de cima à direita. */
+function Dots() {
+  return (
+    <Svg style={styles.dots} pointerEvents="none">
+      <Defs>
+        <Pattern id="pontos" width={7} height={7} patternUnits="userSpaceOnUse">
+          <Circle cx={3.5} cy={3.5} r={1.3} fill="rgba(241,238,230,.16)" />
+        </Pattern>
+        <RadialGradient id="some" cx="100%" cy="0%" rx="110%" ry="100%">
+          <Stop offset="0.2" stopColor="#fff" stopOpacity={1} />
+          <Stop offset="0.7" stopColor="#fff" stopOpacity={0} />
+        </RadialGradient>
+        <Mask id="canto">
+          <Rect width="100%" height="100%" fill="url(#some)" />
+        </Mask>
+      </Defs>
+      <Rect width="100%" height="100%" fill="url(#pontos)" mask="url(#canto)" />
+    </Svg>
+  )
+}
+
+/** O selo: disco acid, o texto em volta, o tracejado e o anel da marca. */
 function Seal() {
   const reduced = useReducedMotion()
   const stamp = useSharedValue(0)
@@ -86,60 +111,73 @@ function Seal() {
   }, [stamp, reduced])
   const style = useAnimatedStyle(() =>
     reduced
-      ? { opacity: stamp.get() }
+      ? { opacity: stamp.get(), transform: [{ rotate: '-14deg' }] }
       : {
           opacity: Math.min(1, stamp.get() * 2),
           transform: [
-            { scale: 1.25 - 0.25 * stamp.get() },
-            { rotate: '-12deg' }
+            { rotate: '-14deg' },
+            { scale: 1.25 - 0.25 * stamp.get() }
           ]
         }
   )
-  const r = 30
   return (
     <Animated.View style={[styles.seal, style]} pointerEvents="none">
-      <Svg width={76} height={76} viewBox="0 0 76 76">
+      <Svg width={80} height={80} viewBox="0 0 100 100">
         <Defs>
           <Path
             id="volta"
-            d={`M38,38 m-${r},0 a${r},${r} 0 1,1 ${2 * r},0 a${r},${r} 0 1,1 -${2 * r},0`}
+            d="M50,50 m-38,0 a38,38 0 1,1 76,0 a38,38 0 1,1 -76,0"
           />
         </Defs>
-        <Circle cx={38} cy={38} r={37} fill={ACID} />
+        <Circle cx={50} cy={50} r={48} fill={ACID} />
         <Circle
-          cx={38}
-          cy={38}
-          r={33}
+          cx={50}
+          cy={50}
+          r={29}
           fill="none"
           stroke={INK}
-          strokeWidth={1}
+          strokeWidth={1.6}
+          strokeDasharray="2 2.6"
         />
         <SvgText
           fill={INK}
-          fontSize={7.4}
+          fontSize={9.6}
           fontFamily={MONO}
-          letterSpacing={1.4}
+          letterSpacing={1.06}
         >
-          <TextPath href="#volta">TORCEDOR VALIDADO · ONSIDE · 2026 ·</TextPath>
+          <TextPath href="#volta" startOffset="0">
+            TORCEDOR VALIDADO · ONSIDE · 2026 ·
+          </TextPath>
         </SvgText>
         <Circle
-          cx={36}
-          cy={36}
-          r={9}
+          cx={50}
+          cy={50}
+          r={12.5}
           fill="none"
           stroke={INK}
-          strokeWidth={4}
+          strokeWidth={5.5}
         />
-        <Circle cx={44} cy={44} r={4} fill={LIVE} />
+        <Circle cx={59} cy={59} r={5.2} fill={LIVE} />
       </Svg>
     </Animated.View>
   )
 }
 
-/** O código de barras do canhoto: traços fixos, nítidos só validada. */
+/** O código de barras do canhoto: as larguras do desenho. */
 const BARS = [
-  3, 1, 2, 1, 1, 3, 1, 2, 2, 1, 3, 1, 1, 2, 1, 3, 2, 1, 1, 2, 3, 1, 2, 1, 1, 3
+  2, 1, 1, 3, 1, 2, 1, 1, 2, 3, 1, 1, 2, 1, 3, 1, 2, 2, 1, 1, 3, 1, 1, 2, 1, 2,
+  1, 3, 1, 1, 2, 1, 1, 2, 3, 1
 ]
+
+/** A marca pequena: o anel com a bola vermelha. */
+export function MarkSmall() {
+  return (
+    <View style={styles.mark}>
+      <View style={styles.markRing} />
+      <View style={styles.markBall} />
+    </View>
+  )
+}
 
 export function FanCard({
   name,
@@ -156,7 +194,7 @@ export function FanCard({
   teams: string[]
   /** As siglas do que assiste ("FUT", "F1", "NBA"). */
   sports: string[]
-  radius: number | null
+  radius: string | null
   base: string | null
   lit?: CardField
   validated?: boolean
@@ -167,151 +205,150 @@ export function FanCard({
   const palette = usePalette()
   return (
     <View>
+      <View style={styles.shadow} />
       <View
         style={[
-          styles.shadow,
-          { backgroundColor: palette.dark ? '#000' : 'rgba(18,18,15,.22)' }
+          styles.card,
+          palette.dark && {
+            backgroundColor: '#1f1f1a',
+            borderWidth: 1,
+            borderColor: 'rgba(241,238,230,.1)'
+          }
         ]}
-      />
-      <View style={styles.card}>
-        <View style={styles.dots} pointerEvents="none">
-          {Array.from({ length: 60 }, (_, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: trama fixa
-            <View key={i} style={styles.dot} />
-          ))}
-        </View>
-        <View style={styles.head}>
-          <View style={styles.brand}>
-            <View style={styles.ring} />
-            <View style={styles.ball} />
-            <Text style={styles.word}>
-              ONSIDE<Text style={{ color: LIVE }}>.</Text>
-            </Text>
+      >
+        <Dots />
+        <View style={styles.top}>
+          <View style={styles.logo}>
+            <MarkSmall />
+            <Text style={styles.word}>ONSIDE</Text>
+            <View style={styles.square} />
           </View>
-          <Text style={[styles.mono, styles.season]}>
-            {'TORCEDOR\nTEMPORADA 26'}
-          </Text>
+          <Text style={styles.season}>{'TORCEDOR\nTEMPORADA 26'}</Text>
         </View>
-        <Text numberOfLines={1} adjustsFontSizeToFit style={styles.name}>
+        <Text
+          numberOfLines={2}
+          style={[styles.name, validated && { paddingRight: 84 }]}
+        >
           {name.toLocaleUpperCase('pt-BR')}
         </Text>
-        {validated ? <Seal /> : null}
 
-        <View style={[styles.teams, lit === 'teams' && styles.fieldOn]}>
-          <Label on={lit === 'teams'}>TORCE PARA</Label>
+        <Field label="Torce para" hot={lit === 'teams'}>
           {teams.length ? (
             <Text
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              style={[styles.teamText, { color: lit === 'teams' ? INK : ACID }]}
+              style={[styles.teams, { color: lit === 'teams' ? INK : ACID }]}
             >
-              {teams.join(' · ').toLocaleUpperCase('pt-BR')}
+              {teams.map((team, i) => (
+                <Text key={team}>
+                  {i ? (
+                    <Text
+                      style={{ color: lit === 'teams' ? HOT_LABEL : MUTED }}
+                    >
+                      {' · '}
+                    </Text>
+                  ) : null}
+                  {team.toLocaleUpperCase('pt-BR')}
+                </Text>
+              ))}
             </Text>
           ) : (
-            <View
-              style={[
-                styles.dashed,
-                styles.dashedWide,
-                lit === 'teams' && { borderColor: INK }
-              ]}
-            >
-              <Text
-                style={[
-                  styles.mono,
-                  { color: lit === 'teams' ? INK : '#8f8d87' }
-                ]}
-              >
-                Escolha um time
-              </Text>
-            </View>
+            <Dash>Escolha um time</Dash>
           )}
-        </View>
+        </Field>
 
         <View style={styles.row}>
-          <Field
-            label="ASSISTE"
-            on={lit === 'sports'}
-            empty={!sports.length}
-            style={{ flex: 1.4 }}
-          >
-            <View style={styles.marks}>
-              {sports.slice(0, 4).map((mark) => (
-                <View
-                  key={mark}
-                  style={[
-                    styles.mark,
-                    {
-                      borderColor:
-                        lit === 'sports' ? INK : 'rgba(241,238,230,.3)'
-                    }
-                  ]}
-                >
-                  <Text
+          <Field label="Assiste" hot={lit === 'sports'} style={{ flex: 1.3 }}>
+            {sports.length ? (
+              <View style={styles.pills}>
+                {sports.map((mark) => (
+                  <View
+                    key={mark}
                     style={[
-                      styles.markText,
-                      { color: lit === 'sports' ? INK : PAPER }
+                      styles.pill,
+                      lit === 'sports' && {
+                        backgroundColor: 'rgba(18,18,15,.08)',
+                        borderColor: 'rgba(18,18,15,.25)'
+                      }
                     ]}
                   >
-                    {mark}
-                  </Text>
-                </View>
-              ))}
-            </View>
+                    <Text
+                      style={[
+                        styles.pillText,
+                        { color: lit === 'sports' ? INK : PAPER }
+                      ]}
+                    >
+                      {mark}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Dash>—</Dash>
+            )}
           </Field>
-          <Field
-            label="RAIO"
-            on={lit === 'radius'}
-            empty={radius === null}
-            style={{ flex: 0.8 }}
-          >
-            <Text
-              style={[styles.value, { color: lit === 'radius' ? INK : PAPER }]}
-            >
-              {radius} km
-            </Text>
+          <Field label="Raio" hot={lit === 'radius'} style={{ flex: 0.7 }}>
+            {radius ? (
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.value,
+                  { color: lit === 'radius' ? INK : PAPER }
+                ]}
+              >
+                {radius}
+              </Text>
+            ) : (
+              <Dash>—</Dash>
+            )}
           </Field>
-          <Field
-            label="BASE"
-            on={lit === 'base'}
-            empty={!base}
-            style={{ flex: 1.3 }}
-          >
-            <Text
-              numberOfLines={1}
-              style={[styles.value, { color: lit === 'base' ? INK : PAPER }]}
-            >
-              {base}
-            </Text>
+          <Field label="Base" hot={lit === 'base'} style={{ flex: 1.2 }}>
+            {base ? (
+              <Text
+                numberOfLines={1}
+                style={[styles.value, { color: lit === 'base' ? INK : PAPER }]}
+              >
+                {base}
+              </Text>
+            ) : (
+              <Dash>—</Dash>
+            )}
           </Field>
         </View>
 
         {/* O picote, com os recortes dos lados na cor do fundo. */}
         <View style={styles.perforation}>
-          <View
-            style={[styles.notch, { left: -26, backgroundColor: palette.bg }]}
-          />
           <View style={styles.cut} />
           <View
-            style={[styles.notch, { right: -26, backgroundColor: palette.bg }]}
+            style={[styles.notch, { left: -7, backgroundColor: palette.bg }]}
+          />
+          <View
+            style={[styles.notch, { right: -7, backgroundColor: palette.bg }]}
           />
         </View>
 
-        <View style={styles.stub}>
-          <View style={[styles.bars, { opacity: validated ? 1 : 0.35 }]}>
+        <View style={styles.foot}>
+          <View style={styles.bars}>
             {BARS.map((w, i) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: traços fixos
-              <View key={i} style={[styles.bar, { width: w }]} />
+              <View
+                // biome-ignore lint/suspicious/noArrayIndexKey: traços fixos
+                key={i}
+                style={{
+                  width: w,
+                  marginRight: i % 3 ? 1 : 2,
+                  backgroundColor: validated ? PAPER : 'rgba(241,238,230,.14)'
+                }}
+              />
             ))}
           </View>
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={[styles.label, { color: '#8f8d87' }]}>
+            <Text style={styles.numLabel}>
               {validated ? `DESDE ${since ?? ''}`.trim() : 'A EMITIR'}
             </Text>
-            <Text style={[styles.mono, { color: PAPER, fontSize: 13 }]}>
-              Nº {validated && number ? number : '· · · · ·'}
+            <Text style={styles.num}>
+              {validated && number ? `Nº ${number}` : 'Nº ·····'}
             </Text>
           </View>
         </View>
+        {validated ? <Seal /> : null}
       </View>
     </View>
   )
@@ -324,107 +361,184 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: -4,
-    borderRadius: 24
+    borderRadius: 24,
+    backgroundColor: '#000'
   },
   card: {
     backgroundColor: INK,
     borderRadius: 24,
-    padding: 16,
-    paddingBottom: 14,
-    gap: 10,
+    paddingTop: 16,
+    paddingHorizontal: 16,
+    gap: 12,
     overflow: 'hidden'
   },
   dots: {
     position: 'absolute',
-    top: 10,
-    right: 10,
-    width: 120,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    opacity: 0.18
+    right: -10,
+    top: -10,
+    width: '62%',
+    height: '70%'
   },
-  dot: { width: 2, height: 2, borderRadius: 1, backgroundColor: PAPER },
-  head: {
+  top: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start'
   },
-  brand: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 20 },
-  ring: {
-    width: 16,
-    height: 16,
+  logo: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  mark: { width: 18, height: 18 },
+  markRing: {
+    position: 'absolute',
+    top: 1,
+    left: 1,
+    right: 1,
+    bottom: 1,
     borderRadius: 8,
-    borderWidth: 3.5,
+    borderWidth: 3,
     borderColor: PAPER
   },
-  ball: {
+  markBall: {
     position: 'absolute',
-    left: 11,
-    top: 12,
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
+    right: 0,
+    bottom: 0,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: LIVE
   },
-  word: { fontFamily: 'Anton', fontSize: 15, color: PAPER, marginVertical: -4 },
-  season: { color: '#8f8d87', fontSize: 9, textAlign: 'right', lineHeight: 12 },
+  word: {
+    fontFamily: 'Anton',
+    fontSize: 18,
+    letterSpacing: 0.36,
+    color: PAPER,
+    marginVertical: -4.5
+  },
+  square: {
+    width: 5,
+    height: 5,
+    backgroundColor: LIVE,
+    alignSelf: 'flex-end',
+    marginLeft: -5,
+    marginBottom: 3
+  },
+  season: {
+    fontFamily: MONO,
+    fontSize: 9.5,
+    lineHeight: 12.8,
+    letterSpacing: 1.14,
+    color: MUTED,
+    textAlign: 'right'
+  },
+  // Sem `lineHeight` menor que a altura natural do Anton: o iOS corta o
+  // topo. A margem negativa leva a linha aos 0,95em do desenho.
   name: {
     fontFamily: 'Anton',
     fontSize: 30,
+    letterSpacing: 0.15,
     color: PAPER,
-    marginVertical: -7,
-    marginTop: 2
+    marginVertical: -7.4
   },
-  teams: { gap: 4, marginHorizontal: -8, padding: 8, borderRadius: 12 },
-  teamText: { fontFamily: 'Anton', fontSize: 24, marginVertical: -6 },
-  row: { flexDirection: 'row', gap: 8 },
-  field: { gap: 5, marginHorizontal: -4, padding: 6, borderRadius: 10 },
-  fieldOn: { backgroundColor: ACID },
-  label: { fontFamily: MONO, fontSize: 9, letterSpacing: 0.6 },
-  mono: { fontFamily: MONO, fontSize: 11 },
-  dashed: {
+  field: {
+    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    marginVertical: -6,
+    marginHorizontal: -8,
+    minWidth: 0
+  },
+  // Geist Mono e Archivo com a altura natural da fonte e margem negativa
+  // até a linha do desenho (1em no rótulo, 1,15em no valor).
+  label: {
+    fontFamily: MONO,
+    fontSize: 9.5,
+    letterSpacing: 1.14,
+    textTransform: 'uppercase',
+    marginTop: -1.4,
+    marginBottom: 4.6
+  },
+  value: { fontFamily: 'Archivo-Bold', fontSize: 14, marginVertical: -1.5 },
+  teams: {
+    fontFamily: 'Anton',
+    fontSize: 24,
+    letterSpacing: 0.24,
+    marginVertical: -6
+  },
+  dash: {
     alignSelf: 'flex-start',
-    minWidth: 26,
-    height: 24,
-    paddingHorizontal: 7,
-    borderRadius: 6,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderStyle: 'dashed',
-    borderColor: 'rgba(241,238,230,.3)',
-    alignItems: 'center',
-    justifyContent: 'center'
+    borderColor: 'rgba(241,238,230,.22)',
+    borderRadius: 8,
+    paddingVertical: 5,
+    paddingHorizontal: 9
   },
-  dashedWide: { paddingHorizontal: 10 },
-  marks: { flexDirection: 'row', gap: 4, flexWrap: 'wrap' },
-  mark: {
+  dashText: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 12,
+    color: DASH,
+    marginVertical: -1
+  },
+  row: { flexDirection: 'row', gap: 10 },
+  pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
+  pill: {
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderRadius: 5,
+    backgroundColor: 'rgba(241,238,230,.07)',
     borderWidth: 1,
-    borderRadius: 4,
-    paddingHorizontal: 5,
-    paddingVertical: 2
+    borderColor: 'rgba(241,238,230,.14)'
   },
-  markText: { fontFamily: MONO, fontSize: 9.5 },
-  value: { fontFamily: 'Archivo-Bold', fontSize: 14 },
-  perforation: { height: 12, justifyContent: 'center', marginHorizontal: -16 },
+  pillText: {
+    fontFamily: MONO,
+    fontSize: 10.5,
+    letterSpacing: 0.42,
+    marginVertical: -1.5
+  },
+  perforation: { height: 14, marginHorizontal: -16 },
   cut: {
-    marginHorizontal: 16,
-    borderTopWidth: 1.5,
+    position: 'absolute',
+    left: 14,
+    right: 14,
+    top: 6,
+    borderTopWidth: 2,
     borderStyle: 'dashed',
-    borderColor: 'rgba(241,238,230,.22)'
+    borderColor: 'rgba(241,238,230,.18)'
   },
   notch: {
     position: 'absolute',
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    top: -4
+    top: 0,
+    width: 14,
+    height: 14,
+    borderRadius: 7
   },
-  stub: {
+  foot: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-end'
+    alignItems: 'center',
+    paddingBottom: 14
   },
-  bars: { flexDirection: 'row', gap: 2, height: 28, alignItems: 'stretch' },
-  bar: { backgroundColor: PAPER },
-  seal: { position: 'absolute', top: 44, right: 14 }
+  bars: { flexDirection: 'row', height: 30 },
+  numLabel: {
+    fontFamily: MONO,
+    fontSize: 9,
+    letterSpacing: 1.08,
+    color: MUTED,
+    marginBottom: 5
+  },
+  num: {
+    fontFamily: MONO,
+    fontSize: 15,
+    color: PAPER,
+    fontVariant: ['tabular-nums']
+  },
+  seal: {
+    position: 'absolute',
+    right: 14,
+    top: 50,
+    width: 80,
+    height: 80,
+    shadowColor: '#000',
+    shadowOpacity: 0.5,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 2 }
+  }
 })
