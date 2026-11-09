@@ -1,0 +1,740 @@
+import { useEffect, useRef } from 'react'
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming
+} from 'react-native-reanimated'
+import { HardShadow, Photo, Tag } from '@/components/explore'
+import { EASE, haptic, usePressScale } from '@/components/motion'
+import { usePalette } from '@/components/theme'
+import { ACID, Icon, INK, LIVE, PAPER, Text, text } from '@/components/ui'
+import { formatTime } from '@/lib/explore'
+import {
+  type BoardBar,
+  distance,
+  type QuietBar,
+  type RowGame
+} from '@/lib/explore-board'
+
+/*
+ * As peças do Explorar novo (rodada 1 do redesign, telas 3, 3b e 3c): a
+ * fileira de dias, a de jogos, o título do jogo na folha, o cartão compacto
+ * do bar, os sem jogo, o "Ampliar", o cartão do jogo ao vivo e a faixa da
+ * conta. Fora do mapa nada é vidro (decisão 1 da rodada): peças sólidas.
+ */
+
+const MONO = 'GeistMono-SemiBold'
+
+/** A pílula da fileira de dias: o indicador anda sob o rótulo (200 ms). */
+export function DayRow({
+  days,
+  value,
+  onChange
+}: {
+  days: { day: string; label: string }[]
+  value: string
+  onChange: (day: string) => void
+}) {
+  const palette = usePalette()
+  const widths = useRef<{ x: number; width: number }[]>([])
+  const x = useSharedValue(0)
+  const w = useSharedValue(0)
+  const index = Math.max(
+    0,
+    days.findIndex((d) => d.day === value)
+  )
+  const place = (animate: boolean) => {
+    const box = widths.current[index]
+    if (!box) return
+    const to = (v: number) =>
+      animate ? withTiming(v, { duration: 200, easing: EASE }) : v
+    x.set(to(box.x))
+    w.set(to(box.width))
+  }
+  // biome-ignore lint/correctness/useExhaustiveDependencies: segue o dia escolhido
+  useEffect(() => place(true), [index])
+  const pill = useAnimatedStyle(() => ({
+    width: w.get(),
+    transform: [{ translateX: x.get() }]
+  }))
+  return (
+    <View style={[styles.days, { backgroundColor: palette.card }]}>
+      <Animated.View
+        style={[styles.dayPill, { backgroundColor: palette.ink }, pill]}
+      />
+      {days.map((d, i) => {
+        const on = i === index
+        return (
+          <Pressable
+            key={d.day}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: on }}
+            onLayout={(e) => {
+              widths.current[i] = e.nativeEvent.layout
+              if (i === index) place(false)
+            }}
+            onPress={() => {
+              if (on) return
+              haptic.select()
+              onChange(d.day)
+            }}
+            style={styles.day}
+          >
+            <Text
+              style={[
+                text(13.5, 'Bold', 1.2),
+                { color: on ? palette.bg : palette.ink }
+              ]}
+            >
+              {d.label}
+            </Text>
+          </Pressable>
+        )
+      })}
+    </View>
+  )
+}
+
+/** A fileira dos jogos do dia: o escolhido em tinta, o ao vivo em vermelho. */
+export function GameRow({
+  games,
+  chosen,
+  onChoose
+}: {
+  games: RowGame[]
+  chosen: string | undefined
+  onChoose: (key: string) => void
+}) {
+  const palette = usePalette()
+  if (!games.length) return null
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={{ flexGrow: 0 }}
+      contentContainerStyle={styles.gameRow}
+    >
+      {games.map((game) => {
+        const on = game.key === chosen
+        const fg = on ? palette.bg : palette.ink
+        return (
+          <Pressable
+            key={game.key}
+            accessibilityRole="button"
+            accessibilityState={{ selected: on }}
+            accessibilityLabel={`${game.title}, ${game.live ? 'ao vivo' : formatTime(game.startsAt)}, ${game.bars.length} ${game.bars.length === 1 ? 'bar' : 'bares'}`}
+            onPress={() => {
+              if (on) return
+              haptic.select()
+              onChoose(game.key)
+            }}
+          >
+            {/* Dezenas de trocas por dia: só o estado, sem deslizar. */}
+            <View
+              style={[
+                styles.game,
+                {
+                  backgroundColor: on ? palette.ink : palette.card,
+                  shadowColor: palette.shadow
+                }
+              ]}
+            >
+              <Text
+                numberOfLines={1}
+                style={[styles.gameKicker, { color: on ? fg : palette.muted }]}
+              >
+                {game.live ? (
+                  <Text style={{ color: palette.live }}>● ao vivo</Text>
+                ) : (
+                  formatTime(game.startsAt)
+                )}
+                {` · ${game.championship}`}
+              </Text>
+              <View style={styles.gameLine}>
+                <Text
+                  numberOfLines={1}
+                  style={[text(14.5, 'Bold', 1.2), { color: fg, flex: 1 }]}
+                >
+                  {game.title}
+                </Text>
+                <Text style={[styles.gameCount, { color: fg }]}>
+                  {game.bars.length}
+                </Text>
+              </View>
+            </View>
+          </Pressable>
+        )
+      })}
+    </ScrollView>
+  )
+}
+
+/** "FLAMENGO × PALMEIRAS": o × em vermelho (acid no escuro). */
+export function GameTitle({
+  title,
+  size = 34,
+  color,
+  accent
+}: {
+  title: string
+  size?: number
+  color: string
+  accent: string
+}) {
+  const sides = title.split(' × ')
+  return (
+    <Text
+      numberOfLines={1}
+      adjustsFontSizeToFit
+      style={[styles.anton, { fontSize: size, color }]}
+    >
+      {sides.length === 2 ? (
+        <>
+          {sides[0]}
+          <Text style={{ color: accent }}> × </Text>
+          {sides[1]}
+        </>
+      ) : (
+        title
+      )}
+    </Text>
+  )
+}
+
+/** Chip sólido da folha (raio, telão, som, atalhos); ligado, em tinta. */
+export function SheetChip({
+  label,
+  icon,
+  on,
+  live,
+  onPress
+}: {
+  label: string
+  icon?:
+    | 'pin'
+    | 'tv'
+    | 'sound'
+    | 'outdoor'
+    | 'ticket'
+    | 'search'
+    | 'person'
+    | 'premiere'
+    | 'map'
+  on: boolean
+  live?: boolean
+  onPress: () => void
+}) {
+  const palette = usePalette()
+  const bg = live && on ? LIVE : on ? palette.ink : palette.card
+  const fg = live && on ? PAPER : on ? palette.bg : palette.ink
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: on }}
+      onPress={() => {
+        haptic.select()
+        onPress()
+      }}
+      style={[
+        styles.chip,
+        { backgroundColor: bg },
+        !on && { borderColor: palette.line, borderWidth: 1 }
+      ]}
+    >
+      {live && !on ? <View style={styles.liveDot} /> : null}
+      {icon ? (
+        <Icon name={icon} size={16} color={fg} accent={palette.accent} />
+      ) : null}
+      <Text style={[text(13.5, on ? 'Bold' : 'SemiBold', 1.2), { color: fg }]}>
+        {label}
+      </Text>
+    </Pressable>
+  )
+}
+
+/** Telão e som, os do jogo neste bar, em mono. */
+function Screens({ bar, color }: { bar: BoardBar; color: string }) {
+  if (!bar.onBigScreen && !bar.withSound) return null
+  return (
+    <View style={styles.screens}>
+      {bar.onBigScreen ? (
+        <View style={styles.screen}>
+          <Icon name="tv" size={13} color={color} />
+          <Text style={[styles.mono11, { color }]}>Telão</Text>
+        </View>
+      ) : null}
+      {bar.withSound ? (
+        <View style={styles.screen}>
+          <Icon name="sound" size={13} color={color} />
+          <Text style={[styles.mono11, { color }]}>Som</Text>
+        </View>
+      ) : null}
+    </View>
+  )
+}
+
+/** O coração do cartão: estala de 0,9 para 1 ao trocar. */
+function Heart({ on, onPress }: { on: boolean; onPress: () => void }) {
+  const palette = usePalette()
+  const scale = useSharedValue(1)
+  const first = useRef(true)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: estala quando `on` muda
+  useEffect(() => {
+    if (first.current) {
+      first.current = false
+      return
+    }
+    scale.set(0.9)
+    scale.set(withSpring(1, { duration: 300, dampingRatio: 0.7 }))
+  }, [on])
+  const style = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.get() }]
+  }))
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={on ? 'Tirar dos salvos' : 'Salvar bar'}
+      accessibilityState={{ selected: on }}
+      hitSlop={10}
+      onPress={() => {
+        haptic.select()
+        onPress()
+      }}
+    >
+      <Animated.View style={style}>
+        <Icon
+          name="fan"
+          size={18}
+          color={on ? palette.live : palette.muted}
+          accent={on ? palette.live : palette.accent}
+        />
+      </Animated.View>
+    </Pressable>
+  )
+}
+
+/** "34 / VÃO" à direita do cartão, em mono. */
+function GoingCount({ count, color }: { count: number; color: string }) {
+  return (
+    <View style={{ alignItems: 'flex-end' }}>
+      <Text style={[styles.goingNumber, { color }]}>
+        {count.toLocaleString('pt-BR')}
+      </Text>
+      <Text style={[styles.mono10, { color }]}>
+        {count === 1 ? 'VAI' : 'VÃO'}
+      </Text>
+    </View>
+  )
+}
+
+/**
+ * O cartão compacto do bar (tela 3): foto, Elite ou ao vivo, nome, bairro e
+ * distância, telão ou som, o coração e "34 vão" em mono à direita.
+ */
+export function BoardCard({
+  bar,
+  live,
+  favorite,
+  chosen,
+  onFavorite,
+  onPress
+}: {
+  bar: BoardBar
+  live: boolean
+  favorite: boolean
+  /** O bar aberto ao lado no tablet. */
+  chosen?: boolean
+  onFavorite: () => void
+  onPress: () => void
+}) {
+  const palette = usePalette()
+  const press = usePressScale(0.985)
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${bar.name}, ${bar.neighborhood}, ${distance(bar.distanceKm)}`}
+      onPress={onPress}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+    >
+      <Animated.View style={press.style}>
+        <HardShadow
+          color={chosen ? 'rgba(201,241,53,.85)' : palette.shadow}
+          offset={3}
+          radius={18}
+        />
+        <View
+          style={[
+            styles.card,
+            { backgroundColor: palette.card, borderColor: palette.ring }
+          ]}
+        >
+          <Photo uri={bar.photoUrl} name={bar.name} style={styles.photo} />
+          <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+            {live || bar.elite ? (
+              <View style={styles.tags}>
+                {live ? (
+                  <View style={[styles.liveTag, { backgroundColor: LIVE }]}>
+                    <Text style={[styles.mono10, { color: PAPER }]}>
+                      ● AO VIVO
+                    </Text>
+                  </View>
+                ) : null}
+                {bar.elite ? <Tag>ELITE</Tag> : null}
+              </View>
+            ) : null}
+            <Text
+              numberOfLines={1}
+              style={[text(16.5, 'Bold', 1.2), { color: palette.ink }]}
+            >
+              {bar.name}
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={[text(13, 'Regular', 1.3), { color: palette.muted }]}
+            >
+              {bar.neighborhood} · {distance(bar.distanceKm)}
+            </Text>
+            <Screens bar={bar} color={palette.muted} />
+          </View>
+          <View style={styles.cardSide}>
+            <Heart on={favorite} onPress={onFavorite} />
+            {bar.going ? (
+              <GoingCount count={bar.going.count} color={palette.ink} />
+            ) : null}
+          </View>
+        </View>
+      </Animated.View>
+    </Pressable>
+  )
+}
+
+/** O corte tracejado antes dos sem jogo: "SEM JOGO MARCADO". */
+export function QuietDivider({ alone }: { alone: boolean }) {
+  const palette = usePalette()
+  return (
+    <View style={styles.divider}>
+      <View style={[styles.dash, { borderColor: palette.dash }]} />
+      <Text style={[styles.mono10, { color: palette.muted }]}>
+        {alone ? 'PERTO DE VOCÊ, SEM JOGO MARCADO' : 'SEM JOGO MARCADO'}
+      </Text>
+      <View style={[styles.dash, { borderColor: palette.dash }]} />
+    </View>
+  )
+}
+
+/** Bar perto sem jogo no dia: cinza, só com o coração. */
+export function QuietCard({
+  bar,
+  favorite,
+  onFavorite,
+  onPress
+}: {
+  bar: QuietBar
+  favorite: boolean
+  onFavorite: () => void
+  onPress: () => void
+}) {
+  const palette = usePalette()
+  const open = bar.opening?.open ? 'aberto' : bar.opening ? 'fechado' : null
+  const tv = bar.amenities.includes(1) ? 'telão' : null
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${bar.name}, sem jogo marcado`}
+      onPress={onPress}
+      style={[
+        styles.quiet,
+        { backgroundColor: palette.card, borderColor: palette.line }
+      ]}
+    >
+      <Photo uri={bar.photoUrl} name={bar.name} style={styles.quietPhoto} />
+      <View style={{ flex: 1, minWidth: 0, opacity: 0.75 }}>
+        <Text
+          numberOfLines={1}
+          style={[text(14.5, 'Bold', 1.2), { color: palette.ink }]}
+        >
+          {bar.name}
+        </Text>
+        <Text
+          numberOfLines={1}
+          style={[text(12.5, 'Regular', 1.3), { color: palette.muted }]}
+        >
+          {[bar.neighborhood, distance(bar.distanceKm), tv, open]
+            .filter(Boolean)
+            .join(' · ')}
+        </Text>
+      </View>
+      <Heart on={favorite} onPress={onFavorite} />
+    </Pressable>
+  )
+}
+
+/** "Ampliar para 3 km": o ganho em número, num bloco escuro. */
+export function WidenBlock({
+  km,
+  gain,
+  onWiden
+}: {
+  km: number
+  /** Quantos bares a mais passam o jogo no raio maior; `null` sem saber. */
+  gain: number | null
+  onWiden: () => void
+}) {
+  return (
+    <View style={styles.widen}>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          style={[styles.anton, { fontSize: 22, color: PAPER }]}
+        >
+          AMPLIAR PARA {km.toLocaleString('pt-BR')} KM
+        </Text>
+        <Text style={[text(12.5, 'Regular', 1.3), { color: '#aaa9a4' }]}>
+          {gain
+            ? `mais ${gain} ${gain === 1 ? 'bar' : 'bares'} com o jogo · vale só agora`
+            : 'vale só agora'}
+        </Text>
+      </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Ampliar para ${km} km`}
+        onPress={() => {
+          haptic.select()
+          onWiden()
+        }}
+        style={styles.widenButton}
+      >
+        <Text style={[text(13.5, 'Bold', 1.2), { color: INK }]}>Ampliar</Text>
+      </Pressable>
+    </View>
+  )
+}
+
+/**
+ * Um jogo ao vivo (tela 3c, atalho "Ao vivo"): cartão escuro nos dois temas,
+ * a faixa "AO VIVO" com o início (a Onside não tem o minuto), os times em
+ * Anton e os bares que passam, cada um com quantos vão.
+ */
+export function LiveGameCard({
+  game,
+  bars,
+  onOpen
+}: {
+  game: RowGame
+  bars: BoardBar[]
+  onOpen: (bar: BoardBar) => void
+}) {
+  return (
+    <View style={styles.liveCard}>
+      <View style={styles.liveHead}>
+        <View style={[styles.liveTag, { backgroundColor: LIVE }]}>
+          <Text style={[styles.mono10, { color: PAPER }]}>● AO VIVO</Text>
+        </View>
+        <Text style={[styles.mono11, { color: '#aaa9a4', flex: 1 }]}>
+          começou {formatTime(game.startsAt)}
+        </Text>
+        <Text
+          numberOfLines={1}
+          style={[styles.mono10, { color: '#aaa9a4', maxWidth: 120 }]}
+        >
+          {game.championship.toUpperCase()}
+        </Text>
+      </View>
+      <GameTitle title={game.title} size={30} color={PAPER} accent={ACID} />
+      {bars.map((bar) => (
+        <Pressable
+          key={bar.barId}
+          accessibilityRole="button"
+          accessibilityLabel={bar.name}
+          onPress={() => onOpen(bar)}
+          style={styles.liveBar}
+        >
+          <Photo uri={bar.photoUrl} name={bar.name} style={styles.quietPhoto} />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text
+              numberOfLines={1}
+              style={[text(14.5, 'Bold', 1.2), { color: PAPER }]}
+            >
+              {bar.name}
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={[text(12.5, 'Regular', 1.3), { color: '#aaa9a4' }]}
+            >
+              {bar.neighborhood} · {distance(bar.distanceKm)}
+            </Text>
+          </View>
+          {bar.going ? (
+            <GoingCount count={bar.going.count} color={ACID} />
+          ) : null}
+        </Pressable>
+      ))}
+    </View>
+  )
+}
+
+/** No fim da lista, para quem não tem conta: o que a conta dá. */
+export function AccountNudge({ onPress }: { onPress: () => void }) {
+  const palette = usePalette()
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={[styles.nudge, { borderColor: palette.dash }]}
+    >
+      <Icon name="ticket" size={18} color={palette.ink} />
+      <Text
+        style={[text(13.5, 'Regular', 1.35), { color: palette.ink, flex: 1 }]}
+      >
+        <Text style={text(13.5, 'Bold', 1.35)}>Crie a conta</Text> para salvar
+        bares e marcar presença.
+      </Text>
+      <Icon name="next" size={16} color={palette.muted} />
+    </Pressable>
+  )
+}
+
+/** O jogo na linha da folha: "21:30 · 9 bares até 1,5 km". */
+export function sheetLine(
+  game: RowGame,
+  count: number,
+  radiusKm: number
+): string {
+  const when = game.live
+    ? `ao vivo · começou ${formatTime(game.startsAt)}`
+    : formatTime(game.startsAt)
+  const few = count > 0 && count < 3 ? 'só ' : ''
+  return `${when} · ${few}${count} ${count === 1 ? 'bar' : 'bares'} até ${radiusKm.toLocaleString('pt-BR')} km`
+}
+
+const styles = StyleSheet.create({
+  days: {
+    flexDirection: 'row',
+    alignSelf: 'flex-start',
+    borderRadius: 20,
+    padding: 3
+  },
+  dayPill: {
+    position: 'absolute',
+    top: 3,
+    bottom: 3,
+    left: 0,
+    borderRadius: 17
+  },
+  day: { height: 34, paddingHorizontal: 13, justifyContent: 'center' },
+  gameRow: { gap: 8, paddingHorizontal: 16 },
+  game: {
+    width: 182,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    gap: 4,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
+  },
+  gameKicker: { fontFamily: MONO, fontSize: 11 },
+  gameLine: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  gameCount: { fontFamily: MONO, fontSize: 13 },
+  anton: {
+    fontFamily: 'Anton',
+    textTransform: 'uppercase',
+    letterSpacing: -0.3,
+    marginVertical: -8
+  },
+  chip: {
+    height: 38,
+    paddingHorizontal: 14,
+    borderRadius: 19,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7
+  },
+  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: LIVE },
+  screens: { flexDirection: 'row', gap: 10, marginTop: 2 },
+  screen: { flexDirection: 'row', gap: 4, alignItems: 'center' },
+  mono11: { fontFamily: MONO, fontSize: 11 },
+  mono10: { fontFamily: MONO, fontSize: 10, letterSpacing: 0.5 },
+  goingNumber: {
+    fontFamily: MONO,
+    fontSize: 18,
+    fontVariant: ['tabular-nums'],
+    marginBottom: -2
+  },
+  card: {
+    flexDirection: 'row',
+    gap: 12,
+    padding: 10,
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center'
+  },
+  photo: { width: 76, height: 76, borderRadius: 12 },
+  tags: { flexDirection: 'row', gap: 6 },
+  liveTag: {
+    alignSelf: 'flex-start',
+    paddingVertical: 3,
+    paddingHorizontal: 6,
+    borderRadius: 3
+  },
+  cardSide: {
+    alignSelf: 'stretch',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    paddingVertical: 2
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 6
+  },
+  dash: { flex: 1, borderTopWidth: 1, borderStyle: 'dashed' },
+  quiet: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 10,
+    borderRadius: 14,
+    borderWidth: 1
+  },
+  quietPhoto: { width: 46, height: 46, borderRadius: 10 },
+  widen: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: INK
+  },
+  widenButton: {
+    height: 40,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: ACID,
+    justifyContent: 'center'
+  },
+  liveCard: {
+    backgroundColor: '#1c1c18',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(232,50,12,.55)',
+    padding: 14,
+    gap: 14
+  },
+  liveHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  liveBar: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  nudge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderStyle: 'dashed'
+  }
+})
