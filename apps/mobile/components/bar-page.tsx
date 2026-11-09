@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { dayLabel } from '@/components/explore'
 import { GameTitle } from '@/components/explore-board'
-import { haptic, SWAP, usePress } from '@/components/motion'
+import { SWAP, usePress } from '@/components/motion'
 import { usePalette } from '@/components/theme'
 import {
   ACID,
@@ -202,10 +202,7 @@ export function AttendDock({
         accessibilityState={{ selected: attending }}
         onPressIn={press.onPressIn}
         onPressOut={press.onPressOut}
-        onPress={() => {
-          haptic.select()
-          onPress()
-        }}
+        onPress={onPress}
       >
         <View style={styles.goEdge} />
         <Animated.View style={[styles.go, press.style]}>
