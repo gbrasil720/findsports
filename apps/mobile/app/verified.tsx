@@ -32,6 +32,9 @@ export default function Verified() {
       const acao = session.data?.user
         ? await finishPending(session.data.user)
         : null
+      // A folha de entrar ainda está aberta: fecha antes, senão o bar abre
+      // dentro dela e o cartão da ação fica escondido atrás.
+      if (router.canDismiss()) router.dismissAll()
       if (acao && 'barId' in acao) {
         router.replace('/explore')
         router.push({ pathname: '/bar/[id]', params: { id: acao.barId } })
