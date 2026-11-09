@@ -349,8 +349,10 @@ export default function FanTabs() {
           onSettings={settings}
         />
       ) : null}
-      {/* Na tela de fora do Flip não há botão da IA para apontar. */}
+      {/* Na tela de fora do Flip não há botão da IA para apontar. Sem conta,
+          a IA leva ao "Entrar": a dica espera a pessoa entrar. */}
       {coach.pending &&
+      fan &&
       pathname === '/explore' &&
       !menuOpen &&
       layout.nav !== 'none' ? (
