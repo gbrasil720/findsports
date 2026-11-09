@@ -23,7 +23,7 @@ describe('e-mail de redefinição de senha', () => {
       'https://onside.app/api/auth/reset-password/abc'
     )
     expect(email.text).toContain(
-      '2. Por segurança, este link expira em 30 minutos.'
+      '• Por segurança, este link expira em 30 minutos.'
     )
   })
 
