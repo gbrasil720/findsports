@@ -55,8 +55,6 @@ export const appRouter = router({
   reservationValidation: reservationValidationRouter,
   barReservations: barReservationsRouter,
   attendance: attendanceRouter,
-  achievements: achievementsRouter,
-  account: accountRouter,
   friends: friendsRouter,
   ranking: rankingRouter,
   feedback: feedbackRouter,
