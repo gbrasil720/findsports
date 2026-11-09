@@ -26,7 +26,7 @@ import {
   useCountdown
 } from '@/components/ui'
 import { attemptPhase, retryable, settleAuth } from '@/lib/auth-attempt'
-import { authClient } from '@/lib/auth-client'
+import { authClient, refreshSession } from '@/lib/auth-client'
 import { formatTime } from '@/lib/explore'
 import { finishPending, takePending } from '@/lib/pending-action'
 import { queryClient, trpc } from '@/lib/trpc'
@@ -127,9 +127,21 @@ export default function Entrar() {
     haptic.success()
     keep.current = true
     await queryClient.invalidateQueries()
+    // Relê sem o cache do cookie e avisa o `useSession`: sem isso, depois
+    // de sair e entrar de novo, as telas seguintes ficavam sem o usuário
+    // (carteirinha sem nome nem número) até reabrir o app.
+    await refreshSession()
     const session = await authClient.getSession()
     router.back()
-    if (session.data?.user) await finishPending(session.data.user)
+    const user = session.data?.user
+    if (!user) return
+    const acao = await finishPending(user)
+    // Sem bar nem jogo na mão (o "Entrar" do topo, "Já tenho conta"), o
+    // torcedor sem onboarding faz o de 5 passos, como ao abrir o app; com
+    // uma ação, ela vem primeiro e o convite curto fica no cartão.
+    const withAction = acao?.kind === 'vou' || acao?.kind === 'fav'
+    if (user.role === 'fan' && !user.onboardingCompleted && !withAction)
+      router.push('/onboarding')
   }
 
   const signIn = async () => {
