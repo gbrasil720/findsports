@@ -43,6 +43,7 @@ import {
 } from '@/components/explore'
 import {
   AccountNudge,
+  BarFloat,
   BoardCard,
   DayRow,
   GameRow,
@@ -296,13 +297,8 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   // card, para sobrar mapa, 20d) e baixa (só o título).
   const top = insets.top + 8
   const [selected, setSelected] = useState<string | null>(null)
-  // No meio, a borda da folha fica a 296 pt do pé da tela (20a, 20b); com um
-  // bar tocado, a 336 pt, para o card dele caber (20c).
-  const snaps = [
-    0,
-    height - top - (selected ? 336 : 296),
-    height - top - 150 - tabSpace
-  ]
+  // No meio, a borda da folha fica a 296 pt do pé da tela (20a, 20b).
+  const snaps = [0, height - top - 296, height - top - 150 - tabSpace]
   const resting = state.resting ?? snaps[1]
   const { setResting } = state
   const expanded = resting === 0
@@ -486,8 +482,9 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
       mapBox.height
     // Abaixo dos chips sobra lugar para a gota grande e o balão (105 pt).
     const ceiling = (phone ? insets.top + HEAD + 24 : padding.top) + 105
+    // No celular o cartão flutuante (3b) ocupa uns 330 pt acima das abas.
     const floor = phone
-      ? height - 336 - 24
+      ? height - tabSpace - 400
       : mapBox.height - padding.bottom - 24
     if (y < ceiling || y > floor) {
       const target = (ceiling + floor) / 2
@@ -648,11 +645,12 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
       Extrapolation.CLAMP
     )
   }))
-  // Tocar num bar sobe a folha um pouco, para o card dele caber (20c);
-  // soltar volta (20a, 20b). Aberta como lista, fica onde está.
+  // Tocar num bar no celular (3b): a folha desce e dá lugar ao cartão
+  // flutuante dele; soltar a traz de volta ao meio.
   // biome-ignore lint/correctness/useExhaustiveDependencies: só quando a escolha muda
   useEffect(() => {
-    if (!expanded) settle(snaps[1])
+    if (phone && selected) settle(height - top)
+    else if (!expanded) settle(snaps[1])
   }, [selected])
   // A seta de "Lista" vira com a folha, não depois dela.
   const arrow = useAnimatedStyle(() => ({
@@ -1457,6 +1455,25 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
               </Animated.View>
             ) : null}
           </Animated.View>
+          {chosen ? (
+            <View
+              style={[
+                styles.floatSpot,
+                { bottom: tabSpace + 12, right: 12 + navInsets.right }
+              ]}
+            >
+              <BarFloat
+                key={chosen.barId}
+                bar={chosen}
+                game={gameOf(chosen)}
+                favorite={favorites.ids.has(chosen.barId)}
+                onFavorite={() => favorites.toggle(chosen.barId)}
+                onClose={() => setSelected(null)}
+                onOpen={() => open(chosen)}
+                onGo={() => 'eventId' in chosen && go(chosen)}
+              />
+            </View>
+          ) : null}
         </>
       ) : cover ? (
         <Cover
@@ -1891,6 +1908,7 @@ const styles = StyleSheet.create({
   round46: { width: 46, height: 46, borderRadius: 23 },
   detail: { position: 'absolute', width: 360, gap: 12 },
   recenter: { position: 'absolute', top: -58, right: 14 },
+  floatSpot: { position: 'absolute', left: 12 },
   round44: { width: 44, height: 44, borderRadius: 22 },
   hoodName: {
     fontFamily: 'Anton',

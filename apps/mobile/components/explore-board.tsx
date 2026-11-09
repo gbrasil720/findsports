@@ -598,6 +598,184 @@ export function AccountNudge({ onPress }: { onPress: () => void }) {
   )
 }
 
+/**
+ * O bar tocado no mapa (tela 3b): no lugar da folha, um cartão flutuante com
+ * a foto, aberto ou fechado, a nota, o jogo com a oferta e quem vai, e as
+ * duas ações. Sobe de onde a folha estava (24 pt e opacidade, 240 ms).
+ */
+export function BarFloat({
+  bar,
+  game,
+  favorite,
+  onFavorite,
+  onClose,
+  onOpen,
+  onGo
+}: {
+  bar: BoardBar | QuietBar
+  game: RowGame | undefined
+  favorite: boolean
+  onFavorite: () => void
+  onClose: () => void
+  onOpen: () => void
+  onGo: () => void
+}) {
+  const palette = usePalette()
+  const shown = useSharedValue(0)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: entra uma vez por bar
+  useEffect(() => {
+    shown.set(withTiming(1, { duration: 240, easing: EASE }))
+  }, [])
+  const enter = useAnimatedStyle(() => ({
+    opacity: shown.get(),
+    transform: [{ translateY: (1 - shown.get()) * 24 }]
+  }))
+  const withGame = 'eventId' in bar ? bar : null
+  const closes = withGame?.closes
+  const open = 'opening' in bar ? bar.opening : null
+  const status = closes
+    ? `ABERTO · FECHA ${closes}`
+    : open
+      ? open.open
+        ? open.closes
+          ? `ABERTO · FECHA ${open.closes}`
+          : 'ABERTO'
+        : 'FECHADO'
+      : null
+  const rating = withGame?.rating
+  const extras = withGame
+    ? [
+        withGame.onBigScreen ? 'Telão' : null,
+        withGame.withSound ? 'Som' : null,
+        withGame.offer
+      ].filter(Boolean)
+    : []
+  return (
+    <Animated.View
+      style={[
+        styles.float,
+        { backgroundColor: palette.card, shadowColor: '#000' },
+        enter
+      ]}
+    >
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Abrir ${bar.name}`}
+        onPress={onOpen}
+      >
+        <View style={styles.floatPhoto}>
+          <Photo
+            uri={bar.photoUrl}
+            name={bar.name}
+            style={StyleSheet.absoluteFill}
+            big
+          />
+          <View style={styles.floatTags}>
+            {withGame?.elite ? <Tag>ELITE</Tag> : null}
+            {status ? (
+              <View style={styles.darkTag}>
+                <Text style={[styles.mono10, { color: PAPER }]}>{status}</Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Fechar"
+        hitSlop={10}
+        onPress={onClose}
+        style={styles.floatClose}
+      >
+        <Icon name="close" size={16} color={PAPER} />
+      </Pressable>
+      <View style={styles.floatBody}>
+        <View style={styles.floatName}>
+          <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            style={[
+              styles.anton,
+              { fontSize: 30, color: palette.ink, flex: 1 }
+            ]}
+          >
+            {bar.name}
+          </Text>
+          <Heart on={favorite} onPress={onFavorite} />
+        </View>
+        <Text style={[text(13, 'Regular', 1.3), { color: palette.muted }]}>
+          {bar.neighborhood} · {distance(bar.distanceKm)}
+          {rating?.stars
+            ? ` · ★ ${rating.stars.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} (${rating.total})`
+            : ''}
+        </Text>
+        {withGame && game ? (
+          <View style={[styles.floatGame, { backgroundColor: palette.bg }]}>
+            <View style={{ alignItems: 'center', minWidth: 62 }}>
+              <Text
+                style={[
+                  styles.mono10,
+                  { color: game.live ? palette.live : palette.muted }
+                ]}
+              >
+                {game.live ? 'AO VIVO' : 'HOJE'}
+              </Text>
+              <Text style={[styles.goingNumber, { color: palette.ink }]}>
+                {formatTime(game.startsAt)}
+              </Text>
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text
+                numberOfLines={1}
+                style={[text(14.5, 'Bold', 1.2), { color: palette.ink }]}
+              >
+                {game.title}
+              </Text>
+              {extras.length ? (
+                <Text
+                  numberOfLines={2}
+                  style={[text(12, 'Regular', 1.3), { color: palette.muted }]}
+                >
+                  {extras.join(' · ')}
+                </Text>
+              ) : null}
+            </View>
+            {withGame.going ? (
+              <GoingCount count={withGame.going.count} color={palette.ink} />
+            ) : null}
+          </View>
+        ) : (
+          <Text style={[text(13, 'Regular', 1.3), { color: palette.muted }]}>
+            Sem jogo marcado neste dia.
+          </Text>
+        )}
+        <View style={styles.floatActions}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={onOpen}
+            style={[styles.floatButton, { borderColor: palette.ink }]}
+          >
+            <Text style={[text(14.5, 'Bold', 1.2), { color: palette.ink }]}>
+              Ver o bar
+            </Text>
+          </Pressable>
+          {withGame?.attendanceEnabled ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={onGo}
+              style={[styles.floatButton, styles.floatGo]}
+            >
+              <Text style={[text(14.5, 'Bold', 1.2), { color: INK }]}>
+                Vou assistir aqui
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+      </View>
+    </Animated.View>
+  )
+}
+
 /** O jogo na linha da folha: "21:30 · 9 bares até 1,5 km". */
 export function sheetLine(
   game: RowGame,
@@ -612,6 +790,58 @@ export function sheetLine(
 }
 
 const styles = StyleSheet.create({
+  float: {
+    borderRadius: 22,
+    overflow: 'hidden',
+    shadowOpacity: 0.28,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 12
+  },
+  floatPhoto: { height: 116 },
+  floatTags: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    flexDirection: 'row',
+    gap: 6
+  },
+  darkTag: {
+    paddingVertical: 3,
+    paddingHorizontal: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(18,18,15,.78)'
+  },
+  floatClose: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(18,18,15,.6)',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  floatBody: { padding: 14, gap: 8 },
+  floatName: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  floatGame: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 10,
+    borderRadius: 14
+  },
+  floatActions: { flexDirection: 'row', gap: 10, marginTop: 2 },
+  floatButton: {
+    flex: 1,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  floatGo: { backgroundColor: ACID, borderColor: ACID },
   days: {
     flexDirection: 'row',
     alignSelf: 'flex-start',
