@@ -18,6 +18,7 @@ import { NAV, useLayout } from '@/components/layout'
 import { haptic, ScalePress } from '@/components/motion'
 import { usePalette } from '@/components/theme'
 import { ACID, Icon, INK, PAPER, Text, text } from '@/components/ui'
+import { useWithAccount } from '@/lib/account'
 import { authClient } from '@/lib/auth-client'
 import type { NavKind } from '@/lib/layout'
 
@@ -115,21 +116,29 @@ type Props = {
 export function StackRail({ current }: { current: NavTab }) {
   const router = useRouter()
   const session = authClient.useSession()
+  // Sem conta, como nas abas: só o Explorar abre; o resto leva ao "Entrar".
+  const withAccount = useWithAccount()
   return (
     <TabRail
       kind="rail"
       current={current}
       onTab={(tab) =>
-        router.navigate(tab === 'voce' ? '/voce/perfil' : `/${tab}`)
+        tab === 'explore'
+          ? router.navigate('/explore')
+          : withAccount(() =>
+              router.navigate(tab === 'voce' ? '/voce/perfil' : `/${tab}`)
+            )
       }
-      onAi={() => router.push('/busca-ia')}
+      onAi={() => withAccount(() => router.push('/busca-ia'))}
       onShortcut={(to) =>
-        router.navigate(
-          to === 'avisos'
-            ? '/avisos'
-            : to === 'jogos'
-              ? '/voce/meus-jogos'
-              : `/voce/${to}`
+        withAccount(() =>
+          router.navigate(
+            to === 'avisos'
+              ? '/avisos'
+              : to === 'jogos'
+                ? '/voce/meus-jogos'
+                : `/voce/${to}`
+          )
         )
       }
       initials={initials(session.data?.user.name ?? '')}
