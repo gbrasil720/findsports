@@ -165,10 +165,14 @@ fuso do processo); use `utcNowSql(now?)`. Não escreva `toLocaleDateString('en-C
 
 ### Catálogo de times e atletas
 
-A tabela `team` (times, seleções, escuderias e atletas: `kind`) é gravada a partir de
+A tabela `team` (times, seleções, atletas e GPs da F1: `kind`) é gravada a partir de
 `packages/db/src/catalog/data/<esporte>.json`, um item por linha (WEB-381). Fontes:
-Wikidata (CC0) para futebol, NBA, NFL, UFC e tênis (código da ATP ou da WTA),
-Jolpica-F1 para a grade da F1, e à mão (`manual:`) para vôlei e NBB. A Wikidata
+Wikidata (CC0) para futebol, NBA, NFL, UFC e tênis (código da ATP ou da WTA), e à mão
+(`manual:`) para vôlei e NBB. **A F1 é por GP** (WEB-520, `kind` `race`, chave
+`f1:gp:<id>`, à mão): sem piloto nem escuderia (os antigos, da Jolpica-F1, ficam
+`hidden`, e quem os favoritou continua com eles) e sem a Jolpica. O traçado de cada pista,
+o ícone do GP, está em `packages/db/src/f1-tracks.ts` (`bacinger/f1-circuits`, MIT); os
+times da API trazem `catalogKey` para achá-lo. A Wikidata
 guarda o nome de muita gente só na língua `mul`, que o `propose` usa quando falta o inglês. O ciclo:
 
 ```bash
@@ -770,8 +774,15 @@ invente layout que o projeto não tem.
   `Linking.createURL`, porque o cliente não converte esse campo. Em dev o link do e-mail sai
   com `PUBLIC_APP_URL` (senão `BETTER_AUTH_URL`, `localhost`), que não abre no celular: para
   testar no aparelho, suba o web com `PUBLIC_APP_URL=http://<ip-do-mac>:3001`.
-- **Onboarding do torcedor ("05", 4i–4n):** `app/onboarding/*`, escolhas num contexto
-  (`components/onboarding.tsx`) e um envio só no fim (`onboarding.completeFan`), como no web.
+- **Onboarding do torcedor ("05", 4i–4n; rodada 2 do redesign, proposta B):**
+  `app/onboarding/*`, escolhas num contexto (`components/onboarding.tsx`) e um envio só no
+  fim (`onboarding.completeFan`), como no web. A carteirinha (`components/fan-card.tsx`)
+  fica no topo de cada passo e se preenche; o campo do passo acende. Ordem: boas-vindas,
+  esportes, times (a F1 em GPs com o traçado), onde (a localização antes do raio; sem ela,
+  a cidade), raio, e "Confere e valida" (cada linha com "Trocar", que volta ao passo com
+  `?volta=1`), com o botão de segurar (1,2 s linear; com menos movimento, toque). Depois,
+  `onboarding/pronto`: o selo carimbado e os jogos de hoje dos times. "Torce para" é só de
+  times; o GP vale para o aviso.
   A tela inicial manda para lá o torcedor com `onboardingCompleted` falso. Cidade por
   `pubs.searchCities` e a contagem "N bares com jogo hoje" por `pubs.countTodayNear`.
   Depois de salvar, `refreshSession` (`lib/auth-client.ts`) expira o cache da sessão (com
