@@ -1,5 +1,9 @@
 import { AMENITIES } from '@findsports_oficial/api/lib/amenities'
-import { groupOpeningHours } from '@findsports_oficial/api/lib/opening-hours'
+import {
+  groupOpeningHours,
+  openingTurn,
+  weekdayName
+} from '@findsports_oficial/api/lib/opening-hours'
 import { reasonLabel } from '@findsports_oficial/api/lib/rating-reasons'
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import { gameTitle } from '@findsports_oficial/db/game-title'
@@ -34,6 +38,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Line } from 'react-native-svg'
 import { scheduleOnRN } from 'react-native-worklets'
+import { AttendDock, SolidRound, TodayCard } from '@/components/bar-page'
 import {
   Amenities,
   amenityChips,
@@ -46,14 +51,7 @@ import {
 } from '@/components/bar-wide'
 import { Card, OfferCard } from '@/components/card'
 import { CheckInCard } from '@/components/check-in'
-import {
-  BarTicket,
-  dayLabel,
-  dropBox,
-  initials,
-  MapDrop,
-  PhotoPill
-} from '@/components/explore'
+import { dayLabel, dropBox, initials, MapDrop } from '@/components/explore'
 import { Ambiente } from '@/components/gallery'
 import { Glass } from '@/components/glass'
 import { NAV, useLayout } from '@/components/layout'
@@ -80,11 +78,13 @@ import {
   text,
   useStatusBar
 } from '@/components/ui'
+import { useWithAccount } from '@/lib/account'
 import { clock } from '@/lib/ai-chat'
 import { authClient } from '@/lib/auth-client'
 import { trackCommercialEvent } from '@/lib/commercial'
 import { env } from '@/lib/env'
 import { formatKm, formatTime, isLive } from '@/lib/explore'
+import { distance } from '@/lib/explore-board'
 import { useFavorites } from '@/lib/favorites'
 import { byHeight } from '@/lib/layout'
 import { MAP_STYLE } from '@/lib/map-style'
@@ -352,15 +352,30 @@ export function BarDetail({
     }),
     [heroEdge]
   )
+  // Puxar para baixo: elástico no topo em vez de parada seca (2g), escala
+  // 1 + |y|/420 e metade do deslocamento.
   const stretch = useAnimatedStyle(() => {
     const pull = Math.max(-scrollY.get(), 0)
     return {
       transform: [
-        { translateY: Math.min(scrollY.get(), 0) },
-        { scale: 1 + pull / heroH }
+        { translateY: Math.min(scrollY.get(), 0) / 2 },
+        { scale: 1 + pull / 420 }
       ]
     }
   }, [heroH])
+  // Passou da foto: a faixa de papel com o nome aparece (300 → 360 pt).
+  const strip = useAnimatedStyle(
+    () => ({
+      opacity: interpolate(
+        scrollY.get(),
+        [heroH - 40, heroH + 20],
+        [0, 1],
+        Extrapolation.CLAMP
+      )
+    }),
+    [heroH]
+  )
+  const withAccount = useWithAccount()
 
   // Uma visita por abertura da página, só depois de ela existir.
   const loaded = bar.isSuccess
@@ -407,14 +422,6 @@ export function BarDetail({
     games.find((game) => game.attendance?.attending) ??
     games.find((game) => game.attendance)
   const mine = going?.attendance
-  const spend = data?.averageSpendCents
-    ? `R$ ${Math.round(data.averageSpendCents / 100)} por pessoa, informado pelo bar`
-    : null
-  const info = data
-    ? [data.neighborhood, km ? formatKm(Number(km)) : null, spend].filter(
-        Boolean
-      )
-    : []
   const amenities = data?.amenities ?? []
   const tiles = TILES.filter((tile) => amenities.includes(tile.id))
   const features = AMENITIES.filter((item) =>
@@ -439,6 +446,22 @@ export function BarDetail({
     km ? formatKm(Number(km)) : null,
     minutes && minutes <= 30 ? `${minutes} min a pé` : null
   ].filter(Boolean)
+
+  // A linha da foto (2g): bairro, distância "de você" e a nota verificada.
+  const turn = data ? openingTurn(data.openingHours, new Date(now)) : null
+  const heroInfo = data
+    ? [
+        data.neighborhood,
+        km ? `${distance(Number(km))}${walk ? ' de você' : ''}` : null,
+        data.rating?.stars
+          ? `★ ${data.rating.stars.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} com ${data.rating.total} ${data.rating.total === 1 ? 'avaliação verificada' : 'avaliações verificadas'}`
+          : data.rating
+            ? `${data.rating.percentage}% voltariam`
+            : null
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    : ''
 
   const pinLive = next ? isLive(next, now) : false
   const pinCallout = {
@@ -494,34 +517,10 @@ export function BarDetail({
     })
 
   // As seções da página, na ordem do celular; fora dele, em duas colunas.
+  // O jogo de hoje no bar (2g): o cartão de tinta, com a oferta dentro.
   const sGame = data ? (
     next ? (
-      <>
-        <Text style={[text(16, 'Bold', 1.4), { color: palette.ink }]}>
-          {dayLabel(next.startsAt, now) === 'Hoje' ||
-          new Date(next.startsAt).getTime() <= now
-            ? 'Hoje no telão'
-            : 'Próximo jogo'}
-        </Text>
-        <BarTicket
-          bar={{
-            id: data.id,
-            name: data.name,
-            neighborhood: data.neighborhood,
-            photo_url: data.photoUrl,
-            plan: data.plan,
-            rating: data.rating,
-            distance_km: km ? Number(km) : null,
-            amenities: data.amenities,
-            goingCount: next.going?.count ?? null,
-            goingInitials: next.going?.initials ?? [],
-            nextEvent: next
-          }}
-          now={now}
-          favorite={favorite}
-          onFavorite={toggleFavorite}
-        />
-      </>
+      <TodayCard game={next} now={now} />
     ) : (
       <Text style={[text(15), { color: palette.muted }]}>
         Nenhum jogo marcado por enquanto.
@@ -568,13 +567,6 @@ export function BarDetail({
         ))}
       </View>
     ) : null
-  ) : null
-  const sOffer = data ? (
-    <>
-      {/* A oferta do jogo em destaque (WEB-422): cada jogo tem a
-                sua, e "Vou assistir aqui" mostra a do jogo escolhido. */}
-      {next?.houseOffer ? <OfferCard offer={next.houseOffer} /> : null}
-    </>
   ) : null
   const sNext = data ? (
     games.length > 1 ? (
@@ -969,23 +961,11 @@ export function BarDetail({
                 acima do nome sem empurrá-lo. São vidro: entram só pela
                 posição, como o corpo (com `FadeIn` o vidro não desenhava e o
                 "Elite" ficava quase invisível sobre a foto). */}
-          <Animated.View entering={BODY_IN} style={styles.heroPills}>
-            {data?.plan === 'elite' ? (
-              <PhotoPill kind="acid" height={28}>
-                <Icon name="medal" size={15} color={INK} />
-                <Text style={[text(12, 'Bold', 1.2), { color: INK }]}>
-                  Elite
-                </Text>
-              </PhotoPill>
-            ) : null}
-            {data?.rating ? (
-              <PhotoPill kind="dark" height={28}>
-                <Text style={[text(12, 'Bold', 1.2), { color: PAPER }]}>
-                  {data.rating.percentage}% voltariam
-                </Text>
-              </PhotoPill>
-            ) : null}
-          </Animated.View>
+          {data?.plan === 'elite' ? (
+            <View style={styles.eliteTag}>
+              <Text style={[text(11, 'Bold', 1.2), { color: INK }]}>ELITE</Text>
+            </View>
+          ) : null}
           <Text
             style={styles.name}
             numberOfLines={2}
@@ -994,6 +974,19 @@ export function BarDetail({
           >
             {(data?.name ?? name ?? '').toUpperCase()}
           </Text>
+          {/* "aberto agora · até 02:00" em acid (2g); sem horário, nada. */}
+          {turn ? (
+            <Text
+              style={[
+                styles.turn,
+                { color: turn.open ? ACID : 'rgba(241,238,230,.75)' }
+              ]}
+            >
+              {turn.open
+                ? `● aberto agora · até ${turn.closes}`
+                : `fechado · abre ${turn.inDays === 0 ? 'hoje' : turn.inDays === 1 ? 'amanhã' : weekdayName(turn.day)} às ${turn.opens}`}
+            </Text>
+          ) : null}
           {/* Um espaço segura a linha enquanto carrega: o nome não sobe. */}
           <Animated.Text
             key={data ? 'info' : 'wait'}
@@ -1002,7 +995,7 @@ export function BarDetail({
             numberOfLines={2}
             maxFontSizeMultiplier={MAX_FONT_SCALE}
           >
-            {info.join(' · ') || ' '}
+            {heroInfo || ' '}
           </Animated.Text>
         </View>
       )}
@@ -1070,6 +1063,17 @@ export function BarDetail({
   const wPhotos = (n: number) =>
     data ? <PhotoGrid barId={data.id} photos={photos} cols={n} /> : null
 
+  // "Vou assistir aqui": a folha marca a presença e mostra o código. Sem
+  // conta, leva ao "Entrar" (a folha de entrar com o bar é da rodada 2).
+  const attend = () =>
+    going &&
+    withAccount(() => {
+      fromAi('going')
+      router.push({
+        pathname: '/vou/[barId]',
+        params: { barId: id, eventId: going.id }
+      })
+    })
   // "Vou assistir aqui": no vidro preso embaixo; na mesa, embaixo da oferta.
   const attendButton =
     going && mine ? (
@@ -1080,13 +1084,7 @@ export function BarDetail({
         onPressIn={attendPress.onPressIn}
         onPressOut={attendPress.onPressOut}
         // A folha também é onde se vê o código e se desmarca.
-        onPress={() => {
-          fromAi('going')
-          router.push({
-            pathname: '/vou/[barId]',
-            params: { barId: id, eventId: going.id }
-          })
-        }}
+        onPress={() => attend()}
         style={styles.attendSlot}
       >
         <View style={styles.attendShadow} />
@@ -1501,16 +1499,17 @@ export function BarDetail({
         {hero}
         {data ? (
           <Animated.View entering={BODY_IN} style={styles.body}>
+            {/* A ordem da 2g: o jogo de hoje, o ambiente, os próximos jogos,
+                o que tem, o que dizem, onde fica e o horário. */}
             {sGame}
             {sCheck}
             {sPhotos}
-            {sTiles}
-            {sOffer}
             {sNext}
+            {sTiles}
             {sFeatures}
+            {sRating}
             {sWhere}
             {sHours}
-            {sRating}
             {sReport}
           </Animated.View>
         ) : (
@@ -1518,40 +1517,59 @@ export function BarDetail({
         )}
       </Animated.ScrollView>
 
+      {/* Passou da foto: faixa de papel com o nome (a foto é o título). */}
       <Animated.View
         pointerEvents="none"
-        style={[styles.edge, { height: insets.top + 64 }, edge]}
+        style={[
+          styles.strip,
+          {
+            height: insets.top + 52,
+            paddingTop: insets.top,
+            backgroundColor: palette.sheet,
+            borderBottomColor: palette.line
+          },
+          strip
+        ]}
       >
-        <LinearGradient
-          colors={[palette.sheet, palette.sheet, `${palette.sheet}00`]}
-          locations={[0, 0.6, 1]}
-          style={StyleSheet.absoluteFill}
-        />
+        <Text
+          numberOfLines={1}
+          style={[styles.stripName, { color: palette.ink }]}
+        >
+          {(data?.name ?? name ?? '').toUpperCase()}
+        </Text>
       </Animated.View>
 
       <View style={[styles.top, { top: insets.top + 6 }]}>
-        <BackButton tone="dark" />
+        <SolidRound label="Voltar" onPress={() => router.back()}>
+          <Icon name="back" size={18} color={INK} />
+        </SolidRound>
         <View style={{ flexDirection: 'row', gap: 10 }}>
-          <RoundGlass label="Compartilhar" onPress={share}>
-            <Icon name="share" size={19} color={PAPER} />
-          </RoundGlass>
-          <RoundGlass
-            label={favorite ? 'Tirar dos favoritos' : 'Favoritar'}
+          <SolidRound
+            label={favorite ? 'Tirar dos salvos' : 'Salvar bar'}
             selected={favorite}
             onPress={toggleFavorite}
           >
-            <Icon name="fan" size={20} color={PAPER} accent={PAPER} />
-          </RoundGlass>
+            <Icon
+              name="fan"
+              size={19}
+              color={favorite ? LIVE_RED : INK}
+              accent={favorite ? LIVE_RED : INK}
+            />
+          </SolidRound>
+          <SolidRound label="Compartilhar" onPress={share}>
+            <Icon name="share" size={18} color={INK} />
+          </SolidRound>
         </View>
       </View>
 
-      {attendButton ? (
-        <Glass
-          tone={palette.dark ? 'dark' : 'light'}
-          style={[styles.dock, { bottom: Math.max(insets.bottom - 6, 14) }]}
-        >
-          {attendButton}
-        </Glass>
+      {going && mine ? (
+        <AttendDock
+          game={going}
+          now={now}
+          attending={mine.attending}
+          bottom={Math.max(insets.bottom, 12)}
+          onPress={attend}
+        />
       ) : null}
       {soon.toast}
     </View>
@@ -1738,7 +1756,19 @@ const styles = StyleSheet.create({
     transformOrigin: 'top'
   },
   heroText: { padding: 18 },
-  heroPills: { flexDirection: 'row', gap: 6, marginBottom: 8 },
+  eliteTag: {
+    alignSelf: 'flex-start',
+    backgroundColor: ACID,
+    paddingVertical: 3,
+    paddingHorizontal: 7,
+    borderRadius: 3,
+    marginBottom: 10
+  },
+  turn: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 12,
+    marginTop: 6
+  },
   name: {
     fontFamily: 'Anton',
     fontSize: 52,
@@ -1841,6 +1871,17 @@ const styles = StyleSheet.create({
   scoreText: { flex: 1, color: INK },
   report: { alignSelf: 'flex-end', padding: 4 },
   edge: { position: 'absolute', top: 0, left: 0, right: 0 },
+  strip: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 110,
+    borderBottomWidth: StyleSheet.hairlineWidth
+  },
+  stripName: { fontFamily: 'Anton', fontSize: 18, marginVertical: -4 },
   top: {
     position: 'absolute',
     left: 16,
