@@ -523,7 +523,7 @@ function Stack({ faces }: { faces: string[] }) {
             style={[text(11, 'Bold', 1.1), { color: INK }]}
             maxFontSizeMultiplier={1}
           >
-            {label}
+            {label.charAt(0)}
           </Text>
         </View>
       ))}
