@@ -1,3 +1,5 @@
+import { brasiliaDay } from '@findsports_oficial/db/event-window'
+
 /**
  * Conquistas do torcedor (WEB-403, seção 09 do design). Decisão do dono em
  * 17/10/2026: "assistiu num bar" é código validado no balcão (o check-in por
@@ -134,4 +136,30 @@ export function levelFor(unlocked: number) {
     /** Conquistas para o próximo nível; nulo no último. */
     nextAt: next?.from ?? null
   }
+}
+
+const WEEK_MS = 7 * 86_400_000
+
+/** A segunda-feira (dia de Brasília) da semana de uma data. */
+function mondayOf(at: Date) {
+  const day = new Date(`${brasiliaDay(at)}T12:00:00Z`)
+  const back = (day.getUTCDay() + 6) % 7
+  return day.getTime() - back * 86_400_000
+}
+
+/**
+ * Semanas seguidas com visita (rodada 6, a estante): conta para trás a partir
+ * desta semana; se ela ainda não tem visita, a partir da passada, para a
+ * sequência não zerar na segunda-feira.
+ */
+export function weekStreak(visits: { at: Date }[], now: Date) {
+  const weeks = new Set(visits.map((v) => mondayOf(v.at)))
+  let week = mondayOf(now)
+  if (!weeks.has(week)) week -= WEEK_MS
+  let streak = 0
+  while (weeks.has(week)) {
+    streak += 1
+    week -= WEEK_MS
+  }
+  return streak
 }
