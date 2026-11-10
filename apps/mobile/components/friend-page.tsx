@@ -5,22 +5,20 @@ import { useState } from 'react'
 import {
   ActionSheetIOS,
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
   View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Card } from '@/components/card'
-import { dayLabel, Photo } from '@/components/explore'
-import {
-  Avatar,
-  heroShadow,
-  useFriendActions,
-  type Via
-} from '@/components/friends'
+import { dayLabel } from '@/components/explore'
+import { useFriendActions, type Via } from '@/components/friends'
+import { DuelCard } from '@/components/friends-activity'
+import { GroupLabel } from '@/components/game-line'
 import { Glass } from '@/components/glass'
-import { haptic, ScalePress } from '@/components/motion'
+import { MedalImage } from '@/components/medal'
+import { ScalePress } from '@/components/motion'
 import { useSoon } from '@/components/soon'
 import { usePalette } from '@/components/theme'
 import {
@@ -32,11 +30,14 @@ import {
   INK,
   LIVE,
   PAPER,
+  PillButton,
   Text,
   text
 } from '@/components/ui'
-import { formatTime, isLive } from '@/lib/explore'
+import { authClient } from '@/lib/auth-client'
+import { formatTime } from '@/lib/explore'
 import { monthName } from '@/lib/invite'
+import type { MedalId } from '@/lib/medals'
 import { trpc } from '@/lib/trpc'
 
 const VIAS: Via[] = ['search', 'code', 'link', 'contacts', 'suggestion']
@@ -66,10 +67,11 @@ export function FriendPage({
   const soon = useSoon()
   const via = VIAS.find((v) => v === viaParam) ?? 'search'
   const profile = useQuery(trpc.friends.profile.queryOptions({ userId: id }))
+  const session = authClient.useSession()
   const actions = useFriendActions()
   const person = profile.data
   const firstName = person?.name.split(' ')[0] ?? ''
-  const [allBars, setAllBars] = useState(false)
+  const [_allBars, _setAllBars] = useState(false)
 
   const more = () => {
     if (!person) return
@@ -142,129 +144,106 @@ export function FriendPage({
           />
         ) : (
           <>
-            <View style={styles.who}>
-              <Avatar
-                id={person.id}
-                name={person.name}
-                image={person.image}
-                size={80}
-              />
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text
-                  style={[styles.name, { color: palette.ink }]}
-                  numberOfLines={2}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.75}
-                >
-                  {person.name}
-                </Text>
-                <Text style={[text(13), { color: palette.muted }]}>
-                  {[person.username ? `@${person.username}` : null, person.city]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </Text>
-                <View style={styles.badges}>
-                  {person.level ? (
-                    <View style={[styles.badge, { backgroundColor: ACID }]}>
-                      <Icon name="medal" size={11} color={INK} accent={INK} />
-                      <Text style={[text(11, 'Bold', 1.2), { color: INK }]}>
-                        Nível {person.level.level}
-                      </Text>
-                    </View>
+            {/* O cartão de tinta (`.ah`): rosto, nome, @, desde quando e o
+                nível; embaixo, a história de vocês. Frases sem gênero. */}
+            <View style={styles.hero}>
+              <View style={styles.heroTop}>
+                <View style={styles.heroFace}>
+                  <Text style={[text(27, 'Bold', 1.1), { color: INK }]}>
+                    {firstName.charAt(0).toUpperCase()}
+                  </Text>
+                  {person.image ? (
+                    <Image
+                      accessibilityIgnoresInvertColors
+                      source={{ uri: person.image }}
+                      style={StyleSheet.absoluteFill}
+                    />
                   ) : null}
-                  {person.friendsSince ? (
-                    <View
-                      style={[styles.badge, { backgroundColor: palette.mark }]}
-                    >
-                      <Text
-                        style={[text(11, 'Bold', 1.2), { color: palette.ink }]}
-                      >
-                        Amigos desde {sinceLabel(person.friendsSince)}
-                      </Text>
-                    </View>
-                  ) : person.mutual ? (
-                    <View
-                      style={[styles.badge, { backgroundColor: palette.mark }]}
-                    >
-                      <Text
-                        style={[text(11, 'Bold', 1.2), { color: palette.ink }]}
-                      >
-                        {person.mutual}{' '}
-                        {person.mutual === 1 ? 'amigo' : 'amigos'} em comum
+                </View>
+                <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+                  <Text
+                    style={styles.heroName}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.6}
+                  >
+                    {firstName}
+                  </Text>
+                  <Text style={styles.heroLine}>
+                    {[
+                      person.username ? `@${person.username}` : null,
+                      person.friendsSince
+                        ? `amizade desde ${sinceLabel(person.friendsSince)}`
+                        : person.mutual
+                          ? `${person.mutual} ${person.mutual === 1 ? 'amigo' : 'amigos'} em comum`
+                          : person.city
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </Text>
+                  {person.level ? (
+                    <View style={styles.heroLevel}>
+                      <View style={styles.heroLevelNumber}>
+                        <Text style={[styles.levelText, { color: ACID }]}>
+                          {person.level.level}
+                        </Text>
+                      </View>
+                      <Text style={[styles.levelText, { color: INK }]}>
+                        {person.level.name}
                       </Text>
                     </View>
                   ) : null}
                 </View>
               </View>
+              {person.visible && person.together ? (
+                <View style={styles.story}>
+                  <Story
+                    value={String(person.together.games)}
+                    label={
+                      person.together.games === 1
+                        ? 'jogo com você'
+                        : 'jogos com você'
+                    }
+                    flex={0.8}
+                  />
+                  <Story
+                    value={String(person.barsInCommon.length)}
+                    label="bares em comum"
+                    flex={0.9}
+                  />
+                  {person.together.place ? (
+                    <Story
+                      value={person.together.place}
+                      label="o lugar de vocês"
+                      flex={1.3}
+                    />
+                  ) : null}
+                </View>
+              ) : null}
             </View>
 
-            {person.relation !== 'self' ? (
-              <View style={styles.buttons}>
-                <RelationButton
-                  relation={person.relation}
-                  busy={actions.busy}
-                  onPress={() =>
-                    person.relation === 'friends'
-                      ? more()
-                      : actions.act(person.id, person.relation, via)
-                  }
-                />
-                <ScalePress
-                  accessibilityRole="button"
-                  containerStyle={{ flex: 1 }}
-                  style={[
-                    styles.invite,
-                    { backgroundColor: palette.dark ? palette.card : INK }
-                  ]}
-                  onPress={() => soon.show('As comunidades chegam em breve')}
-                >
-                  <Icon name="crew" size={17} color={PAPER} accent={ACID} />
-                  <Text style={[text(14, 'Bold'), { color: PAPER }]}>
-                    Convidar
-                  </Text>
-                </ScalePress>
-              </View>
+            {person.relation !== 'self' && person.relation !== 'friends' ? (
+              <RelationButton
+                relation={person.relation}
+                busy={actions.busy}
+                onPress={() => actions.act(person.id, person.relation, via)}
+              />
             ) : null}
 
             {person.visible && person.month ? (
-              <View
-                style={[
-                  styles.compare,
-                  {
-                    backgroundColor: palette.dark ? palette.card : INK,
-                    shadowColor: heroShadow(palette)
-                  }
-                ]}
-              >
-                <View style={styles.compareHead}>
-                  <Text style={[text(13, 'Bold'), { color: PAPER }]}>Você</Text>
-                  <Text style={[text(13), { color: '#aaa9a4' }]}>
-                    {capitalize(monthName())}
-                  </Text>
-                  <Text style={[text(13, 'Bold'), { color: PAPER }]}>
-                    {firstName}
-                  </Text>
-                </View>
-                {(
-                  [
-                    ['Bares', 'bars'],
-                    ['Jogos', 'games'],
-                    ['Bairros', 'neighborhoods'],
-                    ['Conquistas', 'achievements']
-                  ] as const
-                ).map(([label, key]) => (
-                  <Compare
-                    key={key}
-                    label={label}
-                    mine={person.month.me[key]}
-                    theirs={person.month.them[key]}
-                  />
-                ))}
-              </View>
+              <DuelCard
+                title={`Vocês em ${monthName()}`}
+                metric="bares"
+                me={{
+                  name: session.data?.user.name ?? 'Você',
+                  value: person.month.me.bars
+                }}
+                them={{ name: person.name, value: person.month.them.bars }}
+              />
             ) : null}
 
             {person.visible && person.nextGame ? (
-              <NextGame
+              <FriendGame
                 name={firstName}
                 game={person.nextGame}
                 onOpen={() =>
@@ -282,66 +261,15 @@ export function FriendPage({
               />
             ) : null}
 
-            {person.visible && person.barsInCommon.length ? (
+            {person.visible && person.medals.length ? (
               <>
-                <View style={styles.commonHead}>
-                  <Text style={[text(15, 'Bold'), { color: palette.ink }]}>
-                    Bares em comum · {person.barsInCommon.length}
-                  </Text>
-                  {person.barsInCommon.length > 3 ? (
-                    <Text
-                      accessibilityRole="button"
-                      suppressHighlighting
-                      onPress={() => setAllBars(!allBars)}
-                      style={[text(12.5), { color: palette.muted }]}
-                    >
-                      {allBars ? 'Ver menos' : 'Ver todos'}
-                    </Text>
-                  ) : null}
-                </View>
-                {/* Três por linha, dividindo a largura, como no design. */}
-                <View style={styles.common}>
-                  {[
-                    ...(allBars
-                      ? person.barsInCommon
-                      : person.barsInCommon.slice(0, 3)),
-                    // Completa a última linha para os quadros não esticarem.
-                    ...Array(
-                      (3 -
-                        ((allBars
-                          ? person.barsInCommon.length
-                          : Math.min(3, person.barsInCommon.length)) %
-                          3)) %
-                        3
-                    ).fill(null)
-                  ].map((bar, index) =>
-                    bar === null ? (
-                      // biome-ignore lint/suspicious/noArrayIndexKey: espaço vazio da linha
-                      <View key={`gap-${index}`} style={styles.commonBar} />
-                    ) : (
-                      <Pressable
-                        key={bar.id}
-                        accessibilityRole="button"
-                        style={styles.commonBar}
-                        onPress={() => router.push(`/bar/${bar.id}` as Href)}
-                      >
-                        <Photo
-                          uri={bar.photoUrl}
-                          name={bar.name}
-                          style={styles.commonPhoto}
-                        />
-                        <Text
-                          style={[
-                            text(12.5, 'SemiBold'),
-                            { color: palette.ink }
-                          ]}
-                          numberOfLines={1}
-                        >
-                          {bar.name}
-                        </Text>
-                      </Pressable>
-                    )
-                  )}
+                <GroupLabel>{`Medalhas · ${person.medals.length} de ${person.medalTotal}`}</GroupLabel>
+                <View style={styles.medals}>
+                  {person.medals.slice(0, 5).map((id) => (
+                    <View key={id} style={styles.medal}>
+                      <MedalImage id={id as MedalId} size={56} />
+                    </View>
+                  ))}
                 </View>
               </>
             ) : null}
@@ -363,7 +291,73 @@ export function FriendPage({
   )
 }
 
-const capitalize = (word: string) =>
+/** Um número da história de vocês (`.tog`). */
+function Story({
+  value,
+  label,
+  flex
+}: {
+  value: string
+  label: string
+  flex: number
+}) {
+  return (
+    <View style={[styles.storyBox, { flex }]}>
+      <Text style={styles.storyValue} numberOfLines={2}>
+        {value}
+      </Text>
+      <Text style={styles.storyLabel}>{label}</Text>
+    </View>
+  )
+}
+
+/** "Marina vai · hoje 21:30", o jogo e "Vou também" (`.mini3`). */
+function FriendGame({
+  name,
+  game,
+  onOpen,
+  onGo
+}: {
+  name: string
+  game: {
+    barName: string
+    startsAt: string
+    championship: string
+    participants: string[]
+    participantFreeText: string | null
+  }
+  onOpen: () => void
+  onGo: () => void
+}) {
+  const now = Date.now()
+  const two = gameTitle(game).split(' × ')
+  return (
+    <Pressable accessibilityRole="button" onPress={onOpen} style={styles.game}>
+      <View style={styles.gameHead}>
+        <Text style={styles.gameKicker} numberOfLines={1}>
+          {name.toLocaleUpperCase('pt-BR')} VAI ·{' '}
+          {dayLabel(game.startsAt, now).toLocaleUpperCase('pt-BR')}{' '}
+          {formatTime(game.startsAt)}
+        </Text>
+        <Text style={styles.gameKicker} numberOfLines={1}>
+          {game.barName.toLocaleUpperCase('pt-BR')}
+        </Text>
+      </View>
+      <Text style={styles.gameTitle} numberOfLines={2}>
+        {two.map((side, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: os dois lados fixos
+          <Text key={i}>
+            {i ? <Text style={styles.gameX}> × </Text> : null}
+            {side}
+          </Text>
+        ))}
+      </Text>
+      <PillButton label="Vou também" height={44} onPress={onGo} />
+    </Pressable>
+  )
+}
+
+const _capitalize = (word: string) =>
   word.charAt(0).toUpperCase() + word.slice(1)
 
 /** "set.", "out. de 2025": o mês da amizade. */
@@ -423,137 +417,113 @@ function RelationButton({
   )
 }
 
-/** Uma linha da comparação: o número de cada um e a barra que cresce do meio. */
-function Compare({
-  label,
-  mine,
-  theirs
-}: {
-  label: string
-  mine: number
-  theirs: number
-}) {
-  const max = Math.max(mine, theirs, 1)
-  const meLead = mine >= theirs && mine > 0
-  const themLead = theirs > mine
-  return (
-    <View style={styles.compareRow}>
-      <Text
-        style={[
-          styles.compareNumber,
-          { textAlign: 'right', color: meLead ? ACID : PAPER }
-        ]}
-      >
-        {mine}
-      </Text>
-      <View style={[styles.track, { alignItems: 'flex-end' }]}>
-        <View
-          style={[
-            styles.fill,
-            {
-              width: `${(mine / max) * 100}%`,
-              backgroundColor: meLead ? ACID : 'rgba(241,238,230,.5)'
-            }
-          ]}
-        />
-      </View>
-      <Text style={[text(12.5), styles.compareLabel]}>{label}</Text>
-      <View style={styles.track}>
-        <View
-          style={[
-            styles.fill,
-            {
-              width: `${(theirs / max) * 100}%`,
-              backgroundColor: themLead ? ACID : 'rgba(241,238,230,.5)'
-            }
-          ]}
-        />
-      </View>
-      <Text style={[styles.compareNumber, { color: themLead ? ACID : PAPER }]}>
-        {theirs}
-      </Text>
-    </View>
-  )
-}
-
-/** "Marina vai ao Bar do Zé", com o "Vou também". */
-function NextGame({
-  name,
-  game,
-  onOpen,
-  onGo
-}: {
-  name: string
-  game: {
-    barName: string
-    photoUrl: string | null
-    championship: string
-    participants: string[]
-    participantFreeText: string | null
-    startsAt: string
-    endsAt: string
-  }
-  onOpen: () => void
-  onGo: () => void
-}) {
-  const palette = usePalette()
-  const now = Date.now()
-  const live = isLive(game, now)
-  const when = live
-    ? 'Ao vivo'
-    : `${dayLabel(game.startsAt, now).split(',')[0]} · ${formatTime(game.startsAt)}`
-  return (
-    <ScalePress accessibilityRole="button" to={0.985} onPress={onOpen}>
-      <Card shadow={palette.liveShadow}>
-        <View style={styles.next}>
-          <Photo
-            uri={game.photoUrl}
-            name={game.barName}
-            style={styles.nextPhoto}
-          />
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <View style={styles.liveTag}>
-              <View style={styles.liveHalo}>
-                <View style={styles.liveDot} />
-              </View>
-              <Text style={[text(12.5, 'Bold', 1.2), { color: palette.live }]}>
-                {when}
-              </Text>
-            </View>
-            <Text
-              style={[
-                text(14.5, 'Bold', 1.25),
-                { color: palette.ink, marginTop: 2 }
-              ]}
-              numberOfLines={2}
-            >
-              {name} vai ao {game.barName}
-            </Text>
-            <Text
-              style={[text(12), { color: palette.muted }]}
-              numberOfLines={1}
-            >
-              {gameTitle(game)}
-            </Text>
-          </View>
-          <ScalePress
-            accessibilityRole="button"
-            to={0.96}
-            onPress={() => {
-              haptic.select()
-              onGo()
-            }}
-            style={[styles.go, { shadowColor: palette.dark ? '#000' : INK }]}
-          >
-            <Text style={[text(13, 'Bold'), { color: INK }]}>Vou também</Text>
-          </ScalePress>
-        </View>
-      </Card>
-    </ScalePress>
-  )
-}
-
 const styles = StyleSheet.create({
+  hero: {
+    borderRadius: 24,
+    backgroundColor: INK,
+    padding: 14,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  },
+  heroTop: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  heroFace: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: ACID,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden'
+  },
+  // Anton 40: margem negativa no lugar do entrelinha curto.
+  heroName: {
+    fontFamily: 'Anton',
+    fontSize: 40,
+    textTransform: 'uppercase',
+    color: PAPER,
+    marginVertical: -9.7
+  },
+  heroLine: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 12,
+    color: '#aaa9a4'
+  },
+  heroLevel: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: 24,
+    paddingLeft: 3,
+    paddingRight: 9,
+    borderRadius: 12,
+    backgroundColor: ACID,
+    marginTop: 2
+  },
+  heroLevelNumber: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: INK,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  levelText: { fontFamily: 'GeistMono-SemiBold', fontSize: 11.5 },
+  story: { flexDirection: 'row', gap: 8 },
+  storyBox: {
+    borderRadius: 14,
+    backgroundColor: 'rgba(241,238,230,.07)',
+    padding: 10
+  },
+  storyValue: {
+    fontFamily: 'Anton',
+    fontSize: 22,
+    textTransform: 'uppercase',
+    color: PAPER,
+    marginVertical: -4.5
+  },
+  storyLabel: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 10.5,
+    color: '#aaa9a4',
+    marginTop: 6
+  },
+  game: {
+    borderRadius: 24,
+    backgroundColor: INK,
+    padding: 16,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  },
+  gameHead: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
+  gameKicker: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11,
+    letterSpacing: 0.88,
+    color: '#aaa9a4'
+  },
+  // Anton 30/.95: margem negativa no lugar do entrelinha curto.
+  gameTitle: {
+    fontFamily: 'Anton',
+    fontSize: 30,
+    textTransform: 'uppercase',
+    color: PAPER,
+    marginVertical: -7.3
+  },
+  gameX: { color: ACID, fontSize: 22.5 },
+  medals: { flexDirection: 'row', gap: 6 },
+  medal: {
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 4 }
+  },
   screen: { flex: 1 },
   body: { paddingHorizontal: 16, gap: 14 },
   bar: { flexDirection: 'row', justifyContent: 'space-between' },
