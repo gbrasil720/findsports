@@ -128,13 +128,14 @@ describe('aba Bares', () => {
     expect(result.bars.find((b) => b.barId === 'casa')).toMatchObject({
       visits: 0
     })
+    // Empate de bares: primeiro o bairro onde você mais foi (rodada 4).
     expect(result.neighborhoods).toEqual([
-      { name: 'Pinheiros', count: 1 },
-      { name: 'Vila Madalena', count: 1 }
+      { name: 'Vila Madalena', count: 1 },
+      { name: 'Pinheiros', count: 1 }
     ])
     expect(result.nearest).toBeCloseTo(0.1)
     const groups = barGroups(result.bars, result.neighborhoods, 'bairro')
-    expect(groups[0]?.bars.map((b) => b.name)).toEqual(['Casa 92'])
+    expect(groups[0]?.bars.map((b) => b.name)).toEqual(['Bar do Zé'])
   })
 })
 

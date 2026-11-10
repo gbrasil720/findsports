@@ -236,12 +236,20 @@ export function yourBars(
   }
   const list = [...bars.values()]
   const counts = new Map<string, number>()
-  for (const b of list)
+  const went = new Map<string, number>()
+  for (const b of list) {
     counts.set(b.neighborhood, (counts.get(b.neighborhood) ?? 0) + 1)
-  // Bairro com mais bares primeiro; empate pelo nome.
+    went.set(b.neighborhood, (went.get(b.neighborhood) ?? 0) + b.visits)
+  }
+  // Bairro com mais bares primeiro; empate, onde você mais foi, depois o nome.
   const neighborhoods = [...counts.entries()]
     .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'pt-BR'))
+    .sort(
+      (a, b) =>
+        b.count - a.count ||
+        (went.get(b.name) ?? 0) - (went.get(a.name) ?? 0) ||
+        a.name.localeCompare(b.name, 'pt-BR')
+    )
   const near = list
     .map((b) => b.km)
     .filter((k): k is number => k !== null)
