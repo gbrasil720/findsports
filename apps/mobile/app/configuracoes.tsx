@@ -114,7 +114,7 @@ export function SettingsSection({
       {extras ? <NoticesPreview /> : null}
     </>
   ) : tab === 'avisos' ? (
-    <Notices />
+    <Notices wide={wide} />
   ) : tab === 'conta' ? (
     <Account leave={!panel} />
   ) : (
@@ -667,8 +667,84 @@ function useNoticeGroups() {
   return { games, going, friends, mute }
 }
 
-function Notices() {
+function Notices({ wide }: { wide?: boolean }) {
+  const palette = usePalette()
   const { games, going, friends, mute } = useNoticeGroups()
+  // Celular (rodada 6, tela 6a): os avisos do desenho, desligados até o push
+  // (WEB-416) e as preferências no servidor existirem.
+  if (!wide) {
+    const row = (title: string, sub?: string, on = true) => ({ title, sub, on })
+    const group = (label: string, rows: ReturnType<typeof row>[]) => (
+      <>
+        <Text style={[styles.groupLabel, { color: palette.muted }]}>
+          {label}
+        </Text>
+        <MenuBox>
+          {rows.map((item, index) => (
+            <View
+              key={item.title}
+              style={[
+                styles.noticeRow,
+                index > 0 && { borderTopWidth: 1, borderTopColor: palette.line }
+              ]}
+            >
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text
+                  style={[text(15.5, 'SemiBold', 1.3), { color: palette.ink }]}
+                >
+                  {item.title}
+                </Text>
+                {item.sub ? (
+                  <Text
+                    style={[
+                      text(13, 'Regular', 1.35),
+                      { color: palette.muted }
+                    ]}
+                  >
+                    {item.sub}
+                  </Text>
+                ) : null}
+              </View>
+              <Switch6 on={item.on} />
+            </View>
+          ))}
+        </MenuBox>
+      </>
+    )
+    return (
+      <>
+        <View style={styles.pushSoon}>
+          <Icon name="bell" size={24} color={INK} accent={INK} />
+          <View style={{ flex: 1 }}>
+            <Text style={[text(15.5, 'Bold', 1.3), { color: INK }]}>
+              Avisos no celular chegam em breve
+            </Text>
+            <Text style={[text(13.5, 'Regular', 1.35), { color: INK }]}>
+              Até lá, o que é seu aparece no sino do Explorar.
+            </Text>
+          </View>
+        </View>
+        <Off>
+          {group('Jogos', [
+            row(
+              'Jogo dos seus times num bar perto',
+              'quando um bar marcar no seu raio'
+            ),
+            row('Lembrete do jogo', '3 h antes, se você marcou “Vou assistir”'),
+            row('Oferta liberada', 'quando o balcão validar o seu código')
+          ])}
+          {group('Amigos', [
+            row(
+              'Chamado para um jogo',
+              'quando um amigo te chamar para um jogo'
+            ),
+            row('Pedidos de amizade'),
+            row('Conquistas dos amigos', undefined, false)
+          ])}
+        </Off>
+      </>
+    )
+  }
   return (
     <>
       <SoonNote sentence="Os avisos no celular chegam em breve. Até lá, o que é seu aparece no sino do Explorar." />
@@ -1845,6 +1921,31 @@ const styles = StyleSheet.create({
   },
   mono: { fontFamily: 'GeistMono-SemiBold', fontSize: 14 },
   monoSmall: { fontFamily: 'GeistMono-SemiBold', fontSize: 12.5 },
+  groupLabel: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 13,
+    letterSpacing: 1.04,
+    textTransform: 'uppercase',
+    marginTop: 6
+  },
+  noticeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 14
+  },
+  pushSoon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    padding: 16,
+    borderRadius: 22,
+    backgroundColor: ACID,
+    shadowColor: '#8fae1e',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  },
   toggleCard: {
     flexDirection: 'row',
     alignItems: 'center',
