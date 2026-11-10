@@ -1,25 +1,24 @@
 import { maintenanceForecast } from '@findsports_oficial/api/lib/maintenance-forecast'
+import { gameTitle } from '@findsports_oficial/db/game-title'
+import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
 import { setStatusBarStyle } from 'expo-status-bar'
 import { useEffect, useRef, useState } from 'react'
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  useColorScheme,
-  useWindowDimensions,
-  View
-} from 'react-native'
-import Animated, { FadeIn, FadeInLeft, FadeOut } from 'react-native-reanimated'
+import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import Animated, {
+  cancelAnimation,
+  Easing,
+  FadeIn,
+  FadeOut,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withRepeat,
+  withTiming
+} from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import Svg, { Path } from 'react-native-svg'
-import {
-  EASE,
-  enterAt,
-  haptic,
-  LABEL_IN,
-  usePressScale
-} from '@/components/motion'
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg'
+import { haptic, usePressScale } from '@/components/motion'
 import {
   ACID,
   DISPLAY_FONT_SCALE,
@@ -27,66 +26,151 @@ import {
   INK,
   PAPER,
   Text,
-  Title,
-  text,
-  themed
+  text
 } from '@/components/ui'
 import { authClient } from '@/lib/auth-client'
+import { formatTime } from '@/lib/explore'
 import {
   type Maintenance,
   readTodayCode,
   useKeepTodayCode,
   useMaintenance
 } from '@/lib/maintenance'
+import { shortTitle, tickerItem } from '@/lib/maintenance-ticker'
+import { trpc } from '@/lib/trpc'
 
 /*
- * "Voltamos já já." (26d claro, 26e escuro; WEB-466): a manutenção que o
- * Houdini liga. Cobre o app inteiro, por cima das telas; o código do jogo de
- * hoje abre por cima dela (tela cheia nativa), do que está guardado no
- * aparelho. Sem previsão, sem hora nem contagem. Quando a manutenção acaba,
- * a tela sai sozinha: é o "Avisamos aqui quando voltar".
+ * "Intervalo técnico" (rodada 7, 26d; WEB-466): a manutenção que o Houdini
+ * liga. Cobre o app inteiro, por cima das telas. Ao fundo, o telão de LED da
+ * splash, parado e apagado (a tela pode ficar aberta muito tempo); no topo, a
+ * faixa de placar com os jogos de hoje correndo, como no estádio. O relógio
+ * da previsão em dígitos de placar, o quadro do que segue funcionando e o
+ * ingresso guardado no aparelho, com "Abrir meu código": quem está no balcão
+ * não fica sem ele. Só o app muda: painel do bar e login seguem no ar. Quando
+ * a manutenção acaba, a tela sai sozinha.
  */
 
-// Fundo e texto: acid e tinta no claro, tinta e papel no escuro (26e).
-const SCREEN = themed(ACID, INK)
-const FG = themed(INK, PAPER)
-const EYEBROW = themed(INK, ACID)
-const BOX = themed(INK, '#1c1c18')
-const BOX_DROP = themed('rgba(18,18,15,.25)', ACID)
-const BUTTON = themed(INK, ACID)
-const ON_BUTTON = themed(ACID, INK)
 const GREY = '#aaa9a4'
+const LINE = '#34342d'
+const TICKER_MS = 18_000
 
-const BAND_HEIGHT = 46
-/** As listras de 22 px a 135° do design, medidas na horizontal. */
-const STRIPE = 22 * Math.SQRT2
-
-/** A faixa de obra: listras de tinta sobre acid, a 45°, inclinada 6°. */
-function Band({ width }: { width: number }) {
-  const count = Math.ceil((width + BAND_HEIGHT) / (STRIPE * 2)) + 1
-  const d = Array.from({ length: count }, (_, index) => {
-    const x = index * STRIPE * 2 - BAND_HEIGHT
-    return `M${x} ${BAND_HEIGHT}h${STRIPE}l${BAND_HEIGHT} -${BAND_HEIGHT}h-${STRIPE}z`
-  }).join('')
+/** O telão de LED da splash, parado, com o degradê que o apaga. */
+function LedBackdrop() {
   return (
-    <View style={styles.band}>
-      <View style={[styles.bandDrop, { width }]} />
-      <Svg width={width} height={BAND_HEIGHT} style={{ backgroundColor: ACID }}>
-        <Path d={d} fill={INK} />
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Image
+        source={require('@/assets/images/splash/led.webp')}
+        style={[StyleSheet.absoluteFill, { opacity: 0.32 }]}
+        resizeMode="cover"
+      />
+      <Svg style={StyleSheet.absoluteFill}>
+        <Defs>
+          <LinearGradient id="apaga" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0.04" stopColor={INK} stopOpacity={1} />
+            <Stop offset="0.3" stopColor={INK} stopOpacity={0.55} />
+            <Stop offset="0.6" stopColor={INK} stopOpacity={0.7} />
+            <Stop offset="0.92" stopColor={INK} stopOpacity={1} />
+          </LinearGradient>
+        </Defs>
+        <Rect width="100%" height="100%" fill="url(#apaga)" />
       </Svg>
     </View>
   )
 }
 
-// A faixa entra de lado, como fita sendo esticada; o resto sobe em
-// sequência (`enterAt`). Constantes de módulo (ver `components/motion.tsx`).
-const BAND_IN = FadeInLeft.duration(300)
-  .easing(EASE)
-  .withInitialValues({ opacity: 0, transform: [{ translateX: -48 }] })
-const SCREEN_IN = FadeIn.duration(200)
-const SCREEN_OUT = FadeOut.duration(160)
+/**
+ * A faixa de placar: os jogos de hoje correndo da direita para a esquerda,
+ * constante (linear, 18 s por volta). Movimento reduzido: parada.
+ */
+function Ticker() {
+  const reduced = useReducedMotion()
+  const games = useQuery({
+    ...trpc.pubs.todayGames.queryOptions(),
+    retry: false
+  })
+  const items = (games.data ?? []).map((game) => tickerItem(game, formatTime))
+  const [width, setWidth] = useState(0)
+  const x = useSharedValue(0)
+  useEffect(() => {
+    if (reduced || !width) return
+    x.set(0)
+    x.set(
+      withRepeat(
+        withTiming(-width, { duration: TICKER_MS, easing: Easing.linear }),
+        -1
+      )
+    )
+    return () => cancelAnimation(x)
+  }, [reduced, width, x])
+  const run = useAnimatedStyle(() => ({ transform: [{ translateX: x.get() }] }))
+  if (!items.length) return <View style={{ height: 8 }} />
+  // Duas cópias seguidas: quando a primeira sai inteira, volta sem salto.
+  const strip = (copy: 'a' | 'b') => (
+    <View
+      key={copy}
+      style={styles.strip}
+      onLayout={
+        copy === 'a' ? (e) => setWidth(e.nativeEvent.layout.width) : undefined
+      }
+    >
+      {items.map((item, index) => (
+        <View
+          // biome-ignore lint/suspicious/noArrayIndexKey: dois jogos podem ter o mesmo texto
+          key={`${copy}${index}`}
+          style={styles.tickItem}
+        >
+          <Text style={styles.tickText}>{item}</Text>
+          <Text style={styles.tickDot}>●</Text>
+        </View>
+      ))}
+    </View>
+  )
+  return (
+    <View
+      style={styles.ticker}
+      accessible
+      accessibilityLabel={`Jogos de hoje: ${items.join(', ')}`}
+    >
+      <Animated.View style={[styles.tickRow, run]}>
+        {strip('a')}
+        {strip('b')}
+      </Animated.View>
+    </View>
+  )
+}
 
-/** Relógio que anda de 15 em 15 s: a contagem é em minutos. */
+/** O ponto de "voltando": pisca devagar (1,4 s a volta); reduzido, parado. */
+function Waiting() {
+  const reduced = useReducedMotion()
+  const fade = useSharedValue(1)
+  useEffect(() => {
+    if (reduced) return
+    fade.set(
+      withRepeat(
+        withTiming(0.3, { duration: 700, easing: Easing.inOut(Easing.ease) }),
+        -1,
+        true
+      )
+    )
+    return () => cancelAnimation(fade)
+  }, [reduced, fade])
+  const style = useAnimatedStyle(() => ({ opacity: fade.get() }))
+  return (
+    <Animated.View style={[styles.dot, { backgroundColor: GREY }, style]} />
+  )
+}
+
+/** A marca pequena do ingresso (`.mk3`): anel de tinta e o ponto vermelho. */
+function Mark() {
+  return (
+    <View style={styles.mark}>
+      <View style={styles.markRing} />
+      <View style={styles.markDot} />
+    </View>
+  )
+}
+
+/** Relógio que anda de 15 em 15 s: a previsão some quando passa da hora. */
 function useNow() {
   const [now, setNow] = useState(Date.now)
   useEffect(() => {
@@ -96,14 +180,18 @@ function useNow() {
   return now
 }
 
+const STATUS: [string, string, boolean][] = [
+  ['Seu código do balcão', 'valendo', true],
+  ['Painel dos bares', 'no ar', true],
+  ['App da Onside', 'voltando', false]
+]
+
 export function MaintenanceScreen({
   maintenance
 }: {
   maintenance: Maintenance
 }) {
   const insets = useSafeAreaInsets()
-  const { width } = useWindowDimensions()
-  const scheme = useColorScheme()
   const router = useRouter()
   const press = usePressScale(0.97)
   const now = useNow()
@@ -112,75 +200,115 @@ export function MaintenanceScreen({
   const code = readTodayCode(userId, now)
 
   useEffect(() => {
-    setStatusBarStyle(scheme === 'dark' ? 'light' : 'dark')
-  }, [scheme])
+    setStatusBarStyle('light')
+  }, [])
 
   return (
     <View style={styles.screen}>
-      <Animated.View
-        entering={BAND_IN}
-        style={[styles.bandWrap, { top: insets.top + 103 }]}
-      >
-        <Band width={width + 80} />
-      </Animated.View>
+      <LedBackdrop />
       <ScrollView
         contentContainerStyle={[
           styles.scroll,
           {
-            paddingTop: insets.top + 203,
-            paddingBottom: Math.max(insets.bottom, 16) + 6
+            paddingTop: insets.top - 4,
+            paddingBottom: Math.max(insets.bottom, 16) + 18
           }
         ]}
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
-        <View style={styles.body}>
-          <Animated.View entering={enterAt(0, false)}>
-            <Text style={styles.eyebrow}>INTERVALO TÉCNICO</Text>
-          </Animated.View>
-          <Animated.View entering={enterAt(1, false)} style={styles.title}>
-            <Title lines={[['Voltamos'], ['já já.']]} size={60} color={FG} />
-          </Animated.View>
-          <Animated.View entering={enterAt(2, false)}>
-            <Text style={[text(16, 'Regular', 1.5), styles.lead]}>
-              Estamos fazendo uma manutenção no app. Os códigos dos jogos de
-              hoje continuam valendo no balcão.
+        <Ticker />
+        <Text style={styles.eyebrow}>INTERVALO TÉCNICO</Text>
+        <View accessible accessibilityRole="header" style={styles.titleBox}>
+          <Text style={[styles.title, { color: PAPER }]}>Já já</Text>
+          <Text style={[styles.title, { color: ACID }]}>volta o jogo</Text>
+        </View>
+        {forecast ? (
+          <>
+            {/* A previsão em dígitos de placar; troca seca se o servidor mudar. */}
+            <View
+              style={styles.score}
+              accessible
+              accessibilityLabel={`Previsão de volta ${forecast.time}`}
+            >
+              {forecast.time.split('').map((char, index) =>
+                char === ':' ? (
+                  <Text
+                    // biome-ignore lint/suspicious/noArrayIndexKey: posição fixa do relógio
+                    key={index}
+                    style={styles.colon}
+                  >
+                    :
+                  </Text>
+                ) : (
+                  <View
+                    // biome-ignore lint/suspicious/noArrayIndexKey: posição fixa do relógio
+                    key={index}
+                    style={styles.key}
+                  >
+                    <Text style={styles.keyText}>{char}</Text>
+                  </View>
+                )
+              )}
+            </View>
+            <Text style={[text(12.5), { color: GREY }]}>
+              previsão de volta · hoje
             </Text>
-          </Animated.View>
-          {forecast ? (
-            <Animated.View entering={enterAt(3, false)} style={styles.boxWrap}>
-              <View style={styles.boxDrop} />
-              <View
-                style={styles.box}
-                accessible
-                accessibilityLabel={`Previsão de volta ${forecast.time}. Faltam cerca de ${forecast.left}.`}
-              >
-                <View>
-                  <Text style={[text(12.5), { color: GREY }]}>
-                    Previsão de volta
-                  </Text>
-                  <Text style={[styles.big, { color: PAPER }]}>
-                    {forecast.time}
-                  </Text>
-                </View>
-                <View style={styles.right}>
-                  <Text style={[text(12.5), { color: GREY }]}>
-                    Faltam cerca de
-                  </Text>
-                  {/* O número novo sobe no lugar do antigo. */}
-                  <Animated.View key={forecast.left} entering={LABEL_IN}>
-                    <Text style={[styles.big, { color: ACID }]}>
-                      {forecast.left}
-                    </Text>
-                  </Animated.View>
-                </View>
-              </View>
-            </Animated.View>
-          ) : null}
+          </>
+        ) : (
+          <Text style={[text(15, 'Regular', 1.45), styles.lead]}>
+            Estamos fazendo uma manutenção no app. Avisamos aqui quando voltar.
+          </Text>
+        )}
+
+        <View style={styles.status}>
+          {STATUS.map(([label, value, ok], index) => (
+            <View
+              key={label}
+              style={[styles.statusRow, index > 0 && styles.statusLine]}
+            >
+              {ok ? (
+                <View style={[styles.dot, { backgroundColor: ACID }]} />
+              ) : (
+                <Waiting />
+              )}
+              <Text style={[text(13.5, 'SemiBold', 1.2), { color: PAPER }]}>
+                {label}
+              </Text>
+              <Text style={styles.statusValue}>{value}</Text>
+            </View>
+          ))}
         </View>
 
-        <Animated.View entering={enterAt(4, false)} style={styles.foot}>
-          {code ? (
+        {code ? (
+          <>
+            <View style={styles.ticket}>
+              <View style={styles.ticketTop}>
+                <View style={styles.ticketBrand}>
+                  <Mark />
+                  <Text style={styles.ticketLogo}>ONSIDE</Text>
+                  <Text style={styles.ticketKicker}>CÓDIGO DO BALCÃO</Text>
+                </View>
+                <View style={styles.saved}>
+                  <Text style={styles.savedText}>guardado</Text>
+                </View>
+              </View>
+              <View style={styles.ticketBottom}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text
+                    numberOfLines={1}
+                    style={[text(15, 'Bold', 1.25), { color: INK }]}
+                  >
+                    {code.barName}
+                  </Text>
+                  <Text numberOfLines={1} style={styles.ticketLine}>
+                    {shortTitle(gameTitle(code))} · hoje{' '}
+                    {formatTime(code.startsAt)}
+                  </Text>
+                </View>
+                <Text style={styles.code}>{code.code}</Text>
+              </View>
+            </View>
             <Pressable
               accessibilityRole="button"
               onPressIn={press.onPressIn}
@@ -191,32 +319,28 @@ export function MaintenanceScreen({
                   params: { eventId: code.eventId }
                 })
               }
+              style={{ alignSelf: 'stretch' }}
             >
               <Animated.View style={[styles.button, press.style]}>
-                <Icon
-                  name="ticket"
-                  size={18}
-                  color={ON_BUTTON}
-                  accent={ON_BUTTON}
-                />
+                <Icon name="qr" size={20} color={INK} accent={INK} />
                 <Text
                   maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
                   numberOfLines={1}
-                  style={[text(15, 'Bold'), { color: ON_BUTTON }]}
+                  style={[text(16, 'Bold'), { color: INK }]}
                 >
-                  Ver meu código de hoje
+                  Abrir meu código
                 </Text>
               </Animated.View>
             </Pressable>
-          ) : null}
-          <Text style={[text(13.5, 'SemiBold'), styles.notice]}>
-            Avisamos aqui quando voltar
-          </Text>
-        </Animated.View>
+          </>
+        ) : null}
       </ScrollView>
     </View>
   )
 }
+
+const SCREEN_IN = FadeIn.duration(200)
+const SCREEN_OUT = FadeOut.duration(160)
 
 /**
  * A manutenção por cima do app, montada na raiz. Também guarda o código do
@@ -248,60 +372,170 @@ export function MaintenanceGate() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: SCREEN, overflow: 'hidden' },
-  bandWrap: { position: 'absolute', left: -40, right: -40 },
-  band: { transform: [{ rotate: '-6deg' }] },
-  bandDrop: {
-    position: 'absolute',
-    top: 6,
-    left: 0,
-    height: BAND_HEIGHT,
-    backgroundColor: 'rgba(18,18,15,.15)'
+  screen: { flex: 1, backgroundColor: INK, overflow: 'hidden' },
+  scroll: {
+    flexGrow: 1,
+    paddingHorizontal: 18,
+    alignItems: 'center',
+    gap: 12
   },
-  scroll: { flexGrow: 1, paddingHorizontal: 20 },
-  body: { gap: 14 },
+  ticker: {
+    alignSelf: 'stretch',
+    marginHorizontal: -18,
+    marginBottom: 4,
+    overflow: 'hidden',
+    backgroundColor: '#1c1c18',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: LINE,
+    paddingVertical: 8
+  },
+  tickRow: { flexDirection: 'row' },
+  strip: { flexDirection: 'row' },
+  tickItem: { flexDirection: 'row', alignItems: 'center' },
+  tickText: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11.5,
+    letterSpacing: 0.7,
+    color: ACID,
+    marginHorizontal: 7
+  },
+  tickDot: { fontSize: 8, color: '#f3421d', marginHorizontal: 7 },
   eyebrow: {
     fontFamily: 'GeistMono-SemiBold',
     fontSize: 12,
-    letterSpacing: 0.6,
-    color: EYEBROW
+    letterSpacing: 1.68,
+    color: ACID
   },
-  title: { marginVertical: 2 },
-  lead: { color: FG, opacity: 0.85, maxWidth: 320 },
-  boxWrap: { marginTop: 8 },
-  boxDrop: {
-    ...StyleSheet.absoluteFill,
-    top: 5,
-    left: 5,
-    right: -5,
-    bottom: -5,
-    borderRadius: 7,
-    backgroundColor: BOX_DROP
+  titleBox: { alignItems: 'center', marginVertical: 6 },
+  // Anton 54 a .92: margem negativa no lugar do entrelinha curto.
+  title: {
+    fontFamily: 'Anton',
+    fontSize: 54,
+    textTransform: 'uppercase',
+    textAlign: 'center',
+    marginVertical: -15.4
   },
-  box: {
+  lead: { color: GREY, textAlign: 'center', maxWidth: 300 },
+  score: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 },
+  key: {
+    width: 52,
+    height: 72,
+    borderRadius: 10,
+    backgroundColor: '#1c1c18',
+    borderWidth: 1,
+    borderColor: 'rgba(241,238,230,.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  },
+  keyText: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 44,
+    color: ACID,
+    textShadowColor: 'rgba(201,241,53,.5)',
+    textShadowRadius: 16
+  },
+  colon: { fontFamily: 'GeistMono-SemiBold', fontSize: 40, color: ACID },
+  status: {
+    alignSelf: 'stretch',
+    borderRadius: 18,
+    backgroundColor: 'rgba(28,28,24,.9)',
+    borderWidth: 1,
+    borderColor: 'rgba(241,238,230,.08)',
+    paddingVertical: 4,
+    paddingHorizontal: 14
+  },
+  statusRow: {
+    height: 36,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10
+  },
+  statusLine: { borderTopWidth: 1, borderTopColor: LINE },
+  statusValue: {
+    marginLeft: 'auto',
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11.5,
+    color: GREY
+  },
+  dot: { width: 9, height: 9, borderRadius: 4.5 },
+  ticket: {
+    alignSelf: 'stretch',
+    backgroundColor: PAPER,
+    borderRadius: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  },
+  ticketTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  ticketBrand: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  ticketLogo: { fontFamily: 'Anton', fontSize: 14, color: INK },
+  ticketKicker: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 9.5,
+    letterSpacing: 0.95,
+    color: '#55554f'
+  },
+  saved: {
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    borderRadius: 999,
+    backgroundColor: INK
+  },
+  savedText: { fontFamily: 'GeistMono-SemiBold', fontSize: 10.5, color: ACID },
+  ticketBottom: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 7,
-    backgroundColor: BOX
-  },
-  right: { alignItems: 'flex-end', flexShrink: 1 },
-  // Anton 34 do design, sem `lineHeight` (corta no iOS): margem negativa.
-  big: {
-    fontFamily: 'Anton',
-    fontSize: 34,
-    marginTop: 3 - 0.2425 * 34,
-    marginBottom: -0.2425 * 34
-  },
-  foot: {
-    marginTop: 'auto',
-    paddingTop: 32,
-    marginHorizontal: -4,
     gap: 10,
-    alignItems: 'stretch'
+    borderTopWidth: 2,
+    borderStyle: 'dashed',
+    borderTopColor: '#d9d4c8',
+    paddingTop: 8
+  },
+  ticketLine: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11.5,
+    color: '#55554f'
+  },
+  // Anton 30: margem negativa no lugar do entrelinha curto.
+  code: {
+    fontFamily: 'Anton',
+    fontSize: 30,
+    letterSpacing: 0.9,
+    color: INK,
+    marginVertical: -7.3
+  },
+  mark: { width: 14, height: 14 },
+  markRing: {
+    position: 'absolute',
+    top: 1,
+    left: 1,
+    right: 1,
+    bottom: 1,
+    borderRadius: 6,
+    borderWidth: 2.6,
+    borderColor: INK
+  },
+  markDot: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#e8320c'
   },
   button: {
     height: 56,
@@ -309,9 +543,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingHorizontal: 20,
-    backgroundColor: BUTTON
-  },
-  notice: { color: FG, opacity: 0.8, textAlign: 'center' }
+    gap: 9,
+    backgroundColor: ACID,
+    shadowColor: '#7f9a12',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  }
 })
