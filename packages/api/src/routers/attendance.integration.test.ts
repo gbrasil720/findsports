@@ -274,7 +274,10 @@ integrationTest(
         code: again?.code,
         validated: true,
         ended: false,
-        missed: false
+        missed: false,
+        checkedIn: false,
+        myStars: null,
+        attended: null
       })
       // A hora do balcão, em UTC, para o "validado 21:47" do ingresso.
       expect(listed?.validatedAt).toMatch(

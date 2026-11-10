@@ -430,7 +430,23 @@ export async function readMyGames(
         WHERE u.code_id = ${reservationCode.id} AND u.undone_at IS NULL
       )`,
       // Presença confirmada (WEB-408): código validado ou check-in "Estou aqui".
-      visited: sql<boolean>`${visit.eventId} is not null`
+      visited: sql<boolean>`${visit.eventId} is not null`,
+      // Como a presença foi confirmada, para "código validado" ou "check-in"
+      // na linha dos anteriores (rodada 4).
+      checkedIn: sql<boolean>`EXISTS (
+        SELECT 1 FROM attendance_checkin k
+        WHERE k.user_id = ${attendance.userId} AND k.event_id = ${event.id}
+      )`,
+      // A nota que a pessoa deu ("★ 4") e o "Não fui" do pós-jogo.
+      myStars: sql<number | null>`(
+        SELECT r.stars FROM bar_rating r
+        WHERE r.actor_user_id = ${attendance.userId} AND r.event_id = ${event.id}
+        LIMIT 1
+      )`,
+      attended: sql<boolean | null>`(
+        SELECT p.attended FROM attendance_report p
+        WHERE p.user_id = ${attendance.userId} AND p.event_id = ${event.id}
+      )`
     })
     .from(attendance)
     .innerJoin(event, eq(event.id, attendance.eventId))
