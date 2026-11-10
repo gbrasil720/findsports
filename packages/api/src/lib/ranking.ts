@@ -145,3 +145,40 @@ export const listedInCity = (
   rankingGlobal: boolean,
   visibility: 'everyone' | 'friends' | 'nobody'
 ) => rankingGlobal && visibility !== 'nobody'
+
+/** Quantos torcedores da cidade têm cada valor no mês (o histograma). */
+export type CityBucket = { value: number; count: number }
+
+/** "TOP 17%": em que fatia da cidade a posição está, arredondado para cima. */
+export const topPercent = (position: number, total: number) =>
+  Math.max(1, Math.ceil((position / total) * 100))
+
+/** O valor de quem está numa posição, lido do histograma (maior primeiro). */
+function valueAt(buckets: CityBucket[], position: number) {
+  let seen = 0
+  for (const bucket of [...buckets].sort((a, b) => b.value - a.value)) {
+    seen += bucket.count
+    if (seen >= position) return bucket.value
+  }
+  return 0
+}
+
+/**
+ * "Mais 1 bar e você sobe para o top 15%" (rodada 6): a próxima fatia de 5%
+ * acima e quanto falta para passar quem está na beirada dela. Empatar não
+ * basta (no empate, ganha quem chegou antes), então é o valor dela mais 1.
+ * Já no top 5%, ou sem ninguém acima, nulo.
+ */
+export function cityChase(
+  buckets: CityBucket[],
+  position: number,
+  total: number,
+  mine: number
+) {
+  const now = topPercent(position, total)
+  const top = Math.ceil(now / 5) * 5 - 5
+  if (top < 5) return null
+  const edge = Math.max(1, Math.floor((top / 100) * total))
+  if (edge >= position) return null
+  return { top, need: Math.max(1, valueAt(buckets, edge) - mine + 1) }
+}

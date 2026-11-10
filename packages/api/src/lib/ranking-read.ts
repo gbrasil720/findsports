@@ -1,19 +1,23 @@
 import { db, eq, sql } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
+import { computeAchievements, levelFor } from './achievements'
 import { readReviewsOf, readVisitsOf } from './achievements-read'
 import { canSeeActivity, friendIdsOf, monthStart } from './friends'
 import {
   CITY_AROUND,
   CITY_PAGE,
   CITY_TOP,
+  type CityBucket,
   type CityMetric,
   chaseOf,
+  cityChase,
   listedInCity,
   MOVE_WINDOW_MS,
   monthOf,
   type RankingMetric,
   rank,
-  scoreOf
+  scoreOf,
+  topPercent
 } from './ranking'
 import { visit } from './visits'
 
@@ -44,9 +48,10 @@ export async function readFriendsRanking(
       )
   ).filter((p) => p.id === me || canSeeActivity(p.visibility, 'friends'))
   const ids = people.map((p) => p.id)
+  // As resenhas vão sempre: o nível de cada amigo (rodada 6) conta com elas.
   const [visits, reviews] = await Promise.all([
     readVisitsOf(ids),
-    metric === 'achievements' ? readReviewsOf(ids) : Promise.resolve([])
+    readReviewsOf(ids)
   ])
   const start = monthStart(now)
   const board = (to: Date) =>
@@ -75,10 +80,24 @@ export async function readFriendsRanking(
     metric,
     rows: rows.map(({ score, ...row }) => {
       const was = before?.get(row.id)
+      const theirs = visits.filter((v) => v.userId === row.id)
+      const unlocked = computeAchievements(
+        theirs,
+        reviews.filter((r) => r.userId === row.id)
+      ).filter((a) => a.unlockedAt).length
+      const times = theirs.map((v) => v.at.getTime())
       return {
         ...row,
         value: score.value,
-        move: was === undefined ? null : was - row.position
+        move: was === undefined ? null : was - row.position,
+        // "nível 2 · foi ontem", "estreou" (rodada 6).
+        level: levelFor(unlocked).level,
+        lastAt: times.length
+          ? new Date(Math.max(...times)).toISOString()
+          : null,
+        firstAt: times.length
+          ? new Date(Math.min(...times)).toISOString()
+          : null
       }
     }),
     chase: chaseOf(rows)
@@ -194,6 +213,21 @@ export async function readCityBoard(
     const was = before.rows[0]?.position
     weekMove = was === undefined ? null : was - position
   }
+  // O histograma da cidade (rodada 6): quantos têm cada valor no mês. Só na
+  // primeira página, como a seta da semana.
+  let histogram: CityBucket[] = []
+  if (cursor === 0 && position) {
+    const buckets = await db.execute<{ value: number; count: number }>(sql`
+      WITH ${ranked(now)}
+      SELECT value, count(*)::int AS count FROM ranked GROUP BY value
+      ORDER BY value
+    `)
+    histogram = buckets.rows.map((b) => ({
+      value: Number(b.value),
+      count: Number(b.count)
+    }))
+  }
+  const mineValue = rows.find((row) => row.me)?.value ?? 0
   return {
     listed: true as const,
     city: mine.city,
@@ -202,6 +236,13 @@ export async function readCityBoard(
     total,
     position,
     weekMove,
+    histogram,
+    mine: mineValue,
+    top: position && total ? topPercent(position, total) : null,
+    chase:
+      position && histogram.length
+        ? cityChase(histogram, position, total, mineValue)
+        : null,
     rows: rows.filter(
       (r) => r.position > cursor && r.position <= cursor + size
     ),

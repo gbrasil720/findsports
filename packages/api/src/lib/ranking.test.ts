@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'bun:test'
 import {
   chaseOf,
+  cityChase,
   listedInCity,
   monthOf,
   type RankVisit,
   rank,
-  scoreOf
+  scoreOf,
+  topPercent
 } from './ranking'
 
 const at = (iso: string) => new Date(iso)
@@ -147,5 +149,30 @@ describe('listedInCity', () => {
     expect(listedInCity(true, 'everyone')).toBe(true)
     expect(listedInCity(true, 'friends')).toBe(true)
     expect(listedInCity(true, 'nobody')).toBe(false)
+  })
+})
+
+describe('cidade: fatia e perseguição (rodada 6)', () => {
+  // 100 torcedores: 10 com 9 bares, 20 com 6, 70 com 2.
+  const buckets = [
+    { value: 9, count: 10 },
+    { value: 6, count: 20 },
+    { value: 2, count: 70 }
+  ]
+  it('a fatia arredonda para cima e nunca é zero', () => {
+    expect(topPercent(17, 100)).toBe(17)
+    expect(topPercent(1, 1284)).toBe(1)
+    expect(topPercent(212, 1284)).toBe(17)
+  })
+  it('a próxima fatia de 5% e quanto falta para passar a beirada', () => {
+    // 25º de 100 (top 25%): a meta é o top 20%, a 20ª posição tem 6.
+    expect(cityChase(buckets, 25, 100, 6)).toEqual({ top: 20, need: 1 })
+    // 40º (top 40%): meta top 35%, a 35ª tem 2; com 2, falta 1.
+    expect(cityChase(buckets, 40, 100, 2)).toEqual({ top: 35, need: 1 })
+    // 12º (top 12%): meta top 10%, a 10ª tem 9; com 6, faltam 4.
+    expect(cityChase(buckets, 12, 100, 6)).toEqual({ top: 10, need: 4 })
+  })
+  it('no top 5%, nada', () => {
+    expect(cityChase(buckets, 3, 100, 9)).toBeNull()
   })
 })
