@@ -138,6 +138,16 @@ export default function AfterGame() {
       return
     }
     haptic.success()
+    // "Não fui" encerra ali (o "Obrigado por avisar" já está na tela).
+    if (!rating) {
+      await Promise.all(
+        [trpc.postGame.pending.queryKey(), trpc.attendance.mine.queryKey()].map(
+          (queryKey) => queryClient.invalidateQueries({ queryKey })
+        )
+      )
+      close()
+      return
+    }
     setKept(game)
     // A medalha nova aparece aqui: marcada como vista antes de o cache saber,
     // para a 2k não abrir por cima.
@@ -156,9 +166,13 @@ export default function AfterGame() {
     }
     setSent({ medal })
     await Promise.all(
-      [trpc.postGame.pending.queryKey(), trpc.achievements.mine.queryKey()].map(
-        (queryKey) => queryClient.invalidateQueries({ queryKey })
-      )
+      [
+        trpc.postGame.pending.queryKey(),
+        trpc.achievements.mine.queryKey(),
+        // "★ 4" ou "Não fui" na linha de Meus jogos e de Já fui.
+        trpc.attendance.mine.queryKey(),
+        trpc.attendance.visits.queryKey()
+      ].map((queryKey) => queryClient.invalidateQueries({ queryKey }))
     )
   }
 
@@ -270,7 +284,8 @@ export default function AfterGame() {
         </View>
         <ObTitle plain="Como" hot="foi?" size={44} />
         {card}
-        <Verified kind={game.verified} />
+        {/* "Não fui" não tem nota: o selo da nota sai. */}
+        {went === false ? null : <Verified kind={game.verified} />}
 
         {asksPresence ? (
           <Question title="Você foi?">
