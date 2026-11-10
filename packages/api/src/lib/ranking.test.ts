@@ -1,9 +1,11 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, it, test } from 'bun:test'
 import {
   chaseOf,
   cityChase,
+  crownOf,
   listedInCity,
   monthOf,
+  previousMonth,
   type RankVisit,
   rank,
   scoreOf,
@@ -174,5 +176,42 @@ describe('cidade: fatia e perseguição (rodada 6)', () => {
   })
   it('no top 5%, nada', () => {
     expect(cityChase(buckets, 3, 100, 9)).toBeNull()
+  })
+})
+
+describe('crownOf', () => {
+  const row = (me: boolean, position: number, value: number) => ({
+    me,
+    position,
+    value
+  })
+  test('1º com bar e com amigo na lista ganha', () => {
+    expect(crownOf([row(true, 1, 3), row(false, 2, 2)])).toEqual({
+      won: true,
+      value: 3
+    })
+  })
+  test('sozinho não é rei', () => {
+    expect(crownOf([row(true, 1, 5)]).won).toBe(false)
+  })
+  test('1º com zero não ganha', () => {
+    expect(crownOf([row(true, 1, 0), row(false, 2, 0)]).won).toBe(false)
+  })
+  test('2º não ganha', () => {
+    expect(crownOf([row(false, 1, 4), row(true, 2, 3)])).toEqual({
+      won: false,
+      value: 3
+    })
+  })
+})
+
+describe('previousMonth', () => {
+  test('o mês que fechou, no relógio de Brasília', () => {
+    // 1º de novembro, 00:00 em Brasília.
+    const start = new Date('2026-11-01T03:00:00Z')
+    expect(previousMonth(start).month).toBe('2026-10')
+    expect(previousMonth(start).end.toISOString()).toBe(
+      '2026-11-01T02:59:59.999Z'
+    )
   })
 })

@@ -23,6 +23,7 @@ import {
   relationsWith,
   USERNAME_PATTERN
 } from '../lib/friends'
+import { readCrowns } from '../lib/ranking-read'
 import { visit } from '../lib/visits'
 
 /*
@@ -546,14 +547,16 @@ export const friendsRouter = router({
           barsInCommon: [],
           together: null,
           medals: [],
-          medalTotal: 0
+          medalTotal: 0,
+          crowns: []
         }
       const now = new Date()
-      const [mine, theirs, games, both] = await Promise.all([
+      const [mine, theirs, games, both, crowns] = await Promise.all([
         readMonth(me, now),
         readMonth(person.id, now),
         readMyGames(person.id, now),
-        readVisitsOf([me, person.id])
+        readVisitsOf([me, person.id]),
+        readCrowns(person.id)
       ])
       // A história de vocês (rodada 6): os jogos em que os dois validaram e o
       // bar onde mais estiveram juntos.
@@ -595,7 +598,8 @@ export const friendsRouter = router({
         ),
         together: { games: together.length, place },
         medals: theirs.medals,
-        medalTotal: theirs.medalTotal
+        medalTotal: theirs.medalTotal,
+        crowns
       }
     }),
 

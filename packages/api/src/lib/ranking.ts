@@ -182,3 +182,24 @@ export function cityChase(
   if (edge >= position) return null
   return { top, need: Math.max(1, valueAt(buckets, edge) - mine + 1) }
 }
+
+/**
+ * O selo do mês (rodada 6): fecha o mês em 1º no ranking dos amigos quem tem
+ * a posição 1 com pelo menos um bar e pelo menos um amigo na lista (sozinho
+ * não é rei de nada). O empate já sai desfeito em `rank`.
+ */
+export function crownOf(
+  rows: { me: boolean; position: number; value: number }[]
+) {
+  const me = rows.find((row) => row.me)
+  return {
+    won: !!me && me.position === 1 && me.value > 0 && rows.length > 1,
+    value: me?.value ?? 0
+  }
+}
+
+/** O mês anterior ao de `now` ("2026-10"), e o último instante dele. */
+export function previousMonth(start: Date) {
+  const end = new Date(start.getTime() - 1)
+  return { end, month: monthOf(end).month }
+}

@@ -1,5 +1,6 @@
-import { db, eq, sql } from '@findsports_oficial/db'
+import { and, db, desc, eq, sql } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
+import { monthCrown } from '@findsports_oficial/db/schema/social'
 import { computeAchievements, levelFor } from './achievements'
 import { readReviewsOf, readVisitsOf } from './achievements-read'
 import { canSeeActivity, friendIdsOf, monthStart } from './friends'
@@ -11,9 +12,11 @@ import {
   type CityMetric,
   chaseOf,
   cityChase,
+  crownOf,
   listedInCity,
   MOVE_WINDOW_MS,
   monthOf,
+  previousMonth,
   type RankingMetric,
   rank,
   scoreOf,
@@ -251,4 +254,37 @@ export async function readCityBoard(
       : [],
     nextCursor: cursor + size < total ? cursor + size : null
   }
+}
+
+/**
+ * Confere uma vez o mês que fechou (rodada 6): na primeira leitura do mês
+ * novo, conta o ranking dos amigos do mês anterior e grava o resultado.
+ *
+ * ponytail: confere na leitura de quem abre o app, não num job; quem não
+ * abriu não tem o selo gravado, e os amigos são os de hoje, não os do fim do
+ * mês. Com selo em disputa de verdade, vira rotina no `runScheduledJobs`.
+ */
+export async function settleMonthCrown(me: string, now = new Date()) {
+  const { end, month } = previousMonth(monthStart(now))
+  const [done] = await db
+    .select({ month: monthCrown.month })
+    .from(monthCrown)
+    .where(and(eq(monthCrown.userId, me), eq(monthCrown.month, month)))
+  if (done) return
+  const board = await readFriendsRanking(me, 'bars', end)
+  const result = crownOf(board.rows)
+  await db
+    .insert(monthCrown)
+    .values({ userId: me, month, ...result })
+    .onConflictDoNothing()
+}
+
+/** Os meses que a pessoa fechou em 1º, do mais recente ("2026-10"). */
+export async function readCrowns(userId: string) {
+  const rows = await db
+    .select({ month: monthCrown.month, value: monthCrown.value })
+    .from(monthCrown)
+    .where(and(eq(monthCrown.userId, userId), eq(monthCrown.won, true)))
+    .orderBy(desc(monthCrown.month))
+  return rows
 }
