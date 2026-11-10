@@ -1,7 +1,7 @@
 import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import * as Brightness from 'expo-brightness'
-import { useFocusEffect, useLocalSearchParams } from 'expo-router'
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
@@ -26,7 +26,6 @@ import { EASE } from '@/components/motion'
 import { useOnline } from '@/components/offline-banner'
 import {
   ACID,
-  BackButton,
   Icon,
   INK,
   PAPER,
@@ -115,6 +114,7 @@ function until(startsAt: string, now: number) {
 export default function CounterCode() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>()
   const insets = useSafeAreaInsets()
+  const router = useRouter()
   useStatusBar('light')
   useMaxBrightness()
   const queryClient = useQueryClient()
@@ -162,7 +162,18 @@ export default function CounterCode() {
 
   const top = (
     <View style={styles.top}>
-      <BackButton tone="dark" icon="close" />
+      {/* O círculo sólido do desenho (`.tix-s .rb`), sem borda. */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Fechar"
+        hitSlop={8}
+        onPress={() =>
+          router.canGoBack() ? router.back() : router.replace('/explore')
+        }
+        style={styles.round}
+      >
+        <Icon name="close" size={20} color={PAPER} />
+      </Pressable>
       <View style={styles.state}>
         {fromDevice ? null : (
           <Icon name={validated ? 'check' : 'eye'} size={16} color={DIM} />
