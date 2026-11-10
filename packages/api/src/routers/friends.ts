@@ -3,7 +3,7 @@ import { user } from '@findsports_oficial/db/schema/auth'
 import { friendCall, friendship } from '@findsports_oficial/db/schema/social'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
-import { fanProcedure, router } from '../index'
+import { fanProcedure, publicProcedure, router } from '../index'
 import { readVisitsOf } from '../lib/achievements-read'
 import { readMyGames, setAttendance } from '../lib/attendance'
 import { readFriendsFeed, readFriendsToday } from '../lib/friend-activity'
@@ -23,6 +23,7 @@ import {
   relationsWith,
   USERNAME_PATTERN
 } from '../lib/friends'
+import { readInvitePreview } from '../lib/invite-preview'
 import { readCrowns } from '../lib/ranking-read'
 import { visit } from '../lib/visits'
 
@@ -480,6 +481,16 @@ export const friendsRouter = router({
       const row = await readFriendship(me, person.id)
       return { ...person, relation: relationOf(me, person.id, row) }
     }),
+
+  /**
+   * O convite aberto pelo link (rodada 7): quem convidou e o que a
+   * privacidade dela deixa ver. Aberta: quem chega sem conta também vê.
+   */
+  invitePreview: publicProcedure
+    .input(z.object({ code: z.string().trim().min(3).max(16) }))
+    .query(({ ctx, input }) =>
+      readInvitePreview(input.code, ctx.session?.user.id ?? null)
+    ),
 
   /**
    * Pelo link de convite: conta criada há menos de um dia já entra como amiga
