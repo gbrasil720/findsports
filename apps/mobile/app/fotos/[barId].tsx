@@ -1,30 +1,36 @@
-import { groupByCategory } from '@findsports_oficial/db/bar-gallery'
 import { useQuery } from '@tanstack/react-query'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useState } from 'react'
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native'
-import Animated, { FadeIn } from 'react-native-reanimated'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { ChipRow, openPhoto, PhotoTile } from '@/components/gallery'
-import { usePalette } from '@/components/theme'
+import { useRef, useState } from 'react'
 import {
-  BackButton,
-  ErrorState,
-  Text,
-  text,
-  useStatusBar
-} from '@/components/ui'
-import { filterPhotos, type GalleryFilter, parseFilter } from '@/lib/gallery'
+  ActivityIndicator,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View
+} from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { haptic } from '@/components/motion'
+import { type Frame, PhotoViewer } from '@/components/photo-viewer'
+import { usePalette } from '@/components/theme'
+import { ErrorState, Icon, Text, text, useStatusBar } from '@/components/ui'
+import {
+  categoryIcon,
+  filterPhotos,
+  type GalleryFilter,
+  galleryChips,
+  parseFilter
+} from '@/lib/gallery'
 import { trpc } from '@/lib/trpc'
 
 /*
- * Todas as fotos do bar (25c, WEB-462): os chips por categoria e a grade
- * agrupada por tipo, só com as que a Onside aprovou. Tocar numa foto abre a
- * tela cheia (25b) com o mesmo filtro.
+ * "O ambiente" (rodada 7, 25c): todas as fotos do bar em tela cheia, só as
+ * aprovadas pela revisão. Chips por categoria com a contagem; a grade é um
+ * mosaico, a primeira grande e as outras em pares. Trocar o chip troca a
+ * grade seco. Tocar numa foto a abre crescendo dela (`PhotoViewer`).
  */
 
-/** A troca de filtro: a grade nova entra num esmaecer curto. */
-const SWAP_IN = FadeIn.duration(160)
+type Measurable = { measureInWindow: View['measureInWindow'] }
 
 export default function Fotos() {
   const { barId, cat } = useLocalSearchParams<{ barId: string; cat?: string }>()
@@ -36,35 +42,88 @@ export default function Fotos() {
   const photos = bar.data?.photos ?? []
   const [chosen, setChosen] = useState<GalleryFilter | null>(null)
   const filter = chosen ?? parseFilter(photos, cat)
-  const groups = groupByCategory(filterPhotos(photos, filter))
-  // O índice da tela cheia é na lista do filtro.
-  const shown = groups.flatMap((g) => g.photos)
+  const shown = filterPhotos(photos, filter)
+  const tiles = useRef(new Map<string, Measurable | null>())
+  const [open, setOpen] = useState<{
+    index: number
+    frames: Map<number, Frame>
+  } | null>(null)
+
+  // Mede todas as miniaturas antes de abrir: a foto cresce da tocada e, se a
+  // pessoa passar para outra, volta para a dela.
+  const openAt = async (index: number) => {
+    const frames = new Map<number, Frame>()
+    await Promise.all(
+      shown.map(
+        (p, n) =>
+          new Promise<void>((done) => {
+            const tile = tiles.current.get(p.id)
+            if (!tile) return done()
+            tile.measureInWindow((x, y, width, height) => {
+              if (width) frames.set(n, { x, y, width, height })
+              done()
+            })
+          })
+      )
+    )
+    setOpen({ index, frames })
+  }
+
+  const tile = (p: (typeof shown)[number], n: number, big = false) => (
+    <Pressable
+      key={p.id}
+      ref={(node) => {
+        tiles.current.set(p.id, node)
+      }}
+      accessibilityRole="imagebutton"
+      accessibilityLabel={p.caption ?? `Foto ${n + 1} de ${shown.length}`}
+      onPress={() => openAt(n)}
+      style={({ pressed }) => [
+        big ? styles.big : styles.cell,
+        { opacity: pressed ? 0.85 : 1 }
+      ]}
+    >
+      <Image source={{ uri: p.url }} style={styles.fill} resizeMode="cover" />
+    </Pressable>
+  )
+  const [first, ...rest] = shown
+  const pairs = Array.from({ length: Math.ceil(rest.length / 2) }, (_, r) =>
+    rest.slice(r * 2, r * 2 + 2)
+  )
 
   return (
     <View style={[styles.screen, { backgroundColor: palette.bg }]}>
       <ScrollView
         contentContainerStyle={[
           styles.body,
-          { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 32 }
+          { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 32 }
         ]}
       >
         <View style={styles.top}>
-          <BackButton />
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text
-              style={[text(15, 'Regular', 1.3), { color: palette.muted }]}
-              numberOfLines={1}
-            >
-              {bar.data?.name ?? ''}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Voltar"
+            hitSlop={8}
+            onPress={() => router.back()}
+            style={[
+              styles.round,
+              { backgroundColor: palette.card, shadowColor: palette.drop }
+            ]}
+          >
+            <Icon name="back" size={20} color={palette.ink} />
+          </Pressable>
+          {photos.length ? (
+            <Text style={[styles.count, { color: palette.ink }]}>
+              {photos.length} {photos.length === 1 ? 'foto' : 'fotos'}
             </Text>
-            <Text
-              accessibilityRole="header"
-              style={[styles.title, { color: palette.ink }]}
-            >
-              FOTOS
-            </Text>
-          </View>
+          ) : null}
         </View>
+        <Text
+          accessibilityRole="header"
+          style={[styles.title, { color: palette.ink }]}
+        >
+          O ambiente
+        </Text>
 
         {bar.isError ? (
           <ErrorState
@@ -77,134 +136,113 @@ export default function Fotos() {
           <ActivityIndicator color={palette.muted} style={{ marginTop: 40 }} />
         ) : (
           <>
-            <ChipRow photos={photos} filter={filter} onChange={setChosen} />
-            <Animated.View
-              key={filter}
-              entering={SWAP_IN}
-              style={styles.groups}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.chipScroll}
+              contentContainerStyle={styles.chips}
             >
-              {groups.map((group, g) => (
-                <View key={group.id} style={styles.group}>
-                  <View style={styles.groupHead}>
-                    <Text style={[styles.groupTitle, { color: palette.hot }]}>
-                      {group.label.toUpperCase()}
-                    </Text>
+              {galleryChips(photos).map((chip) => {
+                const on = chip.key === filter
+                const icon = chip.key === 'all' ? null : categoryIcon(chip.key)
+                return (
+                  <Pressable
+                    key={chip.key}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                    accessibilityLabel={`${chip.label}, ${chip.count} ${chip.count === 1 ? 'foto' : 'fotos'}`}
+                    onPress={() => {
+                      if (on) return
+                      haptic.select()
+                      setChosen(chip.key)
+                    }}
+                    style={[
+                      styles.chip,
+                      { backgroundColor: on ? palette.ink : palette.mark }
+                    ]}
+                  >
+                    {icon ? (
+                      <Icon
+                        name={icon}
+                        size={16}
+                        color={on ? palette.bg : palette.ink}
+                      />
+                    ) : null}
                     <Text
                       style={[
-                        text(13, 'Bold', 1.2),
-                        {
-                          fontFamily: 'GeistMono-SemiBold',
-                          color: palette.muted
-                        }
+                        text(13.5, 'SemiBold', 1.2),
+                        { color: on ? palette.bg : palette.ink }
                       ]}
                     >
-                      {group.photos.length}
+                      {chip.label} · {chip.count}
                     </Text>
-                  </View>
-                  <Grid
-                    // O primeiro grupo com três ou mais abre com a grande e
-                    // duas empilhadas, como o TELÃO da 25c.
-                    feature={g === 0 && group.photos.length >= 3}
-                    photos={group.photos}
-                    onOpen={(id) =>
-                      openPhoto(
-                        router,
-                        barId,
-                        shown.findIndex((p) => p.id === id),
-                        filter
-                      )
-                    }
-                  />
+                  </Pressable>
+                )
+              })}
+            </ScrollView>
+            <View style={styles.mosaic}>
+              {first ? tile(first, 0, true) : null}
+              {pairs.map((pair, r) => (
+                <View key={pair[0]?.id} style={styles.pair}>
+                  {pair.map((p, k) => tile(p, 1 + r * 2 + k))}
+                  {pair.length === 1 ? <View style={styles.cell} /> : null}
                 </View>
               ))}
-            </Animated.View>
-            <Text
-              style={[
-                text(13.5, 'Regular', 1.4),
-                { color: palette.muted, textAlign: 'center', marginTop: 8 }
-              ]}
-            >
-              As fotos são enviadas pelo bar e revisadas pela Onside.
-            </Text>
+            </View>
           </>
         )}
       </ScrollView>
-    </View>
-  )
-}
-
-function Grid({
-  photos,
-  feature,
-  onOpen
-}: {
-  photos: readonly { id: string; url: string; caption: string | null }[]
-  feature: boolean
-  onOpen: (id: string) => void
-}) {
-  const tile = (p: (typeof photos)[number], style: object) => (
-    <PhotoTile
-      key={p.id}
-      uri={p.url}
-      label={p.caption ?? 'Foto do bar'}
-      onPress={() => onOpen(p.id)}
-      style={style}
-    />
-  )
-  const [first, second, third, ...rest] = photos
-  const cells = feature ? rest : photos
-  // Linhas de três, com vaga vazia no fim: a última linha não estica.
-  const rows = Array.from({ length: Math.ceil(cells.length / 3) }, (_, r) =>
-    cells.slice(r * 3, r * 3 + 3)
-  )
-  return (
-    <View style={styles.gridWrap}>
-      {feature && first && second && third ? (
-        <View style={styles.feature}>
-          {tile(first, { flex: 2 })}
-          <View style={styles.featureSide}>
-            {tile(second, { flex: 1 })}
-            {tile(third, { flex: 1 })}
-          </View>
-        </View>
+      {open ? (
+        <PhotoViewer
+          photos={shown}
+          start={open.index}
+          origin={(n) => open.frames.get(n) ?? null}
+          onClose={() => setOpen(null)}
+        />
       ) : null}
-      {rows.map((row) => (
-        <View key={row[0]?.id} style={styles.row}>
-          {[0, 1, 2].map((n) => {
-            const p = row[n]
-            return p ? (
-              tile(p, styles.cell)
-            ) : (
-              <View key={`vaga-${n}`} style={styles.cell} />
-            )
-          })}
-        </View>
-      ))}
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  body: { paddingHorizontal: 16, gap: 18 },
-  top: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  body: { paddingHorizontal: 16, gap: 14 },
+  top: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  round: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  },
+  count: { fontFamily: 'GeistMono-SemiBold', fontSize: 13 },
+  // Anton 40: margem negativa no lugar do entrelinha curto.
   title: {
     fontFamily: 'Anton',
     fontSize: 40,
-    letterSpacing: -0.8,
-    marginVertical: -8
+    textTransform: 'uppercase',
+    marginVertical: -9.7
   },
-  groups: { gap: 22 },
-  group: { gap: 10 },
-  groupHead: {
+  chipScroll: { marginHorizontal: -16, flexGrow: 0 },
+  chips: { gap: 7, paddingHorizontal: 16 },
+  chip: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline'
+    alignItems: 'center',
+    gap: 7,
+    height: 36,
+    paddingHorizontal: 13,
+    borderRadius: 18
   },
-  groupTitle: { fontFamily: 'Anton', fontSize: 26, marginVertical: -6 },
-  gridWrap: { gap: 5 },
-  feature: { flexDirection: 'row', gap: 5, height: 226 },
-  featureSide: { flex: 1, gap: 5 },
-  row: { flexDirection: 'row', gap: 5 },
-  cell: { flex: 1, aspectRatio: 1.04 }
+  mosaic: { gap: 6 },
+  pair: { flexDirection: 'row', gap: 6 },
+  big: { height: 200, borderRadius: 14, overflow: 'hidden' },
+  cell: { flex: 1, height: 120, borderRadius: 14, overflow: 'hidden' },
+  fill: { width: '100%', height: '100%' }
 })

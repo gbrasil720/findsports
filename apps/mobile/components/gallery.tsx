@@ -1,7 +1,9 @@
 import { useRouter } from 'expo-router'
+import { useRef, useState } from 'react'
 import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { haptic, usePressScale } from '@/components/motion'
+import { type Frame, PhotoViewer } from '@/components/photo-viewer'
 import { usePalette } from '@/components/theme'
 import { ACID, INK, PAPER, Text, text } from '@/components/ui'
 import {
@@ -35,17 +37,21 @@ export function PhotoTile({
   label,
   onPress,
   style,
-  children
+  children,
+  tileRef
 }: {
   uri: string
   label: string
   onPress: () => void
   style?: object
   children?: React.ReactNode
+  /** Para medir a miniatura: a foto aberta cresce dela (rodada 7). */
+  tileRef?: (node: View | null) => void
 }) {
   const press = usePressScale(0.98)
   return (
     <Pressable
+      ref={tileRef}
       accessibilityRole="imagebutton"
       accessibilityLabel={label}
       onPress={onPress}
@@ -187,8 +193,31 @@ export function Ambiente({
 }) {
   const router = useRouter()
   const palette = usePalette()
+  const tiles = useRef<(View | null)[]>([])
+  const [open, setOpen] = useState<{
+    index: number
+    frames: Map<number, Frame>
+  } | null>(null)
   const [first, second, third] = photos
   if (!first) return null
+  // A foto cresce da miniatura tocada (rodada 7); passando para uma das
+  // outras, fecha para a dela, ou esmaece se ela não está à vista.
+  const openAt = async (index: number) => {
+    const frames = new Map<number, Frame>()
+    await Promise.all(
+      tiles.current.map(
+        (tile, n) =>
+          new Promise<void>((done) => {
+            if (!tile) return done()
+            tile.measureInWindow((x, y, width, height) => {
+              if (width) frames.set(n, { x, y, width, height })
+              done()
+            })
+          })
+      )
+    )
+    setOpen({ index, frames })
+  }
   const rest = photos.length - 3
   const all = (filter: GalleryFilter = 'all') =>
     router.push({ pathname: '/fotos/[barId]', params: { barId, cat: filter } })
@@ -235,7 +264,10 @@ export function Ambiente({
           <PhotoTile
             uri={first.url}
             label={label(0)}
-            onPress={() => openPhoto(router, barId, 0)}
+            onPress={() => openAt(0)}
+            tileRef={(node) => {
+              tiles.current[0] = node
+            }}
             style={{ flex: second ? 2 : 1 }}
           />
           {second ? (
@@ -243,16 +275,20 @@ export function Ambiente({
               <PhotoTile
                 uri={second.url}
                 label={label(1)}
-                onPress={() => openPhoto(router, barId, 1)}
+                onPress={() => openAt(1)}
+                tileRef={(node) => {
+                  tiles.current[1] = node
+                }}
                 style={{ flex: 1 }}
               />
               {third ? (
                 <PhotoTile
                   uri={third.url}
                   label={rest > 0 ? `Mais ${rest} fotos` : label(2)}
-                  onPress={() =>
-                    rest > 0 ? all() : openPhoto(router, barId, 2)
-                  }
+                  onPress={() => (rest > 0 ? all() : openAt(2))}
+                  tileRef={(node) => {
+                    tiles.current[2] = node
+                  }}
                   style={{ flex: 1 }}
                 >
                   {rest > 0 ? (
@@ -270,6 +306,14 @@ export function Ambiente({
         </View>
       </View>
       <ChipRow photos={photos} onChange={all} showAll={false} />
+      {open ? (
+        <PhotoViewer
+          photos={photos}
+          start={open.index}
+          origin={(n) => open.frames.get(n) ?? null}
+          onClose={() => setOpen(null)}
+        />
+      ) : null}
     </View>
   )
 }

@@ -72,3 +72,18 @@ export function sentMonth(date: string | Date): string {
 }
 
 export const categoryLabel = photoCategoryLabel
+
+/** O ícone de cada categoria nos chips e na foto aberta (rodada 7). */
+export function categoryIcon(
+  category: PhotoCategory
+): 'tv' | 'outdoor' | 'beer' | 'petiscos' | null {
+  return category === 'telao'
+    ? 'tv'
+    : category === 'area_externa'
+      ? 'outdoor'
+      : category === 'balcao'
+        ? 'beer'
+        : category === 'comida'
+          ? 'petiscos'
+          : null
+}
