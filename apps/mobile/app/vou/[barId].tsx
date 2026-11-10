@@ -136,7 +136,7 @@ export default function GoingSheet() {
     return <View style={{ flex: 1, backgroundColor: palette.bg }} />
   }
 
-  // Os amigos da fileira: quem já vai aparece marcado "vai" e não se chama;
+  // Os amigos da fileira: quem já vai vem depois, marcado "vai", e não se chama;
   // o jogo começado não chama ninguém (a regra do chamado).
   const goingIds = new Set(game.going?.friends.map((f) => f.id) ?? [])
   const started = new Date(game.startsAt).getTime() <= now
@@ -144,8 +144,8 @@ export default function GoingSheet() {
   const callable =
     !mine.attending && !started
       ? [
-          ...all.filter((f) => goingIds.has(f.id)),
-          ...all.filter((f) => !goingIds.has(f.id))
+          ...all.filter((f) => !goingIds.has(f.id)),
+          ...all.filter((f) => goingIds.has(f.id))
         ].slice(0, MAX_FRIENDS)
       : []
   const chosen = calling.filter((id) => !goingIds.has(id))
@@ -272,6 +272,7 @@ export default function GoingSheet() {
               {callable.map((friend) => (
                 <FriendPick
                   key={friend.id}
+                  id={friend.id}
                   name={friend.name}
                   going={goingIds.has(friend.id)}
                   on={calling.includes(friend.id)}
@@ -489,12 +490,21 @@ function Faces({ faces, more }: { faces: string[]; more: number }) {
 }
 
 /** Um amigo na fileira "Chamar para o jogo" (`.fr`): anel acid e marca. */
+// As cores dos quadrinhos (`.fr .a`): algumas em acid, algumas em tinta, a
+// maioria em pedra. Sempre a mesma para a mesma pessoa; escolher só põe o
+// anel e a marca.
+const TONES = ['acid', 'ink', 'stone', 'stone', 'stone'] as const
+const toneOf = (id: string) =>
+  TONES[[...id].reduce((sum, c) => sum + c.charCodeAt(0), 0) % TONES.length]
+
 function FriendPick({
+  id,
   name,
   going,
   on,
   onPress
 }: {
+  id: string
   name: string
   going: boolean
   on: boolean
@@ -502,6 +512,10 @@ function FriendPick({
 }) {
   const palette = usePalette()
   const first = name.trim().split(/\s+/)[0] ?? name
+  const tone = going ? 'stone' : toneOf(id)
+  const bg =
+    tone === 'acid' ? ACID : tone === 'ink' ? palette.ink : palette.mark
+  const fg = tone === 'acid' ? INK : tone === 'ink' ? palette.bg : palette.ink
   return (
     <Pressable
       accessibilityRole="checkbox"
@@ -518,12 +532,8 @@ function FriendPick({
           going && { opacity: 0.55 }
         ]}
       >
-        <View
-          style={[styles.avatar, { backgroundColor: on ? ACID : palette.mark }]}
-        >
-          <Text
-            style={[text(18, 'Bold', 1.2), { color: on ? INK : palette.ink }]}
-          >
+        <View style={[styles.avatar, { backgroundColor: bg }]}>
+          <Text style={[text(18, 'Bold', 1.2), { color: fg }]}>
             {(Array.from(first)[0] ?? '').toLocaleUpperCase('pt-BR')}
           </Text>
         </View>

@@ -23,6 +23,7 @@ import QRCode from 'react-qr-code'
 import { dayLabel } from '@/components/explore'
 import { Seal, useStamp } from '@/components/fan-card'
 import { EASE } from '@/components/motion'
+import { useOnline } from '@/components/offline-banner'
 import {
   ACID,
   BackButton,
@@ -138,7 +139,9 @@ export default function CounterCode() {
   // aparelho (WEB-466).
   const userId = authClient.useSession().data?.user.id
   const saved = mine.data ? null : readTodayCode(userId)
-  const fromDevice = !mine.data && saved?.eventId === eventId
+  // Sem rede, o ingresso abre igual e diz de onde veio (tela 3).
+  const online = useOnline()
+  const fromDevice = (!mine.data && saved?.eventId === eventId) || !online
   const game =
     mine.data?.find((item) => item.eventId === eventId) ??
     (fromDevice ? saved : undefined)
@@ -172,7 +175,7 @@ export default function CounterCode() {
               : 'Brilho no máximo'}
         </Text>
       </View>
-      {game?.code ? (
+      {game?.code && !fromDevice ? (
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Compartilhar o código"
@@ -187,14 +190,16 @@ export default function CounterCode() {
           <Icon name="share" size={20} color={PAPER} />
         </Pressable>
       ) : (
-        <View style={styles.round} />
+        <View style={{ width: 44 }} />
       )}
     </View>
   )
 
   if (!game?.code) {
     return (
-      <View style={[styles.screen, { paddingTop: insets.top + 12 }]}>
+      <View
+        style={[styles.screen, { paddingTop: insets.top + (online ? 12 : 72) }]}
+      >
         {top}
         <View style={styles.center}>
           {mine.isPending ? (
@@ -227,7 +232,9 @@ export default function CounterCode() {
       : (list[0]?.first ?? '')
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top + 12 }]}>
+    <View
+      style={[styles.screen, { paddingTop: insets.top + (online ? 12 : 72) }]}
+    >
       {top}
       <ScrollView
         contentContainerStyle={[
@@ -281,29 +288,32 @@ export default function CounterCode() {
           </Animated.View>
         ) : null}
         <View style={{ flex: 1, minHeight: 24 }} />
-        <Text style={styles.below}>
-          {validated ? (
-            <>
-              Bom jogo. Depois, conta como foi:{' '}
-              <Text style={styles.belowStrong}>
-                a avaliação abre em Meus jogos
-              </Text>
-              .
-            </>
-          ) : waiter ? (
-            <>
-              Mostre ao garçom: ele anota na comanda e a oferta sai na hora.{' '}
-              <Text style={styles.belowStrong}>
-                O bar confirma depois do jogo.
-              </Text>
-            </>
-          ) : (
-            <>
-              O código também fica em{' '}
-              <Text style={styles.belowStrong}>Meus jogos</Text>.
-            </>
-          )}
-        </Text>
+        {/* Sem rede, só o ingresso (tela 3). */}
+        {fromDevice ? null : (
+          <Text style={styles.below}>
+            {validated ? (
+              <>
+                Bom jogo. Depois, conta como foi:{' '}
+                <Text style={styles.belowStrong}>
+                  a avaliação abre em Meus jogos
+                </Text>
+                .
+              </>
+            ) : waiter ? (
+              <>
+                Mostre ao garçom: ele anota na comanda e a oferta sai na hora.{' '}
+                <Text style={styles.belowStrong}>
+                  O bar confirma depois do jogo.
+                </Text>
+              </>
+            ) : (
+              <>
+                O código também fica em{' '}
+                <Text style={styles.belowStrong}>Meus jogos</Text>.
+              </>
+            )}
+          </Text>
+        )}
       </ScrollView>
     </View>
   )
@@ -449,13 +459,14 @@ function Ticket({
 
 /** O selo do validado: o da carteirinha, maior, com o bar na volta. */
 function TicketSeal({ bar }: { bar: string }) {
-  const motion = useStamp()
+  const motion = useStamp('success')
   const label = `VALIDADO NO BALCÃO · ${bar} ·`
   return (
     <Seal
       {...motion}
       size={108}
       fontSize={8.6}
+      around
       // Nome longo não cabe na volta: fica a marca.
       label={label.length > 36 ? 'VALIDADO NO BALCÃO · ONSIDE ·' : label}
       style={styles.seal}
@@ -579,14 +590,21 @@ const styles = StyleSheet.create({
     backgroundColor: INK
   },
   chipLive: { backgroundColor: '#e8320c' },
+  // Mono com 1em de linha (o natural é 1,3em): margem negativa.
   chipText: {
     fontFamily: 'GeistMono-SemiBold',
     fontSize: 11.5,
+    marginVertical: -1.7,
     color: ACID,
     fontVariant: ['tabular-nums']
   },
   // Anton 38/.95: margem negativa no lugar do entrelinha curto.
-  bar: { fontFamily: 'Anton', fontSize: 38, color: INK, marginVertical: -9 },
+  bar: {
+    fontFamily: 'Anton',
+    fontSize: 38,
+    color: INK,
+    marginVertical: -10.5
+  },
   game: { fontFamily: 'GeistMono-SemiBold', fontSize: 13, color: MUTED_INK },
   gameStrong: { fontFamily: 'Archivo-Bold', fontSize: 15, color: INK },
   perf: { height: 16, justifyContent: 'center' },
@@ -614,6 +632,7 @@ const styles = StyleSheet.create({
   hint: {
     fontFamily: 'GeistMono-SemiBold',
     fontSize: 11,
+    marginVertical: -1.6,
     letterSpacing: 0.88,
     color: MUTED_INK
   },
@@ -624,9 +643,9 @@ const styles = StyleSheet.create({
     fontSize: 74,
     letterSpacing: 1.5,
     color: INK,
-    marginVertical: -18
+    marginVertical: -22.4
   },
-  codeBig: { fontSize: 92, marginVertical: -22 },
+  codeBig: { fontSize: 92, marginVertical: -27.8 },
   codeBar: { width: 14, height: 6, borderRadius: 2, backgroundColor: INK },
   qr: {
     padding: 10,

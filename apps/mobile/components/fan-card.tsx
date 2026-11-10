@@ -108,7 +108,11 @@ function Dots() {
  */
 const STAMP_DELAY = 260
 
-export function useStamp() {
+/**
+ * `feel`: o háptico no quadro em que o selo encosta. A carteirinha usa o
+ * impacto médio; o ingresso validado, o de sucesso (rodada 3).
+ */
+export function useStamp(feel: 'stamp' | 'success' = 'stamp') {
   const reduced = useReducedMotion()
   const stamp = useSharedValue(0)
   const issued = useSharedValue(0)
@@ -123,13 +127,13 @@ export function useStamp() {
           { duration: reduced ? 200 : 240, easing: EASE },
           (done) => {
             if (!done) return
-            if (!reduced) scheduleOnRN(haptic.stamp)
+            if (!reduced) scheduleOnRN(haptic[feel])
             scheduleOnRN(show)
           }
         )
       )
     )
-  }, [stamp, issued, reduced])
+  }, [stamp, issued, reduced, feel])
   return { stamp, issued, reduced }
 }
 
@@ -144,12 +148,15 @@ export function Seal({
   size = 80,
   label = 'TORCEDOR VALIDADO · ONSIDE · 2026 ·',
   fontSize = 9.6,
+  around,
   style: place
 }: Pick<ReturnType<typeof useStamp>, 'stamp' | 'reduced'> & {
   size?: number
   label?: string
   /** O texto da volta: 9,6 na carteirinha, 8,6 no ingresso (mais longo). */
   fontSize?: number
+  /** Espalha o texto pela volta inteira, como o `textLength` do ingresso. */
+  around?: boolean
   style?: object
 }) {
   const style = useAnimatedStyle(() =>
@@ -189,7 +196,18 @@ export function Seal({
           fill={INK}
           fontSize={fontSize}
           fontFamily={MONO}
-          letterSpacing={fontSize * 0.11}
+          // Espalhado pela volta (236 dos 239 do círculo): a Geist Mono tem
+          // 0,6em por letra, o resto vira espaço. `textLength` não pega no
+          // TextPath do react-native-svg.
+          letterSpacing={
+            around
+              ? Math.max(
+                  fontSize * 0.11,
+                  (236 - Array.from(label).length * 0.6 * fontSize) /
+                    Array.from(label).length
+                )
+              : fontSize * 0.11
+          }
         >
           <TextPath href="#volta" startOffset="0">
             {label}
