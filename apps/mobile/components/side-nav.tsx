@@ -161,7 +161,7 @@ export function SideNav(props: Props) {
 const FLOAT_WIDTH = BAR.long + AI_GAP + BAR.thick
 
 /**
- * O centro do botão da IA na tela, para o primeiro acesso (4o) cercá-lo. Na
+ * O centro do botão da IA na tela, para o passeio guiado (3b) cercá-lo. Na
  * barra nativa do iOS 26, medido no iPhone 16e (52 pt dos cantos).
  */
 export function useAiButtonCenter() {
