@@ -1288,6 +1288,8 @@ export const pubsRouter = router({
         lng: z.number().min(-180).max(180),
         radiusKm: searchRadiusKmSchema.default(3),
         sportId: z.string().uuid().optional(),
+        // O campeonato do chip (NBA, NBB): o basquete tem um chip para cada.
+        championship: z.string().trim().min(1).max(60).optional(),
         amenities: z.array(z.number().int()).max(MAX_AMENITY_FILTER).optional()
       })
     )
@@ -1296,6 +1298,7 @@ export const pubsRouter = router({
       const now = new Date()
       const filtros = montarFiltrosBusca({
         ...input,
+        championship: undefined,
         limit: 1,
         amenities: input.amenities?.length
           ? normalizeAmenityIds(input.amenities)
@@ -1311,6 +1314,7 @@ export const pubsRouter = router({
           AND ST_DWithin(b.geo, ${filtros.origin}, ${filtros.radiusMeters})
           AND ${onBrasiliaDaysSql(sql`e.starts_at`, brasiliaTodaySql(now), 7)}
           ${input.sportId ? sql`AND e.sport_id = ${input.sportId}` : sql``}
+          ${input.championship ? sql`AND upper(e.championship) = upper(${input.championship})` : sql``}
           ${filtros.amenityFilter(sql`b`)}
           ${filtros.ofertaDoJogo}
         GROUP BY 1

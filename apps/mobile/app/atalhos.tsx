@@ -31,6 +31,7 @@ import {
 import {
   defaultShortcuts,
   FILTER_GROUPS,
+  LEAGUES,
   MAX_SHORTCUTS,
   type Shortcut,
   shortcutLabel,
@@ -87,7 +88,11 @@ export default function ShortcutsScreen() {
   const addable = [
     'hoje',
     'amanha',
-    ...sportList.map((s) => `esporte:${s.slug}`),
+    ...sportList.flatMap((s) =>
+      LEAGUES[s.slug]
+        ? (LEAGUES[s.slug] ?? []).map((league) => `liga:${league}`)
+        : [`esporte:${s.slug}`]
+    ),
     ...FILTER_GROUPS.flatMap((g) => g.items.map((i) => `item:${i.id}`))
   ].filter((key) => !list.includes(key))
   const now = Date.now()

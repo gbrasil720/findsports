@@ -16,6 +16,7 @@ import {
   defaultShortcuts,
   FILTER_GROUPS,
   type Filters,
+  LEAGUES,
   MAX_SHORTCUTS,
   NO_FILTERS,
   type Shortcut,
@@ -74,6 +75,7 @@ export default function FiltersSheet() {
       ...center,
       radiusKm,
       sportId: draft.sportId ?? undefined,
+      championship: draft.league ?? undefined,
       amenities: draft.amenities.length ? draft.amenities : undefined
     }),
     placeholderData: keepPreviousData
@@ -91,7 +93,12 @@ export default function FiltersSheet() {
   const sportSlug =
     sports.data?.find((sport) => sport.id === draft.sportId)?.slug ?? null
   const count = barCount(
-    gameRow(preview.data?.games ?? [], sportSlug, Date.now()),
+    gameRow(
+      preview.data?.games ?? [],
+      sportSlug,
+      Date.now(),
+      draft.league ?? null
+    ),
     draft.amenities
   )
   const full = pins.length >= MAX_SHORTCUTS
@@ -270,26 +277,53 @@ export default function FiltersSheet() {
         </Group>
 
         <Group title="Esporte">
-          {sportList.map((sport) => {
+          {sportList.flatMap((sport) => {
             const look = sportLook(sport)
+            // Basquete vira NBA e NBB (dono, 10/11/2026).
+            const leagues = LEAGUES[sport.slug]
+            if (leagues)
+              return leagues.map((league) => {
+                const on = draft.sportId === sport.id && draft.league === league
+                const key = `liga:${league}`
+                return (
+                  <FilterChip
+                    key={league}
+                    label={league}
+                    icon={look.icon}
+                    on={on}
+                    pinned={pins.includes(key)}
+                    full={full}
+                    onPress={() =>
+                      setDraft({
+                        ...draft,
+                        sportId: on ? null : sport.id,
+                        league: on ? null : league
+                      })
+                    }
+                    onPin={() => pin(key)}
+                  />
+                )
+              })
             const key = `esporte:${sport.slug}`
-            return (
+            const on = draft.sportId === sport.id && !draft.league
+            return [
               <FilterChip
                 key={sport.id}
                 label={look.label}
                 icon={look.icon}
-                on={draft.sportId === sport.id}
+                on={on}
                 pinned={pins.includes(key)}
                 full={full}
                 onPress={() =>
                   setDraft({
                     ...draft,
-                    sportId: draft.sportId === sport.id ? null : sport.id
+                    sportId: on ? null : sport.id,
+                    league: null
                   })
                 }
                 onPin={() => pin(key)}
               />
-            )
+            ]
           })}
         </Group>
 

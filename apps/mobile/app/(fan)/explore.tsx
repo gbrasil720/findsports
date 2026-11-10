@@ -220,7 +220,12 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   const now = Date.now()
   const sportSlug =
     sports.find((sport) => sport.id === filters.sportId)?.slug ?? null
-  const row = gameRow(board.data?.games ?? [], sportSlug, now)
+  const row = gameRow(
+    board.data?.games ?? [],
+    sportSlug,
+    now,
+    filters.league ?? null
+  )
   const liveGames = row.filter((game) => game.live)
   const liveCount = liveGames.length
   const game = chosenGame(row, state.game)

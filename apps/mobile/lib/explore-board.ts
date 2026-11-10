@@ -27,13 +27,18 @@ export type RowGame = BoardGame & { live: boolean }
 export function gameRow(
   games: BoardGame[],
   sportSlug: string | null,
-  now: number
+  now: number,
+  /** O campeonato do chip (NBA, NBB); `null`, todos. */
+  league: string | null = null
 ): RowGame[] {
   return games
     .filter(
       (game) =>
         !hasEventEnded(game, now) &&
-        (sportSlug === null || game.sport.slug === sportSlug)
+        (sportSlug === null || game.sport.slug === sportSlug) &&
+        (league === null ||
+          game.championship.toLocaleUpperCase('pt-BR') ===
+            league.toLocaleUpperCase('pt-BR'))
     )
     .map((game) => ({ ...game, live: isEventLive(game, now) }))
     .sort(

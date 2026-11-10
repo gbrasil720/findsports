@@ -12,6 +12,11 @@ export type Filters = {
   /** Dia de Brasília, "2026-10-20". */
   date: string | null
   sportId: string | null
+  /**
+   * O campeonato dentro do esporte: o basquete tem dois chips, NBA e NBB
+   * (dono, 10/11/2026). `null` é o esporte inteiro.
+   */
+  league?: string | null
   amenities: number[]
   /** `null` usa o raio do perfil. */
   radius: number | null
@@ -25,6 +30,7 @@ export type Filters = {
 export const NO_FILTERS: Filters = {
   date: null,
   sportId: null,
+  league: null,
   amenities: [],
   radius: null,
   gamesOnly: false
@@ -51,6 +57,7 @@ export const searchInput = (
   radiusKm,
   date: f.date ?? undefined,
   sportId: f.sportId ?? undefined,
+  championship: f.league ?? undefined,
   amenities: f.amenities.length ? f.amenities : undefined,
   limit: SEARCH_LIMIT
 })
@@ -76,7 +83,7 @@ export const toggleAmenity = (f: Filters, id: number): Filters => ({
 /*
  * Atalho: um filtro fixado no topo do mapa. A chave vai para o aparelho
  * (SecureStore), então é texto estável: "hoje", "amanha", "esporte:<slug>",
- * "item:<id da característica>", "raio:<km>".
+ * "liga:<campeonato>" (NBA, NBB), "item:<id da característica>", "raio:<km>".
  */
 export type Shortcut = string
 
@@ -116,7 +123,12 @@ export function shortcutOn(
   if (key === 'amanha') return f.date === dayKey(now, 1)
   const [kind, value] = key.split(':')
   if (kind === 'esporte')
-    return f.sportId !== null && sportBySlug(sports, value)?.id === f.sportId
+    return (
+      f.sportId !== null &&
+      !f.league &&
+      sportBySlug(sports, value)?.id === f.sportId
+    )
+  if (kind === 'liga') return f.league === value
   if (kind === 'item') return f.amenities.includes(Number(value))
   if (kind === 'raio') return f.radius === Number(value)
   return false
@@ -135,7 +147,15 @@ export function applyShortcut(
   const [kind, value] = key.split(':')
   if (kind === 'esporte') {
     const sport = sportBySlug(sports, value)
-    return sport ? { ...f, sportId: on ? null : sport.id } : f
+    return sport ? { ...f, sportId: on ? null : sport.id, league: null } : f
+  }
+  if (kind === 'liga') {
+    const sport = sports.find((s) => LEAGUES[s.slug]?.includes(value as string))
+    return sport
+      ? on
+        ? { ...f, sportId: null, league: null }
+        : { ...f, sportId: sport.id, league: value ?? null }
+      : f
   }
   if (kind === 'item') return toggleAmenity(f, Number(value))
   if (kind === 'raio') return { ...f, radius: on ? null : Number(value) }
@@ -236,6 +256,9 @@ export function itemLabel(id: number): string | undefined {
   return BAR_ITEMS.find((i) => i.id === id)?.label
 }
 
+/** Esportes que viram um chip por campeonato no filtro (dono, 10/11/2026). */
+export const LEAGUES: Record<string, string[]> = { basquete: ['NBA', 'NBB'] }
+
 /** O ícone do esporte pelo slug; o nome curto do chip ("F1", "UFC"). */
 const SPORT_LOOK: Record<string, { icon: IconName; short?: string }> = {
   futebol: { icon: 'futebol' },
@@ -270,6 +293,7 @@ export function shortcutLabel(
     const sport = sports.find((s) => s.slug === value)
     return sport ? sportLook(sport) : null
   }
+  if (kind === 'liga' && value) return { label: value, icon: 'basquete' }
   if (kind === 'item') {
     const item = BAR_ITEMS.find((i) => i.id === Number(value))
     return item ? { label: item.label, icon: item.icon } : null

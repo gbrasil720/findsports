@@ -90,6 +90,7 @@ describe('searchInput', () => {
       radiusKm: 3,
       date: undefined,
       sportId: undefined,
+      championship: undefined,
       amenities: undefined,
       limit: SEARCH_LIMIT
     })
@@ -147,5 +148,27 @@ describe('grupos da folha de filtros (rodada 5)', () => {
       icon: 'vale'
     })
     expect(shortcutLabel('item:14', SPORTS)).toBeNull()
+  })
+})
+
+describe('basquete em NBA e NBB (dono, 10/11/2026)', () => {
+  test('o atalho da liga liga o basquete e o campeonato, e desliga', () => {
+    const on = applyShortcut('liga:NBB', NO_FILTERS, SPORTS, NOW)
+    expect(on.sportId).toBe('s2')
+    expect(on.league).toBe('NBB')
+    expect(shortcutOn('liga:NBB', on, SPORTS, NOW)).toBe(true)
+    expect(shortcutOn('liga:NBA', on, SPORTS, NOW)).toBe(false)
+    // Com a liga, o esporte inteiro não conta como ligado.
+    expect(shortcutOn('esporte:basquete', on, SPORTS, NOW)).toBe(false)
+    const off = applyShortcut('liga:NBB', on, SPORTS, NOW)
+    expect(off.sportId).toBeNull()
+    expect(off.league).toBeNull()
+  })
+
+  test('o atalho tem o nome da liga e o ícone do basquete', () => {
+    expect(shortcutLabel('liga:NBA', SPORTS)).toEqual({
+      label: 'NBA',
+      icon: 'basquete'
+    })
   })
 })
