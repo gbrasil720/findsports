@@ -1,4 +1,5 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { brasiliaDay } from '@findsports_oficial/db/event-window'
+import { keepPreviousData, useQueries, useQuery } from '@tanstack/react-query'
 import { type Href, useLocalSearchParams, useRouter } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
 import { type ReactNode, useDeferredValue, useEffect, useState } from 'react'
@@ -22,9 +23,10 @@ import {
   text,
   useStatusBar
 } from '@/components/ui'
+import { authClient } from '@/lib/auth-client'
 import { formatKm, formatTime, searchCenter } from '@/lib/explore'
 import { gameRow, type RowGame } from '@/lib/explore-board'
-import { dayKey } from '@/lib/filters'
+import { dayKey, searchRadius } from '@/lib/filters'
 import {
   type Hood,
   highlight,
@@ -81,10 +83,16 @@ export default function Search() {
   const center = searchCenter(state.device, city.data)
   const now = Date.now()
   const today = dayKey(now)
+  // Os jogos usam o raio do Explorar: tocar num deles abre a mesma régua.
+  const session = authClient.useSession()
+  const gameKm = searchRadius(
+    state.filters,
+    session.data?.user.searchRadiusKm ?? 3
+  )
   const board = useQuery({
     ...trpc.pubs.gameBoard.queryOptions({
       ...center,
-      radiusKm: NEAR_KM,
+      radiusKm: gameKm,
       day: today
     }),
     placeholderData: keepPreviousData
@@ -105,6 +113,24 @@ export default function Search() {
   })
   const row = gameRow(board.data?.games ?? [], null, now)
   const bars = (near.data?.bars ?? []) as (NearBar & { id: string })[]
+  // Os outros dias com jogo perto (`pubs.gameDays`) e a régua de cada um:
+  // os jogos de outro dia entram na busca com a mesma chave do Explorar.
+  const days = useQuery({
+    ...trpc.pubs.gameDays.queryOptions({ ...center, radiusKm: gameKm }),
+    enabled: deferred.length > 0
+  })
+  const laterDays = (days.data ?? [])
+    .filter((d) => d.day !== today && d.games > 0)
+    .slice(0, 6)
+  const laterBoards = useQueries({
+    queries: laterDays.map((d) =>
+      trpc.pubs.gameBoard.queryOptions({
+        ...center,
+        radiusKm: gameKm,
+        day: d.day
+      })
+    )
+  })
 
   // Aberta por link (aviso, DEV) não há tela embaixo: volta ao Explorar.
   const close = () =>
@@ -112,9 +138,9 @@ export default function Search() {
   const finish = () => {
     if (query.trim()) remember(query)
   }
-  const openGame = (game: RowGame) => {
+  const openGame = (game: FoundGame) => {
     finish()
-    state.setFilters({ ...state.filters, date: today })
+    state.setFilters({ ...state.filters, date: brasiliaDay(game.startsAt) })
     state.setLiveOnly(false)
     state.setGame(game.key)
     close()
@@ -132,8 +158,15 @@ export default function Search() {
   }
 
   const typing = deferred.length > 0
-  const teams = typing ? matchTeams(row, deferred) : []
-  const games = typing ? matchGames(row, deferred) : []
+  // Hoje e os próximos dias com jogo, todos da régua do Explorar.
+  const later = typing
+    ? laterBoards.flatMap((board) =>
+        gameRow(board.data?.games ?? [], null, now)
+      )
+    : []
+  const all: FoundGame[] = [...row, ...later]
+  const teams = typing ? matchTeams(all, deferred).slice(0, 4) : []
+  const games = typing ? matchGames(all, deferred).slice(0, 6) : []
   const local = matchQuery(bars, deferred, now)
   // Bares pelo nome: o jogo e o bairro já têm a seção deles.
   const foundBars = typing
@@ -239,7 +272,7 @@ export default function Search() {
                       </View>
                     }
                     title={<Hl value={team.name} query={deferred} />}
-                    sub={`${team.game.live ? 'agora' : `hoje ${formatTime(team.game.startsAt)}`} × ${team.rival} · ${bareCount(team.game.bars.length)}`}
+                    sub={`${team.game.live ? 'agora' : `${dayWord(team.game.startsAt, now)} ${formatTime(team.game.startsAt)}`} × ${team.rival} · ${bareCount(team.game.bars.length)}`}
                     onPress={() => openGame(team.game)}
                   />
                 ))}
@@ -252,6 +285,7 @@ export default function Search() {
                     key={game.key}
                     game={game}
                     first={i === 0}
+                    now={now}
                     query={deferred}
                     onPress={() => openGame(game)}
                   />
@@ -350,6 +384,7 @@ export default function Search() {
                     key={game.key}
                     game={game}
                     first={i === 0}
+                    now={now}
                     onPress={() => openGame(game)}
                   />
                 ))}
@@ -381,6 +416,27 @@ export default function Search() {
 
 const avg = (values: number[]) =>
   values.reduce((sum, v) => sum + v, 0) / Math.max(values.length, 1)
+
+/** Um jogo da busca: o da régua de hoje ou o de outro dia, mesma chave. */
+type FoundGame = Pick<
+  RowGame,
+  'key' | 'title' | 'championship' | 'startsAt' | 'live'
+> & { bars: unknown[] }
+
+/** "hoje", "amanhã" ou "sáb 15", como na linha do desenho. */
+function dayWord(at: string, now: number) {
+  const day = brasiliaDay(at)
+  if (day === brasiliaDay(now)) return 'hoje'
+  if (day === brasiliaDay(now, 1)) return 'amanhã'
+  const date = new Date(at)
+  const week = date
+    .toLocaleDateString('pt-BR', {
+      weekday: 'short',
+      timeZone: 'America/Sao_Paulo'
+    })
+    .replace('.', '')
+  return `${week} ${Number(day.slice(8))}`
+}
 
 const bareCount = (n: number) => `${n} ${n === 1 ? 'bar' : 'bares'}`
 
@@ -462,10 +518,12 @@ function GameRow({
   game,
   first,
   query = '',
+  now,
   onPress
 }: {
-  game: RowGame
+  game: FoundGame
   first: boolean
+  now: number
   query?: string
   onPress: () => void
 }) {
@@ -484,7 +542,9 @@ function GameRow({
             {formatTime(game.startsAt)}
           </Text>
           <Text style={[styles.day, { color: palette.muted }]}>
-            {game.live ? 'AO VIVO' : 'HOJE'}
+            {game.live
+              ? 'AO VIVO'
+              : dayWord(game.startsAt, now).toLocaleUpperCase('pt-BR')}
           </Text>
         </View>
       }
