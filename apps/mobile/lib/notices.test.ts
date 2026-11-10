@@ -6,6 +6,7 @@ import {
   noticeSections,
   noticeTime,
   startsIn,
+  noticeAgo,
   todayGoing
 } from './notices'
 import { sides } from './search'
@@ -262,5 +263,21 @@ describe('chamado de amigo (Rodada 24)', () => {
     expect(callLine(call('a', iso(81.5)), NOW)).toBe(
       'Corinthians × Palmeiras · Bar do Zé · sex 21:30'
     )
+  })
+})
+
+describe('noticeAgo (rodada 5)', () => {
+  // 20/10/2026, 20:00 em Brasília.
+  const at = Date.parse('2026-10-20T23:00:00Z')
+  const minus = (ms: number) => new Date(at - ms).toISOString()
+  test('minutos, horas, ontem e o dia da semana', () => {
+    expect(noticeAgo(minus(20_000), at)).toBe('agora')
+    expect(noticeAgo(minus(12 * 60_000), at)).toBe('há 12 min')
+    expect(noticeAgo(minus(2 * 3_600_000), at)).toBe('há 2 h')
+    expect(noticeAgo(minus(24 * 3_600_000), at)).toBe('ontem')
+    expect(noticeAgo(minus(3 * 24 * 3_600_000), at)).toBe('sáb')
+  })
+  test('horário futuro não tem tempo', () => {
+    expect(noticeAgo(new Date(at + 60_000).toISOString(), at)).toBeNull()
   })
 })

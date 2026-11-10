@@ -370,3 +370,19 @@ export function todayGoing(
         : ` e mais ${others} amigos vão`
   }
 }
+
+/**
+ * Quando o aviso chegou, como no desenho da rodada 5: "agora", "há 12 min",
+ * "há 2 h", "ontem", o dia da semana ("seg") e, com mais de seis dias, a
+ * data ("12 out"). Horário futuro (o do jogo) não tem tempo: `null`.
+ */
+export function noticeAgo(at: string, now: number): string | null {
+  const ms = now - new Date(at).getTime()
+  if (ms < 0) return null
+  const minutes = Math.floor(ms / 60_000)
+  if (minutes < 1) return 'agora'
+  if (dayKey(at) === dayKey(now))
+    return minutes < 60 ? `há ${minutes} min` : `há ${Math.floor(minutes / 60)} h`
+  if (dayKey(at) === dayKey(now - DAY)) return 'ontem'
+  return noticeTime(at, now).toLocaleLowerCase('pt-BR')
+}
