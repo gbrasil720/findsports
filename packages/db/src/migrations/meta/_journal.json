@@ -610,6 +610,13 @@
       "when": 1794260149356,
       "tag": "0087_team_kind_race",
       "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1794343399405,
+      "tag": "0088_month_crown",
+      "breakpoints": true
     }
   ]
 }
