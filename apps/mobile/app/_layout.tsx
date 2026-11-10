@@ -189,7 +189,8 @@ export default function Layout() {
                   name="filtros"
                   options={{
                     presentation: 'formSheet',
-                    sheetAllowedDetents: [0.9],
+                    // O topo a 58 pt da tela, como no desenho (rodada 5).
+                    sheetAllowedDetents: [0.93],
                     sheetGrabberVisible: true,
                     sheetCornerRadius: 30
                   }}

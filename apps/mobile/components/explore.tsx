@@ -406,15 +406,7 @@ export function Chip({
   onPress
 }: {
   label: string
-  icon?:
-    | 'tv'
-    | 'outdoor'
-    | 'sound'
-    | 'ticket'
-    | 'premiere'
-    | 'person'
-    | 'map'
-    | 'search'
+  icon?: Parameters<typeof Icon>[0]['name']
   live?: boolean
   on: boolean
   onPress: () => void

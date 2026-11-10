@@ -1,21 +1,10 @@
 import { brasiliaDay } from '@findsports_oficial/db/event-window'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
-import { useState } from 'react'
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  useWindowDimensions,
-  View
-} from 'react-native'
-import MapView from 'react-native-maps'
+import { type ReactNode, useState } from 'react'
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Card } from '@/components/card'
-import { RadiusCircle } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
-import { Glass } from '@/components/glass'
 import { haptic, ScalePress } from '@/components/motion'
 import { usePalette } from '@/components/theme'
 import { ACID, Icon, INK, PAPER, PillButton, Text, text } from '@/components/ui'
@@ -24,34 +13,29 @@ import { authClient } from '@/lib/auth-client'
 import { searchCenter } from '@/lib/explore'
 import { barCount, gameRow } from '@/lib/explore-board'
 import {
-  activeCount,
-  BAR_ITEMS,
-  CHIP_GROUPS,
   defaultShortcuts,
+  FILTER_GROUPS,
   type Filters,
   MAX_SHORTCUTS,
   NO_FILTERS,
-  RADII,
   type Shortcut,
   searchRadius,
   shortcutLabel,
-  sportCode,
+  sportLook,
   sportsMineFirst,
   toggleAmenity,
   toggleShortcut
 } from '@/lib/filters'
-import { MAP_STYLE } from '@/lib/map-style'
 import { trpc } from '@/lib/trpc'
 
 /*
- * Todos os filtros (19d do design): folha sobre o Explorar. Mexe num rascunho
- * dos filtros e da fileira de atalhos; "Ver N bares" aplica, "Cancelar"
- * descarta. O alfinete de cada filtro fixa ou tira o filtro do topo do mapa.
- * "Só bares com jogo publicado" esconde os bares sem jogo que completam o
- * Explorar; desligado por padrão, ao contrário do design, que o desenha
- * ligado, porque mostrar esses bares foi decisão do dono (21/10/2026).
- * Abaixo de "No bar", as características em chip (`CHIP_GROUPS`): Pagamento
- * do design e os itens novos do catálogo (WEB-455).
+ * Filtros (Tela 2 da rodada 5, 19d): folha sobre o Explorar. Mexe num
+ * rascunho dos filtros e da fileira de atalhos; "Ver N bares" aplica e o X
+ * descarta. No topo, "Atalhos no mapa": o que está fixado, as vagas e
+ * "Ordenar" (a 19e). Cada filtro tem o alfinete, que fixa ou tira do topo.
+ * "Só bares com jogo publicado" fica no alto porque muda tudo embaixo, e
+ * nasce desligado (mostrar os bares sem jogo foi decisão do dono, 21/10/2026).
+ * A distância não está aqui: é o chip "Até N km" do Explorar.
  */
 
 export default function FiltersSheet() {
@@ -59,11 +43,6 @@ export default function FiltersSheet() {
   const insets = useSafeAreaInsets()
   const palette = usePalette()
   const state = useExploreState()
-  // Colunas de largura fixa: com `flexGrow` o tile que sobra na última
-  // linha esticava até a borda.
-  const { width } = useWindowDimensions()
-  const col3 = (width - 36 - 16) / 3
-  const col2 = (width - 36 - 8) / 2
   const session = authClient.useSession()
   const sports = useQuery(trpc.pubs.getSports.queryOptions())
   // Sem conta (o Explorar abre aberto): sem preferências nem cidade do
@@ -88,8 +67,7 @@ export default function FiltersSheet() {
     if (state.shortcuts) setPins(state.shortcuts)
   }
   const center = searchCenter(state.device, fan ? city.data : state.localCity)
-  const profileRadius = session.data?.user.searchRadiusKm ?? 3
-  const radiusKm = searchRadius(draft, profileRadius)
+  const radiusKm = searchRadius(draft, session.data?.user.searchRadiusKm ?? 3)
 
   const days = useQuery({
     ...trpc.pubs.gameDays.queryOptions({
@@ -116,7 +94,7 @@ export default function FiltersSheet() {
     gameRow(preview.data?.games ?? [], sportSlug, Date.now()),
     draft.amenities
   )
-  const more = false
+  const full = pins.length >= MAX_SHORTCUTS
 
   const pin = (key: Shortcut) => {
     haptic.select()
@@ -128,10 +106,6 @@ export default function FiltersSheet() {
     state.setShortcuts(pins)
     router.back()
   }
-  const active = activeCount(draft)
-  const radiusOptions = RADII.includes(profileRadius as never)
-    ? RADII
-    : [...RADII, profileRadius].sort((a, b) => a - b)
 
   return (
     <>
@@ -146,33 +120,21 @@ export default function FiltersSheet() {
       >
         <View style={styles.head}>
           <Text style={[styles.title, { color: palette.ink }]}>Filtros</Text>
-          {active ? (
-            <Pressable
-              accessibilityRole="button"
-              hitSlop={10}
-              // Limpar vale na hora, sem o "Ver N bares": sair da folha
-              // depois de limpar não devolve os filtros antigos.
-              onPress={() => {
-                haptic.select()
-                setDraft(NO_FILTERS)
-                state.setFilters(NO_FILTERS)
-              }}
-            >
-              <Text style={[text(14, 'Bold'), { color: palette.live }]}>
-                Limpar · {active}
-              </Text>
-            </Pressable>
-          ) : null}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Fechar sem aplicar"
+            hitSlop={6}
+            onPress={() => router.back()}
+            style={[styles.close, { backgroundColor: palette.mark }]}
+          >
+            <Icon name="close" size={20} color={palette.ink} />
+          </Pressable>
         </View>
 
-        <Card
-          shadow={
-            palette.dark ? 'rgba(201,241,53,.22)' : 'rgba(201,241,53,.85)'
-          }
-          offset={5}
+        <View
           style={[
             styles.pinsCard,
-            { backgroundColor: palette.dark ? palette.card : INK }
+            palette.dark && { backgroundColor: '#26261f' }
           ]}
         >
           <View style={styles.pinsHead}>
@@ -188,18 +150,29 @@ export default function FiltersSheet() {
                 state.setShortcuts(pins)
                 router.push('/atalhos')
               }}
+              style={styles.order}
             >
-              <Text style={[text(13, 'Bold'), { color: ACID }]}>Editar</Text>
+              <Text style={[text(13, 'Bold'), { color: ACID }]}>Ordenar</Text>
+              <Icon name="next" size={14} color={ACID} />
             </Pressable>
           </View>
-          <View style={styles.pinsRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.pinsRow}
+          >
             {pins.map((key) => {
               const shown = shortcutLabel(key, sports.data ?? [])
               if (!shown) return null
               return (
                 <View key={key} style={styles.pinChip}>
                   {shown.icon ? (
-                    <Icon name={shown.icon} size={14} color={PAPER} />
+                    <Icon
+                      name={shown.icon}
+                      size={16}
+                      color={PAPER}
+                      accent={ACID}
+                    />
                   ) : null}
                   <Text style={[text(12.5, 'SemiBold', 1.2), { color: PAPER }]}>
                     {shown.label}
@@ -209,23 +182,48 @@ export default function FiltersSheet() {
             })}
             {pins.length < MAX_SHORTCUTS ? (
               <View style={styles.pinFree}>
-                <Text
-                  style={[text(12.5, 'Regular', 1.2), { color: '#aaa9a4' }]}
-                >
+                <Text style={[text(12, 'SemiBold', 1.2), { color: '#aaa9a4' }]}>
                   + {MAX_SHORTCUTS - pins.length}{' '}
                   {MAX_SHORTCUTS - pins.length === 1 ? 'vaga' : 'vagas'}
                 </Text>
               </View>
             ) : null}
-          </View>
+          </ScrollView>
           <Text style={[text(12, 'Regular', 1.35), { color: '#aaa9a4' }]}>
             Toque no alfinete de qualquer filtro para fixar ou tirar do topo.
           </Text>
-        </Card>
+        </View>
 
-        <Section title="Quando" meta="jogos perto de você">
+        <Pressable
+          accessibilityRole="switch"
+          accessibilityState={{ checked: draft.gamesOnly }}
+          onPress={() => {
+            haptic.select()
+            setDraft({ ...draft, gamesOnly: !draft.gamesOnly })
+          }}
+          style={[
+            styles.toggle,
+            { backgroundColor: palette.card, shadowColor: palette.drop }
+          ]}
+        >
+          <View style={{ flex: 1 }}>
+            <Text
+              style={[text(14.5, 'SemiBold', 1.25), { color: palette.ink }]}
+            >
+              Só bares com jogo publicado
+            </Text>
+            <Text
+              style={[text(12.5, 'Regular', 1.3), { color: palette.muted }]}
+            >
+              Esconde os bares sem jogo marcado.
+            </Text>
+          </View>
+          <Switch on={draft.gamesOnly} />
+        </Pressable>
+
+        <Group title="Quando">
           <View style={styles.days}>
-            {(days.data ?? []).map((d, i) => {
+            {(days.data ?? []).slice(0, 3).map((d, i) => {
               const on = draft.date === d.day
               return (
                 <ScalePress
@@ -233,7 +231,6 @@ export default function FiltersSheet() {
                   containerStyle={{ flex: 1 }}
                   accessibilityRole="button"
                   accessibilityState={{ selected: on }}
-                  accessibilityLabel={`${weekday(d.day, i)}, ${d.games} ${d.games === 1 ? 'jogo' : 'jogos'}`}
                   onPress={() => {
                     haptic.select()
                     setDraft({ ...draft, date: on ? null : d.day })
@@ -241,438 +238,229 @@ export default function FiltersSheet() {
                   style={[
                     styles.day,
                     on
-                      ? palette.dark
-                        ? { backgroundColor: ACID }
-                        : styles.dayOnLight
+                      ? { backgroundColor: palette.ink, shadowColor: '#000' }
                       : {
                           backgroundColor: palette.card,
-                          borderColor: palette.ring,
-                          borderWidth: 1
+                          shadowColor: palette.drop
                         }
                   ]}
                 >
                   <Text
                     style={[
-                      text(11, 'SemiBold', 1.1),
-                      {
-                        color: on ? (palette.dark ? INK : PAPER) : palette.muted
-                      }
+                      text(14, 'Bold', 1.2),
+                      { color: on ? palette.bg : palette.ink }
                     ]}
                   >
-                    {weekday(d.day, i)}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.dayNumber,
-                      { color: on ? (palette.dark ? INK : PAPER) : palette.ink }
-                    ]}
-                  >
-                    {Number(d.day.slice(8))}
+                    {dayName(d.day, i)}
                   </Text>
                   <Text
                     style={[
                       styles.mono,
-                      {
-                        color: on ? (palette.dark ? INK : ACID) : palette.muted
-                      }
+                      on
+                        ? { color: palette.bg, opacity: 0.7 }
+                        : { color: palette.muted }
                     ]}
                   >
-                    {d.games} jg
+                    {d.games} {d.games === 1 ? 'jogo' : 'jogos'}
                   </Text>
                 </ScalePress>
               )
             })}
           </View>
-        </Section>
+        </Group>
 
-        <Section title="Esporte" meta="seus primeiro">
-          <View style={styles.grid3}>
-            {sportList.map((sport) => {
-              const on = draft.sportId === sport.id
-              const key = `esporte:${sport.slug}`
-              return (
-                <ScalePress
-                  key={sport.id}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: on }}
-                  onPress={() => {
-                    haptic.select()
-                    setDraft({ ...draft, sportId: on ? null : sport.id })
-                  }}
-                  style={[
-                    styles.sport,
-                    { width: col3 },
-                    on
-                      ? styles.sportOn
-                      : {
-                          backgroundColor: palette.card,
-                          borderColor: palette.ring,
-                          borderWidth: 1
-                        }
-                  ]}
-                >
-                  <Text
-                    style={[styles.code, { color: on ? INK : palette.ink }]}
-                  >
-                    {sportCode(sport.name)}
-                  </Text>
-                  <Text
-                    style={[
-                      text(14, 'Bold', 1.2),
-                      { color: on ? INK : palette.ink }
-                    ]}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.8}
-                  >
-                    {sport.name}
-                  </Text>
-                  <View style={styles.sportPin}>
-                    <PinButton
-                      on={pins.includes(key)}
-                      onTint={on}
-                      full={pins.length >= MAX_SHORTCUTS}
-                      label={sport.name}
-                      onPress={() => pin(key)}
-                    />
-                  </View>
-                </ScalePress>
-              )
-            })}
-          </View>
-        </Section>
-
-        <Section
-          title="Distância"
-          meta={state.district ? `de ${state.district}` : 'de onde você está'}
-        >
-          <View style={[styles.map, { borderColor: palette.ring }]}>
-            <MapView
-              style={StyleSheet.absoluteFill}
-              region={{
-                latitude: center.lat,
-                longitude: center.lng,
-                // O círculo do raio cabe na altura do recorte.
-                latitudeDelta: (radiusKm * 2.6) / 111,
-                longitudeDelta: (radiusKm * 2.6) / 111
-              }}
-              mapType="mutedStandard"
-              customMapStyle={palette.dark ? MAP_STYLE.dark : MAP_STYLE.light}
-              userInterfaceStyle={palette.dark ? 'dark' : 'light'}
-              showsPointsOfInterests={false}
-              scrollEnabled={false}
-              zoomEnabled={false}
-              rotateEnabled={false}
-              pitchEnabled={false}
-              pointerEvents="none"
-            >
-              <RadiusCircle
-                center={{ latitude: center.lat, longitude: center.lng }}
-                km={radiusKm}
-                dark={palette.dark}
-                strong
+        <Group title="Esporte">
+          {sportList.map((sport) => {
+            const look = sportLook(sport)
+            const key = `esporte:${sport.slug}`
+            return (
+              <FilterChip
+                key={sport.id}
+                label={look.label}
+                icon={look.icon}
+                on={draft.sportId === sport.id}
+                pinned={pins.includes(key)}
+                full={full}
+                onPress={() =>
+                  setDraft({
+                    ...draft,
+                    sportId: draft.sportId === sport.id ? null : sport.id
+                  })
+                }
+                onPin={() => pin(key)}
               />
-            </MapView>
-            <View style={styles.mapCount}>
-              <Glass
-                tone={palette.dark ? 'dark' : 'light'}
-                style={styles.mapCountGlass}
-              >
-                <Text
-                  style={[text(13.5, 'SemiBold', 1.2), { color: palette.ink }]}
-                >
-                  <Text style={styles.monoBold}>
-                    {count}
-                    {more ? '+' : ''}
-                  </Text>{' '}
-                  {count === 1 ? 'bar' : 'bares'}
-                </Text>
-              </Glass>
-            </View>
-          </View>
-          <View style={[styles.segment, { backgroundColor: palette.mark }]}>
-            {radiusOptions.map((km) => {
-              const on = radiusKm === km
-              return (
-                <Pressable
-                  key={km}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: on }}
-                  onPress={() => {
-                    haptic.select()
-                    setDraft({
-                      ...draft,
-                      radius: km === profileRadius ? null : km
-                    })
-                  }}
-                  style={[
-                    styles.segmentItem,
-                    on && {
-                      backgroundColor: palette.dark ? ACID : INK
-                    }
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.mono13,
-                      {
-                        color: on ? (palette.dark ? INK : ACID) : palette.muted
-                      }
-                    ]}
-                  >
-                    {km} km
-                  </Text>
-                </Pressable>
-              )
-            })}
-          </View>
-        </Section>
+            )
+          })}
+        </Group>
 
-        <Section title="No bar">
-          <View style={styles.grid2}>
-            {BAR_ITEMS.map((item) => {
-              const on = draft.amenities.includes(item.id)
+        {FILTER_GROUPS.map((group) => (
+          <Group key={group.title} title={group.title}>
+            {group.items.map((item) => {
               const key = `item:${item.id}`
               return (
-                <ScalePress
+                <FilterChip
                   key={item.id}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: on }}
-                  onPress={() => {
-                    haptic.select()
-                    setDraft(toggleAmenity(draft, item.id))
-                  }}
-                  style={[
-                    styles.item,
-                    { width: col2 },
-                    on
-                      ? [
-                          styles.itemOn,
-                          {
-                            backgroundColor: palette.dark
-                              ? palette.card
-                              : '#fff',
-                            borderColor: palette.dark ? ACID : INK
-                          }
-                        ]
-                      : {
-                          backgroundColor: palette.card,
-                          borderColor: palette.ring,
-                          borderWidth: 1
-                        }
-                  ]}
-                >
-                  <Icon name={item.icon} size={20} color={palette.ink} />
-                  <Text
-                    style={[
-                      text(13.5, 'Bold', 1.15),
-                      { color: palette.ink, flex: 1 }
-                    ]}
-                  >
-                    {item.label}
-                  </Text>
-                  <PinButton
-                    on={pins.includes(key)}
-                    full={pins.length >= MAX_SHORTCUTS}
-                    label={item.label}
-                    onPress={() => pin(key)}
-                  />
-                </ScalePress>
+                  label={item.label}
+                  icon={item.icon}
+                  on={draft.amenities.includes(item.id)}
+                  pinned={pins.includes(key)}
+                  full={full}
+                  onPress={() => setDraft(toggleAmenity(draft, item.id))}
+                  onPin={() => pin(key)}
+                />
               )
             })}
-          </View>
-        </Section>
-
-        {CHIP_GROUPS.map((group) => (
-          <Section key={group.title} title={group.title}>
-            <View style={styles.chips}>
-              {group.items.map((item) => {
-                const on = draft.amenities.includes(item.id)
-                return (
-                  <ScalePress
-                    key={item.id}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: on }}
-                    onPress={() => {
-                      haptic.select()
-                      setDraft(toggleAmenity(draft, item.id))
-                    }}
-                    style={[
-                      styles.pay,
-                      on
-                        ? { backgroundColor: ACID, borderColor: ACID }
-                        : { borderColor: palette.line }
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        text(13, 'SemiBold', 1.2),
-                        { color: on ? INK : palette.ink }
-                      ]}
-                    >
-                      {item.label}
-                    </Text>
-                  </ScalePress>
-                )
-              })}
-            </View>
-          </Section>
+          </Group>
         ))}
-
-        <View
-          style={[
-            styles.gamesOnly,
-            { backgroundColor: palette.card, borderColor: palette.ring }
-          ]}
-        >
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={[text(14.5, 'Bold', 1.25), { color: palette.ink }]}>
-              Só bares com jogo publicado
-            </Text>
-            <Text
-              style={[text(12.5, 'Regular', 1.3), { color: palette.muted }]}
-            >
-              Esconde quem ainda não montou a agenda
-            </Text>
-          </View>
-          <Switch
-            accessibilityLabel="Só bares com jogo publicado"
-            value={draft.gamesOnly}
-            onValueChange={(gamesOnly) => {
-              haptic.select()
-              setDraft({ ...draft, gamesOnly })
-            }}
-            trackColor={{
-              false: palette.line,
-              true: palette.dark ? ACID : INK
-            }}
-            ios_backgroundColor={palette.line}
-          />
-        </View>
       </ScrollView>
 
-      {/* A cápsula de vidro do rodapé, como a da folha "Vou assistir aqui". */}
       <View
-        style={[styles.dockShadow, { bottom: Math.max(insets.bottom - 6, 14) }]}
+        style={[
+          styles.foot,
+          {
+            backgroundColor: palette.sheet,
+            borderTopColor: palette.line,
+            paddingBottom: Math.max(insets.bottom, 12) + 12
+          }
+        ]}
       >
-        <Glass
-          tone={palette.dark ? 'dark' : 'light'}
-          tint={palette.dark ? undefined : 'rgba(255,255,255,.62)'}
-          style={styles.dock}
+        <Pressable
+          accessibilityRole="button"
+          // Limpar vale na hora, sem o "Ver N bares": sair da folha depois
+          // de limpar não devolve os filtros antigos.
+          onPress={() => {
+            haptic.select()
+            setDraft(NO_FILTERS)
+            state.setFilters(NO_FILTERS)
+          }}
+          style={[styles.clear, { borderColor: palette.line }]}
         >
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.back()}
-            style={[
-              styles.cancel,
-              {
-                backgroundColor: palette.dark
-                  ? 'rgba(241,238,230,.08)'
-                  : 'rgba(255,255,255,.5)',
-                borderColor: palette.ring
-              }
-            ]}
-          >
-            <Text style={[text(15, 'Bold'), { color: palette.ink }]}>
-              Cancelar
-            </Text>
-          </Pressable>
-          <View style={{ flex: 1 }}>
-            <PillButton
-              label={
-                count || !preview.isFetched
-                  ? `Ver ${count}${more ? '+' : ''} ${count === 1 ? 'bar' : 'bares'}`
+          <Text style={[text(16, 'Bold'), { color: palette.ink }]}>Limpar</Text>
+        </Pressable>
+        <View style={{ flex: 1 }}>
+          <PillButton
+            label={
+              preview.isFetching
+                ? 'Contando…'
+                : count || !preview.isFetched
+                  ? `Ver ${count} ${count === 1 ? 'bar' : 'bares'}`
                   : 'Nenhum bar'
-              }
-              height={52}
-              onPress={apply}
-            />
-          </View>
-        </Glass>
+            }
+            height={52}
+            onPress={apply}
+          />
+        </View>
       </View>
     </>
   )
 }
 
-/** "Hoje" para o primeiro dia; depois "Ter", "Qua"... */
-function weekday(day: string, index: number) {
+/** "Hoje", "Amanhã", depois "Qua 11". */
+function dayName(day: string, index: number) {
   if (index === 0) return 'Hoje'
-  return new Date(`${day}T12:00:00Z`)
+  if (index === 1) return 'Amanhã'
+  const weekday = new Date(`${day}T12:00:00Z`)
     .toLocaleDateString('pt-BR', { weekday: 'short', timeZone: 'UTC' })
     .replace('.', '')
-    .replace(/^./, (c) => c.toUpperCase())
+  return `${weekday.replace(/^./, (c) => c.toUpperCase())} ${Number(day.slice(8))}`
 }
 
-function Section({
-  title,
-  meta,
-  children
-}: {
-  title: string
-  meta?: string
-  children: React.ReactNode
-}) {
+function Group({ title, children }: { title: string; children: ReactNode }) {
   const palette = usePalette()
   return (
-    <View style={{ gap: 10 }}>
-      <View style={styles.sectionHead}>
-        <Text style={[text(15, 'Bold'), { color: palette.ink }]}>{title}</Text>
-        {meta ? (
-          <Text style={[text(12.5), { color: palette.muted }]}>{meta}</Text>
-        ) : null}
-      </View>
-      {children}
+    <View style={{ gap: 9 }}>
+      <Text style={[text(15, 'Bold'), { color: palette.ink }]}>{title}</Text>
+      <View style={styles.chips}>{children}</View>
     </View>
   )
 }
 
-/** O alfinete que fixa o filtro no topo do mapa. */
-function PinButton({
-  on,
-  onTint,
-  full,
+/** O interruptor do desenho: acid com a bolinha de tinta, ou apagado. */
+function Switch({ on }: { on: boolean }) {
+  const palette = usePalette()
+  return (
+    <View
+      style={[styles.switch, { backgroundColor: on ? ACID : palette.mark }]}
+    >
+      <View
+        style={[
+          styles.knob,
+          on
+            ? { right: 3, backgroundColor: INK }
+            : { left: 3, backgroundColor: palette.card }
+        ]}
+      />
+    </View>
+  )
+}
+
+/** O chip do filtro com o alfinete que fixa no topo do mapa. */
+function FilterChip({
   label,
-  onPress
+  icon,
+  on,
+  pinned,
+  full,
+  onPress,
+  onPin
 }: {
+  label: string
+  icon?: Parameters<typeof Icon>[0]['name']
   on: boolean
-  /** Sobre o tile ligado (acid): o alfinete vai em tinta. */
-  onTint?: boolean
+  pinned: boolean
   /** Fileira cheia: fixar outro não cabe, só tirar. */
   full: boolean
-  label: string
   onPress: () => void
+  onPin: () => void
 }) {
   const palette = usePalette()
-  const lit = on ? (palette.dark && !onTint ? ACID : INK) : 'transparent'
+  const fg = on ? palette.bg : palette.ink
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={
-        on ? `Tirar ${label} do mapa` : `Fixar ${label} no mapa`
-      }
-      accessibilityState={{ selected: on, disabled: !on && full }}
-      hitSlop={8}
-      onPress={on || !full ? onPress : () => haptic.error()}
+      accessibilityState={{ selected: on }}
+      onPress={() => {
+        haptic.select()
+        onPress()
+      }}
       style={[
-        styles.pin,
-        { backgroundColor: lit },
-        !on && { borderWidth: 1, borderColor: palette.line },
-        !on && full && { opacity: 0.4 }
+        styles.chip,
+        { backgroundColor: on ? palette.ink : palette.mark }
       ]}
     >
-      <Icon
-        name="pin"
-        size={13}
-        color={on ? (lit === ACID ? INK : ACID) : palette.muted}
-        accent={on ? (lit === ACID ? INK : ACID) : palette.muted}
-      />
+      {icon ? (
+        <Icon name={icon} size={16} color={fg} accent={on ? ACID : undefined} />
+      ) : null}
+      <Text style={[text(13.5, 'SemiBold', 1.2), { color: fg }]}>{label}</Text>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={
+          pinned ? `Tirar ${label} do mapa` : `Fixar ${label} no mapa`
+        }
+        accessibilityState={{ selected: pinned, disabled: !pinned && full }}
+        hitSlop={8}
+        onPress={pinned || !full ? onPin : () => haptic.error()}
+        style={[
+          styles.pin,
+          pinned
+            ? { backgroundColor: ACID }
+            : { borderColor: fg, borderWidth: 1.5, opacity: 0.35 }
+        ]}
+      >
+        <Icon
+          name="pin"
+          size={12}
+          color={pinned ? INK : fg}
+          accent={pinned ? INK : fg}
+        />
+      </Pressable>
     </Pressable>
   )
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  body: { paddingHorizontal: 18, paddingTop: 22, gap: 22 },
+  body: { paddingHorizontal: 18, paddingTop: 22, gap: 16 },
   head: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -684,164 +472,112 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: -0.7
   },
-  pinsCard: { paddingVertical: 12, paddingHorizontal: 14, gap: 10 },
-  pinsHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  pinsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  close: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  pinsCard: {
+    borderRadius: 20,
+    backgroundColor: INK,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  },
+  pinsHead: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  order: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  pinsRow: { gap: 6 },
   pinChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    height: 30,
-    paddingHorizontal: 11,
-    borderRadius: 15,
-    backgroundColor: 'rgba(241,238,230,.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(241,238,230,.2)'
+    gap: 7,
+    height: 32,
+    paddingHorizontal: 13,
+    borderRadius: 16,
+    backgroundColor: 'rgba(241,238,230,.1)'
   },
   pinFree: {
-    height: 30,
-    paddingHorizontal: 11,
-    borderRadius: 15,
+    height: 32,
+    paddingHorizontal: 10,
+    borderRadius: 16,
     borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: 'rgba(241,238,230,.3)',
+    borderColor: 'rgba(241,238,230,.25)',
     justifyContent: 'center'
   },
-  sectionHead: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline'
-  },
-  days: { flexDirection: 'row', gap: 6 },
-  day: {
-    flex: 1,
-    height: 70,
-    borderRadius: 5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4
-  },
-  dayOnLight: {
-    backgroundColor: INK,
-    shadowColor: ACID,
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    shadowOffset: { width: 3, height: 3 }
-  },
-  dayNumber: {
-    fontFamily: 'Anton',
-    fontSize: 20,
-    lineHeight: 30,
-    marginVertical: -5
-  },
-  mono: { fontFamily: 'GeistMono-SemiBold', fontSize: 10 },
-  mono13: { fontFamily: 'GeistMono-SemiBold', fontSize: 13 },
-  monoBold: { fontFamily: 'GeistMono-SemiBold' },
-  grid3: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  sport: {
-    height: 72,
-    borderRadius: 5,
-    padding: 10,
-    justifyContent: 'space-between'
-  },
-  sportOn: {
-    backgroundColor: ACID,
-    shadowColor: INK,
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    shadowOffset: { width: 3, height: 3 }
-  },
-  code: { fontFamily: 'GeistMono-SemiBold', fontSize: 11, letterSpacing: 0.66 },
-  sportPin: { position: 'absolute', right: 7, top: 7 },
-  map: {
-    height: 104,
-    borderRadius: 6,
-    overflow: 'hidden',
-    borderWidth: 1
-  },
-  mapCount: { position: 'absolute', right: 10, top: 10 },
-  mapCountGlass: {
-    height: 38,
-    paddingHorizontal: 15,
-    borderRadius: 19,
-    justifyContent: 'center',
-    overflow: 'hidden'
-  },
-  segment: { flexDirection: 'row', gap: 4, padding: 4, borderRadius: 6 },
-  segmentItem: {
-    flex: 1,
-    height: 34,
-    borderRadius: 4,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  grid2: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  item: {
-    height: 54,
-    borderRadius: 5,
-    paddingLeft: 12,
-    paddingRight: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10
-  },
-  itemOn: {
-    borderWidth: 1.5,
-    shadowColor: ACID,
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    shadowOffset: { width: 3, height: 3 }
-  },
-  pin: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  gamesOnly: {
+  toggle: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     paddingVertical: 12,
     paddingHorizontal: 14,
-    borderRadius: 7,
-    borderWidth: 1
+    borderRadius: 18,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
   },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  // Altura mínima, não fixa: com fonte grande o rótulo cresce sem cortar.
-  pay: {
-    minHeight: 34,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 5,
-    borderWidth: 1,
-    justifyContent: 'center'
-  },
-  dockShadow: {
+  switch: { width: 50, height: 30, borderRadius: 15 },
+  knob: {
     position: 'absolute',
-    left: 14,
-    right: 14,
-    borderRadius: 35,
-    backgroundColor: 'rgba(255,255,255,.01)',
-    shadowColor: INK,
+    top: 3,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    shadowColor: '#000',
     shadowOpacity: 0.3,
-    shadowRadius: 15,
-    shadowOffset: { width: 0, height: 12 }
+    shadowRadius: 1.5,
+    shadowOffset: { width: 0, height: 1 }
   },
-  dock: {
-    borderRadius: 35,
-    padding: 9,
+  days: { flexDirection: 'row', gap: 8, width: '100%' },
+  day: {
+    flex: 1,
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    gap: 3,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
+  },
+  mono: { fontFamily: 'GeistMono-SemiBold', fontSize: 11 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    overflow: 'hidden'
+    gap: 7,
+    height: 36,
+    paddingLeft: 13,
+    paddingRight: 7,
+    borderRadius: 18
   },
-  cancel: {
+  pin: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  foot: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    gap: 10,
+    paddingTop: 12,
+    paddingHorizontal: 18,
+    borderTopWidth: StyleSheet.hairlineWidth
+  },
+  clear: {
     height: 52,
-    paddingHorizontal: 20,
+    paddingHorizontal: 18,
     borderRadius: 26,
-    borderWidth: 1,
+    borderWidth: 1.5,
     justifyContent: 'center'
   }
 })

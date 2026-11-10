@@ -3,9 +3,10 @@ import { findAmenity } from '@findsports_oficial/api/lib/amenities'
 import {
   activeCount,
   applyShortcut,
-  CHIP_GROUPS,
+  BAR_ITEMS,
   dayKey,
   defaultShortcuts,
+  FILTER_GROUPS,
   MAX_SHORTCUTS,
   NO_FILTERS,
   SEARCH_LIMIT,
@@ -125,24 +126,26 @@ describe('searchRadius', () => {
   })
 })
 
-describe('características em chip (WEB-455)', () => {
+describe('grupos da folha de filtros (rodada 5)', () => {
   test('Pagamento separa Pix, Cartão e Vale-refeição, com Couvert', () => {
-    expect(CHIP_GROUPS[0]?.items.map((i) => i.label)).toEqual([
-      'Pix',
-      'Cartão',
-      'Vale-refeição',
-      'Couvert'
-    ])
+    expect(
+      FILTER_GROUPS.find((g) => g.title === 'Pagamento')?.items.map(
+        (i) => i.label
+      )
+    ).toEqual(['Pix', 'Cartão', 'Vale-refeição', 'Couvert'])
   })
 
-  test('cada chip é o item do catálogo com o mesmo nome', () => {
-    for (const item of CHIP_GROUPS.flatMap((g) => g.items)) {
-      expect(findAmenity(item.id)?.label).toBe(item.label)
-    }
+  test('todo filtro é um item do catálogo, sem repetir', () => {
+    const ids = BAR_ITEMS.map((item) => item.id)
+    expect(new Set(ids).size).toBe(ids.length)
+    for (const id of ids) expect(findAmenity(id)).toBeDefined()
   })
 
-  test('o atalho de um chip tem nome; o antigo "Pix e cartão" (14), não', () => {
-    expect(shortcutLabel('item:18', SPORTS)).toEqual({ label: 'Vale-refeição' })
+  test('o atalho tem nome e ícone; o antigo "Pix e cartão" (14), não', () => {
+    expect(shortcutLabel('item:18', SPORTS)).toEqual({
+      label: 'Vale-refeição',
+      icon: 'vale'
+    })
     expect(shortcutLabel('item:14', SPORTS)).toBeNull()
   })
 })

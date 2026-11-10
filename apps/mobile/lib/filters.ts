@@ -1,5 +1,6 @@
 import { brasiliaDay } from '@findsports_oficial/db/event-window'
 import { SEARCH_RADIUS_MAX_KM } from '@findsports_oficial/db/search-radius'
+import type { Icon } from '@/components/ui'
 
 /*
  * Filtros do Explorar (19d do design) e os atalhos no topo do mapa (19e).
@@ -167,57 +168,91 @@ export function sportsMineFirst<S extends { id: string; name: string }>(
   ]
 }
 
-/** "No bar" (19d): as características que o filtro oferece, na ordem do design. */
-export const BAR_ITEMS = [
-  { id: 1, label: 'Telão', icon: 'tv' },
-  { id: 2, label: 'Som do jogo', icon: 'sound' },
-  { id: 4, label: 'Área externa', icon: 'outdoor' },
-  { id: 10, label: 'Oferta da casa', icon: 'ticket' },
-  { id: 3, label: 'Premiere', icon: 'premiere' },
-  { id: 6, label: 'Acessível', icon: 'person' }
-] as const
+type IconName = Parameters<typeof Icon>[0]['name']
 
 /**
- * As características em chip, abaixo de "No bar" (WEB-455). "Pagamento" é a
- * do design (19d), com Couvert ("cobra couvert", decisão do dono); "Comida e
- * bebida" e "Para chegar" trazem os itens novos do catálogo que a folha do
- * design não desenha, com os nomes de grupo do painel do bar.
+ * As características do filtro em grupos, na ordem e com os nomes curtos da
+ * folha da rodada 5 (19d), um ícone para cada. Os grupos são os do catálogo
+ * (`lib/amenities.ts` do servidor); "Estacionamento" é o próximo (9), que
+ * inclui o do local.
  */
-export const CHIP_GROUPS: readonly {
+export const FILTER_GROUPS: readonly {
   title: string
-  items: readonly { id: number; label: string }[]
+  items: readonly { id: number; label: string; icon: IconName }[]
 }[] = [
   {
-    title: 'Pagamento',
+    title: 'Para ver o jogo',
     items: [
-      { id: 16, label: 'Pix' },
-      { id: 17, label: 'Cartão' },
-      { id: 18, label: 'Vale-refeição' },
-      { id: 19, label: 'Couvert' }
+      { id: 1, label: 'Telão', icon: 'tv' },
+      { id: 2, label: 'Som do jogo', icon: 'sound' },
+      { id: 3, label: 'Premiere', icon: 'premiere' }
+    ]
+  },
+  {
+    title: 'O espaço',
+    items: [
+      { id: 4, label: 'Área externa', icon: 'outdoor' },
+      { id: 5, label: 'Área coberta', icon: 'coberta' },
+      { id: 6, label: 'Acessível', icon: 'acessivel' },
+      { id: 7, label: 'Pet friendly', icon: 'pet' },
+      { id: 15, label: 'Wi-fi', icon: 'wifi' }
     ]
   },
   {
     title: 'Comida e bebida',
     items: [
-      { id: 21, label: 'Drinks' },
-      { id: 20, label: 'Opção vegetariana' }
+      { id: 13, label: 'Chopp', icon: 'beer' },
+      { id: 12, label: 'Petiscos', icon: 'petiscos' },
+      { id: 11, label: 'Cozinha até tarde', icon: 'cozinha' },
+      { id: 20, label: 'Vegetariana', icon: 'vegetariano' },
+      { id: 21, label: 'Drinks', icon: 'drinks' },
+      { id: 10, label: 'Oferta da casa', icon: 'ticket' }
+    ]
+  },
+  {
+    title: 'Pagamento',
+    items: [
+      { id: 16, label: 'Pix', icon: 'pix' },
+      { id: 17, label: 'Cartão', icon: 'cartao' },
+      { id: 18, label: 'Vale-refeição', icon: 'vale' },
+      { id: 19, label: 'Couvert', icon: 'couvert' }
     ]
   },
   {
     title: 'Para chegar',
     items: [
-      { id: 22, label: 'Perto do metrô' },
-      { id: 23, label: 'Bicicletário' }
+      { id: 22, label: 'Perto do metrô', icon: 'metro' },
+      { id: 23, label: 'Bicicletário', icon: 'bike' },
+      { id: 9, label: 'Estacionamento', icon: 'estacionamento' }
     ]
   }
 ]
 
+/** Todas as características do filtro, na ordem da folha. */
+export const BAR_ITEMS = FILTER_GROUPS.flatMap((group) => group.items)
+
 /** O nome curto de uma característica do filtro ("Telão", "Pix"). */
 export function itemLabel(id: number): string | undefined {
-  return (
-    BAR_ITEMS.find((i) => i.id === id)?.label ??
-    CHIP_GROUPS.flatMap((g) => g.items).find((i) => i.id === id)?.label
-  )
+  return BAR_ITEMS.find((i) => i.id === id)?.label
+}
+
+/** O ícone do esporte pelo slug; o nome curto do chip ("F1", "UFC"). */
+const SPORT_LOOK: Record<string, { icon: IconName; short?: string }> = {
+  futebol: { icon: 'futebol' },
+  basquete: { icon: 'basquete' },
+  'formula-1': { icon: 'f1', short: 'F1' },
+  'mma-ufc': { icon: 'ufc', short: 'UFC' },
+  'futebol-americano': { icon: 'nfl', short: 'NFL' },
+  tenis: { icon: 'tenis' },
+  volei: { icon: 'volei' }
+}
+
+export function sportLook(sport: { slug: string; name: string }): {
+  label: string
+  icon?: IconName
+} {
+  const look = SPORT_LOOK[sport.slug]
+  return { label: look?.short ?? sport.name, icon: look?.icon }
 }
 
 /** Raios do filtro de distância. */
@@ -227,20 +262,18 @@ export const RADII = [1, 2, 5, 10] as const
 export function shortcutLabel(
   key: Shortcut,
   sports: { slug: string; name: string }[]
-): { label: string; icon?: (typeof BAR_ITEMS)[number]['icon'] } | null {
-  if (key === 'hoje') return { label: 'Hoje' }
-  if (key === 'amanha') return { label: 'Amanhã' }
+): { label: string; icon?: IconName } | null {
+  if (key === 'hoje') return { label: 'Hoje', icon: 'calendar' }
+  if (key === 'amanha') return { label: 'Amanhã', icon: 'calendar' }
   const [kind, value] = key.split(':')
   if (kind === 'esporte') {
     const sport = sports.find((s) => s.slug === value)
-    return sport ? { label: sport.name } : null
+    return sport ? sportLook(sport) : null
   }
   if (kind === 'item') {
     const item = BAR_ITEMS.find((i) => i.id === Number(value))
-    if (item) return { label: item.label, icon: item.icon }
-    const label = itemLabel(Number(value))
-    return label ? { label } : null
+    return item ? { label: item.label, icon: item.icon } : null
   }
-  if (kind === 'raio') return { label: `Até ${value} km` }
+  if (kind === 'raio') return { label: `Até ${value} km`, icon: 'pin' }
   return null
 }

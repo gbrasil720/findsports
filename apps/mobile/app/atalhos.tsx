@@ -37,9 +37,8 @@ import {
 } from '@/components/ui'
 import { searchCenter } from '@/lib/explore'
 import {
-  BAR_ITEMS,
-  CHIP_GROUPS,
   defaultShortcuts,
+  FILTER_GROUPS,
   MAX_SHORTCUTS,
   type Shortcut,
   shortcutLabel,
@@ -97,8 +96,7 @@ export default function ShortcutsScreen() {
   const groups: { title: string; keys: Shortcut[] }[] = [
     { title: 'Quando', keys: ['hoje', 'amanha'] },
     { title: 'Esporte', keys: sportList.map((s) => `esporte:${s.slug}`) },
-    { title: 'No bar', keys: BAR_ITEMS.map((i) => `item:${i.id}`) },
-    ...CHIP_GROUPS.map((g) => ({
+    ...FILTER_GROUPS.map((g) => ({
       title: g.title,
       keys: g.items.map((i) => `item:${i.id}`)
     })),

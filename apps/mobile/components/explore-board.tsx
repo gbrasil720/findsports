@@ -251,16 +251,7 @@ export function SheetChip({
   onPress
 }: {
   label: string
-  icon?:
-    | 'pin'
-    | 'tv'
-    | 'sound'
-    | 'outdoor'
-    | 'ticket'
-    | 'search'
-    | 'person'
-    | 'premiere'
-    | 'map'
+  icon?: Parameters<typeof Icon>[0]['name']
   on: boolean
   live?: boolean
   onPress: () => void
