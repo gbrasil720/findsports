@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Image, Pressable, StyleSheet, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
 import Animated, {
   interpolateColor,
   useAnimatedStyle,
@@ -11,21 +11,21 @@ import { HardShadow, Perforation } from '@/components/explore'
 import { haptic, usePress, usePressScale } from '@/components/motion'
 import { PALETTE, PaletteProvider } from '@/components/theme'
 import { ACID, Icon, INK, PAPER, Text, text } from '@/components/ui'
-import type { Proposal, ProposalAction } from '@/lib/ai-events'
+import type { ConfirmResult, Proposal, ProposalAction } from '@/lib/ai-events'
 import { env } from '@/lib/env'
 import { formatCode } from '@/lib/my-games'
 import { Spinner } from './loader'
 import type { AiPalette } from './theme'
-import { Card, Dashed, MONO } from './tool'
+import { Card, MONO } from './tool'
 
 /*
- * Confirmação (Confirmation): toda ação que muda algo pede aprovação. A IA
- * só propõe; quem executa é o "Confirmar" (`ai.confirm`). Pendente, com um
- * interruptor por ação; depois vira uma linha com o resultado. E o cartão
- * do código no balcão que sai do "Vou assistir" (24e).
+ * Confirmação (rodada 5, `.prop`): a IA só propõe; quem executa é o
+ * "Confirmar" (`ai.confirm`). O cartão diz o que vai acontecer, uma linha por
+ * ação, e nada é feito até o toque. "Mudar" recusa e volta ao campo. Feito,
+ * vira o recibo ("Feito às 19:42") com "Ver código".
  */
 
-const ACTION_ICON = { going: 'ticket', call: 'people', remind: 'bell' } as const
+const ACTION_ICON = { going: 'check', call: 'person', remind: 'bell' } as const
 
 export function ConfirmCard({
   proposal,
@@ -33,155 +33,190 @@ export function ConfirmCard({
   when,
   sending,
   palette,
-  onToggle,
   onConfirm,
   onRefuse
 }: {
   proposal: Proposal
-  /** Os interruptores, na ordem de `proposal.actions`. */
+  /** O que vai ser feito, na ordem de `proposal.actions`. */
   values: boolean[]
   /** "hoje 21:30". */
   when: string
   sending: boolean
   palette: AiPalette
-  onToggle: (index: number) => void
+  onToggle?: (index: number) => void
   onConfirm: () => void
   onRefuse: () => void
 }) {
-  const none = !values.some(Boolean)
+  const actions = proposal.actions.filter((_, i) => values[i])
   return (
-    <View>
-      <View
-        style={[
-          StyleSheet.absoluteFill,
-          styles.glow,
-          { backgroundColor: 'rgba(201,241,53,.35)' }
-        ]}
-      />
-      <View
-        style={[
-          styles.confirm,
-          { backgroundColor: palette.card, borderColor: ACID }
-        ]}
-      >
-        <View style={styles.confirmHead}>
+    <View
+      style={[
+        styles.prop,
+        { backgroundColor: palette.card, shadowColor: palette.drop }
+      ]}
+    >
+      <View style={styles.kicker}>
+        <View style={styles.kickerDot} />
+        <Text style={[styles.kickerText, { color: palette.muted }]}>
+          PROPOSTA · NADA FOI FEITO AINDA
+        </Text>
+      </View>
+      {actions.map((action) => (
+        <View key={action.kind} style={styles.item}>
           <Icon
-            name="ticket"
-            size={19}
+            name={ACTION_ICON[action.kind]}
+            size={18}
             color={palette.ink}
             accent={palette.accent}
           />
           <Text
-            style={[text(15, 'Bold', 1.3), { flex: 1, color: palette.ink }]}
+            style={[
+              text(14.5, 'Regular', 1.35),
+              { flex: 1, color: palette.ink }
+            ]}
           >
-            Posso fazer isso por você?
+            <ActionText action={action} proposal={proposal} when={when} />
           </Text>
         </View>
-        <Dashed palette={palette} />
-        <View style={styles.confirmBody}>
-          <View style={styles.barRow}>
-            {proposal.bar.photoUrl ? (
-              <Image
-                source={{ uri: proposal.bar.photoUrl }}
-                style={styles.photo}
-              />
-            ) : (
-              <View style={[styles.photo, { backgroundColor: palette.mark }]} />
-            )}
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text
-                style={[text(16, 'Bold', 1.3), { color: palette.ink }]}
-                numberOfLines={1}
-              >
-                {proposal.bar.name}
-              </Text>
-              <Text
-                style={[text(12.5, 'Regular', 1.4), { color: palette.muted }]}
-                numberOfLines={1}
-              >
-                {proposal.game.title} · {when}
-              </Text>
-            </View>
-          </View>
-          <View style={{ marginTop: 8 }}>
-            {proposal.actions.map((action, i) => (
-              <ActionRow
-                key={action.kind}
-                action={action}
-                on={values[i] ?? false}
-                first={i === 0}
-                disabled={sending}
-                palette={palette}
-                onToggle={() => onToggle(i)}
-              />
-            ))}
-          </View>
-        </View>
-        <View style={styles.buttons}>
-          <LaterButton
-            palette={palette}
-            disabled={sending}
-            onPress={onRefuse}
-          />
-          <ConfirmButton
-            palette={palette}
-            sending={sending}
-            disabled={sending || none}
-            onPress={onConfirm}
-          />
-        </View>
+      ))}
+      <View style={styles.buttons}>
+        <LaterButton palette={palette} disabled={sending} onPress={onRefuse} />
+        <ConfirmButton
+          palette={palette}
+          sending={sending}
+          disabled={sending || !actions.length}
+          onPress={() => {
+            haptic.select()
+            onConfirm()
+          }}
+        />
       </View>
+      <Text style={[text(12.5, 'Regular', 1.3), { color: palette.muted }]}>
+        Só acontece depois do seu toque.
+      </Text>
     </View>
   )
 }
 
-function ActionRow({
+const B = { fontFamily: 'Archivo-Bold' }
+
+/** A frase de cada ação, com os nomes em negrito. */
+function ActionText({
   action,
-  on,
-  first,
-  disabled,
-  palette,
-  onToggle
+  proposal,
+  when
 }: {
   action: ProposalAction
-  on: boolean
-  first: boolean
-  disabled: boolean
-  palette: AiPalette
-  onToggle: () => void
+  proposal: Proposal
+  when: string
 }) {
+  if (action.kind === 'going')
+    return (
+      <>
+        Marcar <Text style={B}>Vou assistir</Text> no{' '}
+        <Text style={B}>{proposal.bar.name}</Text> · {proposal.game.title},{' '}
+        {when}.
+        {action.label.includes('código') ? ' Gera o código do balcão.' : ''}
+      </>
+    )
+  if (action.kind === 'call')
+    return (
+      <>
+        Chamar <Text style={B}>{action.label.replace(/^Chamar\s+/, '')}</Text>{' '}
+        para o mesmo jogo. O chamado chega em Avisos.
+      </>
+    )
   return (
-    <Pressable
-      accessibilityRole="switch"
-      accessibilityState={{ checked: on, disabled }}
-      accessibilityLabel={action.label}
-      disabled={disabled}
-      onPress={() => {
-        haptic.select()
-        onToggle()
-      }}
-      style={[
-        styles.action,
-        first ? null : { borderTopWidth: 1, borderTopColor: palette.line }
-      ]}
-    >
-      <Icon
-        name={ACTION_ICON[action.kind]}
-        size={20}
-        color={palette.ink}
-        accent={palette.accent}
-      />
-      <Text
-        style={[text(14, 'Regular', 1.35), { flex: 1, color: palette.ink }]}
-      >
-        {action.label}
-      </Text>
-      <Switch on={on} palette={palette} />
-    </Pressable>
+    <>
+      Lembrar você <Text style={B}>3 h antes</Text> do jogo.
+    </>
   )
 }
 
-/** O interruptor do design (50 x 30, botão de 24). */
+/** O recibo do que foi feito (`.prop` sem o contorno acid). */
+export function Receipt({
+  result,
+  palette,
+  onCode
+}: {
+  result: ConfirmResult
+  palette: AiPalette
+  onCode?: () => void
+}) {
+  const done = [
+    result.going?.ok && 'Presença marcada',
+    result.call?.ok &&
+      `chamado enviado para ${firstName(result.call.friendName)}`,
+    result.remind?.ok && 'lembrete marcado'
+  ].filter((part): part is string => !!part)
+  const failed = [
+    result.going && !result.going.ok && 'a presença não foi marcada',
+    result.call && !result.call.ok && 'o chamado não foi enviado',
+    result.remind && !result.remind.ok && 'o lembrete não foi marcado'
+  ].filter((part): part is string => !!part)
+  const code = result.going?.ok ? result.going.code : null
+  const sentence = [
+    done.length ? `${capital(list(done))}.` : '',
+    failed.length ? `${capital(list(failed))}.` : '',
+    code ? 'Seu código está em Meus jogos.' : ''
+  ]
+    .filter(Boolean)
+    .join(' ')
+  return (
+    <View
+      style={[
+        styles.prop,
+        styles.receipt,
+        { backgroundColor: palette.card, shadowColor: palette.drop }
+      ]}
+    >
+      <View style={styles.kicker}>
+        <Icon name="check" size={14} color={palette.ink} />
+        <Text style={[styles.kickerText, { color: palette.ink }]}>
+          FEITO ÀS {result.at}
+        </Text>
+      </View>
+      <View style={styles.item}>
+        <Icon
+          name={code ? 'ticket' : 'check'}
+          size={18}
+          color={palette.ink}
+          accent={palette.accent}
+        />
+        <Text
+          style={[text(14.5, 'Regular', 1.35), { flex: 1, color: palette.ink }]}
+        >
+          {sentence}
+        </Text>
+      </View>
+      {code && onCode ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={onCode}
+          style={({ pressed }) => [
+            styles.codeButton,
+            { backgroundColor: palette.ink },
+            pressed && { opacity: 0.85 }
+          ]}
+        >
+          <Text style={[text(15, 'Bold', 1.2), { color: palette.bg }]}>
+            Ver código
+          </Text>
+        </Pressable>
+      ) : null}
+    </View>
+  )
+}
+
+const firstName = (name: string) => name.trim().split(/\s+/)[0] ?? name
+const capital = (value: string) =>
+  value.charAt(0).toUpperCase() + value.slice(1)
+/** "a, b e c". */
+const list = (parts: string[]) =>
+  parts.length > 1
+    ? `${parts.slice(0, -1).join(', ')} e ${parts.at(-1)}`
+    : (parts[0] ?? '')
+
 export function Switch({ on, palette }: { on: boolean; palette: AiPalette }) {
   const value = useSharedValue(on ? 1 : 0)
   useEffect(() => {
@@ -227,17 +262,17 @@ function LaterButton({
       onPress={onPress}
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
-      style={{ flex: 1 }}
     >
       <Animated.View
         style={[
           styles.button,
-          { borderWidth: 1, borderColor: palette.later },
+          styles.change,
+          { borderWidth: 1.5, borderColor: palette.line },
           press.style
         ]}
       >
-        <Text style={[text(14.5, 'Bold', 1.2), { color: palette.ink }]}>
-          Agora não
+        <Text style={[text(15, 'Bold', 1.2), { color: palette.ink }]}>
+          Mudar
         </Text>
       </Animated.View>
     </Pressable>
@@ -265,10 +300,10 @@ function ConfirmButton({
       onPress={onPress}
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
-      style={{ flex: 1.4 }}
+      style={{ flex: 1 }}
     >
       <View>
-        <HardShadow color={palette.confirmShadow} offset={3} radius={5} />
+        <HardShadow color="#7f9a12" offset={3} radius={23} />
         <Animated.View
           style={[
             styles.button,
@@ -286,7 +321,7 @@ function ConfirmButton({
               }}
             />
           ) : (
-            <Text style={[text(14.5, 'Bold', 1.2), { color: INK }]}>
+            <Text style={[text(15, 'Bold', 1.2), { color: INK }]}>
               Confirmar
             </Text>
           )}
@@ -440,6 +475,32 @@ export function CodeCard({
 }
 
 const styles = StyleSheet.create({
+  prop: {
+    borderRadius: 22,
+    padding: 14,
+    gap: 10,
+    borderWidth: 2,
+    borderColor: ACID,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
+  },
+  receipt: { borderWidth: 0 },
+  kicker: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  kickerDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: ACID },
+  kickerText: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11,
+    letterSpacing: 0.88
+  },
+  item: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  change: { paddingHorizontal: 18 },
+  codeButton: {
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
   glow: { top: 5, left: 5, right: -5, bottom: -5, borderRadius: 8 },
   confirm: { borderRadius: 8, borderWidth: 1.5, overflow: 'hidden' },
   confirmHead: {
@@ -477,7 +538,7 @@ const styles = StyleSheet.create({
   },
   button: {
     height: 46,
-    borderRadius: 5,
+    borderRadius: 23,
     alignItems: 'center',
     justifyContent: 'center'
   },
