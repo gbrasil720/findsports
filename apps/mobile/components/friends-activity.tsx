@@ -32,6 +32,7 @@ function Faces({ names }: { names: string[] }) {
     <View style={{ flexDirection: 'row', marginRight: 6 }}>
       {names.slice(0, 3).map((name, index) => (
         <View
+          // biome-ignore lint/suspicious/noArrayIndexKey: duas pessoas podem ter o mesmo nome
           key={name + index}
           style={[
             styles.face,
@@ -233,7 +234,7 @@ export function FeedList({
     <LineList>
       {items.map((item, index) => (
         <Pressable
-          key={`${item.kind}-${item.person.id}-${item.at}-${index}`}
+          key={`${item.kind}-${item.person.id}-${item.at}-${'medalId' in item ? item.medalId : 'barName' in item ? item.barName : item.level}`}
           accessibilityRole="button"
           onPress={() => onPerson(item.person.id)}
           style={[
