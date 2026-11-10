@@ -4,7 +4,6 @@ import { type Href, useRouter } from 'expo-router'
 import { useState } from 'react'
 import {
   ActionSheetIOS,
-  ActivityIndicator,
   Image,
   Pressable,
   ScrollView,
@@ -20,6 +19,7 @@ import { Glass } from '@/components/glass'
 import { MedalImage } from '@/components/medal'
 import { ScalePress } from '@/components/motion'
 import { useSoon } from '@/components/soon'
+import { Skeleton } from '@/components/states'
 import { INK_ON_DARK, usePalette } from '@/components/theme'
 import {
   ACID,
@@ -149,7 +149,7 @@ export function FriendPage({
         </View>
 
         {profile.isPending ? (
-          <ActivityIndicator color={palette.ink} style={{ marginTop: 40 }} />
+          <Skeleton />
         ) : profile.isError || !person ? (
           <ErrorState
             style={styles.empty}

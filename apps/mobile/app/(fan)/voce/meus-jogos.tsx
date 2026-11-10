@@ -4,7 +4,6 @@ import * as Calendar from 'expo-calendar/legacy'
 import { type Href, useRouter } from 'expo-router'
 import { Fragment, useState } from 'react'
 import {
-  ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -26,6 +25,7 @@ import { useLayout, useNavInsets } from '@/components/layout'
 import { haptic } from '@/components/motion'
 import { Segmented } from '@/components/segmented'
 import { useSoon } from '@/components/soon'
+import { Skeleton } from '@/components/states'
 import { useTabBarSpace } from '@/components/tab-bar'
 import { usePalette } from '@/components/theme'
 import {
@@ -170,7 +170,7 @@ export default function MyGames() {
         </Text>
 
         {mine.isPending ? (
-          <ActivityIndicator color={palette.ink} style={{ marginTop: 40 }} />
+          <Skeleton />
         ) : mine.isError ? (
           <ErrorState
             style={styles.empty}
@@ -445,7 +445,7 @@ function TodayNear() {
         Marque um e ele aparece em Meus jogos.
       </Text>
       {search.isPending ? (
-        <ActivityIndicator color={palette.ink} style={{ marginTop: 24 }} />
+        <Skeleton />
       ) : bars.length ? (
         bars
           .slice(0, 8)

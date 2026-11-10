@@ -1,11 +1,5 @@
 import { useState } from 'react'
-import {
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  View
-} from 'react-native'
+import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card, FilterChip } from '@/components/card'
@@ -20,6 +14,7 @@ import {
 } from '@/components/city-ranking'
 import { useLayout, useNavInsets } from '@/components/layout'
 import { SWAP } from '@/components/motion'
+import { Skeleton } from '@/components/states'
 import { useTabBarSpace } from '@/components/tab-bar'
 import { usePalette } from '@/components/theme'
 import {
@@ -97,7 +92,7 @@ export default function CityRanking() {
         </View>
 
         {board.isPending ? (
-          <ActivityIndicator color={palette.ink} style={{ marginTop: 40 }} />
+          <Skeleton />
         ) : board.isError ? (
           <View style={styles.stack}>
             <Text style={[text(15, 'SemiBold'), { color: palette.ink }]}>

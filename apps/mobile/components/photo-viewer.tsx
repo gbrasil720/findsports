@@ -55,7 +55,13 @@ function Dots({ count, index }: { count: number; index: number }) {
     <View style={styles.dots}>
       {Array.from({ length: shown }, (_, n) => {
         const on = start + n === index
-        return <View key={start + n} style={[styles.dot, on && styles.dotOn]} />
+        return (
+          <View
+            // biome-ignore lint/suspicious/noArrayIndexKey: o ponto é a posição da foto
+            key={start + n}
+            style={[styles.dot, on && styles.dotOn]}
+          />
+        )
       })}
     </View>
   )

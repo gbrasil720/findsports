@@ -9,7 +9,6 @@ import { type Href, useRouter } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
 import { type ReactNode, useEffect, useState } from 'react'
 import {
-  ActivityIndicator,
   Alert,
   Pressable,
   RefreshControl,
@@ -33,6 +32,7 @@ import {
 } from '@/components/motion'
 import { Segmented } from '@/components/segmented'
 import { useSoon } from '@/components/soon'
+import { Skeleton } from '@/components/states'
 import { usePalette } from '@/components/theme'
 import {
   ACID,
@@ -354,7 +354,7 @@ export default function Notices() {
           />
         ) : null}
         {!loaded ? (
-          <ActivityIndicator color={palette.ink} style={{ marginTop: 24 }} />
+          <Skeleton />
         ) : shown.length ? (
           <View style={{ gap: 10 }}>
             {shown.map((notice) => (

@@ -4,7 +4,6 @@ import * as Crypto from 'expo-crypto'
 import { type Href, useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
 import {
-  ActivityIndicator,
   Linking,
   Pressable,
   ScrollView,
@@ -23,6 +22,7 @@ import {
 } from '@/components/friends'
 import { GroupLabel, LineList } from '@/components/game-line'
 import { haptic } from '@/components/motion'
+import { Skeleton } from '@/components/states'
 import { INK_ON_DARK, usePalette } from '@/components/theme'
 import {
   ACID,
@@ -141,7 +141,7 @@ export default function ContactsScreen() {
         </Text>
 
         {state === 'asking' || state === 'reading' || match.isPending ? (
-          <ActivityIndicator color={palette.ink} style={{ marginTop: 24 }} />
+          <Skeleton />
         ) : state === 'denied' || state === 'blocked' ? (
           <View style={styles.empty}>
             <Icon name="people" size={30} color={palette.ink} />

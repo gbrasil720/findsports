@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
 import { useRef, useState } from 'react'
 import {
-  ActivityIndicator,
   Platform,
   Pressable,
   RefreshControl,
@@ -29,6 +28,7 @@ import {
   MedalDetail
 } from '@/components/medal-detail'
 import { haptic, SWAP, usePressScale } from '@/components/motion'
+import { Skeleton } from '@/components/states'
 import { useTabBarSpace } from '@/components/tab-bar'
 import {
   ACID,
@@ -647,7 +647,7 @@ export default function Shelf() {
         </View>
 
         {mine.isPending ? (
-          <ActivityIndicator color={P.ink} style={{ marginTop: 40 }} />
+          <Skeleton />
         ) : mine.isError || !data ? (
           <ErrorState
             style={styles.empty}

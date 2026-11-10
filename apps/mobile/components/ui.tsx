@@ -1726,22 +1726,33 @@ export function ErrorState({
   const line = !onlineManager.isOnline()
     ? OFFLINE_LINE
     : transient
-      ? 'Tente de novo. Se continuar, volte mais tarde.'
+      ? 'A conexão caiu no meio. O resto da página continua.'
       : errorMessage(error, 'Verifique a sua conta ou volte mais tarde.')
+  // Rodada 7 (tela 5): o bloco fica no lugar, num cartão, com o título em
+  // Anton, o que deu errado e "Tentar de novo" em tinta; nunca some.
   return (
-    <Animated.View entering={SWAP} accessibilityRole="alert" style={style}>
-      <View style={{ gap: 4 }}>
-        <Text style={[text(15, 'SemiBold', 1.35), { color: FG }]}>{title}</Text>
-        <Text style={[text(13.5, 'Regular', 1.45), { color: SUB }]}>
-          {line}
-        </Text>
-      </View>
+    <Animated.View
+      entering={SWAP}
+      accessibilityRole="alert"
+      style={[styles.errorCard, style]}
+    >
+      <Text style={styles.errorTitle}>{title}</Text>
+      <Text style={[text(14.5, 'Regular', 1.45), { color: SUB }]}>{line}</Text>
       {transient ? (
-        <PillButton
-          label={retrying ? 'Tentando de novo…' : 'Tentar de novo'}
-          busy={retrying}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ busy: retrying }}
+          disabled={retrying}
           onPress={() => void onRetry()}
-        />
+          style={({ pressed }) => [
+            styles.errorButton,
+            pressed && { transform: [{ scale: 0.97 }] }
+          ]}
+        >
+          <Text style={[text(15, 'Bold', 1.2), { color: BG }]}>
+            {retrying ? 'Tentando de novo…' : 'Tentar de novo'}
+          </Text>
+        </Pressable>
       ) : null}
     </Animated.View>
   )
@@ -2051,6 +2062,38 @@ export function authErrorMessage(
 }
 
 const styles = StyleSheet.create({
+  errorCard: {
+    gap: 8,
+    padding: 18,
+    borderRadius: 22,
+    backgroundColor: CARD,
+    shadowColor: DROP,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  },
+  // Anton 26: margem negativa no lugar do entrelinha curto.
+  errorTitle: {
+    fontFamily: 'Anton',
+    fontSize: 26,
+    textTransform: 'uppercase',
+    color: FG,
+    marginVertical: -6.3
+  },
+  errorButton: {
+    alignSelf: 'flex-start',
+    height: 44,
+    paddingHorizontal: 18,
+    borderRadius: 22,
+    marginTop: 6,
+    backgroundColor: FG,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
+  },
   sheetDim: { backgroundColor: 'rgba(18,18,15,.42)' },
   sheetCenter: {
     flex: 1,

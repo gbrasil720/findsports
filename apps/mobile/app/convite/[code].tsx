@@ -3,13 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { inferRouterOutputs } from '@trpc/server'
 import { type Href, useLocalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View
-} from 'react-native'
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import Animated, {
   useAnimatedStyle,
   useReducedMotion,
@@ -25,6 +19,7 @@ import { AddButton, useFriendActions } from '@/components/friends'
 import { DuelCard } from '@/components/friends-activity'
 import { haptic } from '@/components/motion'
 import { sportMark } from '@/components/onboarding'
+import { EmptyCard, Skeleton } from '@/components/states'
 import { usePalette } from '@/components/theme'
 import {
   ACID,
@@ -125,13 +120,27 @@ export default function Invite() {
         </View>
 
         {preview.isPending ? (
-          <ActivityIndicator color={palette.ink} style={{ marginTop: 60 }} />
-        ) : preview.isError || !person ? (
+          <Skeleton />
+        ) : preview.isError ? (
           <ErrorState
-            title="Esse convite não vale mais."
-            error={preview.error ?? undefined}
+            title="Não deu para abrir o convite."
+            error={preview.error}
             onRetry={() => preview.refetch()}
             retrying={preview.isFetching}
+          />
+        ) : !person ? (
+          <EmptyCard
+            title="Esse convite não vale mais"
+            line="O link pode ter mudado. Peça um novo ou procure a pessoa pelo nome."
+            action={
+              <PillButton
+                label="Buscar amigos"
+                height={44}
+                onPress={() =>
+                  router.replace((ready ? '/amigos-busca' : '/') as Href)
+                }
+              />
+            }
           />
         ) : friends ? (
           <Accepted

@@ -31,6 +31,7 @@ import { haptic, SWAP, usePressScale } from '@/components/motion'
 import { CityRace, FriendsRace, PrizeCard } from '@/components/ranking-race'
 import { Segmented } from '@/components/segmented'
 import { useSoon } from '@/components/soon'
+import { Skeleton } from '@/components/states'
 import { useTabBarSpace } from '@/components/tab-bar'
 import { type Palette, usePalette } from '@/components/theme'
 import {
@@ -567,10 +568,7 @@ export default function Ranking() {
             style={styles.stack}
           >
             {city.isPending ? (
-              <ActivityIndicator
-                color={palette.ink}
-                style={{ marginTop: 40 }}
-              />
+              <Skeleton />
             ) : city.isError ? (
               <View style={styles.stack}>
                 <Text style={[text(15, 'SemiBold'), { color: palette.ink }]}>
@@ -600,7 +598,7 @@ export default function Ranking() {
             )}
           </Animated.View>
         ) : board.isPending ? (
-          <ActivityIndicator color={palette.ink} style={{ marginTop: 40 }} />
+          <Skeleton />
         ) : board.isError || !board.data ? (
           <View style={styles.stack}>
             <Text style={[text(15, 'SemiBold'), { color: palette.ink }]}>
@@ -1407,8 +1405,7 @@ function GlobalBody({
 }) {
   const palette = usePalette()
   const head = city.data?.pages[0]
-  if (city.isPending)
-    return <ActivityIndicator color={palette.ink} style={{ marginTop: 24 }} />
+  if (city.isPending) return <Skeleton />
   if (city.isError)
     return (
       <View style={styles.stack}>

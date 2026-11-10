@@ -1,17 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useRef, useState } from 'react'
-import {
-  ActivityIndicator,
-  Image,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View
-} from 'react-native'
+import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { haptic } from '@/components/motion'
 import { type Frame, PhotoViewer } from '@/components/photo-viewer'
+import { Skeleton } from '@/components/states'
 import { usePalette } from '@/components/theme'
 import { ErrorState, Icon, Text, text, useStatusBar } from '@/components/ui'
 import {
@@ -133,7 +127,7 @@ export default function Fotos() {
             retrying={bar.isFetching}
           />
         ) : !bar.data ? (
-          <ActivityIndicator color={palette.muted} style={{ marginTop: 40 }} />
+          <Skeleton />
         ) : (
           <>
             <ScrollView

@@ -71,6 +71,7 @@ import {
 import { StackRail } from '@/components/side-nav'
 import { useSoon } from '@/components/soon'
 import { Stars } from '@/components/stars'
+import { Skeleton } from '@/components/states'
 import { usePalette } from '@/components/theme'
 import {
   ACID,
@@ -976,9 +977,7 @@ export function BarDetail({
       )}
     </View>
   )
-  const wait = (
-    <ActivityIndicator color={palette.ink} style={{ marginTop: 32 }} />
-  )
+  const wait = <Skeleton />
   // As peças do Adaptativo 02 fora do celular.
   const wTitle = (
     <BarTitle

@@ -2,7 +2,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type Href, useRouter } from 'expo-router'
 import { useState } from 'react'
 import {
-  ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -29,6 +28,7 @@ import {
   usePress,
   usePressScale
 } from '@/components/motion'
+import { Skeleton } from '@/components/states'
 import { usePalette } from '@/components/theme'
 import {
   ACID,
@@ -173,7 +173,7 @@ export default function Friends() {
         ) : null}
 
         {overview.isPending ? (
-          <ActivityIndicator color={palette.ink} style={{ marginTop: 24 }} />
+          <Skeleton />
         ) : overview.isError || !data ? (
           <ErrorState
             style={styles.empty}

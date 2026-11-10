@@ -4,7 +4,6 @@ import * as Location from 'expo-location'
 import { type Href, useLocalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
   Image,
   Linking,
   Platform,
@@ -41,6 +40,7 @@ import {
   SWAP
 } from '@/components/motion'
 import { useSoon } from '@/components/soon'
+import { Skeleton } from '@/components/states'
 import {
   CARD_H,
   CARD_W,
@@ -329,7 +329,7 @@ export default function SuggestionsScreen() {
       />
     )
   } else if (!merged) {
-    body = <ActivityIndicator color={palette.ink} style={{ marginTop: 120 }} />
+    body = <Skeleton />
   } else if (demo === 'vazio' || merged.items.length === 0) {
     subtitle = 'Nada por aqui ainda'
     body = (

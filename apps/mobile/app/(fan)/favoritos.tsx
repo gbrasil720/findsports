@@ -5,7 +5,6 @@ import type { inferRouterOutputs } from '@trpc/server'
 import { type Href, useLocalSearchParams, useRouter } from 'expo-router'
 import { type ReactNode, useEffect, useState } from 'react'
 import {
-  ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -28,6 +27,7 @@ import {
   usePressScale
 } from '@/components/motion'
 import { Segmented } from '@/components/segmented'
+import { Skeleton } from '@/components/states'
 import { useTabBarSpace } from '@/components/tab-bar'
 import { type Palette, usePalette } from '@/components/theme'
 import {
@@ -241,7 +241,7 @@ export default function YourBars() {
   const body = (which: Tab) => {
     const query = queryOf(which)
     return query.isPending ? (
-      <ActivityIndicator color={palette.ink} style={{ marginTop: 40 }} />
+      <Skeleton />
     ) : query.isError ? (
       <ErrorState
         style={styles.empty}
@@ -297,8 +297,7 @@ export default function YourBars() {
   // O celular segue a rodada 4 do redesign; os layouts largos, os de antes.
   const phoneBody = (which: Tab) => {
     const query = queryOf(which)
-    if (query.isPending)
-      return <ActivityIndicator color={palette.ink} style={{ marginTop: 40 }} />
+    if (query.isPending) return <Skeleton />
     if (query.isError)
       return (
         <ErrorState
