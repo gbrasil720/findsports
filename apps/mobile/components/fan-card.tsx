@@ -304,6 +304,17 @@ export function MarkSmall() {
   )
 }
 
+/** A marca da carteirinha (o círculo, "ONSIDE" e o quadrado vermelho). */
+export function CardBrand() {
+  return (
+    <View style={styles.logo}>
+      <MarkSmall />
+      <Text style={styles.word}>ONSIDE</Text>
+      <View style={styles.square} />
+    </View>
+  )
+}
+
 export function FanCard({
   name,
   teams,
@@ -343,11 +354,7 @@ export function FanCard({
       >
         <Dots />
         <View style={styles.top}>
-          <View style={styles.logo}>
-            <MarkSmall />
-            <Text style={styles.word}>ONSIDE</Text>
-            <View style={styles.square} />
-          </View>
+          <CardBrand />
           <Text style={styles.season}>{'TORCEDOR\nTEMPORADA 26'}</Text>
         </View>
         <Text

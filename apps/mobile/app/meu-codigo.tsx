@@ -13,22 +13,20 @@ import {
 } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import Svg, { Circle, Defs, Pattern, Rect } from 'react-native-svg'
 import QRCode from 'react-qr-code'
-import { Avatar } from '@/components/friends'
-import { Glass } from '@/components/glass'
+import { CardBrand } from '@/components/fan-card'
 import { haptic, SWAP } from '@/components/motion'
 import { useSoon } from '@/components/soon'
-import { PALETTE, PaletteProvider, usePalette } from '@/components/theme'
+import { usePalette } from '@/components/theme'
 import {
   ACID,
-  BackButton,
   Icon,
   INK,
-  MUTED,
+  LIVE,
   PAPER,
   PillButton,
   Text,
-  Title,
   text,
   useStatusBar
 } from '@/components/ui'
@@ -91,7 +89,7 @@ export default function MyCode() {
     )
 
   const code = me.data?.friendCode
-  const place = [me.data ? `@${me.data.username}` : null, me.data?.city]
+  const _place = [me.data ? `@${me.data.username}` : null, me.data?.city]
     .filter(Boolean)
     .join(' · ')
 
@@ -103,99 +101,130 @@ export default function MyCode() {
       ]}
     >
       <View style={styles.head}>
-        <BackButton />
-        <Title lines={[['Meu código']]} size={32} color={palette.ink} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
+          hitSlop={8}
+          onPress={() => (tab === 'scan' ? setTab('mine') : router.back())}
+          style={[
+            styles.round,
+            { backgroundColor: palette.card, shadowColor: palette.drop }
+          ]}
+        >
+          <Icon name="back" size={20} color={palette.ink} />
+        </Pressable>
+        {tab === 'mine' ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              haptic.select()
+              setTab('scan')
+              if (!permission?.granted) ask()
+            }}
+            style={[styles.read, { borderColor: palette.line }]}
+          >
+            <Icon name="camera" size={16} color={palette.ink} />
+            <Text style={[text(14, 'Bold', 1.2), { color: palette.ink }]}>
+              Ler um código
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
-
-      <Glass tone={palette.dark ? 'dark' : 'light'} style={styles.tabs}>
-        {(
-          [
-            ['mine', 'Meu código'],
-            ['scan', 'Escanear']
-          ] as const
-        ).map(([key, label]) => {
-          const on = key === tab
-          return (
-            <Pressable
-              key={key}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: on }}
-              onPress={() => {
-                if (on) return
-                haptic.select()
-                setTab(key)
-                if (key === 'scan' && !permission?.granted) ask()
-              }}
-              style={[
-                styles.tab,
-                on && [
-                  styles.tabOn,
-                  {
-                    backgroundColor: palette.dark
-                      ? 'rgba(255,255,255,.14)'
-                      : '#fff'
-                  }
-                ]
-              ]}
-            >
-              <Text
-                style={[
-                  text(14, on ? 'Bold' : 'Regular', 1.2),
-                  { color: on ? palette.ink : palette.muted }
-                ]}
-              >
-                {label}
-              </Text>
-            </Pressable>
-          )
-        })}
-      </Glass>
+      <Text style={[styles.title, { color: palette.ink }]}>
+        {tab === 'mine' ? 'Meu código' : 'Ler um código'}
+      </Text>
 
       {tab === 'mine' ? (
         <Animated.View key="mine" entering={SWAP} style={styles.mine}>
-          <View style={[styles.card, { shadowColor: ACID }]}>
-            <View style={styles.who}>
-              {/* O cartão é papel nos dois temas. */}
-              <PaletteProvider value={PALETTE.light}>
-                <Avatar
-                  id={session.data?.user.id ?? ''}
-                  name={session.data?.user.name ?? ''}
-                  image={session.data?.user.image}
-                  size={48}
-                  me
-                />
-              </PaletteProvider>
-              <View style={{ flex: 1 }}>
-                <Text style={[text(17, 'Bold', 1.25), { color: INK }]}>
-                  {session.data?.user.name}
-                </Text>
-                <Text style={[text(13), { color: MUTED }]}>{place}</Text>
-              </View>
+          {/* O cartão no desenho da carteirinha, em tinta nos dois temas. */}
+          <View style={styles.card}>
+            <View style={styles.dots} pointerEvents="none">
+              <Svg style={StyleSheet.absoluteFill}>
+                <Defs>
+                  <Pattern
+                    id="convite"
+                    width={7}
+                    height={7}
+                    patternUnits="userSpaceOnUse"
+                  >
+                    <Circle
+                      cx={3.5}
+                      cy={3.5}
+                      r={1.2}
+                      fill="rgba(241,238,230,.09)"
+                    />
+                  </Pattern>
+                </Defs>
+                <Rect width="100%" height="100%" fill="url(#convite)" />
+              </Svg>
             </View>
+            <View style={styles.cardTop}>
+              <CardBrand />
+              <Text style={styles.cardKicker}>{'CONVITE\nDE AMIZADE'}</Text>
+            </View>
+            <Text
+              style={styles.cardName}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
+              {(session.data?.user.name ?? '').toLocaleUpperCase('pt-BR')}
+            </Text>
             <View style={styles.qr}>
               {code ? (
                 <QRCode
                   value={inviteUrl(code)}
-                  size={176}
+                  size={156}
                   bgColor="#ffffff"
                   fgColor={INK}
                 />
               ) : (
-                <View style={{ width: 176, height: 176 }} />
+                <View style={{ width: 156, height: 156 }} />
               )}
             </View>
             <Text style={styles.code}>{code ?? ' '}</Text>
+            {code ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Copiar o link"
+                hitSlop={8}
+                onPress={async () => {
+                  await Clipboard.setStringAsync(inviteUrl(code))
+                  haptic.success()
+                  soon.show('Link copiado')
+                }}
+                style={styles.linkRow}
+              >
+                <Text style={styles.link} numberOfLines={1}>
+                  {inviteUrl(code).replace(/^https?:\/\/(www\.)?/, '')} ·{' '}
+                </Text>
+                <Icon name="link" size={14} color="#aaa9a4" accent={LIVE} />
+                <Text style={styles.link}> copiar</Text>
+              </Pressable>
+            ) : null}
           </View>
           <Text
             style={[
               text(14, 'Regular', 1.45),
               styles.note,
-              { color: palette.dark ? '#d6d3cb' : palette.muted }
+              { color: palette.muted }
             ]}
           >
-            Quem escanear manda um pedido de amizade. Você aprova antes de virar
-            amigo.
+            Quem abrir o link sem conta entra já como seu amigo ao criar a
+            conta.
           </Text>
+          {code ? (
+            <View style={{ alignSelf: 'stretch' }}>
+              <PillButton
+                label="Compartilhar convite"
+                leading="share"
+                height={56}
+                onPress={() => {
+                  haptic.select()
+                  Share.share({ message: inviteMessage(code) })
+                }}
+              />
+            </View>
+          ) : null}
         </Animated.View>
       ) : (
         <Animated.View key="scan" entering={SWAP} style={styles.scan}>
@@ -256,50 +285,67 @@ export default function MyCode() {
         </Animated.View>
       )}
 
-      {tab === 'mine' && code ? (
-        <View style={[styles.dock, { bottom: insets.bottom + 14 }]}>
-          <Pressable
-            accessibilityRole="button"
-            style={{ flex: 1 }}
-            onPress={async () => {
-              await Clipboard.setStringAsync(inviteUrl(code))
-              haptic.success()
-              soon.show('Link copiado')
-            }}
-          >
-            <Glass tone={palette.dark ? 'dark' : 'light'} style={styles.copy}>
-              <Icon
-                name="link"
-                size={18}
-                color={palette.ink}
-                accent={palette.accent}
-              />
-              <Text style={[text(15, 'Bold'), { color: palette.ink }]}>
-                Copiar link
-              </Text>
-            </Glass>
-          </Pressable>
-          <View style={{ flex: 1 }}>
-            <PillButton
-              label="Compartilhar"
-              leading="share"
-              height={52}
-              onPress={() => {
-                haptic.select()
-                Share.share({ message: inviteMessage(code) })
-              }}
-            />
-          </View>
-        </View>
-      ) : null}
       {soon.toast}
     </View>
   )
 }
 
 const styles = StyleSheet.create({
+  round: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  },
+  read: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    height: 40,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1.5
+  },
+  // Anton 44: margem negativa no lugar do entrelinha curto.
+  title: {
+    fontFamily: 'Anton',
+    fontSize: 44,
+    textTransform: 'uppercase',
+    marginVertical: -10.7
+  },
+  dots: { ...StyleSheet.absoluteFill, borderRadius: 24, overflow: 'hidden' },
+  cardTop: {
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start'
+  },
+  cardKicker: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 9.5,
+    letterSpacing: 0.9,
+    color: '#c9c7c0',
+    textAlign: 'right'
+  },
+  cardName: {
+    alignSelf: 'stretch',
+    fontFamily: 'Anton',
+    fontSize: 30,
+    color: PAPER,
+    marginVertical: -7.3
+  },
+  linkRow: { flexDirection: 'row', alignItems: 'center' },
+  link: { fontFamily: 'GeistMono-SemiBold', fontSize: 12, color: '#aaa9a4' },
   screen: { flex: 1, paddingHorizontal: 16, gap: 16 },
-  head: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  head: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
   tabs: { flexDirection: 'row', padding: 4, borderRadius: 24 },
   tab: {
     flex: 1,
@@ -316,36 +362,23 @@ const styles = StyleSheet.create({
   },
   mine: { alignItems: 'center', gap: 16, paddingTop: 8 },
   card: {
-    width: 300,
-    paddingHorizontal: 22,
-    paddingTop: 22,
-    paddingBottom: 18,
-    borderRadius: 10,
-    backgroundColor: PAPER,
+    alignSelf: 'stretch',
+    padding: 16,
+    borderRadius: 24,
+    backgroundColor: INK,
     alignItems: 'center',
-    gap: 14,
-    shadowOffset: { width: 6, height: 6 },
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 1,
     shadowRadius: 0
   },
-  who: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    alignSelf: 'stretch'
-  },
-  qr: {
-    padding: 10,
-    borderRadius: 8,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: 'rgba(18,18,15,.08)'
-  },
+  qr: { padding: 16, borderRadius: 20, backgroundColor: '#fff' },
   code: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 22,
-    letterSpacing: 1.8,
-    color: INK
+    fontSize: 24,
+    letterSpacing: 2.4,
+    color: ACID
   },
   note: { textAlign: 'center', maxWidth: 320 },
   scan: { flex: 1, gap: 16, alignItems: 'center' },
