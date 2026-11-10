@@ -140,6 +140,7 @@ export function Tour({
       ? { x: ai.x - 39, y: ai.y - 39, w: 78, h: 78 }
       : { x: width * 0.518, y: ai.y - 39, w: 96, h: 78 }
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mede a cada passo e quando a tela muda de tamanho
   useEffect(() => {
     const measure = () => {
       const view = targetOf(step.target)
@@ -159,7 +160,6 @@ export function Tour({
     // O Explorar ainda carrega os jogos ao abrir: mede de novo quando assenta.
     const later = [setTimeout(measure, 350), setTimeout(measure, 1200)]
     return () => later.forEach(clearTimeout)
-    // biome-ignore lint/correctness/useExhaustiveDependencies: mede a cada passo
   }, [step.target, width, height])
 
   const x = useSharedValue(0)

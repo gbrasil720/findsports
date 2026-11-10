@@ -1290,20 +1290,18 @@ function TurnView({
 
       {/* Um só cartão do pedir ao confirmar: "Confirmar" vira o giro nele. */}
       {proposal && (!decision || decision.kind === 'sending') ? (
-        <>
-          <Animated.View entering={IN} exiting={OUT} layout={settle}>
-            <ConfirmCard
-              proposal={proposal}
-              values={isLast ? toggles : proposal.actions.map((a) => a.on)}
-              when={when}
-              sending={decision?.kind === 'sending'}
-              palette={palette}
-              onToggle={onToggle}
-              onConfirm={onConfirm}
-              onRefuse={onRefuse}
-            />
-          </Animated.View>
-        </>
+        <Animated.View entering={IN} exiting={OUT} layout={settle}>
+          <ConfirmCard
+            proposal={proposal}
+            values={isLast ? toggles : proposal.actions.map((a) => a.on)}
+            when={when}
+            sending={decision?.kind === 'sending'}
+            palette={palette}
+            onToggle={onToggle}
+            onConfirm={onConfirm}
+            onRefuse={onRefuse}
+          />
+        </Animated.View>
       ) : null}
       {decision?.kind === 'refused' ? (
         <Animated.View entering={IN} layout={settle}>
