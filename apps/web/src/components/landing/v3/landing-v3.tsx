@@ -67,7 +67,13 @@ type Game = {
   bars?: number
 }
 
-/** Sem jogo publicado hoje: os da demonstração, marcados como exemplo. */
+/**
+ * Com menos de `MIN_REAL_GAMES` jogos publicados hoje, o exemplo usa estes:
+ * um ou dois jogos de verdade deixavam o exemplo pobre (dono, 10/11/2026).
+ */
+const MIN_REAL_GAMES = 3
+
+/** Os jogos da demonstração. */
 const EXAMPLE_GAMES: Game[] = [
   { title: 'Corinthians × Palmeiras', time: '21:30', live: false },
   { title: 'Lakers × Celtics', time: '22:00', live: false },
@@ -254,10 +260,19 @@ const plural = (n: number, um: string, varios: string) =>
 
 /**
  * O exemplo, assumido: bares fictícios com o selo, e logo abaixo o caminho de
- * verdade. Com jogo de hoje, quantos bares o passam e o Explorar já nele; sem
- * jogo publicado (a lista é a de exemplo), a grade dos próximos dias.
+ * verdade. Com jogo de hoje, quantos bares o passam e o Explorar já nele; com
+ * a lista de exemplo, os jogos de hoje que houver (`todayCount`), senão a grade
+ * dos próximos dias.
  */
-function Results({ result, cta }: { result: Result; cta: Cta }) {
+function Results({
+  result,
+  cta,
+  todayCount
+}: {
+  result: Result
+  cta: Cta
+  todayCount: number
+}) {
   const { game } = result
   const real = game.key && game.bars ? game : null
   return (
@@ -314,17 +329,24 @@ function Results({ result, cta }: { result: Result; cta: Cta }) {
           </>
         ) : (
           <>
-            <p className="hp-t">Hoje ainda não tem jogo publicado</p>
+            <p className="hp-t">
+              {todayCount
+                ? `Hoje tem ${plural(todayCount, 'jogo', 'jogos')} na Onside`
+                : 'Hoje ainda não tem jogo publicado'}
+            </p>
             <p className="hp-txt">
-              Os bares publicam a grade ao longo do dia. Veja o que já está
-              marcado para os próximos dias.
+              {todayCount
+                ? 'Veja onde passa e quais bares estão perto de você.'
+                : 'Os bares publicam a grade ao longo do dia. Veja o que já está marcado para os próximos dias.'}
             </p>
             <a
               className="btn btn-ink"
               href={cta.href}
               data-cta={`results_${cta.kind}`}
             >
-              Ver a grade dos próximos dias
+              {todayCount
+                ? 'Ver os jogos de hoje'
+                : 'Ver a grade dos próximos dias'}
               <Arrow />
             </a>
           </>
@@ -339,7 +361,7 @@ export function LandingV3() {
   const medalRef = useRef<HTMLIFrameElement>(null)
   const cta = usePrimaryCta()
   const today = useTodayGames()
-  const games = today.length ? today : EXAMPLE_GAMES
+  const games = today.length >= MIN_REAL_GAMES ? today : EXAMPLE_GAMES
   const [game, setGame] = useState('')
   const [where, setWhere] = useState('Vila Madalena')
   const [result, setResult] = useState<Result | null>(null)
@@ -540,7 +562,13 @@ export function LandingV3() {
                   ))}
                 </div>
                 <div aria-live="polite" ref={resultRef} className="answer">
-                  {result && <Results result={result} cta={cta} />}
+                  {result && (
+                    <Results
+                      result={result}
+                      cta={cta}
+                      todayCount={today.length}
+                    />
+                  )}
                 </div>
               </div>
             </div>
