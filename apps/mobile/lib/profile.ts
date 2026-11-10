@@ -69,6 +69,7 @@ export function nextInSaved<G extends SavedGame>(
 type Visit = {
   barId: string
   barName: string
+  neighborhood?: string | null
   photoUrl: string | null
   startsAt: string | Date
 }
