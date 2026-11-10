@@ -4,7 +4,9 @@ import { friendCall, friendship } from '@findsports_oficial/db/schema/social'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 import { fanProcedure, router } from '../index'
+import { readVisitsOf } from '../lib/achievements-read'
 import { readMyGames, setAttendance } from '../lib/attendance'
+import { readFriendsFeed, readFriendsToday } from '../lib/friend-activity'
 import { deleteCallsBetween, readCallNotices } from '../lib/friend-calls'
 import {
   canSeeActivity,
@@ -125,6 +127,19 @@ async function sendRequest(
 
 export const friendsRouter = router({
   /** O seu `@`, o seu código e a sua privacidade. Gera o que faltar. */
+  /**
+   * O que a galera está fazendo (rodada 6): os bares onde os amigos vão hoje
+   * e a atividade das duas últimas semanas.
+   */
+  activity: fanProcedure.query(async ({ ctx }) => {
+    const me = ctx.session.user.id
+    const [today, feed] = await Promise.all([
+      readFriendsToday(me),
+      readFriendsFeed(me)
+    ])
+    return { today, feed }
+  }),
+
   me: fanProcedure.query(async ({ ctx }) => {
     const me = ctx.session.user.id
     const identity = await ensureSocialIdentity(me)
@@ -506,14 +521,29 @@ export const friendsRouter = router({
           level: null,
           month: null,
           nextGame: null,
-          barsInCommon: []
+          barsInCommon: [],
+          together: null
         }
       const now = new Date()
-      const [mine, theirs, games] = await Promise.all([
+      const [mine, theirs, games, both] = await Promise.all([
         readMonth(me, now),
         readMonth(person.id, now),
-        readMyGames(person.id, now)
+        readMyGames(person.id, now),
+        readVisitsOf([me, person.id])
       ])
+      // A história de vocês (rodada 6): os jogos em que os dois validaram e o
+      // bar onde mais estiveram juntos.
+      const mineEvents = new Set(
+        both.filter((v) => v.userId === me).map((v) => v.eventId)
+      )
+      const together = both.filter(
+        (v) => v.userId === person.id && mineEvents.has(v.eventId)
+      )
+      const places = new Map<string, number>()
+      for (const v of together)
+        places.set(v.barName, (places.get(v.barName) ?? 0) + 1)
+      const place =
+        [...places.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
       // O jogo marcado mais próximo que ainda não acabou.
       const next = games
         .filter((game) => !game.ended && game.barActive)
@@ -538,7 +568,8 @@ export const friendsRouter = router({
           : null,
         barsInCommon: [...theirs.bars.values()].filter(
           (bar) => bar.active && mine.bars.has(bar.id)
-        )
+        ),
+        together: { games: together.length, place }
       }
     }),
 
