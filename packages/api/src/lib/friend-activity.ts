@@ -15,6 +15,7 @@ import {
 import { readReviewsOf, readVisitsOf } from './achievements-read'
 import { canSeeActivity, friendIdsOf } from './friends'
 import { gameTitle } from './game-participants'
+import { utcIso } from './utc-timestamp'
 
 /*
  * O que a galera está fazendo (rodada 6, tela de amigos): hoje, os bares onde
@@ -84,7 +85,12 @@ export function feedOf(
         })
     })
   }
-  return items.sort((a, b) => b.at.localeCompare(a.at)).slice(0, FEED_SIZE)
+  // A medalha conta pela data do jogo: jogo futuro não entra no feed.
+  const until = now.toISOString()
+  return items
+    .filter((item) => item.at <= until)
+    .sort((a, b) => b.at.localeCompare(a.at))
+    .slice(0, FEED_SIZE)
 }
 
 /** Os amigos aceitos que deixam os amigos ver a atividade. */
@@ -161,7 +167,7 @@ export async function readFriendsToday(me: string, now = new Date()) {
     barName: row.bar_name,
     photoUrl: row.photo_url,
     title: row.title,
-    startsAt: new Date(row.starts_at).toISOString(),
+    startsAt: utcIso(row.starts_at),
     mine: row.mine,
     friends: row.friend_ids.flatMap((id) => {
       const person = byId.get(id)

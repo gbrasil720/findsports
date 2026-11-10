@@ -30,4 +30,9 @@ describe('feedOf (rodada 6)', () => {
       feedOf([marina], [visit('2026-10-01T22:00:00Z', 'a')], [], now)
     ).toEqual([])
   })
+  it('o que ainda não aconteceu não entra', () => {
+    expect(
+      feedOf([marina], [visit('2026-11-20T22:00:00Z', 'a')], [], now)
+    ).toEqual([])
+  })
 })
