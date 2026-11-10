@@ -132,7 +132,7 @@ export default function Entrar() {
     // (carteirinha sem nome nem número) até reabrir o app.
     await refreshSession()
     const session = await authClient.getSession()
-    router.back()
+    if (router.canGoBack()) router.back()
     const user = session.data?.user
     if (!user) return
     const acao = await finishPending(user)
@@ -253,10 +253,8 @@ export default function Entrar() {
   const muted = palette.muted
 
   return (
-    // A folha tem a altura do conteúdo (`fitToContents`): cada passo do
-    // desenho ocupa o que precisa, do "Confira seu e-mail" ao criar conta.
     <ScrollView
-      style={{ flexGrow: 0, backgroundColor: palette.sheet }}
+      style={{ flex: 1, backgroundColor: palette.sheet }}
       contentContainerStyle={[
         styles.page,
         { paddingBottom: Math.max(insets.bottom, 34) }

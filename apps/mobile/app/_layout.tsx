@@ -123,7 +123,9 @@ export default function Layout() {
                   name="entrar"
                   options={{
                     presentation: 'formSheet',
-                    sheetAllowedDetents: 'fitToContents',
+                    // Paradas fixas: `fitToContents` subia a folha inteira com
+                    // o teclado, por cima da barra de status.
+                    sheetAllowedDetents: [0.86, 1],
                     sheetGrabberVisible: true
                   }}
                 />
