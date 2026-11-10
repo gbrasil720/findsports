@@ -1,17 +1,32 @@
-import type { ReactNode } from 'react'
+import { type ReactNode, useEffect } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
-import Animated from 'react-native-reanimated'
-import { Glass } from '@/components/glass'
+import Animated, {
+  cancelAnimation,
+  Easing,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withRepeat,
+  withTiming
+} from 'react-native-reanimated'
 import { SWAP } from '@/components/motion'
-import { ACID, Icon, MAX_FONT_SCALE, Text, text } from '@/components/ui'
+import {
+  ACID,
+  Icon,
+  INK,
+  LIVE,
+  MAX_FONT_SCALE,
+  Text,
+  text
+} from '@/components/ui'
 import { AiIcon } from './icons'
-import { Spinner } from './loader'
 import type { AiPalette } from './theme'
 
 /*
- * Cabeçalho da busca com IA: o ícone, "Busca com IA" e o status. Parado,
- * mostra o resultado com o ponto acid; ocupado, gira e diz o que está
- * fazendo. "+" começa outra conversa, "×" fecha a folha.
+ * Cabeçalho da busca com IA (rodada 5, `.iah`): o ícone num ladrilho de
+ * tinta, "Busca com IA" e o status em mono com o ponto (oliva no claro, acid
+ * no escuro; pulsando enquanto pensa). "+" começa outra conversa, "×" fecha
+ * a folha. Os botões são sólidos: vidro só no que é do sistema.
  */
 export function AiHeader({
   status,
@@ -31,48 +46,24 @@ export function AiHeader({
 }) {
   return (
     <View style={styles.head}>
-      <View style={styles.mark}>
-        <Icon
-          name="sparkle"
-          size={34}
-          color={palette.ink}
-          accent={palette.accent}
-        />
+      <View
+        style={[styles.tile, palette.dark && { backgroundColor: '#26261f' }]}
+      >
+        <Icon name="sparkle" size={22} color={ACID} accent={LIVE} />
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={[text(17, 'Bold', 1.3), { color: palette.ink }]}>
           Busca com IA
         </Text>
         <View style={styles.status}>
-          {/* O giro fica fora da troca: não volta ao começo a cada frase. */}
-          {busy ? (
-            <Spinner size={11} palette={palette} />
-          ) : (
-            <View
-              style={[
-                styles.halo,
-                { backgroundColor: quiet ? 'transparent' : palette.statusRing }
-              ]}
-            >
-              <View
-                style={[
-                  styles.dot,
-                  quiet
-                    ? { backgroundColor: palette.muted, opacity: 0.5 }
-                    : { backgroundColor: ACID }
-                ]}
-              />
-            </View>
-          )}
+          <StatusDot busy={busy} quiet={quiet} dark={palette.dark} />
           {/* A frase troca com um esmaecer curto. */}
           <Animated.Text
             maxFontSizeMultiplier={MAX_FONT_SCALE}
             key={status}
             entering={SWAP}
-            style={[
-              text(12.5, 'Regular', 1.4),
-              { color: palette.muted, flexShrink: 1 }
-            ]}
+            numberOfLines={1}
+            style={[styles.statusText, { color: palette.muted }]}
           >
             {status}
           </Animated.Text>
@@ -86,7 +77,7 @@ export function AiHeader({
           onPress={onNew}
         >
           <Round palette={palette}>
-            <AiIcon name="plus" size={17} color={palette.ink} />
+            <AiIcon name="plus" size={20} color={palette.ink} />
           </Round>
         </Pressable>
       ) : null}
@@ -97,10 +88,55 @@ export function AiHeader({
         onPress={onClose}
       >
         <Round palette={palette}>
-          <Icon name="close" size={17} color={palette.ink} />
+          <Icon name="close" size={20} color={palette.ink} />
         </Round>
       </Pressable>
     </View>
+  )
+}
+
+/** O ponto do status; pensando, pulsa (1,2 s). Com menos movimento, parado. */
+function StatusDot({
+  busy,
+  quiet,
+  dark
+}: {
+  busy: boolean
+  quiet?: boolean
+  dark: boolean
+}) {
+  const reduced = useReducedMotion()
+  const fade = useSharedValue(1)
+  useEffect(() => {
+    if (!busy || reduced) {
+      cancelAnimation(fade)
+      fade.set(1)
+      return
+    }
+    fade.set(
+      withRepeat(
+        withTiming(0.35, { duration: 600, easing: Easing.inOut(Easing.ease) }),
+        -1,
+        true
+      )
+    )
+  }, [busy, reduced, fade])
+  const style = useAnimatedStyle(() => ({ opacity: fade.get() }))
+  return (
+    <Animated.View
+      style={[
+        styles.dot,
+        {
+          backgroundColor: quiet
+            ? 'transparent'
+            : busy || dark
+              ? ACID
+              : '#7f9a12'
+        },
+        quiet && { borderWidth: 1, borderColor: '#aaa9a4' },
+        style
+      ]}
+    />
   )
 }
 
@@ -183,33 +219,29 @@ export function RoundButton({
   )
 }
 
-/** O botão redondo de vidro do cabeçalho (38 pt no design). */
+/** O botão redondo do cabeçalho: sólido, na cor de chip (`.rb` sem sombra). */
 export function Round({
   palette,
-  size = 38,
+  size = 40,
   children
 }: {
   palette: AiPalette
   size?: number
   children: ReactNode
 }) {
-  const round =
-    size === 38 ? null : { width: size, height: size, borderRadius: size / 2 }
   return (
     <View
       style={[
-        styles.roundBase,
-        palette.dark && styles.roundBaseDark,
-        round && { borderRadius: size / 2 }
+        styles.round,
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: palette.mark
+        }
       ]}
     >
-      <Glass
-        tone={palette.dark ? 'dark' : 'light'}
-        interactive
-        style={[styles.round, round]}
-      >
-        {children}
-      </Glass>
+      {children}
     </View>
   )
 }
@@ -226,50 +258,25 @@ const styles = StyleSheet.create({
   head: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingTop: 17,
+    gap: 12,
+    paddingTop: 14,
     paddingBottom: 8,
     paddingHorizontal: 16
   },
-  mark: {
-    width: 44,
-    height: 44,
+  tile: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: INK,
     alignItems: 'center',
     justifyContent: 'center'
   },
   status: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  // O ponto de 7 pt com o halo de 3 pt (box-shadow do design).
-  halo: {
-    width: 13,
-    height: 13,
-    borderRadius: 6.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: -3
+  statusText: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 12.5,
+    flexShrink: 1
   },
   dot: { width: 7, height: 7, borderRadius: 3.5 },
-  // Vidro só aparece com algo atrás; sobre a folha lisa, a base e a sombra
-  // fazem o círculo (como o `GlassRound`, em 38 pt).
-  roundBase: {
-    borderRadius: 19,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,.75)',
-    backgroundColor: 'rgba(255,255,255,.55)',
-    shadowColor: '#12120f',
-    shadowOpacity: 0.18,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 8 }
-  },
-  roundBaseDark: {
-    borderColor: 'rgba(255,255,255,.28)',
-    backgroundColor: 'rgba(241,238,230,.1)',
-    shadowColor: '#000'
-  },
-  round: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center'
-  }
+  round: { alignItems: 'center', justifyContent: 'center' }
 })
