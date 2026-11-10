@@ -1,58 +1,52 @@
 import { useEffect, useState } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
 import Animated, {
-  type EntryExitAnimationFunction,
+  cancelAnimation,
+  Easing,
   FadeIn,
-  FadeInDown,
   FadeOut,
   LinearTransition,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withRepeat,
   withTiming
 } from 'react-native-reanimated'
 import { EASE, haptic } from '@/components/motion'
-import { Icon, INK, Text, text } from '@/components/ui'
-import type { Step, Tool } from '@/lib/ai-chat'
-import { AiIcon } from './icons'
-import { Shimmer, Spinner } from './loader'
+import { Icon, MAX_FONT_SCALE, Text, text } from '@/components/ui'
+import type { Step } from '@/lib/ai-chat'
 import { Chevron } from './response'
 import type { AiPalette } from './theme'
-import { ToolCard } from './tool'
 
 /*
- * Raciocínio (Reasoning · ChainOfThought): aberto com os passos enquanto
- * pensa; quando a resposta começa, fecha sozinho em "Pensou por 4 s · 2
- * buscas" para ela ficar no topo. Tocar reabre (e mostra as ferramentas já
- * prontas, em linha).
+ * Raciocínio no padrão Chain of Thought (rodada 5, tela 4b): sem caixa, texto
+ * apagado sobre a folha. Aberto com os passos enquanto pensa; com a resposta,
+ * fecha sozinho numa linha em mono ("Pensou por 6 s · 1 busca") e tocar
+ * reabre. Cada passo tem o ícone do que fez, ligado ao próximo por um fio;
+ * o atual vai na cor cheia com um giro, os que faltam a 45%. As ferramentas
+ * não aparecem aqui: o que o passo achou vai nas etiquetas.
  */
 
-const STEP_IN = FadeInDown.duration(220)
-  .easing(EASE)
-  .withInitialValues({ opacity: 0, transform: [{ translateY: 6 }] })
-// O passo que termina: o check cresce de 0,6 sem passar do ponto.
-const CHECK_IN: EntryExitAnimationFunction = () => {
-  'worklet'
-  return {
-    initialValues: { opacity: 0, transform: [{ scale: 0.6 }] },
-    animations: {
-      opacity: withTiming(1, { duration: 120 }),
-      transform: [{ scale: withTiming(1, { duration: 200, easing: EASE }) }]
-    }
-  }
-}
-// Os passos saem rápido: a resposta sobe para o lugar deles.
+const STEP_IN = FadeIn.duration(150)
 const FOLD_OUT = FadeOut.duration(90)
 const FOLD_IN = FadeIn.duration(200)
-const RESIZE = LinearTransition.duration(220).easing(EASE)
+const RESIZE = LinearTransition.duration(200).easing(EASE)
+
+/** O ícone de cada passo pelo id que o servidor manda. */
+const STEP_ICON: Record<string, Parameters<typeof Icon>[0]['name']> = {
+  understood: 'doc',
+  game: 'calendar',
+  search: 'search',
+  rank: 'sliders'
+}
 
 export function Reasoning({
   steps,
-  tools,
   thinking,
   label,
   palette
 }: {
   steps: Step[]
-  /** Ferramentas prontas: dentro do raciocínio quando ele reabre. */
-  tools: Tool[]
   thinking: boolean
   /** "Pensou por 4 s · 2 buscas". */
   label: string
@@ -63,7 +57,7 @@ export function Reasoning({
   useEffect(() => setOpen(thinking), [thinking])
 
   return (
-    <Animated.View layout={RESIZE} style={{ gap: 12 }}>
+    <Animated.View layout={RESIZE} style={{ gap: 10 }}>
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
@@ -76,42 +70,35 @@ export function Reasoning({
         }}
         style={styles.head}
       >
-        {thinking ? (
-          <>
-            <Spinner size={14} palette={palette} />
-            <Shimmer size={13.5} palette={palette}>
-              Pensando
-            </Shimmer>
-          </>
-        ) : (
-          <Animated.View entering={FOLD_IN} style={styles.headRow}>
-            <AiIcon name="spark" size={15} color={palette.muted} />
-            <Text
-              style={[text(13.5, 'SemiBold', 1.4), { color: palette.muted }]}
-            >
-              {label}
-            </Text>
-          </Animated.View>
-        )}
+        <Icon
+          name="sparkle"
+          size={open ? 16 : 14}
+          color={palette.muted}
+          accent={palette.muted}
+        />
+        <Animated.Text
+          key={thinking ? 'thinking' : label}
+          entering={FOLD_IN}
+          maxFontSizeMultiplier={MAX_FONT_SCALE}
+          style={[
+            open ? text(14, 'Regular', 1.35) : styles.mono,
+            { color: palette.muted }
+          ]}
+        >
+          {thinking ? 'Pensando' : label}
+        </Animated.Text>
         <Chevron open={open} color={palette.muted} />
       </Pressable>
       {open ? (
-        <Animated.View exiting={FOLD_OUT} style={{ gap: 12 }}>
-          <View style={{ paddingLeft: 2 }}>
-            {steps.map((step, i) => (
-              <StepRow
-                key={step.id}
-                step={step}
-                last={i === steps.length - 1}
-                palette={palette}
-              />
-            ))}
-          </View>
-          {thinking
-            ? null
-            : tools
-                .filter((t) => t.state === 'done')
-                .map((t) => <ToolCard key={t.id} tool={t} palette={palette} />)}
+        <Animated.View exiting={FOLD_OUT}>
+          {steps.map((step, i) => (
+            <StepRow
+              key={step.id}
+              step={step}
+              last={i === steps.length - 1}
+              palette={palette}
+            />
+          ))}
         </Animated.View>
       ) : null}
     </Animated.View>
@@ -127,47 +114,53 @@ function StepRow({
   last: boolean
   palette: AiPalette
 }) {
-  if (step.state === 'todo')
-    return <TodoStep label={step.label} palette={palette} />
-  const done = step.state === 'done'
+  const now = step.state === 'run'
+  const color = now ? palette.ink : palette.muted
   return (
-    <Animated.View entering={STEP_IN} style={styles.step}>
-      <View style={styles.rail}>
-        {done ? (
-          <Animated.View entering={CHECK_IN} style={styles.check}>
-            <Icon name="check" size={10} color={INK} accent={INK} />
-          </Animated.View>
+    <Animated.View
+      entering={STEP_IN}
+      style={[
+        styles.step,
+        { paddingBottom: last ? 0 : 14 },
+        step.state === 'todo' && { opacity: 0.45 }
+      ]}
+    >
+      {last ? null : (
+        <View style={[styles.line, { backgroundColor: palette.rail }]} />
+      )}
+      <View style={styles.icon}>
+        {now ? (
+          <Spin palette={palette} />
         ) : (
-          <View style={styles.dot}>
-            <Spinner size={16} palette={palette} />
-          </View>
-        )}
-        {last ? null : (
-          <View style={[styles.line, { backgroundColor: palette.rail }]} />
+          <Icon
+            name={STEP_ICON[step.id] ?? 'check'}
+            size={16}
+            color={palette.muted}
+            accent={palette.muted}
+          />
         )}
       </View>
-      <View style={{ flex: 1, minWidth: 0, paddingBottom: last ? 0 : 10 }}>
-        {done ? (
-          <Text style={[text(14, 'SemiBold', 1.4), { color: palette.ink }]}>
-            {step.label}
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={[text(14, 'Regular', 1.35), { color }]}>{step.label}</Text>
+        {step.detail ? (
+          <Text
+            style={[
+              text(12.5, 'Regular', 1.4),
+              { color: palette.muted, opacity: 0.8, marginTop: 2 }
+            ]}
+          >
+            {step.detail}
           </Text>
-        ) : (
-          <Shimmer size={14} palette={palette}>
-            {step.label}
-          </Shimmer>
-        )}
+        ) : null}
         {step.tags?.length ? (
           <View style={styles.tags}>
             {step.tags.map((tag) => (
               <View
                 key={tag}
-                style={[styles.tag, { backgroundColor: palette.stepTag }]}
+                style={[styles.tag, { backgroundColor: palette.mark }]}
               >
                 <Text
-                  style={[
-                    text(11.5, 'SemiBold', 1.4),
-                    { color: palette.stepTagText }
-                  ]}
+                  style={[text(11.5, 'Regular', 1), { color: palette.ink }]}
                 >
                   {tag}
                 </Text>
@@ -175,18 +168,33 @@ function StepRow({
             ))}
           </View>
         ) : null}
-        {step.detail ? (
-          <Text
-            style={[
-              text(12.5, 'Regular', 1.4),
-              { color: palette.muted, marginTop: 3 }
-            ]}
-          >
-            {step.detail}
-          </Text>
-        ) : null}
       </View>
     </Animated.View>
+  )
+}
+
+/** O giro do passo atual (800 ms, linear); com menos movimento, parado. */
+function Spin({ palette }: { palette: AiPalette }) {
+  const reduced = useReducedMotion()
+  const turn = useSharedValue(0)
+  useEffect(() => {
+    if (reduced) return
+    turn.set(
+      withRepeat(withTiming(1, { duration: 800, easing: Easing.linear }), -1)
+    )
+    return () => cancelAnimation(turn)
+  }, [reduced, turn])
+  const style = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${turn.get() * 360}deg` }]
+  }))
+  return (
+    <Animated.View
+      style={[
+        styles.spin,
+        { borderColor: palette.rail, borderTopColor: palette.ink },
+        style
+      ]}
+    />
   )
 }
 
@@ -199,43 +207,27 @@ export function TodoStep({
   palette: AiPalette
 }) {
   return (
-    <View style={styles.step}>
-      <View style={styles.rail}>
-        <View style={[styles.todo, { borderColor: palette.todo }]} />
-      </View>
-      <Text style={[text(14, 'SemiBold', 1.4), { color: palette.muted }]}>
-        {label}
-      </Text>
-    </View>
+    <StepRow
+      step={{ id: 'rank', label, state: 'todo' }}
+      last
+      palette={palette}
+    />
   )
 }
 
 const styles = StyleSheet.create({
-  head: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  headRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  mono: { fontFamily: 'GeistMono-SemiBold', fontSize: 13 },
   step: { flexDirection: 'row', gap: 10 },
-  rail: { alignItems: 'center', width: 18 },
-  check: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#c9f135',
+  icon: {
+    width: 16,
+    height: 16,
+    marginTop: 1,
     alignItems: 'center',
     justifyContent: 'center'
   },
-  dot: {
-    width: 18,
-    height: 18,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  todo: { width: 18, height: 18, borderRadius: 9, borderWidth: 2 },
-  line: { flex: 1, width: 2, minHeight: 12, marginVertical: 3 },
-  tags: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 5,
-    marginTop: 3
-  },
-  tag: { paddingVertical: 2, paddingHorizontal: 7, borderRadius: 4 }
+  line: { position: 'absolute', left: 7.5, top: 20, bottom: 2, width: 1 },
+  spin: { width: 12, height: 12, borderRadius: 6, borderWidth: 1.5 },
+  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginTop: 6 },
+  tag: { paddingVertical: 5, paddingHorizontal: 8, borderRadius: 6 }
 })

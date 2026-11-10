@@ -162,28 +162,33 @@ export async function* dublaConverse(
   }
 
   const place = input.placeLabel ?? 'Pinheiros'
-  yield { type: 'step', id: 's1', label: 'Entendi o pedido', state: 'run' }
+  yield {
+    type: 'step',
+    id: 'understood',
+    label: 'Entendi o pedido',
+    state: 'run'
+  }
   await wait(700, signal)
   yield {
     type: 'step',
-    id: 's1',
+    id: 'understood',
     label: 'Entendi o pedido',
     state: 'done',
     tags: ['Corinthians', 'Hoje', 'Telão', 'Área externa', place]
   }
-  yield { type: 'step', id: 's4', label: 'Comparar e ordenar', state: 'todo' }
-  yield { type: 'step', id: 's2', label: 'Achei o jogo', state: 'run' }
+  yield { type: 'step', id: 'rank', label: 'Comparar e ordenar', state: 'todo' }
+  yield { type: 'step', id: 'game', label: 'Achei o jogo', state: 'run' }
   await wait(600, signal)
   yield {
     type: 'step',
-    id: 's2',
+    id: 'game',
     label: 'Achei o jogo',
     state: 'done',
     detail: 'Corinthians × Palmeiras · 21:30 · Brasileirão'
   }
   yield {
     type: 'step',
-    id: 's3',
+    id: 'search',
     label: 'Procurando bares que vão passar',
     state: 'run'
   }
@@ -209,13 +214,13 @@ export async function* dublaConverse(
   yield { type: 'bars', bars }
   yield {
     type: 'step',
-    id: 's3',
+    id: 'search',
     label: 'Procurando bares que vão passar',
     state: 'done'
   }
-  yield { type: 'step', id: 's4', label: 'Comparar e ordenar', state: 'run' }
+  yield { type: 'step', id: 'rank', label: 'Comparar e ordenar', state: 'run' }
   await wait(700, signal)
-  yield { type: 'step', id: 's4', label: 'Comparar e ordenar', state: 'done' }
+  yield { type: 'step', id: 'rank', label: 'Comparar e ordenar', state: 'done' }
   for (const text of chunks(ANSWER)) {
     await wait(55, signal)
     yield { type: 'text', text }
@@ -256,9 +261,15 @@ export async function* dublaConverse(
 /** Pior caso: tudo no teto (nomes, etiquetas, oito bares, citação fora). */
 async function* worst(signal: AbortSignal): AsyncGenerator<ChatEvent> {
   const label = 'Entendi o pedido com todos os detalhes que você mandou'
-  yield { type: 'step', id: 's1', label, state: 'run' }
+  yield { type: 'step', id: 'understood', label, state: 'run' }
   await wait(500, signal)
-  yield { type: 'step', id: 's1', label, state: 'done', tags: WORST_CHIPS }
+  yield {
+    type: 'step',
+    id: 'understood',
+    label,
+    state: 'done',
+    tags: WORST_CHIPS
+  }
   yield {
     type: 'tool',
     id: 't1',
@@ -320,11 +331,16 @@ async function* proposal(
   signal: AbortSignal,
   now: number
 ): AsyncGenerator<ChatEvent> {
-  yield { type: 'step', id: 's1', label: 'Entendi o pedido', state: 'run' }
+  yield {
+    type: 'step',
+    id: 'understood',
+    label: 'Entendi o pedido',
+    state: 'run'
+  }
   await wait(600, signal)
   yield {
     type: 'step',
-    id: 's1',
+    id: 'understood',
     label: 'Entendi o pedido',
     state: 'done',
     tags: ['Bar do Zé', 'Marina']
