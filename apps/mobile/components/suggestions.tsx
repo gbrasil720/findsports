@@ -193,14 +193,21 @@ export function SuggestionCard({
               {item.isExpandedRadius ? ' · FORA DO RAIO' : ''}
             </Text>
             <View style={styles.nameRow}>
-              <Text
-                style={styles.name}
-                numberOfLines={2}
-                adjustsFontSizeToFit
-                minimumFontScale={0.6}
-              >
-                {item.name.toLocaleUpperCase('pt-BR')}
-              </Text>
+              {/* Anton em duas linhas com o entrelinha do desenho (.95):
+                  uma linha por vez, com margem negativa. */}
+              <View style={{ flex: 1 }} accessible accessibilityRole="header">
+                {nameLines(item.name).map((line) => (
+                  <Text
+                    key={line}
+                    style={styles.name}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.6}
+                  >
+                    {line}
+                  </Text>
+                ))}
+              </View>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`Abrir a página do ${item.name}`}
@@ -350,6 +357,27 @@ function GamePill({
       </Animated.View>
     </Pressable>
   )
+}
+
+/**
+ * O nome em até duas linhas, quebrando no espaço mais perto do meio quando
+ * não cabe numa só (13 letras em Anton 38 na largura do card).
+ */
+function nameLines(name: string) {
+  const upper = name.toLocaleUpperCase('pt-BR')
+  if (upper.length <= 13 || !upper.includes(' ')) return [upper]
+  const words = upper.split(' ')
+  let best = 1
+  let gap = Number.POSITIVE_INFINITY
+  for (let i = 1; i < words.length; i++) {
+    const left = words.slice(0, i).join(' ').length
+    const right = words.slice(i).join(' ').length
+    if (Math.max(left, right) < gap) {
+      gap = Math.max(left, right)
+      best = i
+    }
+  }
+  return [words.slice(0, best).join(' '), words.slice(best).join(' ')]
 }
 
 // --- Baralho ----------------------------------------------------------------
@@ -931,11 +959,10 @@ const styles = StyleSheet.create({
     gap: 10
   },
   name: {
-    flex: 1,
     fontFamily: 'Anton',
     fontSize: 38,
     color: PAPER,
-    marginVertical: -9.2
+    marginVertical: -10.1
   },
   up: {
     width: 36,
