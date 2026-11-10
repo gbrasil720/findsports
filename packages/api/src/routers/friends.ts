@@ -669,8 +669,14 @@ export const friendsRouter = router({
       if (!input.hashes.length) return []
       // ponytail: compara o hash de cada conta a cada vez (varre `user`);
       // com muitas contas, uma coluna com o hash e índice.
+      // O hash que bateu volta junto (rodada 6): o app mostra o nome que a
+      // pessoa tem na agenda ("na agenda como Bruno Trampo") sem que o e-mail
+      // saia do celular.
       const people = await db
-        .select(PERSON)
+        .select({
+          ...PERSON,
+          hash: sql<string>`encode(sha256(convert_to(lower(trim(${user.email})), 'UTF8')), 'hex')`
+        })
         .from(user)
         .where(
           sql`${listable} AND ${user.id} <> ${me}
