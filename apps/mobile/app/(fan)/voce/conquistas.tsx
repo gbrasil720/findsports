@@ -1,3 +1,4 @@
+import { LEVELS } from '@findsports_oficial/api/lib/achievements'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
 import { useRef, useState } from 'react'
@@ -14,8 +15,10 @@ import {
 } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import Svg, { Circle, Defs, Pattern, Rect } from 'react-native-svg'
 import { Card, FilterChip } from '@/components/card'
 import { FirstMedals, MedalsEmpty } from '@/components/empty-states'
+import { GroupLabel } from '@/components/game-line'
 import { useLayout, useNavInsets } from '@/components/layout'
 import { Medal3D, MedalImage, useMedalPalette } from '@/components/medal'
 import {
@@ -32,6 +35,7 @@ import {
   GlassRound,
   Icon,
   INK,
+  PAPER,
   Text,
   Title,
   text,
@@ -81,6 +85,7 @@ export default function Shelf() {
   const window = useWindowDimensions()
   useStatusBar('auto')
   const mine = useQuery(trpc.achievements.mine.queryOptions())
+  const visits = useQuery(trpc.attendance.visits.queryOptions())
   const [group, setGroup] = useState<Group | null>(null)
   const firstGroup = useRef(group).current
   const list = mine.data?.achievements ?? []
@@ -593,25 +598,51 @@ export default function Shelf() {
     )
   }
 
-  // Celular, Duo fechado (quatro colunas) e o que ainda carrega fora dele.
+  // Celular e Duo fechado (rodada 6): o placar do nível em tinta com a
+  // escada, "Perto de sair" e a estante com a raridade de cada medalha.
   const phone = layout.kind === 'phone' || layout.kind === 'duoClosed'
   const space = window.width - nav.left - nav.right
-  const width = Math.min(space, 640) - 32
-  // Quatro colunas onde passa de 440 (capa do Fold 8); o resto, três.
-  const cols = space > 440 ? 4 : 3
+  const shelf = [...list].sort(
+    (x, y) => Number(Boolean(y.unlockedAt)) - Number(Boolean(x.unlockedAt))
+  )
+  const won = list.filter((a) => a.unlockedAt).length
   return (
     <View style={root}>
       <ScrollView
         contentContainerStyle={[
           styles.body,
-          { paddingTop: insets.top + 13, paddingBottom: tabBar + 24 },
+          { paddingTop: insets.top + 8, paddingBottom: tabBar + 24, gap: 14 },
           !phone && styles.narrow
         ]}
         refreshControl={refresh}
       >
         <View style={styles.top}>
-          <Title lines={[['Conquistas']]} size={40} color={P.ink} />
-          <ShareRound onPress={share} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Voltar"
+            hitSlop={8}
+            onPress={() =>
+              router.canGoBack() ? router.back() : router.navigate('/voce')
+            }
+            style={[
+              styles.round,
+              { backgroundColor: P.card, shadowColor: P.drop }
+            ]}
+          >
+            <Icon name="back" size={20} color={P.ink} />
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Compartilhar seu nível"
+            hitSlop={8}
+            onPress={share}
+            style={[
+              styles.round,
+              { backgroundColor: P.card, shadowColor: P.drop }
+            ]}
+          >
+            <Icon name="share" size={20} color={P.ink} />
+          </Pressable>
         </View>
 
         {mine.isPending ? (
@@ -626,20 +657,308 @@ export default function Shelf() {
           />
         ) : (
           <>
-            <Level data={data} star={star} />
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.chipsScroll}
-              contentContainerStyle={styles.chips}
-            >
-              {chips}
-            </ScrollView>
-            {grid(width, cols, cols === 4 ? 84 : 96, 8, false)}
+            <LevelBoard
+              level={data.level}
+              streak={data.streak}
+              visits={visits.data?.length ?? 0}
+              bars={new Set((visits.data ?? []).map((v) => v.barId)).size}
+            />
+            {nearest(list, 2).length ? (
+              <>
+                <GroupLabel>Perto de sair</GroupLabel>
+                {nearest(list, 2).map((a) => (
+                  <NearCard
+                    key={a.id}
+                    a={a}
+                    onOpen={() => router.push(`/conquista/${a.id}`)}
+                    onBars={
+                      a.group === 'bares'
+                        ? () => router.navigate('/explore')
+                        : undefined
+                    }
+                  />
+                ))}
+              </>
+            ) : null}
+            <GroupLabel>{`A estante · ${won} de ${list.length}`}</GroupLabel>
+            <View style={styles.shelf}>
+              {shelf.map((a) => (
+                <ShelfTile
+                  key={a.id}
+                  a={a}
+                  width={(Math.min(space, 640) - 32 - 16) / 3}
+                  onPress={() => router.push(`/conquista/${a.id}`)}
+                />
+              ))}
+            </View>
           </>
         )}
       </ScrollView>
     </View>
+  )
+}
+
+/** Faltam N do grupo para a próxima: "4 bares novos para chegar a 10". */
+function nearLine(a: Achievement) {
+  const left = a.target - Math.min(a.progress, a.target)
+  const what =
+    a.group === 'resenhas'
+      ? left === 1
+        ? 'resenha'
+        : 'resenhas'
+      : a.group === 'bairros'
+        ? left === 1
+          ? 'bairro novo'
+          : 'bairros novos'
+        : a.group === 'esportes'
+          ? left === 1
+            ? 'esporte novo'
+            : 'esportes novos'
+          : left === 1
+            ? 'bar novo'
+            : 'bares novos'
+  return `${left} ${what} para chegar a ${a.target}`
+}
+
+/** O placar do nível (`.lvh`): o número em acid, o nome, a escada, os números. */
+function LevelBoard({
+  level,
+  streak,
+  visits,
+  bars
+}: {
+  level: {
+    level: number
+    name: string
+    unlocked: number
+    nextAt: number | null
+  }
+  streak: number
+  visits: number
+  bars: number
+}) {
+  const P = useMedalPalette()
+  const from = LEVELS.find((l) => l.level === level.level)?.from ?? 0
+  const next = LEVELS.find((l) => l.level === level.level + 1)
+  const share = level.nextAt
+    ? Math.min(1, (level.unlocked - from) / (level.nextAt - from))
+    : 1
+  return (
+    <View style={[styles.board, P.dark && styles.boardDark]}>
+      {/* Os pontos do placar (`.lvh`): textura parada, por trás de tudo. */}
+      <View style={styles.dots} pointerEvents="none">
+        <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
+          <Defs>
+            <Pattern
+              id="placar"
+              width={9}
+              height={9}
+              patternUnits="userSpaceOnUse"
+            >
+              <Circle cx={4.5} cy={4.5} r={1.2} fill="rgba(241,238,230,.09)" />
+            </Pattern>
+          </Defs>
+          <Rect width="100%" height="100%" fill="url(#placar)" />
+        </Svg>
+      </View>
+      <View style={styles.boardTop}>
+        <View>
+          <Text style={styles.boardKicker}>SEU NÍVEL</Text>
+          <Text style={styles.big}>{level.level}</Text>
+        </View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={styles.boardName} numberOfLines={1} adjustsFontSizeToFit>
+            {level.name}
+          </Text>
+          <Text style={[text(13.5, 'Regular', 1.4), { color: '#c9c7c0' }]}>
+            {level.unlocked} {level.unlocked === 1 ? 'conquista' : 'conquistas'}
+            {next && level.nextAt ? (
+              <>
+                {' · faltam '}
+                <Text style={{ color: ACID, fontFamily: 'Archivo-Bold' }}>
+                  {level.nextAt - level.unlocked}
+                </Text>
+                {` para ${next.name}`}
+              </>
+            ) : (
+              ' · nível máximo'
+            )}
+          </Text>
+          <View style={styles.levelTrack}>
+            <View style={[styles.levelFill, { width: `${share * 100}%` }]} />
+          </View>
+        </View>
+      </View>
+      <Ladder current={level.level} />
+      <View style={styles.boardStats}>
+        {(
+          [
+            [visits, 'visitas', false],
+            [bars, 'bares', false],
+            [streak, 'semanas seguidas', true]
+          ] as const
+        ).map(([value, label, isNew]) => (
+          <View key={label} style={styles.boardStat}>
+            <Text style={styles.boardValue}>{value}</Text>
+            <Text style={styles.boardLabel}>{label}</Text>
+            {isNew ? (
+              <View style={styles.newTag}>
+                <Text style={styles.newText}>NOVO</Text>
+              </View>
+            ) : null}
+          </View>
+        ))}
+      </View>
+    </View>
+  )
+}
+
+/** A escada dos cinco níveis (`.lad`): os passados em papel, o atual em acid. */
+export function Ladder({ current }: { current: number }) {
+  return (
+    <View style={styles.ladder}>
+      <View style={styles.ladderLine} />
+      {LEVELS.map((l) => {
+        const past = l.level < current
+        const now = l.level === current
+        return (
+          <View key={l.level} style={styles.rung}>
+            <View
+              style={[
+                styles.node,
+                past
+                  ? { backgroundColor: PAPER, borderWidth: 0 }
+                  : now
+                    ? styles.nodeNow
+                    : null
+              ]}
+            >
+              <Text
+                style={[
+                  styles.nodeText,
+                  { color: past || now ? INK : '#6b6a63' }
+                ]}
+              >
+                {l.level}
+              </Text>
+            </View>
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              style={[styles.rungName, { color: now ? PAPER : '#aaa9a4' }]}
+            >
+              {l.name}
+            </Text>
+            <Text style={styles.rungFrom}>{l.from}</Text>
+          </View>
+        )
+      })}
+    </View>
+  )
+}
+
+/** "Perto de sair" (`.nr`): a medalha apagada, o que falta e a barra. */
+function NearCard({
+  a,
+  onOpen,
+  onBars
+}: {
+  a: Achievement
+  onOpen: () => void
+  onBars?: () => void
+}) {
+  const P = useMedalPalette()
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onOpen}
+      style={({ pressed }) => [
+        styles.nearCard,
+        { backgroundColor: P.card, shadowColor: P.drop },
+        pressed && { opacity: 0.8 }
+      ]}
+    >
+      <MedalImage id={a.id} locked size={58} />
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={[text(15, 'Bold', 1.2), { color: P.ink }]}>{a.name}</Text>
+        <Text
+          style={[
+            text(12.5, 'Regular', 1.35),
+            { color: P.muted, marginTop: 2 }
+          ]}
+        >
+          {nearLine(a)}
+        </Text>
+        <View style={[styles.nearTrack, { backgroundColor: P.track }]}>
+          <View
+            style={[
+              styles.nearFill,
+              {
+                width: `${progressShare(a) * 100}%`,
+                backgroundColor: P.dark ? ACID : '#7f9a12'
+              }
+            ]}
+          />
+        </View>
+        <Text style={[styles.mono105, { color: P.muted }]}>
+          {Math.min(a.progress, a.target)} de {a.target}
+        </Text>
+      </View>
+      {onBars ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={onBars}
+          style={[styles.nearButton, { backgroundColor: P.ink }]}
+        >
+          <Text
+            style={[text(14, 'Bold', 1.2), { color: P.dark ? INK : PAPER }]}
+          >
+            Ver bares
+          </Text>
+        </Pressable>
+      ) : null}
+    </Pressable>
+  )
+}
+
+/** Uma medalha da estante (`.md6`): a ganha com "12% têm"; a que falta, "2 de 4". */
+function ShelfTile({
+  a,
+  width,
+  onPress
+}: {
+  a: Achievement
+  width: number
+  onPress: () => void
+}) {
+  const P = useMedalPalette()
+  const done = Boolean(a.unlockedAt)
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={a.name}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.tile6,
+        { width, backgroundColor: P.card, shadowColor: P.drop },
+        pressed && { opacity: 0.8 }
+      ]}
+    >
+      <View style={done ? styles.medalLift : { opacity: 0.75 }}>
+        <MedalImage id={a.id} locked={!done} size={70} />
+      </View>
+      <Text
+        numberOfLines={2}
+        style={[text(12.5, 'Bold', 1.2), { color: P.ink, textAlign: 'center' }]}
+      >
+        {a.name}
+      </Text>
+      <Text style={[styles.mono105, { color: P.muted }]}>
+        {done
+          ? `${a.share}% têm`
+          : `${Math.min(a.progress, a.target)} de ${a.target}`}
+      </Text>
+    </Pressable>
   )
 }
 
@@ -915,6 +1234,167 @@ function Tile({
 }
 
 const styles = StyleSheet.create({
+  round: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  },
+  board: {
+    borderRadius: 26,
+    backgroundColor: INK,
+    padding: 18,
+    gap: 16,
+    shadowColor: '#000',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  },
+  dots: { ...StyleSheet.absoluteFill, borderRadius: 26, overflow: 'hidden' },
+  boardDark: {
+    backgroundColor: '#1f1f1a',
+    borderWidth: 1,
+    borderColor: 'rgba(241,238,230,.08)'
+  },
+  boardTop: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  boardKicker: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 10,
+    letterSpacing: 1,
+    color: '#aaa9a4'
+  },
+  // Anton 86/.85: margem negativa no lugar do entrelinha curto.
+  big: {
+    fontFamily: 'Anton',
+    fontSize: 86,
+    color: ACID,
+    marginVertical: -26,
+    textShadowColor: 'rgba(201,241,53,.35)',
+    textShadowRadius: 24
+  },
+  boardName: {
+    fontFamily: 'Anton',
+    fontSize: 34,
+    textTransform: 'uppercase',
+    color: PAPER,
+    marginVertical: -8.2,
+    marginBottom: -2
+  },
+  levelTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#34342d',
+    marginTop: 8,
+    overflow: 'hidden'
+  },
+  levelFill: { height: '100%', backgroundColor: ACID },
+  ladder: { flexDirection: 'row' },
+  ladderLine: {
+    position: 'absolute',
+    left: '10%',
+    right: '10%',
+    top: 15,
+    height: 2,
+    backgroundColor: '#34342d'
+  },
+  rung: { flex: 1, alignItems: 'center', gap: 4 },
+  node: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#26261f',
+    borderWidth: 1.5,
+    borderColor: '#34342d',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  nodeNow: {
+    backgroundColor: ACID,
+    borderWidth: 4,
+    borderColor: 'rgba(201,241,53,.25)'
+  },
+  nodeText: { fontFamily: 'GeistMono-SemiBold', fontSize: 13 },
+  rungName: { ...text(10.5, 'SemiBold', 1.15), maxWidth: '96%' },
+  rungFrom: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 9.5,
+    color: '#6b6a63'
+  },
+  boardStats: { flexDirection: 'row', gap: 8 },
+  boardStat: {
+    flex: 1,
+    borderRadius: 14,
+    backgroundColor: 'rgba(241,238,230,.07)',
+    padding: 10
+  },
+  boardValue: {
+    fontFamily: 'Anton',
+    fontSize: 28,
+    color: PAPER,
+    marginVertical: -6.8
+  },
+  boardLabel: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 10.5,
+    color: '#aaa9a4',
+    marginTop: 6
+  },
+  newTag: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    paddingVertical: 3,
+    paddingHorizontal: 4,
+    borderRadius: 4,
+    backgroundColor: ACID
+  },
+  newText: { fontFamily: 'GeistMono-SemiBold', fontSize: 8.5, color: INK },
+  nearCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 12,
+    borderRadius: 20,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
+  },
+  nearTrack: {
+    height: 5,
+    borderRadius: 3,
+    marginTop: 6,
+    marginBottom: 6,
+    overflow: 'hidden'
+  },
+  nearFill: { height: '100%' },
+  nearButton: {
+    height: 40,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    justifyContent: 'center'
+  },
+  mono105: { fontFamily: 'GeistMono-SemiBold', fontSize: 10.5 },
+  shelf: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tile6: {
+    borderRadius: 18,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    gap: 4,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
+  },
+  medalLift: {
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 6 }
+  },
   screen: { flex: 1 },
   body: { paddingHorizontal: 16, gap: 14 },
   narrow: { width: '100%', maxWidth: 640, alignSelf: 'center' },
