@@ -15,7 +15,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Photo } from '@/components/explore'
 import { FanCard } from '@/components/fan-card'
 import { FriendGame } from '@/components/friend-page'
-import { AddButton, useFriendActions } from '@/components/friends'
+import {
+  AddButton,
+  type Relation,
+  useFriendActions
+} from '@/components/friends'
 import { DuelCard } from '@/components/friends-activity'
 import { haptic } from '@/components/motion'
 import { sportMark } from '@/components/onboarding'
@@ -162,12 +166,13 @@ export default function Invite() {
               teams={person.teams}
               sports={person.sports.map(sportMark)}
               middle="Nível"
-              radius={String(person.level.level)}
+              radius={person.level ? String(person.level.level) : '—'}
               base={person.city}
               bare
             />
             <Mutual
               mutual={person.mutual}
+              mutualCount={person.mutualCount}
               count={person.friendCount}
               first={first}
             />
@@ -219,7 +224,7 @@ export default function Invite() {
                     numberOfLines={1}
                     style={[text(14.5, 'Bold', 1.3), { color: palette.ink }]}
                   >
-                    Hoje {first} vai ao {person.today.barName}
+                    {first} vai hoje · {person.today.barName}
                   </Text>
                   <Text
                     numberOfLines={1}
@@ -296,19 +301,29 @@ type Preview = NonNullable<
 /** "Rafael, João e Bia já estão na rede de Marina"; sem conta, só a contagem. */
 function Mutual({
   mutual,
+  mutualCount,
   count,
   first
 }: {
   mutual: { id: string; name: string }[]
+  /** Todos os em comum; `mutual` traz só os três primeiros. */
+  mutualCount: number
   count: number
   first: string
 }) {
   const palette = usePalette()
   if (!mutual.length && !count) return null
   const names = mutual.map((m) => firstName(m.name))
+  const more = Math.max(0, mutualCount - names.length)
+  const who = more
+    ? `${names.join(', ')} e mais ${more}`
+    : names.length > 1
+      ? `${names.slice(0, -1).join(', ')} e ${names.at(-1)}`
+      : (names[0] ?? '')
+  // Sem gênero: "na rede de", não "amigos dela".
   const line = names.length
-    ? `${names.length > 1 ? `${names.slice(0, -1).join(', ')} e ${names.at(-1)}` : names[0]} ${names.length > 1 ? 'já são amigos' : 'já tem amizade'} com ${first}`
-    : `${first} já tem ${count} ${count === 1 ? 'amigo' : 'amigos'} na Onside`
+    ? `${who} ${names.length + more > 1 ? 'já estão' : 'já está'} na rede de ${first}`
+    : `${first} já tem ${count} ${count === 1 ? 'pessoa' : 'pessoas'} na rede da Onside`
   return (
     <View style={styles.mutual}>
       {names.length ? (
@@ -371,8 +386,8 @@ function Accepted({
   const profile = useQuery(
     trpc.friends.profile.queryOptions({ userId: person.id })
   )
-  const overview = useQuery(trpc.friends.overview.queryOptions())
   const actions = useFriendActions()
+  const [kept, setKept] = useState<Record<string, Relation>>({})
   const going = useMutation(trpc.attendance.set.mutationOptions())
   const near = useSharedValue(animate && !reduced ? 0 : 1)
   const check = useSharedValue(animate ? 0 : 1)
@@ -451,13 +466,13 @@ function Accepted({
           }}
         />
       ) : null}
-      {overview.data?.suggestions.length ? (
+      {person.theirFriends.length ? (
         <>
           <Text style={[styles.label, { color: palette.muted }]}>
             AMIGOS DE {first.toLocaleUpperCase('pt-BR')} QUE VOCÊ TALVEZ CONHEÇA
           </Text>
           <View style={styles.knows}>
-            {overview.data.suggestions.slice(0, 3).map((s) => (
+            {person.theirFriends.map((s) => (
               <View
                 key={s.id}
                 style={[
@@ -479,9 +494,16 @@ function Accepted({
                   {firstName(s.name)}
                 </Text>
                 <AddButton
-                  relation="none"
+                  relation={kept[s.id] ?? 'none'}
                   busy={actions.busyFor(s.id)}
-                  onPress={() => actions.act(s.id, 'none', 'suggestion')}
+                  onPress={() =>
+                    actions.act(
+                      s.id,
+                      kept[s.id] ?? 'none',
+                      'suggestion',
+                      (next) => setKept((all) => ({ ...all, [s.id]: next }))
+                    )
+                  }
                 />
               </View>
             ))}

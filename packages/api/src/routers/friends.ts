@@ -25,6 +25,7 @@ import {
 } from '../lib/friends'
 import { readInvitePreview } from '../lib/invite-preview'
 import { readCrowns } from '../lib/ranking-read'
+import { incrementWindow } from '../lib/rate-limit-store'
 import { visit } from '../lib/visits'
 
 /*
@@ -48,6 +49,9 @@ const PERSON = {
 }
 
 /** Gente que pode aparecer para outro torcedor: conta de torcedor, sem ban. */
+/** Convites abertos por hora, por pessoa ou IP (rodada 7). */
+const INVITE_PREVIEW_LIMIT = { max: 30, windowMs: 3_600_000 }
+
 const listable = sql`${user.role} = 'fan' AND ${user.banned} IS NOT TRUE`
 
 async function withRelations<T extends { id: string }>(
@@ -488,9 +492,23 @@ export const friendsRouter = router({
    */
   invitePreview: publicProcedure
     .input(z.object({ code: z.string().trim().min(3).max(16) }))
-    .query(({ ctx, input }) =>
-      readInvitePreview(input.code, ctx.session?.user.id ?? null)
-    ),
+    .query(async ({ ctx, input }) => {
+      const viewerId = ctx.session?.user.id ?? null
+      // O código é curto (iniciais e quatro dígitos): sem limite, daria para
+      // varrer os torcedores pelo nome.
+      const attempt = await incrementWindow(
+        viewerId
+          ? `invite-preview:user:${viewerId}`
+          : `invite-preview:ip:${ctx.clientIp}`,
+        INVITE_PREVIEW_LIMIT
+      )
+      if (!attempt.allowed)
+        throw new TRPCError({
+          code: 'TOO_MANY_REQUESTS',
+          message: 'Muitos convites abertos agora. Tente de novo mais tarde.'
+        })
+      return readInvitePreview(input.code, viewerId)
+    }),
 
   /**
    * Pelo link de convite: conta criada há menos de um dia já entra como amiga
