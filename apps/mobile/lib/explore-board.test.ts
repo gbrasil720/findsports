@@ -1,5 +1,5 @@
 /// <reference types="bun-types" />
-import { expect, test } from 'bun:test'
+import { describe, expect, test } from 'bun:test'
 import {
   type BoardBar,
   type BoardGame,
@@ -10,7 +10,8 @@ import {
   distance,
   gameRow,
   type QuietBar,
-  quietBars
+  quietBars,
+  withChosenDay
 } from './explore-board'
 
 const bar = (barId: string, km: number, extra: Partial<BoardBar> = {}) =>
@@ -120,4 +121,21 @@ test('dias da fileira: hoje e os três seguintes', () => {
     { day: '2026-11-11', label: 'Qua 11' }
   ])
   expect(dayChoices('2026-12-31')[1]?.day).toBe('2027-01-01')
+})
+
+describe('withChosenDay', () => {
+  const days = [
+    { day: '2026-11-10', label: 'Hoje' },
+    { day: '2026-11-11', label: 'Qua 11' }
+  ]
+  test('o dia escolhido de fora entra no fim', () => {
+    expect(withChosenDay(days, '2026-11-14').at(-1)).toEqual({
+      day: '2026-11-14',
+      label: 'Sáb 14'
+    })
+  })
+  test('dia da fileira ou nenhum: a fileira fica igual', () => {
+    expect(withChosenDay(days, '2026-11-11')).toBe(days)
+    expect(withChosenDay(days, null)).toBe(days)
+  })
 })

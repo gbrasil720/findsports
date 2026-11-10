@@ -89,7 +89,8 @@ import {
   gameRow,
   type QuietBar,
   quietBars,
-  type RowGame
+  type RowGame,
+  withChosenDay
 } from '@/lib/explore-board'
 import { useFavorites } from '@/lib/favorites'
 import {
@@ -695,7 +696,9 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   }, [showsFloat])
 
   const place = district ?? cityData?.name ?? 'São Paulo'
-  const days = dayChoices(today())
+  // O dia escolhido além dos quatro (a busca abre um jogo de sábado) entra
+  // no fim da fileira, para a régua dizer em que dia está.
+  const days = withChosenDay(dayChoices(today()), filters.date)
 
   const glassTone = palette.dark ? 'dark' : 'light'
   const fade = palette.dark ? '18,18,15' : '241,238,230'

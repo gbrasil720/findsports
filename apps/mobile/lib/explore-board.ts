@@ -100,6 +100,23 @@ const WEEKDAY = new Intl.DateTimeFormat('pt-BR', {
 })
 
 /** A fileira de dias: hoje e os três seguintes ("Hoje", "Seg 9", "Ter 10"). */
+/** Os dias da fileira com o escolhido no fim, se ele não está nela. */
+export function withChosenDay(
+  days: { day: string; label: string }[],
+  chosen: string | null
+) {
+  if (!chosen || days.some((d) => d.day === chosen)) return days
+  const at = new Date(`${chosen}T12:00:00.000Z`)
+  const week = WEEKDAY.format(at).replace('.', '')
+  return [
+    ...days,
+    {
+      day: chosen,
+      label: `${week.charAt(0).toUpperCase()}${week.slice(1, 3)} ${at.getUTCDate()}`
+    }
+  ]
+}
+
 export function dayChoices(today: string): { day: string; label: string }[] {
   return [0, 1, 2, 3].map((n) => {
     const at = new Date(`${today}T12:00:00.000Z`)
