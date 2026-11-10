@@ -4,6 +4,9 @@ import {
   cityLayout,
   closesLabel,
   fansLabel,
+  histogramBars,
+  lastLine,
+  monthClock,
   monthLabel,
   ordinal,
   topLabel
@@ -67,5 +70,38 @@ describe('fatia da cidade', () => {
     expect(topLabel(1, 38420)).toBe('Top 1%')
     expect(topLabel(5, 5)).toBe('Top 100%')
     expect(topLabel(1, 0)).toBe('Top 100%')
+  })
+})
+
+describe('rodada 6', () => {
+  it('o relógio vai até a meia-noite de Brasília do dia 1º', () => {
+    // 08/11/2026, 20:00 em Brasília: faltam 22 dias e 4 horas.
+    expect(monthClock('2026-11', Date.parse('2026-11-08T23:00:00Z'))).toEqual({
+      days: 22,
+      hours: 4
+    })
+  })
+  it('a última ida e a estreia', () => {
+    const now = Date.parse('2026-11-10T23:00:00Z')
+    const day = (d: number) => new Date(now - d * 86_400_000).toISOString()
+    expect(lastLine(day(1), day(40), now)).toBe('foi ontem')
+    expect(lastLine(day(0), day(40), now)).toBe('foi hoje')
+    expect(lastLine(day(4), day(40), now)).toBe('foi há 4 dias')
+    expect(lastLine(day(2), day(3), now)).toBe('estreou')
+    expect(lastLine(null, null, now)).toBeNull()
+  })
+  it('o histograma marca a sua barra e agrupa acima de 24', () => {
+    const bars = histogramBars(
+      [
+        { value: 0, count: 50 },
+        { value: 1, count: 10 },
+        { value: 3, count: 20 }
+      ],
+      3
+    )
+    expect(bars.map((b) => b.count)).toEqual([10, 0, 20])
+    expect(bars[2]?.me).toBe(true)
+    expect(bars[2]?.share).toBe(1)
+    expect(histogramBars([{ value: 48, count: 1 }], 1)).toHaveLength(24)
   })
 })

@@ -89,3 +89,71 @@ export function cityLayout<T extends { position: number }>(
   const top = [...loaded, ...around.filter((row) => row.position > last)]
   return { top, gap: 0, around: [], rest: total - (top.at(-1)?.position ?? 0) }
 }
+
+const HOUR = 3_600_000
+const DAY = 24 * HOUR
+
+/**
+ * O relógio do fim do mês ("22d 04h", rodada 6): até a meia-noite de
+ * Brasília do dia 1º do mês seguinte, em dias e horas.
+ */
+export function monthClock(month: string, now: number) {
+  const [year, m] = month.split('-').map(Number) as [number, number]
+  // 00:00 em Brasília (UTC-3, sem horário de verão) é 03:00 UTC.
+  const end = Date.UTC(year, m, 1, 3)
+  const left = Math.max(0, end - now)
+  return {
+    days: Math.floor(left / DAY),
+    hours: Math.floor((left % DAY) / HOUR)
+  }
+}
+
+/** "foi hoje", "foi ontem", "foi há 3 dias" ou "estreou" (a primeira visita na semana). */
+export function lastLine(
+  lastAt: string | null,
+  firstAt: string | null,
+  now: number
+) {
+  if (!lastAt) return null
+  if (firstAt && now - new Date(firstAt).getTime() < 7 * DAY) return 'estreou'
+  const days = Math.floor(
+    (new Date(`${dayOf(now)}T12:00:00Z`).getTime() -
+      new Date(`${dayOf(new Date(lastAt).getTime())}T12:00:00Z`).getTime()) /
+      DAY
+  )
+  if (days <= 0) return 'foi hoje'
+  if (days === 1) return 'foi ontem'
+  return days < 30 ? `foi há ${days} dias` : null
+}
+
+const dayOf = (at: number) => new Date(at - 3 * HOUR).toISOString().slice(0, 10)
+
+/**
+ * As barras do histograma da cidade: uma por valor de 1 ao maior (até 24;
+ * acima disso, faixas iguais), a altura pela contagem e a sua marcada.
+ */
+export function histogramBars(
+  buckets: { value: number; count: number }[],
+  mine: number,
+  max = 24
+) {
+  const top = Math.max(1, ...buckets.map((b) => b.value))
+  const step = Math.ceil(top / max)
+  const bins = Array.from({ length: Math.ceil(top / step) }, (_, i) => ({
+    from: i * step + 1,
+    to: (i + 1) * step,
+    count: 0
+  }))
+  for (const b of buckets) {
+    if (b.value < 1) continue
+    const bin =
+      bins[Math.min(bins.length - 1, Math.floor((b.value - 1) / step))]
+    if (bin) bin.count += b.count
+  }
+  const most = Math.max(1, ...bins.map((b) => b.count))
+  return bins.map((bin) => ({
+    ...bin,
+    share: bin.count / most,
+    me: mine >= bin.from && mine <= bin.to
+  }))
+}

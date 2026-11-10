@@ -28,6 +28,8 @@ import { Avatar, personLine } from '@/components/friends'
 import { Glass } from '@/components/glass'
 import { useLayout, useNavInsets } from '@/components/layout'
 import { haptic, SWAP, usePressScale } from '@/components/motion'
+import { CityRace, FriendsRace } from '@/components/ranking-race'
+import { Segmented } from '@/components/segmented'
 import { useSoon } from '@/components/soon'
 import { useTabBarSpace } from '@/components/tab-bar'
 import { type Palette, usePalette } from '@/components/theme'
@@ -535,11 +537,31 @@ export default function Ranking() {
         refreshControl={refresh}
       >
         <View style={styles.top}>
-          <Title lines={[['Ranking']]} size={40} color={palette.ink} />
-          {headButton}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Voltar"
+            hitSlop={8}
+            onPress={() =>
+              router.canGoBack() ? router.back() : router.navigate('/voce')
+            }
+            style={[
+              styles.roundBack,
+              { backgroundColor: palette.card, shadowColor: palette.drop }
+            ]}
+          >
+            <Icon name="back" size={20} color={palette.ink} />
+          </Pressable>
+          <View style={{ width: 200 }}>
+            <Segmented
+              items={[
+                { key: 'friends', label: 'Amigos' },
+                { key: 'global', label: 'Cidade' }
+              ]}
+              value={tab}
+              onChange={(next) => pick(next)}
+            />
+          </View>
         </View>
-
-        <Segments tab={tab} onPick={pick} />
 
         {tab === 'global' ? (
           // Ligar o ranking global troca o 27c pela cidade no mesmo fade curto.
@@ -567,21 +589,17 @@ export default function Ranking() {
               <OffGlobal data={head} />
             ) : (
               <>
-                <CityRow
-                  data={where}
-                  pending={false}
-                  lead="Você está em"
+                {head?.listed ? (
+                  <CityRace data={head} onAll={() => router.push(CITY)} />
+                ) : (
                   // Sem cidade no perfil, o toque leva a escolher uma.
-                  onPress={() => router.push(where ? CITY : '/cidade')}
-                />
-                {head?.listed && head.rows.length ? (
-                  <CityTop data={head} onAll={() => router.push(CITY)} />
-                ) : null}
-                <Text
-                  style={[text(13, 'Regular', 1.4), { color: palette.muted }]}
-                >
-                  {RULES.bars} {TIE_RULE}
-                </Text>
+                  <CityRow
+                    data={where}
+                    pending={false}
+                    lead="Você está em"
+                    onPress={() => router.push('/cidade')}
+                  />
+                )}
               </>
             )}
           </Animated.View>
@@ -634,12 +652,12 @@ export default function Ranking() {
             ) : null}
           </Animated.View>
         ) : (
-          <FriendsBoard
+          <FriendsRace
             data={board.data}
             metric={metric}
             onMetric={setMetric}
             onOpen={open}
-            onNewBars={newBars}
+            onBars={() => router.navigate('/explore')}
           />
         )}
       </ScrollView>
@@ -1623,6 +1641,16 @@ function Cover({
 }
 
 const styles = StyleSheet.create({
+  roundBack: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  },
   screen: { flex: 1 },
   body: { paddingHorizontal: 16, gap: 12 },
   narrow: { width: '100%', maxWidth: 640, alignSelf: 'center' },
