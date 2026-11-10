@@ -180,7 +180,8 @@ export function DuelCard({
   them,
   closesInDays,
   unitWords = ['bar', 'bares'],
-  onBars
+  onBars,
+  note
 }: {
   title: string
   metric: string
@@ -191,6 +192,11 @@ export function DuelCard({
   unitWords?: [string, string]
   /** Atrás ou empatado: "Ver bares" leva à próxima ida. */
   onBars?: () => void
+  /**
+   * Duelo que acabou de começar (convite aceito, rodada 7): a frase no lugar
+   * da barra e da contagem dos dias.
+   */
+  note?: string
 }) {
   const count = (n: number) => `${n} ${n === 1 ? unitWords[0] : unitWords[1]}`
   const total = me.value + them.value
@@ -218,10 +224,16 @@ export function DuelCard({
           <Initial name={them.name} />
         </View>
       </View>
-      <View style={styles.bar}>
-        <GrowBar share={share} style={styles.barMine} />
-      </View>
-      {closesInDays !== undefined ? (
+      {note ? (
+        <Text style={[text(12.5, 'Regular', 1.3), { color: '#aaa9a4' }]}>
+          {note}
+        </Text>
+      ) : (
+        <View style={styles.bar}>
+          <GrowBar share={share} style={styles.barMine} />
+        </View>
+      )}
+      {!note && closesInDays !== undefined ? (
         <Text style={[text(12.5, 'Regular', 1.3), { color: '#aaa9a4' }]}>
           {lead === 0
             ? 'Empatados'
@@ -234,7 +246,7 @@ export function DuelCard({
             : `Faltam ${closesInDays} ${closesInDays === 1 ? 'dia' : 'dias'}.`}
         </Text>
       ) : null}
-      {onBars && lead <= 0 ? (
+      {onBars && lead <= 0 && !note ? (
         <View style={{ alignItems: 'flex-start' }}>
           <PillButton label="Ver bares" height={36} onPress={onBars} />
         </View>

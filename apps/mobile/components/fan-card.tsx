@@ -364,7 +364,9 @@ export function FanCard({
   number,
   since,
   crown,
-  still
+  still,
+  middle = 'Raio',
+  bare
 }: {
   name: string
   teams: string[]
@@ -384,6 +386,10 @@ export function FanCard({
    * cerimônia do onboarding a cada abertura.
    */
   still?: boolean
+  /** O rótulo do campo do meio: "Raio" na sua, "Nível" na de outra pessoa. */
+  middle?: string
+  /** Sem o picote e o pé (a carteirinha de quem convidou, rodada 7). */
+  bare?: boolean
 }) {
   const palette = usePalette()
   return (
@@ -438,7 +444,7 @@ export function FanCard({
               ))}
             </Text>
           ) : (
-            <Dash>Escolha um time</Dash>
+            <Dash>{bare ? '—' : 'Escolha um time'}</Dash>
           )}
         </Field>
 
@@ -472,7 +478,7 @@ export function FanCard({
               <Dash>—</Dash>
             )}
           </Field>
-          <Field label="Raio" hot={lit === 'radius'} style={{ flex: 0.7 }}>
+          <Field label={middle} hot={lit === 'radius'} style={{ flex: 0.7 }}>
             {radius ? (
               <Text
                 numberOfLines={1}
@@ -501,21 +507,30 @@ export function FanCard({
           </Field>
         </View>
 
-        {/* O picote, com os recortes dos lados na cor do fundo. */}
-        <View style={styles.perforation}>
-          <View style={styles.cut} />
-          <View
-            style={[styles.notch, { left: -7, backgroundColor: palette.bg }]}
-          />
-          <View
-            style={[styles.notch, { right: -7, backgroundColor: palette.bg }]}
-          />
-        </View>
-
-        {validated ? (
-          <Issued number={number} since={since} still={still} />
-        ) : (
-          <Foot validated={false} />
+        {bare ? null : (
+          <>
+            {/* O picote, com os recortes dos lados na cor do fundo. */}
+            <View style={styles.perforation}>
+              <View style={styles.cut} />
+              <View
+                style={[
+                  styles.notch,
+                  { left: -7, backgroundColor: palette.bg }
+                ]}
+              />
+              <View
+                style={[
+                  styles.notch,
+                  { right: -7, backgroundColor: palette.bg }
+                ]}
+              />
+            </View>
+            {validated ? (
+              <Issued number={number} since={since} still={still} />
+            ) : (
+              <Foot validated={false} />
+            )}
+          </>
         )}
       </View>
     </View>

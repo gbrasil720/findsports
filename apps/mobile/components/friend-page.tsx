@@ -336,7 +336,7 @@ function Story({
 }
 
 /** "Marina vai · hoje 21:30", o jogo e "Vou também" (`.mini3`). */
-function FriendGame({
+export function FriendGame({
   name,
   game,
   onOpen,
