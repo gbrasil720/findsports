@@ -47,10 +47,8 @@ import {
   Deck,
   DeckButtons,
   type DeckHandle,
-  EdgeGlow,
   MiniCard,
-  MissingCard,
-  ReleaseHint
+  MissingCard
 } from '@/components/suggestions'
 import { usePalette } from '@/components/theme'
 import {
@@ -296,9 +294,10 @@ export default function SuggestionsScreen() {
 
   // --- Estados --------------------------------------------------------------
 
-  const header = (subtitle: string) => (
+  const header = (subtitle: string, onWhy?: () => void) => (
     <Header
       subtitle={subtitle}
+      onWhy={onWhy}
       onClose={close}
       onSettings={() =>
         router.push({
@@ -343,7 +342,12 @@ export default function SuggestionsScreen() {
     )
   } else if (pending.length && !demo) {
     const index = items.length - pending.length + 1
-    subtitle = `${index} de ${items.length} · curta ou passe`
+    const turn = new Date(merged.nextRoundAt).toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'America/Sao_Paulo'
+    })
+    subtitle = `${index} de ${items.length} · volta às ${turn}`
     body = (
       <View style={{ flex: 1 }}>
         <View style={styles.deckArea}>
@@ -360,7 +364,6 @@ export default function SuggestionsScreen() {
         </View>
         {/* A 28 pt do rodapé, como no design (o indicador de início fica por cima). */}
         <View style={[styles.controls, { paddingBottom: 28 }]}>
-          <ReleaseHint drag={drag} dark={dark} />
           <DeckButtons
             drag={drag}
             dark={dark}
@@ -421,7 +424,6 @@ export default function SuggestionsScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: palette.bg }]}>
       {dark ? <CenterGlow /> : null}
-      {pending.length && !demo ? <EdgeGlow drag={drag} /> : null}
       <View style={{ paddingTop: insets.top + 4, flex: 1 }}>
         {closed ? (
           <View style={styles.closeOnly}>
@@ -437,7 +439,7 @@ export default function SuggestionsScreen() {
             </Pressable>
           </View>
         ) : (
-          header(subtitle)
+          header(subtitle, pending.length && !demo ? why : undefined)
         )}
         {body}
       </View>
@@ -481,52 +483,55 @@ function CenterGlow() {
 
 // --- Cabeçalho ---------------------------------------------------------------
 
+/**
+ * O topo da rodada 4: fechar, "2 de 5 · volta às 10:00" em mono no meio e,
+ * no baralho, o "Por que este bar?"; nos outros estados, as preferências.
+ */
 function Header({
   subtitle,
   onClose,
-  onSettings
+  onSettings,
+  onWhy
 }: {
   subtitle: string
   onClose: () => void
   onSettings: () => void
+  onWhy?: () => void
 }) {
   const palette = usePalette()
+  const round = (
+    icon: 'close' | 'doc' | 'sliders',
+    label: string,
+    onPress: () => void
+  ) => (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={8}
+      onPress={onPress}
+      style={[
+        styles.round,
+        { backgroundColor: palette.card, shadowColor: palette.drop }
+      ]}
+    >
+      <Icon name={icon} size={20} color={palette.ink} accent={LIVE} />
+    </Pressable>
+  )
   return (
     <View style={styles.header}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Fechar"
-        hitSlop={8}
-        onPress={onClose}
+      {round('close', 'Fechar', onClose)}
+      <Animated.Text
+        maxFontSizeMultiplier={MAX_FONT_SCALE}
+        key={subtitle}
+        entering={SWAP}
+        style={[styles.count, { color: palette.ink }]}
+        numberOfLines={1}
       >
-        <GlassRound>
-          <Icon name="close" size={18} color={palette.ink} />
-        </GlassRound>
-      </Pressable>
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={[styles.title, { color: palette.ink }]}>
-          Bares pra você
-        </Text>
-        <Animated.Text
-          maxFontSizeMultiplier={MAX_FONT_SCALE}
-          key={subtitle}
-          entering={SWAP}
-          style={[text(12.5, 'Regular', 1.3), { color: palette.muted }]}
-          numberOfLines={1}
-        >
-          {subtitle}
-        </Animated.Text>
-      </View>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Preferências das sugestões"
-        hitSlop={8}
-        onPress={onSettings}
-      >
-        <GlassRound>
-          <Icon name="sliders" size={18} color={palette.ink} accent={LIVE} />
-        </GlassRound>
-      </Pressable>
+        {subtitle}
+      </Animated.Text>
+      {onWhy
+        ? round('doc', 'Por que este bar?', onWhy)
+        : round('sliders', 'Preferências das sugestões', onSettings)}
     </View>
   )
 }
@@ -1653,11 +1658,21 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     alignItems: 'flex-start'
   },
-  title: {
-    fontFamily: 'Anton',
-    fontSize: 26,
-    textTransform: 'uppercase',
-    marginVertical: -6
+  count: {
+    flex: 1,
+    textAlign: 'center',
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 13
+  },
+  round: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
   },
   deckArea: {
     height: CARD_H + 24,

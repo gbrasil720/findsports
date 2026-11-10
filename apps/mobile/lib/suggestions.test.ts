@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import {
   axisLine,
+  axisTag,
   chips,
   distanceText,
   freshCount,
@@ -203,5 +204,22 @@ describe('jogo, rodada e resumo', () => {
         ])
       )
     ).toBe(1)
+  })
+})
+
+describe('axisTag', () => {
+  test('sua cara, pra variar, vale arriscar pelo quanto o fator somou', () => {
+    const it = item({
+      axes: {
+        directIntent: 0,
+        sportsAffinity: 20,
+        distance: 6,
+        experienceSimilarity: 14,
+        quality: 15
+      }
+    })
+    expect(axisTag(it, 'sportsAffinity')).toBe('Sua cara')
+    expect(axisTag(it, 'distance')).toBe('Pra variar')
+    expect(axisTag(it, 'directIntent')).toBe('Vale arriscar')
   })
 })

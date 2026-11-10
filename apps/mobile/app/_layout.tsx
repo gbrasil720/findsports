@@ -252,10 +252,8 @@ export default function Layout() {
                   name="por-que"
                   options={{
                     presentation: 'formSheet',
-                    sheetAllowedDetents: [0.83],
-                    sheetGrabberVisible: true,
-                    sheetCornerRadius: 30,
-                    contentStyle: { backgroundColor: 'transparent' }
+                    sheetAllowedDetents: [0.62, 1],
+                    sheetGrabberVisible: true
                   }}
                 />
                 {/* Atalhos do mapa (19e): tela cheia, aberta pelo "Editar". */}

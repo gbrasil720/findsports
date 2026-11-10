@@ -303,3 +303,18 @@ export function roundSummary(round: Round, now: number) {
       : listWords(parts)
   return `${capital(joined)}. As próximas sugestões já levam isso em conta.`
 }
+
+/**
+ * A etiqueta de cada fator em "Por que esse bar?" (rodada 4): "Sua cara"
+ * quando o fator somou bem (60% do teto ou mais), "Pra variar" no meio,
+ * "Vale arriscar" quando quase não somou.
+ */
+export function axisTag(item: Suggestion, key: AxisKey) {
+  const axis = AXES.find((a) => a.key === key)
+  const share = axis ? item.axes[key] / axis.max : 0
+  return share >= 0.6
+    ? 'Sua cara'
+    : share >= 0.3
+      ? 'Pra variar'
+      : 'Vale arriscar'
+}

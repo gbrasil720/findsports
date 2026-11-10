@@ -3,28 +3,11 @@ import { useLocalSearchParams } from 'expo-router'
 import { useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import Animated from 'react-native-reanimated'
-import { Card } from '@/components/card'
 import { haptic, SWAP, usePressScale } from '@/components/motion'
-import { ScoreBadge } from '@/components/suggestions'
+import { ObTitle } from '@/components/ob-frame'
 import { usePalette } from '@/components/theme'
-import {
-  ACID,
-  BackButton,
-  Icon,
-  INK,
-  LIVE,
-  PAPER,
-  Text,
-  Title,
-  text
-} from '@/components/ui'
-import {
-  AXES,
-  axisLine,
-  axisPoints,
-  heaviestAxis,
-  type Suggestion
-} from '@/lib/suggestions'
+import { ACID, Icon, INK, LIVE, Text, text } from '@/components/ui'
+import { AXES, axisLine, axisTag } from '@/lib/suggestions'
 import { trpc } from '@/lib/trpc'
 
 /*
@@ -34,16 +17,12 @@ import { trpc } from '@/lib/trpc'
  * vale para o baralho quando a folha fecha.
  */
 
-// As cores dos eixos na barra do topo, na ordem do design.
-const AXIS_COLOR = [LIVE, ACID, PAPER, '#9a9893', '#5f5e59']
-
 export default function WhyThisBar() {
   const { runId, barId } = useLocalSearchParams<{
     runId: string
     barId: string
   }>()
   const palette = usePalette()
-  const dark = palette.dark
   const queryClient = useQueryClient()
   // A rodada já existe: sem localização o servidor só a lê.
   const today = useQuery(
@@ -85,81 +64,36 @@ export default function WhyThisBar() {
     if (next === 'like') like.mutate({ runId, barId })
     else pass.mutate({ runId, barId })
   }
-  const heavy = heaviestAxis(item)
-  const total = AXES.reduce((sum, axis) => sum + item.axes[axis.key], 0) || 1
+
+  // Os fatores do mais forte ao mais fraco, como o desenho lista (`.pq`).
+  const order = [...AXES].sort(
+    (x, y) => item.axes[y.key] / y.max - item.axes[x.key] / x.max
+  )
 
   return (
     <ScrollView
-      style={{
-        flex: 1,
-        backgroundColor: dark ? 'rgba(18,18,15,.9)' : 'rgba(241,238,230,.9)'
-      }}
+      style={{ flex: 1, backgroundColor: palette.bg }}
       contentContainerStyle={styles.body}
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.head}>
-        <View style={{ flex: 1 }}>
-          <Title
-            lines={[['POR QUE ', 'ESSE BAR?']]}
-            size={40}
-            color={palette.ink}
-            accentColor={dark ? ACID : palette.live}
-          />
-        </View>
-        <BackButton icon="close" />
+        <ObTitle plain="Por que" hot="esse bar?" size={34} breakLine />
+        <Text style={[text(14, 'Regular', 1.4), { color: palette.muted }]}>
+          {item.name} · o que pesou na escolha de hoje
+        </Text>
       </View>
 
-      <Card shadow={ACID} offset={6}>
-        <View style={[styles.summary, { backgroundColor: INK }]}>
-          <ScoreBadge score={item.score} size={62} />
-          <View style={{ flex: 1, gap: 10 }}>
-            <Text style={[text(17, 'Bold', 1.25), { color: PAPER }]}>
-              {item.name} combina {Math.round(item.score)} de 100
-            </Text>
-            <View style={styles.stack}>
-              {AXES.map((axis, i) => (
-                <View
-                  key={axis.key}
-                  style={{
-                    flex: Math.max(item.axes[axis.key], 0.01) / total,
-                    backgroundColor: AXIS_COLOR[i]
-                  }}
-                />
-              ))}
-            </View>
-            <View style={styles.legend}>
-              {AXES.map((axis, i) => (
-                <View key={axis.key} style={styles.legendItem}>
-                  <View
-                    style={[
-                      styles.legendDot,
-                      { backgroundColor: AXIS_COLOR[i] }
-                    ]}
-                  />
-                  <Text
-                    style={[text(13, 'Regular', 1.2), { color: '#c9c6bf' }]}
-                  >
-                    {axis.label}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        </View>
-      </Card>
-
-      <Card soft>
-        {AXES.map((axis, i) => (
-          <AxisRow
+      <View style={{ gap: 10 }}>
+        {order.map((axis) => (
+          <Factor
             key={axis.key}
-            item={item}
-            axis={axis}
-            heavy={axis.key === heavy}
-            last={i === AXES.length - 1}
-            radius={radius}
+            icon={axis.icon}
+            label={axis.label}
+            line={axisLine(item, axis.key, radius)}
+            tag={axisTag(item, axis.key)}
           />
         ))}
-      </Card>
+      </View>
 
       <View style={styles.choices}>
         <Choice
@@ -175,7 +109,7 @@ export default function WhyThisBar() {
           onPress={() => choose('pass')}
         />
       </View>
-      <Text style={[text(14, 'Regular', 1.45), { color: palette.muted }]}>
+      <Text style={[text(13, 'Regular', 1.45), { color: palette.muted }]}>
         As sugestões usam só o que você faz na Onside: jogos que abre, bares que
         marca, códigos validados e avaliações. Dá para recomeçar do zero em
         Configurações · Preferências.
@@ -184,78 +118,44 @@ export default function WhyThisBar() {
   )
 }
 
-function AxisRow({
-  item,
-  axis,
-  heavy,
-  last,
-  radius
+/** Um fator (`.pq .f`): o ícone, o nome, a frase e a etiqueta. */
+function Factor({
+  icon,
+  label,
+  line,
+  tag
 }: {
-  item: Suggestion
-  axis: (typeof AXES)[number]
-  heavy: boolean
-  last: boolean
-  radius: number
+  icon: (typeof AXES)[number]['icon']
+  label: string
+  line: string
+  tag: string
 }) {
   const palette = usePalette()
-  const points = axisPoints(item, axis.key)
-  const fill = heavy ? LIVE : palette.ink
+  const strong = tag === 'Sua cara'
   return (
     <View
       style={[
-        styles.axis,
-        !last && { borderBottomWidth: 1, borderBottomColor: palette.line }
+        styles.factor,
+        { backgroundColor: palette.card, shadowColor: palette.drop }
       ]}
     >
-      <View
-        style={[
-          styles.axisIcon,
-          heavy
-            ? styles.axisIconHeavy
-            : { backgroundColor: palette.dark ? '#2a2a25' : '#ebe7de' }
-        ]}
-      >
-        <Icon
-          name={axis.icon}
-          size={22}
-          color={heavy ? INK : palette.ink}
-          accent={heavy ? INK : LIVE}
-        />
+      <View style={[styles.factorIcon, { backgroundColor: palette.mark }]}>
+        <Icon name={icon} size={22} color={palette.ink} accent={LIVE} />
       </View>
-      <View style={{ flex: 1, gap: 4 }}>
-        <View style={styles.axisHead}>
-          <Text style={[text(16, 'Bold', 1.25), { color: palette.ink }]}>
-            {axis.label}
-          </Text>
-          {heavy ? (
-            <Text style={[text(13, 'Bold', 1.2), { color: palette.live }]}>
-              MAIOR PESO
-            </Text>
-          ) : null}
-          <View style={{ flex: 1 }} />
-          <Text style={[styles.points, { color: palette.ink }]}>
-            {points}/{axis.max}
-          </Text>
-        </View>
-        <Text style={[text(14, 'Regular', 1.4), { color: palette.muted }]}>
-          {axisLine(item, axis.key, radius)}
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={[text(15, 'Bold', 1.3), { color: palette.ink }]}>
+          {label}
         </Text>
-        {/* Um tracinho por ponto do teto, como no design. */}
-        <View style={styles.dashes}>
-          {Array.from({ length: axis.max }, (_, n) => (
-            <View
-              // biome-ignore lint/suspicious/noArrayIndexKey: um tracinho por ponto, a posição é a identidade
-              key={`${axis.key}-${n}`}
-              style={[
-                styles.dash,
-                {
-                  backgroundColor:
-                    n < points ? fill : palette.dark ? '#2a2a25' : '#e7e3db'
-                }
-              ]}
-            />
-          ))}
-        </View>
+        <Text style={[text(13, 'Regular', 1.4), { color: palette.muted }]}>
+          {line}
+        </Text>
+      </View>
+      <View
+        style={[styles.tag, { backgroundColor: strong ? ACID : palette.mark }]}
+      >
+        <Text style={[styles.tagText, { color: strong ? INK : palette.ink }]}>
+          {tag}
+        </Text>
       </View>
     </View>
   )
@@ -328,8 +228,33 @@ function Choice({
 }
 
 const styles = StyleSheet.create({
-  body: { paddingHorizontal: 16, paddingTop: 24, paddingBottom: 60, gap: 16 },
-  head: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  // `.fs3`: 18 dos lados, 12 entre as peças.
+  body: { paddingHorizontal: 18, paddingTop: 26, paddingBottom: 60, gap: 12 },
+  head: { gap: 10 },
+  factor: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
+  },
+  factorIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  tag: { paddingVertical: 6, paddingHorizontal: 8, borderRadius: 999 },
+  tagText: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11,
+    marginVertical: -1.6
+  },
   summary: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -379,7 +304,7 @@ const styles = StyleSheet.create({
   choices: { flexDirection: 'row', gap: 12 },
   choice: {
     height: 52,
-    borderRadius: 4,
+    borderRadius: 26,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center'

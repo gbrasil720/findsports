@@ -22,9 +22,7 @@ import Animated, {
   withSpring,
   withTiming
 } from 'react-native-reanimated'
-import Svg, { Defs, Ellipse, RadialGradient, Stop } from 'react-native-svg'
 import { scheduleOnRN } from 'react-native-worklets'
-import { Glass } from '@/components/glass'
 import { EASE, haptic, SWAP, usePressScale } from '@/components/motion'
 import { ACID, Icon, INK, LIVE, PAPER, Text, text } from '@/components/ui'
 import {
@@ -48,7 +46,6 @@ import {
 
 export const CARD_W = 358
 export const CARD_H = 560
-const MUTE = '#aaa9a4'
 const SOFT = '#d6d3cb'
 const FLY = 520
 // Onde a soltura decide: projetada pela velocidade, um peteleco basta.
@@ -125,28 +122,23 @@ export function SlotPill({ item }: { item: Suggestion }) {
   )
 }
 
-/** A foto do bar com o degradê do design; sem foto, o cinza do design. */
+/** A foto na metade de cima (`.ph2`), apagando na tinta do card. */
 export function CardPhoto({ uri }: { uri: string | null }) {
   return (
-    <>
+    <View style={styles.photo}>
       {uri ? (
         <Image
           source={{ uri }}
-          style={{ width: CARD_W, height: CARD_H, position: 'absolute' }}
+          style={StyleSheet.absoluteFill}
           resizeMode="cover"
         />
       ) : null}
       <LinearGradient
-        colors={[
-          'rgba(18,18,15,.45)',
-          'rgba(18,18,15,0)',
-          'rgba(18,18,15,0)',
-          'rgba(18,18,15,.95)'
-        ]}
-        locations={[0, 0.2, 0.34, 0.74]}
+        colors={['rgba(18,18,15,0)', 'rgba(18,18,15,0)', INK]}
+        locations={[0, 0.5, 1]}
         style={StyleSheet.absoluteFill}
       />
-    </>
+    </View>
   )
 }
 
@@ -157,7 +149,12 @@ type CardActions = {
   onAlert: () => void
 }
 
-/** O card de um bar (23a). Sem gesto: o arraste é do `Deck`. */
+/**
+ * O card de um bar (rodada 4, `.cardx`): escuro nos dois temas, a foto na
+ * metade de cima, o bairro, a distância e a nota em mono, o nome em Anton, a
+ * frase do motivo (o jogo em acid), os chips do porquê e, embaixo, Avisar ou
+ * Lembrar e quem vai. Sem gesto: o arraste é do `Deck`.
+ */
 export function SuggestionCard({
   item,
   now,
@@ -176,91 +173,69 @@ export function SuggestionCard({
   const game = item.game
   const today = game ? isToday(game.startsAt, now) : false
   const alerted = item.alerts.sportIds.length + item.alerts.teamIds.length > 0
+  const meta = [
+    item.neighborhood,
+    distanceText(item.distanceKm),
+    item.facts.rating ? `${item.facts.rating.percentage}% voltariam` : null
+  ]
+    .filter(Boolean)
+    .join(' · ')
+    .toLocaleUpperCase('pt-BR')
+  const going = game?.going?.count ?? null
   return (
     <View style={styles.card}>
       <CardPhoto uri={item.photoUrl} />
-      {/* Uma foto por bar: a faixa é um segmento só, cheio. */}
-      <View style={styles.segments}>
-        <View style={styles.segment} />
-      </View>
-      <View style={styles.top}>
-        <SlotPill item={item} />
-        <ScoreBadge score={item.score} />
-      </View>
       {behind && !reveal ? null : (
         <Reveal value={reveal}>
           <View style={styles.bottom}>
+            <Text style={styles.meta} numberOfLines={1}>
+              {meta}
+              {item.isExpandedRadius ? ' · FORA DO RAIO' : ''}
+            </Text>
             <View style={styles.nameRow}>
-              {/* Nome longo encolhe até 60% antes de cortar: a altura de linha
-                natural do Anton deixava duas linhas muito separadas. */}
               <Text
                 style={styles.name}
                 numberOfLines={2}
                 adjustsFontSizeToFit
                 minimumFontScale={0.6}
               >
-                {item.name}
+                {item.name.toLocaleUpperCase('pt-BR')}
               </Text>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`Abrir a página do ${item.name}`}
-                hitSlop={8}
+                hitSlop={10}
                 onPress={actions?.onOpen}
                 style={styles.up}
               >
                 <Icon name="arrowUp" size={16} color={PAPER} />
               </Pressable>
             </View>
-            <Text style={[text(14), styles.where]} numberOfLines={1}>
-              {[item.neighborhood, distanceText(item.distanceKm)]
-                .filter(Boolean)
-                .join(' · ')}
-              {item.isExpandedRadius ? ' · Fora do seu raio' : ''}
+            <Text style={[text(14.5, 'Regular', 1.4), styles.why]}>
+              {game && today ? (
+                <>
+                  Passa{' '}
+                  <Text style={{ color: ACID, fontFamily: 'Archivo-Bold' }}>
+                    {gameTitle(game)}
+                  </Text>{' '}
+                  hoje às {gameWhen(game.startsAt, now).split(' ').at(-1)}.
+                </>
+              ) : (
+                reasonLine(item)
+              )}
             </Text>
-            <View style={styles.reason}>
-              <Icon name="sparkle" size={16} color={INK} accent={LIVE} />
-              <Text style={[text(13.5, 'SemiBold', 1.35), styles.reasonText]}>
-                {reasonLine(item)}
-              </Text>
-            </View>
             {chips(item).length ? (
               <View style={styles.chips}>
                 {chips(item).map((axis) => (
                   <View key={axis.key} style={styles.chip}>
-                    <Icon
-                      name={axis.icon}
-                      size={13}
-                      color={PAPER}
-                      accent={ACID}
-                    />
-                    <Text style={[text(12, 'SemiBold', 1.2), { color: PAPER }]}>
-                      {axis.label}
+                    <Text style={styles.chipText}>
+                      {axis.label.toLocaleUpperCase('pt-BR')}
                     </Text>
                   </View>
                 ))}
               </View>
             ) : null}
-            <View style={styles.game}>
-              <Icon
-                name={game ? 'tv' : 'calendar'}
-                size={20}
-                color={PAPER}
-                accent={ACID}
-              />
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text
-                  style={[styles.when, { color: game ? ACID : MUTE }]}
-                  numberOfLines={1}
-                >
-                  {game ? gameWhen(game.startsAt, now) : 'SEM JOGO MARCADO'}
-                </Text>
-                <Text
-                  style={[text(13.5, 'Bold', 1.3), styles.gameTitle]}
-                  numberOfLines={game ? 1 : 2}
-                >
-                  {game ? gameTitle(game) : usualLine(item)}
-                </Text>
-              </View>
+            <View style={styles.minis}>
               {game && today ? (
                 <GamePill
                   label={game.attending ? 'Você vai' : 'Vou assistir'}
@@ -283,6 +258,21 @@ export function SuggestionCard({
                   onPress={actions?.onAlert}
                 />
               ) : null}
+              {going ? (
+                <View style={styles.goingPill}>
+                  <Icon name="people" size={16} color={PAPER} />
+                  <Text style={[text(13, 'SemiBold', 1.2), { color: PAPER }]}>
+                    {going} {going === 1 ? 'vai' : 'vão'}
+                  </Text>
+                </View>
+              ) : game ? null : (
+                <Text
+                  style={[text(12.5, 'Regular', 1.3), styles.usual]}
+                  numberOfLines={2}
+                >
+                  {usualLine(item)}
+                </Text>
+              )}
             </View>
           </View>
         </Reveal>
@@ -547,12 +537,6 @@ export const Deck = forwardRef<DeckHandle, DeckProps>(function Deck(
       { rotate: `${(x.get() / CARD_W) * 30}deg` }
     ]
   }))
-  const likeRing = useAnimatedStyle(() => ({
-    opacity: interpolate(x.get(), [0, COMMIT_X], [0, 1], Extrapolation.CLAMP)
-  }))
-  const passRing = useAnimatedStyle(() => ({
-    opacity: interpolate(x.get(), [0, -COMMIT_X], [0, 1], Extrapolation.CLAMP)
-  }))
   // Derivado, não função: o estilo só assina o shared value que lê direto,
   // e com `x` dentro de outra função a pilha de trás não andava com o arraste.
   const progress = useDerivedValue(() =>
@@ -599,22 +583,6 @@ export const Deck = forwardRef<DeckHandle, DeckProps>(function Deck(
             style={[styles.layer, styles.topCard, topStyle]}
           >
             <SuggestionCard item={top} now={now} actions={actions(top)} />
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                styles.ring,
-                { borderColor: ACID, backgroundColor: 'rgba(201,241,53,.12)' },
-                likeRing
-              ]}
-            />
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                styles.ring,
-                { borderColor: LIVE, backgroundColor: 'rgba(232,50,12,.16)' },
-                passRing
-              ]}
-            />
             <Stamp label="CURTI" color={ACID} side="left" x={x} />
             <Stamp label="PASSO" color={LIVE} side="right" x={x} />
           </Animated.View>
@@ -650,8 +618,8 @@ function Stamp({
       style={[
         styles.stamp,
         side === 'left'
-          ? { left: 22, transform: [{ rotate: '-16deg' }] }
-          : { right: 22, transform: [{ rotate: '16deg' }] },
+          ? { left: 18, transform: [{ rotate: '-10deg' }] }
+          : { right: 18, transform: [{ rotate: '10deg' }] },
         { borderColor: color },
         style
       ]}
@@ -662,97 +630,6 @@ function Stamp({
 }
 
 // --- Botões e brilho ---------------------------------------------------------
-
-/** O clarão do lado para onde o card vai (acid à direita, vermelho à esquerda). */
-export function EdgeGlow({ drag }: { drag: SharedValue<number> }) {
-  const right = useAnimatedStyle(() => ({ opacity: Math.max(0, drag.get()) }))
-  const left = useAnimatedStyle(() => ({ opacity: Math.max(0, -drag.get()) }))
-  return (
-    <>
-      <Animated.View
-        pointerEvents="none"
-        style={[styles.glow, { right: -120 }, right]}
-      >
-        <Blob color={ACID} strength={0.55} />
-      </Animated.View>
-      <Animated.View
-        pointerEvents="none"
-        style={[styles.glow, { left: -120 }, left]}
-      >
-        <Blob color={LIVE} strength={0.45} />
-      </Animated.View>
-    </>
-  )
-}
-
-function Blob({ color, strength }: { color: string; strength: number }) {
-  return (
-    <Svg width={300} height={420}>
-      <Defs>
-        <RadialGradient id={`g${color.slice(1)}`} cx="50%" cy="50%" r="50%">
-          <Stop offset="0" stopColor={color} stopOpacity={strength} />
-          <Stop offset="1" stopColor={color} stopOpacity={0} />
-        </RadialGradient>
-      </Defs>
-      <Ellipse
-        cx={150}
-        cy={210}
-        rx={150}
-        ry={210}
-        fill={`url(#g${color.slice(1)})`}
-      />
-    </Svg>
-  )
-}
-
-/** "SOLTA PRA CURTIR · vai para Salvos": aparece depois do ponto de soltura. */
-export function ReleaseHint({
-  drag,
-  dark
-}: {
-  drag: SharedValue<number>
-  dark: boolean
-}) {
-  // Segue o dedo: aparece no último trecho antes da soltura.
-  const like = useAnimatedStyle(() => {
-    const p = interpolate(drag.get(), [0.7, 1], [0, 1], Extrapolation.CLAMP)
-    return { opacity: p, transform: [{ translateY: 6 * (1 - p) }] }
-  })
-  const pass = useAnimatedStyle(() => {
-    const p = interpolate(-drag.get(), [0.7, 1], [0, 1], Extrapolation.CLAMP)
-    return { opacity: p, transform: [{ translateY: 6 * (1 - p) }] }
-  })
-  return (
-    <View pointerEvents="none" style={styles.hintRow}>
-      <Animated.View style={[styles.hint, styles.hintLike, like]}>
-        <Text style={[styles.hintStrong, { color: INK }]}>
-          Solta pra curtir
-        </Text>
-        <Text style={[text(12.5, 'Regular', 1.2), { color: INK }]}>
-          vai para Salvos
-        </Text>
-      </Animated.View>
-      <Animated.View
-        style={[
-          styles.hint,
-          {
-            backgroundColor: dark
-              ? 'rgba(232,50,12,.75)'
-              : 'rgba(232,50,12,.85)'
-          },
-          pass
-        ]}
-      >
-        <Text style={[styles.hintStrong, { color: PAPER }]}>
-          Solta pra passar
-        </Text>
-        <Text style={[text(12.5, 'Regular', 1.2), { color: PAPER }]}>
-          some por 30 dias
-        </Text>
-      </Animated.View>
-    </View>
-  )
-}
 
 /**
  * Voltar, Passo, Curti e Por quê (23a). Passo e Curti crescem com o arraste
@@ -765,8 +642,7 @@ export function DeckButtons({
   canUndo,
   onUndo,
   onPass,
-  onLike,
-  onWhy
+  onLike
 }: {
   drag: SharedValue<number>
   dark: boolean
@@ -774,98 +650,48 @@ export function DeckButtons({
   onUndo: () => void
   onPass: () => void
   onLike: () => void
-  onWhy: () => void
+  onWhy?: () => void
 }) {
-  const side = useAnimatedStyle(() => ({
-    transform: [{ scale: 1 - 0.08 * Math.min(1, Math.abs(drag.get())) }]
-  }))
+  // `.acts`: Passo e Voltar no papel do card, Curti em acid e maior. Passo e
+  // Curti crescem com o arraste para o lado deles.
   const pass = useAnimatedStyle(() => {
     const d = drag.get()
-    return {
-      transform: [{ scale: d < 0 ? 1 + 0.12 * -d : 1 - 0.08 * d }],
-      opacity: d > 0 ? 1 - 0.45 * d : 1
-    }
+    return { transform: [{ scale: d < 0 ? 1 + 0.12 * -d : 1 - 0.08 * d }] }
   })
   const like = useAnimatedStyle(() => {
     const d = drag.get()
-    return {
-      transform: [{ scale: d > 0 ? 1 + 0.12 * d : 1 + 0.08 * d }],
-      opacity: d < 0 ? 1 + 0.45 * d : 1
-    }
+    return { transform: [{ scale: d > 0 ? 1 + 0.12 * d : 1 + 0.08 * d }] }
   })
-  // O anel de 6 pt do design em volta do botão para onde o card vai.
-  const passHalo = useAnimatedStyle(() => ({
-    opacity: Math.max(0, -drag.get())
-  }))
-  const likeHalo = useAnimatedStyle(() => ({
-    opacity: Math.max(0, drag.get())
-  }))
-  const label = dark ? MUTE : '#55554f'
-  const edge = dark ? '#000' : INK
+  const card = dark ? '#1c1c18' : '#fbf9f4'
+  const drop = dark ? '#000' : 'rgba(18,18,15,.09)'
+  const ink = dark ? PAPER : INK
   return (
     <View style={styles.buttons}>
-      <RoundAction
-        label="Voltar"
-        color={label}
-        glass
-        disabled={!canUndo}
-        onPress={onUndo}
-      >
-        <Animated.View style={side}>
-          <Glass
-            tone={dark ? 'dark' : 'light'}
-            interactive
-            style={styles.small}
-          >
-            <Icon name="back" size={19} color={dark ? PAPER : INK} />
-          </Glass>
-        </Animated.View>
-      </RoundAction>
-      <RoundAction label="Passo" color={label} onPress={onPass}>
+      <RoundAction label="Passo" onPress={onPass}>
         <Animated.View
           style={[
             styles.big,
-            { backgroundColor: LIVE, shadowColor: edge },
+            { backgroundColor: card, shadowColor: drop },
             pass
           ]}
         >
-          <Animated.View
-            style={[
-              styles.halo,
-              { borderColor: 'rgba(232,50,12,.25)' },
-              passHalo
-            ]}
-          />
-          <Icon name="close" size={29} color={PAPER} />
+          <Icon name="close" size={26} color={ink} />
         </Animated.View>
       </RoundAction>
-      <RoundAction label="Curti" color={label} onPress={onLike}>
-        <Animated.View
+      <RoundAction label="Voltar" disabled={!canUndo} onPress={onUndo}>
+        <View
           style={[
-            styles.big,
-            { backgroundColor: ACID, shadowColor: edge },
-            like
+            styles.small,
+            { backgroundColor: card, shadowColor: drop },
+            !canUndo && { opacity: 0.45 }
           ]}
         >
-          <Animated.View
-            style={[
-              styles.halo,
-              { borderColor: 'rgba(201,241,53,.3)' },
-              likeHalo
-            ]}
-          />
-          <Icon name="fan" size={29} color={INK} accent={INK} />
-        </Animated.View>
+          <Icon name="back" size={20} color={ink} />
+        </View>
       </RoundAction>
-      <RoundAction label="Por quê" color={label} glass onPress={onWhy}>
-        <Animated.View style={side}>
-          <Glass
-            tone={dark ? 'dark' : 'light'}
-            interactive
-            style={styles.small}
-          >
-            <Icon name="eye" size={19} color={dark ? PAPER : INK} />
-          </Glass>
+      <RoundAction label="Curti" onPress={onLike}>
+        <Animated.View style={[styles.like, like]}>
+          <Icon name="fan" size={30} color={INK} accent={INK} />
         </Animated.View>
       </RoundAction>
     </View>
@@ -874,16 +700,11 @@ export function DeckButtons({
 
 function RoundAction({
   label,
-  color,
-  glass,
   disabled,
   onPress,
   children
 }: {
   label: string
-  color: string
-  /** O vidro interativo já responde ao toque: sem a escala por cima. */
-  glass?: boolean
   disabled?: boolean
   onPress: () => void
   children: ReactNode
@@ -898,12 +719,8 @@ function RoundAction({
       onPress={onPress}
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
-      style={styles.action}
     >
-      <Animated.View style={glass ? undefined : press.style}>
-        {children}
-      </Animated.View>
-      <Text style={[text(11, 'SemiBold', 1.2), { color }]}>{label}</Text>
+      <Animated.View style={press.style}>{children}</Animated.View>
     </Pressable>
   )
 }
@@ -1058,10 +875,36 @@ const styles = StyleSheet.create({
   card: {
     width: CARD_W,
     height: CARD_H,
-    borderRadius: 14,
+    borderRadius: 28,
     overflow: 'hidden',
-    backgroundColor: '#2a2a25'
+    backgroundColor: INK
   },
+  photo: { position: 'absolute', left: 0, right: 0, top: 0, height: '52%' },
+  meta: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 12.5,
+    letterSpacing: 0.5,
+    color: '#aaa9a4'
+  },
+  why: { color: PAPER },
+  chipText: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11,
+    letterSpacing: 0.44,
+    color: PAPER,
+    marginVertical: -1.6
+  },
+  minis: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  goingPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: 34,
+    paddingHorizontal: 12,
+    borderRadius: 17,
+    backgroundColor: 'rgba(241,238,230,.1)'
+  },
+  usual: { color: '#aaa9a4', flex: 1 },
   segments: {
     position: 'absolute',
     left: 12,
@@ -1080,7 +923,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start'
   },
-  bottom: { position: 'absolute', left: 16, right: 16, bottom: 16, gap: 9 },
+  bottom: { position: 'absolute', left: 18, right: 18, bottom: 16, gap: 10 },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -1090,11 +933,9 @@ const styles = StyleSheet.create({
   name: {
     flex: 1,
     fontFamily: 'Anton',
-    fontSize: 44,
+    fontSize: 38,
     color: PAPER,
-    textTransform: 'uppercase',
-    letterSpacing: -0.44,
-    marginVertical: -8
+    marginVertical: -9.2
   },
   up: {
     width: 36,
@@ -1119,15 +960,12 @@ const styles = StyleSheet.create({
   reasonText: { color: INK, flex: 1 },
   chips: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    height: 28,
-    paddingHorizontal: 10,
-    borderRadius: 14,
-    backgroundColor: 'rgba(241,238,230,.14)',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    backgroundColor: 'rgba(241,238,230,.1)',
     borderWidth: 1,
-    borderColor: 'rgba(241,238,230,.2)'
+    borderColor: 'rgba(241,238,230,.16)'
   },
   game: {
     flexDirection: 'row',
@@ -1147,17 +985,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    height: 36,
+    height: 34,
     paddingHorizontal: 12,
-    borderRadius: 18
+    borderRadius: 17
   },
   pillRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   pillSolid: { backgroundColor: ACID },
-  pillGhost: {
-    backgroundColor: 'rgba(241,238,230,.14)',
-    borderWidth: 1,
-    borderColor: 'rgba(241,238,230,.25)'
-  },
+  pillGhost: { backgroundColor: 'rgba(241,238,230,.1)' },
   deck: { width: CARD_W, height: CARD_H, alignSelf: 'center' },
   layer: { position: 'absolute', left: 0, top: 0, transformOrigin: '50% 100%' },
   topCard: {
@@ -1165,7 +999,7 @@ const styles = StyleSheet.create({
     // Com fundo, o iOS desenha a sombra pela caixa e não recalcula pelo
     // conteúdo a cada quadro do arraste.
     backgroundColor: INK,
-    borderRadius: 14,
+    borderRadius: 28,
     shadowColor: '#000',
     shadowOpacity: 0.55,
     shadowRadius: 25,
@@ -1177,7 +1011,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: 14,
+    borderRadius: 28,
     backgroundColor: '#000'
   },
   ring: {
@@ -1186,24 +1020,24 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: 14,
+    borderRadius: 28,
     borderWidth: 3
   },
+  // `.lab`: mono 15 com o contorno de 2,5 sobre o vidro escuro.
   stamp: {
     position: 'absolute',
-    top: 110,
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 6,
-    borderWidth: 4
+    top: 18,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 2.5,
+    backgroundColor: 'rgba(18,18,15,.6)'
   },
   stampText: {
-    fontFamily: 'Anton',
-    fontSize: 48,
-    marginVertical: -12,
-    textShadowColor: 'rgba(0,0,0,.4)',
-    textShadowRadius: 12,
-    textShadowOffset: { width: 0, height: 2 }
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 15,
+    letterSpacing: 1.5,
+    marginVertical: -2.2
   },
   glow: { position: 'absolute', top: 200, width: 300, height: 420 },
   hintRow: { height: 30, alignItems: 'center' },
@@ -1226,27 +1060,40 @@ const styles = StyleSheet.create({
   buttons: {
     flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'flex-start',
-    gap: 22
-  },
-  action: { alignItems: 'center', gap: 6 },
-  small: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
     alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden'
+    gap: 18
   },
-  big: {
-    width: 66,
-    height: 66,
-    borderRadius: 33,
+  small: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
     shadowOpacity: 1,
     shadowRadius: 0,
-    shadowOffset: { width: 3, height: 3 }
+    shadowOffset: { width: 0, height: 4 }
+  },
+  big: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  },
+  like: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: ACID,
+    shadowColor: '#7f9a12',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
   },
   halo: {
     position: 'absolute',
