@@ -399,10 +399,10 @@ describe('busca com IA (Rodada 24)', () => {
     expect([bar.latitude, bar.longitude]).toEqual([-23.5614, -46.6912])
   })
 
-  it('seguimento: até três perguntas, "Ver no mapa" em segundo com bares', () => {
+  it('seguimento: "Ver no mapa" primeiro com bares, até três perguntas', () => {
     expect(followUps(['Só com oferta', 'E amanhã?'], true)).toEqual([
-      { kind: 'ask', label: 'Só com oferta' },
       { kind: 'map', label: 'Ver no mapa' },
+      { kind: 'ask', label: 'Só com oferta' },
       { kind: 'ask', label: 'E amanhã?' }
     ])
     expect(followUps(['a', 'b', 'c', 'd'], false)).toHaveLength(3)

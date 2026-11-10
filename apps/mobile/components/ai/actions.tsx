@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
   },
   versions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   version: { fontFamily: MONO, fontSize: 12, lineHeight: 14 },
-  pills: { gap: 8, paddingHorizontal: 12, paddingBottom: 4 },
+  pills: { gap: 8, paddingHorizontal: 16, paddingBottom: 4 },
   sug: {
     flexDirection: 'row',
     alignItems: 'center',

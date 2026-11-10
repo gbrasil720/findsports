@@ -786,6 +786,18 @@ export default function AiSearch() {
                 }
               />
             ))}
+            {/* As sugestões vêm na conversa, logo depois da resposta (`.sug`). */}
+            {followItems.length ? (
+              <View style={{ marginHorizontal: -16 }}>
+                <FollowUps
+                  key={`${last?.id}-${last?.shown}`}
+                  items={followItems}
+                  palette={palette}
+                  onAsk={(q) => send(q)}
+                  onMap={showOnMap}
+                />
+              </View>
+            ) : null}
             {layout.kind === 'stack' && lastBars.length ? (
               <Animated.View
                 entering={IN}
@@ -857,15 +869,7 @@ export default function AiSearch() {
           locations={[0, 0.3]}
           style={StyleSheet.absoluteFill}
         />
-        {followItems.length ? (
-          <FollowUps
-            key={`${last?.id}-${last?.shown}`}
-            items={followItems}
-            palette={palette}
-            onAsk={(q) => send(q)}
-            onMap={showOnMap}
-          />
-        ) : blocked || off ? (
+        {blocked || off ? (
           <View style={styles.pills}>
             <Chip
               label="Abrir a busca"
