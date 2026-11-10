@@ -13,7 +13,8 @@ import {
 import { fold } from '@findsports_oficial/db/catalog/fold'
 import {
   brasiliaDay,
-  DEFAULT_EVENT_DURATION_MS
+  DEFAULT_EVENT_DURATION_MS,
+  isEventLive
 } from '@findsports_oficial/db/event-window'
 import {
   brasiliaDaySql,
@@ -74,6 +75,7 @@ import {
 } from '../lib/favorite-teams'
 import { readGameBoard } from '../lib/game-board'
 import { byMatchOrder, gameTitle } from '../lib/game-participants'
+import { readHereNow } from '../lib/here-now'
 import { effectiveHouseOffer } from '../lib/house-offer'
 import { decodeCursor, encodeCursor } from '../lib/keyset-cursor'
 import { isOpenNow, normalizeOpeningHours } from '../lib/opening-hours'
@@ -745,24 +747,32 @@ export const pubsRouter = router({
       // dele, anunciar a oferta seria prometer sem caminho (WEB-131).
       const elite = issuesCounterCode(subscription ?? null, now)
       const fan = viewer.role === 'fan'
-      const [attendance, going, reasons, reviews, checkIn] = await Promise.all([
-        readFanAttendance(viewer, events, now),
-        // A contagem do ingresso, inclusive do jogo ao vivo; como o botão,
-        // só para torcedor.
-        fan
-          ? readGoing(
-              events.map((game) => game.id),
-              viewer.id
-            )
-          : new Map<string, Going>(),
-        // "O que pesou?" (WEB-398): o mesmo piso da nota, e só o resumo.
-        showRating ? readReasonSummary(result.id) : null,
-        // Os comentários de "O que dizem" (WEB-451): o mesmo piso, só as
-        // verificadas e aprovadas pela Onside.
-        showRating ? readRatingList(result.id, { public: true, limit: 3 }) : [],
-        // "Estou aqui" (WEB-408): o jogo deste bar com check-in aberto agora.
-        fan ? readCheckIn(viewer.id, events, now) : null
-      ])
+      // Só o jogo ao vivo tem "no bar agora" (rodada 8).
+      const liveIds = events
+        .filter((game) => isEventLive(game, now))
+        .map((game) => game.id)
+      const [attendance, going, reasons, reviews, checkIn, hereNow] =
+        await Promise.all([
+          readFanAttendance(viewer, events, now),
+          // A contagem do ingresso, inclusive do jogo ao vivo; como o botão,
+          // só para torcedor.
+          fan
+            ? readGoing(
+                events.map((game) => game.id),
+                viewer.id
+              )
+            : new Map<string, Going>(),
+          // "O que pesou?" (WEB-398): o mesmo piso da nota, e só o resumo.
+          showRating ? readReasonSummary(result.id) : null,
+          // Os comentários de "O que dizem" (WEB-451): o mesmo piso, só as
+          // verificadas e aprovadas pela Onside.
+          showRating
+            ? readRatingList(result.id, { public: true, limit: 3 })
+            : [],
+          // "Estou aqui" (WEB-408): o jogo deste bar com check-in aberto agora.
+          fan ? readCheckIn(viewer.id, events, now) : null,
+          readHereNow(liveIds, fan ? viewer.id : undefined)
+        ])
       return {
         ...publicBar,
         amenities: declaredAmenityIds(publicBar.amenities),
@@ -790,7 +800,9 @@ export const pubsRouter = router({
             attendance: attendance.get(game.id) ?? null,
             // `null`: abaixo do piso e sem amigo indo, ou conta que não é
             // de torcedor.
-            going: going.get(game.id) ?? null
+            going: going.get(game.id) ?? null,
+            // "No bar agora" do jogo ao vivo (rodada 8); `null` fora dele.
+            hereNow: hereNow.get(game.id) ?? null
           })
         ),
         rating,
