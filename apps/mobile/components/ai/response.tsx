@@ -12,7 +12,7 @@ import Animated, {
   withSequence,
   withTiming
 } from 'react-native-reanimated'
-import { dayLabel, HardShadow, Photo, Tag } from '@/components/explore'
+import { dayLabel, Photo } from '@/components/explore'
 import { EASE, haptic, ScalePress, usePressScale } from '@/components/motion'
 import { ACID, Icon, INK, Text, text } from '@/components/ui'
 import { citationPieces } from '@/lib/ai-chat'
@@ -20,7 +20,6 @@ import type { ChatBar, FilterChip, Source } from '@/lib/ai-events'
 import { formatKm, formatTime } from '@/lib/explore'
 import { AiIcon } from './icons'
 import type { AiPalette } from './theme'
-import { MONO } from './tool'
 
 /*
  * Resposta e citações (Response · InlineCitation): texto direto, sem balão,
@@ -43,7 +42,7 @@ export function AnswerText({
   onCite?: (n: number) => void
 }) {
   return (
-    <Text style={[text(15.5, 'Regular', 1.5), { color: palette.ink }]}>
+    <Text style={[text(16.5, 'Regular', 1.5), { color: palette.ink }]}>
       {citationPieces(value, count).map((piece, i) =>
         'cite' in piece ? (
           <Pressable
@@ -132,81 +131,51 @@ export const CitedBar = forwardRef<
         onPressIn={press.onPressIn}
         onPressOut={press.onPressOut}
       >
-        <Animated.View style={press.style}>
-          <HardShadow color={palette.shadow} offset={4} />
-          <View
-            style={[
-              styles.row,
-              { backgroundColor: palette.card, borderColor: palette.ring }
-            ]}
-          >
-            <Photo uri={bar.photoUrl} name={bar.name} style={styles.photo} />
-            <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-              <View style={styles.nameRow}>
-                <Text
-                  style={[
-                    text(16, 'Bold', 1.2),
-                    { color: palette.ink, flexShrink: 1 }
-                  ]}
-                  numberOfLines={1}
-                >
-                  {bar.name}
-                </Text>
-                {bar.plan === 'pro' ? (
-                  <Tag outline color={palette.ink}>
-                    Pro
-                  </Tag>
-                ) : null}
-              </View>
-              <Text
-                style={[text(12.5, 'Regular', 1.3), { color: palette.muted }]}
-                numberOfLines={1}
-              >
-                {game ? game.title : 'Sem eventos programados'}
-              </Text>
-              <View style={styles.meta}>
-                {bar.distanceKm !== null ? (
-                  <View style={styles.km}>
-                    <Icon name="pin" size={13} color={palette.ink} />
-                    <Text
-                      style={[text(12, 'Bold', 1.2), { color: palette.ink }]}
-                    >
-                      {formatKm(bar.distanceKm)}
-                    </Text>
-                  </View>
-                ) : null}
-                <Text
-                  style={[
-                    text(12, 'Regular', 1.2),
-                    { color: palette.muted, flexShrink: 1 }
-                  ]}
-                  numberOfLines={1}
-                >
-                  {bar.neighborhood}
-                </Text>
-                {bar.ratingPercent !== null ? (
-                  <Tag>{bar.ratingPercent}%</Tag>
-                ) : null}
-              </View>
-            </View>
-            {game ? (
-              <View style={styles.when}>
-                <Text
-                  style={[
-                    styles.time,
-                    { color: game.live ? palette.live : palette.ink }
-                  ]}
-                >
-                  {game.live ? 'Agora' : formatTime(game.startsAt)}
-                </Text>
-                <Text
-                  style={[text(11.5, 'Regular', 1.2), { color: palette.muted }]}
-                >
-                  {game.live ? 'Ao vivo' : dayLabel(game.startsAt, now)}
-                </Text>
-              </View>
-            ) : null}
+        <Animated.View
+          style={[
+            styles.row,
+            { backgroundColor: palette.card, shadowColor: palette.drop },
+            press.style
+          ]}
+        >
+          <Photo uri={bar.photoUrl} name={bar.name} style={styles.photo} />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text
+              style={[text(16, 'Bold', 1.25), { color: palette.ink }]}
+              numberOfLines={1}
+            >
+              {bar.name}
+            </Text>
+            <Text
+              style={[text(12.5, 'Regular', 1.35), { color: palette.muted }]}
+              numberOfLines={2}
+            >
+              {[
+                bar.neighborhood,
+                bar.distanceKm !== null ? formatKm(bar.distanceKm) : null,
+                game?.title
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </Text>
           </View>
+          {game ? (
+            <View style={styles.when}>
+              <Text
+                style={[
+                  styles.time,
+                  { color: game.live ? palette.live : palette.ink }
+                ]}
+              >
+                {game.live ? 'Agora' : formatTime(game.startsAt)}
+              </Text>
+              <Text style={[styles.day, { color: palette.muted }]}>
+                {game.live
+                  ? 'ao vivo'
+                  : dayLabel(game.startsAt, now).toLocaleLowerCase('pt-BR')}
+              </Text>
+            </View>
+          ) : null}
         </Animated.View>
       </Pressable>
       <Animated.View pointerEvents="none" style={[styles.flash, ring]} />
@@ -368,16 +337,6 @@ function Face({
   )
 }
 
-const CHIP_ICON = {
-  tv: 'tv',
-  team: 'tv',
-  cal: 'calendar',
-  sun: 'outdoor',
-  pin: 'pin',
-  sport: 'fan',
-  beer: 'bar'
-} as const
-
 // O chip sai encolhendo, só por transform (no campo ele está sobre o vidro).
 const CHIP_OUT: EntryExitAnimationFunction = () => {
   'worklet'
@@ -393,12 +352,12 @@ const CHIP_MOVE = LinearTransition.duration(200).easing(EASE)
 /** Chip com ×: os filtros entendidos e o contexto do campo. */
 export function XChip({
   label,
-  icon,
   palette,
   onRemove
 }: {
   label: string
-  icon: FilterChip['icon']
+  /** Ícone do chip: o desenho da rodada 5 não usa. */
+  icon?: FilterChip['icon']
   palette: AiPalette
   /** Sem `onRemove`, o chip não tem ×. */
   onRemove?: () => void
@@ -416,23 +375,16 @@ export function XChip({
         }}
         style={[
           styles.chip,
-          { backgroundColor: palette.soft },
-          onRemove ? null : { paddingRight: 9 }
+          { backgroundColor: palette.card, borderColor: palette.line }
         ]}
       >
-        <Icon
-          name={CHIP_ICON[icon]}
-          size={13}
-          color={palette.ink}
-          accent={palette.accent}
-        />
-        <Text style={[text(12.5, 'SemiBold', 1.2), { color: palette.ink }]}>
+        <Text style={[text(13.5, 'SemiBold', 1.2), { color: palette.ink }]}>
           {label}
         </Text>
         {onRemove ? (
-          <View style={[styles.x, { backgroundColor: palette.softer }]}>
-            <Icon name="close" size={8} color={palette.muted} />
-          </View>
+          <Text style={[text(13.5, 'Regular', 1.2), { color: palette.muted }]}>
+            ×
+          </Text>
         ) : null}
       </Pressable>
     </Animated.View>
@@ -450,9 +402,9 @@ export function FilterChips({
   onRemove?: (chip: FilterChip) => void
 }) {
   return (
-    <View style={{ gap: 7 }}>
-      <Text style={[text(12.5, 'SemiBold', 1.4), { color: palette.muted }]}>
-        {onRemove ? 'Entendi assim · toque para mudar' : 'Entendi assim'}
+    <View style={{ gap: 8 }}>
+      <Text style={[styles.label, { color: palette.muted }]}>
+        {onRemove ? 'ENTENDI ASSIM · TOQUE PARA MUDAR' : 'ENTENDI ASSIM'}
       </Text>
       <View style={styles.chips}>
         {chips.map((chip) => (
@@ -471,36 +423,42 @@ export function FilterChips({
 
 const styles = StyleSheet.create({
   cite: {
-    minWidth: 18,
-    height: 18,
+    minWidth: 20,
+    height: 20,
     paddingHorizontal: 4,
-    borderRadius: 11,
+    borderRadius: 10,
     backgroundColor: ACID,
     alignItems: 'center',
     justifyContent: 'center'
   },
   // No texto, o número sobe 2 pt da linha de base (vertical-align do design).
   inline: { marginHorizontal: 2, transform: [{ translateY: 1 }] },
-  citeText: { fontFamily: MONO, fontSize: 10.5, lineHeight: 12, color: INK },
-  corner: { position: 'absolute', left: -8, top: -8 },
+  citeText: {
+    fontFamily: 'GeistMono-Bold',
+    fontSize: 11,
+    lineHeight: 13,
+    color: INK
+  },
+  corner: { position: 'absolute', left: -6, top: -6 },
   row: {
     flexDirection: 'row',
     gap: 12,
     alignItems: 'center',
     padding: 10,
-    borderRadius: 6,
-    borderWidth: 1
+    borderRadius: 18,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
   },
-  photo: { width: 62, height: 62, borderRadius: 3 },
-  nameRow: { flexDirection: 'row', gap: 6, alignItems: 'center' },
-  meta: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  km: { flexDirection: 'row', gap: 2, alignItems: 'center' },
-  when: { alignItems: 'flex-end', paddingRight: 4, gap: 3 },
-  time: { fontFamily: 'Anton', fontSize: 24, marginVertical: -7 },
+  photo: { width: 60, height: 60, borderRadius: 12 },
+  when: { alignItems: 'flex-end' },
+  // Anton 30/1: margem negativa no lugar do entrelinha curto.
+  time: { fontFamily: 'Anton', fontSize: 30, marginVertical: -7.3 },
+  day: { fontFamily: 'GeistMono-SemiBold', fontSize: 11, marginTop: 2 },
   flash: {
     ...StyleSheet.absoluteFill,
-    borderRadius: 6,
-    borderWidth: 2,
+    borderRadius: 18,
+    borderWidth: 2.5,
     borderColor: ACID
   },
   sources: { borderRadius: 7, borderWidth: 1, overflow: 'hidden' },
@@ -527,21 +485,15 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     marginHorizontal: 11
   },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
-    height: 28,
-    paddingLeft: 9,
-    paddingRight: 6,
-    borderRadius: 14,
+    height: 34,
+    paddingHorizontal: 12,
+    borderRadius: 17,
+    borderWidth: 1.5,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6
   },
-  x: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center'
-  }
+  label: { fontFamily: 'GeistMono-SemiBold', fontSize: 11, letterSpacing: 0.88 }
 })
