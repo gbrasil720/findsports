@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type Href, useRouter } from 'expo-router'
 import { useState } from 'react'
 import {
@@ -6,7 +6,6 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
-  Share,
   StyleSheet,
   View
 } from 'react-native'
@@ -17,13 +16,12 @@ import { HardShadow } from '@/components/explore'
 import {
   AddButton,
   Avatar,
-  heroShadow,
   PersonRow,
   personLine,
   useFriendActions,
   useKept
 } from '@/components/friends'
-import { Glass } from '@/components/glass'
+import { DuelCard, FeedList, TodayCard } from '@/components/friends-activity'
 import {
   haptic,
   ScalePress,
@@ -34,18 +32,16 @@ import {
 import { usePalette } from '@/components/theme'
 import {
   ACID,
-  BackButton,
   ErrorState,
   Icon,
   INK,
   LIVE,
   Text,
-  Title,
   text,
   usePullRefresh,
   useStatusBar
 } from '@/components/ui'
-import { inviteMessage, monthName } from '@/lib/invite'
+import { monthName } from '@/lib/invite'
 import { trpc } from '@/lib/trpc'
 
 /**
@@ -61,9 +57,32 @@ export default function Friends() {
   useStatusBar('auto')
   const me = useQuery(trpc.friends.me.queryOptions())
   const overview = useQuery(trpc.friends.overview.queryOptions())
+  const activity = useQuery(trpc.friends.activity.queryOptions())
+  const ranking = useQuery(
+    trpc.ranking.friends.queryOptions({ metric: 'bars' })
+  )
+  const queryClient = useQueryClient()
+  const going = useMutation(
+    trpc.attendance.set.mutationOptions({
+      onSuccess: () => {
+        haptic.success()
+        queryClient.invalidateQueries({
+          queryKey: trpc.friends.activity.queryKey()
+        })
+        queryClient.invalidateQueries({ queryKey: trpc.attendance.pathKey() })
+      },
+      onError: () => haptic.error()
+    })
+  )
+  // O duelo do mês: você e o amigo logo acima (ou abaixo) no ranking.
+  const rows = ranking.data?.rows ?? []
+  const mine = rows.find((row) => row.me)
+  const rival =
+    (mine && rows.find((row) => row.position === mine.position - 1)) ??
+    (mine && rows.find((row) => row.position === mine.position + 1))
   const actions = useFriendActions()
   const pull = usePullRefresh(() =>
-    Promise.all([me.refetch(), overview.refetch()])
+    Promise.all([me.refetch(), overview.refetch(), activity.refetch()])
   )
   const data = overview.data
   // Respondido aqui fica na tela até ela abrir de novo, com o botão trocado
@@ -77,12 +96,6 @@ export default function Friends() {
   const month = monthName()
   const open = (id: string) => router.push(`/amigo/${id}` as Href)
 
-  const shareLink = () => {
-    if (!me.data) return
-    haptic.select()
-    Share.share({ message: inviteMessage(me.data.friendCode) })
-  }
-
   return (
     <View style={[styles.screen, { backgroundColor: palette.bg }]}>
       <ScrollView
@@ -92,41 +105,49 @@ export default function Friends() {
         ]}
         refreshControl={<RefreshControl {...pull} tintColor={palette.muted} />}
       >
+        {/* Meu código e adicionar ficam no topo, como ícones (rodada 6). */}
         <View style={styles.head}>
-          <BackButton />
-          <Title lines={[['Amigos']]} size={36} color={palette.ink} />
+          <RoundIcon label="Voltar" onPress={() => router.back()} icon="back" />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <RoundIcon
+              label="Meu código"
+              onPress={() => router.push('/meu-codigo')}
+              icon="qr"
+            />
+            <RoundIcon
+              label="Adicionar amigos"
+              onPress={() => router.push('/amigos-busca')}
+              icon="userplus"
+            />
+          </View>
         </View>
+        <Text style={[styles.bigTitle, { color: palette.ink }]}>Amigos</Text>
 
-        <Pressable
-          accessibilityRole="search"
-          onPress={() => router.push('/amigos-busca')}
-        >
-          <Glass
-            tone={palette.dark ? 'dark' : 'light'}
-            tint={palette.dark ? undefined : 'rgba(255,255,255,.62)'}
-            style={styles.search}
-          >
-            <Icon name="search" size={18} color={palette.muted} />
-            <Text style={[text(15), { color: palette.muted }]}>
-              Nome ou @usuário
-            </Text>
-          </Glass>
-        </Pressable>
-
-        <View style={styles.actions}>
-          <Action
-            icon="qr"
-            label="Meu código"
-            hero
-            onPress={() => router.push('/meu-codigo')}
+        {activity.data?.today.length ? (
+          <TodayCard
+            items={activity.data.today}
+            busy={going.isPending ? (going.variables?.eventId ?? null) : null}
+            onGoing={(item) =>
+              going.mutate({ eventId: item.eventId, attending: true })
+            }
+            onBar={(item) => router.push(`/bar/${item.barId}` as Href)}
           />
-          <Action
-            icon="people"
-            label="Contatos"
-            onPress={() => router.push('/contatos')}
+        ) : null}
+        {mine && rival && ranking.data ? (
+          <DuelCard
+            title={`Duelo de ${month}`}
+            metric="bares"
+            me={{ name: mine.name, value: mine.value }}
+            them={{ name: rival.name, value: rival.value }}
+            closesInDays={ranking.data.closesInDays}
           />
-          <Action icon="link" label="Link de convite" onPress={shareLink} />
-        </View>
+        ) : null}
+        {activity.data?.feed.length ? (
+          <>
+            <Label>Atividade</Label>
+            <FeedList items={activity.data.feed.slice(0, 8)} onPerson={open} />
+          </>
+        ) : null}
 
         {overview.isPending ? (
           <ActivityIndicator color={palette.ink} style={{ marginTop: 24 }} />
@@ -142,7 +163,7 @@ export default function Friends() {
           <>
             {requests.length ? (
               <>
-                <Label>Pedidos · {requests.length}</Label>
+                <Label>{`Pedidos · ${requests.length}`}</Label>
                 <Card shadow={palette.liveShadow}>
                   <View style={styles.inCard}>
                     {requests.map((person, index) => (
@@ -247,8 +268,7 @@ export default function Friends() {
             ) : null}
 
             <Label>
-              Seus amigos
-              {data.friends.length ? ` · ${data.friends.length}` : ''}
+              {`Seus amigos${data.friends.length ? ` · ${data.friends.length}` : ''}`}
             </Label>
             {data.friends.length ? (
               <Card>
@@ -292,52 +312,42 @@ export default function Friends() {
   )
 }
 
-/** "Pedidos · 2", "Talvez você conheça": o rótulo cinza de cada bloco. */
-function Label({ children }: { children: React.ReactNode }) {
-  const palette = usePalette()
-  return (
-    <Text
-      style={[text(13, 'SemiBold'), styles.label, { color: palette.muted }]}
-    >
-      {children}
-    </Text>
-  )
-}
-
-/** Meu código, Contatos, Link de convite. */
-function Action({
-  icon,
+/** Os botões redondos do topo (`.rb`): sólidos, com a sombra dura. */
+function RoundIcon({
   label,
-  hero,
+  icon,
   onPress
 }: {
-  icon: 'qr' | 'people' | 'link'
   label: string
-  hero?: boolean
+  icon: 'back' | 'qr' | 'userplus'
   onPress: () => void
 }) {
   const palette = usePalette()
   return (
-    <ScalePress
+    <Pressable
       accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={6}
       onPress={onPress}
-      containerStyle={{ flex: 1 }}
-      style={{ flex: 1 }}
+      style={[
+        styles.round,
+        { backgroundColor: palette.card, shadowColor: palette.drop }
+      ]}
     >
-      <Card shadow={hero ? heroShadow(palette) : undefined} style={{ flex: 1 }}>
-        <View style={styles.action}>
-          <Icon
-            name={icon}
-            size={26}
-            color={palette.ink}
-            accent={palette.accent}
-          />
-          <Text style={[text(13.5, 'Bold', 1.2), { color: palette.ink }]}>
-            {label}
-          </Text>
-        </View>
-      </Card>
-    </ScalePress>
+      <Icon name={icon} size={20} color={palette.ink} />
+    </Pressable>
+  )
+}
+
+/** "PEDIDOS · 2", "ATIVIDADE": o rótulo em mono de cada bloco (rodada 6). */
+function Label({ children }: { children: React.ReactNode }) {
+  const palette = usePalette()
+  return (
+    <Text style={[styles.label, { color: palette.muted }]}>
+      {typeof children === 'string'
+        ? children.toLocaleUpperCase('pt-BR')
+        : children}
+    </Text>
   )
 }
 
@@ -453,9 +463,36 @@ function Suggestion({
 }
 
 const styles = StyleSheet.create({
+  label: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11,
+    letterSpacing: 0.88,
+    marginBottom: -4
+  },
+  round: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  },
+  // Anton 44: margem negativa no lugar do entrelinha curto.
+  bigTitle: {
+    fontFamily: 'Anton',
+    fontSize: 44,
+    textTransform: 'uppercase',
+    marginVertical: -10.7
+  },
   screen: { flex: 1 },
   body: { paddingHorizontal: 16, gap: 13 },
-  head: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  head: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
   search: {
     height: 48,
     borderRadius: 24,
@@ -466,7 +503,6 @@ const styles = StyleSheet.create({
   },
   actions: { flexDirection: 'row', gap: 8 },
   action: { padding: 12, gap: 10 },
-  label: { marginBottom: -6, marginLeft: 2 },
   inCard: { paddingHorizontal: 14 },
   answer: { flexDirection: 'row', gap: 8 },
   answerButton: {
