@@ -3,8 +3,8 @@ import { useGlobalSearchParams, usePathname, useRouter } from 'expo-router'
 import { NativeTabs } from 'expo-router/unstable-native-tabs'
 import { useEffect, useRef, useState } from 'react'
 import { View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNewAchievement } from '@/components/achievement-watcher'
-import { AiCoach, useCoachPending } from '@/components/ai-coach'
 import { initials } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { usePendingInvite } from '@/components/friends'
@@ -13,6 +13,7 @@ import { SideNav, TAB_ICONS } from '@/components/side-nav'
 import { useSoon } from '@/components/soon'
 import { type MenuItem, YouMenu } from '@/components/tab-bar'
 import { usePalette } from '@/components/theme'
+import { Tour, TourInvite } from '@/components/tour'
 import { YouPanel } from '@/components/you-panel'
 import { useFan, useWithAccount } from '@/lib/account'
 import { authClient } from '@/lib/auth-client'
@@ -75,13 +76,20 @@ export default function FanTabs() {
   }, [inTabs, pathname])
   const closeMenu = () =>
     over ? setOver(false) : router.navigate(from.current)
-  // Primeiro acesso (4o): o coach da busca com IA, uma vez, sobre o Explorar.
-  // `?coach=1` mostra de novo (navegador DEV).
-  const { coach: forceCoach, aba } = useGlobalSearchParams<{
-    coach?: string
+  // Passeio guiado (rodada 5, 3b), no lugar do aviso só da IA (4o): abre
+  // com `?passeio=1` no Explorar (fim do onboarding, Você › Rever o passeio,
+  // o convite da segunda abertura e o navegador DEV).
+  const { passeio, aba } = useGlobalSearchParams<{
+    passeio?: string
     aba?: SettingsTab
   }>()
-  const coach = useCoachPending(forceCoach === '1')
+  const [touring, setTouring] = useState(false)
+  const insets = useSafeAreaInsets()
+  useEffect(() => {
+    if (passeio !== '1' || pathname !== '/explore') return
+    setTouring(true)
+    router.setParams({ passeio: undefined })
+  }, [passeio, pathname, router])
   // Sem conta (o app abre no Explorar): Bares, Você e a IA levam ao
   // "Entrar", e nada só do torcedor é consultado.
   const fan = useFan()
@@ -196,6 +204,16 @@ export default function FanTabs() {
         closeMenu()
         router.push('/configuracoes')
       }
+    },
+    {
+      key: 'passeio',
+      icon: 'map',
+      label: 'Rever o passeio',
+      soon: '',
+      open: () => {
+        closeMenu()
+        router.navigate({ pathname: '/explore', params: { passeio: '1' } })
+      }
     }
   ]
   // Sem conta (rodada 2, tela 5): os itens que precisam de conta ficam à
@@ -268,6 +286,16 @@ export default function FanTabs() {
       open: () => {
         closeMenu()
         router.push('/legal')
+      }
+    },
+    {
+      key: 'passeio',
+      icon: 'map',
+      label: 'Rever o passeio',
+      soon: '',
+      open: () => {
+        closeMenu()
+        router.navigate({ pathname: '/explore', params: { passeio: '1' } })
       }
     }
   ]
@@ -455,19 +483,19 @@ export default function FanTabs() {
           onSettings={fan ? settings : ask('ver as configurações')}
         />
       ) : null}
-      {/* Na tela de fora do Flip não há botão da IA para apontar. Sem conta,
-          a IA leva ao "Entrar": a dica espera a pessoa entrar. */}
-      {coach.pending &&
-      fan &&
-      pathname === '/explore' &&
+      {pathname === '/explore' &&
+      !touring &&
       !menuOpen &&
-      layout.nav !== 'none' ? (
-        <AiCoach
-          onClose={coach.done}
-          onOpen={() => {
-            coach.done()
-            router.push('/busca-ia')
-          }}
+      layout.kind === 'phone' ? (
+        <TourInvite top={insets.top + 196} onOpen={() => setTouring(true)} />
+      ) : null}
+      {touring && pathname === '/explore' && !menuOpen ? (
+        <Tour
+          fan={fan}
+          onClose={() => setTouring(false)}
+          onSignup={() =>
+            withAccount(() => {}, { kind: 'conta', what: 'guardar seus jogos' })
+          }
         />
       ) : null}
       {soon.toast}

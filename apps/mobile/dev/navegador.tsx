@@ -87,11 +87,11 @@ const SECTIONS: { title: string; items: Item[] }[] = [
       { code: '4l', label: 'Distância', href: '/onboarding/distance' },
       { code: '4m', label: 'Localização', href: '/onboarding/location' },
       { code: '4n', label: 'Revisão', href: '/onboarding/review' },
-      // O coach da IA sobre o Explorar; fora daqui, aparece uma vez só.
+      // O passeio guiado (rodada 5, 3b) no lugar do aviso só da IA (4o).
       {
-        code: '4o',
-        label: 'Primeiro acesso (IA)',
-        href: { pathname: '/explore', params: { coach: '1' } }
+        code: '3b',
+        label: 'Passeio guiado',
+        href: { pathname: '/explore', params: { passeio: '1' } }
       }
     ]
   },

@@ -1211,10 +1211,16 @@ invente layout que o projeto não tem.
   (só em desenvolvimento): `?dubla=1` troca o servidor por `lib/ai-dubla.ts`, e `estado=
   pensando|resposta|confirmar|feito` já manda a pergunta de cada tela (navegador DEV, seção
   "24"); `dubla=pior|limite|fora` para o pior caso, o limite e a IA fora do ar.
-- **Primeiro acesso (4o):** `components/ai-coach.tsx`, por cima do Explorar uma vez só
-  (`onside.coach-ia` no SecureStore), montado em `app/(fan)/_layout.tsx`. O furo e o anel
-  cercam o botão da IA da barra nativa, medido no iPhone 16e (centro 52 pt da direita e de
-  baixo, não o 344/784 do design). `?coach=1` mostra de novo (navegador DEV, 4o).
+- **Passeio guiado (rodada 5, 3b), no lugar do primeiro acesso só da IA (4o):**
+  `components/tour.tsx`, montado em `app/(fan)/_layout.tsx` e aberto por `?passeio=1` no
+  Explorar: no fim do onboarding ("Ver como funciona · 30 s", em `onboarding/pronto`), em
+  Você › "Rever o passeio" e no convite do topo do Explorar a partir da segunda abertura
+  (`TourInvite`, até tocar ou dispensar; visto ou dispensado fica em `onside.passeio`).
+  Cinco passos sobre as peças de verdade: o Explorar registra a fileira de jogos, a folha e
+  os filtros com `useTourTarget` (mede na janela); a barra de abas é nativa, então a IA vem
+  de `useAiButtonCenter` e a aba Você da posição do desenho. Recorte em máscara SVG que anda
+  numa mola de 300 ms sem balanço (com menos movimento, pula); só "Pular" fecha. Sem conta,
+  o último passo termina em "Criar conta grátis".
 - **Fontes:** `apps/mobile/assets/fonts/*.ttf`, convertidas dos `.woff2` do web (React Native
   não lê woff2). Só existem os pesos em uso; para um novo, gere a instância com `fonttools`
   e **dê nome próprio a ela** (IDs 1, 4 e 6 da tabela `name`): o instanciador mantém o nome

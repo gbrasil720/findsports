@@ -78,9 +78,11 @@ export default function Pronto() {
       (game) => !mine(game.title) && slugs.includes(game.sport.slug)
     )
   ].slice(0, 3)
-  const finish = () => {
+  const finish = (tour?: boolean) => {
     if (router.canDismiss()) router.dismissAll()
-    router.replace('/explore')
+    router.replace(
+      tour ? { pathname: '/explore', params: { passeio: '1' } } : '/explore'
+    )
   }
   // "do Flamengo ou um dos GPs que você escolheu".
   const who = [
@@ -111,10 +113,23 @@ export default function Pronto() {
       step={5}
       back={false}
       cta={
-        <AcidButton
-          label={games.length ? 'Ver os bares de hoje' : 'Ver bares perto'}
-          onPress={finish}
-        />
+        <View style={{ gap: 14 }}>
+          <AcidButton
+            label={games.length ? 'Ver os bares de hoje' : 'Ver bares perto'}
+            onPress={() => finish()}
+          />
+          {/* O passeio guiado é oferecido, nunca forçado (rodada 5, 3b). */}
+          <Pressable
+            accessibilityRole="button"
+            hitSlop={8}
+            onPress={() => finish(true)}
+            style={{ alignSelf: 'center' }}
+          >
+            <Text style={[text(14, 'SemiBold', 1.2), { color: palette.ink }]}>
+              Ver como funciona · 30 s
+            </Text>
+          </Pressable>
+        </View>
       }
     >
       <FanCard

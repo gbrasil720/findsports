@@ -63,6 +63,7 @@ import { EASE, haptic, ScalePress, SWAP } from '@/components/motion'
 import { useSoon } from '@/components/soon'
 import { useTabBarSpace } from '@/components/tab-bar'
 import { usePalette } from '@/components/theme'
+import { useTourTarget } from '@/components/tour'
 import {
   ACID,
   Icon,
@@ -138,6 +139,10 @@ const HEAD_FONT_SCALE = 1.1
 
 export default function Explore({ capture = true }: { capture?: boolean }) {
   const router = useRouter()
+  // As peças que o passeio guiado cerca (rodada 5, 3b).
+  const tourGames = useTourTarget('jogos')
+  const tourSheet = useTourTarget('folha')
+  const tourFilters = useTourTarget('filtros')
   const insets = useSafeAreaInsets()
   const palette = usePalette()
   const session = authClient.useSession()
@@ -1318,6 +1323,8 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
             {dayRow}
           </View>
           <View
+            ref={tourGames}
+            collapsable={false}
             style={[
               styles.chips,
               { top: insets.top + 116, right: navInsets.right }
@@ -1327,6 +1334,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
           </View>
 
           <Animated.View
+            ref={tourSheet}
             style={[
               styles.sheet,
               { top, right: navInsets.right, backgroundColor: palette.sheet },
@@ -1407,14 +1415,16 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
                   showsVerticalScrollIndicator={false}
                 >
                   {chosen ? null : (
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      style={{ marginHorizontal: -16, flexGrow: 0 }}
-                      contentContainerStyle={styles.sheetChips}
-                    >
-                      {chipItems}
-                    </ScrollView>
+                    <View ref={tourFilters} collapsable={false}>
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={{ marginHorizontal: -16, flexGrow: 0 }}
+                        contentContainerStyle={styles.sheetChips}
+                      >
+                        {chipItems}
+                      </ScrollView>
+                    </View>
                   )}
                   {listBody(
                     // Bar tocado no mapa (20c): a folha troca para o card dele.
