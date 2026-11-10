@@ -440,6 +440,17 @@ function Preferences({
           </Card>
         </View>
       </View>
+      {/* O passeio guiado mora aqui (dono, 10/11/2026), fora do menu Você. */}
+      <Section icon="you" title="Como usar">
+        <Row
+          title="Rever o passeio"
+          sub="Cinco passos pelo Explorar · 30 s"
+          onPress={() =>
+            router.navigate({ pathname: '/explore', params: { passeio: '1' } })
+          }
+          chevron
+        />
+      </Section>
     </>
   )
 }

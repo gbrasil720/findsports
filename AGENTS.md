@@ -1214,7 +1214,7 @@ invente layout que o projeto não tem.
 - **Passeio guiado (rodada 5, 3b), no lugar do primeiro acesso só da IA (4o):**
   `components/tour.tsx`, montado em `app/(fan)/_layout.tsx` e aberto por `?passeio=1` no
   Explorar: no fim do onboarding ("Ver como funciona · 30 s", em `onboarding/pronto`), em
-  Você › "Rever o passeio" e no convite do topo do Explorar a partir da segunda abertura
+  Configurações › Preferências › "Rever o passeio" (fora do menu Você, dono) e no convite do topo do Explorar a partir da segunda abertura
   (`TourInvite`, até tocar ou dispensar; visto ou dispensado fica em `onside.passeio`).
   Cinco passos sobre as peças de verdade: o Explorar registra a fileira de jogos, a folha e
   os filtros com `useTourTarget` (mede na janela); a barra de abas é nativa, então a IA vem

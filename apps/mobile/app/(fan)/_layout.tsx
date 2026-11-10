@@ -77,8 +77,8 @@ export default function FanTabs() {
   const closeMenu = () =>
     over ? setOver(false) : router.navigate(from.current)
   // Passeio guiado (rodada 5, 3b), no lugar do aviso só da IA (4o): abre
-  // com `?passeio=1` no Explorar (fim do onboarding, Você › Rever o passeio,
-  // o convite da segunda abertura e o navegador DEV).
+  // com `?passeio=1` no Explorar (fim do onboarding, Configurações ›
+  // Preferências › Rever o passeio, o convite da segunda abertura e o DEV).
   const { passeio, aba } = useGlobalSearchParams<{
     passeio?: string
     aba?: SettingsTab
@@ -204,16 +204,6 @@ export default function FanTabs() {
         closeMenu()
         router.push('/configuracoes')
       }
-    },
-    {
-      key: 'passeio',
-      icon: 'map',
-      label: 'Rever o passeio',
-      soon: '',
-      open: () => {
-        closeMenu()
-        router.navigate({ pathname: '/explore', params: { passeio: '1' } })
-      }
     }
   ]
   // Sem conta (rodada 2, tela 5): os itens que precisam de conta ficam à
@@ -286,16 +276,6 @@ export default function FanTabs() {
       open: () => {
         closeMenu()
         router.push('/legal')
-      }
-    },
-    {
-      key: 'passeio',
-      icon: 'map',
-      label: 'Rever o passeio',
-      soon: '',
-      open: () => {
-        closeMenu()
-        router.navigate({ pathname: '/explore', params: { passeio: '1' } })
       }
     }
   ]
