@@ -248,13 +248,16 @@ export function SheetChip({
   icon,
   on,
   live,
-  onPress
+  onPress,
+  onLongPress
 }: {
   label: string
   icon?: Parameters<typeof Icon>[0]['name']
   on: boolean
   live?: boolean
   onPress: () => void
+  /** Segurar o atalho abre a tela de atalhos (2b da rodada 5). */
+  onLongPress?: () => void
 }) {
   const palette = usePalette()
   const bg = live && on ? LIVE : on ? palette.ink : palette.card
@@ -267,6 +270,13 @@ export function SheetChip({
         haptic.select()
         onPress()
       }}
+      onLongPress={
+        onLongPress &&
+        (() => {
+          haptic.pick()
+          onLongPress()
+        })
+      }
       style={[
         styles.chip,
         { backgroundColor: bg },

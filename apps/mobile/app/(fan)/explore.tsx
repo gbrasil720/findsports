@@ -936,6 +936,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
             onPress={() =>
               state.setFilters(applyShortcut(key, filters, sports, now))
             }
+            onLongPress={() => router.push('/atalhos')}
           />
         )
       })}
