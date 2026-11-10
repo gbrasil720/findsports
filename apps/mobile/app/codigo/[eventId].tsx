@@ -88,6 +88,17 @@ function useMinute() {
   return now
 }
 
+/** "hoje", "qua 11": o dia do jogo, no fuso de Brasília. */
+function shortDay(startsAt: string, now: number) {
+  if (dayLabel(startsAt, now) === 'Hoje') return 'hoje'
+  const part = (options: Intl.DateTimeFormatOptions) =>
+    new Date(startsAt).toLocaleDateString('pt-BR', {
+      ...options,
+      timeZone: 'America/Sao_Paulo'
+    })
+  return `${part({ weekday: 'short' }).replace('.', '')} ${part({ day: 'numeric' })}`
+}
+
 /** "1h48", "12 min": quanto falta para começar. */
 function until(startsAt: string, now: number) {
   const minutes = Math.max(
@@ -239,12 +250,14 @@ export default function CounterCode() {
                 }
               : live
                 ? { label: 'ao vivo', live: true }
-                : {
-                    label: `começa em ${until(game.startsAt, now)}`,
-                    live: false
-                  }
+                : shortDay(game.startsAt, now) === 'hoje'
+                  ? {
+                      label: `começa em ${until(game.startsAt, now)}`,
+                      live: false
+                    }
+                  : { label: shortDay(game.startsAt, now), live: false }
           }
-          day={dayLabel(game.startsAt, now).toLocaleLowerCase('pt-BR')}
+          day={shortDay(game.startsAt, now)}
         />
         {called.length ? (
           <Animated.View
