@@ -149,10 +149,14 @@ const ownerOffAirReason = (standing: SubscriptionStanding | null) =>
 const cacheEsportes = createTtlCache<(typeof sport.$inferSelect)[]>({
   ttlMs: CATALOGO_TTL_MS
 })
-/** Bares no ar por cidade (nome normalizado e UF), para ordenar as sugestões. */
-const cacheBaresPorCidade = createTtlCache<Map<string, number>>({
-  ttlMs: CATALOGO_TTL_MS
-})
+/**
+ * Bares no ar por cidade (nome normalizado e UF), para ordenar as sugestões,
+ * e quantos têm jogo hoje (a troca de cidade, rodada 6). Cinco minutos: o
+ * "hoje" vira à meia-noite de Brasília.
+ */
+const cacheBaresPorCidade = createTtlCache<
+  Map<string, { bars: number; today: number }>
+>({ ttlMs: 5 * 60_000 })
 const cacheTimes = createTtlCache<
   {
     id: string
@@ -1162,24 +1166,35 @@ export const pubsRouter = router({
             city: string
             uf: string | null
             bars: number
+            today: number
           }>(sql`
-            SELECT city, uf, count(*)::int AS bars FROM bar
+            SELECT city, uf, count(*)::int AS bars,
+              count(*) FILTER (WHERE EXISTS (
+                SELECT 1 FROM event e
+                WHERE e.bar_id = b.id
+                  AND e.published_at IS NOT NULL
+                  AND ${onBrasiliaDaysSql(sql`e.starts_at`, brasiliaTodaySql())}
+              ))::int AS today
+            FROM bar b
             WHERE is_active GROUP BY city, uf
           `)
-          const map = new Map<string, number>()
+          const map = new Map<string, { bars: number; today: number }>()
           for (const row of rows.rows) {
             const key = `${normalizarCidade(row.city)}|${row.uf ?? ''}`
-            map.set(key, (map.get(key) ?? 0) + Number(row.bars))
+            const was = map.get(key)
+            map.set(key, {
+              bars: (was?.bars ?? 0) + Number(row.bars),
+              today: (was?.today ?? 0) + Number(row.today)
+            })
           }
           return map
         })
       ])
-      const barsOf = (city: { name: string; uf: string }) =>
+      const countsOf = (city: { name: string; uf: string }) =>
         counts.get(`${normalizarCidade(city.name)}|${city.uf}`) ??
-        counts.get(`${normalizarCidade(city.name)}|`) ??
-        0
+        counts.get(`${normalizarCidade(city.name)}|`) ?? { bars: 0, today: 0 }
       return candidates
-        .map((city, order) => ({ ...city, bars: barsOf(city), order }))
+        .map((city, order) => ({ ...city, ...countsOf(city), order }))
         .sort((a, b) => b.bars - a.bars || a.order - b.order)
         .slice(0, 8)
         .map(({ order: _order, ...city }) => city)
