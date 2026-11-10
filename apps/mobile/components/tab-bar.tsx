@@ -5,7 +5,6 @@ import Animated, {
   FadeOut,
   withTiming
 } from 'react-native-reanimated'
-import { Glass } from '@/components/glass'
 import { useLayout, useNavInsets } from '@/components/layout'
 import { EASE } from '@/components/motion'
 import { usePalette } from '@/components/theme'
@@ -80,9 +79,9 @@ export function YouMenu({
   current,
   onClose,
   onItem,
-  onChat,
   onSettings,
-  visitor
+  visitor,
+  level
 }: {
   name: string
   initials: string
@@ -93,10 +92,11 @@ export function YouMenu({
   current?: string
   onClose: () => void
   onItem: (item: MenuItem) => void
-  onChat: () => void
   onSettings: () => void
   /** Sem conta (rodada 2, tela 5): o cartão "Sua conta guarda tudo" no topo. */
   visitor?: { onCreate: () => void; onEnter: () => void }
+  /** O nível da pessoa ("3 · Boleiro"), de `achievements.mine`. */
+  level?: { level: number; name: string }
 }) {
   const palette = usePalette()
   const nav = useNavInsets()
@@ -106,8 +106,11 @@ export function YouMenu({
   // mesa, 420 de largura sobre a barra, fora das faixas laterais (WEB-491).
   const { width } = useLayout()
   const free = width - nav.left - nav.right
-  const menuWidth = Math.min(free - 28, 420)
-  const tone = palette.dark ? 'dark' : 'light'
+  // Com conta, o menu da rodada 6: 272 de largura, encostado à direita,
+  // saindo da aba Você. Sem conta, largo, por causa do cartão da conta.
+  const menuWidth = visitor
+    ? Math.min(free - 28, 420)
+    : Math.min(272, free - 24)
   return (
     <>
       {/* O escurecido para acima da barra: tocar numa aba com o menu aberto
@@ -137,7 +140,9 @@ export function YouMenu({
           {
             bottom,
             width: menuWidth,
-            left: nav.left + (free - menuWidth) / 2
+            left: visitor
+              ? nav.left + (free - menuWidth) / 2
+              : nav.left + free - menuWidth - 12
           }
         ]}
       >
@@ -191,7 +196,9 @@ export function YouMenu({
             >
               <View style={styles.menuAvatar}>
                 {/* A foto cobre as iniciais quando carrega. */}
-                <Text style={styles.menuAvatarText}>{initials}</Text>
+                <Text style={[text(16.5, 'Bold', 1.1), { color: INK }]}>
+                  {initials}
+                </Text>
                 {image ? (
                   <Image
                     accessibilityIgnoresInvertColors
@@ -200,35 +207,26 @@ export function YouMenu({
                   />
                 ) : null}
               </View>
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
                 <Text
-                  style={[text(16, 'Bold', 1.25), { color: palette.ink }]}
+                  style={[text(15, 'Bold', 1.2), { color: palette.ink }]}
                   numberOfLines={1}
                 >
                   {name}
                 </Text>
-                {/* Sem as setas do design (⇅): trocar para o perfil de bar não
-                  existe no app, o lado do bar é só no site. */}
-                <Text
-                  style={[text(13, 'Regular', 1.3), { color: palette.muted }]}
-                >
-                  Torcedor
-                </Text>
+                {level ? (
+                  <LevelChip level={level.level} name={level.name} />
+                ) : null}
               </View>
-              <RoundButton
-                label="Fale com a gente"
-                tone={tone}
-                onPress={onChat}
-              >
-                <Icon name="chat" size={19} color={palette.ink} />
-              </RoundButton>
-              <RoundButton
-                label="Configurações"
-                tone={tone}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Configurações"
+                hitSlop={6}
                 onPress={onSettings}
+                style={[styles.gear, { backgroundColor: palette.line }]}
               >
-                <Icon name="gear" size={19} color={palette.ink} />
-              </RoundButton>
+                <Icon name="gear" size={20} color={palette.ink} />
+              </Pressable>
             </View>
           )}
           {items.map((item) => {
@@ -250,13 +248,14 @@ export function YouMenu({
               >
                 <Icon
                   name={item.icon}
-                  size={23}
+                  size={22}
                   color={palette.ink}
                   accent={palette.dark ? ACID : palette.accent}
                 />
                 <Text
+                  numberOfLines={1}
                   style={[
-                    text(16, on ? 'Bold' : 'Regular', 1.2),
+                    text(14.5, on ? 'Bold' : 'SemiBold', 1.2),
                     { color: palette.ink, flex: 1 }
                   ]}
                 >
@@ -277,17 +276,12 @@ export function YouMenu({
                   </View>
                 ) : item.badge ? (
                   <View style={styles.badge}>
-                    <Text style={[text(12.5, 'Bold', 1.2), { color: INK }]}>
+                    <Text style={[styles.mono, { color: INK }]}>
                       {item.badge}
                     </Text>
                   </View>
                 ) : item.meta ? (
-                  <Text
-                    style={[
-                      text(12.5, 'Regular', 1.2),
-                      { color: palette.muted }
-                    ]}
-                  >
+                  <Text style={[styles.mono, { color: palette.muted }]}>
                     {item.meta}
                   </Text>
                 ) : null}
@@ -300,28 +294,18 @@ export function YouMenu({
   )
 }
 
-function RoundButton({
-  label,
-  tone,
-  onPress,
-  children
-}: {
-  label: string
-  tone: 'light' | 'dark'
-  onPress: () => void
-  children: React.ReactNode
-}) {
+/** O nível ("3 · Boleiro", `.lvc`): tinta e acid no claro, invertido no escuro. */
+export function LevelChip({ level, name }: { level: number; name: string }) {
+  const palette = usePalette()
+  const bg = palette.dark ? ACID : INK
+  const fg = palette.dark ? INK : ACID
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      hitSlop={4}
-      onPress={onPress}
-    >
-      <Glass tone={tone} interactive style={styles.round}>
-        {children}
-      </Glass>
-    </Pressable>
+    <View style={[styles.level, { backgroundColor: bg }]}>
+      <View style={[styles.levelNumber, { backgroundColor: fg }]}>
+        <Text style={[styles.levelText, { color: bg }]}>{level}</Text>
+      </View>
+      <Text style={[styles.levelText, { color: fg }]}>{name}</Text>
+    </View>
   )
 }
 
@@ -333,8 +317,8 @@ const styles = StyleSheet.create({
     transformOrigin: '62% 100%'
   },
   menu: {
-    borderRadius: 32,
-    padding: 8,
+    borderRadius: 28,
+    padding: 10,
     borderWidth: StyleSheet.hairlineWidth,
     shadowOpacity: 0.18,
     shadowRadius: 24,
@@ -376,28 +360,48 @@ const styles = StyleSheet.create({
   menuHead: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingTop: 10,
-    paddingHorizontal: 10,
-    paddingBottom: 12,
-    marginBottom: 6,
+    gap: 10,
+    paddingTop: 6,
+    paddingHorizontal: 6,
+    paddingBottom: 10,
+    marginBottom: 4,
     borderBottomWidth: 1
   },
   menuAvatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 6,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: ACID,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden'
   },
-  menuAvatarText: {
-    fontFamily: 'Anton',
-    fontSize: 19,
-    color: INK,
-    marginVertical: -6
+  gear: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
+  level: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: 24,
+    paddingLeft: 3,
+    paddingRight: 9,
+    borderRadius: 12
+  },
+  levelNumber: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  levelText: { fontFamily: 'GeistMono-SemiBold', fontSize: 11.5 },
+  mono: { fontFamily: 'GeistMono-SemiBold', fontSize: 11 },
   round: {
     width: 44,
     height: 44,
@@ -407,17 +411,17 @@ const styles = StyleSheet.create({
     overflow: 'hidden'
   },
   menuItem: {
-    minHeight: 52,
-    paddingHorizontal: 14,
-    borderRadius: 18,
+    height: 42,
+    paddingHorizontal: 8,
+    borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14
+    gap: 10
   },
   badge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 7,
     paddingVertical: 4,
-    borderRadius: 4,
+    borderRadius: 999,
     backgroundColor: ACID
   },
   menuItemOnLight: {

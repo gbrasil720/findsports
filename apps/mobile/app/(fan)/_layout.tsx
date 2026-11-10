@@ -108,6 +108,27 @@ export default function FanTabs() {
     retry: false
   })
   const fresh = suggestions.data?.round ? freshCount(suggestions.data.round) : 0
+  // O que o menu diz de cada item (rodada 6): o nível, "4 de 10", os
+  // pedidos de amizade e a posição no ranking dos amigos.
+  const medals = useQuery({
+    ...trpc.achievements.mine.queryOptions(),
+    enabled: fan && menuOpen
+  })
+  const friendNotices = useQuery({
+    ...trpc.friends.notices.queryOptions(),
+    enabled: fan && menuOpen
+  })
+  const ranking = useQuery({
+    ...trpc.ranking.friends.queryOptions({ metric: 'bars' }),
+    enabled: fan && menuOpen
+  })
+  const unlocked =
+    medals.data?.achievements.filter((a) => a.unlockedAt).length ?? 0
+  const requests = friendNotices.data?.requests.length ?? 0
+  const myRank = ranking.data?.rows.find(
+    (row) => row.id === session.data?.user.id
+  )
+  const toRate = pending.data?.length ?? 0
   const icons = TAB_ICONS[palette.dark ? 'dark' : 'light']
   const user = session.data?.user
   const layout = useLayout()
@@ -138,6 +159,9 @@ export default function FanTabs() {
       icon: 'medal',
       label: 'Conquistas',
       soon: 'As conquistas chegam em breve',
+      meta: medals.data
+        ? `${unlocked} de ${medals.data.achievements.length}`
+        : undefined,
       open: () => router.navigate('/voce/conquistas')
     },
     {
@@ -145,6 +169,7 @@ export default function FanTabs() {
       icon: 'ticket',
       label: 'Meus jogos',
       soon: 'Meus jogos chega em breve',
+      badge: toRate ? `${toRate} para avaliar` : undefined,
       // Na pilha da própria aba: a barra fica e o menu some sozinho.
       open: () => router.navigate('/voce/meus-jogos')
     },
@@ -165,6 +190,9 @@ export default function FanTabs() {
       icon: 'people',
       label: 'Amigos',
       soon: 'Os amigos chegam em breve',
+      badge: requests
+        ? `${requests} ${requests === 1 ? 'pedido' : 'pedidos'}`
+        : undefined,
       // No design, Amigos abre pelo botão do Ranking (11e); até ele existir,
       // fica no menu. Por cima, sem a barra, como as Configurações.
       open: () => {
@@ -177,6 +205,7 @@ export default function FanTabs() {
       icon: 'ranking',
       label: 'Ranking',
       soon: 'O ranking chega em breve',
+      meta: myRank ? `${myRank.position}º` : undefined,
       open: () => router.navigate('/voce/ranking')
     },
     {
@@ -190,9 +219,6 @@ export default function FanTabs() {
             closeMenu()
             router.push(`/pos-jogo/${pending.data[0]?.eventId}`)
           }
-        : undefined,
-      meta: pending.data?.length
-        ? `${pending.data.length} ${pending.data.length === 1 ? 'pendente' : 'pendentes'}`
         : undefined
     },
     {
@@ -432,6 +458,7 @@ export default function FanTabs() {
           name={user?.name ?? ''}
           initials={initials(user?.name ?? '')}
           image={user?.image}
+          level={medals.data?.level}
           items={fan ? items : visitorItems}
           visitor={
             fan
@@ -459,7 +486,6 @@ export default function FanTabs() {
             setOver(false)
             item.open()
           }}
-          onChat={() => soon.show('A conversa com a Onside chega em breve')}
           onSettings={fan ? settings : ask('ver as configurações')}
         />
       ) : null}
