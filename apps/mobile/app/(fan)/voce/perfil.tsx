@@ -3,12 +3,10 @@ import { type Href, useRouter } from 'expo-router'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Photo } from '@/components/explore'
-import { useExploreState } from '@/components/explore-state'
-import { cardNumber, FanCard } from '@/components/fan-card'
 import { GroupLabel, LineList } from '@/components/game-line'
 import { useLayout } from '@/components/layout'
 import { MedalImage } from '@/components/medal'
-import { sportMark } from '@/components/onboarding'
+import { MyFanCard } from '@/components/my-fan-card'
 import { useTabBarSpace } from '@/components/tab-bar'
 import { usePalette } from '@/components/theme'
 import { Icon, Text, text, useStatusBar } from '@/components/ui'
@@ -31,15 +29,11 @@ export default function Profile() {
   const tabBar = useTabBarSpace()
   const palette = usePalette()
   const layout = useLayout()
-  const state = useExploreState()
   useStatusBar('auto')
   const session = authClient.useSession()
   const user = session.data?.user
   const achievements = useQuery(trpc.achievements.mine.queryOptions())
   const visits = useQuery(trpc.attendance.visits.queryOptions())
-  const prefs = useQuery(trpc.pubs.getMyPreferences.queryOptions())
-  const teams = useQuery(trpc.pubs.getMyTeams.queryOptions())
-  const city = useQuery(trpc.pubs.getMyCity.queryOptions())
   const ranking = useQuery(
     trpc.ranking.friends.queryOptions({ metric: 'bars' })
   )
@@ -52,17 +46,6 @@ export default function Profile() {
     .sort((a, b) => String(b.unlockedAt).localeCompare(String(a.unlockedAt)))
   const position = ranking.data?.rows.find((row) => row.id === user?.id)
   const top = topBars(list, now)
-  const since = user
-    ? new Date(user.createdAt)
-        .toLocaleDateString('pt-BR', {
-          month: 'short',
-          year: 'numeric',
-          timeZone: 'America/Sao_Paulo'
-        })
-        .replace(' de ', ' ')
-        .replace('.', '')
-        .toLocaleUpperCase('pt-BR')
-    : undefined
   const stats: [string, string][] = [
     [String(list.length), 'visitas'],
     [String(new Set(list.map((v) => v.barId)).size), 'bares'],
@@ -110,18 +93,7 @@ export default function Profile() {
         </Pressable>
       </View>
 
-      <FanCard
-        name={user?.name ?? 'Torcedor'}
-        teams={(teams.data ?? [])
-          .filter((team) => team.kind !== 'race')
-          .map((team) => team.name)}
-        sports={(prefs.data ?? []).map((pref) => sportMark(pref.sport.name))}
-        radius={`${user?.searchRadiusKm ?? 3} km`}
-        base={(state.device && state.district) || city.data?.name || null}
-        validated
-        number={user ? cardNumber(user.id) : undefined}
-        since={since}
-      />
+      <MyFanCard />
 
       <View style={styles.stats}>
         {stats.map(([value, label]) => (
