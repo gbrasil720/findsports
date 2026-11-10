@@ -548,7 +548,13 @@ export async function readVisitedGames(userId: string) {
       photoUrl: bar.photoUrl,
       latitude: bar.latitude,
       longitude: bar.longitude,
-      barActive: bar.isActive
+      barActive: bar.isActive,
+      // A nota dada a esta visita ("★ 5" em Já fui, rodada 4).
+      myStars: sql<number | null>`(
+        SELECT r.stars FROM bar_rating r
+        WHERE r.actor_user_id = ${userId} AND r.event_id = ${event.id}
+        LIMIT 1
+      )`
     })
     .from(visit)
     .innerJoin(event, eq(event.id, visit.eventId))
