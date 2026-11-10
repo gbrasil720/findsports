@@ -387,6 +387,7 @@ type FoundBar = {
   plan: string | null
   rating: { percentage: number } | null
   averageSpendCents: number | null
+  amenities?: number[]
   nextEvent?: {
     id: string
     startsAt: string
@@ -414,6 +415,7 @@ export function fromSearchBar(
     plan: bar.plan,
     ratingPercent: bar.rating?.percentage ?? null,
     averageSpendCents: bar.averageSpendCents,
+    amenities: bar.amenities ?? [],
     game: game
       ? {
           id: game.id,
@@ -505,11 +507,8 @@ export function followUps(suggestions: string[], hasBars: boolean) {
     .slice(0, 3)
     .map((label) => ({ kind: 'ask' as const, label }))
   if (!hasBars) return asks
-  return [
-    ...asks.slice(0, 1),
-    { kind: 'map' as const, label: 'Ver no mapa' },
-    ...asks.slice(1)
-  ]
+  // "Ver no mapa" primeiro, como no desenho da rodada 5 (`.sug`).
+  return [{ kind: 'map' as const, label: 'Ver no mapa' }, ...asks]
 }
 
 /** "Usei 3 bares e a agenda de hoje" (o dia vem do chip `date:`). */

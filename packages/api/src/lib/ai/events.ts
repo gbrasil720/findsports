@@ -17,6 +17,8 @@ export type ChatBar = {
   ratingPercent: number | null
   game: { id: string; title: string; startsAt: string; live: boolean } | null
   averageSpendCents: number | null
+  /** As características do bar (ids do catálogo), para "telão, área externa". */
+  amenities: number[]
 }
 
 /**

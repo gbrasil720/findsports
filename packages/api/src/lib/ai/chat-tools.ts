@@ -349,7 +349,8 @@ export function toChatBar(b: SearchBar, now: Date): ChatBar {
           live: isEventLive(e, now)
         }
       : null,
-    averageSpendCents: b.averageSpendCents ?? null
+    averageSpendCents: b.averageSpendCents ?? null,
+    amenities: b.amenities ?? []
   }
 }
 

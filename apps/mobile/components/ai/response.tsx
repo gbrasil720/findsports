@@ -18,6 +18,7 @@ import { ACID, Icon, INK, Text, text } from '@/components/ui'
 import { citationPieces } from '@/lib/ai-chat'
 import type { ChatBar, FilterChip, Source } from '@/lib/ai-events'
 import { formatKm, formatTime } from '@/lib/explore'
+import { itemLabel } from '@/lib/filters'
 import { AiIcon } from './icons'
 import type { AiPalette } from './theme'
 
@@ -153,7 +154,7 @@ export const CitedBar = forwardRef<
               {[
                 bar.neighborhood,
                 bar.distanceKm !== null ? formatKm(bar.distanceKm) : null,
-                game?.title
+                features(bar.amenities)
               ]
                 .filter(Boolean)
                 .join(' · ')}
@@ -187,6 +188,16 @@ export const CitedBar = forwardRef<
     </View>
   )
 })
+
+/** "telão, área externa": até duas do que importa para ver o jogo. */
+const FEATURES = [1, 2, 4, 3, 5]
+function features(ids: number[] | undefined) {
+  const shown = FEATURES.filter((id) => ids?.includes(id))
+    .slice(0, 2)
+    .map((id) => itemLabel(id)?.toLocaleLowerCase('pt-BR'))
+    .filter(Boolean)
+  return shown.length ? shown.join(', ') : null
+}
 
 const OPEN_IN = FadeIn.duration(180)
 const OPEN_OUT = FadeOut.duration(120)

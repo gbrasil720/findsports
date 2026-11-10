@@ -63,6 +63,7 @@ function bar(
     plan,
     ratingPercent: rating,
     averageSpendCents: 6000,
+    amenities: [1, 2, 4],
     game
   }
 }
