@@ -15,6 +15,18 @@ import { trpc } from '@/lib/trpc'
  * ponytail: "vista" é por aparelho. Em dois celulares a mesma medalha
  * aparece nos dois; guardar no servidor quando isso incomodar.
  */
+/**
+ * Marca medalhas como vistas antes de o cache saber delas: quem já mostra a
+ * medalha na própria tela (o "Valeu pela resenha") não quer a 2k por cima.
+ */
+export async function markAchievementsSeen(userId: string, ids: string[]) {
+  const key = `achievements-seen.${userId}`
+  const raw = await SecureStore.getItemAsync(key).catch(() => null)
+  const seen = new Set<string>(raw ? JSON.parse(raw) : [])
+  for (const id of ids) seen.add(id)
+  await SecureStore.setItemAsync(key, JSON.stringify([...seen])).catch(() => {})
+}
+
 export function useNewAchievement() {
   const router = useRouter()
   const userId = authClient.useSession().data?.user.id
