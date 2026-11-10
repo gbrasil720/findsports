@@ -27,6 +27,7 @@ import {
   SWAP,
   usePressScale
 } from '@/components/motion'
+import { Segmented } from '@/components/segmented'
 import { useTabBarSpace } from '@/components/tab-bar'
 import { type Palette, usePalette } from '@/components/theme'
 import {
@@ -54,6 +55,12 @@ import {
   type VisitRow,
   VisitsMap
 } from '@/components/your-bars'
+import {
+  PhoneBars,
+  PhoneSaved,
+  PhoneVisits,
+  UndoToast
+} from '@/components/your-bars-phone'
 import { useFan } from '@/lib/account'
 import { authClient } from '@/lib/auth-client'
 import { distanceKm, formatKm, searchCenter } from '@/lib/explore'
@@ -114,6 +121,21 @@ export default function YourBars() {
     enabled: fan
   })
   const favorites = useFavorites()
+  // "Avaliar" em Já fui (rodada 4): o que ainda pede avaliação.
+  const postGame = useQuery({
+    ...trpc.postGame.pending.queryOptions(),
+    enabled: fan
+  })
+  const toRate = new Set(postGame.data?.map((item) => item.eventId))
+  // O bar tirado arrastando, para o "Desfazer" do aviso.
+  const [removed, setRemoved] = useState<{ id: string; name: string } | null>(
+    null
+  )
+  useEffect(() => {
+    if (!removed) return
+    const timer = setTimeout(() => setRemoved(null), 4000)
+    return () => clearTimeout(timer)
+  }, [removed])
   // "Ver os 3 que você curtiu" (23j) abre direto nos salvos.
   const { aba } = useLocalSearchParams<{ aba?: Tab }>()
   const [picked, setPicked] = useState<Tab | null>(aba ?? null)
@@ -269,6 +291,75 @@ export default function YourBars() {
           />
         )}
       </Animated.View>
+    )
+  }
+
+  // O celular segue a rodada 4 do redesign; os layouts largos, os de antes.
+  const phoneBody = (which: Tab) => {
+    const query = queryOf(which)
+    if (query.isPending)
+      return <ActivityIndicator color={palette.ink} style={{ marginTop: 40 }} />
+    if (query.isError)
+      return (
+        <ErrorState
+          style={styles.empty}
+          title="Não deu para abrir seus bares."
+          error={query.error}
+          onRetry={query.refetch}
+          retrying={query.isFetching}
+        />
+      )
+    if (which === 'visits')
+      return (
+        <PhoneVisits
+          now={now}
+          visits={visitRows}
+          toRate={toRate}
+          saved={saved.data ?? []}
+          onOpen={openBar}
+          onRate={(eventId) => router.push(`/pos-jogo/${eventId}` as Href)}
+          onGo={(barId, eventId) =>
+            router.push({
+              pathname: '/vou/[barId]',
+              params: { barId, eventId }
+            } as Href)
+          }
+        />
+      )
+    if (which === 'saved')
+      return savedRows.length ? (
+        <PhoneSaved now={now} saved={savedRows} onOpen={openBar} />
+      ) : (
+        <Saved
+          now={now}
+          rows={savedRows}
+          searching={Boolean(term)}
+          onOpen={openBar}
+          onToggle={toggleSaved}
+          onExplore={() => router.navigate('/explore')}
+        />
+      )
+    return mine.bars.length ? (
+      <PhoneBars
+        now={now}
+        bars={barRows}
+        neighborhoods={mine.neighborhoods}
+        saved={saved.data ?? []}
+        onOpen={openBar}
+        onRemove={(barId) => {
+          const bar = mine.bars.find((b) => b.barId === barId)
+          favorites.toggle(barId)
+          setRemoved({ id: barId, name: bar?.name ?? 'O bar' })
+        }}
+      />
+    ) : (
+      <Bars
+        all={mine}
+        rows={barRows}
+        searching={Boolean(term)}
+        onOpen={openBar}
+        onToggle={toggleSaved}
+      />
     )
   }
 
@@ -704,18 +795,61 @@ export default function YourBars() {
           </>
         ) : (
           <>
-            {/* O título com a lupa ao lado, na altura das outras telas. O
-                voltar do design não entra: aqui a tela é a raiz da aba. */}
+            {/* O título com a lupa ao lado (rodada 4). O voltar do design
+                não entra: aqui a tela é a raiz da aba. */}
             <View style={styles.top}>
-              <Title lines={[['Seus bares']]} size={42} color={palette.ink} />
-              {searchButton}
+              <Text
+                accessibilityRole="header"
+                style={[styles.phoneTitle, { color: palette.ink }]}
+              >
+                SEUS BARES
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={search === null ? 'Buscar' : 'Fechar busca'}
+                hitSlop={8}
+                onPress={() => setSearch(search === null ? '' : null)}
+                style={[
+                  styles.round,
+                  { backgroundColor: palette.card, shadowColor: palette.drop }
+                ]}
+              >
+                <Icon
+                  name={search === null ? 'search' : 'close'}
+                  size={20}
+                  color={palette.ink}
+                />
+              </Pressable>
             </View>
             {searchField}
-            {segments}
+            <Segmented
+              items={[
+                { key: 'visits', label: 'Já fui' },
+                { key: 'saved', label: 'Salvos' },
+                { key: 'bars', label: 'Bares' }
+              ]}
+              value={tab}
+              onChange={(next) => setPicked(next)}
+            />
           </>
         )}
-        {body(tab)}
+        {board || layout.kind === 'duoClosed' ? (
+          body(tab)
+        ) : (
+          // O conteúdo troca seco (rodada 4).
+          <View style={styles.stack}>{phoneBody(tab)}</View>
+        )}
       </ScrollView>
+      {removed ? (
+        <UndoToast
+          name={removed.name}
+          bottom={tabBar + 12}
+          onUndo={() => {
+            favorites.toggle(removed.id)
+            setRemoved(null)
+          }}
+        />
+      ) : null}
     </View>
   )
 }
@@ -1515,6 +1649,18 @@ function Row({
 }
 
 const styles = StyleSheet.create({
+  // Anton 44 do `.pg h3`, sem o entrelinha curto (margem negativa).
+  phoneTitle: { fontFamily: 'Anton', fontSize: 44, marginVertical: -10.7 },
+  round: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
+  },
   // A folha do vazio em pé: sobe por cima do mapa (Adaptativo 10).
   sheet: {
     position: 'absolute',
