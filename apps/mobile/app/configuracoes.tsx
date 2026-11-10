@@ -26,14 +26,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Card } from '@/components/card'
 import { initials, MeDot, RadiusCircle } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
-import { Glass } from '@/components/glass'
+import { LineList } from '@/components/game-line'
 import { NAV, useLayout } from '@/components/layout'
 import { haptic, ScalePress } from '@/components/motion'
+import { MyFanCard } from '@/components/my-fan-card'
+import { Segmented } from '@/components/segmented'
+import { useSoon } from '@/components/soon'
 import { usePalette } from '@/components/theme'
 import {
   ACCENT,
   ACID,
-  GlassRound,
   Icon,
   INK,
   LIVE,
@@ -150,65 +152,33 @@ export default function Settings() {
       <ScrollView
         contentContainerStyle={[
           styles.body,
-          { paddingTop: insets.top + 6, paddingBottom: insets.bottom + 32 },
+          { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 32 },
           // A faixa da direita do Duo fechado (status e Dynamic Island).
           kind === 'duoClosed' && { paddingRight: 16 + NAV.duoRail.width },
           width > COLUMN && { width: COLUMN, alignSelf: 'center' }
         ]}
       >
-        <View style={styles.head}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Voltar"
-            hitSlop={8}
-            onPress={() => router.back()}
-          >
-            <GlassRound>
-              <Icon name="back" size={16} color={palette.ink} />
-            </GlassRound>
-          </Pressable>
-          <Text style={[styles.title, { color: palette.ink }]}>
-            Configurações
-          </Text>
-        </View>
-        <Glass tone={palette.dark ? 'dark' : 'light'} style={styles.tabs}>
-          {TABS.map(([key, label]) => {
-            const on = key === tab
-            return (
-              <Pressable
-                key={key}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: on }}
-                onPress={() => {
-                  if (on) return
-                  haptic.select()
-                  setTab(key)
-                }}
-                style={[
-                  styles.tab,
-                  on && [
-                    styles.tabOn,
-                    {
-                      backgroundColor: palette.dark
-                        ? 'rgba(255,255,255,.14)'
-                        : '#fff'
-                    }
-                  ]
-                ]}
-              >
-                <Text
-                  numberOfLines={1}
-                  style={[
-                    text(13, on ? 'Bold' : 'Regular', 1.2),
-                    { color: on ? palette.ink : palette.muted }
-                  ]}
-                >
-                  {label}
-                </Text>
-              </Pressable>
-            )
-          })}
-        </Glass>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Fechar"
+          hitSlop={8}
+          onPress={() => router.back()}
+          style={[
+            styles.close,
+            { backgroundColor: palette.card, shadowColor: palette.drop }
+          ]}
+        >
+          <Icon name="close" size={20} color={palette.ink} />
+        </Pressable>
+        <Text style={[styles.title, { color: palette.ink }]}>
+          Configurações
+        </Text>
+        <Segmented
+          small
+          items={TABS.map(([key, label]) => ({ key, label }))}
+          value={tab}
+          onChange={setTab}
+        />
         <SettingsSection tab={tab} width={column - 32} />
       </ScrollView>
     </View>
@@ -269,6 +239,72 @@ function Preferences({
     router.push({ pathname: '/onboarding/sports', params: { edit: '1' } })
   const editTeams = () =>
     router.push({ pathname: '/onboarding/teams', params: { edit: '1' } })
+
+  // Celular (rodada 6): a carteirinha e o que ela mostra, campo a campo.
+  if (!wide) {
+    const teamNames = (teams.data ?? []).map((team) => team.name)
+    const sportNames = (sports.data ?? []).map((p) => p.sport.name)
+    return (
+      <>
+        <MyFanCard />
+        <MenuBox>
+          <MenuRow
+            first
+            icon="fan"
+            title="Times"
+            value={teamNames.length ? teamNames.join(' · ') : 'Escolher'}
+            onPress={editTeams}
+          />
+          <MenuRow
+            icon="futebol"
+            title="Esportes"
+            value={sportNames.length ? sportNames.join(', ') : 'Escolher'}
+            onPress={editSports}
+          />
+          <MenuRow
+            icon="map"
+            title="Raio de busca"
+            value={`${radiusKm} km`}
+            onPress={() =>
+              Alert.alert(
+                'Raio de busca',
+                `${count}${more ? '+' : ''} ${count === 1 ? 'bar' : 'bares'} em ${radiusKm} km`,
+                [
+                  ...radii.map((km) => ({
+                    text: `${km} km`,
+                    onPress: () => pickRadius(km)
+                  })),
+                  { text: 'Cancelar', style: 'cancel' as const }
+                ]
+              )
+            }
+          />
+          <MenuRow
+            icon="pin"
+            title="Base"
+            value={
+              (state.device && state.district) || city.data?.name || 'Escolher'
+            }
+            onPress={() => router.push('/cidade' as Href)}
+          />
+        </MenuBox>
+        <MenuBox>
+          <ResetSuggestions menu />
+          <MenuRow
+            icon="you"
+            title="Rever o passeio"
+            value="30 s"
+            onPress={() =>
+              router.navigate({
+                pathname: '/explore',
+                params: { passeio: '1' }
+              })
+            }
+          />
+        </MenuBox>
+      </>
+    )
+  }
 
   return (
     <>
@@ -470,7 +506,14 @@ function SummaryCard({ children }: { children: ReactNode }) {
 }
 
 /** "Recomeçar sugestões": esquece o que a pessoa dispensou e o que viu. */
-function ResetSuggestions({ inline }: { inline?: boolean }) {
+function ResetSuggestions({
+  inline,
+  menu
+}: {
+  inline?: boolean
+  /** Linha de menu da rodada 6. */
+  menu?: boolean
+}) {
   const queryClient = useQueryClient()
   const reset = useMutation(
     trpc.recommendations.reset.mutationOptions({
@@ -494,6 +537,15 @@ function ResetSuggestions({ inline }: { inline?: boolean }) {
         { text: 'Cancelar', style: 'cancel' },
         { text: 'Recomeçar', onPress: () => reset.mutate() }
       ]
+    )
+  if (menu)
+    return (
+      <MenuRow
+        first
+        icon="heart"
+        title="Recomeçar sugestões"
+        onPress={confirm}
+      />
     )
   if (inline)
     return (
@@ -758,111 +810,132 @@ function Account({ leave = true }: { leave?: boolean }) {
       { text: 'Cancelar', style: 'cancel' as const }
     ])
 
+  const sessions = useSessions()
+  const leaveActions = useLeaveActions()
+  const devices = sessions.data?.length
+
   return (
     <>
-      <Card shadow={palette.dark ? '#3a4a12' : undefined}>
-        <View style={styles.me}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Trocar a foto"
-            disabled={photoBusy}
-            onPress={changePhoto}
-          >
-            <View style={styles.avatar}>
-              {user?.image ? (
-                <Image
-                  accessibilityIgnoresInvertColors
-                  source={{ uri: user.image }}
-                  style={styles.avatarPhoto}
-                  onLoad={() => setPhotoBusy(false)}
-                  onError={() => setPhotoBusy(false)}
-                />
-              ) : (
-                <Text style={styles.avatarText}>
-                  {initials(user?.name ?? '')}
-                </Text>
-              )}
-              {photoBusy ? (
-                <View style={styles.avatarBusy}>
-                  <ActivityIndicator color={PAPER} />
-                </View>
-              ) : null}
+      <View style={styles.me}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Trocar a foto"
+          disabled={photoBusy}
+          onPress={changePhoto}
+          style={styles.avatar}
+        >
+          {user?.image ? (
+            <Image
+              accessibilityIgnoresInvertColors
+              source={{ uri: user.image }}
+              style={styles.avatarPhoto}
+              onLoad={() => setPhotoBusy(false)}
+              onError={() => setPhotoBusy(false)}
+            />
+          ) : (
+            <Text style={styles.avatarText}>{initials(user?.name ?? '')}</Text>
+          )}
+          {photoBusy ? (
+            <View style={styles.avatarBusy}>
+              <ActivityIndicator color={PAPER} />
             </View>
-            <View style={[styles.camera, { backgroundColor: PAPER }]}>
-              <Icon name="camera" size={14} color={INK} accent={INK} />
-            </View>
-          </Pressable>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text
-              numberOfLines={1}
-              style={[text(19, 'Bold', 1.2), { color: palette.ink }]}
-            >
-              {user?.name}
-            </Text>
-            <Text
-              numberOfLines={1}
-              style={[text(14), { color: palette.muted }]}
-            >
-              {me.data ? `@${me.data.username}` : ' '}
+          ) : null}
+        </Pressable>
+        <ScalePress
+          accessibilityRole="button"
+          disabled={photoBusy}
+          onPress={changePhoto}
+        >
+          <View style={[styles.ghost, { borderColor: palette.line }]}>
+            <Text style={[text(15, 'Bold', 1.2), { color: palette.ink }]}>
+              Trocar foto
             </Text>
           </View>
-          <Text
-            accessibilityRole="button"
-            onPress={rename}
-            suppressHighlighting
-            style={[text(14, 'Bold'), { color: palette.dark ? ACID : ACCENT }]}
-          >
-            Editar
-          </Text>
-        </View>
-      </Card>
+        </ScalePress>
+      </View>
 
-      <Section icon="person" title="Dados">
-        <Row title="E-mail" value={user?.email} />
-        <Row
-          title="Usuário"
-          value={me.data ? `@${me.data.username}` : ' '}
-          chevron
-          divided
+      <MenuBox>
+        <MenuRow
+          first
+          icon="person"
+          title="Nome"
+          value={user?.name}
+          onPress={rename}
+        />
+        <MenuRow
+          icon="link"
+          title="@usuário"
+          value={me.data?.username}
           onPress={editUsername}
         />
-        <Row
+        <MenuRow
+          icon="pin"
           title="Cidade"
           value={city.data?.name ?? 'Escolher'}
-          chevron
-          divided
           onPress={() => router.push('/cidade' as Href)}
         />
-      </Section>
+      </MenuBox>
 
-      <Section icon="shield" title="Segurança">
-        <Row
-          title="Verificação em duas etapas"
-          right={
-            user?.twoFactorEnabled ? (
-              <Badge>Ativa</Badge>
-            ) : (
-              <Text style={[text(13, 'SemiBold'), { color: palette.muted }]}>
-                Desligada
-              </Text>
-            )
-          }
-          chevron={!user?.twoFactorEnabled}
-          onPress={() => router.push('/duas-etapas' as Href)}
-        />
-        <Row
+      <MenuBox>
+        <MenuRow
+          first
+          icon="lock"
           title="Senha"
-          value="Alterar"
-          chevron
-          divided
           onPress={() => router.push('/senha' as Href)}
         />
-      </Section>
+        <MenuRow
+          icon="shield"
+          title="Duas etapas"
+          value={user?.twoFactorEnabled ? 'ligada' : 'desligada'}
+          on={!!user?.twoFactorEnabled}
+          onPress={() => router.push('/duas-etapas' as Href)}
+        />
+        <MenuRow
+          icon="eye"
+          title="Aparelhos"
+          value={
+            devices
+              ? `${devices} ${devices === 1 ? 'conectado' : 'conectados'}`
+              : undefined
+          }
+          onPress={() => router.push('/aparelhos' as Href)}
+        />
+      </MenuBox>
 
-      <Sessions />
-      {leave ? <LeaveAccount /> : null}
+      {leave ? (
+        <>
+          <MenuBox>
+            <MenuRow
+              first
+              icon="back"
+              title="Sair da conta"
+              onPress={leaveActions.signOut}
+            />
+          </MenuBox>
+          <Text
+            accessibilityRole="button"
+            onPress={leaveActions.deleteAccount}
+            suppressHighlighting
+            style={[styles.danger, { color: palette.muted }]}
+          >
+            Excluir a conta
+          </Text>
+        </>
+      ) : null}
     </>
   )
+}
+
+/** Os aparelhos com a conta aberta (a lista pede login de menos de um dia). */
+function useSessions() {
+  return useQuery({
+    queryKey: ['account-sessions'],
+    queryFn: async () => {
+      const result = await authClient.listSessions()
+      if (result.error) throw result.error
+      return result.data ?? []
+    }
+  })
 }
 
 /** "Sessões ativas": os aparelhos com a conta aberta; os outros saem daqui. */
@@ -871,14 +944,7 @@ export function Sessions() {
   const router = useRouter()
   const session = authClient.useSession()
   const user = session.data?.user
-  const sessions = useQuery({
-    queryKey: ['account-sessions'],
-    queryFn: async () => {
-      const result = await authClient.listSessions()
-      if (result.error) throw result.error
-      return result.data ?? []
-    }
-  })
+  const sessions = useSessions()
   const now = Date.now()
   const current = session.data?.session.id
   const revoke = (id: string, name: string) =>
@@ -967,8 +1033,7 @@ export function Sessions() {
 }
 
 /** "Sair da conta" e "Excluir conta", no fim da Conta e à esquerda do "Você" deitado. */
-export function LeaveAccount() {
-  const palette = usePalette()
+function useLeaveActions() {
   const router = useRouter()
   const signOut = () =>
     Alert.alert('Sair da conta?', undefined, [
@@ -1010,7 +1075,13 @@ export function LeaveAccount() {
         }
       ]
     )
+  return { signOut, deleteAccount }
+}
 
+/** "Sair da conta" e "Excluir conta", à esquerda do "Você" deitado. */
+export function LeaveAccount() {
+  const palette = usePalette()
+  const { signOut, deleteAccount } = useLeaveActions()
   return (
     <View style={styles.leave}>
       <Text
@@ -1058,7 +1129,13 @@ function Privacy({
 }) {
   const palette = usePalette()
   const queryClient = useQueryClient()
+  const session = authClient.useSession()
   const me = useQuery(trpc.friends.me.queryOptions())
+  const board = useQuery(trpc.ranking.friends.queryOptions({ metric: 'bars' }))
+  const monthBars = board.data?.rows.find(
+    (row) => row.id === session.data?.user.id
+  )?.value
+  const soonToast = useSoon()
   // Otimista: a escolha aparece na hora e volta se o servidor recusar.
   const save = useMutation(
     trpc.friends.updatePrivacy.mutationOptions({
@@ -1174,7 +1251,6 @@ function Privacy({
       </Section>
     </>
   )
-  const soon = <SoonNote icon="eye" sentence="Comunidades chegam em breve." />
   // Largo: o aviso por cima e os grupos em duas colunas (regra 05 da T5).
   // Largo: a frase de quem vê no lugar do aviso, os grupos em duas colunas
   // (regra 05 da T5) e, no tablet deitado, as sessões. Bloqueados do design
@@ -1214,11 +1290,96 @@ function Privacy({
         {rest}
       </>
     )
+  const pick = <T extends Record<string, string>>(
+    title: string,
+    map: T,
+    apply: (key: keyof T) => void
+  ) =>
+    Alert.alert(title, undefined, [
+      ...Object.entries(map).map(([key, label]) => ({
+        text: label,
+        onPress: () => {
+          haptic.select()
+          apply(key as keyof T)
+        }
+      })),
+      { text: 'Cancelar', style: 'cancel' as const }
+    ])
+  const listed = !!me.data?.rankingGlobal
   return (
     <>
-      {where}
-      {soon}
-      {rest}
+      <MenuBox>
+        <MenuRow
+          first
+          icon="eye"
+          title="Onde você foi"
+          value={SEES[me.data?.activityVisibility ?? 'friends']}
+          onPress={() =>
+            pick('Quem vê os bares e jogos onde você foi', SEES, (key) =>
+              save.mutate({ activityVisibility: key })
+            )
+          }
+        />
+        <MenuRow
+          icon="userplus"
+          title="Quem pode te adicionar"
+          value={ADDS[me.data?.friendRequestsFrom ?? 'everyone']}
+          onPress={() =>
+            pick('Quem pode te adicionar', ADDS, (key) =>
+              save.mutate({ friendRequestsFrom: key })
+            )
+          }
+        />
+      </MenuBox>
+      <ScalePress
+        accessibilityRole="switch"
+        accessibilityState={{ checked: listed }}
+        to={0.985}
+        disabled={!me.data}
+        onPress={() => {
+          haptic.select()
+          save.mutate({ rankingGlobal: !listed })
+        }}
+      >
+        <View
+          style={[
+            styles.toggleCard,
+            { backgroundColor: palette.card, shadowColor: palette.drop }
+          ]}
+        >
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={[text(14.5, 'SemiBold', 1.3), { color: palette.ink }]}>
+              Aparecer no ranking da cidade
+            </Text>
+            <Text
+              style={[text(12.5, 'Regular', 1.35), { color: palette.muted }]}
+            >
+              {me.data
+                ? `Aparece assim: ${session.data?.user.name ?? ''} · @${me.data.username}${monthBars === undefined ? '' : ` · ${monthBars}`}`
+                : ' '}
+            </Text>
+          </View>
+          <Switch6 on={listed} />
+        </View>
+      </ScalePress>
+      <MenuBox>
+        <MenuRow
+          first
+          icon="doc"
+          title="Baixar meus dados"
+          value={exportData.isPending ? 'enviando…' : 'por e-mail'}
+          onPress={() => {
+            if (!exportData.isPending) exportData.mutate()
+          }}
+        />
+        <MenuRow
+          icon="crew"
+          title="Comunidades"
+          value="em breve"
+          onPress={() => soonToast.show('Comunidades chegam em breve.')}
+        />
+      </MenuBox>
+      {soonToast.toast}
     </>
   )
 }
@@ -1303,6 +1464,77 @@ function SoonNote({
       </View>
     </Card>
   )
+}
+
+/** O cartão das linhas de menu (`.box6`). */
+function MenuBox({ children }: { children: ReactNode }) {
+  return <LineList>{children}</LineList>
+}
+
+/**
+ * Linha de menu da rodada 6 (`.mi6`): ícone, nome, o valor em mono (ou a
+ * pílula acid de "ligada") e a seta.
+ */
+function MenuRow({
+  icon,
+  title,
+  value,
+  on,
+  first,
+  onPress
+}: {
+  icon: Parameters<typeof Icon>[0]['name']
+  title: string
+  value?: string
+  /** O valor na pílula acid (`.v.a`). */
+  on?: boolean
+  first?: boolean
+  onPress: () => void
+}) {
+  const palette = usePalette()
+  return (
+    <ScalePress accessibilityRole="button" to={0.985} onPress={onPress}>
+      <View
+        style={[
+          styles.menuRow,
+          !first && { borderTopWidth: 1, borderTopColor: palette.line }
+        ]}
+      >
+        <Icon
+          name={icon}
+          size={22}
+          color={palette.ink}
+          accent={palette.dark ? ACID : ACCENT}
+        />
+        <Text
+          numberOfLines={1}
+          style={[text(15, 'SemiBold', 1.2), { color: palette.ink }]}
+        >
+          {title}
+        </Text>
+        <View style={styles.menuValue}>
+          {value ? (
+            <Text
+              numberOfLines={1}
+              style={[
+                styles.menuMono,
+                on ? styles.menuOn : { color: palette.muted, flexShrink: 1 }
+              ]}
+            >
+              {value}
+            </Text>
+          ) : null}
+        </View>
+        <Icon name="next" size={16} color={palette.muted} />
+      </View>
+    </ScalePress>
+  )
+}
+
+/** Interruptor do design (`.sw`): trilho acid e bolinha tinta nos dois temas. */
+function Switch6({ on }: { on: boolean }) {
+  const palette = usePalette()
+  return <Switch on={on} off={palette.mark} track={ACID} knob={INK} />
 }
 
 function Section({
@@ -1477,28 +1709,22 @@ function Badge({ children }: { children: string }) {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   body: { paddingHorizontal: 16, gap: 12 },
-  head: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  title: {
-    flex: 1,
-    fontFamily: 'Anton',
-    fontSize: 34,
-    textTransform: 'uppercase',
-    letterSpacing: -0.68
-  },
-  tabs: { flexDirection: 'row', padding: 4, borderRadius: 24 },
-  tab: {
-    flexGrow: 1,
-    height: 38,
-    paddingHorizontal: 10,
-    borderRadius: 19,
+  close: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
   },
-  tabOn: {
-    shadowColor: '#000',
-    shadowOpacity: 0.18,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 }
+  // Anton 40: margem negativa no lugar do entrelinha curto.
+  title: {
+    fontFamily: 'Anton',
+    fontSize: 40,
+    textTransform: 'uppercase',
+    marginVertical: -9.7
   },
   summary: { paddingTop: 15, paddingBottom: 13, paddingHorizontal: 16 },
   summaryFoot: {
@@ -1619,6 +1845,33 @@ const styles = StyleSheet.create({
   },
   mono: { fontFamily: 'GeistMono-SemiBold', fontSize: 14 },
   monoSmall: { fontFamily: 'GeistMono-SemiBold', fontSize: 12.5 },
+  toggleCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
+  },
+  menuRow: {
+    minHeight: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
+  },
+  menuValue: { flex: 1, alignItems: 'flex-end', minWidth: 0 },
+  menuMono: { fontFamily: 'GeistMono-SemiBold', fontSize: 12.5 },
+  menuOn: {
+    color: INK,
+    backgroundColor: ACID,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    borderRadius: 999,
+    overflow: 'hidden'
+  },
   sectionHead: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1662,37 +1915,37 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: ACID
   },
-  me: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14 },
+  me: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   avatar: {
     width: 60,
     height: 60,
-    borderRadius: 6,
+    borderRadius: 30,
+    overflow: 'hidden',
     backgroundColor: ACID,
     alignItems: 'center',
     justifyContent: 'center'
   },
-  avatarText: { fontFamily: 'Archivo-Bold', fontSize: 20, color: INK },
-  avatarPhoto: { width: 60, height: 60, borderRadius: 6 },
+  avatarText: { fontFamily: 'Archivo-Bold', fontSize: 22, color: INK },
+  avatarPhoto: { width: 60, height: 60 },
   avatarBusy: {
     ...StyleSheet.absoluteFill,
-    borderRadius: 6,
     backgroundColor: 'rgba(18,18,15,.45)',
     alignItems: 'center',
     justifyContent: 'center'
   },
-  camera: {
-    position: 'absolute',
-    right: -8,
-    bottom: -8,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  ghost: {
+    height: 40,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1.5,
     alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    shadowOffset: { width: 0, height: 1 }
+    justifyContent: 'center'
+  },
+  danger: {
+    ...text(14, 'SemiBold'),
+    textAlign: 'center',
+    textDecorationLine: 'underline',
+    paddingVertical: 8
   },
   badge: {
     paddingVertical: 4,

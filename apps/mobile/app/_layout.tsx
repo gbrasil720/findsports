@@ -231,6 +231,7 @@ export default function Layout() {
                 <Stack.Screen name="cidade" options={accountSheet} />
                 <Stack.Screen name="senha" options={accountSheet} />
                 <Stack.Screen name="duas-etapas" options={accountSheet} />
+                <Stack.Screen name="aparelhos" options={accountSheet} />
                 {/* Amigos (S1): busca em tela cheia como a do mapa; código,
                 contatos e o perfil de amigo empilham com voltar. */}
                 <Stack.Screen name="amigos" />

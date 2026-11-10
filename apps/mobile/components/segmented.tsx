@@ -17,11 +17,14 @@ import { Text, text } from '@/components/ui'
 export function Segmented<T extends string>({
   items,
   value,
-  onChange
+  onChange,
+  small
 }: {
   items: { key: T; label: string }[]
   value: T
   onChange: (key: T) => void
+  /** Quatro abas (`.seg2.s4`, Configurações): letra de 12,5. */
+  small?: boolean
 }) {
   const palette = usePalette()
   const [width, setWidth] = useState(0)
@@ -67,8 +70,9 @@ export function Segmented<T extends string>({
             style={styles.cell}
           >
             <Text
+              numberOfLines={1}
               style={[
-                text(14, 'SemiBold', 1.2),
+                text(small ? 12.5 : 14, 'SemiBold', 1.2),
                 { color: on ? palette.bg : palette.ink }
               ]}
             >
