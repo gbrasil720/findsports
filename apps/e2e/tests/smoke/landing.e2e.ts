@@ -25,25 +25,25 @@ test('celular: sem rolagem lateral e com o telão no topo', async ({
   ).toBeLessThanOrEqual(page.viewportSize()?.width ?? 0)
 })
 
-test('a busca de exemplo mostra bares marcados como exemplo e leva ao cadastro', async ({
+test('o exemplo do hero se assume e o caminho de verdade vai ao Explorar', async ({
   page
 }) => {
   await page.goto('/')
+  const real = page.locator('.lp3 .paths .path.real a')
+  await expect(real).toHaveAttribute('href', '/dashboard')
+  await expect(page.locator('#busca')).toContainText('Bares fictícios')
+
   await page
     .locator('#busca')
-    .getByRole('button', { name: 'Ver bares' })
+    .getByRole('button', { name: 'Ver como fica' })
     .click()
   const results = page.locator('.lp3 .results')
   await expect(results).toBeVisible()
-  await expect(results).toContainText('EXEMPLO')
-  await expect(results.locator('[data-cta]')).toHaveAttribute(
-    'data-cta',
-    'results_explore'
-  )
-  await expect(results.locator('[data-cta]')).toHaveAttribute(
-    'href',
-    '/dashboard'
-  )
+  await expect(results).toContainText('Exemplo')
+  // Sem jogo publicado hoje (o banco do E2E), a saída é a grade.
+  const next = page.locator('.lp3 .answer .hp-next [data-cta]')
+  await expect(next).toHaveAttribute('data-cta', 'results_explore')
+  await expect(next).toHaveAttribute('href', '/dashboard')
 })
 
 test('o CTA do bar leva ao cadastro com "Tenho um bar" marcado', async ({
@@ -87,6 +87,7 @@ test('sem sessão, as chamadas do torcedor levam ao Explorar', async ({
     'final_pub_signup',
     'footer_explore',
     'footer_pub_signup',
+    'hero_explore',
     'nav_explore',
     'nav_pub_signup',
     'pub_pub_signup'
@@ -111,6 +112,7 @@ test.describe('com sessão', () => {
       'final_pub_signup',
       'footer_app',
       'footer_pub_signup',
+      'hero_app',
       'nav_app',
       'nav_pub_signup',
       'pub_pub_signup'
