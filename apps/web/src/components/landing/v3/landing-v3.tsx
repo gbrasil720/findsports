@@ -40,9 +40,12 @@ import {
  * com a copy do site atual (pedido do marketing, 05/11/2026; artifact
  * BDRkPQGG2C6DzF54zViB8C). Sistema visual em `DESIGN.md`. O texto vem de
  * `onside-landing-content.ts`, o mesmo do JSON-LD. O CSS é o do protótipo,
- * preso a `.lp3` (`landing-v3.css`), mais o do design (`landing-v3-site.css`). Os jogos do letreiro e da busca
- * são os de hoje (`pubs.todayGames`); os bares do resultado são exemplo até o
- * Explorar aberto sem conta (WEB-502/503) existir.
+ * preso a `.lp3` (`landing-v3.css`), mais o do design (`landing-v3-site.css`). Os jogos do letreiro e do
+ * exemplo do hero são os de hoje (`pubs.todayGames`). O hero tem dois caminhos
+ * (B3 do canvas S4PzzkRwGY8kdMo2JD6bDy, 10/11/2026): o de verdade, em acid,
+ * abre o Explorar; o exemplo, em papel, mostra bares fictícios e assume isso
+ * antes do clique, porque a busca de antes parecia de verdade e o pessoal
+ * travava nela.
  */
 
 /** O título do problema em dois tons: o que os outros são, e o que não mostram. */
@@ -52,7 +55,17 @@ const PROBLEM_TITLE = [
   LANDING_COPY.problem.title.slice(PROBLEM_SPLIT)
 ]
 
-type Game = { title: string; time: string; live: boolean }
+/**
+ * `key` e `bars` só nos jogos de hoje: a chave é a da régua do Explorar
+ * (`<startsAt>|<título>`, `?jogo=`) e `bars` é em quantos bares ele passa.
+ */
+type Game = {
+  title: string
+  time: string
+  live: boolean
+  key?: string
+  bars?: number
+}
 
 /** Sem jogo publicado hoje: os da demonstração, marcados como exemplo. */
 const EXAMPLE_GAMES: Game[] = [
@@ -144,7 +157,9 @@ function useTodayGames(): Game[] {
         {
           title: g.title,
           time: brasiliaTime.format(start),
-          live: now >= start.getTime()
+          live: now >= start.getTime(),
+          key: `${g.startsAt}|${g.title}`,
+          bars: g.bars
         }
       ]
     })
@@ -192,7 +207,7 @@ function DefinitionNote({ i }: { i: number }) {
   if (!d) return null
   return (
     <div className="note rv" data-to={i}>
-      <span className="n">{d.number}</span>
+      <span className="hp-n">{d.number}</span>
       <b>{d.text}</b>
     </div>
   )
@@ -232,51 +247,90 @@ const STEP_EXTRAS = [
 
 const OCCASION_ICONS = [Beer, Tv, People] as const
 
-type Result = { game: Game; where: string; example: boolean }
+type Result = { game: Game; where: string }
 
+const plural = (n: number, um: string, varios: string) =>
+  `${n} ${n === 1 ? um : varios}`
+
+/**
+ * O exemplo, assumido: bares fictícios com o selo, e logo abaixo o caminho de
+ * verdade. Com jogo de hoje, quantos bares o passam e o Explorar já nele; sem
+ * jogo publicado (a lista é a de exemplo), a grade dos próximos dias.
+ */
 function Results({ result, cta }: { result: Result; cta: Cta }) {
   const { game } = result
+  const real = game.key && game.bars ? game : null
   return (
-    <div className="results">
-      <header>
-        <b>{game.title}</b>
-        <span>
-          perto de {result.where}
-          <span className="ex">EXEMPLO</span>
-        </span>
-      </header>
-      {EXAMPLE_BARS.map(([name, initials, meta], i) => (
-        <div
-          key={name}
-          className="rbar"
-          style={{ animationDelay: `${0.08 + i * 0.07}s` }}
-        >
-          <span className="thumb">{initials}</span>
-          <span>
-            <b>{name}</b>
-            <small>{meta}</small>
-          </span>
-          <span className="t">
-            {game.live ? (
-              <span style={{ color: '#e8320c' }}>AO VIVO</span>
-            ) : (
-              game.time
-            )}
-            <small>{game.live ? 'agora' : 'hoje'}</small>
-          </span>
-        </div>
-      ))}
-      <footer>
-        <span>Bares de exemplo. Na Onside, os de verdade, perto de você.</span>
-        <a
-          className="btn btn-ink"
-          href={cta.href}
-          data-cta={`results_${cta.kind}`}
-        >
-          Ver os bares
-        </a>
-      </footer>
-    </div>
+    <>
+      <div className="results">
+        <header>
+          <b>Assim aparece na Onside</b>
+          <span className="ex">Exemplo</span>
+        </header>
+        <p className="hp-sub">
+          {game.title} · perto de {result.where}
+        </p>
+        {EXAMPLE_BARS.map(([name, initials, meta], i) => (
+          <div
+            key={name}
+            className="rbar"
+            style={{ animationDelay: `${0.08 + i * 0.07}s` }}
+          >
+            <span className="thumb">{initials}</span>
+            <span>
+              <b>{name}</b>
+              <small>{meta}</small>
+            </span>
+            <span className="t">
+              {game.live ? (
+                <span style={{ color: '#e8320c' }}>AO VIVO</span>
+              ) : (
+                game.time
+              )}
+              <small>{game.live ? 'agora' : 'hoje'}</small>
+            </span>
+          </div>
+        ))}
+        <footer>
+          Esses bares não existem. Os de verdade estão logo abaixo.
+        </footer>
+      </div>
+      <div className="path real hp-next">
+        {real ? (
+          <>
+            <p className="hp-t">Agora com os bares de verdade</p>
+            <p className="hp-txt">
+              {real.title} passa em{' '}
+              <b>{plural(real.bars ?? 0, 'bar', 'bares')}</b> na Onside hoje.
+            </p>
+            <a
+              className="btn btn-ink"
+              href={`/dashboard?jogo=${encodeURIComponent(real.key ?? '')}`}
+              data-cta="results_game"
+            >
+              Ver onde passa perto de você
+              <Arrow />
+            </a>
+          </>
+        ) : (
+          <>
+            <p className="hp-t">Hoje ainda não tem jogo publicado</p>
+            <p className="hp-txt">
+              Os bares publicam a grade ao longo do dia. Veja o que já está
+              marcado para os próximos dias.
+            </p>
+            <a
+              className="btn btn-ink"
+              href={cta.href}
+              data-cta={`results_${cta.kind}`}
+            >
+              Ver a grade dos próximos dias
+              <Arrow />
+            </a>
+          </>
+        )}
+      </div>
+    </>
   )
 }
 
@@ -289,6 +343,7 @@ export function LandingV3() {
   const [game, setGame] = useState('')
   const [where, setWhere] = useState('Vila Madalena')
   const [result, setResult] = useState<Result | null>(null)
+  const resultRef = useRef<HTMLDivElement>(null)
   const [medal, setMedal] = useState<Medal>(MEDALS[0])
 
   useEffect(() => {
@@ -330,7 +385,18 @@ export function LandingV3() {
   function onSearch(e: FormEvent) {
     e.preventDefault()
     const picked = games.find((g) => g.title === game) ?? games[0]
-    if (picked) setResult({ game: picked, where, example: !today.length })
+    if (!picked) return
+    setResult({ game: picked, where })
+    // No celular o resultado nasce abaixo da dobra: a página vai até ele.
+    requestAnimationFrame(() => {
+      const reduce = window.matchMedia(
+        '(prefers-reduced-motion: reduce)'
+      ).matches
+      resultRef.current?.scrollIntoView({
+        behavior: reduce ? 'auto' : 'smooth',
+        block: 'nearest'
+      })
+    })
   }
 
   function pickMedal(md: Medal) {
@@ -395,51 +461,76 @@ export function LandingV3() {
               </p>
 
               <div className="search">
-                <form
-                  method="post"
-                  id="busca"
-                  aria-label="Buscar bares por jogo"
-                  onSubmit={onSearch}
-                >
-                  <div className="field">
-                    <label htmlFor="q-jogo">
-                      {LANDING_COPY.journey.searchPlaceholder}
-                    </label>
-                    <div className="sel">
-                      <select
-                        id="q-jogo"
-                        value={game || games[0]?.title}
-                        onChange={(e) => setGame(e.target.value)}
-                      >
-                        {games.map((g) => (
-                          <option key={g.title + g.time} value={g.title}>
-                            {g.title}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                <div className="paths">
+                  <div className="path real">
+                    <p className="hp-t">
+                      <span className="hp-n">1</span>Ache o seu de verdade
+                    </p>
+                    <p className="hp-txt">
+                      Os jogos de hoje e os bares perto de você. Grátis, sem
+                      conta para olhar.
+                    </p>
+                    <a
+                      className="btn btn-ink"
+                      href={cta.href}
+                      data-cta={`hero_${cta.kind}`}
+                    >
+                      Abrir a Onside
+                      <Arrow />
+                    </a>
                   </div>
-                  <div className="field">
-                    <label htmlFor="q-onde">Onde</label>
-                    <div className="sel">
-                      <select
-                        id="q-onde"
-                        value={where}
-                        onChange={(e) => setWhere(e.target.value)}
-                      >
-                        <option>Vila Madalena</option>
-                        <option>Pinheiros</option>
-                        <option>Moema</option>
-                        <option>Tatuapé</option>
-                        <option>Botafogo, Rio</option>
-                      </select>
+                  <form
+                    method="post"
+                    id="busca"
+                    className="path demo"
+                    aria-label="Exemplo de como a Onside mostra os bares"
+                    onSubmit={onSearch}
+                  >
+                    <p className="hp-t">
+                      <span className="hp-n">2</span>Ou teste com um exemplo
+                    </p>
+                    <p className="hp-tag">
+                      Bares fictícios · só para ver como fica
+                    </p>
+                    <div className="fields">
+                      <div className="field">
+                        <label htmlFor="q-jogo">Jogo</label>
+                        <div className="sel">
+                          <select
+                            id="q-jogo"
+                            value={game || games[0]?.title}
+                            onChange={(e) => setGame(e.target.value)}
+                          >
+                            {games.map((g) => (
+                              <option key={g.title + g.time} value={g.title}>
+                                {g.title}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <div className="field">
+                        <label htmlFor="q-onde">Bairro</label>
+                        <div className="sel">
+                          <select
+                            id="q-onde"
+                            value={where}
+                            onChange={(e) => setWhere(e.target.value)}
+                          >
+                            <option>Vila Madalena</option>
+                            <option>Pinheiros</option>
+                            <option>Moema</option>
+                            <option>Tatuapé</option>
+                            <option>Botafogo, Rio</option>
+                          </select>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <button className="btn btn-acid go" type="submit">
-                    Ver bares
-                    <Arrow />
-                  </button>
-                </form>
+                    <button className="btn btn-ghost try" type="submit">
+                      Ver como fica
+                    </button>
+                  </form>
+                </div>
                 <div className="trigger">
                   {LANDING_COPY.proof.map((p) => (
                     <span key={p}>
@@ -448,7 +539,7 @@ export function LandingV3() {
                     </span>
                   ))}
                 </div>
-                <div aria-live="polite">
+                <div aria-live="polite" ref={resultRef} className="answer">
                   {result && <Results result={result} cta={cta} />}
                 </div>
               </div>
@@ -524,7 +615,7 @@ export function LandingV3() {
                         {t.live ? '● AO VIVO' : t.time}
                       </span>
                       {t.title}
-                      {t.note && <span className="n">{t.note}</span>}
+                      {t.note && <span className="hp-n">{t.note}</span>}
                     </span>
                   )
                 )
@@ -797,7 +888,7 @@ export function LandingV3() {
                 const Icon = OCCASION_ICONS[i] ?? Beer
                 return (
                   <li key={o.id} className={o.highlight ? 'rv hl' : 'rv'}>
-                    <span className="n">{o.number}</span>
+                    <span className="hp-n">{o.number}</span>
                     <b>{o.title}</b>
                     <span className="tg">
                       <Icon />
@@ -835,7 +926,7 @@ export function LandingV3() {
               </p>
               <div className="score rv">
                 <div className="big">4,6</div>
-                <div className="sub">
+                <div className="hp-sub">
                   <b>Bar do Zé em dia de jogo</b>
                   <span>42 avaliações verificadas · 88% voltariam</span>
                 </div>
@@ -1007,7 +1098,7 @@ export function LandingV3() {
                 <span className="h2-2">Encha a casa em dia de jogo.</span>
               </h2>
               <div className="rv">
-                <span className="tag">
+                <span className="hp-tag">
                   <em>{ONBOARDING_TRIAL.days} DIAS</em>de Elite grátis, sem
                   cartão
                 </span>
