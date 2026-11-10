@@ -1,48 +1,39 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { type Href, useRouter } from 'expo-router'
-import { useDeferredValue, useState } from 'react'
+import { type ReactNode, useDeferredValue, useState } from 'react'
 import {
   ActivityIndicator,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Card, FilterChip } from '@/components/card'
 import {
   AddButton,
-  heroShadow,
   PersonRow,
   personLine,
   useFriendActions
 } from '@/components/friends'
-import { Glass } from '@/components/glass'
-import { haptic } from '@/components/motion'
+import { GroupLabel, LineList } from '@/components/game-line'
 import { usePalette } from '@/components/theme'
 import {
-  HOT,
+  ACID,
   Icon,
-  INK,
-  LIVE,
   Text,
   TextInput,
   text,
   useStatusBar
 } from '@/components/ui'
-import { inviteMessage } from '@/lib/invite'
 import { trpc } from '@/lib/trpc'
 
-const SCOPES = [
-  ['all', 'Todos'],
-  ['friendsOfFriends', 'Amigos de amigos'],
-  ['near', 'Perto de você']
-] as const
-
 /**
- * Buscar amigos (11b do design): por nome ou `@`, com o trecho digitado em
- * destaque. "Perto de você" é a mesma cidade do seu perfil.
+ * Buscar amigos (rodada 6, tela 4b): o trecho digitado marcado em acid e cada
+ * pessoa com o que ajuda a reconhecer (@, amigos em comum, bairro). O botão
+ * diz o estado (Adicionar, Pedido enviado, Amigos) e a linha fica no lugar.
+ * Abaixo, "Perto de você" (a mesma cidade) e "Amigos de amigos", as únicas
+ * sugestões; no fim, Meu código e Contatos. Quem escolheu "Ninguém" em "quem
+ * pode te adicionar" não aparece em busca nenhuma.
  */
 export default function FriendSearch() {
   const router = useRouter()
@@ -50,36 +41,56 @@ export default function FriendSearch() {
   const palette = usePalette()
   useStatusBar('auto')
   const [query, setQuery] = useState('')
-  const [scope, setScope] = useState<(typeof SCOPES)[number][0]>('all')
   const deferred = useDeferredValue(query.trim())
-  const me = useQuery(trpc.friends.me.queryOptions())
+  const typing = deferred.replace(/^@/, '').length >= 2
   const results = useQuery({
-    ...trpc.friends.search.queryOptions({ query: deferred, scope }),
-    enabled: deferred.replace(/^@/, '').length >= 2,
+    ...trpc.friends.search.queryOptions({ query: deferred, scope: 'all' }),
+    enabled: typing,
     placeholderData: keepPreviousData
   })
+  const near = useQuery(
+    trpc.friends.search.queryOptions({ query: '', scope: 'near' })
+  )
+  const overview = useQuery(trpc.friends.overview.queryOptions())
+  const city = useQuery(trpc.pubs.getMyCity.queryOptions())
   const actions = useFriendActions()
-  const typing = deferred.replace(/^@/, '').length >= 2
   const people = typing ? (results.data ?? []) : []
+  const open = (id: string) => router.push(`/amigo/${id}` as Href)
 
   return (
     <View style={[styles.screen, { backgroundColor: palette.bg }]}>
       <View style={[styles.top, { paddingTop: insets.top + 8 }]}>
-        <Glass
-          tone={palette.dark ? 'dark' : 'light'}
-          tint={palette.dark ? undefined : 'rgba(255,255,255,.62)'}
-          style={styles.field}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
+          hitSlop={8}
+          onPress={() => router.back()}
+          style={[
+            styles.round,
+            { backgroundColor: palette.card, shadowColor: palette.drop }
+          ]}
         >
-          {/* A borda numa camada por cima: no vidro, o iOS a tinge e o acid
-              do design sai apagado. */}
-          <View
-            pointerEvents="none"
-            style={[
-              styles.ring,
-              { borderColor: palette.dark ? '#c9f135' : INK }
-            ]}
-          />
-          <Icon name="search" size={18} color={palette.ink} />
+          <Icon name="back" size={20} color={palette.ink} />
+        </Pressable>
+        <Text style={[styles.title, { color: palette.muted }]}>AMIGOS</Text>
+        <View style={{ width: 44 }} />
+      </View>
+
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        contentContainerStyle={[
+          styles.body,
+          { paddingBottom: insets.bottom + 32 }
+        ]}
+      >
+        <View
+          style={[
+            styles.field,
+            { backgroundColor: palette.card, borderColor: palette.ink }
+          ]}
+        >
+          <Icon name="search" size={20} color={palette.ink} />
           <TextInput
             autoFocus
             autoCapitalize="none"
@@ -89,7 +100,7 @@ export default function FriendSearch() {
             placeholder="Nome ou @usuário"
             placeholderTextColor={palette.muted}
             returnKeyType="search"
-            selectionColor={palette.dark ? '#c9f135' : LIVE}
+            selectionColor={palette.dark ? ACID : '#5b6d0c'}
             style={[
               text(16, 'Regular', 1.2),
               styles.input,
@@ -102,52 +113,20 @@ export default function FriendSearch() {
               accessibilityLabel="Apagar"
               hitSlop={8}
               onPress={() => setQuery('')}
-              style={[styles.clear, { backgroundColor: palette.mark }]}
             >
-              <Icon name="close" size={12} color={palette.ink} />
+              <Icon name="close" size={16} color={palette.ink} />
             </Pressable>
           ) : null}
-        </Glass>
-        <Pressable
-          accessibilityRole="button"
-          hitSlop={10}
-          onPress={() => router.back()}
-        >
-          <Text style={[text(15, 'SemiBold'), { color: palette.ink }]}>
-            Cancelar
-          </Text>
-        </Pressable>
-      </View>
-
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        contentContainerStyle={[
-          styles.body,
-          { paddingBottom: insets.bottom + 32 }
-        ]}
-      >
-        <View style={styles.chips}>
-          {SCOPES.map(([key, label]) => (
-            <FilterChip
-              key={key}
-              label={label}
-              on={scope === key}
-              raised
-              onPress={() => setScope(key)}
-            />
-          ))}
         </View>
 
         {typing && results.isPending ? (
           <ActivityIndicator color={palette.ink} style={{ marginTop: 16 }} />
         ) : typing && people.length === 0 ? (
           <Text style={[text(14, 'Regular', 1.45), { color: palette.muted }]}>
-            Ninguém com “{deferred}”{scope === 'near' ? ' na sua cidade' : ''}
-            {scope === 'friendsOfFriends' ? ' entre amigos de amigos' : ''}.
+            Ninguém com “{deferred}”.
           </Text>
-        ) : (
-          <View>
+        ) : people.length ? (
+          <People>
             {people.map((person, index) => (
               <PersonRow
                 key={person.id}
@@ -156,10 +135,9 @@ export default function FriendSearch() {
                 image={person.image}
                 sub={personLine(person)}
                 highlight={deferred.replace(/^@/, '')}
-                big
-                size={42}
+                size={40}
                 first={index === 0}
-                onPress={() => router.push(`/amigo/${person.id}` as Href)}
+                onPress={() => open(person.id)}
                 right={
                   <AddButton
                     relation={person.relation}
@@ -171,40 +149,129 @@ export default function FriendSearch() {
                 }
               />
             ))}
-          </View>
-        )}
+          </People>
+        ) : null}
 
-        <Pressable
-          accessibilityRole="button"
-          disabled={!me.data}
-          onPress={() => {
-            if (!me.data) return
-            haptic.select()
-            Share.share({ message: inviteMessage(me.data.friendCode) })
-          }}
-        >
-          <Card shadow={heroShadow(palette)}>
-            <View style={styles.invite}>
-              <Icon name="link" size={26} color={palette.ink} accent={HOT} />
-              <View style={{ flex: 1 }}>
-                <Text style={[text(14.5, 'Bold', 1.3), { color: palette.ink }]}>
-                  Não achou quem procurava?
-                </Text>
-                <Text
-                  style={[
-                    text(12.5, 'Regular', 1.35),
-                    { color: palette.muted }
-                  ]}
-                >
-                  Mande seu link. Quem criar conta por ele já entra como seu
-                  amigo.
-                </Text>
-              </View>
-            </View>
-          </Card>
-        </Pressable>
+        {near.data?.length ? (
+          <>
+            <GroupLabel>
+              {`Perto de você${city.data?.name ? ` · ${city.data.name}` : ''}`}
+            </GroupLabel>
+            <People>
+              {near.data.map((person, index) => (
+                <PersonRow
+                  key={person.id}
+                  id={person.id}
+                  name={person.name}
+                  image={person.image}
+                  sub={personLine(person)}
+                  size={40}
+                  first={index === 0}
+                  onPress={() => open(person.id)}
+                  right={
+                    <AddButton
+                      relation={person.relation}
+                      busy={actions.busy}
+                      onPress={() =>
+                        actions.act(person.id, person.relation, 'search')
+                      }
+                    />
+                  }
+                />
+              ))}
+            </People>
+          </>
+        ) : null}
+
+        {overview.data?.suggestions.length ? (
+          <>
+            <GroupLabel>Amigos de amigos</GroupLabel>
+            <People>
+              {overview.data.suggestions.slice(0, 5).map((person, index) => (
+                <PersonRow
+                  key={person.id}
+                  id={person.id}
+                  name={person.name}
+                  image={person.image}
+                  sub={`${person.mutual} ${person.mutual === 1 ? 'amigo' : 'amigos'} em comum`}
+                  size={40}
+                  first={index === 0}
+                  onPress={() => open(person.id)}
+                  right={
+                    <AddButton
+                      relation="none"
+                      busy={actions.busy}
+                      onPress={() =>
+                        actions.act(person.id, 'none', 'suggestion')
+                      }
+                    />
+                  }
+                />
+              ))}
+            </People>
+          </>
+        ) : null}
+
+        <View style={styles.shortcuts}>
+          <Shortcut
+            icon="qr"
+            title="Meu código"
+            sub="QR e link"
+            onPress={() => router.push('/meu-codigo')}
+          />
+          <Shortcut
+            icon="people"
+            title="Contatos"
+            sub="quem já está aqui"
+            onPress={() => router.push('/contatos')}
+          />
+        </View>
       </ScrollView>
     </View>
+  )
+}
+
+/** O cartão das linhas. */
+function People({ children }: { children: ReactNode }) {
+  return (
+    <LineList>
+      <View>{children}</View>
+    </LineList>
+  )
+}
+
+function Shortcut({
+  icon,
+  title,
+  sub,
+  onPress
+}: {
+  icon: 'qr' | 'people'
+  title: string
+  sub: string
+  onPress: () => void
+}) {
+  const palette = usePalette()
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.shortcut,
+        { backgroundColor: palette.card, shadowColor: palette.drop },
+        pressed && { opacity: 0.8 }
+      ]}
+    >
+      <Icon name={icon} size={22} color={palette.ink} />
+      <View style={{ flex: 1 }}>
+        <Text style={[text(14.5, 'Bold', 1.2), { color: palette.ink }]}>
+          {title}
+        </Text>
+        <Text style={[text(12, 'Regular', 1.3), { color: palette.muted }]}>
+          {sub}
+        </Text>
+      </View>
+    </Pressable>
   )
 }
 
@@ -213,38 +280,46 @@ const styles = StyleSheet.create({
   top: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 6
+    paddingBottom: 10
+  },
+  round: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  },
+  title: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 13,
+    letterSpacing: 1.04
   },
   field: {
-    flex: 1,
-    height: 48,
-    borderRadius: 24,
+    height: 52,
+    borderRadius: 18,
+    borderWidth: 2,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingLeft: 16,
-    paddingRight: 8
+    paddingHorizontal: 16
   },
-  ring: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    borderRadius: 24,
-    borderWidth: 1.5
-  },
-  input: { flex: 1, height: 46 },
-  clear: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+  input: { flex: 1, height: 48 },
+  body: { paddingHorizontal: 16, gap: 14, paddingTop: 4 },
+  shortcuts: { flexDirection: 'row', gap: 8 },
+  shortcut: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center'
-  },
-  body: { paddingHorizontal: 16, gap: 14, paddingTop: 8 },
-  chips: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-  invite: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 }
+    gap: 10,
+    padding: 12,
+    borderRadius: 18,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
+  }
 })

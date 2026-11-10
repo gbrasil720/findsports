@@ -3,13 +3,12 @@ import { type Href, useRouter } from 'expo-router'
 import { type ReactNode, useEffect, useState } from 'react'
 import { Alert, Image, Pressable, StyleSheet, View } from 'react-native'
 import Animated from 'react-native-reanimated'
-import { HardShadow, initials } from '@/components/explore'
+import { initials } from '@/components/explore'
 import { haptic, usePress } from '@/components/motion'
 import { type Palette, usePalette } from '@/components/theme'
 import {
   ACID,
   errorMessage,
-  HOT,
   Icon,
   INK,
   LIVE,
@@ -82,7 +81,8 @@ export function Avatar({
       style={{
         width: size,
         height: size,
-        borderRadius: size > 50 ? 9 : 8,
+        // Rostos redondos (rodada 6, `.av6`).
+        borderRadius: size / 2,
         backgroundColor: bg,
         alignItems: 'center',
         justifyContent: 'center',
@@ -96,7 +96,8 @@ export function Avatar({
             : [text(Math.round(size * 0.34), 'Bold', 1.1), { color: fg }]
         }
       >
-        {initials(name)}
+        {/* Uma letra para os outros e duas para você (rodada 6, `.av6`). */}
+        {me ? initials(name) : initials(name).slice(0, 1)}
       </Text>
       {/* A foto cobre as iniciais quando carrega; lenta ou quebrada, ficam elas. */}
       {image ? (
@@ -128,18 +129,8 @@ export function AddButton({
   if (relation === 'self') return null
   if (relation === 'friends')
     return (
-      <View style={styles.friends}>
-        <Icon
-          name="check"
-          size={14}
-          color={palette.dark ? ACID : '#4d7a00'}
-          accent={palette.dark ? ACID : '#4d7a00'}
-        />
-        <Text
-          style={[text(13, 'Bold'), { color: palette.dark ? ACID : '#4d7a00' }]}
-        >
-          Amigos
-        </Text>
+      <View style={[styles.sent, { borderColor: palette.line }]}>
+        <Text style={[text(13, 'Bold'), { color: palette.muted }]}>Amigos</Text>
       </View>
     )
   if (relation === 'sent')
@@ -149,12 +140,7 @@ export function AddButton({
         accessibilityHint="Cancela o pedido"
         disabled={busy}
         onPress={onPress}
-        style={[
-          styles.sent,
-          {
-            borderColor: palette.dark ? 'rgba(241,238,230,.22)' : palette.line
-          }
-        ]}
+        style={[styles.sent, { borderColor: palette.line }]}
       >
         <Text style={[text(13, 'Bold'), { color: palette.muted }]}>
           Pedido enviado
@@ -169,13 +155,22 @@ export function AddButton({
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
     >
-      {/* A sombra fica parada e o botão afunda sobre ela. */}
-      <HardShadow color={palette.dark ? '#000' : INK} offset={3} />
+      {/* `.b-ink b-sm`: tinta no claro, papel no escuro, sem sombra. */}
       <Animated.View
-        style={[styles.add, busy && { opacity: 0.6 }, press.style]}
+        style={[
+          styles.add,
+          { backgroundColor: palette.ink },
+          busy && { opacity: 0.6 },
+          press.style
+        ]}
       >
-        <Icon name="userplus" size={15} color={INK} accent={INK} />
-        <Text style={[text(13, 'Bold'), { color: INK }]}>
+        <Icon
+          name="userplus"
+          size={15}
+          color={palette.bg}
+          accent={palette.dark ? '#e8320c' : ACID}
+        />
+        <Text style={[text(13, 'Bold'), { color: palette.bg }]}>
           {relation === 'received' ? 'Aceitar' : 'Adicionar'}
         </Text>
       </Animated.View>
@@ -256,7 +251,9 @@ function Marked({ name, part }: { name: string; part?: string }) {
   return (
     <>
       {name.slice(0, at)}
-      <Text style={{ color: HOT }}>{name.slice(at, at + part.length)}</Text>
+      <Text style={{ backgroundColor: ACID, color: INK }}>
+        {name.slice(at, at + part.length)}
+      </Text>
       {name.slice(at + part.length)}
     </>
   )
@@ -359,18 +356,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
-    backgroundColor: ACID
+    height: 36,
+    paddingHorizontal: 14,
+    borderRadius: 18
   },
   sent: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
-    borderWidth: 1
-  },
-  friends: { flexDirection: 'row', alignItems: 'center', gap: 5 }
+    height: 36,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    justifyContent: 'center'
+  }
 })
 
 /**
