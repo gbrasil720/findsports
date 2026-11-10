@@ -522,7 +522,9 @@ export const friendsRouter = router({
           month: null,
           nextGame: null,
           barsInCommon: [],
-          together: null
+          together: null,
+          medals: [],
+          medalTotal: 0
         }
       const now = new Date()
       const [mine, theirs, games, both] = await Promise.all([
@@ -569,7 +571,9 @@ export const friendsRouter = router({
         barsInCommon: [...theirs.bars.values()].filter(
           (bar) => bar.active && mine.bars.has(bar.id)
         ),
-        together: { games: together.length, place }
+        together: { games: together.length, place },
+        medals: theirs.medals,
+        medalTotal: theirs.medalTotal
       }
     }),
 

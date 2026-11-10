@@ -250,6 +250,16 @@ export async function readMonth(userId: string, now = new Date()) {
       achievements: achievements.achievements.filter((a) => a.unlockedAt).length
     },
     level: achievements.level,
+    /** As medalhas ganhas, da mais nova para a mais antiga (rodada 6). */
+    medals: achievements.achievements
+      .filter((a) => a.unlockedAt)
+      .sort(
+        (a, b) =>
+          new Date(b.unlockedAt as string | Date).getTime() -
+          new Date(a.unlockedAt as string | Date).getTime()
+      )
+      .map((a) => a.id),
+    medalTotal: achievements.achievements.length,
     bars: new Map(
       visits.map((visit) => [
         visit.barId,
