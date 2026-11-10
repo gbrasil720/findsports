@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -52,6 +53,7 @@ import {
   removeAvatar,
   uploadAvatar
 } from '@/lib/avatar'
+import { HELP_URL } from '@/lib/env'
 import { searchCenter, teamMark } from '@/lib/explore'
 import { MAP_STYLE } from '@/lib/map-style'
 import { deviceLabel, lastSeen, preferenceSummary } from '@/lib/settings'
@@ -975,6 +977,17 @@ function Account({ leave = true }: { leave?: boolean }) {
               : undefined
           }
           onPress={() => router.push('/aparelhos' as Href)}
+        />
+      </MenuBox>
+
+      {/* A Ajuda do desenho mora aqui (dono, 10/11/2026), como "Suporte". */}
+      <MenuBox>
+        <MenuRow
+          first
+          icon="chat"
+          title="Suporte"
+          value="por e-mail"
+          onPress={() => Linking.openURL(HELP_URL).catch(() => {})}
         />
       </MenuBox>
 
