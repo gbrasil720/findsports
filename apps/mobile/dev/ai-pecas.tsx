@@ -136,20 +136,11 @@ export default function AiPieces() {
 
       <Piece title="Raciocínio" palette={palette}>
         <State label="Pensando" palette={palette}>
-          <Reasoning
-            steps={STEPS}
-            tools={[]}
-            thinking
-            label=""
-            palette={palette}
-          />
+          <Reasoning steps={STEPS} thinking label="" palette={palette} />
         </State>
         <State label="Fechado" palette={palette}>
           <Reasoning
             steps={STEPS.map((s) => ({ ...s, state: 'done' as const }))}
-            tools={[
-              { ...TOOL, state: 'done', output: '3 bares · 0,8 a 2,3 km' }
-            ]}
             thinking={false}
             label="Pensou por 4 s · 2 buscas"
             palette={palette}
@@ -240,6 +231,7 @@ export default function AiPieces() {
       <Piece title="Seguimento" palette={palette}>
         <State label="Pílulas" palette={palette} bleed>
           <FollowUps
+            palette={palette}
             items={followUps(['Só com oferta da casa', 'E amanhã?'], true)}
             onAsk={noop}
             onMap={noop}

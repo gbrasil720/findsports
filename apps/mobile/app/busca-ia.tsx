@@ -28,9 +28,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Actions, FollowUps } from '@/components/ai/actions'
 import { AnswerMap } from '@/components/ai/answer-map'
 import {
-  CodeCard,
   ConfirmCard,
-  DecisionLine
+  DecisionLine,
+  Receipt
 } from '@/components/ai/confirmation'
 import { Conversations } from '@/components/ai/conversations'
 import { AiHeader, AiTopBar, RoundButton } from '@/components/ai/header'
@@ -38,19 +38,13 @@ import { AiIcon } from '@/components/ai/icons'
 import { UserMessage } from '@/components/ai/message'
 import { PromptInput } from '@/components/ai/prompt-input'
 import { Reasoning } from '@/components/ai/reasoning'
-import {
-  AnswerText,
-  CitedBar,
-  FilterChips,
-  Sources
-} from '@/components/ai/response'
+import { AnswerText, CitedBar, FilterChips } from '@/components/ai/response'
 import { Start } from '@/components/ai/start'
 import { type AiPalette, useAiPalette } from '@/components/ai/theme'
-import { DoneLine, ToolCard } from '@/components/ai/tool'
 import { Chip, dayLabel } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { NAV, useLayout } from '@/components/layout'
-import { EASE, haptic, popFrom, SWAP } from '@/components/motion'
+import { EASE, haptic, SWAP } from '@/components/motion'
 import { StackRail } from '@/components/side-nav'
 import {
   ACID,
@@ -68,7 +62,6 @@ import {
   chipSearch,
   clock,
   confirmText,
-  firstName,
   followUps,
   fromSearchBar,
   historyOf,
@@ -84,7 +77,6 @@ import {
   resumeLabel,
   saveRecent,
   shownReply,
-  sourcesLabel,
   stepVersion,
   type Turn,
   thoughtLabel,
@@ -157,16 +149,6 @@ const BAR_IN = Array.from({ length: 8 }, (_, i) =>
 )
 
 const OUT = FadeOut.duration(120)
-// Depois do "Confirmar": as linhas do que foi feito uma depois da outra, e o
-// código por último, com um estalo curto (o momento raro da conversa).
-const DONE_IN = [0, 1, 2].map((i) =>
-  FadeInDown.delay(i * 60)
-    .duration(220)
-    .easing(EASE)
-    .withInitialValues({ opacity: 0, transform: [{ translateY: 8 }] })
-)
-const CODE_IN = popFrom(0.96, 180)
-
 type DevState = 'pensando' | 'resposta' | 'confirmar' | 'feito'
 const DEV_QUESTION: Record<DevState, string> = {
   pensando:
@@ -879,6 +861,7 @@ export default function AiSearch() {
           <FollowUps
             key={`${last?.id}-${last?.shown}`}
             items={followItems}
+            palette={palette}
             onAsk={(q) => send(q)}
             onMap={showOnMap}
           />
@@ -1184,7 +1167,6 @@ function TurnView({
         <Animated.View entering={IN} exiting={OUT} layout={settle}>
           <Reasoning
             steps={reply.steps}
-            tools={reply.tools}
             thinking={thinking}
             label={thoughtLabel(reply)}
             palette={palette}
@@ -1192,27 +1174,15 @@ function TurnView({
         </Animated.View>
       ) : null}
 
-      {/* Rodando: as ferramentas abaixo dos passos; prontas, entram no
-          raciocínio quando ele fecha. Esperando você, ficam à vista. */}
-      {(thinking ? reply.tools : approved ? [] : waiting).map((tool) => (
-        <Animated.View
-          key={tool.id}
-          entering={IN}
-          exiting={OUT}
-          layout={settle}
-        >
-          <ToolCard
-            tool={
-              decision?.kind === 'refused'
-                ? { ...tool, state: 'done', params: undefined }
-                : tool
-            }
+      {approved ? (
+        <Animated.View entering={IN} layout={settle}>
+          <Receipt
+            result={approved}
             palette={palette}
+            onCode={proposal ? () => onCode(proposal.game.id) : undefined}
           />
         </Animated.View>
-      ))}
-
-      {approved ? <ApprovedLines result={approved} palette={palette} /> : null}
+      ) : null}
 
       {reply.state === 'unavailable' ? (
         <Animated.View entering={IN} layout={settle}>
@@ -1318,21 +1288,6 @@ function TurnView({
         </Animated.View>
       ) : null}
 
-      {reply.done?.sources.length && !compact ? (
-        <Animated.View entering={IN} layout={settle}>
-          <Sources
-            label={sourcesLabel(reply.done.sources, reply.done.chips, now)}
-            sources={reply.done.sources}
-            numberOf={numberOf}
-            palette={palette}
-            onOpen={(s) => {
-              const bar = reply.bars.find((b) => b.id === s.barId)
-              if (bar) onBar(bar)
-            }}
-          />
-        </Animated.View>
-      ) : null}
-
       {/* Um só cartão do pedir ao confirmar: "Confirmar" vira o giro nele. */}
       {proposal && (!decision || decision.kind === 'sending') ? (
         <>
@@ -1348,11 +1303,6 @@ function TurnView({
               onRefuse={onRefuse}
             />
           </Animated.View>
-          <Animated.View entering={IN} exiting={OUT} layout={settle}>
-            <Text style={[styles.note, { color: palette.muted }]}>
-              Nada é marcado sem você confirmar.
-            </Text>
-          </Animated.View>
         </>
       ) : null}
       {decision?.kind === 'refused' ? (
@@ -1362,22 +1312,6 @@ function TurnView({
             label="Você recusou · nada foi feito"
             at={decision.at}
             palette={palette}
-          />
-        </Animated.View>
-      ) : null}
-
-      {approved?.going?.ok && approved.going.code && proposal ? (
-        <Animated.View entering={CODE_IN} layout={settle}>
-          <CodeCard
-            code={approved.going.code}
-            title={approved.going.eventTitle}
-            participants={approved.going.participants}
-            when={when}
-            place={[approved.going.barName, approved.going.neighborhood]
-              .filter(Boolean)
-              .join(' · ')}
-            palette={palette}
-            onPress={() => onCode(proposal.game.id)}
           />
         </Animated.View>
       ) : null}
@@ -1403,46 +1337,6 @@ function TurnView({
       ) : null}
     </>
   )
-}
-
-/** As linhas do que foi feito (24e), com a hora e "Pronto". */
-function ApprovedLines({
-  result,
-  palette
-}: {
-  result: ConfirmResult
-  palette: AiPalette
-}) {
-  const lines = [
-    result.going && {
-      icon: 'ticket' as const,
-      label: result.going.ok ? 'Presença marcada' : 'Presença não marcada',
-      failed: !result.going.ok
-    },
-    result.call && {
-      icon: 'people' as const,
-      label: result.call.ok
-        ? `Chamado para ${firstName(result.call.friendName)}`
-        : 'Chamado não enviado',
-      failed: !result.call.ok
-    },
-    result.remind && {
-      icon: 'bell' as const,
-      label: result.remind.ok ? 'Lembrete marcado' : 'Lembrete não marcado',
-      failed: !result.remind.ok
-    }
-  ].filter((l) => !!l)
-  return lines.map((line, i) => (
-    <Animated.View key={line.icon} entering={DONE_IN[i]} layout={SETTLE}>
-      <DoneLine
-        icon={line.icon}
-        label={line.label}
-        at={result.at}
-        failed={line.failed}
-        palette={palette}
-      />
-    </Animated.View>
-  ))
 }
 
 const styles = StyleSheet.create({
