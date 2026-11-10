@@ -95,7 +95,11 @@ import {
   RATING_PUBLIC_FLOOR,
   ratingPercentage
 } from '../lib/rating'
-import { readRatingList, readReasonSummary } from '../lib/rating-list'
+import {
+  readRatingDetail,
+  readRatingList,
+  readReasonSummary
+} from '../lib/rating-list'
 import { starsAverage } from '../lib/rating-review'
 import { chaveBusca, chaveBuscaLocal } from '../lib/search-cache'
 import {
@@ -751,7 +755,7 @@ export const pubsRouter = router({
       const liveIds = events
         .filter((game) => isEventLive(game, now))
         .map((game) => game.id)
-      const [attendance, going, reasons, reviews, checkIn, hereNow] =
+      const [attendance, going, reasons, reviews, checkIn, hereNow, detail] =
         await Promise.all([
           readFanAttendance(viewer, events, now),
           // A contagem do ingresso, inclusive do jogo ao vivo; como o botão,
@@ -771,7 +775,10 @@ export const pubsRouter = router({
             : [],
           // "Estou aqui" (WEB-408): o jogo deste bar com check-in aberto agora.
           fan ? readCheckIn(viewer.id, events, now) : null,
-          readHereNow(liveIds, fan ? viewer.id : undefined)
+          readHereNow(liveIds, fan ? viewer.id : undefined),
+          // A régua das estrelas e quantas vezes cada etiqueta pesou
+          // (rodada 8), com o mesmo piso da nota.
+          showRating ? readRatingDetail(result.id) : null
         ])
       return {
         ...publicBar,
@@ -807,6 +814,7 @@ export const pubsRouter = router({
         ),
         rating,
         ratingReasons: reasons,
+        ratingDetail: detail,
         reviews: reviews.map(
           ({ verified: _v, createdAt: _c, commentPending: _p, ...review }) =>
             review
