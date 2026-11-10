@@ -3,48 +3,40 @@ import { useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
-import MapView from 'react-native-maps'
 import Animated, {
   FadeIn,
-  FadeInDown,
   FadeOut,
   LinearTransition,
   type SharedValue,
   useAnimatedReaction,
   useAnimatedStyle,
-  useReducedMotion,
   useSharedValue,
   withSpring,
   withTiming
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { scheduleOnRN } from 'react-native-worklets'
-import { Card } from '@/components/card'
-import { Chip } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
+import { GroupLabel, LineList } from '@/components/game-line'
 import { EASE, haptic } from '@/components/motion'
 import { usePalette } from '@/components/theme'
 import {
-  ACID,
-  GlassRound,
   Icon,
-  INK,
   LIVE,
-  PAPER,
+  PillButton,
   Text,
   text,
   useStatusBar
 } from '@/components/ui'
-import { searchCenter } from '@/lib/explore'
 import {
   defaultShortcuts,
   FILTER_GROUPS,
   MAX_SHORTCUTS,
   type Shortcut,
   shortcutLabel,
+  shortcutOn,
   toggleShortcut
 } from '@/lib/filters'
-import { MAP_STYLE } from '@/lib/map-style'
 import { trpc } from '@/lib/trpc'
 
 /*
@@ -55,7 +47,7 @@ import { trpc } from '@/lib/trpc'
  * "Fim de semana" do design não entrou: a busca filtra um dia só.
  */
 
-const ROW = 58
+const ROW = 52
 
 export default function ShortcutsScreen() {
   const router = useRouter()
@@ -65,7 +57,6 @@ export default function ShortcutsScreen() {
   useStatusBar('auto')
   const sports = useQuery(trpc.pubs.getSports.queryOptions())
   const prefs = useQuery(trpc.pubs.getMyPreferences.queryOptions())
-  const city = useQuery(trpc.pubs.getMyCity.queryOptions())
   const mainSport = prefs.data?.[0]?.sport.slug ?? null
   const saved = state.shortcuts ?? defaultShortcuts(mainSport)
   const [draft, setList] = useState<Shortcut[] | null>(null)
@@ -76,7 +67,6 @@ export default function ShortcutsScreen() {
   const dirty = draft !== null && draft.join() !== saved.join()
   const sportList = sports.data ?? []
   const full = list.length >= MAX_SHORTCUTS
-  const center = searchCenter(state.device, city.data)
 
   const add = (key: Shortcut) => {
     if (full) return haptic.error()
@@ -93,17 +83,30 @@ export default function ShortcutsScreen() {
     router.back()
   }
 
-  const groups: { title: string; keys: Shortcut[] }[] = [
-    { title: 'Quando', keys: ['hoje', 'amanha'] },
-    { title: 'Esporte', keys: sportList.map((s) => `esporte:${s.slug}`) },
-    ...FILTER_GROUPS.map((g) => ({
-      title: g.title,
-      keys: g.items.map((i) => `item:${i.id}`)
-    })),
-    { title: 'Distância', keys: ['raio:1', 'raio:2', 'raio:5'] }
-  ]
-    .map((g) => ({ ...g, keys: g.keys.filter((k) => !list.includes(k)) }))
-    .filter((g) => g.keys.length)
+  // "Adicionar": os filtros que ainda não estão na fileira, numa lista só.
+  const addable = [
+    'hoje',
+    'amanha',
+    ...sportList.map((s) => `esporte:${s.slug}`),
+    ...FILTER_GROUPS.flatMap((g) => g.items.map((i) => `item:${i.id}`))
+  ].filter((key) => !list.includes(key))
+  const now = Date.now()
+  const back = () => {
+    if (!dirty) return router.back()
+    haptic.error()
+    Alert.alert(
+      'Descartar alterações?',
+      'A ordem e os atalhos que você mexeu ainda não foram salvos.',
+      [
+        { text: 'Continuar editando', style: 'cancel' },
+        {
+          text: 'Descartar',
+          style: 'destructive',
+          onPress: () => router.back()
+        }
+      ]
+    )
+  }
 
   return (
     <View style={[styles.screen, { backgroundColor: palette.bg }]}>
@@ -116,240 +119,136 @@ export default function ShortcutsScreen() {
         <View style={styles.head}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Fechar"
+            accessibilityLabel="Voltar"
             hitSlop={8}
-            onPress={() => {
-              if (!dirty) return router.back()
-              haptic.error()
-              Alert.alert(
-                'Descartar alterações?',
-                'A ordem e os atalhos que você mexeu ainda não foram salvos.',
-                [
-                  { text: 'Continuar editando', style: 'cancel' },
-                  {
-                    text: 'Descartar',
-                    style: 'destructive',
-                    onPress: () => router.back()
-                  }
-                ]
-              )
-            }}
-          >
-            <GlassRound>
-              <Icon name="close" size={16} color={palette.ink} />
-            </GlassRound>
-          </Pressable>
-          <Text
-            style={[styles.title, { color: palette.ink }]}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-          >
-            Atalhos do mapa
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            hitSlop={10}
-            onPress={save}
-            style={dirty && styles.saveOn}
-          >
-            <Text
-              style={[text(15, 'Bold'), { color: dirty ? INK : palette.ink }]}
-            >
-              Salvar
-            </Text>
-          </Pressable>
-        </View>
-
-        {dirty ? (
-          <Animated.View
-            entering={NOTE_IN}
-            exiting={NOTE_OUT}
-            accessibilityRole="alert"
+            onPress={back}
             style={[
-              styles.unsaved,
-              {
-                backgroundColor: palette.dark
-                  ? 'rgba(243,66,29,.14)'
-                  : 'rgba(232,50,12,.08)',
-                borderColor: palette.dark
-                  ? 'rgba(243,66,29,.4)'
-                  : 'rgba(232,50,12,.3)'
-              }
+              styles.round,
+              { backgroundColor: palette.card, shadowColor: palette.drop }
             ]}
           >
-            <View style={styles.unsavedDot} />
-            <Text
-              style={[
-                text(13, 'SemiBold', 1.3),
-                { color: palette.ink, flex: 1 }
-              ]}
-            >
-              Alterações não salvas. Toque em Salvar para manter.
-            </Text>
-          </Animated.View>
-        ) : null}
-
-        {/* Prévia: a fileira como vai ficar sobre o mapa. */}
-        <Card
-          shadow={
-            palette.dark ? 'rgba(201,241,53,.22)' : 'rgba(201,241,53,.85)'
-          }
-          offset={5}
-          style={styles.preview}
+            <Icon name="back" size={20} color={palette.ink} />
+          </Pressable>
+          <PillButton label="Salvar" height={40} onPress={save} />
+        </View>
+        <Text style={[styles.title, { color: palette.ink }]}>Atalhos</Text>
+        <Text
+          style={[
+            text(14, 'Regular', 1.45),
+            { color: palette.muted, marginTop: -10 }
+          ]}
         >
-          <MapView
-            style={StyleSheet.absoluteFill}
-            initialRegion={{
-              latitude: center.lat,
-              longitude: center.lng,
-              latitudeDelta: 0.02,
-              longitudeDelta: 0.02
-            }}
-            mapType="mutedStandard"
-            customMapStyle={palette.dark ? MAP_STYLE.dark : MAP_STYLE.light}
-            userInterfaceStyle={palette.dark ? 'dark' : 'light'}
-            showsPointsOfInterests={false}
-            scrollEnabled={false}
-            zoomEnabled={false}
-            pointerEvents="none"
-          />
-          <View
-            style={[
-              StyleSheet.absoluteFill,
-              {
-                backgroundColor: palette.dark
-                  ? 'rgba(18,18,15,.45)'
-                  : 'rgba(241,238,230,.55)'
-              }
-            ]}
-          />
-          <Text style={[styles.mono, { color: palette.muted, margin: 12 }]}>
-            PRÉVIA
-          </Text>
-          <ScrollView
-            horizontal
-            scrollEnabled={false}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.previewRow}
-            pointerEvents="none"
-          >
-            <View
+          Até cinco filtros na fileira do Explorar. Segure e arraste para
+          ordenar.
+        </Text>
+
+        <GroupLabel>Como fica</GroupLabel>
+        <ScrollView
+          horizontal
+          scrollEnabled={false}
+          showsHorizontalScrollIndicator={false}
+          pointerEvents="none"
+          style={[styles.preview, { backgroundColor: palette.mark }]}
+          contentContainerStyle={styles.previewRow}
+        >
+          <PreviewChip icon="aovivo" label="Ao vivo" />
+          {list.map((key) => {
+            const shown = shortcutLabel(key, sportList)
+            return shown ? (
+              <PreviewChip
+                key={key}
+                icon={shown.icon}
+                label={shown.label}
+                on={shortcutOn(key, state.filters, sportList, now)}
+              />
+            ) : null
+          })}
+        </ScrollView>
+
+        <GroupLabel>{`Na fileira · ${list.length} de ${MAX_SHORTCUTS}`}</GroupLabel>
+        <LineList>
+          <View style={styles.row}>
+            <Icon name="aovivo" size={18} color={palette.muted} accent={LIVE} />
+            <Text
               style={[
-                styles.filterDot,
-                palette.dark && { backgroundColor: ACID }
+                text(15, 'SemiBold', 1.2),
+                { color: palette.muted, flex: 1 }
               ]}
             >
-              <Icon
-                name="sliders"
-                size={17}
-                color={palette.dark ? INK : PAPER}
-                accent={palette.dark ? INK : ACID}
-              />
-            </View>
-            <Chip live label="Ao vivo" on onPress={() => {}} />
-            {list.map((key) => {
-              const shown = shortcutLabel(key, sportList)
-              return shown ? (
-                <Chip
-                  key={key}
-                  icon={shown.icon}
-                  label={shown.label}
-                  on={false}
-                  onPress={() => {}}
-                />
-              ) : null
-            })}
-          </ScrollView>
-        </Card>
-
-        <View style={styles.sectionHead}>
-          <Text style={[text(15, 'Bold'), { color: palette.ink }]}>
-            Na fileira
-          </Text>
-          <Text style={[styles.mono125, { color: palette.ink }]}>
-            {list.length}/{MAX_SHORTCUTS}
-          </Text>
-        </View>
-        <Card soft style={{ overflow: 'visible' }}>
-          <View style={styles.row}>
-            <Icon name="lock" size={18} color={palette.muted} />
-            <View style={styles.liveDot} />
-            <View style={{ flex: 1 }}>
-              <Text style={[text(15, 'Bold', 1.25), { color: palette.ink }]}>
-                Ao vivo
-              </Text>
-              <Text
-                style={[text(12, 'Regular', 1.3), { color: palette.muted }]}
-              >
-                Fixo. Só aparece quando tem jogo rolando
-              </Text>
-            </View>
+              Ao vivo
+            </Text>
+            <Text style={[styles.mono, { color: palette.muted }]}>FIXO</Text>
           </View>
           <Sortable
             list={list}
             sportList={sportList}
-            mainSport={mainSport}
             onMove={setList}
             onRemove={remove}
           />
-        </Card>
-        <Text style={[text(13, 'Regular', 1.4), { color: palette.muted }]}>
-          Arraste para mudar a ordem. O primeiro fica mais perto do botão de
-          filtros.
-        </Text>
+        </LineList>
 
-        {groups.length ? (
-          <Text
-            style={[text(17, 'Bold'), { color: palette.ink, marginTop: 6 }]}
-          >
-            Adicionar
-          </Text>
-        ) : null}
-        {groups.map((group) => (
-          <View key={group.title} style={{ gap: 8 }}>
-            <Text style={[text(13, 'SemiBold'), { color: palette.muted }]}>
-              {group.title}
-            </Text>
-            <View style={styles.addRow}>
-              {group.keys.map((key) => {
-                const shown = shortcutLabel(key, sportList)
-                if (!shown) return null
-                return (
-                  <Pressable
-                    key={key}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Pôr ${shown.label} na fileira`}
-                    accessibilityState={{ disabled: full }}
-                    onPress={() => add(key)}
-                    style={[
-                      styles.add,
-                      {
-                        backgroundColor: palette.card,
-                        borderColor: palette.ring
-                      },
-                      full && { opacity: 0.45 }
-                    ]}
-                  >
-                    {shown.icon ? (
-                      <Icon name={shown.icon} size={16} color={palette.ink} />
-                    ) : null}
-                    <Text
-                      style={[text(14.5, 'SemiBold'), { color: palette.ink }]}
-                    >
-                      {shown.label}
-                    </Text>
-                    <View style={styles.plus}>
-                      <Text style={[text(16, 'Bold', 1), { color: INK }]}>
-                        +
-                      </Text>
-                    </View>
-                  </Pressable>
-                )
-              })}
-            </View>
-          </View>
-        ))}
+        {addable.length ? <GroupLabel>Adicionar</GroupLabel> : null}
+        <View style={styles.addRow}>
+          {addable.map((key) => {
+            const shown = shortcutLabel(key, sportList)
+            if (!shown) return null
+            return (
+              <Pressable
+                key={key}
+                accessibilityRole="button"
+                accessibilityLabel={`Pôr ${shown.label} na fileira`}
+                accessibilityState={{ disabled: full }}
+                onPress={() => add(key)}
+                style={[
+                  styles.add,
+                  { borderColor: palette.line },
+                  full && { opacity: 0.45 }
+                ]}
+              >
+                {shown.icon ? (
+                  <Icon name={shown.icon} size={16} color={palette.ink} />
+                ) : null}
+                <Text style={[text(13.5, 'SemiBold'), { color: palette.ink }]}>
+                  {shown.label}
+                </Text>
+              </Pressable>
+            )
+          })}
+        </View>
       </ScrollView>
+    </View>
+  )
+}
+
+/** O chip da prévia: a fileira como vai ficar; o filtro ligado em papel. */
+function PreviewChip({
+  icon,
+  label,
+  on
+}: {
+  icon?: Parameters<typeof Icon>[0]['name']
+  label: string
+  on?: boolean
+}) {
+  const palette = usePalette()
+  return (
+    <View style={[styles.previewChip, on && { backgroundColor: palette.ink }]}>
+      {icon ? (
+        <Icon
+          name={icon}
+          size={16}
+          color={on ? palette.bg : palette.ink}
+          accent={icon === 'aovivo' ? LIVE : undefined}
+        />
+      ) : null}
+      <Text
+        style={[
+          text(13.5, 'SemiBold', 1.2),
+          { color: on ? palette.bg : palette.ink }
+        ]}
+      >
+        {label}
+      </Text>
     </View>
   )
 }
@@ -359,8 +258,6 @@ const SETTLE = { damping: 22, stiffness: 280 }
 // Constantes de módulo: o Reanimated recomeça a entrada se o objeto muda.
 const ROW_IN = FadeIn.duration(150)
 const ROW_OUT = FadeOut.duration(120)
-const NOTE_IN = FadeInDown.duration(180).easing(EASE)
-const NOTE_OUT = FadeOut.duration(120)
 const HEIGHT = LinearTransition.duration(200).easing(EASE)
 
 /** Leva `id` para a posição `to`; quem estava no caminho anda uma casa. */
@@ -379,20 +276,19 @@ function shift(positions: Record<string, number>, id: string, to: number) {
 }
 
 /**
- * A lista que se arrasta: cada linha fica numa posição absoluta. Enquanto a
- * arrastada passa da metade de uma vizinha, a vizinha já desliza para o
- * lugar livre; soltar grava a ordem. Altura fixa (58).
+ * A lista que se arrasta: cada linha fica numa posição absoluta. Segurar a
+ * linha 250 ms a levanta (háptico leve); enquanto a arrastada passa da
+ * metade de uma vizinha, a vizinha já desliza para o lugar livre (háptico de
+ * seleção a cada troca); soltar grava a ordem. Altura fixa (`ROW`).
  */
 function Sortable({
   list,
   sportList,
-  mainSport,
   onMove,
   onRemove
 }: {
   list: Shortcut[]
   sportList: { slug: string; name: string }[]
-  mainSport: string | null
   onMove: (list: Shortcut[]) => void
   onRemove: (key: Shortcut) => void
 }) {
@@ -413,7 +309,7 @@ function Sortable({
           count={list.length}
           positions={positions}
           label={shortcutLabel(key, sportList)}
-          sub={key === `esporte:${mainSport}` ? 'Seu esporte principal' : null}
+          onPick={haptic.pick}
           onTick={haptic.select}
           onCommit={onMove}
           onRemove={() => onRemove(key)}
@@ -429,7 +325,7 @@ function SortRow({
   count,
   positions,
   label,
-  sub,
+  onPick,
   onTick,
   onCommit,
   onRemove
@@ -439,15 +335,14 @@ function SortRow({
   count: number
   positions: SharedValue<Record<string, number>>
   label: ReturnType<typeof shortcutLabel>
-  sub: string | null
+  onPick: () => void
   onTick: () => void
   onCommit: (order: Shortcut[]) => void
   onRemove: () => void
 }) {
   const palette = usePalette()
-  const reduced = useReducedMotion()
   const dragging = useSharedValue(false)
-  /** 0 no lugar, 1 levantada: escala, giro e o cartão por trás. */
+  /** 0 no lugar, 1 levantada: a escala e o cartão por trás. */
   const lift = useSharedValue(0)
   const y = useSharedValue(index * ROW)
   const start = useSharedValue(0)
@@ -456,15 +351,16 @@ function SortRow({
     () => positions.value[id],
     (at, before) => {
       if (at === undefined || at === before || dragging.value) return
-      y.set(withSpring(at * ROW, SETTLE))
+      y.set(withTiming(at * ROW, { duration: 200, easing: EASE }))
     }
   )
   const pan = Gesture.Pan()
+    .activateAfterLongPress(250)
     .onStart(() => {
       dragging.set(true)
       start.set(y.value)
       lift.set(withTiming(1, { duration: 140, easing: EASE }))
-      scheduleOnRN(onTick)
+      scheduleOnRN(onPick)
     })
     .onUpdate((e) => {
       const next = Math.max(
@@ -490,15 +386,11 @@ function SortRow({
       scheduleOnRN(onCommit, order)
     })
   const style = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: y.value },
-      { scale: 1 + 0.02 * lift.value },
-      // O giro é enfeite: some com "Reduzir movimento".
-      { rotate: `${reduced ? 0 : -1 * lift.value}deg` }
-    ],
+    transform: [{ translateY: y.value }, { scale: 1 + 0.03 * lift.value }],
     zIndex: lift.value > 0 ? 2 : 1
   }))
   const card = useAnimatedStyle(() => ({ opacity: lift.value }))
+  const line = useAnimatedStyle(() => ({ opacity: 1 - lift.value }))
   return (
     <Animated.View
       entering={ROW_IN}
@@ -508,169 +400,128 @@ function SortRow({
       {/* O cartão de quem está na mão: só a opacidade anima. */}
       <Animated.View
         pointerEvents="none"
-        style={[
-          StyleSheet.absoluteFill,
-          styles.liftCard,
-          {
-            backgroundColor: palette.dark ? palette.card : '#fff',
-            borderColor: palette.dark ? ACID : INK
-          },
-          card
-        ]}
+        style={[styles.liftCard, { backgroundColor: palette.card }, card]}
       />
-      <View
-        style={[
-          styles.row,
-          { borderTopWidth: 1, borderTopColor: palette.line }
-        ]}
-      >
-        <GestureDetector gesture={pan}>
-          <View
-            accessibilityLabel={`Arrastar ${label?.label ?? ''}`}
-            hitSlop={12}
-            style={styles.handle}
-          >
-            {[0, 1, 2].map((i) => (
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.rule, { backgroundColor: palette.line }, line]}
+      />
+      <GestureDetector gesture={pan}>
+        <View
+          accessible
+          accessibilityLabel={`${label?.label ?? ''}. Segure e arraste para ordenar`}
+          style={styles.row}
+        >
+          <View style={styles.handle}>
+            {[0, 1, 2, 3, 4, 5].map((i) => (
               <View
                 key={i}
-                style={[
-                  styles.handleBar,
-                  {
-                    backgroundColor: palette.dark
-                      ? 'rgba(241,238,230,.35)'
-                      : 'rgba(18,18,15,.35)'
-                  }
-                ]}
+                style={[styles.dot, { backgroundColor: palette.muted }]}
               />
             ))}
           </View>
-        </GestureDetector>
-        {label?.icon ? (
-          <Icon name={label.icon} size={20} color={palette.ink} />
-        ) : (
-          <View style={{ width: 20 }} />
-        )}
-        <View style={{ flex: 1 }}>
-          <Text style={[text(15, 'Bold', 1.25), { color: palette.ink }]}>
+          {label?.icon ? (
+            <Icon name={label.icon} size={18} color={palette.ink} />
+          ) : null}
+          <Text
+            style={[text(15, 'SemiBold', 1.2), { color: palette.ink, flex: 1 }]}
+          >
             {label?.label ?? id}
           </Text>
-          {sub ? (
-            <Text style={[text(12, 'Regular', 1.3), { color: palette.muted }]}>
-              {sub}
-            </Text>
-          ) : null}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Tirar ${label?.label ?? ''} da fileira`}
+            hitSlop={8}
+            onPress={onRemove}
+            style={[styles.remove, { backgroundColor: palette.mark }]}
+          >
+            <Icon name="close" size={14} color={palette.ink} />
+          </Pressable>
         </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Tirar ${label?.label ?? ''} da fileira`}
-          hitSlop={8}
-          onPress={onRemove}
-          style={styles.minus}
-        >
-          <View style={styles.minusBar} />
-        </Pressable>
-      </View>
+      </GestureDetector>
     </Animated.View>
   )
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  body: { paddingHorizontal: 16, gap: 16 },
-  head: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  title: {
-    flex: 1,
-    fontFamily: 'Anton',
-    fontSize: 30,
-    textTransform: 'uppercase',
-    letterSpacing: -0.6
-  },
-  preview: { height: 150 },
-  previewRow: { gap: 7, paddingHorizontal: 12, alignItems: 'center' },
-  filterDot: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: INK,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  mono: { fontFamily: 'GeistMono-SemiBold', fontSize: 10.5 },
-  mono125: { fontFamily: 'GeistMono-SemiBold', fontSize: 12.5 },
-  sectionHead: {
+  body: { paddingHorizontal: 16, gap: 14 },
+  head: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'baseline',
-    marginBottom: -6
+    alignItems: 'center'
   },
+  round: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  },
+  // Anton 44: margem negativa no lugar do entrelinha curto.
+  title: {
+    fontFamily: 'Anton',
+    fontSize: 44,
+    textTransform: 'uppercase',
+    marginVertical: -10.7
+  },
+  preview: { borderRadius: 22, flexGrow: 0 },
+  previewRow: { gap: 8, padding: 12 },
+  previewChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    height: 36,
+    paddingHorizontal: 13,
+    borderRadius: 18
+  },
+  mono: { fontFamily: 'GeistMono-SemiBold', fontSize: 11, letterSpacing: 0.88 },
   row: {
     height: ROW,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 14
+    gap: 12
   },
   sortRow: { position: 'absolute', left: 0, right: 0, top: 0 },
-  saveOn: {
-    backgroundColor: ACID,
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    marginVertical: -7,
-    marginRight: -4
-  },
-  unsaved: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    borderWidth: 1
-  },
-  unsavedDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: LIVE },
+  rule: { position: 'absolute', left: 0, right: 0, top: 0, height: 1 },
   liftCard: {
-    borderRadius: 6,
-    borderWidth: 1.5,
-    shadowColor: ACID,
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    shadowOffset: { width: 5, height: 5 }
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: -14,
+    right: -14,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.45,
+    shadowRadius: 15,
+    shadowOffset: { width: 0, height: 14 }
   },
-  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: LIVE },
-  handle: { width: 16, gap: 3 },
-  handleBar: { height: 2, borderRadius: 1 },
-  minus: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: LIVE,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  minusBar: {
-    width: 11,
-    height: 2.5,
-    borderRadius: 2,
-    backgroundColor: PAPER
-  },
-  addRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  add: {
+  handle: {
+    width: 22,
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    height: 44,
-    paddingLeft: 16,
-    paddingRight: 8,
-    borderRadius: 22,
-    borderWidth: 1
+    flexWrap: 'wrap',
+    gap: 3,
+    paddingHorizontal: 5
   },
-  plus: {
+  dot: { width: 3.5, height: 3.5, borderRadius: 2 },
+  remove: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: ACID,
     alignItems: 'center',
     justifyContent: 'center'
+  },
+  addRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  add: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: 34,
+    paddingHorizontal: 12,
+    borderRadius: 17,
+    borderWidth: 1.5
   }
 })

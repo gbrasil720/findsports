@@ -53,6 +53,9 @@ export const haptic = {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(
       quiet
     ),
+  /** Pegar uma peça para arrastar (atalhos). */
+  pick: () =>
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(quiet),
   /** O selo da carteirinha encostando no papel. */
   stamp: () =>
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(quiet)
