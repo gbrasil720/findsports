@@ -1,61 +1,29 @@
-import { type RefObject, useEffect } from 'react'
+import type { RefObject } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
 import Animated, {
   type EntryExitAnimationFunction,
-  interpolateColor,
-  useAnimatedStyle,
-  useSharedValue,
   withTiming
 } from 'react-native-reanimated'
-import { Glass } from '@/components/glass'
 import { EASE, haptic, ScalePress } from '@/components/motion'
-import { ACID, Icon, INK, Text, TextInput, text } from '@/components/ui'
+import { ACID, Icon, Text, TextInput, text } from '@/components/ui'
 import { AiIcon } from './icons'
 import { XChip } from './response'
 import type { AiPalette } from './theme'
 
 /*
- * Campo (PromptInput): o contexto em chips (local e dia, com ×), o texto,
- * "+" para pôr contexto de volta, "Meus gostos", o microfone (o ditado é o
- * do teclado do sistema) e enviar. Enviar fica acid só com texto e vira
- * parar enquanto a resposta chega.
+ * Campo (PromptInput, `.cmp` da rodada 5): cartão sólido com o contexto em
+ * chips (local e dia, com ×), o texto, "+" para pôr contexto de volta, "Meus
+ * gostos" e enviar, em tinta. Enquanto a resposta chega, enviar vira o X de
+ * parar. O ditado é o do teclado do sistema.
  */
 
-// O ícone troca crescendo, sem transparência (o botão fica sobre o vidro)
-// e sem passar do ponto: é troca de estado, não gesto.
+// O ícone troca crescendo, sem passar do ponto: é troca de estado, não gesto.
 const ICON_IN: EntryExitAnimationFunction = () => {
   'worklet'
   return {
     initialValues: { transform: [{ scale: 0.6 }] },
     animations: {
       transform: [{ scale: withTiming(1, { duration: 180, easing: EASE }) }]
-    }
-  }
-}
-
-// A sombra sai de trás do botão, só por transform.
-const DROP_IN: EntryExitAnimationFunction = () => {
-  'worklet'
-  return {
-    initialValues: { transform: [{ translateX: 0 }, { translateY: 0 }] },
-    animations: {
-      transform: [
-        { translateX: withTiming(2, { duration: 180, easing: EASE }) },
-        { translateY: withTiming(2, { duration: 180, easing: EASE }) }
-      ]
-    }
-  }
-}
-
-const DROP_OUT: EntryExitAnimationFunction = () => {
-  'worklet'
-  return {
-    initialValues: { transform: [{ translateX: 2 }, { translateY: 2 }] },
-    animations: {
-      transform: [
-        { translateX: withTiming(0, { duration: 120, easing: EASE }) },
-        { translateY: withTiming(0, { duration: 120, easing: EASE }) }
-      ]
     }
   }
 }
@@ -94,28 +62,17 @@ export function PromptInput({
   onStop: () => void
 }) {
   const ready = !busy && draft.trim().length > 0
-  const mode = busy ? 2 : ready ? 1 : 0
-  const progress = useSharedValue(mode)
-  useEffect(() => {
-    // Parado o fundo é translúcido sobre o vidro: troca sem transição. Só
-    // acid ↔ parar (os dois opacos) passa pela cor.
-    progress.set(
-      mode && progress.get()
-        ? withTiming(mode, { duration: 180, easing: EASE })
-        : mode
-    )
-  }, [mode, progress])
-  const idle = palette.dark ? 'rgba(241,238,230,0.12)' : 'rgba(18,18,15,0.08)'
-  const button = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(
-      progress.get(),
-      [0, 1, 2],
-      [idle, ACID, palette.stop]
-    )
-  }))
-
   return (
-    <Glass tone={palette.dark ? 'dark' : 'light'} style={styles.field}>
+    <View
+      style={[
+        styles.field,
+        {
+          backgroundColor: palette.card,
+          borderColor: palette.line,
+          shadowColor: palette.drop
+        }
+      ]}
+    >
       {place || day ? (
         <View style={styles.context}>
           {place ? (
@@ -156,7 +113,7 @@ export function PromptInput({
           accessibilityLabel="Adicionar local ou dia"
           to={0.9}
           onPress={onAdd}
-          style={[styles.round, { borderColor: palette.outline }]}
+          style={[styles.round, { backgroundColor: palette.mark }]}
         >
           <AiIcon name="plus" size={15} color={palette.ink} />
         </ScalePress>
@@ -168,7 +125,7 @@ export function PromptInput({
             haptic.select()
             onTastes()
           }}
-          style={[styles.tastes, { borderColor: palette.outline }]}
+          style={[styles.tastes, { backgroundColor: palette.mark }]}
         >
           <View
             style={[
@@ -195,17 +152,7 @@ export function PromptInput({
           </Text>
         </Pressable>
         <View style={{ flex: 1 }} />
-        {/* Ditado: o microfone do teclado do sistema. Tocar aqui abre o
-            teclado, com o microfone dele à mão. */}
-        <ScalePress
-          accessibilityRole="button"
-          accessibilityLabel="Ditar"
-          hitSlop={8}
-          to={0.9}
-          onPress={() => inputRef.current?.focus()}
-        >
-          <AiIcon name="mic" size={20} color={palette.ink} />
-        </ScalePress>
+        {/* Ocupado, o botão vira o parar (o X sobre cinza, `.go.stop`). */}
         <ScalePress
           accessibilityRole="button"
           accessibilityLabel={busy ? 'Parar' : 'Enviar'}
@@ -213,37 +160,21 @@ export function PromptInput({
           accessibilityState={{ disabled: !busy && !ready }}
           to={0.92}
           onPress={busy ? onStop : onSend}
-          style={styles.sendBox}
+          style={[
+            styles.send,
+            { backgroundColor: busy ? palette.mark : palette.ink }
+          ]}
         >
-          {/* A sombra dura (2 pt) só existe com texto: atrás do fundo
-              translúcido do botão parado, ela apareceria. */}
-          {ready ? (
-            <Animated.View
-              entering={DROP_IN}
-              exiting={DROP_OUT}
-              style={[styles.send, { backgroundColor: palette.sendShadow }]}
+          <Animated.View key={busy ? 'stop' : 'send'} entering={ICON_IN}>
+            <Icon
+              name={busy ? 'close' : 'arrowUp'}
+              size={busy ? 16 : 18}
+              color={busy ? palette.ink : palette.bg}
             />
-          ) : null}
-          <Animated.View style={[styles.send, button]}>
-            {busy ? (
-              <Animated.View
-                key="stop"
-                entering={ICON_IN}
-                style={[styles.stop, { backgroundColor: palette.stopMark }]}
-              />
-            ) : (
-              <Animated.View key={ready ? 'on' : 'off'} entering={ICON_IN}>
-                <Icon
-                  name="arrowUp"
-                  size={18}
-                  color={ready ? INK : palette.muted}
-                />
-              </Animated.View>
-            )}
           </Animated.View>
         </ScalePress>
       </View>
-    </Glass>
+    </View>
   )
 }
 
@@ -251,12 +182,15 @@ const styles = StyleSheet.create({
   field: {
     marginHorizontal: 12,
     borderRadius: 26,
-    paddingTop: 10,
+    borderWidth: 1.5,
+    paddingTop: 12,
     paddingBottom: 10,
     paddingLeft: 12,
-    paddingRight: 10,
+    paddingRight: 12,
     gap: 10,
-    overflow: 'hidden'
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
   },
   context: { flexDirection: 'row', gap: 6, overflow: 'hidden' },
   input: {
@@ -271,15 +205,13 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center'
   },
   tastes: {
     height: 32,
-    paddingHorizontal: 11,
+    paddingHorizontal: 10,
     borderRadius: 16,
-    borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6
@@ -294,14 +226,11 @@ const styles = StyleSheet.create({
     marginHorizontal: -2
   },
   tasteDot: { width: 8, height: 8, borderRadius: 4 },
-  sendBox: { width: 40, height: 40 },
   send: {
-    position: 'absolute',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center'
-  },
-  stop: { width: 12, height: 12, borderRadius: 3 }
+  }
 })

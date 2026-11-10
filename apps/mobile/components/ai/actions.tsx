@@ -4,9 +4,8 @@ import Animated, {
   withDelay,
   withTiming
 } from 'react-native-reanimated'
-import { Chip } from '@/components/explore'
 import { EASE, haptic, ScalePress } from '@/components/motion'
-import { Icon, Text } from '@/components/ui'
+import { Icon, Text, text } from '@/components/ui'
 import type { followUps } from '@/lib/ai-chat'
 import { type AiGlyph, AiIcon } from './icons'
 import type { AiPalette } from './theme'
@@ -168,10 +167,12 @@ const RISE = [rise(0), rise(1), rise(2), rise(3)]
 
 export function FollowUps({
   items,
+  palette,
   onAsk,
   onMap
 }: {
   items: ReturnType<typeof followUps>
+  palette: AiPalette
   onAsk: (question: string) => void
   onMap: () => void
 }) {
@@ -185,12 +186,26 @@ export function FollowUps({
     >
       {items.map((item, i) => (
         <Animated.View key={item.label} entering={RISE[i]}>
-          <Chip
-            label={item.label}
-            icon={item.kind === 'map' ? 'map' : undefined}
-            on={false}
-            onPress={() => (item.kind === 'map' ? onMap() : onAsk(item.label))}
-          />
+          <ScalePress
+            accessibilityRole="button"
+            to={0.97}
+            onPress={() => {
+              haptic.select()
+              if (item.kind === 'map') onMap()
+              else onAsk(item.label)
+            }}
+            style={[
+              styles.sug,
+              { backgroundColor: palette.card, shadowColor: palette.drop }
+            ]}
+          >
+            {item.kind === 'map' ? (
+              <Icon name="map" size={16} color={palette.ink} />
+            ) : null}
+            <Text style={[text(14, 'SemiBold', 1.2), { color: palette.ink }]}>
+              {item.label}
+            </Text>
+          </ScalePress>
         </Animated.View>
       ))}
     </ScrollView>
@@ -214,5 +229,16 @@ const styles = StyleSheet.create({
   },
   versions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   version: { fontFamily: MONO, fontSize: 12, lineHeight: 14 },
-  pills: { gap: 8, paddingHorizontal: 12 }
+  pills: { gap: 8, paddingHorizontal: 12, paddingBottom: 4 },
+  sug: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: 38,
+    paddingHorizontal: 14,
+    borderRadius: 19,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
+  }
 })
