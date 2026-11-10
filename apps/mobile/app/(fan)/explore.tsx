@@ -60,6 +60,7 @@ import { useExploreState, useShotSource } from '@/components/explore-state'
 import { Glass } from '@/components/glass'
 import { useLayout, useNavInsets } from '@/components/layout'
 import { EASE, haptic, ScalePress, SWAP } from '@/components/motion'
+import { useOnline } from '@/components/offline-banner'
 import { useSoon } from '@/components/soon'
 import { useTabBarSpace } from '@/components/tab-bar'
 import { usePalette } from '@/components/theme'
@@ -384,6 +385,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
         screen
       )
   const map = useRef<MapView>(null)
+  const online = useOnline()
   const frameRadius = () =>
     map.current?.animateToRegion(region, reduced ? 0 : 400)
   // A região à vista decide grupos, pontos e rótulos (Rodada 20).
@@ -897,13 +899,20 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
       {sheetTitleNow}
     </Animated.View>
   )
-  const sheetLineText = liveOnly
-    ? `${liveGames.length} ${liveGames.length === 1 ? 'jogo' : 'jogos'} · ${bars.length} ${bars.length === 1 ? 'bar' : 'bares'} até ${radiusKm} km`
-    : game
-      ? sheetLine(game, bars.length, radiusKm)
-      : board.data
-        ? `nenhum jogo ${day === today() ? 'hoje' : 'neste dia'} até ${radiusKm} km`
-        : 'buscando os jogos…'
+  // Sem rede (rodada 7, 14j): a hora do jogo e de quando a lista foi salva.
+  const savedAt = board.dataUpdatedAt
+    ? formatTime(new Date(board.dataUpdatedAt))
+    : null
+  const sheetLineText =
+    !online && savedAt
+      ? `${game ? `${formatTime(game.startsAt)} · ` : ''}salvo às ${savedAt}`
+      : liveOnly
+        ? `${liveGames.length} ${liveGames.length === 1 ? 'jogo' : 'jogos'} · ${bars.length} ${bars.length === 1 ? 'bar' : 'bares'} até ${radiusKm} km`
+        : game
+          ? sheetLine(game, bars.length, radiusKm)
+          : board.data
+            ? `nenhum jogo ${day === today() ? 'hoje' : 'neste dia'} até ${radiusKm} km`
+            : 'buscando os jogos…'
 
   // Os filtros moram depois do resultado (tela 3): todos, o raio, "Ao vivo"
   // (só com jogo rolando) e os atalhos.
@@ -1051,7 +1060,9 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
         <View
           style={[
             StyleSheet.absoluteFill,
-            stack && [styles.mapClip, { borderColor: palette.ring }]
+            stack && [styles.mapClip, { borderColor: palette.ring }],
+            // Sem rede (rodada 7, 14j): o mapa não atualiza, então apaga a 60%.
+            !online && { opacity: 0.6 }
           ]}
         >
           <MapView

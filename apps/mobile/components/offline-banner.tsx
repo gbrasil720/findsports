@@ -18,12 +18,12 @@ import Animated, {
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { FullWindowOverlay } from 'react-native-screens'
-import { Glass } from '@/components/glass'
 import { haptic, usePressScale } from '@/components/motion'
 import { usePalette } from '@/components/theme'
 import {
   ACID,
   DISPLAY_FONT_SCALE,
+  Icon,
   INK,
   LIVE,
   MAX_FONT_SCALE,
@@ -33,7 +33,7 @@ import {
 } from '@/components/ui'
 
 /*
- * "Sem internet" (14j do design, Rodada 14; WEB-460): a faixa de vidro no
+ * "Sem internet" (14j do design, rodada 7; WEB-460): a faixa de tinta no
  * topo, por cima de qualquer tela, folhas e modais inclusive (no iOS, numa
  * janela própria, que só pega o toque na faixa). Quem sabe da rede é o
  * `onlineManager`, ligado ao `expo-network` em `lib/query-client.ts`; ao
@@ -50,9 +50,8 @@ export function useOnline() {
   return useSyncExternalStore(subscribe, () => onlineManager.isOnline())
 }
 
-// Desce de trás da barra de status e sobe ao sair, só com movimento: vidro
-// com transparência animada sai errado no iOS 26. Sair é mais rápido que
-// entrar.
+// Desce de trás da barra de status e sobe pela mesma borda (240 ms; sair é
+// mais rápido, 200 ms).
 const OUT = Easing.bezier(0.23, 1, 0.32, 1)
 const ENTER = (values: EntryAnimationsValues): LayoutAnimation => {
   'worklet'
@@ -61,7 +60,7 @@ const ENTER = (values: EntryAnimationsValues): LayoutAnimation => {
       transform: [{ translateY: -(values.targetOriginY + values.targetHeight) }]
     },
     animations: {
-      transform: [{ translateY: withTiming(0, { duration: 280, easing: OUT }) }]
+      transform: [{ translateY: withTiming(0, { duration: 240, easing: OUT }) }]
     }
   }
 }
@@ -112,78 +111,73 @@ export function OfflineBanner() {
     queryClient.refetchQueries({ type: 'active' })
   }
 
-  // No escuro, tinta e papel trocam (regra do design para o escuro).
-  const fg = palette.dark ? INK : PAPER
-  const bar = palette.dark ? 'rgba(18,18,15,.3)' : 'rgba(241,238,230,.3)'
+  // Tinta sólida nos dois temas (rodada 7: vidro some sobre foto e mapa);
+  // no escuro sobe um tom para se separar do fundo.
   const banner = online ? null : (
     <Animated.View
       entering={ENTER}
       exiting={EXIT}
-      style={[styles.wrap, { top: insets.top + 4 }]}
+      style={[
+        styles.banner,
+        { top: insets.top + 2, backgroundColor: palette.dark ? '#26261f' : INK }
+      ]}
     >
-      <Glass
-        tone={palette.dark ? 'light' : 'dark'}
-        tint={palette.dark ? 'rgba(241,238,230,.86)' : 'rgba(18,18,15,.82)'}
-        style={styles.banner}
+      <View
+        accessibilityRole="alert"
+        accessibilityLabel={LABEL}
+        style={styles.message}
       >
-        <View
-          accessibilityRole="alert"
-          accessibilityLabel={LABEL}
-          style={styles.message}
-        >
-          <View style={styles.bars}>
-            {[5, 8, 11, 14].map((height, index) => (
-              <View
-                key={height}
-                style={[
-                  styles.bar,
-                  { height, backgroundColor: index ? bar : LIVE }
-                ]}
-              />
-            ))}
-          </View>
+        <Icon name="wifi" size={18} color={ACID} accent={LIVE} />
+        <View style={{ flex: 1 }}>
           <Text
-            numberOfLines={2}
+            numberOfLines={1}
             maxFontSizeMultiplier={MAX_FONT_SCALE}
-            style={[text(14, 'SemiBold', 1.3), styles.label, { color: fg }]}
+            style={[text(13, 'Bold', 1.3), { color: PAPER }]}
           >
-            {LABEL}
+            Sem internet
+          </Text>
+          <Text
+            numberOfLines={1}
+            maxFontSizeMultiplier={MAX_FONT_SCALE}
+            style={[text(12, 'Regular', 1.3), { color: '#aaa9a4' }]}
+          >
+            mostrando o que estava salvo
           </Text>
         </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={trying ? 'Tentando' : 'Tentar de novo'}
-          accessibilityState={{ busy: trying }}
-          disabled={trying}
-          hitSlop={6}
-          onPressIn={press.onPressIn}
-          onPressOut={press.onPressOut}
-          onPress={retry}
-        >
-          <Animated.View style={[styles.try, press.style]}>
-            {/* A largura é a do rótulo maior: trocar não empurra o texto. */}
+      </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={trying ? 'Tentando' : 'Tentar de novo'}
+        accessibilityState={{ busy: trying }}
+        disabled={trying}
+        hitSlop={6}
+        onPressIn={press.onPressIn}
+        onPressOut={press.onPressOut}
+        onPress={retry}
+      >
+        <Animated.View style={[styles.try, press.style]}>
+          {/* A largura é a do rótulo maior: trocar não empurra o texto. */}
+          <Text
+            aria-hidden
+            maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
+            style={[text(14.5, 'Bold'), styles.sizer]}
+          >
+            Tentando…
+          </Text>
+          <Animated.View
+            key={trying ? 'trying' : 'idle'}
+            entering={FadeIn.duration(150)}
+            style={styles.tryLabel}
+          >
             <Text
-              aria-hidden
               maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
-              style={[text(12.5, 'Bold'), styles.sizer]}
+              style={[text(14.5, 'Bold'), { color: INK }]}
             >
-              Tentando…
+              {trying ? 'Tentando…' : 'Tentar'}
             </Text>
-            <Animated.View
-              key={trying ? 'trying' : 'idle'}
-              entering={FadeIn.duration(150)}
-              style={styles.tryLabel}
-            >
-              <Text
-                maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
-                style={[text(12.5, 'Bold'), { color: INK }]}
-              >
-                {trying ? 'Tentando…' : 'Tentar'}
-              </Text>
-            </Animated.View>
           </Animated.View>
-        </Pressable>
-      </Glass>
+        </Animated.View>
+      </Pressable>
     </Animated.View>
   )
 
@@ -197,37 +191,34 @@ export function OfflineBanner() {
 }
 
 const styles = StyleSheet.create({
-  wrap: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    borderRadius: 25,
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-    shadowOffset: { width: 0, height: 12 }
-  },
+  // `.off7`: 12 das bordas, canto 18, sombra dura de 4.
   banner: {
-    minHeight: 50,
-    borderRadius: 25,
-    overflow: 'hidden',
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    borderRadius: 18,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingVertical: 6,
-    paddingLeft: 16,
-    paddingRight: 8
+    paddingVertical: 10,
+    paddingLeft: 14,
+    paddingRight: 10,
+    shadowColor: '#000',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
   },
   message: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  bars: { flexDirection: 'row', alignItems: 'flex-end', gap: 2 },
-  bar: { width: 3.5, borderRadius: 1 },
-  label: { flex: 1 },
   try: {
-    height: 34,
-    paddingHorizontal: 12,
-    borderRadius: 17,
+    height: 40,
+    paddingHorizontal: 16,
+    borderRadius: 20,
     justifyContent: 'center',
-    backgroundColor: ACID
+    backgroundColor: ACID,
+    shadowColor: '#7f9a12',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
   },
   sizer: { opacity: 0 },
   tryLabel: {
