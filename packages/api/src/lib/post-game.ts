@@ -244,6 +244,12 @@ export type PostGameItem = {
   presence: { offer: string | null } | null
   /** "Voltaria?" ainda sem resposta. */
   rating: boolean
+  /**
+   * Como a visita foi confirmada (o selo do topo, rodada 4): código
+   * validado no balcão, check-in, ou nenhuma (a avaliação é gravada e não
+   * entra na nota, WEB-408).
+   */
+  verified: 'code' | 'checkin' | null
 }
 
 /**
@@ -269,7 +275,8 @@ export async function readPostGame(userId: string): Promise<PostGameItem[]> {
       participants: q.participants,
       startsAt: utcIso(q.startsAt),
       presence: { offer: q.offer },
-      rating: false
+      rating: false,
+      verified: null
     })
   }
   const didNotGo = new Set(
@@ -280,8 +287,31 @@ export async function readPostGame(userId: string): Promise<PostGameItem[]> {
     const item = items.get(r.eventId)
     items.set(
       r.eventId,
-      item ? { ...item, rating: true } : { ...r, presence: null, rating: true }
+      item
+        ? { ...item, rating: true }
+        : { ...r, presence: null, rating: true, verified: null }
     )
+  }
+  const ids = [...items.keys()]
+  if (ids.length) {
+    const proofs = await db.execute<{ event_id: string; kind: string }>(sql`
+      SELECT r.event_id, 'code' AS kind
+      FROM reservation_code_use u
+      JOIN reservation_code c ON c.id = u.code_id
+      JOIN reservation r ON r.id = c.reservation_id
+      WHERE r.user_id = ${userId} AND u.undone_at IS NULL
+        AND r.event_id IN ${ids}
+      UNION ALL
+      SELECT event_id, 'checkin' AS kind
+      FROM attendance_checkin
+      WHERE user_id = ${userId} AND event_id IN ${ids}
+    `)
+    // O código vem antes do check-in quando há os dois.
+    for (const row of proofs.rows) {
+      const item = items.get(row.event_id)
+      if (item && item.verified !== 'code')
+        item.verified = row.kind === 'code' ? 'code' : 'checkin'
+    }
   }
   return [...items.values()].sort((a, b) =>
     b.startsAt.localeCompare(a.startsAt)
