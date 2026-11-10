@@ -372,6 +372,28 @@ export const friendsRouter = router({
     .query(async ({ ctx, input }) => {
       const me = ctx.session.user.id
       const typed = normalizeUsername(input.query)
+      // "Perto de você" sem texto (rodada 6): quem é da mesma cidade, aceita
+      // pedido e ainda não tem nada com você, até cinco.
+      if (typed.length < 2 && input.scope === 'near') {
+        const near = await db
+          .select(PERSON)
+          .from(user)
+          .where(
+            sql`${listable} AND ${user.id} <> ${me}
+              AND ${user.friendRequestsFrom} <> 'nobody'
+              AND ${user.searchCityName} = (
+                SELECT search_city_name FROM "user" WHERE id = ${me}
+              )
+              AND NOT EXISTS (
+                SELECT 1 FROM friendship x
+                WHERE (x.requester_id = ${me} AND x.addressee_id = ${user.id})
+                   OR (x.requester_id = ${user.id} AND x.addressee_id = ${me})
+              )`
+          )
+          .orderBy(user.name)
+          .limit(5)
+        return withRelations(me, near)
+      }
       if (typed.length < 2) return []
       const pattern = `%${typed}%`
       const scope =
