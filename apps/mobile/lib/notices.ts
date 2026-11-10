@@ -382,7 +382,9 @@ export function noticeAgo(at: string, now: number): string | null {
   const minutes = Math.floor(ms / 60_000)
   if (minutes < 1) return 'agora'
   if (dayKey(at) === dayKey(now))
-    return minutes < 60 ? `há ${minutes} min` : `há ${Math.floor(minutes / 60)} h`
+    return minutes < 60
+      ? `há ${minutes} min`
+      : `há ${Math.floor(minutes / 60)} h`
   if (dayKey(at) === dayKey(now - DAY)) return 'ontem'
   return noticeTime(at, now).toLocaleLowerCase('pt-BR')
 }

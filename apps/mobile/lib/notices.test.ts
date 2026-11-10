@@ -3,10 +3,10 @@ import {
   buildNotices,
   callLine,
   inTab,
+  noticeAgo,
   noticeSections,
   noticeTime,
   startsIn,
-  noticeAgo,
   todayGoing
 } from './notices'
 import { sides } from './search'
