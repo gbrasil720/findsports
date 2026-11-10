@@ -1,28 +1,14 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { LinearGradient } from 'expo-linear-gradient'
 import { type Href, useLocalSearchParams, useRouter } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
-import { useDeferredValue, useEffect, useState } from 'react'
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  useWindowDimensions,
-  View
-} from 'react-native'
-import MapView, { Marker } from 'react-native-maps'
+import { type ReactNode, useDeferredValue, useEffect, useState } from 'react'
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import Animated, { FadeOut, LinearTransition } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Card } from '@/components/card'
 import { SearchEmpty } from '@/components/empty-states'
-import {
-  dayLabel,
-  dropBox,
-  MapDrop,
-  Photo,
-  RadiusCircle
-} from '@/components/explore'
+import { Photo } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
-import { Glass } from '@/components/glass'
+import { GroupLabel, LineList } from '@/components/game-line'
 import { useLayout, useNavInsets } from '@/components/layout'
 import { haptic, ScalePress } from '@/components/motion'
 import { usePalette } from '@/components/theme'
@@ -30,47 +16,44 @@ import {
   ACID,
   Icon,
   INK,
-  LIVE,
   PAPER,
   Text,
   TextInput,
   text,
   useStatusBar
 } from '@/components/ui'
-import {
-  formatKm,
-  formatTime,
-  isLive,
-  searchCenter,
-  teamMark
-} from '@/lib/explore'
-import { dayKey, TELAO, toggleAmenity } from '@/lib/filters'
-import { MAP_STYLE } from '@/lib/map-style'
+import { formatKm, formatTime, searchCenter } from '@/lib/explore'
+import { gameRow, type RowGame } from '@/lib/explore-board'
+import { dayKey } from '@/lib/filters'
 import {
   type Hood,
   highlight,
   hoods,
-  liveNow,
-  matchName,
+  matchGames,
   matchQuery,
+  matchTeams,
   type NearBar,
-  rememberSearch,
-  sides,
-  tonight
+  rememberSearch
 } from '@/lib/search'
 import { trpc } from '@/lib/trpc'
 
 /*
- * Busca (19a e 19b do design). Sem texto: buscas recentes, o jogo rolando
- * agora, a noite em pôsteres e os bairros em recortes de mapa. Digitando:
- * sugestões, o bairro como melhor resultado e os bares. Bar, bairro e jogo
- * casam no aparelho, sobre os bares perto; time e campeonato vão também ao
- * servidor (`pubs.search` com `championship`, que casa nome do bar, times e
- * campeonato). "Pedido mais específico?" abre a busca com IA (2h, WEB-400).
+ * Busca (Tela 1 da rodada 5, 19a e 19b). Sem texto: as buscas recentes em
+ * chips, os jogos de agora em linhas de placar e os bairros perto. Digitando:
+ * Times, Jogos, Bares e Bairros, nessa ordem, com a parte digitada em negrito.
+ * Os jogos vêm da régua do Explorar (`pubs.gameBoard`): jogo e time abrem o
+ * Explorar já no jogo (`setGame`). Bar e bairro casam no aparelho sobre os
+ * bares perto; nome do bar e campeonato vão também ao servidor
+ * (`pubs.search` com `championship`). No fim, o convite para a IA (2h).
+ * Os resultados trocam a cada letra sem animação (decisão da rodada 5).
  */
 
 const RECENT_KEY = 'onside.buscas-recentes'
 const NEAR_KM = 10
+
+// Constantes de módulo: o Reanimated recomeça a animação quando o objeto muda.
+const CHIP_LAYOUT = LinearTransition.duration(180)
+const CHIP_OUT = FadeOut.duration(150)
 
 export default function Search() {
   const router = useRouter()
@@ -88,22 +71,28 @@ export default function Search() {
       .then((raw) => raw && setRecent(JSON.parse(raw)))
       .catch(() => {})
   }, [])
-  const remember = (value: string) => {
-    const next = rememberSearch(recent, value)
+  const saveRecent = (next: string[]) => {
     setRecent(next)
     SecureStore.setItemAsync(RECENT_KEY, JSON.stringify(next)).catch(() => {})
   }
+  const remember = (value: string) => saveRecent(rememberSearch(recent, value))
 
   const city = useQuery(trpc.pubs.getMyCity.queryOptions())
   const center = searchCenter(state.device, city.data)
-  const near = useQuery({
-    ...trpc.pubs.search.queryOptions({
+  const now = Date.now()
+  const today = dayKey(now)
+  const board = useQuery({
+    ...trpc.pubs.gameBoard.queryOptions({
       ...center,
       radiusKm: NEAR_KM,
-      limit: 50
-    })
+      day: today
+    }),
+    placeholderData: keepPreviousData
   })
-  // Time e campeonato também no servidor, num raio maior.
+  const near = useQuery(
+    trpc.pubs.search.queryOptions({ ...center, radiusKm: NEAR_KM, limit: 50 })
+  )
+  // Nome do bar e campeonato também no servidor, num raio maior.
   const remote = useQuery({
     ...trpc.pubs.search.queryOptions({
       ...center,
@@ -114,50 +103,65 @@ export default function Search() {
     enabled: deferred.length >= 2,
     placeholderData: keepPreviousData
   })
-  const now = Date.now()
+  const row = gameRow(board.data?.games ?? [], null, now)
   const bars = (near.data?.bars ?? []) as (NearBar & { id: string })[]
 
-  const close = () => router.back()
-  const openBar = (id: string) => {
+  // Aberta por link (aviso, DEV) não há tela embaixo: volta ao Explorar.
+  const close = () =>
+    router.canGoBack() ? router.back() : router.replace('/explore' as Href)
+  const finish = () => {
     if (query.trim()) remember(query)
+  }
+  const openGame = (game: RowGame) => {
+    finish()
+    state.setFilters({ ...state.filters, date: today })
+    state.setLiveOnly(false)
+    state.setGame(game.key)
+    close()
+  }
+  const openBar = (id: string) => {
+    finish()
     router.push(`/bar/${id}` as Href)
   }
-  const showOnMap = (
-    hood: Hood<NearBar>,
-    apply?: 'hoje' | 'telao' | 'live'
-  ) => {
+  const showOnMap = (hood: Hood<NearBar>) => {
     remember(hood.name)
     const lat = avg(hood.bars.map((b) => Number(b.latitude)))
     const lng = avg(hood.bars.map((b) => Number(b.longitude)))
     state.setFocus({ lat, lng, kmTall: 1.6, kmWide: 1.6 })
-    if (apply === 'hoje')
-      state.setFilters({ ...state.filters, date: dayKey(now) })
-    if (apply === 'telao' && !state.filters.amenities.includes(TELAO))
-      state.setFilters(toggleAmenity(state.filters, TELAO))
-    if (apply === 'live') state.setLiveOnly(true)
     close()
   }
 
-  const typing = query.trim().length > 0
+  const typing = deferred.length > 0
+  const teams = typing ? matchTeams(row, deferred) : []
+  const games = typing ? matchGames(row, deferred) : []
   const local = matchQuery(bars, deferred, now)
-  const results = typing
-    ? dedupe([...local.bars, ...((remote.data?.bars ?? []) as typeof bars)])
+  // Bares pelo nome: o jogo e o bairro já têm a seção deles.
+  const foundBars = typing
+    ? dedupe([
+        ...local.bars,
+        ...((remote.data?.bars ?? []) as typeof bars)
+      ]).filter((bar) => highlight(bar.name, deferred).some((p) => p.hit))
     : []
+  const foundHoods = typing
+    ? hoods(bars, now).filter((hood) =>
+        highlight(hood.name, deferred).some((p) => p.hit)
+      )
+    : []
+  const empty =
+    typing &&
+    !teams.length &&
+    !games.length &&
+    !foundBars.length &&
+    !foundHoods.length
 
-  // Fora do celular a busca (e o "Nada para") fica numa coluna de até 560
-  // no meio (Adaptativo 10, busca sem resultado), fora da faixa do Duo.
+  // Fora do celular a busca fica numa coluna de até 560 no meio (Adaptativo
+  // 10), fora da faixa do Duo.
   const layout = useLayout()
   const strip = useNavInsets().right
   const pad =
     layout.kind === 'phone' || layout.kind === 'duoClosed'
       ? 0
       : (layout.width - strip - Math.min(560, layout.width - strip - 80)) / 2
-  // O vazio do design (Rodada 14) só fora do celular; no celular, a frase.
-  const nothing =
-    layout.kind !== 'phone' &&
-    !results.length &&
-    !remote.isFetching &&
-    !local.hood
   return (
     <View
       style={[
@@ -169,24 +173,25 @@ export default function Search() {
         }
       ]}
     >
-      <View style={[styles.top, { paddingTop: insets.top + 8 }]}>
-        <Glass
-          tone={palette.dark ? 'dark' : 'light'}
-          tint={palette.dark ? undefined : 'rgba(255,255,255,.62)'}
-          style={[styles.field, { borderColor: palette.ink }]}
+      <View style={[styles.top, { paddingTop: insets.top + 11 }]}>
+        <View
+          style={[
+            styles.field,
+            { backgroundColor: palette.card, borderColor: palette.ink }
+          ]}
         >
-          <Icon name="search" size={18} color={palette.ink} />
+          <Icon name="search" size={20} color={palette.ink} />
           <TextInput
             autoFocus
             value={query}
             onChangeText={setQuery}
-            placeholder="Bar, bairro, time ou jogo"
+            placeholder="Time, bar ou bairro"
             placeholderTextColor={palette.muted}
             returnKeyType="search"
-            onSubmitEditing={() => remember(query)}
-            selectionColor={LIVE}
+            onSubmitEditing={finish}
+            selectionColor={palette.dark ? ACID : '#5b6d0c'}
             style={[
-              text(16, 'Regular', 1.2),
+              text(16, 'SemiBold', 1.2),
               styles.input,
               { color: palette.ink }
             ]}
@@ -202,7 +207,7 @@ export default function Search() {
               <Icon name="close" size={12} color={palette.ink} />
             </Pressable>
           ) : null}
-        </Glass>
+        </View>
         <Pressable accessibilityRole="button" hitSlop={10} onPress={close}>
           <Text style={[text(15, 'SemiBold'), { color: palette.ink }]}>
             Cancelar
@@ -218,106 +223,156 @@ export default function Search() {
           { paddingBottom: insets.bottom + 32 }
         ]}
       >
-        <ScrollView
-          horizontal
-          keyboardShouldPersistTaps="handled"
-          showsHorizontalScrollIndicator={false}
-          style={styles.bleed}
-          contentContainerStyle={styles.chips}
-        >
-          {typing && local.hood
-            ? (
-                [
-                  ['hoje', `${local.hood.name} hoje`],
-                  ['telao', `${local.hood.name} com telão`],
-                  ['live', `${local.hood.name} ao vivo`]
-                ] as const
-              ).map(([kind, label]) => (
-                <SearchChip
-                  key={kind}
-                  label={label}
-                  query={deferred}
-                  onPress={() =>
-                    local.hood && showOnMap(local.hood as Hood<NearBar>, kind)
-                  }
-                />
-              ))
-            : typing
-              ? null
-              : recent.map((item) => (
-                  <SearchChip
-                    key={item}
-                    label={item}
-                    onPress={() => setQuery(item)}
-                  />
-                ))}
-        </ScrollView>
-
         {typing ? (
           <>
-            {local.hood ? (
-              <HoodCard
-                hood={local.hood as Hood<NearBar>}
-                query={deferred}
-                now={now}
-                onMap={() => showOnMap(local.hood as Hood<NearBar>)}
-              />
+            {teams.length ? (
+              <Section label="Times">
+                {teams.map((team, i) => (
+                  <Row
+                    key={team.name}
+                    first={i === 0}
+                    lead={
+                      <View
+                        style={[styles.lead, { backgroundColor: palette.mark }]}
+                      >
+                        <Icon name="fan" size={20} color={palette.ink} />
+                      </View>
+                    }
+                    title={<Hl value={team.name} query={deferred} />}
+                    sub={`${team.game.live ? 'agora' : `hoje ${formatTime(team.game.startsAt)}`} × ${team.rival} · ${bareCount(team.game.bars.length)}`}
+                    onPress={() => openGame(team.game)}
+                  />
+                ))}
+              </Section>
             ) : null}
-            <View style={[styles.heading, nothing && { display: 'none' }]}>
-              <Text style={[text(15, 'Bold'), { color: palette.ink }]}>
-                {local.hood ? `Bares em ${local.hood.name}` : 'Bares e jogos'}
-              </Text>
-              <Text style={[text(12.5, 'SemiBold'), { color: palette.muted }]}>
-                {results.length}
-              </Text>
-            </View>
-            {results.length ? (
-              <Card soft>
-                <View style={{ paddingHorizontal: 14 }}>
-                  {results.slice(0, 20).map((bar, i) => (
-                    <ResultRow
-                      key={bar.id}
-                      bar={bar}
-                      query={deferred}
-                      now={now}
-                      first={i === 0}
-                      onPress={() => openBar(bar.id)}
-                    />
-                  ))}
-                </View>
-              </Card>
-            ) : nothing ? (
-              // O vazio do design (Rodada 14): o zero, o pedido e a IA.
-              <SearchEmpty
-                query={query.trim()}
-                onAi={() => router.push('/busca-ia')}
-              />
-            ) : (
-              <Text
-                style={[text(14, 'Regular', 1.45), { color: palette.muted }]}
-              >
-                {remote.isFetching
-                  ? 'Buscando…'
-                  : `Nada perto com “${query.trim()}”. Tente o nome do bar, o bairro ou um time.`}
-              </Text>
-            )}
+            {games.length ? (
+              <Section label="Jogos">
+                {games.map((game, i) => (
+                  <GameRow
+                    key={game.key}
+                    game={game}
+                    first={i === 0}
+                    query={deferred}
+                    onPress={() => openGame(game)}
+                  />
+                ))}
+              </Section>
+            ) : null}
+            {foundBars.length ? (
+              <Section label="Bares">
+                {foundBars.slice(0, 12).map((bar, i) => (
+                  <Row
+                    key={bar.id}
+                    first={i === 0}
+                    lead={
+                      <Photo
+                        uri={bar.photo_url}
+                        name={bar.name}
+                        style={styles.lead}
+                      />
+                    }
+                    title={<Hl value={bar.name} query={deferred} />}
+                    sub={[bar.neighborhood, formatKm(bar.distance_km)]
+                      .filter(Boolean)
+                      .join(' · ')}
+                    onPress={() => openBar(bar.id)}
+                  />
+                ))}
+              </Section>
+            ) : null}
+            {foundHoods.length ? (
+              <Section label="Bairros">
+                {foundHoods.slice(0, 4).map((hood, i) => (
+                  <Row
+                    key={hood.name}
+                    first={i === 0}
+                    lead={
+                      <View
+                        style={[styles.lead, { backgroundColor: palette.mark }]}
+                      >
+                        <Icon name="pin" size={20} color={palette.ink} />
+                      </View>
+                    }
+                    title={<Hl value={hood.name} query={deferred} />}
+                    sub={`${bareCount(hood.bars.length)} · ver no mapa`}
+                    onPress={() => showOnMap(hood)}
+                  />
+                ))}
+              </Section>
+            ) : null}
+            {empty ? (
+              layout.kind !== 'phone' && !remote.isFetching ? (
+                // O vazio do design (Rodada 14) só fora do celular.
+                <SearchEmpty
+                  query={query.trim()}
+                  onAi={() => router.push('/busca-ia')}
+                />
+              ) : (
+                <Text
+                  style={[text(14, 'Regular', 1.45), { color: palette.muted }]}
+                >
+                  {remote.isFetching
+                    ? 'Buscando…'
+                    : `Nada perto com “${query.trim()}”. Tente o nome do bar, o bairro ou um time.`}
+                </Text>
+              )
+            ) : null}
+            <AskAi onPress={() => router.push('/busca-ia')} />
           </>
         ) : (
-          <OpenState
-            bars={bars}
-            now={now}
-            onLive={() => {
-              state.setLiveOnly(true)
-              close()
-            }}
-            onGame={(name) => setQuery(name)}
-            onAgenda={() => {
-              state.setFilters({ ...state.filters, date: dayKey(now) })
-              close()
-            }}
-            onHood={(hood) => setQuery(hood.name)}
-            onAi={() => router.push('/busca-ia')}
-          />
+          <>
+            {recent.length ? (
+              <>
+                <GroupLabel>Recentes</GroupLabel>
+                <View style={styles.chips}>
+                  {recent.map((item) => (
+                    <Animated.View
+                      key={item}
+                      layout={CHIP_LAYOUT}
+                      exiting={CHIP_OUT}
+                    >
+                      <Chip
+                        label={item}
+                        onPress={() => setQuery(item)}
+                        onRemove={() =>
+                          saveRecent(recent.filter((r) => r !== item))
+                        }
+                      />
+                    </Animated.View>
+                  ))}
+                </View>
+              </>
+            ) : null}
+            {row.length ? (
+              <Section label="Jogos de agora">
+                {row.slice(0, 3).map((game, i) => (
+                  <GameRow
+                    key={game.key}
+                    game={game}
+                    first={i === 0}
+                    onPress={() => openGame(game)}
+                  />
+                ))}
+              </Section>
+            ) : null}
+            {bars.length ? (
+              <>
+                <GroupLabel>Bairros perto</GroupLabel>
+                <View style={styles.chips}>
+                  {hoods(bars, now)
+                    .slice(0, 3)
+                    .map((hood) => (
+                      <Chip
+                        key={hood.name}
+                        icon="pin"
+                        label={`${hood.name} · ${hood.bars.length}`}
+                        onPress={() => showOnMap(hood)}
+                      />
+                    ))}
+                </View>
+              </>
+            ) : null}
+          </>
         )}
       </ScrollView>
     </View>
@@ -327,45 +382,129 @@ export default function Search() {
 const avg = (values: number[]) =>
   values.reduce((sum, v) => sum + v, 0) / Math.max(values.length, 1)
 
+const bareCount = (n: number) => `${n} ${n === 1 ? 'bar' : 'bares'}`
+
 function dedupe<B extends { id: string }>(list: B[]) {
   const seen = new Set<string>()
   return list.filter((b) => !seen.has(b.id) && seen.add(b.id))
 }
 
-/** Texto com o trecho da busca marcado em acid. */
-function Hl({
-  value,
-  query,
-  style
-}: {
-  value: string
-  query: string
-  style: object
-}) {
-  return (
-    <Text style={style}>
-      {highlight(value, query).map((part, i) =>
-        part.hit ? (
-          // biome-ignore lint/suspicious/noArrayIndexKey: partes fixas do texto
-          <Text key={i} style={styles.hit}>
-            {part.text}
-          </Text>
-        ) : (
-          part.text
-        )
-      )}
-    </Text>
+/** O texto com a parte digitada em negrito. */
+function Hl({ value, query }: { value: string; query: string }) {
+  return highlight(value, query).map((part, i) =>
+    part.hit ? (
+      // biome-ignore lint/suspicious/noArrayIndexKey: partes fixas do texto
+      <Text key={i} style={styles.hit}>
+        {part.text}
+      </Text>
+    ) : (
+      part.text
+    )
   )
 }
 
-function SearchChip({
-  label,
+function Section({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <>
+      <GroupLabel>{label}</GroupLabel>
+      <LineList>{children}</LineList>
+    </>
+  )
+}
+
+/** A linha `.rw`: o que vem na frente, o nome, a linha de baixo e a seta. */
+function Row({
+  lead,
+  title,
+  sub,
+  first,
+  onPress
+}: {
+  lead: ReactNode
+  title: ReactNode
+  sub: string
+  first: boolean
+  onPress: () => void
+}) {
+  const palette = usePalette()
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.row,
+        !first && { borderTopWidth: 1, borderTopColor: palette.line },
+        pressed && { opacity: 0.6 }
+      ]}
+    >
+      {lead}
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text
+          numberOfLines={1}
+          style={[text(15, 'Regular', 1.2), { color: palette.ink }]}
+        >
+          {title}
+        </Text>
+        <Text
+          numberOfLines={1}
+          style={[text(12.5, 'Regular', 1.35), { color: palette.muted }]}
+        >
+          {sub}
+        </Text>
+      </View>
+      <Icon name="next" size={16} color={palette.muted} />
+    </Pressable>
+  )
+}
+
+/** O jogo em linha de placar: a hora em mono (vermelha ao vivo) e o dia. */
+function GameRow({
+  game,
+  first,
   query = '',
   onPress
 }: {
-  label: string
+  game: RowGame
+  first: boolean
   query?: string
   onPress: () => void
+}) {
+  const palette = usePalette()
+  return (
+    <Row
+      first={first}
+      lead={
+        <View style={styles.time}>
+          <Text
+            style={[
+              styles.timeText,
+              { color: game.live ? palette.live : palette.ink }
+            ]}
+          >
+            {formatTime(game.startsAt)}
+          </Text>
+          <Text style={[styles.day, { color: palette.muted }]}>
+            {game.live ? 'AO VIVO' : 'HOJE'}
+          </Text>
+        </View>
+      }
+      title={<Hl value={game.title} query={query} />}
+      sub={`${game.championship} · ${bareCount(game.bars.length)}`}
+      onPress={onPress}
+    />
+  )
+}
+
+function Chip({
+  label,
+  icon,
+  onPress,
+  onRemove
+}: {
+  label: string
+  icon?: 'pin'
+  onPress: () => void
+  onRemove?: () => void
 }) {
   const palette = usePalette()
   return (
@@ -376,499 +515,52 @@ function SearchChip({
         onPress()
       }}
     >
-      <View
-        style={[
-          styles.chip,
-          { backgroundColor: palette.card, borderColor: palette.ring }
-        ]}
-      >
-        <Icon name="search" size={13} color={palette.muted} />
-        <Hl
-          value={label}
-          query={query}
-          style={[text(14, 'SemiBold', 1.2), { color: palette.ink }]}
-        />
+      <View style={[styles.chip, { backgroundColor: palette.mark }]}>
+        {icon ? <Icon name={icon} size={14} color={palette.ink} /> : null}
+        <Text style={[text(13.5, 'SemiBold', 1.2), { color: palette.ink }]}>
+          {label}
+        </Text>
+        {onRemove ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Tirar ${label} das recentes`}
+            hitSlop={10}
+            onPress={() => {
+              haptic.select()
+              onRemove()
+            }}
+          >
+            <Text
+              style={[text(13.5, 'Regular', 1.2), { color: palette.muted }]}
+            >
+              ×
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
     </ScalePress>
   )
 }
 
-function OpenState({
-  bars,
-  now,
-  onLive,
-  onGame,
-  onAgenda,
-  onHood,
-  onAi
-}: {
-  bars: NearBar[]
-  now: number
-  onLive: () => void
-  onGame: (name: string) => void
-  onAgenda: () => void
-  onHood: (hood: Hood<NearBar>) => void
-  onAi: () => void
-}) {
-  const palette = usePalette()
-  const { width } = useWindowDimensions()
-  const live = liveNow(bars, now)
-  const night = tonight(bars, now)
-  const near = hoods(bars, now).slice(0, 4)
-  const dark = palette.dark
-  return (
-    <>
-      {live ? (
-        <ScalePress accessibilityRole="button" to={0.985} onPress={onLive}>
-          <Card
-            shadow={dark ? 'rgba(201,241,53,.22)' : 'rgba(201,241,53,.85)'}
-            offset={5}
-            style={{ backgroundColor: dark ? palette.card : INK }}
-          >
-            <View style={styles.liveHead}>
-              <View style={styles.liveTag}>
-                <View style={styles.liveDot} />
-                <Text style={[text(12, 'Bold', 1.2), { color: '#f3421d' }]}>
-                  Rolando agora
-                </Text>
-              </View>
-              <Text style={[styles.mono11, { color: '#aaa9a4' }]}>
-                {live.game.championship.toLocaleUpperCase('pt-BR')}
-              </Text>
-            </View>
-            <Teams game={live.game} />
-            <View style={styles.liveFoot}>
-              <View style={{ flexDirection: 'row' }}>
-                {live.bars.slice(0, 3).map((b, i) => (
-                  <Photo
-                    key={b.id}
-                    uri={b.photo_url}
-                    name={b.name}
-                    big
-                    style={{ ...styles.stackPhoto, marginLeft: i ? -8 : 0 }}
-                  />
-                ))}
-              </View>
-              <Text
-                style={[text(13.5, 'Regular', 1.35), { color: PAPER, flex: 1 }]}
-              >
-                <Text style={text(13.5, 'Bold', 1.35)}>
-                  {live.bars.length}{' '}
-                  {live.bars.length === 1 ? 'bar perto' : 'bares perto'}
-                </Text>
-                <Text style={{ color: '#aaa9a4' }}>
-                  {' '}
-                  · o mais perto a {formatKm(live.bars[0]?.distance_km ?? 0)}
-                </Text>
-              </Text>
-              <Icon name="next" size={14} color={ACID} />
-            </View>
-          </Card>
-        </ScalePress>
-      ) : null}
-
-      {night.length ? (
-        <>
-          <View style={styles.heading}>
-            <Text style={[text(15, 'Bold'), { color: palette.ink }]}>
-              {/* "à noite" só quando é: de dia o design mentiria. */}
-              {night.every(
-                (g) => Number(formatTime(g.game.startsAt).slice(0, 2)) >= 18
-              )
-                ? 'Hoje à noite'
-                : 'Mais tarde, hoje'}
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              hitSlop={8}
-              onPress={onAgenda}
-            >
-              <Text style={[text(12.5, 'SemiBold'), { color: palette.muted }]}>
-                Ver agenda
-              </Text>
-            </Pressable>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.bleed}
-            contentContainerStyle={{ gap: 10, paddingHorizontal: 16 }}
-          >
-            {night.map((g) => {
-              const two = sides(g.game)
-              return (
-                <ScalePress
-                  key={g.key}
-                  accessibilityRole="button"
-                  onPress={() => onGame(matchName(g.game))}
-                  style={styles.poster}
-                >
-                  <Photo
-                    uri={g.bars[0]?.photo_url ?? null}
-                    name={g.bars[0]?.name ?? ''}
-                    big
-                    style={StyleSheet.absoluteFill}
-                  />
-                  <LinearGradient
-                    colors={[
-                      'rgba(18,18,15,.55)',
-                      'rgba(18,18,15,.1)',
-                      'rgba(18,18,15,.92)'
-                    ]}
-                    locations={[0, 0.4, 1]}
-                    style={StyleSheet.absoluteFill}
-                  />
-                  <Text style={styles.posterTime}>
-                    {formatTime(g.game.startsAt)}
-                  </Text>
-                  <View style={styles.posterFoot}>
-                    {two ? (
-                      <View style={{ flexDirection: 'row', gap: 4 }}>
-                        {two.map((name) => (
-                          <View key={name} style={styles.markSmall}>
-                            <Text style={styles.markText13}>
-                              {teamMark(name)}
-                            </Text>
-                          </View>
-                        ))}
-                      </View>
-                    ) : null}
-                    <Text
-                      style={[text(14, 'Bold', 1.2), { color: PAPER }]}
-                      numberOfLines={2}
-                    >
-                      {matchName(g.game)}
-                    </Text>
-                    <Text style={[text(11.5, 'Bold', 1.2), { color: ACID }]}>
-                      {g.bars.length} {g.bars.length === 1 ? 'bar' : 'bares'}
-                    </Text>
-                  </View>
-                </ScalePress>
-              )
-            })}
-          </ScrollView>
-        </>
-      ) : null}
-
-      {near.length ? (
-        <>
-          <View style={styles.heading}>
-            <Text style={[text(15, 'Bold'), { color: palette.ink }]}>
-              Por bairro
-            </Text>
-            <Text style={[text(12.5, 'SemiBold'), { color: palette.muted }]}>
-              {near.length} perto
-            </Text>
-          </View>
-          <View style={styles.hoods}>
-            {near.map((hood) => (
-              <ScalePress
-                key={hood.name}
-                accessibilityRole="button"
-                accessibilityLabel={`${hood.name}, ${hood.bars.length} bares`}
-                onPress={() => onHood(hood)}
-                style={[
-                  styles.hood,
-                  { width: (width - 32 - 10) / 2, borderColor: palette.ring }
-                ]}
-              >
-                <HoodMap hood={hood} now={now} />
-                <LinearGradient
-                  colors={
-                    dark
-                      ? ['rgba(18,18,15,0)', 'rgba(18,18,15,.88)']
-                      : ['rgba(241,238,230,0)', 'rgba(241,238,230,.88)']
-                  }
-                  locations={[0.3, 1]}
-                  style={StyleSheet.absoluteFill}
-                  pointerEvents="none"
-                />
-                <View style={styles.hoodFoot} pointerEvents="none">
-                  <Text
-                    style={[styles.hoodName, { color: palette.ink }]}
-                    numberOfLines={1}
-                  >
-                    {hood.name}
-                  </Text>
-                  <Text style={[styles.mono115, { color: palette.ink }]}>
-                    {hood.bars.length}
-                  </Text>
-                </View>
-              </ScalePress>
-            ))}
-          </View>
-        </>
-      ) : null}
-
-      <ScalePress accessibilityRole="button" to={0.985} onPress={onAi}>
-        <Card shadow={INK} offset={5} style={styles.ai}>
-          <View style={styles.aiHead}>
-            <Icon name="sparkle" size={26} color={INK} accent={LIVE} />
-            <Text style={[text(17, 'Bold', 1.25), { color: INK, flex: 1 }]}>
-              Pedido mais específico?
-            </Text>
-            <Icon name="next" size={14} color={INK} />
-          </View>
-          {[
-            '“Telão e chopp barato perto do metrô”',
-            '“Onde passa F1 domingo cedo”'
-          ].map((example) => (
-            <View key={example} style={styles.aiExample}>
-              <Text style={[text(14, 'SemiBold', 1.3), { color: INK }]}>
-                {example}
-              </Text>
-            </View>
-          ))}
-        </Card>
-      </ScalePress>
-    </>
-  )
-}
-
-/** Os dois times grandes do jogo ao vivo, com a sigla no círculo. */
-function Teams({ game }: { game: NonNullable<NearBar['nextEvent']> }) {
-  const two = sides(game)
-  if (!two)
-    return (
-      <Text style={[styles.teamName, { paddingHorizontal: 16 }]}>
-        {matchName(game)}
-      </Text>
-    )
-  return (
-    <View style={styles.teams}>
-      <View style={{ flex: 1, gap: 8, alignItems: 'flex-start' }}>
-        <View style={styles.mark}>
-          <Text style={styles.markText}>{teamMark(two[0])}</Text>
-        </View>
-        <Text style={styles.teamName} numberOfLines={1} adjustsFontSizeToFit>
-          {two[0]}
-        </Text>
-      </View>
-      <Text style={[text(20, 'Bold', 1), { color: ACID }]}>×</Text>
-      <View style={{ flex: 1, gap: 8, alignItems: 'flex-end' }}>
-        <View style={styles.mark}>
-          <Text style={styles.markText}>{teamMark(two[1])}</Text>
-        </View>
-        <Text style={styles.teamName} numberOfLines={1} adjustsFontSizeToFit>
-          {two[1]}
-        </Text>
-      </View>
-    </View>
-  )
-}
-
-/** Recorte do mapa do bairro, com os bares em quadradinhos (vermelho: ao vivo). */
-function HoodMap({
-  hood,
-  now,
-  big
-}: {
-  hood: Hood<NearBar>
-  now: number
-  big?: boolean
-}) {
-  const palette = usePalette()
-  const lats = hood.bars.map((b) => Number(b.latitude))
-  const lngs = hood.bars.map((b) => Number(b.longitude))
-  const span = Math.max(
-    Math.max(...lats) - Math.min(...lats),
-    Math.max(...lngs) - Math.min(...lngs),
-    0.006
-  )
-  const center = { latitude: avg(lats), longitude: avg(lngs) }
-  const firstLive = hood.bars.find(
-    (bar) => bar.nextEvent && isLive(bar.nextEvent, now)
-  )
-  return (
-    <MapView
-      style={StyleSheet.absoluteFill}
-      initialRegion={{
-        ...center,
-        latitudeDelta: span * 1.8,
-        longitudeDelta: span * 1.8
-      }}
-      mapType="mutedStandard"
-      customMapStyle={palette.dark ? MAP_STYLE.dark : MAP_STYLE.light}
-      userInterfaceStyle={palette.dark ? 'dark' : 'light'}
-      showsPointsOfInterests={false}
-      scrollEnabled={false}
-      zoomEnabled={false}
-      rotateEnabled={false}
-      pitchEnabled={false}
-      pointerEvents="none"
-    >
-      {big ? (
-        <RadiusCircle
-          center={center}
-          km={span * 111 * 0.7}
-          dark={palette.dark}
-          strong
-        />
-      ) : null}
-      {/* As mesmas gotas do Explorar (21a); no cartão grande, o primeiro ao
-          vivo leva a pílula com o nome. */}
-      {hood.bars.slice(0, big ? 4 : 8).map((bar) => {
-        const live = bar.nextEvent ? isLive(bar.nextEvent, now) : false
-        const label =
-          big && live && bar.id === firstLive?.id ? bar.name : undefined
-        const box = dropBox({ live, label })
-        return (
-          <Marker
-            key={bar.id}
-            coordinate={{
-              latitude: Number(bar.latitude),
-              longitude: Number(bar.longitude)
-            }}
-            anchor={box.anchor}
-            centerOffset={box.centerOffset}
-            tracksViewChanges={false}
-          >
-            <MapDrop
-              live={live}
-              elite={bar.plan === 'elite'}
-              dark={palette.dark}
-              label={label}
-            />
-          </Marker>
-        )
-      })}
-    </MapView>
-  )
-}
-
-function HoodCard({
-  hood,
-  query,
-  now,
-  onMap
-}: {
-  hood: Hood<NearBar>
-  query: string
-  now: number
-  onMap: () => void
-}) {
+/** "Pedido mais específico?": tinta no claro, cinza no escuro. */
+function AskAi({ onPress }: { onPress: () => void }) {
   const palette = usePalette()
   return (
-    <Card
-      shadow={palette.dark ? 'rgba(201,241,53,.22)' : 'rgba(201,241,53,.85)'}
-      offset={5}
-    >
-      <View style={styles.hoodMap}>
-        <HoodMap hood={hood} now={now} big />
-        <View style={styles.hoodBadge}>
-          <Glass
-            tone={palette.dark ? 'dark' : 'light'}
-            style={styles.badgeGlass}
-          >
-            <Text style={[styles.mono11, { color: palette.ink }]}>BAIRRO</Text>
-          </Glass>
-        </View>
-      </View>
-      <View style={styles.hoodBody}>
+    <ScalePress accessibilityRole="button" to={0.985} onPress={onPress}>
+      <View
+        style={[styles.ask, palette.dark && { backgroundColor: palette.mark }]}
+      >
+        <Icon name="sparkle" size={24} color={ACID} accent={ACID} />
         <View style={{ flex: 1 }}>
-          <Hl
-            value={hood.name}
-            query={query}
-            style={[styles.hoodTitle, { color: palette.ink }]}
-          />
-          <Text style={[text(12.5), { color: palette.muted }]}>
-            {hood.bars.length} {hood.bars.length === 1 ? 'bar' : 'bares'}
-            {hood.live ? (
-              <Text style={[text(12.5, 'Bold'), { color: palette.live }]}>
-                {' '}
-                · {hood.live} com jogo agora
-              </Text>
-            ) : null}
+          <Text style={[text(15, 'Bold', 1.25), { color: PAPER }]}>
+            Pedido mais específico?
+          </Text>
+          <Text style={[text(13, 'Regular', 1.3), { color: '#aaa9a4' }]}>
+            Pergunte do seu jeito à busca com IA.
           </Text>
         </View>
-        <Pressable
-          accessibilityRole="button"
-          onPress={onMap}
-          style={[styles.mapButton, palette.dark && { backgroundColor: ACID }]}
-        >
-          <Text
-            style={[
-              text(13.5, 'Bold', 1.2),
-              { color: palette.dark ? INK : PAPER }
-            ]}
-          >
-            Ver no mapa
-          </Text>
-        </Pressable>
       </View>
-    </Card>
-  )
-}
-
-function ResultRow({
-  bar,
-  query,
-  now,
-  first,
-  onPress
-}: {
-  bar: NearBar
-  query: string
-  now: number
-  first: boolean
-  onPress: () => void
-}) {
-  const palette = usePalette()
-  const game = bar.nextEvent
-  const live = game ? isLive(game, now) : false
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={bar.name}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.result,
-        !first && { borderTopWidth: 1, borderTopColor: palette.line },
-        pressed && { opacity: 0.6 }
-      ]}
-    >
-      <Photo
-        uri={bar.photo_url}
-        name={bar.name}
-        big
-        style={styles.resultPhoto}
-      />
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Hl
-          value={bar.name}
-          query={query}
-          style={[text(15, 'Bold', 1.25), { color: palette.ink }]}
-        />
-        <Text style={[text(12.5), { color: palette.muted }]}>
-          {formatKm(bar.distance_km)}
-          {bar.neighborhood ? ` · ${bar.neighborhood}` : ''}
-        </Text>
-      </View>
-      {game ? (
-        <View style={{ alignItems: 'flex-end', maxWidth: 140 }}>
-          {live ? (
-            <View style={styles.liveTag}>
-              <View style={styles.liveDot} />
-              <Text style={[text(12, 'Bold', 1.2), { color: palette.live }]}>
-                Agora
-              </Text>
-            </View>
-          ) : (
-            <Text style={[styles.time, { color: palette.ink }]}>
-              {formatTime(game.startsAt)}
-            </Text>
-          )}
-          <Text
-            style={[text(11.5, 'Regular', 1.3), { color: palette.muted }]}
-            numberOfLines={1}
-          >
-            {live || dayLabel(game.startsAt, now) === 'Hoje'
-              ? matchName(game)
-              : `${dayLabel(game.startsAt, now)} · ${matchName(game)}`}
-          </Text>
-        </View>
-      ) : null}
-    </Pressable>
+    </ScalePress>
   )
 }
 
@@ -879,202 +571,75 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     paddingHorizontal: 16,
-    paddingBottom: 8
+    paddingBottom: 14
   },
   field: {
     flex: 1,
-    height: 50,
-    borderRadius: 25,
-    borderWidth: 1.5,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     paddingLeft: 16,
-    paddingRight: 8,
-    overflow: 'hidden'
+    paddingRight: 9
   },
-  input: { flex: 1, height: 48 },
+  input: { flex: 1, height: 44 },
   clear: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center'
   },
-  body: { paddingHorizontal: 16, gap: 16, paddingTop: 8 },
-  bleed: { marginHorizontal: -16, flexGrow: 0 },
-  chips: { gap: 8, paddingHorizontal: 16, paddingBottom: 4 },
+  body: { paddingHorizontal: 16, gap: 14 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
+    gap: 6,
     height: 34,
     paddingHorizontal: 12,
-    borderRadius: 17,
-    borderWidth: 1
+    borderRadius: 17
   },
-  hit: {
-    backgroundColor: 'rgba(201,241,53,.8)',
-    color: INK
-  },
-  heading: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-    marginBottom: -4
-  },
-  liveHead: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 14,
-    paddingHorizontal: 16,
-    paddingBottom: 12
-  },
-  liveTag: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  liveDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: LIVE,
-    shadowColor: LIVE,
-    shadowOpacity: 0.5,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 0 }
-  },
-  mono11: { fontFamily: 'GeistMono-SemiBold', fontSize: 11 },
-  mono115: { fontFamily: 'GeistMono-SemiBold', fontSize: 11.5 },
-  teams: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16
-  },
-  mark: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#2a2a25',
-    borderWidth: 2,
-    borderColor: 'rgba(241,238,230,.12)',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  markText: { fontFamily: 'Anton', fontSize: 15, color: PAPER },
-  markSmall: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#2a2a25',
-    borderWidth: 2,
-    borderColor: 'rgba(241,238,230,.12)',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  markText13: { fontFamily: 'Anton', fontSize: 11, color: PAPER },
-  teamName: {
-    fontFamily: 'Anton',
-    fontSize: 24,
-    color: PAPER,
-    textTransform: 'uppercase'
-  },
-  liveFoot: {
-    marginTop: 14,
-    paddingVertical: 11,
-    paddingHorizontal: 16,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(241,238,230,.12)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12
-  },
-  stackPhoto: {
-    width: 30,
-    height: 30,
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: INK
-  },
-  poster: {
-    width: 148,
-    height: 196,
-    borderRadius: 7,
-    overflow: 'hidden',
-    backgroundColor: '#2a2a25'
-  },
-  posterTime: {
-    position: 'absolute',
-    left: 12,
-    top: 6,
-    fontFamily: 'Anton',
-    fontSize: 30,
-    color: PAPER
-  },
-  posterFoot: { position: 'absolute', left: 12, right: 12, bottom: 12, gap: 7 },
-  hoods: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  hood: {
-    height: 104,
-    borderRadius: 6,
-    overflow: 'hidden',
-    borderWidth: 1
-  },
-  hoodFoot: {
-    position: 'absolute',
-    left: 10,
-    right: 10,
-    bottom: 9,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline'
-  },
-  hoodName: {
-    fontFamily: 'Anton',
-    fontSize: 19,
-    textTransform: 'uppercase',
-    flex: 1
-  },
-  ai: { backgroundColor: ACID, padding: 16, gap: 10 },
-  aiHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  aiExample: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,.45)',
-    borderRadius: 4,
-    paddingVertical: 8,
-    paddingHorizontal: 12
-  },
-  hoodMap: { height: 118 },
-  hoodBadge: { position: 'absolute', left: 10, top: 10 },
-  badgeGlass: {
-    height: 32,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    justifyContent: 'center',
-    overflow: 'hidden'
-  },
-  hoodBody: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 14
-  },
-  hoodTitle: {
-    fontFamily: 'Anton',
-    fontSize: 30,
-    textTransform: 'uppercase'
-  },
-  mapButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 4,
-    backgroundColor: INK
-  },
-  result: {
+  hit: { fontFamily: 'Archivo-Bold' },
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingVertical: 10
+    paddingVertical: 11
   },
-  resultPhoto: { width: 52, height: 52, borderRadius: 3 },
-  time: { fontFamily: 'Anton', fontSize: 20 }
+  lead: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  time: { minWidth: 54 },
+  // Mono 17/1: margem negativa no lugar do entrelinha curto.
+  timeText: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 17,
+    fontVariant: ['tabular-nums'],
+    marginVertical: -2.5
+  },
+  day: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 10,
+    letterSpacing: 0.6,
+    marginTop: 4
+  },
+  ask: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    borderRadius: 20,
+    backgroundColor: INK,
+    shadowColor: '#000',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  }
 })
