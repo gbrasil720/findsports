@@ -1,13 +1,16 @@
 import { describe, expect, test } from 'bun:test'
 import {
   calendarEvent,
+  dayShort,
   formatCode,
+  monthsLabel,
   pastLabel,
   pickTodayCode,
   shortDate,
   showsCheckIn,
   thisMonth,
-  todayHeadline
+  todayHeadline,
+  weekOffset
 } from './my-games'
 
 test('o código sai em dois blocos', () => {
@@ -159,5 +162,28 @@ describe('todayHeadline', () => {
       ])
     ).toMatchObject({ title: 'A' })
     expect(todayHeadline([])).toBeNull()
+  })
+})
+
+describe('rodada 4: dia curto, semana e meses', () => {
+  // Domingo, 8 de novembro de 2026, 15:00 em Brasília.
+  const now = Date.parse('2026-11-08T18:00:00Z')
+  test('dia curto', () => {
+    expect(dayShort('2026-11-08T23:00:00Z', now)).toBe('hoje')
+    expect(dayShort('2026-11-09T23:00:00Z', now)).toBe('amanhã')
+    expect(dayShort('2026-11-14T23:00:00Z', now)).toBe('sáb 14')
+  })
+  test('semana de domingo a sábado', () => {
+    expect(weekOffset('2026-11-14T23:00:00Z', now)).toBe(0)
+    expect(weekOffset('2026-11-15T19:00:00Z', now)).toBe(1)
+    expect(weekOffset('2026-11-23T19:00:00Z', now)).toBe(2)
+  })
+  test('meses', () => {
+    expect(
+      monthsLabel([
+        { startsAt: '2026-11-01T19:00:00Z' },
+        { startsAt: '2026-10-24T22:00:00Z' }
+      ])
+    ).toBe('outubro e novembro')
   })
 })

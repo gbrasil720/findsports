@@ -2,33 +2,35 @@ import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useQuery } from '@tanstack/react-query'
 import * as Calendar from 'expo-calendar/legacy'
 import { type Href, useRouter } from 'expo-router'
-import { Fragment, useRef, useState } from 'react'
+import { Fragment, useState } from 'react'
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   View
 } from 'react-native'
-import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Card } from '@/components/card'
 import { CheckInCard } from '@/components/check-in'
 import { MyGamesEmpty } from '@/components/empty-states'
-import { BarRow, dayLabel, Perforation, Photo } from '@/components/explore'
+import { BarRow, dayLabel } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
-import { Glass } from '@/components/glass'
+import {
+  GameLine,
+  GroupLabel,
+  LineList,
+  LineState
+} from '@/components/game-line'
 import { useLayout, useNavInsets } from '@/components/layout'
-import { haptic, usePressScale } from '@/components/motion'
+import { haptic } from '@/components/motion'
+import { Segmented } from '@/components/segmented'
 import { useSoon } from '@/components/soon'
 import { useTabBarSpace } from '@/components/tab-bar'
-import { PaletteProvider, usePalette } from '@/components/theme'
+import { usePalette } from '@/components/theme'
 import {
   ACID,
   ErrorState,
-  GlassRound,
   Icon,
   INK,
   LIVE,
@@ -45,13 +47,13 @@ import { formatTime, searchCenter } from '@/lib/explore'
 import { dayKey, NO_FILTERS, searchInput } from '@/lib/filters'
 import {
   calendarEvent,
+  dayShort,
   formatCode,
   type MyGame,
-  pastLabel,
-  shortDate,
+  monthsLabel,
   showsCheckIn,
-  thisMonth,
-  todayHeadline
+  todayHeadline,
+  weekOffset
 } from '@/lib/my-games'
 import { trpc } from '@/lib/trpc'
 
@@ -84,20 +86,10 @@ export default function MyGames() {
   const toRate = new Set(postGame.data?.map((item) => item.eventId))
   const [first, ...rest] = upcoming
 
-  // "Próximas" e "Anteriores" levam à seção, não filtram: o design mostra as
-  // duas na mesma tela.
-  const scroll = useRef<ScrollView>(null)
-  const pastY = useRef(0)
   const [tab, setTab] = useState<'next' | 'past'>('next')
-  const goTo = (target: 'next' | 'past') => {
-    if (target === tab) return
-    haptic.select()
-    setTab(target)
-    scroll.current?.scrollTo({
-      y: target === 'past' ? pastY.current - 12 : 0,
-      animated: true
-    })
-  }
+  // Anteriores: o que falta avaliar primeiro, o resto pelo mês.
+  const toRateList = past.filter((game) => toRate.has(game.eventId))
+  const done = past.filter((game) => !toRate.has(game.eventId))
 
   const openCode = (game: MyGame) => router.push(`/codigo/${game.eventId}`)
   // Agenda do celular (WEB-406): o formulário de evento do próprio iOS, já
@@ -108,19 +100,6 @@ export default function MyGames() {
         if (action === 'saved') haptic.success()
       })
       .catch(() => soon.show('Não deu para abrir a agenda'))
-  const pickForCalendar = () => {
-    const [only] = upcoming
-    if (!only) return soon.show('Marque um jogo para pôr na agenda')
-    if (upcoming.length === 1) return addToCalendar(only)
-    Alert.alert('Pôr na agenda', 'Qual jogo?', [
-      // ponytail: os quatro mais próximos; mais que isso o alerta não comporta.
-      ...upcoming.slice(0, 4).map((game) => ({
-        text: `${gameTitle(game)} · ${dayLabel(game.startsAt, Date.now()).toLowerCase()}`,
-        onPress: () => addToCalendar(game)
-      })),
-      { text: 'Cancelar', style: 'cancel' as const }
-    ])
-  }
   const openBar = (game: MyGame) =>
     game.barActive ? router.push(`/bar/${game.barId}` as Href) : undefined
   const checkIn = (game: MyGame) =>
@@ -175,7 +154,6 @@ export default function MyGames() {
       ]}
     >
       <ScrollView
-        ref={scroll}
         style={aside ? { width: listWidth, flexGrow: 0 } : undefined}
         contentContainerStyle={[
           styles.body,
@@ -184,29 +162,12 @@ export default function MyGames() {
         ]}
         refreshControl={<RefreshControl {...pull} tintColor={palette.muted} />}
       >
-        {/* Dentro da aba "Você", sem voltar: o título divide a linha com a
-            agenda, como no design. */}
-        <View style={styles.top}>
-          <View style={{ flex: 1 }}>
-            <Title lines={[['Meus jogos']]} size={40} color={palette.ink} />
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Pôr na agenda do celular"
-            hitSlop={8}
-            onPress={pickForCalendar}
-          >
-            <GlassRound>
-              <Icon
-                name="calendar"
-                size={18}
-                color={palette.ink}
-                // O ponto vermelho do design, no claro e no escuro.
-                accent={LIVE}
-              />
-            </GlassRound>
-          </Pressable>
-        </View>
+        <Text
+          accessibilityRole="header"
+          style={[styles.title, { color: palette.ink }]}
+        >
+          MEUS JOGOS
+        </Text>
 
         {mine.isPending ? (
           <ActivityIndicator color={palette.ink} style={{ marginTop: 40 }} />
@@ -244,103 +205,109 @@ export default function MyGames() {
           </View>
         ) : (
           <>
-            <View style={styles.tabs}>
-              <TabChip
-                label={`Próximas · ${upcoming.length}`}
-                selected={tab === 'next'}
-                onPress={() => goTo('next')}
-              />
-              <TabChip
-                label="Anteriores"
-                selected={tab === 'past'}
-                onPress={() => goTo('past')}
-              />
-            </View>
-
-            {first ? (
+            <Segmented
+              items={[
+                { key: 'next', label: 'Próximos' },
+                { key: 'past', label: 'Anteriores' }
+              ]}
+              value={tab}
+              onChange={setTab}
+            />
+            {tab === 'next' ? (
               <>
-                <NextGame
-                  game={first}
-                  now={now}
-                  onCode={() => openCode(first)}
-                  onBar={() => openBar(first)}
-                />
-                {checkIn(first)}
+                {first ? (
+                  <>
+                    <MiniTicket
+                      game={first}
+                      now={now}
+                      onCode={() => openCode(first)}
+                      onBar={() => openBar(first)}
+                      onCalendar={() => addToCalendar(first)}
+                    />
+                    {first.code ? null : checkIn(first)}
+                  </>
+                ) : (
+                  <Text style={[text(14), { color: palette.muted }]}>
+                    Nenhum jogo marcado daqui para a frente.
+                  </Text>
+                )}
+                {WEEKS.map(({ label, test }) => {
+                  const group = rest.filter((game) =>
+                    test(weekOffset(game.startsAt, now))
+                  )
+                  if (!group.length) return null
+                  return (
+                    <Fragment key={label}>
+                      <GroupLabel>{label}</GroupLabel>
+                      <LineList>
+                        {group.map((game, index) => (
+                          <GameLine
+                            key={game.eventId}
+                            first={index === 0}
+                            time={formatTime(game.startsAt)}
+                            day={dayShort(game.startsAt, now)}
+                            title={gameTitle(game)}
+                            sub={
+                              game.code
+                                ? `${game.barName} · código ${formatCode(game.code)}`
+                                : game.barName
+                            }
+                            onPress={() =>
+                              game.code ? openCode(game) : openBar(game)
+                            }
+                          />
+                        ))}
+                      </LineList>
+                    </Fragment>
+                  )
+                })}
               </>
             ) : (
-              <Text style={[text(14), { color: palette.muted }]}>
-                Nenhum jogo marcado daqui para a frente.
-              </Text>
-            )}
-            {rest.map((game) => (
-              <Fragment key={game.eventId}>
-                <LaterGame
-                  game={game}
-                  now={now}
-                  onPress={() => (game.code ? openCode(game) : openBar(game))}
-                />
-                {checkIn(game)}
-              </Fragment>
-            ))}
-            {upcoming.some((game) => game.code) ? (
-              <Text
-                style={[
-                  text(13, 'Regular', 1.45),
-                  { color: palette.muted, textAlign: 'center' }
-                ]}
-              >
-                O código vale só no dia do jogo, no bar que você marcou.
-              </Text>
-            ) : null}
-
-            {past.length ? (
-              <View
-                onLayout={(event) => {
-                  pastY.current = event.nativeEvent.layout.y
-                }}
-                style={{ gap: 12 }}
-              >
-                <View style={styles.heading}>
-                  <Text style={[text(16, 'Bold'), { color: palette.ink }]}>
-                    Anteriores
-                  </Text>
-                  <Text style={[text(12.5), { color: palette.muted }]}>
-                    {thisMonth(past, now) ?? ''}
-                  </Text>
-                </View>
+              <>
                 {past.map(checkIn)}
-                <Card soft>
-                  <View style={styles.list}>
-                    {past.map((game, index) => (
-                      <PastRow
-                        key={game.eventId}
-                        game={game}
-                        first={index === 0}
-                        rate={toRate.has(game.eventId)}
-                        onRate={() => router.push(`/pos-jogo/${game.eventId}`)}
-                      />
-                    ))}
-                  </View>
-                </Card>
-              </View>
-            ) : null}
-            <Text
-              style={[
-                text(12.5, 'Regular', 1.45),
-                styles.note,
-                { color: palette.muted }
-              ]}
-            >
-              Cada código validado conta para as conquistas e para o{' '}
-              <Text
-                accessibilityRole="link"
-                onPress={() => router.navigate('/voce/ranking')}
-                style={[text(12.5, 'Bold', 1.45), { color: palette.ink }]}
-              >
-                ranking do mês
-              </Text>
-              .
-            </Text>
+                {toRateList.length ? (
+                  <>
+                    <GroupLabel>Falta avaliar</GroupLabel>
+                    <LineList>
+                      {toRateList.map((game, index) => (
+                        <PastLine
+                          key={game.eventId}
+                          game={game}
+                          now={now}
+                          first={index === 0}
+                          rate
+                          onPress={() =>
+                            router.push(`/pos-jogo/${game.eventId}`)
+                          }
+                        />
+                      ))}
+                    </LineList>
+                  </>
+                ) : null}
+                {done.length ? (
+                  <>
+                    <GroupLabel>{monthsLabel(done)}</GroupLabel>
+                    <LineList>
+                      {done.map((game, index) => (
+                        <PastLine
+                          key={game.eventId}
+                          game={game}
+                          now={now}
+                          first={index === 0}
+                          onPress={() => openBar(game)}
+                        />
+                      ))}
+                    </LineList>
+                  </>
+                ) : null}
+                {!past.length ? (
+                  <Text style={[text(14), { color: palette.muted }]}>
+                    Os jogos que você marcou e já passaram aparecem aqui.
+                  </Text>
+                ) : null}
+                <RankingFoot />
+              </>
+            )}
           </>
         )}
       </ScrollView>
@@ -500,317 +467,282 @@ function TodayNear() {
   )
 }
 
-function TabChip({
-  label,
-  selected,
-  onPress
-}: {
-  label: string
-  selected: boolean
-  onPress: () => void
-}) {
-  const palette = usePalette()
-  return (
-    <Pressable
-      accessibilityRole="tab"
-      accessibilityState={{ selected }}
-      onPress={onPress}
-      hitSlop={6}
-      style={[
-        styles.tab,
-        selected
-          ? { backgroundColor: ACID, borderColor: ACID }
-          : { borderColor: palette.line }
-      ]}
-    >
-      <Text
-        style={[text(13, 'SemiBold'), { color: selected ? INK : palette.ink }]}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  )
-}
+/** Os grupos dos próximos, pela semana do jogo (domingo a sábado). */
+const WEEKS = [
+  { label: 'Esta semana', test: (week: number) => week <= 0 },
+  { label: 'Próxima semana', test: (week: number) => week === 1 },
+  { label: 'Mais pra frente', test: (week: number) => week >= 2 }
+]
 
-/** O próximo jogo: faixa acid "Você vai", o bar e o código com "Mostrar". */
-function NextGame({
+/**
+ * O próximo jogo como mini ingresso (`.mini3`): o dia e a hora, "começa
+ * em" no de hoje, o jogo em Anton, o bar e a ação do momento: "Ver código"
+ * no Elite, senão o bar; e "Agenda", o formulário do iOS.
+ */
+function MiniTicket({
   game,
   now,
   onCode,
-  onBar
+  onBar,
+  onCalendar
 }: {
   game: MyGame
   now: number
   onCode: () => void
   onBar: () => void
+  onCalendar: () => void
 }) {
   const palette = usePalette()
-  const show = usePressScale()
-  const when = `${dayLabel(game.startsAt, now)} · ${formatTime(game.startsAt)}`
-  const shadow = palette.dark ? 'rgba(201,241,53,.22)' : 'rgba(201,241,53,.85)'
+  const day = dayShort(game.startsAt, now)
+  const minutes = Math.round((Date.parse(game.startsAt) - now) / 60_000)
+  const live = minutes <= 0 && !game.ended
+  const chip = live
+    ? 'ao vivo'
+    : day === 'hoje'
+      ? `começa em ${minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)}h${String(minutes % 60).padStart(2, '0')}`}`
+      : null
+  const sides = gameTitle(game).split(' × ')
   return (
-    <Card shadow={shadow} offset={5} notched>
-      <View style={styles.band}>
-        <Icon name="check" size={14} color={INK} />
-        <Text style={[text(13.5, 'Bold', 1.2), { color: INK, flex: 1 }]}>
-          {game.validated ? 'Validado' : 'Você vai'}
+    <View
+      style={[
+        styles.mini,
+        palette.dark && {
+          backgroundColor: '#1c1c18',
+          borderWidth: 1,
+          borderColor: 'rgba(241,238,230,.08)'
+        }
+      ]}
+    >
+      <View style={styles.miniHead}>
+        <Text style={styles.miniWhen}>
+          {`${day} · ${formatTime(game.startsAt)}`.toLocaleUpperCase('pt-BR')}
         </Text>
-        <Text style={[styles.mono, { color: INK }]}>{when}</Text>
+        {chip ? (
+          <View
+            style={[styles.miniChip, live && { backgroundColor: '#e8320c' }]}
+          >
+            <Text style={styles.miniChipText}>
+              {chip.toLocaleUpperCase('pt-BR')}
+            </Text>
+          </View>
+        ) : null}
       </View>
-      <Pressable
-        accessibilityRole="link"
-        accessibilityLabel={`${game.barName}, ${gameTitle(game)}`}
-        onPress={onBar}
-        style={styles.barRow}
+      <Text
+        numberOfLines={2}
+        adjustsFontSizeToFit
+        minimumFontScale={0.75}
+        style={styles.miniTitle}
       >
-        <Photo uri={game.photoUrl} name={game.barName} style={styles.photo} />
-        <View style={{ flex: 1 }}>
-          <Text
-            style={[text(17, 'Bold', 1.3), { color: palette.ink }]}
-            numberOfLines={1}
-          >
-            {game.barName}
-          </Text>
-          <Text
-            style={[text(13, 'Regular', 1.4), { color: palette.muted }]}
-            numberOfLines={1}
-          >
-            {/* Fora de confronto o título já é o campeonato: não repete. */}
-            {gameTitle(game) === game.championship
-              ? game.championship
-              : `${gameTitle(game)} · ${game.championship}`}
-          </Text>
-        </View>
-      </Pressable>
+        {sides.length === 2 ? (
+          <>
+            {sides[0]?.toLocaleUpperCase('pt-BR')}
+            <Text style={{ color: ACID, fontSize: 22.5 }}> × </Text>
+            {sides[1]?.toLocaleUpperCase('pt-BR')}
+          </>
+        ) : (
+          gameTitle(game).toLocaleUpperCase('pt-BR')
+        )}
+      </Text>
+      <Text
+        numberOfLines={1}
+        style={[text(13.5, 'Regular', 1.35), styles.miniLine]}
+      >
+        {[
+          game.barName,
+          game.neighborhood,
+          game.goingCount ? `${game.goingCount} vão` : null
+        ]
+          .filter(Boolean)
+          .join(' · ')}
+      </Text>
       {!game.barActive ? (
-        <Text style={[text(13, 'SemiBold', 1.4), styles.offAir]}>
+        <Text style={[text(13, 'SemiBold', 1.4), { color: '#f3421d' }]}>
           Este bar não está mais na Onside.
           {game.code && !game.validated
             ? ' Seu código continua valendo: mostre no balcão.'
             : ''}
         </Text>
       ) : null}
-      {game.code ? (
-        <>
-          {/* O furo na cor da tela, não da folha. */}
-          <PaletteProvider
-            value={{
-              ...palette,
-              sheet: palette.bg,
-              dash: palette.dark ? 'rgba(241,238,230,.18)' : palette.dash
-            }}
-          >
-            <Perforation shadow={{ color: shadow, offset: 5 }} inset={16} />
-          </PaletteProvider>
-          <View style={styles.codeRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={[text(12), { color: palette.muted }]}>
-                {/* Bar que confirma pela comanda (WEB-412). */}
-                {game.confirmsCodesLater
-                  ? 'Para o garçom: anote na comanda'
-                  : 'Código'}
-              </Text>
-              <Text
-                style={[styles.code, { color: palette.ink }]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-              >
-                {formatCode(game.code)}
-              </Text>
-              {game.window ? (
-                <Text
-                  style={[text(12), { color: palette.muted, marginTop: 4 }]}
-                >
-                  Vale das {formatTime(game.window.opensAt)} às{' '}
-                  {formatTime(game.window.closesAt)}
-                </Text>
-              ) : null}
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Mostrar o código"
-              onPress={onCode}
-              onPressIn={show.onPressIn}
-              onPressOut={show.onPressOut}
-            >
-              <Animated.View style={show.style}>
-                <Glass
-                  tone={palette.dark ? 'dark' : 'light'}
-                  interactive
-                  style={styles.show}
-                >
-                  <Icon
-                    name="qr"
-                    size={16}
-                    color={palette.ink}
-                    accent={palette.dark ? ACID : palette.accent}
-                  />
-                  <Text
-                    style={[text(13.5, 'Bold', 1.2), { color: palette.ink }]}
-                  >
-                    Mostrar
-                  </Text>
-                </Glass>
-              </Animated.View>
-            </Pressable>
-          </View>
-        </>
-      ) : null}
-    </Card>
+      <View style={styles.miniActions}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={game.code ? onCode : onBar}
+          style={[styles.miniButton, styles.miniAcid]}
+        >
+          <Icon
+            name={game.code ? 'qr' : 'pin'}
+            size={18}
+            color={INK}
+            accent={INK}
+          />
+          <Text style={[text(14.5, 'Bold', 1.2), { color: INK }]}>
+            {game.code ? 'Ver código' : 'Ver o bar'}
+          </Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Pôr na agenda do celular"
+          onPress={onCalendar}
+          style={[styles.miniButton, styles.miniGhost]}
+        >
+          <Icon name="calendar" size={18} color={PAPER} accent={LIVE} />
+          <Text style={[text(14.5, 'Bold', 1.2), { color: PAPER }]}>
+            Agenda
+          </Text>
+        </Pressable>
+      </View>
+    </View>
   )
 }
 
-/** Os outros próximos: "Você vai · amanhã", o bar e o jogo numa linha. */
-function LaterGame({
+/** Uma linha dos anteriores: o estado à direita (Avaliar, ★ 4, Não fui). */
+function PastLine({
   game,
   now,
+  first,
+  rate,
   onPress
 }: {
   game: MyGame
   now: number
+  first: boolean
+  rate?: boolean
   onPress: () => void
 }) {
-  const palette = usePalette()
-  const line = [
-    gameTitle(game),
-    formatTime(game.startsAt),
-    game.code ? `código ${formatCode(game.code)}` : null
-  ]
-    .filter(Boolean)
-    .join(' · ')
-  const press = usePressScale(0.985)
+  const how = game.validated
+    ? 'código validado'
+    : game.checkedIn
+      ? 'check-in'
+      : null
+  const no = game.attended === false
   return (
-    <Pressable
-      accessibilityRole="button"
+    <GameLine
+      first={first}
+      dim={no && !rate}
+      time={formatTime(game.startsAt)}
+      day={dayShort(game.startsAt, now)}
+      title={gameTitle(game)}
+      sub={how ? `${game.barName} · ${how}` : game.barName}
       onPress={onPress}
-      onPressIn={press.onPressIn}
-      onPressOut={press.onPressOut}
-    >
-      <Animated.View style={press.style}>
-        <Card soft>
-          <View style={[styles.barRow, { paddingBottom: 14 }]}>
-            <Photo
-              uri={game.photoUrl}
-              name={game.barName}
-              style={styles.photo}
-            />
-            <View style={{ flex: 1 }}>
-              <View style={styles.when}>
-                <Icon
-                  name="calendar"
-                  size={14}
-                  color={palette.dark ? ACID : palette.ink}
-                  accent={palette.dark ? ACID : palette.accent}
-                />
-                <Text
-                  style={[
-                    text(12.5, 'Bold', 1.3),
-                    { color: palette.dark ? ACID : palette.ink }
-                  ]}
-                >
-                  Você vai · {dayLabel(game.startsAt, now).toLowerCase()}
-                </Text>
-              </View>
-              <Text
-                style={[text(16, 'Bold', 1.3), { color: palette.ink }]}
-                numberOfLines={1}
-              >
-                {game.barName}
-              </Text>
-              <Text
-                style={[text(12.5, 'Regular', 1.4), { color: palette.muted }]}
-                numberOfLines={1}
-              >
-                {line}
-              </Text>
-            </View>
-          </View>
-        </Card>
-      </Animated.View>
-    </Pressable>
+      right={
+        rate ? (
+          <LineState kind="rate" label="Avaliar" />
+        ) : game.myStars ? (
+          <LineState kind="done" label={`★ ${game.myStars}`} />
+        ) : no ? (
+          <LineState kind="no" label="Não fui" />
+        ) : null
+      }
+    />
   )
 }
 
-function PastRow({
-  game,
-  first,
-  rate,
-  onRate
-}: {
-  game: MyGame
-  first: boolean
-  rate: boolean
-  onRate: () => void
-}) {
+/** O rodapé do ranking do mês (WEB-409): "3º entre os amigos em novembro". */
+function RankingFoot() {
+  const router = useRouter()
   const palette = usePalette()
-  const label = pastLabel(game)
-  const confirmed = game.validated || game.visited
-  const press = usePressScale()
+  const ranking = useQuery(
+    trpc.ranking.friends.queryOptions({ metric: 'bars' })
+  )
+  const rows = ranking.data?.rows ?? []
+  const me = rows.find((row) => row.me)
+  // Sozinho no ranking não tem posição para contar.
+  if (!me || rows.length < 2) return null
+  const month = new Date().toLocaleDateString('pt-BR', {
+    month: 'long',
+    timeZone: 'America/Sao_Paulo'
+  })
   return (
-    <View
-      style={[
-        styles.past,
-        !first && { borderTopWidth: 1, borderTopColor: palette.line }
-      ]}
+    <Pressable
+      accessibilityRole="link"
+      onPress={() => router.navigate('/voce/ranking')}
+      style={[styles.rank, { backgroundColor: palette.mark }]}
     >
-      <Icon
-        name="ticket"
-        size={22}
-        color={palette.muted}
-        accent={palette.accent}
-      />
-      <View style={{ flex: 1 }}>
-        <Text
-          style={[text(14.5, 'SemiBold', 1.3), { color: palette.ink }]}
-          numberOfLines={1}
-        >
-          {game.barName}
-        </Text>
-        <Text
-          style={[text(12.5, 'Regular', 1.4), { color: palette.muted }]}
-          numberOfLines={1}
-        >
-          {gameTitle(game)} · {shortDate(game.startsAt)}
-        </Text>
-      </View>
-      {rate ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Avaliar o ${game.barName}`}
-          onPress={onRate}
-          onPressIn={press.onPressIn}
-          onPressOut={press.onPressOut}
-          hitSlop={8}
-        >
-          <Animated.View style={[styles.rate, press.style]}>
-            <Text style={[text(12.5, 'Bold', 1.2), { color: PAPER }]}>
-              Avaliar
-            </Text>
-          </Animated.View>
-        </Pressable>
-      ) : (
-        <View
-          style={[
-            styles.badge,
-            { backgroundColor: confirmed ? ACID : palette.mark }
-          ]}
-        >
-          <Text
-            style={[
-              text(10.5, 'Bold', 1.2),
-              { color: confirmed ? INK : palette.ink }
-            ]}
-          >
-            {label}
-          </Text>
-        </View>
-      )}
-    </View>
+      <Text style={[styles.rankNumber, { color: palette.ink }]}>
+        {me.position}º
+      </Text>
+      <Text
+        style={[text(14, 'Regular', 1.35), { color: palette.ink, flex: 1 }]}
+      >
+        entre os amigos em {month} ·{' '}
+        <Text style={{ textDecorationLine: 'underline' }}>Ver ranking</Text>
+      </Text>
+    </Pressable>
   )
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  // `.pg h3`: Anton 44 sem o entrelinha curto (margem negativa).
+  title: { fontFamily: 'Anton', fontSize: 44, marginVertical: -10.7 },
+  mini: {
+    backgroundColor: INK,
+    borderRadius: 24,
+    padding: 16,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  },
+  miniHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  miniWhen: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11,
+    letterSpacing: 0.88,
+    color: '#aaa9a4',
+    marginVertical: -1.6
+  },
+  miniChip: {
+    paddingVertical: 6,
+    paddingHorizontal: 9,
+    borderRadius: 999,
+    backgroundColor: ACID
+  },
+  miniChipText: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11,
+    color: INK,
+    marginVertical: -1.6
+  },
+  miniTitle: {
+    fontFamily: 'Anton',
+    fontSize: 30,
+    color: PAPER,
+    marginVertical: -7.3
+  },
+  miniLine: { color: '#c9c7c0' },
+  miniActions: { flexDirection: 'row', gap: 8 },
+  miniButton: {
+    flex: 1,
+    height: 40,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8
+  },
+  miniAcid: {
+    backgroundColor: ACID,
+    shadowColor: '#7f9a12',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  },
+  miniGhost: { borderWidth: 1.5, borderColor: 'rgba(241,238,230,.3)' },
+  rank: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 20
+  },
+  rankNumber: { fontFamily: 'Anton', fontSize: 30, marginVertical: -7.3 },
   body: { paddingHorizontal: 16, gap: 14 },
   top: {
     flexDirection: 'row',

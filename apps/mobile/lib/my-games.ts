@@ -141,3 +141,46 @@ export function todayHeadline(games: { title: string; startsAt: string }[]) {
   const [startsAt, title] = best[0].split('\n')
   return { title, startsAt, bars: best[1] }
 }
+
+/** "2026-11-08": o dia em Brasília. */
+const brasiliaDate = (at: string | number) =>
+  new Date(at).toLocaleDateString('en-CA', { timeZone: TZ })
+
+/** "hoje", "amanhã", "sáb 14": o dia curto embaixo da hora (rodada 4). */
+export function dayShort(startsAt: string, now: number) {
+  const day = brasiliaDate(startsAt)
+  if (day === brasiliaDate(now)) return 'hoje'
+  if (day === brasiliaDate(now + 86_400_000)) return 'amanhã'
+  const part = (options: Intl.DateTimeFormatOptions) =>
+    new Date(startsAt).toLocaleDateString('pt-BR', { ...options, timeZone: TZ })
+  return `${part({ weekday: 'short' }).replace('.', '')} ${part({ day: 'numeric' })}`
+}
+
+/**
+ * A semana do jogo, de domingo a sábado em Brasília: 0 é esta, 1 a
+ * próxima, 2 ou mais "mais pra frente".
+ */
+export function weekOffset(startsAt: string, now: number) {
+  const noon = (ymd: string) => Date.parse(`${ymd}T12:00:00Z`)
+  const today = noon(brasiliaDate(now))
+  const weekStart = today - new Date(today).getUTCDay() * 86_400_000
+  const day = noon(brasiliaDate(startsAt))
+  return Math.floor((day - weekStart) / (7 * 86_400_000))
+}
+
+/** "outubro e novembro": os meses dos jogos, do mais antigo ao mais novo. */
+export function monthsLabel(games: { startsAt: string }[]) {
+  const seen: string[] = []
+  for (const game of [...games].sort((a, b) =>
+    a.startsAt.localeCompare(b.startsAt)
+  )) {
+    const month = new Date(game.startsAt).toLocaleDateString('pt-BR', {
+      month: 'long',
+      timeZone: TZ
+    })
+    if (!seen.includes(month)) seen.push(month)
+  }
+  return seen.length > 1
+    ? `${seen.slice(0, -1).join(', ')} e ${seen.at(-1)}`
+    : (seen[0] ?? '')
+}
