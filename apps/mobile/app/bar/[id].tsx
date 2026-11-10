@@ -558,8 +558,10 @@ export function BarDetail({
     data.checkIn ? (
       <CheckInCard
         barId={data.id}
+        barName={data.name}
         eventId={data.checkIn.eventId}
         done={data.checkIn.done}
+        at={data.checkIn.at}
       />
     ) : null
   ) : null
@@ -1542,6 +1544,9 @@ export function BarDetail({
           game={going}
           now={now}
           attending={mine.attending}
+          here={
+            data?.checkIn?.done === true && data.checkIn.eventId === going.id
+          }
           code={mine.code}
           bottom={Math.max(insets.bottom, 12)}
           onPress={attend}

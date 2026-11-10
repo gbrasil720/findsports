@@ -128,6 +128,7 @@ export default function MyGames() {
       <CheckInCard
         key={`check-in-${game.eventId}`}
         barId={game.barId}
+        barName={game.barName}
         eventId={game.eventId}
         done={game.visited}
       />

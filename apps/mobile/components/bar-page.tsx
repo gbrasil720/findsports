@@ -156,6 +156,7 @@ export function AttendDock({
   game,
   now,
   attending,
+  here,
   code,
   bottom,
   onPress,
@@ -164,6 +165,8 @@ export function AttendDock({
   game: CardGame
   now: number
   attending: boolean
+  /** O check-in deste jogo foi feito: "Você está aqui" (rodada 3). */
+  here?: boolean
   /** O código do balcão (Elite): marcado, o botão vira "Ver código". */
   code: string | null
   bottom: number
@@ -190,7 +193,7 @@ export function AttendDock({
       {/* Marcado (rodada 2, tela 3), o rodapé diz o estado; é troca, não
           deslizamento: crossfade de 150 ms. */}
       <Animated.View
-        key={attending ? 'marcado' : 'livre'}
+        key={here ? 'aqui' : attending ? 'marcado' : 'livre'}
         entering={SWAP}
         style={{ flex: 1, minWidth: 0 }}
       >
@@ -202,7 +205,11 @@ export function AttendDock({
             numberOfLines={1}
             style={[text(14.5, 'Bold', 1.25), { color: palette.ink }]}
           >
-            {attending ? 'Presença marcada' : gameTitle(game)}
+            {here
+              ? 'Você está aqui'
+              : attending
+                ? 'Presença marcada'
+                : gameTitle(game)}
           </Text>
         </View>
         <Text

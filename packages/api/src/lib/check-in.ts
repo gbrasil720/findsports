@@ -101,13 +101,18 @@ export async function readCheckIn(
   userId: string,
   games: { id: string; startsAt: Date; endsAt: Date | null }[],
   now = new Date()
-): Promise<{ eventId: string; done: boolean } | null> {
+): Promise<{ eventId: string; done: boolean; at: string | null } | null> {
   const game = games.find((g) => isWithinValidationWindow(g, now))
   if (!game) return null
   const [found] = await db
-    .select({ eventId: visit.eventId })
+    .select({ eventId: visit.eventId, at: visit.visitedAt })
     .from(visit)
     .where(and(eq(visit.userId, userId), eq(visit.eventId, game.id)))
     .limit(1)
-  return { eventId: game.id, done: Boolean(found) }
+  // `at`: a hora da presença ("Presença confirmada · 21:47", rodada 3).
+  return {
+    eventId: game.id,
+    done: Boolean(found),
+    at: found?.at ? new Date(found.at).toISOString() : null
+  }
 }

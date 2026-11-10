@@ -49,6 +49,10 @@ export const haptic = {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(
       quiet
     ),
+  warning: () =>
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(
+      quiet
+    ),
   /** O selo da carteirinha encostando no papel. */
   stamp: () =>
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(quiet)
