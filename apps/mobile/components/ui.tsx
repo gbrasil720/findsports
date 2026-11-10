@@ -40,7 +40,7 @@ import Animated, {
   withTiming
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import Svg, { Circle, G, Path, Rect } from 'react-native-svg'
+import Svg, { Circle, Ellipse, G, Path, Rect } from 'react-native-svg'
 import { AuthBrand } from '@/components/auth-brand'
 import { Glass } from '@/components/glass'
 import { NAV, useLayout } from '@/components/layout'
@@ -627,6 +627,359 @@ const ICONS = {
       <Circle cx={7.4} cy={5.6} r={2.6} fill={a} />
       <Circle cx={11} cy={4.6} r={2.9} fill={a} />
       <Circle cx={14.2} cy={5.8} r={2.3} fill={a} />
+    </>
+  ),
+  coberta: (c: string, a: string) => (
+    <>
+      <Path d="M1.8 11.2 12 3.6l10.2 7.6v1.9H1.8z" fill={c} opacity={0.3} />
+      <Rect x={4.6} y={12.6} width={2.4} height={8} rx={1.2} fill={c} />
+      <Rect x={17} y={12.6} width={2.4} height={8} rx={1.2} fill={c} />
+      <Path d="M1.8 11.2 12 3.6l10.2 7.6-1.2 1.6L12 6.2l-9 6.6z" fill={c} />
+      <Circle cx={12} cy={15.6} r={2} fill={a} />
+    </>
+  ),
+  acessivel: (c: string, a: string) => (
+    <>
+      <Circle
+        cx={10.4}
+        cy={15.2}
+        r={5.6}
+        fill="none"
+        stroke={c}
+        strokeWidth={2.4}
+        opacity={0.3}
+      />
+      <Path d="M8.8 8h2.6v4.6h4.8l2.6 6.2-2.2.9-2-4.7H8.8z" fill={c} />
+      <Circle cx={10.1} cy={4.6} r={2.1} fill={a} />
+    </>
+  ),
+  pet: (c: string, a: string) => (
+    <>
+      <Ellipse cx={12} cy={15.6} rx={5.2} ry={4.4} fill={c} />
+      <Circle cx={5.6} cy={10.4} r={2.2} fill={c} opacity={0.3} />
+      <Circle cx={9.4} cy={6.4} r={2.2} fill={c} opacity={0.3} />
+      <Circle cx={14.6} cy={6.4} r={2.2} fill={c} opacity={0.3} />
+      <Circle cx={18.4} cy={10.4} r={2.2} fill={a} />
+    </>
+  ),
+  wifi: (c: string, a: string) => (
+    <>
+      <Path
+        d="M2.6 9.4a13.4 13.4 0 0 1 18.8 0M5.8 12.8a8.8 8.8 0 0 1 12.4 0"
+        stroke={c}
+        strokeWidth={2.4}
+        strokeLinecap="round"
+        fill="none"
+        opacity={0.3}
+      />
+      <Path
+        d="M9 16.2a4.3 4.3 0 0 1 6 0"
+        stroke={c}
+        strokeWidth={2.4}
+        strokeLinecap="round"
+        fill="none"
+      />
+      <Circle cx={12} cy={19.6} r={1.9} fill={a} />
+    </>
+  ),
+  petiscos: (c: string, a: string) => (
+    <>
+      <Path d="M3 12h18a9 7.6 0 0 1-18 0z" fill={c} opacity={0.3} />
+      <Path d="M5.2 15.4h13.6a9 7.6 0 0 1-13.6 0z" fill={c} />
+      <Rect
+        x={7.6}
+        y={4}
+        width={2.2}
+        height={8}
+        rx={1.1}
+        fill={c}
+        transform="rotate(-10 8.7 8)"
+      />
+      <Rect x={11.2} y={3} width={2.2} height={9} rx={1.1} fill={c} />
+      <Rect
+        x={14.6}
+        y={4}
+        width={2.2}
+        height={8}
+        rx={1.1}
+        fill={a}
+        transform="rotate(10 15.7 8)"
+      />
+    </>
+  ),
+  cozinha: (c: string, a: string) => (
+    <>
+      <Path
+        d="M14.6 3.2A8.6 8.6 0 1 0 20.8 16 7 7 0 0 1 14.6 3.2z"
+        fill={c}
+        opacity={0.3}
+      />
+      <Path
+        d="M7 3v6.4a2 2 0 0 0 1.4 1.9V21h2.2V11.3A2 2 0 0 0 12 9.4V3h-1.6v5H9.6V3H8.6v5H7.8V3z"
+        fill={c}
+      />
+      <Circle cx={18.6} cy={5.4} r={1.7} fill={a} />
+    </>
+  ),
+  vegetariano: (c: string, a: string) => (
+    <>
+      <Path
+        d="M20.6 3.4C11 3.6 4 8.6 4.4 17.2c0 1 .2 2 .5 3 8.4.5 14.4-5.6 15.7-16.8z"
+        fill={c}
+        opacity={0.3}
+      />
+      <Path
+        d="M4.4 20.4C7.6 14.6 11.6 10.6 17 7.4"
+        stroke={c}
+        strokeWidth={2.2}
+        strokeLinecap="round"
+        fill="none"
+      />
+      <Circle cx={17.6} cy={6.8} r={1.8} fill={a} />
+    </>
+  ),
+  drinks: (c: string, a: string) => (
+    <>
+      <Path d="M3.6 4h16.8L12 13.2z" fill={c} opacity={0.3} />
+      <Path d="M7.4 8.2h9.2L12 13.2z" fill={c} />
+      <Rect x={10.9} y={12.4} width={2.2} height={7} fill={c} />
+      <Rect x={7.6} y={18.6} width={8.8} height={2.2} rx={1.1} fill={c} />
+      <Circle cx={17.4} cy={5.2} r={2.1} fill={a} />
+    </>
+  ),
+  pix: (c: string, a: string) => (
+    <>
+      <Rect
+        x={6}
+        y={2.4}
+        width={12}
+        height={19.2}
+        rx={2.6}
+        fill={c}
+        opacity={0.3}
+      />
+      <Path d="M13.2 5.6 8.6 13h3l-1 5.4 4.8-7.6h-3z" fill={c} />
+      <Circle cx={12} cy={19.4} r={1.2} fill={a} />
+    </>
+  ),
+  cartao: (c: string, a: string) => (
+    <>
+      <Rect
+        x={2.4}
+        y={5}
+        width={19.2}
+        height={14}
+        rx={2.6}
+        fill={c}
+        opacity={0.3}
+      />
+      <Rect x={2.4} y={8.2} width={19.2} height={2.8} fill={c} />
+      <Rect x={5} y={14} width={6} height={2.2} rx={1.1} fill={c} />
+      <Rect x={15.2} y={13.4} width={3.6} height={3} rx={0.8} fill={a} />
+    </>
+  ),
+  vale: (c: string, a: string) => (
+    <>
+      <Path
+        d="M2.6 6.5h18.8v3a2.4 2.4 0 0 0 0 5v3H2.6v-3a2.4 2.4 0 0 0 0-5z"
+        fill={c}
+        opacity={0.3}
+      />
+      <Path
+        d="M9 8.4v3.2a1.4 1.4 0 0 0 1 1.3v3.7h1.6v-3.7a1.4 1.4 0 0 0 1-1.3V8.4h-1v2.6h-.6V8.4h-1v2.6h-.6V8.4z"
+        fill={c}
+      />
+      <Circle cx={16.4} cy={12} r={1.8} fill={a} />
+    </>
+  ),
+  couvert: (c: string, a: string) => (
+    <>
+      <Path
+        d="M3 7h18M3 11h18M3 15h18"
+        stroke={c}
+        strokeWidth={1.6}
+        opacity={0.3}
+      />
+      <Path d="M14 4.4v10.8a3 3 0 1 1-2.2-2.9V6.6l7-1.6v2.6z" fill={c} />
+      <Circle cx={18.8} cy={16.4} r={1.9} fill={a} />
+    </>
+  ),
+  estacionamento: (c: string, a: string) => (
+    <>
+      <Rect
+        x={3}
+        y={3}
+        width={18}
+        height={18}
+        rx={4.4}
+        fill={c}
+        opacity={0.3}
+      />
+      <Path
+        d="M8.4 6.4h4.6a4 4 0 0 1 0 8h-2.2v3.4H8.4zm2.4 2.2v3.6h2.1a1.8 1.8 0 0 0 0-3.6z"
+        fill={c}
+      />
+      <Circle cx={17.4} cy={17.4} r={1.7} fill={a} />
+    </>
+  ),
+  metro: (c: string, a: string) => (
+    <>
+      <Rect
+        x={4.6}
+        y={2.6}
+        width={14.8}
+        height={15.4}
+        rx={3.6}
+        fill={c}
+        opacity={0.3}
+      />
+      <Rect x={7} y={5.4} width={10} height={5} rx={1.4} fill={c} />
+      <Path
+        d="M7.6 18.6 5.4 21.4h2.6l1.6-2.2zm8.8 0 2.2 2.8H16l-1.6-2.2z"
+        fill={c}
+      />
+      <Circle cx={8.8} cy={14} r={1.5} fill={a} />
+      <Circle cx={15.2} cy={14} r={1.5} fill={a} />
+    </>
+  ),
+  bike: (c: string, a: string) => (
+    <>
+      <Circle
+        cx={5.8}
+        cy={15.6}
+        r={4}
+        fill="none"
+        stroke={c}
+        strokeWidth={2.2}
+        opacity={0.3}
+      />
+      <Circle
+        cx={18.2}
+        cy={15.6}
+        r={4}
+        fill="none"
+        stroke={c}
+        strokeWidth={2.2}
+        opacity={0.3}
+      />
+      <Path
+        d="M5.8 15.6 9.4 8.6h6.2l2.6 7M9.4 8.6l3.4 7h-7M12 6.4h3"
+        stroke={c}
+        strokeWidth={2}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <Circle cx={9.6} cy={5.8} r={1.6} fill={a} />
+    </>
+  ),
+  futebol: (c: string, a: string) => (
+    <>
+      <Circle cx={12} cy={12} r={9.4} fill={c} opacity={0.3} />
+      <Path d="m12 7.4 4.2 3-1.6 4.9H9.4l-1.6-4.9z" fill={c} />
+      <Path
+        d="M12 2.6v4.8M16.2 10.4l4.4-1.6M14.6 15.3l2.8 4M9.4 15.3l-2.8 4M7.8 10.4 3.4 8.8"
+        stroke={c}
+        strokeWidth={1.6}
+        fill="none"
+      />
+      <Circle cx={12} cy={11.6} r={1.4} fill={a} />
+    </>
+  ),
+  basquete: (c: string, a: string) => (
+    <>
+      <Circle cx={12} cy={12} r={9.4} fill={c} opacity={0.3} />
+      <Path
+        d="M2.6 12h18.8M12 2.6v18.8M5.4 5.4a9.4 9.4 0 0 1 0 13.2M18.6 5.4a9.4 9.4 0 0 0 0 13.2"
+        stroke={c}
+        strokeWidth={1.8}
+        fill="none"
+      />
+      <Circle cx={12} cy={12} r={1.6} fill={a} />
+    </>
+  ),
+  f1: (c: string, a: string) => (
+    <>
+      <Rect x={4} y={2.6} width={2.2} height={19} rx={1.1} fill={c} />
+      <Path d="M6.2 4h14v9.6h-14z" fill={c} opacity={0.3} />
+      <Path
+        d="M6.2 4h3.5v3.2H6.2zm7 0h3.5v3.2h-3.5zm-3.5 3.2h3.5v3.2H9.7zm7 0h3.5v3.2h-3.5zm-10.5 3.2h3.5v3.2H6.2zm7 0h3.5v3.2h-3.5z"
+        fill={c}
+      />
+      <Circle cx={18.4} cy={17.6} r={1.8} fill={a} />
+    </>
+  ),
+  ufc: (c: string, a: string) => (
+    <>
+      <Path
+        d="M6 9.4A5.4 5.4 0 0 1 11.4 4h3.2a5 5 0 0 1 5 5v4.4a5 5 0 0 1-5 5H9.4A3.4 3.4 0 0 1 6 15z"
+        fill={c}
+        opacity={0.3}
+      />
+      <Path
+        d="M6 15h13.4v1.4a3.6 3.6 0 0 1-3.6 3.6H9.6A3.6 3.6 0 0 1 6 16.4z"
+        fill={c}
+      />
+      <Path d="M9.6 8.2h6.6" stroke={c} strokeWidth={2} strokeLinecap="round" />
+      <Circle cx={4.6} cy={11.2} r={1.7} fill={a} />
+    </>
+  ),
+  nfl: (c: string, a: string) => (
+    <>
+      <Ellipse
+        cx={12}
+        cy={12}
+        rx={10}
+        ry={6}
+        transform="rotate(-35 12 12)"
+        fill={c}
+        opacity={0.3}
+      />
+      <Path
+        d="M8.4 15.6 15.6 8.4"
+        stroke={c}
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+      <Path
+        d="m10.6 11.4 2 2m-.6-3.4 2 2m-5-.6 2 2"
+        stroke={c}
+        strokeWidth={1.6}
+        strokeLinecap="round"
+      />
+      <Circle cx={18.4} cy={5.6} r={1.6} fill={a} />
+    </>
+  ),
+  tenis: (c: string, a: string) => (
+    <>
+      <Circle cx={12} cy={12} r={9.4} fill={c} opacity={0.3} />
+      <Path
+        d="M4.4 6.6a9.4 9.4 0 0 1 0 10.8M19.6 6.6a9.4 9.4 0 0 0 0 10.8"
+        stroke={c}
+        strokeWidth={2}
+        fill="none"
+      />
+      <Circle cx={12} cy={12} r={1.6} fill={a} />
+    </>
+  ),
+  volei: (c: string, a: string) => (
+    <>
+      <Circle cx={12} cy={12} r={9.4} fill={c} opacity={0.3} />
+      <Path
+        d="M12 2.6c-1.6 4 -1.2 7 0 9.4M12 12c3 1.6 6.2 2 9.2.6M12 12c-2.4 2.2-4.8 4.8-5.6 8.4"
+        stroke={c}
+        strokeWidth={2}
+        strokeLinecap="round"
+        fill="none"
+      />
+      <Circle cx={12} cy={12} r={1.6} fill={a} />
+    </>
+  ),
+  aovivo: (c: string, a: string) => (
+    <>
+      <Circle cx={12} cy={12} r={9} fill={c} opacity={0.3} />
+      <Circle cx={12} cy={12} r={5} fill={c} />
+      <Circle cx={12} cy={12} r={2.4} fill={a} />
     </>
   )
 }
