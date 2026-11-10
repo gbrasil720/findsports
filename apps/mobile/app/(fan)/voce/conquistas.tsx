@@ -20,6 +20,7 @@ import { Card, FilterChip } from '@/components/card'
 import { FirstMedals, MedalsEmpty } from '@/components/empty-states'
 import { GroupLabel } from '@/components/game-line'
 import { useLayout, useNavInsets } from '@/components/layout'
+import { Ladder } from '@/components/levels'
 import { Medal3D, MedalImage, useMedalPalette } from '@/components/medal'
 import {
   CoverMedal,
@@ -813,50 +814,6 @@ function LevelBoard({
   )
 }
 
-/** A escada dos cinco níveis (`.lad`): os passados em papel, o atual em acid. */
-export function Ladder({ current }: { current: number }) {
-  return (
-    <View style={styles.ladder}>
-      <View style={styles.ladderLine} />
-      {LEVELS.map((l) => {
-        const past = l.level < current
-        const now = l.level === current
-        return (
-          <View key={l.level} style={styles.rung}>
-            <View
-              style={[
-                styles.node,
-                past
-                  ? { backgroundColor: PAPER, borderWidth: 0 }
-                  : now
-                    ? styles.nodeNow
-                    : null
-              ]}
-            >
-              <Text
-                style={[
-                  styles.nodeText,
-                  { color: past || now ? INK : '#6b6a63' }
-                ]}
-              >
-                {l.level}
-              </Text>
-            </View>
-            <Text
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              style={[styles.rungName, { color: now ? PAPER : '#aaa9a4' }]}
-            >
-              {l.name}
-            </Text>
-            <Text style={styles.rungFrom}>{l.from}</Text>
-          </View>
-        )
-      })}
-    </View>
-  )
-}
-
 /** "Perto de sair" (`.nr`): a medalha apagada, o que falta e a barra. */
 function NearCard({
   a,
@@ -1292,38 +1249,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden'
   },
   levelFill: { height: '100%', backgroundColor: ACID },
-  ladder: { flexDirection: 'row' },
-  ladderLine: {
-    position: 'absolute',
-    left: '10%',
-    right: '10%',
-    top: 15,
-    height: 2,
-    backgroundColor: '#34342d'
-  },
-  rung: { flex: 1, alignItems: 'center', gap: 4 },
-  node: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#26261f',
-    borderWidth: 1.5,
-    borderColor: '#34342d',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  nodeNow: {
-    backgroundColor: ACID,
-    borderWidth: 4,
-    borderColor: 'rgba(201,241,53,.25)'
-  },
-  nodeText: { fontFamily: 'GeistMono-SemiBold', fontSize: 13 },
-  rungName: { ...text(10.5, 'SemiBold', 1.15), maxWidth: '96%' },
-  rungFrom: {
-    fontFamily: 'GeistMono-SemiBold',
-    fontSize: 9.5,
-    color: '#6b6a63'
-  },
   boardStats: { flexDirection: 'row', gap: 8 },
   boardStat: {
     flex: 1,

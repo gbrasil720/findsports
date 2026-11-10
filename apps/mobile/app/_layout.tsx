@@ -184,6 +184,11 @@ export default function Layout() {
                         : 'fullScreenModal'
                   }}
                 />
+                {/* Subiu de nível (rodada 6): o momento raro, tela cheia. */}
+                <Stack.Screen
+                  name="nivel"
+                  options={{ presentation: 'fullScreenModal' }}
+                />
                 {/* Todos os filtros (19d): folha alta sobre o Explorar. */}
                 <Stack.Screen
                   name="filtros"

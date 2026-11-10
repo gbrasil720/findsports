@@ -1,3 +1,4 @@
+import { levelFor } from '@findsports_oficial/api/lib/achievements'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
@@ -46,7 +47,14 @@ export function useNewAchievement() {
         if (raw === null) return
         const seen = new Set<string>(JSON.parse(raw))
         const fresh = latest(unlocked.filter((a) => !seen.has(a.id)))
-        if (fresh) router.push(`/conquista/${fresh.id}?nova=1`)
+        if (!fresh) return
+        // A medalha subiu o nível: o momento raro (rodada 6) no lugar dela.
+        const before = levelFor(
+          unlocked.filter((a) => seen.has(a.id)).length
+        ).level
+        if (levelFor(unlocked.length).level > before)
+          router.push({ pathname: '/nivel', params: { medalha: fresh.id } })
+        else router.push(`/conquista/${fresh.id}?nova=1`)
       })
       .catch(() => {})
   }, [list, userId, router])
