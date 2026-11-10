@@ -443,6 +443,10 @@ export async function readMyGames(
         WHERE r.actor_user_id = ${attendance.userId} AND r.event_id = ${event.id}
         LIMIT 1
       )`,
+      // Quantos vão ("34 vão" no mini ingresso), com o piso de sempre.
+      goingTotal: sql<number>`(
+        SELECT count(*)::int FROM attendance g WHERE g.event_id = ${event.id}
+      )`,
       attended: sql<boolean | null>`(
         SELECT p.attended FROM attendance_report p
         WHERE p.user_id = ${attendance.userId} AND p.event_id = ${event.id}
@@ -480,6 +484,7 @@ export async function readMyGames(
     ({
       code,
       usedCount,
+      goingTotal,
       endsAt,
       plan,
       planStatus,
@@ -513,6 +518,7 @@ export async function readMyGames(
         code: code && (validated || window.closesAt >= now) ? code : null,
         window: code ? window : null,
         validated,
+        goingCount: goingTotal >= ATTENDANCE_DISPLAY_FLOOR ? goingTotal : null,
         validatedAt: validated ? row.validatedAt : null,
         // Bar Elite que emitiu código e o jogo passou sem validação.
         missed: code !== null && !validated && lastChance < now

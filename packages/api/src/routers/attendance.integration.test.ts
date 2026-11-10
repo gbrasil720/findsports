@@ -276,6 +276,7 @@ integrationTest(
         ended: false,
         missed: false,
         checkedIn: false,
+        goingCount: null,
         myStars: null,
         attended: null
       })
