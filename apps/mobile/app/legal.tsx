@@ -204,7 +204,11 @@ export default function Legal() {
           paddingTop: insets.top + 8,
           paddingHorizontal: 16,
           paddingBottom: insets.bottom + 40,
-          gap: 14
+          gap: 14,
+          // No iPad, a linha de leitura não passa de ~62 caracteres.
+          width: '100%',
+          maxWidth: 592,
+          alignSelf: 'center'
         }}
       >
         <View style={styles.top}>

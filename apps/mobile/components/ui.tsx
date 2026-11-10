@@ -50,7 +50,6 @@ import {
   haptic,
   LABEL_IN,
   POP_FAST,
-  SWAP,
   usePress
 } from '@/components/motion'
 import {
@@ -1731,11 +1730,8 @@ export function ErrorState({
   // Rodada 7 (tela 5): o bloco fica no lugar, num cartão, com o título em
   // Anton, o que deu errado e "Tentar de novo" em tinta; nunca some.
   return (
-    <Animated.View
-      entering={SWAP}
-      accessibilityRole="alert"
-      style={[styles.errorCard, style]}
-    >
+    // Nada anima em erro (rodada 7): o cartão aparece seco.
+    <View accessibilityRole="alert" style={[styles.errorCard, style]}>
       <Text style={styles.errorTitle}>{title}</Text>
       <Text style={[text(14.5, 'Regular', 1.45), { color: SUB }]}>{line}</Text>
       {transient ? (
@@ -1749,12 +1745,18 @@ export function ErrorState({
             pressed && { transform: [{ scale: 0.97 }] }
           ]}
         >
-          <Text style={[text(15, 'Bold', 1.2), { color: BG }]}>
-            {retrying ? 'Tentando de novo…' : 'Tentar de novo'}
+          {/* A largura é a do rótulo maior: trocar não empurra o botão. */}
+          <Text aria-hidden style={[text(15, 'Bold', 1.2), { opacity: 0 }]}>
+            Tentando de novo…
           </Text>
+          <View style={styles.errorLabel}>
+            <Text style={[text(15, 'Bold', 1.2), { color: BG }]}>
+              {retrying ? 'Tentando de novo…' : 'Tentar de novo'}
+            </Text>
+          </View>
         </Pressable>
       ) : null}
-    </Animated.View>
+    </View>
   )
 }
 
@@ -2079,6 +2081,11 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: FG,
     marginVertical: -6.3
+  },
+  errorLabel: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   errorButton: {
     alignSelf: 'flex-start',

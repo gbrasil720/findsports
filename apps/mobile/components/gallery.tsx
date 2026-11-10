@@ -1,9 +1,17 @@
 import { useRouter } from 'expo-router'
 import { useRef, useState } from 'react'
-import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import {
+  Dimensions,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View
+} from 'react-native'
 import Animated from 'react-native-reanimated'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { haptic, usePressScale } from '@/components/motion'
-import { type Frame, PhotoViewer } from '@/components/photo-viewer'
+import { type Frame, onScreen, PhotoViewer } from '@/components/photo-viewer'
 import { usePalette } from '@/components/theme'
 import { ACID, INK, PAPER, Text, text } from '@/components/ui'
 import {
@@ -193,6 +201,7 @@ export function Ambiente({
 }) {
   const router = useRouter()
   const palette = usePalette()
+  const insets = useSafeAreaInsets()
   const tiles = useRef<(View | null)[]>([])
   const [open, setOpen] = useState<{
     index: number
@@ -203,6 +212,7 @@ export function Ambiente({
   // A foto cresce da miniatura tocada (rodada 7); passando para uma das
   // outras, fecha para a dela, ou esmaece se ela não está à vista.
   const openAt = async (index: number) => {
+    const topInset = insets.top
     const frames = new Map<number, Frame>()
     await Promise.all(
       tiles.current.map(
@@ -210,7 +220,12 @@ export function Ambiente({
           new Promise<void>((done) => {
             if (!tile) return done()
             tile.measureInWindow((x, y, width, height) => {
-              if (width) frames.set(n, { x, y, width, height })
+              const frame = onScreen(
+                { x, y, width, height },
+                Dimensions.get('window').height,
+                topInset
+              )
+              if (frame) frames.set(n, frame)
               done()
             })
           })

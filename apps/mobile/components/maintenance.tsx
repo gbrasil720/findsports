@@ -1,10 +1,17 @@
 import { maintenanceForecast } from '@findsports_oficial/api/lib/maintenance-forecast'
 import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useQuery } from '@tanstack/react-query'
-import { useRouter } from 'expo-router'
+import { usePathname, useRouter } from 'expo-router'
 import { setStatusBarStyle } from 'expo-status-bar'
 import { useEffect, useRef, useState } from 'react'
-import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import {
+  AppState,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View
+} from 'react-native'
 import Animated, {
   cancelAnimation,
   Easing,
@@ -52,7 +59,8 @@ import { trpc } from '@/lib/trpc'
 
 const GREY = '#aaa9a4'
 const LINE = '#34342d'
-const TICKER_MS = 18_000
+/** A faixa de placar anda a 40 pt/s (os quatro jogos do desenho: ~18 s). */
+const SPEED = 40
 
 /** O telão de LED da splash, parado, com o degradê que o apaga. */
 function LedBackdrop() {
@@ -80,37 +88,58 @@ function LedBackdrop() {
 
 /**
  * A faixa de placar: os jogos de hoje correndo da direita para a esquerda,
- * constante (linear, 18 s por volta). Movimento reduzido: parada.
+ * constante (linear, 40 pt/s: com os quatro jogos do desenho, ~18 s por
+ * volta). Só corre à vista: para sob o código aberto por cima e com o app em
+ * segundo plano. Movimento reduzido: parada.
  */
 function Ticker() {
   const reduced = useReducedMotion()
+  const pathname = usePathname()
+  const [active, setActive] = useState(AppState.currentState === 'active')
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) =>
+      setActive(state === 'active')
+    )
+    return () => sub.remove()
+  }, [])
+  const visible = active && !pathname.startsWith('/codigo')
   const games = useQuery({
     ...trpc.pubs.todayGames.queryOptions(),
     retry: false
   })
   const items = (games.data ?? []).map((game) => tickerItem(game, formatTime))
+  const [box, setBox] = useState(0)
   const [width, setWidth] = useState(0)
+  // Com poucos jogos, a lista se repete até cobrir a faixa: sem buraco.
+  const repeat = width && box ? Math.max(1, Math.ceil(box / width)) : 1
   const x = useSharedValue(0)
   useEffect(() => {
-    if (reduced || !width) return
+    if (reduced || !width || !visible) {
+      cancelAnimation(x)
+      return
+    }
+    const lap = width * repeat
     x.set(0)
     x.set(
       withRepeat(
-        withTiming(-width, { duration: TICKER_MS, easing: Easing.linear }),
+        withTiming(-lap, {
+          duration: (lap / SPEED) * 1000,
+          easing: Easing.linear
+        }),
         -1
       )
     )
     return () => cancelAnimation(x)
-  }, [reduced, width, x])
+  }, [reduced, width, repeat, visible, x])
   const run = useAnimatedStyle(() => ({ transform: [{ translateX: x.get() }] }))
   if (!items.length) return <View style={{ height: 8 }} />
-  // Duas cópias seguidas: quando a primeira sai inteira, volta sem salto.
-  const strip = (copy: 'a' | 'b') => (
+  // Duas voltas seguidas: quando a primeira sai inteira, volta sem salto.
+  const strip = (copy: string, measure: boolean) => (
     <View
       key={copy}
       style={styles.strip}
       onLayout={
-        copy === 'a' ? (e) => setWidth(e.nativeEvent.layout.width) : undefined
+        measure ? (e) => setWidth(e.nativeEvent.layout.width) : undefined
       }
     >
       {items.map((item, index) => (
@@ -119,27 +148,35 @@ function Ticker() {
           key={`${copy}${index}`}
           style={styles.tickItem}
         >
-          <Text style={styles.tickText}>{item}</Text>
-          <Text style={styles.tickDot}>●</Text>
+          <Text maxFontSizeMultiplier={1} style={styles.tickText}>
+            {item}
+          </Text>
+          <Text maxFontSizeMultiplier={1} style={styles.tickDot}>
+            ●
+          </Text>
         </View>
       ))}
     </View>
   )
+  const laps = Array.from({ length: repeat * 2 }, (_, n) => `v${n}`)
   return (
     <View
       style={styles.ticker}
+      onLayout={(e) => setBox(e.nativeEvent.layout.width)}
       accessible
       accessibilityLabel={`Jogos de hoje: ${items.join(', ')}`}
     >
       <Animated.View style={[styles.tickRow, run]}>
-        {strip('a')}
-        {strip('b')}
+        {laps.map((copy, n) => strip(copy, n === 0))}
       </Animated.View>
     </View>
   )
 }
 
-/** O ponto de "voltando": pisca devagar (1,4 s a volta); reduzido, parado. */
+/**
+ * O ponto de "voltando": pisca devagar (1,4 s a volta) por uns 30 s e para
+ * aceso; reduzido, parado.
+ */
 function Waiting() {
   const reduced = useReducedMotion()
   const fade = useSharedValue(1)
@@ -148,7 +185,8 @@ function Waiting() {
     fade.set(
       withRepeat(
         withTiming(0.3, { duration: 700, easing: Easing.inOut(Easing.ease) }),
-        -1,
+        // ~30 s e para aceso: a tela pode ficar aberta muito tempo.
+        42,
         true
       )
     )
@@ -201,6 +239,7 @@ export function MaintenanceScreen({
 
   useEffect(() => {
     setStatusBarStyle('light')
+    return () => setStatusBarStyle('auto')
   }, [])
 
   return (
@@ -236,6 +275,7 @@ export function MaintenanceScreen({
                   <Text
                     // biome-ignore lint/suspicious/noArrayIndexKey: posição fixa do relógio
                     key={index}
+                    maxFontSizeMultiplier={1}
                     style={styles.colon}
                   >
                     :
@@ -246,7 +286,9 @@ export function MaintenanceScreen({
                     key={index}
                     style={styles.key}
                   >
-                    <Text style={styles.keyText}>{char}</Text>
+                    <Text maxFontSizeMultiplier={1} style={styles.keyText}>
+                      {char}
+                    </Text>
                   </View>
                 )
               )}

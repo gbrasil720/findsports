@@ -25,7 +25,6 @@ import Animated, {
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { scheduleOnRN } from 'react-native-worklets'
-import { haptic } from '@/components/motion'
 import { Icon, PAPER, Text, text } from '@/components/ui'
 import { categoryIcon, categoryLabel, type GalleryPhoto } from '@/lib/gallery'
 
@@ -40,6 +39,18 @@ import { categoryIcon, categoryLabel, type GalleryPhoto } from '@/lib/gallery'
  */
 
 export type Frame = { x: number; y: number; width: number; height: number }
+
+/**
+ * A miniatura só serve de origem se está à vista: fora da tela (a grade
+ * rolou), a foto fecha esmaecendo em vez de voar para fora.
+ */
+export function onScreen(frame: Frame, screenHeight: number, top = 0) {
+  return frame.width > 0 &&
+    frame.y + frame.height > top &&
+    frame.y < screenHeight
+    ? frame
+    : null
+}
 
 const SPRING = { duration: 300, dampingRatio: 1 }
 const BLACK = '#0b0b09'
@@ -96,6 +107,8 @@ export function PhotoViewer({
   const drag = useSharedValue(0)
   const from = useSharedValue<Frame | null>(origin?.(start) ?? null)
   const closing = useRef(false)
+  // Fechando, o puxar não pega mais a foto (ela já está voltando).
+  const shut = useSharedValue(false)
 
   // Sobre o preto, a barra de status clara; ao fechar, volta a do tema.
   useEffect(() => {
@@ -109,18 +122,21 @@ export function PhotoViewer({
     )
   }, [progress, reduced])
 
-  const close = () => {
+  // `velocity`: a do dedo ao soltar, em pt/s; a foto sai na mesma
+  // velocidade em que estava, sem frear no fim do gesto.
+  const close = (velocity = 0) => {
     if (closing.current) return
     closing.current = true
+    shut.set(true)
     from.set(origin?.(index) ?? null)
     const done = () => onClose()
-    drag.set(withSpring(0, SPRING))
+    drag.set(withSpring(0, { ...SPRING, velocity }))
     progress.set(
-      reduced || !origin
+      reduced || !from.get()
         ? withTiming(0, { duration: 200 }, (ok) => {
             if (ok) scheduleOnRN(done)
           })
-        : withSpring(0, SPRING, (ok) => {
+        : withSpring(0, { ...SPRING, velocity: -velocity / height }, (ok) => {
             if (ok) scheduleOnRN(done)
           })
     )
@@ -130,44 +146,64 @@ export function PhotoViewer({
     .activeOffsetY([-12, 12])
     .failOffsetX([-16, 16])
     .onUpdate((e) => {
-      drag.set(Math.max(-40, e.translationY))
+      if (shut.get()) return
+      // Para baixo, 1:1; para cima, borda elástica (cada vez mais dura).
+      const dy = e.translationY
+      drag.set(dy < 0 ? -40 * (1 - 1 / (1 - dy / 120)) : dy)
     })
     .onEnd((e) => {
+      if (shut.get()) return
       if (e.translationY > height * 0.25 || e.velocityY > 800) {
-        scheduleOnRN(close)
+        scheduleOnRN(close, e.velocityY)
       } else {
-        drag.set(withSpring(0, SPRING))
+        drag.set(withSpring(0, { ...SPRING, velocity: e.velocityY }))
       }
     })
 
-  // A foto: do retângulo da miniatura até o da tela cheia, mais o puxar.
-  const photo = useAnimatedStyle(() => {
+  // A foto: um recorte que vai do retângulo da miniatura ao da tela cheia
+  // (cantos de 14 a 0), com a imagem dentro em escala uniforme, cobrindo o
+  // recorte como a miniatura cobre o dela: nada estica no voo.
+  const clip = useAnimatedStyle(() => {
     const f = from.get()
     const p = progress.get()
-    if (!f || reduced) {
+    if (!f) {
       return {
-        opacity: f ? 1 : p,
-        transform: [{ translateY: drag.get() }]
+        opacity: p,
+        left: 0,
+        top: target.y + drag.get(),
+        width: target.width,
+        height: target.height,
+        borderRadius: 0
       }
     }
-    const sx = interpolate(p, [0, 1], [f.width / target.width, 1])
-    const sy = interpolate(p, [0, 1], [f.height / target.height, 1])
-    const cx = interpolate(
-      p,
-      [0, 1],
-      [f.x + f.width / 2, target.x + target.width / 2]
-    )
-    const cy = interpolate(
-      p,
-      [0, 1],
-      [f.y + f.height / 2, target.y + target.height / 2]
-    )
+    return {
+      // Movimento reduzido: o recorte não voa, só esmaece no lugar final.
+      opacity: reduced ? p : 1,
+      left: reduced ? 0 : interpolate(p, [0, 1], [f.x, target.x]),
+      top:
+        (reduced ? target.y : interpolate(p, [0, 1], [f.y, target.y])) +
+        drag.get(),
+      width: reduced
+        ? target.width
+        : interpolate(p, [0, 1], [f.width, target.width]),
+      height: reduced
+        ? target.height
+        : interpolate(p, [0, 1], [f.height, target.height]),
+      borderRadius: reduced ? 0 : interpolate(p, [0, 1], [14, 0])
+    }
+  })
+  const inner = useAnimatedStyle(() => {
+    const f = from.get()
+    if (!f || reduced) return { transform: [] }
+    const p = progress.get()
+    const w = interpolate(p, [0, 1], [f.width, target.width])
+    const h = interpolate(p, [0, 1], [f.height, target.height])
+    const s = Math.max(w / target.width, h / target.height)
     return {
       transform: [
-        { translateX: cx - (target.x + target.width / 2) },
-        { translateY: cy - (target.y + target.height / 2) + drag.get() },
-        { scaleX: sx },
-        { scaleY: sy }
+        { translateX: (w - target.width) / 2 },
+        { translateY: (h - target.height) / 2 },
+        { scale: s }
       ]
     }
   })
@@ -189,7 +225,7 @@ export function PhotoViewer({
       visible
       animationType="none"
       statusBarTranslucent
-      onRequestClose={close}
+      onRequestClose={() => close()}
     >
       <GestureHandlerRootView style={{ flex: 1 }}>
         <Animated.View
@@ -200,39 +236,41 @@ export function PhotoViewer({
           ]}
         />
         <GestureDetector gesture={pan}>
-          <View style={StyleSheet.absoluteFill}>
-            <Animated.View
-              style={[
-                styles.frame,
-                { top: target.y, height: target.height },
-                photo
-              ]}
-            >
-              <ScrollView
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                contentOffset={{ x: start * width, y: 0 }}
-                onMomentumScrollEnd={(e) => {
-                  const next = Math.round(e.nativeEvent.contentOffset.x / width)
-                  if (next !== index) {
-                    haptic.select()
-                    setIndex(next)
-                  }
-                }}
+          <View
+            style={StyleSheet.absoluteFill}
+            accessibilityViewIsModal
+            // VoiceOver: o gesto de dois dedos em Z fecha, como o "×".
+            onAccessibilityEscape={() => close()}
+          >
+            <Animated.View style={[styles.frame, clip]}>
+              <Animated.View
+                style={[{ width: target.width, height: target.height }, inner]}
               >
-                {photos.map((p, n) => (
-                  <Image
-                    key={p.id}
-                    source={{ uri: p.url }}
-                    accessibilityLabel={
-                      p.caption ?? `Foto ${n + 1} de ${photos.length}`
-                    }
-                    style={{ width, height: target.height }}
-                    resizeMode="cover"
-                  />
-                ))}
-              </ScrollView>
+                <ScrollView
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  contentOffset={{ x: start * width, y: 0 }}
+                  onMomentumScrollEnd={(e) => {
+                    const next = Math.round(
+                      e.nativeEvent.contentOffset.x / width
+                    )
+                    if (next !== index) setIndex(next)
+                  }}
+                >
+                  {photos.map((p, n) => (
+                    <Image
+                      key={p.id}
+                      source={{ uri: p.url }}
+                      accessibilityLabel={
+                        p.caption ?? `Foto ${n + 1} de ${photos.length}`
+                      }
+                      style={{ width, height: target.height }}
+                      resizeMode="cover"
+                    />
+                  ))}
+                </ScrollView>
+              </Animated.View>
             </Animated.View>
           </View>
         </GestureDetector>
@@ -245,7 +283,7 @@ export function PhotoViewer({
             accessibilityRole="button"
             accessibilityLabel="Fechar"
             hitSlop={8}
-            onPress={close}
+            onPress={() => close()}
             style={styles.round}
           >
             <Icon name="close" size={20} color={PAPER} />
@@ -304,7 +342,7 @@ export function PhotoViewer({
 }
 
 const styles = StyleSheet.create({
-  frame: { position: 'absolute', left: 0, right: 0, overflow: 'hidden' },
+  frame: { position: 'absolute', overflow: 'hidden' },
   top: {
     position: 'absolute',
     left: 16,

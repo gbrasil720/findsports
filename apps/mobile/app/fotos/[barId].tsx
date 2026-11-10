@@ -1,11 +1,18 @@
 import { useQuery } from '@tanstack/react-query'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useRef, useState } from 'react'
-import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import {
+  Dimensions,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View
+} from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { haptic } from '@/components/motion'
-import { type Frame, PhotoViewer } from '@/components/photo-viewer'
-import { Skeleton } from '@/components/states'
+import { type Frame, onScreen, PhotoViewer } from '@/components/photo-viewer'
+import { EmptyCard, Skeleton } from '@/components/states'
 import { usePalette } from '@/components/theme'
 import { ErrorState, Icon, Text, text, useStatusBar } from '@/components/ui'
 import {
@@ -46,6 +53,7 @@ export default function Fotos() {
   // Mede todas as miniaturas antes de abrir: a foto cresce da tocada e, se a
   // pessoa passar para outra, volta para a dela.
   const openAt = async (index: number) => {
+    const topInset = insets.top
     const frames = new Map<number, Frame>()
     await Promise.all(
       shown.map(
@@ -54,7 +62,12 @@ export default function Fotos() {
             const tile = tiles.current.get(p.id)
             if (!tile) return done()
             tile.measureInWindow((x, y, width, height) => {
-              if (width) frames.set(n, { x, y, width, height })
+              const frame = onScreen(
+                { x, y, width, height },
+                Dimensions.get('window').height,
+                topInset
+              )
+              if (frame) frames.set(n, frame)
               done()
             })
           })
@@ -128,6 +141,11 @@ export default function Fotos() {
           />
         ) : !bar.data ? (
           <Skeleton />
+        ) : !photos.length ? (
+          <EmptyCard
+            title="Ainda sem fotos do ambiente"
+            line="O bar ainda não mandou fotos, ou elas estão na revisão da Onside. A página do bar tem o resto."
+          />
         ) : (
           <>
             <ScrollView

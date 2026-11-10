@@ -9,7 +9,6 @@ import {
   View
 } from 'react-native'
 import Animated, {
-  Easing,
   type EntryAnimationsValues,
   type ExitAnimationsValues,
   FadeIn,
@@ -18,7 +17,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { FullWindowOverlay } from 'react-native-screens'
-import { haptic, usePressScale } from '@/components/motion'
+import { EASE, haptic, usePressScale } from '@/components/motion'
 import { usePalette } from '@/components/theme'
 import {
   ACID,
@@ -52,7 +51,7 @@ export function useOnline() {
 
 // Desce de trás da barra de status e sobe pela mesma borda (240 ms; sair é
 // mais rápido, 200 ms).
-const OUT = Easing.bezier(0.23, 1, 0.32, 1)
+const OUT = EASE
 const ENTER = (values: EntryAnimationsValues): LayoutAnimation => {
   'worklet'
   return {
