@@ -28,7 +28,7 @@ import { Avatar, personLine } from '@/components/friends'
 import { Glass } from '@/components/glass'
 import { useLayout, useNavInsets } from '@/components/layout'
 import { haptic, SWAP, usePressScale } from '@/components/motion'
-import { CityRace, FriendsRace } from '@/components/ranking-race'
+import { CityRace, FriendsRace, PrizeCard } from '@/components/ranking-race'
 import { Segmented } from '@/components/segmented'
 import { useSoon } from '@/components/soon'
 import { useTabBarSpace } from '@/components/tab-bar'
@@ -652,13 +652,18 @@ export default function Ranking() {
             ) : null}
           </Animated.View>
         ) : (
-          <FriendsRace
-            data={board.data}
-            metric={metric}
-            onMetric={setMetric}
-            onOpen={open}
-            onBars={() => router.navigate('/explore')}
-          />
+          <>
+            <FriendsRace
+              data={board.data}
+              metric={metric}
+              onMetric={setMetric}
+              onOpen={open}
+              onBars={() => router.navigate('/explore')}
+            />
+            {board.data ? (
+              <PrizeCard month={board.data.month} crowns={board.data.crowns} />
+            ) : null}
+          </>
         )}
       </ScrollView>
       {soon.toast}

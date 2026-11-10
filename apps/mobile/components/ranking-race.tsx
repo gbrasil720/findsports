@@ -7,10 +7,12 @@ import Svg, { Circle, Defs, Line, Pattern, Rect } from 'react-native-svg'
 import type { CityBoard } from '@/components/city-ranking'
 import { initials } from '@/components/explore'
 import { GroupLabel, LineList } from '@/components/game-line'
+import { MedalImage } from '@/components/medal'
 import { EASE, haptic } from '@/components/motion'
 import { usePalette } from '@/components/theme'
 import { ACID, Icon, INK, PAPER, PillButton, Text, text } from '@/components/ui'
 import {
+  crownLabel,
   firstName,
   histogramBars,
   lastLine,
@@ -709,4 +711,80 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     letterSpacing: 0.92
   }
+})
+
+/**
+ * O prêmio do mês (rodada 6, `.prize`): o selo de quem fechar em 1º. Quem
+ * ganhou o mês que fechou vê o próprio selo no lugar do convite.
+ */
+export function PrizeCard({
+  month,
+  crowns
+}: {
+  /** O mês em disputa ("2026-11"). */
+  month: string
+  /** Os meses que a pessoa fechou em 1º, do mais recente. */
+  crowns: { month: string }[]
+}) {
+  const palette = usePalette()
+  const last = crowns[0]
+  const won = last && last.month < month ? last : null
+  return (
+    <View
+      style={[
+        prizeStyles.prize,
+        { backgroundColor: palette.card, shadowColor: palette.drop }
+      ]}
+    >
+      <MedalImage id="bar25" size={56} />
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={[prizeStyles.prizeKicker, { color: palette.muted }]}>
+          {won ? 'VOCÊ FECHOU EM 1º' : 'QUEM FECHAR EM 1º'}
+        </Text>
+        <Text style={[text(15, 'Bold', 1.3), { color: palette.ink }]}>
+          Selo “{crownLabel(won ? won.month : month)}”
+        </Text>
+        <Text style={[text(12.5, 'Regular', 1.35), { color: palette.muted }]}>
+          {won
+            ? `Está no seu perfil e na carteirinha. ${monthLabel(month)} já valendo.`
+            : 'Fica no perfil e na carteirinha do vencedor.'}
+        </Text>
+      </View>
+      {won ? null : (
+        <View style={prizeStyles.prizeNew}>
+          <Text style={prizeStyles.prizeNewText}>NOVO</Text>
+        </View>
+      )}
+    </View>
+  )
+}
+
+const prizeStyles = StyleSheet.create({
+  prize: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
+  },
+  prizeKicker: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 10,
+    letterSpacing: 0.8,
+    marginBottom: 4
+  },
+  prizeNew: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    paddingVertical: 3,
+    paddingHorizontal: 5,
+    borderRadius: 4,
+    backgroundColor: ACID
+  },
+  prizeNewText: { fontFamily: 'GeistMono-SemiBold', fontSize: 9, color: INK }
 })

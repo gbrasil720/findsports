@@ -22,7 +22,7 @@ import Svg, {
 import { scheduleOnRN } from 'react-native-worklets'
 import { EASE, haptic } from '@/components/motion'
 import { usePalette } from '@/components/theme'
-import { ACID, INK, LIVE, PAPER, Text } from '@/components/ui'
+import { ACID, Icon, INK, LIVE, PAPER, Text } from '@/components/ui'
 
 /*
  * A carteirinha do torcedor (rodada 2 do redesign, onboarding B), com as
@@ -324,7 +324,8 @@ export function FanCard({
   lit = null,
   validated = false,
   number,
-  since
+  since,
+  crown
 }: {
   name: string
   teams: string[]
@@ -337,6 +338,8 @@ export function FanCard({
   number?: string
   /** "NOV 2026": quando a carteirinha foi validada. */
   since?: string
+  /** O selo do mês mais recente ("Rei de outubro", rodada 6). */
+  crown?: string
 }) {
   const palette = usePalette()
   return (
@@ -363,6 +366,14 @@ export function FanCard({
         >
           {name.toLocaleUpperCase('pt-BR')}
         </Text>
+        {crown ? (
+          <View style={styles.crown}>
+            <Icon name="medal" size={13} color={INK} accent={INK} />
+            <Text style={styles.crownText}>
+              {crown.toLocaleUpperCase('pt-BR')}
+            </Text>
+          </View>
+        ) : null}
 
         <Field label="Torce para" hot={lit === 'teams'}>
           {teams.length ? (
@@ -532,6 +543,23 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
     marginLeft: -5,
     marginBottom: 3
+  },
+  crown: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 999,
+    backgroundColor: ACID
+  },
+  crownText: {
+    fontFamily: MONO,
+    fontSize: 10,
+    letterSpacing: 0.8,
+    color: INK
   },
   season: {
     fontFamily: MONO,

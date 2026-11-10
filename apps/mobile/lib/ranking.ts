@@ -157,3 +157,8 @@ export function histogramBars(
     me: mine >= bin.from && mine <= bin.to
   }))
 }
+
+/** "Rei de outubro" (selo do mês, rodada 6), do mês "2026-10". */
+export function crownLabel(month: string) {
+  return `Rei de ${monthLabel(month).toLocaleLowerCase('pt-BR')}`
+}

@@ -38,6 +38,7 @@ import { authClient } from '@/lib/auth-client'
 import { formatTime } from '@/lib/explore'
 import { monthName } from '@/lib/invite'
 import type { MedalId } from '@/lib/medals'
+import { crownLabel } from '@/lib/ranking'
 import { trpc } from '@/lib/trpc'
 
 const VIAS: Via[] = ['search', 'code', 'link', 'contacts', 'suggestion']
@@ -190,6 +191,14 @@ export function FriendPage({
                       </View>
                       <Text style={[styles.levelText, { color: INK }]}>
                         {person.level.name}
+                      </Text>
+                    </View>
+                  ) : null}
+                  {person.crowns[0] ? (
+                    <View style={styles.heroCrown}>
+                      <Icon name="medal" size={13} color={ACID} accent={ACID} />
+                      <Text style={[styles.levelText, { color: ACID }]}>
+                        {crownLabel(person.crowns[0].month)}
                       </Text>
                     </View>
                   ) : null}
@@ -450,6 +459,17 @@ const styles = StyleSheet.create({
     fontFamily: 'GeistMono-SemiBold',
     fontSize: 12,
     color: '#aaa9a4'
+  },
+  heroCrown: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: ACID
   },
   heroLevel: {
     alignSelf: 'flex-start',
