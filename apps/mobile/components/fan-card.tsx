@@ -79,6 +79,31 @@ function Field({
   )
 }
 
+/**
+ * A trama de pontos inteira (`radial-gradient` de 7 px dos cartões de tinta
+ * da rodada 6), por baixo do conteúdo. `id` único por tela.
+ */
+export function DotField({ id, radius = 20 }: { id: string; radius?: number }) {
+  return (
+    <View
+      pointerEvents="none"
+      style={[
+        StyleSheet.absoluteFill,
+        { borderRadius: radius, overflow: 'hidden' }
+      ]}
+    >
+      <Svg style={StyleSheet.absoluteFill}>
+        <Defs>
+          <Pattern id={id} width={7} height={7} patternUnits="userSpaceOnUse">
+            <Circle cx={3.5} cy={3.5} r={1.2} fill="rgba(241,238,230,.07)" />
+          </Pattern>
+        </Defs>
+        <Rect width="100%" height="100%" fill={`url(#${id})`} />
+      </Svg>
+    </View>
+  )
+}
+
 /** A trama de pontos do placar, só no canto de cima à direita. */
 function Dots() {
   return (
@@ -112,11 +137,16 @@ const STAMP_DELAY = 260
  * `feel`: o háptico no quadro em que o selo encosta. A carteirinha usa o
  * impacto médio; o ingresso validado, o de sucesso (rodada 3).
  */
-export function useStamp(feel: 'stamp' | 'success' = 'stamp') {
+export function useStamp(
+  feel: 'stamp' | 'success' = 'stamp',
+  /** Já carimbada (Perfil, Preferências): sem cerimônia nem háptico. */
+  still = false
+) {
   const reduced = useReducedMotion()
-  const stamp = useSharedValue(0)
-  const issued = useSharedValue(0)
+  const stamp = useSharedValue(still ? 1 : 0)
+  const issued = useSharedValue(still ? 1 : 0)
   useEffect(() => {
+    if (still) return
     const show = () =>
       issued.set(withTiming(1, { duration: 200, easing: EASE }))
     stamp.set(
@@ -133,7 +163,7 @@ export function useStamp(feel: 'stamp' | 'success' = 'stamp') {
         )
       )
     )
-  }, [stamp, issued, reduced, feel])
+  }, [stamp, issued, reduced, feel, still])
   return { stamp, issued, reduced }
 }
 
@@ -274,8 +304,16 @@ function Foot({
  * A carteirinha validada: o pé "A EMITIR" continua até o selo encostar, e
  * então o código e o número aparecem por cima dele.
  */
-function Issued({ number, since }: { number?: string; since?: string }) {
-  const motion = useStamp()
+function Issued({
+  number,
+  since,
+  still
+}: {
+  number?: string
+  since?: string
+  still?: boolean
+}) {
+  const motion = useStamp('stamp', still)
   const { issued } = motion
   const before = useAnimatedStyle(() => ({ opacity: 1 - issued.get() }))
   const after = useAnimatedStyle(() => ({ opacity: issued.get() }))
@@ -325,7 +363,8 @@ export function FanCard({
   validated = false,
   number,
   since,
-  crown
+  crown,
+  still
 }: {
   name: string
   teams: string[]
@@ -340,6 +379,11 @@ export function FanCard({
   since?: string
   /** O selo do mês mais recente ("Rei de outubro", rodada 6). */
   crown?: string
+  /**
+   * A carteirinha que já existe (Perfil, Preferências): carimbada, sem a
+   * cerimônia do onboarding a cada abertura.
+   */
+  still?: boolean
 }) {
   const palette = usePalette()
   return (
@@ -469,7 +513,7 @@ export function FanCard({
         </View>
 
         {validated ? (
-          <Issued number={number} since={since} />
+          <Issued number={number} since={since} still={still} />
         ) : (
           <Foot validated={false} />
         )}

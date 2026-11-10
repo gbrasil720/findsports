@@ -12,6 +12,7 @@ import Animated, {
   type EntryExitAnimationFunction,
   FadeIn,
   FadeInDown,
+  FadeOut,
   Keyframe,
   useAnimatedStyle,
   useSharedValue,
@@ -56,6 +57,9 @@ export const haptic = {
   /** Pegar uma peça para arrastar (atalhos). */
   pick: () =>
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(quiet),
+  /** Toque leve de confirmação (pedido de amizade enviado, rodada 6). */
+  light: () =>
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(quiet),
   /** O selo da carteirinha encostando no papel. */
   stamp: () =>
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(quiet)
@@ -95,6 +99,8 @@ export const POP = popFrom(0.6)
 export const POP_FAST = popFrom(0.8)
 export const POP_LATE = popFrom(0.6, 650)
 export const SWAP = FadeIn.duration(150)
+/** A saída do crossfade de 150 ms (o estado que dá lugar ao outro). */
+export const SWAP_OUT = FadeOut.duration(150)
 /**
  * O rótulo novo de um botão ("Confirmar" → "Confirmando…" → "Tentando de
  * novo…"): sobe 4 pt e aparece. O antigo sai na hora, sem animação de saída,

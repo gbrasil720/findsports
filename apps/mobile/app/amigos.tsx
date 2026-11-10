@@ -62,16 +62,37 @@ export default function Friends() {
     trpc.ranking.friends.queryOptions({ metric: 'bars' })
   )
   const queryClient = useQueryClient()
+  // Otimista: "Você vai" e o háptico saem no mesmo quadro do toque; se o
+  // servidor recusar, o botão volta.
   const going = useMutation(
     trpc.attendance.set.mutationOptions({
-      onSuccess: () => {
+      onMutate: (input) => {
+        const key = trpc.friends.activity.queryKey()
+        const before = queryClient.getQueryData(key)
+        if (before)
+          queryClient.setQueryData(key, {
+            ...before,
+            today: before.today.map((item) =>
+              item.eventId === input.eventId ? { ...item, mine: true } : item
+            )
+          })
         haptic.success()
+        return { before }
+      },
+      onSuccess: () => {
         queryClient.invalidateQueries({
           queryKey: trpc.friends.activity.queryKey()
         })
         queryClient.invalidateQueries({ queryKey: trpc.attendance.pathKey() })
       },
-      onError: () => haptic.error()
+      onError: (_, __, context) => {
+        haptic.error()
+        if (context?.before)
+          queryClient.setQueryData(
+            trpc.friends.activity.queryKey(),
+            context.before
+          )
+      }
     })
   )
   // O duelo do mês: você e o amigo logo acima (ou abaixo) no ranking.
@@ -126,7 +147,8 @@ export default function Friends() {
         {activity.data?.today.length ? (
           <TodayCard
             items={activity.data.today}
-            busy={going.isPending ? (going.variables?.eventId ?? null) : null}
+            meName={mine?.name}
+            busy={null}
             onGoing={(item) =>
               going.mutate({ eventId: item.eventId, attending: true })
             }
@@ -140,6 +162,7 @@ export default function Friends() {
             me={{ name: mine.name, value: mine.value }}
             them={{ name: rival.name, value: rival.value }}
             closesInDays={ranking.data.closesInDays}
+            onBars={() => router.push('/bares-pra-voce')}
           />
         ) : null}
         {activity.data?.feed.length ? (

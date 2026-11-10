@@ -4,18 +4,9 @@ import { type ReactNode, useEffect, useState } from 'react'
 import { Alert, Image, Pressable, StyleSheet, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { initials } from '@/components/explore'
-import { haptic, usePress } from '@/components/motion'
+import { haptic, SWAP, SWAP_OUT, usePress } from '@/components/motion'
 import { type Palette, usePalette } from '@/components/theme'
-import {
-  ACID,
-  errorMessage,
-  Icon,
-  INK,
-  LIVE,
-  PAPER,
-  Text,
-  text
-} from '@/components/ui'
+import { ACID, errorMessage, Icon, INK, Text, text } from '@/components/ui'
 import { takePendingInvite } from '@/lib/invite'
 import { trpc } from '@/lib/trpc'
 
@@ -32,9 +23,9 @@ export const heroShadow = (palette: Palette) =>
 export type Via = 'search' | 'code' | 'link' | 'contacts' | 'suggestion'
 
 // As cores do quadrinho com iniciais, como as pessoas do design: algumas em
-// acid, algumas em vermelho, a maioria em pedra. Sempre a mesma para a mesma
-// pessoa.
-const TONES = ['acid', 'stone', 'live', 'stone', 'stone'] as const
+// acid, algumas em tinta, a maioria em pedra (vermelho é só do ao vivo).
+// Sempre a mesma para a mesma pessoa.
+const TONES = ['acid', 'stone', 'ink', 'stone', 'stone'] as const
 const toneOf = (id: string) =>
   TONES[[...id].reduce((sum, c) => sum + c.charCodeAt(0), 0) % TONES.length]
 
@@ -63,8 +54,8 @@ export function Avatar({
         : INK
       : tone === 'acid'
         ? ACID
-        : tone === 'live'
-          ? LIVE
+        : tone === 'ink'
+          ? palette.ink
           : palette.dark
             ? '#34342e'
             : '#e7e3db'
@@ -73,8 +64,8 @@ export function Avatar({
       ? ACID
       : tone === 'acid'
         ? INK
-        : tone === 'live'
-          ? PAPER
+        : tone === 'ink'
+          ? palette.bg
           : palette.ink
   return (
     <View
@@ -127,54 +118,73 @@ export function AddButton({
   const palette = usePalette()
   const press = usePress(3, 3)
   if (relation === 'self') return null
+  // Um estado dá lugar ao outro num crossfade de 150 ms; a linha fica.
   if (relation === 'friends')
     return (
-      <View style={[styles.sent, { borderColor: palette.line }]}>
+      <Animated.View
+        key="friends"
+        entering={SWAP}
+        exiting={SWAP_OUT}
+        style={[styles.sent, { borderColor: palette.line }]}
+      >
         <Text style={[text(13, 'Bold'), { color: palette.muted }]}>Amigos</Text>
-      </View>
+      </Animated.View>
     )
   if (relation === 'sent')
     return (
-      <Pressable
-        accessibilityRole="button"
-        accessibilityHint="Cancela o pedido"
-        disabled={busy}
-        onPress={onPress}
-        style={[styles.sent, { borderColor: palette.line }]}
-      >
-        <Text style={[text(13, 'Bold'), { color: palette.muted }]}>
-          Pedido enviado
-        </Text>
-      </Pressable>
+      <Animated.View key="sent" entering={SWAP} exiting={SWAP_OUT}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityHint="Cancela o pedido"
+          disabled={busy}
+          onPress={() =>
+            Alert.alert('Cancelar o pedido?', undefined, [
+              { text: 'Manter', style: 'cancel' },
+              { text: 'Cancelar pedido', style: 'destructive', onPress }
+            ])
+          }
+          style={({ pressed }) => [
+            styles.sent,
+            { borderColor: palette.line },
+            pressed && { opacity: 0.7 }
+          ]}
+        >
+          <Text style={[text(13, 'Bold'), { color: palette.muted }]}>
+            Pedido enviado
+          </Text>
+        </Pressable>
+      </Animated.View>
     )
   return (
-    <Pressable
-      accessibilityRole="button"
-      disabled={busy}
-      onPress={onPress}
-      onPressIn={press.onPressIn}
-      onPressOut={press.onPressOut}
-    >
-      {/* `.b-ink b-sm`: tinta no claro, papel no escuro, sem sombra. */}
-      <Animated.View
-        style={[
-          styles.add,
-          { backgroundColor: palette.ink },
-          busy && { opacity: 0.6 },
-          press.style
-        ]}
+    <Animated.View key="add" entering={SWAP} exiting={SWAP_OUT}>
+      <Pressable
+        accessibilityRole="button"
+        disabled={busy}
+        onPress={onPress}
+        onPressIn={press.onPressIn}
+        onPressOut={press.onPressOut}
       >
-        <Icon
-          name="userplus"
-          size={15}
-          color={palette.bg}
-          accent={palette.dark ? '#e8320c' : ACID}
-        />
-        <Text style={[text(13, 'Bold'), { color: palette.bg }]}>
-          {relation === 'received' ? 'Aceitar' : 'Adicionar'}
-        </Text>
-      </Animated.View>
-    </Pressable>
+        {/* `.b-ink b-sm`: tinta no claro, papel no escuro, sem sombra. */}
+        <Animated.View
+          style={[
+            styles.add,
+            { backgroundColor: palette.ink },
+            busy && { opacity: 0.6 },
+            press.style
+          ]}
+        >
+          <Icon
+            name="userplus"
+            size={15}
+            color={palette.bg}
+            accent={palette.dark ? '#e8320c' : ACID}
+          />
+          <Text style={[text(13, 'Bold'), { color: palette.bg }]}>
+            {relation === 'received' ? 'Aceitar' : 'Adicionar'}
+          </Text>
+        </Animated.View>
+      </Pressable>
+    </Animated.View>
   )
 }
 
@@ -290,10 +300,11 @@ export function useFriendActions() {
       errorMessage(error, 'Tente de novo em instantes.')
     )
   }
+  const [pendingId, setPendingId] = useState<string | null>(null)
   const request = useMutation(
     trpc.friends.request.mutationOptions({
       onSuccess: () => {
-        haptic.success()
+        haptic.light()
         refresh()
       },
       onError
@@ -328,8 +339,10 @@ export function useFriendActions() {
     via: Via,
     onDone?: (next: Relation) => void
   ) => {
+    setPendingId(userId)
     const done = {
-      onSuccess: (r: { relation: Relation }) => onDone?.(r.relation)
+      onSuccess: (r: { relation: Relation }) => onDone?.(r.relation),
+      onSettled: () => setPendingId(null)
     }
     if (relation === 'none') request.mutate({ userId, via }, done)
     else if (relation === 'received')
@@ -341,7 +354,9 @@ export function useFriendActions() {
     respond,
     remove,
     act,
-    busy: request.isPending || respond.isPending || remove.isPending
+    busy: request.isPending || respond.isPending || remove.isPending,
+    /** Só a linha tocada espera; as outras seguem tocáveis. */
+    busyFor: (userId: string) => pendingId === userId
   }
 }
 

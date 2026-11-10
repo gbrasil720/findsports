@@ -1,12 +1,13 @@
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import type { inferRouterOutputs } from '@trpc/server'
 import { Pressable, StyleSheet, View } from 'react-native'
-import Animated from 'react-native-reanimated'
+import Animated, { withTiming } from 'react-native-reanimated'
 import { Photo } from '@/components/explore'
 import { LineList } from '@/components/game-line'
+import { GrowBar } from '@/components/levels'
 import { MedalImage } from '@/components/medal'
-import { SWAP } from '@/components/motion'
-import { usePalette } from '@/components/theme'
+import { EASE, SWAP, SWAP_OUT } from '@/components/motion'
+import { INK_ON_DARK, usePalette } from '@/components/theme'
 import { ACID, Icon, INK, PAPER, PillButton, Text, text } from '@/components/ui'
 import { formatTime } from '@/lib/explore'
 import type { MedalId } from '@/lib/medals'
@@ -27,9 +28,34 @@ type Feed = Activity['feed'][number]
 const ACIDS = [ACID, PAPER, '#e7e3db']
 
 /** As iniciais em círculos sobrepostos (`.sa`). */
-function Faces({ names }: { names: string[] }) {
+/** O seu rosto entrando na pilha: .9 → 1 e opacidade, 180 ms EASE (pop in). */
+const FACE_IN = () => {
+  'worklet'
+  return {
+    initialValues: { opacity: 0, transform: [{ scale: 0.9 }] },
+    animations: {
+      opacity: withTiming(1, { duration: 180, easing: EASE }),
+      transform: [{ scale: withTiming(1, { duration: 180, easing: EASE }) }]
+    }
+  }
+}
+
+function Faces({ names, me }: { names: string[]; me?: string }) {
   return (
     <View style={{ flexDirection: 'row', marginRight: 6 }}>
+      {me ? (
+        <Animated.View
+          entering={FACE_IN}
+          style={[
+            styles.face,
+            { backgroundColor: INK, borderWidth: 1, borderColor: ACID }
+          ]}
+        >
+          <Text style={[text(9.5, 'Bold', 1), { color: ACID }]}>
+            {me.trim().charAt(0).toUpperCase()}
+          </Text>
+        </Animated.View>
+      ) : null}
       {names.slice(0, 3).map((name, index) => (
         <View
           // biome-ignore lint/suspicious/noArrayIndexKey: duas pessoas podem ter o mesmo nome
@@ -38,7 +64,7 @@ function Faces({ names }: { names: string[] }) {
             styles.face,
             {
               backgroundColor: ACIDS[index] ?? PAPER,
-              marginLeft: index ? -4 : 0
+              marginLeft: index || me ? -4 : 0
             }
           ]}
         >
@@ -61,17 +87,21 @@ function namesLine(names: string[]) {
 export function TodayCard({
   items,
   busy,
+  meName,
   onGoing,
   onBar
 }: {
   items: Today[]
+  /** Seu nome: o seu rosto entra na pilha quando você marca (pop 180 ms). */
+  meName?: string
   busy: string | null
   onGoing: (item: Today) => void
   onBar: (item: Today) => void
 }) {
+  const palette = usePalette()
   const people = new Set(items.flatMap((i) => i.friends.map((f) => f.id)))
   return (
-    <View style={styles.ink}>
+    <View style={[styles.ink, palette.dark && INK_ON_DARK]}>
       <View style={styles.head}>
         <Text style={styles.kicker}>
           HOJE · {people.size} {people.size === 1 ? 'AMIGO VAI' : 'AMIGOS VÃO'}
@@ -100,7 +130,10 @@ export function TodayCard({
               {item.title} · {formatTime(item.startsAt)}
             </Text>
             <View style={styles.who}>
-              <Faces names={item.friends.map((f) => f.name)} />
+              <Faces
+                names={item.friends.map((f) => f.name)}
+                me={item.mine ? meName : undefined}
+              />
               <Text
                 numberOfLines={1}
                 style={[
@@ -113,7 +146,11 @@ export function TodayCard({
             </View>
           </View>
           {/* O botão vira "Você vai" no lugar (crossfade). */}
-          <Animated.View key={item.mine ? 'vou' : 'nao'} entering={SWAP}>
+          <Animated.View
+            key={item.mine ? 'vou' : 'nao'}
+            entering={SWAP}
+            exiting={SWAP_OUT}
+          >
             {item.mine ? (
               <View style={styles.going}>
                 <Icon name="check" size={14} color={ACID} />
@@ -141,19 +178,27 @@ export function DuelCard({
   metric,
   me,
   them,
-  closesInDays
+  closesInDays,
+  unitWords = ['bar', 'bares'],
+  onBars
 }: {
   title: string
   metric: string
   me: { name: string; value: number }
   them: { name: string; value: number }
   closesInDays?: number
+  /** "por 1 bar", "por 2 bares". */
+  unitWords?: [string, string]
+  /** Atrás ou empatado: "Ver bares" leva à próxima ida. */
+  onBars?: () => void
 }) {
+  const count = (n: number) => `${n} ${n === 1 ? unitWords[0] : unitWords[1]}`
   const total = me.value + them.value
   const share = total ? me.value / total : 0.5
   const lead = me.value - them.value
+  const palette = usePalette()
   return (
-    <View style={styles.ink}>
+    <View style={[styles.ink, palette.dark && INK_ON_DARK]}>
       <View style={styles.head}>
         <Text style={styles.kicker}>{title.toLocaleUpperCase('pt-BR')}</Text>
         <Text style={styles.kicker}>{metric.toLocaleUpperCase('pt-BR')}</Text>
@@ -174,20 +219,25 @@ export function DuelCard({
         </View>
       </View>
       <View style={styles.bar}>
-        <View style={[styles.barMine, { width: `${share * 100}%` }]} />
+        <GrowBar share={share} style={styles.barMine} />
       </View>
       {closesInDays !== undefined ? (
         <Text style={[text(12.5, 'Regular', 1.3), { color: '#aaa9a4' }]}>
           {lead === 0
             ? 'Empatados'
             : lead > 0
-              ? `Você na frente por ${lead}`
-              : `${firstName(them.name)} na frente por ${-lead}`}
+              ? `Você na frente por ${count(lead)}`
+              : `${firstName(them.name)} na frente por ${count(-lead)}`}
           .{' '}
           {closesInDays <= 0
             ? 'Fecha hoje.'
             : `Faltam ${closesInDays} ${closesInDays === 1 ? 'dia' : 'dias'}.`}
         </Text>
+      ) : null}
+      {onBars && lead <= 0 ? (
+        <View style={{ alignItems: 'flex-start' }}>
+          <PillButton label="Ver bares" height={36} onPress={onBars} />
+        </View>
       ) : null}
     </View>
   )

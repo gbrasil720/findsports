@@ -13,6 +13,7 @@ import {
   View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { DotField } from '@/components/fan-card'
 import {
   AddButton,
   PersonRow,
@@ -22,7 +23,7 @@ import {
 } from '@/components/friends'
 import { GroupLabel, LineList } from '@/components/game-line'
 import { haptic } from '@/components/motion'
-import { usePalette } from '@/components/theme'
+import { INK_ON_DARK, usePalette } from '@/components/theme'
 import {
   ACID,
   Icon,
@@ -170,7 +171,8 @@ export default function ContactsScreen() {
           </View>
         ) : (
           <>
-            <View style={styles.board}>
+            <View style={[styles.board, palette.dark && INK_ON_DARK]}>
+              <DotField id="agenda" />
               <Text style={styles.boardKicker}>JÁ ESTÃO NA ONSIDE</Text>
               <View style={styles.boardRow}>
                 <Text style={styles.big}>{people.length}</Text>
@@ -203,7 +205,7 @@ export default function ContactsScreen() {
                       right={
                         <AddButton
                           relation={changed[person.id] ?? person.relation}
-                          busy={actions.busy}
+                          busy={actions.busyFor(person.id)}
                           onPress={() =>
                             actions.act(
                               person.id,
@@ -346,8 +348,10 @@ const styles = StyleSheet.create({
     backgroundColor: INK,
     padding: 14,
     gap: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(241,238,230,.08)'
+    shadowColor: '#000',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
   },
   boardKicker: {
     fontFamily: 'GeistMono-SemiBold',

@@ -109,18 +109,19 @@ export default function FanTabs() {
   })
   const fresh = suggestions.data?.round ? freshCount(suggestions.data.round) : 0
   // O que o menu diz de cada item (rodada 6): o nível, "4 de 10", os
-  // pedidos de amizade e a posição no ranking dos amigos.
+  // pedidos de amizade e a posição no ranking dos amigos. Buscados antes de
+  // o menu abrir, para ele abrir já com os números e o texto não pular.
   const medals = useQuery({
     ...trpc.achievements.mine.queryOptions(),
-    enabled: fan && menuOpen
+    enabled: fan
   })
   const friendNotices = useQuery({
     ...trpc.friends.notices.queryOptions(),
-    enabled: fan && menuOpen
+    enabled: fan
   })
   const ranking = useQuery({
     ...trpc.ranking.friends.queryOptions({ metric: 'bars' }),
-    enabled: fan && menuOpen
+    enabled: fan
   })
   const unlocked =
     medals.data?.achievements.filter((a) => a.unlockedAt).length ?? 0

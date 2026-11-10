@@ -46,152 +46,168 @@ export default function Profile() {
     .sort((a, b) => String(b.unlockedAt).localeCompare(String(a.unlockedAt)))
   const position = ranking.data?.rows.find((row) => row.id === user?.id)
   const top = topBars(list, now)
+  const plural = (n: number, one: string, many: string) =>
+    n === 1 ? one : many
+  const barCount = new Set(list.map((v) => v.barId)).size
+  // "—" até a consulta chegar: zero é um número de verdade.
   const stats: [string, string][] = [
-    [String(list.length), 'visitas'],
-    [String(new Set(list.map((v) => v.barId)).size), 'bares'],
-    [String(unlocked.length), 'conquistas'],
+    [
+      visits.data ? String(list.length) : '—',
+      plural(list.length, 'visita', 'visitas')
+    ],
+    [visits.data ? String(barCount) : '—', plural(barCount, 'bar', 'bares')],
+    [
+      achievements.data ? String(unlocked.length) : '—',
+      plural(unlocked.length, 'conquista', 'conquistas')
+    ],
     [position ? `${position.position}º` : '—', 'no mês']
   ]
   // Fora do celular, a mesma coluna no meio (até 560).
   const column = layout.kind === 'phone' ? undefined : 560
 
   return (
-    <ScrollView
-      style={{ backgroundColor: palette.bg }}
-      contentContainerStyle={[
-        styles.body,
-        { paddingTop: insets.top + 8, paddingBottom: tabBar + 32 },
-        column ? { width: column, alignSelf: 'center' } : null
-      ]}
-    >
-      <View style={styles.head}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Voltar"
-          hitSlop={8}
-          onPress={() =>
-            router.canGoBack() ? router.back() : router.navigate('/voce')
-          }
-          style={[
-            styles.round,
-            { backgroundColor: palette.card, shadowColor: palette.drop }
-          ]}
-        >
-          <Icon name="back" size={20} color={palette.ink} />
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Configurações"
-          hitSlop={8}
-          onPress={() => router.push('/configuracoes')}
-          style={[
-            styles.round,
-            { backgroundColor: palette.card, shadowColor: palette.drop }
-          ]}
-        >
-          <Icon name="gear" size={20} color={palette.ink} />
-        </Pressable>
-      </View>
-
-      <MyFanCard />
-
-      <View style={styles.stats}>
-        {stats.map(([value, label]) => (
-          <View
-            key={label}
+    // Dentro de uma View, como Conquistas: a ScrollView na raiz da tela
+    // ganhava do iOS o topo seguro outra vez, além do `paddingTop`.
+    <View style={{ flex: 1, backgroundColor: palette.bg }}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.body,
+          { paddingTop: insets.top + 8, paddingBottom: tabBar + 32 },
+          column ? { width: column, alignSelf: 'center' } : null
+        ]}
+      >
+        <View style={styles.head}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Voltar"
+            hitSlop={8}
+            onPress={() =>
+              router.canGoBack() ? router.back() : router.navigate('/voce')
+            }
             style={[
-              styles.stat,
+              styles.round,
               { backgroundColor: palette.card, shadowColor: palette.drop }
             ]}
           >
-            <Text style={[styles.statValue, { color: palette.ink }]}>
-              {value}
-            </Text>
-            <Text
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.8}
-              style={[styles.statLabel, { color: palette.muted }]}
-            >
-              {label.toLocaleUpperCase('pt-BR')}
-            </Text>
-          </View>
-        ))}
-      </View>
-
-      {unlocked.length ? (
-        <>
-          <GroupLabel>Medalhas recentes</GroupLabel>
+            <Icon name="back" size={20} color={palette.ink} />
+          </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Ver as ${medals.length} conquistas`}
-            onPress={() => router.navigate('/voce/conquistas')}
-            style={styles.medals}
+            accessibilityLabel="Configurações"
+            hitSlop={8}
+            onPress={() => router.push('/configuracoes')}
+            style={[
+              styles.round,
+              { backgroundColor: palette.card, shadowColor: palette.drop }
+            ]}
           >
-            {unlocked.slice(0, 4).map((medal) => (
-              <View key={medal.id} style={styles.medal}>
-                <MedalImage id={medal.id as MedalId} size={56} />
-              </View>
-            ))}
-            <Text style={[styles.more, { color: palette.muted }]}>
-              ver as {medals.length}
-            </Text>
+            <Icon name="gear" size={20} color={palette.ink} />
           </Pressable>
-        </>
-      ) : null}
+        </View>
 
-      {top.bars.length ? (
-        <>
-          <GroupLabel>Bares mais visitados</GroupLabel>
-          <LineList>
-            {top.bars.map((bar, i) => (
-              <Pressable
-                key={bar.barId}
-                accessibilityRole="button"
-                onPress={() => router.push(`/bar/${bar.barId}` as Href)}
-                style={({ pressed }) => [
-                  styles.bar,
-                  i > 0 && { borderTopWidth: 1, borderTopColor: palette.line },
-                  pressed && { opacity: 0.7 }
-                ]}
+        <MyFanCard />
+
+        <View style={styles.stats}>
+          {stats.map(([value, label]) => (
+            <View
+              key={label}
+              style={[
+                styles.stat,
+                { backgroundColor: palette.card, shadowColor: palette.drop }
+              ]}
+            >
+              <Text style={[styles.statValue, { color: palette.ink }]}>
+                {value}
+              </Text>
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
+                style={[styles.statLabel, { color: palette.muted }]}
               >
-                <Photo
-                  uri={bar.photoUrl}
-                  name={bar.barName}
-                  style={styles.photo}
-                />
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text
-                    numberOfLines={1}
-                    style={[text(15.5, 'Bold', 1.2), { color: palette.ink }]}
-                  >
-                    {bar.barName}
-                  </Text>
-                  {bar.neighborhood ? (
+                {label.toLocaleUpperCase('pt-BR')}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        {unlocked.length ? (
+          <>
+            <GroupLabel>Medalhas recentes</GroupLabel>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Ver as ${medals.length} conquistas`}
+              onPress={() => router.navigate('/voce/conquistas')}
+              style={styles.medals}
+            >
+              {unlocked.slice(0, 4).map((medal) => (
+                <View key={medal.id} style={styles.medal}>
+                  <MedalImage id={medal.id as MedalId} size={56} />
+                </View>
+              ))}
+              <Text style={[styles.more, { color: palette.muted }]}>
+                ver as {medals.length}
+              </Text>
+            </Pressable>
+          </>
+        ) : null}
+
+        {top.bars.length ? (
+          <>
+            <GroupLabel>Bares mais visitados</GroupLabel>
+            <LineList>
+              {top.bars.map((bar, i) => (
+                <Pressable
+                  key={bar.barId}
+                  accessibilityRole="button"
+                  onPress={() => router.push(`/bar/${bar.barId}` as Href)}
+                  style={({ pressed }) => [
+                    styles.bar,
+                    i > 0 && {
+                      borderTopWidth: 1,
+                      borderTopColor: palette.line
+                    },
+                    pressed && { opacity: 0.7 }
+                  ]}
+                >
+                  <Photo
+                    uri={bar.photoUrl}
+                    name={bar.barName}
+                    style={styles.photo}
+                  />
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <Text
-                      style={[
-                        text(12.5, 'Regular', 1.3),
-                        { color: palette.muted }
-                      ]}
+                      numberOfLines={1}
+                      style={[text(15.5, 'Bold', 1.2), { color: palette.ink }]}
                     >
-                      {bar.neighborhood}
+                      {bar.barName}
                     </Text>
-                  ) : null}
-                </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={[styles.times, { color: palette.ink }]}>
-                    {bar.games}×
-                  </Text>
-                  <Text style={[styles.went, { color: palette.muted }]}>
-                    FOI
-                  </Text>
-                </View>
-              </Pressable>
-            ))}
-          </LineList>
-        </>
-      ) : null}
-    </ScrollView>
+                    {bar.neighborhood ? (
+                      <Text
+                        style={[
+                          text(12.5, 'Regular', 1.3),
+                          { color: palette.muted }
+                        ]}
+                      >
+                        {bar.neighborhood}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={[styles.times, { color: palette.ink }]}>
+                      {bar.games}×
+                    </Text>
+                    <Text style={[styles.went, { color: palette.muted }]}>
+                      FOI
+                    </Text>
+                  </View>
+                </Pressable>
+              ))}
+            </LineList>
+          </>
+        ) : null}
+      </ScrollView>
+    </View>
   )
 }
 

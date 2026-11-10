@@ -16,6 +16,7 @@ import {
   Alert,
   Image,
   Linking,
+  Switch as NativeSwitch,
   Platform,
   Pressable,
   ScrollView,
@@ -1448,7 +1449,13 @@ function Privacy({
                 : ' '}
             </Text>
           </View>
-          <Switch6 on={listed} />
+          <Switch6
+            on={listed}
+            onChange={(next) => {
+              haptic.select()
+              save.mutate({ rankingGlobal: next })
+            }}
+          />
         </View>
       </ScalePress>
       <MenuBox>
@@ -1620,10 +1627,29 @@ function MenuRow({
   )
 }
 
-/** Interruptor do design (`.sw`): trilho acid e bolinha tinta nos dois temas. */
-function Switch6({ on }: { on: boolean }) {
+/**
+ * Interruptor do design (`.sw`): o `Switch` nativo do iOS, trilho acid e
+ * bolinha tinta nos dois temas (a spec da rodada 6 pede o do sistema).
+ */
+function Switch6({
+  on,
+  onChange
+}: {
+  on: boolean
+  /** Sem ele, só desenha (o que ainda não existe). */
+  onChange?: (next: boolean) => void
+}) {
   const palette = usePalette()
-  return <Switch on={on} off={palette.mark} track={ACID} knob={INK} />
+  return (
+    <NativeSwitch
+      value={on}
+      disabled={!onChange}
+      onValueChange={onChange}
+      trackColor={{ false: palette.mark, true: ACID }}
+      thumbColor={on ? INK : '#ffffff'}
+      ios_backgroundColor={palette.mark}
+    />
+  )
 }
 
 function Section({

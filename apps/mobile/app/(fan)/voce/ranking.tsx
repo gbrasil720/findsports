@@ -380,9 +380,7 @@ export default function Ranking() {
           </View>
           <Segments tab={tab} onPick={pick} />
           {tab === 'global' ? (
-            <Animated.View entering={SWAP} style={styles.stack}>
-              {global}
-            </Animated.View>
+            <Animated.View style={styles.stack}>{global}</Animated.View>
           ) : (
             <FriendsBoard
               data={ready}
@@ -447,11 +445,9 @@ export default function Ranking() {
             </View>
           </View>
           {tab === 'global' ? (
-            <Animated.View entering={SWAP} style={styles.stack}>
-              {global}
-            </Animated.View>
+            <Animated.View style={styles.stack}>{global}</Animated.View>
           ) : (
-            <Animated.View entering={SWAP} style={{ gap: 16 }}>
+            <Animated.View style={{ gap: 16 }}>
               <View style={styles.stackMeta}>
                 <View style={styles.chipsRow}>
                   <MetricChips metric={metric} onMetric={setMetric} />
@@ -461,7 +457,7 @@ export default function Ranking() {
                   {closesLabel(ready.closesInDays).toLocaleLowerCase('pt-BR')}
                 </Text>
               </View>
-              <Animated.View key={ready.metric} entering={SWAP}>
+              <Animated.View>
                 <Card
                   shadow={palette.dark ? 'rgba(201,241,53,.32)' : ACID}
                   offset={5}
@@ -616,7 +612,7 @@ export default function Ranking() {
             />
           </View>
         ) : alone ? (
-          <Animated.View entering={SWAP} style={styles.stack}>
+          <Animated.View style={styles.stack}>
             <EmptyPodium me={board.data.rows[0]} />
             <View style={{ gap: 8, marginTop: 4 }}>
               <Title
@@ -658,7 +654,8 @@ export default function Ranking() {
               metric={metric}
               onMetric={setMetric}
               onOpen={open}
-              onBars={() => router.navigate('/explore')}
+              onBars={() => router.push('/bares-pra-voce')}
+              onGames={() => router.navigate('/explore')}
             />
             {board.data ? (
               <PrizeCard month={board.data.month} crowns={board.data.crowns} />
@@ -769,8 +766,8 @@ function FriendsBoard({
           </View>
         </>
       )}
-      {/* Trocar de métrica troca o placar em fade curto, sem salto. */}
-      <Animated.View key={data.metric} entering={SWAP} style={styles.stack}>
+      {/* Trocar de métrica: números trocam seco (spec da rodada 6). */}
+      <Animated.View style={styles.stack}>
         <Podium
           rows={data.rows}
           metric={data.metric}

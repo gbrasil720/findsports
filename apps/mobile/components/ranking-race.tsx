@@ -1,8 +1,12 @@
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import type { inferRouterOutputs } from '@trpc/server'
-import type { ReactNode } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
-import Animated, { LinearTransition } from 'react-native-reanimated'
+import Animated, {
+  LayoutAnimationConfig,
+  LinearTransition,
+  withTiming
+} from 'react-native-reanimated'
 import Svg, { Circle, Defs, Line, Pattern, Rect } from 'react-native-svg'
 import type { CityBoard } from '@/components/city-ranking'
 import { initials } from '@/components/explore'
@@ -20,6 +24,7 @@ import {
   type Metric,
   monthClock,
   monthLabel,
+  ordinal,
   unit
 } from '@/lib/ranking'
 
@@ -35,6 +40,27 @@ type Board = inferRouterOutputs<AppRouter>['ranking']['friends']
 type Row = Board['rows'][number]
 
 const ROW_MOVE = LinearTransition.duration(220).easing(EASE)
+
+/**
+ * O degrau sobe da base ao trocar a métrica. Um `entering` próprio, em
+ * constante de módulo, porque o Reanimated recomeça a entrada quando o objeto
+ * muda. A altura do degrau é fixa por lugar; só a escala anda.
+ */
+const stepRise = (height: number) => () => {
+  'worklet'
+  return {
+    initialValues: {
+      transform: [{ translateY: height * 0.3 }, { scaleY: 0.4 }]
+    },
+    animations: {
+      transform: [
+        { translateY: withTiming(0, { duration: 220, easing: EASE }) },
+        { scaleY: withTiming(1, { duration: 220, easing: EASE }) }
+      ]
+    }
+  }
+}
+const STEP_RISE = { 1: stepRise(96), 2: stepRise(72), 3: stepRise(56) }
 
 /** O cartão de tinta do placar, com os pontos de fundo. */
 function Scoreboard({ children }: { children: ReactNode }) {
@@ -58,7 +84,13 @@ function Scoreboard({ children }: { children: ReactNode }) {
 
 /** "22d 04h" em dígitos de placar; muda por minuto, sem animação. */
 function Clock({ month }: { month: string }) {
-  const { days, hours } = monthClock(month, Date.now())
+  const [now, setNow] = useState(Date.now)
+  // Acorda na virada de cada minuto (troca seca, sem animação).
+  useEffect(() => {
+    const timer = setTimeout(() => setNow(Date.now()), 60_000 - (now % 60_000))
+    return () => clearTimeout(timer)
+  }, [now])
+  const { days, hours } = monthClock(month, now)
   return (
     <View style={styles.clock}>
       <Text style={styles.clockText}>
@@ -85,10 +117,12 @@ function Head({ left, month }: { left: string; month: string }) {
 /** A perseguição: o que falta, em acid, com o atalho para os bares. */
 function Chase({
   children,
-  onBars
+  onBars,
+  cta = 'Ver bares'
 }: {
   children: ReactNode
   onBars?: () => void
+  cta?: string
 }) {
   return (
     <View style={styles.chase}>
@@ -96,9 +130,7 @@ function Chase({
       <Text style={[text(13.5, 'Regular', 1.35), styles.chaseText]}>
         {children}
       </Text>
-      {onBars ? (
-        <PillButton label="Ver bares" height={36} onPress={onBars} />
-      ) : null}
+      {onBars ? <PillButton label={cta} height={36} onPress={onBars} /> : null}
     </View>
   )
 }
@@ -113,41 +145,65 @@ export function FriendsRace({
   metric,
   onMetric,
   onOpen,
-  onBars
+  onBars,
+  onGames
 }: {
   data: Board
   metric: Metric
   onMetric: (metric: Metric) => void
   onOpen: (row: Row) => void
+  /** "Ver bares": bares novos para a contagem (Bares pra você). */
   onBars: () => void
+  /** "Ver jogos": as outras métricas sobem com jogo visto. */
+  onGames: () => void
 }) {
   const palette = usePalette()
   const now = Date.now()
-  const label = METRICS.find((m) => m.key === metric)?.label ?? ''
+  // Os números são da métrica que chegou: com a próxima carregando, o
+  // cabeçalho e a frase não mudam antes deles.
+  const shown = data.metric as Metric
+  const label = METRICS.find((m) => m.key === shown)?.label ?? ''
   const podium = data.rows.filter((row) => row.position <= 3)
   const rest = data.rows.filter((row) => row.position > 3)
   return (
     <>
       <Scoreboard>
         <Head
-          left={`${monthLabel(data.month)} · ${metric === 'bars' ? 'bares diferentes' : label}`}
+          left={`${monthLabel(data.month)} · ${shown === 'bars' ? 'bares diferentes' : label}`}
           month={data.month}
         />
-        <View style={styles.podium}>
-          {[2, 1, 3].map((place) => {
-            const row = podium.find((r) => r.position === place)
-            return row ? (
-              <Step key={row.id} row={row} onPress={() => onOpen(row)} />
-            ) : (
-              <View key={place} style={{ flex: place === 1 ? 1.1 : 1 }} />
-            )
-          })}
-        </View>
+        {/* Ao abrir, parado: a subida é só da troca de métrica. */}
+        <LayoutAnimationConfig skipEntering>
+          <View style={styles.podium}>
+            {[2, 1, 3].map((place) => {
+              const row = podium.find((r) => r.position === place)
+              return row ? (
+                <Step
+                  key={row.id}
+                  row={row}
+                  metric={shown}
+                  onPress={() => onOpen(row)}
+                />
+              ) : (
+                <View key={place} style={{ flex: place === 1 ? 1.1 : 1 }} />
+              )
+            })}
+          </View>
+        </LayoutAnimationConfig>
         {data.chase ? (
-          <Chase onBars={metric === 'bars' ? onBars : undefined}>
+          <Chase
+            onBars={
+              shown === 'bars' || shown === 'neighborhoods' ? onBars : onGames
+            }
+            cta={
+              shown === 'bars' || shown === 'neighborhoods'
+                ? 'Ver bares'
+                : 'Ver jogos'
+            }
+          >
             Mais{' '}
             <Strong>
-              {data.chase.need} {unit(metric, data.chase.need)}
+              {data.chase.need} {unit(shown, data.chase.need)}
             </Strong>{' '}
             e você passa {firstName(data.chase.name)}.
           </Chase>
@@ -262,7 +318,15 @@ export function FriendsRace({
 }
 
 /** Um degrau do pódio: rosto, nome e o bloco com a posição e o número. */
-function Step({ row, onPress }: { row: Row; onPress: () => void }) {
+function Step({
+  row,
+  metric,
+  onPress
+}: {
+  row: Row
+  metric: Metric
+  onPress: () => void
+}) {
   const first = row.position === 1
   const size = first ? 56 : 46
   const face = row.me
@@ -315,10 +379,16 @@ function Step({ row, onPress }: { row: Row; onPress: () => void }) {
       <Text numberOfLines={1} style={[text(13, 'Bold', 1.2), { color: PAPER }]}>
         {row.me ? 'Você' : firstName(row.name)}
       </Text>
-      <View style={[styles.block, block]}>
+      {/* Trocar a métrica levanta o degrau a partir da base (scaleY, 220 ms
+          EASE); os números trocam seco. Ao abrir, parado. */}
+      <Animated.View
+        key={metric}
+        entering={STEP_RISE[row.position as 1 | 2 | 3]}
+        style={[styles.block, block]}
+      >
         <Text style={[styles.blockPlace, { color: ink }]}>{row.position}º</Text>
         <Text style={[styles.blockValue, { color: ink }]}>{row.value}</Text>
-      </View>
+      </Animated.View>
     </Pressable>
   )
 }
@@ -359,6 +429,8 @@ export function CityRace({
   const top3 = data.rows.filter((row) => row.position <= 3)
   const around = data.around
   const gap = (around[0]?.position ?? 0) - 4
+  // O corte conta até você, não até a vizinhança ("208 entre o topo e você").
+  const between = Math.max(0, (data.position ?? 0) - 4)
   const unitWord = data.metric === 'bars' ? ['bar', 'bares'] : ['jogo', 'jogos']
   const word = (n: number) => `${n} ${n === 1 ? unitWord[0] : unitWord[1]}`
   return (
@@ -372,7 +444,7 @@ export function CityRace({
           <View style={styles.you}>
             <View>
               <Text style={styles.youKicker}>VOCÊ ESTÁ EM</Text>
-              <Text style={styles.youBig}>{data.position}º</Text>
+              <Text style={styles.youBig}>{ordinal(data.position)}</Text>
               <Text style={[text(12.5, 'Regular', 1.3), styles.youSub]}>
                 de {data.total.toLocaleString('pt-BR')}{' '}
                 {data.total === 1 ? 'torcedor' : 'torcedores'}
@@ -458,8 +530,8 @@ export function CityRace({
           ))}
           <Icon name="ranking" size={16} color={palette.muted} />
           <Text style={[styles.cutText, { color: palette.muted }]}>
-            {gap.toLocaleString('pt-BR')}{' '}
-            {gap === 1 ? 'TORCEDOR' : 'TORCEDORES'} ENTRE O TOPO E VOCÊ
+            {between.toLocaleString('pt-BR')}{' '}
+            {between === 1 ? 'TORCEDOR' : 'TORCEDORES'} ENTRE O TOPO E VOCÊ
           </Text>
         </Pressable>
       ) : null}
@@ -727,8 +799,12 @@ export function PrizeCard({
   crowns: { month: string }[]
 }) {
   const palette = usePalette()
-  const last = crowns[0]
-  const won = last && last.month < month ? last : null
+  // A coroa só aparece no mês seguinte ao que ela fechou; depois o card
+  // volta a anunciar o mês em disputa.
+  const [year, mon] = month.split('-').map(Number) as [number, number]
+  const before =
+    mon === 1 ? `${year - 1}-12` : `${year}-${String(mon - 1).padStart(2, '0')}`
+  const won = crowns[0]?.month === before ? crowns[0] : null
   return (
     <View
       style={[

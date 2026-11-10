@@ -20,7 +20,7 @@ import { Card, FilterChip } from '@/components/card'
 import { FirstMedals, MedalsEmpty } from '@/components/empty-states'
 import { GroupLabel } from '@/components/game-line'
 import { useLayout, useNavInsets } from '@/components/layout'
-import { Ladder } from '@/components/levels'
+import { GrowBar, Ladder } from '@/components/levels'
 import { Medal3D, MedalImage, useMedalPalette } from '@/components/medal'
 import {
   CoverMedal,
@@ -661,8 +661,12 @@ export default function Shelf() {
             <LevelBoard
               level={data.level}
               streak={data.streak}
-              visits={visits.data?.length ?? 0}
-              bars={new Set((visits.data ?? []).map((v) => v.barId)).size}
+              visits={visits.data ? visits.data.length : undefined}
+              bars={
+                visits.data
+                  ? new Set(visits.data.map((v) => v.barId)).size
+                  : undefined
+              }
             />
             {nearest(list, 2).length ? (
               <>
@@ -674,7 +678,7 @@ export default function Shelf() {
                     onOpen={() => router.push(`/conquista/${a.id}`)}
                     onBars={
                       a.group === 'bares'
-                        ? () => router.navigate('/explore')
+                        ? () => router.push('/bares-pra-voce')
                         : undefined
                     }
                   />
@@ -735,8 +739,9 @@ function LevelBoard({
     nextAt: number | null
   }
   streak: number
-  visits: number
-  bars: number
+  /** Nulo enquanto as visitas carregam ("—"). */
+  visits?: number
+  bars?: number
 }) {
   const P = useMedalPalette()
   const from = LEVELS.find((l) => l.level === level.level)?.from ?? 0
@@ -786,7 +791,7 @@ function LevelBoard({
             )}
           </Text>
           <View style={styles.levelTrack}>
-            <View style={[styles.levelFill, { width: `${share * 100}%` }]} />
+            <GrowBar share={share} style={styles.levelFill} />
           </View>
         </View>
       </View>
@@ -794,14 +799,15 @@ function LevelBoard({
       <View style={styles.boardStats}>
         {(
           [
-            [visits, 'visitas', false],
-            [bars, 'bares', false],
-            [streak, 'semanas seguidas', true]
+            [visits, ['visita', 'visitas'], false],
+            [bars, ['bar', 'bares'], false],
+            [streak, ['semana seguida', 'semanas seguidas'], true]
           ] as const
-        ).map(([value, label, isNew]) => (
-          <View key={label} style={styles.boardStat}>
-            <Text style={styles.boardValue}>{value}</Text>
-            <Text style={styles.boardLabel}>{label}</Text>
+        ).map(([value, [one, many], isNew]) => (
+          <View key={many} style={styles.boardStat}>
+            {/* "—" até a consulta chegar: zero é um número de verdade. */}
+            <Text style={styles.boardValue}>{value ?? '—'}</Text>
+            <Text style={styles.boardLabel}>{value === 1 ? one : many}</Text>
             {isNew ? (
               <View style={styles.newTag}>
                 <Text style={styles.newText}>NOVO</Text>
@@ -847,13 +853,11 @@ function NearCard({
           {nearLine(a)}
         </Text>
         <View style={[styles.nearTrack, { backgroundColor: P.track }]}>
-          <View
+          <GrowBar
+            share={progressShare(a)}
             style={[
               styles.nearFill,
-              {
-                width: `${progressShare(a) * 100}%`,
-                backgroundColor: P.dark ? ACID : '#7f9a12'
-              }
+              { backgroundColor: P.dark ? ACID : '#7f9a12' }
             ]}
           />
         </View>

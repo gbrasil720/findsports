@@ -39,6 +39,7 @@ export function MyFanCard() {
       radius={`${user?.searchRadiusKm ?? 3} km`}
       base={(state.device && state.district) || city.data?.name || null}
       validated
+      still
       number={user ? cardNumber(user.id) : undefined}
       since={since}
       crown={crown ? crownLabel(crown.month) : undefined}

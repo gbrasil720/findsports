@@ -93,3 +93,13 @@ export function PaletteProvider({
   const system = PALETTE[useColorScheme() === 'dark' ? 'dark' : 'light']
   return <Current.Provider value={value ?? system}>{children}</Current.Provider>
 }
+
+/**
+ * Cartão de tinta no escuro (`.td .ah`, `.duel`, `.today6`, `.mini3` da
+ * rodada 6): a tinta some no fundo, então ele sobe um tom e ganha o filete.
+ */
+export const INK_ON_DARK = {
+  backgroundColor: '#1f1f1a',
+  borderWidth: 1,
+  borderColor: 'rgba(241,238,230,.08)'
+} as const

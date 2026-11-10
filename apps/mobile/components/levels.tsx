@@ -1,6 +1,14 @@
 import { LEVELS } from '@findsports_oficial/api/lib/achievements'
-import { StyleSheet, View } from 'react-native'
-import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated'
+import { useEffect } from 'react'
+import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native'
+import Animated, {
+  FadeIn,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming
+} from 'react-native-reanimated'
+import { EASE } from '@/components/motion'
 import { ACID, INK, PAPER, Text, text } from '@/components/ui'
 
 /*
@@ -13,6 +21,26 @@ import { ACID, INK, PAPER, Text, text } from '@/components/ui'
 const LIGHT_IN = [0, 1, 2, 3, 4].map((i) =>
   FadeIn.delay(300 + i * 60).duration(180)
 )
+
+/**
+ * Barra de progresso da rodada 6 (nível, duelo, perto de sair): parada ao
+ * abrir; quando o número muda, anda até o novo (400 ms EASE). É absoluta e
+ * sem filhos, então animar a largura não mexe em mais nada.
+ */
+export function GrowBar({
+  share,
+  style
+}: {
+  share: number
+  style: StyleProp<ViewStyle>
+}) {
+  const width = useSharedValue(share)
+  useEffect(() => {
+    width.set(withTiming(share, { duration: 400, easing: EASE }))
+  }, [share, width])
+  const grow = useAnimatedStyle(() => ({ width: `${width.get() * 100}%` }))
+  return <Animated.View style={[style, grow]} />
+}
 
 export function Ladder({
   current,
@@ -53,7 +81,21 @@ export function Ladder({
         return (
           <View key={l.level} style={styles.rung}>
             {light && !reduced && (past || now) ? (
-              <Animated.View entering={LIGHT_IN[index]}>{node}</Animated.View>
+              // O nó apagado por baixo e o aceso entrando por cima: enquanto
+              // espera a vez, o nó não some.
+              <View>
+                <View style={styles.node}>
+                  <Text style={[styles.nodeText, { color: '#6b6a63' }]}>
+                    {l.level}
+                  </Text>
+                </View>
+                <Animated.View
+                  entering={LIGHT_IN[index]}
+                  style={StyleSheet.absoluteFill}
+                >
+                  {node}
+                </Animated.View>
+              </View>
             ) : (
               node
             )}

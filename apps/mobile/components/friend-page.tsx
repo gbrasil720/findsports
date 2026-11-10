@@ -20,12 +20,10 @@ import { Glass } from '@/components/glass'
 import { MedalImage } from '@/components/medal'
 import { ScalePress } from '@/components/motion'
 import { useSoon } from '@/components/soon'
-import { usePalette } from '@/components/theme'
+import { INK_ON_DARK, usePalette } from '@/components/theme'
 import {
   ACID,
-  BackButton,
   ErrorState,
-  GlassRound,
   Icon,
   INK,
   LIVE,
@@ -109,7 +107,22 @@ export function FriendPage({
         ]}
       >
         <View style={styles.bar}>
-          {pane ? <View /> : <BackButton />}
+          {pane ? (
+            <View />
+          ) : (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Voltar"
+              hitSlop={8}
+              onPress={() => router.back()}
+              style={[
+                styles.round,
+                { backgroundColor: palette.card, shadowColor: palette.drop }
+              ]}
+            >
+              <Icon name="back" size={20} color={palette.ink} />
+            </Pressable>
+          )}
           {person &&
           person.relation !== 'none' &&
           person.relation !== 'self' ? (
@@ -118,17 +131,19 @@ export function FriendPage({
               accessibilityLabel="Mais opções"
               hitSlop={8}
               onPress={more}
+              style={[
+                styles.round,
+                { backgroundColor: palette.card, shadowColor: palette.drop }
+              ]}
             >
-              <GlassRound>
-                <Text
-                  style={[
-                    text(15, 'Bold'),
-                    { color: palette.ink, letterSpacing: 1 }
-                  ]}
-                >
-                  ···
-                </Text>
-              </GlassRound>
+              <Text
+                style={[
+                  text(15, 'Bold'),
+                  { color: palette.ink, letterSpacing: 1 }
+                ]}
+              >
+                ···
+              </Text>
             </Pressable>
           ) : null}
         </View>
@@ -147,7 +162,7 @@ export function FriendPage({
           <>
             {/* O cartão de tinta (`.ah`): rosto, nome, @, desde quando e o
                 nível; embaixo, a história de vocês. Frases sem gênero. */}
-            <View style={styles.hero}>
+            <View style={[styles.hero, palette.dark && INK_ON_DARK]}>
               <View style={styles.heroTop}>
                 <View style={styles.heroFace}>
                   <Text style={[text(27, 'Bold', 1.1), { color: INK }]}>
@@ -338,10 +353,15 @@ function FriendGame({
   onOpen: () => void
   onGo: () => void
 }) {
+  const palette = usePalette()
   const now = Date.now()
   const two = gameTitle(game).split(' × ')
   return (
-    <Pressable accessibilityRole="button" onPress={onOpen} style={styles.game}>
+    <Pressable
+      accessibilityRole="button"
+      onPress={onOpen}
+      style={[styles.game, palette.dark && INK_ON_DARK]}
+    >
       <View style={styles.gameHead}>
         <Text style={styles.gameKicker} numberOfLines={1}>
           {name.toLocaleUpperCase('pt-BR')} VAI ·{' '}
@@ -369,15 +389,18 @@ function FriendGame({
 const _capitalize = (word: string) =>
   word.charAt(0).toUpperCase() + word.slice(1)
 
-/** "set.", "out. de 2025": o mês da amizade. */
+/** "set", "out 2025": o mês da amizade, sem ponto (como no desenho). */
 function sinceLabel(iso: string) {
   const date = new Date(iso)
   const sameYear = date.getFullYear() === new Date().getFullYear()
-  return date.toLocaleDateString('pt-BR', {
-    month: 'short',
-    ...(sameYear ? {} : { year: 'numeric' }),
-    timeZone: 'America/Sao_Paulo'
-  })
+  return date
+    .toLocaleDateString('pt-BR', {
+      month: 'short',
+      ...(sameYear ? {} : { year: 'numeric' }),
+      timeZone: 'America/Sao_Paulo'
+    })
+    .replace('.', '')
+    .replace(' de ', ' ')
 }
 
 /** O botão da relação no perfil, em pílula: Amigos, Adicionar, Pedido enviado, Aceitar. */
@@ -427,6 +450,16 @@ function RelationButton({
 }
 
 const styles = StyleSheet.create({
+  round: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  },
   hero: {
     borderRadius: 24,
     backgroundColor: INK,

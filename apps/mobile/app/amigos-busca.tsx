@@ -13,6 +13,7 @@ import {
   AddButton,
   PersonRow,
   personLine,
+  type Relation,
   useFriendActions
 } from '@/components/friends'
 import { GroupLabel, LineList } from '@/components/game-line'
@@ -54,6 +55,9 @@ export default function FriendSearch() {
   const overview = useQuery(trpc.friends.overview.queryOptions())
   const city = useQuery(trpc.pubs.getMyCity.queryOptions())
   const actions = useFriendActions()
+  // "Amigos de amigos" não volta da consulta com a relação: guardamos a
+  // resposta do servidor para a linha trocar o botão e não pedir de novo.
+  const [kept, setKept] = useState<Record<string, Relation>>({})
   const people = typing ? (results.data ?? []) : []
   const open = (id: string) => router.push(`/amigo/${id}` as Href)
 
@@ -141,7 +145,7 @@ export default function FriendSearch() {
                 right={
                   <AddButton
                     relation={person.relation}
-                    busy={actions.busy}
+                    busy={actions.busyFor(person.id)}
                     onPress={() =>
                       actions.act(person.id, person.relation, 'search')
                     }
@@ -171,7 +175,7 @@ export default function FriendSearch() {
                   right={
                     <AddButton
                       relation={person.relation}
-                      busy={actions.busy}
+                      busy={actions.busyFor(person.id)}
                       onPress={() =>
                         actions.act(person.id, person.relation, 'search')
                       }
@@ -199,10 +203,16 @@ export default function FriendSearch() {
                   onPress={() => open(person.id)}
                   right={
                     <AddButton
-                      relation="none"
-                      busy={actions.busy}
+                      relation={kept[person.id] ?? 'none'}
+                      busy={actions.busyFor(person.id)}
                       onPress={() =>
-                        actions.act(person.id, 'none', 'suggestion')
+                        actions.act(
+                          person.id,
+                          kept[person.id] ?? 'none',
+                          'suggestion',
+                          (next) =>
+                            setKept((all) => ({ ...all, [person.id]: next }))
+                        )
                       }
                     />
                   }
