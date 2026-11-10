@@ -4,7 +4,9 @@ import {
   highlight,
   hoods,
   liveNow,
+  matchGames,
   matchQuery,
+  matchTeams,
   type NearBar,
   rememberSearch,
   sides,
@@ -85,5 +87,52 @@ describe('busca (19a, 19b)', () => {
       'Bar do Zé'
     ])
     expect(fold(' Área ')).toBe('area')
+  })
+})
+
+describe('busca da rodada 5', () => {
+  const row = [
+    {
+      key: 'a',
+      title: 'Flamengo × Palmeiras',
+      championship: 'Brasileirão',
+      startsAt: '2026-10-20T23:00:00Z',
+      live: true,
+      bars: [1, 2]
+    },
+    {
+      key: 'b',
+      title: 'Bahia × Flamengo',
+      championship: 'Copa do Brasil',
+      startsAt: '2026-10-21T00:30:00Z',
+      live: false,
+      bars: [1]
+    },
+    {
+      key: 'c',
+      title: 'GP de São Paulo',
+      championship: 'Fórmula 1',
+      startsAt: '2026-10-21T01:00:00Z',
+      live: false,
+      bars: [1]
+    }
+  ]
+
+  test('jogo casa pelo começo de palavra do título ou do campeonato', () => {
+    expect(matchGames(row, 'flam').map((g) => g.key)).toEqual(['a', 'b'])
+    expect(matchGames(row, 'formula').map((g) => g.key)).toEqual(['c'])
+    expect(matchGames(row, 'mengo')).toEqual([])
+    expect(matchGames(row, '  ')).toEqual([])
+  })
+
+  test('time aparece uma vez, no primeiro jogo, com o adversário', () => {
+    const teams = matchTeams(row, 'fla')
+    expect(teams).toHaveLength(1)
+    expect(teams[0]?.name).toBe('Flamengo')
+    expect(teams[0]?.rival).toBe('Palmeiras')
+    expect(teams[0]?.game.key).toBe('a')
+    expect(matchTeams(row, 'bah')[0]?.rival).toBe('Flamengo')
+    // Sem os dois lados (corrida), não há time.
+    expect(matchTeams(row, 'gp')).toEqual([])
   })
 })

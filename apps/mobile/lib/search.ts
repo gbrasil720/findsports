@@ -168,3 +168,69 @@ export function rememberSearch(list: string[], query: string) {
   if (!q) return list
   return [q, ...list.filter((item) => fold(item) !== fold(q))].slice(0, 6)
 }
+
+/*
+ * A busca da rodada 5 (Tela 1): os jogos vêm da régua do Explorar
+ * (`pubs.gameBoard`), para que tocar num jogo ou num time abra o Explorar
+ * exatamente nele (`setGame` com a mesma chave).
+ */
+
+type RowLike = {
+  key: string
+  title: string
+  championship: string
+  startsAt: string
+  live: boolean
+  bars: unknown[]
+}
+
+/** Uma palavra do texto começa com o termo: "fla" acha Flamengo, não Bafla. */
+const startsWord = (value: string, query: string) => {
+  const q = fold(query)
+  return (
+    !!q &&
+    fold(value)
+      .split(/[^\p{L}\p{N}]+/u)
+      .some((w) => w.startsWith(q))
+  )
+}
+
+/** Os jogos cujo título ou campeonato casa com o que a pessoa digitou. */
+export function matchGames<G extends RowLike>(row: G[], query: string): G[] {
+  const words = fold(query).split(/\s+/).filter(Boolean)
+  if (!words.length) return []
+  return row.filter((game) =>
+    words.every(
+      (w) => startsWord(game.title, w) || startsWord(game.championship, w)
+    )
+  )
+}
+
+export type TeamHit<G> = {
+  name: string
+  /** O próximo jogo do time na régua (o ao vivo, senão o mais cedo). */
+  game: G
+  /** O outro lado do jogo, para "hoje 21:30 × Palmeiras". */
+  rival: string
+}
+
+/**
+ * Os times que casam com o texto, tirados dos jogos da régua: só aparece
+ * time com jogo perto, cada um uma vez, no primeiro jogo dele.
+ */
+export function matchTeams<G extends RowLike>(
+  row: G[],
+  query: string
+): TeamHit<G>[] {
+  if (!fold(query)) return []
+  const found = new Map<string, TeamHit<G>>()
+  for (const game of row) {
+    const two = game.title.split(' × ')
+    if (two.length !== 2) continue
+    two.forEach((name, i) => {
+      if (!startsWord(name, query) || found.has(fold(name))) return
+      found.set(fold(name), { name, game, rival: two[1 - i] as string })
+    })
+  }
+  return [...found.values()]
+}
