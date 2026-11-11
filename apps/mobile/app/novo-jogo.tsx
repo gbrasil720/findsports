@@ -179,7 +179,7 @@ export default function NovoJogo() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Fechar"
-            hitSlop={8}
+            hitSlop={12}
             onPress={() =>
               first ? router.replace('/completar-perfil') : router.back()
             }
@@ -387,6 +387,13 @@ export default function NovoJogo() {
       <View style={[styles.foot, { paddingBottom: insets.bottom + 12 }]}>
         <Pressable
           accessibilityRole="button"
+          accessibilityHint={
+            !editing && blocked
+              ? 'O limite de jogos do mês acabou'
+              : !editing && !picked
+                ? 'Escolha um jogo da lista'
+                : undefined
+          }
           disabled={busy || (!editing && (!picked || blocked === true))}
           onPress={submit}
         >

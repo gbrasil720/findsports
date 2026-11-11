@@ -420,6 +420,7 @@ export default function Plano() {
                         </View>
                       ) : (
                         <Pressable
+                          hitSlop={{ top: 4, bottom: 4 }}
                           accessibilityRole="button"
                           accessibilityLabel={`Testar o ${PLAN_NAMES[id]}`}
                           disabled={change.isPending}

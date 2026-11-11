@@ -281,9 +281,9 @@ const styles = StyleSheet.create({
     borderRadius: 20
   },
   round: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center'
   },

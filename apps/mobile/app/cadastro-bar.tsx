@@ -302,7 +302,7 @@ export default function CadastroBar() {
                 </View>
                 <Pressable
                   accessibilityRole="button"
-                  hitSlop={8}
+                  hitSlop={14}
                   onPress={() => {
                     setFound(null)
                     setCep('')
@@ -412,8 +412,9 @@ export default function CadastroBar() {
                     Telas
                   </Text>
                   <Pressable
+                    accessibilityRole="button"
                     accessibilityLabel="Menos telas"
-                    hitSlop={8}
+                    hitSlop={14}
                     onPress={() => setScreens((n) => Math.max(1, n - 1))}
                   >
                     <Text
@@ -426,8 +427,9 @@ export default function CadastroBar() {
                     {screens}
                   </Text>
                   <Pressable
+                    accessibilityRole="button"
                     accessibilityLabel="Mais telas"
-                    hitSlop={8}
+                    hitSlop={14}
                     onPress={() => setScreens((n) => Math.min(99, n + 1))}
                   >
                     <Text
@@ -540,6 +542,11 @@ export default function CadastroBar() {
       >
         <Pressable
           accessibilityRole="button"
+          accessibilityHint={
+            step === 'place' && !placeOk
+              ? 'Preencha o nome, o endereço, o bairro e a cidade'
+              : undefined
+          }
           disabled={(step === 'place' && !placeOk) || complete.isPending}
           onPress={() => {
             haptic.select()
@@ -782,7 +789,7 @@ function ReviewRow({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`Corrigir ${title}`}
-        hitSlop={8}
+        hitSlop={14}
         onPress={onFix}
       >
         <Text

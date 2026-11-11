@@ -11,7 +11,14 @@ import { CameraView, useCameraPermissions } from 'expo-camera'
 import * as Crypto from 'expo-crypto'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import {
+  AccessibilityInfo,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View
+} from 'react-native'
 import Animated, {
   cancelAnimation,
   Easing,
@@ -350,6 +357,11 @@ export default function ValidarCodigo() {
           ))}
           <Pressable
             accessibilityRole="button"
+            accessibilityHint={
+              typed.length < RESERVATION_CODE_LENGTH
+                ? `Digite os ${RESERVATION_CODE_LENGTH} caracteres do código`
+                : undefined
+            }
             disabled={typed.length < RESERVATION_CODE_LENGTH || busy}
             onPress={() => check(typed)}
             style={[
@@ -468,6 +480,12 @@ function Valid({
   const motion = useStamp('success')
   const left = useSharedValue(1)
   const [undoing, setUndoing] = useState(true)
+  // O selo cai na tela; o VoiceOver ouve o mesmo.
+  useEffect(() => {
+    AccessibilityInfo.announceForAccessibility(
+      `Código válido: ${found.guestName}.${found.offer ? ` Libere a oferta: ${found.offer}.` : ''}`
+    )
+  }, [found.guestName, found.offer])
   useEffect(() => {
     // É um relógio, não enfeite: anda também com movimento reduzido.
     left.set(
@@ -605,7 +623,12 @@ function Valid({
             <Text style={[text(15, 'Regular', 1.3), { color: PAPER }]}>
               Código validado
             </Text>
-            <Pressable accessibilityRole="button" hitSlop={10} onPress={onUndo}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Desfazer a validação"
+              hitSlop={16}
+              onPress={onUndo}
+            >
               <Text style={[text(15, 'Bold', 1.3), { color: ACID }]}>
                 Desfazer
               </Text>

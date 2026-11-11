@@ -227,6 +227,8 @@ export default function FotosDoBar() {
             </Text>
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel="Trocar a foto recusada"
+              hitSlop={14}
               onPress={() => addPhoto(rejected[0]?.category as PhotoCategory)}
             >
               <Text

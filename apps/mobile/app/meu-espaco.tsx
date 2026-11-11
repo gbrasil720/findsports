@@ -4,7 +4,8 @@ import {
 } from '@findsports_oficial/api/lib/amenities'
 import {
   type OpeningHours,
-  openingStatus
+  openingStatus,
+  weekdayName
 } from '@findsports_oficial/api/lib/opening-hours'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -312,7 +313,12 @@ export default function MeuEspaco() {
             <View
               style={styles.week}
               accessible
-              accessibilityLabel="Horário da semana"
+              accessibilityLabel={`Horário da semana: ${WEEK_ORDER.map(
+                (day) => {
+                  const slot = hours?.[day]
+                  return `${weekdayName(day)}, ${slot ? `das ${slot.opens} às ${slot.closes}` : 'fechado'}`
+                }
+              ).join('; ')}`}
             >
               {WEEK_ORDER.map((day) => {
                 const slot = hours?.[day] ?? null

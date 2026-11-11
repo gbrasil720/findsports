@@ -176,6 +176,7 @@ export default function QuemVai() {
                   const on = g.id === game.id
                   return (
                     <Pressable
+                      hitSlop={{ top: 4, bottom: 4 }}
                       key={g.id}
                       accessibilityRole="button"
                       accessibilityState={{ selected: on }}
