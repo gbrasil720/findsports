@@ -138,6 +138,9 @@ export default function Layout() {
                   options={{ presentation: 'fullScreenModal' }}
                 />
                 <Stack.Screen name="quem-vai" />
+                <Stack.Screen name="desempenho" />
+                <Stack.Screen name="meu-espaco" />
+                <Stack.Screen name="fotos-do-bar" />
                 <Stack.Screen
                   name="novo-jogo"
                   options={{ presentation: 'modal' }}

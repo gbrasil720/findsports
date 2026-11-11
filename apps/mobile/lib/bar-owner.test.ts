@@ -4,6 +4,8 @@ import {
   dayKicker,
   delta,
   gameState,
+  profileChecklist,
+  shortDate,
   sinceLabel,
   todayGames,
   visitLine,
@@ -78,4 +80,22 @@ describe('quem vai', () => {
     expect(sinceLabel(new Date(NOW - 40 * 60_000), NOW)).toBe('há 40 min')
     expect(sinceLabel(new Date(NOW - 2 * 3_600_000), NOW)).toBe('há 2 h')
   })
+})
+
+it('dia curto', () => {
+  expect(shortDate('2026-10-17T19:00:00Z')).toBe('SÁB 17')
+})
+
+it('perfil: o primeiro que falta vira a frase', () => {
+  const list = profileChecklist({
+    cover: true,
+    description: false,
+    hours: true,
+    phone: true,
+    amenities: true,
+    gallery: true,
+    offer: true
+  })
+  expect(list.filter((i) => i.done)).toHaveLength(6)
+  expect(list.find((i) => !i.done)?.label).toBe('a descrição')
 })

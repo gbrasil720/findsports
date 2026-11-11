@@ -143,3 +143,72 @@ export function arrivalsByHour(
     count: counts.get(i) ?? 0
   }))
 }
+
+/** "SÁB 25": o dia da semana e o dia do mês, em Brasília. */
+export function shortDate(at: string | Date): string {
+  const day = houseDate(new Date(at).getTime())
+  return `${WEEKDAYS[day.getUTCDay()]} ${day.getUTCDate()}`
+}
+
+/** O dia da semana da casa (0 = domingo), em Brasília. */
+export function brasiliaWeekday(now: number): number {
+  return houseDate(now).getUTCDay()
+}
+
+/**
+ * O que o perfil do bar tem (Meu espaço, "Perfil N de 7"): a ordem é a de
+ * quanto cada item pesa para o torcedor, e o primeiro que falta vira a frase.
+ */
+export function profileChecklist(has: {
+  cover: boolean
+  description: boolean
+  hours: boolean
+  phone: boolean
+  amenities: boolean
+  gallery: boolean
+  offer: boolean
+}) {
+  return [
+    {
+      done: has.cover,
+      label: 'a capa',
+      why: 'é assim que o bar aparece no mapa e na busca.'
+    },
+    {
+      done: has.description,
+      label: 'a descrição',
+      why: 'bares com descrição recebem mais visitas.'
+    },
+    {
+      done: has.hours,
+      label: 'o horário',
+      why: 'com ele o bar aparece “aberto agora”.'
+    },
+    {
+      done: has.phone,
+      label: 'o telefone',
+      why: 'o torcedor liga ou chama no WhatsApp.'
+    },
+    {
+      done: has.amenities,
+      label: 'as características',
+      why: 'são os filtros da busca.'
+    },
+    {
+      done: has.gallery,
+      label: 'três fotos aprovadas',
+      why: 'a galeria mostra o ambiente.'
+    },
+    {
+      done: has.offer,
+      label: 'a oferta da casa',
+      why: 'ela vai no código de quem marca.'
+    }
+  ]
+}
+
+/** "9 out": o dia e o mês, em Brasília. */
+export function dayMonth(at: string | Date): string {
+  const day = houseDate(new Date(at).getTime())
+  return `${day.getUTCDate()} ${MONTHS[day.getUTCMonth()]?.toLowerCase()}`
+}

@@ -57,7 +57,11 @@ export default function OwnerTabs() {
       key: 'desempenho',
       icon: 'ranking',
       label: 'Desempenho',
-      soon: 'Desempenho chega ao app em breve; ele está no painel em onside.sh.',
+      soon: '',
+      open: () => {
+        setMenu(false)
+        router.push('/desempenho')
+      },
       meta: growth
         ? `${growth.startsWith('−') ? '▼' : '▲'} ${growth.replace(/[+−]/, '')}`
         : undefined,
@@ -77,13 +81,21 @@ export default function OwnerTabs() {
       key: 'espaco',
       icon: 'beer',
       label: 'Meu espaço',
-      soon: 'Meu espaço chega ao app em breve; ele está no painel em onside.sh.'
+      soon: '',
+      open: () => {
+        setMenu(false)
+        router.push('/meu-espaco')
+      }
     },
     {
       key: 'fotos',
       icon: 'camera',
       label: 'Fotos',
-      soon: 'Fotos chega ao app em breve; ele está no painel em onside.sh.',
+      soon: '',
+      open: () => {
+        setMenu(false)
+        router.push('/fotos-do-bar')
+      },
       badge: inReview ? `${inReview} em revisão` : undefined
     },
     {
