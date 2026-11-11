@@ -604,6 +604,17 @@ function Destaque({
     <div className="pn-tour">
       <div className="pn-tour-blk" style={{ clipPath: furo }} />
       {caixa ? <div className="pn-tour-spot" style={caixa} /> : null}
+      {pronta ? null : (
+        // Enquanto a dica espera o destaque (dados que não vêm, rota que não
+        // chega), a tela fica bloqueada: a saída não pode depender dela.
+        <button
+          type="button"
+          className="pn-btn pn-ink pn-sm pn-tour-esc"
+          onClick={onPausar}
+        >
+          Pular o passeio
+        </button>
+      )}
       <div
         ref={tipRef}
         className={pronta ? 'pn-tour-tip is-on' : 'pn-tour-tip'}
