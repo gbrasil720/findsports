@@ -186,3 +186,44 @@ test('bar de antes do cadastro novo não vê passeio nem Primeiros passos', asyn
   await expect(page.getByText('Primeiros passos do')).toHaveCount(0)
   await expect(tip(page)).toHaveCount(0)
 })
+
+test('sem o destaque da tela, "Pular o passeio" fica à vista enquanto a dica espera', async ({
+  page
+}) => {
+  const { user, barId } = await createPub({
+    subscription: {
+      plan: 'starter',
+      status: 'trialing',
+      currentPeriodEnd: inDays(90)
+    },
+    bar: { routine: JSON.stringify({ games: 8, spend: 60, wants: [] }) }
+  })
+  await createEvent(barId, { startsAt: inDays(1) })
+  await signIn(page, user)
+  await page.goto('/admin?passeio=1')
+  await expect(
+    page.getByRole('dialog', { name: 'Seu jogo já está no ar' })
+  ).toBeVisible()
+  // Jogos sem o alvo do passo, como numa grade que não carregou.
+  await page.evaluate(() => {
+    const tirar = () => {
+      for (const el of document.querySelectorAll('[data-passeio^="jogos"]')) {
+        el.removeAttribute('data-passeio')
+      }
+    }
+    new MutationObserver(tirar).observe(document.body, {
+      subtree: true,
+      childList: true,
+      attributes: true
+    })
+  })
+  await next(page).click()
+  await expect(page).toHaveURL(/\/admin\/jogos$/)
+  // Antes da desistência (240 quadros, uns 4 s), que mostraria a dica.
+  const pular = page.getByRole('button', { name: 'Pular o passeio' })
+  await expect(pular).toBeVisible({ timeout: 2000 })
+  await expect(tip(page)).toBeHidden()
+  await pular.click()
+  await expect(tip(page)).toHaveCount(0)
+  await expect(page.getByText(/^Passeio pausado/)).toBeVisible()
+})
