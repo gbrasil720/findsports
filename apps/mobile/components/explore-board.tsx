@@ -139,7 +139,9 @@ export function GameRow({
       ref={scroller}
       horizontal
       showsHorizontalScrollIndicator={false}
-      style={{ flexGrow: 0 }}
+      // A sombra dura (4 pt) passava da caixa e a rolagem a cortava: folga
+      // embaixo, devolvida na margem para o espaço em volta não mudar.
+      style={{ flexGrow: 0, marginBottom: -SHADOW_ROOM }}
       contentContainerStyle={styles.gameRow}
     >
       {games.map((game) => {
@@ -903,6 +905,8 @@ export function sheetLine(
   return `${when} · ${few}${count} ${count === 1 ? 'bar' : 'bares'} até ${radiusKm.toLocaleString('pt-BR')} km`
 }
 
+const SHADOW_ROOM = 6
+
 const styles = StyleSheet.create({
   float: {
     borderRadius: 26,
@@ -984,7 +988,7 @@ const styles = StyleSheet.create({
   day: { height: 34, paddingHorizontal: 13, justifyContent: 'center' },
   daysStretch: { alignSelf: 'stretch', padding: 4, borderRadius: 999 },
   dayStretch: { flex: 1, alignItems: 'center' },
-  gameRow: { gap: 8, paddingHorizontal: 16 },
+  gameRow: { gap: 8, paddingHorizontal: 16, paddingBottom: SHADOW_ROOM },
   game: {
     width: 208,
     height: 64,
