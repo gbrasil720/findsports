@@ -1,15 +1,5 @@
 # Basemap próprio — MapLibre + Protomaps (WEB-73, WEB-218)
 
-> **Só na prévia do painel (WEB-456, 28/10/2026).** O mapa do torcedor saiu do
-> web em 24/10; o MapLibre voltou apenas para a prévia "Como o torcedor vê" de
-> `/admin/meu-espaco`, carregado por `import()` (`components/admin/mapa-maplibre.ts`).
-> A URL do TileJSON é a constante `TILES_URL` desse arquivo (não há mais
-> `VITE_MAP_TILES_URL`): rebuild do archive = trocar a constante. Só o
-> TileJSON do Worker; o `pmtiles://` legado e o sprite não voltaram (as camadas
-> que só são ícone saem do estilo). Glyphs em `apps/web/public/map/fonts`. O
-> `ALLOWED_ORIGINS` do Worker aceita `http://localhost` em qualquer porta (o E2E
-> continua com o dublê `fixtures/tiles.ts`).
-
 O mapa não depende mais de fornecedor com faturamento. O basemap inteiro é **um
 arquivo** `.pmtiles` no R2; o navegador **não** lê esse arquivo direto — um
 Worker Cloudflare (`onside-tiles`) fatia o archive em tiles ZXY e cacheia cada
@@ -20,8 +10,8 @@ resposta na borda.
 | Biblioteca | `maplibre-gl` (BSD), npm | — |
 | Archive | `.pmtiles` no bucket R2 `onside-maps` | armazenamento (egress grátis) |
 | API de tiles | Worker `onside-tiles` em `tiles.onside.sh` | Workers Paid (WEB-218) |
-| Glyphs e sprite | `apps/web/public/map/`, mesma origem (apagado) | — |
-| Estilo | `apps/web/src/lib/map-style.ts` (apagado) | — |
+| Glyphs e sprite | `apps/web/public/map/`, mesma origem | — |
+| Estilo | `apps/web/src/lib/map-style.ts` | — |
 | Geocoding | LocationIQ (`LOCATIONIQ_API_KEY`) | tier grátis, 5.000/dia |
 
 Não existe chave, cota nem cliff de faturamento em nenhuma dessas linhas.
@@ -38,9 +28,16 @@ Não existe chave, cota nem cliff de faturamento em nenhuma dessas linhas.
 | maxzoom | 15 |
 | Esquema | Protomaps v4 (`version 4.15.2`) |
 
-O cliente só lê o TileJSON do Worker, pela constante `TILES_URL` de
-`apps/web/src/components/admin/mapa-maplibre.ts`: trocar de build é mudar a
-constante e fazer deploy do web.
+`VITE_MAP_TILES_URL` aceita os dois formatos até Infra migrar produção:
+
+| Formato | Exemplo | Comportamento no cliente |
+|---|---|---|
+| Legado (produção hoje) | `…/maps/onside-br-20260906.pmtiles` | `pmtiles://` + Range no R2 |
+| Worker (alvo WEB-218) | `https://tiles.onside.sh/onside-br-20260906.json` | TileJSON + MVT no Worker |
+
+A distinção é automática pelo sufixo `.pmtiles` vs `.json`. Trocar a variável
+(nas `vars` do GitHub Actions) **sem** redeploy do web não muda nada — o valor
+entra no build.
 
 ## Por que Brasil inteiro, e não a região de operação
 
@@ -148,16 +145,27 @@ ou mais num isolate novo (header, diretório folha, tile). Falha sai em
 `console.error`, com o campo `erro`. Para um alerta de verdade: `status >= 500`
 nesses eventos, ou `edgeResponseStatus >= 500` com `requestSource = eyeball`.
 
-### Deploy do Worker
+### Migração para o Worker (Infra — ordem obrigatória)
 
-`tiles.onside.sh` é custom domain do Worker `onside-tiles` (a migração do
-domínio do bucket R2 para o Worker, WEB-218, está feita). O deploy **não** roda
-em push/PR. Só manualmente:
+**Hoje:** `tiles.onside.sh` é custom domain do **bucket R2** `onside-maps`.
+**Não** rode deploy do Worker nesse hostname enquanto o bucket ainda o usa —
+colide ou toma o domínio sem aviso.
+
+O deploy do Worker **não** roda em push/PR. Só manualmente:
 
 **GitHub → Actions → “Deploy tiles worker” → Run workflow**  
 (`.github/workflows/deploy-tiles.yml`, `workflow_dispatch`).
 
-Conferir o cache depois do deploy:
+Ordem para ligar cache por tile **sem derrubar o mapa**:
+
+1. **Merge do código WEB-218** — seguro sozinho: produção continua com
+   `VITE_MAP_TILES_URL` apontando para `.pmtiles` e o cliente detecta o sufixo.
+2. **Remover custom domain do R2** — R2 → `onside-maps` → Settings → Custom
+   Domains → remover `tiles.onside.sh`. (O DNS some com o domínio; é esperado.)
+3. **Deploy do Worker** — rodar o workflow “Deploy tiles worker” (ou
+   `cd apps/tiles && bunx wrangler deploy` com token local). O `wrangler.jsonc`
+   recria `tiles.onside.sh` como custom domain do Worker `onside-tiles`.
+4. **Verificar cache** — antes de mudar o app:
 
 ```bash
 curl -sI 'https://tiles.onside.sh/onside-br-20260906/0/0/0.mvt' | grep -i cf-cache-status
@@ -166,7 +174,22 @@ curl -sI 'https://tiles.onside.sh/onside-br-20260906/0/0/0.mvt' | grep -i cf-cac
 curl -sI 'https://tiles.onside.sh/onside-br-20260906.json' | grep -i cf-cache-status
 ```
 
-Deploy local de emergência:
+5. **Trocar variável** — GitHub Actions `vars.VITE_MAP_TILES_URL` para
+   `https://tiles.onside.sh/onside-br-20260906.json` (TileJSON, não `.pmtiles`).
+6. **Redeploy `onside-web`** — push em `master` ou workflow de deploy; o build
+   embute a URL nova.
+
+#### Como desfazer (por etapa)
+
+| Etapa | Desfazer |
+|---|---|
+| 6–5 (app) | Voltar `VITE_MAP_TILES_URL` para a URL `.pmtiles` antiga e redeploy do web. |
+| 4 (cache) | Nada persistente — só validação. |
+| 3 (Worker) | Cloudflare → Workers → `onside-tiles` → Remove route / custom domain; ou `wrangler delete onside-tiles` se for apagar o Worker inteiro. |
+| 2 (R2 domain) | R2 → `onside-maps` → Settings → Custom Domains → recriar `tiles.onside.sh` no bucket (mapa legado volta a funcionar com a variável `.pmtiles`). |
+| 1 (código) | Reverter merge — o cliente legado continua funcionando com URL `.pmtiles`. |
+
+Deploy local de emergência (mesmo risco de colisão de domínio — só depois do passo 2):
 
 ```bash
 cd apps/tiles && bunx wrangler deploy
@@ -207,15 +230,15 @@ bun apps/web/scripts/build-map-tiles.ts               # extrai e publica
 
 O script sobe o `.pmtiles` para `maps/onside-br-{data}.pmtiles` com
 `Cache-Control: public, max-age=31536000, immutable` (via `aws s3 cp` — o
-`Bun.S3Client` descartava o cabeçalho) e imprime a `TILES_URL` nova
+`Bun.S3Client` descartava o cabeçalho) e imprime a `VITE_MAP_TILES_URL` nova
 (apontando para o TileJSON no Worker).
 
-Trocar a constante `TILES_URL` em `apps/web/src/components/admin/mapa-maplibre.ts`
-é passo manual, num PR: build novo = nome novo = URL nova; não há invalidação
-global de cache no Worker (cada tile é imutável por URL).
+Trocar a variável **nas `vars` do GitHub Actions e no `.env` local** é passo
+manual: build novo = nome novo = URL nova; não há invalidação global de cache
+no Worker (cada tile é imutável por URL).
 
 Ordem para não derrubar produção: publicar no R2 → deploy do Worker (se
-precisar) → trocar `TILES_URL` → deploy `onside-web` → conferir mapa →
+precisar) → trocar `VITE_MAP_TILES_URL` → deploy `onside-web` → conferir mapa →
 apagar archive antigo do bucket.
 
 ### Corrigir o cabeçalho de um arquivo já publicado
@@ -326,9 +349,9 @@ posiciona os pinos. Aparece no `attributionControl` do mapa, montada em
   chega ao componente. Por isso `criarEstiloDoMapa` recebe a origem.
 - **O `@2x` do sprite custa um 307 no Workers assets.** O MapLibre acrescenta
   `@2x` ao `sprite` em tela de alta densidade, e o Workers assets redireciona
-  `light@2x.*` para `light%402x.*` antes de servir. O sprite saiu em 24/10 e as
-  regras de `apps/web/public/_redirects` saíram com ele: sprite que voltar
-  precisa de duas regras `200` reescrevendo direto para a forma codificada.
+  `light@2x.*` para `light%402x.*` antes de servir. Duas regras `200` em
+  `apps/web/public/_redirects` reescrevem direto para a forma codificada. Sprite
+  novo com outro nome precisa das mesmas duas linhas.
 - **`maplibre-gl` está em `optimizeDeps.exclude`** (`apps/web/vite.config.ts`).
   O pré-empacotamento do Vite quebra o `new Worker(new URL(...))` do MapLibre e
   o worker vira 404 em desenvolvimento; sem worker, nenhum tile é decodificado —
