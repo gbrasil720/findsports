@@ -62,13 +62,19 @@ const gravarQuadros = (page: Page) =>
     requestAnimationFrame(loop)
   `)
 
-/** Os quadros do passo fora de onde a dica está agora. */
+/**
+ * Os quadros do passo fora de onde a dica está agora, depois de olhar a dica
+ * por um tempo: sem a espera, a conta podia rodar com um quadro só (ou
+ * nenhum) e passar sem ter visto nada.
+ */
 const quadrosForaDoLugar = async (page: Page, passo: string) => {
+  await page.waitForTimeout(500)
   const quadros = (await page.evaluate<Quadro[]>('window.__quadros')).filter(
     (q) => q.passo.startsWith(passo)
   )
-  const fim = quadros.at(-1)
-  return quadros.filter((q) => fim && Math.hypot(q.x - fim.x, q.y - fim.y) > 4)
+  expect(quadros.length, `quadros gravados de ${passo}`).toBeGreaterThan(1)
+  const fim = quadros.at(-1) as Quadro
+  return quadros.filter((q) => Math.hypot(q.x - fim.x, q.y - fim.y) > 4)
 }
 
 for (const plan of ['starter', 'pro', 'elite'] as const) {
