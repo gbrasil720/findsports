@@ -31,7 +31,13 @@ import {
   useStatusBar
 } from '@/components/ui'
 import { dayMonth } from '@/lib/bar-owner'
-import { PLAN_NAMES, PLAN_PRICES, type Plan, useOwnerBar } from '@/lib/owner'
+import {
+  PLAN_NAMES,
+  type Plan,
+  subscriptionCharge,
+  useOwnerBar,
+  usePlanPrices
+} from '@/lib/owner'
 import { queryClient, trpc } from '@/lib/trpc'
 
 /*
@@ -73,6 +79,7 @@ export default function Plano() {
     })
   )
   const s = sub.data
+  const price = usePlanPrices()
   const site = Boolean(s?.externalSubscriptionId)
   const standing = s?.standing ?? null
   const trial = s?.status === 'trialing' && !site && standing === 'current'
@@ -184,7 +191,13 @@ export default function Plano() {
                       >
                         {trial
                           ? `faltam ${left} ${left === 1 ? 'dia' : 'dias'}${end ? ` · até ${dayMonth(end)}` : ''}`
-                          : `R$ ${PLAN_PRICES[plan].founder}/mês${end ? ` · renova em ${dayMonth(end)}` : ''}`}
+                          : `R$ ${(site ? subscriptionCharge(plan, s?.monthlyDiscountReais) : price(plan)).now}/mês${
+                              s?.cancelAt
+                                ? ` · termina em ${dayMonth(s.cancelAt)}`
+                                : end
+                                  ? ` · renova em ${dayMonth(end)}`
+                                  : ''
+                            }`}
                       </Text>
                     </View>
                   </View>
@@ -386,7 +399,7 @@ export default function Plano() {
                             { color: palette.muted }
                           ]}
                         >
-                          {`R$ ${PLAN_PRICES[id].founder}/mês depois do teste`}
+                          {`R$ ${price(id).now}/mês depois do teste`}
                         </Text>
                       </View>
                       {id === plan ? (
@@ -478,7 +491,7 @@ export default function Plano() {
               { color: palette.muted, textAlign: 'center' }
             ]}
           >
-            {`App Store · R$ ${PLAN_PRICES[ended ? choice : 'elite'].founder}/mês${trial && end ? ` a partir de ${dayMonth(end)}` : ''} · a compra pelo app chega em breve`}
+            {`App Store · R$ ${price(ended ? choice : 'elite').now}/mês${trial && end ? ` a partir de ${dayMonth(end)}` : ''} · a compra pelo app chega em breve`}
           </Text>
         </View>
       ) : null}
@@ -527,6 +540,7 @@ function Ended({
   indicated: Plan
   onPick: (plan: Plan) => void
 }) {
+  const price = usePlanPrices()
   const palette = usePalette()
   return (
     <>
@@ -571,7 +585,7 @@ function Ended({
             key={id}
             accessibilityRole="radio"
             accessibilityState={{ checked: id === choice }}
-            accessibilityLabel={`${PLAN_NAMES[id]}, R$ ${PLAN_PRICES[id].founder} por mês${id === indicated ? ', indicado pela sua rotina' : ''}`}
+            accessibilityLabel={`${PLAN_NAMES[id]}, R$ ${price(id).now} por mês${id === indicated ? ', indicado pela sua rotina' : ''}`}
             onPress={() => onPick(id)}
             style={[
               styles.planCard,
@@ -587,10 +601,12 @@ function Ended({
             </Text>
             <Text
               style={[styles.planPrice, { color: palette.ink }]}
-            >{`R$ ${PLAN_PRICES[id].founder}`}</Text>
-            <Text
-              style={[styles.planOld, { color: palette.muted }]}
-            >{`R$ ${PLAN_PRICES[id].table}`}</Text>
+            >{`R$ ${price(id).now}`}</Text>
+            {price(id).list ? (
+              <Text
+                style={[styles.planOld, { color: palette.muted }]}
+              >{`R$ ${price(id).list}`}</Text>
+            ) : null}
           </Pressable>
         ))}
       </View>

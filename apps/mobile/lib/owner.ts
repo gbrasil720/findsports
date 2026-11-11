@@ -27,6 +27,34 @@ export const PLAN_PRICES: Record<Plan, { table: number; founder: number }> = {
   elite: { table: 297, founder: 269 }
 }
 
+export type PlanCharge = { now: number; list: number | null }
+
+/**
+ * O preço da vitrine, como o painel (`planChargeForShowcase`): o de fundador
+ * só enquanto o cupom vale no Stripe; esgotado ou expirado, a tabela.
+ * ponytail: enquanto a consulta não volta, mostra o de fundador (o caso de
+ * hoje); se ele acabar, o número troca na tela.
+ */
+export function usePlanPrices() {
+  const coupon = useQuery(trpc.pub.getFounderCouponAvailable.queryOptions())
+  const founder = coupon.isError ? false : (coupon.data?.available ?? true)
+  return (plan: Plan): PlanCharge =>
+    founder
+      ? { now: PLAN_PRICES[plan].founder, list: PLAN_PRICES[plan].table }
+      : { now: PLAN_PRICES[plan].table, list: null }
+}
+
+/** O que a assinatura cobra: a tabela menos o desconto gravado pelo webhook. */
+export function subscriptionCharge(
+  plan: Plan,
+  monthlyDiscountReais: number | null | undefined
+): PlanCharge {
+  const table = PLAN_PRICES[plan].table
+  return monthlyDiscountReais && monthlyDiscountReais > 0
+    ? { now: table - monthlyDiscountReais, list: table }
+    : { now: table, list: null }
+}
+
 export function currentPlan(
   subscription: {
     plan: Plan

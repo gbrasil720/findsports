@@ -27,7 +27,7 @@ import {
   useStatusBar
 } from '@/components/ui'
 import { dayMonth } from '@/lib/bar-owner'
-import { PLAN_NAMES, PLAN_PRICES, type Plan, useOwnerBar } from '@/lib/owner'
+import { PLAN_NAMES, type Plan, useOwnerBar, usePlanPrices } from '@/lib/owner'
 import { queryClient, trpc } from '@/lib/trpc'
 
 /*
@@ -86,6 +86,7 @@ export default function PlanoDoTeste() {
   // O indicado: o que a rotina acabou de mandar, senão o da rotina gravada
   // no bar (tela aberta pelo plano), senão o Elite.
   const owner = useOwnerBar()
+  const price = usePlanPrices()
   const routine = readRoutine(owner.bar?.routine)
   const recommended: Plan =
     indicado && PLAN_NAMES[indicado]
@@ -175,12 +176,12 @@ export default function PlanoDoTeste() {
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
                     <Text style={styles.price}>
-                      {`R$ ${PLAN_PRICES[plan].founder}`}
+                      {`R$ ${price(plan).now}`}
                       <Text style={styles.per}>/mês</Text>
                     </Text>
-                    <Text
-                      style={styles.old}
-                    >{`R$ ${PLAN_PRICES[plan].table}`}</Text>
+                    {price(plan).list ? (
+                      <Text style={styles.old}>{`R$ ${price(plan).list}`}</Text>
+                    ) : null}
                   </View>
                   <View style={[styles.radio, on && { borderColor: ACID }]}>
                     {on ? <View style={styles.radioDot} /> : null}
