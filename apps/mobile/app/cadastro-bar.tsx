@@ -3,23 +3,15 @@ import {
   HIDDEN_AMENITY_IDS
 } from '@findsports_oficial/api/lib/amenities'
 import { useMutation } from '@tanstack/react-query'
-import { Redirect, useRouter } from 'expo-router'
-import { useEffect, useRef, useState } from 'react'
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router'
+import { useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
-import Animated, {
-  useAnimatedStyle,
-  useReducedMotion,
-  useSharedValue,
-  withDelay,
-  withRepeat,
-  withSequence,
-  withTiming
-} from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AuthField } from '@/components/auth-shell'
 import { HardShadow } from '@/components/explore'
 import { DotField } from '@/components/fan-card'
-import { EASE, haptic } from '@/components/motion'
+import { haptic } from '@/components/motion'
+import { PubReceipt } from '@/components/pub-receipt'
 import { usePalette } from '@/components/theme'
 import {
   ACID,
@@ -66,22 +58,28 @@ export default function CadastroBar() {
   const router = useRouter()
   const palette = usePalette()
   const insets = useSafeAreaInsets()
-  const [step, setStep] = useState<Step>('welcome')
+  // Só em desenvolvimento: `?recibo=1` abre direto no comprovante, com um bar
+  // de exemplo, para conferir a impressão sem cadastrar outro bar.
+  const { recibo } = useLocalSearchParams<{ recibo?: string }>()
+  const preview = __DEV__ && recibo === '1'
+  const [step, setStep] = useState<Step>(preview ? 'receipt' : 'welcome')
   useStatusBar(palette.dark || step === 'welcome' ? 'light' : 'dark')
-  const [name, setName] = useState('')
+  const [name, setName] = useState(preview ? 'Bar do Zé' : '')
   const [cep, setCep] = useState('')
   const [found, setFound] = useState<CepAddress | null>(null)
   const [cepState, setCepState] = useState<'idle' | 'busy' | 'none'>('idle')
-  const [street, setStreet] = useState('')
-  const [number, setNumber] = useState('')
-  const [hood, setHood] = useState('')
-  const [city, setCity] = useState('')
-  const [uf, setUf] = useState('')
+  const [street, setStreet] = useState(preview ? 'Rua Aspicuelta' : '')
+  const [number, setNumber] = useState(preview ? '1' : '')
+  const [hood, setHood] = useState(preview ? 'Vila Madalena' : '')
+  const [city, setCity] = useState(preview ? 'São Paulo' : '')
+  const [uf, setUf] = useState(preview ? 'SP' : '')
   const [phone, setPhone] = useState('')
   const [amenities, setAmenities] = useState<number[]>([])
   const [screens, setScreens] = useState(1)
   const [problem, setProblem] = useState<string | null>(null)
-  const [done, setDone] = useState<{ at: number } | null>(null)
+  const [done, setDone] = useState<{ at: number } | null>(
+    preview ? { at: Date.now() } : null
+  )
   const complete = useMutation(trpc.onboarding.completePub.mutationOptions())
   const owner = useOwnerBar()
 
@@ -143,18 +141,22 @@ export default function CadastroBar() {
     )
 
   // Bar já cadastrado (link antigo, app reaberto aqui): Hoje na casa.
-  if (owner.bar && !done) return <Redirect href="/casa" />
+  if (owner.bar && !done && !preview) return <Redirect href="/casa" />
 
   if (step === 'receipt' && done)
     return (
-      <Receipt
-        name={name.trim()}
-        street={address}
-        hood={hood}
-        city={city}
-        uf={uf}
-        at={done.at}
-        onFirstGame={() =>
+      <PubReceipt
+        bar={{
+          name: name.trim(),
+          address,
+          neighborhood: hood.trim(),
+          city: city.trim(),
+          uf: uf || undefined
+        }}
+        until={new Date(done.at + TRIAL_DAYS * 86_400_000)}
+        issuedAt={new Date(done.at)}
+        continueLabel="Publicar o primeiro jogo"
+        onContinue={() =>
           router.replace({ pathname: '/novo-jogo', params: { primeiro: '1' } })
         }
       />
@@ -662,240 +664,6 @@ export function Plate({
       </View>
     </View>
   )
-}
-
-/** O comprovante que sai da impressora, linha a linha (uma vez). */
-function Receipt({
-  name,
-  street,
-  hood,
-  city,
-  uf,
-  at,
-  onFirstGame
-}: {
-  name: string
-  street: string
-  hood: string
-  city: string
-  uf: string
-  at: number
-  onFirstGame: () => void
-}) {
-  const palette = usePalette()
-  const insets = useSafeAreaInsets()
-  const reduced = useReducedMotion()
-  const [round, setRound] = useState(0)
-  const end = new Date(at + TRIAL_DAYS * 86_400_000)
-  const when = new Date(at)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  // Número do comprovante: os segundos do dia em que foi ao ar (não é um
-  // registro do servidor, é a fita).
-  const number = String(Math.floor(at / 1000) % 1_000_000).padStart(6, '0')
-  const lines: [string, string][] = [
-    ['TESTE GRÁTIS', 'R$ 0,00'],
-    [
-      `${TRIAL_DAYS} dias`,
-      `até ${pad(end.getDate())}/${pad(end.getMonth() + 1)}/${end.getFullYear()}`
-    ],
-    ['Cartão', 'não pedido'],
-    ['Plano', 'você escolhe depois'],
-    ['PRIMEIRO JOGO', 'por conta da Onside']
-  ]
-  return (
-    <View style={{ flex: 1, backgroundColor: palette.bg }}>
-      <ScrollView
-        contentContainerStyle={{
-          paddingTop: insets.top + 16,
-          paddingBottom: insets.bottom + 150,
-          paddingHorizontal: 20,
-          alignItems: 'center',
-          gap: 14
-        }}
-      >
-        <Text style={[styles.mono, { color: palette.muted }]}>
-          PRONTO. SAIU O SEU COMPROVANTE
-        </Text>
-        <View
-          accessible
-          accessibilityRole="header"
-          style={{ alignItems: 'center' }}
-        >
-          <Text
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            style={[styles.receiptTitle, { color: palette.ink }]}
-          >
-            {name}
-          </Text>
-          <Text
-            style={[
-              styles.receiptTitle,
-              { color: palette.dark ? ACID : palette.live }
-            ]}
-          >
-            ESTÁ NO AR
-          </Text>
-        </View>
-        <Printer printing={round} reduced={reduced} lines={lines.length + 3} />
-        <View key={round} style={styles.paper}>
-          <Line i={0} reduced={reduced} last={false}>
-            <Text style={styles.paperBrand}>ONSIDE</Text>
-            <Text style={styles.paperSmall}>COMPROVANTE DE CADASTRO</Text>
-            <View style={styles.paperRow}>
-              <Text style={styles.paperMono}>{`Nº ${number}`}</Text>
-              <Text
-                style={styles.paperMono}
-              >{`${pad(when.getDate())}/${pad(when.getMonth() + 1)}/${when.getFullYear()} · ${pad(when.getHours())}:${pad(when.getMinutes())}`}</Text>
-            </View>
-          </Line>
-          <Line i={1} reduced={reduced} last={false}>
-            <View style={styles.paperRule} />
-            <Text
-              style={[styles.paperMono, { fontFamily: 'GeistMono-SemiBold' }]}
-            >
-              {name.toUpperCase()}
-            </Text>
-            <Text style={styles.paperMono}>{street}</Text>
-            <Text style={styles.paperMono}>
-              {[hood, uf ? `${city}/${uf}` : city].filter(Boolean).join(' · ')}
-            </Text>
-            <View style={styles.paperRule} />
-          </Line>
-          {lines.map(([a, b], i) => (
-            <Line key={a} i={i + 2} reduced={reduced} last={false}>
-              <View style={styles.paperRow}>
-                <Text
-                  style={[
-                    styles.paperMono,
-                    a === a.toUpperCase() && {
-                      fontFamily: 'GeistMono-SemiBold'
-                    }
-                  ]}
-                >
-                  {a}
-                </Text>
-                <Text style={styles.paperMono}>{b}</Text>
-              </View>
-            </Line>
-          ))}
-          <Line i={lines.length + 2} reduced={reduced} last>
-            <View style={styles.paperRule} />
-            <View style={styles.paperRow}>
-              <Text style={styles.paperTotal}>TOTAL HOJE</Text>
-              <Text style={styles.paperTotal}>R$ 0,00</Text>
-            </View>
-            <View style={styles.barcode}>
-              {Array.from({ length: 34 }, (_, k) => (
-                <View
-                  key={String(k)}
-                  style={{
-                    width: (k * 7) % 3 === 0 ? 3 : 1.5,
-                    height: 30,
-                    backgroundColor: INK,
-                    marginRight: 1.5
-                  }}
-                />
-              ))}
-            </View>
-            <Text style={[styles.paperMono, { textAlign: 'center' }]}>
-              obrigado por torcer com a gente
-            </Text>
-          </Line>
-        </View>
-      </ScrollView>
-      <View
-        style={[
-          styles.foot,
-          { paddingBottom: insets.bottom + 10, backgroundColor: palette.bg }
-        ]}
-      >
-        <Pressable accessibilityRole="button" onPress={onFirstGame}>
-          <HardShadow color="#7f9a12" offset={4} radius={999} />
-          <View style={styles.cta}>
-            <Icon name="plus" size={20} color={INK} />
-            <Text style={[text(18, 'Bold', 1.2), { color: INK }]}>
-              Publicar o primeiro jogo
-            </Text>
-          </View>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => setRound((n) => n + 1)}
-        >
-          <Text
-            style={[
-              text(15, 'SemiBold', 1.3),
-              { color: palette.ink, textDecorationLine: 'underline' }
-            ]}
-          >
-            Imprimir de novo
-          </Text>
-        </Pressable>
-      </View>
-    </View>
-  )
-}
-
-function Printer({
-  printing,
-  reduced,
-  lines
-}: {
-  printing: number
-  reduced: boolean
-  lines: number
-}) {
-  const led = useSharedValue(1)
-  // biome-ignore lint/correctness/useExhaustiveDependencies: pisca a cada impressão
-  useEffect(() => {
-    if (reduced) return
-    led.set(
-      withRepeat(
-        withSequence(
-          withTiming(0.25, { duration: 500 }),
-          withTiming(1, { duration: 500 })
-        ),
-        Math.ceil((lines * 95 + 350) / 1000)
-      )
-    )
-  }, [printing, reduced])
-  const style = useAnimatedStyle(() => ({ opacity: led.get() }))
-  return (
-    <View style={styles.printer}>
-      <Animated.View style={[styles.led, style]} />
-    </View>
-  )
-}
-
-function Line({
-  i,
-  reduced,
-  last,
-  children
-}: {
-  i: number
-  reduced: boolean
-  last: boolean
-  children: React.ReactNode
-}) {
-  const t = useSharedValue(reduced ? 1 : 0)
-  const fired = useRef(false)
-  // biome-ignore lint/correctness/useExhaustiveDependencies: uma vez por impressão
-  useEffect(() => {
-    if (reduced) return
-    t.set(withDelay(i * 95, withTiming(1, { duration: 350, easing: EASE })))
-    if (last && !fired.current) {
-      fired.current = true
-      const timer = setTimeout(() => haptic.success(), i * 95 + 350)
-      return () => clearTimeout(timer)
-    }
-  }, [])
-  const style = useAnimatedStyle(() => ({
-    opacity: t.get(),
-    transform: [{ translateY: -8 * (1 - t.get()) }]
-  }))
-  return <Animated.View style={style}>{children}</Animated.View>
 }
 
 function Title({ a, b }: { a: string; b: string }) {
