@@ -293,19 +293,6 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   Todo checkout novo sai com ele enquanto o Stripe o der como válido; esgotado,
   expirado ou inexistente na conta, o checkout segue a preço de tabela
   (`usableFounderCoupon`). A oferta acaba no painel do Stripe, não no app.
-- **Dados da nota** (WEB-444): razão social, CNPJ e e-mail para notas em
-  `/admin/billing` (`components/painel/dados-da-nota.tsx`), nas colunas
-  `bar.legal_name`, `cnpj` e `invoice_email`, por `pub.updateInvoiceDetails`. Com
-  cliente no Stripe, ele recebe os três antes do banco (recusa ou Stripe fora do ar
-  não grava nada): a razão social vira a empresa, o CNPJ o único `br_cnpj` e o
-  e-mail o do cliente (vazio volta ao de acesso). CNPJ conferido pelo dígito, com
-  letras ou só números (`@findsports_oficial/db/cnpj`).
-- **Motivo do cancelamento** (WEB-445): "Por que está cancelando?"
-  (`components/painel/cancelar-plano.tsx`) grava em `subscription_cancel_reason` ao
-  abrir o portal (intenção). Só quando o webhook vê a assinatura agendada para acabar
-  ou encerrada o último motivo do dia antes do pedido vai a `cancellation_details` no
-  Stripe (`stripe-sync.ts`), sem sobrescrever o que o portal trouxe. Lista em
-  `packages/db/src/cancel-reasons.ts`.
 
 ### Avisos por e-mail do bar (WEB-441)
 
@@ -495,12 +482,13 @@ Import shared components: `import { Button } from "@findsports_oficial/ui/compon
 
 ### Mapa
 
-O único mapa do web é o da prévia "Como o torcedor vê" em `/admin/meu-espaco` (WEB-456):
-MapLibre com os tiles da Onside (Worker `apps/tiles`, `tiles.onside.sh`), carregado por
-`import()` só ali (`components/admin/mapa-da-previa.tsx` e `mapa-maplibre.ts`, glyphs em
-`apps/web/public/map/fonts`); nada de MapLibre no bundle de entrada. A distância da prévia
-é de um torcedor de exemplo a 0,8 km do bar, e a legenda diz isso. O app usa o mapa nativo
-(`react-native-maps`, ver "App mobile"). Runbook dos tiles em `docs/map-tiles.md`.
+MapLibre GL JS com basemap Protomaps: archive `.pmtiles` no R2, tiles ZXY via
+Worker `apps/tiles` em `tiles.onside.sh` (WEB-218). Componente em
+`apps/web/src/components/app/onside-map.tsx`, estilo em
+`apps/web/src/lib/map-style.ts`, glyphs e sprite em `apps/web/public/map/`.
+**Antes de mexer em tiles, estilo ou rebuild, leia `docs/map-tiles.md`** —
+runbook, deploy do Worker e armadilhas (URL absoluta para sprite/glyphs,
+`maplibre-gl` fora do `optimizeDeps` do Vite).
 
 ### SEO
 
@@ -553,9 +541,7 @@ linguagem da Onside (WEB-480, canvas https://claude.ai/artifact/DmzHetdEyDNRP3eW
 todo em `components/houdini/houdini.css`, preso a `.houdini`: Anton, Archivo e Geist
 Mono, acid e sombra dura. O tema segue o do sistema (escuro por padrão), e toda
 diferença entre claro e escuro é token `--hd-*`.
-Revisão (`/houdini/revisao`, WEB-462 e
-WEB-478): fotos e descrições dos bares, aprovar ou recusar com motivo, cada decisão no
-Grimório (`bar.photo_*`, `bar.description_*`). Jogo em rascunho (WEB-436) fica fora de
+Jogo em rascunho (WEB-436) fica fora de
 Jogos e de toda contagem do Houdini; só a aba Jogos da ficha do bar o mostra, marcado "Rascunho". A seção IA está em "IA (Workers AI…)".
 
 Revisão (`/houdini/revisao`, `adminReview`, WEB-462, WEB-478 e WEB-451): fotos e
