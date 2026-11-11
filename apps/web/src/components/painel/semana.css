@@ -563,3 +563,68 @@ html[data-theme="dark"] .tdc {
   color: var(--tdc-muted);
   font-size: 13.5px;
 }
+
+/* A faixa de números do jogo publicado em Jogos (PJ-depois, PJ-estados). */
+.pn3 .pn-pst {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  text-align: left;
+}
+
+.pn3 .pn-ps {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  padding-right: 12px;
+}
+
+.pn3 .pn-ps + .pn-ps {
+  padding-left: 14px;
+  border-left: 1px solid var(--line);
+}
+
+.pn3 .pn-ps > b {
+  flex: none;
+  font: 400 24px / 1 var(--display);
+  font-variant-numeric: tabular-nums;
+}
+
+.pn3 .pn-ps > b.is-up {
+  color: #5b6d0c;
+}
+
+html[data-theme="dark"] .pn3 .pn-ps > b.is-up {
+  color: var(--acid);
+}
+
+.pn3 .pn-ps > span {
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.3;
+}
+
+.pn3 .pn-ps i {
+  display: block;
+  color: #5b6d0c;
+  font-style: normal;
+  font-weight: 700;
+}
+
+html[data-theme="dark"] .pn3 .pn-ps i {
+  color: var(--acid);
+}
+
+@media (max-width: 720px) {
+  .pn3 .pn-ps {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .pn3 .pn-ps > b {
+    font-size: 20px;
+  }
+}
