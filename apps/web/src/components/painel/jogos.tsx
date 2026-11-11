@@ -62,6 +62,7 @@ import {
 import { NovoJogo, type NovoJogoMode } from './novo-jogo'
 import { Interruptor, initials, usePainel } from './painel-shell'
 import { Desfazer } from './quem-vai'
+import { SemanaPraVoce } from './semana-pra-voce'
 import { SugestoesDeJogo } from './sugestoes-de-jogo'
 
 /*
@@ -168,6 +169,32 @@ export function JogosPage({
   const lapsedPlan = getLapsedPaidPlan(plan.subscription)
   const blockReason = getCreateBlockReason(policyState, lapsedPlan?.title)
   const canCreate = blockReason === null
+
+  // Sem o catálogo da semana, a lista de sempre (bares perto).
+  const sugestoesAntigas = (
+    <SugestoesDeJogo
+      className="pn-card pn-sgj"
+      alvo="jogos-sugestoes"
+      disabled={!canCreate}
+      title={
+        <div className="pn-chd">
+          <h3>
+            <Sparkle size={20} />
+            Jogos que outros bares perto já marcaram
+          </h3>
+          <small>nos próximos 7 dias</small>
+        </div>
+      }
+      hint={
+        <p className="pn-note">
+          Um toque publica, com o telão e o som do bar.{' '}
+          {policy.data?.status === 'limited'
+            ? `Cada um conta nos ${policy.data.limit} jogos do mês.`
+            : 'Dá para editar depois.'}
+        </p>
+      }
+    />
+  )
 
   const subtitle = (() => {
     const name = plan.shownPlan?.name
@@ -435,28 +462,18 @@ export function JogosPage({
       ) : (
         <div className="pn-jl">
           <div data-passeio="jogos">
-            {tab === 'prox' ? (
-              <SugestoesDeJogo
-                className="pn-card pn-sgj"
-                alvo="jogos-sugestoes"
+            {tab === 'prox' && bar ? (
+              <SemanaPraVoce
+                variant="jogos"
+                bar={bar}
                 disabled={!canCreate}
-                title={
-                  <div className="pn-chd">
-                    <h3>
-                      <Sparkle size={20} />
-                      Jogos que outros bares perto já marcaram
-                    </h3>
-                    <small>nos próximos 7 dias</small>
-                  </div>
+                onEditar={open}
+                limitNote={
+                  policy.data?.status === 'limited'
+                    ? `Um toque publica, com o telão e o som do bar. Cada um conta nos ${policy.data.limit} jogos do mês.`
+                    : undefined
                 }
-                hint={
-                  <p className="pn-note">
-                    Um toque publica, com o telão e o som do bar.{' '}
-                    {policy.data?.status === 'limited'
-                      ? `Cada um conta nos ${policy.data.limit} jogos do mês.`
-                      : 'Dá para editar depois.'}
-                  </p>
-                }
+                fallback={sugestoesAntigas}
               />
             ) : null}
             {tab === 'prox' && interest.gathering && upcoming.length ? (
