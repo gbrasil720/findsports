@@ -329,6 +329,19 @@ export default function QuemVai() {
                 </Text>
               </View>
             </Pressable>
+            {owner.bar?.confirmsCodesLater ? (
+              // Bar que confere pela comanda: lançar o que o garçom anotou.
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.push('/comanda')}
+                style={[styles.comanda, { borderColor: palette.ink }]}
+              >
+                <Icon name="doc" size={20} color={palette.ink} />
+                <Text style={[text(17, 'Bold', 1.2), { color: palette.ink }]}>
+                  Lançar códigos da comanda
+                </Text>
+              </Pressable>
+            ) : null}
           </>
         )}
       </ScrollView>
@@ -549,6 +562,15 @@ const styles = StyleSheet.create({
     borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center'
+  },
+  comanda: {
+    height: 56,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10
   },
   validate: { height: 58, marginTop: 4 },
   validateFace: {

@@ -5,8 +5,10 @@ import {
   delta,
   gameState,
   profileChecklist,
+  retryableCodes,
   shortDate,
   sinceLabel,
+  splitLateCodes,
   todayGames,
   visitLine,
   weekDays,
@@ -108,4 +110,24 @@ it('perfil: o primeiro que falta vira a frase', () => {
   })
   expect(list.filter((i) => i.done)).toHaveLength(6)
   expect(list.find((i) => !i.done)?.label).toBe('a descrição')
+})
+
+describe('comanda', () => {
+  it('separa por linha, vírgula e ponto e vírgula, não por espaço', () => {
+    expect(splitLateCodes('K7M R4P\nH3XW9T, ab12cd;\n\n')).toEqual([
+      'K7M R4P',
+      'H3XW9T',
+      'ab12cd'
+    ])
+  })
+  it('volta para a caixa só o que dá para corrigir', () => {
+    expect(
+      retryableCodes([
+        { code: 'A', status: 'logged' },
+        { code: 'B', status: 'not_found' },
+        { code: 'C', status: 'expired' },
+        { code: 'D', status: 'limited' }
+      ])
+    ).toEqual(['B', 'D'])
+  })
 })

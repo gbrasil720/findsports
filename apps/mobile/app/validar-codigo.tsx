@@ -367,7 +367,7 @@ export default function ValidarCodigo() {
           {problem ??
             (permission?.granted
               ? owner.bar?.confirmsCodesLater
-                ? 'Bar pela comanda: anote o código e lance depois em Quem vai'
+                ? 'Bar pela comanda: anote o código e lance depois, em Comanda'
                 : 'Aponte para o QR do torcedor'
               : 'A câmera lê o QR do código do torcedor')}
         </Text>
@@ -397,11 +397,19 @@ export default function ValidarCodigo() {
               setMode('type')
             }}
           />
-          <Outline
-            icon="people"
-            label="Quem vai"
-            onPress={() => router.replace('/quem-vai')}
-          />
+          {owner.bar?.confirmsCodesLater ? (
+            <Outline
+              icon="doc"
+              label="Comanda"
+              onPress={() => router.replace('/comanda')}
+            />
+          ) : (
+            <Outline
+              icon="people"
+              label="Quem vai"
+              onPress={() => router.replace('/quem-vai')}
+            />
+          )}
         </View>
       </View>
     </View>

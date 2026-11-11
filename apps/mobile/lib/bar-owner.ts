@@ -223,3 +223,43 @@ export function dayMonth(at: string | Date): string {
   const day = houseDate(new Date(at).getTime())
   return `${day.getUTCDate()} ${MONTHS[day.getUTCMonth()]?.toLowerCase()}`
 }
+
+/*
+ * Código pela comanda (WEB-412), as mesmas regras do painel
+ * (`apps/web/src/domain/code-confirmation.ts`).
+ */
+export type LateStatus =
+  | 'logged'
+  | 'not_found'
+  | 'used'
+  | 'not_confirmed'
+  | 'too_early'
+  | 'expired'
+  | 'limited'
+
+/** Um código por linha; vírgula e ponto e vírgula também separam. */
+export function splitLateCodes(text: string): string[] {
+  return text
+    .split(/[\n,;]+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+}
+
+export const LATE_LABELS: Record<LateStatus, string> = {
+  logged: 'Lançado',
+  not_found: 'Não encontrado. Confira as letras na comanda.',
+  used: 'Já estava validado.',
+  not_confirmed: 'O torcedor desmarcou este jogo.',
+  too_early: 'O jogo deste código ainda não começou.',
+  expired: 'Passou o prazo: o código vale até 48 h depois do jogo.',
+  limited: 'Muitos códigos errados seguidos. Espere 10 minutos e lance de novo.'
+}
+
+/** O que volta para a caixa depois de lançar: só o que dá para corrigir. */
+export function retryableCodes(
+  results: readonly { code: string; status: LateStatus }[]
+): string[] {
+  return results
+    .filter(({ status }) => status === 'not_found' || status === 'limited')
+    .map(({ code }) => code)
+}
