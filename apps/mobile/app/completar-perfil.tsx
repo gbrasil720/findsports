@@ -69,8 +69,15 @@ export default function CompletarPerfil() {
     DEFAULT,
     DEFAULT
   ])
-  const [offer, setOffer] = useState<string | null>(OFFERS[0] ?? null)
+  // Nada pré-escolhido: oferta e horário são compromissos do bar.
+  const [offer, setOffer] = useState<string | null>(null)
+  const [touched, setTouched] = useState(false)
   const [until, setUntil] = useState<string>(UNTIL[0] ?? '')
+  // Mexer num dia marca que o horário é do dono: só então ele é gravado.
+  const changeHours = (next: (now: Day[]) => Day[]) => {
+    setTouched(true)
+    setHours(next)
+  }
   const add = useMutation(trpc.pub.addPhoto.mutationOptions())
   const updateMe = useMutation(trpc.pub.updateMe.mutationOptions())
   const saveHours = useMutation(trpc.pub.updateOpeningHours.mutationOptions())
@@ -110,7 +117,7 @@ export default function CompletarPerfil() {
       if (step === 1 && about.trim())
         await updateMe.mutateAsync({ description: about.trim() })
       if (step === 2) {
-        await saveHours.mutateAsync({ openingHours: hours })
+        if (touched) await saveHours.mutateAsync({ openingHours: hours })
         if (owner.elite && offer)
           await saveOffer.mutateAsync({ houseOffer: `${offer} ${until}` })
       }
@@ -327,7 +334,7 @@ export default function CompletarPerfil() {
                 accessibilityRole="button"
                 // Terça em todos os dias, menos a segunda (costuma fechar).
                 onPress={() =>
-                  setHours((now) =>
+                  changeHours((now) =>
                     now.map((d, i) => (i === 1 ? d : (now[2] ?? DEFAULT)))
                   )
                 }
@@ -343,7 +350,7 @@ export default function CompletarPerfil() {
                 accessibilityRole="button"
                 // Domingo igual ao sábado.
                 onPress={() =>
-                  setHours((now) =>
+                  changeHours((now) =>
                     now.map((d, i) => (i === 0 ? (now[6] ?? null) : d))
                   )
                 }
@@ -369,7 +376,7 @@ export default function CompletarPerfil() {
                       accessibilityLabel={`${LETTERS[day]}: ${slot ? `${slot.opens} às ${slot.closes}` : 'fechado'}`}
                       onPress={() => {
                         haptic.select()
-                        setHours((now) =>
+                        changeHours((now) =>
                           now.map((d, i) =>
                             i === day ? (d ? null : DEFAULT) : d
                           )

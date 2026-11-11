@@ -11,7 +11,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera'
 import * as Crypto from 'expo-crypto'
 import { useRouter } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import Animated, {
   cancelAnimation,
   Easing,
@@ -27,6 +27,7 @@ import { Seal, useStamp } from '@/components/fan-card'
 import { EASE, haptic, useShake } from '@/components/motion'
 import {
   ACID,
+  errorMessage,
   Icon,
   INK,
   PAPER,
@@ -188,7 +189,20 @@ export default function ValidarCodigo() {
         onClose={() => router.back()}
         onNext={next}
         onUndo={async () => {
-          await undo.mutateAsync({ useId: found.useId }).catch(() => null)
+          try {
+            await undo.mutateAsync({ useId: found.useId })
+          } catch (error) {
+            // Não desfez: a chegada continua valendo, e o dono precisa saber.
+            haptic.error()
+            Alert.alert(
+              'Não deu para desfazer',
+              errorMessage(
+                error,
+                'A validação continua valendo. Tente de novo.'
+              )
+            )
+            return
+          }
           queryClient.invalidateQueries()
           next()
         }}

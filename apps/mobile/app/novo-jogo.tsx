@@ -128,7 +128,12 @@ export default function NovoJogo() {
       onBigScreen: onScreen,
       withSound,
       ...(owner.elite
-        ? { attendanceEnabled: withList, noHouseOffer: !withOffer }
+        ? {
+            attendanceEnabled: withList,
+            // Só com a oferta padrão o interruptor aparece: sem ela, nada a
+            // desligar, e o jogo herda a oferta quando o bar criar uma.
+            ...(bar?.houseOffer ? { noHouseOffer: !withOffer } : {})
+          }
         : {})
     }
     if (editing)

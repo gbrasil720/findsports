@@ -12,6 +12,7 @@ import { usePalette } from '@/components/theme'
 import {
   ACID,
   BackButton,
+  ErrorState,
   Icon,
   INK,
   PAPER,
@@ -103,7 +104,14 @@ export default function Plano() {
           <View style={{ width: 44 }} />
         </View>
 
-        {sub.isPending ? (
+        {sub.isError ? (
+          <ErrorState
+            title="Não deu para abrir o plano."
+            error={sub.error}
+            onRetry={() => sub.refetch()}
+            retrying={sub.isFetching}
+          />
+        ) : sub.isPending ? (
           <Text style={[text(15, 'Regular', 1.45), { color: palette.muted }]}>
             Carregando o plano…
           </Text>
@@ -112,6 +120,7 @@ export default function Plano() {
             barName={owner.bar?.name ?? ''}
             address={owner.bar?.address ?? ''}
             people={proof.data?.people ?? 0}
+            trialEnded={standing !== 'ended'}
           />
         ) : (
           <>
@@ -262,7 +271,7 @@ export default function Plano() {
                   {[
                     [
                       'Quem vai, jogo a jogo',
-                      `${proof.data?.people ?? 0} pessoas marcaram este mês`
+                      `${proof.data?.people ?? 0} ${(proof.data?.people ?? 0) === 1 ? 'pessoa marcou' : 'pessoas marcaram'} este mês`
                     ],
                     [
                       'Oferta da casa e código do balcão',
@@ -476,11 +485,14 @@ function Cell({ value, label }: { value: number | undefined; label: string }) {
 function Ended({
   barName,
   address,
-  people
+  people,
+  trialEnded
 }: {
   barName: string
   address: string
   people: number
+  /** O teste do cadastro acabou; `false` é assinatura que terminou. */
+  trialEnded: boolean
 }) {
   const palette = usePalette()
   return (
@@ -511,9 +523,9 @@ function Ended({
         accessibilityRole="header"
         style={[styles.endedTitle, { color: palette.ink }]}
       >
-        {'O TESTE '}
+        {trialEnded ? 'O TESTE ' : 'A ASSINATURA '}
         <Text style={{ color: palette.dark ? ACID : palette.live }}>
-          ACABOU
+          {trialEnded ? 'ACABOU' : 'TERMINOU'}
         </Text>
       </Text>
       <Text style={[text(15.5, 'Regular', 1.45), { color: palette.muted }]}>
@@ -546,7 +558,9 @@ function Ended({
         ))}
       </View>
       <Text style={[styles.endedNote, { color: palette.muted }]}>
-        {`O ELITE TROUXE ${people} ${people === 1 ? 'PESSOA' : 'PESSOAS'} ESTE MÊS`}
+        {people
+          ? `${people} ${people === 1 ? 'PESSOA MARCOU' : 'PESSOAS MARCARAM'} PRESENÇA ESTE MÊS`
+          : 'OS DADOS DO BAR CONTINUAM GUARDADOS'}
       </Text>
     </>
   )

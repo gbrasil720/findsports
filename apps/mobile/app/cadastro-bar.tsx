@@ -101,9 +101,10 @@ export default function CadastroBar() {
     haptic.success()
     setCepState('idle')
     setFound(address)
-    setStreet(address.street)
-    setHood(address.neighborhood)
-    setCity(address.city)
+    // CEP de cidade inteira vem sem rua e bairro: não apaga o que foi digitado.
+    if (address.street) setStreet(address.street)
+    if (address.neighborhood) setHood(address.neighborhood)
+    if (address.city) setCity(address.city)
     setUf(address.uf)
   }
 
