@@ -213,7 +213,7 @@ function DefinitionNote({ i }: { i: number }) {
   if (!d) return null
   return (
     <div className="note rv" data-to={i}>
-      <span className="hp-n">{d.number}</span>
+      <span className="n">{d.number}</span>
       <b>{d.text}</b>
     </div>
   )
@@ -643,7 +643,7 @@ export function LandingV3() {
                         {t.live ? '● AO VIVO' : t.time}
                       </span>
                       {t.title}
-                      {t.note && <span className="hp-n">{t.note}</span>}
+                      {t.note && <span className="n">{t.note}</span>}
                     </span>
                   )
                 )
@@ -916,7 +916,7 @@ export function LandingV3() {
                 const Icon = OCCASION_ICONS[i] ?? Beer
                 return (
                   <li key={o.id} className={o.highlight ? 'rv hl' : 'rv'}>
-                    <span className="hp-n">{o.number}</span>
+                    <span className="n">{o.number}</span>
                     <b>{o.title}</b>
                     <span className="tg">
                       <Icon />
@@ -954,7 +954,7 @@ export function LandingV3() {
               </p>
               <div className="score rv">
                 <div className="big">4,6</div>
-                <div className="hp-sub">
+                <div className="sub">
                   <b>Bar do Zé em dia de jogo</b>
                   <span>42 avaliações verificadas · 88% voltariam</span>
                 </div>
@@ -1126,7 +1126,7 @@ export function LandingV3() {
                 <span className="h2-2">Encha a casa em dia de jogo.</span>
               </h2>
               <div className="rv">
-                <span className="hp-tag">
+                <span className="tag">
                   <em>{ONBOARDING_TRIAL.days} DIAS</em>de Elite grátis, sem
                   cartão
                 </span>
