@@ -31,6 +31,7 @@ import {
   assertCanConfigureHouseOffer,
   parseHouseOfferInput
 } from '../lib/house-offer'
+import { houseTeamIdsSchema, replaceHouseTeams } from '../lib/house-teams'
 import { normalizeOpeningHours, openingHoursSchema } from '../lib/opening-hours'
 import { ONBOARDING_TRIAL } from '../lib/plan-limits'
 import { recommendPlan, routineSchema } from '../lib/pub-routine'
@@ -121,7 +122,9 @@ export const onboardingRouter = router({
         // Opcional: aba e rascunho de antes do campo não a mandam, e esse bar
         // nasce como antes, no Elite e com o plano dado como escolhido (o
         // cliente antigo troca por `changeTrialPlan` logo em seguida).
-        routine: routineSchema.optional()
+        routine: routineSchema.optional(),
+        // "Times da casa" (WEB-433), opcional na rotina.
+        houseTeamIds: houseTeamIdsSchema.optional()
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -220,6 +223,9 @@ export const onboardingRouter = router({
           status: 'trialing',
           currentPeriodEnd: sql`now() + make_interval(days => ${ONBOARDING_TRIAL.days}::int)`
         })
+
+        if (input.houseTeamIds?.length)
+          await replaceHouseTeams(tx, newBar.id, input.houseTeamIds)
 
         await tx
           .update(user)
