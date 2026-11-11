@@ -112,7 +112,7 @@ export function scoreGame(history: BarHistory, game: CatalogCandidate) {
   const team = teamOf(history, game)
   const slots = slotCount(history, game.startsAt)
   let score = 0
-  score += Math.min(championship, 5) * 0.8
+  score += championship ? 1.5 + Math.min(championship, 5) * 0.3 : 0
   score += team ? 2 + Math.min(team.count, 5) * 0.4 : 0
   score += history.sports.has(game.sportId) ? 1 : 0
   score += Math.min(slots, 4) * 0.5
