@@ -56,6 +56,11 @@ export default function QuemVai() {
     enabled: owner.elite,
     refetchInterval: 30_000
   })
+  // Lista desligada no jogo (WEB-437): ele some de `going`; a tela diz quais.
+  const events = useQuery({
+    ...trpc.pub.getMyEvents.queryOptions(),
+    enabled: owner.elite
+  })
   const [chosen, setChosen] = useState<string | null>(null)
   const [filter, setFilter] = useState<Filter>('all')
   const now = Date.now()
@@ -63,7 +68,10 @@ export default function QuemVai() {
   // O jogo de agora: o ao vivo, senão o próximo.
   const live = games.find(
     (g) =>
-      gameState({ ...g, endsAt: null, publishedAt: g.startsAt }, now) === 'live'
+      gameState(
+        { ...g, endsAt: g.endsAt ?? null, publishedAt: g.startsAt },
+        now
+      ) === 'live'
   )
   const game =
     games.find((g) => g.id === chosen) ??
@@ -86,6 +94,11 @@ export default function QuemVai() {
       )
     : []
   const isLive = game ? game.id === live?.id : false
+  const off = (events.data ?? []).filter(
+    (g) =>
+      g.attendanceEnabled === false &&
+      (gameState(g, now) === 'upcoming' || gameState(g, now) === 'live')
+  )
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
@@ -140,7 +153,18 @@ export default function QuemVai() {
               ? 'Carregando…'
               : 'Ninguém marcou presença nos próximos jogos ainda.'}
           </Text>
-        ) : (
+        ) : null}
+        {owner.elite && off.length ? (
+          <Text style={[text(14, 'Regular', 1.4), { color: palette.muted }]}>
+            {`Lista desligada em ${off
+              .slice(0, 3)
+              .map((g) => shortTitle(gameTitle(g)))
+              .join(
+                ', '
+              )}${off.length > 3 ? ` e mais ${off.length - 3}` : ''}: quem já marcou continua com o código. Religue no jogo, em Jogos.`}
+          </Text>
+        ) : null}
+        {!owner.elite || going.isError || !game ? null : (
           <>
             {games.length > 1 ? (
               <ScrollView

@@ -123,6 +123,8 @@ export const barReservationsRouter = router({
         participantFreeText: event.participantFreeText,
         participants: participantNames(sql`${event.id}`),
         startsAt: event.startsAt,
+        // O fim próprio do jogo (nulo deriva pelo esporte): o "ao vivo" do app.
+        endsAt: event.endsAt,
         houseOffer: event.houseOffer,
         noHouseOffer: event.noHouseOffer,
         name: user.name,
@@ -183,6 +185,7 @@ export const barReservationsRouter = router({
         participantFreeText: string | null
         participants: string[]
         startsAt: Date
+        endsAt: Date | null
         houseOffer: string | null
         noHouseOffer: boolean
         people: {
