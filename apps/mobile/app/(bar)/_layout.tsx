@@ -67,7 +67,11 @@ export default function OwnerTabs() {
       key: 'quem-vai',
       icon: 'people',
       label: 'Quem vai',
-      soon: 'Quem vai chega ao app em breve; ele está no painel em onside.sh.'
+      soon: '',
+      open: () => {
+        setMenu(false)
+        router.push('/quem-vai')
+      }
     },
     {
       key: 'espaco',

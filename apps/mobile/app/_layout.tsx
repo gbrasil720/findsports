@@ -137,6 +137,11 @@ export default function Layout() {
                   name="validar-codigo"
                   options={{ presentation: 'fullScreenModal' }}
                 />
+                <Stack.Screen name="quem-vai" />
+                <Stack.Screen
+                  name="novo-jogo"
+                  options={{ presentation: 'modal' }}
+                />
                 {/* "Vou assistir aqui" (3d): folha nativa do iOS, quase alta. Fundo
                 transparente: é o que deixa o iOS 26 desenhar o vidro dela. */}
                 <Stack.Screen

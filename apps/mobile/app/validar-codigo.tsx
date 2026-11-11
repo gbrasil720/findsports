@@ -34,7 +34,7 @@ import {
   text,
   useStatusBar
 } from '@/components/ui'
-import { gameState, visitLine } from '@/lib/bar-owner'
+import { gameState, sinceLabel, visitLine } from '@/lib/bar-owner'
 import { formatTime } from '@/lib/explore'
 import { useOwnerBar } from '@/lib/owner'
 import { queryClient, trpc } from '@/lib/trpc'
@@ -346,9 +346,7 @@ export default function ValidarCodigo() {
           <Outline
             icon="people"
             label="Quem vai"
-            onPress={() => {
-              router.back()
-            }}
+            onPress={() => router.replace('/quem-vai')}
           />
         </View>
       </View>
@@ -388,7 +386,7 @@ function Valid({
   }))
   const g = found.guest
   const first = g.visitsHere === 0
-  const marked = g.markedAt ? sinceLabel(g.markedAt) : null
+  const marked = g.markedAt ? sinceLabel(g.markedAt, Date.now()) : null
   return (
     <View style={[styles.dark, { paddingTop: insets.top + 10 }]}>
       <View style={styles.validTop}>
@@ -775,17 +773,6 @@ function shortTitle(title: string) {
   return sides.length === 2
     ? sides.map((side) => side.slice(0, 3)).join(' × ')
     : title
-}
-
-/** "há 2 h", "há 40 min". */
-function sinceLabel(at: string | Date) {
-  const minutes = Math.max(
-    1,
-    Math.round((Date.now() - new Date(at).getTime()) / 60000)
-  )
-  if (minutes < 60) return `há ${minutes} min`
-  const hours = Math.round(minutes / 60)
-  return hours < 24 ? `há ${hours} h` : `há ${Math.round(hours / 24)} d`
 }
 
 // O teclado só com o que existe no código (sem O, 0, I, 1 nem L).

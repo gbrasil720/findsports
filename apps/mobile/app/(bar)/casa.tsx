@@ -390,7 +390,7 @@ export default function Casa() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`${suggestion.title} na sua grade?`}
-            onPress={() => router.navigate('/jogos')}
+            onPress={() => router.push('/novo-jogo')}
           >
             <HardShadow color={palette.drop} offset={4} radius={24} />
             <View

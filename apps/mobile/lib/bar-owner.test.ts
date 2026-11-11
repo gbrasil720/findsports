@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'bun:test'
 import {
+  arrivalsByHour,
   dayKicker,
   delta,
   gameState,
+  sinceLabel,
   todayGames,
   visitLine,
+  weekDays,
   weekdayName
 } from './bar-owner'
 
@@ -47,5 +50,32 @@ describe('app do dono', () => {
     expect(delta(18.4)).toBe('+18%')
     expect(delta(-4)).toBe('−4%')
     expect(delta(null)).toBeNull()
+  })
+})
+
+describe('semana da casa', () => {
+  it('sete dias a partir de hoje em Brasília', () => {
+    const days = weekDays(NOW)
+    expect(days).toHaveLength(7)
+    expect(days[0]).toBe('2026-10-12')
+    expect(days[6]).toBe('2026-10-18')
+  })
+})
+
+describe('quem vai', () => {
+  it('chegadas por hora de Brasília a partir da hora antes do jogo', () => {
+    // Jogo às 21:30 (00:30 UTC); chegadas às 20:10, 21:05 e 21:40.
+    const bars = arrivalsByHour(
+      ['2026-10-12T23:10:00Z', '2026-10-13T00:05:00Z', '2026-10-13T00:40:00Z'],
+      '2026-10-13T00:30:00Z'
+    )
+    expect(bars[0]).toEqual({ hour: 20, count: 1 })
+    expect(bars[1]).toEqual({ hour: 21, count: 2 })
+    expect(bars).toHaveLength(4)
+  })
+
+  it('há quanto tempo', () => {
+    expect(sinceLabel(new Date(NOW - 40 * 60_000), NOW)).toBe('há 40 min')
+    expect(sinceLabel(new Date(NOW - 2 * 3_600_000), NOW)).toBe('há 2 h')
   })
 })

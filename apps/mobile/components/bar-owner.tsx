@@ -79,11 +79,17 @@ export function OwnerRow({
 export function DayBoard({
   kicker,
   live,
+  aside,
+  hot,
   children
 }: {
   kicker: string
-  /** "1 AO VIVO", em vermelho com o ponto. */
+  /** "1 AO VIVO", à direita, em vermelho com o ponto. */
   live?: string
+  /** O canto direito em cinza ("BRASILEIRÃO"). */
+  aside?: string
+  /** O próprio rótulo em vermelho com o ponto ("21:30 · AO VIVO"). */
+  hot?: boolean
   children: ReactNode
 }) {
   const palette = usePalette()
@@ -98,7 +104,17 @@ export function DayBoard({
       >
         <DotField id="dia" radius={28} />
         <View style={styles.boardHead}>
-          <Text style={[styles.mono, { color: '#aaa9a4' }]}>{kicker}</Text>
+          {hot ? (
+            <View style={styles.liveRow}>
+              <View style={[styles.dot, { backgroundColor: '#f3421d' }]} />
+              <Text style={[styles.mono, { color: '#f3421d' }]}>{kicker}</Text>
+            </View>
+          ) : (
+            <Text style={[styles.mono, { color: '#aaa9a4' }]}>{kicker}</Text>
+          )}
+          {aside ? (
+            <Text style={[styles.mono, { color: '#aaa9a4' }]}>{aside}</Text>
+          ) : null}
           {live ? (
             <View style={styles.liveRow}>
               <View style={[styles.dot, { backgroundColor: '#f3421d' }]} />

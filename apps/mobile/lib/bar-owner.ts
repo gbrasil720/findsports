@@ -98,3 +98,48 @@ export function delta(change: number | null | undefined): string | null {
   const n = Math.round(change)
   return `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n)}%`
 }
+
+/**
+ * Jogo lotando: passou de 20 marcações, a mesma regra do e-mail "Jogo
+ * lotando" (`packages/api/src/lib/bar-notices.ts`).
+ */
+export const LOTANDO = 21
+
+/** Os sete dias da casa a partir de hoje ("2026-11-11", ...). */
+export function weekDays(now: number): string[] {
+  return Array.from({ length: 7 }, (_, i) => brasiliaDay(now, i))
+}
+
+/** "há 2 h", "há 40 min", "há 3 d". */
+export function sinceLabel(at: string | Date, now: number): string {
+  const minutes = Math.max(
+    1,
+    Math.round((now - new Date(at).getTime()) / 60_000)
+  )
+  if (minutes < 60) return `há ${minutes} min`
+  const hours = Math.round(minutes / 60)
+  return hours < 24 ? `há ${hours} h` : `há ${Math.round(hours / 24)} d`
+}
+
+/**
+ * As chegadas por hora de Brasília, da hora antes do jogo até a última
+ * chegada (no mínimo quatro horas), para o gráfico do Quem vai.
+ */
+export function arrivalsByHour(
+  times: readonly (string | Date)[],
+  startsAt: string | Date
+): { hour: number; count: number }[] {
+  const hourOf = (at: string | Date) => (new Date(at).getUTCHours() + 21) % 24
+  const start = (hourOf(startsAt) + 23) % 24
+  const counts = new Map<number, number>()
+  let last = 3
+  for (const at of times) {
+    const offset = (hourOf(at) - start + 24) % 24
+    counts.set(offset, (counts.get(offset) ?? 0) + 1)
+    last = Math.max(last, offset)
+  }
+  return Array.from({ length: last + 1 }, (_, i) => ({
+    hour: (start + i) % 24,
+    count: counts.get(i) ?? 0
+  }))
+}
