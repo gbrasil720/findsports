@@ -130,6 +130,13 @@ export default function Layout() {
                   }}
                 />
                 <Stack.Screen name="(fan)" options={{ animation: 'fade' }} />
+                {/* O app do dono do bar (rodada 10); validar o código abre
+                    por cima de qualquer tela, como a câmera do sistema. */}
+                <Stack.Screen name="(bar)" options={{ animation: 'fade' }} />
+                <Stack.Screen
+                  name="validar-codigo"
+                  options={{ presentation: 'fullScreenModal' }}
+                />
                 {/* "Vou assistir aqui" (3d): folha nativa do iOS, quase alta. Fundo
                 transparente: é o que deixa o iOS 26 desenhar o vidro dela. */}
                 <Stack.Screen

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Image, Pressable, StyleSheet, View } from 'react-native'
 import Animated, {
   type EntryExitAnimationFunction,
@@ -40,8 +41,14 @@ export type MenuItem = {
     | 'pin'
     | 'map'
     | 'doc'
+    | 'calendar'
+    | 'camera'
+    | 'beer'
+    | 'gear'
   label: string
   meta?: string
+  /** A variação em acid ("▲ 32%", Desempenho do dono). */
+  metaHot?: boolean
   /** Sem conta (rodada 2, tela 5): o item fica à vista com "com conta". */
   account?: boolean
   /** O selo acid do design ("5 novos"). */
@@ -81,7 +88,9 @@ export function YouMenu({
   onItem,
   onSettings,
   visitor,
-  level
+  level,
+  head,
+  wide
 }: {
   name: string
   initials: string
@@ -97,6 +106,10 @@ export function YouMenu({
   visitor?: { onCreate: () => void; onEnter: () => void }
   /** O nível da pessoa ("3 · Boleiro"), de `achievements.mine`. */
   level?: { level: number; name: string }
+  /** O topo do menu no lugar do da pessoa (o do bar, rodada 10). */
+  head?: ReactNode
+  /** Mais largo (o menu do Bar, 340). */
+  wide?: boolean
 }) {
   const palette = usePalette()
   const nav = useNavInsets()
@@ -110,7 +123,7 @@ export function YouMenu({
   // saindo da aba Você. Sem conta, largo, por causa do cartão da conta.
   const menuWidth = visitor
     ? Math.min(free - 28, 420)
-    : Math.min(272, free - 24)
+    : Math.min(wide ? 340 : 272, free - 24)
   return (
     <>
       {/* O escurecido para acima da barra: tocar numa aba com o menu aberto
@@ -189,6 +202,12 @@ export function YouMenu({
                   </Text>
                 </Pressable>
               </View>
+            </View>
+          ) : head ? (
+            <View
+              style={[styles.menuHead, { borderBottomColor: palette.line }]}
+            >
+              {head}
             </View>
           ) : (
             <View
@@ -281,7 +300,18 @@ export function YouMenu({
                     </Text>
                   </View>
                 ) : item.meta ? (
-                  <Text style={[styles.mono, { color: palette.muted }]}>
+                  <Text
+                    style={[
+                      styles.mono,
+                      {
+                        color: item.metaHot
+                          ? palette.dark
+                            ? ACID
+                            : '#5b6d0c'
+                          : palette.muted
+                      }
+                    ]}
+                  >
                     {item.meta}
                   </Text>
                 ) : null}
