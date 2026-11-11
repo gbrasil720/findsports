@@ -39,6 +39,44 @@ const PASSOS: Record<Plan, [string, RegExp][]> = {
 const tip = (page: Page) => page.locator('.pn-tour-tip')
 const next = (page: Page) => tip(page).locator('.pn-acid')
 
+type Quadro = { passo: string; x: number; y: number }
+
+// Onde a dica aparece em cada quadro em que está à vista (o centro, que a
+// escala da entrada não mexe). Ela não pode aparecer num lugar e pular para
+// o destaque depois: antes, cada passo abria no canto da tela.
+const gravarQuadros = (page: Page) =>
+  page.addInitScript(`
+    window.__quadros = []
+    const loop = () => {
+      const el = document.querySelector('.pn-tour-tip')
+      if (el && getComputedStyle(el).visibility === 'visible') {
+        const r = el.getBoundingClientRect()
+        window.__quadros.push({
+          passo: el.querySelector('.mono')?.textContent ?? '',
+          x: Math.round(r.left + r.width / 2),
+          y: Math.round(r.top + r.height / 2)
+        })
+      }
+      requestAnimationFrame(loop)
+    }
+    requestAnimationFrame(loop)
+  `)
+
+/**
+ * Os quadros do passo fora de onde a dica está agora, depois de olhar a dica
+ * por um tempo: sem a espera, a conta podia rodar com um quadro só (ou
+ * nenhum) e passar sem ter visto nada.
+ */
+const quadrosForaDoLugar = async (page: Page, passo: string) => {
+  await page.waitForTimeout(500)
+  const quadros = (await page.evaluate<Quadro[]>('window.__quadros')).filter(
+    (q) => q.passo.startsWith(passo)
+  )
+  expect(quadros.length, `quadros gravados de ${passo}`).toBeGreaterThan(1)
+  const fim = quadros.at(-1) as Quadro
+  return quadros.filter((q) => Math.hypot(q.x - fim.x, q.y - fim.y) > 4)
+}
+
 for (const plan of ['starter', 'pro', 'elite'] as const) {
   test(`passeio do ${plan}: ${PASSOS[plan].length} telas, cada uma pelo "Próximo"`, async ({
     page
@@ -70,6 +108,7 @@ for (const plan of ['starter', 'pro', 'elite'] as const) {
       championship: `Final ${tag}`
     })
     await signIn(page, user)
+    await gravarQuadros(page)
     await page.goto('/admin?passeio=1')
 
     const passos = PASSOS[plan]
@@ -85,6 +124,9 @@ for (const plan of ['starter', 'pro', 'elite'] as const) {
       ).toBeVisible()
       await expect(page.locator('.pn-tour-spot')).toBeVisible()
       await print(page, testInfo, `passeio-${plan}-${i + 1}`, 600)
+      expect(
+        await quadrosForaDoLugar(page, `${i + 1} DE ${passos.length}`)
+      ).toEqual([])
 
       if (titulo === 'Ponha mais um jogo') {
         // A ação do passo muda o texto; quem segue é o dono.
@@ -143,4 +185,45 @@ test('bar de antes do cadastro novo não vê passeio nem Primeiros passos', asyn
   ).toBeVisible()
   await expect(page.getByText('Primeiros passos do')).toHaveCount(0)
   await expect(tip(page)).toHaveCount(0)
+})
+
+test('sem o destaque da tela, "Pular o passeio" fica à vista enquanto a dica espera', async ({
+  page
+}) => {
+  const { user, barId } = await createPub({
+    subscription: {
+      plan: 'starter',
+      status: 'trialing',
+      currentPeriodEnd: inDays(90)
+    },
+    bar: { routine: JSON.stringify({ games: 8, spend: 60, wants: [] }) }
+  })
+  await createEvent(barId, { startsAt: inDays(1) })
+  await signIn(page, user)
+  await page.goto('/admin?passeio=1')
+  await expect(
+    page.getByRole('dialog', { name: 'Seu jogo já está no ar' })
+  ).toBeVisible()
+  // Jogos sem o alvo do passo, como numa grade que não carregou.
+  await page.evaluate(`
+    const tirar = () => {
+      for (const el of document.querySelectorAll('[data-passeio^="jogos"]')) {
+        el.removeAttribute('data-passeio')
+      }
+    }
+    new MutationObserver(tirar).observe(document.body, {
+      subtree: true,
+      childList: true,
+      attributes: true
+    })
+  `)
+  await next(page).click()
+  await expect(page).toHaveURL(/\/admin\/jogos$/)
+  // Antes da desistência (240 quadros, uns 4 s), que mostraria a dica.
+  const pular = page.getByRole('button', { name: 'Pular o passeio' })
+  await expect(pular).toBeVisible({ timeout: 2000 })
+  await expect(tip(page)).toBeHidden()
+  await pular.click()
+  await expect(tip(page)).toHaveCount(0)
+  await expect(page.getByText(/^Passeio pausado/)).toBeVisible()
 })

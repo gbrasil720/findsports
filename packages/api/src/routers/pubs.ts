@@ -391,7 +391,8 @@ export const pubsRouter = router({
    * Os jogos de hoje nos bares no ar, para a splash do app (`apps/mobile`).
    * Aberta: aparece antes do login. Sai só o título e a hora do jogo, sem
    * identificar bar nenhum, e o mesmo jogo em vários bares conta uma vez,
-   * com quantos bares o passam (a marca das telas de entrar do tablet) e se
+   * com quantos bares o passam (o número da busca da landing e a marca das
+   * telas de entrar do tablet) e se
    * está ao vivo em algum deles (o "● N ao vivo" da splash), pelo relógio do
    * jogo. "Hoje" é o dia de Brasília; `starts_at` é `timestamp` sem fuso, em UTC.
    */

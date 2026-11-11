@@ -114,9 +114,14 @@ integrationTest(
         game.title.includes(mark)
       )
 
-      expect(games.map((game) => game.title).sort()).toEqual([
-        `Mandante ${mark} × Visitante ${mark}`,
-        `Treino livre ${mark}`
+      // O jogo dos dois bares conta os dois; o bar fora do ar, nenhum.
+      expect(
+        games
+          .map((game) => [game.title, game.bars])
+          .sort(([a], [b]) => String(a).localeCompare(String(b)))
+      ).toEqual([
+        [`Mandante ${mark} × Visitante ${mark}`, 2],
+        [`Treino livre ${mark}`, 1]
       ])
       for (const game of games) {
         expect(game.startsAt).toBe(now.toISOString())
