@@ -81,9 +81,10 @@
   // Escolhido no build (`CLOUDFLARE_ENV=preview`), não no `wrangler deploy`.
   //
   // `vars` e `hyperdrive` não são herdados do topo: repita aqui o que entrar
-  // lá. Sem CF_ACCOUNT_ID e sem as chaves R2: o bucket `onside-media` é fixo
-  // no código, então o preview só lê as fotos (MEDIA_PUBLIC_ORIGIN) e o
-  // upload fica desligado, com a mensagem própria.
+  // lá. Sem as chaves R2: o bucket `onside-media` é fixo no código, então o
+  // preview só lê as fotos (MEDIA_PUBLIC_ORIGIN) e o upload fica desligado,
+  // com a mensagem própria. CF_ACCOUNT_ID entra pelos jogos da semana
+  // (WEB-433); sozinho, sem as chaves R2, não liga o upload.
   "env": {
     "preview": {
       "name": "onside-web-preview",
@@ -118,6 +119,7 @@
         "EMAIL_FROM": "contato@mail.onside.sh",
         "EMAIL_API_URL": "https://api.millionsend.com",
         "MEDIA_PUBLIC_ORIGIN": "https://media.onside.sh",
+        "CF_ACCOUNT_ID": "dc48dae1d364480e5b618e4a00e98565",
         "AI_GATEWAY_ID": "onside-preview",
         // Banco com e-mails reais: e-mail vai para o log, com o link. O env
         // recusa isto com PUBLIC_APP_URL em onside.sh.
