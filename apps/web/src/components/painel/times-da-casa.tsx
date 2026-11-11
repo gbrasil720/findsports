@@ -36,7 +36,10 @@ export function EscolhaTimesDaCasa({
     ...CATALOG_QUERY,
     meta: { errorToast: false }
   })
-  const search = useTeamSearch((sports.data ?? []).map((s) => s.id))
+  const search = useTeamSearch(
+    (sports.data ?? []).map((s) => s.id),
+    true
+  )
   const cheio = value.length >= TIMES_DA_CASA_MAX
   const achados = (search.results.data ?? [])
     .filter((t) => !value.some((v) => v.id === t.id))

@@ -32,7 +32,11 @@ function toggleFavoriteTeam(
  * WEB-381: busca no catálogo inteiro dos esportes, a partir de duas letras. O
  * termo espera o dedo parar (250 ms) antes de ir ao servidor.
  */
-export function useTeamSearch(sportIds: string[]) {
+export function useTeamSearch(
+  sportIds: string[],
+  /** Times da casa do bar (WEB-433): só clubes. */
+  clubsOnly?: boolean
+) {
   const trpc = useTRPC()
   const [text, setText] = useState('')
   const [query, setQuery] = useState('')
@@ -42,7 +46,11 @@ export function useTeamSearch(sportIds: string[]) {
   }, [text])
   const active = text.trim().length >= 2 && sportIds.length > 0
   const results = useQuery({
-    ...trpc.pubs.searchTeams.queryOptions({ sportIds, query }),
+    ...trpc.pubs.searchTeams.queryOptions({
+      sportIds,
+      query,
+      ...(clubsOnly ? { clubsOnly } : {})
+    }),
     enabled: active && query.length >= 2,
     placeholderData: keepPreviousData,
     meta: { errorToast: false }
