@@ -9,7 +9,7 @@ import {
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { CameraView, useCameraPermissions } from 'expo-camera'
 import * as Crypto from 'expo-crypto'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import Animated, {
@@ -26,6 +26,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { PlanNudge } from '@/components/bar-owner'
+import { useLocalSteps } from '@/components/bar-tour'
 import { Seal, useStamp } from '@/components/fan-card'
 import { EASE, haptic, useShake } from '@/components/motion'
 import {
@@ -79,6 +80,9 @@ type Found = {
 }
 
 const UNDO_MS = 5000
+// O código de exemplo do passeio (o mesmo do "Treine o balcão" do painel):
+// validado só na tela, sem gravar código nem visita.
+const EXAMPLE = 'GRTGVX'
 const FRAME = 260
 
 export default function ValidarCodigo() {
@@ -87,8 +91,10 @@ export default function ValidarCodigo() {
   const reduced = useReducedMotion()
   useStatusBar('light')
   const owner = useOwnerBar()
-  const [mode, setMode] = useState<'scan' | 'type'>('scan')
-  const [typed, setTyped] = useState('')
+  const example = useLocalSearchParams<{ exemplo?: string }>().exemplo === '1'
+  const { mark } = useLocalSteps(owner.bar?.id)
+  const [mode, setMode] = useState<'scan' | 'type'>(example ? 'type' : 'scan')
+  const [typed, setTyped] = useState(example ? EXAMPLE : '')
   const [torch, setTorch] = useState(false)
   const [found, setFound] = useState<Found | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
@@ -143,6 +149,25 @@ export default function ValidarCodigo() {
     if (!isReservationCodeShaped(code))
       return fail('Esse não é um código da Onside.')
     setProblem(null)
+    if (example && code === EXAMPLE) {
+      mark({ codigo: true })
+      setFound({
+        code,
+        guestName: 'Exemplo',
+        offer: owner.bar?.houseOffer ?? null,
+        title: live ? gameTitle(live) : 'Jogo de exemplo',
+        startsAt: new Date(),
+        guest: {
+          markedAt: null,
+          visitsHere: 0,
+          visitsOnside: null,
+          friendsToday: 0
+        },
+        useId: '',
+        at: Date.now()
+      })
+      return
+    }
     try {
       const data = await lookup.mutateAsync({ code })
       if (!data) return fail('Código não encontrado neste bar.')
@@ -186,8 +211,10 @@ export default function ValidarCodigo() {
         found={found}
         barName={owner.bar?.name ?? ''}
         onClose={() => router.back()}
-        onNext={next}
+        onNext={example ? () => router.back() : next}
+        nextLabel={example ? 'Voltar ao passeio' : undefined}
         onUndo={async () => {
+          if (!found.useId) return next()
           try {
             await undo.mutateAsync({ useId: found.useId })
           } catch (error) {
@@ -290,7 +317,10 @@ export default function ValidarCodigo() {
             ))}
           </Animated.View>
           <Text style={[styles.rule, problem && { color: '#f3421d' }]}>
-            {problem ?? '6 caracteres · sem O, 0, I, 1 nem L'}
+            {problem ??
+              (example
+                ? 'Código de exemplo · não conta nas visitas'
+                : '6 caracteres · sem O, 0, I, 1 nem L')}
           </Text>
           <Recent rows={recent} />
         </View>
@@ -422,12 +452,15 @@ function Valid({
   barName,
   onClose,
   onNext,
+  nextLabel,
   onUndo
 }: {
   found: Found
   barName: string
   onClose: () => void
   onNext: () => void
+  /** O código de exemplo volta ao passeio. */
+  nextLabel?: string
   onUndo: () => void
 }) {
   const insets = useSafeAreaInsets()
@@ -560,9 +593,11 @@ function Valid({
           onPress={onNext}
           style={styles.validate}
         >
-          <Icon name="camera" size={22} color={INK} accent={INK} />
+          {nextLabel ? null : (
+            <Icon name="camera" size={22} color={INK} accent={INK} />
+          )}
           <Text style={[text(18, 'Bold', 1.2), { color: INK }]}>
-            Escanear o próximo
+            {nextLabel ?? 'Escanear o próximo'}
           </Text>
         </Pressable>
         {undoing ? (
