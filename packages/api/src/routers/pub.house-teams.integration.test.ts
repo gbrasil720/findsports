@@ -48,3 +48,46 @@ integrationTest(
     }
   }
 )
+
+integrationTest(
+  'a busca dos times da casa traz só clubes; sem o filtro, a do torcedor segue igual',
+  async () => {
+    const meu = await seedBar('pro', 'active', null)
+    const sportId = crypto.randomUUID()
+    const tag = `zq${crypto.randomUUID().slice(0, 6)}`
+    const rows = [
+      { name: `${tag} Clube`, kind: 'team' as const, isNationalTeam: false },
+      { name: `${tag} Seleção`, kind: 'team' as const, isNationalTeam: true },
+      { name: `${tag} Atleta`, kind: 'athlete' as const, isNationalTeam: false }
+    ].map((t) => ({
+      ...t,
+      id: crypto.randomUUID(),
+      sportId,
+      slug: `integration-${crypto.randomUUID()}`,
+      searchText: t.name.toLowerCase()
+    }))
+    try {
+      await meu.db.insert(sport).values({
+        id: sportId,
+        name: `Esporte ${sportId}`,
+        slug: `integration-${sportId}`
+      })
+      await meu.db.insert(team).values(rows)
+      const search = (clubsOnly?: boolean) =>
+        meu.owner.pubs
+          .searchTeams({ sportIds: [sportId], query: tag, clubsOnly })
+          .then((list) => list.map((t) => t.name))
+      expect(await search(true)).toEqual([`${tag} Clube`])
+      expect(await search()).toHaveLength(3)
+    } finally {
+      await meu.cleanup()
+      await meu.db.delete(team).where(
+        inArray(
+          team.id,
+          rows.map((r) => r.id)
+        )
+      )
+      await meu.db.delete(sport).where(eq(sport.id, sportId))
+    }
+  }
+)
