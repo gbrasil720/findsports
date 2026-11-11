@@ -5,7 +5,9 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import Animated, {
   LinearTransition,
-  useReducedMotion
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { scheduleOnRN } from 'react-native-worklets'
@@ -273,22 +275,40 @@ function Chart({ points }: { points: { date: string; value: number }[] }) {
   const [at, setAt] = useState<number | null>(null)
   const max = Math.max(1, ...points.map((p) => p.value))
   const step = points.length ? width / points.length : 0
-  const pick = (x: number) => {
+  // O dedo no UI thread: o marcador e o rótulo seguem o x 1:1; o JS só
+  // fica sabendo quando o dia muda (o rótulo e um toque por dia).
+  const x = useSharedValue(-1)
+  const last = useSharedValue(-1)
+  const choose = (index: number) => {
+    haptic.select()
+    setAt(index)
+  }
+  const follow = (to: number) => {
+    'worklet'
     if (!step) return
-    const index = Math.max(0, Math.min(points.length - 1, Math.floor(x / step)))
-    setAt((now) => {
-      if (now !== index) haptic.select()
-      return index
-    })
+    x.set(Math.max(0, Math.min(width, to)))
+    const index = Math.max(
+      0,
+      Math.min(points.length - 1, Math.floor(to / step))
+    )
+    if (index === last.get()) return
+    last.set(index)
+    scheduleOnRN(choose, index)
   }
   const pan = Gesture.Pan()
     .minDistance(0)
-    .onBegin((e) => {
-      scheduleOnRN(pick, e.x)
-    })
-    .onUpdate((e) => {
-      scheduleOnRN(pick, e.x)
-    })
+    // Arrastar na vertical rola a tela; na horizontal, percorre os dias.
+    .failOffsetY([-12, 12])
+    .onBegin((e) => follow(e.x))
+    .onUpdate((e) => follow(e.x))
+  const marker = useAnimatedStyle(() => ({
+    opacity: x.get() < 0 ? 0 : 1,
+    transform: [{ translateX: x.get() - 1 }]
+  }))
+  const tip = useAnimatedStyle(() => ({
+    opacity: x.get() < 0 ? 0 : 1,
+    transform: [{ translateX: Math.max(0, Math.min(width - 96, x.get() - 48)) }]
+  }))
   const chosen = at === null ? null : points[at]
   const label = (p: { date: string } | undefined) =>
     p ? dayMonth(`${p.date}T15:00:00Z`) : ''
@@ -315,23 +335,16 @@ function Chart({ points }: { points: { date: string; value: number }[] }) {
               ]}
             />
           ))}
+          <Animated.View pointerEvents="none" style={[styles.marker, marker]} />
           {chosen && at !== null ? (
-            <View
+            <Animated.View
               pointerEvents="none"
-              style={[
-                styles.tip,
-                {
-                  left: Math.max(
-                    0,
-                    Math.min(width - 96, at * step + step / 2 - 48)
-                  )
-                }
-              ]}
+              style={[styles.tip, { left: 0 }, tip]}
             >
               <Text style={styles.tipText}>
                 {`${label(chosen).toUpperCase()} · ${chosen.value}`}
               </Text>
-            </View>
+            </Animated.View>
           ) : null}
         </View>
       </GestureDetector>
@@ -449,6 +462,14 @@ const styles = StyleSheet.create({
     marginTop: 14
   },
   col: { flex: 1, borderRadius: 3 },
+  marker: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    width: 2,
+    backgroundColor: 'rgba(201,241,53,.6)'
+  },
   tip: {
     position: 'absolute',
     top: -6,

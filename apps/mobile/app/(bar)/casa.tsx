@@ -113,13 +113,16 @@ export default function Casa() {
     )
   // Chegou alguém: um toque leve (a linha entra sozinha).
   const newest = arrivals[0]?.validatedAt
-  const [seen, setSeen] = useState<string | null>(null)
+  // `undefined` até a primeira resposta: o que já estava lá ao abrir não
+  // vibra nem entra animado; a primeira chegada do dia, sim.
+  const [seen, setSeen] = useState<string | null | undefined>(undefined)
   useEffect(() => {
-    if (!newest) return
-    const at = String(newest)
-    if (seen && at !== seen) haptic.light()
+    if (!going.isFetched) return
+    const at = newest ? String(newest) : null
+    if (seen !== undefined && at && at !== seen) haptic.light()
     setSeen(at)
-  }, [newest, seen])
+  }, [newest, seen, going.isFetched])
+  const settled = seen !== undefined
 
   const change = interest.data?.changePercent ?? null
   const offer = bar?.houseOffer ?? null
@@ -217,7 +220,7 @@ export default function Casa() {
                 arrivals.slice(0, 5).map((person, index) => (
                   <Animated.View
                     key={`${person.useId ?? person.name}-${String(person.validatedAt)}`}
-                    entering={reduced ? undefined : ARRIVE}
+                    entering={reduced || !settled ? undefined : ARRIVE}
                     layout={reduced ? undefined : SLIDE}
                   >
                     <OwnerRow first={index === 0}>

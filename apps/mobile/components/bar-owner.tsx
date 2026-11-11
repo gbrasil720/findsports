@@ -1,8 +1,14 @@
-import type { ReactNode } from 'react'
-import { Alert, StyleSheet, View } from 'react-native'
+import { type ReactNode, useEffect, useState } from 'react'
+import { Alert, Pressable, StyleSheet, View } from 'react-native'
+import Animated, {
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming
+} from 'react-native-reanimated'
 import { HardShadow } from '@/components/explore'
 import { DotField } from '@/components/fan-card'
-import { haptic } from '@/components/motion'
+import { EASE, haptic } from '@/components/motion'
 import { usePalette } from '@/components/theme'
 import { ACID, errorMessage, INK, PAPER, Text, text } from '@/components/ui'
 
@@ -266,7 +272,8 @@ const styles = StyleSheet.create({
   cellValue: {
     fontFamily: 'Anton',
     fontSize: 40,
-    marginVertical: -9.7
+    marginVertical: -9.7,
+    fontVariant: ['tabular-nums']
   },
   cellLabel: {
     marginTop: 10,
@@ -297,5 +304,103 @@ const styles = StyleSheet.create({
     fontFamily: 'GeistMono-SemiBold',
     fontSize: 11.5,
     color: INK
+  }
+})
+
+/**
+ * Abas em pílula (Jogos, Quem vai): uma pílula só, que desliza para a aba
+ * escolhida em 200 ms (EASE); o conteúdo troca seco. Movimento reduzido:
+ * a pílula pula. Tocar na aba já marcada não faz nada (nem vibra).
+ */
+export function PillTabs<K extends string>({
+  items,
+  value,
+  onChange,
+  pill,
+  track,
+  on,
+  off
+}: {
+  items: readonly (readonly [K, string])[]
+  value: K
+  onChange: (key: K) => void
+  pill: string
+  track: string
+  on: string
+  off: string
+}) {
+  const reduced = useReducedMotion()
+  const [width, setWidth] = useState(0)
+  const index = Math.max(
+    0,
+    items.findIndex(([key]) => key === value)
+  )
+  const cell = width ? (width - 8) / items.length : 0
+  const x = useSharedValue(0)
+  useEffect(() => {
+    x.set(
+      withTiming(index * cell, { duration: reduced ? 0 : 200, easing: EASE })
+    )
+  }, [index, cell, reduced, x])
+  const style = useAnimatedStyle(() => ({
+    transform: [{ translateX: x.get() }]
+  }))
+  return (
+    <View
+      accessibilityRole="tablist"
+      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+      style={[pillStyles.pillTrack, { backgroundColor: track }]}
+    >
+      {cell ? (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            pillStyles.pill,
+            { width: cell, backgroundColor: pill },
+            style
+          ]}
+        />
+      ) : null}
+      {items.map(([key, label]) => {
+        const selected = key === value
+        return (
+          <Pressable
+            key={key}
+            accessibilityRole="tab"
+            accessibilityState={{ selected }}
+            onPress={() => {
+              if (selected) return
+              haptic.select()
+              onChange(key)
+            }}
+            style={pillStyles.pillItem}
+          >
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+              style={[
+                text(15, selected ? 'Bold' : 'SemiBold', 1.2),
+                { color: selected ? on : off }
+              ]}
+            >
+              {label}
+            </Text>
+          </Pressable>
+        )
+      })}
+    </View>
+  )
+}
+
+const pillStyles = StyleSheet.create({
+  pillTrack: { flexDirection: 'row', padding: 4, borderRadius: 999 },
+  pill: { position: 'absolute', top: 4, bottom: 4, left: 4, borderRadius: 999 },
+  pillItem: {
+    flex: 1,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6
   }
 })

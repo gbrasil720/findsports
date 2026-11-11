@@ -4,20 +4,17 @@ import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
 import { useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
-import Animated, {
-  LinearTransition,
-  useReducedMotion
-} from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle } from 'react-native-svg'
 import {
   DayBoard,
   OwnerCard,
   OwnerRow,
-  ownerText
+  ownerText,
+  PillTabs
 } from '@/components/bar-owner'
 import { HardShadow } from '@/components/explore'
-import { EASE, haptic } from '@/components/motion'
+import { haptic } from '@/components/motion'
 import { usePalette } from '@/components/theme'
 import {
   ACID,
@@ -46,13 +43,11 @@ import { trpc } from '@/lib/trpc'
  */
 
 type Filter = 'all' | 'in' | 'way'
-const PILL = LinearTransition.duration(200).easing(EASE)
 
 export default function QuemVai() {
   const router = useRouter()
   const palette = usePalette()
   const insets = useSafeAreaInsets()
-  const reduced = useReducedMotion()
   useStatusBar(palette.dark ? 'light' : 'dark')
   const owner = useOwnerBar()
   const going = useQuery({
@@ -219,47 +214,19 @@ export default function QuemVai() {
               </View>
             </DayBoard>
 
-            <View style={[styles.filters, { backgroundColor: palette.mark }]}>
-              {(
-                [
-                  ['all', `Todos · ${people.length}`],
-                  ['in', `Chegaram · ${arrived.length}`],
-                  ['way', `A caminho · ${people.length - arrived.length}`]
-                ] as const
-              ).map(([key, label]) => {
-                const on = filter === key
-                return (
-                  <Pressable
-                    key={key}
-                    accessibilityRole="tab"
-                    accessibilityState={{ selected: on }}
-                    onPress={() => {
-                      haptic.select()
-                      setFilter(key)
-                    }}
-                    style={styles.filter}
-                  >
-                    {on ? (
-                      <Animated.View
-                        layout={reduced ? undefined : PILL}
-                        style={[
-                          styles.filterPill,
-                          { backgroundColor: palette.ink }
-                        ]}
-                      />
-                    ) : null}
-                    <Text
-                      style={[
-                        text(14.5, 'SemiBold', 1.2),
-                        { color: on ? palette.bg : palette.ink }
-                      ]}
-                    >
-                      {label}
-                    </Text>
-                  </Pressable>
-                )
-              })}
-            </View>
+            <PillTabs
+              items={[
+                ['all', `Todos · ${people.length}`],
+                ['in', `Chegaram · ${arrived.length}`],
+                ['way', `A caminho · ${people.length - arrived.length}`]
+              ]}
+              value={filter}
+              onChange={setFilter}
+              pill={palette.ink}
+              track={palette.mark}
+              on={palette.bg}
+              off={palette.ink}
+            />
 
             <OwnerCard>
               {shown.length ? (

@@ -91,12 +91,14 @@ export function weekdayName(now: number): string {
   return `de ${WEEKDAY_NAMES[houseDate(now).getUTCDay()]}`
 }
 
-/** "+18%", "−4%", ou nada sem base de comparação. */
+/** "+18%", "−4%", ou nada sem base de comparação (ou sem variação). */
 export function delta(change: number | null | undefined): string | null {
   if (change === null || change === undefined || !Number.isFinite(change))
     return null
   const n = Math.round(change)
-  return `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n)}%`
+  // Sem variação, nada: "▲ 0%" parece crescimento.
+  if (n === 0) return null
+  return `${n > 0 ? '+' : '−'}${Math.abs(n)}%`
 }
 
 /**

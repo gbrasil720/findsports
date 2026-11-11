@@ -16,10 +16,12 @@ import Animated, {
   cancelAnimation,
   Easing,
   FadeOut,
+  ReduceMotion,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
   withRepeat,
+  withSequence,
   withTiming
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -268,15 +270,17 @@ export default function ValidarCodigo() {
                   key={key}
                   label={key}
                   onPress={() => {
+                    const next =
+                      key === '⌫'
+                        ? typed.slice(0, -1)
+                        : typed.length < RESERVATION_CODE_LENGTH
+                          ? typed + key
+                          : typed
+                    // Só vibra quando a tecla muda algo.
+                    if (next === typed) return
                     haptic.select()
                     setProblem(null)
-                    setTyped((now) =>
-                      key === '⌫'
-                        ? now.slice(0, -1)
-                        : now.length < RESERVATION_CODE_LENGTH
-                          ? now + key
-                          : now
-                    )
+                    setTyped(next)
                   }}
                 />
               ))}
@@ -392,7 +396,14 @@ function Valid({
   const left = useSharedValue(1)
   const [undoing, setUndoing] = useState(true)
   useEffect(() => {
-    left.set(withTiming(0, { duration: UNDO_MS, easing: Easing.linear }))
+    // É um relógio, não enfeite: anda também com movimento reduzido.
+    left.set(
+      withTiming(0, {
+        duration: UNDO_MS,
+        easing: Easing.linear,
+        reduceMotion: ReduceMotion.Never
+      })
+    )
     const timer = setTimeout(() => setUndoing(false), UNDO_MS)
     return () => {
       clearTimeout(timer)
@@ -588,17 +599,31 @@ function Box({
   active: boolean
   dotAfter: boolean
 }) {
+  // A caixa acende (contorno acid, 100 ms) ao receber a letra e apaga para o
+  // contorno de preenchida; a vazia da vez fica acesa.
+  const lit = useSharedValue(active ? 1 : 0)
+  const [shown, setShown] = useState(letter)
+  useEffect(() => {
+    if (letter && letter !== shown) {
+      lit.set(
+        withSequence(
+          withTiming(1, { duration: 100 }),
+          withTiming(active ? 1 : 0, { duration: 160 })
+        )
+      )
+    } else lit.set(withTiming(active ? 1 : 0, { duration: 100 }))
+    setShown(letter)
+  }, [letter, active, lit, shown])
+  const style = useAnimatedStyle(() => ({ opacity: lit.get() }))
   return (
     <>
       <View
         style={[
           styles.box,
-          (active || letter) && {
-            borderColor: active ? ACID : 'rgba(241,238,230,.3)'
-          },
-          active && { borderWidth: 2.5 }
+          letter ? { borderColor: 'rgba(241,238,230,.3)' } : null
         ]}
       >
+        <Animated.View pointerEvents="none" style={[styles.boxRing, style]} />
         <Text style={styles.boxText}>{letter ?? ''}</Text>
       </View>
       {dotAfter ? <Text style={styles.boxDot}>·</Text> : null}
@@ -966,6 +991,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#1c1c18',
     alignItems: 'center',
     justifyContent: 'center'
+  },
+  boxRing: {
+    position: 'absolute',
+    top: -1.5,
+    left: -1.5,
+    right: -1.5,
+    bottom: -1.5,
+    borderRadius: 14,
+    borderWidth: 2.5,
+    borderColor: ACID
   },
   boxText: { fontFamily: 'GeistMono-SemiBold', fontSize: 30, color: ACID },
   boxDot: { fontFamily: 'GeistMono-SemiBold', fontSize: 20, color: '#55554f' },

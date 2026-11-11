@@ -7,16 +7,18 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import Animated, {
+  FadeIn,
   LinearTransition,
   useReducedMotion
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { alertFailure } from '@/components/bar-owner'
 import { HardShadow } from '@/components/explore'
-import { EASE, haptic } from '@/components/motion'
+import { EASE, haptic, SWAP } from '@/components/motion'
 import { PlanMedal } from '@/components/plan-medal'
 import {
   ACID,
+  DISPLAY_FONT_SCALE,
   Icon,
   INK,
   PAPER,
@@ -40,6 +42,7 @@ import { queryClient, trpc } from '@/lib/trpc'
  */
 
 const OPEN = LinearTransition.duration(200).easing(EASE)
+const OPEN_IN = FadeIn.duration(200).easing(EASE)
 const PLANS: Plan[] = ['elite', 'pro', 'starter']
 const PITCH: Record<Plan, { line: string; perks: string[]; why: string }> = {
   elite: {
@@ -184,7 +187,10 @@ export default function PlanoDoTeste() {
                   </View>
                 </View>
                 {on ? (
-                  <>
+                  <Animated.View
+                    entering={reduced ? undefined : OPEN_IN}
+                    style={{ gap: 12 }}
+                  >
                     <View style={styles.perks}>
                       {pitch.perks.map((perk) => (
                         <View key={perk} style={styles.perk}>
@@ -213,7 +219,7 @@ export default function PlanoDoTeste() {
                         {pitch.why}
                       </Text>
                     </View>
-                  </>
+                  </Animated.View>
                 ) : (
                   <Text
                     style={[
@@ -237,11 +243,17 @@ export default function PlanoDoTeste() {
         >
           <HardShadow color="#7f9a12" offset={4} radius={999} />
           <View style={[styles.cta, change.isPending && { opacity: 0.55 }]}>
-            <Text style={[text(18, 'Bold', 1.2), { color: INK }]}>
+            {/* O nome do plano cruza em 150 ms quando a escolha muda. */}
+            <Animated.Text
+              key={change.isPending ? 'pending' : chosen}
+              entering={reduced ? undefined : SWAP}
+              maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
+              style={[text(18, 'Bold', 1.2), { color: INK }]}
+            >
               {change.isPending
                 ? 'Trocando…'
                 : `Testar o ${PLAN_NAMES[chosen]} · R$ 0 hoje`}
-            </Text>
+            </Animated.Text>
           </View>
         </Pressable>
         <Text
@@ -291,6 +303,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#1c1c18',
     borderRadius: 24,
+    overflow: 'hidden',
     borderWidth: 2.5,
     padding: 16,
     gap: 12

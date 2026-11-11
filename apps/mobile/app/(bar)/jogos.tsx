@@ -13,7 +13,8 @@ import {
   OwnerCard,
   OwnerLabel,
   OwnerRow,
-  ownerText
+  ownerText,
+  PillTabs
 } from '@/components/bar-owner'
 import { HardShadow } from '@/components/explore'
 import { useNavInsets } from '@/components/layout'
@@ -51,7 +52,6 @@ import { trpc } from '@/lib/trpc'
  */
 
 type Tab = 'next' | 'drafts' | 'past'
-const PILL = LinearTransition.duration(200).easing(EASE)
 const BAR = LinearTransition.duration(300).easing(EASE)
 
 export default function Jogos() {
@@ -179,44 +179,19 @@ export default function Jogos() {
           })}
         </View>
 
-        <View style={[styles.tabs, { backgroundColor: palette.mark }]}>
-          {(
-            [
-              ['next', `Próximos · ${upcoming.length}`],
-              ['drafts', `Rascunhos · ${drafts.length}`],
-              ['past', 'Como foi']
-            ] as const
-          ).map(([key, label]) => {
-            const on = tab === key
-            return (
-              <Pressable
-                key={key}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: on }}
-                onPress={() => {
-                  haptic.select()
-                  setTab(key)
-                }}
-                style={styles.tabItem}
-              >
-                {on ? (
-                  <Animated.View
-                    layout={reduced ? undefined : PILL}
-                    style={[styles.tabPill, { backgroundColor: palette.card }]}
-                  />
-                ) : null}
-                <Text
-                  style={[
-                    text(15, on ? 'Bold' : 'SemiBold', 1.2),
-                    { color: on ? palette.ink : palette.muted }
-                  ]}
-                >
-                  {label}
-                </Text>
-              </Pressable>
-            )
-          })}
-        </View>
+        <PillTabs
+          items={[
+            ['next', `Próximos · ${upcoming.length}`],
+            ['drafts', `Rascunhos · ${drafts.length}`],
+            ['past', 'Como foi']
+          ]}
+          value={tab}
+          onChange={setTab}
+          pill={palette.card}
+          track={palette.mark}
+          on={palette.ink}
+          off={palette.muted}
+        />
 
         {events.isError ? (
           <ErrorState

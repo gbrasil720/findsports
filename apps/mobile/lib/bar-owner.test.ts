@@ -52,6 +52,7 @@ describe('app do dono', () => {
     expect(delta(18.4)).toBe('+18%')
     expect(delta(-4)).toBe('−4%')
     expect(delta(null)).toBeNull()
+    expect(delta(0.3)).toBeNull()
   })
 })
 
