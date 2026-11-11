@@ -17,7 +17,7 @@ import {
   View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { alertFailure } from '@/components/bar-owner'
+import { alertFailure, PlanNudge } from '@/components/bar-owner'
 import { HardShadow, Photo } from '@/components/explore'
 import { haptic } from '@/components/motion'
 import { usePalette } from '@/components/theme'
@@ -241,49 +241,61 @@ export default function FotosDoBar() {
           </View>
         ) : null}
 
-        <Text
-          style={[styles.kicker, { color: palette.muted, marginBottom: -4 }]}
-        >
-          POR CATEGORIA · O QUE FALTA
-        </Text>
-        <View style={styles.categories}>
-          {PHOTO_CATEGORIES.map((category) => {
-            const n = all.filter(
-              (p) => p.category === category.id && p.status !== 'rejected'
-            ).length
-            return (
-              <Pressable
-                key={category.id}
-                accessibilityRole="button"
-                accessibilityLabel={`${category.label}: ${n ? `${n} fotos` : 'adicionar'}`}
-                onPress={() => (n ? null : addPhoto(category.id))}
-                style={[
-                  styles.category,
-                  { width: cell, backgroundColor: palette.card }
-                ]}
-              >
-                <Text
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.8}
-                  style={[text(15, 'Bold', 1.2), { color: palette.ink }]}
-                >
-                  {category.label}
-                </Text>
-                <Text
-                  style={[
-                    styles.categoryMeta,
-                    {
-                      color: n ? palette.muted : palette.dark ? ACID : '#5b6d0c'
-                    }
-                  ]}
-                >
-                  {n ? `${n} ${n === 1 ? 'foto' : 'fotos'}` : 'adicionar'}
-                </Text>
-              </Pressable>
-            )
-          })}
-        </View>
+        {/* Categorias só onde há galeria: no Starter vale a capa. */}
+        {gallery ? (
+          <>
+            <Text
+              style={[
+                styles.kicker,
+                { color: palette.muted, marginBottom: -4 }
+              ]}
+            >
+              POR CATEGORIA · O QUE FALTA
+            </Text>
+            <View style={styles.categories}>
+              {PHOTO_CATEGORIES.map((category) => {
+                const n = all.filter(
+                  (p) => p.category === category.id && p.status !== 'rejected'
+                ).length
+                return (
+                  <Pressable
+                    key={category.id}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${category.label}: ${n ? `${n} fotos` : 'adicionar'}`}
+                    onPress={() => (n ? null : addPhoto(category.id))}
+                    style={[
+                      styles.category,
+                      { width: cell, backgroundColor: palette.card }
+                    ]}
+                  >
+                    <Text
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.8}
+                      style={[text(15, 'Bold', 1.2), { color: palette.ink }]}
+                    >
+                      {category.label}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.categoryMeta,
+                        {
+                          color: n
+                            ? palette.muted
+                            : palette.dark
+                              ? ACID
+                              : '#5b6d0c'
+                        }
+                      ]}
+                    >
+                      {n ? `${n} ${n === 1 ? 'foto' : 'fotos'}` : 'adicionar'}
+                    </Text>
+                  </Pressable>
+                )
+              })}
+            </View>
+          </>
+        ) : null}
 
         {problem ? (
           <Text style={[text(14, 'SemiBold', 1.4), { color: palette.live }]}>
@@ -338,9 +350,11 @@ export default function FotosDoBar() {
             ))}
         </View>
         {!gallery ? (
-          <Text style={[text(14, 'Regular', 1.45), { color: palette.muted }]}>
-            No Starter vale a capa; a galeria de fotos é dos planos Pro e Elite.
-          </Text>
+          <PlanNudge
+            to="pro"
+            title="Mostre o bar inteiro"
+            body="No Starter vale a capa. No Pro e no Elite entram até 12 fotos: telão, área externa, balcão, comida."
+          />
         ) : null}
       </ScrollView>
     </View>

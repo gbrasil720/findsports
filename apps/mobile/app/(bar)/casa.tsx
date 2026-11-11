@@ -18,6 +18,7 @@ import {
   OwnerLabel,
   OwnerRow,
   ownerText,
+  PlanNudge,
   StateTag
 } from '@/components/bar-owner'
 import { HardShadow, initials } from '@/components/explore'
@@ -209,6 +210,15 @@ export default function Casa() {
             }
           />
         </DayBoard>
+
+        {owner.bar && !owner.elite && owner.trial ? (
+          <PlanNudge
+            compact
+            to="elite"
+            title="Quem vai assistir no seu bar"
+            body="No Elite, “vão assistir” vira nome e número, e o código do balcão mostra quem veio pela Onside."
+          />
+        ) : null}
 
         {owner.elite ? (
           <>

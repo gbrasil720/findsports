@@ -13,7 +13,8 @@ import {
   alertFailure,
   OwnerCard,
   OwnerLabel,
-  OwnerRow
+  OwnerRow,
+  PlanNudge
 } from '@/components/bar-owner'
 import { HardShadow, Photo } from '@/components/explore'
 import { haptic } from '@/components/motion'
@@ -382,16 +383,11 @@ export default function MeuEspaco() {
                 })}
               </View>
             ) : (
-              <OwnerCard>
-                <Text
-                  style={[
-                    text(14.5, 'Regular', 1.45),
-                    { color: palette.muted, paddingVertical: 16 }
-                  ]}
-                >
-                  O código do balcão é do plano Elite.
-                </Text>
-              </OwnerCard>
+              <PlanNudge
+                to="elite"
+                title="O código do balcão"
+                body="Quem marca “Vou assistir aqui” recebe um código; no balcão você valida, libera a oferta da casa e sabe quem veio pela Onside."
+              />
             )}
           </>
         ) : (

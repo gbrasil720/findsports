@@ -11,6 +11,7 @@ import {
   View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { PlanNudge } from '@/components/bar-owner'
 import { HardShadow, Photo } from '@/components/explore'
 import { haptic } from '@/components/motion'
 import { usePalette } from '@/components/theme'
@@ -192,8 +193,15 @@ export default function NovoJogo() {
           <Note>
             {policy.data?.status === 'inactive'
               ? 'O bar está fora do ar: publique um jogo depois de voltar.'
-              : 'O limite de jogos do mês acabou. No Pro e no Elite não há limite.'}
+              : 'O limite de jogos do mês acabou.'}
           </Note>
+        ) : null}
+        {blocked && policy.data?.status !== 'inactive' ? (
+          <PlanNudge
+            to="pro"
+            title="Jogos sem limite"
+            body="No Pro e no Elite a grade não tem limite por mês: cada jogo é mais uma busca em que o bar aparece."
+          />
         ) : null}
 
         {editing ? null : (

@@ -16,7 +16,8 @@ import {
   OwnerCard,
   OwnerLabel,
   OwnerRow,
-  ownerText
+  ownerText,
+  PlanNudge
 } from '@/components/bar-owner'
 import { HardShadow } from '@/components/explore'
 import { EASE, haptic } from '@/components/motion'
@@ -207,6 +208,13 @@ export default function Desempenho() {
               ))}
               <View style={{ height: 8 }} />
             </OwnerCard>
+            {owner.elite ? null : (
+              <PlanNudge
+                to="elite"
+                title="Do perfil ao balcão, até o fim"
+                body="No Elite o funil vai até quem marcou que ia e quem validou o código no balcão: a visita verificada."
+              />
+            )}
 
             {best.length ? (
               <>

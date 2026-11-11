@@ -25,6 +25,7 @@ import Animated, {
   withTiming
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { PlanNudge } from '@/components/bar-owner'
 import { Seal, useStamp } from '@/components/fan-card'
 import { EASE, haptic, useShake } from '@/components/motion'
 import {
@@ -237,6 +238,37 @@ export default function ValidarCodigo() {
       )}
     </View>
   )
+
+  // Fora do Elite o servidor recusa o código: no lugar da câmera, o que o
+  // Elite daria aqui e o teste com um toque (decisão do dono, 11/11/2026).
+  if (owner.bar && !owner.elite)
+    return (
+      <View
+        style={[
+          styles.dark,
+          { paddingTop: insets.top + 74, paddingHorizontal: 16, gap: 18 }
+        ]}
+      >
+        <View style={[styles.top, { top: insets.top + 10 }]}>
+          <Round label="Fechar" onPress={() => router.back()}>
+            <Icon name="close" size={20} color={PAPER} />
+          </Round>
+        </View>
+        <Text accessibilityRole="header" style={styles.typeTitle}>
+          {'CÓDIGO DO '}
+          <Text style={{ color: ACID }}>BALCÃO</Text>
+        </Text>
+        <Text style={[text(15.5, 'Regular', 1.45), { color: '#c9c7c0' }]}>
+          Quem marca “Vou assistir aqui” no seu bar recebe um código. Aqui você
+          valida na porta, libera a oferta da casa e vê quem veio pela Onside.
+        </Text>
+        <PlanNudge
+          to="elite"
+          title="Validar é do Elite"
+          body="Com o Elite, este círculo abre a câmera: aponte para o QR do torcedor ou digite as 6 letras."
+        />
+      </View>
+    )
 
   if (mode === 'type')
     return (

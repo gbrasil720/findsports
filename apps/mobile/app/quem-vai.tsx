@@ -11,7 +11,8 @@ import {
   OwnerCard,
   OwnerRow,
   ownerText,
-  PillTabs
+  PillTabs,
+  PlanNudge
 } from '@/components/bar-owner'
 import { HardShadow } from '@/components/explore'
 import { haptic } from '@/components/motion'
@@ -121,17 +122,11 @@ export default function QuemVai() {
         </View>
 
         {!owner.elite ? (
-          <OwnerCard>
-            <Text
-              style={[
-                text(15, 'Regular', 1.45),
-                { color: palette.muted, paddingVertical: 16 }
-              ]}
-            >
-              A lista de quem vai vem com o código do balcão, do plano Elite. No
-              Starter e no Pro, a página do bar mostra quantos vão.
-            </Text>
-          </OwnerCard>
+          <PlanNudge
+            to="elite"
+            title="Saiba quem vem, jogo a jogo"
+            body="No Elite, cada “Vou assistir aqui” vira um nome nesta lista, com quem já chegou e quem é a primeira vez no bar."
+          />
         ) : going.isError ? (
           <ErrorState
             title="Não deu para carregar quem vai."

@@ -1,3 +1,5 @@
+import { useMutation } from '@tanstack/react-query'
+import { useRouter } from 'expo-router'
 import { type ReactNode, useEffect, useState } from 'react'
 import { Alert, Pressable, StyleSheet, View } from 'react-native'
 import Animated, {
@@ -11,6 +13,8 @@ import { DotField } from '@/components/fan-card'
 import { EASE, haptic } from '@/components/motion'
 import { usePalette } from '@/components/theme'
 import { ACID, errorMessage, INK, PAPER, Text, text } from '@/components/ui'
+import { useOwnerBar } from '@/lib/owner'
+import { queryClient, trpc } from '@/lib/trpc'
 
 /*
  * Peças do app do dono do bar (rodada 10): o rótulo em mono das seções, o
@@ -402,5 +406,105 @@ const pillStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 6
+  }
+})
+
+/**
+ * O convite no ponto do bloqueio (decisão do dono, 11/11/2026): quem testa
+ * outro plano vê o que o Elite (ou o Pro) daria ali e testa com um toque,
+ * sem cartão (`pub.changeTrialPlan`, WEB-358; o fim do teste não muda). Fora
+ * do teste, leva ao Plano. Nunca bloqueia: o dono testa o plano que quiser.
+ */
+export function PlanNudge({
+  to,
+  title,
+  body,
+  compact
+}: {
+  to: 'pro' | 'elite'
+  title: string
+  body: string
+  compact?: boolean
+}) {
+  const palette = usePalette()
+  const router = useRouter()
+  const owner = useOwnerBar()
+  const [done, setDone] = useState(false)
+  const change = useMutation(
+    trpc.pub.changeTrialPlan.mutationOptions({
+      onSuccess: () => {
+        haptic.success()
+        setDone(true)
+        queryClient.invalidateQueries()
+      },
+      onError: alertFailure('Não deu para trocar o plano do teste')
+    })
+  )
+  const name = to === 'elite' ? 'Elite' : 'Pro'
+  const label = owner.trial
+    ? change.isPending
+      ? 'Trocando…'
+      : `Testar o ${name} grátis`
+    : 'Ver planos'
+  return (
+    <View
+      accessibilityRole="summary"
+      style={[
+        nudgeStyles.box,
+        { backgroundColor: palette.card, borderColor: ACID },
+        compact && { padding: 12 }
+      ]}
+    >
+      <View style={nudgeStyles.tag}>
+        <Text style={nudgeStyles.tagText}>{`NO ${name.toUpperCase()}`}</Text>
+      </View>
+      <Text style={[text(16.5, 'Bold', 1.25), { color: palette.ink }]}>
+        {done ? `Agora você está testando o ${name}` : title}
+      </Text>
+      <Text style={[text(14, 'Regular', 1.4), { color: palette.muted }]}>
+        {done ? 'A data do fim do teste não mudou.' : body}
+      </Text>
+      {done ? null : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ disabled: change.isPending }}
+          disabled={change.isPending}
+          onPress={() =>
+            owner.trial ? change.mutate({ plan: to }) : router.push('/plano')
+          }
+          style={[nudgeStyles.button, { backgroundColor: palette.ink }]}
+        >
+          <Text style={[text(15, 'Bold', 1.2), { color: palette.bg }]}>
+            {label}
+          </Text>
+        </Pressable>
+      )}
+    </View>
+  )
+}
+
+const nudgeStyles = StyleSheet.create({
+  box: { borderRadius: 22, borderWidth: 2, padding: 16, gap: 8 },
+  tag: {
+    alignSelf: 'flex-start',
+    height: 22,
+    paddingHorizontal: 7,
+    borderRadius: 5,
+    backgroundColor: ACID,
+    justifyContent: 'center'
+  },
+  tagText: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11,
+    letterSpacing: 0.8,
+    color: INK
+  },
+  button: {
+    alignSelf: 'flex-start',
+    minHeight: 44,
+    paddingHorizontal: 18,
+    borderRadius: 22,
+    justifyContent: 'center',
+    marginTop: 4
   }
 })

@@ -13,7 +13,8 @@ import {
   alertFailure,
   OwnerCard,
   OwnerLabel,
-  OwnerRow
+  OwnerRow,
+  PlanNudge
 } from '@/components/bar-owner'
 import { haptic } from '@/components/motion'
 import { usePalette } from '@/components/theme'
@@ -189,11 +190,21 @@ export default function ConfiguracoesBar() {
                 )
               })}
             </View>
-            <Text style={[text(14, 'Regular', 1.45), { color: palette.muted }]}>
-              {owner.elite
-                ? 'Na hora, o garçom valida na porta. Pela comanda, você lança os códigos até 48 h depois do jogo.'
-                : 'O código do balcão é do plano Elite.'}
-            </Text>
+            {owner.elite ? (
+              <Text
+                style={[text(14, 'Regular', 1.45), { color: palette.muted }]}
+              >
+                {
+                  'Na hora, o garçom valida na porta. Pela comanda, você lança os códigos até 48 h depois do jogo.'
+                }
+              </Text>
+            ) : (
+              <PlanNudge
+                to="elite"
+                title="O código do balcão"
+                body="Quem marca “Vou assistir aqui” recebe um código; no balcão você valida, libera a oferta da casa e sabe quem veio pela Onside."
+              />
+            )}
 
             <OwnerCard>
               <Link
