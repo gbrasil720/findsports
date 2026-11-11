@@ -1,6 +1,6 @@
 import { ONBOARDING_TRIAL } from '@findsports_oficial/api/lib/plan-limits'
 /** biome-ignore-all lint/performance/noImgElement: telas e fotos estáticas de public/landing/v3, com width e height. */
-import { getEventEnd } from '@findsports_oficial/db/event-window'
+import { brasiliaDay, getEventEnd } from '@findsports_oficial/db/event-window'
 import { useQuery } from '@tanstack/react-query'
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useTRPC } from '@/utils/trpc'
@@ -262,7 +262,7 @@ const plural = (n: number, um: string, varios: string) =>
  * O exemplo, assumido: bares fictícios com o selo, e logo abaixo o caminho de
  * verdade. Com jogo de hoje, quantos bares o passam e o Explorar já nele; com
  * a lista de exemplo, os jogos de hoje que houver (`todayCount`), senão a grade
- * dos próximos dias.
+ * de amanhã (`?dia=`; a régua do Explorar mostra os dias seguintes).
  */
 function Results({
   result,
@@ -341,7 +341,11 @@ function Results({
             </p>
             <a
               className="btn btn-ink"
-              href={cta.href}
+              href={
+                todayCount
+                  ? cta.href
+                  : `/dashboard?dia=${brasiliaDay(Date.now(), 1)}`
+              }
               data-cta={`results_${cta.kind}`}
             >
               {todayCount
