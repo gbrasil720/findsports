@@ -13,7 +13,8 @@ export const JOB_NAMES = [
   'bar_plans',
   'analytics_retention',
   'ai_stale_runs',
-  'bar_notices'
+  'bar_notices',
+  'weekly_games'
 ] as const
 export type JobName = (typeof JOB_NAMES)[number]
 export type JobTrigger = 'cron' | 'houdini'
@@ -32,7 +33,14 @@ const JOBS: Record<JobName, (trigger: JobTrigger) => Promise<unknown>> = {
   // `bar-notices` puxa `env/server`, que valida as variáveis ao ser
   // importado. No Worker elas não existem nesse momento, e ele não sobe.
   bar_notices: async () =>
-    (await import('./bar-notices')).sendWeeklyBarNotices()
+    (await import('./bar-notices')).sendWeeklyBarNotices(),
+  // Jogos da semana com onde passa (WEB-433): monta às segundas, procura o
+  // canal que faltou às quintas, nos outros dias não faz nada. Importado
+  // aqui dentro pelo mesmo motivo do `bar_notices`.
+  weekly_games: async (trigger) =>
+    (await import('./weekly-games/catalog')).runWeeklyGames(
+      trigger === 'cron' ? 'cron' : 'houdini'
+    )
 }
 
 /**
@@ -92,7 +100,11 @@ export async function runScheduledJobs() {
       try {
         await runJob('ai_stale_runs', 'cron')
       } finally {
-        await runJob('bar_notices', 'cron')
+        try {
+          await runJob('bar_notices', 'cron')
+        } finally {
+          await runJob('weekly_games', 'cron')
+        }
       }
     }
   }

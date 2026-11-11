@@ -45,7 +45,10 @@ export default {
   //
   // WEB-441: por último, os avisos da semana por e-mail aos bares, que só
   // enviam às segundas.
+  //
+  // WEB-433: os jogos da semana chamam a IA no cron: o binding entra aqui também.
   async scheduled(_controller, env) {
+    setAiBinding(env.AI as unknown as AiBinding)
     await runWithDb(env.HYPERDRIVE.connectionString, runScheduledJobs)
   }
 } satisfies ExportedHandler<Env>
