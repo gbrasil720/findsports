@@ -100,10 +100,12 @@ export async function runScheduledJobs() {
       try {
         await runJob('ai_stale_runs', 'cron')
       } finally {
+        // O catálogo da semana antes do resumo da segunda, que leva os
+        // jogos da semana pra você (WEB-433).
         try {
-          await runJob('bar_notices', 'cron')
-        } finally {
           await runJob('weekly_games', 'cron')
+        } finally {
+          await runJob('bar_notices', 'cron')
         }
       }
     }
