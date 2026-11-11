@@ -28,6 +28,7 @@ import {
   PlanNudge
 } from '@/components/bar-owner'
 import { HardShadow, Photo } from '@/components/explore'
+import { HouseTeams } from '@/components/house-teams'
 import { haptic } from '@/components/motion'
 import { useSoon } from '@/components/soon'
 import { usePalette } from '@/components/theme'
@@ -276,38 +277,44 @@ export default function MeuEspaco() {
         </ScrollView>
 
         {tab === 'dados' ? (
-          <OwnerCard>
-            {[
-              ['Nome', bar.name],
-              [
-                'Endereço',
-                [bar.address, bar.neighborhood, bar.city]
-                  .filter(Boolean)
-                  .join(' · ')
-              ],
-              ['Telefone', bar.phone ?? 'não informado'],
-              [
-                'Descrição',
-                bar.descriptionPending
-                  ? `em revisão: ${bar.descriptionPending}`
-                  : (bar.description ?? 'sem descrição')
-              ]
-            ].map(([label, value], index) => (
-              <OwnerRow key={label} first={index === 0}>
-                <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-                  <Text style={[styles.rowLabel, { color: palette.muted }]}>
-                    {label.toUpperCase()}
-                  </Text>
-                  <Text
-                    numberOfLines={3}
-                    style={[text(15.5, 'Regular', 1.4), { color: palette.ink }]}
-                  >
-                    {value}
-                  </Text>
-                </View>
-              </OwnerRow>
-            ))}
-          </OwnerCard>
+          <>
+            <OwnerCard>
+              {[
+                ['Nome', bar.name],
+                [
+                  'Endereço',
+                  [bar.address, bar.neighborhood, bar.city]
+                    .filter(Boolean)
+                    .join(' · ')
+                ],
+                ['Telefone', bar.phone ?? 'não informado'],
+                [
+                  'Descrição',
+                  bar.descriptionPending
+                    ? `em revisão: ${bar.descriptionPending}`
+                    : (bar.description ?? 'sem descrição')
+                ]
+              ].map(([label, value], index) => (
+                <OwnerRow key={label} first={index === 0}>
+                  <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+                    <Text style={[styles.rowLabel, { color: palette.muted }]}>
+                      {label.toUpperCase()}
+                    </Text>
+                    <Text
+                      numberOfLines={3}
+                      style={[
+                        text(15.5, 'Regular', 1.4),
+                        { color: palette.ink }
+                      ]}
+                    >
+                      {value}
+                    </Text>
+                  </View>
+                </OwnerRow>
+              ))}
+            </OwnerCard>
+            <HouseTeams />
+          </>
         ) : tab === 'horario' ? (
           <OwnerCard pad={14}>
             <View
