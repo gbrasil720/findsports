@@ -1,25 +1,25 @@
+import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
 import { useState } from 'react'
-import { View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import {
+  AccountField,
+  AccountNote,
+  AccountPage,
+  StrengthRule
+} from '@/components/account-page'
 import { ErrorText, haptic } from '@/components/motion'
+import { usePalette } from '@/components/theme'
 import {
   authErrorMessage,
-  BackButton,
-  BlockButton,
-  FG,
-  Field,
+  Icon,
   LIVE,
   MIN_PASSWORD,
+  PillButton,
   passwordScore,
   phaseBusy,
   phaseLabel,
-  Screen,
-  STONE,
-  STRENGTH,
-  StrengthBars,
-  SUB,
   Text,
-  Title,
   text
 } from '@/components/ui'
 import { attemptPhase, retryable, settleAuth } from '@/lib/auth-attempt'
@@ -34,7 +34,16 @@ export default function ChangePassword() {
   const router = useRouter()
   const [current, setCurrent] = useState('')
   const [password, setPassword] = useState('')
-  const [visible, setVisible] = useState(false)
+  const palette = usePalette()
+  const sessions = useQuery({
+    queryKey: ['account-sessions'],
+    queryFn: async () => {
+      const result = await authClient.listSessions()
+      if (result.error) throw result.error
+      return result.data ?? []
+    },
+    retry: false
+  })
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   // Falha passageira: o botão vira "Tentar de novo" (WEB-460) e a frase treme
@@ -77,55 +86,126 @@ export default function ChangePassword() {
 
   const phase = attemptPhase(pending, failed)
 
+  // Rodada 8, tela 6b: a régua de força e as regras viram check enquanto
+  // digita; antes do botão, quantos aparelhos saem (o changePassword derruba
+  // as outras sessões).
+  const others = (sessions.data?.length ?? 1) - 1
   return (
-    <Screen gap={16} top={6} sheet={{ onDone: submit, busy: pending }}>
-      <BackButton />
-      <Title lines={[['Alterar ', 'senha']]} size={44} />
-      <Field
+    <AccountPage
+      title="Trocar a "
+      accent="senha"
+      cta={
+        <>
+          <PillButton
+            label={phaseLabel(phase, {
+              idle: 'Trocar a senha',
+              sending: 'Trocando…'
+            })}
+            busy={phaseBusy(phase)}
+            onPress={submit}
+          />
+          <Text
+            accessibilityRole="link"
+            onPress={() => router.push('/forgot-password')}
+            suppressHighlighting
+            style={[
+              text(14, 'SemiBold', 1.3),
+              styles.forgot,
+              { color: palette.ink }
+            ]}
+          >
+            Esqueci a senha atual
+          </Text>
+        </>
+      }
+    >
+      <AccountField
         label="Senha atual"
-        icon="lock"
-        action={{
-          label: visible ? 'Ocultar' : 'Mostrar',
-          onPress: () => setVisible(!visible)
-        }}
         autoComplete="current-password"
         textContentType="password"
-        secureTextEntry={!visible}
+        secureTextEntry
         value={current}
         onChangeText={setCurrent}
       />
-      <Field
-        label="Nova senha"
-        icon="lock"
-        autoComplete="new-password"
-        textContentType="newPassword"
-        secureTextEntry={!visible}
-        value={password}
-        onChangeText={setPassword}
-        onSubmitEditing={submit}
-      />
-      <View style={{ gap: 8, marginTop: -6 }}>
-        <StrengthBars score={score} empty={STONE} />
-        <Text style={[text(12.5, 'Bold'), { color: FG }]}>
-          {STRENGTH[score] || ' '}
-        </Text>
+      <View style={{ gap: 8 }}>
+        <AccountField
+          label="Nova senha"
+          autoComplete="new-password"
+          textContentType="newPassword"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+          onSubmitEditing={submit}
+        />
+        <StrengthRule score={score} />
+        <View style={{ gap: 5 }}>
+          <Rule ok={password.length >= MIN_PASSWORD}>
+            {`${MIN_PASSWORD} caracteres ou mais`}
+          </Rule>
+          <Rule ok={!!password && password !== current}>
+            diferente da atual
+          </Rule>
+          <Rule ok={/\d/.test(password)} hint>
+            um número deixa mais forte
+          </Rule>
+        </View>
       </View>
-      <Text style={[text(13.5, 'Regular', 1.4), { color: SUB }]}>
-        Os outros aparelhos saem da conta e entram de novo com a senha nova.
-      </Text>
+      <AccountNote icon="you">
+        {others > 0 ? (
+          <>
+            Os outros{' '}
+            <Text style={text(13, 'Bold', 1.45)}>
+              {others} {others === 1 ? 'aparelho' : 'aparelhos'}
+            </Text>{' '}
+            saem da conta. Este continua conectado.
+          </>
+        ) : (
+          'Se a conta estiver aberta em outro aparelho, ele sai. Este continua conectado.'
+        )}
+      </AccountNote>
       {error ? (
         <ErrorText key={`erro-${tries}`} style={[text(13.5), { color: LIVE }]}>
           {error}
         </ErrorText>
       ) : null}
-      <BlockButton
-        label={phaseLabel(phase, {
-          idle: 'Salvar senha',
-          sending: 'Salvando…'
-        })}
-        busy={phaseBusy(phase)}
-        onPress={submit}
-      />
-    </Screen>
+    </AccountPage>
   )
 }
+
+/** Uma regra da senha: vira check quando vale; a dica fica com o "+". */
+function Rule({
+  ok,
+  hint,
+  children
+}: {
+  ok: boolean
+  hint?: boolean
+  children: string
+}) {
+  const palette = usePalette()
+  return (
+    <View style={styles.rule}>
+      <Icon
+        name={ok ? 'check' : hint ? 'plus' : 'check'}
+        size={14}
+        color={ok ? palette.ink : palette.muted}
+      />
+      <Text
+        style={[
+          text(12.5, 'Regular', 1.3),
+          { color: ok ? palette.ink : palette.muted }
+        ]}
+      >
+        {children}
+      </Text>
+    </View>
+  )
+}
+
+const styles = StyleSheet.create({
+  rule: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  forgot: {
+    alignSelf: 'center',
+    textDecorationLine: 'underline'
+  }
+})
