@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { ReactNode, RefObject } from 'react'
 import { Image, Pressable, StyleSheet, View } from 'react-native'
 import Animated, {
   type EntryExitAnimationFunction,
@@ -49,6 +49,8 @@ export type MenuItem = {
   meta?: string
   /** A variação em acid ("▲ 32%", Desempenho do dono). */
   metaHot?: boolean
+  /** A linha que o passeio do bar cerca (`useTourTarget`). */
+  ref?: RefObject<View | null>
   /** Sem conta (rodada 2, tela 5): o item fica à vista com "com conta". */
   account?: boolean
   /** O selo acid do design ("5 novos"). */
@@ -253,6 +255,7 @@ export function YouMenu({
             return (
               <Pressable
                 key={item.key}
+                ref={item.ref}
                 accessibilityRole="button"
                 accessibilityLabel={item.label}
                 onPress={() => onItem(item)}

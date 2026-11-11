@@ -21,11 +21,13 @@ import {
   PlanNudge,
   StateTag
 } from '@/components/bar-owner'
+import { askBarTour, FirstSteps } from '@/components/bar-tour'
 import { HardShadow, initials } from '@/components/explore'
 import { useNavInsets } from '@/components/layout'
 import { EASE, haptic } from '@/components/motion'
 import { useSoon } from '@/components/soon'
 import { usePalette } from '@/components/theme'
+import { useTourTarget } from '@/components/tour'
 import {
   ACID,
   ErrorState,
@@ -92,6 +94,7 @@ export default function Casa() {
     })
   )
   const suggestions = useQuery(trpc.pub.gameSuggestions.queryOptions())
+  const tourBoard = useTourTarget('bar-board')
 
   const games = todayGames(events.data ?? [], now)
   const live = games.filter((game) => gameState(game, now) === 'live').length
@@ -185,31 +188,35 @@ export default function Casa() {
           </Pressable>
         </View>
 
-        <DayBoard
-          kicker={dayKicker(now)}
-          live={live ? `${live} AO VIVO` : undefined}
-        >
-          <BoardCell
-            value={String(games.length)}
-            label={games.length === 1 ? 'jogo\nhoje' : 'jogos\nhoje'}
-          />
-          <BoardCell
-            value={owner.elite ? String(goingToday) : '—'}
-            label={'vão\nassistir'}
-          />
-          <BoardCell
-            grow={1.7}
-            hot={change !== null && change > 0}
-            value={change === null ? '—' : (delta(change) ?? '—')}
-            label={
-              change === null
-                ? `interesse ${weekdayName(now)}, ainda sem base`
-                : Math.round(change) === 0
-                  ? `interesse igual ao normal ${weekdayName(now)}`
-                  : `interesse ${change < 0 ? 'abaixo' : 'acima'} do normal ${weekdayName(now)}`
-            }
-          />
-        </DayBoard>
+        <View ref={tourBoard} collapsable={false}>
+          <DayBoard
+            kicker={dayKicker(now)}
+            live={live ? `${live} AO VIVO` : undefined}
+          >
+            <BoardCell
+              value={String(games.length)}
+              label={games.length === 1 ? 'jogo\nhoje' : 'jogos\nhoje'}
+            />
+            <BoardCell
+              value={owner.elite ? String(goingToday) : '—'}
+              label={'vão\nassistir'}
+            />
+            <BoardCell
+              grow={1.7}
+              hot={change !== null && change > 0}
+              value={change === null ? '—' : (delta(change) ?? '—')}
+              label={
+                change === null
+                  ? `interesse ${weekdayName(now)}, ainda sem base`
+                  : Math.round(change) === 0
+                    ? `interesse igual ao normal ${weekdayName(now)}`
+                    : `interesse ${change < 0 ? 'abaixo' : 'acima'} do normal ${weekdayName(now)}`
+              }
+            />
+          </DayBoard>
+        </View>
+
+        <FirstSteps onTour={askBarTour} />
 
         {owner.bar && !owner.elite && owner.trial ? (
           <PlanNudge

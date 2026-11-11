@@ -1,15 +1,23 @@
 import { useQuery } from '@tanstack/react-query'
-import { Redirect, usePathname, useRouter } from 'expo-router'
+import {
+  Redirect,
+  useGlobalSearchParams,
+  usePathname,
+  useRouter
+} from 'expo-router'
 import { NativeTabs } from 'expo-router/unstable-native-tabs'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
+import { BarTour, useBarGuide, useBarTourAsk } from '@/components/bar-tour'
 import { initials } from '@/components/explore'
 import { OWNER_TAB_ICONS } from '@/components/owner-tabs'
 import { useSoon } from '@/components/soon'
 import { type MenuItem, YouMenu } from '@/components/tab-bar'
 import { usePalette } from '@/components/theme'
+import { useTourTarget } from '@/components/tour'
 import { ACID, INK, Text, text } from '@/components/ui'
 import { delta } from '@/lib/bar-owner'
+import { type TourStep, tourSteps } from '@/lib/bar-tour'
 import { useOwnerBar } from '@/lib/owner'
 import { trpc } from '@/lib/trpc'
 
@@ -30,6 +38,34 @@ export default function OwnerTabs() {
   // Trocar de tela fecha o menu.
   // biome-ignore lint/correctness/useExhaustiveDependencies: reage à rota
   useEffect(() => setMenu(false), [pathname])
+  // O passeio do bar (rodada 11): `?passeio=1` do começo, `continuar` das
+  // telas não vistas (Perfil completo, Primeiros passos, Configurações).
+  const { passeio } = useGlobalSearchParams<{ passeio?: string }>()
+  const guide = useBarGuide()
+  const [tour, setTour] = useState<TourStep[] | null>(null)
+  const [ask, setAsk] = useState<'start' | 'continuar' | null>(null)
+  useBarTourAsk(
+    useCallback((resume: boolean) => setAsk(resume ? 'continuar' : 'start'), [])
+  )
+  useEffect(() => {
+    if (!passeio) return
+    setAsk(passeio === 'continuar' ? 'continuar' : 'start')
+    router.setParams({ passeio: undefined })
+  }, [passeio, router])
+  useEffect(() => {
+    if (!ask || !guide.ready) return
+    setAsk(null)
+    setTour(
+      tourSteps(
+        guide.items,
+        guide.facts.elite,
+        ask === 'continuar' ? guide.local.vistos : undefined
+      )
+    )
+  }, [ask, guide.ready, guide.items, guide.facts.elite, guide.local.vistos])
+  const tourQuemVai = useTourTarget('menu-quem-vai')
+  const tourEspaco = useTourTarget('menu-espaco')
+  const tourDesempenho = useTourTarget('menu-desempenho')
   const icons = OWNER_TAB_ICONS[palette.dark ? 'dark' : 'light']
   // Conta de bar sem bar (cadastro não feito ou interrompido): o cadastro.
   // É o servidor quem diz, não a sessão em cache, que pode ser da conta de
@@ -61,6 +97,7 @@ export default function OwnerTabs() {
       icon: 'ranking',
       label: 'Desempenho',
       soon: '',
+      ref: tourDesempenho,
       open: () => {
         setMenu(false)
         router.push('/desempenho')
@@ -75,6 +112,7 @@ export default function OwnerTabs() {
       icon: 'people',
       label: 'Quem vai',
       soon: '',
+      ref: tourQuemVai,
       open: () => {
         setMenu(false)
         router.push('/quem-vai')
@@ -85,6 +123,7 @@ export default function OwnerTabs() {
       icon: 'beer',
       label: 'Meu espaço',
       soon: '',
+      ref: tourEspaco,
       open: () => {
         setMenu(false)
         router.push('/meu-espaco')
@@ -212,6 +251,9 @@ export default function OwnerTabs() {
             </>
           }
         />
+      ) : null}
+      {tour ? (
+        <BarTour steps={tour} onMenu={setMenu} onClose={() => setTour(null)} />
       ) : null}
       {soon.toast}
     </View>
