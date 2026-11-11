@@ -97,7 +97,15 @@ function Title({ title, size }: { title: string; size: number }) {
     <Text
       numberOfLines={2}
       maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
-      style={[styles.title, { fontSize: size, lineHeight: size * 1.12 }]}
+      // Anton abaixo de 1,505 em corta o acento no iOS (AGENTS.md, "Fontes").
+      style={[
+        styles.title,
+        {
+          fontSize: size,
+          lineHeight: size * 1.505,
+          marginVertical: -size * 0.2
+        }
+      ]}
     >
       {sides.length === 2 ? (
         <>
@@ -533,7 +541,12 @@ const styles = StyleSheet.create({
     marginVertical: -5,
     fontVariant: ['tabular-nums']
   },
-  cellTv: { fontSize: 15, lineHeight: 23, marginVertical: -1 },
+  cellTv: {
+    fontSize: 15,
+    lineHeight: 23,
+    marginVertical: -1,
+    textTransform: 'uppercase'
+  },
   cellLabel: {
     fontFamily: 'GeistMono-SemiBold',
     fontSize: 8.5,
