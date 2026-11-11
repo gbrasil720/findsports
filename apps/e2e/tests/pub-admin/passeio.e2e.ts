@@ -205,7 +205,7 @@ test('sem o destaque da tela, "Pular o passeio" fica à vista enquanto a dica es
     page.getByRole('dialog', { name: 'Seu jogo já está no ar' })
   ).toBeVisible()
   // Jogos sem o alvo do passo, como numa grade que não carregou.
-  await page.evaluate(() => {
+  await page.evaluate(`
     const tirar = () => {
       for (const el of document.querySelectorAll('[data-passeio^="jogos"]')) {
         el.removeAttribute('data-passeio')
@@ -216,7 +216,7 @@ test('sem o destaque da tela, "Pular o passeio" fica à vista enquanto a dica es
       childList: true,
       attributes: true
     })
-  })
+  `)
   await next(page).click()
   await expect(page).toHaveURL(/\/admin\/jogos$/)
   // Antes da desistência (240 quadros, uns 4 s), que mostraria a dica.
