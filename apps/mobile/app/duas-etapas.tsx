@@ -1,29 +1,34 @@
 import * as Clipboard from 'expo-clipboard'
 import { useRouter } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
-import { Linking, Share, StyleSheet, type TextInput, View } from 'react-native'
+import {
+  Linking,
+  Pressable,
+  Share,
+  StyleSheet,
+  type TextInput,
+  View
+} from 'react-native'
 import QRCode from 'react-qr-code'
+import {
+  AccountField,
+  AccountNote,
+  AccountPage
+} from '@/components/account-page'
 import { CodeBoxes, DIGITS } from '@/components/code-boxes'
+import { DotField } from '@/components/fan-card'
 import { ErrorText, haptic, useShake } from '@/components/motion'
+import { INK_ON_DARK, usePalette } from '@/components/theme'
 import {
   authErrorMessage,
-  BackButton,
-  BlockButton,
-  CARD,
-  Checkbox,
-  DROP,
-  FG,
-  Field,
+  Icon,
   INK,
-  LINE,
   LIVE,
+  PAPER,
+  PillButton,
   phaseBusy,
   phaseLabel,
-  Screen,
-  SUB,
   Text,
-  TextLink,
-  Title,
   text
 } from '@/components/ui'
 import { attemptPhase, retryable, settleAuth } from '@/lib/auth-attempt'
@@ -51,11 +56,10 @@ export default function TwoFactorSetup() {
   const [enabled] = useState(session.data?.user.twoFactorEnabled === true)
   const [step, setStep] = useState<Step>('password')
   const [password, setPassword] = useState('')
-  const [visible, setVisible] = useState(false)
+  const palette = usePalette()
   const [uri, setUri] = useState('')
   const [backupCodes, setBackupCodes] = useState<string[]>([])
   const [code, setCode] = useState('')
-  const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   // Falha passageira: o botão vira "Tentar de novo" (WEB-460) e a frase treme
@@ -153,88 +157,95 @@ export default function TwoFactorSetup() {
   const secret = totpSecret(uri)
   const codesText = backupCodes.join('\n')
 
+  const passwordField = (
+    <AccountField
+      label="Senha"
+      autoComplete="current-password"
+      textContentType="password"
+      secureTextEntry
+      value={password}
+      onChangeText={setPassword}
+      onSubmitEditing={begin}
+    />
+  )
+
+  // Rodada 8, tela 6b: três passos (senha, autenticador, códigos) no topo;
+  // número vira check ao concluir.
   if (enabled)
     return (
-      <Screen key="off" gap={16} top={6} sheet={{}}>
-        <BackButton />
-        <Title lines={[['Desligar a'], ['', 'verificação']]} size={40} />
-        <Text style={[text(15, 'Regular', 1.45), { color: SUB }]}>
-          A verificação em duas etapas está ligada. Desligada, a conta volta a
-          entrar só com a senha.
+      <AccountPage
+        key="off"
+        title="Desligar as "
+        accent="duas etapas"
+        cta={
+          <PillButton
+            label={phaseLabel(phase, {
+              idle: 'Desligar',
+              sending: 'Desligando…'
+            })}
+            busy={phaseBusy(phase)}
+            onPress={begin}
+          />
+        }
+      >
+        <Text style={[text(15, 'Regular', 1.45), { color: palette.muted }]}>
+          Desligadas, a conta volta a entrar só com a senha. Confirme a senha
+          para desligar.
         </Text>
-        <Field
-          label="Senha"
-          icon="lock"
-          action={{
-            label: visible ? 'Ocultar' : 'Mostrar',
-            onPress: () => setVisible(!visible)
-          }}
-          autoComplete="current-password"
-          textContentType="password"
-          secureTextEntry={!visible}
-          value={password}
-          onChangeText={setPassword}
-          onSubmitEditing={begin}
-        />
+        {passwordField}
         {errorText}
-        <BlockButton
-          label={phaseLabel(phase, {
-            idle: 'Desligar a verificação',
-            sending: 'Desligando…'
-          })}
-          busy={phaseBusy(phase)}
-          onPress={begin}
-        />
-      </Screen>
+      </AccountPage>
     )
 
   if (step === 'password')
     return (
-      <Screen key={step} gap={16} top={6} sheet={{}}>
-        <BackButton />
-        <Title lines={[['Verificação em'], ['', 'duas etapas']]} size={40} />
-        <Text style={[text(15, 'Regular', 1.45), { color: SUB }]}>
+      <AccountPage
+        key={step}
+        title="Ligue as "
+        accent="duas etapas"
+        steps={{ current: 1, total: 3 }}
+        cta={
+          <PillButton
+            label={phaseLabel(phase, {
+              idle: 'Continuar',
+              sending: 'Conferindo…'
+            })}
+            busy={phaseBusy(phase)}
+            onPress={begin}
+          />
+        }
+      >
+        <Text style={[text(15, 'Regular', 1.45), { color: palette.muted }]}>
           Além da senha, a Onside vai pedir um código do seu app autenticador ao
           entrar. Confirme a senha para começar.
         </Text>
-        <Field
-          label="Senha"
-          icon="lock"
-          action={{
-            label: visible ? 'Ocultar' : 'Mostrar',
-            onPress: () => setVisible(!visible)
-          }}
-          autoComplete="current-password"
-          textContentType="password"
-          secureTextEntry={!visible}
-          value={password}
-          onChangeText={setPassword}
-          onSubmitEditing={begin}
-        />
+        {passwordField}
         {errorText}
-        <BlockButton
-          label={phaseLabel(phase, {
-            idle: 'Continuar',
-            sending: 'Conferindo…'
-          })}
-          trailing={!pending}
-          busy={phaseBusy(phase)}
-          onPress={begin}
-        />
-      </Screen>
+      </AccountPage>
     )
 
   if (step === 'key')
     return (
-      <Screen key={step} gap={16} top={6} sheet={{}}>
-        <BackButton />
-        <Title lines={[['Adicione no'], ['', 'autenticador']]} size={40} />
-        <Text style={[text(15, 'Regular', 1.45), { color: SUB }]}>
-          Use um app como Senhas do iPhone, Google Authenticator ou 1Password.
-          Depois digite o código de 6 dígitos que ele mostrar.
-        </Text>
-        <BlockButton
+      <AccountPage
+        key={step}
+        title="Ligue no "
+        accent="autenticador"
+        steps={{ current: 2, total: 3 }}
+        cta={
+          <PillButton
+            label={phaseLabel(phase, {
+              idle: 'Confirmar',
+              sending: 'Verificando…'
+            })}
+            busy={phaseBusy(phase)}
+            disabled={code.length < DIGITS}
+            onPress={() => verify(code)}
+          />
+        }
+      >
+        <PillButton
           label="Abrir no app autenticador"
+          leading="link"
           onPress={() =>
             Linking.openURL(uri).catch(() =>
               setError(
@@ -243,13 +254,22 @@ export default function TwoFactorSetup() {
             )
           }
         />
-        <View style={styles.card}>
+        <View
+          style={[
+            styles.qrCard,
+            { backgroundColor: palette.card, shadowColor: palette.drop }
+          ]}
+        >
           <View style={styles.qr}>
             <QRCode value={uri} size={112} bgColor="#ffffff" fgColor={INK} />
           </View>
           <View style={{ flex: 1, gap: 6 }}>
-            <Text style={[text(12.5, 'SemiBold'), { color: SUB }]}>Chave</Text>
-            <Text selectable style={[styles.secret, { color: FG }]}>
+            <Text
+              style={[text(12.5, 'Regular', 1.35), { color: palette.muted }]}
+            >
+              Em outro aparelho? Leia o QR ou digite a chave:
+            </Text>
+            <Text selectable style={[styles.secret, { color: palette.ink }]}>
               {secret}
             </Text>
             <Text
@@ -257,16 +277,21 @@ export default function TwoFactorSetup() {
               suppressHighlighting
               onPress={() => copy('key', secret.replace(/\s/g, ''))}
               style={[
-                text(14, 'Bold'),
-                { color: FG, textDecorationLine: 'underline' }
+                text(13, 'SemiBold'),
+                { color: palette.ink, textDecorationLine: 'underline' }
               ]}
             >
-              {copied === 'key' ? 'Chave copiada' : 'Copiar a chave'}
+              {copied === 'key' ? 'Chave copiada' : 'Copiar chave'}
             </Text>
           </View>
         </View>
-        <Text style={[text(13, 'SemiBold'), { color: FG, marginBottom: -6 }]}>
-          Código do app
+        <Text
+          style={[
+            text(13, 'SemiBold'),
+            { color: palette.ink, marginBottom: -6 }
+          ]}
+        >
+          Código de 6 dígitos do app
         </Text>
         <CodeBoxes
           ref={input}
@@ -277,100 +302,134 @@ export default function TwoFactorSetup() {
           autoFocus={false}
         />
         {errorText}
-        <BlockButton
-          label={phaseLabel(phase, {
-            idle: 'Ligar a verificação',
-            sending: 'Verificando…'
-          })}
-          busy={phaseBusy(phase)}
-          onPress={() =>
-            code.length === DIGITS ? verify(code) : input.current?.focus()
-          }
-        />
-      </Screen>
+      </AccountPage>
     )
 
   return (
-    <Screen key={step} gap={16} top={6} sheet={{}}>
-      <Title lines={[['Guarde os'], ['', 'códigos']]} size={40} />
-      <Text style={[text(15, 'Regular', 1.45), { color: SUB }]}>
-        A verificação está ligada. Se perder o celular, cada código abaixo entra
-        na conta uma vez no lugar do app autenticador.
+    <AccountPage
+      key={step}
+      title="Guarde estes "
+      accent="códigos"
+      steps={{ current: 3, total: 3 }}
+      back={false}
+      cta={
+        <PillButton label="Guardei os códigos" onPress={() => router.back()} />
+      }
+    >
+      <Text
+        style={[
+          text(14, 'Regular', 1.45),
+          { color: palette.muted, marginTop: -4 }
+        ]}
+      >
+        Sem o celular, cada um entra uma vez no lugar do código do app. A Onside
+        não mostra de novo.
       </Text>
-      <View style={[styles.card, styles.codes]}>
-        {backupCodes.map((item) => (
-          <Text key={item} selectable style={[styles.code, { color: FG }]}>
-            {item}
-          </Text>
+      <View style={[styles.codes, palette.dark && INK_ON_DARK]}>
+        <DotField id="codigos" radius={20} />
+        {backupCodes.map((item, index) => (
+          <View
+            key={item}
+            style={[styles.codeCell, index % 2 === 0 && styles.codeCellLeft]}
+          >
+            <Text style={styles.codeN}>{index + 1}</Text>
+            <Text selectable style={styles.code}>
+              {item}
+            </Text>
+          </View>
         ))}
       </View>
       <View style={styles.actions}>
-        {/* A largura de "Copiados" fica reservada: a troca não empurra
-            "Compartilhar". */}
-        <View>
-          <View
-            style={{ opacity: 0 }}
-            pointerEvents="none"
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-          >
-            <TextLink label="Copiados" underline onPress={() => {}} />
-          </View>
-          <View style={StyleSheet.absoluteFill}>
-            <TextLink
-              label={copied === 'codes' ? 'Copiados' : 'Copiar'}
-              underline
-              onPress={() => copy('codes', codesText)}
-            />
-          </View>
-        </View>
-        <TextLink
-          label="Compartilhar"
-          underline
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => copy('codes', codesText)}
+          style={[styles.ghost, { borderColor: palette.line }]}
+        >
+          <Icon name="doc" size={16} color={palette.ink} />
+          <Text style={[text(14.5, 'Bold', 1.2), { color: palette.ink }]}>
+            {copied === 'codes' ? 'Copiados' : 'Copiar'}
+          </Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
           onPress={() =>
             Share.share({
               message: `Códigos de recuperação da Onside:\n${codesText}`
             })
           }
-        />
+          style={[styles.ghost, { borderColor: palette.line }]}
+        >
+          <Icon name="share" size={16} color={palette.ink} />
+          <Text style={[text(14.5, 'Bold', 1.2), { color: palette.ink }]}>
+            Salvar em Notas
+          </Text>
+        </Pressable>
       </View>
-      <Checkbox checked={saved} onChange={setSaved}>
-        <Text style={[text(14, 'Regular', 1.4), { color: FG }]}>
-          Guardei os códigos num lugar seguro.
-        </Text>
-      </Checkbox>
-      <BlockButton
-        label="Concluir"
-        disabled={!saved}
-        onPress={() => router.back()}
-      />
-    </Screen>
+      <AccountNote icon="lock">
+        Guarde <Text style={text(13, 'Bold', 1.45)}>fora do celular</Text>: no
+        gerenciador de senhas, ou impresso. Se perder o celular, é com eles que
+        você entra.
+      </AccountNote>
+    </AccountPage>
   )
 }
 
 const styles = StyleSheet.create({
-  card: {
+  qrCard: {
     flexDirection: 'row',
     gap: 14,
     alignItems: 'center',
     padding: 14,
-    borderRadius: 6,
-    backgroundColor: CARD,
-    borderWidth: 1,
-    borderColor: LINE,
-    shadowColor: DROP,
+    borderRadius: 20,
     shadowOpacity: 1,
     shadowRadius: 0,
-    shadowOffset: { width: 4, height: 4 }
+    shadowOffset: { width: 0, height: 3 }
   },
-  qr: { padding: 6, borderRadius: 6, backgroundColor: '#ffffff' },
-  secret: { fontFamily: 'GeistMono-SemiBold', fontSize: 15, lineHeight: 22 },
-  codes: { flexWrap: 'wrap', rowGap: 10, columnGap: 0 },
-  code: {
+  qr: { padding: 10, borderRadius: 14, backgroundColor: '#ffffff' },
+  secret: { fontFamily: 'GeistMono-SemiBold', fontSize: 14, lineHeight: 20 },
+  codes: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: 6,
+    borderRadius: 20,
+    backgroundColor: INK,
+    shadowColor: '#000',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  },
+  codeCell: {
     width: '50%',
+    flexDirection: 'row',
+    gap: 10,
+    paddingVertical: 13,
+    paddingHorizontal: 12
+  },
+  codeCellLeft: {
+    borderRightWidth: 1,
+    borderRightColor: 'rgba(241,238,230,.1)'
+  },
+  codeN: {
+    width: 16,
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 12,
+    color: '#6a6a63'
+  },
+  code: {
     fontFamily: 'GeistMono-SemiBold',
     fontSize: 16,
-    letterSpacing: 0.5
+    letterSpacing: 1,
+    color: PAPER
   },
-  actions: { flexDirection: 'row', gap: 22, justifyContent: 'center' }
+  actions: { flexDirection: 'row', gap: 8 },
+  ghost: {
+    flex: 1,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8
+  }
 })
