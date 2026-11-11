@@ -130,7 +130,7 @@ export function mergeGames(found: readonly FoundGame[]): MergedGame[] {
     const key = gameKey(game.day, game.name)
     const channels = normalizeChannels(game.channels)
     const source = { ...game.source, channels }
-    const prev = games.get(key)
+    const prev = games.get(key) ?? sameKickoff(games.values(), game, key)
     if (!prev) {
       const { source: _source, ...rest } = game
       games.set(key, {
@@ -148,6 +148,35 @@ export function mergeGames(found: readonly FoundGame[]): MergedGame[] {
     prev.sources.push(source)
   }
   return markConfirmation([...games.values()])
+}
+
+/**
+ * O mesmo jogo com um lado escrito de outro jeito ("CA Mineiro" e
+ * "Atlético-MG"): mesmo início e um dos lados com a mesma chave.
+ */
+function sameKickoff(
+  games: Iterable<MergedGame>,
+  game: FoundGame,
+  key: string
+) {
+  const sides = new Set(key.split('|')[1]?.split('-'))
+  for (const other of games)
+    if (
+      other.startsAt.getTime() === game.startsAt.getTime() &&
+      other.key
+        .split('|')[1]
+        ?.split('-')
+        .some((side) => side && sides.has(side))
+    )
+      return other
+  return undefined
+}
+
+/** Sem a sigla de clube na ponta ("CR Vasco da Gama" → "vasco da gama"), para casar com o catálogo. */
+export function withoutClubAffixes(name: string) {
+  return fold(name)
+    .replace(/^(?:[a-z]{1,3}\.?\s+)+/, '')
+    .replace(/(?:\s+[a-z]{1,3}\.?)+$/, '')
 }
 
 /** Uma página que dá a mesma lista a tantos jogos do campeonato fala da competição. */

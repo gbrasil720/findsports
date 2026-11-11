@@ -24,7 +24,8 @@ import {
   type MergedGame,
   markConfirmation,
   mergeGames,
-  splitSides
+  splitSides,
+  withoutClubAffixes
 } from './merge'
 import {
   BROWSER_USD_PER_MS,
@@ -150,11 +151,15 @@ async function saveCatalog(weekStart: string, games: MergedGame[]) {
     const ofSport = games.filter((g) => g.sportId === sportId)
     const teams = await matchTeams(
       sportId,
-      ofSport.flatMap((g) => g.sides ?? [])
+      ofSport.flatMap((g) =>
+        (g.sides ?? []).flatMap((side) => [side, withoutClubAffixes(side)])
+      )
     )
+    const teamOf = (side: string) =>
+      teams.get(fold(side)) ?? teams.get(withoutClubAffixes(side))
     const values = ofSport.map((game) => {
-      const home = game.sides ? teams.get(fold(game.sides[0])) : undefined
-      const away = game.sides ? teams.get(fold(game.sides[1])) : undefined
+      const home = game.sides ? teamOf(game.sides[0]) : undefined
+      const away = game.sides ? teamOf(game.sides[1]) : undefined
       // A regra de `gameTitle`: "A × B" com os nomes do catálogo quando os
       // dois casaram, que é o que um bar que publicou o jogo mostra.
       const title = game.sides

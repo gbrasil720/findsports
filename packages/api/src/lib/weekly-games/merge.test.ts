@@ -9,7 +9,8 @@ import {
   hourInPage,
   mergeGames,
   normalizeChannels,
-  splitSides
+  splitSides,
+  withoutClubAffixes
 } from './merge'
 
 const found = (
@@ -101,6 +102,21 @@ describe('jogos da semana: contas puras', () => {
       'https://b'
     ])
     expect(game?.channelConfirmed).toBe(true)
+  })
+
+  test('mesmo início e um lado igual é o mesmo jogo, mesmo com o outro escrito diferente', () => {
+    const games = mergeGames([
+      found('Mirassol x CA Mineiro', [], null),
+      found('Mirassol x Atlético-MG', ['Prime Video'], 'https://a')
+    ])
+    expect(games).toHaveLength(1)
+    expect(games[0]?.channels).toEqual(['Prime Video'])
+  })
+
+  test('sigla de clube na ponta sai para casar com o catálogo', () => {
+    expect(withoutClubAffixes('CR Vasco da Gama')).toBe('vasco da gama')
+    expect(withoutClubAffixes('Chapecoense AF')).toBe('chapecoense')
+    expect(withoutClubAffixes('Atlético-MG')).toBe('atletico-mg')
   })
 
   test('lista da competição inteira não confirma o canal', () => {
