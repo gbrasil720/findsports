@@ -11,10 +11,7 @@ import {
   userFavoriteTeams,
   userPreferenceSports
 } from '@findsports_oficial/db/schema/platform'
-import {
-  barGameDismissal,
-  weeklyGame
-} from '@findsports_oficial/db/schema/weekly-games'
+import { weeklyGame } from '@findsports_oficial/db/schema/weekly-games'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 import { env } from '@findsports_oficial/env/server'
 import { seedBar } from '../../routers/integration-seed'
