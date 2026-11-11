@@ -1663,16 +1663,22 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
       {beside ? (
         // O bar aberto ao lado da lista (a02), no lugar do mapa, que continua
         // montado por baixo, onde estava.
+        // No Duo a barra fica de pé na borda direita: a página acaba antes
+        // dela, para o placar e o "Vou assistir aqui" não ficarem por baixo.
         <View
           style={[
             styles.beside,
-            { left: mapBox.left, backgroundColor: palette.bg }
+            {
+              left: mapBox.left,
+              right: navInsets.right,
+              backgroundColor: palette.bg
+            }
           ]}
         >
           <BarDetail
             key={beside.id}
             {...beside}
-            width={mapBox.width}
+            width={mapBox.width - navInsets.right}
             back={false}
           />
         </View>
