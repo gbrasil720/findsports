@@ -34,7 +34,10 @@ export const aiRun = pgTable(
     userId: text('user_id').references(() => user.id, {
       onDelete: 'set null'
     }),
-    feature: text('feature', { enum: ['recommender', 'chat'] }).notNull(),
+    // `weekly_games`: a rotina dos jogos da semana (WEB-433), sem pessoa.
+    feature: text('feature', {
+      enum: ['recommender', 'chat', 'weekly_games']
+    }).notNull(),
     // Braço do teste ("a", "b", "c"), sorteado por pessoa.
     variant: text('variant').notNull(),
     // O modelo do braço sorteado e o que respondeu de fato (outro, depois de
