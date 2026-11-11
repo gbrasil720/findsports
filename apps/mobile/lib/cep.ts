@@ -38,8 +38,13 @@ export function readViaCep(json: unknown): CepAddress | null {
   }
 }
 
-/** Busca o endereço; fora do ar ou sem resposta, `null` (preenche à mão). */
-export async function findCep(cep: string): Promise<CepAddress | null> {
+/**
+ * Busca o endereço. `null`: o CEP não existe; `'fora'`: sem rede ou o ViaCEP
+ * não respondeu (a frase é outra; nos dois casos preenche à mão).
+ */
+export async function findCep(
+  cep: string
+): Promise<CepAddress | null | 'fora'> {
   const d = cep.replace(/\D/g, '')
   if (d.length !== 8) return null
   const controller = new AbortController()
@@ -48,9 +53,9 @@ export async function findCep(cep: string): Promise<CepAddress | null> {
     const res = await fetch(`https://viacep.com.br/ws/${d}/json/`, {
       signal: controller.signal
     })
-    return res.ok ? readViaCep(await res.json()) : null
+    return res.ok ? readViaCep(await res.json()) : 'fora'
   } catch {
-    return null
+    return 'fora'
   } finally {
     clearTimeout(timer)
   }

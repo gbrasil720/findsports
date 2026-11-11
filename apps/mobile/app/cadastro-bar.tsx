@@ -4,7 +4,7 @@ import {
 } from '@findsports_oficial/api/lib/amenities'
 import { useMutation } from '@tanstack/react-query'
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AuthField } from '@/components/auth-shell'
@@ -68,7 +68,11 @@ export default function CadastroBar() {
   const [name, setName] = useState(preview ? 'Bar do Zé' : '')
   const [cep, setCep] = useState('')
   const [found, setFound] = useState<CepAddress | null>(null)
-  const [cepState, setCepState] = useState<'idle' | 'busy' | 'none'>('idle')
+  const [cepState, setCepState] = useState<'idle' | 'busy' | 'none' | 'fora'>(
+    'idle'
+  )
+  // O último CEP pedido: resposta de um CEP antigo chega depois e não vale.
+  const lastCep = useRef('')
   const [street, setStreet] = useState(preview ? 'Rua Aspicuelta' : '')
   const [number, setNumber] = useState(preview ? '1' : '')
   const [hood, setHood] = useState(preview ? 'Vila Madalena' : '')
@@ -95,9 +99,15 @@ export default function CadastroBar() {
   const onCep = async (value: string) => {
     const next = formatCep(value)
     setCep(next)
-    if (next.length < 9) return setCepState('idle')
+    if (next.length < 9) {
+      lastCep.current = ''
+      return setCepState('idle')
+    }
     setCepState('busy')
+    lastCep.current = next
     const address = await findCep(next)
+    if (lastCep.current !== next) return
+    if (address === 'fora') return setCepState('fora')
     if (!address) return setCepState('none')
     haptic.success()
     setCepState('idle')
@@ -326,7 +336,9 @@ export default function CadastroBar() {
                   >
                     {cepState === 'busy'
                       ? 'Buscando o CEP…'
-                      : 'Não achamos esse CEP. Preencha o endereço abaixo.'}
+                      : cepState === 'fora'
+                        ? 'Não deu para buscar o CEP agora. Preencha o endereço abaixo.'
+                        : 'Não achamos esse CEP. Preencha o endereço abaixo.'}
                   </Text>
                 ) : null}
                 <AuthField
