@@ -1,11 +1,15 @@
+import { gameTitle } from '@findsports_oficial/db/game-title'
+import { useQuery } from '@tanstack/react-query'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Image, Platform, Pressable, StyleSheet, View } from 'react-native'
-import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { AuthShell } from '@/components/auth-shell'
+import { dayLabel, Photo } from '@/components/explore'
 import { Glass } from '@/components/glass'
 import { useLayout } from '@/components/layout'
-import { ErrorText, Float, haptic, POP_LATE } from '@/components/motion'
+import { ErrorText, haptic, } from '@/components/motion'
+import { usePalette } from '@/components/theme'
 import { useTurnstile } from '@/components/turnstile'
 import {
   ACID,
@@ -28,7 +32,6 @@ import {
   Screen,
   SUB,
   Text,
-  TextLink,
   Title,
   text,
   useBrandFrame,
@@ -36,6 +39,10 @@ import {
 } from '@/components/ui'
 import { settleAuth } from '@/lib/auth-attempt'
 import { authClient } from '@/lib/auth-client'
+import { formatTime } from '@/lib/explore'
+import { shortTitle } from '@/lib/maintenance-ticker'
+import { type Acao, peekPending } from '@/lib/pending-action'
+import { trpc } from '@/lib/trpc'
 
 /*
  * "Confirmar e-mail" (4h do design), depois do cadastro e do login de quem
@@ -53,6 +60,27 @@ export default function VerifyEmail() {
   // passos; os apps de e-mail entram no passo de abrir o e-mail.
   const framed = useBrandFrame()
   const insets = useSafeAreaInsets()
+  const palette = usePalette()
+  // O que a pessoa tentava fazer quando a conta foi pedida (rodada 2): a
+  // espera ganha rumo ("Guardado pra você").
+  const [saved, setSaved] = useState<Acao | null>(null)
+  useEffect(() => {
+    peekPending().then((acao) =>
+      setSaved(
+        acao && (acao.kind === 'vou' || acao.kind === 'fav') ? acao : null
+      )
+    )
+  }, [])
+  const savedBar = useQuery({
+    ...trpc.pubs.getById.queryOptions({
+      id: saved && 'barId' in saved ? saved.barId : ''
+    }),
+    enabled: !!saved && 'barId' in saved
+  })
+  const savedGame =
+    saved?.kind === 'vou'
+      ? savedBar.data?.events.find((game) => game.id === saved.eventId)
+      : undefined
 
   const resend = async () => {
     setNotice(null)
@@ -197,69 +225,149 @@ export default function VerifyEmail() {
       </Screen>
     )
 
+  // Rodada 8, tela 5: o título e a notificação como ela vai chegar, para a
+  // pessoa reconhecer; para onde foi, quanto vale, "Abrir o Mail" e reenviar;
+  // o que ficou guardado e os três passos até voltar, para a espera ter rumo.
   return (
-    <Screen
-      brand
-      gap={16}
-      footer={
-        <View style={{ gap: 12, alignItems: 'center' }}>
-          {countdown.left > 0 ? (
-            <Text style={[text(14), { color: SUB }]}>
-              Não chegou?{' '}
-              <Text style={[text(14, 'Bold'), { color: FG }]}>
-                Reenviar em {countdown.label}
+    <AuthShell
+      title={['Confira', 'seu e-mail']}
+      art={
+        <View style={styles.notif}>
+          <View style={styles.notifHead}>
+            <View style={styles.notifMark}>
+              <View style={styles.notifRing} />
+              <View style={styles.notifDot} />
+            </View>
+            <View>
+              <Text style={[text(13, 'Bold', 1.2), { color: INK }]}>
+                Onside
               </Text>
+              <Text style={styles.notifTime}>agora</Text>
+            </View>
+          </View>
+          <Text style={[text(14.5, 'Bold', 1.3), { color: INK }]}>
+            Confirme seu e-mail
+          </Text>
+          <View style={styles.notifButton}>
+            <Text style={[text(12, 'Bold', 1.2), { color: INK }]}>
+              Confirmar e-mail
             </Text>
-          ) : (
-            <TextLink lead="Não chegou?" label="Reenviar" onPress={resend} />
-          )}
-          <TextLink
-            lead="E-mail errado?"
-            label="Corrigir"
-            onPress={() => router.back()}
-          />
+          </View>
         </View>
       }
+      footer={
+        <Text style={[text(13, 'Regular', 1.4), { color: palette.muted }]}>
+          Não chegou? Olhe em spam ou promoções.
+        </Text>
+      }
     >
-      <BackButton />
-      <View style={styles.art}>
-        <View>
-          <View style={styles.orbShadow} />
-          {/* Só a bola flutua: a sombra fica, e a distância entre as duas
-              respira. */}
-          <Float>
-            <View style={styles.orb}>
-              <Icon name="mail" size={76} color={INK} accent={LIVE} />
-            </View>
-            <Animated.View entering={POP_LATE} style={styles.badge}>
-              <Text style={[text(15, 'Bold', 1), { color: PAPER }]}>1</Text>
-            </Animated.View>
-          </Float>
-        </View>
-      </View>
-      <Title lines={[['Confirme seu e-mail']]} size={38} />
-      <Text style={[text(16, 'Regular', 1.48), { color: SUB, marginTop: -4 }]}>
-        Enviamos um link para{' '}
-        <Text style={[text(16, 'Bold', 1.48), { color: FG }]}>{email}</Text>.
-        Toque nele para continuar o cadastro.
+      <Text style={[text(15, 'Regular', 1.45), { color: palette.ink }]}>
+        Mandamos para <Text style={text(15, 'Bold', 1.45)}>{email}</Text>. O
+        link vale por 1 hora.
       </Text>
-      <View style={styles.apps}>
-        {MAIL_APPS.map((app) => (
-          <Pressable
-            key={app.label}
+      <PillButton
+        label="Abrir o Mail"
+        leading="mail"
+        onPress={() => openMailApp('Mail', MAIL)}
+      />
+      <View style={styles.resendLine}>
+        {countdown.left > 0 ? (
+          <Text style={[styles.monoSmall, { color: palette.muted }]}>
+            Reenviar em {countdown.label}
+          </Text>
+        ) : (
+          <Text
             accessibilityRole="button"
-            onPress={() => openMailApp(app.label, app.url)}
-            style={styles.app}
+            suppressHighlighting
+            onPress={resend}
+            style={[
+              text(13.5, 'Bold'),
+              styles.underline,
+              { color: palette.ink }
+            ]}
           >
-            <Text style={[text(13.5, 'Bold'), { color: FG }]}>{app.label}</Text>
-          </Pressable>
-        ))}
+            Reenviar
+          </Text>
+        )}
+        <Text
+          accessibilityRole="button"
+          suppressHighlighting
+          onPress={() => router.back()}
+          style={[text(13.5, 'Bold'), styles.underline, { color: palette.ink }]}
+        >
+          Corrigir e-mail
+        </Text>
       </View>
       {notice ? (
         <ErrorText style={[text(13.5), { color: LIVE }]}>{notice}</ErrorText>
       ) : null}
+      {saved ? (
+        <View
+          style={[
+            styles.saved,
+            { backgroundColor: palette.card, shadowColor: palette.drop }
+          ]}
+        >
+          <Photo
+            uri={savedBar.data?.photoUrl ?? null}
+            name={savedBar.data?.name ?? 'Bar'}
+            style={styles.savedPhoto}
+          />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={[styles.monoTiny, { color: palette.muted }]}>
+              GUARDADO PRA VOCÊ
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={[text(15, 'Bold', 1.3), { color: palette.ink }]}
+            >
+              {saved.kind === 'fav'
+                ? `Salvar · ${savedBar.data?.name ?? 'o bar'}`
+                : `Vou assistir${savedGame ? ` · ${shortTitle(gameTitle(savedGame))}` : ''}`}
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={[text(12.5, 'Regular', 1.3), { color: palette.muted }]}
+            >
+              {[
+                savedBar.data?.name,
+                savedGame
+                  ? `${dayLabel(savedGame.startsAt, Date.now()).toLowerCase()} ${formatTime(savedGame.startsAt)}`
+                  : null
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </Text>
+          </View>
+        </View>
+      ) : null}
+      <View style={{ gap: 10 }}>
+        {[
+          'Abra o e-mail da Onside',
+          'Toque em “Confirmar e-mail”',
+          saved && savedBar.data
+            ? `Você volta ao ${savedBar.data.name} com ${saved.kind === 'fav' ? 'o bar salvo' : 'a presença marcada'}`
+            : 'Você volta ao app com a conta pronta'
+        ].map((line, index) => (
+          <View key={line} style={styles.stepRow}>
+            <View style={[styles.stepDot, { backgroundColor: palette.mark }]}>
+              <Text style={[styles.monoTiny, { color: palette.ink }]}>
+                {index + 1}
+              </Text>
+            </View>
+            <Text
+              style={[
+                text(14, 'Regular', 1.35),
+                { color: palette.ink, flex: 1 }
+              ]}
+            >
+              {line}
+            </Text>
+          </View>
+        ))}
+      </View>
       {turnstile.widget}
-    </Screen>
+    </AuthShell>
   )
 }
 
@@ -280,6 +388,78 @@ function Step({ n, children }: { n: string; children: string }) {
 }
 
 const styles = StyleSheet.create({
+  // A notificação como chega (`.nf8`): papel sobre o topo de tinta.
+  notif: {
+    backgroundColor: '#e7e3db',
+    borderRadius: 18,
+    padding: 14,
+    gap: 8,
+    marginBottom: 6
+  },
+  notifHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  notifMark: { width: 24, height: 24 },
+  notifRing: {
+    position: 'absolute',
+    top: 2,
+    left: 2,
+    right: 2,
+    bottom: 2,
+    borderRadius: 10,
+    borderWidth: 3.5,
+    borderColor: INK
+  },
+  notifDot: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#e8320c'
+  },
+  notifTime: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 10,
+    color: '#55554f'
+  },
+  notifButton: {
+    alignSelf: 'flex-start',
+    paddingVertical: 5,
+    paddingHorizontal: 9,
+    borderRadius: 999,
+    backgroundColor: ACID
+  },
+  resendLine: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  monoSmall: { fontFamily: 'GeistMono-SemiBold', fontSize: 12.5 },
+  monoTiny: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 10,
+    letterSpacing: 0.8
+  },
+  underline: { textDecorationLine: 'underline' },
+  saved: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 10,
+    borderRadius: 18,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
+  },
+  savedPhoto: { width: 52, height: 52, borderRadius: 12 },
+  stepRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  stepDot: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
   squareShadow: {
     position: 'absolute',
     top: 6,

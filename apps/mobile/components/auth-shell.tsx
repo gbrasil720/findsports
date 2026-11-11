@@ -68,7 +68,8 @@ export function AuthShell({
         <View
           style={[
             styles.top,
-            { paddingTop: insets.top + 8, minHeight: tall ? 360 : 330 }
+            // A marca (34) e 30 de respiro antes do título, sempre.
+            { paddingTop: insets.top + 8 + 34 + 30, minHeight: tall ? 360 : 330 }
           ]}
         >
           <DotField id="conta" radius={0} />

@@ -25,6 +25,16 @@ const KEY = 'onside.acao-pendente'
 export const savePending = (acao: Acao) =>
   SecureStore.setItemAsync(KEY, JSON.stringify(acao)).catch(() => {})
 
+/** A ação guardada, sem tirar do aparelho ("Guardado pra você", rodada 8). */
+export async function peekPending(): Promise<Acao | null> {
+  try {
+    const raw = await SecureStore.getItemAsync(KEY)
+    return raw ? (JSON.parse(raw) as Acao) : null
+  } catch {
+    return null
+  }
+}
+
 /** A ação guardada, que sai do aparelho ao ser lida. */
 export async function takePending(): Promise<Acao | null> {
   try {
