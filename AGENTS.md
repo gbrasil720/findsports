@@ -640,6 +640,11 @@ não faz nada. Método e números do protótipo em `docs/web-433-prototipo.md`:
   novos do `GameSuggestion` são opcionais: cliente antigo segue igual.
 - Houdini: `/houdini/jogos-da-semana` (`houdini.jogosDaSemana.overview`), com o catálogo,
   as fontes, o gasto do mês contra o teto e o "Rodar agora" (`bastidores.run`).
+- **Fila das rotinas longas:** o "Rodar agora" de rotina em `QUEUED_JOBS`
+  (`lib/job-queue.ts`) não espera na requisição (o `waitUntil` só segura 30 s): vai para a
+  fila `onside-jobs` (`onside-jobs-preview` no preview; binding `JOBS`), e o `queue()` do
+  `worker.ts` a roda com até 15 min, uma por vez e sem nova tentativa. O resultado ou a
+  falha ficam em `job_run`. Sem fila (`vite dev`, testes), roda na requisição.
 
 ### Web do torcedor (WEB-501)
 
