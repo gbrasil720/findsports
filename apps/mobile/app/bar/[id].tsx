@@ -6,6 +6,7 @@ import {
 } from '@findsports_oficial/api/lib/opening-hours'
 import { reasonLabel } from '@findsports_oficial/api/lib/rating-reasons'
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
+import { brasiliaDay } from '@findsports_oficial/db/event-window'
 import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import type { inferRouterOutputs } from '@trpc/server'
@@ -44,7 +45,17 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Line } from 'react-native-svg'
 import { scheduleOnRN } from 'react-native-worklets'
-import { AttendDock, SolidRound, TodayCard } from '@/components/bar-page'
+import {
+  AttendDock,
+  CheckInDock,
+  LiveCard,
+  NextCard,
+  NoGameToday,
+  OfferStrip,
+  SaveDock,
+  SolidRound,
+  TodayCard
+} from '@/components/bar-page'
 import {
   Amenities,
   amenityChips,
@@ -55,9 +66,9 @@ import {
   PhotoGrid,
   WhereCard
 } from '@/components/bar-wide'
-import { Card, OfferCard } from '@/components/card'
-import { CheckInCard } from '@/components/check-in'
-import { dayLabel, dropBox, initials, MapDrop } from '@/components/explore'
+import { OfferCard } from '@/components/card'
+import { CheckInCard, useCheckIn } from '@/components/check-in'
+import { dayLabel, dropBox, MapDrop } from '@/components/explore'
 import { Ambiente } from '@/components/gallery'
 import { Glass } from '@/components/glass'
 import { NAV, useLayout } from '@/components/layout'
@@ -70,7 +81,6 @@ import {
 } from '@/components/motion'
 import { StackRail } from '@/components/side-nav'
 import { useSoon } from '@/components/soon'
-import { Stars } from '@/components/stars'
 import { Skeleton } from '@/components/states'
 import { usePalette } from '@/components/theme'
 import {
@@ -88,12 +98,14 @@ import {
 import { useWithAccount } from '@/lib/account'
 import { clock } from '@/lib/ai-chat'
 import { authClient } from '@/lib/auth-client'
+import { closedNote } from '@/lib/bar-states'
 import { trackCommercialEvent } from '@/lib/commercial'
 import { env } from '@/lib/env'
 import { formatKm, formatTime, isLive } from '@/lib/explore'
 import { distance } from '@/lib/explore-board'
 import { useFavorites } from '@/lib/favorites'
 import { byHeight } from '@/lib/layout'
+import { shortTitle } from '@/lib/maintenance-ticker'
 import { MAP_STYLE } from '@/lib/map-style'
 import { formatCode } from '@/lib/my-games'
 import { trpc } from '@/lib/trpc'
@@ -148,7 +160,8 @@ const BODY_IN: EntryExitAnimationFunction = () => {
 /** Quantos próximos jogos a página lista: três, como o design. */
 const MORE_GAMES = 3
 /** A foto do celular; a dos tablets sai da medida da tela. */
-const HERO = 420
+/** A foto do topo (rodada 8: mais baixa, o jogo de hoje sobe). */
+const HERO = 310
 /** A foto e o nome no tablet, pela altura da tela (gen/adapt02.js). */
 const HERO_PORTRAIT: [number, number][] = [
   [1133, 320],
@@ -330,6 +343,19 @@ export function BarDetail({
   const bar = useQuery(trpc.pubs.getById.queryOptions({ id }))
   const favorites = useFavorites()
   const favorite = favorites.ids.has(id)
+  // "Avisar quando marcar" (rodada 8): o aviso que já existe, do bar com os
+  // seus times (ou o seu esporte, sem time), e o bar salvo junto.
+  const fanAccount = session.data?.user.role === 'fan'
+  const myTeams = useQuery({
+    ...trpc.pubs.getMyTeams.queryOptions(),
+    enabled: fanAccount
+  })
+  const mySports = useQuery({
+    ...trpc.pubs.getMyPreferences.queryOptions(),
+    enabled: fanAccount
+  })
+  const alert = useMutation(trpc.recommendations.setAlert.mutationOptions())
+  const [alertOn, setAlertOn] = useState(false)
 
   // Puxar para baixo estica a foto em vez de mostrar papel acima dela.
   const scrollY = useSharedValue(0)
@@ -476,11 +502,7 @@ export function BarDetail({
               {data.rating.stars.toLocaleString('pt-BR', {
                 maximumFractionDigits: 1
               })}
-            </Text>{' '}
-            com {data.rating.total}{' '}
-            {data.rating.total === 1
-              ? 'avaliação verificada'
-              : 'avaliações verificadas'}
+            </Text>
           </Fragment>
         ) : data.rating ? (
           `${data.rating.percentage}% voltariam`
@@ -506,6 +528,25 @@ export function BarDetail({
     box: dropBox({ callout: pinCallout })
   }
 
+  const toggleAlert = async () => {
+    if (alertOn) return
+    const teams = (myTeams.data ?? []).filter((team) => team.kind !== 'race')
+    const targets = teams.length
+      ? teams.map((team) => ({ teamId: team.id }))
+      : (mySports.data ?? []).slice(0, 1).map((p) => ({ sportId: p.sport.id }))
+    try {
+      await Promise.all(
+        targets.map((target) =>
+          alert.mutateAsync({ barId: id, on: true, ...target })
+        )
+      )
+      if (!favorite) favorites.toggle(id)
+      haptic.success()
+      setAlertOn(true)
+    } catch {
+      haptic.error()
+    }
+  }
   const toggleFavorite = () => {
     haptic.select()
     favorites.toggle(id)
@@ -546,17 +587,47 @@ export function BarDetail({
 
   // As seções da página, na ordem do celular; fora dele, em duas colunas.
   // O jogo de hoje no bar (2g): o cartão de tinta, com a oferta dentro.
+  // O jogo do momento (rodada 8): ao vivo vira o placar do bar, com a oferta
+  // fora do cartão; jogo hoje, o cartão de tinta (sem código, o check-in no
+  // lugar da oferta; fechado, quando o bar abre); sem jogo hoje, o próximo
+  // e "Hoje não tem jogo aqui", que não deixa a página virar beco.
+  const today = next
+    ? brasiliaDay(new Date(next.startsAt)) === brasiliaDay(new Date(now))
+    : false
   const sGame = data ? (
-    next ? (
-      <TodayCard game={next} now={now} />
+    next && pinLive ? (
+      <>
+        <LiveCard game={next} screens={data.screenCount ?? null} />
+        {next.houseOffer ? <OfferStrip offer={next.houseOffer} /> : null}
+      </>
+    ) : next && today ? (
+      <TodayCard
+        game={next}
+        now={now}
+        noCode={!data.issuesCode}
+        closedNote={closedNote(turn, formatTime(next.startsAt))}
+      />
     ) : (
-      <Text style={[text(15), { color: palette.muted }]}>
-        Nenhum jogo marcado por enquanto.
-      </Text>
+      <>
+        {next ? <NextCard game={next} /> : null}
+        <NoGameToday
+          on={alertOn}
+          busy={alert.isPending}
+          onAlert={() => withAccount(toggleAlert, { kind: 'fav', barId: id })}
+        />
+      </>
     )
   ) : null
+  // Ao vivo e ainda sem check-in, o "Estou aqui" vai para o rodapé.
+  const checkInDock =
+    !!data?.checkIn &&
+    !data.checkIn.done &&
+    pinLive &&
+    data.checkIn.eventId === next?.id
   const sCheck = data ? (
-    data.checkIn ? (
+    // O cartão fica só para o check-in feito ("Presença confirmada");
+    // o "Estou aqui" é o rodapé do jogo ao vivo (rodada 8).
+    data.checkIn?.done ? (
       <CheckInCard
         barId={data.id}
         barName={data.name}
@@ -570,7 +641,25 @@ export function BarDetail({
     <>
       {/* "O ambiente" (25a, WEB-462): as fotos que a Onside aprovou,
                 logo depois de "Hoje no telão", como na 2g. */}
-      <Ambiente barId={data.id} photos={data.photos} />
+      {/* Sem galeria (Starter, ou sem foto aprovada), só a capa (rodada 8). */}
+      <Ambiente
+        barId={data.id}
+        photos={
+          data.photos.length
+            ? data.photos
+            : data.photoUrl
+              ? [
+                  {
+                    id: 'capa',
+                    url: data.photoUrl,
+                    category: 'salao' as const,
+                    caption: null,
+                    createdAt: new Date(0).toISOString()
+                  }
+                ]
+              : []
+        }
+      />
     </>
   ) : null
   const sNext = data ? (
@@ -666,11 +755,17 @@ export function BarDetail({
       </>
     ) : null
   ) : null
+  // "Onde fica" (rodada 8, tela 3): o mapa com a gota grande do bar, o
+  // endereço, a distância a pé, perto do metrô e estacionamento quando o bar
+  // marcou, "Como chegar" (o app de mapas) e "Ligar".
+  const nearby = AMENITIES.filter(
+    (item) => [22, 9, 8].includes(item.id) && amenities.includes(item.id)
+  )
   const sWhere = data ? (
     located ? (
       <>
         <Heading title="Onde fica" />
-        <Card soft>
+        <View style={styles.whereMap}>
           {/* Tocar no mapa abre a rota, como um mapa estático no iOS. */}
           <AnimatedPressable
             accessibilityRole="link"
@@ -681,7 +776,7 @@ export function BarDetail({
             }}
             onPressIn={mapPress.onPressIn}
             onPressOut={mapPress.onPressOut}
-            style={[styles.map, mapPress.style]}
+            style={[styles.map, { height: 200 }, mapPress.style]}
           >
             {/* O mapa não recebe toque: o toque é do botão. */}
             <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -717,66 +812,96 @@ export function BarDetail({
                 live={pin.live}
                 elite={data.plan === 'elite'}
                 dark={palette.dark}
-                callout={pin.callout}
+                callout={undefined}
               />
             </View>
           </AnimatedPressable>
-          <View style={styles.where}>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text
-                style={[text(14.5, 'Bold', 1.4), { color: palette.ink }]}
-                numberOfLines={1}
+        </View>
+        <View>
+          <Text style={[text(17, 'Bold', 1.3), { color: palette.ink }]}>
+            {data.address}
+          </Text>
+          <Text style={[text(14, 'Regular', 1.4), { color: palette.muted }]}>
+            {place.join(' · ')}
+          </Text>
+        </View>
+        {nearby.length ? (
+          <View style={styles.pos}>
+            {nearby.map((item) => (
+              <View
+                key={item.id}
+                style={[styles.nearChip, { backgroundColor: palette.mark }]}
               >
-                {data.address}
-              </Text>
-              <Text
-                style={[text(12.5, 'Regular', 1.4), { color: palette.muted }]}
-                numberOfLines={1}
-              >
-                {place.join(' · ')}
-              </Text>
-            </View>
-            <AnimatedPressable
+                <Icon
+                  name={item.id === 22 ? 'metro' : 'estacionamento'}
+                  size={16}
+                  color={palette.ink}
+                />
+                <Text
+                  style={[text(13.5, 'SemiBold', 1.2), { color: palette.ink }]}
+                >
+                  {chipLabel(item)}
+                </Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+        <View style={styles.whereButtons}>
+          <AnimatedPressable
+            accessibilityRole="link"
+            onPress={() => {
+              fromAi('route')
+              Linking.openURL(directions(lat, lng))
+            }}
+            onPressIn={goPress.onPressIn}
+            onPressOut={goPress.onPressOut}
+            style={[styles.routeButton, goPress.style]}
+          >
+            <Icon name="pin" size={18} color={INK} accent={INK} />
+            <Text style={[text(14.5, 'Bold', 1.2), { color: INK }]}>
+              Como chegar
+            </Text>
+          </AnimatedPressable>
+          {data.phone ? (
+            <Pressable
               accessibilityRole="link"
-              hitSlop={8}
-              onPress={() => {
-                fromAi('route')
-                Linking.openURL(directions(lat, lng))
-              }}
-              onPressIn={goPress.onPressIn}
-              onPressOut={goPress.onPressOut}
-              style={[
-                styles.go,
-                { backgroundColor: palette.ink },
-                goPress.style
+              onPress={() => Linking.openURL(`tel:${data.phone}`)}
+              style={({ pressed }) => [
+                styles.callButton,
+                { borderColor: palette.line },
+                pressed && { opacity: 0.7 }
               ]}
             >
-              <Text style={[text(13, 'Bold', 1.4), { color: palette.bg }]}>
-                Como chegar
+              <Text style={[text(14.5, 'Bold', 1.2), { color: palette.ink }]}>
+                Ligar
               </Text>
-            </AnimatedPressable>
-          </View>
-        </Card>
+            </Pressable>
+          ) : null}
+        </View>
       </>
     ) : null
   ) : null
+  // Horário (rodada 8): a semana agrupada, o dia de hoje em tinta, e
+  // "aberto agora · fecha 02:00" embaixo (fechado, em papel).
+  const weekday = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(
+    new Date(now).toLocaleDateString('en-US', {
+      weekday: 'short',
+      timeZone: 'America/Sao_Paulo'
+    })
+  )
   const sHours = data ? (
     data.openingHours ? (
       <>
-        <Heading
-          small={wide}
-          title="Horário"
-          aside={
-            data.openNow === null
-              ? undefined
-              : data.openNow
-                ? 'Aberto agora'
-                : 'Fechado agora'
-          }
-        />
-        <Card soft>
-          <View style={styles.list}>
-            {groupOpeningHours(data.openingHours).map((row, index) => (
+        <Heading small={wide} title="Horário" />
+        <View
+          style={[
+            styles.hoursCard,
+            { backgroundColor: palette.card, shadowColor: palette.drop }
+          ]}
+        >
+          {groupOpeningHours(data.openingHours).map((row, index) => {
+            const isToday = row.dayIndexes.includes(weekday)
+            return (
               <View
                 key={row.days}
                 style={[
@@ -789,65 +914,152 @@ export function BarDetail({
               >
                 <Text
                   style={[
-                    text(13.5, 'Regular', 1.4),
+                    isToday ? styles.monoBold : styles.mono,
                     { color: palette.ink, flexShrink: 1 }
                   ]}
                 >
-                  {row.days}
+                  {shortDays(row.days)}
+                  {isToday ? (
+                    <Text style={[styles.mono, { color: palette.muted }]}>
+                      {' (hoje)'}
+                    </Text>
+                  ) : null}
                 </Text>
                 <Text
                   style={[
-                    styles.mono,
+                    isToday ? styles.monoBold : styles.mono,
                     { color: row.hours ? palette.ink : palette.muted }
                   ]}
                 >
-                  {row.hours ?? 'Fechado'}
+                  {row.hours?.replace(' – ', '–') ?? 'fechado'}
                 </Text>
               </View>
-            ))}
-          </View>
-        </Card>
+            )
+          })}
+        </View>
+        {turn ? (
+          <Text
+            style={[
+              styles.monoBold,
+              {
+                color: turn.open
+                  ? palette.dark
+                    ? ACID
+                    : '#5b6d0c'
+                  : palette.ink
+              }
+            ]}
+          >
+            {turn.open
+              ? `● aberto agora · fecha ${turn.closes}`
+              : `● fechado · abre ${turn.inDays === 0 ? 'hoje' : turn.inDays === 1 ? 'amanhã' : weekdayName(turn.day)} às ${turn.opens}`}
+          </Text>
+        ) : null}
       </>
     ) : null
   ) : null
-  // "O que dizem" (`.nota`, `.pos`, `.quote` do redesign): a nota grande em
-  // Anton, o que pesou em pílulas (acid quem voltaria, cinza quem não) e os
-  // comentários.
+  // "O que dizem" (rodada 8, tela 3): a nota grande em Anton com as estrelas
+  // e a régua de cada estrela, "voltariam" em porcentagem, o que pesou a
+  // favor (acid) e contra, com quantas vezes, e os três comentários mais
+  // recentes aprovados. Tudo só das verificadas, e a seção diz isso.
   const sRating = data ? (
     data.rating ? (
       <>
         <Heading small={wide} title="O que dizem" />
-        <View style={styles.nota}>
-          <Text style={[styles.notaBig, { color: palette.ink }]}>
-            {data.rating.stars !== null
-              ? data.rating.stars.toLocaleString('pt-BR', {
-                  minimumFractionDigits: 1,
-                  maximumFractionDigits: 1
-                })
-              : `${data.rating.percentage}%`}
-          </Text>
-          <View style={{ flex: 1, paddingBottom: 4 }}>
-            <Text style={[text(15.5, 'Bold', 1.3), { color: palette.ink }]}>
+        <View
+          style={[
+            styles.scoreCard,
+            { backgroundColor: palette.card, shadowColor: palette.drop }
+          ]}
+        >
+          <View style={{ maxWidth: 110 }}>
+            <Text style={[styles.scoreBig, { color: palette.ink }]}>
               {data.rating.stars !== null
-                ? `${data.rating.total} ${data.rating.total === 1 ? 'avaliação verificada' : 'avaliações verificadas'}`
-                : 'voltariam para ver outro jogo aqui'}
+                ? data.rating.stars.toLocaleString('pt-BR', {
+                    minimumFractionDigits: 1,
+                    maximumFractionDigits: 1
+                  })
+                : `${data.rating.percentage}%`}
             </Text>
-            <Text style={[text(14, 'Regular', 1.4), { color: palette.muted }]}>
-              Só conta quem validou o código ou fez check-in.
+            {data.rating.stars !== null ? (
+              <Text
+                style={[
+                  styles.scoreStars,
+                  { color: palette.dark ? ACID : '#7f9a12' }
+                ]}
+              >
+                {'★'.repeat(Math.round(data.rating.stars))}
+                <Text style={{ color: palette.mark }}>
+                  {'★'.repeat(5 - Math.round(data.rating.stars))}
+                </Text>
+              </Text>
+            ) : null}
+            <Text style={[styles.scoreSmall, { color: palette.muted }]}>
+              {data.rating.total}{' '}
+              {data.rating.total === 1
+                ? 'avaliação verificada'
+                : 'avaliações verificadas'}
             </Text>
           </View>
+          {data.ratingDetail ? (
+            <View style={{ flex: 1, gap: 6 }}>
+              {data.ratingDetail.stars.map((row) => (
+                <View key={row.star} style={styles.barRow}>
+                  <Text style={[styles.barLabel, { color: palette.muted }]}>
+                    {row.star}
+                  </Text>
+                  <View
+                    style={[styles.barTrack, { backgroundColor: palette.mark }]}
+                  >
+                    <View
+                      style={[
+                        styles.barFill,
+                        {
+                          width: `${(row.count / Math.max(1, ...(data.ratingDetail?.stars ?? []).map((row) => row.count))) * 100}%`,
+                          backgroundColor: palette.ink
+                        }
+                      ]}
+                    />
+                  </View>
+                  <Text
+                    style={[
+                      styles.barLabel,
+                      { color: palette.muted, width: 22, textAlign: 'right' }
+                    ]}
+                  >
+                    {row.count}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
         </View>
-        {data.ratingReasons &&
-        (data.ratingReasons.positive.length ||
-          data.ratingReasons.negative.length) ? (
+        {data.rating.stars !== null ? (
+          <View style={styles.vt}>
+            <Text style={[styles.vtBig, { color: palette.ink }]}>
+              {data.rating.percentage}%
+            </Text>
+            <Text
+              style={[
+                text(14, 'Regular', 1.3),
+                { color: palette.muted, flex: 1 }
+              ]}
+            >
+              voltariam para ver um jogo lá
+            </Text>
+          </View>
+        ) : null}
+        {data.ratingDetail &&
+        (data.ratingDetail.positive.length ||
+          data.ratingDetail.negative.length) ? (
           <View style={styles.pos}>
             {[
-              ...data.ratingReasons.positive.map((id) => [true, id] as const),
-              ...data.ratingReasons.negative.map((id) => [false, id] as const)
-            ].map(([back, id]) => (
+              ...data.ratingDetail.positive.map((row) => [true, row] as const),
+              ...data.ratingDetail.negative.map((row) => [false, row] as const)
+            ].map(([back, row]) => (
               <View
-                key={`${back}:${id}`}
-                accessibilityLabel={`${back ? 'Quem voltaria' : 'Quem não voltaria'}: ${reasonLabel(id)}`}
+                key={`${back}:${row.id}`}
+                accessibilityLabel={`${back ? 'A favor' : 'Contra'}: ${reasonLabel(row.id as never)}, ${row.count}`}
                 style={[
                   styles.posPill,
                   { backgroundColor: back ? ACID : palette.mark }
@@ -859,21 +1071,18 @@ export function BarDetail({
                     { color: back ? INK : palette.ink }
                   ]}
                 >
-                  {reasonLabel(id)}
+                  {reasonLabel(row.id as never)} · {row.count}
                 </Text>
               </View>
             ))}
           </View>
         ) : null}
-        {data.reviews.length ? (
-          <Card soft>
-            <View style={styles.list}>
-              {data.reviews.map((review, index) => (
-                <Review key={review.id} review={review} divided={index > 0} />
-              ))}
-            </View>
-          </Card>
-        ) : null}
+        {data.reviews.map((review) => (
+          <Review key={review.id} review={review} />
+        ))}
+        <Text style={[text(12.5, 'Regular', 1.4), { color: palette.muted }]}>
+          Só entram avaliações de quem validou o código ou fez check-in.
+        </Text>
       </>
     ) : null
   ) : null
@@ -923,57 +1132,62 @@ export function BarDetail({
           onPress={openGallery}
         />
       ) : (
-        <View style={styles.heroText}>
-          {/* O topo cresce para cima (`flex-end`): as etiquetas chegam
+        <>
+          {/* Jogo ao vivo no bar: o selo vermelho sobre a foto (rodada 8). */}
+          {pinLive ? (
+            <View style={[styles.liveBadge, { top: insets.top + 54 }]}>
+              <View style={styles.liveBadgeDot} />
+              <Text style={styles.liveBadgeText}>AO VIVO</Text>
+            </View>
+          ) : null}
+          <View style={styles.heroText}>
+            {/* O topo cresce para cima (`flex-end`): as etiquetas chegam
                 acima do nome sem empurrá-lo. São vidro: entram só pela
                 posição, como o corpo (com `FadeIn` o vidro não desenhava e o
                 "Elite" ficava quase invisível sobre a foto). */}
-          {data?.plan === 'elite' ? (
-            <View style={styles.eliteTag}>
-              <Text
-                style={{
-                  fontFamily: 'GeistMono-SemiBold',
-                  fontSize: 11,
-                  letterSpacing: 0.77,
-                  color: INK
-                }}
-              >
-                ELITE
-              </Text>
-            </View>
-          ) : null}
-          <Text
-            style={styles.name}
-            numberOfLines={2}
-            adjustsFontSizeToFit
-            minimumFontScale={0.6}
-          >
-            {(data?.name ?? name ?? '').toUpperCase()}
-          </Text>
-          {/* "aberto agora · até 02:00" em acid (2g); sem horário, nada. */}
-          {turn ? (
+            {data?.plan === 'elite' ? (
+              <View style={styles.eliteTag}>
+                <Text
+                  style={{
+                    fontFamily: 'GeistMono-SemiBold',
+                    fontSize: 11,
+                    letterSpacing: 0.77,
+                    color: INK
+                  }}
+                >
+                  ELITE
+                </Text>
+              </View>
+            ) : null}
             <Text
-              style={[
-                styles.turn,
-                { color: turn.open ? ACID : 'rgba(241,238,230,.75)' }
-              ]}
+              style={styles.name}
+              numberOfLines={2}
+              adjustsFontSizeToFit
+              minimumFontScale={0.6}
             >
-              {turn.open
-                ? `● aberto agora · até ${turn.closes}`
-                : `fechado · abre ${turn.inDays === 0 ? 'hoje' : turn.inDays === 1 ? 'amanhã' : weekdayName(turn.day)} às ${turn.opens}`}
+              {(data?.name ?? name ?? '').toUpperCase()}
             </Text>
-          ) : null}
-          {/* Um espaço segura a linha enquanto carrega: o nome não sobe. */}
-          <Animated.Text
-            key={data ? 'info' : 'wait'}
-            entering={SWAP}
-            style={[text(15, 'Regular', 1.4), styles.info]}
-            numberOfLines={2}
-            maxFontSizeMultiplier={MAX_FONT_SCALE}
-          >
-            {heroInfo || ' '}
-          </Animated.Text>
-        </View>
+            {/* "aberto agora · até 02:00" em acid (2g); sem horário, nada. */}
+            {turn ? (
+              <Text style={[styles.turn, { color: turn.open ? ACID : PAPER }]}>
+                {/* Fechado em papel, não em vermelho: vermelho é só ao vivo. */}
+                {turn.open
+                  ? `● aberto agora · até ${turn.closes}`
+                  : `● fechado · abre ${turn.inDays === 0 ? 'hoje' : turn.inDays === 1 ? 'amanhã' : weekdayName(turn.day)} às ${turn.opens}`}
+              </Text>
+            ) : null}
+            {/* Um espaço segura a linha enquanto carrega: o nome não sobe. */}
+            <Animated.Text
+              key={data ? 'info' : 'wait'}
+              entering={SWAP}
+              style={[text(15, 'Regular', 1.4), styles.info]}
+              numberOfLines={2}
+              maxFontSizeMultiplier={MAX_FONT_SCALE}
+            >
+              {heroInfo || ' '}
+            </Animated.Text>
+          </View>
+        </>
       )}
     </View>
   )
@@ -1538,7 +1752,19 @@ export function BarDetail({
         </View>
       </View>
 
-      {going && mine ? (
+      {checkInDock && data?.checkIn ? (
+        <CheckInDockFor
+          barId={id}
+          eventId={data.checkIn.eventId}
+          bottom={Math.max(insets.bottom, 12)}
+        />
+      ) : data && !games.length ? (
+        <SaveDock
+          bottom={Math.max(insets.bottom, 12)}
+          saved={favorite}
+          onPress={toggleFavorite}
+        />
+      ) : going && mine ? (
         <AttendDock
           game={going}
           now={now}
@@ -1562,90 +1788,50 @@ export function BarDetail({
   )
 }
 
+/** "sexta" → "sex", "Seg a qui" → "seg a qui": a semana curta do desenho. */
+function shortDays(days: string) {
+  const lower = days.toLocaleLowerCase('pt-BR')
+  return /\s/.test(lower) ? lower : lower.slice(0, 3)
+}
+
 /**
  * Um comentário de "O que dizem" (2g): quem (ou "Anônimo"), o jogo e o mês,
  * o texto e as etiquetas. O quadrinho é acid para quem voltaria.
  */
 function Review({
-  review,
-  divided
+  review
 }: {
   review: inferRouterOutputs<AppRouter>['pubs']['getById']['reviews'][number]
-  divided: boolean
 }) {
   const palette = usePalette()
-  const month = new Date(review.startsAt)
+  const date = new Date(review.startsAt)
     .toLocaleDateString('pt-BR', {
+      day: 'numeric',
       month: 'short',
       timeZone: 'America/Sao_Paulo'
     })
     .replace('.', '')
+    .replace(' de ', ' ')
   return (
     <View
       style={[
-        styles.said,
-        divided && { borderTopWidth: 1, borderTopColor: palette.line }
+        styles.quote,
+        { backgroundColor: palette.card, shadowColor: palette.drop }
       ]}
     >
-      <View style={styles.saidHead}>
-        <View
-          style={[
-            styles.saidMark,
-            { backgroundColor: review.wouldReturn ? ACID : palette.mark }
-          ]}
-        >
-          {review.name ? (
-            <Text
-              style={[
-                text(11.5, 'Bold', 1.2),
-                { color: review.wouldReturn ? INK : palette.ink }
-              ]}
-            >
-              {initials(review.name)}
-            </Text>
-          ) : (
-            <Icon
-              name={review.wouldReturn ? 'fan' : 'close'}
-              size={15}
-              color={review.wouldReturn ? INK : palette.ink}
-              accent={review.wouldReturn ? INK : palette.accent}
-            />
-          )}
-        </View>
-        <Text
-          style={[text(15, 'Bold', 1.3), { color: palette.ink, flex: 1 }]}
-          numberOfLines={1}
-        >
-          {review.name ?? 'Anônimo'}
-        </Text>
-        <Text
-          style={[
-            text(12.5, 'Regular', 1.4),
-            { color: palette.muted, flexShrink: 1 }
-          ]}
-          numberOfLines={1}
-        >
-          {gameTitle(review)} · {month}
-        </Text>
-      </View>
-      {review.stars ? <Stars value={review.stars} size={13} /> : null}
-      <Text style={[text(14, 'Regular', 1.45), { color: palette.ink }]}>
-        {review.comment}
+      <Text style={[text(15, 'Regular', 1.45), { color: palette.ink }]}>
+        “{review.comment}”
       </Text>
-      {review.reasons.length ? (
-        <View style={styles.chips}>
-          {review.reasons.map((id) => (
-            <View
-              key={id}
-              style={[styles.reason, { backgroundColor: palette.mark }]}
-            >
-              <Text style={[text(12.5, 'Bold', 1.3), { color: palette.ink }]}>
-                {reasonLabel(id)}
-              </Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
+      <Text style={[styles.quoteBy, { color: palette.muted }]}>
+        {[
+          review.name ?? 'Anônimo',
+          shortTitle(gameTitle(review)),
+          date,
+          review.stars ? `★ ${review.stars}` : null
+        ]
+          .filter(Boolean)
+          .join(' · ')}
+      </Text>
     </View>
   )
 }
@@ -1754,6 +1940,102 @@ const styles = StyleSheet.create({
   },
   // `.hero .info`: 20 dos lados, 22 do pé, 8 entre as linhas.
   heroText: { paddingHorizontal: 20, paddingBottom: 22 },
+  scoreCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    padding: 16,
+    borderRadius: 22,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
+  },
+  // Anton 56: margem negativa no lugar do entrelinha curto.
+  scoreBig: { fontFamily: 'Anton', fontSize: 56, marginVertical: -13.6 },
+  scoreStars: { fontSize: 14, letterSpacing: 2, marginTop: 4 },
+  scoreSmall: { fontFamily: 'GeistMono-SemiBold', fontSize: 11, marginTop: 4 },
+  barRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  barLabel: { fontFamily: 'GeistMono-SemiBold', fontSize: 11, width: 12 },
+  barTrack: { flex: 1, height: 6, borderRadius: 3, overflow: 'hidden' },
+  barFill: { height: '100%' },
+  vt: { flexDirection: 'row', alignItems: 'baseline', gap: 12 },
+  // Anton 40: margem negativa no lugar do entrelinha curto.
+  vtBig: { fontFamily: 'Anton', fontSize: 40, marginVertical: -9.7 },
+  quote: {
+    borderRadius: 20,
+    padding: 16,
+    gap: 8,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
+  },
+  quoteBy: { fontFamily: 'GeistMono-SemiBold', fontSize: 11.5 },
+  whereMap: { borderRadius: 20, overflow: 'hidden' },
+  nearChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    height: 36,
+    paddingHorizontal: 13,
+    borderRadius: 18
+  },
+  whereButtons: { flexDirection: 'row', gap: 10 },
+  routeButton: {
+    flex: 1,
+    height: 40,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: ACID,
+    shadowColor: '#7f9a12',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  },
+  callButton: {
+    flex: 1,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  hoursCard: {
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
+  },
+  monoBold: { fontFamily: 'GeistMono-Bold', fontSize: 13.5 },
+  // `.lvband`: o selo vermelho do jogo ao vivo sobre a foto.
+  liveBadge: {
+    position: 'absolute',
+    left: 16,
+    zIndex: 3,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    borderRadius: 7,
+    backgroundColor: LIVE_RED
+  },
+  liveBadgeDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: INK
+  },
+  liveBadgeText: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 12,
+    letterSpacing: 0.96,
+    color: INK
+  },
   eliteTag: {
     alignSelf: 'flex-start',
     backgroundColor: ACID,
@@ -2042,3 +2324,26 @@ const styles = StyleSheet.create({
     gap: 8
   }
 })
+
+/** O rodapé "Você está no bar?" com o check-in de verdade (rodada 8). */
+function CheckInDockFor({
+  barId,
+  eventId,
+  bottom
+}: {
+  barId: string
+  eventId: string
+  bottom: number
+}) {
+  const { phase, error, denied, run } = useCheckIn(barId, eventId)
+  return (
+    <CheckInDock
+      bottom={bottom}
+      phase={phase}
+      error={error}
+      denied={denied}
+      onPress={run}
+      onSettings={() => Linking.openSettings()}
+    />
+  )
+}

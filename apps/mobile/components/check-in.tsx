@@ -23,21 +23,11 @@ import { trpc } from '@/lib/trpc'
 
 type Phase = 'idle' | 'locating' | 'sending'
 
-export function CheckInCard({
-  barId,
-  barName,
-  eventId,
-  done,
-  at
-}: {
-  barId: string
-  barName?: string
-  eventId: string
-  done: boolean
-  /** A hora da presença, para "Presença confirmada · 21:47". */
-  at?: string | null
-}) {
-  const palette = usePalette()
+/**
+ * O check-in "Estou aqui", para o cartão e para o rodapé da página do bar
+ * (rodada 8): pede a localização na hora, manda ao servidor e relê a página.
+ */
+export function useCheckIn(barId: string, eventId: string) {
   const queryClient = useQueryClient()
   const [phase, setPhase] = useState<Phase>('idle')
   const [error, setError] = useState<string | null>(null)
@@ -85,7 +75,26 @@ export function CheckInCard({
       setPhase('idle')
     }
   }
+  const run = () => withAccount(check, { kind: 'checkin', barId, eventId })
+  return { phase, error, denied, run }
+}
 
+export function CheckInCard({
+  barId,
+  barName,
+  eventId,
+  done,
+  at
+}: {
+  barId: string
+  barName?: string
+  eventId: string
+  done: boolean
+  /** A hora da presença, para "Presença confirmada · 21:47". */
+  at?: string | null
+}) {
+  const palette = usePalette()
+  const { phase, error, denied, run } = useCheckIn(barId, eventId)
   if (done) {
     return (
       <Animated.View
@@ -175,9 +184,7 @@ export function CheckInCard({
                 : 'Estou aqui'
           }
           busy={phase !== 'idle'}
-          onPress={() =>
-            withAccount(check, { kind: 'checkin', barId, eventId })
-          }
+          onPress={run}
         />
       )}
       <ErrorText style={[text(13.5, 'SemiBold', 1.4), { color: palette.live }]}>
