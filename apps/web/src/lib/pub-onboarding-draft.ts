@@ -41,6 +41,12 @@ export type PubOnboardingDraft = {
    * plano que ela recomenda; o dono escolhe o plano depois do primeiro jogo.
    */
   routine?: Routine
+  /**
+   * "Times da casa" (WEB-433), opcional. Os nomes ficam para o passo voltar
+   * preenchido; ao servidor vão só os ids.
+   */
+  houseTeams?: { id: string; name: string; sportId: string }[]
+  houseTeamIds?: string[]
 }
 
 const mesmoEmail = (a: string, b: string) =>
@@ -61,6 +67,20 @@ export function serializePubOnboardingDraft(
   now = Date.now()
 ): string {
   return JSON.stringify({ draft, email, expiresAt: now + DRAFT_TTL_MS })
+}
+
+/** Times da casa do rascunho: só os que têm id, nome e esporte. */
+function houseTeamsOf(value: unknown): Partial<PubOnboardingDraft> {
+  if (!Array.isArray(value)) return {}
+  const houseTeams = value.filter(
+    (t): t is { id: string; name: string; sportId: string } =>
+      typeof t?.id === 'string' &&
+      typeof t?.name === 'string' &&
+      typeof t?.sportId === 'string'
+  )
+  return houseTeams.length
+    ? { houseTeams, houseTeamIds: houseTeams.map((t) => t.id) }
+    : {}
 }
 
 /** Só devolve rascunho gravado para esse e-mail; o de outra conta não volta. */
@@ -102,7 +122,10 @@ export function parsePubOnboardingDraft(
       ...draft,
       uf: ehUf(parsed.draft.uf) ? parsed.draft.uf : undefined,
       step: Number.isInteger(step) && Number(step) > 0 ? step : undefined,
-      routine: readRoutine(parsed.draft.routine) ?? undefined
+      routine: readRoutine(parsed.draft.routine) ?? undefined,
+      houseTeams: undefined,
+      houseTeamIds: undefined,
+      ...houseTeamsOf(parsed.draft.houseTeams)
     }
   } catch {
     return null

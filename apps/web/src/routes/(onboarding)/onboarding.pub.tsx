@@ -28,6 +28,8 @@ import {
   useFinishPubSignup
 } from '@/components/onboarding/pub-receipt'
 import { PubRoutineStep } from '@/components/onboarding/pub-routine-step'
+import { EscolhaTimesDaCasa } from '@/components/painel/times-da-casa'
+import type { FavoriteTeam } from '@/components/sports/team-picker'
 import { conciliarUfComCidade } from '@/components/uf-select'
 import { useSession } from '@/hooks/use-session'
 import { analytics } from '@/lib/analytics'
@@ -132,6 +134,8 @@ function PubOnboarding() {
   // A rotina vai no rascunho e no `completePub`: o bar a guarda, e o passo
   // "Plano do teste" recomenda por ela, mesmo aberto em outro aparelho.
   const [routine, setRoutine] = useState<Routine>(DEFAULT_ROUTINE)
+  // "Times da casa" (WEB-433), opcional, junto da rotina.
+  const [houseTeams, setHouseTeams] = useState<FavoriteTeam[]>([])
   const [receipt, setReceipt] = useState<PubReceiptData | null>(null)
   const [leaving, setLeaving] = useState(false)
   const finishSignup = useFinishPubSignup()
@@ -182,7 +186,10 @@ function PubOnboarding() {
       description: description.trim() || undefined,
       amenities: amenities.length > 0 ? amenities : undefined,
       screenCount: screenCount ?? undefined,
-      routine
+      routine,
+      ...(houseTeams.length
+        ? { houseTeams, houseTeamIds: houseTeams.map((t) => t.id) }
+        : {})
     }),
     [
       name,
@@ -195,7 +202,8 @@ function PubOnboarding() {
       description,
       amenities,
       screenCount,
-      routine
+      routine,
+      houseTeams
     ]
   )
 
@@ -297,6 +305,7 @@ function PubOnboarding() {
     setScreenCount(salvo.screenCount ?? null)
     setPhoneError(motivoTelefoneInvalido(salvo.phone))
     setRoutine(salvo.routine ?? DEFAULT_ROUTINE)
+    setHouseTeams(salvo.houseTeams ?? [])
     setDraftRestored(true)
     setStep(Math.min(salvo.step ?? 1, STEPS.length - 1))
   }, [contaEmail, setCep])
@@ -691,6 +700,10 @@ function PubOnboarding() {
               faz mais sentido pro seu bar. Nada disso aparece no perfil.
             </p>
             <PubRoutineStep routine={routine} onChange={setRoutine} />
+            <fieldset className="ob-cg">
+              <legend>O bar é a casa de algum time? (opcional)</legend>
+              <EscolhaTimesDaCasa value={houseTeams} onChange={setHouseTeams} />
+            </fieldset>
           </>
         )}
 
