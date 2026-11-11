@@ -640,6 +640,25 @@ não faz nada. Método e números do protótipo em `docs/web-433-prototipo.md`:
   novos do `GameSuggestion` são opcionais: cliente antigo segue igual.
 - Houdini: `/houdini/jogos-da-semana` (`houdini.jogosDaSemana.overview`), com o catálogo,
   as fontes, o gasto do mês contra o teto e o "Rodar agora" (`bastidores.run`).
+- **Times da casa** (`bar_team`, até 5, opcional; `lib/house-teams.ts`): Meu espaço do
+  web e do app (`pub.getMyHouseTeams`, `pub.updateHouseTeams`) e a rotina do cadastro
+  (`completePub.houseTeamIds`). Jogo com time da casa vem primeiro no `rank.ts`, sai com
+  `houseTeam` (a etiqueta "Seu time") e o motivo "Do <time>, que você marcou".
+- **Telas** (canvas "Jogos da semana pra você"): `SemanaPraVoce`
+  (`components/painel/semana-pra-voce.tsx`, CSS `semana.css`) em Jogos, Hoje e "Seu
+  primeiro jogo"; no app, `components/week-games.tsx` (carrossel em Hoje e Jogos, card e
+  linhas no Novo jogo). Só com o catálogo (`featured`); sem ele, a lista dos bares perto de
+  sempre. A linha "Dados de jogos: football-data.org" fica perto da lista. O jogo publicado
+  pelo card fica nele como "No ar" (Editar, Desfazer = `deleteEvent`; `createEvent` devolve
+  `eventId`). `/admin/jogos?publicar=<id do catálogo>` põe esse jogo no card.
+- **E-mail da segunda**: o resumo leva o card e até 3 outros, cada um com o link
+  `?publicar=` (`weekSuggestionBlocks` em `bar-notices.ts`); por isso `weekly_games` roda
+  antes de `bar_notices` no cron.
+- **Faixa do jogo publicado** em Jogos (`pub.getMyEventNumbers`, `lib/event-numbers.ts`;
+  conta em `components/painel/faixa-do-jogo.ts`): antes, se interessaram (WhatsApp, rota
+  ou telefone pelo jogo, como no resto do painel) com os das últimas 24 h, outros bares
+  do bairro com o jogo e horas até ele; ao vivo, no Elite, vão e chegaram com código;
+  depois, viram o bar por ele, se interessaram e a % contra a média dos encerrados (com 5).
 
 ### Web do torcedor (WEB-501)
 
