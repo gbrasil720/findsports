@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { type ReactNode, useState } from 'react'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 import Loader from 'reicon-react/icons/Loader'
 import { toast } from 'sonner'
 import { Check, Sparkle } from '@/components/landing/v3/icons'
@@ -412,7 +412,8 @@ export function SemanaPraVoce({
   fallback = null,
   onCreated,
   onEditar,
-  limitNote
+  limitNote,
+  foco
 }: {
   variant: SemanaVariant
   bar: Bar
@@ -423,6 +424,8 @@ export function SemanaPraVoce({
   onEditar?: (eventId: string) => void
   /** O texto sob a lista (Jogos: o limite do Starter). */
   limitNote?: string
+  /** Id do catálogo que vai ao card no lugar do destaque (`?publicar=`). */
+  foco?: string
 }) {
   const trpc = useTRPC()
   const queryClient = useQueryClient()
@@ -444,6 +447,12 @@ export function SemanaPraVoce({
   )
 
   const lista = sugestoes.data ?? []
+  // O link do e-mail (`?publicar=`): a tela abre no card, com o jogo nele.
+  const secao = useRef<HTMLElement>(null)
+  const achou = Boolean(foco && lista.some((s) => s.catalogId === foco))
+  useEffect(() => {
+    if (achou) secao.current?.scrollIntoView({ block: 'center' })
+  }, [achou])
   if (disabled) return null
   if (!temCatalogo(lista) && !destaque)
     return sugestoes.isPending ? null : fallback
@@ -459,7 +468,11 @@ export function SemanaPraVoce({
       ].map((queryKey) => queryClient.invalidateQueries({ queryKey }))
     )
 
-  const card = destaque?.sugestao ?? lista.find((s) => s.featured) ?? lista[0]
+  const card =
+    destaque?.sugestao ??
+    (foco ? lista.find((s) => s.catalogId === foco) : undefined) ??
+    lista.find((s) => s.featured) ??
+    lista[0]
   const resto = lista.filter(
     (s) =>
       s.key !== card?.key && !publicados.some((p) => p.sugestao.key === s.key)
@@ -605,6 +618,7 @@ export function SemanaPraVoce({
 
   return (
     <section
+      ref={secao}
       className="sem"
       aria-labelledby="sem-t"
       data-passeio="jogos-sugestoes"

@@ -95,11 +95,14 @@ type Tab = 'prox' | 'rasc' | 'pass'
 
 export function JogosPage({
   initialId,
-  passados = false
+  passados = false,
+  publicar
 }: {
   initialId?: string
   /** `?passados=1`: abre em Passados (o link de Desempenho). */
   passados?: boolean
+  /** `?publicar=`: o jogo da semana que o e-mail da segunda abriu. */
+  publicar?: string
 }) {
   const trpc = useTRPC()
   const queryClient = useQueryClient()
@@ -470,6 +473,7 @@ export function JogosPage({
               <SemanaPraVoce
                 variant="jogos"
                 bar={bar}
+                foco={publicar}
                 disabled={!canCreate}
                 onEditar={open}
                 limitNote={
