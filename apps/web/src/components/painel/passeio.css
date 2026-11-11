@@ -374,6 +374,12 @@
 }
 
 @media (max-width: 860px) {
+  /* Acima das abas do celular (~68 pt mais a área segura), no mesmo canto. */
+  .pn3 .pn-tour-esc {
+    right: var(--gr, 16px);
+    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  }
+
   .pn3 .pn-guia-l li {
     grid-template-columns: 30px minmax(0, 1fr);
   }
