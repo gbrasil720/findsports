@@ -26,13 +26,20 @@ export default function Home() {
   // vez antes de tratar como visitante.
   const stored = hasStoredSession()
   const empty = !session.isPending && !session.isRefetching && !session.data
-  const [retried, setRetried] = useState(false)
+  // Com a sessão guardada, relê até três vezes (0,4 s, 0,8 s, 1,2 s) antes de
+  // tratar como visitante: no recarregar do Metro o cliente ainda não leu o
+  // cookie e a primeira releitura também volta vazia.
+  const [tries, setTries] = useState(0)
+  const retried = tries >= 3
   const { refetch } = session
   useEffect(() => {
     if (!empty || !stored || retried) return
-    setRetried(true)
-    refetch()
-  }, [empty, stored, retried, refetch])
+    const timer = setTimeout(
+      () => Promise.resolve(refetch()).finally(() => setTries((n) => n + 1)),
+      400 * (tries + 1)
+    )
+    return () => clearTimeout(timer)
+  }, [empty, stored, retried, tries, refetch])
 
   // Sem sessão, o app abre aberto (rodada 1 do redesign): O jogo de hoje na
   // primeira vez, depois o Explorar. Só sem sessão de fato: logo depois de
