@@ -16,6 +16,7 @@ import {
   OwnerRow,
   PlanNudge
 } from '@/components/bar-owner'
+import { askBarTour } from '@/components/bar-tour'
 import { haptic } from '@/components/motion'
 import { usePalette } from '@/components/theme'
 import {
@@ -233,6 +234,16 @@ export default function ConfiguracoesBar() {
                 sub={inReview ? `${inReview} em revisão` : 'no ar'}
                 onPress={() => router.push('/fotos-do-bar')}
               />
+              {/* O passeio do bar (rodada 11), como em Preferências do torcedor. */}
+              <Link
+                icon="sparkle"
+                title="Rever o passeio"
+                sub="30 s pelas telas do app do bar"
+                onPress={() => {
+                  router.navigate('/casa')
+                  askBarTour(false)
+                }}
+              />
             </OwnerCard>
 
             <OwnerLabel>Conta do dono</OwnerLabel>
@@ -369,7 +380,14 @@ function Link({
   onPress,
   first
 }: {
-  icon: 'calendar' | 'ticket' | 'camera' | 'person' | 'lock' | 'close'
+  icon:
+    | 'calendar'
+    | 'ticket'
+    | 'camera'
+    | 'person'
+    | 'lock'
+    | 'close'
+    | 'sparkle'
   title: string
   sub: string
   onPress: () => void

@@ -153,6 +153,23 @@ export default function PerfilCompleto() {
               </Text>
             </View>
           </View>
+          {/* A porta principal do passeio do bar (rodada 11): oferecido,
+              nunca forçado. */}
+          <Pressable
+            accessibilityRole="button"
+            onPress={() =>
+              router.replace({ pathname: '/casa', params: { passeio: '1' } })
+            }
+            style={[styles.row, styles.line]}
+          >
+            <View style={[styles.dot, { backgroundColor: ACID }]}>
+              <Icon name="sparkle" size={16} color={INK} accent={INK} />
+            </View>
+            <Text style={[text(16.5, 'Bold', 1.3), { color: PAPER, flex: 1 }]}>
+              Passeio de 30 s pelo app do bar
+            </Text>
+            <Text style={[text(15, 'Bold', 1.2), { color: ACID }]}>Ver</Text>
+          </Pressable>
         </View>
       </ScrollView>
       <View style={[styles.foot, { paddingBottom: insets.bottom + 10 }]}>
