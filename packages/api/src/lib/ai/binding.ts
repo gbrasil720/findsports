@@ -30,9 +30,15 @@ export async function getAiBinding(): Promise<AiBinding | null> {
 
 let token: { value: string; until: number } | null = null
 
-/** Token da API: o do ambiente, ou o do login do wrangler (vale 1 h). */
-async function apiToken() {
+/**
+ * Token da API REST da Cloudflare: o do ambiente (`CLOUDFLARE_API_TOKEN`, ou
+ * o segredo `CF_API_TOKEN` do Worker, que a busca dos jogos da semana usa) ou,
+ * só em `development`, o do login do wrangler (vale 1 h). Nulo sem nenhum.
+ */
+export async function cloudflareApiToken(): Promise<string | null> {
   if (process.env.CLOUDFLARE_API_TOKEN) return process.env.CLOUDFLARE_API_TOKEN
+  if (env.CF_API_TOKEN) return env.CF_API_TOKEN
+  if (env.NODE_ENV !== 'development') return null
   if (token && token.until > Date.now()) return token.value
   const { execFile } = await import('node:child_process')
   const value = await new Promise<string>((resolve, reject) =>
@@ -64,7 +70,7 @@ function restBinding(accountId: string): AiBinding {
         {
           method: 'POST',
           headers: {
-            authorization: `Bearer ${await apiToken()}`,
+            authorization: `Bearer ${await cloudflareApiToken()}`,
             'content-type': 'application/json',
             ...(options
               ? {
