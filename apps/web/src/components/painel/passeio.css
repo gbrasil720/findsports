@@ -281,6 +281,23 @@
   }
 }
 
+/* A saída enquanto a dica não aparece. Entra com atraso: na troca de passo
+   normal o destaque chega antes e ela nem pisca. */
+.pn3 .pn-tour-esc {
+  position: fixed;
+  right: 24px;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  pointer-events: auto;
+  visibility: hidden;
+  animation: pn-tour-esc 0s 0.8s forwards;
+}
+
+@keyframes pn-tour-esc {
+  to {
+    visibility: visible;
+  }
+}
+
 .pn3 .pn-tour-k {
   display: flex;
   align-items: center;
