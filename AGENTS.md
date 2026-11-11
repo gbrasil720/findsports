@@ -582,10 +582,11 @@ navegável). Duas partes:
   padrão da coluna é `now()`).
 - **Sugestões de jogo** (`packages/api/src/lib/game-suggestions/`): a tela só conhece
   `pub.gameSuggestions` e `GameSuggestion`; a fonte é trocável (`GameSuggestionSource`
-  em `index.ts`). Hoje há uma, `nearby-bars.ts`: jogos publicados (sem rascunho) por
-  outros bares no ar da mesma cidade (`search_normalize`) nos próximos 7 dias, um por
-  jogo (início + título), até 6, os mais marcados primeiro, sem os que o bar já tem. O
-  catálogo semanal do WEB-433 entra como outra fonte ali. Um toque é um `createEvent`
+  em `index.ts`). Duas, nesta ordem: o catálogo dos jogos da semana (`catalog.ts`, ver
+  "Jogos da semana" abaixo) e, para completar, `nearby-bars.ts`: jogos publicados (sem
+  rascunho) por outros bares no ar da mesma cidade (`search_normalize`) nos próximos 7
+  dias, um por jogo (início + título), os mais marcados primeiro, sem os que o bar já
+  tem. Até 6 (a entrada `limit` pede até 10). Um toque é um `createEvent`
   com campeonato, times, texto livre e horário; telão e som herdam das
   características. Mesma peça em "Seu primeiro jogo" e em Jogos (`SugestoesDeJogo`).
 - **Passeio e Primeiros passos** (`components/painel/passeio.tsx`): só para o bar do
@@ -602,6 +603,43 @@ navegável). Duas partes:
   `localStorage` (`primeiros-passos-local.ts`, leitura e escrita em `try`). Some ao
   completar ou com "Esconder". O código de exemplo ("Treine o balcão", em Quem vai) é
   só na tela: não grava código nem visita.
+
+### Jogos da semana com onde passa (WEB-433)
+
+Catálogo único da semana (segunda a domingo de Brasília) em `weekly_game`, montado pela
+rotina `weekly_games` do cron diário (`packages/api/src/lib/weekly-games/`): **segunda**
+monta, **quinta** procura de novo o canal só dos jogos que ficaram sem; nos outros dias
+não faz nada. Método e números do protótipo em `docs/web-433-prototipo.md`:
+- Escopo: campeonatos que algum bar no ar publicou nas últimas 8 semanas, mais Série A,
+  Copa do Brasil e Libertadores (até 15).
+- Calendário do **football-data.org** (plano grátis, `FOOTBALL_DATA_API_KEY`, cabeçalho
+  `X-Auth-Token`) para as ligas que ele cobre: data e hora certas, sem canal. Opcional:
+  sem a chave o catálogo sai só da busca. Onde esse dado aparecer, a atribuição
+  "Football data provided by the Football-Data.org API" é obrigatória (termos, 7.1).
+  **Jolpica não**: licença não comercial.
+- Busca: Web Search da Cloudflare com a **Exa** pelo AI Gateway → Browser Rendering
+  `/markdown` nos 2 primeiros resultados legíveis (robots.txt respeitado, PDF pulado) →
+  GPT-6 Luna extrai `{jogo, data, hora, canais}`; hora que a página não escreve sai. Jogo
+  sem canal ganha uma busca "onde assistir" (até 12 por execução). Junção por dia + começo
+  do nome dos times (`merge.ts`); os canais das fontes somam; lista igual em 3+ jogos da
+  mesma página é a da competição e fica "a conferir" (`channel_confirmed` falso).
+  Precisa de `CF_ACCOUNT_ID` e `CF_API_TOKEN` (no `vite dev`, o token do `wrangler`).
+- Custo e teto: uma linha em `ai_run` por execução (`feature = 'weekly_games'`, sem
+  pessoa), com busca (US$ 0,007), página e modelo somados. Teto do mês próprio,
+  `weekly_games.config` no `app_config` (`monthlyBudgetUsd`, padrão US$ 5), separado do
+  `ai.limits` do chat: antes de cada chamada o pior caso tem de caber, e passando a rotina
+  para no meio e grava o que já achou. `enabled` nasce falso: o cron só roda ligado; o
+  "Rodar agora" do Houdini roda sempre (monta se a semana não tem catálogo, senão procura
+  canal).
+- Sugestões por bar (`game-suggestions/catalog.ts` e `rank.ts`): próximos 7 dias, sem os
+  que o bar já tem nem os dispensados (`bar_game_dismissal`, `pub.dismissGameSuggestion`,
+  o "Não passo esse"), ordenados pelo histórico do bar (campeonato, times, dia e hora),
+  torcedores e concorrência; o primeiro é `featured`. Números agregados: `fansInCity`
+  (quem favoritou um dos times e escolheu a cidade do bar; abaixo de 10, nulo) e
+  `barsInNeighborhood` (outros bares no ar do bairro que já publicaram o jogo). Campos
+  novos do `GameSuggestion` são opcionais: cliente antigo segue igual.
+- Houdini: `/houdini/jogos-da-semana` (`houdini.jogosDaSemana.overview`), com o catálogo,
+  as fontes, o gasto do mês contra o teto e o "Rodar agora" (`bastidores.run`).
 
 ### Web do torcedor (WEB-501)
 
