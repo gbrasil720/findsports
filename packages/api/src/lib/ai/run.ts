@@ -204,11 +204,7 @@ export function readUsage(raw: Raw) {
 export async function runAi<T>(
   meta: AiRunMeta,
   deps: AiDeps,
-  fn: (
-    call: AiCall,
-    runId: string,
-    charge: AiCharge
-  ) => Promise<AiOutcome<T>>
+  fn: (call: AiCall, runId: string, charge: AiCharge) => Promise<AiOutcome<T>>
 ): Promise<AiOutcome<T> & { runId: string }> {
   const runId = crypto.randomUUID()
   const started = performance.now()

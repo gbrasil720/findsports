@@ -122,7 +122,11 @@ export async function weeklyGamesMonthUsd(now: Date) {
 async function matchTeams(sportId: string, names: string[]) {
   const folded = [...new Set(names.map((n) => fold(n)))]
   if (!folded.length) return new Map<string, { id: string; name: string }>()
-  const { rows } = await db.execute<{ q: string; id: string; name: string }>(sql`
+  const { rows } = await db.execute<{
+    q: string
+    id: string
+    name: string
+  }>(sql`
     SELECT q.q, t.id, t.name
     FROM unnest(ARRAY[${sql.join(
       folded.map((n) => sql`${n}`),
@@ -227,7 +231,8 @@ export async function runWeeklyGames(
   let mode: 'catalog' | 'channels' | null = null
   if (trigger === 'cron') {
     if (!config.enabled) return { skipped: 'desligada' }
-    mode = week.weekday === 1 ? 'catalog' : week.weekday === 4 ? 'channels' : null
+    mode =
+      week.weekday === 1 ? 'catalog' : week.weekday === 4 ? 'channels' : null
   } else {
     const [row] = await db
       .select({ id: weeklyGame.id })
@@ -333,7 +338,12 @@ export async function runWeeklyGames(
           if (!page) continue
           used++
           try {
-            for (const g of await extract(page, hit.url, scope.championship, days)) {
+            for (const g of await extract(
+              page,
+              hit.url,
+              scope.championship,
+              days
+            )) {
               const startsAt = brasiliaStart(g.day, g.time)
               if (!startsAt) continue
               out.push({
@@ -381,7 +391,9 @@ export async function runWeeklyGames(
           const found: FoundGame[] = []
           if (env.FOOTBALL_DATA_API_KEY && futebol) {
             const codes = footballDataCodes(
-              scope.filter((s) => s.sportId === futebol).map((s) => s.championship)
+              scope
+                .filter((s) => s.sportId === futebol)
+                .map((s) => s.championship)
             )
             try {
               const fixtures = await footballDataFixtures(

@@ -1,5 +1,8 @@
 import { fold } from '@findsports_oficial/db/catalog/fold'
-import { brasiliaDay, brasiliaDayStart } from '@findsports_oficial/db/event-window'
+import {
+  brasiliaDay,
+  brasiliaDayStart
+} from '@findsports_oficial/db/event-window'
 import type { WeeklyGameSource } from '@findsports_oficial/db/schema/weekly-games'
 
 /*
@@ -40,7 +43,8 @@ export function brasiliaWeekOf(now: Date) {
 }
 
 /** "14/11" */
-export const dayMonth = (day: string) => `${day.slice(8, 10)}/${day.slice(5, 7)}`
+export const dayMonth = (day: string) =>
+  `${day.slice(8, 10)}/${day.slice(5, 7)}`
 
 /** O instante de "HH:MM" no dia `day` de Brasília. */
 export function brasiliaStart(day: string, time: string): Date | null {

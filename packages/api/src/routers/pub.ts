@@ -33,11 +33,11 @@ import {
   subscriptionPlanEnum,
   team
 } from '@findsports_oficial/db/schema/platform'
+import { barRating } from '@findsports_oficial/db/schema/rating'
 import {
   barGameDismissal,
   weeklyGame
 } from '@findsports_oficial/db/schema/weekly-games'
-import { barRating } from '@findsports_oficial/db/schema/rating'
 import { env } from '@findsports_oficial/env/server'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'

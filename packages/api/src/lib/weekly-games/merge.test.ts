@@ -54,7 +54,9 @@ describe('jogos da semana: contas puras', () => {
     expect(gameKey('2026-11-18', 'São Paulo vs Fluminense')).toBe(
       gameKey('2026-11-18', 'Sao Paulo FC x Fluminense')
     )
-    expect(gameKey('2026-11-18', 'A x B')).not.toBe(gameKey('2026-11-19', 'A x B'))
+    expect(gameKey('2026-11-18', 'A x B')).not.toBe(
+      gameKey('2026-11-19', 'A x B')
+    )
     expect(splitSides('GP de Las Vegas')).toBeNull()
   })
 
@@ -71,7 +73,15 @@ describe('jogos da semana: contas puras', () => {
         'Caze TV',
         'Canal Novo'
       ])
-    ).toEqual(['Prime Video', 'ESPN', 'Disney+', 'SporTV', 'GE TV', 'CazéTV', 'Canal Novo'])
+    ).toEqual([
+      'Prime Video',
+      'ESPN',
+      'Disney+',
+      'SporTV',
+      'GE TV',
+      'CazéTV',
+      'Canal Novo'
+    ])
   })
 
   test('junção: hora do primeiro, canais somados, fontes guardadas', () => {
@@ -85,7 +95,11 @@ describe('jogos da semana: contas puras', () => {
     expect(rest).toHaveLength(0)
     expect(game?.startsAt.toISOString()).toBe('2026-11-18T23:30:00.000Z')
     expect(game?.channels).toEqual(['Globo', 'SporTV', 'GE TV'])
-    expect(game?.sources.map((s) => s.url)).toEqual([null, 'https://a', 'https://b'])
+    expect(game?.sources.map((s) => s.url)).toEqual([
+      null,
+      'https://a',
+      'https://b'
+    ])
     expect(game?.channelConfirmed).toBe(true)
   })
 
@@ -97,13 +111,22 @@ describe('jogos da semana: contas puras', () => {
       found('Ceará x Remo', all, 'https://agregador'),
       found('Náutico x Paysandu', ['Premiere'], 'https://oficial')
     ])
-    expect(games.map((g) => g.channelConfirmed)).toEqual([false, false, false, true])
+    expect(games.map((g) => g.channelConfirmed)).toEqual([
+      false,
+      false,
+      false,
+      true
+    ])
     // Jogo sem canal nunca é confirmado.
-    expect(mergeGames([found('C x D', [], 'https://x')])[0]?.channelConfirmed).toBe(false)
+    expect(
+      mergeGames([found('C x D', [], 'https://x')])[0]?.channelConfirmed
+    ).toBe(false)
   })
 
   test('hora tem de estar escrita na página', () => {
-    expect(hourInPage('Flamengo x Bahia, 20h30, no Maracanã', '20:30')).toBe(true)
+    expect(hourInPage('Flamengo x Bahia, 20h30, no Maracanã', '20:30')).toBe(
+      true
+    )
     expect(hourInPage('às 9h, horário de Brasília', '09:00')).toBe(true)
     expect(hourInPage('às 21:00', '21:00')).toBe(true)
     expect(hourInPage('às 18h30', '20:30')).toBe(false)

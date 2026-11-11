@@ -118,7 +118,9 @@ export function scoreGame(history: BarHistory, game: CatalogCandidate) {
   score += Math.min(slots, 4) * 0.5
   score += game.fans >= FANS_FLOOR ? Math.min(game.fans / 50, 2) : 0
   score +=
-    game.barsInNeighborhood === 0 ? 1 : -0.5 * Math.min(game.barsInNeighborhood, 3)
+    game.barsInNeighborhood === 0
+      ? 1
+      : -0.5 * Math.min(game.barsInNeighborhood, 3)
   score += game.channels.length ? 0.3 : 0
   return score
 }
@@ -157,7 +159,8 @@ export function rankCatalogGames(
     .map((game) => ({ game, score: scoreGame(history, game) }))
     .sort(
       (a, b) =>
-        b.score - a.score || a.game.startsAt.getTime() - b.game.startsAt.getTime()
+        b.score - a.score ||
+        a.game.startsAt.getTime() - b.game.startsAt.getTime()
     )
     .slice(0, limit)
     .map(({ game }, i) => ({
