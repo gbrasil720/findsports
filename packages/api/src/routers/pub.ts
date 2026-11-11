@@ -33,6 +33,10 @@ import {
   subscriptionPlanEnum,
   team
 } from '@findsports_oficial/db/schema/platform'
+import {
+  barGameDismissal,
+  weeklyGame
+} from '@findsports_oficial/db/schema/weekly-games'
 import { barRating } from '@findsports_oficial/db/schema/rating'
 import { env } from '@findsports_oficial/env/server'
 import { TRPCError } from '@trpc/server'
@@ -77,6 +81,7 @@ import {
 import { byMatchOrder } from '../lib/game-participants'
 import {
   GAME_SUGGESTION_LIMIT,
+  GAME_SUGGESTION_MAX,
   gameSuggestionSource
 } from '../lib/game-suggestions'
 import { geocodeAddress } from '../lib/geocode-address'
@@ -1037,15 +1042,44 @@ export const pubRouter = router({
    * toque é um `createEvent` com o que vem aqui; telão e som ficam de fora e
    * herdam das características do bar (WEB-399).
    */
-  gameSuggestions: pubProcedure.query(async ({ ctx }) => {
-    const existingBar = await getBarByUserId(ctx.session.user.id)
-    return gameSuggestionSource.suggest({
-      barId: existingBar.id,
-      city: existingBar.city,
-      now: new Date(),
-      limit: GAME_SUGGESTION_LIMIT
-    })
-  }),
+  // Sem entrada, as 6 de sempre; a tela dos jogos da semana pede até 10.
+  gameSuggestions: pubProcedure
+    .input(
+      z
+        .object({ limit: z.number().int().min(1).max(GAME_SUGGESTION_MAX) })
+        .optional()
+    )
+    .query(async ({ ctx, input }) => {
+      const existingBar = await getBarByUserId(ctx.session.user.id)
+      return gameSuggestionSource.suggest({
+        barId: existingBar.id,
+        city: existingBar.city,
+        neighborhood: existingBar.neighborhood,
+        now: new Date(),
+        limit: input?.limit ?? GAME_SUGGESTION_LIMIT
+      })
+    }),
+
+  // "Não passo esse" (WEB-433): o jogo do catálogo não volta para este bar.
+  dismissGameSuggestion: pubProcedure
+    .input(z.object({ catalogId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const existingBar = await getBarByUserId(ctx.session.user.id)
+      const [game] = await db
+        .select({ id: weeklyGame.id })
+        .from(weeklyGame)
+        .where(eq(weeklyGame.id, input.catalogId))
+      if (!game)
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Esse jogo não está mais na lista.'
+        })
+      await db
+        .insert(barGameDismissal)
+        .values({ barId: existingBar.id, weeklyGameId: game.id })
+        .onConflictDoNothing()
+      return { ok: true as const }
+    }),
 
   createEvent: pubProcedure
     .input(
