@@ -488,13 +488,18 @@ export function LandingV3() {
 
               <div className="search">
                 <div className="paths">
+                  {/* Desenho B3 (canvas S4PzzkRwGY8kdMo2JD6bDy), ajustado com o
+                      dono em 11/11/2026: os dois cartões empilhados, o de
+                      verdade em cima (a chamada principal fica na primeira
+                      tela) e o exemplo embaixo, com os campos lado a lado. */}
                   <div className="path real">
                     <p className="hp-t">
                       <span className="hp-n">1</span>Ache o seu de verdade
                     </p>
                     <p className="hp-txt">
-                      Os jogos de hoje e os bares perto de você. Grátis, sem
-                      conta para olhar.
+                      Os jogos de hoje e os bares perto de você. Grátis,
+                      <span className="so-pc"> no navegador,</span> sem conta
+                      para olhar.
                     </p>
                     <a
                       className="btn btn-ink"
@@ -514,8 +519,9 @@ export function LandingV3() {
                   >
                     <p className="hp-t">
                       <span className="hp-n">2</span>Ou teste com um exemplo
+                      <span className="hp-tag so-pc">Bares fictícios</span>
                     </p>
-                    <p className="hp-tag">
+                    <p className="hp-tag so-cel">
                       Bares fictícios · só para ver como fica
                     </p>
                     <div className="fields">
