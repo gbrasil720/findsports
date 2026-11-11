@@ -38,7 +38,11 @@ export function HouseTeams() {
   }, [typed])
   const sportIds = (sports.data ?? []).map((s) => s.id)
   const found = useQuery({
-    ...trpc.pubs.searchTeams.queryOptions({ sportIds, query }),
+    ...trpc.pubs.searchTeams.queryOptions({
+      sportIds,
+      query,
+      clubsOnly: true
+    }),
     enabled: query.length >= 2 && sportIds.length > 0
   })
   const key = trpc.pub.getMyHouseTeams.queryKey()
