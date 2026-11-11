@@ -19,7 +19,8 @@ TURNSTILE_SECRET_KEY=
 # Jogos da semana (WEB-433), opcionais. CF_API_TOKEN: token da API da Cloudflare
 # com Browser Rendering e Workers AI (Web Search); sem ele a rotina não busca.
 # FOOTBALL_DATA_API_KEY: calendário do football-data.org (plano grátis, cabeçalho
-# X-Auth-Token); sem ela o catálogo sai só da busca. Onde o dado aparecer:
-# "Football data provided by the Football-Data.org API".
+# X-Auth-Token); sem ela o catálogo sai só da busca. Atribuição não exigida
+# (confirmado pelo football-data em 11/11/2026); "Dados de jogos: football-data.org"
+# fica como crédito.
 CF_API_TOKEN=
 FOOTBALL_DATA_API_KEY=

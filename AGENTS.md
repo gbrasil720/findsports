@@ -614,8 +614,9 @@ não faz nada. Método e números do protótipo em `docs/web-433-prototipo.md`:
   Copa do Brasil e Libertadores (até 15).
 - Calendário do **football-data.org** (plano grátis, `FOOTBALL_DATA_API_KEY`, cabeçalho
   `X-Auth-Token`) para as ligas que ele cobre: data e hora certas, sem canal. Opcional:
-  sem a chave o catálogo sai só da busca. Onde esse dado aparecer, a atribuição
-  "Football data provided by the Football-Data.org API" é obrigatória (termos, 7.1).
+  sem a chave o catálogo sai só da busca. Atribuição não exigida (confirmado pelo
+  football-data em 11/11/2026); a linha "Dados de jogos: football-data.org" fica como
+  crédito.
   **Jolpica não**: licença não comercial.
 - Busca: Web Search da Cloudflare com a **Exa** pelo AI Gateway → Browser Rendering
   `/markdown` nos 2 primeiros resultados legíveis (robots.txt respeitado, PDF pulado) →
@@ -640,9 +641,11 @@ não faz nada. Método e números do protótipo em `docs/web-433-prototipo.md`:
   novos do `GameSuggestion` são opcionais: cliente antigo segue igual.
 - Houdini: `/houdini/jogos-da-semana` (`houdini.jogosDaSemana.overview`), com o catálogo,
   as fontes, o gasto do mês contra o teto e o "Rodar agora" (`bastidores.run`).
-- **Times da casa** (`bar_team`, até 5, opcional; `lib/house-teams.ts`): Meu espaço do
+- **Times da casa** (`bar_team`, até 5, opcional, só clubes: sem seleção nem atleta;
+  `lib/house-teams.ts`, busca por `pubs.searchTeams` com `clubsOnly`): Meu espaço do
   web e do app (`pub.getMyHouseTeams`, `pub.updateHouseTeams`) e a rotina do cadastro
-  (`completePub.houseTeamIds`). Jogo com time da casa vem primeiro no `rank.ts`, sai com
+  (web: `completePub.houseTeamIds`; app: a rotina vem depois do bar criado e grava por
+  `updateHouseTeams`). Jogo com time da casa vem primeiro no `rank.ts`, sai com
   `houseTeam` (a etiqueta "Seu time") e o motivo "Do <time>, que você marcou".
 - **Telas** (canvas "Jogos da semana pra você"): `SemanaPraVoce`
   (`components/painel/semana-pra-voce.tsx`, CSS `semana.css`) em Jogos, Hoje e "Seu
