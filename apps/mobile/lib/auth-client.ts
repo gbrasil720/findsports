@@ -58,6 +58,13 @@ export async function adoptSessionCookie(setCookie: string) {
   authClient.$store.notify('$sessionSignal')
 }
 
+/**
+ * Há sessão guardada no aparelho? Lido direto do SecureStore (síncrono): na
+ * partida o `getCookie()` do cliente ainda pode estar vazio.
+ */
+export const hasStoredSession = () =>
+  Boolean(SecureStore.getItem(`${scheme}_cookie`))
+
 /** Onde a tela de senha nova acha o e-mail, para entrar logo depois. */
 export const RESET_EMAIL_KEY = 'onside.reset-email'
 

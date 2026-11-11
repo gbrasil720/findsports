@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Pressable, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Text, useStatusBar } from '@/components/ui'
-import { authClient } from '@/lib/auth-client'
+import { authClient, hasStoredSession } from '@/lib/auth-client'
 import { firstOpenSeen } from '@/lib/first-open'
 import { trpc } from '@/lib/trpc'
 
@@ -21,14 +21,29 @@ export default function Home() {
     firstOpenSeen().then(setSeen)
   }, [])
 
+  // Com a sessão guardada no aparelho, a primeira leitura pode voltar vazia
+  // (o app recarregado pelo Metro abria "O jogo de hoje" sem conta): relê uma
+  // vez antes de tratar como visitante.
+  const stored = hasStoredSession()
+  const empty = !session.isPending && !session.isRefetching && !session.data
+  const [retried, setRetried] = useState(false)
+  const { refetch } = session
+  useEffect(() => {
+    if (!empty || !stored || retried) return
+    setRetried(true)
+    refetch()
+  }, [empty, stored, retried, refetch])
+
   // Sem sessão, o app abre aberto (rodada 1 do redesign): O jogo de hoje na
   // primeira vez, depois o Explorar. Só sem sessão de fato: logo depois de
   // entrar (ou de confirmar o e-mail), a sessão nova ainda está sendo
   // buscada e `data` vem vazio por um instante.
-  if (!session.isPending && !session.isRefetching && !session.data) {
-    if (seen === undefined) return null
+  if (empty) {
+    if (seen === undefined || (stored && !retried)) return null
     return <Redirect href={seen ? '/explore' : '/hoje'} />
   }
+  // Relendo: nada na tela até a resposta.
+  if (!session.data && stored) return null
   // Torcedor que ainda não escolheu esportes e distância faz o onboarding.
   const user = session.data?.user
   if (user?.role === 'fan' && !user.onboardingCompleted)
