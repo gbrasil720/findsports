@@ -11,6 +11,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useExploreState } from '@/components/explore-state'
+import { NAV, useLayout } from '@/components/layout'
 import { EASE } from '@/components/motion'
 import { AcidButton } from '@/components/ob-frame'
 import { SplashDone } from '@/components/splash'
@@ -59,6 +60,7 @@ export default function Today() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const palette = usePalette()
+  const layout = useLayout()
   const splashDone = useContext(SplashDone)
   useStatusBar(palette.dark ? 'light' : 'dark')
   const { localCity, locate } = useExploreState()
@@ -98,7 +100,13 @@ export default function Today() {
       <ScrollView
         contentContainerStyle={[
           styles.page,
-          { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 16 }
+          {
+            paddingTop: insets.top + 14,
+            paddingBottom: insets.bottom + 16,
+            // Duo fechado: a barra de status fica numa faixa à direita.
+            paddingRight:
+              22 + (layout.kind === 'duoClosed' ? NAV.duoRail.width : 0)
+          }
         ]}
       >
         <View style={styles.top}>
