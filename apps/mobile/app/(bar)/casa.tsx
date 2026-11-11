@@ -38,6 +38,7 @@ import {
   text,
   useStatusBar
 } from '@/components/ui'
+import { hasCatalog, useWeekGames, WeekCarousel } from '@/components/week-games'
 import {
   dayKicker,
   delta,
@@ -94,7 +95,7 @@ export default function Casa() {
       to: day
     })
   )
-  const suggestions = useQuery(trpc.pub.gameSuggestions.queryOptions())
+  const suggestions = useWeekGames()
   const tourBoard = useTourTarget('bar-board')
 
   const games = todayGames(events.data ?? [], now)
@@ -131,7 +132,11 @@ export default function Casa() {
 
   const change = interest.data?.changePercent ?? null
   const offer = bar?.houseOffer ?? null
-  const suggestion = suggestions.data?.[0]
+  // Com o catálogo, a semana vai no carrossel (WEB-433); sem, a sugestão de
+  // sempre, dos bares perto, no fim da tela.
+  const suggestion = hasCatalog(suggestions.data)
+    ? undefined
+    : suggestions.data?.[0]
 
   if (owner.error)
     return (
@@ -225,6 +230,8 @@ export default function Casa() {
         </View>
 
         <FirstSteps onTour={askBarTour} />
+
+        <WeekCarousel gutter={16 + nav.left} />
 
         {owner.bar && !owner.elite && owner.trial ? (
           <PlanNudge
