@@ -94,6 +94,7 @@ import {
 import { readMonthProof } from '../lib/month-proof'
 import { normalizeOpeningHours, openingHoursSchema } from '../lib/opening-hours'
 import { PLAN_NAMES, STARTER_EVENT_LIMIT } from '../lib/plan-limits'
+import { recommendPlan, routineSchema } from '../lib/pub-routine'
 import {
   hasPublicRating,
   RATING_PUBLIC_FLOOR,
@@ -618,6 +619,22 @@ export const pubRouter = router({
    * grade vazia. Cada interruptor grava sozinho, sem "Salvar". Recurso de
    * todo plano; quem decide o conteúdo de cada e-mail é `lib/bar-notices.ts`.
    */
+  /**
+   * "Sua rotina" depois de o bar ir ao ar (app, rodada 10: a última pergunta
+   * vem depois do primeiro jogo). Só grava a rotina; o plano do teste segue
+   * por `changeTrialPlan`, com a recomendação calculada na tela.
+   */
+  updateRoutine: pubProcedure
+    .input(routineSchema)
+    .mutation(async ({ ctx, input }) => {
+      const existingBar = await getOwnBar(ctx.session.user.id)
+      await db
+        .update(bar)
+        .set({ routine: input, updatedAt: new Date() })
+        .where(eq(bar.id, existingBar.id))
+      return { routine: input, recommended: recommendPlan(input) }
+    }),
+
   updateNotices: pubProcedure
     .input(
       z
