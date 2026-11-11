@@ -92,6 +92,11 @@ import {
   parseHouseOfferInput
 } from '../lib/house-offer'
 import {
+  houseTeamIdsSchema,
+  readHouseTeamList,
+  replaceHouseTeams
+} from '../lib/house-teams'
+import {
   INVOICE_FIELDS,
   type InvoiceField,
   invoiceFieldProblem,
@@ -1069,6 +1074,22 @@ export const pubRouter = router({
         now: new Date(),
         limit: input?.limit ?? GAME_SUGGESTION_LIMIT
       })
+    }),
+
+  // "Times da casa" (WEB-433): Meu espaço, no web e no app.
+  getMyHouseTeams: pubProcedure.query(async ({ ctx }) => {
+    const existingBar = await getBarByUserId(ctx.session.user.id)
+    return readHouseTeamList(existingBar.id)
+  }),
+
+  updateHouseTeams: pubProcedure
+    .input(z.object({ teamIds: houseTeamIdsSchema }))
+    .mutation(async ({ ctx, input }) => {
+      const existingBar = await getBarByUserId(ctx.session.user.id)
+      await db.transaction((tx) =>
+        replaceHouseTeams(tx, existingBar.id, input.teamIds)
+      )
+      return { success: true }
     }),
 
   // "Não passo esse" (WEB-433): o jogo do catálogo não volta para este bar.
