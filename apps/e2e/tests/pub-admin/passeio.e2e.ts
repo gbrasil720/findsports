@@ -39,6 +39,41 @@ const PASSOS: Record<Plan, [string, RegExp][]> = {
 const tip = (page: Page) => page.locator('.pn-tour-tip')
 const next = (page: Page) => tip(page).locator('.pn-acid')
 
+type Quadro = { passo: string; x: number; y: number }
+
+// Onde a dica aparece em cada quadro em que está à vista (o centro, que a
+// escala da entrada não mexe). Ela não pode aparecer num lugar e pular para
+// o destaque depois: antes, cada passo abria no canto da tela.
+const gravarQuadros = (page: Page) =>
+  page.addInitScript(() => {
+    const quadros: Quadro[] = []
+    Object.assign(window, { __quadros: quadros })
+    const loop = () => {
+      const el = document.querySelector('.pn-tour-tip')
+      if (el && getComputedStyle(el).visibility === 'visible') {
+        const r = el.getBoundingClientRect()
+        quadros.push({
+          passo: el.querySelector('.mono')?.textContent ?? '',
+          x: Math.round(r.left + r.width / 2),
+          y: Math.round(r.top + r.height / 2)
+        })
+      }
+      requestAnimationFrame(loop)
+    }
+    requestAnimationFrame(loop)
+  })
+
+/** Os quadros do passo fora de onde a dica está agora. */
+const quadrosForaDoLugar = async (page: Page, passo: string) => {
+  const quadros = (
+    await page.evaluate(
+      () => (window as unknown as { __quadros: Quadro[] }).__quadros
+    )
+  ).filter((q) => q.passo.startsWith(passo))
+  const fim = quadros.at(-1)
+  return quadros.filter((q) => fim && Math.hypot(q.x - fim.x, q.y - fim.y) > 4)
+}
+
 for (const plan of ['starter', 'pro', 'elite'] as const) {
   test(`passeio do ${plan}: ${PASSOS[plan].length} telas, cada uma pelo "Próximo"`, async ({
     page
@@ -70,6 +105,7 @@ for (const plan of ['starter', 'pro', 'elite'] as const) {
       championship: `Final ${tag}`
     })
     await signIn(page, user)
+    await gravarQuadros(page)
     await page.goto('/admin?passeio=1')
 
     const passos = PASSOS[plan]
@@ -85,6 +121,9 @@ for (const plan of ['starter', 'pro', 'elite'] as const) {
       ).toBeVisible()
       await expect(page.locator('.pn-tour-spot')).toBeVisible()
       await print(page, testInfo, `passeio-${plan}-${i + 1}`, 600)
+      expect(
+        await quadrosForaDoLugar(page, `${i + 1} DE ${passos.length}`)
+      ).toEqual([])
 
       if (titulo === 'Ponha mais um jogo') {
         // A ação do passo muda o texto; quem segue é o dono.
