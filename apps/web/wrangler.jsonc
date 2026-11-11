@@ -65,6 +65,15 @@
   // WEB-424: Workers AI. Toda chamada passa pelo AI Gateway de
   // `AI_GATEWAY_ID` (teto de gasto, alertas e logs ficam lá).
   "ai": { "binding": "AI" },
+  // WEB-433: fila das rotinas longas pedidas pelo Houdini ("Rodar agora" dos
+  // jogos da semana), consumida pelo `queue()` de src/worker.ts com até
+  // 15 min. Uma por vez e sem nova tentativa (repetir gastaria o teto).
+  "queues": {
+    "producers": [{ "binding": "JOBS", "queue": "onside-jobs" }],
+    "consumers": [
+      { "queue": "onside-jobs", "max_batch_size": 1, "max_retries": 0 }
+    ]
+  },
 
   // WEB-204: preview de PR, outro Worker com banco próprio (branch `preview`
   // do Neon). Uma URL só, a do último PR publicado: com ela no
@@ -72,9 +81,10 @@
   // Escolhido no build (`CLOUDFLARE_ENV=preview`), não no `wrangler deploy`.
   //
   // `vars` e `hyperdrive` não são herdados do topo: repita aqui o que entrar
-  // lá. Sem CF_ACCOUNT_ID e sem as chaves R2: o bucket `onside-media` é fixo
-  // no código, então o preview só lê as fotos (MEDIA_PUBLIC_ORIGIN) e o
-  // upload fica desligado, com a mensagem própria.
+  // lá. Sem as chaves R2: o bucket `onside-media` é fixo no código, então o
+  // preview só lê as fotos (MEDIA_PUBLIC_ORIGIN) e o upload fica desligado,
+  // com a mensagem própria. CF_ACCOUNT_ID entra pelos jogos da semana
+  // (WEB-433); sozinho, sem as chaves R2, não liga o upload.
   "env": {
     "preview": {
       "name": "onside-web-preview",
@@ -84,6 +94,16 @@
       "routes": [],
       "version_metadata": { "binding": "CF_VERSION_METADATA" },
       "ai": { "binding": "AI" },
+      "queues": {
+        "producers": [{ "binding": "JOBS", "queue": "onside-jobs-preview" }],
+        "consumers": [
+          {
+            "queue": "onside-jobs-preview",
+            "max_batch_size": 1,
+            "max_retries": 0
+          }
+        ]
+      },
       "hyperdrive": [
         {
           "binding": "HYPERDRIVE",
@@ -99,6 +119,7 @@
         "EMAIL_FROM": "contato@mail.onside.sh",
         "EMAIL_API_URL": "https://api.millionsend.com",
         "MEDIA_PUBLIC_ORIGIN": "https://media.onside.sh",
+        "CF_ACCOUNT_ID": "dc48dae1d364480e5b618e4a00e98565",
         "AI_GATEWAY_ID": "onside-preview",
         // Banco com e-mails reais: e-mail vai para o log, com o link. O env
         // recusa isto com PUBLIC_APP_URL em onside.sh.

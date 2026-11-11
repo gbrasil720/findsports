@@ -659,6 +659,11 @@ não faz nada. Método e números do protótipo em `docs/web-433-prototipo.md`:
   ou telefone pelo jogo, como no resto do painel) com os das últimas 24 h, outros bares
   do bairro com o jogo e horas até ele; ao vivo, no Elite, vão e chegaram com código;
   depois, viram o bar por ele, se interessaram e a % contra a média dos encerrados (com 5).
+- **Fila das rotinas longas:** o "Rodar agora" de rotina em `QUEUED_JOBS`
+  (`lib/job-queue.ts`) não espera na requisição (o `waitUntil` só segura 30 s): vai para a
+  fila `onside-jobs` (`onside-jobs-preview` no preview; binding `JOBS`), e o `queue()` do
+  `worker.ts` a roda com até 15 min, uma por vez e sem nova tentativa. O resultado ou a
+  falha ficam em `job_run`. Sem fila (`vite dev`, testes), roda na requisição.
 
 ### Web do torcedor (WEB-501)
 
