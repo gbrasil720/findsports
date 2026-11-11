@@ -91,6 +91,7 @@ import {
   invoiceFieldProblem,
   normalizeInvoiceField
 } from '../lib/invoice-details'
+import { readMonthProof } from '../lib/month-proof'
 import { normalizeOpeningHours, openingHoursSchema } from '../lib/opening-hours'
 import { PLAN_NAMES, STARTER_EVENT_LIMIT } from '../lib/plan-limits'
 import {
@@ -1296,6 +1297,15 @@ export const pubRouter = router({
   }),
 
   // Retorna o plano e status atual da subscription do bar
+  /**
+   * O mês do bar em números, para a tela do plano no app: pessoas que
+   * marcaram presença e códigos validados (`lib/month-proof.ts`).
+   */
+  getMonthProof: pubProcedure.query(async ({ ctx }) => {
+    const existingBar = await getOwnBar(ctx.session.user.id)
+    return readMonthProof(existingBar.id)
+  }),
+
   getMySubscription: pubProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id
 
