@@ -264,7 +264,13 @@ export default function QuemVai() {
             <OwnerCard>
               {shown.length ? (
                 shown.map((person, index) => (
-                  <OwnerRow key={`${index}-${person.name}`} first={index === 0}>
+                  <OwnerRow
+                    // A lista não traz id de pessoa (o bar não vê): nome e
+                    // horários repetem em contas de teste, e a posição desempata.
+                    // biome-ignore lint/suspicious/noArrayIndexKey: sem id estável
+                    key={`${index}-${person.name}`}
+                    first={index === 0}
+                  >
                     <View
                       style={[
                         styles.avatar,
