@@ -219,3 +219,31 @@ html[data-theme="dark"] .lp3.ob3 .ob-printer {
 html[data-theme="dark"] .lp3.ob3 .ob-h .hl {
   color: var(--acid);
 }
+
+/*
+ * Contraste no escuro (11/11/2026). Com `--ink` e `--paper` trocados, o
+ * número das notas virava acid sobre círculo de papel (1,1:1) e o texto do
+ * cartão verde-limão herdava o papel (1,1:1). Sobre acid e sobre o vermelho
+ * do escuro (#f3421d), o texto é tinta; os nomes do chat de exemplo e o
+ * carimbo sobre a foto clara ganham tons que leem no fundo deles.
+ */
+html[data-theme="dark"] .lp3 :is(.note .n, .target span) {
+  background: var(--acid);
+  color: #12120f;
+}
+html[data-theme="dark"] .lp3 .occ li.hl {
+  color: #12120f;
+}
+html[data-theme="dark"] .lp3 :is(.ev .num, .ask, .pains .ic) {
+  color: #12120f;
+}
+html[data-theme="dark"] .lp3 .m .who-red {
+  color: #ff7a5c !important;
+}
+html[data-theme="dark"] .lp3 .m .who-blue {
+  color: #9db4ff !important;
+}
+html[data-theme="dark"] .lp3 .stamp {
+  color: #c92b0c;
+  border-color: #c92b0c;
+}
