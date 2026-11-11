@@ -16,3 +16,10 @@ R2_MEDIA_ACCESS_KEY_ID=
 R2_MEDIA_SECRET_ACCESS_KEY=
 # Opcional: sem ela o Turnstile não é verificado no servidor.
 TURNSTILE_SECRET_KEY=
+# Jogos da semana (WEB-433), opcionais. CF_API_TOKEN: token da API da Cloudflare
+# com Browser Rendering e Workers AI (Web Search); sem ele a rotina não busca.
+# FOOTBALL_DATA_API_KEY: calendário do football-data.org (plano grátis, cabeçalho
+# X-Auth-Token); sem ela o catálogo sai só da busca. Onde o dado aparecer:
+# "Football data provided by the Football-Data.org API".
+CF_API_TOKEN=
+FOOTBALL_DATA_API_KEY=

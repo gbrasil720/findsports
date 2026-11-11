@@ -88,6 +88,16 @@ const rawEnv = createEnv({
       .regex(/^[a-z0-9-]+$/, 'AI_GATEWAY_ID inválido')
       .optional(),
     /**
+     * Jogos da semana (WEB-433). `CF_API_TOKEN`: token da API da Cloudflare
+     * com Browser Rendering e Workers AI (Web Search), para a busca e a
+     * leitura das páginas; sem ele a rotina não busca (em `development` vale
+     * o token do login do `wrangler`). `FOOTBALL_DATA_API_KEY`: calendário do
+     * football-data.org (plano grátis, com a atribuição onde o dado aparece);
+     * sem ela, o catálogo sai só da busca.
+     */
+    CF_API_TOKEN: z.string().min(1).optional(),
+    FOOTBALL_DATA_API_KEY: z.string().min(1).optional(),
+    /**
      * Chaves só do E2E (WEB-174, `docs/e2e.md`). Recusadas em produção logo
      * abaixo: qualquer uma delas troca um serviço real por um dublê.
      *
