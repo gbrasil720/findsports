@@ -8,7 +8,7 @@ import { AuthShell } from '@/components/auth-shell'
 import { dayLabel, Photo } from '@/components/explore'
 import { Glass } from '@/components/glass'
 import { useLayout } from '@/components/layout'
-import { ErrorText, haptic, } from '@/components/motion'
+import { ErrorText, haptic } from '@/components/motion'
 import { usePalette } from '@/components/theme'
 import { useTurnstile } from '@/components/turnstile'
 import {

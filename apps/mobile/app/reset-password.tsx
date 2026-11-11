@@ -1,37 +1,19 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
 import { useState } from 'react'
-import { StyleSheet, View } from 'react-native'
-import Animated, { FadeOut } from 'react-native-reanimated'
-import { ErrorText, haptic, POP } from '@/components/motion'
+import { AuthField, AuthRule, AuthShell } from '@/components/auth-shell'
+import { ErrorText, haptic } from '@/components/motion'
+import { usePalette } from '@/components/theme'
 import { useTurnstile } from '@/components/turnstile'
 import {
-  ACID,
   authErrorMessage,
-  BackButton,
-  BlockButton,
-  CARD,
-  DROP,
-  FG,
-  Field,
-  Icon,
-  INK,
-  LINE,
   LIVE,
   MIN_PASSWORD,
-  PASSWORD_RULES,
-  passwordScore,
+  PillButton,
   phaseBusy,
   phaseLabel,
-  Screen,
-  STONE,
-  STRENGTH,
-  StrengthBars,
-  SUB,
   Text,
-  Title,
-  text,
-  themed
+  text
 } from '@/components/ui'
 import { attemptPhase, retryable, settleAuth } from '@/lib/auth-attempt'
 import { authClient, RESET_EMAIL_KEY } from '@/lib/auth-client'
@@ -52,7 +34,7 @@ export default function ResetPassword() {
   }>()
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
-  const [visible, setVisible] = useState(false)
+  const palette = usePalette()
   const [error, setError] = useState<string | null>(
     linkError || !token
       ? 'Este link expirou ou já foi usado. Peça outro em "Esqueci minha senha".'
@@ -63,7 +45,6 @@ export default function ResetPassword() {
   // Cada falha passageira treme a frase de novo, mesmo igual à anterior.
   const [tries, setTries] = useState(0)
   const turnstile = useTurnstile()
-  const score = passwordScore(password)
 
   const submit = async () => {
     if (pending) return
@@ -122,68 +103,48 @@ export default function ResetPassword() {
 
   const phase = attemptPhase(pending, failed)
 
+  // Rodada 8, tela 6: "3 de 3", dois campos com a regra marcando o ok e
+  // "Salvar e entrar".
   return (
-    <Screen brand gap={16} top={6}>
-      <BackButton icon="close" onPress={() => router.dismissTo('/sign-in')} />
-      <Title lines={[['Crie uma ', 'senha nova']]} size={44} />
-      <Field
-        label="Nova senha"
-        icon="lock"
-        action={{
-          label: visible ? 'Ocultar' : 'Mostrar',
-          onPress: () => setVisible(!visible)
-        }}
+    <AuthShell
+      title={['Nova', 'senha']}
+      tall
+      step="3 DE 3"
+      footer={
+        <Text style={[text(13, 'Regular', 1.4), { color: palette.muted }]}>
+          Os outros aparelhos saem da conta ao salvar.
+        </Text>
+      }
+    >
+      <AuthField
+        label="Senha nova"
         autoComplete="new-password"
         textContentType="newPassword"
-        secureTextEntry={!visible}
+        secureTextEntry
         value={password}
         onChangeText={setPassword}
       />
-      <View style={{ gap: 8, marginTop: -6 }}>
-        <StrengthBars score={score} empty={STONE} />
-        <Text style={[text(12.5, 'Bold'), { color: FG }]}>
-          {STRENGTH[score] || ' '}
-        </Text>
-      </View>
-      <View style={styles.rules}>
-        {PASSWORD_RULES.map((rule) => {
-          const met = rule.test(password)
-          return (
-            <View key={rule.label} style={styles.rule}>
-              <View style={[styles.dot, styles.dotOff]}>
-                {met ? (
-                  <Animated.View
-                    entering={POP}
-                    exiting={FadeOut.duration(120)}
-                    style={[styles.dot, styles.dotOn]}
-                  >
-                    <Icon name="check" size={11} color={INK} accent={LIVE} />
-                  </Animated.View>
-                ) : null}
-              </View>
-              <Text style={[text(13.5), { color: met ? FG : SUB }]}>
-                {rule.label}
-              </Text>
-            </View>
-          )
-        })}
-      </View>
-      <Field
-        label="Confirmar senha"
-        icon="lock"
+      <AuthRule ok={password.length >= MIN_PASSWORD}>
+        {`${MIN_PASSWORD} caracteres ou mais`}
+      </AuthRule>
+      <AuthField
+        label="Repita a senha"
         autoComplete="new-password"
         textContentType="newPassword"
-        secureTextEntry={!visible}
+        secureTextEntry
         value={confirm}
         onChangeText={setConfirm}
         onSubmitEditing={submit}
       />
+      <AuthRule ok={!!confirm && confirm === password}>
+        As duas são iguais
+      </AuthRule>
       {error ? (
         <ErrorText key={`erro-${tries}`} style={[text(13.5), { color: LIVE }]}>
           {error}
         </ErrorText>
       ) : null}
-      <BlockButton
+      <PillButton
         label={phaseLabel(phase, {
           idle: 'Salvar e entrar',
           sending: 'Salvando…'
@@ -193,42 +154,6 @@ export default function ResetPassword() {
         onPress={submit}
       />
       {turnstile.widget}
-    </Screen>
+    </AuthShell>
   )
 }
-
-const styles = StyleSheet.create({
-  rules: {
-    padding: 14,
-    borderRadius: 6,
-    backgroundColor: CARD,
-    borderWidth: 1,
-    borderColor: LINE,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    rowGap: 10,
-    shadowColor: DROP,
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    shadowOffset: { width: 4, height: 4 }
-  },
-  rule: { width: '50%', flexDirection: 'row', gap: 8, alignItems: 'center' },
-  dot: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  // A bolinha cheia cobre o anel por inteiro.
-  dotOn: {
-    position: 'absolute',
-    top: -1.5,
-    left: -1.5,
-    backgroundColor: ACID
-  },
-  dotOff: {
-    borderWidth: 1.5,
-    borderColor: themed('rgba(18,18,15,.25)', 'rgba(241,238,230,.3)')
-  }
-})
