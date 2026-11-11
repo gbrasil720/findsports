@@ -360,8 +360,12 @@ function BastidoresPage() {
 
   const run = useMutation(
     trpc.bastidores.run.mutationOptions({
-      onSuccess: async () => {
-        toast.success('Rodou. O resultado está no cartão.')
+      onSuccess: async (data) => {
+        toast.success(
+          data.queued
+            ? 'Na fila. Leva uns minutos; o resultado aparece no cartão.'
+            : 'Rodou. O resultado está no cartão.'
+        )
         await reload()
       },
       // A falha também fica registrada: o cartão passa a mostrar o erro.

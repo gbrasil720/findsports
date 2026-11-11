@@ -5,6 +5,7 @@ import { z } from 'zod'
 
 import { adminProcedure, router } from '../index'
 import { getDeployVersion } from '../lib/deploy-version'
+import { enqueueJob } from '../lib/job-queue'
 import {
   type Health,
   JOB_NAMES,
@@ -118,9 +119,15 @@ export const bastidoresRouter = router({
       // sucesso ou falha, e o detalhe do resultado fica em `job_run`.
       let ok = false
       try {
+        // Rotina longa vai para a fila e responde na hora; o resultado
+        // aparece em `job_run` quando ela acabar (`lib/job-queue.ts`).
+        if (await enqueueJob(input.job)) {
+          ok = true
+          return { job: input.job, queued: true as const, result: null }
+        }
         const result = await runJob(input.job, 'houdini')
         ok = true
-        return { job: input.job, result }
+        return { job: input.job, queued: false as const, result }
       } finally {
         await recordAdminActionSafely({
           kind: 'system.run_job',

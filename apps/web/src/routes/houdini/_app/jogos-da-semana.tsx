@@ -80,8 +80,12 @@ function JogosDaSemanaPage() {
     })
   const run = useMutation(
     trpc.bastidores.run.mutationOptions({
-      onSuccess: async () => {
-        toast.success('Rodou. O catálogo abaixo está atualizado.')
+      onSuccess: async (data) => {
+        toast.success(
+          data.queued
+            ? 'Na fila. Leva uns minutos; o resultado aparece aqui e no Bastidores.'
+            : 'Rodou. O catálogo abaixo está atualizado.'
+        )
         await reload()
       },
       onError: async (error) => {
@@ -111,7 +115,7 @@ function JogosDaSemanaPage() {
               disabled={run.isPending}
               onClick={() => run.mutate({ job: 'weekly_games' })}
             >
-              {run.isPending ? 'Rodando… (alguns minutos)' : 'Rodar agora'}
+              {run.isPending ? 'Pondo na fila…' : 'Rodar agora'}
             </button>
           }
         />
