@@ -705,13 +705,13 @@ export function LandingV3() {
               <div className="ev ev-chat">
                 <span className="num">03</span>
                 <div className="m" aria-hidden="true">
-                  <span className="who" style={{ color: '#c4290a' }}>
+                  <span className="who who-red" style={{ color: '#c4290a' }}>
                     Lucas
                   </span>
                   será que passa o jogo lá?
                 </div>
                 <div className="m" aria-hidden="true">
-                  <span className="who" style={{ color: '#2f55c7' }}>
+                  <span className="who who-blue" style={{ color: '#2f55c7' }}>
                     Rafa
                   </span>
                   sei lá, e se tiver sem som
