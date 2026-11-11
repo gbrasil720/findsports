@@ -1,4 +1,4 @@
-import { db, eq, inArray } from '@findsports_oficial/db'
+import { and, db, eq, inArray } from '@findsports_oficial/db'
 import { barTeam, team } from '@findsports_oficial/db/schema/platform'
 import { z } from 'zod'
 
@@ -26,7 +26,10 @@ export function readHouseTeamList(barId: string) {
     .orderBy(barTeam.createdAt, team.name)
 }
 
-/** Troca os times da casa; id que não existe no catálogo fica de fora. */
+/**
+ * Troca os times da casa. Só clube conta (sem seleção nem atleta, como a
+ * busca com `clubsOnly`); o resto fica de fora sem recusar.
+ */
 export async function replaceHouseTeams(
   tx: Executor,
   barId: string,
@@ -38,7 +41,13 @@ export async function replaceHouseTeams(
   const known = await tx
     .select({ id: team.id })
     .from(team)
-    .where(inArray(team.id, ids))
+    .where(
+      and(
+        inArray(team.id, ids),
+        eq(team.kind, 'team'),
+        eq(team.isNationalTeam, false)
+      )
+    )
   if (!known.length) return
   await tx
     .insert(barTeam)
