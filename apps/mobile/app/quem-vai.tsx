@@ -128,6 +128,8 @@ export default function QuemVai() {
           </Text>
           <Text
             accessibilityRole="header"
+            numberOfLines={1}
+            adjustsFontSizeToFit
             style={[styles.title, { color: palette.ink }]}
           >
             Quem vai

@@ -158,17 +158,24 @@ export default function Casa() {
       >
         <View style={styles.head}>
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text
-              numberOfLines={1}
-              style={[styles.kicker, { color: palette.muted }]}
-            >
-              {[bar?.name, owner.planName]
-                .filter(Boolean)
-                .join(' · ')
-                .toLocaleUpperCase('pt-BR')}
-            </Text>
+            {/* Nome longo encolhe com reticências; o plano fica sempre. */}
+            <View style={{ flexDirection: 'row' }}>
+              <Text
+                numberOfLines={1}
+                style={[styles.kicker, { color: palette.muted, flexShrink: 1 }]}
+              >
+                {(bar?.name ?? '').toLocaleUpperCase('pt-BR')}
+              </Text>
+              {owner.planName ? (
+                <Text style={[styles.kicker, { color: palette.muted }]}>
+                  {` · ${owner.planName.toLocaleUpperCase('pt-BR')}`}
+                </Text>
+              ) : null}
+            </View>
             <Text
               accessibilityRole="header"
+              numberOfLines={1}
+              adjustsFontSizeToFit
               style={[styles.title, { color: palette.ink }]}
             >
               Hoje na casa
@@ -306,7 +313,7 @@ export default function Casa() {
 
         <OwnerLabel>
           {offer && owner.elite
-            ? `Hoje na casa · oferta: ${offer}`
+            ? `Hoje na casa · oferta: ${offer.length > 34 ? `${offer.slice(0, 33).trimEnd()}…` : offer}`
             : 'Hoje na casa'}
         </OwnerLabel>
         <OwnerCard>
@@ -328,7 +335,13 @@ export default function Casa() {
                 <Pressable
                   key={game.id}
                   accessibilityRole="button"
-                  onPress={() => router.navigate('/jogos')}
+                  accessibilityHint="Abre a edição do jogo"
+                  onPress={() =>
+                    router.push({
+                      pathname: '/novo-jogo',
+                      params: { id: game.id }
+                    })
+                  }
                 >
                   <OwnerRow first={index === 0}>
                     <Text
@@ -415,7 +428,12 @@ export default function Casa() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`${suggestion.title} na sua grade?`}
-            onPress={() => router.push('/novo-jogo')}
+            onPress={() =>
+              router.push({
+                pathname: '/novo-jogo',
+                params: { sugestao: suggestion.key }
+              })
+            }
           >
             <HardShadow color={palette.drop} offset={4} radius={24} />
             <View

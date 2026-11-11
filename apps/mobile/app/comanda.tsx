@@ -93,6 +93,8 @@ export default function Comanda() {
           </Text>
           <Text
             accessibilityRole="header"
+            numberOfLines={1}
+            adjustsFontSizeToFit
             style={[styles.title, { color: palette.ink }]}
           >
             Lançar a comanda

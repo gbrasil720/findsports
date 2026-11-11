@@ -53,9 +53,11 @@ export default function NovoJogo() {
   const palette = usePalette()
   const insets = useSafeAreaInsets()
   useStatusBar(palette.dark ? 'light' : 'dark')
-  const { id, primeiro } = useLocalSearchParams<{
+  const { id, primeiro, sugestao } = useLocalSearchParams<{
     id?: string
     primeiro?: string
+    /** A sugestão tocada em Hoje na casa já vem escolhida. */
+    sugestao?: string
   }>()
   // O primeiro jogo do cadastro (rodada 10): depois de publicar, a tela
   // "está no ar"; "Pular por enquanto" segue para completar o perfil.
@@ -73,7 +75,7 @@ export default function NovoJogo() {
     enabled: !id
   })
   const [query, setQuery] = useState('')
-  const [chosen, setChosen] = useState<string | null>(null)
+  const [chosen, setChosen] = useState<string | null>(sugestao ?? null)
   const hasScreen = bar?.amenities?.includes(1) ?? true
   const [screen, setScreen] = useState<boolean | null>(null)
   const [sound, setSound] = useState<boolean | null>(null)

@@ -86,6 +86,18 @@ export default function Jogos() {
     .filter((g) => gameState(g, now) === 'ended')
     .reverse()
     .slice(0, 20)
+  // "Como foi" com o número de cada jogo dos últimos 30 dias (o que todo
+  // plano vê); mais antigo fica só com o campeonato.
+  const stats = useQuery({
+    ...trpc.commercialAnalytics.getMyEventAnalytics.queryOptions({
+      from: brasiliaDay(now, -29),
+      to: brasiliaDay(now)
+    }),
+    enabled: tab === 'past'
+  })
+  const statOf = new Map(
+    (stats.data?.events ?? []).map((row) => [row.eventId, row])
+  )
   const week = weekDays(now)
   const inWeek = upcoming.filter((g) => week.includes(brasiliaDay(g.startsAt)))
   const weekGoing = inWeek.reduce((sum, g) => sum + count(g.id), 0)
@@ -120,6 +132,8 @@ export default function Jogos() {
             </Text>
             <Text
               accessibilityRole="header"
+              numberOfLines={1}
+              adjustsFontSizeToFit
               style={[styles.title, { color: palette.ink }]}
             >
               Jogos
@@ -285,7 +299,9 @@ export default function Jogos() {
                                 ? game.attendanceEnabled === false
                                   ? 'lista desligada'
                                   : `${n} ${n === 1 ? 'vai' : 'vão'}`
-                                : game.championship,
+                                : state === 'ended' && statOf.get(game.id)
+                                  ? pastLine(statOf.get(game.id), owner.elite)
+                                  : game.championship,
                               // Nulo herda das características (WEB-399).
                               (game.onBigScreen ??
                               (owner.bar?.amenities ?? []).includes(1))
@@ -369,6 +385,19 @@ function Tag({ state, full }: { state: GameState; full: boolean }) {
       </Text>
     </View>
   )
+}
+
+/** "12 foram · 30 se interessaram" (Elite) ou "30 se interessaram". */
+function pastLine(
+  row:
+    | { interestedPeople?: number | null; arrivals?: number | null }
+    | undefined,
+  elite: boolean
+) {
+  const interested = row?.interestedPeople ?? 0
+  const went = row?.arrivals ?? 0
+  const line = `${interested} ${interested === 1 ? 'se interessou' : 'se interessaram'}`
+  return elite ? `${went} ${went === 1 ? 'foi' : 'foram'} · ${line}` : line
 }
 
 const styles = StyleSheet.create({
