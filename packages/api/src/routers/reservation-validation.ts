@@ -33,6 +33,7 @@ import { z } from 'zod'
 import { pubProcedure, router } from '../index'
 import type { SubscriptionForPlan } from '../lib/current-plan'
 import { byMatchOrder } from '../lib/game-participants'
+import { readGuestStory } from '../lib/guest-story'
 import { incrementWindow, refundWindowAttempt } from '../lib/rate-limit-store'
 import { canValidateReservations } from '../lib/reservation-intake'
 import {
@@ -108,6 +109,8 @@ function ownCodes(reader: Reader, match: SQL, ownerId: string) {
       reservationStatus: reservation.status,
       offerSnapshot: reservation.offerSnapshot,
       guestName: user.name,
+      guestId: reservation.userId,
+      barId: event.barId,
       eventId: event.id,
       championship: event.championship,
       participantFreeText: event.participantFreeText,
@@ -245,12 +248,20 @@ export const reservationValidationRouter = router({
 
       await refundWindowAttempt(attemptKey)
 
-      const participants = await db
-        .select({ name: team.name })
-        .from(eventParticipants)
-        .innerJoin(team, eq(team.id, eventParticipants.teamId))
-        .where(eq(eventParticipants.eventId, found.eventId))
-        .orderBy(...byMatchOrder(eventParticipants))
+      const [participants, guest] = await Promise.all([
+        db
+          .select({ name: team.name })
+          .from(eventParticipants)
+          .innerJoin(team, eq(team.id, eventParticipants.teamId))
+          .where(eq(eventParticipants.eventId, found.eventId))
+          .orderBy(...byMatchOrder(eventParticipants)),
+        // A história de quem chega, para o balcão (app, rodada 10).
+        readGuestStory({
+          guestId: found.guestId,
+          eventId: found.eventId,
+          barId: found.barId
+        })
+      ])
 
       return {
         codeId: found.codeId,
@@ -262,6 +273,7 @@ export const reservationValidationRouter = router({
         offerSnapshot: found.offerSnapshot,
         usedCount: found.usedCount,
         maxUses: found.maxUses,
+        guest,
         event: {
           championship: found.championship,
           participants: participants.map((participant) => participant.name),
