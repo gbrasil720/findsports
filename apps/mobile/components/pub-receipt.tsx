@@ -52,10 +52,22 @@ const BARS = Array.from({ length: 38 }, (_, i) => ({
 const PAPER = '#fbfaf6'
 const MUTED = '#55554f'
 
+// Data e hora da casa (Brasília), não do fuso do aparelho.
+const HOUSE = { timeZone: 'America/Sao_Paulo' } as const
 const date = (value: Date) =>
-  `${String(value.getDate()).padStart(2, '0')}/${String(value.getMonth() + 1).padStart(2, '0')}/${value.getFullYear()}`
+  new Intl.DateTimeFormat('pt-BR', {
+    ...HOUSE,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  }).format(value)
 const time = (value: Date) =>
-  `${String(value.getHours()).padStart(2, '0')}:${String(value.getMinutes()).padStart(2, '0')}`
+  new Intl.DateTimeFormat('pt-BR', {
+    ...HOUSE,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23'
+  }).format(value)
 
 type Kind = 'logo' | 'c' | 'm' | 'b' | 'cut' | 'note' | 'tot' | 'bars'
 
