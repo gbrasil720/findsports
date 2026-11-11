@@ -1,6 +1,5 @@
 import { type ComponentProps, type ReactNode, useState } from 'react'
 import {
-  KeyboardAvoidingView,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -53,8 +52,7 @@ export function AuthShell({
   const palette = usePalette()
   useStatusBar('light')
   return (
-    <KeyboardAvoidingView
-      behavior="padding"
+    <View
       style={{
         flex: 1,
         backgroundColor: palette.dark ? '#1c1c18' : palette.bg
@@ -62,6 +60,7 @@ export function AuthShell({
     >
       <ScrollView
         keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
         contentContainerStyle={{ flexGrow: 1 }}
         bounces={false}
       >
@@ -103,7 +102,7 @@ export function AuthShell({
           ) : null}
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </View>
   )
 }
 

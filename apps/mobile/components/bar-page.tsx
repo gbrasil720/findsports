@@ -1,8 +1,13 @@
-import { gameTitle, type TitledGame } from '@findsports_oficial/db/game-title'
+import {
+  gameTitle,
+  matchSides,
+  type TitledGame
+} from '@findsports_oficial/db/game-title'
 import { useEffect } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
 import Animated, {
   cancelAnimation,
+  LayoutAnimationConfig,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
@@ -196,7 +201,8 @@ export function LiveCard({
   screens: number | null
 }) {
   const palette = usePalette()
-  const sides = gameTitle(game).split(' × ')
+  // Os lados só de confronto (`matchSides`); nunca quebrar o título de volta.
+  const sides = matchSides(game) ?? [gameTitle(game)]
   const here = game.hereNow
   const going = game.going?.count ?? null
   const tags = [
@@ -223,16 +229,31 @@ export function LiveCard({
       <View style={styles.liveTeams}>
         {sides.length === 2 ? (
           <>
-            <Text numberOfLines={1} adjustsFontSizeToFit style={styles.team}>
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.55}
+              style={styles.team}
+            >
               {sides[0]}
             </Text>
             <Text style={styles.teamX}>×</Text>
-            <Text numberOfLines={1} adjustsFontSizeToFit style={styles.team}>
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.55}
+              style={styles.team}
+            >
               {sides[1]}
             </Text>
           </>
         ) : (
-          <Text numberOfLines={2} adjustsFontSizeToFit style={styles.team}>
+          <Text
+            numberOfLines={2}
+            adjustsFontSizeToFit
+            minimumFontScale={0.55}
+            style={styles.team}
+          >
             {gameTitle(game)}
           </Text>
         )}
@@ -265,35 +286,38 @@ export function LiveCard({
         </View>
       ) : null}
       {here?.friends.length ? (
-        <View style={styles.liveFriends}>
-          <View style={{ flexDirection: 'row' }}>
-            {here.friends.slice(0, 3).map((friend, index) => (
-              <Animated.View
-                key={friend.id}
-                entering={FACE_IN}
-                style={[
-                  styles.liveFace,
-                  {
-                    backgroundColor: index % 2 ? PAPER : ACID,
-                    marginLeft: index ? -7 : 0
-                  }
-                ]}
-              >
-                <Text style={[text(11, 'Bold', 1), { color: INK }]}>
-                  {friend.name.trim().charAt(0).toUpperCase()}
-                </Text>
-              </Animated.View>
-            ))}
+        // Ao abrir, parados; só o amigo que chega depois entra na pilha.
+        <LayoutAnimationConfig skipEntering>
+          <View style={styles.liveFriends}>
+            <View style={{ flexDirection: 'row' }}>
+              {here.friends.slice(0, 3).map((friend, index) => (
+                <Animated.View
+                  key={friend.id}
+                  entering={FACE_IN}
+                  style={[
+                    styles.liveFace,
+                    {
+                      backgroundColor: index % 2 ? PAPER : ACID,
+                      marginLeft: index ? -7 : 0
+                    }
+                  ]}
+                >
+                  <Text style={[text(11, 'Bold', 1), { color: INK }]}>
+                    {friend.name.trim().charAt(0).toUpperCase()}
+                  </Text>
+                </Animated.View>
+              ))}
+            </View>
+            <Text
+              style={[text(13, 'Regular', 1.3), { color: '#aaa9a4', flex: 1 }]}
+            >
+              <Text style={[text(13, 'Bold', 1.3), { color: PAPER }]}>
+                {namesLine(here.friends.map((friend) => friend.name))}
+              </Text>{' '}
+              {here.friends.length === 1 ? 'está lá' : 'estão lá'}
+            </Text>
           </View>
-          <Text
-            style={[text(13, 'Regular', 1.3), { color: '#aaa9a4', flex: 1 }]}
-          >
-            <Text style={[text(13, 'Bold', 1.3), { color: PAPER }]}>
-              {namesLine(here.friends.map((friend) => friend.name))}
-            </Text>{' '}
-            {here.friends.length === 1 ? 'está lá' : 'estão lá'}
-          </Text>
-        </View>
+        </LayoutAnimationConfig>
       ) : null}
     </View>
   )

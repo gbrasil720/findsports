@@ -11,7 +11,7 @@ import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import type { inferRouterOutputs } from '@trpc/server'
 import { LinearGradient } from 'expo-linear-gradient'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { type Href, useLocalSearchParams, useRouter } from 'expo-router'
 import {
   type ComponentProps,
   Fragment,
@@ -323,6 +323,7 @@ export function BarDetail({
         : 42
   const router = useRouter()
   const palette = usePalette()
+  const clockNow = useClockNow()
   const session = authClient.useSession()
   const soon = useSoon()
   const attendPress = usePress(0, 3)
@@ -444,7 +445,9 @@ export function BarDetail({
   }
 
   const data = bar.data
-  const now = Date.now()
+  // O relógio anda a cada 30 s: o apito troca o cartão e o rodapé sem
+  // precisar reabrir a página.
+  const now = clockNow
   const games = data?.events ?? []
   const next = games[0]
   // "Vou assistir" abre no jogo marcado, senão no próximo que não começou.
@@ -534,6 +537,11 @@ export function BarDetail({
     const targets = teams.length
       ? teams.map((team) => ({ teamId: team.id }))
       : (mySports.data ?? []).slice(0, 1).map((p) => ({ sportId: p.sport.id }))
+    if (!targets.length) {
+      haptic.warning()
+      router.push('/onboarding/teams?edit=1' as Href)
+      return
+    }
     try {
       await Promise.all(
         targets.map((target) =>
@@ -591,8 +599,11 @@ export function BarDetail({
   // fora do cartão; jogo hoje, o cartão de tinta (sem código, o check-in no
   // lugar da oferta; fechado, quando o bar abre); sem jogo hoje, o próximo
   // e "Hoje não tem jogo aqui", que não deixa a página virar beco.
+  // "Do momento": hoje no calendário de Brasília, ou nas próximas 12 h
+  // (o UFC da madrugada não vira "Hoje não tem jogo aqui" às 23:30).
   const today = next
-    ? brasiliaDay(new Date(next.startsAt)) === brasiliaDay(new Date(now))
+    ? brasiliaDay(new Date(next.startsAt)) === brasiliaDay(new Date(now)) ||
+      new Date(next.startsAt).getTime() - now < 12 * 3_600_000
     : false
   const sGame = data ? (
     next && pinLive ? (
@@ -983,6 +994,7 @@ export function BarDetail({
             </Text>
             {data.rating.stars !== null ? (
               <Text
+                accessibilityLabel={`${data.rating.stars.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} de 5 estrelas`}
                 style={[
                   styles.scoreStars,
                   { color: palette.dark ? ACID : '#7f9a12' }
@@ -1004,7 +1016,12 @@ export function BarDetail({
           {data.ratingDetail ? (
             <View style={{ flex: 1, gap: 6 }}>
               {data.ratingDetail.stars.map((row) => (
-                <View key={row.star} style={styles.barRow}>
+                <View
+                  key={row.star}
+                  style={styles.barRow}
+                  accessible
+                  accessibilityLabel={`${row.star} ${row.star === 1 ? 'estrela' : 'estrelas'}: ${row.count} ${row.count === 1 ? 'avaliação' : 'avaliações'}`}
+                >
                   <Text style={[styles.barLabel, { color: palette.muted }]}>
                     {row.star}
                   </Text>
@@ -1752,7 +1769,7 @@ export function BarDetail({
         </View>
       </View>
 
-      {checkInDock && data?.checkIn ? (
+      {checkInDock && data?.checkIn && !mine?.code ? (
         <CheckInDockFor
           barId={id}
           eventId={data.checkIn.eventId}
@@ -2346,4 +2363,14 @@ function CheckInDockFor({
       onSettings={() => Linking.openSettings()}
     />
   )
+}
+
+/** O agora da página, de 30 em 30 s. */
+function useClockNow() {
+  const [now, setNow] = useState(Date.now)
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(timer)
+  }, [])
+  return now
 }

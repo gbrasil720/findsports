@@ -75,7 +75,7 @@ import {
 } from '../lib/favorite-teams'
 import { readGameBoard } from '../lib/game-board'
 import { byMatchOrder, gameTitle } from '../lib/game-participants'
-import { readHereNow } from '../lib/here-now'
+import { type HereNow, readHereNow } from '../lib/here-now'
 import { effectiveHouseOffer } from '../lib/house-offer'
 import { decodeCursor, encodeCursor } from '../lib/keyset-cursor'
 import { isOpenNow, normalizeOpeningHours } from '../lib/opening-hours'
@@ -775,7 +775,10 @@ export const pubsRouter = router({
             : [],
           // "Estou aqui" (WEB-408): o jogo deste bar com check-in aberto agora.
           fan ? readCheckIn(viewer.id, events, now) : null,
-          readHereNow(liveIds, fan ? viewer.id : undefined),
+          // Como a contagem de quem vai: só para torcedor.
+          fan
+            ? readHereNow(liveIds, viewer.id)
+            : new Map<string, HereNow>(),
           // A régua das estrelas e quantas vezes cada etiqueta pesou
           // (rodada 8), com o mesmo piso da nota.
           showRating ? readRatingDetail(result.id) : null

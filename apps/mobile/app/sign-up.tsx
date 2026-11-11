@@ -44,6 +44,8 @@ export default function SignUp() {
   const submit = async () => {
     // Sem rede, a frase fica enquanto tenta de novo: o botão não pula.
     if (!failed) setError(null)
+    if (!accepted)
+      return setError('Aceite os Termos e a Privacidade para continuar.')
     if (!name.trim()) return setError('Diga seu nome.')
     if (!email.includes('@')) return setError('Confira o e-mail.')
     if (password.length < MIN_PASSWORD)
@@ -130,20 +132,6 @@ export default function SignUp() {
       <AuthRule ok={password.length >= MIN_PASSWORD}>
         {`${MIN_PASSWORD} caracteres ou mais`}
       </AuthRule>
-      {error ? (
-        <ErrorText key={`erro-${tries}`} style={[text(13.5), { color: LIVE }]}>
-          {error}
-        </ErrorText>
-      ) : null}
-      <PillButton
-        label={phaseLabel(phase, {
-          idle: 'Criar conta grátis',
-          sending: 'Criando…'
-        })}
-        busy={phaseBusy(phase)}
-        disabled={!accepted}
-        onPress={submit}
-      />
       {/* O aceite continua explícito (o toque marca), na linha do desenho. */}
       <Checkbox checked={accepted} onChange={setAccepted}>
         <Text style={[text(12.5, 'Regular', 1.4), { color: SUB }]}>
@@ -177,6 +165,19 @@ export default function SignUp() {
           </Text>
         </Text>
       </Checkbox>
+      {error ? (
+        <ErrorText key={`erro-${tries}`} style={[text(13.5), { color: LIVE }]}>
+          {error}
+        </ErrorText>
+      ) : null}
+      <PillButton
+        label={phaseLabel(phase, {
+          idle: 'Criar conta grátis',
+          sending: 'Criando…'
+        })}
+        busy={phaseBusy(phase)}
+        onPress={submit}
+      />
       {turnstile.widget}
     </AuthShell>
   )

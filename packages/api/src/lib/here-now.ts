@@ -26,7 +26,10 @@ export async function readHereNow(
         count: sql<number>`count(*)::int`
       })
       .from(visit)
-      .where(inArray(visit.eventId, eventIds))
+      .innerJoin(user, sql`${user.id} = ${visit.userId}`)
+      .where(
+        sql`${inArray(visit.eventId, eventIds)} AND ${user.banned} IS NOT TRUE`
+      )
       .groupBy(visit.eventId),
     viewerId
       ? db

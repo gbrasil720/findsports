@@ -2,7 +2,7 @@ import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
-import { Pressable, StyleSheet, View } from 'react-native'
+import { AccessibilityInfo, Pressable, StyleSheet, View } from 'react-native'
 import Animated, {
   useAnimatedStyle,
   useReducedMotion,
@@ -74,42 +74,54 @@ export default function Verified() {
   }))
 
   useEffect(() => {
-    latestURL().then(async (url) => {
-      const cookie = url ? rawParam(url, 'cookie') : undefined
-      if (!cookie) {
-        router.replace({ pathname: '/sign-in', params: { notice: 'expired' } })
-        return
-      }
-      await adoptSessionCookie(cookie)
-      // Busca a sessão antes de sair daqui, para a tela inicial já a ver.
-      const session = await authClient.getSession()
-      await queryClient.invalidateQueries()
-      const user = session.data?.user
-      // A ação que pediu a conta (rodada 2): sai feita, e a pessoa volta ao
-      // bar dela, sem o onboarding na frente (a ação primeiro).
-      const done = user ? await finishPending(user) : null
-      setName(user?.name?.trim().split(/\s+/)[0] ?? '')
-      setAcao(done)
-      haptic.success()
-      check.set(withTiming(1, { duration: 240, easing: EASE }))
-      card.set(withDelay(80, withTiming(1, { duration: 200, easing: EASE })))
-      let left = false
-      const leave = () => {
-        if (left) return
-        left = true
-        // A folha de entrar ainda está aberta: fecha antes, senão o bar abre
-        // dentro dela e o cartão da ação fica escondido atrás.
-        if (router.canDismiss()) router.dismissAll()
-        if (done && 'barId' in done) {
-          router.replace('/explore')
-          router.push({ pathname: '/bar/[id]', params: { id: done.barId } })
+    let timer: ReturnType<typeof setTimeout> | undefined
+    latestURL()
+      .then(async (url) => {
+        const cookie = url ? rawParam(url, 'cookie') : undefined
+        if (!cookie) {
+          router.replace({
+            pathname: '/sign-in',
+            params: { notice: 'expired' }
+          })
           return
         }
-        router.replace('/')
-      }
-      go.current = leave
-      setTimeout(leave, FOLLOW_MS)
-    })
+        await adoptSessionCookie(cookie)
+        // Busca a sessão antes de sair daqui, para a tela inicial já a ver.
+        const session = await authClient.getSession()
+        await queryClient.invalidateQueries()
+        const user = session.data?.user
+        // A ação que pediu a conta (rodada 2): sai feita, e a pessoa volta ao
+        // bar dela, sem o onboarding na frente (a ação primeiro).
+        const done = user ? await finishPending(user) : null
+        setName(user?.name?.trim().split(/\s+/)[0] ?? '')
+        setAcao(done)
+        haptic.success()
+        check.set(withTiming(1, { duration: 240, easing: EASE }))
+        card.set(withDelay(80, withTiming(1, { duration: 200, easing: EASE })))
+        let left = false
+        const leave = () => {
+          if (left) return
+          left = true
+          // A folha de entrar ainda está aberta: fecha antes, senão o bar abre
+          // dentro dela e o cartão da ação fica escondido atrás.
+          if (router.canDismiss()) router.dismissAll()
+          if (done && 'barId' in done) {
+            router.replace('/explore')
+            router.push({ pathname: '/bar/[id]', params: { id: done.barId } })
+            return
+          }
+          router.replace('/')
+        }
+        go.current = leave
+        // Com leitor de tela, não sai sozinha: o "ir agora" leva adiante.
+        if (!(await AccessibilityInfo.isScreenReaderEnabled()))
+          timer = setTimeout(leave, FOLLOW_MS)
+      })
+      // Sessão que não pegou: o login pede de novo, sem tela escura parada.
+      .catch(() =>
+        router.replace({ pathname: '/sign-in', params: { notice: 'expired' } })
+      )
+    return () => clearTimeout(timer)
   }, [router, check, card])
 
   const line =
@@ -121,8 +133,7 @@ export default function Verified() {
 
   return (
     <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Continuar"
+      accessible={false}
       onPress={() => go.current?.()}
       style={[styles.screen, { paddingBottom: insets.bottom + 24 }]}
     >
@@ -176,7 +187,11 @@ export default function Verified() {
           ) : null}
           <Text style={[text(13, 'Regular', 1.4), { color: '#aaa9a4' }]}>
             {acao && 'barId' in acao ? 'Voltando ao bar · ' : 'Entrando · '}
-            <Text style={[text(13, 'Bold', 1.4), styles.underline]}>
+            <Text
+              accessibilityRole="button"
+              onPress={() => go.current?.()}
+              style={[text(13, 'Bold', 1.4), styles.underline]}
+            >
               ir agora
             </Text>
           </Text>
