@@ -125,6 +125,9 @@ export default function MeuEspaco() {
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
       <ScrollView
+        // A busca dos times da casa fica no fim: o teclado empurra a tela.
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
           paddingTop: insets.top + 10,
           paddingBottom: insets.bottom + 32,
