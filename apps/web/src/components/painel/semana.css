@@ -1,0 +1,478 @@
+/* biome-ignore-all lint/style/noDescendingSpecificity: card e lista na ordem das pranchas; tudo preso a .sem. */
+/*
+ * Jogos da semana pra você (WEB-433; pranchas WJ, WH, WP e C-estados do canvas
+ * "Jogos da semana pra você"). O card Placar é escuro nos dois temas; a lista
+ * segue o tema. Cores próprias (`--sem-*`): a seção mora no painel (`.pn3`) e
+ * no "Seu primeiro jogo" (`.lp3.ob3`), que nomeiam as variáveis diferente.
+ */
+
+.sem {
+  --sem-fg: #12120f;
+  --sem-card: #faf8f3;
+  --sem-muted: #55554f;
+  --sem-body: #3a3a35;
+  --sem-line: rgba(18, 18, 15, 0.1);
+  --sem-ink: #12120f;
+  --sem-paper: #f1eee6;
+  --sem-acid: #c9f135;
+  --sem-drop: #7f9a12;
+  --sem-display: "Anton", "Impact", "Arial Narrow", sans-serif;
+  --sem-mono: "Geist Mono", ui-monospace, Menlo, monospace;
+  --sem-text: "Archivo", ui-sans-serif, system-ui, sans-serif;
+
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 14px 0 18px;
+  color: var(--sem-fg);
+  font-family: var(--sem-text);
+}
+
+html[data-theme="dark"] .sem {
+  --sem-fg: #f1eee6;
+  --sem-card: #1c1c18;
+  --sem-muted: #aaa9a4;
+  --sem-body: #d6d3cb;
+  --sem-line: rgba(241, 238, 230, 0.1);
+}
+
+.sem-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 2px 2px 0;
+}
+
+.sem-head h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.sem-mono {
+  color: var(--sem-muted);
+  font: 500 13px / 1.3 var(--sem-mono);
+}
+
+.sem-head .sem-more {
+  margin-left: auto;
+}
+
+.sem-more {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--sem-fg);
+  font: 700 14.5px / 1.3 var(--sem-text);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.sem-lab {
+  margin-top: 6px;
+  color: var(--sem-muted);
+  font: 600 12px / 1.2 var(--sem-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* O card Placar. */
+.sem-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 22px;
+  border-radius: 24px;
+  background-color: var(--sem-ink);
+  background-image: radial-gradient(
+    circle,
+    rgba(241, 238, 230, 0.07) 1.2px,
+    transparent 1.5px
+  );
+  background-size: 7px 7px;
+  box-shadow: 0 6px 0 #000;
+  color: var(--sem-paper);
+}
+
+.sem-card.is-on {
+  outline: 2px solid var(--sem-acid);
+  outline-offset: -2px;
+  box-shadow: 0 6px 0 var(--sem-drop);
+}
+
+.sem-card.is-wide {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 24px;
+}
+
+.sem-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sem-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sem-k {
+  color: #aaa9a4;
+  font: 600 11px / 1.35 var(--sem-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.sem-card .sem-k.sem-acid {
+  font-size: 12px;
+}
+
+.sem-acid {
+  color: var(--sem-acid);
+}
+
+.sem-disp {
+  margin: 6px 0 0;
+  font: 400 44px / 0.98 var(--sem-display);
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.sem-card.is-on .sem-disp {
+  margin: 0;
+  font-size: 40px;
+}
+
+.sem-x {
+  color: var(--sem-acid);
+}
+
+.sem-cells {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 8px;
+}
+
+.sem-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(241, 238, 230, 0.06);
+}
+
+.sem-cell .sem-k {
+  font-size: 10px;
+}
+
+.sem-cell.is-tbc {
+  border: 1.5px dashed rgba(241, 238, 230, 0.35);
+  background: transparent;
+}
+
+.sem-n {
+  font: 400 32px / 1 var(--sem-display);
+  font-variant-numeric: tabular-nums;
+  text-transform: uppercase;
+}
+
+.sem-n.is-tv {
+  margin-top: 6px;
+  font-size: 22px;
+  overflow-wrap: anywhere;
+}
+
+.sem-acts {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+}
+
+.sem-acts.is-start {
+  justify-content: flex-start;
+}
+
+.sem-why {
+  flex: 1;
+  margin: 0;
+  color: #dedbd4;
+  font-size: 14.5px;
+  line-height: 1.45;
+}
+
+.sem-why b {
+  color: var(--sem-paper);
+}
+
+.sem-why.is-end {
+  margin-top: auto;
+  flex: none;
+}
+
+.sem-txt {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: #aaa9a4;
+  font: 700 14px / 1.2 var(--sem-text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sem-txt:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.sem-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 46px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 999px;
+  font: 700 15px / 1 var(--sem-text);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sem-pill:active {
+  transform: translateY(2px);
+}
+
+.sem-pill:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.sem-pill.is-acid {
+  background: var(--sem-acid);
+  color: var(--sem-ink);
+  box-shadow: 0 4px 0 var(--sem-drop);
+}
+
+.sem-pill.is-line {
+  border: 1.5px solid rgba(241, 238, 230, 0.5);
+  background: transparent;
+  color: var(--sem-paper);
+}
+
+.sem-pill.is-ink {
+  background: var(--sem-fg);
+  color: var(--sem-card);
+}
+
+.sem-pill.is-sm {
+  height: 38px;
+  padding: 0 16px;
+  font-size: 14px;
+}
+
+.sem-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font: 600 10.5px / 1.2 var(--sem-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.sem-tag.is-on,
+.sem-tag.is-grid {
+  background: var(--sem-acid);
+  color: var(--sem-ink);
+}
+
+.sem-tag.is-grid {
+  height: 30px;
+  padding: 0 10px;
+}
+
+/* A lista dos outros da semana. */
+.sem-list {
+  padding: 4px 20px 10px;
+  border-radius: 24px;
+  background: var(--sem-card);
+  box-shadow: 0 10px 30px -18px rgba(18, 18, 15, 0.35);
+}
+
+.sem-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sem-row {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 0;
+  border-top: 1px solid var(--sem-line);
+}
+
+.sem-row:first-child {
+  border-top: 0;
+}
+
+.sem-when {
+  display: flex;
+  flex-direction: column;
+}
+
+.sem-when .sem-k {
+  color: var(--sem-muted);
+  font-size: 10.5px;
+}
+
+.sem-when b {
+  font: 400 23px / 1.1 var(--sem-display);
+}
+
+.sem-row-m {
+  min-width: 0;
+}
+
+.sem-row-m > b {
+  display: block;
+  font-size: 15.5px;
+}
+
+.sem-row-m > span {
+  display: block;
+  margin-top: 3px;
+  color: var(--sem-muted);
+  font-size: 13px;
+}
+
+.sem-row-m > span b {
+  color: var(--sem-fg);
+}
+
+.sem-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--sem-line);
+  color: var(--sem-muted);
+  font-size: 13.5px;
+}
+
+.sem-monday {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--sem-body);
+  font-size: 14px;
+}
+
+.sem-attr {
+  margin: 0 2px;
+  color: var(--sem-muted);
+  font-size: 12px;
+}
+
+.sem-attr a {
+  color: inherit;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .sem-pill:not(:disabled):hover {
+    transform: translateY(-2px);
+  }
+}
+
+@media (max-width: 720px) {
+  .sem-card {
+    padding: 18px;
+    gap: 12px;
+  }
+
+  .sem-card.is-wide {
+    display: flex;
+  }
+
+  .sem-disp {
+    font-size: 32px;
+  }
+
+  .sem-cells {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .sem-cell {
+    padding: 10px;
+  }
+
+  .sem-n {
+    font-size: 24px;
+  }
+
+  .sem-n.is-tv {
+    font-size: 16px;
+  }
+
+  .sem-cell .sem-k {
+    font-size: 8.5px;
+  }
+
+  .sem-acts {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .sem-acts .sem-pill {
+    order: 1;
+    width: 100%;
+  }
+
+  .sem-acts .sem-txt {
+    order: 2;
+    height: 32px;
+  }
+
+  .sem-acts.is-start {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .sem-acts.is-start .sem-pill {
+    width: auto;
+  }
+
+  .sem-list {
+    padding: 2px 14px 8px;
+  }
+
+  .sem-row {
+    grid-template-columns: 50px minmax(0, 1fr) auto;
+    gap: 10px;
+  }
+
+  .sem-foot {
+    flex-wrap: wrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sem-pill {
+    transition: none;
+  }
+}
