@@ -4,6 +4,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
 import {
+  Linking,
   Switch as NativeSwitch,
   Pressable,
   ScrollView,
@@ -20,12 +21,22 @@ import {
   errorMessage,
   Icon,
   INK,
+  PAPER,
   Text,
   TextInput,
   text,
   useStatusBar
 } from '@/components/ui'
+import {
+  FootballDataNote,
+  hasCatalog,
+  PlacarCard,
+  useWeekGames,
+  type WeekGame,
+  WeekRow
+} from '@/components/week-games'
 import { dayKicker } from '@/lib/bar-owner'
+import { env } from '@/lib/env'
 import { formatTime } from '@/lib/explore'
 import { useOwnerBar } from '@/lib/owner'
 import { queryClient, trpc } from '@/lib/trpc'
@@ -66,10 +77,10 @@ export default function NovoJogo() {
   const bar = owner.bar
   const events = useQuery(trpc.pub.getMyEvents.queryOptions())
   const editing = id ? events.data?.find((game) => game.id === id) : undefined
-  const suggestions = useQuery({
-    ...trpc.pub.gameSuggestions.queryOptions(),
-    enabled: !id
-  })
+  // Os jogos da semana (WEB-433): com o catálogo, o mais indicado vai no
+  // card Placar e o resto em linhas; sem, a lista dos bares perto.
+  const suggestions = useWeekGames(!id)
+  const catalog = hasCatalog(suggestions.data)
   const policy = useQuery({
     ...trpc.pub.getMyEventCreationPolicy.queryOptions(),
     enabled: !id
@@ -228,7 +239,17 @@ export default function NovoJogo() {
                 returnKeyType="search"
               />
             </View>
-            {list_.length ? (
+            {catalog && list_.length ? (
+              <WeekChoice
+                games={list_}
+                first={first}
+                chosen={chosen}
+                onChoose={(key) => {
+                  haptic.select()
+                  setChosen(key === chosen ? null : key)
+                }}
+              />
+            ) : list_.length ? (
               list_.map((game) => {
                 const on = game.key === chosen
                 return (
@@ -483,6 +504,81 @@ function Feature({
   )
 }
 
+/**
+ * O mais indicado no card Placar e os outros em linha (AN-depois e
+ * AP-depois); tocar escolhe, e o Publicar de baixo publica.
+ */
+function WeekChoice({
+  games,
+  first,
+  chosen,
+  onChoose
+}: {
+  games: WeekGame[]
+  first: boolean
+  chosen: string | null
+  onChoose: (key: string) => void
+}) {
+  const palette = usePalette()
+  const top = games.find((game) => game.featured) ?? games[0]
+  const rest = games.filter((game) => game !== top)
+  const label = [styles.weekLabel, { color: palette.muted }]
+  return (
+    <View style={{ gap: 8 }}>
+      {top ? (
+        <>
+          <Text style={label}>
+            {first
+              ? 'O MAIS INDICADO PRO SEU PRIMEIRO JOGO'
+              : 'O MAIS INDICADO DA SEMANA'}
+          </Text>
+          <Pressable
+            accessibilityRole="radio"
+            accessibilityState={{ checked: chosen === top.key }}
+            onPress={() => onChoose(top.key)}
+          >
+            <PlacarCard game={top} selected={chosen === top.key} />
+          </Pressable>
+        </>
+      ) : null}
+      {rest.length ? (
+        <Text style={[label, { marginTop: 6 }]}>OUTROS DESTA SEMANA</Text>
+      ) : null}
+      {rest.map((game) => (
+        <WeekRow
+          key={game.key}
+          game={game}
+          selected={chosen === game.key}
+          onPress={() => onChoose(game.key)}
+        />
+      ))}
+      {first ? (
+        <View style={styles.monday}>
+          <Icon name="sparkle" size={16} color={ACID} />
+          <Text style={[text(13, 'Regular', 1.35), { color: PAPER, flex: 1 }]}>
+            <Text style={[text(13, 'Bold', 1.35), { color: PAPER }]}>
+              Toda segunda, uma lista nova
+            </Text>
+            , em Hoje e em Jogos.
+          </Text>
+        </View>
+      ) : (
+        <Pressable
+          accessibilityRole="link"
+          onPress={() =>
+            Linking.openURL(`${env.EXPO_PUBLIC_SERVER_URL}/admin/jogos`)
+          }
+        >
+          <Text style={[text(14, 'Bold', 1.3), { color: palette.ink }]}>
+            Não está aqui? Montar um jogo fora da lista ›
+          </Text>
+        </Pressable>
+      )}
+      <FootballDataNote />
+    </View>
+  )
+}
+
 function Note({ children }: { children: string }) {
   const palette = usePalette()
   return (
@@ -495,6 +591,22 @@ function Note({ children }: { children: string }) {
 }
 
 const styles = StyleSheet.create({
+  weekLabel: {
+    marginHorizontal: 2,
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11.5,
+    letterSpacing: 1.15
+  },
+  monday: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 2,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 16,
+    backgroundColor: INK
+  },
   head: {
     flexDirection: 'row',
     alignItems: 'center',
