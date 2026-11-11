@@ -71,7 +71,8 @@ const JOB_TITLES: Record<string, string> = {
   bar_plans: 'Reconciliação diária',
   analytics_retention: 'Limpeza dos analytics',
   ai_stale_runs: 'Execuções presas da IA',
-  bar_notices: 'Avisos da semana dos bares'
+  bar_notices: 'Avisos da semana dos bares',
+  weekly_games: 'Jogos da semana'
 }
 
 /** "2 fotos e 1 descrição", só o que tem. */

@@ -60,6 +60,10 @@ const GLOSSARY = [
     'Avisos da semana',
     'Os e-mails das segundas para o dono do bar: o resumo da semana e o aviso de grade vazia. Cada bar liga e desliga os seus.'
   ],
+  [
+    'Jogos da semana',
+    'Às segundas busca os jogos da semana e onde passam; às quintas procura o canal que faltou. Detalhe e custo na tela Jogos da semana.'
+  ],
   ['Latência', 'Quanto o banco demora para responder. Até uns 50 ms é normal.'],
   [
     'Tiles do mapa',
@@ -118,12 +122,14 @@ function buildChecks(status: Status): Check[] {
   const retention = status.jobs.find((j) => j.job === 'analytics_retention')
   const notices = status.jobs.find((j) => j.job === 'bar_notices')
   const aiRuns = status.jobs.find((j) => j.job === 'ai_stale_runs')
+  const weekly = status.jobs.find((j) => j.job === 'weekly_games')
   const next = plans ? formatDateTime(plans.nextRunAt) : '—'
   const { migrations, database, tiles, deploy } = status
   const p = counts(plans)
   const r = counts(retention)
   const n = counts(notices)
   const a = counts(aiRuns)
+  const w = counts(weekly)
 
   return [
     {
@@ -272,6 +278,23 @@ function buildChecks(status: Status): Check[] {
           v: String(n.weeklySummaries ?? '—')
         },
         { k: 'Grade vazia', v: String(n.emptySchedules ?? '—') }
+      ]
+    },
+    {
+      key: 'weekly_games',
+      title: 'Jogos da semana',
+      where: 'mesmo cron · runWeeklyGames',
+      state: weekly?.state ?? 'warn',
+      job: 'weekly_games',
+      error: weekly?.lastRun?.ok === false ? weekly.lastRun.error : null,
+      facts: [
+        ...lastRunFacts(weekly),
+        { k: 'Esperado', v: 'monta às segundas, canal às quintas' },
+        { k: 'Jogos', v: String(w.games ?? '—') },
+        {
+          k: 'Custo',
+          v: w.costUsd === undefined ? '—' : `US$ ${w.costUsd.toFixed(3)}`
+        }
       ]
     },
     {
