@@ -350,6 +350,13 @@ export default function ValidarCodigo() {
                     haptic.select()
                     setProblem(null)
                     setTyped(next)
+                    // O 6º caractere já valida, como o leitor do QR.
+                    if (
+                      next.length === RESERVATION_CODE_LENGTH &&
+                      key !== '⌫' &&
+                      !busy
+                    )
+                      check(next)
                   }}
                 />
               ))}

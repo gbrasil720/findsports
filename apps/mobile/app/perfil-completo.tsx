@@ -75,6 +75,7 @@ export default function PerfilCompleto() {
         : ''
     ]
   ]
+  const doneCount = rows.filter(([ok]) => ok).length
   const amenities = bar?.amenities ?? []
   const tags = [
     ...(amenities.includes(1) ? [`TELÃO ×${bar?.screenCount ?? 1}`] : []),
@@ -98,7 +99,11 @@ export default function PerfilCompleto() {
           gap: 14
         }}
       >
-        <Text style={styles.kicker}>PERFIL COMPLETO</Text>
+        <Text style={styles.kicker}>
+          {doneCount === rows.length
+            ? 'PERFIL COMPLETO'
+            : `QUASE LÁ · ${doneCount} DE ${rows.length}`}
+        </Text>
         <Plate
           name={bar?.name ?? ''}
           address={bar ? `${bar.address} · ${bar.neighborhood}` : null}
@@ -115,7 +120,12 @@ export default function PerfilCompleto() {
         />
         <View style={styles.list}>
           {rows.map(([ok, title, sub], i) => (
-            <View key={title} style={[styles.row, i > 0 && styles.line]}>
+            <View
+              key={title}
+              accessible
+              accessibilityLabel={`${title}: ${ok ? 'feito' : 'falta'}${sub ? `, ${sub}` : ''}`}
+              style={[styles.row, i > 0 && styles.line]}
+            >
               <View
                 style={[
                   styles.dot,

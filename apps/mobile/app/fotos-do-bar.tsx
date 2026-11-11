@@ -189,12 +189,23 @@ export default function FotosDoBar() {
                 Assim aparece no mapa e na busca
               </Text>
               <Text style={[text(14, 'Regular', 1.35), { color: '#c9c7c0' }]}>
-                Segure outra foto para trocar.
+                {!bar?.photoUrl
+                  ? 'Sem capa ainda: toque no + e mande a primeira foto.'
+                  : !gallery
+                    ? 'Toque no + para trocar a capa.'
+                    : live.length > 1
+                      ? 'Segure outra foto aprovada para trocar.'
+                      : 'Mande mais fotos para ter outra opção de capa.'}
               </Text>
             </View>
           </View>
         </View>
 
+        {gallery ? (
+          <Text style={[styles.kicker, { color: palette.muted }]}>
+            {`${live.length + review.length} DE 12 FOTOS · RECUSADA NÃO CONTA`}
+          </Text>
+        ) : null}
         <View style={styles.counts}>
           <Count value={live.length} label="no ar" />
           <Count value={review.length} label="em revisão" />
