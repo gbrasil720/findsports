@@ -50,6 +50,12 @@ export const HOUDINI_NAV_GROUPS = [
         icon: 'spark',
         hint: 'gasto e testes A/B'
       },
+      {
+        to: '/houdini/jogos-da-semana',
+        label: 'Jogos da semana',
+        icon: 'cal',
+        hint: 'catálogo e onde passa'
+      },
       { to: '/houdini/bastidores', label: 'Bastidores', icon: 'pulse' }
     ]
   },

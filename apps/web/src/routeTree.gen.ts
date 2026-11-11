@@ -65,6 +65,7 @@ import { Route as HoudiniAppFeiticosRouteImport } from './routes/houdini/_app/fe
 import { Route as HoudiniAppGrimorioRouteImport } from './routes/houdini/_app/grimorio'
 import { Route as HoudiniAppIaRouteImport } from './routes/houdini/_app/ia'
 import { Route as HoudiniAppJogosRouteImport } from './routes/houdini/_app/jogos'
+import { Route as HoudiniAppJogosDaSemanaRouteImport } from './routes/houdini/_app/jogos-da-semana'
 import { Route as HoudiniAppPessoasRouteImport } from './routes/houdini/_app/pessoas'
 import { Route as HoudiniAppRevisaoRouteImport } from './routes/houdini/_app/revisao'
 import { Route as dashboardDashboardAvaliarEventIdRouteImport } from './routes/(dashboard)/dashboard_.avaliar.$eventId'
@@ -357,6 +358,11 @@ const HoudiniAppJogosRoute = HoudiniAppJogosRouteImport.update({
   path: '/jogos',
   getParentRoute: () => HoudiniAppRoute,
 } as any)
+const HoudiniAppJogosDaSemanaRoute = HoudiniAppJogosDaSemanaRouteImport.update({
+  id: '/jogos-da-semana',
+  path: '/jogos-da-semana',
+  getParentRoute: () => HoudiniAppRoute,
+} as any)
 const HoudiniAppPessoasRoute = HoudiniAppPessoasRouteImport.update({
   id: '/pessoas',
   path: '/pessoas',
@@ -451,6 +457,7 @@ export interface FileRoutesByFullPath {
   '/houdini/grimorio': typeof HoudiniAppGrimorioRoute
   '/houdini/ia': typeof HoudiniAppIaRoute
   '/houdini/jogos': typeof HoudiniAppJogosRoute
+  '/houdini/jogos-da-semana': typeof HoudiniAppJogosDaSemanaRoute
   '/houdini/pessoas': typeof HoudiniAppPessoasRoute
   '/houdini/revisao': typeof HoudiniAppRevisaoRoute
   '/houdini/': typeof HoudiniAppIndexRoute
@@ -514,6 +521,7 @@ export interface FileRoutesByTo {
   '/houdini/grimorio': typeof HoudiniAppGrimorioRoute
   '/houdini/ia': typeof HoudiniAppIaRoute
   '/houdini/jogos': typeof HoudiniAppJogosRoute
+  '/houdini/jogos-da-semana': typeof HoudiniAppJogosDaSemanaRoute
   '/houdini/pessoas': typeof HoudiniAppPessoasRoute
   '/houdini/revisao': typeof HoudiniAppRevisaoRoute
   '/dashboard/avaliar/$eventId': typeof dashboardDashboardAvaliarEventIdRoute
@@ -579,6 +587,7 @@ export interface FileRoutesById {
   '/houdini/_app/grimorio': typeof HoudiniAppGrimorioRoute
   '/houdini/_app/ia': typeof HoudiniAppIaRoute
   '/houdini/_app/jogos': typeof HoudiniAppJogosRoute
+  '/houdini/_app/jogos-da-semana': typeof HoudiniAppJogosDaSemanaRoute
   '/houdini/_app/pessoas': typeof HoudiniAppPessoasRoute
   '/houdini/_app/revisao': typeof HoudiniAppRevisaoRoute
   '/houdini/_app/': typeof HoudiniAppIndexRoute
@@ -645,6 +654,7 @@ export interface FileRouteTypes {
     | '/houdini/grimorio'
     | '/houdini/ia'
     | '/houdini/jogos'
+    | '/houdini/jogos-da-semana'
     | '/houdini/pessoas'
     | '/houdini/revisao'
     | '/houdini/'
@@ -708,6 +718,7 @@ export interface FileRouteTypes {
     | '/houdini/grimorio'
     | '/houdini/ia'
     | '/houdini/jogos'
+    | '/houdini/jogos-da-semana'
     | '/houdini/pessoas'
     | '/houdini/revisao'
     | '/dashboard/avaliar/$eventId'
@@ -772,6 +783,7 @@ export interface FileRouteTypes {
     | '/houdini/_app/grimorio'
     | '/houdini/_app/ia'
     | '/houdini/_app/jogos'
+    | '/houdini/_app/jogos-da-semana'
     | '/houdini/_app/pessoas'
     | '/houdini/_app/revisao'
     | '/houdini/_app/'
@@ -1218,6 +1230,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HoudiniAppJogosRouteImport
       parentRoute: typeof HoudiniAppRoute
     }
+    '/houdini/_app/jogos-da-semana': {
+      id: '/houdini/_app/jogos-da-semana'
+      path: '/jogos-da-semana'
+      fullPath: '/houdini/jogos-da-semana'
+      preLoaderRoute: typeof HoudiniAppJogosDaSemanaRouteImport
+      parentRoute: typeof HoudiniAppRoute
+    }
     '/houdini/_app/pessoas': {
       id: '/houdini/_app/pessoas'
       path: '/pessoas'
@@ -1305,6 +1324,7 @@ interface HoudiniAppRouteChildren {
   HoudiniAppGrimorioRoute: typeof HoudiniAppGrimorioRoute
   HoudiniAppIaRoute: typeof HoudiniAppIaRoute
   HoudiniAppJogosRoute: typeof HoudiniAppJogosRoute
+  HoudiniAppJogosDaSemanaRoute: typeof HoudiniAppJogosDaSemanaRoute
   HoudiniAppPessoasRoute: typeof HoudiniAppPessoasRoute
   HoudiniAppRevisaoRoute: typeof HoudiniAppRevisaoRoute
   HoudiniAppIndexRoute: typeof HoudiniAppIndexRoute
@@ -1321,6 +1341,7 @@ const HoudiniAppRouteChildren: HoudiniAppRouteChildren = {
   HoudiniAppGrimorioRoute: HoudiniAppGrimorioRoute,
   HoudiniAppIaRoute: HoudiniAppIaRoute,
   HoudiniAppJogosRoute: HoudiniAppJogosRoute,
+  HoudiniAppJogosDaSemanaRoute: HoudiniAppJogosDaSemanaRoute,
   HoudiniAppPessoasRoute: HoudiniAppPessoasRoute,
   HoudiniAppRevisaoRoute: HoudiniAppRevisaoRoute,
   HoudiniAppIndexRoute: HoudiniAppIndexRoute,
