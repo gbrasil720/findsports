@@ -1,28 +1,20 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
 import { StyleSheet, View } from 'react-native'
+import { AuthField, AuthRule, AuthShell } from '@/components/auth-shell'
+import { FanCard } from '@/components/fan-card'
 import { ErrorText, haptic } from '@/components/motion'
 import { useTurnstile } from '@/components/turnstile'
 import {
   authErrorMessage,
-  BackButton,
-  BlockButton,
   Checkbox,
-  FG,
-  Field,
-  Icon,
   LIVE,
   MIN_PASSWORD,
-  passwordScore,
+  PillButton,
   phaseBusy,
   phaseLabel,
-  Screen,
-  STONE,
-  StrengthBars,
   SUB,
   Text,
-  TextLink,
-  Title,
   text
 } from '@/components/ui'
 import { attemptPhase, retryable, settleAuth } from '@/lib/auth-attempt'
@@ -88,34 +80,36 @@ export default function SignUp() {
 
   const phase = attemptPhase(pending, failed)
 
+  // Rodada 8, tela 4: "Crie sua carteirinha", com a carteirinha da pessoa
+  // por trás do formulário (a única peça de apoio): o nome se preenche
+  // enquanto ela digita. Não pergunta torcedor ou bar aqui; o dono chega pelo
+  // caminho do bar (`role=pub`).
   return (
-    <Screen brand gap={15}>
-      <View style={styles.top}>
-        <BackButton />
-        <TextLink
-          lead="Já tem conta?"
-          label="Entrar"
-          onPress={() => router.dismissTo('/sign-in')}
-        />
-      </View>
-      <View style={styles.tag}>
-        <Icon name={role === 'pub' ? 'bar' : 'fan'} size={11} />
-        <Text style={[text(10.5, 'Bold', 1.2), { color: FG }]}>
-          {role === 'pub' ? 'Conta de bar' : 'Conta de torcedor'}
-        </Text>
-      </View>
-      <Title lines={[['Crie sua conta ', 'grátis.']]} size={40} />
-      <Field
+    <AuthShell
+      title={['Crie sua', 'carteirinha']}
+      art={
+        <View style={styles.peek} pointerEvents="none">
+          <FanCard
+            name={name.trim() || 'Seu nome'}
+            teams={[]}
+            sports={[]}
+            radius={null}
+            base={null}
+          />
+        </View>
+      }
+    >
+      <AuthField
         label="Nome"
-        icon="person"
+        placeholder="Como você aparece na Onside"
         autoComplete="name"
         textContentType="name"
         value={name}
         onChangeText={setName}
       />
-      <Field
+      <AuthField
         label="E-mail"
-        icon="mail"
+        placeholder="voce@email.com"
         autoCapitalize="none"
         autoComplete="email"
         keyboardType="email-address"
@@ -123,28 +117,44 @@ export default function SignUp() {
         value={email}
         onChangeText={setEmail}
       />
-      <Field
+      <AuthField
         label="Senha"
-        icon="lock"
+        placeholder={`${MIN_PASSWORD} caracteres ou mais`}
         autoComplete="new-password"
         textContentType="newPassword"
         secureTextEntry
         value={password}
         onChangeText={setPassword}
+        onSubmitEditing={submit}
       />
-      <View style={{ marginTop: -6 }}>
-        <StrengthBars score={passwordScore(password)} />
-      </View>
+      <AuthRule ok={password.length >= MIN_PASSWORD}>
+        {`${MIN_PASSWORD} caracteres ou mais`}
+      </AuthRule>
+      {error ? (
+        <ErrorText key={`erro-${tries}`} style={[text(13.5), { color: LIVE }]}>
+          {error}
+        </ErrorText>
+      ) : null}
+      <PillButton
+        label={phaseLabel(phase, {
+          idle: 'Criar conta grátis',
+          sending: 'Criando…'
+        })}
+        busy={phaseBusy(phase)}
+        disabled={!accepted}
+        onPress={submit}
+      />
+      {/* O aceite continua explícito (o toque marca), na linha do desenho. */}
       <Checkbox checked={accepted} onChange={setAccepted}>
-        <Text style={[text(13.5), { color: SUB }]}>
-          Li e aceito os{' '}
+        <Text style={[text(12.5, 'Regular', 1.4), { color: SUB }]}>
+          Aceito os{' '}
           <Text
             style={styles.link}
             onPress={() =>
               router.push({ pathname: '/legal', params: { doc: 'termos' } })
             }
           >
-            Termos de Uso
+            Termos
           </Text>{' '}
           e a{' '}
           <Text
@@ -156,45 +166,28 @@ export default function SignUp() {
               })
             }
           >
-            Política de Privacidade
+            Privacidade
+          </Text>{' '}
+          · Já tem conta?{' '}
+          <Text
+            style={styles.link}
+            onPress={() => router.dismissTo('/sign-in')}
+          >
+            Entrar
           </Text>
-          .
         </Text>
       </Checkbox>
-      {error ? (
-        <ErrorText key={`erro-${tries}`} style={[text(13.5), { color: LIVE }]}>
-          {error}
-        </ErrorText>
-      ) : null}
-      <BlockButton
-        label={phaseLabel(phase, {
-          idle: 'Criar conta grátis',
-          sending: 'Criando…'
-        })}
-        busy={phaseBusy(phase)}
-        disabled={!accepted}
-        onPress={submit}
-      />
       {turnstile.widget}
-    </Screen>
+    </AuthShell>
   )
 }
 
 const styles = StyleSheet.create({
-  top: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center'
+  // A carteirinha aparece atrás do papel: só o topo dela fica à vista.
+  peek: {
+    height: 96,
+    marginBottom: -50,
+    transform: [{ rotate: '-2deg' }]
   },
-  tag: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 3,
-    paddingHorizontal: 6,
-    borderRadius: 3,
-    backgroundColor: STONE
-  },
-  link: { textDecorationLine: 'underline' }
+  link: { textDecorationLine: 'underline', fontFamily: 'Archivo-Bold' }
 })
