@@ -102,14 +102,22 @@ export default function OwnerTabs() {
       key: 'plano',
       icon: 'star',
       label: 'Plano',
-      soon: 'O plano chega ao app em breve; ele está no painel em onside.sh.',
+      soon: '',
+      open: () => {
+        setMenu(false)
+        router.push('/plano')
+      },
       meta: owner.planName ?? undefined
     },
     {
       key: 'config',
       icon: 'gear',
       label: 'Configurações',
-      soon: 'As configurações do bar chegam ao app em breve; elas estão no painel em onside.sh.'
+      soon: '',
+      open: () => {
+        setMenu(false)
+        router.push('/configuracoes-bar')
+      }
     }
   ]
   // "BZ" de "Bar do Zé": a primeira e a última palavra.

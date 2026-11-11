@@ -8,12 +8,23 @@ import { trpc } from '@/lib/trpc'
  * decide o que desenhar: o servidor confere de novo cada pedido.
  */
 
-type Plan = 'starter' | 'pro' | 'elite'
+export type Plan = 'starter' | 'pro' | 'elite'
 
 export const PLAN_NAMES: Record<Plan, string> = {
   starter: 'Starter',
   pro: 'Pro',
   elite: 'Elite'
+}
+
+/**
+ * Preço por mês em reais: a tabela e o de fundador (tabela − 28). A fonte é
+ * o catálogo do web (`apps/web/src/lib/plan-catalog.ts`, `pricesFor`), que o
+ * teste de lá amarra aos Termos de Uso.
+ */
+export const PLAN_PRICES: Record<Plan, { table: number; founder: number }> = {
+  starter: { table: 97, founder: 69 },
+  pro: { table: 147, founder: 119 },
+  elite: { table: 297, founder: 269 }
 }
 
 export function currentPlan(

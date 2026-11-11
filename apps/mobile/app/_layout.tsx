@@ -141,6 +141,8 @@ export default function Layout() {
                 <Stack.Screen name="desempenho" />
                 <Stack.Screen name="meu-espaco" />
                 <Stack.Screen name="fotos-do-bar" />
+                <Stack.Screen name="plano" />
+                <Stack.Screen name="configuracoes-bar" />
                 <Stack.Screen
                   name="novo-jogo"
                   options={{ presentation: 'modal' }}
