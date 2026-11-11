@@ -82,6 +82,9 @@ export function PubReceipt({
   const insets = useSafeAreaInsets()
   const reduced = useReducedMotion()
   const [run, setRun] = useState(0)
+  // O rodapé (dois botões e a nota) cobre o fim da rolagem: a folga é a
+  // altura dele, medida.
+  const [foot, setFoot] = useState(220)
   const lines: [Kind, ReactNode, ReactNode?][] = [
     ['logo', null],
     ['c', 'COMPROVANTE DE CADASTRO'],
@@ -135,7 +138,7 @@ export function PubReceipt({
       <ScrollView
         contentContainerStyle={{
           paddingTop: insets.top + 28,
-          paddingBottom: insets.bottom + 170,
+          paddingBottom: foot + 24,
           paddingHorizontal: 16,
           alignItems: 'center'
         }}
@@ -182,6 +185,7 @@ export function PubReceipt({
         </Animated.View>
       </ScrollView>
       <View
+        onLayout={(e) => setFoot(e.nativeEvent.layout.height)}
         style={[
           styles.foot,
           { paddingBottom: insets.bottom + 10, backgroundColor: palette.bg }
