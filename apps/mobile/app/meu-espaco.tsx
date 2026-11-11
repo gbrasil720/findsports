@@ -9,8 +9,8 @@ import {
 } from '@findsports_oficial/api/lib/opening-hours'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { LinearGradient } from 'expo-linear-gradient'
-import { useRouter } from 'expo-router'
-import { useState } from 'react'
+import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Pressable,
@@ -71,7 +71,12 @@ export default function MeuEspaco() {
   const owner = useOwnerBar()
   const bar = owner.bar
   const photos = useQuery(trpc.pub.photos.queryOptions())
-  const [tab, setTab] = useState<Tab>('horario')
+  // `?aba=dados` abre direto numa aba (link e navegador DEV).
+  const { aba } = useLocalSearchParams<{ aba?: Tab }>()
+  const [tab, setTab] = useState<Tab>(aba ?? 'horario')
+  useEffect(() => {
+    if (aba) setTab(aba)
+  }, [aba])
   const confirm = useMutation(
     trpc.pub.updateCodeConfirmation.mutationOptions({
       onSuccess: () => queryClient.invalidateQueries(),
