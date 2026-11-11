@@ -83,6 +83,7 @@ const reservation: ValidatedReservation = {
   offerSnapshot: 'Chopp em dobro',
   usedCount: 0,
   maxUses: 3,
+  guest: { markedAt: null, visitsHere: 0, visitsOnside: null, friendsToday: 0 },
   event: {
     championship: 'Brasileirão',
     participants: ['Corinthians', 'Palmeiras'],
