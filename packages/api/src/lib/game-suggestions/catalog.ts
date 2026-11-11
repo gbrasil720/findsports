@@ -109,6 +109,17 @@ export async function readCatalogCandidates(request: {
   }))
 }
 
+/** Os times da casa do bar (`bar_team`), id → nome. */
+export async function readHouseTeams(
+  barId: string
+): Promise<Map<string, string>> {
+  const { rows } = await db.execute<{ id: string; name: string }>(sql`
+    SELECT t.id, t.name FROM bar_team bt JOIN team t ON t.id = bt.team_id
+    WHERE bt.bar_id = ${barId}
+  `)
+  return new Map(rows.map((r) => [r.id, r.name]))
+}
+
 /** Os jogos que o bar publicou nas últimas 8 semanas, com os times. */
 export async function readBarHistory(
   barId: string,
@@ -142,34 +153,38 @@ export async function readBarHistory(
 export const catalogSource: GameSuggestionSource = {
   async suggest(request) {
     if (!request.neighborhood) return []
-    const [candidates, history] = await Promise.all([
+    const [candidates, history, houseTeams] = await Promise.all([
       readCatalogCandidates({ ...request, neighborhood: request.neighborhood }),
-      readBarHistory(request.barId, request.now)
+      readBarHistory(request.barId, request.now),
+      readHouseTeams(request.barId)
     ])
-    return rankCatalogGames(barHistory(history), candidates, request.limit).map(
-      (game): GameSuggestion => {
-        const startsAt = game.startsAt.toISOString()
-        const teams =
-          game.homeTeamId && game.awayTeamId
-            ? [game.homeTeamId, game.awayTeamId]
-            : []
-        return {
-          key: `${startsAt}|${game.title}`,
-          title: game.title,
-          sportId: game.sportId,
-          championship: game.championship,
-          startsAt,
-          participantIds: teams,
-          participantFreeText: teams.length ? null : game.title,
-          channels: game.channels.length ? game.channels : null,
-          channelConfirmed: game.channelConfirmed,
-          fansInCity: game.fansInCity,
-          barsInNeighborhood: game.barsInNeighborhood,
-          reason: game.reason,
-          featured: game.featured,
-          catalogId: game.id
-        }
+    return rankCatalogGames(
+      barHistory(history, houseTeams),
+      candidates,
+      request.limit
+    ).map((game): GameSuggestion => {
+      const startsAt = game.startsAt.toISOString()
+      const teams =
+        game.homeTeamId && game.awayTeamId
+          ? [game.homeTeamId, game.awayTeamId]
+          : []
+      return {
+        key: `${startsAt}|${game.title}`,
+        title: game.title,
+        sportId: game.sportId,
+        championship: game.championship,
+        startsAt,
+        participantIds: teams,
+        participantFreeText: teams.length ? null : game.title,
+        channels: game.channels.length ? game.channels : null,
+        channelConfirmed: game.channelConfirmed,
+        fansInCity: game.fansInCity,
+        barsInNeighborhood: game.barsInNeighborhood,
+        reason: game.reason,
+        houseTeam: game.houseTeam,
+        featured: game.featured,
+        catalogId: game.id
       }
-    )
+    })
   }
 }

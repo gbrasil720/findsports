@@ -69,6 +69,32 @@ describe('sugestões do catálogo: ordem e motivo', () => {
     expect(ranked[1]?.reason).toBe('Você costuma passar brasileirao serie a')
   })
 
+  test('time da casa vem antes do histórico e vira "Seu time"', () => {
+    const history = barHistory(wednesdays, new Map([['pal', 'Palmeiras']]))
+    const [first, second] = rankCatalogGames(
+      history,
+      [
+        game('Do histórico', '2026-11-15T15:00:00Z', { homeTeamId: 'fla' }),
+        game('Da casa', '2026-11-16T15:00:00Z', {
+          homeTeamId: 'sao',
+          awayTeamId: 'pal',
+          barsInNeighborhood: 2
+        })
+      ],
+      2
+    )
+    expect(first?.title).toBe('Da casa')
+    expect(first?.houseTeam).toBe('Palmeiras')
+    expect(first?.reason).toBe('Do Palmeiras, que você marcou')
+    expect(second?.houseTeam).toBeNull()
+    expect(
+      reasonFor(
+        history,
+        game('Sozinho', '2026-11-17T15:00:00Z', { awayTeamId: 'pal' })
+      )
+    ).toBe('Do Palmeiras, que você marcou, e ninguém do bairro passa ainda')
+  })
+
   test('torcedores abaixo de 10 não saem', () => {
     const history = barHistory([])
     const [many, few] = rankCatalogGames(

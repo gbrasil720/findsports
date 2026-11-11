@@ -34,6 +34,8 @@ export type GameSuggestion = {
   barsInNeighborhood?: number | null
   /** Por que combina com o bar, do histórico dele. */
   reason?: string | null
+  /** Time da casa que joga ("Seu time"); nulo ou ausente sem ele. */
+  houseTeam?: string | null
   /** O primeiro da lista, o que mais combina. */
   featured?: boolean
   /** O jogo em `weekly_game`, para o "Não passo esse". */

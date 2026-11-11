@@ -22,6 +22,8 @@ export type HistoryEvent = {
 }
 
 export type BarHistory = {
+  /** Times da casa (`bar_team`), id → nome: pesam mais que o histórico. */
+  houseTeams: Map<string, string>
   championships: Map<string, number>
   teams: Map<string, { name: string; count: number }>
   sports: Set<string>
@@ -56,8 +58,12 @@ export function brasiliaSlot(at: Date) {
   return { weekday, hour: Number(hourFormat.format(at)) }
 }
 
-export function barHistory(events: readonly HistoryEvent[]): BarHistory {
+export function barHistory(
+  events: readonly HistoryEvent[],
+  houseTeams: ReadonlyMap<string, string> = new Map()
+): BarHistory {
   const history: BarHistory = {
+    houseTeams: new Map(houseTeams),
     championships: new Map(),
     teams: new Map(),
     sports: new Set(),
@@ -100,6 +106,15 @@ const WEEKDAYS = [
   'aos sábados'
 ]
 
+/** O time da casa que joga (o mandante primeiro), pelo nome. */
+export function houseTeamOf(history: BarHistory, game: CatalogCandidate) {
+  for (const id of [game.homeTeamId, game.awayTeamId]) {
+    const name = id ? history.houseTeams.get(id) : undefined
+    if (name) return name
+  }
+  return null
+}
+
 function teamOf(history: BarHistory, game: CatalogCandidate) {
   return [game.homeTeamId, game.awayTeamId]
     .flatMap((id) => (id ? [history.teams.get(id)] : []))
@@ -112,6 +127,8 @@ export function scoreGame(history: BarHistory, game: CatalogCandidate) {
   const team = teamOf(history, game)
   const slots = slotCount(history, game.startsAt)
   let score = 0
+  // O bar disse que é a casa desse time: vem antes de qualquer histórico.
+  score += houseTeamOf(history, game) ? 8 : 0
   score += championship ? 1.5 + Math.min(championship, 5) * 0.3 : 0
   score += team ? 2 + Math.min(team.count, 5) * 0.4 : 0
   score += history.sports.has(game.sportId) ? 1 : 0
@@ -127,6 +144,11 @@ export function scoreGame(history: BarHistory, game: CatalogCandidate) {
 
 /** Uma frase curta, do histórico do próprio bar; nula sem motivo. */
 export function reasonFor(history: BarHistory, game: CatalogCandidate) {
+  const house = houseTeamOf(history, game)
+  if (house)
+    return game.barsInNeighborhood === 0
+      ? `Do ${house}, que você marcou, e ninguém do bairro passa ainda`
+      : `Do ${house}, que você marcou`
   const team = teamOf(history, game)
   if (team)
     return team.count > 1
@@ -144,6 +166,8 @@ export function reasonFor(history: BarHistory, game: CatalogCandidate) {
 }
 
 export type RankedGame = CatalogCandidate & {
+  /** O time da casa que joga ("Seu time" no card); nulo sem ele. */
+  houseTeam: string | null
   fansInCity: number | null
   reason: string | null
   featured: boolean
@@ -165,6 +189,7 @@ export function rankCatalogGames(
     .slice(0, limit)
     .map(({ game }, i) => ({
       ...game,
+      houseTeam: houseTeamOf(history, game),
       fansInCity: game.fans >= FANS_FLOOR ? game.fans : null,
       reason: reasonFor(history, game),
       featured: i === 0
