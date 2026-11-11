@@ -58,6 +58,10 @@ export function useOwnerBar() {
     elite: plan === 'elite',
     trial: bar?.subscription?.status === 'trialing',
     error: query.error,
+    /** A conta é de bar, mas o bar ainda não existe: falta o cadastro. */
+    noBar:
+      (query.error as { data?: { code?: string } } | null)?.data?.code ===
+      'NOT_FOUND',
     refetch: query.refetch,
     pending: query.isPending
   }

@@ -51,7 +51,13 @@ export default function NovoJogo() {
   const palette = usePalette()
   const insets = useSafeAreaInsets()
   useStatusBar(palette.dark ? 'light' : 'dark')
-  const { id } = useLocalSearchParams<{ id?: string }>()
+  const { id, primeiro } = useLocalSearchParams<{
+    id?: string
+    primeiro?: string
+  }>()
+  // O primeiro jogo do cadastro (rodada 10): depois de publicar, a tela
+  // "está no ar"; "Pular por enquanto" segue para completar o perfil.
+  const first = primeiro === '1'
   const owner = useOwnerBar()
   const bar = owner.bar
   const events = useQuery(trpc.pub.getMyEvents.queryOptions())
@@ -75,6 +81,11 @@ export default function NovoJogo() {
   const done = () => {
     haptic.success()
     queryClient.invalidateQueries()
+    if (first && picked)
+      return router.replace({
+        pathname: '/jogo-no-ar',
+        params: { title: picked.title, startsAt: picked.startsAt }
+      })
     router.back()
   }
   const fail = (error: unknown) => {
@@ -146,7 +157,7 @@ export default function NovoJogo() {
         automaticallyAdjustKeyboardInsets
         contentContainerStyle={{
           padding: 18,
-          paddingTop: 22,
+          paddingTop: first ? insets.top + 12 : 22,
           paddingBottom: insets.bottom + 110,
           gap: 12
         }}
@@ -156,13 +167,19 @@ export default function NovoJogo() {
             accessibilityRole="header"
             style={[styles.title, { color: palette.ink }]}
           >
-            {editing ? 'Editar jogo' : 'Novo jogo'}
+            {editing
+              ? 'Editar jogo'
+              : first
+                ? 'Seu primeiro jogo'
+                : 'Novo jogo'}
           </Text>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Fechar"
             hitSlop={8}
-            onPress={() => router.back()}
+            onPress={() =>
+              first ? router.replace('/completar-perfil') : router.back()
+            }
             style={[styles.close, { backgroundColor: palette.mark }]}
           >
             <Icon name="close" size={20} color={palette.ink} />

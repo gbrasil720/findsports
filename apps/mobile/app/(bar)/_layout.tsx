@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { usePathname, useRouter } from 'expo-router'
+import { Redirect, usePathname, useRouter } from 'expo-router'
 import { NativeTabs } from 'expo-router/unstable-native-tabs'
 import { useEffect, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
@@ -31,6 +31,9 @@ export default function OwnerTabs() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: reage à rota
   useEffect(() => setMenu(false), [pathname])
   const icons = OWNER_TAB_ICONS[palette.dark ? 'dark' : 'light']
+  // Conta de bar sem bar (cadastro não feito ou interrompido): o cadastro.
+  // É o servidor quem diz, não a sessão em cache, que pode ser da conta de
+  // antes logo depois de entrar.
   // O que o menu diz de cada item, buscado antes de ele abrir.
   const month = useQuery(
     trpc.commercialAnalytics.getMyAnalyticsOverview.queryOptions(last30())
@@ -123,6 +126,8 @@ export default function OwnerTabs() {
   // "BZ" de "Bar do Zé": a primeira e a última palavra.
   const words = (bar?.name ?? '').trim().split(/\s+/)
   const mark = `${words[0]?.charAt(0) ?? ''}${words.length > 1 ? (words.at(-1)?.charAt(0) ?? '') : ''}`
+
+  if (owner.noBar) return <Redirect href="/cadastro-bar" />
 
   return (
     <View style={{ flex: 1 }}>

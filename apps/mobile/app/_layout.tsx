@@ -144,6 +144,21 @@ export default function Layout() {
                 <Stack.Screen name="plano" />
                 <Stack.Screen name="configuracoes-bar" />
                 <Stack.Screen
+                  name="cadastro-bar"
+                  options={{ gestureEnabled: false }}
+                />
+                <Stack.Screen
+                  name="jogo-no-ar"
+                  options={{ gestureEnabled: false }}
+                />
+                <Stack.Screen name="completar-perfil" />
+                <Stack.Screen name="rotina" />
+                <Stack.Screen name="plano-do-teste" />
+                <Stack.Screen
+                  name="perfil-completo"
+                  options={{ gestureEnabled: false }}
+                />
+                <Stack.Screen
                   name="novo-jogo"
                   options={{ presentation: 'modal' }}
                 />

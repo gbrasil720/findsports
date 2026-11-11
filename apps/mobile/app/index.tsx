@@ -51,7 +51,10 @@ export default function Home() {
   // Com o onboarding feito, o torcedor começa no Explorar. O bar continua
   // nesta tela até o app ter o painel do dono (seções 16 e 17).
   if (user?.role === 'fan') return <Redirect href="/explore" />
-  // O dono do bar começa em Hoje na casa (rodada 10).
+  // O dono do bar sem bar ainda faz o cadastro (rodada 10, tela 6); com o
+  // bar no ar, começa em Hoje na casa.
+  if (user?.role === 'pub' && !user.onboardingCompleted)
+    return <Redirect href="/cadastro-bar" />
   if (user?.role === 'pub') return <Redirect href="/casa" />
 
   const apiStatus = api.isPending
