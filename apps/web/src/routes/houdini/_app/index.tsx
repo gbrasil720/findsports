@@ -1,12 +1,12 @@
 import { PLAN_NAMES } from '@findsports_oficial/api/lib/plan-limits'
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
+import { BRASILIA_TIME_ZONE } from '@findsports_oficial/db/event-window'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import type { inferRouterOutputs } from '@trpc/server'
 import { type ReactNode, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
-import { refusalMessage } from '@/components/houdini/errors'
 import {
   formatDate,
   formatDateTime,
@@ -19,6 +19,7 @@ import { Icon, type IconName } from '@/components/houdini/icons'
 import { HoudiniShell, PageHead } from '@/components/houdini/shell'
 import { appHref } from '@/lib/houdini-host'
 import { countLabel } from '@/lib/plural'
+import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 
 export const Route = createFileRoute('/houdini/_app/')({
@@ -26,7 +27,7 @@ export const Route = createFileRoute('/houdini/_app/')({
   component: InicioPage
 })
 
-const TZ = 'America/Sao_Paulo'
+const TZ = BRASILIA_TIME_ZONE
 
 /** "Boa <em>noite</em>." pela hora de Brasília. */
 function greeting(now = new Date()) {
@@ -69,7 +70,24 @@ const NEW_ACCOUNT: Record<string, string> = {
 const JOB_TITLES: Record<string, string> = {
   bar_plans: 'Reconciliação diária',
   analytics_retention: 'Limpeza dos analytics',
+  ai_stale_runs: 'Execuções presas da IA',
   bar_notices: 'Avisos da semana dos bares'
+}
+
+/** "2 fotos e 1 descrição", só o que tem. */
+function reviewLabel({
+  photos,
+  descriptions
+}: {
+  photos: number
+  descriptions: number
+}) {
+  return [
+    photos ? countLabel(photos, 'foto', 'fotos') : null,
+    descriptions ? countLabel(descriptions, 'descrição', 'descrições') : null
+  ]
+    .filter(Boolean)
+    .join(' e ')
 }
 
 /**
@@ -372,7 +390,9 @@ function PedeAMao({ data, loading }: { data?: Pede; loading: boolean }) {
         await refresh()
       },
       onError: (error) =>
-        toast.error(refusalMessage(error, 'Não foi possível arrumar a busca.'))
+        toast.error(
+          getUserFacingMessage(error, 'Não foi possível arrumar a busca.')
+        )
     })
   )
   const extend = useMutation(
@@ -384,7 +404,9 @@ function PedeAMao({ data, loading }: { data?: Pede; loading: boolean }) {
         await refresh()
       },
       onError: (error) =>
-        toast.error(refusalMessage(error, 'Não foi possível estender o teste.'))
+        toast.error(
+          getUserFacingMessage(error, 'Não foi possível estender o teste.')
+        )
     })
   )
   const busy = (barId: string) =>
@@ -429,6 +451,48 @@ function PedeAMao({ data, loading }: { data?: Pede; loading: boolean }) {
             </Link>
           )
         })),
+        ...(data.stuckAi
+          ? [
+              {
+                key: 'ai:stuck',
+                what: (
+                  <>
+                    <b>
+                      {countLabel(
+                        data.stuckAi,
+                        'execução da IA',
+                        'execuções da IA'
+                      )}
+                    </b>{' '}
+                    {data.stuckAi === 1 ? 'presa' : 'presas'} há mais de 1 h
+                  </>
+                ),
+                action: (
+                  <Link to="/houdini/bastidores" className="hd-btn is-sm">
+                    Ver bastidores
+                  </Link>
+                )
+              }
+            ]
+          : []),
+        ...(data.review.photos + data.review.descriptions
+          ? [
+              {
+                key: 'review',
+                tone: 'sand' as const,
+                what: (
+                  <>
+                    <b>{reviewLabel(data.review)}</b> esperando revisão
+                  </>
+                ),
+                action: (
+                  <Link to="/houdini/revisao" className="hd-btn is-sm">
+                    Abrir a Revisão
+                  </Link>
+                )
+              }
+            ]
+          : []),
         ...data.drift.map((b) => ({
           key: `drift:${b.id}`,
           tone: 'sand' as const,

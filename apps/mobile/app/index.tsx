@@ -1,9 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, Redirect } from 'expo-router'
-import { Pressable, Text, View } from 'react-native'
+import { useEffect, useState } from 'react'
+import { Pressable, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useStatusBar } from '@/components/ui'
-import { authClient } from '@/lib/auth-client'
+import { Text, useStatusBar } from '@/components/ui'
+import { authClient, hasStoredSession } from '@/lib/auth-client'
+import { firstOpenSeen } from '@/lib/first-open'
 import { trpc } from '@/lib/trpc'
 
 // Tela de partida do app: prova que as duas pontas estão ligadas — a API
@@ -14,12 +16,41 @@ export default function Home() {
   const session = authClient.useSession()
   useStatusBar('light')
   const api = useQuery(trpc.appConfig.getPublic.queryOptions())
+  const [seen, setSeen] = useState<boolean>()
+  useEffect(() => {
+    firstOpenSeen().then(setSeen)
+  }, [])
 
-  // Sem sessão, o app começa pela apresentação.
-  // Só sem sessão de fato: logo depois de entrar (ou de confirmar o e-mail),
-  // a sessão nova ainda está sendo buscada e `data` vem vazio por um instante.
-  if (!session.isPending && !session.isRefetching && !session.data)
-    return <Redirect href="/intro" />
+  // Com a sessão guardada no aparelho, a primeira leitura pode voltar vazia
+  // (o app recarregado pelo Metro abria "O jogo de hoje" sem conta): relê uma
+  // vez antes de tratar como visitante.
+  const stored = hasStoredSession()
+  const empty = !session.isPending && !session.isRefetching && !session.data
+  // Com a sessão guardada, relê até três vezes (0,4 s, 0,8 s, 1,2 s) antes de
+  // tratar como visitante: no recarregar do Metro o cliente ainda não leu o
+  // cookie e a primeira releitura também volta vazia.
+  const [tries, setTries] = useState(0)
+  const retried = tries >= 3
+  const { refetch } = session
+  useEffect(() => {
+    if (!empty || !stored || retried) return
+    const timer = setTimeout(
+      () => Promise.resolve(refetch()).finally(() => setTries((n) => n + 1)),
+      400 * (tries + 1)
+    )
+    return () => clearTimeout(timer)
+  }, [empty, stored, retried, tries, refetch])
+
+  // Sem sessão, o app abre aberto (rodada 1 do redesign): O jogo de hoje na
+  // primeira vez, depois o Explorar. Só sem sessão de fato: logo depois de
+  // entrar (ou de confirmar o e-mail), a sessão nova ainda está sendo
+  // buscada e `data` vem vazio por um instante.
+  if (empty) {
+    if (seen === undefined || (stored && !retried)) return null
+    return <Redirect href={seen ? '/explore' : '/hoje'} />
+  }
+  // Relendo: nada na tela até a resposta.
+  if (!session.data && stored) return null
   // Torcedor que ainda não escolheu esportes e distância faz o onboarding.
   const user = session.data?.user
   if (user?.role === 'fan' && !user.onboardingCompleted)
@@ -27,6 +58,11 @@ export default function Home() {
   // Com o onboarding feito, o torcedor começa no Explorar. O bar continua
   // nesta tela até o app ter o painel do dono (seções 16 e 17).
   if (user?.role === 'fan') return <Redirect href="/explore" />
+  // O dono do bar sem bar ainda faz o cadastro (rodada 10, tela 6); com o
+  // bar no ar, começa em Hoje na casa.
+  if (user?.role === 'pub' && !user.onboardingCompleted)
+    return <Redirect href="/cadastro-bar" />
+  if (user?.role === 'pub') return <Redirect href="/casa" />
 
   const apiStatus = api.isPending
     ? 'Conectando à API…'

@@ -4,13 +4,13 @@ export type TeamGroupLabel = 'Clubes' | 'Times' | 'Seleções' | 'Atletas'
 
 /**
  * WEB-284: separa clubes de seleções dentro de um esporte; WEB-381: e times
- * de atletas (escuderias e pilotos na F1). Preserva a ordem recebida —
+ * de atletas. WEB-520: a F1 é por GP (`race`), um grupo só, sem rótulo. Preserva a ordem recebida —
  * `pubs.getTeamsBySport` já entrega em ordem alfabética pt-BR. Esporte com um
  * tipo só devolve um grupo sem rótulo: subtítulo único não informa nada (NBA,
  * UFC).
  */
 export function groupTeamsByKind<
-  T extends { isNationalTeam?: boolean; kind?: 'team' | 'athlete' }
+  T extends { isNationalTeam?: boolean; kind?: 'team' | 'athlete' | 'race' }
 >(teams: T[]): { label: TeamGroupLabel | null; teams: T[] }[] {
   const athletes = teams.filter((team) => team.kind === 'athlete')
   const clubs = teams.filter(

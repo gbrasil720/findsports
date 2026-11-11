@@ -1,113 +1,89 @@
+import { useMutation } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
-import { StyleSheet, Text, View } from 'react-native'
-import { OnboardingTop } from '@/components/onboarding'
-import {
-  CARD,
-  DROP,
-  FG,
-  HOT,
-  Icon,
-  LINE,
-  PillButton,
-  Screen,
-  SUB,
-  Title,
-  text,
-  themed
-} from '@/components/ui'
+import { StyleSheet, View } from 'react-native'
+import { AcidButton, ObPage, ObTitle } from '@/components/ob-frame'
+import { clearDraft, OnboardingCard } from '@/components/onboarding'
+import { usePalette } from '@/components/theme'
+import { Icon, Text, text } from '@/components/ui'
+import { refreshSession } from '@/lib/auth-client'
+import { queryClient, trpc } from '@/lib/trpc'
 
 /*
- * 4i, "Boas-vindas" do onboarding do torcedor: o primeiro passo depois de
- * confirmar o e-mail, para quem ainda não escolheu esportes e distância.
+ * 1 · Boas-vindas do onboarding B (rodada 2 do redesign): a carteirinha vazia
+ * com o nome, o que ela dá e "3 perguntas · 30 segundos". "Pular" conclui sem
+ * escolher nada (`completeFan` aceita vazio).
  */
 
-const FEATURES = [
-  { icon: 'fire', label: 'Veja jogos ao vivo perto de você' },
-  { icon: 'map', label: 'Bares dentro do seu raio' },
-  { icon: 'people', label: 'Leve a galera junto' }
+const USES = [
+  { icon: 'calendar', label: 'Os jogos dos seus times aparecem primeiro' },
+  { icon: 'bell', label: 'Aviso quando um bar perto passar o jogo deles' },
+  { icon: 'medal', label: 'Conquistas e ranking com o seu nome' }
 ] as const
 
 export default function Welcome() {
   const router = useRouter()
+  const palette = usePalette()
+  const skip = useMutation(
+    trpc.onboarding.completeFan.mutationOptions({
+      onSuccess: async () => {
+        clearDraft()
+        await refreshSession()
+        await queryClient.invalidateQueries()
+        router.dismissAll()
+        router.replace('/explore')
+      }
+    })
+  )
   return (
-    <Screen
-      gap={16}
-      padding={18}
-      footer={
-        <PillButton
+    <ObPage
+      step={1}
+      back={false}
+      onSkip={() => skip.mutate({})}
+      note="3 perguntas · 30 segundos"
+      cta={
+        <AcidButton
           label="Começar"
-          trailing
           onPress={() => router.push('/onboarding/sports')}
         />
       }
     >
-      <OnboardingTop step={1} />
-      <View style={{ marginTop: 20, gap: 6 }}>
-        <Text style={[text(14, 'Bold'), { color: HOT }]}>
-          É torcedor? Chegou no lugar certo.
-        </Text>
-        <Title
-          lines={[
-            ['Vamos achar os'],
-            ['', 'melhores bares'],
-            ['pro seu jogo.']
-          ]}
-          size={42}
-        />
-      </View>
-      <Text style={[text(16.5, 'Regular', 1.48), { color: SUB }]}>
-        Em 3 passos a gente calibra sua busca: esportes favoritos, quem você
-        acompanha e raio de localização.
-      </Text>
-      <View style={{ gap: 8, marginTop: 6 }}>
-        {FEATURES.map((feature, index) => (
-          <View key={feature.label}>
-            <View
+      <ObTitle plain="Sua carteirinha" hot="de torcedor" size={38} breakLine />
+      <OnboardingCard lit={null} />
+      <View style={{ gap: 8 }}>
+        {USES.map((use) => (
+          <View
+            key={use.label}
+            style={[
+              styles.use,
+              { backgroundColor: palette.card, shadowColor: palette.drop }
+            ]}
+          >
+            <Icon name={use.icon} size={20} color={palette.ink} />
+            <Text
               style={[
-                styles.shadow,
-                index === 0 && {
-                  top: 5,
-                  left: 5,
-                  right: -5,
-                  bottom: -5,
-                  backgroundColor: FIRST_DROP
-                }
+                text(14.5, 'SemiBold', 1.3),
+                { color: palette.ink, flex: 1 }
               ]}
-            />
-            <View style={styles.feature}>
-              <Icon name={feature.icon} size={26} />
-              <Text style={[text(15, 'Bold'), { color: FG }]}>
-                {feature.label}
-              </Text>
-            </View>
+            >
+              {use.label}
+            </Text>
           </View>
         ))}
       </View>
-    </Screen>
+    </ObPage>
   )
 }
 
-// O primeiro item ganha a sombra do destaque: vermelho no claro, acid no escuro.
-const FIRST_DROP = themed('rgba(232,50,12,.28)', 'rgba(201,241,53,.28)')
-
 const styles = StyleSheet.create({
-  feature: {
+  use: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    padding: 14,
-    borderRadius: 6,
-    backgroundColor: CARD,
-    borderWidth: 1,
-    borderColor: LINE
-  },
-  shadow: {
-    position: 'absolute',
-    top: 4,
-    left: 4,
-    right: -4,
-    bottom: -4,
-    borderRadius: 6,
-    backgroundColor: DROP
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
   }
 })

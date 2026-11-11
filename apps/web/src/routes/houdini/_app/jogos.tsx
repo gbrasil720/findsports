@@ -4,6 +4,11 @@ import {
   EVENT_CHAMPIONSHIP_MIN_LENGTH
 } from '@findsports_oficial/db/event-limits'
 import {
+  BRASILIA_TIME_ZONE,
+  brasiliaDayStart
+} from '@findsports_oficial/db/event-window'
+import { gameTitle } from '@findsports_oficial/db/game-title'
+import {
   keepPreviousData,
   useMutation,
   useQuery,
@@ -13,7 +18,6 @@ import { createFileRoute } from '@tanstack/react-router'
 import type { inferRouterOutputs } from '@trpc/server'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { refusalMessage } from '@/components/houdini/errors'
 import { HoldButton } from '@/components/houdini/hold-button'
 import { Icon } from '@/components/houdini/icons'
 import { HoudiniShell, PageHead } from '@/components/houdini/shell'
@@ -42,7 +46,7 @@ const WARN_SHORT: Record<Warning['kind'], string> = {
   free_text: 'time fora do catálogo'
 }
 
-const TZ = 'America/Sao_Paulo'
+const TZ = BRASILIA_TIME_ZONE
 
 /** Dia e hora em Brasília, no formato dos campos `date` e `time`. */
 function brt(date: Date | string) {
@@ -52,9 +56,11 @@ function brt(date: Date | string) {
   return { day, time: time.slice(0, 5) }
 }
 
-// ponytail: Brasília em -03:00 fixo; o Brasil não tem horário de verão desde 2019.
 function fromBrt(day: string, time: string) {
-  return new Date(`${day}T${time}:00-03:00`)
+  const [hours = 0, minutes = 0] = time.split(':').map(Number)
+  return new Date(
+    brasiliaDayStart(day).getTime() + (hours * 60 + minutes) * 60_000
+  )
 }
 
 function whenLabel(startsAt: Date | string) {
@@ -64,14 +70,6 @@ function whenLabel(startsAt: Date | string) {
   if (day === today) return `hoje ${time}`
   if (day === tomorrow) return `amanhã ${time}`
   return `${day.slice(8, 10)}/${day.slice(5, 7)} ${time}`
-}
-
-function matchTitle(game: Game) {
-  return (
-    game.participants.join(' × ') ||
-    game.participantFreeText ||
-    game.championship
-  )
 }
 
 /** Códigos do balcão em vigor: quem marcou "Vou assistir aqui" no Elite. */
@@ -217,7 +215,7 @@ function JogosPage() {
                               className="hd-cell-btn"
                               onClick={() => setPickedId(game.id)}
                             >
-                              {matchTitle(game)}
+                              {gameTitle(game)}
                               <span className="hd-sub">
                                 {game.championship}
                               </span>
@@ -345,7 +343,7 @@ function GamePanel({ game }: { game: Game }) {
         await refresh()
       },
       onError: (error) =>
-        toast.error(refusalMessage(error, 'Não foi possível consertar.'))
+        toast.error(getUserFacingMessage(error, 'Não foi possível consertar.'))
     })
   )
   const update = useMutation(
@@ -357,7 +355,7 @@ function GamePanel({ game }: { game: Game }) {
         await refresh()
       },
       onError: (error) =>
-        toast.error(refusalMessage(error, 'Não foi possível salvar.'))
+        toast.error(getUserFacingMessage(error, 'Não foi possível salvar.'))
     })
   )
   const remove = useMutation(
@@ -367,7 +365,7 @@ function GamePanel({ game }: { game: Game }) {
         await refresh()
       },
       onError: (error) =>
-        toast.error(refusalMessage(error, 'Não foi possível apagar.'))
+        toast.error(getUserFacingMessage(error, 'Não foi possível apagar.'))
     })
   )
   const busy = fix.isPending || update.isPending || remove.isPending
@@ -396,7 +394,7 @@ function GamePanel({ game }: { game: Game }) {
     <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         <span className="hd-eyebrow">Jogo escolhido</span>
-        <h2 className="hd-h1 is-sm">{matchTitle(game)}</h2>
+        <h2 className="hd-h1 is-sm">{gameTitle(game)}</h2>
         <span className="hd-small">
           {game.championship} · {game.barName}
         </span>

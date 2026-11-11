@@ -5,11 +5,24 @@ import {
   desc,
   eq,
   inArray,
+  isNotNull,
   notInArray,
   or,
   sql
 } from '@findsports_oficial/db'
 import { fold } from '@findsports_oficial/db/catalog/fold'
+import {
+  brasiliaDay,
+  DEFAULT_EVENT_DURATION_MS,
+  isEventLive
+} from '@findsports_oficial/db/event-window'
+import {
+  brasiliaDaySql,
+  brasiliaTodaySql,
+  eventNotEndedSql,
+  onBrasiliaDaysSql,
+  utcNowSql
+} from '@findsports_oficial/db/event-window-sql'
 import { user } from '@findsports_oficial/db/schema/auth'
 import {
   bar,
@@ -33,12 +46,14 @@ import {
 } from '../index'
 import {
   declaredAmenityIds,
+  HOUSE_OFFER_AMENITY_ID,
   MAX_AMENITY_FILTER,
   normalizeAmenityIds
 } from '../lib/amenities'
 import { getAppConfig } from '../lib/app-config'
 import {
   type FanAttendance,
+  type Going,
   readFanAttendance,
   readFriendsGoing,
   readGoing
@@ -47,12 +62,12 @@ import { resolvePublicGallery } from '../lib/bar-gallery'
 import { canShowBarMenu, resolvePublicBarMenu } from '../lib/bar-menu'
 import { readBarsWithoutGame } from '../lib/bars-without-game'
 import { readCheckIn } from '../lib/check-in'
+import { normalizarCidade } from '../lib/city-match'
 import {
-  getCurrentPlan,
   getSubscriptionStanding,
+  issuesCounterCode,
   type SubscriptionStanding
 } from '../lib/current-plan'
-import { EVENT_LIVE_WINDOW_MS } from '../lib/event-profile-window'
 import { resolveEventScreen } from '../lib/event-screen'
 import {
   favoriteTeamIdsSchema,
@@ -60,6 +75,7 @@ import {
 } from '../lib/favorite-teams'
 import { readGameBoard } from '../lib/game-board'
 import { byMatchOrder, gameTitle } from '../lib/game-participants'
+import { type HereNow, readHereNow } from '../lib/here-now'
 import { effectiveHouseOffer } from '../lib/house-offer'
 import { decodeCursor, encodeCursor } from '../lib/keyset-cursor'
 import { isOpenNow, normalizeOpeningHours } from '../lib/opening-hours'
@@ -67,6 +83,10 @@ import {
   executarBuscaEmCamadas,
   executarBuscaLinear,
   executarBuscaPorNota,
+  jogoNaoAcabou,
+  type LinhaBusca,
+  montarFiltrosBusca,
+  montarPaginaBusca,
   type SearchPage
 } from '../lib/pub-search'
 import { PUBLIC_BAR_COLUMNS } from '../lib/public-bar'
@@ -75,7 +95,11 @@ import {
   RATING_PUBLIC_FLOOR,
   ratingPercentage
 } from '../lib/rating'
-import { readRatingList, readReasonSummary } from '../lib/rating-list'
+import {
+  readRatingDetail,
+  readRatingList,
+  readReasonSummary
+} from '../lib/rating-list'
 import { starsAverage } from '../lib/rating-review'
 import { chaveBusca, chaveBuscaLocal } from '../lib/search-cache'
 import {
@@ -85,13 +109,12 @@ import {
   suggestSearchCities
 } from '../lib/search-city'
 import { searchRadiusKmSchema } from '../lib/search-radius'
-import { createSharedCache } from '../lib/shared-cache'
+import { createTtlCache } from '../lib/ttl-cache'
 import { utcIso } from '../lib/utc-timestamp'
 
 /**
- * ESC-08: catálogos e buscas são iguais para todo mundo. Sem KV o cache
- * vive na instância; com Upstash Redis as instâncias passam a
- * compartilhar. Nada derivado de sessão entra aqui.
+ * ESC-08: catálogos e buscas são iguais para todo mundo. O cache vive na
+ * instância. Nada derivado de sessão entra aqui.
  */
 const CATALOGO_TTL_MS = 5 * 60_000
 /** Jogos em destaque e busca dependem de NOW(); janela curta. */
@@ -111,7 +134,9 @@ const TEAM_COLUMNS = {
   sportId: team.sportId,
   name: team.name,
   kind: team.kind,
-  isNationalTeam: team.isNationalTeam
+  isNationalTeam: team.isNationalTeam,
+  // WEB-520: o GP da F1 desenha o traçado da pista pela chave do catálogo.
+  catalogKey: team.catalogKey
 }
 const TEAM_SEARCH_LIMIT = 30
 
@@ -127,30 +152,35 @@ const ownerOffAirReason = (standing: SubscriptionStanding | null) =>
       ? ('subscription' as const)
       : null
 
-const cacheEsportes = createSharedCache<(typeof sport.$inferSelect)[]>({
-  prefix: 'pubs.sports',
+const cacheEsportes = createTtlCache<(typeof sport.$inferSelect)[]>({
   ttlMs: CATALOGO_TTL_MS
 })
-const cacheTimes = createSharedCache<
+/**
+ * Bares no ar por cidade (nome normalizado e UF), para ordenar as sugestões,
+ * e quantos têm jogo hoje (a troca de cidade, rodada 6). Cinco minutos: o
+ * "hoje" vira à meia-noite de Brasília.
+ */
+const cacheBaresPorCidade = createTtlCache<
+  Map<string, { bars: number; today: number }>
+>({ ttlMs: 5 * 60_000 })
+const cacheTimes = createTtlCache<
   {
     id: string
     sportId: string
     name: string
     kind: TeamKind
     isNationalTeam: boolean
+    catalogKey: string | null
   }[]
 >({
-  prefix: 'pubs.teams',
   ttlMs: CATALOGO_TTL_MS,
   maxEntries: 50
 })
-const cacheBusca = createSharedCache<SearchPage>({
-  prefix: 'pubs.search',
+const cacheBusca = createTtlCache<SearchPage>({
   ttlMs: BUSCA_TTL_MS,
   maxEntries: 200
 })
-const cacheLocal = createSharedCache<LocationPage>({
-  prefix: 'pubs.location',
+const cacheLocal = createTtlCache<LocationPage>({
   ttlMs: BUSCA_TTL_MS,
   maxEntries: 200
 })
@@ -256,19 +286,22 @@ async function executarBuscaLocal(input: LocationInput): Promise<LocationPage> {
 }
 
 /**
- * Gasto médio declarado dos bares de uma página de busca (WEB-144), pela
- * regra do perfil: só com Pro/Elite vigente pela assinatura (`canShowBarMenu`),
- * nunca por `bar.plan`, que só acompanha o fim do trial uma vez por dia.
+ * O que o card do bar lê da tabela `bar` depois do cache, numa consulta só:
+ * o gasto médio declarado (WEB-144) e as características.
  *
- * Roda depois do cache, pelo mesmo motivo da nota: um trial que vence ou uma
- * assinatura que vira `past_due` esconde o valor na hora, e não um TTL depois.
+ * O gasto segue a regra do perfil: só com Pro/Elite vigente pela assinatura
+ * (`canShowBarMenu`), nunca por `bar.plan`, que só acompanha o fim do trial
+ * uma vez por dia. Roda depois do cache pelo mesmo motivo da nota: um trial
+ * que vence ou uma assinatura que vira `past_due` esconde o valor na hora, e
+ * não um TTL depois.
  */
-async function comGastoMedio<T extends { id: string }>(bars: T[]) {
-  const rows = bars.length
+async function lerCartoes(ids: string[]) {
+  const rows = ids.length
     ? await db
         .select({
           id: bar.id,
           averageSpendCents: bar.averageSpendCents,
+          amenities: bar.amenities,
           subscription: {
             plan: subscription.plan,
             status: subscription.status,
@@ -277,60 +310,58 @@ async function comGastoMedio<T extends { id: string }>(bars: T[]) {
         })
         .from(bar)
         .leftJoin(subscription, eq(subscription.barId, bar.id))
-        .where(
-          inArray(
-            bar.id,
-            bars.map((achado) => achado.id)
-          )
-        )
+        .where(inArray(bar.id, ids))
     : []
-  const gasto = new Map(
+  return new Map(
     rows.map((row) => [
       row.id,
-      canShowBarMenu(row.subscription) ? row.averageSpendCents : null
+      {
+        averageSpendCents: canShowBarMenu(row.subscription)
+          ? row.averageSpendCents
+          : null,
+        amenities: declaredAmenityIds(row.amenities)
+      }
     ])
   )
-  return bars.map((achado) => ({
-    ...achado,
-    averageSpendCents: gasto.get(achado.id) ?? null
-  }))
 }
 
 /**
- * O que o card do bar no app mostra além da busca (07 do design): as
- * características declaradas e quantos marcaram presença no próximo jogo.
- * Depois do cache, como o gasto médio: presença muda o tempo todo. A contagem
- * segue o piso de "Vou assistir aqui" (`readGoing`): abaixo dele sai `null`,
- * e jogo vazio não vira número na tela; junto vão as iniciais de quem vai.
+ * O card do bar (07 do design), completado depois do cache: o que muda sem
+ * esperar o TTL. Gasto médio e características (`lerCartoes`), quantos
+ * marcaram presença no próximo jogo e, nas linhas que têm nota, a exibição
+ * pública dela (`rating.public_display`).
+ *
+ * A contagem segue o piso de "Vou assistir aqui" (`readGoing`): abaixo dele
+ * sai `null`, e jogo vazio não vira número na tela; junto vão as iniciais de
+ * quem vai. A nota sai depois do cache, e não dentro dele: desligar a
+ * exibição costuma ser a reação a um problema, e uma página guardada
+ * continuaria mostrando a nota por até um TTL.
  */
-async function comCaracteristicasEPresenca<
-  T extends { id: string; nextEvent?: { id: string } | undefined }
+async function toBarCards<
+  T extends {
+    id: string
+    nextEvent?: { id: string } | undefined
+    /** Só as linhas que têm nota: a de `searchByLocation` não tem. */
+    rating?: object | null
+  }
 >(bars: T[]) {
   const eventIds = bars.flatMap((achado) =>
     achado.nextEvent ? [achado.nextEvent.id] : []
   )
-  const [declarados, vao] = await Promise.all([
-    bars.length
-      ? db
-          .select({ id: bar.id, amenities: bar.amenities })
-          .from(bar)
-          .where(
-            inArray(
-              bar.id,
-              bars.map((achado) => achado.id)
-            )
-          )
-      : [],
-    readGoing(eventIds)
+  const [cartoes, vao, notaPublica] = await Promise.all([
+    lerCartoes(bars.map((achado) => achado.id)),
+    readGoing(eventIds),
+    getAppConfig('rating.public_display')
   ])
-  const caracteristicas = new Map(
-    declarados.map((row) => [row.id, declaredAmenityIds(row.amenities)])
-  )
   return bars.map((achado) => {
+    const cartao = cartoes.get(achado.id)
     const going = achado.nextEvent ? vao.get(achado.nextEvent.id) : undefined
+    const nota =
+      'rating' in achado && !notaPublica ? { ...achado, rating: null } : achado
     return {
-      ...achado,
-      amenities: caracteristicas.get(achado.id) ?? [],
+      ...(nota as T),
+      averageSpendCents: cartao?.averageSpendCents ?? null,
+      amenities: cartao?.amenities ?? [],
       goingCount: going?.count ?? null,
       goingInitials: going?.initials ?? []
     }
@@ -346,25 +377,34 @@ type ViewerGames = Record<
   }
 >
 
+/**
+ * Quem abre o bar sem conta: um torcedor sem presença nem id. Nenhuma linha
+ * tem `user_id` vazio, então nada dele é achado (presença, código, dono).
+ */
+const VISITOR = { id: '', role: 'fan' } as const
+
 /** Teto da agenda do dia: é cenário de splash, não listagem. */
 const TODAY_GAMES_LIMIT = 30
 
 export const pubsRouter = router({
   /**
    * Os jogos de hoje nos bares no ar, para a splash do app (`apps/mobile`).
-   * Aberta: aparece antes do login. Sai só o título, a hora do jogo e em
-   * quantos bares ele passa (`bars`, o número da busca da landing), sem
-   * identificar bar nenhum, e o mesmo jogo em vários bares conta uma vez.
-   * "Hoje" é o dia de Brasília; `starts_at` é `timestamp` sem fuso, em UTC.
+   * Aberta: aparece antes do login. Sai só o título e a hora do jogo, sem
+   * identificar bar nenhum, e o mesmo jogo em vários bares conta uma vez,
+   * com quantos bares o passam (o número da busca da landing e a marca das
+   * telas de entrar do tablet) e se
+   * está ao vivo em algum deles (o "● N ao vivo" da splash), pelo relógio do
+   * jogo. "Hoje" é o dia de Brasília; `starts_at` é `timestamp` sem fuso, em UTC.
    */
   todayGames: publicProcedure.query(async () => {
-    const dayStart = sql`(date_trunc('day', now() AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'America/Sao_Paulo' AT TIME ZONE 'UTC')`
     const games = await db.execute<{
       title: string
       starts_at: string
       bars: number
+      live: boolean
     }>(sql`
-      SELECT g.title, g.starts_at, count(DISTINCT g.bar_id)::int AS bars
+      SELECT g.title, g.starts_at, count(DISTINCT g.bar_id)::int AS bars,
+        bool_or(g.live) AS live
       FROM (
         SELECT
           ${gameTitle({
@@ -373,13 +413,13 @@ export const pubsRouter = router({
             championship: sql`e.championship`
           })} AS title,
           e.starts_at,
-          e.bar_id
+          e.bar_id,
+          e.starts_at <= ${utcNowSql()} AND ${eventNotEndedSql('e')} AS live
         FROM event e
         JOIN bar b ON b.id = e.bar_id
         WHERE b.is_active
           AND e.published_at IS NOT NULL
-          AND e.starts_at >= ${dayStart}
-          AND e.starts_at < ${dayStart} + interval '1 day'
+          AND ${onBrasiliaDaysSql(sql`e.starts_at`, brasiliaTodaySql())}
       ) g
       GROUP BY g.title, g.starts_at
       ORDER BY g.starts_at, g.title
@@ -388,9 +428,85 @@ export const pubsRouter = router({
     return games.rows.map((game) => ({
       title: game.title,
       startsAt: utcIso(game.starts_at),
-      bars: Number(game.bars)
+      bars: Number(game.bars),
+      live: Boolean(game.live)
     }))
   }),
+
+  /**
+   * O que o onboarding do app mostra em cada escolha (rodada 2 do redesign):
+   * por esporte, quantos jogos há nos próximos 7 dias nos bares no ar (e o
+   * próximo, para a F1 dizer o GP); por time, o próximo jogo e quantos na
+   * semana. Aberta e sem localização: o onboarding pede onde só depois.
+   */
+  onboardingHints: publicProcedure
+    .input(
+      z.object({
+        teamIds: z.array(z.string().uuid()).max(60).default([])
+      })
+    )
+    .query(async ({ input }) => {
+      const week = sql`(${eventNotEndedSql('e')} AND e.starts_at < ${utcNowSql()} + interval '7 days')`
+      const sports = await db.execute<{
+        sport_id: string
+        games: number
+        next_title: string | null
+      }>(sql`
+        SELECT g.sport_id, count(*)::int AS games,
+          (array_agg(g.title ORDER BY g.starts_at))[1] AS next_title
+        FROM (
+          SELECT DISTINCT e.sport_id, e.starts_at,
+            ${gameTitle({
+              id: sql`e.id`,
+              participantFreeText: sql`e.participant_free_text`,
+              championship: sql`e.championship`
+            })} AS title
+          FROM event e JOIN bar b ON b.id = e.bar_id
+          WHERE b.is_active AND e.published_at IS NOT NULL AND ${week}
+        ) g
+        GROUP BY g.sport_id
+      `)
+      const teams = input.teamIds.length
+        ? await db.execute<{
+            team_id: string
+            games: number
+            next_at: string
+            next_title: string
+          }>(sql`
+            SELECT g.team_id, count(*)::int AS games, min(g.starts_at) AS next_at,
+              (array_agg(g.title ORDER BY g.starts_at))[1] AS next_title
+            FROM (
+              SELECT DISTINCT ep.team_id, e.starts_at,
+                ${gameTitle({
+                  id: sql`e.id`,
+                  participantFreeText: sql`e.participant_free_text`,
+                  championship: sql`e.championship`
+                })} AS title
+              FROM event e
+              JOIN bar b ON b.id = e.bar_id
+              JOIN event_participants ep ON ep.event_id = e.id
+              WHERE b.is_active AND e.published_at IS NOT NULL AND ${week}
+                AND ep.team_id IN (${sql.join(
+                  input.teamIds.map((id) => sql`${id}`),
+                  sql`, `
+                )})
+            ) g
+            GROUP BY g.team_id
+          `)
+        : { rows: [] }
+      return {
+        sports: sports.rows.map((row) => ({
+          sportId: row.sport_id,
+          games: Number(row.games),
+          next: row.next_title
+        })),
+        teams: teams.rows.map((row) => ({
+          teamId: row.team_id,
+          games: Number(row.games),
+          next: { title: row.next_title, startsAt: utcIso(row.next_at) }
+        }))
+      }
+    }),
 
   /**
    * A régua do Explorar do web (WEB-501): os jogos de um dia de Brasília
@@ -424,7 +540,7 @@ export const pubsRouter = router({
     )
     .query(({ input }) => readBarsWithoutGame(input)),
 
-  search: protectedProcedure
+  search: publicProcedure
     .input(
       z.object({
         lat: z.number().min(-90).max(90),
@@ -480,21 +596,8 @@ export const pubsRouter = router({
         () => executar(normalizado)
       )
 
-      // A nota é retirada DEPOIS do cache, não dentro dele: a flag pode virar
-      // a qualquer momento e o cache tem TTL próprio. Filtrar antes deixaria
-      // páginas já guardadas continuarem entregando nota por até um TTL
-      // depois de a exibição ser desligada — e desligar exibição costuma ser
-      // a reação a um problema, ou seja, exatamente a hora em que a demora
-      // não é aceitável.
-      const bars = await comCaracteristicasEPresenca(
-        await comGastoMedio(pagina.bars)
-      )
-      return {
-        ...pagina,
-        bars: notaPublica
-          ? bars
-          : bars.map((achado) => ({ ...achado, rating: null }))
-      }
+      // Gasto, presença e a nota pública saem DEPOIS do cache (`toBarCards`).
+      return { ...pagina, bars: await toBarCards(pagina.bars) }
     }),
 
   /**
@@ -518,16 +621,19 @@ export const pubsRouter = router({
    * encontrado." até alguém ativar o bar. O dono precisa ver o que o cadastro
    * dele produz antes de ele ir ao ar; ninguém mais vê.
    */
-  getById: protectedProcedure
+  getById: publicProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       const now = new Date()
-      const liveCutoff = new Date(now.getTime() - EVENT_LIVE_WINDOW_MS)
+      // Aberta (app sem conta, rodada 1 do redesign): quem não entrou vê o
+      // bar como um torcedor sem presença, com a contagem e o botão; marcar
+      // pede conta no app.
+      const viewer = ctx.session?.user ?? VISITOR
 
       const result = await db.query.bar.findFirst({
         where: and(
           eq(bar.id, input.id),
-          or(eq(bar.isActive, true), eq(bar.userId, ctx.session.user.id))
+          or(eq(bar.isActive, true), eq(bar.userId, viewer.id))
         ),
         // `geo` só serve ao índice espacial. `userId` é lido para reconhecer o
         // dono e descartado antes da resposta — quem visita não precisa saber
@@ -571,23 +677,10 @@ export const pubsRouter = router({
             }
           },
           events: {
-            // Jogo ao vivo continua na página: o corte é o fim provável do
-            // jogo, não o início. Ver `event-profile-window.ts`.
-            //
-            // O predicado é montado com operadores do Drizzle, e não com SQL
-            // cru: `event.starts_at` é `timestamp` sem fuso, e comparar com
-            // `now()` (que é `timestamptz`) faria o Postgres converter usando
-            // o fuso da sessão — a janela mudaria de tamanho conforme o
-            // servidor. Com os operadores, o valor viaja pelo tipo da coluna.
+            // Jogo ao vivo continua na página até o fim derivado.
             // Rascunho (WEB-436) não sai na página do bar.
-            where: (event, { and, gte, isNotNull, isNull, or }) =>
-              and(
-                isNotNull(event.publishedAt),
-                or(
-                  and(isNotNull(event.endsAt), gte(event.endsAt, now)),
-                  and(isNull(event.endsAt), gte(event.startsAt, liveCutoff))
-                )
-              ),
+            where: (event) =>
+              and(isNotNull(event.publishedAt), eventNotEndedSql(event, now)),
             with: {
               sport: true,
               participants: {
@@ -629,9 +722,9 @@ export const pubsRouter = router({
         houseOffer,
         menuUrl,
         averageSpendCents,
+        photos,
         confirmsCodesLater,
         openingHours,
-        photos,
         subscription,
         events,
         ...publicBar
@@ -657,21 +750,38 @@ export const pubsRouter = router({
 
       // O código do balcão, e com ele a oferta da casa, é do Elite: fora
       // dele, anunciar a oferta seria prometer sem caminho (WEB-131).
-      const elite = getCurrentPlan(subscription ?? null, now) === 'elite'
-      const fan = ctx.session.user.role === 'fan'
-      const [attendance, going, reasons, reviews, checkIn] = await Promise.all([
-        readFanAttendance(ctx.session.user, events, now),
-        // A contagem do ingresso, inclusive do jogo ao vivo; como o botão,
-        // só para torcedor.
-        fan ? readGoing(events.map((game) => game.id)) : new Map(),
-        // "O que pesou?" (WEB-398): o mesmo piso da nota, e só o resumo.
-        showRating ? readReasonSummary(result.id) : null,
-        // Os comentários de "O que dizem" (WEB-451): o mesmo piso, só as
-        // verificadas e aprovadas pela Onside.
-        showRating ? readRatingList(result.id, { public: true, limit: 3 }) : [],
-        // "Estou aqui" (WEB-408): o jogo deste bar com check-in aberto agora.
-        fan ? readCheckIn(ctx.session.user.id, events, now) : null
-      ])
+      const elite = issuesCounterCode(subscription ?? null, now)
+      const fan = viewer.role === 'fan'
+      // Só o jogo ao vivo tem "no bar agora" (rodada 8).
+      const liveIds = events
+        .filter((game) => isEventLive(game, now))
+        .map((game) => game.id)
+      const [attendance, going, reasons, reviews, checkIn, hereNow, detail] =
+        await Promise.all([
+          readFanAttendance(viewer, events, now),
+          // A contagem do ingresso, inclusive do jogo ao vivo; como o botão,
+          // só para torcedor.
+          fan
+            ? readGoing(
+                events.map((game) => game.id),
+                viewer.id
+              )
+            : new Map<string, Going>(),
+          // "O que pesou?" (WEB-398): o mesmo piso da nota, e só o resumo.
+          showRating ? readReasonSummary(result.id) : null,
+          // Os comentários de "O que dizem" (WEB-451): o mesmo piso, só as
+          // verificadas e aprovadas pela Onside.
+          showRating
+            ? readRatingList(result.id, { public: true, limit: 3 })
+            : [],
+          // "Estou aqui" (WEB-408): o jogo deste bar com check-in aberto agora.
+          fan ? readCheckIn(viewer.id, events, now) : null,
+          // Como a contagem de quem vai: só para torcedor.
+          fan ? readHereNow(liveIds, viewer.id) : new Map<string, HereNow>(),
+          // A régua das estrelas e quantas vezes cada etiqueta pesou
+          // (rodada 8), com o mesmo piso da nota.
+          showRating ? readRatingDetail(result.id) : null
+        ])
       return {
         ...publicBar,
         amenities: declaredAmenityIds(publicBar.amenities),
@@ -697,18 +807,23 @@ export const pubsRouter = router({
             ...resolveEventScreen(game, publicBar.amenities),
             // `null`: o botão não cabe neste jogo (ADR 0003, "Presença").
             attendance: attendance.get(game.id) ?? null,
-            // `null`: abaixo do piso, ou conta que não é de torcedor.
-            going: going.get(game.id) ?? null
+            // `null`: abaixo do piso e sem amigo indo, ou conta que não é
+            // de torcedor.
+            going: going.get(game.id) ?? null,
+            // "No bar agora" do jogo ao vivo (rodada 8); `null` fora dele.
+            hereNow: hereNow.get(game.id) ?? null
           })
         ),
         rating,
         ratingReasons: reasons,
+        ratingDetail: detail,
         reviews: reviews.map(
           ({ verified: _v, createdAt: _c, commentPending: _p, ...review }) =>
             review
         ),
         checkIn,
-        // A padrão do bar. O que vale em cada jogo é `events[].houseOffer`.
+        // A padrão do bar. O que vale em cada jogo é `events[].houseOffer`;
+        // esta fica para o app anterior, que só lia a do bar.
         houseOffer: elite ? houseOffer : null,
         // "Vou assistir aqui" sai com código do balcão (o app escolhe entre
         // "Confirmar e gerar código" e só "Confirmar").
@@ -731,14 +846,14 @@ export const pubsRouter = router({
         // a seção. "Aberto agora" é decidido aqui, no relógio de Brasília.
         openingHours: normalizeOpeningHours(openingHours),
         openNow: isOpenNow(normalizeOpeningHours(openingHours), now),
-        isOwner: userId === ctx.session.user.id,
+        isOwner: userId === viewer.id,
         // Só para o aviso da prévia do dono: bar fora do ar por assinatura
         // encerrada não é bar que nunca foi publicado (WEB-345). Teste do
         // cadastro vencido também tira o bar do ar (WEB-357), e quem só teve
         // o teste não tinha assinatura para terminar: o aviso diz qual dos
         // dois foi.
         offAirReason: ownerOffAirReason(
-          userId === ctx.session.user.id
+          userId === viewer.id
             ? getSubscriptionStanding(subscription ?? null, now)
             : null
         )
@@ -760,7 +875,7 @@ export const pubsRouter = router({
         return { fan: false, favorited: false, games: {} as ViewerGames }
       }
       const now = new Date()
-      const liveCutoff = new Date(now.getTime() - EVENT_LIVE_WINDOW_MS)
+      const liveCutoff = new Date(now.getTime() - DEFAULT_EVENT_DURATION_MS)
       const games = await db.query.event.findMany({
         where: (game, { and, eq, gte, isNotNull, isNull, or }) =>
           and(
@@ -893,7 +1008,6 @@ export const pubsRouter = router({
   getFavorites: fanProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id
     const now = new Date()
-    const liveCutoff = new Date(now.getTime() - EVENT_LIVE_WINDOW_MS)
 
     const favorites = await db.query.userFavoriteBars.findMany({
       where: sql`${userFavoriteBars.userId} = ${userId} AND EXISTS (
@@ -908,15 +1022,8 @@ export const pubsRouter = router({
           with: {
             events: {
               // Jogo em andamento continua na lista, como no perfil do bar.
-              // Rascunho (WEB-436) fica fora.
-              where: (event, { and, gte, isNotNull, isNull, or }) =>
-                and(
-                  isNotNull(event.publishedAt),
-                  or(
-                    and(isNotNull(event.endsAt), gte(event.endsAt, now)),
-                    and(isNull(event.endsAt), gte(event.startsAt, liveCutoff))
-                  )
-                ),
+              where: (event) =>
+                and(isNotNull(event.publishedAt), eventNotEndedSql(event, now)),
               // Colunas da antiga reserva de mesa: não saem mais. A oferta
               // do jogo crua também não: o que vale sai de `getById`, já com o
               // plano (WEB-422).
@@ -983,7 +1090,14 @@ export const pubsRouter = router({
 
   getMyTeams: fanProcedure.query(async ({ ctx }) => {
     const teams = await db
-      .select({ id: team.id, name: team.name, sportId: team.sportId })
+      .select({
+        id: team.id,
+        name: team.name,
+        sportId: team.sportId,
+        // WEB-520: o GP da F1 vale para o aviso, não para "Torce para".
+        kind: team.kind,
+        catalogKey: team.catalogKey
+      })
       .from(userFavoriteTeams)
       .innerJoin(team, eq(team.id, userFavoriteTeams.teamId))
       .where(eq(userFavoriteTeams.userId, ctx.session.user.id))
@@ -1056,20 +1170,64 @@ export const pubsRouter = router({
       const pagina = await cacheLocal.get(chaveBuscaLocal(input), () =>
         executarBuscaLocal(input)
       )
-      return { ...pagina, bars: await comGastoMedio(pagina.bars) }
+      return { ...pagina, bars: await toBarCards(pagina.bars) }
     }),
 
-  /** Sugestões de cidade para o onboarding do app (ver `suggestSearchCities`). */
-  searchCities: protectedProcedure
+  /**
+   * Sugestões de cidade para o onboarding do app (ver `suggestSearchCities`),
+   * com quantos bares no ar cada uma tem: as que têm mais vêm antes ("sao"
+   * traz São Paulo, não São Benedito), como a lista do desenho (rodada 2).
+   */
+  searchCities: publicProcedure
     .input(z.object({ query: z.string().trim().min(1).max(100) }))
-    .query(({ input }) => suggestSearchCities(input.query)),
+    .query(async ({ input }) => {
+      const [candidates, counts] = await Promise.all([
+        suggestSearchCities(input.query, 400),
+        cacheBaresPorCidade.get('todos', async () => {
+          const rows = await db.execute<{
+            city: string
+            uf: string | null
+            bars: number
+            today: number
+          }>(sql`
+            SELECT city, uf, count(*)::int AS bars,
+              count(*) FILTER (WHERE EXISTS (
+                SELECT 1 FROM event e
+                WHERE e.bar_id = b.id
+                  AND e.published_at IS NOT NULL
+                  AND ${onBrasiliaDaysSql(sql`e.starts_at`, brasiliaTodaySql())}
+              ))::int AS today
+            FROM bar b
+            WHERE is_active GROUP BY city, uf
+          `)
+          const map = new Map<string, { bars: number; today: number }>()
+          for (const row of rows.rows) {
+            const key = `${normalizarCidade(row.city)}|${row.uf ?? ''}`
+            const was = map.get(key)
+            map.set(key, {
+              bars: (was?.bars ?? 0) + Number(row.bars),
+              today: (was?.today ?? 0) + Number(row.today)
+            })
+          }
+          return map
+        })
+      ])
+      const countsOf = (city: { name: string; uf: string }) =>
+        counts.get(`${normalizarCidade(city.name)}|${city.uf}`) ??
+        counts.get(`${normalizarCidade(city.name)}|`) ?? { bars: 0, today: 0 }
+      return candidates
+        .map((city, order) => ({ ...city, ...countsOf(city), order }))
+        .sort((a, b) => b.bars - a.bars || a.order - b.order)
+        .slice(0, 8)
+        .map(({ order: _order, ...city }) => city)
+    }),
 
   /**
    * Quantos bares no ar, dentro do raio, têm jogo hoje (dia de Brasília). É
    * o "12 bares com jogo hoje" do passo de distância do onboarding do app:
    * mostra o que a escolha do raio muda antes de salvar.
    */
-  countTodayNear: protectedProcedure
+  countTodayNear: publicProcedure
     .input(
       z.object({
         lat: z.number().min(-90).max(90),
@@ -1084,7 +1242,6 @@ export const pubsRouter = router({
     )
     .query(async ({ input }) => {
       const origin = sql`ST_SetSRID(ST_MakePoint(${input.lng}, ${input.lat}), 4326)::geography`
-      const dayStart = sql`(date_trunc('day', now() AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'America/Sao_Paulo' AT TIME ZONE 'UTC')`
       const result = await db.execute<{ bars: string }>(sql`
         SELECT count(*) AS bars
         FROM bar b
@@ -1094,14 +1251,119 @@ export const pubsRouter = router({
             SELECT 1 FROM event e
             WHERE e.bar_id = b.id
               AND e.published_at IS NOT NULL
-              AND e.starts_at >= ${dayStart}
-              AND e.starts_at < ${dayStart} + interval '1 day'
+              AND ${onBrasiliaDaysSql(sql`e.starts_at`, brasiliaTodaySql())}
           )
       `)
       return { bars: Number(result.rows[0]?.bars ?? 0) }
     }),
 
-  getSports: protectedProcedure.query(async () => {
+  /**
+   * Bares no ar perto de um ponto que não têm jogo marcado, do mais perto ao
+   * mais longe. O Explorar do app completa a lista com eles quando a busca
+   * traz poucos bares com jogo, para o torcedor não dar com uma lista vazia
+   * (decisão do dono em 21/10/2026). Mesmo formato dos bares da busca, sem
+   * `nextEvent`; as características filtram como lá.
+   */
+  nearbyWithoutGames: publicProcedure
+    .input(
+      z.object({
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        radiusKm: searchRadiusKmSchema.default(3),
+        amenities: z.array(z.number().int()).max(MAX_AMENITY_FILTER).optional(),
+        limit: z.number().int().min(1).max(20).default(10)
+      })
+    )
+    .query(async ({ input }) => {
+      const { origin, radiusMeters, amenityFilter } = montarFiltrosBusca({
+        ...input,
+        amenities: input.amenities?.length
+          ? normalizeAmenityIds(input.amenities)
+          : undefined
+      })
+      const result = await db.execute(sql`
+        SELECT
+          b.id, b.name, b.neighborhood, b.city, b.latitude, b.longitude,
+          b.photo_url, b.created_at, b.plan, b.rating_count, b.rating_positive,
+          0 AS event_count,
+          ST_Distance(b.geo, ${origin}) / 1000 AS distance_km
+        FROM bar b
+        WHERE b.is_active
+          AND ST_DWithin(b.geo, ${origin}, ${radiusMeters})
+          ${amenityFilter(sql`b`)}
+          -- Sem jogo, a oferta que valeria é a padrão do bar (WEB-422); o
+          -- Elite já vem do filtro de características.
+          ${
+            input.amenities?.includes(HOUSE_OFFER_AMENITY_ID)
+              ? sql`AND b.house_offer IS NOT NULL`
+              : sql``
+          }
+          AND NOT EXISTS (
+            SELECT 1 FROM event e WHERE e.bar_id = b.id AND ${jogoNaoAcabou(sql`e`)}
+          )
+        ORDER BY distance_km, b.id
+        LIMIT ${input.limit}
+      `)
+      // Sem cursor: a lista é curta e não pagina.
+      const { bars } = montarPaginaBusca(
+        result.rows as LinhaBusca[],
+        Number.POSITIVE_INFINITY
+      )
+      return toBarCards(bars)
+    }),
+
+  /**
+   * "Quando" dos filtros do app (19d): quantos jogos começam em cada um dos
+   * próximos sete dias (de Brasília, a partir de hoje) nos bares no ar do
+   * raio. Esporte e características são os da busca, para a contagem bater
+   * com o que a busca devolveria naquele dia.
+   */
+  gameDays: publicProcedure
+    .input(
+      z.object({
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        radiusKm: searchRadiusKmSchema.default(3),
+        sportId: z.string().uuid().optional(),
+        // O campeonato do chip (NBA, NBB): o basquete tem um chip para cada.
+        championship: z.string().trim().min(1).max(60).optional(),
+        amenities: z.array(z.number().int()).max(MAX_AMENITY_FILTER).optional()
+      })
+    )
+    .query(async ({ input }) => {
+      // O mesmo agora para o SQL e para os sete dias, senão discordam à meia-noite.
+      const now = new Date()
+      const filtros = montarFiltrosBusca({
+        ...input,
+        championship: undefined,
+        limit: 1,
+        amenities: input.amenities?.length
+          ? normalizeAmenityIds(input.amenities)
+          : undefined
+      })
+      const result = await db.execute<{ day: string; games: number }>(sql`
+        SELECT to_char(${brasiliaDaySql(sql`e.starts_at`)}, 'YYYY-MM-DD') AS day,
+          count(*)::int AS games
+        FROM event e
+        JOIN bar b ON b.id = e.bar_id
+        WHERE b.is_active
+          AND e.published_at IS NOT NULL
+          AND ST_DWithin(b.geo, ${filtros.origin}, ${filtros.radiusMeters})
+          AND ${onBrasiliaDaysSql(sql`e.starts_at`, brasiliaTodaySql(now), 7)}
+          ${input.sportId ? sql`AND e.sport_id = ${input.sportId}` : sql``}
+          ${input.championship ? sql`AND upper(e.championship) = upper(${input.championship})` : sql``}
+          ${filtros.amenityFilter(sql`b`)}
+          ${filtros.ofertaDoJogo}
+        GROUP BY 1
+      `)
+      const games = new Map(result.rows.map((row) => [row.day, row.games]))
+      return Array.from({ length: 7 }, (_, i) => {
+        const day = brasiliaDay(now, i)
+        return { day, games: games.get(day) ?? 0 }
+      })
+    }),
+
+  getSports: publicProcedure.query(async () => {
     return cacheEsportes.get('todos', () => db.select().from(sport))
   }),
 
@@ -1109,7 +1371,7 @@ export const pubsRouter = router({
    * Os times em destaque do esporte (WEB-381): a lista curta que a tela mostra
    * sem busca. O resto do catálogo vem por `searchTeams`.
    */
-  getTeamsBySport: protectedProcedure
+  getTeamsBySport: publicProcedure
     .input(z.object({ sportId: z.string().uuid() }))
     .query(async ({ input }) => {
       return cacheTimes.get(input.sportId, async () =>
@@ -1129,7 +1391,9 @@ export const pubsRouter = router({
    * apelido, sem acento. Quem começa com o termo vem antes; depois, o mais
    * conhecido.
    */
-  searchTeams: protectedProcedure
+  // Aberta como `getTeamsBySport`: o catálogo é público e o onboarding do
+  // app roda antes de a sessão existir (a busca voltava UNAUTHORIZED).
+  searchTeams: publicProcedure
     .input(
       z.object({
         sportIds: z.array(z.string().uuid()).min(1).max(20),

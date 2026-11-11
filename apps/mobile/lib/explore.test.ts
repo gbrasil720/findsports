@@ -4,8 +4,9 @@ import {
   distanceKm,
   formatKm,
   formatTime,
-  greeting,
+  goingSummary,
   isLive,
+  matchPeriod,
   searchCenter,
   teamMark
 } from './explore'
@@ -40,8 +41,6 @@ test('textos como o design escreve', () => {
   expect(formatTime('2026-10-16T00:30:00Z')).toBe('21:30')
   expect(teamMark('Corinthians')).toBe('COR')
   expect(teamMark('Grêmio')).toBe('GRÊ')
-  expect(greeting(new Date('2026-10-16T00:30:00Z'))).toBe('Boa noite')
-  expect(greeting(new Date('2026-10-16T13:00:00Z'))).toBe('Bom dia')
 })
 
 test('distância de um quarteirão a outro', () => {
@@ -51,4 +50,62 @@ test('distância de um quarteirão a outro', () => {
   )
   expect(km).toBeGreaterThan(2.6)
   expect(km).toBeLessThan(2.8)
+})
+
+test('quem vai: contagem, amigos pelo primeiro nome e a pilha', () => {
+  const friends = (...names: string[]) => names.map((name) => ({ name }))
+  expect(
+    goingSummary({
+      count: 34,
+      initials: ['J', 'K', 'L'],
+      friends: friends('Marina Costa', 'Rafael Lima')
+    })
+  ).toEqual({
+    faces: ['M', 'R'],
+    more: 32,
+    lead: '34 pessoas vão',
+    tail: ', entre elas Marina e Rafael'
+  })
+  expect(
+    goingSummary({ count: 20, initials: ['J', 'K', 'L'], friends: [] })
+  ).toEqual({ faces: ['J', 'K'], more: 18, lead: '20 pessoas vão', tail: '' })
+  // Abaixo do piso: só os amigos, sem número.
+  expect(
+    goingSummary({ count: null, initials: [], friends: friends('Marina') })
+  ).toEqual({ faces: ['M'], more: 0, lead: 'Marina vai', tail: '' })
+  expect(
+    goingSummary({
+      count: null,
+      initials: [],
+      friends: friends('Ana', 'Bia', 'Caio', 'Duda')
+    }).lead
+  ).toBe('Ana, Bia e mais 2 amigos vão')
+  expect(
+    goingSummary({
+      count: 16,
+      initials: [],
+      friends: friends('Ana', 'Bia', 'Caio')
+    }).tail
+  ).toBe(', entre elas Ana, Bia e Caio')
+  // Nome que começa com emoji: o primeiro nome é a primeira palavra com letra.
+  expect(
+    goingSummary({ count: null, initials: [], friends: friends('🦁 Leo Dias') })
+  ).toMatchObject({ faces: ['L'], lead: 'Leo vai' })
+})
+
+test('parte do jogo de futebol pelo relógio', () => {
+  const game = {
+    startsAt: '2026-10-15T22:00:00Z',
+    endsAt: null,
+    sport: { slug: 'futebol' }
+  }
+  const at = (min: number) => Date.parse(game.startsAt) + min * 60_000
+  expect(matchPeriod(game, at(-5))).toBeNull()
+  expect(matchPeriod(game, at(30))).toBe('1º tempo')
+  expect(matchPeriod(game, at(50))).toBe('Intervalo')
+  expect(matchPeriod(game, at(80))).toBe('2º tempo')
+  expect(matchPeriod(game, at(130))).toBe('Ao vivo')
+  expect(matchPeriod({ ...game, sport: { slug: 'basquete' } }, at(30))).toBe(
+    'Ao vivo'
+  )
 })

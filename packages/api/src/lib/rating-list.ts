@@ -1,6 +1,10 @@
 import { db, sql } from '@findsports_oficial/db'
 import { participantNames } from './game-participants'
-import { type RatingReasonId, summarizeReasons } from './rating-reasons'
+import {
+  type RatingReasonId,
+  REASON_SUMMARY_SIZE,
+  summarizeReasons
+} from './rating-reasons'
 import { utcIso } from './utc-timestamp'
 
 /**
@@ -101,4 +105,54 @@ export async function readReasonSummary(barId: string) {
       count: Number(row.count)
     }))
   )
+}
+
+/**
+ * A régua de "O que dizem" (rodada 8): quantas verificadas deram cada
+ * estrela, de 5 a 1, e quantas vezes cada etiqueta pesou, a favor e contra
+ * (as três de cada lado que o resumo mostra). Mesmo piso da nota: quem chama
+ * só pede acima dele.
+ */
+export async function readRatingDetail(barId: string) {
+  const [stars, reasons] = await Promise.all([
+    db.execute(sql`
+      SELECT stars, COUNT(*)::int AS count
+      FROM bar_rating
+      WHERE bar_id = ${barId} AND verified AND stars IS NOT NULL
+      GROUP BY stars
+    `),
+    db.execute(sql`
+      SELECT r.would_return, reason, COUNT(*)::int AS count
+      FROM bar_rating r, unnest(r.reasons) AS reason
+      WHERE r.bar_id = ${barId} AND r.verified
+      GROUP BY r.would_return, reason
+    `)
+  ])
+  const byStar = new Map(
+    (stars.rows as { stars: number; count: number }[]).map((row) => [
+      Number(row.stars),
+      Number(row.count)
+    ])
+  )
+  const rows = (
+    reasons.rows as { would_return: boolean; reason: string; count: number }[]
+  ).map((row) => ({
+    wouldReturn: row.would_return,
+    reason: row.reason,
+    count: Number(row.count)
+  }))
+  const side = (wouldReturn: boolean) =>
+    rows
+      .filter((row) => row.wouldReturn === wouldReturn)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, REASON_SUMMARY_SIZE)
+      .map((row) => ({ id: row.reason, count: row.count }))
+  return {
+    stars: [5, 4, 3, 2, 1].map((star) => ({
+      star,
+      count: byStar.get(star) ?? 0
+    })),
+    positive: side(true),
+    negative: side(false)
+  }
 }

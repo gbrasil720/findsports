@@ -35,6 +35,7 @@ import { Route as AdminMeuEspacoRouteImport } from './routes/admin.meu-espaco'
 import { Route as AdminQuemVaiRouteImport } from './routes/admin.quem-vai'
 import { Route as AdminValidateRouteImport } from './routes/admin.validate'
 import { Route as BarSlugRouteImport } from './routes/bar.$slug'
+import { Route as ConviteCodeRouteImport } from './routes/convite.$code'
 import { Route as GuiaIndexRouteImport } from './routes/guia.index'
 import { Route as GuiaSlugRouteImport } from './routes/guia.$slug'
 import { Route as HoudiniAppRouteImport } from './routes/houdini/_app'
@@ -49,6 +50,7 @@ import { Route as dashboardDashboardSeusBaresRouteImport } from './routes/(dashb
 import { Route as onboardingOnboardingFanRouteImport } from './routes/(onboarding)/onboarding.fan'
 import { Route as onboardingOnboardingPubRouteImport } from './routes/(onboarding)/onboarding.pub'
 import { Route as pubPubPubIdRouteImport } from './routes/(pub)/pub.$pubId'
+import { Route as ApiAppStatusRouteImport } from './routes/api/app/status'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiBarCommercialEventRouteImport } from './routes/api/bar/commercial-event'
 import { Route as ApiBarPhotoRouteImport } from './routes/api/bar/photo'
@@ -61,6 +63,7 @@ import { Route as HoudiniAppBastidoresRouteImport } from './routes/houdini/_app/
 import { Route as HoudiniAppFantasmasRouteImport } from './routes/houdini/_app/fantasmas'
 import { Route as HoudiniAppFeiticosRouteImport } from './routes/houdini/_app/feiticos'
 import { Route as HoudiniAppGrimorioRouteImport } from './routes/houdini/_app/grimorio'
+import { Route as HoudiniAppIaRouteImport } from './routes/houdini/_app/ia'
 import { Route as HoudiniAppJogosRouteImport } from './routes/houdini/_app/jogos'
 import { Route as HoudiniAppPessoasRouteImport } from './routes/houdini/_app/pessoas'
 import { Route as HoudiniAppRevisaoRouteImport } from './routes/houdini/_app/revisao'
@@ -200,6 +203,11 @@ const BarSlugRoute = BarSlugRouteImport.update({
   path: '/bar/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConviteCodeRoute = ConviteCodeRouteImport.update({
+  id: '/convite/$code',
+  path: '/convite/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GuiaIndexRoute = GuiaIndexRouteImport.update({
   id: '/guia/',
   path: '/guia/',
@@ -274,6 +282,11 @@ const pubPubPubIdRoute = pubPubPubIdRouteImport.update({
   path: '/pub/$pubId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAppStatusRoute = ApiAppStatusRouteImport.update({
+  id: '/api/app/status',
+  path: '/api/app/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -332,6 +345,11 @@ const HoudiniAppFeiticosRoute = HoudiniAppFeiticosRouteImport.update({
 const HoudiniAppGrimorioRoute = HoudiniAppGrimorioRouteImport.update({
   id: '/grimorio',
   path: '/grimorio',
+  getParentRoute: () => HoudiniAppRoute,
+} as any)
+const HoudiniAppIaRoute = HoudiniAppIaRouteImport.update({
+  id: '/ia',
+  path: '/ia',
   getParentRoute: () => HoudiniAppRoute,
 } as any)
 const HoudiniAppJogosRoute = HoudiniAppJogosRouteImport.update({
@@ -404,6 +422,7 @@ export interface FileRoutesByFullPath {
   '/admin/quem-vai': typeof AdminQuemVaiRoute
   '/admin/validate': typeof AdminValidateRoute
   '/bar/$slug': typeof BarSlugRoute
+  '/convite/$code': typeof ConviteCodeRoute
   '/guia/$slug': typeof GuiaSlugRoute
   '/houdini/entrar': typeof HoudiniEntrarRoute
   '/plan/confirmed': typeof PlanConfirmedRoute
@@ -418,6 +437,7 @@ export interface FileRoutesByFullPath {
   '/onboarding/fan': typeof onboardingOnboardingFanRoute
   '/onboarding/pub': typeof onboardingOnboardingPubRoute
   '/pub/$pubId': typeof pubPubPubIdRoute
+  '/api/app/status': typeof ApiAppStatusRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/bar/commercial-event': typeof ApiBarCommercialEventRoute
   '/api/bar/photo': typeof ApiBarPhotoRoute
@@ -429,6 +449,7 @@ export interface FileRoutesByFullPath {
   '/houdini/fantasmas': typeof HoudiniAppFantasmasRoute
   '/houdini/feiticos': typeof HoudiniAppFeiticosRoute
   '/houdini/grimorio': typeof HoudiniAppGrimorioRoute
+  '/houdini/ia': typeof HoudiniAppIaRoute
   '/houdini/jogos': typeof HoudiniAppJogosRoute
   '/houdini/pessoas': typeof HoudiniAppPessoasRoute
   '/houdini/revisao': typeof HoudiniAppRevisaoRoute
@@ -464,6 +485,7 @@ export interface FileRoutesByTo {
   '/admin/quem-vai': typeof AdminQuemVaiRoute
   '/admin/validate': typeof AdminValidateRoute
   '/bar/$slug': typeof BarSlugRoute
+  '/convite/$code': typeof ConviteCodeRoute
   '/guia/$slug': typeof GuiaSlugRoute
   '/houdini/entrar': typeof HoudiniEntrarRoute
   '/plan/confirmed': typeof PlanConfirmedRoute
@@ -478,6 +500,7 @@ export interface FileRoutesByTo {
   '/onboarding/fan': typeof onboardingOnboardingFanRoute
   '/onboarding/pub': typeof onboardingOnboardingPubRoute
   '/pub/$pubId': typeof pubPubPubIdRoute
+  '/api/app/status': typeof ApiAppStatusRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/bar/commercial-event': typeof ApiBarCommercialEventRoute
   '/api/bar/photo': typeof ApiBarPhotoRoute
@@ -489,6 +512,7 @@ export interface FileRoutesByTo {
   '/houdini/fantasmas': typeof HoudiniAppFantasmasRoute
   '/houdini/feiticos': typeof HoudiniAppFeiticosRoute
   '/houdini/grimorio': typeof HoudiniAppGrimorioRoute
+  '/houdini/ia': typeof HoudiniAppIaRoute
   '/houdini/jogos': typeof HoudiniAppJogosRoute
   '/houdini/pessoas': typeof HoudiniAppPessoasRoute
   '/houdini/revisao': typeof HoudiniAppRevisaoRoute
@@ -525,6 +549,7 @@ export interface FileRoutesById {
   '/admin/quem-vai': typeof AdminQuemVaiRoute
   '/admin/validate': typeof AdminValidateRoute
   '/bar/$slug': typeof BarSlugRoute
+  '/convite/$code': typeof ConviteCodeRoute
   '/guia/$slug': typeof GuiaSlugRoute
   '/houdini/_app': typeof HoudiniAppRouteWithChildren
   '/houdini/entrar': typeof HoudiniEntrarRoute
@@ -540,6 +565,7 @@ export interface FileRoutesById {
   '/(onboarding)/onboarding/fan': typeof onboardingOnboardingFanRoute
   '/(onboarding)/onboarding/pub': typeof onboardingOnboardingPubRoute
   '/(pub)/pub/$pubId': typeof pubPubPubIdRoute
+  '/api/app/status': typeof ApiAppStatusRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/bar/commercial-event': typeof ApiBarCommercialEventRoute
   '/api/bar/photo': typeof ApiBarPhotoRoute
@@ -551,6 +577,7 @@ export interface FileRoutesById {
   '/houdini/_app/fantasmas': typeof HoudiniAppFantasmasRoute
   '/houdini/_app/feiticos': typeof HoudiniAppFeiticosRoute
   '/houdini/_app/grimorio': typeof HoudiniAppGrimorioRoute
+  '/houdini/_app/ia': typeof HoudiniAppIaRoute
   '/houdini/_app/jogos': typeof HoudiniAppJogosRoute
   '/houdini/_app/pessoas': typeof HoudiniAppPessoasRoute
   '/houdini/_app/revisao': typeof HoudiniAppRevisaoRoute
@@ -589,6 +616,7 @@ export interface FileRouteTypes {
     | '/admin/quem-vai'
     | '/admin/validate'
     | '/bar/$slug'
+    | '/convite/$code'
     | '/guia/$slug'
     | '/houdini/entrar'
     | '/plan/confirmed'
@@ -603,6 +631,7 @@ export interface FileRouteTypes {
     | '/onboarding/fan'
     | '/onboarding/pub'
     | '/pub/$pubId'
+    | '/api/app/status'
     | '/api/auth/$'
     | '/api/bar/commercial-event'
     | '/api/bar/photo'
@@ -614,6 +643,7 @@ export interface FileRouteTypes {
     | '/houdini/fantasmas'
     | '/houdini/feiticos'
     | '/houdini/grimorio'
+    | '/houdini/ia'
     | '/houdini/jogos'
     | '/houdini/pessoas'
     | '/houdini/revisao'
@@ -649,6 +679,7 @@ export interface FileRouteTypes {
     | '/admin/quem-vai'
     | '/admin/validate'
     | '/bar/$slug'
+    | '/convite/$code'
     | '/guia/$slug'
     | '/houdini/entrar'
     | '/plan/confirmed'
@@ -663,6 +694,7 @@ export interface FileRouteTypes {
     | '/onboarding/fan'
     | '/onboarding/pub'
     | '/pub/$pubId'
+    | '/api/app/status'
     | '/api/auth/$'
     | '/api/bar/commercial-event'
     | '/api/bar/photo'
@@ -674,6 +706,7 @@ export interface FileRouteTypes {
     | '/houdini/fantasmas'
     | '/houdini/feiticos'
     | '/houdini/grimorio'
+    | '/houdini/ia'
     | '/houdini/jogos'
     | '/houdini/pessoas'
     | '/houdini/revisao'
@@ -709,6 +742,7 @@ export interface FileRouteTypes {
     | '/admin/quem-vai'
     | '/admin/validate'
     | '/bar/$slug'
+    | '/convite/$code'
     | '/guia/$slug'
     | '/houdini/_app'
     | '/houdini/entrar'
@@ -724,6 +758,7 @@ export interface FileRouteTypes {
     | '/(onboarding)/onboarding/fan'
     | '/(onboarding)/onboarding/pub'
     | '/(pub)/pub/$pubId'
+    | '/api/app/status'
     | '/api/auth/$'
     | '/api/bar/commercial-event'
     | '/api/bar/photo'
@@ -735,6 +770,7 @@ export interface FileRouteTypes {
     | '/houdini/_app/fantasmas'
     | '/houdini/_app/feiticos'
     | '/houdini/_app/grimorio'
+    | '/houdini/_app/ia'
     | '/houdini/_app/jogos'
     | '/houdini/_app/pessoas'
     | '/houdini/_app/revisao'
@@ -764,6 +800,7 @@ export interface RootRouteChildren {
   authVerifyEmailRoute: typeof authVerifyEmailRoute
   dashboardDashboardRoute: typeof dashboardDashboardRoute
   BarSlugRoute: typeof BarSlugRoute
+  ConviteCodeRoute: typeof ConviteCodeRoute
   GuiaSlugRoute: typeof GuiaSlugRoute
   PlanConfirmedRoute: typeof PlanConfirmedRoute
   GuiaIndexRoute: typeof GuiaIndexRoute
@@ -776,6 +813,7 @@ export interface RootRouteChildren {
   onboardingOnboardingFanRoute: typeof onboardingOnboardingFanRoute
   onboardingOnboardingPubRoute: typeof onboardingOnboardingPubRoute
   pubPubPubIdRoute: typeof pubPubPubIdRoute
+  ApiAppStatusRoute: typeof ApiAppStatusRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiBarCommercialEventRoute: typeof ApiBarCommercialEventRoute
   ApiBarPhotoRoute: typeof ApiBarPhotoRoute
@@ -970,6 +1008,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BarSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/convite/$code': {
+      id: '/convite/$code'
+      path: '/convite/$code'
+      fullPath: '/convite/$code'
+      preLoaderRoute: typeof ConviteCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/guia/': {
       id: '/guia/'
       path: '/guia'
@@ -1068,6 +1113,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof pubPubPubIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/app/status': {
+      id: '/api/app/status'
+      path: '/api/app/status'
+      fullPath: '/api/app/status'
+      preLoaderRoute: typeof ApiAppStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -1150,6 +1202,13 @@ declare module '@tanstack/react-router' {
       path: '/grimorio'
       fullPath: '/houdini/grimorio'
       preLoaderRoute: typeof HoudiniAppGrimorioRouteImport
+      parentRoute: typeof HoudiniAppRoute
+    }
+    '/houdini/_app/ia': {
+      id: '/houdini/_app/ia'
+      path: '/ia'
+      fullPath: '/houdini/ia'
+      preLoaderRoute: typeof HoudiniAppIaRouteImport
       parentRoute: typeof HoudiniAppRoute
     }
     '/houdini/_app/jogos': {
@@ -1244,6 +1303,7 @@ interface HoudiniAppRouteChildren {
   HoudiniAppFantasmasRoute: typeof HoudiniAppFantasmasRoute
   HoudiniAppFeiticosRoute: typeof HoudiniAppFeiticosRoute
   HoudiniAppGrimorioRoute: typeof HoudiniAppGrimorioRoute
+  HoudiniAppIaRoute: typeof HoudiniAppIaRoute
   HoudiniAppJogosRoute: typeof HoudiniAppJogosRoute
   HoudiniAppPessoasRoute: typeof HoudiniAppPessoasRoute
   HoudiniAppRevisaoRoute: typeof HoudiniAppRevisaoRoute
@@ -1259,6 +1319,7 @@ const HoudiniAppRouteChildren: HoudiniAppRouteChildren = {
   HoudiniAppFantasmasRoute: HoudiniAppFantasmasRoute,
   HoudiniAppFeiticosRoute: HoudiniAppFeiticosRoute,
   HoudiniAppGrimorioRoute: HoudiniAppGrimorioRoute,
+  HoudiniAppIaRoute: HoudiniAppIaRoute,
   HoudiniAppJogosRoute: HoudiniAppJogosRoute,
   HoudiniAppPessoasRoute: HoudiniAppPessoasRoute,
   HoudiniAppRevisaoRoute: HoudiniAppRevisaoRoute,
@@ -1302,6 +1363,7 @@ const rootRouteChildren: RootRouteChildren = {
   authVerifyEmailRoute: authVerifyEmailRoute,
   dashboardDashboardRoute: dashboardDashboardRoute,
   BarSlugRoute: BarSlugRoute,
+  ConviteCodeRoute: ConviteCodeRoute,
   GuiaSlugRoute: GuiaSlugRoute,
   PlanConfirmedRoute: PlanConfirmedRoute,
   GuiaIndexRoute: GuiaIndexRoute,
@@ -1314,6 +1376,7 @@ const rootRouteChildren: RootRouteChildren = {
   onboardingOnboardingFanRoute: onboardingOnboardingFanRoute,
   onboardingOnboardingPubRoute: onboardingOnboardingPubRoute,
   pubPubPubIdRoute: pubPubPubIdRoute,
+  ApiAppStatusRoute: ApiAppStatusRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiBarCommercialEventRoute: ApiBarCommercialEventRoute,
   ApiBarPhotoRoute: ApiBarPhotoRoute,

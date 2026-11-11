@@ -2,8 +2,8 @@
 
 Suíte de navegador em `apps/e2e`. Sobe o app com `vite dev` contra um Postgres
 descartável, roda cada teste em Chromium desktop e em Chromium com viewport de
-Pixel 7, e não sai para a rede: e-mail, LocationIQ, R2 (fotos), Stripe e tiles
-do mapa são dublês.
+Pixel 7, e não sai para a rede: e-mail, LocationIQ, R2 (fotos), Stripe e
+tiles do mapa são dublês.
 
 ```bash
 bun run test:e2e                              # tudo, nos dois projetos
@@ -75,6 +75,13 @@ chave que o `apps/web/.env` de quem roda local pode trazer com valor real
 (API de e-mail, LocationIQ, Stripe, Redis, PostHog) é sobrescrita ali, nem que seja com
 vazio.
 
+Com `E2E_DATABASE_URL`, o `vite dev` segura conexão ociosa por 70 s
+(`e2eKeepAlive` em `apps/web/vite.config.ts`), mais que um teste dura. Com os 5 s do
+Node, o `page.request` (e o `request`) que volta a falar depois de uns segundos de
+tela pegava a conexão no instante em que o servidor a fechava: "socket hang up" ou
+"read ECONNRESET", só na suíte carregada. O navegador repete o pedido sozinho; o
+agente do Node, não.
+
 ## Estrutura
 
 ```
@@ -128,8 +135,8 @@ import { createUser } from '../../fixtures/users'
 test.describe('com a sessão pronta de torcedor', () => {
   test.use({ storageState: storageState('fan') })
 
-  test('abre o dashboard', async ({ page }) => {
-    await page.goto('/dashboard')
+  test('cai na página do app', async ({ page }) => {
+    await page.goto('/torcedor')
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   })
 })
@@ -206,8 +213,9 @@ com o de `/privacidade` (WEB-240).
 | LocationIQ | `LOCATIONIQ_BASE_URL` aponta o geocoding do servidor para o stub. Rua com `falha-geocoding` → 503 (o app responde `SERVICE_UNAVAILABLE`); com `inexistente` → 404 (endereço não encontrado); resto → centro de São Paulo | `GET ${STUB_URL}/locationiq/calls` lista as consultas recebidas |
 | R2 (fotos) | O upload sai do navegador: `page.route` responde o PUT em `*.r2.cloudflarestorage.com` (e o preflight) sem rede e serve um pixel em `MEDIA_PUBLIC_ORIGIN`. A URL assinada sai da rota real, com chave falsa | `interceptMediaUploads(page)` em `fixtures/media.ts`, antes do `goto` |
 | Stripe (webhook) | `STRIPE_WEBHOOK_SECRET` de teste no servidor; o helper assina como o Stripe (`stripe-signature: t=…,v1=HMAC-SHA256`). O app não confia no corpo do evento: busca no Stripe (o stub) o estado atual da assinatura, então ela precisa estar semeada | `deliverSubscription(request, tipo, stripeSubscription({ id, status, plan, userId }))` em `fixtures/stripe.ts` semeia e entrega; `sendStripeWebhook(request, evento)` só entrega. Mande com o `request` sem sessão: com cookie, o better-auth exige `Origin` |
-| Stripe (API) | `STRIPE_API_BASE_URL` aponta o SDK para o stub, que responde em `/v1/*`: cliente criado em `POST /v1/customers` (`cus_e2e_…`) e lido/atualizado em `/v1/customers/<id>` (sempre sem endereço, para o app mandar o do cadastro), documentos do cliente em `/v1/customers/<id>/tax_ids` (o CNPJ dos dados da nota, WEB-444, guardado no stub; `99.999.999/0001-91` é recusado com 400), preço pela lookup key, sessão de checkout com `url` em `${STUB_URL}/stripe/checkout/<sessão>` e portal em `${STUB_URL}/stripe/portal/<cliente>` (páginas do stub, para o teste esperar o redirect), cupom válido, até `setFounderCoupon(request, estado)` trocar a resposta: `'exhausted'` é o cupom esgotado, `'missing'` o 404 de cupom que não existe na conta — daí a sessão que mandar cupom é recusada, como no Stripe. `GET /v1/subscriptions/<id>` devolve o que foi semeado em `POST ${STUB_URL}/stripe/subscriptions`, e `DELETE /v1/subscriptions/<id>` a encerra (passa a `canceled`; 404 sem semear), que é o que a exclusão da conta chama (WEB-336); `POST /v1/subscriptions/<id>` só grava `cancellation_details` (o motivo do cancelamento, WEB-445). Saldo do cliente e prévia da próxima fatura (`expand[]=customer` e `POST /v1/invoices/create_preview`, WEB-350) saem de `seedStripeBalance(request, assinatura, { balance, nextAmountDue })`, em centavos; sem semear, saldo zero, e assinatura que não está no stub responde 404 (o app segue sem o saldo). Cartão salvo: `stripeSubscription({ cardLast4 })` põe a forma de pagamento na assinatura, e o stub só a devolve como objeto com `expand[]=default_payment_method`. | `GET ${STUB_URL}/stripe/calls` lista `{ method, path, query, body }` de cada chamada; o corpo é formulário (`line_items[0][price]`). Filtre por `metadata[userId]` ou pelo cliente do seu usuário |
+| Stripe (API) | `STRIPE_API_BASE_URL` aponta o SDK para o stub, que responde em `/v1/*`: cliente criado em `POST /v1/customers` (`cus_e2e_…`) e lido/atualizado em `/v1/customers/<id>` (sempre sem endereço, para o app mandar o do cadastro), documentos do cliente em `/v1/customers/<id>/tax_ids` (o CNPJ dos dados da nota, WEB-444, guardado no stub; `99.999.999/0001-91` é recusado com 400), preço pela lookup key, sessão de checkout com `url` em `${STUB_URL}/stripe/checkout/<sessão>` e portal em `${STUB_URL}/stripe/portal/<cliente>` (páginas do stub, para o teste esperar o redirect), cupom válido, até `setFounderCoupon(request, estado)` trocar a resposta: `'exhausted'` é o cupom esgotado, `'missing'` o 404 de cupom que não existe na conta — daí a sessão que mandar cupom é recusada, como no Stripe. `GET /v1/subscriptions/<id>` devolve o que foi semeado em `POST ${STUB_URL}/stripe/subscriptions`, e `DELETE /v1/subscriptions/<id>` a encerra (passa a `canceled`; 404 sem semear), que é o que a exclusão da conta chama (WEB-336); `POST /v1/subscriptions/<id>` só grava `cancellation_details` (o motivo do cancelamento, WEB-445). Saldo do cliente e prévia da próxima fatura (`expand[]=customer` e `POST /v1/invoices/create_preview`, WEB-350) saem de `seedStripeBalance(request, assinatura, { balance, nextAmountDue })`, em centavos; sem semear, saldo zero, e assinatura que não está no stub responde 404 (o app segue sem o saldo). Cartão salvo: `stripeSubscription({ cardLast4 })` põe a forma de pagamento na assinatura, e o stub só a devolve como objeto com `expand[]=default_payment_method`. Faturas da assinatura e cobranças do cliente (`GET /v1/invoices?subscription=`, `GET /v1/charges?customer=`, WEB-443) saem de `seedStripeInvoices(request, assinatura, [stripeInvoice({ … })], cobranças)`; sem semear, lista vazia. | `GET ${STUB_URL}/stripe/calls` lista `{ method, path, query, body }` de cada chamada; o corpo é formulário (`line_items[0][price]`). Filtre por `metadata[userId]` ou pelo cliente do seu usuário |
 | Mapa | `VITE_MAP_TILES_URL` aponta para o TileJSON do stub (`/tiles.json`); tiles MVT respondem 204: o mapa monta, marcadores aparecem | — |
+| Mapa (tiles) | Todo contexto do `test` responde `tiles.onside.sh` sem rede: TileJSON do próprio host e tile 204, e o mapa da prévia monta no tom do chão (WEB-456) | `stubTiles(page)` em `fixtures/tiles.ts`, antes do `goto`, devolve os caminhos pedidos |
 | Geolocalização | Concedida e no centro de São Paulo para todo teste (`use.geolocation`) | `test.use({ permissions: [] })` para negar |
 
 Rede externa está bloqueada no Chromium (`--host-resolver-rules`): o que não é
@@ -229,8 +237,8 @@ novo — vale na requisição seguinte.
 A alternativa, "criar o dado antes do primeiro request que lê", não se sustenta
 com workers paralelos batendo no mesmo servidor: a chave do cache de busca é a
 consulta, e um teste leria a busca que outro deixou em cache. O custo é o E2E
-não exercitar o cache em si — isso fica com os testes unitários
-(`ttl-cache.test.ts`, `shared-cache.test.ts`).
+não exercitar o cache em si — isso fica com o teste unitário
+(`ttl-cache.test.ts`).
 
 `E2E_DISABLE_CACHES`, `E2E_EMAIL_OUTBOX`, `LOCATIONIQ_BASE_URL`,
 `STRIPE_API_BASE_URL` e `E2E_DATABASE_URL` são recusadas por `packages/env` quando
@@ -240,12 +248,22 @@ não exercitar o cache em si — isso fica com os testes unitários
 
 - **`vite dev`, não o build.** O build de produção usa o driver HTTP do Neon e
   falha com `fetch failed` contra Postgres local.
-- **Origem.** `BETTER_AUTH_URL`, `CORS_ORIGIN` e `PUBLIC_APP_URL` são
+- **Origem.** `BETTER_AUTH_URL` e `PUBLIC_APP_URL` são
   `http://127.0.0.1:<E2E_PORT>`, e o `baseURL` do Playwright também. Trocar um
   só dá `Invalid origin` no login. `127.0.0.1`, e não `localhost`: no macOS o
   `localhost` do Vite pode abrir só em `::1`.
 - **Hidratação.** Clique logo depois de um `goto` cru (fora do `test` da suíte)
   pode cair no HTML antes do React.
+- **Server function no SSR, servidor frio.** No `vite dev`, duas primeiras
+  chamadas ao mesmo tempo da mesma server function quebram a segunda ("(intermediate
+  value) is not a function": o módulo dela chega pela metade). O `setup` chama
+  cada uma em série antes dos workers ("server functions do SSR aquecidas");
+  server function nova que o SSR chama entra na lista de lá.
+- **Componente `lazy`.** `html[data-hydrated]` marca a raiz hidratada, não o
+  que está dentro de um `lazy` (hoje, a faixa da pele no `__root.tsx`): o HTML
+  do servidor fica lá sem handler até o módulo chegar, e o React descarta o
+  clique nesse intervalo. Espere um sinal do próprio componente (a faixa: o
+  relógio sair de "--:--", em `houdini/pessoas.e2e.ts`).
 - **Devtools.** Em `vite dev` o app mostra os botões do TanStack Router e do
   React Query nos cantos de baixo. Se um clique no mobile cair em cima deles,
   role o alvo para a vista antes.

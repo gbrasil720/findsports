@@ -44,6 +44,12 @@ export const HOUDINI_NAV_GROUPS = [
     label: 'Máquina',
     items: [
       { to: '/houdini/feiticos', label: 'Feitiços', icon: 'wand' },
+      {
+        to: '/houdini/ia',
+        label: 'IA',
+        icon: 'spark',
+        hint: 'gasto e testes A/B'
+      },
       { to: '/houdini/bastidores', label: 'Bastidores', icon: 'pulse' }
     ]
   },

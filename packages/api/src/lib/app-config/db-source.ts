@@ -1,7 +1,7 @@
 import { db, sql } from '@findsports_oficial/db'
 import { recordAdminActionSafely } from '@findsports_oficial/db/admin-action'
 
-import { createSharedCache } from '../shared-cache'
+import { createTtlCache } from '../ttl-cache'
 import { utcIso } from '../utc-timestamp'
 import {
   type AppConfigKey,
@@ -139,8 +139,7 @@ export async function carregarAppConfigGravada(): Promise<LinhaAppConfig[]> {
 
 export const appConfigStore = createAppConfigStore({
   carregar: carregarDoBanco,
-  cache: createSharedCache<RegistroBruto>({
-    prefix: 'app-config',
+  cache: createTtlCache<RegistroBruto>({
     ttlMs: APP_CONFIG_TTL_MS,
     maxEntries: 1
   })

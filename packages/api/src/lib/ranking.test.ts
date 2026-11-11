@@ -1,0 +1,217 @@
+import { describe, expect, it, test } from 'bun:test'
+import {
+  chaseOf,
+  cityChase,
+  crownOf,
+  listedInCity,
+  monthOf,
+  previousMonth,
+  type RankVisit,
+  rank,
+  scoreOf,
+  topPercent
+} from './ranking'
+
+const at = (iso: string) => new Date(iso)
+const v = (
+  iso: string,
+  barId: string,
+  eventId = `${barId}-${iso}`,
+  neighborhood = 'Pinheiros'
+): RankVisit => ({
+  at: at(iso),
+  eventId,
+  barId,
+  barName: barId,
+  neighborhood,
+  city: 'São Paulo',
+  sportId: 'futebol',
+  sportName: 'Futebol'
+})
+
+// Outubro de 2026 em Brasília (UTC-3): 01/10 03:00Z a 01/11 03:00Z.
+const FROM = at('2026-10-01T03:00:00Z')
+const TO = at('2026-11-01T03:00:00Z')
+
+describe('scoreOf', () => {
+  const visits = [
+    v('2026-09-30T23:00:00Z', 'a'), // 20h de 30/09 em Brasília: setembro
+    v('2026-10-02T22:00:00Z', 'a'),
+    v('2026-10-05T22:00:00Z', 'b', 'jogo-b', 'Lapa'),
+    v('2026-10-09T22:00:00Z', 'a'),
+    v('2026-11-01T02:30:00Z', 'c') // 23h30 de 31/10 em Brasília: outubro
+  ]
+
+  it('conta bares diferentes no mês de Brasília e quando chegou ao número', () => {
+    expect(scoreOf('bars', visits, [], FROM, TO)).toEqual({
+      value: 3,
+      reachedAt: at('2026-11-01T02:30:00Z')
+    })
+  })
+
+  it('jogos e bairros', () => {
+    expect(scoreOf('games', visits, [], FROM, TO).value).toBe(4)
+    expect(scoreOf('neighborhoods', visits, [], FROM, TO)).toEqual({
+      value: 2,
+      reachedAt: at('2026-10-05T22:00:00Z')
+    })
+  })
+
+  it('conquistas: só as que saíram no mês, com a história de antes', () => {
+    // "Primeira rodada" saiu em setembro; "Rodou a cidade" pede 3 bairros.
+    const score = scoreOf(
+      'achievements',
+      [
+        v('2026-09-10T22:00:00Z', 'a', 'e1', 'Lapa'),
+        v('2026-10-03T22:00:00Z', 'b', 'e2', 'Moema'),
+        v('2026-10-04T22:00:00Z', 'c', 'e3', 'Sé')
+      ],
+      [{ at: at('2026-10-06T12:00:00Z'), barName: 'b' }],
+      FROM,
+      TO
+    )
+    expect(score).toEqual({ value: 2, reachedAt: at('2026-10-06T12:00:00Z') })
+  })
+
+  it('o mês seguinte começa do zero', () => {
+    expect(scoreOf('bars', visits, [], TO, at('2026-12-01T03:00:00Z'))).toEqual(
+      { value: 0, reachedAt: null }
+    )
+  })
+})
+
+describe('rank', () => {
+  const person = (id: string, value: number, reached: string | null) => ({
+    id,
+    name: id,
+    score: { value, reachedAt: reached ? at(reached) : null }
+  })
+
+  it('empate vai para quem chegou primeiro; zero, pelo nome', () => {
+    const rows = rank([
+      person('Caio', 0, null),
+      person('Bia', 3, '2026-10-09T00:00:00Z'),
+      person('Ana', 0, null),
+      person('Rafa', 3, '2026-10-05T00:00:00Z'),
+      person('Marina', 5, '2026-10-20T00:00:00Z')
+    ])
+    expect(rows.map((r) => [r.position, r.id])).toEqual([
+      [1, 'Marina'],
+      [2, 'Rafa'],
+      [3, 'Bia'],
+      [4, 'Ana'],
+      [5, 'Caio']
+    ])
+  })
+})
+
+describe('chaseOf', () => {
+  const row = (name: string, position: number, value: number, me = false) => ({
+    name,
+    position,
+    me,
+    score: { value, reachedAt: null }
+  })
+
+  it('falta passar quem está logo acima, e empatar não basta', () => {
+    expect(
+      chaseOf([row('Marina', 1, 9), row('Você', 2, 7, true), row('Rafa', 3, 6)])
+    ).toEqual({ name: 'Marina', need: 3, mine: 7 })
+    expect(chaseOf([row('Marina', 1, 7), row('Você', 2, 7, true)])?.need).toBe(
+      1
+    )
+  })
+
+  it('em primeiro, nada', () => {
+    expect(chaseOf([row('Você', 1, 2, true), row('Rafa', 2, 1)])).toBeNull()
+  })
+})
+
+describe('monthOf', () => {
+  it('fecha no último dia de Brasília, e vira às 0h de Brasília', () => {
+    expect(monthOf(at('2026-10-13T15:00:00Z'))).toEqual({
+      month: '2026-10',
+      closesInDays: 18
+    })
+    // 23h de 31/10 em Brasília, já 1º/11 em UTC.
+    expect(monthOf(at('2026-11-01T02:00:00Z'))).toEqual({
+      month: '2026-10',
+      closesInDays: 0
+    })
+    expect(monthOf(at('2026-11-01T03:00:00Z'))).toEqual({
+      month: '2026-11',
+      closesInDays: 29
+    })
+  })
+})
+
+describe('listedInCity', () => {
+  it('só quem ligou o ranking global e não escolheu "Ninguém"', () => {
+    expect(listedInCity(false, 'everyone')).toBe(false)
+    expect(listedInCity(true, 'everyone')).toBe(true)
+    expect(listedInCity(true, 'friends')).toBe(true)
+    expect(listedInCity(true, 'nobody')).toBe(false)
+  })
+})
+
+describe('cidade: fatia e perseguição (rodada 6)', () => {
+  // 100 torcedores: 10 com 9 bares, 20 com 6, 70 com 2.
+  const buckets = [
+    { value: 9, count: 10 },
+    { value: 6, count: 20 },
+    { value: 2, count: 70 }
+  ]
+  it('a fatia arredonda para cima e nunca é zero', () => {
+    expect(topPercent(17, 100)).toBe(17)
+    expect(topPercent(1, 1284)).toBe(1)
+    expect(topPercent(212, 1284)).toBe(17)
+  })
+  it('a próxima fatia de 5% e quanto falta para passar a beirada', () => {
+    // 25º de 100 (top 25%): a meta é o top 20%, a 20ª posição tem 6.
+    expect(cityChase(buckets, 25, 100, 6)).toEqual({ top: 20, need: 1 })
+    // 40º (top 40%): meta top 35%, a 35ª tem 2; com 2, falta 1.
+    expect(cityChase(buckets, 40, 100, 2)).toEqual({ top: 35, need: 1 })
+    // 12º (top 12%): meta top 10%, a 10ª tem 9; com 6, faltam 4.
+    expect(cityChase(buckets, 12, 100, 6)).toEqual({ top: 10, need: 4 })
+  })
+  it('no top 5%, nada', () => {
+    expect(cityChase(buckets, 3, 100, 9)).toBeNull()
+  })
+})
+
+describe('crownOf', () => {
+  const row = (me: boolean, position: number, value: number) => ({
+    me,
+    position,
+    value
+  })
+  test('1º com bar e com amigo na lista ganha', () => {
+    expect(crownOf([row(true, 1, 3), row(false, 2, 2)])).toEqual({
+      won: true,
+      value: 3
+    })
+  })
+  test('sozinho não é rei', () => {
+    expect(crownOf([row(true, 1, 5)]).won).toBe(false)
+  })
+  test('1º com zero não ganha', () => {
+    expect(crownOf([row(true, 1, 0), row(false, 2, 0)]).won).toBe(false)
+  })
+  test('2º não ganha', () => {
+    expect(crownOf([row(false, 1, 4), row(true, 2, 3)])).toEqual({
+      won: false,
+      value: 3
+    })
+  })
+})
+
+describe('previousMonth', () => {
+  test('o mês que fechou, no relógio de Brasília', () => {
+    // 1º de novembro, 00:00 em Brasília.
+    const start = new Date('2026-11-01T03:00:00Z')
+    expect(previousMonth(start).month).toBe('2026-10')
+    expect(previousMonth(start).end.toISOString()).toBe(
+      '2026-11-01T02:59:59.999Z'
+    )
+  })
+})

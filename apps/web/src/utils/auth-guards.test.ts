@@ -5,6 +5,7 @@ import {
   isHashOnlyChange,
   PUB_LIVE_PATH,
   requiresAuthentication,
+  sessionAfterFailure,
   toClientSession
 } from './auth-guards'
 
@@ -161,6 +162,29 @@ describe('applyAuthGuards', () => {
           .search?.callbackUrl
       ).toBe(callbackUrl)
     }
+  })
+
+  // WEB-473: no SSR não há `location`; a origem do router decide se o
+  // `callbackUrl` absoluto é do próprio site.
+  test('segue o callbackUrl absoluto de mesma origem com a origem do router', () => {
+    const origin = 'https://onside.sh'
+    const login = (callbackUrl: string, role: 'pub' | 'admin' = 'pub') => {
+      try {
+        applyAuthGuards(
+          session(role),
+          '/login',
+          {},
+          `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`,
+          origin
+        )
+      } catch (error) {
+        return (error as { options?: { to?: string } }).options?.to
+      }
+      return undefined
+    }
+    expect(login('https://onside.sh/admin/jogos?x=1')).toBe('/admin/jogos?x=1')
+    expect(login('https://outro.site/admin/jogos')).not.toContain('outro.site')
+    expect(login('https://onside.sh/houdini', 'admin')).toBe('/houdini')
   })
 
   test('lets visitors stay on unknown URLs so the 404 can render', () => {
@@ -352,6 +376,25 @@ describe('isHashOnlyChange', () => {
     expect(isHashOnlyChange(admin, { ...admin, searchStr: '?public=1' })).toBe(
       false
     )
+  })
+})
+
+describe('sessionAfterFailure', () => {
+  const last = { session: session('pub') }
+  const semRede = new TypeError('Failed to fetch')
+
+  test('sem rede, a troca de tela fica com a última sessão conferida', () => {
+    expect(sessionAfterFailure(semRede, last)).toBe(last.session)
+    expect(sessionAfterFailure({ status: 503 }, last)).toBe(last.session)
+  })
+
+  test('saiu da conta ou foi a primeira conferência: o erro segue', () => {
+    expect(() => sessionAfterFailure(semRede, undefined)).toThrow(semRede)
+  })
+
+  test('recusa do servidor não usa a sessão guardada', () => {
+    const recusa = { status: 401, message: 'Unauthorized' }
+    expect(() => sessionAfterFailure(recusa, last)).toThrow()
   })
 })
 

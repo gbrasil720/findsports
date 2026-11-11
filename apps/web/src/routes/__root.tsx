@@ -41,6 +41,7 @@ import {
   consentBannerEnabled,
   useAnalyticsConsent
 } from '../lib/analytics-consent'
+import { env } from '../lib/env'
 import { initPostHog, stopPostHog } from '../lib/posthog'
 import { OG_IMAGE_URL } from '../lib/site'
 import { authMiddleware } from '../middleware/auth'
@@ -48,13 +49,16 @@ import {
   type AuthSession,
   applyAuthGuards,
   isHashOnlyChange,
-  type SessionLocation
+  type SessionLocation,
+  sessionAfterFailure
 } from '../utils/auth-guards'
 
 export interface RouterAppContext {
   trpc: TRPCOptionsProxy<AppRouter>
   queryClient: QueryClient
   syncSession: (userId: string | null) => void
+  // A origem do router (WEB-473): o `beforeLoad` não recebe o router.
+  origin: () => string
   // Última sessão conferida pelo `beforeLoad` da raiz, por instância de router.
   lastSessionCheck: {
     current?: {
@@ -102,14 +106,17 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
     const session =
       last && isHashOnlyChange(last.location, location)
         ? last.session
-        : await getSession()
+        : await getSession().catch((error: unknown) =>
+            sessionAfterFailure(error, last)
+          )
     context.lastSessionCheck.current = { location, session }
     context.syncSession(session?.user.id ?? null)
     applyAuthGuards(
       session,
       location.pathname,
       location.search,
-      location.pathname + location.searchStr
+      location.pathname + location.searchStr,
+      context.origin()
     )
     return { session }
   },
@@ -234,7 +241,8 @@ function PostHogProvider() {
 function RootDocument() {
   const session = Route.useRouteContext({ select: (ctx) => ctx.session })
   const impersonated = session?.session.impersonatedBy ? session : null
-  const isDev = import.meta.env.DEV
+  // Sem devtools na suíte E2E: o botão flutuante cobre o que o teste clica.
+  const isDev = import.meta.env.DEV && !env.VITE_E2E_NO_DEVTOOLS
   const narrow = useNarrowScreen()
   // WEB-383: o Houdini não mede o admin nem pede consentimento de cookie.
   const inHoudini = useRouterState({

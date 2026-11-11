@@ -1,0 +1,9 @@
+{
+  "name": "fold-posture",
+  "version": "0.1.0",
+  "description": "Postura da dobra: dobradiça do iPhone Duo (UIHinge) e Jetpack WindowManager no Android",
+  "license": "UNLICENSED",
+  "author": "Onside",
+  "homepage": "https://onside.sh",
+  "main": "index.ts"
+}

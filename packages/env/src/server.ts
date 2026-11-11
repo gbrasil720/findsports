@@ -10,7 +10,6 @@ const rawEnv = createEnv({
     BETTER_AUTH_SECRET: z.string().min(32),
     BETTER_AUTH_URL: z.url(),
     PUBLIC_APP_URL: z.url().optional(),
-    CORS_ORIGIN: z.url(),
     AUTH_DEV_TRUSTED_ORIGIN: z.url().optional(),
     /**
      * Envio de e-mail (WEB-476): a MillionSend, ou qualquer API no mesmo
@@ -78,6 +77,16 @@ const rawEnv = createEnv({
      * (`VITE_TURNSTILE_SITE_KEY`) precisa estar no build ANTES deste segredo.
      */
     TURNSTILE_SECRET_KEY: z.string().min(1).optional(),
+    /**
+     * AI Gateway por onde passa toda chamada de IA (WEB-424): `onside-prod`
+     * e `onside-preview`, no `wrangler.jsonc`, com teto de gasto e logs.
+     * Ausente em produção, a IA não chama ninguém: sem Gateway não há teto.
+     * No `vite dev` vale o `default` da conta.
+     */
+    AI_GATEWAY_ID: z
+      .string()
+      .regex(/^[a-z0-9-]+$/, 'AI_GATEWAY_ID inválido')
+      .optional(),
     /**
      * Chaves só do E2E (WEB-174, `docs/e2e.md`). Recusadas em produção logo
      * abaixo: qualquer uma delas troca um serviço real por um dublê.

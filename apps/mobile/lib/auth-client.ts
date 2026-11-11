@@ -11,6 +11,7 @@ import { createAuthClient } from 'better-auth/react'
 import Constants from 'expo-constants'
 import * as SecureStore from 'expo-secure-store'
 import { env } from './env'
+import { queryClient } from './query-client'
 
 // O mesmo better-auth do web, em `<servidor>/api/auth`. No app não há cookie
 // de navegador: o plugin do Expo guarda a sessão no SecureStore e a repassa
@@ -57,6 +58,13 @@ export async function adoptSessionCookie(setCookie: string) {
   authClient.$store.notify('$sessionSignal')
 }
 
+/**
+ * Há sessão guardada no aparelho? Lido direto do SecureStore (síncrono): na
+ * partida o `getCookie()` do cliente ainda pode estar vazio.
+ */
+export const hasStoredSession = () =>
+  Boolean(SecureStore.getItem(`${scheme}_cookie`))
+
 /** Onde a tela de senha nova acha o e-mail, para entrar logo depois. */
 export const RESET_EMAIL_KEY = 'onside.reset-email'
 
@@ -73,4 +81,7 @@ export async function refreshSession() {
     .catch(() => {})
   await authClient.getSession({ query: { disableCookieCache: true } })
   authClient.$store.notify('$sessionSignal')
+  // Nome, foto e raio mudam por aqui, fora das mutations do tRPC: o cache
+  // vence do mesmo jeito (ver `lib/query-client.ts`).
+  queryClient.invalidateQueries({ refetchType: 'none' })
 }

@@ -1,0 +1,546 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { type Href, useRouter } from 'expo-router'
+import { useState } from 'react'
+import {
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  View
+} from 'react-native'
+import Animated from 'react-native-reanimated'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Card } from '@/components/card'
+import { HardShadow } from '@/components/explore'
+import {
+  AddButton,
+  Avatar,
+  PersonRow,
+  personLine,
+  useFriendActions,
+  useKept
+} from '@/components/friends'
+import { DuelCard, FeedList, TodayCard } from '@/components/friends-activity'
+import {
+  haptic,
+  ScalePress,
+  SWAP,
+  usePress,
+  usePressScale
+} from '@/components/motion'
+import { Skeleton } from '@/components/states'
+import { usePalette } from '@/components/theme'
+import {
+  ACID,
+  ErrorState,
+  Icon,
+  INK,
+  LIVE,
+  Text,
+  text,
+  usePullRefresh,
+  useStatusBar
+} from '@/components/ui'
+import { monthName } from '@/lib/invite'
+import { trpc } from '@/lib/trpc'
+
+/**
+ * Amigos (11a do design): busca, os três jeitos de adicionar, pedidos
+ * recebidos, sugestões de amigos de amigos e a lista. Empilhada sem a barra
+ * de abas, com voltar, como no design (lá ela abre pelo Ranking, 11e; aqui,
+ * pelo menu "Você").
+ */
+export default function Friends() {
+  const router = useRouter()
+  const insets = useSafeAreaInsets()
+  const palette = usePalette()
+  useStatusBar('auto')
+  const me = useQuery(trpc.friends.me.queryOptions())
+  const overview = useQuery(trpc.friends.overview.queryOptions())
+  const activity = useQuery(trpc.friends.activity.queryOptions())
+  const ranking = useQuery(
+    trpc.ranking.friends.queryOptions({ metric: 'bars' })
+  )
+  const queryClient = useQueryClient()
+  // Otimista: "Você vai" e o háptico saem no mesmo quadro do toque; se o
+  // servidor recusar, o botão volta.
+  const going = useMutation(
+    trpc.attendance.set.mutationOptions({
+      onMutate: (input) => {
+        const key = trpc.friends.activity.queryKey()
+        const before = queryClient.getQueryData(key)
+        if (before)
+          queryClient.setQueryData(key, {
+            ...before,
+            today: before.today.map((item) =>
+              item.eventId === input.eventId ? { ...item, mine: true } : item
+            )
+          })
+        haptic.success()
+        return { before }
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({
+          queryKey: trpc.friends.activity.queryKey()
+        })
+        queryClient.invalidateQueries({ queryKey: trpc.attendance.pathKey() })
+      },
+      onError: (_, __, context) => {
+        haptic.error()
+        if (context?.before)
+          queryClient.setQueryData(
+            trpc.friends.activity.queryKey(),
+            context.before
+          )
+      }
+    })
+  )
+  // O duelo do mês: você e o amigo logo acima (ou abaixo) no ranking.
+  const rows = ranking.data?.rows ?? []
+  const mine = rows.find((row) => row.me)
+  const rival =
+    (mine && rows.find((row) => row.position === mine.position - 1)) ??
+    (mine && rows.find((row) => row.position === mine.position + 1))
+  const actions = useFriendActions()
+  const pull = usePullRefresh(() =>
+    Promise.all([me.refetch(), overview.refetch(), activity.refetch()])
+  )
+  const data = overview.data
+  // Respondido aqui fica na tela até ela abrir de novo, com o botão trocado
+  // ("Amigos", "Recusado", "Pedido enviado"): tirar a linha fazia o card e o
+  // resto da tela pularem.
+  const [answered, setAnswered] = useState<Record<string, Answered>>({})
+  const answer = (id: string, value: Answered) =>
+    setAnswered((all) => ({ ...all, [id]: value }))
+  const requests = useKept(data?.requests)
+  const suggestions = useKept(data?.suggestions)
+  const month = monthName()
+  const open = (id: string) => router.push(`/amigo/${id}` as Href)
+
+  return (
+    <View style={[styles.screen, { backgroundColor: palette.bg }]}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.body,
+          { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 24 }
+        ]}
+        refreshControl={<RefreshControl {...pull} tintColor={palette.muted} />}
+      >
+        {/* Meu código e adicionar ficam no topo, como ícones (rodada 6). */}
+        <View style={styles.head}>
+          <RoundIcon label="Voltar" onPress={() => router.back()} icon="back" />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <RoundIcon
+              label="Meu código"
+              onPress={() => router.push('/meu-codigo')}
+              icon="qr"
+            />
+            <RoundIcon
+              label="Adicionar amigos"
+              onPress={() => router.push('/amigos-busca')}
+              icon="userplus"
+            />
+          </View>
+        </View>
+        <Text style={[styles.bigTitle, { color: palette.ink }]}>Amigos</Text>
+
+        {activity.data?.today.length ? (
+          <TodayCard
+            items={activity.data.today}
+            meName={mine?.name}
+            busy={null}
+            onGoing={(item) =>
+              going.mutate({ eventId: item.eventId, attending: true })
+            }
+            onBar={(item) => router.push(`/bar/${item.barId}` as Href)}
+          />
+        ) : null}
+        {mine && rival && ranking.data ? (
+          <DuelCard
+            title={`Duelo de ${month}`}
+            metric="bares"
+            me={{ name: mine.name, value: mine.value }}
+            them={{ name: rival.name, value: rival.value }}
+            closesInDays={ranking.data.closesInDays}
+            onBars={() => router.push('/bares-pra-voce')}
+          />
+        ) : null}
+        {activity.data?.feed.length ? (
+          <>
+            <Label>Atividade</Label>
+            <FeedList items={activity.data.feed.slice(0, 8)} onPerson={open} />
+          </>
+        ) : null}
+
+        {overview.isPending ? (
+          <Skeleton />
+        ) : overview.isError || !data ? (
+          <ErrorState
+            style={styles.empty}
+            title="Não deu para abrir seus amigos."
+            error={overview.error}
+            onRetry={overview.refetch}
+            retrying={overview.isFetching}
+          />
+        ) : (
+          <>
+            {requests.length ? (
+              <>
+                <Label>{`Pedidos · ${requests.length}`}</Label>
+                <Card shadow={palette.liveShadow}>
+                  <View style={styles.inCard}>
+                    {requests.map((person, index) => (
+                      <PersonRow
+                        key={person.id}
+                        id={person.id}
+                        name={person.name}
+                        image={person.image}
+                        sub={
+                          person.via === 'link'
+                            ? 'Pelo seu link'
+                            : person.mutual
+                              ? `${person.mutual} ${person.mutual === 1 ? 'amigo' : 'amigos'} em comum`
+                              : personLine(person)
+                        }
+                        first={index === 0}
+                        onPress={() => open(person.id)}
+                        right={
+                          answered[person.id] ? (
+                            <Animated.View entering={SWAP}>
+                              {answered[person.id] === 'declined' ? (
+                                <Text
+                                  style={[
+                                    text(13, 'Bold'),
+                                    { color: palette.muted }
+                                  ]}
+                                >
+                                  Recusado
+                                </Text>
+                              ) : (
+                                <AddButton
+                                  relation="friends"
+                                  onPress={() => {}}
+                                />
+                              )}
+                            </Animated.View>
+                          ) : (
+                            <View style={styles.answer}>
+                              <Answer
+                                label={`Recusar ${person.name}`}
+                                disabled={actions.busy}
+                                onPress={() =>
+                                  actions.respond.mutate(
+                                    { userId: person.id, accept: false },
+                                    {
+                                      onSuccess: () =>
+                                        answer(person.id, 'declined')
+                                    }
+                                  )
+                                }
+                              />
+                              <Answer
+                                accept
+                                label={`Aceitar ${person.name}`}
+                                disabled={actions.busy}
+                                onPress={() =>
+                                  actions.respond.mutate(
+                                    { userId: person.id, accept: true },
+                                    {
+                                      onSuccess: () =>
+                                        answer(person.id, 'friends')
+                                    }
+                                  )
+                                }
+                              />
+                            </View>
+                          )
+                        }
+                      />
+                    ))}
+                  </View>
+                </Card>
+              </>
+            ) : null}
+
+            {suggestions.length ? (
+              <>
+                <Label>Talvez você conheça</Label>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.bleed}
+                  contentContainerStyle={styles.suggestions}
+                >
+                  {suggestions.map((person) => (
+                    <Suggestion
+                      key={person.id}
+                      person={person}
+                      sent={answered[person.id] === 'sent'}
+                      busy={actions.busy}
+                      onOpen={() => open(person.id)}
+                      onAdd={() =>
+                        actions.request.mutate(
+                          { userId: person.id, via: 'suggestion' },
+                          { onSuccess: () => answer(person.id, 'sent') }
+                        )
+                      }
+                    />
+                  ))}
+                </ScrollView>
+              </>
+            ) : null}
+
+            <Label>
+              {`Seus amigos${data.friends.length ? ` · ${data.friends.length}` : ''}`}
+            </Label>
+            {data.friends.length ? (
+              <Card>
+                <View style={styles.inCard}>
+                  {data.friends.map((friend, index) => (
+                    <PersonRow
+                      key={friend.id}
+                      id={friend.id}
+                      name={friend.name}
+                      image={friend.image}
+                      size={38}
+                      sub={[
+                        friend.barsThisMonth === null
+                          ? null
+                          : `${friend.barsThisMonth} ${friend.barsThisMonth === 1 ? 'bar' : 'bares'} em ${month}`,
+                        friend.city
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                      first={index === 0}
+                      onPress={() => open(friend.id)}
+                      right={
+                        <Icon name="next" size={12} color={palette.muted} />
+                      }
+                    />
+                  ))}
+                </View>
+              </Card>
+            ) : (
+              <Text
+                style={[text(14, 'Regular', 1.45), { color: palette.muted }]}
+              >
+                Ninguém ainda. Mande seu link ou mostre seu código: quem entrar
+                pelo link já vira seu amigo.
+              </Text>
+            )}
+          </>
+        )}
+      </ScrollView>
+    </View>
+  )
+}
+
+/** Os botões redondos do topo (`.rb`): sólidos, com a sombra dura. */
+function RoundIcon({
+  label,
+  icon,
+  onPress
+}: {
+  label: string
+  icon: 'back' | 'qr' | 'userplus'
+  onPress: () => void
+}) {
+  const palette = usePalette()
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={6}
+      onPress={onPress}
+      style={[
+        styles.round,
+        { backgroundColor: palette.card, shadowColor: palette.drop }
+      ]}
+    >
+      <Icon name={icon} size={20} color={palette.ink} />
+    </Pressable>
+  )
+}
+
+/** "PEDIDOS · 2", "ATIVIDADE": o rótulo em mono de cada bloco (rodada 6). */
+function Label({ children }: { children: React.ReactNode }) {
+  const palette = usePalette()
+  return (
+    <Text style={[styles.label, { color: palette.muted }]}>
+      {typeof children === 'string'
+        ? children.toLocaleUpperCase('pt-BR')
+        : children}
+    </Text>
+  )
+}
+
+/** Recusar (x) e aceitar (✓) de um pedido. */
+function Answer({
+  accept,
+  label,
+  disabled,
+  onPress
+}: {
+  accept?: boolean
+  label: string
+  disabled?: boolean
+  onPress: () => void
+}) {
+  // Aceitar tem sombra dura: afunda sobre ela. Recusar, sem sombra, encolhe.
+  const palette = usePalette()
+  const sink = usePress(3, 3)
+  const shrink = usePressScale(0.94)
+  const press = accept ? sink : shrink
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      disabled={disabled}
+      onPress={onPress}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+    >
+      {accept ? (
+        <HardShadow color={palette.dark ? '#000' : INK} offset={3} />
+      ) : null}
+      <Animated.View
+        style={[
+          styles.answerButton,
+          accept
+            ? { backgroundColor: ACID }
+            : {
+                borderWidth: 1,
+                borderColor: palette.dark
+                  ? 'rgba(241,238,230,.22)'
+                  : palette.line
+              },
+          press.style
+        ]}
+      >
+        <Icon
+          name={accept ? 'check' : 'close'}
+          size={16}
+          color={accept ? INK : palette.ink}
+          accent={accept ? INK : LIVE}
+        />
+      </Animated.View>
+    </Pressable>
+  )
+}
+
+/** Um card de "Talvez você conheça". */
+function Suggestion({
+  person,
+  sent,
+  busy,
+  onOpen,
+  onAdd
+}: {
+  person: { id: string; name: string; image: string | null; mutual: number }
+  sent: boolean
+  busy: boolean
+  onOpen: () => void
+  onAdd: () => void
+}) {
+  const palette = usePalette()
+  return (
+    <ScalePress accessibilityRole="button" to={0.985} onPress={onOpen}>
+      <Card>
+        <View style={styles.suggestion}>
+          <Avatar
+            id={person.id}
+            name={person.name}
+            image={person.image}
+            size={46}
+          />
+          <View>
+            <Text
+              style={[text(14, 'Bold', 1.25), { color: palette.ink }]}
+              numberOfLines={1}
+            >
+              {person.name}
+            </Text>
+            <Text
+              style={[
+                text(11.5, 'Regular', 1.3),
+                styles.why,
+                { color: palette.muted }
+              ]}
+              numberOfLines={2}
+            >
+              {person.mutual} {person.mutual === 1 ? 'amigo' : 'amigos'} em
+              comum
+            </Text>
+          </View>
+          <Animated.View key={String(sent)} entering={SWAP}>
+            <AddButton
+              relation={sent ? 'sent' : 'none'}
+              busy={busy || sent}
+              onPress={onAdd}
+            />
+          </Animated.View>
+        </View>
+      </Card>
+    </ScalePress>
+  )
+}
+
+const styles = StyleSheet.create({
+  label: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11,
+    letterSpacing: 0.88,
+    marginBottom: -4
+  },
+  round: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  },
+  // Anton 44: margem negativa no lugar do entrelinha curto.
+  bigTitle: {
+    fontFamily: 'Anton',
+    fontSize: 44,
+    textTransform: 'uppercase',
+    marginVertical: -10.7
+  },
+  screen: { flex: 1 },
+  body: { paddingHorizontal: 16, gap: 13 },
+  head: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  search: {
+    height: 48,
+    borderRadius: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16
+  },
+  actions: { flexDirection: 'row', gap: 8 },
+  action: { padding: 12, gap: 10 },
+  inCard: { paddingHorizontal: 14 },
+  answer: { flexDirection: 'row', gap: 8 },
+  answerButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  bleed: { marginHorizontal: -16, flexGrow: 0 },
+  suggestions: { gap: 10, paddingHorizontal: 16, paddingBottom: 6 },
+  // 142 de conteúdo mais o padding, como o `width:142px;padding:12px` do design.
+  suggestion: { width: 166, padding: 12, gap: 8, alignItems: 'flex-start' },
+  why: { minHeight: 30 },
+  empty: { alignItems: 'center', gap: 14, paddingVertical: 32 }
+})
+
+type Answered = 'friends' | 'declined' | 'sent'

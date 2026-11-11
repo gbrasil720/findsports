@@ -112,6 +112,26 @@ test.describe('"Ver a landing" do menu não redireciona', () => {
   })
 })
 
+// WEB-473: o guard roda no SSR, onde a origem é a da requisição. Link
+// absoluto do próprio site (e-mail, favorito) leva ao destino, não a /admin.
+test.describe('bar logado com callbackUrl absoluto', () => {
+  test.use({ storageState: storageState('pub') })
+
+  test('/login segue para o destino de mesma origem', async ({
+    page,
+    baseURL
+  }) => {
+    const destino = new URL('/admin/jogos?ref=email', baseURL).href
+    await page.goto(`/login?callbackUrl=${encodeURIComponent(destino)}`)
+    await expect
+      .poll(() => {
+        const url = new URL(page.url())
+        return url.pathname + url.search
+      })
+      .toBe('/admin/jogos?ref=email')
+  })
+})
+
 test.describe('papel errado cai na casa certa', () => {
   test.describe('fan', () => {
     test.use({ storageState: storageState('fan') })

@@ -5,8 +5,7 @@ const productionEnv = {
   NODE_ENV: 'production',
   DATABASE_URL: 'postgres://user:pass@prod.example.com/prod',
   BETTER_AUTH_SECRET: 'x'.repeat(32),
-  BETTER_AUTH_URL: 'https://onside.sh',
-  CORS_ORIGIN: 'https://onside.sh'
+  BETTER_AUTH_URL: 'https://onside.sh'
 }
 
 function loadServerEnv(extra: Record<string, string>) {

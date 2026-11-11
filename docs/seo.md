@@ -79,6 +79,7 @@ das páginas legais.
 | `/bar/:slug` (bar fora do ar) | não | 200 com `noindex`; o dono logado vê a prévia, também `noindex` |
 | `/bar/:slug` sem bar (prefixo inválido, inexistente ou repetido) | não | 404 de verdade |
 | `/pub/:id` | — | 301 para `/bar/:slug`; id que não existe é 404 |
+| `/convite/:código` | não | `noindex`: convite de amigo (WEB-468), que no celular abre o app (`onside://convite/…`) |
 | rota que não existe (`/x`, `/termos/x`, `/x.txt`) | não | status 404 de verdade, `noindex, nofollow` |
 | `/llms.txt` | — | texto para assistentes de IA; não é página |
 | `/dashboard`, `/admin`, `/plan`, `/onboarding`, `/app`, `/houdini`, `/api` | não | `Disallow` no `robots.txt` (redirecionam para o login ou dão 404) |

@@ -1,5 +1,5 @@
 import { type db, sql } from '@findsports_oficial/db'
-import { DEFAULT_EVENT_DURATION_INTERVAL } from '@findsports_oficial/db/event-window'
+import { eventNotEndedSql } from '@findsports_oficial/db/event-window-sql'
 
 /**
  * O que a exclusão de um jogo levaria junto (WEB-252). `reservation`,
@@ -55,7 +55,7 @@ export async function readEventDeletionImpact(
       SELECT
         count(*) FILTER (
           WHERE res.status = 'pending'
-            AND coalesce(e.ends_at, e.starts_at + ${DEFAULT_EVENT_DURATION_INTERVAL}::interval) > now()
+            AND ${eventNotEndedSql('e')}
         )::int AS pending,
         count(*) FILTER (WHERE res.status = 'confirmed')::int AS confirmed,
         count(*)::int AS total

@@ -1,3 +1,7 @@
+import {
+  BRASILIA_TIME_ZONE,
+  brasiliaDay
+} from '@findsports_oficial/db/event-window'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
@@ -44,7 +48,7 @@ const FILTERS = [
   { label: 'Jogos', kinds: ['event.update', 'event.delete', 'event.fix'] }
 ] as const
 
-const TZ = 'America/Sao_Paulo'
+const TZ = BRASILIA_TIME_ZONE
 
 /** "qui, 22 out", no calendário de Brasília. */
 function shortDay(date: Date) {
@@ -59,8 +63,9 @@ function shortDay(date: Date) {
 function dayOf(value: Date | string, now = new Date()) {
   const date = new Date(value)
   const day = shortDay(date)
-  if (day === shortDay(now)) return { label: 'Hoje', date: day }
-  if (day === shortDay(new Date(now.getTime() - 86_400_000)))
+  if (brasiliaDay(date) === brasiliaDay(now))
+    return { label: 'Hoje', date: day }
+  if (brasiliaDay(date) === brasiliaDay(now, -1))
     return { label: 'Ontem', date: day }
   return { label: day, date: null }
 }

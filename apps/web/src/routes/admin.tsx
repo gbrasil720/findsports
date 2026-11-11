@@ -1,5 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
-import { createFileRoute, Outlet, useNavigate } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  Outlet,
+  useNavigate,
+  useRouter
+} from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import {
@@ -46,7 +51,22 @@ export const Route = createFileRoute('/admin')({
   component: AdminLayout
 })
 
+/**
+ * As telas do painel baixam já na abertura (WEB-470): sem rede, a troca de
+ * tela não acha o código da próxima e o router recarrega a página inteira,
+ * que cai na página offline do service worker.
+ */
+function usePainelChunks() {
+  const router = useRouter()
+  useEffect(() => {
+    for (const route of Object.values(router.routesById))
+      if (route.id.startsWith('/admin/'))
+        router.loadRouteChunk(route)?.catch(() => {})
+  }, [router])
+}
+
 function AdminLayout() {
+  usePainelChunks()
   const trpc = useTRPC()
   const now = useMinuteNow()
   const [analyticsRange, setAnalyticsRange] = useState(() =>

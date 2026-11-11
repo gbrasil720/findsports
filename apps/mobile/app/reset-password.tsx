@@ -1,35 +1,21 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
 import { useState } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
-import Animated, { FadeOut } from 'react-native-reanimated'
-import { ErrorText, haptic, POP } from '@/components/motion'
+import { AuthField, AuthRule, AuthShell } from '@/components/auth-shell'
+import { ErrorText, haptic } from '@/components/motion'
+import { usePalette } from '@/components/theme'
 import { useTurnstile } from '@/components/turnstile'
 import {
-  ACID,
   authErrorMessage,
-  BackButton,
-  BlockButton,
-  CARD,
-  DROP,
-  FG,
-  Field,
-  Icon,
-  INK,
-  LINE,
   LIVE,
   MIN_PASSWORD,
-  PASSWORD_RULES,
-  passwordScore,
-  Screen,
-  STONE,
-  STRENGTH,
-  StrengthBars,
-  SUB,
-  Title,
-  text,
-  themed
+  PillButton,
+  phaseBusy,
+  phaseLabel,
+  Text,
+  text
 } from '@/components/ui'
+import { attemptPhase, retryable, settleAuth } from '@/lib/auth-attempt'
 import { authClient, RESET_EMAIL_KEY } from '@/lib/auth-client'
 import { queryClient } from '@/lib/trpc'
 
@@ -48,27 +34,33 @@ export default function ResetPassword() {
   }>()
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
-  const [visible, setVisible] = useState(false)
+  const palette = usePalette()
   const [error, setError] = useState<string | null>(
     linkError || !token
       ? 'Este link expirou ou já foi usado. Peça outro em "Esqueci minha senha".'
       : null
   )
   const [pending, setPending] = useState(false)
+  const [failed, setFailed] = useState(false)
+  // Cada falha passageira treme a frase de novo, mesmo igual à anterior.
+  const [tries, setTries] = useState(0)
   const turnstile = useTurnstile()
-  const score = passwordScore(password)
 
   const submit = async () => {
-    setError(null)
+    if (pending) return
+    // Sem rede, a frase fica enquanto tenta de novo: o botão não pula.
+    if (!failed) setError(null)
     if (!token) return
     if (password.length < MIN_PASSWORD)
       return setError(`A senha precisa de ${MIN_PASSWORD} caracteres ou mais.`)
     if (password !== confirm) return setError('As senhas não são iguais.')
     setPending(true)
-    const reset = await authClient.resetPassword({
-      newPassword: password,
-      token
-    })
+    const reset = await settleAuth(
+      authClient.resetPassword({ newPassword: password, token })
+    )
+    const transient = retryable(reset.error)
+    setFailed(transient)
+    if (transient) setTries((n) => n + 1)
     if (reset.error) {
       setPending(false)
       setError(
@@ -83,11 +75,15 @@ export default function ResetPassword() {
       router.replace({ pathname: '/sign-in', params: { notice: 'reset' } })
       return
     }
-    const signIn = await authClient.signIn.email({
-      email,
-      password,
-      fetchOptions: turnstile.fetchOptions
-    })
+    // A senha já mudou: se a entrada falhar (até sem rede), o login pede de
+    // novo com o aviso.
+    const signIn = await settleAuth(
+      authClient.signIn.email({
+        email,
+        password,
+        fetchOptions: turnstile.fetchOptions
+      })
+    )
     turnstile.reset()
     setPending(false)
     if (signIn.error) {
@@ -105,107 +101,59 @@ export default function ResetPassword() {
     router.replace('/')
   }
 
+  const phase = attemptPhase(pending, failed)
+
+  // Rodada 8, tela 6: "3 de 3", dois campos com a regra marcando o ok e
+  // "Salvar e entrar".
   return (
-    <Screen gap={16} top={6}>
-      <BackButton icon="close" onPress={() => router.dismissTo('/sign-in')} />
-      <Title lines={[['Crie uma ', 'senha nova']]} size={44} />
-      <Field
-        label="Nova senha"
-        icon="lock"
-        action={{
-          label: visible ? 'Ocultar' : 'Mostrar',
-          onPress: () => setVisible(!visible)
-        }}
+    <AuthShell
+      title={['Nova', 'senha']}
+      tall
+      step="3 DE 3"
+      footer={
+        <Text style={[text(13, 'Regular', 1.4), { color: palette.muted }]}>
+          Os outros aparelhos saem da conta ao salvar.
+        </Text>
+      }
+    >
+      <AuthField
+        label="Senha nova"
         autoComplete="new-password"
         textContentType="newPassword"
-        secureTextEntry={!visible}
+        secureTextEntry
         value={password}
         onChangeText={setPassword}
       />
-      <View style={{ gap: 8, marginTop: -6 }}>
-        <StrengthBars score={score} empty={STONE} />
-        <Text style={[text(12.5, 'Bold'), { color: FG }]}>
-          {STRENGTH[score] || ' '}
-        </Text>
-      </View>
-      <View style={styles.rules}>
-        {PASSWORD_RULES.map((rule) => {
-          const met = rule.test(password)
-          return (
-            <View key={rule.label} style={styles.rule}>
-              <View style={[styles.dot, styles.dotOff]}>
-                {met ? (
-                  <Animated.View
-                    entering={POP}
-                    exiting={FadeOut.duration(120)}
-                    style={[styles.dot, styles.dotOn]}
-                  >
-                    <Icon name="check" size={11} color={INK} accent={LIVE} />
-                  </Animated.View>
-                ) : null}
-              </View>
-              <Text style={[text(13.5), { color: met ? FG : SUB }]}>
-                {rule.label}
-              </Text>
-            </View>
-          )
-        })}
-      </View>
-      <Field
-        label="Confirmar senha"
-        icon="lock"
+      <AuthRule ok={password.length >= MIN_PASSWORD}>
+        {`${MIN_PASSWORD} caracteres ou mais`}
+      </AuthRule>
+      <AuthField
+        label="Repita a senha"
         autoComplete="new-password"
         textContentType="newPassword"
-        secureTextEntry={!visible}
+        secureTextEntry
         value={confirm}
         onChangeText={setConfirm}
         onSubmitEditing={submit}
       />
+      <AuthRule ok={!!confirm && confirm === password}>
+        As duas são iguais
+      </AuthRule>
       {error ? (
-        <ErrorText style={[text(13.5), { color: LIVE }]}>{error}</ErrorText>
+        <ErrorText key={`erro-${tries}`} style={[text(13.5), { color: LIVE }]}>
+          {error}
+        </ErrorText>
       ) : null}
-      <BlockButton
-        label={pending ? 'Salvando…' : 'Salvar e entrar'}
-        disabled={pending || !token}
+      <PillButton
+        label={phaseLabel(phase, {
+          idle: 'Salvar e entrar',
+          sending: 'Salvando…'
+        })}
+        busy={phaseBusy(phase)}
+        disabled={!token}
         onPress={submit}
       />
       {turnstile.widget}
-    </Screen>
+    </AuthShell>
   )
 }
-
-const styles = StyleSheet.create({
-  rules: {
-    padding: 14,
-    borderRadius: 6,
-    backgroundColor: CARD,
-    borderWidth: 1,
-    borderColor: LINE,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    rowGap: 10,
-    shadowColor: DROP,
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    shadowOffset: { width: 4, height: 4 }
-  },
-  rule: { width: '50%', flexDirection: 'row', gap: 8, alignItems: 'center' },
-  dot: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  // A bolinha cheia cobre o anel por inteiro.
-  dotOn: {
-    position: 'absolute',
-    top: -1.5,
-    left: -1.5,
-    backgroundColor: ACID
-  },
-  dotOff: {
-    borderWidth: 1.5,
-    borderColor: themed('rgba(18,18,15,.25)', 'rgba(241,238,230,.3)')
-  }
-})

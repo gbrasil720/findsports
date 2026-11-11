@@ -13,7 +13,12 @@ import {
   EVENT_CHAMPIONSHIP_MAX_LENGTH,
   EVENT_CHAMPIONSHIP_MIN_LENGTH
 } from '@findsports_oficial/db/event-limits'
-import { DEFAULT_EVENT_DURATION_INTERVAL } from '@findsports_oficial/db/event-window'
+import {
+  brasiliaDayStartSql,
+  brasiliaTodaySql,
+  eventNotEndedSql,
+  utcNowSql
+} from '@findsports_oficial/db/event-window-sql'
 import {
   bar,
   event,
@@ -101,7 +106,7 @@ const isFreeText = sql<boolean>`(
 const hasWarning = sql`(${isDuplicate} OR ${isFreeText})`
 
 /** O jogo que ainda não acabou, pelo fim derivado da ADR 0003. */
-const notEnded = sql`coalesce(${event.endsAt}, ${event.startsAt} + ${DEFAULT_EVENT_DURATION_INTERVAL}::interval) > now()`
+const notEnded = eventNotEndedSql()
 
 /**
  * Rascunho (`published_at` nulo, WEB-436) fica fora de Jogos: a tela conserta
@@ -111,10 +116,16 @@ const notEnded = sql`coalesce(${event.endsAt}, ${event.startsAt} + ${DEFAULT_EVE
  */
 const published = isNotNull(event.publishedAt)
 
-// As colunas são `timestamp` em UTC; "hoje" é o dia em Brasília.
+/**
+ * Os jogos que Jogos lista: publicados e que ainda não acabaram. O número do
+ * trilho do Houdini (`houdini.overview`, `jogosFuturos`) conta estes mesmos.
+ */
+export const listedGames = and(published, notEnded)
+
+// "Hoje" é o dia em Brasília.
 const PERIOD: Record<'today' | 'week' | 'all', SQL | undefined> = {
-  today: sql`${event.startsAt} < ((((now() AT TIME ZONE 'America/Sao_Paulo')::date + 1)::timestamp AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'UTC')`,
-  week: sql`${event.startsAt} < (now() AT TIME ZONE 'UTC') + interval '7 days'`,
+  today: sql`${event.startsAt} < ${brasiliaDayStartSql(brasiliaTodaySql(), 1)}`,
+  week: sql`${event.startsAt} < ${utcNowSql()} + interval '7 days'`,
   all: undefined
 }
 
@@ -205,8 +216,7 @@ export const adminEventsRouter = router({
     .query(async ({ input }) => {
       const pattern = input.search ? `%${escapeLike(input.search)}%` : null
       const base = and(
-        published,
-        notEnded,
+        listedGames,
         PERIOD[input.period],
         pattern
           ? sql`(

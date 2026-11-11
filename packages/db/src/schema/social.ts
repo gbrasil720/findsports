@@ -1,7 +1,9 @@
 import { sql } from 'drizzle-orm'
 import {
+  boolean,
   check,
   index,
+  integer,
   pgTable,
   primaryKey,
   text,
@@ -100,4 +102,29 @@ export const friendCall = pgTable(
     index('friend_call_event_idx').on(table.eventId),
     check('friend_call_not_self', sql`${table.fromUserId} <> ${table.toUserId}`)
   ]
+)
+
+/**
+ * O selo do mês (rodada 6, "Rei de novembro"): quem fechou o mês em 1º no
+ * ranking dos amigos, por bares diferentes. O ranking é contado das visitas
+ * e nada dele é gravado; o resultado do mês fechado, sim, para o selo não
+ * mudar quando a lista de amigos mudar. Uma linha por pessoa e mês já
+ * conferido, com `won` falso para quem não ganhou (assim a conta sai uma vez).
+ */
+export const monthCrown = pgTable(
+  'month_crown',
+  {
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    /** "2026-10", o mês de Brasília. */
+    month: text('month').notNull(),
+    won: boolean('won').notNull(),
+    /** Bares diferentes no mês. */
+    value: integer('value').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull()
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.month] })]
 )

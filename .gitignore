@@ -49,3 +49,6 @@ coverage
 .cache
 tmp
 temp
+
+# saída local da skill brag
+brag-output*/

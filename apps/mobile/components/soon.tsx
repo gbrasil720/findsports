@@ -1,13 +1,13 @@
 import { isLiquidGlassAvailable } from 'expo-glass-effect'
-import { useCallback, useRef, useState } from 'react'
-import { StyleSheet, Text } from 'react-native'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { StyleSheet } from 'react-native'
 import Animated, {
   type EntryExitAnimationFunction,
   withTiming
 } from 'react-native-reanimated'
 import { Glass } from '@/components/glass'
 import { EASE } from '@/components/motion'
-import { text } from '@/components/ui'
+import { Text, text } from '@/components/ui'
 
 /*
  * Aviso curto para o que o design já mostra mas o app ainda não tem (Favoritos,
@@ -47,13 +47,11 @@ export function useSoon() {
     setMessage(sentence)
     timer.current = setTimeout(() => setMessage(null), 1600)
   }, [])
+  useEffect(() => () => clearTimeout(timer.current), [])
   const toast = message ? (
     <Animated.View entering={IN} pointerEvents="none" style={styles.wrap}>
       <Glass tone="dark" style={styles.toast}>
-        <Text
-          style={[text(13.5, 'SemiBold', 1.2), { color: '#f1eee6' }]}
-          maxFontSizeMultiplier={1.3}
-        >
+        <Text style={[text(13.5, 'SemiBold', 1.2), { color: '#f1eee6' }]}>
           {message}
         </Text>
       </Glass>

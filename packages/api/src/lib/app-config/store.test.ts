@@ -94,6 +94,22 @@ describe('leitura da configuração (ESC-19)', () => {
     expect(await store.get('search.tiered_plan_query')).toBe(true)
   })
 
+  // WEB-466: a manutenção do app não pode cair em "desligada" com o banco fora.
+  it('getOrThrow deixa a falha do banco subir e lê o cache como get', async () => {
+    const ligada = { on: true, backAt: null }
+    const { store } = montar([
+      async () => {
+        throw new Error('connection refused')
+      },
+      async () => ({ 'app.maintenance': ligada })
+    ])
+    await expect(store.getOrThrow('app.maintenance')).rejects.toThrow(
+      'connection refused'
+    )
+    expect(await store.getOrThrow('app.maintenance')).toEqual(ligada)
+    expect(await store.get('app.maintenance')).toEqual(ligada)
+  })
+
   /**
    * Falha NÃO pode ser cacheada. Se fosse, uma indisponibilidade de segundos
    * travaria a configuração em padrão por um TTL inteiro depois de o banco

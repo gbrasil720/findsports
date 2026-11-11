@@ -54,7 +54,8 @@ const MAX_SUGGESTIONS = 8
  * do arquivo, que é alfabética.
  */
 export async function suggestSearchCities(
-  query: string
+  query: string,
+  limit = MAX_SUGGESTIONS
 ): Promise<SearchCity[]> {
   const alvo = normalizarCidade(query)
   if (alvo.length === 0) return []
@@ -65,10 +66,10 @@ export async function suggestSearchCities(
     const nome = normalizarCidade(linha[0])
     if (nome.startsWith(alvo)) prefixo.push(linha)
     else if (nome.includes(alvo)) contem.push(linha)
-    if (prefixo.length >= MAX_SUGGESTIONS) break
+    if (prefixo.length >= limit) break
   }
   return [...prefixo, ...contem]
-    .slice(0, MAX_SUGGESTIONS)
+    .slice(0, limit)
     .map(([name, uf, lat, lng]) => ({ name, uf, lat, lng }))
 }
 

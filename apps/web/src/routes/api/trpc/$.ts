@@ -8,7 +8,12 @@ function handler({ request }: { request: Request }) {
     req: request,
     router: appRouter,
     createContext,
-    endpoint: '/api/trpc'
+    endpoint: '/api/trpc',
+    // A compressão da borda pode juntar os eventos do chat num pedaço só.
+    responseMeta: ({ paths }) =>
+      paths?.includes('ai.converse')
+        ? { headers: new Headers({ 'cache-control': 'no-transform' }) }
+        : {}
   })
 }
 

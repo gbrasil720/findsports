@@ -193,6 +193,24 @@ integrationTest(
         jogos: 2
       })
 
+      // "Quando" conta só os jogos com oferta; o bar sem jogo usa a padrão.
+      const dias = await caller.pubs.gameDays({
+        lat,
+        lng,
+        radiusKm: 3,
+        amenities: [10]
+      })
+      expect(dias.reduce((soma, dia) => soma + dia.games, 0)).toBe(3)
+      const semJogo = await caller.pubs.nearbyWithoutGames({
+        lat,
+        lng,
+        radiusKm: 3,
+        amenities: [10]
+      })
+      expect(semJogo.map((b) => b.id)).toEqual([
+        caso('sem jogo, com padrão').barId
+      ])
+
       await setAppConfig('search.tiered_plan_query', false, null)
       expect(await buscar([10])).toEqual(esperado)
     } finally {

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useRef } from 'react'
+import { useFan, useWithAccount } from './account'
 import { trpc } from './trpc'
 
 /**
@@ -9,7 +10,12 @@ import { trpc } from './trpc'
  */
 export function useFavorites() {
   const queryClient = useQueryClient()
-  const favorites = useQuery(trpc.pubs.getFavorites.queryOptions())
+  const fan = useFan()
+  const withAccount = useWithAccount()
+  const favorites = useQuery({
+    ...trpc.pubs.getFavorites.queryOptions(),
+    enabled: fan
+  })
   const key = trpc.pubs.getFavorites.queryKey()
   type List = NonNullable<typeof favorites.data>
 
@@ -49,6 +55,10 @@ export function useFavorites() {
     ids,
     count: favorites.data?.length ?? 0,
     toggle: (barId: string) =>
-      ids.has(barId) ? remove.mutate({ barId }) : add.mutate({ barId })
+      withAccount(
+        () =>
+          ids.has(barId) ? remove.mutate({ barId }) : add.mutate({ barId }),
+        { kind: 'fav', barId }
+      )
   }
 }

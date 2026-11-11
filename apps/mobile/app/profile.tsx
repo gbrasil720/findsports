@@ -4,7 +4,6 @@ import {
   Image,
   Pressable,
   StyleSheet,
-  Text,
   useColorScheme,
   View
 } from 'react-native'
@@ -27,6 +26,7 @@ import {
   PillButton,
   Screen,
   SUB,
+  Text,
   Title,
   text
 } from '@/components/ui'
@@ -198,6 +198,7 @@ export default function Profile() {
 
   return (
     <Screen
+      brand
       gap={14}
       padding={18}
       footer={

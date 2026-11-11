@@ -1,0 +1,423 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { type Href, useRouter } from 'expo-router'
+import { type ReactNode, useEffect, useState } from 'react'
+import { Alert, Image, Pressable, StyleSheet, View } from 'react-native'
+import Animated from 'react-native-reanimated'
+import { initials } from '@/components/explore'
+import { haptic, SWAP, SWAP_OUT, usePress } from '@/components/motion'
+import { type Palette, usePalette } from '@/components/theme'
+import { ACID, errorMessage, Icon, INK, Text, text } from '@/components/ui'
+import { takePendingInvite } from '@/lib/invite'
+import { trpc } from '@/lib/trpc'
+
+/*
+ * Peças dos amigos (S1 do design: 11a–11d). As regras moram no servidor
+ * (`packages/api/src/routers/friends.ts`).
+ */
+
+export type Relation = 'self' | 'friends' | 'sent' | 'received' | 'none'
+
+/** A sombra dos cartões de destaque do design (`sh(t, 'hero')`): acid. */
+export const heroShadow = (palette: Palette) =>
+  palette.dark ? 'rgba(201,241,53,.22)' : ACID
+export type Via = 'search' | 'code' | 'link' | 'contacts' | 'suggestion'
+
+// As cores do quadrinho com iniciais, como as pessoas do design: algumas em
+// acid, algumas em tinta, a maioria em pedra (vermelho é só do ao vivo).
+// Sempre a mesma para a mesma pessoa.
+const TONES = ['acid', 'stone', 'ink', 'stone', 'stone'] as const
+const toneOf = (id: string) =>
+  TONES[[...id].reduce((sum, c) => sum + c.charCodeAt(0), 0) % TONES.length]
+
+/** O quadrinho com as iniciais (`ava` do design), ou a foto da pessoa. */
+export function Avatar({
+  id,
+  name,
+  size,
+  me,
+  image
+}: {
+  id: string
+  name: string
+  size: number
+  /** Você: tinta com acid em Anton, como no design. */
+  me?: boolean
+  /** A foto do perfil (WEB-419), no lugar das iniciais. */
+  image?: string | null
+}) {
+  const palette = usePalette()
+  const tone = me ? 'me' : toneOf(id)
+  const bg =
+    tone === 'me'
+      ? palette.dark
+        ? palette.card
+        : INK
+      : tone === 'acid'
+        ? ACID
+        : tone === 'ink'
+          ? palette.ink
+          : palette.dark
+            ? '#34342e'
+            : '#e7e3db'
+  const fg =
+    tone === 'me'
+      ? ACID
+      : tone === 'acid'
+        ? INK
+        : tone === 'ink'
+          ? palette.bg
+          : palette.ink
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        // Rostos redondos (rodada 6, `.av6`).
+        borderRadius: size / 2,
+        backgroundColor: bg,
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden'
+      }}
+    >
+      <Text
+        style={
+          me
+            ? { fontFamily: 'Anton', fontSize: size * 0.4, color: fg }
+            : [text(Math.round(size * 0.34), 'Bold', 1.1), { color: fg }]
+        }
+      >
+        {/* Uma letra para os outros e duas para você (rodada 6, `.av6`). */}
+        {me ? initials(name) : initials(name).slice(0, 1)}
+      </Text>
+      {/* A foto cobre as iniciais quando carrega; lenta ou quebrada, ficam elas. */}
+      {image ? (
+        <Image
+          accessibilityIgnoresInvertColors
+          source={{ uri: image }}
+          style={StyleSheet.absoluteFill}
+        />
+      ) : null}
+    </View>
+  )
+}
+
+/**
+ * O botão da relação (`addBtn` do design): "Adicionar", "Pedido enviado" ou
+ * "Amigos". Pedido recebido vira "Aceitar".
+ */
+export function AddButton({
+  relation,
+  busy,
+  onPress
+}: {
+  relation: Relation
+  busy?: boolean
+  onPress: () => void
+}) {
+  const palette = usePalette()
+  const press = usePress(3, 3)
+  if (relation === 'self') return null
+  // Um estado dá lugar ao outro num crossfade de 150 ms; a linha fica.
+  if (relation === 'friends')
+    return (
+      <Animated.View
+        key="friends"
+        entering={SWAP}
+        exiting={SWAP_OUT}
+        style={[styles.sent, { borderColor: palette.line }]}
+      >
+        <Text style={[text(13, 'Bold'), { color: palette.muted }]}>Amigos</Text>
+      </Animated.View>
+    )
+  if (relation === 'sent')
+    return (
+      <Animated.View key="sent" entering={SWAP} exiting={SWAP_OUT}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityHint="Cancela o pedido"
+          disabled={busy}
+          onPress={() =>
+            Alert.alert('Cancelar o pedido?', undefined, [
+              { text: 'Manter', style: 'cancel' },
+              { text: 'Cancelar pedido', style: 'destructive', onPress }
+            ])
+          }
+          style={({ pressed }) => [
+            styles.sent,
+            { borderColor: palette.line },
+            pressed && { opacity: 0.7 }
+          ]}
+        >
+          <Text style={[text(13, 'Bold'), { color: palette.muted }]}>
+            Pedido enviado
+          </Text>
+        </Pressable>
+      </Animated.View>
+    )
+  return (
+    <Animated.View key="add" entering={SWAP} exiting={SWAP_OUT}>
+      <Pressable
+        accessibilityRole="button"
+        disabled={busy}
+        onPress={onPress}
+        onPressIn={press.onPressIn}
+        onPressOut={press.onPressOut}
+      >
+        {/* `.b-ink b-sm`: tinta no claro, papel no escuro, sem sombra. */}
+        <Animated.View
+          style={[
+            styles.add,
+            { backgroundColor: palette.ink },
+            busy && { opacity: 0.6 },
+            press.style
+          ]}
+        >
+          <Icon
+            name="userplus"
+            size={15}
+            color={palette.bg}
+            accent={palette.dark ? '#e8320c' : ACID}
+          />
+          <Text style={[text(13, 'Bold'), { color: palette.bg }]}>
+            {relation === 'received' ? 'Aceitar' : 'Adicionar'}
+          </Text>
+        </Animated.View>
+      </Pressable>
+    </Animated.View>
+  )
+}
+
+/** Uma pessoa numa lista: quadrinho, nome, linha de baixo e o que vai à direita. */
+export function PersonRow({
+  id,
+  name,
+  image,
+  sub,
+  first,
+  size = 40,
+  right,
+  highlight,
+  big,
+  onPress
+}: {
+  id: string
+  name: string
+  image?: string | null
+  sub: string | null
+  /** O trecho digitado na busca, em destaque no nome (11b). */
+  highlight?: string
+  /** A linha da busca (11b): nome em 15 e a de baixo em até duas linhas. */
+  big?: boolean
+  first?: boolean
+  size?: number
+  right?: ReactNode
+  onPress?: () => void
+}) {
+  const palette = usePalette()
+  return (
+    <Pressable
+      accessibilityRole={onPress ? 'button' : undefined}
+      disabled={!onPress}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.row,
+        big && { gap: 12 },
+        !first && { borderTopWidth: 1, borderTopColor: palette.line },
+        pressed && { opacity: 0.7 }
+      ]}
+    >
+      <Avatar id={id} name={name} image={image} size={size} />
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text
+          style={[text(big ? 15 : 14.5, 'Bold', 1.25), { color: palette.ink }]}
+          numberOfLines={1}
+        >
+          <Marked name={name} part={highlight} />
+        </Text>
+        {sub ? (
+          <Text
+            style={[text(12, 'Regular', 1.3), { color: palette.muted }]}
+            numberOfLines={big ? 2 : 1}
+          >
+            {sub}
+          </Text>
+        ) : null}
+      </View>
+      {right}
+    </Pressable>
+  )
+}
+
+/** O nome com `part` em destaque, sem olhar caixa nem acento. */
+function Marked({ name, part }: { name: string; part?: string }) {
+  const fold = (value: string) =>
+    value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+  const at = part ? fold(name).indexOf(fold(part)) : -1
+  if (!part || at < 0) return name
+  return (
+    <>
+      {name.slice(0, at)}
+      <Text style={{ backgroundColor: ACID, color: INK }}>
+        {name.slice(at, at + part.length)}
+      </Text>
+      {name.slice(at + part.length)}
+    </>
+  )
+}
+
+/** "@marinac · Pinheiros", "2 amigos em comum": o que der. */
+export function personLine(person: {
+  username: string | null
+  city: string | null
+  mutual?: number
+}) {
+  return [
+    person.username ? `@${person.username}` : null,
+    person.mutual
+      ? `${person.mutual} ${person.mutual === 1 ? 'amigo' : 'amigos'} em comum`
+      : person.city
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
+
+/**
+ * Pedir, aceitar, recusar e desfazer, com as listas atualizadas depois. O
+ * erro do servidor (quem não recebe pedidos) vai num alerta.
+ */
+export function useFriendActions() {
+  const queryClient = useQueryClient()
+  const refresh = () =>
+    queryClient.invalidateQueries({ queryKey: trpc.friends.pathKey() })
+  const onError = (error: unknown) => {
+    haptic.error()
+    Alert.alert(
+      'Não deu certo',
+      errorMessage(error, 'Tente de novo em instantes.')
+    )
+  }
+  const [pendingId, setPendingId] = useState<string | null>(null)
+  const request = useMutation(
+    trpc.friends.request.mutationOptions({
+      onSuccess: () => {
+        haptic.light()
+        refresh()
+      },
+      onError
+    })
+  )
+  const respond = useMutation(
+    trpc.friends.respond.mutationOptions({
+      onSuccess: (_, input) => {
+        if (input.accept) haptic.success()
+        else haptic.select()
+        refresh()
+      },
+      onError
+    })
+  )
+  const remove = useMutation(
+    trpc.friends.remove.mutationOptions({
+      onSuccess: () => {
+        haptic.select()
+        refresh()
+      },
+      onError
+    })
+  )
+  /**
+   * O toque no botão de relação, para cada estado. `onDone` recebe a relação
+   * nova, para a lista que não vem de consulta (contatos).
+   */
+  const act = (
+    userId: string,
+    relation: Relation,
+    via: Via,
+    onDone?: (next: Relation) => void
+  ) => {
+    setPendingId(userId)
+    const done = {
+      onSuccess: (r: { relation: Relation }) => onDone?.(r.relation),
+      onSettled: () => setPendingId(null)
+    }
+    if (relation === 'none') request.mutate({ userId, via }, done)
+    else if (relation === 'received')
+      respond.mutate({ userId, accept: true }, done)
+    else if (relation === 'sent') remove.mutate({ userId }, done)
+  }
+  return {
+    request,
+    respond,
+    remove,
+    act,
+    busy: request.isPending || respond.isPending || remove.isPending,
+    /** Só a linha tocada espera; as outras seguem tocáveis. */
+    busyFor: (userId: string) => pendingId === userId
+  }
+}
+
+const styles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+    paddingVertical: 11
+  },
+  add: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: 36,
+    paddingHorizontal: 14,
+    borderRadius: 18
+  },
+  sent: {
+    height: 36,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    justifyContent: 'center'
+  }
+})
+
+/**
+ * O convite guardado por quem abriu o link antes de ter conta: aceito quando
+ * a conta chega às abas do torcedor, com o perfil de quem convidou aberto.
+ */
+export function usePendingInvite() {
+  const router = useRouter()
+  const join = useMutation(trpc.friends.joinByInvite.mutationOptions())
+  // biome-ignore lint/correctness/useExhaustiveDependencies: uma vez, ao montar as abas
+  useEffect(() => {
+    takePendingInvite().then((code) => {
+      if (!code) return
+      join.mutate(
+        { code },
+        {
+          onSuccess: ({ inviterId }) => {
+            haptic.success()
+            router.push(`/amigo/${inviterId}?via=link` as Href)
+          }
+        }
+      )
+    })
+  }, [])
+}
+
+/**
+ * A lista como a tela a mostrou: quem sai da resposta do servidor (pedido
+ * aceito, sugestão adicionada) continua até a tela abrir de novo; quem chega
+ * entra no fim. Com a versão nova dos dados de quem continua.
+ */
+export function useKept<T extends { id: string }>(list: T[] | undefined) {
+  const [kept, setKept] = useState<T[]>([])
+  const fresh = list ?? []
+  const added = fresh.filter((item) => !kept.some((k) => k.id === item.id))
+  // Na renderização, não em efeito, como no resto do app.
+  if (added.length) setKept([...kept, ...added])
+  return kept.map((k) => fresh.find((item) => item.id === k.id) ?? k)
+}

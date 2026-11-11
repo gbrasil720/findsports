@@ -4,7 +4,6 @@ import { createFileRoute } from '@tanstack/react-router'
 import type { inferRouterOutputs } from '@trpc/server'
 import type { CSSProperties } from 'react'
 import { toast } from 'sonner'
-import { refusalMessage } from '@/components/houdini/errors'
 import { formatDateTime } from '@/components/houdini/format'
 import { Icon } from '@/components/houdini/icons'
 import { HoudiniShell, PageHead } from '@/components/houdini/shell'
@@ -52,6 +51,14 @@ const GLOSSARY = [
   [
     'Webhook do Stripe',
     'O aviso que o Stripe manda quando alguém paga, cancela ou atrasa. Se ele falhar, o plano do bar não atualiza.'
+  ],
+  [
+    'Execuções presas da IA',
+    'Resposta da IA que começou e não terminou em uma hora. A rotina fecha como erro, sem descontar do limite de quem perguntou.'
+  ],
+  [
+    'Avisos da semana',
+    'Os e-mails das segundas para o dono do bar: o resumo da semana e o aviso de grade vazia. Cada bar liga e desliga os seus.'
   ],
   ['Latência', 'Quanto o banco demora para responder. Até uns 50 ms é normal.'],
   [
@@ -110,11 +117,13 @@ function buildChecks(status: Status): Check[] {
   const plans = status.jobs.find((j) => j.job === 'bar_plans')
   const retention = status.jobs.find((j) => j.job === 'analytics_retention')
   const notices = status.jobs.find((j) => j.job === 'bar_notices')
+  const aiRuns = status.jobs.find((j) => j.job === 'ai_stale_runs')
   const next = plans ? formatDateTime(plans.nextRunAt) : '—'
   const { migrations, database, tiles, deploy } = status
   const p = counts(plans)
   const r = counts(retention)
   const n = counts(notices)
+  const a = counts(aiRuns)
 
   return [
     {
@@ -236,6 +245,19 @@ function buildChecks(status: Status): Check[] {
       ]
     },
     {
+      key: 'ai_stale_runs',
+      title: 'Execuções presas da IA',
+      where: 'mesmo cron · closeStaleRuns',
+      state: aiRuns?.state ?? 'warn',
+      job: 'ai_stale_runs',
+      error: aiRuns?.lastRun?.ok === false ? aiRuns.lastRun.error : null,
+      facts: [
+        ...lastRunFacts(aiRuns),
+        { k: 'Esperado', v: 'todo dia 01:00' },
+        { k: 'Encerradas', v: String(a.closed ?? '—') }
+      ]
+    },
+    {
       key: 'bar_notices',
       title: 'Avisos da semana dos bares',
       where: 'mesmo cron · sendWeeklyBarNotices',
@@ -321,7 +343,7 @@ function BastidoresPage() {
       },
       // A falha também fica registrada: o cartão passa a mostrar o erro.
       onError: async (error) => {
-        toast.error(refusalMessage(error, 'A rotina falhou.'))
+        toast.error(getUserFacingMessage(error, 'A rotina falhou.'))
         await reload()
       }
     })

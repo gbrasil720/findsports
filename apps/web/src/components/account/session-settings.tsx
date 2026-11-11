@@ -91,6 +91,7 @@ export function useAccountSessions() {
 
   return {
     current,
+    currentId: current?.session.id,
     sessions,
     sessionsErrorFeedback,
     ordered,

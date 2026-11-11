@@ -184,12 +184,13 @@ jobs:
   # WEB-204: deploy no Cloudflare Workers (produção = Worker `onside-web`, preview =
   # `onside-web-preview`). Não há deploy Vercel neste repositório — só Workers.
   deploy:
-    needs: [check, unit-test, e2e]
+    needs: [check, unit-test, e2e, e2e-worker]
     if: >-
       ${{ !cancelled()
       && needs.check.result == 'success'
       && needs.unit-test.result == 'success'
       && (needs.e2e.result == 'success' || needs.e2e.result == 'skipped')
+      && (needs.e2e-worker.result == 'success' || needs.e2e-worker.result == 'skipped')
       && needs.check.outputs.target != '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15

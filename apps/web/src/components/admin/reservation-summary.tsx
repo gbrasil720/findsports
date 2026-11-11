@@ -1,3 +1,4 @@
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import type { ReactNode, Ref } from 'react'
 import { formatGameSubtitle } from '@/domain/pub-profile'
 import {
@@ -5,7 +6,6 @@ import {
   getAllValidatedMessage,
   getArrivalBlocker,
   getCounterLabel,
-  getGameTitle,
   type ValidatedReservation
 } from '@/domain/reservation-validation'
 
@@ -44,10 +44,10 @@ export function ReservationSummary({
         <div>
           <dt>Jogo</dt>
           <dd>
-            <b>{getGameTitle(reservation.event)}</b>
+            <b>{gameTitle(reservation.event)}</b>
           </dd>
           <dd>
-            {formatGameSubtitle(getGameTitle(reservation.event), [
+            {formatGameSubtitle(gameTitle(reservation.event), [
               reservation.event.championship,
               formatDateTime(reservation.event.startsAt)
             ])}

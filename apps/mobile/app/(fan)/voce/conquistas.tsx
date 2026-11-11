@@ -1,0 +1,1458 @@
+import { LEVELS } from '@findsports_oficial/api/lib/achievements'
+import { useQuery } from '@tanstack/react-query'
+import { useRouter } from 'expo-router'
+import { useRef, useState } from 'react'
+import {
+  Platform,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  Share,
+  StyleSheet,
+  useWindowDimensions,
+  View
+} from 'react-native'
+import Animated from 'react-native-reanimated'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import Svg, { Circle, Defs, Pattern, Rect } from 'react-native-svg'
+import { Card, FilterChip } from '@/components/card'
+import { FirstMedals, MedalsEmpty } from '@/components/empty-states'
+import { GroupLabel } from '@/components/game-line'
+import { useLayout, useNavInsets } from '@/components/layout'
+import { GrowBar, Ladder } from '@/components/levels'
+import { Medal3D, MedalImage, useMedalPalette } from '@/components/medal'
+import {
+  CoverMedal,
+  engraving,
+  Glow,
+  MedalDetail
+} from '@/components/medal-detail'
+import { haptic, SWAP, usePressScale } from '@/components/motion'
+import { Skeleton } from '@/components/states'
+import { useTabBarSpace } from '@/components/tab-bar'
+import {
+  ACID,
+  ErrorState,
+  GlassRound,
+  Icon,
+  INK,
+  PAPER,
+  Text,
+  Title,
+  text,
+  usePullRefresh,
+  useStatusBar
+} from '@/components/ui'
+import {
+  type Achievement,
+  type Achievements,
+  amountLine,
+  describe,
+  GROUPS,
+  type Group,
+  latest,
+  missingLine,
+  nearest,
+  progressLabel,
+  progressShare,
+  series,
+  seriesLabel,
+  shortDate,
+  shortDescribe,
+  timeline,
+  timelineLine
+} from '@/lib/achievements'
+import { trpc } from '@/lib/trpc'
+
+/*
+ * Estante de conquistas (2i do design): o nível, os filtros por série e a
+ * grade das dez medalhas. Claro ou escuro pelo tema (`useMedalPalette`).
+ * Tocar numa medalha abre o detalhe em 3D (`app/conquista/[id].tsx`).
+ *
+ * Fora do celular (A06): no tablet em pé, a mais recente em destaque, a
+ * grade larga, as que estão perto e a linha do tempo; lado a lado (tablet
+ * deitado, dobrável aberto), a estante e o detalhe da medalha tocada, sem
+ * trocar de tela; na mesa, a medalha em cima e a estante embaixo; na tela de
+ * fora do Flip, a última conquista.
+ */
+
+export default function Shelf() {
+  const router = useRouter()
+  const insets = useSafeAreaInsets()
+  const tabBar = useTabBarSpace()
+  const P = useMedalPalette()
+  const layout = useLayout()
+  const nav = useNavInsets()
+  const window = useWindowDimensions()
+  useStatusBar('auto')
+  const mine = useQuery(trpc.achievements.mine.queryOptions())
+  const visits = useQuery(trpc.attendance.visits.queryOptions())
+  const [group, setGroup] = useState<Group | null>(null)
+  const firstGroup = useRef(group).current
+  const list = mine.data?.achievements ?? []
+  const shown = group ? list.filter((a) => a.group === group) : list
+  const star = latest(list)
+  // Lado a lado e na mesa, a medalha tocada fica marcada e aparece grande.
+  const [chosen, setChosen] = useState<string | null>(null)
+  const picked = list.find((a) => a.id === chosen) ?? star ?? list[0]
+
+  const share = () => {
+    const level = mine.data?.level
+    if (!level) return
+    Share.share({
+      message: `Estou no nível ${level.level} da Onside, ${level.name}, com ${level.unlocked} ${level.unlocked === 1 ? 'conquista' : 'conquistas'}. https://onside.sh`
+    })
+  }
+  const shareMedal = (medal: Achievement) =>
+    Share.share({
+      message: medal.unlockedAt
+        ? `Ganhei a medalha ${medal.name} na Onside. ${describe(medal)} https://onside.sh`
+        : `Estou atrás da medalha ${medal.name} na Onside: ${progressLabel(medal)}. https://onside.sh`
+    })
+  const pick = (id: string) => {
+    if (id === picked?.id) return
+    haptic.select()
+    setChosen(id)
+  }
+
+  const pull = usePullRefresh(() => mine.refetch())
+  const refresh = <RefreshControl {...pull} tintColor={P.muted} />
+  const root = [
+    styles.screen,
+    { backgroundColor: P.bg, paddingLeft: nav.left, paddingRight: nav.right }
+  ]
+  const data = mine.data
+
+  const chips = (
+    <>
+      <FilterChip
+        label={`Todas · ${list.length}`}
+        on={group === null}
+        onPress={() => setGroup(null)}
+      />
+      {GROUPS.map((g) => (
+        <FilterChip
+          key={g.key}
+          label={g.label}
+          on={group === g.key}
+          onPress={() => setGroup(g.key)}
+        />
+      ))}
+    </>
+  )
+  /** A grade: `width` é o espaço todo, dividido em `cols`. */
+  const grid = (
+    width: number,
+    cols: number,
+    size: number,
+    gap: number,
+    side: boolean
+  ) => (
+    // Trocar de filtro troca a grade em fade curto, sem salto.
+    <Animated.View
+      key={group ?? 'todas'}
+      entering={group === firstGroup ? undefined : SWAP}
+      style={[styles.grid, { gap }]}
+    >
+      {shown.map((a) => (
+        <Tile
+          key={a.id}
+          achievement={a}
+          width={(width - gap * (cols - 1)) / cols}
+          size={size}
+          highlight={!side && a.id === star?.id}
+          selected={side && a.id === picked?.id}
+          onPress={() =>
+            side ? pick(a.id) : router.push(`/conquista/${a.id}`)
+          }
+        />
+      ))}
+    </Animated.View>
+  )
+
+  /** "Perto de desbloquear" (A06) em `cols` colunas na largura `width`. */
+  const nearSection = (
+    width: number,
+    cols: number,
+    onOpen: (id: string) => void
+  ) => {
+    const near = nearest(list)
+    if (!near.length) return null
+    return (
+      <View style={{ gap: 12 }}>
+        <Section title="Perto de desbloquear" sub={String(near.length)} />
+        <View style={styles.nearGrid}>
+          {near.map((a) => (
+            <View
+              key={a.id}
+              style={{ width: (width - 12 * (cols - 1)) / cols }}
+            >
+              <Near achievement={a} onPress={() => onOpen(a.id)} />
+            </View>
+          ))}
+        </View>
+      </View>
+    )
+  }
+
+  // Nenhuma ainda, no tablet (Adaptativo 10): o vazio da Rodada 14 numa
+  // coluna e "As primeiras" em cima (em pé) ou ao lado (deitado, dobrável
+  // aberto). No celular, a estante de sempre, com todas bloqueadas.
+  const empty =
+    (layout.kind === 'split' || layout.kind === 'stack') &&
+    mine.isSuccess &&
+    !list.some((a) => a.unlockedAt)
+  if (empty) {
+    const column = (
+      <ScrollView
+        contentContainerStyle={[
+          styles.body,
+          {
+            paddingTop: layout.kind === 'stack' ? 40 : insets.top + 13,
+            paddingBottom: tabBar + 24
+          }
+        ]}
+      >
+        <View style={styles.top}>
+          <Title lines={[['Conquistas']]} size={40} color={P.ink} />
+          <Text style={[styles.total, { color: P.muted }]}>
+            0/{list.length}
+          </Text>
+        </View>
+        <MedalsEmpty onStart={() => router.navigate('/explore')} />
+      </ScrollView>
+    )
+    const first = (
+      <FirstMedals
+        list={list}
+        top={layout.kind === 'stack' ? insets.top + 16 : insets.top + 8}
+        onOpen={(id) => router.push(`/conquista/${id}`)}
+      />
+    )
+    const usable = layout.width - nav.left - nav.right
+    if (layout.kind === 'stack') {
+      const width = Math.min(560, usable - 80)
+      return (
+        <View style={root}>
+          <View style={{ height: 460 }}>{first}</View>
+          <View
+            style={[
+              styles.sheet,
+              {
+                width,
+                left: nav.left + (usable - width) / 2,
+                backgroundColor: P.bg
+              }
+            ]}
+          >
+            {column}
+          </View>
+        </View>
+      )
+    }
+    const listWidth = layout.gap ? layout.split : Math.round(usable * 0.42)
+    return (
+      <View style={[root, { flexDirection: 'row', gap: layout.gap }]}>
+        <View style={{ width: listWidth, alignItems: 'center' }}>
+          <View style={{ flex: 1, width: Math.min(listWidth, 430) }}>
+            {column}
+          </View>
+        </View>
+        <View style={{ flex: 1 }}>{first}</View>
+      </View>
+    )
+  }
+
+  // Tela de fora do Z Flip 8 (A06): a última conquista girando; sem
+  // nenhuma ainda, a primeira, com quanto falta.
+  if (layout.kind === 'cover') {
+    const medal = star ?? list[0]
+    return medal ? (
+      <CoverMedal medal={medal} list={list} share={() => shareMedal(medal)} />
+    ) : (
+      <View style={[styles.screen, { backgroundColor: INK }]} />
+    )
+  }
+
+  const ready = data && picked ? data : null
+
+  // Na mesa (Duo em laptop, Flex Mode): a medalha gira na metade de cima,
+  // longe da mão; a estante fica embaixo, perto do polegar.
+  if (layout.kind === 'table' && ready && picked) {
+    const wide = layout.width > 800
+    const medal = Math.min(layout.split - insets.top - 24, 300)
+    // Uma fileira de cinco (seis na mesa larga), dividindo a largura.
+    const cols = wide ? 6 : 5
+    const size = wide ? 96 : 84
+    return (
+      <View style={root}>
+        <View style={{ height: layout.split, overflow: 'hidden' }}>
+          <Glow
+            strength={P.dark ? 0.14 : 0.3}
+            rx="50%"
+            ry="70%"
+            cx="30%"
+            cy="55%"
+          />
+          <View style={[styles.tableTop, { paddingTop: insets.top }]}>
+            <Medal3D
+              medal={engraving(picked)}
+              drag
+              style={{ width: medal, height: medal }}
+            />
+            <Animated.View
+              key={picked.id}
+              entering={SWAP}
+              style={styles.tableCopy}
+            >
+              <Text style={[text(13), { color: P.muted }]}>
+                {seriesLabel(list, picked)}
+              </Text>
+              <Title
+                lines={[[picked.name]]}
+                size={wide ? 44 : 36}
+                color={P.ink}
+              />
+              <Text style={[text(14.5, 'Regular', 1.45), { color: P.body }]}>
+                {shortDescribe(picked)}
+              </Text>
+              <Tiers medal={picked} list={list} size={44} onPick={pick} />
+            </Animated.View>
+          </View>
+        </View>
+        <View
+          style={[
+            styles.tableBottom,
+            // A fileira não desconta a barra: ela flutua mais abaixo, e o
+            // recorte cortava o nome das medalhas.
+            { marginTop: layout.gap }
+          ]}
+        >
+          <View style={styles.tableBar}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chips}
+            >
+              {chips}
+            </ScrollView>
+            <Text style={[text(12.5), { color: P.muted }]}>
+              Nível {ready.level.level}
+              {ready.level.nextAt
+                ? ` · ${ready.level.unlocked} de ${ready.level.nextAt}`
+                : ''}
+            </Text>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.tableShelf}
+          >
+            {shown.map((a) => (
+              <Tile
+                key={a.id}
+                achievement={a}
+                width={
+                  (layout.width - nav.left - nav.right - 40 - 10 * (cols - 1)) /
+                  cols
+                }
+                size={size}
+                highlight={false}
+                selected={a.id === picked.id}
+                single
+                onPress={() => pick(a.id)}
+              />
+            ))}
+          </ScrollView>
+        </View>
+      </View>
+    )
+  }
+
+  // Lado a lado: a estante à esquerda e o detalhe fixo à direita. No tablet
+  // o detalhe tem até 480 (38% da tela); no dobrável, a outra metade.
+  if (layout.kind === 'split' && ready && picked) {
+    const tablet =
+      Platform.OS === 'ios' ? Platform.isPad : layout.nav === 'rail'
+    const space = layout.width - nav.left - nav.right
+    const detail = tablet
+      ? Math.min(480, Math.round(space * 0.38))
+      : space - (layout.split - nav.left) - layout.gap
+    const shelf = tablet ? space - detail : layout.split - nav.left
+    const pad = tablet ? 24 : 16
+    const cols = tablet ? (shelf > 800 ? 5 : 4) : 3
+    return (
+      <View style={[root, styles.row]}>
+        <ScrollView
+          style={{ width: shelf, flexGrow: 0 }}
+          contentContainerStyle={[
+            styles.body,
+            {
+              paddingHorizontal: pad,
+              paddingTop: insets.top + 26,
+              paddingBottom: tabBar + 24
+            }
+          ]}
+          refreshControl={refresh}
+        >
+          <View style={styles.top}>
+            <Title
+              lines={[['Conquistas']]}
+              size={tablet ? 44 : 32}
+              color={P.ink}
+            />
+            <ShareRound onPress={share} />
+          </View>
+          <Level data={ready} star={null} />
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={[styles.chipsScroll, { marginHorizontal: -pad }]}
+            contentContainerStyle={[styles.chips, { paddingHorizontal: pad }]}
+          >
+            {chips}
+          </ScrollView>
+          {grid(
+            shelf - pad * 2,
+            cols,
+            tablet ? (shelf > 800 ? 104 : 96) : shelf > 420 ? 92 : 80,
+            tablet ? 10 : 8,
+            true
+          )}
+          {/* No Galaxy Tab deitado (800 de altura ou mais) o design põe as
+              que estão perto embaixo da estante. */}
+          {layout.nav === 'rail' && layout.height >= 800
+            ? nearSection(shelf - pad * 2, shelf > 800 ? 3 : 2, pick)
+            : null}
+        </ScrollView>
+        <View
+          style={[
+            styles.pane,
+            {
+              width: detail,
+              marginLeft: tablet ? 0 : layout.gap,
+              backgroundColor: P.dark ? '#161613' : '#ebe8df'
+            }
+          ]}
+        >
+          <Glow strength={P.dark ? 0.13 : 0.3} rx="70%" />
+          <MedalDetail
+            medal={picked}
+            list={list}
+            insets={{ top: insets.top + 6, bottom: tabBar }}
+            share={() => shareMedal(picked)}
+            onPick={pick}
+            frame={{
+              width: detail,
+              medal: Math.min(320, detail - 60, layout.height * 0.36),
+              title: tablet ? 42 : detail < 400 ? 36 : 44,
+              close: false,
+              tiers: tablet ? 46 : 52,
+              // Duo aberto (669 de altura): o design tira o rodapé.
+              actions: tablet || layout.height > 800
+            }}
+          />
+        </View>
+      </View>
+    )
+  }
+
+  // Tablet em pé (A06): a mais recente em destaque e o nível ao lado, a
+  // grade em quatro a seis colunas, as que estão perto e a linha do tempo.
+  if (layout.kind === 'stack' && ready) {
+    const content = layout.width - nav.left - nav.right - 56
+    // Mini e Galaxy Tab em pé (1,52 e 1,6): quatro colunas grandes. O 11″
+    // (1,44; o Pro, 1,45) fica com cinco, como o Air do design.
+    const tall = layout.height / layout.width > 1.48
+    const cols = tall ? 4 : content > 900 ? 6 : content > 700 ? 5 : 4
+    const size = tall
+      ? Math.min(150, Math.floor((content - 36) / 4) - 24)
+      : cols >= 6
+        ? 108
+        : cols === 5
+          ? 104
+          : 110
+    const big = content > 900
+    const done = timeline(list)
+    return (
+      <View style={root}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.stackBody,
+            { paddingTop: insets.top + 28, paddingBottom: tabBar + 24 }
+          ]}
+          refreshControl={refresh}
+        >
+          <View style={styles.top}>
+            <Title lines={[['Conquistas']]} size={52} color={P.ink} />
+            <ShareRound onPress={share} />
+          </View>
+          <View style={styles.heroRow}>
+            {star ? (
+              <View style={{ flex: 1.4, minWidth: 0 }}>
+                <Card shadow={P.glow} offset={5} style={{ flex: 1 }}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`${star.name}, a mais recente`}
+                    onPress={() => router.push(`/conquista/${star.id}`)}
+                    style={styles.hero}
+                  >
+                    {/* O brilho acid atrás da medalha, como no design. */}
+                    <Glow
+                      strength={P.dark ? 0.14 : 0.45}
+                      rx="50%"
+                      ry="80%"
+                      cx="18%"
+                      cy="50%"
+                    />
+                    <MedalImage id={star.id} size={big ? 170 : 140} />
+                    <View style={styles.heroCopy}>
+                      <Text style={[styles.kicker, { color: P.hot }]}>
+                        MAIS RECENTE ·{' '}
+                        {shortDate(star.unlockedAt as string).toUpperCase()}
+                      </Text>
+                      <Title
+                        lines={[[star.name]]}
+                        size={big ? 38 : 30}
+                        color={P.ink}
+                      />
+                      <Text style={[text(13.5), { color: P.muted }]}>
+                        {amountLine(star)} · {star.share}% dos torcedores têm
+                      </Text>
+                      <Tiers
+                        medal={star}
+                        list={list}
+                        size={big ? 40 : 32}
+                        onPick={(id) => router.push(`/conquista/${id}`)}
+                      />
+                    </View>
+                  </Pressable>
+                </Card>
+              </View>
+            ) : null}
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Level data={ready} star={null} big />
+            </View>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={[styles.chipsScroll, { marginHorizontal: -28 }]}
+            contentContainerStyle={[styles.chips, { paddingHorizontal: 28 }]}
+          >
+            {chips}
+          </ScrollView>
+          {grid(content, cols, size, 12, false)}
+          {nearSection(content, big && !tall ? 3 : 2, (id) =>
+            router.push(`/conquista/${id}`)
+          )}
+          {layout.height > 1250 && done.length ? (
+            <View style={{ gap: 12 }}>
+              <Section
+                title="Linha do tempo"
+                sub={`desde ${shortDate(done.at(-1)?.unlockedAt as string).split(' ')[1]}.`}
+              />
+              <Card shadow={P.drop}>
+                <View style={styles.timeline}>
+                  {done.map((a, index) => (
+                    <Pressable
+                      key={a.id}
+                      accessibilityRole="button"
+                      onPress={() => router.push(`/conquista/${a.id}`)}
+                      style={({ pressed }) => [
+                        styles.timeRow,
+                        index > 0 && {
+                          borderTopWidth: 1,
+                          borderTopColor: P.line
+                        },
+                        pressed && { opacity: 0.7 }
+                      ]}
+                    >
+                      <Text style={[styles.timeDate, { color: P.muted }]}>
+                        {shortDate(a.unlockedAt as string).toUpperCase()}
+                      </Text>
+                      <MedalImage id={a.id} size={48} />
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text
+                          numberOfLines={1}
+                          style={[text(15, 'Bold'), { color: P.ink }]}
+                        >
+                          {a.name}
+                        </Text>
+                        {a.where ? (
+                          <Text
+                            numberOfLines={1}
+                            style={[text(12.5), { color: P.muted }]}
+                          >
+                            {timelineLine(a)}
+                          </Text>
+                        ) : null}
+                      </View>
+                    </Pressable>
+                  ))}
+                </View>
+              </Card>
+            </View>
+          ) : null}
+        </ScrollView>
+      </View>
+    )
+  }
+
+  // Celular e Duo fechado (rodada 6): o placar do nível em tinta com a
+  // escada, "Perto de sair" e a estante com a raridade de cada medalha.
+  const phone = layout.kind === 'phone' || layout.kind === 'duoClosed'
+  const space = window.width - nav.left - nav.right
+  const shelf = [...list].sort(
+    (x, y) => Number(Boolean(y.unlockedAt)) - Number(Boolean(x.unlockedAt))
+  )
+  const won = list.filter((a) => a.unlockedAt).length
+  return (
+    <View style={root}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.body,
+          { paddingTop: insets.top + 8, paddingBottom: tabBar + 24, gap: 14 },
+          !phone && styles.narrow
+        ]}
+        refreshControl={refresh}
+      >
+        <View style={styles.top}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Voltar"
+            hitSlop={8}
+            onPress={() =>
+              router.canGoBack() ? router.back() : router.navigate('/voce')
+            }
+            style={[
+              styles.round,
+              { backgroundColor: P.card, shadowColor: P.drop }
+            ]}
+          >
+            <Icon name="back" size={20} color={P.ink} />
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Compartilhar seu nível"
+            hitSlop={8}
+            onPress={share}
+            style={[
+              styles.round,
+              { backgroundColor: P.card, shadowColor: P.drop }
+            ]}
+          >
+            <Icon name="share" size={20} color={P.ink} />
+          </Pressable>
+        </View>
+
+        {mine.isPending ? (
+          <Skeleton />
+        ) : mine.isError || !data ? (
+          <ErrorState
+            style={styles.empty}
+            title="Não deu para abrir suas conquistas."
+            error={mine.error}
+            onRetry={mine.refetch}
+            retrying={mine.isFetching}
+          />
+        ) : (
+          <>
+            <LevelBoard
+              level={data.level}
+              streak={data.streak}
+              visits={visits.data ? visits.data.length : undefined}
+              bars={
+                visits.data
+                  ? new Set(visits.data.map((v) => v.barId)).size
+                  : undefined
+              }
+            />
+            {nearest(list, 2).length ? (
+              <>
+                <GroupLabel>Perto de sair</GroupLabel>
+                {nearest(list, 2).map((a) => (
+                  <NearCard
+                    key={a.id}
+                    a={a}
+                    onOpen={() => router.push(`/conquista/${a.id}`)}
+                    onBars={
+                      a.group === 'bares'
+                        ? () => router.push('/bares-pra-voce')
+                        : undefined
+                    }
+                  />
+                ))}
+              </>
+            ) : null}
+            <GroupLabel>{`A estante · ${won} de ${list.length}`}</GroupLabel>
+            <View style={styles.shelf}>
+              {shelf.map((a) => (
+                <ShelfTile
+                  key={a.id}
+                  a={a}
+                  width={(Math.min(space, 640) - 32 - 16) / 3}
+                  onPress={() => router.push(`/conquista/${a.id}`)}
+                />
+              ))}
+            </View>
+          </>
+        )}
+      </ScrollView>
+    </View>
+  )
+}
+
+/** Faltam N do grupo para a próxima: "4 bares novos para chegar a 10". */
+function nearLine(a: Achievement) {
+  const left = a.target - Math.min(a.progress, a.target)
+  const what =
+    a.group === 'resenhas'
+      ? left === 1
+        ? 'resenha'
+        : 'resenhas'
+      : a.group === 'bairros'
+        ? left === 1
+          ? 'bairro novo'
+          : 'bairros novos'
+        : a.group === 'esportes'
+          ? left === 1
+            ? 'esporte novo'
+            : 'esportes novos'
+          : left === 1
+            ? 'bar novo'
+            : 'bares novos'
+  return `${left} ${what} para chegar a ${a.target}`
+}
+
+/** O placar do nível (`.lvh`): o número em acid, o nome, a escada, os números. */
+function LevelBoard({
+  level,
+  streak,
+  visits,
+  bars
+}: {
+  level: {
+    level: number
+    name: string
+    unlocked: number
+    nextAt: number | null
+  }
+  streak: number
+  /** Nulo enquanto as visitas carregam ("—"). */
+  visits?: number
+  bars?: number
+}) {
+  const P = useMedalPalette()
+  const from = LEVELS.find((l) => l.level === level.level)?.from ?? 0
+  const next = LEVELS.find((l) => l.level === level.level + 1)
+  const share = level.nextAt
+    ? Math.min(1, (level.unlocked - from) / (level.nextAt - from))
+    : 1
+  return (
+    <View style={[styles.board, P.dark && styles.boardDark]}>
+      {/* Os pontos do placar (`.lvh`): textura parada, por trás de tudo. */}
+      <View style={styles.dots} pointerEvents="none">
+        <Svg style={StyleSheet.absoluteFill} pointerEvents="none">
+          <Defs>
+            <Pattern
+              id="placar"
+              width={9}
+              height={9}
+              patternUnits="userSpaceOnUse"
+            >
+              <Circle cx={4.5} cy={4.5} r={1.2} fill="rgba(241,238,230,.09)" />
+            </Pattern>
+          </Defs>
+          <Rect width="100%" height="100%" fill="url(#placar)" />
+        </Svg>
+      </View>
+      <View style={styles.boardTop}>
+        <View>
+          <Text style={styles.boardKicker}>SEU NÍVEL</Text>
+          <Text style={styles.big}>{level.level}</Text>
+        </View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={styles.boardName} numberOfLines={1} adjustsFontSizeToFit>
+            {level.name}
+          </Text>
+          <Text style={[text(13.5, 'Regular', 1.4), { color: '#c9c7c0' }]}>
+            {level.unlocked} {level.unlocked === 1 ? 'conquista' : 'conquistas'}
+            {next && level.nextAt ? (
+              <>
+                {' · faltam '}
+                <Text style={{ color: ACID, fontFamily: 'Archivo-Bold' }}>
+                  {level.nextAt - level.unlocked}
+                </Text>
+                {` para ${next.name}`}
+              </>
+            ) : (
+              ' · nível máximo'
+            )}
+          </Text>
+          <View style={styles.levelTrack}>
+            <GrowBar share={share} style={styles.levelFill} />
+          </View>
+        </View>
+      </View>
+      <Ladder current={level.level} />
+      <View style={styles.boardStats}>
+        {(
+          [
+            [visits, ['visita', 'visitas'], false],
+            [bars, ['bar', 'bares'], false],
+            [streak, ['semana seguida', 'semanas seguidas'], true]
+          ] as const
+        ).map(([value, [one, many], isNew]) => (
+          <View key={many} style={styles.boardStat}>
+            {/* "—" até a consulta chegar: zero é um número de verdade. */}
+            <Text style={styles.boardValue}>{value ?? '—'}</Text>
+            <Text style={styles.boardLabel}>{value === 1 ? one : many}</Text>
+            {isNew ? (
+              <View style={styles.newTag}>
+                <Text style={styles.newText}>NOVO</Text>
+              </View>
+            ) : null}
+          </View>
+        ))}
+      </View>
+    </View>
+  )
+}
+
+/** "Perto de sair" (`.nr`): a medalha apagada, o que falta e a barra. */
+function NearCard({
+  a,
+  onOpen,
+  onBars
+}: {
+  a: Achievement
+  onOpen: () => void
+  onBars?: () => void
+}) {
+  const P = useMedalPalette()
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onOpen}
+      style={({ pressed }) => [
+        styles.nearCard,
+        { backgroundColor: P.card, shadowColor: P.drop },
+        pressed && { opacity: 0.8 }
+      ]}
+    >
+      <MedalImage id={a.id} locked size={58} />
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={[text(15, 'Bold', 1.2), { color: P.ink }]}>{a.name}</Text>
+        <Text
+          style={[
+            text(12.5, 'Regular', 1.35),
+            { color: P.muted, marginTop: 2 }
+          ]}
+        >
+          {nearLine(a)}
+        </Text>
+        <View style={[styles.nearTrack, { backgroundColor: P.track }]}>
+          <GrowBar
+            share={progressShare(a)}
+            style={[
+              styles.nearFill,
+              { backgroundColor: P.dark ? ACID : '#7f9a12' }
+            ]}
+          />
+        </View>
+        <Text style={[styles.mono105, { color: P.muted }]}>
+          {Math.min(a.progress, a.target)} de {a.target}
+        </Text>
+      </View>
+      {onBars ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={onBars}
+          style={[styles.nearButton, { backgroundColor: P.ink }]}
+        >
+          <Text
+            style={[text(14, 'Bold', 1.2), { color: P.dark ? INK : PAPER }]}
+          >
+            Ver bares
+          </Text>
+        </Pressable>
+      ) : null}
+    </Pressable>
+  )
+}
+
+/** Uma medalha da estante (`.md6`): a ganha com "12% têm"; a que falta, "2 de 4". */
+function ShelfTile({
+  a,
+  width,
+  onPress
+}: {
+  a: Achievement
+  width: number
+  onPress: () => void
+}) {
+  const P = useMedalPalette()
+  const done = Boolean(a.unlockedAt)
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={a.name}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.tile6,
+        { width, backgroundColor: P.card, shadowColor: P.drop },
+        pressed && { opacity: 0.8 }
+      ]}
+    >
+      <View style={done ? styles.medalLift : { opacity: 0.75 }}>
+        <MedalImage id={a.id} locked={!done} size={70} />
+      </View>
+      <Text
+        numberOfLines={2}
+        style={[text(12.5, 'Bold', 1.2), { color: P.ink, textAlign: 'center' }]}
+      >
+        {a.name}
+      </Text>
+      <Text style={[styles.mono105, { color: P.muted }]}>
+        {done
+          ? `${a.share}% têm`
+          : `${Math.min(a.progress, a.target)} de ${a.target}`}
+      </Text>
+    </Pressable>
+  )
+}
+
+function ShareRound({ onPress }: { onPress: () => void }) {
+  const P = useMedalPalette()
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Compartilhar seu nível"
+      hitSlop={8}
+      onPress={onPress}
+    >
+      <GlassRound>
+        <Icon name="share" size={18} color={P.ink} />
+      </GlassRound>
+    </Pressable>
+  )
+}
+
+/** "Perto de desbloquear 3", o título de seção do tablet (A06). */
+function Section({ title, sub }: { title: string; sub: string }) {
+  const P = useMedalPalette()
+  return (
+    <View style={styles.section}>
+      <Text style={[styles.sectionTitle, { color: P.hot }]}>{title}</Text>
+      <Text style={[text(12.5), { color: P.muted }]}>{sub}</Text>
+    </View>
+  )
+}
+
+/** As medalhas da série com o alvo de cada uma ("1 5 10 25"). */
+function Tiers({
+  medal,
+  list,
+  size,
+  onPick
+}: {
+  medal: Achievement
+  list: Achievement[]
+  size: number
+  onPick: (id: string) => void
+}) {
+  const P = useMedalPalette()
+  return (
+    <View style={styles.tiers}>
+      {series(list, medal.group).map((a) => {
+        const on = a.id === medal.id
+        return (
+          <Pressable
+            key={a.id}
+            accessibilityRole="button"
+            accessibilityState={{ selected: on }}
+            accessibilityLabel={a.name}
+            onPress={() => onPick(a.id)}
+            style={[
+              styles.tier,
+              on && { backgroundColor: P.pick, borderColor: P.pickEdge }
+            ]}
+          >
+            <MedalImage id={a.id} locked={!a.unlockedAt} size={size} />
+            <Text style={[styles.count, { color: P.muted }]}>{a.target}</Text>
+          </Pressable>
+        )
+      })}
+    </View>
+  )
+}
+
+/** Uma das que estão perto: a medalha, a barra e quanto falta. */
+function Near({
+  achievement: a,
+  onPress
+}: {
+  achievement: Achievement
+  onPress: () => void
+}) {
+  const P = useMedalPalette()
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${a.name}, ${progressLabel(a)}`}
+      onPress={onPress}
+    >
+      <Card shadow={P.drop}>
+        <View style={styles.near}>
+          <MedalImage id={a.id} locked size={64} />
+          <View style={{ flex: 1, minWidth: 0, gap: 5 }}>
+            <View style={styles.nearHead}>
+              <Text
+                numberOfLines={1}
+                style={[text(14.5, 'Bold'), { flex: 1, color: P.ink }]}
+              >
+                {a.name}
+              </Text>
+              <Text style={[styles.count, { fontSize: 11.5, color: P.muted }]}>
+                {progressLabel(a)}
+              </Text>
+            </View>
+            <Bar share={progressShare(a)} height={5} />
+            <Text style={[text(12, 'Regular', 1.35), { color: P.muted }]}>
+              {missingLine(a)}
+            </Text>
+          </View>
+        </View>
+      </Card>
+    </Pressable>
+  )
+}
+
+function Level({
+  data,
+  star,
+  big
+}: {
+  data: Achievements
+  star: Achievement | null
+  /** No tablet em pé, ao lado do destaque: número e nome maiores. */
+  big?: boolean
+}) {
+  const P = useMedalPalette()
+  const { level } = data
+  const share = level.nextAt ? level.unlocked / level.nextAt : 1
+  return (
+    <Card shadow={P.glow} offset={5} style={big ? { flex: 1 } : undefined}>
+      <View style={[styles.level, big && { flex: 1 }]}>
+        <View style={{ flex: 1 }}>
+          <Text style={[text(13), { color: P.muted }]}>Seu nível</Text>
+          <View style={styles.levelName}>
+            <Text
+              style={[
+                styles.levelNumber,
+                big && styles.levelBig,
+                { color: P.hot }
+              ]}
+            >
+              {level.level}
+            </Text>
+            <Text style={[text(big ? 22 : 19, 'Bold', 1.2), { color: P.ink }]}>
+              {level.name}
+            </Text>
+          </View>
+          <Bar share={share} height={6} style={{ marginTop: 8 }} />
+          <Text style={[text(12.5), { color: P.muted, marginTop: 6 }]}>
+            {level.nextAt
+              ? `${level.unlocked} de ${level.nextAt} ${level.nextAt === 1 ? 'conquista' : 'conquistas'} para o nível ${level.level + 1}`
+              : `Nível máximo, com ${level.unlocked} conquistas`}
+          </Text>
+        </View>
+        {star ? <MedalImage id={star.id} size={96} /> : null}
+      </View>
+    </Card>
+  )
+}
+
+function Bar({
+  share,
+  height,
+  style
+}: {
+  share: number
+  height: number
+  style?: object
+}) {
+  const P = useMedalPalette()
+  const { kind } = useLayout()
+  // Fora do celular a barra é acid nos dois temas, como no A06; no celular
+  // segue a paleta da medalha (tinta no claro).
+  const fill = kind === 'phone' || kind === 'duoClosed' ? P.fill : ACID
+  return (
+    <View
+      style={[
+        styles.bar,
+        { height, borderRadius: height / 2, backgroundColor: P.track },
+        style
+      ]}
+    >
+      <View
+        style={{
+          width: `${Math.round(share * 100)}%`,
+          height: '100%',
+          backgroundColor: fill
+        }}
+      />
+    </View>
+  )
+}
+
+function Tile({
+  achievement: a,
+  width,
+  size,
+  highlight,
+  selected,
+  single,
+  onPress
+}: {
+  achievement: Achievement
+  width: number
+  size: number
+  highlight: boolean
+  /** Lado a lado: a medalha que está grande no detalhe. */
+  selected?: boolean
+  /**
+   * Numa fileira só (a mesa): sem igualar a altura à da vizinha, que lá é a
+   * metade de baixo inteira.
+   */
+  single?: boolean
+  onPress: () => void
+}) {
+  const P = useMedalPalette()
+  const press = usePressScale()
+  const done = Boolean(a.unlockedAt)
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={`${a.name}, ${done ? `conquistada em ${shortDate(a.unlockedAt as string)}` : `${progressLabel(a)}`}`}
+      onPress={onPress}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+      style={{ width }}
+    >
+      {/* Altura da linha: a medalha ganha fica do tamanho da que tem barra. */}
+      <Animated.View style={[!single && { flex: 1 }, press.style]}>
+        <Card
+          shadow={selected ? ACID : highlight ? P.glow : P.drop}
+          offset={selected ? 3 : highlight ? 5 : 4}
+          fill={selected ? (P.dark ? '#262621' : '#fff') : undefined}
+          style={single ? undefined : { flex: 1 }}
+        >
+          <View
+            style={[
+              styles.tile,
+              selected && [
+                styles.tileOn,
+                single && { flex: 0 },
+                { borderColor: P.dark ? 'rgba(241,238,230,.6)' : INK }
+              ]
+            ]}
+          >
+            <MedalImage id={a.id} locked={!done} size={size} />
+            <Text
+              style={[
+                text(12.5, 'Bold', 1.2),
+                styles.tileName,
+                { color: P.ink }
+              ]}
+              numberOfLines={2}
+            >
+              {a.name}
+            </Text>
+            {done ? (
+              <Text style={[text(11), { color: P.muted }]}>
+                {shortDate(a.unlockedAt as string)}
+              </Text>
+            ) : (
+              <>
+                <Bar
+                  share={progressShare(a)}
+                  height={4}
+                  style={{ width: '70%' }}
+                />
+                <Text style={[styles.count, { color: P.muted }]}>
+                  {progressLabel(a)}
+                </Text>
+              </>
+            )}
+          </View>
+        </Card>
+      </Animated.View>
+    </Pressable>
+  )
+}
+
+const styles = StyleSheet.create({
+  round: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  },
+  board: {
+    borderRadius: 26,
+    backgroundColor: INK,
+    padding: 18,
+    gap: 16,
+    shadowColor: '#000',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  },
+  dots: { ...StyleSheet.absoluteFill, borderRadius: 26, overflow: 'hidden' },
+  boardDark: {
+    backgroundColor: '#1f1f1a',
+    borderWidth: 1,
+    borderColor: 'rgba(241,238,230,.08)'
+  },
+  boardTop: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  boardKicker: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 10,
+    letterSpacing: 1,
+    color: '#aaa9a4'
+  },
+  // Anton 86/.85: margem negativa no lugar do entrelinha curto.
+  big: {
+    fontFamily: 'Anton',
+    fontSize: 86,
+    color: ACID,
+    marginVertical: -26,
+    textShadowColor: 'rgba(201,241,53,.35)',
+    textShadowRadius: 24
+  },
+  boardName: {
+    fontFamily: 'Anton',
+    fontSize: 34,
+    textTransform: 'uppercase',
+    color: PAPER,
+    marginVertical: -8.2,
+    marginBottom: -2
+  },
+  levelTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#34342d',
+    marginTop: 8,
+    overflow: 'hidden'
+  },
+  levelFill: { height: '100%', backgroundColor: ACID },
+  boardStats: { flexDirection: 'row', gap: 8 },
+  boardStat: {
+    flex: 1,
+    borderRadius: 14,
+    backgroundColor: 'rgba(241,238,230,.07)',
+    padding: 10
+  },
+  boardValue: {
+    fontFamily: 'Anton',
+    fontSize: 28,
+    color: PAPER,
+    marginVertical: -6.8
+  },
+  boardLabel: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 10.5,
+    color: '#aaa9a4',
+    marginTop: 6
+  },
+  newTag: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    paddingVertical: 3,
+    paddingHorizontal: 4,
+    borderRadius: 4,
+    backgroundColor: ACID
+  },
+  newText: { fontFamily: 'GeistMono-SemiBold', fontSize: 8.5, color: INK },
+  nearCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 12,
+    borderRadius: 20,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
+  },
+  nearTrack: {
+    height: 5,
+    borderRadius: 3,
+    marginTop: 6,
+    marginBottom: 6,
+    overflow: 'hidden'
+  },
+  nearFill: { height: '100%' },
+  nearButton: {
+    height: 40,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    justifyContent: 'center'
+  },
+  mono105: { fontFamily: 'GeistMono-SemiBold', fontSize: 10.5 },
+  shelf: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tile6: {
+    borderRadius: 18,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    gap: 4,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
+  },
+  medalLift: {
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 6 }
+  },
+  screen: { flex: 1 },
+  body: { paddingHorizontal: 16, gap: 14 },
+  narrow: { width: '100%', maxWidth: 640, alignSelf: 'center' },
+  row: { flexDirection: 'row' },
+  top: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  empty: { gap: 16, marginTop: 24 },
+  total: { fontFamily: 'GeistMono-SemiBold', fontSize: 13 },
+  // A folha do vazio em pé: sobe por cima de "As primeiras".
+  sheet: {
+    position: 'absolute',
+    top: 432,
+    bottom: 0,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: -14 }
+  },
+  level: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 16
+  },
+  levelName: { flexDirection: 'row', alignItems: 'baseline', gap: 10 },
+  levelNumber: {
+    fontFamily: 'Anton',
+    fontSize: 46,
+    // Sem lineHeight menor que a fonte: o iOS cortaria o topo (AGENTS.md).
+    marginVertical: -8
+  },
+  levelBig: { fontSize: 56, marginVertical: -10 },
+  bar: { overflow: 'hidden' },
+  chipsScroll: { marginHorizontal: -16, flexGrow: 0 },
+  chips: { gap: 6, paddingHorizontal: 16 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tile: {
+    alignItems: 'center',
+    gap: 4,
+    paddingTop: 8,
+    paddingBottom: 10,
+    paddingHorizontal: 4
+  },
+  // A medalha do detalhe ao lado: contorno de tinta e a sombra acid (A06).
+  tileOn: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderRadius: 6,
+    paddingTop: 6.5,
+    paddingBottom: 8.5,
+    paddingHorizontal: 2.5
+  },
+  tileName: { textAlign: 'center' },
+  count: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 10.5
+  },
+  // Fora do celular (A06).
+  pane: { overflow: 'hidden' },
+  stackBody: { paddingHorizontal: 28, gap: 16 },
+  heroRow: { flexDirection: 'row', gap: 16, alignItems: 'stretch' },
+  hero: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 18,
+    paddingVertical: 18,
+    paddingHorizontal: 22
+  },
+  heroCopy: { flex: 1, minWidth: 0, gap: 8 },
+  kicker: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11,
+    letterSpacing: 0.66
+  },
+  tiers: { flexDirection: 'row', gap: 6 },
+  tier: {
+    alignItems: 'center',
+    gap: 4,
+    padding: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'transparent'
+  },
+  section: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginTop: 6
+  },
+  sectionTitle: {
+    fontFamily: 'Anton',
+    fontSize: 22,
+    textTransform: 'uppercase',
+    marginVertical: -5
+  },
+  nearGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  near: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12 },
+  nearHead: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
+  timeline: { paddingHorizontal: 16, paddingVertical: 4 },
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 10
+  },
+  timeDate: { width: 52, fontFamily: 'GeistMono-SemiBold', fontSize: 12 },
+  tableTop: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 24,
+    paddingHorizontal: 24,
+    paddingBottom: 16
+  },
+  tableCopy: { flex: 1, minWidth: 0, gap: 10 },
+  tableBottom: { flex: 1, paddingTop: 14, gap: 12 },
+  tableBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingRight: 20
+  },
+  tableShelf: { gap: 10, paddingHorizontal: 20, alignItems: 'flex-start' }
+})

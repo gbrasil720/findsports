@@ -1,10 +1,17 @@
+import {
+  type ActionPhase,
+  isTransientError
+} from '@findsports_oficial/api/lib/transient-error'
+import { onlineManager } from '@tanstack/react-query'
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router'
 import { setStatusBarStyle } from 'expo-status-bar'
 import {
   Children,
+  createContext,
   isValidElement,
   type ReactNode,
   useCallback,
+  useContext,
   useEffect,
   useRef,
   useState
@@ -19,29 +26,47 @@ import {
   ScrollView,
   type StyleProp,
   StyleSheet,
-  Text,
-  TextInput,
   type TextInputProps,
   useColorScheme,
+  useWindowDimensions,
   View,
   type ViewStyle
 } from 'react-native'
 import Animated, {
+  FadeInDown,
+  interpolateColor,
   useAnimatedStyle,
   useSharedValue,
   withTiming
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import Svg, { Circle, G, Path, Rect } from 'react-native-svg'
+import Svg, { Circle, Ellipse, G, Path, Rect } from 'react-native-svg'
+import { AuthBrand } from '@/components/auth-brand'
 import { Glass } from '@/components/glass'
+import { NAV, useLayout } from '@/components/layout'
 import {
   EASE,
   enterAt,
   haptic,
+  LABEL_IN,
   POP_FAST,
-  SWAP,
   usePress
 } from '@/components/motion'
+import {
+  DISPLAY_FONT_SCALE,
+  MAX_FONT_SCALE,
+  Text,
+  TextInput
+} from '@/components/text'
+import {
+  ACID,
+  INK,
+  LIVE,
+  PALETTE,
+  PAPER,
+  type Palette
+} from '@/components/theme'
+import { APP_VERSION, HELP_URL } from '@/lib/env'
 
 /*
  * As peças das telas de conta ("04 Conta" do design): botão de voltar em
@@ -49,56 +74,53 @@ import {
  * Medidas do design a 390 x 844.
  */
 
-export const INK = '#12120f'
-export const PAPER = '#f1eee6'
-export const ACID = '#c9f135'
-export const LIVE = '#e8320c'
-export const MUTED = '#55554f'
-export const ACCENT = '#c92b0c'
+export { ACCENT, ACID, INK, LIVE, MUTED, PAPER } from '@/components/theme'
 
 /*
- * Cores que seguem o tema do sistema. O design só desenha as telas de conta
- * e o onboarding no claro; no escuro valem as mesmas formas com tinta e papel
- * trocados e o acid no lugar do vermelho (a regra da tab bar do design). São
- * cores dinâmicas do iOS: trocam sozinhas, então servem no `StyleSheet` de
- * módulo e no SVG. Onde a cor é calculada em JS (`interpolateColor`,
- * gradiente), use `useColorScheme`.
+ * Cores que seguem o tema do sistema, tiradas da tabela de
+ * `components/theme.tsx`. São cores dinâmicas do iOS: trocam sozinhas, então
+ * servem no `StyleSheet` de módulo e no SVG. Onde a cor é calculada em JS
+ * (`interpolateColor`, gradiente), use `usePalette()`.
  *
- * ponytail: no Android ficam no claro; trocar por um hook de tema quando o
- * app for testado lá.
+ * ponytail: no Android ficam no claro; lá a fonte é `usePalette()`, trocar
+ * estas por ela quando o app for testado no Android.
  */
 export const themed = (light: string, dark: string) =>
   (Platform.OS === 'ios'
     ? DynamicColorIOS({ light, dark })
     : light) as unknown as string
+const fromTable = (key: Exclude<keyof Palette, 'dark'>) =>
+  themed(PALETTE.light[key], PALETTE.dark[key])
 /** Texto e traço: tinta no claro, papel no escuro. */
-export const FG = themed(INK, PAPER)
+export const FG = fromTable('ink')
 /** Fundo da tela. */
-export const BG = themed(PAPER, INK)
+export const BG = fromTable('bg')
 /** O detalhe dos ícones: vermelho no claro, acid no escuro (em acid, passe LIVE). */
-export const SPARK = themed(LIVE, ACID)
+export const SPARK = fromTable('accent')
 /** Texto secundário. */
-export const SUB = themed(MUTED, '#aaa9a4')
+export const SUB = fromTable('muted')
 /** O trecho em destaque do título. */
-export const HOT = themed(ACCENT, ACID)
+export const HOT = fromTable('hot')
 /** Card sobre o fundo. */
-export const CARD = themed('#faf8f3', '#1c1c18')
+export const CARD = fromTable('card')
 /** Caixa de texto. */
-export const FIELD = themed('#fffdf8', '#1c1c18')
+export const FIELD = fromTable('field')
 /** Placa apagada (mapa vazio, capa sem foto). */
-export const STONE = themed('#e7e3db', '#2a2a25')
+export const STONE = fromTable('mark')
 /** Borda fina de card. */
-export const LINE = themed('rgba(18,18,15,.08)', 'rgba(241,238,230,.1)')
+export const LINE = fromTable('cardLine')
 /** Borda de campo e trilho vazio. */
-export const LINE_STRONG = themed('rgba(18,18,15,.14)', 'rgba(241,238,230,.16)')
+export const LINE_STRONG = fromTable('fieldLine')
 /** A sombra dura dos botões acid: tinta some no fundo de tinta, vira preto. */
-export const EDGE = themed(INK, '#000')
+export const EDGE = fromTable('edge')
 // O visto acid na caixa de tinta; na caixa de papel (escuro), tinta.
 const CHECK = themed(ACID, INK)
 const FIELD_DROP = themed('rgba(18,18,15,.05)', 'rgba(0,0,0,.5)')
 const PLACEHOLDER = themed('rgba(85,85,79,.6)', 'rgba(170,169,164,.6)')
 /** A sombra dura dos cards ("4px 4px 0"). */
-export const DROP = themed('rgba(18,18,15,.09)', '#000')
+export const DROP = fromTable('drop')
+
+export { DISPLAY_FONT_SCALE, MAX_FONT_SCALE, Text, TextInput }
 
 /** Texto em Archivo com a altura de linha 1,4 do design. */
 export const text = (
@@ -132,15 +154,6 @@ export function Icon({
   )
 }
 
-/** As setinhas de "abre menu" (⇅), ao lado de um rótulo. */
-export function UpDown({ color = FG }: { color?: string }) {
-  return (
-    <Svg width={8} height={14} viewBox="0 0 8 14">
-      <Path d="M4 1 7.4 5H.6zM4 13 .6 9h6.8z" fill={color} opacity={0.7} />
-    </Svg>
-  )
-}
-
 const ICONS = {
   back: (c: string) => (
     <Path d="M15.6 3.4 17.4 5.2 10.6 12l6.8 6.8-1.8 1.8L7 12z" fill={c} />
@@ -148,6 +161,12 @@ const ICONS = {
   close: (c: string) => (
     <Path
       d="M6.3 4.6 12 10.3l5.7-5.7 1.7 1.7-5.7 5.7 5.7 5.7-1.7 1.7-5.7-5.7-5.7 5.7-1.7-1.7 5.7-5.7-5.7-5.7z"
+      fill={c}
+    />
+  ),
+  plus: (c: string) => (
+    <Path
+      d="M10.75 4h2.5v6.75H20v2.5h-6.75V20h-2.5v-6.75H4v-2.5h6.75z"
       fill={c}
     />
   ),
@@ -275,6 +294,23 @@ const ICONS = {
         fill={c}
       />
     </>
+  ),
+  eye: (c: string) => (
+    <>
+      <Path
+        d="M12 5c5.2 0 9 4.4 10 7-1 2.6-4.8 7-10 7S3 14.6 2 12c1-2.6 4.8-7 10-7z"
+        fill={c}
+        opacity={0.3}
+      />
+      <Circle cx={12} cy={12} r={3.6} fill={c} />
+    </>
+  ),
+  camera: (c: string) => (
+    <Path
+      fillRule="evenodd"
+      d="M8.6 4h6.8l1.5 2.4H20a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.4a2 2 0 0 1 2-2h3.1zM12 9a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"
+      fill={c}
+    />
   ),
   pin: (c: string) => (
     <Path
@@ -424,6 +460,39 @@ const ICONS = {
       />
     </>
   ),
+  userplus: (c: string, a: string) => (
+    <>
+      <Circle cx={9} cy={8} r={4.2} fill={c} />
+      <Path d="M1.8 20.8a7.2 7.2 0 0 1 14.4 0z" fill={c} />
+      <Path d="M18 3.6h2.4V7h3.4v2.4h-3.4v3.4H18V9.4h-3.4V7H18z" fill={a} />
+    </>
+  ),
+  link: (c: string, a: string) => (
+    <>
+      <Path
+        d="M14.5 6.5H17a5.5 5.5 0 0 1 0 11h-2.5v-2.6H17a2.9 2.9 0 0 0 0-5.8h-2.5z"
+        fill={c}
+        opacity={0.35}
+      />
+      <Path
+        d="M9.5 6.5H7a5.5 5.5 0 0 0 0 11h2.5v-2.6H7a2.9 2.9 0 0 1 0-5.8h2.5z"
+        fill={c}
+      />
+      <Rect x={7.6} y={10.7} width={8.8} height={2.6} rx={1.3} fill={a} />
+    </>
+  ),
+  crew: (c: string, a: string) => (
+    <>
+      <G fill={c} opacity={0.35}>
+        <Circle cx={4.8} cy={9} r={2.6} />
+        <Circle cx={19.2} cy={9} r={2.6} />
+        <Path d="M.8 18.5a4 4 0 0 1 7.2-2.4V18.5zM23.2 18.5a4 4 0 0 0-7.2-2.4V18.5z" />
+      </G>
+      <Circle cx={12} cy={7.6} r={3.6} fill={c} />
+      <Path d="M5.8 20.5a6.2 6.2 0 0 1 12.4 0z" fill={c} />
+      <Circle cx={19.6} cy={3.4} r={2} fill={a} />
+    </>
+  ),
   ranking: (c: string, a: string) => (
     <>
       <Path d="M2 11.5h6V21H2zM16 14h6v7h-6z" fill={c} opacity={0.35} />
@@ -483,6 +552,13 @@ const ICONS = {
       <Circle cx={16} cy={10} r={1.6} fill={c} />
     </>
   ),
+  // Termos e privacidade (2l): a folha com o canto dobrado.
+  doc: (c: string) => (
+    <>
+      <Path d="M5 2.5h9.5L19 7v14.5H5z" fill={c} opacity={0.35} />
+      <Path d="M14.5 2.5V7H19zM8 11h8v2H8zM8 15h6v2H8z" fill={c} />
+    </>
+  ),
   star: (c: string) => (
     <Path
       d="m12 2.8 2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.6l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z"
@@ -512,10 +588,408 @@ const ICONS = {
       <Circle cx={15.5} cy={7} r={3.2} fill={c} />
       <Circle cx={8.5} cy={17} r={3.2} fill={a} />
     </>
+  ),
+  // Vazios da Rodada 14 (WEB-492): o coração dos salvos e o copo.
+  heart: (c: string, a: string) => (
+    <>
+      <Path
+        d="M12 21s-8.6-5-8.6-11.2A4.8 4.8 0 0 1 12 6.6a4.8 4.8 0 0 1 8.6 3.2C20.6 16 12 21 12 21z"
+        fill={c}
+        opacity={0.3}
+      />
+      <Path
+        d="M12 18.6s-6.4-3.9-6.4-8.5A3.2 3.2 0 0 1 12 8.9a3.2 3.2 0 0 1 6.4 1.2c0 4.6-6.4 8.5-6.4 8.5z"
+        fill={c}
+      />
+      <Path
+        d="M19.3 2.2l.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7z"
+        fill={a}
+      />
+    </>
+  ),
+  beer: (c: string, a: string) => (
+    <>
+      <Path
+        d="M5 6h11v13.5a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 5 19.5z"
+        fill={c}
+        opacity={0.3}
+      />
+      <Path
+        d="M16 9h2.2a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H16v-2h2v-4h-2z"
+        fill={c}
+        opacity={0.3}
+      />
+      <Path
+        d="M5 11h11v8.5a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 5 19.5z"
+        fill={c}
+      />
+      <Circle cx={7.4} cy={5.6} r={2.6} fill={a} />
+      <Circle cx={11} cy={4.6} r={2.9} fill={a} />
+      <Circle cx={14.2} cy={5.8} r={2.3} fill={a} />
+    </>
+  ),
+  coberta: (c: string, a: string) => (
+    <>
+      <Path d="M1.8 11.2 12 3.6l10.2 7.6v1.9H1.8z" fill={c} opacity={0.3} />
+      <Rect x={4.6} y={12.6} width={2.4} height={8} rx={1.2} fill={c} />
+      <Rect x={17} y={12.6} width={2.4} height={8} rx={1.2} fill={c} />
+      <Path d="M1.8 11.2 12 3.6l10.2 7.6-1.2 1.6L12 6.2l-9 6.6z" fill={c} />
+      <Circle cx={12} cy={15.6} r={2} fill={a} />
+    </>
+  ),
+  acessivel: (c: string, a: string) => (
+    <>
+      <Circle
+        cx={10.4}
+        cy={15.2}
+        r={5.6}
+        fill="none"
+        stroke={c}
+        strokeWidth={2.4}
+        opacity={0.3}
+      />
+      <Path d="M8.8 8h2.6v4.6h4.8l2.6 6.2-2.2.9-2-4.7H8.8z" fill={c} />
+      <Circle cx={10.1} cy={4.6} r={2.1} fill={a} />
+    </>
+  ),
+  pet: (c: string, a: string) => (
+    <>
+      <Ellipse cx={12} cy={15.6} rx={5.2} ry={4.4} fill={c} />
+      <Circle cx={5.6} cy={10.4} r={2.2} fill={c} opacity={0.3} />
+      <Circle cx={9.4} cy={6.4} r={2.2} fill={c} opacity={0.3} />
+      <Circle cx={14.6} cy={6.4} r={2.2} fill={c} opacity={0.3} />
+      <Circle cx={18.4} cy={10.4} r={2.2} fill={a} />
+    </>
+  ),
+  wifi: (c: string, a: string) => (
+    <>
+      <Path
+        d="M2.6 9.4a13.4 13.4 0 0 1 18.8 0M5.8 12.8a8.8 8.8 0 0 1 12.4 0"
+        stroke={c}
+        strokeWidth={2.4}
+        strokeLinecap="round"
+        fill="none"
+        opacity={0.3}
+      />
+      <Path
+        d="M9 16.2a4.3 4.3 0 0 1 6 0"
+        stroke={c}
+        strokeWidth={2.4}
+        strokeLinecap="round"
+        fill="none"
+      />
+      <Circle cx={12} cy={19.6} r={1.9} fill={a} />
+    </>
+  ),
+  petiscos: (c: string, a: string) => (
+    <>
+      <Path d="M3 12h18a9 7.6 0 0 1-18 0z" fill={c} opacity={0.3} />
+      <Path d="M5.2 15.4h13.6a9 7.6 0 0 1-13.6 0z" fill={c} />
+      <Rect
+        x={7.6}
+        y={4}
+        width={2.2}
+        height={8}
+        rx={1.1}
+        fill={c}
+        transform="rotate(-10 8.7 8)"
+      />
+      <Rect x={11.2} y={3} width={2.2} height={9} rx={1.1} fill={c} />
+      <Rect
+        x={14.6}
+        y={4}
+        width={2.2}
+        height={8}
+        rx={1.1}
+        fill={a}
+        transform="rotate(10 15.7 8)"
+      />
+    </>
+  ),
+  cozinha: (c: string, a: string) => (
+    <>
+      <Path
+        d="M14.6 3.2A8.6 8.6 0 1 0 20.8 16 7 7 0 0 1 14.6 3.2z"
+        fill={c}
+        opacity={0.3}
+      />
+      <Path
+        d="M7 3v6.4a2 2 0 0 0 1.4 1.9V21h2.2V11.3A2 2 0 0 0 12 9.4V3h-1.6v5H9.6V3H8.6v5H7.8V3z"
+        fill={c}
+      />
+      <Circle cx={18.6} cy={5.4} r={1.7} fill={a} />
+    </>
+  ),
+  vegetariano: (c: string, a: string) => (
+    <>
+      <Path
+        d="M20.6 3.4C11 3.6 4 8.6 4.4 17.2c0 1 .2 2 .5 3 8.4.5 14.4-5.6 15.7-16.8z"
+        fill={c}
+        opacity={0.3}
+      />
+      <Path
+        d="M4.4 20.4C7.6 14.6 11.6 10.6 17 7.4"
+        stroke={c}
+        strokeWidth={2.2}
+        strokeLinecap="round"
+        fill="none"
+      />
+      <Circle cx={17.6} cy={6.8} r={1.8} fill={a} />
+    </>
+  ),
+  drinks: (c: string, a: string) => (
+    <>
+      <Path d="M3.6 4h16.8L12 13.2z" fill={c} opacity={0.3} />
+      <Path d="M7.4 8.2h9.2L12 13.2z" fill={c} />
+      <Rect x={10.9} y={12.4} width={2.2} height={7} fill={c} />
+      <Rect x={7.6} y={18.6} width={8.8} height={2.2} rx={1.1} fill={c} />
+      <Circle cx={17.4} cy={5.2} r={2.1} fill={a} />
+    </>
+  ),
+  pix: (c: string, a: string) => (
+    <>
+      <Rect
+        x={6}
+        y={2.4}
+        width={12}
+        height={19.2}
+        rx={2.6}
+        fill={c}
+        opacity={0.3}
+      />
+      <Path d="M13.2 5.6 8.6 13h3l-1 5.4 4.8-7.6h-3z" fill={c} />
+      <Circle cx={12} cy={19.4} r={1.2} fill={a} />
+    </>
+  ),
+  cartao: (c: string, a: string) => (
+    <>
+      <Rect
+        x={2.4}
+        y={5}
+        width={19.2}
+        height={14}
+        rx={2.6}
+        fill={c}
+        opacity={0.3}
+      />
+      <Rect x={2.4} y={8.2} width={19.2} height={2.8} fill={c} />
+      <Rect x={5} y={14} width={6} height={2.2} rx={1.1} fill={c} />
+      <Rect x={15.2} y={13.4} width={3.6} height={3} rx={0.8} fill={a} />
+    </>
+  ),
+  vale: (c: string, a: string) => (
+    <>
+      <Path
+        d="M2.6 6.5h18.8v3a2.4 2.4 0 0 0 0 5v3H2.6v-3a2.4 2.4 0 0 0 0-5z"
+        fill={c}
+        opacity={0.3}
+      />
+      <Path
+        d="M9 8.4v3.2a1.4 1.4 0 0 0 1 1.3v3.7h1.6v-3.7a1.4 1.4 0 0 0 1-1.3V8.4h-1v2.6h-.6V8.4h-1v2.6h-.6V8.4z"
+        fill={c}
+      />
+      <Circle cx={16.4} cy={12} r={1.8} fill={a} />
+    </>
+  ),
+  couvert: (c: string, a: string) => (
+    <>
+      <Path
+        d="M3 7h18M3 11h18M3 15h18"
+        stroke={c}
+        strokeWidth={1.6}
+        opacity={0.3}
+      />
+      <Path d="M14 4.4v10.8a3 3 0 1 1-2.2-2.9V6.6l7-1.6v2.6z" fill={c} />
+      <Circle cx={18.8} cy={16.4} r={1.9} fill={a} />
+    </>
+  ),
+  estacionamento: (c: string, a: string) => (
+    <>
+      <Rect
+        x={3}
+        y={3}
+        width={18}
+        height={18}
+        rx={4.4}
+        fill={c}
+        opacity={0.3}
+      />
+      <Path
+        d="M8.4 6.4h4.6a4 4 0 0 1 0 8h-2.2v3.4H8.4zm2.4 2.2v3.6h2.1a1.8 1.8 0 0 0 0-3.6z"
+        fill={c}
+      />
+      <Circle cx={17.4} cy={17.4} r={1.7} fill={a} />
+    </>
+  ),
+  metro: (c: string, a: string) => (
+    <>
+      <Rect
+        x={4.6}
+        y={2.6}
+        width={14.8}
+        height={15.4}
+        rx={3.6}
+        fill={c}
+        opacity={0.3}
+      />
+      <Rect x={7} y={5.4} width={10} height={5} rx={1.4} fill={c} />
+      <Path
+        d="M7.6 18.6 5.4 21.4h2.6l1.6-2.2zm8.8 0 2.2 2.8H16l-1.6-2.2z"
+        fill={c}
+      />
+      <Circle cx={8.8} cy={14} r={1.5} fill={a} />
+      <Circle cx={15.2} cy={14} r={1.5} fill={a} />
+    </>
+  ),
+  bike: (c: string, a: string) => (
+    <>
+      <Circle
+        cx={5.8}
+        cy={15.6}
+        r={4}
+        fill="none"
+        stroke={c}
+        strokeWidth={2.2}
+        opacity={0.3}
+      />
+      <Circle
+        cx={18.2}
+        cy={15.6}
+        r={4}
+        fill="none"
+        stroke={c}
+        strokeWidth={2.2}
+        opacity={0.3}
+      />
+      <Path
+        d="M5.8 15.6 9.4 8.6h6.2l2.6 7M9.4 8.6l3.4 7h-7M12 6.4h3"
+        stroke={c}
+        strokeWidth={2}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <Circle cx={9.6} cy={5.8} r={1.6} fill={a} />
+    </>
+  ),
+  futebol: (c: string, a: string) => (
+    <>
+      <Circle cx={12} cy={12} r={9.4} fill={c} opacity={0.3} />
+      <Path d="m12 7.4 4.2 3-1.6 4.9H9.4l-1.6-4.9z" fill={c} />
+      <Path
+        d="M12 2.6v4.8M16.2 10.4l4.4-1.6M14.6 15.3l2.8 4M9.4 15.3l-2.8 4M7.8 10.4 3.4 8.8"
+        stroke={c}
+        strokeWidth={1.6}
+        fill="none"
+      />
+      <Circle cx={12} cy={11.6} r={1.4} fill={a} />
+    </>
+  ),
+  basquete: (c: string, a: string) => (
+    <>
+      <Circle cx={12} cy={12} r={9.4} fill={c} opacity={0.3} />
+      <Path
+        d="M2.6 12h18.8M12 2.6v18.8M5.4 5.4a9.4 9.4 0 0 1 0 13.2M18.6 5.4a9.4 9.4 0 0 0 0 13.2"
+        stroke={c}
+        strokeWidth={1.8}
+        fill="none"
+      />
+      <Circle cx={12} cy={12} r={1.6} fill={a} />
+    </>
+  ),
+  f1: (c: string, a: string) => (
+    <>
+      <Rect x={4} y={2.6} width={2.2} height={19} rx={1.1} fill={c} />
+      <Path d="M6.2 4h14v9.6h-14z" fill={c} opacity={0.3} />
+      <Path
+        d="M6.2 4h3.5v3.2H6.2zm7 0h3.5v3.2h-3.5zm-3.5 3.2h3.5v3.2H9.7zm7 0h3.5v3.2h-3.5zm-10.5 3.2h3.5v3.2H6.2zm7 0h3.5v3.2h-3.5z"
+        fill={c}
+      />
+      <Circle cx={18.4} cy={17.6} r={1.8} fill={a} />
+    </>
+  ),
+  ufc: (c: string, a: string) => (
+    <>
+      <Path
+        d="M6 9.4A5.4 5.4 0 0 1 11.4 4h3.2a5 5 0 0 1 5 5v4.4a5 5 0 0 1-5 5H9.4A3.4 3.4 0 0 1 6 15z"
+        fill={c}
+        opacity={0.3}
+      />
+      <Path
+        d="M6 15h13.4v1.4a3.6 3.6 0 0 1-3.6 3.6H9.6A3.6 3.6 0 0 1 6 16.4z"
+        fill={c}
+      />
+      <Path d="M9.6 8.2h6.6" stroke={c} strokeWidth={2} strokeLinecap="round" />
+      <Circle cx={4.6} cy={11.2} r={1.7} fill={a} />
+    </>
+  ),
+  nfl: (c: string, a: string) => (
+    <>
+      <Ellipse
+        cx={12}
+        cy={12}
+        rx={10}
+        ry={6}
+        transform="rotate(-35 12 12)"
+        fill={c}
+        opacity={0.3}
+      />
+      <Path
+        d="M8.4 15.6 15.6 8.4"
+        stroke={c}
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+      <Path
+        d="m10.6 11.4 2 2m-.6-3.4 2 2m-5-.6 2 2"
+        stroke={c}
+        strokeWidth={1.6}
+        strokeLinecap="round"
+      />
+      <Circle cx={18.4} cy={5.6} r={1.6} fill={a} />
+    </>
+  ),
+  tenis: (c: string, a: string) => (
+    <>
+      <Circle cx={12} cy={12} r={9.4} fill={c} opacity={0.3} />
+      <Path
+        d="M4.4 6.6a9.4 9.4 0 0 1 0 10.8M19.6 6.6a9.4 9.4 0 0 0 0 10.8"
+        stroke={c}
+        strokeWidth={2}
+        fill="none"
+      />
+      <Circle cx={12} cy={12} r={1.6} fill={a} />
+    </>
+  ),
+  volei: (c: string, a: string) => (
+    <>
+      <Circle cx={12} cy={12} r={9.4} fill={c} opacity={0.3} />
+      <Path
+        d="M12 2.6c-1.6 4 -1.2 7 0 9.4M12 12c3 1.6 6.2 2 9.2.6M12 12c-2.4 2.2-4.8 4.8-5.6 8.4"
+        stroke={c}
+        strokeWidth={2}
+        strokeLinecap="round"
+        fill="none"
+      />
+      <Circle cx={12} cy={12} r={1.6} fill={a} />
+    </>
+  ),
+  aovivo: (c: string, a: string) => (
+    <>
+      <Circle cx={12} cy={12} r={9} fill={c} opacity={0.3} />
+      <Circle cx={12} cy={12} r={5} fill={c} />
+      <Circle cx={12} cy={12} r={2.4} fill={a} />
+    </>
   )
 }
 
 // --- Barra de status -------------------------------------------------------
+
+/**
+ * Quem desenha atrás da barra de status no lugar da tela (o painel escuro do
+ * onboarding no tablet) diz a cor dela aqui.
+ */
+export const StatusBarOver = createContext<'light' | 'dark' | null>(null)
 
 /**
  * A cor da barra de status da tela em foco. Não dá para usar `<StatusBar>`
@@ -525,8 +999,9 @@ const ICONS = {
  * react-native-screens reaplica o padrão no fim da transição: por isso
  * também no `transitionEnd`.
  */
-export function useStatusBar(wanted: 'light' | 'dark' | 'auto') {
+export function useStatusBar(asked: 'light' | 'dark' | 'auto') {
   const navigation = useNavigation()
+  const wanted = useContext(StatusBarOver) ?? asked
   // "auto" resolvido aqui: o do expo-status-bar só olha o tema na hora da
   // chamada, e trocar o tema com a tela aberta deixaria a barra errada.
   const scheme = useColorScheme()
@@ -545,12 +1020,55 @@ export function useStatusBar(wanted: 'light' | 'dark' | 'auto') {
   )
 }
 
+/**
+ * Puxar para atualizar: o giro só aparece quando a pessoa puxa. Ligado ao
+ * `isRefetching`, uma recarga em segundo plano (voltar para a aba) mostrava
+ * o giro, empurrava a tela para baixo e o iOS só a devolvia no próximo toque.
+ */
+export function usePullRefresh(refetch: () => Promise<unknown>) {
+  const [refreshing, setRefreshing] = useState(false)
+  const onRefresh = () => {
+    setRefreshing(true)
+    refetch().finally(() => setRefreshing(false))
+  }
+  return { refreshing, onRefresh }
+}
+
 // --- Tela -------------------------------------------------------------------
 
 /**
  * A moldura das telas de conta: fundo papel (ou tinta), conteúdo que rola
  * acima do teclado e, opcional, um rodapé preso embaixo.
  */
+/**
+ * As telas de entrar fora do celular (a08 do design, WEB-491): marca e
+ * formulário lado a lado no tablet deitado e no dobrável aberto, marca em
+ * cima no tablet em pé. A tela que desenha a própria foto (o login) a deixa
+ * de lado quando isto é verdade.
+ */
+export function useBrandFrame() {
+  const { kind } = useLayout()
+  return kind === 'split' || kind === 'stack'
+}
+
+/**
+ * As telas curtas da conta abrem como folha fora do celular (regra 06 da
+ * a08): o `app/_layout.tsx` as apresenta por cima (`transparentModal`) e o
+ * `Screen` desenha a folha.
+ */
+export function useAccountSheet() {
+  const { kind } = useLayout()
+  return kind !== 'phone' && kind !== 'duoClosed' && kind !== 'cover'
+}
+
+// A folha sobe um pouco enquanto o fundo escurece (constante de módulo: ver
+// `POP` em `motion.tsx`).
+const SHEET_IN = FadeInDown.duration(260).easing(EASE)
+
+/** Tablet (iPad, Galaxy Tab): a marca fica com mais da metade da tela. */
+const IS_TABLET_NAV = (nav: string) =>
+  nav === 'rail' || (Platform.OS === 'ios' && Platform.isPad)
+
 export function Screen({
   dark,
   lightStatus,
@@ -559,6 +1077,8 @@ export function Screen({
   padding = 20,
   header,
   footer,
+  brand,
+  sheet,
   children
 }: {
   dark?: boolean
@@ -571,10 +1091,39 @@ export function Screen({
   /** Fica atrás do conteúdo, no topo, e rola junto (a foto do login). */
   header?: ReactNode
   footer?: ReactNode
+  /**
+   * Tela de entrar ou de conta antes do login: fora do celular, ao lado da
+   * marca (ou sob ela) numa coluna de leitura (`useBrandFrame`).
+   */
+  brand?: boolean
+  /**
+   * Tela curta da conta (Cidade, Senha, Duas etapas): fora do celular abre
+   * como folha no meio, com "Cancelar" e o botão de pronto no topo (sheet8 do
+   * design); no dobrável aberto, na metade da direita. O voltar sai.
+   */
+  sheet?: { done?: string; onDone?: () => void; busy?: boolean }
   children: ReactNode
 }) {
   const insets = useSafeAreaInsets()
-  useStatusBar(dark || lightStatus ? 'light' : 'auto')
+  const layout = useLayout()
+  const router = useRouter()
+  const asSheet = useAccountSheet()
+  const sheetMode = sheet && asSheet
+  const framed = brand && (layout.kind === 'split' || layout.kind === 'stack')
+  // Na mesa (Duo em laptop, Flex Mode), os campos em cima e o teclado embaixo.
+  const table = layout.kind === 'table'
+  // A faixa da direita do Duo fechado (status e Dynamic Island).
+  const strip = layout.kind === 'duoClosed' ? NAV.duoRail.width : 0
+  const tablet = IS_TABLET_NAV(layout.nav)
+  const brandWidth = tablet ? Math.round(layout.width * 0.55) : layout.split
+  const rightWidth = layout.width - brandWidth - layout.gap
+  const column = table
+    ? Math.min(560, layout.width - 48)
+    : layout.kind === 'split'
+      ? Math.min(440, rightWidth - 48)
+      : Math.min(480, layout.width - 80)
+  // Com a marca, a hora fica sobre a foto: clara.
+  useStatusBar(dark || lightStatus || framed ? 'light' : 'auto')
   // A entrada em sequência vale só para o que nasce com a tela; o que aparece
   // depois (erro, aviso) entra sozinho, na hora.
   const born = useRef(Date.now())
@@ -589,46 +1138,204 @@ export function Screen({
     }
     return entry
   }
-  const items = Children.toArray(children)
+  const items = Children.toArray(children).map((child, index) =>
+    // O voltar é vidro, e vidro com transparência animada sai errado no
+    // iOS 26; ele chega com a própria transição da tela.
+    isValidElement(child) && child.type === BackButton ? (
+      child
+    ) : (
+      <Animated.View
+        key={String(isValidElement(child) ? child.key : index)}
+        entering={entering(
+          String(isValidElement(child) ? child.key : index),
+          index
+        )}
+      >
+        {child}
+      </Animated.View>
+    )
+  )
+  const background = dark ? INK : BG
+
+  if (sheetMode) {
+    const half = layout.kind === 'split' && layout.width < 1000
+    const width = half
+      ? layout.width - layout.split - layout.gap
+      : Math.min(560, layout.width - 120)
+    return (
+      <View style={{ flex: 1 }}>
+        <Pressable
+          accessibilityLabel="Fechar"
+          onPress={() => router.back()}
+          style={[StyleSheet.absoluteFill, styles.sheetDim]}
+        />
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          pointerEvents="box-none"
+          style={
+            half
+              ? [StyleSheet.absoluteFill, { left: layout.split + layout.gap }]
+              : styles.sheetCenter
+          }
+        >
+          <Animated.View
+            entering={SHEET_IN}
+            style={[
+              styles.sheetCard,
+              { width, backgroundColor: background },
+              half
+                ? { flex: 1, borderRadius: 0, paddingTop: insets.top }
+                : // Cabe entre o topo e o teclado: a folha encolhe e rola.
+                  { maxHeight: '100%' }
+            ]}
+          >
+            <View style={styles.sheetBar}>
+              <Text
+                accessibilityRole="button"
+                suppressHighlighting
+                onPress={() => router.back()}
+                style={[text(15, 'SemiBold'), { color: SUB }]}
+              >
+                Cancelar
+              </Text>
+              <View style={[styles.grabber, { backgroundColor: LINE }]} />
+              <Text
+                accessibilityRole="button"
+                suppressHighlighting
+                disabled={!sheet.onDone || sheet.busy}
+                onPress={sheet.onDone}
+                style={[
+                  text(15, 'Bold'),
+                  { color: HOT, opacity: sheet.onDone ? 1 : 0 }
+                ]}
+              >
+                {sheet.done ?? 'Salvar'}
+              </Text>
+            </View>
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{
+                paddingHorizontal: 28,
+                paddingBottom: 28,
+                gap
+              }}
+            >
+              <TitleSize.Provider value={half ? 36 : 40}>
+                {items.filter(
+                  (child) =>
+                    !(isValidElement(child) && child.type === BackButton)
+                )}
+              </TitleSize.Provider>
+              {footer}
+            </ScrollView>
+          </Animated.View>
+        </KeyboardAvoidingView>
+      </View>
+    )
+  }
+
+  if (framed || table) {
+    const body = (
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        style={table && { maxHeight: layout.split }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          alignItems: 'center',
+          justifyContent: table ? 'flex-start' : 'center',
+          paddingTop: layout.kind === 'stack' ? 36 : insets.top + top,
+          paddingBottom: 30
+        }}
+      >
+        <View style={{ width: column, gap }}>
+          <TitleSize.Provider
+            value={
+              // Os tamanhos do título no design (split8, port8, table8).
+              table ? 30 : layout.kind === 'stack' ? 48 : column < 360 ? 34 : 42
+            }
+          >
+            {items}
+          </TitleSize.Provider>
+          {footer ? (
+            <Animated.View
+              entering={entering('footer', items.length)}
+              style={{ gap: 12, paddingTop: 4 }}
+            >
+              {footer}
+            </Animated.View>
+          ) : null}
+        </View>
+      </ScrollView>
+    )
+    if (layout.kind === 'split')
+      return (
+        // Só o formulário sobe com o teclado; a marca fica parada.
+        <View
+          style={{ flex: 1, flexDirection: 'row', backgroundColor: background }}
+        >
+          <View style={{ width: brandWidth }}>
+            <AuthBrand column width={brandWidth} height={layout.height} />
+          </View>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={{ flex: 1, marginLeft: layout.gap }}
+          >
+            {body}
+          </KeyboardAvoidingView>
+        </View>
+      )
+    if (table)
+      return (
+        <View style={{ flex: 1, backgroundColor: background }}>{body}</View>
+      )
+    // Em pé: a marca no terço de cima e o formulário numa folha por cima dela.
+    const band = Math.round(layout.height * 0.36)
+    return (
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1, backgroundColor: INK }}
+      >
+        <View style={{ height: band }}>
+          <AuthBrand width={layout.width} height={band} />
+        </View>
+        <View
+          style={[
+            styles.sheet,
+            { backgroundColor: background, paddingBottom: insets.bottom + 12 }
+          ]}
+        >
+          {body}
+          <BrandLinks dark={dark} />
+        </View>
+      </KeyboardAvoidingView>
+    )
+  }
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={{ flex: 1, backgroundColor: dark ? INK : BG }}
+      style={{ flex: 1, backgroundColor: background }}
     >
       <ScrollView
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
           flexGrow: 1,
           paddingTop: header ? 0 : insets.top + top,
-          paddingHorizontal: header ? 0 : padding,
+          paddingLeft: header ? 0 : padding,
+          paddingRight: (header ? 0 : padding) + strip,
           paddingBottom: 24,
           gap
         }}
       >
         {header}
-        {items.map((child, index) =>
-          // O voltar é vidro, e vidro com transparência animada sai errado no
-          // iOS 26; ele chega com a própria transição da tela.
-          isValidElement(child) && child.type === BackButton ? (
-            child
-          ) : (
-            <Animated.View
-              key={String(isValidElement(child) ? child.key : index)}
-              entering={entering(
-                String(isValidElement(child) ? child.key : index),
-                index
-              )}
-            >
-              {child}
-            </Animated.View>
-          )
-        )}
+        {items}
       </ScrollView>
       {footer ? (
         <Animated.View
           entering={entering('footer', items.length)}
           style={{
-            paddingHorizontal: 16,
+            paddingLeft: 16,
+            paddingRight: 16 + strip,
             paddingTop: 12,
             paddingBottom: Math.max(insets.bottom - 4, 16),
             gap: 12
@@ -638,6 +1345,41 @@ export function Screen({
         </Animated.View>
       ) : null}
     </KeyboardAvoidingView>
+  )
+}
+
+/** "Termos de uso · Privacidade · Ajuda · v0.1.0" no pé da folha do tablet em pé. */
+function BrandLinks({ dark }: { dark?: boolean }) {
+  const router = useRouter()
+  const color = dark ? '#aaa9a4' : SUB
+  return (
+    <View style={styles.brandLinks}>
+      {(
+        [
+          ['termos', 'Termos de uso'],
+          ['privacidade', 'Privacidade']
+        ] as const
+      ).map(([doc, label]) => (
+        <Text
+          key={doc}
+          accessibilityRole="link"
+          suppressHighlighting
+          onPress={() => router.push({ pathname: '/legal', params: { doc } })}
+          style={[text(13, 'SemiBold'), { color }]}
+        >
+          {label}
+        </Text>
+      ))}
+      <Text
+        accessibilityRole="link"
+        suppressHighlighting
+        onPress={() => Linking.openURL(HELP_URL).catch(() => {})}
+        style={[text(13, 'SemiBold'), { color }]}
+      >
+        Ajuda
+      </Text>
+      <Text style={[styles.version, { color }]}>{APP_VERSION}</Text>
+    </View>
   )
 }
 
@@ -665,14 +1407,34 @@ export function BackButton({
       onPress={onPress ?? (() => router.back())}
       style={{ alignSelf: 'flex-start' }}
     >
-      {/* Vidro só aparece com algo atrás; sobre o papel liso, a base branca
-          e a sombra do design (0 12px 30px -10px) fazem o círculo. */}
-      <View style={forced !== 'dark' && styles.roundBase}>
-        <Glass tone={tone} interactive style={styles.round}>
-          <Icon name={icon} size={18} color={tone === 'light' ? INK : PAPER} />
-        </Glass>
-      </View>
+      <GlassRound tone={forced}>
+        <Icon name={icon} size={18} color={tone === 'light' ? INK : PAPER} />
+      </GlassRound>
     </Pressable>
+  )
+}
+
+/**
+ * O botão redondo de vidro do design (40 pt). Vidro só aparece com algo
+ * atrás; sobre o papel liso, a base e a sombra do design (0 12px 30px -10px)
+ * fazem o círculo. Sem tom, segue o tema do sistema; `dark` é o de sobre
+ * foto ou fundo escuro, que dispensa a base.
+ */
+export function GlassRound({
+  tone: forced,
+  children
+}: {
+  tone?: 'light' | 'dark'
+  children: ReactNode
+}) {
+  const scheme = useColorScheme()
+  const tone = forced ?? (scheme === 'dark' ? 'dark' : 'light')
+  return (
+    <View style={forced !== 'dark' && styles.roundBase}>
+      <Glass tone={tone} interactive style={styles.round}>
+        {children}
+      </Glass>
+    </View>
   )
 }
 
@@ -683,17 +1445,25 @@ export function BackButton({
  * iOS ele corta o topo das letras quando é menor que a altura da fonte
  * (1,505em); a margem negativa leva a linha ao 1.02 do design.
  */
+/**
+ * Fora do celular o `Screen` dita o tamanho do título (o do design de cada
+ * moldura); no celular, vale o de cada tela.
+ */
+const TitleSize = createContext<number | null>(null)
+
 export function Title({
   lines,
-  size,
+  size: own,
   color = FG,
   accentColor = HOT
 }: {
-  lines: [string, string?][]
+  /** Cada linha: texto, trecho em destaque e, se houver, o que vem depois. */
+  lines: [string, string?, string?][]
   size: number
   color?: string
   accentColor?: string
 }) {
+  const size = useContext(TitleSize) ?? own
   const style = {
     fontFamily: 'Anton',
     fontSize: size,
@@ -704,10 +1474,11 @@ export function Title({
   }
   return (
     <View accessible accessibilityRole="header">
-      {lines.map(([plain, accent]) => (
+      {lines.map(([plain, accent, after]) => (
         <Text key={plain + accent} style={style}>
           {plain}
           {accent ? <Text style={{ color: accentColor }}>{accent}</Text> : null}
+          {after}
         </Text>
       ))}
     </View>
@@ -743,28 +1514,46 @@ function HardShadow({
   )
 }
 
+/**
+ * Encolher o rótulo só no "Texto maior" do iOS, onde ele não cabe. No
+ * tamanho padrão o `adjustsFontSizeToFit` media a linha antes de o botão
+ * ter largura (a raiz de uma aba nativa, como Seus bares) e deixava o
+ * "Tentar de novo" com uns 6 pt.
+ */
+export const useFitLabel = () => useWindowDimensions().fontScale > 1
+
 /** O botão retangular acid dos formulários ("Criar conta grátis"...). */
 export function BlockButton({
   label,
   onPress,
   disabled,
   trailing,
+  leading,
+  leadingAccent = ACID,
   shadow = EDGE,
-  style
+  style,
+  busy
 }: {
   label: string
   onPress: () => void
   disabled?: boolean
+  /** A ação está no ar: não aceita toque, mas não esmaece (o rótulo conta). */
+  busy?: boolean
   trailing?: boolean
+  /** Ícone antes do rótulo ("Ampliar para 10 km", com o pino, 23i). */
+  leading?: keyof typeof ICONS
+  /** O detalhe do ícone: acid por padrão; tinta quando o acid sumiria no botão. */
+  leadingAccent?: string
   shadow?: string
   style?: StyleProp<ViewStyle>
 }) {
   const press = usePress(3, 3)
+  const fit = useFitLabel()
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ disabled }}
-      disabled={disabled}
+      accessibilityState={{ disabled, busy }}
+      disabled={disabled || busy}
       onPress={onPress}
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
@@ -774,8 +1563,23 @@ export function BlockButton({
       <View style={disabled && { opacity: 0.45 }}>
         <HardShadow color={shadow} x={3} y={3} radius={4} />
         <Animated.View style={[styles.block, press.style]}>
-          <Animated.View key={label} entering={SWAP} style={styles.row}>
-            <Text style={[text(15, 'Bold'), { color: INK }]}>{label}</Text>
+          <Animated.View key={label} entering={LABEL_IN} style={styles.row}>
+            {leading ? (
+              <Icon
+                name={leading}
+                size={17}
+                color={INK}
+                accent={leadingAccent}
+              />
+            ) : null}
+            <Text
+              style={[text(15, 'Bold'), { color: INK, flexShrink: 1 }]}
+              maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
+              numberOfLines={1}
+              adjustsFontSizeToFit={fit}
+            >
+              {label}
+            </Text>
             {trailing ? (
               <Icon name="next" size={16} color={INK} accent={LIVE} />
             ) : null}
@@ -791,19 +1595,26 @@ export function PillButton({
   label,
   onPress,
   trailing,
+  leading,
   edge = EDGE,
   disabled,
+  busy,
   height = 56
 }: {
+  /** A ação está no ar: não aceita toque, mas não esmaece (o rótulo conta). */
+  busy?: boolean
   label: string
   onPress: () => void
   trailing?: boolean
+  /** Ícone antes do rótulo ("Compartilhar" com a seta, 11c). */
+  leading?: keyof typeof ICONS
   edge?: string
   disabled?: boolean
   /** 52 no vidro do rodapé de uma folha (3d); 56 no resto. */
   height?: number
 }) {
   const press = usePress(0, 3)
+  const fit = useFitLabel()
   return (
     <View
       style={[
@@ -814,8 +1625,8 @@ export function PillButton({
     >
       <Pressable
         accessibilityRole="button"
-        accessibilityState={{ disabled }}
-        disabled={disabled}
+        accessibilityState={{ disabled, busy }}
+        disabled={disabled || busy}
         onPress={onPress}
         onPressIn={press.onPressIn}
         onPressOut={press.onPressOut}
@@ -828,14 +1639,123 @@ export function PillButton({
           ]}
         >
           {/* O rótulo que muda ("Continuar" e "Começar") troca suave. */}
-          <Animated.View key={label} entering={SWAP} style={styles.row}>
-            <Text style={[text(15, 'Bold'), { color: INK }]}>{label}</Text>
+          <Animated.View key={label} entering={LABEL_IN} style={styles.row}>
+            {leading ? (
+              <Icon name={leading} size={17} color={INK} accent={INK} />
+            ) : null}
+            <Text
+              style={[text(15, 'Bold'), { color: INK, flexShrink: 1 }]}
+              maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
+              numberOfLines={1}
+              adjustsFontSizeToFit={fit}
+            >
+              {label}
+            </Text>
             {trailing ? (
               <Icon name="next" size={17} color={INK} accent={LIVE} />
             ) : null}
           </Animated.View>
         </Animated.View>
       </Pressable>
+    </View>
+  )
+}
+
+// --- Erro (WEB-460) ----------------------------------------------------------
+
+const OFFLINE_LINE = 'Sem conexão. Tentamos de novo quando a rede voltar.'
+
+/**
+ * A frase de uma falha, para alerta e linha de erro: sem rede, a da rede; na
+ * falha passageira, `fallback`; na recusa do servidor, o texto dele (a API
+ * escreve em português para quem usa). O "Network request failed" do React
+ * Native não chega à pessoa.
+ */
+export function errorMessage(error: unknown, fallback: string) {
+  if (!onlineManager.isOnline()) return OFFLINE_LINE
+  if (isTransientError(error)) return fallback
+  const own = error as { message?: string; data?: { httpStatus?: number } }
+  return own?.data?.httpStatus && own.message ? own.message : fallback
+}
+
+const PHASE_LABELS = {
+  waiting: 'Esperando a rede…',
+  retrying: 'Tentando de novo…',
+  failed: 'Tentar de novo'
+}
+
+/**
+ * O rótulo do botão em cada fase da ação (`actionPhase`, a regra do web):
+ * "Confirmar" → "Confirmando…" → "Tentando de novo…" → "Tentar de novo".
+ */
+export function phaseLabel(
+  phase: ActionPhase,
+  labels: { idle: string; sending: string; done?: string } & Partial<
+    Record<ActionPhase, string>
+  >
+) {
+  return { ...PHASE_LABELS, done: labels.idle, ...labels }[phase] ?? labels.idle
+}
+
+/** Ocupado: a ação está no ar (o botão não aceita toque). */
+export const phaseBusy = (phase: ActionPhase) =>
+  phase === 'sending' || phase === 'waiting' || phase === 'retrying'
+
+/**
+ * O bloco que não carregou, no lugar do que sumiria: o que houve, o que
+ * fazer e "Tentar de novo" na falha passageira. Recusa do servidor mostra o
+ * texto dele, sem botão (repetir só repetiria a recusa).
+ */
+export function ErrorState({
+  title,
+  error,
+  onRetry,
+  retrying,
+  style
+}: {
+  /** "Não deu para abrir seus bares." */
+  title: string
+  error: unknown
+  onRetry: () => unknown
+  /** A nova tentativa está no ar (`isFetching` da consulta). */
+  retrying?: boolean
+  style?: StyleProp<ViewStyle>
+}) {
+  const transient = isTransientError(error)
+  const line = !onlineManager.isOnline()
+    ? OFFLINE_LINE
+    : transient
+      ? 'A conexão caiu no meio. O resto da página continua.'
+      : errorMessage(error, 'Verifique a sua conta ou volte mais tarde.')
+  // Rodada 7 (tela 5): o bloco fica no lugar, num cartão, com o título em
+  // Anton, o que deu errado e "Tentar de novo" em tinta; nunca some.
+  return (
+    // Nada anima em erro (rodada 7): o cartão aparece seco.
+    <View accessibilityRole="alert" style={[styles.errorCard, style]}>
+      <Text style={styles.errorTitle}>{title}</Text>
+      <Text style={[text(14.5, 'Regular', 1.45), { color: SUB }]}>{line}</Text>
+      {transient ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ busy: retrying }}
+          disabled={retrying}
+          onPress={() => void onRetry()}
+          style={({ pressed }) => [
+            styles.errorButton,
+            pressed && { transform: [{ scale: 0.97 }] }
+          ]}
+        >
+          {/* A largura é a do rótulo maior: trocar não empurra o botão. */}
+          <Text aria-hidden style={[text(15, 'Bold', 1.2), { opacity: 0 }]}>
+            Tentando de novo…
+          </Text>
+          <View style={styles.errorLabel}>
+            <Text style={[text(15, 'Bold', 1.2), { color: BG }]}>
+              {retrying ? 'Tentando de novo…' : 'Tentar de novo'}
+            </Text>
+          </View>
+        </Pressable>
+      ) : null}
     </View>
   )
 }
@@ -1041,6 +1961,41 @@ export function Checkbox({
   )
 }
 
+/**
+ * O interruptor das Configurações (50 x 30, bolinha de 24). Só desenha: o
+ * toque é da linha. Ao trocar, a bolinha anda e as cores mudam no mesmo
+ * passo (180 ms), em vez de a cor pular no primeiro quadro.
+ */
+export function Toggle({
+  on,
+  off,
+  track = INK,
+  knob = ACID
+}: {
+  on: boolean
+  /** O trilho desligado (a bolinha desligada é branca). */
+  off: string
+  track?: string
+  knob?: string
+}) {
+  const x = useSharedValue(on ? 20 : 0)
+  useEffect(() => {
+    x.set(withTiming(on ? 20 : 0, { duration: 180, easing: EASE }))
+  }, [on, x])
+  const trackStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(x.get(), [0, 20], [off, track])
+  }))
+  const knobStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(x.get(), [0, 20], ['#ffffff', knob]),
+    transform: [{ translateX: x.get() }]
+  }))
+  return (
+    <Animated.View style={[styles.toggle, trackStyle]}>
+      <Animated.View style={[styles.knob, knobStyle]} />
+    </Animated.View>
+  )
+}
+
 // --- Contagem para reenviar -------------------------------------------------
 
 /** Segundos até poder reenviar; `restart` recomeça. */
@@ -1102,13 +2057,97 @@ export function authErrorMessage(
       return 'Código de recuperação incorreto.'
   }
   if (error.status === 429) return 'Muitas tentativas. Espere um pouco.'
+  // `status: 0`: o pedido nem chegou ao servidor (`settleAuth`, WEB-469).
+  if (error.status === 0)
+    return 'Não deu para conectar. Confira a internet e tente de novo.'
   return fallback
 }
 
 const styles = StyleSheet.create({
+  errorCard: {
+    gap: 8,
+    padding: 18,
+    borderRadius: 22,
+    backgroundColor: CARD,
+    shadowColor: DROP,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  },
+  // Anton 26: margem negativa no lugar do entrelinha curto.
+  errorTitle: {
+    fontFamily: 'Anton',
+    fontSize: 26,
+    textTransform: 'uppercase',
+    color: FG,
+    marginVertical: -6.3
+  },
+  errorLabel: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  errorButton: {
+    alignSelf: 'flex-start',
+    height: 44,
+    paddingHorizontal: 18,
+    borderRadius: 22,
+    marginTop: 6,
+    backgroundColor: FG,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
+  },
+  sheetDim: { backgroundColor: 'rgba(18,18,15,.42)' },
+  sheetCenter: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60
+  },
+  sheetCard: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+    shadowRadius: 35,
+    shadowOffset: { width: 0, height: 30 }
+  },
+  sheetBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 28,
+    paddingTop: 22,
+    paddingBottom: 12
+  },
+  grabber: { width: 40, height: 5, borderRadius: 3 },
+  // A folha do formulário sobe 28 por cima da marca (tablet em pé, a08).
+  sheet: {
+    flex: 1,
+    marginTop: -28,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    overflow: 'hidden'
+  },
+  version: { fontFamily: 'GeistMono-SemiBold', fontSize: 12 },
+  brandLinks: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 22,
+    paddingTop: 8
+  },
+  toggle: { width: 50, height: 30, borderRadius: 15, padding: 3 },
+  knob: { width: 24, height: 24, borderRadius: 12 },
   // No escuro a base branca deixava o vidro leitoso, mais claro que o topo.
+  // A borda fina e clara do vidro do design (inset 0 0 0 .5px).
   roundBase: {
     borderRadius: 20,
+    borderWidth: 0.5,
+    borderColor: themed('rgba(255,255,255,.75)', 'rgba(255,255,255,.28)'),
     backgroundColor: themed('rgba(255,255,255,.55)', 'rgba(241,238,230,.1)'),
     shadowColor: themed(INK, '#000'),
     shadowOpacity: 0.18,
@@ -1145,6 +2184,7 @@ const styles = StyleSheet.create({
   pill: {
     height: 56,
     borderRadius: 28,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1181,7 +2221,9 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: FG
   },
+  // Encolhe com o rótulo no tamanho de fonte máximo, para ele caber na pílula.
   row: {
+    flexShrink: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

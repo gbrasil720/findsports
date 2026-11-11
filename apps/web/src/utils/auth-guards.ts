@@ -1,3 +1,4 @@
+import { isTransientError } from '@findsports_oficial/api/lib/transient-error'
 import type { auth } from '@findsports_oficial/auth'
 import { impersonationModeFrom } from '@findsports_oficial/auth/impersonation-mode'
 import { redirect } from '@tanstack/react-router'
@@ -45,13 +46,16 @@ export function applyAuthGuards(
   session: AuthSession,
   pathname: string,
   search: Record<string, unknown> = {},
-  href = pathname
+  href = pathname,
+  origin?: string
 ) {
   // Unknown URLs stay public so the 404 page can render for visitors.
   // /onboarding/pub stays public — o rascunho pré-cadastro depende do fluxo
   // de verificação de e-mail, que precisa funcionar antes da sessão existir.
   // WEB-210: `href` relativo (caminho + query) volta como destino do login;
-  // `getCallbackUrl` só aceita mesma origem.
+  // `getCallbackUrl` só aceita mesma origem. WEB-473: `origin` é a do router
+  // (no SSR, a da requisição), como no `useCallbackUrl` do WEB-472; sem ela o
+  // servidor recusava o `callbackUrl` absoluto de mesma origem.
   // WEB-383: o Houdini tem portão próprio (`lib/houdini-gate`), que vale
   // também para sessão impersonada de conta sem onboarding.
   if (pathname === '/houdini' || pathname.startsWith('/houdini/')) return
@@ -84,7 +88,7 @@ export function applyAuthGuards(
 
     if (!pathname.startsWith(onboardingRoute)) {
       const entrada = pathname === '/login' || pathname === '/signup'
-      const destino = entrada ? getCallbackUrl(href) : href
+      const destino = entrada ? getCallbackUrl(href, origin) : href
       // Conta nova por uma ação (`?acao=`, `components/torcedor/acao.ts`): a
       // ação é concluída primeiro e as preferências vêm depois, no card e na
       // tela curta (`/dashboard/bem-vindo`).
@@ -114,7 +118,7 @@ export function applyAuthGuards(
   // cadastro; segue para o destino que a URL levava. `/dashboard` é o padrão
   // de `getCallbackUrl`, e o guard abaixo leva o bar à casa dele.
   if (pathname === '/login' || pathname === '/signup') {
-    throw redirect({ to: getCallbackUrl(href) })
+    throw redirect({ to: getCallbackUrl(href, origin) })
   }
 
   // Landing é exclusiva para visitantes — sessão pronta vai para a superfície do papel.
@@ -172,6 +176,22 @@ export function isHashOnlyChange(
     previous.searchStr === next.searchStr &&
     previous.hash !== next.hash
   )
+}
+
+/**
+ * A sessão da navegação quando `getSession` falhou (WEB-470). Falha
+ * passageira (sem rede, 5xx) fica com a última sessão conferida nesta aba,
+ * em vez de levar a troca de tela para a página de erro. Ela só decide a
+ * rota: os dados continuam pedindo o cookie ao servidor. Sem sessão
+ * conferida (aba nova, depois de sair) ou com recusa do servidor, o erro
+ * segue.
+ */
+export function sessionAfterFailure(
+  error: unknown,
+  last: { session: AuthSession } | undefined
+): AuthSession {
+  if (!last || !isTransientError(error)) throw error
+  return last.session
 }
 
 /**

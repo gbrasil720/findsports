@@ -104,31 +104,6 @@ export function assertAnalyticsPeriodAllowed(
   }
 }
 
-/**
- * Returns true if the plan has access to the given event type analytics.
- */
-export function canViewEventType(
-  plan: SubscriptionPlan,
-  eventType: string
-): boolean {
-  const e = ENTITLEMENTS[plan]
-  switch (eventType) {
-    case 'profile_view':
-      return e.canViewAnalytics
-    case 'phone_clicked':
-      return e.canViewPhoneClicked
-    case 'whatsapp_opened':
-      return e.canViewWhatsappOpened
-    case 'directions_opened':
-      return e.canViewDirectionsOpened
-    case 'classic_exposure':
-    case 'classic_click':
-      return e.canViewClassicPlacement
-    default:
-      return false
-  }
-}
-
 /** Metrics a comparison may expose for the plan. */
 export function getComparisonMetrics(
   entitlements: AnalyticsEntitlements

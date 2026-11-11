@@ -1,5 +1,6 @@
 import { and, eq, inArray, sql } from 'drizzle-orm'
 import { createDb } from '..'
+import { brasiliaDay } from '../event-window'
 import {
   bar,
   barCommercialEvent,
@@ -29,10 +30,6 @@ function daysFrom(anchor: Date, offset: number): Date {
   return date
 }
 
-function getCommercialDay(date: Date): string {
-  return date.toISOString().slice(0, 10)
-}
-
 function rotate<T>(items: T[], offset: number): T[] {
   const normalized = offset % items.length
   return [...items.slice(normalized), ...items.slice(0, normalized)]
@@ -60,7 +57,7 @@ function buildEventRow({
     sourceEventChampionship: sourceEvent?.championship,
     sourceEventStartsAt: sourceEvent?.startsAt,
     occurredAt,
-    commercialDay: getCommercialDay(occurredAt),
+    commercialDay: brasiliaDay(occurredAt),
     createdAt: occurredAt
   }
 }

@@ -62,13 +62,9 @@ sozinho: `pubs.search` e `pubs.getById` para a nota.
 
 ## Propagação
 
-Salvar grava na hora. Sem Redis — o caso de produção hoje —, cada instância
-mantém a sua cópia, e as demais veem o valor novo **em até 60 segundos**: é o
-TTL do cache que evita uma consulta por requisição.
-
-Com Upstash Redis configurado (`UPSTASH_REDIS_REST_URL` e
-`UPSTASH_REDIS_REST_TOKEN`), o cache é compartilhado e salvar apaga a entrada
-de lá: todas as instâncias leem o valor novo na próxima requisição.
+Salvar grava na hora. Cada instância mantém a sua cópia, e as demais veem o
+valor novo **em até 60 segundos**: é o TTL do cache que evita uma consulta por
+requisição.
 
 O painel lê direto do banco, sem cache, para o administrador ver o que está
 gravado em vez do que a instância dele ainda tem em memória.

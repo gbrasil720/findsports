@@ -21,18 +21,26 @@ const LoadTestDatabaseName = z
   .string()
   .regex(/^findsports_load_test(_[a-z0-9_]+)?$/)
 
+/**
+ * Banco de desenvolvimento: `findsports_dev` ou `findsports_dev_<sufixo>`, para
+ * worktrees diferentes subirem o web cada uma no seu banco (DEV_DATABASE_URL).
+ */
+const DevDatabaseName = z.string().regex(/^findsports_dev(_[a-z0-9_]+)?$/)
+
 const DevDatabaseConfig = z.object({
   host: LocalhostSchema,
   port: z.number().int().positive(),
-  database: z.union([
-    z.literal('findsports_dev'),
-    LoadTestDatabaseName,
-    E2eDatabaseName
-  ])
+  database: z.union([DevDatabaseName, LoadTestDatabaseName, E2eDatabaseName])
 })
 
 const DefaultDevUrl =
   'postgres://findsports_dev:findsports_dev_local@localhost:5432/findsports_dev'
+
+const DevOverrideConfig = z.object({
+  host: LocalhostSchema,
+  port: z.number().int().positive(),
+  database: DevDatabaseName
+})
 
 const LoadTestDatabaseConfig = z.object({
   host: LocalhostSchema,
@@ -103,6 +111,7 @@ function disposableUrl(
  * - development → localhost findsports_dev (fail-closed)
  * - test → localhost findsports_dev (fail-closed)
  * - E2E_DATABASE_URL / LOAD_TEST_DATABASE_URL override both, loopback only
+ * - DEV_DATABASE_URL overrides development, loopback findsports_dev[_<suffix>] only
  * - production → DATABASE_URL from environment
  * - missing/other → throws
  *
@@ -150,6 +159,16 @@ export function resolveDatabaseUrl(): string {
       'LOAD_TEST_DATABASE_URL',
       LoadTestDatabaseConfig,
       'Load tests require a loopback host and database=findsports_load_test[_<suffix>].'
+    )
+  }
+
+  const devUrl = process.env.DEV_DATABASE_URL
+  if (devUrl && nodeEnv === 'development') {
+    return disposableUrl(
+      devUrl,
+      'DEV_DATABASE_URL',
+      DevOverrideConfig,
+      'Development override requires a loopback host and database=findsports_dev[_<suffix>].'
     )
   }
 

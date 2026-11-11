@@ -8,6 +8,13 @@ import {
   type SQL,
   sql
 } from '@findsports_oficial/db'
+import {
+  brasiliaDaySql,
+  brasiliaDayStartSql,
+  brasiliaTodaySql,
+  utcNowSql
+} from '@findsports_oficial/db/event-window-sql'
+import { aiRun } from '@findsports_oficial/db/schema/ai'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { appConfig } from '@findsports_oficial/db/schema/config'
 import { adminAction } from '@findsports_oficial/db/schema/houdini'
@@ -28,6 +35,8 @@ import { getCurrentPlan } from '../lib/current-plan'
 import { escapeLike } from '../lib/escape-like'
 import { JOB_NAMES, lastJobRun } from '../lib/jobs'
 import { expectedSearchPlan } from './admin-bars'
+import { listedGames } from './admin-events'
+import { houdiniIaRouter } from './houdini-ia'
 
 const DAY = 24 * 3_600_000
 const SEARCH_LIMIT = 8
@@ -55,15 +64,15 @@ const signupTrial = and(
  */
 const trialEndingThisWeek = and(
   signupTrial,
-  sql`(${subscription.currentPeriodEnd} IS NULL OR ${subscription.currentPeriodEnd} < ((date_trunc('day', now() AT TIME ZONE 'America/Sao_Paulo') + interval '7 days') AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'UTC')`
+  sql`(${subscription.currentPeriodEnd} IS NULL OR ${subscription.currentPeriodEnd} < ${brasiliaDayStartSql(brasiliaTodaySql(), 7)})`
 )
 
 /** Dias entre hoje e o fim do teste, contados no calendário de Brasília. */
-const spDaysUntilEnd = sql<number>`(((${subscription.currentPeriodEnd} AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo')::date - (now() AT TIME ZONE 'America/Sao_Paulo')::date)`
+const spDaysUntilEnd = sql<number>`(${brasiliaDaySql(subscription.currentPeriodEnd)} - ${brasiliaTodaySql()})`
 
 const upcomingGames = sql<number>`(
   SELECT count(*)::int FROM ${event}
-  WHERE ${event.barId} = ${bar.id} AND ${event.startsAt} > now()
+  WHERE ${event.barId} = ${bar.id} AND ${event.startsAt} > ${utcNowSql()}
     AND ${event.publishedAt} IS NOT NULL
 )`
 
@@ -99,10 +108,30 @@ async function reviewQueue() {
 }
 
 /**
+ * Execução da IA em `running` há mais de uma hora: não termina mais, e a
+ * rotina `ai_stale_runs` só a fecha no cron seguinte (`closeStaleRuns`).
+ */
+async function stuckAiRuns() {
+  const [row] = await db
+    .select({ n: count() })
+    .from(aiRun)
+    .where(
+      and(
+        eq(aiRun.status, 'running'),
+        sql`${aiRun.createdAt} <= now() - interval '1 hour'`
+      )
+    )
+  return row?.n ?? 0
+}
+
+/**
  * WEB-391: o Início do Houdini e o ⌘K. Só leitura, montado com o que as
  * tabelas já registram.
  */
 export const houdiniRouter = router({
+  /** A tela "IA": testes, gasto e limites da IA. */
+  ia: houdiniIaRouter,
+
   overview: adminProcedure.query(async () => {
     const now = new Date()
     const since = iso(new Date(now.getTime() - DAY))
@@ -148,16 +177,13 @@ export const houdiniRouter = router({
         .select({ n: count() })
         .from(bar)
         .where(sql`${bar.createdAt} > ${since}`),
-      db
-        .select({ n: count() })
-        .from(event)
-        .where(sql`${event.startsAt} > now()`),
+      db.select({ n: count() }).from(event).where(listedGames),
       // Feitiço lançado e ainda valendo, como `carregarAppConfigGravada` lê.
       db
         .select({ n: count() })
         .from(appConfig)
         .where(
-          sql`${appConfig.expiresAt} IS NULL OR ${appConfig.expiresAt} > now()`
+          sql`${appConfig.expiresAt} IS NULL OR ${appConfig.expiresAt} > ${utcNowSql()}`
         ),
       failedJobs(),
       reviewQueue()
@@ -226,8 +252,8 @@ export const houdiniRouter = router({
           and(
             eq(bar.isActive, false),
             signupTrial,
-            sql`${subscription.currentPeriodEnd} <= (now() AT TIME ZONE 'UTC')`,
-            sql`${subscription.currentPeriodEnd} > (now() AT TIME ZONE 'UTC') - interval '7 days'`,
+            sql`${subscription.currentPeriodEnd} <= ${utcNowSql()}`,
+            sql`${subscription.currentPeriodEnd} > ${utcNowSql()} - interval '7 days'`,
             sql`${lastOnOff} IS DISTINCT FROM 'bar.take_off_air'`
           )
         )
@@ -250,50 +276,54 @@ export const houdiniRouter = router({
    * WEB-480: "Pede a sua mão" do Início. Só o que as tabelas já dizem: fatura
    * sem pagar (`past_due`), rotina cuja última execução falhou, busca atrás
    * do plano e teste do cadastro que acaba hoje (a coluna de hoje da
-   * Ampulheta, vencidos à espera da reconciliação inclusive).
+   * Ampulheta, vencidos à espera da reconciliação inclusive). E também a
+   * fila da Revisão e a execução da IA presa.
    */
   pedeAMao: adminProcedure.query(async () => {
-    const [pastDue, drift, endingToday, jobs] = await Promise.all([
-      db
-        .select({ id: bar.id, name: bar.name, plan: subscription.plan })
-        .from(subscription)
-        .innerJoin(bar, eq(bar.id, subscription.barId))
-        .where(eq(subscription.status, 'past_due'))
-        .orderBy(sql`${subscription.updatedAt} DESC`)
-        .limit(PEDE_LIMIT),
-      db
-        .select({
-          id: bar.id,
-          name: bar.name,
-          barPlan: bar.plan,
-          expectedSearchPlan
-        })
-        .from(bar)
-        .leftJoin(subscription, eq(subscription.barId, bar.id))
-        .where(sql`${bar.plan} IS DISTINCT FROM ${expectedSearchPlan}`)
-        .orderBy(sql`${bar.createdAt} DESC`)
-        .limit(PEDE_LIMIT),
-      db
-        .select({
-          id: bar.id,
-          name: bar.name,
-          currentPeriodEnd: subscription.currentPeriodEnd,
-          upcomingGames
-        })
-        .from(bar)
-        .innerJoin(subscription, eq(subscription.barId, bar.id))
-        .where(
-          and(
-            eq(bar.isActive, true),
-            trialEndingThisWeek,
-            sql`COALESCE(${spDaysUntilEnd}, 0) <= 0`
+    const [pastDue, drift, endingToday, jobs, review, stuckAi] =
+      await Promise.all([
+        db
+          .select({ id: bar.id, name: bar.name, plan: subscription.plan })
+          .from(subscription)
+          .innerJoin(bar, eq(bar.id, subscription.barId))
+          .where(eq(subscription.status, 'past_due'))
+          .orderBy(sql`${subscription.updatedAt} DESC`)
+          .limit(PEDE_LIMIT),
+        db
+          .select({
+            id: bar.id,
+            name: bar.name,
+            barPlan: bar.plan,
+            expectedSearchPlan
+          })
+          .from(bar)
+          .leftJoin(subscription, eq(subscription.barId, bar.id))
+          .where(sql`${bar.plan} IS DISTINCT FROM ${expectedSearchPlan}`)
+          .orderBy(sql`${bar.createdAt} DESC`)
+          .limit(PEDE_LIMIT),
+        db
+          .select({
+            id: bar.id,
+            name: bar.name,
+            currentPeriodEnd: subscription.currentPeriodEnd,
+            upcomingGames
+          })
+          .from(bar)
+          .innerJoin(subscription, eq(subscription.barId, bar.id))
+          .where(
+            and(
+              eq(bar.isActive, true),
+              trialEndingThisWeek,
+              sql`COALESCE(${spDaysUntilEnd}, 0) <= 0`
+            )
           )
-        )
-        .orderBy(sql`${subscription.currentPeriodEnd} ASC NULLS FIRST`)
-        .limit(PEDE_LIMIT),
-      failedJobs()
-    ])
-    return { pastDue, drift, endingToday, jobs }
+          .orderBy(sql`${subscription.currentPeriodEnd} ASC NULLS FIRST`)
+          .limit(PEDE_LIMIT),
+        failedJobs(),
+        reviewQueue(),
+        stuckAiRuns()
+      ])
+    return { pastDue, drift, endingToday, jobs, review, stuckAi }
   }),
 
   /**

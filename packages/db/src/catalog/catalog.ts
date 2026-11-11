@@ -13,7 +13,10 @@ export { fold }
  * `db:catalog:sync` grava na tabela `team`. App e web leem só a tabela.
  */
 export type CatalogEntry = {
-  /** `Q…` da Wikidata, `f1:<id>` da Jolpica-F1 ou `manual:<slug>`. */
+  /**
+   * `Q…` da Wikidata, `f1:gp:<id>` (GP da F1, à mão), `manual:<slug>`, ou
+   * `f1:<id>`, os pilotos e escuderias antigos da Jolpica-F1, escondidos.
+   */
   key: string
   /** Nome curto que a tela mostra ("Corinthians"). Revisado à mão. */
   name: string

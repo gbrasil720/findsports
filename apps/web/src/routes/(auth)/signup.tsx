@@ -1,11 +1,6 @@
 import { ONBOARDING_TRIAL } from '@findsports_oficial/api/lib/plan-limits'
 import { useForm } from '@tanstack/react-form'
-import {
-  createFileRoute,
-  Link,
-  useLocation,
-  useNavigate
-} from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useRef, useState } from 'react'
 import Envelope from 'reicon-react/icons/Envelope'
 import Loader from 'reicon-react/icons/Loader'
@@ -28,7 +23,7 @@ import { authClient } from '@/lib/auth-client'
 import { pageHead } from '@/lib/page-head'
 import { PENDING_VERIFICATION_KEY } from '@/lib/pending-verification'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
-import { getCallbackUrl, withCallbackUrl } from '@/utils/callback-url'
+import { useCallbackUrl, withCallbackUrl } from '@/utils/callback-url'
 
 export const Route = createFileRoute('/(auth)/signup')({
   // `?role=pub` abre o cadastro com "Tenho um bar" marcado: é para onde a
@@ -158,7 +153,6 @@ function validateConfirm({
 
 function SignupPage() {
   const navigate = useNavigate()
-  const { href } = useLocation()
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -169,7 +163,7 @@ function SignupPage() {
   const formRef = useRef<HTMLFormElement>(null)
   const captcha = useTurnstile()
 
-  const callbackUrl = getCallbackUrl(href)
+  const callbackUrl = useCallbackUrl()
 
   const form = useForm({
     defaultValues: { name: '', email: '', password: '', confirm: '' },

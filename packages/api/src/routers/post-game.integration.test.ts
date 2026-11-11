@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test'
 import { and, eq, sql } from '@findsports_oficial/db'
 import {
   attendance,
+  attendanceCheckin,
   attendanceReport
 } from '@findsports_oficial/db/schema/attendance'
 import { barRating } from '@findsports_oficial/db/schema/rating'
@@ -74,6 +75,24 @@ integrationTest('pós-jogo: fila, resposta única e desfazer', async () => {
       [missed, { offer: null }, true],
       [directions, null, true]
     ])
+    // Sem visita, a avaliação não entra na nota: o selo diz isso.
+    expect((await api.pending()).map((item) => item.verified)).toEqual([
+      null,
+      null,
+      null
+    ])
+    // Com check-in, o item diz como a visita foi confirmada.
+    await db.insert(attendanceCheckin).values({
+      userId: seeded.fanId,
+      eventId: went,
+      latitude: 0,
+      longitude: 0,
+      distanceM: 40
+    })
+    expect((await api.pending())[0]?.verified).toBe('checkin')
+    await db
+      .delete(attendanceCheckin)
+      .where(eq(attendanceCheckin.eventId, went))
 
     // Uma resposta grava as duas.
     await api.answer({

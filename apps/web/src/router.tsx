@@ -1,5 +1,10 @@
+import {
+  idempotentMutationKeys,
+  retryDelay,
+  retryTransient
+} from '@findsports_oficial/api/lib/transient-error'
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
-import { QueryCache, QueryClient } from '@tanstack/react-query'
+import { onlineManager, QueryCache, QueryClient } from '@tanstack/react-query'
 
 import { createRouter as createTanStackRouter } from '@tanstack/react-router'
 import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
@@ -17,6 +22,7 @@ import { NotFoundPage } from './components/not-found/not-found-page'
 import { RouteErrorPage } from './components/route-error-page'
 import { houdiniRewriteInput, houdiniRewriteOutput } from './lib/houdini-host'
 import { getUserFacingError, shouldRetryQuery } from './lib/user-facing-error'
+import type { RouterAppContext } from './routes/__root'
 import { routeTree } from './routeTree.gen'
 import { TRPCProvider } from './utils/trpc'
 
@@ -36,6 +42,7 @@ declare module '@tanstack/react-query' {
 
 export const getRouter = () => {
   let cachedUserId: string | null = null
+  const lastSessionCheck: RouterAppContext['lastSessionCheck'] = {}
   const queryClient = new QueryClient({
     queryCache: new QueryCache({
       onError: (error, query) => {
@@ -58,9 +65,25 @@ export const getRouter = () => {
       }
     }),
     defaultOptions: {
-      queries: { staleTime: 60 * 1000, retry: shouldRetryQuery }
+      // Só a falha passageira tenta de novo, com espera crescente (WEB-460).
+      queries: { staleTime: 60 * 1000, retry: shouldRetryQuery, retryDelay }
     }
   })
+
+  // Mutation só repete sozinha quando mandar duas vezes dá no mesmo
+  // (WEB-460); as outras voltam ao botão "Tentar de novo".
+  for (const mutationKey of idempotentMutationKeys())
+    queryClient.setMutationDefaults(mutationKey, {
+      retry: retryTransient,
+      retryDelay
+    })
+
+  // A rede voltou (WEB-460): a tela à vista é relida inteira, não só o que
+  // passou do `staleTime`; o que ficou em erro enquanto caía volta sozinho.
+  if (typeof window !== 'undefined')
+    onlineManager.subscribe((online) => {
+      if (online) void queryClient.invalidateQueries()
+    })
 
   const linkOptions = {
     url: '/api/trpc',
@@ -74,14 +97,15 @@ export const getRouter = () => {
   const trpcClient = createTRPCClient<AppRouter>({
     links: [
       // O lote só responde quando a última chamada dele termina. As consultas
-      // do cupom e do saldo vão ao Stripe; no mesmo lote, seguravam a assinatura
-      // de `/admin/billing` e de `/plan` em "Carregando…" até o Stripe responder
-      // (WEB-348) — o saldo, num refetch junto com a assinatura. Cada uma sai
-      // em requisição própria.
+      // do cupom, do saldo e das faturas (WEB-443) vão ao Stripe; no mesmo
+      // lote, seguravam a assinatura de `/admin/billing` e de `/plan` em
+      // "Carregando…" até o Stripe responder (WEB-348) — o saldo, num refetch
+      // junto com a assinatura. Cada uma sai em requisição própria.
       splitLink({
         condition: (op) =>
           op.path === 'pub.getFounderCouponAvailable' ||
-          op.path === 'pub.getMyBillingBalance',
+          op.path === 'pub.getMyBillingBalance' ||
+          op.path === 'pub.getMyInvoices',
         true: httpLink(linkOptions),
         false: httpBatchLink(linkOptions)
       })
@@ -105,7 +129,8 @@ export const getRouter = () => {
     context: {
       trpc,
       queryClient,
-      lastSessionCheck: {},
+      lastSessionCheck,
+      origin: () => router.origin,
       syncSession(userId: string | null) {
         if (cachedUserId === userId) return
         // clear also cancels pending queries so an old response cannot refill
@@ -118,9 +143,25 @@ export const getRouter = () => {
     // conta junto, o cliente começa em `null` — a hidratação não roda
     // `beforeLoad` — e a primeira navegação limpava o cache inteiro,
     // remontando a página e apagando o que estava digitado (WEB-140).
-    dehydrate: () => ({ cachedUserId }),
+    // A sessão que o SSR conferiu vai junto (WEB-470): sem ela, a primeira
+    // troca de tela sem rede não teria sessão anterior em que se apoiar.
+    dehydrate: () => {
+      const last = lastSessionCheck.current
+      return {
+        cachedUserId,
+        lastSessionCheck: last && {
+          location: {
+            pathname: last.location.pathname,
+            searchStr: last.location.searchStr,
+            hash: last.location.hash
+          },
+          session: last.session
+        }
+      }
+    },
     hydrate: (dehydrated) => {
       cachedUserId = dehydrated.cachedUserId
+      lastSessionCheck.current = dehydrated.lastSessionCheck
     },
     defaultPendingComponent: () => <Loader />,
     defaultNotFoundComponent: NotFoundPage,

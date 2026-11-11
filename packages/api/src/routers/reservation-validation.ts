@@ -3,6 +3,7 @@ import {
   db,
   eq,
   gte,
+  inArray,
   isNull,
   lte,
   type SQL,
@@ -30,7 +31,9 @@ import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
 import { pubProcedure, router } from '../index'
+import type { SubscriptionForPlan } from '../lib/current-plan'
 import { byMatchOrder } from '../lib/game-participants'
+import { readGuestStory } from '../lib/guest-story'
 import { incrementWindow, refundWindowAttempt } from '../lib/rate-limit-store'
 import { canValidateReservations } from '../lib/reservation-intake'
 import {
@@ -70,7 +73,7 @@ type Reader = Pick<typeof db, 'select'>
 const validatorProcedure = pubProcedure.use(async ({ ctx, next }) => {
   const ownBar = await db.query.bar.findFirst({
     where: eq(bar.userId, ctx.session.user.id),
-    columns: { id: true },
+    columns: { id: true, confirmsCodesLater: true },
     with: { subscription: true }
   })
   if (!ownBar) {
@@ -84,7 +87,7 @@ const validatorProcedure = pubProcedure.use(async ({ ctx, next }) => {
     assertCanValidateReservations(subscription)
   }
 
-  return next({ ctx })
+  return next({ ctx: { ownBar } })
 })
 
 /**
@@ -95,8 +98,8 @@ const validatorProcedure = pubProcedure.use(async ({ ctx, next }) => {
  * de um pedido pendente faria a tela dizer "não encontrado" para um código
  * que o torcedor está mostrando no celular.
  */
-async function findOwnCode(reader: Reader, match: SQL, ownerId: string) {
-  const [row] = await reader
+function ownCodes(reader: Reader, match: SQL, ownerId: string) {
+  return reader
     .select({
       codeId: reservationCode.id,
       code: reservationCode.code,
@@ -106,6 +109,8 @@ async function findOwnCode(reader: Reader, match: SQL, ownerId: string) {
       reservationStatus: reservation.status,
       offerSnapshot: reservation.offerSnapshot,
       guestName: user.name,
+      guestId: reservation.userId,
+      barId: event.barId,
       eventId: event.id,
       championship: event.championship,
       participantFreeText: event.participantFreeText,
@@ -120,21 +125,25 @@ async function findOwnCode(reader: Reader, match: SQL, ownerId: string) {
     .where(
       and(match, isNull(reservationCode.retiredAt), eq(bar.userId, ownerId))
     )
-    .limit(1)
+}
+
+async function findOwnCode(reader: Reader, match: SQL, ownerId: string) {
+  const [row] = await ownCodes(reader, match, ownerId).limit(1)
   return row
 }
 
-/** `logLate` e `notLogged` só servem ao bar que confirma pela comanda. */
-async function assertConfirmsCodesLater(ownerId: string) {
-  const ownBar = await db.query.bar.findFirst({
-    where: eq(bar.userId, ownerId),
-    columns: { confirmsCodesLater: true },
-    with: { subscription: true }
-  })
+/**
+ * `logLate` e `notLogged` só servem ao bar que confirma pela comanda. Recebe
+ * o bar que o `validatorProcedure` já leu.
+ */
+function assertConfirmsCodesLater(ownBar: {
+  confirmsCodesLater: boolean
+  subscription?: SubscriptionForPlan | null
+}) {
   // Pela comanda é recurso do Elite, como a escolha: o bar que perdeu o
   // plano fica só com a validação na hora, na janela de sempre.
-  assertCanValidateReservations(ownBar?.subscription ?? null)
-  if (!ownBar?.confirmsCodesLater) {
+  assertCanValidateReservations(ownBar.subscription ?? null)
+  if (!ownBar.confirmsCodesLater) {
     throw new TRPCError({
       code: 'FORBIDDEN',
       message:
@@ -187,6 +196,17 @@ type LateEntryStatus =
   | 'expired'
   | 'limited'
 
+type LateEntry = {
+  code: string
+  status: LateEntryStatus
+  guestName?: string
+  event?: {
+    championship: string
+    participantFreeText: string | null
+    startsAt: Date
+  }
+}
+
 export const reservationValidationRouter = router({
   /**
    * Mutation, e não query: consome tentativa do limite, e resposta de código
@@ -228,12 +248,20 @@ export const reservationValidationRouter = router({
 
       await refundWindowAttempt(attemptKey)
 
-      const participants = await db
-        .select({ name: team.name })
-        .from(eventParticipants)
-        .innerJoin(team, eq(team.id, eventParticipants.teamId))
-        .where(eq(eventParticipants.eventId, found.eventId))
-        .orderBy(...byMatchOrder(eventParticipants))
+      const [participants, guest] = await Promise.all([
+        db
+          .select({ name: team.name })
+          .from(eventParticipants)
+          .innerJoin(team, eq(team.id, eventParticipants.teamId))
+          .where(eq(eventParticipants.eventId, found.eventId))
+          .orderBy(...byMatchOrder(eventParticipants)),
+        // A história de quem chega, para o balcão (app, rodada 10).
+        readGuestStory({
+          guestId: found.guestId,
+          eventId: found.eventId,
+          barId: found.barId
+        })
+      ])
 
       return {
         codeId: found.codeId,
@@ -245,6 +273,7 @@ export const reservationValidationRouter = router({
         offerSnapshot: found.offerSnapshot,
         usedCount: found.usedCount,
         maxUses: found.maxUses,
+        guest,
         event: {
           championship: found.championship,
           participants: participants.map((participant) => participant.name),
@@ -415,6 +444,13 @@ export const reservationValidationRouter = router({
    * Cada código conta no mesmo limite de tentativas da busca, devolvido quando
    * resolve: colar uma lista não vira atalho para varrer códigos. Estourado o
    * limite, o resto da lista volta como `limited`, sem ser conferido.
+   *
+   * Em lote, sem uma ida ao banco por código: uma busca para a lista, uma
+   * cobrança e um insert. A conta do limite é a mesma de cobrar um por um
+   * (o que resolve não gasta; o primeiro que passa do limite gasta e para a
+   * lista), feita sobre a contagem que a cobrança atômica devolve. A
+   * cobrança reserva o pior caso antes de qualquer resposta e devolve a
+   * sobra em seguida, então um envio paralelo nunca passa do limite.
    */
   logLate: validatorProcedure
     .input(
@@ -424,84 +460,107 @@ export const reservationValidationRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
-      await assertConfirmsCodesLater(userId)
+      assertConfirmsCodesLater(ctx.ownBar)
 
       const attemptKey = validationAttemptKey(userId)
       const codes = [
         ...new Set(input.codes.map(normalizeReservationCode).filter(Boolean))
       ]
-      const results: {
-        code: string
-        status: LateEntryStatus
-        guestName?: string
-        event?: {
-          championship: string
-          participantFreeText: string | null
-          startsAt: Date
-        }
-      }[] = []
-      let limited = false
+      const shaped = codes.filter(isReservationCodeShaped)
+      const found = new Map(
+        (shaped.length
+          ? await ownCodes(db, inArray(reservationCode.code, shaped), userId)
+          : []
+        ).map((row) => [row.code, row])
+      )
 
+      // Pior caso: cada código que não resolve gasta uma tentativa, e o que
+      // estoura o limite gasta mais uma.
+      const reserved = codes.filter((code) => !found.has(code)).length + 1
+      const { count } = await incrementWindow(
+        attemptKey,
+        VALIDATION_ATTEMPT_LIMIT,
+        reserved
+      )
+      const now = new Date()
+      const results: LateEntry[] = []
+      const toLog: { entry: LateEntry; codeId: string }[] = []
+      let spent = 0
+      let limited = false
       for (const code of codes) {
+        // Bloqueado, nem código certo resolve, senão uma lista de um código
+        // por vez seguiria varrendo.
+        if (
+          !limited &&
+          count - reserved + spent + 1 > VALIDATION_ATTEMPT_LIMIT.max
+        ) {
+          limited = true
+          spent++
+        }
         if (limited) {
           results.push({ code, status: 'limited' })
           continue
         }
-        // Cobra antes de olhar, como `lookup`: bloqueado, nem código certo
-        // resolve, senão uma lista de um código por vez seguiria varrendo.
-        const attempt = await incrementWindow(
-          attemptKey,
-          VALIDATION_ATTEMPT_LIMIT
-        )
-        if (!attempt.allowed) {
-          limited = true
-          results.push({ code, status: 'limited' })
-          continue
-        }
-        const found = isReservationCodeShaped(code)
-          ? await findOwnCode(db, eq(reservationCode.code, code), userId)
-          : undefined
-        if (!found) {
+        const row = found.get(code)
+        if (!row) {
+          spent++
           results.push({ code, status: 'not_found' })
           continue
         }
-        await refundWindowAttempt(attemptKey)
-
-        const about = {
-          guestName: found.guestName,
+        const window = getLateEntryWindow(row)
+        const entry: LateEntry = {
+          code,
+          status:
+            row.reservationStatus !== 'confirmed'
+              ? 'not_confirmed'
+              : now < window.opensAt
+                ? 'too_early'
+                : now > window.closesAt
+                  ? 'expired'
+                  : row.usedCount >= row.maxUses
+                    ? 'used'
+                    : 'logged',
+          guestName: row.guestName,
           event: {
-            championship: found.championship,
-            participantFreeText: found.participantFreeText,
-            startsAt: found.startsAt
+            championship: row.championship,
+            participantFreeText: row.participantFreeText,
+            startsAt: row.startsAt
           }
         }
-        const now = new Date()
-        const window = getLateEntryWindow(found)
-        const status: LateEntryStatus =
-          found.reservationStatus !== 'confirmed'
-            ? 'not_confirmed'
-            : now < window.opensAt
-              ? 'too_early'
-              : now > window.closesAt
-                ? 'expired'
-                : found.usedCount >= found.maxUses
-                  ? 'used'
-                  : await db
-                      .insert(reservationCodeUse)
-                      .values({
-                        id: crypto.randomUUID(),
-                        codeId: found.codeId,
-                        validatedByUserId: userId,
-                        late: true
-                      })
-                      .then(() => 'logged' as const)
-                      .catch((error: unknown) => {
-                        // Validado entre a busca e o insert: já usado.
-                        if (translateArrivalWriteError(error, found.maxUses))
-                          return 'used' as const
-                        throw error
-                      })
-        results.push({ code, status, ...about })
+        if (entry.status === 'logged') toLog.push({ entry, codeId: row.codeId })
+        results.push(entry)
+      }
+      if (reserved > spent)
+        await refundWindowAttempt(attemptKey, reserved - spent)
+
+      const use = (codeId: string) => ({
+        id: crypto.randomUUID(),
+        codeId,
+        validatedByUserId: userId,
+        late: true
+      })
+      // Validado entre a busca e o insert: já usado. A mensagem da recusa
+      // não importa aqui, só se ela é uma das regras conhecidas.
+      const refusedAsUsed = (error: unknown) => {
+        if (!translateArrivalWriteError(error, 1)) throw error
+      }
+      if (toLog.length) {
+        await db
+          .insert(reservationCodeUse)
+          .values(toLog.map(({ codeId }) => use(codeId)))
+          .catch(async (error: unknown) => {
+            // O lote volta inteiro: um por um, só a recusa vira `used`.
+            refusedAsUsed(error)
+            for (const { entry, codeId } of toLog) {
+              await db
+                .insert(reservationCodeUse)
+                .values(use(codeId))
+                .catch((error: unknown) => {
+                  refusedAsUsed(error)
+                  entry.status = 'used'
+                })
+            }
+          })
       }
 
       return results
@@ -515,7 +574,7 @@ export const reservationValidationRouter = router({
    */
   notLogged: validatorProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id
-    await assertConfirmsCodesLater(userId)
+    assertConfirmsCodesLater(ctx.ownBar)
     const now = new Date()
     // O prazo (48 h depois do fim) se confere abaixo; o corte só limita a busca.
     const since = new Date(now.getTime() - 7 * 24 * 3_600_000)

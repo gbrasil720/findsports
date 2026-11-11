@@ -42,6 +42,10 @@ function definir<S extends z.ZodType, P extends boolean>(definicao: {
   return definicao
 }
 
+/** Pesos de um teste de IA: percentuais que fecham 100. */
+const somaCem = (pesos: Record<string, number>) =>
+  Object.values(pesos).reduce((soma, peso) => soma + peso, 0) === 100
+
 export const APP_CONFIG_DEFINITIONS = {
   /**
    * Interruptor da busca em camadas por plano (migration 0018).
@@ -93,6 +97,110 @@ export const APP_CONFIG_DEFINITIONS = {
     descricao:
       'Exibe a nota do bar para o torcedor e libera o modo "melhor ' +
       'avaliados" na busca. A coleta de avaliações independe desta chave.'
+  }),
+
+  /**
+   * WEB-424: chave de desligar a IA (chat e recomendador). Nasce desligada:
+   * o padrão é o de hoje, sem IA, e ligar é decisão de quando o Gateway de
+   * produção tiver crédito e teto configurados. Desligada, o chat responde
+   * "indisponível" e a busca normal segue.
+   */
+  'ai.enabled': definir({
+    schema: z.boolean(),
+    padrao: false,
+    publico: false,
+    descricao:
+      'Liga a busca com IA do app e o recomendador. Desligada, o app avisa ' +
+      'que a IA está indisponível e a busca normal continua. O teto de US$ 40 ' +
+      'por mês continua valendo com ela ligada.'
+  }),
+
+  /**
+   * WEB-424: pesos dos braços dos testes, por funcionalidade. O sorteio é
+   * fixo por pessoa (hash do id com o nome do teste), então mudar um peso só
+   * move quem cai na faixa que mudou de braço.
+   */
+  'ai.variant_weights': definir({
+    schema: z.object({
+      chat: z
+        .object({
+          a: z.number().int().min(0).max(100),
+          b: z.number().int().min(0).max(100)
+        })
+        .refine(somaCem, 'Os pesos do chat precisam somar 100.'),
+      recommender: z
+        .object({
+          a: z.number().int().min(0).max(100),
+          b: z.number().int().min(0).max(100),
+          c: z.number().int().min(0).max(100)
+        })
+        .refine(somaCem, 'Os pesos do recomendador precisam somar 100.')
+    }),
+    padrao: { chat: { a: 50, b: 50 }, recommender: { a: 34, b: 33, c: 33 } },
+    publico: false,
+    descricao:
+      'Pesos dos braços dos testes de IA. Chat: a = Gemini 2.5 Flash, ' +
+      'b = GPT-6 Luna. Recomendador: a = só o algoritmo, b = Jev, ' +
+      'c = Clef-flash. Cada teste soma 100; peso 0 tira o braço.'
+  }),
+
+  /**
+   * WEB-424: tetos e limites da IA, que moravam em constantes de
+   * `lib/ai/limits.ts`. O padrão é o de hoje. O teto do mês também está no
+   * AI Gateway de produção: subir aqui sem subir lá não libera nada.
+   */
+  'ai.limits': definir({
+    schema: z
+      .object({
+        monthlyBudgetUsd: z.number().min(1).max(500),
+        userMonthlyUsd: z.number().min(0.1).max(20),
+        userDailyCalls: z.number().int().min(1).max(500),
+        chatDailyMessages: z.number().int().min(1).max(200),
+        chatMonthlyMessages: z.number().int().min(1).max(3000)
+      })
+      .refine((l) => l.userMonthlyUsd <= l.monthlyBudgetUsd, {
+        message: 'O teto por pessoa não pode passar do teto do mês.'
+      })
+      .refine((l) => l.chatDailyMessages <= l.chatMonthlyMessages, {
+        message: 'O limite do dia não pode passar do limite do mês.'
+      }),
+    padrao: {
+      monthlyBudgetUsd: 40,
+      userMonthlyUsd: 1.5,
+      userDailyCalls: 30,
+      chatDailyMessages: 10,
+      chatMonthlyMessages: 100
+    },
+    publico: false,
+    descricao:
+      'Tetos da IA. monthlyBudgetUsd: gasto do mês de todo mundo junto, em ' +
+      'US$ (o Gateway de produção tem o próprio teto, mude lá também). ' +
+      'userMonthlyUsd: gasto do mês por pessoa. userDailyCalls: chamadas por ' +
+      'pessoa no dia, inclusive as que falharam. chatDailyMessages e ' +
+      'chatMonthlyMessages: mensagens do chat com resposta útil por pessoa, ' +
+      'no dia e no mês de Brasília.'
+  }),
+
+  /**
+   * WEB-466: modo de manutenção do app (26d, 26e). Só o app lê, pela rota
+   * `/api/app/status`; o servidor não recusa nada por causa dela, então o
+   * painel do bar, o Houdini e o login seguem no ar. `backAt` é a previsão
+   * de volta (sem ela, o app não mostra contagem). Não há checagem de data:
+   * uma previsão que passou continua válida aqui, o app é que deixa de
+   * mostrá-la, senão a manutenção desligaria sozinha na hora prevista.
+   */
+  'app.maintenance': definir({
+    schema: z.object({
+      on: z.boolean(),
+      backAt: z.iso.datetime({ offset: true }).nullable()
+    }),
+    padrao: { on: false, backAt: null },
+    publico: true,
+    descricao:
+      'Manutenção do app. on: true mostra "Voltamos já já" a quem abrir o ' +
+      'app, com a previsão de volta (backAt, data e hora ISO; null = sem ' +
+      'previsão). O painel do bar, o Houdini e o login continuam no ar, e o ' +
+      'código do jogo de hoje continua abrindo no app.'
   })
 } as const
 

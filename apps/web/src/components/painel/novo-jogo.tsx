@@ -1,10 +1,15 @@
 import { gameHouseOfferFromForm } from '@findsports_oficial/api/lib/house-offer'
 import {
+  isOpenNow,
+  type OpeningHours
+} from '@findsports_oficial/api/lib/opening-hours'
+import {
   EVENT_CHAMPIONSHIP_MAX_LENGTH,
   EVENT_CHAMPIONSHIP_MIN_LENGTH,
   EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH
 } from '@findsports_oficial/db/event-limits'
 import {
+  brasiliaDay,
   EVENT_START_PROBLEM_MESSAGE,
   getEventStartProblem
 } from '@findsports_oficial/db/event-window'
@@ -38,6 +43,31 @@ import { CATALOG_QUERY } from '@/lib/query-cache'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import { gameOffer, gameScreen, isDraft } from './dados'
+
+const DIAS = [
+  'domingo',
+  'segunda',
+  'terça',
+  'quarta',
+  'quinta',
+  'sexta',
+  'sábado'
+]
+
+/**
+ * Aviso de jogo com o bar fechado (WEB-463, decisão do dono: só avisa, não
+ * bloqueia). O dia é o do início, em Brasília. Sem horário ou dentro: `null`.
+ */
+export function avisoForaDoHorario(
+  hours: OpeningHours | null,
+  startsAt: Date
+): string | null {
+  if (isOpenNow(hours, startsAt) !== false) return null
+  const dia = new Date(`${brasiliaDay(startsAt)}T12:00:00Z`).getUTCDay()
+  const faixa = hours?.[dia]
+  return `Fora do horário de funcionamento (${DIAS[dia]}, ${faixa ? `${faixa.opens} – ${faixa.closes}` : 'fechado'}). Dá para publicar mesmo assim.`
+}
+
 import { Interruptor, PainelContext } from './painel-shell'
 
 /*
@@ -349,6 +379,10 @@ function Formulario({
   const startProblem =
     start.value && startChanged
       ? getEventStartProblem(new Date(start.value))
+      : null
+  const foraDoHorario =
+    start.value && !startProblem
+      ? avisoForaDoHorario(bar?.openingHours ?? null, new Date(start.value))
       : null
 
   const endDigits = endText.replace(/\D/g, '')
@@ -705,6 +739,9 @@ function Formulario({
             {EVENT_START_PROBLEM_MESSAGE[startProblem]}
           </p>
         ) : null}
+        <div role="status" className="contents">
+          {foraDoHorario ? <p className="pn-hint">{foraDoHorario}</p> : null}
+        </div>
 
         <label className="pn-fl">
           <span className="pn-fl-l">Termina às · opcional</span>

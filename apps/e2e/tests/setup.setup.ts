@@ -9,7 +9,7 @@ import {
 } from '../fixtures/auth'
 import { clearRateLimits, query, resetAppConfig } from '../fixtures/db'
 import { createPub } from '../fixtures/pubs'
-import { test as setup } from '../fixtures/test'
+import { expect, test as setup } from '../fixtures/test'
 import { createUser, type Role } from '../fixtures/users'
 
 /**
@@ -21,6 +21,25 @@ setup('estado global limpo', async () => {
   await resetAppConfig()
   await mkdir(dirname(OUTBOX_FILE), { recursive: true })
   await writeFile(OUTBOX_FILE, '')
+})
+
+/**
+ * Chama uma vez, em série, cada server function que o SSR usa, antes dos
+ * workers paralelos (WEB-402). No `vite dev`, a primeira chamada de uma delas
+ * importa o módulo dela; duas chamadas ao mesmo tempo nesse instante, e a
+ * segunda recebe o módulo ainda pela metade: `getServerFnById` devolve
+ * `undefined` e a rota quebra com "(intermediate value) is not a function"
+ * (500 no Houdini; na página do bar o `.catch` do loader tira o cartão).
+ * O build não tem isso: lá o resolver importa os módulos de antemão.
+ *
+ * O `getSession` da raiz já vem aquecido pela espera do `webServer` em `/`.
+ * Server function nova chamada no SSR entra aqui, com uma rota que a chame.
+ */
+setup('server functions do SSR aquecidas', async ({ request }) => {
+  for (const path of ['/houdini', '/pub/aquecimento']) {
+    const response = await request.get(path)
+    expect(response.status(), path).toBe(404)
+  }
 })
 
 for (const role of ['fan', 'pub', 'admin'] as const satisfies Role[]) {

@@ -21,9 +21,9 @@ import {
  * caminhos continuam válidos no outro.
  */
 const PLAN_TIERS = [
-  { rank: 1, plan: sql`'elite'` },
-  { rank: 2, plan: sql`'pro'` },
-  { rank: 3, plan: sql`'starter'` }
+  { rank: 1, plan: sql`'elite'`, cte: sql`camada_elite` },
+  { rank: 2, plan: sql`'pro'`, cte: sql`camada_pro` },
+  { rank: 3, plan: sql`'starter'`, cte: sql`camada_starter` }
 ] as const
 
 /**
@@ -38,15 +38,40 @@ const PLAN_TIERS = [
  *
  * O primeiro morreu com `bar.plan` (projeção mantida por trigger, migration
  * 0018). O segundo encolheu com avaliação em camadas: o plano é a primeira
- * chave de ordenação, então cada camada é uma subquery com o seu próprio
- * LIMIT e o `Append` só desce para a camada seguinte se a anterior não
- * encheu a página. No dataset grande a camada `elite` (5% dos bares, ~300
- * candidatos no raio) resolve sozinha as buscas sem filtro.
+ * chave de ordenação, então cada camada é um CTE com o seu próprio LIMIT, e
+ * uma camada só roda se as anteriores não encheram a página. No dataset
+ * grande a camada `elite` (5% dos bares, ~300 candidatos no raio) resolve
+ * sozinha as buscas sem filtro.
  *
- * Medido no harness local, raio de 3 km em São Paulo, 6.100 bares no raio:
- * 24 ms / 44.363 buffers antes, 5,5 ms / 1.355 buffers depois. No pior caso
- * — filtro que não casa com nada, obrigando as três camadas a varrer tudo —
- * ficou em 23 ms, ou seja, empata com o plano antigo em vez de regredir.
+ * A trava é a condição `count(anteriores) < limit` de cada camada, e não a
+ * ordem em que o `Append` de um `UNION ALL` lê os filhos: o SQL não promete
+ * essa ordem, e o `ORDER BY` que o ranking de clássicos (08/09) pôs por fora
+ * para garanti-la fazia o `Sort` ler as três camadas até o fim em toda busca.
+ * Com a trava, o `ORDER BY` de fora ordena no máximo 3 × limit linhas.
+ *
+ * Medido em 29/10/2026 (Postgres 17, mediana de 7), raio de 3 km em
+ * (-23,55, -46,63), 6.100 bares no raio (300 elite, 1.000 pro, 4.800
+ * starter): sem filtro, 3,5 ms / 2.154 buffers (com o `Sort` sobre as três
+ * camadas eram 53 ms / 39.134); com um campeonato comum, 5,9 ms / 2.556 (eram
+ * 79 ms / 47.215). Mesmas páginas da versão anterior, 40 páginas pelo cursor,
+ * inclusive as que cruzam de camada. O caminho linear, na mesma busca sem
+ * filtro, fica em 143 ms / 86.323.
+ *
+ * Texto que quase nada casa faz as três camadas rodarem, e cada bar no raio
+ * custava uma ida ao índice de `event` (57 ms). A camada starter (80% dos
+ * bares) agora parte dos jogos que casam (`texto_jogos`, índice trigram):
+ * 21 ms. Elite e pro continuam bar a bar: com `texto_jogos` também na pro o
+ * texto raro ia a 11 ms, mas texto comum, que enche o teto, pagava a lista
+ * inteira do índice nas páginas da pro (da 12ª em diante: 18 para 54 ms).
+ * Texto comum na primeira página: 3,7 a 5,6 ms, como antes. Medido sem JIT
+ * (migration 0084): com ele, a compilação sozinha levava 121 ms.
+ *
+ * Para medir: em `packages/db`, `NODE_ENV=test bun run db:seed:load-test
+ * --bars 100000` (100 mil bares, 500 mil jogos; só aceita o
+ * `findsports_load_test`, ver AGENTS.md) e
+ * `EXPLAIN (ANALYZE, BUFFERS)` da consulta que `executarBuscaEmCamadas`
+ * manda para `{ lat: -23.55, lng: -46.63, radiusKm: 3, limit: 20 }`;
+ * buffers são `shared hit + read` do nó de cima.
  *
  * Preserva os mesmos filtros e a troca segura para o caminho linear; o cursor
  * de relevância agora é v2 porque inclui clássico e qualidade. Campeonato
@@ -62,6 +87,8 @@ export async function executarBuscaEmCamadas(
     eventFilter,
     champBarFilter,
     proximoJogo,
+    textoJogosCte,
+    prefiltroTexto,
     amenityFilter
   } = montarFiltrosBusca(input)
 
@@ -84,9 +111,8 @@ export async function executarBuscaEmCamadas(
   // Uma camada por plano, na mesma ordem em que a query ordenava. Os literais
   // vêm desta lista fixa, nunca da entrada do usuário: precisam ser constantes
   // para o Postgres casar o índice parcial `bar_geo_<plano>_idx`.
-  const tiers = PLAN_TIERS.filter(
-    (tier) => !keyset || tier.rank >= keyset.p
-  ).map((tier) => {
+  const included = PLAN_TIERS.filter((tier) => !keyset || tier.rank >= keyset.p)
+  const tiers = included.map((tier, index) => {
     const classicRank =
       tier.rank === 1
         ? sql`CASE WHEN agg.classic_rule_id IS NULL THEN 1 ELSE 0 END`
@@ -106,7 +132,18 @@ export async function executarBuscaEmCamadas(
                  ${keyset.d}::float8, ${keyset.i}::text)`
         : sql``
 
-    return sql`(
+    // A camada só roda se as anteriores não encheram a página. Sem coluna da
+    // linha, a condição vira um `One-Time Filter` no topo do plano: falsa, a
+    // camada não lê nem o índice.
+    const earlier = included.slice(0, index)
+    const gate = earlier.length
+      ? sql`AND ${sql.join(
+          earlier.map((prev) => sql`(SELECT count(*) FROM ${prev.cte})`),
+          sql` + `
+        )} < ${limit}`
+      : sql``
+
+    return sql`${tier.cte} AS MATERIALIZED (
       SELECT
         ${tier.rank}::int AS cursor_plan_rank,
         b.id,
@@ -143,7 +180,12 @@ export async function executarBuscaEmCamadas(
         AND b.plan = ${tier.plan}
         AND ST_DWithin(b.geo, ${origin}, ${radiusMeters})
         ${amenityFilterB}
+        ${
+          // Só na starter: ver o comentário do topo.
+          tier.rank === 3 ? prefiltroTexto(sql`b`) : sql``
+        }
         ${tierKeyset}
+        ${gate}
       ORDER BY
         ${classicRank} ASC,
         ${qualityRank} ASC,
@@ -155,9 +197,20 @@ export async function executarBuscaEmCamadas(
   })
 
   const results = await db.execute(sql`
-    WITH ${currentClassicRulesCte}, ranked AS MATERIALIZED (
+    WITH ${sql.join(
+      [
+        currentClassicRulesCte,
+        ...(textoJogosCte ? [textoJogosCte] : []),
+        ...tiers
+      ],
+      sql`, `
+    )},
+    ranked AS MATERIALIZED (
       SELECT * FROM (
-        ${sql.join(tiers, sql` UNION ALL `)}
+        ${sql.join(
+          included.map((tier) => sql`SELECT * FROM ${tier.cte}`),
+          sql` UNION ALL `
+        )}
       ) tiers
       ORDER BY
         cursor_plan_rank,

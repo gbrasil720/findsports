@@ -9,7 +9,6 @@ import { appHref } from '@/lib/houdini-host'
 import { LAPSED_COPY } from '@/lib/lapsed-plan'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
-import { refusalMessage } from './errors'
 import { formatDateTime } from './format'
 import { HoldButton } from './hold-button'
 import { Icon } from './icons'
@@ -81,7 +80,9 @@ export function SearchDriftAlert({ bar }: { bar: TrickBar }) {
         await refresh()
       },
       onError: (error) =>
-        toast.error(refusalMessage(error, 'Não foi possível arrumar a busca.'))
+        toast.error(
+          getUserFacingMessage(error, 'Não foi possível arrumar a busca.')
+        )
     })
   )
 
@@ -249,7 +250,9 @@ export function BarTricks({ bar }: { bar: TrickBar }) {
         await refresh()
       },
       onError: (error) =>
-        toast.error(refusalMessage(error, 'Não foi possível estender o teste.'))
+        toast.error(
+          getUserFacingMessage(error, 'Não foi possível estender o teste.')
+        )
     })
   )
   const setActive = useMutation(
@@ -263,7 +266,9 @@ export function BarTricks({ bar }: { bar: TrickBar }) {
         await refresh()
       },
       onError: (error) =>
-        toast.error(refusalMessage(error, 'Não foi possível mudar o bar.'))
+        toast.error(
+          getUserFacingMessage(error, 'Não foi possível mudar o bar.')
+        )
     })
   )
   const busy = extend.isPending || setActive.isPending

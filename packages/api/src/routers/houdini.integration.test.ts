@@ -3,7 +3,13 @@ import { eq, sql } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { bar, subscription } from '@findsports_oficial/db/schema/platform'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
-import { contextFor, inAMonth, load, seedBar } from './integration-seed'
+import {
+  contextFor,
+  inAMonth,
+  load,
+  seedBar,
+  withClock
+} from './integration-seed'
 
 /** Início do Houdini e ⌘K (WEB-391). */
 
@@ -48,6 +54,38 @@ integrationTest(
       await paying.cleanup()
       await stripeTrial.cleanup()
       await offAir.cleanup()
+    }
+  }
+)
+
+integrationTest(
+  'Jogos do trilho conta o que a tela Jogos lista: publicado e não acabado',
+  async () => {
+    const caller = await admin()
+    const listed = async () =>
+      (await caller.adminEvents.list({ period: 'all' })).total
+    const [before, beforeListed] = await Promise.all([
+      caller.houdini.overview(),
+      listed()
+    ])
+    const seeded = await seedBar('pro', 'active', inAMonth())
+    try {
+      await seeded.seedGame()
+      // Começou há meia hora e ainda não acabou: a tela lista.
+      await seeded.seedGame({ startsAt: inDays(-1 / 48) })
+      // Rascunhos (WEB-436) e jogo que já acabou ficam fora dos dois.
+      await seeded.seedGame({ publishedAt: null })
+      await seeded.seedGame({ publishedAt: null })
+      await seeded.seedGame({
+        startsAt: inDays(-1),
+        endsAt: inDays(-1 + 1 / 12)
+      })
+
+      const after = await caller.houdini.overview()
+      expect(after.jogosFuturos - before.jogosFuturos).toBe(2)
+      expect((await listed()) - beforeListed).toBe(2)
+    } finally {
+      await seeded.cleanup()
     }
   }
 )
@@ -205,6 +243,29 @@ integrationTest(
   }
 )
 
+// `starts_at` é `timestamp` em UTC: comparado com `now()` cru, a sessão em
+// Brasília contava como futuro o jogo que começou há até 3 h.
+for (const session of ['UTC', 'America/Sao_Paulo']) {
+  integrationTest(
+    `ampulheta conta só os jogos que ainda vão começar (sessão ${session})`,
+    () =>
+      withClock({ session }, async () => {
+        const caller = await admin()
+        const seed = await seedBar('pro', 'trialing', inDays(2))
+        try {
+          await seed.seedGame({
+            startsAt: new Date(Date.now() - 2 * 3_600_000)
+          })
+          await seed.seedGame()
+          const { ending } = await caller.houdini.ampulheta()
+          expect(ending.find((b) => b.id === seed.barId)?.upcomingGames).toBe(1)
+        } finally {
+          await seed.cleanup()
+        }
+      })
+  )
+}
+
 integrationTest(
   'pedeAMao traz fatura sem pagar, busca atrás do plano e teste de hoje',
   async () => {
@@ -220,8 +281,18 @@ integrationTest(
         .update(bar)
         .set({ plan: 'elite' })
         .where(eq(bar.id, behind.barId))
+      await later.db
+        .update(bar)
+        .set({
+          descriptionPending: 'Telão e chope.',
+          descriptionReview: 'pending'
+        })
+        .where(eq(bar.id, later.barId))
 
-      const { pastDue, drift, endingToday } = await caller.houdini.pedeAMao()
+      const { pastDue, drift, endingToday, review, stuckAi } =
+        await caller.houdini.pedeAMao()
+      expect(review.descriptions).toBeGreaterThanOrEqual(1)
+      expect(stuckAi).toBeGreaterThanOrEqual(0)
       expect(pastDue.find((b) => b.id === unpaid.barId)).toMatchObject({
         plan: 'pro'
       })
@@ -234,6 +305,7 @@ integrationTest(
 
       const overview = await caller.houdini.overview()
       expect(overview.bars.novos).toBeGreaterThanOrEqual(seeds.length)
+      expect(overview.revisao).toBeGreaterThanOrEqual(1)
     } finally {
       for (const seed of seeds) await seed.cleanup()
     }

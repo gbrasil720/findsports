@@ -1,36 +1,19 @@
-import { LinearGradient } from 'expo-linear-gradient'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useEffect, useState } from 'react'
-import {
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View
-} from 'react-native'
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming
-} from 'react-native-reanimated'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Glass } from '@/components/glass'
-import { EASE, ErrorText, haptic } from '@/components/motion'
+import { useState } from 'react'
+import { AuthField, AuthLink, AuthShell } from '@/components/auth-shell'
+import { ErrorText, haptic } from '@/components/motion'
 import { useTurnstile } from '@/components/turnstile'
 import {
   authErrorMessage,
-  BlockButton,
   FG,
-  Field,
-  INK,
   LIVE,
-  PAPER,
-  Screen,
-  SUB,
-  Title,
+  PillButton,
+  phaseBusy,
+  phaseLabel,
+  Text,
   text
 } from '@/components/ui'
+import { attemptPhase, retryable, settleAuth } from '@/lib/auth-attempt'
 import { authClient } from '@/lib/auth-client'
 import { queryClient } from '@/lib/trpc'
 
@@ -46,40 +29,41 @@ const NOTICES: Record<string, string> = {
 
 export default function SignIn() {
   const router = useRouter()
-  const insets = useSafeAreaInsets()
-  const dark = useColorScheme() === 'dark'
   const params = useLocalSearchParams<{ email?: string; notice?: string }>()
   const [email, setEmail] = useState(params.email ?? '')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  // A última tentativa falhou de forma passageira: o botão vira "Tentar de
+  // novo" (WEB-460).
+  const [failed, setFailed] = useState(false)
+  // Cada falha passageira treme a frase de novo, mesmo igual à anterior.
+  const [tries, setTries] = useState(0)
   const turnstile = useTurnstile()
   const notice = params.notice ? NOTICES[params.notice] : undefined
-  // A foto assenta de um zoom leve quando a tela abre.
-  const zoom = useSharedValue(1.04)
-  useEffect(() => {
-    zoom.value = withTiming(1, { duration: 900, easing: EASE })
-  }, [zoom])
-  const settle = useAnimatedStyle(() => ({
-    transform: [{ scale: zoom.value }]
-  }))
-
   const submit = async () => {
-    setError(null)
+    if (pending) return
+    // Sem rede, a frase fica enquanto tenta de novo: o botão não pula.
+    if (!failed) setError(null)
     setPending(true)
-    const result = await authClient.signIn.email({
-      email: email.trim(),
-      password,
-      // Sem `callbackURL`: com ele o servidor responde "redirecionar" e o
-      // plugin do Expo abre a janela de login social do iOS ("deseja usar
-      // ... para iniciar sessão"). O e-mail de confirmação que o login
-      // reenvia a quem não confirmou leva ao site; o "Reenviar" da tela de
-      // confirmação manda o que volta para o app.
-      fetchOptions: turnstile.fetchOptions
-    })
+    const result = await settleAuth(
+      authClient.signIn.email({
+        email: email.trim(),
+        password,
+        // Sem `callbackURL`: com ele o servidor responde "redirecionar" e o
+        // plugin do Expo abre a janela de login social do iOS ("deseja usar
+        // ... para iniciar sessão"). O e-mail de confirmação que o login
+        // reenvia a quem não confirmou leva ao site; o "Reenviar" da tela de
+        // confirmação manda o que volta para o app.
+        fetchOptions: turnstile.fetchOptions
+      })
+    )
     // O token do Turnstile vale uma vez: com erro ou não, pede outro.
     turnstile.reset()
     setPending(false)
+    const transient = retryable(result.error)
+    setFailed(transient)
+    if (transient) setTries((n) => n + 1)
     if (result.error) {
       if (result.error.code === 'EMAIL_NOT_VERIFIED') {
         router.push({
@@ -106,138 +90,71 @@ export default function SignIn() {
     router.replace('/')
   }
 
+  const phase = attemptPhase(pending, failed)
+
+  // Rodada 8, tela 4: "De volta ao jogo" no topo de tinta e o formulário no
+  // papel. "Continuar com a Apple" do desenho espera a conta de
+  // desenvolvedor (pendência anotada).
   return (
-    <Screen
-      gap={0}
-      lightStatus
-      header={
-        <View style={styles.hero}>
-          <Animated.Image
-            source={require('../assets/images/intro/bar.jpg')}
-            style={[{ width: '100%', height: '100%' }, settle]}
-            resizeMode="cover"
-          />
-          <LinearGradient
-            // Funde no fundo da tela; o gradiente pede cor pronta, não dinâmica.
-            colors={[
-              'rgba(18,18,15,.2)',
-              'rgba(18,18,15,0)',
-              dark ? INK : PAPER
-            ]}
-            locations={[0, 0.45, 1]}
-            style={StyleSheet.absoluteFill}
-          />
-          <View style={[styles.top, { top: insets.top + 8 }]}>
-            <Glass tone="dark" style={styles.chip}>
-              <Image
-                source={require('../assets/images/brand/wordmark-light.png')}
-                accessibilityLabel="Onside"
-                style={{ height: 19, width: (19 * 845) / 256 }}
-              />
-            </Glass>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push('/profile')}
-            >
-              <Glass tone="dark" interactive style={styles.chip}>
-                <Text style={[text(13.5, 'SemiBold'), { color: PAPER }]}>
-                  Criar conta
-                </Text>
-              </Glass>
-            </Pressable>
-          </View>
-        </View>
+    <AuthShell
+      title={['De volta', 'ao jogo']}
+      footer={
+        <AuthLink
+          center
+          lead="Não tem conta?"
+          label="Criar conta grátis"
+          onPress={() => router.push('/sign-up')}
+        />
       }
     >
-      <View style={styles.content}>
-        <View>
-          <Title lines={[['De volta ', 'ao jogo.']]} size={48} />
-          <View style={{ marginTop: 8 }}>
-            <Text style={[text(15), { color: SUB }]}>
-              Não tem conta?{' '}
-              <Text
-                accessibilityRole="link"
-                onPress={() => router.push('/profile')}
-                style={[text(15, 'Bold'), { color: FG }, styles.underline]}
-              >
-                Cadastre-se grátis
-              </Text>
-            </Text>
-          </View>
-        </View>
-        {notice ? (
-          <Text
-            accessibilityRole="alert"
-            style={[text(14, 'SemiBold'), { color: FG }]}
-          >
-            {notice}
-          </Text>
-        ) : null}
-        <Field
-          label="E-mail"
-          icon="mail"
-          autoCapitalize="none"
-          autoComplete="email"
-          keyboardType="email-address"
-          textContentType="emailAddress"
-          value={email}
-          onChangeText={setEmail}
-        />
-        <Field
-          label="Senha"
-          icon="lock"
-          action={{
-            label: 'Esqueci minha senha',
-            onPress: () =>
-              router.push({
-                pathname: '/forgot-password',
-                params: { email: email.trim() }
-              })
-          }}
-          autoComplete="current-password"
-          textContentType="password"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-          onSubmitEditing={submit}
-        />
-        {error ? (
-          <ErrorText style={[text(13.5), { color: LIVE }]}>{error}</ErrorText>
-        ) : null}
-        <BlockButton
-          label={pending ? 'Entrando…' : 'Acessar minha conta'}
-          trailing={!pending}
-          disabled={pending}
-          onPress={submit}
-          style={{ marginTop: 6 }}
-        />
-        <Text style={[text(12.5), { color: SUB, textAlign: 'center' }]}>
-          Ao entrar, você acessa o app Onside com sua conta.
+      {notice ? (
+        <Text
+          accessibilityRole="alert"
+          style={[text(14, 'SemiBold', 1.4), { color: FG }]}
+        >
+          {notice}
         </Text>
-        {turnstile.widget}
-      </View>
-    </Screen>
+      ) : null}
+      <AuthField
+        label="E-mail"
+        placeholder="voce@email.com"
+        autoCapitalize="none"
+        autoComplete="email"
+        keyboardType="email-address"
+        textContentType="emailAddress"
+        value={email}
+        onChangeText={setEmail}
+      />
+      <AuthField
+        label="Senha"
+        placeholder="Sua senha"
+        autoComplete="current-password"
+        textContentType="password"
+        secureTextEntry
+        value={password}
+        onChangeText={setPassword}
+        onSubmitEditing={submit}
+      />
+      <AuthLink
+        label="Esqueci minha senha"
+        onPress={() =>
+          router.push({
+            pathname: '/forgot-password',
+            params: { email: email.trim() }
+          })
+        }
+      />
+      {error ? (
+        <ErrorText key={`erro-${tries}`} style={[text(13.5), { color: LIVE }]}>
+          {error}
+        </ErrorText>
+      ) : null}
+      <PillButton
+        label={phaseLabel(phase, { idle: 'Entrar', sending: 'Entrando…' })}
+        busy={phaseBusy(phase)}
+        onPress={submit}
+      />
+      {turnstile.widget}
+    </AuthShell>
   )
 }
-
-const styles = StyleSheet.create({
-  hero: { height: 310, backgroundColor: '#2a2a25' },
-  top: {
-    position: 'absolute',
-    left: 20,
-    right: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center'
-  },
-  chip: {
-    height: 38,
-    paddingHorizontal: 15,
-    borderRadius: 19,
-    flexDirection: 'row',
-    alignItems: 'center'
-  },
-  // O conteúdo começa a 226 do topo, sobre o fim da foto.
-  content: { marginTop: 226 - 310, paddingHorizontal: 20, gap: 16 },
-  underline: { textDecorationLine: 'underline' }
-})

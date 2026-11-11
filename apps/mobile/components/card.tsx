@@ -1,17 +1,76 @@
 import type { ReactNode } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
+import Animated from 'react-native-reanimated'
 import Svg, { Line } from 'react-native-svg'
-import type { Palette } from '@/components/explore'
-import { ACID, Icon, INK, text } from '@/components/ui'
+import { haptic, usePressScale } from '@/components/motion'
+import { usePalette } from '@/components/theme'
+import { ACID, Icon, INK, Text, text } from '@/components/ui'
 
 /*
  * Peças da página do bar que as telas de "Vou assistir" (08) também usam:
  * o cartão com sombra dura e a oferta da casa com o canhoto acid.
  */
 
+/**
+ * Chip de filtro sobre o papel (estante de conquistas, ordem dos favoritos):
+ * ligado em acid, desligado só com o contorno. Os do mapa são de vidro
+ * (`Chip`, em `explore.tsx`).
+ */
+export function FilterChip({
+  label,
+  on,
+  onPress,
+  raised
+}: {
+  label: string
+  on: boolean
+  onPress: () => void
+  /** Ligado, com a sombra dura e o canto 5 dos chips de ordem (17e). */
+  raised?: boolean
+}) {
+  const palette = usePalette()
+  const press = usePressScale()
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: on }}
+      onPress={() => {
+        if (on) return
+        haptic.select()
+        onPress()
+      }}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+    >
+      <Animated.View
+        style={[
+          styles.chip,
+          raised && { borderRadius: 5 },
+          on && raised && styles.raised,
+          on
+            ? { backgroundColor: ACID }
+            : {
+                borderWidth: 1,
+                borderColor: palette.dark
+                  ? 'rgba(241,238,230,.10)'
+                  : 'rgba(18,18,15,.12)'
+              },
+          press.style
+        ]}
+      >
+        <Text
+          style={[text(13, 'SemiBold', 1.2), { color: on ? INK : palette.ink }]}
+        >
+          {label}
+        </Text>
+      </Animated.View>
+    </Pressable>
+  )
+}
+
 /** Cartão do design: fundo, contorno de 1 px e sombra dura deslocada. */
 export function Card({
-  palette,
+  fill,
   shadow,
   offset = 4,
   soft,
@@ -19,7 +78,8 @@ export function Card({
   style,
   children
 }: {
-  palette: Palette
+  /** O fundo, quando não é o `card` da paleta (o cartão de tinta no claro). */
+  fill?: string
   shadow?: string
   offset?: number
   /** Mais a sombra longa e macia dos cartões de lista. */
@@ -32,6 +92,7 @@ export function Card({
   style?: object
   children: ReactNode
 }) {
+  const palette = usePalette()
   return (
     <View style={style && { flex: 1 }}>
       {/* A sombra longa num fundo cheio: sem fundo o iOS a calcularia pelos
@@ -41,7 +102,7 @@ export function Card({
           style={[
             StyleSheet.absoluteFill,
             styles.soft,
-            { backgroundColor: palette.card }
+            { backgroundColor: fill ?? palette.card }
           ]}
         />
       ) : null}
@@ -61,7 +122,7 @@ export function Card({
       <View
         style={[
           styles.card,
-          { backgroundColor: palette.card, borderColor: palette.ring },
+          { backgroundColor: fill ?? palette.card, borderColor: palette.ring },
           notched && { overflow: 'visible' },
           style
         ]}
@@ -74,20 +135,19 @@ export function Card({
 
 /** "Oferta da casa", com o canhoto acid do ingresso. */
 export function OfferCard({
-  palette,
   offer,
   note,
   compact
 }: {
-  palette: Palette
   offer: string
   /** O que vem depois da oferta ("Vale com o seu código."). */
   note?: string
   /** A versão menor da folha "Vou assistir aqui" (3d). */
   compact?: boolean
 }) {
+  const palette = usePalette()
   return (
-    <Card palette={palette} shadow="rgba(201,241,53,.85)" offset={5}>
+    <Card shadow="rgba(201,241,53,.85)" offset={5}>
       <View style={styles.offer}>
         <View style={[styles.offerStub, { width: compact ? 56 : 62 }]}>
           <Icon name="ticket" size={26} color={INK} accent={INK} />
@@ -125,7 +185,11 @@ export function OfferCard({
               { color: palette.muted }
             ]}
           >
-            {note ? `${offer} ${note}` : offer}
+            {/* A oferta é texto do dono: ponto final só se ele não pôs, senão
+                "no intervalo Vale com…" sai colado. */}
+            {note
+              ? `${/[.!?…]$/.test(offer) ? offer : `${offer}.`} ${note}`
+              : offer}
           </Text>
         </View>
       </View>
@@ -134,6 +198,18 @@ export function OfferCard({
 }
 
 const styles = StyleSheet.create({
+  raised: {
+    shadowColor: '#000',
+    shadowOpacity: 0.6,
+    shadowRadius: 0,
+    shadowOffset: { width: 3, height: 3 }
+  },
+  chip: {
+    height: 34,
+    paddingHorizontal: 12,
+    borderRadius: 4,
+    justifyContent: 'center'
+  },
   card: { borderRadius: 6, borderWidth: 1, overflow: 'hidden' },
   soft: {
     borderRadius: 6,

@@ -1,0 +1,183 @@
+import type { Layout } from '@/lib/layout'
+
+/*
+ * O onboarding do torcedor fora do celular (WEB-492, seleção T6 e página
+ * Adaptativo 09 do design). O passo é o mesmo do celular, numa coluna; o que
+ * muda é o caminho em volta: o painel escuro à esquerda na tela larga, a
+ * faixa no topo no tablet em pé, a pergunta em cima na mesa e o aviso na
+ * tela de fora do Flip.
+ */
+
+type Step = {
+  route: string
+  name: string
+  hint: string
+  ask: string
+  /**
+   * O passo que dá para pular no celular (Times, "Pular"; Localização,
+   * "Agora não"): só neles a faixa e a mesa mostram o "Pular" do design.
+   */
+  skip?: { to: string; replace: boolean }
+}
+
+/**
+ * Os passos, na ordem das rotas de `app/onboarding/`: o nome, o que pede e a
+ * pergunta (o título do passo, que na mesa sobe para a metade de cima).
+ */
+export const FLOW: Step[] = [
+  {
+    route: '',
+    name: 'Boas-vindas',
+    hint: 'A sua carteirinha',
+    ask: 'Sua carteirinha de torcedor'
+  },
+  {
+    route: 'sports',
+    name: 'Esportes',
+    hint: 'O que você acompanha',
+    ask: 'O que mais assiste?'
+  },
+  {
+    route: 'teams',
+    name: 'Times',
+    hint: 'Para avisar dos jogos',
+    ask: 'E pra quem torce?',
+    // Times são opcionais: o "Pular" do passo leva ao onde.
+    skip: { to: '/onboarding/location', replace: false }
+  },
+  {
+    // Rodada 2 (revenue-centric-design): a localização, o pedido mais caro,
+    // vem depois do investimento, com a carteirinha quase cheia.
+    route: 'location',
+    name: 'Onde',
+    hint: 'Para achar os mais perto',
+    ask: 'Onde você assiste?',
+    // "Prefiro escolher a cidade": segue sem a localização.
+    skip: { to: '/onboarding/distance', replace: true }
+  },
+  {
+    route: 'distance',
+    name: 'Distância',
+    hint: 'Até onde você vai',
+    ask: 'Até onde você vai?'
+  },
+  {
+    route: 'review',
+    name: 'Revisão',
+    hint: 'Confira e valide',
+    ask: 'Confere e valida'
+  }
+]
+
+/** O passo pelo caminho (`/onboarding/teams` → 2). */
+export function stepOf(pathname: string) {
+  const route = pathname.replace(/^\/onboarding\/?/, '').split('/')[0]
+  return Math.max(
+    FLOW.findIndex((step) => step.route === route),
+    0
+  )
+}
+
+/** "01", "06": o número grande da etapa. */
+export const twoDigits = (n: number) => String(n).padStart(2, '0')
+
+export type Frame =
+  /** Celular, capa e Duo fechado: a tela de sempre. */
+  | { kind: 'phone' }
+  /** Painel escuro à esquerda; o passo à direita, numa coluna. */
+  | { kind: 'side'; panel: number; pane: number; column: number }
+  /** Faixa escura no topo; o passo numa folha por cima dela. */
+  | { kind: 'band'; band: number; column: number }
+  /** Meio dobrado: a pergunta em cima, o passo embaixo. */
+  | { kind: 'table'; top: number; gap: number; column: number }
+  /** A tela de fora do Flip: o aviso para terminar no celular aberto. */
+  | { kind: 'cover' }
+
+/**
+ * Onde o painel, a faixa e a coluna ficam em cada aparelho (`split9`,
+ * `port9` e `table9` do design): o painel tem 42% da tela deitada (40% no
+ * 13″ e no Ultra) e a metade no dobrável aberto, até a dobra; a coluna do
+ * passo vai até 470 ao lado do painel e até 540 debaixo da faixa.
+ */
+export function frameOf(layout: Layout, fold: boolean): Frame {
+  const { kind, width, height } = layout
+  if (kind === 'cover') return { kind: 'cover' }
+  if (kind === 'table')
+    return {
+      kind: 'table',
+      top: layout.split,
+      gap: layout.gap,
+      // Na mesa as opções vão de ponta a ponta (24 de cada lado, `table9`).
+      column: width - 48
+    }
+  if (kind === 'stack')
+    return {
+      kind: 'band',
+      band: Math.round(height * 0.3),
+      column: Math.min(540, width - 80)
+    }
+  if (kind !== 'split') return { kind: 'phone' }
+  // No dobrável a dobra divide: o painel numa metade, o passo na outra.
+  const panel = fold
+    ? layout.split
+    : Math.round(width * (layout.wide ? 0.4 : 0.42))
+  const pane = width - panel - (fold ? layout.gap : 0)
+  return {
+    kind: 'side',
+    panel,
+    pane,
+    column: Math.min(470, pane - (fold ? 12 : 48))
+  }
+}
+
+/**
+ * O aviso da tela de fora do Flip: o que já está salvo e o que falta
+ * ("Futebol, Basquete e F1 salvos. Falta escolher os times.").
+ */
+export function coverNote(sports: string[], step: number) {
+  const short = sports.map((name) => (name === 'Fórmula 1' ? 'F1' : name))
+  const saved =
+    short.length === 0
+      ? ''
+      : `${
+          short.length === 1
+            ? short[0]
+            : `${short.slice(0, -1).join(', ')} e ${short.at(-1)}`
+        } ${short.length === 1 ? 'salvo' : 'salvos'}. `
+  const missing = [
+    'Falta escolher os esportes.',
+    'Falta escolher os esportes.',
+    'Falta escolher os times.',
+    'Falta escolher a distância.',
+    'Falta a localização.',
+    'Falta confirmar.'
+  ][step]
+  return `${saved}${missing}`
+}
+
+/** A ordem dos esportes nas pílulas de "Do que você gosta?" (rodada 2). */
+const SPORT_ORDER = [
+  'futebol',
+  'basquete',
+  'formula-1',
+  'mma-ufc',
+  'futebol-americano',
+  'tenis',
+  'volei'
+]
+
+/** O nome curto da pílula: "F1", "UFC", "NFL"; o resto, o do catálogo. */
+export const sportChip = (sport: { slug: string; name: string }) =>
+  ({ 'formula-1': 'F1', 'mma-ufc': 'UFC', 'futebol-americano': 'NFL' })[
+    sport.slug
+  ] ?? sport.name
+
+/** Os esportes na ordem do desenho; esporte novo do catálogo vai no fim. */
+export const bySportOrder = <T extends { slug: string }>(sports: T[]) =>
+  [...sports].sort((a, b) => {
+    const rank = (slug: string) =>
+      SPORT_ORDER.includes(slug)
+        ? SPORT_ORDER.indexOf(slug)
+        : SPORT_ORDER.length
+    return rank(a.slug) - rank(b.slug)
+  })

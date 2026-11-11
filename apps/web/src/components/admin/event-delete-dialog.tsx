@@ -1,5 +1,5 @@
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useEffect, useRef } from 'react'
-import { getGameTitle } from '@/domain/reservation-validation'
 import { countLabel } from '@/lib/plural'
 import type { AdminEvent } from './admin-model'
 
@@ -98,7 +98,7 @@ export function EventDeleteDialog({
   const cancelRef = useRef<HTMLButtonElement>(null)
   const block = getDeleteBlock(event.deletion)
   const consequences = getDeleteConsequences(event.deletion)
-  const title = getGameTitle({
+  const title = gameTitle({
     ...event,
     participants: event.participants.map((item) => item.team.name)
   })

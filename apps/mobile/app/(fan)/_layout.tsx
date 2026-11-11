@@ -1,102 +1,213 @@
 import { useQuery } from '@tanstack/react-query'
-import { usePathname, useRouter } from 'expo-router'
+import { useGlobalSearchParams, usePathname, useRouter } from 'expo-router'
 import { NativeTabs } from 'expo-router/unstable-native-tabs'
-import { Alert, View } from 'react-native'
-import { initials, usePalette } from '@/components/explore'
-import { ExploreStateProvider } from '@/components/explore-state'
+import { useEffect, useRef, useState } from 'react'
+import { View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useNewAchievement } from '@/components/achievement-watcher'
+import { initials } from '@/components/explore'
+import { useExploreState } from '@/components/explore-state'
+import { usePendingInvite } from '@/components/friends'
+import { useLayout } from '@/components/layout'
+import { SideNav, TAB_ICONS } from '@/components/side-nav'
 import { useSoon } from '@/components/soon'
 import { type MenuItem, YouMenu } from '@/components/tab-bar'
+import { usePalette } from '@/components/theme'
+import { Tour, TourInvite } from '@/components/tour'
+import { YouPanel } from '@/components/you-panel'
+import { useFan, useWithAccount } from '@/lib/account'
 import { authClient } from '@/lib/auth-client'
+import { freshCount } from '@/lib/suggestions'
 import { trpc } from '@/lib/trpc'
+import type { SettingsTab } from '../configuracoes'
 
 /*
- * As abas do torcedor ("02 Navbar glass"): Explorar, Favoritos e Você, com a
+ * As abas do torcedor ("02 Navbar glass"): Explorar, Bares (Seus bares) e Você, com a
  * busca com IA no círculo à direita. O design põe o Ranking no lugar dos
  * Favoritos; o dono trocou (16/10/2026), e o Ranking foi para o menu. É a barra nativa do iOS 26
  * (UITabBarController, pelo `NativeTabs`): o vidro distorce o que passa por
  * baixo e o destaque da aba se arrasta de uma para outra, como no sistema.
- * Favoritos e IA ainda não existem (avisam "em breve"); "Você" mostra o
+ * A IA abre a busca com IA (2h) numa folha; "Você" mostra o
  * mesmo Explorar com o menu de vidro (2c) por cima.
  */
 
-// Fora da aba, só o ícone; selecionada, o ícone com o nome ao lado (e as
-// setinhas no Você), como no design. A barra do sistema só põe o nome
-// embaixo, então o nome vai dentro da imagem e o rótulo nativo fica oculto.
-// O nome sai em 12,5 (o design usa 14): a lente de vidro da seleção desenha
-// por dentro a versão selecionada de todas as abas, e uma imagem mais larga
-// que a aba aparece na lente da vizinha. Favoritos, desligada, fica sem nome;
-// quando ligar, a imagem dela precisa caber em uns 70 pt.
-const TAB_ICONS = {
-  light: {
-    map: {
-      default: require('../../assets/images/tabs/map-light.png'),
-      selected: require('../../assets/images/tabs/map-light-on.png')
-    },
-    fan: require('../../assets/images/tabs/fan-light.png'),
-    you: {
-      default: require('../../assets/images/tabs/you-light.png'),
-      selected: require('../../assets/images/tabs/you-light-on.png')
-    },
-    sparkle: require('../../assets/images/tabs/sparkle-light.png')
-  },
-  dark: {
-    map: {
-      default: require('../../assets/images/tabs/map-dark.png'),
-      selected: require('../../assets/images/tabs/map-dark-on.png')
-    },
-    fan: require('../../assets/images/tabs/fan-dark.png'),
-    you: {
-      default: require('../../assets/images/tabs/you-dark.png'),
-      selected: require('../../assets/images/tabs/you-dark-on.png')
-    },
-    sparkle: require('../../assets/images/tabs/sparkle-dark.png')
-  }
+/** A tela da pilha "Você" e o item do menu que a abre. */
+const MENU_SCREENS: Record<string, string> = {
+  '/voce/perfil': 'perfil',
+  '/voce/conquistas': 'conquistas',
+  '/voce/meus-jogos': 'jogos',
+  '/voce/ranking': 'ranking'
 }
 
+// O estado do Explorar (`ExploreStateProvider`) mora em `app/_layout.tsx`:
+// a folha de filtros (19d) fica fora das abas e mexe nele também.
 export default function FanTabs() {
   const router = useRouter()
   const palette = usePalette()
   const soon = useSoon()
   const session = authClient.useSession()
+  useNewAchievement()
+  usePendingInvite()
   // "Você" é uma aba de verdade (a barra a mantém marcada) que mostra o
   // mesmo Explorar com o menu por cima; fechar o menu volta para Explorar.
+  // Numa tela da pilha da aba (Conquistas, Meus jogos), tocar em "Você" abre
+  // o menu por cima dela (`over`), e fechar deixa a pessoa onde estava.
   const pathname = usePathname()
-  const menuOpen = pathname === '/voce'
-  const closeMenu = () => router.navigate('/explore')
+  const [over, setOver] = useState(false)
+  // A última aba fora do "Você": fechar o menu volta para ela.
+  const from = useRef<'/explore' | '/favoritos'>('/explore')
+  useEffect(() => {
+    if (pathname === '/explore' || pathname === '/favoritos')
+      from.current = pathname
+  }, [pathname])
+  // Trocar de tela ou de aba fecha o menu aberto por cima.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reage à rota
+  useEffect(() => setOver(false), [pathname])
+  const menuOpen = pathname === '/voce' || over
+  // A última rota das abas: com uma tela da conta aberta por cima (Senha,
+  // Cidade), o "Você" deitado continua embaixo dela.
+  const inTabs =
+    pathname === '/explore' ||
+    pathname === '/favoritos' ||
+    pathname.startsWith('/voce')
+  const [tabPath, setTabPath] = useState(pathname)
+  useEffect(() => {
+    if (inTabs) setTabPath(pathname)
+  }, [inTabs, pathname])
+  const closeMenu = () =>
+    over ? setOver(false) : router.navigate(from.current)
+  // Passeio guiado (rodada 5, 3b), no lugar do aviso só da IA (4o): abre
+  // com `?passeio=1` no Explorar (fim do onboarding, Configurações ›
+  // Preferências › Rever o passeio, o convite da segunda abertura e o DEV).
+  const { passeio, aba } = useGlobalSearchParams<{
+    passeio?: string
+    aba?: SettingsTab
+  }>()
+  const [touring, setTouring] = useState(false)
+  const insets = useSafeAreaInsets()
+  useEffect(() => {
+    if (passeio !== '1' || pathname !== '/explore') return
+    setTouring(true)
+    router.setParams({ passeio: undefined })
+  }, [passeio, pathname, router])
+  // Sem conta (o app abre no Explorar): Bares, Você e a IA levam ao
+  // "Entrar", e nada só do torcedor é consultado.
+  const fan = useFan()
+  const withAccount = useWithAccount()
   const pending = useQuery({
-    ...trpc.ratings.getPending.queryOptions(),
-    retry: false,
-    meta: { errorToast: false }
+    ...trpc.postGame.pending.queryOptions(),
+    enabled: fan,
+    retry: false
   })
+  // "Bares pra você · N novos" (2c): a rodada de hoje, criada aqui mesmo se
+  // ainda não existe e o aparelho sabe onde está.
+  const { device, beside, localCity, filters } = useExploreState()
+  const suggestions = useQuery({
+    ...trpc.recommendations.today.queryOptions({ where: device }),
+    enabled: fan && menuOpen,
+    retry: false
+  })
+  const fresh = suggestions.data?.round ? freshCount(suggestions.data.round) : 0
+  // O que o menu diz de cada item (rodada 6): o nível, "4 de 10", os
+  // pedidos de amizade e a posição no ranking dos amigos. Buscados antes de
+  // o menu abrir, para ele abrir já com os números e o texto não pular.
+  const medals = useQuery({
+    ...trpc.achievements.mine.queryOptions(),
+    enabled: fan
+  })
+  const friendNotices = useQuery({
+    ...trpc.friends.notices.queryOptions(),
+    enabled: fan
+  })
+  const ranking = useQuery({
+    ...trpc.ranking.friends.queryOptions({ metric: 'bars' }),
+    enabled: fan
+  })
+  const unlocked =
+    medals.data?.achievements.filter((a) => a.unlockedAt).length ?? 0
+  const requests = friendNotices.data?.requests.length ?? 0
+  const myRank = ranking.data?.rows.find(
+    (row) => row.id === session.data?.user.id
+  )
+  const toRate = pending.data?.length ?? 0
   const icons = TAB_ICONS[palette.dark ? 'dark' : 'light']
   const user = session.data?.user
+  const layout = useLayout()
+  // Tablet deitado e dobrável aberto: o "Você" é uma tela (menu e seção lado
+  // a lado, `YouPanel`), não o menu de vidro; tocar de novo não fecha.
+  // Sem conta, o menu (com o cartão da conta), também no tablet.
+  const panel = layout.kind === 'split' && fan
+  const panelOpen = panel && (menuOpen || (!inTabs && tabPath === '/voce'))
+  // O mesmo toque da aba "Você" na barra nativa.
+  const pressYou = () => {
+    if (panel) {
+      if (!menuOpen) router.navigate('/voce')
+    } else if (menuOpen) closeMenu()
+    else if (pathname.startsWith('/voce/')) setOver(true)
+    else router.navigate('/voce')
+  }
 
   const items: MenuItem[] = [
     {
       key: 'perfil',
       icon: 'you',
       label: 'Perfil',
-      soon: 'O perfil chega em breve'
+      soon: 'O perfil chega em breve',
+      open: () => router.navigate('/voce/perfil')
     },
     {
       key: 'conquistas',
       icon: 'medal',
       label: 'Conquistas',
-      soon: 'As conquistas chegam em breve'
+      soon: 'As conquistas chegam em breve',
+      meta: medals.data
+        ? `${unlocked} de ${medals.data.achievements.length}`
+        : undefined,
+      open: () => router.navigate('/voce/conquistas')
     },
     {
       key: 'jogos',
       icon: 'ticket',
       label: 'Meus jogos',
       soon: 'Meus jogos chega em breve',
+      badge: toRate ? `${toRate} para avaliar` : undefined,
       // Na pilha da própria aba: a barra fica e o menu some sozinho.
-      open: () => router.push('/voce/meus-jogos')
+      open: () => router.navigate('/voce/meus-jogos')
+    },
+    {
+      key: 'sugestoes',
+      icon: 'sparkle',
+      label: 'Bares pra você',
+      soon: 'As sugestões chegam em breve',
+      badge: fresh ? `${fresh} ${fresh === 1 ? 'novo' : 'novos'}` : undefined,
+      // Por cima, sem a barra, como no design (23a).
+      open: () => {
+        closeMenu()
+        router.push('/bares-pra-voce')
+      }
+    },
+    {
+      key: 'amigos',
+      icon: 'people',
+      label: 'Amigos',
+      soon: 'Os amigos chegam em breve',
+      badge: requests
+        ? `${requests} ${requests === 1 ? 'pedido' : 'pedidos'}`
+        : undefined,
+      // No design, Amigos abre pelo botão do Ranking (11e); até ele existir,
+      // fica no menu. Por cima, sem a barra, como as Configurações.
+      open: () => {
+        closeMenu()
+        router.push('/amigos')
+      }
     },
     {
       key: 'ranking',
       icon: 'ranking',
       label: 'Ranking',
-      soon: 'O ranking chega em breve'
+      soon: 'O ranking chega em breve',
+      meta: myRank ? `${myRank.position}º` : undefined,
+      open: () => router.navigate('/voce/ranking')
     },
     {
       key: 'avaliacoes',
@@ -109,94 +220,292 @@ export default function FanTabs() {
             closeMenu()
             router.push(`/pos-jogo/${pending.data[0]?.eventId}`)
           }
-        : undefined,
-      meta: pending.data?.length
-        ? `${pending.data.length} ${pending.data.length === 1 ? 'pendente' : 'pendentes'}`
         : undefined
     },
     {
       key: 'preferencias',
       icon: 'sliders',
       label: 'Preferências',
-      soon: 'As preferências chegam em breve'
+      soon: 'As preferências chegam em breve',
+      open: () => {
+        closeMenu()
+        router.push('/configuracoes')
+      }
     }
   ]
-  // ponytail: Configurações é a seção 11; até lá a engrenagem só oferece "Sair".
-  const settings = () =>
-    Alert.alert(user?.name ?? 'Conta', user?.email, [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Sair',
-        style: 'destructive',
-        onPress: async () => {
-          await authClient.signOut()
-          router.replace('/intro')
-        }
+  // Sem conta (rodada 2, tela 5): os itens que precisam de conta ficam à
+  // vista com "com conta" e abrem a folha de entrar; cidade, raio e termos
+  // funcionam sem conta.
+  const ask = (what: string) => () => {
+    closeMenu()
+    withAccount(() => {}, { kind: 'conta', what })
+  }
+  const visitorItems: MenuItem[] = [
+    {
+      key: 'jogos',
+      icon: 'ticket',
+      label: 'Meus jogos',
+      soon: '',
+      account: true,
+      open: ask('ver seus jogos')
+    },
+    {
+      key: 'conquistas',
+      icon: 'medal',
+      label: 'Conquistas',
+      soon: '',
+      account: true,
+      open: ask('ver suas conquistas')
+    },
+    {
+      key: 'ranking',
+      icon: 'ranking',
+      label: 'Ranking',
+      soon: '',
+      account: true,
+      open: ask('ver o ranking')
+    },
+    {
+      key: 'amigos',
+      icon: 'people',
+      label: 'Amigos',
+      soon: '',
+      account: true,
+      open: ask('ver seus amigos')
+    },
+    {
+      key: 'cidade',
+      icon: 'pin',
+      label: 'Cidade',
+      soon: '',
+      meta: localCity?.name ?? 'São Paulo',
+      open: () => {
+        closeMenu()
+        router.push('/cidade')
       }
-    ])
+    },
+    {
+      key: 'raio',
+      icon: 'map',
+      label: 'Raio de busca',
+      soon: '',
+      meta: `${filters.radius ?? 3} km`,
+      open: () => {
+        closeMenu()
+        router.push('/filtros')
+      }
+    },
+    {
+      key: 'termos',
+      icon: 'doc',
+      label: 'Termos e Privacidade',
+      soon: '',
+      open: () => {
+        closeMenu()
+        router.push('/legal')
+      }
+    }
+  ]
+  // As Configurações (11f–11i) abrem por cima, sem a barra.
+  const settings = () => {
+    closeMenu()
+    router.push({ pathname: '/configuracoes', params: { aba: 'conta' } })
+  }
 
   return (
-    <ExploreStateProvider>
-      <View style={{ flex: 1 }}>
-        <NativeTabs minimizeBehavior="never" tintColor={palette.ink}>
-          <NativeTabs.Trigger name="explore">
-            <NativeTabs.Trigger.Icon src={icons.map} renderingMode="original" />
-            <NativeTabs.Trigger.Label hidden>Explorar</NativeTabs.Trigger.Label>
-          </NativeTabs.Trigger>
-          <NativeTabs.Trigger
-            name="favoritos"
-            disabled
-            listeners={{
-              tabPress: () => soon.show('A lista de favoritos chega em breve')
-            }}
-          >
-            <NativeTabs.Trigger.Icon src={icons.fan} renderingMode="original" />
-            <NativeTabs.Trigger.Label hidden>
-              Favoritos
-            </NativeTabs.Trigger.Label>
-          </NativeTabs.Trigger>
-          <NativeTabs.Trigger
-            name="voce"
-            // Tocar de novo com o menu aberto fecha; numa tela da pilha da
-            // aba, o sistema volta ao começo dela, que é o menu.
-            listeners={{ tabPress: () => menuOpen && closeMenu() }}
-          >
-            <NativeTabs.Trigger.Icon src={icons.you} renderingMode="original" />
-            <NativeTabs.Trigger.Label hidden>Você</NativeTabs.Trigger.Label>
-          </NativeTabs.Trigger>
-          <NativeTabs.Trigger
-            name="ia"
-            role="search"
-            disabled
-            accessibilityLabel="Busca com IA"
-            listeners={{
-              tabPress: () => soon.show('A busca com IA chega em breve')
-            }}
-          >
-            <NativeTabs.Trigger.Icon
-              src={icons.sparkle}
-              renderingMode="original"
-            />
-            <NativeTabs.Trigger.Label>IA</NativeTabs.Trigger.Label>
-          </NativeTabs.Trigger>
-        </NativeTabs>
-        {menuOpen ? (
-          <YouMenu
-            palette={palette}
-            name={user?.name ?? ''}
-            initials={initials(user?.name ?? '')}
-            items={items}
-            onClose={closeMenu}
-            onItem={(item) => {
-              if (!item.open) return soon.show(item.soon)
-              item.open()
-            }}
-            onChat={() => soon.show('A conversa com a Onside chega em breve')}
-            onSettings={settings}
+    <View style={{ flex: 1 }}>
+      <NativeTabs
+        // Fora do celular a navegação é a do aparelho (`SideNav`); a barra
+        // nativa só se esconde, para as abas não remontarem ao abrir o dobrável.
+        hidden={layout.nav !== 'tabs'}
+        minimizeBehavior="never"
+        tintColor={palette.ink}
+        // No aparelho, uma renderização do JS feita antes do toque chegava
+        // ao nativo depois dele e devolvia a seleção à aba anterior: a lente
+        // ia ao "Você", voltava e ia de novo. Recusa o pedido antigo.
+        unstable_nativeProps={{ rejectStaleNavStateUpdates: true }}
+      >
+        <NativeTabs.Trigger name="explore">
+          <NativeTabs.Trigger.Icon src={icons.map} renderingMode="original" />
+          <NativeTabs.Trigger.Label hidden>Explorar</NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
+        {/* Sem o recuo automático: a aba somava o topo seguro ao
+            `paddingTop` da tela, e o título descia 48 pt. */}
+        <NativeTabs.Trigger
+          name="favoritos"
+          disableAutomaticContentInsets
+          disabled={!fan}
+          listeners={
+            fan
+              ? undefined
+              : {
+                  tabPress: () =>
+                    withAccount(() => {}, {
+                      kind: 'conta',
+                      what: 'ver seus bares'
+                    })
+                }
+          }
+        >
+          <NativeTabs.Trigger.Icon src={icons.fan} renderingMode="original" />
+          <NativeTabs.Trigger.Label hidden>Bares</NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
+        <NativeTabs.Trigger
+          name="voce"
+          // A troca vem do nativo, sem esperar o JS (a foto sob o menu já
+          // está pronta). Tocar de novo com o menu aberto fecha. Numa tela
+          // da pilha da aba, o menu abre por cima dela: o sistema voltaria
+          // ao começo da pilha (`disablePopToTop` impede). Vindo de outra
+          // aba, a pilha já voltou ao menu (`voce/_layout.tsx`).
+          disablePopToTop
+          listeners={{
+            tabPress: () => {
+              if (menuOpen) closeMenu()
+              else if (pathname.startsWith('/voce/')) setOver(true)
+            }
+          }}
+        >
+          <NativeTabs.Trigger.Icon src={icons.you} renderingMode="original" />
+          <NativeTabs.Trigger.Label hidden>Você</NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
+        <NativeTabs.Trigger
+          name="ia"
+          role="search"
+          disabled
+          accessibilityLabel="Busca com IA"
+          // A busca com IA (2h) é uma folha por cima da aba atual.
+          listeners={{
+            tabPress: () =>
+              withAccount(() => router.push('/busca-ia'), {
+                kind: 'conta',
+                what: 'buscar com a IA'
+              })
+          }}
+        >
+          <NativeTabs.Trigger.Icon
+            src={icons.sparkle}
+            renderingMode="original"
           />
-        ) : null}
-        {soon.toast}
-      </View>
-    </ExploreStateProvider>
+          <NativeTabs.Trigger.Label>IA</NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
+      </NativeTabs>
+      {panelOpen ? (
+        <YouPanel
+          name={user?.name ?? ''}
+          initials={initials(user?.name ?? '')}
+          image={user?.image}
+          items={items.filter(
+            (item) => item.key !== 'perfil' && item.key !== 'preferencias'
+          )}
+          tab={aba}
+          onProfile={() => router.navigate('/voce/perfil')}
+          onItem={(item) => (item.open ? item.open() : soon.show(item.soon))}
+        />
+      ) : null}
+      {layout.nav !== 'tabs' && layout.nav !== 'none' ? (
+        <SideNav
+          kind={layout.nav}
+          current={
+            menuOpen || panelOpen || pathname.startsWith('/voce')
+              ? 'voce'
+              : pathname === '/favoritos'
+                ? 'favoritos'
+                : 'explore'
+          }
+          onTab={(tab) =>
+            tab === 'explore'
+              ? router.navigate('/explore')
+              : withAccount(() =>
+                  tab === 'voce' ? pressYou() : router.navigate(`/${tab}`)
+                )
+          }
+          onAi={() =>
+            withAccount(() => router.push('/busca-ia'), {
+              kind: 'conta',
+              what: 'buscar com a IA'
+            })
+          }
+          onShortcut={(to) =>
+            withAccount(() =>
+              to === 'avisos'
+                ? router.push('/avisos')
+                : router.navigate(
+                    to === 'jogos' ? '/voce/meus-jogos' : `/voce/${to}`
+                  )
+            )
+          }
+          initials={initials(user?.name ?? '')}
+          left={
+            // No Explorar a barra flutua sobre o mapa (04b) e no "Você"
+            // deitado, sobre a seção da direita (a07); nas outras abas,
+            // centrada na tela (design T3 e T4).
+            (pathname === '/explore' || panelOpen) &&
+            layout.kind === 'split' &&
+            layout.nav === 'float' &&
+            !beside
+              ? layout.split + layout.gap
+              : 0
+          }
+          // Com um bar aberto ao lado da lista, sob a lista (a02).
+          right={
+            pathname === '/explore' && layout.kind === 'split' && beside
+              ? layout.width - layout.split
+              : 0
+          }
+        />
+      ) : null}
+      {menuOpen && !panel ? (
+        <YouMenu
+          name={user?.name ?? ''}
+          initials={initials(user?.name ?? '')}
+          image={user?.image}
+          level={medals.data?.level}
+          items={fan ? items : visitorItems}
+          visitor={
+            fan
+              ? undefined
+              : {
+                  onCreate: () => {
+                    closeMenu()
+                    router.push({
+                      pathname: '/entrar',
+                      params: { modo: 'criar' }
+                    })
+                  },
+                  onEnter: () => {
+                    closeMenu()
+                    router.push('/entrar')
+                  }
+                }
+          }
+          // Destaca a tela de baixo; sobre o Explorar, nenhum item, para não
+          // sugerir um toque.
+          current={MENU_SCREENS[pathname]}
+          onClose={closeMenu}
+          onItem={(item) => {
+            if (!item.open) return soon.show(item.soon)
+            setOver(false)
+            item.open()
+          }}
+          onSettings={fan ? settings : ask('ver as configurações')}
+        />
+      ) : null}
+      {pathname === '/explore' &&
+      !touring &&
+      !menuOpen &&
+      layout.kind === 'phone' ? (
+        <TourInvite top={insets.top + 196} onOpen={() => setTouring(true)} />
+      ) : null}
+      {touring && pathname === '/explore' && !menuOpen ? (
+        <Tour
+          fan={fan}
+          onClose={() => setTouring(false)}
+          onSignup={() =>
+            withAccount(() => {}, { kind: 'conta', what: 'guardar seus jogos' })
+          }
+        />
+      ) : null}
+      {soon.toast}
+    </View>
   )
 }

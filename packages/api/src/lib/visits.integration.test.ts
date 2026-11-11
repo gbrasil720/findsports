@@ -104,6 +104,11 @@ integrationTest(
       ).toEqual([
         { userId: fanId, eventId: twice as string, barId, visitedAt: first }
       ])
+      // "Já fui" lê a mesma visita: um jogo, com a primeira validação.
+      const { readVisitedGames } = await import('./attendance')
+      expect(
+        (await readVisitedGames(fanId)).map((game) => game.validatedAt)
+      ).toEqual([first])
     } finally {
       await db.delete(user).where(inArray(user.id, [ownerId, fanId]))
       await db.delete(sport).where(eq(sport.id, sportId))

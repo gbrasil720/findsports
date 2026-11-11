@@ -61,12 +61,13 @@ export const subscriptionPlanEnum = pgEnum('subscription_plan', [
 export type SubscriptionPlan = (typeof subscriptionPlanEnum.enumValues)[number]
 
 /**
- * WEB-381: quem o torcedor acompanha é um time (clube, seleção, escuderia da
- * F1) ou um atleta (piloto, lutador). A interface diz "time" ou "atleta"; o
- * resto do sistema (favoritos, participantes do jogo, busca) trata os dois
- * pela mesma tabela.
+ * WEB-381: quem o torcedor acompanha é um time (clube, seleção) ou um atleta
+ * (lutador, tenista). WEB-520: na F1, um GP (`race`), um por corrida do
+ * calendário, no lugar de piloto e escuderia. A interface diz "time",
+ * "atleta" ou "GP"; o resto do sistema (favoritos, participantes do jogo,
+ * busca) trata todos pela mesma tabela.
  */
-export const teamKindEnum = pgEnum('team_kind', ['team', 'athlete'])
+export const teamKindEnum = pgEnum('team_kind', ['team', 'athlete', 'race'])
 
 /** As categorias da foto do bar (design 28c), em `bar-gallery.ts`. */
 export const barPhotoCategoryEnum = pgEnum(
@@ -459,9 +460,8 @@ export const event = pgTable(
     index('event_startsAt_idx').on(table.startsAt),
     // Padrão real de acesso da busca: próximo jogo de um bar específico.
     index('event_barId_startsAt_idx').on(table.barId, table.startsAt),
-    // Busca com texto raro (migration 0084, trazida da integração para o
-    // journal ser o mesmo): acha os jogos que casam sem ir bar a bar. A
-    // consulta que o usa (`texto_jogos`) ainda não chegou a esta busca.
+    // Busca com texto raro: acha os jogos que casam sem ir bar a bar
+    // (`texto_jogos` em pub-search). A expressão é a mesma da consulta.
     // `fastupdate` desligado: cada gravação paga o índice na hora (+0,08 ms)
     // em vez de uma fila que, ao esvaziar, segurava uma gravação por 16 ms.
     index('event_search_text_trgm_idx')

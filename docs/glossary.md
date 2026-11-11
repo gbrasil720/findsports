@@ -188,7 +188,19 @@ só em `packages/db/src/bar-menu.ts`.
 
 `endsAt ?? startsAt + duração padrão`. Existe porque `event.endsAt` é opcional
 no schema e "fim do jogo" precisa ser definido para todo evento. Calculado por
-uma função única.
+uma função única (`getEventEnd`, e `eventEndSql` em SQL). O fim é exclusivo: no
+instante do fim o jogo já acabou.
+
+## Dia de Brasília
+
+O dia do calendário em `America/Sao_Paulo`, "AAAA-MM-DD": é o "hoje" de toda
+tela e consulta, e o `commercial_day` do relatório. Nunca o dia do UTC nem o
+do fuso de quem lê.
+
+## Relógio do jogo
+
+O module que decide o dia de Brasília e o fim derivado, em TypeScript
+(`event-window.ts`) e em SQL (`event-window-sql.ts`), com os mesmos nomes.
 
 ## Comparecimento
 
@@ -196,3 +208,34 @@ Registro de que o torcedor de fato foi ao bar. Tem duas fontes declaradas e
 independentes — o bar validando o código e o torcedor respondendo depois do
 jogo. A segunda existe porque cada validação custa um brinde ao bar e só rende
 um dado que será usado para cobrar dele: não registrar é gratuito e invisível.
+
+## Título do jogo
+
+Como um jogo é nomeado em toda tela: com dois participantes, "A × B" (confronto);
+com qualquer outro número, o texto livre do bar e, em branco, o campeonato
+(`@findsports_oficial/db/game-title`).
+
+## Card do bar
+
+Um bar numa lista de busca, completado depois do cache com gasto médio,
+características, quem vai e nota pública (`toBarCards`).
+
+## Visita
+
+O torcedor esteve no bar para o jogo: uma por torcedor e jogo, com a primeira
+confirmação. Hoje é o código validado no balcão e não desfeito; o check-in
+(WEB-408) será a segunda fonte. Fonte única em `packages/api/src/lib/visits.ts`.
+Não é a chegada vista pelo bar: "Quem vai", o alerta interno e a análise
+comercial leem o código de propósito.
+
+## Pós-jogo
+
+As perguntas depois do jogo, "Você foi?" e "Voltaria?", numa fila com um item
+por jogo e uma resposta que grava as duas numa transação
+(`packages/api/src/lib/post-game.ts`, router `postGame`). Quem responde "Não
+fui" não avalia.
+
+## Código do balcão
+
+O ingresso que o torcedor mostra no bar para ganhar a oferta da casa. Só bar
+com Elite vigente emite: `issuesCounterCode` (`packages/api/src/lib/current-plan.ts`).

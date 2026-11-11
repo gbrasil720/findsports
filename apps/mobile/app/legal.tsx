@@ -5,67 +5,35 @@ import type {
 } from '@findsports_oficial/legal/legal-types'
 import { POLITICA_DE_PRIVACIDADE } from '@findsports_oficial/legal/politica-de-privacidade'
 import { TERMOS_DE_USO } from '@findsports_oficial/legal/termos-de-uso'
-import { LinearGradient } from 'expo-linear-gradient'
-import { useLocalSearchParams } from 'expo-router'
-import { useEffect, useRef, useState } from 'react'
-import {
-  Linking,
-  Pressable,
-  ScrollView,
-  Share,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View
-} from 'react-native'
-import Animated, {
-  FadeIn,
-  FadeOut,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming
-} from 'react-native-reanimated'
+import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useRef, useState } from 'react'
+import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import Svg, { Path } from 'react-native-svg'
-import { Glass } from '@/components/glass'
-import { EASE, haptic, SWAP } from '@/components/motion'
+import { Segmented } from '@/components/segmented'
+import { usePalette } from '@/components/theme'
 import {
-  BackButton,
   BG,
   CARD,
   FG,
-  FIELD,
-  INK,
+  Icon,
   LINE,
   LIVE,
-  PAPER,
   SUB,
-  Title,
+  Text,
   text,
   themed,
   useStatusBar
 } from '@/components/ui'
 
 /*
- * 11x, Termos de Uso e Política de Privacidade para ler no app, com o mesmo
- * texto do site (`packages/legal`). Abas no topo, índice que acompanha a
- * leitura, compartilhar o link e voltar ao topo.
+ * Termos de Uso e Política de Privacidade (rodada 7, 06): o texto de
+ * `packages/legal`, o mesmo do site, numa leitura confortável (Archivo 16,
+ * entrelinha 1,6), com o índice das seções no topo (tocar rola até ela) e a
+ * data da versão em mono.
  */
 
 const DOCS = { termos: TERMOS_DE_USO, privacidade: POLITICA_DE_PRIVACIDADE }
 type Doc = keyof typeof DOCS
-const SITE = 'https://onside.sh'
-// Constantes: a tela re-renderiza na rolagem (índice e "Topo"), e uma entrada
-// criada no JSX recomeçaria a cada renderização (ver `POP` em `motion.tsx`).
-const MENU_IN = FadeIn.duration(160)
-const MENU_OUT = FadeOut.duration(120)
-const TOP_IN = FadeIn.duration(180)
-const TOP_OUT = FadeOut.duration(140)
-
-/** "1. Quem pode usar"; a seção 00 (definições) vai sem número, como no design. */
-const sectionLabel = ({ num, title }: { num: string; title: string }) =>
-  Number(num) === 0 ? title : `${Number(num)}. ${title}`
-
 /** Texto com negrito, e-mail clicável e termo marcado. */
 function Rich({ content }: { content: LegalRich }) {
   if (typeof content === 'string') return <>{content}</>
@@ -171,131 +139,137 @@ function Block({ block }: { block: LegalBlock }) {
   }
 }
 
-/** As duas abas, com o indicador branco que desliza. */
-function Tabs({ doc, onChange }: { doc: Doc; onChange: (doc: Doc) => void }) {
-  const [width, setWidth] = useState(0)
-  const x = useSharedValue(doc === 'termos' ? 0 : 1)
-  useEffect(() => {
-    x.value = withTiming(doc === 'termos' ? 0 : 1, {
-      duration: 220,
-      easing: EASE
-    })
-  }, [doc, x])
-  const pill = useAnimatedStyle(() => ({
-    transform: [{ translateX: (x.value * width) / 2 }]
-  }))
-  const tone = useColorScheme() === 'dark' ? 'dark' : 'light'
-  return (
-    <Glass tone={tone} style={styles.tabs}>
-      <View
-        style={{ flex: 1, flexDirection: 'row' }}
-        onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
-      >
-        {width ? (
-          <Animated.View style={[styles.tabPill, { width: width / 2 }, pill]} />
-        ) : null}
-        {(['termos', 'privacidade'] as const).map((key) => (
-          <Pressable
-            key={key}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: doc === key }}
-            onPress={() => {
-              if (key !== doc) haptic.select()
-              onChange(key)
-            }}
-            style={styles.tab}
-          >
-            <Text
-              style={[
-                text(14, doc === key ? 'Bold' : 'Regular'),
-                // O indicador é branco nos dois temas: o escolhido fica em tinta.
-                { color: doc === key ? INK : SUB }
-              ]}
-            >
-              {key === 'termos' ? 'Termos de Uso' : 'Privacidade'}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-    </Glass>
-  )
+const MONTHS = [
+  'janeiro',
+  'fevereiro',
+  'março',
+  'abril',
+  'maio',
+  'junho',
+  'julho',
+  'agosto',
+  'setembro',
+  'outubro',
+  'novembro',
+  'dezembro'
+]
+
+/** "6 de novembro de 2026" → "06/11/2026" (a versão em mono do topo). */
+export function versionDate(updated: string) {
+  const match = updated.match(/(\d{1,2}) de (\p{L}+) de (\d{4})/u)
+  if (!match) return updated
+  const month = MONTHS.indexOf(match[2].toLocaleLowerCase('pt-BR')) + 1
+  if (!month) return updated
+  return `${match[1].padStart(2, '0')}/${String(month).padStart(2, '0')}/${match[3]}`
 }
 
-function Chevron({ open }: { open: boolean }) {
-  return (
-    <Svg width={14} height={14} viewBox="0 0 24 24">
-      <Path d={open ? 'M5 15l7-7 7 7z' : 'M5 9l7 7 7-7z'} fill={FG} />
-    </Svg>
-  )
-}
+/** "3 · Presença e código do balcão"; a 00 (definições) vai sem número. */
+const indexLabel = ({ num, title }: { num: string; title: string }) =>
+  Number(num) === 0 ? title : `${Number(num)} · ${title}`
 
 export default function Legal() {
   const insets = useSafeAreaInsets()
+  const router = useRouter()
+  const palette = usePalette()
   const params = useLocalSearchParams<{ doc?: string }>()
   const [doc, setDoc] = useState<Doc>(
     params.doc === 'privacidade' ? 'privacidade' : 'termos'
   )
   const document: LegalDocument = DOCS[doc]
   const scroller = useRef<ScrollView>(null)
+  const sectionsTop = useRef(0)
   const offsets = useRef<Record<string, number>>({})
-  const [current, setCurrent] = useState(0)
-  const [menu, setMenu] = useState(false)
-  const [scrolled, setScrolled] = useState(false)
   useStatusBar('auto')
-  const dark = useColorScheme() === 'dark'
-  const tone = dark ? 'dark' : 'light'
 
   const switchDoc = (next: Doc) => {
     setDoc(next)
-    setCurrent(0)
-    setMenu(false)
     offsets.current = {}
     scroller.current?.scrollTo({ y: 0, animated: false })
   }
 
-  const goTo = (index: number) => {
-    setMenu(false)
-    const y = offsets.current[document.sections[index].id]
-    if (y !== undefined) scroller.current?.scrollTo({ y: y - 16 })
+  // Tocar no índice rola até a seção (scroll nativo).
+  const goTo = (id: string) => {
+    const y = offsets.current[id]
+    if (y !== undefined)
+      scroller.current?.scrollTo({
+        y: sectionsTop.current + y - insets.top - 12
+      })
   }
-
-  const top = insets.top + 4
-  const headerHeight = top + 108
-  const section = document.sections[current]
 
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
       <ScrollView
         ref={scroller}
-        scrollEventThrottle={64}
-        onScroll={(event) => {
-          const y = event.nativeEvent.contentOffset.y
-          setScrolled(y > 500)
-          let index = 0
-          document.sections.forEach((s, i) => {
-            const at = offsets.current[s.id]
-            if (at !== undefined && at - 40 <= y) index = i
-          })
-          setCurrent(index)
-        }}
         contentContainerStyle={{
-          paddingTop: headerHeight + 24,
-          paddingHorizontal: 22,
-          paddingBottom: insets.bottom + 110,
-          gap: 14
+          paddingTop: insets.top + 8,
+          paddingHorizontal: 16,
+          paddingBottom: insets.bottom + 40,
+          gap: 14,
+          // No iPad, a linha de leitura não passa de ~62 caracteres.
+          width: '100%',
+          maxWidth: 592,
+          alignSelf: 'center'
         }}
       >
-        <Animated.View key={doc} entering={SWAP} style={{ gap: 14 }}>
-          <Title lines={[[document.title]]} size={38} />
-          <Text style={[styles.updated, { marginTop: -6 }]}>
-            Atualizado em {document.updated}
+        <View style={styles.top}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Voltar"
+            hitSlop={8}
+            onPress={() => router.back()}
+            style={[
+              styles.round,
+              { backgroundColor: palette.card, shadowColor: palette.drop }
+            ]}
+          >
+            <Icon name="back" size={20} color={palette.ink} />
+          </Pressable>
+          <Text style={styles.version}>
+            VERSÃO DE {versionDate(document.updated)}
           </Text>
-          {document.intro.map((paragraph, index) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: texto fixo
-            <Text key={index} style={styles.body}>
-              <Rich content={paragraph} />
+        </View>
+        <Segmented
+          items={[
+            { key: 'termos', label: 'Termos de Uso' },
+            { key: 'privacidade', label: 'Privacidade' }
+          ]}
+          value={doc}
+          onChange={switchDoc}
+        />
+
+        <View
+          style={[
+            styles.index,
+            { backgroundColor: palette.card, shadowColor: palette.drop }
+          ]}
+        >
+          <Text style={styles.indexKicker}>NESTA PÁGINA</Text>
+          {document.sections.map((part) => (
+            <Text
+              key={part.id}
+              accessibilityRole="link"
+              onPress={() => goTo(part.id)}
+              suppressHighlighting
+              style={styles.indexItem}
+            >
+              {indexLabel(part)}
             </Text>
           ))}
+        </View>
+
+        {document.intro.map((paragraph, index) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: texto fixo
+          <Text key={`${doc}-${index}`} style={styles.body}>
+            <Rich content={paragraph} />
+          </Text>
+        ))}
+        <View
+          key={doc}
+          style={{ gap: 14 }}
+          onLayout={(event) => {
+            sectionsTop.current = event.nativeEvent.layout.y
+          }}
+        >
           {document.sections.map((part) => (
             <View
               key={part.id}
@@ -304,8 +278,8 @@ export default function Legal() {
                 offsets.current[part.id] = event.nativeEvent.layout.y
               }}
             >
-              <Text style={[text(17, 'Bold'), { color: FG }]}>
-                {sectionLabel(part)}
+              <Text accessibilityRole="header" style={styles.heading}>
+                {indexLabel(part)}
               </Text>
               {part.blocks.map((block, index) => (
                 // biome-ignore lint/suspicious/noArrayIndexKey: texto fixo
@@ -320,129 +294,17 @@ export default function Legal() {
               </Text>
             ))}
           </View>
-        </Animated.View>
-      </ScrollView>
-
-      {/* O topo some sobre o texto: papel cheio e depois transparente. */}
-      <View
-        pointerEvents="box-none"
-        style={[styles.header, { paddingTop: top }]}
-      >
-        <LinearGradient
-          pointerEvents="none"
-          colors={
-            dark
-              ? [INK, INK, 'rgba(18,18,15,0)']
-              : [PAPER, PAPER, 'rgba(241,238,230,0)']
-          }
-          locations={[0, 0.78, 1]}
-          style={[styles.fade, { height: headerHeight + 40 }]}
-        />
-        <View style={styles.headRow}>
-          <BackButton />
-          <View style={{ flex: 1 }}>
-            <Tabs doc={doc} onChange={switchDoc} />
-          </View>
         </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Índice"
-          onPress={() => setMenu(!menu)}
-        >
-          <Glass tone={tone} style={styles.index}>
-            <Text
-              style={[text(14, 'SemiBold'), { color: FG, flex: 1 }]}
-              numberOfLines={1}
-            >
-              <Text style={{ color: SUB }}>Índice · </Text>
-              {section ? sectionLabel(section) : ''}
-            </Text>
-            <Chevron open={menu} />
-          </Glass>
-        </Pressable>
-        {menu ? (
-          <Animated.View
-            entering={MENU_IN}
-            exiting={MENU_OUT}
-            style={styles.menu}
-          >
-            <ScrollView style={{ maxHeight: 360 }}>
-              {document.sections.map((part, index) => (
-                <Pressable
-                  key={part.id}
-                  accessibilityRole="button"
-                  onPress={() => goTo(index)}
-                  style={({ pressed }) => [
-                    styles.menuItem,
-                    pressed && { backgroundColor: PRESSED }
-                  ]}
-                >
-                  <Text
-                    style={[
-                      text(14.5, index === current ? 'Bold' : 'Regular'),
-                      { color: FG }
-                    ]}
-                  >
-                    {sectionLabel(part)}
-                  </Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-          </Animated.View>
-        ) : null}
-      </View>
-
-      <View
-        style={[styles.actions, { bottom: Math.max(insets.bottom - 4, 16) }]}
-      >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Compartilhar"
-          onPress={() =>
-            Share.share({
-              message: `${document.title} da Onside: ${SITE}/${doc}`
-            })
-          }
-        >
-          <Glass tone={tone} interactive style={styles.round}>
-            <Svg width={18} height={18} viewBox="0 0 24 24">
-              <Path
-                d="M12 2.5 7.5 7l1.4 1.4L11 6.3V15h2V6.3l2.1 2.1L16.5 7zM5 11v9.5h14V11h-3v2h1v5.5H7V13h1v-2z"
-                fill={FG}
-              />
-            </Svg>
-          </Glass>
-        </Pressable>
-        {scrolled ? (
-          <Animated.View entering={TOP_IN} exiting={TOP_OUT}>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => scroller.current?.scrollTo({ y: 0 })}
-            >
-              <Glass tone={tone} interactive style={styles.topButton}>
-                <Svg width={14} height={14} viewBox="0 0 24 24">
-                  <Path
-                    d="M11 21V7.8l-5.6 5.6L4 12l8-8 8 8-1.4 1.4L13 7.8V21z"
-                    fill={FG}
-                  />
-                </Svg>
-                <Text style={[text(14, 'Bold'), { color: FG }]}>Topo</Text>
-              </Glass>
-            </Pressable>
-          </Animated.View>
-        ) : null}
-      </View>
+      </ScrollView>
     </View>
   )
 }
 
-const PRESSED = themed('rgba(18,18,15,.05)', 'rgba(241,238,230,.06)')
-
 const styles = StyleSheet.create({
   body: {
     fontFamily: 'Archivo-Regular',
-    fontSize: 15.5,
-    lineHeight: 15.5 * 1.6,
+    fontSize: 16,
+    lineHeight: 16 * 1.6,
     color: FG
   },
   bold: { fontFamily: 'Archivo-Bold' },
@@ -476,69 +338,50 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: LINE
   },
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 16,
-    gap: 12
-  },
-  fade: { position: 'absolute', top: 0, left: 0, right: 0 },
-  headRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  tabs: { height: 46, borderRadius: 24, padding: 4 },
-  tabPill: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    borderRadius: 19,
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOpacity: 0.18,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 2 }
-  },
-  tab: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  index: {
-    height: 44,
-    paddingHorizontal: 16,
-    borderRadius: 22,
+  top: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8
-  },
-  menu: {
-    borderRadius: 16,
-    backgroundColor: FIELD,
-    borderWidth: 1,
-    borderColor: themed('rgba(18,18,15,.1)', 'rgba(241,238,230,.12)'),
-    paddingVertical: 6,
-    shadowColor: '#000',
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 10 }
-  },
-  menuItem: { paddingHorizontal: 16, paddingVertical: 10 },
-  actions: {
-    position: 'absolute',
-    right: 16,
-    flexDirection: 'row',
-    gap: 10
+    justifyContent: 'space-between'
   },
   round: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
   },
-  topButton: {
-    height: 48,
-    paddingHorizontal: 18,
-    borderRadius: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7
+  version: { fontFamily: 'GeistMono-SemiBold', fontSize: 12.5, color: SUB },
+  index: {
+    borderRadius: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    gap: 6,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
+  },
+  indexKicker: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11,
+    letterSpacing: 0.88,
+    color: SUB
+  },
+  indexItem: {
+    alignSelf: 'flex-start',
+    ...text(15, 'SemiBold', 1.3),
+    color: FG,
+    textDecorationLine: 'underline',
+    textDecorationColor: themed('rgba(18,18,15,.3)', 'rgba(241,238,230,.3)')
+  },
+  // Anton 24: margem negativa no lugar do entrelinha curto.
+  heading: {
+    fontFamily: 'Anton',
+    fontSize: 24,
+    textTransform: 'uppercase',
+    color: FG,
+    marginVertical: -5.8
   }
 })

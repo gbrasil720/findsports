@@ -1,11 +1,13 @@
 import { describe, expect, test } from 'bun:test'
 import {
   groupOpeningHours,
+  isGameWithinHours,
   isOpenNow,
   normalizeOpeningHours,
   type OpeningHours,
   openingHoursSchema,
-  openingStatus
+  openingStatus,
+  openingTurn
 } from './opening-hours'
 
 const day = (opens: string, closes: string) => ({ opens, closes })
@@ -115,6 +117,32 @@ describe('openingHoursSchema', () => {
   })
 })
 
+describe('isGameWithinHours', () => {
+  // 23/10/2026 é sexta (17–02); 26/10 é segunda (17–00).
+  test('vale o início do jogo, inclusive depois da meia-noite', () => {
+    expect(isGameWithinHours(ZE, brt('2026-10-23T22:00:00'))).toBe(true)
+    expect(isGameWithinHours(ZE, brt('2026-10-24T01:30:00'))).toBe(true)
+    expect(isGameWithinHours(ZE, brt('2026-10-24T02:00:00'))).toBe(false)
+    expect(isGameWithinHours(ZE, brt('2026-10-23T16:00:00'))).toBe(false)
+  })
+
+  test('o fim não conta: jogo das 23:00 num bar que fecha à meia-noite', () => {
+    expect(isGameWithinHours(ZE, brt('2026-10-26T23:00:00'))).toBe(true)
+  })
+
+  test('dia fechado é fora; bar sem horário não diz', () => {
+    const hours: OpeningHours = [...ZE]
+    hours[1] = null
+    expect(isGameWithinHours(hours, brt('2026-10-26T21:00:00'))).toBe(false)
+    expect(isGameWithinHours(null, brt('2026-10-26T21:00:00'))).toBeNull()
+  })
+
+  test('no relógio de Brasília, seja qual for o fuso do instante', () => {
+    // 00:30 UTC de sábado é 21:30 de sexta em Brasília.
+    expect(isGameWithinHours(ZE, new Date('2026-10-24T00:30:00Z'))).toBe(true)
+  })
+})
+
 describe('openingStatus', () => {
   // 24/10/2026 é sábado.
   test('aberto, com a hora de fechar e a faixa de hoje', () => {
@@ -157,5 +185,48 @@ describe('openingStatus', () => {
   })
   test('sem horário, nada', () => {
     expect(openingStatus(null, new Date())).toBeNull()
+  })
+})
+
+describe('openingTurn', () => {
+  test('aberto diz quando fecha, inclusive na faixa de ontem', () => {
+    expect(openingTurn(ZE, brt('2026-10-23T18:00:00'))).toEqual({
+      open: true,
+      closes: '02:00'
+    })
+    expect(openingTurn(ZE, brt('2026-10-24T01:00:00'))).toEqual({
+      open: true,
+      closes: '02:00'
+    })
+  })
+
+  test('fechado diz quando abre: hoje, amanhã ou adiante', () => {
+    expect(openingTurn(ZE, brt('2026-10-23T10:00:00'))).toEqual({
+      open: false,
+      opens: '17:00',
+      inDays: 0,
+      day: 5
+    })
+    // Domingo 23:00: fechou às 22h, abre segunda.
+    expect(openingTurn(ZE, brt('2026-10-25T23:00:00'))).toEqual({
+      open: false,
+      opens: '17:00',
+      inDays: 1,
+      day: 1
+    })
+    const sexta: OpeningHours = Array(7).fill(null)
+    sexta[5] = day('18:00', '23:00')
+    // Sexta 23:30: só abre na sexta seguinte.
+    expect(openingTurn(sexta, brt('2026-10-23T23:30:00'))).toEqual({
+      open: false,
+      opens: '18:00',
+      inDays: 7,
+      day: 5
+    })
+  })
+
+  test('sem horário não diz nada', () => {
+    expect(openingTurn(null, new Date())).toBeNull()
+    expect(openingTurn(Array(7).fill(null), new Date())).toBeNull()
   })
 })

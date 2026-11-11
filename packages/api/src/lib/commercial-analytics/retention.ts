@@ -1,6 +1,6 @@
 import { db, sql } from '@findsports_oficial/db'
+import { brasiliaDay } from '@findsports_oficial/db/event-window'
 import { analyticsRetentionRun } from '@findsports_oficial/db/schema/analytics'
-import { getCommercialDay } from './commercial-day'
 
 // ---------------------------------------------------------------------------
 // Retention cleanup (idempotent, safe to run multiple times)
@@ -55,9 +55,9 @@ async function finalizarDiasFechados(agora: Date): Promise<number> {
   // `CURRENT_DATE`. `commercial_day` é gravado nesse fuso, mas `CURRENT_DATE`
   // sai do relógio do servidor — em UTC, das 21h à meia-noite de São Paulo ele
   // já é o dia seguinte, e a consolidação fechava um dia que ainda estava
-  // recebendo evento. Vem do mesmo `getCommercialDay` que grava o bruto, para
+  // recebendo evento. Vem do mesmo `brasiliaDay` que grava o bruto, para
   // não existir uma segunda definição de "hoje".
-  const hoje = getCommercialDay(agora)
+  const hoje = brasiliaDay(agora)
 
   // O piso sai da própria projeção que está sendo escrita, não de uma data
   // compartilhada: se a primeira instrução consolidar e a segunda falhar, a
@@ -182,7 +182,7 @@ export async function runAnalyticsRetention(options: {
   // WEB-110: o corte da poda também é dia comercial, pelo mesmo motivo do teto
   // da consolidação — `commercial_day` vive em `America/Sao_Paulo`, e derivar a
   // data em UTC deslocava a janela em um dia durante três horas por dia.
-  const cutoffDay = getCommercialDay(
+  const cutoffDay = brasiliaDay(
     new Date(agora.getTime() - retentionDays * 24 * 60 * 60 * 1000)
   )
 

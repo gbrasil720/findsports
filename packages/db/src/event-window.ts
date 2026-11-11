@@ -1,20 +1,20 @@
 /**
- * Fonte única do tempo derivado de um jogo (WEB-119).
+ * Relógio do jogo: o fim derivado (WEB-119, ADR 0003) e o dia de Brasília.
  *
  * `event.endsAt` é opcional: o bar informa o início e, quase nunca, o fim.
  * Toda regra que depende de "o jogo acabou" — perfil público, rótulo ao vivo,
  * avaliação, relatório comercial, validação de código de reserva — precisa do
- * MESMO fim, ou uma tela diz "ao vivo" enquanto outra já recusa o código.
+ * MESMO fim, ou uma tela diz "ao vivo" enquanto outra já recusa o código. E
+ * "hoje" é sempre o dia de Brasília, onde os bares estão, nunca o do fuso do
+ * processo ou do navegador.
  *
- * Por isso nenhum outro arquivo soma a duração padrão por conta própria:
- * TypeScript chama `getEventEnd`, SQL usa `DEFAULT_EVENT_DURATION_INTERVAL`.
+ * Nenhum outro arquivo soma a duração padrão nem calcula o dia por conta
+ * própria. Em SQL, os mesmos nomes estão em `./event-window-sql` (só
+ * servidor), e um teste de integração confere que os dois lados concordam.
  *
- * Módulo sem imports de propósito: é lido pelo navegador
+ * Módulo sem imports de propósito: é lido pelo navegador e pelo app
  * (`@findsports_oficial/db/event-window`) e não pode arrastar driver de banco.
  */
-
-// O dia de Brasília (WEB-441, WEB-449): o resumo da semana e o interesse do
-// dia contam a partir da meia-noite dos bares.
 
 /** O fuso dos bares. O Brasil não tem horário de verão desde 2019, mas o fuso guarda o histórico. */
 export const BRASILIA_TIME_ZONE = 'America/Sao_Paulo'
@@ -119,6 +119,29 @@ type EventTimes = {
 export function getEventEnd({ startsAt, endsAt }: EventTimes): Date {
   if (endsAt) return new Date(endsAt)
   return new Date(new Date(startsAt).getTime() + DEFAULT_EVENT_DURATION_MS)
+}
+
+/**
+ * Ao vivo: começou e não chegou ao fim derivado. O fim é exclusivo — no
+ * instante do fim o jogo já acabou, como em `eventEndedSql`.
+ */
+export function isEventLive(
+  event: EventTimes,
+  now: Date | number = Date.now()
+) {
+  const nowMs = new Date(now).getTime()
+  return (
+    new Date(event.startsAt).getTime() <= nowMs &&
+    nowMs < getEventEnd(event).getTime()
+  )
+}
+
+/** Acabou: o fim derivado chegou. Avaliação e "Você foi?" abrem aqui. */
+export function hasEventEnded(
+  event: EventTimes,
+  now: Date | number = Date.now()
+) {
+  return getEventEnd(event).getTime() <= new Date(now).getTime()
 }
 
 /**

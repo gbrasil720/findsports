@@ -1,10 +1,5 @@
 import { useMutation } from '@tanstack/react-query'
-import {
-  createFileRoute,
-  Link,
-  useLocation,
-  useNavigate
-} from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Check from 'reicon-react/icons/Check'
 import Envelope from 'reicon-react/icons/Envelope'
@@ -33,7 +28,7 @@ import {
 } from '@/lib/pub-onboarding-draft'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { PUB_LIVE_PATH } from '@/utils/auth-guards'
-import { getCallbackUrl, withCallbackUrl } from '@/utils/callback-url'
+import { useCallbackUrl, withCallbackUrl } from '@/utils/callback-url'
 import { useTRPC } from '@/utils/trpc'
 
 const PANEL: AuthPanel = {
@@ -62,7 +57,7 @@ function VerifyEmailPage() {
   const navigate = useNavigate()
   // Vem no link do e-mail (WEB-211): a aba aberta por ele não tem o
   // `sessionStorage` da aba do cadastro.
-  const callbackUrl = getCallbackUrl(useLocation().href)
+  const callbackUrl = useCallbackUrl()
   const trpc = useTRPC()
   const continuing = useRef(false)
   const [email, setEmail] = useState('')

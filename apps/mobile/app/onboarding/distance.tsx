@@ -1,58 +1,39 @@
-import { useQuery } from '@tanstack/react-query'
-import * as Location from 'expo-location'
-import { useRouter } from 'expo-router'
+import { brasiliaDay } from '@findsports_oficial/db/event-window'
+import { keepPreviousData, useQueries, useQuery } from '@tanstack/react-query'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
+import { Platform, Pressable, StyleSheet, View } from 'react-native'
+import MapView, { Marker } from 'react-native-maps'
+import { MapDrop, MeDot, QuietDot, RadiusCircle } from '@/components/explore'
+import { DayRow } from '@/components/explore-board'
+import { useExploreState } from '@/components/explore-state'
+import { haptic } from '@/components/motion'
+import { AcidButton, NoteStrong, ObPage, ObTitle } from '@/components/ob-frame'
 import {
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View
-} from 'react-native'
-import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming
-} from 'react-native-reanimated'
-import { Glass } from '@/components/glass'
-import { SWAP } from '@/components/motion'
-import {
-  OnboardingTop,
+  OnboardingCard,
   type Radius,
-  RadiusTile,
   useOnboarding
 } from '@/components/onboarding'
-import {
-  ACID,
-  DROP,
-  FG,
-  FIELD,
-  Field,
-  INK,
-  LINE,
-  LINE_STRONG,
-  PillButton,
-  Screen,
-  SUB,
-  Title,
-  text,
-  themed
-} from '@/components/ui'
+import { usePalette } from '@/components/theme'
+import { ACID, Icon, INK, Text, TextInput, text } from '@/components/ui'
+import { SAO_PAULO } from '@/lib/explore'
+import { MAP_STYLE } from '@/lib/map-style'
 import { trpc } from '@/lib/trpc'
 
 /*
- * 4l, "Distância": cidade (opcional, da lista) e raio. O círculo no mapa
- * cresce com o raio, e a contagem é real: bares no ar com jogo hoje no raio
- * em volta do centro da cidade (`pubs.countTodayNear`).
+ * 4 · Onde, depois do pedido (rodada 2 do redesign, tela 4b):
+ * - sem a localização, "Qual cidade?": a busca de cidades com quantos bares
+ *   têm jogo hoje em cada uma, e "Continuar com São Paulo";
+ * - com ela (ou com a cidade escolhida), o raio: o mapa com as gotas de
+ *   verdade, o círculo tracejado e o seu ponto, e o seletor de distância. A
+ *   nota conta os bares com jogo hoje no raio (`pubs.countTodayNear`).
+ * A carteirinha acende a Base na cidade e o Raio no raio.
  */
 
 const RADII: Radius[] = [1, 3, 5, 10]
-// Diâmetro do círculo no mapa de 170 de altura; 10 km passa da borda.
-const CIRCLE: Record<Radius, number> = { 1: 64, 3: 150, 5: 210, 10: 330 }
-// Mudar de tamanho na tela é movimento sobre a tela: ease-in-out.
-const MORPH = Easing.bezier(0.77, 0, 0.175, 1)
+const MAP_HEIGHT = 220
+/** O diâmetro do círculo na tela; o zoom sai dele. */
+const CIRCLE: Record<Radius, number> = { 1: 110, 3: 190, 5: 230, 10: 300 }
 
 /** O texto digitado, só depois de 200 ms parado. */
 function useDebounced(value: string) {
@@ -64,214 +45,380 @@ function useDebounced(value: string) {
   return settled
 }
 
-export default function Distance() {
-  const router = useRouter()
-  const dark = useColorScheme() === 'dark'
-  const { choices, set } = useOnboarding()
-  const label = (city: { name: string; uf: string }) =>
-    `${city.name}, ${city.uf}`
-  const [typed, setTyped] = useState(choices.city ? label(choices.city) : '')
-  const query = useDebounced(typed.trim())
-  const picking = !choices.city || typed !== label(choices.city)
+type City = { name: string; uf: string; lat: number; lng: number }
 
-  const suggestions = useQuery({
-    ...trpc.pubs.searchCities.queryOptions({ query }),
-    enabled: picking && query.length >= 2
-  })
-  const count = useQuery({
-    ...trpc.pubs.countTodayNear.queryOptions({
-      lat: choices.city?.lat ?? 0,
-      lng: choices.city?.lng ?? 0,
-      radiusKm: choices.radius
-    }),
-    enabled: !!choices.city
-  })
-
-  // Tamanho, e não escala: a escala engrossaria a borda junto. O círculo é
-  // absoluto e sem filhos, então mudar o tamanho não refaz o layout de mais
-  // ninguém.
-  const size = useSharedValue(CIRCLE[choices.radius])
-  useEffect(() => {
-    size.value = withTiming(CIRCLE[choices.radius], {
-      duration: 320,
-      easing: MORPH
-    })
-  }, [choices.radius, size])
-  const circle = useAnimatedStyle(() => ({
-    width: size.value,
-    height: size.value,
-    borderRadius: size.value / 2
-  }))
-
-  // Texto que não é uma cidade da lista não vale: segue sem cidade.
-  const pending = typed.trim().length > 0 && picking
-
-  const next = async () => {
-    const { status } = await Location.getForegroundPermissionsAsync()
-    router.push(
-      status === 'undetermined' ? '/onboarding/location' : '/onboarding/review'
-    )
-  }
-
+/** Destaca no nome o que foi digitado ("São" em "São Paulo"). */
+function Marked({
+  name,
+  typed,
+  on
+}: {
+  name: string
+  typed: string
+  on: boolean
+}) {
+  // Sem acento dos dois lados: "sao" acende "São". Tirar o acento não muda
+  // o tamanho, então a posição vale no nome original.
+  const fold = (value: string) =>
+    value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLocaleLowerCase('pt-BR')
+  const at = fold(name).indexOf(fold(typed))
+  if (!typed || at < 0) return <>{name}</>
   return (
-    <Screen
-      gap={14}
-      padding={18}
-      footer={
-        <PillButton label="Continuar" disabled={pending} onPress={next} />
-      }
-    >
-      <OnboardingTop step={4} />
-      <View style={{ marginTop: 8 }}>
-        <Title lines={[['Quão longe você topa ir?']]} size={36} />
-      </View>
-      <Text style={[text(15, 'Regular', 1.45), { color: SUB, marginTop: -4 }]}>
-        Sua cidade e a distância definem quais bares aparecem pra você.
+    <>
+      {name.slice(0, at)}
+      <Text style={[styles.mark, on && { backgroundColor: ACID }]}>
+        {name.slice(at, at + typed.length)}
       </Text>
-      <View style={{ gap: 6 }}>
-        <Field
-          label="Sua cidade"
-          icon="pin"
-          placeholder="Ex: São Paulo"
-          autoCorrect={false}
-          value={typed}
-          onChangeText={(value) => {
-            setTyped(value)
-            if (choices.city && value !== label(choices.city))
-              set({ city: null })
-          }}
-        />
-        {picking && (suggestions.data?.length ?? 0) > 0 ? (
-          <Animated.View entering={SWAP} style={styles.suggestions}>
-            {suggestions.data?.map((city) => (
-              <Pressable
-                key={`${city.name}-${city.uf}`}
-                accessibilityRole="button"
-                onPress={() => {
-                  set({ city })
-                  setTyped(label(city))
-                }}
-                style={({ pressed }) => [
-                  styles.suggestion,
-                  pressed && { backgroundColor: PRESSED }
-                ]}
-              >
-                <Text style={[text(15, 'SemiBold'), { color: FG }]}>
-                  {city.name}
-                </Text>
-                <Text style={[text(13), { color: SUB }]}>{city.uf}</Text>
-              </Pressable>
-            ))}
-          </Animated.View>
-        ) : null}
-        <Text style={[text(12.5), { color: SUB }]}>
-          {pending
-            ? 'Escolha a cidade na lista, ou apague para seguir sem ela.'
-            : 'Opcional. Sem a localização do celular, a busca parte do centro dela.'}
-        </Text>
-      </View>
-      <View style={styles.mapWrap}>
-        <View style={styles.mapShadow} />
-        <View style={styles.map}>
-          <Image
-            source={
-              dark
-                ? require('../../assets/images/intro/map-dark.jpg')
-                : require('../../assets/images/intro/map.jpg')
-            }
-            style={{ width: '100%', height: '100%' }}
-            resizeMode="cover"
-          />
-          <Animated.View style={[styles.circle, circle]} />
-          <View style={styles.you} />
-          {choices.city && count.data ? (
-            <View style={styles.count}>
-              <Glass tone={dark ? 'dark' : 'light'} style={styles.countGlass}>
-                <Animated.Text
-                  key={count.data.bars}
-                  entering={SWAP}
-                  style={[text(13.5, 'SemiBold'), { color: FG }]}
-                >
-                  <Text style={text(13.5, 'Bold')}>
-                    {count.data.bars} {count.data.bars === 1 ? 'bar' : 'bares'}
-                  </Text>{' '}
-                  com jogo hoje
-                </Animated.Text>
-              </Glass>
-            </View>
-          ) : null}
-        </View>
-      </View>
-      <View style={{ flexDirection: 'row', gap: 8 }}>
-        {RADII.map((km) => (
-          <RadiusTile
-            key={km}
-            km={km}
-            selected={choices.radius === km}
-            onPress={() => set({ radius: km })}
-          />
-        ))}
-      </View>
-    </Screen>
+      {name.slice(at + typed.length)}
+    </>
   )
 }
 
-const PRESSED = themed('rgba(18,18,15,.05)', 'rgba(241,238,230,.06)')
+function CityStep({ onPick }: { onPick: (city: City) => void }) {
+  const palette = usePalette()
+  const { choices, set } = useOnboarding()
+  const [typed, setTyped] = useState(choices.city?.name ?? '')
+  const query = useDebounced(typed.trim())
+  const found = useQuery({
+    ...trpc.pubs.searchCities.queryOptions({ query }),
+    enabled: query.length >= 2,
+    placeholderData: keepPreviousData
+  })
+  const cities = (found.data ?? []).slice(0, 4)
+  const counts = useQueries({
+    queries: cities.map((city) =>
+      trpc.pubs.countTodayNear.queryOptions({
+        lat: city.lat,
+        lng: city.lng,
+        radiusKm: 10
+      })
+    )
+  })
+  const chosen = choices.city ?? cities[0] ?? null
+  const chosenCount = counts[cities.findIndex((c) => c === chosen)]?.data?.bars
+  return (
+    <ObPage
+      step={4}
+      onSkip={() => chosen && onPick(chosen)}
+      note={
+        chosen ? (
+          <>
+            O mapa abre no centro da cidade
+            {chosenCount !== undefined ? (
+              <>
+                {' · '}
+                <NoteStrong>
+                  {chosenCount} {chosenCount === 1 ? 'bar' : 'bares'}
+                </NoteStrong>{' '}
+                com jogo hoje
+              </>
+            ) : null}
+          </>
+        ) : undefined
+      }
+      cta={
+        <AcidButton
+          label={chosen ? `Continuar com ${chosen.name}` : 'Continuar'}
+          disabled={!chosen}
+          onPress={() => chosen && onPick(chosen)}
+        />
+      }
+    >
+      <OnboardingCard lit="base" base baseName={chosen?.name} />
+      <ObTitle plain="Qual" hot="cidade?" size={32} />
+      <View
+        style={[
+          styles.field,
+          { backgroundColor: palette.card, borderColor: palette.ink }
+        ]}
+      >
+        <Icon name="search" size={20} color={palette.muted} />
+        <TextInput
+          value={typed}
+          onChangeText={setTyped}
+          placeholder="Sua cidade"
+          placeholderTextColor={palette.muted}
+          autoCorrect={false}
+          style={[styles.input, { color: palette.ink }]}
+        />
+        {typed ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Apagar"
+            hitSlop={10}
+            onPress={() => setTyped('')}
+          >
+            <Icon name="close" size={18} color={palette.muted} />
+          </Pressable>
+        ) : null}
+      </View>
+      {cities.length ? (
+        <View
+          style={[
+            styles.cities,
+            { backgroundColor: palette.card, shadowColor: palette.drop }
+          ]}
+        >
+          {cities.map((city, index) => {
+            const on =
+              chosen === city ||
+              (choices.city?.name === city.name && choices.city?.uf === city.uf)
+            const bars = counts[index]?.data?.bars
+            const fg = on ? palette.bg : palette.ink
+            return (
+              <Pressable
+                key={`${city.name}-${city.uf}`}
+                accessibilityRole="button"
+                accessibilityState={{ selected: on }}
+                onPress={() => {
+                  haptic.select()
+                  set({ city })
+                }}
+                style={[
+                  styles.city,
+                  on && { backgroundColor: palette.ink, borderRadius: 16 },
+                  index > 0 &&
+                    !on && {
+                      borderTopWidth: StyleSheet.hairlineWidth,
+                      borderTopColor: palette.line
+                    }
+                ]}
+              >
+                <Icon name="pin" size={20} color={fg} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text
+                    numberOfLines={1}
+                    style={[text(15, 'SemiBold', 1.25), { color: fg }]}
+                  >
+                    <Marked name={city.name} typed={query} on={on} />
+                  </Text>
+                  <Text
+                    style={[
+                      text(12.5, 'Regular', 1.3),
+                      { color: fg, opacity: 0.75 }
+                    ]}
+                  >
+                    {city.uf} ·{' '}
+                    {city.bars
+                      ? `${city.bars} ${city.bars === 1 ? 'bar' : 'bares'}`
+                      : '0 bares ainda'}
+                  </Text>
+                </View>
+                {bars === undefined ? null : bars ? (
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text
+                      style={[
+                        styles.cityCount,
+                        { color: on ? fg : palette.ink }
+                      ]}
+                    >
+                      {bars}
+                    </Text>
+                    <Text
+                      style={[styles.cityLabel, { color: fg, opacity: 0.75 }]}
+                    >
+                      {index === 0 ? 'com jogo hoje' : 'hoje'}
+                    </Text>
+                  </View>
+                ) : (
+                  <Text
+                    style={[
+                      styles.cityLabel,
+                      { color: fg, opacity: 0.6, textAlign: 'right' }
+                    ]}
+                  >
+                    {'avisamos\nquando chegar'}
+                  </Text>
+                )}
+              </Pressable>
+            )
+          })}
+        </View>
+      ) : null}
+    </ObPage>
+  )
+}
+
+function RadiusStep({ center }: { center: { lat: number; lng: number } }) {
+  const router = useRouter()
+  const palette = usePalette()
+  const { choices, set } = useOnboarding()
+  const { volta } = useLocalSearchParams<{ volta?: string }>()
+  const [day] = useState(() => brasiliaDay(Date.now()))
+  const count = useQuery({
+    ...trpc.pubs.countTodayNear.queryOptions({
+      ...center,
+      radiusKm: choices.radius
+    }),
+    placeholderData: keepPreviousData
+  })
+  const board = useQuery({
+    ...trpc.pubs.gameBoard.queryOptions({
+      ...center,
+      radiusKm: choices.radius,
+      day
+    }),
+    placeholderData: keepPreviousData
+  })
+  const quiet = useQuery({
+    ...trpc.pubs.barsWithoutGame.queryOptions({
+      ...center,
+      radiusKm: choices.radius,
+      day
+    }),
+    enabled: count.data?.bars === 0
+  })
+  const bars = [
+    ...new Map(
+      (board.data?.games ?? []).flatMap((game) =>
+        game.bars.map((bar) => [bar.barId, bar] as const)
+      )
+    ).values()
+  ]
+  const span =
+    ((choices.radius * 2) / 111) * (MAP_HEIGHT / CIRCLE[choices.radius])
+  const n = count.data?.bars
+  const quietCount = quiet.data?.length ?? 0
+  const next = () => (volta ? router.back() : router.push('/onboarding/review'))
+  return (
+    <ObPage
+      step={4}
+      onSkip={volta ? undefined : next}
+      note={
+        n === undefined ? undefined : n ? (
+          <>
+            <NoteStrong>
+              {n} {n === 1 ? 'bar' : 'bares'}
+            </NoteStrong>{' '}
+            com jogo hoje no raio
+          </>
+        ) : quietCount ? (
+          <>
+            <NoteStrong>
+              {quietCount} {quietCount === 1 ? 'bar' : 'bares'}
+            </NoteStrong>{' '}
+            no raio · nenhum com jogo marcado hoje
+          </>
+        ) : (
+          `Nenhum bar até ${choices.radius} km ainda`
+        )
+      }
+      cta={<AcidButton label="Continuar" onPress={next} />}
+    >
+      <OnboardingCard lit="radius" radius base />
+      <View style={[styles.map, { backgroundColor: palette.mark }]}>
+        <MapView
+          style={StyleSheet.absoluteFill}
+          region={{
+            latitude: center.lat,
+            longitude: center.lng,
+            latitudeDelta: span,
+            longitudeDelta: span
+          }}
+          mapType={Platform.OS === 'ios' ? 'mutedStandard' : 'standard'}
+          customMapStyle={palette.dark ? MAP_STYLE.dark : MAP_STYLE.light}
+          userInterfaceStyle={palette.dark ? 'dark' : 'light'}
+          showsPointsOfInterests={false}
+          scrollEnabled={false}
+          zoomEnabled={false}
+          rotateEnabled={false}
+          pitchEnabled={false}
+          toolbarEnabled={false}
+          pointerEvents="none"
+        >
+          <RadiusCircle
+            center={{ latitude: center.lat, longitude: center.lng }}
+            km={choices.radius}
+            dark={palette.dark}
+          />
+          {bars.slice(0, 12).map((bar) => (
+            <Marker
+              key={bar.barId}
+              coordinate={{ latitude: bar.latitude, longitude: bar.longitude }}
+              tracksViewChanges={false}
+            >
+              <MapDrop live={false} elite={bar.elite} dark={palette.dark} />
+            </Marker>
+          ))}
+          {(quiet.data ?? []).slice(0, 12).map((bar) => (
+            <Marker
+              key={bar.barId}
+              coordinate={{ latitude: bar.latitude, longitude: bar.longitude }}
+              anchor={{ x: 0.5, y: 0.5 }}
+              tracksViewChanges={false}
+            >
+              <QuietDot dark={palette.dark} />
+            </Marker>
+          ))}
+        </MapView>
+        <View pointerEvents="none" style={styles.me}>
+          <MeDot />
+        </View>
+      </View>
+      <DayRow
+        days={RADII.map((km) => ({ day: String(km), label: `${km} km` }))}
+        value={String(choices.radius)}
+        onChange={(km) => set({ radius: Number(km) as Radius })}
+        stretch
+      />
+    </ObPage>
+  )
+}
+
+export default function Distance() {
+  const { choices } = useOnboarding()
+  const { device } = useExploreState()
+  const { cidade } = useLocalSearchParams<{ cidade?: string }>()
+  // Sem a localização, a cidade primeiro; escolhida, o raio dela.
+  const [confirmed, setConfirmed] = useState(!cidade && Boolean(choices.city))
+  if (device) return <RadiusStep center={device} />
+  if (!confirmed || !choices.city)
+    return (
+      <CityStep
+        onPick={() => {
+          haptic.select()
+          setConfirmed(true)
+        }}
+      />
+    )
+  return <RadiusStep center={choices.city ?? SAO_PAULO} />
+}
 
 const styles = StyleSheet.create({
-  suggestions: {
-    borderRadius: 5,
-    backgroundColor: FIELD,
-    borderWidth: 1,
-    borderColor: LINE_STRONG,
-    overflow: 'hidden'
-  },
-  suggestion: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-    paddingHorizontal: 14,
-    paddingVertical: 12
-  },
-  mapWrap: { height: 170 },
-  mapShadow: {
-    position: 'absolute',
-    top: 4,
-    left: 4,
-    right: -4,
-    bottom: -4,
-    borderRadius: 6,
-    backgroundColor: DROP
-  },
-  map: {
-    flex: 1,
-    borderRadius: 6,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: LINE
-  },
-  circle: {
-    position: 'absolute',
-    backgroundColor: 'rgba(201,241,53,.22)',
+  field: {
+    height: 52,
+    borderRadius: 16,
     borderWidth: 2,
-    borderColor: FG
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14
   },
-  you: {
-    position: 'absolute',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 3,
-    borderColor: INK,
-    backgroundColor: ACID
+  input: { flex: 1, fontFamily: 'Archivo-Regular', fontSize: 16 },
+  cities: {
+    borderRadius: 20,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
   },
-  count: { position: 'absolute', right: 10, bottom: 10 },
-  countGlass: {
-    height: 38,
-    paddingHorizontal: 15,
-    borderRadius: 19,
+  city: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 13,
+    paddingHorizontal: 14,
+    minHeight: 52
+  },
+  mark: { backgroundColor: ACID, color: INK },
+  cityCount: { fontFamily: 'Anton', fontSize: 22, marginVertical: -5 },
+  cityLabel: { fontFamily: 'GeistMono-SemiBold', fontSize: 12 },
+  map: { height: MAP_HEIGHT, borderRadius: 24, overflow: 'hidden' },
+  me: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
     justifyContent: 'center'
   }
 })

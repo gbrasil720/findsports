@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'bun:test'
-import { computeAchievements, levelFor, type Visit } from './achievements'
+import {
+  computeAchievements,
+  levelFor,
+  type Visit,
+  weekStreak
+} from './achievements'
 import { sharePercent } from './achievements-read'
 
 const day = (n: number) => new Date(Date.UTC(2026, 8, n, 22))
@@ -80,5 +85,34 @@ describe('sharePercent', () => {
     expect(sharePercent(1, 1000)).toBe(1)
     expect(sharePercent(0, 1000)).toBe(0)
     expect(sharePercent(12, 100)).toBe(12)
+  })
+})
+
+describe('weekStreak', () => {
+  // Quarta, 11/11/2026, 20:00 em Brasília.
+  const now = new Date('2026-11-11T23:00:00Z')
+  const at = (iso: string) => ({ at: new Date(iso) })
+  it('conta as semanas seguidas, desta para trás', () => {
+    expect(
+      weekStreak(
+        [
+          at('2026-11-10T22:00:00Z'),
+          at('2026-11-05T22:00:00Z'),
+          at('2026-10-27T22:00:00Z')
+        ],
+        now
+      )
+    ).toBe(3)
+  })
+  it('sem visita nesta semana, começa na passada', () => {
+    expect(weekStreak([at('2026-11-05T22:00:00Z')], now)).toBe(1)
+  })
+  it('um buraco quebra a sequência', () => {
+    expect(
+      weekStreak([at('2026-11-10T22:00:00Z'), at('2026-10-27T22:00:00Z')], now)
+    ).toBe(1)
+  })
+  it('sem visita, zero', () => {
+    expect(weekStreak([], now)).toBe(0)
   })
 })

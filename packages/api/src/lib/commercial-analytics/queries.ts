@@ -1,11 +1,15 @@
 import type { SubscriptionPlan } from '@findsports_oficial/db'
 import { db, eq, sql } from '@findsports_oficial/db'
+import { brasiliaDay } from '@findsports_oficial/db/event-window'
+import {
+  brasiliaDaySql,
+  eventEndSql
+} from '@findsports_oficial/db/event-window-sql'
 import { bar } from '@findsports_oficial/db/schema/platform'
 import { TRPCError } from '@trpc/server'
-import { EVENT_LIVE_WINDOW_HOURS } from '../event-profile-window'
+import { brasiliaWindows } from '../ai/limits'
 import { gameTitle } from '../game-participants'
 import { utcIso } from '../utc-timestamp'
-import { COMMERCIAL_TIME_ZONE, getCommercialDay } from './commercial-day'
 import { buildEventComparison } from './comparison'
 import { getAnalyticsPlan } from './entitlements'
 import type {
@@ -148,8 +152,8 @@ async function buscarDiasPodados(
     FROM bar_commercial_daily_rollup r
     WHERE r.bar_id = ${barId}
       AND r.is_finalized = true
-      AND r.commercial_day >= ${getCommercialDay(prev.start)}::date
-      AND r.commercial_day <= ${getCommercialDay(to)}::date
+      AND r.commercial_day >= ${brasiliaDay(prev.start)}::date
+      AND r.commercial_day <= ${brasiliaDay(to)}::date
       AND NOT EXISTS (
         SELECT 1
         FROM bar_commercial_event e
@@ -294,10 +298,10 @@ export async function getMyAnalyticsOverview(
   const diasPodados = await buscarDiasPodados(barId, prev, to)
   if (diasPodados.length > 0) {
     limitations.push('distinct_counts_are_daily_sums_after_retention')
-    const atualIni = getCommercialDay(from)
-    const atualFim = getCommercialDay(to)
-    const anteriorIni = getCommercialDay(prev.start)
-    const anteriorFim = getCommercialDay(prev.end)
+    const atualIni = brasiliaDay(from)
+    const atualFim = brasiliaDay(to)
+    const anteriorIni = brasiliaDay(prev.start)
+    const anteriorFim = brasiliaDay(prev.end)
 
     for (const dia of diasPodados) {
       const noAtual = dia.date >= atualIni && dia.date <= atualFim
@@ -379,8 +383,8 @@ export async function getMyAnalyticsOverview(
     classicClicksChange: pctChange(classicClicks, classicClicksPrev),
     dailyProfileViews,
     dailyHighIntentActions,
-    from: getCommercialDay(from),
-    to: getCommercialDay(to),
+    from: brasiliaDay(from),
+    to: brasiliaDay(to),
     limitations
   }
 }
@@ -434,8 +438,8 @@ async function getEventAnalyticsSnapshots(
       FROM bar_commercial_event_daily_rollup r
       WHERE r.bar_id = ${barId}
         AND r.is_finalized = true
-        AND r.commercial_day >= ${getCommercialDay(from)}::date
-        AND r.commercial_day <= ${getCommercialDay(to)}::date
+        AND r.commercial_day >= ${brasiliaDay(from)}::date
+        AND r.commercial_day <= ${brasiliaDay(to)}::date
         AND NOT EXISTS (
           SELECT 1
           FROM bar_commercial_event bce
@@ -455,17 +459,12 @@ async function getEventAnalyticsSnapshots(
       GREATEST(
         EXTRACT(
           EPOCH FROM (
-            COALESCE(
-              e.ends_at,
-              e.starts_at + (${EVENT_LIVE_WINDOW_HOURS} * interval '1 hour')
-            ) - e.starts_at
+            ${eventEndSql('e')} - e.starts_at
           )
         ) / 3600,
         0.25
       ) AS window_hours,
-      EXTRACT(
-        ISODOW FROM (e.starts_at AT TIME ZONE ${COMMERCIAL_TIME_ZONE})
-      ) AS weekday,
+      EXTRACT(ISODOW FROM ${brasiliaDaySql(sql`e.starts_at`)}) AS weekday,
       COALESCE(bruto.unique_visitors, 0) AS unique_visitors,
       COALESCE(bruto.interested_people, 0) AS interested_people,
       COALESCE(bruto.profile_views, 0) + COALESCE(podado.profile_views, 0) AS profile_views,
@@ -580,8 +579,8 @@ export async function getMyEventAnalytics(
 
   const response: EventAnalyticsResponse = {
     events,
-    from: getCommercialDay(from),
-    to: getCommercialDay(to)
+    from: brasiliaDay(from),
+    to: brasiliaDay(to)
   }
 
   if (options?.comparisonTarget) {
@@ -598,14 +597,27 @@ export async function getMyEventAnalytics(
 }
 
 /**
- * Os números do bar num período `[start, end)` (WEB-441), lidos pelo resumo
- * da semana por e-mail:
- * - `going`: presenças marcadas ("Vou assistir aqui") nos jogos do bar, pela
- *   data do jogo;
+ * O que o plano rendeu no mês de Brasília que contém `now` (Plano e cobrança,
+ * 3o e 3q; WEB-446):
+ * - `going`: presenças marcadas ("Vou assistir aqui") nos jogos do bar do mês,
+ *   pela data do jogo;
  * - `validatedCodes`: códigos validados no balcão e não desfeitos. O lançado
  *   depois pela comanda (`late`, WEB-412) conta na data do jogo, como a visita;
- * - `classicsOnTop`: clássicos em que o bar apareceu no topo da busca;
- * - `profileViews`: aberturas do perfil (a "Aberturas" do Desempenho).
+ * - `classicsOnTop`: clássicos em que o bar apareceu no topo da busca (jogos
+ *   distintos com `classic_exposure` no mês).
+ *
+ * Os brutos de analytics ficam 395 dias, então o mês corrente nunca depende
+ * dos rollups.
+ */
+export async function getMonthNumbers(barId: string, now = new Date()) {
+  const { monthStart, nextMonth } = brasiliaWindows(now)
+  return getBarNumbers(barId, monthStart, nextMonth)
+}
+
+/**
+ * Os números de `getMonthNumbers` num período qualquer, `[start, end)`, mais
+ * as aberturas do perfil (`profileViews`, a "Aberturas" do Desempenho). O
+ * resumo da semana por e-mail (WEB-441) lê a semana passada por aqui.
  */
 export async function getBarNumbers(
   barId: string,

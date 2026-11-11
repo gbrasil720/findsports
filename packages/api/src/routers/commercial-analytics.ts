@@ -5,20 +5,17 @@ import {
 } from '@findsports_oficial/db/event-window'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
-import { adminProcedure, fanProcedure, pubProcedure, router } from '../index'
+import { adminProcedure, pubProcedure, router } from '../index'
 import {
   applyEventBreakdownEntitlements,
   applyOverviewEntitlements,
   assertAnalyticsPeriodAllowed,
-  COMMERCIAL_EVENT_TYPES,
-  COMMERCIAL_TIME_ZONE,
-  canViewEventType,
   getAnalyticsEntitlements,
   getComparisonMetrics,
+  getMonthNumbers,
   getMyAnalyticsOverview,
   getMyEventAnalytics,
   getWeekdayInterest,
-  recordCommercialEvent,
   resolveBarAndPlan,
   runAndRecordAnalyticsRetention,
   WEEKDAY_INTEREST_WEEKS
@@ -26,16 +23,6 @@ import {
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/
-const dateTimeParts = new Intl.DateTimeFormat('en-CA', {
-  timeZone: COMMERCIAL_TIME_ZONE,
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-  hourCycle: 'h23'
-})
 
 export const analyticsDateSchema = z
   .string()
@@ -53,48 +40,6 @@ export const comparisonTargetSchema = z.discriminatedUnion('type', [
   })
 ])
 
-function startOfCommercialDay(date: string): Date {
-  const [year, month, day] = date.split('-').map(Number) as [
-    number,
-    number,
-    number
-  ]
-  const target = Date.UTC(year, month - 1, day)
-  let instant = target
-
-  // Duas passagens resolvem o deslocamento IANA sem fixar UTC-3 e continuam
-  // corretas se a regra de horário de verão de São Paulo mudar no futuro.
-  for (let pass = 0; pass < 2; pass += 1) {
-    const parts = Object.fromEntries(
-      dateTimeParts
-        .formatToParts(new Date(instant))
-        .filter((part) => part.type !== 'literal')
-        .map((part) => [part.type, Number(part.value)])
-    )
-    if (
-      parts.year === undefined ||
-      parts.month === undefined ||
-      parts.day === undefined ||
-      parts.hour === undefined ||
-      parts.minute === undefined ||
-      parts.second === undefined
-    ) {
-      throw new Error('Intl não retornou uma data comercial completa')
-    }
-    const observed = Date.UTC(
-      parts.year,
-      parts.month - 1,
-      parts.day,
-      parts.hour,
-      parts.minute,
-      parts.second
-    )
-    instant += target - observed
-  }
-
-  return new Date(instant)
-}
-
 function nextDate(date: string): string {
   const next = new Date(`${date}T00:00:00.000Z`)
   next.setUTCDate(next.getUTCDate() + 1)
@@ -107,10 +52,10 @@ export function parseAnalyticsRange(input: { from: string; to: string }): {
   periodDays: number
 } {
   const from = DATE_ONLY_PATTERN.test(input.from)
-    ? startOfCommercialDay(input.from)
+    ? brasiliaDayStart(input.from)
     : new Date(input.from)
   const to = DATE_ONLY_PATTERN.test(input.to)
-    ? new Date(startOfCommercialDay(nextDate(input.to)).getTime() - 1)
+    ? new Date(brasiliaDayStart(nextDate(input.to)).getTime() - 1)
     : new Date(input.to)
 
   if (from.getTime() > to.getTime()) {
@@ -128,23 +73,6 @@ export function parseAnalyticsRange(input: { from: string; to: string }): {
 }
 
 export const commercialAnalyticsRouter = router({
-  /**
-   * Record a commercial event (fan action on a bar profile).
-   * Authenticated fan only. No impersonation.
-   */
-  recordCommercialEvent: fanProcedure
-    .input(
-      z.object({
-        pubId: z.string().uuid(),
-        type: z.enum(COMMERCIAL_EVENT_TYPES),
-        sourceEventId: z.string().uuid().optional(),
-        recommendationRunId: z.string().uuid().optional()
-      })
-    )
-    .mutation(async ({ ctx, input }) => {
-      return recordCommercialEvent(ctx, input)
-    }),
-
   /**
    * Get analytics overview for the authenticated pub's bar.
    * Tenant-safe: bar derived from session.
@@ -237,10 +165,30 @@ export const commercialAnalyticsRouter = router({
     }),
 
   /**
-   * Interesse do dia contra o normal do mesmo dia da semana (Hoje; WEB-449).
-   * `day` é o dia da casa que a tela mostra; a janela vai da meia-noite dele
-   * até agora, e as quatro semanas de antes cabem no histórico de todos os
-   * planos.
+   * O mês do bar em Plano e cobrança (3o, 3q; WEB-446): presenças marcadas,
+   * códigos validados e clássicos no topo. O que o plano não enxerga vem
+   * nulo, pela mesma regra do analytics por jogo e do overview.
+   */
+  getMyMonthNumbers: pubProcedure.query(async ({ ctx }) => {
+    const { barId, plan } = await resolveBarAndPlan(ctx.session.user.id)
+    const entitlements = getAnalyticsEntitlements(plan)
+    const month = await getMonthNumbers(barId)
+    return {
+      going: entitlements.canViewReservations ? month.going : null,
+      validatedCodes: entitlements.canViewReservations
+        ? month.validatedCodes
+        : null,
+      classicsOnTop: entitlements.canViewClassicPlacement
+        ? month.classicsOnTop
+        : null
+    }
+  }),
+
+  /**
+   * Interesse do dia contra o normal do mesmo dia da semana (Hoje, 1r;
+   * WEB-449). `day` é o dia da casa que a tela mostra; a janela vai da
+   * meia-noite dele até agora, e as quatro semanas de antes cabem no
+   * histórico de todos os planos.
    */
   getMyWeekdayInterest: pubProcedure
     .input(z.object({ day: z.string().date() }))
@@ -270,16 +218,6 @@ export const commercialAnalyticsRouter = router({
     const { plan } = await resolveBarAndPlan(ctx.session.user.id)
     return getAnalyticsEntitlements(plan)
   }),
-
-  /**
-   * Check if a specific event type is accessible for the pub's plan.
-   */
-  canViewEventType: pubProcedure
-    .input(z.object({ eventType: z.string() }))
-    .query(async ({ ctx, input }) => {
-      const { plan } = await resolveBarAndPlan(ctx.session.user.id)
-      return canViewEventType(plan, input.eventType)
-    }),
 
   /**
    * Admin: retenção de analytics (ESC-10).

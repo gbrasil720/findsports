@@ -7,7 +7,8 @@ import {
   type AchievementId,
   computeAchievements,
   levelFor,
-  type Visit
+  type Visit,
+  weekStreak
 } from './achievements'
 import { createTtlCache } from './ttl-cache'
 import { visit } from './visits'
@@ -144,6 +145,8 @@ export async function readAchievements(
   }))
   return {
     level: levelFor(achievements.filter((a) => a.unlockedAt).length),
+    /** Semanas seguidas com visita (rodada 6, o placar do nível). */
+    streak: weekStreak(visitRows, new Date()),
     achievements
   }
 }

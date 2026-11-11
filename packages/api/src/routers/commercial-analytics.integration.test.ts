@@ -19,7 +19,7 @@ import {
 } from '@findsports_oficial/db/schema/platform'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 import { TRPCError } from '@trpc/server'
-import { getCommercialDay } from '../lib/commercial-analytics/commercial-day'
+import { recordCommercialEvent } from '../lib/commercial-analytics/recorder'
 import type { CommercialEventType } from '../lib/commercial-analytics/types'
 import {
   contextFor,
@@ -34,7 +34,7 @@ const integrationTest = isDisposableTestDatabase() ? test : test.skip
 integrationTest(
   'WEB-96: serializa registros paralelos e não aceita o 31º evento na janela',
   async () => {
-    const { db, appRouter } = await load()
+    const { db } = await load()
     const fanUserId = crypto.randomUUID()
     const pubUserId = crypto.randomUUID()
     const barId = crypto.randomUUID()
@@ -90,10 +90,10 @@ integrationTest(
       }))
       await db.insert(event).values(sourceEvents)
 
-      const caller = appRouter.createCaller(contextFor(fanUserId, 'fan', now))
+      const ctx = contextFor(fanUserId, 'fan', now)
       const results = await Promise.allSettled(
         sourceEvents.map((ev) =>
-          caller.commercialAnalytics.recordCommercialEvent({
+          recordCommercialEvent(ctx, {
             pubId: barId,
             type: 'profile_view',
             sourceEventId: ev.id
@@ -170,7 +170,7 @@ integrationTest(
       type,
       sourceEventId,
       occurredAt,
-      commercialDay: getCommercialDay(occurredAt),
+      commercialDay: brasiliaDay(occurredAt),
       createdAt: occurredAt
     })
 
@@ -306,8 +306,8 @@ integrationTest(
       return d
     }
 
-    const diaCorrente = getCommercialDay(dia(-2))
-    const diaAnterior = getCommercialDay(dia(-3))
+    const diaCorrente = brasiliaDay(dia(-2))
+    const diaAnterior = brasiliaDay(dia(-3))
     // 22h30 em São Paulo do dia corrente = 01h30 UTC do dia seguinte. É a
     // janela em que a data do servidor e o dia comercial discordam.
     const agora = new Date(`${diaCorrente}T22:30:00.000-03:00`)
@@ -322,7 +322,7 @@ integrationTest(
       actorUserId: fanId,
       type: 'profile_view' as const,
       occurredAt,
-      commercialDay: getCommercialDay(occurredAt),
+      commercialDay: brasiliaDay(occurredAt),
       createdAt: occurredAt
     })
 
@@ -461,7 +461,7 @@ integrationTest(
           : recentDay
         : null,
       occurredAt,
-      commercialDay: getCommercialDay(occurredAt),
+      commercialDay: brasiliaDay(occurredAt),
       createdAt: occurredAt
     })
 
@@ -824,7 +824,7 @@ integrationTest(
           sourceEventChampionship: 'WEB-103 A',
           sourceEventStartsAt: firstStartsAt,
           occurredAt: firstStartsAt,
-          commercialDay: getCommercialDay(firstStartsAt)
+          commercialDay: brasiliaDay(firstStartsAt)
         },
         {
           id: crypto.randomUUID(),
@@ -835,7 +835,7 @@ integrationTest(
           sourceEventChampionship: 'WEB-103 A',
           sourceEventStartsAt: firstStartsAt,
           occurredAt: firstStartsAt,
-          commercialDay: getCommercialDay(firstStartsAt)
+          commercialDay: brasiliaDay(firstStartsAt)
         },
         {
           id: crypto.randomUUID(),
@@ -846,7 +846,7 @@ integrationTest(
           sourceEventChampionship: 'WEB-103 A',
           sourceEventStartsAt: firstStartsAt,
           occurredAt: firstStartsAt,
-          commercialDay: getCommercialDay(firstStartsAt)
+          commercialDay: brasiliaDay(firstStartsAt)
         },
         {
           id: crypto.randomUUID(),
@@ -857,7 +857,7 @@ integrationTest(
           sourceEventChampionship: 'WEB-103 B',
           sourceEventStartsAt: secondStartsAt,
           occurredAt: secondStartsAt,
-          commercialDay: getCommercialDay(secondStartsAt)
+          commercialDay: brasiliaDay(secondStartsAt)
         },
         {
           id: crypto.randomUUID(),
@@ -868,7 +868,7 @@ integrationTest(
           sourceEventChampionship: 'WEB-103 externo',
           sourceEventStartsAt: foreignStartsAt,
           occurredAt: foreignStartsAt,
-          commercialDay: getCommercialDay(foreignStartsAt)
+          commercialDay: brasiliaDay(foreignStartsAt)
         }
       ])
 
@@ -984,6 +984,85 @@ integrationTest(
     } finally {
       await vencido.cleanup()
       await vigente.cleanup()
+    }
+  }
+)
+
+// O dia da semana do jogo é o de Brasília: o de sábado às 22h (domingo no
+// UTC) se compara com os sábados. Antes, `starts_at AT TIME ZONE` lia a
+// coluna UTC como hora de Brasília e o jogo das 21h–23h59 caía no dia seguinte.
+integrationTest(
+  'comparação por dia da semana usa o dia de Brasília do jogo',
+  async () => {
+    const seed = await seedBar('elite', 'active', inAMonth())
+    const saturdayNight = new Date('2026-09-13T01:00:00.000Z') // sáb 12/09, 22h
+    const wednesday = new Date('2026-09-16T23:00:00.000Z') // qua 16/09, 20h
+    const pastSaturday = new Date('2026-08-15T18:00:00.000Z') // sáb 15/08, 15h
+    try {
+      const current = await seed.seedGame({ startsAt: saturdayNight })
+      const other = await seed.seedGame({ startsAt: wednesday })
+      const past = await seed.seedGame({ startsAt: pastSaturday })
+      await seed.db.insert(barCommercialEvent).values(
+        [
+          [current, saturdayNight],
+          [other, wednesday],
+          [past, pastSaturday]
+        ].map(([eventId, at]) => ({
+          id: crypto.randomUUID(),
+          barId: seed.barId,
+          actorUserId: seed.fanId,
+          type: 'profile_view' as const,
+          sourceEventId: eventId as string,
+          sourceEventChampionship: 'Campeonato de integração',
+          sourceEventStartsAt: at as Date,
+          occurredAt: at as Date,
+          commercialDay: brasiliaDay(at as Date)
+        }))
+      )
+
+      const result = await seed.owner.commercialAnalytics.getMyEventAnalytics({
+        from: '2026-09-01',
+        to: '2026-09-30',
+        comparisonTarget: { type: 'event_to_bar', eventId: current }
+      })
+
+      const weekdays = result.comparison?.benchmarks
+        ?.filter((item) => item.scope === 'weekday')
+        .map((item) => item.weekday)
+      expect(weekdays?.length).toBeGreaterThan(0)
+      expect(new Set(weekdays)).toEqual(new Set([6]))
+    } finally {
+      await seed.db
+        .delete(barCommercialEvent)
+        .where(eq(barCommercialEvent.barId, seed.barId))
+      await seed.cleanup()
+    }
+  }
+)
+
+// O `pg` manda `Date` no fuso do processo ("…23:59:59.999-03:00"), e o
+// Postgres, ao comparar com `timestamp` sem fuso, descarta o deslocamento:
+// numa máquina em Brasília o fim do dia virava 20:59 UTC e o jogo das 21h
+// sumia do período. No Worker e no CI (UTC) o erro não aparece.
+integrationTest(
+  'jogo da noite entra no período com o processo no fuso de Brasília',
+  async () => {
+    const tz = process.env.TZ
+    process.env.TZ = 'America/Sao_Paulo'
+    const seed = await seedBar('elite', 'active', inAMonth())
+    try {
+      const noite = await seed.seedGame({
+        startsAt: new Date('2026-09-17T00:30:00.000Z') // qua 16/09, 21h30
+      })
+      const result = await seed.owner.commercialAnalytics.getMyEventAnalytics({
+        from: '2026-09-16',
+        to: '2026-09-16'
+      })
+      expect(result.events.map((item) => item.eventId)).toEqual([noite])
+    } finally {
+      if (tz === undefined) delete process.env.TZ
+      else process.env.TZ = tz
+      await seed.cleanup()
     }
   }
 )

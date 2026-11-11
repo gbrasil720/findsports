@@ -1,4 +1,6 @@
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
+import { BRASILIA_TIME_ZONE as TZ } from '@findsports_oficial/db/event-window'
+import { gameTitle, matchSides } from '@findsports_oficial/db/game-title'
 import type { inferRouterOutputs } from '@trpc/server'
 import { isLiquidGlassAvailable } from 'expo-glass-effect'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -7,20 +9,22 @@ import {
   Image,
   Pressable,
   StyleSheet,
-  Text,
-  useColorScheme,
   View,
   type ViewStyle
 } from 'react-native'
+import { Circle } from 'react-native-maps'
 import Animated, {
+  type EntryExitAnimationFunction,
   useAnimatedStyle,
   useSharedValue,
-  withSpring
+  withSpring,
+  withTiming
 } from 'react-native-reanimated'
 import Svg, { Line } from 'react-native-svg'
 import { Glass } from '@/components/glass'
 import { haptic, usePressScale } from '@/components/motion'
-import { ACID, Icon, INK, LIVE, PAPER, text } from '@/components/ui'
+import { usePalette } from '@/components/theme'
+import { ACID, Icon, INK, LIVE, PAPER, Text, text } from '@/components/ui'
 import { formatKm, formatTime, isLive, teamMark } from '@/lib/explore'
 
 /*
@@ -42,54 +46,10 @@ export type Game = {
   participantFreeText: string | null
 }
 
-export const PALETTE = {
-  light: {
-    dark: false,
-    bg: PAPER,
-    sheet: PAPER,
-    card: '#faf8f3',
-    ink: INK,
-    muted: '#55554f',
-    line: 'rgba(18,18,15,.12)',
-    ring: 'rgba(18,18,15,.08)',
-    mark: '#e7e3db',
-    markRing: 'rgba(18,18,15,.08)',
-    dash: 'rgba(18,18,15,.16)',
-    grabber: 'rgba(18,18,15,.18)',
-    live: '#c92b0c',
-    accent: LIVE,
-    shadow: 'rgba(18,18,15,.09)',
-    liveShadow: 'rgba(232,50,12,.28)'
-  },
-  dark: {
-    dark: true,
-    bg: INK,
-    sheet: '#161613',
-    card: '#1c1c18',
-    ink: PAPER,
-    muted: '#aaa9a4',
-    line: 'rgba(241,238,230,.1)',
-    ring: 'rgba(241,238,230,.09)',
-    mark: '#2a2a25',
-    markRing: 'rgba(241,238,230,.12)',
-    dash: 'rgba(241,238,230,.16)',
-    grabber: 'rgba(241,238,230,.2)',
-    live: '#f3421d',
-    accent: ACID,
-    shadow: 'rgba(0,0,0,.35)',
-    liveShadow: 'rgba(232,50,12,.30)'
-  }
-}
-export type Palette = (typeof PALETTE)['light'] | (typeof PALETTE)['dark']
-
-export function usePalette(): Palette {
-  return PALETTE[useColorScheme() === 'dark' ? 'dark' : 'light']
-}
-
 const DAY = 86_400_000
 const dayOf = (value: number | string | Date) =>
   new Date(value).toLocaleDateString('pt-BR', {
-    timeZone: 'America/Sao_Paulo'
+    timeZone: TZ
   })
 
 /** "Hoje", "Amanhã", "Ontem" ou "sáb., 18/10". */
@@ -101,22 +61,13 @@ export function dayLabel(date: string | Date, now: number) {
     weekday: 'short',
     day: '2-digit',
     month: '2-digit',
-    timeZone: 'America/Sao_Paulo'
+    timeZone: TZ
   })
 }
 
 /** Bar cadastrado há menos de 30 dias ganha o selo "Novo", como no web. */
 export const isNewBar = (createdAt: string, now: number) =>
   now - new Date(createdAt).getTime() < 30 * DAY
-
-export function matchLine(game: Game) {
-  const names = game.participants.map((p) => p.team.name)
-  if (names.length === 2) return `${names[0]} × ${names[1]}`
-  return (
-    game.participantFreeText ??
-    (names.length ? names.join(', ') : game.championship)
-  )
-}
 
 /** "BS" para Boteco Sete: a foto que falta vira as iniciais. */
 export const initials = (name: string) =>
@@ -131,58 +82,277 @@ export const initials = (name: string) =>
 // --- Mapa -------------------------------------------------------------------
 
 /**
- * O pino do bar: ao vivo em vermelho, com o nome; jogo mais tarde hoje em
- * acid, com a hora; o resto em tinta, com o nome.
+ * A gota do bar (21a): pin clássico com a ponta reta da marca. Tinta com
+ * copo (o padrão); vermelha com telão e halo na ponta se ao vivo; acid com
+ * estrela se Elite. Ao vivo pode levar a pílula com o nome à direita; o bar
+ * tocado vira a gota maior com o balão de nome e hora acima. A ponta da gota
+ * é o lugar do bar: `dropAnchor` diz onde ela cai na caixa do desenho.
  */
-export function Pin({ bar, now }: { bar: SearchBar; now: number }) {
-  const game = bar.nextEvent
-  const live = game ? isLive(game, now) : false
-  const later = game && !live && dayOf(game.startsAt) === dayOf(now)
+export function MapDrop({
+  live,
+  elite,
+  dark,
+  label,
+  callout
+}: {
+  live: boolean
+  elite: boolean
+  dark: boolean
+  /** A pílula do ao vivo. */
+  label?: string
+  /** O bar tocado: nome e quando. */
+  callout?: { name: string; when: string | null }
+}) {
+  const big = Boolean(callout)
+  const size = big ? 40 : 28
+  const color = live ? LIVE : elite ? ACID : INK
+  const fg = elite && !live ? INK : PAPER
+  const box = dropBox({ live, label, callout })
   return (
-    <PinTag
-      label={later && game ? formatTime(game.startsAt) : bar.name}
-      kind={live ? 'live' : later ? 'later' : 'idle'}
-    />
+    <Animated.View
+      collapsable={false}
+      // O tocado cresce da ponta (0,8 → 1, mola curta): a gota pequena vira
+      // a grande no mesmo lugar, em vez de o balão surgir do nada.
+      entering={callout ? DROP_IN : undefined}
+      style={{
+        width: box.width,
+        height: box.height,
+        transformOrigin: `${box.tipX}px ${box.tipY}px`
+      }}
+    >
+      {callout ? (
+        <View style={[styles.callout, { top: 0, left: 0, right: 0 }]}>
+          <View style={styles.calloutBody}>
+            <Text style={[text(13, 'Bold', 1.25), { color: PAPER }]}>
+              {callout.name}
+            </Text>
+            {callout.when ? (
+              <Text style={styles.calloutWhen}>{callout.when}</Text>
+            ) : null}
+          </View>
+        </View>
+      ) : null}
+      {/* A gota: a ponta fica em (box.tipX, box.tipY). */}
+      <View
+        style={{
+          position: 'absolute',
+          left: box.tipX - size / 2,
+          top: box.tipY - (big ? 51 : 36),
+          width: size,
+          height: big ? 51 : 36
+        }}
+      >
+        {live ? (
+          <View
+            style={[
+              styles.dropHalo,
+              { left: size / 2 - 18.6, top: (big ? 51 : 36) + 6 - 18.6 }
+            ]}
+          />
+        ) : null}
+        <View
+          style={[
+            styles.drop,
+            {
+              width: size,
+              height: size,
+              borderTopLeftRadius: size / 2,
+              borderTopRightRadius: size / 2,
+              borderBottomRightRadius: size / 2,
+              backgroundColor: color,
+              borderColor: dark ? '#1c1c18' : PAPER
+            }
+          ]}
+        />
+        <View style={[styles.dropIcon, { width: size, height: size }]}>
+          {live ? (
+            <Icon name="tv" size={big ? 20 : 14} color={PAPER} accent={PAPER} />
+          ) : elite ? (
+            <Icon name="star" size={big ? 20 : 14} color={INK} />
+          ) : (
+            <Icon name="bar" size={big ? 20 : 14} color={PAPER} accent={ACID} />
+          )}
+        </View>
+      </View>
+      {label ? (
+        <View
+          style={[
+            styles.dropPill,
+            {
+              left: box.tipX + 14 + 6,
+              top: box.tipY - 36 + 14 - 12,
+              backgroundColor: color,
+              borderColor: dark ? 'rgba(241,238,230,.12)' : 'rgba(18,18,15,.08)'
+            }
+          ]}
+        >
+          <Text
+            style={[text(12, 'Bold', 1.1), { color: fg }]}
+            numberOfLines={1}
+          >
+            {label}
+          </Text>
+        </View>
+      ) : null}
+    </Animated.View>
   )
 }
 
-/** A etiqueta do pino, sem a regra de qual cor: o mapa de "Onde fica" a usa. */
-export function PinTag({
+/**
+ * A caixa do desenho da gota e onde a ponta cai nela. Centrada na ponta,
+ * para o `anchor` do marcador ser fixo: o lado da pílula sobra vazio do
+ * outro lado.
+ */
+export function dropBox({
   label,
-  kind
+  callout
 }: {
-  label: string
-  kind: 'live' | 'later' | 'idle'
+  live?: boolean
+  label?: string
+  callout?: { name: string; when: string | null }
 }) {
-  const live = kind === 'live'
-  const bg = live ? LIVE : kind === 'later' ? ACID : INK
-  const fg = kind === 'later' ? INK : PAPER
+  const big = Boolean(callout)
+  // A gota tem 44 pt de largura para o dedo (22 de cada lado da ponta); a
+  // pílula do ao vivo vem à direita, sem área vazia do outro lado, para não
+  // roubar o toque de um vizinho.
+  const left = callout ? Math.max(24, callout.name.length * 3.7 + 11, 52) : 22
+  const right = label ? 14 + 6 + label.length * 6.6 + 18 + 4 : left
+  // O halo do ao vivo passa da caixa por baixo (o iOS não recorta): assim
+  // ele não rouba o toque da gota vizinha.
+  const below = 8
+  const above = big ? 51 + 8 + 46 : 36
+  const width = left + right
+  const height = above + below
+  return {
+    width,
+    height,
+    tipX: left,
+    tipY: above,
+    // Android (Google Maps) usa `anchor`; o Apple Maps ignora e posiciona
+    // pelo centro do desenho, deslocado por `centerOffset`, em pt.
+    anchor: { x: left / width, y: above / height },
+    centerOffset: { x: width / 2 - left, y: height / 2 - above }
+  }
+}
+
+/**
+ * Bar sem jogo marcado no mapa: um ponto oco e pequeno, abaixo das gotas,
+ * para os bares com jogo continuarem na frente. Tocado, vira a gota grande
+ * como qualquer outro.
+ */
+export function QuietDot({ dark }: { dark: boolean }) {
   return (
-    <View style={styles.pin}>
+    // Sem `collapsable`, a caixa de toque some no achatamento e o marcador
+    // fica do tamanho do ponto, difícil de acertar.
+    <View collapsable={false} style={styles.quietHit}>
       <View
         style={[
-          styles.pinLabel,
-          live && styles.pinLive,
-          { backgroundColor: bg }
+          styles.quietDot,
+          {
+            backgroundColor: dark ? INK : PAPER,
+            borderColor: dark ? 'rgba(241,238,230,.55)' : 'rgba(18,18,15,.5)'
+          }
         ]}
-      >
-        {live ? <View style={styles.pinDot} /> : null}
-        <Text
-          style={[
-            text(live ? 13 : 12, 'Bold', 1.2),
-            { color: fg, maxWidth: 150 }
-          ]}
-          numberOfLines={1}
-        >
-          {label}
-        </Text>
-      </View>
-      <View style={[styles.pinTip, { backgroundColor: bg }]} />
+      />
     </View>
   )
 }
 
-/** Você no mapa: o ponto acid com dois halos. */
+/** O grupo (21a): círculo com o número; o selo vermelho conta os ao vivo. */
+export function MapGroup({
+  count,
+  live,
+  elite,
+  dark
+}: {
+  count: number
+  live: number
+  /** Com algum Elite dentro, o círculo vai em acid (3b). */
+  elite?: boolean
+  dark: boolean
+}) {
+  return (
+    <View style={styles.groupHit} collapsable={false}>
+      <View
+        style={[
+          styles.groupRing,
+          dark && { backgroundColor: 'rgba(0,0,0,.25)' }
+        ]}
+      >
+        <View
+          style={[
+            styles.group,
+            { borderColor: dark ? '#1c1c18' : PAPER },
+            elite && { backgroundColor: ACID }
+          ]}
+        >
+          <Text style={[styles.groupText, elite && { color: INK }]}>
+            {count}
+          </Text>
+        </View>
+      </View>
+      {live ? (
+        <View
+          style={[styles.groupLive, { borderColor: dark ? '#1c1c18' : PAPER }]}
+        >
+          <Text style={styles.groupLiveText}>{live}</Text>
+        </View>
+      ) : null}
+    </View>
+  )
+}
+
+// Um toque não leva impulso: o tocado assenta sem quique (rodada 1 do
+// redesign), de 0,95 a 1 com a opacidade.
+const DROP_IN: EntryExitAnimationFunction = () => {
+  'worklet'
+  return {
+    initialValues: { opacity: 0, transform: [{ scale: 0.95 }] },
+    animations: {
+      opacity: withTiming(1, { duration: 150 }),
+      transform: [{ scale: withSpring(1, { duration: 300, dampingRatio: 1 }) }]
+    }
+  }
+}
+
+/**
+ * O raio de busca no mapa: o mesmo círculo no Explorar, nos filtros e nos
+ * recortes da busca. Tinta no claro, acid no escuro, miolo acid bem leve.
+ */
+export function RadiusCircle({
+  center,
+  km,
+  dark,
+  strong
+}: {
+  center: { latitude: number; longitude: number }
+  km: number
+  dark: boolean
+  /** Recorte pequeno (filtros, busca): miolo mais forte, como no design. */
+  strong?: boolean
+}) {
+  return (
+    <Circle
+      center={center}
+      radius={km * 1000}
+      // O tracejado do redesign (`.radius`): a cor do texto a 55%, sem miolo.
+      strokeWidth={strong ? 2 : 1.25}
+      strokeColor={
+        strong
+          ? dark
+            ? ACID
+            : INK
+          : dark
+            ? 'rgba(241,238,230,.55)'
+            : 'rgba(18,18,15,.55)'
+      }
+      fillColor={strong ? 'rgba(201,241,53,.2)' : 'transparent'}
+      lineDashPattern={strong ? undefined : [5, 5]}
+    />
+  )
+}
+
+/** Você no mapa: o ponto azul do redesign (`.me`), anel branco e halo. */
 export function MeDot() {
   return (
     <View style={styles.meHalo2}>
@@ -233,17 +403,16 @@ export function Chip({
   icon,
   live,
   on,
-  palette,
   onPress
 }: {
   label: string
-  icon?: 'tv' | 'outdoor'
+  icon?: Parameters<typeof Icon>[0]['name']
   live?: boolean
   on: boolean
-  palette: Palette
   onPress: () => void
 }) {
-  const fg = on ? INK : palette.ink
+  const palette = usePalette()
+  const fg = on || live ? INK : palette.ink
   const press = usePressScale()
   return (
     <Pressable
@@ -261,9 +430,11 @@ export function Chip({
       <Animated.View style={LIQUID ? undefined : press.style}>
         <Glass
           tone={palette.dark ? 'dark' : 'light'}
-          tint={on ? 'rgba(201,241,53,.66)' : undefined}
+          // "Ao vivo" vem sempre em acid, como no design (19e, 20a); ligado,
+          // ganha o contorno de tinta.
+          tint={on || live ? 'rgba(201,241,53,.66)' : undefined}
           interactive
-          style={styles.chip}
+          style={[styles.chip, live && on && styles.chipLiveOn]}
         >
           {live ? <View style={styles.liveDot} /> : null}
           {icon ? (
@@ -310,7 +481,15 @@ export function Tag({
 }
 
 /** Sombra dura deslocada, como o `box-shadow` sem desfoque do design. */
-function HardShadow({ color, offset }: { color: string; offset: number }) {
+export function HardShadow({
+  color,
+  offset,
+  radius = 6
+}: {
+  color: string
+  offset: number
+  radius?: number
+}) {
   return (
     <View
       style={[
@@ -320,7 +499,7 @@ function HardShadow({ color, offset }: { color: string; offset: number }) {
           left: offset,
           right: -offset,
           bottom: -offset,
-          borderRadius: 6,
+          borderRadius: radius,
           backgroundColor: color
         }
       ]}
@@ -334,28 +513,18 @@ export function Photo({
   uri,
   name,
   style,
-  palette,
   big
 }: {
   uri: string | null
   name: string
   style: ViewStyle
-  palette: Palette
   big?: boolean
 }) {
-  // Foto que não carrega cai para as iniciais em vez de um quadro vazio.
-  const [failed, setFailed] = useState(false)
-  if (uri && !failed)
-    return (
-      <Image
-        source={{ uri }}
-        // O quadro do design enquanto a foto carrega (ou se ela não vem).
-        style={
-          [style, { backgroundColor: big ? '#2a2a25' : palette.mark }] as never
-        }
-        onError={() => setFailed(true)}
-      />
-    )
+  // As iniciais ficam sempre por baixo e a foto cobre quando carrega: foto
+  // lenta ou quebrada mostra as iniciais desde o primeiro quadro, não um
+  // quadro vazio. Carregada, as iniciais saem (foto com transparência).
+  const palette = usePalette()
+  const [loaded, setLoaded] = useState(false)
   return (
     <View
       style={[
@@ -364,30 +533,33 @@ export function Photo({
         { backgroundColor: big ? '#2a2a25' : palette.mark }
       ]}
     >
-      <Text
-        style={[
-          text(big ? 34 : 19, 'Bold', 1.2),
-          { color: big ? 'rgba(241,238,230,.22)' : palette.ink }
-        ]}
-      >
-        {initials(name)}
-      </Text>
+      {loaded ? null : (
+        <Text
+          style={[
+            text(big ? 34 : 19, 'Bold', 1.2),
+            { color: big ? 'rgba(241,238,230,.22)' : palette.ink }
+          ]}
+        >
+          {initials(name)}
+        </Text>
+      )}
+      {uri ? (
+        <Image
+          source={{ uri }}
+          style={StyleSheet.absoluteFill}
+          onLoad={() => setLoaded(true)}
+        />
+      ) : null}
     </View>
   )
 }
 
 /** Time contra time, com o estado no meio ("AO VIVO" ou a hora). */
-export function MatchRow({
-  game,
-  now,
-  palette
-}: {
-  game: Game
-  now: number
-  palette: Palette
-}) {
+export function MatchRow({ game, now }: { game: Game; now: number }) {
+  const palette = usePalette()
   const live = isLive(game, now)
-  const [home, away] = game.participants.map((p) => p.team.name)
+  // Um de cada lado só no confronto (dois); corrida vai pelo título.
+  const [home, away] = matchSides(game) ?? []
   const center = (
     // Campeonato de nome longo corta em vez de espremer os times.
     <View style={{ alignItems: 'center', maxWidth: 112 }}>
@@ -399,9 +571,12 @@ export function MatchRow({
       >
         {live ? 'AO VIVO' : formatTime(game.startsAt)}
       </Text>
-      <Text style={[styles.mono, { color: palette.muted }]} numberOfLines={1}>
-        {game.championship}
-      </Text>
+      {/* Fora de confronto o título pode já ser o campeonato: não repete. */}
+      {(home && away) || gameTitle(game) !== game.championship ? (
+        <Text style={[styles.mono, { color: palette.muted }]} numberOfLines={1}>
+          {game.championship}
+        </Text>
+      ) : null}
     </View>
   )
   if (!home || !away) {
@@ -411,7 +586,7 @@ export function MatchRow({
           style={[text(14, 'Bold', 1.15), { color: palette.ink, flex: 1 }]}
           numberOfLines={2}
         >
-          {matchLine(game)}
+          {gameTitle(game)}
         </Text>
         {center}
       </View>
@@ -458,12 +633,10 @@ export function MatchRow({
 
 /** O picote entre o jogo e o bar, com os dois recortes na cor da folha. */
 export function Perforation({
-  palette,
   shadow,
   inset = 14,
   radius = 9
 }: {
-  palette: Palette
   /**
    * A sombra dura do ingresso. Nos ingressos recortados do design (Meus
    * jogos, código no balcão) a sombra tem o mesmo furo, deslocado: no furo
@@ -475,6 +648,7 @@ export function Perforation({
   /** Raio do furo. */
   radius?: number
 }) {
+  const palette = usePalette()
   const size = radius * 2
   const notch = {
     width: size,
@@ -540,13 +714,8 @@ const AMENITY_ICONS = [
   [4, 'outdoor']
 ] as const
 
-export function AmenityIcons({
-  ids,
-  palette
-}: {
-  ids: number[]
-  palette: Palette
-}) {
+export function AmenityIcons({ ids }: { ids: number[] }) {
+  const palette = usePalette()
   const shown = AMENITY_ICONS.filter(([id]) => ids.includes(id))
   if (!shown.length) return null
   return (
@@ -564,13 +733,12 @@ export function AmenityIcons({
  */
 export function Going({
   count,
-  initials,
-  palette
+  initials
 }: {
   count: number
   initials: string[]
-  palette: Palette
 }) {
+  const palette = usePalette()
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
       {initials.length ? (
@@ -677,7 +845,6 @@ function HeartPop({ on }: { on: boolean }) {
 type CardProps = {
   bar: SearchBar
   now: number
-  palette: Palette
   favorite: boolean
   onFavorite: () => void
   onPress: () => void
@@ -691,7 +858,6 @@ type CardProps = {
 export function BarTicket({
   bar,
   now,
-  palette,
   favorite,
   onFavorite,
   onPress
@@ -699,6 +865,7 @@ export function BarTicket({
   bar: TicketBar
   onPress?: () => void
 }) {
+  const palette = usePalette()
   const game = bar.nextEvent
   const live = game ? isLive(game, now) : false
   const elite = bar.plan === 'elite'
@@ -730,7 +897,6 @@ export function BarTicket({
               uri={bar.photo_url}
               name={bar.name}
               style={StyleSheet.absoluteFill}
-              palette={palette}
               big
             />
             <LinearGradient
@@ -792,12 +958,8 @@ export function BarTicket({
               </Glass>
             </Pressable>
           </View>
-          {game ? <MatchRow game={game} now={now} palette={palette} /> : null}
-          {game ? (
-            <Perforation palette={palette} />
-          ) : (
-            <View style={{ height: 12 }} />
-          )}
+          {game ? <MatchRow game={game} now={now} /> : null}
+          {game ? <Perforation /> : <View style={{ height: 12 }} />}
           <View style={styles.ticketFoot}>
             <View style={{ flex: 1, minWidth: 0 }}>
               <View style={styles.nameRow}>
@@ -821,15 +983,11 @@ export function BarTicket({
                 >
                   {bar.neighborhood}
                 </Text>
-                <AmenityIcons ids={bar.amenities} palette={palette} />
+                <AmenityIcons ids={bar.amenities} />
               </View>
             </View>
             {bar.goingCount ? (
-              <Going
-                count={bar.goingCount}
-                initials={bar.goingInitials}
-                palette={palette}
-              />
+              <Going count={bar.goingCount} initials={bar.goingInitials} />
             ) : null}
           </View>
         </View>
@@ -845,9 +1003,13 @@ export function BarTicket({
 export function BarRow({
   bar,
   now,
-  palette,
-  onPress
-}: Omit<CardProps, 'favorite' | 'onFavorite'>) {
+  onPress,
+  compact
+}: Omit<CardProps, 'favorite' | 'onFavorite'> & {
+  /** O card da folha baixa do Explorar (20a): sem a coluna da hora. */
+  compact?: boolean
+}) {
+  const palette = usePalette()
   const game = bar.nextEvent
   const live = game ? isLive(game, now) : false
   const press = usePressScale(0.985)
@@ -872,7 +1034,6 @@ export function BarRow({
               uri={bar.photo_url}
               name={bar.name}
               style={styles.rowPhoto}
-              palette={palette}
             />
             {isNewBar(bar.created_at, now) ? (
               <View style={styles.newTag}>
@@ -901,7 +1062,7 @@ export function BarRow({
               style={[text(12.5, 'Regular', 1.3), { color: palette.muted }]}
               numberOfLines={1}
             >
-              {game ? matchLine(game) : 'Sem eventos programados'}
+              {game ? gameTitle(game) : 'Sem eventos programados'}
             </Text>
             <View style={styles.rowMeta}>
               <View style={styles.km}>
@@ -922,7 +1083,7 @@ export function BarRow({
               {bar.rating ? <Tag>{bar.rating.percentage}%</Tag> : null}
             </View>
           </View>
-          {game ? (
+          {game && !compact ? (
             <View style={styles.rowWhen}>
               <Text
                 style={[
@@ -946,7 +1107,114 @@ export function BarRow({
 }
 
 const styles = StyleSheet.create({
-  pin: { alignItems: 'center' },
+  quietHit: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  quietDot: { width: 12, height: 12, borderRadius: 6, borderWidth: 2 },
+  drop: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    borderBottomLeftRadius: 3,
+    borderWidth: 2.5,
+    transform: [{ rotate: '-45deg' }],
+    shadowColor: INK,
+    shadowOpacity: 0.22,
+    shadowRadius: 0,
+    shadowOffset: { width: 3, height: -1 }
+  },
+  dropIcon: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  // Halo do ao vivo na ponta: 25 pt de vermelho com 6 pt mais claros em volta.
+  dropHalo: {
+    position: 'absolute',
+    width: 37.2,
+    height: 37.2,
+    borderRadius: 18.6,
+    borderWidth: 6,
+    borderColor: 'rgba(232,50,12,.1)',
+    backgroundColor: 'rgba(232,50,12,.2)'
+  },
+  dropPill: {
+    position: 'absolute',
+    height: 24,
+    paddingHorizontal: 9,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: 'center',
+    shadowColor: INK,
+    shadowOpacity: 0.22,
+    shadowRadius: 0,
+    shadowOffset: { width: 2, height: 3 }
+  },
+  callout: { position: 'absolute', alignItems: 'center' },
+  calloutBody: {
+    paddingVertical: 7,
+    paddingHorizontal: 11,
+    borderRadius: 12,
+    backgroundColor: INK,
+    alignItems: 'center',
+    gap: 2,
+    shadowColor: ACID,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 3, height: 4 }
+  },
+  calloutWhen: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11,
+    color: ACID
+  },
+  groupHit: {
+    width: 64,
+    height: 64,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  // O anel claro de 4 pt por fora do anel de papel (`0 0 0 7px`).
+  groupRing: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(18,18,15,.12)',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  group: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: INK,
+    borderWidth: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: INK,
+    shadowOpacity: 0.2,
+    shadowRadius: 0,
+    shadowOffset: { width: 3, height: 4 }
+  },
+  groupText: { fontFamily: 'Anton', fontSize: 19, color: PAPER },
+  groupLive: {
+    position: 'absolute',
+    top: 7,
+    right: 7,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    backgroundColor: LIVE,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  groupLiveText: { ...text(9.5, 'Bold', 1), color: PAPER },
   // 22 pt com o anel de 2 pt da cor do cartão por fora, como o box-shadow.
   goer: {
     width: 26,
@@ -956,55 +1224,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
-  pinLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 9,
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: PAPER,
-    shadowColor: '#000',
-    shadowOpacity: 0.4,
-    shadowRadius: 7,
-    shadowOffset: { width: 0, height: 6 }
-  },
-  pinLive: { paddingVertical: 8, paddingHorizontal: 12 },
-  pinDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: PAPER },
-  pinTip: {
-    width: 9,
-    height: 9,
-    marginTop: -6,
-    transform: [{ rotate: '45deg' }],
-    borderRightWidth: 2,
-    borderBottomWidth: 2,
-    borderColor: PAPER
-  },
   meHalo2: {
-    width: 74,
-    height: 74,
-    borderRadius: 37,
-    backgroundColor: 'rgba(201,241,53,.10)',
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: 'rgba(47,107,255,.18)',
     alignItems: 'center',
     justifyContent: 'center'
   },
   meHalo1: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(201,241,53,.25)',
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center'
   },
   me: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: ACID,
-    borderWidth: 3,
-    borderColor: INK
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#2f6bff'
   },
+  chipLiveOn: { borderWidth: 1.5, borderColor: INK },
   chip: {
     height: 38,
     paddingHorizontal: 15,
@@ -1120,10 +1362,35 @@ const styles = StyleSheet.create({
     borderWidth: 1
   },
   rowPhoto: { width: 62, height: 62, borderRadius: 3 },
+  line: {
+    flexDirection: 'row',
+    gap: 11,
+    alignItems: 'center',
+    padding: 9,
+    borderRadius: 6,
+    borderWidth: 1
+  },
+  linePhoto: { width: 52, height: 52, borderRadius: 3 },
+  lineMeta: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  lineMono: { fontFamily: 'GeistMono-SemiBold', fontSize: 12 },
+  lineLive: { flexDirection: 'row', gap: 6, alignItems: 'center' },
+  lineHalo: {
+    width: 15,
+    height: 15,
+    borderRadius: 7.5,
+    backgroundColor: 'rgba(232,50,12,.22)',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  lineDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: LIVE },
   newTag: { position: 'absolute', left: -4, top: -4 },
   rowMeta: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   km: { flexDirection: 'row', gap: 2, alignItems: 'center' },
   rowWhen: { alignItems: 'flex-end', paddingRight: 4, gap: 3 },
   rowTime: { fontFamily: 'Anton', fontSize: 24, marginVertical: -7 },
-  noPhoto: { alignItems: 'center', justifyContent: 'center' }
+  noPhoto: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden'
+  }
 })

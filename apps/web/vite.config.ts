@@ -2,7 +2,26 @@ import { cloudflare } from '@cloudflare/vite-plugin'
 import tailwindcss from '@tailwindcss/vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
+
+/**
+ * Só na suíte E2E: o servidor não fecha conexão ociosa enquanto um teste vive
+ * (60 s). Com os 5 s do Node, o `page.request` que volta a falar depois de
+ * uns segundos de tela pegava a conexão no instante em que o servidor a
+ * fechava, e o teste caía com "socket hang up" ou "read ECONNRESET" (o agente
+ * do Node não respeita o `Keep-Alive: timeout` e não repete o pedido; o
+ * navegador repete). Pela mesma razão o pedido do navegador nunca acusou.
+ */
+const e2eKeepAlive: Plugin = {
+  name: 'e2e-keep-alive',
+  apply: 'serve',
+  configureServer({ httpServer }) {
+    if (!process.env.E2E_DATABASE_URL || !httpServer) return
+    if (!('keepAliveTimeout' in httpServer)) return
+    httpServer.keepAliveTimeout = 70_000
+    httpServer.headersTimeout = 71_000
+  }
+}
 
 export default defineConfig(({ mode }) => ({
   optimizeDeps: {
@@ -20,32 +39,19 @@ export default defineConfig(({ mode }) => ({
      */
     include: ['three', '@t3-oss/env-core', 'zod/mini', '@trpc/server'],
     /**
-     * WEB-73: o worker do MapLibre e a thread principal trocam mensagens
-     * tipadas registradas em `maplibre-gl-shared.mjs`. Pré-empacotado, o lado
-     * principal passa a usar a cópia de `.vite/deps` enquanto o worker carrega
-     * o arquivo original — duas instâncias do mesmo módulo, e o handshake
-     * trava. Sem erro: o canvas aparece e nada é decodificado.
-     *
-     * Só afeta `vite dev`; no build o Rollup empacota os dois a partir da
-     * mesma origem.
+     * WEB-73/456: pré-empacotado, o worker do MapLibre e a página carregam
+     * duas cópias do módulo compartilhado e o handshake trava, sem erro: o
+     * canvas aparece e nenhum tile é desenhado. Só afeta `vite dev`.
      */
     exclude: ['maplibre-gl']
   },
-  /**
-   * WEB-73: o worker do MapLibre é um módulo ES e importa
-   * `./maplibre-gl-shared.mjs`. O padrão do Vite é emitir worker como IIFE, e
-   * aí o `new Worker(url, { type: 'module' })` do MapLibre carrega um script
-   * que não é módulo. Ver `onside-map.tsx` para o resto da história.
-   */
+  /** O worker do MapLibre é módulo ES (`?worker&url` em `mapa-maplibre.ts`). */
   worker: {
     format: 'es'
   },
   server: {
     port: 3001,
-    allowedHosts: [
-      'host.docker.internal',
-      'nintendo-hyperlink-undamaged.ngrok-free.dev'
-    ]
+    allowedHosts: ['host.docker.internal']
   },
   resolve: {
     tsconfigPaths: true
@@ -56,7 +62,12 @@ export default defineConfig(({ mode }) => ({
      * Com o plugin, o `vite dev` roda o SSR em workerd, e o E2E depende do dev
      * em Node (outbox de e-mail em `node:fs`, resolver do banco local).
      */
-    mode === 'cloudflare' && cloudflare({ viteEnvironment: { name: 'ssr' } }),
+    // `remoteBindings: false`: o `vite preview` do E2E do Worker não abre
+    // sessão remota para o binding `ai` (o CI não tem token da Cloudflare). O
+    // deploy não usa sessão remota; em desenvolvimento a IA vai pela API REST.
+    mode === 'cloudflare' &&
+      cloudflare({ viteEnvironment: { name: 'ssr' }, remoteBindings: false }),
+    e2eKeepAlive,
     tailwindcss(),
     tanstackStart(),
     viteReact()

@@ -1,0 +1,1 @@
+ALTER TYPE "public"."team_kind" ADD VALUE 'race';

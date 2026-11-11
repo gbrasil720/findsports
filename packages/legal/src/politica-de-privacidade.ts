@@ -493,7 +493,7 @@ export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
         {
           type: 'p',
           content:
-            'O estabelecimento vê métricas agregadas do próprio perfil — visualizações, check-ins, avaliações. Quando houver benefício ativo, ele recebe o mínimo necessário para identificar no balcão quem fez check-in de presença e validar a entrega da cortesia.'
+            'O estabelecimento vê métricas agregadas do próprio perfil — visualizações, check-ins, avaliações. Quando houver benefício ativo, ele recebe o mínimo necessário para identificar no balcão quem fez check-in de presença e validar a entrega da cortesia. Quando você valida o código no balcão, o estabelecimento também vê se é a sua primeira vez lá ou quantas vezes você validou código naquele mesmo bar no mês. Ele nunca vê as suas idas a outros bares.'
         },
         {
           type: 'attention',
@@ -539,6 +539,11 @@ export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
               'LocationIQ (Unwired Labs)',
               'Busca de endereços e conversão entre endereço e coordenadas',
               'Estados Unidos ou União Europeia, conforme o servidor utilizado'
+            ],
+            [
+              'Google, OpenAI e TypeSafe, via Cloudflare',
+              'Modelos de IA da busca com IA e das sugestões de bares do app (seção 9.5)',
+              'Estados Unidos'
             ]
           ]
         },
@@ -575,8 +580,34 @@ export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
         },
         {
           type: 'h3',
-          text: 'Com autoridades públicas',
+          text: 'Sobre a busca com IA',
           num: '9.5'
+        },
+        {
+          type: 'p',
+          content:
+            'A busca com IA do app entende um pedido escrito — "Corinthians hoje, com telão, perto de Pinheiros" — e procura os bares por você. Para responder, o texto do pedido, as últimas mensagens da conversa e o resultado das buscas na Onside (bares, jogos, distâncias) passam pela Cloudflare (Workers AI e AI Gateway) até um fornecedor de modelo de IA: hoje o Google ou a OpenAI. As sugestões de bares também podem usar modelos de IA com dados de uso, como times escolhidos e bares salvos ou visitados.'
+        },
+        {
+          type: 'p',
+          content: [
+            'O fornecedor ',
+            {
+              b: 'não recebe o seu nome, o seu e-mail nem as suas coordenadas'
+            },
+            ': recebe o pedido e o necessário para respondê-lo. Do nosso lado, guardamos de cada pedido só o que mede custo e qualidade — qual modelo respondeu, quanto demorou, quanto custou e se você marcou a resposta como útil —, sem o texto da conversa. O registro técnico das chamadas fica no AI Gateway da Cloudflare, para investigar erro e abuso.'
+          ]
+        },
+        {
+          type: 'attention',
+          label: 'Atenção',
+          content:
+            'Escreva na busca com IA só o que ela precisa para achar um bar. Não inclua documento, telefone, endereço de casa ou dado de saúde: o texto do pedido sai da Onside para ser respondido.'
+        },
+        {
+          type: 'h3',
+          text: 'Com autoridades públicas',
+          num: '9.6'
         },
         {
           type: 'p',
@@ -586,7 +617,7 @@ export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
         {
           type: 'h3',
           text: 'Em reorganização societária',
-          num: '9.6'
+          num: '9.7'
         },
         {
           type: 'p',
@@ -596,7 +627,7 @@ export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
         {
           type: 'h3',
           text: 'Dados agregados',
-          num: '9.7'
+          num: '9.8'
         },
         {
           type: 'p',
@@ -741,7 +772,7 @@ export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
         {
           type: 'p',
           content:
-            'O estabelecimento pode pedir a cópia dos dados da conta pelo próprio painel, sem escrever para a gente: em Configurações › Privacidade › Baixar meus dados. O arquivo, em formato JSON, vai por e-mail para o endereço cadastrado na conta e traz o perfil, o bar, o plano e os jogos cadastrados. De outras pessoas não traz nada, nem quem marcou presença. Dá para pedir um arquivo a cada 24 horas. Para os demais pedidos, inclusive a cópia dos dados de quem usa a Onside como torcedor, siga o caminho abaixo.'
+            'Para acessar seus dados ou levá-los a outro serviço, você pode pedir o arquivo pela própria conta, sem escrever para a gente: no aplicativo, em Configurações › Privacidade › Baixar meus dados; no painel do estabelecimento, em Configurações › Privacidade › Baixar meus dados. O arquivo, em formato JSON, vai por e-mail para o endereço cadastrado na conta. Ele traz o seu perfil, as suas preferências e o que você fez na plataforma; no caso do estabelecimento, também o bar, o plano e os jogos cadastrados. De outras pessoas, traz no máximo o nome e o nome de usuário de quem é seu amigo na Onside. Dá para pedir um arquivo a cada 24 horas.'
         },
         {
           type: 'h3',

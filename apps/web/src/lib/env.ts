@@ -80,14 +80,17 @@ export const env = createEnv({
      * `vite dev`, onde não há análise, para a suíte conseguir testá-lo. O
      * PostHog continua desligado; ver `consentBannerEnabled`.
      */
-    VITE_E2E_CONSENT_BANNER: z.optional(z.string())
+    VITE_E2E_CONSENT_BANNER: z.optional(z.string()),
+    /** Só da suíte E2E: sem os devtools do TanStack, que cobrem o canto da tela. */
+    VITE_E2E_NO_DEVTOOLS: z.optional(z.string())
   },
   runtimeEnv: {
     VITE_MAP_TILES_URL: import.meta.env.VITE_MAP_TILES_URL,
     VITE_POSTHOG_KEY: import.meta.env.VITE_POSTHOG_KEY,
     VITE_POSTHOG_HOST: import.meta.env.VITE_POSTHOG_HOST,
     VITE_TURNSTILE_SITE_KEY: import.meta.env.VITE_TURNSTILE_SITE_KEY,
-    VITE_E2E_CONSENT_BANNER: import.meta.env.VITE_E2E_CONSENT_BANNER
+    VITE_E2E_CONSENT_BANNER: import.meta.env.VITE_E2E_CONSENT_BANNER,
+    VITE_E2E_NO_DEVTOOLS: import.meta.env.VITE_E2E_NO_DEVTOOLS
   },
   emptyStringAsUndefined: true
 })

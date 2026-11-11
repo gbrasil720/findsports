@@ -1,4 +1,5 @@
 import { PLAN_NAMES } from '@findsports_oficial/api/lib/plan-limits'
+import { BRASILIA_TIME_ZONE } from '@findsports_oficial/db/event-window'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState } from 'react'
@@ -27,7 +28,7 @@ function columnLabel(day: number, date: Date) {
   const weekday = date
     .toLocaleDateString('pt-BR', {
       weekday: 'short',
-      timeZone: 'America/Sao_Paulo'
+      timeZone: BRASILIA_TIME_ZONE
     })
     .replace('.', '')
   return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)}`

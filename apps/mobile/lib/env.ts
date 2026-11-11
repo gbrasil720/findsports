@@ -37,3 +37,9 @@ export const env = {
   ...parsed,
   EXPO_PUBLIC_SERVER_URL: reachableServerUrl(parsed.EXPO_PUBLIC_SERVER_URL)
 }
+
+/** "v0.1.0": a versão do app (`app.json`), no rodapé do "Você" e da entrada. */
+export const APP_VERSION = `v${Constants.expoConfig?.version ?? ''}`
+
+/** "Ajuda e contato": o mesmo endereço do site. */
+export const HELP_URL = 'mailto:contato@onside.sh'

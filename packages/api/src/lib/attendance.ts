@@ -10,11 +10,15 @@ import {
   sql
 } from '@findsports_oficial/db'
 import {
-  DEFAULT_EVENT_DURATION_INTERVAL,
   getEventEnd,
   getValidationWindow,
   VALIDATION_WINDOW_MARGIN_HOURS
 } from '@findsports_oficial/db/event-window'
+import {
+  eventEndedSql,
+  eventEndSql,
+  utcNowSql
+} from '@findsports_oficial/db/event-window-sql'
 import {
   attendance,
   attendanceReport
@@ -32,6 +36,7 @@ import {
   reservationCodeUse
 } from '@findsports_oficial/db/schema/reservation'
 import { TRPCError } from '@trpc/server'
+import { ATTENDANCE_DISPLAY_FLOOR } from './attendance-floor'
 import {
   issueTicket,
   readTicket,
@@ -39,7 +44,7 @@ import {
   type Tx
 } from './attendance-ticket'
 import { gameFillingDue, notifyGameFilling } from './bar-notices'
-import { getCurrentPlan } from './current-plan'
+import { issuesCounterCode } from './current-plan'
 import { gameTitle, participantNames } from './game-participants'
 import { effectiveHouseOffer } from './house-offer'
 import { getLateEntryWindow, LATE_ENTRY_HOURS } from './reservation-validation'
@@ -47,15 +52,14 @@ import { visit } from './visits'
 
 /**
  * Presença confirmada (WEB-127, ADR 0003). Os números daqui só saem do
- * servidor já resolvidos: o torcedor recebe a contagem a partir do piso, e o
- * bar recebe só o sinal relativo, nunca a contagem.
+ * servidor já resolvidos: o torcedor recebe a contagem a partir do piso; o
+ * bar Elite recebe a contagem (Hoje e Plano e cobrança), os outros planos só o
+ * sinal relativo.
  */
 
-/** Fim derivado em SQL, o mesmo de `getEventEnd`. */
-const eventEnd = sql`coalesce(${event.endsAt}, ${event.startsAt} + ${DEFAULT_EVENT_DURATION_INTERVAL}::interval)`
+const eventEnd = eventEndSql()
 
-/** Piso de exibição (WEB-123). Abaixo dele, só o botão. */
-export const ATTENDANCE_DISPLAY_FLOOR = 15
+export { ATTENDANCE_DISPLAY_FLOOR }
 
 /**
  * Histórico suficiente para o sinal (WEB-122): jogos encerrados do bar com
@@ -64,9 +68,9 @@ export const ATTENDANCE_DISPLAY_FLOOR = 15
 export const INTEREST_MIN_HISTORY = 5
 
 /**
- * O jogo onde "Vou assistir aqui" ainda cabe: existe, está publicado, o bar
- * está no ar e não começou (jogo começado vira histórico do sinal de
- * interesse do bar e não muda). É a precondição de marcar e desmarcar.
+ * O jogo onde "Vou assistir aqui" ainda cabe: existe, o bar está no ar e não
+ * começou (jogo começado vira histórico do sinal de interesse do bar e não
+ * muda). É a precondição de marcar, desmarcar e chamar um amigo para o jogo.
  */
 export async function attendableGame(
   eventId: string,
@@ -112,6 +116,9 @@ export const closedListError = () =>
  * plano"); no bar Elite, marcar também emite o código do balcão, que dá a
  * oferta da casa (`attendance-ticket.ts`), e desmarcar o aposenta. Repetir a
  * mesma marcação devolve o mesmo estado.
+ *
+ * Com `tx`, roda dentro da transação de quem chama (o "Vou também" grava o
+ * chamado e a presença juntos); recusa lança `TRPCError` e desfaz tudo.
  */
 export async function setAttendance(
   input: { userId: string; eventId: string; attending: boolean; now?: Date },
@@ -157,7 +164,7 @@ export async function setAttendance(
         target: [attendance.userId, attendance.eventId],
         set: { source: 'manual' }
       })
-    if (getCurrentPlan(game.bar.subscription ?? null, now) === 'elite') {
+    if (issuesCounterCode(game.bar.subscription ?? null, now)) {
       // A oferta deste jogo (WEB-422): a dele, a do bar ou nenhuma.
       await issueTicket(
         tx,
@@ -191,52 +198,72 @@ export async function setAttendance(
   }
 }
 
-/**
- * Quem vai a cada jogo, para o card do Explorar e o ingresso da página do
- * bar: a contagem a partir do piso e a inicial do nome dos três que marcaram
- * por último (design 2g: "M R J 34 vão"). Vale também para jogo já começado:
- * o botão "Vou assistir aqui" não cabe mais, a contagem sim. Só a primeira
- * letra: mostra que é gente de verdade sem identificar ninguém.
- */
-export async function readGoing(
-  eventIds: string[]
-): Promise<Map<string, { count: number; initials: string[] }>> {
-  if (!eventIds.length) return new Map()
-  const rows = await db
-    .select({
-      eventId: attendance.eventId,
-      count: sql<number>`count(*)::int`,
-      initials: sql<
-        (string | null)[]
-      >`(array_agg(upper(left(trim(${user.name}), 1)) order by ${attendance.createdAt} desc))[1:3]`
-    })
-    .from(attendance)
-    .innerJoin(user, eq(user.id, attendance.userId))
-    .where(inArray(attendance.eventId, eventIds))
-    .groupBy(attendance.eventId)
-  return new Map(
-    rows
-      .filter((row) => row.count >= ATTENDANCE_DISPLAY_FLOOR)
-      .map((row) => [
-        row.eventId,
-        {
-          count: row.count,
-          initials: row.initials.filter((letter): letter is string =>
-            Boolean(letter)
-          )
-        }
-      ])
-  )
-}
-
+/** Um amigo que marcou "Vou assistir aqui" (WEB-404). */
 export type GoingFriend = { id: string; name: string; image: string | null }
 
+/** Quem vai a um jogo, como o torcedor pode ver. */
+export type Going = {
+  /** `null` abaixo do piso (`ATTENDANCE_DISPLAY_FLOOR`). */
+  count: number | null
+  /** A inicial dos três que marcaram por último; vazio abaixo do piso. */
+  initials: string[]
+  /** Os amigos de quem vê que deixam amigos verem, do último ao primeiro. */
+  friends: GoingFriend[]
+}
+
 /**
- * Os amigos de `viewerId` que marcaram presença em cada jogo (WEB-404, trazido
- * da branch de integração para a página pública do bar). Só entra quem é amigo
- * aceito e deixa amigos verem a atividade ("todos" ou "amigos"); "ninguém"
- * nunca aparece, e quem não é amigo nunca é nomeado, nem com "todos". Ordem:
- * quem marcou por último primeiro.
+ * Quem vai a cada jogo, para o card do Explorar, o ingresso da página do bar
+ * e a folha "Vou assistir aqui" (design 2g e 3d: "34 pessoas vão, entre elas
+ * Marina e Rafael"). Vale também para jogo já começado: o botão não cabe
+ * mais, a contagem sim.
+ *
+ * - Contagem e iniciais só a partir do piso. Só a primeira letra: mostra que
+ *   é gente de verdade sem identificar ninguém.
+ * - Com `viewerId`, os nomes dos amigos dele que vão (`readFriendsGoing`),
+ *   mesmo abaixo do piso: nome não é número de jogo vazio.
+ * - O mapa só tem o jogo que tem algo a mostrar: contagem ou amigo.
+ */
+export async function readGoing(
+  eventIds: string[],
+  viewerId?: string
+): Promise<Map<string, Going>> {
+  if (!eventIds.length) return new Map()
+  const [rows, friends] = await Promise.all([
+    db
+      .select({
+        eventId: attendance.eventId,
+        count: sql<number>`count(*)::int`,
+        initials: sql<
+          (string | null)[]
+        >`(array_agg(upper(left(trim(${user.name}), 1)) order by ${attendance.createdAt} desc))[1:3]`
+      })
+      .from(attendance)
+      .innerJoin(user, eq(user.id, attendance.userId))
+      .where(inArray(attendance.eventId, eventIds))
+      .groupBy(attendance.eventId),
+    viewerId ? readFriendsGoing(viewerId, eventIds) : new Map()
+  ])
+  const going = new Map<string, Going>()
+  for (const row of rows) {
+    const shown = row.count >= ATTENDANCE_DISPLAY_FLOOR
+    const mine = friends.get(row.eventId) ?? []
+    if (!shown && !mine.length) continue
+    going.set(row.eventId, {
+      count: shown ? row.count : null,
+      initials: shown
+        ? row.initials.filter((letter): letter is string => Boolean(letter))
+        : [],
+      friends: mine
+    })
+  }
+  return going
+}
+
+/**
+ * Os amigos de `viewerId` que marcaram presença em cada jogo (WEB-404). Só
+ * entra quem é amigo aceito e deixa amigos verem a atividade (11i: "todos"
+ * ou "amigos"); "ninguém" nunca aparece, e quem não é amigo nunca é nomeado,
+ * nem com "todos". Ordem: quem marcou por último primeiro.
  */
 export async function readFriendsGoing(
   viewerId: string,
@@ -362,7 +389,8 @@ const MY_GAMES_LIMIT = 50
 /**
  * "Meus jogos": os jogos em que o torcedor marcou "Vou assistir aqui", com o
  * código do balcão onde há (bar Elite). O código só sai enquanto vale, até a
- * janela de validação fechar; depois, fica só se foi validado.
+ * janela de validação fechar; depois, fica só se foi validado. `limit: null`
+ * traz todos (o arquivo de "Baixar meus dados").
  */
 export async function readMyGames(
   userId: string,
@@ -393,7 +421,36 @@ export async function readMyGames(
       currentPeriodEnd: subscription.currentPeriodEnd,
       offer: reservation.offerSnapshot,
       code: reservationCode.code,
-      usedCount: reservationCode.usedCount
+      usedCount: reservationCode.usedCount,
+      // A hora em que o balcão validou (o "validado 21:47" do ingresso): o
+      // uso mais recente que não foi desfeito.
+      validatedAt: sql<string | null>`(
+        SELECT to_char(max(u.used_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+        FROM reservation_code_use u
+        WHERE u.code_id = ${reservationCode.id} AND u.undone_at IS NULL
+      )`,
+      // Presença confirmada (WEB-408): código validado ou check-in "Estou aqui".
+      visited: sql<boolean>`${visit.eventId} is not null`,
+      // Como a presença foi confirmada, para "código validado" ou "check-in"
+      // na linha dos anteriores (rodada 4).
+      checkedIn: sql<boolean>`EXISTS (
+        SELECT 1 FROM attendance_checkin k
+        WHERE k.user_id = ${attendance.userId} AND k.event_id = ${event.id}
+      )`,
+      // A nota que a pessoa deu ("★ 4") e o "Não fui" do pós-jogo.
+      myStars: sql<number | null>`(
+        SELECT r.stars FROM bar_rating r
+        WHERE r.actor_user_id = ${attendance.userId} AND r.event_id = ${event.id}
+        LIMIT 1
+      )`,
+      // Quantos vão ("34 vão" no mini ingresso), com o piso de sempre.
+      goingTotal: sql<number>`(
+        SELECT count(*)::int FROM attendance g WHERE g.event_id = ${event.id}
+      )`,
+      attended: sql<boolean | null>`(
+        SELECT p.attended FROM attendance_report p
+        WHERE p.user_id = ${attendance.userId} AND p.event_id = ${event.id}
+      )`
     })
     .from(attendance)
     .innerJoin(event, eq(event.id, attendance.eventId))
@@ -414,14 +471,20 @@ export async function readMyGames(
         isNull(reservationCode.retiredAt)
       )
     )
+    .leftJoin(
+      visit,
+      and(eq(visit.userId, attendance.userId), eq(visit.eventId, event.id))
+    )
     .where(eq(attendance.userId, userId))
     .orderBy(sql`${event.startsAt} desc`)
+    .$dynamic()
   const rows = await (limit === null ? query : query.limit(limit))
 
   return rows.map(
     ({
       code,
       usedCount,
+      goingTotal,
       endsAt,
       plan,
       planStatus,
@@ -432,25 +495,31 @@ export async function readMyGames(
       // Pela comanda só vale com o Elite: o bar que perdeu o plano não lança mais.
       const confirmsCodesLater =
         row.confirmsCodesLater &&
-        getCurrentPlan(
+        issuesCounterCode(
           plan && planStatus
             ? { plan, status: planStatus, currentPeriodEnd }
             : null,
           now
-        ) === 'elite'
+        )
       const lastChance = confirmsCodesLater
         ? getLateEntryWindow({ startsAt: row.startsAt, endsAt }).closesAt
         : window.closesAt
       const validated = (usedCount ?? 0) > 0
+      const end = getEventEnd({ startsAt: row.startsAt, endsAt })
       return {
         ...row,
         confirmsCodesLater,
-        ended: getEventEnd({ startsAt: row.startsAt, endsAt }) <= now,
+        // O fim já resolvido (o informado pelo bar, senão o padrão): a agenda
+        // do celular usa o mesmo que o servidor.
+        endsAt: end,
+        ended: end <= now,
         // `null`: bar sem Elite quando o torcedor marcou, ou janela fechada sem
         // validação.
         code: code && (validated || window.closesAt >= now) ? code : null,
         window: code ? window : null,
         validated,
+        goingCount: goingTotal >= ATTENDANCE_DISPLAY_FLOOR ? goingTotal : null,
+        validatedAt: validated ? row.validatedAt : null,
         // Bar Elite que emitiu código e o jogo passou sem validação.
         missed: code !== null && !validated && lastChance < now
       }
@@ -479,7 +548,13 @@ export async function readVisitedGames(userId: string) {
       photoUrl: bar.photoUrl,
       latitude: bar.latitude,
       longitude: bar.longitude,
-      barActive: bar.isActive
+      barActive: bar.isActive,
+      // A nota dada a esta visita ("★ 5" em Já fui, rodada 4).
+      myStars: sql<number | null>`(
+        SELECT r.stars FROM bar_rating r
+        WHERE r.actor_user_id = ${userId} AND r.event_id = ${event.id}
+        LIMIT 1
+      )`
     })
     .from(visit)
     .innerJoin(event, eq(event.id, visit.eventId))
@@ -522,7 +597,7 @@ export async function readInterestSignal(
   const games = await db
     .select({
       eventId: event.id,
-      ended: sql<boolean>`${eventEnd} <= now()`,
+      ended: eventEndedSql(),
       count: sql<number>`count(${attendance.userId})::int`
     })
     .from(event)
@@ -602,8 +677,8 @@ export async function readAttendanceQuestions(
         eq(attendance.userId, userId),
         eventId ? eq(attendance.eventId, eventId) : undefined,
         eq(bar.isActive, true),
-        sql`${eventEnd} <= now()`,
-        sql`${eventEnd} > now() - ${`${ATTENDANCE_REPORT_WINDOW_DAYS} days`}::interval`
+        eventEndedSql(),
+        sql`${eventEnd} > ${utcNowSql()} - ${`${ATTENDANCE_REPORT_WINDOW_DAYS} days`}::interval`
       )
     )
     .orderBy(sql`${event.startsAt} desc`)
@@ -649,7 +724,7 @@ export function readUnregisteredAlerts() {
     .where(
       and(
         eq(reservation.status, 'confirmed'),
-        sql`${eventEnd} + ${`${VALIDATION_WINDOW_MARGIN_HOURS} hours`}::interval < now()`
+        sql`${eventEnd} + ${`${VALIDATION_WINDOW_MARGIN_HOURS} hours`}::interval < ${utcNowSql()}`
       )
     )
     .groupBy(bar.id)

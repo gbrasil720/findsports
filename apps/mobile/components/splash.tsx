@@ -1,363 +1,194 @@
-import { LinearGradient } from 'expo-linear-gradient'
-import { createContext, useEffect, useState } from 'react'
-import {
-  StyleSheet,
-  Text,
-  useColorScheme,
-  useWindowDimensions,
-  View
-} from 'react-native'
+import { createContext, useEffect } from 'react'
+import { Image, StyleSheet, useWindowDimensions, View } from 'react-native'
 import Animated, {
   Easing,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withDelay,
   withRepeat,
+  withSequence,
   withTiming
 } from 'react-native-reanimated'
-import Svg, { Path } from 'react-native-svg'
-import { SPLASH_ON, SPLASH_SIDE } from './splash-letters'
+import { Text } from '@/components/ui'
 
 /**
  * Se a splash já saiu. A tela de baixo espera por isso para animar a
- * entrada, que senão tocaria escondida (`app/intro.tsx`). Fora do provedor,
+ * entrada, que senão tocaria escondida (`app/hoje.tsx`). Fora do provedor,
  * vale como saída.
  */
 export const SplashDone = createContext(true)
 
 /**
- * A splash do app: a agenda do dia em faixas inclinadas correndo por trás de um
- * "ON / SIDE" que sobe de trás de uma máscara. Segue a tela "02 Splash" do
- * projeto de design (`Onside Selecao 1 Entrada.dc.html`), nas duas variantes:
- * clara (8a, ácido) e escura (8b, tinta), escolhidas pelo tema do sistema.
+ * A splash do app (redesign, rodada 1, splash B "marca primeiro"): a torcida
+ * em pontos de LED atrás da marca e, embaixo dela, quantos jogos há hoje.
  *
- * No design a animação fica em laço de 3,6 s para ser vista; no app ela toca
- * uma vez e sai. As medidas (px a 390 de largura) e os tempos são os de lá.
+ * A marca é a mesma imagem da splash nativa (`app.json`), no mesmo centro: ela
+ * está parada desde o primeiro quadro. O que entra é o telão, inteiro e de uma
+ * vez, assentando com um leve recuo; depois 18% dos pontos piscam devagar, em
+ * três grupos com ritmos diferentes. As imagens saem de
+ * `scripts/splash/generate.ts`.
  */
 
-// Agenda de exemplo, a do design: cenário para quando não há jogo de verdade
-// para mostrar (nenhum cadastrado hoje, ou a API não respondeu a tempo). Com
-// ela a contagem do rodapé não aparece: não se conta jogo inventado.
-const SAMPLE_AGENDA = [
-  'COR × PAL 21:30',
-  'LAL × BOS 22:00',
-  'FLA × FLU 16:00',
-  'GRE × INT 21:45',
-  'F1 · TREINO 16:00',
-  'SAO × SAN 19:00'
-]
+/** A caixa da `mark.png`, em pt: a mesma do gerador e do `imageWidth` do `app.json`. */
+const MARK_BOX = { width: 200, height: 164 }
+/** O telão foi desenhado na tela do design (iPhone 16e). */
+const LED = { width: 390, height: 844 }
 
 const INK = '#12120f'
 const PAPER = '#f1eee6'
-const ACID = '#c9f135'
-const LIVE = '#e8320c'
+const MUTED = '#aaa9a4'
+const LIVE_ON_INK = '#f3421d'
 
-const THEMES = {
-  light: {
-    stage: ACID,
-    band: INK,
-    bandOpacity: [0.1, 0.16],
-    // No claro nenhum jogo ganha destaque; no escuro, um a cada três vem em ácido.
-    highlight: null as string | null,
-    veil: ['rgba(201,241,53,0)', 'rgba(201,241,53,0.92)'] as const,
-    word: INK,
-    footer: INK,
-    count: INK
-  },
-  dark: {
-    stage: INK,
-    band: PAPER,
-    bandOpacity: [0.08, 0.14],
-    highlight: ACID as string | null,
-    veil: ['rgba(18,18,15,0)', 'rgba(18,18,15,0.94)'] as const,
-    word: ACID,
-    footer: PAPER,
-    count: ACID
-  }
-}
-type Theme = (typeof THEMES)[keyof typeof THEMES]
+/** `cubic-bezier(.16,1,.3,1)`, a curva do DESIGN.md. */
+const ease = Easing.bezier(0.16, 1, 0.3, 1)
+const ENTER = 320
+/** Quando a saída começa: o telão aceso fica pouco mais de um segundo para ser lido. */
+const HOLD_UNTIL = 1500
+const EXIT = 220
+/** Quanto cada grupo de pontos apaga no fundo do pisca (na landing, até 40%). */
+const TWINKLE_DEPTH = 0.4
+const TWINKLES = [
+  { source: require('../assets/images/splash/twinkle-1.webp'), period: 2200 },
+  { source: require('../assets/images/splash/twinkle-2.webp'), period: 2900 },
+  { source: require('../assets/images/splash/twinkle-3.webp'), period: 3600 }
+]
 
-const ROWS = 12
-const MIN_ITEMS = 6 // jogos por volta de uma faixa, como no design
-const LINE = 164 // altura da máscara de cada linha do "ON / SIDE"
-const BASELINE = 161.5 // onde a linha de base das letras cai dentro da máscara
-const SQUARE = 45
-const DESIGN_WIDTH = 390 // a largura de tela em que o design foi medido
-const MARGIN = 22
+type Size = { width: number; height: number }
 
-// Tempos do design (ms): `sp-up` nas duas linhas, `sp-fade` no rodapé.
-const RISE = { delay: 216, stagger: 120, duration: 792 }
-const FOOTER = { delay: 1640, duration: 648 }
-// O rodapé termina de entrar em 2,3 s; a tela fica mais 1,5 s parada para ser lida antes de sair.
-const HOLD_UNTIL = 3800
-const EXIT = 260
-const riseEase = Easing.bezier(0.23, 1, 0.32, 1)
-
-/** Uma faixa: os jogos em fila, duas vezes, andando meia largura em laço. */
-function Band({
-  index,
-  agenda,
-  theme
+/** Um grupo de pontos que apaga e volta, em laço, depois que o telão acende. */
+function Twinkle({
+  source,
+  period,
+  size
 }: {
-  index: number
-  agenda: string[]
-  theme: Theme
+  source: number
+  period: number
+  size: Size
 }) {
-  const [half, setHalf] = useState(0)
-  const progress = useSharedValue(0)
-  const reverse = index % 2 === 1
-
+  const dim = useSharedValue(0)
   useEffect(() => {
-    if (!half) return
-    progress.value = 0
-    // 18 s na primeira faixa, 3 s a mais em cada uma: nenhuma anda junto.
-    progress.value = withRepeat(
-      withTiming(1, {
-        duration: (18 + 3 * index) * 1000,
-        easing: Easing.linear
-      }),
-      -1
+    const half = { duration: period / 2, easing: Easing.inOut(Easing.sin) }
+    dim.value = withDelay(
+      ENTER,
+      withRepeat(
+        withSequence(withTiming(TWINKLE_DEPTH, half), withTiming(0, half)),
+        -1
+      )
     )
-  }, [half, index, progress])
-
-  const style = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: -half * (reverse ? 1 - progress.value : progress.value) }
-    ]
-  }))
-
-  // Cada faixa começa num jogo diferente. Com poucos jogos no dia a fila se
-  // repete até encher a faixa, senão sobraria vazio entre uma volta e outra.
-  const start = index % agenda.length
-  const turn = [...agenda.slice(start), ...agenda.slice(0, start)]
-  const items = Array.from(
-    { length: Math.max(MIN_ITEMS, turn.length) },
-    (_, i) => turn[i % turn.length] as string
-  )
-  const run = (copy: number) => (
-    <View
-      key={copy}
-      onLayout={
-        copy === 0 ? (e) => setHalf(e.nativeEvent.layout.width) : undefined
-      }
-      style={styles.run}
-    >
-      {items.map((item, i) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: a fila repete jogos, a posição é a identidade
-        <View key={i} style={styles.run}>
-          <Text
-            style={[
-              styles.bandText,
-              {
-                color:
-                  theme.highlight && agenda.indexOf(item) % 3 === 0
-                    ? theme.highlight
-                    : theme.band
-              }
-            ]}
-          >
-            {item}
-          </Text>
-          <Text style={[styles.slash, { color: theme.band }]}>/</Text>
-        </View>
-      ))}
-    </View>
-  )
-
-  return (
-    <View style={{ overflow: 'hidden', opacity: theme.bandOpacity[index % 2] }}>
-      <Animated.View style={[styles.run, style]}>
-        {run(0)}
-        {run(1)}
-      </Animated.View>
-    </View>
-  )
+  }, [dim, period])
+  const style = useAnimatedStyle(() => ({ opacity: dim.value }))
+  return <Animated.Image source={source} style={[styles.layer, size, style]} />
 }
 
-/** Uma linha do "ON / SIDE": sobe de baixo da máscara. */
-function Line({
-  letters,
-  color,
-  delay,
-  scale,
-  square = false
-}: {
-  letters: { d: string; advance: number }
-  color: string
-  delay: number
-  /** Tamanho contra o do design: o "SIDE" com o quadrado tem de caber em qualquer largura de tela. */
-  scale: number
-  square?: boolean
-}) {
-  const rise = useSharedValue(0)
-  useEffect(() => {
-    rise.value = withDelay(
-      delay,
-      withTiming(1, { duration: RISE.duration, easing: riseEase })
-    )
-  }, [delay, rise])
-  const style = useAnimatedStyle(() => ({
-    transform: [{ translateY: (1 - rise.value) * LINE * scale * 1.05 }]
-  }))
-  const width = letters.advance + (square ? 12 + SQUARE : 0)
-  return (
-    <View style={{ height: LINE * scale, overflow: 'hidden' }}>
-      <Animated.View style={style}>
-        <Svg
-          width={width * scale}
-          height={LINE * scale}
-          viewBox={`0 0 ${width} ${LINE}`}
-        >
-          <Path
-            d={letters.d}
-            fill={color}
-            transform={`translate(0 ${BASELINE})`}
-          />
-          {square ? (
-            <Path
-              d={`M${letters.advance + 12} ${LINE - 22 - SQUARE}h${SQUARE}v${SQUARE}h${-SQUARE}z`}
-              fill={LIVE}
-            />
-          ) : null}
-        </Svg>
-      </Animated.View>
-    </View>
-  )
-}
+export type TodayGames = { games: number; live: number }
 
 export function Splash({
-  agenda,
+  today,
   onDone
 }: {
-  /** Os jogos de hoje, já escritos como vão na faixa ("FLAMENGO × PALMEIRAS 16:00"). */
-  agenda?: string[]
+  /** Os jogos de hoje; sem eles (nenhum, ou a API não respondeu), "O jogo é aqui". */
+  today?: TodayGames
   onDone: () => void
 }) {
-  const real = agenda && agenda.length > 0 ? agenda : null
-  const shown = real ?? SAMPLE_AGENDA
-  const theme = THEMES[useColorScheme() === 'dark' ? 'dark' : 'light']
-  const { width } = useWindowDimensions()
-  const scale = Math.min(
-    1.3,
-    (width - 2 * MARGIN) / (DESIGN_WIDTH - 2 * MARGIN)
-  )
-  const footer = useSharedValue(0)
+  const window = useWindowDimensions()
+  const reduced = useReducedMotion()
+  // O telão cobre a tela (`cover`): no tablet ele cresce e corta as bordas.
+  const cover = Math.max(window.width / LED.width, window.height / LED.height)
+  const size = { width: LED.width * cover, height: LED.height * cover }
+  const lit = useSharedValue(0)
   const exit = useSharedValue(0)
 
   useEffect(() => {
-    footer.value = withDelay(
-      FOOTER.delay,
-      withTiming(1, { duration: FOOTER.duration, easing: Easing.ease })
-    )
+    lit.value = withTiming(1, { duration: ENTER, easing: ease })
     exit.value = withDelay(
       HOLD_UNTIL,
-      // Saída em ease-out: em ease-in ela demoraria a começar.
-      withTiming(1, { duration: EXIT, easing: riseEase })
+      withTiming(1, { duration: EXIT, easing: ease })
     )
     const done = setTimeout(onDone, HOLD_UNTIL + EXIT)
     return () => clearTimeout(done)
-  }, [exit, footer, onDone])
+  }, [exit, lit, onDone])
 
-  const footerStyle = useAnimatedStyle(() => ({
-    opacity: footer.value,
-    transform: [{ translateY: (1 - footer.value) * 10 }]
+  // Com menos movimento, o telão só acende: sem o recuo e sem o pisca.
+  const ledStyle = useAnimatedStyle(() => ({
+    opacity: lit.value,
+    transform: [{ scale: reduced ? 1 : 1.04 - 0.04 * lit.value }]
   }))
   const exitStyle = useAnimatedStyle(() => ({ opacity: 1 - exit.value }))
 
-  const count = real
-    ? `${real.length} ${real.length === 1 ? 'JOGO' : 'JOGOS'} HOJE`
-    : null
+  const games = today?.games ?? 0
+  const live = today?.live ?? 0
+  const count = `${games} ${games === 1 ? 'JOGO' : 'JOGOS'} HOJE`
 
   return (
     <Animated.View
-      accessibilityLabel="Onside. O jogo é aqui."
+      accessibilityLabel={
+        games > 0
+          ? `Onside. ${count.toLowerCase()}${live > 0 ? `, ${live} ao vivo` : ''}.`
+          : 'Onside. O jogo é aqui.'
+      }
       accessible
-      style={[
-        StyleSheet.absoluteFill,
-        { backgroundColor: theme.stage },
-        exitStyle
-      ]}
+      style={[StyleSheet.absoluteFill, styles.stage, exitStyle]}
     >
-      <View pointerEvents="none" style={styles.bands}>
-        {Array.from({ length: ROWS }, (_, i) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: as faixas são fixas, a posição é a identidade
-          <Band key={i} index={i} agenda={shown} theme={theme} />
-        ))}
-      </View>
-      <LinearGradient
-        colors={theme.veil}
-        locations={[0.3, 0.72]}
-        pointerEvents="none"
-        style={StyleSheet.absoluteFill}
-      />
-      <View style={styles.word}>
-        <Line
-          letters={SPLASH_ON}
-          color={theme.word}
-          delay={RISE.delay}
-          scale={scale}
+      <Animated.View pointerEvents="none" style={[styles.center, ledStyle]}>
+        <Image
+          source={require('../assets/images/splash/led.webp')}
+          style={[styles.layer, size]}
         />
-        <Line
-          letters={SPLASH_SIDE}
-          color={theme.word}
-          delay={RISE.delay + RISE.stagger}
-          scale={scale}
-          square
-        />
-      </View>
-      <Animated.View style={[styles.footer, footerStyle]}>
-        <Text style={[styles.footerText, { color: theme.footer }]}>
-          O JOGO É AQUI
-        </Text>
-        {count ? (
-          <Text style={[styles.footerText, { color: theme.count }]}>
-            {count}
-          </Text>
-        ) : null}
+        {reduced
+          ? null
+          : TWINKLES.map((twinkle) => (
+              <Twinkle key={twinkle.period} {...twinkle} size={size} />
+            ))}
       </Animated.View>
+      <View pointerEvents="none" style={styles.center}>
+        <Image
+          source={require('../assets/images/splash/mark.png')}
+          style={MARK_BOX}
+        />
+        {/* Fora do fluxo, para a marca ficar no centro exato, como na nativa. */}
+        <Text numberOfLines={1} style={styles.sub}>
+          {games > 0 ? (
+            <>
+              <Text style={styles.strong}>{count}</Text>
+              {live > 0 ? (
+                <>
+                  {' · '}
+                  <Text style={styles.live}>● {live} AO VIVO</Text>
+                </>
+              ) : null}
+            </>
+          ) : (
+            <Text style={styles.strong}>O JOGO É AQUI</Text>
+          )}
+        </Text>
+      </View>
     </Animated.View>
   )
 }
 
 const styles = StyleSheet.create({
-  bands: {
+  stage: { backgroundColor: INK, overflow: 'hidden' },
+  center: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  // Absoluta e sem posição: o pai a centra, maior que a tela se precisar.
+  layer: { position: 'absolute' },
+  // A Geist Mono tem 1,3em de altura natural; o design pede 1em, e um
+  // `lineHeight` menor cortaria o topo no iOS.
+  sub: {
     position: 'absolute',
-    top: -60,
-    right: -60,
-    bottom: -60,
-    left: -60,
-    justifyContent: 'center',
-    transform: [{ rotate: '-8deg' }]
-  },
-  run: { flexDirection: 'row', alignSelf: 'flex-start' },
-  // Sem `lineHeight`: menor que a altura natural da fonte, o iOS corta o topo
-  // das letras. A margem negativa leva a linha natural do Anton (1,505em, 81)
-  // aos 64 do design.
-  bandText: {
-    fontFamily: 'Anton',
-    fontSize: 54,
-    marginVertical: -8.6,
-    paddingHorizontal: 18
-  },
-  slash: {
-    fontFamily: 'Anton',
-    fontSize: 54,
-    marginVertical: -8.6,
-    opacity: 0.35
-  },
-  word: { position: 'absolute', left: MARGIN, right: MARGIN, bottom: 160 },
-  footer: {
-    position: 'absolute',
-    left: MARGIN,
-    right: MARGIN,
-    bottom: 70,
-    flexDirection: 'row',
-    justifyContent: 'space-between'
-  },
-  // Mesmo motivo: a Geist Mono tem 1,3em de altura natural, o design pede 1em.
-  footerText: {
+    top: '50%',
+    // O conteúdo da caixa tem 160 pt (anel 92, 18, nome 50): 18 + 4 abaixo
+    // do nome, menos a sobra da caixa e a da Geist Mono (1,3em).
+    marginTop: MARK_BOX.height / 2 + 18 + 4 - 2 - 2,
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 13,
-    marginVertical: -1.95
-  }
+    fontSize: 12,
+    letterSpacing: 1.2,
+    color: MUTED
+  },
+  strong: { color: PAPER },
+  live: { color: LIVE_ON_INK }
 })

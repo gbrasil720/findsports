@@ -38,7 +38,6 @@ const pubOnly: [string, string][] = [
   ['commercialAnalytics', 'getMyAnalyticsOverview'],
   ['commercialAnalytics', 'getMyEventAnalytics'],
   ['commercialAnalytics', 'getMyEntitlements'],
-  ['commercialAnalytics', 'canViewEventType'],
   ['onboarding', 'completePub'],
   ['recommendations', 'getMyBarQualityStatus'],
   ['reservationValidation', 'lookup']
@@ -65,8 +64,7 @@ const fanOnly: [string, string][] = [
   ['ratings', 'submit'],
   ['ratings', 'remove'],
   ['attendance', 'removeReport'],
-  ['onboarding', 'completeFan'],
-  ['commercialAnalytics', 'recordCommercialEvent']
+  ['onboarding', 'completeFan']
 ]
 
 const guards = [

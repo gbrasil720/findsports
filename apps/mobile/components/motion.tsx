@@ -1,11 +1,18 @@
 import * as Haptics from 'expo-haptics'
 import { type ReactNode, useEffect } from 'react'
-import { type StyleProp, Text, type TextStyle } from 'react-native'
+import {
+  Pressable,
+  type PressableProps,
+  type StyleProp,
+  type TextStyle,
+  type ViewStyle
+} from 'react-native'
 import Animated, {
   Easing,
   type EntryExitAnimationFunction,
   FadeIn,
   FadeInDown,
+  FadeOut,
   Keyframe,
   useAnimatedStyle,
   useSharedValue,
@@ -15,6 +22,7 @@ import Animated, {
   withSpring,
   withTiming
 } from 'react-native-reanimated'
+import { Text } from '@/components/text'
 
 /*
  * Movimento das telas de conta: entrada em sequência, pressão dos botões,
@@ -41,7 +49,20 @@ export const haptic = {
   error: () =>
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(
       quiet
-    )
+    ),
+  warning: () =>
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(
+      quiet
+    ),
+  /** Pegar uma peça para arrastar (atalhos). */
+  pick: () =>
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(quiet),
+  /** Toque leve de confirmação (pedido de amizade enviado, rodada 6). */
+  light: () =>
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(quiet),
+  /** O selo da carteirinha encostando no papel. */
+  stamp: () =>
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(quiet)
 }
 
 // Entradas prontas. Constantes de propósito: o Reanimated 4 recomeça a
@@ -52,7 +73,10 @@ export const haptic = {
  * Estalo: nasce em `from` (nunca em zero: nada aparece do nada) e assenta
  * numa mola curta, com um pouco de passo além.
  */
-const popFrom = (from: number, delay = 0): EntryExitAnimationFunction => {
+export const popFrom = (
+  from: number,
+  delay = 0
+): EntryExitAnimationFunction => {
   return () => {
     'worklet'
     return {
@@ -75,6 +99,16 @@ export const POP = popFrom(0.6)
 export const POP_FAST = popFrom(0.8)
 export const POP_LATE = popFrom(0.6, 650)
 export const SWAP = FadeIn.duration(150)
+/** A saída do crossfade de 150 ms (o estado que dá lugar ao outro). */
+export const SWAP_OUT = FadeOut.duration(150)
+/**
+ * O rótulo novo de um botão ("Confirmar" → "Confirmando…" → "Tentando de
+ * novo…"): sobe 4 pt e aparece. O antigo sai na hora, sem animação de saída,
+ * senão os dois dividiriam a linha e o botão mudaria de largura.
+ */
+export const LABEL_IN = FadeInDown.duration(180)
+  .easing(EASE)
+  .withInitialValues({ opacity: 0, transform: [{ translateY: 4 }] })
 
 /**
  * A entrada do elemento `index` de uma tela: sobe e aparece, um depois do
@@ -131,6 +165,43 @@ export function usePressScale(to = 0.97) {
       down.set(withTiming(0, { duration: 160, easing: EASE }))
     }
   }
+}
+
+/**
+ * Algo tocável que afunda de leve no toque (0,97 em 120 ms, volta em 160 ms):
+ * cartões e tiles das telas de busca, filtros e avisos. `style` vai na parte
+ * que afunda.
+ */
+export function ScalePress({
+  to = 0.97,
+  style,
+  containerStyle,
+  children,
+  ...props
+}: Omit<PressableProps, 'style' | 'children'> & {
+  to?: number
+  style?: StyleProp<ViewStyle>
+  /** Layout do lado de fora (um `flex: 1` numa fileira). */
+  containerStyle?: StyleProp<ViewStyle>
+  children: ReactNode
+}) {
+  const press = usePressScale(to)
+  return (
+    <Pressable
+      {...props}
+      style={containerStyle}
+      onPressIn={(e) => {
+        press.onPressIn()
+        props.onPressIn?.(e)
+      }}
+      onPressOut={(e) => {
+        press.onPressOut()
+        props.onPressOut?.(e)
+      }}
+    >
+      <Animated.View style={[style, press.style]}>{children}</Animated.View>
+    </Pressable>
+  )
 }
 
 /** Tremida curta de erro, para chamar `shake()` quando algo falha. */

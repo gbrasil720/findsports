@@ -256,8 +256,7 @@ export async function hydrateRound(
   const eventIds = gameRows.map((game) => game.id)
   const eventList = JSON.stringify(eventIds)
   const [going, mine] = await Promise.all([
-    // Sem os nomes dos amigos (WEB-404 é do app): só a contagem.
-    readGoing(eventIds),
+    readGoing(eventIds, userId),
     eventIds.length
       ? db.execute(sql`
           SELECT event_id, 'attend' AS kind FROM attendance

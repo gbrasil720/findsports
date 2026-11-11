@@ -1,6 +1,8 @@
 import type { Page } from '@playwright/test'
+import { BASE_URL } from '../../env'
 import { signIn, storageState } from '../../fixtures/auth'
 import { query, resetAppConfig } from '../../fixtures/db'
+import { createPub } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
 
@@ -148,6 +150,30 @@ test('alteração de conta que não existe mais não mostra o id', async ({
 /** Um valor válido e diferente do atual, do mesmo formato. */
 function anotherValue(value: unknown): unknown {
   if (typeof value === 'boolean') return !value
+  // Pesos dos testes de IA (WEB-424): o chat inteiro num braço (soma 100).
+  if (
+    value !== null &&
+    typeof value === 'object' &&
+    'chat' in value &&
+    'recommender' in value
+  ) {
+    const weights = value as { chat: { a: number; b: number } }
+    const a = weights.chat.a === 100 ? 0 : 100
+    return { ...weights, chat: { a, b: 100 - a } }
+  }
+  // Limites da IA: uma chamada a mais por pessoa no dia.
+  if (
+    value !== null &&
+    typeof value === 'object' &&
+    'userDailyCalls' in value
+  ) {
+    const limits = value as { userDailyCalls: number }
+    return { ...limits, userDailyCalls: limits.userDailyCalls + 1 }
+  }
+  // Manutenção do app (WEB-466): o contrário, sem previsão.
+  if (value !== null && typeof value === 'object' && 'on' in value) {
+    return { on: !value.on, backAt: null }
+  }
   throw new Error(`Formato sem valor alternativo: ${JSON.stringify(value)}`)
 }
 
@@ -178,9 +204,16 @@ test('todo feitiço edita como JSON, lança e volta ao padrão', async ({
   })
   // `allTextContents` não espera: só lê depois que as linhas renderizaram.
   await expect(spell(page, KEY)).toBeVisible()
-  const keys = await page.locator('article code').allTextContents()
+  // O padrão de um feitiço em JSON também sai em `<code>`: só os nomes contam.
+  const keys = (await page.locator('article code').allTextContents()).filter(
+    (text) => /^[a-z0-9_]+(\.[a-z0-9_]+)+$/.test(text)
+  )
   // Só as chaves do registro, nenhuma a mais; chave nova entra aqui.
   expect([...keys].sort()).toEqual([
+    'ai.enabled',
+    'ai.limits',
+    'ai.variant_weights',
+    'app.maintenance',
     'rating.public_display',
     'search.tiered_plan_query'
   ])
@@ -218,4 +251,105 @@ test('ligar rating.public_display mostra a ordem por avaliação na busca', asyn
   await signIn(page, await createUser())
   await page.goto('/dashboard')
   await expect(page.getByRole('option', { name: 'Melhor nota' })).toHaveCount(1)
+})
+
+/** O que o app lê (WEB-466). */
+async function appStatus(page: Page) {
+  const response = await page.request.get('/api/app/status')
+  expect(response.ok()).toBe(true)
+  expect(response.headers()['cache-control']).toBe('no-store')
+  return (
+    (await response.json()) as {
+      maintenance: { on: boolean; backAt: string | null }
+    }
+  ).maintenance
+}
+
+// WEB-466: o interruptor da manutenção do app (26d, 26e), com a previsão.
+// Ligado, o painel do bar e o Houdini continuam no ar.
+test('manutenção do app liga com previsão, muda a previsão e desliga', async ({
+  page,
+  browser,
+  extraHTTPHeaders
+}) => {
+  await page.goto('/houdini/feiticos')
+  const card = page.locator('article').filter({
+    has: page.getByRole('switch', { name: 'App em manutenção' })
+  })
+  const toggle = card.getByRole('switch', { name: 'App em manutenção' })
+  const confirm = card.getByRole('alertdialog')
+
+  await expect(card).toContainText('No ar')
+  await expect(toggle).toHaveAttribute('aria-checked', 'false')
+  expect(await appStatus(page)).toEqual({ on: false, backAt: null })
+
+  // Pede confirmação; cancelar não grava.
+  await toggle.click()
+  await expect(confirm).toContainText('Pôr o app em manutenção (volta em 1 h)?')
+  await confirm.getByRole('button', { name: 'Cancelar' }).click()
+  await expect(confirm).toHaveCount(0)
+  expect(await stored('app.maintenance')).toBeUndefined()
+
+  const before = Date.now()
+  await toggle.click()
+  await confirm.getByRole('button', { name: 'Pôr em manutenção' }).click()
+  await expect(page.getByText('App em manutenção.')).toBeVisible()
+  await expect(toggle).toHaveAttribute('aria-checked', 'true')
+  await expect(card).toContainText('Em manutenção')
+  await expect(card).toContainText(
+    /Previsão de volta \d\d:\d\d, faltam cerca de (1 h|55 min)\./
+  )
+  const on = await appStatus(page)
+  expect(on.on).toBe(true)
+  const minutes = (Date.parse(on.backAt ?? '') - before) / 60_000
+  expect(minutes).toBeGreaterThan(59)
+  expect(minutes).toBeLessThan(61)
+  // Sem prazo: a manutenção só sai pelo interruptor.
+  expect((await stored('app.maintenance'))?.minutes_left).toBeNull()
+
+  // O Grimório anota quem ligou.
+  const [entry] = await query<{ actor_name: string }>(
+    `SELECT actor_name FROM admin_action
+     WHERE kind = 'config.set' AND target_id = 'app.maintenance'
+     ORDER BY created_at DESC LIMIT 1`
+  )
+  expect(entry?.actor_name).toBe('E2E admin')
+
+  // O painel do bar segue no ar: a validação do código abre.
+  const pubContext = await browser.newContext({
+    baseURL: BASE_URL,
+    extraHTTPHeaders
+  })
+  try {
+    const pubPage = await pubContext.newPage()
+    await signIn(
+      pubPage,
+      (await createPub({ subscription: { plan: 'elite' } })).user
+    )
+    await pubPage.goto('/admin/validate')
+    await expect(pubPage.getByLabel('Código', { exact: true })).toBeVisible()
+  } finally {
+    await pubContext.close()
+  }
+
+  // Nova previsão: sem previsão, o app não mostra contagem.
+  await card
+    .getByRole('group', { name: 'Previsão de volta' })
+    .getByRole('button', { name: 'Sem previsão' })
+    .click()
+  await card.getByRole('button', { name: 'Mudar a previsão' }).click()
+  await expect(confirm).toContainText(
+    'Mudar a previsão de volta (sem previsão)?'
+  )
+  await confirm.getByRole('button', { name: 'Mudar a previsão' }).click()
+  await expect(card).toContainText('Sem previsão de volta')
+  expect(await appStatus(page)).toEqual({ on: true, backAt: null })
+
+  await page.reload()
+  await toggle.click()
+  await expect(confirm).toContainText('Tirar o app da manutenção?')
+  await confirm.getByRole('button', { name: 'Tirar da manutenção' }).click()
+  await expect(page.getByText('App de volta ao ar.')).toBeVisible()
+  await expect(card).toContainText('No ar')
+  expect(await appStatus(page)).toEqual({ on: false, backAt: null })
 })

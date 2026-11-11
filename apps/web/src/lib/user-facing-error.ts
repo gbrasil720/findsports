@@ -1,3 +1,11 @@
+import {
+  getErrorCode,
+  getErrorStatus,
+  getErrorText,
+  isTransientError,
+  retryTransient
+} from '@findsports_oficial/api/lib/transient-error'
+
 export type UserFacingErrorContext = 'credentials'
 
 export type UserFacingError = {
@@ -5,70 +13,14 @@ export type UserFacingError = {
   retryable: boolean
 }
 
-type ErrorRecord = Record<string, unknown>
+export { getErrorCode }
 
-const RETRYABLE_CODES = new Set([
-  'BAD_GATEWAY',
-  'GATEWAY_TIMEOUT',
-  'INTERNAL_SERVER_ERROR',
-  'NETWORK_ERROR',
-  'SERVICE_UNAVAILABLE',
-  'TIMEOUT',
-  'TIMEOUT_ERROR',
-  'FETCH_ERROR',
-  'ECONNRESET',
-  'ECONNREFUSED',
-  'ETIMEDOUT'
-])
+type ErrorRecord = Record<string, unknown>
 
 function asRecord(value: unknown): ErrorRecord | null {
   return typeof value === 'object' && value !== null
     ? (value as ErrorRecord)
     : null
-}
-
-function getErrorValues(error: unknown): unknown[] {
-  const record = asRecord(error)
-  return [
-    error,
-    record?.error,
-    record?.data,
-    asRecord(record?.shape)?.data,
-    asRecord(record?.cause)?.data,
-    // O tRPC guarda a resposta HTTP em `meta.response`: é o único lugar com o
-    // status quando o corpo não é JSON (a página de erro de um gateway).
-    asRecord(record?.meta)?.response
-  ].filter(Boolean)
-}
-
-function getErrorText(error: unknown): string {
-  for (const value of getErrorValues(error)) {
-    if (typeof value === 'string' && value) return value
-    if (value instanceof Error && value.message) return value.message
-    const record = asRecord(value)
-    if (typeof record?.message === 'string') return record.message
-    if (typeof record?.error === 'string') return record.error
-  }
-  return ''
-}
-
-export function getErrorCode(error: unknown): string | undefined {
-  for (const value of getErrorValues(error)) {
-    const record = asRecord(value)
-    if (typeof record?.code === 'string') return record.code.toUpperCase()
-  }
-  return undefined
-}
-
-function getErrorStatus(error: unknown): number | undefined {
-  for (const value of getErrorValues(error)) {
-    const record = asRecord(value)
-    for (const key of ['status', 'statusCode', 'httpStatus']) {
-      const status = record?.[key]
-      if (typeof status === 'number') return status
-    }
-  }
-  return undefined
 }
 
 /**
@@ -84,30 +36,39 @@ function isOwnApiRefusal(error: unknown): boolean {
   )
 }
 
-export function isRetryableError(error: unknown): boolean {
-  const code = getErrorCode(error)
-  const status = getErrorStatus(error)
-  const text = getErrorText(error)
+/**
+ * Recusa de regra da nossa API (400, 409, 412) diz o que corrigir: "CNPJ
+ * inválido. Confira os números.", "A galeria mudou. Recarregue…". A entrada
+ * recusada pelo zod também é 400, mas a mensagem é o JSON das issues (em
+ * inglês), e essa fica com o texto da tela (WEB-474).
+ */
+const RULE_REFUSAL_STATUSES = new Set([400, 409, 412])
 
-  if (status !== undefined)
-    return status === 0 || status === 408 || status === 429 || status >= 500
-  if (code && RETRYABLE_CODES.has(code)) return true
-
-  // "não é JSON": o servidor ou o gateway respondeu uma página de erro em HTML,
-  // o que só acontece quando ele está fora do ar ou sobrecarregado.
-  return /conexão|connection|econn|failed to fetch|fetch failed|network|offline|\brede\b|server error|temporar|timed out|timeout|not valid json|unexpected token|unable to transform response/i.test(
-    text
+function isRuleRefusal(
+  error: unknown,
+  status: number | undefined,
+  text: string
+) {
+  return (
+    status !== undefined &&
+    RULE_REFUSAL_STATUSES.has(status) &&
+    !/^\s*[[{]/.test(text) &&
+    isOwnApiRefusal(error)
   )
 }
+
+/**
+ * Falha passageira (sem rede, timeout, 5xx, 429): a regra comum de web e app
+ * (WEB-460), em `@findsports_oficial/api/lib/transient-error`.
+ */
+export const isRetryableError = isTransientError
 
 /**
  * `retry` padrão das queries: recusa da API (bar que não existe, sem
  * permissão) não muda na segunda tentativa, e insistir três vezes segurava o
  * esqueleto por uns 7 s antes de a tela dizer o que houve.
  */
-export function shouldRetryQuery(failures: number, error: unknown): boolean {
-  return failures < 3 && isRetryableError(error)
-}
+export const shouldRetryQuery = retryTransient
 
 export function getUserFacingError(
   error: unknown,
@@ -198,6 +159,10 @@ export function getUserFacingError(
       message: 'O conteúdo solicitado não está disponível.',
       retryable: false
     }
+  }
+
+  if (text && isRuleRefusal(error, status, text)) {
+    return { message: text, retryable: false }
   }
 
   return { message: fallback, retryable: isRetryableError(error) }

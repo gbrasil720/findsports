@@ -134,6 +134,14 @@ function SubscriptionConfirmed() {
     enabled: confirmed,
     meta: { errorToast: false }
   })
+  // PDF do comprovante: a fatura da contratação, a mais nova da assinatura
+  // logo depois do checkout (WEB-443). Sem ela, o link não aparece.
+  const receiptPdf = useQuery({
+    ...trpc.pub.getMyInvoices.queryOptions(),
+    enabled: confirmed && Boolean(subscription?.externalSubscriptionId),
+    meta: { errorToast: false },
+    retry: false
+  }).data?.invoices[0]?.pdfUrl
 
   /*
    * O teto vive num relógio próprio porque o de tentativas sozinho não fecha
@@ -332,6 +340,16 @@ function SubscriptionConfirmed() {
               <Link to="/admin/billing" className="btn btn-ghost">
                 Assinatura e pagamentos
               </Link>
+              {receiptPdf ? (
+                <a
+                  href={receiptPdf}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-ghost"
+                >
+                  Baixar PDF
+                </a>
+              ) : null}
               {scheduledCancelAt ? (
                 <ReactivateSubscriptionButton className="btn btn-ghost" />
               ) : null}

@@ -54,6 +54,11 @@ RUN_DISPOSABLE_DB_TESTS=1 bun run test
 
 `db:seed:load-test` (carga do k6) continua recusando tudo que não seja o banco sem sufixo.
 
+Para subir o web de outra worktree no seu próprio banco de desenvolvimento, crie
+`findsports_dev_<sufixo>` no container do dev e rode com
+`DEV_DATABASE_URL=postgres://findsports_dev:findsports_dev_local@localhost:5432/findsports_dev_<sufixo>`
+(só vale em `development`, só em loopback e só com esse nome; `DATABASE_URL` continua ignorada).
+
 ## Architecture
 
 Turborepo monorepo, `bun` package manager, Biome for lint/format (2 spaces, single quotes).
@@ -144,12 +149,30 @@ Não existe modo "descubra sozinho até onde o banco está": marcar como aplicad
 migration que não está faz o `migrate` pular SQL de verdade, e o erro só aparece depois.
 Rode `db:journal` sem argumento para ver o estado antes de escolher o corte.
 
+### Relógio do jogo
+
+"Que dia é" e "o jogo acabou" têm um dono só: `packages/db/src/event-window.ts`
+(`brasiliaDay`, `brasiliaDayStart`, `getEventEnd`, `isEventLive`, `hasEventEnded`),
+sem imports, lido pelo servidor, pelo web e pelo app. Em SQL, os mesmos nomes estão em
+`event-window-sql.ts` (só servidor: `eventEndSql`, `eventEndedSql`, `eventNotEndedSql`,
+`brasiliaDaySql`, `brasiliaTodaySql`, `brasiliaDayStartSql`, `onBrasiliaDaysSql`,
+`utcNowSql`), e `event-window-sql.integration.test.ts` confere os dois lados no Postgres.
+"Hoje" é sempre o dia de Brasília; o fim derivado é exclusivo (no instante do fim o jogo
+já acabou). `starts_at`, `ends_at` e `current_period_end` são `timestamp` sem fuso em
+UTC: não compare com `now()` cru nem passe `Date` cru no `sql` (o driver o escreve no
+fuso do processo); use `utcNowSql(now?)`. Não escreva `toLocaleDateString('en-CA', …)`,
+`AT TIME ZONE 'America/Sao_Paulo'` nem `coalesce(ends_at, …)` à mão.
+
 ### Catálogo de times e atletas
 
-A tabela `team` (times, seleções, escuderias e atletas: `kind`) é gravada a partir de
+A tabela `team` (times, seleções, atletas e GPs da F1: `kind`) é gravada a partir de
 `packages/db/src/catalog/data/<esporte>.json`, um item por linha (WEB-381). Fontes:
-Wikidata (CC0) para futebol, NBA, NFL, UFC e tênis (código da ATP ou da WTA),
-Jolpica-F1 para a grade da F1, e à mão (`manual:`) para vôlei e NBB. A Wikidata
+Wikidata (CC0) para futebol, NBA, NFL, UFC e tênis (código da ATP ou da WTA), e à mão
+(`manual:`) para vôlei e NBB. **A F1 é por GP** (WEB-520, `kind` `race`, chave
+`f1:gp:<id>`, à mão): sem piloto nem escuderia (os antigos, da Jolpica-F1, ficam
+`hidden`, e quem os favoritou continua com eles) e sem a Jolpica. O traçado de cada pista,
+o ícone do GP, está em `packages/db/src/f1-tracks.ts` (`bacinger/f1-circuits`, MIT); os
+times da API trazem `catalogKey` para achá-lo. A Wikidata
 guarda o nome de muita gente só na língua `mul`, que o `propose` usa quando falta o inglês. O ciclo:
 
 ```bash
@@ -164,10 +187,25 @@ o `propose` o traria de volta, e o `sync` nunca apaga linha (favoritos e jogos s
 cascata). `featured` é a lista curta que a tela mostra sem busca; o resto aparece por
 `pubs.searchTeams`. Escudo e foto não entram (marca do clube, licença das imagens).
 
+### Título do jogo e card do bar
+
+O título de um jogo sai de `gameTitle` em `packages/db/src/game-title.ts`, sem imports:
+web, app e servidor (chat da IA) usam o mesmo. A regra (dono, 24/10/2026): **dois
+participantes → "A × B"; qualquer outro número (0, 1, ou 3+, como numa corrida, que não
+é confronto) → o texto livre do bar, senão o campeonato**. Leitura em SQL cru usa o irmão
+`gameTitle` de `packages/api/src/lib/game-participants.ts`; um teste de integração
+confere que os dois concordam. Tela que põe um lado de cada (escudos, ticket do código)
+usa `matchSides` (só com dois) e nunca quebra o título de volta.
+
+O card do bar nas listas (`pubs.search`, `nearbyWithoutGames`, `searchByLocation`) é
+completado depois do cache por `toBarCards` (`routers/pubs.ts`): gasto médio pela
+assinatura vigente, características, quem vai (piso do `readGoing`) e a exibição pública
+da nota. O que pode envelhecer um TTL fica no cache; o que não pode, ali.
+
 ### Environment variables
 
 Split by runtime boundary:
-- `packages/env/src/server.ts` — `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `CORS_ORIGIN`, `LOCATIONIQ_API_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NODE_ENV`
+- `packages/env/src/server.ts` — `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `LOCATIONIQ_API_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NODE_ENV`
 - `apps/web/src/lib/env.ts` — client-safe `VITE_*` vars only
 
 **E-mail (WEB-476):** todo envio passa por `sendEmail`
@@ -229,6 +267,12 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
 - **Excluir a conta encerra a assinatura no Stripe** (WEB-336): assinatura viva não
   bloqueia mais a exclusão; o servidor cancela no Stripe e só então apaga a conta, e se
   o Stripe falhar nada é excluído (`packages/auth/src/account-deletion.ts`).
+- **Motivo do cancelamento** (WEB-445): "Por que está cancelando?" grava em
+  `subscription_cancel_reason` ao abrir o portal (intenção). Só quando o webhook vê a
+  assinatura agendada para acabar ou encerrada o último motivo do dia antes do pedido
+  (`canceled_at`) vai a `cancellation_details` no Stripe (`stripe-sync.ts`), sem
+  sobrescrever o que o portal trouxe. Lista e feedback do Stripe em
+  `packages/db/src/cancel-reasons.ts`.
 - **Nome e empresa da assinatura vêm do cadastro, não do checkout** (WEB-328): o
   checkout não pede nenhum dos dois. Antes de a sessão abrir, o cliente do Stripe
   recebe `user.name`, `bar.name` e, se ainda não tiver endereço, o do bar
@@ -236,25 +280,19 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   (`stripe-sync.ts`). O checkout hospedado não mostra esses dados preenchidos: o
   endereço de cobrança é digitado na primeira compra. `/plan` avisa em nome de quem
   a assinatura sai. Cobrança sempre em BRL (Adaptive Pricing desligado na sessão).
+- **Dados da nota** (WEB-444): razão social, CNPJ e e-mail para notas em
+  `/admin/billing`, nas colunas `bar.legal_name`, `cnpj` e `invoice_email`, por
+  `pub.updateInvoiceDetails`. Com cliente no Stripe, ele recebe os três antes do banco
+  (recusa ou Stripe fora do ar não grava nada): a razão social vira a empresa no lugar
+  do nome do bar, o CNPJ o único `br_cnpj` e o e-mail o do cliente (vazio volta ao de
+  acesso). O checkout e o fim dele mandam o que estiver preenchido. CNPJ conferido pelo
+  dígito, com letras ou só números (`@findsports_oficial/db/cnpj`).
 - **Cobrança não tem chave em `app_config`** (WEB-233): a contratação está sempre
   aberta, o teste do cadastro é a constante acima e o cupom de fundador é
   `FOUNDER_COUPON_ID` (`stripe-checkout.ts`), o mesmo id no sandbox e em produção.
   Todo checkout novo sai com ele enquanto o Stripe o der como válido; esgotado,
   expirado ou inexistente na conta, o checkout segue a preço de tabela
   (`usableFounderCoupon`). A oferta acaba no painel do Stripe, não no app.
-- **Dados da nota** (WEB-444): razão social, CNPJ e e-mail para notas em
-  `/admin/billing` (`components/painel/dados-da-nota.tsx`), nas colunas
-  `bar.legal_name`, `cnpj` e `invoice_email`, por `pub.updateInvoiceDetails`. Com
-  cliente no Stripe, ele recebe os três antes do banco (recusa ou Stripe fora do ar
-  não grava nada): a razão social vira a empresa, o CNPJ o único `br_cnpj` e o
-  e-mail o do cliente (vazio volta ao de acesso). CNPJ conferido pelo dígito, com
-  letras ou só números (`@findsports_oficial/db/cnpj`).
-- **Motivo do cancelamento** (WEB-445): "Por que está cancelando?"
-  (`components/painel/cancelar-plano.tsx`) grava em `subscription_cancel_reason` ao
-  abrir o portal (intenção). Só quando o webhook vê a assinatura agendada para acabar
-  ou encerrada o último motivo do dia antes do pedido vai a `cancellation_details` no
-  Stripe (`stripe-sync.ts`), sem sobrescrever o que o portal trouxe. Lista em
-  `packages/db/src/cancel-reasons.ts`.
 
 ### Avisos por e-mail do bar (WEB-441)
 
@@ -334,19 +372,100 @@ exige na tela), e o card do web não as pergunta.
   a mesma linha `ListaDeAvaliacoes` (`components/painel/avaliacao.tsx`), com o selo
   "Não verificada".
 
+### Oferta da casa por jogo (WEB-422, WEB-464)
+
+Só Elite. `bar.house_offer` é a padrão (Meu espaço e Revisão do cadastro, com as
+sugestões e a prévia da 28f; **sem prazo**). Cada jogo pode trocar (`event.house_offer`)
+ou desligar (`event.no_house_offer`, "sem oferta neste jogo"); nulo e falso herda a
+padrão. A regra é `effectiveHouseOffer` (`packages/api/src/lib/house-offer.ts`) e vale
+em tudo: `pubs.getById` devolve `events[].houseOffer` já resolvida (a `houseOffer` do
+topo é a padrão, para o app anterior), o código do balcão copia a deste jogo em
+`offer_snapshot` e o filtro "Oferta da casa" da busca olha o jogo que casa
+(`jogoComOferta`, em `pub-search/shared.ts`). O painel troca no "Novo jogo"/"Editar
+jogo" e no interruptor do jogo aberto (`pub.createEvent`/`updateEvent`, campos
+`houseOffer` e `noHouseOffer`, recusados fora do Elite).
+
 ### Código do balcão pela comanda (WEB-412)
 
 Opção do bar Elite, **desligada por padrão** (`bar.confirms_codes_later`), escolhida
 no card "Oferta da casa" do `/admin` (Na hora / Depois do jogo, pela comanda), por
 `pub.updateCodeConfirmation`. Ligada, a tela do código do torcedor fala com o garçom
 ("anote na comanda"), o card traz o recado pronto para a equipe, e o dono lança os
-códigos anotados em `/admin/validate` por `reservationValidation.logLate`, até 48 h
+códigos anotados em `/admin/quem-vai` por `reservationValidation.logLate`, até 48 h
 depois do fim do jogo (`getLateEntryWindow`). Acima da caixa, "Faltou lançar?"
 (`reservationValidation.notLogged`) lista pelo nome quem marcou e não foi lançado, sem
 ler `attendance_report`. O uso fica com `late = true` e `used_at` na
 hora do lançamento: quem conta visita usa a data do jogo (`event.starts_at`). A Onside não confere se o cliente estava no bar: fraude é risco do bar,
 decisão do dono. Bar "na hora" não lança depois. O alfabeto do código não tem O, 0,
 I, 1 nem L (`CODE_ALPHABET`), para não confundir anotado à mão.
+
+### IA (Workers AI, WEB-424; busca com IA, WEB-400)
+
+Binding `AI` no `wrangler.jsonc` (produção e preview) e um AI Gateway por ambiente em
+`AI_GATEWAY_ID` (`onside-prod`, `onside-preview`; **crie os dois no painel da Cloudflare**,
+com o teto de US$ 40/mês e alertas em 50% e 80% no de produção). Sem Gateway em produção a
+IA não chama nada. O `worker.ts` entrega o binding a `packages/api/src/lib/ai/binding.ts`; o
+`vite dev` roda em Node sem ele, e em `development` a chamada vai pela API REST do Workers
+AI com o token do login do `wrangler` e o Gateway `default` (o `getPlatformProxy` trava no
+Bun). Toda chamada passa por `runAi` (`lib/ai/run.ts`): confere `ai.enabled` (desligada por
+padrão, no `app_config`), o teto do mês somando `ai_run.cost_usd`, US$ 1,50/mês e 30
+chamadas/dia por pessoa, manda `run_id`, `variant` e `feature` como metadados do Gateway e
+grava uma linha em `ai_run` (assim como polegar e ações em `ai_action`). Tetos e sorteio
+(hash de usuário + teste, pesos em `ai.variant_weights`, que somam 100 em cada teste) são
+puros em `lib/ai/limits.ts`; os valores dos tetos e limites moram em `ai.limits` no
+`app_config` (padrão: US$ 40, US$ 1,50 e 30 chamadas por pessoa, 10 e 100 mensagens), e o
+teto do Gateway de produção é à parte: subir um sem o outro não libera nada.
+
+A tela "IA" do Houdini (`routes/houdini/_app/ia.tsx`, `houdini.ia.overview` e `runs`, só
+admin) mostra a situação, os braços dos dois testes, quem mais gasta e o registro, e muda
+`ai.enabled`, pesos e limites pelo `appConfig.set` (sem prazo, com confirmação e Grimório).
+As contas estão em `lib/ai/report.ts`: conversa é a sequência da mesma pessoa no mesmo braço
+sem pausa de mais de 30 min; converte com `ai_action` em até 24 h da resposta; a diferença
+B − A sai com intervalo de 95% só com 100 conversas por braço e 5 com e 5 sem ação em cada.
+
+O chat (`routers/ai.ts`, `lib/ai/chat.ts`) só consulta a Onside pelas ferramentas de
+`lib/ai/chat-tools.ts`, que chamam `pubs.*` com a sessão do torcedor (máximo 3 por mensagem,
+termina em `responder`); bar citado que nenhuma ferramenta devolveu sai da resposta.
+Característica acima das 6 que a busca aceita não recusa o pedido (WEB-458): ficam as de
+"Para ver o jogo", depois as outras na ordem do modelo, e o app acrescenta à resposta
+quais ficaram de fora (`searchAmenities`, `withLeftOut`). Falha:
+nova tentativa no mesmo modelo, depois o outro braço. Limite do chat: 10 por dia e 100 por
+mês (Brasília), contando só resposta útil (`ai_run.useful`). Modelos e preços em
+`lib/ai/models.ts`, com o raciocínio de cada um (`reasoningEffort`: o Gemini recusa `none`
+e vai em `minimal`). Modelo de fora chamado sem Gateway responde `2021 Insufficient
+balance`; pelo Gateway os cinco respondem (`packages/api/scripts/ai-smoke.ts`). No `vite
+dev`, ligue `ai.enabled` no seu banco (cada mensagem chama os modelos de verdade e gasta
+crédito; para testar sem rede, os testes dublam o modelo com `setAiBinding`). Só os modelos
+decididos: nada de trocar por outro do catálogo sem o dono. Conjunto
+offline (só roda com autorização e teto de custo): `packages/api/scripts/ai-chat-eval.ts` (34 pedidos: filtros certos, bares
+inventados, tempo e custo).
+
+**Chat em eventos (Rodada 24):** `ai.converse` é uma mutation que devolve um async iterable
+(`ChatEvent`, `lib/ai/events.ts`, que o app importa como tipo): `run` primeiro (o `run_id`),
+`step` ("Entendi o pedido",
+"Achei o jogo", "Procurando bares que vão passar", "Comparar e ordenar", só os que o pedido
+usa; numa busca, "Comparar e ordenar" chega já como `todo` e o app o mantém vazio no fim),
+`tool` (`run` → `done`, ou `wait` na proposta), `bars` assim que a busca devolve (sai de
+novo antes do texto se a resposta escolheu outros ou outra ordem: a última lista vale),
+`text` com citação `[[n]]` (renumerada depois da conferência; fora do intervalo sai),
+`proposal` e `done` (chips com `key` = `<argumento do pubs.search>:<valor>`, fontes,
+até 3 sugestões, `thoughtMs`, `searches`). Trava, braços, reserva e `ai_run` são os do chat.
+`marcar_vou_assistir` e `lembrar` só propõem: a proposta vira `ai_proposal` depois da linha
+do `ai_run` e só `ai.confirm` executa (uma vez, só o dono; "Vou assistir" pelo
+`setAttendance`, chamado por `createFriendCall`, lembrete por `recommendations.remind` com
+`beforeMinutes: 180`, o "Me lembrar 3 h antes", que aparece em Avisos 3 h antes do jogo e,
+com push (WEB-416), avisa nessa hora; sem `beforeMinutes`, o "Lembrar" de Bares pra você vale o dia;
+cada ação grava `ai_action`; falha volta com `code` estável, `ConfirmFailure`). Só propõe
+quando a mensagem pede (marcar, chamar, lembrar), e "Chamar" só com o nome escrito nela;
+amigo é achado só entre os aceitos. O trabalho vai pelo `waitUntil` (`runInBackground`):
+o app desconectar não perde o `ai_run` nem para a mensagem. Parar é explícito (WEB-430):
+`ai.stop` com o `run_id` marca a linha `stopped` (ela nasce `running` no `runAi`), a próxima
+chamada ao modelo não sai, a já feita fica no custo e a mensagem não desconta (não é útil).
+Resposta pronta não para. A resposta sai com `Cache-Control: no-transform`,
+para a compressão da borda não juntar os eventos. O app fala com
+`ai.converse` pelo `httpBatchStreamLink` com o `fetch` de `expo/fetch` (`splitLink` em
+`apps/mobile/lib/trpc.ts`). Fumaça contra um web rodando:
+`packages/api/scripts/ai-converse-smoke.ts`.
 
 ### UI / Styling
 
@@ -422,6 +541,8 @@ linguagem da Onside (WEB-480, canvas https://claude.ai/artifact/DmzHetdEyDNRP3eW
 todo em `components/houdini/houdini.css`, preso a `.houdini`: Anton, Archivo e Geist
 Mono, acid e sombra dura. O tema segue o do sistema (escuro por padrão), e toda
 diferença entre claro e escuro é token `--hd-*`.
+Jogo em rascunho (WEB-436) fica fora de
+Jogos e de toda contagem do Houdini; só a aba Jogos da ficha do bar o mostra, marcado "Rascunho". A seção IA está em "IA (Workers AI…)".
 
 Revisão (`/houdini/revisao`, `adminReview`, WEB-462, WEB-478 e WEB-451): fotos e
 descrições dos bares e comentários das avaliações (ver "Avaliação do bar"), aprovar ou
@@ -571,6 +692,14 @@ invente layout que o projeto não tem.
   `/api/auth` (`apps/mobile/.env`, modelo em `.env.example`). Só o **tipo** do router cruza a
   fronteira (`import type { AppRouter }` em `lib/trpc.ts`); código de servidor nunca entra no
   bundle do app.
+- **Cache das consultas:** `lib/query-client.ts`. Resposta vale 30 s (`staleTime`);
+  esportes, times, cidade, preferências, `friends.me` e `appConfig.getPublic`, 5 min
+  (`lib/trpc.ts`). Toda mutation que dá certo, o `refreshSession` e o `ai.confirm` vencem o
+  cache inteiro sem buscar nada (`refetchType: 'none'`): a próxima tela que abrir busca de
+  novo, e a tela à vista atualiza pelo `invalidateQueries` da própria mutation. Escrita
+  nova fora do `useMutation` (como `authClient`) tem de vencer o cache do mesmo jeito.
+  Voltar do segundo plano revalida o que venceu (`focusManager` no `AppState`) e, sem rede,
+  as consultas esperam (`onlineManager` no `expo-network`).
 - **Sessão:** `@better-auth/expo` guarda a sessão no SecureStore e a manda como cabeçalho
   `Cookie`. No servidor, o plugin `expo()` e o esquema `onside://` em
   `packages/auth/src/trusted-origins.ts` (`APP_SCHEME`, igual ao `scheme` do `app.json`).
@@ -592,21 +721,36 @@ invente layout que o projeto não tem.
   versão à mão: `bunx expo install --check` diz o que o SDK aceita.
 - `EXPO_PUBLIC_*` vai embutida no bundle: nunca é lugar de segredo.
 - Tokens da Onside em `apps/mobile/global.css` (`bg-ink`, `text-paper`, `bg-acid`...).
-- **Splash:** `apps/mobile/components/splash.tsx`, a tela "02 Splash" do design (agenda do dia
-  em faixas atrás do "ON / SIDE"), clara ou escura pelo tema do sistema. A splash nativa
-  (`app.json`) é só a cor de fundo e fica até as fontes carregarem (`app/_layout.tsx`). As
-  letras grandes são vetor (`splash-letters.ts`), não texto.
-- **Agenda da splash:** os jogos de hoje vêm de `pubs.todayGames` (pública: bares no ar, dia de
-  Brasília, o mesmo jogo em vários bares conta uma vez). A abertura espera a resposta por até
-  600 ms; sem jogo hoje, ou sem resposta, usa a agenda de exemplo do design e **esconde a
-  contagem** "N jogos hoje".
-- **Apresentação:** `app/intro.tsx` (+ `components/intro-art.tsx`), a seção "03 Apresentação"
-  do design. Quem abre sem sessão cai nela (`app/index.tsx`). O mapa da primeira tela é
-  imagem (`assets/images/intro/map.jpg`) tirada do nosso estilo (`map-style.ts`) com os tiles
-  da Onside, não do ArcGIS do design; por ser OpenStreetMap leva o "© OpenStreetMap".
-  O design só desenha o claro; a apresentação segue o tema do sistema com tinta e papel
-  trocados e o acid no lugar do vermelho (a regra da tab bar do design), e o mapa tem
-  versão escura (`map-dark.jpg`, mesma vista com a paleta escurecida).
+- **Splash:** `apps/mobile/components/splash.tsx`, a splash B do redesign ("marca primeiro"):
+  a torcida em pontos de LED atrás da marca, com quantos jogos há hoje e quantos ao vivo.
+  A marca é a mesma imagem da splash nativa (`app.json`, tinta nos dois temas), no mesmo
+  centro, e não se mexe; o telão acende em 320 ms e 18% dos pontos piscam devagar. Telão,
+  pisca e marca são imagens geradas por `bun apps/mobile/scripts/splash/generate.ts` (grade
+  `hero` da landing, `apps/web/public/landing/v3/led.json`).
+- **Jogos de hoje da splash:** `pubs.todayGames` (pública: bares no ar, dia de Brasília, o
+  mesmo jogo em vários bares conta uma vez; `live` pelo relógio do jogo). A abertura espera
+  a resposta por até 600 ms; sem jogo hoje, ou sem resposta, diz "O jogo é aqui".
+- **Abertura sem conta (rodada 1 do redesign):** ver sem conta, agir com conta, como no web
+  do torcedor. Sem sessão, `app/index.tsx` manda à "O jogo de hoje" (`app/hoje.tsx`) na
+  primeira abertura e ao Explorar depois (`lib/first-open.ts`, guardado no aparelho). A tela
+  lista os jogos de hoje na cidade por `pubs.gameBoard`, cada um com quantos bares; a
+  localização só é pedida no "Ver bares perto de mim", e "escolher a cidade" sem conta fica
+  no aparelho (`localCity` em `explore-state`). As leituras do Explorar e do bar
+  (`pubs.search`, `getById`, `nearbyWithoutGames`, `gameDays`, `getSports`, `getTeamsBySport`,
+  `searchCities`, `countTodayNear`) são abertas; `getById` trata o visitante como torcedor sem
+  presença. O que é só do torcedor espera `useFan()`, e o que grava passa por
+  `useWithAccount()` (`lib/account.ts`). As quatro páginas da apresentação antiga saíram.
+- **Folha de entrar (rodada 2):** sem conta, `useWithAccount(acao, contexto)` guarda a ação
+  (`lib/pending-action.ts`, no SecureStore: vou, fav, checkin, conta) e abre `app/entrar.tsx`,
+  uma `formSheet` por cima de onde a pessoa estava, com o bar e o jogo no topo e o título da
+  ação. Entrar, criar conta (sempre torcedor; termos aceitos pelo texto), confirmar e-mail e
+  duas etapas trocam na mesma folha. Com a sessão, `finishPending` faz a ação e o cartão
+  `ActionDone` (layout raiz) diz o que foi feito; conta nova sem preferências ganha o convite
+  para "Do que você gosta?" (`app/gostos.tsx`, `onboarding.completeFan`, que aceita vazio).
+  Pelo link do e-mail, `/verified` fecha a folha, conclui a ação e volta ao bar sem o
+  onboarding na frente. Fechar a folha sem conta descarta a ação. A aba Você sem conta mostra
+  "Sua conta guarda tudo" e os itens "com conta"; cidade, raio e termos são livres. "Entrar com
+  a Apple" espera a conta de desenvolvedor paga.
 - **Conta ("04 Conta"):** `profile` (torcedor ou bar, vira `role` no cadastro), `sign-up`,
   `verify-email`, `sign-in`, `forgot-password`, `reset-sent`, `reset-password`, `two-factor`;
   peças em `components/ui.tsx`. O link de confirmação abre no navegador; o servidor entra e
@@ -616,8 +760,15 @@ invente layout que o projeto não tem.
   `Linking.createURL`, porque o cliente não converte esse campo. Em dev o link do e-mail sai
   com `PUBLIC_APP_URL` (senão `BETTER_AUTH_URL`, `localhost`), que não abre no celular: para
   testar no aparelho, suba o web com `PUBLIC_APP_URL=http://<ip-do-mac>:3001`.
-- **Onboarding do torcedor ("05", 4i–4n):** `app/onboarding/*`, escolhas num contexto
-  (`components/onboarding.tsx`) e um envio só no fim (`onboarding.completeFan`), como no web.
+- **Onboarding do torcedor ("05", 4i–4n; rodada 2 do redesign, proposta B):**
+  `app/onboarding/*`, escolhas num contexto (`components/onboarding.tsx`) e um envio só no
+  fim (`onboarding.completeFan`), como no web. A carteirinha (`components/fan-card.tsx`)
+  fica no topo de cada passo e se preenche; o campo do passo acende. Ordem: boas-vindas,
+  esportes, times (a F1 em GPs com o traçado), onde (a localização antes do raio; sem ela,
+  a cidade), raio, e "Confere e valida" (cada linha com "Trocar", que volta ao passo com
+  `?volta=1`), com o botão de segurar (1,2 s linear; com menos movimento, toque). Depois,
+  `onboarding/pronto`: o selo carimbado e os jogos de hoje dos times. "Torce para" é só de
+  times; o GP vale para o aviso.
   A tela inicial manda para lá o torcedor com `onboardingCompleted` falso. Cidade por
   `pubs.searchCities` e a contagem "N bares com jogo hoje" por `pubs.countTodayNear`.
   Depois de salvar, `refreshSession` (`lib/auth-client.ts`) expira o cache da sessão (com
@@ -625,21 +776,65 @@ invente layout que o projeto não tem.
   `NODE_ENV=development bun run db:catalog:sync` (o resolver fixa o Postgres local).
 - **Avulsas ("06"):** `app/+not-found.tsx` (404) e `app/legal.tsx` (Termos e Privacidade).
   O texto legal vem de `packages/legal`, o mesmo do site.
+- **Manutenção (26d, 26e, WEB-466):** o Houdini liga no card "Manutenção do app" dos
+  Feitiços (chave `app.maintenance`, com a previsão de volta; confirmação e Grimório). Só o
+  app muda: o servidor não recusa nada, então painel do bar, Houdini e login seguem no ar.
+  O app lê `GET /api/app/status` (sem sessão, 503 se o banco não responde) ao abrir, a cada
+  minuto e ao voltar ao primeiro plano, e guarda a última resposta boa: manutenção é o que
+  o servidor anunciou, falha sem anúncio continua no erro de sempre. A tela
+  (`components/maintenance.tsx`) cobre o app; "Ver meu código de hoje" abre o código
+  guardado no aparelho (`lib/maintenance.ts`, gravado a cada `attendance.mine`, apagado ao
+  sair da conta), que a tela do código também usa sem resposta do servidor. No navegador
+  DEV, seção "26" (`app/manutencao.tsx`).
 - **Explorar ("07"):** `app/explore.tsx`, onde o torcedor com onboarding feito começa, e
   `app/bar/[id].tsx` (página do bar); peças em `components/explore.tsx`, contas puras em
   `lib/explore.ts`. O mapa é o nativo, pelo `react-native-maps` (decisão do dono em
   15/10/2026): Apple Maps na versão apagada (`mutedStandard`, sem pontos de interesse) no
   iOS, Google Maps com `customMapStyle` nas cores da Onside (`lib/map-style.ts`) no Android.
-  Roda no Expo Go. Os pinos, o raio e os cards são nossos. A busca é `pubs.search` a partir
-  do aparelho, senão da cidade do perfil (`pubs.getMyCity`), senão São Paulo; o fim do jogo
+  Roda no Expo Go. Os pinos, o raio e os cards são nossos. **A busca começa pelo jogo**
+  (rodada 1 do redesign): a régua do dia, `pubs.gameBoard` (a mesma do web do torcedor),
+  traz os jogos perto e os bares de cada um; a fileira de dias e a de jogos ficam no topo, a
+  folha mostra o jogo escolhido em Anton, os filtros depois do resultado e o cartão
+  compacto (`components/explore-board.tsx`, contas em `lib/explore-board.ts`). "Ao vivo" é
+  um cartão escuro por jogo; o bar tocado no mapa vira um cartão flutuante no lugar da
+  folha (3b), com os outros pinos a 45%; grupo com Elite dentro vai em acid. A folha de
+  filtros conta pela mesma régua. A régua parte
+  do aparelho, senão da cidade do perfil (`pubs.getMyCity`; sem conta, a escolhida no
+  aparelho), senão São Paulo; o fim do jogo
   ("ao vivo") vem de `@findsports_oficial/db/event-window`, a mesma fonte do servidor. A
-  página do bar registra `profile_view` em `/api/bar/commercial-event`, como o web. A página do bar segue
-  o design até "O que dizem", menos "Horário" e as avaliações escritas, que não têm dado (o
-  bar não cadastra horário; a avaliação da Onside é só "voltaria"). "Ampliar", no fim da
-  lista, dobra o raio só na visita. **Não existe reserva de mesa** (decisão do
+  página do bar registra `profile_view` em `/api/bar/commercial-event`, como o web. No
+  celular, a página é a 2g da rodada 1 do redesign (`components/bar-page.tsx`): foto com o
+  nome, "aberto agora · até" (`openingTurn`) e a nota verificada; o jogo de hoje num cartão
+  de tinta com telão, som, a oferta e quantos vão; o rodapé fixo com "Vou assistir aqui";
+  círculos sólidos sobre a foto e a faixa com o nome ao passar dela. Sem conta, "Vou
+  assistir", "Estou aqui" e o coração levam ao "Entrar". A página do bar segue
+  o design até "O que dizem", menos "Ver todas": entram a média das estrelas e os três
+  comentários mais recentes aprovados (WEB-451, `readRatingList` em
+  `packages/api/src/lib/rating-list.ts`), só das avaliações verificadas. No dia do jogo,
+  "Estou aqui" (`components/check-in.tsx`, `attendance.checkIn`) faz o check-in. "Horário" (WEB-397) só com horário informado: o dono grava em
+  `/admin` (`pub.updateOpeningHours`), sete faixas em `bar.opening_hours` (0 = domingo, fechar
+  antes de abrir vira a meia-noite) e `pubs.getById` devolve `openNow` no relógio de Brasília;
+  a regra e o agrupamento ("Seg a qui") são de `packages/api/src/lib/opening-hours.ts`, que o
+  web também usa. "Em dia de clássico" não entra. Em "Próximos jogos aqui" vai uma etiqueta
+  por jogo: "Vou", senão "Telão", senão "Som ligado" (WEB-399: `event.on_big_screen` e
+  `with_sound`, nulos herdam das características, `lib/event-screen.ts`; o dono desmarca no
+  "Novo evento"). Abaixo da nota, o resumo de "O que pesou?" (WEB-398, `ratingReasons`):
+  até três etiquetas de quem voltaria e de quem não voltaria, sem nome, pelo piso da nota. "Ampliar", no fim da
+  lista, dobra o raio só na visita. Com menos de cinco bares com jogo (e fora do "Ao
+  vivo"), a lista se completa com os bares perto sem jogo marcado, sob "Sem jogo
+  marcado" (`pubs.barsWithoutGame`; decisão do dono e sócios em 21/10/2026). No
+  mapa eles são um ponto oco pequeno (`QuietDot`), abaixo das gotas e fora de grupos e
+  rótulos, para os com jogo continuarem na frente; tocado, vira a gota grande como os
+  outros. **Não existe reserva de mesa** (decisão do
   dono em 16/10/2026, card da seção 08; ADR 0003 revista): "Vou assistir aqui"
   marca presença e, no bar Elite, o servidor já emite o código do balcão
-  (`packages/api/src/lib/attendance-ticket.ts`).
+  (`packages/api/src/lib/attendance-ticket.ts`; quem emite é `issuesCounterCode`, em
+  `lib/current-plan.ts`, a mesma regra da oferta, de quem vai e da validação). Toda marcação passa por `setAttendance`
+  (`packages/api/src/lib/attendance.ts`): `attendance.set`, `ai.confirm` e o "Vou também".
+  O Elite desliga a lista de quem vai jogo a jogo no formulário do painel (WEB-437,
+  `event.attendance_enabled`): o botão some para quem não marcou, marcação nova e
+  chamado de amigo são recusados e Quem vai do painel deixa o jogo de fora; quem já
+  marcou fica, com o código valendo.
 - **Vou assistir ("08"):** o botão da página do bar abre a folha `app/vou/[barId].tsx`
   (`formSheet` nativo com o vidro do iOS 26: fundo transparente em `contentStyle` e na
   tela; o `ScrollView` é filho direto da tela, com `flex: 1`, senão o
@@ -647,38 +842,269 @@ invente layout que o projeto não tem.
   ao código no balcão, `app/codigo/[eventId].tsx` (tela cheia no escuro, brilho no máximo
   pelo `expo-brightness`, QR do `react-qr-code`). O QR leva a
   `/admin/validate?code=`, que no web já abre buscando o código. `app/(fan)/voce/meus-jogos.tsx`
-  (menu "Você"; fica na pilha da aba, com a barra, e tocar "Você" volta ao menu) lista os próximos e os anteriores; "Avaliar" abre o pós-jogo
-  `app/pos-jogo/[eventId].tsx` ("Você foi?" é `attendance.report`, "Voltaria?" é
-  `ratings.submit`; marcar "Vou assistir aqui" libera a avaliação). O que o design da 08
-  mostra e ainda não existe, cada um com ticket e comentário no lugar onde entra: "O que
-  pesou?" no pós-jogo (WEB-398), "Sua Nª resenha" e o rodapé de conquistas (WEB-403),
-  "entre elas Marina e Rafael" (WEB-404), "Desmarcado" nos anteriores (WEB-405) e o botão
-  de calendário (WEB-406). A busca com
-  IA (2h, WEB-400) também não entrou: o que o design mostra e não existe avisa "chega em
-  breve" (`components/soon.tsx`).
+  (menu "Você"; fica na pilha da aba, com a barra; tocar "Você" numa tela da pilha abre o menu
+  por cima dela, com `disablePopToTop` na aba, e fechar deixa a pessoa onde estava) lista os próximos e os anteriores, e o botão de calendário põe o jogo na agenda
+  do celular pelo formulário de evento do iOS (`expo-calendar/legacy`, sem pedir permissão); "Avaliar" abre o pós-jogo
+  `app/pos-jogo/[eventId].tsx`: "Você foi?" e "Voltaria?" são um item da fila
+  `postGame.pending` e vão juntos em `postGame.answer`, numa transação
+  (`packages/api/src/lib/post-game.ts`; web e app leem a mesma fila; `attendance.report`,
+  `ratings.submit` e os vizinhos ficam como adaptadores do web publicado antes). Marcar
+  "Vou assistir aqui" libera a avaliação, e "Não fui" a recusa. "O que pesou?" são as
+  seis etiquetas de `RATING_REASONS` (`packages/api/src/lib/rating-reasons.ts`, id nunca
+  reusado), opcionais, gravadas com o "voltaria" em `bar_rating.reasons`; o card de
+  avaliação do dashboard web usa as mesmas. A avaliação tem ainda estrelas (1 a 5,
+  obrigatórias no app novo), comentário opcional e "Mostrar meu nome" (WEB-451): o
+  comentário só aparece depois da revisão da Onside (`/houdini/revisao`,
+  `adminReview.decideComment`; recusado não aparece em lugar nenhum e o torcedor não é
+  avisado), e o nome só de quem ligou o interruptor. **Só a avaliação verificada entra
+  na nota** (WEB-408): código validado no balcão ou check-in "Estou aqui" (até 150 m do
+  bar, na janela do código, um por jogo, `packages/api/src/lib/check-in.ts`).
+  `bar_rating.verified` é do banco (triggers da migration 0083, a mesma regra da
+  visita); os contadores do bar (`rating_count`, `rating_positive`, `rating_stars_*`)
+  contam só as verificadas, e o resumo de etiquetas e "O que dizem" também. A não
+  verificada é gravada e aparece para o dono (selo "Não verificada") e na revisão.
+  Quem pode responder não mudou: intenção de ir, "Vou assistir aqui" ou check-in. O rodapé de Meus jogos abre o ranking do mês (WEB-409). "34
+  pessoas vão, entre elas Marina e Rafael" (WEB-404) sai de `readGoing(eventIds,
+  viewerId)` (`packages/api/src/lib/attendance.ts`): só nomeia amigo aceito com
+  `activity_visibility` "todos" ou "amigos", mesmo abaixo do piso (aí sem contagem); quem
+  não é amigo nunca é nomeado. Frase e pilha em `goingSummary` (`lib/explore.ts`). "Desmarcado" nos anteriores não entra (decisão
+  do dono em 21/10/2026): desmarcar apaga a presença e não fica registro. O que o
+  design mostra e não existe avisa "chega em breve" (`components/soon.tsx`).
+- **Conquistas ("09", WEB-403):** `app/(fan)/voce/conquistas.tsx` (estante, 2i, no menu
+  "Você") e `app/conquista/[id].tsx` (a medalha, 2j; com `?nova=1`, a conquista
+  desbloqueada, 2k). O design só desenha o escuro; no claro, tinta e papel trocam, o
+  vermelho entra no lugar do acid em texto e a bloqueada sai em cinza-pedra
+  (`useMedalPalette` em `components/medal.tsx`, `LOCKED_LIGHT` em `lib/medals.ts`). As regras são do
+  servidor (`packages/api/src/lib/achievements.ts`, `achievements.mine`): nada é gravado,
+  tudo sai das visitas e das avaliações. **Visita** é uma fonte só,
+  `packages/api/src/lib/visits.ts` (uma linha por torcedor e jogo; hoje o código validado
+  no balcão e não desfeito, e o check-in "Estou aqui" do WEB-408): conquistas, "Já
+  fui", amigos e recomendações a leem. "Quem vai", o alerta interno e a
+  análise comercial leem o código de propósito (é o registro do bar, não a visita). A 2k abre sozinha quando sai medalha nova
+  (`components/achievement-watcher.tsx`; a tela do código pergunta a cada 5 s até o
+  balcão validar). **A medalha 3D é uma WebView**, não `expo-gl`: o three roda no WebGL
+  do Safari (`assets/medal/viewer.html`), porque o `expo-gl` congelava a tela quando uma
+  textura subia depois do primeiro quadro e não mostrava nada num segundo contexto. Estante,
+  perfil e listas usam a miniatura pronta (`assets/images/medals/*.webp`). Visualizador e
+  miniaturas saem do desenho do design (`o3d.js`) por `bun apps/mobile/scripts/medals/generate.ts`;
+  medalha nova é uma linha em `ACHIEVEMENTS` e outra em `lib/medals.ts`, e o gerador de
+  novo. Para ver com dados: `apps/mobile/scripts/conquistas.sql` (`-v fan=<e-mail>`).
+- **Perfil (10, tela 2l):** `app/(fan)/voce/perfil.tsx`, aberto pelo menu "Você". Só lê
+  o que já existe (`achievements.mine`, `attendance.visits` e `mine`, `pubs.getFavorites`,
+  `getMyPreferences`, `getMyCity`, `postGame.pending`); as contas ficam em `lib/profile.ts`.
+  "Suas comunidades" do design não entrou (comunidades não existem), "Tenho um bar"
+  saiu a pedido do dono; a engrenagem, "Raio de busca" e "Esportes" abrem as
+  Configurações.
+- **Configurações (11f–11i, escolhidas pelo dono em 20/10/2026):** `app/configuracoes.tsx`
+  (`?aba=preferencias|avisos|conta|privacidade`), pela engrenagem do menu "Você" e do
+  Perfil, por "Preferências" no menu e pelo sino de Avisos. Contas puras em
+  `lib/settings.ts`. Preferências: a frase do perfil, "Recomeçar sugestões"
+  (`recommendations.reset`), esportes e times ("Editar" abre `onboarding/sports` e
+  `teams` com `?edit=1`, que começam do que a pessoa tem e salvam no fim por
+  `updateMyPreferences` e `updateMyTeams`; voltar sai da edição, porque o expo-router
+  põe as boas-vindas por baixo) e o raio (`updateUser({ searchRadiusKm })`). Conta:
+  nome (`updateUser`), cidade (`app/cidade.tsx`, `updateMyCity`), senha
+  (`app/senha.tsx`, `changePassword`, derruba os outros aparelhos), sessões
+  (`listSessions`, revogar por `/revoke-session-by-id`; a lista pede login de menos de
+  um dia, `freshAge`, senão pede para entrar de novo), sair e excluir (`deleteUser` com
+  a senha). Foto (WEB-419, `lib/avatar.ts`): seletor ou câmera do sistema com recorte
+  quadrado, 512 px em JPEG e o mesmo `POST /api/user/avatar` do web (URL assinada do R2,
+  depois `updateUser({ image })`); sem as chaves do R2 o servidor responde 503 e o app
+  mostra a frase dele ("Upload de foto indisponível no momento."). Para testar o
+  upload, suba o web com `R2_MEDIA_*`, `CF_ACCOUNT_ID` e `MEDIA_PUBLIC_ORIGIN` (o
+  bucket é o de produção, `onside-media`, na chave `users/<id>/avatar`); para ver o
+  503, suba com essas variáveis vazias. A foto aparece no menu Você, no Perfil, na Conta
+  e no quadrinho dos amigos (`Avatar` com `image`). Duas etapas: `app/duas-etapas.tsx`
+  (senha, "Abrir no app autenticador" com o `otpauth://`, QR e chave, código de 6
+  dígitos em `components/code-boxes.tsx`, códigos de recuperação; ligada, desliga com a
+  senha). Ligar troca a sessão: a lista de aparelhos é relida. O `@usuário`
+  dos amigos se troca na Conta. Avisos segue o desenho com os controles desligados e o
+  aviso de "em breve" (não há notificação); em Privacidade, "Onde você foi" funciona
+  (quem vê os bares e jogos, quem pode te adicionar), "Aparecer no ranking global" grava
+  `user.ranking_global` (WEB-465), comunidades seguem "em breve", e "Baixar meus dados" pede o arquivo (`account.requestExport`, WEB-418): o
+  servidor monta o JSON (perfil, preferências, favoritos, jogos, avaliações, amigos e
+  conquistas; de outra pessoa, só nome e `@` de amigo; para bar, `barData`) e o manda de
+  anexo para o e-mail da sessão, um pedido a cada 24 h por conta (`rate_limit`, chave
+  `data-export:user:<id>`; o segundo volta `TOO_MANY_REQUESTS` com a frase para a tela, e
+  envio que falha devolve o pedido). A política de privacidade (seção 13) cita o caminho. "Reservas" do 11g virou "Vou assistir", porque
+  não existe reserva de mesa.
+- **Amigos (S1 do design, 11a–11d, decisões do dono em 21/10/2026):** só na API e no
+  app; o web não tem tela (por isso o branch só vai para master com o app pronto). Banco:
+  `friendship` (`packages/db/src/schema/social.ts`, uma linha por dupla em qualquer
+  direção, pendente até aceitar; recusar ou desfazer apaga) e, em `user`, `username`,
+  `friend_code` ("GB-4821", o do QR), `activity_visibility` e `friend_requests_from`
+  (Privacidade, 11i). `@` e código nascem no primeiro uso (`ensureSocialIdentity`). Regras
+  em `packages/api/src/lib/friends.ts`, roteador `friends`. Telas: `app/amigos`
+  (11a, item "Amigos" do menu "Você"; no design abre pelo Ranking), `amigos-busca` (11b,
+  "Perto de você" é a mesma cidade), `meu-codigo` (11c, QR do link de convite e leitor
+  pelo `expo-camera`), `amigo/[id]` (11d: nível, o mês lado a lado, o jogo marcado com
+  "Vou também", bares em comum, tudo pela privacidade da pessoa), `contatos` (a conta não
+  tem telefone: o app manda o SHA-256 dos e-mails da agenda, pelo `expo-contacts/legacy`,
+  e só aparece quem aceita pedido de todos). Sugestões só de amigos de amigos. O link de
+  convite é `/convite/<código>` no web (página `noindex` que abre `onside://convite/…`):
+  conta criada há menos de um dia já entra como amiga; sem conta, o app guarda o código
+  (`savePendingInvite`) e as abas do torcedor aceitam depois (`usePendingInvite`).
+  "Convidar" (comunidades) avisa "em breve". Pedido respondido e
+  sugestão adicionada ficam na tela com o botão trocado até ela abrir de novo
+  (`useKept`): tirar a linha fazia o card pular, e `LinearTransition` não anima a
+  altura do `Card`. Dados de teste: `apps/mobile/scripts/amigos.sql`.
+- **Ranking do mês (13 do design, 10d e 11e; WEB-409):** `app/(fan)/voce/ranking.tsx`, pelo
+  item "Ranking" do menu "Você" e pelo rodapé de Meus jogos. Nada é gravado: `ranking.friends`
+  (`packages/api/src/lib/ranking.ts` e `ranking-read.ts`) conta das visitas (`visits.ts`) você
+  e os amigos aceitos que deixam os amigos ver a atividade (`canSeeActivity`, como o perfil de
+  amigo; "Ninguém" não entra). Métricas do design: bares diferentes (padrão), jogos, bairros e
+  conquistas desbloqueadas no mês. O mês é o de Brasília pela data do jogo e vira à 0h do dia
+  1º; empate vai para quem chegou primeiro ao número, e com zero pelo nome. As setas comparam
+  com a posição de uma semana atrás (no começo do mês, sem setas). A aba Comunidades avisa
+  "em breve". Sozinho (sem amigo visível), a tela é o 11e. Dados de teste:
+  `apps/mobile/scripts/ranking.sql`, depois de `conquistas.sql`.
+- **Ranking da cidade (Rodada 27, 27a–27c; WEB-465):** aba Global e
+  `app/(fan)/voce/ranking-cidade.tsx` (pelo "Ver todos"), peças em
+  `components/city-ranking.tsx`. `ranking.city` (`readCityBoard`) pagina por posição
+  (`row_number` no banco): `cursor` 0 traz o top 8, os seguintes 30, e toda página traz a sua
+  vizinhança (você e 2 de cada lado), fixa abaixo do corte "N TORCEDORES"; tocar no corte
+  traz a próxima página até o topo encostar em você (`cityLayout`, `lib/ranking.ts`). Só
+  "Bares no mês" e "Jogos". Entra na lista quem ligou `user.ranking_global` (nasce desligado;
+  Configurações › Privacidade ou o interruptor do 27c) e não tem "Ninguém" em
+  `activity_visibility` (`listedInCity`). Aparecem nome, `@` e número, sem foto. Quem está
+  fora não aparece para ninguém e também não vê a própria posição (o 27c no lugar da aba).
+  Filtro de bairro, setas e a medalha Cidade ficaram para depois. Dados de teste:
+  `apps/mobile/scripts/ranking-cidade.sql`, depois de `ranking.sql`.
+- **Chamado de amigo ("Chamar Marina", Rodada 24):** tabela `friend_call` (um por de, para e
+  jogo; pending, going, not_now). Quem cria é `createFriendCall`
+  (`packages/api/src/lib/friend-calls.ts`; só amigo aceito, jogo começado recusa pela mesma
+  precondição de marcar presença, `attendableGame`, bar fora do ar é `NOT_FOUND`, repetido devolve `duplicate`), chamado
+  pelo `ai.confirm`. `friends.respondCall` só pelo destinatário e uma vez (o `update` só
+  pega linha `pending`, na mesma transação da presença: se ela falhar, nada muda): "Vou
+  também" passa por `setAttendance` (código no Elite), "Agora não" não avisa quem chamou. Desfazer ou
+  recusar amizade apaga os chamados da dupla. Em Avisos (`CallCard` em `app/avisos.tsx`),
+  aba Amigos e Tudo: `calls` (pendente some quando o jogo começa) e `callsAccepted` ("Marina
+  vai também"); o "Vou também" sai dos dois lados se a presença for desmarcada. A frase do design ("o Gabriel foi avisado") vai sem gênero. A 24g (notificação)
+  não entra: não há push (WEB-416).
+- **Bares pra você (08 Sugestões, Rodadas 22 e 23, WEB-425):** `app/bares-pra-voce.tsx`
+  (tela cheia, pelo item do menu "Você" com o selo "N novos"), `app/por-que.tsx` (22c, folha),
+  baralho e card em `components/suggestions.tsx`, frases em `lib/suggestions.ts`. **Uma rodada de
+  até cinco bares por dia** (dono, 21/10/2026), gravada em `recommendation_round` na primeira
+  leitura do dia com localização (`recommendations.today`); vira às 10:00 de Brasília
+  (`lib/recommendations/round.ts`) e não muda no dia. O ranking tem 5 posições (`count`; o perfil
+  do web segue com 3). Curti = favorito + `high_intent`; Passo = `dismiss`, 30 dias; Voltar =
+  `recommendations.undo` (sem resfriamento). Avisar (`bar_game_alert`, bar + esporte ou time) e
+  Lembrar (`game_reminder`) viram avisos em Avisos por `recommendations.notices`; sem push.
+  "Vou assistir" do card manda `runId` para `attendance.set` (atribuição `attend`). O card é escuro
+  nos dois temas, como no design. As frases só usam números do servidor (`facts`); a nota pública
+  respeita o piso e o `app_config`. Os nomes dos amigos no "Combinou" (23d) ainda não existem
+  (WEB-404): hoje vai a contagem de `readGoing`, com o ponto de encaixe comentado. Dados de teste:
+  `apps/mobile/scripts/bares-pra-voce.sql`; estados de fim e vazio no DEV (`?estado=`).
+- **Busca, avisos e filtros (seção 08 nova, Rodada 18 do design, telas 19a–19i):**
+  - **Filtros (19d):** `app/filtros.tsx`, folha nativa aberta pelo botão redondo da fileira
+    do Explorar. Mexe num rascunho e aplica no "Ver N bares" (a contagem é uma
+    `pubs.search` com o rascunho, montada por `searchInput` de `lib/filters.ts`, a mesma do
+    mapa: mesmo raio e o mesmo limite de 30, então o botão diz "Ver 30+"). "Quando" conta jogos por dia com `pubs.gameDays`. "Só
+    bares com jogo publicado" (`gamesOnly`) esconde os bares sem jogo da lista e do mapa;
+    nasce desligado, ao contrário do design. Abaixo de "No bar", chips por grupo
+    (`CHIP_GROUPS`, WEB-455): Pagamento (Pix, Cartão, Vale-refeição, Couvert = "cobra
+    couvert") e os itens novos do catálogo que a folha do design não desenha (Drinks,
+    Opção vegetariana, Perto do metrô, Bicicletário); todos podem virar atalho. O antigo
+    "Pix e cartão" (id 14) está em `HIDDEN_AMENITY_IDS` (`packages/api/src/lib/amenities.ts`):
+    os bares o mantêm gravado, a busca e a escrita o aceitam, nenhuma tela o mostra; a
+    migration 0075 deu Pix e Cartão a quem o tinha.
+  - **Atalhos (19e):** `app/atalhos.tsx`. Até cinco filtros fixados no topo do mapa, mais o
+    "Ao vivo", que é fixo e só aparece com jogo rolando. Guardados no aparelho (SecureStore);
+    sem nada salvo, a fileira é Hoje, Telão, Área externa e o esporte principal. Contas em
+    `lib/filters.ts`; o estado (`filters`, `shortcuts`, `focus`) mora em
+    `components/explore-state.tsx`, montado em `app/_layout.tsx` para a folha alcançar.
+    "Fim de semana" não entrou: a busca filtra um dia só.
+  - **Busca (19a, 19b):** `app/busca.tsx`, pela lupa do Explorar. Contas em `lib/search.ts`
+    sobre os bares num raio de 10 km; time e campeonato vão também ao servidor
+    (`pubs.search` com `championship`). Recentes no aparelho. "Ver no mapa" põe `focus` no
+    estado e o Explorar leva o mapa até o bairro. "Pedido mais específico?" abre a busca com
+    IA (2h).
+  - **Avisos (19c):** `app/avisos.tsx`, pelo sino. Montados do que já existe
+    (`lib/notices.ts`): oferta liberada (código validado com oferta), jogo dos seus times
+    perto (`pubs.search` com `teamIds`), conquista desbloqueada e, dos amigos
+    (`friends.notices`), pedido recebido (Aceitar e Recusar no cartão), pedido aceito
+    (30 dias) e o chamado de amigo (Rodada 24). No topo, "Seu jogo de hoje" com os amigos que vão (`todayGoing`). As abas
+    são as do design, Tudo, Jogos e Amigos; conquista só em Tudo. Ranking e comunidades
+    ainda não existem. "Lido" fica no aparelho. Não há notificação no celular.
+- **Pins do mapa (Rodada 21, família Gota, 21a, escolhida pelo dono em 20/10/2026):**
+  gota com a ponta reta da marca (`MapDrop` em `components/explore.tsx`): tinta com copo,
+  vermelha com telão e halo na ponta se ao vivo, acid com estrela se Elite. Só o ao vivo
+  ganha a pílula com o nome à direita; o bar tocado vira a gota maior com o balão de nome e
+  "HOJE 21:30" e os outros não apagam. Grupo é um círculo com selo. No Apple Maps o `anchor` é
+  ignorado: a ponta cai no bar pelo `centerOffset` que `dropBox` calcula (o `anchor` fica
+  para o Android). Cada tipo de marcador (gota, gota com pílula, tocado) tem chave própria
+  e nasce de novo ao trocar: mudar tamanho e `centerOffset` de um marcador vivo o deixava
+  fora do lugar, e o `zIndex` só vale na criação. O halo do ao vivo passa da caixa por
+  baixo para não roubar o toque da gota vizinha. As mesmas gotas valem nos recortes de mapa da busca e no mapa da
+  página do bar (a gota grande com o balão, como a do bar tocado), e
+  o raio de busca aparece como círculo tracejado no Explorar (`RadiusCircle`, também nos
+  filtros e na busca, com miolo mais forte).
+- **Mapa sem amontoado (Rodada 20, 20a–20d):** cada bar vira grupo (colados a menos de
+  60 pt na tela, com selo de quantos ao vivo; tocar aproxima), ponto (o padrão: tinta,
+  vermelho se ao vivo, acid se Elite) ou rótulo (só ao vivo e Elite, por prioridade, que
+  caibam sem encostar e fora do cabeçalho e da folha). Zoom de bairro (mais de 4 km na
+  tela): grupos, pontos e nomes de bairro, sem rótulo; de rua: sem grupo, até 3 rótulos;
+  mais perto que 1,5 km: rótulo em todos que couberem. Tocar num bar o seleciona: os outros apagam para 45% e a folha
+  troca para o card dele; tocar no mapa solta. Grupos pela `supercluster` (tocar abre no zoom em que o
+  grupo se separa; o índice só é refeito quando os bares mudam, `indexCache`) e o resto em `lib/map-layers.ts`, sobre os cantos reais da tela
+  (`getMapBoundaries`); debaixo do cabeçalho não sai rótulo. A camada nativa do MapLibre
+  faria isso sozinha, mas sai do Expo Go: WEB-417, sem compromisso. A câmera abre no raio da pessoa, com a
+  região da tela toda e o centro deslocado para a faixa livre: `mapPadding` e
+  `edgePadding` no iOS abriam três vezes mais longe. A folha abre mais baixa (título e
+  um card, com o seguinte sumindo num degradê antes da barra de abas, para dizer que a
+  lista continua; com um bar só, sem degradê) e o botão de alfinete acima dela volta ao raio.
 - **Abas do torcedor:** são a barra
   nativa do iOS 26 (`NativeTabs` em `app/(fan)/_layout.tsx`, UITabBar com liquid glass,
   distorção e arraste do sistema; roda no Expo Go): ícones em PNG gerados dos nossos
   (`assets/images/tabs/`, claro e escuro, `renderingMode="original"`; a aba selecionada
   troca para `*-on`, o ícone com o nome ao lado, e o rótulo nativo fica oculto), IA na aba de papel
-  `search` (o círculo à direita) e Favoritos e IA desabilitadas com `tabPress`. A barra tem Favoritos onde o design tem Ranking (o dono trocou em 16/10/2026); o Ranking fica no menu "Você". "Você" é aba
-  de verdade (a barra a mantém marcada): mostra o mesmo Explorar com o menu de vidro por
-  cima (`components/tab-bar.tsx`), e o estado que as duas dividem (filtros, folha,
-  localização) fica em `components/explore-state.tsx`. Borda tracejada de um
+  `search` (o círculo à direita) e desabilitada com `tabPress`. Bares (a antiga Favoritos) é "Seus bares"
+  (17b, 17d e 17e da Rodada 17), `app/(fan)/favoritos.tsx`: "Já fui" (calendário e visitas
+  por mês, `attendance.visits`, os códigos validados), "Salvos" (a semana dos jogos dos
+  salvos) e "Bares" (só os salvos, por bairro, perto ou A–Z, com quantas vezes foi a cada um). Seus bares leva `disableAutomaticContentInsets` na aba: sem ele o
+  iOS somava o topo seguro ao `paddingTop` e o título descia 48 pt. As imagens selecionadas das abas
+  (`*-on`) têm no máximo ~72 pt: mais largas, a ponta aparece na lente da aba vizinha. A barra tem Bares onde o design tem Ranking (o dono trocou em 16/10/2026); o Ranking fica no menu "Você". "Você" é aba
+  de verdade (a barra a mantém marcada): mostra a aba de onde se veio (Explorar ou
+  Seus bares) com o menu de vidro por cima (`components/tab-bar.tsx`), e fechar volta
+  para ela, e o estado que as duas dividem (filtros, folha,
+  localização) fica em `components/explore-state.tsx`. Por baixo do menu vai uma foto
+  dessa aba (`react-native-view-shot`, `useShotSource`), tirada meio segundo depois
+  de cada mudança na tela em foco: a aba troca no nativo, sem esperar o JS (com a
+  aba desabilitada e o JS fotografando no toque, a lente da barra ia, voltava e ia
+  de novo no aparelho), e uma segunda cópia viva montava outro mapa, que recarregava.
+  Ao sair da aba "Você", a pilha dela volta ao menu (`voce/_layout.tsx`). A barra leva
+  `rejectStaleNavStateUpdates` (via `unstable_nativeProps`): sem ele, no aparelho, um
+  pedido de seleção antigo do JS chegava depois do toque e a lente ia, voltava e ia
+  de novo. O simulador não mostra esse pulo; confira no celular. O menu só destaca o item da tela aberta
+  (`MENU_SCREENS`). Borda tracejada de um
   lado só não aparece no iOS: o picote do card é `react-native-svg`. O banco local nasce sem jogos: crie
   eventos para hoje nos bares de teste para ver os pinos, ou rode
+  `apps/mobile/scripts/jogos-hoje.sql` (oito jogos de hoje nos bares de teste; o simulador
+  precisa da localização na Vila Madalena) ou
   `apps/mobile/scripts/bar-do-ze.sql`, que monta o "Bar do Zé" completo da tela 2g (jogo ao
   vivo, próximos jogos, oferta, nota, 34 presenças, todas as características). Publicar no Android vai pedir
   chave do Maps SDK for Android em `app.json`.
 - **Tema escuro:** o design só desenha conta, onboarding e avulsas no claro; no escuro valem
-  as mesmas formas com tinta e papel trocados e o acid no lugar do vermelho. As cores que
-  seguem o tema estão em `components/ui.tsx` (`FG`, `BG`, `SUB`, `HOT`, `CARD`, `LINE`,
-  `DROP`, `EDGE`, `SPARK`, e `themed(claro, escuro)` para um valor avulso): são
-  `DynamicColorIOS`, trocam sozinhas e servem no `StyleSheet` de módulo e no SVG. Onde a cor
-  é calculada em JS (`interpolateColor`, gradiente, imagem, tom do `Glass`) use
-  `useColorScheme`. Texto sem `color` sai preto: passe `FG`. `INK`/`PAPER` são as cores
-  fixas (texto e ícone sobre acid ficam `INK`, com `accent={LIVE}`). No Android as cores
-  dinâmicas ficam no claro.
+  as mesmas formas com tinta e papel trocados e o acid no lugar do vermelho. **Uma tabela de
+  cores só**, `PALETTE` em `components/theme.tsx` (claro e escuro), lida de dois jeitos:
+  `usePalette()`, que lê o `PaletteProvider` montado em `app/_layout` (cor calculada em JS:
+  `palette.dark ? … : …`, `interpolateColor`, gradiente, tom do `Glass`; é a forma que vale
+  no Android), e as constantes de `components/ui.tsx` (`FG`, `BG`, `SUB`, `HOT`, `CARD`,
+  `LINE`, `DROP`, `EDGE`, `SPARK`…), que saem da mesma tabela como `DynamicColorIOS`: trocam
+  sozinhas e servem no `StyleSheet` de módulo e no SVG, sem hook. Cor nova que mais de uma
+  peça usa entra na tabela; `themed(claro, escuro)` fica para um valor avulso de um lugar
+  só. Peça não recebe a paleta por prop: chama `usePalette()`. Trocar uma cor de uma peça
+  é prop dela (`Card fill`, `shadow`); um trecho com outra paleta (o ingresso claro sobre a
+  tela escura) vai dentro de `<PaletteProvider value={…}>`, que vale para tudo dentro dele.
+  A IA (`components/ai/theme.ts`) e a medalha (`useMedalPalette`) estendem a tabela com as
+  cores só delas. Texto sem `color` sai preto: passe `FG`. `INK`/`PAPER` são as cores
+  fixas (texto e ícone sobre acid ficam `INK`, com `accent={LIVE}`). No Android as
+  constantes dinâmicas ficam no claro.
+- **Fonte grande do iOS:** o `Text` de `components/ui.tsx` acompanha o "Texto maior" até
+  `MAX_FONT_SCALE` (1,35×, o maior tamanho fora dos de acessibilidade); acima disso,
+  chips, botões e cards de altura fixa cortavam o rótulo (nos de acessibilidade a letra
+  chega a 3,1×). Já usam: filtros, página do bar e as peças de `ui`, `card` e `explore`;
+  o resto ainda importa o `Text` do `react-native`. Um `maxFontSizeMultiplier` próprio vence.
 - **Barra de status:** `useStatusBar` (`components/ui.tsx`), no foco e no `transitionEnd`.
   Não use `<StatusBar>` (com telas empilhadas, a de baixo ganha) nem a opção
   `statusBarStyle` da pilha (o Expo Go não liga `UIViewControllerBasedStatusBarAppearance`
@@ -689,18 +1115,98 @@ invente layout que o projeto não tem.
   recomeça a entrada quando o objeto muda, e um `ZoomIn.delay(...)` escrito no JSX é um
   objeto novo a cada renderização. Nada de transparência animada em cima de vidro.
 - **Navegador de telas (só em desenvolvimento):** a aba "DEV" na borda direita
-  (`components/dev-tab.tsx`) abre `app/dev.tsx`, a lista das telas pelo código do design
+  (`components/dev-tab.tsx`) abre `app/dev.tsx` (a tela fica em `dev/navegador.tsx`, que a
+  rota só carrega com `__DEV__`, para ficar fora do bundle de produção), a lista das telas pelo código do design
   (4b…4n, 2p, 11p…11x, 2d/2e; 8a/8b recarrega o app para ver a splash). Tocar num item abre a
   tela montada de novo; "Recarregar esta tela", ou segurar a aba, monta a atual outra vez
-  (a entrada toca de novo). Tela nova entra na lista de `SECTIONS`.
+  (a entrada toca de novo). Tela nova entra na lista de `SECTIONS`
+  (`dev/navegador.tsx`). O dublê da IA (`lib/ai-dubla.ts`) também só entra por `require`
+  dentro do `__DEV__`.
 - **Tocar e digitar no simulador:** `idb` (`brew install facebook/fb/idb-companion` e
   `pip install fb-idb`; `idb connect <udid>`, `idb ui tap --udid <udid> x y` em pontos,
   `idb ui text`). Com `recordVideo` dá para conferir a microinteração quadro a quadro.
+  O simulador do Xcode 27 não tem menu de girar: `idb ui rotate --udid <udid> LANDSCAPE_LEFT`
+  (e `PORTRAIT`) gira o iPad. Em alguns aparelhos `simctl io screenshot` falha
+  ("Invalid argument"); `idb screenshot --udid <udid> <arquivo>` funciona.
+- **Tablet e dobrável (WEB-483, base no WEB-486):** o app abre em tela cheia no iPad
+  (`supportsTablet`) e gira; celular e capa de dobrável ficam em retrato
+  (`usePortraitLock`, pela menor medida da tela, abaixo de 600). O layout vem de
+  `useLayout()` (`components/layout.tsx`, contas em `lib/layout.ts`), pela largura da janela e
+  pelo sistema, nunca pelo modelo: `phone`, `duoClosed` (iPhone com mais de 460 pt),
+  `split` (lista e detalhe lado a lado: tablet deitado e dobrável aberto; `split` é a largura
+  da lista, ou a metade no dobrável) e `stack` (tablet em pé); `wide` marca a terceira coluna
+  (13″ e Tab S11 Ultra deitados). A navegação também: `tabs` (a `NativeTabs`, só no
+  celular), `float` (barra flutuante embaixo: iPad e dobrável aberto, sobre a metade do mapa),
+  `duoRail` (faixa da direita do Duo) e `rail` (Galaxy Tab, com a IA no topo e os atalhos),
+  em `components/side-nav.tsx`. Em todos, a barra é a do celular (o dono pediu, o design tinha a
+  antiga): cápsula de vidro de 290 x 62, lente que desliza com mola e segue o dedo, os mesmos
+  PNG de `TAB_ICONS` e o círculo da IA; em pé (Duo, rail) a cápsula fica de pé, só com os ícones. Fora do celular a `NativeTabs` só se esconde (`hidden`),
+  para abrir o dobrável não remontar as abas. Telas das abas descontam a navegação por
+  `useNavInsets()` (`useTabBarSpace` é o `bottom` dele); o primeiro acesso (4o) cerca o botão
+  da IA por `useAiButtonCenter`. Há ainda `table` (meio dobrado na mesa: Duo em laptop, Flex
+  Mode; `split` é a altura da metade de cima) e `cover` (tela de fora do Z Flip 8, 360 x 400 dp,
+  nav `none`); `gap` é a largura da dobra, e o painel da direita começa em `split + gap`. A
+  postura vem de `modules/fold-posture` (módulo local do Expo: `UIHingeInteraction` no iOS
+  27.1, Jetpack WindowManager no Android), que só existe no build de desenvolvimento; no Expo
+  Go o dobrável aberto é reconhecido pela proporção e `table` não aparece. O navegador DEV
+  mostra a classe e a postura no topo. **Build de desenvolvimento:** iOS com
+  `bunx expo run:ios --device <udid>` (o iOS 27 exige o ciclo de cenas, ligado por
+  `ios.enableSceneSupport` do `expo-build-properties`; sai no SDK 58); depois de criar ou
+  mudar módulo local, `pod install` em `ios/`. Android com `bunx expo run:android`, usando o
+  JDK do Android Studio (25) com `JAVA_TOOL_OPTIONS=--enable-native-access=ALL-UNNAMED`, senão
+  o CMake falha em "A restricted method in java.lang.System has been called"; o build Android
+  ainda fecha no mapa sem a chave do Maps SDK (`com.google.android.geo.API_KEY`), então abra
+  `onside://dev` para conferir postura. **Dobrar no simulador:** o iPhone Duo dobra pelos três
+  botões da barra de baixo da janela dele no DeviceHub (fechado, livro, aberto) e gira por
+  `idb ui rotate`; a tela aberta é o display `primary-1` do `simctl io screenshot`. O AVD do
+  Fold dobra por `adb emu posture 2` (meio) e `3` (aberto) e gira por `adb emu rotate`; a
+  tela de fora do Flip se imita com `adb shell wm size 720x800` e `wm density 320`. iPad e
+  Android também rodam no Expo Go em tela cheia. No Android: `adb reverse tcp:8081 tcp:8081` e
+  `tcp:3001`, e `adb shell am start -a android.intent.action.VIEW -d exp://localhost:8081`.
+  O web do `vite dev` escuta só em `::1`: para o simulador alcançar, suba com
+  `bun run dev -- --host 127.0.0.1`.
 - **Liquid glass:** o que o design faz em vidro (botão "Pular", card sobre mapa ou foto) usa
   `Glass` (`components/glass.tsx`), que é o `GlassView` do `expo-glass-effect` no iOS 26 e
   cor translúcida mais opaca onde o vidro do sistema não existe (Android, iOS anterior).
-- **Busca com IA:** a quarta tela da apresentação anuncia uma busca que o produto ainda não
-  tem; o dono confirmou (14/10/2026) que ela vai existir e a tela fica como no design.
+- **Busca com IA (Rodada 24, 24a–24e; WEB-400):** `app/busca-ia.tsx`, folha alta
+  (`formSheet`, detent 1) aberta pela aba IA, por "Pedido mais específico?" da busca e pelo
+  coach. Fala com `ai.converse` em eventos (passos, ferramentas, `bars` antes do `text`,
+  proposta, `done`) e `ai.confirm`; a fonte está em `lib/ai-stream.ts`, os tipos em
+  `lib/ai-events.ts` (`import type` dos de `packages/api/src/lib/ai/events.ts` e do router) e as contas puras em `lib/ai-chat.ts` (eventos → resposta,
+  citações `[[n]]` em pedaços, versões do "refazer", recentes, chips). As peças são de
+  `components/ai/` (uma por arquivo, nomes do AI Elements da 24f) e o quadro delas (t24c) é a
+  tela DEV `app/ai-pecas.tsx` (corpo em `dev/ai-pecas.tsx`). O raciocínio fica aberto enquanto pensa e fecha no primeiro
+  texto ou proposta; ferramenta pronta entra nele, a que espera "Confirmar" fica à vista.
+  Citação tocada rola até o card e o faz piscar. Tirar um chip de "Entendi assim" refaz a
+  busca sem IA: a `key` do chip é `<argumento de pubs.search>:<valor>` (mais
+  `neighborhood:` e `origin:`), e `chipSearch` monta a busca com os que sobram. "Ver no
+  mapa" enquadra no Explorar os bares da resposta e o ponto da busca (`mapFocus`, WEB-432;
+  o `ChatBar` traz `latitude` e `longitude`), na faixa livre entre os chips e a folha
+  (`frameRegion`, a mesma conta do raio), e os desenha como gotas junto com os da busca
+  do Explorar (`answer` em `explore-state`, `answerPins`), sem repetir os que ela já tem;
+  tocar numa delas abre a página do bar. Ficam até a pessoa mexer na busca (filtros,
+  atalhos, "Ao vivo", "Ampliar"), pedir outro "Ver no mapa" ou tocar no "voltar ao raio";
+  arrastar o mapa ou tocar num bar não os solta. Chips de local
+  e dia só no campo do início (24a); "+" troca o contexto depois. Recentes (até 20, com a
+  conversa inteira) ficam no aparelho, em `busca-ia-recentes.json` (`Paths.document`): o
+  servidor não guarda texto. Depois do "Confirmar" (24e) a frase é do app (`confirmText`) e
+  o cartão do código abre `app/codigo/[eventId]`. Parar manda `ai.stop` (o servidor
+  não chama o modelo de novo e a pergunta não desconta) e deixa de mostrar. Abrir um bar fecha a folha antes e leva `?ai=<run_id>`.
+  Limite, IA fora do ar e busca refeita sem bares não estão no design: frase no lugar da
+  resposta e "Abrir a busca". O microfone só abre o teclado (ditado do sistema). **Dublê**
+  (só em desenvolvimento): `?dubla=1` troca o servidor por `lib/ai-dubla.ts`, e `estado=
+  pensando|resposta|confirmar|feito` já manda a pergunta de cada tela (navegador DEV, seção
+  "24"); `dubla=pior|limite|fora` para o pior caso, o limite e a IA fora do ar.
+- **Passeio guiado (rodada 5, 3b), no lugar do primeiro acesso só da IA (4o):**
+  `components/tour.tsx`, montado em `app/(fan)/_layout.tsx` e aberto por `?passeio=1` no
+  Explorar: no fim do onboarding ("Ver como funciona · 30 s", em `onboarding/pronto`), em
+  Configurações › Preferências › "Rever o passeio" (fora do menu Você, dono) e no convite do topo do Explorar a partir da segunda abertura
+  (`TourInvite`, até tocar ou dispensar; visto ou dispensado fica em `onside.passeio`).
+  Cinco passos sobre as peças de verdade: o Explorar registra a fileira de jogos, a folha e
+  os filtros com `useTourTarget` (mede na janela); a barra de abas é nativa, então a IA vem
+  de `useAiButtonCenter` e a aba Você da posição do desenho. Recorte em máscara SVG que anda
+  numa mola de 300 ms sem balanço (com menos movimento, pula); só "Pular" fecha. Sem conta,
+  o último passo termina em "Criar conta grátis".
 - **Fontes:** `apps/mobile/assets/fonts/*.ttf`, convertidas dos `.woff2` do web (React Native
   não lê woff2). Só existem os pesos em uso; para um novo, gere a instância com `fonttools`
   e **dê nome próprio a ela** (IDs 1, 4 e 6 da tabela `name`): o instanciador mantém o nome
@@ -722,8 +1228,32 @@ invente layout que o projeto não tem.
   e `xcrun simctl io booted screenshot <arquivo>.png` tira o print, para comparar lado a lado
   com o design renderizado a 3x. O botão flutuante do Expo Go some com
   `EXDevMenuShowFloatingActionButton = false` no plist de preferências do Expo Go no simulador.
+- **Metro com `CI=1` não observa os arquivos:** a edição não chega ao app, nem reabrindo
+  ("Metro is running in CI mode, reloads are disabled"). Com o simulador aberto para editar,
+  suba o `expo start` sem `CI`.
+- **Texto grande do iOS (WEB-410):** `Text` e `TextInput` vêm de `@/components/ui`, nunca do
+  `react-native` (`components/text.tsx`). O `Text` para de crescer em 1,35× (`MAX_FONT_SCALE`),
+  e em 1,2× (`DISPLAY_FONT_SCALE`) quando a fonte é Anton; um `Text` dentro de outro herda o
+  teto de fora. Rótulo de botão em pílula leva `DISPLAY_FONT_SCALE`, uma linha e
+  `adjustsFontSizeToFit`. `Animated.Text` não passa pelo `Text`: dê o teto à mão. Confira no
+  simulador com `xcrun simctl ui <udid> content_size accessibility-extra-extra-extra-large`.
 - `Image` com só `StyleSheet.absoluteFill` sai no tamanho original da imagem neste app: passe
   `width` e `height` explícitos.
+
+### Falha de rede (WEB-460)
+
+Uma regra só para o painel e o app, em `packages/api/src/lib/transient-error.ts`: falha
+passageira (sem rede, timeout, 5xx, 429, página de gateway que não é JSON) tenta de novo
+com espera crescente (1 s, 2 s, 4 s); recusa da regra não repete. Mutation só repete
+sozinha se estiver em `IDEMPOTENT_MUTATIONS` (mandar duas vezes dá no mesmo; o porquê das
+que ficaram de fora está no comentário): mutation nova entra lá só depois de conferir no
+servidor. O resto volta ao botão como "Tentar de novo", com o que a pessoa digitou. O botão
+conta a fase (`actionPhase`): no painel, `BotaoAcao` (rótulos na mesma célula, largura
+fixa); no app, `phaseLabel` com `busy` no `PillButton`. Bloco que não carregou é
+`ErroBloco` (painel) ou `ErrorState` (app), nunca some. A faixa de "sem conexão" está no
+`PainelShell` e no `_layout.tsx` do app: no app é a 14j do design ("Sem internet · mostrando
+o que estava salvo", vidro escuro, "Tentar"), por cima de folhas e modais
+(`components/offline-banner.tsx`); ao reconectar, a tela é relida. No app, "Simular sem rede" no navegador DEV liga e desliga o `onlineManager`.
 
 ### Routing
 

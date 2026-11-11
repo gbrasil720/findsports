@@ -1,6 +1,7 @@
 import { db, eq, sql } from '@findsports_oficial/db'
 import { jobRun } from '@findsports_oficial/db/schema/houdini'
 
+import { closeStaleRuns } from './ai/stale-runs'
 import { reconcileBarPlans } from './bar-plan-sync'
 import { runScheduledAnalyticsRetention } from './commercial-analytics/retention'
 
@@ -11,6 +12,7 @@ import { runScheduledAnalyticsRetention } from './commercial-analytics/retention
 export const JOB_NAMES = [
   'bar_plans',
   'analytics_retention',
+  'ai_stale_runs',
   'bar_notices'
 ] as const
 export type JobName = (typeof JOB_NAMES)[number]
@@ -22,6 +24,8 @@ const JOBS: Record<JobName, (trigger: JobTrigger) => Promise<unknown>> = {
   // quem não é o cron.
   analytics_retention: (trigger) =>
     runScheduledAnalyticsRetention(trigger === 'cron' ? 'cron' : 'admin'),
+  // Execução da IA presa em `running` (WEB-430).
+  ai_stale_runs: () => closeStaleRuns(),
   // Resumo da semana e grade vazia por e-mail (WEB-441). Roda todo dia e só
   // manda às segundas, depois dos planos: o resumo lê `bar.plan` em dia.
   // Importado aqui dentro: o `worker.ts` carrega este arquivo na subida, e
@@ -85,7 +89,11 @@ export async function runScheduledJobs() {
     try {
       await runJob('analytics_retention', 'cron')
     } finally {
-      await runJob('bar_notices', 'cron')
+      try {
+        await runJob('ai_stale_runs', 'cron')
+      } finally {
+        await runJob('bar_notices', 'cron')
+      }
     }
   }
 }

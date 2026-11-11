@@ -1,12 +1,14 @@
 import { and, db, eq, inArray, sql } from '@findsports_oficial/db'
+import { VALIDATION_WINDOW_MARGIN_INTERVAL } from '@findsports_oficial/db/event-window'
 import {
-  DEFAULT_EVENT_DURATION_INTERVAL,
-  VALIDATION_WINDOW_MARGIN_INTERVAL
-} from '@findsports_oficial/db/event-window'
+  eventEndSql,
+  eventNotEndedSql,
+  utcNowSql
+} from '@findsports_oficial/db/event-window-sql'
 import { event } from '@findsports_oficial/db/schema/platform'
 import { reservation } from '@findsports_oficial/db/schema/reservation'
 import { TRPCError } from '@trpc/server'
-import { getCurrentPlan, type SubscriptionForPlan } from './current-plan'
+import { issuesCounterCode, type SubscriptionForPlan } from './current-plan'
 
 /**
  * O que o bar Elite tem por causa do código do balcão: a lista de quem vai e
@@ -18,18 +20,11 @@ import { getCurrentPlan, type SubscriptionForPlan } from './current-plan'
  * tabelas da antiga reserva (`attendance-ticket.ts`).
  */
 
-function canEnableReservations(
-  subscription: SubscriptionForPlan | null,
-  now = new Date()
-): boolean {
-  return getCurrentPlan(subscription, now) === 'elite'
-}
-
 export function assertCanEnableReservations(
   subscription: SubscriptionForPlan | null,
   now = new Date()
 ): void {
-  if (!canEnableReservations(subscription, now)) {
+  if (!issuesCounterCode(subscription, now)) {
     throw new TRPCError({
       code: 'FORBIDDEN',
       message: 'A lista de quem vai é um recurso do plano Elite.'
@@ -38,13 +33,13 @@ export function assertCanEnableReservations(
 }
 
 /** Jogo que ainda não acabou, pelo fim derivado da ADR 0003. */
-export const notEnded = sql`coalesce(${event.endsAt}, ${event.startsAt} + ${DEFAULT_EVENT_DURATION_INTERVAL}::interval) > now()`
+export const notEnded = eventNotEndedSql()
 
 /**
  * Janela de validação ainda aberta: o fim derivado mais a margem de
  * `getValidationWindow`, inclusivo como `assertWindowOpen`.
  */
-export const validationOpen = sql`coalesce(${event.endsAt}, ${event.startsAt} + ${DEFAULT_EVENT_DURATION_INTERVAL}::interval) + ${VALIDATION_WINDOW_MARGIN_INTERVAL}::interval >= now()`
+export const validationOpen = sql<boolean>`${eventEndSql()} + ${VALIDATION_WINDOW_MARGIN_INTERVAL}::interval >= ${utcNowSql()}`
 
 /**
  * Gerir o que já existe (WEB-341): ver a fila, responder e validar código.
@@ -59,8 +54,7 @@ export async function canManageReservations(
   now = new Date()
 ): Promise<boolean> {
   return (
-    canEnableReservations(subscription, now) ||
-    (await hasOpenReservations(barId))
+    issuesCounterCode(subscription, now) || (await hasOpenReservations(barId))
   )
 }
 
@@ -75,7 +69,7 @@ export async function canValidateReservations(
   now = new Date()
 ): Promise<boolean> {
   return (
-    canEnableReservations(subscription, now) ||
+    issuesCounterCode(subscription, now) ||
     (await hasOpenReservations(barId, validationOpen))
   )
 }

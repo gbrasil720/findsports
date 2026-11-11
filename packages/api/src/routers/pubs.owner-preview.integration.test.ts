@@ -70,12 +70,26 @@ integrationTest(
       await expect(asFan.pubs.getById({ id: barId })).rejects.toThrow(
         'Bar não encontrado.'
       )
+      // Sem conta (o app abre no Explorar sem login): fora do ar, também não.
+      const visitor = appRouter.createCaller({
+        auth: null,
+        session: null,
+        clientIp: '127.0.0.1'
+      })
+      await expect(visitor.pubs.getById({ id: barId })).rejects.toThrow(
+        'Bar não encontrado.'
+      )
 
       // Publicado, volta a ser bar de todo mundo.
       await db.update(bar).set({ isActive: true }).where(eq(bar.id, barId))
       const publicado = await asFan.pubs.getById({ id: barId })
       expect(publicado.id).toBe(barId)
       expect(publicado.isOwner).toBe(false)
+      // O visitante vê o bar publicado como um torcedor sem presença.
+      const aberto = await visitor.pubs.getById({ id: barId })
+      expect(aberto.id).toBe(barId)
+      expect(aberto.isOwner).toBe(false)
+      expect(aberto.checkIn).toBeNull()
 
       // Assinatura encerrada tira o bar do ar (`stripe-sync`): o dono recebe
       // o motivo, para o aviso da prévia não dizer "ainda fora do ar".

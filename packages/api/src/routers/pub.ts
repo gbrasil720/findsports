@@ -62,6 +62,7 @@ import {
   UF_SIGLAS
 } from '../lib/bar-profile-validation'
 import { readBillingBalance } from '../lib/billing-balance'
+import { readInvoices } from '../lib/billing-invoices'
 import {
   canCancelSubscription,
   getCurrentPlan,
@@ -90,8 +91,10 @@ import {
   invoiceFieldProblem,
   normalizeInvoiceField
 } from '../lib/invoice-details'
+import { readMonthProof } from '../lib/month-proof'
 import { normalizeOpeningHours, openingHoursSchema } from '../lib/opening-hours'
 import { PLAN_NAMES, STARTER_EVENT_LIMIT } from '../lib/plan-limits'
+import { recommendPlan, routineSchema } from '../lib/pub-routine'
 import {
   hasPublicRating,
   RATING_PUBLIC_FLOOR,
@@ -140,7 +143,7 @@ export function resolvePhoneAcceptsWhatsapp(
       throw new TRPCError({
         code: 'BAD_REQUEST',
         message:
-          'Confirmação de WhatsApp requer telefone cadastrado. Envie um telefone junto com a confirmação.'
+          'Para confirmar o WhatsApp, preencha o telefone do bar em Informações e salve as alterações.'
       })
     }
   }
@@ -275,7 +278,7 @@ async function parseGameHouseOffer(
   if (input.houseOffer === undefined && input.noHouseOffer === undefined) {
     return {}
   }
-  const own = await getBarByUserId(userId)
+  const own = await getOwnBar(userId)
   assertCanConfigureHouseOffer(own.subscription ?? null)
   // "Sem oferta" não guarda texto (CHECK `event_no_house_offer_without_text`).
   if (input.noHouseOffer) return { houseOffer: null, noHouseOffer: true }
@@ -296,7 +299,7 @@ async function assertCanCloseAttendance(
   input: { attendanceEnabled?: boolean }
 ): Promise<void> {
   if (input.attendanceEnabled !== false) return
-  const own = await getBarByUserId(userId)
+  const own = await getOwnBar(userId)
   if (getCurrentPlan(own.subscription ?? null) !== 'elite') {
     throw new TRPCError({
       code: 'FORBIDDEN',
@@ -374,22 +377,49 @@ async function lockBarForPublishing(tx: EventTransaction, userId: string) {
   return lockedBar
 }
 
-async function getBarByUserId(userId: string) {
-  const result = await db.query.bar.findFirst({
-    where: eq(bar.userId, userId),
-    // `geo` é derivada e só serve ao índice espacial — não vai para o cliente.
-    columns: { geo: false },
-    with: { subscription: true }
-  })
-
+function ownBarOrThrow<T>(result: T | undefined): T {
   if (!result) {
     throw new TRPCError({
       code: 'NOT_FOUND',
       message: 'Bar não encontrado para este usuário.'
     })
   }
-
   return result
+}
+
+/** A linha inteira do bar do dono: para quem devolve ou edita o perfil. */
+async function getBarByUserId(userId: string) {
+  return ownBarOrThrow(
+    await db.query.bar.findFirst({
+      where: eq(bar.userId, userId),
+      // `geo` é derivada e só serve ao índice espacial — não vai para o cliente.
+      columns: { geo: false },
+      with: { subscription: true }
+    })
+  )
+}
+
+/**
+ * O bar do dono só com o que os outros procedimentos usam: o id, se está no
+ * ar, os contadores da nota e a assinatura. Descrição, horário, foto e o
+ * resto do perfil não viajam a cada chamada do painel.
+ */
+async function getOwnBar(userId: string) {
+  const [result] = await db
+    .select({
+      id: bar.id,
+      isActive: bar.isActive,
+      ratingCount: bar.ratingCount,
+      ratingPositive: bar.ratingPositive,
+      ratingStarsCount: bar.ratingStarsCount,
+      ratingStarsSum: bar.ratingStarsSum,
+      subscription
+    })
+    .from(bar)
+    .leftJoin(subscription, eq(subscription.barId, bar.id))
+    .where(eq(bar.userId, userId))
+    .limit(1)
+  return ownBarOrThrow(result)
 }
 
 /** O que o dono vê de cada foto (WEB-462), com a revisão. */
@@ -552,7 +582,7 @@ export const pubRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const existingBar = await getBarByUserId(ctx.session.user.id)
+      const existingBar = await getOwnBar(ctx.session.user.id)
       assertCanConfigureHouseOffer(existingBar.subscription ?? null)
       const houseOffer = parseHouseOfferInput(input.houseOffer)
 
@@ -574,7 +604,7 @@ export const pubRouter = router({
   updateCodeConfirmation: pubProcedure
     .input(z.object({ later: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
-      const existingBar = await getBarByUserId(ctx.session.user.id)
+      const existingBar = await getOwnBar(ctx.session.user.id)
       assertCanValidateReservations(existingBar.subscription ?? null)
       const [updated] = await db
         .update(bar)
@@ -589,6 +619,22 @@ export const pubRouter = router({
    * grade vazia. Cada interruptor grava sozinho, sem "Salvar". Recurso de
    * todo plano; quem decide o conteúdo de cada e-mail é `lib/bar-notices.ts`.
    */
+  /**
+   * "Sua rotina" depois de o bar ir ao ar (app, rodada 10: a última pergunta
+   * vem depois do primeiro jogo). Só grava a rotina; o plano do teste segue
+   * por `changeTrialPlan`, com a recomendação calculada na tela.
+   */
+  updateRoutine: pubProcedure
+    .input(routineSchema)
+    .mutation(async ({ ctx, input }) => {
+      const existingBar = await getOwnBar(ctx.session.user.id)
+      await db
+        .update(bar)
+        .set({ routine: input, updatedAt: new Date() })
+        .where(eq(bar.id, existingBar.id))
+      return { routine: input, recommended: recommendPlan(input) }
+    }),
+
   updateNotices: pubProcedure
     .input(
       z
@@ -603,6 +649,7 @@ export const pubRouter = router({
         )
     )
     .mutation(async ({ ctx, input }) => {
+      const existingBar = await getOwnBar(ctx.session.user.id)
       const [updated] = await db
         .update(bar)
         .set({
@@ -610,18 +657,13 @@ export const pubRouter = router({
           noticeGameFilling: input.gameFilling,
           noticeEmptySchedule: input.emptySchedule
         })
-        .where(eq(bar.userId, ctx.session.user.id))
+        .where(eq(bar.id, existingBar.id))
         .returning({
           noticeWeeklySummary: bar.noticeWeeklySummary,
           noticeGameFilling: bar.noticeGameFilling,
           noticeEmptySchedule: bar.noticeEmptySchedule
         })
-      if (!updated) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Bar não encontrado para este usuário.'
-        })
-      }
+      if (!updated) throw new TRPCError({ code: 'NOT_FOUND' })
       return updated
     }),
 
@@ -632,7 +674,7 @@ export const pubRouter = router({
   updateOpeningHours: pubProcedure
     .input(z.object({ openingHours: openingHoursSchema.nullable() }))
     .mutation(async ({ ctx, input }) => {
-      const existingBar = await getBarByUserId(ctx.session.user.id)
+      const existingBar = await getOwnBar(ctx.session.user.id)
       const [updated] = await db
         .update(bar)
         .set({ openingHours: normalizeOpeningHours(input.openingHours) })
@@ -670,7 +712,7 @@ export const pubRouter = router({
         )
     )
     .mutation(async ({ ctx, input }) => {
-      const existingBar = await getBarByUserId(ctx.session.user.id)
+      const existingBar = await getOwnBar(ctx.session.user.id)
       assertCanConfigureBarMenu(existingBar.subscription ?? null)
 
       const [updated] = await db
@@ -702,7 +744,7 @@ export const pubRouter = router({
    * recusada, com o motivo. Na ordem do dono; o painel agrupa por categoria.
    */
   photos: pubProcedure.query(async ({ ctx }) => {
-    const existingBar = await getBarByUserId(ctx.session.user.id)
+    const existingBar = await getOwnBar(ctx.session.user.id)
     return db
       .select(OWNER_PHOTO_COLUMNS)
       .from(barPhoto)
@@ -730,7 +772,7 @@ export const pubRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const existingBar = await getBarByUserId(ctx.session.user.id)
+      const existingBar = await getOwnBar(ctx.session.user.id)
       assertCanAddPhoto(existingBar.subscription ?? null, input.cover)
       if (!isOwnGalleryPhotoUrl(input.url, existingBar.id, env)) {
         throw new TRPCError({
@@ -794,7 +836,7 @@ export const pubRouter = router({
   setPhotoCategory: pubProcedure
     .input(z.object({ id: z.string(), category: z.enum(PHOTO_CATEGORY_IDS) }))
     .mutation(async ({ ctx, input }) => {
-      const existingBar = await getBarByUserId(ctx.session.user.id)
+      const existingBar = await getOwnBar(ctx.session.user.id)
       const [updated] = await db
         .update(barPhoto)
         .set({ category: input.category })
@@ -814,7 +856,7 @@ export const pubRouter = router({
   setPhotoCover: pubProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const existingBar = await getBarByUserId(ctx.session.user.id)
+      const existingBar = await getOwnBar(ctx.session.user.id)
       return db.transaction(async (tx) => {
         const [photo] = await tx
           .select({ url: barPhoto.url, status: barPhoto.status })
@@ -866,7 +908,7 @@ export const pubRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const existingBar = await getBarByUserId(ctx.session.user.id)
+      const existingBar = await getOwnBar(ctx.session.user.id)
       await db.transaction(async (tx) => {
         await tx
           .select({ id: bar.id })
@@ -914,7 +956,7 @@ export const pubRouter = router({
    * (WEB-451, `readRatingList`).
    */
   getMyRatings: pubProcedure.query(async ({ ctx }) => {
-    const existingBar = await getBarByUserId(ctx.session.user.id)
+    const existingBar = await getOwnBar(ctx.session.user.id)
 
     const [recent, [counts]] = await Promise.all([
       readRatingList(existingBar.id, { public: false, limit: 50 }),
@@ -952,7 +994,7 @@ export const pubRouter = router({
   getMyEvents: pubProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id
 
-    const existingBar = await getBarByUserId(userId)
+    const existingBar = await getOwnBar(userId)
 
     // O que a exclusão levaria junto vem na mesma leitura (WEB-252): a grade
     // avisa do bloqueio antes do clique, sem uma ida por jogo.
@@ -979,14 +1021,14 @@ export const pubRouter = router({
 
   /** Sinal de interesse dos jogos que ainda não acabaram; nunca a contagem. */
   getMyInterest: pubProcedure.query(async ({ ctx }) => {
-    const existingBar = await getBarByUserId(ctx.session.user.id)
+    const existingBar = await getOwnBar(ctx.session.user.id)
     return readInterestSignal(existingBar.id)
   }),
 
   getMyEventCreationPolicy: pubProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id
 
-    const existingBar = await getBarByUserId(userId)
+    const existingBar = await getOwnBar(userId)
     return getEventCreationPolicy(db, existingBar)
   }),
 
@@ -1042,7 +1084,7 @@ export const pubRouter = router({
 
       const offer = await parseGameHouseOffer(userId, input)
       await assertCanCloseAttendance(userId, input)
-      const draftBar = input.draft ? await getBarByUserId(userId) : null
+      const draftBar = input.draft ? await getOwnBar(userId) : null
       await db.transaction(async (tx) => {
         const lockedBar = draftBar ?? (await lockBarForPublishing(tx, userId))
 
@@ -1127,7 +1169,7 @@ export const pubRouter = router({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
 
-      const existingBar = await getBarByUserId(userId)
+      const existingBar = await getOwnBar(userId)
 
       const existingEvent = await db.query.event.findFirst({
         where: eq(event.id, input.eventId)
@@ -1225,7 +1267,7 @@ export const pubRouter = router({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
 
-      const existingBar = await getBarByUserId(userId)
+      const existingBar = await getOwnBar(userId)
 
       await db.transaction(async (tx) => {
         // A trava na linha do jogo fecha a corrida com o pedido que chega no
@@ -1272,10 +1314,19 @@ export const pubRouter = router({
   }),
 
   // Retorna o plano e status atual da subscription do bar
+  /**
+   * O mês do bar em números, para a tela do plano no app: pessoas que
+   * marcaram presença e códigos validados (`lib/month-proof.ts`).
+   */
+  getMonthProof: pubProcedure.query(async ({ ctx }) => {
+    const existingBar = await getOwnBar(ctx.session.user.id)
+    return readMonthProof(existingBar.id)
+  }),
+
   getMySubscription: pubProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id
 
-    const existingBar = await getBarByUserId(userId)
+    const existingBar = await getOwnBar(userId)
     const now = new Date()
 
     return existingBar.subscription
@@ -1290,8 +1341,18 @@ export const pubRouter = router({
   // Saldo e próxima fatura no Stripe (WEB-350). Fora de `getMySubscription`
   // para o card do plano não esperar o Stripe.
   getMyBillingBalance: pubProcedure.query(async ({ ctx }) => {
-    const existingBar = await getBarByUserId(ctx.session.user.id)
+    const existingBar = await getOwnBar(ctx.session.user.id)
     return readBillingBalance(
+      stripeClient,
+      existingBar.subscription?.externalSubscriptionId
+    )
+  }),
+
+  // Faturas da assinatura no Stripe, com o PDF e a data da cobrança recusada
+  // (WEB-443). Consulta à parte, como o saldo: o plano não espera o Stripe.
+  getMyInvoices: pubProcedure.query(async ({ ctx }) => {
+    const existingBar = await getOwnBar(ctx.session.user.id)
+    return readInvoices(
       stripeClient,
       existingBar.subscription?.externalSubscriptionId
     )
@@ -1321,9 +1382,18 @@ export const pubRouter = router({
       }
 
       const userId = ctx.session.user.id
-      const { id, name, legalName, cnpj, invoiceEmail } =
-        await getBarByUserId(userId)
-      const current = { id, name, legalName, cnpj, invoiceEmail }
+      const current = ownBarOrThrow(
+        await db.query.bar.findFirst({
+          where: eq(bar.userId, userId),
+          columns: {
+            id: true,
+            name: true,
+            legalName: true,
+            cnpj: true,
+            invoiceEmail: true
+          }
+        })
+      )
       const next = { ...current, ...changes }
       const owner = await db.query.user.findFirst({
         where: eq(user.id, userId),
@@ -1381,7 +1451,7 @@ export const pubRouter = router({
   openSubscriptionCancel: pubProcedure
     .input(z.object({ reason: cancelReasonSchema.optional() }).optional())
     .mutation(async ({ ctx, input }) => {
-      const { id: barId, subscription: current } = await getBarByUserId(
+      const { id: barId, subscription: current } = await getOwnBar(
         ctx.session.user.id
       )
       const subscriptionId = current?.externalSubscriptionId
@@ -1423,7 +1493,7 @@ export const pubRouter = router({
   changeTrialPlan: pubProcedure
     .input(z.object({ plan: z.enum(subscriptionPlanEnum.enumValues) }))
     .mutation(async ({ ctx, input }) => {
-      const existingBar = await getBarByUserId(ctx.session.user.id)
+      const existingBar = await getOwnBar(ctx.session.user.id)
       // A escolha do passo "Plano do teste" do cadastro é esta mesma troca:
       // ela marca o plano como escolhido, e o painel deixa de levar até lá.
       const changed = await db.transaction(async (tx) => {
@@ -1462,7 +1532,7 @@ export const pubRouter = router({
     }),
 
   getAccountDeletionEligibility: pubProcedure.query(async ({ ctx }) => {
-    const existingBar = await getBarByUserId(ctx.session.user.id)
+    const existingBar = await getOwnBar(ctx.session.user.id)
     // Assinatura viva não segura a exclusão: é encerrada junto (WEB-336), e
     // a tela avisa antes de o dono confirmar.
     return {

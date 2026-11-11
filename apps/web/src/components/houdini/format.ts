@@ -1,6 +1,11 @@
+import {
+  BRASILIA_TIME_ZONE,
+  brasiliaDay
+} from '@findsports_oficial/db/event-window'
+
 // As colunas são `timestamp` sem fuso, em UTC; o Houdini lê no horário de
 // Brasília, que é o de quem opera e o do dono do bar.
-const TZ = 'America/Sao_Paulo'
+const TZ = BRASILIA_TIME_ZONE
 
 export function formatDate(date: Date | string) {
   return new Date(date).toLocaleDateString('pt-BR', { timeZone: TZ })
@@ -28,9 +33,8 @@ const day = (date: Date) => date.toLocaleDateString('pt-BR', { timeZone: TZ })
 export function when(value: Date | string, now = new Date()) {
   const date = new Date(value)
   const time = formatTime(date)
-  if (day(date) === day(now)) return `hoje ${time}`
-  if (day(date) === day(new Date(now.getTime() - 86_400_000)))
-    return `ontem ${time}`
+  if (brasiliaDay(date) === brasiliaDay(now)) return `hoje ${time}`
+  if (brasiliaDay(date) === brasiliaDay(now, -1)) return `ontem ${time}`
   return `${day(date).slice(0, 5)} ${time}`
 }
 

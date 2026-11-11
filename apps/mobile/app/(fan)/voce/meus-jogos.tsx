@@ -1,48 +1,59 @@
+import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useQuery } from '@tanstack/react-query'
+import * as Calendar from 'expo-calendar/legacy'
 import { type Href, useRouter } from 'expo-router'
-import { useRef, useState } from 'react'
+import { Fragment, useState } from 'react'
 import {
-  ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
-  Text,
   View
 } from 'react-native'
-import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Card } from '@/components/card'
+import { CheckInCard } from '@/components/check-in'
+import { MyGamesEmpty } from '@/components/empty-states'
+import { BarRow, dayLabel } from '@/components/explore'
+import { useExploreState } from '@/components/explore-state'
 import {
-  dayLabel,
-  type Palette,
-  Perforation,
-  Photo,
-  usePalette
-} from '@/components/explore'
-import { Glass } from '@/components/glass'
-import { haptic, usePressScale } from '@/components/motion'
+  GameLine,
+  GroupLabel,
+  LineList,
+  LineState
+} from '@/components/game-line'
+import { useLayout, useNavInsets } from '@/components/layout'
+import { haptic } from '@/components/motion'
+import { Segmented } from '@/components/segmented'
 import { useSoon } from '@/components/soon'
+import { Skeleton } from '@/components/states'
 import { useTabBarSpace } from '@/components/tab-bar'
+import { usePalette } from '@/components/theme'
 import {
   ACID,
+  ErrorState,
   Icon,
   INK,
   LIVE,
   PAPER,
   PillButton,
+  Text,
   Title,
   text,
+  usePullRefresh,
   useStatusBar
 } from '@/components/ui'
-import { formatTime } from '@/lib/explore'
+import { authClient } from '@/lib/auth-client'
+import { formatTime, searchCenter } from '@/lib/explore'
+import { dayKey, NO_FILTERS, searchInput } from '@/lib/filters'
 import {
+  calendarEvent,
+  dayShort,
   formatCode,
-  gameTitle,
   type MyGame,
-  pastLabel,
-  shortDate,
-  thisMonth
+  monthsLabel,
+  showsCheckIn,
+  todayHeadline,
+  weekOffset
 } from '@/lib/my-games'
 import { trpc } from '@/lib/trpc'
 
@@ -51,6 +62,10 @@ import { trpc } from '@/lib/trpc'
  * O próximo jogo vem grande, com o código do balcão (bar Elite); os outros
  * próximos, compactos; os que passaram, numa lista com o desfecho ou
  * "Avaliar". O código abre em tela cheia (3f), a avaliação no pós-jogo (3g).
+ *
+ * No dia do jogo, o "Estou aqui" (check-in, WEB-408) da página do bar vem
+ * logo abaixo do jogo; o design da 08 não o desenha. O jogo que acabou há
+ * menos de 3 h já está em "Anteriores", e o card vai acima da lista.
  */
 
 export default function MyGames() {
@@ -61,517 +76,673 @@ export default function MyGames() {
   const soon = useSoon()
   useStatusBar('auto')
   const mine = useQuery(trpc.attendance.mine.queryOptions())
-  const ratings = useQuery({
-    ...trpc.ratings.getPending.queryOptions(),
-    meta: { errorToast: false }
-  })
-  const reports = useQuery({
-    ...trpc.attendance.pendingReports.queryOptions(),
-    meta: { errorToast: false }
-  })
+  const postGame = useQuery(trpc.postGame.pending.queryOptions())
   const now = Date.now()
   const games = mine.data ?? []
   // O servidor manda do mais recente ao mais antigo; os próximos vão do mais
   // perto ao mais longe.
   const upcoming = games.filter((game) => !game.ended).reverse()
   const past = games.filter((game) => game.ended)
-  const toRate = new Set([
-    ...(ratings.data ?? []).map((item) => item.eventId),
-    ...(reports.data ?? []).map((item) => item.eventId)
-  ])
+  const toRate = new Set(postGame.data?.map((item) => item.eventId))
   const [first, ...rest] = upcoming
 
-  // "Próximas" e "Anteriores" levam à seção, não filtram: o design mostra as
-  // duas na mesma tela.
-  const scroll = useRef<ScrollView>(null)
-  const pastY = useRef(0)
   const [tab, setTab] = useState<'next' | 'past'>('next')
-  const goTo = (target: 'next' | 'past') => {
-    if (target === tab) return
-    haptic.select()
-    setTab(target)
-    scroll.current?.scrollTo({
-      y: target === 'past' ? pastY.current - 12 : 0,
-      animated: true
-    })
-  }
+  // Anteriores: o que falta avaliar primeiro, o resto pelo mês.
+  const toRateList = past.filter((game) => toRate.has(game.eventId))
+  const done = past.filter((game) => !toRate.has(game.eventId))
 
   const openCode = (game: MyGame) => router.push(`/codigo/${game.eventId}`)
+  // Agenda do celular (WEB-406): o formulário de evento do próprio iOS, já
+  // preenchido. Não pede permissão de calendário e a pessoa confirma lá.
+  const addToCalendar = (game: MyGame) =>
+    Calendar.createEventInCalendarAsync(calendarEvent(game))
+      .then(({ action }) => {
+        if (action === 'saved') haptic.success()
+      })
+      .catch(() => soon.show('Não deu para abrir a agenda'))
   const openBar = (game: MyGame) =>
     game.barActive ? router.push(`/bar/${game.barId}` as Href) : undefined
+  const checkIn = (game: MyGame) =>
+    showsCheckIn(game, now) ? (
+      <CheckInCard
+        key={`check-in-${game.eventId}`}
+        barId={game.barId}
+        barName={game.barName}
+        eventId={game.eventId}
+        done={game.visited}
+      />
+    ) : null
+
+  const pull = usePullRefresh(() =>
+    Promise.all([mine.refetch(), postGame.refetch()])
+  )
+  const layout = useLayout()
+  // A tela de fora do Flip, sem jogo hoje: uma frase e um botão (regra 04
+  // do Adaptativo 10).
+  const markedToday = upcoming.some(
+    (game) => dayLabel(game.startsAt, now) === 'Hoje'
+  )
+  const nav = useNavInsets()
+  if (layout.kind === 'cover' && mine.isSuccess && !markedToday)
+    return <CoverEmpty />
+
+  // Fora do celular a lista fica numa coluna; vazia na tela larga, os jogos
+  // de hoje perto vão ao lado, para marcar um (Adaptativo 10, regra 01).
+  const usable = layout.width - nav.left - nav.right
+  const aside = layout.kind === 'split' && mine.isSuccess && !games.length
+  const listWidth = aside
+    ? layout.gap
+      ? layout.split
+      : Math.round(usable * 0.46)
+    : usable
+  const column =
+    layout.kind === 'phone' || layout.kind === 'duoClosed'
+      ? listWidth
+      : Math.min(listWidth, aside ? 430 : 560)
+  const pad = (listWidth - column) / 2
 
   return (
-    <View style={[styles.screen, { backgroundColor: palette.bg }]}>
+    <View
+      style={[
+        styles.screen,
+        { backgroundColor: palette.bg },
+        (nav.left > 0 || nav.right > 0) && {
+          paddingLeft: nav.left,
+          paddingRight: nav.right
+        },
+        aside && { flexDirection: 'row', gap: layout.gap }
+      ]}
+    >
       <ScrollView
-        ref={scroll}
+        style={aside ? { width: listWidth, flexGrow: 0 } : undefined}
         contentContainerStyle={[
           styles.body,
-          { paddingTop: insets.top + 8, paddingBottom: tabBar + 24 }
+          { paddingTop: insets.top + 8, paddingBottom: tabBar + 24 },
+          pad > 0 && { paddingHorizontal: 16 + pad }
         ]}
-        refreshControl={
-          <RefreshControl
-            refreshing={mine.isRefetching}
-            onRefresh={() => {
-              mine.refetch()
-              ratings.refetch()
-              reports.refetch()
-            }}
-            tintColor={palette.muted}
-          />
-        }
+        refreshControl={<RefreshControl {...pull} tintColor={palette.muted} />}
       >
-        {/* Dentro da aba "Você", sem voltar: o título divide a linha com a
-            agenda, como no design. */}
-        <View style={styles.top}>
-          <View style={{ flex: 1 }}>
-            <Title lines={[['Meus jogos']]} size={40} color={palette.ink} />
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Pôr na agenda do celular"
-            hitSlop={8}
-            // O que o botão faz ainda não foi decidido: WEB-406.
-            onPress={() => soon.show('A agenda do celular chega em breve')}
-          >
-            <Glass
-              tone={palette.dark ? 'dark' : 'light'}
-              interactive
-              style={styles.round}
-            >
-              <Icon
-                name="calendar"
-                size={18}
-                color={palette.ink}
-                // O ponto vermelho do design, no claro e no escuro.
-                accent={LIVE}
-              />
-            </Glass>
-          </Pressable>
-        </View>
+        <Text
+          accessibilityRole="header"
+          style={[styles.title, { color: palette.ink }]}
+        >
+          MEUS JOGOS
+        </Text>
 
         {mine.isPending ? (
-          <ActivityIndicator color={palette.ink} style={{ marginTop: 40 }} />
+          <Skeleton />
         ) : mine.isError ? (
-          <View style={styles.empty}>
-            <Text style={[text(15, 'SemiBold'), { color: palette.ink }]}>
-              Não deu para abrir seus jogos.
-            </Text>
-            <PillButton label="Tentar de novo" onPress={() => mine.refetch()} />
-          </View>
+          <ErrorState
+            style={styles.empty}
+            title="Não deu para abrir seus jogos."
+            error={mine.error}
+            onRetry={mine.refetch}
+            retrying={mine.isFetching}
+          />
         ) : !games.length ? (
           <View style={styles.empty}>
-            <Text style={[text(16, 'Bold'), { color: palette.ink }]}>
-              Você ainda não marcou nenhum jogo.
-            </Text>
-            <Text style={[text(14, 'Regular', 1.45), { color: palette.muted }]}>
-              Na página de um bar, toque em “Vou assistir aqui”. Nos bares Elite
-              o código sai na hora e vale a oferta da casa no balcão.
-            </Text>
-            <PillButton
-              label="Procurar bares"
-              onPress={() => router.navigate('/explore')}
-            />
+            {/* O vazio da Rodada 14 é do tablet (Adaptativo 10); no
+                celular, o de sempre. */}
+            {layout.kind === 'phone' ? (
+              <>
+                <Text style={[text(16, 'Bold'), { color: palette.ink }]}>
+                  Você ainda não marcou nenhum jogo.
+                </Text>
+                <Text
+                  style={[text(14, 'Regular', 1.45), { color: palette.muted }]}
+                >
+                  Na página de um bar, toque em “Vou assistir aqui”. Nos bares
+                  Elite o código sai na hora e vale a oferta da casa no balcão.
+                </Text>
+                <PillButton
+                  label="Procurar bares"
+                  onPress={() => router.navigate('/explore')}
+                />
+              </>
+            ) : (
+              <WeekEmpty />
+            )}
           </View>
         ) : (
           <>
-            <View style={styles.tabs}>
-              <TabChip
-                palette={palette}
-                label={`Próximas · ${upcoming.length}`}
-                selected={tab === 'next'}
-                onPress={() => goTo('next')}
-              />
-              <TabChip
-                palette={palette}
-                label="Anteriores"
-                selected={tab === 'past'}
-                onPress={() => goTo('past')}
-              />
-            </View>
-
-            {first ? (
-              <NextGame
-                palette={palette}
-                game={first}
-                now={now}
-                onCode={() => openCode(first)}
-                onBar={() => openBar(first)}
-              />
+            <Segmented
+              items={[
+                { key: 'next', label: 'Próximos' },
+                { key: 'past', label: 'Anteriores' }
+              ]}
+              value={tab}
+              onChange={setTab}
+            />
+            {tab === 'next' ? (
+              <>
+                {first ? (
+                  <>
+                    <MiniTicket
+                      game={first}
+                      now={now}
+                      onCode={() => openCode(first)}
+                      onBar={() => openBar(first)}
+                      onCalendar={() => addToCalendar(first)}
+                    />
+                    {first.code ? null : checkIn(first)}
+                  </>
+                ) : (
+                  <Text style={[text(14), { color: palette.muted }]}>
+                    Nenhum jogo marcado daqui para a frente.
+                  </Text>
+                )}
+                {WEEKS.map(({ label, test }) => {
+                  const group = rest.filter((game) =>
+                    test(weekOffset(game.startsAt, now))
+                  )
+                  if (!group.length) return null
+                  return (
+                    <Fragment key={label}>
+                      <GroupLabel>{label}</GroupLabel>
+                      <LineList>
+                        {group.map((game, index) => (
+                          <GameLine
+                            key={game.eventId}
+                            first={index === 0}
+                            time={formatTime(game.startsAt)}
+                            day={dayShort(game.startsAt, now)}
+                            title={gameTitle(game)}
+                            sub={
+                              game.code
+                                ? `${game.barName} · código ${formatCode(game.code)}`
+                                : game.barName
+                            }
+                            onPress={() =>
+                              game.code ? openCode(game) : openBar(game)
+                            }
+                          />
+                        ))}
+                      </LineList>
+                    </Fragment>
+                  )
+                })}
+              </>
             ) : (
-              <Text style={[text(14), { color: palette.muted }]}>
-                Nenhum jogo marcado daqui para a frente.
-              </Text>
+              <>
+                {past.map(checkIn)}
+                {toRateList.length ? (
+                  <>
+                    <GroupLabel>Falta avaliar</GroupLabel>
+                    <LineList>
+                      {toRateList.map((game, index) => (
+                        <PastLine
+                          key={game.eventId}
+                          game={game}
+                          now={now}
+                          first={index === 0}
+                          rate
+                          onPress={() =>
+                            router.push(`/pos-jogo/${game.eventId}`)
+                          }
+                        />
+                      ))}
+                    </LineList>
+                  </>
+                ) : null}
+                {done.length ? (
+                  <>
+                    <GroupLabel>{monthsLabel(done)}</GroupLabel>
+                    <LineList>
+                      {done.map((game, index) => (
+                        <PastLine
+                          key={game.eventId}
+                          game={game}
+                          now={now}
+                          first={index === 0}
+                          onPress={() => openBar(game)}
+                        />
+                      ))}
+                    </LineList>
+                  </>
+                ) : null}
+                {!past.length ? (
+                  <Text style={[text(14), { color: palette.muted }]}>
+                    Os jogos que você marcou e já passaram aparecem aqui.
+                  </Text>
+                ) : null}
+                <RankingFoot />
+              </>
             )}
-            {rest.map((game) => (
-              <LaterGame
-                key={game.eventId}
-                palette={palette}
-                game={game}
-                now={now}
-                onPress={() => (game.code ? openCode(game) : openBar(game))}
-              />
-            ))}
-            {upcoming.some((game) => game.code) ? (
-              <Text
-                style={[
-                  text(13, 'Regular', 1.45),
-                  { color: palette.muted, textAlign: 'center' }
-                ]}
-              >
-                O código vale só no dia do jogo, no bar que você marcou.
-              </Text>
-            ) : null}
-
-            {past.length ? (
-              <View
-                onLayout={(event) => {
-                  pastY.current = event.nativeEvent.layout.y
-                }}
-                style={{ gap: 12 }}
-              >
-                <View style={styles.heading}>
-                  <Text style={[text(16, 'Bold'), { color: palette.ink }]}>
-                    Anteriores
-                  </Text>
-                  <Text style={[text(12.5), { color: palette.muted }]}>
-                    {thisMonth(past, now) ?? ''}
-                  </Text>
-                </View>
-                <Card palette={palette} soft>
-                  <View style={styles.list}>
-                    {past.map((game, index) => (
-                      <PastRow
-                        key={game.eventId}
-                        palette={palette}
-                        game={game}
-                        first={index === 0}
-                        rate={toRate.has(game.eventId)}
-                        onRate={() => router.push(`/pos-jogo/${game.eventId}`)}
-                      />
-                    ))}
-                  </View>
-                </Card>
-              </View>
-            ) : null}
           </>
         )}
       </ScrollView>
+      {aside ? <TodayNear /> : null}
       {soon.toast}
     </View>
   )
 }
 
-function TabChip({
-  palette,
-  label,
-  selected,
-  onPress
-}: {
-  palette: Palette
-  label: string
-  selected: boolean
-  onPress: () => void
-}) {
+/**
+ * Os bares perto com jogo: a busca do Explorar (o cache é o dele), de hoje
+ * ou, sem dia, com o próximo jogo de cada bar.
+ */
+function useGamesNear(date?: string) {
+  const session = authClient.useSession()
+  const { device } = useExploreState()
+  const city = useQuery(trpc.pubs.getMyCity.queryOptions())
+  const search = useQuery({
+    ...trpc.pubs.search.queryOptions(
+      searchInput(
+        { ...NO_FILTERS, date: date ?? null },
+        searchCenter(device, city.data),
+        session.data?.user.searchRadiusKm ?? 3
+      )
+    ),
+    enabled: device !== null || !city.isPending
+  })
+  return {
+    search,
+    bars: (search.data?.bars ?? []).filter((bar) => bar.nextEvent)
+  }
+}
+
+const WEEKDAYS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB']
+/** "QUA": o dia da semana em Brasília (UTC-3, sem horário de verão). */
+const weekday = (iso: string) =>
+  WEEKDAYS[new Date(Date.parse(iso) - 3 * 3600_000).getUTCDay()]
+
+/**
+ * O vazio de Meus jogos (`eRes`), com os jogos desta semana perto: o
+ * próximo jogo de cada bar, dos que caem nos próximos 7 dias.
+ */
+function WeekEmpty() {
+  const router = useRouter()
+  const { bars } = useGamesNear()
+  const now = Date.now()
+  const week = bars
+    .filter((bar) => {
+      const at = Date.parse(bar.nextEvent?.startsAt ?? '')
+      return at - now < 7 * 24 * 3600_000
+    })
+    .sort((a, b) =>
+      (a.nextEvent?.startsAt ?? '').localeCompare(b.nextEvent?.startsAt ?? '')
+    )
+    .slice(0, 2)
+    .map((bar) => {
+      const game = bar.nextEvent as NonNullable<typeof bar.nextEvent>
+      return {
+        key: bar.id,
+        day: weekday(game.startsAt),
+        title: gameTitle(game),
+        detail: bar.goingCount
+          ? `${bar.name} · ${bar.goingCount} vão`
+          : bar.name,
+        onPress: () =>
+          router.push({
+            pathname: '/vou/[barId]',
+            params: { barId: bar.id, eventId: game.id }
+          } as Href)
+      }
+    })
+  return <MyGamesEmpty week={week} />
+}
+
+/** A tela de fora do Flip sem jogo marcado hoje (`flip10`). */
+function CoverEmpty() {
+  const router = useRouter()
+  const insets = useSafeAreaInsets()
+  const now = Date.now()
+  const { bars } = useGamesNear(dayKey(now))
+  const top = todayHeadline(
+    bars.map((bar) => {
+      const game = bar.nextEvent as NonNullable<typeof bar.nextEvent>
+      return { title: gameTitle(game), startsAt: game.startsAt }
+    })
+  )
   return (
-    <Pressable
-      accessibilityRole="tab"
-      accessibilityState={{ selected }}
-      onPress={onPress}
-      hitSlop={6}
-      style={[
-        styles.tab,
-        selected
-          ? { backgroundColor: ACID, borderColor: ACID }
-          : { borderColor: palette.line }
-      ]}
-    >
-      <Text
-        style={[text(13, 'SemiBold'), { color: selected ? INK : palette.ink }]}
-      >
-        {label}
-      </Text>
-    </Pressable>
+    <View style={[styles.cover, { paddingTop: Math.max(insets.top, 40) }]}>
+      <Text style={styles.coverKicker}>MEUS JOGOS</Text>
+      <Title
+        lines={[['Nenhum jogo'], ['marcado hoje']]}
+        size={26}
+        color={PAPER}
+      />
+      {top ? (
+        <Text style={[text(12.5, 'Regular', 1.4), { color: '#aaa9a4' }]}>
+          {top.title} às {formatTime(top.startsAt)} em {top.bars}{' '}
+          {top.bars === 1 ? 'bar perto' : 'bares perto'}.
+        </Text>
+      ) : null}
+      <View style={{ alignSelf: 'flex-end', width: 170, marginTop: 6 }}>
+        <PillButton
+          label="Ver bares"
+          height={48}
+          edge="#000"
+          onPress={() => router.navigate('/explore')}
+        />
+      </View>
+    </View>
   )
 }
 
-/** O próximo jogo: faixa acid "Você vai", o bar e o código com "Mostrar". */
-function NextGame({
-  palette,
+/** Ao lado da lista vazia: os bares perto com jogo hoje, para marcar um. */
+function TodayNear() {
+  const router = useRouter()
+  const insets = useSafeAreaInsets()
+  const tabBar = useTabBarSpace()
+  const palette = usePalette()
+  const now = Date.now()
+  const { search, bars } = useGamesNear(dayKey(now))
+  return (
+    <ScrollView
+      style={{ flex: 1, backgroundColor: palette.dark ? '#161613' : '#ebe8df' }}
+      contentContainerStyle={{
+        paddingTop: insets.top + 8,
+        paddingHorizontal: 20,
+        paddingBottom: tabBar + 24,
+        gap: 12
+      }}
+    >
+      <Text style={[styles.aside, { color: palette.dark ? ACID : '#c92b0c' }]}>
+        Jogos hoje perto
+      </Text>
+      <Text style={[text(13), { color: palette.muted, marginTop: -6 }]}>
+        Marque um e ele aparece em Meus jogos.
+      </Text>
+      {search.isPending ? (
+        <Skeleton />
+      ) : bars.length ? (
+        bars
+          .slice(0, 8)
+          .map((bar) => (
+            <BarRow
+              key={bar.id}
+              bar={bar}
+              now={now}
+              compact
+              onPress={() => router.push(`/bar/${bar.id}` as Href)}
+            />
+          ))
+      ) : (
+        <Text style={[text(14, 'Regular', 1.45), { color: palette.muted }]}>
+          Nenhum bar perto com jogo publicado hoje.
+        </Text>
+      )}
+    </ScrollView>
+  )
+}
+
+/** Os grupos dos próximos, pela semana do jogo (domingo a sábado). */
+const WEEKS = [
+  { label: 'Esta semana', test: (week: number) => week <= 0 },
+  { label: 'Próxima semana', test: (week: number) => week === 1 },
+  { label: 'Mais pra frente', test: (week: number) => week >= 2 }
+]
+
+/**
+ * O próximo jogo como mini ingresso (`.mini3`): o dia e a hora, "começa
+ * em" no de hoje, o jogo em Anton, o bar e a ação do momento: "Ver código"
+ * no Elite, senão o bar; e "Agenda", o formulário do iOS.
+ */
+function MiniTicket({
   game,
   now,
   onCode,
-  onBar
+  onBar,
+  onCalendar
 }: {
-  palette: Palette
   game: MyGame
   now: number
   onCode: () => void
   onBar: () => void
+  onCalendar: () => void
 }) {
-  const show = usePressScale()
-  const when = `${dayLabel(game.startsAt, now)} · ${formatTime(game.startsAt)}`
-  const shadow = palette.dark ? 'rgba(201,241,53,.22)' : 'rgba(201,241,53,.85)'
+  const palette = usePalette()
+  const day = dayShort(game.startsAt, now)
+  const minutes = Math.round((Date.parse(game.startsAt) - now) / 60_000)
+  const live = minutes <= 0 && !game.ended
+  const chip = live
+    ? 'ao vivo'
+    : day === 'hoje'
+      ? `começa em ${minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)}h${String(minutes % 60).padStart(2, '0')}`}`
+      : null
+  const sides = gameTitle(game).split(' × ')
   return (
-    <Card palette={palette} shadow={shadow} offset={5} notched>
-      <View style={styles.band}>
-        <Icon name="check" size={14} color={INK} />
-        <Text style={[text(13.5, 'Bold', 1.2), { color: INK, flex: 1 }]}>
-          {game.validated ? 'Validado' : 'Você vai'}
+    <View
+      style={[
+        styles.mini,
+        palette.dark && {
+          backgroundColor: '#1c1c18',
+          borderWidth: 1,
+          borderColor: 'rgba(241,238,230,.08)'
+        }
+      ]}
+    >
+      <View style={styles.miniHead}>
+        <Text style={styles.miniWhen}>
+          {`${day} · ${formatTime(game.startsAt)}`.toLocaleUpperCase('pt-BR')}
         </Text>
-        <Text style={[styles.mono, { color: INK }]}>{when}</Text>
+        {chip ? (
+          <View
+            style={[styles.miniChip, live && { backgroundColor: '#e8320c' }]}
+          >
+            <Text style={styles.miniChipText}>
+              {chip.toLocaleUpperCase('pt-BR')}
+            </Text>
+          </View>
+        ) : null}
       </View>
-      <Pressable
-        accessibilityRole="link"
-        accessibilityLabel={`${game.barName}, ${gameTitle(game)}`}
-        onPress={onBar}
-        style={styles.barRow}
+      <Text
+        numberOfLines={2}
+        adjustsFontSizeToFit
+        minimumFontScale={0.75}
+        style={styles.miniTitle}
       >
-        <Photo
-          uri={game.photoUrl}
-          name={game.barName}
-          palette={palette}
-          style={styles.photo}
-        />
-        <View style={{ flex: 1 }}>
-          <Text
-            style={[text(17, 'Bold', 1.3), { color: palette.ink }]}
-            numberOfLines={1}
-          >
-            {game.barName}
-          </Text>
-          <Text
-            style={[text(13, 'Regular', 1.4), { color: palette.muted }]}
-            numberOfLines={1}
-          >
-            {gameTitle(game)} · {game.championship}
-          </Text>
-        </View>
-      </Pressable>
+        {sides.length === 2 ? (
+          <>
+            {sides[0]?.toLocaleUpperCase('pt-BR')}
+            <Text style={{ color: ACID, fontSize: 22.5 }}> × </Text>
+            {sides[1]?.toLocaleUpperCase('pt-BR')}
+          </>
+        ) : (
+          gameTitle(game).toLocaleUpperCase('pt-BR')
+        )}
+      </Text>
+      <Text
+        numberOfLines={1}
+        style={[text(13.5, 'Regular', 1.35), styles.miniLine]}
+      >
+        {[
+          game.barName,
+          game.neighborhood,
+          game.goingCount ? `${game.goingCount} vão` : null
+        ]
+          .filter(Boolean)
+          .join(' · ')}
+      </Text>
       {!game.barActive ? (
-        <Text style={[text(13, 'SemiBold', 1.4), styles.offAir]}>
+        <Text style={[text(13, 'SemiBold', 1.4), { color: '#f3421d' }]}>
           Este bar não está mais na Onside.
           {game.code && !game.validated
             ? ' Seu código continua valendo: mostre no balcão.'
             : ''}
         </Text>
       ) : null}
-      {game.code ? (
-        <>
-          <Perforation
-            palette={{
-              ...palette,
-              sheet: palette.bg,
-              dash: palette.dark ? 'rgba(241,238,230,.18)' : palette.dash
-            }}
-            shadow={{ color: shadow, offset: 5 }}
-            inset={16}
-          />
-          <View style={styles.codeRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={[text(12), { color: palette.muted }]}>Código</Text>
-              <Text
-                style={[styles.code, { color: palette.ink }]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-              >
-                {formatCode(game.code)}
-              </Text>
-              {game.window ? (
-                <Text
-                  style={[text(12), { color: palette.muted, marginTop: 4 }]}
-                >
-                  Vale das {formatTime(game.window.opensAt)} às{' '}
-                  {formatTime(game.window.closesAt)}
-                </Text>
-              ) : null}
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Mostrar o código"
-              onPress={onCode}
-              onPressIn={show.onPressIn}
-              onPressOut={show.onPressOut}
-            >
-              <Animated.View style={show.style}>
-                <Glass
-                  tone={palette.dark ? 'dark' : 'light'}
-                  interactive
-                  style={styles.show}
-                >
-                  <Icon
-                    name="qr"
-                    size={16}
-                    color={palette.ink}
-                    accent={palette.dark ? ACID : palette.accent}
-                  />
-                  <Text
-                    style={[text(13.5, 'Bold', 1.2), { color: palette.ink }]}
-                  >
-                    Mostrar
-                  </Text>
-                </Glass>
-              </Animated.View>
-            </Pressable>
-          </View>
-        </>
-      ) : null}
-    </Card>
-  )
-}
-
-/** Os outros próximos: "Você vai · amanhã", o bar e o jogo numa linha. */
-function LaterGame({
-  palette,
-  game,
-  now,
-  onPress
-}: {
-  palette: Palette
-  game: MyGame
-  now: number
-  onPress: () => void
-}) {
-  const line = [
-    gameTitle(game),
-    formatTime(game.startsAt),
-    game.code ? `código ${formatCode(game.code)}` : null
-  ]
-    .filter(Boolean)
-    .join(' · ')
-  const press = usePressScale(0.985)
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      onPressIn={press.onPressIn}
-      onPressOut={press.onPressOut}
-    >
-      <Animated.View style={press.style}>
-        <Card palette={palette} soft>
-          <View style={[styles.barRow, { paddingBottom: 14 }]}>
-            <Photo
-              uri={game.photoUrl}
-              name={game.barName}
-              palette={palette}
-              style={styles.photo}
-            />
-            <View style={{ flex: 1 }}>
-              <View style={styles.when}>
-                <Icon
-                  name="calendar"
-                  size={14}
-                  color={palette.dark ? ACID : palette.ink}
-                  accent={palette.dark ? ACID : palette.accent}
-                />
-                <Text
-                  style={[
-                    text(12.5, 'Bold', 1.3),
-                    { color: palette.dark ? ACID : palette.ink }
-                  ]}
-                >
-                  Você vai · {dayLabel(game.startsAt, now).toLowerCase()}
-                </Text>
-              </View>
-              <Text
-                style={[text(16, 'Bold', 1.3), { color: palette.ink }]}
-                numberOfLines={1}
-              >
-                {game.barName}
-              </Text>
-              <Text
-                style={[text(12.5, 'Regular', 1.4), { color: palette.muted }]}
-                numberOfLines={1}
-              >
-                {line}
-              </Text>
-            </View>
-          </View>
-        </Card>
-      </Animated.View>
-    </Pressable>
-  )
-}
-
-function PastRow({
-  palette,
-  game,
-  first,
-  rate,
-  onRate
-}: {
-  palette: Palette
-  game: MyGame
-  first: boolean
-  rate: boolean
-  onRate: () => void
-}) {
-  const label = pastLabel(game)
-  const press = usePressScale()
-  return (
-    <View
-      style={[
-        styles.past,
-        !first && { borderTopWidth: 1, borderTopColor: palette.line }
-      ]}
-    >
-      <Icon
-        name="ticket"
-        size={22}
-        color={palette.muted}
-        accent={palette.accent}
-      />
-      <View style={{ flex: 1 }}>
-        <Text
-          style={[text(14.5, 'SemiBold', 1.3), { color: palette.ink }]}
-          numberOfLines={1}
-        >
-          {game.barName}
-        </Text>
-        <Text
-          style={[text(12.5, 'Regular', 1.4), { color: palette.muted }]}
-          numberOfLines={1}
-        >
-          {gameTitle(game)} · {shortDate(game.startsAt)}
-        </Text>
-      </View>
-      {rate ? (
+      <View style={styles.miniActions}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`Avaliar o ${game.barName}`}
-          onPress={onRate}
-          onPressIn={press.onPressIn}
-          onPressOut={press.onPressOut}
-          hitSlop={8}
+          onPress={game.code ? onCode : onBar}
+          style={[styles.miniButton, styles.miniAcid]}
         >
-          <Animated.View style={[styles.rate, press.style]}>
-            <Text style={[text(12.5, 'Bold', 1.2), { color: PAPER }]}>
-              Avaliar
-            </Text>
-          </Animated.View>
-        </Pressable>
-      ) : (
-        <View
-          style={[
-            styles.badge,
-            { backgroundColor: game.validated ? ACID : palette.mark }
-          ]}
-        >
-          <Text
-            style={[
-              text(10.5, 'Bold', 1.2),
-              { color: game.validated ? INK : palette.ink }
-            ]}
-          >
-            {label}
+          <Icon
+            name={game.code ? 'qr' : 'pin'}
+            size={18}
+            color={INK}
+            accent={INK}
+          />
+          <Text style={[text(14.5, 'Bold', 1.2), { color: INK }]}>
+            {game.code ? 'Ver código' : 'Ver o bar'}
           </Text>
-        </View>
-      )}
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Pôr na agenda do celular"
+          onPress={onCalendar}
+          style={[styles.miniButton, styles.miniGhost]}
+        >
+          <Icon name="calendar" size={18} color={PAPER} accent={LIVE} />
+          <Text style={[text(14.5, 'Bold', 1.2), { color: PAPER }]}>
+            Agenda
+          </Text>
+        </Pressable>
+      </View>
     </View>
+  )
+}
+
+/** Uma linha dos anteriores: o estado à direita (Avaliar, ★ 4, Não fui). */
+function PastLine({
+  game,
+  now,
+  first,
+  rate,
+  onPress
+}: {
+  game: MyGame
+  now: number
+  first: boolean
+  rate?: boolean
+  onPress: () => void
+}) {
+  const how = game.validated
+    ? 'código validado'
+    : game.checkedIn
+      ? 'check-in'
+      : null
+  const no = game.attended === false
+  return (
+    <GameLine
+      first={first}
+      dim={no && !rate}
+      time={formatTime(game.startsAt)}
+      day={dayShort(game.startsAt, now)}
+      title={gameTitle(game)}
+      sub={how ? `${game.barName} · ${how}` : game.barName}
+      onPress={onPress}
+      right={
+        rate ? (
+          <LineState kind="rate" label="Avaliar" />
+        ) : game.myStars ? (
+          <LineState kind="done" label={`★ ${game.myStars}`} />
+        ) : no ? (
+          <LineState kind="no" label="Não fui" />
+        ) : null
+      }
+    />
+  )
+}
+
+/** O rodapé do ranking do mês (WEB-409): "3º entre os amigos em novembro". */
+function RankingFoot() {
+  const router = useRouter()
+  const palette = usePalette()
+  const ranking = useQuery(
+    trpc.ranking.friends.queryOptions({ metric: 'bars' })
+  )
+  const rows = ranking.data?.rows ?? []
+  const me = rows.find((row) => row.me)
+  // Sozinho no ranking não tem posição para contar.
+  if (!me || rows.length < 2) return null
+  const month = new Date().toLocaleDateString('pt-BR', {
+    month: 'long',
+    timeZone: 'America/Sao_Paulo'
+  })
+  return (
+    <Pressable
+      accessibilityRole="link"
+      onPress={() => router.navigate('/voce/ranking')}
+      style={[styles.rank, { backgroundColor: palette.mark }]}
+    >
+      <Text style={[styles.rankNumber, { color: palette.ink }]}>
+        {me.position}º
+      </Text>
+      <Text
+        style={[text(14, 'Regular', 1.35), { color: palette.ink, flex: 1 }]}
+      >
+        entre os amigos em {month} ·{' '}
+        <Text style={{ textDecorationLine: 'underline' }}>Ver ranking</Text>
+      </Text>
+    </Pressable>
   )
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  // `.pg h3`: Anton 44 sem o entrelinha curto (margem negativa).
+  title: { fontFamily: 'Anton', fontSize: 44, marginVertical: -10.7 },
+  mini: {
+    backgroundColor: INK,
+    borderRadius: 24,
+    padding: 16,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  },
+  miniHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  miniWhen: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11,
+    letterSpacing: 0.88,
+    color: '#aaa9a4',
+    marginVertical: -1.6
+  },
+  miniChip: {
+    paddingVertical: 6,
+    paddingHorizontal: 9,
+    borderRadius: 999,
+    backgroundColor: ACID
+  },
+  miniChipText: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11,
+    color: INK,
+    marginVertical: -1.6
+  },
+  miniTitle: {
+    fontFamily: 'Anton',
+    fontSize: 30,
+    color: PAPER,
+    marginVertical: -7.3
+  },
+  miniLine: { color: '#c9c7c0' },
+  miniActions: { flexDirection: 'row', gap: 8 },
+  miniButton: {
+    flex: 1,
+    height: 40,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8
+  },
+  miniAcid: {
+    backgroundColor: ACID,
+    shadowColor: '#7f9a12',
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 }
+  },
+  miniGhost: { borderWidth: 1.5, borderColor: 'rgba(241,238,230,.3)' },
+  rank: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 20
+  },
+  rankNumber: { fontFamily: 'Anton', fontSize: 30, marginVertical: -7.3 },
   body: { paddingHorizontal: 16, gap: 14 },
   top: {
     flexDirection: 'row',
@@ -580,15 +751,26 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 4
   },
-  round: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden'
-  },
   empty: { gap: 14, marginTop: 24 },
+  cover: {
+    flex: 1,
+    backgroundColor: INK,
+    paddingHorizontal: 22,
+    gap: 10
+  },
+  coverKicker: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11,
+    letterSpacing: 0.66,
+    color: ACID
+  },
+  // Anton 22 do design, sem `lineHeight` (corta no iOS): margem negativa.
+  aside: {
+    fontFamily: 'Anton',
+    fontSize: 22,
+    textTransform: 'uppercase',
+    marginVertical: -0.2425 * 22
+  },
   tabs: { flexDirection: 'row', gap: 8, marginTop: 4 },
   tab: {
     paddingVertical: 8,
@@ -658,6 +840,7 @@ const styles = StyleSheet.create({
     marginTop: 12
   },
   list: { paddingHorizontal: 14 },
+  note: { paddingHorizontal: 4 },
   past: {
     flexDirection: 'row',
     alignItems: 'center',

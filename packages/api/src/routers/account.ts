@@ -18,9 +18,11 @@ import {
   userPreferenceSports
 } from '@findsports_oficial/db/schema/platform'
 import { barRating } from '@findsports_oficial/db/schema/rating'
+import { friendship } from '@findsports_oficial/db/schema/social'
 import { env } from '@findsports_oficial/env/server'
 import { TRPCError } from '@trpc/server'
 import { protectedProcedure, router } from '../index'
+import { readAchievements } from '../lib/achievements-read'
 import { findAmenity } from '../lib/amenities'
 import { readMyGames } from '../lib/attendance'
 import { participantNames } from '../lib/game-participants'
@@ -31,9 +33,11 @@ import {
 } from '../lib/rate-limit-store'
 
 /*
- * "Baixar meus dados" (Privacidade das Configurações do painel; WEB-418): o
- * servidor monta o JSON e manda de anexo para o e-mail da conta, um pedido
- * por dia. Só sai o que é da própria conta, nada de outra pessoa.
+ * "Baixar meus dados" (Privacidade, 11i do app e Configurações do painel;
+ * WEB-418): o servidor monta o JSON e manda de anexo para o e-mail da conta,
+ * um pedido por dia. Só sai o que é da própria conta: de outra pessoa, só o
+ * nome e o `@` de quem é seu amigo ou trocou pedido com você, que a pessoa já
+ * vê na tela de amigos.
  */
 
 const iso = (date: Date | null) => date?.toISOString() ?? null
@@ -59,7 +63,7 @@ export function createDataExportEmail(input: {
   const contents =
     input.role === 'pub'
       ? 'Ele traz a conta, o bar, o plano e os jogos cadastrados. De torcedor não vem nada, nem quem marcou presença.'
-      : 'Ele traz a conta, as preferências, os bares salvos, os jogos e as avaliações. De outra pessoa não vem nada.'
+      : 'Ele traz a conta, as preferências, os bares salvos, os jogos, as avaliações, os amigos e as conquistas. De outra pessoa, só o nome e o @ de quem é seu amigo.'
   const template = createOnsideEmailTemplate({
     heading: 'Seus dados',
     headingAccent: 'na Onside',
@@ -97,7 +101,9 @@ export async function fanData(me: string) {
     games,
     reports,
     ratings,
-    waitlist
+    waitlist,
+    friends,
+    achievements
   ] = await Promise.all([
     db
       .select({
@@ -106,9 +112,14 @@ export async function fanData(me: string) {
         email: user.email,
         emailVerified: user.emailVerified,
         image: user.image,
+        username: user.username,
+        friendCode: user.friendCode,
         city: user.searchCityName,
         uf: user.searchCityUf,
         searchRadiusKm: user.searchRadiusKm,
+        activityVisibility: user.activityVisibility,
+        friendRequestsFrom: user.friendRequestsFrom,
+        rankingGlobal: user.rankingGlobal,
         twoFactorEnabled: user.twoFactorEnabled,
         createdAt: user.createdAt
       })
@@ -169,7 +180,26 @@ export async function fanData(me: string) {
         unsubscribedAt: appWaitlist.unsubscribedAt
       })
       .from(appWaitlist)
-      .where(eq(appWaitlist.userId, me))
+      .where(eq(appWaitlist.userId, me)),
+    db
+      .select({
+        name: user.name,
+        username: user.username,
+        requestedByMe: sql<boolean>`${friendship.requesterId} = ${me}`,
+        since: friendship.createdAt,
+        acceptedAt: friendship.acceptedAt
+      })
+      .from(friendship)
+      .innerJoin(
+        user,
+        sql`${user.id} = CASE WHEN ${friendship.requesterId} = ${me}
+            THEN ${friendship.addresseeId} ELSE ${friendship.requesterId} END`
+      )
+      .where(
+        sql`${friendship.requesterId} = ${me} OR ${friendship.addresseeId} = ${me}`
+      )
+      .orderBy(user.name),
+    readAchievements(me)
   ])
   const went = new Map(reports.map((r) => [r.eventId, r.attended]))
   return {
@@ -204,7 +234,28 @@ export async function fanData(me: string) {
       createdAt: iso(w.createdAt),
       notifiedAt: iso(w.notifiedAt),
       unsubscribedAt: iso(w.unsubscribedAt)
-    }))
+    })),
+    friends: friends.map((f) => ({
+      name: f.name,
+      username: f.username,
+      status: f.acceptedAt
+        ? 'friends'
+        : f.requestedByMe
+          ? 'request_sent'
+          : 'request_received',
+      since: iso(f.acceptedAt ?? f.since)
+    })),
+    achievements: {
+      level: achievements.level.level,
+      levelName: achievements.level.name,
+      unlocked: achievements.achievements
+        .filter((a) => a.unlockedAt)
+        .map((a) => ({
+          id: a.id,
+          name: a.name,
+          unlockedAt: iso(a.unlockedAt ? new Date(a.unlockedAt) : null)
+        }))
+    }
   }
 }
 

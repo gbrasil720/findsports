@@ -1,18 +1,28 @@
 import * as Location from 'expo-location'
+import { useIsFocused } from 'expo-router'
+import * as SecureStore from 'expo-secure-store'
 import {
   createContext,
   type ReactNode,
   useContext,
   useEffect,
-  useState
+  useRef,
+  useState,
+  useSyncExternalStore
 } from 'react'
+import type { View } from 'react-native'
+import { captureRef, releaseCapture } from 'react-native-view-shot'
+import type { ChatBar } from '@/lib/ai-events'
 import type { Coordinates } from '@/lib/explore'
+import { type Filters, NO_FILTERS, type Shortcut } from '@/lib/filters'
+import type { MapFrame } from '@/lib/map-layers'
 
 /*
  * O estado do Explorar que as abas do torcedor dividem: a aba "Você" mostra o
  * mesmo Explorar por baixo do menu (2c), então filtros, posição da folha e
  * localização precisam ser os mesmos nas duas, senão trocar de aba mudaria
- * a tela de baixo.
+ * a tela de baixo. A tela de baixo da "Você" é uma foto da aba de onde a
+ * pessoa veio (`useShot`, mais abaixo).
  */
 
 type ExploreState = {
@@ -22,30 +32,126 @@ type ExploreState = {
   district: string | null
   liveOnly: boolean
   setLiveOnly: (on: boolean) => void
-  todayOnly: boolean
-  setTodayOnly: (on: boolean) => void
-  amenities: number[]
-  setAmenities: (ids: number[]) => void
-  /** O raio ampliado no fim da lista; `null` usa o do perfil. */
-  radius: number | null
-  setRadius: (km: number) => void
+  /** Dia, esporte, características e raio (19d); o raio vale só na visita. */
+  filters: Filters
+  setFilters: (filters: Filters) => void
+  /**
+   * Os atalhos fixados no topo do mapa (19e), guardados no aparelho. `null`:
+   * a pessoa nunca mexeu, e a fileira é a padrão (`defaultShortcuts`).
+   */
+  shortcuts: Shortcut[] | null
+  setShortcuts: (list: Shortcut[]) => void
+  /**
+   * "Ver no mapa" da busca (19b) e da busca com IA: o Explorar leva o mapa
+   * até o quadro e limpa. Um quadro novo troca os bares da resposta pelos de
+   * `answer` (só a busca com IA manda; a outra busca os tira).
+   */
+  focus: MapFrame | null
+  setFocus: (focus: MapFrame | null, answer?: ChatBar[]) => void
+  /**
+   * Os bares da resposta da busca com IA que o "Ver no mapa" levou: o
+   * Explorar os desenha como gotas junto com os da busca dele, até a pessoa
+   * mexer na busca (filtros, atalhos, "Ao vivo", "Ampliar"), pedir outro
+   * "Ver no mapa" ou voltar ao raio (`clearAnswer`).
+   */
+  answer: ChatBar[] | null
+  clearAnswer: () => void
   /** Onde a folha parou (distância do topo); `null` até a primeira vez. */
   resting: number | null
   setResting: (top: number) => void
+  /**
+   * O bar aberto ao lado da lista no tablet deitado (a02): o Explorar troca
+   * o mapa pela página dele, e a barra flutuante volta para baixo da lista.
+   */
+  beside: BesideBar | null
+  setBeside: (bar: BesideBar | null) => void
+  /** Lê a localização de novo: depois de a pessoa dar a permissão no toque. */
+  locate: () => Promise<void>
+  /**
+   * A cidade escolhida sem conta ("escolher a cidade" de O jogo de hoje),
+   * guardada no aparelho. Com conta, a cidade é a do perfil.
+   */
+  localCity: City | null
+  setLocalCity: (city: City) => void
+  /**
+   * O jogo escolhido na fileira (chave da régua, `início|título`); `null`, o
+   * primeiro. Vem também de "O jogo de hoje" (`?jogo=`).
+   */
+  game: string | null
+  setGame: (key: string | null) => void
 }
+
+export type City = Coordinates & { name: string; uf: string }
+
+/** O que a página do bar desenha antes da resposta (os parâmetros dela). */
+export type BesideBar = {
+  id: string
+  km?: string
+  name?: string
+  photo?: string
+  walk?: string
+}
+
+const SHORTCUTS_KEY = 'onside.atalhos-do-mapa'
+const CITY_KEY = 'onside.cidade'
 
 const Context = createContext<ExploreState | null>(null)
 
 export function ExploreStateProvider({ children }: { children: ReactNode }) {
   const [device, setDevice] = useState<Coordinates | null>(null)
   const [district, setDistrict] = useState<string | null>(null)
-  const [liveOnly, setLiveOnly] = useState(false)
-  const [todayOnly, setTodayOnly] = useState(false)
-  const [amenities, setAmenities] = useState<number[]>([])
-  const [radius, setRadius] = useState<number | null>(null)
-  const [resting, setResting] = useState<number | null>(null)
-
+  const [liveOnly, saveLiveOnly] = useState(false)
+  const [filters, saveFilters] = useState<Filters>(NO_FILTERS)
+  const [shortcuts, saveShortcuts] = useState<Shortcut[] | null>(null)
+  const [focus, saveFocus] = useState<ExploreState['focus']>(null)
+  const [answer, setAnswer] = useState<ChatBar[] | null>(null)
+  const clearAnswer = () => setAnswer(null)
+  // Mexer na busca solta os bares da resposta: os pinos voltam a ser só os
+  // da busca à vista.
+  const setLiveOnly = (on: boolean) => {
+    saveLiveOnly(on)
+    clearAnswer()
+  }
+  const setFilters = (next: Filters) => {
+    saveFilters(next)
+    clearAnswer()
+  }
+  const setFocus: ExploreState['setFocus'] = (next, bars) => {
+    saveFocus(next)
+    if (next) setAnswer(bars ?? null)
+  }
+  const [game, setGame] = useState<string | null>(null)
+  const [localCity, saveLocalCity] = useState<City | null>(null)
+  const setLocalCity = (city: City) => {
+    saveLocalCity(city)
+    SecureStore.setItemAsync(CITY_KEY, JSON.stringify(city)).catch(() => {})
+  }
   useEffect(() => {
+    SecureStore.getItemAsync(CITY_KEY)
+      .then((raw) => {
+        if (raw) saveLocalCity(JSON.parse(raw))
+      })
+      .catch(() => {})
+  }, [])
+  useEffect(() => {
+    SecureStore.getItemAsync(SHORTCUTS_KEY)
+      .then((raw) => {
+        if (raw) saveShortcuts(JSON.parse(raw))
+      })
+      .catch(() => {})
+  }, [])
+  const setShortcuts = (list: Shortcut[]) => {
+    saveShortcuts(list)
+    SecureStore.setItemAsync(SHORTCUTS_KEY, JSON.stringify(list)).catch(
+      () => {}
+    )
+  }
+  const [resting, setResting] = useState<number | null>(null)
+  const [beside, setBeside] = useState<BesideBar | null>(null)
+
+  // Só lê se a permissão já foi dada: quem pede é o toque em "Ver bares
+  // perto de mim" (O jogo de hoje) ou o onboarding.
+  const locate = () =>
     Location.getForegroundPermissionsAsync()
       .then(({ granted }) =>
         granted
@@ -68,6 +174,9 @@ export function ExploreStateProvider({ children }: { children: ReactNode }) {
         setDistrict(place?.district ?? place?.subregion ?? place?.city ?? null)
       })
       .catch(() => {})
+  // biome-ignore lint/correctness/useExhaustiveDependencies: só ao montar
+  useEffect(() => {
+    locate()
   }, [])
 
   return (
@@ -77,14 +186,23 @@ export function ExploreStateProvider({ children }: { children: ReactNode }) {
         district,
         liveOnly,
         setLiveOnly,
-        todayOnly,
-        setTodayOnly,
-        amenities,
-        setAmenities,
-        radius,
-        setRadius,
+        filters,
+        setFilters,
+        shortcuts,
+        setShortcuts,
+        focus,
+        setFocus,
+        answer,
+        clearAnswer,
         resting,
-        setResting
+        setResting,
+        beside,
+        setBeside,
+        locate,
+        localCity,
+        setLocalCity,
+        game,
+        setGame
       }}
     >
       {children}
@@ -96,4 +214,62 @@ export function useExploreState() {
   const value = useContext(Context)
   if (!value) throw new Error('useExploreState fora de app/(fan)')
   return value
+}
+
+/*
+ * A foto que a aba "Você" põe sob o menu: a da última aba vista (Explorar ou
+ * Seus bares). Uma segunda cópia viva do Explorar montava outro mapa, que
+ * recarregava os tiles. A aba troca no nativo, sem esperar o JS (esperar
+ * fazia a lente da barra ir, voltar e ir de novo), então a foto já tem de
+ * estar pronta: a tela em foco se fotografa meio segundo depois de cada
+ * mudança. Fica fora do contexto para a foto nova não renderizar as telas.
+ */
+type ShotSource = 'explore' | 'bars'
+const shots: Partial<Record<ShotSource, string>> = {}
+// A aba que a pessoa viu por último: é ela que vai sob o menu.
+let lastSource: ShotSource = 'explore'
+const shotListeners = new Set<() => void>()
+const notify = () => {
+  for (const listener of shotListeners) listener()
+}
+
+/** A foto da última aba vista; `undefined` antes da primeira. */
+export function useShot() {
+  return useSyncExternalStore(
+    (listener) => {
+      shotListeners.add(listener)
+      return () => shotListeners.delete(listener)
+    },
+    () => shots[lastSource]
+  )
+}
+
+/**
+ * A tela a fotografar (`ref`). `again` pede outra foto onde a mudança não
+ * renderiza nada (rolagem).
+ */
+export function useShotSource(source: ShotSource, enabled = true) {
+  const ref = useRef<View>(null)
+  const focused = useIsFocused()
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    if (!enabled || !focused) return
+    if (lastSource !== source) {
+      lastSource = source
+      notify()
+    }
+    // ~70 ms no simulador: parado há meio segundo, não pesa num gesto.
+    const timer = setTimeout(() => {
+      captureRef(ref, { format: 'jpg', quality: 0.9, result: 'tmpfile' })
+        .then((uri) => {
+          const old = shots[source]
+          if (old) releaseCapture(old)
+          shots[source] = uri
+          notify()
+        })
+        .catch(() => {})
+    }, 500)
+    return () => clearTimeout(timer)
+  })
+  return { ref, again: () => setTick((t) => t + 1) }
 }

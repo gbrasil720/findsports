@@ -100,12 +100,26 @@ integrationTest(
       expect(rows[0]?.distanceM).toBeGreaterThan(90)
       expect(rows[0]?.distanceM).toBeLessThan(110)
       // A página do bar oferece o check-in do jogo ao vivo, já feito.
-      expect((await fan(a).pubs.getById({ id: seeded.barId })).checkIn).toEqual(
-        { eventId: live, done: true }
-      )
+      expect(
+        (await fan(a).pubs.getById({ id: seeded.barId })).checkIn
+      ).toMatchObject({ eventId: live, done: true, at: expect.any(String) })
       expect(
         (await fan(b as string).pubs.getById({ id: seeded.barId })).checkIn
-      ).toEqual({ eventId: live, done: false })
+      ).toEqual({ eventId: live, done: false, at: null })
+      // Meus jogos mostra a presença confirmada na linha do jogo (o jogo já
+      // começou: a presença entra direto, `attendance.set` recusaria).
+      await db.insert(attendance).values([
+        { userId: a, eventId: live },
+        { userId: b as string, eventId: live }
+      ])
+      expect((await fan(a).attendance.mine())[0]).toMatchObject({
+        eventId: live,
+        visited: true
+      })
+      expect((await fan(b as string).attendance.mine())[0]).toMatchObject({
+        eventId: live,
+        visited: false
+      })
 
       // --- avaliação de um jogo que acabou ------------------------------
 

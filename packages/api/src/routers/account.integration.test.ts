@@ -4,6 +4,7 @@ import { attendance } from '@findsports_oficial/db/schema/attendance'
 import { rateLimit, user } from '@findsports_oficial/db/schema/auth'
 import { event, userFavoriteBars } from '@findsports_oficial/db/schema/platform'
 import { barRating } from '@findsports_oficial/db/schema/rating'
+import { friendship } from '@findsports_oficial/db/schema/social'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 import { barData, dataExportLimitKey, fanData } from './account'
 import {
@@ -15,9 +16,10 @@ import {
 } from './integration-seed'
 
 /**
- * "Baixar meus dados" (WEB-418): o arquivo vai de anexo para o e-mail da
- * conta, um pedido por dia, e traz a conta inteira de quem pede e nada de
- * outra pessoa. Nenhum e-mail sai: a API de e-mail é dublê.
+ * "Baixar meus dados" (11i e 2e, WEB-418): o arquivo vai de anexo para o
+ * e-mail da conta, um pedido por dia, e traz a conta inteira de quem pede e
+ * nada de outra pessoa além do nome e do `@` de quem é amigo. Nenhum e-mail
+ * sai: a API de e-mail é dublê.
  */
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
 
@@ -48,25 +50,24 @@ integrationTest('torcedor recebe os dados por e-mail', async () => {
   const { appRouter } = await load()
   cleanups.push(() => forgetLimit(ctx.fanId))
   const tag = crypto.randomUUID().slice(0, 8)
-  // Outra torcedora no mesmo jogo: nada dela sai no arquivo.
-  const outra = {
+  const friend = {
     id: crypto.randomUUID(),
-    name: `Outra ${tag}`,
+    name: `Amiga ${tag}`,
     email: `amiga-${tag}@integration.invalid`,
     emailVerified: true,
     role: 'fan' as const,
     onboardingCompleted: true
   }
   try {
-    await db.insert(user).values(outra)
+    await db.insert(user).values(friend)
     const past = await ctx.seedGame({
       startsAt: new Date(Date.now() - 2 * 86_400_000)
     })
     const me = ctx.fanId
     await db.insert(attendance).values([
       { userId: me, eventId: past },
-      // A presença dela não é do torcedor: não sai no arquivo dele.
-      { userId: outra.id, eventId: past }
+      // A presença da amiga não é do torcedor: não sai no arquivo dele.
+      { userId: friend.id, eventId: past }
     ])
     await db.insert(barRating).values({
       barId: ctx.barId,
@@ -75,6 +76,12 @@ integrationTest('torcedor recebe os dados por e-mail', async () => {
       wouldReturn: true
     })
     await db.insert(userFavoriteBars).values({ userId: me, barId: ctx.barId })
+    await db.insert(friendship).values({
+      requesterId: friend.id,
+      addresseeId: me,
+      via: 'code',
+      acceptedAt: new Date()
+    })
 
     // O destinatário é o da sessão: campo a mais do cliente é descartado.
     const answer = await appRouter
@@ -104,17 +111,18 @@ integrationTest('torcedor recebe os dados por e-mail', async () => {
     expect(
       data.ratings.map((r: { wouldReturn: boolean }) => r.wouldReturn)
     ).toEqual([true])
-    // Sem amigos nem conquistas no web: o arquivo não inventa seção vazia.
-    expect(data).not.toHaveProperty('friends')
-    expect(data).not.toHaveProperty('achievements')
+    expect(data.friends).toEqual([
+      expect.objectContaining({ name: friend.name, status: 'friends' })
+    ])
+    expect(data.achievements.level).toBeGreaterThanOrEqual(1)
+    // Da amiga, só o nome: nem e-mail nem id.
     const wire = JSON.stringify(data)
-    expect(wire).not.toContain(outra.name)
-    expect(wire).not.toContain(outra.email)
-    expect(wire).not.toContain(outra.id)
-    // Nem a presença dela no mesmo jogo.
+    expect(wire).not.toContain(friend.email)
+    expect(wire).not.toContain(friend.id)
+    // Nem a presença da amiga no mesmo jogo.
     expect(data.games).toHaveLength(1)
   } finally {
-    await db.delete(user).where(inArray(user.id, [outra.id]))
+    await db.delete(user).where(inArray(user.id, [friend.id]))
     await ctx.cleanup()
   }
 })

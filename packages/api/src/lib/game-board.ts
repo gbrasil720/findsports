@@ -15,7 +15,7 @@ import { effectiveHouseOffer } from './house-offer'
 import { normalizeOpeningHours, type OpeningHours } from './opening-hours'
 import { hasPublicRating, RATING_PUBLIC_FLOOR } from './rating'
 import { starsAverage } from './rating-review'
-import { createSharedCache } from './shared-cache'
+import { createTtlCache } from './ttl-cache'
 import { utcIso } from './utc-timestamp'
 
 /*
@@ -75,8 +75,7 @@ type BoardRow = {
   classic_rule_version: number | null
 }
 
-const cache = createSharedCache<BoardRow[]>({
-  prefix: 'pubs.gameBoard',
+const cache = createTtlCache<BoardRow[]>({
   ttlMs: 60_000,
   maxEntries: 200
 })
@@ -209,7 +208,12 @@ export async function readGameBoard(input: BoardInput, now = new Date()) {
               ruleVersion: Number(row.classic_rule_version)
             }
           : null,
-      going: vao ? { count: vao.count, initials: vao.initials } : null
+      // Sem `viewerId`, só entra o jogo que passou do piso: a contagem nunca
+      // vem nula aqui; o filtro deixa isso explícito para o tipo.
+      going:
+        vao && vao.count !== null
+          ? { count: vao.count, initials: vao.initials }
+          : null
     }
   }
 

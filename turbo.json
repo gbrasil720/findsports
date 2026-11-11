@@ -1,17 +1,23 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
+  "globalPassThroughEnv": [
+    "DEV_DATABASE_URL",
+    "LOAD_TEST_DATABASE_URL",
+    "E2E_DATABASE_URL",
+    "RUN_DISPOSABLE_DB_TESTS"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": ["dist/**"]
     },
-    "lint": {
-      "dependsOn": ["^lint"]
+    "transit": {
+      "dependsOn": ["^transit"]
     },
     "check-types": {
-      "dependsOn": ["^check-types"]
+      "dependsOn": ["transit"]
     },
     "test": {
       "cache": false
@@ -23,7 +29,7 @@
     "dev:load-test": {
       "cache": false,
       "persistent": true,
-      "env": ["BETTER_AUTH_SECRET", "BETTER_AUTH_URL", "CORS_ORIGIN"]
+      "env": ["BETTER_AUTH_SECRET", "BETTER_AUTH_URL"]
     },
     "db:push": {
       "cache": false,
@@ -35,7 +41,6 @@
     },
     "db:migrate": {
       "cache": false,
-      "persistent": true,
       "env": ["NODE_ENV", "DATABASE_URL"]
     },
     "db:studio": {

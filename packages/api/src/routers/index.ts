@@ -5,6 +5,7 @@ import { adminBarsRouter } from './admin-bars'
 import { adminEventsRouter } from './admin-events'
 import { adminReviewRouter } from './admin-review'
 import { adminUsersRouter } from './admin-users'
+import { aiRouter } from './ai'
 import { appConfigRouter } from './app-config'
 import { appWaitlistRouter } from './app-waitlist'
 import { attendanceRouter } from './attendance'
@@ -12,12 +13,14 @@ import { barReservationsRouter } from './bar-reservations'
 import { bastidoresRouter } from './bastidores'
 import { commercialAnalyticsRouter } from './commercial-analytics'
 import { feedbackRouter } from './feedback'
+import { friendsRouter } from './friends'
 import { grimorioRouter } from './grimorio'
 import { houdiniRouter } from './houdini'
 import { onboardingRouter } from './onboarding'
 import { postGameRouter } from './post-game'
 import { pubRouter } from './pub'
 import { pubsRouter } from './pubs'
+import { rankingRouter } from './ranking'
 import { ratingsRouter } from './ratings'
 import { recommendationsRouter } from './recommendations'
 import { reservationValidationRouter } from './reservation-validation'
@@ -35,6 +38,7 @@ export const appRouter = router({
   achievements: achievementsRouter,
   account: accountRouter,
   adminBars: adminBarsRouter,
+  ai: aiRouter,
   adminEvents: adminEventsRouter,
   adminReview: adminReviewRouter,
   adminUsers: adminUsersRouter,
@@ -51,6 +55,8 @@ export const appRouter = router({
   reservationValidation: reservationValidationRouter,
   barReservations: barReservationsRouter,
   attendance: attendanceRouter,
+  friends: friendsRouter,
+  ranking: rankingRouter,
   feedback: feedbackRouter,
   grimorio: grimorioRouter,
   houdini: houdiniRouter

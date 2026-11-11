@@ -1,10 +1,11 @@
+import { maintenanceForecast } from '@findsports_oficial/api/lib/maintenance-forecast'
 import type { AppRouter } from '@findsports_oficial/api/routers/index'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import type { inferRouterOutputs } from '@trpc/server'
 import { useEffect, useId, useState } from 'react'
 import { toast } from 'sonner'
-
+import { Confirm } from '@/components/houdini/confirm'
 import { formatDateTime } from '@/components/houdini/format'
 import { Icon } from '@/components/houdini/icons'
 import { HoudiniShell, PageHead } from '@/components/houdini/shell'
@@ -55,7 +56,11 @@ const GLOSSARY = [
   ],
   [
     'JSON',
-    'O formato dos feitiços que guardam mais de um número, como os pesos e limites da IA.'
+    'O formato dos feitiços que guardam mais de um número, como os pesos e limites da IA. Em dúvida, mude pela tela da IA, que valida os números.'
+  ],
+  [
+    'Manutenção do app',
+    'Tira o app do torcedor do ar com o aviso "Voltamos já já." e a previsão de volta. O painel do bar, o Houdini e o login continuam no ar.'
   ],
   [
     'Instâncias',
@@ -161,6 +166,12 @@ function FeiticosPage() {
             Como ler esta página
           </a>
         </PageHead>
+
+        {list.data ? (
+          <MaintenanceCard
+            spell={spells.find((s) => s.key === 'app.maintenance')}
+          />
+        ) : null}
 
         {list.isError ? (
           <div className="hd-card" role="alert">
@@ -474,6 +485,173 @@ function SpellRow({
             </button>
           ) : null}
         </div>
+      ) : null}
+    </article>
+  )
+}
+
+// WEB-466: a previsão sai da hora do clique, sem fuso para digitar.
+const PREVISOES = [
+  { label: '30 min', minutes: 30 },
+  { label: '1 h', minutes: 60 },
+  { label: '2 h', minutes: 120 },
+  { label: 'Sem previsão', minutes: null }
+] as const
+
+type Maintenance = { on: boolean; backAt: string | null }
+
+/**
+ * Manutenção do app (WEB-466, 26d e 26e): o interruptor da chave
+ * `app.maintenance`, com a previsão de volta. Só o app lê a chave; o painel
+ * do bar, o Houdini e o login seguem no ar.
+ */
+function MaintenanceCard({ spell }: { spell: Spell | undefined }) {
+  const trpc = useTRPC()
+  const queryClient = useQueryClient()
+  const [asking, setAsking] = useState<'switch' | 'forecast' | null>(null)
+  const [previsao, setPrevisao] = useState(1)
+  const value = (spell?.valor ?? { on: false, backAt: null }) as Maintenance
+  const forecast = maintenanceForecast(value.backAt, Date.now())
+
+  const set = useMutation(
+    trpc.appConfig.set.mutationOptions({
+      onSuccess: async (_, input) => {
+        const next = input.value as Maintenance
+        toast.success(next.on ? 'App em manutenção.' : 'App de volta ao ar.')
+        setAsking(null)
+        await queryClient.invalidateQueries({
+          queryKey: trpc.appConfig.list.queryKey()
+        })
+      },
+      onError: (error) =>
+        toast.error(getUserFacingMessage(error, 'Não foi possível mudar.'))
+    })
+  )
+
+  const minutes = PREVISOES[previsao]?.minutes ?? null
+  const backAt = () =>
+    minutes === null
+      ? null
+      : new Date(Date.now() + minutes * 60_000).toISOString()
+  const forecastLabel =
+    minutes === null ? 'sem previsão' : `volta em ${PREVISOES[previsao]?.label}`
+
+  return (
+    <article
+      className={`hd-card${value.on ? ' is-live' : ''}`}
+      aria-labelledby="manutencao-h"
+      style={{ gap: 14 }}
+    >
+      <div className="hd-card-hd">
+        <h2 id="manutencao-h" className="hd-h2">
+          Manutenção do app
+        </h2>
+        <span className="meta hd-mono">
+          app.maintenance · {spell?.sobrescrito ? 'lançado' : 'no padrão'}
+        </span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <span
+          style={{
+            font: '400 40px/1 var(--hd-display)',
+            textTransform: 'uppercase',
+            color: value.on ? 'var(--hd-live-text)' : 'var(--hd-fg)'
+          }}
+        >
+          {value.on ? 'Em manutenção' : 'No ar'}
+        </span>
+        <button
+          type="button"
+          role="switch"
+          className="hd-switch"
+          aria-checked={value.on}
+          aria-label="App em manutenção"
+          style={{ marginLeft: 'auto' }}
+          disabled={!spell || set.isPending || asking !== null}
+          onClick={() => setAsking('switch')}
+        />
+      </div>
+      {value.on ? (
+        <p style={{ margin: 0, color: 'var(--hd-body)' }}>
+          {forecast
+            ? `Previsão de volta ${forecast.time}, faltam cerca de ${forecast.left}.`
+            : 'Sem previsão de volta: o app não mostra contagem.'}
+        </p>
+      ) : (
+        <p style={{ margin: 0, color: 'var(--hd-body)' }}>
+          Ligada, quem abre o app vê "Voltamos já já." com a previsão e o código
+          do jogo de hoje. O painel do bar, o Houdini e o login continuam no ar.
+        </p>
+      )}
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          gap: 10
+        }}
+      >
+        <span className="hd-eyebrow">Previsão de volta</span>
+        <fieldset className="hd-seg" aria-label="Previsão de volta">
+          {PREVISOES.map((p, index) => (
+            <button
+              key={p.label}
+              type="button"
+              aria-pressed={previsao === index}
+              onClick={() => setPrevisao(index)}
+            >
+              {p.label}
+            </button>
+          ))}
+        </fieldset>
+        {value.on ? (
+          <button
+            type="button"
+            className="hd-btn"
+            disabled={set.isPending || asking !== null}
+            onClick={() => setAsking('forecast')}
+          >
+            Mudar a previsão
+          </button>
+        ) : null}
+      </div>
+      <span className="hd-mono hd-small">
+        app.maintenance ·{' '}
+        {spell?.updatedAt
+          ? `mudou em ${formatDateTime(spell.updatedAt)}${
+              spell.updatedByNome ? ` por ${spell.updatedByNome}` : ''
+            }`
+          : 'nunca lançado'}
+      </span>
+      {asking ? (
+        <Confirm
+          text={
+            asking === 'forecast'
+              ? `Mudar a previsão de volta (${forecastLabel})? O app mostra a nova em até 2 minutos.`
+              : value.on
+                ? 'Tirar o app da manutenção? Quem está com o app aberto volta ao normal em até 2 minutos.'
+                : `Pôr o app em manutenção (${forecastLabel})? Em até 2 minutos, quem abrir o app vê "Voltamos já já." no lugar das telas.`
+          }
+          confirmLabel={
+            asking === 'forecast'
+              ? 'Mudar a previsão'
+              : value.on
+                ? 'Tirar da manutenção'
+                : 'Pôr em manutenção'
+          }
+          busy={set.isPending}
+          onCancel={() => setAsking(null)}
+          onConfirm={() =>
+            set.mutate({
+              key: 'app.maintenance',
+              value:
+                asking === 'switch' && value.on
+                  ? { on: false, backAt: null }
+                  : { on: true, backAt: backAt() },
+              expiresInMinutes: null
+            })
+          }
+        />
       ) : null}
     </article>
   )

@@ -599,6 +599,12 @@ html[data-consent]:has(.houdini) body {
   grid-template-columns: repeat(auto-fit, minmax(var(--hd-min, 210px), 1fr));
 }
 
+/* Fila da Revisão: o cartão com o recusar aberto cresce sozinho; o vizinho
+ * da mesma linha fica na altura dele. */
+.hd-grid.is-fila {
+  align-items: start;
+}
+
 .hd-cols {
   display: flex;
   flex-wrap: wrap;
@@ -1022,6 +1028,14 @@ a.hd-kpi:active {
   box-shadow: var(--hd-shadow);
 }
 
+/* Tabela dentro de um cartão (a IA): sem o segundo cartão em volta. */
+.hd-table-wrap.is-flat {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
 .hd-table {
   width: 100%;
   min-width: 640px;
@@ -1047,7 +1061,7 @@ a.hd-kpi:active {
   transition: background-color 120ms ease;
 }
 
-.hd-table tr:last-child td {
+.hd-table tbody tr:last-child :is(td, th) {
   border-bottom: 0;
 }
 
@@ -1286,6 +1300,14 @@ a.hd-row + a.hd-row {
 .hd-gloss dt {
   font-size: 14px;
   font-weight: 700;
+}
+
+/* A sigla ao lado do termo ("p.p. pontos percentuais"), como no hd.css. */
+.hd-gloss dt .hd-mono {
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--hd-muted);
 }
 
 .hd-gloss dd {

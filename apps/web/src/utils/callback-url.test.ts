@@ -10,7 +10,7 @@ describe('getCallbackUrl', () => {
       origin
     )
 
-  it('returns /dashboard when no callbackUrl', () => {
+  it('returns /admin when no callbackUrl', () => {
     expect(getCallbackUrl('/some-page?foo=bar', origin)).toBe('/dashboard')
     expect(getCallbackUrl('/login', origin)).toBe('/dashboard')
   })
@@ -47,7 +47,7 @@ describe('getCallbackUrl', () => {
     '/\t/evil.com/pub/abc',
     'javascript:alert(1)',
     'data:text/html,hi'
-  ])('returns /dashboard for other-origin callbackUrl %p', (callbackUrl) => {
+  ])('returns /admin for other-origin callbackUrl %p', (callbackUrl) => {
     expect(login(callbackUrl)).toBe('/dashboard')
   })
 })

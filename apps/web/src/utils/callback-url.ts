@@ -1,3 +1,5 @@
+import { useLocation, useRouter } from '@tanstack/react-router'
+
 export function getSafeCallbackUrl(url: string, fallback = '/dashboard') {
   if (!url.startsWith('/') || url.startsWith('//') || url.includes('\\')) {
     return fallback
@@ -23,6 +25,15 @@ export function getCallbackUrl(
   } catch {
     return '/dashboard'
   }
+}
+
+// WEB-472: na tela, a origem é a do router, que no SSR é a da requisição e no
+// navegador a da página. Com a base fictícia, o servidor recusava o
+// `callbackUrl` absoluto de mesma origem que o navegador aceitava, e o HTML
+// saía diferente do primeiro render do cliente.
+export function useCallbackUrl(): string {
+  const { origin } = useRouter()
+  return getCallbackUrl(useLocation().href, origin)
 }
 
 // WEB-211: o destino do cadastro viaja na URL, e não no `sessionStorage`: o

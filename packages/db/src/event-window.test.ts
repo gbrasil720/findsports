@@ -7,6 +7,8 @@ import {
   getEventEnd,
   getEventStartProblem,
   getValidationWindow,
+  hasEventEnded,
+  isEventLive,
   isWithinValidationWindow,
   VALIDATION_WINDOW_MARGIN_MS
 } from './event-window'
@@ -166,5 +168,28 @@ describe('brasiliaDayStart', () => {
     expect(brasiliaDayStart('2019-02-17').toISOString()).toBe(
       '2019-02-17T03:00:00.000Z'
     )
+  })
+})
+
+describe('isEventLive e hasEventEnded', () => {
+  const game = { startsAt: START, endsAt: null }
+  const end = START.getTime() + DEFAULT_EVENT_DURATION_MS
+
+  it('ao vivo do início (inclusivo) ao fim (exclusivo)', () => {
+    expect(isEventLive(game, START.getTime() - 1)).toBe(false)
+    expect(isEventLive(game, START)).toBe(true)
+    expect(isEventLive(game, end - 1)).toBe(true)
+    expect(isEventLive(game, end)).toBe(false)
+  })
+
+  it('acabou no instante do fim derivado', () => {
+    expect(hasEventEnded(game, end - 1)).toBe(false)
+    expect(hasEventEnded(game, end)).toBe(true)
+  })
+
+  it('o fim informado ganha do padrão', () => {
+    const short = { startsAt: START, endsAt: new Date(START.getTime() + HOUR) }
+    expect(hasEventEnded(short, START.getTime() + HOUR)).toBe(true)
+    expect(isEventLive(short, START.getTime() + HOUR)).toBe(false)
   })
 })

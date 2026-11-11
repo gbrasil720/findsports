@@ -13,11 +13,7 @@ import {
   type Routine
 } from '@findsports_oficial/api/lib/pub-routine'
 import { useMutation } from '@tanstack/react-query'
-import {
-  createFileRoute,
-  useLocation,
-  useNavigate
-} from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Pin, Star, Tv } from '@/components/landing/v3/icons'
@@ -54,7 +50,7 @@ import {
 import { getPubOnboardingReview } from '@/lib/pub-onboarding-review'
 import { uploadMedia } from '@/lib/upload-media'
 import { PUB_LIVE_PATH } from '@/utils/auth-guards'
-import { getCallbackUrl } from '@/utils/callback-url'
+import { useCallbackUrl } from '@/utils/callback-url'
 import { formatStoredPhone } from '@/utils/format-phone'
 import { useTRPC } from '@/utils/trpc'
 
@@ -104,7 +100,7 @@ const WELCOME_FEATURES: [ReactNode, string, string][] = [
 
 function PubOnboarding() {
   const navigate = useNavigate()
-  const callbackUrl = getCallbackUrl(useLocation().href)
+  const callbackUrl = useCallbackUrl()
   const trpc = useTRPC()
   const headingRef = useRef<HTMLHeadingElement>(null)
   const user = Route.useRouteContext({

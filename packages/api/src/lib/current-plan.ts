@@ -30,6 +30,18 @@ export function getCurrentPlan(
 }
 
 /**
+ * O bar emite o código do balcão: Elite vigente (ADR 0003, revisão de
+ * 16/10/2026). Com o código vêm a oferta da casa, a lista de quem vai, a
+ * validação e o lançamento pela comanda; todos perguntam aqui.
+ */
+export function issuesCounterCode(
+  subscription: SubscriptionForPlan | null,
+  now = new Date()
+) {
+  return getCurrentPlan(subscription, now) === 'elite'
+}
+
+/**
  * Em que pé a assinatura está, para a interface escolher a ação (WEB-141).
  *
  * `past_due` e `trial_ended` são plano parado: o dono regulariza a assinatura
