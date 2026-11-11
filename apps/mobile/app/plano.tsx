@@ -1,5 +1,10 @@
+import {
+  readRoutine,
+  recommendPlan
+} from '@findsports_oficial/api/lib/pub-routine'
 import { brasiliaDay } from '@findsports_oficial/db/event-window'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
@@ -74,6 +79,12 @@ export default function Plano() {
   const ended = !s || standing === 'trial_ended' || standing === 'ended'
   const pastDue = standing === 'past_due'
   const plan = (s?.plan ?? 'starter') as Plan
+  // Teste vencido: o fluxo normal de escolher o plano (decisão do dono,
+  // 11/11/2026). Vem marcado o que a rotina indica, senão o do teste.
+  const routine = readRoutine(owner.bar?.routine)
+  const indicated: Plan = routine ? recommendPlan(routine).plan : plan
+  const [picked, setPicked] = useState<Plan | null>(null)
+  const choice = picked ?? indicated
   const end = s?.currentPeriodEnd ? new Date(s.currentPeriodEnd) : null
   const left = end
     ? Math.max(0, Math.ceil((end.getTime() - Date.now()) / DAY))
@@ -127,6 +138,12 @@ export default function Plano() {
             address={owner.bar?.address ?? ''}
             people={proof.data?.people ?? 0}
             trialEnded={standing !== 'ended'}
+            choice={choice}
+            indicated={indicated}
+            onPick={(id) => {
+              haptic.select()
+              setPicked(id)
+            }}
           />
         ) : (
           <>
@@ -440,13 +457,17 @@ export default function Plano() {
         >
           <Pressable
             accessibilityRole="button"
-            onPress={() => buy(ended ? 'Voltar ao ar' : 'Garantir o Elite')}
+            onPress={() =>
+              buy(
+                ended ? `Assinar o ${PLAN_NAMES[choice]}` : 'Garantir o Elite'
+              )
+            }
           >
             <HardShadow color="#7f9a12" offset={4} radius={999} />
             <View style={styles.buy}>
               <Text style={[text(17, 'Bold', 1.2), { color: INK }]}>
                 {ended
-                  ? 'Voltar ao ar com o Elite'
+                  ? `Voltar ao ar com o ${PLAN_NAMES[choice]}`
                   : 'Garantir o Elite · R$ 0 hoje'}
               </Text>
             </View>
@@ -457,7 +478,7 @@ export default function Plano() {
               { color: palette.muted, textAlign: 'center' }
             ]}
           >
-            {`App Store · R$ ${PLAN_PRICES.elite.founder}/mês${trial && end ? ` a partir de ${dayMonth(end)}` : ''} · a compra pelo app chega em breve`}
+            {`App Store · R$ ${PLAN_PRICES[ended ? choice : 'elite'].founder}/mês${trial && end ? ` a partir de ${dayMonth(end)}` : ''} · a compra pelo app chega em breve`}
           </Text>
         </View>
       ) : null}
@@ -492,13 +513,19 @@ function Ended({
   barName,
   address,
   people,
-  trialEnded
+  trialEnded,
+  choice,
+  indicated,
+  onPick
 }: {
   barName: string
   address: string
   people: number
   /** O teste do cadastro acabou; `false` é assinatura que terminou. */
   trialEnded: boolean
+  choice: Plan
+  indicated: Plan
+  onPick: (plan: Plan) => void
 }) {
   const palette = usePalette()
   return (
@@ -540,13 +567,17 @@ function Ended({
       </Text>
       <View style={styles.plansRow}>
         {(['starter', 'pro', 'elite'] as Plan[]).map((id) => (
-          <View
+          <Pressable
             key={id}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: id === choice }}
+            accessibilityLabel={`${PLAN_NAMES[id]}, R$ ${PLAN_PRICES[id].founder} por mês${id === indicated ? ', indicado pela sua rotina' : ''}`}
+            onPress={() => onPick(id)}
             style={[
               styles.planCard,
               {
-                backgroundColor: id === 'elite' ? palette.card : palette.mark,
-                borderColor: id === 'elite' ? ACID : 'transparent'
+                backgroundColor: id === choice ? palette.card : palette.mark,
+                borderColor: id === choice ? ACID : 'transparent'
               }
             ]}
           >
@@ -560,13 +591,16 @@ function Ended({
             <Text
               style={[styles.planOld, { color: palette.muted }]}
             >{`R$ ${PLAN_PRICES[id].table}`}</Text>
-          </View>
+          </Pressable>
         ))}
       </View>
       <Text style={[styles.endedNote, { color: palette.muted }]}>
-        {people
-          ? `${people} ${people === 1 ? 'PESSOA MARCOU' : 'PESSOAS MARCARAM'} PRESENÇA ESTE MÊS`
-          : 'OS DADOS DO BAR CONTINUAM GUARDADOS'}
+        {[
+          people
+            ? `${people} ${people === 1 ? 'PESSOA MARCOU' : 'PESSOAS MARCARAM'} PRESENÇA ESTE MÊS`
+            : 'OS DADOS DO BAR CONTINUAM GUARDADOS',
+          `${PLAN_NAMES[indicated].toUpperCase()} INDICADO PELA SUA ROTINA`
+        ].join(' · ')}
       </Text>
     </>
   )
