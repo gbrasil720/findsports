@@ -20,6 +20,7 @@ import Animated, {
   type EntryExitAnimationFunction,
   Extrapolation,
   interpolate,
+  LinearTransition,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useReducedMotion,
@@ -34,7 +35,6 @@ import { BarDetail } from '@/app/bar/[id]'
 import {
   dayLabel,
   dropBox,
-  HardShadow,
   MapDrop,
   MapGroup,
   MeDot,
@@ -156,17 +156,21 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   const navInsets = useNavInsets()
   // Celular (e Duo fechado): o mapa na tela toda e a lista numa folha. No
   // tablet e no dobrável aberto (T1 do design adaptativo), a lista à esquerda
-  // e o mapa ao lado (`split`), ou o mapa num card sobre a lista (`stack`).
+  // e o mapa ao lado (`split`), ou o mapa em cima e a lista numa folha
+  // embaixo (`stack`, rodada 9).
   const phone = layout.kind === 'phone' || layout.kind === 'duoClosed'
   const stack = layout.kind === 'stack'
   // Meio dobrado na mesa (Duo em laptop, Flex Mode): o mapa em cima, a lista
   // embaixo da dobra. Tela de fora do Flip: só o bar mais perto (`Cover`).
   const table = layout.kind === 'table'
-  // Tablet deitado (iPad, Galaxy Tab): abrir um bar troca o mapa pela página
-  // dele, com a lista ao lado (a02). No dobrável e no Duo, a página inteira.
-  const besideList =
+  // Tablet deitado (iPad, Galaxy Tab; rodada 9): tocar no bar da lista o
+  // escolhe, com o contorno acid, e o mapa centra na gota dele; tocar de novo
+  // abre a página. No dobrável aberto e no Duo, a página do bar abre na outra
+  // metade, no lugar do mapa, sem nada atravessando a dobra.
+  const tablet =
     layout.kind === 'split' &&
     (layout.nav === 'rail' || (layout.nav === 'float' && Platform.OS === 'ios'))
+  const besideList = layout.kind === 'split' && !tablet
   const cover = layout.kind === 'cover'
   // O dobrável aberto tem a lista mais justa (12 dos lados, não 22).
   const pad = stack
@@ -269,6 +273,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
       // Distância do aparelho, não do centro da cidade: vale "N min a pé".
       walk: device ? '1' : undefined
     }
+    if (tablet && selected !== bar.barId) return pick(bar)
     if (!besideList) return router.push({ pathname: '/bar/[id]', params })
     // Tocar de novo no bar aberto volta ao mapa.
     if (state.beside?.id === bar.barId) return state.setBeside(null)
@@ -306,6 +311,8 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   // os jogos continuam à mão.
   const top = insets.top + HEAD + 20
   const [selected, setSelected] = useState<string | null>(null)
+  // Em pé, onde acaba a busca por cima do mapa (a faixa livre começa ali).
+  const [headBottom, setHeadBottom] = useState(220)
   // O jogo tocado em "O jogo de hoje" chega pela URL (`?jogo=`).
   const { jogo, de } = useLocalSearchParams<{ jogo?: string; de?: string }>()
   const { setGame } = state
@@ -322,7 +329,8 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   const reduced = useReducedMotion()
 
   // Onde o mapa fica: a tela toda no celular; ao lado da lista no `split`
-  // (sob a navegação do Duo, à direita); num card abaixo dos chips no `stack`.
+  // (sob a navegação do Duo, à direita); de borda a borda em cima no `stack`,
+  // com a busca por cima e a folha da lista subindo sobre a base dele.
   // A câmera (abrir no raio, recentrar, abrir grupo) conta sobre esta área.
   const mapBox =
     phone || cover
@@ -331,9 +339,9 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
         ? { left: 0, width, height: layout.split }
         : stack
           ? {
-              left: navInsets.left + pad,
-              width: width - navInsets.left - navInsets.right - 2 * pad,
-              height: Math.round(height * (height >= TALL ? 0.38 : 0.34))
+              left: navInsets.left,
+              width: width - navInsets.left - navInsets.right,
+              height: Math.round(height * 0.52)
             }
           : {
               // Do outro lado da dobra, quando há uma (livro, Fold aberto).
@@ -351,7 +359,8 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
         ? // Os chips passam por cima do mapa, no topo.
           { top: insets.top + 64, bottom: 16 }
         : stack
-          ? { top: 16, bottom: 16 }
+          ? // A busca, os dias e os jogos por cima; a folha sobe 24 na base.
+            { top: headBottom + 12, bottom: SHEET_OVER + 16 }
           : {
               top: insets.top + 16,
               bottom:
@@ -368,22 +377,12 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   }
   const band = mapBox.height - padding.top - padding.bottom
   const shift = mapBox.height / 2 - (padding.top + band / 2)
-  // No celular, o raio inteiro na faixa livre. Fora dele, o zoom de rua do
-  // design adaptativo (a01: uns 2,7 m por ponto, os bares de perto
-  // espalhados), com você no meio da faixa.
-  const region = phone
-    ? frameRegion(
-        { ...center, kmTall: radiusKm * 2, kmWide: radiusKm * 2 },
-        screen
-      )
-    : frameRegion(
-        {
-          ...center,
-          kmTall: (band * STREET_M_PER_PT) / 1000,
-          kmWide: (mapBox.width * STREET_M_PER_PT) / 1000
-        },
-        screen
-      )
+  // O raio inteiro na faixa livre, em toda tela (rodada 9: no iPad e no
+  // dobrável também, com o círculo tracejado).
+  const region = frameRegion(
+    { ...center, kmTall: radiusKm * 2, kmWide: radiusKm * 2 },
+    screen
+  )
   const map = useRef<MapView>(null)
   const online = useOnline()
   const frameRadius = () =>
@@ -469,6 +468,20 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
       }
     }
   }
+  // Bar escolhido na lista do tablet: o mapa centra na gota (300 ms) no
+  // meio da faixa livre.
+  const pick = (bar: AnyBar) => {
+    haptic.select()
+    setSelected(bar.barId)
+    map.current?.animateToRegion(
+      {
+        ...view,
+        longitude: bar.longitude,
+        latitude: bar.latitude - (shift * view.latitudeDelta) / mapBox.height
+      },
+      reduced ? 0 : 300
+    )
+  }
   const dimmed = (layer: Layer) =>
     selected !== null && layer.kind !== 'selected'
   const tapLayer = (layer: Layer) => {
@@ -521,14 +534,14 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   // O mapa só aceita `animateToRegion` depois de pronto: a localização que
   // chegava antes disso se perdia, e o Explorar ficava na cidade do perfil.
   const [mapReady, setMapReady] = useState(false)
-  // Enquadra quando o mapa fica pronto, quando o centro muda e quando chega a
-  // primeira resposta; não a cada filtro, que desfaria o arrasto que a
-  // pessoa fez no mapa.
+  // Enquadra quando o mapa fica pronto, quando o centro muda, quando chega a
+  // primeira resposta e quando a tela gira ou o dobrável abre (a caixa do
+  // mapa muda); não a cada filtro, que desfaria o arrasto que a pessoa fez.
   const framed = board.data !== undefined
-  // biome-ignore lint/correctness/useExhaustiveDependencies: só centro, mapa pronto e primeira resposta
+  // biome-ignore lint/correctness/useExhaustiveDependencies: só centro, mapa pronto, primeira resposta e caixa do mapa
   useEffect(() => {
     if (mapReady) frameRadius()
-  }, [mapReady, center.lat, center.lng, framed])
+  }, [mapReady, center.lat, center.lng, framed, layout.kind, mapBox.width])
   // "Ver no mapa" da busca (19b) e da busca com IA (WEB-432): o quadro
   // pedido na faixa livre, como o raio.
   // biome-ignore lint/correctness/useExhaustiveDependencies: só quando o foco muda
@@ -722,8 +735,6 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
       ? 44
       : 34
   const column = (mapBox.width - 12) / 2
-  // Em pé, o mapa fica no espaço que a coluna reserva para ele, medido.
-  const [mapTop, setMapTop] = useState(0)
 
   // Em pé e na mesa, os cards em duas colunas (`columns` é a largura de
   // uma). Com um bar aberto ao lado, ele fica marcado na lista (a02).
@@ -746,7 +757,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
       bar={bar}
       live={gameOf(bar)?.live ?? false}
       favorite={favorites.ids.has(bar.barId)}
-      chosen={beside?.id === bar.barId}
+      chosen={beside?.id === bar.barId || (tablet && selected === bar.barId)}
       onFavorite={() => favorites.toggle(bar.barId)}
       onPress={() => open(bar)}
     />
@@ -757,6 +768,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
       favorite={favorites.ids.has(bar.barId)}
       onFavorite={() => favorites.toggle(bar.barId)}
       onPress={() => open(bar)}
+      chosen={tablet && selected === bar.barId}
     />
   )
   const cell = columns ? { width: columns } : styles.full
@@ -1029,9 +1041,10 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
     >
       {/* O mapa fica sempre neste lugar da árvore: girar o tablet ou abrir o
           dobrável só muda a caixa dele, sem remontar (a posição, os pinos e
-          o bar tocado continuam onde estavam). */}
-      <View
+          o bar tocado continuam onde estavam), em 250 ms (rodada 9). */}
+      <Animated.View
         pointerEvents="box-none"
+        layout={phone || cover || reduced ? undefined : RESIZE}
         style={
           // Na tela de fora do Flip o mapa fica por baixo da foto do bar:
           // abrir o celular o mostra como estava.
@@ -1041,26 +1054,19 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
               ? [styles.mapTop, { height: mapBox.height }]
               : stack
                 ? [
-                    styles.mapCard,
+                    styles.mapTop,
                     {
-                      top: mapTop,
                       left: mapBox.left,
                       width: mapBox.width,
-                      height: mapBox.height,
-                      // Até o espaço dele na coluna ser medido.
-                      opacity: mapTop ? 1 : 0
+                      height: mapBox.height
                     }
                   ]
                 : [styles.mapSide, { left: mapBox.left }]
         }
       >
-        {stack ? (
-          <HardShadow color={palette.shadow} offset={4} radius={9} />
-        ) : null}
         <View
           style={[
             StyleSheet.absoluteFill,
-            stack && [styles.mapClip, { borderColor: palette.ring }],
             // Sem rede (rodada 7, 14j): o mapa não atualiza, então apaga a 60%.
             !online && { opacity: 0.6 }
           ]}
@@ -1104,15 +1110,12 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
             toolbarEnabled={false}
           >
             {/* O raio de busca em volta de onde a busca parte (você, ou a
-                cidade do perfil). Só no celular: o design adaptativo abre no
-                zoom de rua, sem o círculo. */}
-            {phone ? (
-              <RadiusCircle
-                center={{ latitude: center.lat, longitude: center.lng }}
-                km={radiusKm}
-                dark={palette.dark}
-              />
-            ) : null}
+                cidade do perfil). */}
+            <RadiusCircle
+              center={{ latitude: center.lat, longitude: center.lng }}
+              km={radiusKm}
+              dark={palette.dark}
+            />
             {device ? (
               <Marker
                 coordinate={{ latitude: device.lat, longitude: device.lng }}
@@ -1241,8 +1244,9 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
               styles.mapControls,
               layout.nav === 'duoRail' ? { left: 16 } : { right: 16 },
               {
-                bottom:
-                  stack || table
+                bottom: stack
+                  ? SHEET_OVER + 16
+                  : table
                     ? 16
                     : layout.nav === 'float'
                       ? navInsets.bottom + 14
@@ -1319,7 +1323,7 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
             ) : null}
           </Animated.View>
         ) : null}
-      </View>
+      </Animated.View>
 
       {phone ? (
         <>
@@ -1560,10 +1564,11 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
           </View>
         </>
       ) : (
-        // Tablet e dobrável aberto: a coluna da lista (à esquerda do mapa, ou
-        // a tela toda em pé, com o espaço do mapa reservado abaixo dos chips).
-        <View
+        // Tablet e dobrável aberto: a coluna da lista (à esquerda do mapa), ou
+        // em pé a folha que sobe sobre a base do mapa.
+        <Animated.View
           pointerEvents="box-none"
+          layout={reduced ? undefined : RESIZE}
           style={[
             styles.pane,
             {
@@ -1573,19 +1578,25 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
               paddingHorizontal: pad,
               gap: stack ? 16 : 14
             },
-            stack ? { right: navInsets.right } : { width: layout.split }
+            stack
+              ? {
+                  right: navInsets.right,
+                  top: mapBox.height - SHEET_OVER,
+                  paddingTop: 24,
+                  backgroundColor: palette.bg,
+                  borderTopLeftRadius: 28,
+                  borderTopRightRadius: 28
+                }
+              : { width: layout.split }
           ]}
         >
-          {topRow}
-          {dayRow}
-          <View style={{ marginHorizontal: -pad }}>{gameStrip}</View>
-          {stack ? (
-            <View
-              pointerEvents="none"
-              style={{ height: mapBox.height }}
-              onLayout={(e) => setMapTop(e.nativeEvent.layout.y)}
-            />
-          ) : null}
+          {stack ? null : (
+            <>
+              {topRow}
+              {dayRow}
+              <View style={{ marginHorizontal: -pad }}>{gameStrip}</View>
+            </>
+          )}
           <View style={{ gap: 8 }}>
             <GameTitle
               title={
@@ -1624,8 +1635,31 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
             {/* Em pé, duas colunas (a01k, a01m, a01o). */}
             {listBody(cards, stack ? styles.grid : undefined)}
           </ScrollView>
-        </View>
+        </Animated.View>
       )}
+      {stack ? (
+        // Em pé, a busca, os dias e os jogos ficam por cima do mapa, como no
+        // celular.
+        <View
+          pointerEvents="box-none"
+          onLayout={(e) =>
+            setHeadBottom(e.nativeEvent.layout.y + e.nativeEvent.layout.height)
+          }
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: navInsets.left,
+            right: navInsets.right,
+            paddingTop: Math.max(44, insets.top + 12),
+            paddingHorizontal: pad,
+            gap: 16
+          }}
+        >
+          {topRow}
+          {dayRow}
+          <View style={{ marginHorizontal: -pad }}>{gameStrip}</View>
+        </View>
+      ) : null}
       {beside ? (
         // O bar aberto ao lado da lista (a02), no lugar do mapa, que continua
         // montado por baixo, onde estava.
@@ -1654,10 +1688,16 @@ const VEIL_ABOVE_TABS = 16
 const VEIL_HEIGHT = 64
 
 /** O zoom de rua do design adaptativo (tiles do nível 15 a 410 px). */
-const STREET_M_PER_PT = 2.7
 
 /** Tablet em pé com mais altura que isto (13″, Tab S11 Ultra): mapa maior. */
 const TALL = 1350
+/**
+ * Girar o tablet ou abrir o dobrável (rodada 9): só a caixa do mapa e da lista
+ * muda, em 250 ms; com movimento reduzido, troca seca.
+ */
+const RESIZE = LinearTransition.duration(250).easing(EASE)
+/** Quanto a folha da lista sobe sobre a base do mapa, em pé. */
+const SHEET_OVER = 24
 
 /** Abaixo disso, a lista do Explorar se completa com bares sem jogo. */
 const FEW_BARS = 5
@@ -1934,9 +1974,7 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   full: { width: '100%' },
   mapSide: { position: 'absolute', top: 0, bottom: 0, right: 0 },
-  mapCard: { position: 'absolute' },
   mapTop: { position: 'absolute', top: 0, left: 0, right: 0 },
-  mapClip: { borderRadius: 9, overflow: 'hidden', borderWidth: 1 },
   mapControls: { position: 'absolute', gap: 10 },
   round46: { width: 46, height: 46, borderRadius: 23 },
   detail: { position: 'absolute', width: 360, gap: 12 },
