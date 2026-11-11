@@ -25,14 +25,38 @@ test('celular: sem rolagem lateral e com o telão no topo', async ({
   ).toBeLessThanOrEqual(page.viewportSize()?.width ?? 0)
 })
 
-test('o exemplo do hero se assume e o caminho de verdade vai ao Explorar', async ({
-  page
-}) => {
+type TodayGame = { title: string; startsAt: string; bars: number }
+
+/**
+ * Responde `pubs.todayGames` com `games`. O banco do E2E é do shard inteiro e
+ * outro teste pode ter publicado jogo hoje: sem o dublê, o ramo do hero que
+ * sai depende da ordem dos testes. A consulta pode vir no lote com outras;
+ * só a posição dela é trocada.
+ */
+async function stubTodayGames(page: Page, games: TodayGame[]) {
+  await page.route(/\/api\/trpc\/[^?]*pubs\.todayGames/, async (route) => {
+    const url = new URL(route.request().url())
+    const paths = url.pathname.replace('/api/trpc/', '').split(',')
+    const response = await route.fetch()
+    const body = await response.json()
+    const at = paths.indexOf('pubs.todayGames')
+    if (Array.isArray(body)) body[at] = { result: { data: games } }
+    else body.result = { data: games }
+    await route.fulfill({ response, json: body })
+  })
+}
+
+/** Amanhã no relógio de Brasília, como `brasiliaDay(now, 1)`. */
+const brasiliaTomorrow = () =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(
+    Date.now() + 86_400_000
+  )
+
+async function openExample(page: Page) {
   await page.goto('/')
   const real = page.locator('.lp3 .paths .path.real a')
   await expect(real).toHaveAttribute('href', '/dashboard')
   await expect(page.locator('#busca')).toContainText('Bares fictícios')
-
   await page
     .locator('#busca')
     .getByRole('button', { name: 'Ver como fica' })
@@ -40,16 +64,53 @@ test('o exemplo do hero se assume e o caminho de verdade vai ao Explorar', async
   const results = page.locator('.lp3 .results')
   await expect(results).toBeVisible()
   await expect(results).toContainText('Exemplo')
-  // O banco do E2E é dividido entre os testes do shard: pode ter jogo
-  // publicado hoje (outro teste o criou) ou não. Com jogo, a saída leva a
-  // ele no Explorar; sem, à grade.
-  const next = page.locator('.lp3 .answer .hp-next [data-cta]')
-  await expect(next).toHaveAttribute('data-cta', /^results_(game|explore)$/)
-  if ((await next.getAttribute('data-cta')) === 'results_game') {
-    await expect(next).toHaveAttribute('href', /^\/dashboard\?jogo=.+/)
-  } else {
-    await expect(next).toHaveAttribute('href', '/dashboard')
-  }
+  return page.locator('.lp3 .answer .hp-next')
+}
+
+// Com o jogo, a hora dele: começa em 30 min, então ainda não acabou.
+const soon = () => new Date(Date.now() + 30 * 60_000).toISOString()
+
+test('sem jogo hoje, o exemplo leva à grade de amanhã', async ({ page }) => {
+  await stubTodayGames(page, [])
+  const next = await openExample(page)
+  await expect(next).toContainText('Hoje ainda não tem jogo publicado')
+  const link = next.locator('[data-cta]')
+  await expect(link).toHaveAttribute('data-cta', 'results_explore')
+  await expect(link).toHaveAttribute(
+    'href',
+    `/dashboard?dia=${brasiliaTomorrow()}`
+  )
+})
+
+test('com poucos jogos hoje, o exemplo leva aos jogos de hoje', async ({
+  page
+}) => {
+  await stubTodayGames(page, [
+    { title: 'Flamengo × Vasco', startsAt: soon(), bars: 2 }
+  ])
+  const next = await openExample(page)
+  await expect(next).toContainText('Hoje tem 1 jogo na Onside')
+  const link = next.locator('[data-cta]')
+  await expect(link).toHaveAttribute('data-cta', 'results_explore')
+  await expect(link).toHaveAttribute('href', '/dashboard')
+})
+
+test('com jogos hoje, o exemplo leva ao jogo escolhido no Explorar', async ({
+  page
+}) => {
+  const startsAt = soon()
+  const games = ['Flamengo × Vasco', 'Grêmio × Inter', 'Lakers × Celtics'].map(
+    (title, i) => ({ title, startsAt, bars: i + 1 })
+  )
+  await stubTodayGames(page, games)
+  const next = await openExample(page)
+  await expect(next).toContainText('Flamengo × Vasco passa em 1 bar')
+  const link = next.locator('[data-cta]')
+  await expect(link).toHaveAttribute('data-cta', 'results_game')
+  await expect(link).toHaveAttribute(
+    'href',
+    `/dashboard?jogo=${encodeURIComponent(`${startsAt}|Flamengo × Vasco`)}`
+  )
 })
 
 test('o CTA do bar leva ao cadastro com "Tenho um bar" marcado', async ({
