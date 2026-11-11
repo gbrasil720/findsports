@@ -80,17 +80,19 @@ export default function Desempenho() {
   const best = [...rows]
     .sort((a, b) => (b.interestedPeople ?? 0) - (a.interestedPeople ?? 0))
     .slice(0, 3)
-  const funnel = [
-    { label: 'Viram o bar', value: d?.uniqueVisitors ?? 0 },
-    { label: 'Se interessaram', value: d?.interestedPeople ?? 0 },
+  // Sem resposta ainda (ou com erro nos jogos), "—": zero seria mentira.
+  const gamesIn = games.isSuccess
+  const funnel: { label: string; value: number | null }[] = [
+    { label: 'Viram o bar', value: d?.uniqueVisitors ?? null },
+    { label: 'Se interessaram', value: d?.interestedPeople ?? null },
     ...(owner.elite
       ? [
-          { label: 'Marcaram que iam', value: reserved },
-          { label: 'Validaram no balcão', value: arrivals }
+          { label: 'Marcaram que iam', value: gamesIn ? reserved : null },
+          { label: 'Validaram no balcão', value: gamesIn ? arrivals : null }
         ]
       : [])
   ]
-  const top = Math.max(1, ...funnel.map((row) => row.value))
+  const top = Math.max(1, ...funnel.map((row) => row.value ?? 0))
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
@@ -170,7 +172,7 @@ export default function Desempenho() {
                   key={row.label}
                   style={[styles.funnel, index === 0 && { paddingTop: 14 }]}
                   accessible
-                  accessibilityLabel={`${row.label}: ${row.value}`}
+                  accessibilityLabel={`${row.label}: ${row.value ?? 'carregando'}`}
                 >
                   <View style={{ flex: 1, gap: 6 }}>
                     <Text
@@ -189,7 +191,7 @@ export default function Desempenho() {
                         style={[
                           styles.fill,
                           {
-                            width: `${Math.max(2, (row.value / top) * 100)}%`,
+                            width: `${Math.max(2, ((row.value ?? 0) / top) * 100)}%`,
                             backgroundColor:
                               index === funnel.length - 1
                                 ? ACID
@@ -202,7 +204,9 @@ export default function Desempenho() {
                     </View>
                   </View>
                   <Text style={[styles.funnelValue, { color: palette.ink }]}>
-                    {row.value.toLocaleString('pt-BR')}
+                    {row.value === null
+                      ? '—'
+                      : row.value.toLocaleString('pt-BR')}
                   </Text>
                 </View>
               ))}
@@ -216,7 +220,14 @@ export default function Desempenho() {
               />
             )}
 
-            {best.length ? (
+            {games.isError ? (
+              <ErrorState
+                title="Não deu para carregar os jogos."
+                error={games.error}
+                onRetry={() => games.refetch()}
+                retrying={games.isFetching}
+              />
+            ) : best.length ? (
               <>
                 <OwnerLabel>Melhores jogos</OwnerLabel>
                 <OwnerCard>
@@ -318,6 +329,10 @@ function Chart({ points }: { points: { date: string; value: number }[] }) {
     transform: [{ translateX: Math.max(0, Math.min(width - 96, x.get() - 48)) }]
   }))
   const chosen = at === null ? null : points[at]
+  const best = points.reduce<(typeof points)[number] | null>(
+    (top, p) => (!top || p.value > top.value ? p : top),
+    null
+  )
   const label = (p: { date: string } | undefined) =>
     p ? dayMonth(`${p.date}T15:00:00Z`) : ''
   return (
@@ -325,7 +340,29 @@ function Chart({ points }: { points: { date: string; value: number }[] }) {
       <GestureDetector gesture={pan}>
         <View
           accessible
-          accessibilityLabel="Visualizações do perfil por dia. Arraste para ver cada dia."
+          // VoiceOver: ajustável, um dia por gesto de subir ou descer.
+          accessibilityRole="adjustable"
+          accessibilityLabel={`Visualizações do perfil por dia, ${points.length} dias${best ? `; o melhor foi ${label(best)}, com ${best.value}` : ''}`}
+          accessibilityValue={{
+            text: chosen
+              ? `${label(chosen)}: ${chosen.value}`
+              : 'deslize para cima ou para baixo para ouvir cada dia'
+          }}
+          accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
+          onAccessibilityAction={(e) => {
+            const from =
+              at ??
+              (e.nativeEvent.actionName === 'increment' ? -1 : points.length)
+            const to = Math.max(
+              0,
+              Math.min(
+                points.length - 1,
+                from + (e.nativeEvent.actionName === 'increment' ? 1 : -1)
+              )
+            )
+            setAt(to)
+            x.set(step * to + step / 2)
+          }}
           onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
           style={styles.chart}
         >
