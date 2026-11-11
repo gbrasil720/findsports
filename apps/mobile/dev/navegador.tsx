@@ -1,5 +1,6 @@
 import { onlineManager } from '@tanstack/react-query'
 import { type Href, useLocalSearchParams, useRouter } from 'expo-router'
+import * as ScreenOrientation from 'expo-screen-orientation'
 import { DevSettings, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useLayout } from '@/components/layout'
 import { BackButton, INK, MUTED, Screen, Title, text } from '@/components/ui'
@@ -335,6 +336,17 @@ export default function Dev() {
       <Row
         item={{ code: '⌁', label: 'Simular sem rede (liga e desliga)' }}
         onPress={() => onlineManager.setOnline(!onlineManager.isOnline())}
+      />
+      {/* O simulador do Xcode 27 não tem menu de girar: gira o iPad daqui. */}
+      <Row
+        item={{ code: '⟳', label: 'Girar a tela (deitado e em pé)' }}
+        onPress={() =>
+          ScreenOrientation.lockAsync(
+            layout.width > layout.height
+              ? ScreenOrientation.OrientationLock.PORTRAIT_UP
+              : ScreenOrientation.OrientationLock.LANDSCAPE_LEFT
+          ).catch(() => {})
+        }
       />
       {SECTIONS.map((section) => (
         <View key={section.title} style={{ gap: 8 }}>
