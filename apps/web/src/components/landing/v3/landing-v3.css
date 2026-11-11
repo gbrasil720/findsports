@@ -316,20 +316,30 @@
   max-width: 660px;
 }
 /* Dois caminhos: o de verdade em acid, o exemplo em papel, assumido. */
+/* Desenho B3, ajustado com o dono (11/11/2026): os dois cartões empilhados, o
+   de verdade em cima, numa faixa (texto à esquerda, botão à direita), e o
+   exemplo embaixo, com os campos lado a lado e o botão do tamanho do texto. No
+   celular (B3m, até 640 px) tudo empilha e os botões ocupam a largura toda.
+   `.so-pc` / `.so-cel`: o texto que só um dos dois mostra. */
 .lp3 .paths {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
-  align-items: stretch;
+}
+.lp3 .so-cel {
+  display: none;
 }
 .lp3 .path {
   margin: 0;
-  border-radius: 24px;
-  padding: 18px;
+  border-radius: 28px;
+  padding: 20px 22px;
   display: flex;
   flex-direction: column;
   gap: 12px;
   color: var(--ink);
+}
+.lp3 .path.demo {
+  gap: 14px;
 }
 .lp3 .path.real {
   background: var(--acid);
@@ -347,13 +357,17 @@
   margin: 0;
   display: flex;
   align-items: center;
-  gap: 9px;
-  font: 700 17px / 1.2 var(--body);
+  gap: 10px;
+  font: 700 18px / 1.2 var(--body);
+}
+.lp3 .path .hp-t .hp-tag {
+  margin: 0 0 0 auto;
+  white-space: nowrap;
 }
 .lp3 .path .hp-n {
   flex: none;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -376,22 +390,44 @@
   text-transform: uppercase;
   color: var(--muted);
 }
+.lp3 .path.real {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 18px;
+  row-gap: 6px;
+}
 .lp3 .path.real .btn {
-  margin-top: auto;
-  height: 50px;
-  font-size: 15px;
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  height: 48px;
+  font-size: 16px;
 }
 .lp3 .path .fields {
+  display: flex;
   border: 1.5px solid var(--sand);
-  border-radius: 16px;
+  border-radius: 18px;
   overflow: hidden;
 }
 .lp3 .path .field {
+  flex: 1;
   border-radius: 0;
 }
+.lp3 .path .field:first-child {
+  flex: 1.2;
+}
+.lp3 .path .field + .field {
+  border-top: 0;
+  border-left: 1.5px solid var(--sand);
+}
+.lp3 .path .field select {
+  font-size: 17px;
+}
 .lp3 .path .try {
+  align-self: flex-start;
   height: 46px;
-  font-size: 15px;
+  padding: 0 20px;
+  font-size: 16px;
   --sh: transparent;
 }
 .lp3 .field {
@@ -1994,7 +2030,47 @@
   .lp3 .paths {
     grid-template-columns: 1fr;
   }
+  .lp3 .path {
+    border-radius: 24px;
+    padding: 18px;
+  }
+  .lp3 .path.real {
+    display: flex;
+    align-items: stretch;
+  }
+  .lp3 .path.real .btn {
+    margin-top: 2px;
+  }
+  .lp3 .path.demo {
+    gap: 12px;
+  }
+  .lp3 .so-pc {
+    display: none;
+  }
+  .lp3 .so-cel {
+    display: revert;
+  }
+  .lp3 .path .hp-t {
+    gap: 9px;
+    font-size: 17px;
+  }
+  .lp3 .path .hp-n {
+    width: 24px;
+    height: 24px;
+  }
+  .lp3 .path .fields {
+    display: block;
+    border-radius: 16px;
+  }
+  .lp3 .path .field + .field {
+    border-left: 0;
+    border-top: 1.5px solid var(--sand);
+  }
+  .lp3 .path .field select {
+    font-size: 16px;
+  }
   .lp3 .path.real .btn,
+  .lp3 .path .try,
   .lp3 .hp-next .btn {
     align-self: stretch;
   }
