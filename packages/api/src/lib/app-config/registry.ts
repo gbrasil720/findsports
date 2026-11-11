@@ -182,6 +182,29 @@ export const APP_CONFIG_DEFINITIONS = {
   }),
 
   /**
+   * WEB-433: jogos da semana com onde passa. A rotina `weekly_games` busca,
+   * lê páginas e extrai com IA às segundas (e refaz o canal às quintas). Nasce
+   * desligada, como toda chave nova: o cron só gasta depois de ligada. O
+   * "Rodar agora" do Houdini roda mesmo desligada, sempre dentro do teto. O
+   * teto é só desta rotina (buscas, páginas e modelo somados em `ai_run`),
+   * separado do `ai.limits` do chat.
+   */
+  'weekly_games.config': definir({
+    schema: z.object({
+      enabled: z.boolean(),
+      monthlyBudgetUsd: z.number().min(0.5).max(50)
+    }),
+    padrao: { enabled: false, monthlyBudgetUsd: 5 },
+    publico: false,
+    descricao:
+      'Jogos da semana com onde passa. enabled: true deixa o cron montar o ' +
+      'catálogo às segundas e procurar o canal que faltou às quintas. ' +
+      'monthlyBudgetUsd: teto do mês desta rotina em US$ (buscas, leitura ' +
+      'das páginas e IA somadas); passou, a rotina para no meio e retoma no ' +
+      'mês seguinte.'
+  }),
+
+  /**
    * WEB-466: modo de manutenção do app (26d, 26e). Só o app lê, pela rota
    * `/api/app/status`; o servidor não recusa nada por causa dela, então o
    * painel do bar, o Houdini e o login seguem no ar. `backAt` é a previsão

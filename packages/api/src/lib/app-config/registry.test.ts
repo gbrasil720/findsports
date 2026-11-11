@@ -51,7 +51,8 @@ describe('registro de configuração (ESC-19)', () => {
       'ai.variant_weights',
       'app.maintenance',
       'rating.public_display',
-      'search.tiered_plan_query'
+      'search.tiered_plan_query',
+      'weekly_games.config'
     ])
     for (const key of [
       'billing.checkout_enabled',
