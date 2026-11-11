@@ -45,14 +45,13 @@ type Quadro = { passo: string; x: number; y: number }
 // escala da entrada não mexe). Ela não pode aparecer num lugar e pular para
 // o destaque depois: antes, cada passo abria no canto da tela.
 const gravarQuadros = (page: Page) =>
-  page.addInitScript(() => {
-    const quadros: Quadro[] = []
-    Object.assign(window, { __quadros: quadros })
+  page.addInitScript(`
+    window.__quadros = []
     const loop = () => {
       const el = document.querySelector('.pn-tour-tip')
       if (el && getComputedStyle(el).visibility === 'visible') {
         const r = el.getBoundingClientRect()
-        quadros.push({
+        window.__quadros.push({
           passo: el.querySelector('.mono')?.textContent ?? '',
           x: Math.round(r.left + r.width / 2),
           y: Math.round(r.top + r.height / 2)
@@ -61,15 +60,13 @@ const gravarQuadros = (page: Page) =>
       requestAnimationFrame(loop)
     }
     requestAnimationFrame(loop)
-  })
+  `)
 
 /** Os quadros do passo fora de onde a dica está agora. */
 const quadrosForaDoLugar = async (page: Page, passo: string) => {
-  const quadros = (
-    await page.evaluate(
-      () => (window as unknown as { __quadros: Quadro[] }).__quadros
-    )
-  ).filter((q) => q.passo.startsWith(passo))
+  const quadros = (await page.evaluate<Quadro[]>('window.__quadros')).filter(
+    (q) => q.passo.startsWith(passo)
+  )
   const fim = quadros.at(-1)
   return quadros.filter((q) => fim && Math.hypot(q.x - fim.x, q.y - fim.y) > 4)
 }
