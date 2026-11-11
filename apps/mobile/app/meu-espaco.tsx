@@ -2,11 +2,21 @@ import {
   AMENITIES,
   HIDDEN_AMENITY_IDS
 } from '@findsports_oficial/api/lib/amenities'
+import {
+  type OpeningHours,
+  openingStatus
+} from '@findsports_oficial/api/lib/opening-hours'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
 import { useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View
+} from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle } from 'react-native-svg'
 import {
@@ -23,6 +33,7 @@ import { usePalette } from '@/components/theme'
 import {
   ACID,
   BackButton,
+  ErrorState,
   Icon,
   PAPER,
   Text,
@@ -57,10 +68,6 @@ export default function MeuEspaco() {
   useStatusBar(palette.dark ? 'light' : 'dark')
   const owner = useOwnerBar()
   const bar = owner.bar
-  const page = useQuery({
-    ...trpc.pubs.getById.queryOptions({ id: bar?.id ?? '' }),
-    enabled: Boolean(bar?.id)
-  })
   const photos = useQuery(trpc.pub.photos.queryOptions())
   const [tab, setTab] = useState<Tab>('horario')
   const confirm = useMutation(
@@ -69,13 +76,31 @@ export default function MeuEspaco() {
       onError: alertFailure('Não deu para trocar como o código é conferido')
     })
   )
-  if (!bar) return <View style={{ flex: 1, backgroundColor: palette.bg }} />
+  if (!bar)
+    return (
+      <View
+        style={[styles.center, { backgroundColor: palette.bg }]}
+        accessibilityLabel="Carregando o bar"
+      >
+        {owner.error ? (
+          <ErrorState
+            title="Não deu para abrir o seu bar."
+            error={owner.error}
+            onRetry={() => owner.refetch()}
+          />
+        ) : (
+          <ActivityIndicator color={palette.muted} />
+        )}
+      </View>
+    )
 
   const hours = (bar.openingHours ?? null) as
     | ({ opens: string; closes: string } | null)[]
     | null
   const today = brasiliaWeekday(Date.now())
-  const todayHours = hours?.[today] ?? null
+  // A mesma regra da página do bar: depois da meia-noite, a faixa de ontem
+  // que passa da virada ainda vale ("aberto · fecha 02:00").
+  const status = openingStatus(hours as OpeningHours | null, new Date())
   const approved = (photos.data ?? []).filter((p) => p.status === 'approved')
   const checklist = profileChecklist({
     cover: Boolean(bar.photoUrl),
@@ -111,8 +136,20 @@ export default function MeuEspaco() {
               accessibilityRole="header"
               accessibilityLabel="Meu espaço"
             >
-              <Text style={[styles.title, { color: palette.ink }]}>Meu</Text>
-              <Text style={[styles.title, { color: palette.ink }]}>espaço</Text>
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                style={[styles.title, { color: palette.ink }]}
+              >
+                Meu
+              </Text>
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                style={[styles.title, { color: palette.ink }]}
+              >
+                espaço
+              </Text>
             </View>
           </View>
           <Pressable
@@ -156,22 +193,22 @@ export default function MeuEspaco() {
                 <View
                   style={[
                     styles.openDot,
-                    { backgroundColor: page.data?.openNow ? ACID : '#aaa9a4' }
+                    { backgroundColor: status?.open ? ACID : '#aaa9a4' }
                   ]}
                 />
                 <Text
                   style={[
                     styles.openText,
-                    { color: page.data?.openNow ? ACID : PAPER }
+                    { color: status?.open ? ACID : PAPER }
                   ]}
                 >
-                  {page.data?.openNow
-                    ? `aberto agora${todayHours ? ` · fecha ${todayHours.closes}` : ''}`
-                    : todayHours
-                      ? `fechado agora · abre ${todayHours.opens}`
-                      : hours
-                        ? 'fechado hoje'
-                        : 'sem horário informado'}
+                  {!status
+                    ? 'sem horário informado'
+                    : status.open
+                      ? `aberto agora · fecha ${status.closes}`
+                      : status.opens
+                        ? `fechado agora · abre ${status.opens.day === 'hoje' ? '' : `${status.opens.day} `}${status.opens.time}`
+                        : 'fechado hoje'}
                 </Text>
               </View>
             </View>
@@ -307,7 +344,7 @@ export default function MeuEspaco() {
                     </View>
                     <Text style={[styles.weekHours, { color: palette.muted }]}>
                       {slot
-                        ? `${slot.opens.slice(0, 2)}-${slot.closes.slice(0, 2)}`
+                        ? `${shortHour(slot.opens)}\n${shortHour(slot.closes)}`
                         : '—'}
                     </Text>
                   </View>
@@ -392,6 +429,16 @@ export default function MeuEspaco() {
           </>
         ) : (
           <View style={styles.chips}>
+            {!(bar.amenities ?? []).some(
+              (id) => !HIDDEN_AMENITY_IDS.includes(id)
+            ) ? (
+              <Text
+                style={[text(14, 'Regular', 1.4), { color: palette.muted }]}
+              >
+                Nenhuma característica marcada. Elas são os filtros da busca:
+                telão, som, área externa…
+              </Text>
+            ) : null}
             {AMENITIES.filter(
               (item) =>
                 (bar.amenities ?? []).includes(item.id) &&
@@ -436,6 +483,11 @@ export default function MeuEspaco() {
       {soon.toast}
     </View>
   )
+}
+
+/** "18" para 18:00, "18:30" com minutos: cabe na coluna do dia. */
+function shortHour(value: string) {
+  return value.endsWith(':00') ? value.slice(0, 2) : value.slice(0, 5)
 }
 
 /** Horas abertas (fechar antes de abrir passa da meia-noite). */
@@ -544,7 +596,17 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   weekBar: { width: '86%', borderRadius: 8 },
-  weekHours: { fontFamily: 'GeistMono-SemiBold', fontSize: 10.5 },
+  weekHours: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 10.5,
+    textAlign: 'center'
+  },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24
+  },
   choices: { flexDirection: 'row', gap: 10 },
   choice: { borderRadius: 20, borderWidth: 2.5, padding: 14, gap: 2 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
