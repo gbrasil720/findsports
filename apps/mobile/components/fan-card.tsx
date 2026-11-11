@@ -157,7 +157,8 @@ export function useStamp(
           { duration: reduced ? 200 : 240, easing: EASE },
           (done) => {
             if (!done) return
-            if (!reduced) scheduleOnRN(haptic[feel])
+            // O retorno tátil vale com movimento reduzido: só a animação muda.
+            scheduleOnRN(haptic[feel])
             scheduleOnRN(show)
           }
         )

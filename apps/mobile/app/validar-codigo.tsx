@@ -90,6 +90,9 @@ export default function ValidarCodigo() {
   const [problem, setProblem] = useState<string | null>(null)
   const [permission, askPermission] = useCameraPermissions()
   const reading = useRef(false)
+  // O último código recusado e quando: a câmera continua vendo o mesmo QR,
+  // e sem isso ela consultaria e vibraria sem parar.
+  const refused = useRef<{ code: string; at: number } | null>(null)
   const shake = useShake()
   const events = useQuery(trpc.pub.getMyEvents.queryOptions())
   const going = useQuery({
@@ -132,6 +135,7 @@ export default function ValidarCodigo() {
 
   const check = async (raw: string) => {
     const code = normalizeReservationCode(raw)
+    refused.current = { code, at: Date.now() }
     if (!isReservationCodeShaped(code))
       return fail('Esse não é um código da Onside.')
     setProblem(null)
@@ -299,8 +303,12 @@ export default function ValidarCodigo() {
             if (reading.current || busy) return
             const code = codeFromQr(data)
             if (!code) return
+            const last = refused.current
+            if (last && last.code === code && Date.now() - last.at < 2500)
+              return
             reading.current = true
-            haptic.success()
+            // Leu: um toque leve. O sucesso vibra quando o selo encosta.
+            haptic.light()
             check(code)
           }}
         />
