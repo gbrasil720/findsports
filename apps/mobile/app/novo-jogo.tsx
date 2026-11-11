@@ -86,7 +86,15 @@ export default function NovoJogo() {
     enabled: !id
   })
   const [query, setQuery] = useState('')
-  const [chosen, setChosen] = useState<string | null>(sugestao ?? null)
+  // `undefined` até a pessoa tocar: com o catálogo, o mais indicado já vem
+  // escolhido (AN-depois, AP-depois); desmarcar fica desmarcado.
+  const [picked_, setChosen] = useState<string | null | undefined>(sugestao)
+  const chosen =
+    picked_ !== undefined
+      ? picked_
+      : catalog
+        ? (suggestions.data?.find((game) => game.featured)?.key ?? null)
+        : null
   const hasScreen = bar?.amenities?.includes(1) ?? true
   const [screen, setScreen] = useState<boolean | null>(null)
   const [sound, setSound] = useState<boolean | null>(null)
@@ -243,6 +251,8 @@ export default function NovoJogo() {
               <WeekChoice
                 games={list_}
                 first={first}
+                // O primeiro jogo mostra dois outros, como a prancha; a busca, todos.
+                others={first && !query.trim() ? 2 : undefined}
                 chosen={chosen}
                 onChoose={(key) => {
                   haptic.select()
@@ -511,17 +521,20 @@ function Feature({
 function WeekChoice({
   games,
   first,
+  others,
   chosen,
   onChoose
 }: {
   games: WeekGame[]
   first: boolean
+  /** Quantos outros em linha; sem, todos. */
+  others?: number
   chosen: string | null
   onChoose: (key: string) => void
 }) {
   const palette = usePalette()
   const top = games.find((game) => game.featured) ?? games[0]
-  const rest = games.filter((game) => game !== top)
+  const rest = games.filter((game) => game !== top).slice(0, others)
   const label = [styles.weekLabel, { color: palette.muted }]
   return (
     <View style={{ gap: 8 }}>
