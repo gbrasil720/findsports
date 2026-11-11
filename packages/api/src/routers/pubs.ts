@@ -776,9 +776,7 @@ export const pubsRouter = router({
           // "Estou aqui" (WEB-408): o jogo deste bar com check-in aberto agora.
           fan ? readCheckIn(viewer.id, events, now) : null,
           // Como a contagem de quem vai: só para torcedor.
-          fan
-            ? readHereNow(liveIds, viewer.id)
-            : new Map<string, HereNow>(),
+          fan ? readHereNow(liveIds, viewer.id) : new Map<string, HereNow>(),
           // A régua das estrelas e quantas vezes cada etiqueta pesou
           // (rodada 8), com o mesmo piso da nota.
           showRating ? readRatingDetail(result.id) : null
