@@ -187,6 +187,80 @@ export function agenda(
   }
 }
 
+/**
+ * O jogo da semana em tinta (WEB-433, prancha E-depois): quando, campeonato,
+ * o confronto, três números e o motivo, com o link para publicar. O link é
+ * uma pílula, não um segundo botão do template.
+ */
+export function weekGame(input: {
+  head: string
+  when: string
+  tag?: string
+  championship: string
+  title: string
+  cells: [value: string, label: string][]
+  reason?: string
+  action: string
+  url: string
+}): EmailBlock {
+  const [first, ...rest] = input.title.split(' × ')
+  const title =
+    rest.length === 1
+      ? `${e(first ?? '')} <span style="color:${C.acid}">×</span> ${e(rest[0] ?? '')}`
+      : e(input.title)
+  const cells = input.cells
+    .map(
+      ([value, text], i) =>
+        `<td valign="top" width="33%" style="width:33%;padding:0 ${i < 2 ? 8 : 0}px 0 0"><table ${TB} bgcolor="${C.raised}" style="width:100%;border-collapse:separate;background:${C.raised};border-radius:14px"><tr><td style="padding:12px"><div style="font-family:${F.display};font-size:${value.length > 6 ? 19 : 28}px;line-height:1.05;color:${i === 0 ? C.acid : C.paper};text-transform:uppercase">${e(value)}</div><div style="padding-top:6px">${label(text, C.mutedInk)}</div></td></tr></table></td>`
+    )
+    .join('')
+  const html = `${label(input.head)}<table ${TB} bgcolor="${C.ink}" style="width:100%;border-collapse:separate;margin-top:10px;background:${C.ink};border-radius:18px;border-bottom:4px solid #000000">
+<tr><td style="padding:20px 20px 0"><table ${T}><tr><td>${label(input.when, C.acid)}</td>${input.tag ? `<td align="right"><span style="background:${C.acid};border-radius:999px;padding:4px 8px;font-family:${F.mono};font-size:10.5px;font-weight:600;letter-spacing:.08em;color:${C.ink}">${e(input.tag.toUpperCase())}</span></td>` : ''}</tr></table></td></tr>
+<tr><td style="padding:14px 20px 0">${label(input.championship, C.mutedInk)}<div style="padding-top:6px;font-family:${F.display};font-size:34px;line-height:1.02;color:${C.paper};text-transform:uppercase">${title}</div></td></tr>
+<tr><td style="padding:14px 20px 0"><table ${T} style="width:100%;border-collapse:collapse;table-layout:fixed"><tr>${cells}</tr></table></td></tr>
+${input.reason ? `<tr><td style="padding:14px 20px 0;font-family:${F.body};font-size:14.5px;line-height:1.45;color:#dedbd4">${e(input.reason)}</td></tr>` : ''}
+<tr><td style="padding:16px 20px 20px"><a href="${e(input.url)}" style="display:inline-block;padding:14px 22px;border-radius:999px;background:${C.acid};font-family:${F.body};font-size:15px;font-weight:700;line-height:1;color:${C.ink};text-decoration:none">${e(input.action)}&nbsp;&rarr;</a></td></tr></table>`
+  return {
+    html,
+    text: [
+      input.head,
+      `${input.when} · ${input.championship}`,
+      input.title,
+      ...input.cells.map(([value, text]) => `${value} ${text}`),
+      ...(input.reason ? [input.reason] : []),
+      `${input.action}: ${input.url}`
+    ].join('\n')
+  }
+}
+
+/** Os outros jogos da semana, com a caixa do dia e "Publicar →" em cada um. */
+export function weekGameRows(
+  head: string,
+  games: (AgendaGame & { url: string })[],
+  more?: string
+): EmailBlock {
+  const rows = games
+    .map(
+      (game) =>
+        `<tr><td valign="top" width="58" style="width:58px;padding:12px 12px 12px 0;border-top:1px solid ${C.sand}"><table ${TI}><tr><td align="center" width="50" bgcolor="${C.stone}" style="width:50px;background:${C.stone};border-radius:12px;padding:7px 0;font-family:${F.mono};line-height:1.15"><span style="font-size:10px;font-weight:600;letter-spacing:.08em;color:${C.muted}">${e(game.weekday)}</span><br><span style="font-size:14px;font-weight:600;color:${C.ink}">${e(game.day)}</span></td></tr></table></td><td valign="middle" style="padding:12px 0;border-top:1px solid ${C.sand}"><div style="font-family:${F.body};font-size:16px;font-weight:700;line-height:1.3;color:${C.ink}">${e(game.title)}</div><div style="padding-top:3px;font-family:${F.body};font-size:13px;color:${C.muted}">${e(game.detail)}</div></td><td valign="middle" align="right" style="padding:12px 0 12px 10px;border-top:1px solid ${C.sand};white-space:nowrap"><a href="${e(game.url)}" style="font-family:${F.body};font-size:14px;font-weight:700;color:${C.ink};text-decoration:none">Publicar&nbsp;&rarr;</a></td></tr>`
+    )
+    .join('')
+  const tail = more
+    ? `<tr><td colspan="3" style="padding:12px 0 0;border-top:1px solid ${C.sand};font-family:${F.body};font-size:14px;color:${C.body}">${e(more)}</td></tr>`
+    : ''
+  return {
+    html: `${label(head)}<table ${TB} style="width:100%;border-collapse:collapse;margin-top:10px">${rows}${tail}</table>`,
+    text: [
+      head,
+      ...games.map(
+        (game) =>
+          `• ${game.weekday} ${game.day} · ${game.title} · ${game.detail} · Publicar: ${game.url}`
+      ),
+      ...(more ? [more] : [])
+    ].join('\n')
+  }
+}
+
 /** A semana em branco, dia a dia. Não diz nada a mais em texto. */
 export function emptyWeek(days: [weekday: string, day: string][]): EmailBlock {
   const html = `<table ${TB} style="width:100%;border-collapse:separate;border-spacing:4px 0;table-layout:fixed"><tr>${days
