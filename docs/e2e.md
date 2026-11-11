@@ -51,7 +51,7 @@ Os argumentos depois de `--` chegam inteiros ao Playwright; o script só faz
 | Variável | Padrão | Para quê |
 |---|---|---|
 | `E2E_PORT` | `3201` | Porta do `vite dev` da suíte |
-| `E2E_STUB_PORT` | `3202` | Porta do stub (LocationIQ e API do Stripe) |
+| `E2E_STUB_PORT` | `3202` | Porta do stub (LocationIQ, API do Stripe e tiles) |
 | `E2E_DATABASE_URL` | `postgres://findsports_e2e:findsports_e2e_local@127.0.0.1:5434/findsports_e2e` | Banco da suíte |
 
 Várias worktrees podem rodar ao mesmo tempo desde que cada uma tenha portas e
@@ -88,7 +88,7 @@ agente do Node, não.
 apps/e2e/
   playwright.config.ts   projetos, webServer, trace/vídeo só em falha
   env.ts                 portas, URLs, segredos de teste, ambiente do servidor
-  stubs/server.ts        LocationIQ + API do Stripe (Bun)
+  stubs/server.ts        LocationIQ + API do Stripe + TileJSON/tiles vazios (Bun)
   fixtures/              blocos para os testes — um arquivo por assunto
   tests/setup.setup.ts   estado global limpo + uma sessão por papel
   tests/smoke/           sentinela e prova de que cada dublê está ligado
@@ -99,7 +99,7 @@ apps/e2e/
 |---|---|
 | `tests/auth` | WEB-175 — cadastro, login, 2FA, conta, guarda de rota |
 | `tests/onboarding` | WEB-177 — onboarding de torcedor e de bar |
-| `tests/fan` | WEB-178 — o link do bar (`/pub/$pubId`), que leva ao app (o painel do torcedor saiu do web) |
+| `tests/fan` | WEB-178 — busca, mapa, página do bar, Meus jogos, perfil |
 | `tests/pub-admin` | WEB-179 — painel do bar, validação, cobrança |
 | `tests/billing` | WEB-180 — `/plan`, checkout, webhooks |
 | `tests/houdini` | WEB-181, WEB-393 — o Houdini (painel interno) |

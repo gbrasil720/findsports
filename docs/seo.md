@@ -82,7 +82,7 @@ das páginas legais.
 | `/convite/:código` | não | `noindex`: convite de amigo (WEB-468), que no celular abre o app (`onside://convite/…`) |
 | rota que não existe (`/x`, `/termos/x`, `/x.txt`) | não | status 404 de verdade, `noindex, nofollow` |
 | `/llms.txt` | — | texto para assistentes de IA; não é página |
-| `/dashboard`, `/admin`, `/plan`, `/onboarding`, `/app`, `/houdini`, `/api` | não | `Disallow` no `robots.txt` (redirecionam para o login ou dão 404; `/dashboard` saiu e é 404) |
+| `/dashboard`, `/admin`, `/plan`, `/onboarding`, `/app`, `/houdini`, `/api` | não | `Disallow` no `robots.txt` (redirecionam para o login ou dão 404) |
 
 Fora de `www.onside.sh` (o `workers.dev` do `onside-web`, o preview por PR e
 `houdini.onside.sh`) o Worker manda `X-Robots-Tag: noindex, nofollow`
