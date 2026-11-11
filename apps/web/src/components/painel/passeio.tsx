@@ -498,6 +498,11 @@ function Destaque({
   const dica = dicaDo(passo, inicio, g)
   const [caixa, setCaixa] = useState<Caixa | null>(null)
   const [tip, setTip] = useState<{ left: number; top: number } | null>(null)
+  // Sem alvo achado (a rota nova ainda não chegou ou os dados ainda vêm), a
+  // dica fica escondida: mostrar no canto e pular para o destaque era o salto
+  // a cada passo. Só aparece no canto se o alvo não chegar (`desistiu`).
+  const [desistiu, setDesistiu] = useState(false)
+  const pronta = caixa !== null || desistiu
   const tipRef = useRef<HTMLDivElement>(null)
   const proximoRef = useRef<HTMLButtonElement>(null)
   const alvo = useRef<Element | null>(null)
@@ -531,6 +536,7 @@ function Destaque({
         .find(Boolean)
       if (!el) {
         if (tentativas++ < 240) quadro = requestAnimationFrame(achar)
+        else setDesistiu(true)
         return
       }
       alvo.current = el
@@ -578,8 +584,8 @@ function Destaque({
   }, [caixa])
 
   useEffect(() => {
-    proximoRef.current?.focus({ preventScroll: true })
-  }, [])
+    if (pronta) proximoRef.current?.focus({ preventScroll: true })
+  }, [pronta])
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -600,7 +606,7 @@ function Destaque({
       {caixa ? <div className="pn-tour-spot" style={caixa} /> : null}
       <div
         ref={tipRef}
-        className="pn-tour-tip"
+        className={pronta ? 'pn-tour-tip is-on' : 'pn-tour-tip'}
         role="dialog"
         aria-modal="false"
         aria-labelledby="pn-tour-t"
