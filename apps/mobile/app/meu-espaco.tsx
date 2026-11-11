@@ -9,7 +9,12 @@ import { useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle } from 'react-native-svg'
-import { OwnerCard, OwnerLabel, OwnerRow } from '@/components/bar-owner'
+import {
+  alertFailure,
+  OwnerCard,
+  OwnerLabel,
+  OwnerRow
+} from '@/components/bar-owner'
 import { HardShadow, Photo } from '@/components/explore'
 import { haptic } from '@/components/motion'
 import { useSoon } from '@/components/soon'
@@ -59,7 +64,8 @@ export default function MeuEspaco() {
   const [tab, setTab] = useState<Tab>('horario')
   const confirm = useMutation(
     trpc.pub.updateCodeConfirmation.mutationOptions({
-      onSuccess: () => queryClient.invalidateQueries()
+      onSuccess: () => queryClient.invalidateQueries(),
+      onError: alertFailure('Não deu para trocar como o código é conferido')
     })
   )
   if (!bar) return <View style={{ flex: 1, backgroundColor: palette.bg }} />
@@ -284,7 +290,9 @@ export default function MeuEspaco() {
                         style={[
                           styles.weekBar,
                           {
-                            height: slot ? Math.max(18, (length / 14) * 96) : 4,
+                            height: slot
+                              ? Math.min(96, Math.max(18, (length / 16) * 96))
+                              : 4,
                             backgroundColor: !slot
                               ? palette.mark
                               : on
@@ -299,7 +307,7 @@ export default function MeuEspaco() {
                     <Text style={[styles.weekHours, { color: palette.muted }]}>
                       {slot
                         ? `${slot.opens.slice(0, 2)}-${slot.closes.slice(0, 2)}`
-                        : 'fechado'}
+                        : '—'}
                     </Text>
                   </View>
                 )

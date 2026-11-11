@@ -25,7 +25,7 @@ const sameMonth = (ts: Parameters<typeof brasiliaDaySql>[0]) =>
 export async function readMonthProof(barId: string) {
   const result = await db.execute<{ people: number; codes: number }>(sql`
     SELECT
-      (SELECT count(*)::int FROM ${attendance} a
+      (SELECT count(DISTINCT a.user_id)::int FROM ${attendance} a
         JOIN ${event} e ON e.id = a.event_id
         WHERE e.bar_id = ${barId} AND ${sameMonth(sql`e.starts_at`)}) AS people,
       (SELECT count(*)::int FROM ${reservationCodeUse} u

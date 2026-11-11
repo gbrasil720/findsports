@@ -114,7 +114,7 @@ export default function Jogos() {
         <View style={styles.head}>
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={[styles.kicker, { color: palette.muted }]}>
-              {`ESTA SEMANA · ${inWeek.length} ${inWeek.length === 1 ? 'JOGO' : 'JOGOS'}${owner.elite ? ` · ${weekGoing} VÃO` : ''}`}
+              {`ESTA SEMANA · ${inWeek.length} ${inWeek.length === 1 ? 'JOGO' : 'JOGOS'}${owner.elite ? ` · ${weekGoing} ${weekGoing === 1 ? 'VAI' : 'VÃO'}` : ''}`}
             </Text>
             <Text
               accessibilityRole="header"
@@ -432,7 +432,7 @@ const styles = StyleSheet.create({
     borderRadius: 999
   },
   time: {
-    width: 64,
+    minWidth: 64,
     fontFamily: 'GeistMono-SemiBold',
     fontSize: 19,
     fontVariant: ['tabular-nums']

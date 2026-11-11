@@ -2,7 +2,12 @@ import { brasiliaDay } from '@findsports_oficial/db/event-window'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { OwnerCard, OwnerLabel, OwnerRow } from '@/components/bar-owner'
+import {
+  alertFailure,
+  OwnerCard,
+  OwnerLabel,
+  OwnerRow
+} from '@/components/bar-owner'
 import { HardShadow } from '@/components/explore'
 import { DotField } from '@/components/fan-card'
 import { haptic } from '@/components/motion'
@@ -55,6 +60,7 @@ export default function Plano() {
   )
   const change = useMutation(
     trpc.pub.changeTrialPlan.mutationOptions({
+      onError: alertFailure('Não deu para trocar o plano do teste'),
       onSuccess: () => {
         haptic.success()
         queryClient.invalidateQueries()

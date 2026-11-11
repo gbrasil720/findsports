@@ -1,15 +1,25 @@
 import type { ReactNode } from 'react'
-import { StyleSheet, View } from 'react-native'
+import { Alert, StyleSheet, View } from 'react-native'
 import { HardShadow } from '@/components/explore'
 import { DotField } from '@/components/fan-card'
+import { haptic } from '@/components/motion'
 import { usePalette } from '@/components/theme'
-import { ACID, INK, PAPER, Text, text } from '@/components/ui'
+import { ACID, errorMessage, INK, PAPER, Text, text } from '@/components/ui'
 
 /*
  * Peças do app do dono do bar (rodada 10): o rótulo em mono das seções, o
  * card claro com a sombra dura, o placar do dia em tinta e as etiquetas de
  * estado do jogo. As telas (Hoje na casa, Jogos, Quem vai) montam com elas.
  */
+
+/**
+ * O `onError` das mudanças do dono: nenhuma falha passa calada (regra do
+ * WEB-460). Vibra o erro e mostra a frase do servidor, ou a de reserva.
+ */
+export const alertFailure = (title: string) => (error: unknown) => {
+  haptic.error()
+  Alert.alert(title, errorMessage(error, 'Confira a conexão e tente de novo.'))
+}
 
 /** "CHEGARAM AGORA · 14 CÓDIGOS VALIDADOS". */
 export function OwnerLabel({ children }: { children: string }) {
@@ -113,7 +123,15 @@ export function DayBoard({
             <Text style={[styles.mono, { color: '#aaa9a4' }]}>{kicker}</Text>
           )}
           {aside ? (
-            <Text style={[styles.mono, { color: '#aaa9a4' }]}>{aside}</Text>
+            <Text
+              numberOfLines={1}
+              style={[
+                styles.mono,
+                { color: '#aaa9a4', flexShrink: 1, textAlign: 'right' }
+              ]}
+            >
+              {aside}
+            </Text>
           ) : null}
           {live ? (
             <View style={styles.liveRow}>

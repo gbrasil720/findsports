@@ -428,7 +428,9 @@ function Cell({ value, label }: { value: number; label: string }) {
       accessible
       accessibilityLabel={`${value} ${label}`}
     >
-      <Text style={styles.cellValue}>{value}</Text>
+      <Text numberOfLines={1} adjustsFontSizeToFit style={styles.cellValue}>
+        {value}
+      </Text>
       <Text
         numberOfLines={2}
         adjustsFontSizeToFit
@@ -463,8 +465,9 @@ function Hours({ bars }: { bars: { hour: number; count: number }[] }) {
         ))}
       </View>
       <View style={styles.hoursAxis}>
-        {bars
-          .filter((_, i) => i % 2 === 0)
+        {/* O primeiro, o do meio e o último: mais que isso se encavala. */}
+        {[...new Set([bars[0], bars[Math.floor(bars.length / 2)], bars.at(-1)])]
+          .filter((b): b is { hour: number; count: number } => Boolean(b))
           .map((b) => (
             <Text key={b.hour} style={styles.hoursLabel}>{`${b.hour}h`}</Text>
           ))}

@@ -145,7 +145,7 @@ export default function Desempenho() {
         ) : (
           <>
             <DayBoard
-              kicker="VIRAM O BAR"
+              kicker="PESSOAS VIRAM O BAR"
               aside={
                 delta(d?.uniqueVisitorsChange)
                   ? `${(d?.uniqueVisitorsChange ?? 0) < 0 ? '▼' : '▲'} ${delta(d?.uniqueVisitorsChange)?.replace(/[+−]/, '')}`
@@ -297,7 +297,7 @@ function Chart({ points }: { points: { date: string; value: number }[] }) {
       <GestureDetector gesture={pan}>
         <View
           accessible
-          accessibilityLabel="Gráfico por dia. Arraste para ver cada dia."
+          accessibilityLabel="Visualizações do perfil por dia. Arraste para ver cada dia."
           onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
           style={styles.chart}
         >
@@ -306,6 +306,8 @@ function Chart({ points }: { points: { date: string; value: number }[] }) {
               key={p.date}
               style={[
                 styles.col,
+                // 90 dias não cabem com vão de 3: as colunas sumiam.
+                points.length > 31 && { marginHorizontal: -1 },
                 {
                   height: Math.max(4, (p.value / max) * 100),
                   backgroundColor: index === at ? ACID : 'rgba(241,238,230,.16)'

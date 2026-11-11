@@ -8,6 +8,7 @@ import { haptic } from '@/components/motion'
 import { usePalette } from '@/components/theme'
 import {
   ACID,
+  errorMessage,
   Icon,
   INK,
   Text,
@@ -15,7 +16,7 @@ import {
   text,
   useStatusBar
 } from '@/components/ui'
-import { pickBarPhoto, uploadBarPhoto } from '@/lib/bar-photo'
+import { BarPhotoError, pickBarPhoto, uploadBarPhoto } from '@/lib/bar-photo'
 import { useOwnerBar } from '@/lib/owner'
 import { queryClient, trpc } from '@/lib/trpc'
 
@@ -90,9 +91,9 @@ export default function CompletarPerfil() {
   const fail = (error: unknown) => {
     haptic.error()
     setProblem(
-      error instanceof Error
+      error instanceof BarPhotoError
         ? error.message
-        : 'Não deu para salvar. Tente de novo.'
+        : errorMessage(error, 'Não deu para salvar. Tente de novo.')
     )
   }
   const pick = async (source: 'library' | 'camera') => {

@@ -1,3 +1,7 @@
+import {
+  readRoutine,
+  recommendPlan
+} from '@findsports_oficial/api/lib/pub-routine'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
@@ -7,6 +11,7 @@ import Animated, {
   useReducedMotion
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { alertFailure } from '@/components/bar-owner'
 import { HardShadow } from '@/components/explore'
 import { EASE, haptic } from '@/components/motion'
 import { PlanMedal } from '@/components/plan-medal'
@@ -20,7 +25,7 @@ import {
   useStatusBar
 } from '@/components/ui'
 import { dayMonth } from '@/lib/bar-owner'
-import { PLAN_NAMES, PLAN_PRICES, type Plan } from '@/lib/owner'
+import { PLAN_NAMES, PLAN_PRICES, type Plan, useOwnerBar } from '@/lib/owner'
 import { queryClient, trpc } from '@/lib/trpc'
 
 /*
@@ -75,15 +80,26 @@ export default function PlanoDoTeste() {
   const reduced = useReducedMotion()
   useStatusBar('light')
   const { indicado } = useLocalSearchParams<{ indicado?: Plan }>()
+  // O indicado: o que a rotina acabou de mandar, senão o da rotina gravada
+  // no bar (tela aberta pelo plano), senão o Elite.
+  const owner = useOwnerBar()
+  const routine = readRoutine(owner.bar?.routine)
   const recommended: Plan =
-    indicado && PLAN_NAMES[indicado] ? indicado : 'elite'
-  const [chosen, setChosen] = useState<Plan>(recommended)
+    indicado && PLAN_NAMES[indicado]
+      ? indicado
+      : routine
+        ? recommendPlan(routine).plan
+        : 'elite'
+  // O indicado chega com o bar: até a pessoa escolher, vale ele.
+  const [picked, setChosen] = useState<Plan | null>(null)
+  const chosen = picked ?? recommended
   const sub = useQuery(trpc.pub.getMySubscription.queryOptions())
   const end = sub.data?.currentPeriodEnd
     ? new Date(sub.data.currentPeriodEnd)
     : null
   const change = useMutation(
     trpc.pub.changeTrialPlan.mutationOptions({
+      onError: alertFailure('Não deu para trocar o plano do teste'),
       onSuccess: () => {
         haptic.success()
         queryClient.invalidateQueries()

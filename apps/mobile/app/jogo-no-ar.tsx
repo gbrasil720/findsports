@@ -65,6 +65,7 @@ export default function JogoNoAr() {
             <Text
               numberOfLines={1}
               adjustsFontSizeToFit
+              minimumFontScale={0.5}
               style={[styles.title, { color: palette.ink }]}
             >
               {title}

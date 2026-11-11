@@ -7,7 +7,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { HardShadow } from '@/components/explore'
 import { haptic } from '@/components/motion'
 import { usePalette } from '@/components/theme'
-import { ACID, Icon, INK, Text, text, useStatusBar } from '@/components/ui'
+import {
+  ACID,
+  errorMessage,
+  Icon,
+  INK,
+  Text,
+  text,
+  useStatusBar
+} from '@/components/ui'
 import { trpc } from '@/lib/trpc'
 
 /*
@@ -34,7 +42,7 @@ export default function Rotina() {
           params: { indicado: data.recommended.plan }
         }),
       onError: (error) =>
-        setProblem(error.message || 'Não deu para salvar. Tente de novo.')
+        setProblem(errorMessage(error, 'Não deu para salvar. Tente de novo.'))
     })
   )
 

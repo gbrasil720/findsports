@@ -35,7 +35,7 @@ import {
   text,
   useStatusBar
 } from '@/components/ui'
-import { gameState, sinceLabel, visitLine } from '@/lib/bar-owner'
+import { gameState, shortDate, sinceLabel, visitLine } from '@/lib/bar-owner'
 import { formatTime } from '@/lib/explore'
 import { useOwnerBar } from '@/lib/owner'
 import { queryClient, trpc } from '@/lib/trpc'
@@ -166,11 +166,7 @@ export default function ValidarCodigo() {
       setTyped('')
       queryClient.invalidateQueries()
     } catch (error) {
-      fail(
-        error instanceof Error && error.message
-          ? error.message
-          : 'Não deu para validar. Tente de novo.'
-      )
+      fail(errorMessage(error, 'Não deu para validar. Tente de novo.'))
     }
   }
 
@@ -447,14 +443,14 @@ function Valid({
             </Text>
           </View>
           <Text style={[text(15, 'Regular', 1.45), { color: '#55554f' }]}>
-            {`${found.title} · ${brasiliaDay(found.startsAt) === brasiliaDay(Date.now()) ? 'hoje' : ''} ${formatTime(found.startsAt)}`}
+            {`${found.title} · ${brasiliaDay(found.startsAt) === brasiliaDay(Date.now()) ? 'hoje' : shortDate(found.startsAt).toLowerCase()} ${formatTime(found.startsAt)}`}
             {marked ? `\nmarcou ${marked}` : ''}
           </Text>
           <View style={styles.dash} />
           <View style={styles.stats}>
             <Stat
               value={first ? '1ª' : String(g.visitsHere + 1)}
-              label={first ? `visita ao ${barName}` : `visitas ao ${barName}`}
+              label={first ? 'visita aqui' : 'visitas aqui'}
             />
             {g.visitsOnside !== null ? (
               <Stat
@@ -463,7 +459,12 @@ function Valid({
               />
             ) : null}
             {g.friendsToday ? (
-              <Stat value={`+${g.friendsToday}`} label="amigos vêm hoje" />
+              <Stat
+                value={`+${g.friendsToday}`}
+                label={
+                  g.friendsToday === 1 ? 'amigo vem hoje' : 'amigos vêm hoje'
+                }
+              />
             ) : null}
           </View>
           <Seal
@@ -971,7 +972,7 @@ const styles = StyleSheet.create({
   rule: {
     fontFamily: 'GeistMono-SemiBold',
     fontSize: 12.5,
-    color: '#55554f',
+    color: '#aaa9a4',
     textAlign: 'center'
   },
   keyboard: {

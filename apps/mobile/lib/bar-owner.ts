@@ -129,17 +129,26 @@ export function arrivalsByHour(
   times: readonly (string | Date)[],
   startsAt: string | Date
 ): { hour: number; count: number }[] {
-  const hourOf = (at: string | Date) => (new Date(at).getUTCHours() + 21) % 24
-  const start = (hourOf(startsAt) + 23) % 24
+  // A hora de Brasília (UTC−3) de cada coluna, contada por tempo de verdade,
+  // não pela hora do relógio: chegar antes da hora anterior ao jogo fica na
+  // primeira coluna, e lançar pela comanda no dia seguinte não dá a volta.
+  // O começo da hora cheia anterior ao jogo (as colunas são horas do relógio).
+  const first =
+    Math.floor((new Date(startsAt).getTime() - 3_600_000) / 3_600_000) *
+    3_600_000
+  const firstHour = (new Date(first).getUTCHours() + 21) % 24
   const counts = new Map<number, number>()
   let last = 3
   for (const at of times) {
-    const offset = (hourOf(at) - start + 24) % 24
+    const offset = Math.min(
+      12,
+      Math.max(0, Math.floor((new Date(at).getTime() - first) / 3_600_000))
+    )
     counts.set(offset, (counts.get(offset) ?? 0) + 1)
     last = Math.max(last, offset)
   }
   return Array.from({ length: last + 1 }, (_, i) => ({
-    hour: (start + i) % 24,
+    hour: (firstHour + i) % 24,
     count: counts.get(i) ?? 0
   }))
 }

@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Switch as NativeSwitch,
   Pressable,
@@ -9,7 +9,12 @@ import {
   View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { OwnerCard, OwnerLabel, OwnerRow } from '@/components/bar-owner'
+import {
+  alertFailure,
+  OwnerCard,
+  OwnerLabel,
+  OwnerRow
+} from '@/components/bar-owner'
 import { haptic } from '@/components/motion'
 import { usePalette } from '@/components/theme'
 import {
@@ -55,10 +60,19 @@ export default function ConfiguracoesBar() {
   ).length
   const refresh = () => queryClient.invalidateQueries()
   const confirm = useMutation(
-    trpc.pub.updateCodeConfirmation.mutationOptions({ onSuccess: refresh })
+    trpc.pub.updateCodeConfirmation.mutationOptions({
+      onSuccess: refresh,
+      onError: alertFailure('Não deu para trocar como o código é conferido')
+    })
   )
   const notices = useMutation(
-    trpc.pub.updateNotices.mutationOptions({ onSuccess: refresh })
+    trpc.pub.updateNotices.mutationOptions({
+      onSuccess: refresh,
+      onError: (error) => {
+        refresh()
+        alertFailure('Não deu para salvar o aviso')(error)
+      }
+    })
   )
   const user = session.data?.user
   const hours = (bar?.openingHours ?? null) as
@@ -280,19 +294,23 @@ export default function ConfiguracoesBar() {
                 title="Resumo da semana"
                 sub="toda segunda, com os jogos e quem foi"
                 on={bar?.noticeWeeklySummary ?? true}
-                onChange={(next) => notices.mutate({ weeklySummary: next })}
+                onChange={(next) =>
+                  notices.mutateAsync({ weeklySummary: next })
+                }
               />
               <Toggle
                 title="Jogo lotando"
                 sub="quando um jogo passa de 20 pessoas"
                 on={bar?.noticeGameFilling ?? true}
-                onChange={(next) => notices.mutate({ gameFilling: next })}
+                onChange={(next) => notices.mutateAsync({ gameFilling: next })}
               />
               <Toggle
                 title="Grade vazia"
                 sub="segunda sem nenhum jogo na semana"
                 on={bar?.noticeEmptySchedule ?? false}
-                onChange={(next) => notices.mutate({ emptySchedule: next })}
+                onChange={(next) =>
+                  notices.mutateAsync({ emptySchedule: next })
+                }
               />
             </OwnerCard>
             <View style={[styles.note, { backgroundColor: palette.mark }]}>
@@ -384,11 +402,13 @@ function Toggle({
   sub: string
   on?: boolean
   /** Sem ele, desenha desligado e travado (o que ainda não existe). */
-  onChange?: (next: boolean) => void
+  onChange?: (next: boolean) => Promise<unknown> | undefined
   first?: boolean
 }) {
   const palette = usePalette()
   const [value, setValue] = useState(on ?? false)
+  // Acompanha o valor salvo (o bar chega depois da tela).
+  useEffect(() => setValue(on ?? false), [on])
   return (
     <OwnerRow first={first}>
       <View style={{ flex: 1, minWidth: 0 }}>
@@ -413,7 +433,8 @@ function Toggle({
           onValueChange={(next) => {
             haptic.select()
             setValue(next)
-            onChange?.(next)
+            // Falhou: volta ao que estava (o aviso sai pelo onError).
+            onChange?.(next)?.catch(() => setValue(!next))
           }}
           trackColor={{ false: palette.mark, true: ACID }}
           thumbColor={onChange && value ? INK : '#ffffff'}

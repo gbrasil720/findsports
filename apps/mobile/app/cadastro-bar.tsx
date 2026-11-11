@@ -15,6 +15,7 @@ import { PubReceipt } from '@/components/pub-receipt'
 import { usePalette } from '@/components/theme'
 import {
   ACID,
+  errorMessage,
   Icon,
   INK,
   PAPER,
@@ -129,9 +130,7 @@ export default function CadastroBar() {
     } catch (error) {
       haptic.error()
       setProblem(
-        error instanceof Error
-          ? error.message
-          : 'Não deu para colocar o bar no ar. Tente de novo.'
+        errorMessage(error, 'Não deu para colocar o bar no ar. Tente de novo.')
       )
     }
   }
@@ -267,6 +266,7 @@ export default function CadastroBar() {
               onChangeText={setName}
               placeholder="Bar do Zé"
               autoCapitalize="words"
+              maxLength={100}
             />
             {found ? (
               <View
@@ -362,7 +362,8 @@ export default function CadastroBar() {
                   value={number}
                   onChangeText={setNumber}
                   placeholder="1"
-                  keyboardType="number-pad"
+                  // "S/N" e "123-A" existem: teclado de texto.
+                  autoCapitalize="characters"
                 />
               </View>
               <View style={{ flex: 1 }}>

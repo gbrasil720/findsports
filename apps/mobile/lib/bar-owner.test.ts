@@ -76,6 +76,15 @@ describe('quem vai', () => {
     expect(bars).toHaveLength(4)
   })
 
+  it('chegada cedo fica na primeira coluna; não dá a volta no dia', () => {
+    const bars = arrivalsByHour(
+      ['2026-10-12T22:00:00Z', '2026-10-13T13:00:00Z'],
+      '2026-10-13T00:30:00Z'
+    )
+    expect(bars[0]?.count).toBe(1)
+    expect(bars.length).toBeLessThanOrEqual(13)
+  })
+
   it('há quanto tempo', () => {
     expect(sinceLabel(new Date(NOW - 40 * 60_000), NOW)).toBe('há 40 min')
     expect(sinceLabel(new Date(NOW - 2 * 3_600_000), NOW)).toBe('há 2 h')

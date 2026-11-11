@@ -200,7 +200,9 @@ export default function Casa() {
             label={
               change === null
                 ? `interesse ${weekdayName(now)}, ainda sem base`
-                : `interesse ${change < 0 ? 'abaixo' : 'acima'} do normal ${weekdayName(now)}`
+                : Math.round(change) === 0
+                  ? `interesse igual ao normal ${weekdayName(now)}`
+                  : `interesse ${change < 0 ? 'abaixo' : 'acima'} do normal ${weekdayName(now)}`
             }
           />
         </DayBoard>
@@ -334,7 +336,9 @@ export default function Casa() {
                             people.length
                               ? `${people.length} ${people.length === 1 ? 'vai' : 'vão'}`
                               : 'ninguém marcou ainda',
-                            validated ? `${validated} validaram` : null
+                            validated
+                              ? `${validated} ${validated === 1 ? 'validou' : 'validaram'}`
+                              : null
                           ]
                             .filter(Boolean)
                             .join(' · ')}
@@ -367,7 +371,7 @@ export default function Casa() {
           )}
         </OwnerCard>
 
-        <OwnerLabel>Esta semana · vs. a passada</OwnerLabel>
+        <OwnerLabel>Últimos 7 dias · vs. os 7 anteriores</OwnerLabel>
         <View style={styles.weekRow}>
           <WeekCell
             value={week.data?.uniqueVisitors}
@@ -530,8 +534,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
+  // Largura mínima, não fixa: com o texto grande do iOS, "21:30" não quebra.
   time: {
-    width: 64,
+    minWidth: 64,
     fontFamily: 'GeistMono-SemiBold',
     fontSize: 19,
     fontVariant: ['tabular-nums']

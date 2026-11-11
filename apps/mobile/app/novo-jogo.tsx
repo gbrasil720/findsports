@@ -16,6 +16,7 @@ import { haptic } from '@/components/motion'
 import { usePalette } from '@/components/theme'
 import {
   ACID,
+  errorMessage,
   Icon,
   INK,
   Text,
@@ -90,11 +91,7 @@ export default function NovoJogo() {
   }
   const fail = (error: unknown) => {
     haptic.error()
-    setProblem(
-      error instanceof Error && error.message
-        ? error.message
-        : 'Não deu para salvar. Tente de novo.'
-    )
+    setProblem(errorMessage(error, 'Não deu para salvar. Tente de novo.'))
   }
   const create = useMutation(
     trpc.pub.createEvent.mutationOptions({ onSuccess: done, onError: fail })

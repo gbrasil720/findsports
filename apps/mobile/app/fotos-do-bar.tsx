@@ -17,12 +17,14 @@ import {
   View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { alertFailure } from '@/components/bar-owner'
 import { HardShadow, Photo } from '@/components/explore'
 import { haptic } from '@/components/motion'
 import { usePalette } from '@/components/theme'
 import {
   ACID,
   BackButton,
+  errorMessage,
   Icon,
   INK,
   PAPER,
@@ -30,7 +32,7 @@ import {
   text,
   useStatusBar
 } from '@/components/ui'
-import { pickBarPhoto, uploadBarPhoto } from '@/lib/bar-photo'
+import { BarPhotoError, pickBarPhoto, uploadBarPhoto } from '@/lib/bar-photo'
 import { useOwnerBar } from '@/lib/owner'
 import { queryClient, trpc } from '@/lib/trpc'
 
@@ -83,6 +85,7 @@ export default function FotosDoBar() {
   const add = useMutation(trpc.pub.addPhoto.mutationOptions())
   const cover = useMutation(
     trpc.pub.setPhotoCover.mutationOptions({
+      onError: alertFailure('Não deu para trocar a capa'),
       onSuccess: () => {
         haptic.success()
         queryClient.invalidateQueries()
@@ -123,9 +126,9 @@ export default function FotosDoBar() {
     } catch (error) {
       haptic.error()
       setProblem(
-        error instanceof Error
+        error instanceof BarPhotoError
           ? error.message
-          : 'Não foi possível enviar a foto.'
+          : errorMessage(error, 'Não foi possível enviar a foto.')
       )
     } finally {
       setBusy(false)
