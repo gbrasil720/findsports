@@ -2,12 +2,16 @@ import * as SecureStore from 'expo-secure-store'
 import { type RefObject, useEffect, useRef, useState } from 'react'
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native'
 import Animated, {
+  cancelAnimation,
+  Easing,
   FadeIn,
   FadeOut,
   useAnimatedProps,
   useReducedMotion,
   useSharedValue,
-  withSpring
+  withRepeat,
+  withSpring,
+  withTiming
 } from 'react-native-reanimated'
 import Svg, { Defs, Mask, Rect } from 'react-native-svg'
 import { haptic } from '@/components/motion'
@@ -31,11 +35,12 @@ import { ACID, Icon, INK, PAPER, PillButton, Text, text } from '@/components/ui'
 
 const SEEN_KEY = 'onside.passeio'
 
-type Target = 'jogos' | 'folha' | 'filtros' | 'ia' | 'voce'
+// As do torcedor ('jogos', 'folha', 'filtros') e as do dono (`bar-tour.tsx`).
+type Target = string
 // O Explorar pode montar mais de uma vez (a cópia da foto do menu Você):
 // cada montagem guarda a sua `ref`, e o passeio usa a que estiver na tela.
 const targets = new Map<Target, Set<RefObject<View | null>>>()
-const targetOf = (key: Target) =>
+export const targetOf = (key: Target) =>
   [...(targets.get(key) ?? [])].find((ref) => ref.current)?.current ?? null
 
 /** A peça que o passeio pode cercar; devolve a `ref` para pôr nela. */
@@ -106,13 +111,119 @@ const STEPS: Step[] = [
   }
 ]
 
-type Box = { x: number; y: number; w: number; h: number }
+export type Box = { x: number; y: number; w: number; h: number }
 
 const AnimatedRect = Animated.createAnimatedComponent(Rect)
 const SPRING = { duration: 300, dampingRatio: 1 }
 const DIM_IN = FadeIn.duration(240)
 const CARD_IN = FadeIn.duration(150)
 const CARD_OUT = FadeOut.duration(150)
+
+/**
+ * O escuro com o recorte e o anel acid em volta da peça (sem peça, só o
+ * escuro). O recorte anda numa mola de 300 ms sem balanço; com menos
+ * movimento, pula. `breathe`: o anel respira (1 → 0,55 em 2,4 s), o passeio
+ * do bar. Tocar no escuro não fecha.
+ */
+export function Spotlight({
+  box,
+  radius,
+  pad,
+  breathe
+}: {
+  box: Box | null
+  radius: number
+  pad: number
+  breathe?: boolean
+}) {
+  const reduced = useReducedMotion()
+  const { width, height } = useWindowDimensions()
+  const x = useSharedValue(0)
+  const y = useSharedValue(0)
+  const w = useSharedValue(0)
+  const h = useSharedValue(0)
+  const glow = useSharedValue(1)
+  const placed = useRef(false)
+  useEffect(() => {
+    if (!box) {
+      placed.current = false
+      w.set(0)
+      h.set(0)
+      return
+    }
+    const to = {
+      x: box.x - pad,
+      y: box.y - pad,
+      w: box.w + pad * 2,
+      h: box.h + pad * 2
+    }
+    const move = (v: typeof x, value: number) =>
+      v.set(placed.current && !reduced ? withSpring(value, SPRING) : value)
+    move(x, to.x)
+    move(y, to.y)
+    move(w, to.w)
+    move(h, to.h)
+    placed.current = true
+  }, [box, pad, reduced, x, y, w, h])
+  useEffect(() => {
+    if (!breathe || reduced) return glow.set(1)
+    glow.set(
+      withRepeat(
+        withTiming(0.55, { duration: 1200, easing: Easing.inOut(Easing.sin) }),
+        -1,
+        true
+      )
+    )
+    return () => cancelAnimation(glow)
+  }, [breathe, reduced, glow])
+
+  const hole = useAnimatedProps(() => ({
+    x: x.get(),
+    y: y.get(),
+    width: w.get(),
+    height: h.get()
+  }))
+  const ring = useAnimatedProps(() => ({
+    x: x.get() - 1.5,
+    y: y.get() - 1.5,
+    width: w.get() + 3,
+    height: h.get() + 3,
+    strokeOpacity: glow.get()
+  }))
+  return (
+    <Pressable style={StyleSheet.absoluteFill} accessible={false}>
+      <Svg width={width} height={height}>
+        <Defs>
+          <Mask id="tour-hole">
+            <Rect width={width} height={height} fill="#fff" />
+            <AnimatedRect
+              animatedProps={hole}
+              rx={radius}
+              ry={radius}
+              fill="#000"
+            />
+          </Mask>
+        </Defs>
+        <Rect
+          width={width}
+          height={height}
+          fill="rgba(5,5,4,.74)"
+          mask="url(#tour-hole)"
+        />
+        {box ? (
+          <AnimatedRect
+            animatedProps={ring}
+            rx={radius + 1.5}
+            ry={radius + 1.5}
+            fill="none"
+            stroke={ACID}
+            strokeWidth={3}
+          />
+        ) : null}
+      </Svg>
+    </Pressable>
+  )
+}
 
 export function Tour({
   fan,
@@ -125,7 +236,6 @@ export function Tour({
   onSignup: () => void
 }) {
   const palette = usePalette()
-  const reduced = useReducedMotion()
   const { width, height } = useWindowDimensions()
   const [index, setIndex] = useState(0)
   const [box, setBox] = useState<Box | null>(null)
@@ -162,41 +272,6 @@ export function Tour({
     return () => later.forEach(clearTimeout)
   }, [step.target, width, height])
 
-  const x = useSharedValue(0)
-  const y = useSharedValue(0)
-  const w = useSharedValue(0)
-  const h = useSharedValue(0)
-  const placed = useRef(false)
-  useEffect(() => {
-    if (!box) return
-    const to = {
-      x: box.x - step.pad,
-      y: box.y - step.pad,
-      w: box.w + step.pad * 2,
-      h: box.h + step.pad * 2
-    }
-    const move = (v: typeof x, value: number) =>
-      v.set(placed.current && !reduced ? withSpring(value, SPRING) : value)
-    move(x, to.x)
-    move(y, to.y)
-    move(w, to.w)
-    move(h, to.h)
-    placed.current = true
-  }, [box, step.pad, reduced, x, y, w, h])
-
-  const hole = useAnimatedProps(() => ({
-    x: x.get(),
-    y: y.get(),
-    width: w.get(),
-    height: h.get()
-  }))
-  const ring = useAnimatedProps(() => ({
-    x: x.get() - 1.5,
-    y: y.get() - 1.5,
-    width: w.get() + 3,
-    height: h.get() + 3
-  }))
-
   const close = () => {
     haptic.select()
     markTourSeen()
@@ -224,46 +299,17 @@ export function Tour({
 
   return (
     <Animated.View entering={DIM_IN} style={StyleSheet.absoluteFill}>
-      {/* Tocar fora do cartão não fecha: só "Pular". */}
-      <Pressable style={StyleSheet.absoluteFill} accessible={false}>
-        <Svg width={width} height={height}>
-          <Defs>
-            <Mask id="tour-hole">
-              <Rect width={width} height={height} fill="#fff" />
-              <AnimatedRect
-                animatedProps={hole}
-                rx={step.radius}
-                ry={step.radius}
-                fill="#000"
-              />
-            </Mask>
-          </Defs>
-          <Rect
-            width={width}
-            height={height}
-            fill="rgba(5,5,4,.74)"
-            mask="url(#tour-hole)"
-          />
-          <AnimatedRect
-            animatedProps={ring}
-            rx={step.radius + 1.5}
-            ry={step.radius + 1.5}
-            fill="none"
-            stroke={ACID}
-            strokeWidth={3}
-          />
-        </Svg>
-      </Pressable>
+      <Spotlight box={box} radius={step.radius} pad={step.pad} />
       <Animated.View
         key={index}
         entering={CARD_IN}
         exiting={CARD_OUT}
         accessibilityViewIsModal
         style={[
-          styles.card,
+          tourStyles.card,
           cardPos,
           { backgroundColor: palette.bg },
-          palette.dark && styles.cardDark
+          palette.dark && tourStyles.cardDark
         ]}
       >
         <Pressable
@@ -271,14 +317,14 @@ export function Tour({
           accessibilityLabel="Pular o passeio"
           hitSlop={10}
           onPress={close}
-          style={styles.kicker}
+          style={tourStyles.kicker}
         >
-          <Text style={[styles.mono, { color: palette.muted }]}>
+          <Text style={[tourStyles.mono, { color: palette.muted }]}>
             {index + 1} DE {STEPS.length}
           </Text>
-          <Text style={[styles.mono, { color: palette.muted }]}>PULAR</Text>
+          <Text style={[tourStyles.mono, { color: palette.muted }]}>PULAR</Text>
         </Pressable>
-        <Text style={[styles.title, { color: palette.ink }]}>
+        <Text style={[tourStyles.title, { color: palette.ink }]}>
           {last && !fan ? 'Sua conta guarda tudo' : step.title}
         </Text>
         <Text
@@ -291,13 +337,13 @@ export function Tour({
             ? 'Com a conta, seus jogos, o código do balcão e as conquistas ficam em Você.'
             : step.body}
         </Text>
-        <View style={styles.foot}>
-          <View style={styles.dots}>
+        <View style={tourStyles.foot}>
+          <View style={tourStyles.dots}>
             {STEPS.map((s, i) => (
               <View
                 key={s.target}
                 style={[
-                  styles.dot,
+                  tourStyles.dot,
                   i === index
                     ? { width: 24, backgroundColor: palette.ink }
                     : { backgroundColor: palette.mark }
@@ -318,7 +364,7 @@ export function Tour({
   )
 }
 
-const styles = StyleSheet.create({
+export const tourStyles = StyleSheet.create({
   card: {
     position: 'absolute',
     left: 16,
@@ -412,7 +458,7 @@ export function TourInvite({
       entering={CARD_IN}
       exiting={CARD_OUT}
       style={[
-        styles.invite,
+        tourStyles.invite,
         { top },
         palette.dark && { backgroundColor: '#26261f' }
       ]}
@@ -424,10 +470,10 @@ export function TourInvite({
           setShow(false)
           onOpen()
         }}
-        style={styles.inviteMain}
+        style={tourStyles.inviteMain}
       >
         <Icon name="sparkle" size={18} color={ACID} accent={ACID} />
-        <Text style={[text(14, 'SemiBold', 1.25), styles.inviteText]}>
+        <Text style={[text(14, 'SemiBold', 1.25), tourStyles.inviteText]}>
           Novo por aqui? Ver como funciona · 30 s
         </Text>
       </Pressable>
