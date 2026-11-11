@@ -508,3 +508,13 @@ const nudgeStyles = StyleSheet.create({
     marginTop: 4
   }
 })
+
+/** O relógio da tela, de minuto em minuto (estado do jogo e "hoje"). */
+export function useMinuteNow() {
+  const [now, setNow] = useState(Date.now)
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(timer)
+  }, [])
+  return now
+}

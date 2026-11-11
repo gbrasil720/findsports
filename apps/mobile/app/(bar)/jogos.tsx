@@ -14,7 +14,8 @@ import {
   OwnerLabel,
   OwnerRow,
   ownerText,
-  PillTabs
+  PillTabs,
+  useMinuteNow
 } from '@/components/bar-owner'
 import { HardShadow } from '@/components/explore'
 import { useNavInsets } from '@/components/layout'
@@ -69,7 +70,8 @@ export default function Jogos() {
   })
   const [tab, setTab] = useState<Tab>('next')
   const [day, setDay] = useState<string | null>(null)
-  const now = Date.now()
+  // Relógio de 30 s: o "ao vivo" entra e sai sem reabrir a tela.
+  const now = useMinuteNow()
   const all = events.data ?? []
   const goingOf = new Map(
     (going.data ?? []).map((g) => [g.id, g.people.length])
@@ -280,9 +282,15 @@ export default function Jogos() {
                             {[
                               owner.elite &&
                               (state === 'live' || state === 'upcoming')
-                                ? `${n} ${n === 1 ? 'vai' : 'vão'}`
+                                ? game.attendanceEnabled === false
+                                  ? 'lista desligada'
+                                  : `${n} ${n === 1 ? 'vai' : 'vão'}`
                                 : game.championship,
-                              game.onBigScreen === false ? null : 'telão',
+                              // Nulo herda das características (WEB-399).
+                              (game.onBigScreen ??
+                              (owner.bar?.amenities ?? []).includes(1))
+                                ? 'telão'
+                                : null,
                               game.noHouseOffer || !owner.elite
                                 ? null
                                 : game.houseOffer || owner.bar?.houseOffer

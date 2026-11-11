@@ -19,7 +19,8 @@ import {
   OwnerRow,
   ownerText,
   PlanNudge,
-  StateTag
+  StateTag,
+  useMinuteNow
 } from '@/components/bar-owner'
 import { askBarTour, FirstSteps } from '@/components/bar-tour'
 import { HardShadow, initials } from '@/components/explore'
@@ -512,16 +513,6 @@ function suggestionWhen(startsAt: string, now: number) {
           .format(new Date(startsAt))
           .replace('.', '')
   return `${day.charAt(0).toUpperCase()}${day.slice(1)} ${formatTime(startsAt)}`
-}
-
-/** O relógio da tela, de minuto em minuto (estado do jogo e "hoje"). */
-function useMinuteNow() {
-  const [now, setNow] = useState(Date.now)
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 30_000)
-    return () => clearInterval(timer)
-  }, [])
-  return now
 }
 
 const styles = StyleSheet.create({
