@@ -242,7 +242,7 @@ function NoAr() {
       }
     >
       <PrimeiroJogo
-        barName={bar.name}
+        bar={bar}
         heading={heading}
         onPublicado={() => ir('torcedor')}
         nav={
