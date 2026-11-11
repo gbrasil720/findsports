@@ -476,3 +476,90 @@ html[data-theme="dark"] .sem {
     transition: none;
   }
 }
+
+/* "Seu time": o jogo de um time da casa. */
+.sem-tag.is-team {
+  background: var(--sem-acid);
+  color: var(--sem-ink);
+}
+
+/* Times da casa (Meu espaço e rotina do cadastro). */
+.tdc {
+  --tdc-fg: #12120f;
+  --tdc-field: #fff;
+  --tdc-chip: #e7e3db;
+  --tdc-line: rgba(18, 18, 15, 0.18);
+  --tdc-muted: #55554f;
+
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+html[data-theme="dark"] .tdc {
+  --tdc-fg: #f1eee6;
+  --tdc-field: #1c1c18;
+  --tdc-chip: #26261f;
+  --tdc-line: rgba(241, 238, 230, 0.18);
+  --tdc-muted: #aaa9a4;
+}
+
+.tdc-l {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tdc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--tdc-chip);
+  color: var(--tdc-fg);
+  font:
+    600 14px / 1.2 "Archivo",
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
+  cursor: pointer;
+}
+
+.tdc-chip.is-on {
+  background: #c9f135;
+  color: #12120f;
+}
+
+.tdc-chip:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.tdc-q {
+  width: 100%;
+  max-width: 420px;
+  height: 46px;
+  padding: 0 16px;
+  border: 1.5px solid var(--tdc-line);
+  border-radius: 14px;
+  background: var(--tdc-field);
+  color: var(--tdc-fg);
+  font:
+    400 16px / 1.2 "Archivo",
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
+}
+
+.tdc-note {
+  margin: 0;
+  color: var(--tdc-muted);
+  font-size: 13.5px;
+}
