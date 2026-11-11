@@ -173,6 +173,9 @@ function Placar({
       ? quandoCurto(s.startsAt, true)
       : `O jogo da semana${variant === 'jogos' ? ` pro ${bar.name}` : ''} · ${quandoCurto(s.startsAt)}`
   const bares = s.barsInNeighborhood ?? 0
+  const seuTime = s.houseTeam ? (
+    <span className="sem-tag is-team">Seu time</span>
+  ) : null
 
   if (publicado) {
     return (
@@ -291,7 +294,10 @@ function Placar({
     return (
       <article className="sem-card is-wide">
         <div className="sem-col">
-          <span className="sem-k sem-acid">{kicker}</span>
+          <div className="sem-top">
+            <span className="sem-k sem-acid">{kicker}</span>
+            {seuTime}
+          </div>
           <div>
             <span className="sem-k">{s.championship}</span>
             <h3 className="sem-disp">
@@ -315,6 +321,7 @@ function Placar({
     <article className="sem-card">
       <div className="sem-top">
         <span className="sem-k sem-acid">{kicker}</span>
+        {seuTime}
       </div>
       <div>
         <span className="sem-k">{s.championship}</span>
