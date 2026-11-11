@@ -385,7 +385,7 @@ export function BoardCard({
   bar: BoardBar
   live: boolean
   favorite: boolean
-  /** O bar aberto ao lado no tablet. */
+  /** O bar escolhido no tablet, ou aberto ao lado no dobrável: contorno acid. */
   chosen?: boolean
   onFavorite: () => void
   onPress: () => void
@@ -401,12 +401,9 @@ export function BoardCard({
       onPressOut={press.onPressOut}
     >
       <Animated.View style={press.style}>
-        <HardShadow
-          color={chosen ? 'rgba(201,241,53,.85)' : palette.drop}
-          offset={3}
-          radius={20}
-        />
+        <HardShadow color={palette.drop} offset={3} radius={20} />
         <View style={[styles.card, { backgroundColor: palette.card }]}>
+          {chosen ? <View pointerEvents="none" style={styles.chosen} /> : null}
           <Photo uri={bar.photoUrl} name={bar.name} style={styles.photo} />
           <View style={{ flex: 1, minWidth: 0 }}>
             {live || bar.elite ? (
@@ -489,12 +486,14 @@ export function QuietCard({
   bar,
   favorite,
   onFavorite,
-  onPress
+  onPress,
+  chosen
 }: {
   bar: QuietBar
   favorite: boolean
   onFavorite: () => void
   onPress: () => void
+  chosen?: boolean
 }) {
   const palette = usePalette()
   const open = bar.opening?.open ? 'aberto' : bar.opening ? 'fechado' : null
@@ -509,6 +508,12 @@ export function QuietCard({
         { backgroundColor: palette.card, borderColor: palette.line }
       ]}
     >
+      {chosen ? (
+        <View
+          pointerEvents="none"
+          style={[styles.chosen, { borderRadius: 14, margin: -1 }]}
+        />
+      ) : null}
       <Photo uri={bar.photoUrl} name={bar.name} style={styles.quietPhoto} />
       <View style={{ flex: 1, minWidth: 0, opacity: 0.75 }}>
         <Text
@@ -1024,6 +1029,18 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     letterSpacing: 0.63,
     marginVertical: -1.6
+  },
+  // Contorno do bar escolhido (rodada 9): troca seco, por cima da borda.
+  chosen: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: ACID,
+    zIndex: 1
   },
   card: {
     flexDirection: 'row',
