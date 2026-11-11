@@ -40,10 +40,16 @@ test('o exemplo do hero se assume e o caminho de verdade vai ao Explorar', async
   const results = page.locator('.lp3 .results')
   await expect(results).toBeVisible()
   await expect(results).toContainText('Exemplo')
-  // Sem jogo publicado hoje (o banco do E2E), a saída é a grade.
+  // O banco do E2E é dividido entre os testes do shard: pode ter jogo
+  // publicado hoje (outro teste o criou) ou não. Com jogo, a saída leva a
+  // ele no Explorar; sem, à grade.
   const next = page.locator('.lp3 .answer .hp-next [data-cta]')
-  await expect(next).toHaveAttribute('data-cta', 'results_explore')
-  await expect(next).toHaveAttribute('href', '/dashboard')
+  await expect(next).toHaveAttribute('data-cta', /^results_(game|explore)$/)
+  if ((await next.getAttribute('data-cta')) === 'results_game') {
+    await expect(next).toHaveAttribute('href', /^\/dashboard\?jogo=.+/)
+  } else {
+    await expect(next).toHaveAttribute('href', '/dashboard')
+  }
 })
 
 test('o CTA do bar leva ao cadastro com "Tenho um bar" marcado', async ({
