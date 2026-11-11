@@ -264,6 +264,12 @@
     0 4px 0 var(--drop),
     0 30px 60px -20px rgba(0, 0, 0, 0.6);
   color: var(--fg);
+  visibility: hidden;
+}
+
+/* Só aparece medida, no lugar dela: a entrada parte do lugar certo. */
+.pn3 .pn-tour-tip.is-on {
+  visibility: visible;
   pointer-events: auto;
   animation: pn-tour-in 0.35s var(--ease);
 }
@@ -400,7 +406,7 @@
     transition: none;
   }
 
-  .pn3 .pn-tour-tip {
+  .pn3 .pn-tour-tip.is-on {
     animation: none;
   }
 }
