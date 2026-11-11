@@ -78,6 +78,7 @@ import {
   getEventDeletionBlock,
   readEventDeletionImpact
 } from '../lib/event-deletion'
+import { readEventNumbers } from '../lib/event-numbers'
 import { byMatchOrder } from '../lib/game-participants'
 import {
   GAME_SUGGESTION_LIMIT,
@@ -1025,6 +1026,16 @@ export const pubRouter = router({
   }),
 
   /** Sinal de interesse dos jogos que ainda não acabaram; nunca a contagem. */
+  // A faixa de números do jogo publicado (WEB-433, `lib/event-numbers.ts`).
+  getMyEventNumbers: pubProcedure.query(async ({ ctx }) => {
+    const existingBar = await getBarByUserId(ctx.session.user.id)
+    return readEventNumbers({
+      barId: existingBar.id,
+      city: existingBar.city,
+      neighborhood: existingBar.neighborhood
+    })
+  }),
+
   getMyInterest: pubProcedure.query(async ({ ctx }) => {
     const existingBar = await getOwnBar(ctx.session.user.id)
     return readInterestSignal(existingBar.id)
@@ -1119,7 +1130,7 @@ export const pubRouter = router({
       const offer = await parseGameHouseOffer(userId, input)
       await assertCanCloseAttendance(userId, input)
       const draftBar = input.draft ? await getOwnBar(userId) : null
-      await db.transaction(async (tx) => {
+      const eventId = await db.transaction(async (tx) => {
         const lockedBar = draftBar ?? (await lockBarForPublishing(tx, userId))
 
         await assertTeamsMatchSport(
@@ -1167,9 +1178,11 @@ export const pubRouter = router({
             )
             .onConflictDoNothing()
         }
+        return newEvent.id
       })
 
-      return { success: true }
+      // O id deixa "Editar o jogo" e "Desfazer" no card publicado (WEB-433).
+      return { success: true, eventId }
     }),
 
   updateEvent: pubProcedure
