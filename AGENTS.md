@@ -293,6 +293,20 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   Todo checkout novo sai com ele enquanto o Stripe o der como válido; esgotado,
   expirado ou inexistente na conta, o checkout segue a preço de tabela
   (`usableFounderCoupon`). A oferta acaba no painel do Stripe, não no app.
+- **Pix Automático pela AbacatePay** (11/11/2026): `ABACATE_PAY_API_KEY` (`abc_dev_`
+  é o Modo Teste; `abc_prod_` só em `onside.sh`) e `ABACATE_PAY_WEBHOOK_SECRET`; sem a
+  chave o Pix some das telas. Cliente em `packages/auth/src/abacatepay.ts`, produtos
+  achados por `externalId` (`<plano>_monthly` e `<plano>_founder_monthly`: o cupom não
+  vale no Pix, o preço de fundador é o produto). `subscription.provider = 'abacatepay'`.
+  O webhook (`/api/abacatepay/webhook`, segredo + HMAC) relê a assinatura na AbacatePay
+  (`applyPixSubscription`, `pix-sync.ts`), como no Stripe. As 100 vagas de fundador
+  somam cartão e Pix (`readFounderCoupon`). A AbacatePay só cancela na hora: o painel
+  grava `cancel_at` no fim do mês pago e `reconcileBarPlans` encerra depois. Trocar de
+  plano no Pix é uma autorização nova (a anterior é cancelada). **No teste do
+  cadastro o Pix espera o fim dele** (dono, 11/11/2026): a AbacatePay não agenda
+  débito, então `pub.schedulePixAfterTrial` só grava `subscription.pix_after_trial_at`,
+  e e-mail (3 dias antes e no último dia, `sendPixTrialReminders` na rotina
+  `bar_notices`) e painel pedem a autorização; "Autorizar agora" encerra o teste.
 
 ### Avisos por e-mail do bar (WEB-441)
 
