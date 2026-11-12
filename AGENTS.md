@@ -677,6 +677,11 @@ não faz nada. Método e números do protótipo em `docs/web-433-prototipo.md`:
   (web: `completePub.houseTeamIds`; app: a rotina vem depois do bar criado e grava por
   `updateHouseTeams`). Jogo com time da casa vem primeiro no `rank.ts`, sai com
   `houseTeam` (a etiqueta "Seu time") e o motivo "Do <time>, que você marcou".
+- **Clássico** (WEB-529): jogo do catálogo que casa com as regras de clássico da busca
+  (`classic_rule`, versão ativa; par de times por `team.slug`, em qualquer ordem, ou o
+  campeonato) sai com `classic` (a etiqueta vermelha "Clássico" no card do web, do app e
+  do e-mail) e ganha +4 no `rank.ts` (acima do histórico de um time, abaixo do time da
+  casa). Par novo é versão nova de `classic_rule`, por migration.
 - **Telas** (canvas "Jogos da semana pra você"): `SemanaPraVoce`
   (`components/painel/semana-pra-voce.tsx`, CSS `semana.css`) em Jogos, Hoje e "Seu
   primeiro jogo"; no app, `components/week-games.tsx` (carrossel em Hoje e Jogos, card e
