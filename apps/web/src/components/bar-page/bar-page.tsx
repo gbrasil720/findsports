@@ -298,17 +298,27 @@ export function BarPage({
     if (!search.acao || !session || !viewer.data || pending.current) return
     pending.current = true
     const { acao: texto, ...rest } = search
-    void navigate({ to: '.', search: rest, replace: true, resetScroll: false })
+    const limpar = () =>
+      void navigate({
+        to: '.',
+        search: rest,
+        replace: true,
+        resetScroll: false
+      })
     const acao = lerAcao(texto, { barId: bar.id, eventId: game?.id })
-    if (!acao || acao.tipo === 'lembrar') return
+    if (!acao || acao.tipo === 'lembrar') return limpar()
     if (!viewer.data.fan) {
+      limpar()
       toast.info('Marcar presença e salvar bar são para conta de torcedor.')
       return
     }
     // Conta nova (sem onboarding): depois da ação, a tela dela com o card da
-    // conta nova, como no web do torcedor (`destinoContaNova`).
+    // conta nova, como no web do torcedor (`destinoContaNova`). Até lá a
+    // `acao` fica na URL: sem ela a guarda manda a conta nova ao onboarding
+    // (`contaNovaPodeVer`) antes de a ação responder.
     const nova = session.user.onboardingCompleted === false
     contaNova.current = nova
+    if (!nova) limpar()
     if (acao.tipo === 'fav' && !(acao.id === bar.id && viewer.data.favorited))
       favorite.mutate(
         { barId: acao.id },
