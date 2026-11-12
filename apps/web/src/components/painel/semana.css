@@ -483,6 +483,19 @@ html[data-theme="dark"] .sem {
   color: var(--sem-ink);
 }
 
+/* "Clássico" (WEB-529): vermelho do ao vivo; o card é escuro nos dois temas. */
+.sem-tag.is-classic {
+  background: #e8320c;
+  color: var(--sem-paper);
+}
+
+.sem-tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
 /* Times da casa (Meu espaço e rotina do cadastro). */
 .tdc {
   --tdc-fg: #12120f;
