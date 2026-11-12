@@ -1,7 +1,9 @@
 import {
-  AbacatePayError,
   cancelSubscription as cancelPixSubscription,
   createPixSubscriptionCheckout,
+  deleteSubscriptionCheckout,
+  getSubscription as getPixSubscription,
+  isNotActiveError,
   pixEnabled,
   productIdFor,
   upsertCustomer
@@ -10,6 +12,7 @@ import { liveStripeSubscriptionId } from '@findsports_oficial/auth/account-delet
 import { pixExternalId } from '@findsports_oficial/auth/pix-sync'
 import {
   founderCouponUsable,
+  pixFounderSeatAvailable,
   pushInvoiceDetails
 } from '@findsports_oficial/auth/stripe-checkout'
 import { stripeClient } from '@findsports_oficial/auth/stripe-client'
@@ -429,6 +432,37 @@ function stripeSubscriptionIdOf(
   sub: { provider: string | null; externalSubscriptionId: string | null } | null
 ) {
   return sub?.provider === 'stripe' ? sub.externalSubscriptionId : null
+}
+
+/**
+ * Um checkout de Pix pendente por bar: grava o novo e apaga na AbacatePay o
+ * que ele substituiu. A troca é atômica (a linha fica travada), então duas
+ * abas abrindo ao mesmo tempo apagam uma a da outra na ordem em que gravam,
+ * e só o último checkout aceita autorização. Apagar o que já foi pago não
+ * cancela a assinatura dele; a recusa da API vai ao log.
+ */
+async function replacePendingPixCheckout(barId: string, checkoutId: string) {
+  const result = await db.execute<{ previous: string | null }>(sql`
+    UPDATE subscription s
+    SET pix_checkout_id = ${checkoutId}
+    FROM (
+      SELECT bar_id, pix_checkout_id AS previous
+      FROM subscription
+      WHERE bar_id = ${barId}
+      FOR UPDATE
+    ) old
+    WHERE s.bar_id = old.bar_id
+    RETURNING old.previous
+  `)
+  const previous = result.rows[0]?.previous
+  if (!previous || previous === checkoutId) return
+  await deleteSubscriptionCheckout(previous).catch((error: unknown) =>
+    logBillingError('pix_pending_checkout_delete_failed', {
+      barId,
+      checkoutId: previous,
+      message: error instanceof Error ? error.message : String(error)
+    })
+  )
 }
 
 async function getOwnBar(userId: string) {
@@ -1488,10 +1522,20 @@ export const pubRouter = router({
         })
       }
 
-      let founder = false
-      try {
-        founder = await founderCouponUsable(stripeClient)
-      } catch {}
+      // Quem já paga o Pix de fundador e troca de plano leva o desconto: a
+      // vaga é dele, e contá-la de novo daria "esgotado" com as 100 ocupadas.
+      // Pix novo só ganha o fundador com a contagem conferida.
+      const keepsFounder =
+        current?.provider === 'abacatepay' &&
+        standing === 'current' &&
+        !current.cancelAt &&
+        (current.monthlyDiscountReais ?? 0) > 0
+      let founder = keepsFounder
+      if (!founder) {
+        try {
+          founder = await pixFounderSeatAvailable(stripeClient)
+        } catch {}
+      }
       const app = getPublicAppUrl()
       // A razão social, quando o bar a deu, é o nome do cliente. O documento
       // não vai: quem paga o Pix pode ser a empresa (CNPJ) ou o dono (CPF),
@@ -1517,6 +1561,7 @@ export const pubRouter = router({
           completionUrl: new URL('/plan/confirmed?pix=1', app).href,
           returnUrl: new URL('/plan', app).href
         })
+        await replacePendingPixCheckout(ownBar.id, checkout.id)
         return { url: checkout.url }
       } catch (error) {
         logBillingError('pix_checkout_failed', {
@@ -1693,22 +1738,36 @@ export const pubRouter = router({
         // segue até o fim do ciclo, e o cron diário encerra
         // (`reconcileBarPlans`). O webhook do cancelamento vê o `cancel_at`
         // e não derruba o bar antes.
+        // As escritas valem só para esta assinatura: se outra autorização a
+        // substituiu no meio do caminho, não é ela que está sendo cancelada.
+        const thisOne = and(
+          eq(subscription.barId, barId),
+          eq(subscription.externalSubscriptionId, subscriptionId)
+        )
         const cancelAt = current.currentPeriodEnd ?? new Date()
-        await db
+        const [marked] = await db
           .update(subscription)
           .set({ cancelAt })
-          .where(eq(subscription.barId, barId))
+          .where(thisOne)
+          .returning({ barId: subscription.barId })
+        if (!marked) {
+          throw new TRPCError({
+            code: 'CONFLICT',
+            message: 'Sua assinatura acabou de mudar. Recarregue a página.'
+          })
+        }
         try {
           await cancelPixSubscription(subscriptionId)
         } catch (error) {
-          if (
-            !(error instanceof AbacatePayError) ||
-            !/not active/i.test(error.message)
-          ) {
-            await db
-              .update(subscription)
-              .set({ cancelAt: null })
-              .where(eq(subscription.barId, barId))
+          // Sem resposta não quer dizer que não cancelou: a AbacatePay é que
+          // diz. Cancelada lá, o `cancel_at` fica.
+          const cancelled =
+            isNotActiveError(error) ||
+            (await getPixSubscription(subscriptionId)
+              .then((sub) => sub.status === 'CANCELLED')
+              .catch(() => false))
+          if (!cancelled) {
+            await db.update(subscription).set({ cancelAt: null }).where(thisOne)
             logBillingError('pix_cancel_failed', {
               barId,
               subscriptionId,
