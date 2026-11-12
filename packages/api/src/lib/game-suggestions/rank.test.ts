@@ -140,4 +140,55 @@ describe('sugestões do catálogo: ordem e motivo', () => {
       )
     ).toBeNull()
   })
+
+  test('bar novo: seleção, depois clube brasileiro e TV aberta, antes da hora', () => {
+    const ranked = rankCatalogGames(
+      barHistory([]),
+      [
+        game('Magic × Jazz', '2026-11-12T02:00:00Z', {
+          sportId: 'basquete',
+          championship: 'NBA',
+          channels: ['NBA League Pass']
+        }),
+        game('Mirassol × Atlético-MG', '2026-11-14T21:30:00Z', {
+          championship: 'Brasileirão série A',
+          channels: ['Prime Video']
+        }),
+        game('Argentina × Uruguai', '2026-11-13T23:00:00Z', {
+          championship: 'Amistoso FIFA',
+          channels: ['SporTV']
+        }),
+        game('Japão × Brasil', '2026-11-14T10:15:00Z', {
+          championship: 'Amistoso FIFA',
+          channels: ['Globo', 'SporTV']
+        })
+      ],
+      4
+    )
+    expect(ranked.map((g) => g.id)).toEqual([
+      'Japão × Brasil',
+      'Mirassol × Atlético-MG',
+      'Magic × Jazz',
+      'Argentina × Uruguai'
+    ])
+    expect(ranked[0]?.featured).toBe(true)
+  })
+
+  test('bar com histórico não ganha o empurrão do bar novo', () => {
+    const ranked = rankCatalogGames(
+      barHistory(wednesdays),
+      [
+        game('Japão × Brasil', '2026-11-14T10:15:00Z', {
+          championship: 'Amistoso FIFA',
+          channels: ['Globo']
+        }),
+        game('Fla', '2026-11-15T15:00:00Z', {
+          championship: 'Copa do Brasil',
+          homeTeamId: 'fla'
+        })
+      ],
+      2
+    )
+    expect(ranked[0]?.id).toBe('Fla')
+  })
 })
