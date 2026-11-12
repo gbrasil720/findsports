@@ -23,6 +23,7 @@ const GROUPS: { title: string; items: [MascotState, string][] }[] = [
       ['comparing', 'Comparar e ordenar'],
       ['writing', 'Escrevendo'],
       ['done', 'Pronto'],
+      ['pleased', 'Pronto (de novo)'],
       ['empty', 'Nenhum bar']
     ]
   },
