@@ -631,6 +631,13 @@
       "when": 1794436434249,
       "tag": "0090_bar_team",
       "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1794444103302,
+      "tag": "0091_subscription_pix_after_trial",
+      "breakpoints": true
     }
   ]
 }
