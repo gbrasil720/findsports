@@ -39,7 +39,7 @@ integrationTest(
     const sportId = crypto.randomUUID()
     const teamIds = {
       flamengo: crypto.randomUUID(),
-      palmeiras: crypto.randomUUID()
+      fluminense: crypto.randomUUID()
     }
     const fixtures = [
       {
@@ -140,10 +140,10 @@ integrationTest(
             country: 'BR'
           },
           {
-            id: teamIds.palmeiras,
+            id: teamIds.fluminense,
             sportId,
-            name: 'Palmeiras',
-            slug: 'palmeiras',
+            name: 'Fluminense',
+            slug: 'fluminense',
             country: 'BR'
           }
         ])
@@ -151,13 +151,13 @@ integrationTest(
 
       const teams = await db.query.team.findMany({
         where: (table, operators) =>
-          operators.inArray(table.slug, ['flamengo', 'palmeiras']),
+          operators.inArray(table.slug, ['flamengo', 'fluminense']),
         columns: { id: true, slug: true }
       })
       const teamBySlug = new Map(teams.map((item) => [item.slug, item.id]))
       const flamengoId = teamBySlug.get('flamengo')
-      const palmeirasId = teamBySlug.get('palmeiras')
-      if (!flamengoId || !palmeirasId)
+      const fluminenseId = teamBySlug.get('fluminense')
+      if (!flamengoId || !fluminenseId)
         throw new Error('times do clássico ausentes')
 
       for (const fixture of fixtures) {
@@ -192,7 +192,7 @@ integrationTest(
       )) {
         await db.insert(eventParticipants).values([
           { eventId: fixture.eventId, teamId: flamengoId },
-          { eventId: fixture.eventId, teamId: palmeirasId }
+          { eventId: fixture.eventId, teamId: fluminenseId }
         ])
       }
 
@@ -223,8 +223,8 @@ integrationTest(
       })
       expect(relevance.bars.map((item) => item.id)).toEqual(expectedOrder)
       expect(relevance.bars[0]?.nextEvent?.classic).toEqual({
-        reason: 'Flamengo x Palmeiras: rivalidade editorial',
-        ruleVersion: 1
+        reason: 'Flamengo x Fluminense: Fla-Flu',
+        ruleVersion: 2
       })
       expect(relevance.bars.slice(0, 2).map((item) => item.id)).toEqual(
         expectedOrder.slice(0, 2)
@@ -288,13 +288,13 @@ integrationTest(
       expect(measurements).toEqual([
         {
           type: 'classic_exposure',
-          ruleVersion: 1,
-          reason: 'Flamengo x Palmeiras: rivalidade editorial'
+          ruleVersion: 2,
+          reason: 'Flamengo x Fluminense: Fla-Flu'
         },
         {
           type: 'classic_click',
-          ruleVersion: 1,
-          reason: 'Flamengo x Palmeiras: rivalidade editorial'
+          ruleVersion: 2,
+          reason: 'Flamengo x Fluminense: Fla-Flu'
         }
       ])
       const [rollup] = await db
