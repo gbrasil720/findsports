@@ -16,7 +16,8 @@ export default defineConfig({
   testMatch: /\.e2e\.ts$/,
   forbidOnly: CI,
   retries: CI ? 1 : 0,
-  workers: CI ? 4 : undefined,
+  // 2 e não 4: com 4 workers um shard teve 9 testes instáveis e 1 falha.
+  workers: CI ? 2 : undefined,
   timeout: 60_000,
   expect: { timeout: 10_000 },
   // O JSON alimenta `shard.ts --record`: os tempos do CI, não os de um Mac.
