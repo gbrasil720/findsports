@@ -84,7 +84,9 @@ export const aiRun = pgTable(
 
 /**
  * O que a pessoa fez depois da resposta (métrica principal do teste do chat):
- * abriu um bar citado, marcou "Vou assistir", pediu a rota.
+ * abriu um bar citado, marcou "Vou assistir", pediu a rota, ligou ou abriu o
+ * WhatsApp do bar (WEB-427). Texto sem CHECK no banco: valor novo não pede
+ * migration.
  */
 export const aiAction = pgTable(
   'ai_action',
@@ -97,7 +99,15 @@ export const aiAction = pgTable(
       .references(() => aiRun.runId, { onDelete: 'cascade' }),
     // `call` e `remind` vêm do "Confirmar" de uma proposta da IA (R24).
     kind: text('kind', {
-      enum: ['open_bar', 'going', 'route', 'call', 'remind']
+      enum: [
+        'open_bar',
+        'going',
+        'route',
+        'phone',
+        'whatsapp',
+        'call',
+        'remind'
+      ]
     }).notNull(),
     barId: text('bar_id'),
     createdAt: timestamp('created_at', { withTimezone: true })
