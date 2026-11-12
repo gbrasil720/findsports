@@ -20,6 +20,7 @@ import {
   errorMessage,
   Icon,
   INK,
+  LIVE,
   PAPER,
   Text,
   text
@@ -190,6 +191,16 @@ export function PlacarCard({
               <View style={styles.tag}>
                 <Text maxFontSizeMultiplier={1.2} style={styles.tagText}>
                   SEU TIME
+                </Text>
+              </View>
+            ) : null}
+            {game.classic ? (
+              <View style={[styles.tag, styles.tagClassic]}>
+                <Text
+                  maxFontSizeMultiplier={1.2}
+                  style={[styles.tagText, styles.tagClassicText]}
+                >
+                  CLÁSSICO
                 </Text>
               </View>
             ) : null}
@@ -506,6 +517,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.95,
     color: INK
   },
+  // "Clássico" (WEB-529): vermelho do ao vivo; o card é escuro nos dois temas.
+  tagClassic: { backgroundColor: LIVE },
+  tagClassicText: { color: PAPER },
   check: {
     width: 22,
     height: 22,
