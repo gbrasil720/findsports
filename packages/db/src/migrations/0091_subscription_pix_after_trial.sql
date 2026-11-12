@@ -1,0 +1,1 @@
+ALTER TABLE "subscription" ADD COLUMN "pix_after_trial_at" timestamp;
