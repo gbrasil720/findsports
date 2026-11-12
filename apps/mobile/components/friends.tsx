@@ -40,7 +40,7 @@ export function Avatar({
   id: string
   name: string
   size: number
-  /** Você: tinta com acid em Anton, como no design. */
+  /** Você: tinta com acid em Anton; no escuro, grafite com contorno. */
   me?: boolean
   /** A foto do perfil (WEB-419), no lugar das iniciais. */
   image?: string | null
@@ -50,7 +50,7 @@ export function Avatar({
   const bg =
     tone === 'me'
       ? palette.dark
-        ? palette.card
+        ? '#34342e'
         : INK
       : tone === 'acid'
         ? ACID
@@ -75,6 +75,11 @@ export function Avatar({
         // Rostos redondos (rodada 6, `.av6`).
         borderRadius: size / 2,
         backgroundColor: bg,
+        // No escuro o seu quadrinho é grafite com contorno (WEB-495): o
+        // `card` de antes sumia no fundo da tela.
+        ...(tone === 'me' && palette.dark
+          ? { borderWidth: 1.5, borderColor: palette.markRing }
+          : null),
         alignItems: 'center',
         justifyContent: 'center',
         overflow: 'hidden'
