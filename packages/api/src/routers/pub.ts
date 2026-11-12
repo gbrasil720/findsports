@@ -1493,18 +1493,21 @@ export const pubRouter = router({
         founder = await founderCouponUsable(stripeClient)
       } catch {}
       const app = getPublicAppUrl()
-      // Os dados da nota, quando o bar os deu, viram o cliente na AbacatePay.
+      // A razão social, quando o bar a deu, é o nome do cliente. O documento
+      // não vai: quem paga o Pix pode ser a empresa (CNPJ) ou o dono (CPF),
+      // e o checkout da AbacatePay pede "CPF ou CNPJ" quando o cliente não
+      // tem (docs, Pix Automático). O CNPJ dos dados da nota prenderia o
+      // débito à conta da empresa.
       const invoice = await db.query.bar.findFirst({
         where: eq(bar.id, ownBar.id),
-        columns: { legalName: true, cnpj: true }
+        columns: { legalName: true }
       })
       try {
         const [productId, customerId] = await Promise.all([
           productIdFor(`${input.plan}_${founder ? 'founder_' : ''}monthly`),
           upsertCustomer({
             email: ctx.session.user.email,
-            name: invoice?.legalName ?? ctx.session.user.name,
-            taxId: invoice?.cnpj
+            name: invoice?.legalName ?? ctx.session.user.name
           })
         ])
         const checkout = await createPixSubscriptionCheckout({
