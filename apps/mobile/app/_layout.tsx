@@ -21,6 +21,7 @@ import { OfflineBanner } from '@/components/offline-banner'
 import { Splash, SplashDone, type TodayGames } from '@/components/splash'
 import { PaletteProvider } from '@/components/theme'
 import { useAccountSheet } from '@/components/ui'
+import { PushResponder } from '@/lib/push'
 import { queryClient, trpc } from '@/lib/trpc'
 
 // A splash nativa (a marca sobre a tinta, `app.json`) fica até as fontes
@@ -310,6 +311,8 @@ export default function Layout() {
           <OfflineBanner />
           {/* O que a folha de entrar fez (rodada 2, tela 3), sobre qualquer tela. */}
           <ActionDone />
+          {/* Registra o aparelho e abre a tela da notificação tocada (WEB-416). */}
+          <PushResponder />
           <DevTab />
           {splashDone ? null : (
             <Splash today={today ?? undefined} onDone={endSplash} />
