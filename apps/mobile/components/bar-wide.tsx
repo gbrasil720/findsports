@@ -424,7 +424,7 @@ export function WhereCard({
   const goPress = usePressScale()
   const go = () => {
     onRoute()
-    Linking.openURL(directions(lat, lng))
+    Linking.openURL(directions(lat, lng)).catch(() => {})
   }
   return (
     <View style={{ gap: 10 }}>

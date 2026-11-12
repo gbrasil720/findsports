@@ -98,7 +98,7 @@ import {
 import { useWithAccount } from '@/lib/account'
 import { clock } from '@/lib/ai-chat'
 import { authClient } from '@/lib/auth-client'
-import { phoneLabel, whatsappUrl } from '@/lib/bar-contact'
+import { barPhone, phoneLabel, telUrl, whatsappUrl } from '@/lib/bar-contact'
 import { closedNote } from '@/lib/bar-states'
 import { trackCommercialEvent } from '@/lib/commercial'
 import { env } from '@/lib/env'
@@ -412,6 +412,11 @@ export function BarDetail({
   // Uma visita por abertura da página, só depois de ela existir.
   const loaded = bar.isSuccess
   const fan = session.data?.user.role === 'fan'
+  // "Como chegar" conta para o bar como no web (só torcedor) e, vindo da IA,
+  // como ação da resposta.
+  const onRoute = () => {
+    fromAi('route')
+  }
   useEffect(() => {
     if (loaded && fan) trackCommercialEvent({ pubId: id, type: 'profile_view' })
   }, [loaded, fan, id])
@@ -770,8 +775,8 @@ export function BarDetail({
   // "Onde fica" (rodada 8, tela 3): o mapa com a gota grande do bar, o
   // endereço, a distância a pé, perto do metrô e estacionamento quando o bar
   // marcou, "Como chegar" (o app de mapas) e "Ligar".
-  const wa =
-    data?.phone && data.phoneAcceptsWhatsapp ? whatsappUrl(data.phone) : null
+  const phone = barPhone(data?.phone)
+  const wa = phone && data?.phoneAcceptsWhatsapp ? whatsappUrl(phone) : null
   const nearby = AMENITIES.filter(
     (item) => [22, 9, 8].includes(item.id) && amenities.includes(item.id)
   )
@@ -785,8 +790,8 @@ export function BarDetail({
             accessibilityRole="link"
             accessibilityLabel={`Como chegar ao ${data.name}`}
             onPress={() => {
-              fromAi('route')
-              Linking.openURL(directions(lat, lng))
+              onRoute()
+              openLink(directions(lat, lng))
             }}
             onPressIn={mapPress.onPressIn}
             onPressOut={mapPress.onPressOut}
@@ -837,11 +842,11 @@ export function BarDetail({
           </Text>
           <Text style={[text(14, 'Regular', 1.4), { color: palette.muted }]}>
             {place.join(' · ')}
-            {data.phone ? (
+            {phone ? (
               <>
                 {place.length ? ' · ' : null}
                 <Text style={[styles.phone, { color: palette.ink }]}>
-                  {phoneLabel(data.phone)}
+                  {phoneLabel(phone)}
                 </Text>
               </>
             ) : null}
@@ -874,8 +879,8 @@ export function BarDetail({
             accessibilityRole="link"
             accessibilityLabel={`Como chegar ao ${data.name}`}
             onPress={() => {
-              fromAi('route')
-              Linking.openURL(directions(lat, lng))
+              onRoute()
+              openLink(directions(lat, lng))
             }}
             onPressIn={goPress.onPressIn}
             onPressOut={goPress.onPressOut}
@@ -890,7 +895,7 @@ export function BarDetail({
               Como chegar
             </Text>
           </AnimatedPressable>
-          {data.phone ? (
+          {phone ? (
             <ContactButton
               label="Ligar"
               icon="phone"
@@ -899,7 +904,7 @@ export function BarDetail({
                 fromAi('phone')
                 if (fan)
                   trackCommercialEvent({ pubId: id, type: 'phone_clicked' })
-                Linking.openURL(`tel:${data.phone}`)
+                openLink(telUrl(phone))
               }}
             />
           ) : null}
@@ -912,7 +917,7 @@ export function BarDetail({
                 fromAi('whatsapp')
                 if (fan)
                   trackCommercialEvent({ pubId: id, type: 'whatsapp_opened' })
-                Linking.openURL(wa)
+                openLink(wa)
               }}
             />
           ) : null}
@@ -1287,7 +1292,7 @@ export function BarDetail({
         address={[data.address, data.neighborhood].filter(Boolean).join(' · ')}
         live={pinLive}
         elite={data.plan === 'elite'}
-        onRoute={() => fromAi('route')}
+        onRoute={onRoute}
       />
     ) : null
   const wAmen = data ? (
@@ -1973,6 +1978,11 @@ function RoundGlass({
       </Glass>
     </Pressable>
   )
+}
+
+/** Sem app para o link (discador, WhatsApp, mapas), nada acontece. */
+const openLink = (url: string) => {
+  Linking.openURL(url).catch(() => {})
 }
 
 /** Ligar e WhatsApp de "Onde fica" (rodada 29): pílula de contorno. */
