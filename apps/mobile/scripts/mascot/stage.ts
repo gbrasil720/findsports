@@ -20,6 +20,7 @@ export type MascotState =
   | 'comparing'
   | 'writing'
   | 'done'
+  | 'pleased'
   | 'empty'
   | 'awaiting'
   | 'going'
@@ -563,7 +564,9 @@ function ripple(x: number) {
 function pin(x: number) {
   const el = add('pin', { left: `calc(50% + ${(x * B) / 100}px)` })
   el.dataset.x = String(x)
-  const base = 'translate(-50%, -135%) rotate(-45deg)'
+  // A ponta do pino (o canto de baixo à esquerda, que a rotação leva para
+  // baixo) fica em x: sem o -50%, que deixava o melhor fora da gota.
+  const base = 'translate(0, -135%) rotate(-45deg)'
   el.animate(
     [
       { transform: `${base} scale(.4)`, opacity: 0 },
@@ -908,7 +911,7 @@ async function writeOut(t: number, next: MascotState) {
   await finish()
   eye({ wide: 1 }, 420, spring, t)
   // Sorri só se achou: sem bares, a próxima cena é a do "?".
-  if (next === 'done') setMood('happy', t)
+  if (next === 'done' || next === 'pleased') setMood('happy', t)
   await to({ sx: 1, sy: 1 }, 520, spring, t)
 }
 
@@ -1086,6 +1089,17 @@ const STATES: Record<MascotState, Run> = {
     bot.update({ mood: 'idle' })
     mood = 'idle'
   },
+  // As respostas seguintes da conversa: sorri e dá um pulinho, sem festa.
+  pleased: async (t) => {
+    if (cur !== HOME) await morph(HOME, { stay: true }, t)
+    await setMood('happy', t)
+    await hop(10, t)
+    await release(t)
+    await sleep(2600)
+    if (!alive(t)) return
+    bot.update({ mood: 'idle' })
+    mood = 'idle'
+  },
   empty: async (t) => {
     await homeFront(t)
     if (!alive(t)) return
@@ -1247,11 +1261,20 @@ const STATES: Record<MascotState, Run> = {
       await to({ x, r: x * 0.6 }, 45, lin, t)
     await eye({ dead: 1, wide: 1 }, 320, lin, t)
     if (!alive(t)) return
-    pop('dizzy', 0, -44, '<i></i><i></i><i></i>')
-    while (alive(t) && !reduce) {
-      await to({ r: 8, x: 3, sy: 0.97 }, 480, io, t)
-      await to({ r: -8, x: -3, sy: 0.97 }, 480, io, t)
-    }
+    const stars = pop('dizzy', 0, -44, '<i></i><i></i><i></i>')
+    // Fica tonta um tempo e se recompõe, como no artifact; o aviso de fora do
+    // ar continua no chat.
+    if (reduce) await sleep(2400)
+    else
+      for (let i = 0; i < 3; i++) {
+        await to({ r: 8, x: 3, sy: 0.97 }, 480, io, t)
+        await to({ r: -8, x: -3, sy: 0.97 }, 480, io, t)
+      }
+    fade(stars)
+    await to({ r: 0, x: 0, sy: 1 }, 200, io, t)
+    for (const r of [-9, 9, -6, 6, 0]) await to({ r }, 55, lin, t)
+    await eye({ dead: 0 }, 300, lin, t)
+    await release(t)
   },
   offline: async (t) => {
     await homeFront(t)
@@ -1319,6 +1342,15 @@ async function leave(prev: MascotState, next: MascotState, t: number) {
   }
 }
 
+/** Reações a um momento: abrir a tela já nesse estado não as repete. */
+const REPLAY_OFF = new Set<MascotState>([
+  'idle',
+  'done',
+  'pleased',
+  'going',
+  'call',
+  'remind'
+])
 let shown: MascotState = 'idle'
 async function go(next: MascotState) {
   const prev = shown
@@ -1393,5 +1425,8 @@ requestAnimationFrame(() => {
     setTimeout(warm, 60)
   }
   setTimeout(warm, 400)
-  if (cfg.state !== 'idle') request(cfg.state)
+  // Conversa reaberta: a festa e as ações já aconteceram, a taça só fica
+  // parada. O resto entra depois de ela aparecer, para o começo da cena ser
+  // visto (a WebView surge com um fade de 200 ms).
+  if (!REPLAY_OFF.has(cfg.state)) setTimeout(() => request(cfg.state), 450)
 })
