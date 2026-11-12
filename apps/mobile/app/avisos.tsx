@@ -411,11 +411,10 @@ export default function Notices() {
                 detail: (teams.data ?? [])
                   .slice(0, 3)
                   .map((team) => team.name)
-                  .join(', '),
-                on: true
+                  .join(', ')
               },
-              { icon: 'people', title: 'Pedidos de amizade', on: true },
-              { icon: 'crew', title: 'Ranking do mês fechou', on: false }
+              { icon: 'people', title: 'Pedidos de amizade' },
+              { icon: 'crew', title: 'Ranking do mês fechou' }
             ]}
             onToggles={() =>
               router.push({
