@@ -36,6 +36,12 @@ const rawEnv = createEnv({
      * protegido ("Enhanced Security for Push Notifications").
      */
     PUSH_DELIVERY: z.literal('console').optional(),
+    /**
+     * `1` liga o lembrete por push do cron de 15 min. Desligada (padrão em
+     * produção e no preview), o cron não consulta o banco. Ligar junto com o
+     * EAS (`projectId`) e o Firebase, quando houver aparelho para receber.
+     */
+    PUSH_ENABLED: z.literal('1').optional(),
     EXPO_ACCESS_TOKEN: z.string().min(1).optional(),
     /**
      * Cobrança pelo Stripe (WEB-31). O modo vem da própria chave: `_test_` é o
