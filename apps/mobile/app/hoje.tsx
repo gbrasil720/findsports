@@ -26,6 +26,7 @@ import {
 } from '@/components/ui'
 import { SAO_PAULO } from '@/lib/explore'
 import { leaveFirstOpen } from '@/lib/first-open'
+import { readTodayCode } from '@/lib/maintenance'
 import { trpc } from '@/lib/trpc'
 
 /*
@@ -58,6 +59,16 @@ const kickoff = (startsAt: string) =>
 
 export default function Today() {
   const router = useRouter()
+  // Servidor fora do ar, a sessão não se confirma e a pessoa cai aqui: o
+  // código de hoje guardado no aparelho abre igual (26a).
+  const saved = readTodayCode(undefined)
+  const codeOnDevice = saved
+    ? () =>
+        router.push({
+          pathname: '/codigo/[eventId]',
+          params: { eventId: saved.eventId }
+        })
+    : undefined
   const insets = useSafeAreaInsets()
   const palette = usePalette()
   const layout = useLayout()
@@ -154,10 +165,12 @@ export default function Today() {
 
         {board.isError ? (
           <ErrorState
-            title="Não deu para ver os jogos de hoje."
+            kind="signal"
+            title="Não deu pra carregar os jogos."
             error={board.error}
             onRetry={() => board.refetch()}
             retrying={board.isFetching}
+            onCode={codeOnDevice}
             style={{ marginTop: 22 }}
           />
         ) : !board.data || !splashDone ? (
