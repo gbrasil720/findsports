@@ -83,7 +83,18 @@ export type ScoredRecommendation = {
   isExpandedRadius: boolean
 }
 
-type RankingContext = { now: Date; radiusKm: number }
+/**
+ * Afinidade da IA por bar (WEB-426): o id do bar e a nota de 0 a 1 que ela
+ * deu ao estilo dele para esta pessoa. Bar sem nota segue a regra.
+ */
+export type AiAffinity = ReadonlyMap<string, number>
+
+type RankingContext = {
+  now: Date
+  radiusKm: number
+  /** Só nas variantes com IA; sem ela, o ranking é o de sempre. */
+  affinity?: AiAffinity
+}
 
 const INTENT_POINTS: Record<RecommendationIntentKind, number> = {
   positive_rating: 30,
@@ -180,6 +191,14 @@ function experienceSimilarityScore(candidate: RecommendationCandidate): number {
   )
 }
 
+/**
+ * O eixo "Seu estilo" com a IA: a afinidade (0 a 1) vira os mesmos 0 a 18
+ * pontos da similaridade por regras, que ela substitui (dono, 12/11/2026).
+ */
+export function aiExperienceScore(affinity: number): number {
+  return round(clamp(affinity, 0, 1) * 18)
+}
+
 function qualityScore(candidate: RecommendationCandidate): number {
   if (candidate.ratingCount < 5 || candidate.ratingScore == null) return 8.5
   return round(clamp(candidate.ratingScore, 0, 1) * 17)
@@ -202,7 +221,10 @@ export function scoreRecommendationCandidate(
     directIntent: directIntentScore(candidate.intentActions, context.now),
     sportsAffinity: sportsAffinityScore(candidate),
     distance: distanceScore(candidate.distanceKm, context.radiusKm),
-    experienceSimilarity: experienceSimilarityScore(candidate),
+    experienceSimilarity:
+      context.affinity?.has(candidate.id) === true
+        ? aiExperienceScore(context.affinity.get(candidate.id) ?? 0)
+        : experienceSimilarityScore(candidate),
     quality: qualityScore(candidate)
   }
 
