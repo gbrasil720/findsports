@@ -7,6 +7,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { SvgXml } from 'react-native-svg'
 import { WebView } from 'react-native-webview'
+import { haptic } from '@/components/motion'
 import type { MascotState } from '@/lib/mascot'
 import { TACA_SVG } from './mascot-still'
 import type { AiPalette } from './theme'
@@ -84,6 +85,7 @@ export function Mascot({
             // página volta, e o "ready" manda o estado de agora.
             onContentProcessDidTerminate={() => web.current?.reload()}
             onMessage={(e) => {
+              if (e.nativeEvent.data === 'trick') return void haptic.select()
               if (e.nativeEvent.data !== 'ready') return
               if (latest.current !== first.current)
                 web.current?.injectJavaScript(
