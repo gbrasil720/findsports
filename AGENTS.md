@@ -316,6 +316,12 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   com `ABACATE_PAY_API_KEY`, `ABACATE_PAY_WEBHOOK_SECRET` e
   `PUBLIC_APP_URL=https://www.onside.sh` no ambiente. Aviso recusado vai ao log como
   `pix_webhook_rejected`, com o motivo: a AbacatePay não reenvia 401.
+  **A leitura da AbacatePay atrasa** (GET de assinatura e listagens mostraram o estado
+  antigo por ~1 min no Modo Teste): aviso que a leitura contradiz (pago com `PENDING`,
+  cancelado com `ACTIVE`) responde 500 para ser reenviado (`readLagsBehind`), e nada
+  de invalidar checkout pela listagem: o pendente fica em `subscription.pix_checkout_id`
+  e o seguinte o apaga (`replacePendingPixCheckout`). A situação (`active`/`past_due`)
+  sai do fim do ciclo pago, não da ordem dos avisos (`pixStanding`).
 
 ### Avisos por e-mail do bar (WEB-441)
 
