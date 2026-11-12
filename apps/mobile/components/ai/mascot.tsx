@@ -37,12 +37,20 @@ export function Mascot({
   // A primeira vai antes de a página carregar; as seguintes trocam no lugar.
   // O que mudar antes de a página ficar pronta segue no "ready": o chat
   // anda mais rápido que o carregamento da WebView.
+  // Compara com o último enviado: voltar ao estado do início (pensando,
+  // escrevendo, pensando de novo) também tem de chegar ao palco.
   const first = useRef(config)
+  const sent = useRef(config)
   const latest = useRef(config)
   latest.current = config
+  const send = (value: string) => {
+    if (value === sent.current) return
+    sent.current = value
+    web.current?.injectJavaScript(`window.setMascot(${value});true`)
+  }
+  // biome-ignore lint/correctness/useExhaustiveDependencies: send só lê refs
   useEffect(() => {
-    if (ready && config !== first.current)
-      web.current?.injectJavaScript(`window.setMascot(${config});true`)
+    if (ready) send(config)
   }, [config, ready])
   // De volta do segundo plano, o palco confere se a animação não parou (o iOS
   // pode perder o quadro pendente da WebView suspensa).
@@ -83,14 +91,15 @@ export function Mascot({
             injectedJavaScriptBeforeContentLoaded={`window.MASCOT=${first.current};true`}
             // O iOS pode encerrar o processo da WebView em segundo plano: a
             // página volta, e o "ready" manda o estado de agora.
-            onContentProcessDidTerminate={() => web.current?.reload()}
+            onContentProcessDidTerminate={() => {
+              // A página recarrega com a configuração da montagem.
+              sent.current = first.current
+              web.current?.reload()
+            }}
             onMessage={(e) => {
               if (e.nativeEvent.data === 'trick') return void haptic.select()
               if (e.nativeEvent.data !== 'ready') return
-              if (latest.current !== first.current)
-                web.current?.injectJavaScript(
-                  `window.setMascot(${latest.current});true`
-                )
+              send(latest.current)
               setReady(true)
             }}
             style={{ backgroundColor: 'transparent' }}
@@ -124,7 +133,10 @@ function useStage() {
     stageUri ??= Asset.fromModule(require('@/assets/mascot/stage.html'))
       .downloadAsync()
       .then((asset) => asset.localUri ?? asset.uri)
-    stageUri.then(setUri)
+    // Falhou: sem taça desta vez, e a próxima montagem tenta de novo.
+    stageUri.then(setUri, () => {
+      stageUri = null
+    })
   }, [])
   return uri
 }
