@@ -3,6 +3,7 @@ import type Stripe from 'stripe'
 import {
   customerPrefillFor,
   founderCouponUsable,
+  pixFounderSeatAvailable,
   prefillCustomer,
   pushInvoiceDetails,
   trialEndForCheckout,
@@ -112,8 +113,17 @@ describe('cliente do Stripe com os dados do cadastro (WEB-328)', () => {
 })
 
 describe('consulta do cupom de fundador com teto de tempo', () => {
+  // Nenhum fundador pelo Pix, sem banco.
+  const noPix = async () => 0
+
   /** Stripe dublado: guarda as opções de cada consulta de cupom. */
-  function stripeWith(answer: () => Promise<{ valid: boolean }>) {
+  function stripeWith(
+    answer: () => Promise<{
+      valid: boolean
+      max_redemptions?: number
+      times_redeemed?: number
+    }>
+  ) {
     const requests: unknown[] = []
     const client = {
       coupons: {
@@ -130,7 +140,7 @@ describe('consulta do cupom de fundador com teto de tempo', () => {
 
   it('consulta com teto de 5s e sem nova tentativa', async () => {
     const { client, requests } = stripeWith(async () => ({ valid: true }))
-    expect(await founderCouponUsable(client)).toBe(true)
+    expect(await founderCouponUsable(client, noPix)).toBe(true)
     expect(requests).toEqual([{ timeout: 5000, maxNetworkRetries: 0 }])
   })
 
@@ -138,7 +148,7 @@ describe('consulta do cupom de fundador com teto de tempo', () => {
   async function checkoutWith(answer: () => Promise<{ valid: boolean }>) {
     const error = spyOn(console, 'error').mockImplementation(() => {})
     try {
-      const coupon = await usableFounderCoupon(stripeWith(answer).client)
+      const coupon = await usableFounderCoupon(stripeWith(answer).client, noPix)
       const logs = error.mock.calls.map(([line]) => JSON.parse(String(line)))
       return { coupon, logs }
     } finally {
@@ -159,7 +169,7 @@ describe('consulta do cupom de fundador com teto de tempo', () => {
         }
       ]
     })
-    expect(await founderCouponUsable(stripeWith(slow).client)).toBe(true)
+    expect(await founderCouponUsable(stripeWith(slow).client, noPix)).toBe(true)
   })
 
   const unavailable = {
@@ -188,12 +198,43 @@ describe('consulta do cupom de fundador com teto de tempo', () => {
         })
       )
     expect(await checkoutWith(missing)).toEqual(unavailable)
-    expect(await founderCouponUsable(stripeWith(missing).client)).toBe(false)
+    expect(await founderCouponUsable(stripeWith(missing).client, noPix)).toBe(
+      false
+    )
+  })
+
+  it('vagas somam cartão e Pix, mesmo com o Pix desligado', async () => {
+    const { client } = stripeWith(async () => ({
+      valid: true,
+      max_redemptions: 100,
+      times_redeemed: 90
+    }))
+    expect(await founderCouponUsable(client, async () => 9)).toBe(true)
+    expect(await founderCouponUsable(client, async () => 10)).toBe(false)
+  })
+
+  it('Pix novo só ganha fundador com a contagem conferida', async () => {
+    const { client } = stripeWith(async () => ({ valid: true }))
+    expect(await pixFounderSeatAvailable(client, noPix)).toBe(true)
+    // Stripe lento: o cartão segue com o cupom, o Pix não.
+    expect(await pixFounderSeatAvailable(stripeWith(slow).client, noPix)).toBe(
+      false
+    )
+    const error = spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      // Banco sem responder também é contagem desconhecida.
+      const down = async () => {
+        throw new Error('banco fora')
+      }
+      expect(await pixFounderSeatAvailable(client, down)).toBe(false)
+    } finally {
+      error.mockRestore()
+    }
   })
 
   it('Stripe respondeu e o cupom vale: entra no checkout', async () => {
     const { client } = stripeWith(async () => ({ valid: true }))
-    expect(await usableFounderCoupon(client)).toBe('eM7dQpMF')
+    expect(await usableFounderCoupon(client, noPix)).toBe('eM7dQpMF')
   })
 })
 

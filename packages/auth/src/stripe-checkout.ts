@@ -1,7 +1,6 @@
 import { and, count, db, eq, gt } from '@findsports_oficial/db'
 import { bar, subscription } from '@findsports_oficial/db/schema/platform'
 import type Stripe from 'stripe'
-import { pixEnabled } from './abacatepay'
 import {
   customerDetailsFor,
   type InvoiceDetails,
@@ -91,7 +90,13 @@ type FounderCouponState =
   | { state: 'invalid' }
   | { state: 'unknown'; message: string }
 
-async function readFounderCoupon(client: Stripe): Promise<FounderCouponState> {
+/** Quem conta os fundadores do Pix; os testes do cupom passam um sem banco. */
+type CountPixFounders = () => Promise<number>
+
+async function readFounderCoupon(
+  client: Stripe,
+  countPix: CountPixFounders
+): Promise<FounderCouponState> {
   try {
     const coupon = await client.coupons.retrieve(
       FOUNDER_COUPON_ID,
@@ -102,9 +107,9 @@ async function readFounderCoupon(client: Stripe): Promise<FounderCouponState> {
     // As vagas de fundador somam cartão e Pix (decisão do dono, 11/11/2026):
     // o teto do cupom conta também quem entrou pelo Pix.
     const seats = coupon.max_redemptions ?? FOUNDER_SEATS
-    // Sem a chave da AbacatePay não há Pix: o banco nem é consultado.
-    const pix = pixEnabled() ? await pixFounderCount() : 0
-    const taken = (coupon.times_redeemed ?? 0) + pix
+    // Conta mesmo com o Pix desligado: os fundadores que entraram por ele
+    // seguem ocupando a vaga. Banco sem responder cai no `unknown` abaixo.
+    const taken = (coupon.times_redeemed ?? 0) + (await countPix())
     return { state: taken < seats ? 'valid' : 'invalid' }
   } catch (error) {
     // Cupom apagado ou com o id errado: o Stripe respondeu, e a resposta é não.
@@ -126,8 +131,24 @@ async function readFounderCoupon(client: Stripe): Promise<FounderCouponState> {
  * tabela. Se o cupom tiver mesmo acabado, é a criação da sessão que recusa, e
  * o bar tenta de novo.
  */
-export async function founderCouponUsable(client: Stripe): Promise<boolean> {
-  return (await readFounderCoupon(client)).state !== 'invalid'
+export async function founderCouponUsable(
+  client: Stripe,
+  countPix: CountPixFounders = pixFounderCount
+): Promise<boolean> {
+  return (await readFounderCoupon(client, countPix)).state !== 'invalid'
+}
+
+/**
+ * Vaga de fundador para um Pix novo: só com a contagem conferida. Ao
+ * contrário do cartão, onde o Stripe recusa o cupom esgotado na sessão, o
+ * produto de fundador do Pix não tem teto próprio, e `unknown` daria o
+ * desconto sem saber se sobrou vaga.
+ */
+export async function pixFounderSeatAvailable(
+  client: Stripe,
+  countPix: CountPixFounders = pixFounderCount
+): Promise<boolean> {
+  return (await readFounderCoupon(client, countPix)).state === 'valid'
 }
 
 /**
@@ -136,9 +157,10 @@ export async function founderCouponUsable(client: Stripe): Promise<boolean> {
  * inteira, e o bar não conseguiria contratar por causa de um desconto.
  */
 export async function usableFounderCoupon(
-  client: Stripe
+  client: Stripe,
+  countPix: CountPixFounders = pixFounderCount
 ): Promise<string | null> {
-  const coupon = await readFounderCoupon(client)
+  const coupon = await readFounderCoupon(client, countPix)
   if (coupon.state === 'invalid') {
     logBillingError('stripe_founder_coupon_unavailable', {
       couponId: FOUNDER_COUPON_ID,
