@@ -327,7 +327,7 @@ export default function Casa() {
           {events.isError ? (
             <View style={{ paddingVertical: 12 }}>
               <ErrorState
-                title="Não deu para carregar a agenda."
+                kind="block"
                 error={events.error}
                 onRetry={() => events.refetch()}
                 retrying={events.isFetching}

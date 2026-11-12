@@ -339,8 +339,7 @@ export default function Notices() {
         {/* O que não abriu não vira "nada por aqui" (WEB-460). */}
         {failed && loaded ? (
           <ErrorState
-            style={{ gap: 14 }}
-            title="Não deu para abrir todos os avisos."
+            kind="block"
             error={failed.error}
             onRetry={() => {
               for (const q of sources) if (q.isError) q.refetch()
