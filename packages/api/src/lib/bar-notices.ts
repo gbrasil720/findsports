@@ -210,7 +210,10 @@ export function weekSuggestionBlocks(input: {
     weekGame({
       head: 'Pra sua semana · o jogo que a Onside separou',
       when: `${when.weekday} ${when.dayMonth} · ${when.time}`,
-      tag: featured.houseTeam ? 'Seu time' : undefined,
+      tags: [
+        ...(featured.houseTeam ? [{ text: 'Seu time' }] : []),
+        ...(featured.classic ? [{ text: 'Clássico', red: true }] : [])
+      ],
       championship: featured.championship,
       title: featured.title,
       cells: [

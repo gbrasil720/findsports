@@ -7,7 +7,8 @@ import {
   EMAIL_FONTS_URL,
   fileCard,
   scoreboard,
-  ticket
+  ticket,
+  weekGame
 } from './email-layout'
 
 const input = {
@@ -155,5 +156,20 @@ describe('layout dos e-mails Onside', () => {
     expect(text).toContain('Bar\n1 <i>vez</i>')
     expect(text).toContain('• QUA 11/11 · A × <B> · 21:30')
     expect(text).toContain('20+ pessoas')
+  })
+
+  it('jogo da semana: "Seu time" em acid e "Clássico" em vermelho', () => {
+    const { html } = weekGame({
+      head: 'Pra sua semana',
+      when: 'QUA 18/11 · 21:30',
+      tags: [{ text: 'Seu time' }, { text: 'Clássico', red: true }],
+      championship: 'Brasileirão',
+      title: 'Corinthians × Palmeiras',
+      cells: [],
+      action: 'Publicar',
+      url: 'https://onside.sh/admin/jogos'
+    })
+    expect(html).toMatch(/background:#c9f135[^>]*>SEU TIME</)
+    expect(html).toMatch(/background:#e8320c[^>]*>CLÁSSICO</)
   })
 })

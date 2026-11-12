@@ -195,7 +195,8 @@ export function agenda(
 export function weekGame(input: {
   head: string
   when: string
-  tag?: string
+  /** Etiquetas à direita do quando: "Seu time" em acid, "Clássico" em vermelho. */
+  tags?: { text: string; red?: boolean }[]
   championship: string
   title: string
   cells: [value: string, label: string][]
@@ -215,7 +216,7 @@ export function weekGame(input: {
     )
     .join('')
   const html = `${label(input.head)}<table ${TB} bgcolor="${C.ink}" style="width:100%;border-collapse:separate;margin-top:10px;background:${C.ink};border-radius:18px;border-bottom:4px solid #000000">
-<tr><td style="padding:20px 20px 0"><table ${T}><tr><td>${label(input.when, C.acid)}</td>${input.tag ? `<td align="right"><span style="background:${C.acid};border-radius:999px;padding:4px 8px;font-family:${F.mono};font-size:10.5px;font-weight:600;letter-spacing:.08em;color:${C.ink}">${e(input.tag.toUpperCase())}</span></td>` : ''}</tr></table></td></tr>
+<tr><td style="padding:20px 20px 0"><table ${T}><tr><td>${label(input.when, C.acid)}</td>${input.tags?.length ? `<td align="right">${input.tags.map((tag) => `<span style="background:${tag.red ? C.red : C.acid};border-radius:999px;padding:4px 8px;margin-left:6px;font-family:${F.mono};font-size:10.5px;font-weight:600;letter-spacing:.08em;color:${tag.red ? C.paper : C.ink}">${e(tag.text.toUpperCase())}</span>`).join('')}</td>` : ''}</tr></table></td></tr>
 <tr><td style="padding:14px 20px 0">${label(input.championship, C.mutedInk)}<div style="padding-top:6px;font-family:${F.display};font-size:34px;line-height:1.02;color:${C.paper};text-transform:uppercase">${title}</div></td></tr>
 <tr><td style="padding:14px 20px 0"><table ${T} style="width:100%;border-collapse:collapse;table-layout:fixed"><tr>${cells}</tr></table></td></tr>
 ${input.reason ? `<tr><td style="padding:14px 20px 0;font-family:${F.body};font-size:14.5px;line-height:1.45;color:#dedbd4">${e(input.reason)}</td></tr>` : ''}
