@@ -9,8 +9,8 @@ import {
 } from '@findsports_oficial/api/lib/opening-hours'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { LinearGradient } from 'expo-linear-gradient'
-import { useRouter } from 'expo-router'
-import { useState } from 'react'
+import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Pressable,
@@ -28,6 +28,7 @@ import {
   PlanNudge
 } from '@/components/bar-owner'
 import { HardShadow, Photo } from '@/components/explore'
+import { HouseTeams } from '@/components/house-teams'
 import { haptic } from '@/components/motion'
 import { useSoon } from '@/components/soon'
 import { usePalette } from '@/components/theme'
@@ -70,7 +71,12 @@ export default function MeuEspaco() {
   const owner = useOwnerBar()
   const bar = owner.bar
   const photos = useQuery(trpc.pub.photos.queryOptions())
-  const [tab, setTab] = useState<Tab>('horario')
+  // `?aba=dados` abre direto numa aba (link e navegador DEV).
+  const { aba } = useLocalSearchParams<{ aba?: Tab }>()
+  const [tab, setTab] = useState<Tab>(aba ?? 'horario')
+  useEffect(() => {
+    if (aba) setTab(aba)
+  }, [aba])
   const confirm = useMutation(
     trpc.pub.updateCodeConfirmation.mutationOptions({
       onSuccess: () => queryClient.invalidateQueries(),
@@ -119,6 +125,9 @@ export default function MeuEspaco() {
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
       <ScrollView
+        // A busca dos times da casa fica no fim: o teclado empurra a tela.
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
           paddingTop: insets.top + 10,
           paddingBottom: insets.bottom + 32,
@@ -276,38 +285,44 @@ export default function MeuEspaco() {
         </ScrollView>
 
         {tab === 'dados' ? (
-          <OwnerCard>
-            {[
-              ['Nome', bar.name],
-              [
-                'Endereço',
-                [bar.address, bar.neighborhood, bar.city]
-                  .filter(Boolean)
-                  .join(' · ')
-              ],
-              ['Telefone', bar.phone ?? 'não informado'],
-              [
-                'Descrição',
-                bar.descriptionPending
-                  ? `em revisão: ${bar.descriptionPending}`
-                  : (bar.description ?? 'sem descrição')
-              ]
-            ].map(([label, value], index) => (
-              <OwnerRow key={label} first={index === 0}>
-                <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-                  <Text style={[styles.rowLabel, { color: palette.muted }]}>
-                    {label.toUpperCase()}
-                  </Text>
-                  <Text
-                    numberOfLines={3}
-                    style={[text(15.5, 'Regular', 1.4), { color: palette.ink }]}
-                  >
-                    {value}
-                  </Text>
-                </View>
-              </OwnerRow>
-            ))}
-          </OwnerCard>
+          <>
+            <OwnerCard>
+              {[
+                ['Nome', bar.name],
+                [
+                  'Endereço',
+                  [bar.address, bar.neighborhood, bar.city]
+                    .filter(Boolean)
+                    .join(' · ')
+                ],
+                ['Telefone', bar.phone ?? 'não informado'],
+                [
+                  'Descrição',
+                  bar.descriptionPending
+                    ? `em revisão: ${bar.descriptionPending}`
+                    : (bar.description ?? 'sem descrição')
+                ]
+              ].map(([label, value], index) => (
+                <OwnerRow key={label} first={index === 0}>
+                  <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+                    <Text style={[styles.rowLabel, { color: palette.muted }]}>
+                      {label.toUpperCase()}
+                    </Text>
+                    <Text
+                      numberOfLines={3}
+                      style={[
+                        text(15.5, 'Regular', 1.4),
+                        { color: palette.ink }
+                      ]}
+                    >
+                      {value}
+                    </Text>
+                  </View>
+                </OwnerRow>
+              ))}
+            </OwnerCard>
+            <HouseTeams />
+          </>
         ) : tab === 'horario' ? (
           <OwnerCard pad={14}>
             <View

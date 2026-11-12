@@ -1,6 +1,6 @@
 import { getEventEnd } from '@findsports_oficial/db/event-window'
 import { useQuery } from '@tanstack/react-query'
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import type { AdminEvent } from '@/components/admin/admin-model'
 import {
@@ -49,6 +49,7 @@ import {
 import { NovoJogo, type NovoJogoMode } from './novo-jogo'
 import { initials, usePainel } from './painel-shell'
 import { PrimeirosPassos } from './passeio'
+import { SemanaPraVoce } from './semana-pra-voce'
 
 /*
  * Hoje (WEB-501, fase 2; protótipo `hoje`, `chart`, `smooth`): o jogo de
@@ -76,6 +77,7 @@ export function HojePage() {
   const interest = useInterest()
   const { showsGoing, elite, openValidation } = usePainel()
   const [sheet, setSheet] = useState<NovoJogoMode | null>(null)
+  const navigate = useNavigate()
 
   if (!bar) return null
   const today = houseDay(now)
@@ -209,6 +211,16 @@ export function HojePage() {
         goingById={goingById}
         showsGoing={showsGoing}
         heroId={hero?.id}
+      />
+
+      {/* Jogos da semana pra você (WEB-433): só com o catálogo. */}
+      <SemanaPraVoce
+        variant="hoje"
+        bar={bar}
+        disabled={policy.data ? !canCreate : true}
+        onEditar={(jogo) =>
+          void navigate({ to: '/admin/jogos', search: { jogo } })
+        }
       />
 
       <div className="pn-duo">

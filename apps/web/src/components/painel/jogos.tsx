@@ -1,3 +1,4 @@
+import type { EventNumbers } from '@findsports_oficial/api/lib/event-numbers'
 import { ARRIVAL_UNDO_WINDOW_MS } from '@findsports_oficial/db/reservation-code'
 import { PortalProvider } from '@findsports_oficial/ui/components/portal'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -43,9 +44,11 @@ import {
   interestLabel,
   isDraft,
   useEventAnalytics,
+  useEventNumbers,
   useGoing,
   useInterest
 } from './dados'
+import { faixaDoJogo } from './faixa-do-jogo'
 import {
   brasiliaDay,
   brasiliaTime,
@@ -62,6 +65,7 @@ import {
 import { NovoJogo, type NovoJogoMode } from './novo-jogo'
 import { Interruptor, initials, usePainel } from './painel-shell'
 import { Desfazer } from './quem-vai'
+import { SemanaPraVoce } from './semana-pra-voce'
 import { SugestoesDeJogo } from './sugestoes-de-jogo'
 
 /*
@@ -91,11 +95,14 @@ type Tab = 'prox' | 'rasc' | 'pass'
 
 export function JogosPage({
   initialId,
-  passados = false
+  passados = false,
+  publicar
 }: {
   initialId?: string
   /** `?passados=1`: abre em Passados (o link de Desempenho). */
   passados?: boolean
+  /** `?publicar=`: o jogo da semana que o e-mail da segunda abriu. */
+  publicar?: string
 }) {
   const trpc = useTRPC()
   const queryClient = useQueryClient()
@@ -108,6 +115,7 @@ export function JogosPage({
   const plan = usePlanStatus()
   const going = useGoing()
   const interest = useInterest()
+  const eventNumbers = useEventNumbers()
 
   const all = events.data ?? []
   const initial = all.find((event) => event.id === initialId)
@@ -168,6 +176,32 @@ export function JogosPage({
   const lapsedPlan = getLapsedPaidPlan(plan.subscription)
   const blockReason = getCreateBlockReason(policyState, lapsedPlan?.title)
   const canCreate = blockReason === null
+
+  // Sem o catálogo da semana, a lista de sempre (bares perto).
+  const sugestoesAntigas = (
+    <SugestoesDeJogo
+      className="pn-card pn-sgj"
+      alvo="jogos-sugestoes"
+      disabled={!canCreate}
+      title={
+        <div className="pn-chd">
+          <h3>
+            <Sparkle size={20} />
+            Jogos que outros bares perto já marcaram
+          </h3>
+          <small>nos próximos 7 dias</small>
+        </div>
+      }
+      hint={
+        <p className="pn-note">
+          Um toque publica, com o telão e o som do bar.{' '}
+          {policy.data?.status === 'limited'
+            ? `Cada um conta nos ${policy.data.limit} jogos do mês.`
+            : 'Dá para editar depois.'}
+        </p>
+      }
+    />
+  )
 
   const subtitle = (() => {
     const name = plan.shownPlan?.name
@@ -435,28 +469,19 @@ export function JogosPage({
       ) : (
         <div className="pn-jl">
           <div data-passeio="jogos">
-            {tab === 'prox' ? (
-              <SugestoesDeJogo
-                className="pn-card pn-sgj"
-                alvo="jogos-sugestoes"
+            {tab === 'prox' && bar ? (
+              <SemanaPraVoce
+                variant="jogos"
+                bar={bar}
+                foco={publicar}
                 disabled={!canCreate}
-                title={
-                  <div className="pn-chd">
-                    <h3>
-                      <Sparkle size={20} />
-                      Jogos que outros bares perto já marcaram
-                    </h3>
-                    <small>nos próximos 7 dias</small>
-                  </div>
+                onEditar={open}
+                limitNote={
+                  policy.data?.status === 'limited'
+                    ? `Um toque publica, com o telão e o som do bar. Cada um conta nos ${policy.data.limit} jogos do mês.`
+                    : undefined
                 }
-                hint={
-                  <p className="pn-note">
-                    Um toque publica, com o telão e o som do bar.{' '}
-                    {policy.data?.status === 'limited'
-                      ? `Cada um conta nos ${policy.data.limit} jogos do mês.`
-                      : 'Dá para editar depois.'}
-                  </p>
-                }
+                fallback={sugestoesAntigas}
               />
             ) : null}
             {tab === 'prox' && interest.gathering && upcoming.length ? (
@@ -483,7 +508,7 @@ export function JogosPage({
                 elite={elite}
                 showsGoing={showsGoing}
                 goingById={goingById}
-                byEvent={analytics.byEvent}
+                numbers={eventNumbers}
                 interest={interest.ratio}
                 selected={shown?.id}
                 onOpen={open}
@@ -602,7 +627,7 @@ type RowProps = {
   elite: boolean
   showsGoing: boolean
   goingById: Map<string, GoingGame>
-  byEvent: Map<string, { uniqueVisitors: number; arrivals: number | null }>
+  numbers: Map<string, EventNumbers>
   interest: Map<string, number>
   selected: string | undefined
   onOpen: (id: string) => void
@@ -642,7 +667,7 @@ function Linha({
   elite,
   showsGoing,
   goingById,
-  byEvent,
+  numbers,
   interest,
   selected,
   onOpen
@@ -650,12 +675,24 @@ function Linha({
   const state = eventState(event, now)
   const day = brasiliaDay(event.startsAt)
   const counts = goingCount(goingById.get(event.id))
-  const row = byEvent.get(event.id)
   const ratio = interest.get(event.id)
   const screen = bar ? gameScreen(event, bar) : null
   const offer = bar ? gameOffer(event, bar, elite) : null
   const draft = isDraft(event)
   const ahead = tab !== 'pass'
+  // A faixa de números (WEB-433): antes, ao vivo e depois do jogo.
+  const faixa =
+    draft || !bar
+      ? null
+      : faixaDoJogo({
+          state:
+            state === 'live' ? 'live' : tab === 'pass' ? 'past' : 'upcoming',
+          numbers: numbers.get(event.id),
+          startsAt: event.startsAt,
+          now,
+          neighborhood: bar.neighborhood,
+          going: showsGoing ? counts : undefined
+        })
   return (
     <li>
       <button
@@ -710,30 +747,17 @@ function Linha({
             <Selo state={state} draft={draft} />
           </span>
         </span>
-        {tab === 'prox' && showsGoing ? (
-          <span className="pn-st">
-            <b>{counts.going}</b>
-            <span>
-              {counts.going
-                ? `vão · ${counts.arrived} chegaram`
-                : 'ninguém marcou ainda'}
-            </span>
-            <span className="pn-bar">
-              <i
-                style={{
-                  width: `${counts.going ? Math.round((counts.arrived / counts.going) * 100) : 0}%`
-                }}
-              />
-            </span>
-          </span>
-        ) : tab === 'pass' ? (
-          <span className="pn-st">
-            <b>{row ? row.uniqueVisitors : '—'}</b>
-            <span>
-              {row
-                ? `viram o jogo${row.arrivals !== null ? ` · ${row.arrivals} códigos` : ''}`
-                : 'fora do período'}
-            </span>
+        {faixa ? (
+          <span className="pn-pst">
+            {faixa.map((c) => (
+              <span key={c.rotulo} className="pn-ps">
+                <b className={c.verde ? 'is-up' : undefined}>{c.valor}</b>
+                <span>
+                  {c.rotulo}
+                  {c.extra ? <i>{c.extra}</i> : null}
+                </span>
+              </span>
+            ))}
           </span>
         ) : null}
       </button>

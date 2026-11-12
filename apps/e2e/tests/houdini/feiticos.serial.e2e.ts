@@ -174,6 +174,15 @@ function anotherValue(value: unknown): unknown {
   if (value !== null && typeof value === 'object' && 'on' in value) {
     return { on: !value.on, backAt: null }
   }
+  // Jogos da semana (WEB-433): liga ou desliga, mesmo teto.
+  if (
+    value !== null &&
+    typeof value === 'object' &&
+    'monthlyBudgetUsd' in value
+  ) {
+    const config = value as { enabled: boolean; monthlyBudgetUsd: number }
+    return { ...config, enabled: !config.enabled }
+  }
   throw new Error(`Formato sem valor alternativo: ${JSON.stringify(value)}`)
 }
 
@@ -215,7 +224,8 @@ test('todo feitiço edita como JSON, lança e volta ao padrão', async ({
     'ai.variant_weights',
     'app.maintenance',
     'rating.public_display',
-    'search.tiered_plan_query'
+    'search.tiered_plan_query',
+    'weekly_games.config'
   ])
 
   for (const key of keys) {

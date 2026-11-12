@@ -19,10 +19,11 @@ import { costUsd } from './models'
  * `ai_run` com o que a execução gastou, dê certo ou não.
  */
 
-export type AiFeature = 'chat' | 'recommender'
+export type AiFeature = 'chat' | 'recommender' | 'weekly_games'
 
 export type AiRunMeta = {
-  userId: string
+  /** Nulo na rotina sem pessoa (`weekly_games`). */
+  userId: string | null
   feature: AiFeature
   variant: string
   assignedModel: string
@@ -35,6 +36,12 @@ export type AiCall = (
   input: Record<string, unknown>,
   opts?: { timeoutMs?: number }
 ) => Promise<unknown>
+
+/**
+ * Gasto fora do modelo na mesma execução (busca na web, leitura de página),
+ * somado ao `cost_usd` da linha para o teto cobrir tudo.
+ */
+export type AiCharge = (usd: number) => void
 
 export type AiStatus = 'ok' | 'fallback' | 'error' | 'timeout' | 'stopped'
 
@@ -197,7 +204,7 @@ export function readUsage(raw: Raw) {
 export async function runAi<T>(
   meta: AiRunMeta,
   deps: AiDeps,
-  fn: (call: AiCall, runId: string) => Promise<AiOutcome<T>>
+  fn: (call: AiCall, runId: string, charge: AiCharge) => Promise<AiOutcome<T>>
 ): Promise<AiOutcome<T> & { runId: string }> {
   const runId = crypto.randomUUID()
   const started = performance.now()
@@ -263,7 +270,9 @@ export async function runAi<T>(
   }
 
   try {
-    const outcome = await fn(call, runId)
+    const outcome = await fn(call, runId, (usd) => {
+      cost += usd
+    })
     const row = await write(outcome)
     return row?.status === 'stopped'
       ? { ...outcome, status: 'stopped', useful: false, runId }

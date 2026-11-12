@@ -9,7 +9,11 @@ import {
   setAiBinding
 } from '@findsports_oficial/api/lib/ai/binding-slot'
 import { setDeployVersion } from '@findsports_oficial/api/lib/deploy-version'
-import { runScheduledJobs } from '@findsports_oficial/api/lib/jobs'
+import {
+  type JobMessage,
+  setJobQueue
+} from '@findsports_oficial/api/lib/job-queue'
+import { runJob, runScheduledJobs } from '@findsports_oficial/api/lib/jobs'
 import { setBackgroundTaskHandler } from '@findsports_oficial/auth/background'
 import { runWithDb } from '@findsports_oficial/db'
 import handler from '@tanstack/react-start/server-entry'
@@ -21,6 +25,8 @@ setBackgroundTaskHandler(waitUntil)
 export default {
   async fetch(request, env) {
     setDeployVersion(env.CF_VERSION_METADATA)
+    // WEB-433: o "Rodar agora" das rotinas longas vai para a fila.
+    setJobQueue(env.JOBS)
     // WEB-424: o binding do Workers AI, para a IA do app.
     setAiBinding(env.AI as unknown as AiBinding)
     // WEB-201: banco por requisição, sobre o Hyperdrive.
@@ -45,7 +51,27 @@ export default {
   //
   // WEB-441: por último, os avisos da semana por e-mail aos bares, que só
   // enviam às segundas.
+  //
+  // WEB-433: os jogos da semana chamam a IA no cron: o binding entra aqui também.
   async scheduled(_controller, env) {
+    setAiBinding(env.AI as unknown as AiBinding)
     await runWithDb(env.HYPERDRIVE.connectionString, runScheduledJobs)
+  },
+  // WEB-433: rotina longa pedida pelo Houdini (`lib/job-queue.ts`), com o
+  // tempo de um consumidor de fila. Uma mensagem por vez e sem nova tentativa
+  // (`max_retries: 0`): repetir gastaria o teto de novo, e a falha já fica em
+  // `job_run`, que o Bastidores mostra.
+  async queue(batch, env) {
+    setAiBinding(env.AI as unknown as AiBinding)
+    for (const message of batch.messages) {
+      try {
+        await runWithDb(env.HYPERDRIVE.connectionString, () =>
+          runJob(message.body.job, 'houdini')
+        )
+      } catch {
+        // Registrada em `job_run` por `recordJobRun`.
+      }
+      message.ack()
+    }
   }
-} satisfies ExportedHandler<Env>
+} satisfies ExportedHandler<Env, JobMessage>

@@ -617,6 +617,20 @@
       "when": 1794343399405,
       "tag": "0088_month_crown",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1794425999907,
+      "tag": "0089_weekly_games",
+      "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1794436434249,
+      "tag": "0090_bar_team",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,5 @@
 import type { GameSuggestion } from '@findsports_oficial/api/lib/game-suggestions/index'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { type ReactNode, useState } from 'react'
 import Loader from 'reicon-react/icons/Loader'
 import { toast } from 'sonner'
@@ -7,6 +7,7 @@ import { Add } from '@/components/landing/v3/icons'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import { brasiliaDay, brasiliaTime, dayLabel, shiftDay } from './noite'
+import { useSugestoesDaSemana } from './semana-pra-voce'
 
 export type SugestaoDeJogo = GameSuggestion
 
@@ -47,15 +48,13 @@ export function SugestoesDeJogo({
   const trpc = useTRPC()
   const queryClient = useQueryClient()
   const [criando, setCriando] = useState<string | null>(null)
-  const sugestoes = useQuery({
-    ...trpc.pub.gameSuggestions.queryOptions(),
-    meta: { errorToast: false }
-  })
+  // A mesma leitura dos jogos da semana (`SemanaPraVoce`): uma ida só.
+  const sugestoes = useSugestoesDaSemana()
   const create = useMutation(
     trpc.pub.createEvent.mutationOptions({ meta: { errorToast: false } })
   )
 
-  const lista = sugestoes.data ?? []
+  const lista = (sugestoes.data ?? []).slice(0, 6)
   if (disabled || lista.length === 0) return null
 
   const publicar = async (sugestao: SugestaoDeJogo) => {

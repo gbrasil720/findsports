@@ -69,6 +69,7 @@ import {
   type Rascunho
 } from './espaco-rascunho'
 import { Interruptor } from './painel-shell'
+import { TimesDaCasa } from './times-da-casa'
 
 /*
  * "Meu espaço" do painel novo (WEB-501, fase 4; protótipo `espaco`, `dirty`
@@ -932,6 +933,9 @@ function Espaco({ bar }: { bar: AdminBar }) {
               declaradas por você.
             </p>
           </section>
+
+          {/* ─── Times da casa (WEB-433) ─── */}
+          <TimesDaCasa />
 
           {/* ─── Oferta da casa (Elite) ─── */}
           <section className="pn-card pn-sec2" aria-labelledby="esp-of">

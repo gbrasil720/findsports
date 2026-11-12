@@ -30,6 +30,7 @@ import {
   text,
   useStatusBar
 } from '@/components/ui'
+import { WeekCarousel } from '@/components/week-games'
 import {
   dayKicker,
   type GameState,
@@ -194,6 +195,8 @@ export default function Jogos() {
             )
           })}
         </View>
+
+        <WeekCarousel gutter={16 + nav.left} />
 
         <PillTabs
           items={[

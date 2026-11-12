@@ -1397,7 +1397,10 @@ export const pubsRouter = router({
     .input(
       z.object({
         sportIds: z.array(z.string().uuid()).min(1).max(20),
-        query: z.string().trim().min(2).max(60)
+        query: z.string().trim().min(2).max(60),
+        // Times da casa do bar (WEB-433): só clubes, sem seleção nem atleta.
+        // Ausente, a busca do torcedor de sempre.
+        clubsOnly: z.boolean().optional()
       })
     )
     .query(async ({ input }) => {
@@ -1413,7 +1416,10 @@ export const pubsRouter = router({
         .where(
           and(
             inArray(team.sportId, input.sportIds),
-            sql`${team.searchText} ~ ${wordStart}`
+            sql`${team.searchText} ~ ${wordStart}`,
+            input.clubsOnly
+              ? and(eq(team.kind, 'team'), eq(team.isNationalTeam, false))
+              : undefined
           )
         )
         .orderBy(

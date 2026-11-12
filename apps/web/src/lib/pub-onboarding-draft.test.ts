@@ -113,6 +113,20 @@ describe('rascunho do onboarding de bar', () => {
   })
 })
 
+describe('times da casa no rascunho (WEB-433)', () => {
+  it('voltam com os ids; item sem nome sai', () => {
+    const time = { id: 't1', name: 'Palmeiras', sportId: 'f' }
+    const serialized = JSON.stringify({
+      draft: { ...DRAFT, houseTeams: [time, { id: 't2' }] },
+      email: 'dona',
+      expiresAt: 9_000
+    })
+    const draft = parsePubOnboardingDraft(serialized, 'dona', 2_000)
+    expect(draft?.houseTeams).toEqual([time])
+    expect(draft?.houseTeamIds).toEqual(['t1'])
+  })
+})
+
 describe('recusa do cadastro do bar', () => {
   const recusa = (code: string, message = 'texto do servidor') =>
     Object.assign(new Error(message), { data: { code } })

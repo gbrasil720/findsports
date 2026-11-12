@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { HardShadow } from '@/components/explore'
+import { HouseTeams } from '@/components/house-teams'
 import { haptic } from '@/components/motion'
 import { usePalette } from '@/components/theme'
 import {
@@ -49,6 +50,8 @@ export default function Rotina() {
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
       <ScrollView
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
           paddingTop: insets.top + 8,
           paddingBottom: insets.bottom + 120,
@@ -170,6 +173,9 @@ export default function Rotina() {
             })}
           </View>
         </View>
+        {/* Times da casa (WEB-433), opcional: o bar já existe aqui, então
+            grava na hora, como no Meu espaço. */}
+        <HouseTeams />
         {problem ? (
           <Text style={[text(14, 'SemiBold', 1.4), { color: palette.live }]}>
             {problem}

@@ -37,6 +37,7 @@ import { JOB_NAMES, lastJobRun } from '../lib/jobs'
 import { expectedSearchPlan } from './admin-bars'
 import { listedGames } from './admin-events'
 import { houdiniIaRouter } from './houdini-ia'
+import { houdiniWeeklyGamesRouter } from './houdini-weekly-games'
 
 const DAY = 24 * 3_600_000
 const SEARCH_LIMIT = 8
@@ -131,6 +132,7 @@ async function stuckAiRuns() {
 export const houdiniRouter = router({
   /** A tela "IA": testes, gasto e limites da IA. */
   ia: houdiniIaRouter,
+  jogosDaSemana: houdiniWeeklyGamesRouter,
 
   overview: adminProcedure.query(async () => {
     const now = new Date()

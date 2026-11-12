@@ -5,7 +5,9 @@ import {
   emptyWeek,
   paragraph,
   scoreboard,
-  ticket
+  ticket,
+  weekGame,
+  weekGameRows
 } from '@findsports_oficial/auth/email-layout'
 import { sendEmail } from '@findsports_oficial/auth/verification-email'
 import { and, db, eq, sql } from '@findsports_oficial/db'
@@ -19,6 +21,11 @@ import { env } from '@findsports_oficial/env/server'
 
 import { getBarNumbers } from './commercial-analytics/queries'
 import { gameTitle } from './game-participants'
+import {
+  GAME_SUGGESTION_MAX,
+  type GameSuggestion,
+  gameSuggestionSource
+} from './game-suggestions/index'
 
 /**
  * Avisos por e-mail ao dono do bar (WEB-441, design 2b): o resumo da semana,
@@ -167,6 +174,90 @@ function blankWeek(start: Date) {
 
 /** Jogos mostrados por extenso; o resto é contado. */
 const SHOWN_GAMES = 4
+/** Outros jogos da semana em linha, depois do card. */
+const SHOWN_SUGGESTIONS = 3
+
+const numberOrDash = (n: number | null | undefined) =>
+  n === null || n === undefined ? '—' : count(n)
+
+/** Onde passa, curto: "Premiere", "ESPN · Disney+", ou a confirmar. */
+const channelsOf = (s: GameSuggestion) =>
+  s.channels?.length ? s.channels.slice(0, 2).join(' · ') : 'canal a confirmar'
+
+/**
+ * Os jogos da semana pra você (WEB-433, prancha E-depois): o card do jogo que
+ * mais combina com o bar e os outros em linha, cada um com o link que abre
+ * Jogos com ele pronto para publicar. Só com o catálogo (`featured`); sem
+ * ele, nada.
+ */
+export function weekSuggestionBlocks(input: {
+  games: GameSuggestion[]
+  neighborhood: string
+}) {
+  const featured = input.games.find((s) => s.featured && s.catalogId)
+  if (!featured) return []
+  const url = (s: GameSuggestion) =>
+    appUrl(`/admin/jogos?publicar=${encodeURIComponent(s.catalogId ?? '')}`)
+  const others = input.games.filter((s) => s !== featured && s.catalogId)
+  const shown = others.slice(0, SHOWN_SUGGESTIONS)
+  const rest = others.length - shown.length
+  const when = dateParts(new Date(featured.startsAt))
+  const bars = featured.barsInNeighborhood ?? 0
+  return [
+    weekGame({
+      head: 'Pra sua semana · o jogo que a Onside separou',
+      when: `${when.weekday} ${when.dayMonth} · ${when.time}`,
+      tag: featured.houseTeam ? 'Seu time' : undefined,
+      championship: featured.championship,
+      title: featured.title,
+      cells: [
+        [
+          numberOrDash(featured.fansInCity),
+          'torcedores dos dois times na cidade'
+        ],
+        [
+          count(bars),
+          `${bars === 1 ? 'bar' : 'bares'} de ${input.neighborhood} ${bars === 1 ? 'passa' : 'passam'}`
+        ],
+        featured.channels?.length
+          ? [featured.channels[0] ?? '', 'onde passa']
+          : ['A confirmar', 'a TV define até quinta']
+      ],
+      reason: featured.reason ? `${featured.reason}.` : undefined,
+      action: 'Publicar com telão e som',
+      url: url(featured)
+    }),
+    ...(shown.length
+      ? [
+          weekGameRows(
+            'Outros desta semana',
+            shown.map((s) => {
+              const d = dateParts(new Date(s.startsAt))
+              return {
+                weekday: d.weekday,
+                day: d.dayMonth,
+                title: s.title,
+                detail: [
+                  d.time,
+                  s.fansInCity == null
+                    ? null
+                    : `${count(s.fansInCity)} na cidade`,
+                  `${count(s.barsInNeighborhood ?? 0)} no bairro`,
+                  channelsOf(s)
+                ]
+                  .filter(Boolean)
+                  .join(' · '),
+                url: url(s)
+              }
+            }),
+            rest > 0
+              ? `+ ${rest} no painel. Cada link abre o jogo pronto para publicar.`
+              : 'Cada link abre o jogo pronto para publicar.'
+          )
+        ]
+      : [])
+  ]
+}
 
 export function createWeeklySummaryEmail(input: {
   owner: string
@@ -178,8 +269,15 @@ export function createWeeklySummaryEmail(input: {
   /** Presenças e códigos só saem para o Elite, como no painel. */
   elite: boolean
   games: Game[]
+  /** Os jogos da semana pra você (WEB-433); vazio sem o catálogo. */
+  suggestions?: GameSuggestion[]
+  neighborhood?: string
 }): Email {
   const { numbers } = input
+  const week = weekSuggestionBlocks({
+    games: input.suggestions ?? [],
+    neighborhood: input.neighborhood ?? 'seu bairro'
+  })
   const thisWeek = range(input.current.start, input.current.end)
   const shown = input.games.slice(0, SHOWN_GAMES).map((game) => ({
     game,
@@ -230,6 +328,7 @@ export function createWeeklySummaryEmail(input: {
     blocks: shown.length
       ? [
           score,
+          ...week,
           // Os jogos que o bar publicou, não sugestões.
           agenda(
             `Na sua agenda · ${thisWeek}`,
@@ -248,6 +347,7 @@ export function createWeeklySummaryEmail(input: {
         ]
       : [
           score,
+          ...week,
           blank.block,
           paragraph(
             `Nenhum jogo na agenda desta semana, ${thisWeek}. Com jogo na agenda, o bar aparece para quem procura onde assistir àquele jogo.`
@@ -381,6 +481,31 @@ const titleSql = gameTitle({
   championship: sql`e.championship`
 })
 
+/** As sugestões do bar; falhar aqui não segura o resumo, que sai sem elas. */
+async function weekSuggestionsFor(
+  row: { id: string; city: string; neighborhood: string },
+  now: Date
+) {
+  try {
+    return await gameSuggestionSource.suggest({
+      barId: row.id,
+      city: row.city,
+      neighborhood: row.neighborhood,
+      now,
+      limit: GAME_SUGGESTION_MAX
+    })
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        evt: 'bar_notice_suggestions_failed',
+        barId: row.id,
+        message: error instanceof Error ? error.message : String(error)
+      })
+    )
+    return []
+  }
+}
+
 /**
  * Os avisos da segunda (resumo e grade vazia) dos bares no ar. Fora da
  * segunda não faz nada: rodar de novo no mesmo dia não repete e-mail
@@ -400,8 +525,10 @@ export async function sendWeeklyBarNotices(now = new Date()) {
     empty_schedule: boolean
     email: string
     owner: string
+    city: string
+    neighborhood: string
   }>(sql`
-    SELECT b.id, b.name, b.plan, u.email, u.name AS owner,
+    SELECT b.id, b.name, b.plan, u.email, u.name AS owner, b.city, b.neighborhood,
       b.notice_weekly_summary AS weekly_summary,
       b.notice_empty_schedule AS empty_schedule
     FROM bar b
@@ -464,7 +591,9 @@ export async function sendWeeklyBarNotices(now = new Date()) {
                 week.start
               ),
               elite: row.plan === 'elite',
-              games: list
+              games: list,
+              suggestions: await weekSuggestionsFor(row, now),
+              neighborhood: row.neighborhood
             })
           : createEmptyScheduleEmail({ owner: row.owner, current })
       const sent = await sendOnce(

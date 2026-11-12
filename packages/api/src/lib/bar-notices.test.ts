@@ -197,3 +197,59 @@ test('jogo lotando', () => {
   expect(email.text).toMatch(/\/admin\/jogos\?jogo=jogo-7/)
   expect(email.text).toContain('Avisamos uma vez por jogo.')
 })
+
+describe('jogos da semana no resumo (WEB-433)', () => {
+  const sugestao = (n: number, extra = {}) => ({
+    key: `k${n}`,
+    title: `Casa ${n} × Fora ${n}`,
+    sportId: 'futebol',
+    championship: 'Brasileirão',
+    startsAt: '2026-10-31T21:00:00Z',
+    participantIds: [],
+    participantFreeText: null,
+    channels: ['Premiere'],
+    channelConfirmed: true,
+    fansInCity: 1240,
+    barsInNeighborhood: 0,
+    reason: 'Seria o único do bairro',
+    featured: n === 1,
+    catalogId: `w${n}`,
+    ...extra
+  })
+  const base = {
+    owner: 'Zé',
+    barName: 'Bar do Zé',
+    previous,
+    current,
+    numbers: { going: 0, validatedCodes: 0, profileViews: 3 },
+    elite: false,
+    games: [],
+    neighborhood: 'Consolação'
+  }
+
+  test('o card, três linhas e quantos ficam no painel, cada um com o link de publicar', () => {
+    const email = createWeeklySummaryEmail({
+      ...base,
+      suggestions: [1, 2, 3, 4, 5, 6].map((n) =>
+        sugestao(n, n === 1 ? { houseTeam: 'Palmeiras' } : {})
+      )
+    })
+    const html = visible(email.html)
+    expect(html).toContain('Casa 1 × Fora 1')
+    expect(html).toContain('SEU TIME')
+    expect(html).toContain('1.240')
+    expect(html).toContain('bares de Consolação passam')
+    expect(html).toContain('Publicar com telão e som →')
+    expect(html).toContain('+ 2 no painel.')
+    expect(email.html).toContain('/admin/jogos?publicar=w1')
+    expect(email.text).toContain('/admin/jogos?publicar=w4')
+  })
+
+  test('sem o catálogo, o resumo sai como antes', () => {
+    const email = createWeeklySummaryEmail({
+      ...base,
+      suggestions: [sugestao(1, { featured: undefined, catalogId: undefined })]
+    })
+    expect(email.text).not.toContain('o jogo que a Onside separou')
+  })
+})

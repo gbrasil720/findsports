@@ -34,6 +34,10 @@ import {
   team
 } from '@findsports_oficial/db/schema/platform'
 import { barRating } from '@findsports_oficial/db/schema/rating'
+import {
+  barGameDismissal,
+  weeklyGame
+} from '@findsports_oficial/db/schema/weekly-games'
 import { env } from '@findsports_oficial/env/server'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
@@ -74,9 +78,11 @@ import {
   getEventDeletionBlock,
   readEventDeletionImpact
 } from '../lib/event-deletion'
+import { readEventNumbers } from '../lib/event-numbers'
 import { byMatchOrder } from '../lib/game-participants'
 import {
   GAME_SUGGESTION_LIMIT,
+  GAME_SUGGESTION_MAX,
   gameSuggestionSource
 } from '../lib/game-suggestions'
 import { geocodeAddress } from '../lib/geocode-address'
@@ -85,6 +91,11 @@ import {
   type GameHouseOffer,
   parseHouseOfferInput
 } from '../lib/house-offer'
+import {
+  houseTeamIdsSchema,
+  readHouseTeamList,
+  replaceHouseTeams
+} from '../lib/house-teams'
 import {
   INVOICE_FIELDS,
   type InvoiceField,
@@ -1020,6 +1031,16 @@ export const pubRouter = router({
   }),
 
   /** Sinal de interesse dos jogos que ainda não acabaram; nunca a contagem. */
+  // A faixa de números do jogo publicado (WEB-433, `lib/event-numbers.ts`).
+  getMyEventNumbers: pubProcedure.query(async ({ ctx }) => {
+    const existingBar = await getBarByUserId(ctx.session.user.id)
+    return readEventNumbers({
+      barId: existingBar.id,
+      city: existingBar.city,
+      neighborhood: existingBar.neighborhood
+    })
+  }),
+
   getMyInterest: pubProcedure.query(async ({ ctx }) => {
     const existingBar = await getOwnBar(ctx.session.user.id)
     return readInterestSignal(existingBar.id)
@@ -1037,15 +1058,60 @@ export const pubRouter = router({
    * toque é um `createEvent` com o que vem aqui; telão e som ficam de fora e
    * herdam das características do bar (WEB-399).
    */
-  gameSuggestions: pubProcedure.query(async ({ ctx }) => {
+  // Sem entrada, as 6 de sempre; a tela dos jogos da semana pede até 10.
+  gameSuggestions: pubProcedure
+    .input(
+      z
+        .object({ limit: z.number().int().min(1).max(GAME_SUGGESTION_MAX) })
+        .optional()
+    )
+    .query(async ({ ctx, input }) => {
+      const existingBar = await getBarByUserId(ctx.session.user.id)
+      return gameSuggestionSource.suggest({
+        barId: existingBar.id,
+        city: existingBar.city,
+        neighborhood: existingBar.neighborhood,
+        now: new Date(),
+        limit: input?.limit ?? GAME_SUGGESTION_LIMIT
+      })
+    }),
+
+  // "Times da casa" (WEB-433): Meu espaço, no web e no app.
+  getMyHouseTeams: pubProcedure.query(async ({ ctx }) => {
     const existingBar = await getBarByUserId(ctx.session.user.id)
-    return gameSuggestionSource.suggest({
-      barId: existingBar.id,
-      city: existingBar.city,
-      now: new Date(),
-      limit: GAME_SUGGESTION_LIMIT
-    })
+    return readHouseTeamList(existingBar.id)
   }),
+
+  updateHouseTeams: pubProcedure
+    .input(z.object({ teamIds: houseTeamIdsSchema }))
+    .mutation(async ({ ctx, input }) => {
+      const existingBar = await getBarByUserId(ctx.session.user.id)
+      await db.transaction((tx) =>
+        replaceHouseTeams(tx, existingBar.id, input.teamIds)
+      )
+      return { success: true }
+    }),
+
+  // "Não passo esse" (WEB-433): o jogo do catálogo não volta para este bar.
+  dismissGameSuggestion: pubProcedure
+    .input(z.object({ catalogId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const existingBar = await getBarByUserId(ctx.session.user.id)
+      const [game] = await db
+        .select({ id: weeklyGame.id })
+        .from(weeklyGame)
+        .where(eq(weeklyGame.id, input.catalogId))
+      if (!game)
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Esse jogo não está mais na lista.'
+        })
+      await db
+        .insert(barGameDismissal)
+        .values({ barId: existingBar.id, weeklyGameId: game.id })
+        .onConflictDoNothing()
+      return { ok: true as const }
+    }),
 
   createEvent: pubProcedure
     .input(
@@ -1085,7 +1151,7 @@ export const pubRouter = router({
       const offer = await parseGameHouseOffer(userId, input)
       await assertCanCloseAttendance(userId, input)
       const draftBar = input.draft ? await getOwnBar(userId) : null
-      await db.transaction(async (tx) => {
+      const eventId = await db.transaction(async (tx) => {
         const lockedBar = draftBar ?? (await lockBarForPublishing(tx, userId))
 
         await assertTeamsMatchSport(
@@ -1133,9 +1199,11 @@ export const pubRouter = router({
             )
             .onConflictDoNothing()
         }
+        return newEvent.id
       })
 
-      return { success: true }
+      // O id deixa "Editar o jogo" e "Desfazer" no card publicado (WEB-433).
+      return { success: true, eventId }
     }),
 
   updateEvent: pubProcedure

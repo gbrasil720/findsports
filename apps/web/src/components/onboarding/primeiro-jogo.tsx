@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Sparkle } from '@/components/landing/v3/icons'
+import { SemanaPraVoce } from '@/components/painel/semana-pra-voce'
 import { SugestoesDeJogo } from '@/components/painel/sugestoes-de-jogo'
 
 /*
@@ -10,19 +11,20 @@ import { SugestoesDeJogo } from '@/components/painel/sugestoes-de-jogo'
  * limite do Starter (`countedTowardsLimit`, no servidor).
  */
 export function PrimeiroJogo({
-  barName,
+  bar,
   heading,
   onPublicado,
   nav
 }: {
-  barName: string
+  /** Com cidade e bairro: os números do jogo da semana falam deles. */
+  bar: { name: string; city: string; neighborhood: string }
   heading: (content: ReactNode) => ReactNode
   onPublicado: () => void
   nav: ReactNode
 }) {
   return (
     <>
-      <span className="ob-k">{barName} está no ar</span>
+      <span className="ob-k">{bar.name} está no ar</span>
       {heading(
         <>
           Seu primeiro <span className="hl">jogo</span>
@@ -41,17 +43,26 @@ export function PrimeiroJogo({
           de jogos de nenhum plano.
         </span>
       </div>
-      <SugestoesDeJogo
-        className="ob-sgj"
-        title={
-          <h2 className="ob-k">Jogos que outros bares perto já marcaram</h2>
-        }
-        hint={
-          <p className="ob-note">
-            Um toque publica, com o telão e o som do bar. Dá para editar depois.
-          </p>
-        }
+      {/* Com o catálogo, o jogo da semana (WEB-433); sem, os bares perto. */}
+      <SemanaPraVoce
+        variant="primeiro"
+        bar={bar}
         onCreated={onPublicado}
+        fallback={
+          <SugestoesDeJogo
+            className="ob-sgj"
+            title={
+              <h2 className="ob-k">Jogos que outros bares perto já marcaram</h2>
+            }
+            hint={
+              <p className="ob-note">
+                Um toque publica, com o telão e o som do bar. Dá para editar
+                depois.
+              </p>
+            }
+            onCreated={onPublicado}
+          />
+        }
       />
       {nav}
     </>

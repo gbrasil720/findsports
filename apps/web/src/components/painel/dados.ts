@@ -62,6 +62,16 @@ export function useInterest() {
   }
 }
 
+/** A faixa de números de cada jogo publicado (WEB-433), por id. */
+export function useEventNumbers() {
+  const trpc = useTRPC()
+  const { data } = useQuery({
+    ...trpc.pub.getMyEventNumbers.queryOptions(),
+    meta: { errorToast: false }
+  })
+  return new Map((data ?? []).map((row) => [row.eventId, row]))
+}
+
 export function interestLabel(ratio: number): string {
   return `Interesse: ${ratio.toLocaleString('pt-BR')}x a média deste bar`
 }

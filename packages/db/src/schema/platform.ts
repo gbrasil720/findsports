@@ -585,6 +585,28 @@ export const userFavoriteBars = pgTable(
   ]
 )
 
+/**
+ * "Times da casa" (WEB-433): os times que o bar escolhe, opcional. Pesam
+ * nas sugestões dos jogos da semana e dão o "Seu time" no card.
+ */
+export const barTeam = pgTable(
+  'bar_team',
+  {
+    barId: text('bar_id')
+      .notNull()
+      .references(() => bar.id, { onDelete: 'cascade' }),
+    teamId: text('team_id')
+      .notNull()
+      .references(() => team.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at').defaultNow().notNull()
+  },
+  (table) => [
+    primaryKey({ columns: [table.barId, table.teamId] }),
+    // A PK começa por bar_id; cascatear a remoção de um time precisa deste.
+    index('bar_team_teamId_idx').on(table.teamId)
+  ]
+)
+
 export const subscription = pgTable('subscription', {
   id: text('id')
     .primaryKey()
