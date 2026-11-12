@@ -1,8 +1,12 @@
 import { PLAN_NAMES } from '@findsports_oficial/api/lib/plan-limits'
 import type { SubscriptionPlan } from '@findsports_oficial/db'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { type ReactNode, useState } from 'react'
+import {
+  PaymentChoiceDialog,
+  type PaymentMethod
+} from '@/components/billing/payment-choice'
 import { DowngradeConfirmDialog } from '@/components/billing/plan-change'
 import { ReactivateSubscriptionButton } from '@/components/billing/reactivate-subscription-button'
 import { PubObShell } from '@/components/onboarding/pub-ob-shell'
@@ -249,7 +253,55 @@ function PlanSelection() {
     to: SubscriptionPlan
   } | null>(null)
   const [testing, setTesting] = useState<SubscriptionPlan | null>(null)
+  // "Como você quer pagar?": o plano escolhido, antes do cartão ou do Pix.
+  const [choosing, setChoosing] = useState<SubscriptionPlan | null>(null)
+  const [payError, setPayError] = useState<string | null>(null)
   const queryClient = useQueryClient()
+  const pixAvailable = Boolean(
+    useQuery({
+      ...trpc.pub.getPaymentMethods.queryOptions(),
+      meta: { errorToast: false }
+    }).data?.pix
+  )
+  const startPix = useMutation(
+    trpc.pub.startPixCheckout.mutationOptions({
+      onMutate: ({ plan }) => {
+        setPayError(null)
+        analytics.checkoutStarted(plan)
+        markCheckoutIntent(plan)
+      },
+      // A URL é da AbacatePay: daqui o navegador sai, e o botão segue em
+      // "Abrindo…" até a página trocar.
+      onSuccess: ({ url }) => {
+        window.location.href = url
+      },
+      onError: (pixError) =>
+        setPayError(
+          pixError.message ||
+            'Não foi possível abrir o Pix agora. Tente de novo.'
+        )
+    })
+  )
+
+  // Pix no fim do teste: só grava a escolha. O painel mostra o aviso e o
+  // botão de autorizar, e é para lá que o dono vai.
+  const navigate = useNavigate()
+  const schedulePix = useMutation(
+    trpc.pub.schedulePixAfterTrial.mutationOptions({
+      onMutate: () => setPayError(null),
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({
+          queryKey: trpc.pub.getMySubscription.queryKey()
+        })
+        await navigate({ to: '/admin/billing' })
+      },
+      onError: (scheduleError) =>
+        setPayError(
+          scheduleError.message ||
+            'Não foi possível guardar a escolha agora. Tente de novo.'
+        )
+    })
+  )
 
   const subscriptionQuery = useQuery({
     ...trpc.pub.getMySubscription.queryOptions(),
@@ -352,8 +404,26 @@ function PlanSelection() {
     })
   )
 
+  const onPixSubscription =
+    subscription?.provider === 'abacatepay' && hasSubscription
+  // Contratar passa pela escolha da forma de pagamento quando o Pix está
+  // ligado: quem ainda não assina e quem já paga por Pix (a troca de plano
+  // no Pix é uma autorização nova). A troca no cartão segue no portal.
+  const contract = (plan: SubscriptionPlan) => {
+    if (pixAvailable && (!hasSubscription || onPixSubscription)) {
+      setPayError(null)
+      setChoosing(plan)
+      return
+    }
+    void handleCheckout(plan)
+  }
+
   const busy =
-    loading !== null || trialPlan.isPending || subscriptionQuery.isLoading
+    loading !== null ||
+    trialPlan.isPending ||
+    subscriptionQuery.isLoading ||
+    startPix.isPending ||
+    schedulePix.isPending
   const goingDown = (to: SubscriptionPlan) =>
     currentPlan !== null && isDowngrade(currentPlan, to)
   // Os jogos do bar já estão carregados quando a confirmação de plano menor
@@ -413,14 +483,14 @@ function PlanSelection() {
           : `+${formatPlanPrice(diff)}/mês.${earnsCredit ? ' A diferença deste mês sai proporcional.' : ''}`,
         onClick: down
           ? () => setConfirming({ kind: 'checkout', to: plan.id })
-          : () => void handleCheckout(plan.id)
+          : () => contract(plan.id)
       }
     }
     return {
       label: checkoutLabel(plan.id),
       tone: plan.id === defaultPlan ? 'acid' : 'ghost',
       disabled: busy,
-      onClick: () => void handleCheckout(plan.id)
+      onClick: () => contract(plan.id)
     }
   }
 
@@ -585,12 +655,15 @@ function PlanSelection() {
           </>
         ) : null}
         <span className="pl-lg">
-          Contratar agora não antecipa nada: a primeira cobrança é em{' '}
+          No cartão, contratar agora não antecipa nada: a primeira cobrança é em{' '}
           {firstCharge}.
+          {pixAvailable
+            ? subscription.pixAfterTrialAt
+              ? ' Você escolheu o Pix: a gente avisa perto do fim para autorizar.'
+              : ' No Pix também: a autorização é pedida perto do fim.'
+            : ''}
         </span>
-        <span className="pl-sm">
-          Primeira cobrança só em {firstCharge}, se você contratar.
-        </span>
+        <span className="pl-sm">Primeira cobrança só em {firstCharge}.</span>
       </>
     )
     primary = (
@@ -598,7 +671,7 @@ function PlanSelection() {
         type="button"
         className="btn btn-acid"
         disabled={busy}
-        onClick={() => void handleCheckout(subscription.plan)}
+        onClick={() => contract(subscription.plan)}
       >
         {checkoutLabel(subscription.plan)}
       </button>
@@ -642,7 +715,7 @@ function PlanSelection() {
         type="button"
         className="btn btn-acid"
         disabled={busy}
-        onClick={() => void handleCheckout(defaultPlan)}
+        onClick={() => contract(defaultPlan)}
       >
         {checkoutLabel(defaultPlan)}
       </button>
@@ -791,6 +864,51 @@ function PlanSelection() {
         </div>
       </div>
 
+      {choosing ? (
+        <PaymentChoiceDialog
+          plan={choosing}
+          chargeReais={
+            planChargeForShowcase(
+              getPlan(choosing),
+              founderCouponAvailable,
+              false
+            )?.chargeReais ?? null
+          }
+          listReais={
+            planChargeForShowcase(
+              getPlan(choosing),
+              founderCouponAvailable,
+              false
+            )?.listReais ?? null
+          }
+          trialEnd={
+            onTrial && subscription?.currentPeriodEnd
+              ? subscription.currentPeriodEnd
+              : null
+          }
+          pixPlanChange={
+            onPixSubscription && currentPlan && currentPlan !== choosing
+              ? currentPlan
+              : null
+          }
+          pending={
+            startPix.isPending || startPix.isSuccess || schedulePix.isPending
+              ? 'pix'
+              : loading
+                ? 'card'
+                : null
+          }
+          error={payError}
+          onCancel={() => setChoosing(null)}
+          onConfirm={(method: PaymentMethod, timing) => {
+            if (method === 'pix' && timing === 'trial_end')
+              schedulePix.mutate({ plan: choosing })
+            else if (method === 'pix') startPix.mutate({ plan: choosing })
+            else void handleCheckout(choosing)
+          }}
+        />
+      ) : null}
+
       {confirming && currentPlan ? (
         <DowngradeConfirmDialog
           from={currentPlan}
@@ -805,7 +923,7 @@ function PlanSelection() {
             const { kind, to } = confirming
             setConfirming(null)
             if (kind === 'trial') trialPlan.mutate({ plan: to })
-            else void handleCheckout(to)
+            else contract(to)
           }}
         />
       ) : null}
