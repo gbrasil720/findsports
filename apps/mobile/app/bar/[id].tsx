@@ -416,6 +416,7 @@ export function BarDetail({
   // como ação da resposta.
   const onRoute = () => {
     fromAi('route')
+    if (fan) trackCommercialEvent({ pubId: id, type: 'directions_opened' })
   }
   useEffect(() => {
     if (loaded && fan) trackCommercialEvent({ pubId: id, type: 'profile_view' })
