@@ -138,3 +138,62 @@ export function cancelSubscription(id: string): Promise<AbacateSubscription> {
   })
 }
 
+// ── Configuração da conta: usado por `bun run pix:check` e `pix:setup`. ──
+
+export type AbacateWebhook = {
+  id: string
+  name: string
+  endpoint: string
+  events: string[]
+  devMode: boolean
+}
+
+export type AbacateProduct = {
+  id: string
+  externalId: string | null
+  price: number
+  currency: string
+  cycle: string | null
+  status: string
+}
+
+export function listWebhooks(): Promise<AbacateWebhook[]> {
+  return call<AbacateWebhook[]>('/webhooks/list')
+}
+
+/** O segredo só existe aqui: a API não o devolve depois. */
+export function createWebhook(input: {
+  name: string
+  endpoint: string
+  secret: string
+  events: string[]
+}): Promise<AbacateWebhook> {
+  return call<AbacateWebhook>('/webhooks/create', {
+    method: 'POST',
+    body: input
+  })
+}
+
+export function deleteWebhook(id: string): Promise<unknown> {
+  return call(`/webhooks/delete?id=${encodeURIComponent(id)}`, {
+    method: 'POST'
+  })
+}
+
+export function getProduct(externalId: string): Promise<AbacateProduct> {
+  return call<AbacateProduct>(
+    `/products/get?externalId=${encodeURIComponent(externalId)}`
+  )
+}
+
+export function deleteCustomer(id: string): Promise<unknown> {
+  return call(`/customers/delete?id=${encodeURIComponent(id)}`, {
+    method: 'POST'
+  })
+}
+
+export function deleteSubscriptionCheckout(id: string): Promise<unknown> {
+  return call(`/subscriptions/checkouts/delete?id=${encodeURIComponent(id)}`, {
+    method: 'POST'
+  })
+}

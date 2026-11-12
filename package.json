@@ -42,6 +42,8 @@
     "db:seed:sports": "turbo -F @findsports_oficial/db db:seed:sports",
     "db:catalog:sync": "cd packages/db && NODE_ENV=${NODE_ENV:-development} bun run src/catalog/sync.ts",
     "catalog:propose": "cd packages/db && bun run src/catalog/propose.ts",
+    "pix:check": "cd apps/web && bun run ../../packages/auth/scripts/pix.ts check",
+    "pix:setup": "cd apps/web && bun run ../../packages/auth/scripts/pix.ts setup",
     "check": "biome check . && bun scripts/check-onside-classes.ts",
     "fix": "biome check --write .",
     "prepare": "git config core.hooksPath .githooks || true"
