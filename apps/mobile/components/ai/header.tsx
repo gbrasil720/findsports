@@ -10,16 +10,9 @@ import Animated, {
   withTiming
 } from 'react-native-reanimated'
 import { SWAP } from '@/components/motion'
-import {
-  ACID,
-  Icon,
-  INK,
-  LIVE,
-  MAX_FONT_SCALE,
-  Text,
-  text
-} from '@/components/ui'
+import { ACID, Icon, INK, MAX_FONT_SCALE, Text, text } from '@/components/ui'
 import { AiIcon } from './icons'
+import { MascotStill } from './mascot'
 import type { AiPalette } from './theme'
 
 /*
@@ -49,7 +42,7 @@ export function AiHeader({
       <View
         style={[styles.tile, palette.dark && { backgroundColor: '#26261f' }]}
       >
-        <Icon name="sparkle" size={22} color={ACID} accent={LIVE} />
+        <MascotStill size={36} />
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={[text(17, 'Bold', 1.3), { color: palette.ink }]}>
