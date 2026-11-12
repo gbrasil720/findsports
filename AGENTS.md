@@ -681,7 +681,8 @@ não faz nada. Método e números do protótipo em `docs/web-433-prototipo.md`:
   (`classic_rule`, versão ativa; par de times por `team.slug`, em qualquer ordem, ou o
   campeonato) sai com `classic` (a etiqueta vermelha "Clássico" no card do web, do app e
   do e-mail) e ganha +4 no `rank.ts` (acima do histórico de um time, abaixo do time da
-  casa). Par novo é versão nova de `classic_rule`, por migration.
+  casa). Par novo é versão nova de `classic_rule`, por migration (v2: 0093, decisão do
+  dono em 12/11/2026; a busca lê sempre a maior versão).
 - **Telas** (canvas "Jogos da semana pra você"): `SemanaPraVoce`
   (`components/painel/semana-pra-voce.tsx`, CSS `semana.css`) em Jogos, Hoje e "Seu
   primeiro jogo"; no app, `components/week-games.tsx` (carrossel em Hoje e Jogos, card e
