@@ -25,6 +25,7 @@
       "!**/worker-configuration.d.ts",
       "!apps/web/public/map",
       "!apps/mobile/assets/medal",
+      "!apps/mobile/assets/mascot",
       "!apps/web/public/landing/v3/led.json",
       "!apps/web/public/landing/v3/medalha.html",
       "!docs/design",
