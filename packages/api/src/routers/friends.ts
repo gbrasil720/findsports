@@ -1,3 +1,4 @@
+import { runInBackground } from '@findsports_oficial/auth/background'
 import { and, db, eq, isNull, sql } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { friendCall, friendship } from '@findsports_oficial/db/schema/social'
@@ -24,6 +25,7 @@ import {
   USERNAME_PATTERN
 } from '../lib/friends'
 import { readInvitePreview } from '../lib/invite-preview'
+import { pushCallAccepted } from '../lib/push'
 import { readCrowns } from '../lib/ranking-read'
 import { incrementWindow } from '../lib/rate-limit-store'
 import { visit } from '../lib/visits'
@@ -330,7 +332,7 @@ export const friendsRouter = router({
       // Chamado e presença numa transação: presença recusada (jogo começou,
       // bar saiu do ar) deixa o chamado pendente, sem "vai também" para quem
       // chamou nem por um instante.
-      return db.transaction(async (tx) => {
+      const answered = await db.transaction(async (tx) => {
         // Responde só o que ainda está pendente, numa linha só: dois toques
         // juntos não respondem duas vezes.
         const [call] = await tx
@@ -365,6 +367,10 @@ export const friendsRouter = router({
           code: marked.code
         }
       })
+      // "Marina vai também" para quem chamou (WEB-429), depois do commit.
+      if (answered.status === 'going')
+        runInBackground(pushCallAccepted(input.callId))
+      return answered
     }),
 
   /** Busca por nome ou `@` (11b): todos, amigos de amigos ou da sua cidade. */

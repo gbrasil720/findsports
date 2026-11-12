@@ -1,3 +1,4 @@
+import { runInBackground } from '@findsports_oficial/auth/background'
 import { and, db, eq, or, sql } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { friendCall } from '@findsports_oficial/db/schema/social'
@@ -5,12 +6,13 @@ import { TRPCError } from '@trpc/server'
 import { attendableGame, closedListError } from './attendance'
 import { readFriendship } from './friends'
 import { participantNames } from './game-participants'
+import { pushFriendCall } from './push'
 import { utcIso } from './utc-timestamp'
 
 /*
  * Chamado de amigo ("Chamar Marina", Rodada 24). Quem cria é `ai.confirm`
  * (a IA propõe, o torcedor confirma); quem responde é `friends.respondCall`;
- * o card mora em Avisos (`friends.notices`). Sem push (WEB-416).
+ * o card mora em Avisos (`friends.notices`) e vai por push (WEB-416, WEB-429).
  */
 
 export type FriendCallResult =
@@ -45,6 +47,8 @@ export async function createFriendCall(input: {
     .onConflictDoNothing()
     .returning({ id: friendCall.id })
   if (!created) return { ok: false, reason: 'duplicate' }
+  // A notificação da 24g sai depois da resposta (WEB-429).
+  runInBackground(pushFriendCall(created.id))
   const [friend] = await db
     .select({ name: user.name })
     .from(user)
