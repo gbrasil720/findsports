@@ -1020,7 +1020,7 @@ invente layout que o projeto não tem.
   dígitos em `components/code-boxes.tsx`, códigos de recuperação; ligada, desliga com a
   senha). Ligar troca a sessão: a lista de aparelhos é relida. O `@usuário`
   dos amigos se troca na Conta. Avisos segue o desenho com os controles desligados e o
-  aviso de "em breve" (não há notificação); em Privacidade, "Onde você foi" funciona
+  aviso de "em breve" (o push existe, mas sem preferência por tipo: ver "Push"); em Privacidade, "Onde você foi" funciona
   (quem vê os bares e jogos, quem pode te adicionar), "Aparecer no ranking global" grava
   `user.ranking_global` (WEB-465), comunidades seguem "em breve", e "Baixar meus dados" pede o arquivo (`account.requestExport`, WEB-418): o
   servidor monta o JSON (perfil, preferências, favoritos, jogos, avaliações, amigos e
@@ -1080,8 +1080,8 @@ invente layout que o projeto não tem.
   também" passa por `setAttendance` (código no Elite), "Agora não" não avisa quem chamou. Desfazer ou
   recusar amizade apaga os chamados da dupla. Em Avisos (`CallCard` em `app/avisos.tsx`),
   aba Amigos e Tudo: `calls` (pendente some quando o jogo começa) e `callsAccepted` ("Marina
-  vai também"); o "Vou também" sai dos dois lados se a presença for desmarcada. A frase do design ("o Gabriel foi avisado") vai sem gênero. A 24g (notificação)
-  não entra: não há push (WEB-416).
+  vai também"); o "Vou também" sai dos dois lados se a presença for desmarcada. A frase do design ("o Gabriel foi avisado") vai sem gênero. A 24g é push
+  (WEB-429, ver "Push"): o chamado vai a quem foi chamado e o "Vou também" a quem chamou.
 - **Bares pra você (08 Sugestões, Rodadas 22 e 23, WEB-425):** `app/bares-pra-voce.tsx`
   (tela cheia, pelo item do menu "Você" com o selo "N novos"), `app/por-que.tsx` (22c, folha),
   baralho e card em `components/suggestions.tsx`, frases em `lib/suggestions.ts`. **Uma rodada de
@@ -1090,7 +1090,8 @@ invente layout que o projeto não tem.
   (`lib/recommendations/round.ts`) e não muda no dia. O ranking tem 5 posições (`count`; o perfil
   do web segue com 3). Curti = favorito + `high_intent`; Passo = `dismiss`, 30 dias; Voltar =
   `recommendations.undo` (sem resfriamento). Avisar (`bar_game_alert`, bar + esporte ou time) e
-  Lembrar (`game_reminder`) viram avisos em Avisos por `recommendations.notices`; sem push.
+  Lembrar (`game_reminder`) viram avisos em Avisos por `recommendations.notices`; sem push
+  ainda (só o "3 h antes" da busca com IA sai por push, ver "Push").
   "Vou assistir" do card manda `runId` para `attendance.set` (atribuição `attend`). O card é escuro
   nos dois temas, como no design. As frases só usam números do servidor (`facts`); a nota pública
   respeita o piso e o `app_config`. Os nomes dos amigos no "Combinou" (23d) ainda não existem
@@ -1126,7 +1127,43 @@ invente layout que o projeto não tem.
     (`friends.notices`), pedido recebido (Aceitar e Recusar no cartão), pedido aceito
     (30 dias) e o chamado de amigo (Rodada 24). No topo, "Seu jogo de hoje" com os amigos que vão (`todayGoing`). As abas
     são as do design, Tudo, Jogos e Amigos; conquista só em Tudo. Ranking e comunidades
-    ainda não existem. "Lido" fica no aparelho. Não há notificação no celular.
+    ainda não existem. "Lido" fica no aparelho. Por push, só o chamado de amigo e o
+    lembrete "3 h antes" (ver "Push").
+- **Push (WEB-416, WEB-429):** servidor em `packages/api/src/lib/push.ts`, pelo serviço da
+  Expo (`exp.host/--/api/v2/push/send`, sem SDK). O app registra o token em `push.register`
+  (tabela `push_token`, chave o token, **presa à sessão**: sair da conta, revogar o aparelho
+  em Sessões ou trocar a sessão no 2FA apaga a linha em cascata, e o app registra de novo
+  quando a sessão muda; permissão negada nos ajustes do celular chama `push.unregister`). Token
+  que a Expo dá como `DeviceNotRegistered` sai no envio; os recibos não são lidos. Gatilhos
+  hoje: o chamado de amigo (24g, em `createFriendCall`, com a categoria `friend_call`), "Marina
+  vai também" (`friends.respondCall` com "Vou também", depois do commit; "Agora não" não avisa
+  ninguém) e o "Me lembrar 3 h antes" (`pushDueReminders`, cron `*/15 * * * *` do Worker,
+  `PUSH_CRON`; uma vez por lembrete, `game_reminder.pushed_at`; pedido já dentro da janela não
+  sai). Tudo sai depois da resposta (`runInBackground`) e falha só vai ao log (`push_failed`).
+  **Ainda só em Avisos, sem push:** "Lembrar" de Bares pra você (dia do jogo, falta decidir a
+  hora), "Avisar" (`bar_game_alert`, quando o bar publica), oferta liberada, jogo dos seus times
+  perto, conquista nova e pedido de amizade. Não há preferência de avisos no servidor: os
+  controles da aba Avisos das Configurações seguem desligados e todo push sai para quem deu a
+  permissão. No preview, `PUSH_DELIVERY=console` (o banco é cópia de produção) põe a mensagem
+  no log; `EXPO_ACCESS_TOKEN` só se o projeto da Expo ligar o envio protegido. Testes:
+  `push.integration.test.ts` dubla a Expo pelo `fetch`.
+  No app, `lib/push.ts`: no Expo Go não carrega nada (o módulo lança no Android e avisa no
+  iOS). A permissão é pedida uma vez, logo depois de uma ação que gera aviso (lembrar, avisar,
+  pedir ou aceitar amizade, o "Confirmar" da IA), nunca na abertura. `PushResponder` (layout
+  raiz) registra o aparelho a cada sessão e abre `data.url` da notificação tocada (Avisos para o
+  chamado, a página do bar para o lembrete). Os botões da 24g: "Vou também" e "Agora não"
+  respondem sem abrir o app (`friends.respondCall`; já respondido conta como feito, outra
+  recusa vira notificação local com a frase do servidor), "Ver o bar" abre a página. Com o app
+  fechado, só o Android roda o botão, pela tarefa do `expo-task-manager`, definida em
+  `apps/mobile/index.ts` (a entrada do app, que importa `lib/push` antes do expo-router).
+  **O que falta do dono:** (1) `eas init` e `extra.eas.projectId` no `app.json` (sem ele o app
+  não pede token); (2) Android: projeto no Firebase com o app `sh.onside.app`, o
+  `google-services.json` em `apps/mobile/` (fora do git; ou `GOOGLE_SERVICES_JSON` com o
+  caminho) e a chave da conta de serviço do FCM V1 subida no projeto da Expo (`eas
+  credentials`), depois `bunx expo run:android`; (3) iOS: conta paga da Apple para a chave
+  APNs. Até lá, `app.config.ts` tira o `aps-environment` que o `expo-notifications` liga,
+  senão a equipe pessoal não assina o build no aparelho; com a conta, build com `IOS_PUSH=1`.
+  Expo Go não recebe push remoto: só build de desenvolvimento.
 - **Pins do mapa (Rodada 21, família Gota, 21a, escolhida pelo dono em 20/10/2026):**
   gota com a ponta reta da marca (`MapDrop` em `components/explore.tsx`): tinta com copo,
   vermelha com telão e halo na ponta se ao vivo, acid com estrela se Elite. Só o ao vivo
