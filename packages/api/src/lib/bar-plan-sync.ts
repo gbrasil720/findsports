@@ -52,7 +52,27 @@ export async function reconcileBarPlans(): Promise<{
       )
     RETURNING b.id
   `)
-  const counts = { updated: result.rows.length, offAir: expired.rows.length }
+  // Pix cancelado pelo painel: a AbacatePay só cancela na hora,
+  // então o fim do mês pago é nosso. Passado o `cancel_at`, a assinatura
+  // acaba e o bar sai do ar, como o `canceled` do Stripe.
+  const pixEnded = await db.execute(sql`
+    WITH ended AS (
+      UPDATE subscription s
+      SET status = 'cancelled', cancel_at = NULL
+      WHERE s.provider = 'abacatepay'
+        AND s.status IN ('active', 'past_due')
+        AND s.cancel_at IS NOT NULL
+        AND s.cancel_at <= (now() AT TIME ZONE 'UTC')
+      RETURNING s.bar_id
+    )
+    UPDATE bar b SET is_active = false
+    FROM ended WHERE ended.bar_id = b.id
+    RETURNING b.id
+  `)
+  const counts = {
+    updated: result.rows.length,
+    offAir: expired.rows.length + pixEnded.rows.length
+  }
   console.log(
     JSON.stringify({ evt: 'bar_plan_reconcile', ok: true, ...counts })
   )
