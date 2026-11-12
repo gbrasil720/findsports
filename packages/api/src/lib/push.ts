@@ -188,9 +188,13 @@ export async function pushCallAccepted(callId: string) {
  * chegou na janela sai uma vez (`pushed_at`). O de antes de a janela abrir
  * só; o pedido já dentro dela não, porque a pessoa acabou de pedir e
  * Avisos já o mostra. Marca antes de mandar: falha no envio não repete.
- * Roda no cron de 15 min do Worker (`PUSH_CRON`).
+ * Roda no cron de 15 min do Worker (`PUSH_CRON`): o diário não serve, o
+ * lembrete é 3 h antes do jogo. Sem `PUSH_ENABLED=1` volta antes de qualquer
+ * consulta: o cron não acorda o Neon a cada 15 min enquanto nenhum aparelho
+ * pode receber (sem `projectId` do EAS e Firebase não há token).
  */
 export async function pushDueReminders(now?: Date) {
+  if (process.env.PUSH_ENABLED !== '1') return { due: 0, sent: 0 }
   const due = await db.execute<
     GameRow & { user_id: string; bar_id: string }
   >(sql`

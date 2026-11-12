@@ -32,3 +32,7 @@ FOOTBALL_DATA_API_KEY=
 # Push do app (WEB-416), opcional: só se o projeto da Expo ligar o envio
 # protegido (Enhanced Security for Push Notifications).
 EXPO_ACCESS_TOKEN=
+# PUSH_ENABLED=1 liga o lembrete "3 h antes" do cron de 15 min. Desligada, o
+# cron não toca no banco (não acorda o Neon). Ligar junto com o EAS/Firebase
+# (AGENTS.md › Push); é var, não segredo: em produção, nas `vars` do wrangler.
+# PUSH_ENABLED=1
