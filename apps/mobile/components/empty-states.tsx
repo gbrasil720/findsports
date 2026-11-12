@@ -630,7 +630,6 @@ export type NoticeToggle = {
   icon: 'tv' | 'people' | 'crew'
   title: string
   detail?: string
-  on: boolean
 }
 
 /** Avisos sem nada (`eNotif`): o sino dormindo e o que avisa. */
@@ -669,8 +668,16 @@ export function NoticesEmpty({
         accent="em dia."
         body="Quando um bar perto publicar jogo dos seus times, ou alguém te adicionar, aparece aqui."
       />
-      <Pressable accessibilityRole="button" onPress={onToggles}>
-        <Card>
+      {/* Não há preferência de avisos no servidor: os interruptores do
+          design ficam desligados e apagados, com o "em breve" das
+          Configurações (WEB-494). */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Ajustes dos avisos, em breve"
+        onPress={onToggles}
+        style={{ gap: 8 }}
+      >
+        <Card style={{ opacity: 0.5 }}>
           <View style={{ paddingHorizontal: 14 }}>
             {toggles.map((row, index) => (
               <View
@@ -708,7 +715,7 @@ export function NoticesEmpty({
                   ) : null}
                 </View>
                 <Toggle
-                  on={row.on}
+                  on={false}
                   off={palette.mark}
                   track={palette.dark ? ACID : INK}
                   knob={palette.dark ? INK : ACID}
@@ -717,6 +724,9 @@ export function NoticesEmpty({
             ))}
           </View>
         </Card>
+        <Text style={[text(13, 'Regular', 1.35), { color: palette.muted }]}>
+          Avisos no celular chegam em breve.
+        </Text>
       </Pressable>
     </View>
   )
