@@ -4,11 +4,13 @@
  * 35% mais lento que a média (e o PR espera o mais lento).
  *
  *   bun shard.ts 3 8                 # arquivos do shard 3 de 8
- *   bun shard.ts --record report.json  # regrava durations.json
+ *   bun shard.ts --record a.json b.json  # regrava durations.json
  *
- * Arquivo sem medida entra com a mediana. Para medir de novo:
- * `PLAYWRIGHT_JSON_OUTPUT_NAME=report.json bunx playwright test
- * --project=desktop --project=mobile --reporter=json` e o `--record`.
+ * Arquivo sem medida entra com a mediana. Para medir de novo, com os tempos
+ * do CI (cada shard publica o relatório JSON como artifact `e2e-durations-N`):
+ *
+ *   gh run download <run> -p 'e2e-durations-*' -D /tmp/d
+ *   bun shard.ts --record /tmp/d/e2e-durations-?/durations-report.json
  */
 import { Glob } from 'bun'
 
@@ -55,9 +57,11 @@ export function record(suites: Suite[], into: Durations = {}) {
 }
 
 if (import.meta.main) {
-  const [a, b] = process.argv.slice(2)
+  const [a, b, ...more] = process.argv.slice(2)
   if (a === '--record' && b) {
-    const measured = record((await Bun.file(b).json()).suites)
+    const measured: Durations = {}
+    for (const report of [b, ...more])
+      record((await Bun.file(report).json()).suites, measured)
     const rounded = Object.fromEntries(
       Object.entries(measured)
         .sort(([x], [y]) => x.localeCompare(y))

@@ -2,3 +2,4 @@
 .outbox/
 test-results/
 playwright-report/
+durations-report.json

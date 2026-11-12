@@ -148,6 +148,13 @@ jobs:
           bunx playwright test --project=desktop-serial --no-deps
           bunx playwright test --project=mobile-serial --no-deps
         working-directory: apps/e2e
+      # Tempo de cada arquivo neste shard, para `apps/e2e/shard.ts --record`.
+      - uses: actions/upload-artifact@v4
+        if: steps.scope.outputs.web == 'true' && matrix.part != 'serial' && !cancelled()
+        with:
+          name: e2e-durations-${{ matrix.part }}
+          path: apps/e2e/durations-report.json
+          retention-days: 3
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
