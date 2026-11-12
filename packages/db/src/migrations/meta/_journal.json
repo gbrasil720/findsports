@@ -652,6 +652,13 @@
       "when": 1794491191010,
       "tag": "0093_classic_rules_v2",
       "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1794494253519,
+      "tag": "0094_push_token",
+      "breakpoints": true
     }
   ]
 }

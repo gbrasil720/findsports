@@ -172,6 +172,8 @@ export const gameReminder = pgTable(
     // Quanto antes do jogo o lembrete vale (a busca com IA usa 3 h). Nulo é o
     // "Lembrar" de Bares pra você: o dia do jogo inteiro.
     remindBeforeMinutes: integer('remind_before_minutes'),
+    // Quando o push do lembrete saiu (WEB-416): uma vez por lembrete.
+    pushedAt: timestamp('pushed_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow()
       .notNull()
