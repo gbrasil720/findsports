@@ -14,6 +14,7 @@ import {
   setJobQueue
 } from '@findsports_oficial/api/lib/job-queue'
 import { runJob, runScheduledJobs } from '@findsports_oficial/api/lib/jobs'
+import { PUSH_CRON, pushDueReminders } from '@findsports_oficial/api/lib/push'
 import { setBackgroundTaskHandler } from '@findsports_oficial/auth/background'
 import { runWithDb } from '@findsports_oficial/db'
 import handler from '@tanstack/react-start/server-entry'
@@ -53,7 +54,13 @@ export default {
   // enviam às segundas.
   //
   // WEB-433: os jogos da semana chamam a IA no cron: o binding entra aqui também.
-  async scheduled(_controller, env) {
+  //
+  // WEB-416: o cron de 15 min só manda os lembretes do app por push.
+  async scheduled(controller, env) {
+    if (controller.cron === PUSH_CRON) {
+      await runWithDb(env.HYPERDRIVE.connectionString, pushDueReminders)
+      return
+    }
     setAiBinding(env.AI as unknown as AiBinding)
     await runWithDb(env.HYPERDRIVE.connectionString, runScheduledJobs)
   },
