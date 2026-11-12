@@ -20,12 +20,15 @@ import { useTRPC } from '@/utils/trpc'
 export function CancelarPlano({
   planName,
   until,
-  className
+  className,
+  pix = false
 }: {
   planName: string
   /** Fim do período pago: até lá o plano segue. */
   until: Date | null
   className: string
+  /** Pix Automático: cancela aqui mesmo, sem portal. */
+  pix?: boolean
 }) {
   const [aberto, setAberto] = useState(false)
   return (
@@ -44,6 +47,7 @@ export function CancelarPlano({
             <Dialogo
               planName={planName}
               until={until}
+              pix={pix}
               onClose={() => setAberto(false)}
             />,
             document.querySelector('.pn3') ?? document.body
@@ -56,10 +60,12 @@ export function CancelarPlano({
 function Dialogo({
   planName,
   until,
+  pix,
   onClose
 }: {
   planName: string
   until: Date | null
+  pix: boolean
   onClose: () => void
 }) {
   const trpc = useTRPC()
@@ -150,8 +156,9 @@ function Dialogo({
             ))}
           </div>
           <span className="pn-hint">
-            Opcional. O cancelamento é feito no portal do Stripe, no passo
-            seguinte.
+            {pix
+              ? 'Opcional. O cancelamento é feito na hora: a autorização do Pix no seu banco acaba e não sai mais débito.'
+              : 'Opcional. O cancelamento é feito no portal do Stripe, no passo seguinte.'}
           </span>
         </fieldset>
 
@@ -170,7 +177,9 @@ function Dialogo({
             onClick={() => cancel.mutate(reason ? { reason } : undefined)}
           >
             {opening
-              ? 'Abrindo portal…'
+              ? pix
+                ? 'Cancelando…'
+                : 'Abrindo portal…'
               : cancel.isError
                 ? 'Tentar de novo'
                 : 'Cancelar mesmo assim'}
