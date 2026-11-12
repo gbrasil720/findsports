@@ -222,7 +222,7 @@ export default function Desempenho() {
 
             {games.isError ? (
               <ErrorState
-                title="Não deu para carregar os jogos."
+                kind="block"
                 error={games.error}
                 onRetry={() => games.refetch()}
                 retrying={games.isFetching}

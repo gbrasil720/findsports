@@ -107,7 +107,7 @@ export default function Comanda() {
 
         {missing.isError ? (
           <ErrorState
-            title="Não deu para ver quem faltou lançar."
+            kind="block"
             error={missing.error}
             onRetry={() => missing.refetch()}
             retrying={missing.isFetching}

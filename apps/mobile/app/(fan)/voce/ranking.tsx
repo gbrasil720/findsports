@@ -37,6 +37,7 @@ import { type Palette, usePalette } from '@/components/theme'
 import {
   ACID,
   BlockButton,
+  ErrorState,
   GlassRound,
   Icon,
   INK,
@@ -570,15 +571,12 @@ export default function Ranking() {
             {city.isPending ? (
               <Skeleton />
             ) : city.isError ? (
-              <View style={styles.stack}>
-                <Text style={[text(15, 'SemiBold'), { color: palette.ink }]}>
-                  Não deu para abrir o ranking.
-                </Text>
-                <PillButton
-                  label="Tentar de novo"
-                  onPress={() => city.refetch()}
-                />
-              </View>
+              <ErrorState
+                kind="block"
+                error={city.error}
+                onRetry={() => city.refetch()}
+                retrying={city.isFetching}
+              />
             ) : head && !head.listed ? (
               <OffGlobal data={head} />
             ) : (
@@ -600,15 +598,12 @@ export default function Ranking() {
         ) : board.isPending ? (
           <Skeleton />
         ) : board.isError || !board.data ? (
-          <View style={styles.stack}>
-            <Text style={[text(15, 'SemiBold'), { color: palette.ink }]}>
-              Não deu para abrir o ranking.
-            </Text>
-            <PillButton
-              label="Tentar de novo"
-              onPress={() => board.refetch()}
-            />
-          </View>
+          <ErrorState
+            kind="block"
+            error={board.error}
+            onRetry={() => board.refetch()}
+            retrying={board.isFetching}
+          />
         ) : alone ? (
           <Animated.View style={styles.stack}>
             <EmptyPodium me={board.data.rows[0]} />
@@ -1403,17 +1398,16 @@ function GlobalBody({
    */
   top?: 'list' | 'rows' | 'none'
 }) {
-  const palette = usePalette()
   const head = city.data?.pages[0]
   if (city.isPending) return <Skeleton />
   if (city.isError)
     return (
-      <View style={styles.stack}>
-        <Text style={[text(15, 'SemiBold'), { color: palette.ink }]}>
-          Não deu para abrir o ranking.
-        </Text>
-        <PillButton label="Tentar de novo" onPress={() => city.refetch()} />
-      </View>
+      <ErrorState
+        kind="block"
+        error={city.error}
+        onRetry={() => city.refetch()}
+        retrying={city.isFetching}
+      />
     )
   if (head && !head.listed) return <OffGlobal data={head} />
   return (
