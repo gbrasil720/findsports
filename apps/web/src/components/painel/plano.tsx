@@ -1,5 +1,5 @@
 import type { SubscriptionPlan } from '@findsports_oficial/db'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -95,8 +95,16 @@ export function PlanoPage({
   // Sem cliente no Stripe não há portal: é o bar no teste do cadastro, que
   // nunca passou pelo checkout (WEB-264). O id da assinatura cobre a sessão
   // em cache de quem acabou de pagar.
+  // Pix Automático (AbacatePay): sem portal; o banco debita e o painel cancela.
+  const onPix = subscription?.provider === 'abacatepay'
+  const pixAvailable = useQuery({
+    ...trpc.pub.getPaymentMethods.queryOptions(),
+    meta: { errorToast: false }
+  }).data?.pix
   const hasProviderCustomer = Boolean(
-    session?.user.stripeCustomerId || subscription?.externalSubscriptionId
+    session?.user.stripeCustomerId ||
+      (subscription?.provider === 'stripe' &&
+        subscription.externalSubscriptionId)
   )
   const subscriptionError = subscriptionQuery.error
     ? getUserFacingError(
@@ -147,29 +155,75 @@ export function PlanoPage({
     ]
   const cancelNotice = getCancelNotice(subscription)
   const canCancel = canCancelSubscription(subscription)
+  // Pix escolhido no teste do cadastro, ainda sem autorização: no teste e
+  // depois dele (o bar fora do ar volta ao autorizar).
+  const pixWaiting = Boolean(
+    pixAvailable &&
+      subscription?.pixAfterTrialAt &&
+      subscription.status === 'trialing' &&
+      !subscription.externalSubscriptionId
+  )
+  const authorizePix = useMutation(
+    trpc.pub.startPixCheckout.mutationOptions({
+      onSuccess: ({ url }) => {
+        window.location.href = url
+      },
+      onError: (pixError) =>
+        toast.error(
+          pixError.message ||
+            'Não foi possível abrir o Pix agora. Tente de novo.'
+        )
+    })
+  )
+  const trialOver = standing === 'trial_ended'
 
-  const notice = lapsed ? (
-    <p className="pn-ph-bad">
-      {LAPSED_COPY[lapsed].cause}{' '}
-      {contractInPlan
-        ? 'O bar sai das buscas e do mapa até um plano ser contratado.'
-        : 'Recursos do plano, como o cardápio no perfil, ficam suspensos até a assinatura ser regularizada. Atualize o método de pagamento em “Gerenciar assinatura”.'}
-    </p>
-  ) : ended ? (
-    <p className="pn-ph-bad">
-      Assinatura encerrada: o bar fica fora das buscas e do mapa até um plano
-      ser contratado.
-    </p>
-  ) : cancelNotice ? (
-    <p>
-      {cancelNotice}. <ReactivateSubscriptionButton className="pn-lnk-b pn-u" />
-    </p>
-  ) : subscription?.currentPeriodEnd ? (
-    <p>
-      {getTrialNotice(subscription) ??
-        `Próxima cobrança em ${formatDate(subscription.currentPeriodEnd)}`}
-    </p>
-  ) : null
+  const notice =
+    pixWaiting && subscription ? (
+      <p className={trialOver ? 'pn-ph-bad' : undefined}>
+        {trialOver
+          ? 'O teste grátis acabou e o bar saiu das buscas e do mapa. Autorize o Pix para voltar ao ar na hora.'
+          : `Você escolheu pagar com Pix no fim do teste. Autorize até ${subscription.currentPeriodEnd ? formatDate(subscription.currentPeriodEnd) : 'o fim do teste'} para o bar seguir no ar: o primeiro débito sai quando você autorizar, e o teste acaba aí. A gente lembra por e-mail 3 dias antes e no último dia.`}
+      </p>
+    ) : lapsed ? (
+      <p className="pn-ph-bad">
+        {LAPSED_COPY[lapsed].cause}{' '}
+        {contractInPlan
+          ? 'O bar sai das buscas e do mapa até um plano ser contratado.'
+          : 'Recursos do plano, como o cardápio no perfil, ficam suspensos até a assinatura ser regularizada. Atualize o método de pagamento em “Gerenciar assinatura”.'}
+      </p>
+    ) : ended ? (
+      <p className="pn-ph-bad">
+        Assinatura encerrada: o bar fica fora das buscas e do mapa até um plano
+        ser contratado.
+      </p>
+    ) : cancelNotice && onPix ? (
+      <p>
+        {cancelNotice}. A autorização do Pix já acabou no banco: para continuar,{' '}
+        <Link
+          to="/plan"
+          search={{ origin: 'billing' }}
+          className="pn-lnk-b pn-u"
+        >
+          contrate de novo
+        </Link>
+        .
+      </p>
+    ) : cancelNotice ? (
+      <p>
+        {cancelNotice}.{' '}
+        <ReactivateSubscriptionButton className="pn-lnk-b pn-u" />
+      </p>
+    ) : onPix && subscription?.currentPeriodEnd ? (
+      <p>
+        Pix Automático: próximo débito em{' '}
+        {formatDate(subscription.currentPeriodEnd)}, direto no seu banco.
+      </p>
+    ) : subscription?.currentPeriodEnd ? (
+      <p>
+        {getTrialNotice(subscription) ??
+          `Próxima cobrança em ${formatDate(subscription.currentPeriodEnd)}`}
+      </p>
+    ) : null
 
   return (
     <>
@@ -272,7 +326,32 @@ export function PlanoPage({
               ) : null}
 
               <div className="pn-acts pn-ph-acts">
-                {contractInPlan ? (
+                {pixWaiting && subscription ? (
+                  <>
+                    <button
+                      type="button"
+                      className="pn-btn pn-acid"
+                      disabled={
+                        authorizePix.isPending || authorizePix.isSuccess
+                      }
+                      onClick={() =>
+                        authorizePix.mutate({ plan: subscription.plan })
+                      }
+                    >
+                      {authorizePix.isPending || authorizePix.isSuccess
+                        ? 'Abrindo…'
+                        : 'Autorizar o Pix'}
+                    </button>
+                    <Link
+                      to="/plan"
+                      search={{ origin: 'billing' }}
+                      className="pn-btn pn-ghost"
+                    >
+                      Trocar de plano
+                    </Link>
+                  </>
+                ) : null}
+                {contractInPlan && !pixWaiting ? (
                   <Link
                     to="/plan"
                     search={{ origin: 'billing' }}
@@ -281,7 +360,7 @@ export function PlanoPage({
                     Continuar no {planInfo.name}
                   </Link>
                 ) : null}
-                {onLocalTrial || ended ? (
+                {(onLocalTrial || ended) && !pixWaiting ? (
                   <Link
                     to="/plan"
                     search={{ origin: 'billing' }}
@@ -290,7 +369,7 @@ export function PlanoPage({
                     Contratar plano
                   </Link>
                 ) : null}
-                {plan && plan !== 'elite' ? (
+                {plan && plan !== 'elite' && !pixWaiting ? (
                   <Link
                     to="/plan"
                     search={{ origin: 'billing' }}
@@ -325,6 +404,7 @@ export function PlanoPage({
                         : null
                     }
                     className="pn-lnk-b pn-u pn-ph-cancel"
+                    pix={onPix}
                   />
                 ) : null}
               </div>
@@ -334,15 +414,19 @@ export function PlanoPage({
                 </p>
               ) : null}
               <p className="pn-ph-foot">
-                {ended && hasProviderCustomer
-                  ? 'As faturas e os recibos da assinatura encerrada continuam no portal de gerenciamento.'
-                  : canCancel
-                    ? 'Para trocar de plano ou atualizar o método de pagamento, use o portal de gerenciamento. “Cancelar assinatura” pergunta o motivo e abre o portal direto no cancelamento.'
-                    : hasProviderCustomer
-                      ? 'Para cancelar, trocar de plano ou atualizar o método de pagamento, use o portal de gerenciamento.'
-                      : onLocalTrial
-                        ? `${TRIAL_NO_CARD_NOTE} Contratando antes do fim, a primeira cobrança só sai quando o teste acabar.`
-                        : 'Cancelamento, troca de plano e método de pagamento ficam aqui depois da contratação.'}
+                {pixWaiting
+                  ? 'Prefere o cartão? Em “Ver todos os planos”, contrate no cartão: a primeira cobrança só sai quando o teste acabar.'
+                  : onPix && canCancel
+                    ? 'Para trocar de plano, autorize o Pix do novo plano em “Ver todos os planos”: o débito dele sai na hora e o Pix atual é cancelado sozinho. “Cancelar assinatura” encerra a autorização no banco, e o plano segue até o fim do mês pago.'
+                    : ended && hasProviderCustomer
+                      ? 'As faturas e os recibos da assinatura encerrada continuam no portal de gerenciamento.'
+                      : canCancel
+                        ? 'Para trocar de plano ou atualizar o método de pagamento, use o portal de gerenciamento. “Cancelar assinatura” pergunta o motivo e abre o portal direto no cancelamento.'
+                        : hasProviderCustomer
+                          ? 'Para cancelar, trocar de plano ou atualizar o método de pagamento, use o portal de gerenciamento.'
+                          : onLocalTrial
+                            ? `${TRIAL_NO_CARD_NOTE} Contratando antes do fim, a primeira cobrança só sai quando o teste acabar.`
+                            : 'Cancelamento, troca de plano e método de pagamento ficam aqui depois da contratação.'}
               </p>
             </div>
             <div className="pn-ph-r">
@@ -424,7 +508,9 @@ export function PlanoPage({
                     className="pn-btn pn-ghost pn-sm"
                   >
                     {/* Sem assinatura no Stripe não há o que mudar: contrata. */}
-                    {plan && subscription?.externalSubscriptionId
+                    {plan &&
+                    subscription?.externalSubscriptionId &&
+                    !subscription.cancelAt
                       ? 'Mudar para'
                       : 'Contratar'}{' '}
                     {info.name}
@@ -467,13 +553,66 @@ export function PlanoPage({
               )}
             </div>
             <div className="pn-ln">
-              <span>
-                <b>
-                  Pix <span className="pn-badge">EM BREVE</span>
-                </b>
-                <span>Pagar a mensalidade por Pix</span>
-              </span>
-              <span />
+              {onPix && !ended ? (
+                <>
+                  <span>
+                    <b>
+                      Pix Automático{' '}
+                      <span className="pn-badge is-pub">
+                        {subscription?.cancelAt ? 'CANCELADO' : 'EM USO'}
+                      </span>
+                    </b>
+                    <span>
+                      {subscription?.cancelAt
+                        ? 'Autorização encerrada no banco. Não sai mais débito.'
+                        : charge
+                          ? `${formatPlanPrice(charge.chargeReais)} por mês, debitado do seu banco`
+                          : 'Débito mensal, autorizado no seu banco'}
+                    </span>
+                  </span>
+                  <span />
+                </>
+              ) : pixWaiting ? (
+                <>
+                  <span>
+                    <b>
+                      Pix Automático{' '}
+                      <span className="pn-badge is-pub">ESCOLHIDO</span>
+                    </b>
+                    <span>Falta autorizar no app do banco.</span>
+                  </span>
+                  <span />
+                </>
+              ) : pixAvailable ? (
+                <>
+                  <span>
+                    <b>Pix Automático</b>
+                    <span>
+                      Autorize uma vez no app do banco e o débito sai todo mês.
+                      {onLocalTrial
+                        ? ' No teste grátis, a autorização fica para o fim dele.'
+                        : ' O primeiro débito sai na autorização.'}
+                    </span>
+                  </span>
+                  <Link
+                    to="/plan"
+                    search={{ origin: 'billing' }}
+                    className="pn-btn pn-ghost pn-sm"
+                  >
+                    Pagar com Pix
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <span>
+                    <b>
+                      Pix <span className="pn-badge">EM BREVE</span>
+                    </b>
+                    <span>Pagar a mensalidade por Pix</span>
+                  </span>
+                  <span />
+                </>
+              )}
             </div>
           </div>
         </section>
@@ -487,9 +626,11 @@ export function PlanoPage({
             <h3 id="pn-fat">Faturas</h3>
           </div>
           <p className="pn-note">
-            {hasProviderCustomer
-              ? 'As faturas e os recibos de cada cobrança ficam no portal, em “Gerenciar assinatura”. O recibo também chega por e-mail a cada pagamento.'
-              : 'Nenhum pagamento registrado ainda.'}
+            {onPix
+              ? 'Cada débito do Pix Automático aparece no extrato do seu banco, e o comprovante chega por e-mail.'
+              : hasProviderCustomer
+                ? 'As faturas e os recibos de cada cobrança ficam no portal, em “Gerenciar assinatura”. O recibo também chega por e-mail a cada pagamento.'
+                : 'Nenhum pagamento registrado ainda.'}
           </p>
           {hasProviderCustomer ? (
             <button
