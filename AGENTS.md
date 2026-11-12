@@ -307,6 +307,15 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   débito, então `pub.schedulePixAfterTrial` só grava `subscription.pix_after_trial_at`,
   e e-mail (3 dias antes e no último dia, `sendPixTrialReminders` na rotina
   `bar_notices`) e painel pedem a autorização; "Autorizar agora" encerra o teste.
+  O checkout não recebe CPF nem CNPJ: a AbacatePay pede "CPF ou CNPJ" de quem paga
+  (a empresa ou o dono). **Configuração da conta:** `bun run pix:setup` cria o webhook
+  deste endereço com o segredo do ambiente (a API não devolve o segredo, então ele nasce
+  daqui) e `bun run pix:check` confere produtos e preços, o webhook, o endpoint publicado
+  (aviso assinado com o segredo local: 200 é o mesmo segredo do Worker, 401 é outro) e
+  se a conta aceita assinatura com Pix (abre e apaga um checkout). Para produção, rode
+  com `ABACATE_PAY_API_KEY`, `ABACATE_PAY_WEBHOOK_SECRET` e
+  `PUBLIC_APP_URL=https://www.onside.sh` no ambiente. Aviso recusado vai ao log como
+  `pix_webhook_rejected`, com o motivo: a AbacatePay não reenvia 401.
 
 ### Avisos por e-mail do bar (WEB-441)
 
