@@ -35,12 +35,22 @@ const JOBS: Record<JobName, (trigger: JobTrigger) => Promise<unknown>> = {
   // Também o lembrete do Pix escolhido no teste, que sai em qualquer dia.
   bar_notices: async () => {
     const notices = await import('./bar-notices')
-    const weekly = await notices
-      .sendWeeklyBarNotices()
-      .catch((error: unknown) => error)
-    const pix = await notices.sendPixTrialReminders()
-    if (weekly instanceof Error) throw weekly
-    return { ...(weekly as object), ...pix }
+    const [weekly, pix] = await Promise.allSettled([
+      notices.sendWeeklyBarNotices(),
+      notices.sendPixTrialReminders()
+    ])
+    // As duas falhas vão juntas ao `job_run`, nenhuma esconde a outra.
+    const failures = [weekly, pix]
+      .filter((r) => r.status === 'rejected')
+      .map((r) => {
+        const reason = (r as PromiseRejectedResult).reason
+        return reason instanceof Error ? reason.message : String(reason)
+      })
+    if (failures.length) throw new Error(failures.join(' | '))
+    return {
+      ...(weekly as PromiseFulfilledResult<object>).value,
+      ...(pix as PromiseFulfilledResult<object>).value
+    }
   },
   // Jogos da semana com onde passa (WEB-433): monta às segundas, procura o
   // canal que faltou às quintas, nos outros dias não faz nada. Importado
