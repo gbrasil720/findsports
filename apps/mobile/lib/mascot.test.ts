@@ -56,6 +56,13 @@ describe('mascotState', () => {
   it('fim: comemora com bares, murcha sem', () => {
     expect(mascotState(reply({ state: 'done', bars: [bar] }), on)).toBe('done')
     expect(mascotState(reply({ state: 'done' }), on)).toBe('empty')
+    // Festa só na primeira resposta da conversa.
+    expect(
+      mascotState(reply({ state: 'done', bars: [bar] }), {
+        ...on,
+        first: false
+      })
+    ).toBe('pleased')
     expect(mascotState(reply({ state: 'stopped', text: 'O' }), on)).toBe(
       'stopped'
     )

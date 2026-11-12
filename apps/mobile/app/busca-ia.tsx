@@ -299,7 +299,8 @@ export default function AiSearch() {
   const mascot = mascotState(lastReply ?? null, {
     online,
     off,
-    blocked: !!blocked
+    blocked: !!blocked,
+    first: turns.length <= 1
   })
 
   // Contexto do campo: o local (aparelho, senão a cidade do perfil) e o dia.
