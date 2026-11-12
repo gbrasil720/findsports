@@ -293,6 +293,29 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   Todo checkout novo sai com ele enquanto o Stripe o der como válido; esgotado,
   expirado ou inexistente na conta, o checkout segue a preço de tabela
   (`usableFounderCoupon`). A oferta acaba no painel do Stripe, não no app.
+- **Pix Automático pela AbacatePay** (11/11/2026): `ABACATE_PAY_API_KEY` (`abc_dev_`
+  é o Modo Teste; `abc_prod_` só em `onside.sh`) e `ABACATE_PAY_WEBHOOK_SECRET`; sem a
+  chave o Pix some das telas. Cliente em `packages/auth/src/abacatepay.ts`, produtos
+  achados por `externalId` (`<plano>_monthly` e `<plano>_founder_monthly`: o cupom não
+  vale no Pix, o preço de fundador é o produto). `subscription.provider = 'abacatepay'`.
+  O webhook (`/api/abacatepay/webhook`, segredo + HMAC) relê a assinatura na AbacatePay
+  (`applyPixSubscription`, `pix-sync.ts`), como no Stripe. As 100 vagas de fundador
+  somam cartão e Pix (`readFounderCoupon`). A AbacatePay só cancela na hora: o painel
+  grava `cancel_at` no fim do mês pago e `reconcileBarPlans` encerra depois. Trocar de
+  plano no Pix é uma autorização nova (a anterior é cancelada). **No teste do
+  cadastro o Pix espera o fim dele** (dono, 11/11/2026): a AbacatePay não agenda
+  débito, então `pub.schedulePixAfterTrial` só grava `subscription.pix_after_trial_at`,
+  e e-mail (3 dias antes e no último dia, `sendPixTrialReminders` na rotina
+  `bar_notices`) e painel pedem a autorização; "Autorizar agora" encerra o teste.
+  O checkout não recebe CPF nem CNPJ: a AbacatePay pede "CPF ou CNPJ" de quem paga
+  (a empresa ou o dono). **Configuração da conta:** `bun run pix:setup` cria o webhook
+  deste endereço com o segredo do ambiente (a API não devolve o segredo, então ele nasce
+  daqui) e `bun run pix:check` confere produtos e preços, o webhook, o endpoint publicado
+  (aviso assinado com o segredo local: 200 é o mesmo segredo do Worker, 401 é outro) e
+  se a conta aceita assinatura com Pix (abre e apaga um checkout). Para produção, rode
+  com `ABACATE_PAY_API_KEY`, `ABACATE_PAY_WEBHOOK_SECRET` e
+  `PUBLIC_APP_URL=https://www.onside.sh` no ambiente. Aviso recusado vai ao log como
+  `pix_webhook_rejected`, com o motivo: a AbacatePay não reenvia 401.
 
 ### Avisos por e-mail do bar (WEB-441)
 

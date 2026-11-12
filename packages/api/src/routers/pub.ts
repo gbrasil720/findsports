@@ -1,4 +1,13 @@
+import {
+  AbacatePayError,
+  cancelSubscription as cancelPixSubscription,
+  createPixSubscriptionCheckout,
+  pixEnabled,
+  productIdFor,
+  upsertCustomer
+} from '@findsports_oficial/auth/abacatepay'
 import { liveStripeSubscriptionId } from '@findsports_oficial/auth/account-deletion-policy'
+import { pixExternalId } from '@findsports_oficial/auth/pix-sync'
 import {
   founderCouponUsable,
   pushInvoiceDetails
@@ -38,7 +47,7 @@ import {
   barGameDismissal,
   weeklyGame
 } from '@findsports_oficial/db/schema/weekly-games'
-import { env } from '@findsports_oficial/env/server'
+import { env, getPublicAppUrl } from '@findsports_oficial/env/server'
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 import { pubProcedure, router } from '../index'
@@ -415,6 +424,13 @@ async function getBarByUserId(userId: string) {
  * ar, os contadores da nota e a assinatura. Descrição, horário, foto e o
  * resto do perfil não viajam a cada chamada do painel.
  */
+/** Só a assinatura do Stripe tem saldo e faturas lá; a do Pix não. */
+function stripeSubscriptionIdOf(
+  sub: { provider: string | null; externalSubscriptionId: string | null } | null
+) {
+  return sub?.provider === 'stripe' ? sub.externalSubscriptionId : null
+}
+
 async function getOwnBar(userId: string) {
   const [result] = await db
     .select({
@@ -1381,6 +1397,140 @@ export const pubRouter = router({
     }
   }),
 
+  /** Formas de pagar além do cartão: o Pix só aparece com a chave no Worker. */
+  getPaymentMethods: pubProcedure.query(() => ({ pix: pixEnabled() })),
+
+  /**
+   * Pix no fim do teste do cadastro (dono, 11/11/2026): a AbacatePay não
+   * agenda o primeiro débito, então só fica gravada a escolha, com o plano.
+   * Perto do fim, e-mail (`sendPixTrialReminders`) e painel pedem a
+   * autorização, que é o `startPixCheckout` de sempre. A regra vai no UPDATE,
+   * como em `changeTrialPlan`.
+   */
+  schedulePixAfterTrial: pubProcedure
+    .input(z.object({ plan: z.enum(subscriptionPlanEnum.enumValues) }))
+    .mutation(async ({ ctx, input }) => {
+      if (!pixEnabled()) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'O pagamento por Pix não está disponível agora.'
+        })
+      }
+      const existingBar = await getOwnBar(ctx.session.user.id)
+      const [row] = await db
+        .update(subscription)
+        .set({ plan: input.plan, pixAfterTrialAt: sql`now()` })
+        .where(
+          and(
+            eq(subscription.barId, existingBar.id),
+            eq(subscription.status, 'trialing'),
+            isNull(subscription.externalSubscriptionId),
+            sql`${subscription.currentPeriodEnd} > (now() AT TIME ZONE 'UTC')`
+          )
+        )
+        .returning({
+          plan: subscription.plan,
+          currentPeriodEnd: subscription.currentPeriodEnd
+        })
+      if (!row) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message:
+            'Seu teste grátis já acabou. Autorize o Pix agora para voltar ao ar.'
+        })
+      }
+      await db
+        .update(bar)
+        .set({ trialPlanChosenAt: sql`now()` })
+        .where(and(eq(bar.id, existingBar.id), isNull(bar.trialPlanChosenAt)))
+      return row
+    }),
+
+  /**
+   * Abre o checkout de Pix Automático da AbacatePay. O primeiro débito sai
+   * na autorização: no teste do cadastro, ele acaba aí (quem quer o teste
+   * inteiro usa `schedulePixAfterTrial`). O preço de fundador vem
+   * do produto (`*_founder_monthly`), porque o cupom não vale no Pix, e as
+   * vagas são as mesmas do cartão (`founderCouponUsable`).
+   */
+  startPixCheckout: pubProcedure
+    .input(z.object({ plan: z.enum(['starter', 'pro', 'elite']) }))
+    .mutation(async ({ ctx, input }) => {
+      if (!pixEnabled()) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'O pagamento por Pix não está disponível agora.'
+        })
+      }
+      const ownBar = await getOwnBar(ctx.session.user.id)
+      const current = ownBar.subscription
+      const standing = current ? getSubscriptionStanding(current) : null
+      if (
+        current?.provider === 'stripe' &&
+        current.externalSubscriptionId &&
+        standing !== 'ended'
+      ) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message:
+            'Sua assinatura é no cartão. Para passar para o Pix, cancele a do cartão em Plano e cobrança e contrate pelo Pix quando ela acabar.'
+        })
+      }
+      if (
+        current?.provider === 'abacatepay' &&
+        standing === 'current' &&
+        current.plan === input.plan &&
+        !current.cancelAt
+      ) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'Você já paga este plano pelo Pix.'
+        })
+      }
+
+      let founder = false
+      try {
+        founder = await founderCouponUsable(stripeClient)
+      } catch {}
+      const app = getPublicAppUrl()
+      // A razão social, quando o bar a deu, é o nome do cliente. O documento
+      // não vai: quem paga o Pix pode ser a empresa (CNPJ) ou o dono (CPF),
+      // e o checkout da AbacatePay pede "CPF ou CNPJ" quando o cliente não
+      // tem (docs, Pix Automático). O CNPJ dos dados da nota prenderia o
+      // débito à conta da empresa.
+      const invoice = await db.query.bar.findFirst({
+        where: eq(bar.id, ownBar.id),
+        columns: { legalName: true }
+      })
+      try {
+        const [productId, customerId] = await Promise.all([
+          productIdFor(`${input.plan}_${founder ? 'founder_' : ''}monthly`),
+          upsertCustomer({
+            email: ctx.session.user.email,
+            name: invoice?.legalName ?? ctx.session.user.name
+          })
+        ])
+        const checkout = await createPixSubscriptionCheckout({
+          productId,
+          customerId,
+          externalId: pixExternalId(ownBar.id, input.plan, founder),
+          completionUrl: new URL('/plan/confirmed?pix=1', app).href,
+          returnUrl: new URL('/plan', app).href
+        })
+        return { url: checkout.url }
+      } catch (error) {
+        logBillingError('pix_checkout_failed', {
+          barId: ownBar.id,
+          plan: input.plan,
+          message: error instanceof Error ? error.message : String(error)
+        })
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Não foi possível abrir o Pix agora. Tente de novo.'
+        })
+      }
+    }),
+
   // Retorna o plano e status atual da subscription do bar
   /**
    * O mês do bar em números, para a tela do plano no app: pessoas que
@@ -1412,7 +1562,7 @@ export const pubRouter = router({
     const existingBar = await getOwnBar(ctx.session.user.id)
     return readBillingBalance(
       stripeClient,
-      existingBar.subscription?.externalSubscriptionId
+      stripeSubscriptionIdOf(existingBar.subscription)
     )
   }),
 
@@ -1422,7 +1572,7 @@ export const pubRouter = router({
     const existingBar = await getOwnBar(ctx.session.user.id)
     return readInvoices(
       stripeClient,
-      existingBar.subscription?.externalSubscriptionId
+      stripeSubscriptionIdOf(existingBar.subscription)
     )
   }),
 
@@ -1536,11 +1686,48 @@ export const pubRouter = router({
           message: 'Não há assinatura em vigor para cancelar.'
         })
       }
-      const url = await createSubscriptionCancelUrl(
-        stripeClient,
-        subscriptionId,
-        new URL('/admin/billing', env.BETTER_AUTH_URL).href
-      )
+      let url: string
+      if (current.provider === 'abacatepay') {
+        // Pix: a AbacatePay só cancela na hora, e o mês já foi debitado. Lá a
+        // autorização acaba agora (o banco não debita mais); aqui o plano
+        // segue até o fim do ciclo, e o cron diário encerra
+        // (`reconcileBarPlans`). O webhook do cancelamento vê o `cancel_at`
+        // e não derruba o bar antes.
+        const cancelAt = current.currentPeriodEnd ?? new Date()
+        await db
+          .update(subscription)
+          .set({ cancelAt })
+          .where(eq(subscription.barId, barId))
+        try {
+          await cancelPixSubscription(subscriptionId)
+        } catch (error) {
+          if (
+            !(error instanceof AbacatePayError) ||
+            !/not active/i.test(error.message)
+          ) {
+            await db
+              .update(subscription)
+              .set({ cancelAt: null })
+              .where(eq(subscription.barId, barId))
+            logBillingError('pix_cancel_failed', {
+              barId,
+              subscriptionId,
+              message: error instanceof Error ? error.message : String(error)
+            })
+            throw new TRPCError({
+              code: 'INTERNAL_SERVER_ERROR',
+              message: 'Não foi possível cancelar agora. Tente de novo.'
+            })
+          }
+        }
+        url = new URL('/admin/billing', getPublicAppUrl()).href
+      } else {
+        url = await createSubscriptionCancelUrl(
+          stripeClient,
+          subscriptionId,
+          new URL('/admin/billing', env.BETTER_AUTH_URL).href
+        )
+      }
       if (input?.reason) {
         // O motivo é opcional: falhar ao gravá-lo não segura o cancelamento.
         await db

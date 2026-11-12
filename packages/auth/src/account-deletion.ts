@@ -3,6 +3,10 @@ import { stripeSubscription } from '@findsports_oficial/db/schema/auth'
 import { bar } from '@findsports_oficial/db/schema/platform'
 import { APIError } from 'better-auth/api'
 import type Stripe from 'stripe'
+import {
+  AbacatePayError,
+  cancelSubscription as cancelPixSubscription
+} from './abacatepay'
 import { liveStripeSubscriptionId } from './account-deletion-policy'
 import { QUICK_REQUEST } from './stripe-checkout'
 import { logBillingError } from './stripe-sync'
@@ -26,6 +30,29 @@ export async function endLiveSubscriptionOf(userId: string, client: Stripe) {
     accountBar?.subscription ?? null
   )
   if (!subscriptionId) return
+
+  if (accountBar?.subscription?.provider === 'abacatepay') {
+    // Pix Automático: cancelar na AbacatePay desfaz a autorização no banco.
+    // Já cancelada lá responde "not active", e aí não há o que encerrar.
+    try {
+      await cancelPixSubscription(subscriptionId)
+    } catch (error) {
+      if (
+        !(error instanceof AbacatePayError && /not active/i.test(error.message))
+      ) {
+        logBillingError('account_deletion_pix_cancel_failed', {
+          userId,
+          subscriptionId,
+          message: error instanceof Error ? error.message : String(error)
+        })
+        throw new APIError('SERVICE_UNAVAILABLE', {
+          message:
+            'Não foi possível encerrar a assinatura agora. Tente de novo em alguns minutos.'
+        })
+      }
+    }
+    return
+  }
 
   try {
     // Lida antes: se o Stripe já a encerrou (aviso que ainda não chegou, ou

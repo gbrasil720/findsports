@@ -32,8 +32,16 @@ const JOBS: Record<JobName, (trigger: JobTrigger) => Promise<unknown>> = {
   // Importado aqui dentro: o `worker.ts` carrega este arquivo na subida, e
   // `bar-notices` puxa `env/server`, que valida as variáveis ao ser
   // importado. No Worker elas não existem nesse momento, e ele não sobe.
-  bar_notices: async () =>
-    (await import('./bar-notices')).sendWeeklyBarNotices(),
+  // Também o lembrete do Pix escolhido no teste, que sai em qualquer dia.
+  bar_notices: async () => {
+    const notices = await import('./bar-notices')
+    const weekly = await notices
+      .sendWeeklyBarNotices()
+      .catch((error: unknown) => error)
+    const pix = await notices.sendPixTrialReminders()
+    if (weekly instanceof Error) throw weekly
+    return { ...(weekly as object), ...pix }
+  },
   // Jogos da semana com onde passa (WEB-433): monta às segundas, procura o
   // canal que faltou às quintas, nos outros dias não faz nada. Importado
   // aqui dentro pelo mesmo motivo do `bar_notices`.

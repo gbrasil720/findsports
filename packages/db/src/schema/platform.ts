@@ -302,7 +302,12 @@ export const barNotice = pgTable(
       .notNull()
       .references(() => bar.id, { onDelete: 'cascade' }),
     kind: text('kind', {
-      enum: ['weekly_summary', 'empty_schedule', 'game_filling']
+      enum: [
+        'weekly_summary',
+        'empty_schedule',
+        'game_filling',
+        'pix_trial_end'
+      ]
     }).notNull(),
     ref: text('ref').notNull(),
     sentAt: timestamp('sent_at', { withTimezone: true }).defaultNow().notNull()
@@ -620,7 +625,7 @@ export const subscription = pgTable('subscription', {
   // Assinatura no provedor de cobrança. As duas nulas é o trial criado no
   // cadastro: o bar ainda não contratou nada. Genéricas de propósito, para um
   // segundo provedor (Pix) não pedir coluna nova.
-  provider: text('provider', { enum: ['stripe'] }),
+  provider: text('provider', { enum: ['stripe', 'abacatepay'] }),
   externalSubscriptionId: text('external_subscription_id').unique(),
   /** Desconto fixo mensal em reais na assinatura do Stripe; null = desconhecido. */
   monthlyDiscountReais: integer('monthly_discount_reais'),
@@ -631,6 +636,13 @@ export const subscription = pgTable('subscription', {
    * segue `active` até lá.
    */
   cancelAt: timestamp('cancel_at'),
+  /**
+   * Quando o dono, no teste do cadastro, escolheu pagar com Pix no fim dele
+   * (`pub.schedulePixAfterTrial`). A AbacatePay não agenda o primeiro débito,
+   * então nada é criado lá: perto do fim, e-mail e painel pedem a
+   * autorização. Só vale com `trialing` e sem `external_subscription_id`.
+   */
+  pixAfterTrialAt: timestamp('pix_after_trial_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
     .defaultNow()

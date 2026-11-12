@@ -12,6 +12,11 @@ LOCATIONIQ_API_KEY=
 # no painel do Stripe (`/api/auth/stripe/webhook`).
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
+# Pix Automático (AbacatePay): `abc_dev_...` fora de produção — `abc_prod_` é
+# recusada fora de onside.sh. O segredo do webhook é o escolhido ao criar o
+# webhook no dashboard (`/api/abacatepay/webhook`), com 32+ caracteres.
+ABACATE_PAY_API_KEY=
+ABACATE_PAY_WEBHOOK_SECRET=
 R2_MEDIA_ACCESS_KEY_ID=
 R2_MEDIA_SECRET_ACCESS_KEY=
 # Opcional: sem ela o Turnstile não é verificado no servidor.

@@ -1,6 +1,7 @@
-import { db, eq } from '@findsports_oficial/db'
-import { bar } from '@findsports_oficial/db/schema/platform'
+import { and, count, db, eq, gt } from '@findsports_oficial/db'
+import { bar, subscription } from '@findsports_oficial/db/schema/platform'
 import type Stripe from 'stripe'
+import { pixEnabled } from './abacatepay'
 import {
   customerDetailsFor,
   type InvoiceDetails,
@@ -60,6 +61,27 @@ export const FOUNDER_COUPON_ID = 'eM7dQpMF'
 // tentativa, seguem adiante (o padrão do SDK são 80s e 2 tentativas).
 export const QUICK_REQUEST = { timeout: 5000, maxNetworkRetries: 0 }
 
+/** Vagas de fundador, cartão e Pix juntos; o cupom do Stripe tem o mesmo teto. */
+export const FOUNDER_SEATS = 100
+
+/**
+ * Bares que entraram como fundador pelo Pix: o produto de fundador grava o
+ * desconto na linha (`pix-sync.ts`). Contam enquanto a linha existir,
+ * como o resgate do cupom, que não volta quando a assinatura acaba.
+ */
+export async function pixFounderCount(): Promise<number> {
+  const [row] = await db
+    .select({ n: count() })
+    .from(subscription)
+    .where(
+      and(
+        eq(subscription.provider, 'abacatepay'),
+        gt(subscription.monthlyDiscountReais, 0)
+      )
+    )
+  return row?.n ?? 0
+}
+
 /**
  * O que o Stripe disse do cupom. `unknown` é o Stripe sem responder (demora,
  * rede, erro 5xx): não é o mesmo que cupom que não vale.
@@ -76,7 +98,14 @@ async function readFounderCoupon(client: Stripe): Promise<FounderCouponState> {
       {},
       QUICK_REQUEST
     )
-    return { state: coupon.valid ? 'valid' : 'invalid' }
+    if (!coupon.valid) return { state: 'invalid' }
+    // As vagas de fundador somam cartão e Pix (decisão do dono, 11/11/2026):
+    // o teto do cupom conta também quem entrou pelo Pix.
+    const seats = coupon.max_redemptions ?? FOUNDER_SEATS
+    // Sem a chave da AbacatePay não há Pix: o banco nem é consultado.
+    const pix = pixEnabled() ? await pixFounderCount() : 0
+    const taken = (coupon.times_redeemed ?? 0) + pix
+    return { state: taken < seats ? 'valid' : 'invalid' }
   } catch (error) {
     // Cupom apagado ou com o id errado: o Stripe respondeu, e a resposta é não.
     if ((error as { type?: string }).type === 'StripeInvalidRequestError') {

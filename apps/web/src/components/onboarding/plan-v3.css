@@ -723,6 +723,188 @@ html[data-theme="dark"] .pl-dlg {
   outline-offset: 3px;
 }
 
+/* ─── "Como você quer pagar?": cartão ou Pix Automático ─── */
+.pl-dlg .pl-dlg-acts .acid {
+  background: #c9f135;
+  color: #12120f;
+  box-shadow: 0 4px 0 #7f9a12;
+}
+
+.pl-dlg .pl-dlg-acts button:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.pl-pay .pl-pay-price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+}
+
+.pl-pay .pl-pay-price s {
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.pl-pay .pl-pay-price b {
+  font:
+    400 38px / 1 "Anton",
+    "Impact",
+    sans-serif;
+}
+
+.pl-pay .pl-pay-price > span {
+  color: var(--muted);
+  font-size: 14.5px;
+}
+
+.pl-pay .pl-pay-price .pl-pay-fund,
+.pl-pay .pl-pay-tag {
+  padding: 5px 8px;
+  border-radius: 7px;
+  background: #c9f135;
+  color: #12120f;
+  font:
+    600 11px / 1 "Geist Mono",
+    ui-monospace,
+    monospace;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.pl-pay .pl-pay-opts {
+  display: grid;
+  gap: 10px;
+}
+
+.pl-pay .pl-pay-opt {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 22px;
+  gap: 14px;
+  align-items: center;
+  padding: 16px 18px;
+  border: 0;
+  border-radius: 20px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--line2);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  transition: box-shadow 0.15s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.pl-pay .pl-pay-opt[aria-checked="true"] {
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+
+.pl-pay .pl-pay-opt:focus-visible {
+  outline: 2px solid #c9f135;
+  outline-offset: 3px;
+}
+
+.pl-pay .pl-pay-ic {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  background: rgba(127, 127, 120, 0.16);
+}
+
+.pl-pay .pl-pay-ic.is-pix {
+  background: #12120f;
+  color: #c9f135;
+}
+
+.pl-pay .pl-pay-tx {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.pl-pay .pl-pay-tx b {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  font-size: 16.5px;
+}
+
+.pl-pay .pl-pay-tx > span {
+  color: var(--muted);
+  font-size: 14.5px;
+  line-height: 1.4;
+}
+
+.pl-pay .pl-pay-tag.is-no {
+  background: #e8320c;
+  color: #fff;
+}
+
+.pl-pay .pl-pay-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--line2);
+}
+
+.pl-pay .pl-pay-opt[aria-checked="true"] .pl-pay-dot {
+  background: radial-gradient(circle, #c9f135 0 4px, var(--ink) 4.5px);
+  box-shadow: none;
+}
+
+.pl-pay .pl-pay-warn {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #f5e6c8;
+  box-shadow: inset 0 0 0 1.5px #12120f;
+  color: #12120f;
+  font-size: 14.5px;
+  line-height: 1.45;
+}
+
+/* Pix que espera o fim do teste: informação, não alerta. */
+.pl-pay .pl-pay-info {
+  padding: 14px 16px;
+  border-radius: 16px;
+  box-shadow: inset 0 0 0 1.5px currentColor;
+  font-size: 14.5px;
+  line-height: 1.45;
+}
+
+.pl-pay .pl-pay-now {
+  align-self: flex-end;
+  margin-top: -6px;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 13.5px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.pl-pay .pl-pay-now:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.pl-pay .pl-pay-err {
+  margin: 0;
+  color: #e8320c;
+  font-size: 14px;
+}
+
+.pl-pay .pl-pay-fine {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 /* ─── Escuro: o que não é escuro nos dois temas ─── */
 html[data-theme="dark"] .lp3.ob3 :is(.pl-pc.on, .placar, .noar-r) .ob-k {
   color: #aaa9a4;
