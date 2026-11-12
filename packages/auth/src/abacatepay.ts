@@ -84,19 +84,17 @@ export async function productIdFor(externalId: string): Promise<string> {
   return product.id
 }
 
-/** Acha ou cria o cliente (a API procura por CPF/CNPJ, e-mail e celular). */
+/**
+ * Acha ou cria o cliente (a API procura por CPF/CNPJ, e-mail e celular). Sem
+ * documento: o checkout pede "CPF ou CNPJ" de quem paga.
+ */
 export async function upsertCustomer(customer: {
   email: string
   name: string
-  taxId?: string | null
 }): Promise<string> {
   const created = await call<{ id: string }>('/customers/create', {
     method: 'POST',
-    body: {
-      email: customer.email,
-      name: customer.name,
-      ...(customer.taxId ? { taxId: customer.taxId } : {})
-    }
+    body: { email: customer.email, name: customer.name }
   })
   return created.id
 }
@@ -139,3 +137,4 @@ export function cancelSubscription(id: string): Promise<AbacateSubscription> {
     body: { id }
   })
 }
+
