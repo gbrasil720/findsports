@@ -50,6 +50,7 @@ import { Route as dashboardDashboardSeusBaresRouteImport } from './routes/(dashb
 import { Route as onboardingOnboardingFanRouteImport } from './routes/(onboarding)/onboarding.fan'
 import { Route as onboardingOnboardingPubRouteImport } from './routes/(onboarding)/onboarding.pub'
 import { Route as pubPubPubIdRouteImport } from './routes/(pub)/pub.$pubId'
+import { Route as ApiAbacatepayWebhookRouteImport } from './routes/api/abacatepay/webhook'
 import { Route as ApiAppStatusRouteImport } from './routes/api/app/status'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiBarCommercialEventRouteImport } from './routes/api/bar/commercial-event'
@@ -283,6 +284,11 @@ const pubPubPubIdRoute = pubPubPubIdRouteImport.update({
   path: '/pub/$pubId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAbacatepayWebhookRoute = ApiAbacatepayWebhookRouteImport.update({
+  id: '/api/abacatepay/webhook',
+  path: '/api/abacatepay/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAppStatusRoute = ApiAppStatusRouteImport.update({
   id: '/api/app/status',
   path: '/api/app/status',
@@ -443,6 +449,7 @@ export interface FileRoutesByFullPath {
   '/onboarding/fan': typeof onboardingOnboardingFanRoute
   '/onboarding/pub': typeof onboardingOnboardingPubRoute
   '/pub/$pubId': typeof pubPubPubIdRoute
+  '/api/abacatepay/webhook': typeof ApiAbacatepayWebhookRoute
   '/api/app/status': typeof ApiAppStatusRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/bar/commercial-event': typeof ApiBarCommercialEventRoute
@@ -507,6 +514,7 @@ export interface FileRoutesByTo {
   '/onboarding/fan': typeof onboardingOnboardingFanRoute
   '/onboarding/pub': typeof onboardingOnboardingPubRoute
   '/pub/$pubId': typeof pubPubPubIdRoute
+  '/api/abacatepay/webhook': typeof ApiAbacatepayWebhookRoute
   '/api/app/status': typeof ApiAppStatusRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/bar/commercial-event': typeof ApiBarCommercialEventRoute
@@ -573,6 +581,7 @@ export interface FileRoutesById {
   '/(onboarding)/onboarding/fan': typeof onboardingOnboardingFanRoute
   '/(onboarding)/onboarding/pub': typeof onboardingOnboardingPubRoute
   '/(pub)/pub/$pubId': typeof pubPubPubIdRoute
+  '/api/abacatepay/webhook': typeof ApiAbacatepayWebhookRoute
   '/api/app/status': typeof ApiAppStatusRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/bar/commercial-event': typeof ApiBarCommercialEventRoute
@@ -640,6 +649,7 @@ export interface FileRouteTypes {
     | '/onboarding/fan'
     | '/onboarding/pub'
     | '/pub/$pubId'
+    | '/api/abacatepay/webhook'
     | '/api/app/status'
     | '/api/auth/$'
     | '/api/bar/commercial-event'
@@ -704,6 +714,7 @@ export interface FileRouteTypes {
     | '/onboarding/fan'
     | '/onboarding/pub'
     | '/pub/$pubId'
+    | '/api/abacatepay/webhook'
     | '/api/app/status'
     | '/api/auth/$'
     | '/api/bar/commercial-event'
@@ -769,6 +780,7 @@ export interface FileRouteTypes {
     | '/(onboarding)/onboarding/fan'
     | '/(onboarding)/onboarding/pub'
     | '/(pub)/pub/$pubId'
+    | '/api/abacatepay/webhook'
     | '/api/app/status'
     | '/api/auth/$'
     | '/api/bar/commercial-event'
@@ -825,6 +837,7 @@ export interface RootRouteChildren {
   onboardingOnboardingFanRoute: typeof onboardingOnboardingFanRoute
   onboardingOnboardingPubRoute: typeof onboardingOnboardingPubRoute
   pubPubPubIdRoute: typeof pubPubPubIdRoute
+  ApiAbacatepayWebhookRoute: typeof ApiAbacatepayWebhookRoute
   ApiAppStatusRoute: typeof ApiAppStatusRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiBarCommercialEventRoute: typeof ApiBarCommercialEventRoute
@@ -1125,6 +1138,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof pubPubPubIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/abacatepay/webhook': {
+      id: '/api/abacatepay/webhook'
+      path: '/api/abacatepay/webhook'
+      fullPath: '/api/abacatepay/webhook'
+      preLoaderRoute: typeof ApiAbacatepayWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/app/status': {
       id: '/api/app/status'
       path: '/api/app/status'
@@ -1397,6 +1417,7 @@ const rootRouteChildren: RootRouteChildren = {
   onboardingOnboardingFanRoute: onboardingOnboardingFanRoute,
   onboardingOnboardingPubRoute: onboardingOnboardingPubRoute,
   pubPubPubIdRoute: pubPubPubIdRoute,
+  ApiAbacatepayWebhookRoute: ApiAbacatepayWebhookRoute,
   ApiAppStatusRoute: ApiAppStatusRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiBarCommercialEventRoute: ApiBarCommercialEventRoute,
