@@ -1,7 +1,10 @@
 import { Asset } from 'expo-asset'
 import { useEffect, useRef, useState } from 'react'
 import { type StyleProp, View, type ViewStyle } from 'react-native'
-import Animated, { useReducedMotion } from 'react-native-reanimated'
+import Animated, {
+  cubicBezier,
+  useReducedMotion
+} from 'react-native-reanimated'
 import { SvgXml } from 'react-native-svg'
 import { WebView } from 'react-native-webview'
 import type { MascotState } from '@/lib/mascot'
@@ -54,8 +57,11 @@ export function Mascot({
           style={{
             flex: 1,
             opacity: ready ? 1 : 0,
-            transitionProperty: 'opacity',
-            transitionDuration: 180
+            // Fade puro numa peça grande pisca; a escala dá corpo à entrada.
+            transform: [{ scale: ready || reduced ? 1 : 0.97 }],
+            transitionProperty: ['opacity', 'transform'],
+            transitionDuration: 200,
+            transitionTimingFunction: EASE_OUT
           }}
         >
           <WebView
@@ -88,6 +94,8 @@ export function Mascot({
     </View>
   )
 }
+
+const EASE_OUT = cubicBezier(0.23, 1, 0.32, 1)
 
 /** A taça parada, para o ladrilho do cabeçalho (sempre escuro). */
 export function MascotStill({ size }: { size: number }) {
