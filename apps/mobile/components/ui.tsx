@@ -65,7 +65,8 @@ import {
   LIVE,
   PALETTE,
   PAPER,
-  type Palette
+  type Palette,
+  usePalette
 } from '@/components/theme'
 import { APP_VERSION, HELP_URL } from '@/lib/env'
 
@@ -1800,8 +1801,13 @@ function BlockError({
   style
 }: Extract<ErrorStateProps, { kind: 'block' }>) {
   const transient = isTransientError(error)
+  // A sombra do iOS não troca sozinha com o tema: vem da paleta.
+  const shadowColor = usePalette().liveShadow
   return (
-    <View accessibilityRole="alert" style={[styles.blockCard, style]}>
+    <View
+      accessibilityRole="alert"
+      style={[styles.blockCard, { shadowColor }, style]}
+    >
       <Icon name="bell" size={24} />
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={[text(14.5, 'Bold', 1.3), { color: FG }]}>
@@ -1853,9 +1859,14 @@ function SignalLost({
   onCode,
   style
 }: Extract<ErrorStateProps, { kind: 'signal' }>) {
+  // A sombra do iOS não troca sozinha com o tema: vem da paleta.
+  const { dark } = usePalette()
   return (
     <View style={[{ gap: 14 }, style]}>
-      <View accessibilityRole="alert" style={styles.signalCard}>
+      <View
+        accessibilityRole="alert"
+        style={[styles.signalCard, { shadowColor: dark ? LIVE : ACID }]}
+      >
         <Text
           aria-hidden
           maxFontSizeMultiplier={1}
@@ -1893,6 +1904,7 @@ function SignalLost({
             style={({ pressed }) => [
               styles.signalButton,
               styles.signalRetry,
+              { shadowColor: dark ? INK : '#000' },
               pressed && { transform: [{ scale: 0.97 }] }
             ]}
           >
@@ -2277,7 +2289,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: LINE,
     backgroundColor: CARD,
-    shadowColor: themed('rgba(232,50,12,.28)', 'rgba(232,50,12,.30)'),
     shadowOpacity: 1,
     shadowRadius: 0,
     shadowOffset: { width: 5, height: 5 }
@@ -2295,7 +2306,6 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     borderRadius: 7,
     backgroundColor: SIGNAL_BG,
-    shadowColor: themed(ACID, LIVE),
     shadowOpacity: 1,
     shadowRadius: 0,
     shadowOffset: { width: 6, height: 6 }
@@ -2333,7 +2343,6 @@ const styles = StyleSheet.create({
   },
   signalRetry: {
     backgroundColor: ACID,
-    shadowColor: themed('#000', INK),
     shadowOpacity: 1,
     shadowRadius: 0,
     shadowOffset: { width: 3, height: 3 }
