@@ -885,7 +885,7 @@ export function BarDetail({
             <Text
               numberOfLines={1}
               maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
-              style={[text(14.5, 'Bold', 1.2), { color: INK }]}
+              style={[text(13.5, 'Bold', 1.2), { color: INK }]}
             >
               Como chegar
             </Text>
@@ -2003,7 +2003,7 @@ function ContactButton({
       <Text
         numberOfLines={1}
         maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
-        style={[text(14.5, 'Bold', 1.2), { color: palette.ink }]}
+        style={[text(13.5, 'Bold', 1.2), { color: palette.ink }]}
       >
         {label}
       </Text>
@@ -2060,7 +2060,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 13,
     borderRadius: 18
   },
-  whereButtons: { flexDirection: 'row', gap: 8 },
+  whereButtons: { flexDirection: 'row', gap: 6 },
   routeButton: {
     flex: 1.35,
     height: 40,
