@@ -173,9 +173,15 @@ function Placar({
       ? quandoCurto(s.startsAt, true)
       : `O jogo da semana${variant === 'jogos' ? ` pro ${bar.name}` : ''} · ${quandoCurto(s.startsAt)}`
   const bares = s.barsInNeighborhood ?? 0
-  const seuTime = s.houseTeam ? (
-    <span className="sem-tag is-team">Seu time</span>
-  ) : null
+  const seuTime =
+    s.houseTeam || s.classic ? (
+      <span className="sem-tags">
+        {s.houseTeam ? <span className="sem-tag is-team">Seu time</span> : null}
+        {s.classic ? (
+          <span className="sem-tag is-classic">Clássico</span>
+        ) : null}
+      </span>
+    ) : null
 
   if (publicado) {
     return (
