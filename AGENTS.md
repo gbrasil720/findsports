@@ -470,6 +470,14 @@ decididos: nada de trocar por outro do catálogo sem o dono. Conjunto
 offline (só roda com autorização e teto de custo): `packages/api/scripts/ai-chat-eval.ts` (34 pedidos: filtros certos, bares
 inventados, tempo e custo).
 
+**Recomendador com IA (WEB-426, fase offline):** a afinidade da IA (`score` de 0 a 4 por bar,
+15 primeiros do controle numa chamada) troca o eixo "Seu estilo" no `rankRecommendations`
+(`context.affinity`); pedido, leitura e regra de falha em
+`lib/recommendations/ai-affinity.ts`. Nada disso está em `recommendations.today`.
+`bun packages/api/scripts/recommender-eval.ts` compara A, B e C em perfis sintéticos com
+semente (trio que muda, Kendall, tempo, custo; `--out` grava o JSON do painel) com o modelo
+dublado; o modelo de verdade só com `--live --max-usd <teto>` (autorização do dono).
+
 **Chat em eventos (Rodada 24):** `ai.converse` é uma mutation que devolve um async iterable
 (`ChatEvent`, `lib/ai/events.ts`, que o app importa como tipo): `run` primeiro (o `run_id`),
 `step` ("Entendi o pedido",
