@@ -65,7 +65,7 @@ Turborepo monorepo, `bun` package manager, Biome for lint/format (2 spaces, sing
 
 ### Apps
 - **`apps/web`** — fullstack app: TanStack Start (SSR) + TanStack Router (file-based) + React 19. Runs on `localhost:3001`.
-- **`apps/e2e`** — Playwright E2E suite against `vite dev` and a disposable Postgres. See `docs/e2e.md`.
+- **`apps/e2e`** — Playwright E2E suite against the Node build (`vite build` + `vite preview`) and a disposable Postgres. See `docs/e2e.md`.
 - **`apps/mobile`** — app nativo: Expo SDK 57 + expo-router + Uniwind (Tailwind v4 no React Native). Ver "App mobile" abaixo.
 
 ### Packages
