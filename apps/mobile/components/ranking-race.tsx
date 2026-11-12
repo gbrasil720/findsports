@@ -329,8 +329,10 @@ function Step({
 }) {
   const first = row.position === 1
   const size = first ? 56 : 46
+  // Você: grafite com contorno (WEB-495); em tinta sumia no quadro, que é
+  // tinta nos dois temas.
   const face = row.me
-    ? { bg: INK, fg: ACID }
+    ? { bg: '#34342d', fg: ACID }
     : row.position === 2
       ? { bg: ACID, fg: INK }
       : { bg: PAPER, fg: INK }
@@ -369,7 +371,8 @@ function Step({
             height: size,
             borderRadius: size / 2,
             backgroundColor: face.bg
-          }
+          },
+          row.me && styles.stepFaceMe
         ]}
       >
         <Text style={[text(first ? 21 : 17, 'Bold', 1.1), { color: face.fg }]}>
@@ -713,6 +716,7 @@ const styles = StyleSheet.create({
     fontFamily: 'GeistMono-SemiBold',
     fontSize: 15
   },
+  stepFaceMe: { borderWidth: 1.5, borderColor: 'rgba(241,238,230,.22)' },
   face: {
     width: 34,
     height: 34,

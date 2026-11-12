@@ -78,7 +78,7 @@ export function Avatar({
         // No escuro o seu quadrinho é grafite com contorno (WEB-495): o
         // `card` de antes sumia no fundo da tela.
         ...(tone === 'me' && palette.dark
-          ? { borderWidth: 1.5, borderColor: palette.markRing }
+          ? { borderWidth: 1.5, borderColor: 'rgba(241,238,230,.22)' }
           : null),
         alignItems: 'center',
         justifyContent: 'center',
