@@ -59,12 +59,25 @@ const PLAN_TIERS = [
  *
  * Texto que quase nada casa faz as três camadas rodarem, e cada bar no raio
  * custava uma ida ao índice de `event` (57 ms). A camada starter (80% dos
- * bares) agora parte dos jogos que casam (`texto_jogos`, índice trigram):
- * 21 ms. Elite e pro continuam bar a bar: com `texto_jogos` também na pro o
- * texto raro ia a 11 ms, mas texto comum, que enche o teto, pagava a lista
- * inteira do índice nas páginas da pro (da 12ª em diante: 18 para 54 ms).
- * Texto comum na primeira página: 3,7 a 5,6 ms, como antes. Medido sem JIT
- * (migration 0084): com ele, a compilação sozinha levava 121 ms.
+ * bares) parte dos jogos que casam (`texto_jogos`, índice trigram): 21 ms.
+ *
+ * A pro também parte deles, mas só na primeira página (WEB-481). Ali ela só
+ * roda se a elite não encheu a página, e a elite (300 bares no raio) já é a
+ * amostra que diz se o texto é raro; texto comum enche a página na elite e
+ * nem monta `texto_jogos`. Com cursor a pro segue bar a bar: página funda já
+ * diz que o texto casa com muito bar, e montar `texto_jogos` nela pagava a
+ * lista inteira do índice (da 12ª página em diante, 18 para 54 ms). A elite
+ * fica sempre bar a bar: ela roda em toda busca e montaria `texto_jogos`
+ * para texto comum também.
+ *
+ * Medido em 12/11/2026 (mesmo dataset, mediana de 9, máquina carregada:
+ * compare os buffers), primeira página: texto raro de 10.742 para 3.817
+ * buffers (58 para 24 ms); campeonato em 1 de cada 97 bares, de 11.787 para
+ * 4.910. Páginas com cursor e texto comum na primeira página: mesmos
+ * buffers. O pior caso é texto que a elite não tem e enche a página na pro
+ * com `texto_jogos` no teto: monta a lista à toa, cerca de 140 buffers a
+ * menos mas 5 a 9 ms a mais. Medido sem JIT (migration 0084): com ele, a
+ * compilação sozinha levava 121 ms.
  *
  * Para medir: em `packages/db`, `NODE_ENV=test bun run db:seed:load-test
  * --bars 100000` (100 mil bares, 500 mil jogos; só aceita o
@@ -181,8 +194,11 @@ export async function executarBuscaEmCamadas(
         AND ST_DWithin(b.geo, ${origin}, ${radiusMeters})
         ${amenityFilterB}
         ${
-          // Só na starter: ver o comentário do topo.
-          tier.rank === 3 ? prefiltroTexto(sql`b`) : sql``
+          // Na starter sempre; na pro só na primeira página (WEB-481). Ver
+          // o comentário do topo.
+          tier.rank === 3 || (tier.rank === 2 && !keyset)
+            ? prefiltroTexto(sql`b`)
+            : sql``
         }
         ${tierKeyset}
         ${gate}
