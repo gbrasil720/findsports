@@ -230,12 +230,12 @@ test('"Continuar como visitante" e "Ver jogos de hoje" levam ao Explorar', async
 test('sem VITE_MAP_TILES_URL o mapa mostra o erro e a lista segue', async ({
   page
 }) => {
-  // O `vite dev` injeta `import.meta.env` no topo de cada módulo. Apagar a
-  // URL só na resposta de `env.ts` é o mesmo que subir sem a variável.
-  await page.route(/\/src\/lib\/env\.ts(\?|$)/, async (route) => {
+  // O build embute `import.meta.env` no JavaScript. Apagar a URL na resposta
+  // é o mesmo que subir sem a variável.
+  await page.route(/\/assets\/[^/]+\.js$/, async (route) => {
     const response = await route.fetch()
     const body = (await response.text()).replace(
-      /("VITE_MAP_TILES_URL":\s*)"[^"]*"/,
+      /(VITE_MAP_TILES_URL"?:\s*)(["'`])[^"'`]*\2/,
       '$1""'
     )
     await route.fulfill({ response, body })
