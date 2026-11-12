@@ -191,15 +191,10 @@ export default function Notices() {
   const unreadFriends = notices.filter(
     (n) => inTab(n, 'friends') && !read.includes(n.id)
   ).length
-  // Nada em lugar nenhum, fora do celular: o "Tudo em dia" do design
-  // (Rodada 14, Adaptativo 10), sem as abas. No celular, a frase de sempre.
-  const phone = useLayout().kind === 'phone'
+  // Nada em lugar nenhum: o "Tudo em dia" do design (Rodada 14, Adaptativo
+  // 10), sem as abas, no celular e fora dele (WEB-494).
   const calm =
-    !phone &&
-    !mine.isPending &&
-    !medals.isPending &&
-    !failed &&
-    notices.length === 0
+    !mine.isPending && !medals.isPending && !failed && notices.length === 0
   // Aberta a tela, o que está nela conta como lido na próxima vez; o ponto
   // acid fica nesta visita (o desenho não tem "Ler tudo").
   const loaded = !mine.isPending && !medals.isPending
