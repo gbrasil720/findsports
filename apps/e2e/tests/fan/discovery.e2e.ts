@@ -176,7 +176,7 @@ test('Elite no clássico vai na frente e registra exposição e clique', async (
 }) => {
   const spot = uniqueSpot()
   const startsAt = hours(2)
-  const [fla, pal] = [await team('flamengo'), await team('palmeiras')]
+  const [fla, flu] = [await team('flamengo'), await team('fluminense')]
   const perto = await pubAt(north(spot, 0.3), {
     subscription: { plan: 'starter' }
   })
@@ -186,7 +186,7 @@ test('Elite no clássico vai na frente e registra exposição e clique', async (
     ids[pub.barId] = await createEvent({
       barId: pub.barId,
       startsAt,
-      teamIds: [fla.id, pal.id]
+      teamIds: [fla.id, flu.id]
     })
   }
   const fan = await signInFanAt(page, spot)

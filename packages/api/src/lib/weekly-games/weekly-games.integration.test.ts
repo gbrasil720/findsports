@@ -219,16 +219,17 @@ integrationTest(
     const sportId = crypto.randomUUID()
     const created: string[] = []
     const gameIds: string[] = []
+    const slugs = ['corinthians', 'sao-paulo', 'flamengo', 'palmeiras']
     try {
       await db
         .insert(sport)
         .values({ id: sportId, name: `Futebol ${tag}`, slug: `wgc-${tag}` })
-      // Os slugs da regra `classic-v1` (migration 0031); no banco de teste o
-      // catálogo pode já tê-los.
+      // Os slugs das regras de clássico (migrations 0031 e 0093); no banco
+      // de teste o catálogo pode já tê-los.
       const fresh = await db
         .insert(team)
         .values(
-          ['flamengo', 'palmeiras'].map((slug) => ({
+          slugs.map((slug) => ({
             id: crypto.randomUUID(),
             sportId,
             name: `${slug} ${tag}`,
@@ -239,33 +240,34 @@ integrationTest(
         .returning({ id: team.id })
       created.push(...fresh.map((t) => t.id))
       const teams = await db.query.team.findMany({
-        where: (t, o) => o.inArray(t.slug, ['flamengo', 'palmeiras']),
+        where: (t, o) => o.inArray(t.slug, slugs),
         columns: { id: true, slug: true }
       })
       const id = (slug: string) =>
         teams.find((t) => t.slug === slug)?.id as string
+      const game = (
+        key: string,
+        home: string,
+        away: string | null,
+        h: number
+      ) => ({
+        weekStart: '2026-11-09',
+        key: `${key}-${tag}`,
+        sportId,
+        championship: `Liga ${tag}`,
+        title: `${key} ${tag}`,
+        homeTeamId: id(home),
+        awayTeamId: away ? id(away) : null,
+        startsAt: hours(h)
+      })
       const games = await db
         .insert(weeklyGame)
         .values([
-          {
-            weekStart: '2026-11-09',
-            key: `classico-${tag}`,
-            sportId,
-            championship: `Liga ${tag}`,
-            title: `Palmeiras × Flamengo ${tag}`,
-            homeTeamId: id('palmeiras'),
-            awayTeamId: id('flamengo'),
-            startsAt: hours(30)
-          },
-          {
-            weekStart: '2026-11-09',
-            key: `comum-${tag}`,
-            sportId,
-            championship: `Liga ${tag}`,
-            title: `Jogo comum ${tag}`,
-            homeTeamId: id('palmeiras'),
-            startsAt: hours(31)
-          }
+          // Majestoso, entrou na v2, com o mandante trocado.
+          game('majestoso', 'sao-paulo', 'corinthians', 30),
+          // Saiu na v2: não é mais clássico.
+          game('fla-pal', 'flamengo', 'palmeiras', 31),
+          game('comum', 'palmeiras', null, 32)
         ])
         .returning({ id: weeklyGame.id })
       gameIds.push(...games.map((g) => g.id))
@@ -275,9 +277,8 @@ integrationTest(
         neighborhood: 'Centro',
         now: new Date()
       })
-      const byId = new Map(got.map((g) => [g.id, g.classic]))
-      expect(byId.get(gameIds[0] as string)).toBe(true)
-      expect(byId.get(gameIds[1] as string)).toBe(false)
+      const classic = new Map(got.map((g) => [g.id, g.classic]))
+      expect(gameIds.map((g) => classic.get(g))).toEqual([true, false, false])
     } finally {
       await db.delete(weeklyGame).where(inArray(weeklyGame.id, gameIds))
       if (created.length) await db.delete(team).where(inArray(team.id, created))

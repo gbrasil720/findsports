@@ -87,12 +87,12 @@ integrationTest(
         .insert(team)
         .values([
           { sportId, name: 'Flamengo', slug: 'flamengo', country: 'BR' },
-          { sportId, name: 'Palmeiras', slug: 'palmeiras', country: 'BR' }
+          { sportId, name: 'Fluminense', slug: 'fluminense', country: 'BR' }
         ])
         .onConflictDoNothing()
       const times = await db.query.team.findMany({
         where: (t, { inArray: dentro }) =>
-          dentro(t.slug, ['flamengo', 'palmeiras']),
+          dentro(t.slug, ['flamengo', 'fluminense']),
         columns: { id: true }
       })
       const classico = await elite.seedGame({ startsAt })
