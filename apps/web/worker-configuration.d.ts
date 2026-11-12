@@ -15,6 +15,7 @@ interface __BaseEnv_Env {
 	CF_ACCOUNT_ID: string;
 	AI_GATEWAY_ID: string;
 	EMAIL_DELIVERY?: string;
+	PUSH_DELIVERY?: string;
 }
 declare namespace Cloudflare {
 	interface GlobalProps {
@@ -34,6 +35,7 @@ declare namespace Cloudflare {
 		CF_ACCOUNT_ID: string;
 		AI_GATEWAY_ID: string;
 		EMAIL_DELIVERY: string;
+		PUSH_DELIVERY: string;
 	}
 	interface Env extends __BaseEnv_Env {}
 }
@@ -42,7 +44,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "NODE_ENV" | "BETTER_AUTH_URL" | "PUBLIC_APP_URL" | "EMAIL_FROM" | "EMAIL_API_URL" | "MEDIA_PUBLIC_ORIGIN" | "CF_ACCOUNT_ID" | "AI_GATEWAY_ID" | "EMAIL_DELIVERY">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "NODE_ENV" | "BETTER_AUTH_URL" | "PUBLIC_APP_URL" | "EMAIL_FROM" | "EMAIL_API_URL" | "MEDIA_PUBLIC_ORIGIN" | "CF_ACCOUNT_ID" | "AI_GATEWAY_ID" | "EMAIL_DELIVERY" | "PUSH_DELIVERY">> {}
 }
 
 // Begin runtime types
