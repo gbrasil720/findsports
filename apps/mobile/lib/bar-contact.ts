@@ -5,6 +5,18 @@
  * `11988776655`, e número local brasileiro (10 ou 11 dígitos) ganha o 55.
  */
 
+/** O telefone gravado, ou nulo quando é vazio ou só espaços. */
+export function barPhone(phone: string | null | undefined) {
+  const trimmed = phone?.trim()
+  return trimmed ? trimmed : null
+}
+
+/** `tel:` só com dígitos e o "+": máscara e espaços não vão para o discador. */
+export function telUrl(phone: string) {
+  const clean = phone.replace(/[^\d+]/g, '')
+  return `tel:${clean.startsWith('+') ? '+' : ''}${clean.replace(/\+/g, '')}`
+}
+
 const local = (phone: string) => {
   const digits = phone.replace(/\D/g, '')
   return phone.startsWith('+55') ? digits.slice(2) : digits
