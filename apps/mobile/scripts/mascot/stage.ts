@@ -67,6 +67,7 @@ let cfg: MascotConfig = window.MASCOT ?? {
   reduced: false
 }
 let reduce = cfg.reduced
+document.documentElement.classList.toggle('reduce', reduce)
 const theme = () =>
   cfg.dark
     ? { body: '#c9f135', eye: '#12120f', fg: '#f1eee6', rgb: [201, 241, 53] }
@@ -77,6 +78,8 @@ const ACID = '#c9f135'
 
 /** O corpo é um quadrado de B px; enfeites em % do corpo, a partir do centro. */
 let B = 100
+/** Medidas em px do artifact (corpo de 205 px) no corpo daqui. */
+const px = (n: number) => (n * B) / 205
 function fit() {
   B = Math.round(Math.min(stage.clientHeight * 0.6, stage.clientWidth * 0.4))
   document.documentElement.style.setProperty('--b', `${B}px`)
@@ -152,11 +155,11 @@ async function tween(ms: number, fn: (u: number) => void, t = token) {
   }
   const start = performance.now()
   for (;;) {
-    await frame()
-    if (!alive(t)) throw CANCEL
     const u = Math.min(1, (performance.now() - start) / ms)
     fn(u)
     if (u === 1) return
+    await frame()
+    if (!alive(t)) throw CANCEL
   }
 }
 function mix<T extends Num>(
@@ -512,11 +515,10 @@ function burst(
   { up = 0, spread = 70, size = [5, 11], square = false } = {}
 ) {
   if (reduce) return
-  const k = B / 100
   for (let i = 0; i < n; i++) {
-    const s = size[0] + Math.random() * (size[1] - size[0])
+    const s = px(size[0] + Math.random() * (size[1] - size[0]))
     const a = Math.random() * Math.PI * 2
-    const d = (0.4 + Math.random() * 0.6) * spread * k
+    const d = ((0.4 + Math.random() * 0.6) * spread * B) / 440
     const el = add('bit', {
       ...at(x, y),
       width: `${s}px`,
@@ -529,7 +531,7 @@ function burst(
         { transform: 'translate(-50%,-50%) scale(.3)', opacity: 0 },
         { opacity: 1, offset: 0.12 },
         {
-          transform: `translate(calc(-50% + ${Math.cos(a) * d}px), calc(-50% + ${Math.sin(a) * d - up * k}px)) scale(1) rotate(${Math.random() * 300}deg)`,
+          transform: `translate(calc(-50% + ${Math.cos(a) * d}px), calc(-50% + ${Math.sin(a) * d - (up * B) / 44}px)) scale(1) rotate(${Math.random() * 300}deg)`,
           opacity: 0
         }
       ],
@@ -564,7 +566,8 @@ function pin(x: number) {
   const base = 'translate(-50%, -135%) rotate(-45deg)'
   el.animate(
     [
-      { transform: `${base} scale(0)` },
+      { transform: `${base} scale(.4)`, opacity: 0 },
+      { opacity: 1, offset: 0.25 },
       { transform: `${base} scale(1.25)`, offset: 0.6 },
       { transform: `${base} scale(.92)`, offset: 0.8 },
       { transform: `${base} scale(1)` }
@@ -585,7 +588,7 @@ function wave(i: number, x = 46, y = -6, dir = 1) {
       },
       { opacity: 1, offset: 0.2 },
       {
-        transform: `translate(-50%,-50%) translateX(${dir * B * 0.5}px) scale(${dir * 2.3}, 2.3)`,
+        transform: `translate(-50%,-50%) translateX(${dir * B * 0.36}px) scale(${dir * 2.3}, 2.3)`,
         opacity: 0
       }
     ],
@@ -597,7 +600,11 @@ function pop(cls: string, x: number, y: number, html = '') {
   el.innerHTML = html
   el.animate(
     [
-      { transform: 'translate(-50%,-50%) scale(0) rotate(-20deg)' },
+      {
+        transform: 'translate(-50%,-50%) scale(.6) rotate(-20deg)',
+        opacity: 0
+      },
+      { opacity: 1, offset: 0.3 },
       {
         transform: 'translate(-50%,-50%) scale(1.2) rotate(6deg)',
         offset: 0.6
@@ -619,7 +626,7 @@ function zzz(n: number) {
         { transform: 'translate(0,0)', opacity: 0 },
         { opacity: 1, offset: 0.25 },
         {
-          transform: `translate(${B * 0.35}px, ${-B * 0.55}px) rotate(14deg)`,
+          transform: `translate(${B * 0.2}px, ${-B * 0.32}px) rotate(14deg)`,
           opacity: 0
         }
       ],
@@ -695,7 +702,7 @@ const SPOTS = [-72, 70, 0]
 
 /** Pensando: um pulso corre pela roda e ela gira no eixo, com pausa de frente. */
 async function ponder(t: number) {
-  while (alive(t)) {
+  while (alive(t) && !reduce) {
     await sleep(700)
     if (!alive(t)) return
     await tween(
@@ -782,7 +789,8 @@ async function writeIn(t: number) {
   }
 }
 /** Sai do "escrevendo": parou (volta seco) ou pronto (cometa, anel, forma). */
-async function writeOut(t: number, stopped: boolean) {
+async function writeOut(t: number, next: MascotState) {
+  const stopped = next === 'stopped'
   if (!writing) return
   writing = false
   const sb = sdf(HOME)
@@ -899,19 +907,53 @@ async function writeOut(t: number, stopped: boolean) {
   ])
   await finish()
   eye({ wide: 1 }, 420, spring, t)
+  // Sorri só se achou: sem bares, a próxima cena é a do "?".
+  if (next === 'done') setMood('happy', t)
   await to({ sx: 1, sy: 1 }, 520, spring, t)
 }
 
 // ---------- estados ----------
 type Run = (t: number, prev: MascotState) => Promise<void>
 const loopHop = async (t: number, every: number, h: number) => {
-  while (alive(t)) {
+  while (alive(t) && !reduce) {
     await sleep(every)
     if (!alive(t)) return
     await hop(h, t)
   }
 }
 const home = (t: number) => morph(HOME, {}, t)
+/** A taça de frente: troca de forma se precisar, sem soltar e virar de novo. */
+const homeFront = async (t: number) => {
+  if (cur === HOME) await front(t)
+  else await morph(HOME, { stay: true }, t)
+  // O sorriso de "pronto" não passa para a cena seguinte.
+  if (E.happy > 0) await setMood('idle', t)
+}
+
+/** Salto com giro de verdade em 3D (a cambalhota do artifact). */
+async function flip(t: number) {
+  await release(t)
+  await to({ sx: 1.18, sy: 0.78 }, 150, out3, t)
+  await to({ sx: 0.94, sy: 1.1, y: -3 }, 70, out3, t)
+  const h = 40
+  const y0 = S.y
+  await tween(
+    640,
+    (u) => {
+      const air = Math.sin(Math.PI * u)
+      S.y = y0 * (1 - u) - 4 * h * u * (1 - u)
+      S.sx = 0.94 + 0.06 * u - 0.04 * air
+      S.sy = 1.1 - 0.1 * u + 0.06 * air
+      apply()
+      bot.update({ view: { yaw: 0, pitch: -io(u) * Math.PI * 2 } })
+    },
+    t
+  )
+  bot.update({ view: { yaw: 0, pitch: 0 } })
+  ripple(S.x)
+  await to({ y: 0, sx: 1.2, sy: 0.8 }, 60, out3, t)
+  await to({ sx: 1, sy: 1 }, 440, spring, t)
+}
 
 const STATES: Record<MascotState, Run> = {
   idle: async (t) => {
@@ -941,6 +983,12 @@ const STATES: Record<MascotState, Run> = {
   },
   searching: async (t) => {
     await morph(DEF.gota, { stay: true, quick: true }, t)
+    if (reduce) {
+      // Sem os pulos: os bares marcados aparecem de uma vez.
+      pin(-72)
+      pin(70)
+      return
+    }
     for (let i = 0; alive(t); i++) {
       const x = SPOTS[i % 3]
       if (i < 3 && i > 0) pin(SPOTS[i - 1])
@@ -967,7 +1015,11 @@ const STATES: Record<MascotState, Run> = {
     const nod = (el: HTMLElement) =>
       !reduce &&
       el.animate(
-        [{ translate: '0 0' }, { translate: '0 -9px' }, { translate: '0 0' }],
+        [
+          { translate: '0 0' },
+          { translate: `0 ${-px(9)}px` },
+          { translate: '0 0' }
+        ],
         {
           duration: 240,
           easing: 'ease-out',
@@ -989,7 +1041,7 @@ const STATES: Record<MascotState, Run> = {
       list[2].animate(
         [
           { translate: '0 0' },
-          { translate: `${-dx / 2}px -26px` },
+          { translate: `${-dx / 2}px ${-px(26)}px` },
           { translate: `${-dx}px 0` }
         ],
         { duration: 420, easing: 'ease-in-out', fill: 'forwards' }
@@ -997,7 +1049,7 @@ const STATES: Record<MascotState, Run> = {
       list[1].animate(
         [
           { translate: '0 0' },
-          { translate: `${dx / 2}px 12px` },
+          { translate: `${dx / 2}px ${px(12)}px` },
           { translate: `${dx}px 0` }
         ],
         { duration: 420, easing: 'ease-in-out', fill: 'forwards' }
@@ -1015,7 +1067,7 @@ const STATES: Record<MascotState, Run> = {
       })
     await eye({ gy: 0.4, wide: 1.1 }, 200, out3, t)
     // fica olhando o melhor, flutuando
-    while (alive(t)) {
+    while (alive(t) && !reduce) {
       await to({ y: -42 }, 900, io, t)
       await to({ y: -46 }, 900, io, t)
     }
@@ -1024,21 +1076,18 @@ const STATES: Record<MascotState, Run> = {
     await writeIn(t)
   },
   done: async (t) => {
-    await home(t)
-    if (!alive(t)) return
+    if (cur !== HOME) await morph(HOME, { stay: true }, t)
     await setMood('happy', t)
     confetti()
-    await hop(14, t)
-    if (!alive(t)) return
-    await release(t)
+    await sleep(500)
+    await flip(t)
     await sleep(2600)
     if (!alive(t)) return
     bot.update({ mood: 'idle' })
     mood = 'idle'
   },
   empty: async (t) => {
-    await home(t)
-    await front(t)
+    await homeFront(t)
     if (!alive(t)) return
     await to({ x: -8, r: -4 }, 220, io, t)
     await eye({ gx: -1 }, 160, out3, t)
@@ -1056,22 +1105,21 @@ const STATES: Record<MascotState, Run> = {
     await to({ sx: 1.07, sy: 0.9 }, 420, out3, t)
   },
   awaiting: async (t) => {
-    await home(t)
-    await front(t)
+    await homeFront(t)
     if (!alive(t)) return
     await setMood('idle', t)
-    for (let i = 0; alive(t); i++) {
+    for (let i = 0; alive(t) && !reduce; i++) {
       eye({ gy: 1, gx: 0, wide: 1 }, 180, io, t)
       await to({ r: 0, y: 2, sx: 1.04, sy: 0.95 }, 220, io, t)
-      await sleep(520)
+      await sleep(380)
       if (!alive(t)) return
       eye({ gy: 0, wide: 1.14 }, 180, io, t)
       await to({ y: -5, sx: 0.97, sy: 1.05, r: i % 2 ? -4 : 4 }, 240, out3, t)
-      await sleep(900)
+      await sleep(620)
       if (!alive(t)) return
       eye({ wide: 1 }, 200, out3, t)
       await to({ y: 0, sx: 1, sy: 1, r: 0 }, 300, spring, t)
-      await sleep(400)
+      await sleep(250)
     }
   },
   going: async (t) => {
@@ -1103,7 +1151,7 @@ const STATES: Record<MascotState, Run> = {
     await to({ sx: 1, sy: 1, r: 0 }, 420, spring, t)
     eye({ gx: 0, gy: 0 }, 200, out3, t)
     await setMood('happy', t)
-    await sleep(1600)
+    await sleep(1500)
     if (!alive(t)) return
     hideStamp()
     await home(t)
@@ -1123,7 +1171,7 @@ const STATES: Record<MascotState, Run> = {
     }
     eye({ gx: 0 }, 200, out3, t)
     await setMood('happy', t)
-    await sleep(1200)
+    await sleep(1100)
     if (!alive(t)) return
     await home(t)
   },
@@ -1145,7 +1193,7 @@ const STATES: Record<MascotState, Run> = {
     const chip = pop('chip', 34, -50, '3 h antes')
     await setMood('happy', t)
     await hop(8, t)
-    await sleep(1400)
+    await sleep(1200)
     if (!alive(t)) return
     fade(chip)
     await home(t)
@@ -1166,17 +1214,15 @@ const STATES: Record<MascotState, Run> = {
     await eye({ tilt: 12 }, 260, out3, t)
   },
   stopped: async (t) => {
-    await home(t)
-    await front(t)
+    await homeFront(t)
     if (!alive(t)) return
     await to({ sy: 0.93, sx: 1.04 }, 140, io, t)
     await to({ sy: 1, sx: 1 }, 300, spring, t)
-    await sleep(600)
+    await sleep(700)
     await release(t)
   },
   limit: async (t) => {
-    await home(t)
-    await front(t)
+    await homeFront(t)
     if (!alive(t)) return
     eye({ open: 0.55 }, 400, io, t)
     await to({ sx: 0.95, sy: 1.1, y: -2 }, 520, io, t)
@@ -1185,7 +1231,7 @@ const STATES: Record<MascotState, Run> = {
     if (!alive(t)) return
     eye({ flat: 1 }, 260, out3, t)
     await to({ r: 7, x: 3 }, 600, io, t)
-    while (alive(t)) {
+    while (alive(t) && !reduce) {
       zzz(3)
       for (let i = 0; i < 2 && alive(t); i++) {
         await to({ sy: 0.98, sx: 1.03 }, 700, io, t)
@@ -1194,8 +1240,7 @@ const STATES: Record<MascotState, Run> = {
     }
   },
   down: async (t) => {
-    await home(t)
-    await front(t)
+    await homeFront(t)
     if (!alive(t)) return
     eye({ wide: 1.25 }, 60, out3, t)
     for (const x of [-7, 7, -6, 5, -3, 0])
@@ -1203,21 +1248,21 @@ const STATES: Record<MascotState, Run> = {
     await eye({ dead: 1, wide: 1 }, 320, lin, t)
     if (!alive(t)) return
     pop('dizzy', 0, -44, '<i></i><i></i><i></i>')
-    while (alive(t)) {
+    while (alive(t) && !reduce) {
       await to({ r: 8, x: 3, sy: 0.97 }, 480, io, t)
       await to({ r: -8, x: -3, sy: 0.97 }, 480, io, t)
     }
   },
   offline: async (t) => {
-    await home(t)
-    await front(t)
+    await homeFront(t)
     if (!alive(t)) return
     const sig = pop('sig', 0, -62, '<b></b><b></b><b></b><u></u>')
     eye({ gy: -1, wide: 1.1 }, 200, out3, t)
     await sleep(500)
     for (const b of [...sig.querySelectorAll('b')].reverse()) {
       ;(b as HTMLElement).style.opacity = '.18'
-      await sleep(260)
+      await to({ sy: S.sy - 0.025, sx: S.sx + 0.015 }, 160, out3, t)
+      await sleep(170)
       if (!alive(t)) return
     }
     ;(sig.querySelector('u') as HTMLElement).style.transform =
@@ -1260,7 +1305,7 @@ async function leave(prev: MascotState, next: MascotState, t: number) {
     })
   }
   if (E.dead || E.flat || E.tilt || E.wk) eye(NEUTRAL, 260, out3, t)
-  if (writing) await writeOut(t, next === 'stopped')
+  if (writing) await writeOut(t, next)
   if (!alive(t)) return
   if (prev === 'thinking' && S.sx < 0.9) {
     setMood('idle', t)
@@ -1321,6 +1366,7 @@ window.setMascot = (c) => {
   cfg = { ...cfg, ...c }
   if (cfg.reduced !== before.reduced) {
     reduce = cfg.reduced
+    document.documentElement.classList.toggle('reduce', reduce)
     bot.update({ reducedMotion: reduce })
   }
   if (cfg.dark !== before.dark) {
@@ -1337,5 +1383,15 @@ window.setMascot = (c) => {
 requestAnimationFrame(() => {
   apply()
   window.ReactNativeWebView?.postMessage('ready')
+  // As formas de antes, uma por vez no tempo livre: na hora da troca, calcular
+  // o campo de distância perdia quadros bem no impulso.
+  const queue = Object.values(DEF)
+  const warm = () => {
+    const def = queue.shift()
+    if (!def) return
+    sdf(def)
+    setTimeout(warm, 60)
+  }
+  setTimeout(warm, 400)
   if (cfg.state !== 'idle') request(cfg.state)
 })

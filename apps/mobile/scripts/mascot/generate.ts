@@ -45,7 +45,7 @@ html,body{height:100%;background:transparent;overflow:hidden;-webkit-user-select
 @keyframes pulse{50%{transform:scale(1.08);opacity:.7}}
 .orbit{position:absolute;left:50%;top:var(--cy);width:calc(var(--b) * 1.3);height:calc(var(--b) * 1.3);margin:calc(var(--b) * -.65) 0 0 calc(var(--b) * -.65);container-type:inline-size;pointer-events:none;opacity:0;transform:scale(.35);transition:opacity .22s,transform .5s cubic-bezier(.3,1.5,.5,1)}
 .orbit.on{opacity:1;transform:scale(1)}
-.orbit b{position:absolute;left:50%;top:50%;width:7px;height:7px;margin:-3.5px;border-radius:50%;background:var(--accent);scale:.7;opacity:.5}
+.orbit b{position:absolute;left:50%;top:50%;width:calc(var(--b) * .044);height:calc(var(--b) * .044);margin:calc(var(--b) * -.022);border-radius:50%;background:var(--accent);scale:.7;opacity:.5}
 .orbit.on b{animation:chase 1.2s linear infinite}
 @keyframes chase{0%,34%,100%{scale:.7;opacity:.5}9%{scale:1.9;opacity:1}}
 .live{position:absolute;left:49%;top:20%;display:flex;align-items:center;gap:.25em;font:600 .54em ui-monospace,Menlo,monospace;letter-spacing:.04em;color:var(--on-body);opacity:0;transform:scale(.6);transition:opacity .18s,transform .28s cubic-bezier(.3,1.6,.5,1);white-space:nowrap}
@@ -53,16 +53,16 @@ html,body{height:100%;background:transparent;overflow:hidden;-webkit-user-select
 .live i{width:.62em;height:.62em;border-radius:50%;background:#e8320c;animation:blink 1s steps(2,jump-none) infinite}
 @keyframes blink{50%{opacity:.25}}
 .stamp{position:absolute;left:72.5%;top:63.5%;width:29%;aspect-ratio:1;border-radius:50%;border:.16em solid #e8320c;color:#e8320c;display:grid;place-items:center;font:900 1em Impact,'Arial Narrow',sans-serif;letter-spacing:.04em;transform:translate(-50%,-50%) rotate(-14deg) scale(2.6);opacity:0}
-.pin{position:absolute;top:calc(var(--cy) + var(--b) * .38);width:calc(var(--b) * .15);aspect-ratio:1;border-radius:50% 50% 50% 0;background:var(--fg);transform-origin:0 100%;transition:scale .3s cubic-bezier(.3,1.6,.5,1),background .3s}
+.pin{position:absolute;top:calc(var(--cy) + var(--b) * .36);width:calc(var(--b) * .15);aspect-ratio:1;border-radius:50% 50% 50% 0;background:var(--fg);transform-origin:0 100%;transition:scale .3s cubic-bezier(.3,1.6,.5,1),background .3s}
 .pin::after{content:'';position:absolute;inset:30%;border-radius:50%;background:var(--bg-dot,#12120f)}
-.pin.best{scale:1.6;background:var(--accent)}
-.ripple{position:absolute;top:calc(var(--cy) + var(--b) * .38);width:calc(var(--b) * .5);height:calc(var(--b) * .11);border-radius:50%;border:2px solid var(--accent)}
+.pin.best{scale:1.5;background:var(--accent)}
+.ripple{position:absolute;top:calc(var(--cy) + var(--b) * .36);width:calc(var(--b) * .5);height:calc(var(--b) * .11);border-radius:50%;border:2px solid var(--accent)}
 .wave{position:absolute;width:calc(var(--b) * .2);aspect-ratio:1;border-radius:50%;border:3px solid transparent;border-right-color:var(--accent)}
 .bit{position:absolute}
 .txt{position:absolute;font:600 1em ui-monospace,Menlo,monospace;color:var(--fg);line-height:1}
 .txt.big{font:900 2.1em Impact,'Arial Narrow',sans-serif;color:var(--accent);transform:translate(-50%,-50%)}
 .card{position:absolute;width:calc(var(--b) * .17);aspect-ratio:5/7;border-radius:14%;background:#e8320c;box-shadow:3px 3px 0 rgba(0,0,0,.45)}
-.chip{position:absolute;padding:.3em .7em;border-radius:999px;background:var(--fg);color:var(--chip-text,#12120f);font:600 .9em ui-monospace,Menlo,monospace;white-space:nowrap}
+.chip{position:absolute;padding:.3em .7em;border-radius:999px;background:var(--fg);color:var(--chip-text,#12120f);font:600 .56em ui-monospace,Menlo,monospace;white-space:nowrap}
 .sig{position:absolute;width:calc(var(--b) * .34);aspect-ratio:1.25;display:flex;align-items:flex-end;justify-content:center;gap:12%}
 .sig b{width:18%;border-radius:3px;background:var(--fg);transition:opacity .2s}
 .sig b:nth-child(1){height:34%}.sig b:nth-child(2){height:64%}.sig b:nth-child(3){height:96%}
@@ -70,6 +70,8 @@ html,body{height:100%;background:transparent;overflow:hidden;-webkit-user-select
 .dizzy{position:absolute;width:calc(var(--b) * .6);aspect-ratio:3}
 .dizzy i{position:absolute;left:50%;top:50%;width:9%;aspect-ratio:1;margin:-4.5%;border-radius:50%;background:var(--fg);animation:dz 1.1s linear infinite}
 .dizzy i:nth-child(2){animation-delay:-.37s}.dizzy i:nth-child(3){animation-delay:-.73s}
+html.reduce .orbit.on b,html.reduce .glow.on,html.reduce .live i,html.reduce .dizzy i{animation:none}
+html.reduce .orbit,html.reduce .live,html.reduce .sig u,html.reduce .pin{transition:none}
 @keyframes dz{0%{transform:translate(340%,0) scale(1.1)}25%{transform:translate(0,110%) scale(1.3)}50%{transform:translate(-340%,0) scale(1.1)}75%{transform:translate(0,-110%) scale(.7)}100%{transform:translate(340%,0) scale(1.1)}}
 `
 
