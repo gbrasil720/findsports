@@ -197,13 +197,12 @@ async function setup() {
     )
     process.exit(1)
   }
-  // Sem rota de atualização na API: o do mesmo endereço sai e entra de novo.
-  // Entre os dois, um aviso pode se perder; a AbacatePay não reenvia 404.
-  for (const hook of await listWebhooks()) {
-    if (hook.endpoint !== endpoint) continue
-    await deleteWebhook(hook.id)
-    console.log(`  apagado ${hook.id} (${hook.name})`)
-  }
+  // Sem rota de atualização na API. O novo entra antes de o antigo sair:
+  // se a criação falhar, o antigo continua recebendo. Entre os dois, o mesmo
+  // aviso pode chegar duas vezes, e o webhook relê o estado (idempotente).
+  const old = (await listWebhooks()).filter(
+    (hook) => hook.endpoint === endpoint
+  )
   const created = await createWebhook({
     name: production ? 'onside-producao' : 'onside-teste',
     endpoint,
@@ -211,6 +210,10 @@ async function setup() {
     events: [...PIX_WEBHOOK_EVENTS]
   })
   console.log(`  criado ${created.id} para ${created.endpoint}`)
+  for (const hook of old) {
+    await deleteWebhook(hook.id)
+    console.log(`  apagado ${hook.id} (${hook.name})`)
+  }
 }
 
 const command = process.argv[2]
