@@ -90,11 +90,13 @@ jobs:
       - run: bun run test
 
   e2e:
-    # Suíte Playwright (WEB-174, docs/e2e.md): `vite dev` contra um Postgres
+    # Suíte Playwright (WEB-174, docs/e2e.md): build em Node contra um Postgres
     # descartável, Chromium desktop + Pixel 7, sem rede externa.
-    # `desktop`/`mobile` divididos em 12 shards (repo público: minuto de
-    # runner padrão não custa, e cada shard a mais corta o tempo do PR); os `*-serial` num job
-    # à parte, porque como dependência eles puxariam a suíte inteira para cada shard.
+    # `desktop`/`mobile` divididos em 8 shards pelo tempo medido de cada
+    # arquivo (`apps/e2e/shard.ts`). Não mais que isso: a conta roda 20 jobs
+    # por vez, e com vários PRs abertos o shard a mais espera na fila. Os
+    # `*-serial` num job à parte, porque como dependência eles puxariam a suíte
+    # inteira para cada shard.
     #
     # Só em PR: o push em `master` é o merge de uma PR que já passou por
     # aqui, e rodar de novo dobrava os minutos e atrasava o deploy (WEB-236).
@@ -109,7 +111,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        part: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, serial]
+        part: [1, 2, 3, 4, 5, 6, 7, 8, serial]
     env:
       E2E_DATABASE_URL: postgres://findsports_e2e:findsports_e2e_local@127.0.0.1:5432/findsports_e2e
     services:
@@ -138,7 +140,7 @@ jobs:
       - if: steps.scope.outputs.web == 'true'
         uses: ./.github/actions/setup-playwright
       - if: steps.scope.outputs.web == 'true' && matrix.part != 'serial'
-        run: bunx playwright test --project=desktop --project=mobile --shard=${{ matrix.part }}/12
+        run: bunx playwright test --project=desktop --project=mobile $(bun shard.ts ${{ matrix.part }} 8)
         working-directory: apps/e2e
       - if: steps.scope.outputs.web == 'true' && matrix.part == 'serial'
         run: |
