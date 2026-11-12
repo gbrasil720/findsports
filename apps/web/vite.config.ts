@@ -15,15 +15,21 @@ import { defineConfig, type Plugin } from 'vite'
 const e2eKeepAlive: Plugin = {
   name: 'e2e-keep-alive',
   apply: 'serve',
-  configureServer({ httpServer }) {
-    if (!process.env.E2E_DATABASE_URL || !httpServer) return
-    if (!('keepAliveTimeout' in httpServer)) return
-    httpServer.keepAliveTimeout = 70_000
-    httpServer.headersTimeout = 71_000
-  }
+  configureServer: ({ httpServer }) => keepAlive(httpServer),
+  // O CI roda a suíte no `vite preview` do build (docs/e2e.md).
+  configurePreviewServer: ({ httpServer }) => keepAlive(httpServer)
 }
 
-export default defineConfig(({ mode }) => ({
+function keepAlive(httpServer: object | null) {
+  if (!process.env.E2E_DATABASE_URL || !httpServer) return
+  if (!('keepAliveTimeout' in httpServer)) return
+  Object.assign(httpServer, {
+    keepAliveTimeout: 70_000,
+    headersTimeout: 71_000
+  })
+}
+
+export default defineConfig(({ mode, command }) => ({
   optimizeDeps: {
     /**
      * `three` só é pedido por `import()`, no desktop, depois da hidratação
@@ -49,6 +55,13 @@ export default defineConfig(({ mode }) => ({
   worker: {
     format: 'es'
   },
+  /**
+   * Build em Node (o do E2E; o deploy é `--mode cloudflare`): tudo no bundle,
+   * como no Worker. Com dependência externa, o Node acha o `react` dela por
+   * outro caminho que o do `react-dom` e o SSR quebra com duas cópias do React
+   * ("Cannot read properties of null (reading 'useContext')").
+   */
+  ssr: command === 'build' ? { noExternal: true } : undefined,
   server: {
     port: 3001,
     allowedHosts: ['host.docker.internal']

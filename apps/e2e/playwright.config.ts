@@ -74,15 +74,15 @@ export default defineConfig({
       reuseExistingServer: false
     },
     {
-      // `vite dev`, e não o build: o build usa o driver HTTP do Neon, que não
-      // fala com Postgres local. Migra e semeia antes de subir.
+      // O build em Node (~5 s), e não o `vite dev`: nenhum módulo é compilado
+      // no meio do teste. Migra e semeia antes de subir.
       command: [
         'cd ../../packages/db',
         'bunx drizzle-kit migrate',
         'bun src/seed/sports.ts',
         'bun src/catalog/sync.ts',
         'cd ../../apps/web',
-        `bunx vite dev --port ${APP_PORT} --strictPort --host 127.0.0.1`
+        `bunx vite build && bunx vite preview --port ${APP_PORT} --strictPort --host 127.0.0.1`
       ].join(' && '),
       url: BASE_URL,
       env: SERVER_ENV,
