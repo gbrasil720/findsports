@@ -9,7 +9,11 @@ import { env } from './env'
  */
 export function trackCommercialEvent(payload: {
   pubId: string
-  type: 'profile_view' | 'directions_opened' | 'phone_clicked'
+  type:
+    | 'profile_view'
+    | 'directions_opened'
+    | 'phone_clicked'
+    | 'whatsapp_opened'
 }) {
   const cookie = authClient.getCookie()
   fetch(`${env.EXPO_PUBLIC_SERVER_URL}/api/bar/commercial-event`, {
