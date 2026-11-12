@@ -638,6 +638,13 @@
       "when": 1794444103302,
       "tag": "0091_subscription_pix_after_trial",
       "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1794450937697,
+      "tag": "0092_subscription_pix_checkout_id",
+      "breakpoints": true
     }
   ]
 }

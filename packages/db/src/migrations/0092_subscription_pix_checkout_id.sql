@@ -1,0 +1,1 @@
+ALTER TABLE "subscription" ADD COLUMN "pix_checkout_id" text;
