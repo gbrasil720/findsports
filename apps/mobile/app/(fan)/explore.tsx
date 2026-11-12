@@ -67,6 +67,7 @@ import { usePalette } from '@/components/theme'
 import { useTourTarget } from '@/components/tour'
 import {
   ACID,
+  ErrorState,
   Icon,
   INK,
   LIVE,
@@ -101,6 +102,7 @@ import {
   shortcutLabel,
   shortcutOn
 } from '@/lib/filters'
+import { readTodayCode } from '@/lib/maintenance'
 import {
   expandGroup,
   frameRegion,
@@ -222,6 +224,16 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
     // em vez de piscar "Buscando bares…".
     placeholderData: keepPreviousData
   })
+  // "Ver meu código" (26a): o código de hoje guardado no aparelho, o mesmo da
+  // manutenção; sem ele, o botão sai.
+  const saved = board.isError ? readTodayCode(session.data?.user.id) : null
+  const codeOnDevice = saved
+    ? () =>
+        router.push({
+          pathname: '/codigo/[eventId]',
+          params: { eventId: saved.eventId }
+        })
+    : undefined
   const now = Date.now()
   const sportSlug =
     sports.find((sport) => sport.id === filters.sportId)?.slug ?? null
@@ -984,18 +996,15 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
   const listBody = (content: ReactNode, grid?: object) => (
     <>
       {board.isError ? (
-        <View style={styles.note}>
-          <Text style={[text(14), { color: palette.muted }]}>
-            Não deu para buscar os jogos.
-          </Text>
-          <Pressable onPress={() => board.refetch()} hitSlop={10}>
-            <Text
-              style={[text(14, 'Bold'), styles.link, { color: palette.ink }]}
-            >
-              Tentar de novo
-            </Text>
-          </Pressable>
-        </View>
+        <ErrorState
+          kind="signal"
+          title="Não deu pra carregar os bares."
+          error={board.error}
+          onRetry={() => board.refetch()}
+          retrying={board.isFetching}
+          onCode={codeOnDevice}
+          style={{ paddingTop: 4, paddingBottom: 24 }}
+        />
       ) : !board.data ? (
         <Text style={[text(14), styles.note, { color: palette.muted }]}>
           Buscando os jogos…
@@ -2137,7 +2146,6 @@ const styles = StyleSheet.create({
     gap: 10,
     textAlign: 'center'
   },
-  link: { textDecorationLine: 'underline' },
   end: { textAlign: 'center', paddingVertical: 8 },
   endRow: {
     flexDirection: 'row',
