@@ -643,6 +643,12 @@ export const subscription = pgTable('subscription', {
    * autorização. Só vale com `trialing` e sem `external_subscription_id`.
    */
   pixAfterTrialAt: timestamp('pix_after_trial_at'),
+  /**
+   * O checkout de Pix aberto e ainda não pago (`bill_...`). Abrir outro o
+   * apaga na AbacatePay (`pub.startPixCheckout`), para duas abas não poderem
+   * ser autorizadas e debitar duas vezes; o pagamento o limpa.
+   */
+  pixCheckoutId: text('pix_checkout_id'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
     .defaultNow()
