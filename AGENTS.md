@@ -1291,6 +1291,18 @@ invente layout que o projeto não tem.
   (só em desenvolvimento): `?dubla=1` troca o servidor por `lib/ai-dubla.ts`, e `estado=
   pensando|resposta|confirmar|feito` já manda a pergunta de cada tela (navegador DEV, seção
   "24"); `dubla=pior|limite|fora` para o pior caso, o limite e a IA fora do ar.
+- **A taça, mascote da busca com IA:** `components/ai/mascot.tsx`. O palco
+  (`scripts/mascot/stage.ts`, gerado em `assets/mascot/stage.html` por
+  `bun apps/mobile/scripts/mascot/generate.ts`) roda numa WebView, como a medalha:
+  o `open-bot-avatar` (MIT) dá o volume, o olhar e o piscar, e por cima vão a troca
+  de forma (taça, telão, gota, chopp, ingresso, megafone, sino, apito, em
+  `scripts/mascot/shapes.json`), os olhos e os enfeites. A tela só diz o estado:
+  `mascotState` (`lib/mascot.ts`) o tira da resposta (passo `understood`/`game`/
+  `search`/`rank`, texto, proposta, confirmação, limite, fora do ar, sem rede), e o
+  palco entra nele a partir do que estiver mostrando, com um mínimo de tempo por
+  cena. Fica grande no início da busca e presa acima do campo durante a conversa;
+  o ladrilho do cabeçalho é a taça parada em SVG (`mascot-still.ts`, gerado). Desenho
+  aprovado no artifact "Taça da IA Onside". No navegador DEV, "Taça (estados)".
 - **Passeio guiado (rodada 5, 3b), no lugar do primeiro acesso só da IA (4o):**
   `components/tour.tsx`, montado em `app/(fan)/_layout.tsx` e aberto por `?passeio=1` no
   Explorar: no fim do onboarding ("Ver como funciona · 30 s", em `onboarding/pronto`), em
