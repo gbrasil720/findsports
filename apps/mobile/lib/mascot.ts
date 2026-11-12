@@ -14,6 +14,8 @@ export type MascotState =
   | 'comparing'
   | 'writing'
   | 'done'
+  /** As respostas seguintes da conversa: sorriso e pulinho, sem festa. */
+  | 'pleased'
   | 'empty'
   | 'awaiting'
   | 'going'
@@ -35,7 +37,13 @@ const STEP_SCENE: Record<string, MascotState> = {
 
 export function mascotState(
   reply: Reply | null,
-  ctx: { online: boolean; off: boolean; blocked: boolean }
+  ctx: {
+    online: boolean
+    off: boolean
+    blocked: boolean
+    /** A primeira resposta da conversa ganha a festa inteira. */
+    first?: boolean
+  }
 ): MascotState {
   if (!ctx.online) return 'offline'
   if (!reply) return ctx.off ? 'down' : ctx.blocked ? 'limit' : 'idle'
@@ -55,7 +63,10 @@ export function mascotState(
   }
   if (reply.proposal) return 'awaiting'
 
-  if (reply.state === 'done') return reply.bars.length ? 'done' : 'empty'
+  if (reply.state === 'done') {
+    if (!reply.bars.length) return 'empty'
+    return ctx.first === false ? 'pleased' : 'done'
+  }
   if (reply.text) return 'writing'
   // O passo mais recente que começou (os "todo" ainda não chegaram).
   const started = reply.steps.filter((s) => s.state !== 'todo')
