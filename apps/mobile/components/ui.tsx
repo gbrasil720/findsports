@@ -59,6 +59,7 @@ import {
   TextInput
 } from '@/components/text'
 import {
+  ACCENT,
   ACID,
   INK,
   LIVE,
@@ -1701,26 +1702,66 @@ export function phaseLabel(
 export const phaseBusy = (phase: ActionPhase) =>
   phase === 'sending' || phase === 'waiting' || phase === 'retrying'
 
-/**
- * O bloco que não carregou, no lugar do que sumiria: o que houve, o que
- * fazer e "Tentar de novo" na falha passageira. Recusa do servidor mostra o
- * texto dele, sem botão (repetir só repetiria a recusa).
- */
-export function ErrorState({
-  title,
-  error,
-  onRetry,
+/** "Tentar de novo" com a largura do rótulo maior: trocar não empurra o botão. */
+function RetryLabel({
   retrying,
-  style
+  color
 }: {
-  /** "Não deu para abrir seus bares." */
-  title: string
+  retrying?: boolean
+  color: string
+}) {
+  return (
+    <>
+      <Text aria-hidden style={[text(15, 'Bold', 1.2), { opacity: 0 }]}>
+        Tentando de novo…
+      </Text>
+      <View style={styles.errorLabel}>
+        <Text style={[text(15, 'Bold', 1.2), { color }]}>
+          {retrying ? 'Tentando de novo…' : 'Tentar de novo'}
+        </Text>
+      </View>
+    </>
+  )
+}
+
+type ErrorStateProps = {
   error: unknown
   onRetry: () => unknown
   /** A nova tentativa está no ar (`isFetching` da consulta). */
   retrying?: boolean
   style?: StyleProp<ViewStyle>
-}) {
+} & (
+  | {
+      /** O conteúdo da tela não veio: "Não deu para abrir seus bares." */
+      kind?: 'screen'
+      title: string
+    }
+  | {
+      /** Só uma parte da tela falhou (26c): o resto segue funcionando. */
+      kind: 'block'
+      title?: never
+    }
+  | {
+      /**
+       * "Sinal caiu" (26a e 26b), no lugar da lista do Explorar. "Ver meu
+       * código" só com o código de hoje no aparelho (`onCode`).
+       */
+      kind: 'signal'
+      title: string
+      onCode?: () => void
+    }
+)
+
+/**
+ * O que não carregou, no lugar do que sumiria; nunca some, e nada anima em
+ * erro (rodada 7): o cartão aparece seco. Na falha passageira, a nova
+ * tentativa; a recusa do servidor mostra o texto dele, sem botão (repetir só
+ * repetiria a recusa).
+ */
+export function ErrorState(props: ErrorStateProps) {
+  if (props.kind === 'block') return <BlockError {...props} />
+  if (props.kind === 'signal') return <SignalLost {...props} />
+  const { title, error, onRetry, retrying, style } = props
   const transient = isTransientError(error)
   const line = !onlineManager.isOnline()
     ? OFFLINE_LINE
@@ -1728,9 +1769,8 @@ export function ErrorState({
       ? 'A conexão caiu no meio. O resto da página continua.'
       : errorMessage(error, 'Verifique a sua conta ou volte mais tarde.')
   // Rodada 7 (tela 5): o bloco fica no lugar, num cartão, com o título em
-  // Anton, o que deu errado e "Tentar de novo" em tinta; nunca some.
+  // Anton, o que deu errado e "Tentar de novo" em tinta.
   return (
-    // Nada anima em erro (rodada 7): o cartão aparece seco.
     <View accessibilityRole="alert" style={[styles.errorCard, style]}>
       <Text style={styles.errorTitle}>{title}</Text>
       <Text style={[text(14.5, 'Regular', 1.45), { color: SUB }]}>{line}</Text>
@@ -1745,20 +1785,147 @@ export function ErrorState({
             pressed && { transform: [{ scale: 0.97 }] }
           ]}
         >
-          {/* A largura é a do rótulo maior: trocar não empurra o botão. */}
-          <Text aria-hidden style={[text(15, 'Bold', 1.2), { opacity: 0 }]}>
-            Tentando de novo…
-          </Text>
-          <View style={styles.errorLabel}>
-            <Text style={[text(15, 'Bold', 1.2), { color: BG }]}>
-              {retrying ? 'Tentando de novo…' : 'Tentar de novo'}
-            </Text>
-          </View>
+          <RetryLabel retrying={retrying} color={BG} />
         </Pressable>
       ) : null}
     </View>
   )
 }
+
+/** 26c: a parte que falhou, com o sino e "Recarregar". */
+function BlockError({
+  error,
+  onRetry,
+  retrying,
+  style
+}: Extract<ErrorStateProps, { kind: 'block' }>) {
+  const transient = isTransientError(error)
+  return (
+    <View accessibilityRole="alert" style={[styles.blockCard, style]}>
+      <Icon name="bell" size={24} />
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={[text(14.5, 'Bold', 1.3), { color: FG }]}>
+          Essa parte não carregou
+        </Text>
+        <Text style={[text(12.5, 'Regular', 1.35), { color: SUB }]}>
+          {transient
+            ? 'O resto da tela continua funcionando.'
+            : errorMessage(error, 'Verifique a sua conta ou volte mais tarde.')}
+        </Text>
+      </View>
+      {transient ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ busy: retrying }}
+          disabled={retrying}
+          onPress={() => void onRetry()}
+          style={({ pressed }) => [
+            styles.blockButton,
+            retrying && { opacity: 0.6 },
+            pressed && { transform: [{ scale: 0.97 }] }
+          ]}
+        >
+          <Text
+            maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
+            numberOfLines={1}
+            style={[text(13, 'Bold', 1.2), { color: BG }]}
+          >
+            Recarregar
+          </Text>
+        </Pressable>
+      ) : null}
+    </View>
+  )
+}
+
+// 26a (claro) e 26b (escuro): o cartão troca tinta e papel; a sombra é acid no
+// claro e vermelha no escuro.
+const SIGNAL_BG = themed(INK, PAPER)
+const SIGNAL_FG = themed(PAPER, INK)
+const SIGNAL_KICKER = themed(ACID, ACCENT)
+const SIGNAL_LINE = themed('rgba(241,238,230,.3)', 'rgba(18,18,15,.25)')
+
+/** 26a e 26b: a lista inteira não veio; embaixo, a lista apagada. */
+function SignalLost({
+  title,
+  onRetry,
+  retrying,
+  onCode,
+  style
+}: Extract<ErrorStateProps, { kind: 'signal' }>) {
+  return (
+    <View style={[{ gap: 14 }, style]}>
+      <View accessibilityRole="alert" style={styles.signalCard}>
+        <Text
+          aria-hidden
+          maxFontSizeMultiplier={1}
+          style={[styles.signalBang, { color: SIGNAL_FG }]}
+        >
+          !
+        </Text>
+        <View style={styles.signalKicker}>
+          <Icon name="tv" size={30} color={SIGNAL_FG} accent={SIGNAL_KICKER} />
+          <Text style={[styles.kicker, { color: SIGNAL_KICKER }]}>
+            SINAL CAIU
+          </Text>
+        </View>
+        <Text
+          maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
+          style={[styles.signalTitle, { color: SIGNAL_FG }]}
+        >
+          {title}
+        </Text>
+        <Text
+          style={[
+            text(14, 'Regular', 1.45),
+            { color: SIGNAL_FG, opacity: 0.75 }
+          ]}
+        >
+          Pode ser a conexão ou o nosso servidor. Seus favoritos e o código do
+          jogo de hoje continuam no aparelho.
+        </Text>
+        <View style={styles.signalButtons}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ busy: retrying }}
+            disabled={retrying}
+            onPress={() => void onRetry()}
+            style={({ pressed }) => [
+              styles.signalButton,
+              styles.signalRetry,
+              pressed && { transform: [{ scale: 0.97 }] }
+            ]}
+          >
+            <RetryLabel retrying={retrying} color={INK} />
+          </Pressable>
+          {onCode ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={onCode}
+              style={({ pressed }) => [
+                styles.signalButton,
+                styles.signalCode,
+                pressed && { transform: [{ scale: 0.97 }] }
+              ]}
+            >
+              <Text
+                maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
+                numberOfLines={1}
+                style={[text(15, 'Bold', 1.2), { color: SIGNAL_FG }]}
+              >
+                Ver meu código
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+      </View>
+      {GHOSTS.map((key) => (
+        <View key={key} style={styles.signalGhost} />
+      ))}
+    </View>
+  )
+}
+const GHOSTS = ['a', 'b', 'c']
 
 /** Link em texto: "Já tem conta? **Entrar**". */
 export function TextLink({
@@ -2100,6 +2267,83 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 0,
     shadowOffset: { width: 0, height: 3 }
+  },
+  blockCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: LINE,
+    backgroundColor: CARD,
+    shadowColor: themed('rgba(232,50,12,.28)', 'rgba(232,50,12,.30)'),
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 5, height: 5 }
+  },
+  blockButton: {
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderRadius: 4,
+    backgroundColor: FG
+  },
+  signalCard: {
+    gap: 12,
+    paddingTop: 18,
+    paddingHorizontal: 18,
+    paddingBottom: 16,
+    borderRadius: 7,
+    backgroundColor: SIGNAL_BG,
+    shadowColor: themed(ACID, LIVE),
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 6, height: 6 }
+  },
+  // O "!" de 120 no canto, quase apagado.
+  signalBang: {
+    position: 'absolute',
+    top: -14,
+    right: 16,
+    fontFamily: 'Anton',
+    fontSize: 120,
+    lineHeight: 181,
+    opacity: 0.07
+  },
+  signalKicker: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  kicker: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11,
+    letterSpacing: 0.55
+  },
+  // Anton 30/1.02: margem negativa no lugar do entrelinha curto.
+  signalTitle: {
+    fontFamily: 'Anton',
+    fontSize: 30,
+    textTransform: 'uppercase',
+    marginVertical: -7.3
+  },
+  signalButtons: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  signalButton: {
+    flex: 1,
+    height: 46,
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  signalRetry: {
+    backgroundColor: ACID,
+    shadowColor: themed('#000', INK),
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 3, height: 3 }
+  },
+  signalCode: { borderWidth: 1.5, borderColor: SIGNAL_LINE },
+  signalGhost: {
+    height: 96,
+    borderRadius: 20,
+    backgroundColor: CARD,
+    opacity: 0.5
   },
   sheetDim: { backgroundColor: 'rgba(18,18,15,.42)' },
   sheetCenter: {
