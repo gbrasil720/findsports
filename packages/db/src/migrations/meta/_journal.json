@@ -645,6 +645,13 @@
       "when": 1794450937697,
       "tag": "0092_subscription_pix_checkout_id",
       "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1794491191010,
+      "tag": "0093_classic_rules_v2",
+      "breakpoints": true
     }
   ]
 }
