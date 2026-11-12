@@ -897,6 +897,8 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
     />
   )
 
+  // A régua não veio (26a): a folha volta à pergunta de sempre.
+  const failed = board.isError && !board.data
   // O título da folha: o jogo em Anton, ou "Rolando agora" no "Ao vivo".
   const sheetTitleNow = liveOnly ? (
     <Text numberOfLines={1} style={[styles.sheetTitle, { color: palette.ink }]}>
@@ -911,7 +913,11 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
     />
   ) : (
     <Text numberOfLines={1} style={[styles.sheetTitle, { color: palette.ink }]}>
-      {quiet.length ? 'BARES PERTO DE VOCÊ' : 'NENHUM JOGO'}
+      {failed
+        ? 'ONDE VAI SER O JOGO?'
+        : quiet.length
+          ? 'BARES PERTO DE VOCÊ'
+          : 'NENHUM JOGO'}
     </Text>
   )
   // Trocar o jogo é só estado: o título faz crossfade (150 ms).
@@ -936,7 +942,9 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
           ? sheetLine(game, bars.length, radiusKm)
           : board.data
             ? `nenhum jogo ${day === today() ? 'hoje' : 'neste dia'} até ${radiusKm} km`
-            : 'buscando os jogos…'
+            : failed
+              ? `até ${radiusKm} km`
+              : 'buscando os jogos…'
 
   // Os filtros moram depois do resultado (tela 3): todos, o raio, "Ao vivo"
   // (só com jogo rolando) e os atalhos.
@@ -1609,7 +1617,10 @@ export default function Explore({ capture = true }: { capture?: boolean }) {
           <View style={{ gap: 8 }}>
             <GameTitle
               title={
-                liveOnly ? 'Rolando agora' : (game?.title ?? 'Nenhum jogo')
+                liveOnly
+                  ? 'Rolando agora'
+                  : (game?.title ??
+                    (failed ? 'Onde vai ser o jogo?' : 'Nenhum jogo'))
               }
               size={titleSize}
               color={palette.ink}
