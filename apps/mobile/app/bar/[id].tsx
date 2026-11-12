@@ -98,6 +98,7 @@ import {
 import { useWithAccount } from '@/lib/account'
 import { clock } from '@/lib/ai-chat'
 import { authClient } from '@/lib/auth-client'
+import { phoneLabel, whatsappUrl } from '@/lib/bar-contact'
 import { closedNote } from '@/lib/bar-states'
 import { trackCommercialEvent } from '@/lib/commercial'
 import { env } from '@/lib/env'
@@ -331,10 +332,10 @@ export function BarDetail({
   const mapPress = usePressScale(0.985)
   const reportPress = usePressScale()
   const feedback = useMutation(trpc.feedback.send.mutationOptions())
-  // Rota e "Vou assistir" depois da busca com IA contam como ação da
-  // resposta (a métrica do teste).
+  // Rota, "Vou assistir", Ligar e WhatsApp depois da busca com IA contam
+  // como ação da resposta (a métrica do teste; Ligar e WhatsApp, WEB-427).
   const aiAction = useMutation(trpc.ai.action.mutationOptions())
-  const fromAi = (kind: 'going' | 'route') => {
+  const fromAi = (kind: 'going' | 'route' | 'phone' | 'whatsapp') => {
     if (ai) aiAction.mutate({ runId: ai, kind, barId: id })
   }
   // Barra de status clara sobre a foto; passou dela, segue o papel.
@@ -769,6 +770,8 @@ export function BarDetail({
   // "Onde fica" (rodada 8, tela 3): o mapa com a gota grande do bar, o
   // endereço, a distância a pé, perto do metrô e estacionamento quando o bar
   // marcou, "Como chegar" (o app de mapas) e "Ligar".
+  const wa =
+    data?.phone && data.phoneAcceptsWhatsapp ? whatsappUrl(data.phone) : null
   const nearby = AMENITIES.filter(
     (item) => [22, 9, 8].includes(item.id) && amenities.includes(item.id)
   )
@@ -834,6 +837,14 @@ export function BarDetail({
           </Text>
           <Text style={[text(14, 'Regular', 1.4), { color: palette.muted }]}>
             {place.join(' · ')}
+            {data.phone ? (
+              <>
+                {place.length ? ' · ' : null}
+                <Text style={[styles.phone, { color: palette.ink }]}>
+                  {phoneLabel(data.phone)}
+                </Text>
+              </>
+            ) : null}
           </Text>
         </View>
         {nearby.length ? (
@@ -857,9 +868,11 @@ export function BarDetail({
             ))}
           </View>
         ) : null}
+        {/* Rodada 29: só os botões que existem, dividindo a linha. */}
         <View style={styles.whereButtons}>
           <AnimatedPressable
             accessibilityRole="link"
+            accessibilityLabel={`Como chegar ao ${data.name}`}
             onPress={() => {
               fromAi('route')
               Linking.openURL(directions(lat, lng))
@@ -869,24 +882,39 @@ export function BarDetail({
             style={[styles.routeButton, goPress.style]}
           >
             <Icon name="pin" size={18} color={INK} accent={INK} />
-            <Text style={[text(14.5, 'Bold', 1.2), { color: INK }]}>
+            <Text
+              numberOfLines={1}
+              maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
+              style={[text(14.5, 'Bold', 1.2), { color: INK }]}
+            >
               Como chegar
             </Text>
           </AnimatedPressable>
           {data.phone ? (
-            <Pressable
-              accessibilityRole="link"
-              onPress={() => Linking.openURL(`tel:${data.phone}`)}
-              style={({ pressed }) => [
-                styles.callButton,
-                { borderColor: palette.line },
-                pressed && { opacity: 0.7 }
-              ]}
-            >
-              <Text style={[text(14.5, 'Bold', 1.2), { color: palette.ink }]}>
-                Ligar
-              </Text>
-            </Pressable>
+            <ContactButton
+              label="Ligar"
+              icon="phone"
+              accessibilityLabel={`Ligar para o ${data.name}`}
+              onPress={() => {
+                fromAi('phone')
+                if (fan)
+                  trackCommercialEvent({ pubId: id, type: 'phone_clicked' })
+                Linking.openURL(`tel:${data.phone}`)
+              }}
+            />
+          ) : null}
+          {wa ? (
+            <ContactButton
+              label="WhatsApp"
+              icon="whatsapp"
+              accessibilityLabel={`Abrir conversa no WhatsApp com o ${data.name}`}
+              onPress={() => {
+                fromAi('whatsapp')
+                if (fan)
+                  trackCommercialEvent({ pubId: id, type: 'whatsapp_opened' })
+                Linking.openURL(wa)
+              }}
+            />
           ) : null}
         </View>
       </>
@@ -1947,6 +1975,42 @@ function RoundGlass({
   )
 }
 
+/** Ligar e WhatsApp de "Onde fica" (rodada 29): pílula de contorno. */
+function ContactButton({
+  label,
+  icon,
+  accessibilityLabel,
+  onPress
+}: {
+  label: string
+  icon: 'phone' | 'whatsapp'
+  accessibilityLabel: string
+  onPress: () => void
+}) {
+  const palette = usePalette()
+  return (
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLabel={accessibilityLabel}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.callButton,
+        { borderColor: palette.line },
+        pressed && { opacity: 0.7 }
+      ]}
+    >
+      <Icon name={icon} size={18} color={palette.ink} />
+      <Text
+        numberOfLines={1}
+        maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
+        style={[text(14.5, 'Bold', 1.2), { color: palette.ink }]}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  )
+}
+
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
   hero: { height: 340, justifyContent: 'flex-end' },
@@ -1996,9 +2060,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 13,
     borderRadius: 18
   },
-  whereButtons: { flexDirection: 'row', gap: 10 },
+  whereButtons: { flexDirection: 'row', gap: 8 },
   routeButton: {
-    flex: 1,
+    flex: 1.35,
     height: 40,
     borderRadius: 20,
     flexDirection: 'row',
@@ -2016,9 +2080,13 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     borderWidth: 1.5,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 8
   },
+  phone: { fontFamily: 'GeistMono-SemiBold', fontSize: 13 },
   hoursCard: {
     borderRadius: 20,
     paddingVertical: 6,
