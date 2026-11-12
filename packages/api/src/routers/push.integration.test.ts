@@ -150,6 +150,18 @@ integrationTest('push de ponta a ponta', async () => {
       { userId: gabriel, eventId: other, remindBeforeMinutes: 180 }
     ])
     sent.length = 0
+    // Desligado (padrão): não consulta nem envia, e o lembrete fica para depois.
+    delete process.env.PUSH_ENABLED
+    expect(await pushDueReminders()).toEqual({ due: 0, sent: 0 })
+    const [pending] = await db
+      .select({ pushedAt: gameReminder.pushedAt })
+      .from(gameReminder)
+      .where(
+        and(eq(gameReminder.userId, gabriel), eq(gameReminder.eventId, game))
+      )
+    expect(pending?.pushedAt).toBeNull()
+    expect(sent).toEqual([])
+    process.env.PUSH_ENABLED = '1'
     expect(await pushDueReminders()).toEqual({ due: 1, sent: 1 })
     expect(sent).toMatchObject([
       {
@@ -207,6 +219,7 @@ integrationTest('push de ponta a ponta', async () => {
       await db.select().from(pushToken).where(eq(pushToken.userId, marina.id))
     ).toEqual([])
   } finally {
+    delete process.env.PUSH_ENABLED
     spy.mockRestore()
     setBackgroundTaskHandler(() => {})
     await db.delete(user).where(eq(user.id, marina.id))
