@@ -122,6 +122,38 @@ function teamOf(history: BarHistory, game: CatalogCandidate) {
     .sort((a, b) => b.count - a.count)[0]
 }
 
+/** Bar sem jogo publicado e sem time da casa: nada do histórico pesa. */
+function isNewBar(history: BarHistory) {
+  return history.sports.size === 0 && history.houseTeams.size === 0
+}
+
+// ponytail: pelo nome do campeonato e do título; uma coluna de país no
+// catálogo resolve de vez se a lista de nomes começar a errar.
+const BRAZILIAN_CLUB_COMPETITIONS =
+  /brasileir|copa do brasil|libertadores|sul-americana|paulist|carioca|mineiro|gauch|baian|pernambuc|cearense|paranaense|catarinense|goian/
+const OPEN_TV = new Set([
+  'globo',
+  'band',
+  'record',
+  'sbt',
+  'cazetv',
+  'tv cultura',
+  'redetv'
+])
+
+/**
+ * Para o bar novo, o que todo bar brasileiro passa: a seleção, depois clube
+ * brasileiro, e o que está na TV aberta. Sem isso, tudo empata e o destaque
+ * vira o jogo mais cedo, mesmo que seja um da NBA no League Pass.
+ */
+function newBarBonus(game: CatalogCandidate) {
+  let bonus = 0
+  if (/\bbrasil\b/.test(fold(game.title))) bonus += 3
+  else if (BRAZILIAN_CLUB_COMPETITIONS.test(fold(game.championship))) bonus += 2
+  if (game.channels.some((c) => OPEN_TV.has(fold(c)))) bonus += 1
+  return bonus
+}
+
 export function scoreGame(history: BarHistory, game: CatalogCandidate) {
   const championship = history.championships.get(fold(game.championship)) ?? 0
   const team = teamOf(history, game)
@@ -139,6 +171,7 @@ export function scoreGame(history: BarHistory, game: CatalogCandidate) {
       ? 1
       : -0.5 * Math.min(game.barsInNeighborhood, 3)
   score += game.channels.length ? 0.3 : 0
+  if (isNewBar(history)) score += newBarBonus(game)
   return score
 }
 
