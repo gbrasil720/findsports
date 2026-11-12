@@ -1138,8 +1138,11 @@ invente layout que o projeto não tem.
   hoje: o chamado de amigo (24g, em `createFriendCall`, com a categoria `friend_call`), "Marina
   vai também" (`friends.respondCall` com "Vou também", depois do commit; "Agora não" não avisa
   ninguém) e o "Me lembrar 3 h antes" (`pushDueReminders`, cron `*/15 * * * *` do Worker,
-  `PUSH_CRON`; uma vez por lembrete, `game_reminder.pushed_at`; pedido já dentro da janela não
-  sai). Tudo sai depois da resposta (`runInBackground`) e falha só vai ao log (`push_failed`).
+  `PUSH_CRON`; o diário não serve, o lembrete é 3 h antes; uma vez por lembrete,
+  `game_reminder.pushed_at`; pedido já dentro da janela não sai). **O cron só consulta o
+  banco com `PUSH_ENABLED=1`**: desligada (padrão em produção e no preview) ele volta na hora,
+  sem acordar o Neon a cada 15 min. Ligue (nas `vars` do `wrangler.jsonc`) junto com o EAS e o
+  Firebase, quando houver aparelho com token. Tudo sai depois da resposta (`runInBackground`) e falha só vai ao log (`push_failed`).
   **Ainda só em Avisos, sem push:** "Lembrar" de Bares pra você (dia do jogo, falta decidir a
   hora), "Avisar" (`bar_game_alert`, quando o bar publica), oferta liberada, jogo dos seus times
   perto, conquista nova e pedido de amizade. Não há preferência de avisos no servidor: os
