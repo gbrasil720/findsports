@@ -197,7 +197,7 @@ export default function Shelf() {
 
   // Nenhuma ainda, no tablet (Adaptativo 10): o vazio da Rodada 14 numa
   // coluna e "As primeiras" em cima (em pé) ou ao lado (deitado, dobrável
-  // aberto). No celular, a estante de sempre, com todas bloqueadas.
+  // aberto). No celular, o mesmo vazio abaixo do voltar (mais embaixo).
   const empty =
     (layout.kind === 'split' || layout.kind === 'stack') &&
     mine.isSuccess &&
@@ -656,6 +656,17 @@ export default function Shelf() {
             onRetry={mine.refetch}
             retrying={mine.isFetching}
           />
+        ) : !won ? (
+          // Nenhuma ainda: o vazio da Rodada 14, como no tablet (WEB-494).
+          <>
+            <View style={styles.top}>
+              <Title lines={[['Conquistas']]} size={40} color={P.ink} />
+              <Text style={[styles.total, { color: P.muted }]}>
+                0/{list.length}
+              </Text>
+            </View>
+            <MedalsEmpty onStart={() => router.navigate('/explore')} />
+          </>
         ) : (
           <>
             <LevelBoard
