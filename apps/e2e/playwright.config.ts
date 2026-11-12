@@ -19,7 +19,14 @@ export default defineConfig({
   workers: CI ? 2 : undefined,
   timeout: 60_000,
   expect: { timeout: 10_000 },
-  reporter: CI ? [['github'], ['html', { open: 'never' }]] : 'list',
+  // O JSON alimenta `shard.ts --record`: os tempos do CI, não os de um Mac.
+  reporter: CI
+    ? [
+        ['github'],
+        ['html', { open: 'never' }],
+        ['json', { outputFile: 'durations-report.json' }]
+      ]
+    : 'list',
   use: {
     baseURL: BASE_URL,
     trace: 'retain-on-failure',
