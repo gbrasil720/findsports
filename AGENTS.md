@@ -1356,7 +1356,11 @@ que ficaram de fora está no comentário): mutation nova entra lá só depois de
 servidor. O resto volta ao botão como "Tentar de novo", com o que a pessoa digitou. O botão
 conta a fase (`actionPhase`): no painel, `BotaoAcao` (rótulos na mesma célula, largura
 fixa); no app, `phaseLabel` com `busy` no `PillButton`. Bloco que não carregou é
-`ErroBloco` (painel) ou `ErrorState` (app), nunca some. A faixa de "sem conexão" está no
+`ErroBloco` (painel) ou `ErrorState` (app), nunca some. No app (WEB-485), o
+`ErrorState` tem três formas: a da tela (padrão, com título), `kind="block"` para a
+parte que falhou com o resto funcionando (26c, "Essa parte não carregou" e
+"Recarregar") e `kind="signal"` no Explorar (26a/26b, "Sinal caiu", com "Ver meu
+código" só quando há código de hoje guardado no aparelho, `readTodayCode`). A faixa de "sem conexão" está no
 `PainelShell` e no `_layout.tsx` do app: no app é a 14j do design ("Sem internet · mostrando
 o que estava salvo", vidro escuro, "Tentar"), por cima de folhas e modais
 (`components/offline-banner.tsx`); ao reconectar, a tela é relida. No app, "Simular sem rede" no navegador DEV liga e desliga o `onlineManager`.
