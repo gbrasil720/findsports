@@ -980,7 +980,7 @@ const homeFront = async (t: number) => {
 }
 
 /** Salto com giro de verdade em 3D (a cambalhota do artifact). */
-async function flip(t: number) {
+async function flip(t: number, axis: 'pitch' | 'yaw' = 'pitch') {
   await release(t)
   await to({ sx: 1.18, sy: 0.78 }, 150, out3, t)
   await to({ sx: 0.94, sy: 1.1, y: -3 }, 70, out3, t)
@@ -994,7 +994,10 @@ async function flip(t: number) {
       S.sx = 0.94 + 0.06 * u - 0.04 * air
       S.sy = 1.1 - 0.1 * u + 0.06 * air
       apply()
-      upd({ view: { yaw: 0, pitch: -io(u) * Math.PI * 2 } })
+      const a = io(u) * Math.PI * 2
+      upd({
+        view: axis === 'pitch' ? { yaw: 0, pitch: -a } : { yaw: a, pitch: 0 }
+      })
     },
     t
   )
@@ -1004,12 +1007,88 @@ async function flip(t: number) {
   await to({ sx: 1, sy: 1 }, 440, spring, t)
 }
 
+// ---------- truques (tocar na taça parada) ----------
+async function cartwheel(t: number) {
+  await setMood('happy', t)
+  await to({ sx: 1.1, sy: 0.9 }, 110, out3, t)
+  await to({ sx: 1, sy: 1 }, 60, out3, t)
+  wrap.style.transformOrigin = '50% 50%'
+  const roll = (back: boolean) =>
+    tween(
+      560,
+      (u) => {
+        const e = back ? 1 - io(u) : io(u)
+        S.x = -64 * e
+        S.r = -360 * e
+        S.y = -10 * Math.sin(Math.PI * u)
+        apply()
+      },
+      t
+    )
+  await roll(false)
+  await sleep(120)
+  await roll(true)
+  S.r = 0
+  S.y = 0
+  wrap.style.transformOrigin = ''
+  apply()
+  await to({ sx: 1.1, sy: 0.9 }, 60, out3, t)
+  await to({ sx: 1, sy: 1 }, 380, spring, t)
+}
+async function wink(t: number) {
+  await front(t)
+  eye({ gx: 0.5 }, 140, out3, t)
+  await to({ r: 7, sx: 1.03, sy: 0.98 }, 160, out3, t)
+  await eye({ wk: 1 }, 170, lin, t)
+  await sleep(260)
+  await eye({ wk: 0 }, 200, lin, t)
+  eye({ gx: 0 }, 160, out3, t)
+  await to({ r: 0, sx: 1, sy: 1 }, 380, spring, t)
+  await release(t)
+}
+/** Um por toque, em rodízio: cambalhota, pirueta, estrelinha, piscadela. */
+const TRICKS: ((t: number) => Promise<void>)[] = [
+  async (t) => {
+    await setMood('happy', t)
+    await flip(t, 'pitch')
+  },
+  async (t) => {
+    await setMood('happy', t)
+    await flip(t, 'yaw')
+  },
+  cartwheel,
+  wink
+]
+let resting = true
+let tricking = false
+let nextTrick = 0
+async function trick() {
+  // Só com a taça parada: no meio de uma cena, o toque não atrapalha.
+  if (!resting || tricking || reduce) return
+  tricking = true
+  window.ReactNativeWebView?.postMessage('trick')
+  const t = token
+  try {
+    await TRICKS[nextTrick++ % TRICKS.length](t)
+    await setMood('idle', t)
+  } catch (e) {
+    if (e !== CANCEL) throw e
+  } finally {
+    tricking = false
+    wrap.style.transformOrigin = ''
+  }
+}
+wrap.addEventListener('click', () => {
+  trick()
+})
+
 const STATES: Record<MascotState, Run> = {
   idle: async (t) => {
     await home(t)
     if (!alive(t)) return
     await setMood('idle', t)
     await release(t)
+    resting = true
   },
   thinking: async (t) => {
     await home(t)
@@ -1134,6 +1213,7 @@ const STATES: Record<MascotState, Run> = {
     if (!alive(t)) return
     upd({ mood: 'idle' })
     mood = 'idle'
+    resting = true
   },
   // As respostas seguintes da conversa: sorri e dá um pulinho, sem festa.
   pleased: async (t) => {
@@ -1145,6 +1225,7 @@ const STATES: Record<MascotState, Run> = {
     if (!alive(t)) return
     upd({ mood: 'idle' })
     mood = 'idle'
+    resting = true
   },
   empty: async (t) => {
     await homeFront(t)
@@ -1405,6 +1486,7 @@ let shown: MascotState = 'idle'
 async function go(next: MascotState) {
   const prev = shown
   shown = next
+  resting = false
   const t = ++token
   try {
     await leave(prev, next, t)
