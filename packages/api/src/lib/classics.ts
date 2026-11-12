@@ -87,3 +87,30 @@ export function classicRuleLateral(eventAlias: SQL): SQL {
     ) classic ON true
   `
 }
+
+/**
+ * O jogo do catálogo da semana (`weekly_game`, alias `w`) é clássico pelas
+ * mesmas regras da busca (WEB-529): par de times, por slug e em qualquer
+ * ordem, ou o campeonato inteiro. Pede `currentClassicRulesCte` no `WITH`.
+ */
+export const weeklyGameClassicSql = sql`
+  EXISTS (
+    SELECT 1
+    FROM current_classic_rules cr
+    LEFT JOIN team th ON th.id = w.home_team_id
+    LEFT JOIN team ta ON ta.id = w.away_team_id
+    WHERE (
+        cr.rule_type = 'championship'
+        AND LOWER(BTRIM(w.championship)) = LOWER(BTRIM(cr.championship))
+      )
+      OR (
+        cr.rule_type = 'team_pair'
+        AND (
+          (LOWER(th.slug) = LOWER(cr.team_a_slug)
+            AND LOWER(ta.slug) = LOWER(cr.team_b_slug))
+          OR (LOWER(th.slug) = LOWER(cr.team_b_slug)
+            AND LOWER(ta.slug) = LOWER(cr.team_a_slug))
+        )
+      )
+  )
+`

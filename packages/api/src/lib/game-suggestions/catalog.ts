@@ -1,5 +1,6 @@
 import { db, type SQL, sql } from '@findsports_oficial/db'
 import { utcNowSql } from '@findsports_oficial/db/event-window-sql'
+import { currentClassicRulesCte, weeklyGameClassicSql } from '../classics'
 import { gameTitle } from '../game-participants'
 import { utcIso } from '../utc-timestamp'
 import type { GameSuggestion, GameSuggestionSource } from './index'
@@ -52,6 +53,7 @@ type CandidateRow = {
   channel_confirmed: boolean
   fans: number
   bars: number
+  classic: boolean
 }
 
 export async function readCatalogCandidates(request: {
@@ -62,6 +64,7 @@ export async function readCatalogCandidates(request: {
 }): Promise<CatalogCandidate[]> {
   const now = utcNowSql(request.now)
   const { rows } = await db.execute<CandidateRow>(sql`
+    WITH ${currentClassicRulesCte}
     SELECT w.id, w.sport_id, w.championship, w.title, w.starts_at,
       w.home_team_id, w.away_team_id, w.channels, w.channel_confirmed,
       (SELECT count(DISTINCT f.user_id)::int
@@ -80,7 +83,8 @@ export async function readCatalogCandidates(request: {
          AND search_normalize(b.city) = search_normalize(${request.city})
          AND search_normalize(b.neighborhood) = search_normalize(${request.neighborhood})
          AND ${sameGame}
-      ) AS bars
+      ) AS bars,
+      ${weeklyGameClassicSql} AS classic
     FROM weekly_game w
     WHERE w.starts_at > ${now}
       AND w.starts_at < ${now} + make_interval(days => ${WINDOW_DAYS})
@@ -105,7 +109,8 @@ export async function readCatalogCandidates(request: {
     channels: r.channels ?? [],
     channelConfirmed: r.channel_confirmed,
     fans: r.fans,
-    barsInNeighborhood: r.bars
+    barsInNeighborhood: r.bars,
+    classic: r.classic
   }))
 }
 
@@ -182,6 +187,7 @@ export const catalogSource: GameSuggestionSource = {
         barsInNeighborhood: game.barsInNeighborhood,
         reason: game.reason,
         houseTeam: game.houseTeam,
+        classic: game.classic,
         featured: game.featured,
         catalogId: game.id
       }
