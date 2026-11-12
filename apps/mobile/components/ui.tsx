@@ -156,6 +156,10 @@ export function Icon({
   )
 }
 
+/** O fone do "Ligar", que o WhatsApp repete pela metade dentro do balão. */
+const PHONE =
+  'M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z'
+
 const ICONS = {
   back: (c: string) => (
     <Path d="M15.6 3.4 17.4 5.2 10.6 12l6.8 6.8-1.8 1.8L7 12z" fill={c} />
@@ -320,6 +324,25 @@ const ICONS = {
       d="M12 2a7.5 7.5 0 0 1 7.5 7.5c0 5.5-7.5 12.5-7.5 12.5S4.5 15 4.5 9.5A7.5 7.5 0 0 1 12 2zm0 4.6a2.9 2.9 0 1 0 0 5.8 2.9 2.9 0 0 0 0-5.8z"
       fill={c}
     />
+  ),
+  phone: (c: string, a: string) => (
+    <>
+      <Path d={PHONE} fill={c} />
+      <Path
+        d="M15.2 2.6a6.4 6.4 0 0 1 6.2 6.2h-2a4.4 4.4 0 0 0-4.2-4.2z"
+        fill={a}
+      />
+    </>
+  ),
+  whatsapp: (c: string) => (
+    <>
+      <Path
+        d="M12 2.6a9.4 9.4 0 0 0-8.1 14.2L2.6 21.4l4.7-1.2A9.4 9.4 0 1 0 12 2.6z"
+        fill={c}
+        opacity={0.3}
+      />
+      <Path d={PHONE} fill={c} transform="translate(6.2 6.2) scale(.5)" />
+    </>
   ),
   tv: (c: string, a: string) => (
     <>
