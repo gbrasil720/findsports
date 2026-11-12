@@ -42,58 +42,101 @@ type WebhookBody = {
   }
 }
 
-const SUBSCRIPTION_EVENTS = new Set([
+/** Os eventos que o webhook da Onside assina (`pix:setup`) e trata. */
+export const PIX_WEBHOOK_EVENTS = [
   'subscription.completed',
   'subscription.renewed',
   'subscription.payment_failed',
   'subscription.cancelled'
-])
+] as const
+const SUBSCRIPTION_EVENTS = new Set<string>(PIX_WEBHOOK_EVENTS)
+
+export type PixWebhookRead =
+  | { status: 401; reason: 'secret' | 'signature' }
+  | { status: 400 }
+  | { status: 200; ignored: true }
+  | {
+      status: 200
+      ignored: false
+      event: string
+      subscriptionId: string
+      externalId: string | null
+    }
 
 /**
- * `POST /api/abacatepay/webhook`. 401 não gera reenvio; falha nossa (banco,
- * API fora) responde 500 e a AbacatePay tenta de novo.
+ * Confere segredo e assinatura e lê o evento, sem banco nem rede: é o que
+ * o teste de contrato exercita com o formato dos docs.
  */
-export async function handlePixWebhook(request: Request): Promise<Response> {
-  const secret = env.ABACATE_PAY_WEBHOOK_SECRET
-  if (!secret || !env.ABACATE_PAY_API_KEY) {
-    return new Response('Pix desligado', { status: 503 })
+export async function readPixWebhook(input: {
+  raw: string
+  secretHeader: string | null
+  secretQuery: string | null
+  signature: string | null
+  secret: string
+}): Promise<PixWebhookRead> {
+  if (!safeEqual(input.secretHeader ?? input.secretQuery ?? '', input.secret)) {
+    return { status: 401, reason: 'secret' }
   }
-  const received =
-    request.headers.get('x-webhook-secret') ??
-    new URL(request.url).searchParams.get('webhookSecret') ??
-    ''
-  const raw = await request.text()
-  const signature = request.headers.get('x-webhook-signature') ?? ''
-  if (
-    !safeEqual(received, secret) ||
-    !safeEqual(signature, await signatureFor(raw))
-  ) {
-    return new Response('Unauthorized', { status: 401 })
+  if (!safeEqual(input.signature ?? '', await signatureFor(input.raw))) {
+    return { status: 401, reason: 'signature' }
   }
-
   let body: WebhookBody
   try {
-    body = JSON.parse(raw) as WebhookBody
+    body = JSON.parse(input.raw) as WebhookBody
   } catch {
-    return new Response('Bad Request', { status: 400 })
+    return { status: 400 }
   }
   const subscriptionId = body.data?.subscription?.id
   if (!body.event || !SUBSCRIPTION_EVENTS.has(body.event) || !subscriptionId) {
     // Os outros eventos (checkout.completed etc.) repetem o que a assinatura
     // já conta: recebidos e ignorados.
-    return new Response('ok')
+    return { status: 200, ignored: true }
   }
+  return {
+    status: 200,
+    ignored: false,
+    event: body.event,
+    subscriptionId,
+    externalId: body.data?.checkout?.externalId ?? null
+  }
+}
+
+/**
+ * `POST /api/abacatepay/webhook`. 401 não gera reenvio: por isso a recusa
+ * vai ao log como erro de cobrança, com o motivo. Segredo recusado é quase
+ * sempre o Worker e o webhook com segredos diferentes, que `pix:setup`
+ * resolve. Falha nossa (banco, API fora) responde 500 e a AbacatePay tenta
+ * de novo.
+ */
+export async function handlePixWebhook(request: Request): Promise<Response> {
+  const secret = env.ABACATE_PAY_WEBHOOK_SECRET
+  if (!secret || !env.ABACATE_PAY_API_KEY) {
+    logBillingError('pix_webhook_disabled', {
+      hasKey: Boolean(env.ABACATE_PAY_API_KEY),
+      hasSecret: Boolean(secret)
+    })
+    return new Response('Pix desligado', { status: 503 })
+  }
+  const read = await readPixWebhook({
+    raw: await request.text(),
+    secretHeader: request.headers.get('x-webhook-secret'),
+    secretQuery: new URL(request.url).searchParams.get('webhookSecret'),
+    signature: request.headers.get('x-webhook-signature'),
+    secret
+  })
+  if (read.status === 401) {
+    logBillingError('pix_webhook_rejected', { reason: read.reason })
+    return new Response('Unauthorized', { status: 401 })
+  }
+  if (read.status === 400) return new Response('Bad Request', { status: 400 })
+  if (read.ignored) return new Response('ok')
 
   try {
-    await applyPixSubscription(
-      subscriptionId,
-      body.data?.checkout?.externalId,
-      body.event
-    )
+    await applyPixSubscription(read.subscriptionId, read.externalId, read.event)
   } catch (error) {
     logBillingError('pix_webhook_failed', {
-      event: body.event,
-      subscriptionId,
+      event: read.event,
+      subscriptionId: read.subscriptionId,
       message: error instanceof Error ? error.message : String(error)
     })
     return new Response('Erro', { status: 500 })
