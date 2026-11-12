@@ -189,7 +189,9 @@ export function PlanoPage({
         {LAPSED_COPY[lapsed].cause}{' '}
         {contractInPlan
           ? 'O bar sai das buscas e do mapa até um plano ser contratado.'
-          : 'Recursos do plano, como o cardápio no perfil, ficam suspensos até a assinatura ser regularizada. Atualize o método de pagamento em “Gerenciar assinatura”.'}
+          : onPix
+            ? 'O débito do Pix Automático não passou. A AbacatePay tenta de novo nos próximos dias: deixe saldo na conta que autorizou. Recursos do plano, como o cardápio no perfil, ficam suspensos até o débito passar.'
+            : 'Recursos do plano, como o cardápio no perfil, ficam suspensos até a assinatura ser regularizada. Atualize o método de pagamento em “Gerenciar assinatura”.'}
       </p>
     ) : ended ? (
       <p className="pn-ph-bad">

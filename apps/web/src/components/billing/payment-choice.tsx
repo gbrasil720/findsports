@@ -188,9 +188,10 @@ export function PaymentChoiceDialog({
 
         {method === 'pix' && pixWaits ? (
           <div className="pl-pay-info" role="note">
-            <b>Seu teste segue até {ddmm(trialEnd)}.</b> Nada é cobrado agora.
-            Três dias antes e no último dia, a gente avisa por e-mail e no
-            painel para você autorizar o Pix. O primeiro débito
+            <b>Seu teste segue até {ddmm(trialEnd)}.</b> Escolhendo o fim do
+            teste, nada é cobrado agora. Três dias antes e no último dia, a
+            gente avisa por e-mail e no painel para você autorizar o Pix. O
+            primeiro débito
             {price ? ` de ${price}` : ''} sai quando você autorizar. Sem a
             autorização, o bar sai do ar quando o teste acabar.
           </div>
@@ -246,7 +247,8 @@ export function PaymentChoiceDialog({
             disabled={busy}
             onClick={() => onConfirm('pix', 'now')}
           >
-            Autorizar agora (o teste acaba hoje)
+            Autorizar agora: o primeiro débito{price ? ` de ${price}` : ''} sai
+            hoje e o teste acaba
           </button>
         ) : null}
         <p className="pl-pay-fine">
