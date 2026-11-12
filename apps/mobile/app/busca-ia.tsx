@@ -35,6 +35,7 @@ import {
 import { Conversations } from '@/components/ai/conversations'
 import { AiHeader, AiTopBar, RoundButton } from '@/components/ai/header'
 import { AiIcon } from '@/components/ai/icons'
+import { Mascot } from '@/components/ai/mascot'
 import { UserMessage } from '@/components/ai/message'
 import { PromptInput } from '@/components/ai/prompt-input'
 import { Reasoning } from '@/components/ai/reasoning'
@@ -45,6 +46,7 @@ import { Chip, dayLabel } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { NAV, useLayout } from '@/components/layout'
 import { EASE, haptic, SWAP } from '@/components/motion'
+import { useOnline } from '@/components/offline-banner'
 import { StackRail } from '@/components/side-nav'
 import {
   ACID,
@@ -87,6 +89,7 @@ import type { ChatBar, ConfirmResult } from '@/lib/ai-events'
 import { confirm, converse, stop as stopRun } from '@/lib/ai-stream'
 import { authClient } from '@/lib/auth-client'
 import { formatKm, formatTime, isLive } from '@/lib/explore'
+import { mascotState } from '@/lib/mascot'
 import { trpc } from '@/lib/trpc'
 
 /*
@@ -292,6 +295,12 @@ export default function AiSearch() {
     (status.data?.kind === 'unavailable' && !last)
   const pending =
     lastReply?.proposal && !lastReply.decision ? lastReply.proposal : null
+  const online = useOnline()
+  const mascot = mascotState(lastReply ?? null, {
+    online,
+    off,
+    blocked: !!blocked
+  })
 
   // Contexto do campo: o local (aparelho, senão a cidade do perfil) e o dia.
   const radiusKm = session.data?.user.searchRadiusKm ?? 3
@@ -717,6 +726,13 @@ export default function AiSearch() {
             style={[styles.body, sheet ? null : { paddingHorizontal: pad }]}
           >
             {!turns.length ? (
+              <Mascot
+                state={mascot}
+                palette={palette}
+                style={styles.mascotStart}
+              />
+            ) : null}
+            {!turns.length ? (
               <Start
                 recents={convo ? [] : recents}
                 now={now}
@@ -869,6 +885,11 @@ export default function AiSearch() {
           locations={[0, 0.3]}
           style={StyleSheet.absoluteFill}
         />
+        {/* A taça fica presa acima do campo durante a conversa: no meio dela,
+            a rolagem até o fim a tirava da tela assim que o texto chegava. */}
+        {turns.length ? (
+          <Mascot state={mascot} palette={palette} style={styles.mascotDock} />
+        ) : null}
         {blocked || off ? (
           <View style={styles.pills}>
             <Chip
@@ -1342,6 +1363,9 @@ function TurnView({
 }
 
 const styles = StyleSheet.create({
+  // O palco da taça: largo, para a gota pular e o comparar caber.
+  mascotStart: { height: 168, marginHorizontal: -16, marginBottom: -8 },
+  mascotDock: { height: 112, marginTop: -6, marginBottom: -12 },
   sheet: { flex: 1 },
   full: { flex: 1 },
   barGrid: { flexDirection: 'row', flexWrap: 'wrap' },
