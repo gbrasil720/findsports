@@ -1300,27 +1300,31 @@ const STATES: Record<MascotState, Run> = {
     }
   },
   down: async (t) => {
-    await homeFront(t)
-    if (!alive(t)) return
-    eye({ wide: 1.25 }, 60, out3, t)
-    for (const x of [-7, 7, -6, 5, -3, 0])
-      await to({ x, r: x * 0.6 }, 45, lin, t)
-    await eye({ dead: 1, wide: 1 }, 320, lin, t)
-    if (!alive(t)) return
-    const stars = pop('dizzy', 0, -44, '<i></i><i></i><i></i>')
-    // Fica tonta um tempo e se recompõe, como no artifact; o aviso de fora do
-    // ar continua no chat.
-    if (reduce) await sleep(2400)
-    else
-      for (let i = 0; i < 3; i++) {
-        await to({ r: 8, x: 3, sy: 0.97 }, 480, io, t)
-        await to({ r: -8, x: -3, sy: 0.97 }, 480, io, t)
+    // Enquanto a IA estiver fora: tranco, olhos em X, tontura, se recompõe e,
+    // depois de um respiro parada, tudo de novo. Com menos movimento, uma vez.
+    for (let round = 0; alive(t); round++) {
+      if (round) {
+        if (reduce) return
+        await sleep(2200)
       }
-    fade(stars)
-    await to({ r: 0, x: 0, sy: 1 }, 200, io, t)
-    for (const r of [-9, 9, -6, 6, 0]) await to({ r }, 55, lin, t)
-    await eye({ dead: 0 }, 300, lin, t)
-    await release(t)
+      await homeFront(t)
+      eye({ wide: 1.25 }, 60, out3, t)
+      for (const x of [-7, 7, -6, 5, -3, 0])
+        await to({ x, r: x * 0.6 }, 45, lin, t)
+      await eye({ dead: 1, wide: 1 }, 320, lin, t)
+      const stars = pop('dizzy', 0, -44, '<i></i><i></i><i></i>')
+      if (reduce) await sleep(2400)
+      else
+        for (let i = 0; i < 3; i++) {
+          await to({ r: 8, x: 3, sy: 0.97 }, 480, io, t)
+          await to({ r: -8, x: -3, sy: 0.97 }, 480, io, t)
+        }
+      fade(stars)
+      await to({ r: 0, x: 0, sy: 1 }, 200, io, t)
+      for (const r of [-9, 9, -6, 6, 0]) await to({ r }, 55, lin, t)
+      await eye({ dead: 0 }, 300, lin, t)
+      await release(t)
+    }
   },
   offline: async (t) => {
     await homeFront(t)
