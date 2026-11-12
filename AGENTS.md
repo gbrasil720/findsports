@@ -439,7 +439,8 @@ AI com o token do login do `wrangler` e o Gateway `default` (o `getPlatformProxy
 Bun). Toda chamada passa por `runAi` (`lib/ai/run.ts`): confere `ai.enabled` (desligada por
 padrão, no `app_config`), o teto do mês somando `ai_run.cost_usd`, US$ 1,50/mês e 30
 chamadas/dia por pessoa, manda `run_id`, `variant` e `feature` como metadados do Gateway e
-grava uma linha em `ai_run` (assim como polegar e ações em `ai_action`). Tetos e sorteio
+grava uma linha em `ai_run` (assim como polegar e ações em `ai_action`: abrir bar, Vou assistir,
+rota, Ligar e WhatsApp da página do bar vinda da IA, WEB-427). Tetos e sorteio
 (hash de usuário + teste, pesos em `ai.variant_weights`, que somam 100 em cada teste) são
 puros em `lib/ai/limits.ts`; os valores dos tetos e limites moram em `ai.limits` no
 `app_config` (padrão: US$ 40, US$ 1,50 e 30 chamadas por pessoa, 10 e 100 mensagens), e o
