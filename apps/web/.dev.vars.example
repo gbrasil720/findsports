@@ -29,3 +29,6 @@ TURNSTILE_SECRET_KEY=
 # fica como crédito.
 CF_API_TOKEN=
 FOOTBALL_DATA_API_KEY=
+# Push do app (WEB-416), opcional: só se o projeto da Expo ligar o envio
+# protegido (Enhanced Security for Push Notifications).
+EXPO_ACCESS_TOKEN=

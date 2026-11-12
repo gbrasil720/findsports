@@ -29,6 +29,15 @@ const rawEnv = createEnv({
      */
     EMAIL_DELIVERY: z.literal('console').optional(),
     /**
+     * Push do app pela Expo (WEB-416, `packages/api/src/lib/push.ts`, que lê
+     * `process.env` direto). `console`: a notificação vai para o log, como o
+     * e-mail no preview, cujo banco tem aparelhos de gente de verdade.
+     * `EXPO_ACCESS_TOKEN` só é exigida se o projeto da Expo ligar o envio
+     * protegido ("Enhanced Security for Push Notifications").
+     */
+    PUSH_DELIVERY: z.literal('console').optional(),
+    EXPO_ACCESS_TOKEN: z.string().min(1).optional(),
+    /**
      * Cobrança pelo Stripe (WEB-31). O modo vem da própria chave: `_test_` é o
      * sandbox, `_live_` cobra de verdade — por isso a chave viva é recusada
      * fora do domínio de produção, logo abaixo. Aceita a chave secreta padrão
