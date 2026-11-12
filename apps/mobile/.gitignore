@@ -23,3 +23,7 @@ expo-env.d.ts
 
 # Tipos gerados pelo Uniwind
 uniwind-types.d.ts
+
+# Firebase do Android (push, WEB-416): fica fora do git, ver app.config.ts
+google-services.json
+GoogleService-Info.plist
