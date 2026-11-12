@@ -526,6 +526,8 @@ async function morph(
   await frame()
   if (!alive(t)) return
   painting(false)
+  // A cena começa a contar o tempo mínimo agora, com a forma nova à vista.
+  since = performance.now()
   await Promise.all([
     to({ sx: 1, sy: 1 }, quick ? 340 : 520, spring, t),
     eye({ wide: 1 }, quick ? 300 : 420, spring, t)
@@ -1460,6 +1462,16 @@ async function leave(prev: MascotState, next: MascotState, t: number) {
   }
   if (E.dead || E.flat || E.tilt || E.wk) eye(NEUTRAL, 260, out3, t)
   if (writing) await writeOut(t, next)
+  else if (layer.style.visibility === 'visible') {
+    // Uma troca de forma (ou a saída do escrevendo) foi interrompida no meio:
+    // volta o avatar, com a forma que ele já tem, e os olhos de frente.
+    painting(false)
+    shade = 1
+    if (frontal && !eyesOn) {
+      Object.assign(E, eyesOf(cur), NEUTRAL, { happy: 0 })
+      eyesOn = true
+    }
+  }
   if (!alive(t)) return
   if (prev === 'thinking' && S.sx < 0.9) {
     setMood('idle', t)
@@ -1490,6 +1502,7 @@ async function go(next: MascotState) {
   const t = ++token
   try {
     await leave(prev, next, t)
+    since = performance.now()
     await STATES[next](t, prev)
   } catch (e) {
     if (e !== CANCEL) throw e
@@ -1503,7 +1516,7 @@ async function go(next: MascotState) {
  */
 const DWELL: Partial<Record<MascotState, number>> = {
   thinking: 900,
-  live: 1700,
+  live: 2200,
   searching: 2300,
   comparing: 2400,
   writing: 1400,
