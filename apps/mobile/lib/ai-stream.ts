@@ -1,5 +1,6 @@
 import type { Dubla } from './ai-dubla'
 import type { ChatEvent, ConfirmInput, ConverseInput } from './ai-events'
+import { askForPush } from './push'
 import { queryClient } from './query-client'
 import { trpcClient } from './trpc'
 
@@ -41,5 +42,7 @@ export const confirm = (input: ConfirmInput, dubla: boolean) =>
         // O "Confirmar" marca presença, chama amigo ou lembra, fora do
         // `useMutation`: o cache vence como numa mutation (`query-client.ts`).
         queryClient.invalidateQueries({ refetchType: 'none' })
+        // Lembrete e chamado geram aviso: é a hora de pedir o push (WEB-416).
+        askForPush()
         return result
       })
