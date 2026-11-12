@@ -5,7 +5,8 @@ runs:
   using: composite
   steps:
     # PRs só leem o cache da master (ver setup-monorepo): sem cópia de ~280 MB
-    # por PR.
+    # por PR. Com o navegador no cache não há `install-deps` (~19 s de apt por
+    # job): a imagem `ubuntu-latest` já traz as bibliotecas do Chromium.
     - uses: actions/cache/restore@v4
       id: playwright-cache
       with:
@@ -18,11 +19,6 @@ runs:
       shell: bash
       working-directory: apps/e2e
       run: bunx playwright install --with-deps chromium
-    - name: Install Playwright OS deps (browser cache hit)
-      if: steps.playwright-cache.outputs.cache-hit == 'true'
-      shell: bash
-      working-directory: apps/e2e
-      run: bunx playwright install-deps chromium
     - if: github.ref == 'refs/heads/master' && steps.playwright-cache.outputs.cache-hit != 'true'
       uses: actions/cache/save@v4
       with:
