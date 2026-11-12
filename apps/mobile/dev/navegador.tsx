@@ -157,7 +157,8 @@ const SECTIONS: { title: string; items: Item[] }[] = [
         label: 'IA fora do ar',
         href: ai({ estado: 'resposta', dubla: 'fora' })
       },
-      { code: 't24c', label: 'Peças do chat', href: '/ai-pecas' }
+      { code: 't24c', label: 'Peças do chat', href: '/ai-pecas' },
+      { code: 't24t', label: 'Taça (estados)', href: '/mascote' }
     ]
   },
   {
