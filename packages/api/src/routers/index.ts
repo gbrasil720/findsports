@@ -20,6 +20,7 @@ import { onboardingRouter } from './onboarding'
 import { postGameRouter } from './post-game'
 import { pubRouter } from './pub'
 import { pubsRouter } from './pubs'
+import { pushRouter } from './push'
 import { rankingRouter } from './ranking'
 import { ratingsRouter } from './ratings'
 import { recommendationsRouter } from './recommendations'
@@ -48,6 +49,7 @@ export const appRouter = router({
   onboarding: onboardingRouter,
   pub: pubRouter,
   pubs: pubsRouter,
+  push: pushRouter,
   recommendations: recommendationsRouter,
   commercialAnalytics: commercialAnalyticsRouter,
   ratings: ratingsRouter,
