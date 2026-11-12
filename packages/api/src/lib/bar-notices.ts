@@ -1,3 +1,4 @@
+import { pixEnabled } from '@findsports_oficial/auth/abacatepay'
 import {
   agenda,
   band,
@@ -43,6 +44,8 @@ import {
  * `bar_notice` garante que cada aviso sai uma vez, mesmo com o cron rodando
  * de novo pelo Houdini.
  */
+
+const DAY_MS = 24 * 60 * 60 * 1000
 
 /** "Mais de 20 pessoas marcaram que vão" (2b). */
 export const GAME_FILLING_THRESHOLD = 20
@@ -466,11 +469,11 @@ export function createPixTrialEndEmail(input: {
       separator: 'middot',
       lead: input.barName
     }),
-    heading: input.lastDay ? 'Último dia' : 'Faltam 3 dias',
+    heading: input.lastDay ? 'Últimas horas' : 'Faltam 3 dias',
     headingAccent: 'do teste',
     intro: `${hello(input.owner)} ${
       input.lastDay
-        ? `O teste grátis do ${input.barName} acaba hoje, às ${end.time}.`
+        ? `O teste grátis do ${input.barName} acaba em menos de 24 horas: ${end.dayMonth}, às ${end.time}.`
         : `O teste grátis do ${input.barName} acaba em ${end.dayMonth}, às ${end.time}.`
     } Você escolheu pagar o ${plan} com Pix: autorize no app do banco para o bar seguir no ar.`,
     blocks: [
@@ -489,7 +492,7 @@ export function createPixTrialEndEmail(input: {
   })
   return {
     subject: input.lastDay
-      ? 'Seu teste acaba hoje: autorize o Pix'
+      ? 'Seu teste acaba em menos de 24 horas: autorize o Pix'
       : `Seu teste acaba em ${end.dayMonth}: autorize o Pix`,
     ...template
   }
@@ -753,11 +756,16 @@ export async function notifyGameFilling(eventId: string) {
 
 /**
  * Lembretes do Pix escolhido no teste do cadastro (`pix_after_trial_at`): no
- * dia de Brasília três dias antes do fim e no último dia. Roda todo dia no
- * cron (01:00), então o do último dia chega de manhã, antes do fim. A
- * referência é o dia do fim mais o lembrete, e o `bar_notice` não repete.
+ * dia de Brasília três dias antes do fim, e o último quando faltam menos de
+ * 24 horas. O cron roda às 01:00: "no dia do fim" perderia o teste que acaba
+ * entre a meia-noite e a 01:00, que já venceu nessa hora. A referência é o
+ * dia do fim mais o lembrete, e o `bar_notice` não repete.
+ *
+ * Com o Pix desligado (sem chave ou segredo) não sai nada: o e-mail pediria
+ * uma autorização que o painel não oferece. O dono contrata no cartão.
  */
 export async function sendPixTrialReminders(now = new Date()) {
+  if (!pixEnabled()) return { pixTrialReminders: 0 }
   const today = brasiliaDay(now)
   const inThree = brasiliaDay(`${today}T12:00:00Z`, 3)
   // `current_period_end` é `timestamp` guardando UTC.
@@ -777,14 +785,14 @@ export async function sendPixTrialReminders(now = new Date()) {
     WHERE s.pix_after_trial_at IS NOT NULL
       AND s.status = 'trialing'
       AND s.external_subscription_id IS NULL
-      AND s.current_period_end > (now() AT TIME ZONE 'UTC')
+      AND (s.current_period_end AT TIME ZONE 'UTC') > ${now.toISOString()}::timestamptz
   `)
   let sent = 0
   const failures: string[] = []
   for (const row of rows.rows) {
     const trialEnd = new Date(row.trial_end)
     const endDay = brasiliaDay(trialEnd)
-    const lastDay = endDay === today
+    const lastDay = trialEnd.getTime() - now.getTime() <= DAY_MS
     if (!lastDay && endDay !== inThree) continue
     try {
       const ok = await sendOnce(
