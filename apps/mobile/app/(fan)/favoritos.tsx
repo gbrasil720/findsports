@@ -38,7 +38,6 @@ import {
   Icon,
   INK,
   LIVE,
-  PillButton,
   Text,
   TextInput,
   Title,
@@ -445,11 +444,11 @@ export default function YourBars() {
   // Nada ainda (nenhuma visita, nenhum salvo): o vazio do design (Rodada
   // 14) no lugar das abas; no tablet, com o mapa em cima ou ao lado para
   // achar o primeiro (Adaptativo 10).
-  // Só fora do celular: no celular as abas e o vazio de sempre.
-  // Só no tablet e no dobrável aberto (Adaptativo 10); a capa do Flip e a
-  // mesa ficam com as telas do T3.
+  // No celular, só a coluna (WEB-494); a capa do Flip e a mesa ficam com as
+  // telas do T3.
+  const wide = layout.kind === 'split' || layout.kind === 'stack'
   const nothing =
-    (layout.kind === 'split' || layout.kind === 'stack') &&
+    (wide || layout.kind === 'phone' || layout.kind === 'duoClosed') &&
     search === null &&
     visits.isSuccess &&
     saved.isSuccess &&
@@ -479,6 +478,16 @@ export default function YourBars() {
         onOpen={openBar}
       />
     )
+    if (!wide)
+      return (
+        <View
+          ref={shotSource.ref}
+          collapsable={false}
+          style={[styles.screen, { backgroundColor: palette.bg }]}
+        >
+          {column}
+        </View>
+      )
     const usable = layout.width - nav.left - nav.right
     if (layout.kind === 'stack') {
       const width = Math.min(560, usable - 80)
@@ -1152,8 +1161,6 @@ function Saved({
   const palette = usePalette()
   const t = tones(palette)
   const week = savedWeek(rows, now)
-  // O vazio da Rodada 14 é do tablet; no celular, o de sempre.
-  const phone = useLayout().kind === 'phone'
   return (
     <>
       <Card shadow={t.glow} offset={5}>
@@ -1210,22 +1217,7 @@ function Saved({
 
       {!rows.length && !searching ? (
         <View style={styles.empty}>
-          {phone ? (
-            <>
-              <Text style={[text(16, 'Bold'), { color: palette.ink }]}>
-                Nenhum bar salvo ainda.
-              </Text>
-              <Text
-                style={[text(14, 'Regular', 1.45), { color: palette.muted }]}
-              >
-                Toque no coração de um bar, no mapa ou na página dele, para ver
-                aqui os jogos da semana de lá.
-              </Text>
-              <PillButton label="Procurar bares" onPress={onExplore} />
-            </>
-          ) : (
-            <SavedEmpty onExplore={onExplore} />
-          )}
+          <SavedEmpty onExplore={onExplore} />
         </View>
       ) : !rows.length ? (
         <NoMatch />
@@ -1346,7 +1338,6 @@ function Bars({
   const router = useRouter()
   const palette = usePalette()
   const t = tones(palette)
-  const phone = useLayout().kind === 'phone'
   const [sort, setSort] = useState<BarSort>('bairro')
   const sorts: [BarSort, string][] = [
     ['bairro', 'Bairro'],
@@ -1356,19 +1347,7 @@ function Bars({
   if (!all.bars.length)
     return (
       <View style={styles.empty}>
-        {phone ? (
-          <>
-            <Text style={[text(16, 'Bold'), { color: palette.ink }]}>
-              Nenhum bar salvo ainda.
-            </Text>
-            <Text style={[text(14, 'Regular', 1.45), { color: palette.muted }]}>
-              Toque no coração de um bar, no mapa ou na página dele, para
-              guardar aqui, por bairro.
-            </Text>
-          </>
-        ) : (
-          <SavedEmpty onExplore={() => router.navigate('/explore')} />
-        )}
+        <SavedEmpty onExplore={() => router.navigate('/explore')} />
       </View>
     )
   return (
