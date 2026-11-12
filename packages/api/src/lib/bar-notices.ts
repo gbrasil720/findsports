@@ -440,6 +440,61 @@ export function createGameFillingEmail(input: {
   return { subject: `Jogo lotando: ${input.game.title}`, ...template }
 }
 
+const PLAN_NAMES: Record<string, string> = {
+  starter: 'Starter',
+  pro: 'Pro',
+  elite: 'Elite'
+}
+
+/**
+ * Lembrete do Pix escolhido no teste do cadastro: três dias antes do fim e
+ * no último dia. Não tem interruptor em Avisos: sem a autorização o bar sai
+ * do ar.
+ */
+export function createPixTrialEndEmail(input: {
+  owner: string
+  barName: string
+  plan: string
+  trialEnd: Date
+  lastDay: boolean
+}): Email {
+  const end = dateParts(input.trialEnd)
+  const plan = PLAN_NAMES[input.plan] ?? input.plan
+  const template = createOnsideEmailTemplate({
+    tag: TAG,
+    band: band([`TESTE GRÁTIS ATÉ ${end.dayMonth}`], {
+      separator: 'middot',
+      lead: input.barName
+    }),
+    heading: input.lastDay ? 'Último dia' : 'Faltam 3 dias',
+    headingAccent: 'do teste',
+    intro: `${hello(input.owner)} ${
+      input.lastDay
+        ? `O teste grátis do ${input.barName} acaba hoje, às ${end.time}.`
+        : `O teste grátis do ${input.barName} acaba em ${end.dayMonth}, às ${end.time}.`
+    } Você escolheu pagar o ${plan} com Pix: autorize no app do banco para o bar seguir no ar.`,
+    blocks: [
+      paragraph(
+        'A autorização é uma vez só. O primeiro débito sai quando você autorizar, e depois todo mês na mesma data. Sem a autorização, o bar sai das buscas e do mapa quando o teste acabar.'
+      )
+    ],
+    steps: [],
+    action: 'Autorizar o Pix',
+    actionUrl: appUrl('/admin/billing'),
+    linkFallback: false,
+    noteLabel: 'Plano',
+    note: 'Prefere o cartão? Em Plano e cobrança, "Ver todos os planos" contrata no cartão.',
+    reason:
+      'Você recebeu este e-mail porque escolheu pagar com Pix no fim do teste grátis da Onside.'
+  })
+  return {
+    subject: input.lastDay
+      ? 'Seu teste acaba hoje: autorize o Pix'
+      : `Seu teste acaba em ${end.dayMonth}: autorize o Pix`,
+    ...template
+  }
+}
+
 type Notice = typeof barNotice.$inferInsert
 
 /**
@@ -694,4 +749,76 @@ export async function notifyGameFilling(eventId: string) {
     )
     return false
   }
+}
+
+/**
+ * Lembretes do Pix escolhido no teste do cadastro (`pix_after_trial_at`): no
+ * dia de Brasília três dias antes do fim e no último dia. Roda todo dia no
+ * cron (01:00), então o do último dia chega de manhã, antes do fim. A
+ * referência é o dia do fim mais o lembrete, e o `bar_notice` não repete.
+ */
+export async function sendPixTrialReminders(now = new Date()) {
+  const today = brasiliaDay(now)
+  const inThree = brasiliaDay(`${today}T12:00:00Z`, 3)
+  // `current_period_end` é `timestamp` guardando UTC.
+  const rows = await db.execute<{
+    bar_id: string
+    name: string
+    plan: string
+    email: string
+    owner: string
+    trial_end: string | Date
+  }>(sql`
+    SELECT b.id AS bar_id, b.name, s.plan, u.email, u.name AS owner,
+      (s.current_period_end AT TIME ZONE 'UTC') AS trial_end
+    FROM subscription s
+    JOIN bar b ON b.id = s.bar_id
+    JOIN "user" u ON u.id = b.user_id
+    WHERE s.pix_after_trial_at IS NOT NULL
+      AND s.status = 'trialing'
+      AND s.external_subscription_id IS NULL
+      AND s.current_period_end > (now() AT TIME ZONE 'UTC')
+  `)
+  let sent = 0
+  const failures: string[] = []
+  for (const row of rows.rows) {
+    const trialEnd = new Date(row.trial_end)
+    const endDay = brasiliaDay(trialEnd)
+    const lastDay = endDay === today
+    if (!lastDay && endDay !== inThree) continue
+    try {
+      const ok = await sendOnce(
+        {
+          barId: row.bar_id,
+          kind: 'pix_trial_end',
+          ref: `${endDay}:${lastDay ? 'd0' : 'd3'}`
+        },
+        row.email,
+        createPixTrialEndEmail({
+          owner: row.owner,
+          barName: row.name,
+          plan: row.plan,
+          trialEnd,
+          lastDay
+        })
+      )
+      if (ok) sent++
+    } catch (error) {
+      failures.push(row.bar_id)
+      console.error(
+        JSON.stringify({
+          evt: 'bar_notice_failed',
+          kind: 'pix_trial_end',
+          barId: row.bar_id,
+          message: error instanceof Error ? error.message : String(error)
+        })
+      )
+    }
+  }
+  if (failures.length) {
+    throw new Error(
+      `${plural(failures.length, 'lembrete do Pix não saiu', 'lembretes do Pix não saíram')} (enviados: ${sent}).`
+    )
+  }
+  return { pixTrialReminders: sent }
 }
