@@ -322,3 +322,80 @@ describe('recommendation round of five', () => {
     )
   })
 })
+
+describe('recommendation with AI affinity (WEB-426)', () => {
+  const ruled = candidate('ruled', {
+    amenitySimilarity: 1,
+    screenSimilarity: 1,
+    neighborhoodSimilarity: 1,
+    distanceKm: 0.5
+  })
+  const plain = candidate('plain', { distanceKm: 0.5 })
+
+  test('replaces only the style axis and recomputes the total', () => {
+    const before = scoreRecommendationCandidate(plain, {
+      now: NOW,
+      radiusKm: 3
+    })
+    const after = scoreRecommendationCandidate(plain, {
+      now: NOW,
+      radiusKm: 3,
+      affinity: new Map([['plain', 0.5]])
+    })
+    expect(after.axes).toEqual({ ...before.axes, experienceSimilarity: 9 })
+    expect(after.score).toBe(before.score + 9)
+    expect(after.reason).toBe('similar_experience')
+  })
+
+  test('clamps the affinity to 0..18 points', () => {
+    const at = (value: number) =>
+      scoreRecommendationCandidate(plain, {
+        now: NOW,
+        radiusKm: 3,
+        affinity: new Map([['plain', value]])
+      }).axes.experienceSimilarity
+    expect(at(-1)).toBe(0)
+    expect(at(1)).toBe(18)
+    expect(at(7)).toBe(18)
+  })
+
+  test('falls back to the rules for a bar without a score', () => {
+    const result = scoreRecommendationCandidate(ruled, {
+      now: NOW,
+      radiusKm: 3,
+      affinity: new Map([['other', 0]])
+    })
+    expect(result.axes.experienceSimilarity).toBe(18)
+  })
+
+  test('can flip the first position, keeping the slot rules', () => {
+    const control = rankRecommendations([ruled, plain], {
+      now: NOW,
+      radiusKm: 3
+    })
+    const withAi = rankRecommendations([ruled, plain], {
+      now: NOW,
+      radiusKm: 3,
+      affinity: new Map([
+        ['ruled', 0],
+        ['plain', 1]
+      ])
+    })
+    expect(control.map((item) => item.bar.id)).toEqual(['ruled', 'plain'])
+    expect(withAi.map((item) => item.bar.id)).toEqual(['plain', 'ruled'])
+    expect(withAi.map((item) => item.slot)).toEqual(['sua_cara', 'pra_variar'])
+  })
+
+  test('never brings back a quality-protected bar', () => {
+    const bad = candidate('bad', {
+      recentRatingCount: 10,
+      recentRatingPositive: 1
+    })
+    const ranked = rankRecommendations([bad, plain], {
+      now: NOW,
+      radiusKm: 3,
+      affinity: new Map([['bad', 1]])
+    })
+    expect(ranked.map((item) => item.bar.id)).toEqual(['plain'])
+  })
+})
