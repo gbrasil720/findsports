@@ -335,8 +335,8 @@ export default function Search() {
               </Section>
             ) : null}
             {empty ? (
-              layout.kind !== 'phone' && !remote.isFetching ? (
-                // O vazio do design (Rodada 14) só fora do celular.
+              !remote.isFetching ? (
+                // O vazio do design (Rodada 14), em todo aparelho (WEB-494).
                 <SearchEmpty
                   query={query.trim()}
                   onAi={() => router.push('/busca-ia')}
@@ -345,13 +345,14 @@ export default function Search() {
                 <Text
                   style={[text(14, 'Regular', 1.45), { color: palette.muted }]}
                 >
-                  {remote.isFetching
-                    ? 'Buscando…'
-                    : `Nada perto com “${query.trim()}”. Tente o nome do bar, o bairro ou um time.`}
+                  Buscando…
                 </Text>
               )
             ) : null}
-            <AskAi onPress={() => router.push('/busca-ia')} />
+            {/* Com o vazio do design, o atalho da IA já está nele. */}
+            {empty && !remote.isFetching ? null : (
+              <AskAi onPress={() => router.push('/busca-ia')} />
+            )}
           </>
         ) : (
           <>
