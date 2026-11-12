@@ -2,9 +2,11 @@ import type { SubscriptionPlan } from '@findsports_oficial/db'
 import { db, eq } from '@findsports_oficial/db'
 import { bar, subscription } from '@findsports_oficial/db/schema/platform'
 import {
+  AbacatePayError,
   type AbacateSubscription,
   cancelSubscription,
-  getSubscription
+  getSubscription,
+  isNotActiveError
 } from './abacatepay'
 import { logBillingError } from './stripe-sync'
 
@@ -50,22 +52,80 @@ export type PixEvent =
   | 'subscription.payment_failed'
   | 'subscription.cancelled'
 
+type Row = typeof subscription.$inferSelect
+
+/**
+ * Situação de uma assinatura ativa sem confiar na ordem dos avisos (a
+ * AbacatePay não garante ordem). O que avança é o fim do ciclo pago: débito
+ * que passou o empurra para a frente, débito recusado não.
+ *
+ * - Recusa com o ciclo já à frente do que temos gravado: um débito mais novo
+ *   passou, e a recusa é antiga.
+ * - Pagamento sem avançar o ciclo de quem está em atraso: aviso antigo, que
+ *   não limpa uma recusa mais nova.
+ */
+export function pixStanding(input: {
+  eventType: string
+  periodEnd: Date | null
+  existing: Pick<Row, 'status' | 'currentPeriodEnd'> | null
+  isCurrent: boolean
+}): 'active' | 'past_due' {
+  const stored = input.isCurrent ? input.existing : null
+  const advanced =
+    !stored?.currentPeriodEnd ||
+    (input.periodEnd !== null && input.periodEnd > stored.currentPeriodEnd)
+  if (input.eventType === 'subscription.payment_failed') {
+    return stored && advanced && stored.status === 'active'
+      ? 'active'
+      : 'past_due'
+  }
+  return stored?.status === 'past_due' && !advanced ? 'past_due' : 'active'
+}
+
+/**
+ * O evento diz uma coisa e a leitura outra que ainda não chegou lá: pago com
+ * a assinatura `PENDING`, ou cancelado com ela viva.
+ */
+export function readLagsBehind(eventType: string, status: string): boolean {
+  if (eventType === 'subscription.cancelled') return status !== 'CANCELLED'
+  if (
+    eventType === 'subscription.completed' ||
+    eventType === 'subscription.renewed'
+  ) {
+    return status === 'PENDING'
+  }
+  return false
+}
+
+/** Cancela na AbacatePay; já cancelada ou inexistente lá conta como feito. */
+async function cancelAtProvider(id: string) {
+  try {
+    await cancelSubscription(id)
+  } catch (error) {
+    if (isNotActiveError(error)) return
+    if (error instanceof AbacatePayError && error.status === 404) return
+    throw error
+  }
+}
+
 /**
  * Grava o estado ATUAL de uma assinatura Pix, como `applyStripeSubscription`:
- * relê a assinatura na AbacatePay em vez de confiar no corpo do evento, então
- * evento repetido ou fora de ordem grava o mesmo estado.
+ * relê a assinatura na AbacatePay em vez de confiar no corpo do evento.
  *
  * | AbacatePay                        | Nosso                              |
  * | --------------------------------- | ---------------------------------- |
- * | `ACTIVE`                          | `active`                           |
- * | `ACTIVE` + `payment_failed`       | `past_due` (segue no ar, Starter)  |
- * | `CANCELLED` com fim já agendado   | `active` até `cancel_at` (o cron   |
- * |                                   | encerra; ver `reconcileBarPlans`)  |
- * | `CANCELLED` sem agendamento       | `cancelled`, o bar sai do ar       |
+ * | `ACTIVE`                          | `active` (`past_due` pela          |
+ * |                                   | `pixStanding`, segue no ar)        |
+ * | `CANCELLED` com ciclo pago à      | `active` até `cancel_at` (o cron   |
+ * | frente (painel, app do banco)     | encerra; ver `reconcileBarPlans`)  |
+ * | `CANCELLED` com o ciclo vencido   | `cancelled`, o bar sai do ar       |
  * | `PENDING`                         | nada: o Pix ainda não foi pago     |
  *
  * Assinatura nova ativa com outra Pix na linha (troca de plano, que no Pix é
- * uma autorização nova) cancela a antiga na AbacatePay.
+ * uma autorização nova) cancela a antiga ANTES de gravar a nova: se o
+ * cancelamento falhar, o aviso responde 500, a AbacatePay reenvia e a linha
+ * ainda tem o id da antiga para tentar de novo. Aviso atrasado de uma
+ * assinatura mais velha que a da linha não a substitui: a velha é cancelada.
  */
 export async function applyPixSubscription(
   subscriptionId: string,
@@ -81,6 +141,14 @@ export async function applyPixSubscription(
     return null
   }
   const sub = await getSubscription(subscriptionId)
+  if (readLagsBehind(eventType, sub.status)) {
+    // A leitura da AbacatePay demora a refletir a escrita (visto ~1 min no
+    // Modo Teste). Ignorar o aviso perderia o pagamento ou o cancelamento:
+    // o erro vira 500, e a AbacatePay reenvia quando a leitura já alcançou.
+    throw new Error(
+      `Leitura atrasada da AbacatePay: ${eventType} com a assinatura em ${sub.status}.`
+    )
+  }
   if (sub.status === 'PENDING') return null
 
   const foundBar = await db.query.bar.findFirst({
@@ -91,17 +159,29 @@ export async function applyPixSubscription(
     logBillingError('pix_webhook_bar_not_found', { subscriptionId, ...ref })
     return null
   }
-  const existing = await db.query.subscription.findFirst({
-    where: eq(subscription.barId, ref.barId)
-  })
+  const existing =
+    (await db.query.subscription.findFirst({
+      where: eq(subscription.barId, ref.barId)
+    })) ?? null
   const isCurrent = existing?.externalSubscriptionId === sub.id
+  const periodEnd = periodEndOf(sub)
 
   if (sub.status === 'CANCELLED') {
     // Aviso de uma assinatura que não é mais a do bar (a antiga da troca de
     // plano, ou uma do Stripe que entrou depois): não derruba nada.
     if (!isCurrent || !existing) return null
-    // Cancelada pelo painel: o mês pago vale até o fim e o cron encerra.
-    if (existing.cancelAt && existing.cancelAt > new Date()) return ref.barId
+    // Cancelada no painel, no app do banco ou na AbacatePay: o ciclo pago
+    // vale até o fim, e o cron encerra depois.
+    const end = existing.cancelAt ?? periodEnd
+    if (end && end > new Date()) {
+      if (!existing.cancelAt) {
+        await db
+          .update(subscription)
+          .set({ cancelAt: end })
+          .where(eq(subscription.barId, ref.barId))
+      }
+      return ref.barId
+    }
     await db
       .update(subscription)
       .set({ status: 'cancelled', cancelAt: null })
@@ -111,38 +191,52 @@ export async function applyPixSubscription(
   }
 
   const previous =
-    existing?.provider === 'abacatepay' && !isCurrent
+    existing?.provider === 'abacatepay' &&
+    existing.externalSubscriptionId &&
+    !isCurrent
       ? existing.externalSubscriptionId
       : null
 
+  if (previous && existing?.status !== 'cancelled') {
+    // Sem resposta, segue: o cancelamento da antiga logo abaixo tenta de novo
+    // e, falhando, faz o aviso voltar com 500.
+    const current = await getSubscription(previous).catch(() => null)
+    if (
+      current &&
+      current.status !== 'CANCELLED' &&
+      new Date(current.createdAt) > new Date(sub.createdAt)
+    ) {
+      // A linha já tem uma autorização mais nova: este aviso é de uma velha
+      // que ficou ativa. Ela é que sai.
+      await cancelAtProvider(sub.id)
+      logBillingError('pix_stale_subscription_cancelled', {
+        barId: ref.barId,
+        subscriptionId: sub.id,
+        current: previous
+      })
+      return null
+    }
+  }
+  if (previous) await cancelAtProvider(previous)
+
   const values = {
-    status:
-      eventType === 'subscription.payment_failed'
-        ? ('past_due' as const)
-        : ('active' as const),
+    status: pixStanding({ eventType, periodEnd, existing, isCurrent }),
     plan: ref.plan,
     provider: 'abacatepay' as const,
     externalSubscriptionId: sub.id,
-    currentPeriodEnd: periodEndOf(sub),
+    currentPeriodEnd: periodEnd,
     // Débito de agora em diante: uma assinatura nova nunca nasce cancelada.
     cancelAt: isCurrent ? (existing?.cancelAt ?? null) : null,
     monthlyDiscountReais: ref.founder ? PIX_FOUNDER_DISCOUNT_REAIS : 0,
     // O Pix escolhido no teste foi autorizado: não há mais o que lembrar.
-    pixAfterTrialAt: null
+    pixAfterTrialAt: null,
+    // Pago: não há checkout pendente a apagar no próximo.
+    pixCheckoutId: null
   }
   await db
     .insert(subscription)
     .values({ barId: ref.barId, ...values })
     .onConflictDoUpdate({ target: subscription.barId, set: values })
   await db.update(bar).set({ isActive: true }).where(eq(bar.id, ref.barId))
-
-  if (previous) {
-    await cancelSubscription(previous).catch((error: unknown) =>
-      logBillingError('pix_previous_cancel_failed', {
-        subscriptionId: previous,
-        message: error instanceof Error ? error.message : String(error)
-      })
-    )
-  }
   return ref.barId
 }
