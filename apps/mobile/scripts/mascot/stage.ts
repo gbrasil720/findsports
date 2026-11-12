@@ -9,7 +9,11 @@
  * partir do que estiver na tela e fica até o próximo.
  */
 import type { AvatarDefinition } from 'open-bot-avatar'
-import { type MountedAvatar, mountAvatar } from 'open-bot-avatar/dom'
+import {
+  type AvatarOptions,
+  type MountedAvatar,
+  mountAvatar
+} from 'open-bot-avatar/dom'
 import SHAPES from './shapes.json'
 
 export type MascotState =
@@ -46,6 +50,7 @@ declare global {
   interface Window {
     MASCOT?: MascotConfig
     setMascot: (c: Partial<MascotConfig>) => void
+    mascotWake: () => void
     ReactNativeWebView?: { postMessage: (m: string) => void }
   }
 }
@@ -106,14 +111,21 @@ for (let i = 0; i < 12; i++) {
   orbit.append(b)
 }
 
-const bot: MountedAvatar = mountAvatar(botEl, {
+// As opções vigentes do avatar, para montá-lo de novo igual (ver `revive`).
+const opts: AvatarOptions = {
   definition: HOME,
   color: theme().body,
   eyeColor: theme().eye,
   followPointer: true,
   reducedMotion: reduce,
   label: ''
-})
+}
+let bot: MountedAvatar = mountAvatar(botEl, opts)
+/** Todo `update` do avatar passa por aqui, para o `revive` saber o estado. */
+const upd = (o: Partial<AvatarOptions>) => {
+  Object.assign(opts, o)
+  bot.update(o)
+}
 
 // ---------- motor ----------
 let token = 0
@@ -130,7 +142,18 @@ const sleep = (ms: number, t = token) =>
   new Promise<void>((resolve, reject) =>
     setTimeout(() => (alive(t) ? resolve() : reject(CANCEL)), ms)
   )
-const frame = () => new Promise(requestAnimationFrame)
+/**
+ * Um quadro, ou 100 ms se ele não vier: o iOS pode descartar o quadro
+ * pendente da WebView ao suspendê-la, e um laço esperando por ele pararia.
+ */
+const frame = () =>
+  new Promise<void>((resolve) => {
+    const timer = setTimeout(resolve, 100)
+    requestAnimationFrame(() => {
+      clearTimeout(timer)
+      resolve()
+    })
+  })
 const lin = (u: number) => u
 const out3 = (u: number) => 1 - (1 - u) ** 3
 const in2 = (u: number) => u * u
@@ -264,10 +287,33 @@ function drawEyes(now: number) {
     }
   }
 }
-;(function loop(now: number) {
+let lastTick = performance.now()
+function loop(now: number) {
+  lastTick = performance.now()
   if (eyesOn || eyesC.width) drawEyes(now)
   requestAnimationFrame(loop)
-})(0)
+}
+requestAnimationFrame(loop)
+
+/**
+ * Volta a animar depois de o iOS suspender a WebView (app em segundo plano,
+ * janela escondida): se o quadro pendente se perdeu, o relógio da biblioteca
+ * fica esperando por ele para sempre e a taça para. Montar o avatar de novo
+ * zera esse relógio; o laço dos olhos recomeça.
+ */
+function revive() {
+  // Escondida, o navegador para os quadros de propósito: não é travamento.
+  if (document.hidden || performance.now() - lastTick < 1500) return
+  bot.destroy()
+  bot = mountAvatar(botEl, opts)
+  lastTick = performance.now()
+  requestAnimationFrame(loop)
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') setTimeout(revive, 300)
+})
+setInterval(revive, 1000)
+window.mascotWake = () => setTimeout(revive, 300)
 const eye = (target: Partial<typeof E>, ms = 200, ease = out3, t = token) =>
   mix(E, target, ms, ease, t)
 const eyesOf = (def: AvatarDefinition) => ({
@@ -385,13 +431,13 @@ let cur = HOME
 let frontal = false
 let mood: 'idle' | 'thinking' | 'happy' = 'idle'
 const setView = (e: number) =>
-  bot.update({ view: { yaw: FRONT.yaw * e, pitch: FRONT.pitch * e } })
+  upd({ view: { yaw: FRONT.yaw * e, pitch: FRONT.pitch * e } })
 
 /** Solto, o humor é o da biblioteca; de frente, o dos nossos olhos. */
 function setMood(m: typeof mood, t = token) {
   mood = m
   if (!frontal) {
-    bot.update({ mood: m })
+    upd({ mood: m })
     return Promise.resolve()
   }
   return eye({ happy: m === 'happy' ? 1 : 0 }, 340, lin, t)
@@ -404,7 +450,7 @@ async function front(t = token) {
   Object.assign(E, eyesOf(cur), NEUTRAL, { happy: mood === 'happy' ? 1 : 0 })
   eyesOn = true
   frontal = true
-  bot.update({
+  upd({
     mood: 'idle',
     reducedMotion: true,
     lookAt: null,
@@ -417,11 +463,11 @@ async function release(t = token) {
   await eye(NEUTRAL, 160, out3, t)
   if (!alive(t)) return
   mood = E.happy > 0.5 ? 'happy' : 'idle'
-  bot.update({ mood, eyeColor: theme().eye })
+  upd({ mood, eyeColor: theme().eye })
   eyesOn = false
   await tween(240, (u) => setView(1 - io(u)), t)
   if (!alive(t)) return
-  bot.update({
+  upd({
     reducedMotion: reduce,
     view: { yaw: 0, pitch: 0 },
     lookAt: null
@@ -435,7 +481,7 @@ async function morph(
 ) {
   const from = cur
   if (reduce) {
-    bot.update({ definition: def })
+    upd({ definition: def })
     cur = def
     if (stay) await front(t)
     else await release(t)
@@ -474,7 +520,7 @@ async function morph(
     )
   ])
   if (!alive(t)) return
-  bot.update({ definition: def, view: FRONT })
+  upd({ definition: def, view: FRONT })
   cur = def
   await frame()
   await frame()
@@ -651,7 +697,7 @@ function tint(a: number[], b: number[], ms: number, t: number) {
     (u) => {
       const c = hex(a, b, io(u))
       bodyRgb = [0, 1, 2].map((i) => Math.round(a[i] + (b[i] - a[i]) * io(u)))
-      bot.update(frontal ? { color: c, eyeColor: c } : { color: c })
+      upd(frontal ? { color: c, eyeColor: c } : { color: c })
     },
     t
   )
@@ -710,7 +756,7 @@ async function ponder(t: number) {
     if (!alive(t)) return
     await tween(
       1000,
-      (u) => bot.update({ view: { yaw: io(u) * Math.PI * 2, pitch: 0 } }),
+      (u) => upd({ view: { yaw: io(u) * Math.PI * 2, pitch: 0 } }),
       t
     )
   }
@@ -798,7 +844,7 @@ async function writeOut(t: number, next: MascotState) {
   writing = false
   const sb = sdf(HOME)
   if (cur !== HOME) {
-    bot.update({ definition: HOME })
+    upd({ definition: HOME })
     cur = HOME
   }
   const finish = async () => {
@@ -948,11 +994,11 @@ async function flip(t: number) {
       S.sx = 0.94 + 0.06 * u - 0.04 * air
       S.sy = 1.1 - 0.1 * u + 0.06 * air
       apply()
-      bot.update({ view: { yaw: 0, pitch: -io(u) * Math.PI * 2 } })
+      upd({ view: { yaw: 0, pitch: -io(u) * Math.PI * 2 } })
     },
     t
   )
-  bot.update({ view: { yaw: 0, pitch: 0 } })
+  upd({ view: { yaw: 0, pitch: 0 } })
   ripple(S.x)
   await to({ y: 0, sx: 1.2, sy: 0.8 }, 60, out3, t)
   await to({ sx: 1, sy: 1 }, 440, spring, t)
@@ -1086,7 +1132,7 @@ const STATES: Record<MascotState, Run> = {
     await flip(t)
     await sleep(2600)
     if (!alive(t)) return
-    bot.update({ mood: 'idle' })
+    upd({ mood: 'idle' })
     mood = 'idle'
   },
   // As respostas seguintes da conversa: sorri e dá um pulinho, sem festa.
@@ -1097,7 +1143,7 @@ const STATES: Record<MascotState, Run> = {
     await release(t)
     await sleep(2600)
     if (!alive(t)) return
-    bot.update({ mood: 'idle' })
+    upd({ mood: 'idle' })
     mood = 'idle'
   },
   empty: async (t) => {
@@ -1318,11 +1364,11 @@ async function leave(prev: MascotState, next: MascotState, t: number) {
       (next === 'comparing' || (prev === 'searching' && next === 'searching'))
     if (!keepPins) fade(el)
   }
-  bot.update({ view: { yaw: 0, pitch: 0 } })
+  upd({ view: { yaw: 0, pitch: 0 } })
   if (grey) {
     grey = false
     await tint(GREY, theme().rgb, 260, t)
-    bot.update({
+    upd({
       color: theme().body,
       eyeColor: frontal ? theme().body : theme().eye
     })
@@ -1399,12 +1445,12 @@ window.setMascot = (c) => {
   if (cfg.reduced !== before.reduced) {
     reduce = cfg.reduced
     document.documentElement.classList.toggle('reduce', reduce)
-    bot.update({ reducedMotion: reduce })
+    upd({ reducedMotion: reduce })
   }
   if (cfg.dark !== before.dark) {
     fit()
     bodyRgb = theme().rgb
-    bot.update({
+    upd({
       color: theme().body,
       eyeColor: frontal ? theme().body : theme().eye
     })
