@@ -16,6 +16,7 @@ import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolv
 import { env } from '@findsports_oficial/env/server'
 import { seedBar } from '../../routers/integration-seed'
 import { setAiBinding } from '../ai/binding'
+import { readCatalogCandidates } from '../game-suggestions/catalog'
 import { runWeeklyGames } from './catalog'
 
 /**
@@ -176,6 +177,7 @@ integrationTest(
         barsInNeighborhood: 1,
         // O histórico conta o jogo de semana passada e o que ele já marcou.
         reason: `Você costuma passar Liga ${tag}`,
+        classic: false,
         featured: true
       })
       expect(fromCatalog[1]).toMatchObject({
@@ -203,6 +205,83 @@ integrationTest(
       await db.delete(user).where(inArray(user.id, fans))
       await mine.cleanup()
       await other.cleanup()
+      await db.delete(sport).where(eq(sport.id, sportId))
+    }
+  }
+)
+
+integrationTest(
+  'clássico do catálogo pelas regras da busca, em qualquer ordem (WEB-529)',
+  async () => {
+    const tag = crypto.randomUUID().slice(0, 8)
+    const seeded = await seedBar('pro', 'active', null)
+    const { db } = seeded
+    const sportId = crypto.randomUUID()
+    const created: string[] = []
+    const gameIds: string[] = []
+    try {
+      await db
+        .insert(sport)
+        .values({ id: sportId, name: `Futebol ${tag}`, slug: `wgc-${tag}` })
+      // Os slugs da regra `classic-v1` (migration 0031); no banco de teste o
+      // catálogo pode já tê-los.
+      const fresh = await db
+        .insert(team)
+        .values(
+          ['flamengo', 'palmeiras'].map((slug) => ({
+            id: crypto.randomUUID(),
+            sportId,
+            name: `${slug} ${tag}`,
+            slug
+          }))
+        )
+        .onConflictDoNothing()
+        .returning({ id: team.id })
+      created.push(...fresh.map((t) => t.id))
+      const teams = await db.query.team.findMany({
+        where: (t, o) => o.inArray(t.slug, ['flamengo', 'palmeiras']),
+        columns: { id: true, slug: true }
+      })
+      const id = (slug: string) =>
+        teams.find((t) => t.slug === slug)?.id as string
+      const games = await db
+        .insert(weeklyGame)
+        .values([
+          {
+            weekStart: '2026-11-09',
+            key: `classico-${tag}`,
+            sportId,
+            championship: `Liga ${tag}`,
+            title: `Palmeiras × Flamengo ${tag}`,
+            homeTeamId: id('palmeiras'),
+            awayTeamId: id('flamengo'),
+            startsAt: hours(30)
+          },
+          {
+            weekStart: '2026-11-09',
+            key: `comum-${tag}`,
+            sportId,
+            championship: `Liga ${tag}`,
+            title: `Jogo comum ${tag}`,
+            homeTeamId: id('palmeiras'),
+            startsAt: hours(31)
+          }
+        ])
+        .returning({ id: weeklyGame.id })
+      gameIds.push(...games.map((g) => g.id))
+      const got = await readCatalogCandidates({
+        barId: seeded.barId,
+        city: `Cidade ${tag}`,
+        neighborhood: 'Centro',
+        now: new Date()
+      })
+      const byId = new Map(got.map((g) => [g.id, g.classic]))
+      expect(byId.get(gameIds[0] as string)).toBe(true)
+      expect(byId.get(gameIds[1] as string)).toBe(false)
+    } finally {
+      await db.delete(weeklyGame).where(inArray(weeklyGame.id, gameIds))
+      if (created.length) await db.delete(team).where(inArray(team.id, created))
+      await seeded.cleanup()
       await db.delete(sport).where(eq(sport.id, sportId))
     }
   }

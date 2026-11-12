@@ -23,6 +23,7 @@ const game = (
   channelConfirmed: false,
   fans: 0,
   barsInNeighborhood: 0,
+  classic: false,
   ...extra
 })
 
@@ -190,5 +191,33 @@ describe('sugestões do catálogo: ordem e motivo', () => {
       2
     )
     expect(ranked[0]?.id).toBe('Fla')
+  })
+
+  test('clássico passa o time do histórico, mas não o time da casa', () => {
+    const fla = game('Fla × Bahia', '2026-11-15T15:00:00Z', {
+      championship: 'Copa do Brasil',
+      homeTeamId: 'fla',
+      awayTeamId: 'bah'
+    })
+    const derby = game('Corinthians × Palmeiras', '2026-11-16T15:00:00Z', {
+      championship: 'Copa do Brasil',
+      homeTeamId: 'cor',
+      awayTeamId: 'pal',
+      classic: true
+    })
+    const pelaHistoria = rankCatalogGames(
+      barHistory(wednesdays),
+      [fla, derby],
+      2
+    )
+    expect(pelaHistoria.map((g) => g.id)).toEqual([derby.id, fla.id])
+    expect(pelaHistoria[0]?.classic).toBe(true)
+
+    const daCasa = rankCatalogGames(
+      barHistory(wednesdays, new Map([['fla', 'Flamengo']])),
+      [fla, derby],
+      2
+    )
+    expect(daCasa.map((g) => g.id)).toEqual([fla.id, derby.id])
   })
 })

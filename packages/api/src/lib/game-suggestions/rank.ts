@@ -44,6 +44,8 @@ export type CatalogCandidate = {
   /** Contagem crua; só sai se passar do piso (`FANS_FLOOR`). */
   fans: number
   barsInNeighborhood: number
+  /** Par de times (ou campeonato) das regras de clássico da busca. */
+  classic: boolean
 }
 
 const hourFormat = new Intl.DateTimeFormat('en-GB', {
@@ -161,6 +163,8 @@ export function scoreGame(history: BarHistory, game: CatalogCandidate) {
   let score = 0
   // O bar disse que é a casa desse time: vem antes de qualquer histórico.
   score += houseTeamOf(history, game) ? 8 : 0
+  // Clássico enche bar de qualquer torcida: acima do histórico de um time.
+  score += game.classic ? 4 : 0
   score += championship ? 1.5 + Math.min(championship, 5) * 0.3 : 0
   score += team ? 2 + Math.min(team.count, 5) * 0.4 : 0
   score += history.sports.has(game.sportId) ? 1 : 0

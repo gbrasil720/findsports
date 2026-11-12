@@ -36,6 +36,8 @@ export type GameSuggestion = {
   reason?: string | null
   /** Time da casa que joga ("Seu time"); nulo ou ausente sem ele. */
   houseTeam?: string | null
+  /** Confronto clássico pelas regras da busca ("Clássico" no card). */
+  classic?: boolean
   /** O primeiro da lista, o que mais combina. */
   featured?: boolean
   /** O jogo em `weekly_game`, para o "Não passo esse". */
