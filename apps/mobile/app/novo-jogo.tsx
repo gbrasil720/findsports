@@ -2,7 +2,7 @@ import { brasiliaDay } from '@findsports_oficial/db/event-window'
 import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Linking,
   Switch as NativeSwitch,
@@ -101,6 +101,22 @@ export default function NovoJogo() {
   const [offer, setOffer] = useState<boolean | null>(null)
   const [list, setList] = useState<boolean | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
+  // O rodapé com o Publicar fica por cima da lista (WEB-531): o fim da lista
+  // reserva a altura dele, e tocar num jogo rola até as opções aparecerem
+  // inteiras acima do botão.
+  const scroll = useRef<ScrollView>(null)
+  const scrollY = useRef(0)
+  const footTop = useRef<number | null>(null)
+  const options = useRef<{ y: number; height: number } | null>(null)
+  const reveal = useRef(false)
+  const [footHeight, setFootHeight] = useState<number | null>(null)
+  const showOptions = () => {
+    const box = options.current
+    if (!reveal.current || !box || footTop.current === null) return
+    reveal.current = false
+    const target = box.y + box.height + 12 - footTop.current
+    if (target > scrollY.current) scroll.current?.scrollTo({ y: target })
+  }
   const done = () => {
     haptic.success()
     queryClient.invalidateQueries()
@@ -140,6 +156,12 @@ export default function NovoJogo() {
   const draft = editing && !editing.publishedAt
   const busy = create.isPending || update.isPending
   const blocked = !id && policy.data && !policy.data.canCreate
+  // Trocar de um jogo para outro não mede de novo as opções: rola daqui.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: roda a cada escolha
+  useEffect(() => {
+    if (!picked) options.current = null
+    showOptions()
+  }, [chosen])
 
   const submit = () => {
     setProblem(null)
@@ -177,12 +199,17 @@ export default function NovoJogo() {
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
       <ScrollView
+        ref={scroll}
+        onScroll={(event) => {
+          scrollY.current = event.nativeEvent.contentOffset.y
+        }}
+        scrollEventThrottle={32}
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
         contentContainerStyle={{
           padding: 18,
           paddingTop: first ? insets.top + 12 : 22,
-          paddingBottom: insets.bottom + 110,
+          paddingBottom: (footHeight ?? insets.bottom + 86) + 24,
           gap: 12
         }}
       >
@@ -256,6 +283,7 @@ export default function NovoJogo() {
                 chosen={chosen}
                 onChoose={(key) => {
                   haptic.select()
+                  reveal.current = key !== chosen
                   setChosen(key === chosen ? null : key)
                 }}
               />
@@ -269,6 +297,7 @@ export default function NovoJogo() {
                     accessibilityState={{ checked: on }}
                     onPress={() => {
                       haptic.select()
+                      reveal.current = !on
                       setChosen(on ? null : game.key)
                     }}
                   >
@@ -338,34 +367,42 @@ export default function NovoJogo() {
 
         {editing || picked ? (
           <>
-            <Line
-              icon="tv"
-              label="Telão neste jogo"
-              on={onScreen}
-              onChange={setScreen}
-            />
-            <Line
-              icon="sound"
-              label="Som do jogo"
-              on={withSound}
-              onChange={setSound}
-            />
-            {owner.elite && bar?.houseOffer ? (
+            <View
+              style={{ gap: 12 }}
+              onLayout={(event) => {
+                options.current = event.nativeEvent.layout
+                showOptions()
+              }}
+            >
               <Line
-                icon="ticket"
-                label={`Oferta: ${bar.houseOffer}`}
-                on={withOffer}
-                onChange={setOffer}
+                icon="tv"
+                label="Telão neste jogo"
+                on={onScreen}
+                onChange={setScreen}
               />
-            ) : null}
-            {owner.elite ? (
               <Line
-                icon="people"
-                label="Lista de quem vai"
-                on={withList}
-                onChange={setList}
+                icon="sound"
+                label="Som do jogo"
+                on={withSound}
+                onChange={setSound}
               />
-            ) : null}
+              {owner.elite && bar?.houseOffer ? (
+                <Line
+                  icon="ticket"
+                  label={`Oferta: ${bar.houseOffer}`}
+                  on={withOffer}
+                  onChange={setOffer}
+                />
+              ) : null}
+              {owner.elite ? (
+                <Line
+                  icon="people"
+                  label="Lista de quem vai"
+                  on={withList}
+                  onChange={setList}
+                />
+              ) : null}
+            </View>
 
             <View style={[styles.preview, { backgroundColor: palette.mark }]}>
               <Text style={[styles.previewKicker, { color: palette.muted }]}>
@@ -417,7 +454,13 @@ export default function NovoJogo() {
           </Text>
         ) : null}
       </ScrollView>
-      <View style={[styles.foot, { paddingBottom: insets.bottom + 12 }]}>
+      <View
+        style={[styles.foot, { paddingBottom: insets.bottom + 12 }]}
+        onLayout={(event) => {
+          footTop.current = event.nativeEvent.layout.y
+          setFootHeight(event.nativeEvent.layout.height)
+        }}
+      >
         <Pressable
           accessibilityRole="button"
           accessibilityHint={
