@@ -43,6 +43,17 @@ const rawEnv = createEnv({
       .optional(),
     STRIPE_WEBHOOK_SECRET: z.string().startsWith('whsec_').optional(),
     /**
+     * Pix Automático pela AbacatePay. Como no Stripe, o modo vem da chave:
+     * `abc_dev_` é o Modo Teste, `abc_prod_` debita de verdade e só vale no
+     * domínio de produção. Faltando, o Pix some de `/plan` e o resto segue.
+     * O segredo do webhook é o que se escolhe ao criá-lo no dashboard.
+     */
+    ABACATE_PAY_API_KEY: z
+      .string()
+      .regex(/^abc_(dev|prod)_/, 'ABACATE_PAY_API_KEY inválida')
+      .optional(),
+    ABACATE_PAY_WEBHOOK_SECRET: z.string().min(32).optional(),
+    /**
      * Fotos de bar e avatares no bucket R2 `onside-media` (WEB-202). O
      * servidor assina um PUT com a chave S3 do bucket e o navegador sobe
      * direto; a leitura sai de `MEDIA_PUBLIC_ORIGIN`.
@@ -157,6 +168,16 @@ if (
   if (!/(^|\.)onside\.sh$/.test(host)) {
     throw new Error(
       'STRIPE_SECRET_KEY viva recusada fora do domínio de produção.'
+    )
+  }
+}
+
+// Mesma regra para o Pix: chave de produção da AbacatePay só em onside.sh.
+if (rawEnv.ABACATE_PAY_API_KEY?.startsWith('abc_prod_')) {
+  const host = new URL(rawEnv.PUBLIC_APP_URL ?? rawEnv.BETTER_AUTH_URL).hostname
+  if (!/(^|\.)onside\.sh$/.test(host)) {
+    throw new Error(
+      'ABACATE_PAY_API_KEY de produção recusada fora do domínio de produção.'
     )
   }
 }
