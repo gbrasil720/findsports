@@ -1,6 +1,6 @@
 import { Asset } from 'expo-asset'
 import { useEffect, useRef, useState } from 'react'
-import { type StyleProp, View, type ViewStyle } from 'react-native'
+import { AppState, type StyleProp, View, type ViewStyle } from 'react-native'
 import Animated, {
   cubicBezier,
   useReducedMotion
@@ -43,6 +43,15 @@ export function Mascot({
     if (ready && config !== first.current)
       web.current?.injectJavaScript(`window.setMascot(${config});true`)
   }, [config, ready])
+  // De volta do segundo plano, o palco confere se a animação não parou (o iOS
+  // pode perder o quadro pendente da WebView suspensa).
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active')
+        web.current?.injectJavaScript('window.mascotWake&&mascotWake();true')
+    })
+    return () => sub.remove()
+  }, [])
 
   return (
     <View
@@ -71,6 +80,9 @@ export function Mascot({
             allowFileAccess
             allowingReadAccessToURL={uri}
             injectedJavaScriptBeforeContentLoaded={`window.MASCOT=${first.current};true`}
+            // O iOS pode encerrar o processo da WebView em segundo plano: a
+            // página volta, e o "ready" manda o estado de agora.
+            onContentProcessDidTerminate={() => web.current?.reload()}
             onMessage={(e) => {
               if (e.nativeEvent.data !== 'ready') return
               if (latest.current !== first.current)
