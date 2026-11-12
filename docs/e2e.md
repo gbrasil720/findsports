@@ -1,6 +1,7 @@
 # E2E com Playwright (WEB-174)
 
-Suíte de navegador em `apps/e2e`. Sobe o app com `vite dev` contra um Postgres
+Suíte de navegador em `apps/e2e`. Sobe o build do app em Node (`vite build` +
+`vite preview`, ~5 s) contra um Postgres
 descartável, roda cada teste em Chromium desktop e em Chromium com viewport de
 Pixel 7, e não sai para a rede: e-mail, LocationIQ, R2 (fotos), Stripe e
 tiles do mapa são dublês.
@@ -50,7 +51,7 @@ Os argumentos depois de `--` chegam inteiros ao Playwright; o script só faz
 
 | Variável | Padrão | Para quê |
 |---|---|---|
-| `E2E_PORT` | `3201` | Porta do `vite dev` da suíte |
+| `E2E_PORT` | `3201` | Porta do servidor da suíte |
 | `E2E_STUB_PORT` | `3202` | Porta do stub (LocationIQ, API do Stripe e tiles) |
 | `E2E_DATABASE_URL` | `postgres://findsports_e2e:findsports_e2e_local@127.0.0.1:5434/findsports_e2e` | Banco da suíte |
 
@@ -75,7 +76,7 @@ chave que o `apps/web/.env` de quem roda local pode trazer com valor real
 (API de e-mail, LocationIQ, Stripe, Redis, PostHog) é sobrescrita ali, nem que seja com
 vazio.
 
-Com `E2E_DATABASE_URL`, o `vite dev` segura conexão ociosa por 70 s
+Com `E2E_DATABASE_URL`, o servidor segura conexão ociosa por 70 s
 (`e2eKeepAlive` em `apps/web/vite.config.ts`), mais que um teste dura. Com os 5 s do
 Node, o `page.request` (e o `request`) que volta a falar depois de uns segundos de
 tela pegava a conexão no instante em que o servidor a fechava: "socket hang up" ou
@@ -246,8 +247,14 @@ não exercitar o cache em si — isso fica com o teste unitário
 
 ## Armadilhas
 
-- **`vite dev`, não o build.** O build de produção usa o driver HTTP do Neon e
-  falha com `fetch failed` contra Postgres local.
+- **Build em Node, não `vite dev` nem o do Worker.** `vite build` sem
+  `--mode cloudflare`, com `NODE_ENV=development` (o `packages/env` recusa as
+  chaves de E2E em produção) e tudo no bundle (`ssr.noExternal` em
+  `apps/web/vite.config.ts`: com dependência externa o SSR carrega duas cópias
+  do React). Fala com o Postgres local pelo `pg`. O `vite dev` compilava cada
+  módulo no meio do teste, em cada shard. `VITE_*` fica embutida no JavaScript:
+  teste que precisa de outro valor reescreve a resposta de `/assets/*.js`
+  (`fan/discovery.e2e.ts`).
 - **Origem.** `BETTER_AUTH_URL` e `PUBLIC_APP_URL` são
   `http://127.0.0.1:<E2E_PORT>`, e o `baseURL` do Playwright também. Trocar um
   só dá `Invalid origin` no login. `127.0.0.1`, e não `localhost`: no macOS o
@@ -277,8 +284,8 @@ não exercitar o cache em si — isso fica com o teste unitário
 
 ## Suíte do Worker
 
-A suíte principal roda em `vite dev`, que serve `public/` diferente do Worker:
-o Workers assets responde `/offline.html` com 307 para `/offline`, o `vite dev`
+A suíte principal roda no build em Node, que serve `public/` diferente do Worker:
+o Workers assets responde `/offline.html` com 307 para `/offline`, o Node
 com 200. Foi essa diferença que escondeu a WEB-269. O que depende de como o
 Worker serve arquivo estático tem suíte própria, contra o bundle real em
 workerd:
@@ -301,7 +308,11 @@ suíte principal.
 Job `e2e` em `.github/workflows/ci.yml`, em todo PR, com
 serviço Postgres/PostGIS próprio (`ghcr.io/gbrasil720/findsports/ci-postgis`,
 publicado por `.github/workflows/publish-ci-postgis.yml` — sem Docker Hub).
-Instala só o Chromium. Em falha, publica
+Instala só o Chromium. `desktop` e `mobile` vão em 8 shards divididos pelo tempo
+medido de cada arquivo (`apps/e2e/shard.ts`, tempos em `durations.json`; arquivo
+novo entra com a mediana, e o cabeçalho do script diz como medir de novo). Trocar
+o número de shards pede trocar os checks `e2e (N)` obrigatórios da proteção de
+`master`. Em falha, publica
 `playwright-report` e `test-results` (trace, vídeo e screenshot só dos testes
 que falharam) como artifact.
 
