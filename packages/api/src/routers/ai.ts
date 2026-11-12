@@ -606,7 +606,7 @@ export const aiRouter = router({
     .input(
       z.object({
         runId: z.string().uuid(),
-        kind: z.enum(['open_bar', 'going', 'route']),
+        kind: z.enum(['open_bar', 'going', 'route', 'phone', 'whatsapp']),
         barId: z.string().uuid().optional()
       })
     )

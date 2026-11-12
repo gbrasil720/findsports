@@ -179,6 +179,9 @@ integrationTest(
         kind: 'open_bar',
         barId: seeded.barId
       })
+      // Ligar e WhatsApp do bar citado também contam (WEB-427).
+      for (const kind of ['phone', 'whatsapp'] as const)
+        await fan.ai.action({ runId: done.runId, kind, barId: seeded.barId })
       const other = appRouter.createCaller(
         contextFor(crypto.randomUUID(), 'fan')
       )
@@ -198,12 +201,15 @@ integrationTest(
         .from(aiRun)
         .where(eq(aiRun.runId, done.runId))
       expect(rated?.feedback).toBe(1)
-      expect(
-        await db
-          .select({ kind: aiAction.kind })
-          .from(aiAction)
-          .where(eq(aiAction.runId, done.runId))
-      ).toEqual([{ kind: 'open_bar' }])
+      const kinds = await db
+        .select({ kind: aiAction.kind })
+        .from(aiAction)
+        .where(eq(aiAction.runId, done.runId))
+      expect(kinds.map((a) => a.kind).sort()).toEqual([
+        'open_bar',
+        'phone',
+        'whatsapp'
+      ])
     } finally {
       await resetAppConfig('ai.enabled')
       await db.delete(aiRun).where(eq(aiRun.userId, seeded.fanId))
