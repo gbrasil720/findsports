@@ -347,6 +347,15 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   de invalidar checkout pela listagem: o pendente fica em `subscription.pix_checkout_id`
   e o seguinte o apaga (`replacePendingPixCheckout`). A situação (`active`/`past_due`)
   sai do fim do ciclo pago, não da ordem dos avisos (`pixStanding`).
+  **Do Pix para o cartão** (WEB-536): em `/plan`, quem paga por Pix vê o cartão na
+  janela "Como você quer pagar?" (troca de plano, ou "Passar para o cartão" no mesmo
+  plano; mensal ou anual). O checkout manda `trial_end` = fim do ciclo pago
+  (`trialEndForCheckout`), e o fundador do Pix leva a vaga. O primeiro evento do
+  cartão vivo (`applyStripeSubscription`) cancela o Pix na AbacatePay antes de a
+  linha virar `stripe`; falha lá responde erro e o Stripe reenvia, com o bar no Pix
+  enquanto isso. O `cancelled` do Pix que chega depois não é da assinatura atual e
+  não derruba nada. Sem `ABACATE_PAY_API_KEY`, o checkout de quem tem Pix ativo é
+  recusado (`blocksCardOverPix`, `PIX_SWITCH_UNAVAILABLE`): pagaria os dois.
 
 ### Avisos por e-mail do bar (WEB-441)
 
