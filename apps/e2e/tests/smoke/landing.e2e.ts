@@ -52,11 +52,17 @@ const brasiliaTomorrow = () =>
     Date.now() + 86_400_000
   )
 
-async function openExample(page: Page) {
+/**
+ * Abre o exemplo do hero. Com `game`, espera o campo "Jogo" mostrá-lo antes do
+ * clique: o resultado guarda o jogo escolhido na hora do envio, e clicar antes
+ * de `pubs.todayGames` responder levava o jogo da lista de exemplo (WEB-532).
+ */
+async function openExample(page: Page, game?: string) {
   await page.goto('/')
   const real = page.locator('.lp3 .paths .path.real a')
   await expect(real).toHaveAttribute('href', '/dashboard')
   await expect(page.locator('#busca')).toContainText('Bares fictícios')
+  if (game) await expect(page.locator('#q-jogo')).toHaveValue(game)
   await page
     .locator('#busca')
     .getByRole('button', { name: 'Ver como fica' })
@@ -103,7 +109,7 @@ test('com jogos hoje, o exemplo leva ao jogo escolhido no Explorar', async ({
     (title, i) => ({ title, startsAt, bars: i + 1 })
   )
   await stubTodayGames(page, games)
-  const next = await openExample(page)
+  const next = await openExample(page, 'Flamengo × Vasco')
   await expect(next).toContainText('Flamengo × Vasco passa em 1 bar')
   const link = next.locator('[data-cta]')
   await expect(link).toHaveAttribute('data-cta', 'results_game')
