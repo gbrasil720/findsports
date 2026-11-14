@@ -6,7 +6,7 @@ import {
 } from '@findsports_oficial/db/reservation-code'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { type KeyboardEvent, useEffect, useRef, useState } from 'react'
+import { type KeyboardEvent, useRef, useState } from 'react'
 import { useUndoCountdown } from '@/components/admin/use-undo-countdown'
 import { useMinuteNow } from '@/components/app/minute-tick'
 import { Beer, Close } from '@/components/landing/v3/icons'
@@ -24,6 +24,7 @@ import {
   wasAnsweredByServer
 } from '@/domain/reservation-validation'
 import { useTRPC, useTRPCClient } from '@/utils/trpc'
+import { FolhaNativa } from './folha-nativa'
 
 /*
  * "Validar código" da casca do painel (protótipo: `openVal`, `doVal`,
@@ -44,37 +45,17 @@ export function ValidarCodigo({
   open: boolean
   onClose: () => void
 }) {
-  const ref = useRef<HTMLDialogElement>(null)
-
-  useEffect(() => {
-    const dialog = ref.current
-    if (!dialog) return
-    if (open && !dialog.open) {
-      dialog.showModal()
-      // O `showModal` foca o primeiro botão (Fechar); a caixa abre para digitar.
-      dialog.querySelector('input')?.focus()
-    }
-    if (!open && dialog.open) dialog.close()
-  }, [open])
-
   return (
-    // biome-ignore lint/a11y/useKeyWithClickEvents: o Esc do teclado já fecha o `<dialog>` nativo; o clique é só o do fundo.
-    <dialog
-      ref={ref}
+    <FolhaNativa
+      open={open}
       className="pn-val"
       aria-labelledby="pn-val-t"
-      // Só o fechamento desta folha: o React repassa o `close` de um
-      // `<dialog>` de dentro (uma confirmação) para cá.
-      onClose={(event) => {
-        if (event.target === ref.current) onClose()
-      }}
-      // Clique no fundo (fora da caixa) fecha, como no protótipo.
-      onClick={(event) => {
-        if (event.target === ref.current) onClose()
-      }}
+      onClose={onClose}
+      // O `showModal` foca o primeiro botão (Fechar); a caixa abre para digitar.
+      onOpen={(dialog) => dialog.querySelector('input')?.focus()}
     >
       {open ? <Conteudo onClose={onClose} /> : null}
-    </dialog>
+    </FolhaNativa>
   )
 }
 
