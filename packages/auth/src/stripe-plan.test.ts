@@ -1,6 +1,7 @@
 import { describe, expect, it, test } from 'bun:test'
 import {
   monthlyPriceReais,
+  pixMonthlyReais,
   pixUpgradeCents,
   planForLookupKey,
   STRIPE_PLANS
@@ -61,6 +62,12 @@ describe('diferença da subida do Pix para o cartão (WEB-536)', () => {
     })
     // 297 − 119 = 178 pela metade do mês.
     expect(fromFounder).toBe(8900)
+  })
+
+  it('Pix anual: o mensal atual é o ano em 12', () => {
+    // Pro anual de fundador no Pix: 1.470 − 280 = 1.190 por ano.
+    expect(pixMonthlyReais('pro', 280, true)).toBe(1190 / 12)
+    expect(pixMonthlyReais('pro', 28, false)).toBe(119)
   })
 
   it('anual: a mensalidade equivalente, 10 meses em 12', () => {

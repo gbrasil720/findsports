@@ -1,8 +1,8 @@
 import { PLAN_NAMES } from '@findsports_oficial/api/lib/plan-limits'
 import {
   monthlyPriceReais,
-  pixUpgradeCents,
-  TABLE_PRICE_REAIS
+  pixMonthlyReais,
+  pixUpgradeCents
 } from '@findsports_oficial/auth/stripe-plan'
 import type { SubscriptionPlan } from '@findsports_oficial/db'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -442,9 +442,11 @@ function PlanSelection() {
     subscription?.currentPeriodEnd &&
     choiceFounder !== null
       ? pixUpgradeCents({
-          currentMonthlyReais:
-            TABLE_PRICE_REAIS[currentPlan] -
-            (subscription.monthlyDiscountReais ?? 0),
+          currentMonthlyReais: pixMonthlyReais(
+            currentPlan,
+            subscription.monthlyDiscountReais ?? 0,
+            subscription.billingInterval === 'year'
+          ),
           newMonthlyReais: monthlyPriceReais(plan, {
             founder: choiceFounder,
             annual
