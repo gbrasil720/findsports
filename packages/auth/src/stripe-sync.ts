@@ -228,7 +228,12 @@ export async function applyStripeSubscription(
     externalSubscriptionId: stripeSubscription.id,
     currentPeriodEnd: new Date(item.current_period_end * 1000),
     cancelAt: scheduledCancelOf(stripeSubscription, item.current_period_end),
-    monthlyDiscountReais: monthlyDiscountReaisFromStripe(stripeSubscription)
+    monthlyDiscountReais: monthlyDiscountReaisFromStripe(stripeSubscription),
+    // A tela lê o do cartão em `stripe_subscription`; aqui fica coerente.
+    billingInterval:
+      item.price.recurring?.interval === 'year'
+        ? ('year' as const)
+        : ('month' as const)
   }
   await db
     .insert(subscription)
