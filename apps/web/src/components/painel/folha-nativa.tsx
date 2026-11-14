@@ -34,19 +34,17 @@ export function FolhaNativa({
   children: ReactNode
 }) {
   const ref = useRef<HTMLDialogElement>(null)
-  // `onOpen` costuma ser uma função nova a cada renderização: não reabre.
-  const onOpenRef = useRef(onOpen)
-  onOpenRef.current = onOpen
 
   useEffect(() => {
     const dialog = ref.current
     if (!dialog) return
     if (open && !dialog.open) {
       dialog.showModal()
-      onOpenRef.current?.(dialog)
+      onOpen?.(dialog)
     }
     if (!open && dialog.open) dialog.close()
-  }, [open])
+    // `onOpen` novo a cada renderização não reabre: a folha aberta pula o `if`.
+  }, [open, onOpen])
 
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: o Esc já fecha o `<dialog>` nativo; o clique é só o do fundo.
