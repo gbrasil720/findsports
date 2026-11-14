@@ -238,6 +238,11 @@ test('quem paga por Pix passa o mesmo plano para o cartão', async ({
 }) => {
   const { user, paidUntil } = await pixBar(page)
   await page.goto('/plan')
+  // O cabeçalho diz a regra do Pix, não o proporcional do cartão.
+  await expect(page.locator('.ob-sub')).toContainText(
+    `Pago no Pix até ${ddmm(paidUntil)}`
+  )
+  await expect(page.getByText('acertada de forma proporcional')).toHaveCount(0)
 
   await page.getByRole('button', { name: 'Passar para o cartão' }).click()
   const dialog = page.getByRole('dialog', { name: 'Como você quer pagar?' })
@@ -279,6 +284,7 @@ test('prints da janela de quem paga por Pix', async ({ page }, testInfo) => {
   })
   await pixBar(page)
   await page.goto('/plan')
+  await print(page, testInfo, 'plan-pix-cabecalho', 300)
   const dialog = page.getByRole('dialog', { name: 'Como você quer pagar?' })
 
   await page.getByRole('button', { name: 'Mudar para o Elite' }).click()

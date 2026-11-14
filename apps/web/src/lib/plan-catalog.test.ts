@@ -723,6 +723,21 @@ describe('getPlanHeader', () => {
     }
   })
 
+  // WEB-536: no Pix não há crédito proporcional; subir no cartão cobra a
+  // diferença até o fim do mês pago, e no Pix a troca é autorização nova.
+  test('quem paga no Pix lê a regra da troca, não o proporcional', () => {
+    const pix = {
+      ...paid,
+      provider: 'abacatepay',
+      currentPeriodEnd: '2026-12-02T15:00:00.000Z'
+    }
+    const header = getPlanHeader(pix)
+    expect(header.text).toBe(
+      'Pago no Pix até 02/12. Para subir de plano no cartão, a diferença até 02/12 sai hoje; no Pix, a troca pede uma nova autorização. Passar para o cartão sem subir não cobra nada até 02/12.'
+    )
+    expect(header.text).not.toContain('proporcional')
+  })
+
   // WEB-335: com data para acabar, o cabeçalho não convida a trocar de plano.
   test('cancelamento agendado tem cabeçalho próprio, com a data do aviso', () => {
     const header = getPlanHeader({
