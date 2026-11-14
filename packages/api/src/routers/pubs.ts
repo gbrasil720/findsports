@@ -786,14 +786,7 @@ export const pubsRouter = router({
         ...publicBar,
         amenities: declaredAmenityIds(publicBar.amenities),
         events: events.map(
-          // Colunas da antiga reserva de mesa: não saem mais.
-          ({
-            reservationCap: _cap,
-            acceptsReservations: _accepts,
-            houseOffer: gameOffer,
-            noHouseOffer,
-            ...game
-          }) => ({
+          ({ houseOffer: gameOffer, noHouseOffer, ...game }) => ({
             ...game,
             // A oferta que vale neste jogo (WEB-422): a dele substitui a do
             // bar, e "sem oferta neste jogo" a desliga. Só no Elite.
@@ -1024,12 +1017,9 @@ export const pubsRouter = router({
               // Jogo em andamento continua na lista, como no perfil do bar.
               where: (event) =>
                 and(isNotNull(event.publishedAt), eventNotEndedSql(event, now)),
-              // Colunas da antiga reserva de mesa: não saem mais. A oferta
-              // do jogo crua também não: o que vale sai de `getById`, já com o
-              // plano (WEB-422).
+              // A oferta do jogo crua não sai: o que vale sai de `getById`,
+              // já com o plano (WEB-422).
               columns: {
-                reservationCap: false,
-                acceptsReservations: false,
                 houseOffer: false,
                 noHouseOffer: false
               },

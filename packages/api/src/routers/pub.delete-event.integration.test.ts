@@ -51,9 +51,7 @@ async function seedGame() {
       role: 'fan',
       onboardingCompleted: true
     })
-    await ctx.db
-      .insert(reservation)
-      .values({ eventId, userId, partySize: 1, status })
+    await ctx.db.insert(reservation).values({ eventId, userId, status })
     await ctx.db.insert(attendance).values({ eventId, userId })
   }
   const exists = async (eventId: string) =>
@@ -128,9 +126,7 @@ integrationTest(
       const eventId = await ctx.addGame()
       let deletion: ReturnType<typeof refusal> | undefined
       await ctx.db.transaction(async (tx) => {
-        await tx
-          .insert(reservation)
-          .values({ eventId, userId: ctx.fanId, partySize: 1 })
+        await tx.insert(reservation).values({ eventId, userId: ctx.fanId })
         // O pedido ainda não foi gravado: a exclusão para na trava do jogo
         // e só conta as reservas depois que ele entra.
         deletion = refusal(ctx.owner.pub.deleteEvent({ eventId }))

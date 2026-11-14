@@ -332,7 +332,6 @@ integrationTest(
         .values({
           eventId: past,
           userId: e as string,
-          partySize: 1,
           status: 'confirmed'
         })
         .returning({ id: reservation.id })

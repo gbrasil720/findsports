@@ -59,10 +59,10 @@ integrationTest(
         { userId: fanId, eventId: novembro }
       ])
 
-      const codeFor = async (eventId: string, partySize: number) => {
+      const codeFor = async (eventId: string, userId = fanId) => {
         const [row] = await db
           .insert(reservation)
-          .values({ eventId, userId: fanId, partySize, status: 'confirmed' })
+          .values({ eventId, userId, status: 'confirmed' })
           .returning({ id: reservation.id })
         if (!row) throw new Error('reserva não criada')
         const [code] = await db
@@ -74,15 +74,16 @@ integrationTest(
               .slice(0, 8)
               .toUpperCase(),
             reservationId: row.id,
-            maxUses: partySize
+            maxUses: 1
           })
           .returning({ id: reservationCode.id })
         if (!code) throw new Error('código não criado')
         return code.id
       }
-      const codeSetembro = await codeFor(setembro, 1)
-      const codeOutubro = await codeFor(fimDeOutubro, 4)
-      const codeNovembro = await codeFor(novembro, 1)
+      const codeSetembro = await codeFor(setembro)
+      const codeOutubro = await codeFor(fimDeOutubro)
+      const codeOutubroOutro = await codeFor(fimDeOutubro, otherFanId)
+      const codeNovembro = await codeFor(novembro)
 
       await db.insert(reservationCodeUse).values([
         // Lançado pela comanda em outubro, de jogo de setembro: setembro.
@@ -95,7 +96,7 @@ integrationTest(
         { codeId: codeOutubro, usedAt: at('2026-11-01T00:30:00Z') },
         // Lançado em novembro, de jogo de outubro: outubro.
         {
-          codeId: codeOutubro,
+          codeId: codeOutubroOutro,
           usedAt: at('2026-11-02T12:00:00Z'),
           late: true
         },

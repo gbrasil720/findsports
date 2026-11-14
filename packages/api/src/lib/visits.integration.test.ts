@@ -55,7 +55,7 @@ integrationTest(
       await db
         .insert(sport)
         .values({ id: sportId, name: sportId, slug: `visit-${sportId}` })
-      const [twice, undone, never] = await db
+      const [validated, undone, never] = await db
         .insert(event)
         .values(
           [1, 2, 3].map((n) => ({
@@ -68,18 +68,18 @@ integrationTest(
         .returning({ id: event.id })
         .then((rows) => rows.map((row) => row.id))
 
-      /** Ingresso de duas pessoas, com um uso em cada `usedAt`. */
+      /** Ingresso com um uso em cada `usedAt` (desfeito libera o seguinte). */
       const ticket = async (eventId: string, uses: Date[]) => {
         const [created] = await db
           .insert(reservation)
-          .values({ eventId, userId: fanId, partySize: 2, status: 'confirmed' })
+          .values({ eventId, userId: fanId, status: 'confirmed' })
           .returning({ id: reservation.id })
         const [code] = await db
           .insert(reservationCode)
           .values({
             code: generateReservationCode(),
             reservationId: created?.id as string,
-            maxUses: 2
+            maxUses: 1
           })
           .returning({ id: reservationCode.id })
         if (!uses.length) return []
@@ -91,7 +91,7 @@ integrationTest(
           .returning({ id: reservationCodeUse.id })
       }
       const first = new Date(Date.now() - 30 * HOUR)
-      await ticket(twice as string, [new Date(Date.now() - 29 * HOUR), first])
+      await ticket(validated as string, [first])
       const [use] = await ticket(undone as string, [new Date()])
       await db
         .update(reservationCodeUse)
@@ -102,7 +102,7 @@ integrationTest(
       expect(
         await db.select().from(visit).where(eq(visit.userId, fanId))
       ).toEqual([
-        { userId: fanId, eventId: twice as string, barId, visitedAt: first }
+        { userId: fanId, eventId: validated as string, barId, visitedAt: first }
       ])
       // "Já fui" lê a mesma visita: um jogo, com a primeira validação.
       const { readVisitedGames } = await import('./attendance')

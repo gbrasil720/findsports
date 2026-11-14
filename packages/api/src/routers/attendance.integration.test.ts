@@ -94,8 +94,7 @@ async function seed(
         sportId,
         championship: 'Campeonato de integração',
         participantFreeText: 'Time A × Time B',
-        startsAt: new Date(Date.now() + offset),
-        acceptsReservations: options.elite ?? false
+        startsAt: new Date(Date.now() + offset)
       }))
     )
     .returning({ id: event.id })
@@ -132,7 +131,6 @@ async function seed(
         .values({
           eventId,
           userId,
-          partySize: 1,
           status: 'confirmed',
           offerSnapshot: options.offer ?? null
         })
@@ -233,13 +231,10 @@ integrationTest(
       expect(marked?.code).toMatch(/^[A-Z0-9]{6}$/)
       expect(first).toMatchObject({ attending: true, code: marked?.code })
       const tickets = await ctx.db
-        .select({
-          status: reservation.status,
-          partySize: reservation.partySize
-        })
+        .select({ status: reservation.status })
         .from(reservation)
         .where(eq(reservation.eventId, future))
-      expect(tickets).toEqual([{ status: 'confirmed', partySize: 1 }])
+      expect(tickets).toEqual([{ status: 'confirmed' }])
 
       await api.set({ eventId: future, attending: false })
       expect(await mine()).toEqual({
