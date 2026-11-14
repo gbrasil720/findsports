@@ -44,7 +44,7 @@ export const Route = createFileRoute('/')({
       // pôster e da Anton no celular.
       {
         rel: 'preload',
-        href: '/fonts/onside/anton-latin-400.woff2?v=2',
+        href: '/fonts/onside/anton-latin-400.woff2?v=3',
         as: 'font',
         type: 'font/woff2',
         crossOrigin: 'anonymous',
@@ -52,7 +52,7 @@ export const Route = createFileRoute('/')({
       },
       {
         rel: 'preload',
-        href: '/fonts/onside/archivo-latin-wght.woff2?v=2',
+        href: '/fonts/onside/archivo-latin-wght.woff2?v=3',
         as: 'font',
         type: 'font/woff2',
         crossOrigin: 'anonymous',
@@ -60,7 +60,7 @@ export const Route = createFileRoute('/')({
       },
       {
         rel: 'preload',
-        href: '/fonts/onside/geist-mono-latin-wght.woff2?v=2',
+        href: '/fonts/onside/geist-mono-latin-wght.woff2?v=3',
         as: 'font',
         type: 'font/woff2',
         crossOrigin: 'anonymous',

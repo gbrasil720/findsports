@@ -11,14 +11,14 @@ export const Route = createFileRoute('/$')({
     links: [
       {
         rel: 'preload',
-        href: '/fonts/onside/anton-latin-400.woff2?v=2',
+        href: '/fonts/onside/anton-latin-400.woff2?v=3',
         as: 'font',
         type: 'font/woff2',
         crossOrigin: 'anonymous'
       },
       {
         rel: 'preload',
-        href: '/fonts/onside/archivo-latin-wght.woff2?v=2',
+        href: '/fonts/onside/archivo-latin-wght.woff2?v=3',
         as: 'font',
         type: 'font/woff2',
         crossOrigin: 'anonymous'
