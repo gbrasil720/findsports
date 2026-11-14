@@ -666,6 +666,13 @@
       "when": 1794670717648,
       "tag": "0095_reservation_ticket_defaults",
       "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1794671149227,
+      "tag": "0096_drop_reservation_leftovers",
+      "breakpoints": true
     }
   ]
 }
