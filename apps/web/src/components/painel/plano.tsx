@@ -7,6 +7,7 @@ import { PlanChangedNotice } from '@/components/billing/plan-change'
 import { ReactivateSubscriptionButton } from '@/components/billing/reactivate-subscription-button'
 import { Check } from '@/components/landing/v3/icons'
 import { PLAN_ART } from '@/components/onboarding/pub-plan-step'
+import { useFounderCoupon } from '@/hooks/use-founder-coupon'
 import { useSession } from '@/hooks/use-session'
 import { analytics } from '@/lib/analytics'
 import { openBillingPortal } from '@/lib/billing-client'
@@ -14,7 +15,6 @@ import { isLapsed, LAPSED_COPY } from '@/lib/lapsed-plan'
 import {
   CONTRACTED_TRIAL_LABEL,
   formatPlanPrice,
-  founderCouponFromQuery,
   getPlan,
   getPlanPageMode,
   getTrialNotice,
@@ -79,9 +79,6 @@ export function PlanoPage({
     ...trpc.pub.getMySubscription.queryOptions(),
     meta: { errorToast: false }
   })
-  const founderCouponQuery = useQuery(
-    trpc.pub.getFounderCouponAvailable.queryOptions()
-  )
   const subscription = subscriptionQuery.data
   // Crédito, próxima cobrança e cartão, lidos do Stripe (WEB-350). Enquanto
   // carrega, ou se o Stripe falhar, a tela segue sem eles.
@@ -140,7 +137,7 @@ export function PlanoPage({
   const ended = standing === 'ended'
   const shownPlan = plan ?? (lapsed || ended ? subscription?.plan : null)
   const planInfo = shownPlan ? getPlan(shownPlan) : null
-  const founderCouponAvailable = founderCouponFromQuery(founderCouponQuery)
+  const founderCouponAvailable = useFounderCoupon()
   const charge =
     planInfo && subscription
       ? planChargeForCurrentPlan(planInfo, subscription, founderCouponAvailable)
