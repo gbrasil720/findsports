@@ -59,7 +59,7 @@ async function seed() {
     }))
   )
   /** Um torcedor novo: a rodada dele ainda não existe hoje. */
-  const fan = async () => {
+  const fan = async (client: 'app' | 'web' = 'app') => {
     const id = crypto.randomUUID()
     fanIds.push(id)
     await db.insert(schema.user).values({
@@ -71,9 +71,10 @@ async function seed() {
       onboardingCompleted: true,
       searchRadiusKm: 3
     })
-    const caller = appRouter.createCaller(
-      contextFor(id, 'fan') as Parameters<typeof appRouter.createCaller>[0]
-    )
+    const caller = appRouter.createCaller({
+      ...contextFor(id, 'fan'),
+      headers: new Headers(client === 'app' ? { 'x-onside-client': 'app' } : {})
+    } as Parameters<typeof appRouter.createCaller>[0])
     return { id, today: () => caller.recommendations.today({ where: ORIGIN }) }
   }
   const runs = (userId: string) =>
@@ -163,6 +164,24 @@ integrationTest(
     expect(round?.items).toHaveLength(5)
     expect(calls).toEqual([])
     expect(await ctx.runs(fan.id)).toEqual([])
+  }
+)
+
+integrationTest(
+  'ligado, pedido do web: fica no controle, sem ai_run nem chamada (só o app entra)',
+  async () => {
+    if (!ctx) throw new Error('sem seed')
+    const calls = model(allFour)
+    await testOn({ a: 0, c: 100 })
+    try {
+      const fan = await ctx.fan('web')
+      const { round } = await fan.today()
+      expect(round?.items).toHaveLength(5)
+      expect(calls).toEqual([])
+      expect(await ctx.runs(fan.id)).toEqual([])
+    } finally {
+      await testOff()
+    }
   }
 )
 
