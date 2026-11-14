@@ -68,21 +68,14 @@ export function codeNotFoundError(): TRPCError {
 }
 
 /**
- * O código nasce junto com o pedido (ADR 0003), então o torcedor pode chegar
- * com código de reserva que o dono ainda não respondeu. O código resolve e a
- * tela mostra o estado; chegada só se registra em reserva confirmada, porque
- * a confirmação manual é a única defesa do bar contra overbooking.
+ * Chegada só se registra com o código em vigor. O desmarcado resolve (a tela
+ * mostra o estado), mas não valida.
  */
 export function assertReservationConfirmed(status: ReservationStatus): void {
   if (status === 'confirmed') return
   throw new TRPCError({
     code: 'UNPROCESSABLE_CONTENT',
-    message:
-      status === 'pending'
-        ? 'Este código é de um pedido de reserva antigo, sem resposta.'
-        : status === 'declined'
-          ? 'Este código é de um pedido de reserva recusado.'
-          : 'O torcedor desmarcou este jogo.'
+    message: 'O torcedor desmarcou este jogo.'
   })
 }
 

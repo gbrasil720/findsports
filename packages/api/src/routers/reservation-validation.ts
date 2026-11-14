@@ -94,9 +94,9 @@ const validatorProcedure = pubProcedure.use(async ({ ctx, next }) => {
  * Código ativo de um jogo do bar de `ownerId`. Qualquer condição que falhe
  * devolve `undefined`, sem dizer qual.
  *
- * O estado da reserva não filtra: é dado do próprio bar, e sumir com o código
- * de um pedido pendente faria a tela dizer "não encontrado" para um código
- * que o torcedor está mostrando no celular.
+ * O estado não filtra: é dado do próprio bar, e sumir com o código desmarcado
+ * faria a tela dizer "não encontrado" para um código que o torcedor está
+ * mostrando no celular.
  */
 function ownCodes(reader: Reader, match: SQL, ownerId: string) {
   return reader
@@ -105,7 +105,6 @@ function ownCodes(reader: Reader, match: SQL, ownerId: string) {
       code: reservationCode.code,
       usedCount: reservationCode.usedCount,
       maxUses: reservationCode.maxUses,
-      partySize: reservation.partySize,
       reservationStatus: reservation.status,
       offerSnapshot: reservation.offerSnapshot,
       guestName: user.name,
@@ -267,8 +266,12 @@ export const reservationValidationRouter = router({
         codeId: found.codeId,
         code: found.code,
         guestName: found.guestName,
-        reservationStatus: found.reservationStatus,
-        partySize: found.partySize,
+        // Fora de `confirmed` só há o desmarcado: pedido pendente ou recusado
+        // é da reserva de mesa, que saiu (WEB-401), e conta como desmarcado.
+        reservationStatus:
+          found.reservationStatus === 'confirmed'
+            ? ('confirmed' as const)
+            : ('cancelled' as const),
         // A cópia congelada na reserva, nunca `bar.house_offer`.
         offerSnapshot: found.offerSnapshot,
         usedCount: found.usedCount,

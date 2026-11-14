@@ -207,7 +207,6 @@ integrationTest(
         code: ctx.code,
         guestName: 'Torcedora de integração',
         reservationStatus: 'confirmed',
-        partySize: 3,
         offerSnapshot: 'Chopp em dobro',
         usedCount: 0,
         maxUses: 3
@@ -292,11 +291,12 @@ integrationTest(
 )
 
 integrationTest(
-  'reserva não confirmada resolve com o estado e recusa chegada',
+  'código desmarcado resolve com o estado e recusa chegada',
   async () => {
     const ctx = await seed()
     try {
-      // O código nasce com o pedido: pendente é estado normal de quem chega.
+      // `pending` e `declined` são da reserva de mesa, que saiu (WEB-401):
+      // um registro antigo assim responde como desmarcado.
       for (const status of ['pending', 'declined', 'cancelled'] as const) {
         await ctx.db
           .update(reservation)
@@ -304,7 +304,7 @@ integrationTest(
           .where(eq(reservation.id, ctx.reservationId))
 
         const found = await resolved(ctx.owner, ctx.code)
-        expect(found.reservationStatus).toBe(status)
+        expect(found.reservationStatus).toBe('cancelled')
         expect(found.codeId).toBe(ctx.codeId)
 
         const refused = await refusal(
