@@ -963,7 +963,13 @@ invente layout que o projeto não tem.
   dono em 16/10/2026, card da seção 08; ADR 0003 revista): "Vou assistir aqui"
   marca presença e, no bar Elite, o servidor já emite o código do balcão
   (`packages/api/src/lib/attendance-ticket.ts`; quem emite é `issuesCounterCode`, em
-  `lib/current-plan.ts`, a mesma regra da oferta, de quem vai e da validação). Toda marcação passa por `setAttendance`
+  `lib/current-plan.ts`, a mesma regra da oferta, de quem vai e da validação). **"reservation"
+  é o código de quem vai** (WEB-401): o código mora nas tabelas `reservation` (uma linha
+  `confirmed`, ou `cancelled` ao desmarcar) e `reservation_code` (um uso), e os nomes
+  ficaram, como os do roteador `barReservations`/`reservationValidation` e dos
+  componentes, para não mudar o contrato do app publicado. Pessoas, observação, teto
+  por jogo e os estados `pending`/`declined` saíram; os dois valores seguem no enum
+  `reservation_status` sem uso. Toda marcação passa por `setAttendance`
   (`packages/api/src/lib/attendance.ts`): `attendance.set`, `ai.confirm` e o "Vou também".
   O Elite desliga a lista de quem vai jogo a jogo no formulário do painel (WEB-437,
   `event.attendance_enabled`): o botão some para quem não marcou, marcação nova e

@@ -56,6 +56,8 @@ const EVENT_FIELDS: Record<string, string> = {
   startsAt: 'início',
   endsAt: 'fim',
   championship: 'campeonato',
+  // As duas colunas saíram com a reserva de mesa (WEB-401); ficam aqui para
+  // os registros antigos do Grimório continuarem legíveis.
   acceptsReservations: 'reservas',
   reservationCap: 'limite'
 }
