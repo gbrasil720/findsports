@@ -8,6 +8,7 @@ import {
   subscriptionCancelReason
 } from '@findsports_oficial/db/schema/platform'
 import type Stripe from 'stripe'
+import { cancelSubscriptionIfActive } from './abacatepay'
 import { monthlyDiscountReaisFromStripe } from './stripe-discount'
 import { planForLookupKey } from './stripe-plan'
 
@@ -175,6 +176,29 @@ export async function applyStripeSubscription(
     existing.externalSubscriptionId !== stripeSubscription.id
   ) {
     return null
+  }
+
+  // Do Pix para o cartão (WEB-536): o cartão confirmado cancela o Pix ANTES
+  // de a linha trocar de dono. Falha na AbacatePay lança, o Stripe reenvia, e
+  // a linha segue com o Pix (bar no ar, plano pago) e o id para tentar de
+  // novo. Já cancelado lá conta como feito: repetir não quebra. Vale para o
+  // primeiro evento que chegar (`checkout.session.completed` ou
+  // `customer.subscription.created`), porque depois dele a linha é do Stripe.
+  if (
+    !offAir &&
+    existing?.provider === 'abacatepay' &&
+    existing.externalSubscriptionId &&
+    existing.status !== 'cancelled'
+  ) {
+    await cancelSubscriptionIfActive(existing.externalSubscriptionId)
+    console.log(
+      JSON.stringify({
+        evt: 'pix_replaced_by_card',
+        barId: foundBar.id,
+        pixSubscriptionId: existing.externalSubscriptionId,
+        subscriptionId: stripeSubscription.id
+      })
+    )
   }
 
   const values = {
