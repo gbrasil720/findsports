@@ -67,7 +67,7 @@ export function weekWhen(startsAt: string) {
 }
 
 /** "AMANHÃ", "HOJE" ou "SEX", para a caixa da linha. */
-function rowDay(startsAt: string) {
+export function rowDay(startsAt: string) {
   const day = brasiliaDay(startsAt)
   if (day === brasiliaDay(Date.now())) return 'HOJE'
   if (day === brasiliaDay(Date.now(), 1)) return 'AMANHÃ'
