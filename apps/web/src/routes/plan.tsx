@@ -55,9 +55,21 @@ import { useTRPC } from '@/utils/trpc'
 export const Route = createFileRoute('/plan')({
   validateSearch: (
     search: Record<string, unknown>
-  ): { origin?: PlanOrigin } => {
+  ): {
+    origin?: PlanOrigin
+    troca?: 'cartao'
+    para?: SubscriptionPlan
+    anual?: '1'
+  } => {
     const origin = parsePlanOrigin(search.origin)
-    return origin ? { origin } : {}
+    // Volta do checkout do Pix para o cartão sem concluir (WEB-536).
+    const para = PLAN_CATALOG.find((plan) => plan.id === search.para)?.id
+    return {
+      ...(origin ? { origin } : {}),
+      ...(search.troca === 'cartao' ? { troca: 'cartao' as const } : {}),
+      ...(para ? { para } : {}),
+      ...(String(search.anual) === '1' ? { anual: '1' as const } : {})
+    }
   },
   head: () => ({
     meta: [
@@ -258,7 +270,7 @@ function PlanOptionCard({
 }
 
 function PlanSelection() {
-  const { origin } = Route.useSearch()
+  const { origin, troca, para, anual: trocaAnual } = Route.useSearch()
   const trpc = useTRPC()
   // Plano do checkout que está abrindo: só o botão dele diz "Redirecionando…".
   const [loading, setLoading] = useState<SubscriptionPlan | null>(null)
@@ -305,6 +317,27 @@ function PlanSelection() {
         setPayError(
           pixError.message ||
             'Não foi possível abrir o Pix agora. Tente de novo.'
+        )
+    })
+  )
+
+  // Do Pix para o cartão (WEB-536): checkout nosso, com a diferença da subida
+  // cobrada na tela do Stripe. A URL é do Stripe: o botão segue em
+  // "Abrindo…" até a página trocar.
+  const startCard = useMutation(
+    trpc.pub.startCardFromPix.mutationOptions({
+      onMutate: ({ plan }) => {
+        setPayError(null)
+        analytics.checkoutStarted(plan)
+        markCheckoutIntent(plan)
+      },
+      onSuccess: ({ url }) => {
+        window.location.href = url
+      },
+      onError: (cardError) =>
+        setPayError(
+          cardError.message ||
+            'Não foi possível abrir o cartão agora. Tente de novo.'
         )
     })
   )
@@ -499,6 +532,7 @@ function PlanSelection() {
     trialPlan.isPending ||
     subscriptionQuery.isLoading ||
     startPix.isPending ||
+    startCard.isPending ||
     schedulePix.isPending
   const goingDown = (to: SubscriptionPlan) =>
     currentPlan !== null && isDowngrade(currentPlan, to)
@@ -926,6 +960,30 @@ function PlanSelection() {
           </section>
         ) : null}
 
+        {troca === 'cartao' && onPixSubscription && currentPlan ? (
+          <div className="pl-msg err" role="alert">
+            <p>
+              <b>A troca para o cartão não foi concluída.</b> Nada mudou: o bar
+              segue no {getPlan(currentPlan).name}, pago no Pix
+              {subscription?.currentPeriodEnd
+                ? ` até ${ddmm(subscription.currentPeriodEnd)}`
+                : ''}
+              . Se o cartão foi recusado, tente outro.
+            </p>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              disabled={busy}
+              onClick={() => {
+                setAnnualChosen(trocaAnual === '1')
+                contract(para ?? currentPlan)
+              }}
+            >
+              Tentar outro cartão
+            </button>
+          </div>
+        ) : null}
+
         {showCycle ? (
           <CycleHeader
             deal={focusDeal}
@@ -1004,7 +1062,7 @@ function PlanSelection() {
           pending={
             startPix.isPending || startPix.isSuccess || schedulePix.isPending
               ? 'pix'
-              : loading
+              : loading || startCard.isPending || startCard.isSuccess
                 ? 'card'
                 : null
           }
@@ -1014,6 +1072,8 @@ function PlanSelection() {
             if (method === 'pix' && timing === 'trial_end')
               schedulePix.mutate({ plan: choosing })
             else if (method === 'pix') startPix.mutate({ plan: choosing })
+            else if (onPixSubscription)
+              startCard.mutate({ plan: choosing, annual })
             else void handleCheckout(choosing)
           }}
         />
