@@ -176,8 +176,9 @@ integrationTest('WEB-446: o que o plano não libera vem nulo', async () => {
       validatedCodes: expect.any(Number),
       classicsOnTop: expect.any(Number)
     })
+    // WEB-522: o Pro vê quantos marcaram presença, não os códigos.
     expect(await pro.owner.commercialAnalytics.getMyMonthNumbers()).toEqual({
-      going: null,
+      going: expect.any(Number),
       validatedCodes: null,
       classicsOnTop: null
     })
@@ -186,3 +187,63 @@ integrationTest('WEB-446: o que o plano não libera vem nulo', async () => {
     await pro.cleanup()
   }
 })
+
+integrationTest(
+  'WEB-522: presenças do mês no Pro e no Elite, códigos só no Elite, nada no Starter',
+  async () => {
+    const bars = {
+      starter: await seedBar('starter', 'active', inAMonth()),
+      pro: await seedBar('pro', 'active', inAMonth()),
+      elite: await seedBar('elite', 'active', inAMonth())
+    }
+    try {
+      for (const bar of Object.values(bars)) {
+        // Jogo de agora: o mesmo mês de Brasília da leitura.
+        const eventId = await bar.seedGame({ startsAt: new Date() })
+        await bar.db.insert(attendance).values({ userId: bar.fanId, eventId })
+        const [created] = await bar.db
+          .insert(reservation)
+          .values({
+            eventId,
+            userId: bar.fanId,
+            partySize: 1,
+            status: 'confirmed'
+          })
+          .returning({ id: reservation.id })
+        const [code] = await bar.db
+          .insert(reservationCode)
+          .values({
+            code: `W${crypto.randomUUID().replace(/-/g, '').slice(0, 7).toUpperCase()}`,
+            reservationId: created?.id as string,
+            maxUses: 1
+          })
+          .returning({ id: reservationCode.id })
+        await bar.db
+          .insert(reservationCodeUse)
+          .values({ codeId: code?.id as string })
+      }
+
+      expect(await bars.elite.owner.pub.getMonthProof()).toEqual({
+        people: 1,
+        codes: 1
+      })
+      expect(await bars.pro.owner.pub.getMonthProof()).toEqual({
+        people: 1,
+        codes: null
+      })
+      // Starter: nulo, não zero — zero diria "ninguém marcou".
+      expect(await bars.starter.owner.pub.getMonthProof()).toEqual({
+        people: null,
+        codes: null
+      })
+      expect(
+        (await bars.starter.owner.commercialAnalytics.getMyMonthNumbers()).going
+      ).toBeNull()
+      expect(
+        (await bars.pro.owner.commercialAnalytics.getMyMonthNumbers()).going
+      ).toBe(1)
+    } finally {
+      for (const bar of Object.values(bars)) await bar.cleanup()
+    }
+  }
+)
