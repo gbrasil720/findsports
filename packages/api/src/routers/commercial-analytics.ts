@@ -8,6 +8,7 @@ import { z } from 'zod'
 import { adminProcedure, pubProcedure, router } from '../index'
 import {
   applyEventBreakdownEntitlements,
+  applyMonthGoingEntitlements,
   applyOverviewEntitlements,
   assertAnalyticsPeriodAllowed,
   getAnalyticsEntitlements,
@@ -170,14 +171,19 @@ export const commercialAnalyticsRouter = router({
    * nulo, pela mesma regra do analytics por jogo e do overview.
    */
   getMyMonthNumbers: pubProcedure.query(async ({ ctx }) => {
-    const { barId, plan } = await resolveBarAndPlan(ctx.session.user.id)
+    const { barId, plan, currentPlan } = await resolveBarAndPlan(
+      ctx.session.user.id
+    )
     const entitlements = getAnalyticsEntitlements(plan)
     const month = await getMonthNumbers(barId)
+    // Presenças e códigos pela regra do `getMonthProof` (WEB-522).
+    const going = applyMonthGoingEntitlements(
+      { people: month.going, codes: month.validatedCodes },
+      currentPlan
+    )
     return {
-      going: entitlements.canViewGoingCount ? month.going : null,
-      validatedCodes: entitlements.canViewReservations
-        ? month.validatedCodes
-        : null,
+      going: going.people,
+      validatedCodes: going.codes,
       classicsOnTop: entitlements.canViewClassicPlacement
         ? month.classicsOnTop
         : null

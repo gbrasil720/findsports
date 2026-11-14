@@ -132,19 +132,27 @@ describe('commercial-analytics entitlements', () => {
     expect(e.maxDaysRetention).toBe(null)
   })
 
-  it('WEB-522: presenças do mês no Pro e no Elite; códigos só no Elite', () => {
+  it('WEB-522: presenças em todo plano vigente; códigos só no Elite; parado não vê', () => {
     const month = { people: 34, codes: 12 }
-    const of = (plan: 'starter' | 'pro' | 'elite') =>
-      applyMonthGoingEntitlements(month, getAnalyticsEntitlements(plan))
-    expect(of('elite')).toEqual({ people: 34, codes: 12 })
-    expect(of('pro')).toEqual({ people: 34, codes: null })
-    // O Starter não vê: nulo, nunca zero ("ninguém marcou").
-    expect(of('starter')).toEqual({ people: null, codes: null })
+    expect(applyMonthGoingEntitlements(month, 'elite')).toEqual({
+      people: 34,
+      codes: 12
+    })
+    expect(applyMonthGoingEntitlements(month, 'pro')).toEqual({
+      people: 34,
+      codes: null
+    })
+    expect(applyMonthGoingEntitlements(month, 'starter')).toEqual({
+      people: 34,
+      codes: null
+    })
+    // Plano parado: nulo, nunca zero ("ninguém marcou").
+    expect(applyMonthGoingEntitlements(month, null)).toEqual({
+      people: null,
+      codes: null
+    })
     expect(
-      applyMonthGoingEntitlements(
-        { people: 0, codes: 0 },
-        getAnalyticsEntitlements('pro')
-      )
+      applyMonthGoingEntitlements({ people: 0, codes: 0 }, 'starter')
     ).toEqual({ people: 0, codes: null })
   })
 
