@@ -99,6 +99,53 @@ export function billedPlan<
   return { ...plan, tablePrice, founderPrice: tablePrice, period: '/ano' }
 }
 
+/** Reais com centavos só quando há: "R$ 122,50", "R$ 1.470". */
+export function formatReais(reais: number): string {
+  const cents = Math.round(reais * 100) % 100 !== 0
+  return `R$ ${reais.toLocaleString('pt-BR', {
+    minimumFractionDigits: cents ? 2 : 0,
+    maximumFractionDigits: 2
+  })}`
+}
+
+/**
+ * A conta do anual para um plano, contra o mensal que o bar pagaria de
+ * verdade (WEB-442): com o cupom de fundador valendo, o mensal é o de
+ * fundador, e aí o anual pode sair mais caro (Starter e Pro). `savingsReais`
+ * negativo ou zero: a tela não pode dizer que o anual economiza.
+ */
+export type AnnualDeal = {
+  yearReais: number
+  /** O ano dividido por 12, para comparar com o mensal. */
+  perMonthReais: number
+  /** 12 meses da tabela cheia: a âncora riscada. */
+  tableYearReais: number
+  /** 12 meses do mensal que o bar pagaria (fundador, se vale). */
+  monthlyYearReais: number
+  monthlyReais: number
+  savingsReais: number
+  founderMonthly: boolean
+}
+
+export function annualDeal(
+  plan: Pick<Plan, 'tablePrice' | 'founderPrice'>,
+  founderCouponAvailable: boolean
+): AnnualDeal {
+  const yearReais = plan.tablePrice * ANNUAL_MONTHS
+  const monthlyReais = founderCouponAvailable
+    ? plan.founderPrice
+    : plan.tablePrice
+  return {
+    yearReais,
+    perMonthReais: Math.round((yearReais / 12) * 100) / 100,
+    tableYearReais: plan.tablePrice * 12,
+    monthlyYearReais: monthlyReais * 12,
+    monthlyReais,
+    savingsReais: monthlyReais * 12 - yearReais,
+    founderMonthly: founderCouponAvailable
+  }
+}
+
 /**
  * Vitrine do anual em `/plan`: o preço de 10 meses, riscando o de 12 — os
  * "2 meses grátis" do design.

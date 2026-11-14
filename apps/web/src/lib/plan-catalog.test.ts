@@ -2,10 +2,12 @@ import { describe, expect, test } from 'bun:test'
 
 import { TERMOS_DE_USO } from '@findsports_oficial/legal/termos-de-uso'
 import {
+  annualDeal,
   billedPlan,
   earnsDowngradeCredit,
   FOUNDER_DISCOUNT,
   formatPlanChargeLine,
+  formatReais,
   founderCouponFromQuery,
   getCommonPlanItems,
   getDefaultPlanSelection,
@@ -921,5 +923,36 @@ describe('plano anual (WEB-442)', () => {
         now
       )
     ).toBe('Primeira cobrança de R$ 1.470 em 01/12/2026')
+  })
+})
+
+// A tela só diz "economize" quando o anual sai mesmo mais barato que o
+// mensal que o bar pagaria (WEB-442).
+describe('conta do anual contra o mensal (WEB-442)', () => {
+  test('sem fundador, o anual economiza 2 meses de tabela em todo plano', () => {
+    expect(
+      PLAN_CATALOG.map((plan) => annualDeal(plan, false).savingsReais)
+    ).toEqual([194, 294, 594])
+    expect(annualDeal(getPlan('pro'), false)).toEqual({
+      yearReais: 1470,
+      perMonthReais: 122.5,
+      tableYearReais: 1764,
+      monthlyYearReais: 1764,
+      monthlyReais: 147,
+      savingsReais: 294,
+      founderMonthly: false
+    })
+  })
+
+  test('com fundador, o mensal sai mais barato no Starter e no Pro', () => {
+    expect(
+      PLAN_CATALOG.map((plan) => annualDeal(plan, true).savingsReais)
+    ).toEqual([-142, -42, 258])
+  })
+
+  test('reais com centavos só quando há', () => {
+    expect(formatReais(122.5)).toBe('R$ 122,50')
+    expect(formatReais(80.83)).toBe('R$ 80,83')
+    expect(formatReais(1470)).toBe('R$ 1.470')
   })
 })
