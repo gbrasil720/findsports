@@ -3,6 +3,7 @@ import type { SubscriptionPlan } from '@findsports_oficial/db'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { type ReactNode, useState } from 'react'
+import { AnnualVerdict, CycleToggle } from '@/components/billing/annual-cycle'
 import {
   PaymentChoiceDialog,
   type PaymentMethod
@@ -16,6 +17,7 @@ import { useSession } from '@/hooks/use-session'
 import { analytics } from '@/lib/analytics'
 import { startCheckout } from '@/lib/billing-client'
 import {
+  annualDeal,
   billedPlan,
   earnsDowngradeCredit,
   formatPlanPrice,
@@ -143,6 +145,7 @@ function PlanOptionCard({
   priceNote,
   period,
   strike,
+  extra,
   action
 }: {
   plan: Plan
@@ -155,6 +158,8 @@ function PlanOptionCard({
   period: string
   priceNote: string | null
   strike: boolean
+  /** A conta do anual, abaixo do preço (WEB-442). */
+  extra?: ReactNode
   action: CardAction | null
 }) {
   // Só o que o plano acrescenta ao anterior; o comum fica abaixo dos cartões.
@@ -172,7 +177,8 @@ function PlanOptionCard({
       />
       <h3>{plan.name}</h3>
       <p className="pd">{plan.tagline}</p>
-      <div className="price">
+      {/* A chave troca com o ciclo: o preço novo entra (WEB-442). */}
+      <div className="price" key={period}>
         <p className="ob-k">{priceLabel}</p>
         <div className="pv">
           {charge ? (
@@ -192,6 +198,7 @@ function PlanOptionCard({
           )}
         </div>
         {priceNote ? <p className="fine">{priceNote}</p> : null}
+        {extra}
       </div>
       <p className="lead">{lists.lead}</p>
       <div className="grp">
@@ -364,6 +371,15 @@ function PlanSelection() {
   // Sem plano vigente, o que a faixa contrata: o da assinatura, vigente ou
   // não, e o Pro só para quem nunca teve uma (WEB-249).
   const defaultPlan = getDefaultPlanSelection(subscription)
+  // A conta do anual para cada plano, contra o mensal que o bar pagaria de
+  // verdade (WEB-442). Com o cupom ainda carregando, a conta fica para depois:
+  // ela pode trocar de "economiza" para "o mensal sai mais barato".
+  const dealFor = (plan: Plan) =>
+    founderCouponAvailable === null
+      ? null
+      : annualDeal(plan, founderCouponAvailable)
+  const focusPlan = getPlan(ownPlan ?? defaultPlan)
+  const focusDeal = dealFor(focusPlan)
 
   const handleCheckout = async (plan: SubscriptionPlan) => {
     analytics.checkoutStarted(plan)
@@ -545,14 +561,14 @@ function PlanSelection() {
     }
     if (annual) {
       // 10 meses riscando os 12; o cupom de fundador é só do mensal.
+      const deal = dealFor(plan)
       return {
         label: onTrial ? 'Depois do teste' : 'Por ano',
         charge: planChargeForAnnual(plan),
         strike: true,
         period: '/ano',
-        note: onTrial
-          ? '2 meses grátis, só se você contratar.'
-          : '2 meses grátis, no cartão.'
+        note: onTrial ? 'Só se você contratar.' : null,
+        extra: deal ? <AnnualVerdict deal={deal} /> : null
       }
     }
     const charge = planChargeForShowcase(
@@ -853,25 +869,13 @@ function PlanSelection() {
         ) : null}
 
         {showCycle ? (
-          <fieldset className="pl-cycle">
-            <legend className="sr-only">Cobrança</legend>
-            <button
-              type="button"
-              aria-pressed={!annual}
-              onClick={() => setAnnualChosen(false)}
-            >
-              Mensal
-            </button>
-            <button
-              type="button"
-              aria-pressed={annual}
-              disabled={!annualAvailable}
-              onClick={() => setAnnualChosen(true)}
-            >
-              Anual
-              <em>{annualAvailable ? '2 MESES GRÁTIS' : 'EM BREVE'}</em>
-            </button>
-          </fieldset>
+          <CycleToggle
+            plan={focusPlan}
+            deal={focusDeal}
+            annual={annual}
+            available={annualAvailable}
+            onChange={setAnnualChosen}
+          />
         ) : null}
 
         <ul className="pl-plans" aria-label="Planos">
@@ -887,6 +891,7 @@ function PlanSelection() {
                 priceLabel={price.label}
                 priceNote={price.note}
                 period={price.period}
+                extra={'extra' in price ? price.extra : null}
                 strike={price.strike}
                 action={cardAction(plan)}
               />
