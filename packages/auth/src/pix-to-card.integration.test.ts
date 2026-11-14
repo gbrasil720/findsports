@@ -28,7 +28,7 @@ const reply = (status: number, data: unknown, error: string | null = null) =>
     status,
     headers: { 'content-type': 'application/json' }
   })
-globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
   const url = String(input instanceof Request ? input.url : input)
   if (!url.startsWith(ABACATE)) return realFetch(input, init)
   const path = url.slice(ABACATE.length)
