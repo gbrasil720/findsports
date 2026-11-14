@@ -12,6 +12,7 @@ import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
 import { fanProcedure, pubProcedure, router } from '../index'
+import { fromApp } from '../lib/client-app'
 import { participantNames } from '../lib/game-participants'
 import { loadRecommendationCandidates } from '../lib/recommendations/load-candidates'
 import {
@@ -32,7 +33,6 @@ import {
   readTodayRound,
   refillRound
 } from '../lib/recommendations/round-store'
-import { fromApp } from '../lib/client-app'
 import { utcIso } from '../lib/utc-timestamp'
 
 const coordinatesSchema = z.object({
