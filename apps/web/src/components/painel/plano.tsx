@@ -342,7 +342,10 @@ export function PlanoPage({
                         authorizePix.isPending || authorizePix.isSuccess
                       }
                       onClick={() =>
-                        authorizePix.mutate({ plan: subscription.plan })
+                        authorizePix.mutate({
+                          plan: subscription.plan,
+                          annual: subscription.billingInterval === 'year'
+                        })
                       }
                     >
                       {authorizePix.isPending || authorizePix.isSuccess
