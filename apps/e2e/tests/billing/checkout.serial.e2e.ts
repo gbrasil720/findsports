@@ -402,6 +402,9 @@ test('anual no teste grátis: checkout com o cupom de fundador do anual e a mesm
   await expect(pro).toContainText('R$ 1.428')
   await expect(pro).toContainText('/ano')
   await expect(pro).toContainText('Economize R$ 238')
+  await expect(
+    page.getByText('O teste grátis e o desconto de fundador valem nos dois.')
+  ).toBeVisible()
   await expect(page.getByRole('listitem', { name: 'Starter' })).toContainText(
     'Economize R$ 138'
   )
@@ -496,6 +499,7 @@ test('anual sem vaga de fundador: 10 meses de tabela, sem cupom no checkout (WEB
   const pro = page.getByRole('listitem', { name: 'Pro' })
   await expect(pro).toContainText('R$ 1.470')
   await expect(pro).toContainText('Economize R$ 294')
+  await expect(page.getByText('O teste grátis vale nos dois.')).toBeVisible()
   await page.getByRole('button', { name: 'Contratar o Pro anual' }).click()
   await page.waitForURL(`${STUB_URL}/stripe/checkout/**`)
   const session = await checkoutSessionOf(page, user.id)
