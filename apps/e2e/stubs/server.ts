@@ -48,8 +48,9 @@ import { SAO_PAULO, STUB_PORT, STUB_URL } from '../env'
  *   invoices, charges }`), ou lista vazia (WEB-443);
  * - `GET /v1/coupons/{id}`: cupom válido. `POST /stripe/coupon` com
  *   `{ state }` troca a resposta para todo cupom: `exhausted` (`valid: false`,
- *   teto de usos batido) ou `missing` (404, cupom que não existe nesta conta);
- *   `valid` desfaz. Fora de `valid`, a sessão de checkout que mandar cupom é
+ *   teto de usos batido), `missing` (404, cupom que não existe nesta conta)
+ *   ou `slow` (o Stripe sem responder: segura a resposta por 30 s, além do
+ *   teto de 5 s do app; WEB-534); `valid` desfaz. Fora de `valid`, a sessão de checkout que mandar cupom é
  *   recusada com 400, como no Stripe;
  * - `POST /v1/checkout/sessions`: `url` em `/stripe/checkout/{id}`, uma página
  *   do stub — o teste espera o redirect para lá;
@@ -95,7 +96,7 @@ const stripeTaxIds = new Map<
 >()
 
 /** O que o "Stripe" diz do cupom de fundador. Global: só teste serial troca. */
-let couponState: 'valid' | 'exhausted' | 'missing' = 'valid'
+let couponState: 'valid' | 'exhausted' | 'missing' | 'slow' = 'valid'
 
 function customerIdFor(email: string) {
   return `cus_e2e_${Bun.hash(email).toString(36)}`
@@ -386,6 +387,7 @@ async function stripe(request: Request, url: URL) {
     if (couponState === 'missing') {
       return stripeError(404, `No such coupon: ${coupon[1]}`)
     }
+    if (couponState === 'slow') await Bun.sleep(30_000)
     return Response.json({
       id: coupon[1],
       object: 'coupon',
