@@ -20,6 +20,14 @@ test.afterEach(async ({ request }) => {
   await setAnnualPrices(request, false)
 })
 
+/** Com o Pix ligado, contratar passa por "Como você quer pagar?": cartão. */
+async function continueWithCard(page: Page) {
+  await page
+    .getByRole('dialog', { name: 'Como você quer pagar?' })
+    .getByRole('button', { name: 'Continuar no cartão' })
+    .click()
+}
+
 /**
  * Corpo da sessão de checkout que o app pediu ao Stripe para este dono. O
  * corpo é formulário, com as chaves como o SDK manda (`line_items[0][price]`).
@@ -63,6 +71,7 @@ test('trial vencido sem assinatura no provedor: o botão padrão contrata o plan
 
   // O plano do teste vencido é o que o cartão escuro e a faixa contratam.
   await page.getByRole('button', { name: 'Contratar o Elite' }).last().click()
+  await continueWithCard(page)
   await page.waitForURL(`${STUB_URL}/stripe/checkout/**`)
 
   const session = await checkoutSessionOf(page, user.id)
@@ -92,6 +101,7 @@ test('o clique abre a sessão e redireciona para o Stripe, com o cupom de fundad
 
   // Cada cartão contrata o próprio plano.
   await page.getByRole('button', { name: 'Contratar o Elite' }).click()
+  await continueWithCard(page)
 
   await page.waitForURL(`${STUB_URL}/stripe/checkout/**`)
   await expect(page).toHaveTitle('Stripe (stub)')
@@ -159,6 +169,7 @@ test('teste grátis em vigor: contrata já, e a primeira cobrança fica para o f
   // No celular a versão longa do subtítulo fica oculta; o texto continua na página.
   await expect(page.getByText('O teste grátis não pede cartão.')).toBeAttached()
   await page.getByRole('button', { name: 'Contratar o Elite' }).click()
+  await continueWithCard(page)
   await page.waitForURL(`${STUB_URL}/stripe/checkout/**`)
 
   const session = await checkoutSessionOf(page, user.id)
@@ -193,6 +204,7 @@ for (const [state, caso] of [
     await expect(page.getByText('R$ 269')).toHaveCount(0)
 
     await page.getByRole('button', { name: 'Contratar o Pro' }).first().click()
+    await continueWithCard(page)
     await page.waitForURL(`${STUB_URL}/stripe/checkout/**`)
     const session = await checkoutSessionOf(page, user.id)
     expect(session).toMatchObject({
@@ -230,6 +242,7 @@ test('checkout concluído: o bar fica ativo no plano pago, e contratar de novo v
   await signIn(page, user)
   await page.goto('/plan')
   await page.getByRole('button', { name: 'Contratar o Pro' }).first().click()
+  await continueWithCard(page)
   await page.waitForURL(`${STUB_URL}/stripe/checkout/**`)
   const session = await checkoutSessionOf(page, user.id)
   if (!session) throw new Error('sessão de checkout não foi criada')
@@ -409,6 +422,7 @@ test('anual no teste grátis: checkout com o cupom de fundador do anual e a mesm
     'Economize R$ 138'
   )
   await page.getByRole('button', { name: 'Contratar o Pro anual' }).click()
+  await continueWithCard(page)
   await page.waitForURL(`${STUB_URL}/stripe/checkout/**`)
 
   const session = await checkoutSessionOf(page, user.id)
@@ -501,6 +515,7 @@ test('anual sem vaga de fundador: 10 meses de tabela, sem cupom no checkout (WEB
   await expect(pro).toContainText('Economize R$ 294')
   await expect(page.getByText('O teste grátis vale nos dois.')).toBeVisible()
   await page.getByRole('button', { name: 'Contratar o Pro anual' }).click()
+  await continueWithCard(page)
   await page.waitForURL(`${STUB_URL}/stripe/checkout/**`)
   const session = await checkoutSessionOf(page, user.id)
   expect(session).toMatchObject({
