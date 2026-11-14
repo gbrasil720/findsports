@@ -6,7 +6,8 @@ import { env } from '@findsports_oficial/env/server'
  * da chave, como no Stripe.
  */
 
-const BASE_URL = 'https://api.abacatepay.com/v2'
+// Só o E2E muda isso (`ABACATE_PAY_API_BASE_URL`, recusada em produção).
+const BASE_URL = `${env.ABACATE_PAY_API_BASE_URL ?? 'https://api.abacatepay.com'}/v2`
 // Mesma régua do Stripe (`QUICK_REQUEST`): a tela não espera mais que isso.
 const TIMEOUT_MS = 8000
 
@@ -166,6 +167,20 @@ export function cancelSubscription(id: string): Promise<AbacateSubscription> {
     method: 'POST',
     body: { id }
   })
+}
+
+/**
+ * Cancela na AbacatePay; já cancelada ou inexistente lá conta como feito, e
+ * por isso repetir não quebra nada. O resto (rede, chave) lança.
+ */
+export async function cancelSubscriptionIfActive(id: string): Promise<void> {
+  try {
+    await cancelSubscription(id)
+  } catch (error) {
+    if (isNotActiveError(error)) return
+    if (error instanceof AbacatePayError && error.status === 404) return
+    throw error
+  }
 }
 
 // ── Configuração da conta: usado por `bun run pix:check` e `pix:setup`. ──

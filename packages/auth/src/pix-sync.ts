@@ -2,11 +2,9 @@ import type { SubscriptionPlan } from '@findsports_oficial/db'
 import { db, eq } from '@findsports_oficial/db'
 import { bar, subscription } from '@findsports_oficial/db/schema/platform'
 import {
-  AbacatePayError,
   type AbacateSubscription,
-  cancelSubscription,
-  getSubscription,
-  isNotActiveError
+  cancelSubscriptionIfActive,
+  getSubscription
 } from './abacatepay'
 import { logBillingError } from './stripe-sync'
 
@@ -95,17 +93,6 @@ export function readLagsBehind(eventType: string, status: string): boolean {
     return status === 'PENDING'
   }
   return false
-}
-
-/** Cancela na AbacatePay; já cancelada ou inexistente lá conta como feito. */
-async function cancelAtProvider(id: string) {
-  try {
-    await cancelSubscription(id)
-  } catch (error) {
-    if (isNotActiveError(error)) return
-    if (error instanceof AbacatePayError && error.status === 404) return
-    throw error
-  }
 }
 
 /**
@@ -208,7 +195,7 @@ export async function applyPixSubscription(
     ) {
       // A linha já tem uma autorização mais nova: este aviso é de uma velha
       // que ficou ativa. Ela é que sai.
-      await cancelAtProvider(sub.id)
+      await cancelSubscriptionIfActive(sub.id)
       logBillingError('pix_stale_subscription_cancelled', {
         barId: ref.barId,
         subscriptionId: sub.id,
@@ -217,7 +204,7 @@ export async function applyPixSubscription(
       return null
     }
   }
-  if (previous) await cancelAtProvider(previous)
+  if (previous) await cancelSubscriptionIfActive(previous)
 
   const values = {
     status: pixStanding({ eventType, periodEnd, existing, isCurrent }),
