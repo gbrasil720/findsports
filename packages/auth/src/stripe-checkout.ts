@@ -1,5 +1,7 @@
 import { and, count, db, eq, gt } from '@findsports_oficial/db'
+import { user } from '@findsports_oficial/db/schema/auth'
 import { bar, subscription } from '@findsports_oficial/db/schema/platform'
+import { env } from '@findsports_oficial/env/server'
 import type Stripe from 'stripe'
 import {
   ANNUAL_LOOKUP_KEYS,
@@ -7,6 +9,7 @@ import {
   monthlyPriceReais,
   type Plan,
   pixUpgradeCents,
+  STRIPE_PLANS,
   TABLE_PRICE_REAIS
 } from './stripe-plan'
 import {
@@ -417,9 +420,7 @@ export async function checkoutParamsFor(
     : pixFounderCount
   const coupon = await usableFounderCoupon(client, countPix, { annual })
   // Subida do Pix para o cartão (dono, 14/11/2026): a diferença até o fim do
-  // mês pago sai hoje. O plugin não deixa a sessão levar item avulso, então
-  // o valor vai na assinatura, e quem cobra é o webhook que cancela o Pix
-  // (`chargePixUpgrade`, em `stripe-sync.ts`).
+  // mês pago sai hoje, como item avulso da sessão (`startCardFromPix`).
   const upgradeCents =
     plan &&
     current?.provider === 'abacatepay' &&
@@ -436,26 +437,158 @@ export async function checkoutParamsFor(
           paidUntil: current.currentPeriodEnd
         })
       : 0
+  // Com a diferença na sessão, o cupom (valor fixo por fatura) a descontaria
+  // do item avulso, e o código promocional também: o cupom vai na
+  // assinatura, e quem o aplica é o webhook (`applyUpgradeCoupon`).
+  const upgrade = upgradeCents > 0
   return {
     locale: 'pt-BR',
     billing_address_collection: 'required',
     tax_id_collection: { enabled: true },
     customer_update: CUSTOMER_UPDATE,
     adaptive_pricing: { enabled: false },
-    ...(coupon
+    ...(coupon && !upgrade
       ? { discounts: [{ coupon }] }
-      : annual
+      : annual || upgrade
         ? {}
         : { allow_promotion_codes: true }),
     ...(trialEnd
       ? {
           subscription_data: {
             trial_end: trialEnd,
-            ...(upgradeCents > 0
-              ? { metadata: { pixUpgradeCents: String(upgradeCents) } }
+            ...(upgrade
+              ? {
+                  metadata: {
+                    pixUpgradeCents: String(upgradeCents),
+                    ...(coupon ? { founderCoupon: coupon } : {})
+                  }
+                }
               : {})
           }
         }
       : {})
   }
+}
+
+/** Recusa da passagem do Pix para o cartão, com a frase para a tela. */
+export class CardFromPixRefusal extends Error {}
+
+const UPGRADE_ITEM_NAME = 'Diferença da troca de plano até o fim do mês pago'
+
+/**
+ * Do Pix para o cartão (WEB-536): a sessão de checkout é nossa, não do plugin,
+ * porque a subida cobra a diferença na hora (dono, 14/11/2026) e o plugin não
+ * deixa a sessão levar item avulso. Com o item, o Stripe cobra a diferença na
+ * própria tela do checkout, junto com o cartão guardado para a mensalidade:
+ * cartão recusado fica ali, o dono tenta outro, e nenhuma assinatura nasce.
+ * Paga, o webhook cancela o Pix e troca a linha (`applyStripeSubscription`).
+ * A assinatura entra no plugin pelo `customer.subscription.created`, como a
+ * criada no painel do Stripe: o portal e as trocas seguintes funcionam igual.
+ *
+ * Mesmo plano e descida usam a mesma sessão, sem o item: o cartão só cobra
+ * no fim do mês pago. Sem a chave da AbacatePay, recusa: o Pix não seria
+ * cancelado e o bar pagaria os dois.
+ */
+export async function startCardFromPix(
+  owner: { id: string; name: string; email: string },
+  { plan, annual = false }: { plan: Plan; annual?: boolean },
+  client: Stripe,
+  appUrl: string,
+  // Sem a chave, o webhook do cartão não consegue cancelar o Pix.
+  { pixCancellable = Boolean(env.ABACATE_PAY_API_KEY) } = {}
+): Promise<{ url: string }> {
+  const ownerBar = await db.query.bar.findFirst({
+    where: eq(bar.userId, owner.id),
+    with: { subscription: true }
+  })
+  const current = ownerBar?.subscription
+  if (
+    current?.provider !== 'abacatepay' ||
+    current.status !== 'active' ||
+    !current.externalSubscriptionId
+  ) {
+    throw new CardFromPixRefusal('Sua assinatura não está no Pix.')
+  }
+  if (!pixCancellable) {
+    throw new CardFromPixRefusal(
+      'A troca para o cartão está indisponível agora. Tente de novo mais tarde.'
+    )
+  }
+
+  const ownerRow = await db.query.user.findFirst({
+    where: eq(user.id, owner.id),
+    columns: { stripeCustomerId: true }
+  })
+  let customerId = ownerRow?.stripeCustomerId ?? null
+  if (!customerId) {
+    const created = await client.customers.create(
+      { email: owner.email, name: owner.name, metadata: { userId: owner.id } },
+      QUICK_REQUEST
+    )
+    customerId = created.id
+    await db
+      .update(user)
+      .set({ stripeCustomerId: customerId })
+      .where(eq(user.id, owner.id))
+  }
+
+  const lookupKey = STRIPE_PLANS.find((p) => p.name === plan)?.[
+    annual ? 'annualDiscountLookupKey' : 'lookupKey'
+  ]
+  const { data: prices } = await client.prices.list(
+    { lookup_keys: lookupKey ? [lookupKey] : [], active: true, limit: 1 },
+    QUICK_REQUEST
+  )
+  const price = prices[0]
+  if (!price) {
+    throw new CardFromPixRefusal(
+      'Este plano está indisponível no cartão agora. Tente de novo mais tarde.'
+    )
+  }
+
+  const params = await checkoutParamsFor(owner, customerId, client, {
+    annual,
+    plan
+  })
+  const upgradeCents = Number(
+    (params.subscription_data?.metadata as Record<string, string> | undefined)
+      ?.pixUpgradeCents ?? 0
+  )
+  const back = new URL('/plan', appUrl)
+  back.searchParams.set('troca', 'cartao')
+  back.searchParams.set('para', plan)
+  if (annual) back.searchParams.set('anual', '1')
+  const session = await client.checkout.sessions.create({
+    ...params,
+    mode: 'subscription',
+    customer: customerId,
+    client_reference_id: owner.id,
+    line_items: [
+      { price: price.id, quantity: 1 },
+      ...(upgradeCents > 0
+        ? [
+            {
+              quantity: 1,
+              price_data: {
+                currency: 'brl',
+                unit_amount: upgradeCents,
+                product_data: { name: UPGRADE_ITEM_NAME }
+              }
+            }
+          ]
+        : [])
+    ],
+    success_url: new URL('/plan/confirmed', appUrl).href,
+    cancel_url: back.href,
+    metadata: { userId: owner.id },
+    subscription_data: {
+      ...params.subscription_data,
+      metadata: {
+        ...(params.subscription_data?.metadata as Record<string, string>),
+        userId: owner.id
+      }
+    }
+  })
+  if (!session.url) throw new Error('Stripe não devolveu a URL do checkout.')
+  return { url: session.url }
 }
