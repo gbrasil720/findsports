@@ -9,11 +9,11 @@ import {
 import { isDisposableTestDatabase } from './utils/db-resolver'
 
 /**
- * As regras de reserva que o ticket exige NO BANCO (WEB-119), e não só na
+ * As regras do código do balcão que ficam NO BANCO (WEB-119), e não só na
  * aplicação. Cada uma é exatamente o que a checagem da API não cobre: duas
  * requisições simultâneas passam juntas por um `SELECT` de verificação.
  *
- *   1. Um pedido ativo por torcedor por jogo (índice único parcial).
+ *   1. Um código em vigor por torcedor por jogo (índice único parcial).
  *   2. `used_count` nunca passa de `max_uses` (check + trigger de contador).
  *   3. Código único só entre os ativos (índice único parcial).
  */
@@ -117,33 +117,23 @@ integrationTest(
         startsAt: new Date(Date.now() + 24 * 60 * 60_000)
       })
 
-      // --- 1. um pedido ativo por torcedor por jogo ----------------------
+      // --- 1. um código em vigor por torcedor por jogo ------------------
 
       const primeira = single(
         await db
           .insert(reservation)
-          .values({ eventId, userId: fanId, partySize: 2 })
+          .values({ eventId, userId: fanId })
           .returning()
       )
-      expect(primeira.status).toBe('pending')
+      expect(primeira.status).toBe('confirmed')
       expect(primeira.offerSnapshot).toBeNull()
 
       await expectPgError(
-        db.insert(reservation).values({ eventId, userId: fanId, partySize: 4 }),
+        db.insert(reservation).values({ eventId, userId: fanId }),
         UNIQUE_VIOLATION
       )
 
-      // Confirmada continua ocupando a vaga.
-      await db
-        .update(reservation)
-        .set({ status: 'confirmed' })
-        .where(eq(reservation.id, primeira.id))
-      await expectPgError(
-        db.insert(reservation).values({ eventId, userId: fanId, partySize: 4 }),
-        UNIQUE_VIOLATION
-      )
-
-      // Cancelada libera um novo pedido, e o histórico fica.
+      // Cancelada libera uma nova marcação, e o histórico fica.
       await db
         .update(reservation)
         .set({ status: 'cancelled' })
@@ -154,33 +144,18 @@ integrationTest(
           .values({
             eventId,
             userId: fanId,
-            partySize: 2,
             offerSnapshot: 'Chope em dobro até o apito inicial'
           })
           .returning()
       )
       expect(segunda.offerSnapshot).toBe('Chope em dobro até o apito inicial')
 
-      await expectPgError(
-        db.insert(reservation).values({ eventId, userId: fanId, partySize: 0 }),
-        CHECK_VIOLATION
-      )
-      await expectPgError(
-        db.insert(reservation).values({
-          eventId,
-          userId: ownerId,
-          partySize: 1,
-          note: 'x'.repeat(281)
-        }),
-        CHECK_VIOLATION
-      )
-
       // --- 2. used_count nunca passa de max_uses -------------------------
 
       const codigo = single(
         await db
           .insert(reservationCode)
-          .values({ code: codeA, reservationId: segunda.id, maxUses: 2 })
+          .values({ code: codeA, reservationId: segunda.id, maxUses: 1 })
           .returning()
       )
       const usos = async () =>
@@ -191,36 +166,34 @@ integrationTest(
           })
         )?.usedCount
 
-      await db
-        .insert(reservationCodeUse)
-        .values({ codeId: codigo.id, validatedByUserId: ownerId })
-      const segundoUso = single(
+      const primeiroUso = single(
         await db
           .insert(reservationCodeUse)
           .values({ codeId: codigo.id, validatedByUserId: ownerId })
           .returning()
       )
-      expect(await usos()).toBe(2)
+      expect(await usos()).toBe(1)
 
-      // Terceira pessoa num código para duas: o banco recusa, e o uso não fica.
+      // Segunda validação de um código de um uso: o banco recusa, e o uso
+      // não fica.
       await expectPgError(
         db.insert(reservationCodeUse).values({ codeId: codigo.id }),
         CHECK_VIOLATION
       )
-      expect(await usos()).toBe(2)
+      expect(await usos()).toBe(1)
       expect(
         await db.$count(
           reservationCodeUse,
           eq(reservationCodeUse.codeId, codigo.id)
         )
-      ).toBe(2)
+      ).toBe(1)
 
       // O contador é derivado: nem acima do limite, nem zerado para liberar
-      // mais usos do que pessoas (0034).
+      // mais usos (0034).
       await expectPgError(
         db
           .update(reservationCode)
-          .set({ usedCount: 3 })
+          .set({ usedCount: 2 })
           .where(eq(reservationCode.id, codigo.id)),
         CHECK_VIOLATION
       )
@@ -232,58 +205,23 @@ integrationTest(
         CHECK_VIOLATION,
         'reservation_code_used_count_derived'
       )
-      expect(await usos()).toBe(2)
+      expect(await usos()).toBe(1)
 
-      // `max_uses` acompanha a quantidade de pessoas da reserva (0034).
-      await expectPgError(
-        db
-          .update(reservationCode)
-          .set({ maxUses: 10 })
-          .where(eq(reservationCode.id, codigo.id)),
-        CHECK_VIOLATION,
-        'reservation_code_max_uses_matches_party_size'
-      )
-      // Reduzir a reserva abaixo dos usos já feitos esbarra no limite.
-      await expectPgError(
-        db
-          .update(reservation)
-          .set({ partySize: 1 })
-          .where(eq(reservation.id, segunda.id)),
-        CHECK_VIOLATION
-      )
-      // Aumentar a reserva leva o código junto.
-      await db
-        .update(reservation)
-        .set({ partySize: 3 })
-        .where(eq(reservation.id, segunda.id))
-      expect(
-        (
-          await db.query.reservationCode.findFirst({
-            where: (c, { eq }) => eq(c.id, codigo.id),
-            columns: { maxUses: true }
-          })
-        )?.maxUses
-      ).toBe(3)
-      await db
-        .update(reservation)
-        .set({ partySize: 2 })
-        .where(eq(reservation.id, segunda.id))
-
-      // Desfazer devolve o lugar; refazer o desfeito consome de novo.
+      // Desfazer devolve o uso; refazer o desfeito consome de novo.
       await db
         .update(reservationCodeUse)
         .set({ undoneAt: new Date(Date.now() + 1000) })
-        .where(eq(reservationCodeUse.id, segundoUso.id))
-      expect(await usos()).toBe(1)
+        .where(eq(reservationCodeUse.id, primeiroUso.id))
+      expect(await usos()).toBe(0)
       await db.insert(reservationCodeUse).values({ codeId: codigo.id })
-      expect(await usos()).toBe(2)
+      expect(await usos()).toBe(1)
 
       // --- 3. código único entre os ativos --------------------------------
 
       const outraReserva = single(
         await db
           .insert(reservation)
-          .values({ eventId, userId: ownerId, partySize: 1 })
+          .values({ eventId, userId: ownerId })
           .returning()
       )
 
@@ -297,7 +235,7 @@ integrationTest(
       await expectPgError(
         db
           .insert(reservationCode)
-          .values({ code: codeB, reservationId: segunda.id, maxUses: 2 }),
+          .values({ code: codeB, reservationId: segunda.id, maxUses: 1 }),
         UNIQUE_VIOLATION
       )
       await expectPgError(
@@ -308,14 +246,7 @@ integrationTest(
         }),
         CHECK_VIOLATION
       )
-      // Código emitido com mais usos que pessoas, ou já com usos (0034).
-      await expectPgError(
-        db
-          .insert(reservationCode)
-          .values({ code: codeB, reservationId: outraReserva.id, maxUses: 10 }),
-        CHECK_VIOLATION,
-        'reservation_code_max_uses_matches_party_size'
-      )
+      // Código emitido já com usos (0034).
       await expectPgError(
         db.insert(reservationCode).values({
           code: codeB,
@@ -338,7 +269,7 @@ integrationTest(
         CHECK_VIOLATION,
         'reservation_code_use_code_not_retired'
       )
-      expect(await usos()).toBe(2)
+      expect(await usos()).toBe(1)
       await db
         .update(reservationCodeUse)
         .set({ undoneAt: new Date(Date.now() + 2000) })

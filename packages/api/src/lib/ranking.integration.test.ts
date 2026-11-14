@@ -96,7 +96,6 @@ integrationTest('ranking dos amigos e posição na cidade', async () => {
         .values({
           eventId: game?.id as string,
           userId: who.id,
-          partySize: 1,
           status: 'confirmed'
         })
         .returning({ id: reservation.id })
@@ -335,9 +334,9 @@ integrationTest(
         FROM generate_series(1, 15) e
       `)
       await db.execute(sql`
-        INSERT INTO reservation (id, event_id, user_id, party_size, status)
+        INSERT INTO reservation (id, event_id, user_id, status)
         SELECT ${tag} || '-r-' || n || '-' || e, ${tag} || '-ev-' || e,
-          ${tag} || '-' || n, 1, 'confirmed'
+          ${tag} || '-' || n, 'confirmed'
         FROM generate_series(1, ${fans}) n, generate_series(1, 15) e
         WHERE e <= n % 12
       `)

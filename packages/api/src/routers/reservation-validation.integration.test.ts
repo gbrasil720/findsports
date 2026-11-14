@@ -52,7 +52,6 @@ async function seed(
     status?: Status
     currentPeriodEnd?: Date | null
     startsAt?: Date
-    partySize?: number
   } = {}
 ) {
   const { db, appRouter } = await load()
@@ -63,7 +62,6 @@ async function seed(
   const rivalBarId = crypto.randomUUID()
   const sportId = crypto.randomUUID()
   const code = newCode()
-  const partySize = options.partySize ?? 3
 
   await db.insert(user).values(
     [
@@ -129,7 +127,6 @@ async function seed(
     .values({
       eventId: createdEvent.id,
       userId: fanId,
-      partySize,
       status: 'confirmed',
       offerSnapshot: 'Chopp em dobro'
     })
@@ -137,7 +134,7 @@ async function seed(
   if (!createdReservation) throw new Error('reserva não criada')
   const [createdCode] = await db
     .insert(reservationCode)
-    .values({ code, reservationId: createdReservation.id, maxUses: partySize })
+    .values({ code, reservationId: createdReservation.id, maxUses: 1 })
     .returning({ id: reservationCode.id })
   if (!createdCode) throw new Error('código não criado')
 
@@ -209,7 +206,7 @@ integrationTest(
         reservationStatus: 'confirmed',
         offerSnapshot: 'Chopp em dobro',
         usedCount: 0,
-        maxUses: 3
+        maxUses: 1
       })
       expect(found.event).toMatchObject({
         championship: 'Campeonato de integração',
@@ -222,17 +219,11 @@ integrationTest(
         codeId: ctx.codeId,
         requestId: crypto.randomUUID()
       })
-      expect(first).toMatchObject({ usedCount: 1, maxUses: 3, replayed: false })
-
-      const second = await ctx.owner.registerArrival({
-        codeId: ctx.codeId,
-        requestId: crypto.randomUUID()
-      })
-      expect(second.usedCount).toBe(2)
+      expect(first).toMatchObject({ usedCount: 1, maxUses: 1, replayed: false })
 
       const [use] = await usesOf(ctx)
       expect(use?.validatedByUserId).toBe(ctx.ownerId)
-      expect((await resolved(ctx.owner, ctx.code)).usedCount).toBe(2)
+      expect((await resolved(ctx.owner, ctx.code)).usedCount).toBe(1)
     } finally {
       await ctx.cleanup()
     }
@@ -434,8 +425,8 @@ integrationTest(
   }
 )
 
-integrationTest('maxUses + 1 falha com erro útil', async () => {
-  const ctx = await seed({ partySize: 2 })
+integrationTest('segunda validação falha com erro útil', async () => {
+  const ctx = await seed()
   try {
     const arrive = () =>
       ctx.owner.registerArrival({
@@ -443,16 +434,15 @@ integrationTest('maxUses + 1 falha com erro útil', async () => {
         requestId: crypto.randomUUID()
       })
     await arrive()
-    await arrive()
 
     const extra = await refusal(arrive())
     expect(extra.code).toBe('CONFLICT')
-    expect(extra.message).toBe('As 2 pessoas deste código já foram validadas.')
-    expect(await counterOf(ctx)).toBe(2)
-    expect(await usesOf(ctx)).toHaveLength(2)
+    expect(extra.message).toBe('Este código já foi validado.')
+    expect(await counterOf(ctx)).toBe(1)
+    expect(await usesOf(ctx)).toHaveLength(1)
 
-    // Disputa pelo último lugar: só um leva.
-    const last = await seed({ partySize: 1 })
+    // Duas validações ao mesmo tempo: só uma leva.
+    const last = await seed()
     try {
       const race = await Promise.allSettled([
         last.owner.registerArrival({
@@ -480,60 +470,46 @@ integrationTest('maxUses + 1 falha com erro útil', async () => {
 })
 
 integrationTest(
-  'desfazer reverte a última chegada dentro da janela curta',
+  'desfazer reverte a chegada dentro da janela curta',
   async () => {
     const ctx = await seed()
     try {
-      const arrive = () =>
-        ctx.owner.registerArrival({
-          codeId: ctx.codeId,
-          requestId: crypto.randomUUID()
-        })
-      const first = await arrive()
-      const second = await arrive()
-
-      // Só a última: a primeira tem uma chegada mais nova por cima.
-      const notLast = await refusal(
-        ctx.owner.undoArrival({ useId: first.useId })
-      )
-      expect(notLast).toEqual({
-        code: 'PRECONDITION_FAILED',
-        message: 'Só a última validação pode ser desfeita.'
-      })
-
-      const undone = await ctx.owner.undoArrival({ useId: second.useId })
-      expect(undone).toMatchObject({ usedCount: 1, maxUses: 3 })
-
-      // Desfazer repetido não devolve o uso duas vezes.
-      const again = await ctx.owner.undoArrival({ useId: second.useId })
-      expect(again.usedCount).toBe(1)
-      expect(await counterOf(ctx)).toBe(1)
-
-      // O registro fica, marcado, para auditoria.
-      const uses = await usesOf(ctx)
-      expect(uses).toHaveLength(2)
-      expect(
-        uses.find((use) => use.id === second.useId)?.undoneAt
-      ).not.toBeNull()
-
-      // O `+1` repetido de uma chegada desfeita não a ressuscita.
-      const replay = await ctx.owner.registerArrival({
+      const first = await ctx.owner.registerArrival({
         codeId: ctx.codeId,
-        requestId: second.useId
-      })
-      expect(replay).toMatchObject({
-        undone: true,
-        replayed: true,
-        usedCount: 1
+        requestId: crypto.randomUUID()
       })
 
-      // Desfeita a segunda, a primeira voltou a ser a última — mas o vizinho
-      // não desfaz chegada do bar dos outros.
+      // O vizinho não desfaz chegada do bar dos outros.
       const foreign = await refusal(
         ctx.rival.undoArrival({ useId: first.useId })
       )
       expect(foreign.code).toBe('NOT_FOUND')
       expect(await counterOf(ctx)).toBe(1)
+
+      const undone = await ctx.owner.undoArrival({ useId: first.useId })
+      expect(undone).toMatchObject({ usedCount: 0, maxUses: 1 })
+
+      // Desfazer repetido não devolve o uso duas vezes.
+      const again = await ctx.owner.undoArrival({ useId: first.useId })
+      expect(again.usedCount).toBe(0)
+      expect(await counterOf(ctx)).toBe(0)
+
+      // O registro fica, marcado, para auditoria.
+      const uses = await usesOf(ctx)
+      expect(uses).toHaveLength(1)
+      expect(uses[0]?.undoneAt).not.toBeNull()
+
+      // O `+1` repetido de uma chegada desfeita não a ressuscita.
+      const replay = await ctx.owner.registerArrival({
+        codeId: ctx.codeId,
+        requestId: first.useId
+      })
+      expect(replay).toMatchObject({
+        undone: true,
+        replayed: true,
+        usedCount: 0
+      })
+      expect(await counterOf(ctx)).toBe(0)
     } finally {
       await ctx.cleanup()
     }
@@ -838,8 +814,7 @@ integrationTest(
   'código do jogo de ontem lançado no dia seguinte vira chegada marcada como tardia',
   async () => {
     const ctx = await seed({
-      startsAt: new Date(Date.now() - 26 * HOUR),
-      partySize: 1
+      startsAt: new Date(Date.now() - 26 * HOUR)
     })
     try {
       await confirmsLater(ctx)
@@ -927,7 +902,7 @@ integrationTest(
  */
 async function moreCodes(
   ctx: Seeded,
-  statuses: ('confirmed' | 'pending')[]
+  statuses: ('confirmed' | 'cancelled')[]
 ): Promise<{ fans: string[]; codes: string[] }> {
   const [own] = await ctx.db
     .select({ eventId: reservation.eventId })
@@ -952,7 +927,6 @@ async function moreCodes(
       fans.map((userId, i) => ({
         eventId: own.eventId,
         userId,
-        partySize: 1,
         status: statuses[i]
       }))
     )
@@ -987,10 +961,9 @@ integrationTest(
   'lançar em lote: cada código com o seu desfecho, e só o que não resolve gasta tentativa',
   async () => {
     const ctx = await seed({
-      startsAt: new Date(Date.now() - 26 * HOUR),
-      partySize: 1
+      startsAt: new Date(Date.now() - 26 * HOUR)
     })
-    const extra = await moreCodes(ctx, ['confirmed', 'confirmed', 'pending'])
+    const extra = await moreCodes(ctx, ['confirmed', 'confirmed', 'cancelled'])
     try {
       await confirmsLater(ctx)
       const [fresh, validated, pending] = extra.codes as [
@@ -1042,8 +1015,7 @@ integrationTest(
   'limite estourado no meio do lote: o resto volta limited, como um por um',
   async () => {
     const ctx = await seed({
-      startsAt: new Date(Date.now() - 26 * HOUR),
-      partySize: 1
+      startsAt: new Date(Date.now() - 26 * HOUR)
     })
     const extra = await moreCodes(ctx, ['confirmed'])
     try {
@@ -1081,8 +1053,7 @@ integrationTest(
   'dois lançamentos ao mesmo tempo com o mesmo código: entra uma vez só',
   async () => {
     const ctx = await seed({
-      startsAt: new Date(Date.now() - 26 * HOUR),
-      partySize: 1
+      startsAt: new Date(Date.now() - 26 * HOUR)
     })
     const extra = await moreCodes(ctx, ['confirmed', 'confirmed'])
     try {

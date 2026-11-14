@@ -153,7 +153,6 @@ export async function seedBar(
           sportId,
           championship: 'Campeonato de integração',
           startsAt: inAMonth(),
-          acceptsReservations: true,
           ...fields
         })
         .returning({ id: event.id })

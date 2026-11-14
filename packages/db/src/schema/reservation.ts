@@ -11,18 +11,20 @@ import {
   uniqueIndex
 } from 'drizzle-orm/pg-core'
 import { RESERVATION_CODE_PATTERN } from '../reservation-code'
-import { RESERVATION_NOTE_MAX_LENGTH } from '../reservation-limits'
 import { user } from './auth'
 import { event } from './platform'
 
 export { RESERVATION_CODE_PATTERN }
 
 /**
- * Reserva de mesa (WEB-119). Só a camada de dados: quem pode criar, aceitar,
- * cancelar ou validar é decidido nos procedimentos tRPC dos tickets filhos.
+ * "reservation" é o código do balcão de quem vai (WEB-401): a reserva de mesa
+ * saiu do produto em 16/10/2026 e o código de "Vou assistir aqui" no Elite
+ * passou a morar nestas tabelas (`packages/api/src/lib/attendance-ticket.ts`).
+ * Os nomes ficaram para não mexer no contrato do app publicado.
  *
- * Estados: `pending` (pedido do torcedor, aguardando o bar), `confirmed`,
- * `declined` (o bar recusou) e `cancelled` (o torcedor desistiu).
+ * Estados em uso: `confirmed` (código em vigor) e `cancelled` (o torcedor
+ * desmarcou). `pending` e `declined` são da reserva antiga: ficam no enum
+ * (tirar valor de enum no Postgres é caro), ninguém grava nem lê.
  */
 export const reservationStatusEnum = pgEnum('reservation_status', [
   'pending',
@@ -34,22 +36,14 @@ export const reservationStatusEnum = pgEnum('reservation_status', [
 export type ReservationStatus =
   (typeof reservationStatusEnum.enumValues)[number]
 
-/**
- * Estados que ocupam a vaga do torcedor naquele jogo. Recusado ou cancelado
- * libera um novo pedido.
- */
+/** O código em vigor do torcedor naquele jogo. Cancelado libera um novo. */
 export const ACTIVE_RESERVATION_STATUSES = [
-  'pending',
   'confirmed'
 ] as const satisfies readonly ReservationStatus[]
 
-// Os `sql.raw` deste arquivo só inlinam constantes do próprio código em DDL:
-// predicado de índice e CHECK não aceitam parâmetro, e escrever o literal à
-// mão criaria uma segunda cópia do valor.
-const activeStatusList = ACTIVE_RESERVATION_STATUSES.map((s) => `'${s}'`).join(
-  ', '
-)
-const activeStatusPredicate = sql.raw(`status IN (${activeStatusList})`) // sql-raw-permitido: constante em DDL
+// O predicado do índice continua com `pending`, como está no banco: trocar
+// recriaria o índice sem ganho (`status = 'confirmed'` já o usa).
+const activeStatusPredicate = sql`status IN ('pending', 'confirmed')`
 
 export const reservation = pgTable(
   'reservation',
@@ -65,9 +59,10 @@ export const reservation = pgTable(
     userId: text('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
-    partySize: smallint('party_size').notNull(),
-    note: text('note'),
-    status: reservationStatusEnum('status').default('pending').notNull(),
+    // `party_size` e `note` saíram do schema (WEB-401) e só deixam o banco
+    // na migration seguinte, depois do deploy: o Drizzle lista toda coluna
+    // do schema nos SELECTs, e o CI migra antes de publicar.
+    status: reservationStatusEnum('status').default('confirmed').notNull(),
     // Texto da oferta da casa COPIADO na criação. Se o bar mudar a oferta
     // depois, o torcedor continua vendo o que aceitou. Nulo quando o bar não
     // tinha oferta configurada.
@@ -97,17 +92,13 @@ export const reservation = pgTable(
     index('reservation_userId_createdAt_idx').on(
       table.userId,
       table.createdAt.desc()
-    ),
-    check('reservation_party_size_positive', sql`${table.partySize} >= 1`),
-    check(
-      'reservation_note_length',
-      sql`${table.note} IS NULL OR char_length(${table.note}) <= ${sql.raw(String(RESERVATION_NOTE_MAX_LENGTH))}` // sql-raw-permitido: constante de limite em CHECK
     )
   ]
 )
 
 /**
- * Código que o torcedor apresenta no bar.
+ * Código que o torcedor apresenta no balcão. Sempre de um uso só
+ * (`attendance-ticket.ts`).
  *
  * Único entre os códigos ATIVOS (`retired_at IS NULL`), não para sempre: um
  * código curto esgotaria o espaço se nunca voltasse a circular. Aposentar o
@@ -137,7 +128,8 @@ export const reservationCode = pgTable(
     reservationId: text('reservation_id')
       .notNull()
       .references(() => reservation.id, { onDelete: 'cascade' }),
-    // Igual a `reservation.party_size` no momento da emissão.
+    // Sempre 1 no código de quem vai; códigos antigos da reserva guardam o
+    // número de pessoas da época.
     maxUses: smallint('max_uses').notNull(),
     usedCount: smallint('used_count').default(0).notNull(),
     retiredAt: timestamp('retired_at', { withTimezone: true }),

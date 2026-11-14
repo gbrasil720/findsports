@@ -1,6 +1,5 @@
 import { relations, sql } from 'drizzle-orm'
 import {
-  type AnyPgColumn,
   boolean,
   check,
   customType,
@@ -27,7 +26,6 @@ import {
 } from '../bar-gallery'
 import { AVERAGE_SPEND_MAX_CENTS, MENU_URL_MAX_LENGTH } from '../bar-menu'
 import { HOUSE_OFFER_MAX_LENGTH } from '../house-offer'
-import { RESERVATION_CAP_MAX } from '../reservation-limits'
 import { user } from './auth'
 import { barRating } from './rating'
 import { reviewStatusEnum } from './review-status'
@@ -76,9 +74,6 @@ export const barPhotoCategoryEnum = pgEnum(
 )
 
 export type TeamKind = (typeof teamKindEnum.enumValues)[number]
-
-const reservationCapRange = (column: AnyPgColumn) =>
-  sql`${column} IS NULL OR ${column} BETWEEN 1 AND ${sql.raw(String(RESERVATION_CAP_MAX))}` // sql-raw-permitido: constante de limite em CHECK
 
 export const bar = pgTable(
   'bar',
@@ -152,10 +147,6 @@ export const bar = pgTable(
     // `PUBLIC_BAR_COLUMNS`. Gasto em centavos inteiros, nunca `float`.
     menuUrl: text('menu_url'),
     averageSpendCents: integer('average_spend_cents'),
-    // Teto padrão de pessoas confirmadas por jogo (WEB-152). Nulo é sem teto.
-    // `event.reservation_cap` sobrescreve por jogo; a regra vive em
-    // `packages/api/src/lib/reservation-intake.ts`.
-    reservationCap: smallint('reservation_cap'),
     // Avisos por e-mail ao dono (WEB-441), ligados e desligados em
     // Configurações → Avisos. Os padrões são os do design (2b): resumo da
     // semana e jogo lotando ligados, grade vazia desligada. Regras e envio em
@@ -276,10 +267,6 @@ export const bar = pgTable(
     check(
       'bar_average_spend_cents_range',
       sql`${table.averageSpendCents} IS NULL OR ${table.averageSpendCents} BETWEEN 1 AND ${sql.raw(String(AVERAGE_SPEND_MAX_CENTS))}` // sql-raw-permitido: constante de limite em CHECK
-    ),
-    check(
-      'bar_reservation_cap_range',
-      reservationCapRange(table.reservationCap)
     ),
     check(
       'bar_description_pending_length',
@@ -425,15 +412,6 @@ export const event = pgTable(
     startsAt: timestamp('starts_at').notNull(),
     endsAt: timestamp('ends_at'),
     participantFreeText: text('participant_free_text'),
-    // Override do teto padrão do bar para este jogo (WEB-152). Nulo herda o
-    // padrão.
-    reservationCap: smallint('reservation_cap'),
-    // O bar recebe pedido de reserva para ESTE jogo. Desligado por padrão: o
-    // dono marca jogo a jogo, e só com Elite vigente. A regra vive em
-    // `packages/api/src/lib/reservation-intake.ts`.
-    acceptsReservations: boolean('accepts_reservations')
-      .default(false)
-      .notNull(),
     // Telão e som do jogo, por jogo (WEB-399). Nulo herda das características
     // do bar (`bar.amenities`); o painel grava o que o dono marcou no "Novo
     // evento". Quem resolve é `packages/api/src/lib/event-screen.ts`.
@@ -481,10 +459,6 @@ export const event = pgTable(
     check(
       'event_ends_at_after_starts_at',
       sql`${table.endsAt} IS NULL OR ${table.endsAt} > ${table.startsAt}`
-    ),
-    check(
-      'event_reservation_cap_range',
-      reservationCapRange(table.reservationCap)
     ),
     // Mesma regra de `bar_house_offer_length`.
     check(
