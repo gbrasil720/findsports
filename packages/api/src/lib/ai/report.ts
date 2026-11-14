@@ -74,10 +74,14 @@ export type ConversionDiff =
  * proporções, erro padrão sem agrupar). Devolve o que falta enquanto a
  * amostra for pequena.
  */
-export function conversionDiff(a: Arm, b: Arm): ConversionDiff {
+export function conversionDiff(
+  a: Arm,
+  b: Arm,
+  names: [string, string] = ['A', 'B']
+): ConversionDiff {
   for (const [name, arm] of [
-    ['A', a],
-    ['B', b]
+    [names[0], a],
+    [names[1], b]
   ] as const) {
     if (arm.conversations < MIN_CONVERSATIONS)
       return {
@@ -100,4 +104,57 @@ export function conversionDiff(a: Arm, b: Arm): ConversionDiff {
   const low = diff - 1.96 * se
   const high = diff + 1.96 * se
   return { enough: true, diff, low, high, significant: low > 0 || high < 0 }
+}
+
+/**
+ * Regra de parada do teste do recomendador (WEB-426): o braço C sai se cair
+ * no controle (erro ou demora) em mais de 2% das rodadas, se o Passo dele
+ * passar o do A em mais de 30%, ou se o teto do mês estourar.
+ */
+export const STOP_FALLBACK_RATE = 0.02
+export const STOP_PASS_RATIO = 1.3
+
+export type RecommenderArmStats = {
+  rounds: number
+  /** Rodadas do braço que saíram na ordem do controle (erro ou demora). */
+  fellBack: number
+  /** Bares mostrados nas rodadas e quantos levaram Passo. */
+  shown: number
+  passed: number
+}
+
+export type StopRule = {
+  key: 'fallback' | 'pass' | 'budget'
+  /** Nulo enquanto não há dado para decidir. */
+  tripped: boolean | null
+  value: number | null
+  limit: number
+}
+
+export function recommenderStops(
+  a: RecommenderArmStats,
+  c: RecommenderArmStats,
+  budgetBlocked: boolean
+): StopRule[] {
+  const fallback = c.rounds ? c.fellBack / c.rounds : null
+  const passA = a.shown ? a.passed / a.shown : null
+  const passC = c.shown ? c.passed / c.shown : null
+  // Passo do C em relação ao do A (1,3 = 30% acima). A sem Passo nenhum
+  // ainda não dá base: fica nulo.
+  const passRatio = passA && passC !== null ? passC / passA : null
+  return [
+    {
+      key: 'fallback',
+      tripped: fallback === null ? null : fallback > STOP_FALLBACK_RATE,
+      value: fallback,
+      limit: STOP_FALLBACK_RATE
+    },
+    {
+      key: 'pass',
+      tripped: passRatio === null ? null : passRatio > STOP_PASS_RATIO,
+      value: passRatio,
+      limit: STOP_PASS_RATIO
+    },
+    { key: 'budget', tripped: budgetBlocked, value: null, limit: 1 }
+  ]
 }
