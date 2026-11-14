@@ -471,14 +471,23 @@ async function replacePendingPixCheckout(barId: string, checkoutId: string) {
 }
 
 /**
- * Mensal ou anual (WEB-442). O intervalo não está na nossa `subscription`: é
- * o que o plugin do Stripe grava em `stripe_subscription` a partir do preço.
- * Teste do cadastro e Pix são sempre mensais.
+ * Mensal ou anual (WEB-442). No cartão, o que o plugin do Stripe grava em
+ * `stripe_subscription` a partir do preço; no Pix e no Pix escolhido no teste
+ * do cadastro, `subscription.billing_interval` (Pix anual). O teste sem Pix
+ * escolhido é mensal.
  */
 async function readBillingInterval(current: {
   provider: string | null
   externalSubscriptionId: string | null
+  billingInterval: 'month' | 'year'
+  pixAfterTrialAt: Date | null
 }): Promise<'month' | 'year'> {
+  if (
+    current.provider === 'abacatepay' ||
+    (!current.externalSubscriptionId && current.pixAfterTrialAt)
+  ) {
+    return current.billingInterval
+  }
   if (current.provider !== 'stripe' || !current.externalSubscriptionId) {
     return 'month'
   }
@@ -1481,7 +1490,12 @@ export const pubRouter = router({
    * como em `changeTrialPlan`.
    */
   schedulePixAfterTrial: pubProcedure
-    .input(z.object({ plan: z.enum(subscriptionPlanEnum.enumValues) }))
+    .input(
+      z.object({
+        plan: z.enum(subscriptionPlanEnum.enumValues),
+        annual: z.boolean().default(false)
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       if (!pixEnabled()) {
         throw new TRPCError({
@@ -1492,7 +1506,12 @@ export const pubRouter = router({
       const existingBar = await getOwnBar(ctx.session.user.id)
       const [row] = await db
         .update(subscription)
-        .set({ plan: input.plan, pixAfterTrialAt: sql`now()` })
+        .set({
+          plan: input.plan,
+          pixAfterTrialAt: sql`now()`,
+          // Pix anual (WEB-536): a autorização pedida no fim do teste é a do ano.
+          billingInterval: input.annual ? 'year' : 'month'
+        })
         .where(
           and(
             eq(subscription.barId, existingBar.id),
@@ -1565,7 +1584,12 @@ export const pubRouter = router({
     }),
 
   startPixCheckout: pubProcedure
-    .input(z.object({ plan: z.enum(['starter', 'pro', 'elite']) }))
+    .input(
+      z.object({
+        plan: z.enum(['starter', 'pro', 'elite']),
+        annual: z.boolean().default(false)
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       if (!pixEnabled()) {
         throw new TRPCError({
@@ -1591,6 +1615,7 @@ export const pubRouter = router({
         current?.provider === 'abacatepay' &&
         standing === 'current' &&
         current.plan === input.plan &&
+        current.billingInterval === (input.annual ? 'year' : 'month') &&
         !current.cancelAt
       ) {
         throw new TRPCError({
@@ -1625,7 +1650,9 @@ export const pubRouter = router({
       })
       try {
         const [productId, customerId] = await Promise.all([
-          productIdFor(`${input.plan}_${founder ? 'founder_' : ''}monthly`),
+          productIdFor(
+            `${input.plan}_${founder ? 'founder_' : ''}${input.annual ? 'yearly' : 'monthly'}`
+          ),
           upsertCustomer({
             email: ctx.session.user.email,
             name: invoice?.legalName ?? ctx.session.user.name
@@ -1634,7 +1661,12 @@ export const pubRouter = router({
         const checkout = await createPixSubscriptionCheckout({
           productId,
           customerId,
-          externalId: pixExternalId(ownBar.id, input.plan, founder),
+          externalId: pixExternalId(
+            ownBar.id,
+            input.plan,
+            founder,
+            input.annual
+          ),
           completionUrl: new URL('/plan/confirmed?pix=1', app).href,
           returnUrl: new URL('/plan', app).href
         })
