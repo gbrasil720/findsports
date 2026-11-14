@@ -115,7 +115,7 @@ export function PaymentChoiceDialog({
               : `Mudar para o ${name}`
             : toCard
               ? `${name} no cartão`
-              : `Contratar o ${name}`}
+              : `Contratar o ${name}${annual ? ' anual' : ''}`}
         </p>
         <DialogTitle className="pl-dlg-h">Como você quer pagar?</DialogTitle>
         <DialogDescription className="sr-only">
