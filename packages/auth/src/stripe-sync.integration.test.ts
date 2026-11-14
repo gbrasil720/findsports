@@ -86,6 +86,8 @@ function stripeSubscription(options: {
   customerId: string
   userId?: string
   founderDiscount?: boolean
+  /** Desconto do cupom, em centavos; o de fundador do anual é 28000. */
+  amountOff?: number
   cancelAt?: Date
   cancelAtPeriodEnd?: boolean
 }) {
@@ -99,7 +101,11 @@ function stripeSubscription(options: {
     customer: options.customerId,
     metadata: options.userId ? { userId: options.userId } : {},
     discounts: options.founderDiscount
-      ? [{ coupon: { amount_off: 2800, currency: 'brl' } }]
+      ? [
+          {
+            coupon: { amount_off: options.amountOff ?? 2800, currency: 'brl' }
+          }
+        ]
       : [],
     items: {
       data: [
@@ -153,6 +159,27 @@ integrationTest(
     // O mesmo evento de novo grava o mesmo estado: idempotente.
     await applyStripeSubscription(sub)
     expect(await stateOf(owner.barId)).toEqual(expected)
+  }
+)
+
+// WEB-442: o desconto de fundador do anual fica gravado por fatura, e o
+// painel tira do ano: R$ 1.470 − R$ 280 = R$ 1.190, 10 × o mensal de fundador.
+integrationTest(
+  'anual com o cupom de fundador do anual: grava os R$ 280 do ano',
+  async () => {
+    const { applyStripeSubscription, createBar, stateOf } = ready()
+    const owner = await createBar({ plan: 'pro', currentPeriodEnd: periodEnd })
+    const sub = stripeSubscription({
+      id: `sub_${owner.barId}`,
+      status: 'trialing',
+      lookupKey: 'pro_yearly',
+      customerId: owner.customerId,
+      userId: owner.userId,
+      founderDiscount: true,
+      amountOff: 28000
+    })
+    await applyStripeSubscription(sub)
+    expect((await stateOf(owner.barId)).monthlyDiscountReais).toBe(280)
   }
 )
 
