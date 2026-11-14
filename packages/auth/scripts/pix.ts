@@ -3,8 +3,9 @@
  *
  *   bun run pix:check   confere a conta da chave: produtos e preços, webhook
  *                       deste endereço, e se a conta aceita Pix em assinatura
- *   bun run pix:setup   cria (ou recria) o webhook deste endereço com o segredo
- *                       do ambiente, para o Worker e a AbacatePay terem o mesmo
+ *   bun run pix:setup   cria os produtos que faltam (mensais e anuais) e cria
+ *                       (ou recria) o webhook deste endereço com o segredo do
+ *                       ambiente, para o Worker e a AbacatePay terem o mesmo
  *
  * A chave, o segredo e o endereço vêm do ambiente, como no Worker. Para
  * produção, com os valores dos segredos do `onside-web`:
@@ -21,6 +22,7 @@ import { env, getPublicAppUrl } from '@findsports_oficial/env/server'
 import {
   AbacatePayError,
   createPixSubscriptionCheckout,
+  createProduct,
   createWebhook,
   deleteCustomer,
   deleteSubscriptionCheckout,
@@ -29,9 +31,9 @@ import {
   listWebhooks,
   upsertCustomer
 } from '../src/abacatepay'
-import { PIX_FOUNDER_DISCOUNT_REAIS } from '../src/pix-sync'
+import { pixFounderDiscountReais } from '../src/pix-sync'
 import { PIX_WEBHOOK_EVENTS, signatureFor } from '../src/pix-webhook'
-import { TABLE_PRICE_REAIS } from '../src/stripe-plan'
+import { ANNUAL_MONTHS, TABLE_PRICE_REAIS } from '../src/stripe-plan'
 
 const key = env.ABACATE_PAY_API_KEY
 if (!key) {
@@ -53,26 +55,68 @@ const bad = (text: string) => {
 const message = (error: unknown) =>
   error instanceof Error ? error.message : String(error)
 
+/**
+ * Os produtos que o app procura pelo `externalId`: mensal e anual (Pix anual,
+ * 10 meses), tabela e fundador (o desconto da fatura, R$ 28 no mês e R$ 280
+ * no ano).
+ */
+const PRODUCTS = Object.entries(TABLE_PRICE_REAIS).flatMap(([plan, table]) =>
+  [false, true].flatMap((annual) =>
+    [false, true].map((founder) => ({
+      externalId: `${plan}_${founder ? 'founder_' : ''}${annual ? 'yearly' : 'monthly'}`,
+      name: `Onside ${plan[0]?.toUpperCase()}${plan.slice(1)} ${annual ? 'anual' : 'mensal'}${founder ? ' (fundador)' : ''}`,
+      price:
+        ((annual ? table * ANNUAL_MONTHS : table) -
+          (founder ? pixFounderDiscountReais(annual) : 0)) *
+        100,
+      cycle: annual ? ('ANNUALLY' as const) : ('MONTHLY' as const)
+    }))
+  )
+)
+
+// A API responde "Product not found" sem garantir o 404.
+const notFound = (error: unknown) =>
+  error instanceof AbacatePayError &&
+  (error.status === 404 || /not found/i.test(error.message))
+
 async function checkProducts() {
   console.log('\nProdutos')
-  for (const [plan, table] of Object.entries(TABLE_PRICE_REAIS)) {
-    for (const founder of [false, true]) {
-      const externalId = `${plan}_${founder ? 'founder_' : ''}monthly`
-      const cents = (table - (founder ? PIX_FOUNDER_DISCOUNT_REAIS : 0)) * 100
-      try {
-        const product = await getProduct(externalId)
-        const wrong = [
-          product.price !== cents &&
-            `preço ${product.price / 100} (esperado ${cents / 100})`,
-          product.cycle !== 'MONTHLY' && `ciclo ${product.cycle}`,
-          product.currency !== 'BRL' && `moeda ${product.currency}`,
-          product.status !== 'ACTIVE' && `situação ${product.status}`
-        ].filter(Boolean)
-        if (wrong.length) bad(`${externalId}: ${wrong.join(', ')}`)
-        else ok(`${externalId}: R$ ${cents / 100} por mês`)
-      } catch (error) {
-        bad(`${externalId}: ${message(error)}`)
-      }
+  for (const expected of PRODUCTS) {
+    const { externalId, price, cycle } = expected
+    const per = cycle === 'ANNUALLY' ? 'por ano' : 'por mês'
+    try {
+      const product = await getProduct(externalId)
+      const wrong = [
+        product.price !== price &&
+          `preço ${product.price / 100} (esperado ${price / 100})`,
+        product.cycle !== cycle && `ciclo ${product.cycle}`,
+        product.currency !== 'BRL' && `moeda ${product.currency}`,
+        product.status !== 'ACTIVE' && `situação ${product.status}`
+      ].filter(Boolean)
+      if (wrong.length) bad(`${externalId}: ${wrong.join(', ')}`)
+      else ok(`${externalId}: R$ ${price / 100} ${per}`)
+    } catch (error) {
+      bad(
+        `${externalId}: ${message(error)}${notFound(error) ? ' (rode pix:setup)' : ''}`
+      )
+    }
+  }
+}
+
+/** Cria o produto que falta; o que já existe não é tocado (o preço não muda por aqui). */
+async function setupProducts() {
+  console.log('\nProdutos')
+  for (const expected of PRODUCTS) {
+    try {
+      await getProduct(expected.externalId)
+      ok(`${expected.externalId} já existe`)
+    } catch (error) {
+      if (!(error instanceof AbacatePayError && error.status === 404))
+        throw error
+      const created = await createProduct(expected)
+      ok(
+        `${expected.externalId} criado (${created.id}, R$ ${expected.price / 100})`
+      )
     }
   }
 }
@@ -195,6 +239,8 @@ async function setup() {
     )
     process.exit(1)
   }
+  await setupProducts()
+  console.log('\nWebhook')
   // Sem rota de atualização na API. O novo entra antes de o antigo sair:
   // se a criação falhar, o antigo continua recebendo. Entre os dois, o mesmo
   // aviso pode chegar duas vezes, e o webhook relê o estado (idempotente).
