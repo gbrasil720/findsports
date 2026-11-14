@@ -96,6 +96,18 @@ export async function readEventNumbers(input: {
       WHERE e.bar_id = ${input.barId}
         AND e.published_at IS NOT NULL
         AND e.starts_at >= ${utcNowSql(now)} - make_interval(days => ${WINDOW_DAYS})
+    ),
+    -- O primeiro jogo em que cada torcedor visitou o bar, uma vez só: o
+    -- NOT EXISTS por jogo refazia a visita do bar inteiro a cada linha.
+    -- Só é lido no Elite (o CASE abaixo), então nos outros planos não roda.
+    -- ponytail: outro jogo no mesmo horário exato não conta como anterior
+    -- (o Quem vai conta); dois jogos no mesmo instante e no mesmo bar é raro.
+    first_seen AS MATERIALIZED (
+      SELECT ${visit.userId} AS user_id, min(ve.starts_at) AS starts_at
+      FROM ${visit}
+      JOIN event ve ON ve.id = ${visit.eventId}
+      WHERE ${visit.barId} = ${input.barId}
+      GROUP BY ${visit.userId}
     )
     SELECT m.id, m.ended,
       (SELECT count(DISTINCT c.actor_user_id)::int FROM bar_commercial_event c
@@ -135,15 +147,9 @@ export async function readEventNumbers(input: {
         FROM reservation_code_use u
         JOIN reservation_code rc ON rc.id = u.code_id
         JOIN reservation r ON r.id = rc.reservation_id
+        LEFT JOIN first_seen f ON f.user_id = r.user_id
         WHERE r.event_id = m.id AND u.undone_at IS NULL
-          AND NOT EXISTS (
-            SELECT 1 FROM ${visit}
-            JOIN event ve ON ve.id = ${visit.eventId}
-            WHERE ${visit.userId} = r.user_id
-              AND ${visit.barId} = ${input.barId}
-              AND ${visit.eventId} <> m.id
-              AND ve.starts_at <= m.starts_at
-          )
+          AND (f.starts_at IS NULL OR f.starts_at >= m.starts_at)
       ) END AS first_time
     FROM mine m
   `)
