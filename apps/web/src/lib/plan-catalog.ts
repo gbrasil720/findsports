@@ -658,6 +658,7 @@ type PlanSubscription =
       currentPeriodEnd: string | Date | null
       externalSubscriptionId: string | null
       cancelAt?: string | Date | null
+      provider?: string | null
     }
   | null
   | undefined
@@ -792,6 +793,23 @@ export function getPlanHeader(subscription: PlanSubscription): {
             title: `Seu ${name} vai até ${cancelAt.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })}`,
             text: 'Você pediu o cancelamento, e o plano segue até lá. Mudou de ideia? Dá para manter a assinatura.'
           }
+        }
+      }
+      if (
+        subscription.provider === 'abacatepay' &&
+        subscription.externalSubscriptionId &&
+        subscription.currentPeriodEnd
+      ) {
+        // WEB-536: subir pelo cartão cobra a diferença até o fim do mês pago;
+        // no Pix, a troca é uma autorização nova.
+        const until = new Date(
+          subscription.currentPeriodEnd
+        ).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+        return {
+          kicker: 'Plano e cobrança',
+          title: `Seu plano é o ${name}`,
+          text: `Pago no Pix até ${until}. Para subir de plano no cartão, a diferença até ${until} sai hoje; no Pix, a troca pede uma nova autorização. Passar para o cartão sem subir não cobra nada até ${until}.`,
+          short: `Pago no Pix até ${until}.`
         }
       }
       return {
