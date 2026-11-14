@@ -249,6 +249,13 @@ export const bar = pgTable(
     index('bar_geo_starter_idx')
       .using('gist', table.geo)
       .where(sql`is_active AND plan = 'starter'`),
+    // WEB-539: a busca com texto também casa pelo nome do bar. Sem índice, o
+    // texto raro obrigava a ler todo bar do raio só para testar o nome; com
+    // ele, `texto_candidatos` (pub-search) acha esses bares direto. A
+    // expressão é a mesma da consulta.
+    index('bar_name_search_trgm_idx')
+      .using('gin', sql`search_normalize(${table.name}) gin_trgm_ops`)
+      .where(sql`is_active`),
     // Mesma regra de `normalizeHouseOffer`: vazio é `null`, nunca string
     // vazia, e o limite é o do formulário.
     check(
