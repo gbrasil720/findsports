@@ -198,10 +198,6 @@ test.describe('com sessão', () => {
 test('o tema abre claro e a escolha do rodapé vale e fica guardada', async ({
   page
 }) => {
-  // ponytail: no mobile do CI (vite dev, sem GPU) a segunda abertura da landing
-  // levou 45 s para hidratar (o fundo em WebGL trava o navegador) e estourava
-  // os 60 s do teste. Prazo triplo até a landing ficar leve no CI.
-  test.slow()
   await page.emulateMedia({ colorScheme: 'dark' })
   await page.goto('/')
   const html = page.locator('html')
@@ -214,14 +210,13 @@ test('o tema abre claro e a escolha do rodapé vale e fica guardada', async ({
   await expect(tema.getByRole('radio', { name: 'Escuro' })).toBeChecked()
   await expect(html).toHaveAttribute('data-theme', 'dark')
 
-  // Abre a página de novo por navegação, não por `reload`: no projeto mobile
-  // do CI (vite dev) o `reload` abortava os módulos e a página voltava sem
-  // hidratar (o `<html>` escuro do script do head, mas nada respondia).
-  await page.goto('/', { waitUntil: 'networkidle' })
+  // Abre de novo pelo `goto` da suíte, que só volta com a página hidratada:
+  // o `<html>` escuro vem do script do head, o rádio só depois do React.
+  // (WEB-516: a falha do celular do CI era do `vite dev`, que compilava e
+  // recarregava módulos no meio da visita; a suíte roda no build desde então.)
+  await page.goto('/')
   await expect(html).toHaveAttribute('data-theme', 'dark')
-  await expect(tema.getByRole('radio', { name: 'Escuro' })).toBeChecked({
-    timeout: 30_000
-  })
+  await expect(tema.getByRole('radio', { name: 'Escuro' })).toBeChecked()
 
   await tema.getByText('Auto').click()
   await expect(html).toHaveAttribute('data-theme', 'dark')
