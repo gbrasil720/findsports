@@ -38,8 +38,13 @@ export function stripeSubscription(options: {
   customerId?: string
   /** Últimos 4 dígitos do cartão salvo no checkout; sem isto, sem cartão. */
   cardLast4?: string
+  /** Cobrança anual (WEB-442): o preço `<plano>_yearly`. */
+  interval?: 'month' | 'year'
 }) {
-  const lookupKey = options.lookupKey ?? LOOKUP_KEY[options.plan]
+  const interval = options.interval ?? 'month'
+  const lookupKey =
+    options.lookupKey ??
+    (interval === 'year' ? `${options.plan}_yearly` : LOOKUP_KEY[options.plan])
   return {
     id: options.id,
     object: 'subscription',
@@ -85,7 +90,7 @@ export function stripeSubscription(options: {
           price: {
             id: `price_e2e_${lookupKey}`,
             lookup_key: lookupKey,
-            recurring: { interval: 'month' }
+            recurring: { interval }
           }
         }
       ]
@@ -248,4 +253,20 @@ export async function setFounderCoupon(
     data: { state }
   })
   if (!changed.ok()) throw new Error('stub do Stripe recusou o cupom')
+}
+
+/**
+ * Liga ou desliga os preços anuais (`*_yearly`) no stub do Stripe (WEB-442).
+ * Desligados por padrão, como na conta de verdade até o dono criá-los. O
+ * estado é global: só em `*.serial.e2e.ts`, com `false` de volta no
+ * `afterEach`.
+ */
+export async function setAnnualPrices(
+  request: APIRequestContext,
+  available: boolean
+) {
+  const changed = await request.post(`${STUB_URL}/stripe/annual`, {
+    data: { available }
+  })
+  if (!changed.ok()) throw new Error('stub do Stripe recusou os preços anuais')
 }
