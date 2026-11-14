@@ -57,6 +57,46 @@ describe('fim do teste grátis herdado pelo checkout (WEB-31)', () => {
   })
 })
 
+describe('do Pix para o cartão: o cartão cobra no fim do mês pago (WEB-536)', () => {
+  const pix = (status: string, currentPeriodEnd: Date | null) => ({
+    status,
+    currentPeriodEnd,
+    externalSubscriptionId: 'subs_pix_1',
+    provider: 'abacatepay'
+  })
+
+  it('Pix ativo: a primeira cobrança no cartão é o fim do ciclo pago', () => {
+    const end = inHours(24 * 20)
+    expect(trialEndForCheckout(pix('active', end), now)).toBe(seconds(end))
+  })
+
+  it('ciclo acabando em menos de dois dias: o mínimo do Stripe', () => {
+    expect(trialEndForCheckout(pix('active', inHours(10)), now)).toBe(
+      seconds(inHours(49))
+    )
+  })
+
+  it('Pix em atraso, encerrado ou sem data: cobra na hora', () => {
+    expect(
+      trialEndForCheckout(pix('past_due', inHours(240)), now)
+    ).toBeUndefined()
+    expect(
+      trialEndForCheckout(pix('cancelled', inHours(240)), now)
+    ).toBeUndefined()
+    expect(trialEndForCheckout(pix('active', null), now)).toBeUndefined()
+    expect(trialEndForCheckout(pix('active', inHours(-1)), now)).toBeUndefined()
+  })
+
+  it('assinatura ativa no Stripe não ganha teste', () => {
+    expect(
+      trialEndForCheckout(
+        { ...pix('active', inHours(240)), provider: 'stripe' },
+        now
+      )
+    ).toBeUndefined()
+  })
+})
+
 describe('cliente do Stripe com os dados do cadastro (WEB-328)', () => {
   const ownerBar = {
     name: 'Bar do Zé',
