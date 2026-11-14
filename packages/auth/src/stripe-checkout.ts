@@ -1,6 +1,7 @@
 import { and, count, db, eq, gt } from '@findsports_oficial/db'
 import { bar, subscription } from '@findsports_oficial/db/schema/platform'
 import type Stripe from 'stripe'
+import { ANNUAL_LOOKUP_KEYS } from './stripe-plan'
 import {
   customerDetailsFor,
   type InvoiceDetails,
@@ -179,6 +180,31 @@ export async function usableFounderCoupon(
   return FOUNDER_COUPON_ID
 }
 
+/**
+ * O plano anual está à venda (WEB-442): os três preços anuais existem e estão
+ * ativos na conta do Stripe, com cobrança por ano. Enquanto o dono não os
+ * cria, ou com o Stripe sem responder no teto, a tela mostra o "Anual"
+ * desligado e o mensal segue igual.
+ */
+export async function annualPlansAvailable(
+  client: Pick<Stripe, 'prices'>
+): Promise<boolean> {
+  try {
+    const { data } = await client.prices.list(
+      { lookup_keys: ANNUAL_LOOKUP_KEYS, active: true, limit: 10 },
+      QUICK_REQUEST
+    )
+    return ANNUAL_LOOKUP_KEYS.every((key) =>
+      data.some(
+        (price) =>
+          price.lookup_key === key && price.recurring?.interval === 'year'
+      )
+    )
+  } catch {
+    return false
+  }
+}
+
 type BarForCustomer = {
   name: string
   address: string
@@ -294,11 +320,16 @@ const CUSTOMER_UPDATE = { name: 'auto', address: 'auto' } as const
  * o navegador esteja.
  * Código promocional só quando não há cupom de fundador — o Stripe não aceita
  * os dois na mesma sessão.
+ *
+ * Anual (WEB-442): o cupom de fundador é só do mensal (decisão do dono,
+ * 28/10/2026), e o anual já sai pelo preço de 10 meses; sem cupom nem código
+ * promocional. O teste do cadastro vale nos dois: `trial_end` é o mesmo.
  */
 export async function checkoutParamsFor(
   owner: { id: string; name: string },
   customerId: string | null | undefined,
-  client: Stripe
+  client: Stripe,
+  { annual = false }: { annual?: boolean } = {}
 ): Promise<Stripe.Checkout.SessionCreateParams> {
   const ownerBar = await db.query.bar.findFirst({
     where: eq(bar.userId, owner.id),
@@ -308,14 +339,18 @@ export async function checkoutParamsFor(
     await prefillCustomer(client, customerId, owner.name, ownerBar)
   }
   const trialEnd = trialEndForCheckout(ownerBar?.subscription ?? null)
-  const coupon = await usableFounderCoupon(client)
+  const coupon = annual ? null : await usableFounderCoupon(client)
   return {
     locale: 'pt-BR',
     billing_address_collection: 'required',
     tax_id_collection: { enabled: true },
     customer_update: CUSTOMER_UPDATE,
     adaptive_pricing: { enabled: false },
-    ...(coupon ? { discounts: [{ coupon }] } : { allow_promotion_codes: true }),
+    ...(annual
+      ? {}
+      : coupon
+        ? { discounts: [{ coupon }] }
+        : { allow_promotion_codes: true }),
     ...(trialEnd ? { subscription_data: { trial_end: trialEnd } } : {})
   }
 }
