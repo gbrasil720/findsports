@@ -42,6 +42,8 @@ export function stripeSubscription(options: {
   interval?: 'month' | 'year'
   /** Metadados além do dono, como os que o checkout grava (WEB-536). */
   metadata?: Record<string, string>
+  /** Primeira fatura, como `expand[]=latest_invoice` devolve (WEB-536). */
+  latestInvoice?: { status: 'paid' | 'open'; amount_paid: number }
 }) {
   const interval = options.interval ?? 'month'
   const lookupKey =
@@ -53,6 +55,13 @@ export function stripeSubscription(options: {
     status: options.status,
     customer: options.customerId ?? `cus_e2e_wh_${options.userId}`,
     metadata: { ...options.metadata, userId: options.userId },
+    latest_invoice: options.latestInvoice
+      ? {
+          id: `in_e2e_${options.id}`,
+          object: 'invoice',
+          ...options.latestInvoice
+        }
+      : null,
     cancel_at: options.cancelAt
       ? Math.floor(options.cancelAt.getTime() / 1000)
       : null,

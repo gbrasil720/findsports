@@ -425,32 +425,6 @@ async function stripe(request: Request, url: URL) {
   if (request.method === 'GET' && path === '/invoices') {
     return list(stripeInvoices.get(query.subscription ?? '') ?? [])
   }
-  // Fatura avulsa da subida do Pix para o cartão (WEB-536): criada,
-  // recebe o item, é finalizada e paga. O teste lê em `/stripe/calls`.
-  if (request.method === 'POST' && path === '/invoices') {
-    return Response.json({
-      id: `in_e2e_${crypto.randomUUID().slice(0, 8)}`,
-      object: 'invoice',
-      status: 'draft',
-      customer: body.customer
-    })
-  }
-  if (request.method === 'POST' && path === '/invoiceitems') {
-    return Response.json({
-      id: `ii_e2e_${crypto.randomUUID().slice(0, 8)}`,
-      object: 'invoiceitem',
-      invoice: body.invoice,
-      amount: Number(body.amount)
-    })
-  }
-  const invoiceAction = path.match(/^\/invoices\/([^/]+)\/(finalize|pay)$/)
-  if (request.method === 'POST' && invoiceAction) {
-    return Response.json({
-      id: invoiceAction[1],
-      object: 'invoice',
-      status: invoiceAction[2] === 'pay' ? 'paid' : 'open'
-    })
-  }
   if (request.method === 'GET' && path === '/charges') {
     return list(stripeCharges.get(query.customer ?? '') ?? [])
   }

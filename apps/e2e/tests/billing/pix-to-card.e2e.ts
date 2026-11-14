@@ -50,7 +50,15 @@ async function pixBar(page: Page) {
   return { ...pub, pixId, paidUntil }
 }
 
-test('quem paga por Pix muda de plano no cartão, que só cobra no fim do mês pago', async ({
+/** O que o app pediu ao Stripe para a assinatura (`POST /v1/subscriptions/<id>`). */
+async function subscriptionCalls(page: Page, id: string) {
+  const calls = (await (
+    await page.request.get(`${STUB_URL}/stripe/calls`)
+  ).json()) as { method: string; path: string; body: Record<string, string> }[]
+  return calls.filter((call) => call.path === `/subscriptions/${id}`)
+}
+
+test('subida do Pix para o cartão: a diferença sai no checkout e só paga o Pix é cancelado', async ({
   page,
   request
 }) => {
@@ -93,6 +101,15 @@ test('quem paga por Pix muda de plano no cartão, que só cobra no fim do mês p
   )
   // A tela e o checkout fazem a mesma conta, segundos depois.
   expect(Math.abs(upgradeCents - shown)).toBeLessThanOrEqual(1)
+  // A diferença é item avulso da sessão: o Stripe a cobra na tela dele, e o
+  // cupom de fundador espera o webhook (no item, tiraria R$ 28 da diferença).
+  expect(session).toMatchObject({
+    'line_items[0][price]': 'price_e2e_elite_monthly',
+    'line_items[1][price_data][unit_amount]': String(upgradeCents),
+    'line_items[1][price_data][currency]': 'brl',
+    'subscription_data[metadata][founderCoupon]': 'eM7dQpMF'
+  })
+  expect(session).not.toHaveProperty('discounts[0][coupon]')
   // O checkout não cancela nada: o Pix só sai com o cartão confirmado.
   expect(await pixCancels(request)).not.toContain(pixId)
 
@@ -106,33 +123,21 @@ test('quem paga por Pix muda de plano no cartão, que só cobra no fim do mês p
       plan: 'elite',
       userId: user.id,
       currentPeriodEnd: paidUntil,
-      metadata: { pixUpgradeCents: String(upgradeCents) }
+      metadata: {
+        pixUpgradeCents: String(upgradeCents),
+        founderCoupon: 'eM7dQpMF'
+      },
+      latestInvoice: { status: 'paid', amount_paid: upgradeCents }
     })
   )
   expect(delivered.ok()).toBe(true)
   expect(await pixCancels(request)).toContain(pixId)
-  // A diferença virou uma fatura avulsa, finalizada e paga.
-  const calls = (await (
-    await request.get(`${STUB_URL}/stripe/calls`)
-  ).json()) as {
-    method: string
-    path: string
-    body: Record<string, string>
-  }[]
-  const item = calls.find(
-    (call) =>
-      call.path === '/invoiceitems' &&
-      call.body.customer === `cus_e2e_wh_${user.id}`
-  )
-  expect(item?.body).toMatchObject({
-    amount: String(upgradeCents),
-    currency: 'brl',
-    discountable: 'false'
-  })
+  // Paga a diferença, o cupom de fundador entra na assinatura.
   expect(
-    calls.some((call) => call.path === `/invoices/${item?.body.invoice}/pay`)
+    (await subscriptionCalls(page, subId)).some(
+      (call) => call.body['discounts[0][coupon]'] === 'eM7dQpMF'
+    )
   ).toBe(true)
-
   const [row] = await query<{
     provider: string
     plan: string
@@ -151,6 +156,83 @@ test('quem paga por Pix muda de plano no cartão, que só cobra no fim do mês p
   })
 })
 
+test('cartão recusado na diferença: nada muda e a tela pede outro cartão', async ({
+  page,
+  request
+}, testInfo) => {
+  if (process.env.E2E_PRINTS_DIR) {
+    await page.setViewportSize(
+      testInfo.project.name === 'mobile'
+        ? { width: 390, height: 844 }
+        : { width: 1440, height: 900 }
+    )
+  }
+  const { user, barId, pixId, paidUntil } = await pixBar(page)
+  await page.goto('/plan')
+  await page.getByRole('button', { name: 'Mudar para o Elite' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Como você quer pagar?' })
+  await dialog.getByRole('button', { name: 'Passar para o cartão' }).click()
+  await page.waitForURL(`${STUB_URL}/stripe/checkout/**`)
+  const session = await checkoutSessionOf(page, user.id)
+
+  // O Stripe recusa o cartão na tela dele, e o dono volta sem concluir.
+  await page.goto(session?.cancel_url ?? '')
+  const alert = page.getByRole('alert').filter({
+    hasText: 'A troca para o cartão não foi concluída.'
+  })
+  await expect(alert).toContainText(
+    `Nada mudou: o bar segue no Pro, pago no Pix até ${ddmm(paidUntil)}. Se o cartão foi recusado, tente outro.`
+  )
+  await print(page, testInfo, 'pix-cartao-recusado', 300)
+
+  // Assinatura que nascesse sem a diferença paga: cancelada, e o Pix fica.
+  const subId = `sub_e2e_${randomUUID()}`
+  const delivered = await deliverSubscription(
+    request,
+    'customer.subscription.created',
+    stripeSubscription({
+      id: subId,
+      status: 'trialing',
+      plan: 'elite',
+      userId: user.id,
+      currentPeriodEnd: paidUntil,
+      metadata: {
+        pixUpgradeCents:
+          session?.['subscription_data[metadata][pixUpgradeCents]'] ?? '1',
+        founderCoupon: 'eM7dQpMF'
+      },
+      latestInvoice: { status: 'open', amount_paid: 0 }
+    })
+  )
+  expect(delivered.ok()).toBe(true)
+  expect(await pixCancels(request)).not.toContain(pixId)
+  expect(
+    (await subscriptionCalls(page, subId)).some(
+      (call) => call.method === 'DELETE'
+    )
+  ).toBe(true)
+  const [row] = await query<{
+    provider: string
+    plan: string
+    external_subscription_id: string
+    is_active: boolean
+  }>(
+    `SELECT s.provider, s.plan, s.external_subscription_id, b.is_active
+       FROM subscription s JOIN bar b ON b.id = s.bar_id WHERE s.bar_id = $1`,
+    [barId]
+  )
+  expect(row).toEqual({
+    provider: 'abacatepay',
+    plan: 'pro',
+    external_subscription_id: pixId,
+    is_active: true
+  })
+
+  // "Tentar outro cartão" volta à janela do mesmo plano.
+  await alert.getByRole('button', { name: 'Tentar outro cartão' }).click()
+  await expect(dialog.getByText('Mudar para o Elite')).toBeVisible()
+})
+
 test('quem paga por Pix passa o mesmo plano para o cartão', async ({
   page
 }) => {
@@ -166,7 +248,11 @@ test('quem paga por Pix passa o mesmo plano para o cartão', async ({
 
   await dialog.getByRole('button', { name: 'Passar para o cartão' }).click()
   await page.waitForURL(`${STUB_URL}/stripe/checkout/**`)
-  expect(await checkoutSessionOf(page, user.id)).toMatchObject({
+  const session = await checkoutSessionOf(page, user.id)
+  // Sem diferença: nada cobrado hoje, e o cupom vai na própria sessão.
+  expect(session).not.toHaveProperty('line_items[1][price_data][unit_amount]')
+  expect(session).toMatchObject({
+    'discounts[0][coupon]': 'eM7dQpMF',
     'line_items[0][price]': 'price_e2e_pro_monthly',
     'subscription_data[trial_end]': String(
       Math.floor(paidUntil.getTime() / 1000)
