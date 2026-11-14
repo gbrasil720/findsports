@@ -38,6 +38,21 @@ export function useGoing() {
 
 export type GoingGame = NonNullable<ReturnType<typeof useGoing>['data']>[number]
 
+/**
+ * Quem vai de um jogo encerrado, que `useGoing` não traz mais (a janela de
+ * validação fechou): só no Elite, só quando o jogo está aberto.
+ */
+export function useGoingForGame(eventId: string | undefined, enabled: boolean) {
+  const trpc = useTRPC()
+  return useQuery({
+    ...trpc.barReservations.goingForGame.queryOptions({
+      eventId: eventId ?? ''
+    }),
+    enabled: enabled && Boolean(eventId),
+    meta: { errorToast: false }
+  })
+}
+
 /** Quantos marcaram e quantos já validaram no balcão. */
 export function goingCount(game: GoingGame | undefined) {
   const going = game?.people.length ?? 0
