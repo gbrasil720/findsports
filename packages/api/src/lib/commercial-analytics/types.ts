@@ -296,6 +296,12 @@ export interface AnalyticsEntitlements {
   canViewClassicPlacement: boolean
   /** Reservas e chegadas por jogo: reserva de mesa é do Elite (ADR 0003). */
   canViewReservations: boolean
+  /**
+   * Quantas pessoas marcaram presença no mês, só o número (WEB-522): Pro e
+   * Elite. Nomes, a lista por jogo e os códigos seguem em
+   * `canViewReservations`.
+   */
+  canViewGoingCount: boolean
   canViewComparison: boolean
   /** Comparison capability sold by the plan; the server is authoritative. */
   comparison: AnalyticsComparisonMode

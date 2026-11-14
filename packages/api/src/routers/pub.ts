@@ -80,6 +80,11 @@ import {
 import { readBillingBalance } from '../lib/billing-balance'
 import { readInvoices } from '../lib/billing-invoices'
 import {
+  applyMonthGoingEntitlements,
+  getAnalyticsEntitlements,
+  getAnalyticsPlan
+} from '../lib/commercial-analytics/entitlements'
+import {
   canCancelSubscription,
   getCurrentPlan,
   getSubscriptionStanding,
@@ -1581,11 +1586,16 @@ export const pubRouter = router({
   // Retorna o plano e status atual da subscription do bar
   /**
    * O mês do bar em números, para a tela do plano no app: pessoas que
-   * marcaram presença e códigos validados (`lib/month-proof.ts`).
+   * marcaram presença e códigos validados (`lib/month-proof.ts`). O que o
+   * plano não vê vem nulo (WEB-522: presenças no Pro e no Elite, códigos só
+   * no Elite).
    */
   getMonthProof: pubProcedure.query(async ({ ctx }) => {
     const existingBar = await getOwnBar(ctx.session.user.id)
-    return readMonthProof(existingBar.id)
+    return applyMonthGoingEntitlements(
+      await readMonthProof(existingBar.id),
+      getAnalyticsEntitlements(getAnalyticsPlan(existingBar.subscription))
+    )
   }),
 
   getMySubscription: pubProcedure.query(async ({ ctx }) => {
