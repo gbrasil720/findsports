@@ -126,6 +126,18 @@ export async function planRoundAi(input: {
   now: Date
   radiusKm: number
 }): Promise<RoundAi | null> {
+  try {
+    return await planOrThrow(input)
+  } catch {
+    // Falha de banco ao sortear ou gravar a linha: a rodada sai como sempre,
+    // com `run_id` próprio e fora da comparação.
+    return null
+  }
+}
+
+async function planOrThrow(
+  input: Parameters<typeof planRoundAi>[0]
+): Promise<RoundAi | null> {
   const variant = await recommenderArm(input.userId)
   if (!variant) return null
   if (variant === 'a')
@@ -145,43 +157,45 @@ export async function planRoundAi(input: {
       affinity: null
     }
 
-  try {
-    const outcome = await runAi(
-      {
-        userId: input.userId,
-        feature: 'recommender',
-        variant: 'c',
-        assignedModel: RECOMMENDER_MODELS.c
-      },
-      gate.deps,
-      async (call) => {
-        const extra = await loadAffinityInputs(
-          input.userId,
-          bars.map((bar) => bar.id)
-        )
-        const result = await requestAffinity(
-          (model, body) =>
-            call(model, body, { timeoutMs: AFFINITY_TIMEOUT_MS }),
-          RECOMMENDER_MODELS.c,
-          { sports: extra.sports, teams: extra.teams, ...style },
-          bars.map((candidate) => ({
-            candidate,
-            description: extra.descriptions.get(candidate.id)
-          })),
-          { other: null }
-        )
+  const outcome = await runAi(
+    {
+      userId: input.userId,
+      feature: 'recommender',
+      variant: 'c',
+      assignedModel: RECOMMENDER_MODELS.c
+    },
+    gate.deps,
+    async (call) => {
+      // Falha ao ler o perfil vira desfecho `error`, não exceção: a linha
+      // fica com o `run_id` que a rodada vai levar.
+      const extra = await loadAffinityInputs(
+        input.userId,
+        bars.map((bar) => bar.id)
+      ).catch(() => null)
+      if (!extra)
         return {
-          value: result.affinity,
-          status: result.status,
-          servedModel: result.servedModel,
-          useful: result.affinity !== null
+          value: null,
+          status: 'error',
+          servedModel: null,
+          useful: false
         }
+      const result = await requestAffinity(
+        (model, body) => call(model, body, { timeoutMs: AFFINITY_TIMEOUT_MS }),
+        RECOMMENDER_MODELS.c,
+        { sports: extra.sports, teams: extra.teams, ...style },
+        bars.map((candidate) => ({
+          candidate,
+          description: extra.descriptions.get(candidate.id)
+        })),
+        { other: null }
+      )
+      return {
+        value: result.affinity,
+        status: result.status,
+        servedModel: result.servedModel,
+        useful: result.affinity !== null
       }
-    )
-    return { runId: outcome.runId, affinity: outcome.value }
-  } catch {
-    // `runAi` já gravou a linha com `error`; sem o id dela, a rodada sai
-    // com um novo e fica fora da comparação (raro: falha de banco).
-    return { runId: crypto.randomUUID(), affinity: null }
-  }
+    }
+  )
+  return { runId: outcome.runId, affinity: outcome.value }
 }
