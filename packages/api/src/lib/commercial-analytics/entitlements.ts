@@ -23,9 +23,8 @@ import type {
  * - Elite:    + classics, reservations, unlimited retention, advanced
  *              comparison and insights
  *
- * Quantas pessoas marcaram presença no mês (só o número) é do Pro e do Elite
- * (WEB-522, decisão do dono em 09/11/2026): no Pro é o "No Elite, este mês
- * você teria visto". O Starter segue sem ele (decisão em aberto).
+ * Quantas pessoas marcaram presença no mês (só o número) não é de plano: ver
+ * `applyMonthGoingEntitlements`.
  *
  * A série diária (aberturas e contatos somados) é de todos os planos, como no
  * design (1r, 1x; WEB-449): não há entitlement para ela.
@@ -39,7 +38,6 @@ const ENTITLEMENTS: Record<SubscriptionPlan, AnalyticsEntitlements> = {
     canViewDirectionsOpened: false,
     canViewClassicPlacement: false,
     canViewReservations: false,
-    canViewGoingCount: false,
     canViewComparison: true,
     comparison: 'previous_period',
     eventBreakdown: 'basic',
@@ -53,7 +51,6 @@ const ENTITLEMENTS: Record<SubscriptionPlan, AnalyticsEntitlements> = {
     canViewDirectionsOpened: true,
     canViewClassicPlacement: false,
     canViewReservations: false,
-    canViewGoingCount: true,
     canViewComparison: true,
     comparison: 'cross_game',
     eventBreakdown: 'complete',
@@ -67,7 +64,6 @@ const ENTITLEMENTS: Record<SubscriptionPlan, AnalyticsEntitlements> = {
     canViewDirectionsOpened: true,
     canViewClassicPlacement: true,
     canViewReservations: true,
-    canViewGoingCount: true,
     canViewComparison: true,
     comparison: 'advanced',
     eventBreakdown: 'complete',
@@ -206,17 +202,22 @@ export function applyEventBreakdownEntitlements(
 }
 
 /**
- * O mês do bar na tela do plano (`pub.getMonthProof`, `getMyMonthNumbers`):
- * presenças para quem tem `canViewGoingCount`, códigos validados só com
- * `canViewReservations`. Fora disso vem nulo, nunca zero: zero diria
- * "ninguém marcou" quando é "seu plano não vê".
+ * O mês do bar na tela do plano (`pub.getMonthProof`, `getMyMonthNumbers`),
+ * decisão do dono (WEB-522, 09 e 14/11/2026): quantas pessoas marcaram
+ * presença vai a todo plano vigente, Starter inclusive (no Starter e no Pro é
+ * o "No Elite, este mês você teria visto"); códigos validados só no Elite.
+ *
+ * `plan` é o vigente (`getCurrentPlan`), não o piso das analytics: plano
+ * parado (pagamento atrasado, teste vencido, assinatura encerrada) é nulo e
+ * não vê nenhum dos dois, embora caia no Starter para o resto. Fora disso vem
+ * nulo, nunca zero: zero diria "ninguém marcou" quando é "seu plano não vê".
  */
 export function applyMonthGoingEntitlements(
   month: { people: number; codes: number },
-  entitlements: AnalyticsEntitlements
+  plan: SubscriptionPlan | null
 ) {
   return {
-    people: entitlements.canViewGoingCount ? month.people : null,
-    codes: entitlements.canViewReservations ? month.codes : null
+    people: plan ? month.people : null,
+    codes: plan === 'elite' ? month.codes : null
   }
 }

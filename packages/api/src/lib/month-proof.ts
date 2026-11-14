@@ -16,8 +16,9 @@ import {
  * quantas pessoas marcaram presença nos jogos do mês de Brasília e quantos
  * códigos foram validados no balcão. Só números, sem nomes: no Pro é o "No
  * Elite, este mês você teria visto" (decisão do dono, 09/11/2026). Quem vê
- * cada número é `applyMonthGoingEntitlements` (WEB-522): o Starter não vê
- * nenhum dos dois, e os códigos são só do Elite.
+ * cada número é `applyMonthGoingEntitlements` (WEB-522): presenças em todo
+ * plano vigente, Starter inclusive, códigos só no Elite, e o plano parado
+ * (pagamento atrasado, encerrado) não vê nenhum dos dois.
  */
 
 const sameMonth = (ts: Parameters<typeof brasiliaDaySql>[0]) =>
