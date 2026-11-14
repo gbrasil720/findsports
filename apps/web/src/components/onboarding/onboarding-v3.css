@@ -74,7 +74,7 @@
 .lp3.ob3 .ob-h {
   margin: 8px 0 0;
   font: 400 clamp(38px, 4vw, 56px) / 1 var(--display);
-  text-transform: uppercase;
+  --caixa: "ss20";
   text-wrap: balance;
   /* Nome sem espaço no "Tudo pronto, …" não vaza para o telão. */
   overflow-wrap: anywhere;
@@ -99,7 +99,7 @@
   color: var(--muted);
   font: 600 12px / 1.3 var(--mono);
   letter-spacing: 0.06em;
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 
 .lp3.ob3 .ob-note {
@@ -347,7 +347,7 @@
   color: var(--ink);
   font: 600 15px / 1.2 var(--body);
   letter-spacing: 0;
-  text-transform: none;
+  --caixa: normal;
   box-shadow: var(--shadow);
 }
 
@@ -721,7 +721,7 @@
 .lp3.ob3 .ob-fl-name {
   font: 600 12px / 1.2 var(--mono);
   letter-spacing: 0.06em;
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 
 .lp3.ob3 .ob-fl-head > :is(a, span:not(.ob-fl-name)) {
@@ -729,7 +729,7 @@
   color: var(--ink);
   font: 600 12px / 1 var(--body);
   letter-spacing: 0;
-  text-transform: none;
+  --caixa: normal;
 }
 
 .lp3.ob3 .ob-fl.auto :is(.onside-input, .onside-select) {
@@ -914,7 +914,7 @@
   color: var(--muted);
   font: 600 12px / 1.3 var(--mono);
   letter-spacing: 0.06em;
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 
 .lp3.ob3 .ob-chips {
@@ -1108,7 +1108,7 @@
 .lp3.ob3 .ob-pc h3 {
   margin: 16px 0 0;
   font: 400 34px / 1 var(--display);
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 
 .lp3.ob3 .ob-pc .pd {
@@ -1839,7 +1839,7 @@
   color: #c9f135;
   font: 600 12px / 1.3 var(--mono);
   letter-spacing: 0.06em;
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 
 .lp3.ob3 .ob-tv .phone {

@@ -124,7 +124,7 @@ export function AppShell({ variant, userMeta, children }: Props) {
               >
                 {name || '…'}
               </div>
-              <div className="max-w-[140px] truncate font-[family-name:var(--onside-mono)] text-[10px] uppercase tracking-[0.12em] text-[var(--onside-muted)]">
+              <div className="max-w-[140px] truncate font-[family-name:var(--onside-mono)] text-[10px] caixa-alta tracking-[0.12em] text-[var(--onside-muted)]">
                 {userMeta ?? accountLabel}
               </div>
             </div>
@@ -147,7 +147,7 @@ export function AppShell({ variant, userMeta, children }: Props) {
                 {session?.user?.email}
               </div>
               {userMeta && (
-                <div className="mt-1 font-[family-name:var(--onside-mono)] text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--onside-muted)]">
+                <div className="mt-1 font-[family-name:var(--onside-mono)] text-[10px] font-bold caixa-alta tracking-[0.12em] text-[var(--onside-muted)]">
                   {userMeta}
                 </div>
               )}

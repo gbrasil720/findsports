@@ -376,7 +376,7 @@ html[data-theme="dark"] .pn3 .pn-tip {
   font: 600 12px var(--mono);
   letter-spacing: 0.06em;
   text-align: left;
-  text-transform: uppercase;
+  --caixa: "ss20";
   white-space: nowrap;
 }
 
@@ -387,7 +387,7 @@ html[data-theme="dark"] .pn3 .pn-tip {
   color: inherit;
   font: inherit;
   letter-spacing: inherit;
-  text-transform: inherit;
+  --caixa: inherit;
   cursor: pointer;
 }
 
@@ -453,7 +453,7 @@ html[data-theme="dark"] .pn3 .pn-tip {
   color: var(--muted);
   font: 600 11.5px var(--mono);
   letter-spacing: 0.06em;
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 
 .pn3 .pn-tbl-x dd {
@@ -566,7 +566,7 @@ html[data-theme="dark"] .pn3 .pn-tip {
   padding: 14px 16px;
   font: 600 16px / 1.6 var(--mono);
   letter-spacing: 0.15em;
-  text-transform: uppercase;
+  --caixa: "ss20";
   resize: vertical;
 }
 

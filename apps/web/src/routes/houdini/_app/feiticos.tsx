@@ -554,7 +554,7 @@ function MaintenanceCard({ spell }: { spell: Spell | undefined }) {
         <span
           style={{
             font: '400 40px/1 var(--hd-display)',
-            textTransform: 'uppercase',
+            ['--caixa' as string]: '"ss20"',
             color: value.on ? 'var(--hd-live-text)' : 'var(--hd-fg)'
           }}
         >

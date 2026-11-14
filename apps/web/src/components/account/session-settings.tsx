@@ -194,7 +194,7 @@ export function SessionSettings() {
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="font-bold text-sm">{device.label}</h3>
                       {isCurrent ? (
-                        <span className="font-bold text-[10px] uppercase tracking-[0.1em]">
+                        <span className="font-bold text-[10px] caixa-alta tracking-[0.1em]">
                           Este dispositivo
                         </span>
                       ) : null}

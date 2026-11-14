@@ -151,7 +151,7 @@ function GrimorioPage() {
                 <h2
                   style={{
                     font: '400 26px/1 var(--hd-display)',
-                    textTransform: 'uppercase'
+                    ['--caixa' as string]: '"ss20"'
                   }}
                 >
                   {group.label}

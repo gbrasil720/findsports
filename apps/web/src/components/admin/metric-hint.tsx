@@ -40,7 +40,7 @@ export function MetricHint({
         <CircleInfo size={14} color="currentColor" aria-hidden="true" />
       </PopoverTrigger>
       <PopoverContent>
-        <PopoverTitle className="mb-2 font-[family-name:var(--onside-mono)] font-semibold text-[11px] uppercase leading-tight tracking-[0.12em]">
+        <PopoverTitle className="mb-2 font-[family-name:var(--onside-mono)] font-semibold text-[11px] caixa-alta leading-tight tracking-[0.12em]">
           {label}
         </PopoverTitle>
         <PopoverDescription className="text-sm leading-relaxed opacity-80">

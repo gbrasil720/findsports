@@ -14,7 +14,7 @@ export function OnboardingHeader({ label, mb = 'mb-8' }: Props) {
       <Link to="/" className="inline-flex" aria-label="Onside — página inicial">
         <OnsideBrand />
       </Link>
-      <div className="flex items-center gap-2 font-[family-name:var(--onside-mono)] text-[10px] font-bold text-[var(--onside-muted)] uppercase tracking-[0.16em]">
+      <div className="flex items-center gap-2 font-[family-name:var(--onside-mono)] text-[10px] font-bold text-[var(--onside-muted)] caixa-alta tracking-[0.16em]">
         <span className="onside-live-dot" aria-hidden="true" />
         {label}
       </div>

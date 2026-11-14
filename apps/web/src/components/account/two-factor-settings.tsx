@@ -241,7 +241,7 @@ export function EnableTwoFactorDialog({
             <QRCode value={totpUri} size={184} />
           </div>
           <div className="rounded-2xl bg-[var(--onside-stone)] p-3">
-            <p className="font-bold text-[10px] uppercase tracking-[0.1em]">
+            <p className="font-bold text-[10px] caixa-alta tracking-[0.1em]">
               Chave manual
             </p>
             <code className="mt-2 block overflow-x-auto whitespace-nowrap font-[family-name:var(--onside-mono)] text-xs">

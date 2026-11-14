@@ -125,7 +125,7 @@
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.12em;
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 
 .onside-app .onside-map-label.is-bottom {
@@ -185,7 +185,7 @@
   font-family: var(--onside-body);
   font-size: 12px;
   font-weight: 700;
-  text-transform: uppercase;
+  --caixa: "ss20";
   letter-spacing: 0.06em;
   text-decoration: none;
   color: var(--onside-ink);
@@ -263,7 +263,7 @@
   font-family: var(--onside-display);
   font-size: 36px;
   line-height: 0.95;
-  text-transform: uppercase;
+  --caixa: "ss20";
   font-variant-numeric: tabular-nums;
 }
 
@@ -273,7 +273,7 @@
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.12em;
-  text-transform: uppercase;
+  --caixa: "ss20";
   color: var(--onside-muted);
 }
 

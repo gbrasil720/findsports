@@ -65,7 +65,7 @@ export function RadiusSlider({
         onChange={(event) => setDraft(Number(event.target.value))}
         className="w-full cursor-pointer accent-[var(--onside-ink)] disabled:cursor-not-allowed disabled:opacity-60"
       />
-      <div className="flex justify-between font-[family-name:var(--onside-mono)] text-[10px] text-[var(--onside-muted)] uppercase tracking-[0.12em]">
+      <div className="flex justify-between font-[family-name:var(--onside-mono)] text-[10px] text-[var(--onside-muted)] caixa-alta tracking-[0.12em]">
         <span>{SEARCH_RADIUS_MIN_KM} km</span>
         {note ? (
           <span className="normal-case tracking-normal">{note}</span>

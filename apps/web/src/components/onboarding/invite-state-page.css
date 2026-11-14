@@ -123,7 +123,7 @@
   font-size: 9px;
   font-weight: 600;
   letter-spacing: 0.12em;
-  text-transform: uppercase;
+  --caixa: "ss20";
   color: var(--onside-ink);
 }
 
@@ -150,7 +150,7 @@
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 
 .onside-invite-title {
@@ -162,7 +162,7 @@
   font-weight: 400;
   letter-spacing: -0.03em;
   line-height: 0.86;
-  text-transform: uppercase;
+  --caixa: "ss20";
   text-wrap: balance;
 }
 
@@ -209,7 +209,7 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-align: left;
-  text-transform: uppercase;
+  --caixa: "ss20";
   cursor: pointer;
   touch-action: manipulation;
   transition:
@@ -250,7 +250,7 @@
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.05em;
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 
 .onside-invite-error {
@@ -294,7 +294,7 @@
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.1em;
-  text-transform: uppercase;
+  --caixa: "ss20";
   color: var(--onside-ink);
 }
 

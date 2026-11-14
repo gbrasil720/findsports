@@ -130,7 +130,7 @@ html[data-consent] .onside-app > aside {
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.1em;
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 
 .onside-consent-note {
@@ -139,7 +139,7 @@ html[data-consent] .onside-app > aside {
   font-size: 11.5px;
   font-weight: 500;
   letter-spacing: 0;
-  text-transform: none;
+  --caixa: normal;
 }
 
 /* Seis quadradinhos do telão, acesos e meio apagados. */

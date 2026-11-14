@@ -103,7 +103,7 @@ html[data-theme="dark"] .tc {
 .tc .disp {
   font-family: var(--display);
   font-weight: 400;
-  text-transform: uppercase;
+  --caixa: "ss20";
   line-height: 0.95;
   letter-spacing: 0;
   margin: 0;
@@ -782,7 +782,7 @@ html[data-theme="dark"] .tc {
 .tc .empty b {
   display: block;
   font: 400 30px / 1 var(--display);
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 .tc .empty p {
   color: var(--muted);
@@ -798,7 +798,7 @@ html[data-theme="dark"] .tc {
 .tc .semjogo h2 {
   margin: 0;
   font: 400 26px / 1 var(--display);
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 .tc .semjogo p {
   margin: 6px 0 0;
@@ -1119,7 +1119,7 @@ html[data-theme="dark"] .tc .m-d {
 }
 .tc .sec h2 {
   font: 400 30px / 1 var(--display);
-  text-transform: uppercase;
+  --caixa: "ss20";
   margin: 0 0 18px;
 }
 .tc .today {
@@ -1144,7 +1144,7 @@ html[data-theme="dark"] .tc .m-d {
 }
 .tc .today h3 {
   font: 400 clamp(36px, 3.6vw, 52px) / 0.95 var(--display);
-  text-transform: uppercase;
+  --caixa: "ss20";
   margin: 10px 0 0;
 }
 .tc .today .tags li {
@@ -1212,7 +1212,7 @@ html[data-theme="dark"] .tc .m-d {
   margin: 0 0 10px;
   font: 600 12px var(--mono);
   letter-spacing: 0.08em;
-  text-transform: uppercase;
+  --caixa: "ss20";
   color: var(--muted);
 }
 .tc .amen ul {
@@ -1348,7 +1348,7 @@ html[data-theme="dark"] .tc .m-d {
 }
 .tc .sheet h2 {
   font: 400 40px / 0.95 var(--display);
-  text-transform: uppercase;
+  --caixa: "ss20";
   margin: 8px 0 0;
 }
 .tc .ctx {
@@ -1419,7 +1419,7 @@ html[data-theme="dark"] .tc .m-d {
   gap: 6px;
   font: 600 12px var(--mono);
   letter-spacing: 0.06em;
-  text-transform: uppercase;
+  --caixa: "ss20";
   color: var(--muted);
 }
 .tc .form input {
@@ -2049,7 +2049,7 @@ html[data-theme="dark"] .tc .m-d {
 .tc .tk h3 {
   margin: 0;
   font: 400 34px / 0.95 var(--display);
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 .tc .tk .at {
   font-size: 15px;
@@ -2320,7 +2320,7 @@ html[data-theme="dark"] .tc .m-d {
 .tc .wk h4 {
   margin: 0;
   font: 600 12px var(--mono);
-  text-transform: uppercase;
+  --caixa: "ss20";
   letter-spacing: 0.06em;
   color: var(--muted);
 }
@@ -2463,7 +2463,7 @@ html[data-theme="dark"] .tc .m-d {
 }
 .tc .q3 h2 {
   font: 400 30px / 1 var(--display);
-  text-transform: uppercase;
+  --caixa: "ss20";
   margin: 0;
 }
 .tc .q3 p {
@@ -2914,7 +2914,7 @@ html[data-theme="dark"] .tc .m-d {
 .tc .secx h2 {
   margin: 0;
   font: 400 28px / 1 var(--display);
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 .tc .secx .hdx a {
   font: 600 14px var(--text);
@@ -3096,7 +3096,7 @@ html[data-theme="dark"] .tc .m-d {
 .tc .sc h3 {
   margin: 0;
   font: 400 40px / 0.95 var(--display);
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 .tc .sc .m {
   font-size: 14.5px;
@@ -3388,7 +3388,7 @@ html[data-theme="dark"] .tc .m-d {
 }
 .tc .ob .r .cap b {
   font: 400 44px / 0.95 var(--display);
-  text-transform: uppercase;
+  --caixa: "ss20";
   display: block;
 }
 .tc .obp {
@@ -3824,7 +3824,7 @@ html[data-theme="dark"] .tc .m-d {
 .tc .rd-hd h3 {
   margin: 0;
   font: 400 34px / 1 var(--display);
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 .tc .rd-hd h3 a {
   text-decoration: none;
@@ -3876,7 +3876,7 @@ html[data-theme="dark"] .tc .m-d {
 .tc .rd-gl {
   grid-column: 1 / -1;
   font: 600 11.5px / 1 var(--mono);
-  text-transform: uppercase;
+  --caixa: "ss20";
   letter-spacing: 0.06em;
   color: var(--muted);
 }
@@ -4411,7 +4411,7 @@ html[data-consent] .tc .mx {
 .tc .tc-cidade .onside-label {
   font: 600 12px var(--mono);
   letter-spacing: 0.06em;
-  text-transform: uppercase;
+  --caixa: "ss20";
   color: var(--muted);
 }
 .tc .tc-cidade .onside-input,

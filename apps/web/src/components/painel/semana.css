@@ -74,7 +74,7 @@ html[data-theme="dark"] .sem {
   color: var(--sem-muted);
   font: 600 12px / 1.2 var(--sem-mono);
   letter-spacing: 0.1em;
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 
 /* O card Placar. */
@@ -124,7 +124,7 @@ html[data-theme="dark"] .sem {
   color: #aaa9a4;
   font: 600 11px / 1.35 var(--sem-mono);
   letter-spacing: 0.1em;
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 
 .sem-card .sem-k.sem-acid {
@@ -138,7 +138,7 @@ html[data-theme="dark"] .sem {
 .sem-disp {
   margin: 6px 0 0;
   font: 400 44px / 0.98 var(--sem-display);
-  text-transform: uppercase;
+  --caixa: "ss20";
   overflow-wrap: anywhere;
 }
 
@@ -179,7 +179,7 @@ html[data-theme="dark"] .sem {
 .sem-n {
   font: 400 32px / 1 var(--sem-display);
   font-variant-numeric: tabular-nums;
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 
 .sem-n.is-tv {
@@ -286,7 +286,7 @@ html[data-theme="dark"] .sem {
   border-radius: 999px;
   font: 600 10.5px / 1.2 var(--sem-mono);
   letter-spacing: 0.1em;
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 
 .sem-tag.is-on,

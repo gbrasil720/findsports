@@ -933,7 +933,7 @@ html[data-theme="dark"] .pn3 {
   color: var(--muted);
   font: 600 13px var(--mono);
   letter-spacing: 0.06em;
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 
 .pn3 .pn-jl section:first-of-type .pn-day,
@@ -1137,7 +1137,7 @@ html[data-theme="dark"] .pn3 {
   color: var(--muted);
   font: 600 12.5px var(--mono);
   letter-spacing: 0.06em;
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 
 .pn3 .pn-wd h3 b {
@@ -1395,7 +1395,7 @@ html[data-theme="dark"] .pn3 {
   color: var(--muted);
   font: 600 12px var(--mono);
   letter-spacing: 0.06em;
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 
 .pn3 label.pn-fl .pn-fl-l,

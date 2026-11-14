@@ -60,7 +60,7 @@ export function AccountSettings({ surface }: Props) {
               title="E-mail de acesso"
               description={session?.user.email ?? '—'}
               action={
-                <span className="inline-flex min-h-8 items-center border border-[var(--onside-line)] px-3 font-bold text-[10px] text-[var(--onside-muted)] uppercase tracking-[0.1em]">
+                <span className="inline-flex min-h-8 items-center border border-[var(--onside-line)] px-3 font-bold text-[10px] text-[var(--onside-muted)] caixa-alta tracking-[0.1em]">
                   Somente leitura
                 </span>
               }

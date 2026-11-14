@@ -361,7 +361,7 @@ html[data-theme="dark"]:has(.bp) body {
 .bp .hero h1 .disp {
   display: block;
   font: 400 clamp(48px, 6vw, 84px) / 0.92 var(--display);
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 .bp .hero h1 .wh {
   display: block;
@@ -432,7 +432,7 @@ html[data-theme="dark"]:has(.bp) body {
 }
 .bp .sec h2 {
   font: 400 30px / 1 var(--display);
-  text-transform: uppercase;
+  --caixa: "ss20";
   margin: 0;
 }
 .bp .sh {
@@ -474,7 +474,7 @@ html[data-theme="dark"]:has(.bp) body {
   font: 600 12.5px / 1 var(--mono);
   letter-spacing: 0.04em;
   color: #c9c7c0;
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 .bp .live {
   display: inline-flex;
@@ -502,7 +502,7 @@ html[data-theme="dark"]:has(.bp) body {
 }
 .bp .today h2 {
   font: 400 clamp(34px, 3.2vw, 46px) / 0.95 var(--display);
-  text-transform: uppercase;
+  --caixa: "ss20";
   margin: 14px 0 0;
   overflow-wrap: anywhere;
 }
@@ -741,7 +741,7 @@ html[data-theme="dark"]:has(.bp) body {
 }
 .bp .today .now .st {
   font: 400 clamp(40px, 3.8vw, 54px) / 0.92 var(--display);
-  text-transform: uppercase;
+  --caixa: "ss20";
   color: #c9f135;
 }
 .bp .today .now .when {
@@ -962,7 +962,7 @@ html[data-theme="dark"]:has(.bp) body {
   font: 500 12px var(--mono);
   color: var(--muted);
   margin-top: 6px;
-  text-transform: uppercase;
+  --caixa: "ss20";
   letter-spacing: 0.04em;
 }
 .bp .nextl .h.lv {
@@ -1015,7 +1015,7 @@ html[data-theme="dark"]:has(.bp) body {
   margin: 0 0 10px;
   font: 600 11.5px / 1 var(--mono);
   letter-spacing: 0.08em;
-  text-transform: uppercase;
+  --caixa: "ss20";
   color: var(--muted);
 }
 .bp .amen ul {
@@ -1306,7 +1306,7 @@ footer.bp-foot {
 }
 .bp .gone h1 {
   font: 400 clamp(44px, 5vw, 64px) / 0.92 var(--display);
-  text-transform: uppercase;
+  --caixa: "ss20";
   margin: 14px 0 0;
 }
 .bp .gone h1 .hl {
@@ -1384,7 +1384,7 @@ dialog.bp-layer::backdrop {
 }
 .bp-layer.sheet h2 {
   font: 400 38px / 0.95 var(--display);
-  text-transform: uppercase;
+  --caixa: "ss20";
   margin: 6px 0 0;
 }
 .bp-layer .ctx {
@@ -1464,7 +1464,7 @@ dialog.bp-layer::backdrop {
   gap: 6px;
   font: 600 11.5px var(--mono);
   letter-spacing: 0.08em;
-  text-transform: uppercase;
+  --caixa: "ss20";
   color: var(--muted);
 }
 .bp-layer .form input {
@@ -1477,7 +1477,7 @@ dialog.bp-layer::backdrop {
   font: 500 16px var(--text);
   color: var(--fg);
   outline: none;
-  text-transform: none;
+  --caixa: normal;
   letter-spacing: 0;
 }
 .bp-layer .form input:focus {
@@ -1526,7 +1526,7 @@ dialog.bp-layer::backdrop {
 }
 .bp-layer.modal h2 {
   font: 400 32px / 0.95 var(--display);
-  text-transform: uppercase;
+  --caixa: "ss20";
   margin: 4px 0 0;
   padding-right: 48px;
 }

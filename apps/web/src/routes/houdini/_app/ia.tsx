@@ -495,7 +495,7 @@ function Section({
 /** O número grande das pranchas, em Anton. */
 const display = (size: number): CSSProperties => ({
   font: `400 ${size}px/1 var(--hd-display)`,
-  textTransform: 'uppercase'
+  ['--caixa' as string]: '"ss20"'
 })
 
 function SwitchCard({
@@ -896,7 +896,7 @@ function ArmsTable({ arms, unitLabel }: { arms: Arm[]; unitLabel: string }) {
                 style={{
                   font: '500 14px/1.3 var(--hd-sans)',
                   letterSpacing: 0,
-                  textTransform: 'none',
+                  ['--caixa' as string]: 'normal',
                   color: 'var(--hd-fg)',
                   whiteSpace: 'normal',
                   minWidth: 160

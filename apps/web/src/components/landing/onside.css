@@ -99,7 +99,7 @@ html:has(.onside-page) {
      desenho da v2 usa 1.02–1.05, e ali o til de "NÃO" entra no "O" de cima
      ("GOOGLE" vira "GQOGLE"): os títulos da landing ficam com este valor. */
   line-height: 1.15;
-  text-transform: uppercase;
+  --caixa: "ss20";
   text-wrap: balance;
 }
 
@@ -159,7 +159,7 @@ html:has(.onside-page) {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.16em;
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 
 /* ─── Header ─── */
@@ -245,7 +245,7 @@ html:has(.onside-page) {
   border: 1.5px solid currentColor;
   font-size: 12px;
   font-weight: 700;
-  text-transform: uppercase;
+  --caixa: "ss20";
   letter-spacing: 0.04em;
   transition:
     background-color var(--onside-motion-base) ease,
@@ -327,7 +327,7 @@ html:has(.onside-page) {
   color: var(--onside-ink);
   font-size: 13px;
   font-weight: 700;
-  text-transform: uppercase;
+  --caixa: "ss20";
   letter-spacing: 0.035em;
   cursor: pointer;
   transition:
@@ -399,7 +399,7 @@ html:has(.onside-page) {
   font-family: var(--onside-mono);
   font-size: 10px;
   letter-spacing: 0.06em;
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 
 .onside-page .onside-proof > span {
@@ -539,7 +539,7 @@ html:has(.onside-page) {
   font-size: 8px;
   letter-spacing: 0.06em;
   line-height: 1.5;
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 
 .onside-page .onside-map-card.is-ink {
@@ -683,7 +683,7 @@ html:has(.onside-page) {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.13em;
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 
 .onside-page .onside-live-dot {
@@ -798,7 +798,7 @@ html:has(.onside-page) {
   font-family: var(--onside-mono);
   font-size: 9px;
   letter-spacing: 0.12em;
-  text-transform: uppercase;
+  --caixa: "ss20";
   opacity: 0;
   transition: opacity 0.6s ease;
 }
@@ -829,7 +829,7 @@ html:has(.onside-page) {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.12em;
-  text-transform: uppercase;
+  --caixa: "ss20";
   animation: onside-marquee 32s linear infinite;
 }
 
@@ -869,7 +869,7 @@ html:has(.onside-page) {
   color: var(--onside-ink);
   font-family: var(--onside-mono);
   font-size: 10px;
-  text-transform: uppercase;
+  --caixa: "ss20";
   letter-spacing: 0.06em;
   cursor: pointer;
 }
@@ -1199,7 +1199,7 @@ html:has(.onside-page) {
   font-size: 22px;
   font-weight: 400;
   line-height: 1.15;
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 
 .onside-page .onside-arrival-card > div {
@@ -1241,7 +1241,7 @@ html:has(.onside-page) {
   font-size: 40px;
   font-weight: 400;
   line-height: 1.15;
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 
 .onside-page .onside-journey-copy p {
@@ -1309,7 +1309,7 @@ html:has(.onside-page) {
   font-family: var(--onside-display);
   font-size: clamp(40px, 4.4vw, 64px);
   line-height: 1;
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 
 .onside-page .onside-occasion-list small {
@@ -1318,7 +1318,7 @@ html:has(.onside-page) {
   font-family: var(--onside-mono);
   font-size: 10px;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 
 .onside-page .onside-occasion-list small.is-acid {
@@ -1565,7 +1565,7 @@ html:has(.onside-page) {
   font-family: var(--onside-mono);
   font-size: 10px;
   letter-spacing: 0.13em;
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 
 .onside-page .onside-final-cta h2 {
@@ -1653,7 +1653,7 @@ html:has(.onside-page) {
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
+  --caixa: "ss20";
   transition:
     background-color var(--onside-motion-base) ease,
     color var(--onside-motion-base) ease,
@@ -1674,7 +1674,7 @@ html:has(.onside-page) {
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.14em;
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 
 .onside-page .onside-footer-column a {
@@ -1728,7 +1728,7 @@ html:has(.onside-page) {
   font-family: var(--onside-mono);
   font-size: 9px;
   letter-spacing: 0.1em;
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 
 .onside-page .onside-footer-status {
@@ -1758,7 +1758,7 @@ html:has(.onside-page) {
   line-height: 0.82;
   letter-spacing: -0.02em;
   text-align: center;
-  text-transform: uppercase;
+  --caixa: "ss20";
   white-space: nowrap;
   user-select: none;
   transform: translateY(0.1em);
@@ -1810,7 +1810,7 @@ html:has(.onside-page) {
   font-family: var(--onside-mono);
   font-size: 10px;
   letter-spacing: 0.1em;
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 
 .onside-page .onside-sticky-button {
@@ -1824,7 +1824,7 @@ html:has(.onside-page) {
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
+  --caixa: "ss20";
   transition:
     background-color var(--onside-motion-fast) ease,
     translate 0.4s var(--onside-ease-power3);

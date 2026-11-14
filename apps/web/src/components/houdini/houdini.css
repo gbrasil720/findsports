@@ -226,7 +226,7 @@ html[data-consent]:has(.houdini) body {
     calc(20px + env(safe-area-inset-left, 0px));
   font: 600 11px / 1.2 var(--hd-mono);
   letter-spacing: 0.08em;
-  text-transform: uppercase;
+  --caixa: "ss20";
 }
 
 .hd-env[data-env="produção"] {
@@ -293,7 +293,7 @@ html[data-consent]:has(.houdini) body {
 .hd-brand-word {
   display: block;
   font: 400 26px / 1 var(--hd-display);
-  text-transform: uppercase;
+  --caixa: "ss20";
   letter-spacing: 0.01em;
 }
 
@@ -302,7 +302,7 @@ html[data-consent]:has(.houdini) body {
   margin-top: 5px;
   font: 600 10.5px / 1 var(--hd-mono);
   letter-spacing: 0.1em;
-  text-transform: uppercase;
+  --caixa: "ss20";
   color: var(--hd-muted);
 }
 
@@ -320,7 +320,7 @@ html[data-consent]:has(.houdini) body {
   padding: 14px 12px 6px;
   font: 600 10.5px / 1 var(--hd-mono);
   letter-spacing: 0.1em;
-  text-transform: uppercase;
+  --caixa: "ss20";
   color: var(--hd-muted);
 }
 
@@ -486,7 +486,7 @@ html[data-consent]:has(.houdini) body {
 
 .hd-h1 {
   font: 400 56px / 1.02 var(--hd-display);
-  text-transform: uppercase;
+  --caixa: "ss20";
   letter-spacing: -0.01em;
   word-spacing: 0.08em;
   color: var(--hd-fg);
@@ -529,7 +529,7 @@ html[data-consent]:has(.houdini) body {
 .hd-eyebrow {
   font: 600 11px / 1 var(--hd-mono);
   letter-spacing: 0.1em;
-  text-transform: uppercase;
+  --caixa: "ss20";
   color: var(--hd-muted);
 }
 
@@ -1048,7 +1048,7 @@ a.hd-kpi:active {
   text-align: left;
   font: 600 11px / 1 var(--hd-mono);
   letter-spacing: 0.06em;
-  text-transform: uppercase;
+  --caixa: "ss20";
   color: var(--hd-muted);
   border-bottom: 1px solid var(--hd-line);
   white-space: nowrap;
@@ -1159,7 +1159,7 @@ a.hd-row + a.hd-row {
   margin-bottom: 6px;
   font: 600 10.5px / 1 var(--hd-mono);
   letter-spacing: 0.08em;
-  text-transform: uppercase;
+  --caixa: "ss20";
   color: var(--hd-muted);
 }
 

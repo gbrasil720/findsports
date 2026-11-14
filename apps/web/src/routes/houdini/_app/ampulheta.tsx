@@ -187,7 +187,7 @@ function AmpulhetaPage() {
                   <h2
                     style={{
                       font: '400 22px/1 var(--hd-display)',
-                      textTransform: 'uppercase'
+                      ['--caixa' as string]: '"ss20"'
                     }}
                   >
                     {column.label}

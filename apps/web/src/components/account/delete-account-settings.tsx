@@ -214,7 +214,7 @@ export function DeleteAccountSettings({ surface }: { surface: 'fan' | 'pub' }) {
 
   return (
     <section className="border border-[var(--onside-live)] bg-[var(--onside-paper)] p-5 sm:p-6">
-      <p className="font-[family-name:var(--onside-mono)] font-bold text-[10px] text-[var(--onside-live-text)] uppercase tracking-[0.14em]">
+      <p className="font-[family-name:var(--onside-mono)] font-bold text-[10px] text-[var(--onside-live-text)] caixa-alta tracking-[0.14em]">
         Zona de exclusão
       </p>
       <div
