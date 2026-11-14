@@ -11,6 +11,7 @@ import {
 import { liveStripeSubscriptionId } from '@findsports_oficial/auth/account-deletion-policy'
 import { pixExternalId } from '@findsports_oficial/auth/pix-sync'
 import {
+  annualPlansAvailable,
   founderCouponUsable,
   pixFounderSeatAvailable,
   pushInvoiceDetails
@@ -34,7 +35,7 @@ import {
   getEventStartProblem
 } from '@findsports_oficial/db/event-window'
 import { HOUSE_OFFER_MAX_LENGTH } from '@findsports_oficial/db/house-offer'
-import { user } from '@findsports_oficial/db/schema/auth'
+import { stripeSubscription, user } from '@findsports_oficial/db/schema/auth'
 import {
   bar,
   barPhoto,
@@ -465,6 +466,31 @@ async function replacePendingPixCheckout(barId: string, checkoutId: string) {
       message: error instanceof Error ? error.message : String(error)
     })
   )
+}
+
+/**
+ * Mensal ou anual (WEB-442). O intervalo não está na nossa `subscription`: é
+ * o que o plugin do Stripe grava em `stripe_subscription` a partir do preço.
+ * Teste do cadastro e Pix são sempre mensais.
+ */
+async function readBillingInterval(current: {
+  provider: string | null
+  externalSubscriptionId: string | null
+}): Promise<'month' | 'year'> {
+  if (current.provider !== 'stripe' || !current.externalSubscriptionId) {
+    return 'month'
+  }
+  const [row] = await db
+    .select({ billingInterval: stripeSubscription.billingInterval })
+    .from(stripeSubscription)
+    .where(
+      eq(
+        stripeSubscription.stripeSubscriptionId,
+        current.externalSubscriptionId
+      )
+    )
+    .limit(1)
+  return row?.billingInterval === 'year' ? 'year' : 'month'
 }
 
 async function getOwnBar(userId: string) {
@@ -1434,6 +1460,14 @@ export const pubRouter = router({
     }
   }),
 
+  /**
+   * Plano anual à venda no cartão (WEB-442): só com os três preços anuais na
+   * conta do Stripe. Consulta o Stripe: sai em requisição própria.
+   */
+  getAnnualPlansAvailable: pubProcedure.query(async () => ({
+    available: await annualPlansAvailable(stripeClient)
+  })),
+
   /** Formas de pagar além do cartão: o Pix só aparece com a chave no Worker. */
   getPaymentMethods: pubProcedure.query(() => ({ pix: pixEnabled() })),
 
@@ -1599,12 +1633,14 @@ export const pubRouter = router({
 
     const existingBar = await getOwnBar(userId)
     const now = new Date()
+    const current = existingBar.subscription
 
-    return existingBar.subscription
+    return current
       ? {
-          ...existingBar.subscription,
-          currentPlan: getCurrentPlan(existingBar.subscription, now),
-          standing: getSubscriptionStanding(existingBar.subscription, now)
+          ...current,
+          currentPlan: getCurrentPlan(current, now),
+          standing: getSubscriptionStanding(current, now),
+          billingInterval: await readBillingInterval(current)
         }
       : null
   }),
