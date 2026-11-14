@@ -75,7 +75,6 @@ export async function createTicket(
     id: reservationId,
     event_id: eventId,
     user_id: fan.id,
-    party_size: 1,
     status: unmarked ? 'cancelled' : 'confirmed',
     offer_snapshot: offerSnapshot
   })

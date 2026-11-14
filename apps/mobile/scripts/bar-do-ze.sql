@@ -32,14 +32,14 @@ values (gen_random_uuid()::text, 'b0b0b0b0-0000-4000-8000-000000000e01', 'elite'
 
 -- Ids em UUID: `attendance.set` recusa outro formato.
 -- Horários em UTC (a coluna é sem fuso): Brasília = UTC - 3.
-insert into event (id, bar_id, sport_id, championship, starts_at, participant_free_text, accepts_reservations, on_big_screen, with_sound) values
- ('b0b0b0b0-0000-4000-8000-000000000e11', 'b0b0b0b0-0000-4000-8000-000000000e01', (select id from sport where name = 'Futebol'), 'Brasileirão', (now() at time zone 'utc') - interval '40 minutes', null, false, null, null),
- ('b0b0b0b0-0000-4000-8000-000000000e12',  'b0b0b0b0-0000-4000-8000-000000000e01', (select id from sport where name = 'Basquete'), 'NBA', date_trunc('day', now() at time zone 'America/Sao_Paulo') + interval '22 hours' + interval '3 hours', 'Lakers × Celtics', false, null, null),
- ('b0b0b0b0-0000-4000-8000-000000000e13',  'b0b0b0b0-0000-4000-8000-000000000e01', (select id from sport where name = 'Futebol'), 'Brasileirão', date_trunc('day', now() at time zone 'America/Sao_Paulo') + interval '1 day 16 hours' + interval '3 hours', null, true, null, null),
- ('b0b0b0b0-0000-4000-8000-000000000e14',   'b0b0b0b0-0000-4000-8000-000000000e01', (select id from sport where name = 'Fórmula 1'), 'Fórmula 1', date_trunc('day', now() at time zone 'America/Sao_Paulo') + interval '2 days 14 hours' + interval '3 hours', 'McLaren no GP de São Paulo', false, false, true),
- ('b0b0b0b0-0000-4000-8000-000000000e15', 'b0b0b0b0-0000-4000-8000-000000000e01', (select id from sport where name = 'Futebol'), 'Copa do Brasil', date_trunc('day', now() at time zone 'America/Sao_Paulo') + interval '4 days 21 hours 30 minutes' + interval '3 hours', null, true, null, null),
+insert into event (id, bar_id, sport_id, championship, starts_at, participant_free_text, on_big_screen, with_sound) values
+ ('b0b0b0b0-0000-4000-8000-000000000e11', 'b0b0b0b0-0000-4000-8000-000000000e01', (select id from sport where name = 'Futebol'), 'Brasileirão', (now() at time zone 'utc') - interval '40 minutes', null, null, null),
+ ('b0b0b0b0-0000-4000-8000-000000000e12',  'b0b0b0b0-0000-4000-8000-000000000e01', (select id from sport where name = 'Basquete'), 'NBA', date_trunc('day', now() at time zone 'America/Sao_Paulo') + interval '22 hours' + interval '3 hours', 'Lakers × Celtics', null, null),
+ ('b0b0b0b0-0000-4000-8000-000000000e13',  'b0b0b0b0-0000-4000-8000-000000000e01', (select id from sport where name = 'Futebol'), 'Brasileirão', date_trunc('day', now() at time zone 'America/Sao_Paulo') + interval '1 day 16 hours' + interval '3 hours', null, null, null),
+ ('b0b0b0b0-0000-4000-8000-000000000e14',   'b0b0b0b0-0000-4000-8000-000000000e01', (select id from sport where name = 'Fórmula 1'), 'Fórmula 1', date_trunc('day', now() at time zone 'America/Sao_Paulo') + interval '2 days 14 hours' + interval '3 hours', 'McLaren no GP de São Paulo', false, true),
+ ('b0b0b0b0-0000-4000-8000-000000000e15', 'b0b0b0b0-0000-4000-8000-000000000e01', (select id from sport where name = 'Futebol'), 'Copa do Brasil', date_trunc('day', now() at time zone 'America/Sao_Paulo') + interval '4 days 21 hours 30 minutes' + interval '3 hours', null, null, null),
  -- Jogo da semana passada, para as avaliações com "O que pesou?".
- ('b0b0b0b0-0000-4000-8000-000000000e10', 'b0b0b0b0-0000-4000-8000-000000000e01', (select id from sport where name = 'Futebol'), 'Brasileirão', (now() at time zone 'utc') - interval '6 days', 'Corinthians × Santos', false, null, null);
+ ('b0b0b0b0-0000-4000-8000-000000000e10', 'b0b0b0b0-0000-4000-8000-000000000e01', (select id from sport where name = 'Futebol'), 'Brasileirão', (now() at time zone 'utc') - interval '6 days', 'Corinthians × Santos', null, null);
 
 insert into event_participants (event_id, team_id, position) values
  ('b0b0b0b0-0000-4000-8000-000000000e11', (select id from team where name = 'Corinthians' and kind = 'team' limit 1), 0),
