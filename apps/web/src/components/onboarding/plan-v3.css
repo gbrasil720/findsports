@@ -428,8 +428,7 @@
   font-size: 14px;
 }
 
-/* A conta do anual no cartão: verde-limão quando economiza, neutra quando o
- * mensal de fundador sai mais barato. */
+/* A conta do anual no cartão. */
 .lp3.ob3 .pl-save {
   display: grid;
   gap: 4px;
@@ -449,16 +448,6 @@
 .lp3.ob3 .pl-save span {
   font-size: 13px;
   line-height: 1.35;
-}
-
-.lp3.ob3 .pl-save.off {
-  background: var(--sub);
-  color: var(--ink);
-  box-shadow: none;
-}
-
-.lp3.ob3 .pl-save.off b {
-  font-size: 18px;
 }
 
 /* O preço novo entra ao trocar o ciclo (a chave do bloco troca). */

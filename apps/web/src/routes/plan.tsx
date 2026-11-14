@@ -560,11 +560,12 @@ function PlanSelection() {
       }
     }
     if (annual) {
-      // 10 meses riscando os 12; o cupom de fundador é só do mensal.
+      // 10 meses riscando os 12, do mensal que o bar pagaria (fundador,
+      // se vale). Com o cupom carregando, o preço espera.
       const deal = dealFor(plan)
       return {
         label: onTrial ? 'Depois do teste' : 'Por ano',
-        charge: planChargeForAnnual(plan),
+        charge: deal ? planChargeForAnnual(deal) : null,
         strike: true,
         period: '/ano',
         note: onTrial ? 'Só se você contratar.' : null,
