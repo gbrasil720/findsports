@@ -6,6 +6,7 @@ import {
 import { INTEREST_MIN_HISTORY } from './attendance'
 import { pctChange } from './commercial-analytics/types'
 import { gameTitle } from './game-participants'
+import { visit } from './visits'
 
 /*
  * A faixa de números do jogo publicado no painel (WEB-433, PJ-depois e
@@ -18,6 +19,11 @@ import { gameTitle } from './game-participants'
  * Os números são do próprio bar, sem nome de ninguém, e somam as ações que
  * a série diária já mostra a todo plano (WEB-449); a contagem de quem vai
  * segue só no Elite (`barReservations.going`, WEB-127).
+ *
+ * "Primeira vez no bar" (WEB-530, só Elite, do começo do jogo em diante): de
+ * quem chegou com código neste jogo, quantos não tinham visita (`visits.ts`)
+ * a este bar num jogo anterior. É a mesma regra do selo de primeira visita
+ * do Quem vai, que já mostra cada um pelo nome: por isso não há piso.
  */
 
 /** Jogos de até 60 dias atrás: Próximos e o começo de Passados. */
@@ -35,6 +41,8 @@ export type EventNumbers = {
   barsInNeighborhood: number
   /** Jogo encerrado: % contra a média do bar; nulo sem histórico. */
   vsAverage: number | null
+  /** Elite, jogo começado: chegaram com código sem visita anterior aqui. */
+  firstTime: number | null
 }
 
 type Row = {
@@ -44,13 +52,14 @@ type Row = {
   interested_day: number
   views: number
   bars: number
+  first_time: number | null
 }
 
 /** A conta da média, sem banco: só jogos encerrados, com histórico mínimo. */
-export function withAverage(
-  rows: readonly Omit<EventNumbers, 'vsAverage'>[],
+export function withAverage<T extends { eventId: string; interested: number }>(
+  rows: readonly T[],
   ended: ReadonlySet<string>
-): EventNumbers[] {
+): (T & { vsAverage: number | null })[] {
   const past = rows.filter((r) => ended.has(r.eventId))
   const average =
     past.length >= INTEREST_MIN_HISTORY
@@ -69,6 +78,8 @@ export async function readEventNumbers(input: {
   barId: string
   city: string
   neighborhood: string
+  /** Elite vigente (`issuesCounterCode`): só ele vê "primeira vez no bar". */
+  elite: boolean
   now?: Date
 }): Promise<EventNumbers[]> {
   const now = input.now ?? new Date()
@@ -118,7 +129,22 @@ export async function readEventNumbers(input: {
              WHERE a.event_id = o.id AND p.event_id = m.id
            )
          )
-      ) AS bars
+      ) AS bars,
+      CASE WHEN ${input.elite} AND m.starts_at <= ${utcNowSql(now)} THEN (
+        SELECT count(DISTINCT r.user_id)::int
+        FROM reservation_code_use u
+        JOIN reservation_code rc ON rc.id = u.code_id
+        JOIN reservation r ON r.id = rc.reservation_id
+        WHERE r.event_id = m.id AND u.undone_at IS NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM ${visit}
+            JOIN event ve ON ve.id = ${visit.eventId}
+            WHERE ${visit.userId} = r.user_id
+              AND ${visit.barId} = ${input.barId}
+              AND ${visit.eventId} <> m.id
+              AND ve.starts_at <= m.starts_at
+          )
+      ) END AS first_time
     FROM mine m
   `)
   return withAverage(
@@ -127,7 +153,8 @@ export async function readEventNumbers(input: {
       interested: r.interested,
       interestedLastDay: r.interested_day,
       views: r.views,
-      barsInNeighborhood: r.bars
+      barsInNeighborhood: r.bars,
+      firstTime: r.first_time
     })),
     new Set(rows.filter((r) => r.ended).map((r) => r.id))
   )

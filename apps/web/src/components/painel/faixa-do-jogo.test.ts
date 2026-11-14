@@ -7,7 +7,8 @@ const numbers = {
   interestedLastDay: 12,
   views: 96,
   barsInNeighborhood: 1,
-  vsAverage: 24
+  vsAverage: 24,
+  firstTime: null as number | null
 }
 const base = {
   numbers,

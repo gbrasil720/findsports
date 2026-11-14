@@ -83,6 +83,7 @@ import {
   canCancelSubscription,
   getCurrentPlan,
   getSubscriptionStanding,
+  issuesCounterCode,
   type SubscriptionForPlan
 } from '../lib/current-plan'
 import { getEventCreationPolicy } from '../lib/event-creation-policy'
@@ -1087,7 +1088,8 @@ export const pubRouter = router({
     return readEventNumbers({
       barId: existingBar.id,
       city: existingBar.city,
-      neighborhood: existingBar.neighborhood
+      neighborhood: existingBar.neighborhood,
+      elite: issuesCounterCode(existingBar.subscription)
     })
   }),
 
