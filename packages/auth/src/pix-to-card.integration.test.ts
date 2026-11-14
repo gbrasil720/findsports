@@ -156,6 +156,9 @@ function cardSubscription(o: {
   trialEnd: Date
   status?: Stripe.Subscription.Status
   upgradeCents?: number
+  founderCoupon?: string
+  /** Primeira fatura (a da diferença): paga por padrão. */
+  firstInvoice?: 'paid' | 'open'
 }) {
   return {
     id: o.id,
@@ -165,7 +168,13 @@ function cardSubscription(o: {
     customer: o.customerId,
     metadata: {
       userId: o.userId,
-      ...(o.upgradeCents ? { pixUpgradeCents: String(o.upgradeCents) } : {})
+      ...(o.upgradeCents ? { pixUpgradeCents: String(o.upgradeCents) } : {}),
+      ...(o.founderCoupon ? { founderCoupon: o.founderCoupon } : {})
+    },
+    latest_invoice: {
+      id: 'in_first',
+      status: o.firstInvoice ?? 'paid',
+      amount_paid: o.firstInvoice === 'open' ? 0 : (o.upgradeCents ?? 0)
     },
     default_payment_method: 'pm_card_1',
     discounts: [],
@@ -414,89 +423,167 @@ integrationTest(
   }
 )
 
-/** Stripe que guarda as chamadas de fatura, com a idempotência dele. */
-function billingStripe({ declines = false } = {}) {
-  const calls: { op: string; params: unknown; key?: string }[] = []
-  const seen = new Map<string, unknown>()
-  const once = (
-    op: string,
-    params: unknown,
-    key?: string,
-    result?: unknown
-  ) => {
-    if (key && seen.has(key)) return seen.get(key)
-    calls.push({ op, params, key })
-    if (key) seen.set(key, result)
-    return result
-  }
+/** Stripe que guarda as chamadas de assinatura e de checkout. */
+function recordingStripe() {
+  const calls: { op: string; args: unknown[] }[] = []
   const client = {
-    invoices: {
-      create: async (params: unknown, o?: { idempotencyKey?: string }) =>
-        once('invoice', params, o?.idempotencyKey, {
-          id: 'in_1',
-          status: 'draft'
-        }),
-      finalizeInvoice: async (
-        _id: string,
-        _p: unknown,
-        o?: { idempotencyKey?: string }
-      ) => once('finalize', null, o?.idempotencyKey, { id: 'in_1' }),
-      pay: async (
-        _id: string,
-        _p: unknown,
-        o?: { idempotencyKey?: string }
-      ) => {
-        once('pay', null, o?.idempotencyKey)
-        if (declines) throw new Error('Your card was declined.')
-        return { id: 'in_1', status: 'paid' }
+    coupons: {
+      retrieve: async (id: string) =>
+        id === 'fundador_anual' ? { times_redeemed: 0 } : { valid: true }
+    },
+    customers: {
+      create: async (...args: unknown[]) => {
+        calls.push({ op: 'customer', args })
+        return { id: `cus_new_${crypto.randomUUID().slice(0, 6)}` }
+      },
+      retrieve: async () => ({ deleted: false, address: { line1: 'x' } }),
+      update: async () => ({}),
+      listTaxIds: async () => ({ data: [] })
+    },
+    prices: {
+      list: async (params: { lookup_keys: string[] }) => ({
+        data: [{ id: `price_${params.lookup_keys[0]}` }]
+      })
+    },
+    checkout: {
+      sessions: {
+        create: async (params: unknown) => {
+          calls.push({ op: 'session', args: [params] })
+          return { url: 'https://checkout.stripe.test/cs_1' }
+        }
       }
     },
-    invoiceItems: {
-      create: async (params: unknown, o?: { idempotencyKey?: string }) =>
-        once('item', params, o?.idempotencyKey, { id: 'ii_1' })
+    subscriptions: {
+      update: async (...args: unknown[]) => {
+        calls.push({ op: 'update', args })
+        const [id, params] = args as [string, { discounts: unknown[] }]
+        return { ...lastSubscription, id, discounts: params.discounts }
+      },
+      cancel: async (...args: unknown[]) => {
+        calls.push({ op: 'cancel', args })
+        return { id: args[0], status: 'canceled' }
+      }
     }
   } as unknown as Stripe
-  return { client, calls }
+  let lastSubscription: object = {}
+  return {
+    client,
+    calls,
+    remember: (sub: object) => {
+      lastSubscription = sub
+    }
+  }
+}
+
+type SessionParams = {
+  line_items: {
+    price?: string
+    quantity: number
+    price_data?: { unit_amount: number }
+  }[]
+  discounts?: unknown
+  allow_promotion_codes?: boolean
+  cancel_url: string
+  subscription_data: { trial_end: number; metadata: Record<string, string> }
 }
 
 integrationTest(
-  'checkout da subida: a diferença até o fim do mês pago vai na assinatura',
+  'subida: a diferença é um item avulso da sessão, cobrado no checkout, e o cupom vai para depois',
   async () => {
-    const { checkoutParamsFor, createPixBar } = ready()
+    const { createPixBar, startCardFromPix } = ready()
     const paidUntil = new Date(Date.now() + 15 * DAY)
     const { owner } = await createPixBar({ paidUntil })
-    // Vagas de fundador valendo: o Elite sai a 269.
-    const client = {
-      coupons: {
-        retrieve: async (id: string) =>
-          id === 'fundador_anual' ? { times_redeemed: 0 } : { valid: true }
-      }
-    } as unknown as Stripe
+    const stripe = recordingStripe()
 
-    const up = await checkoutParamsFor(owner, null, client, { plan: 'elite' })
+    const { url } = await startCardFromPix(
+      { ...owner, email: `${owner.id}@integration.invalid` },
+      { plan: 'elite' },
+      stripe.client,
+      'https://app.test'
+    )
+    expect(url).toBe('https://checkout.stripe.test/cs_1')
+    const session = stripe.calls.find((c) => c.op === 'session')
+      ?.args[0] as SessionParams
     const expected = pixUpgradeCents({
       currentMonthlyReais: 147,
       newMonthlyReais: 269,
       paidUntil
     })
-    expect(expected).toBeGreaterThan(5000)
-    const sent = Number(
-      (up.subscription_data?.metadata as Record<string, string>).pixUpgradeCents
+    expect(session.line_items[0]).toEqual({
+      price: 'price_elite_monthly',
+      quantity: 1
+    })
+    const charged = session.line_items[1]?.price_data?.unit_amount ?? 0
+    expect(Math.abs(charged - expected)).toBeLessThanOrEqual(1)
+    // Sem cupom nem código na sessão: tirariam o desconto do item avulso.
+    expect(session.discounts).toBeUndefined()
+    expect(session.allow_promotion_codes).toBeUndefined()
+    expect(session.subscription_data).toMatchObject({
+      trial_end: Math.floor(paidUntil.getTime() / 1000),
+      metadata: {
+        pixUpgradeCents: String(charged),
+        founderCoupon: 'eM7dQpMF',
+        userId: owner.id
+      }
+    })
+    expect(session.cancel_url).toBe(
+      'https://app.test/plan?troca=cartao&para=elite'
     )
-    // Segundos entre a conta do teste e a do checkout.
-    expect(Math.abs(sent - expected)).toBeLessThanOrEqual(1)
+    // O dono já tinha cliente no Stripe: é o mesmo, para o plugin achá-lo.
+    expect(stripe.calls.filter((c) => c.op === 'customer')).toHaveLength(0)
+  }
+)
 
-    for (const plan of ['pro', 'starter'] as const) {
-      const flat = await checkoutParamsFor(owner, null, client, { plan })
-      expect(flat.subscription_data).toEqual({
-        trial_end: Math.floor(paidUntil.getTime() / 1000)
+integrationTest(
+  'mesmo plano: só a mensalidade, com o cupom na sessão e nada cobrado hoje',
+  async () => {
+    const { createPixBar, startCardFromPix } = ready()
+    const paidUntil = new Date(Date.now() + 15 * DAY)
+    const { owner } = await createPixBar({ paidUntil })
+    const stripe = recordingStripe()
+
+    await startCardFromPix(
+      { ...owner, email: `${owner.id}@integration.invalid` },
+      { plan: 'pro' },
+      stripe.client,
+      'https://app.test'
+    )
+    const session = stripe.calls.find((c) => c.op === 'session')
+      ?.args[0] as SessionParams
+    expect(session.line_items).toHaveLength(1)
+    expect(session.discounts).toEqual([{ coupon: 'eM7dQpMF' }])
+    expect(session.subscription_data.metadata.pixUpgradeCents).toBeUndefined()
+  }
+)
+
+integrationTest(
+  'sem a chave da AbacatePay, ou sem Pix ativo: recusa antes do Stripe',
+  async () => {
+    const { createPixBar, startCardFromPix, CardFromPixRefusal } = ready()
+    const { owner } = await createPixBar({
+      paidUntil: new Date(Date.now() + 15 * DAY)
+    })
+    const stripe = recordingStripe()
+    const who = { ...owner, email: `${owner.id}@integration.invalid` }
+    await expect(
+      startCardFromPix(who, { plan: 'elite' }, stripe.client, 'https://a', {
+        pixCancellable: false
       })
-    }
+    ).rejects.toBeInstanceOf(CardFromPixRefusal)
+    await expect(
+      startCardFromPix(
+        { id: crypto.randomUUID(), name: 'x', email: 'x@y.invalid' },
+        { plan: 'elite' },
+        stripe.client,
+        'https://a'
+      )
+    ).rejects.toBeInstanceOf(CardFromPixRefusal)
+    expect(stripe.calls).toHaveLength(0)
   }
 )
 
 integrationTest(
-  'cartão da subida confirmado: uma fatura só com a diferença, mesmo com eventos repetidos',
+  'diferença sem pagar: o Pix fica, o plano não muda e a assinatura do cartão é cancelada',
   async () => {
     const { applyStripeSubscription, createPixBar, stateOf } = ready()
     const paidUntil = new Date(Date.now() + 15 * DAY)
@@ -506,69 +593,88 @@ integrationTest(
       customerId: bar.customerId,
       userId: bar.userId,
       trialEnd: paidUntil,
-      upgradeCents: 6100
+      upgradeCents: 7285,
+      firstInvoice: 'open'
     })
-    const stripe = billingStripe()
-    const log = spyOn(console, 'log').mockImplementation(() => {})
-    try {
-      await applyStripeSubscription(card, stripe.client)
-      await applyStripeSubscription(card, stripe.client)
-    } finally {
-      log.mockRestore()
-    }
-
-    expect(stripe.calls.map((c) => c.op)).toEqual([
-      'invoice',
-      'item',
-      'finalize',
-      'pay'
-    ])
-    expect(stripe.calls[0]?.params).toMatchObject({
-      customer: bar.customerId,
-      default_payment_method: 'pm_card_1',
-      pending_invoice_items_behavior: 'exclude'
-    })
-    expect(stripe.calls[1]?.params).toMatchObject({
-      invoice: 'in_1',
-      amount: 6100,
-      currency: 'brl',
-      discountable: false
-    })
-    expect(await stateOf(bar.barId)).toMatchObject({
-      isActive: true,
-      plan: 'elite',
-      provider: 'stripe'
-    })
-  }
-)
-
-integrationTest(
-  'cartão recusado na diferença: o bar troca de plano mesmo assim e o Stripe cobra depois',
-  async () => {
-    const { applyStripeSubscription, createPixBar, stateOf } = ready()
-    const paidUntil = new Date(Date.now() + 15 * DAY)
-    const bar = await createPixBar({ paidUntil })
-    const card = cardSubscription({
-      id: `sub_${bar.barId}`,
-      customerId: bar.customerId,
-      userId: bar.userId,
-      trialEnd: paidUntil,
-      upgradeCents: 6100
-    })
-    const stripe = billingStripe({ declines: true })
-    const log = spyOn(console, 'log').mockImplementation(() => {})
+    const stripe = recordingStripe()
     const error = spyOn(console, 'error').mockImplementation(() => {})
     try {
-      await applyStripeSubscription(card, stripe.client)
-      expect(error).toHaveBeenCalled()
+      // Repetido e fora de ordem: nunca troca nada.
+      expect(await applyStripeSubscription(card, stripe.client)).toBeNull()
+      expect(await applyStripeSubscription(card, stripe.client)).toBeNull()
     } finally {
-      log.mockRestore()
       error.mockRestore()
     }
+
+    expect(abacate.cancels).toEqual([])
+    expect(abacate.subs.get(bar.pixId)?.status).toBe('ACTIVE')
+    expect(stripe.calls.filter((c) => c.op === 'cancel')[0]?.args[0]).toBe(
+      card.id
+    )
+    expect(await stateOf(bar.barId)).toEqual({
+      isActive: true,
+      status: 'active',
+      plan: 'pro',
+      provider: 'abacatepay',
+      externalSubscriptionId: bar.pixId,
+      cancelAt: null
+    })
+
+    // O `deleted` do cartão cancelado chega depois: não é a assinatura do bar.
+    expect(
+      await applyStripeSubscription(
+        { ...card, status: 'canceled' } as Stripe.Subscription,
+        stripe.client
+      )
+    ).toBeNull()
+    expect(await stateOf(bar.barId)).toMatchObject({
+      isActive: true,
+      provider: 'abacatepay',
+      plan: 'pro'
+    })
+  }
+)
+
+integrationTest(
+  'diferença paga: cupom de fundador na assinatura, Pix cancelado e a linha vira do cartão',
+  async () => {
+    const { applyStripeSubscription, createPixBar, stateOf } = ready()
+    const paidUntil = new Date(Date.now() + 15 * DAY)
+    const bar = await createPixBar({ paidUntil })
+    const card = cardSubscription({
+      id: `sub_${bar.barId}`,
+      customerId: bar.customerId,
+      userId: bar.userId,
+      trialEnd: paidUntil,
+      upgradeCents: 7285,
+      founderCoupon: 'eM7dQpMF'
+    })
+    const stripe = recordingStripe()
+    stripe.remember(card)
+    const log = spyOn(console, 'log').mockImplementation(() => {})
+    try {
+      await applyStripeSubscription(card, stripe.client)
+      await applyStripeSubscription(card, stripe.client)
+    } finally {
+      log.mockRestore()
+    }
+
+    const updates = stripe.calls.filter((c) => c.op === 'update')
+    expect(updates).toHaveLength(1)
+    expect(updates[0]?.args).toEqual([
+      card.id,
+      {
+        discounts: [{ coupon: 'eM7dQpMF' }],
+        expand: ['discounts.source.coupon']
+      },
+      { idempotencyKey: `pix-founder-${card.id}` }
+    ])
+    expect(abacate.cancels).toEqual([bar.pixId])
     expect(await stateOf(bar.barId)).toMatchObject({
       isActive: true,
       plan: 'elite',
-      provider: 'stripe'
+      provider: 'stripe',
+      externalSubscriptionId: card.id
     })
   }
 )
