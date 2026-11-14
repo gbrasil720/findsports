@@ -3,6 +3,7 @@ import type Stripe from 'stripe'
 import {
   annualPlansAvailable,
   customerPrefillFor,
+  FOUNDER_ANNUAL_COUPON_ID,
   founderCouponUsable,
   pixFounderSeatAvailable,
   prefillCustomer,
@@ -117,18 +118,31 @@ describe('consulta do cupom de fundador com teto de tempo', () => {
   // Nenhum fundador pelo Pix, sem banco.
   const noPix = async () => 0
 
-  /** Stripe dublado: guarda as opções de cada consulta de cupom. */
+  /**
+   * Stripe dublado: guarda as opções de cada consulta do cupom do mensal. O
+   * cupom do anual responde `annualRedeemed` resgates, ou 404 sem ele.
+   */
   function stripeWith(
     answer: () => Promise<{
       valid: boolean
       max_redemptions?: number
       times_redeemed?: number
-    }>
+    }>,
+    annualRedeemed?: number
   ) {
     const requests: unknown[] = []
     const client = {
       coupons: {
-        retrieve: (_id: string, _params: unknown, request: unknown) => {
+        retrieve: (id: string, _params: unknown, request: unknown) => {
+          if (id === FOUNDER_ANNUAL_COUPON_ID) {
+            return annualRedeemed === undefined
+              ? Promise.reject(
+                  Object.assign(new Error('No such coupon'), {
+                    type: 'StripeInvalidRequestError'
+                  })
+                )
+              : Promise.resolve({ times_redeemed: annualRedeemed })
+          }
           requests.push(request)
           return answer()
         }
@@ -231,6 +245,28 @@ describe('consulta do cupom de fundador com teto de tempo', () => {
     } finally {
       error.mockRestore()
     }
+  })
+
+  // WEB-442: o anual de fundador ocupa a mesma vaga.
+  it('vagas somam os resgates do cupom anual', async () => {
+    const answer = async () => ({
+      valid: true,
+      max_redemptions: 100,
+      times_redeemed: 90
+    })
+    expect(await founderCouponUsable(stripeWith(answer, 9).client, noPix)).toBe(
+      true
+    )
+    expect(
+      await founderCouponUsable(stripeWith(answer, 10).client, noPix)
+    ).toBe(false)
+  })
+
+  it('no anual, o cupom é o de fundador do anual', async () => {
+    const { client } = stripeWith(async () => ({ valid: true }), 0)
+    expect(await usableFounderCoupon(client, noPix, { annual: true })).toBe(
+      'fundador_anual'
+    )
   })
 
   it('Stripe respondeu e o cupom vale: entra no checkout', async () => {
@@ -375,7 +411,15 @@ describe('plano anual à venda (WEB-442)', () => {
     lookup_key,
     recurring: { interval }
   })
-  function pricesWith(answer: () => Promise<{ data: unknown[] }>) {
+  const annualCoupon = {
+    amount_off: 28000,
+    currency: 'brl',
+    duration: 'forever'
+  }
+  function pricesWith(
+    answer: () => Promise<{ data: unknown[] }>,
+    coupon: () => Promise<unknown> = async () => annualCoupon
+  ) {
     const requests: unknown[][] = []
     const client = {
       prices: {
@@ -383,10 +427,18 @@ describe('plano anual à venda (WEB-442)', () => {
           requests.push(args)
           return answer()
         }
-      }
-    } as unknown as Pick<Stripe, 'prices'>
+      },
+      coupons: { retrieve: () => coupon() }
+    } as unknown as Pick<Stripe, 'prices' | 'coupons'>
     return { client, requests }
   }
+  const allYearly = async () => ({
+    data: [
+      yearly('starter_yearly'),
+      yearly('pro_yearly'),
+      yearly('elite_yearly')
+    ]
+  })
 
   it('com os três preços anuais ativos, o anual está à venda', async () => {
     const { client, requests } = pricesWith(async () => ({
@@ -422,6 +474,27 @@ describe('plano anual à venda (WEB-442)', () => {
       ]
     }))
     expect(await annualPlansAvailable(monthly.client)).toBe(false)
+  })
+
+  it('sem o cupom de fundador do anual, ou com outro valor, o anual fica desligado', async () => {
+    const missing = pricesWith(allYearly, () =>
+      Promise.reject(
+        Object.assign(new Error('No such coupon'), {
+          type: 'StripeInvalidRequestError'
+        })
+      )
+    )
+    expect(await annualPlansAvailable(missing.client)).toBe(false)
+    const monthlyAmount = pricesWith(allYearly, async () => ({
+      ...annualCoupon,
+      amount_off: 2800
+    }))
+    expect(await annualPlansAvailable(monthlyAmount.client)).toBe(false)
+    const once = pricesWith(allYearly, async () => ({
+      ...annualCoupon,
+      duration: 'once'
+    }))
+    expect(await annualPlansAvailable(once.client)).toBe(false)
   })
 
   it('Stripe sem responder deixa o anual desligado', async () => {
