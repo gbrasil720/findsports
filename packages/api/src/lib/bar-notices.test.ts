@@ -4,6 +4,7 @@ import {
   brasiliaWeek,
   createEmptyScheduleEmail,
   createGameFillingEmail,
+  createPixTrialEndEmail,
   createWeeklySummaryEmail,
   weeklyNoticeFor
 } from './bar-notices'
@@ -251,5 +252,27 @@ describe('jogos da semana no resumo (WEB-433)', () => {
       suggestions: [sugestao(1, { featured: undefined, catalogId: undefined })]
     })
     expect(email.text).not.toContain('o jogo que a Onside separou')
+  })
+})
+
+describe('lembrete do Pix escolhido no teste', () => {
+  const base = {
+    owner: 'Ana',
+    barName: 'Bar do Zé',
+    plan: 'pro',
+    trialEnd: new Date('2026-12-02T15:00:00Z'),
+    lastDay: false
+  }
+
+  test('mensal: débito todo mês', () => {
+    const email = createPixTrialEndEmail(base)
+    expect(email.text).toContain('pagar o Pro com Pix')
+    expect(email.text).toContain('depois todo mês na mesma data')
+  })
+
+  test('anual (Pix anual): o plano anual e o débito todo ano', () => {
+    const email = createPixTrialEndEmail({ ...base, annual: true })
+    expect(email.text).toContain('pagar o Pro anual com Pix')
+    expect(email.text).toContain('depois todo ano na mesma data')
   })
 })
