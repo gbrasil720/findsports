@@ -64,6 +64,21 @@ test('quem paga por Pix muda de plano no cartão, que só cobra no fim do mês p
   await expect(card).toHaveAttribute('aria-checked', 'true')
   await expect(card).toContainText(`PAGO ATÉ ${ddmm(paidUntil)}`)
   await expect(dialog.getByText('Nada é cobrado em dobro.')).toBeVisible()
+  // Subida (dono, 14/11/2026): a diferença até o fim do mês pago sai hoje.
+  const note = dialog.getByRole('note')
+  await expect(note).toContainText(
+    new RegExp(
+      `Hoje: R\\$ [\\d.]+,\\d{2} da diferença até ${ddmm(paidUntil)}\\. Depois, R\\$ 269 por mês\\.`
+    )
+  )
+  const shown = Number(
+    (
+      /Hoje: R\$ ([\d.]+,\d{2})/.exec((await note.textContent()) ?? '')?.[1] ??
+      ''
+    )
+      .replaceAll('.', '')
+      .replace(',', '')
+  )
 
   await dialog.getByRole('button', { name: 'Passar para o cartão' }).click()
   await page.waitForURL(`${STUB_URL}/stripe/checkout/**`)
@@ -73,6 +88,11 @@ test('quem paga por Pix muda de plano no cartão, que só cobra no fim do mês p
       Math.floor(paidUntil.getTime() / 1000)
     )
   })
+  const upgradeCents = Number(
+    session?.['subscription_data[metadata][pixUpgradeCents]']
+  )
+  // A tela e o checkout fazem a mesma conta, segundos depois.
+  expect(Math.abs(upgradeCents - shown)).toBeLessThanOrEqual(1)
   // O checkout não cancela nada: o Pix só sai com o cartão confirmado.
   expect(await pixCancels(request)).not.toContain(pixId)
 
@@ -85,11 +105,33 @@ test('quem paga por Pix muda de plano no cartão, que só cobra no fim do mês p
       status: 'trialing',
       plan: 'elite',
       userId: user.id,
-      currentPeriodEnd: paidUntil
+      currentPeriodEnd: paidUntil,
+      metadata: { pixUpgradeCents: String(upgradeCents) }
     })
   )
   expect(delivered.ok()).toBe(true)
   expect(await pixCancels(request)).toContain(pixId)
+  // A diferença virou uma fatura avulsa, finalizada e paga.
+  const calls = (await (
+    await request.get(`${STUB_URL}/stripe/calls`)
+  ).json()) as {
+    method: string
+    path: string
+    body: Record<string, string>
+  }[]
+  const item = calls.find(
+    (call) =>
+      call.path === '/invoiceitems' &&
+      call.body.customer === `cus_e2e_wh_${user.id}`
+  )
+  expect(item?.body).toMatchObject({
+    amount: String(upgradeCents),
+    currency: 'brl',
+    discountable: 'false'
+  })
+  expect(
+    calls.some((call) => call.path === `/invoices/${item?.body.invoice}/pay`)
+  ).toBe(true)
 
   const [row] = await query<{
     provider: string
@@ -120,6 +162,7 @@ test('quem paga por Pix passa o mesmo plano para o cartão', async ({
   await expect(dialog.getByText('Pro no cartão')).toBeVisible()
   // Pix fora das telas e o mesmo plano: só o cartão.
   await expect(dialog.getByRole('radio')).toHaveCount(1)
+  await expect(dialog.getByRole('note')).not.toContainText('Hoje:')
 
   await dialog.getByRole('button', { name: 'Passar para o cartão' }).click()
   await page.waitForURL(`${STUB_URL}/stripe/checkout/**`)
@@ -154,7 +197,7 @@ test('prints da janela de quem paga por Pix', async ({ page }, testInfo) => {
 
   await page.getByRole('button', { name: 'Mudar para o Elite' }).click()
   await expect(dialog.getByRole('radio')).toHaveCount(2)
-  await print(page, testInfo, 'pix-cartao-troca', 300)
+  await print(page, testInfo, 'pix-cartao-subida', 300)
   await dialog.getByRole('radio', { name: /Pix Automático/ }).click()
   await print(page, testInfo, 'pix-cartao-troca-pix', 300)
   await dialog.getByRole('button', { name: 'Voltar' }).click()

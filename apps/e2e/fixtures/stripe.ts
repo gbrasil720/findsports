@@ -40,6 +40,8 @@ export function stripeSubscription(options: {
   cardLast4?: string
   /** Cobrança anual (WEB-442): o preço `<plano>_yearly`. */
   interval?: 'month' | 'year'
+  /** Metadados além do dono, como os que o checkout grava (WEB-536). */
+  metadata?: Record<string, string>
 }) {
   const interval = options.interval ?? 'month'
   const lookupKey =
@@ -50,7 +52,7 @@ export function stripeSubscription(options: {
     object: 'subscription',
     status: options.status,
     customer: options.customerId ?? `cus_e2e_wh_${options.userId}`,
-    metadata: { userId: options.userId },
+    metadata: { ...options.metadata, userId: options.userId },
     cancel_at: options.cancelAt
       ? Math.floor(options.cancelAt.getTime() / 1000)
       : null,
