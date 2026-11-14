@@ -1,11 +1,12 @@
-import { afterAll, expect, test } from 'bun:test'
+import { afterAll, expect, spyOn, test } from 'bun:test'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 import type Stripe from 'stripe'
 
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
 
-// Parâmetros da sessão de checkout no mensal e no anual (WEB-442): o cupom de
-// fundador é só do mensal, e o teste do cadastro vale nos dois.
+// Parâmetros da sessão de checkout no mensal e no anual (WEB-442): o desconto
+// de fundador vale nos dois, cada um com o seu cupom (dono, 14/11/2026), e o
+// teste do cadastro também.
 
 async function setup() {
   const [{ db, inArray }, { user }, { bar, subscription }, checkout] =
@@ -63,18 +64,15 @@ afterAll(async () => {
   await context?.cleanup()
 })
 
-/** Stripe com o cupom de fundador valendo; conta quantas vezes foi consultado. */
-function stripeWithCoupon() {
-  let couponReads = 0
+/** Stripe com os cupons de fundador; `valid` é o do mensal, que manda nas vagas. */
+function stripeWithCoupon(valid = true) {
   const client = {
     coupons: {
-      retrieve: async () => {
-        couponReads += 1
-        return { valid: true }
-      }
+      retrieve: async (id: string) =>
+        id === 'fundador_anual' ? { times_redeemed: 0 } : { valid }
     }
   } as unknown as Stripe
-  return { client, couponReads: () => couponReads }
+  return { client }
 }
 
 integrationTest(
@@ -96,23 +94,47 @@ integrationTest(
 )
 
 integrationTest(
-  'anual no teste grátis: sem cupom de fundador, com a mesma primeira cobrança',
+  'anual no teste grátis: cupom de fundador do anual, com a mesma primeira cobrança',
   async () => {
-    const { checkoutParamsFor, createTrialBar } = ready()
+    const { checkoutParamsFor, createTrialBar, FOUNDER_ANNUAL_COUPON_ID } =
+      ready()
     const trialEnd = new Date(Date.now() + 30 * 24 * 3_600_000)
     const owner = await createTrialBar(trialEnd)
-    const stripe = stripeWithCoupon()
 
-    const params = await checkoutParamsFor(owner, null, stripe.client, {
-      annual: true
-    })
+    const params = await checkoutParamsFor(
+      owner,
+      null,
+      stripeWithCoupon().client,
+      { annual: true }
+    )
 
-    expect(params.discounts).toBeUndefined()
+    expect(params.discounts).toEqual([{ coupon: FOUNDER_ANNUAL_COUPON_ID }])
     expect(params.allow_promotion_codes).toBeUndefined()
-    // O anual nem pergunta do cupom ao Stripe.
-    expect(stripe.couponReads()).toBe(0)
     expect(params.subscription_data).toEqual({
       trial_end: Math.floor(trialEnd.getTime() / 1000)
     })
+  }
+)
+
+integrationTest(
+  'vagas de fundador esgotadas: anual a preço de tabela, sem cupom nem código',
+  async () => {
+    const { checkoutParamsFor, createTrialBar } = ready()
+    const owner = await createTrialBar(
+      new Date(Date.now() + 30 * 24 * 3_600_000)
+    )
+    const error = spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const params = await checkoutParamsFor(
+        owner,
+        null,
+        stripeWithCoupon(false).client,
+        { annual: true }
+      )
+      expect(params.discounts).toBeUndefined()
+      expect(params.allow_promotion_codes).toBeUndefined()
+    } finally {
+      error.mockRestore()
+    }
   }
 )
