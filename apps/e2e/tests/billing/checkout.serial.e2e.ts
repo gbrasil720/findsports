@@ -399,6 +399,13 @@ test('anual no teste grátis: checkout sem cupom com a mesma primeira cobrança,
   await expect(pro).toContainText('R$ 1.470')
   await expect(pro).toContainText('R$ 1.764')
   await expect(pro).toContainText('/ano')
+  // Com o desconto de fundador valendo (o padrão do stub), o mensal do Pro
+  // sai mais barato que o anual, e a tela diz isso; o do Elite, não.
+  await expect(pro).toContainText('Sem desconto de fundador')
+  await expect(pro).not.toContainText('Economize')
+  await expect(page.getByRole('listitem', { name: 'Elite' })).toContainText(
+    'Economize R$ 258'
+  )
   await page.getByRole('button', { name: 'Contratar o Pro anual' }).click()
   await page.waitForURL(`${STUB_URL}/stripe/checkout/**`)
 
