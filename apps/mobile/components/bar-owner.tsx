@@ -12,7 +12,16 @@ import { HardShadow } from '@/components/explore'
 import { DotField } from '@/components/fan-card'
 import { EASE, haptic } from '@/components/motion'
 import { usePalette } from '@/components/theme'
-import { ACID, errorMessage, INK, PAPER, Text, text } from '@/components/ui'
+import {
+  ACID,
+  DISPLAY_FONT_SCALE,
+  errorMessage,
+  Icon,
+  INK,
+  PAPER,
+  Text,
+  text
+} from '@/components/ui'
 import { useOwnerBar } from '@/lib/owner'
 import { queryClient, trpc } from '@/lib/trpc'
 
@@ -156,6 +165,78 @@ export function DayBoard({
   )
 }
 
+/**
+ * O cartão escuro do vazio (WEB-467; o "Nenhum jogo na grade" do painel
+ * web): o rótulo em acid, o título em Anton com a parte acesa e, se houver,
+ * o botão acid. Escuro nos dois temas, como o placar.
+ */
+export function InkCallout({
+  kicker,
+  title,
+  hot,
+  body,
+  action,
+  children
+}: {
+  kicker: string
+  title: string
+  /** O fim do título, em acid. */
+  hot?: string
+  body?: string
+  action?: { label: string; onPress: () => void }
+  children?: ReactNode
+}) {
+  const palette = usePalette()
+  return (
+    <View>
+      <HardShadow color="#000" offset={5} radius={26} />
+      <View
+        style={[
+          styles.callout,
+          palette.dark && { borderWidth: 1, borderColor: palette.line }
+        ]}
+      >
+        <Text maxFontSizeMultiplier={1.2} style={styles.calloutKicker}>
+          {kicker.toLocaleUpperCase('pt-BR')}
+        </Text>
+        <Text
+          accessibilityRole="header"
+          maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
+          style={styles.calloutTitle}
+        >
+          {title}
+          {hot ? <Text style={{ color: ACID }}>{` ${hot}`}</Text> : null}
+        </Text>
+        {body ? <Text style={styles.calloutBody}>{body}</Text> : null}
+        {children}
+        {action ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              haptic.select()
+              action.onPress()
+            }}
+            style={styles.calloutAction}
+          >
+            <View style={styles.calloutDrop} />
+            <View style={styles.calloutPill}>
+              <Icon name="plus" size={18} color={INK} />
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
+                style={styles.calloutLabel}
+              >
+                {action.label}
+              </Text>
+            </View>
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
+  )
+}
+
 /** Uma célula do placar: o número em Anton e a legenda em mono. */
 export function BoardCell({
   value,
@@ -243,6 +324,49 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 13
   },
+  callout: {
+    backgroundColor: INK,
+    borderRadius: 26,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    gap: 8
+  },
+  calloutKicker: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11,
+    letterSpacing: 1.1,
+    color: ACID
+  },
+  // Anton abaixo de 1,505 em corta o acento no iOS (AGENTS.md, "Fontes").
+  calloutTitle: {
+    fontFamily: 'Anton',
+    fontSize: 30,
+    lineHeight: 45,
+    marginVertical: -6,
+    textTransform: 'uppercase',
+    color: PAPER
+  },
+  calloutBody: { ...text(14.5, 'Regular', 1.45), color: '#c9c7c0' },
+  calloutAction: { alignSelf: 'flex-start', marginTop: 6, marginBottom: 4 },
+  calloutDrop: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 4,
+    height: 42,
+    borderRadius: 999,
+    backgroundColor: '#7f9a12'
+  },
+  calloutPill: {
+    height: 42,
+    borderRadius: 999,
+    backgroundColor: ACID,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 18
+  },
+  calloutLabel: { ...text(14.5, 'Bold', 1.2), color: INK },
   board: {
     backgroundColor: INK,
     borderRadius: 28,
