@@ -16,19 +16,9 @@ export function getDeleteBlock(
   deletion: Deletion
 ): { reason: string; wayOut: string[] } | null {
   if (!deletion) return null
-  const { pendingReservations, confirmedReservations, ratings } = deletion
+  const { confirmedReservations, ratings } = deletion
   const reasons: string[] = []
   const wayOut: string[] = []
-  if (pendingReservations > 0) {
-    reasons.push(
-      countLabel(
-        pendingReservations,
-        'pedido antigo de reserva',
-        'pedidos antigos de reserva'
-      )
-    )
-    wayOut.push('Pedido antigo de reserva expira sozinho no fim do jogo.')
-  }
   if (confirmedReservations > 0) {
     reasons.push(
       countLabel(

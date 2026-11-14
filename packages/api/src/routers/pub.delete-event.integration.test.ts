@@ -53,7 +53,7 @@ async function seedGame() {
     })
     await ctx.db
       .insert(reservation)
-      .values({ eventId, userId, partySize: 2, status })
+      .values({ eventId, userId, partySize: 1, status })
     await ctx.db.insert(attendance).values({ eventId, userId })
   }
   const exists = async (eventId: string) =>
@@ -73,33 +73,31 @@ async function seedGame() {
   }
 }
 
-for (const status of ['pending', 'confirmed'] as const) {
-  integrationTest(
-    `reserva ${status} bloqueia a exclusão e nada é apagado`,
-    async () => {
-      const ctx = await seedGame()
-      try {
-        const eventId = await ctx.addGame()
-        await ctx.addReservation(eventId, status)
-        await ctx.addReservation(eventId, 'declined')
+integrationTest(
+  'código em vigor bloqueia a exclusão e nada é apagado',
+  async () => {
+    const ctx = await seedGame()
+    try {
+      const eventId = await ctx.addGame()
+      await ctx.addReservation(eventId, 'confirmed')
+      await ctx.addReservation(eventId, 'cancelled')
 
-        expect(await refusal(ctx.owner.pub.deleteEvent({ eventId }))).toEqual({
-          code: 'PRECONDITION_FAILED',
-          message: 'Este jogo tem 1 código de quem vai e não pode ser excluído.'
-        })
-        expect(await ctx.exists(eventId)).toBe(true)
-        expect(
-          await ctx.db
-            .select()
-            .from(reservation)
-            .where(eq(reservation.eventId, eventId))
-        ).toHaveLength(2)
-      } finally {
-        await ctx.cleanup()
-      }
+      expect(await refusal(ctx.owner.pub.deleteEvent({ eventId }))).toEqual({
+        code: 'PRECONDITION_FAILED',
+        message: 'Este jogo tem 1 código de quem vai e não pode ser excluído.'
+      })
+      expect(await ctx.exists(eventId)).toBe(true)
+      expect(
+        await ctx.db
+          .select()
+          .from(reservation)
+          .where(eq(reservation.eventId, eventId))
+      ).toHaveLength(2)
+    } finally {
+      await ctx.cleanup()
     }
-  )
-}
+  }
+)
 
 integrationTest('avaliação bloqueia a exclusão', async () => {
   const ctx = await seedGame()
@@ -132,7 +130,7 @@ integrationTest(
       await ctx.db.transaction(async (tx) => {
         await tx
           .insert(reservation)
-          .values({ eventId, userId: ctx.fanId, partySize: 2 })
+          .values({ eventId, userId: ctx.fanId, partySize: 1 })
         // O pedido ainda não foi gravado: a exclusão para na trava do jogo
         // e só conta as reservas depois que ele entra.
         deletion = refusal(ctx.owner.pub.deleteEvent({ eventId }))
@@ -151,18 +149,18 @@ integrationTest(
 )
 
 integrationTest(
-  'reserva recusada, cancelada ou expirada não bloqueia e vai junto',
+  'código desmarcado, ou pedido da reserva antiga, não bloqueia e vai junto',
   async () => {
     const ctx = await seedGame()
     try {
       const upcoming = await ctx.addGame()
-      await ctx.addReservation(upcoming, 'declined')
       await ctx.addReservation(upcoming, 'cancelled')
-      // Pendente de jogo que acabou: expirou sem resposta.
-      const ended = await ctx.addGame(new Date(Date.now() - 24 * HOUR))
-      await ctx.addReservation(ended, 'pending')
+      // Pedido pendente da reserva de mesa, que saiu (WEB-401): conta como
+      // encerrado, mesmo de jogo que não acabou.
+      const legacy = await ctx.addGame()
+      await ctx.addReservation(legacy, 'pending')
 
-      for (const eventId of [upcoming, ended]) {
+      for (const eventId of [upcoming, legacy]) {
         await expect(ctx.owner.pub.deleteEvent({ eventId })).resolves.toEqual({
           success: true
         })
@@ -204,12 +202,11 @@ integrationTest(
     const ctx = await seedGame()
     try {
       const busy = await ctx.addGame()
-      await ctx.addReservation(busy, 'pending')
       await ctx.addReservation(busy, 'confirmed')
       await ctx.addReservation(busy, 'confirmed')
       await ctx.addReservation(busy, 'cancelled')
       const ended = await ctx.addGame(new Date(Date.now() - 24 * HOUR))
-      await ctx.addReservation(ended, 'pending')
+      await ctx.addReservation(ended, 'cancelled')
       await ctx.db.insert(barRating).values({
         barId: ctx.barId,
         actorUserId: ctx.fanId,
@@ -222,21 +219,18 @@ integrationTest(
       const deletion = (id: string) =>
         events.find((item) => item.id === id)?.deletion
       expect(deletion(busy)).toEqual({
-        pendingReservations: 1,
         confirmedReservations: 2,
         ratings: 0,
         closedReservations: 1,
         hasAttendance: true
       })
       expect(deletion(ended)).toEqual({
-        pendingReservations: 0,
         confirmedReservations: 0,
         ratings: 1,
         closedReservations: 1,
         hasAttendance: true
       })
       expect(deletion(empty)).toEqual({
-        pendingReservations: 0,
         confirmedReservations: 0,
         ratings: 0,
         closedReservations: 0,
