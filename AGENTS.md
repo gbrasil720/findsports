@@ -537,8 +537,9 @@ pesos A e C de `ai.variant_weights.recommender`; o peso do `b` é ignorado). Só
 desligado, a rodada sai como sempre e nada vai a `ai_run`. Ligado, toda rodada nova tem uma
 linha em `ai_run` com o **mesmo `run_id` da rodada** (A: `assigned_model = 'control'`, sem
 chamada), e as ações dos cards (`recommendation_event`, com o `runId` da rodada) chegam ao
-braço sem coluna nova. No C a chamada vai pelo `runAi` com teto de 300 ms por chamada
-(`AFFINITY_TIMEOUT_MS`, o p95 do ADR 0001): erro tem uma nova tentativa no mesmo modelo,
+braço sem coluna nova. No C a chamada vai pelo `runAi` com teto de 2,5 s por chamada
+(`AFFINITY_TIMEOUT_MS`; não os 300 ms do ADR 0001: o Clef-flash mediu 3,3 s de p95 na
+fase 1, e a espera só acontece na primeira abertura do dia, dono em 14/11/2026): erro tem uma nova tentativa no mesmo modelo,
 demora e teto (`aiGate`) caem direto na ordem do controle, com `error`/`timeout` na linha.
 Sem cache próprio: a rodada fica gravada o dia todo. O "Ampliar" (`refill`) segue só a
 regra. A tela IA do Houdini lê A × C pela rodada (`readRecommender` em

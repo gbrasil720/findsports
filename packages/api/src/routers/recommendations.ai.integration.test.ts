@@ -5,7 +5,10 @@ import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolv
 
 import { setAiBinding } from '../lib/ai/binding'
 import { RECOMMENDER_MODELS } from '../lib/ai/models'
-import { CONTROL_MODEL } from '../lib/recommendations/ai-round'
+import {
+  AFFINITY_TIMEOUT_MS,
+  CONTROL_MODEL
+} from '../lib/recommendations/ai-round'
 import { contextFor, load } from './integration-seed'
 
 /*
@@ -266,7 +269,7 @@ integrationTest(
     const calls = model(
       (input) =>
         new Promise((resolve) =>
-          setTimeout(() => resolve(allFour(input)), 1000)
+          setTimeout(() => resolve(allFour(input)), AFFINITY_TIMEOUT_MS + 500)
         )
     )
     await testOn({ a: 0, c: 100 })
@@ -281,7 +284,9 @@ integrationTest(
     } finally {
       await testOff()
     }
-  }
+  },
+  // Espera o teto inteiro (2,5 s) antes de cair no controle.
+  10_000
 )
 
 integrationTest(
