@@ -11,13 +11,13 @@ import { DowngradeConfirmDialog } from '@/components/billing/plan-change'
 import { ReactivateSubscriptionButton } from '@/components/billing/reactivate-subscription-button'
 import { PubObShell } from '@/components/onboarding/pub-ob-shell'
 import { PLAN_ART } from '@/components/onboarding/pub-plan-step'
+import { useFounderCoupon } from '@/hooks/use-founder-coupon'
 import { useSession } from '@/hooks/use-session'
 import { analytics } from '@/lib/analytics'
 import { startCheckout } from '@/lib/billing-client'
 import {
   earnsDowngradeCredit,
   formatPlanPrice,
-  founderCouponFromQuery,
   getCommonPlanItems,
   getDefaultPlanSelection,
   getPlan,
@@ -307,10 +307,7 @@ function PlanSelection() {
     ...trpc.pub.getMySubscription.queryOptions(),
     meta: { errorToast: false }
   })
-  const founderCouponQuery = useQuery(
-    trpc.pub.getFounderCouponAvailable.queryOptions()
-  )
-  const founderCouponAvailable = founderCouponFromQuery(founderCouponQuery)
+  const founderCouponAvailable = useFounderCoupon()
   const subscription = subscriptionQuery.data
   const currentPlan = subscription?.currentPlan ?? null
   // Quem vê o quê sai do nosso estado da assinatura, numa função só (WEB-249).
