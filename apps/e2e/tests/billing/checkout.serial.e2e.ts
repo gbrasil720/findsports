@@ -6,6 +6,7 @@ import { query } from '../../fixtures/db'
 import { createPub, inDays } from '../../fixtures/pubs'
 import {
   sendStripeWebhook,
+  setAnnualPrices,
   setFounderCoupon,
   stripeSubscription
 } from '../../fixtures/stripe'
@@ -14,7 +15,10 @@ import { expect, test } from '../../fixtures/test'
 // Serial porque troca o que o stub do Stripe diz do cupom de fundador, que é
 // global: os testes paralelos contam com o cupom valendo.
 
-test.afterEach(({ request }) => setFounderCoupon(request, 'valid'))
+test.afterEach(async ({ request }) => {
+  await setFounderCoupon(request, 'valid')
+  await setAnnualPrices(request, false)
+})
 
 /**
  * Corpo da sessão de checkout que o app pediu ao Stripe para este dono. O
@@ -367,4 +371,98 @@ test('/admin/billing: com o Stripe sem responder ao cupom, o card do plano do tr
   const currentPlan = page.getByRole('region', { name: 'Seu plano' })
   await expect(currentPlan).toContainText('R$ 269', { timeout: 15_000 })
   await expect(currentPlan).not.toContainText('Carregando preço')
+})
+
+// WEB-442: anual = 10 meses, no cartão, sem cupom de fundador; o teste do
+// cadastro vale igual. O preço anual vira o mesmo plano na nossa tabela.
+test('anual no teste grátis: checkout sem cupom com a mesma primeira cobrança, e o painel diz o valor do ano (WEB-442)', async ({
+  page,
+  request
+}) => {
+  await setAnnualPrices(request, true)
+  const trialEnd = inDays(20)
+  const { user, barId } = await createPub({
+    subscription: {
+      plan: 'pro',
+      status: 'trialing',
+      currentPeriodEnd: trialEnd
+    }
+  })
+  await signIn(page, user)
+  await page.goto('/plan')
+
+  await page
+    .getByRole('group', { name: 'Cobrança' })
+    .getByRole('button', { name: /^Anual/ })
+    .click()
+  const pro = page.getByRole('listitem', { name: 'Pro' })
+  await expect(pro).toContainText('R$ 1.470')
+  await expect(pro).toContainText('R$ 1.764')
+  await expect(pro).toContainText('/ano')
+  await page.getByRole('button', { name: 'Contratar o Pro anual' }).click()
+  await page.waitForURL(`${STUB_URL}/stripe/checkout/**`)
+
+  const session = await checkoutSessionOf(page, user.id)
+  if (!session) throw new Error('sessão de checkout não foi criada')
+  expect(session).toMatchObject({
+    'line_items[0][price]': 'price_e2e_pro_yearly',
+    'subscription_data[trial_end]': String(
+      Math.floor(trialEnd.getTime() / 1000)
+    )
+  })
+  expect(session).not.toHaveProperty('discounts[0][coupon]')
+  expect(session).not.toHaveProperty('allow_promotion_codes')
+
+  // O dono conclui o checkout: a assinatura anual, ainda no teste.
+  const subscription = stripeSubscription({
+    id: `sub_e2e_${barId}`,
+    status: 'trialing',
+    plan: 'pro',
+    interval: 'year',
+    userId: user.id,
+    customerId: session.customer,
+    currentPeriodEnd: trialEnd
+  })
+  await request.post(`${STUB_URL}/stripe/subscriptions`, { data: subscription })
+  const webhook = await sendStripeWebhook(request, {
+    id: `evt_e2e_checkout_anual_${barId}`,
+    object: 'event',
+    type: 'checkout.session.completed',
+    data: {
+      object: {
+        id: 'cs_e2e_anual',
+        object: 'checkout.session',
+        mode: 'subscription',
+        customer: session.customer,
+        subscription: subscription.id,
+        client_reference_id: user.id,
+        metadata: {
+          userId: user.id,
+          referenceId: user.id,
+          subscriptionId: session['metadata[subscriptionId]']
+        }
+      }
+    }
+  })
+  expect(webhook.ok(), await webhook.text()).toBe(true)
+
+  const [state] = await query<Record<string, unknown>>(
+    `SELECT s.status, s.plan, s.monthly_discount_reais, p.billing_interval
+       FROM subscription s
+       JOIN bar b ON b.id = s.bar_id
+       JOIN stripe_subscription p ON p.reference_id = b.user_id
+      WHERE s.bar_id = $1`,
+    [barId]
+  )
+  expect(state).toEqual({
+    status: 'trialing',
+    plan: 'pro',
+    monthly_discount_reais: 0,
+    billing_interval: 'year'
+  })
+
+  await page.goto('/admin/billing')
+  const currentPlan = page.getByRole('region', { name: 'Seu plano' })
+  await expect(currentPlan).toContainText('R$ 1.470')
+  await expect(currentPlan).toContainText('por ano')
 })
