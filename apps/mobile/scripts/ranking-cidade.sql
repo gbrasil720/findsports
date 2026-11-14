@@ -26,8 +26,8 @@ select 'rc-' || n,
 from generate_series(1, 1300) n;
 
 -- O torcedor n foi aos n % 8 primeiros jogos (0 a 7 bares no mês).
-insert into reservation (id, event_id, user_id, party_size, status, created_at)
-select 'rc-res-' || n || '-' || e, 'rk-ev-' || e, 'rc-' || n, 1, 'confirmed',
+insert into reservation (id, event_id, user_id, status, created_at)
+select 'rc-res-' || n || '-' || e, 'rk-ev-' || e, 'rc-' || n, 'confirmed',
   timestamp '2026-09-30 12:00'
 from generate_series(1, 1300) n, generate_series(1, 7) e
 where e <= n % 8;
