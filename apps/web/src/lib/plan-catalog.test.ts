@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 
 import { TERMOS_DE_USO } from '@findsports_oficial/legal/termos-de-uso'
 import {
+  billedPlan,
   earnsDowngradeCredit,
   FOUNDER_DISCOUNT,
   formatPlanChargeLine,
@@ -24,6 +25,7 @@ import {
   parsePlanChange,
   parsePlanOrigin,
   planChangeReturnUrl,
+  planChargeForAnnual,
   planChargeForCurrentPlan,
   planChargeForShowcase,
   planChargeFromSubscription
@@ -864,5 +866,60 @@ describe('getPlanCardLists', () => {
         expect(shown.has(label)).toBe(true)
       }
     }
+  })
+})
+
+// WEB-442: anual = 10 meses, sem desconto de fundador.
+describe('plano anual (WEB-442)', () => {
+  test('o anual é a tabela de 10 meses por ano, sem preço de fundador', () => {
+    const pro = billedPlan(getPlan('pro'), 'year')
+    expect(pro).toMatchObject({
+      tablePrice: 1470,
+      founderPrice: 1470,
+      period: '/ano'
+    })
+    expect(billedPlan(getPlan('pro'), 'month')).toBe(getPlan('pro'))
+    expect(billedPlan(getPlan('pro'))).toBe(getPlan('pro'))
+  })
+
+  test('vitrine do anual risca os 12 meses', () => {
+    const charge = planChargeForAnnual(getPlan('elite'))
+    expect(charge).toEqual({
+      chargeReais: 2970,
+      listReais: 3564,
+      hint: '2 meses grátis'
+    })
+    expect(formatPlanChargeLine(charge, '/ano')).toBe(
+      'R$ 2.970/ano (tabela cheia R$ 3.564/ano)'
+    )
+  })
+
+  test('assinatura anual no card do plano: o valor do ano, sem riscar', () => {
+    const plan = billedPlan(getPlan('starter'), 'year')
+    expect(
+      planChargeForCurrentPlan(
+        plan,
+        { externalSubscriptionId: 'sub_1', monthlyDiscountReais: 0 },
+        true
+      )
+    ).toEqual({ chargeReais: 970, listReais: null, hint: null })
+  })
+
+  test('contratou o anual no teste: a primeira cobrança é a do ano', () => {
+    const now = new Date('2026-10-09T12:00:00Z')
+    expect(
+      getTrialNotice(
+        {
+          status: 'trialing',
+          standing: 'current',
+          currentPeriodEnd: '2026-12-01T12:00:00Z',
+          plan: 'pro',
+          externalSubscriptionId: 'sub_1',
+          monthlyDiscountReais: 0,
+          billingInterval: 'year'
+        },
+        now
+      )
+    ).toBe('Primeira cobrança de R$ 1.470 em 01/12/2026')
   })
 })

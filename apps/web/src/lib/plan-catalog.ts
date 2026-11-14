@@ -6,6 +6,7 @@ import {
   PLAN_NAMES,
   STARTER_EVENT_LIMIT
 } from '@findsports_oficial/api/lib/plan-limits'
+import { ANNUAL_MONTHS } from '@findsports_oficial/auth/stripe-plan'
 import type { SubscriptionPlan } from '@findsports_oficial/db'
 
 // ---------------------------------------------------------------------------
@@ -77,7 +78,39 @@ function pricesFor(tablePrice: number) {
 }
 
 export function formatPlanPrice(reais: number): string {
-  return `R$ ${reais}`
+  // O anual passa de mil: "R$ 1.470".
+  return `R$ ${reais.toLocaleString('pt-BR')}`
+}
+
+/** Mensal ou anual, como o Stripe chama o intervalo do preço (WEB-442). */
+export type BillingInterval = 'month' | 'year'
+
+/**
+ * O plano com o preço do intervalo cobrado (WEB-442). O anual é a tabela de
+ * `ANNUAL_MONTHS` meses, por ano e sem desconto de fundador (decisão do dono,
+ * 28/10/2026: o cupom é só do mensal). Quem desenha preço com o `period` do
+ * plano passa a dizer "/ano" sem saber que o anual existe.
+ */
+export function billedPlan<
+  P extends Pick<Plan, 'tablePrice' | 'founderPrice' | 'period'>
+>(plan: P, interval: BillingInterval = 'month'): P {
+  if (interval !== 'year') return plan
+  const tablePrice = plan.tablePrice * ANNUAL_MONTHS
+  return { ...plan, tablePrice, founderPrice: tablePrice, period: '/ano' }
+}
+
+/**
+ * Vitrine do anual em `/plan`: o preço de 10 meses, riscando o de 12 — os
+ * "2 meses grátis" do design.
+ */
+export function planChargeForAnnual(
+  plan: Pick<Plan, 'tablePrice'>
+): PlanChargeDisplay {
+  return {
+    chargeReais: plan.tablePrice * ANNUAL_MONTHS,
+    listReais: plan.tablePrice * 12,
+    hint: `${12 - ANNUAL_MONTHS} meses grátis`
+  }
 }
 
 export type PlanChargeDisplay = {
@@ -794,6 +827,7 @@ export function getTrialNotice(
         plan?: SubscriptionPlan
         externalSubscriptionId?: string | null
         monthlyDiscountReais?: number | null
+        billingInterval?: BillingInterval
       }
     | null
     | undefined,
@@ -809,7 +843,7 @@ export function getTrialNotice(
   const end = new Date(subscription.currentPeriodEnd)
   if (isContractedTrial(subscription) && subscription.plan) {
     const { chargeReais } = planChargeFromSubscription(
-      getPlan(subscription.plan),
+      billedPlan(getPlan(subscription.plan), subscription.billingInterval),
       subscription.monthlyDiscountReais
     )
     return `Primeira cobrança de ${formatPlanPrice(chargeReais)} em ${end.toLocaleDateString('pt-BR')}`
