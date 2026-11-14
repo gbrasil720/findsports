@@ -534,7 +534,7 @@ por perder do controle no painel às cegas): `recommendations.today` sorteia o b
 rodada nova do dia (`lib/recommendations/ai-round.ts`, hash do id + `recommender-2026-11`,
 pesos A e C de `ai.variant_weights.recommender`; o peso do `b` é ignorado). Só com
 `ai.enabled` **e** `ai.recommender_enabled` (nasce desligado; Houdini › IA › "O teste");
-desligado, a rodada sai como sempre e nada vai a `ai_run`. Ligado, toda rodada nova tem uma
+desligado, a rodada sai como sempre e nada vai a `ai_run`. **Só o app entra no teste** (dono, 14/11/2026): o app manda `x-onside-client: app` (`apps/mobile/lib/trpc.ts`, lido por `lib/client-app.ts`), e pedido do web cria a rodada no controle, sem `ai_run`. A rodada é uma por dia: se a pessoa abrir primeiro no web, o app lê a mesma rodada, fora da comparação. Ligado, toda rodada nova tem uma
 linha em `ai_run` com o **mesmo `run_id` da rodada** (A: `assigned_model = 'control'`, sem
 chamada), e as ações dos cards (`recommendation_event`, com o `runId` da rodada) chegam ao
 braço sem coluna nova. No C a chamada vai pelo `runAi` com teto de 2,5 s por chamada
