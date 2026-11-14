@@ -520,8 +520,8 @@ function PlanSelection() {
   // a janela explica a passagem para o cartão (WEB-536) e a troca de plano no
   // Pix, que é uma autorização nova. A troca no cartão segue no portal.
   const contract = (plan: SubscriptionPlan) => {
-    // O Pix Automático é só mensal: o anual vai direto ao cartão (WEB-442).
-    if (onPixSubscription || (!annual && pixAvailable && !hasSubscription)) {
+    // Pix anual: o anual também passa pela janela, com o Pix do ano.
+    if (onPixSubscription || (pixAvailable && !hasSubscription)) {
       setPayError(null)
       setChoosing(plan)
       return
@@ -581,13 +581,18 @@ function PlanSelection() {
     }
     if (currentPlan) {
       if (plan.id === currentPlan) {
-        // Quem paga por Pix passa o mesmo plano para o cartão (WEB-536).
+        // Quem paga por Pix passa o mesmo plano para o cartão (WEB-536), ou
+        // para o anual (ou o mensal), no cartão ou no Pix.
         if (onPixSubscription) {
+          const otherCycle =
+            annual !== (subscription?.billingInterval === 'year')
           return {
             label:
               loading === plan.id
                 ? 'Redirecionando…'
-                : `Passar para o cartão${annual ? ' anual' : ''}`,
+                : otherCycle
+                  ? `Passar para o ${annual ? 'anual' : 'mensal'}`
+                  : 'Passar para o cartão',
             tone: 'ghost',
             disabled: busy,
             note: 'Seu plano atual, hoje no Pix.',
@@ -802,7 +807,7 @@ function PlanSelection() {
         <span className="pl-lg">
           No cartão, contratar agora não antecipa nada: a primeira cobrança é em{' '}
           {firstCharge}.
-          {pixAvailable && !annual
+          {pixAvailable
             ? subscription.pixAfterTrialAt
               ? ' Você escolheu o Pix: a gente avisa perto do fim para autorizar.'
               : ' No Pix também: a autorização é pedida perto do fim.'
@@ -1057,6 +1062,7 @@ function PlanSelection() {
           annual={annual}
           offerPix={pixAvailable}
           pixPlan={onPixSubscription ? currentPlan : null}
+          pixAnnual={subscription?.billingInterval === 'year'}
           pixPaidUntil={
             onPixSubscription ? (subscription?.currentPeriodEnd ?? null) : null
           }
@@ -1072,8 +1078,9 @@ function PlanSelection() {
           onCancel={() => setChoosing(null)}
           onConfirm={(method: PaymentMethod, timing) => {
             if (method === 'pix' && timing === 'trial_end')
-              schedulePix.mutate({ plan: choosing })
-            else if (method === 'pix') startPix.mutate({ plan: choosing })
+              schedulePix.mutate({ plan: choosing, annual })
+            else if (method === 'pix')
+              startPix.mutate({ plan: choosing, annual })
             else if (onPixSubscription)
               startCard.mutate({ plan: choosing, annual })
             else void handleCheckout(choosing)
