@@ -526,10 +526,26 @@ decididos: nada de trocar por outro do catálogo sem o dono. Conjunto
 offline (só roda com autorização e teto de custo): `packages/api/scripts/ai-chat-eval.ts` (34 pedidos: filtros certos, bares
 inventados, tempo e custo).
 
-**Recomendador com IA (WEB-426, fase offline):** a afinidade da IA (`score` de 0 a 4 por bar,
+**Recomendador com IA (WEB-426):** a afinidade da IA (`score` de 0 a 4 por bar,
 15 primeiros do controle numa chamada) troca o eixo "Seu estilo" no `rankRecommendations`
 (`context.affinity`); pedido, leitura e regra de falha em
-`lib/recommendations/ai-affinity.ts`. Nada disso está em `recommendations.today`.
+`lib/recommendations/ai-affinity.ts`. **Fase 2, A × C** (dono, 14/11/2026: o B, Jev, saiu
+por perder do controle no painel às cegas): `recommendations.today` sorteia o braço na
+rodada nova do dia (`lib/recommendations/ai-round.ts`, hash do id + `recommender-2026-11`,
+pesos A e C de `ai.variant_weights.recommender`; o peso do `b` é ignorado). Só com
+`ai.enabled` **e** `ai.recommender_enabled` (nasce desligado; Houdini › IA › "O teste");
+desligado, a rodada sai como sempre e nada vai a `ai_run`. Ligado, toda rodada nova tem uma
+linha em `ai_run` com o **mesmo `run_id` da rodada** (A: `assigned_model = 'control'`, sem
+chamada), e as ações dos cards (`recommendation_event`, com o `runId` da rodada) chegam ao
+braço sem coluna nova. No C a chamada vai pelo `runAi` com teto de 300 ms por chamada
+(`AFFINITY_TIMEOUT_MS`, o p95 do ADR 0001): erro tem uma nova tentativa no mesmo modelo,
+demora e teto (`aiGate`) caem direto na ordem do controle, com `error`/`timeout` na linha.
+Sem cache próprio: a rodada fica gravada o dia todo. O "Ampliar" (`refill`) segue só a
+regra. A tela IA do Houdini lê A × C pela rodada (`readRecommender` em
+`routers/houdini-ia.ts`): conversão por pessoa em 7 dias (Curti, rota, telefone,
+WhatsApp, "Vou assistir" num card, ou visita num bar da rodada), Passo, queda para o
+controle, custo por mil rodadas e a regra de parada (`recommenderStops` em
+`lib/ai/report.ts`: queda > 2%, Passo do C 30% acima do A, teto do mês).
 `bun packages/api/scripts/recommender-eval.ts` compara A, B e C em perfis sintéticos com
 semente (trio que muda, Kendall, tempo, custo; `--out` grava o JSON do painel) com o modelo
 dublado; o modelo de verdade só com `--live --max-usd <teto>` (autorização do dono).
