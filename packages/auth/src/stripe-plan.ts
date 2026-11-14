@@ -59,3 +59,56 @@ export function planForLookupKey(
     )?.name ?? null
   )
 }
+
+/** Preço de tabela do mês, em reais: o mesmo do Stripe e dos produtos do Pix. */
+export const TABLE_PRICE_REAIS: Record<Plan, number> = {
+  starter: 97,
+  pro: 147,
+  elite: 297
+}
+
+/** Desconto de fundador por mês, em reais (cupom do Stripe e produto do Pix). */
+export const FOUNDER_DISCOUNT_REAIS = 28
+
+/**
+ * O que o bar paga por mês num plano: tabela ou fundador, e no anual o ano
+ * (10 meses) dividido por 12.
+ */
+export function monthlyPriceReais(
+  plan: Plan,
+  { founder, annual = false }: { founder: boolean; annual?: boolean }
+): number {
+  const month = TABLE_PRICE_REAIS[plan] - (founder ? FOUNDER_DISCOUNT_REAIS : 0)
+  return annual ? (month * ANNUAL_MONTHS) / 12 : month
+}
+
+/** Menor cobrança em real que o Stripe aceita: R$ 0,50. */
+const STRIPE_MIN_BRL_CENTS = 50
+
+/**
+ * Subida de plano do Pix para o cartão (dono, 14/11/2026, WEB-536): o cartão
+ * cobra hoje a diferença entre o que o bar vai pagar e o que paga no Pix, pelo
+ * que falta do mês já pago (`paidUntil`), em centavos. O ciclo do Pix é de um
+ * mês, que acaba em `paidUntil`. Descida e mesmo preço não cobram nada, e
+ * diferença abaixo do mínimo do Stripe também não.
+ */
+export function pixUpgradeCents({
+  currentMonthlyReais,
+  newMonthlyReais,
+  paidUntil,
+  now = new Date()
+}: {
+  currentMonthlyReais: number
+  newMonthlyReais: number
+  paidUntil: Date
+  now?: Date
+}): number {
+  const diff = newMonthlyReais - currentMonthlyReais
+  const left = paidUntil.getTime() - now.getTime()
+  if (diff <= 0 || left <= 0) return 0
+  const start = new Date(paidUntil)
+  start.setUTCMonth(start.getUTCMonth() - 1)
+  const fraction = Math.min(1, left / (paidUntil.getTime() - start.getTime()))
+  const cents = Math.round(diff * 100 * fraction)
+  return cents < STRIPE_MIN_BRL_CENTS ? 0 : cents
+}
