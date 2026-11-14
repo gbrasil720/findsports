@@ -257,11 +257,11 @@ export default function Plano() {
                 <OwnerLabel>O Elite neste mês</OwnerLabel>
                 <View style={styles.cells}>
                   <Cell
-                    value={proof.data?.people}
+                    value={proof.data?.people ?? undefined}
                     label="pessoas na lista de quem vai"
                   />
                   <Cell
-                    value={proof.data?.codes}
+                    value={proof.data?.codes ?? undefined}
                     label="códigos validados no balcão"
                   />
                   <Cell

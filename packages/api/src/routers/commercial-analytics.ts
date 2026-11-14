@@ -174,7 +174,7 @@ export const commercialAnalyticsRouter = router({
     const entitlements = getAnalyticsEntitlements(plan)
     const month = await getMonthNumbers(barId)
     return {
-      going: entitlements.canViewReservations ? month.going : null,
+      going: entitlements.canViewGoingCount ? month.going : null,
       validatedCodes: entitlements.canViewReservations
         ? month.validatedCodes
         : null,
