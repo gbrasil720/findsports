@@ -810,7 +810,7 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums']
   },
   untilUnit: { fontFamily: 'Anton', fontSize: 26, color: PAPER },
-  tile: { borderRadius: 18, padding: 12, gap: 2 },
+  tile: { flex: 1, borderRadius: 18, padding: 12, gap: 2 },
   tileValue: { fontFamily: 'Anton', fontSize: 32, marginVertical: -7.7 },
   small: { borderRadius: 20, padding: 14, gap: 2 },
   smallValue: { fontFamily: 'Anton', fontSize: 36, marginVertical: -8.7 },
