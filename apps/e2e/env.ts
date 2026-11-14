@@ -24,6 +24,8 @@ export const OUTBOX_FILE = fileURLToPath(
 
 /** Segredo de assinatura do webhook do Stripe; o servidor e o helper usam o mesmo. */
 export const STRIPE_WEBHOOK_SECRET = 'whsec_e2e_only_stripe_webhook_secret'
+export const ABACATE_PAY_WEBHOOK_SECRET =
+  'e2e_only_abacatepay_webhook_secret_0000000'
 
 /** Domínio público falso do bucket de fotos; `fixtures/media.ts` serve a leitura. */
 export const MEDIA_PUBLIC_ORIGIN = 'https://media.e2e.test'
@@ -63,11 +65,11 @@ export const SERVER_ENV: Record<string, string> = {
   STRIPE_WEBHOOK_SECRET,
   // O SDK do Stripe fala com o stub (`/v1/*` em `stubs/server.ts`).
   STRIPE_API_BASE_URL: STUB_URL,
-  // Pix (WEB-536): a chave deixa o servidor cancelar o Pix de quem passa para
-  // o cartão, no stub (`/v2/*`). Sem o segredo do webhook o Pix segue fora
-  // das telas (`pixEnabled`), então o resto da suíte não vê a opção.
+  // Pix ligado (Pix anual): a AbacatePay é o stub (`/v2/*`), e o webhook
+  // aceita avisos assinados com este segredo (`fixtures/abacatepay.ts`).
+  // Contratar abre a janela "Como você quer pagar?" com cartão e Pix.
   ABACATE_PAY_API_KEY: 'abc_dev_e2e_fake_key',
-  ABACATE_PAY_WEBHOOK_SECRET: '',
+  ABACATE_PAY_WEBHOOK_SECRET,
   ABACATE_PAY_API_BASE_URL: STUB_URL,
   UPSTASH_REDIS_REST_URL: '',
   UPSTASH_REDIS_REST_TOKEN: '',
