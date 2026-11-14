@@ -230,6 +230,19 @@ export function deleteWebhook(id: string): Promise<unknown> {
   })
 }
 
+/** Produto de assinatura (`cycle`), achado depois pelo `externalId`. */
+export function createProduct(input: {
+  externalId: string
+  name: string
+  price: number
+  cycle: 'MONTHLY' | 'ANNUALLY'
+}): Promise<AbacateProduct> {
+  return call<AbacateProduct>('/products/create', {
+    method: 'POST',
+    body: { ...input, currency: 'BRL' }
+  })
+}
+
 export function getProduct(externalId: string): Promise<AbacateProduct> {
   return call<AbacateProduct>(
     `/products/get?externalId=${encodeURIComponent(externalId)}`
