@@ -410,11 +410,18 @@ export function createAuth() {
           enabled: true,
           plans: STRIPE_PLANS,
           requireEmailVerification: true,
-          getCheckoutSessionParams: async ({ user, subscription }) => ({
+          // `annual` é o do pedido (`subscription.upgrade`): o cupom de
+          // fundador é só do mensal (WEB-442).
+          getCheckoutSessionParams: async (
+            { user, subscription },
+            _req,
+            ctx
+          ) => ({
             params: await checkoutParamsFor(
               user,
               subscription.stripeCustomerId,
-              stripeClient
+              stripeClient,
+              { annual: ctx?.body?.annual === true }
             )
           })
         }

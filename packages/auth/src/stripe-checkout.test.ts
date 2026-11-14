@@ -1,6 +1,7 @@
 import { describe, expect, it, spyOn } from 'bun:test'
 import type Stripe from 'stripe'
 import {
+  annualPlansAvailable,
   customerPrefillFor,
   founderCouponUsable,
   pixFounderSeatAvailable,
@@ -366,5 +367,67 @@ describe('dados da nota no cliente do Stripe (WEB-444)', () => {
     ])
     await prefillCustomer(client, 'cus_1', 'Zé Dono', ownerBar)
     expect(calls.map(([kind]) => kind)).toEqual(['update'])
+  })
+})
+
+describe('plano anual à venda (WEB-442)', () => {
+  const yearly = (lookup_key: string, interval = 'year') => ({
+    lookup_key,
+    recurring: { interval }
+  })
+  function pricesWith(answer: () => Promise<{ data: unknown[] }>) {
+    const requests: unknown[][] = []
+    const client = {
+      prices: {
+        list: (...args: unknown[]) => {
+          requests.push(args)
+          return answer()
+        }
+      }
+    } as unknown as Pick<Stripe, 'prices'>
+    return { client, requests }
+  }
+
+  it('com os três preços anuais ativos, o anual está à venda', async () => {
+    const { client, requests } = pricesWith(async () => ({
+      data: [
+        yearly('starter_yearly'),
+        yearly('pro_yearly'),
+        yearly('elite_yearly')
+      ]
+    }))
+    expect(await annualPlansAvailable(client)).toBe(true)
+    expect(requests).toEqual([
+      [
+        {
+          lookup_keys: ['starter_yearly', 'pro_yearly', 'elite_yearly'],
+          active: true,
+          limit: 10
+        },
+        { timeout: 5000, maxNetworkRetries: 0 }
+      ]
+    ])
+  })
+
+  it('preço que falta, ou cobrado por mês, deixa o anual desligado', async () => {
+    const missing = pricesWith(async () => ({
+      data: [yearly('starter_yearly'), yearly('pro_yearly')]
+    }))
+    expect(await annualPlansAvailable(missing.client)).toBe(false)
+    const monthly = pricesWith(async () => ({
+      data: [
+        yearly('starter_yearly'),
+        yearly('pro_yearly'),
+        yearly('elite_yearly', 'month')
+      ]
+    }))
+    expect(await annualPlansAvailable(monthly.client)).toBe(false)
+  })
+
+  it('Stripe sem responder deixa o anual desligado', async () => {
+    const { client } = pricesWith(() =>
+      Promise.reject(new Error('Request aborted due to timeout'))
+    )
+    expect(await annualPlansAvailable(client)).toBe(false)
   })
 })
