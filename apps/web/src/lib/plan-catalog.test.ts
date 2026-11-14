@@ -715,7 +715,8 @@ describe('getPlanHeader', () => {
   test('sem cobrança no Stripe não há crédito a prometer', () => {
     const contractedTrial = { ...liveTrial, externalSubscriptionId: 'sub_1' }
     const manual = { ...paid, externalSubscriptionId: null }
-    for (const subscription of [contractedTrial, manual]) {
+    const pix = { ...paid, provider: 'abacatepay' }
+    for (const subscription of [contractedTrial, manual, pix]) {
       expect(earnsDowngradeCredit(subscription)).toBe(false)
       expect(getPlanHeader(subscription).kicker).toBe('Plano e cobrança')
       expect(getPlanHeader(subscription).text).not.toContain('crédito')
