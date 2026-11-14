@@ -350,3 +350,21 @@ test('assinatura parada no Stripe: o servidor recusa checkout novo e manda regul
   // Nada foi pedido ao Stripe: nem cliente, nem sessão.
   expect(await checkoutSessionOf(page, user.id)).toBeUndefined()
 })
+
+test('/admin/billing: com o Stripe sem responder ao cupom, o card do plano do trial sai do "Carregando preço…" (WEB-534)', async ({
+  page,
+  request
+}) => {
+  await setFounderCoupon(request, 'slow')
+  const { user } = await createPub({
+    subscription: { plan: 'elite', status: 'trialing' }
+  })
+  await signIn(page, user)
+  await page.goto('/admin/billing')
+
+  // O servidor desiste do Stripe em 5 s (`QUICK_REQUEST`) e responde. Stripe
+  // sem resposta não é cupom esgotado: vale o de fundador, como no checkout.
+  const currentPlan = page.getByRole('region', { name: 'Seu plano' })
+  await expect(currentPlan).toContainText('R$ 269', { timeout: 15_000 })
+  await expect(currentPlan).not.toContainText('Carregando preço')
+})

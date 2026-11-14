@@ -236,12 +236,13 @@ export async function seedStripeInvoices(
 
 /**
  * O que o "Stripe" (o stub) passa a dizer do cupom de fundador: `exhausted`
- * bateu o teto de usos, `missing` não existe nesta conta. O estado é global:
+ * bateu o teto de usos, `missing` não existe nesta conta, `slow` é o Stripe
+ * que não responde a tempo (WEB-534). O estado é global:
  * só em `*.serial.e2e.ts`, e com `'valid'` de volta no `afterEach`.
  */
 export async function setFounderCoupon(
   request: APIRequestContext,
-  state: 'valid' | 'exhausted' | 'missing'
+  state: 'valid' | 'exhausted' | 'missing' | 'slow'
 ) {
   const changed = await request.post(`${STUB_URL}/stripe/coupon`, {
     data: { state }
