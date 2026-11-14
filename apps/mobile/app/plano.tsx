@@ -278,7 +278,7 @@ export default function Plano() {
                     NO ELITE, ESTE MÊS VOCÊ TERIA VISTO
                   </Text>
                   <Text style={styles.teaserTitle}>
-                    {`${proof.data?.people ?? 0} ${(proof.data?.people ?? 0) === 1 ? 'pessoa marcou' : 'pessoas marcaram'} presença no seu bar`}
+                    {goingLine(proof.data?.people, 'presença no seu bar')}
                   </Text>
                   <Text style={[text(15, 'Regular', 1.45), { color: INK }]}>
                     Com o nome de cada uma, jogo a jogo, e o código do balcão
@@ -307,7 +307,9 @@ export default function Plano() {
                   {[
                     [
                       'Quem vai, jogo a jogo',
-                      `${proof.data?.people ?? 0} ${(proof.data?.people ?? 0) === 1 ? 'pessoa marcou' : 'pessoas marcaram'} este mês`
+                      proof.data?.people == null
+                        ? 'volta quando o pagamento passar'
+                        : goingLine(proof.data.people, 'este mês')
                     ],
                     [
                       'Oferta da casa e código do balcão',
@@ -499,6 +501,15 @@ export default function Plano() {
       {soon.toast}
     </View>
   )
+}
+
+/**
+ * "34 pessoas marcaram presença no seu bar". Sem o número (Starter, plano
+ * parado: o servidor manda nulo, WEB-522), a frase não inventa um zero.
+ */
+function goingLine(people: number | null | undefined, tail: string) {
+  if (people == null) return `Quem marcou ${tail}`
+  return `${people} ${people === 1 ? 'pessoa marcou' : 'pessoas marcaram'} ${tail}`
 }
 
 function Cell({ value, label }: { value: number | undefined; label: string }) {
