@@ -251,7 +251,7 @@ integrationTest(
 
       // Recomendador nunca rodou: a tela mostra "ainda não ligado".
       expect(o.recommender.live).toBe(false)
-      expect(o.recommender.arms.map((r) => r.weight)).toEqual([34, 33, 33])
+      expect(o.recommender.arms.map((r) => r.weight)).toEqual([50, 50])
 
       expect(o.status.limits.chatDailyMessages).toBe(1)
       expect(o.status.hits).toEqual({

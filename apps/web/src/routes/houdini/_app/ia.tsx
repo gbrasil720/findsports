@@ -32,6 +32,9 @@ export const Route = createFileRoute('/houdini/_app/ia')({
 type Outputs = inferRouterOutputs<AppRouter>
 type Overview = Outputs['houdini']['ia']['overview']
 type Arm = Overview['chat']['arms'][number]
+type RecArm = Overview['recommender']['arms'][number]
+type Stop = Overview['recommender']['stops'][number]
+type ArmHead = { variant: string; model: string | null; weight: number }
 type Limits = Overview['status']['limits']
 type Weights = Record<string, number>
 type Spell = Outputs['appConfig']['list'][number]
@@ -49,9 +52,9 @@ const CHAT_ARMS = [
   { key: 'a', label: 'A · Gemini 2.5 Flash' },
   { key: 'b', label: 'B · GPT-6 Luna' }
 ]
+// O B (Jev) saiu na fase 2 (WEB-426, dono em 14/11/2026).
 const RECOMMENDER_ARMS = [
   { key: 'a', label: 'A · só o algoritmo' },
-  { key: 'b', label: 'B · Jev' },
   { key: 'c', label: 'C · Clef-flash' }
 ]
 
@@ -79,7 +82,7 @@ const GLOSSARY: ReadonlyArray<readonly [string, string | null, string]> = [
   [
     'Braço',
     null,
-    'Cada versão dentro de um teste: o braço A usa um modelo, o B usa outro. O recomendador tem três braços (A, B e C).'
+    'Cada versão dentro de um teste: o braço A usa um modelo, o B usa outro. O recomendador tem dois braços: A, só o algoritmo, e C, o algoritmo com o Clef-flash.'
   ],
   [
     'Peso',
@@ -110,6 +113,16 @@ const GLOSSARY: ReadonlyArray<readonly [string, string | null, string]> = [
     'Desvio',
     null,
     'O modelo do braço falhou e a resposta saiu pelo modelo do outro braço.'
+  ],
+  [
+    'Queda para o controle',
+    null,
+    'No recomendador, a rodada do braço C que saiu na ordem do algoritmo porque a IA falhou duas vezes, demorou mais de 300 ms ou bateu num teto.'
+  ],
+  [
+    'Regra de parada',
+    null,
+    'Quando o braço C do recomendador deve ser desligado: queda para o controle acima de 2% das rodadas, Passo 30% acima do A, ou teto do mês estourado.'
   ],
   [
     'Teto',
@@ -224,7 +237,13 @@ function IaPage() {
   // Sem prazo: o que muda aqui fica até alguém mudar de novo. Lançar por
   // tempo continua nos Feitiços.
   const cast =
-    (key: 'ai.enabled' | 'ai.variant_weights' | 'ai.limits') =>
+    (
+      key:
+        | 'ai.enabled'
+        | 'ai.recommender_enabled'
+        | 'ai.variant_weights'
+        | 'ai.limits'
+    ) =>
     (value: unknown) =>
       set.mutateAsync({ key, value, expiresInMinutes: null }).then(
         () => true,
@@ -233,6 +252,7 @@ function IaPage() {
 
   const o = overview.data
   const enabledSpell = spell('ai.enabled')
+  const recommenderSpell = spell('ai.recommender_enabled')
   const weightsSpell = spell('ai.variant_weights')
   const limitsSpell = spell('ai.limits')
   const weights = weightsSpell?.valor as
@@ -299,6 +319,12 @@ function IaPage() {
               }
             >
               <SwitchCard
+                title="A IA"
+                configKey="ai.enabled"
+                on="Ligada"
+                off="Desligada"
+                askOn="Ligar a IA? Cada mensagem chama o modelo e gasta crédito, até o teto do mês."
+                askOff='Desligar a IA? O chat do app passa a dizer "indisponível", o recomendador volta todo ao A e a busca normal segue. Vale em até 1 minuto.'
                 enabled={
                   enabledSpell ? enabledSpell.valor === true : o.status.enabled
                 }
@@ -321,7 +347,16 @@ function IaPage() {
             >
               <div className="hd-cols" style={{ gap: 24 }}>
                 <div className="grow" style={{ gap: 0 }}>
-                  <ArmsTable arms={o.chat.arms} unitLabel="Conversas" />
+                  <ArmsTable
+                    arms={o.chat.arms}
+                    rows={[
+                      {
+                        label: 'Conversas',
+                        cell: (a) => int(a.conversations)
+                      },
+                      ...ARM_ROWS
+                    ]}
+                  />
                 </div>
                 <div className="side" style={{ gap: 16 }}>
                   <ConversionCard
@@ -348,47 +383,93 @@ function IaPage() {
             <Section
               id="ia-recomendador"
               title="Teste do recomendador"
-              meta="A só o algoritmo × B Jev × C Clef-flash"
+              meta="A só o algoritmo × C Clef-flash"
             >
-              {o.recommender.live ? (
-                <ArmsTable arms={o.recommender.arms} unitLabel="Pedidos" />
-              ) : (
-                <div
-                  style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
-                >
-                  <span
-                    className="hd-pill"
-                    data-tone="draft"
-                    style={{ alignSelf: 'flex-start' }}
-                  >
-                    ainda não ligado
-                  </span>
-                  <p style={{ margin: 0, color: 'var(--hd-body)' }}>
-                    O recomendador (WEB-426) ainda não chama a IA, então não há
-                    número para mostrar. Os pesos abaixo já valem no dia em que
-                    ele ligar.
-                  </p>
-                  <ModelList
-                    arms={o.recommender.arms}
-                    labels={RECOMMENDER_ARMS}
-                  />
+              <div className="hd-cols" style={{ gap: 24 }}>
+                <div className="grow" style={{ gap: 16 }}>
+                  {o.recommender.live ? (
+                    <ArmsTable arms={o.recommender.arms} rows={REC_ROWS} />
+                  ) : (
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 10
+                      }}
+                    >
+                      <span
+                        className="hd-pill"
+                        data-tone="draft"
+                        style={{ alignSelf: 'flex-start' }}
+                      >
+                        sem rodada no teste ainda
+                      </span>
+                      <p style={{ margin: 0, color: 'var(--hd-body)' }}>
+                        Com o teste e a IA ligados, cada rodada nova de "Bares
+                        pra você" entra aqui pelo braço sorteado. Desligado,
+                        todo mundo fica no A, como antes.
+                      </p>
+                      <ModelList
+                        arms={o.recommender.arms}
+                        labels={RECOMMENDER_ARMS}
+                      />
+                    </div>
+                  )}
+                  <StopRules stops={o.recommender.stops} />
                 </div>
-              )}
-              {weights ? (
-                <>
-                  <hr className="hd-rule" />
-                  <WeightsEditor
-                    title="Pesos do recomendador"
-                    arms={RECOMMENDER_ARMS}
-                    value={weights.recommender}
-                    changed={changedBy(weightsSpell)}
-                    busy={set.isPending}
-                    onSave={(recommender) =>
-                      cast('ai.variant_weights')({ ...weights, recommender })
+                <div className="side" style={{ gap: 16 }}>
+                  <SwitchCard
+                    title="O teste"
+                    configKey="ai.recommender_enabled"
+                    on="Ligado"
+                    off="Desligado"
+                    enabled={
+                      recommenderSpell
+                        ? recommenderSpell.valor === true
+                        : o.recommender.enabled
                     }
+                    overridden={recommenderSpell?.sobrescrito ?? false}
+                    changed={changedBy(recommenderSpell)}
+                    busy={set.isPending || !config.data}
+                    note={
+                      o.status.enabled
+                        ? null
+                        : 'A IA está desligada: mesmo ligado, todo mundo fica no A.'
+                    }
+                    askOn="Ligar o teste do recomendador? Quem cair no C passa a ter a rodada do dia ordenada com o Clef-flash (uma chamada por pessoa por dia), dentro do teto do mês."
+                    askOff="Desligar o teste do recomendador? As rodadas novas voltam todas ao A, só o algoritmo. Vale em até 1 minuto."
+                    onChange={cast('ai.recommender_enabled')}
                   />
-                </>
-              ) : null}
+                  <ConversionCard
+                    names={['A', 'C']}
+                    arms={o.recommender.arms}
+                    conversion={o.recommender.conversion}
+                    minimum={o.chat.minimum}
+                    unit="pessoas"
+                  >
+                    Converte a pessoa que, em até 7 dias depois de uma rodada,
+                    dá Curti, pede a rota, liga, abre o WhatsApp ou marca "Vou
+                    assistir" num card dela, ou vai a um dos bares (código
+                    validado ou check-in). A análise é pelo braço sorteado:
+                    rodada do C que caiu no controle continua no C.
+                  </ConversionCard>
+                  {weights ? (
+                    <WeightsEditor
+                      title="Pesos do recomendador"
+                      arms={RECOMMENDER_ARMS}
+                      value={weights.recommender}
+                      changed={changedBy(weightsSpell)}
+                      busy={set.isPending}
+                      onSave={(recommender) =>
+                        cast('ai.variant_weights')({
+                          ...weights,
+                          recommender: { ...recommender, b: 0 }
+                        })
+                      }
+                    />
+                  ) : null}
+                </div>
+              </div>
             </Section>
 
             <Section id="ia-limites" title="Limites" meta="ai.limits">
@@ -499,27 +580,42 @@ const display = (size: number): CSSProperties => ({
 })
 
 function SwitchCard({
+  title,
+  configKey,
+  on,
+  off,
+  askOn,
+  askOff,
   enabled,
   overridden,
   gatewayId,
+  note,
   changed,
   busy,
   onChange
 }: {
+  title: string
+  configKey: string
+  on: string
+  off: string
+  askOn: string
+  askOff: string
   enabled: boolean
   overridden: boolean
-  gatewayId: string | null
+  /** Só no cartão da IA: por onde as chamadas passam. */
+  gatewayId?: string | null
+  note?: string | null
   changed: string
   busy: boolean
   onChange: (value: boolean) => Promise<boolean>
 }) {
   const [asking, setAsking] = useState(false)
   return (
-    <article className="hd-card" style={{ gap: 14 }} aria-label="A IA">
+    <article className="hd-card" style={{ gap: 14 }} aria-label={title}>
       <div className="hd-card-hd">
-        <b>A IA</b>
+        <b>{title}</b>
         <span className="meta hd-mono">
-          ai.enabled · {overridden ? 'lançado' : 'no padrão'}
+          {configKey} · {overridden ? 'lançado' : 'no padrão'}
         </span>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -529,34 +625,39 @@ function SwitchCard({
             color: enabled ? 'var(--hd-fg)' : 'var(--hd-muted)'
           }}
         >
-          {enabled ? 'Ligada' : 'Desligada'}
+          {enabled ? on : off}
         </span>
         <button
           type="button"
           role="switch"
           className="hd-switch"
           aria-checked={enabled}
-          aria-label="IA ligada"
+          aria-label={`${title} ${on.toLowerCase()}`}
           style={{ marginLeft: 'auto' }}
           disabled={busy || asking}
           onClick={() => setAsking(true)}
         />
       </div>
-      <dl className="hd-dl">
-        <div>
-          <dt>Gateway</dt>
-          <dd className="hd-mono">{gatewayId ?? 'nenhum (nada é chamado)'}</dd>
-        </div>
-      </dl>
+      {gatewayId !== undefined ? (
+        <dl className="hd-dl">
+          <div>
+            <dt>Gateway</dt>
+            <dd className="hd-mono">
+              {gatewayId ?? 'nenhum (nada é chamado)'}
+            </dd>
+          </div>
+        </dl>
+      ) : null}
+      {note ? (
+        <p className="hd-small" style={{ margin: 0, color: 'var(--hd-body)' }}>
+          {note}
+        </p>
+      ) : null}
       <span className="hd-mono hd-small">{changed}</span>
       {asking ? (
         <Confirm
-          text={
-            enabled
-              ? 'Desligar a IA? O chat do app passa a dizer "indisponível" e a busca normal segue. Vale em até 1 minuto.'
-              : 'Ligar a IA? Cada mensagem chama o modelo e gasta crédito, até o teto do mês.'
-          }
-          confirmLabel={enabled ? 'Desligar a IA' : 'Ligar a IA'}
+          text={enabled ? askOff : askOn}
+          confirmLabel={`${enabled ? 'Desligar' : 'Ligar'} ${title.toLowerCase().replace('ia', 'IA')}`}
           busy={busy}
           onCancel={() => setAsking(false)}
           onConfirm={() =>
@@ -821,7 +922,7 @@ function DailyBars({
   )
 }
 
-const ARM_ROWS: Array<{ label: string; cell: (a: Arm) => string }> = [
+const ARM_ROWS: ArmRow<Arm>[] = [
   { label: 'Pessoas', cell: (a) => int(a.people) },
   { label: 'Mensagens', cell: (a) => int(a.messages) },
   {
@@ -858,7 +959,44 @@ const ARM_ROWS: Array<{ label: string; cell: (a: Arm) => string }> = [
   { label: 'Custo por conversão', cell: (a) => unit(a.costPerConversion) }
 ]
 
-function ArmsTable({ arms, unitLabel }: { arms: Arm[]; unitLabel: string }) {
+type ArmRow<T> = { label: string; cell: (a: T) => string }
+
+const REC_ROWS: ArmRow<RecArm>[] = [
+  { label: 'Pessoas', cell: (a) => int(a.people) },
+  { label: 'Rodadas', cell: (a) => int(a.rounds) },
+  {
+    label: 'Conversão por pessoa (7 dias)',
+    cell: (a) =>
+      `${int(a.converted)} de ${int(a.people)} · ${pct(a.conversionRate, 1)}`
+  },
+  {
+    label: 'Passo (bares mostrados)',
+    cell: (a) => `${int(a.passed)} de ${int(a.shown)} · ${pct(a.passRate, 1)}`
+  },
+  {
+    label: 'Queda para o controle',
+    cell: (a) => `${int(a.fellBack)} · ${pct(a.fellBackRate, 1)}`
+  },
+  {
+    label: 'Erros · demoras',
+    cell: (a) => `${int(a.errors)} · ${int(a.timeouts)}`
+  },
+  {
+    label: 'Tempo da IA p50 · p95',
+    cell: (a) => `${ms(a.p50Ms)} · ${ms(a.p95Ms)}`
+  },
+  { label: 'Custo', cell: (a) => usd(a.costUsd) },
+  { label: 'Custo por mil rodadas', cell: (a) => usd(a.costPer1000Rounds) },
+  { label: 'Custo por conversão', cell: (a) => unit(a.costPerConversion) }
+]
+
+function ArmsTable<T extends ArmHead>({
+  arms,
+  rows
+}: {
+  arms: T[]
+  rows: ArmRow<T>[]
+}) {
   return (
     <div className="hd-table-wrap is-flat">
       <table className="hd-table" style={{ minWidth: 120 + arms.length * 160 }}>
@@ -886,10 +1024,7 @@ function ArmsTable({ arms, unitLabel }: { arms: Arm[]; unitLabel: string }) {
           </tr>
         </thead>
         <tbody>
-          {[
-            { label: unitLabel, cell: (a: Arm) => int(a.conversations) },
-            ...ARM_ROWS
-          ].map((row) => (
+          {rows.map((row) => (
             <tr key={row.label}>
               <th
                 scope="row"
@@ -928,12 +1063,20 @@ function ArmsTable({ arms, unitLabel }: { arms: Arm[]; unitLabel: string }) {
 function ConversionCard({
   arms,
   conversion,
-  minimum
+  minimum,
+  names = ['A', 'B'],
+  unit = 'conversas',
+  children
 }: {
-  arms: Arm[]
+  arms: Array<{ conversionRate: number | null }>
   conversion: Overview['chat']['conversion']
   minimum: Overview['chat']['minimum']
+  names?: [string, string]
+  unit?: string
+  /** O que conta como conversão neste teste. */
+  children?: ReactNode
 }) {
+  const [first, second] = names
   const points = (n: number) =>
     `${n > 0 ? '+' : ''}${(n * 100).toLocaleString('pt-BR', {
       maximumFractionDigits: 1
@@ -943,7 +1086,9 @@ function ConversionCard({
       className="hd-card"
       style={{ gap: 8, background: 'var(--hd-card-2)' }}
     >
-      <span className="hd-eyebrow">Conversão: B − A, com intervalo de 95%</span>
+      <span className="hd-eyebrow">
+        Conversão: {second} − {first}, com intervalo de 95%
+      </span>
       {conversion.enough ? (
         <>
           <span style={{ font: '400 44px/1 var(--hd-display)', marginTop: 4 }}>
@@ -958,7 +1103,7 @@ function ConversionCard({
             style={{ alignSelf: 'flex-start' }}
           >
             {conversion.significant
-              ? `diferença real: ${conversion.diff > 0 ? 'B' : 'A'} converte mais`
+              ? `diferença real: ${conversion.diff > 0 ? second : first} converte mais`
               : 'ainda pode ser zero: sem vencedor'}
           </span>
         </>
@@ -975,14 +1120,74 @@ function ConversionCard({
         </>
       )}
       <p className="hd-small" style={{ margin: 0, color: 'var(--hd-body)' }}>
-        Conversa: mensagens da mesma pessoa no mesmo braço sem pausa de mais de
-        30 minutos. Converte quando alguma resposta dela leva, em até 24 h, a
-        abrir um bar citado, marcar "Vou assistir" ou pedir a rota. O teste
-        compara {arms.map((a) => pct(a.conversionRate, 1)).join(' e ')} só com
-        pelo menos {minimum.conversations} conversas por braço e{' '}
+        {children ??
+          'Conversa: mensagens da mesma pessoa no mesmo braço sem pausa de mais de 30 minutos. Converte quando alguma resposta dela leva, em até 24 h, a abrir um bar citado, marcar "Vou assistir" ou pedir a rota.'}{' '}
+        O teste compara {arms.map((a) => pct(a.conversionRate, 1)).join(' e ')}{' '}
+        só com pelo menos {minimum.conversations} {unit} por braço e{' '}
         {minimum.outcomes} com e {minimum.outcomes} sem ação em cada: abaixo
         disso o teste de duas proporções não vale e o intervalo enganaria.
       </p>
+    </article>
+  )
+}
+
+const STOP_TEXT: Record<Stop['key'], { label: string; rule: string }> = {
+  fallback: {
+    label: 'Queda para o controle no C',
+    rule: 'acima de 2% das rodadas'
+  },
+  pass: { label: 'Passo do C contra o do A', rule: '30% acima do A' },
+  budget: { label: 'Teto do mês', rule: 'gasto no teto' }
+}
+
+/** A regra de parada do ticket: estourou uma, desligue o teste. */
+function StopRules({ stops }: { stops: Stop[] }) {
+  const value = (stop: Stop) =>
+    stop.value === null
+      ? 'sem dado'
+      : stop.key === 'pass'
+        ? `${stop.value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}× o do A`
+        : pct(stop.value, 1)
+  return (
+    <article
+      className="hd-card"
+      style={{ gap: 10 }}
+      aria-label="Regra de parada"
+    >
+      <div className="hd-card-hd">
+        <b>Regra de parada</b>
+        <span className="meta hd-mono">estourou uma, desligue o teste</span>
+      </div>
+      <dl className="hd-dl">
+        {stops.map((stop) => (
+          <div key={stop.key}>
+            <dt>
+              {STOP_TEXT[stop.key].label} · {STOP_TEXT[stop.key].rule}
+            </dt>
+            <dd style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <span
+                className="hd-pill"
+                data-tone={
+                  stop.tripped === null
+                    ? 'draft'
+                    : stop.tripped
+                      ? 'live'
+                      : 'acid'
+                }
+              >
+                {stop.tripped === null
+                  ? 'aguardando'
+                  : stop.tripped
+                    ? 'estourou'
+                    : 'dentro'}
+              </span>
+              {stop.key === 'budget' ? null : (
+                <span className="hd-mono hd-small">{value(stop)}</span>
+              )}
+            </dd>
+          </div>
+        ))}
+      </dl>
     </article>
   )
 }
@@ -991,7 +1196,7 @@ function ModelList({
   arms,
   labels
 }: {
-  arms: Arm[]
+  arms: ArmHead[]
   labels: Array<{ key: string; label: string }>
 }) {
   return (
