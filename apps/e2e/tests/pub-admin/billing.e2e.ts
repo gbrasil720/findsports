@@ -83,6 +83,23 @@ test('a assinatura aparece sem esperar a consulta do cupom ao Stripe (WEB-348)',
   await page.unrouteAll({ behavior: 'ignoreErrors' })
 })
 
+test('a consulta do cupom sem resposta não deixa o card do trial em "Carregando preço…" (WEB-534)', async ({
+  page
+}) => {
+  const pub = await createPub({
+    subscription: { plan: 'elite', status: 'trialing' }
+  })
+  await signIn(page, pub.user)
+  // A resposta do servidor nunca chega ao navegador. Passado o teto, o card
+  // mostra a tabela cheia em vez de carregar para sempre.
+  await page.route(/\/api\/trpc\/[^?]*pub\.getFounderCouponAvailable/, () => {})
+  await page.goto('/admin/billing')
+
+  await expect(currentPlan(page)).toContainText('R$ 297', { timeout: 15_000 })
+  await expect(currentPlan(page)).not.toContainText('Carregando preço')
+  await page.unrouteAll({ behavior: 'ignoreErrors' })
+})
+
 test('Elite ativo: plano e portal do Stripe', async ({ page }) => {
   // O portal só existe para quem tem cliente no Stripe (WEB-264): o id da
   // assinatura e o do cliente são o rastro de quem já passou pelo checkout.
