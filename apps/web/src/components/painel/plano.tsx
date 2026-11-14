@@ -13,6 +13,7 @@ import { analytics } from '@/lib/analytics'
 import { openBillingPortal } from '@/lib/billing-client'
 import { isLapsed, LAPSED_COPY } from '@/lib/lapsed-plan'
 import {
+  billedPlan,
   CONTRACTED_TRIAL_LABEL,
   formatPlanPrice,
   getPlan,
@@ -136,7 +137,10 @@ export function PlanoPage({
   // Assinatura encerrada mostra o plano contratado com o selo (WEB-60).
   const ended = standing === 'ended'
   const shownPlan = plan ?? (lapsed || ended ? subscription?.plan : null)
-  const planInfo = shownPlan ? getPlan(shownPlan) : null
+  // Com o preço do intervalo cobrado: o anual diz o valor do ano (WEB-442).
+  const planInfo = shownPlan
+    ? billedPlan(getPlan(shownPlan), subscription?.billingInterval)
+    : null
   const founderCouponAvailable = useFounderCoupon()
   const charge =
     planInfo && subscription
@@ -287,7 +291,11 @@ export function PlanoPage({
                     </s>
                   ) : null}
                   <b>{formatPlanPrice(charge.chargeReais)}</b>
-                  <span>por mês</span>
+                  <span>
+                    {subscription?.billingInterval === 'year'
+                      ? 'por ano'
+                      : 'por mês'}
+                  </span>
                 </div>
               ) : (
                 <div className="pn-price" aria-busy="true">
