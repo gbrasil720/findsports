@@ -44,7 +44,7 @@ import { sessionTokenGuard } from './session-token'
 import { startCookies } from './start-cookies'
 import { checkoutParamsFor } from './stripe-checkout'
 import { stripeClient } from './stripe-client'
-import { STRIPE_PLANS } from './stripe-plan'
+import { planForLookupKey, STRIPE_PLANS } from './stripe-plan'
 import { syncStripeEvent } from './stripe-sync'
 import { APP_SCHEME, buildTrustedOrigins } from './trusted-origins'
 import { publicEmailUrl, sendVerificationEmail } from './verification-email'
@@ -426,7 +426,7 @@ export function createAuth() {
           // `annual` é o do pedido (`subscription.upgrade`): o cupom de
           // fundador é só do mensal (WEB-442).
           getCheckoutSessionParams: async (
-            { user, subscription },
+            { user, subscription, plan },
             _req,
             ctx
           ) => ({
@@ -434,7 +434,10 @@ export function createAuth() {
               user,
               subscription.stripeCustomerId,
               stripeClient,
-              { annual: ctx?.body?.annual === true }
+              {
+                annual: ctx?.body?.annual === true,
+                plan: planForLookupKey(plan.lookupKey) ?? undefined
+              }
             )
           })
         }
