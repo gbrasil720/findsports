@@ -113,6 +113,25 @@ const abacateCalls: { method: string; path: string; body: unknown }[] = []
 function abacatepay(path: string, body: unknown, url: URL) {
   const reply = (status: number, data: unknown, error: string | null = null) =>
     Response.json({ data, error }, { status })
+  // Checkout do Pix (Pix anual): produto pelo `externalId`, cliente e o
+  // checkout de assinatura, com a página dele no stub.
+  if (path === '/products/get') {
+    const ext = url.searchParams.get('externalId') ?? ''
+    return reply(200, { id: `prod_e2e_${ext}`, externalId: ext })
+  }
+  if (path === '/customers/create') {
+    return reply(200, { id: `cust_e2e_${crypto.randomUUID().slice(0, 8)}` })
+  }
+  if (path === '/subscriptions/create') {
+    const id = `bill_e2e_${crypto.randomUUID().slice(0, 8)}`
+    return reply(200, {
+      id,
+      url: `${STUB_URL}/abacatepay/checkout/${id}`,
+      status: 'PENDING',
+      externalId: (body as { externalId?: string })?.externalId ?? null
+    })
+  }
+  if (path === '/subscriptions/checkouts/delete') return reply(200, {})
   if (path === '/subscriptions/get') {
     const sub = abacateSubscriptions.get(url.searchParams.get('id') ?? '')
     return sub ? reply(200, sub) : reply(404, null, 'Subscription not found')
@@ -192,6 +211,11 @@ Bun.serve({
       return abacatepay(path, body, url)
     }
     if (url.pathname === '/abacatepay/calls') return Response.json(abacateCalls)
+    if (url.pathname.startsWith('/abacatepay/checkout/')) {
+      return new Response('<!doctype html><title>AbacatePay (stub)</title>', {
+        headers: { 'content-type': 'text/html' }
+      })
+    }
     if (
       url.pathname === '/abacatepay/subscriptions' &&
       request.method === 'POST'
