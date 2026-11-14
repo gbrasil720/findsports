@@ -9,6 +9,13 @@ import { useRef, useState } from 'react'
 import { formatPlanPrice, getPlan } from '@/lib/plan-catalog'
 
 export type PaymentMethod = 'card' | 'pix'
+
+/** Centavos como a fatura mostra: "R$ 61,27". */
+const reais = (cents: number) =>
+  `R$ ${(cents / 100).toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })}`
 /** Pix no teste do cadastro: no fim dele (padrão) ou já, encerrando o teste. */
 export type PixTiming = 'trial_end' | 'now'
 
@@ -40,6 +47,7 @@ export function PaymentChoiceDialog({
   offerPix,
   pixPlan,
   pixPaidUntil,
+  upgradeTodayCents = 0,
   pending,
   error,
   onConfirm,
@@ -58,6 +66,11 @@ export function PaymentChoiceDialog({
   pixPlan: SubscriptionPlan | null
   /** Fim do mês já pago no Pix: quando o cartão começa a cobrar. */
   pixPaidUntil: string | Date | null
+  /**
+   * Subida do Pix para o cartão (dono, 14/11/2026): a diferença até o fim do
+   * mês pago, cobrada hoje, em centavos (`pixUpgradeCents`). 0 sem cobrança.
+   */
+  upgradeTodayCents?: number
   pending: PaymentMethod | null
   error: string | null
   onConfirm: (method: PaymentMethod, timing?: PixTiming) => void
@@ -169,7 +182,9 @@ export function PaymentChoiceDialog({
                 {trialEnd
                   ? `A primeira cobrança só sai em ${ddmm(trialEnd)}, quando o teste acaba. Depois, todo ${annual ? 'ano' : 'mês'} no cartão.`
                   : pixPaidUntil
-                    ? `O que você já pagou no Pix vale até ${ddmm(pixPaidUntil)}. A primeira cobrança no cartão sai nesse dia.`
+                    ? upgradeTodayCents > 0
+                      ? `O que você já pagou no Pix vale até ${ddmm(pixPaidUntil)}. A mensalidade no cartão começa nesse dia.`
+                      : `O que você já pagou no Pix vale até ${ddmm(pixPaidUntil)}. A primeira cobrança no cartão sai nesse dia.`
                     : `Cobrado todo ${annual ? 'ano' : 'mês'} no cartão, pelo Stripe.`}
               </span>
             </span>
@@ -223,8 +238,12 @@ export function PaymentChoiceDialog({
           <div className="pl-pay-info" role="note">
             <b>Nada é cobrado em dobro.</b> Confirmado o cartão, o Pix é
             cancelado e não debita mais
-            {pixPlanChange ? `, e o ${name} começa na hora` : ''}. O bar segue
-            no ar sem intervalo.
+            {upgradeTodayCents > 0 && pixPaidUntil
+              ? `. Hoje: ${reais(upgradeTodayCents)} da diferença até ${ddmm(pixPaidUntil)}. Depois, ${price ?? ''} por ${annual ? 'ano' : 'mês'}`
+              : pixPlanChange
+                ? `, e o ${name} começa na hora`
+                : ''}
+            . O bar segue no ar sem intervalo.
           </div>
         ) : method === 'pix' && pixWaits ? (
           <div className="pl-pay-info" role="note">

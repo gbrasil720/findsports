@@ -1,4 +1,9 @@
 import { PLAN_NAMES } from '@findsports_oficial/api/lib/plan-limits'
+import {
+  monthlyPriceReais,
+  pixUpgradeCents,
+  TABLE_PRICE_REAIS
+} from '@findsports_oficial/auth/stripe-plan'
 import type { SubscriptionPlan } from '@findsports_oficial/db'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
@@ -383,18 +388,37 @@ function PlanSelection() {
       : annualDeal(plan, founderCouponAvailable)
   // O preço da janela de pagamento. Fundador do Pix que passa ao cartão leva o
   // desconto junto (WEB-536), mesmo com as vagas cheias: a vaga é dele.
+  const choiceFounder =
+    founderCouponAvailable === null
+      ? null
+      : founderCouponAvailable ||
+        (subscription?.provider === 'abacatepay' &&
+          (subscription.monthlyDiscountReais ?? 0) > 0)
   const choiceCharge = (plan: SubscriptionPlan) => {
-    const founder =
-      founderCouponAvailable === null
-        ? null
-        : founderCouponAvailable ||
-          (subscription?.provider === 'abacatepay' &&
-            (subscription.monthlyDiscountReais ?? 0) > 0)
+    const founder = choiceFounder
     if (founder === null) return null
     return annual
       ? planChargeForAnnual(annualDeal(getPlan(plan), founder))
       : planChargeForShowcase(getPlan(plan), founder, false)
   }
+  // Subida do Pix para o cartão: a diferença que sai hoje, a mesma conta do
+  // checkout (dono, 14/11/2026).
+  const upgradeTodayCents = (plan: SubscriptionPlan) =>
+    onPixSubscription &&
+    currentPlan &&
+    subscription?.currentPeriodEnd &&
+    choiceFounder !== null
+      ? pixUpgradeCents({
+          currentMonthlyReais:
+            TABLE_PRICE_REAIS[currentPlan] -
+            (subscription.monthlyDiscountReais ?? 0),
+          newMonthlyReais: monthlyPriceReais(plan, {
+            founder: choiceFounder,
+            annual
+          }),
+          paidUntil: new Date(subscription.currentPeriodEnd)
+        })
+      : 0
   const focusPlan = getPlan(ownPlan ?? defaultPlan)
   const focusDeal = dealFor(focusPlan)
 
@@ -976,6 +1000,7 @@ function PlanSelection() {
           pixPaidUntil={
             onPixSubscription ? (subscription?.currentPeriodEnd ?? null) : null
           }
+          upgradeTodayCents={upgradeTodayCents(choosing)}
           pending={
             startPix.isPending || startPix.isSuccess || schedulePix.isPending
               ? 'pix'
