@@ -2757,7 +2757,11 @@ html[data-theme="dark"] .tc .m-d {
   color: #c9f135;
   display: grid;
   place-items: center;
-  --spark: #e8320c;
+}
+.tc .appc .ph2 svg {
+  width: 42px;
+  height: 42px;
+  display: block;
 }
 .tc .appc b {
   display: block;

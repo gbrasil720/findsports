@@ -3,12 +3,15 @@ import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import { Ic } from './icones'
 import { useTorcedor } from './shell'
+import { TACA_SVG } from './taca-still'
 
 /*
- * "O app da Onside está chegando" (`.appc` do protótipo): "Me avise" põe o
+ * "No app, o Jules acha o bar do seu jogo" (`.appc`, versão A da prancha 3 do
+ * estudo do Jules: a taça parada, sem animação): "Me avise" põe o
  * e-mail da conta na lista (`appWaitlist`); sem sessão passa pela folha de
  * entrar e conclui ao voltar (`agir`). Na lista, diz para qual e-mail vai e
  * deixa sair ("Não quero mais"). Nenhum e-mail sai agora: o aviso é no dia.
+ * O web não conversa com o Jules: o cartão só aponta para o app.
  */
 export function AppChegando() {
   const trpc = useTRPC()
@@ -43,29 +46,22 @@ export function AppChegando() {
 
   return (
     <div className={`appc${naLista ? ' ok' : ''}`}>
-      <span className="ph2">
-        <svg width="26" height="26" viewBox="0 0 30 30" aria-hidden="true">
-          <circle
-            cx="14"
-            cy="14"
-            r="10.5"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="4.2"
-          />
-          <circle cx="22.4" cy="22.6" r="4.6" fill="#e8320c" />
-        </svg>
-      </span>
+      <span
+        className="ph2"
+        aria-hidden="true"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: SVG estático gerado, sem dado de usuário
+        dangerouslySetInnerHTML={{ __html: TACA_SVG }}
+      />
       <span aria-live="polite">
         <b>
           {naLista
             ? 'Combinado: avisamos quando o app chegar'
-            : 'O app da Onside está chegando'}
+            : 'No app, o Jules acha o bar do seu jogo'}
         </b>
         <span>
           {naLista
             ? `Um e-mail só, para ${status.data?.email}, no dia em que sair nas lojas. Sua conta é a mesma.`
-            : 'Tudo o que você faz aqui continua lá, com a mesma conta. Quer saber no dia?'}
+            : 'Você pede do seu jeito e a IA da Onside responde com os bares que vão passar. Quer saber no dia em que o app sair?'}
         </span>
         {erro ? (
           <span className="tk-aviso" role="alert">
