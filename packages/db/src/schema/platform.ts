@@ -586,49 +586,66 @@ export const barTeam = pgTable(
   ]
 )
 
-export const subscription = pgTable('subscription', {
-  id: text('id')
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  barId: text('bar_id')
-    .notNull()
-    .unique()
-    .references(() => bar.id, { onDelete: 'cascade' }),
-  plan: subscriptionPlanEnum('plan').notNull().default('starter'),
-  status: subscriptionStatusEnum('status').notNull().default('trialing'),
-  // Assinatura no provedor de cobrança. As duas nulas é o trial criado no
-  // cadastro: o bar ainda não contratou nada. Genéricas de propósito, para um
-  // segundo provedor (Pix) não pedir coluna nova.
-  provider: text('provider', { enum: ['stripe', 'abacatepay'] }),
-  externalSubscriptionId: text('external_subscription_id').unique(),
-  /** Desconto fixo mensal em reais na assinatura do Stripe; null = desconhecido. */
-  monthlyDiscountReais: integer('monthly_discount_reais'),
-  currentPeriodEnd: timestamp('current_period_end'),
-  /**
-   * Cancelamento agendado no Stripe (WEB-335): quando a assinatura acaba. Null
-   * sem cancelamento marcado, e volta a null se o dono reativar. O status
-   * segue `active` até lá.
-   */
-  cancelAt: timestamp('cancel_at'),
-  /**
-   * Quando o dono, no teste do cadastro, escolheu pagar com Pix no fim dele
-   * (`pub.schedulePixAfterTrial`). A AbacatePay não agenda o primeiro débito,
-   * então nada é criado lá: perto do fim, e-mail e painel pedem a
-   * autorização. Só vale com `trialing` e sem `external_subscription_id`.
-   */
-  pixAfterTrialAt: timestamp('pix_after_trial_at'),
-  /**
-   * O checkout de Pix aberto e ainda não pago (`bill_...`). Abrir outro o
-   * apaga na AbacatePay (`pub.startPixCheckout`), para duas abas não poderem
-   * ser autorizadas e debitar duas vezes; o pagamento o limpa.
-   */
-  pixCheckoutId: text('pix_checkout_id'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at')
-    .defaultNow()
-    .$onUpdate(() => new Date())
-    .notNull()
-})
+export const subscription = pgTable(
+  'subscription',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    barId: text('bar_id')
+      .notNull()
+      .unique()
+      .references(() => bar.id, { onDelete: 'cascade' }),
+    plan: subscriptionPlanEnum('plan').notNull().default('starter'),
+    status: subscriptionStatusEnum('status').notNull().default('trialing'),
+    // Assinatura no provedor de cobrança. As duas nulas é o trial criado no
+    // cadastro: o bar ainda não contratou nada. Genéricas de propósito, para um
+    // segundo provedor (Pix) não pedir coluna nova.
+    provider: text('provider', { enum: ['stripe', 'abacatepay'] }),
+    externalSubscriptionId: text('external_subscription_id').unique(),
+    /** Desconto fixo mensal em reais na assinatura do Stripe; null = desconhecido. */
+    monthlyDiscountReais: integer('monthly_discount_reais'),
+    currentPeriodEnd: timestamp('current_period_end'),
+    /**
+     * Cancelamento agendado no Stripe (WEB-335): quando a assinatura acaba. Null
+     * sem cancelamento marcado, e volta a null se o dono reativar. O status
+     * segue `active` até lá.
+     */
+    cancelAt: timestamp('cancel_at'),
+    /**
+     * Quando o dono, no teste do cadastro, escolheu pagar com Pix no fim dele
+     * (`pub.schedulePixAfterTrial`). A AbacatePay não agenda o primeiro débito,
+     * então nada é criado lá: perto do fim, e-mail e painel pedem a
+     * autorização. Só vale com `trialing` e sem `external_subscription_id`.
+     */
+    pixAfterTrialAt: timestamp('pix_after_trial_at'),
+    /**
+     * O checkout de Pix aberto e ainda não pago (`bill_...`). Abrir outro o
+     * apaga na AbacatePay (`pub.startPixCheckout`), para duas abas não poderem
+     * ser autorizadas e debitar duas vezes; o pagamento o limpa.
+     */
+    pixCheckoutId: text('pix_checkout_id'),
+    /**
+     * Mensal ou anual do Pix (WEB-536, Pix anual): o da assinatura paga ou o
+     * escolhido no teste do cadastro (`pixAfterTrialAt`). O do cartão é o que o
+     * plugin grava em `stripe_subscription.billing_interval`.
+     */
+    billingInterval: text('billing_interval', { enum: ['month', 'year'] })
+      .notNull()
+      .default('month'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull()
+  },
+  (table) => [
+    check(
+      'subscription_billing_interval_check',
+      sql`${table.billingInterval} in ('month', 'year')`
+    )
+  ]
+)
 
 /**
  * "Por que está cancelando?" (WEB-445, 3q): o motivo que o dono escolhe ao
