@@ -35,6 +35,37 @@ describe('faixa do jogo publicado', () => {
     expect(faixa?.map((c) => c.valor)).toEqual(['34', '12', '1'])
   })
 
+  it('ao vivo no Elite com primeira vez: ela entra no lugar do bairro', () => {
+    const faixa = faixaDoJogo({
+      ...base,
+      numbers: { ...numbers, firstTime: 5 },
+      state: 'live',
+      going: { going: 34, arrived: 12 }
+    })
+    expect(faixa?.[2]).toEqual({ valor: '5', rotulo: 'primeira vez no bar' })
+    expect(
+      faixaDoJogo({
+        ...base,
+        numbers: { ...numbers, firstTime: 0 },
+        state: 'live',
+        going: { going: 3, arrived: 0 }
+      })?.[2]?.valor
+    ).toBe('0')
+  })
+
+  it('depois, no Elite: quem veio pela primeira vez sob "viram o bar"', () => {
+    const faixa = (firstTime: number | null) =>
+      faixaDoJogo({
+        ...base,
+        numbers: { ...numbers, firstTime },
+        state: 'past'
+      })?.[0]?.extra
+    expect(faixa(5)).toBe('5 vieram pela primeira vez')
+    expect(faixa(1)).toBe('1 veio pela primeira vez')
+    expect(faixa(0)).toBeUndefined()
+    expect(faixa(null)).toBeUndefined()
+  })
+
   it('depois: comparação com a média, ou o aviso sem ela', () => {
     expect(faixaDoJogo({ ...base, state: 'past' })?.[2]?.valor).toBe('▲ 24%')
     expect(
