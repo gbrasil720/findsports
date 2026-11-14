@@ -221,6 +221,7 @@ test('todo feitiço edita como JSON, lança e volta ao padrão', async ({
   expect([...keys].sort()).toEqual([
     'ai.enabled',
     'ai.limits',
+    'ai.recommender_enabled',
     'ai.variant_weights',
     'app.maintenance',
     'rating.public_display',
