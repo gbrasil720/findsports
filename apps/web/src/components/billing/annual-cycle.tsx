@@ -1,4 +1,4 @@
-import type { AnnualDeal, Plan } from '@/lib/plan-catalog'
+import type { AnnualDeal } from '@/lib/plan-catalog'
 import { formatReais } from '@/lib/plan-catalog'
 
 /*
@@ -8,7 +8,6 @@ import { formatReais } from '@/lib/plan-catalog'
  */
 
 type CycleProps = {
-  plan: Plan
   deal: AnnualDeal | null
   annual: boolean
   available: boolean
@@ -16,8 +15,10 @@ type CycleProps = {
 }
 
 /** O que o teste e o cupom fazem em cada ciclo, numa linha. */
-export const CYCLE_FACTS =
-  'O teste grátis e o desconto de fundador valem nos dois.'
+export const cycleFacts = (founder: boolean) =>
+  founder
+    ? 'O teste grátis e o desconto de fundador valem nos dois.'
+    : 'O teste grátis vale nos dois.'
 
 /** A conta do anual no cartão do plano. */
 export function AnnualVerdict({ deal }: { deal: AnnualDeal }) {
@@ -29,21 +30,21 @@ export function AnnualVerdict({ deal }: { deal: AnnualDeal }) {
   )
 }
 
-/** O seletor, com a economia do plano do bar no "Anual". */
-export function CycleToggle({
-  plan,
-  deal,
-  annual,
-  available,
-  onChange
-}: CycleProps) {
-  const chip = !available
-    ? 'EM BREVE'
-    : deal
-      ? `ECONOMIZE ${formatReais(deal.savingsReais)} NO ${plan.name.toUpperCase()}`
-      : '2 MESES GRÁTIS'
+/**
+ * O cabeçalho da tabela de planos (posição escolhida pelo dono, 14/11/2026):
+ * o título à esquerda e o seletor à direita, com a economia do plano do bar
+ * no "Anual".
+ */
+export function CycleHeader({ deal, annual, available, onChange }: CycleProps) {
   return (
-    <div className="pl-cyc-wrap">
+    <div className="pl-head">
+      <div>
+        <p className="ob-k">Os planos</p>
+        <h2>Pague por mês ou por ano</h2>
+        {available ? (
+          <p className="pl-head-note">{cycleFacts(Boolean(deal?.founder))}</p>
+        ) : null}
+      </div>
       <fieldset className="pl-cyc">
         <legend className="sr-only">Cobrança</legend>
         <button
@@ -61,10 +62,15 @@ export function CycleToggle({
           onClick={() => onChange(true)}
         >
           Anual
-          <em>{chip}</em>
+          <em>
+            {!available
+              ? 'EM BREVE'
+              : deal
+                ? `−${formatReais(deal.savingsReais)}`
+                : '2 MESES GRÁTIS'}
+          </em>
         </button>
       </fieldset>
-      {available ? <p className="pl-cyc-note">{CYCLE_FACTS}</p> : null}
     </div>
   )
 }

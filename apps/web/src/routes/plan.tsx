@@ -3,7 +3,7 @@ import type { SubscriptionPlan } from '@findsports_oficial/db'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { type ReactNode, useState } from 'react'
-import { AnnualVerdict, CycleToggle } from '@/components/billing/annual-cycle'
+import { AnnualVerdict, CycleHeader } from '@/components/billing/annual-cycle'
 import {
   PaymentChoiceDialog,
   type PaymentMethod
@@ -870,8 +870,7 @@ function PlanSelection() {
         ) : null}
 
         {showCycle ? (
-          <CycleToggle
-            plan={focusPlan}
+          <CycleHeader
             deal={focusDeal}
             annual={annual}
             available={annualAvailable}
