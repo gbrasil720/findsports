@@ -26,6 +26,7 @@ import { adminRouteRefusal } from './admin-guard'
 import { isLoggedAdminPath, logAdminAction, previousRole } from './admin-log'
 import { runInBackground } from './background'
 import {
+  blocksCardOverPix,
   blocksNewCheckout,
   canAccessPubBilling,
   requiresPubBillingAccess
@@ -193,6 +194,18 @@ export function createAuth() {
               message:
                 'Seu plano está com pagamento pendente. Regularize a assinatura em “Assinatura e pagamentos” antes de contratar de novo.',
               code: 'SUBSCRIPTION_PAST_DUE'
+            })
+          }
+          if (
+            blocksCardOverPix(
+              ownerBar?.subscription ?? null,
+              Boolean(env.ABACATE_PAY_API_KEY)
+            )
+          ) {
+            throw new APIError('CONFLICT', {
+              message:
+                'Sua assinatura é no Pix, e a troca para o cartão está indisponível agora. Tente de novo mais tarde.',
+              code: 'PIX_SWITCH_UNAVAILABLE'
             })
           }
         }
