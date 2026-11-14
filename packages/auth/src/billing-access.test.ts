@@ -43,24 +43,20 @@ describe('acesso às rotas comerciais do bar', () => {
   })
 })
 
-describe('cartão por cima do Pix (WEB-536)', () => {
+describe('cartão por cima do Pix pelo plugin (WEB-536)', () => {
   const pix = (status: string, provider = 'abacatepay') => ({
     status,
     externalSubscriptionId: 'subs_pix_1',
     provider
   })
 
-  it('sem a chave da AbacatePay, recusa: o Pix não seria cancelado', () => {
-    expect(blocksCardOverPix(pix('active'), false)).toBe(true)
-  })
-
-  it('com a chave, deixa: o webhook do cartão cancela o Pix', () => {
-    expect(blocksCardOverPix(pix('active'), true)).toBe(false)
+  it('Pix ativo: recusa, a passagem é pela sessão própria', () => {
+    expect(blocksCardOverPix(pix('active'))).toBe(true)
   })
 
   it('sem Pix ativo, não é com ela', () => {
-    expect(blocksCardOverPix(pix('cancelled'), false)).toBe(false)
-    expect(blocksCardOverPix(pix('active', 'stripe'), false)).toBe(false)
-    expect(blocksCardOverPix(null, false)).toBe(false)
+    expect(blocksCardOverPix(pix('cancelled'))).toBe(false)
+    expect(blocksCardOverPix(pix('active', 'stripe'))).toBe(false)
+    expect(blocksCardOverPix(null)).toBe(false)
   })
 })
