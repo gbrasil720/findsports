@@ -70,7 +70,7 @@ export function stripeSubscription(options: {
             coupon: {
               id: 'eM7dQpMF',
               object: 'coupon',
-              amount_off: 2800,
+              amount_off: interval === 'year' ? 28000 : 2800,
               currency: 'brl',
               valid: true
             }
