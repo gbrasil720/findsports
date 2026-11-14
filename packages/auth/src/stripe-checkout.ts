@@ -1,7 +1,14 @@
 import { and, count, db, eq, gt } from '@findsports_oficial/db'
 import { bar, subscription } from '@findsports_oficial/db/schema/platform'
 import type Stripe from 'stripe'
-import { ANNUAL_LOOKUP_KEYS, ANNUAL_MONTHS } from './stripe-plan'
+import {
+  ANNUAL_LOOKUP_KEYS,
+  ANNUAL_MONTHS,
+  monthlyPriceReais,
+  type Plan,
+  pixUpgradeCents,
+  TABLE_PRICE_REAIS
+} from './stripe-plan'
 import {
   customerDetailsFor,
   type InvoiceDetails,
@@ -387,7 +394,7 @@ export async function checkoutParamsFor(
   owner: { id: string; name: string },
   customerId: string | null | undefined,
   client: Stripe,
-  { annual = false }: { annual?: boolean } = {}
+  { annual = false, plan }: { annual?: boolean; plan?: Plan } = {}
 ): Promise<Stripe.Checkout.SessionCreateParams> {
   const ownerBar = await db.query.bar.findFirst({
     where: eq(bar.userId, owner.id),
@@ -409,6 +416,26 @@ export async function checkoutParamsFor(
     ? async () => Math.max(0, (await pixFounderCount()) - 1)
     : pixFounderCount
   const coupon = await usableFounderCoupon(client, countPix, { annual })
+  // Subida do Pix para o cartão (dono, 14/11/2026): a diferença até o fim do
+  // mês pago sai hoje. O plugin não deixa a sessão levar item avulso, então
+  // o valor vai na assinatura, e quem cobra é o webhook que cancela o Pix
+  // (`chargePixUpgrade`, em `stripe-sync.ts`).
+  const upgradeCents =
+    plan &&
+    current?.provider === 'abacatepay' &&
+    trialEnd &&
+    current.currentPeriodEnd
+      ? pixUpgradeCents({
+          currentMonthlyReais:
+            TABLE_PRICE_REAIS[current.plan] -
+            (current.monthlyDiscountReais ?? 0),
+          newMonthlyReais: monthlyPriceReais(plan, {
+            founder: coupon !== null,
+            annual
+          }),
+          paidUntil: current.currentPeriodEnd
+        })
+      : 0
   return {
     locale: 'pt-BR',
     billing_address_collection: 'required',
@@ -420,6 +447,15 @@ export async function checkoutParamsFor(
       : annual
         ? {}
         : { allow_promotion_codes: true }),
-    ...(trialEnd ? { subscription_data: { trial_end: trialEnd } } : {})
+    ...(trialEnd
+      ? {
+          subscription_data: {
+            trial_end: trialEnd,
+            ...(upgradeCents > 0
+              ? { metadata: { pixUpgradeCents: String(upgradeCents) } }
+              : {})
+          }
+        }
+      : {})
   }
 }
