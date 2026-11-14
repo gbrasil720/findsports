@@ -8,9 +8,9 @@ import {
   ANNUAL_MONTHS,
   monthlyPriceReais,
   type Plan,
+  pixMonthlyReais,
   pixUpgradeCents,
-  STRIPE_PLANS,
-  TABLE_PRICE_REAIS
+  STRIPE_PLANS
 } from './stripe-plan'
 import {
   customerDetailsFor,
@@ -427,9 +427,11 @@ export async function checkoutParamsFor(
     trialEnd &&
     current.currentPeriodEnd
       ? pixUpgradeCents({
-          currentMonthlyReais:
-            TABLE_PRICE_REAIS[current.plan] -
-            (current.monthlyDiscountReais ?? 0),
+          currentMonthlyReais: pixMonthlyReais(
+            current.plan,
+            current.monthlyDiscountReais ?? 0,
+            current.billingInterval === 'year'
+          ),
           newMonthlyReais: monthlyPriceReais(plan, {
             founder: coupon !== null,
             annual

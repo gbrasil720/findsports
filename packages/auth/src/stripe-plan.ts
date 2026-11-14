@@ -82,6 +82,20 @@ export function monthlyPriceReais(
   return annual ? (month * ANNUAL_MONTHS) / 12 : month
 }
 
+/**
+ * O que o bar paga por mês no Pix, pelo desconto da fatura gravado na linha:
+ * no anual, o ano (10 meses de tabela menos o desconto do ano) em 12.
+ */
+export function pixMonthlyReais(
+  plan: Plan,
+  discountReais: number,
+  annual: boolean
+): number {
+  return annual
+    ? (TABLE_PRICE_REAIS[plan] * ANNUAL_MONTHS - discountReais) / 12
+    : TABLE_PRICE_REAIS[plan] - discountReais
+}
+
 /** Menor cobrança em real que o Stripe aceita: R$ 0,50. */
 const STRIPE_MIN_BRL_CENTS = 50
 
