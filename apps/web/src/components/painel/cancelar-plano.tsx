@@ -3,10 +3,11 @@ import {
   type CancelReasonId
 } from '@findsports_oficial/db/cancel-reasons'
 import { useMutation } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Close } from '@/components/landing/v3/icons'
 import { useTRPC } from '@/utils/trpc'
+import { FolhaNativa } from './folha-nativa'
 
 /*
  * "Cancelar assinatura" (WEB-339, WEB-445; 3q): antes do portal, "Por que
@@ -69,7 +70,6 @@ function Dialogo({
   onClose: () => void
 }) {
   const trpc = useTRPC()
-  const ref = useRef<HTMLDialogElement>(null)
   const manter = useRef<HTMLButtonElement>(null)
   const [reason, setReason] = useState<CancelReasonId | null>(null)
   const cancel = useMutation(
@@ -82,15 +82,6 @@ function Dialogo({
   // Com a URL em mãos o navegador já está saindo: o botão não volta ao normal.
   const opening = cancel.isPending || cancel.isSuccess
 
-  useEffect(() => {
-    const dialog = ref.current
-    if (dialog && !dialog.open) {
-      dialog.showModal()
-      // Abre no caminho seguro: manter o plano.
-      manter.current?.focus()
-    }
-  }, [])
-
   const fim = until
     ? until.toLocaleDateString('pt-BR', {
         day: 'numeric',
@@ -100,19 +91,13 @@ function Dialogo({
     : null
 
   return (
-    // biome-ignore lint/a11y/useKeyWithClickEvents: o Esc já fecha o `<dialog>` nativo; o clique é só o do fundo.
-    <dialog
-      ref={ref}
+    <FolhaNativa
       className="pn-val pn-cancel"
       aria-labelledby="pn-cancel-t"
-      // Só o fechamento desta folha: o React repassa o `close` de um
-      // `<dialog>` de dentro (uma confirmação) para cá.
-      onClose={(event) => {
-        if (event.target === ref.current) onClose()
-      }}
-      onClick={(event) => {
-        if (event.target === ref.current && !opening) onClose()
-      }}
+      onClose={onClose}
+      // Abre no caminho seguro: manter o plano.
+      onOpen={() => manter.current?.focus()}
+      closeOnBackdrop={!opening}
     >
       <div className="pn-val-in">
         <div className="pn-val-top">
@@ -195,6 +180,6 @@ function Dialogo({
           </button>
         </div>
       </div>
-    </dialog>
+    </FolhaNativa>
   )
 }
