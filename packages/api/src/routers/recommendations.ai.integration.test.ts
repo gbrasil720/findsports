@@ -183,6 +183,9 @@ integrationTest(
           costUsd: 0
         }
       ])
+      // A linha sem chamada não gasta das chamadas do dia da pessoa.
+      const { readUserUsage } = await import('../lib/ai/run')
+      expect((await readUserUsage(fan.id)).callsToday).toBe(0)
       // A mesma rodada no resto do dia: nenhuma linha nova.
       await fan.today()
       expect(await ctx.runs(fan.id)).toHaveLength(1)
@@ -217,6 +220,8 @@ integrationTest(
         status: 'ok'
       })
       expect(run?.costUsd).toBeGreaterThan(0)
+      const { readUserUsage } = await import('../lib/ai/run')
+      expect((await readUserUsage(fan.id)).callsToday).toBe(1)
 
       await fan.today()
       expect(calls).toHaveLength(1)
