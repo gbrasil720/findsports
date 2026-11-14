@@ -34,12 +34,16 @@ export const RECOMMENDER_EXPERIMENT = 'recommender-2026-11'
 export const CONTROL_MODEL = 'control'
 
 /**
- * Teto de tempo de cada chamada: o p95 de 300 ms do spec (ADR 0001). Passou,
- * a rodada sai na ordem do controle.
+ * Teto de tempo de cada chamada. Não é o p95 de 300 ms do spec (ADR 0001):
+ * na fase 1 o Clef-flash mediu 528 ms de mediana e 3,3 s de p95, e com 300 ms
+ * quase toda rodada cairia no controle e o teste não mediria nada (dono,
+ * 14/11/2026). A rodada é montada uma vez por dia por pessoa, então a espera
+ * só acontece na primeira abertura do dia. Passou, a rodada sai na ordem do
+ * controle.
  */
 // ponytail: teto por chamada, não da rodada inteira; com a nova tentativa
-// depois de erro a espera chega a 2 × 300 ms.
-export const AFFINITY_TIMEOUT_MS = 300
+// depois de erro a espera chega a 2 × 2,5 s.
+export const AFFINITY_TIMEOUT_MS = 2500
 
 export type RecommenderVariant = 'a' | 'c'
 

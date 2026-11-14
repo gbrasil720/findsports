@@ -117,7 +117,7 @@ const GLOSSARY: ReadonlyArray<readonly [string, string | null, string]> = [
   [
     'Queda para o controle',
     null,
-    'No recomendador, a rodada do braço C que saiu na ordem do algoritmo porque a IA falhou duas vezes, demorou mais de 300 ms ou bateu num teto.'
+    'No recomendador, a rodada do braço C que saiu na ordem do algoritmo porque a IA falhou duas vezes, demorou mais de 2,5 s ou bateu num teto.'
   ],
   [
     'Regra de parada',
