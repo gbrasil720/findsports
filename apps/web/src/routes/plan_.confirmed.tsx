@@ -11,7 +11,7 @@ import {
 import { PubObShell } from '@/components/onboarding/pub-ob-shell'
 import { analytics } from '@/lib/analytics'
 import { openBillingPortal } from '@/lib/billing-client'
-import { getPlan, isContractedTrial } from '@/lib/plan-catalog'
+import { billedPlan, getPlan, isContractedTrial } from '@/lib/plan-catalog'
 import { PWA_LINKS, PWA_META } from '@/lib/pwa'
 import { getScheduledCancelAt } from '@/lib/scheduled-cancel'
 import {
@@ -125,7 +125,11 @@ function SubscriptionConfirmed() {
   const subscription = subscriptionQuery.data ?? null
   const confirmed = isSubscriptionConfirmed(subscription, awaitingCheckout)
   const plan = subscription?.currentPlan
-    ? getPlan(subscription.currentPlan)
+    ? // O anual imprime o valor do ano e o ciclo "Anual" (WEB-442).
+      billedPlan(
+        getPlan(subscription.currentPlan),
+        subscription.billingInterval
+      )
     : null
 
   // O nome do bar é do recibo, não da espera: só é buscado quando há recibo.
