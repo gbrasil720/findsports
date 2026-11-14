@@ -189,12 +189,16 @@ integrationTest('WEB-446: o que o plano não libera vem nulo', async () => {
 })
 
 integrationTest(
-  'WEB-522: presenças do mês no Pro e no Elite, códigos só no Elite, nada no Starter',
+  'WEB-522: presenças do mês em todo plano vigente, códigos só no Elite, nada no plano parado',
   async () => {
     const bars = {
       starter: await seedBar('starter', 'active', inAMonth()),
       pro: await seedBar('pro', 'active', inAMonth()),
-      elite: await seedBar('elite', 'active', inAMonth())
+      elite: await seedBar('elite', 'active', inAMonth()),
+      // Pagamento atrasado: cai no piso do Starter, mas não vê o número.
+      parado: await seedBar('elite', 'past_due', inAMonth()),
+      // Teste do cadastro vencido.
+      vencido: await seedBar('pro', 'trialing', new Date(Date.now() - 1000))
     }
     try {
       for (const bar of Object.values(bars)) {
@@ -223,25 +227,30 @@ integrationTest(
           .values({ codeId: code?.id as string })
       }
 
-      expect(await bars.elite.owner.pub.getMonthProof()).toEqual({
-        people: 1,
-        codes: 1
+      const proof = (key: keyof typeof bars) =>
+        bars[key].owner.pub.getMonthProof()
+      const month = (key: keyof typeof bars) =>
+        bars[key].owner.commercialAnalytics.getMyMonthNumbers()
+      expect(await proof('elite')).toEqual({ people: 1, codes: 1 })
+      expect(await proof('pro')).toEqual({ people: 1, codes: null })
+      expect(await proof('starter')).toEqual({ people: 1, codes: null })
+      // Parado: nulo, não zero — zero diria "ninguém marcou".
+      expect(await proof('parado')).toEqual({ people: null, codes: null })
+      expect(await proof('vencido')).toEqual({ people: null, codes: null })
+
+      // O mesmo número no web (Plano e cobrança, WEB-446).
+      expect(await month('starter')).toMatchObject({
+        going: 1,
+        validatedCodes: null
       })
-      expect(await bars.pro.owner.pub.getMonthProof()).toEqual({
-        people: 1,
-        codes: null
+      expect(await month('elite')).toMatchObject({
+        going: 1,
+        validatedCodes: 1
       })
-      // Starter: nulo, não zero — zero diria "ninguém marcou".
-      expect(await bars.starter.owner.pub.getMonthProof()).toEqual({
-        people: null,
-        codes: null
+      expect(await month('parado')).toMatchObject({
+        going: null,
+        validatedCodes: null
       })
-      expect(
-        (await bars.starter.owner.commercialAnalytics.getMyMonthNumbers()).going
-      ).toBeNull()
-      expect(
-        (await bars.pro.owner.commercialAnalytics.getMyMonthNumbers()).going
-      ).toBe(1)
     } finally {
       for (const bar of Object.values(bars)) await bar.cleanup()
     }
