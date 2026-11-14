@@ -19,7 +19,7 @@ import {
   normalizeHouseOffer
 } from '@findsports_oficial/db/house-offer'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useContext, useEffect, useId, useRef, useState } from 'react'
+import { useContext, useId, useState } from 'react'
 import type { AdminEvent } from '@/components/admin/admin-model'
 import { useMyBar } from '@/components/admin/admin-queries'
 import {
@@ -43,6 +43,7 @@ import { CATALOG_QUERY } from '@/lib/query-cache'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import { gameOffer, gameScreen, isDraft } from './dados'
+import { FolhaNativa } from './folha-nativa'
 
 const DIAS = [
   'domingo',
@@ -160,28 +161,12 @@ export function NovoJogo({
    */
   elite?: boolean
 }) {
-  const ref = useRef<HTMLDialogElement>(null)
-
-  useEffect(() => {
-    const dialog = ref.current
-    if (dialog && !dialog.open) dialog.showModal()
-  }, [])
-
   const title = mode.kind === 'edit' ? 'Editar jogo' : 'Novo jogo'
   return (
-    // biome-ignore lint/a11y/useKeyWithClickEvents: o Esc já fecha o `<dialog>` nativo; o clique é só o do fundo.
-    <dialog
-      ref={ref}
+    <FolhaNativa
       className="pn-sheet"
       aria-labelledby="pn-sheet-t"
-      // Só o fechamento desta folha: o React repassa o `close` de um
-      // `<dialog>` de dentro (uma confirmação) para cá.
-      onClose={(event) => {
-        if (event.target === ref.current) onClose()
-      }}
-      onClick={(event) => {
-        if (event.target === ref.current) onClose()
-      }}
+      onClose={onClose}
     >
       <div className="pn-sheet-in">
         <header>
@@ -199,7 +184,7 @@ export function NovoJogo({
         </header>
         <Formulario mode={mode} onDone={onClose} elite={elite} />
       </div>
-    </dialog>
+    </FolhaNativa>
   )
 }
 
