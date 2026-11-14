@@ -242,22 +242,31 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   dono). O app não lê plano dali.
 - Planos são achados por **lookup key** (`starter_monthly`, `pro_monthly`,
   `elite_monthly`), iguais no sandbox e em produção: `packages/auth/src/stripe-plan.ts`.
-- **Plano anual no cartão** (WEB-442, decisão do dono de 28/10/2026): preço de 10
-  meses (`ANNUAL_MONTHS`, "2 meses grátis"), lookup keys `starter_yearly`,
-  `pro_yearly` e `elite_yearly` (o `annualDiscountLookupKey` do plugin), intervalo
-  anual. O preço anual vira o mesmo `subscription.plan` (`planForLookupKey`), então
-  limites e recursos não mudam; o Starter anual conta os jogos por mês, como o teste
-  (`getEventCreationPeriod`). **Cupom de fundador só no mensal**: o checkout anual
-  (`checkoutParamsFor` com `annual`, vindo do `subscription.upgrade({ annual })`) sai
-  sem cupom nem código promocional, e o teste do cadastro vale igual (`trial_end`).
-  O Pix segue só mensal. `/plan` mostra Mensal/Anual para quem vai ao checkout (teste,
-  teste vencido, sem assinatura); quem já assina troca de plano no portal, no
-  intervalo em que está. O "Anual" só liga com os três preços anuais ativos na conta
-  (`pub.getAnnualPlansAvailable`, `annualPlansAvailable`); sem eles fica "em breve" e
-  o mensal não muda. Mensal ou anual da assinatura vem de
+- **Plano anual no cartão** (WEB-442): preço de 10 meses (`ANNUAL_MONTHS`, "2 meses
+  grátis"), lookup keys `starter_yearly`, `pro_yearly` e `elite_yearly` (o
+  `annualDiscountLookupKey` do plugin), intervalo anual. O preço anual vira o mesmo
+  `subscription.plan` (`planForLookupKey`), então limites e recursos não mudam; o
+  Starter anual conta os jogos por mês, como o teste (`getEventCreationPeriod`).
+  **O desconto de fundador vale no anual** (dono, 14/11/2026, no lugar do "cupom só
+  no mensal" de 28/10): anual de fundador = 10 × o mensal de fundador (R$ 690, 1.190,
+  2.690). O `FOUNDER_COUPON_ID` é de valor fixo por fatura (no anual tiraria R$ 28
+  do ano), então o anual leva o segundo cupom, `FOUNDER_ANNUAL_COUPON_ID`
+  (`fundador_anual`, R$ 280 por fatura, para sempre), pelo mesmo `discounts` do
+  checkout (`checkoutParamsFor` com `annual`, vindo do
+  `subscription.upgrade({ annual })`). Mesmas 100 vagas: resgates dos dois cupons e
+  o Pix somam (`readFounderCoupon`). Sem vaga, o anual sai a preço de tabela, sem
+  código promocional. O teste do cadastro vale igual (`trial_end`). Na assinatura
+  anual, `monthly_discount_reais` é o desconto da fatura do ano (280). O Pix segue só
+  mensal. `/plan` mostra Mensal/Anual para quem vai ao checkout (teste, teste
+  vencido, sem assinatura); quem já assina troca de plano no portal, no intervalo em
+  que está. O "Anual" só liga com os três preços anuais ativos e o cupom
+  `fundador_anual` de R$ 280 para sempre na conta (`pub.getAnnualPlansAvailable`,
+  `annualPlansAvailable`); sem eles fica "em breve" e o mensal não muda. A conta da
+  tela é `annualDeal` (`apps/web/src/lib/plan-catalog.ts`): sempre economiza dois
+  meses do mensal que o bar pagaria. Mensal ou anual da assinatura vem de
   `stripe_subscription.billing_interval`, que o plugin grava
-  (`getMySubscription().billingInterval`); `billedPlan` (`apps/web/src/lib/plan-catalog.ts`)
-  dá o preço e o "/ano" ao card do plano, ao placar e ao recibo.
+  (`getMySubscription().billingInterval`); `billedPlan` dá o preço e o "/ano" ao card
+  do plano, ao placar e ao recibo.
 - **Teste grátis nasce no cadastro, sem cartão**: 90 dias para todo bar novo,
   contados de quando ele vai ao ar no `completePub` (`ONBOARDING_TRIAL`, em
   `packages/api/src/lib/plan-limits.ts`), no plano que a rotina do cadastro recomenda
