@@ -509,6 +509,14 @@ para a compressão da borda não juntar os eventos. O app fala com
 
 Global styles and design tokens: `packages/ui/src/styles/globals.css`. Tailwind v4.
 
+**Caixa alta no web é `--caixa: "ss20"` (ou a classe `caixa-alta`), nunca
+`text-transform: uppercase`** (WEB-135): o Safari e o Chrome entregam o texto
+transformado ao leitor de tela. As fontes do site têm o conjunto `ss20`, que desenha a
+minúscula como maiúscula; a regra está no fim de `apps/web/src/index.css` e
+`caixa-alta.test.ts` recusa `text-transform` de volta. Fonte nova do site passa por
+`scripts/fonts/caixa-alta.py` (e sobe o `?v=`); em fonte do sistema o `ss20` não existe
+e o texto sai minúsculo.
+
 Add shared primitives (used across multiple apps):
 ```bash
 npx shadcn@latest add <component> -c packages/ui
