@@ -256,10 +256,10 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   `subscription.upgrade({ annual })`). Mesmas 100 vagas: resgates dos dois cupons e
   o Pix somam (`readFounderCoupon`). Sem vaga, o anual sai a preço de tabela, sem
   código promocional. O teste do cadastro vale igual (`trial_end`). Na assinatura
-  anual, `monthly_discount_reais` é o desconto da fatura do ano (280). O Pix segue só
-  mensal. `/plan` mostra Mensal/Anual para quem vai ao checkout (teste, teste
-  vencido, sem assinatura); quem já assina troca de plano no portal, no intervalo em
-  que está. O "Anual" só liga com os três preços anuais ativos e o cupom
+  anual, `monthly_discount_reais` é o desconto da fatura do ano (280). O Pix também
+  tem anual (ver "Pix anual" abaixo). `/plan` mostra Mensal/Anual para quem vai ao
+  checkout (teste, teste vencido, sem assinatura) e para quem paga no Pix; quem já
+  assina no cartão troca de plano no portal, no intervalo em que está. O "Anual" só liga com os três preços anuais ativos e o cupom
   `fundador_anual` de R$ 280 para sempre na conta (`pub.getAnnualPlansAvailable`,
   `annualPlansAvailable`); sem eles fica "em breve" e o mensal não muda. A conta da
   tela é `annualDeal` (`apps/web/src/lib/plan-catalog.ts`): sempre economiza dois
@@ -347,6 +347,19 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   de invalidar checkout pela listagem: o pendente fica em `subscription.pix_checkout_id`
   e o seguinte o apaga (`replacePendingPixCheckout`). A situação (`active`/`past_due`)
   sai do fim do ciclo pago, não da ordem dos avisos (`pixStanding`).
+  **Pix anual** (dono, 14/11/2026): produtos `<plano>_yearly` (R$ 970, 1.470, 2.970)
+  e `<plano>_founder_yearly` (R$ 690, 1.190, 2.690), ciclo `ANNUALLY`, achados por
+  `externalId` como os mensais; `pix:setup` cria os que faltam e `pix:check` confere
+  todos. O checkout anual marca o `externalId` com `:y` no fim (sem ele, mensal),
+  e o webhook grava `subscription.billing_interval = 'year'` e, no fundador, o
+  desconto do ano (280, `pixFounderDiscountReais`), como o cartão anual. O intervalo
+  do Pix mora em `subscription.billing_interval` (o do cartão segue em
+  `stripe_subscription`, `readBillingInterval`): `pub.schedulePixAfterTrial({ annual })`
+  o grava no teste do cadastro, e o lembrete e o "Autorizar agora" usam o do ano. No
+  `/plan`, o anual passa pela janela "Como você quer pagar?" com cartão e Pix, e quem
+  paga no Pix troca de intervalo por uma autorização nova (`startPixCheckout` com
+  `annual`; a anterior é cancelada, como na troca de plano). Na subida do Pix anual
+  para o cartão, o mensal atual é o ano em 12 (`pixMonthlyReais`).
   **Do Pix para o cartão** (WEB-536): em `/plan`, quem paga por Pix vê o cartão na
   janela "Como você quer pagar?" (troca de plano, ou "Passar para o cartão" no mesmo
   plano; mensal ou anual). A sessão é nossa, não do plugin (`startCardFromPix`, via
