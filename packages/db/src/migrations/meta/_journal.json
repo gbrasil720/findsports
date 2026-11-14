@@ -673,6 +673,13 @@
       "when": 1794671149227,
       "tag": "0096_drop_reservation_leftovers",
       "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1794681897687,
+      "tag": "0097_subscription_billing_interval",
+      "breakpoints": true
     }
   ]
 }
