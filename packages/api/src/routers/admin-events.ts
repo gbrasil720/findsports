@@ -444,8 +444,7 @@ export const adminEventsRouter = router({
           ).get(row.id)
           if (
             !impact ||
-            impact.pendingReservations +
-              impact.confirmedReservations +
+            impact.confirmedReservations +
               impact.closedReservations +
               impact.ratings >
               0 ||
