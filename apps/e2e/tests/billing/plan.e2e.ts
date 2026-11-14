@@ -174,6 +174,37 @@ test('trial em vigor: sem cartão, e contratar qualquer plano já é possível (
   ).toBeVisible()
 })
 
+// WEB-442: sem os preços anuais na conta do Stripe (o padrão do stub, como em
+// produção até o dono criá-los), o Anual fica "em breve" e o mensal não muda.
+test('sem os preços anuais no Stripe, o Anual fica em breve e o mensal segue (WEB-442)', async ({
+  page
+}) => {
+  const { user } = await createPub({
+    subscription: {
+      plan: 'pro',
+      status: 'trialing',
+      currentPeriodEnd: inDays(14)
+    }
+  })
+  await signIn(page, user)
+  await page.goto('/plan')
+
+  const cycle = page.getByRole('group', { name: 'Cobrança' })
+  await expect(cycle.getByRole('button', { name: 'Mensal' })).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  )
+  const annual = cycle.getByRole('button', { name: /^Anual/ })
+  await expect(annual).toBeDisabled()
+  await expect(annual).toContainText('EM BREVE')
+  await expect(
+    page.getByRole('listitem', { name: 'Pro' }).getByText('/mês')
+  ).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'Contratar o Pro', exact: true })
+  ).toBeVisible()
+})
+
 // WEB-358: o teste do cadastro não é só do Elite. Sem cartão e com o checkout
 // desligado (o padrão daqui): testar não passa pela contratação.
 test('trial em vigor: testa outro plano sem cartão, confirma o que perde no menor, e a troca sobrevive ao recarregar', async ({
