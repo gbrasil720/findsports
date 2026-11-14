@@ -25,3 +25,25 @@
 @import "./components/onboarding/invite-state-page.css";
 @import "./components/bar-page/bar-page.css";
 @source "./**/*.{ts,tsx}";
+
+/*
+ * Caixa alta pela fonte (WEB-135). `text-transform: uppercase` entrega o texto
+ * transformado ao leitor de tela no Safari e no Chrome ("botão ACESSAR MINHA
+ * CONTA"). No lugar dele, `--caixa: "ss20"` (ou a classe `caixa-alta`) liga o
+ * conjunto ss20 que `scripts/fonts/caixa-alta.py` pôs nas fontes do site: a
+ * minúscula sai com o desenho da maiúscula e o texto continua o do código.
+ * A variável herda como o text-transform herdava; a propriedade não, porque
+ * todo `font:` a zera, daí a regra em todo elemento. `--caixa: normal` desliga.
+ * Só vale nas fontes do site: em fonte do sistema a minúscula fica minúscula.
+ */
+*,
+::before,
+::after,
+::placeholder {
+  /* biome-ignore lint/complexity/noImportantStyles: vence o `font:` das regras de classe, que zeraria o ss20 */
+  font-feature-settings: var(--caixa, normal) !important;
+}
+
+@utility caixa-alta {
+  --caixa: "ss20";
+}
