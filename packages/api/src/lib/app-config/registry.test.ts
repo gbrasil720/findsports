@@ -48,6 +48,7 @@ describe('registro de configuração (ESC-19)', () => {
     expect([...APP_CONFIG_KEYS].sort()).toEqual([
       'ai.enabled',
       'ai.limits',
+      'ai.recommender_enabled',
       'ai.variant_weights',
       'app.maintenance',
       'rating.public_display',
