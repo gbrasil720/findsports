@@ -130,6 +130,27 @@ describe('preços (WEB-112)', () => {
     expect(founderCouponFromQuery({ isPending: false })).toBe(false)
   })
 
+  // WEB-534: consulta parada não deixa o card em "Carregando preço…".
+  test('passado o teto, cupom ainda pendente vale tabela cheia', () => {
+    const pro = getPlan('pro')
+    const waited = founderCouponFromQuery({ isPending: true }, true)
+    expect(waited).toBe(false)
+    expect(
+      planChargeForCurrentPlan(
+        pro,
+        { externalSubscriptionId: null, monthlyDiscountReais: null },
+        waited
+      )
+    ).toEqual({ chargeReais: 147, listReais: null, hint: null })
+    // A resposta que chega depois do teto ainda vale.
+    expect(
+      founderCouponFromQuery(
+        { isPending: false, data: { available: true } },
+        true
+      )
+    ).toBe(true)
+  })
+
   // WEB-353: quem já assina troca de plano pelo portal, sem checkout.
   test('dica do desconto fala de checkout só para quem ainda não assina', () => {
     const pro = getPlan('pro')

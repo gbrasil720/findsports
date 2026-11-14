@@ -88,16 +88,28 @@ export type PlanChargeDisplay = {
 }
 
 /**
+ * Quanto a tela espera a consulta do cupom antes de desenhar a tabela cheia
+ * (WEB-534). O servidor desiste do Stripe em 5 s (`QUICK_REQUEST`) e responde;
+ * a folga cobre a ida e volta. Passado isso, a resposta não vem mais.
+ */
+export const FOUNDER_COUPON_WAIT_MS = 8000
+
+/**
  * Cupom de fundador para o preço de vitrine, a partir da consulta. `null`
  * enquanto ela não responde: o valor ainda pode trocar de tabela cheia para
- * fundador, e quem desenha o preço mostra carregamento no lugar dele.
- * Consulta que falhou vale tabela cheia, como sempre valeu.
+ * fundador, e quem desenha o preço mostra carregamento no lugar dele. Depois
+ * de `FOUNDER_COUPON_WAIT_MS` (`waited`) a espera acaba e vale a tabela cheia,
+ * em vez de carregar para sempre (WEB-534). Consulta que falhou vale tabela
+ * cheia, como sempre valeu.
  */
-export function founderCouponFromQuery(query: {
-  isPending: boolean
-  data?: { available: boolean }
-}): boolean | null {
-  if (query.isPending) return null
+export function founderCouponFromQuery(
+  query: {
+    isPending: boolean
+    data?: { available: boolean }
+  },
+  waited = false
+): boolean | null {
+  if (query.isPending && !waited) return null
   return query.data?.available ?? false
 }
 
