@@ -680,6 +680,13 @@
       "when": 1794681897687,
       "tag": "0097_subscription_billing_interval",
       "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1794683721875,
+      "tag": "0098_bar_name_search_trgm",
+      "breakpoints": true
     }
   ]
 }
