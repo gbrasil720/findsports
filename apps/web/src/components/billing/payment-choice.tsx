@@ -35,8 +35,8 @@ const ddmm = (value: string | Date) =>
  *
  * Quem já paga por Pix também passa por aqui (WEB-536): o cartão aparece com
  * a troca explicada (só cobra quando acaba o mês pago no Pix, e o Pix é
- * cancelado quando o cartão se confirma), e o Pix só na troca de plano. O
- * anual é só no cartão.
+ * cancelado quando o cartão se confirma), e o Pix só na troca de plano ou de
+ * intervalo. O Pix também tem anual (Pix anual): o débito sai uma vez por ano.
  */
 export function PaymentChoiceDialog({
   plan,
@@ -46,6 +46,7 @@ export function PaymentChoiceDialog({
   annual = false,
   offerPix,
   pixPlan,
+  pixAnnual = false,
   pixPaidUntil,
   upgradeTodayCents = 0,
   pending,
@@ -58,12 +59,14 @@ export function PaymentChoiceDialog({
   listReais: number | null
   /** Fim do teste grátis do cadastro, quando ele está correndo. */
   trialEnd: string | Date | null
-  /** Cobrança anual: o preço é do ano, e o Pix não entra. */
+  /** Cobrança anual: o preço é do ano, no cartão e no Pix. */
   annual?: boolean
   /** Pix Automático ligado e cabível (mensal). */
   offerPix: boolean
   /** Plano de quem já paga por Pix, ou `null`. */
   pixPlan: SubscriptionPlan | null
+  /** O Pix de quem já paga é anual. */
+  pixAnnual?: boolean
   /** Fim do mês já pago no Pix: quando o cartão começa a cobrar. */
   pixPaidUntil: string | Date | null
   /**
@@ -78,9 +81,13 @@ export function PaymentChoiceDialog({
 }) {
   const [method, setMethod] = useState<PaymentMethod>('card')
   // Pix na troca de plano de quem já paga por Pix: uma autorização nova.
-  const pixPlanChange = pixPlan !== null && pixPlan !== plan ? pixPlan : null
+  const pixPlanChange =
+    pixPlan !== null && (pixPlan !== plan || pixAnnual !== annual)
+      ? pixPlan
+      : null
   // No mesmo plano, quem paga por Pix só tem o que trocar: o cartão.
-  const showPix = offerPix && !annual && (pixPlan === null || !!pixPlanChange)
+  const showPix = offerPix && (pixPlan === null || !!pixPlanChange)
+  const every = annual ? 'ano' : 'mês'
   const toCard = pixPlan !== null
   const backRef = useRef<HTMLButtonElement>(null)
   const name = getPlan(plan).name
@@ -103,7 +110,9 @@ export function PaymentChoiceDialog({
       >
         <p className="pl-dlg-k">
           {pixPlanChange
-            ? `Mudar para o ${name}`
+            ? pixPlanChange === plan
+              ? `${name} ${annual ? 'anual' : 'mensal'}`
+              : `Mudar para o ${name}`
             : toCard
               ? `${name} no cartão`
               : `Contratar o ${name}`}
@@ -119,7 +128,9 @@ export function PaymentChoiceDialog({
             <b>{price}</b>
             <span>
               {annual
-                ? 'por ano, no cartão'
+                ? showPix
+                  ? 'por ano, no cartão ou no Pix'
+                  : 'por ano, no cartão'
                 : showPix
                   ? 'por mês, no cartão ou no Pix'
                   : 'por mês, no cartão'}
@@ -225,8 +236,8 @@ export function PaymentChoiceDialog({
                 </b>
                 <span>
                   {pixWaits
-                    ? `Perto de ${ddmm(trialEnd)}, a gente te avisa para autorizar no app do banco. Depois, o débito sai todo mês.`
-                    : 'Você autoriza uma vez no app do banco e o débito sai todo mês. Sem cartão e sem QR Code a cada mês.'}
+                    ? `Perto de ${ddmm(trialEnd)}, a gente te avisa para autorizar no app do banco. Depois, o débito sai todo ${every}.`
+                    : `Você autoriza uma vez no app do banco e o débito sai todo ${every}. Sem cartão e sem QR Code a cada ${every}.`}
                 </span>
               </span>
               <span className="pl-pay-dot" aria-hidden="true" />
@@ -239,8 +250,8 @@ export function PaymentChoiceDialog({
             <b>Nada é cobrado em dobro.</b> Confirmado o cartão, o Pix é
             cancelado e não debita mais
             {upgradeTodayCents > 0 && pixPaidUntil
-              ? `. Hoje: ${reais(upgradeTodayCents)} da diferença até ${ddmm(pixPaidUntil)}. Depois, ${price ?? ''} por ${annual ? 'ano' : 'mês'}`
-              : pixPlanChange
+              ? `. Hoje: ${reais(upgradeTodayCents)} da diferença até ${ddmm(pixPaidUntil)}. Depois, ${price ?? ''} por ${every}`
+              : pixPlanChange && pixPlanChange !== plan
                 ? `, e o ${name} começa na hora`
                 : ''}
             . O bar segue no ar sem intervalo.
@@ -258,8 +269,8 @@ export function PaymentChoiceDialog({
           <div className="pl-pay-warn" role="note">
             <b>O Pix não tem teste grátis.</b>{' '}
             {pixPlanChange
-              ? `Mudar de plano no Pix pede uma nova autorização: o primeiro débito do ${name}${price ? `, de ${price},` : ''} sai hoje, e o Pix do ${getPlan(pixPlanChange).name} é cancelado.`
-              : `O primeiro débito${price ? ` de ${price}` : ''} sai hoje, quando você autorizar, e se repete todo mês nessa data.`}
+              ? `Mudar de plano no Pix pede uma nova autorização: o primeiro débito do ${name}${annual ? ' anual' : ''}${price ? `, de ${price},` : ''} sai hoje, e o Pix ${pixAnnual ? 'anual' : 'mensal'} do ${getPlan(pixPlanChange).name} é cancelado.`
+              : `O primeiro débito${price ? ` de ${price}` : ''} sai hoje, quando você autorizar, e se repete todo ${every} nessa data.`}
           </div>
         ) : null}
 
