@@ -31,9 +31,7 @@ import {
 } from '../src/abacatepay'
 import { PIX_FOUNDER_DISCOUNT_REAIS } from '../src/pix-sync'
 import { PIX_WEBHOOK_EVENTS, signatureFor } from '../src/pix-webhook'
-
-// Preço de tabela de cada plano (`pricesFor` em apps/web/src/lib/plan-catalog.ts).
-const TABLE_PRICE_REAIS = { starter: 97, pro: 147, elite: 297 } as const
+import { TABLE_PRICE_REAIS } from '../src/stripe-plan'
 
 const key = env.ABACATE_PAY_API_KEY
 if (!key) {
