@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import {
+  blocksCardOverPix,
   blocksNewCheckout,
   canAccessPubBilling,
   requiresPubBillingAccess
@@ -39,5 +40,27 @@ describe('acesso às rotas comerciais do bar', () => {
     expect(blocksNewCheckout(sub('past_due', null))).toBe(false)
     expect(blocksNewCheckout(sub('inactive', 'sub_1'))).toBe(false)
     expect(blocksNewCheckout(null)).toBe(false)
+  })
+})
+
+describe('cartão por cima do Pix (WEB-536)', () => {
+  const pix = (status: string, provider = 'abacatepay') => ({
+    status,
+    externalSubscriptionId: 'subs_pix_1',
+    provider
+  })
+
+  it('sem a chave da AbacatePay, recusa: o Pix não seria cancelado', () => {
+    expect(blocksCardOverPix(pix('active'), false)).toBe(true)
+  })
+
+  it('com a chave, deixa: o webhook do cartão cancela o Pix', () => {
+    expect(blocksCardOverPix(pix('active'), true)).toBe(false)
+  })
+
+  it('sem Pix ativo, não é com ela', () => {
+    expect(blocksCardOverPix(pix('cancelled'), false)).toBe(false)
+    expect(blocksCardOverPix(pix('active', 'stripe'), false)).toBe(false)
+    expect(blocksCardOverPix(null, false)).toBe(false)
   })
 })
