@@ -1,7 +1,7 @@
 import { and, count, db, eq, gt } from '@findsports_oficial/db'
 import { bar, subscription } from '@findsports_oficial/db/schema/platform'
 import type Stripe from 'stripe'
-import { ANNUAL_LOOKUP_KEYS } from './stripe-plan'
+import { ANNUAL_LOOKUP_KEYS, ANNUAL_MONTHS } from './stripe-plan'
 import {
   customerDetailsFor,
   type InvoiceDetails,
@@ -57,6 +57,18 @@ export function trialEndForCheckout(
  */
 export const FOUNDER_COUPON_ID = 'eM7dQpMF'
 
+/**
+ * Cupom de fundador do anual (decisão do dono, 14/11/2026: o desconto de
+ * fundador vale no anual). O `FOUNDER_COUPON_ID` é de valor fixo por fatura, e
+ * no anual tiraria R$ 28 do ano; este tira `ANNUAL_MONTHS` vezes isso, e o
+ * anual do fundador sai 10 × o mensal de fundador. Mesmas vagas: os resgates
+ * dos dois cupons e o Pix somam no teto.
+ */
+export const FOUNDER_ANNUAL_COUPON_ID = 'fundador_anual'
+
+/** O desconto do cupom anual, em centavos: R$ 28 × 10 = R$ 280 por ano. */
+export const FOUNDER_ANNUAL_AMOUNT_OFF = 2800 * ANNUAL_MONTHS
+
 // O checkout e a `/plan` não esperam o Stripe: sem resposta em 5s, e sem nova
 // tentativa, seguem adiante (o padrão do SDK são 80s e 2 tentativas).
 export const QUICK_REQUEST = { timeout: 5000, maxNetworkRetries: 0 }
@@ -94,6 +106,23 @@ type FounderCouponState =
 /** Quem conta os fundadores do Pix; os testes do cupom passam um sem banco. */
 type CountPixFounders = () => Promise<number>
 
+/** Resgates do cupom anual; cupom que não existe nesta conta não tem nenhum. */
+async function annualRedemptions(client: Stripe): Promise<number> {
+  try {
+    const coupon = await client.coupons.retrieve(
+      FOUNDER_ANNUAL_COUPON_ID,
+      {},
+      QUICK_REQUEST
+    )
+    return coupon.times_redeemed ?? 0
+  } catch (error) {
+    if ((error as { type?: string }).type === 'StripeInvalidRequestError') {
+      return 0
+    }
+    throw error
+  }
+}
+
 async function readFounderCoupon(
   client: Stripe,
   countPix: CountPixFounders
@@ -110,7 +139,11 @@ async function readFounderCoupon(
     const seats = coupon.max_redemptions ?? FOUNDER_SEATS
     // Conta mesmo com o Pix desligado: os fundadores que entraram por ele
     // seguem ocupando a vaga. Banco sem responder cai no `unknown` abaixo.
-    const taken = (coupon.times_redeemed ?? 0) + (await countPix())
+    // Os do anual também (WEB-442).
+    const taken =
+      (coupon.times_redeemed ?? 0) +
+      (await annualRedemptions(client)) +
+      (await countPix())
     return { state: taken < seats ? 'valid' : 'invalid' }
   } catch (error) {
     // Cupom apagado ou com o id errado: o Stripe respondeu, e a resposta é não.
@@ -159,12 +192,14 @@ export async function pixFounderSeatAvailable(
  */
 export async function usableFounderCoupon(
   client: Stripe,
-  countPix: CountPixFounders = pixFounderCount
+  countPix: CountPixFounders = pixFounderCount,
+  { annual = false }: { annual?: boolean } = {}
 ): Promise<string | null> {
+  const couponId = annual ? FOUNDER_ANNUAL_COUPON_ID : FOUNDER_COUPON_ID
   const coupon = await readFounderCoupon(client, countPix)
   if (coupon.state === 'invalid') {
     logBillingError('stripe_founder_coupon_unavailable', {
-      couponId: FOUNDER_COUPON_ID,
+      couponId,
       reason: 'coupon_invalid'
     })
     return null
@@ -173,32 +208,43 @@ export async function usableFounderCoupon(
     // Segue com o cupom sem a conferência; o log deixa o rastro para o caso
     // de a sessão ser recusada logo depois.
     logBillingError('stripe_founder_coupon_unverified', {
-      couponId: FOUNDER_COUPON_ID,
+      couponId,
       message: coupon.message
     })
   }
-  return FOUNDER_COUPON_ID
+  return couponId
 }
 
 /**
  * O plano anual está à venda (WEB-442): os três preços anuais existem e estão
- * ativos na conta do Stripe, com cobrança por ano. Enquanto o dono não os
- * cria, ou com o Stripe sem responder no teto, a tela mostra o "Anual"
- * desligado e o mensal segue igual.
+ * ativos na conta do Stripe, com cobrança por ano, e o cupom de fundador do
+ * anual existe com R$ 280 fixos para sempre — sem ele a tela prometeria um
+ * preço de fundador que o checkout não daria. Enquanto o dono não cria tudo,
+ * ou com o Stripe sem responder no teto, a tela mostra o "Anual" desligado e
+ * o mensal segue igual.
  */
 export async function annualPlansAvailable(
-  client: Pick<Stripe, 'prices'>
+  client: Pick<Stripe, 'prices' | 'coupons'>
 ): Promise<boolean> {
   try {
-    const { data } = await client.prices.list(
-      { lookup_keys: ANNUAL_LOOKUP_KEYS, active: true, limit: 10 },
-      QUICK_REQUEST
-    )
-    return ANNUAL_LOOKUP_KEYS.every((key) =>
+    const [{ data }, coupon] = await Promise.all([
+      client.prices.list(
+        { lookup_keys: ANNUAL_LOOKUP_KEYS, active: true, limit: 10 },
+        QUICK_REQUEST
+      ),
+      client.coupons.retrieve(FOUNDER_ANNUAL_COUPON_ID, {}, QUICK_REQUEST)
+    ])
+    const prices = ANNUAL_LOOKUP_KEYS.every((key) =>
       data.some(
         (price) =>
           price.lookup_key === key && price.recurring?.interval === 'year'
       )
+    )
+    return (
+      prices &&
+      coupon.amount_off === FOUNDER_ANNUAL_AMOUNT_OFF &&
+      coupon.currency?.toLowerCase() === 'brl' &&
+      coupon.duration === 'forever'
     )
   } catch {
     return false
@@ -321,9 +367,10 @@ const CUSTOMER_UPDATE = { name: 'auto', address: 'auto' } as const
  * Código promocional só quando não há cupom de fundador — o Stripe não aceita
  * os dois na mesma sessão.
  *
- * Anual (WEB-442): o cupom de fundador é só do mensal (decisão do dono,
- * 28/10/2026), e o anual já sai pelo preço de 10 meses; sem cupom nem código
- * promocional. O teste do cadastro vale nos dois: `trial_end` é o mesmo.
+ * Anual (WEB-442): o desconto de fundador vale nos dois (dono, 14/11/2026),
+ * pelo cupom anual (`FOUNDER_ANNUAL_COUPON_ID`); sem ele, o anual vai a preço
+ * de tabela e sem código promocional. O teste do cadastro vale nos dois:
+ * `trial_end` é o mesmo.
  */
 export async function checkoutParamsFor(
   owner: { id: string; name: string },
@@ -339,17 +386,19 @@ export async function checkoutParamsFor(
     await prefillCustomer(client, customerId, owner.name, ownerBar)
   }
   const trialEnd = trialEndForCheckout(ownerBar?.subscription ?? null)
-  const coupon = annual ? null : await usableFounderCoupon(client)
+  const coupon = await usableFounderCoupon(client, pixFounderCount, {
+    annual
+  })
   return {
     locale: 'pt-BR',
     billing_address_collection: 'required',
     tax_id_collection: { enabled: true },
     customer_update: CUSTOMER_UPDATE,
     adaptive_pricing: { enabled: false },
-    ...(annual
-      ? {}
-      : coupon
-        ? { discounts: [{ coupon }] }
+    ...(coupon
+      ? { discounts: [{ coupon }] }
+      : annual
+        ? {}
         : { allow_promotion_codes: true }),
     ...(trialEnd ? { subscription_data: { trial_end: trialEnd } } : {})
   }
