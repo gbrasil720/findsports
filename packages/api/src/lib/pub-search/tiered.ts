@@ -79,6 +79,26 @@ const PLAN_TIERS = [
  * menos mas 5 a 9 ms a mais. Medido sem JIT (migration 0084): com ele, a
  * compilação sozinha levava 121 ms.
  *
+ * Ainda assim a starter (e a pro, na primeira página) lia todo bar do raio:
+ * o pré-filtro também aceita bar pelo nome, e testar o nome pede a linha do
+ * bar. Com o índice trigram do nome (migration 0097, WEB-539), poucos
+ * candidatos (`texto_candidatos`: os de `texto_jogos` e os casados pelo nome,
+ * até 10 por km² do raio) fazem a camada partir de cada um pela chave do bar;
+ * acima disso fica o filtro de antes, mais barato que ~8 buffers por
+ * candidato. Medido em 14/11/2026 (mesmo dataset, mediana de 5), primeira
+ * página: texto raro de 3.057 para 1.727 buffers em 3 km (11 para 4 ms) e de
+ * 7.414 para 4.711 em 5 km; texto em 142 jogos, 5 km, de 7.361 para 5.264.
+ * Texto e campeonato comuns: mesmos buffers. Quando os candidatos passam do
+ * teto, montar a lista custa até ~150 buffers a mais (nome em 111 bares, 3 km:
+ * 3.074 para 3.214).
+ *
+ * Teto conhecido: campeonato em 1/7 ou 1/23 dos bares, nas páginas que chegam
+ * à starter com cursor, segue bar a bar (~23 mil buffers em 3 km). O jogo não
+ * tem localização: ou se testa cada bar do raio (~4 buffers por bar), ou se
+ * monta a lista de jogos do banco inteiro (13 mil buffers para 1/7, crescendo
+ * com o banco). O caminho é o bar guardar o texto dos próximos jogos, com
+ * índice trigram, para o Postgres cruzar raio e texto num `BitmapAnd`.
+ *
  * Para medir: em `packages/db`, `NODE_ENV=test bun run db:seed:load-test
  * --bars 100000` (100 mil bares, 500 mil jogos; só aceita o
  * `findsports_load_test`, ver AGENTS.md) e
