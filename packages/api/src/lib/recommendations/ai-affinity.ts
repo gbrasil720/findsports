@@ -14,8 +14,8 @@ import {
  * substitui a similaridade por regras no eixo "Seu estilo" (`ranking.ts`), e a
  * seleção de sempre escolhe a rodada. Jev e Clef-flash recebem o mesmo pedido.
  *
- * Contas puras: quem chama a IA e grava `ai_run` é quem usa (por ora, só o
- * `scripts/recommender-eval.ts`). Nada disso está em `recommendations.today`.
+ * Contas puras: quem chama a IA e grava `ai_run` é quem usa: a rodada do
+ * dia no braço C (`ai-round.ts`) e o `scripts/recommender-eval.ts`.
  */
 
 export const AI_AFFINITY_CANDIDATES = 15
@@ -156,8 +156,11 @@ export function readAffinity(raw: unknown, keys: string[]): AiAffinity {
 
 export type AffinityResult = {
   affinity: AiAffinity | null
-  /** `ok` no sorteado, `fallback` no outro modelo, `error` cai no controle. */
-  status: 'ok' | 'fallback' | 'error'
+  /**
+   * `ok` no sorteado, `fallback` no outro modelo; `error` e `timeout` caem no
+   * controle.
+   */
+  status: 'ok' | 'fallback' | 'error' | 'timeout'
   servedModel: RecommenderModel | null
   calls: number
 }
@@ -166,22 +169,29 @@ export type AffinityResult = {
  * A regra de falha do ticket (dono, 21/10/2026): uma nova tentativa no mesmo
  * modelo, depois o outro (Jev ↔ Clef-flash); os dois falhando, o controle.
  * Resposta sem nenhuma nota aproveitável conta como falha.
+ *
+ * Na fase 2 (A × C, dono em 14/11/2026) o B saiu: quem chama passa
+ * `other: null` e não há troca de modelo. Demora (`AiTimeoutError` do
+ * `runAi`) não ganha nova tentativa: já passou do teto de tempo.
  */
 export async function requestAffinity(
   call: (model: string, input: Record<string, unknown>) => Promise<unknown>,
   assigned: RecommenderModel,
   profile: AffinityProfile,
-  bars: AffinityBar[]
+  bars: AffinityBar[],
+  options: { other?: RecommenderModel | null } = {}
 ): Promise<AffinityResult> {
   const other =
-    assigned === RECOMMENDER_MODELS.b
-      ? RECOMMENDER_MODELS.c
-      : RECOMMENDER_MODELS.b
-  const attempts = [
+    options.other !== undefined
+      ? options.other
+      : assigned === RECOMMENDER_MODELS.b
+        ? RECOMMENDER_MODELS.c
+        : RECOMMENDER_MODELS.b
+  const attempts: [RecommenderModel, 'ok' | 'fallback'][] = [
     [assigned, 'ok'],
     [assigned, 'ok'],
-    [other, 'fallback']
-  ] as const
+    ...(other ? [[other, 'fallback'] as [RecommenderModel, 'fallback']] : [])
+  ]
   let calls = 0
   for (const [model, status] of attempts) {
     const { input, keys } = buildAffinityRequest(model, profile, bars)
@@ -190,7 +200,10 @@ export async function requestAffinity(
       const affinity = readAffinity(await call(model, input), keys)
       if (affinity.size > 0)
         return { affinity, status, servedModel: model, calls }
-    } catch {
+    } catch (error) {
+      // Pelo nome: importar o `run.ts` traria o banco a este arquivo puro.
+      if ((error as Error)?.name === 'AiTimeoutError')
+        return { affinity: null, status: 'timeout', servedModel: null, calls }
       // Segue para a próxima tentativa.
     }
   }
