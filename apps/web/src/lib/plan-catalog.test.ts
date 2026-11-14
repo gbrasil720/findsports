@@ -871,29 +871,39 @@ describe('getPlanCardLists', () => {
   })
 })
 
-// WEB-442: anual = 10 meses, sem desconto de fundador.
+// WEB-442: anual = 10 meses, com o desconto de fundador também (14/11/2026).
 describe('plano anual (WEB-442)', () => {
-  test('o anual é a tabela de 10 meses por ano, sem preço de fundador', () => {
-    const pro = billedPlan(getPlan('pro'), 'year')
-    expect(pro).toMatchObject({
+  test('o anual é 10 meses da tabela e 10 do fundador, por ano', () => {
+    expect(billedPlan(getPlan('pro'), 'year')).toMatchObject({
       tablePrice: 1470,
-      founderPrice: 1470,
+      founderPrice: 1190,
       period: '/ano'
     })
     expect(billedPlan(getPlan('pro'), 'month')).toBe(getPlan('pro'))
     expect(billedPlan(getPlan('pro'))).toBe(getPlan('pro'))
   })
 
-  test('vitrine do anual risca os 12 meses', () => {
-    const charge = planChargeForAnnual(getPlan('elite'))
-    expect(charge).toEqual({
-      chargeReais: 2970,
-      listReais: 3564,
-      hint: '2 meses grátis'
-    })
+  test('vitrine do anual risca 12 meses do mensal', () => {
+    const charge = planChargeForAnnual(annualDeal(getPlan('elite'), false))
+    expect(charge).toEqual({ chargeReais: 2970, listReais: 3564, hint: null })
     expect(formatPlanChargeLine(charge, '/ano')).toBe(
       'R$ 2.970/ano (tabela cheia R$ 3.564/ano)'
     )
+    expect(planChargeForAnnual(annualDeal(getPlan('elite'), true))).toEqual({
+      chargeReais: 2690,
+      listReais: 3228,
+      hint: null
+    })
+  })
+
+  test('anual de fundador no card do plano: o ano menos os R$ 280 da fatura', () => {
+    expect(
+      planChargeForCurrentPlan(
+        billedPlan(getPlan('pro'), 'year'),
+        { externalSubscriptionId: 'sub_1', monthlyDiscountReais: 280 },
+        true
+      )
+    ).toMatchObject({ chargeReais: 1190, listReais: 1470 })
   })
 
   test('assinatura anual no card do plano: o valor do ano, sem riscar', () => {
@@ -926,28 +936,30 @@ describe('plano anual (WEB-442)', () => {
   })
 })
 
-// A tela só diz "economize" quando o anual sai mesmo mais barato que o
-// mensal que o bar pagaria (WEB-442).
+// O anual sempre economiza dois meses do mensal que o bar pagaria (WEB-442).
 describe('conta do anual contra o mensal (WEB-442)', () => {
-  test('sem fundador, o anual economiza 2 meses de tabela em todo plano', () => {
+  test('sem fundador: 10 meses de tabela', () => {
     expect(
       PLAN_CATALOG.map((plan) => annualDeal(plan, false).savingsReais)
     ).toEqual([194, 294, 594])
     expect(annualDeal(getPlan('pro'), false)).toEqual({
       yearReais: 1470,
       perMonthReais: 122.5,
-      tableYearReais: 1764,
-      monthlyYearReais: 1764,
       monthlyReais: 147,
+      monthlyYearReais: 1764,
       savingsReais: 294,
-      founderMonthly: false
+      founder: false
     })
   })
 
-  test('com fundador, o mensal sai mais barato no Starter e no Pro', () => {
+  test('com fundador: 10 meses do mensal de fundador', () => {
+    expect(
+      PLAN_CATALOG.map((plan) => annualDeal(plan, true).yearReais)
+    ).toEqual([690, 1190, 2690])
     expect(
       PLAN_CATALOG.map((plan) => annualDeal(plan, true).savingsReais)
-    ).toEqual([-142, -42, 258])
+    ).toEqual([138, 238, 538])
+    expect(annualDeal(getPlan('pro'), true).perMonthReais).toBe(99.17)
   })
 
   test('reais com centavos só quando há', () => {

@@ -86,17 +86,22 @@ export function formatPlanPrice(reais: number): string {
 export type BillingInterval = 'month' | 'year'
 
 /**
- * O plano com o preço do intervalo cobrado (WEB-442). O anual é a tabela de
- * `ANNUAL_MONTHS` meses, por ano e sem desconto de fundador (decisão do dono,
- * 28/10/2026: o cupom é só do mensal). Quem desenha preço com o `period` do
- * plano passa a dizer "/ano" sem saber que o anual existe.
+ * O plano com o preço do intervalo cobrado (WEB-442). O anual é `ANNUAL_MONTHS`
+ * meses, da tabela e do fundador (o desconto de fundador vale no anual, dono,
+ * 14/11/2026). Quem desenha preço com o `period` do plano passa a dizer "/ano"
+ * sem saber que o anual existe. Na assinatura anual, `monthlyDiscountReais` é
+ * o desconto da fatura, do ano: R$ 1.470 − R$ 280 = R$ 1.190.
  */
 export function billedPlan<
   P extends Pick<Plan, 'tablePrice' | 'founderPrice' | 'period'>
 >(plan: P, interval: BillingInterval = 'month'): P {
   if (interval !== 'year') return plan
-  const tablePrice = plan.tablePrice * ANNUAL_MONTHS
-  return { ...plan, tablePrice, founderPrice: tablePrice, period: '/ano' }
+  return {
+    ...plan,
+    tablePrice: plan.tablePrice * ANNUAL_MONTHS,
+    founderPrice: plan.founderPrice * ANNUAL_MONTHS,
+    period: '/ano'
+  }
 }
 
 /** Reais com centavos só quando há: "R$ 122,50", "R$ 1.470". */
@@ -109,54 +114,47 @@ export function formatReais(reais: number): string {
 }
 
 /**
- * A conta do anual para um plano, contra o mensal que o bar pagaria de
- * verdade (WEB-442): com o cupom de fundador valendo, o mensal é o de
- * fundador, e aí o anual pode sair mais caro (Starter e Pro). `savingsReais`
- * negativo ou zero: a tela não pode dizer que o anual economiza.
+ * A conta do anual para um plano (WEB-442): `ANNUAL_MONTHS` meses do mensal
+ * que o bar pagaria, o de fundador quando o cupom vale, contra 12 deles. Com o
+ * fundador no anual também (dono, 14/11/2026), o anual sempre economiza dois
+ * meses do mensal.
  */
 export type AnnualDeal = {
   yearReais: number
   /** O ano dividido por 12, para comparar com o mensal. */
   perMonthReais: number
-  /** 12 meses da tabela cheia: a âncora riscada. */
-  tableYearReais: number
-  /** 12 meses do mensal que o bar pagaria (fundador, se vale). */
-  monthlyYearReais: number
+  /** O mensal que o bar pagaria (fundador, se vale). */
   monthlyReais: number
+  /** 12 desse mensal: a âncora riscada. */
+  monthlyYearReais: number
   savingsReais: number
-  founderMonthly: boolean
+  founder: boolean
 }
 
 export function annualDeal(
   plan: Pick<Plan, 'tablePrice' | 'founderPrice'>,
   founderCouponAvailable: boolean
 ): AnnualDeal {
-  const yearReais = plan.tablePrice * ANNUAL_MONTHS
   const monthlyReais = founderCouponAvailable
     ? plan.founderPrice
     : plan.tablePrice
+  const yearReais = monthlyReais * ANNUAL_MONTHS
   return {
     yearReais,
     perMonthReais: Math.round((yearReais / 12) * 100) / 100,
-    tableYearReais: plan.tablePrice * 12,
-    monthlyYearReais: monthlyReais * 12,
     monthlyReais,
+    monthlyYearReais: monthlyReais * 12,
     savingsReais: monthlyReais * 12 - yearReais,
-    founderMonthly: founderCouponAvailable
+    founder: founderCouponAvailable
   }
 }
 
-/**
- * Vitrine do anual em `/plan`: o preço de 10 meses, riscando o de 12 — os
- * "2 meses grátis" do design.
- */
-export function planChargeForAnnual(
-  plan: Pick<Plan, 'tablePrice'>
-): PlanChargeDisplay {
+/** Vitrine do anual em `/plan`: o ano, riscando 12 meses do mensal. */
+export function planChargeForAnnual(deal: AnnualDeal): PlanChargeDisplay {
   return {
-    chargeReais: plan.tablePrice * ANNUAL_MONTHS,
-    listReais: plan.tablePrice * 12,
-    hint: `${12 - ANNUAL_MONTHS} meses grátis`
+    chargeReais: deal.yearReais,
+    listReais: deal.monthlyYearReais,
+    hint: null
   }
 }
 
