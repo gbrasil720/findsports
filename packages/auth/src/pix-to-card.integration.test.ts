@@ -1,6 +1,7 @@
 import { afterAll, afterEach, expect, spyOn, test } from 'bun:test'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 import type Stripe from 'stripe'
+import { pixUpgradeCents } from './stripe-plan'
 
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
 
@@ -154,6 +155,7 @@ function cardSubscription(o: {
   userId: string
   trialEnd: Date
   status?: Stripe.Subscription.Status
+  upgradeCents?: number
 }) {
   return {
     id: o.id,
@@ -161,7 +163,11 @@ function cardSubscription(o: {
     cancel_at: null,
     cancel_at_period_end: false,
     customer: o.customerId,
-    metadata: { userId: o.userId },
+    metadata: {
+      userId: o.userId,
+      ...(o.upgradeCents ? { pixUpgradeCents: String(o.upgradeCents) } : {})
+    },
+    default_payment_method: 'pm_card_1',
     discounts: [],
     items: {
       data: [
@@ -404,6 +410,165 @@ integrationTest(
       provider: 'stripe',
       externalSubscriptionId: card.id,
       cancelAt: null
+    })
+  }
+)
+
+/** Stripe que guarda as chamadas de fatura, com a idempotência dele. */
+function billingStripe({ declines = false } = {}) {
+  const calls: { op: string; params: unknown; key?: string }[] = []
+  const seen = new Map<string, unknown>()
+  const once = (
+    op: string,
+    params: unknown,
+    key?: string,
+    result?: unknown
+  ) => {
+    if (key && seen.has(key)) return seen.get(key)
+    calls.push({ op, params, key })
+    if (key) seen.set(key, result)
+    return result
+  }
+  const client = {
+    invoices: {
+      create: async (params: unknown, o?: { idempotencyKey?: string }) =>
+        once('invoice', params, o?.idempotencyKey, {
+          id: 'in_1',
+          status: 'draft'
+        }),
+      finalizeInvoice: async (
+        _id: string,
+        _p: unknown,
+        o?: { idempotencyKey?: string }
+      ) => once('finalize', null, o?.idempotencyKey, { id: 'in_1' }),
+      pay: async (
+        _id: string,
+        _p: unknown,
+        o?: { idempotencyKey?: string }
+      ) => {
+        once('pay', null, o?.idempotencyKey)
+        if (declines) throw new Error('Your card was declined.')
+        return { id: 'in_1', status: 'paid' }
+      }
+    },
+    invoiceItems: {
+      create: async (params: unknown, o?: { idempotencyKey?: string }) =>
+        once('item', params, o?.idempotencyKey, { id: 'ii_1' })
+    }
+  } as unknown as Stripe
+  return { client, calls }
+}
+
+integrationTest(
+  'checkout da subida: a diferença até o fim do mês pago vai na assinatura',
+  async () => {
+    const { checkoutParamsFor, createPixBar } = ready()
+    const paidUntil = new Date(Date.now() + 15 * DAY)
+    const { owner } = await createPixBar({ paidUntil })
+    // Vagas de fundador valendo: o Elite sai a 269.
+    const client = {
+      coupons: {
+        retrieve: async (id: string) =>
+          id === 'fundador_anual' ? { times_redeemed: 0 } : { valid: true }
+      }
+    } as unknown as Stripe
+
+    const up = await checkoutParamsFor(owner, null, client, { plan: 'elite' })
+    const expected = pixUpgradeCents({
+      currentMonthlyReais: 147,
+      newMonthlyReais: 269,
+      paidUntil
+    })
+    expect(expected).toBeGreaterThan(5000)
+    const sent = Number(
+      (up.subscription_data?.metadata as Record<string, string>).pixUpgradeCents
+    )
+    // Segundos entre a conta do teste e a do checkout.
+    expect(Math.abs(sent - expected)).toBeLessThanOrEqual(1)
+
+    for (const plan of ['pro', 'starter'] as const) {
+      const flat = await checkoutParamsFor(owner, null, client, { plan })
+      expect(flat.subscription_data).toEqual({
+        trial_end: Math.floor(paidUntil.getTime() / 1000)
+      })
+    }
+  }
+)
+
+integrationTest(
+  'cartão da subida confirmado: uma fatura só com a diferença, mesmo com eventos repetidos',
+  async () => {
+    const { applyStripeSubscription, createPixBar, stateOf } = ready()
+    const paidUntil = new Date(Date.now() + 15 * DAY)
+    const bar = await createPixBar({ paidUntil })
+    const card = cardSubscription({
+      id: `sub_${bar.barId}`,
+      customerId: bar.customerId,
+      userId: bar.userId,
+      trialEnd: paidUntil,
+      upgradeCents: 6100
+    })
+    const stripe = billingStripe()
+    const log = spyOn(console, 'log').mockImplementation(() => {})
+    try {
+      await applyStripeSubscription(card, stripe.client)
+      await applyStripeSubscription(card, stripe.client)
+    } finally {
+      log.mockRestore()
+    }
+
+    expect(stripe.calls.map((c) => c.op)).toEqual([
+      'invoice',
+      'item',
+      'finalize',
+      'pay'
+    ])
+    expect(stripe.calls[0]?.params).toMatchObject({
+      customer: bar.customerId,
+      default_payment_method: 'pm_card_1',
+      pending_invoice_items_behavior: 'exclude'
+    })
+    expect(stripe.calls[1]?.params).toMatchObject({
+      invoice: 'in_1',
+      amount: 6100,
+      currency: 'brl',
+      discountable: false
+    })
+    expect(await stateOf(bar.barId)).toMatchObject({
+      isActive: true,
+      plan: 'elite',
+      provider: 'stripe'
+    })
+  }
+)
+
+integrationTest(
+  'cartão recusado na diferença: o bar troca de plano mesmo assim e o Stripe cobra depois',
+  async () => {
+    const { applyStripeSubscription, createPixBar, stateOf } = ready()
+    const paidUntil = new Date(Date.now() + 15 * DAY)
+    const bar = await createPixBar({ paidUntil })
+    const card = cardSubscription({
+      id: `sub_${bar.barId}`,
+      customerId: bar.customerId,
+      userId: bar.userId,
+      trialEnd: paidUntil,
+      upgradeCents: 6100
+    })
+    const stripe = billingStripe({ declines: true })
+    const log = spyOn(console, 'log').mockImplementation(() => {})
+    const error = spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      await applyStripeSubscription(card, stripe.client)
+      expect(error).toHaveBeenCalled()
+    } finally {
+      log.mockRestore()
+      error.mockRestore()
+    }
+    expect(await stateOf(bar.barId)).toMatchObject({
+      isActive: true,
+      plan: 'elite',
+      provider: 'stripe'
     })
   }
 )
