@@ -49,6 +49,7 @@ import {
   useInterest
 } from './dados'
 import { faixaDoJogo } from './faixa-do-jogo'
+import { FolhaNativa } from './folha-nativa'
 import {
   brasiliaDay,
   brasiliaTime,
@@ -1187,28 +1188,14 @@ function DetalheFolha({
   children: React.ReactNode
   onClose: () => void
 }) {
-  const ref = useRef<HTMLDialogElement>(null)
   // A folha é modal nativa (camada de cima): a confirmação do "Desfazer"
   // precisa abrir dentro dela, senão fica por baixo e não recebe o toque.
   const portal = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const dialog = ref.current
-    if (dialog && !dialog.open) dialog.showModal()
-  }, [])
   return (
-    // biome-ignore lint/a11y/useKeyWithClickEvents: o Esc já fecha o `<dialog>` nativo; o clique é só o do fundo.
-    <dialog
-      ref={ref}
+    <FolhaNativa
       className="pn-sheet pn-detsheet"
       aria-label="Jogo aberto"
-      // O React repassa o `close` de um `<dialog>` de dentro (a confirmação
-      // do "Desfazer") para este: só fecha a folha o fechamento dela mesma.
-      onClose={(event) => {
-        if (event.target === ref.current) onClose()
-      }}
-      onClick={(event) => {
-        if (event.target === ref.current) onClose()
-      }}
+      onClose={onClose}
     >
       <div className="pn-sheet-in">
         <header>
@@ -1227,6 +1214,6 @@ function DetalheFolha({
         </div>
       </div>
       <div ref={portal} className="onside-app pn-portal" />
-    </dialog>
+    </FolhaNativa>
   )
 }
