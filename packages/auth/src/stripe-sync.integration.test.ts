@@ -156,6 +156,37 @@ integrationTest(
   }
 )
 
+// WEB-442: o anual é o mesmo plano; limites e recursos não mudam.
+integrationTest(
+  'checkout anual no teste grátis: o preço anual vira o mesmo plano, sem desconto',
+  async () => {
+    const { applyStripeSubscription, createBar, stateOf } = ready()
+    const owner = await createBar({
+      plan: 'starter',
+      currentPeriodEnd: periodEnd
+    })
+    const sub = stripeSubscription({
+      id: `sub_${owner.barId}`,
+      status: 'trialing',
+      lookupKey: 'pro_yearly',
+      customerId: owner.customerId,
+      userId: owner.userId
+    })
+
+    await applyStripeSubscription(sub)
+    expect(await stateOf(owner.barId)).toEqual({
+      isActive: true,
+      status: 'trialing',
+      plan: 'pro',
+      provider: 'stripe',
+      externalSubscriptionId: sub.id,
+      currentPeriodEnd: periodEnd.toISOString(),
+      cancelAt: null,
+      monthlyDiscountReais: 0
+    })
+  }
+)
+
 integrationTest(
   'bar sem assinatura: o primeiro pagamento cria a linha e publica o bar',
   async () => {
