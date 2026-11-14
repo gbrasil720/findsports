@@ -349,20 +349,22 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   sai do fim do ciclo pago, não da ordem dos avisos (`pixStanding`).
   **Do Pix para o cartão** (WEB-536): em `/plan`, quem paga por Pix vê o cartão na
   janela "Como você quer pagar?" (troca de plano, ou "Passar para o cartão" no mesmo
-  plano; mensal ou anual). O checkout manda `trial_end` = fim do ciclo pago
-  (`trialEndForCheckout`), e o fundador do Pix leva a vaga. **Na subida, a diferença
-  sai hoje** (dono, 14/11/2026): `pixUpgradeCents` (`stripe-plan.ts`, a mesma conta
-  na tela) dá o proporcional de (mensal novo − mensal do Pix, preços pagos de fato;
-  anual = 10/12 do mensal) pelo que falta do mês pago; o checkout o grava em
-  `subscription_data.metadata.pixUpgradeCents` (o plugin não aceita item avulso na
-  sessão) e o webhook que cancela o Pix cria a fatura avulsa (`chargePixUpgrade`,
-  chaves de idempotência; cartão recusado só vai ao log e a fatura fica aberta).
-  Descida e mesmo plano não cobram nada agora. O primeiro evento do
-  cartão vivo (`applyStripeSubscription`) cancela o Pix na AbacatePay antes de a
-  linha virar `stripe`; falha lá responde erro e o Stripe reenvia, com o bar no Pix
-  enquanto isso. O `cancelled` do Pix que chega depois não é da assinatura atual e
-  não derruba nada. Sem `ABACATE_PAY_API_KEY`, o checkout de quem tem Pix ativo é
-  recusado (`blocksCardOverPix`, `PIX_SWITCH_UNAVAILABLE`): pagaria os dois.
+  plano; mensal ou anual). A sessão é nossa, não do plugin (`startCardFromPix`, via
+  `pub.startCardFromPix`; o `/subscription/upgrade` recusa Pix ativo,
+  `blocksCardOverPix`): `trial_end` = fim do ciclo pago, e na **subida** a diferença
+  (`pixUpgradeCents`, a mesma conta na tela: proporcional de mensal novo − mensal do
+  Pix, preços pagos de fato, anual = 10/12) vai como item avulso, que o Stripe cobra
+  na tela do checkout (dono, 14/11/2026: a troca só vale com a diferença paga).
+  Cartão recusado não cria assinatura; voltando sem concluir, `/plan?troca=cartao`
+  diz que nada mudou e pede outro cartão. Com a diferença na sessão, o cupom de
+  fundador vai na metadata e o webhook o aplica (`applyUpgradeCoupon`). No webhook,
+  a ordem é: primeira fatura paga (`upgradePaid`; sem ela a assinatura do cartão é
+  cancelada e o bar segue no Pix), cupom, Pix cancelado na AbacatePay, linha do
+  Stripe; falha na AbacatePay lança e o Stripe reenvia, com o bar no Pix. A
+  assinatura entra no plugin pelo `customer.subscription.created`. Sem
+  `ABACATE_PAY_API_KEY` a sessão é recusada: o Pix não seria cancelado. O fundador
+  do Pix leva a vaga, e o `cancelled` do Pix que chega depois não é da assinatura
+  atual e não derruba nada.
 
 ### Avisos por e-mail do bar (WEB-441)
 
