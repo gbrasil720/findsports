@@ -1,5 +1,13 @@
 import { brasiliaDay } from '@findsports_oficial/db/event-window'
+import { gameTitle } from '@findsports_oficial/db/game-title'
+import {
+  comparisonStartsOn,
+  performanceStage,
+  sinceLive,
+  untilGame
+} from '@findsports_oficial/db/performance-history'
 import { useQuery } from '@tanstack/react-query'
+import { useRouter } from 'expo-router'
 import { useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
@@ -13,11 +21,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { scheduleOnRN } from 'react-native-worklets'
 import {
   DayBoard,
+  InkCallout,
   OwnerCard,
   OwnerLabel,
   OwnerRow,
   ownerText,
-  PlanNudge
+  PlanNudge,
+  useMinuteNow
 } from '@/components/bar-owner'
 import { HardShadow } from '@/components/explore'
 import { EASE, haptic } from '@/components/motion'
@@ -33,7 +43,7 @@ import {
   text,
   useStatusBar
 } from '@/components/ui'
-import { dayMonth, delta, shortDate } from '@/lib/bar-owner'
+import { dayMonth, delta, nextGameWhen, shortDate } from '@/lib/bar-owner'
 import { useOwnerBar } from '@/lib/owner'
 import { trpc } from '@/lib/trpc'
 
@@ -93,6 +103,24 @@ export default function Desempenho() {
       : [])
   ]
   const top = Math.max(1, ...funnel.map((row) => row.value ?? 0))
+  // Bar com pouca história (WEB-467): bloco sem dado some; sem jogo, o
+  // cartão do primeiro jogo; antes dele, a contagem e "Até agora"; e a
+  // comparação só quando o período anterior inteiro é de depois da criação.
+  const router = useRouter()
+  const now = useMinuteNow()
+  const events = useQuery(trpc.pub.getMyEvents.queryOptions())
+  const stage = events.data ? performanceStage(events.data, now) : null
+  const early = stage !== null && stage.kind !== 'played'
+  const created = owner.bar?.createdAt
+  const compareOn = created ? comparisonStartsOn(created, days, now) : null
+  const hasNumbers =
+    !!d &&
+    (d.uniqueVisitors > 0 || d.profileViews > 0 || d.interestedPeople > 0)
+  const showNumbers = !early || hasNumbers
+  const showChannels =
+    !early || (d?.whatsappOpened ?? 0) + (d?.directionsOpened ?? 0) > 0
+  const showElite = !owner.elite || !early || (d?.classicExposures ?? 0) > 0
+  const newGame = () => router.push('/novo-jogo')
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
@@ -140,6 +168,12 @@ export default function Desempenho() {
           </Pressable>
         </View>
 
+        {stage?.kind === 'no-games' ? (
+          <NoGames elite={owner.elite} onNew={newGame} />
+        ) : stage?.kind === 'before-first' ? (
+          <FirstGame game={stage.game} now={now} elite={owner.elite} />
+        ) : null}
+
         {overview.isError ? (
           <ErrorState
             title="Não deu para carregar os números."
@@ -149,76 +183,107 @@ export default function Desempenho() {
           />
         ) : (
           <>
-            <DayBoard
-              kicker="PESSOAS VIRAM O BAR"
-              aside={
-                delta(d?.uniqueVisitorsChange)
-                  ? `${(d?.uniqueVisitorsChange ?? 0) < 0 ? '▼' : '▲'} ${delta(d?.uniqueVisitorsChange)?.replace(/[+−]/, '')}`
-                  : undefined
-              }
-            >
-              <View style={{ flex: 1, gap: 10 }}>
-                <Text style={styles.big}>
-                  {d ? d.uniqueVisitors.toLocaleString('pt-BR') : '—'}
-                </Text>
-                {d ? <Chart points={d.dailyProfileViews} /> : null}
-              </View>
-            </DayBoard>
-
-            <OwnerLabel>Do perfil ao balcão</OwnerLabel>
-            <OwnerCard>
-              {funnel.map((row, index) => (
-                <View
-                  key={row.label}
-                  style={[styles.funnel, index === 0 && { paddingTop: 14 }]}
-                  accessible
-                  accessibilityLabel={`${row.label}: ${row.value ?? 'carregando'}`}
+            {showNumbers ? (
+              <>
+                <DayBoard
+                  kicker="PESSOAS VIRAM O BAR"
+                  aside={
+                    !compareOn && delta(d?.uniqueVisitorsChange)
+                      ? `${(d?.uniqueVisitorsChange ?? 0) < 0 ? '▼' : '▲'} ${delta(d?.uniqueVisitorsChange)?.replace(/[+−]/, '')}`
+                      : undefined
+                  }
                 >
-                  <View style={{ flex: 1, gap: 6 }}>
+                  <View style={{ flex: 1, gap: 10 }}>
+                    <Text style={styles.big}>
+                      {d ? d.uniqueVisitors.toLocaleString('pt-BR') : '—'}
+                    </Text>
+                    {d ? (
+                      <Chart
+                        points={
+                          created
+                            ? sinceLive(d.dailyProfileViews, created)
+                            : d.dailyProfileViews
+                        }
+                      />
+                    ) : null}
+                  </View>
+                </DayBoard>
+                {compareOn ? (
+                  <View
+                    style={[styles.note, { backgroundColor: palette.mark }]}
+                  >
                     <Text
                       style={[
-                        text(15.5, 'SemiBold', 1.2),
+                        text(13.5, 'Regular', 1.4),
                         { color: palette.ink }
                       ]}
                     >
-                      {row.label}
+                      {`A comparação com os ${days} dias anteriores aparece em ${dayMonth(`${compareOn}T15:00:00Z`)}.`}
                     </Text>
-                    <View
-                      style={[styles.track, { backgroundColor: palette.mark }]}
-                    >
-                      <Animated.View
-                        layout={reduced ? undefined : BAR}
-                        style={[
-                          styles.fill,
-                          {
-                            width: `${Math.max(2, ((row.value ?? 0) / top) * 100)}%`,
-                            backgroundColor:
-                              index === funnel.length - 1
-                                ? ACID
-                                : palette.dark
-                                  ? PAPER
-                                  : INK
-                          }
-                        ]}
-                      />
-                    </View>
                   </View>
-                  <Text style={[styles.funnelValue, { color: palette.ink }]}>
-                    {row.value === null
-                      ? '—'
-                      : row.value.toLocaleString('pt-BR')}
-                  </Text>
-                </View>
-              ))}
-              <View style={{ height: 8 }} />
-            </OwnerCard>
-            {owner.elite ? null : (
-              <PlanNudge
-                to="elite"
-                title="Do perfil ao balcão, até o fim"
-                body="No Elite o funil vai até quem marcou que ia e quem validou o código no balcão: a visita verificada."
-              />
-            )}
+                ) : null}
+
+                <OwnerLabel>Do perfil ao balcão</OwnerLabel>
+                <OwnerCard>
+                  {funnel.map((row, index) => (
+                    <View
+                      key={row.label}
+                      style={[styles.funnel, index === 0 && { paddingTop: 14 }]}
+                      accessible
+                      accessibilityLabel={`${row.label}: ${row.value ?? 'carregando'}`}
+                    >
+                      <View style={{ flex: 1, gap: 6 }}>
+                        <Text
+                          style={[
+                            text(15.5, 'SemiBold', 1.2),
+                            { color: palette.ink }
+                          ]}
+                        >
+                          {row.label}
+                        </Text>
+                        <View
+                          style={[
+                            styles.track,
+                            { backgroundColor: palette.mark }
+                          ]}
+                        >
+                          <Animated.View
+                            layout={reduced ? undefined : BAR}
+                            style={[
+                              styles.fill,
+                              {
+                                width: `${Math.max(2, ((row.value ?? 0) / top) * 100)}%`,
+                                backgroundColor:
+                                  index === funnel.length - 1
+                                    ? ACID
+                                    : palette.dark
+                                      ? PAPER
+                                      : INK
+                              }
+                            ]}
+                          />
+                        </View>
+                      </View>
+                      <Text
+                        style={[styles.funnelValue, { color: palette.ink }]}
+                      >
+                        {row.value === null
+                          ? '—'
+                          : row.value.toLocaleString('pt-BR')}
+                      </Text>
+                    </View>
+                  ))}
+                  <View style={{ height: 8 }} />
+                </OwnerCard>
+                {owner.elite ? null : (
+                  <PlanNudge
+                    to="elite"
+                    title="Do perfil ao balcão, até o fim"
+                    body="No Elite o funil vai até quem marcou que ia e quem validou o código no balcão: a visita verificada."
+                  />
+                )}
+              </>
+            ) : null}
 
             {games.isError ? (
               <ErrorState
@@ -227,7 +292,7 @@ export default function Desempenho() {
                 onRetry={() => games.refetch()}
                 retrying={games.isFetching}
               />
-            ) : best.length ? (
+            ) : best.length && !early ? (
               <>
                 <OwnerLabel>Melhores jogos</OwnerLabel>
                 <OwnerCard>
@@ -271,19 +336,166 @@ export default function Desempenho() {
               </>
             ) : null}
 
-            <View style={styles.pair}>
-              <Small value={d?.whatsappOpened} label="WhatsApp" />
-              <Small value={d?.directionsOpened} label="rota" />
-            </View>
+            {showChannels ? (
+              <View style={styles.pair}>
+                <Small value={d?.whatsappOpened} label="WhatsApp" />
+                <Small value={d?.directionsOpened} label="rota" />
+              </View>
+            ) : null}
 
-            <EliteCard
-              elite={owner.elite}
-              exposures={d?.classicExposures ?? null}
-              clicks={d?.classicClicks ?? null}
-            />
+            {showElite ? (
+              <EliteCard
+                elite={owner.elite}
+                exposures={d?.classicExposures ?? null}
+                clicks={d?.classicClicks ?? null}
+              />
+            ) : null}
           </>
         )}
       </ScrollView>
+    </View>
+  )
+}
+
+/** Bar sem jogo publicado: o que falta e o que vai aparecer. */
+function NoGames({ elite, onNew }: { elite: boolean; onNew: () => void }) {
+  const palette = usePalette()
+  return (
+    <>
+      <InkCallout
+        kicker="Ainda sem número"
+        title="Os números chegam"
+        hot="com o primeiro jogo"
+        body={
+          elite
+            ? 'Quem viu o bar, quem se interessou e quem foi aparecem aqui depois que você publicar um jogo.'
+            : 'Quem viu o bar e quem se interessou aparecem aqui depois que você publicar um jogo.'
+        }
+        action={{ label: 'Publicar um jogo', onPress: onNew }}
+      />
+      <OwnerLabel>Depois do primeiro jogo, aparece aqui</OwnerLabel>
+      <View style={{ gap: 8 }}>
+        {[
+          ['Pessoas que viram o bar', 'por dia'],
+          ['Se interessaram', 'WhatsApp, rota, telefone'],
+          ['Como cada jogo foi', 'jogo a jogo']
+        ].map(([label, aside]) => (
+          <View
+            key={label}
+            style={[styles.ghost, { backgroundColor: palette.mark }]}
+          >
+            <Text
+              numberOfLines={1}
+              style={[
+                text(14, 'SemiBold', 1.2),
+                { color: palette.ink, flexShrink: 1 }
+              ]}
+            >
+              {label}
+            </Text>
+            <Text style={[styles.ghostAside, { color: palette.muted }]}>
+              {aside?.toLocaleUpperCase('pt-BR')}
+            </Text>
+          </View>
+        ))}
+      </View>
+    </>
+  )
+}
+
+/** Antes do primeiro jogo: a contagem até ele e o que já se sabe dele. */
+function FirstGame({
+  game,
+  now,
+  elite
+}: {
+  game: { id: string; startsAt: string | Date } & Parameters<
+    typeof gameTitle
+  >[0]
+  now: number
+  elite: boolean
+}) {
+  const palette = usePalette()
+  const numbers = useQuery(trpc.pub.getMyEventNumbers.queryOptions())
+  const mine = numbers.data?.find((row) => row.eventId === game.id)
+  const until = untilGame(game.startsAt, now)
+  const [home, away] = gameTitle(game).split(' × ')
+  return (
+    <>
+      <View>
+        <HardShadow color="#000" offset={5} radius={26} />
+        <View
+          style={[
+            styles.first,
+            palette.dark && { borderWidth: 1, borderColor: palette.line }
+          ]}
+        >
+          <View style={styles.firstHead}>
+            <Text style={styles.firstKicker}>SEU PRIMEIRO JOGO</Text>
+            <Text style={styles.firstKicker}>
+              {nextGameWhen(game.startsAt, now)
+                .replace(' às ', ' ')
+                .toLocaleUpperCase('pt-BR')}
+            </Text>
+          </View>
+          <Text style={styles.firstTitle} numberOfLines={2}>
+            {away ? (
+              <>
+                {home} <Text style={{ color: ACID }}>×</Text> {away}
+              </>
+            ) : (
+              home
+            )}
+          </Text>
+          <View
+            accessible
+            accessibilityLabel={`Faltam ${until.value} ${until.unit}`}
+            style={styles.until}
+          >
+            <Text style={styles.untilValue}>{until.value}</Text>
+            <Text style={styles.untilUnit}>{until.unit}</Text>
+          </View>
+        </View>
+      </View>
+      {mine ? (
+        <>
+          <OwnerLabel>Até agora</OwnerLabel>
+          <View style={styles.pair}>
+            <Tile value={mine.interested} label="se interessaram" />
+            <Tile value={mine.interestedLastDay} label="nas últimas 24 h" />
+            <Tile
+              value={mine.barsInNeighborhood}
+              label={
+                mine.barsInNeighborhood === 1
+                  ? 'bar do bairro com ele'
+                  : 'bares do bairro com ele'
+              }
+            />
+          </View>
+          <View style={[styles.note, { backgroundColor: palette.mark }]}>
+            <Text style={[text(13.5, 'Regular', 1.4), { color: palette.ink }]}>
+              {`Depois do jogo, aqui aparecem quantos viram o bar por ele${elite ? ', se interessaram e foram' : ' e se interessaram'}.`}
+            </Text>
+          </View>
+        </>
+      ) : null}
+    </>
+  )
+}
+
+function Tile({ value, label }: { value: number; label: string }) {
+  const palette = usePalette()
+  return (
+    <View style={{ flex: 1 }}>
+      <HardShadow color={palette.drop} offset={4} radius={18} />
+      <View style={[styles.tile, { backgroundColor: palette.card }]}>
+        <Text style={[styles.tileValue, { color: palette.ink }]}>
+          {value.toLocaleString('pt-BR')}
+        </Text>
+        <Text style={[styles.smallLabel, { color: palette.muted }]}>
+          {label}
+        </Text>
+      </View>
     </View>
   )
 }
@@ -552,6 +764,54 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums']
   },
   pair: { flexDirection: 'row', gap: 10 },
+  note: { borderRadius: 16, paddingHorizontal: 14, paddingVertical: 12 },
+  ghost: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12
+  },
+  ghostAside: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 10.5,
+    letterSpacing: 0.6
+  },
+  first: {
+    backgroundColor: INK,
+    borderRadius: 26,
+    padding: 18,
+    gap: 8,
+    overflow: 'hidden'
+  },
+  firstHead: { flexDirection: 'row', justifyContent: 'space-between' },
+  firstKicker: {
+    fontFamily: 'GeistMono-SemiBold',
+    fontSize: 11,
+    letterSpacing: 1,
+    color: '#aaa9a4'
+  },
+  firstTitle: {
+    fontFamily: 'Anton',
+    fontSize: 28,
+    lineHeight: 42,
+    marginVertical: -6,
+    textTransform: 'uppercase',
+    color: PAPER
+  },
+  until: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  untilValue: {
+    fontFamily: 'Anton',
+    fontSize: 88,
+    color: ACID,
+    marginVertical: -21,
+    fontVariant: ['tabular-nums']
+  },
+  untilUnit: { fontFamily: 'Anton', fontSize: 26, color: PAPER },
+  tile: { borderRadius: 18, padding: 12, gap: 2 },
+  tileValue: { fontFamily: 'Anton', fontSize: 32, marginVertical: -7.7 },
   small: { borderRadius: 20, padding: 14, gap: 2 },
   smallValue: { fontFamily: 'Anton', fontSize: 36, marginVertical: -8.7 },
   smallLabel: { marginTop: 12, fontFamily: 'GeistMono-SemiBold', fontSize: 12 },
