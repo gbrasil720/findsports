@@ -26,7 +26,10 @@ import { SAO_PAULO, STUB_PORT, STUB_URL } from '../env'
  *   documentos do cliente, guardados aqui (o CNPJ dos dados da nota, WEB-444).
  *   `99.999.999/0001-91` (dígito certo) é recusado com 400, como o Stripe
  *   recusa o documento que não aceita;
- * - `GET /v1/prices?lookup_keys[]=`: um preço mensal com a lookup key pedida;
+ * - `GET /v1/prices?lookup_keys[]=`: um preço para cada lookup key pedida,
+ *   mensal; as `*_yearly` (WEB-442) são anuais e só existem depois de
+ *   `POST /stripe/annual` com `{ available: true }` — como na conta de
+ *   verdade, onde o dono ainda vai criá-las;
  * - `GET /v1/subscriptions?customer=`: as assinaturas semeadas daquele
  *   cliente — vazia para quem ainda não passou pelo checkout;
  * - `GET /v1/subscriptions/{id}`: o que o teste semeou em
@@ -95,6 +98,9 @@ const stripeTaxIds = new Map<
   { id: string; object: 'tax_id'; type: string; value: string }[]
 >()
 
+/** Preços anuais na conta (WEB-442). Global: só teste serial liga. */
+let annualPrices = false
+
 /** O que o "Stripe" diz do cupom de fundador. Global: só teste serial troca. */
 let couponState: 'valid' | 'exhausted' | 'missing' | 'slow' = 'valid'
 
@@ -152,6 +158,11 @@ Bun.serve({
     if (url.pathname === '/stripe/subscriptions' && request.method === 'POST') {
       const subscription = (await request.json()) as { id: string }
       stripeSubscriptions.set(subscription.id, subscription)
+      return Response.json({ ok: true })
+    }
+    if (url.pathname === '/stripe/annual' && request.method === 'POST') {
+      annualPrices = ((await request.json()) as { available: boolean })
+        .available
       return Response.json({ ok: true })
     }
     if (url.pathname === '/stripe/coupon' && request.method === 'POST') {
@@ -366,20 +377,24 @@ async function stripe(request: Request, url: URL) {
   }
 
   if (request.method === 'GET' && path === '/prices') {
-    const lookupKey =
-      Object.entries(query).find(([key]) =>
-        key.startsWith('lookup_keys')
-      )?.[1] ?? ''
-    return list([
-      {
-        id: `price_e2e_${lookupKey}`,
-        object: 'price',
-        active: true,
-        currency: 'brl',
-        lookup_key: lookupKey,
-        recurring: { interval: 'month', usage_type: 'licensed' }
-      }
-    ])
+    const lookupKeys = Object.entries(query)
+      .filter(([key]) => key.startsWith('lookup_keys'))
+      .map(([, value]) => value)
+    return list(
+      lookupKeys
+        .filter((key) => annualPrices || !key.endsWith('_yearly'))
+        .map((lookupKey) => ({
+          id: `price_e2e_${lookupKey}`,
+          object: 'price',
+          active: true,
+          currency: 'brl',
+          lookup_key: lookupKey,
+          recurring: {
+            interval: lookupKey.endsWith('_yearly') ? 'year' : 'month',
+            usage_type: 'licensed'
+          }
+        }))
+    )
   }
 
   const coupon = /^\/coupons\/([^/]+)$/.exec(path)
