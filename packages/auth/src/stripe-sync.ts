@@ -138,7 +138,8 @@ function scheduledCancelOf(
  * o Stripe reenvia.
  */
 export async function applyStripeSubscription(
-  stripeSubscription: Stripe.Subscription
+  stripeSubscription: Stripe.Subscription,
+  client?: StripeBilling
 ): Promise<string | null> {
   const status = localStatusFor(stripeSubscription.status)
   if (!status) return null
@@ -191,6 +192,7 @@ export async function applyStripeSubscription(
     existing.status !== 'cancelled'
   ) {
     await cancelSubscriptionIfActive(existing.externalSubscriptionId)
+    if (client) await chargePixUpgrade(stripeSubscription, client)
     console.log(
       JSON.stringify({
         evt: 'pix_replaced_by_card',
@@ -216,6 +218,80 @@ export async function applyStripeSubscription(
     .onConflictDoUpdate({ target: subscription.barId, set: values })
   await db.update(bar).set({ isActive: !offAir }).where(eq(bar.id, foundBar.id))
   return foundBar.id
+}
+
+type StripeBilling = Pick<Stripe, 'invoices' | 'invoiceItems'>
+
+const PIX_UPGRADE_DESCRIPTION =
+  'Diferença da troca de plano até o fim do mês pago no Pix'
+
+/**
+ * Subida de plano do Pix para o cartão (dono, 14/11/2026, WEB-536): o checkout
+ * gravou na assinatura a diferença até o fim do mês pago (`pixUpgradeCents`),
+ * e aqui ela vira uma fatura avulsa, cobrada no cartão do checkout. O plugin
+ * não deixa a sessão levar item avulso, por isso a fatura sai daqui.
+ *
+ * Roda antes de a linha virar do Stripe, junto com o cancelamento do Pix: o
+ * erro de rede lança e o Stripe reenvia. As chaves de idempotência (24 h no
+ * Stripe) seguram a segunda fatura quando dois eventos chegam juntos ou o
+ * reenvio repete. Cartão recusado não lança: a fatura fica aberta, o Stripe
+ * tenta de novo sozinho, e o bar não perde o plano por causa da diferença.
+ */
+async function chargePixUpgrade(
+  stripeSubscription: Stripe.Subscription,
+  client: StripeBilling
+) {
+  const cents = Number(stripeSubscription.metadata?.pixUpgradeCents ?? 0)
+  if (!Number.isInteger(cents) || cents <= 0) return
+  const customer =
+    typeof stripeSubscription.customer === 'string'
+      ? stripeSubscription.customer
+      : stripeSubscription.customer.id
+  const card = stripeSubscription.default_payment_method
+  const key = `pix-upgrade-${stripeSubscription.id}`
+  const invoice = await client.invoices.create(
+    {
+      customer,
+      collection_method: 'charge_automatically',
+      auto_advance: true,
+      pending_invoice_items_behavior: 'exclude',
+      description: PIX_UPGRADE_DESCRIPTION,
+      metadata: { subscriptionId: stripeSubscription.id },
+      ...(card
+        ? { default_payment_method: typeof card === 'string' ? card : card.id }
+        : {})
+    },
+    { idempotencyKey: `${key}-invoice` }
+  )
+  if (!invoice.id) return
+  await client.invoiceItems.create(
+    {
+      customer,
+      invoice: invoice.id,
+      amount: cents,
+      currency: 'brl',
+      description: PIX_UPGRADE_DESCRIPTION,
+      discountable: false
+    },
+    { idempotencyKey: `${key}-item` }
+  )
+  if (invoice.status === 'draft') {
+    await client.invoices.finalizeInvoice(
+      invoice.id,
+      {},
+      { idempotencyKey: `${key}-finalize` }
+    )
+  }
+  await client.invoices
+    .pay(invoice.id, {}, { idempotencyKey: `${key}-pay` })
+    .catch((error: unknown) =>
+      logBillingError('pix_upgrade_charge_failed', {
+        subscriptionId: stripeSubscription.id,
+        invoiceId: invoice.id,
+        cents,
+        message: error instanceof Error ? error.message : String(error)
+      })
+    )
 }
 
 /** O motivo vale para o cancelamento pedido até um dia depois de escolhido. */
@@ -408,7 +484,7 @@ export async function syncStripeEvent(event: Stripe.Event, client: Stripe) {
   const current = await client.subscriptions.retrieve(subscriptionId, {
     expand: ['discounts.source.coupon']
   })
-  const barId = await applyStripeSubscription(current)
+  const barId = await applyStripeSubscription(current, client)
   if (barId) await sendCancelReason(current, barId, client)
   if (event.type === 'checkout.session.completed') {
     await restoreCustomerNames(event.data.object, client)
