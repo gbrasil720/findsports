@@ -1,4 +1,4 @@
-import { db, sql } from '@findsports_oficial/db'
+import { db, type SQL, sql } from '@findsports_oficial/db'
 
 import { currentClassicRulesCte } from '../classics'
 import { participantTeams } from '../game-participants'
@@ -156,7 +156,7 @@ export async function executarBuscaEmCamadas(
         )} < ${limit}`
       : sql``
 
-    return sql`${tier.cte} AS MATERIALIZED (
+    const selecionar = (filtroTexto: SQL) => sql`
       SELECT
         ${tier.rank}::int AS cursor_plan_rank,
         b.id,
@@ -193,23 +193,31 @@ export async function executarBuscaEmCamadas(
         AND b.plan = ${tier.plan}
         AND ST_DWithin(b.geo, ${origin}, ${radiusMeters})
         ${amenityFilterB}
-        ${
-          // Na starter sempre; na pro só na primeira página (WEB-481). Ver
-          // o comentário do topo.
-          tier.rank === 3 || (tier.rank === 2 && !keyset)
-            ? prefiltroTexto(sql`b`)
-            : sql``
-        }
         ${tierKeyset}
         ${gate}
+        ${filtroTexto}
       ORDER BY
         ${classicRank} ASC,
         ${qualityRank} ASC,
         agg.next_event_at ASC,
         distance_km ASC,
         b.id ASC
-      LIMIT ${limit}
-    )`
+      LIMIT ${limit}`
+
+    // Com texto, na starter sempre e na pro só na primeira página (WEB-481,
+    // ver o comentário do topo), a camada vira dois SELECTs que se excluem:
+    // com `texto_jogos` completo, parte dos candidatos pela chave do bar; no
+    // teto, lê o raio. A condição de cada um não tem coluna da linha e vira
+    // um `One-Time Filter`: o que não vale não lê nada. Um SELECT só com `OR`
+    // obrigava o Postgres a ler todo bar do raio para testar o nome (WEB-539).
+    const usaTexto = tier.rank === 3 || (tier.rank === 2 && !keyset)
+    const corpo =
+      prefiltroTexto && usaTexto
+        ? sql`(${selecionar(prefiltroTexto.poucos(sql`b`))})
+            UNION ALL (${selecionar(prefiltroTexto.muitos(sql`b`))})`
+        : selecionar(sql``)
+
+    return sql`${tier.cte} AS MATERIALIZED (${corpo})`
   })
 
   const results = await db.execute(sql`

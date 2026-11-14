@@ -45,6 +45,17 @@ const MAX_LIVE_SPAN_INTERVAL = '24 hours'
 const TEXTO_TETO = 2000
 
 /**
+ * Teto de `texto_candidatos` por km² do raio (WEB-539). Abaixo dele a camada
+ * parte de cada candidato pela chave do bar, uns 8 buffers por candidato
+ * (4 em cada camada que usa o texto), estejam eles no raio ou não; acima, ler
+ * os bares do raio sai mais barato, e isso cresce com a área. Medido em
+ * 14/11/2026 no dataset de 100 mil bares (ver `tiered.ts`): no centro, a
+ * starter de 3 km são ~1.300 páginas; com 1 km, 111 candidatos custavam 700
+ * buffers a mais que o caminho antigo.
+ */
+const CANDIDATOS_POR_KM2 = 10
+
+/**
  * Jogo publicado que ainda não acabou: o próximo ou o que está rolando agora.
  * Rascunho (`published_at` nulo, WEB-436) nunca entra na busca.
  *
@@ -270,17 +281,30 @@ export type FiltrosBusca = {
    * Com texto na busca, o CTE `texto_jogos`: até `TEXTO_TETO` bares de jogos
    * que não acabaram e casam pelo texto do jogo (campeonato e participantes
    * juntos, pelo índice trigram `event_search_text_trgm_idx`) ou pelo nome de
-   * um time. Vazio sem texto; vai no `WITH` de quem usa `prefiltroTexto`.
+   * um time, e `texto_candidatos` (ver `prefiltroTexto`). Nulo sem texto; vai
+   * no `WITH` de quem usa `prefiltroTexto`.
    */
   textoJogosCte: SQL | null
   /**
-   * Com menos de `TEXTO_TETO` linhas, `texto_jogos` está completo e só passa
-   * bar que está nele ou que casa pelo nome: texto raro não vai mais bar a
-   * bar. No teto, o texto é comum e o filtro deixa todos passarem (a trava é
-   * avaliada uma vez só). Folgado de propósito: quem decide é
-   * `champBarFilter`, no próximo jogo.
+   * Pré-filtro do texto, em dois ramos que se excluem (WEB-539); nulo sem
+   * texto. `texto_candidatos` junta `texto_jogos` e os bares que casam pelo
+   * nome (índice trigram `bar_name_search_trgm_idx`), até um teto que cresce
+   * com a área do raio (`CANDIDATOS_POR_KM2`).
+   *
+   * - `poucos`: abaixo do teto a lista está completa (e `texto_jogos`
+   *   também), então só passa bar dela, e o Postgres parte de cada um pela
+   *   chave do bar em vez de ler os bares do raio só para testar o nome.
+   * - `muitos`: o filtro de antes. Com `texto_jogos` completo só passa bar
+   *   que está nele ou que casa pelo nome; no teto todo bar passa.
+   *
+   * Folgado de propósito: quem decide é `champBarFilter`, no próximo jogo.
+   * As travas não têm coluna da linha e viram `One-Time Filter`: o ramo que
+   * não vale não lê nada.
    */
-  prefiltroTexto: (barAlias: SQL) => SQL
+  prefiltroTexto: {
+    poucos: (barAlias: SQL) => SQL
+    muitos: (barAlias: SQL) => SQL
+  } | null
   /**
    * Próximo jogo do bar, com os mesmos recortes que o admitem na busca.
    *
@@ -367,6 +391,7 @@ export function montarFiltrosBusca(input: SearchInput): FiltrosBusca {
   const champBarFilter = (nomeDoBar: SQL) =>
     championship ? sql`AND (${textoDoJogo} OR ${casa(nomeDoBar)})` : sql``
 
+  const candidatosTeto = Math.ceil(CANDIDATOS_POR_KM2 * radiusKm ** 2)
   const jogoAberto = sql`e.published_at IS NOT NULL
     AND e.starts_at >= ${utcNowSql()} - ${MAX_LIVE_SPAN_INTERVAL}::interval`
   // A expressão do texto precisa ser a mesma do índice, letra por letra.
@@ -383,16 +408,30 @@ export function montarFiltrosBusca(input: SearchInput): FiltrosBusca {
           WHERE ${casa(sql`t.name`)} AND ${jogoAberto}
         ) jogos
         LIMIT ${TEXTO_TETO}
+      ),
+      texto_candidatos AS MATERIALIZED (
+        SELECT bar_id FROM (
+          SELECT bar_id FROM texto_jogos
+          UNION ALL
+          SELECT nome_bar.id FROM bar nome_bar
+          WHERE nome_bar.is_active AND ${casa(sql`nome_bar.name`)}
+        ) candidatos
+        LIMIT ${candidatosTeto}
       )`
     : null
-  const prefiltroTexto = (barAlias: SQL) =>
-    championship
-      ? sql`AND (
-          (SELECT count(*) FROM texto_jogos) >= ${TEXTO_TETO}
-          OR ${barAlias}.id IN (SELECT bar_id FROM texto_jogos)
-          OR ${casa(sql`${barAlias}.name`)}
-        )`
-      : sql``
+  const poucosCandidatos = sql`(SELECT count(*) FROM texto_candidatos) < ${candidatosTeto}`
+  const prefiltroTexto = championship
+    ? {
+        poucos: (barAlias: SQL) => sql`AND ${poucosCandidatos}
+          AND ${barAlias}.id IN (SELECT bar_id FROM texto_candidatos)`,
+        muitos: (barAlias: SQL) => sql`AND NOT ${poucosCandidatos}
+          AND (
+            (SELECT count(*) FROM texto_jogos) >= ${TEXTO_TETO}
+            OR ${barAlias}.id IN (SELECT bar_id FROM texto_jogos)
+            OR ${casa(sql`${barAlias}.name`)}
+          )`
+      }
+    : null
 
   return {
     origin: sql`ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography`,
