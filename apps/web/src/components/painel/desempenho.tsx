@@ -1,7 +1,14 @@
+import {
+  comparisonStartsOn,
+  performanceStage,
+  sinceLive,
+  untilGame
+} from '@findsports_oficial/db/performance-history'
 import { useIsFetching, useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { type KeyboardEvent, type PointerEvent, useState } from 'react'
 import {
+  type AdminEvent,
   type AnalyticsOverviewData,
   type EventAnalyticsState,
   getInterestRate,
@@ -10,6 +17,7 @@ import {
 import {
   useMyAnalyticsEntitlements,
   useMyBar,
+  useMyEventCreationPolicy,
   useMyEvents,
   useMySubscription
 } from '@/components/admin/admin-queries'
@@ -17,18 +25,27 @@ import {
   type AnalyticsPeriodPreset,
   getAnalyticsRange,
   getAvailableAnalyticsPeriods,
-  getPeriodDays
+  getPeriodDays,
+  toCommercialDate
 } from '@/components/admin/analytics-period'
 import { MetricHint } from '@/components/admin/metric-hint'
-import { Arrow } from '@/components/landing/v3/icons'
+import { useMinuteNow } from '@/components/app/minute-tick'
+import { Add, Arrow, Sparkle } from '@/components/landing/v3/icons'
 import { getShownPlan } from '@/lib/lapsed-plan'
 import { getPlan } from '@/lib/plan-catalog'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import { ComoCadaJogo } from './como-cada-jogo'
-import { isDraft, useEventAnalytics, useHashScroll } from './dados'
-import { dayLabel } from './noite'
+import {
+  isDraft,
+  useEventAnalytics,
+  useEventNumbers,
+  useHashScroll
+} from './dados'
+import { brasiliaTime, dayLabel, eventTitle } from './noite'
+import { NovoJogo } from './novo-jogo'
 import { usePainel } from './painel-shell'
+import { diaDaSugestao, SugestoesDeJogo } from './sugestoes-de-jogo'
 
 /*
  * Desempenho (WEB-501, fase 3; protótipo `desempenho`, `bigChart`,
@@ -195,8 +212,22 @@ export function DesempenhoPage() {
         .filter(Boolean)
         .join(' · ')
     : null
+  const now = useMinuteNow()
+  const policy = useMyEventCreationPolicy()
+  const [creating, setCreating] = useState(false)
+  // Bar com pouca história (WEB-467): bloco sem dado some, e a comparação
+  // só vale quando o período anterior inteiro é de depois da criação.
+  const stage = events.data ? performanceStage(events.data, now) : null
+  const early = stage !== null && stage.kind !== 'played'
+  const compareOn =
+    d && bar && preset !== 'all' && d.to === toCommercialDate(new Date(now))
+      ? comparisonStartsOn(bar.createdAt, getPeriodDays(d.from, d.to), now)
+      : null
   // "Tudo" não tem período anterior (WEB-263).
-  const vs = d && preset !== 'all' ? versus(d.from, d.to) : null
+  const vs = d && preset !== 'all' && !compareOn ? versus(d.from, d.to) : null
+  const hasNumbers =
+    !!d &&
+    (d.uniqueVisitors > 0 || d.profileViews > 0 || d.interestedPeople > 0)
 
   return (
     <>
@@ -303,7 +334,23 @@ export function DesempenhoPage() {
         </form>
       ) : null}
 
-      {overview.isLoading ? (
+      {stage?.kind === 'no-games' ? (
+        <SemJogo
+          canCreate={policy.data?.canCreate === true}
+          onNew={() => setCreating(true)}
+        />
+      ) : stage?.kind === 'before-first' ? (
+        <AntesDoJogo game={stage.game} now={now} />
+      ) : null}
+
+      {compareOn && d && (!early || hasNumbers) ? (
+        <p className="pn-note pn-cmp-note" role="note">
+          A comparação com os {getPeriodDays(d.from, d.to)} dias anteriores
+          aparece em {dayLabel(compareOn).replace(/^\S+, /, '')}.
+        </p>
+      ) : null}
+
+      {overview.isLoading || events.isLoading ? (
         <div className="pn-skel pn-big3-skel" role="status" aria-busy="true">
           <span className="sr-only">Carregando desempenho do bar…</span>
           <i />
@@ -318,19 +365,37 @@ export function DesempenhoPage() {
             retry={() => void overview.refetch()}
           />
         </div>
-      ) : (
-        <Numeros data={d} vs={vs} games={analytics.state} />
+      ) : early && !hasNumbers ? null : (
+        <Numeros
+          data={d}
+          vs={vs}
+          games={analytics.state}
+          since={bar?.createdAt}
+          early={early}
+        />
       )}
 
-      <section
-        id="como-cada-jogo"
-        className="pn-card pn-sec"
-        aria-labelledby="pn-ccj-t"
-      >
-        <ComoCadaJogo state={analytics.state} titleId="pn-ccj-t" />
-      </section>
+      {early ? null : (
+        <section
+          id="como-cada-jogo"
+          className="pn-card pn-sec"
+          aria-labelledby="pn-ccj-t"
+        >
+          <ComoCadaJogo state={analytics.state} titleId="pn-ccj-t" />
+        </section>
+      )}
 
-      {d ? <Classicos data={d} vs={vs} /> : null}
+      {d &&
+      (!early ||
+        d.classicExposures === null ||
+        d.classicClicks === null ||
+        d.classicExposures > 0) ? (
+        <Classicos data={d} vs={vs} />
+      ) : null}
+
+      {creating ? (
+        <NovoJogo mode={{ kind: 'new' }} onClose={() => setCreating(false)} />
+      ) : null}
     </>
   )
 }
@@ -338,11 +403,17 @@ export function DesempenhoPage() {
 function Numeros({
   data: d,
   vs,
-  games
+  games,
+  since,
+  early
 }: {
   data: AnalyticsOverviewData
   vs: string | null
   games: EventAnalyticsState
+  /** A criação do bar: o gráfico começa nela. */
+  since?: string | Date
+  /** Antes do primeiro jogo encerrado: bloco sem dado some. */
+  early: boolean
 }) {
   const rate = getInterestRate(d.interestedPeople, d.uniqueVisitors)
   const prevRate =
@@ -350,6 +421,15 @@ function Numeros({
       ? getInterestRate(d.interestedPeoplePrev, d.uniqueVisitorsPrev)
       : null
   const views = changeText(d.profileViewsChange)
+  const rows = games.status === 'ready' ? games.items : []
+  const showsQuemFoi =
+    !early ||
+    rows.some((row) => (row.reservedPeople ?? 0) + (row.arrivals ?? 0) > 0)
+  const showsCanais =
+    !early ||
+    [d.whatsappOpened, d.directionsOpened, d.phoneClicked].some(
+      (count) => (count ?? 0) > 0
+    )
 
   return (
     <>
@@ -409,12 +489,14 @@ function Numeros({
         </div>
       </section>
 
-      <Atividade data={d} vs={vs} />
+      <Atividade data={d} vs={vs} since={since} />
 
-      <div className="pn-duo">
-        <QuemFoi state={games} />
-        <Canais data={d} vs={vs} />
-      </div>
+      {early && !showsQuemFoi && !showsCanais ? null : (
+        <div className="pn-duo">
+          {showsQuemFoi ? <QuemFoi state={games} /> : null}
+          {showsCanais ? <Canais data={d} vs={vs} /> : null}
+        </div>
+      )}
     </>
   )
 }
@@ -480,14 +562,18 @@ const TOP = 16
 
 function Atividade({
   data: d,
-  vs
+  vs,
+  since
 }: {
   data: AnalyticsOverviewData
   vs: string | null
+  since?: string | Date
 }) {
   const [show, setShow] = useState({ views: true, actions: true })
   const [hover, setHover] = useState<number | null>(null)
-  const days = dailySeries(d)
+  const all = dailySeries(d)
+  const live = since ? sinceLive(all, since) : all
+  const days = live.length ? live : all
 
   const count = days.length
   const totalViews = days.reduce((sum, day) => sum + day.views, 0)
@@ -918,5 +1004,152 @@ function Classicos({
         </>
       )}
     </section>
+  )
+}
+
+/* ─── Bar sem jogo e antes do primeiro jogo (WEB-467) ─── */
+
+function SemJogo({
+  canCreate,
+  onNew
+}: {
+  canCreate: boolean
+  onNew: () => void
+}) {
+  const { elite } = usePainel()
+  return (
+    <>
+      <section
+        className="pn-now is-empty"
+        aria-label="Ainda sem número"
+        data-passeio="numeros"
+      >
+        <div className="pn-now-l">
+          <span className="pn-tag">AINDA SEM NÚMERO</span>
+          <h2 className="pn-disp">
+            Os números chegam <span>com o primeiro jogo</span>
+          </h2>
+          <p className="pn-now-p">
+            {elite
+              ? 'Quem viu o bar, quem se interessou e quem foi aparecem aqui depois que você publicar um jogo.'
+              : 'Quem viu o bar e quem se interessou aparecem aqui depois que você publicar um jogo.'}
+          </p>
+          <div className="pn-acts">
+            {canCreate ? (
+              <button type="button" className="pn-btn pn-acid" onClick={onNew}>
+                <Add size={20} />
+                Publicar um jogo
+              </button>
+            ) : (
+              <Link to="/admin/jogos" className="pn-btn pn-acid">
+                Ver grade
+              </Link>
+            )}
+          </div>
+        </div>
+      </section>
+      <section className="pn-card pn-sec" aria-labelledby="pn-vem-t">
+        <div className="pn-chd">
+          <h3 id="pn-vem-t">Depois do primeiro jogo, aparece aqui</h3>
+        </div>
+        <ul className="pn-vem">
+          <li>
+            <b>Pessoas que viram o bar</b>
+            <span>por dia, com o gráfico do período</span>
+          </li>
+          <li>
+            <b>Se interessaram</b>
+            <span>WhatsApp, rota e telefone</span>
+          </li>
+          <li>
+            <b>Como cada jogo foi</b>
+            <span>jogo a jogo, depois do fim</span>
+          </li>
+        </ul>
+      </section>
+      <SugestoesDeJogo
+        className="pn-card pn-sgj"
+        disabled={!canCreate}
+        title={
+          <div className="pn-chd">
+            <h3>
+              <Sparkle size={20} />
+              Jogos que outros bares perto já marcaram
+            </h3>
+            <small>nos próximos 7 dias</small>
+          </div>
+        }
+      />
+    </>
+  )
+}
+
+function AntesDoJogo({ game, now }: { game: AdminEvent; now: number }) {
+  const { elite } = usePainel()
+  const numbers = useEventNumbers().get(game.id)
+  const until = untilGame(game.startsAt, now)
+  const [home, away] = eventTitle(game).split(' × ')
+  return (
+    <>
+      <section
+        className="pn-now is-empty"
+        aria-label="Seu primeiro jogo"
+        data-passeio="numeros"
+      >
+        <div className="pn-now-l">
+          <span className="pn-tag">
+            SEU PRIMEIRO JOGO ·{' '}
+            {diaDaSugestao(String(game.startsAt), now).toLocaleUpperCase(
+              'pt-BR'
+            )}{' '}
+            {brasiliaTime(game.startsAt)}
+          </span>
+          <h2 className="pn-disp">
+            {away ? (
+              <>
+                {home} <span>×</span> {away}
+              </>
+            ) : (
+              home
+            )}
+          </h2>
+          <p className="pn-until">
+            <span className="sr-only">Faltam </span>
+            <b>{until.value}</b>
+            <small>{until.unit}</small>
+            <span className="sr-only"> para o jogo</span>
+          </p>
+        </div>
+      </section>
+      {numbers ? (
+        <section className="pn-card pn-sec" aria-labelledby="pn-ate-t">
+          <div className="pn-chd">
+            <h3 id="pn-ate-t">Até agora</h3>
+          </div>
+          <div className="pn-nums">
+            <div>
+              <b>{fmt(numbers.interested)}</b>
+              <span>se interessaram</span>
+            </div>
+            <div>
+              <b>{fmt(numbers.interestedLastDay)}</b>
+              <span>nas últimas 24 h</span>
+            </div>
+            <div>
+              <b>{fmt(numbers.barsInNeighborhood)}</b>
+              <span>
+                {numbers.barsInNeighborhood === 1
+                  ? 'bar do bairro com ele'
+                  : 'bares do bairro com ele'}
+              </span>
+            </div>
+          </div>
+          <p className="pn-note">
+            Depois do jogo, aqui aparecem quantos viram o bar por ele
+            {elite ? ', se interessaram e foram.' : ' e se interessaram.'}
+          </p>
+        </section>
+      ) : null}
+    </>
   )
 }
