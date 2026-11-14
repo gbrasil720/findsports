@@ -196,15 +196,10 @@ export function createAuth() {
               code: 'SUBSCRIPTION_PAST_DUE'
             })
           }
-          if (
-            blocksCardOverPix(
-              ownerBar?.subscription ?? null,
-              Boolean(env.ABACATE_PAY_API_KEY)
-            )
-          ) {
+          if (blocksCardOverPix(ownerBar?.subscription ?? null)) {
             throw new APIError('CONFLICT', {
               message:
-                'Sua assinatura é no Pix, e a troca para o cartão está indisponível agora. Tente de novo mais tarde.',
+                'Sua assinatura é no Pix: passe para o cartão pela tela de planos.',
               code: 'PIX_SWITCH_UNAVAILABLE'
             })
           }
