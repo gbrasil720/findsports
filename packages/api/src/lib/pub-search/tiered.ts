@@ -81,7 +81,7 @@ const PLAN_TIERS = [
  *
  * Ainda assim a starter (e a pro, na primeira página) lia todo bar do raio:
  * o pré-filtro também aceita bar pelo nome, e testar o nome pede a linha do
- * bar. Com o índice trigram do nome (migration 0097, WEB-539), poucos
+ * bar. Com o índice trigram do nome (migration 0098, WEB-539), poucos
  * candidatos (`texto_candidatos`: os de `texto_jogos` e os casados pelo nome,
  * até 10 por km² do raio) fazem a camada partir de cada um pela chave do bar;
  * acima disso fica o filtro de antes, mais barato que ~8 buffers por
