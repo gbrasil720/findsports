@@ -235,3 +235,45 @@ describe('affinity failure rule', () => {
     expect(result.calls).toBe(2)
   })
 })
+
+describe('affinity failure rule without the other model (A × C)', () => {
+  const bars = [{ candidate: bar('a') }]
+
+  test('two failures on Clef-flash fall to control, no Jev', async () => {
+    const calls = dubla(() => {
+      throw new Error('3040: falha')
+    })
+    const result = await requestAffinity(
+      callThroughBinding,
+      RECOMMENDER_MODELS.c,
+      profile,
+      bars,
+      { other: null }
+    )
+    expect(calls).toEqual([RECOMMENDER_MODELS.c, RECOMMENDER_MODELS.c])
+    expect(result).toEqual({
+      affinity: null,
+      status: 'error',
+      servedModel: null,
+      calls: 2
+    })
+  })
+
+  test('a timeout goes straight to control, without a second try', async () => {
+    const calls = dubla(() => {
+      const error = new Error('IA sem resposta a tempo')
+      error.name = 'AiTimeoutError'
+      throw error
+    })
+    const result = await requestAffinity(
+      callThroughBinding,
+      RECOMMENDER_MODELS.c,
+      profile,
+      bars,
+      { other: null }
+    )
+    expect(calls).toEqual([RECOMMENDER_MODELS.c])
+    expect(result.status).toBe('timeout')
+    expect(result.affinity).toBeNull()
+  })
+})
