@@ -1,4 +1,4 @@
-import { and, db, eq, inArray, sql } from '@findsports_oficial/db'
+import { and, db, eq, sql } from '@findsports_oficial/db'
 import { VALIDATION_WINDOW_MARGIN_INTERVAL } from '@findsports_oficial/db/event-window'
 import {
   eventEndSql,
@@ -43,10 +43,10 @@ export const validationOpen = sql<boolean>`${eventEndSql()} + ${VALIDATION_WINDO
 
 /**
  * Gerir o que já existe (WEB-341): ver a fila, responder e validar código.
- * Passa o Elite vigente e também o bar que perdeu o plano com reserva pendente
- * ou confirmada de jogo que ainda não acabou: o torcedor segue com o código na
+ * Passa o Elite vigente e também o bar que perdeu o plano com código em vigor
+ * de jogo que ainda não acabou: o torcedor segue com o código na
  * mão, e o bar precisa conseguir honrar. Não libera pedido novo, interruptor
- * nem teto, que continuam em `assertCanEnableReservations`.
+ * nem lista de quem vai, que continuam em `assertCanEnableReservations`.
  */
 export async function canManageReservations(
   barId: string,
@@ -85,7 +85,7 @@ export async function hasOpenReservations(
     .where(
       and(
         eq(event.barId, barId),
-        inArray(reservation.status, ['pending', 'confirmed']),
+        eq(reservation.status, 'confirmed'),
         stillOpen
       )
     )

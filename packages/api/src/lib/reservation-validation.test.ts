@@ -50,11 +50,15 @@ describe('assertCanValidateReservations', () => {
 })
 
 describe('assertReservationConfirmed', () => {
-  test('só reserva confirmada registra chegada', () => {
+  test('só o código em vigor registra chegada', () => {
     expect(() => assertReservationConfirmed('confirmed')).not.toThrow()
+    // `pending` e `declined` são da reserva antiga e contam como desmarcado.
     for (const status of ['pending', 'declined', 'cancelled'] as const) {
       expect(() => assertReservationConfirmed(status)).toThrow(
-        expect.objectContaining({ code: 'UNPROCESSABLE_CONTENT' })
+        expect.objectContaining({
+          code: 'UNPROCESSABLE_CONTENT',
+          message: 'O torcedor desmarcou este jogo.'
+        })
       )
     }
   })

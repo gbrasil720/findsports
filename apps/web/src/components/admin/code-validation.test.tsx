@@ -79,7 +79,6 @@ const reservation: ValidatedReservation = {
   code: 'AB3K9X',
   guestName: 'Marina Souza',
   reservationStatus: 'confirmed',
-  partySize: 3,
   offerSnapshot: 'Chopp em dobro',
   usedCount: 0,
   maxUses: 3,
@@ -580,22 +579,6 @@ describe('janela de validação', () => {
 })
 
 describe('estado da reserva', () => {
-  test('reserva pendente resolve, explica e não oferece +1', async () => {
-    const api = fakeApi({
-      lookup: mock(async () => ({
-        ...reservation,
-        reservationStatus: 'pending' as const
-      }))
-    })
-    await find(api)
-
-    const text = document.body.textContent ?? ''
-    expect(text).toContain('Marina Souza')
-    expect(text).toContain('Este código é de um pedido antigo')
-    expect(button('Validar código')).toBeUndefined()
-    expect(status()).toContain('Este código é de um pedido antigo.')
-  })
-
   test('reserva cancelada com código ainda ativo não oferece +1', async () => {
     const api = fakeApi({
       lookup: mock(async () => ({

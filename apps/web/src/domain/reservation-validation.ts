@@ -67,17 +67,6 @@ const STATUS_NOTICES: Record<
   Exclude<ValidatedReservation['reservationStatus'], 'confirmed'>,
   Notice
 > = {
-  // Pendente e recusado só existem em pedido de reserva de antes de a
-  // reserva de mesa sair do produto (16/10/2026).
-  pending: {
-    title: 'Este código é de um pedido antigo',
-    detail:
-      'O pedido de reserva ficou sem resposta. O código não pode ser validado.'
-  },
-  declined: {
-    title: 'Este código é de um pedido recusado',
-    detail: 'O código não pode ser validado.'
-  },
   cancelled: {
     title: 'O torcedor desmarcou',
     detail:
