@@ -25,13 +25,21 @@ const ddmm = (value: string | Date) =>
  * fica gravada e a autorização é pedida perto do fim. Quem quiser autoriza
  * já, e o teste acaba aí. Fora do teste, o Pix debita na autorização, e a
  * janela diz isso com todas as letras.
+ *
+ * Quem já paga por Pix também passa por aqui (WEB-536): o cartão aparece com
+ * a troca explicada (só cobra quando acaba o mês pago no Pix, e o Pix é
+ * cancelado quando o cartão se confirma), e o Pix só na troca de plano. O
+ * anual é só no cartão.
  */
 export function PaymentChoiceDialog({
   plan,
   chargeReais,
   listReais,
   trialEnd,
-  pixPlanChange,
+  annual = false,
+  offerPix,
+  pixPlan,
+  pixPaidUntil,
   pending,
   error,
   onConfirm,
@@ -42,16 +50,25 @@ export function PaymentChoiceDialog({
   listReais: number | null
   /** Fim do teste grátis do cadastro, quando ele está correndo. */
   trialEnd: string | Date | null
-  /** Bar que já paga por Pix trocando de plano: só o Pix, com a troca explicada. */
-  pixPlanChange: SubscriptionPlan | null
+  /** Cobrança anual: o preço é do ano, e o Pix não entra. */
+  annual?: boolean
+  /** Pix Automático ligado e cabível (mensal). */
+  offerPix: boolean
+  /** Plano de quem já paga por Pix, ou `null`. */
+  pixPlan: SubscriptionPlan | null
+  /** Fim do mês já pago no Pix: quando o cartão começa a cobrar. */
+  pixPaidUntil: string | Date | null
   pending: PaymentMethod | null
   error: string | null
   onConfirm: (method: PaymentMethod, timing?: PixTiming) => void
   onCancel: () => void
 }) {
-  const [method, setMethod] = useState<PaymentMethod>(
-    pixPlanChange ? 'pix' : 'card'
-  )
+  const [method, setMethod] = useState<PaymentMethod>('card')
+  // Pix na troca de plano de quem já paga por Pix: uma autorização nova.
+  const pixPlanChange = pixPlan !== null && pixPlan !== plan ? pixPlan : null
+  // No mesmo plano, quem paga por Pix só tem o que trocar: o cartão.
+  const showPix = offerPix && !annual && (pixPlan === null || !!pixPlanChange)
+  const toCard = pixPlan !== null
   const backRef = useRef<HTMLButtonElement>(null)
   const name = getPlan(plan).name
   const price = chargeReais === null ? null : formatPlanPrice(chargeReais)
@@ -72,7 +89,11 @@ export function PaymentChoiceDialog({
         className="pl-dlg pl-pay flex max-h-[min(92dvh,900px)] max-w-[calc(100vw-2rem)] flex-col gap-4 overflow-y-auto rounded-[26px] p-[26px] sm:max-w-[580px]"
       >
         <p className="pl-dlg-k">
-          {pixPlanChange ? `Mudar para o ${name}` : `Contratar o ${name}`}
+          {pixPlanChange
+            ? `Mudar para o ${name}`
+            : toCard
+              ? `${name} no cartão`
+              : `Contratar o ${name}`}
         </p>
         <DialogTitle className="pl-dlg-h">Como você quer pagar?</DialogTitle>
         <DialogDescription className="sr-only">
@@ -83,7 +104,13 @@ export function PaymentChoiceDialog({
           <div className="pl-pay-price">
             {listReais !== null ? <s>{formatPlanPrice(listReais)}</s> : null}
             <b>{price}</b>
-            <span>por mês, no cartão ou no Pix</span>
+            <span>
+              {annual
+                ? 'por ano, no cartão'
+                : showPix
+                  ? 'por mês, no cartão ou no Pix'
+                  : 'por mês, no cartão'}
+            </span>
             {listReais !== null ? (
               <span className="pl-pay-fund">PREÇO DE FUNDADOR</span>
             ) : null}
@@ -95,98 +122,111 @@ export function PaymentChoiceDialog({
           role="radiogroup"
           aria-label="Forma de pagamento"
         >
-          {pixPlanChange ? null : (
-            // biome-ignore lint/a11y/useSemanticElements: cartão de escolha inteiro clicável, como o plano do cadastro.
-            <button
-              type="button"
-              role="radio"
-              aria-checked={method === 'card'}
-              className="pl-pay-opt"
-              disabled={busy}
-              onClick={() => setMethod('card')}
-            >
-              <span className="pl-pay-ic" aria-hidden="true">
-                <svg width="22" height="22" viewBox="0 0 24 24">
-                  <rect
-                    x="2.5"
-                    y="5"
-                    width="19"
-                    height="14"
-                    rx="2.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  />
-                  <path
-                    d="M2.5 10h19M6.5 15h4"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </span>
-              <span className="pl-pay-tx">
-                <b>
-                  Cartão de crédito
-                  {trialEnd ? (
-                    <span className="pl-pay-tag">
-                      TESTE GRÁTIS ATÉ {ddmm(trialEnd)}
-                    </span>
-                  ) : null}
-                </b>
-                <span>
-                  {trialEnd
-                    ? `A primeira cobrança só sai em ${ddmm(trialEnd)}, quando o teste acaba. Depois, todo mês no cartão.`
-                    : 'Cobrado todo mês no cartão, pelo Stripe.'}
-                </span>
-              </span>
-              <span className="pl-pay-dot" aria-hidden="true" />
-            </button>
-          )}
-
           {/* biome-ignore lint/a11y/useSemanticElements: cartão de escolha inteiro clicável, como o plano do cadastro. */}
           <button
             type="button"
             role="radio"
-            aria-checked={method === 'pix'}
+            aria-checked={method === 'card'}
             className="pl-pay-opt"
             disabled={busy}
-            onClick={() => setMethod('pix')}
+            onClick={() => setMethod('card')}
           >
-            <span className="pl-pay-ic is-pix" aria-hidden="true">
+            <span className="pl-pay-ic" aria-hidden="true">
               <svg width="22" height="22" viewBox="0 0 24 24">
-                <path
-                  d="M12 3.5l3.6 3.6-3.6 3.6-3.6-3.6zM12 13.3l3.6 3.6-3.6 3.6-3.6-3.6zM3.5 12l3.6-3.6 3.6 3.6-3.6 3.6zM13.3 12l3.6-3.6 3.6 3.6-3.6 3.6z"
+                <rect
+                  x="2.5"
+                  y="5"
+                  width="19"
+                  height="14"
+                  rx="2.5"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
-                  strokeLinejoin="round"
+                />
+                <path
+                  d="M2.5 10h19M6.5 15h4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
                 />
               </svg>
             </span>
             <span className="pl-pay-tx">
               <b>
-                Pix Automático
-                {pixWaits ? (
+                Cartão de crédito
+                {trialEnd ? (
                   <span className="pl-pay-tag">
                     TESTE GRÁTIS ATÉ {ddmm(trialEnd)}
                   </span>
-                ) : (
-                  <span className="pl-pay-tag is-no">SEM TESTE GRÁTIS</span>
-                )}
+                ) : pixPaidUntil ? (
+                  <span className="pl-pay-tag">
+                    PAGO ATÉ {ddmm(pixPaidUntil)}
+                  </span>
+                ) : null}
               </b>
               <span>
-                {pixWaits
-                  ? `Perto de ${ddmm(trialEnd)}, a gente te avisa para autorizar no app do banco. Depois, o débito sai todo mês.`
-                  : 'Você autoriza uma vez no app do banco e o débito sai todo mês. Sem cartão e sem QR Code a cada mês.'}
+                {trialEnd
+                  ? `A primeira cobrança só sai em ${ddmm(trialEnd)}, quando o teste acaba. Depois, todo ${annual ? 'ano' : 'mês'} no cartão.`
+                  : pixPaidUntil
+                    ? `O que você já pagou no Pix vale até ${ddmm(pixPaidUntil)}. A primeira cobrança no cartão sai nesse dia.`
+                    : `Cobrado todo ${annual ? 'ano' : 'mês'} no cartão, pelo Stripe.`}
               </span>
             </span>
             <span className="pl-pay-dot" aria-hidden="true" />
           </button>
+
+          {showPix ? (
+            // biome-ignore lint/a11y/useSemanticElements: cartão de escolha inteiro clicável, como o plano do cadastro.
+            <button
+              type="button"
+              role="radio"
+              aria-checked={method === 'pix'}
+              className="pl-pay-opt"
+              disabled={busy}
+              onClick={() => setMethod('pix')}
+            >
+              <span className="pl-pay-ic is-pix" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24">
+                  <path
+                    d="M12 3.5l3.6 3.6-3.6 3.6-3.6-3.6zM12 13.3l3.6 3.6-3.6 3.6-3.6-3.6zM3.5 12l3.6-3.6 3.6 3.6-3.6 3.6zM13.3 12l3.6-3.6 3.6 3.6-3.6 3.6z"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
+              <span className="pl-pay-tx">
+                <b>
+                  Pix Automático
+                  {pixWaits ? (
+                    <span className="pl-pay-tag">
+                      TESTE GRÁTIS ATÉ {ddmm(trialEnd)}
+                    </span>
+                  ) : (
+                    <span className="pl-pay-tag is-no">SEM TESTE GRÁTIS</span>
+                  )}
+                </b>
+                <span>
+                  {pixWaits
+                    ? `Perto de ${ddmm(trialEnd)}, a gente te avisa para autorizar no app do banco. Depois, o débito sai todo mês.`
+                    : 'Você autoriza uma vez no app do banco e o débito sai todo mês. Sem cartão e sem QR Code a cada mês.'}
+                </span>
+              </span>
+              <span className="pl-pay-dot" aria-hidden="true" />
+            </button>
+          ) : null}
         </div>
 
-        {method === 'pix' && pixWaits ? (
+        {method === 'card' && toCard ? (
+          <div className="pl-pay-info" role="note">
+            <b>Nada é cobrado em dobro.</b> Confirmado o cartão, o Pix é
+            cancelado e não debita mais
+            {pixPlanChange ? `, e o ${name} começa na hora` : ''}. O bar segue
+            no ar sem intervalo.
+          </div>
+        ) : method === 'pix' && pixWaits ? (
           <div className="pl-pay-info" role="note">
             <b>Seu teste segue até {ddmm(trialEnd)}.</b> Escolhendo o fim do
             teste, nada é cobrado agora. Três dias antes e no último dia, a
@@ -237,7 +277,9 @@ export function PaymentChoiceDialog({
                 ? pixWaits
                   ? 'Pagar com Pix no fim do teste'
                   : 'Autorizar no app do banco'
-                : 'Continuar no cartão'}
+                : toCard
+                  ? 'Passar para o cartão'
+                  : 'Continuar no cartão'}
           </button>
         </div>
         {method === 'pix' && pixWaits ? (
