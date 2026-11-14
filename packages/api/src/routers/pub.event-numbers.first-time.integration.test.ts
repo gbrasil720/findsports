@@ -47,7 +47,7 @@ integrationTest(
     ) => {
       const [created] = await db
         .insert(reservation)
-        .values({ eventId, userId, partySize: 1, status: 'confirmed' })
+        .values({ eventId, userId, status: 'confirmed' })
         .returning({ id: reservation.id })
       const [code] = await db
         .insert(reservationCode)
