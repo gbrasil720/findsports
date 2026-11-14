@@ -99,6 +99,36 @@ const stripeTaxIds = new Map<
   { id: string; object: 'tax_id'; type: string; value: string }[]
 >()
 
+/**
+ * AbacatePay (WEB-536): assinaturas Pix semeadas por `POST /abacatepay/subscriptions`
+ * e o que o app pediu, em `GET /abacatepay/calls`. A API responde em `/v2/*`
+ * como a de verdade: `{ data, error }`.
+ */
+const abacateSubscriptions = new Map<
+  string,
+  { id: string; status: string; currentPeriodEnd: string; createdAt: string }
+>()
+const abacateCalls: { method: string; path: string; body: unknown }[] = []
+
+function abacatepay(path: string, body: unknown, url: URL) {
+  const reply = (status: number, data: unknown, error: string | null = null) =>
+    Response.json({ data, error }, { status })
+  if (path === '/subscriptions/get') {
+    const sub = abacateSubscriptions.get(url.searchParams.get('id') ?? '')
+    return sub ? reply(200, sub) : reply(404, null, 'Subscription not found')
+  }
+  if (path === '/subscriptions/cancel') {
+    const sub = abacateSubscriptions.get((body as { id?: string })?.id ?? '')
+    if (!sub) return reply(404, null, 'Subscription not found')
+    if (sub.status !== 'ACTIVE') {
+      return reply(400, null, 'Subscription is not active')
+    }
+    sub.status = 'CANCELLED'
+    return reply(200, sub)
+  }
+  return reply(404, null, `rota não dublada: ${path}`)
+}
+
 /** Preços anuais na conta (WEB-442). Global: só teste serial liga. */
 let annualPrices = false
 
@@ -155,6 +185,28 @@ Bun.serve({
     if (url.pathname === '/locationiq/calls') return Response.json(calls)
 
     if (url.pathname.startsWith('/v1/')) return stripe(request, url)
+    if (url.pathname.startsWith('/v2/')) {
+      const path = url.pathname.slice('/v2'.length)
+      const body = request.method === 'POST' ? await request.json() : null
+      abacateCalls.push({ method: request.method, path, body })
+      return abacatepay(path, body, url)
+    }
+    if (url.pathname === '/abacatepay/calls') return Response.json(abacateCalls)
+    if (
+      url.pathname === '/abacatepay/subscriptions' &&
+      request.method === 'POST'
+    ) {
+      const sub = (await request.json()) as {
+        id: string
+        currentPeriodEnd: string
+      }
+      abacateSubscriptions.set(sub.id, {
+        status: 'ACTIVE',
+        createdAt: new Date().toISOString(),
+        ...sub
+      })
+      return Response.json({ ok: true })
+    }
     if (url.pathname === '/stripe/calls') return Response.json(stripeCalls)
     if (url.pathname === '/stripe/subscriptions' && request.method === 'POST') {
       const subscription = (await request.json()) as { id: string }

@@ -63,6 +63,12 @@ export const SERVER_ENV: Record<string, string> = {
   STRIPE_WEBHOOK_SECRET,
   // O SDK do Stripe fala com o stub (`/v1/*` em `stubs/server.ts`).
   STRIPE_API_BASE_URL: STUB_URL,
+  // Pix (WEB-536): a chave deixa o servidor cancelar o Pix de quem passa para
+  // o cartão, no stub (`/v2/*`). Sem o segredo do webhook o Pix segue fora
+  // das telas (`pixEnabled`), então o resto da suíte não vê a opção.
+  ABACATE_PAY_API_KEY: 'abc_dev_e2e_fake_key',
+  ABACATE_PAY_WEBHOOK_SECRET: '',
+  ABACATE_PAY_API_BASE_URL: STUB_URL,
   UPSTASH_REDIS_REST_URL: '',
   UPSTASH_REDIS_REST_TOKEN: '',
   VITE_MAP_TILES_URL: `${STUB_URL}/tiles.json`,
