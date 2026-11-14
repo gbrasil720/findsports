@@ -346,46 +346,169 @@
   background: #ff6b47;
 }
 
-/* ─── Mensal ou anual (WEB-442) ─── */
-.lp3.ob3 .pl-cycle {
+/* ─── Mensal ou anual (WEB-442) ───
+ * O verde-limão é do anual: é a escolha que a tela vende, com a sombra dura
+ * dos botões. Toda frase sai da conta de `annualDeal`. */
+.lp3.ob3 .pl-cyc-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+}
+
+.lp3.ob3 .pl-cyc {
   display: inline-flex;
-  width: fit-content;
-  gap: 4px;
+  gap: 6px;
   margin: 0;
-  padding: 4px;
+  padding: 6px;
   border: 0;
-  border-radius: 999px;
+  border-radius: 18px;
   background: var(--sub);
 }
 
-.lp3.ob3 .pl-cycle button {
+.lp3.ob3 .pl-cyc button {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  min-height: 40px;
-  padding: 0 18px;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 20px;
   border: 0;
-  border-radius: 999px;
+  border-radius: 13px;
   background: transparent;
   color: var(--ink);
-  font: 600 14px / 1 var(--body);
+  font: 400 24px / 1 var(--display);
+  text-transform: uppercase;
   cursor: pointer;
+  transition:
+    background-color 0.18s var(--ease),
+    box-shadow 0.18s var(--ease),
+    transform 0.18s var(--ease);
 }
 
-.lp3.ob3 .pl-cycle button[aria-pressed="true"] {
+.lp3.ob3 .pl-cyc button[aria-pressed="true"] {
   background: var(--card);
   box-shadow: inset 0 0 0 2px var(--ink);
 }
 
-.lp3.ob3 .pl-cycle button:disabled {
+.lp3.ob3 .pl-cyc button.yr[aria-pressed="true"] {
+  background: #c9f135;
+  color: #12120f;
+  box-shadow: 0 4px 0 #7f9a12;
+  transform: translateY(-2px);
+}
+
+.lp3.ob3 .pl-cyc em {
+  padding: 5px 7px;
+  border-radius: 7px;
+  background: #c9f135;
+  color: #12120f;
+  font: 600 10.5px / 1 var(--mono);
+  font-style: normal;
+  letter-spacing: 0.06em;
+}
+
+.lp3.ob3 .pl-cyc button.yr[aria-pressed="true"] em {
+  background: #12120f;
+  color: #c9f135;
+}
+
+.lp3.ob3 .pl-cyc button:disabled {
   color: var(--muted);
   cursor: not-allowed;
 }
 
-.lp3.ob3 .pl-cycle em {
-  font: 600 10px / 1 var(--mono);
-  font-style: normal;
-  letter-spacing: 0.06em;
+.lp3.ob3 .pl-cyc button:disabled em {
+  background: var(--card);
+  color: var(--muted);
+}
+
+.lp3.ob3 .pl-cyc-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* A conta do anual no cartão: verde-limão quando economiza, neutra quando o
+ * mensal de fundador sai mais barato. */
+.lp3.ob3 .pl-save {
+  display: grid;
+  gap: 4px;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #c9f135;
+  color: #12120f;
+  box-shadow: 0 4px 0 #7f9a12;
+}
+
+.lp3.ob3 .pl-save b {
+  font: 400 22px / 1 var(--display);
+  text-transform: uppercase;
+}
+
+.lp3.ob3 .pl-save span {
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.lp3.ob3 .pl-save.off {
+  background: var(--sub);
+  color: var(--ink);
+  box-shadow: none;
+}
+
+.lp3.ob3 .pl-save.off b {
+  font-size: 18px;
+}
+
+/* O preço novo entra ao trocar o ciclo (a chave do bloco troca). */
+@keyframes pl-swap {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.lp3.ob3 .pl-pc .price {
+  animation: pl-swap 0.22s var(--ease) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp3.ob3 .pl-pc .price {
+    animation: none;
+  }
+
+  .lp3.ob3 .pl-cyc button {
+    transition: none;
+  }
+
+  .lp3.ob3 .pl-cyc button.yr[aria-pressed="true"] {
+    transform: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .lp3.ob3 .pl-cyc {
+    display: flex;
+    width: 100%;
+  }
+
+  .lp3.ob3 .pl-cyc button {
+    flex: 1;
+    justify-content: center;
+    padding: 0 12px;
+  }
+
+  .lp3.ob3 .pl-cyc button.yr {
+    flex: 2;
+  }
+
+  .lp3.ob3 .pl-cyc em {
+    max-width: 120px;
+    white-space: normal;
+    line-height: 1.2;
+    text-align: left;
+  }
 }
 
 /* ─── Cartões dos planos (os do cadastro, `.ob-pc`) ─── */
