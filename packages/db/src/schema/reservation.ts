@@ -59,9 +59,6 @@ export const reservation = pgTable(
     userId: text('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
-    // `party_size` e `note` saíram do schema (WEB-401) e só deixam o banco
-    // na migration seguinte, depois do deploy: o Drizzle lista toda coluna
-    // do schema nos SELECTs, e o CI migra antes de publicar.
     status: reservationStatusEnum('status').default('confirmed').notNull(),
     // Texto da oferta da casa COPIADO na criação. Se o bar mudar a oferta
     // depois, o torcedor continua vendo o que aceitou. Nulo quando o bar não
@@ -109,12 +106,10 @@ export const reservation = pgTable(
  * (migration 0033). Ninguém no TypeScript escreve esse número; a restrição
  * `used_count <= max_uses` faz o insert do uso excedente falhar no banco.
  *
- * Guardas da migration 0034, todas no banco:
+ * Guardas no banco (migration 0034, revista na 0096 quando `party_size`
+ * saiu):
  * - `used_count` só muda pela trigger de uso; escrita direta é recusada
  *   (`reservation_code_used_count_derived`).
- * - `max_uses` precisa ser igual a `reservation.party_size` na emissão e
- *   acompanha mudanças da reserva
- *   (`reservation_code_max_uses_matches_party_size`).
  * - Código aposentado não aceita uso novo
  *   (`reservation_code_use_code_not_retired`).
  */
