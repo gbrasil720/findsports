@@ -12,9 +12,11 @@ import { liveStripeSubscriptionId } from '@findsports_oficial/auth/account-delet
 import { pixExternalId } from '@findsports_oficial/auth/pix-sync'
 import {
   annualPlansAvailable,
+  CardFromPixRefusal,
   founderCouponUsable,
   pixFounderSeatAvailable,
-  pushInvoiceDetails
+  pushInvoiceDetails,
+  startCardFromPix
 } from '@findsports_oficial/auth/stripe-checkout'
 import { stripeClient } from '@findsports_oficial/auth/stripe-client'
 import { logBillingError } from '@findsports_oficial/auth/stripe-sync'
@@ -1524,6 +1526,44 @@ export const pubRouter = router({
    * do produto (`*_founder_monthly`), porque o cupom não vale no Pix, e as
    * vagas são as mesmas do cartão (`founderCouponUsable`).
    */
+  /**
+   * Do Pix para o cartão (WEB-536): checkout do Stripe com a diferença da
+   * subida cobrada na hora; recusa do cartão fica na tela do Stripe e não
+   * muda nada (`startCardFromPix`).
+   */
+  startCardFromPix: pubProcedure
+    .input(
+      z.object({
+        plan: z.enum(['starter', 'pro', 'elite']),
+        annual: z.boolean().default(false)
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await startCardFromPix(
+          ctx.session.user,
+          input,
+          stripeClient,
+          getPublicAppUrl()
+        )
+      } catch (error) {
+        if (error instanceof CardFromPixRefusal) {
+          throw new TRPCError({
+            code: 'PRECONDITION_FAILED',
+            message: error.message
+          })
+        }
+        logBillingError('stripe_card_from_pix_failed', {
+          userId: ctx.session.user.id,
+          message: error instanceof Error ? error.message : String(error)
+        })
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Não foi possível abrir o cartão agora. Tente de novo.'
+        })
+      }
+    }),
+
   startPixCheckout: pubProcedure
     .input(z.object({ plan: z.enum(['starter', 'pro', 'elite']) }))
     .mutation(async ({ ctx, input }) => {
