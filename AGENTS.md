@@ -350,7 +350,14 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   **Do Pix para o cartão** (WEB-536): em `/plan`, quem paga por Pix vê o cartão na
   janela "Como você quer pagar?" (troca de plano, ou "Passar para o cartão" no mesmo
   plano; mensal ou anual). O checkout manda `trial_end` = fim do ciclo pago
-  (`trialEndForCheckout`), e o fundador do Pix leva a vaga. O primeiro evento do
+  (`trialEndForCheckout`), e o fundador do Pix leva a vaga. **Na subida, a diferença
+  sai hoje** (dono, 14/11/2026): `pixUpgradeCents` (`stripe-plan.ts`, a mesma conta
+  na tela) dá o proporcional de (mensal novo − mensal do Pix, preços pagos de fato;
+  anual = 10/12 do mensal) pelo que falta do mês pago; o checkout o grava em
+  `subscription_data.metadata.pixUpgradeCents` (o plugin não aceita item avulso na
+  sessão) e o webhook que cancela o Pix cria a fatura avulsa (`chargePixUpgrade`,
+  chaves de idempotência; cartão recusado só vai ao log e a fatura fica aberta).
+  Descida e mesmo plano não cobram nada agora. O primeiro evento do
   cartão vivo (`applyStripeSubscription`) cancela o Pix na AbacatePay antes de a
   linha virar `stripe`; falha lá responde erro e o Stripe reenvia, com o bar no Pix
   enquanto isso. O `cancelled` do Pix que chega depois não é da assinatura atual e
