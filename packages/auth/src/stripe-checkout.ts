@@ -13,6 +13,7 @@ type TrialSubscription = {
   status: string
   currentPeriodEnd: Date | null
   externalSubscriptionId: string | null
+  provider?: string | null
 } | null
 
 // O Stripe recusa `trial_end` a menos de 48h de agora. A hora a mais é folga
@@ -29,14 +30,24 @@ const STRIPE_MIN_TRIAL_MS = 49 * 60 * 60 * 1000
  * Faltando menos de dois dias, a primeira cobrança sai no mínimo que o Stripe
  * aceita, um pouco depois do fim do teste.
  *
- * Teste vencido, ou assinatura que já existe no provedor, não herda nada.
+ * Do Pix para o cartão (WEB-536) é o mesmo mecanismo: o mês já pago no Pix
+ * vale até `currentPeriodEnd`, e o cartão só cobra dali em diante. O Pix é
+ * cancelado quando o cartão se confirma (`applyStripeSubscription`).
+ *
+ * Teste vencido, ou assinatura que já existe no Stripe, não herda nada.
  */
 export function trialEndForCheckout(
   subscription: TrialSubscription,
   now = new Date()
 ): number | undefined {
-  if (subscription?.status !== 'trialing') return undefined
-  if (subscription.externalSubscriptionId) return undefined
+  const pixPaid =
+    subscription?.provider === 'abacatepay' &&
+    subscription.status === 'active' &&
+    Boolean(subscription.externalSubscriptionId)
+  if (!pixPaid) {
+    if (subscription?.status !== 'trialing') return undefined
+    if (subscription.externalSubscriptionId) return undefined
+  }
   const end = subscription.currentPeriodEnd
   if (!end || end <= now) return undefined
   return Math.floor(
@@ -385,10 +396,19 @@ export async function checkoutParamsFor(
   if (ownerBar && customerId) {
     await prefillCustomer(client, customerId, owner.name, ownerBar)
   }
-  const trialEnd = trialEndForCheckout(ownerBar?.subscription ?? null)
-  const coupon = await usableFounderCoupon(client, pixFounderCount, {
-    annual
-  })
+  const current = ownerBar?.subscription ?? null
+  const trialEnd = trialEndForCheckout(current)
+  // Fundador do Pix que passa para o cartão (WEB-536) leva a vaga junto: ela
+  // sai da conta do Pix quando a linha virar do Stripe e entra no resgate do
+  // cupom. Sem descontar a dele, com as vagas cheias ele perderia o desconto.
+  const pixFounder =
+    current?.provider === 'abacatepay' &&
+    current.status === 'active' &&
+    (current.monthlyDiscountReais ?? 0) > 0
+  const countPix = pixFounder
+    ? async () => Math.max(0, (await pixFounderCount()) - 1)
+    : pixFounderCount
+  const coupon = await usableFounderCoupon(client, countPix, { annual })
   return {
     locale: 'pt-BR',
     billing_address_collection: 'required',
