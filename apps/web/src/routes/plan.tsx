@@ -16,6 +16,7 @@ import { useSession } from '@/hooks/use-session'
 import { analytics } from '@/lib/analytics'
 import { startCheckout } from '@/lib/billing-client'
 import {
+  billedPlan,
   earnsDowngradeCredit,
   formatPlanPrice,
   getCommonPlanItems,
@@ -34,6 +35,7 @@ import {
   type PlanChargeDisplay,
   type PlanOrigin,
   parsePlanOrigin,
+  planChargeForAnnual,
   planChargeForCurrentPlan,
   planChargeForShowcase
 } from '@/lib/plan-catalog'
@@ -139,6 +141,7 @@ function PlanOptionCard({
   charge,
   priceLabel,
   priceNote,
+  period,
   strike,
   action
 }: {
@@ -148,6 +151,8 @@ function PlanOptionCard({
   /** `null`: cupom de fundador ainda carregando. */
   charge: PlanChargeDisplay | null
   priceLabel: string
+  /** "/mês" ou "/ano" (WEB-442). */
+  period: string
   priceNote: string | null
   strike: boolean
   action: CardAction | null
@@ -173,7 +178,7 @@ function PlanOptionCard({
           {charge ? (
             <>
               <b>{formatPlanPrice(charge.chargeReais)}</b>
-              <span>{plan.period}</span>
+              <span>{period}</span>
               {strike && charge.listReais ? (
                 <s>{formatPlanPrice(charge.listReais)}</s>
               ) : null}
@@ -256,6 +261,15 @@ function PlanSelection() {
   // "Como você quer pagar?": o plano escolhido, antes do cartão ou do Pix.
   const [choosing, setChoosing] = useState<SubscriptionPlan | null>(null)
   const [payError, setPayError] = useState<string | null>(null)
+  // Mensal ou anual (WEB-442). O anual só existe no cartão e só com os
+  // preços anuais criados no Stripe; até lá o "Anual" fica "em breve".
+  const [annualChosen, setAnnualChosen] = useState(false)
+  const annualAvailable = Boolean(
+    useQuery({
+      ...trpc.pub.getAnnualPlansAvailable.queryOptions(),
+      meta: { errorToast: false }
+    }).data?.available
+  )
   const queryClient = useQueryClient()
   const pixAvailable = Boolean(
     useQuery({
@@ -325,6 +339,10 @@ function PlanSelection() {
   const hasSubscription =
     Boolean(subscription?.externalSubscriptionId) &&
     subscription?.standing !== 'ended'
+  // O anual é para quem vai ao checkout: assinatura que já existe troca de
+  // plano no portal, no intervalo em que está (WEB-442).
+  const showCycle = !hasSubscription && !regularize
+  const annual = showCycle && annualAvailable && annualChosen
   // WEB-328: o checkout não pede nome nem empresa; saem do cadastro. A tela
   // diz em nome de quem a assinatura sai antes de mandar para o Stripe.
   const ownerName = useSession()?.user.name
@@ -359,7 +377,7 @@ function PlanSelection() {
     try {
       // Com URL na resposta o cliente do better-auth já está navegando para
       // o Stripe; ver `startCheckout` (WEB-241).
-      if (await startCheckout(plan, currentPlan)) return
+      if (await startCheckout(plan, currentPlan, annual)) return
       setError('Não foi possível iniciar o pagamento. Tente novamente.')
     } catch (checkoutError) {
       // Plano parado (WEB-172): a recusa do servidor já diz o que fazer.
@@ -407,7 +425,8 @@ function PlanSelection() {
   // ligado: quem ainda não assina e quem já paga por Pix (a troca de plano
   // no Pix é uma autorização nova). A troca no cartão segue no portal.
   const contract = (plan: SubscriptionPlan) => {
-    if (pixAvailable && (!hasSubscription || onPixSubscription)) {
+    // O Pix Automático é só mensal: o anual vai direto ao cartão (WEB-442).
+    if (!annual && pixAvailable && (!hasSubscription || onPixSubscription)) {
       setPayError(null)
       setChoosing(plan)
       return
@@ -434,7 +453,9 @@ function PlanSelection() {
   })
 
   const checkoutLabel = (plan: SubscriptionPlan) =>
-    loading === plan ? 'Redirecionando…' : `Contratar o ${PLAN_NAMES[plan]}`
+    loading === plan
+      ? 'Redirecionando…'
+      : `Contratar o ${PLAN_NAMES[plan]}${annual ? ' anual' : ''}`
 
   function cardAction(plan: Plan): CardAction | null {
     // Assinatura paga parada não passa pelo checkout: a faixa leva a
@@ -506,11 +527,12 @@ function PlanSelection() {
       return {
         label: 'Você paga',
         charge: planChargeForCurrentPlan(
-          plan,
+          billedPlan(plan, subscription.billingInterval),
           subscription,
           founderCouponAvailable
         ),
         strike: false,
+        period: subscription.billingInterval === 'year' ? '/ano' : plan.period,
         note:
           subscription.standing !== 'current' || !subscription.currentPeriodEnd
             ? null
@@ -519,6 +541,18 @@ function PlanSelection() {
               : contracted
                 ? `Primeira cobrança em ${ddmm(subscription.currentPeriodEnd)}.`
                 : `Renova em ${ddmm(subscription.currentPeriodEnd)}.`
+      }
+    }
+    if (annual) {
+      // 10 meses riscando os 12; o cupom de fundador é só do mensal.
+      return {
+        label: onTrial ? 'Depois do teste' : 'Por ano',
+        charge: planChargeForAnnual(plan),
+        strike: true,
+        period: '/ano',
+        note: onTrial
+          ? '2 meses grátis, só se você contratar.'
+          : '2 meses grátis, no cartão.'
       }
     }
     const charge = planChargeForShowcase(
@@ -532,6 +566,7 @@ function PlanSelection() {
         label: 'Depois do teste',
         charge,
         strike: true,
+        period: plan.period,
         note: founder
           ? 'Preço de fundador, só se você contratar.'
           : 'Só se você contratar.'
@@ -541,6 +576,7 @@ function PlanSelection() {
       label: founder ? 'Preço de fundador' : 'Por mês',
       charge,
       strike: !hasSubscription,
+      period: plan.period,
       note: null
     }
   }
@@ -552,11 +588,13 @@ function PlanSelection() {
     const name = getPlan(subscription.plan).name.toUpperCase()
     const end = subscription.currentPeriodEnd
     const charge = planChargeForCurrentPlan(
-      getPlan(subscription.plan),
+      billedPlan(getPlan(subscription.plan), subscription.billingInterval),
       subscription,
       founderCouponAvailable
     )
     const price = charge ? formatPlanPrice(charge.chargeReais) : '…'
+    const perLabel =
+      subscription.billingInterval === 'year' ? 'Por ano' : 'Por mês'
     if (subscription.standing === 'past_due') {
       return {
         label: 'Sua assinatura',
@@ -595,7 +633,7 @@ function PlanSelection() {
             ]
           : [
               ['Plano', name],
-              ['Por mês', price],
+              [perLabel, price],
               ['1ª cobrança', ddmm(end)]
             ]
       }
@@ -608,7 +646,7 @@ function PlanSelection() {
       progress: null,
       cells: [
         ['Plano', name],
-        ['Por mês', price],
+        [perLabel, price],
         cancelAt
           ? ['Cancela', ddmm(cancelAt)]
           : ['Renova', end ? ddmm(end) : '—']
@@ -654,7 +692,7 @@ function PlanSelection() {
         <span className="pl-lg">
           No cartão, contratar agora não antecipa nada: a primeira cobrança é em{' '}
           {firstCharge}.
-          {pixAvailable
+          {pixAvailable && !annual
             ? subscription.pixAfterTrialAt
               ? ' Você escolheu o Pix: a gente avisa perto do fim para autorizar.'
               : ' No Pix também: a autorização é pedida perto do fim.'
@@ -814,6 +852,28 @@ function PlanSelection() {
           </section>
         ) : null}
 
+        {showCycle ? (
+          <fieldset className="pl-cycle">
+            <legend className="sr-only">Cobrança</legend>
+            <button
+              type="button"
+              aria-pressed={!annual}
+              onClick={() => setAnnualChosen(false)}
+            >
+              Mensal
+            </button>
+            <button
+              type="button"
+              aria-pressed={annual}
+              disabled={!annualAvailable}
+              onClick={() => setAnnualChosen(true)}
+            >
+              Anual
+              <em>{annualAvailable ? '2 MESES GRÁTIS' : 'EM BREVE'}</em>
+            </button>
+          </fieldset>
+        ) : null}
+
         <ul className="pl-plans" aria-label="Planos">
           {PLAN_CATALOG.map((plan) => {
             const price = priceFor(plan)
@@ -826,6 +886,7 @@ function PlanSelection() {
                 charge={price.charge}
                 priceLabel={price.label}
                 priceNote={price.note}
+                period={price.period}
                 strike={price.strike}
                 action={cardAction(plan)}
               />

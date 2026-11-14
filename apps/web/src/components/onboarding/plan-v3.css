@@ -346,6 +346,48 @@
   background: #ff6b47;
 }
 
+/* ─── Mensal ou anual (WEB-442) ─── */
+.lp3.ob3 .pl-cycle {
+  display: inline-flex;
+  width: fit-content;
+  gap: 4px;
+  margin: 0;
+  padding: 4px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--sub);
+}
+
+.lp3.ob3 .pl-cycle button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: 600 14px / 1 var(--body);
+  cursor: pointer;
+}
+
+.lp3.ob3 .pl-cycle button[aria-pressed="true"] {
+  background: var(--card);
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+
+.lp3.ob3 .pl-cycle button:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.lp3.ob3 .pl-cycle em {
+  font: 600 10px / 1 var(--mono);
+  font-style: normal;
+  letter-spacing: 0.06em;
+}
+
 /* ─── Cartões dos planos (os do cadastro, `.ob-pc`) ─── */
 .lp3.ob3 .pl-plans {
   display: grid;
