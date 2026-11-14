@@ -664,16 +664,22 @@ type PlanSubscription =
 
 /**
  * Só assinatura paga no Stripe gera crédito proporcional na troca para um
- * plano menor (WEB-350); em teste grátis não há o que creditar.
+ * plano menor (WEB-350); em teste grátis não há o que creditar, e no Pix
+ * (WEB-536) a troca é uma autorização nova, sem proporcional.
  */
 export function earnsDowngradeCredit(
   subscription:
-    | { status: string; externalSubscriptionId?: string | null }
+    | {
+        status: string
+        externalSubscriptionId?: string | null
+        provider?: string | null
+      }
     | null
     | undefined
 ): boolean {
   return (
     subscription?.status === 'active' &&
+    subscription.provider !== 'abacatepay' &&
     Boolean(subscription.externalSubscriptionId)
   )
 }
