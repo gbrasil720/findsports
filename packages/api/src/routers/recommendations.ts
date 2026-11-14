@@ -32,6 +32,7 @@ import {
   readTodayRound,
   refillRound
 } from '../lib/recommendations/round-store'
+import { fromApp } from '../lib/client-app'
 import { utcIso } from '../lib/utc-timestamp'
 
 const coordinatesSchema = z.object({
@@ -232,7 +233,8 @@ export const recommendationsRouter = router({
         userId: ctx.session.user.id,
         userRadiusKm: ctx.session.user.searchRadiusKm,
         where: input.where,
-        now
+        now,
+        aiEligible: fromApp(ctx.headers)
       })
       return {
         userRadiusKm: clampSearchRadiusKm(ctx.session.user.searchRadiusKm, 3),
