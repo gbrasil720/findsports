@@ -77,7 +77,7 @@ function parseIntentActions(
   })
 }
 
-export async function loadRecommendationCandidates(input: {
+type CandidatesInput = {
   userId: string
   lat: number
   lng: number
@@ -85,7 +85,32 @@ export async function loadRecommendationCandidates(input: {
   now: Date
   /** Bares que já estão na rodada do dia (completar a rodada não os repete). */
   excludeBarIds?: string[]
-}): Promise<RecommendationCandidate[]> {
+}
+
+/**
+ * O estilo da pessoa que a consulta já calcula para "Seu estilo": as
+ * características e os bairros dos bares de que ela gostou e as
+ * características dos que ela não voltaria. Vai ao pedido da IA (WEB-426).
+ */
+export type RecommendationStyle = {
+  likedAmenities: number[]
+  likedNeighborhoods: string[]
+  dislikedAmenities: number[]
+}
+
+export async function loadRecommendationCandidates(
+  input: CandidatesInput
+): Promise<RecommendationCandidate[]> {
+  return (await loadRecommendationCandidatesWithStyle(input)).candidates
+}
+
+/** Os candidatos e o estilo da pessoa (nulo sem candidato). */
+export async function loadRecommendationCandidatesWithStyle(
+  input: CandidatesInput
+): Promise<{
+  candidates: RecommendationCandidate[]
+  style: RecommendationStyle | null
+}> {
   // Em JSON: o `sql` do Drizzle abre um array em vários parâmetros.
   const excluded = JSON.stringify(input.excludeBarIds ?? [])
   const sixtyDaysAgo = new Date(
@@ -407,7 +432,17 @@ export async function loadRecommendationCandidates(input: {
     ORDER BY eligible.distance_km, eligible.id
   `)
 
-  return (results.rows as CandidateRow[]).map((row) => {
+  const rows = results.rows as CandidateRow[]
+  // O estilo sai do CROSS JOIN: igual em todas as linhas.
+  const first = rows[0]
+  const style = first
+    ? {
+        likedAmenities: first.signature_amenities ?? [],
+        likedNeighborhoods: first.signature_neighborhoods ?? [],
+        dislikedAmenities: first.negative_amenities ?? []
+      }
+    : null
+  const candidates = rows.map((row) => {
     const amenities = row.amenities ?? []
     const signatureAmenities = row.signature_amenities ?? []
     const signatureScreenCount =
@@ -478,4 +513,5 @@ export async function loadRecommendationCandidates(input: {
       intentActions: parseIntentActions(row.intent_actions)
     }
   })
+  return { candidates, style }
 }
