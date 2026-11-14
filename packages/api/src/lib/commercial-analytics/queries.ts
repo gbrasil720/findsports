@@ -482,7 +482,7 @@ async function getEventAnalyticsSnapshots(
       -- WEB-323: dados do próprio bar, não analytics de torcedor. Saem das
       -- tabelas de reserva, então a poda dos eventos brutos não os alcança.
       (
-        SELECT COALESCE(SUM(r.party_size), 0)
+        SELECT count(*)
         FROM reservation r
         WHERE r.event_id = e.id AND r.status = 'confirmed'
       ) AS reserved_people,
