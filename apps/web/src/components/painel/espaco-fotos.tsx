@@ -20,6 +20,7 @@ import {
   problemaDoArquivo,
   vizinha
 } from './espaco-fotos-model'
+import { FolhaNativa } from './folha-nativa'
 import { Interruptor } from './painel-shell'
 
 /*
@@ -427,28 +428,17 @@ function FolhaDaFoto({
   galeria: boolean
   recarregar: () => Promise<unknown>
 }) {
-  const ref = useRef<HTMLDialogElement>(null)
   const { folha, setFolha } = envio
   const aberta =
     folha?.tipo === 'foto' ? fotos.find((f) => f.id === folha.id) : null
   const fechar = () => setFolha(null)
 
-  useEffect(() => {
-    const dialog = ref.current
-    if (dialog && !dialog.open) dialog.showModal()
-  }, [])
-
   if (folha?.tipo !== 'nova' && !aberta) return null
   return (
-    // biome-ignore lint/a11y/useKeyWithClickEvents: o Esc já fecha o `<dialog>` nativo; o clique é só o do fundo.
-    <dialog
-      ref={ref}
+    <FolhaNativa
       className="pn-sheet"
       aria-labelledby="pn-foto-t"
       onClose={fechar}
-      onClick={(event) => {
-        if (event.target === ref.current) fechar()
-      }}
     >
       <div className="pn-sheet-in">
         <header>
@@ -488,7 +478,7 @@ function FolhaDaFoto({
           />
         ) : null}
       </div>
-    </dialog>
+    </FolhaNativa>
   )
 }
 
