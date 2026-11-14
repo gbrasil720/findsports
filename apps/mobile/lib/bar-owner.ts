@@ -263,3 +263,25 @@ export function retryableCodes(
     .filter(({ status }) => status === 'not_found' || status === 'limited')
     .map(({ code }) => code)
 }
+
+/**
+ * "amanhã às 16:00", "sáb às 16:00" (na semana) ou "2 dez às 16:00": o
+ * próximo jogo no cartão de Hoje sem jogo hoje (WEB-467).
+ */
+export function nextGameWhen(startsAt: string | Date, now: number): string {
+  const day = brasiliaDay(startsAt)
+  const time = new Date(startsAt).toLocaleTimeString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+  const when =
+    day === brasiliaDay(now, 1)
+      ? 'amanhã'
+      : day < brasiliaDay(now, 7)
+        ? (
+            WEEKDAYS[houseDate(new Date(startsAt).getTime()).getUTCDay()] ?? ''
+          ).toLowerCase()
+        : dayMonth(startsAt)
+  return `${when} às ${time}`
+}
