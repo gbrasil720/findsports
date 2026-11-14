@@ -117,6 +117,8 @@ export async function readOrCreateRound(input: {
   userRadiusKm: number | null | undefined
   where: Where | null
   now: Date
+  /** Só o app entra no teste A × C (dono, 14/11/2026); o web fica no controle. */
+  aiEligible: boolean
 }) {
   const day = roundDay(input.now)
   const existing = await readRound(input.userId, day)
@@ -134,6 +136,7 @@ export async function readOrCreateRound(input: {
     exclude: [],
     firstPosition: 1,
     withAi: async (candidates, style) => {
+      if (!input.aiEligible) return null
       const plan = await planRoundAi({
         userId: input.userId,
         candidates,
