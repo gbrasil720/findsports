@@ -101,6 +101,13 @@ export async function wasStopped(runId: string) {
   return row?.status === 'stopped'
 }
 
+/**
+ * Execução que chamou modelo. A linha do recomendador gravada sem chamada (o
+ * braço A do teste, o C barrado por teto ou sem candidato; WEB-426) nasce
+ * com `latency_ms` 0 e não gasta das chamadas do dia.
+ */
+export const calledModel = sql`NOT (feature = 'recommender' AND latency_ms = 0)`
+
 /** O que a pessoa e todo mundo já usaram, no dia e no mês de Brasília. */
 export async function readUserUsage(
   userId: string,
@@ -115,7 +122,7 @@ export async function readUserUsage(
     total_cost: string | number
   }>(sql`
     SELECT
-      count(*) FILTER (WHERE user_id = ${userId} AND created_at >= ${w.dayStart})::int AS calls_today,
+      count(*) FILTER (WHERE user_id = ${userId} AND created_at >= ${w.dayStart} AND ${calledModel})::int AS calls_today,
       count(*) FILTER (WHERE user_id = ${userId} AND feature = 'chat' AND useful AND created_at >= ${w.dayStart})::int AS chat_today,
       count(*) FILTER (WHERE user_id = ${userId} AND feature = 'chat' AND useful)::int AS chat_month,
       coalesce(sum(cost_usd) FILTER (WHERE user_id = ${userId}), 0) AS user_cost,
@@ -257,7 +264,8 @@ export async function runAi<T>(
       .update(aiRun)
       .set({
         servedModel: outcome.servedModel,
-        latencyMs: Math.round(performance.now() - started),
+        // Ao menos 1: `latency_ms` 0 é a linha sem chamada (`calledModel`).
+        latencyMs: Math.max(1, Math.round(performance.now() - started)),
         tokensIn,
         tokensOut,
         costUsd: cost,

@@ -17,6 +17,7 @@ import {
   periodStart,
   recommenderStops
 } from '../lib/ai/report'
+import { calledModel } from '../lib/ai/run'
 import { getAppConfig } from '../lib/app-config'
 import { visit } from '../lib/visits'
 
@@ -292,7 +293,7 @@ async function readLimitHits(start: Date | null, limits: AiLimits) {
   const result = await db.execute<LimitHits>(sql`
     WITH days AS (
       SELECT r.user_id, ((r.created_at AT TIME ZONE ${TZ})::date) AS day,
-        count(*) AS calls,
+        count(*) FILTER (WHERE ${calledModel}) AS calls,
         count(*) FILTER (WHERE r.feature = 'chat' AND r.useful) AS chat
       FROM ai_run r
       WHERE r.user_id IS NOT NULL AND ${since(start)}
