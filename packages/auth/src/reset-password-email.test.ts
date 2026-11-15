@@ -97,6 +97,7 @@ describe('e-mail de redefinição de senha', () => {
   it('envia HTML e texto pela API de e-mail sem expor a chave no corpo', async () => {
     let request: Request | undefined
     await sendResetPasswordEmail({
+      reserve: async () => {},
       apiKey: 're_test',
       fromEmail: 'contato@onside.app',
       to: 'ana@example.com',

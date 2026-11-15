@@ -1,5 +1,11 @@
 import { appendFile } from 'node:fs/promises'
 import { env } from '@findsports_oficial/env/server'
+import {
+  EmailBudgetExceeded,
+  type EmailCategory,
+  type ReserveEmail,
+  reserveEmailSend
+} from './email-budget'
 import { chips, createOnsideEmailTemplate } from './email-layout'
 
 export { escapeHtml } from './email-layout'
@@ -64,9 +70,10 @@ export async function sendVerificationEmail(input: {
   name: string
   verificationUrl: string
   fetcher?: EmailFetcher
+  reserve?: ReserveEmail
 }): Promise<void> {
   const email = createVerificationEmail(input)
-  await sendEmail({ ...input, ...email })
+  await sendEmail({ ...input, ...email, category: 'auth' })
 }
 
 /**
@@ -96,7 +103,11 @@ export async function sendEmail(input: {
   /** Padrão: a caixa da Onside. O feedback responde para quem escreveu. */
   replyTo?: string
   attachments?: EmailAttachment[]
+  /** Que parte do orçamento do dia o envio gasta (`email-budget.ts`). */
+  category: EmailCategory
   fetcher?: EmailFetcher
+  /** Dublê do orçamento nos testes sem banco. */
+  reserve?: ReserveEmail
 }): Promise<{ delivered: boolean }> {
   const replyTo = input.replyTo ?? REPLY_TO_EMAIL
   // Outbox e log dizem que anexo saiu (nome, tipo, bytes), sem o conteúdo.
@@ -149,6 +160,9 @@ export async function sendEmail(input: {
     return { delivered: false }
   }
 
+  // Só o envio de verdade gasta a cota: outbox, console e falta de chave não.
+  await (input.reserve ?? reserveEmailSend)(input.category, input.to)
+
   const response = await (input.fetcher ?? fetch)(
     `${env.EMAIL_API_URL.replace(/\/+$/, '')}/emails`,
     {
@@ -177,6 +191,16 @@ export async function sendEmail(input: {
     }
   )
 
+  if (response.status === 429) {
+    console.warn(
+      JSON.stringify({
+        event: 'email_budget_refused',
+        category: input.category,
+        scope: 'provider'
+      })
+    )
+    throw new EmailBudgetExceeded(input.category, 'provider')
+  }
   if (!response.ok) {
     throw new Error(`A API de e-mail recusou o envio (${response.status}).`)
   }

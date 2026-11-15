@@ -373,6 +373,7 @@ export const accountRouter = router({
       await sendEmail({
         apiKey: env.EMAIL_API_KEY,
         fromEmail: env.EMAIL_FROM,
+        category: 'export',
         to: user.email,
         attachments: [
           {

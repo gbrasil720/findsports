@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'bun:test'
 import { env } from '@findsports_oficial/env/server'
+import { EmailBudgetExceeded } from './email-budget'
 import {
   createVerificationEmail,
   publicEmailUrl,
   sendEmail,
   sendVerificationEmail
 } from './verification-email'
+
+const allowAll = async () => {}
+/** Sem banco: o orçamento é dublado (o de verdade está em `email-budget`). */
+const budget = { category: 'feedback' as const, reserve: allowAll }
 
 describe('e-mail de verificação Onside', () => {
   it('move o link de autenticação para o host público do e-mail', () => {
@@ -80,6 +85,7 @@ describe('e-mail de verificação Onside', () => {
   it('envia HTML e texto pela API de e-mail sem expor a chave no corpo', async () => {
     let request: Request | undefined
     await sendVerificationEmail({
+      reserve: allowAll,
       apiKey: 're_test',
       fromEmail: 'contato@onside.app',
       to: 'ana@example.com',
@@ -108,6 +114,7 @@ describe('e-mail de verificação Onside', () => {
   it('marca o envio como delivered quando a API de e-mail aceita', async () => {
     expect(
       await sendEmail({
+        ...budget,
         apiKey: 're_test',
         fromEmail: 'contato@onside.app',
         to: 'ana@example.com',
@@ -126,6 +133,7 @@ describe('e-mail de verificação Onside', () => {
     let url: string | undefined
     try {
       await sendEmail({
+        ...budget,
         apiKey: 'ms_test',
         fromEmail: 'contato@onside.app',
         to: 'ana@example.com',
@@ -146,6 +154,7 @@ describe('e-mail de verificação Onside', () => {
   it('manda Reply-To próprio e anexos em base64 quando quem chama pede', async () => {
     let body: Record<string, unknown> | undefined
     await sendEmail({
+      ...budget,
       apiKey: 're_test',
       fromEmail: 'contato@onside.app',
       to: 'contato@onside.sh',
@@ -182,6 +191,7 @@ describe('e-mail de verificação Onside', () => {
     )
     try {
       await sendEmail({
+        ...budget,
         apiKey: 're_real',
         fromEmail: 'contato@onside.app',
         to: 'contato@onside.sh',
@@ -213,6 +223,7 @@ describe('e-mail de verificação Onside', () => {
     }
     try {
       const result = await sendEmail({
+        ...budget,
         apiKey: undefined,
         fromEmail: undefined,
         to: 'ana@example.com',
@@ -239,6 +250,7 @@ describe('e-mail de verificação Onside', () => {
     try {
       await expect(
         sendEmail({
+          ...budget,
           apiKey: undefined,
           fromEmail: undefined,
           to: 'ana@example.com',
@@ -266,6 +278,7 @@ describe('e-mail de verificação Onside', () => {
     }
     try {
       const result = await sendEmail({
+        ...budget,
         apiKey: 're_real',
         fromEmail: 'contato@onside.app',
         to: 'ana@example.com',
@@ -284,6 +297,50 @@ describe('e-mail de verificação Onside', () => {
       console.log = log
       process.env.NODE_ENV = previous
       delete process.env.EMAIL_DELIVERY
+    }
+  })
+
+  it('conta no orçamento antes de chamar a API, e a recusa não chega ao provedor', async () => {
+    const calls: string[] = []
+    await expect(
+      sendEmail({
+        apiKey: 're_test',
+        fromEmail: 'contato@onside.app',
+        to: 'ana@example.com',
+        subject: 'ok',
+        html: '<p>ok</p>',
+        text: 'ok',
+        category: 'auth',
+        reserve: async (category, to) => {
+          calls.push(`${category}:${to}`)
+          throw new EmailBudgetExceeded(category, 'daily')
+        },
+        fetcher: async () => {
+          throw new Error('não deveria chamar a API de e-mail')
+        }
+      })
+    ).rejects.toBeInstanceOf(EmailBudgetExceeded)
+    expect(calls).toEqual(['auth:ana@example.com'])
+  })
+
+  it('429 do provedor vira EmailBudgetExceeded (cota acabou)', async () => {
+    const warn = console.warn
+    console.warn = () => {}
+    try {
+      const error = await sendEmail({
+        ...budget,
+        apiKey: 're_test',
+        fromEmail: 'contato@onside.app',
+        to: 'ana@example.com',
+        subject: 'ok',
+        html: '<p>ok</p>',
+        text: 'ok',
+        fetcher: async () => new Response('{}', { status: 429 })
+      }).catch((caught: unknown) => caught)
+      expect(error).toBeInstanceOf(EmailBudgetExceeded)
+      expect(error).toMatchObject({ category: 'feedback', scope: 'provider' })
+    } finally {
+      console.warn = warn
     }
   })
 })
