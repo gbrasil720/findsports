@@ -1,6 +1,6 @@
 import { describe, expect, it, spyOn } from 'bun:test'
 import {
-  founderSeatLeft,
+  founderSeatsFull,
   parsePixExternalId,
   pixExternalId,
   pixFounderDiscountReais,
@@ -125,35 +125,21 @@ describe('leitura da AbacatePay atrás do aviso', () => {
 describe('vaga de fundador com o Stripe sem responder', () => {
   // O dublê responde antes da contagem: o banco não é tocado.
   const tx = {} as Tx
-  const failing = () =>
-    spyOn(stripeClient.coupons, 'retrieve').mockImplementation((async () => {
-      throw Object.assign(new Error('Invalid API Key provided'), {
-        type: 'StripeAuthenticationError'
-      })
-    }) as unknown as typeof stripeClient.coupons.retrieve)
 
-  it('com a chave, lança para a AbacatePay reenviar', async () => {
-    const spy = failing()
+  it('não trava o aviso: conta como não esgotou, com o motivo no log', async () => {
+    const spy = spyOn(stripeClient.coupons, 'retrieve').mockImplementation(
+      (async () => {
+        throw Object.assign(new Error('Invalid API Key provided'), {
+          type: 'StripeAuthenticationError'
+        })
+      }) as unknown as typeof stripeClient.coupons.retrieve
+    )
     const error = spyOn(console, 'error').mockImplementation(() => {})
     try {
-      await expect(founderSeatLeft(tx, { hasStripeKey: true })).rejects.toThrow(
-        'Vagas de fundador sem conferir'
-      )
-      expect(String(error.mock.calls[0]?.[0])).toContain(
-        'pix_founder_seat_check_failed'
-      )
-    } finally {
-      spy.mockRestore()
-      error.mockRestore()
-    }
-  })
-
-  it('sem a chave, é sem vaga, com o motivo no log', async () => {
-    const spy = failing()
-    const error = spyOn(console, 'error').mockImplementation(() => {})
-    try {
-      expect(await founderSeatLeft(tx, { hasStripeKey: false })).toBe(false)
-      expect(String(error.mock.calls[0]?.[0])).toContain('stripe_key_missing')
+      expect(await founderSeatsFull(tx)).toBe(false)
+      const logged = String(error.mock.calls[0]?.[0])
+      expect(logged).toContain('pix_founder_seat_unverified')
+      expect(logged).toMatch(/stripe_key_missing|stripe_unavailable/)
     } finally {
       spy.mockRestore()
       error.mockRestore()

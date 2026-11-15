@@ -80,35 +80,29 @@ type Row = typeof subscription.$inferSelect
 export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
 
 /**
- * Sobrou vaga de fundador para o Pix que acabou de ser pago (o checkout
- * conferiu ao abrir, mas checkout aberto não reserva vaga). Conta com `tx`,
- * que já tem o lock das vagas.
+ * As vagas de fundador já tinham acabado quando este Pix foi pago. Checkout
+ * aberto não reserva vaga, então um Pix de fundador pode ser pago depois de
+ * esgotar. Conta com `tx`, que já tem o lock das vagas.
  *
- * Stripe sem responder lança: o aviso volta com 500 e a AbacatePay reenvia,
- * em vez de tirar o desconto de quem tinha vaga. Sem `STRIPE_SECRET_KEY` a
- * conta nunca fecha (toda chamada volta 401) e o reenvio seria eterno: aí é
- * "sem vaga", com o motivo no log.
+ * Só serve ao log: o preço de fundador é honrado de qualquer jeito (ver
+ * `applyPixSubscription`). Por isso Stripe sem responder, ou sem
+ * `STRIPE_SECRET_KEY` (toda chamada volta 401), não trava o aviso: vai ao log
+ * com o motivo e conta como "não esgotou".
  */
-export async function founderSeatLeft(
-  tx: Tx,
-  { hasStripeKey = Boolean(env.STRIPE_SECRET_KEY) } = {}
-): Promise<boolean> {
+export async function founderSeatsFull(tx: Tx): Promise<boolean> {
   const coupon = await readFounderCoupon(stripeClient, () =>
     pixFounderCount(tx)
   )
   if (coupon.state === 'unknown') {
-    if (!hasStripeKey) {
-      logBillingError('pix_founder_seat_unverified', {
-        reason: 'stripe_key_missing'
-      })
-      return false
-    }
-    logBillingError('pix_founder_seat_check_failed', {
+    logBillingError('pix_founder_seat_unverified', {
+      reason: env.STRIPE_SECRET_KEY
+        ? 'stripe_unavailable'
+        : 'stripe_key_missing',
       message: coupon.message
     })
-    throw new Error(`Vagas de fundador sem conferir: ${coupon.message}`)
+    return false
   }
-  return coupon.state === 'valid'
+  return coupon.state === 'invalid'
 }
 
 /**
@@ -179,8 +173,8 @@ export async function applyPixSubscription(
   eventType: PixEvent | string,
   // Os testes dublam a contagem; o padrão pergunta ao Stripe.
   {
-    seatLeft = founderSeatLeft
-  }: { seatLeft?: (tx: Tx) => Promise<boolean> } = {}
+    seatsFull = founderSeatsFull
+  }: { seatsFull?: (tx: Tx) => Promise<boolean> } = {}
 ): Promise<string | null> {
   const ref = parsePixExternalId(externalId)
   if (!ref) {
@@ -274,18 +268,16 @@ export async function applyPixSubscription(
     existing?.provider === 'abacatepay' &&
     (existing.monthlyDiscountReais ?? 0) > 0
   await db.transaction(async (tx) => {
-    let founder = ref.founder
-    if (founder && !holdsSeat) {
+    if (ref.founder && !holdsSeat) {
       // ponytail: um lock só para todas as vagas; os webhooks do Pix são
       // poucos. Os resgates do cupom no cartão não passam por aqui.
       await tx.execute(
         sql`SELECT pg_advisory_xact_lock(hashtextextended('founder-seats', 0))`
       )
-      founder = await seatLeft(tx)
-      if (!founder) {
-        // Sem vaga: o Pix pago fica (o bar no ar, no plano pago), mas a linha
-        // não ganha a vaga. O preço de fundador continua na AbacatePay até o
-        // dono decidir (ver "Cobrança" no AGENTS.md).
+      // Pago depois de esgotar: o checkout saiu com o preço de fundador e
+      // ninguém avisou o bar de que as vagas acabaram, então o preço é
+      // honrado (dono, 15/11/2026). O dono fica sabendo pelo log.
+      if (await seatsFull(tx)) {
         logBillingError('pix_founder_seat_overflow', {
           barId: ref.barId,
           subscriptionId: sub.id,
@@ -302,7 +294,9 @@ export async function applyPixSubscription(
       currentPeriodEnd: periodEnd,
       // Débito de agora em diante: uma assinatura nova nunca nasce cancelada.
       cancelAt: isCurrent ? (existing?.cancelAt ?? null) : null,
-      monthlyDiscountReais: founder ? pixFounderDiscountReais(ref.annual) : 0,
+      monthlyDiscountReais: ref.founder
+        ? pixFounderDiscountReais(ref.annual)
+        : 0,
       billingInterval: ref.annual ? ('year' as const) : ('month' as const),
       // O Pix escolhido no teste foi autorizado: não há mais o que lembrar.
       pixAfterTrialAt: null,
