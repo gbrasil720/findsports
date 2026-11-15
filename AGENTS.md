@@ -1134,8 +1134,9 @@ invente layout que o projeto não tem.
   nula, e a busca por nome não lista quem escolheu "Ninguém" para quem não tem nada com
   ela. `byCode` e `joinByInvite` dividem 30 tentativas por hora. O link de
   convite é `/convite/<código>` no web (página `noindex` que abre `onside://convite/…`):
-  conta criada há menos de um dia já entra como amiga, se quem convidou aceita pedido
-  dessa conta ("Ninguém" recusa, "amigos de amigos" só com amigo em comum); sem conta, o app guarda o código
+  o convite manda um pedido a quem convidou, como pelo código (sem aceite direto: o
+  código é permanente e curto; aceite direto só com um convite de uso único, ainda por
+  fazer), pela regra de "Quem pode te adicionar"; sem conta, o app guarda o código
   (`savePendingInvite`) e as abas do torcedor aceitam depois (`usePendingInvite`).
   "Convidar" (comunidades) avisa "em breve". Pedido respondido e
   sugestão adicionada ficam na tela com o botão trocado até ela abrir de novo
