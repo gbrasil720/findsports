@@ -31,6 +31,7 @@ import {
   canAccessPubBilling,
   requiresPubBillingAccess
 } from './billing-access'
+import { EmailBudgetExceeded } from './email-budget'
 import {
   isAuthWrite,
   isReadOnlyImpersonation,
@@ -65,6 +66,19 @@ function cookieDomainFor(baseUrl: string): string | undefined {
  * Sem `TURNSTILE_SECRET_KEY` o plugin nem entra — o deploy pode chegar antes
  * do segredo.
  */
+/**
+ * Verificação e reset recusados pelo orçamento de e-mail (`email-budget.ts`)
+ * saem calados: o better-auth responde como sempre, sem dizer se o endereço
+ * existe, e o provedor não é chamado. A recusa já foi ao log.
+ */
+async function withinEmailBudget(send: Promise<void>): Promise<void> {
+  try {
+    await send
+  } catch (error) {
+    if (!(error instanceof EmailBudgetExceeded)) throw error
+  }
+}
+
 function turnstilePlugin() {
   if (env.TURNSTILE_SECRET_KEY) {
     return captcha({
@@ -248,15 +262,17 @@ export function createAuth() {
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: async ({ user, url }) => {
         const publicAppUrl = getPublicAppUrl()
-        await sendResetPasswordEmail({
-          apiKey: env.EMAIL_API_KEY,
-          fromEmail: env.EMAIL_FROM,
-          to: user.email,
-          name: user.name,
-          // `url` sai com o host de `BETTER_AUTH_URL`, que localmente é
-          // localhost e não abre na caixa de entrada de ninguém.
-          resetUrl: publicEmailUrl(url, publicAppUrl, env.BETTER_AUTH_URL)
-        })
+        await withinEmailBudget(
+          sendResetPasswordEmail({
+            apiKey: env.EMAIL_API_KEY,
+            fromEmail: env.EMAIL_FROM,
+            to: user.email,
+            name: user.name,
+            // `url` sai com o host de `BETTER_AUTH_URL`, que localmente é
+            // localhost e não abre na caixa de entrada de ninguém.
+            resetUrl: publicEmailUrl(url, publicAppUrl, env.BETTER_AUTH_URL)
+          })
+        )
       },
       customSyntheticUser: ({ coreFields, additionalFields, id }) => ({
         ...coreFields,
@@ -277,17 +293,19 @@ export function createAuth() {
       expiresIn: 60 * 60,
       sendVerificationEmail: async ({ user, url }) => {
         const publicAppUrl = getPublicAppUrl()
-        await sendVerificationEmail({
-          apiKey: env.EMAIL_API_KEY,
-          fromEmail: env.EMAIL_FROM,
-          to: user.email,
-          name: user.name,
-          verificationUrl: publicEmailUrl(
-            url,
-            publicAppUrl,
-            env.BETTER_AUTH_URL
-          )
-        })
+        await withinEmailBudget(
+          sendVerificationEmail({
+            apiKey: env.EMAIL_API_KEY,
+            fromEmail: env.EMAIL_FROM,
+            to: user.email,
+            name: user.name,
+            verificationUrl: publicEmailUrl(
+              url,
+              publicAppUrl,
+              env.BETTER_AUTH_URL
+            )
+          })
+        )
       }
     },
     user: {
