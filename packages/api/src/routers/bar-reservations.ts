@@ -3,6 +3,7 @@ import {
   db,
   eq,
   inArray,
+  isNotNull,
   isNull,
   type SQL,
   sql
@@ -117,7 +118,14 @@ export const barReservationsRouter = router({
    * cada grupo, quem marcou antes.
    */
   going: ownerProcedure.query(({ ctx }) =>
-    readGoingGames(ctx.barId, validationOpen)
+    readGoingGames(
+      ctx.barId,
+      issuesCounterCode(ctx.subscription)
+        ? validationOpen
+        : // Sem Elite, só quem tem código a honrar: a lista inteira é do
+          // Elite, e um código num jogo distante não a reabre.
+          and(validationOpen, isNotNull(reservation.id))!
+    )
   ),
 
   /**
