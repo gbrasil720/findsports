@@ -14,7 +14,7 @@
   /* O palco não tem tema: com o mesmo esquema do iframe, o fundo fica
      transparente também na página escura (sem isso o navegador o pinta). */
   color-scheme: normal;
-  /* O cursor chega pelo repasse do `jules.tsx`; o iframe não rouba clique. */
+  /* O cursor chega pelo repasse do `jules.tsx`; o iframe não rouba clique.
+     Sem transição de opacidade: a troca com a taça parada é num quadro só. */
   pointer-events: none;
-  transition: opacity 0.2s ease-out;
 }

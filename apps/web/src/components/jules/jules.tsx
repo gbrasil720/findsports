@@ -75,6 +75,26 @@ export function Jules({
     if (enviado.current && enviado.current !== estado) enviar(estado)
   }, [estado])
 
+  // O palco avisa depois do primeiro quadro pintado (`jules-ready`). Sem o
+  // aviso (arquivo fora do ar, bloqueio), fica a taça parada.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: enviar só lê refs
+  useEffect(() => {
+    if (!montar) return
+    let timer = 0
+    const ouvir = (e: MessageEvent) => {
+      if (e.data !== 'jules-ready') return
+      if (e.source !== frame.current?.contentWindow) return
+      if (e.origin !== location.origin) return
+      setPronto(true)
+      timer = window.setTimeout(() => enviar(atual.current), REAGE_EM_MS)
+    }
+    addEventListener('message', ouvir)
+    return () => {
+      removeEventListener('message', ouvir)
+      clearTimeout(timer)
+    }
+  }, [montar])
+
   // O cursor fora do iframe chega ao palco como se estivesse dentro dele.
   useEffect(() => {
     if (!pronto) return
@@ -114,14 +134,10 @@ export function Jules({
           src={`/jules/stage.html#${config}`}
           title="Jules"
           tabIndex={-1}
+          // Invisível até o palco pintar; depois a troca é no mesmo quadro,
+          // sem fade: com a parada escondida e o iframe a meio caminho, a
+          // tinta saía translúcida sobre o acid (o Jules "apagado").
           style={{ opacity: pronto ? 1 : 0 }}
-          onLoad={() => {
-            const win = frame.current?.contentWindow as Palco | null
-            // Sem o palco (404 do arquivo, bloqueio), fica a taça parada.
-            if (!win?.setMascot) return
-            requestAnimationFrame(() => setPronto(true))
-            setTimeout(() => enviar(atual.current), REAGE_EM_MS)
-          }}
         />
       ) : null}
     </div>
