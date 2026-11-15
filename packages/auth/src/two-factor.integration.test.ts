@@ -83,16 +83,38 @@ integrationTest(
       return (await auth.api.generateTOTP({ body: { secret } })).code
     }
 
+    async function sessionOf(cookie: string) {
+      const response = await auth.handler(
+        new Request(`${baseUrl}/api/auth/get-session`, {
+          headers: { cookie, origin: baseUrl, 'x-forwarded-for': clientIp }
+        })
+      )
+      return (await response.json()) as { user: { id: string } } | null
+    }
+
     try {
+      // Sessão aberta só com a senha antes do 2FA (aparelho perdido, senha
+      // vazada): ligar o 2FA em outro lugar tem de derrubá-la, senão ela
+      // herdava os portões de admin, que leem `user.twoFactorEnabled`.
+      const before2fa = cookiesOf(await signIn())
       const session = cookiesOf(await signIn())
       expect(
         (await post('/two-factor/enable', session, { password })).status
       ).toBe(200)
-      expect(
-        (await post('/two-factor/verify-totp', session, { code: await totp() }))
-          .status
-      ).toBe(200)
+      const enabled = await post('/two-factor/verify-totp', session, {
+        code: await totp()
+      })
+      expect(enabled.status).toBe(200)
       expect((await row()).verified).toBe(true)
+      // Só o token: o cookie cache (60 s) ainda guarda `twoFactorEnabled`
+      // falso, que os portões recusam; vencido, a leitura vai ao banco.
+      const tokenOnly = before2fa
+        .split('; ')
+        .filter((pair) => pair.startsWith('better-auth.session_token='))
+        .join('; ')
+      expect(await sessionOf(tokenOnly)).toBeNull()
+      const enabler = cookiesOf(enabled)
+      expect((await sessionOf(enabler))?.user.id).toBe(id)
 
       const pending = await signIn()
       expect(await pending.json()).toMatchObject({ twoFactorRedirect: true })
@@ -108,6 +130,8 @@ integrationTest(
         code: await totp()
       })
       expect(right.status).toBe(200)
+      // Entrar com TOTP não é ativar: os outros aparelhos ficam.
+      expect((await sessionOf(enabler))?.user.id).toBe(id)
       expect(await row()).toMatchObject({
         failedVerificationCount: 0,
         lockedUntil: null
