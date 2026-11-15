@@ -161,10 +161,15 @@ describe('título e descrição', () => {
 
 describe('JSON-LD', () => {
   const URL = 'https://www.onside.sh/bar/bar-do-ze-vila-madalena-b0b0b0b0'
-  test('o bar e um Event por jogo que não acabou', () => {
+  test('o bar e um SportsEvent por jogo que não acabou', () => {
     const data = barJsonLd(bar([ENDED, LIVE, LATER]), URL, NOW)
-    const [place, ...events] = data['@graph'] as Record<string, unknown>[]
+    const [place, crumbs, ...events] = data['@graph'] as Record<
+      string,
+      unknown
+    >[]
     expect(place?.['@type']).toBe('BarOrPub')
+    expect(crumbs?.['@type']).toBe('BreadcrumbList')
+    expect(events.every((e) => e['@type'] === 'SportsEvent')).toBe(true)
     expect(place?.aggregateRating).toBeUndefined()
     expect(events.map((e) => e.name)).toEqual([
       'Corinthians × Bahia no Bar do Zé',
@@ -172,6 +177,40 @@ describe('JSON-LD', () => {
     ])
     expect(events[1]?.startDate).toBe('2026-11-07T21:30:00-03:00')
     expect(events[1]?.endDate).toBe('2026-11-08T00:30:00-03:00')
+  })
+  test('breadcrumb: Onside, cidade, bairro e bar, o último sem item', () => {
+    const data = barJsonLd(bar([]), URL, NOW)
+    const crumbs = data['@graph'][1] as {
+      itemListElement: { position: number; name: string; item?: string }[]
+    }
+    const items = crumbs.itemListElement
+    expect(items.map((i) => i.position)).toEqual([1, 2, 3, 4])
+    expect(items[0]?.item).toBe('https://www.onside.sh/')
+    expect(items[1]?.item).toMatch(
+      /^https:\/\/www\.onside\.sh\/bares\/[a-z-]+$/
+    )
+    expect(items[2]?.item).toMatch(/\/bares\/[a-z-]+\/[a-z-]+$/)
+    expect(items[3]?.name).toBe('Bar do Zé')
+    expect(items[3]).not.toHaveProperty('item')
+  })
+  test('SportsEvent: 2 times viram mandante e visitante', () => {
+    const data = barJsonLd(bar([LIVE]), URL, NOW)
+    const event = data['@graph'][2] as Record<string, unknown>
+    expect(event.sport).toBe('Futebol')
+    expect(event.homeTeam).toEqual({ '@type': 'SportsTeam', name: 'Flamengo' })
+    expect(event.awayTeam).toEqual({ '@type': 'SportsTeam', name: 'Palmeiras' })
+    expect(event).not.toHaveProperty('competitor')
+  })
+  test('SportsEvent: 1 time vira competitor; texto livre sem times', () => {
+    const one = barJsonLd(bar([game({ teams: ['Brasil'] })]), URL, NOW)
+    const e1 = one['@graph'][2] as Record<string, unknown>
+    expect(e1.competitor).toEqual([{ '@type': 'SportsTeam', name: 'Brasil' }])
+    expect(e1).not.toHaveProperty('homeTeam')
+    const free = barJsonLd(bar([game({ teams: [], sport: null })]), URL, NOW)
+    const e2 = free['@graph'][2] as Record<string, unknown>
+    expect(e2).not.toHaveProperty('competitor')
+    expect(e2).not.toHaveProperty('sport')
+    expect(Object.values(e2).includes(undefined)).toBe(false)
   })
   test('nota só quando a página a mostra', () => {
     const data = barJsonLd(

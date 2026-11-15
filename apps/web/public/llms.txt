@@ -5,13 +5,14 @@
 - Site: https://www.onside.sh/ (em português do Brasil)
 - Funciona no navegador; o cadastro é aberto para torcedores e bares de qualquer cidade do Brasil, e os bares aparecem na busca conforme se cadastram.
 - Além de futebol, a busca inclui basquete, vôlei, automobilismo, lutas e outros eventos.
-- As páginas de bar e a busca exigem conta; o conteúdo público é a página inicial, o guia e as páginas legais abaixo.
+- Cada bar no ar tem página pública em https://www.onside.sh/bar/... (grade de jogos, endereço, horários e infraestrutura); a busca completa exige conta. Todas as páginas públicas estão no sitemap.
 - Contato: contato@onside.sh
 
 ## Páginas públicas
 
 - [Página inicial](https://www.onside.sh/): o que é a Onside, como funciona em três passos (busque o jogo, compare o ambiente, vá sabendo o que esperar) e dúvidas frequentes
 - [Dúvidas frequentes](https://www.onside.sh/#duvidas): cidades atendidas, gratuidade para torcedores, o que dá para comparar, outros esportes e uso dos dados
+- [Sitemap](https://www.onside.sh/sitemap.xml): lista de todas as páginas públicas, incluindo cada bar no ar
 - [Criar conta de torcedor](https://www.onside.sh/signup): cadastro gratuito
 - [Cadastrar um bar](https://www.onside.sh/signup?role=pub): cadastro do bar, com teste grátis dos planos
 - [Entrar](https://www.onside.sh/login): acesso à conta
