@@ -108,12 +108,15 @@ async function sendRequest(
     return 'friends' as const
   }
   if (row) return 'sent' as const
-  if (!acceptNow && other.from === 'nobody')
+  // O atalho do convite (`acceptNow`) nunca passa por cima de "Quem pode te
+  // adicionar": o código é permanente e curto, não prova que a pessoa
+  // convidou quem chega.
+  if (other.from === 'nobody')
     throw new TRPCError({
       code: 'FORBIDDEN',
       message: 'Essa pessoa não recebe pedidos de amizade.'
     })
-  if (!acceptNow && other.from === 'friends_of_friends') {
+  if (other.from === 'friends_of_friends') {
     const mutual = (await mutualCounts(me, [target])).get(target) ?? 0
     if (!mutual)
       throw new TRPCError({
