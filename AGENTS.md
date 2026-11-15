@@ -266,7 +266,17 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   meses do mensal que o bar pagaria. Mensal ou anual da assinatura vem de
   `stripe_subscription.billing_interval`, que o plugin grava
   (`getMySubscription().billingInterval`); `billedPlan` dá o preço e o "/ano" ao card
-  do plano, ao placar e ao recibo.
+  do plano, ao placar e ao recibo. **Troca de plano no cartão fica no intervalo da
+  assinatura**: o hook do `/subscription/upgrade` recusa `annual` diferente do
+  `stripe_subscription.billing_interval` da assinatura viva
+  (`changesBillingInterval`, `BILLING_INTERVAL_MISMATCH`), e a `/plan` manda o do
+  assinante. Sem isso a anual virava mensal com o cupom de R$ 280 em cada fatura.
+  Mudar entre mensal e anual no cartão não tem caminho no app.
+- **Rotas do plugin que o app recusa** (`billing-access.ts`): `/subscription/cancel`
+  e `/subscription/restore` (404; o cancelamento é pelo portal,
+  `createSubscriptionCancelUrl`) e `metadata` no corpo do `/subscription/upgrade`
+  (o plugin a mescla na assinatura, e o webhook lê dali `founderCoupon` e
+  `pixUpgradeCents`). `/subscription/success` fica: é a volta do checkout.
 - **Teste grátis nasce no cadastro, sem cartão**: 90 dias para todo bar novo,
   contados de quando ele vai ao ar no `completePub` (`ONBOARDING_TRIAL`, em
   `packages/api/src/lib/plan-limits.ts`), no plano que a rotina do cadastro recomenda
@@ -325,7 +335,13 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   vale no Pix, o preço de fundador é o produto). `subscription.provider = 'abacatepay'`.
   O webhook (`/api/abacatepay/webhook`, segredo + HMAC) relê a assinatura na AbacatePay
   (`applyPixSubscription`, `pix-sync.ts`), como no Stripe. As 100 vagas de fundador
-  somam cartão e Pix (`readFounderCoupon`). A AbacatePay só cancela na hora: o painel
+  somam cartão e Pix (`readFounderCoupon`). Checkout aberto não reserva vaga: o Pix
+  de fundador é conferido de novo no pagamento, sob `pg_advisory_xact_lock`, quando
+  o bar ainda não tem a vaga. Sem vaga, o Pix pago fica (bar no ar, no plano), a
+  linha grava desconto 0 e o log leva `pix_founder_seat_overflow`: **a AbacatePay
+  segue cobrando o preço de fundador** até o dono decidir (honrar, ou pedir uma
+  autorização nova na tabela); a cada renovação a vaga é conferida de novo e o log
+  se repete. Stripe sem responder nessa conta lança, e a AbacatePay reenvia. A AbacatePay só cancela na hora: o painel
   grava `cancel_at` no fim do mês pago e `reconcileBarPlans` encerra depois. Trocar de
   plano no Pix é uma autorização nova (a anterior é cancelada). **No teste do
   cadastro o Pix espera o fim dele** (dono, 11/11/2026): a AbacatePay não agenda
@@ -366,11 +382,14 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   `pub.startCardFromPix`; o `/subscription/upgrade` recusa Pix ativo,
   `blocksCardOverPix`): `trial_end` = fim do ciclo pago, e na **subida** a diferença
   (`pixUpgradeCents`, a mesma conta na tela: proporcional de mensal novo − mensal do
-  Pix, preços pagos de fato, anual = 10/12) vai como item avulso, que o Stripe cobra
+  Pix, preços pagos de fato, anual = 10/12, pelo resto do ciclo pago: um mês, ou
+  12 no Pix anual) vai como item avulso, que o Stripe cobra
   na tela do checkout (dono, 14/11/2026: a troca só vale com a diferença paga).
   Cartão recusado não cria assinatura; voltando sem concluir, `/plan?troca=cartao`
   diz que nada mudou e pede outro cartão. Com a diferença na sessão, o cupom de
-  fundador vai na metadata e o webhook o aplica (`applyUpgradeCoupon`). No webhook,
+  fundador vai na metadata e o webhook o aplica (`applyUpgradeCoupon`), só com
+  `pixUpgradeCents` e só o cupom de fundador do intervalo da assinatura
+  (`upgradeCouponFor`); outro vai ao log (`pix_upgrade_coupon_untrusted`). No webhook,
   a ordem é: primeira fatura paga (`upgradePaid`; sem ela a assinatura do cartão é
   cancelada e o bar segue no Pix), cupom, Pix cancelado na AbacatePay, linha do
   Stripe; falha na AbacatePay lança e o Stripe reenvia, com o bar no Pix. A
