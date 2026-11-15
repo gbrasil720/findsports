@@ -82,3 +82,28 @@ export function buildTrustedOrigins({
   if (!origins.includes(development.origin)) origins.push(development.origin)
   return origins
 }
+
+/**
+ * Para onde o link de redefinição de senha leva o token: só um caminho do
+ * próprio site ou uma origem http(s) confiável. Nunca o esquema do app
+ * (`onside://`), que outro app instalado pode registrar e receber o token; o
+ * app manda `/reset-password` e a senha nova é escolhida no site. Vazio é o
+ * padrão do better-auth (a página de erro dele).
+ */
+export function isSafeResetRedirect(
+  target: unknown,
+  trustedOrigins: string[]
+): boolean {
+  if (target === undefined || target === null || target === '') return true
+  if (typeof target !== 'string') return false
+  if (target.startsWith('/'))
+    return !target.startsWith('//') && !target.includes('\\')
+  let url: URL
+  try {
+    url = new URL(target)
+  } catch {
+    return false
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return false
+  return trustedOrigins.includes(url.origin)
+}
