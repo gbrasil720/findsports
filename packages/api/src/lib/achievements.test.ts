@@ -66,6 +66,21 @@ describe('computeAchievements', () => {
     expect(byId(list, 'ava1')?.where).toBe('R1')
     expect(byId(list, 'ava10')?.progress).toBe(3)
   })
+
+  it('a secreta do Jules vem do registro, não das visitas (WEB-558)', () => {
+    const visits = [1, 2, 3].map((n) => visit(n, `b${n}`))
+    expect(byId(computeAchievements(visits, []), 'jules')?.unlockedAt).toBe(
+      null
+    )
+    const achou = byId(
+      computeAchievements(visits, [], [{ id: 'jules', at: day(7) }]),
+      'jules'
+    )
+    expect(achou?.unlockedAt).toEqual(day(7))
+    expect(achou?.progress).toBe(1)
+    expect(achou?.where).toBe('No app')
+    expect(levelFor(1).level).toBe(2)
+  })
 })
 
 describe('levelFor', () => {

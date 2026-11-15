@@ -36,6 +36,7 @@ import { Route as AdminQuemVaiRouteImport } from './routes/admin.quem-vai'
 import { Route as AdminValidateRouteImport } from './routes/admin.validate'
 import { Route as BarSlugRouteImport } from './routes/bar.$slug'
 import { Route as ConviteCodeRouteImport } from './routes/convite.$code'
+import { Route as ErroCodigoRouteImport } from './routes/erro.$codigo'
 import { Route as GuiaIndexRouteImport } from './routes/guia.index'
 import { Route as GuiaSlugRouteImport } from './routes/guia.$slug'
 import { Route as HoudiniAppRouteImport } from './routes/houdini/_app'
@@ -208,6 +209,11 @@ const BarSlugRoute = BarSlugRouteImport.update({
 const ConviteCodeRoute = ConviteCodeRouteImport.update({
   id: '/convite/$code',
   path: '/convite/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ErroCodigoRoute = ErroCodigoRouteImport.update({
+  id: '/erro/$codigo',
+  path: '/erro/$codigo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GuiaIndexRoute = GuiaIndexRouteImport.update({
@@ -435,6 +441,7 @@ export interface FileRoutesByFullPath {
   '/admin/validate': typeof AdminValidateRoute
   '/bar/$slug': typeof BarSlugRoute
   '/convite/$code': typeof ConviteCodeRoute
+  '/erro/$codigo': typeof ErroCodigoRoute
   '/guia/$slug': typeof GuiaSlugRoute
   '/houdini/entrar': typeof HoudiniEntrarRoute
   '/plan/confirmed': typeof PlanConfirmedRoute
@@ -500,6 +507,7 @@ export interface FileRoutesByTo {
   '/admin/validate': typeof AdminValidateRoute
   '/bar/$slug': typeof BarSlugRoute
   '/convite/$code': typeof ConviteCodeRoute
+  '/erro/$codigo': typeof ErroCodigoRoute
   '/guia/$slug': typeof GuiaSlugRoute
   '/houdini/entrar': typeof HoudiniEntrarRoute
   '/plan/confirmed': typeof PlanConfirmedRoute
@@ -566,6 +574,7 @@ export interface FileRoutesById {
   '/admin/validate': typeof AdminValidateRoute
   '/bar/$slug': typeof BarSlugRoute
   '/convite/$code': typeof ConviteCodeRoute
+  '/erro/$codigo': typeof ErroCodigoRoute
   '/guia/$slug': typeof GuiaSlugRoute
   '/houdini/_app': typeof HoudiniAppRouteWithChildren
   '/houdini/entrar': typeof HoudiniEntrarRoute
@@ -635,6 +644,7 @@ export interface FileRouteTypes {
     | '/admin/validate'
     | '/bar/$slug'
     | '/convite/$code'
+    | '/erro/$codigo'
     | '/guia/$slug'
     | '/houdini/entrar'
     | '/plan/confirmed'
@@ -700,6 +710,7 @@ export interface FileRouteTypes {
     | '/admin/validate'
     | '/bar/$slug'
     | '/convite/$code'
+    | '/erro/$codigo'
     | '/guia/$slug'
     | '/houdini/entrar'
     | '/plan/confirmed'
@@ -765,6 +776,7 @@ export interface FileRouteTypes {
     | '/admin/validate'
     | '/bar/$slug'
     | '/convite/$code'
+    | '/erro/$codigo'
     | '/guia/$slug'
     | '/houdini/_app'
     | '/houdini/entrar'
@@ -825,6 +837,7 @@ export interface RootRouteChildren {
   dashboardDashboardRoute: typeof dashboardDashboardRoute
   BarSlugRoute: typeof BarSlugRoute
   ConviteCodeRoute: typeof ConviteCodeRoute
+  ErroCodigoRoute: typeof ErroCodigoRoute
   GuiaSlugRoute: typeof GuiaSlugRoute
   PlanConfirmedRoute: typeof PlanConfirmedRoute
   GuiaIndexRoute: typeof GuiaIndexRoute
@@ -1038,6 +1051,13 @@ declare module '@tanstack/react-router' {
       path: '/convite/$code'
       fullPath: '/convite/$code'
       preLoaderRoute: typeof ConviteCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/erro/$codigo': {
+      id: '/erro/$codigo'
+      path: '/erro/$codigo'
+      fullPath: '/erro/$codigo'
+      preLoaderRoute: typeof ErroCodigoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/guia/': {
@@ -1405,6 +1425,7 @@ const rootRouteChildren: RootRouteChildren = {
   dashboardDashboardRoute: dashboardDashboardRoute,
   BarSlugRoute: BarSlugRoute,
   ConviteCodeRoute: ConviteCodeRoute,
+  ErroCodigoRoute: ErroCodigoRoute,
   GuiaSlugRoute: GuiaSlugRoute,
   PlanConfirmedRoute: PlanConfirmedRoute,
   GuiaIndexRoute: GuiaIndexRoute,

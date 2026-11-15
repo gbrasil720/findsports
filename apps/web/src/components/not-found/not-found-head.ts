@@ -1,5 +1,5 @@
 const NOT_FOUND_DESCRIPTION =
-  'Essa página saiu de campo. O link pode estar quebrado ou a página não existe mais.'
+  'Bola fora. Essa página não está em campo: pode ter mudado de endereço ou nunca ter existido.'
 
 /**
  * Meta da página de não encontrado. Vale para a rota curinga (`$.tsx`) e para

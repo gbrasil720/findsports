@@ -372,7 +372,7 @@ export default function FanTabs() {
           name="ia"
           role="search"
           disabled
-          accessibilityLabel="Busca com IA"
+          accessibilityLabel="Jules, a IA da Onside"
           // A busca com IA (2h) é uma folha por cima da aba atual.
           listeners={{
             tabPress: () =>
@@ -382,10 +382,7 @@ export default function FanTabs() {
               })
           }}
         >
-          <NativeTabs.Trigger.Icon
-            src={icons.sparkle}
-            renderingMode="original"
-          />
+          <NativeTabs.Trigger.Icon src={icons.jules} renderingMode="original" />
           <NativeTabs.Trigger.Label>IA</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
       </NativeTabs>

@@ -14,7 +14,13 @@ import { useSession } from '@/hooks/use-session'
 import { useSignOut } from '@/hooks/use-sign-out'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
-import { type Acao, destinoContaNova, lerAcao, semAcao } from './acao'
+import {
+  type Acao,
+  CONQUISTA_JULES,
+  destinoContaNova,
+  lerAcao,
+  semAcao
+} from './acao'
 import {
   avisarNaProxima,
   avisosPendentes,
@@ -84,6 +90,7 @@ function useAcoes(avisar: (texto: string) => void) {
   const salvar = useMutation(trpc.pubs.favorite.mutationOptions())
   const lembrar = useMutation(trpc.recommendations.remind.mutationOptions())
   const avisarApp = useMutation(trpc.appWaitlist.join.mutationOptions())
+  const acharJules = useMutation(trpc.achievements.findJules.mutationOptions())
 
   return useCallback(
     async (acao: Acao, nova = false) => {
@@ -110,6 +117,13 @@ function useAcoes(avisar: (texto: string) => void) {
             trpc.appWaitlist.status.queryFilter()
           )
           avisar(`Combinado. Avisamos ${email} no dia em que o app sair.`)
+          // Pelo easter egg do Explorar: a conquista secreta vai junto.
+          if (acao.jules) {
+            const { isNew } = await acharJules
+              .mutateAsync({ via: 'web' })
+              .catch(() => ({ isNew: false }))
+            if (isNew) avisar(CONQUISTA_JULES)
+          }
           return
         }
         if (acao.tipo === 'vou') {
@@ -157,7 +171,17 @@ function useAcoes(avisar: (texto: string) => void) {
         )
       }
     },
-    [avisar, marcar, salvar, lembrar, avisarApp, navigate, queryClient, trpc]
+    [
+      avisar,
+      marcar,
+      salvar,
+      lembrar,
+      avisarApp,
+      acharJules,
+      navigate,
+      queryClient,
+      trpc
+    ]
   )
 }
 

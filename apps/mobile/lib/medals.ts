@@ -4,7 +4,8 @@
  * visualizador (`scripts/medals/`), e o app mostra as miniaturas prontas.
  */
 
-export type MedalShape = 'round' | 'hex' | 'oct' | 'shield' | 'star'
+/** `jules`: a secreta, recortada na silhueta dele (WEB-558). */
+export type MedalShape = 'round' | 'hex' | 'oct' | 'shield' | 'star' | 'jules'
 export type MedalMetal = 'gold' | 'silver' | 'bronze'
 
 export type MedalLook = {
@@ -99,6 +100,16 @@ export const MEDAL_LOOKS = {
     num: '10',
     unit: 'RESENHAS',
     top: 'CRÍTICO'
+  },
+  // A secreta (WEB-558, variação B2): ouro com esmalte acid quase até a
+  // borda, os olhos felizes dele e "ACHOU O JULES" no pé; a argola é a gota.
+  jules: {
+    shape: 'jules',
+    metal: 'gold',
+    enamel: '#c9f135',
+    num: '',
+    unit: '',
+    top: 'ACHOU O JULES'
   }
 } satisfies Record<string, MedalLook>
 

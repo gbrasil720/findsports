@@ -1,10 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
 import { Platform, Pressable, StyleSheet, View } from 'react-native'
 import MapView, { Marker } from 'react-native-maps'
+import { useReducedMotion } from 'react-native-reanimated'
 import Svg, { Circle, Defs, Line, RadialGradient, Stop } from 'react-native-svg'
+import { Mascot, MascotStill } from '@/components/ai/mascot'
+import { useAiPalette } from '@/components/ai/theme'
 import { Card } from '@/components/card'
 import { dropBox, HardShadow, MapDrop, MeDot } from '@/components/explore'
 import { Medal3D, MedalImage } from '@/components/medal'
+import { ScalePress } from '@/components/motion'
 import { usePalette } from '@/components/theme'
 import {
   ACID,
@@ -285,78 +289,107 @@ export function MyGamesEmpty({ week }: { week: WeekGame[] }) {
   )
 }
 
-/** Busca sem resultado (`eSearch`): o zero, o telão, o copo e o pino. */
+/**
+ * Busca sem resultado (`eSearch`). Com a IA disponível (`onAi`, WEB-544), o
+ * Jules na cena "não achei" no lugar do zero e dos ladrilhos, e o convite em
+ * acid como ação principal, que leva o texto digitado. Sem IA (desligada,
+ * fora do ar ou no limite do dia), o vazio de antes: o zero, o telão, o copo
+ * e o pino, sem convite.
+ */
 export function SearchEmpty({
   query,
   onAi
 }: {
   query: string
-  onAi: () => void
+  onAi?: () => void
 }) {
   const palette = usePalette()
   return (
     <View style={{ gap: 16 }}>
-      <View style={styles.zeroArt}>
-        <Text
-          maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
-          style={[styles.zero, { color: dashColor(palette.dark, 0.06) }]}
-        >
-          0
-        </Text>
-        <View style={styles.tiles}>
-          {(['tv', 'beer', 'pin'] as const).map((icon, index) => (
-            <View
-              key={icon}
-              style={{ transform: [{ rotate: `${[-6, 3, -2][index]}deg` }] }}
-            >
-              <HardShadow
-                color={index === 1 ? palette.liveShadow : palette.drop}
-                offset={4}
-                radius={7}
-              />
-              <View style={[styles.tile, { backgroundColor: palette.card }]}>
-                <Icon
-                  name={icon}
-                  size={30}
-                  color={palette.ink}
-                  accent={index === 1 ? LIVE_INK : palette.dark ? ACID : LIVE}
+      {onAi ? (
+        <JulesEmpty />
+      ) : (
+        <View style={styles.zeroArt}>
+          <Text
+            maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
+            style={[styles.zero, { color: dashColor(palette.dark, 0.06) }]}
+          >
+            0
+          </Text>
+          <View style={styles.tiles}>
+            {(['tv', 'beer', 'pin'] as const).map((icon, index) => (
+              <View
+                key={icon}
+                style={{ transform: [{ rotate: `${[-6, 3, -2][index]}deg` }] }}
+              >
+                <HardShadow
+                  color={index === 1 ? palette.liveShadow : palette.drop}
+                  offset={4}
+                  radius={7}
                 />
+                <View style={[styles.tile, { backgroundColor: palette.card }]}>
+                  <Icon
+                    name={icon}
+                    size={30}
+                    color={palette.ink}
+                    accent={index === 1 ? LIVE_INK : palette.dark ? ACID : LIVE}
+                  />
+                </View>
               </View>
-            </View>
-          ))}
+            ))}
+          </View>
         </View>
-      </View>
+      )}
       <Copy
         plain="Nada para "
         accent={`“${query}”`}
-        body="Nenhum bar perto com esse nome, bairro ou time. Tente outro pedido:"
+        body={
+          onAi
+            ? 'A busca comum só acha nome, bairro e time. O Jules entende o pedido inteiro.'
+            : 'Nenhum bar perto com esse nome, bairro ou time.'
+        }
         size={30}
       />
-      <Pressable accessibilityRole="button" onPress={onAi}>
-        <Card shadow={palette.dark ? 'rgba(201,241,53,.28)' : undefined}>
-          <View style={styles.ai}>
-            <Icon
-              name="sparkle"
-              size={30}
-              color={palette.ink}
-              accent={palette.dark ? ACID : LIVE}
-            />
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={[text(14.5, 'Bold', 1.25), { color: palette.ink }]}>
-                Pergunte à busca com IA
-              </Text>
-              <Text
-                style={[text(12.5, 'Regular', 1.3), { color: palette.muted }]}
-              >
-                Ela entende o pedido inteiro e procura também nas avaliações.
-              </Text>
+      {onAi ? (
+        <ScalePress accessibilityRole="button" to={0.985} onPress={onAi}>
+          <Card fill={ACID} shadow="#7f9a12">
+            <View style={styles.ai}>
+              <View style={styles.aiFace}>
+                <MascotStill size={34} />
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={[text(16, 'Bold', 1.25), { color: INK }]}>
+                  Pergunta pro Jules
+                </Text>
+                <Text style={[text(13, 'Regular', 1.3), { color: '#3d470e' }]}>
+                  Ele já leva o que você digitou.
+                </Text>
+              </View>
+              <Icon name="next" size={12} color={INK} />
             </View>
-            <Icon name="next" size={12} color={palette.muted} />
-          </View>
-        </Card>
-      </Pressable>
+          </Card>
+        </ScalePress>
+      ) : null}
     </View>
   )
+}
+
+/**
+ * O Jules na cena "não achei" (um só por tela). Com "reduzir movimento", a
+ * taça parada num ladrilho escuro, como no cabeçalho da busca com IA.
+ */
+function JulesEmpty() {
+  const reduced = useReducedMotion()
+  const palette = useAiPalette()
+  if (reduced)
+    return (
+      <View style={styles.zeroArt}>
+        <View style={styles.julesTile}>
+          <MascotStill size={84} />
+        </View>
+      </View>
+    )
+  return <Mascot state="empty" palette={palette} style={styles.julesStage} />
 }
 
 /**
@@ -811,6 +844,23 @@ const styles = StyleSheet.create({
     width: 62,
     height: 62,
     borderRadius: 7,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  julesStage: { height: 170, marginHorizontal: -20 },
+  julesTile: {
+    width: 120,
+    height: 120,
+    borderRadius: 28,
+    backgroundColor: INK,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  aiFace: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: INK,
     alignItems: 'center',
     justifyContent: 'center'
   },

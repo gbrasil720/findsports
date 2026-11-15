@@ -10,9 +10,10 @@ import {
   computeAchievements,
   LEVELS,
   type Review,
+  type Secret,
   type Visit
 } from './achievements'
-import { readReviewsOf, readVisitsOf } from './achievements-read'
+import { readReviewsOf, readSecretsOf, readVisitsOf } from './achievements-read'
 import { canSeeActivity, friendIdsOf } from './friends'
 import { gameTitle } from './game-participants'
 import { utcIso } from './utc-timestamp'
@@ -45,7 +46,8 @@ export function feedOf(
   people: Person[],
   visits: (Visit & { userId: string })[],
   reviews: (Review & { userId: string })[],
-  now: Date
+  now: Date,
+  secrets: (Secret & { userId: string })[] = []
 ): FeedItem[] {
   const since = now.getTime() - FEED_DAYS * 86_400_000
   const items: FeedItem[] = []
@@ -61,7 +63,8 @@ export function feedOf(
         })
     const unlocked = computeAchievements(
       theirs,
-      reviews.filter((r) => r.userId === person.id)
+      reviews.filter((r) => r.userId === person.id),
+      secrets.filter((x) => x.userId === person.id)
     )
       .filter((a) => a.unlockedAt)
       .sort(
@@ -114,11 +117,12 @@ export async function readFriendsFeed(me: string, now = new Date()) {
   const people = await visibleFriends(me)
   if (!people.length) return []
   const ids = people.map((p) => p.id)
-  const [visits, reviews] = await Promise.all([
+  const [visits, reviews, secrets] = await Promise.all([
     readVisitsOf(ids),
-    readReviewsOf(ids)
+    readReviewsOf(ids),
+    readSecretsOf(ids)
   ])
-  return feedOf(people, visits, reviews, now)
+  return feedOf(people, visits, reviews, now, secrets)
 }
 
 /**

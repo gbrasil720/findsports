@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
 import { useState } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
+import { MascotStill } from '@/components/ai/mascot'
+import { useAiReady } from '@/components/ai/ready'
 import { dayLabel, Photo } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
 import { cardNumber, FanCard } from '@/components/fan-card'
@@ -31,6 +33,7 @@ const SINCE = new Date()
 export default function Pronto() {
   const router = useRouter()
   const palette = usePalette()
+  const aiReady = useAiReady()
   const user = authClient.useSession().data?.user
   // O que acabou de ser enviado vale antes do servidor: o cache das
   // preferências podia vir da abertura do app, ainda vazio.
@@ -266,11 +269,69 @@ export default function Pronto() {
           ) : null}
         </>
       ) : null}
+      {/* O convite ao Jules (WEB-548), só com a IA disponível. Ele se
+          apresenta e não assina a lista de cima, que não é feita pela IA. Os
+          dois botões de baixo continuam o caminho principal. */}
+      {aiReady ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => {
+            finish()
+            router.push('/busca-ia')
+          }}
+          style={[
+            styles.jules,
+            palette.dark && {
+              backgroundColor: palette.card,
+              borderColor: 'rgba(241,238,230,.14)'
+            }
+          ]}
+        >
+          <View
+            style={[
+              styles.julesFace,
+              palette.dark && { backgroundColor: '#12120f' }
+            ]}
+          >
+            <MascotStill size={46} />
+          </View>
+          <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+            <Text style={[styles.kicker, { color: '#c9f135' }]}>
+              JULES · A IA DA ONSIDE
+            </Text>
+            <Text style={[text(16, 'Bold', 1.25), { color: '#f1eee6' }]}>
+              Quer um bar do seu jeito? É só pedir.
+            </Text>
+            <Text style={[text(13, 'Regular', 1.35), { color: '#aaa9a4' }]}>
+              “Fla com telão e chopp barato perto de mim”
+            </Text>
+          </View>
+          <Icon name="next" size={12} color="#aaa9a4" />
+        </Pressable>
+      ) : null}
     </ObPage>
   )
 }
 
 const styles = StyleSheet.create({
+  jules: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    padding: 16,
+    borderRadius: 22,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'transparent',
+    backgroundColor: '#12120f'
+  },
+  julesFace: {
+    width: 60,
+    height: 60,
+    borderRadius: 18,
+    backgroundColor: '#1c1c18',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
   kicker: {
     fontFamily: 'GeistMono-SemiBold',
     fontSize: 11,

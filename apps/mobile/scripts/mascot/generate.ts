@@ -5,11 +5,14 @@
  * - `assets/mascot/stage.html`: o palco num arquivo só, com o
  *   `open-bot-avatar` embutido, que a WebView abre sem rede;
  * - `components/ai/mascot-still.ts`: a taça parada em SVG, para os tamanhos
- *   pequenos (o ladrilho do cabeçalho), onde uma WebView pesaria.
+ *   pequenos (o ladrilho do cabeçalho), onde uma WebView pesaria;
+ * - `apps/web/src/components/jules/taca-still.ts`: a mesma taça para o
+ *   cartão "Me avise" do web (`AppChegando`), decorativa (sem título nem
+ *   `role`, com `aria-hidden`).
  *
  *   bun apps/mobile/scripts/mascot/generate.ts
  */
-import { writeFile } from 'node:fs/promises'
+import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { renderAvatarSvg, validateAvatar } from 'open-bot-avatar'
 import SHAPES from './shapes.json'
@@ -75,10 +78,14 @@ html.reduce .orbit,html.reduce .live,html.reduce .sig u,html.reduce .pin{transit
 @keyframes dz{0%{transform:translate(340%,0) scale(1.1)}25%{transform:translate(0,110%) scale(1.3)}50%{transform:translate(-340%,0) scale(1.1)}75%{transform:translate(0,-110%) scale(.7)}100%{transform:translate(340%,0) scale(1.1)}}
 `
 
-const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><style>${css}</style></head><body>
+const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="robots" content="noindex"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><style>${css}</style></head><body>
 <div id="stage"><div class="glow" id="glow"></div><div class="orbit" id="orbit"></div><div id="shadow"></div><div id="fx"></div><div id="wrap"><div id="bot"></div><div class="live" id="live"><i></i>AO VIVO</div><div class="stamp" id="stamp">VOU</div></div></div>
 <script>${script.replaceAll('</script', '<\\/script')}</script></body></html>`
 await writeFile(join(app, 'assets/mascot/stage.html'), html)
+// O mesmo palco no web (WEB-554, WEB-555), num iframe do mesmo domínio,
+// carregado só depois da página.
+await mkdir(join(app, '../web/public/jules'), { recursive: true })
+await writeFile(join(app, '../web/public/jules/stage.html'), html)
 
 // O ladrilho do cabeçalho é sempre escuro: taça acid, olhos tinta.
 const still = renderAvatarSvg(SHAPES.taca as never, {
@@ -89,13 +96,40 @@ await writeFile(
   join(app, 'components/ai/mascot-still.ts'),
   `// Gerado por scripts/mascot/generate.ts: não edite à mão.\nexport const TACA_SVG = ${JSON.stringify(still)}\n`
 )
+const webStill = join(app, '../web/src/components/jules/taca-still.ts')
+const decorative = still
+  .replace(' role="img" aria-label="Taça"', ' aria-hidden="true"')
+  .replace('<title>Taça</title>', '')
+// Em tinta com olhos acid, para os painéis acid do web (erros, easter egg).
+// Os ids do SVG ganham outro prefixo: as duas taças podem dividir a página.
+const ink = renderAvatarSvg(SHAPES.taca as never, {
+  color: '#12120f',
+  eyeColor: '#c9f135'
+})
+  .replace(' role="img" aria-label="Taça"', ' aria-hidden="true"')
+  .replace('<title>Taça</title>', '')
+  .replace(/oba-[a-z0-9]+-/g, 'oba-tinta-')
+const header =
+  '// Gerado por apps/mobile/scripts/mascot/generate.ts (a taça parada do app,\n// `apps/mobile/components/ai/mascot-still.ts`): não edite à mão.\n'
+await writeFile(
+  webStill,
+  `${header}export const TACA_SVG = ${JSON.stringify(decorative)}\n`
+)
+// Um arquivo por cor: quem só usa uma não carrega as duas (~25 KB cada).
+const webInk = join(app, '../web/src/components/jules/taca-tinta.ts')
+await writeFile(
+  webInk,
+  `${header}\n/** A taça em tinta, com olhos acid, para fundo acid. */\nexport const TACA_TINTA_SVG = ${JSON.stringify(ink)}\n`
+)
 // No formato do Biome, para o arquivo gerado não mudar a cada `bun run check`.
 Bun.spawnSync([
   'bunx',
   'biome',
   'format',
   '--write',
-  join(app, 'components/ai/mascot-still.ts')
+  join(app, 'components/ai/mascot-still.ts'),
+  webStill,
+  webInk
 ])
 console.log(
   `stage.html ${Math.round(html.length / 1024)} KB, mascot-still.ts ${Math.round(still.length / 1024)} KB`

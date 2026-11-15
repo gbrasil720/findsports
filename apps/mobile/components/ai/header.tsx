@@ -45,8 +45,11 @@ export function AiHeader({
         <MascotStill size={36} />
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={[text(17, 'Bold', 1.3), { color: palette.ink }]}>
-          Busca com IA
+        <Text
+          numberOfLines={1}
+          style={[text(17, 'Bold', 1.3), { color: palette.ink }]}
+        >
+          Jules, a IA da Onside
         </Text>
         <View style={styles.status}>
           <StatusDot busy={busy} quiet={quiet} dark={palette.dark} />
@@ -157,14 +160,11 @@ export function AiTopBar({
         />
       ) : null}
       <View style={styles.barTitle}>
-        <Icon
-          name="sparkle"
-          size={26}
-          color={palette.ink}
-          accent={palette.accent}
-        />
+        <View style={styles.barFace}>
+          <MascotStill size={22} />
+        </View>
         <Text style={[text(17, 'Bold', 1.3), { color: palette.ink }]}>
-          Busca com IA
+          Jules
         </Text>
       </View>
       {onNew ? (
@@ -241,6 +241,15 @@ export function Round({
 
 const styles = StyleSheet.create({
   bar: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  // A taça é acid: no claro, precisa do ladrilho de tinta para aparecer.
+  barFace: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    backgroundColor: INK,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
   barTitle: {
     flex: 1,
     minWidth: 0,

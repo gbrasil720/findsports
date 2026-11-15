@@ -1,4 +1,5 @@
 import { db, eq, inArray, sql } from '@findsports_oficial/db'
+import { secretAchievement } from '@findsports_oficial/db/schema/achievement'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { bar, event, sport } from '@findsports_oficial/db/schema/platform'
 import { barRating } from '@findsports_oficial/db/schema/rating'
@@ -7,6 +8,7 @@ import {
   type AchievementId,
   computeAchievements,
   levelFor,
+  type Secret,
   type Visit,
   weekStreak
 } from './achievements'
@@ -60,6 +62,42 @@ export async function readReviewsOf(userIds: string[]) {
     .where(inArray(barRating.actorUserId, userIds))
 }
 
+/** As conquistas secretas achadas (WEB-558), de várias pessoas. */
+export async function readSecretsOf(
+  userIds: string[]
+): Promise<(Secret & { userId: string })[]> {
+  if (!userIds.length) return []
+  const rows = await db
+    .select({
+      userId: secretAchievement.userId,
+      id: secretAchievement.achievementId,
+      at: secretAchievement.foundAt,
+      via: secretAchievement.via
+    })
+    .from(secretAchievement)
+    .where(inArray(secretAchievement.userId, userIds))
+  return rows
+}
+
+/**
+ * Grava a conquista secreta uma vez só (WEB-558). Devolve se é nova: achar de
+ * novo não muda a data nem abre a tela de conquista outra vez.
+ */
+export async function findSecret(
+  userId: string,
+  id: Secret['id'],
+  via: 'app' | 'web'
+) {
+  const inserted = await db
+    .insert(secretAchievement)
+    .values({ userId, achievementId: id, via })
+    .onConflictDoNothing()
+    .returning({ at: secretAchievement.foundAt })
+  // A fatia de quem tem (2j) muda com a primeira de cada um.
+  if (inserted.length) shareCache.clear()
+  return { isNew: inserted.length > 0 }
+}
+
 /**
  * "Têm essa N% dos torcedores" (2j): para cada medalha, a fatia das contas de
  * torcedor que já chegou ao alvo. É agregado de todo mundo, igual para
@@ -99,7 +137,7 @@ async function readShares() {
     .from(barRating)
     .groupBy(barRating.actorUserId)
     .as('reviews')
-  const [fans, rows] = await Promise.all([
+  const [fans, rows, secrets] = await Promise.all([
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(user)
@@ -112,12 +150,22 @@ async function readShares() {
         resenhas: sql<number>`coalesce(${reviews.resenhas}, 0)`
       })
       .from(visits)
-      .fullJoin(reviews, eq(reviews.userId, visits.userId))
+      .fullJoin(reviews, eq(reviews.userId, visits.userId)),
+    db
+      .select({
+        id: secretAchievement.achievementId,
+        count: sql<number>`count(*)::int`
+      })
+      .from(secretAchievement)
+      .groupBy(secretAchievement.achievementId)
   ])
   const total = fans[0]?.count ?? 0
   return Object.fromEntries(
     ACHIEVEMENTS.map((a) => {
-      const have = rows.filter((r) => r[a.group] >= a.target).length
+      const have =
+        a.group === 'segredos'
+          ? (secrets.find((r) => r.id === a.id)?.count ?? 0)
+          : rows.filter((r) => r[a.group] >= a.target).length
       return [a.id, sharePercent(have, total)]
     })
   ) as Record<AchievementId, number>
@@ -134,15 +182,21 @@ export async function readAchievements(
   userId: string,
   visits: Promise<Visit[]> = readVisits(userId)
 ) {
-  const [visitRows, reviews, shares] = await Promise.all([
+  const [visitRows, reviews, secrets, shares] = await Promise.all([
     visits,
     readReviewsOf([userId]),
+    readSecretsOf([userId]),
     shareCache.get('all', readShares)
   ])
-  const achievements = computeAchievements(visitRows, reviews).map((a) => ({
-    ...a,
-    share: shares[a.id]
-  }))
+  const achievements = computeAchievements(visitRows, reviews, secrets).map(
+    (a) => ({
+      ...a,
+      // A secreta bloqueada não diz o que é (WEB-558).
+      name:
+        a.group === 'segredos' && !a.unlockedAt ? 'Conquista secreta' : a.name,
+      share: shares[a.id]
+    })
+  )
   return {
     level: levelFor(achievements.filter((a) => a.unlockedAt).length),
     /** Semanas seguidas com visita (rodada 6, o placar do nível). */

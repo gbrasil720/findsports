@@ -687,6 +687,13 @@
       "when": 1794683721875,
       "tag": "0098_bar_name_search_trgm",
       "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1794756265208,
+      "tag": "0099_secret_achievement",
+      "breakpoints": true
     }
   ]
 }

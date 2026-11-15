@@ -108,7 +108,9 @@ export const APP_CONFIG_DEFINITIONS = {
   'ai.enabled': definir({
     schema: z.boolean(),
     padrao: false,
-    publico: false,
+    // Pública (WEB-544, WEB-548): o app só convida para o Jules com a IA
+    // ligada, inclusive para o visitante, que não pode ler `ai.status`.
+    publico: true,
     descricao:
       'Liga a busca com IA do app e o recomendador. Desligada, o app avisa ' +
       'que a IA está indisponível e a busca normal continua. O teto de US$ 40 ' +

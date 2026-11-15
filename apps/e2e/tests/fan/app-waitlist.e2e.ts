@@ -3,7 +3,8 @@ import { query } from '../../fixtures/db'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
 
-// "Me avise quando o app chegar" no perfil do torcedor (WEB-501): grava o
+// "Me avise quando o app chegar" no perfil do torcedor (WEB-501; texto e taça
+// do Jules do WEB-545): grava o
 // e-mail da conta, sobrevive ao recarregar, "Não quero mais"
 // marca a saída, e a falha de rede deixa "Tentar de novo".
 
@@ -20,7 +21,13 @@ test('entra na lista, recarrega e sai', async ({ page }) => {
 
   await page.goto('/dashboard/profile')
   const card = page.locator('.appc')
-  await expect(card).toContainText('O app da Onside está chegando')
+  await expect(card).toContainText('No app, o Jules acha o bar do seu jogo')
+  await expect(card).toContainText(
+    'Você pede do seu jeito e a IA da Onside responde com os bares que vão passar. Quer saber no dia em que o app sair?'
+  )
+  // A taça do Jules é decorativa: fica fora da árvore de acessibilidade.
+  await expect(card.locator('.ph2')).toHaveAttribute('aria-hidden', 'true')
+  await expect(card.locator('.ph2 svg')).toBeVisible()
   await card.getByRole('button', { name: 'Me avise' }).click()
 
   await expect(card).toContainText('Combinado: avisamos quando o app chegar')

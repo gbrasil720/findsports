@@ -20,6 +20,9 @@ mock.module('@tanstack/react-router', () => ({
   ),
   useRouter: () => ({ invalidate: async () => {} })
 }))
+mock.module('@/hooks/use-sign-out', () => ({
+  useSignOut: () => async () => {}
+}))
 
 test('a tela de erro das rotas é em português, tem saída e não expõe o erro', async () => {
   const { RouteErrorPage } = await import('./route-error-page')
@@ -29,9 +32,21 @@ test('a tela de erro das rotas é em português, tem saída e não expõe o erro
     <Tela error={new Error('database credentials leaked')} />
   )
 
+  expect(markup).toContain('Caiu o sinal.')
   expect(markup).toContain('Tentar de novo')
-  expect(markup).toContain('Voltar para a página inicial')
+  expect(markup).toContain('Voltar ao início')
   expect(markup).toContain('href="/"')
   expect(markup).not.toContain('database credentials leaked')
   expect(markup).not.toContain('Something went wrong')
+})
+
+test('cada falha vira a página do erro certo (WEB-554)', async () => {
+  const { tipoDoErro } = await import('./route-error-page')
+  const trpc = (httpStatus: number) => ({ data: { httpStatus } })
+  expect(tipoDoErro(trpc(403))).toBe('403')
+  expect(tipoDoErro(trpc(429))).toBe('429')
+  expect(tipoDoErro(trpc(503))).toBe('503')
+  expect(tipoDoErro(trpc(500))).toBe('500')
+  expect(tipoDoErro(new Error('boom'))).toBe('500')
+  expect(tipoDoErro(new Error('boom'), false)).toBe('off')
 })

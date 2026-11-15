@@ -172,6 +172,8 @@ describe('leitura da configuração (ESC-19)', () => {
 
     // As públicas saem, com valor gravado ou com padrão.
     expect(publico['rating.public_display']).toBe(true)
+    // O app decide se convida para o Jules (WEB-544) sem sessão.
+    expect(publico['ai.enabled']).toBe(false)
 
     // As internas não saem — nem as que têm valor gravado.
     expect(Object.hasOwn(publico, 'search.tiered_plan_query')).toBe(false)

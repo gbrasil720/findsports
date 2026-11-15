@@ -67,11 +67,27 @@ const glow = $('glow')
 const live = $('live')
 const stamp = $('stamp')
 
-let cfg: MascotConfig = window.MASCOT ?? {
-  state: 'idle',
-  dark: true,
-  reduced: false
+/**
+ * No web (`apps/web/public/jules/stage.html`, num iframe) a configuração vem
+ * no fragmento da URL: `#{"state":"empty","dark":false}`.
+ */
+function hashConfig(): MascotConfig | undefined {
+  try {
+    const raw = decodeURIComponent(location.hash.slice(1))
+    return raw
+      ? { state: 'idle', dark: true, reduced: false, ...JSON.parse(raw) }
+      : undefined
+  } catch {
+    return undefined
+  }
 }
+
+let cfg: MascotConfig = window.MASCOT ??
+  hashConfig() ?? {
+    state: 'idle',
+    dark: true,
+    reduced: false
+  }
 let reduce = cfg.reduced
 document.documentElement.classList.toggle('reduce', reduce)
 const theme = () =>
@@ -1288,6 +1304,8 @@ const STATES: Record<MascotState, Run> = {
       }
     ).finished
     if (!alive(t)) return
+    // O app vibra no carimbo, não no toque (WEB-546).
+    window.ReactNativeWebView?.postMessage('stamp')
     burst(23, 14, 10, [LIVE], { spread: 50, size: [4, 8] })
     wince(t)
     await to({ sx: 1.1, sy: 0.88, r: 2 }, 60, out3, t)
@@ -1560,6 +1578,12 @@ window.setMascot = (c) => {
 requestAnimationFrame(() => {
   apply()
   window.ReactNativeWebView?.postMessage('ready')
+  // No web (iframe do mesmo domínio): avisa a página depois do primeiro quadro
+  // pintado, para ela trocar a taça parada pelo palco sem instante translúcido.
+  if (window.parent !== window)
+    requestAnimationFrame(() =>
+      window.parent.postMessage('jules-ready', location.origin)
+    )
   // As formas de antes, uma por vez no tempo livre: na hora da troca, calcular
   // o campo de distância perdia quadros bem no impulso.
   const queue = Object.values(DEF)

@@ -12,6 +12,7 @@ import {
 import { useMinuteNow } from '@/components/app/minute-tick'
 import { type MapBar, OnsideMap } from '@/components/app/onside-map'
 import { brasiliaTime } from '@/components/painel/noite'
+import { AchouJules, buscouJules } from '@/components/torcedor/achou-jules'
 import {
   CartaoBar,
   CartaoSemJogo
@@ -477,6 +478,8 @@ function ExplorarConteudo({ busca }: { busca: string }) {
       <b>Procurando jogos</b>
       <p>Os bares perto de você que vão passar.</p>
     </div>
+  ) : !jogo && buscouJules(busca) ? (
+    <AchouJules />
   ) : !jogo ? (
     <div className="empty">
       <b>Nenhum jogo perto</b>

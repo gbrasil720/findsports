@@ -35,7 +35,7 @@ import {
 import { Conversations } from '@/components/ai/conversations'
 import { AiHeader, AiTopBar, RoundButton } from '@/components/ai/header'
 import { AiIcon } from '@/components/ai/icons'
-import { Mascot } from '@/components/ai/mascot'
+import { Mascot, MascotStill } from '@/components/ai/mascot'
 import { UserMessage } from '@/components/ai/message'
 import { PromptInput } from '@/components/ai/prompt-input'
 import { Reasoning } from '@/components/ai/reasoning'
@@ -229,12 +229,18 @@ export default function AiSearch() {
   useStatusBar(sheet || layout.kind === 'cover' ? 'light' : 'auto')
   // Navegador DEV: `?dubla=1` usa o dublê; `estado` já manda a pergunta de
   // cada tela (24b pensando, 24c resposta, 24d confirmar, 24e feito).
-  const params = useLocalSearchParams<{ dubla?: Dubla; estado?: DevState }>()
+  // `pergunta`: o vazio da busca (WEB-544) abre já com o que a pessoa digitou,
+  // numa conversa nova, e manda na hora.
+  const params = useLocalSearchParams<{
+    dubla?: Dubla
+    estado?: DevState
+    pergunta?: string
+  }>()
   const dubla = __DEV__ && params.dubla ? params.dubla : null
   const devState = __DEV__ ? params.estado : undefined
 
   const [conversation, setConversation] = useState(() =>
-    devState ? { id: newId(), turns: [] } : saved
+    devState || params.pergunta ? { id: newId(), turns: [] } : saved
   )
   const turns = conversation.turns
   const setTurns = (update: (list: Turn[]) => Turn[]) =>
@@ -423,6 +429,16 @@ export default function AiSearch() {
       return next
     })
   }, [lastState, conversation.id, restored, turns])
+
+  // Veio da busca sem resultado: manda o texto dela uma vez.
+  const askedFrom = useRef(false)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: só na montagem
+  useEffect(() => {
+    const question = params.pergunta?.trim()
+    if (!question || askedFrom.current) return
+    askedFrom.current = true
+    send(question)
+  }, [])
 
   // Navegador DEV: manda a pergunta da tela pedida.
   const devSent = useRef(false)
@@ -657,7 +673,7 @@ export default function AiSearch() {
   const placeholder = blocked
     ? `O chat volta ${resumeLabel(blocked.resumesAt, now)}`
     : off && !last
-      ? 'A busca com IA está fora do ar'
+      ? 'O Jules está fora do ar'
       : busy
         ? 'Responda ou espere eu terminar…'
         : pending
@@ -739,7 +755,7 @@ export default function AiSearch() {
                 now={now}
                 notice={
                   off
-                    ? 'A busca com IA está fora do ar agora. A busca normal continua funcionando.'
+                    ? 'O Jules está fora do ar agora. A busca normal continua funcionando.'
                     : blocked
                       ? `Você usou as perguntas ${blocked.scope === 'day' ? 'de hoje' : 'deste mês'}. O chat volta ${resumeLabel(blocked.resumesAt, now)}; a busca normal continua.`
                       : null
@@ -950,8 +966,8 @@ export default function AiSearch() {
         ]}
       >
         <View style={styles.coverHead}>
-          <Icon name="sparkle" size={16} color={PAPER} accent={ACID} />
-          <Text style={[styles.coverKicker, { flex: 1 }]}>BUSCA COM IA</Text>
+          <MascotStill size={18} />
+          <Text style={[styles.coverKicker, { flex: 1 }]}>JULES</Text>
           <Text style={styles.coverClock}>{clock(now)}</Text>
         </View>
         {last ? (

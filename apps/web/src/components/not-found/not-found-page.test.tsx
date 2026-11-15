@@ -24,12 +24,19 @@ mock.module('@tanstack/react-router', () => ({
   )
 }))
 
-test('o heading do 404 mantém espaço entre as linhas no texto acessível', () => {
+test('a 404 é a página do Jules: título, saídas e taça decorativa (WEB-554)', () => {
   const markup = renderToStaticMarkup(<NotFoundPage />)
-  const h1 = new JSDOM(markup).window.document.querySelector('h1')
+  const doc = new JSDOM(markup).window.document
 
-  // A quebra visual (`<br />`) não podia juntar as linhas sem espaço, senão
-  // o leitor de tela anuncia "Essa páginasaiu de campo" (WEB-93).
-  expect(h1?.textContent).toBe('Essa página saiu de campo')
-  expect(h1?.textContent).not.toBe('Essa páginasaiu de campo')
+  expect(doc.querySelector('h1')?.textContent).toBe('Bola fora.')
+  const links = [...doc.querySelectorAll('a')].map((a) => [
+    a.textContent,
+    a.getAttribute('href')
+  ])
+  expect(links).toContainEqual(['Ver jogos de hoje', '/dashboard'])
+  expect(links).toContainEqual(['Voltar ao início', '/'])
+  // O Jules não é lido: o texto ao lado diz tudo.
+  expect(doc.querySelector('.erro-jules')?.getAttribute('aria-hidden')).toBe(
+    'true'
+  )
 })

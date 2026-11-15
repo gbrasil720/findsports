@@ -1425,7 +1425,10 @@ invente layout que o projeto não tem.
   (só em desenvolvimento): `?dubla=1` troca o servidor por `lib/ai-dubla.ts`, e `estado=
   pensando|resposta|confirmar|feito` já manda a pergunta de cada tela (navegador DEV, seção
   "24"); `dubla=pior|limite|fora` para o pior caso, o limite e a IA fora do ar.
-- **A taça, mascote da busca com IA:** `components/ai/mascot.tsx`. O palco
+- **O Jules, mascote da busca com IA** (nome do dono, 12/11/2026, WEB-542): uma taça
+  com olhos, masculino ("o Jules"). Na primeira aparição de uma tela, com o papel:
+  "Jules, a IA da Onside". Nome de arquivo e de código continua `mascot`/`taca`.
+  `components/ai/mascot.tsx`. O palco
   (`scripts/mascot/stage.ts`, gerado em `assets/mascot/stage.html` por
   `bun apps/mobile/scripts/mascot/generate.ts`) roda numa WebView, como a medalha:
   o `open-bot-avatar` (MIT) dá o volume, o olhar e o piscar, e por cima vão a troca
@@ -1437,6 +1440,28 @@ invente layout que o projeto não tem.
   cena. Fica grande no início da busca e presa acima do campo durante a conversa;
   o ladrilho do cabeçalho é a taça parada em SVG (`mascot-still.ts`, gerado). Desenho
   aprovado no artifact "Taça da IA Onside". No navegador DEV, "Taça (estados)".
+  **Onde mais o Jules aparece (projeto Jules no Linear):** a aba da IA é a taça
+  parada (`assets/images/tabs/jules-*`, WEB-543); a busca sem resultado o chama
+  com o texto digitado (`/busca-ia?pergunta=`, WEB-544); o passeio o apresenta
+  (WEB-547); o fim do onboarding convida para ele (WEB-548); confirmar "Vou
+  assistir" comemora com ele virando ingresso, e a vibração sai no carimbo
+  (mensagem `stamp` do palco, WEB-546). O convite só aparece com a IA disponível
+  (`useAiReady`, `components/ai/ready.ts`: `ai.enabled`, que é pública, e
+  `ai.status` para o torcedor). **No web** o Jules é `components/jules/jules.tsx`:
+  a taça parada em SVG (`taca-still.ts` e `taca-tinta.ts`, gerados com o palco)
+  e, depois do `load`, o mesmo palco num iframe (`public/jules/stage.html`,
+  configurado pelo fragmento da URL), com o cursor da página repassado aos
+  olhos; com "reduzir movimento", só a taça. Usam: as páginas de erro (WEB-554:
+  `components/erro/pagina-erro.tsx`, 404, 403, 500 com código de referência,
+  503, 429 e sem rede, na 404 e no `defaultErrorComponent`; vitrine em
+  `/erro/<código>` só no `vite dev` e no E2E), o cartão do app (WEB-545) e o
+  easter egg do Explorar (buscar "jules", WEB-555). O telão de LED da landing
+  o desenha em pontos (`landing/v3/jules-led.ts`, carregado depois da página,
+  WEB-556). **Achou o Jules** (WEB-558) é a conquista secreta, a única gravada
+  (`secret_achievement`, `achievements.findJules`): tocar no Jules no app ou
+  buscar "jules" no web; o visitante a ganha pelo "Me avise" do easter egg
+  (`?acao=app.jules`). Bloqueada, chama "Conquista secreta" e não diz como se
+  ganha.
 - **Passeio guiado (rodada 5, 3b), no lugar do primeiro acesso só da IA (4o):**
   `components/tour.tsx`, montado em `app/(fan)/_layout.tsx` e aberto por `?passeio=1` no
   Explorar: no fim do onboarding ("Ver como funciona · 30 s", em `onboarding/pronto`), em

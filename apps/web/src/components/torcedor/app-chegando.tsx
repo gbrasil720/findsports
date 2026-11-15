@@ -1,16 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { TACA_SVG } from '@/components/jules/taca-still'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import { Ic } from './icones'
 import { useTorcedor } from './shell'
 
 /*
- * "O app da Onside está chegando" (`.appc` do protótipo): "Me avise" põe o
+ * "No app, o Jules acha o bar do seu jogo" (`.appc`, versão A da prancha 3 do
+ * estudo do Jules: a taça parada, sem animação): "Me avise" põe o
  * e-mail da conta na lista (`appWaitlist`); sem sessão passa pela folha de
  * entrar e conclui ao voltar (`agir`). Na lista, diz para qual e-mail vai e
  * deixa sair ("Não quero mais"). Nenhum e-mail sai agora: o aviso é no dia.
+ * O web não conversa com o Jules: o cartão só aponta para o app.
  */
-export function AppChegando() {
+/**
+ * A lista de espera do app (`appWaitlist`), dividida entre o cartão de Meus
+ * jogos e do perfil e o easter egg do Jules no Explorar (WEB-555).
+ */
+export function useListaDoApp({ jules = false } = {}) {
   const trpc = useTRPC()
   const queryClient = useQueryClient()
   const { logado, agir } = useTorcedor()
@@ -34,38 +41,48 @@ export function AppChegando() {
 
   const tocar = () => {
     if (!logado) {
-      agir({ tipo: 'app', acao: { tipo: 'app' } })
+      // Pelo easter egg, a conquista secreta vai junto na volta (WEB-558).
+      agir({
+        tipo: 'app',
+        acao: jules ? { tipo: 'app', jules } : { tipo: 'app' }
+      })
       return
     }
     acao.reset()
     acao.mutate()
   }
 
+  return {
+    naLista,
+    email: status.data?.email,
+    erro,
+    pendente: acao.isPending,
+    carregando: logado && status.isPending,
+    tocar
+  }
+}
+
+export function AppChegando() {
+  const { naLista, email, erro, pendente, carregando, tocar } = useListaDoApp()
+
   return (
     <div className={`appc${naLista ? ' ok' : ''}`}>
-      <span className="ph2">
-        <svg width="26" height="26" viewBox="0 0 30 30" aria-hidden="true">
-          <circle
-            cx="14"
-            cy="14"
-            r="10.5"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="4.2"
-          />
-          <circle cx="22.4" cy="22.6" r="4.6" fill="#e8320c" />
-        </svg>
-      </span>
+      <span
+        className="ph2"
+        aria-hidden="true"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: SVG estático gerado, sem dado de usuário
+        dangerouslySetInnerHTML={{ __html: TACA_SVG }}
+      />
       <span aria-live="polite">
         <b>
           {naLista
             ? 'Combinado: avisamos quando o app chegar'
-            : 'O app da Onside está chegando'}
+            : 'No app, o Jules acha o bar do seu jogo'}
         </b>
         <span>
           {naLista
-            ? `Um e-mail só, para ${status.data?.email}, no dia em que sair nas lojas. Sua conta é a mesma.`
-            : 'Tudo o que você faz aqui continua lá, com a mesma conta. Quer saber no dia?'}
+            ? `Um e-mail só, para ${email}, no dia em que sair nas lojas. Sua conta é a mesma.`
+            : 'Você pede do seu jeito e a IA da Onside responde com os bares que vão passar. Quer saber no dia em que o app sair?'}
         </span>
         {erro ? (
           <span className="tk-aviso" role="alert">
@@ -76,11 +93,11 @@ export function AppChegando() {
       <button
         className={`btn sm ${naLista ? 'b-ghost' : 'b-ink'}`}
         type="button"
-        disabled={acao.isPending || (logado && status.isPending)}
+        disabled={pendente || carregando}
         onClick={tocar}
       >
         {naLista ? null : <Ic n="bell" s={18} />}
-        {acao.isPending
+        {pendente
           ? naLista
             ? 'Saindo…'
             : 'Combinando…'
