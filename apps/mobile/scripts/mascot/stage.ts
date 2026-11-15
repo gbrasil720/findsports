@@ -67,11 +67,27 @@ const glow = $('glow')
 const live = $('live')
 const stamp = $('stamp')
 
-let cfg: MascotConfig = window.MASCOT ?? {
-  state: 'idle',
-  dark: true,
-  reduced: false
+/**
+ * No web (`apps/web/public/jules/stage.html`, num iframe) a configuração vem
+ * no fragmento da URL: `#{"state":"empty","dark":false}`.
+ */
+function hashConfig(): MascotConfig | undefined {
+  try {
+    const raw = decodeURIComponent(location.hash.slice(1))
+    return raw
+      ? { state: 'idle', dark: true, reduced: false, ...JSON.parse(raw) }
+      : undefined
+  } catch {
+    return undefined
+  }
 }
+
+let cfg: MascotConfig = window.MASCOT ??
+  hashConfig() ?? {
+    state: 'idle',
+    dark: true,
+    reduced: false
+  }
 let reduce = cfg.reduced
 document.documentElement.classList.toggle('reduce', reduce)
 const theme = () =>
