@@ -13,7 +13,11 @@ import { useTorcedor } from './shell'
  * deixa sair ("Não quero mais"). Nenhum e-mail sai agora: o aviso é no dia.
  * O web não conversa com o Jules: o cartão só aponta para o app.
  */
-export function AppChegando() {
+/**
+ * A lista de espera do app (`appWaitlist`), dividida entre o cartão de Meus
+ * jogos e do perfil e o easter egg do Jules no Explorar (WEB-555).
+ */
+export function useListaDoApp() {
   const trpc = useTRPC()
   const queryClient = useQueryClient()
   const { logado, agir } = useTorcedor()
@@ -44,6 +48,20 @@ export function AppChegando() {
     acao.mutate()
   }
 
+  return {
+    naLista,
+    email: status.data?.email,
+    erro,
+    pendente: acao.isPending,
+    carregando: logado && status.isPending,
+    tocar
+  }
+}
+
+export function AppChegando() {
+  const { naLista, email, erro, pendente, carregando, tocar } =
+    useListaDoApp()
+
   return (
     <div className={`appc${naLista ? ' ok' : ''}`}>
       <span
@@ -60,7 +78,7 @@ export function AppChegando() {
         </b>
         <span>
           {naLista
-            ? `Um e-mail só, para ${status.data?.email}, no dia em que sair nas lojas. Sua conta é a mesma.`
+            ? `Um e-mail só, para ${email}, no dia em que sair nas lojas. Sua conta é a mesma.`
             : 'Você pede do seu jeito e a IA da Onside responde com os bares que vão passar. Quer saber no dia em que o app sair?'}
         </span>
         {erro ? (
@@ -72,11 +90,11 @@ export function AppChegando() {
       <button
         className={`btn sm ${naLista ? 'b-ghost' : 'b-ink'}`}
         type="button"
-        disabled={acao.isPending || (logado && status.isPending)}
+        disabled={pendente || carregando}
         onClick={tocar}
       >
         {naLista ? null : <Ic n="bell" s={18} />}
-        {acao.isPending
+        {pendente
           ? naLista
             ? 'Saindo…'
             : 'Combinando…'
