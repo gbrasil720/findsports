@@ -1128,9 +1128,14 @@ invente layout que o projeto não tem.
   pelo `expo-camera`), `amigo/[id]` (11d: nível, o mês lado a lado, o jogo marcado com
   "Vou também", bares em comum, tudo pela privacidade da pessoa), `contatos` (a conta não
   tem telefone: o app manda o SHA-256 dos e-mails da agenda, pelo `expo-contacts/legacy`,
-  e só aparece quem aceita pedido de todos). Sugestões só de amigos de amigos. O link de
+  e só aparece quem aceita pedido de todos; teto de 4000 hashes por dia por conta).
+  Sugestões só de amigos de amigos. A cidade de outra pessoa só sai na lista de amigos
+  aceitos (`overview`); busca, código, pedidos, sugestões, perfil e contatos a devolvem
+  nula, e a busca por nome não lista quem escolheu "Ninguém" para quem não tem nada com
+  ela. `byCode` e `joinByInvite` dividem 30 tentativas por hora. O link de
   convite é `/convite/<código>` no web (página `noindex` que abre `onside://convite/…`):
-  conta criada há menos de um dia já entra como amiga; sem conta, o app guarda o código
+  conta criada há menos de um dia já entra como amiga, se quem convidou aceita pedido
+  dessa conta ("Ninguém" recusa, "amigos de amigos" só com amigo em comum); sem conta, o app guarda o código
   (`savePendingInvite`) e as abas do torcedor aceitam depois (`usePendingInvite`).
   "Convidar" (comunidades) avisa "em breve". Pedido respondido e
   sugestão adicionada ficam na tela com o botão trocado até ela abrir de novo
