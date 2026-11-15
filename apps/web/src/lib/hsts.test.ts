@@ -28,7 +28,16 @@ describe('HSTS no Worker', () => {
       })
     )
     expect(comCsp.headers.get('Content-Security-Policy')).toBe(
-      "default-src 'self'"
+      "default-src 'self'; frame-ancestors 'self'"
+    )
+
+    const comTrava = withHsts(
+      new Response('ok', {
+        headers: { 'Content-Security-Policy': "frame-ancestors 'none'" }
+      })
+    )
+    expect(comTrava.headers.get('Content-Security-Policy')).toBe(
+      "frame-ancestors 'none'"
     )
   })
 

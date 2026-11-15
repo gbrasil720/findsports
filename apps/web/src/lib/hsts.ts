@@ -16,8 +16,14 @@ export const FRAME_ANCESTORS = "frame-ancestors 'self'"
 export function withHsts(response: Response): Response {
   const copy = new Response(response.body, response)
   copy.headers.set('Strict-Transport-Security', HSTS)
-  if (!copy.headers.has('Content-Security-Policy'))
-    copy.headers.set('Content-Security-Policy', FRAME_ANCESTORS)
+  const csp = copy.headers.get('Content-Security-Policy')
+  // CSP que já venha sem `frame-ancestors` ganha a diretiva, não a perde.
+  if (!csp) copy.headers.set('Content-Security-Policy', FRAME_ANCESTORS)
+  else if (!/(^|;)\s*frame-ancestors\b/i.test(csp))
+    copy.headers.set(
+      'Content-Security-Policy',
+      `${csp.replace(/;\s*$/, '')}; ${FRAME_ANCESTORS}`
+    )
   copy.headers.set('X-Frame-Options', 'SAMEORIGIN')
   return copy
 }
