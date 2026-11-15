@@ -167,14 +167,19 @@ export function amenityGroups(ids: readonly number[]) {
 }
 
 /** O que a casa tem, em poucas palavras, para descrição e cartão. */
-function highlights(bar: PageBar): string {
-  const parts = [
+function highlightParts(bar: PageBar): string[] {
+  return [
     screensLabel(bar)?.toLowerCase(),
     bar.amenities.includes(2) ? 'som do jogo' : null,
     bar.amenities.includes(4) ? 'área externa' : null
-  ].filter(Boolean)
-  return parts.join(', ')
+  ].filter((part): part is string => Boolean(part))
 }
+
+function highlights(bar: PageBar): string {
+  return highlightParts(bar).join(', ')
+}
+
+const TITLE_MAX = 60
 
 const DESCRIPTION_MAX = 158
 
@@ -186,7 +191,20 @@ export function barPageTitle(bar: PageBar, now: Date): string {
   const [first] = todayGames(bar.events, now)
   if (first)
     return `Onde assistir ${first.title} hoje: ${bar.name}, ${bar.neighborhood} — Onside`
-  return `${bar.name}, ${bar.neighborhood}: jogos no telão — Onside`
+  const head = `${bar.name}, ${bar.neighborhood}`
+  const generic = `${head}: jogos no telão — Onside`
+  // Sem jogo, o que distingue o bar é o que ele tem de verdade: acrescenta
+  // os diferenciais enquanto o título couber nos 60 caracteres.
+  let best = generic
+  let picked = ''
+  for (const part of highlightParts(bar)) {
+    const next = picked ? `${picked}, ${part}` : part
+    const title = `${head}: ${next} — Onside`
+    if (title.length > TITLE_MAX) break
+    picked = next
+    best = title
+  }
+  return best
 }
 
 /** Descrição para o Google, com a grade de hoje ou a próxima. */
