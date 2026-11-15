@@ -1488,7 +1488,7 @@ invente layout que o projeto não tem.
 ### Falha de rede (WEB-460)
 
 Uma regra só para o painel e o app, em `packages/api/src/lib/transient-error.ts`: falha
-passageira (sem rede, timeout, 5xx, 429, página de gateway que não é JSON) tenta de novo
+passageira (sem rede, timeout, 5xx, página de gateway que não é JSON; 429 não, que repetir gasta a cota) tenta de novo
 com espera crescente (1 s, 2 s, 4 s); recusa da regra não repete. Mutation só repete
 sozinha se estiver em `IDEMPOTENT_MUTATIONS` (mandar duas vezes dá no mesmo; o porquê das
 que ficaram de fora está no comentário): mutation nova entra lá só depois de conferir no

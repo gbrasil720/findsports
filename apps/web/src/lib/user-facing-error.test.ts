@@ -195,8 +195,8 @@ describe('isRetryableError: falhas passageiras sem JSON', () => {
     expect(isRetryableError(error)).toBe(true)
   })
 
-  test('429 é passageiro; 404 não', () => {
-    expect(isRetryableError({ status: 429 })).toBe(true)
+  test('429 e 404 não repetem', () => {
+    expect(isRetryableError({ status: 429 })).toBe(false)
     expect(isRetryableError({ status: 404 })).toBe(false)
   })
 })

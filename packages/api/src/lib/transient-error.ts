@@ -3,9 +3,10 @@
  * (web) e no app, que importam daqui. Puro: nada de servidor entra no bundle.
  *
  * - Passageira: sem rede, timeout, 5xx (Worker, Hyperdrive, Stripe ou
- *   geocoding fora do ar) e 429. A segunda tentativa pode dar certo.
+ *   geocoding fora do ar). A segunda tentativa pode dar certo.
  * - Definitiva: recusa da regra (`FORBIDDEN`, `PRECONDITION_FAILED`,
- *   validação, 404). Repetir só repete a recusa.
+ *   validação, 404) e 429. Repetir só repete a recusa, e no 429 ainda gasta
+ *   a cota (`incrementWindow` conta a tentativa recusada).
  */
 
 type ErrorRecord = Record<string, unknown>
@@ -18,7 +19,6 @@ const TRANSIENT_CODES = new Set([
   'SERVICE_UNAVAILABLE',
   'TIMEOUT',
   'TIMEOUT_ERROR',
-  'TOO_MANY_REQUESTS',
   'FETCH_ERROR',
   'ECONNRESET',
   'ECONNREFUSED',
@@ -78,7 +78,7 @@ export function getErrorStatus(error: unknown): number | undefined {
 export function isTransientError(error: unknown): boolean {
   const status = getErrorStatus(error)
   if (status !== undefined)
-    return status === 0 || status === 408 || status === 429 || status >= 500
+    return status === 0 || status === 408 || status >= 500
   const code = getErrorCode(error)
   if (code && TRANSIENT_CODES.has(code)) return true
   // Sem status, sem código: a requisição nem chegou ("Failed to fetch" no
