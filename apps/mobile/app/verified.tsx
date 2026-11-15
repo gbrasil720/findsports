@@ -36,14 +36,15 @@ import {
 import { formatTime } from '@/lib/explore'
 import { latestURL } from '@/lib/latest-url'
 import { type Acao, finishPending } from '@/lib/pending-action'
-import { rawParam } from '@/lib/raw-param'
 import { queryClient, trpc } from '@/lib/trpc'
-import { takeVerifyNonce } from '@/lib/verify-link'
+import { verifiedGate } from '@/lib/verified-gate'
+import { clearVerifier, readStoredVerifier } from '@/lib/verify-link'
 
 /*
  * Destino do link de confirmação de e-mail (rodada 8, tela 5). O servidor
- * confirma, entra e redireciona para cá com a sessão em `?cookie=…`; sem ela
- * (link vencido ou já usado), o login pede outro link.
+ * confirma e redireciona para cá com um código de uso único (`?code=`), que o
+ * app troca pela sessão com o verificador guardado ao pedir o e-mail
+ * (`lib/verify-link.ts`). Sem código ou verificador, o login pede a senha.
  *
  * "Tudo certo, Lucas": curta e escura. O check entra (.9 → 1 e opacidade,
  * 240 ms EASE, com o háptico de sucesso) e, 80 ms depois, o cartão da
@@ -110,23 +111,25 @@ export default function Verified() {
     let timer: ReturnType<typeof setTimeout> | undefined
     latestURL()
       .then(async (url) => {
-        const cookie = url ? rawParam(url, 'cookie') : undefined
-        const nonce = url ? rawParam(url, 'v') : undefined
-        // Só a sessão de um e-mail que este aparelho pediu (nonce no `v`, ver
-        // `lib/verify-link.ts`); e quem já está numa conta decide se troca.
-        if (
-          !cookie ||
-          !(await takeVerifyNonce(nonce)) ||
-          !(await confirmSwitch())
-        ) {
+        const gate = verifiedGate(url, await readStoredVerifier())
+        const exit = (notice: 'confirmed' | 'expired') => {
           if (hasStoredSession()) router.replace('/')
-          else
-            router.replace({
-              pathname: '/sign-in',
-              params: { notice: 'expired' }
-            })
-          return
+          else router.replace({ pathname: '/sign-in', params: { notice } })
         }
+        if (gate.kind === 'leave') return exit(gate.notice)
+        // Quem já está numa conta decide se troca.
+        if (!(await confirmSwitch())) return exit('confirmed')
+        const redeemed = await authClient.$fetch<{ cookie: string }>(
+          '/app-session/redeem',
+          {
+            method: 'POST',
+            body: { code: gate.code, verifier: gate.verifier }
+          }
+        )
+        await clearVerifier()
+        const cookie = redeemed.data?.cookie
+        // Código vencido ou já usado: o e-mail está confirmado, falta entrar.
+        if (!cookie) return exit('confirmed')
         await adoptSessionCookie(cookie)
         // Busca a sessão antes de sair daqui, para a tela inicial já a ver.
         const session = await authClient.getSession()
