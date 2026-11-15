@@ -727,7 +727,7 @@ function founderPix(bar: { barId: string }, paidUntil: Date) {
 }
 
 integrationTest(
-  'vaga de fundador conferida no pagamento: dois Pix pagos ao mesmo tempo, uma vaga só',
+  'vaga de fundador conferida no pagamento: dois Pix com uma vaga, os dois honrados e um no log',
   async () => {
     const {
       applyPixSubscription,
@@ -749,9 +749,12 @@ integrationTest(
         applyPixSubscription(pa.id, pa.externalId, 'subscription.completed'),
         applyPixSubscription(pb.id, pb.externalId, 'subscription.completed')
       ])
-      const discounts = [await discountOf(a.barId), await discountOf(b.barId)]
-      expect(discounts.sort()).toEqual([0, 28])
-      // Quem ficou sem vaga segue no ar, no plano pago, e vai ao log.
+      // O checkout saiu com o preço de fundador e ninguém avisou que as
+      // vagas acabaram: os dois ficam com ele (dono, 15/11/2026), e o que
+      // passou da conta vai ao log para o dono.
+      expect([await discountOf(a.barId), await discountOf(b.barId)]).toEqual([
+        28, 28
+      ])
       const overflow = error.mock.calls
         .map((c) => JSON.parse(String(c[0])))
         .filter((e) => e.event === 'pix_founder_seat_overflow')
@@ -771,15 +774,10 @@ integrationTest(
 )
 
 integrationTest(
-  'vaga de fundador: quem já a tem no Pix renova sem conferir; Stripe sem responder lança',
+  'vaga de fundador: quem já a tem no Pix renova sem conferir; Stripe sem responder não trava o aviso',
   async () => {
-    const {
-      applyPixSubscription,
-      createPixBar,
-      discountOf,
-      founderSeatLeft,
-      stripeClient
-    } = ready()
+    const { applyPixSubscription, createPixBar, discountOf, stripeClient } =
+      ready()
     const paidUntil = new Date(Date.now() + 30 * DAY)
     const founder = await createPixBar({ founder: true, paidUntil })
     const seats = couponWithSeats(stripeClient, 0)
@@ -797,19 +795,23 @@ integrationTest(
 
     const other = await createPixBar({ paidUntil })
     const down = couponWithSeats(stripeClient, 'down')
+    const error = spyOn(console, 'error').mockImplementation(() => {})
     try {
       const pix = founderPix(other, paidUntil)
-      await expect(
-        // O ambiente de teste não tem STRIPE_SECRET_KEY: aqui é o Stripe
-        // de produção fora do ar.
-        applyPixSubscription(pix.id, pix.externalId, 'subscription.completed', {
-          seatLeft: (tx) => founderSeatLeft(tx, { hasStripeKey: true })
-        })
-      ).rejects.toThrow('Vagas de fundador sem conferir')
-      // Nada gravado: o reenvio da AbacatePay tenta de novo.
-      expect(await discountOf(other.barId)).toBe(0)
+      await applyPixSubscription(
+        pix.id,
+        pix.externalId,
+        'subscription.completed'
+      )
+      expect(await discountOf(other.barId)).toBe(28)
+      expect(
+        error.mock.calls.some((c) =>
+          String(c[0]).includes('pix_founder_seat_unverified')
+        )
+      ).toBe(true)
     } finally {
       down.mockRestore()
+      error.mockRestore()
     }
   }
 )
