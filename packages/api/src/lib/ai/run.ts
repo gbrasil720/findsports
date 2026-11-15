@@ -136,6 +136,11 @@ export async function readUserUsage(
   exec: Pick<typeof db, 'execute'> = db
 ): Promise<UserUsage> {
   const w = brasiliaWindows(now)
+  // `Date` cru no `sql` aqui está certo, ao contrário da regra do relógio:
+  // `ai_run.created_at` é `timestamptz`, e o pg escreve o `Date` com o offset
+  // do processo (`dateToString`, "…T00:00:00.000-03:00"), que o Postgres lê
+  // como o mesmo instante em qualquer fuso. A regra vale para `timestamp` sem
+  // fuso (`starts_at`, `ends_at`, `current_period_end`).
   const result = await exec.execute<{
     calls_today: number
     chat_today: number
