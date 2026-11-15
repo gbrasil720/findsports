@@ -10,6 +10,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import { pinDoPlano } from '@/components/app/map-icons'
+import { GUIA_FOOTER_LINKS } from '@/components/landing/onside-landing-content'
 import { Logo } from '@/components/landing/v3/icons'
 import { ThemeSwitch } from '@/components/landing/v3/theme-switch'
 import { QRCode } from '@/components/qr-code'
@@ -520,6 +521,7 @@ export function BarPage({
             {neighbors.length ? (
               <NeighborsSection neighbors={neighbors} />
             ) : null}
+            <GuiaSection />
           </div>
           <aside className="side" aria-label="Jogo de hoje">
             {game ? (
@@ -1624,6 +1626,24 @@ function NeighborsSection({ neighbors }: { neighbors: Neighbor[] }) {
             <a href={item.path}>
               {item.name}, {item.neighborhood}
             </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+/** Links para os guias, para as páginas de texto terem links internos. */
+function GuiaSection() {
+  return (
+    <section className="sec o-neighbors" aria-labelledby="guia-h">
+      <div className="sh">
+        <h2 id="guia-h">Como escolher o bar do jogo</h2>
+      </div>
+      <ul>
+        {GUIA_FOOTER_LINKS.slice(0, 2).map((item) => (
+          <li key={item.to}>
+            <a href={item.to}>{item.label}</a>
           </li>
         ))}
       </ul>

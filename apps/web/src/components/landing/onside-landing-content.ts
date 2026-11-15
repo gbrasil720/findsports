@@ -123,6 +123,26 @@ export const NAV_ITEMS: NavItem[] = [
 ]
 
 /**
+ * Artigos do guia linkados no rodapé de todas as páginas, para o `/guia` e os
+ * textos de busca ("onde assistir") não ficarem a um clique só do menu.
+ * Os slugs precisam existir em `GUIA_ARTICLES`.
+ */
+export const GUIA_FOOTER_LINKS = [
+  {
+    label: 'Onde assistir futebol em São Paulo',
+    to: '/guia/onde-assistir-futebol-em-sao-paulo'
+  },
+  {
+    label: 'Como achar o bar do seu time',
+    to: '/guia/como-achar-bar-que-passa-o-jogo-do-seu-time'
+  },
+  {
+    label: 'Como atrair torcedores para o seu bar',
+    to: '/guia/como-atrair-torcedores-para-o-seu-bar-em-dia-de-jogo'
+  }
+] as const
+
+/**
  * Os seis bares do hero, na ordem da cena (`BARS` em `onside-scenes.ts`).
  * São fictícios: os nomes vêm dos mocks do desenho.
  */

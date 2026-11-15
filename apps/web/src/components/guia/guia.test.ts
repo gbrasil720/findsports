@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-
+import { GUIA_FOOTER_LINKS } from '@/components/landing/onside-landing-content'
 import type { PageInline } from '@/components/legal/legal-page'
 import { SITE_URL } from '@/lib/site'
 import { GUIA_ARTICLES } from './guia-articles'
@@ -103,5 +103,14 @@ describe('guia', () => {
       // O "Leia também" aponta para outro artigo, não para o próprio.
       expect(article.document.other.to).not.toBe(`/guia/${article.slug}`)
     }
+  })
+})
+
+describe('links do rodape para os guias', () => {
+  it('cada link aponta para um artigo que existe', () => {
+    const slugs = GUIA_ARTICLES.map((article) => `/guia/${article.slug}`)
+    for (const item of GUIA_FOOTER_LINKS) expect(slugs).toContain(item.to)
+    const links: string[] = GUIA_FOOTER_LINKS.map((item) => item.to)
+    expect(links.sort()).toEqual([...slugs].sort())
   })
 })
