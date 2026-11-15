@@ -54,7 +54,8 @@ export const TAB_ICONS = {
       default: require('../assets/images/tabs/you-light.png'),
       selected: require('../assets/images/tabs/you-light-on.png')
     },
-    sparkle: require('../assets/images/tabs/sparkle-light.png')
+    // A taça do Jules parada (WEB-543), a mesma de `components/ai/mascot-still.ts`.
+    jules: require('../assets/images/tabs/jules-light.png')
   },
   dark: {
     map: {
@@ -69,7 +70,8 @@ export const TAB_ICONS = {
       default: require('../assets/images/tabs/you-dark.png'),
       selected: require('../assets/images/tabs/you-dark-on.png')
     },
-    sparkle: require('../assets/images/tabs/sparkle-dark.png')
+    // A taça do Jules parada (WEB-543), a mesma de `components/ai/mascot-still.ts`.
+    jules: require('../assets/images/tabs/jules-dark.png')
   }
 }
 
@@ -369,7 +371,7 @@ function AiButton({ onPress }: { onPress: () => void }) {
   return (
     <ScalePress
       accessibilityRole="button"
-      accessibilityLabel="Busca com IA"
+      accessibilityLabel="Jules, a IA da Onside"
       onPress={onPress}
       to={0.94}
     >
@@ -382,7 +384,7 @@ function AiButton({ onPress }: { onPress: () => void }) {
           { width: BAR.thick, height: BAR.thick }
         ]}
       >
-        <Image source={TAB_ICONS[tone].sparkle} style={styles.sparkle} />
+        <Image source={TAB_ICONS[tone].jules} style={styles.jules} />
       </Glass>
     </ScalePress>
   )
@@ -490,7 +492,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
-  sparkle: { width: 24, height: 24 },
+  jules: { width: 28, height: 28 },
   floatWrap: {
     position: 'absolute',
     right: 0,
