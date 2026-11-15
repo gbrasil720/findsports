@@ -102,6 +102,7 @@ test('assinatura mensal no cartão pedindo o anual: 409 também', async ({
   expect(await response.json()).toMatchObject({
     code: 'BILLING_INTERVAL_MISMATCH'
   })
+  expect(await stripeSessionsOf(page, user.id)).toEqual([])
 })
 
 test('/subscription/cancel e /subscription/restore do plugin: 404', async ({
