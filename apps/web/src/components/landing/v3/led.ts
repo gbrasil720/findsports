@@ -19,11 +19,25 @@ function decode(base64: string) {
   return out
 }
 
-class Led {
+/**
+ * Uma figura desenhada nos pontos do telão, por cima da foto (a taça do
+ * Jules, WEB-556): `mask` tem uma célula por ponto, 1 aceso em acid, 2
+ * apagado (os olhos), 0 transparente. `x` e `y` em pontos, podem ser frações.
+ */
+export type LedSprite = {
+  mask: Uint8Array
+  w: number
+  h: number
+  x: number
+  y: number
+}
+
+export class Led {
   readonly canvas: HTMLCanvasElement
   private ctx: CanvasRenderingContext2D
-  private cols: number
-  private rows: number
+  readonly cols: number
+  readonly rows: number
+  sprite: LedSprite | null = null
   private lum: Uint8Array
   private flag: Uint8Array
   private soft: boolean
@@ -80,6 +94,15 @@ class Led {
     this.oy = (this.h - this.rows * this.pitch) / 2
   }
 
+  private spriteAt(i: number, j: number) {
+    const s = this.sprite
+    if (!s) return 0
+    const si = Math.floor(i - s.x)
+    const sj = Math.floor(j - s.y)
+    if (si < 0 || sj < 0 || si >= s.w || sj >= s.h) return 0
+    return s.mask[sj * s.w + si] as number
+  }
+
   draw(now: number) {
     const { ctx, cols, rows, pitch } = this
     const t = (now - this.start) / 1000
@@ -101,6 +124,12 @@ class Led {
         const k = j * cols + i
         const x = this.ox + i * pitch
         if (x < -pitch || x > this.w) continue
+        const dot = this.spriteAt(i, j)
+        if (dot === 1) {
+          lit[LEVELS - 1]?.push(x + pad, y + pad)
+          continue
+        }
+        if (dot === 2) continue
         let v = (this.lum[k] as number) / 255
         v = v ** 0.9
         if (this.speed[k])
@@ -192,6 +221,19 @@ export function startLeds(root: HTMLElement): () => void {
       for (const led of leds) io.observe(led.canvas)
       cleanups.push(() => io.disconnect())
       raf = requestAnimationFrame(loop)
+      // O easter egg do Jules (WEB-556) vem num pedaço à parte, depois de a
+      // página carregar: nada dele entra no JavaScript de entrada.
+      const heroes = leds.filter((led) => led.canvas.dataset.led === 'hero')
+      const easter = () =>
+        void import('./jules-led').then(({ startJulesLed }) => {
+          if (!stopped) cleanups.push(startJulesLed(heroes))
+        })
+      if (!heroes.length) return
+      if (document.readyState === 'complete') easter()
+      else {
+        addEventListener('load', easter, { once: true })
+        cleanups.push(() => removeEventListener('load', easter))
+      }
     })
     .catch(() => {
       // Sem a grade, o fundo de tinta continua: o telão é enfeite.
