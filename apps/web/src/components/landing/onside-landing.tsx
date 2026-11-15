@@ -28,6 +28,7 @@ import {
 import { OnsideFaqList } from './onside-faq'
 import {
   DEFINITION_POINTS,
+  GUIA_FOOTER_LINKS,
   JOURNEY_STEPS,
   type JourneyStep,
   LANDING_COPY,
@@ -352,6 +353,11 @@ export function OnsideFooter({ home = '' }: OnsideChromeProps) {
               </a>
             ))}
             <Link to="/guia">Guia</Link>
+            {GUIA_FOOTER_LINKS.map((item) => (
+              <a key={item.to} href={item.to}>
+                {item.label}
+              </a>
+            ))}
           </div>
           <div className="onside-footer-column">
             <p>Conta</p>

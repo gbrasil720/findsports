@@ -1,6 +1,7 @@
 import { useRouteContext } from '@tanstack/react-router'
 import { CookiePreferencesButton } from '@/components/consent/cookie-consent'
 import {
+  GUIA_FOOTER_LINKS,
   LANDING_COPY,
   NAV_ITEMS,
   SOCIAL_LINKS
@@ -124,6 +125,11 @@ export function SiteFooter({
               </a>
             ))}
             <a href="/guia">Guia</a>
+            {GUIA_FOOTER_LINKS.map((item) => (
+              <a key={item.to} href={item.to}>
+                {item.label}
+              </a>
+            ))}
           </div>
           <div className="foot-col conta">
             <p>Conta</p>
