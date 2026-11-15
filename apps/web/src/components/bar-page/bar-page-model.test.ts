@@ -130,11 +130,25 @@ describe('título e descrição', () => {
   test('sem jogo hoje, o próximo', () => {
     const page = bar([SUNDAY])
     expect(barPageTitle(page, NOW)).toBe(
-      'Bar do Zé, Vila Madalena: jogos no telão — Onside'
+      'Bar do Zé, Vila Madalena: 3 telões, som do jogo — Onside'
     )
     expect(barPageDescription(page, NOW)).toStartWith(
       'Próximo jogo no Bar do Zé: São Paulo × Grêmio, amanhã às 16:00.'
     )
+  })
+  test('sem jogo, o título traz o diferencial de cada bar e cabe em 60', () => {
+    const a = barPageTitle(bar([], { amenities: [2], screenCount: null }), NOW)
+    const b = barPageTitle(bar([], { amenities: [4], screenCount: null }), NOW)
+    const none = barPageTitle(
+      bar([], { amenities: [], screenCount: null }),
+      NOW
+    )
+    expect(a).toBe('Bar do Zé, Vila Madalena: som do jogo — Onside')
+    expect(b).toBe('Bar do Zé, Vila Madalena: área externa — Onside')
+    expect(a).not.toBe(b)
+    expect(none).toBe('Bar do Zé, Vila Madalena: jogos no telão — Onside')
+    for (const title of [a, b, none, barPageTitle(bar([]), NOW)])
+      expect(title.length).toBeLessThanOrEqual(60)
   })
   test('cabe em 158 e larga o horário primeiro', () => {
     const page = bar([LIVE, LATER], {
