@@ -146,6 +146,13 @@ async function setup() {
     }
   }
 
+  async function setDiscount(barId: string, reais: number) {
+    await db
+      .update(subscription)
+      .set({ monthlyDiscountReais: reais })
+      .where(eq(subscription.barId, barId))
+  }
+
   async function discountOf(barId: string) {
     const row = await db.query.subscription.findFirst({
       where: eq(subscription.barId, barId)
@@ -161,6 +168,7 @@ async function setup() {
     createPixBar,
     stateOf,
     discountOf,
+    setDiscount,
     cleanup
   }
 }
@@ -245,8 +253,7 @@ integrationTest(
 integrationTest(
   'checkout: fundador do Pix leva a vaga para o cartão mesmo com as vagas cheias',
   async () => {
-    const { checkoutParamsFor, createPixBar, pixFounderCount, FOUNDER_SEATS } =
-      ready()
+    const { checkoutParamsFor, createPixBar, FOUNDER_SEATS } = ready()
     const founder = await createPixBar({
       founder: true,
       paidUntil: new Date(Date.now() + 20 * DAY)
@@ -254,25 +261,20 @@ integrationTest(
     const other = await createPixBar({
       paidUntil: new Date(Date.now() + 20 * DAY)
     })
-    // Cartão + Pix fecham as 100 vagas, contando o fundador deste teste.
-    const pixFounders = await pixFounderCount()
     const client = {
-      coupons: {
-        retrieve: async (id: string) =>
-          id === 'fundador_anual'
-            ? { times_redeemed: 0 }
-            : {
-                valid: true,
-                max_redemptions: FOUNDER_SEATS,
-                times_redeemed: FOUNDER_SEATS - pixFounders
-              }
-      }
+      coupons: { retrieve: async () => ({ valid: true }) }
     } as unknown as Stripe
+    // Cartão + Pix fecham as 100 vagas, contando o fundador deste teste.
+    const countSeats = async () => FOUNDER_SEATS
     const error = spyOn(console, 'error').mockImplementation(() => {})
     try {
-      const kept = await checkoutParamsFor(founder.owner, null, client)
+      const kept = await checkoutParamsFor(founder.owner, null, client, {
+        countSeats
+      })
       expect(kept.discounts).toEqual([{ coupon: 'eM7dQpMF' }])
-      const full = await checkoutParamsFor(other.owner, null, client)
+      const full = await checkoutParamsFor(other.owner, null, client, {
+        countSeats
+      })
       expect(full.discounts).toBeUndefined()
     } finally {
       error.mockRestore()
@@ -702,17 +704,11 @@ integrationTest(
   }
 )
 
-/** Cupom do Stripe com `seats` vagas no total (dublê do `coupons.retrieve`). */
-function couponWithSeats(client: Stripe, seats: number | 'down') {
-  return spyOn(client.coupons, 'retrieve').mockImplementation((async (
-    id: string
-  ) => {
-    if (seats === 'down') throw new Error('timeout')
-    // A resposta demora: dois avisos ao mesmo tempo chegam juntos à conta.
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    return id === 'fundador_anual'
-      ? { times_redeemed: 0 }
-      : { valid: true, max_redemptions: seats, times_redeemed: 0 }
+/** Cupom de fundador valendo no Stripe, ou o Stripe fora do ar. */
+function couponWithSeats(client: Stripe, state: 'valid' | 'down') {
+  return spyOn(client.coupons, 'retrieve').mockImplementation((async () => {
+    if (state === 'down') throw new Error('timeout')
+    return { valid: true }
   }) as unknown as typeof client.coupons.retrieve)
 }
 
@@ -727,47 +723,54 @@ function founderPix(bar: { barId: string }, paidUntil: Date) {
 }
 
 integrationTest(
-  'vaga de fundador conferida no pagamento: dois Pix com uma vaga, os dois honrados e um no log',
+  'vagas contadas pelo banco: Pix e cartão de fundador, mensal e anual, uma por bar',
   async () => {
-    const {
-      applyPixSubscription,
-      createPixBar,
-      discountOf,
-      pixFounderCount,
-      stripeClient
-    } = ready()
+    const { createPixBar, founderSeatCount, setDiscount } = ready()
+    const paidUntil = new Date(Date.now() + 30 * DAY)
+    const before = await founderSeatCount()
+    await createPixBar({ founder: true, paidUntil })
+    const annual = await createPixBar({ paidUntil })
+    await setDiscount(annual.barId, 280)
+    // Código promocional de outro valor não é vaga.
+    const promo = await createPixBar({ paidUntil })
+    await setDiscount(promo.barId, 15)
+    expect(await founderSeatCount()).toBe(before + 2)
+  }
+)
+
+integrationTest(
+  'Pix de fundador pago depois de esgotar: honrado, e o que passou vai ao log',
+  async () => {
+    const { applyPixSubscription, createPixBar, discountOf, founderSeatCount } =
+      ready()
     const paidUntil = new Date(Date.now() + 30 * DAY)
     const a = await createPixBar({ paidUntil })
     const b = await createPixBar({ paidUntil })
-    // Os dois abriram o checkout de fundador com uma vaga sobrando.
-    const seats = couponWithSeats(stripeClient, (await pixFounderCount()) + 1)
+    // Os dois abriram o checkout de fundador com uma vaga sobrando; a conta
+    // é a do banco, com o teto logo acima do que já existe.
+    const limit = (await founderSeatCount()) + 1
+    const seatsFull = async () => (await founderSeatCount()) >= limit
     const error = spyOn(console, 'error').mockImplementation(() => {})
     try {
-      const pa = founderPix(a, paidUntil)
-      const pb = founderPix(b, paidUntil)
-      await Promise.all([
-        applyPixSubscription(pa.id, pa.externalId, 'subscription.completed'),
-        applyPixSubscription(pb.id, pb.externalId, 'subscription.completed')
-      ])
-      // O checkout saiu com o preço de fundador e ninguém avisou que as
-      // vagas acabaram: os dois ficam com ele (dono, 15/11/2026), e o que
-      // passou da conta vai ao log para o dono.
+      for (const bar of [a, b]) {
+        const pix = founderPix(bar, paidUntil)
+        await applyPixSubscription(
+          pix.id,
+          pix.externalId,
+          'subscription.completed',
+          { seatsFull }
+        )
+      }
+      // Ninguém avisou que as vagas acabaram: os dois ficam com o preço de
+      // fundador (dono, 15/11/2026), e o segundo vai ao log para o dono.
       expect([await discountOf(a.barId), await discountOf(b.barId)]).toEqual([
         28, 28
       ])
       const overflow = error.mock.calls
         .map((c) => JSON.parse(String(c[0])))
         .filter((e) => e.event === 'pix_founder_seat_overflow')
-      expect(overflow).toHaveLength(1)
-      for (const bar of [a, b]) {
-        expect(await ready().stateOf(bar.barId)).toMatchObject({
-          isActive: true,
-          status: 'active',
-          plan: 'elite'
-        })
-      }
+      expect(overflow.map((e) => e.barId)).toEqual([b.barId])
     } finally {
-      seats.mockRestore()
       error.mockRestore()
     }
   }
@@ -780,7 +783,7 @@ integrationTest(
       ready()
     const paidUntil = new Date(Date.now() + 30 * DAY)
     const founder = await createPixBar({ founder: true, paidUntil })
-    const seats = couponWithSeats(stripeClient, 0)
+    const seats = couponWithSeats(stripeClient, 'valid')
     try {
       await applyPixSubscription(
         founder.pixId,

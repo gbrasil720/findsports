@@ -5,8 +5,7 @@ import {
   pixExternalId,
   pixFounderDiscountReais,
   pixStanding,
-  readLagsBehind,
-  type Tx
+  readLagsBehind
 } from './pix-sync'
 import { stripeClient } from './stripe-client'
 
@@ -124,8 +123,6 @@ describe('leitura da AbacatePay atrás do aviso', () => {
 
 describe('vaga de fundador com o Stripe sem responder', () => {
   // O dublê responde antes da contagem: o banco não é tocado.
-  const tx = {} as Tx
-
   it('não trava o aviso: conta como não esgotou, com o motivo no log', async () => {
     const spy = spyOn(stripeClient.coupons, 'retrieve').mockImplementation(
       (async () => {
@@ -136,7 +133,7 @@ describe('vaga de fundador com o Stripe sem responder', () => {
     )
     const error = spyOn(console, 'error').mockImplementation(() => {})
     try {
-      expect(await founderSeatsFull(tx)).toBe(false)
+      expect(await founderSeatsFull()).toBe(false)
       const logged = String(error.mock.calls[0]?.[0])
       expect(logged).toContain('pix_founder_seat_unverified')
       expect(logged).toMatch(/stripe_key_missing|stripe_unavailable/)

@@ -1,4 +1,4 @@
-import { and, count, db, eq, gt } from '@findsports_oficial/db'
+import { count, db, eq, inArray } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { bar, subscription } from '@findsports_oficial/db/schema/platform'
 import { env } from '@findsports_oficial/env/server'
@@ -9,6 +9,7 @@ import {
   CARD_FROM_PIX_KEY,
   FOUNDER_ANNUAL_COUPON_ID,
   FOUNDER_COUPON_ID,
+  FOUNDER_DISCOUNT_REAIS,
   monthlyPriceReais,
   type Plan,
   pixMonthlyReais,
@@ -77,89 +78,83 @@ export const FOUNDER_ANNUAL_AMOUNT_OFF = 2800 * ANNUAL_MONTHS
 // tentativa, seguem adiante (o padrão do SDK são 80s e 2 tentativas).
 export const QUICK_REQUEST = { timeout: 5000, maxNetworkRetries: 0 }
 
-/** Vagas de fundador, cartão e Pix juntos; o cupom do Stripe tem o mesmo teto. */
+/** Vagas de fundador, cartão e Pix juntos. O teto é do app, não do cupom. */
 export const FOUNDER_SEATS = 100
 
+/** O desconto de fundador gravado na linha: R$ 28 no mensal, R$ 280 no anual. */
+const FOUNDER_DISCOUNTS = [
+  FOUNDER_DISCOUNT_REAIS,
+  FOUNDER_DISCOUNT_REAIS * ANNUAL_MONTHS
+]
+
 /**
- * Bares que entraram como fundador pelo Pix: o produto de fundador grava o
- * desconto na linha (`pix-sync.ts`). Contam enquanto a linha existir,
- * como o resgate do cupom, que não volta quando a assinatura acaba.
+ * Vagas de fundador ocupadas: bares com o desconto de fundador na linha de
+ * `subscription` (cartão e Pix; uma linha por bar). Contam enquanto a linha
+ * existir, também com a assinatura encerrada, como o resgate de cupom que não
+ * volta. Não usa `times_redeemed` do Stripe: a troca do cupom de fundador
+ * entre mensal e anual (`stripe-sync.ts`) resgata de novo, e o bar contaria
+ * duas vezes.
+ *
+ * ponytail: reconhece o fundador pelo valor; um código promocional de
+ * exatamente R$ 28 ou R$ 280 contaria como vaga. Uma coluna própria resolve
+ * se isso aparecer.
  */
-export async function pixFounderCount(
+export async function founderSeatCount(
   executor: Pick<typeof db, 'select'> = db
 ): Promise<number> {
   const [row] = await executor
     .select({ n: count() })
     .from(subscription)
-    .where(
-      and(
-        eq(subscription.provider, 'abacatepay'),
-        gt(subscription.monthlyDiscountReais, 0)
-      )
-    )
+    .where(inArray(subscription.monthlyDiscountReais, FOUNDER_DISCOUNTS))
   return row?.n ?? 0
 }
 
 /**
- * O que o Stripe disse do cupom. `unknown` é o Stripe sem responder (demora,
- * rede, erro 5xx): não é o mesmo que cupom que não vale.
+ * O que se sabe da oferta. `unknown` é a conta que não fechou: o Stripe sem
+ * responder (demora, rede, erro 5xx, chave ausente) ou o banco, em `source`.
+ * Não é o mesmo que cupom que não vale.
  */
 type FounderCouponState =
   | { state: 'valid' }
   | { state: 'invalid' }
-  | { state: 'unknown'; message: string }
+  | { state: 'unknown'; source: 'stripe' | 'db'; message: string }
 
-/** Quem conta os fundadores do Pix; os testes do cupom passam um sem banco. */
-type CountPixFounders = () => Promise<number>
+/** Quem conta as vagas ocupadas; os testes do cupom passam um sem banco. */
+type CountFounderSeats = () => Promise<number>
 
-/** Resgates do cupom anual; cupom que não existe nesta conta não tem nenhum. */
-async function annualRedemptions(client: Stripe): Promise<number> {
-  try {
-    const coupon = await client.coupons.retrieve(
-      FOUNDER_ANNUAL_COUPON_ID,
-      {},
-      QUICK_REQUEST
-    )
-    return coupon.times_redeemed ?? 0
-  } catch (error) {
-    if ((error as { type?: string }).type === 'StripeInvalidRequestError') {
-      return 0
-    }
-    throw error
-  }
-}
+const messageOf = (error: unknown) =>
+  error instanceof Error ? error.message : String(error)
 
+/**
+ * A oferta de fundador: o cupom do Stripe valendo (o dono a encerra lá) e
+ * vaga sobrando na conta do app (`founderSeatCount`).
+ */
 export async function readFounderCoupon(
   client: Stripe,
-  countPix: CountPixFounders
+  countSeats: CountFounderSeats
 ): Promise<FounderCouponState> {
+  let valid: boolean
   try {
     const coupon = await client.coupons.retrieve(
       FOUNDER_COUPON_ID,
       {},
       QUICK_REQUEST
     )
-    if (!coupon.valid) return { state: 'invalid' }
-    // As vagas de fundador somam cartão e Pix (decisão do dono, 11/11/2026):
-    // o teto do cupom conta também quem entrou pelo Pix.
-    const seats = coupon.max_redemptions ?? FOUNDER_SEATS
-    // Conta mesmo com o Pix desligado: os fundadores que entraram por ele
-    // seguem ocupando a vaga. Banco sem responder cai no `unknown` abaixo.
-    // Os do anual também (WEB-442).
-    const taken =
-      (coupon.times_redeemed ?? 0) +
-      (await annualRedemptions(client)) +
-      (await countPix())
-    return { state: taken < seats ? 'valid' : 'invalid' }
+    valid = coupon.valid
   } catch (error) {
     // Cupom apagado ou com o id errado: o Stripe respondeu, e a resposta é não.
     if ((error as { type?: string }).type === 'StripeInvalidRequestError') {
       return { state: 'invalid' }
     }
-    return {
-      state: 'unknown',
-      message: error instanceof Error ? error.message : String(error)
-    }
+    return { state: 'unknown', source: 'stripe', message: messageOf(error) }
+  }
+  if (!valid) return { state: 'invalid' }
+  try {
+    // As vagas somam cartão e Pix (dono, 11/11/2026), e o anual (WEB-442).
+    const taken = await countSeats()
+    return { state: taken < FOUNDER_SEATS ? 'valid' : 'invalid' }
+  } catch (error) {
+    return { state: 'unknown', source: 'db', message: messageOf(error) }
   }
 }
 
@@ -173,9 +168,9 @@ export async function readFounderCoupon(
  */
 export async function founderCouponUsable(
   client: Stripe,
-  countPix: CountPixFounders = pixFounderCount
+  countSeats: CountFounderSeats = founderSeatCount
 ): Promise<boolean> {
-  return (await readFounderCoupon(client, countPix)).state !== 'invalid'
+  return (await readFounderCoupon(client, countSeats)).state !== 'invalid'
 }
 
 /**
@@ -186,9 +181,9 @@ export async function founderCouponUsable(
  */
 export async function pixFounderSeatAvailable(
   client: Stripe,
-  countPix: CountPixFounders = pixFounderCount
+  countSeats: CountFounderSeats = founderSeatCount
 ): Promise<boolean> {
-  return (await readFounderCoupon(client, countPix)).state === 'valid'
+  return (await readFounderCoupon(client, countSeats)).state === 'valid'
 }
 
 /**
@@ -198,11 +193,11 @@ export async function pixFounderSeatAvailable(
  */
 export async function usableFounderCoupon(
   client: Stripe,
-  countPix: CountPixFounders = pixFounderCount,
+  countSeats: CountFounderSeats = founderSeatCount,
   { annual = false }: { annual?: boolean } = {}
 ): Promise<string | null> {
   const couponId = annual ? FOUNDER_ANNUAL_COUPON_ID : FOUNDER_COUPON_ID
-  const coupon = await readFounderCoupon(client, countPix)
+  const coupon = await readFounderCoupon(client, countSeats)
   if (coupon.state === 'invalid') {
     logBillingError('stripe_founder_coupon_unavailable', {
       couponId,
@@ -382,7 +377,16 @@ export async function checkoutParamsFor(
   owner: { id: string; name: string },
   customerId: string | null | undefined,
   client: Stripe,
-  { annual = false, plan }: { annual?: boolean; plan?: Plan } = {}
+  {
+    annual = false,
+    plan,
+    countSeats: count = founderSeatCount
+  }: {
+    annual?: boolean
+    plan?: Plan
+    /** Vagas ocupadas; os testes passam uma conta sem encher o banco. */
+    countSeats?: CountFounderSeats
+  } = {}
 ): Promise<Stripe.Checkout.SessionCreateParams> {
   const ownerBar = await db.query.bar.findFirst({
     where: eq(bar.userId, owner.id),
@@ -400,10 +404,10 @@ export async function checkoutParamsFor(
     current?.provider === 'abacatepay' &&
     current.status === 'active' &&
     (current.monthlyDiscountReais ?? 0) > 0
-  const countPix = pixFounder
-    ? async () => Math.max(0, (await pixFounderCount()) - 1)
-    : pixFounderCount
-  const coupon = await usableFounderCoupon(client, countPix, { annual })
+  const countSeats = pixFounder
+    ? async () => Math.max(0, (await count()) - 1)
+    : count
+  const coupon = await usableFounderCoupon(client, countSeats, { annual })
   // Subida do Pix para o cartão (dono, 14/11/2026): a diferença até o fim do
   // ciclo pago (mês ou ano) sai hoje, como item avulso da sessão (`startCardFromPix`).
   const upgradeCents =

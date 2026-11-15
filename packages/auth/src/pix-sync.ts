@@ -1,5 +1,5 @@
 import type { SubscriptionPlan } from '@findsports_oficial/db'
-import { db, eq, sql } from '@findsports_oficial/db'
+import { db, eq } from '@findsports_oficial/db'
 import { bar, subscription } from '@findsports_oficial/db/schema/platform'
 import { env } from '@findsports_oficial/env/server'
 import {
@@ -7,7 +7,7 @@ import {
   cancelSubscriptionIfActive,
   getSubscription
 } from './abacatepay'
-import { pixFounderCount, readFounderCoupon } from './stripe-checkout'
+import { founderSeatCount, readFounderCoupon } from './stripe-checkout'
 import { stripeClient } from './stripe-client'
 import { ANNUAL_MONTHS } from './stripe-plan'
 import { logBillingError } from './stripe-sync'
@@ -77,27 +77,26 @@ export type PixEvent =
 
 type Row = typeof subscription.$inferSelect
 
-export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
-
 /**
  * As vagas de fundador já tinham acabado quando este Pix foi pago. Checkout
  * aberto não reserva vaga, então um Pix de fundador pode ser pago depois de
- * esgotar. Conta com `tx`, que já tem o lock das vagas.
+ * esgotar.
  *
  * Só serve ao log: o preço de fundador é honrado de qualquer jeito (ver
- * `applyPixSubscription`). Por isso Stripe sem responder, ou sem
- * `STRIPE_SECRET_KEY` (toda chamada volta 401), não trava o aviso: vai ao log
- * com o motivo e conta como "não esgotou".
+ * `applyPixSubscription`). Por isso a conta que não fecha (Stripe sem
+ * responder, sem `STRIPE_SECRET_KEY`, ou o banco) não trava o aviso: vai ao
+ * log com o motivo e conta como "não esgotou".
  */
-export async function founderSeatsFull(tx: Tx): Promise<boolean> {
-  const coupon = await readFounderCoupon(stripeClient, () =>
-    pixFounderCount(tx)
-  )
+export async function founderSeatsFull(): Promise<boolean> {
+  const coupon = await readFounderCoupon(stripeClient, founderSeatCount)
   if (coupon.state === 'unknown') {
     logBillingError('pix_founder_seat_unverified', {
-      reason: env.STRIPE_SECRET_KEY
-        ? 'stripe_unavailable'
-        : 'stripe_key_missing',
+      reason:
+        coupon.source === 'db'
+          ? 'db_unavailable'
+          : env.STRIPE_SECRET_KEY
+            ? 'stripe_unavailable'
+            : 'stripe_key_missing',
       message: coupon.message
     })
     return false
@@ -172,9 +171,7 @@ export async function applyPixSubscription(
   externalId: string | null | undefined,
   eventType: PixEvent | string,
   // Os testes dublam a contagem; o padrão pergunta ao Stripe.
-  {
-    seatsFull = founderSeatsFull
-  }: { seatsFull?: (tx: Tx) => Promise<boolean> } = {}
+  { seatsFull = founderSeatsFull }: { seatsFull?: () => Promise<boolean> } = {}
 ): Promise<string | null> {
   const ref = parsePixExternalId(externalId)
   if (!ref) {
@@ -264,50 +261,39 @@ export async function applyPixSubscription(
   if (previous) await cancelSubscriptionIfActive(previous)
 
   // Quem já tem a vaga no Pix (renovação, troca de plano) a mantém.
-  const holdsSeat =
-    existing?.provider === 'abacatepay' &&
-    (existing.monthlyDiscountReais ?? 0) > 0
-  await db.transaction(async (tx) => {
-    if (ref.founder && !holdsSeat) {
-      // ponytail: um lock só para todas as vagas; os webhooks do Pix são
-      // poucos. Os resgates do cupom no cartão não passam por aqui.
-      await tx.execute(
-        sql`SELECT pg_advisory_xact_lock(hashtextextended('founder-seats', 0))`
-      )
-      // Pago depois de esgotar: o checkout saiu com o preço de fundador e
-      // ninguém avisou o bar de que as vagas acabaram, então o preço é
-      // honrado (dono, 15/11/2026). O dono fica sabendo pelo log.
-      if (await seatsFull(tx)) {
-        logBillingError('pix_founder_seat_overflow', {
-          barId: ref.barId,
-          subscriptionId: sub.id,
-          plan: ref.plan,
-          annual: ref.annual
-        })
-      }
-    }
-    const values = {
-      status: pixStanding({ eventType, periodEnd, existing, isCurrent }),
+  // Quem já tem a vaga (renovação, troca de plano, cartão que veio ao Pix)
+  // não ocupa outra.
+  const holdsSeat = (existing?.monthlyDiscountReais ?? 0) > 0
+  // Pago depois de esgotar: o checkout saiu com o preço de fundador e ninguém
+  // avisou o bar de que as vagas acabaram, então o preço é honrado (dono,
+  // 15/11/2026). O dono fica sabendo pelo log.
+  if (ref.founder && !holdsSeat && (await seatsFull())) {
+    logBillingError('pix_founder_seat_overflow', {
+      barId: ref.barId,
+      subscriptionId: sub.id,
       plan: ref.plan,
-      provider: 'abacatepay' as const,
-      externalSubscriptionId: sub.id,
-      currentPeriodEnd: periodEnd,
-      // Débito de agora em diante: uma assinatura nova nunca nasce cancelada.
-      cancelAt: isCurrent ? (existing?.cancelAt ?? null) : null,
-      monthlyDiscountReais: ref.founder
-        ? pixFounderDiscountReais(ref.annual)
-        : 0,
-      billingInterval: ref.annual ? ('year' as const) : ('month' as const),
-      // O Pix escolhido no teste foi autorizado: não há mais o que lembrar.
-      pixAfterTrialAt: null,
-      // Pago: não há checkout pendente a apagar no próximo.
-      pixCheckoutId: null
-    }
-    await tx
-      .insert(subscription)
-      .values({ barId: ref.barId, ...values })
-      .onConflictDoUpdate({ target: subscription.barId, set: values })
-    await tx.update(bar).set({ isActive: true }).where(eq(bar.id, ref.barId))
-  })
+      annual: ref.annual
+    })
+  }
+  const values = {
+    status: pixStanding({ eventType, periodEnd, existing, isCurrent }),
+    plan: ref.plan,
+    provider: 'abacatepay' as const,
+    externalSubscriptionId: sub.id,
+    currentPeriodEnd: periodEnd,
+    // Débito de agora em diante: uma assinatura nova nunca nasce cancelada.
+    cancelAt: isCurrent ? (existing?.cancelAt ?? null) : null,
+    monthlyDiscountReais: ref.founder ? pixFounderDiscountReais(ref.annual) : 0,
+    billingInterval: ref.annual ? ('year' as const) : ('month' as const),
+    // O Pix escolhido no teste foi autorizado: não há mais o que lembrar.
+    pixAfterTrialAt: null,
+    // Pago: não há checkout pendente a apagar no próximo.
+    pixCheckoutId: null
+  }
+  await db
+    .insert(subscription)
+    .values({ barId: ref.barId, ...values })
+    .onConflictDoUpdate({ target: subscription.barId, set: values })
+  await db.update(bar).set({ isActive: true }).where(eq(bar.id, ref.barId))
   return ref.barId
 }
