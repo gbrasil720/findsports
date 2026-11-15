@@ -782,10 +782,12 @@ integrationTest(
         .from(event)
         .where(eq(event.barId, ctx.barId))
       if (!first) throw new Error('evento não encontrado')
-      const [{ fanId }] = await ctx.db
+      const [holder] = await ctx.db
         .select({ fanId: reservation.userId })
         .from(reservation)
         .where(eq(reservation.id, ctx.reservationId))
+      if (!holder) throw new Error('reserva não encontrada')
+      const { fanId } = holder
       await ctx.db.insert(user).values({
         id: otherFanId,
         role: 'fan',
