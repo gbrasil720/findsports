@@ -93,6 +93,19 @@ function turnstilePlugin() {
   return { id: 'captcha-disabled' }
 }
 
+/**
+ * `role` que o cadastro aceita do cliente: torcedor ou bar, nunca `admin`.
+ * Vale em `additionalFields` e no plugin que vem depois do admin(), para a
+ * recusa não depender da ordem nem da presença dos plugins.
+ */
+const SIGN_UP_ROLE_FIELD = {
+  type: 'string',
+  required: false,
+  defaultValue: 'fan',
+  input: true,
+  validator: { input: z.enum(['fan', 'pub']) }
+} as const
+
 /** WEB-390: o cookie do modo da pele, com o mesmo domínio do de sessão. */
 export function impersonationModeCookieOptions(expires: Date) {
   const domain = cookieDomainFor(env.BETTER_AUTH_URL)
@@ -299,12 +312,7 @@ export function createAuth() {
         afterDelete: (accountUser) => deleteStripeSubscriptionOf(accountUser.id)
       },
       additionalFields: {
-        role: {
-          type: 'string',
-          required: false,
-          defaultValue: 'fan',
-          input: true
-        },
+        role: SIGN_UP_ROLE_FIELD,
         onboardingCompleted: {
           type: 'boolean',
           required: false,
@@ -378,27 +386,13 @@ export function createAuth() {
         adminRoles: ['admin'],
         defaultRole: 'fan'
       }),
-      // The admin() plugin above redefines `role` with `input: false`, which
-      // blocks clients from setting it at signup (error: "role is not
-      // allowed to be set"). Since plugin schemas merge in array order and
-      // later entries win, this plugin re-enables input but restricts the
-      // accepted values to non-privileged roles, preventing signup from
-      // self-escalating to `admin`.
+      // O admin() acima redeclara `role` com `input: false`, e o cadastro não
+      // conseguiria escolher torcedor ou bar. Campo de plugin substitui o
+      // anterior inteiro (o último vence), então este devolve a entrada com
+      // o mesmo `SIGN_UP_ROLE_FIELD` de `additionalFields`: só `fan` ou `pub`.
       {
         id: 'allow-role-on-signup',
-        schema: {
-          user: {
-            fields: {
-              role: {
-                type: 'string',
-                required: false,
-                defaultValue: 'fan',
-                input: true,
-                validator: { input: z.enum(['fan', 'pub']) }
-              }
-            }
-          }
-        }
+        schema: { user: { fields: { role: SIGN_UP_ROLE_FIELD } } }
       },
       // Cobrança pelo Stripe (WEB-31). O plugin cuida de checkout, portal e
       // da verificação da assinatura do webhook (`/stripe/webhook`); o estado
