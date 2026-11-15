@@ -2,6 +2,7 @@ import { groupOpeningHours } from '@findsports_oficial/api/lib/opening-hours'
 import type { PublicGame } from '@findsports_oficial/api/lib/public-bar-page'
 import { RATING_REASONS } from '@findsports_oficial/api/lib/rating-reasons'
 import { photoCategoryLabel } from '@findsports_oficial/db/bar-gallery'
+import { cityPath, neighborhoodPath } from '@findsports_oficial/db/bar-listing'
 import { BRASILIA_TIME_ZONE } from '@findsports_oficial/db/event-window'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useRouteContext } from '@tanstack/react-router'
@@ -548,8 +549,22 @@ export function BarPage({
             <li>
               <a href="/">Onside</a>
             </li>
-            <li>{bar.city}</li>
-            <li>{bar.neighborhood}</li>
+            <li>
+              {cityPath(bar.city) ? (
+                <a href={cityPath(bar.city) ?? ''}>{bar.city}</a>
+              ) : (
+                bar.city
+              )}
+            </li>
+            <li>
+              {neighborhoodPath(bar.city, bar.neighborhood) ? (
+                <a href={neighborhoodPath(bar.city, bar.neighborhood) ?? ''}>
+                  {bar.neighborhood}
+                </a>
+              ) : (
+                bar.neighborhood
+              )}
+            </li>
             <li aria-current="page">{bar.name}</li>
           </ol>
         </div>
