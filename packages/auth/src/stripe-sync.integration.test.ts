@@ -664,8 +664,10 @@ integrationTest(
 )
 
 /**
- * Dublê do Stripe com a assinatura num preço e um cupom de fundador: o
- * `update` troca o cupom e as leituras seguintes já o veem.
+ * Dublê do Stripe com a assinatura num preço, um cupom de fundador e, se
+ * pedido, outro desconto: o `update` aplica a lista que recebe (`discount`
+ * mantém um que existe, `coupon` cria um novo) e as leituras seguintes já a
+ * veem. `refuse` recusa criar desconto com cupom.
  */
 function portalSwitch(o: {
   id: string
@@ -673,15 +675,25 @@ function portalSwitch(o: {
   userId: string
   interval: 'month' | 'year'
   coupon: 'eM7dQpMF' | 'fundador_anual'
+  otherDiscount?: boolean
   refuse?: boolean
 }) {
   const couponObject = (id: string) => ({
     id,
-    amount_off: id === 'fundador_anual' ? 28000 : 2800,
+    amount_off:
+      id === 'fundador_anual' ? 28000 : id === 'eM7dQpMF' ? 2800 : 500,
     currency: 'brl'
   })
-  let couponId: string = o.coupon
+  const discount = (id: string, coupon: string) => ({
+    id,
+    source: { type: 'coupon', coupon: couponObject(coupon) }
+  })
+  let discounts = [
+    discount('di_founder', o.coupon),
+    ...(o.otherDiscount ? [discount('di_other', 'OUTRO5')] : [])
+  ]
   const updates: unknown[][] = []
+  const lookupKey = o.interval === 'year' ? 'elite_yearly' : 'elite_monthly'
   const current = () =>
     ({
       ...stripeSubscription({
@@ -689,22 +701,16 @@ function portalSwitch(o: {
         status: 'active',
         customerId: o.customerId,
         userId: o.userId,
-        lookupKey: o.interval === 'year' ? 'elite_yearly' : 'elite_monthly'
+        lookupKey
       }),
-      discounts: [
-        {
-          id: 'di_1',
-          source: { type: 'coupon', coupon: couponObject(couponId) }
-        }
-      ],
+      discounts,
       items: {
         data: [
           {
             current_period_end: Math.floor(periodEnd.getTime() / 1000),
             price: {
-              id: 'price_1',
-              lookup_key:
-                o.interval === 'year' ? 'elite_yearly' : 'elite_monthly',
+              id: `price_${lookupKey}`,
+              lookup_key: lookupKey,
               recurring: { interval: o.interval }
             }
           }
@@ -716,13 +722,19 @@ function portalSwitch(o: {
       retrieve: async () => current(),
       update: async (...args: unknown[]) => {
         updates.push(args)
-        if (o.refuse) {
+        const params = args[1] as {
+          discounts: ({ discount: string } | { coupon: string })[]
+        }
+        if (o.refuse && params.discounts.some((d) => 'coupon' in d)) {
           throw Object.assign(new Error('Coupon is used up'), {
             type: 'StripeInvalidRequestError'
           })
         }
-        const params = args[1] as { discounts: { coupon: string }[] }
-        couponId = params.discounts[0]?.coupon ?? couponId
+        discounts = params.discounts.flatMap((d) => {
+          if ('coupon' in d) return [discount(`di_new_${d.coupon}`, d.coupon)]
+          const kept = discounts.find((x) => x.id === d.discount)
+          return kept ? [kept] : []
+        })
         return current()
       }
     },
@@ -738,7 +750,7 @@ const updated = (id: string) =>
   }) as unknown as Stripe.Event
 
 integrationTest(
-  'anual trocado para mensal no portal: o cupom de R$ 280 vira o de fundador do mês',
+  'anual trocado para mensal no portal: só o cupom de R$ 280 vira o de fundador do mês',
   async () => {
     const { syncStripeEvent, createBar, stateOf } = ready()
     const owner = await createBar(null)
@@ -748,7 +760,8 @@ integrationTest(
       customerId: owner.customerId,
       userId: owner.userId,
       interval: 'month',
-      coupon: 'fundador_anual'
+      coupon: 'fundador_anual',
+      otherDiscount: true
     })
     const log = spyOn(console, 'log').mockImplementation(() => {})
     try {
@@ -762,14 +775,17 @@ integrationTest(
       [
         id,
         {
-          discounts: [{ coupon: 'eM7dQpMF' }],
+          // O outro desconto fica; só o de fundador muda.
+          discounts: [{ discount: 'di_other' }, { coupon: 'eM7dQpMF' }],
           expand: ['discounts.source.coupon']
-        }
+        },
+        { idempotencyKey: `fix-coupon:${id}:price_elite_monthly:di_founder` }
       ]
     ])
+    // R$ 28 do fundador + R$ 5 do outro.
     expect(await stateOf(owner.barId)).toMatchObject({
       plan: 'elite',
-      monthlyDiscountReais: 28
+      monthlyDiscountReais: 33
     })
   }
 )
@@ -801,7 +817,7 @@ integrationTest(
 )
 
 integrationTest(
-  'cupom do intervalo recusado pelo Stripe: só vai ao log, e a linha grava o que está lá',
+  'cupom do intervalo recusado pelo Stripe: o errado sai mesmo assim, o resto fica e vai ao log',
   async () => {
     const { syncStripeEvent, createBar, stateOf } = ready()
     const owner = await createBar(null)
@@ -812,8 +828,10 @@ integrationTest(
       userId: owner.userId,
       interval: 'month',
       coupon: 'fundador_anual',
+      otherDiscount: true,
       refuse: true
     })
+    const log = spyOn(console, 'log').mockImplementation(() => {})
     const error = spyOn(console, 'error').mockImplementation(() => {})
     try {
       await syncStripeEvent(updated(id), stripe.client)
@@ -823,10 +841,16 @@ integrationTest(
         )
       ).toBe(true)
     } finally {
+      log.mockRestore()
       error.mockRestore()
     }
+    expect(stripe.updates.at(-1)?.[1]).toEqual({
+      discounts: [{ discount: 'di_other' }],
+      expand: ['discounts.source.coupon']
+    })
+    // Nunca os R$ 280 numa fatura mensal: só o outro desconto.
     expect(await stateOf(owner.barId)).toMatchObject({
-      monthlyDiscountReais: 280
+      monthlyDiscountReais: 5
     })
   }
 )
