@@ -1,9 +1,11 @@
+import { createHmac } from 'node:crypto'
 import { db, eq } from '@findsports_oficial/db'
 import {
   incrementWindow,
   refundWindowAttempt
 } from '@findsports_oficial/db/rate-limit'
 import { rateLimit } from '@findsports_oficial/db/schema/auth'
+import { env } from '@findsports_oficial/env/server'
 
 /**
  * Quem gasta a cota do provedor de e-mail. `signup` é a verificação que sai
@@ -69,6 +71,18 @@ export function emailBudgetDay(now: Date): string {
   return `email:day:${utcDay(now)}`
 }
 
+/**
+ * O que entra na chave de `rate_limit` no lugar do e-mail e do IP: HMAC com o
+ * segredo do auth, para a tabela não guardar dado pessoal (LGPD) nem dar para
+ * testar um e-mail contra ela sem o segredo.
+ */
+export function emailBudgetHash(...parts: string[]): string {
+  return createHmac('sha256', env.BETTER_AUTH_SECRET)
+    .update(parts.join('\n'))
+    .digest('hex')
+    .slice(0, 32)
+}
+
 export type EmailBudgetScope = 'recipient' | 'ip' | 'category' | 'provider'
 
 /** Envio recusado pelo orçamento (ou o provedor disse que a cota acabou). */
@@ -110,13 +124,13 @@ export async function reserveEmailSend(
   if (knownIp && PUBLIC_CATEGORIES.has(category)) {
     if (category !== 'signup') {
       checks.push({
-        key: `email:to:${category}:${to.trim().toLowerCase()}:${knownIp}`,
+        key: `email:to:${category}:${emailBudgetHash(to.trim().toLowerCase(), knownIp)}`,
         ...EMAIL_BUDGET.perRecipient,
         scope: 'recipient'
       })
     }
     checks.push({
-      key: `email:ip:${utcDay(now)}:${knownIp}`,
+      key: `email:ip:${utcDay(now)}:${emailBudgetHash(knownIp)}`,
       max: EMAIL_BUDGET.perIpDaily,
       windowMs: DAY_MS,
       scope: 'ip'

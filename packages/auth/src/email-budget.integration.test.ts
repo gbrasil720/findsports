@@ -7,6 +7,7 @@ import {
   type EmailBudgetExceeded,
   type EmailCategory,
   emailBudgetDay,
+  emailBudgetHash,
   emailCategoryExhausted,
   reserveEmailSend
 } from './email-budget'
@@ -45,15 +46,14 @@ async function setup() {
   const ips: string[] = []
   cleanups.push(async () => {
     warn.mockRestore()
-    await db
-      .delete(rateLimit)
-      .where(
-        or(
-          sql`${rateLimit.key} like ${`${emailBudgetDay(PAST)}%`}`,
-          sql`${rateLimit.key} like 'email:ip:2001-01-01:%'`,
-          ...ips.map((ip) => sql`${rateLimit.key} like ${`email:to:%:${ip}`}`)
-        )
+    await db.delete(rateLimit).where(
+      or(
+        sql`${rateLimit.key} like ${`${emailBudgetDay(PAST)}%`}`,
+        sql`${rateLimit.key} like 'email:ip:2001-01-01:%'`,
+        // Só este arquivo grava `email:to:` (o api não manda e-mail de auth).
+        sql`${rateLimit.key} like 'email:to:%'`
       )
+    )
   })
 
   async function count(key: string) {
@@ -138,6 +138,35 @@ integrationTest(
     await send('reset', victim, ip())
     // Verificação tem o seu contador: o reset gasto não a trava.
     await send('verify', victim, attacker)
+  }
+)
+
+integrationTest(
+  'a chave em rate_limit não guarda o e-mail nem o IP (LGPD)',
+  async () => {
+    const { ip } = await setup()
+    const { db, sql } = await import('@findsports_oficial/db')
+    const { rateLimit } = await import('@findsports_oficial/db/schema/auth')
+    const victim = address()
+    const from = ip()
+
+    await send('reset', victim, from)
+
+    const keys = (
+      await db
+        .select({ key: rateLimit.key })
+        .from(rateLimit)
+        .where(
+          sql`${rateLimit.key} like 'email:to:%' or ${rateLimit.key} like 'email:ip:%'`
+        )
+    ).map((row) => row.key)
+    expect(keys).toContain(`email:to:reset:${emailBudgetHash(victim, from)}`)
+    expect(keys).toContain(`email:ip:2001-01-01:${emailBudgetHash(from)}`)
+    for (const key of keys) {
+      expect(key).not.toContain(victim)
+      expect(key).not.toContain(victim.split('@')[0] ?? victim)
+      expect(key).not.toContain(from)
+    }
   }
 )
 
@@ -235,7 +264,11 @@ async function httpSetup() {
       await db.delete(user).where(eq(user.email, email))
     }
     for (const ip of ips) {
-      await db.delete(rateLimit).where(sql`${rateLimit.key} like ${`%${ip}%`}`)
+      await db
+        .delete(rateLimit)
+        .where(
+          sql`${rateLimit.key} like ${`%${ip}%`} or ${rateLimit.key} like ${`email:ip:%:${emailBudgetHash(ip)}`} or ${rateLimit.key} like 'email:to:%'`
+        )
     }
     for (const [category, amount] of Object.entries(spent)) {
       await refundWindowAttempt(

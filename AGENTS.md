@@ -224,7 +224,9 @@ um balde por dia de UTC, e a soma fica em 90: `signup` (verificação do cadastr
 segunda. As três abertas sem login contam também por IP (`extrairIp`, o mesmo do
 tRPC): 5 por IP no dia, somadas, e `verify`/`reset` 3 por hora para o mesmo endereço
 **a partir do mesmo IP** (contar só pelo endereço deixaria outra pessoa travar o reset
-da vítima; cadastrar, entrar duas vezes sem verificar e reenviar cabe). Passou de um
+da vítima; cadastrar, entrar duas vezes sem verificar e reenviar cabe). Nas chaves de
+`rate_limit`, e-mail e IP vão como HMAC com o `BETTER_AUTH_SECRET` (`emailBudgetHash`),
+sem dado pessoal; as linhas vencidas ainda não são apagadas por rotina. Passou de um
 teto, ou o provedor respondeu 429: `EmailBudgetExceeded`, sem chamar o provedor, e
 `email_budget_refused` no log. Verificação e reset recusados saem calados (a resposta
 do better-auth não muda); o admin (reenviar e reset no Houdini) é avisado antes por
