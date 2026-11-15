@@ -94,6 +94,16 @@ export class Led {
     this.oy = (this.h - this.rows * this.pitch) / 2
   }
 
+  /** O ponto da grade sob um lugar do canvas, em px (a figura do Jules). */
+  cellAt(x: number, y: number) {
+    return { i: (x - this.ox) / this.pitch, j: (y - this.oy) / this.pitch }
+  }
+
+  /** O lado de um ponto, em px. */
+  get cell() {
+    return this.pitch
+  }
+
   private spriteAt(i: number, j: number) {
     const s = this.sprite
     if (!s) return 0

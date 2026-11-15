@@ -11,8 +11,8 @@ import type { Led, LedSprite } from './led'
  * carrega depois da página (`led.ts`) e nunca com movimento reduzido.
  */
 
-/** Altura da taça em pontos do telão, como fração das linhas. */
-const ALTURA = 0.42
+/** Altura da taça como fração da parte do telão à vista. */
+const ALTURA = 0.5
 /** Um intervalo sorteado entre 1 e 2 min de página aberta (proposta). */
 const ESPERA_MIN_MS = 60_000
 const ESPERA_MAX_MS = 120_000
@@ -73,12 +73,23 @@ export function startJulesLed(leds: Led[]): () => void {
   const passar = async (led: Led) => {
     if (passando) return
     passando = true
-    const lado = Math.round(led.rows * ALTURA)
+    // O telão pode passar da tela (o herói é mais alto que ela): a taça se
+    // mede e se centra pela parte que está à vista.
+    const rect = led.canvas.getBoundingClientRect()
+    const alto = Math.max(
+      0,
+      Math.min(rect.bottom, innerHeight) - Math.max(rect.top, 0)
+    )
+    const lado = Math.max(12, Math.round((alto * ALTURA) / led.cell))
     const mask = await rasterizar(lado)
     const olhos = mask.map((v) => (v === 2 ? 1 : v))
+    const centro = led.cellAt(
+      rect.width / 2,
+      Math.max(0, -rect.top) + alto * 0.5
+    )
     const sprite: LedSprite = { mask, w: lado, h: lado, x: led.cols, y: 0 }
-    const chao = Math.round((led.rows - lado) / 2)
-    const meio = (led.cols - lado) / 2
+    const chao = Math.round(centro.j - lado / 2)
+    const meio = centro.i - lado / 2
     const inicio = performance.now()
     const total = ENTRADA_MS + PARADO_MS + SAIDA_MS
     const quadro = (agora: number) => {

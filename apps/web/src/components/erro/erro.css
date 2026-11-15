@@ -34,7 +34,7 @@
   color: inherit;
   display: inline-flex;
 }
-.erro-painel {
+.erro-pg .erro-painel {
   position: relative;
   max-width: 1180px;
   width: 100%;
@@ -166,7 +166,7 @@
   margin-left: -600px;
 }
 @media (max-width: 760px) {
-  .erro-painel {
+  .erro-pg .erro-painel {
     grid-template-columns: minmax(0, 1fr);
     min-height: 0;
   }
@@ -191,4 +191,9 @@
     font-size: 220px;
     top: -10px;
   }
+}
+/* No escuro, a marca em papel sobre tinta (como o cabeçalho sobre tinta). */
+:root[data-theme="dark"] .erro-topo .onside-brand-wordmark,
+:root[data-theme="dark"] .erro-topo .onside-brand-mark {
+  filter: invert(1) hue-rotate(180deg);
 }
