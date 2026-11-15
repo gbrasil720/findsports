@@ -272,6 +272,12 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   (`changesBillingInterval`, `BILLING_INTERVAL_MISMATCH`), e a `/plan` manda o do
   assinante. Sem isso a anual virava mensal com o cupom de R$ 280 em cada fatura.
   Mudar entre mensal e anual no cartão não tem caminho no app.
+  **O cupom de fundador acompanha o intervalo do preço** (dono, 15/11/2026: os dois
+  cupons valem em todos os planos, mensais e anuais, sem `applies_to`): o portal do
+  Stripe deixa trocar de preço fora do nosso hook, então o webhook troca o cupom de
+  fundador que não bate com o intervalo pelo do intervalo certo
+  (`fixFounderCouponInterval`, `stripe_founder_coupon_interval_fixed`; recusa do
+  Stripe vai ao log como `stripe_founder_coupon_interval_refused`).
 - **Rotas do plugin que o app recusa** (`billing-access.ts`): `/subscription/cancel`
   e `/subscription/restore` (404; o cancelamento é pelo portal,
   `createSubscriptionCancelUrl`) e `metadata` no corpo do `/subscription/upgrade`
@@ -335,16 +341,14 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   vale no Pix, o preço de fundador é o produto). `subscription.provider = 'abacatepay'`.
   O webhook (`/api/abacatepay/webhook`, segredo + HMAC) relê a assinatura na AbacatePay
   (`applyPixSubscription`, `pix-sync.ts`), como no Stripe. As 100 vagas de fundador
-  somam cartão e Pix (`readFounderCoupon`). Checkout aberto não reserva vaga: o Pix
-  de fundador é conferido de novo no pagamento, sob `pg_advisory_xact_lock`, quando
-  o bar ainda não tem a vaga. Sem vaga, o Pix pago fica (bar no ar, no plano), a
-  linha grava desconto 0 e o log leva `pix_founder_seat_overflow`: **a AbacatePay
-  segue cobrando o preço de fundador** até o dono decidir (honrar, ou pedir uma
-  autorização nova na tabela); a cada renovação a vaga é conferida de novo e o log
-  se repete. Stripe sem responder nessa conta lança (`pix_founder_seat_check_failed`),
-  e a AbacatePay reenvia. **Sem `STRIPE_SECRET_KEY`** a conta nunca fecha (401):
-  aí o Pix de fundador grava sem a vaga, com `pix_founder_seat_unverified`
-  (`stripe_key_missing`) no log; ambiente com Pix de fundador precisa da chave. A AbacatePay só cancela na hora: o painel
+  somam cartão e Pix (`readFounderCoupon`). Checkout de fundador só nasce com vaga, mas
+  checkout aberto não reserva vaga. **Pago depois de esgotar, o preço de fundador
+  é honrado** (dono, 15/11/2026: sem aviso de esgotado antes de pagar, vale o
+  preço de fundador; com aviso, preço cheio, e o Pix hoje não tem esse aviso): o
+  webhook grava o desconto mesmo passando de 100 e registra
+  `pix_founder_seat_overflow` (conta sob `pg_advisory_xact_lock`, só para o log).
+  Stripe sem responder, ou sem `STRIPE_SECRET_KEY`, não trava o aviso: vai ao log
+  como `pix_founder_seat_unverified`. A AbacatePay só cancela na hora: o painel
   grava `cancel_at` no fim do mês pago e `reconcileBarPlans` encerra depois. Trocar de
   plano no Pix é uma autorização nova (a anterior é cancelada). **No teste do
   cadastro o Pix espera o fim dele** (dono, 11/11/2026): a AbacatePay não agenda
@@ -390,6 +394,9 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   na tela do checkout (dono, 14/11/2026: a troca só vale com a diferença paga).
   Cartão recusado não cria assinatura; voltando sem concluir, `/plan?troca=cartao`
   diz que nada mudou e pede outro cartão. Com a diferença na sessão, o cupom de
+  A sessão leva `cardFromPix` na metadata, e o webhook cancela a assinatura do
+  cartão que chega sobre Pix vivo sem ele (um checkout do plugin aberto no teste do
+  cadastro e pago depois do Pix; `pix_card_over_pix`), e o bar segue no Pix.
   fundador vai na metadata e o webhook o aplica (`applyUpgradeCoupon`), só com
   `pixUpgradeCents` e só o cupom de fundador do intervalo da assinatura
   (`upgradeCouponFor`); outro vai ao log (`pix_upgrade_coupon_untrusted`). No webhook,
