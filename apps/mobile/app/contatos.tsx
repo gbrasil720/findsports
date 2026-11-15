@@ -1,3 +1,7 @@
+import {
+  getErrorCode,
+  getErrorText
+} from '@findsports_oficial/api/lib/transient-error'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import * as Contacts from 'expo-contacts/legacy'
 import * as Crypto from 'expo-crypto'
@@ -161,6 +165,18 @@ export default function ContactsScreen() {
                 state === 'blocked' ? Linking.openSettings() : read()
               }
             />
+          </View>
+        ) : getErrorCode(match.error) === 'TOO_MANY_REQUESTS' ? (
+          // Limite do dia: tentar de novo agora só repete a recusa.
+          <View style={styles.empty}>
+            <Text
+              style={[
+                text(15, 'SemiBold', 1.45),
+                { color: palette.ink, textAlign: 'center' }
+              ]}
+            >
+              {getErrorText(match.error)}
+            </Text>
           </View>
         ) : match.isError || state === 'failed' ? (
           <View style={styles.empty}>
