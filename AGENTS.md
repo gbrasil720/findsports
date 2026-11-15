@@ -409,8 +409,10 @@ nos 30 dias do Starter; semana de antes de o bar existir não entra; com menos d
 
 A retenção do plano (`maxDaysRetention`: 30 dias no Starter, 365 no Pro) é contada a
 partir de hoje, não só pelo tamanho da janela: `assertAnalyticsPeriodAllowed` recusa
-início antes dos últimos N dias de Brasília no overview e no breakdown por jogo, e o
-período personalizado do Desempenho para ali.
+início antes dos últimos N dias de Brasília no overview e no breakdown por jogo, com um
+dia de folga (o painel calcula o período uma vez, e a aba aberta desde antes da
+meia-noite pede o início de ontem). O período personalizado do Desempenho para nos N
+dias exatos.
 
 ### Baixar meus dados (WEB-418)
 
