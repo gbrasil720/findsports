@@ -1,3 +1,4 @@
+import { MascotStill } from '@/components/ai/mascot'
 import { brasiliaDay } from '@findsports_oficial/db/event-window'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
@@ -266,11 +267,53 @@ export default function Pronto() {
           ) : null}
         </>
       ) : null}
+      {/* PROTÓTIPO (Jules, fase 2): o convite à IA. Ele se apresenta e não
+          assina a lista de cima, que não é feita pela IA. */}
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => {
+          finish()
+          router.push('/busca-ia')
+        }}
+        style={styles.jules}
+      >
+        <View style={styles.julesFace}>
+          <MascotStill size={46} />
+        </View>
+        <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+          <Text style={[styles.kicker, { color: '#c9f135' }]}>
+            JULES · A IA DA ONSIDE
+          </Text>
+          <Text style={[text(16, 'Bold', 1.25), { color: '#f1eee6' }]}>
+            Quer um bar do seu jeito? É só pedir.
+          </Text>
+          <Text style={[text(13, 'Regular', 1.35), { color: '#aaa9a4' }]}>
+            “Fla com telão e chopp barato perto de mim”
+          </Text>
+        </View>
+        <Icon name="next" size={12} color="#aaa9a4" />
+      </Pressable>
     </ObPage>
   )
 }
 
 const styles = StyleSheet.create({
+  jules: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    padding: 16,
+    borderRadius: 22,
+    backgroundColor: '#12120f'
+  },
+  julesFace: {
+    width: 60,
+    height: 60,
+    borderRadius: 18,
+    backgroundColor: '#1c1c18',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
   kicker: {
     fontFamily: 'GeistMono-SemiBold',
     fontSize: 11,
