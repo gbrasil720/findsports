@@ -46,7 +46,11 @@ import { checkoutParamsFor } from './stripe-checkout'
 import { stripeClient } from './stripe-client'
 import { planForLookupKey, STRIPE_PLANS } from './stripe-plan'
 import { syncStripeEvent } from './stripe-sync'
-import { APP_SCHEME, buildTrustedOrigins } from './trusted-origins'
+import {
+  APP_SCHEME,
+  buildTrustedOrigins,
+  isSafeResetRedirect
+} from './trusted-origins'
 import { publicEmailUrl, sendVerificationEmail } from './verification-email'
 
 function cookieDomainFor(baseUrl: string): string | undefined {
@@ -140,6 +144,19 @@ export function createAuth() {
               message: READ_ONLY_IMPERSONATION_MESSAGE
             })
           }
+        }
+        // O token de redefinição de senha não vai a `onside://` (qualquer app
+        // registra o esquema): só ao site. Ver `isSafeResetRedirect`.
+        const resetTarget =
+          ctx.path === '/request-password-reset'
+            ? (ctx.body as { redirectTo?: unknown } | undefined)?.redirectTo
+            : ctx.path === '/reset-password/:token'
+              ? ctx.query?.callbackURL
+              : undefined
+        if (!isSafeResetRedirect(resetTarget, ctx.context.trustedOrigins)) {
+          throw new APIError('BAD_REQUEST', {
+            message: 'Endereço de redefinição de senha não permitido.'
+          })
         }
         // WEB-383: 2FA obrigatório e rotas admin sem uso desligadas.
         if (ctx.path?.startsWith('/admin/')) {
