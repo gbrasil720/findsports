@@ -8,6 +8,7 @@ import {
   type AiLimits,
   brasiliaWindows,
   budgetBlock,
+  chatAllowance,
   type UserUsage
 } from './limits'
 import { costUsd } from './models'
@@ -72,6 +73,26 @@ export class AiStoppedError extends Error {
 const DEFAULT_TIMEOUT_MS = 15_000
 
 /**
+ * Tempo depois do qual uma linha `running` do chat não segura mais a
+ * próxima mensagem: uma execução que caiu sem gravar o fim não trava a
+ * pessoa para sempre. Fica acima do pior caso de uma mensagem (algumas
+ * chamadas de 15 s com as ferramentas no meio).
+ */
+const STALE_RUN_INTERVAL = '5 minutes'
+
+/**
+ * A reserva de `runAi` recusou: no lugar entre a conferência e a gravação,
+ * outra execução da mesma pessoa gastou o que sobrava (`AiBlock`), o chat
+ * chegou ao limite de mensagens ou já tem uma mensagem em andamento.
+ */
+export class AiBlockedError extends Error {
+  constructor(readonly reason: AiBlock | 'chat_limit' | 'chat_running') {
+    super(`IA barrada: ${reason}`)
+    this.name = 'AiBlockedError'
+  }
+}
+
+/**
  * Para a execução em andamento de uma mensagem do chat (WEB-430). Só a da
  * própria pessoa e só enquanto roda: resposta pronta já descontou e não volta
  * atrás. A linha fica `stopped` e não útil; o gasto até aqui entra no fim.
@@ -111,10 +132,11 @@ export const calledModel = sql`NOT (feature = 'recommender' AND latency_ms = 0)`
 /** O que a pessoa e todo mundo já usaram, no dia e no mês de Brasília. */
 export async function readUserUsage(
   userId: string,
-  now = new Date()
+  now = new Date(),
+  exec: Pick<typeof db, 'execute'> = db
 ): Promise<UserUsage> {
   const w = brasiliaWindows(now)
-  const result = await db.execute<{
+  const result = await exec.execute<{
     calls_today: number
     chat_today: number
     chat_month: number
@@ -200,6 +222,44 @@ export function readUsage(raw: Raw) {
 }
 
 /**
+ * Confere os tetos da pessoa e grava a linha `running` num passo só. O
+ * `aiGate` lê o uso antes, sem trava, e pedidos simultâneos da mesma pessoa
+ * viam todos o mesmo uso e passavam juntos. Aqui a trava por pessoa
+ * (`pg_advisory_xact_lock`) enfileira as reservas: cada uma relê o uso já
+ * com a linha da anterior. No chat, uma mensagem por vez: a linha em
+ * andamento ainda não é útil e não conta no limite de mensagens.
+ */
+async function reserveRun(
+  userId: string,
+  feature: AiFeature,
+  row: typeof aiRun.$inferInsert
+) {
+  const blocked = await db.transaction(async (tx) => {
+    await tx.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtext(${`ai_run:${userId}`}))`
+    )
+    const now = new Date()
+    const limits = await getAppConfig('ai.limits')
+    const usage = await readUserUsage(userId, now, tx)
+    const block = budgetBlock(usage, limits)
+    if (block) return block
+    if (feature === 'chat') {
+      if (!chatAllowance(usage, now, limits).ok) return 'chat_limit' as const
+      const running = await tx.execute(sql`
+        SELECT 1 FROM ai_run
+        WHERE user_id = ${userId} AND feature = 'chat' AND status = 'running'
+          AND created_at > now() - ${STALE_RUN_INTERVAL}::interval
+        LIMIT 1
+      `)
+      if (running.rows.length) return 'chat_running' as const
+    }
+    await tx.insert(aiRun).values(row)
+    return null
+  })
+  if (blocked) throw new AiBlockedError(blocked)
+}
+
+/**
  * Executa `fn` como uma execução de IA e grava a linha em `ai_run`. `fn`
  * recebe `call`, que fala com o modelo, e o `runId`; ela decide o desfecho
  * (status, quem respondeu, se foi útil). Se `fn` lançar, a linha sai com
@@ -215,14 +275,16 @@ export async function runAi<T>(
 ): Promise<AiOutcome<T> & { runId: string }> {
   const runId = crypto.randomUUID()
   const started = performance.now()
-  await db.insert(aiRun).values({
+  const row = {
     runId,
     userId: meta.userId,
     feature: meta.feature,
     variant: meta.variant,
     assignedModel: meta.assignedModel,
-    status: 'running'
-  })
+    status: 'running' as const
+  }
+  if (meta.userId) await reserveRun(meta.userId, meta.feature, row)
+  else await db.insert(aiRun).values(row)
   let tokensIn = 0
   let tokensOut = 0
   let cost = 0
