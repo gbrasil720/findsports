@@ -79,3 +79,12 @@ export function monthlyDiscountReaisFromStripe(
 
   return inferred ? Math.round(totalCents / 100) : null
 }
+
+/** Ids dos cupons da assinatura (desconto não expandido fica de fora). */
+export function couponIdsOf(subscription: Stripe.Subscription): string[] {
+  return expandedDiscountObjects(subscription).flatMap((discount) => {
+    const coupon = couponFromDiscount(discount)
+    if (!coupon) return []
+    return [typeof coupon === 'string' ? coupon : coupon.id]
+  })
+}

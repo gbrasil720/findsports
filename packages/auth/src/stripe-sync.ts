@@ -9,7 +9,7 @@ import {
 } from '@findsports_oficial/db/schema/platform'
 import type Stripe from 'stripe'
 import { cancelSubscriptionIfActive } from './abacatepay'
-import { monthlyDiscountReaisFromStripe } from './stripe-discount'
+import { couponIdsOf, monthlyDiscountReaisFromStripe } from './stripe-discount'
 import {
   CARD_FROM_PIX_KEY,
   FOUNDER_ANNUAL_COUPON_ID,
@@ -230,6 +230,13 @@ export async function applyStripeSubscription(
     )
   }
 
+  if (!offAir && client) {
+    stripeSubscription = await fixFounderCouponInterval(
+      stripeSubscription,
+      client
+    )
+  }
+
   const values = {
     status,
     plan,
@@ -341,6 +348,54 @@ async function applyUpgradeCoupon(
     logBillingError('pix_upgrade_coupon_refused', {
       subscriptionId: stripeSubscription.id,
       coupon,
+      message: error instanceof Error ? error.message : String(error)
+    })
+    return stripeSubscription
+  }
+}
+
+/**
+ * Cupom de fundador do intervalo do preço atual (dono, 15/11/2026: o desconto
+ * de fundador vale em todos os planos, mensais e anuais). Troca de plano fora
+ * do nosso hook (o portal do Stripe deixa o anual ir para um preço mensal)
+ * levaria o `fundador_anual` (R$ 280 por fatura) para cada mês, ou o mensal
+ * (R$ 28) para o ano: aqui o cupom vira o do intervalo certo. Já certo, não
+ * faz nada, então evento repetido não muda nada. Recusa do Stripe (cupom
+ * esgotado, por exemplo) só vai ao log.
+ */
+async function fixFounderCouponInterval(
+  stripeSubscription: Stripe.Subscription,
+  client: StripeBilling
+): Promise<Stripe.Subscription> {
+  const annual =
+    stripeSubscription.items.data[0]?.price.recurring?.interval === 'year'
+  const right = annual ? FOUNDER_ANNUAL_COUPON_ID : FOUNDER_COUPON_ID
+  const wrong = annual ? FOUNDER_COUPON_ID : FOUNDER_ANNUAL_COUPON_ID
+  if (!couponIdsOf(stripeSubscription).includes(wrong)) {
+    return stripeSubscription
+  }
+  try {
+    const fixed = await client.subscriptions.update(stripeSubscription.id, {
+      discounts: [{ coupon: right }],
+      expand: ['discounts.source.coupon']
+    })
+    console.log(
+      JSON.stringify({
+        evt: 'stripe_founder_coupon_interval_fixed',
+        subscriptionId: stripeSubscription.id,
+        from: wrong,
+        to: right
+      })
+    )
+    return fixed
+  } catch (error) {
+    if ((error as { type?: string }).type !== 'StripeInvalidRequestError') {
+      throw error
+    }
+    logBillingError('stripe_founder_coupon_interval_refused', {
+      subscriptionId: stripeSubscription.id,
+      from: wrong,
+      to: right,
       message: error instanceof Error ? error.message : String(error)
     })
     return stripeSubscription
