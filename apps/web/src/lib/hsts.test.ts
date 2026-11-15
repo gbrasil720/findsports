@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 
-import { HSTS, withHsts } from './hsts'
+import { FRAME_ANCESTORS, HSTS, withHsts } from './hsts'
 
 describe('HSTS no Worker', () => {
   test('resposta dinâmica sai com HSTS e mantém status, headers e corpo', async () => {
@@ -14,6 +14,22 @@ describe('HSTS no Worker', () => {
     const page = withHsts(new Response('ok', { headers: { 'X-A': '1' } }))
     expect(page.headers.get('X-A')).toBe('1')
     expect(await page.text()).toBe('ok')
+  })
+
+  // REPORT.md §6: sem trava de iframe, outro site podia emoldurar o web.
+  test('resposta dinâmica só abre em iframe da própria origem', () => {
+    const page = withHsts(new Response('ok'))
+    expect(page.headers.get('Content-Security-Policy')).toBe(FRAME_ANCESTORS)
+    expect(page.headers.get('X-Frame-Options')).toBe('SAMEORIGIN')
+
+    const comCsp = withHsts(
+      new Response('ok', {
+        headers: { 'Content-Security-Policy': "default-src 'self'" }
+      })
+    )
+    expect(comCsp.headers.get('Content-Security-Policy')).toBe(
+      "default-src 'self'"
+    )
   })
 
   test('public/_headers manda o mesmo HSTS para todo arquivo estático', () => {
