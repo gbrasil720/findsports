@@ -69,12 +69,6 @@ const SECTIONS: { title: string; items: Item[] }[] = [
         label: 'Link enviado',
         href: { pathname: '/reset-sent', params: { email: EMAIL } }
       },
-      {
-        // Token de mentira: a tela abre, salvar dá erro de link vencido.
-        code: '11r',
-        label: 'Nova senha',
-        href: { pathname: '/reset-password', params: { token: 'dev' } }
-      },
       { code: '11s', label: 'Duas etapas', href: '/two-factor' }
     ]
   },

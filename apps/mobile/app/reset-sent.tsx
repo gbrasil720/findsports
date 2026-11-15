@@ -1,4 +1,3 @@
-import * as Linking from 'expo-linking'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
 import { Platform, Pressable, StyleSheet, View } from 'react-native'
@@ -45,7 +44,7 @@ export default function ResetSent() {
     const result = await settleAuth(
       authClient.requestPasswordReset({
         email,
-        redirectTo: Linking.createURL('/reset-password'),
+        redirectTo: '/reset-password',
         fetchOptions: turnstile.fetchOptions
       })
     )
@@ -121,7 +120,8 @@ export default function ResetSent() {
         <Text style={[text(16, 'Bold', 1.5), { color: PAPER }]}>
           {maskEmail(email)}
         </Text>
-        . Ele vale por 30 minutos. Se não aparecer, olhe o spam.
+        . Abra e escolha a senha nova no site da Onside; depois, entre aqui com
+        ela. O link vale por 30 minutos. Se não aparecer, olhe o spam.
       </Text>
       {notice ? (
         <ErrorText style={[text(13.5), { color: LIVE }]}>{notice}</ErrorText>
