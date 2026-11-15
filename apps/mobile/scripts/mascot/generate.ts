@@ -6,7 +6,7 @@
  *   `open-bot-avatar` embutido, que a WebView abre sem rede;
  * - `components/ai/mascot-still.ts`: a taça parada em SVG, para os tamanhos
  *   pequenos (o ladrilho do cabeçalho), onde uma WebView pesaria;
- * - `apps/web/src/components/torcedor/taca-still.ts`: a mesma taça para o
+ * - `apps/web/src/components/jules/taca-still.ts`: a mesma taça para o
  *   cartão "Me avise" do web (`AppChegando`), decorativa (sem título nem
  *   `role`, com `aria-hidden`).
  *
@@ -96,7 +96,7 @@ await writeFile(
   join(app, 'components/ai/mascot-still.ts'),
   `// Gerado por scripts/mascot/generate.ts: não edite à mão.\nexport const TACA_SVG = ${JSON.stringify(still)}\n`
 )
-const webStill = join(app, '../web/src/components/torcedor/taca-still.ts')
+const webStill = join(app, '../web/src/components/jules/taca-still.ts')
 const decorative = still
   .replace(' role="img" aria-label="Taça"', ' aria-hidden="true"')
   .replace('<title>Taça</title>', '')

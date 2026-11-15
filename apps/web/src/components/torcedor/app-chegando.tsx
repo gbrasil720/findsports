@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { TACA_SVG } from '@/components/jules/taca-still'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import { Ic } from './icones'
 import { useTorcedor } from './shell'
-import { TACA_SVG } from './taca-still'
 
 /*
  * "No app, o Jules acha o bar do seu jogo" (`.appc`, versão A da prancha 3 do
