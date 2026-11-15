@@ -74,8 +74,8 @@ das páginas legais.
 |---|---|---|
 | `/`, `/termos`, `/privacidade` | sim | `index, follow`, canônica, no sitemap |
 | `/guia`, `/guia/:slug` | sim | `index, follow`, canônica, no sitemap e no `llms.txt`; slug desconhecido é 404 |
-| `/bares/:cidade` | sim | `index, follow`, canônica, no sitemap; 404 se a cidade não tem bar no ar |
-| `/bares/:cidade/:bairro` | só com 3+ bares | abaixo do piso (`MIN_BARS_INDEXABLE_NEIGHBORHOOD`) abre, mas sai `noindex` e fora do sitemap, para não virar página fina |
+| `/bares/:cidade` | só com 5+ bares | abaixo do piso (`MIN_BARS_INDEXABLE_NEIGHBORHOOD`) abre, mas sai `noindex` e fora do sitemap; 404 se a cidade não tem bar no ar |
+| `/bares/:cidade/:bairro` | só com 5+ bares | abaixo do piso (`MIN_BARS_INDEXABLE_NEIGHBORHOOD`) abre, mas sai `noindex` e fora do sitemap, para não virar página fina |
 | `/login`, `/signup`, recuperação de senha, `/verify-email`, `/two-factor` | não | `noindex` |
 | `/bar/:slug` (bar no ar) | sim | `index, follow`, canônica, no sitemap; título e descrição mudam com a grade do dia |
 | `/bar/:slug` (bar fora do ar) | não | 200 com `noindex`; o dono logado vê a prévia, também `noindex` |
@@ -107,7 +107,7 @@ com milhares de bares, vira consulta com `GROUP BY`. O HTML sai do servidor, os
 bares são `<a href>` comuns, e o JSON-LD leva `BreadcrumbList` e `ItemList`. O
 breadcrumb da página do bar aponta para a cidade e o bairro.
 
-Bairro com menos de `MIN_BARS_INDEXABLE_NEIGHBORHOOD` bares fica `noindex` e fora
+Cidade ou bairro com menos de `MIN_BARS_INDEXABLE_NEIGHBORHOOD` (5) bares fica `noindex` e fora
 do sitemap. Pendente: listagem por time e por jogo, link das listagens na home.
 
 ## Página do bar (`/bar/:slug`)
