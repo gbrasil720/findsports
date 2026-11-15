@@ -11,10 +11,13 @@ import { barSlug } from './bar-slug'
 
 /**
  * Bairro com menos bares que isto sai `noindex` e fora do sitemap: uma página
- * com um ou dois bares é conteúdo fino. Ela continua abrindo (o link do
+ * com poucos bares é conteúdo fino. Ela continua abrindo (o link do
  * breadcrumb do bar não pode dar 404) e os bares dela aparecem na cidade.
  */
-export const MIN_BARS_INDEXABLE_NEIGHBORHOOD = 3
+export const MIN_BARS_INDEXABLE_NEIGHBORHOOD = 5
+
+/** Mesmo piso para a cidade: com menos bares ela abre, mas sai `noindex`. */
+export const MIN_BARS_INDEXABLE_CITY = 5
 
 export type ListingBar = {
   id: string
@@ -39,6 +42,7 @@ export type CityListing = {
   uf: string | null
   bars: ListingBar[]
   neighborhoods: NeighborhoodListing[]
+  indexable: boolean
 }
 
 const LOWERCASE_WORDS = new Set(['de', 'da', 'do', 'das', 'dos', 'e'])
@@ -149,7 +153,8 @@ export function buildListings(bars: readonly ListingBar[]): CityListing[] {
       name: properName(commonest(cityBars.map((b) => b.city))),
       uf: commonest(cityBars.flatMap((b) => (b.uf ? [b.uf] : []))) || null,
       bars: sortBars(cityBars),
-      neighborhoods
+      neighborhoods,
+      indexable: cityBars.length >= MIN_BARS_INDEXABLE_CITY
     })
   }
   return cities.sort(bySizeThenName)

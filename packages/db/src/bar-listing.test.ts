@@ -3,6 +3,7 @@ import {
   buildListings,
   cityPath,
   type ListingBar,
+  MIN_BARS_INDEXABLE_CITY,
   MIN_BARS_INDEXABLE_NEIGHBORHOOD,
   neighborhoodPath,
   properName
@@ -68,6 +69,19 @@ describe('buildListings', () => {
     const bySlug = new Map(city?.neighborhoods.map((n) => [n.slug, n]))
     expect(bySlug.get('vila-assuncao')?.indexable).toBe(false)
     expect(bySlug.get('centro')?.indexable).toBe(true)
+  })
+
+  test('cidade só indexa a partir do piso', () => {
+    const few = Array.from({ length: MIN_BARS_INDEXABLE_CITY - 1 }, (_, i) =>
+      bar(i)
+    )
+    const enough = Array.from({ length: MIN_BARS_INDEXABLE_CITY }, (_, i) =>
+      bar(i + 10, { city: 'Mauá' })
+    )
+    const cities = buildListings([...few, ...enough])
+    const bySlug = new Map(cities.map((c) => [c.slug, c]))
+    expect(bySlug.get('santo-andre')?.indexable).toBe(false)
+    expect(bySlug.get('maua')?.indexable).toBe(true)
   })
 
   test('cidades ordenadas por quantidade de bares', () => {
