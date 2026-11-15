@@ -108,9 +108,7 @@ function bySizeThenName<T extends { name: string; bars: unknown[] }>(
   a: T,
   b: T
 ): number {
-  return (
-    b.bars.length - a.bars.length || a.name.localeCompare(b.name, 'pt-BR')
-  )
+  return b.bars.length - a.bars.length || a.name.localeCompare(b.name, 'pt-BR')
 }
 
 /**

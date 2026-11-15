@@ -71,11 +71,7 @@ describe('buildListings', () => {
   })
 
   test('cidades ordenadas por quantidade de bares', () => {
-    const cities = buildListings([
-      bar(1, { city: 'Mauá' }),
-      bar(2),
-      bar(3)
-    ])
+    const cities = buildListings([bar(1, { city: 'Mauá' }), bar(2), bar(3)])
     expect(cities.map((c) => c.slug)).toEqual(['santo-andre', 'maua'])
     expect(cities[0]?.uf).toBe('SP')
   })
