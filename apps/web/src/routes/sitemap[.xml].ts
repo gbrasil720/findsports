@@ -51,26 +51,29 @@ export const Route = createFileRoute('/sitemap.xml')({
               priority: 0.6
             })
           ),
-          // Listagens: toda cidade com bar no ar; bairro só a partir do piso
-          // (`MIN_BARS_INDEXABLE_NEIGHBORHOOD`), o resto sai `noindex`.
-          ...cidades.flatMap((cidade): SitemapEntry[] => [
-            {
-              path: `/bares/${cidade.slug}`,
-              lastModified: lastModified(cidade.bars),
-              changeFrequency: 'daily',
-              priority: 0.8
-            },
-            ...cidade.neighborhoods
-              .filter((bairro) => bairro.indexable)
-              .map(
-                (bairro): SitemapEntry => ({
-                  path: `/bares/${cidade.slug}/${bairro.slug}`,
-                  lastModified: lastModified(bairro.bars),
-                  changeFrequency: 'daily',
-                  priority: 0.7
-                })
-              )
-          ]),
+          // Listagens: cidade e bairro só a partir do piso
+          // (`MIN_BARS_INDEXABLE_CITY` e `MIN_BARS_INDEXABLE_NEIGHBORHOOD`),
+          // o resto sai `noindex`.
+          ...cidades
+            .filter((cidade) => cidade.indexable)
+            .flatMap((cidade): SitemapEntry[] => [
+              {
+                path: `/bares/${cidade.slug}`,
+                lastModified: lastModified(cidade.bars),
+                changeFrequency: 'daily',
+                priority: 0.8
+              },
+              ...cidade.neighborhoods
+                .filter((bairro) => bairro.indexable)
+                .map(
+                  (bairro): SitemapEntry => ({
+                    path: `/bares/${cidade.slug}/${bairro.slug}`,
+                    lastModified: lastModified(bairro.bars),
+                    changeFrequency: 'daily',
+                    priority: 0.7
+                  })
+                )
+            ]),
           ...bares.map(
             (bar): SitemapEntry => ({
               path: bar.path,
