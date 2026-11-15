@@ -190,6 +190,9 @@ export async function readAchievements(
   const achievements = computeAchievements(visitRows, reviews, secrets).map(
     (a) => ({
       ...a,
+      // A secreta bloqueada não diz o que é (WEB-558).
+      name:
+        a.group === 'segredos' && !a.unlockedAt ? 'Conquista secreta' : a.name,
       share: shares[a.id]
     })
   )

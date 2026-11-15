@@ -677,9 +677,11 @@ function noticeLook(
         lead: { kind: 'medal', id: medal.id as MedalId },
         title: `Conquista: ${medal.name}`,
         line:
-          medal.group === 'resenhas'
-            ? `${unit('resenhas', medal.target)}.`
-            : `${unit(medal.group, medal.target)}${medal.target > 1 ? ' diferentes' : ''}.`
+          medal.group === 'segredos'
+            ? 'Conquista secreta.'
+            : medal.group === 'resenhas'
+              ? `${unit('resenhas', medal.target)}.`
+              : `${unit(medal.group, medal.target)}${medal.target > 1 ? ' diferentes' : ''}.`
       }
     }
   }

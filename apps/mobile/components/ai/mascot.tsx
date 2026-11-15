@@ -9,6 +9,7 @@ import { SvgXml } from 'react-native-svg'
 import { WebView } from 'react-native-webview'
 import { haptic } from '@/components/motion'
 import type { MascotState } from '@/lib/mascot'
+import { useFindJules } from './find-jules'
 import { TACA_SVG } from './mascot-still'
 import type { AiPalette } from './theme'
 
@@ -33,6 +34,7 @@ export function Mascot({
   onStamp?: () => void
 }) {
   const reduced = useReducedMotion()
+  const findJules = useFindJules()
   const uri = useStage()
   const web = useRef<WebView>(null)
   const [ready, setReady] = useState(false)
@@ -100,7 +102,11 @@ export function Mascot({
               web.current?.reload()
             }}
             onMessage={(e) => {
-              if (e.nativeEvent.data === 'trick') return void haptic.select()
+              if (e.nativeEvent.data === 'trick') {
+                haptic.select()
+                // O truque é o segredo: a medalha "Achou o Jules" (WEB-558).
+                return findJules()
+              }
               if (e.nativeEvent.data === 'stamp') return void onStamp?.()
               if (e.nativeEvent.data !== 'ready') return
               send(latest.current)

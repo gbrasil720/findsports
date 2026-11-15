@@ -16,7 +16,8 @@ export const GROUPS: { key: Group; label: string }[] = [
   { key: 'bares', label: 'Bares' },
   { key: 'bairros', label: 'Bairros' },
   { key: 'esportes', label: 'Esportes' },
-  { key: 'resenhas', label: 'Resenhas' }
+  { key: 'resenhas', label: 'Resenhas' },
+  { key: 'segredos', label: 'Segredos' }
 ]
 
 /** Nome da série no topo do detalhe ("Bares novos · 2 de 4"). */
@@ -24,14 +25,16 @@ const SERIES: Record<Group, string> = {
   bares: 'Bares novos',
   bairros: 'Bairros',
   esportes: 'Esportes',
-  resenhas: 'Resenhas'
+  resenhas: 'Resenhas',
+  segredos: 'Segredo'
 }
 
 const UNIT: Record<Group, [string, string]> = {
   bares: ['bar', 'bares'],
   bairros: ['bairro', 'bairros'],
   esportes: ['esporte', 'esportes'],
-  resenhas: ['resenha', 'resenhas']
+  resenhas: ['resenha', 'resenhas'],
+  segredos: ['segredo', 'segredos']
 }
 
 export const unit = (group: Group, n: number) =>
@@ -89,6 +92,11 @@ export function latest(list: Achievement[]) {
 /** O texto do detalhe (2j). */
 export function describe(a: Achievement) {
   const n = a.target
+  // A secreta (WEB-558): bloqueada, não conta como se ganha.
+  if (a.group === 'segredos')
+    return a.unlockedAt
+      ? 'Você achou o Jules. Poucos acham: ele se esconde no app e no site.'
+      : 'Uma conquista secreta. Ninguém conta como se ganha.'
   if (a.unlockedAt) {
     if (a.group === 'bares')
       return n === 1
@@ -114,9 +122,11 @@ export function describe(a: Achievement) {
 
 /** "5 bares diferentes", no destaque do tablet em pé (A06). */
 export const amountLine = (a: Achievement) =>
-  a.group === 'resenhas'
-    ? unit(a.group, a.target)
-    : `${unit(a.group, a.target)} diferentes`
+  a.group === 'segredos'
+    ? 'conquista secreta'
+    : a.group === 'resenhas'
+      ? unit(a.group, a.target)
+      : `${unit(a.group, a.target)} diferentes`
 
 const NTH: Record<number, string> = {
   2: 'Segundo',
