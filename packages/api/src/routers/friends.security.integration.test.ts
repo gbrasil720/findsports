@@ -42,7 +42,7 @@ async function seed(keys: string[]) {
 }
 
 integrationTest(
-  'convite de conta nova respeita "Quem pode te adicionar"',
+  'convite vira pedido pendente e respeita "Quem pode te adicionar"',
   async () => {
     const { db, people, as, cleanup } = await seed([
       'Vera',
@@ -83,21 +83,22 @@ integrationTest(
         )
       expect(rows).toEqual([])
 
-      // Quem aceita de todos continua virando amigo na hora pelo convite.
+      // Mesmo de quem aceita pedido de todos, o convite é um pedido: "todos"
+      // é quem pode pedir, não quem vira amigo sem aceitar.
       const ottoCode = (await as(otto).me()).friendCode
       expect((await as(nina).joinByInvite({ code: ottoCode })).relation).toBe(
-        'friends'
+        'sent'
       )
-      const [accepted] = await db
+      const [pending] = await db
         .select({ at: friendship.acceptedAt })
         .from(friendship)
         .where(
           and(
-            eq(friendship.requesterId, otto.id),
-            eq(friendship.addresseeId, nina.id)
+            eq(friendship.requesterId, nina.id),
+            eq(friendship.addresseeId, otto.id)
           )
         )
-      expect(accepted?.at).not.toBeNull()
+      expect(pending).toEqual({ at: null })
     } finally {
       await cleanup()
     }

@@ -93,10 +93,11 @@ integrationTest('amizade de ponta a ponta', async () => {
     expect(byCode?.id).toBe(ana.id)
     expect(byCode?.relation).toBe('none')
 
-    // Convite: conta nova entra como amiga; conta antiga só manda pedido.
+    // Convite: manda pedido, conta nova ou antiga; Ana aceita.
     expect(
       (await as(eva).joinByInvite({ code: anaMe.friendCode })).relation
-    ).toBe('friends')
+    ).toBe('sent')
+    await as(ana).respond({ userId: eva.id, accept: true })
     const old = new Date(Date.now() - 5 * 86_400_000)
     expect(
       (await as(dora, old).joinByInvite({ code: anaMe.friendCode })).relation

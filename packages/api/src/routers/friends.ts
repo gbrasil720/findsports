@@ -103,8 +103,7 @@ async function withRelations<T extends { id: string }>(
 async function sendRequest(
   me: string,
   target: string,
-  how: z.infer<typeof via>,
-  acceptNow = false
+  how: z.infer<typeof via>
 ) {
   if (me === target)
     throw new TRPCError({
@@ -132,9 +131,6 @@ async function sendRequest(
     return 'friends' as const
   }
   if (row) return 'sent' as const
-  // O atalho do convite (`acceptNow`) nunca passa por cima de "Quem pode te
-  // adicionar": o código é permanente e curto, não prova que a pessoa
-  // convidou quem chega.
   if (other.from === 'nobody')
     throw new TRPCError({
       code: 'FORBIDDEN',
@@ -151,13 +147,12 @@ async function sendRequest(
   await db
     .insert(friendship)
     .values({
-      requesterId: acceptNow ? target : me,
-      addresseeId: acceptNow ? me : target,
-      via: how,
-      acceptedAt: acceptNow ? new Date() : null
+      requesterId: me,
+      addresseeId: target,
+      via: how
     })
     .onConflictDoNothing()
-  return acceptNow ? ('friends' as const) : ('sent' as const)
+  return 'sent' as const
 }
 
 export const friendsRouter = router({
@@ -552,8 +547,10 @@ export const friendsRouter = router({
     }),
 
   /**
-   * Pelo link de convite: conta criada há menos de um dia já entra como amiga
-   * de quem convidou; conta antiga manda um pedido, como pelo código.
+   * Pelo link de convite: manda um pedido, como pelo código (ou aceita o que
+   * quem convidou já mandou). Não há aceite direto: o código é permanente e
+   * curto, não prova que o dono convidou quem chega. Ele volta quando houver
+   * um convite de uso único emitido pelo dono do código.
    */
   joinByInvite: fanProcedure
     .input(z.object({ code: z.string().trim().min(3).max(16) }))
@@ -571,10 +568,8 @@ export const friendsRouter = router({
           code: 'NOT_FOUND',
           message: 'Esse convite não vale mais.'
         })
-      const created = new Date(ctx.session.user.createdAt).getTime()
-      const fresh = Date.now() - created < 86_400_000
       return {
-        relation: await sendRequest(me, inviter.id, 'link', fresh),
+        relation: await sendRequest(me, inviter.id, 'link'),
         inviterId: inviter.id
       }
     }),
