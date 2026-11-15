@@ -23,11 +23,14 @@ import type { AiPalette } from './theme'
 export function Mascot({
   state,
   palette,
-  style
+  style,
+  onStamp
 }: {
   state: MascotState
   palette: AiPalette
   style?: StyleProp<ViewStyle>
+  /** O carimbo da cena `going` desceu (a vibração de sucesso sai aí). */
+  onStamp?: () => void
 }) {
   const reduced = useReducedMotion()
   const uri = useStage()
@@ -98,6 +101,7 @@ export function Mascot({
             }}
             onMessage={(e) => {
               if (e.nativeEvent.data === 'trick') return void haptic.select()
+              if (e.nativeEvent.data === 'stamp') return void onStamp?.()
               if (e.nativeEvent.data !== 'ready') return
               send(latest.current)
               setReady(true)

@@ -1288,6 +1288,8 @@ const STATES: Record<MascotState, Run> = {
       }
     ).finished
     if (!alive(t)) return
+    // O app vibra no carimbo, não no toque (WEB-546).
+    window.ReactNativeWebView?.postMessage('stamp')
     burst(23, 14, 10, [LIVE], { spread: 50, size: [4, 8] })
     wince(t)
     await to({ sx: 1.1, sy: 0.88, r: 2 }, 60, out3, t)
