@@ -215,6 +215,19 @@ da MillionSend (plano Free da nuvem, 100 por dia). O provedor é `EMAIL_API_URL`
 remetente `EMAIL_FROM`. A Resend saiu em 29/10/2026 (WEB-482). DNS de envio:
 `docs/email-dns.md`.
 
+**Orçamento da cota:** todos os envios dividem a mesma cota da conta, então
+`sendEmail` pede `category` (`auth`, `feedback`, `export`, `notices`) e conta o envio
+em `rate_limit` antes de chamar o provedor (`packages/auth/src/email-budget.ts`,
+valores em `EMAIL_BUDGET`): 90 por dia de UTC no total, dos quais só `auth`
+(verificação e reset) usa os últimos 30; feedback e exportação têm teto próprio no dia
+(10 cada); verificação e reset, 3 por endereço por hora (o reenvio do `sendOnSignIn`
+entra aqui). Passou de um teto, ou o provedor respondeu 429: `EmailBudgetExceeded`,
+sem chamar o provedor, e `email_budget_refused` no log. Verificação e reset recusados
+saem calados (a resposta do better-auth não muda); `feedback.send` responde
+`TOO_MANY_REQUESTS` e não devolve a tentativa. Outbox do E2E, `EMAIL_DELIVERY=console`
+e falta de chave não contam. Testes sem banco passam `reserve` (dublê); o
+`fakeEmailApi` zera o orçamento de hoje a cada teste.
+
 Client env lives in the app, not in `packages/env`: `import.meta.env` is only
 typed where Vite's types are, and the shared package needed an `any` cast to
 compile — which erased the boundary it existed to provide.
