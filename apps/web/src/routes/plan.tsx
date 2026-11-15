@@ -451,7 +451,8 @@ function PlanSelection() {
             founder: choiceFounder,
             annual
           }),
-          paidUntil: new Date(subscription.currentPeriodEnd)
+          paidUntil: new Date(subscription.currentPeriodEnd),
+          annual: subscription.billingInterval === 'year'
         })
       : 0
   const focusPlan = getPlan(ownPlan ?? defaultPlan)

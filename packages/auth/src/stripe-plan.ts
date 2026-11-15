@@ -102,27 +102,33 @@ const STRIPE_MIN_BRL_CENTS = 50
 /**
  * Subida de plano do Pix para o cartão (dono, 14/11/2026, WEB-536): o cartão
  * cobra hoje a diferença entre o que o bar vai pagar e o que paga no Pix, pelo
- * que falta do mês já pago (`paidUntil`), em centavos. O ciclo do Pix é de um
- * mês, que acaba em `paidUntil`. Descida e mesmo preço não cobram nada, e
- * diferença abaixo do mínimo do Stripe também não.
+ * que falta do ciclo já pago (`paidUntil`), em centavos. O ciclo do Pix acaba
+ * em `paidUntil` e dura um mês, ou 12 no Pix anual (`annual`): o cartão só
+ * começa a cobrar em `paidUntil`, então a diferença vale por todo o resto do
+ * ano pago. Descida e mesmo preço não cobram nada, e diferença abaixo do
+ * mínimo do Stripe também não.
  */
 export function pixUpgradeCents({
   currentMonthlyReais,
   newMonthlyReais,
   paidUntil,
+  annual = false,
   now = new Date()
 }: {
   currentMonthlyReais: number
   newMonthlyReais: number
   paidUntil: Date
+  /** O Pix atual é anual: o ciclo pago é de 12 meses. */
+  annual?: boolean
   now?: Date
 }): number {
   const diff = newMonthlyReais - currentMonthlyReais
   const left = paidUntil.getTime() - now.getTime()
   if (diff <= 0 || left <= 0) return 0
+  const months = annual ? 12 : 1
   const start = new Date(paidUntil)
-  start.setUTCMonth(start.getUTCMonth() - 1)
+  start.setUTCMonth(start.getUTCMonth() - months)
   const fraction = Math.min(1, left / (paidUntil.getTime() - start.getTime()))
-  const cents = Math.round(diff * 100 * fraction)
+  const cents = Math.round(diff * months * 100 * fraction)
   return cents < STRIPE_MIN_BRL_CENTS ? 0 : cents
 }

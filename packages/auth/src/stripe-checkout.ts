@@ -420,7 +420,7 @@ export async function checkoutParamsFor(
     : pixFounderCount
   const coupon = await usableFounderCoupon(client, countPix, { annual })
   // Subida do Pix para o cartão (dono, 14/11/2026): a diferença até o fim do
-  // mês pago sai hoje, como item avulso da sessão (`startCardFromPix`).
+  // ciclo pago (mês ou ano) sai hoje, como item avulso da sessão (`startCardFromPix`).
   const upgradeCents =
     plan &&
     current?.provider === 'abacatepay' &&
@@ -436,7 +436,8 @@ export async function checkoutParamsFor(
             founder: coupon !== null,
             annual
           }),
-          paidUntil: current.currentPeriodEnd
+          paidUntil: current.currentPeriodEnd,
+          annual: current.billingInterval === 'year'
         })
       : 0
   // Com a diferença na sessão, o cupom (valor fixo por fatura) a descontaria
@@ -475,7 +476,8 @@ export async function checkoutParamsFor(
 /** Recusa da passagem do Pix para o cartão, com a frase para a tela. */
 export class CardFromPixRefusal extends Error {}
 
-const UPGRADE_ITEM_NAME = 'Diferença da troca de plano até o fim do mês pago'
+const UPGRADE_ITEM_NAME =
+  'Diferença da troca de plano até o fim do período pago no Pix'
 
 /**
  * Do Pix para o cartão (WEB-536): a sessão de checkout é nossa, não do plugin,
