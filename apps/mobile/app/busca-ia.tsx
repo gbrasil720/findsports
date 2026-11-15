@@ -229,12 +229,18 @@ export default function AiSearch() {
   useStatusBar(sheet || layout.kind === 'cover' ? 'light' : 'auto')
   // Navegador DEV: `?dubla=1` usa o dublê; `estado` já manda a pergunta de
   // cada tela (24b pensando, 24c resposta, 24d confirmar, 24e feito).
-  const params = useLocalSearchParams<{ dubla?: Dubla; estado?: DevState }>()
+  // `pergunta`: o vazio da busca (WEB-544) abre já com o que a pessoa digitou,
+  // numa conversa nova, e manda na hora.
+  const params = useLocalSearchParams<{
+    dubla?: Dubla
+    estado?: DevState
+    pergunta?: string
+  }>()
   const dubla = __DEV__ && params.dubla ? params.dubla : null
   const devState = __DEV__ ? params.estado : undefined
 
   const [conversation, setConversation] = useState(() =>
-    devState ? { id: newId(), turns: [] } : saved
+    devState || params.pergunta ? { id: newId(), turns: [] } : saved
   )
   const turns = conversation.turns
   const setTurns = (update: (list: Turn[]) => Turn[]) =>
@@ -423,6 +429,16 @@ export default function AiSearch() {
       return next
     })
   }, [lastState, conversation.id, restored, turns])
+
+  // Veio da busca sem resultado: manda o texto dela uma vez.
+  const askedFrom = useRef(false)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: só na montagem
+  useEffect(() => {
+    const question = params.pergunta?.trim()
+    if (!question || askedFrom.current) return
+    askedFrom.current = true
+    send(question)
+  }, [])
 
   // Navegador DEV: manda a pergunta da tela pedida.
   const devSent = useRef(false)
