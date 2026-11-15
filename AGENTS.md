@@ -407,6 +407,11 @@ da meia-noite até agora, contra a média da mesma janela nas quatro semanas ant
 nos 30 dias do Starter; semana de antes de o bar existir não entra; com menos de duas,
 "—").
 
+A retenção do plano (`maxDaysRetention`: 30 dias no Starter, 365 no Pro) é contada a
+partir de hoje, não só pelo tamanho da janela: `assertAnalyticsPeriodAllowed` recusa
+início antes dos últimos N dias de Brasília no overview e no breakdown por jogo, e o
+período personalizado do Desempenho para ali.
+
 ### Baixar meus dados (WEB-418)
 
 `account.requestExport` monta o JSON no servidor e o manda de anexo para o e-mail da
@@ -443,7 +448,9 @@ exige na tela), e o card do web não as pergunta.
   decisão do dono para não expor o bar com uma única negativa). Abaixo dele nada da nota
   sai na leitura pública: nem %, nem estrelas, nem "O que pesou?", nem comentários. Vale
   para `pubs.getById` (`rating`, `ratingReasons`, `reviews`), a busca e a ordenação por
-  nota, e o `app_config` `rating.public_display` continua por cima.
+  nota, e o `app_config` `rating.public_display` continua por cima. Com ela desligada, a
+  nota também sai da ordem padrão da busca (a qualidade vale 0 em `linear.ts` e
+  `tiered.ts`): o `nextCursor` leva a chave da ordem em base64 legível.
 - **Comentário passa pela revisão da Onside** (`/houdini/revisao`,
   `adminReview.decideComment`, decisão no Grimório como `bar.rating_comment_*`). Recusado
   não aparece em lugar nenhum e o torcedor não é avisado; o resto da avaliação vale.
@@ -495,7 +502,11 @@ AI com o token do login do `wrangler` e o Gateway `default` (o `getPlatformProxy
 Bun). Toda chamada passa por `runAi` (`lib/ai/run.ts`): confere `ai.enabled` (desligada por
 padrão, no `app_config`), o teto do mês somando `ai_run.cost_usd`, US$ 1,50/mês e 30
 chamadas/dia por pessoa, manda `run_id`, `variant` e `feature` como metadados do Gateway e
-grava uma linha em `ai_run` (assim como polegar e ações em `ai_action`: abrir bar, Vou assistir,
+grava uma linha em `ai_run`. A linha `running` nasce numa transação com
+`pg_advisory_xact_lock` por pessoa, que relê o uso e confere os tetos de novo, e o chat
+aceita uma mensagem por vez (linha `running` de mais de 5 min não segura): pedidos
+simultâneos não furam os limites (`AiBlockedError` volta como a trava de sempre). Polegar
+e ações vão em `ai_action` (abrir bar, Vou assistir,
 rota, Ligar e WhatsApp da página do bar vinda da IA, WEB-427). Tetos e sorteio
 (hash de usuário + teste, pesos em `ai.variant_weights`, que somam 100 em cada teste) são
 puros em `lib/ai/limits.ts`; os valores dos tetos e limites moram em `ai.limits` no
@@ -1022,7 +1033,8 @@ invente layout que o projeto não tem.
   O Elite desliga a lista de quem vai jogo a jogo no formulário do painel (WEB-437,
   `event.attendance_enabled`): o botão some para quem não marcou, marcação nova e
   chamado de amigo são recusados e Quem vai do painel deixa o jogo de fora; quem já
-  marcou fica, com o código valendo.
+  marcou fica, com o código valendo. Bar que perdeu o Elite com código em aberto
+  (WEB-341) vê em Quem vai só quem tem código a honrar, não a lista inteira.
 - **Vou assistir ("08"):** o botão da página do bar abre a folha `app/vou/[barId].tsx`
   (`formSheet` nativo com o vidro do iOS 26: fundo transparente em `contentStyle` e na
   tela; o `ScrollView` é filho direto da tela, com `flex: 1`, senão o
