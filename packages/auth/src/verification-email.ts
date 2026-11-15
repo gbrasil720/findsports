@@ -69,11 +69,14 @@ export async function sendVerificationEmail(input: {
   to: string
   name: string
   verificationUrl: string
+  /** Cadastro (endereço novo) ou conta que já existe. */
+  category: Extract<EmailCategory, 'signup' | 'verify'>
+  ip?: string
   fetcher?: EmailFetcher
   reserve?: ReserveEmail
 }): Promise<void> {
   const email = createVerificationEmail(input)
-  await sendEmail({ ...input, ...email, category: 'auth' })
+  await sendEmail({ ...input, ...email })
 }
 
 /**
@@ -105,6 +108,8 @@ export async function sendEmail(input: {
   attachments?: EmailAttachment[]
   /** Que parte do orçamento do dia o envio gasta (`email-budget.ts`). */
   category: EmailCategory
+  /** IP de quem pediu, nas categorias abertas sem login. */
+  ip?: string
   fetcher?: EmailFetcher
   /** Dublê do orçamento nos testes sem banco. */
   reserve?: ReserveEmail
@@ -161,7 +166,7 @@ export async function sendEmail(input: {
   }
 
   // Só o envio de verdade gasta a cota: outbox, console e falta de chave não.
-  await (input.reserve ?? reserveEmailSend)(input.category, input.to)
+  await (input.reserve ?? reserveEmailSend)(input.category, input.to, input.ip)
 
   const response = await (input.fetcher ?? fetch)(
     `${env.EMAIL_API_URL.replace(/\/+$/, '')}/emails`,

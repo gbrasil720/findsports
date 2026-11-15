@@ -58,9 +58,10 @@ export async function sendResetPasswordEmail(input: {
   to: string
   name: string
   resetUrl: string
+  ip?: string
   fetcher?: EmailFetcher
   reserve?: ReserveEmail
 }): Promise<void> {
   const email = createResetPasswordEmail(input)
-  await sendEmail({ ...input, ...email, category: 'auth' })
+  await sendEmail({ ...input, ...email, category: 'reset' })
 }

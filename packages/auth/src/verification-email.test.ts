@@ -86,6 +86,7 @@ describe('e-mail de verificação Onside', () => {
     let request: Request | undefined
     await sendVerificationEmail({
       reserve: allowAll,
+      category: 'signup',
       apiKey: 're_test',
       fromEmail: 'contato@onside.app',
       to: 'ana@example.com',
@@ -310,17 +311,17 @@ describe('e-mail de verificação Onside', () => {
         subject: 'ok',
         html: '<p>ok</p>',
         text: 'ok',
-        category: 'auth',
+        category: 'reset',
         reserve: async (category, to) => {
           calls.push(`${category}:${to}`)
-          throw new EmailBudgetExceeded(category, 'daily')
+          throw new EmailBudgetExceeded(category, 'category')
         },
         fetcher: async () => {
           throw new Error('não deveria chamar a API de e-mail')
         }
       })
     ).rejects.toBeInstanceOf(EmailBudgetExceeded)
-    expect(calls).toEqual(['auth:ana@example.com'])
+    expect(calls).toEqual(['reset:ana@example.com'])
   })
 
   it('429 do provedor vira EmailBudgetExceeded (cota acabou)', async () => {
