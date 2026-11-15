@@ -1,0 +1,194 @@
+/*
+ * A página de erro (WEB-554): o painel acid com o texto à esquerda e o Jules
+ * enorme em tinta à direita, o código gigante e apagado atrás dele. No
+ * celular, ele em cima. O painel é o mesmo nos dois temas; só o fundo em
+ * volta segue o `data-theme`.
+ */
+.erro-pg {
+  --erro-fundo: var(--onside-paper, #f1eee6);
+  --erro-tinta: #12120f;
+  --erro-acid: #c9f135;
+  box-sizing: border-box;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 18px max(16px, env(safe-area-inset-right, 0px)) 28px
+    max(16px, env(safe-area-inset-left, 0px));
+  background: var(--erro-fundo);
+  color: var(--erro-tinta);
+  font-family: var(--onside-body);
+  -webkit-font-smoothing: antialiased;
+}
+:root[data-theme="dark"] .erro-pg {
+  --erro-fundo: #12120f;
+  color: #f1eee6;
+}
+.erro-topo {
+  max-width: 1180px;
+  width: 100%;
+  margin: 0 auto;
+  color: inherit;
+}
+.erro-topo a {
+  color: inherit;
+  display: inline-flex;
+}
+.erro-painel {
+  position: relative;
+  max-width: 1180px;
+  width: 100%;
+  margin: 0 auto;
+  flex: 1;
+  min-height: 600px;
+  background: var(--erro-acid);
+  color: var(--erro-tinta);
+  border-radius: 28px;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  align-items: end;
+}
+.erro-codigo {
+  position: absolute;
+  right: -18px;
+  top: -36px;
+  font: 400 clamp(240px, 44vw, 520px) / 0.9 var(--onside-display);
+  color: rgba(18, 18, 15, 0.09);
+  pointer-events: none;
+  user-select: none;
+}
+.erro-texto {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 44px 0 48px 44px;
+  min-width: 0;
+  align-self: center;
+}
+.erro-texto small {
+  align-self: flex-start;
+  font: 500 13px / 1 var(--onside-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: var(--erro-tinta);
+  color: var(--erro-acid);
+  padding: 8px 12px;
+  border-radius: 999px;
+}
+.erro-texto small.quente {
+  background: #c92b0c;
+  color: #fff;
+}
+.erro-texto h1 {
+  font: 400 clamp(56px, 8.6vw, 112px) / 0.93 var(--onside-display);
+  text-transform: uppercase;
+  margin: 6px 0 0;
+  text-wrap: balance;
+}
+.erro-texto p {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.45;
+  max-width: 34ch;
+  color: #2c2f1c;
+}
+.erro-texto .erro-ref {
+  font-size: 14px;
+}
+.erro-ref code {
+  font: 500 14px / 1 var(--onside-mono);
+  background: rgba(18, 18, 15, 0.1);
+  padding: 3px 6px;
+  border-radius: 6px;
+}
+.erro-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
+.erro-acoes .erro-p,
+.erro-acoes .erro-s {
+  display: inline-flex;
+  align-items: center;
+  height: 54px;
+  padding: 0 26px;
+  border-radius: 999px;
+  border: 0;
+  font: 700 16px / 1 var(--onside-body);
+  text-decoration: none;
+  cursor: pointer;
+}
+.erro-acoes .erro-p {
+  background: var(--erro-tinta);
+  color: #f1eee6;
+  box-shadow: 0 4px 0 rgba(18, 18, 15, 0.35);
+}
+.erro-acoes .erro-p:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+.erro-acoes .erro-s {
+  background: transparent;
+  color: var(--erro-tinta);
+  box-shadow: inset 0 0 0 2px rgba(18, 18, 15, 0.55);
+}
+.erro-acoes a:focus-visible,
+.erro-acoes button:focus-visible,
+.erro-topo a:focus-visible {
+  outline: 3px solid var(--erro-tinta);
+  outline-offset: 3px;
+}
+.erro-topo a:focus-visible {
+  outline-color: currentColor;
+}
+.erro-jules {
+  position: relative;
+  height: 600px;
+  min-width: 0;
+}
+.erro-jules .jules-parado {
+  position: absolute;
+  left: 50%;
+  top: 56%;
+  width: 330px;
+  height: 330px;
+  transform: translate(-50%, -50%);
+}
+.erro-jules .jules-palco {
+  position: absolute;
+  left: 50%;
+  top: -110px;
+  width: 1200px;
+  height: 800px;
+  margin-left: -600px;
+}
+@media (max-width: 760px) {
+  .erro-painel {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+  }
+  .erro-jules {
+    order: -1;
+    height: 360px;
+  }
+  .erro-jules .jules-parado {
+    width: 220px;
+    height: 220px;
+    top: 58%;
+  }
+  .erro-jules .jules-palco {
+    transform: scale(0.6);
+    transform-origin: 50% 0;
+    top: -50px;
+  }
+  .erro-texto {
+    padding: 0 22px 30px;
+  }
+  .erro-codigo {
+    font-size: 220px;
+    top: -10px;
+  }
+}

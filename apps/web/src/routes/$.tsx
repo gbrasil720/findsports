@@ -22,12 +22,6 @@ export const Route = createFileRoute('/$')({
         as: 'font',
         type: 'font/woff2',
         crossOrigin: 'anonymous'
-      },
-      {
-        rel: 'preload',
-        href: '/onside-icone-preto-broken.webp',
-        as: 'image',
-        type: 'image/webp'
       }
     ]
   }),

@@ -173,9 +173,7 @@ test.describe('onboarding pendente força /onboarding/{papel}', () => {
 test('rota inexistente renderiza 404 com noindex', async ({ page }) => {
   const response = await page.goto('/rota-que-nao-existe-e2e')
   expect(response?.status()).toBe(404)
-  await expect(
-    page.getByRole('heading', { name: /saiu de campo/ })
-  ).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Bola fora/ })).toBeVisible()
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
     'content',
     /noindex/
