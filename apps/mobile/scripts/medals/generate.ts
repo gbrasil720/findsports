@@ -3,7 +3,8 @@
  *
  * - `assets/medal/viewer.html`: o visualizador (`viewer.ts`) num arquivo só,
  *   com o three e as fontes embutidos, que a WebView abre sem rede;
- * - `assets/images/medals/*.webp`: a miniatura de cada medalha, ganha e
+ * - `assets/images/medals/*.webp` (e `apps/web/public/torcedor/medalhas`, a
+ *   ganha e a bloqueada, para o perfil do web): a miniatura de cada medalha, ganha e
  *   bloqueada (a bloqueada também no cinza do tema claro), tirada do próprio visualizador. A estante e o perfil mostram
  *   a imagem: uma WebView por medalha pesaria.
  *
@@ -11,7 +12,7 @@
  *
  * Usa o Chromium do Playwright da raiz (o mesmo do E2E).
  */
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { ACHIEVEMENTS } from '@findsports_oficial/api/lib/achievements'
 import { chromium } from 'playwright'
@@ -20,6 +21,7 @@ const here = import.meta.dir
 const app = join(here, '../..')
 const viewer = join(app, 'assets/medal/viewer.html')
 const thumbs = join(app, 'assets/images/medals')
+const webThumbs = join(app, '../web/public/torcedor/medalhas')
 
 /** Ângulo da miniatura, o mesmo de cada medalha na estante do design (2i). */
 const YAW: Record<string, number> = {
@@ -114,6 +116,12 @@ for (const a of ACHIEVEMENTS) {
     )
     count++
   }
+  // O perfil do web do torcedor mostra as mesmas miniaturas (a do escuro).
+  for (const name of [a.id, `${a.id}-locked`])
+    await copyFile(
+      join(thumbs, `${name}.webp`),
+      join(webThumbs, `${name}.webp`)
+    )
 }
 await browser.close()
 console.log(
