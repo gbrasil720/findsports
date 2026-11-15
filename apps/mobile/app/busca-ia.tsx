@@ -35,7 +35,7 @@ import {
 import { Conversations } from '@/components/ai/conversations'
 import { AiHeader, AiTopBar, RoundButton } from '@/components/ai/header'
 import { AiIcon } from '@/components/ai/icons'
-import { Mascot } from '@/components/ai/mascot'
+import { Mascot, MascotStill } from '@/components/ai/mascot'
 import { UserMessage } from '@/components/ai/message'
 import { PromptInput } from '@/components/ai/prompt-input'
 import { Reasoning } from '@/components/ai/reasoning'
@@ -673,7 +673,7 @@ export default function AiSearch() {
   const placeholder = blocked
     ? `O chat volta ${resumeLabel(blocked.resumesAt, now)}`
     : off && !last
-      ? 'A busca com IA está fora do ar'
+      ? 'O Jules está fora do ar'
       : busy
         ? 'Responda ou espere eu terminar…'
         : pending
@@ -755,7 +755,7 @@ export default function AiSearch() {
                 now={now}
                 notice={
                   off
-                    ? 'A busca com IA está fora do ar agora. A busca normal continua funcionando.'
+                    ? 'O Jules está fora do ar agora. A busca normal continua funcionando.'
                     : blocked
                       ? `Você usou as perguntas ${blocked.scope === 'day' ? 'de hoje' : 'deste mês'}. O chat volta ${resumeLabel(blocked.resumesAt, now)}; a busca normal continua.`
                       : null
@@ -966,8 +966,8 @@ export default function AiSearch() {
         ]}
       >
         <View style={styles.coverHead}>
-          <Icon name="sparkle" size={16} color={PAPER} accent={ACID} />
-          <Text style={[styles.coverKicker, { flex: 1 }]}>BUSCA COM IA</Text>
+          <MascotStill size={18} />
+          <Text style={[styles.coverKicker, { flex: 1 }]}>JULES</Text>
           <Text style={styles.coverClock}>{clock(now)}</Text>
         </View>
         {last ? (

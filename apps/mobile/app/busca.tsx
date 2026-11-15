@@ -6,6 +6,7 @@ import { type ReactNode, useDeferredValue, useEffect, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import Animated, { FadeOut, LinearTransition } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { MascotStill } from '@/components/ai/mascot'
 import { useAiReady } from '@/components/ai/ready'
 import { SearchEmpty } from '@/components/empty-states'
 import { Photo } from '@/components/explore'
@@ -619,7 +620,7 @@ function Chip({
   )
 }
 
-/** "Pedido mais específico?": tinta no claro, cinza no escuro. */
+/** "Pedido mais específico?": tinta no claro, cinza no escuro, com o Jules. */
 function AskAi({ onPress }: { onPress: () => void }) {
   const palette = usePalette()
   return (
@@ -627,13 +628,13 @@ function AskAi({ onPress }: { onPress: () => void }) {
       <View
         style={[styles.ask, palette.dark && { backgroundColor: palette.mark }]}
       >
-        <Icon name="sparkle" size={24} color={ACID} accent={ACID} />
+        <MascotStill size={28} />
         <View style={{ flex: 1 }}>
           <Text style={[text(15, 'Bold', 1.25), { color: PAPER }]}>
             Pedido mais específico?
           </Text>
           <Text style={[text(13, 'Regular', 1.3), { color: '#aaa9a4' }]}>
-            Pergunte do seu jeito à busca com IA.
+            Pergunte do seu jeito ao Jules, a IA da Onside.
           </Text>
         </View>
       </View>

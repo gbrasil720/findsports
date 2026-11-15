@@ -1425,7 +1425,10 @@ invente layout que o projeto não tem.
   (só em desenvolvimento): `?dubla=1` troca o servidor por `lib/ai-dubla.ts`, e `estado=
   pensando|resposta|confirmar|feito` já manda a pergunta de cada tela (navegador DEV, seção
   "24"); `dubla=pior|limite|fora` para o pior caso, o limite e a IA fora do ar.
-- **A taça, mascote da busca com IA:** `components/ai/mascot.tsx`. O palco
+- **O Jules, mascote da busca com IA** (nome do dono, 12/11/2026, WEB-542): uma taça
+  com olhos, masculino ("o Jules"). Na primeira aparição de uma tela, com o papel:
+  "Jules, a IA da Onside". Nome de arquivo e de código continua `mascot`/`taca`.
+  `components/ai/mascot.tsx`. O palco
   (`scripts/mascot/stage.ts`, gerado em `assets/mascot/stage.html` por
   `bun apps/mobile/scripts/mascot/generate.ts`) roda numa WebView, como a medalha:
   o `open-bot-avatar` (MIT) dá o volume, o olhar e o piscar, e por cima vão a troca

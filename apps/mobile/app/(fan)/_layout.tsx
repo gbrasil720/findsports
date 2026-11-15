@@ -382,10 +382,7 @@ export default function FanTabs() {
               })
           }}
         >
-          <NativeTabs.Trigger.Icon
-            src={icons.jules}
-            renderingMode="original"
-          />
+          <NativeTabs.Trigger.Icon src={icons.jules} renderingMode="original" />
           <NativeTabs.Trigger.Label>IA</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
       </NativeTabs>
