@@ -32,7 +32,8 @@ const YAW: Record<string, number> = {
   esp2: 18,
   esp4: -30,
   ava1: 24,
-  ava10: -18
+  ava10: -18,
+  jules: -16
 }
 /** 96 pt a 3x, o maior tamanho em que a miniatura aparece. */
 const THUMB = 288

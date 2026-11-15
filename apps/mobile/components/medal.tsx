@@ -27,7 +27,8 @@ const THUMBS = {
   esp2: require('@/assets/images/medals/esp2.webp'),
   esp4: require('@/assets/images/medals/esp4.webp'),
   ava1: require('@/assets/images/medals/ava1.webp'),
-  ava10: require('@/assets/images/medals/ava10.webp')
+  ava10: require('@/assets/images/medals/ava10.webp'),
+  jules: require('@/assets/images/medals/jules.webp')
 } satisfies Record<MedalId, number>
 
 const LOCKED_THUMBS = {
@@ -40,7 +41,8 @@ const LOCKED_THUMBS = {
   esp2: require('@/assets/images/medals/esp2-locked.webp'),
   esp4: require('@/assets/images/medals/esp4-locked.webp'),
   ava1: require('@/assets/images/medals/ava1-locked.webp'),
-  ava10: require('@/assets/images/medals/ava10-locked.webp')
+  ava10: require('@/assets/images/medals/ava10-locked.webp'),
+  jules: require('@/assets/images/medals/jules-locked.webp')
 } satisfies Record<MedalId, number>
 
 const LOCKED_LIGHT_THUMBS = {
@@ -53,7 +55,8 @@ const LOCKED_LIGHT_THUMBS = {
   esp2: require('@/assets/images/medals/esp2-locked-light.webp'),
   esp4: require('@/assets/images/medals/esp4-locked-light.webp'),
   ava1: require('@/assets/images/medals/ava1-locked-light.webp'),
-  ava10: require('@/assets/images/medals/ava10-locked-light.webp')
+  ava10: require('@/assets/images/medals/ava10-locked-light.webp'),
+  jules: require('@/assets/images/medals/jules-locked-light.webp')
 } satisfies Record<MedalId, number>
 
 /**
