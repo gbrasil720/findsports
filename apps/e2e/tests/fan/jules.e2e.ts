@@ -57,7 +57,7 @@ test('torcedor com conta acha o Jules e a conquista é gravada uma vez', async (
   await expect(page.locator('.achou-jules:visible')).toContainText('Me achou.')
   await expect(
     page.getByText(
-      'Você destravou uma conquista secreta. Ela te espera no app.'
+      'Você destravou uma conquista secreta. Ela fica guardada na sua conta e aparece quando o app chegar.'
     )
   ).toBeVisible()
   await expect.poll(async () => (await secreta(fan.id)).length).toBe(1)

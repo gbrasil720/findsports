@@ -143,6 +143,9 @@ export function contaNovaPodeVer(pathname: string, href: string): boolean {
   )
 }
 
-/** O aviso de quem acha o Jules no web (WEB-558): a medalha é do app. */
+/**
+ * O aviso de quem acha o Jules no web (WEB-558). A medalha é do app, que
+ * ainda não saiu: o texto não pode dar o app como disponível.
+ */
 export const CONQUISTA_JULES =
-  'Você destravou uma conquista secreta. Ela te espera no app.'
+  'Você destravou uma conquista secreta. Ela fica guardada na sua conta e aparece quando o app chegar.'

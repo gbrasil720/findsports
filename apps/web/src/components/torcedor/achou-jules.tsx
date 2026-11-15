@@ -66,8 +66,8 @@ export function AchouJules() {
         <b>{naLista ? 'Combinado.' : 'Me achou.'}</b>
         <p>
           {naLista
-            ? `Avisamos ${email} no dia em que o app sair. Lá eu respondo de verdade.`
-            : 'Sou a IA da Onside. Aqui eu só apareço; no app eu respondo de verdade e acho o bar do seu jogo.'}
+            ? `Avisamos ${email} no dia em que o app sair. Lá eu vou responder de verdade.`
+            : 'Sou a IA da Onside. Aqui eu só apareço; quando o app chegar, eu vou responder de verdade e achar o bar do seu jogo.'}
         </p>
         {erro ? (
           <p className="achou-jules-erro" role="alert">
