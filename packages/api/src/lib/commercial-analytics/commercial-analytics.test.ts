@@ -305,22 +305,29 @@ describe('commercial-analytics retention contract', () => {
   })
 
   it('ancora a janela em hoje: 30 dias do passado não passam no Starter', () => {
-    // 15/11/2026 às 10h de Brasília; o "30d" do painel começa em 17/10.
+    // 15/11/2026 às 10h de Brasília; o "30d" do painel começa em 17/10, e
+    // o de ontem (aba aberta desde antes da meia-noite), em 16/10.
     const now = new Date('2026-11-15T13:00:00Z')
     const day = (d: string) => new Date(`${d}T03:00:00Z`)
     expect(() =>
       assertAnalyticsPeriodAllowed('starter', 30, day('2026-10-17'), now)
     ).not.toThrow()
     expect(() =>
+      assertAnalyticsPeriodAllowed('starter', 30, day('2026-10-16'), now)
+    ).not.toThrow()
+    expect(() =>
       assertAnalyticsPeriodAllowed('starter', 25, day('2026-01-09'), now)
     ).toThrow('Plano Starter mostra só os últimos 30 dias')
     expect(() =>
-      assertAnalyticsPeriodAllowed('starter', 30, day('2026-10-16'), now)
+      assertAnalyticsPeriodAllowed('starter', 30, day('2026-10-15'), now)
     ).toThrow('Plano Starter mostra só os últimos 30 dias')
 
     expect(() =>
       assertAnalyticsPeriodAllowed('pro', 365, day('2025-11-16'), now)
     ).not.toThrow()
+    expect(() =>
+      assertAnalyticsPeriodAllowed('pro', 365, day('2025-11-14'), now)
+    ).toThrow('Plano Pro mostra só os últimos 365 dias')
     expect(() =>
       assertAnalyticsPeriodAllowed('pro', 20, day('2025-10-21'), now)
     ).toThrow('Plano Pro mostra só os últimos 365 dias')
