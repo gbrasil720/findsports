@@ -8,6 +8,28 @@ export type Plan = 'starter' | 'pro' | 'elite'
 export const ANNUAL_MONTHS = 10
 
 /**
+ * Cupom de fundador (WEB-31): R$ 28,00 a menos por mês, em qualquer plano e
+ * enquanto a assinatura durar, para o bar que contratar durante o lançamento.
+ * No Stripe é o cupom `Early Bird`, com este id no sandbox e em produção e
+ * teto de 100 usos.
+ *
+ * Não há interruptor no app: a oferta acaba quando o cupom esgota ou expira
+ * no Stripe, e daí em diante o checkout segue a preço de tabela
+ * (`usableFounderCoupon`). Numa conta em que o cupom não existe é a mesma
+ * coisa.
+ */
+export const FOUNDER_COUPON_ID = 'eM7dQpMF'
+
+/**
+ * Cupom de fundador do anual (decisão do dono, 14/11/2026: o desconto de
+ * fundador vale no anual). O `FOUNDER_COUPON_ID` é de valor fixo por fatura, e
+ * no anual tiraria R$ 28 do ano; este tira `ANNUAL_MONTHS` vezes isso, e o
+ * anual do fundador sai 10 × o mensal de fundador. Mesmas vagas: os resgates
+ * dos dois cupons e o Pix somam no teto.
+ */
+export const FOUNDER_ANNUAL_COUPON_ID = 'fundador_anual'
+
+/**
  * Fonte única dos planos vendidos no Stripe (WEB-31): o checkout vende estes
  * e o webhook só aplica estes.
  *
