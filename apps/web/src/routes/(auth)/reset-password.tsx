@@ -1,6 +1,6 @@
 import { useForm } from '@tanstack/react-form'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Key from 'reicon-react/icons/Key'
 import Loader from 'reicon-react/icons/Loader'
 import { toast } from 'sonner'
@@ -70,7 +70,21 @@ function validateConfirm({
 }
 
 function ResetPasswordPage() {
-  const { token, error } = Route.useSearch()
+  const search = Route.useSearch()
+  // O token fica só na memória da página: lido, sai da barra de endereço,
+  // do histórico e de quem lê a URL depois (análise, extensão, print).
+  const [token] = useState(search.token)
+  const { error } = search
+  useEffect(() => {
+    if (!token) return
+    const url = new URL(window.location.href)
+    url.searchParams.delete('token')
+    window.history.replaceState(
+      window.history.state,
+      '',
+      url.pathname + url.search + url.hash
+    )
+  }, [token])
 
   return (
     <AuthShell panel={PANEL}>

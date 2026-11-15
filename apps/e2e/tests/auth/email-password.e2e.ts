@@ -140,7 +140,8 @@ test.describe('redefinir senha', () => {
 
     const link = await requestReset(page, user.email)
     await page.goto(link)
-    await expect(page).toHaveURL(/\/reset-password\?token=/)
+    // Lido o token, ele sai da barra de endereço (e de quem lê a URL depois).
+    await expect(page).toHaveURL(/\/reset-password$/)
     await page.getByLabel('Nova senha', { exact: true }).fill(NEW_PASSWORD)
     await page
       .getByLabel('Confirmar nova senha', { exact: true })
