@@ -84,7 +84,10 @@ function julesJewel(ctx, s, mask) {
     ctx.fill()
   }
   const smile = (x) => {
-    for (const [w, c] of [[86, metal], [66, inkc]]) {
+    for (const [w, c] of [
+      [86, metal],
+      [66, inkc]
+    ]) {
       ctx.strokeStyle = c
       ctx.lineWidth = w
       ctx.beginPath()
@@ -92,10 +95,20 @@ function julesJewel(ctx, s, mask) {
       ctx.stroke()
     }
   }
-  if (s.variant === 'b2') { smile(362); smile(662) }
-  else if (s.variant === 'b3') { open(362); smile(662) }
-  else { open(362); open(662) }
-  if (s.variant === 'b3') { ctx.fillStyle = metal; star(ctx, 800, 250, 34) }
+  if (s.variant === 'b2') {
+    smile(362)
+    smile(662)
+  } else if (s.variant === 'b3') {
+    open(362)
+    smile(662)
+  } else {
+    open(362)
+    open(662)
+  }
+  if (s.variant === 'b3') {
+    ctx.fillStyle = metal
+    star(ctx, 800, 250, 34)
+  }
   // O pé: esmalte com o nome em relevo de ouro.
   ctx.fillStyle = metal
   ctx.textAlign = 'center'
@@ -115,8 +128,16 @@ function julesFront(ctx, s, locked, mask) {
   // a: rosto limpo no esmalte, nome no pé · b: o Jules inteiro em acid · c: ouro maciço
   if (!locked && /^b\d/.test(s.variant ?? '')) return julesJewel(ctx, s, mask)
   const v = (s.variant ?? 'a')[0]
-  const metal = mask ? '#fff' : locked ? (s.lockedMetal ?? METAL.locked) : METAL[s.metal]
-  const enamel = mask ? '#000' : locked ? (s.lockedEnamel ?? '#24241f') : s.enamel
+  const metal = mask
+    ? '#fff'
+    : locked
+      ? (s.lockedMetal ?? METAL.locked)
+      : METAL[s.metal]
+  const enamel = mask
+    ? '#000'
+    : locked
+      ? (s.lockedEnamel ?? '#24241f')
+      : s.enamel
   ctx.fillStyle = v === 'c' ? metal : enamel
   ctx.fillRect(0, 0, 1024, 1024)
   ctx.textAlign = 'center'
@@ -151,7 +172,11 @@ function julesFront(ctx, s, locked, mask) {
   }
 }
 function julesBack(ctx, s, locked, bump) {
-  ctx.fillStyle = bump ? '#fff' : locked ? (s.lockedMetal ?? METAL.locked) : METAL[s.metal]
+  ctx.fillStyle = bump
+    ? '#fff'
+    : locked
+      ? (s.lockedMetal ?? METAL.locked)
+      : METAL[s.metal]
   ctx.fillRect(0, 0, 1024, 1024)
   ctx.fillStyle = bump ? '#000' : 'rgba(0,0,0,.28)'
   ctx.strokeStyle = ctx.fillStyle

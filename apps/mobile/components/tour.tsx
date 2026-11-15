@@ -1,4 +1,3 @@
-import { MascotStill } from '@/components/ai/mascot'
 import * as SecureStore from 'expo-secure-store'
 import { type RefObject, useEffect, useRef, useState } from 'react'
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native'
@@ -15,6 +14,7 @@ import Animated, {
   withTiming
 } from 'react-native-reanimated'
 import Svg, { Defs, Mask, Rect } from 'react-native-svg'
+import { MascotStill } from '@/components/ai/mascot'
 import { haptic } from '@/components/motion'
 import { useAiButtonCenter } from '@/components/side-nav'
 import { usePalette } from '@/components/theme'

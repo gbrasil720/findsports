@@ -102,7 +102,14 @@ export function makeMedal(
       })
   // PROTÓTIPO (medalha secreta do Jules): recortada no formato dele.
   if ((look.shape as string) === 'jules')
-    return julesMedal(g, metal, locked, tx, (look as { variant?: string }).variant ?? 'a', (look as { bail?: string }).bail ?? 'ring')
+    return julesMedal(
+      g,
+      metal,
+      locked,
+      tx,
+      (look as { variant?: string }).variant ?? 'a',
+      (look as { bail?: string }).bail ?? 'ring'
+    )
   g.add(new THREE.Mesh(extrude(shapeFor(look.shape, r), 0.14, 0.055), metal))
   const rim = extrude(
     ringShape(look.shape, r * 0.985, r * 0.8),
@@ -262,7 +269,11 @@ const JK = 1 / 36
 const jx = (x: number) => (x - 50) * JK
 const jy = (y: number) => (50 - y) * JK
 type Seg = [string, ...number[]]
-function jPath(target: THREE.Path, segs: Seg[], tf = (x: number, y: number) => [x, y]) {
+function jPath(
+  target: THREE.Path,
+  segs: Seg[],
+  tf = (x: number, y: number) => [x, y]
+) {
   for (const [op, ...n] of segs) {
     const pt = (i: number) => {
       const [x, y] = tf(n[i], n[i + 1])
@@ -275,15 +286,74 @@ function jPath(target: THREE.Path, segs: Seg[], tf = (x: number, y: number) => [
   target.closePath()
   return target
 }
-const J_BODY: Seg[] = [['M', 26, 14], ['L', 74, 14], ['L', 74, 38], ['C', 74, 51, 66, 60, 56, 62], ['L', 56, 72], ['L', 64, 72], ['C', 67, 72, 68, 74, 68, 77], ['L', 68, 82], ['C', 68, 85, 66, 86, 63, 86], ['L', 37, 86], ['C', 34, 86, 32, 85, 32, 82], ['L', 32, 77], ['C', 32, 74, 33, 72, 36, 72], ['L', 44, 72], ['L', 44, 62], ['C', 34, 60, 26, 51, 26, 38]]
-const J_BOWL: Seg[] = [['M', 26, 14], ['L', 74, 14], ['L', 74, 38], ['C', 74, 51, 66, 60, 56, 62], ['L', 44, 62], ['C', 34, 60, 26, 51, 26, 38]]
-const J_BASE: Seg[] = [['M', 36, 72], ['L', 64, 72], ['C', 67, 72, 68, 74, 68, 77], ['L', 68, 82], ['C', 68, 85, 66, 86, 63, 86], ['L', 37, 86], ['C', 34, 86, 32, 85, 32, 82], ['L', 32, 77], ['C', 32, 74, 33, 72, 36, 72]]
+const J_BODY: Seg[] = [
+  ['M', 26, 14],
+  ['L', 74, 14],
+  ['L', 74, 38],
+  ['C', 74, 51, 66, 60, 56, 62],
+  ['L', 56, 72],
+  ['L', 64, 72],
+  ['C', 67, 72, 68, 74, 68, 77],
+  ['L', 68, 82],
+  ['C', 68, 85, 66, 86, 63, 86],
+  ['L', 37, 86],
+  ['C', 34, 86, 32, 85, 32, 82],
+  ['L', 32, 77],
+  ['C', 32, 74, 33, 72, 36, 72],
+  ['L', 44, 72],
+  ['L', 44, 62],
+  ['C', 34, 60, 26, 51, 26, 38]
+]
+const J_BOWL: Seg[] = [
+  ['M', 26, 14],
+  ['L', 74, 14],
+  ['L', 74, 38],
+  ['C', 74, 51, 66, 60, 56, 62],
+  ['L', 44, 62],
+  ['C', 34, 60, 26, 51, 26, 38]
+]
+const J_BASE: Seg[] = [
+  ['M', 36, 72],
+  ['L', 64, 72],
+  ['C', 67, 72, 68, 74, 68, 77],
+  ['L', 68, 82],
+  ['C', 68, 85, 66, 86, 63, 86],
+  ['L', 37, 86],
+  ['C', 34, 86, 32, 85, 32, 82],
+  ['L', 32, 77],
+  ['C', 32, 74, 33, 72, 36, 72]
+]
 const J_HANDLES: [Seg[], Seg[]][] = [
-  [[['M', 28, 47], ['C', 17, 47, 10, 41, 10, 32], ['C', 10, 24, 16, 18, 27, 20]], [['M', 27, 26], ['C', 20, 25, 16, 28, 16, 32], ['C', 16, 37, 20, 41, 27, 41]]],
-  [[['M', 73, 20], ['C', 84, 18, 90, 24, 90, 32], ['C', 90, 41, 83, 47, 72, 47]], [['M', 73, 41], ['C', 80, 41, 84, 37, 84, 32], ['C', 84, 28, 80, 25, 73, 26]]]
+  [
+    [
+      ['M', 28, 47],
+      ['C', 17, 47, 10, 41, 10, 32],
+      ['C', 10, 24, 16, 18, 27, 20]
+    ],
+    [
+      ['M', 27, 26],
+      ['C', 20, 25, 16, 28, 16, 32],
+      ['C', 16, 37, 20, 41, 27, 41]
+    ]
+  ],
+  [
+    [
+      ['M', 73, 20],
+      ['C', 84, 18, 90, 24, 90, 32],
+      ['C', 90, 41, 83, 47, 72, 47]
+    ],
+    [
+      ['M', 73, 41],
+      ['C', 80, 41, 84, 37, 84, 32],
+      ['C', 84, 28, 80, 25, 73, 26]
+    ]
+  ]
 ]
 /** Encolhe em torno de um centro: serve de recuo para formas quase convexas. */
-const inset = (cx: number, cy: number, k: number) => (x: number, y: number) => [cx + (x - cx) * k, cy + (y - cy) * k]
+const inset = (cx: number, cy: number, k: number) => (x: number, y: number) => [
+  cx + (x - cx) * k,
+  cy + (y - cy) * k
+]
 /** Placa com UV num retângulo do canvas de 1024 (x0, y0, x1, y1 em px) sobre a caixa da forma. */
 function jPlate(shape: THREE.Shape, px: [number, number, number, number]) {
   const g = new THREE.ShapeGeometry(shape, 96)
@@ -294,28 +364,67 @@ function jPlate(shape: THREE.Shape, px: [number, number, number, number]) {
   for (let i = 0; i < p.count; i++) {
     const u = (p.getX(i) - b.min.x) / (b.max.x - b.min.x)
     const v = (p.getY(i) - b.min.y) / (b.max.y - b.min.y)
-    uv.setXY(i, (px[0] + u * (px[2] - px[0])) / 1024, 1 - (px[3] - v * (px[3] - px[1])) / 1024)
+    uv.setXY(
+      i,
+      (px[0] + u * (px[2] - px[0])) / 1024,
+      1 - (px[3] - v * (px[3] - px[1])) / 1024
+    )
   }
   return g
 }
-function julesMedal(g: THREE.Group, metal: THREE.Material, locked: boolean, tx: MedalTextures, variant: string, bailKind: string) {
+function julesMedal(
+  g: THREE.Group,
+  metal: THREE.Material,
+  locked: boolean,
+  tx: MedalTextures,
+  variant: string,
+  bailKind: string
+) {
   // 'b': o esmalte vai quase até a borda (o Jules inteiro em acid, com fio de ouro).
   const k = variant.startsWith('b') ? 0.92 : 0.82
   const kb = variant.startsWith('b') ? 0.9 : 0.8
   const D = 0.14
-  g.add(new THREE.Mesh(extrude(jPath(new THREE.Shape(), J_BODY) as THREE.Shape, D, 0.055), metal))
+  g.add(
+    new THREE.Mesh(
+      extrude(jPath(new THREE.Shape(), J_BODY) as THREE.Shape, D, 0.055),
+      metal
+    )
+  )
   for (const [outer, hole] of J_HANDLES) {
     const s = jPath(new THREE.Shape(), outer) as THREE.Shape
-    s.holes.push(new THREE.Path((jPath(new THREE.Shape(), hole) as THREE.Shape).getPoints(24).reverse()))
+    s.holes.push(
+      new THREE.Path(
+        (jPath(new THREE.Shape(), hole) as THREE.Shape).getPoints(24).reverse()
+      )
+    )
     g.add(new THREE.Mesh(extrude(s, D * 0.8, 0.05), metal))
   }
   // Aro em relevo na boca e no pé, dos dois lados, como nas outras.
-  const ring = (segs: Seg[], cx: number, cy: number, k1: number, k2: number) => {
-    const s = new THREE.Shape((jPath(new THREE.Shape(), segs, inset(cx, cy, k1)) as THREE.Shape).getPoints(48))
-    s.holes.push(new THREE.Path((jPath(new THREE.Shape(), segs, inset(cx, cy, k2)) as THREE.Shape).getPoints(48).reverse()))
+  const ring = (
+    segs: Seg[],
+    cx: number,
+    cy: number,
+    k1: number,
+    k2: number
+  ) => {
+    const s = new THREE.Shape(
+      (
+        jPath(new THREE.Shape(), segs, inset(cx, cy, k1)) as THREE.Shape
+      ).getPoints(48)
+    )
+    s.holes.push(
+      new THREE.Path(
+        (jPath(new THREE.Shape(), segs, inset(cx, cy, k2)) as THREE.Shape)
+          .getPoints(48)
+          .reverse()
+      )
+    )
     return extrude(s, 0.05, 0.022, 96)
   }
-  for (const geo of [ring(J_BOWL, 50, 36, 0.985, k), ring(J_BASE, 50, 79, 0.975, kb)]) {
+  for (const geo of [
+    ring(J_BOWL, 50, 36, 0.985, k),
+    ring(J_BASE, 50, 79, 0.975, kb)
+  ]) {
     for (const z of [0.125, -0.125]) {
       const m = new THREE.Mesh(geo, metal)
       m.position.z = z
@@ -338,10 +447,17 @@ function julesMedal(g: THREE.Group, metal: THREE.Material, locked: boolean, tx: 
       polygonOffsetUnits: -4
     })
   const bowl = jPath(new THREE.Shape(), J_BOWL, inset(50, 36, k)) as THREE.Shape
-  const base = jPath(new THREE.Shape(), J_BASE, inset(50, 79, kb)) as THREE.Shape
+  const base = jPath(
+    new THREE.Shape(),
+    J_BASE,
+    inset(50, 79, kb)
+  ) as THREE.Shape
   const front = mat(tx.front, tx.frontMask, true)
   const back = mat(tx.back, tx.backBump, false)
-  for (const [shape, px] of [[bowl, [112, 0, 912, 800]], [base, [162, 812, 862, 1018]]] as [THREE.Shape, [number, number, number, number]][]) {
+  for (const [shape, px] of [
+    [bowl, [112, 0, 912, 800]],
+    [base, [162, 812, 862, 1018]]
+  ] as [THREE.Shape, [number, number, number, number]][]) {
     const f = new THREE.Mesh(jPlate(shape, px), front)
     f.position.z = 0.129
     g.add(f)
@@ -351,8 +467,19 @@ function julesMedal(g: THREE.Group, metal: THREE.Material, locked: boolean, tx: 
     g.add(v)
   }
   // PROTÓTIPO: a argola. 'ring' é a das outras medalhas; as demais são só dele.
-  const acid = new THREE.MeshPhysicalMaterial({ color: locked ? '#24241f' : '#c9f135', metalness: 0, roughness: 0.35, clearcoat: 0.4, clearcoatRoughness: 0.3 })
-  const put = (geo: THREE.BufferGeometry, mat: THREE.Material, y: number, z = 0) => {
+  const acid = new THREE.MeshPhysicalMaterial({
+    color: locked ? '#24241f' : '#c9f135',
+    metalness: 0,
+    roughness: 0.35,
+    clearcoat: 0.4,
+    clearcoatRoughness: 0.3
+  })
+  const put = (
+    geo: THREE.BufferGeometry,
+    mat: THREE.Material,
+    y: number,
+    z = 0
+  ) => {
     const m = new THREE.Mesh(geo, mat)
     m.position.set(0, y, z)
     g.add(m)
@@ -373,7 +500,8 @@ function julesMedal(g: THREE.Group, metal: THREE.Material, locked: boolean, tx: 
     put(new THREE.CylinderGeometry(0.06, 0.08, 0.06, 24), metal, 1.02)
     put(new THREE.SphereGeometry(0.095, 32, 24), acid, 1.13)
     put(new THREE.CylinderGeometry(0.05, 0.05, 0.05, 24), metal, 1.235)
-    put(new THREE.TorusGeometry(0.13, 0.04, 20, 48), metal, 1.38).rotation.y = Math.PI / 2
+    put(new THREE.TorusGeometry(0.13, 0.04, 20, 48), metal, 1.38).rotation.y =
+      Math.PI / 2
   } else if (bailKind === 'ribbon') {
     // Passador de ouro e um pedaço de fita: acid com a listra de tinta.
     put(new THREE.BoxGeometry(0.1, 0.1, 0.1), metal, 1.03)
@@ -388,15 +516,22 @@ function julesMedal(g: THREE.Group, metal: THREE.Material, locked: boolean, tx: 
     x.fillRect(100, 0, 56, 256)
     const t = new THREE.CanvasTexture(c)
     t.colorSpace = THREE.SRGBColorSpace
-    const cloth = new THREE.MeshStandardMaterial({ map: t, roughness: 0.85, metalness: 0 })
+    const cloth = new THREE.MeshStandardMaterial({
+      map: t,
+      roughness: 0.85,
+      metalness: 0
+    })
     const fita = put(new THREE.BoxGeometry(0.5, 0.5, 0.025), cloth, 1.37, -0.02)
     fita.rotation.x = -0.12
   } else {
-    put(new THREE.TorusGeometry(0.15, 0.045, 20, 48), metal, 1.2).rotation.y = Math.PI / 2
+    put(new THREE.TorusGeometry(0.15, 0.045, 20, 48), metal, 1.2).rotation.y =
+      Math.PI / 2
     put(new THREE.CylinderGeometry(0.07, 0.09, 0.14, 24), metal, 1.03)
   }
   // As argolas mais altas pedem a medalha um pouco menor e mais baixa no quadro.
-  if (bailKind === 'bead' || bailKind === 'ribbon') g.scale.setScalar(bailKind === 'ribbon' ? 0.88 : 0.93)
-  g.position.y = bailKind === 'ribbon' ? -0.3 : bailKind === 'bead' ? -0.2 : -0.1
+  if (bailKind === 'bead' || bailKind === 'ribbon')
+    g.scale.setScalar(bailKind === 'ribbon' ? 0.88 : 0.93)
+  g.position.y =
+    bailKind === 'ribbon' ? -0.3 : bailKind === 'bead' ? -0.2 : -0.1
   return g
 }
