@@ -71,20 +71,21 @@ function validateConfirm({
 
 function ResetPasswordPage() {
   const search = Route.useSearch()
-  // O token fica só na memória da página: lido, sai da barra de endereço,
-  // do histórico e de quem lê a URL depois (análise, extensão, print).
+  const navigate = useNavigate()
+  // O token fica só na memória da página: lido, sai da URL pelo router (que
+  // também não o guarda), do histórico e de quem lê a URL depois (análise,
+  // extensão, print).
   const [token] = useState(search.token)
   const { error } = search
   useEffect(() => {
     if (!token) return
-    const url = new URL(window.location.href)
-    url.searchParams.delete('token')
-    window.history.replaceState(
-      window.history.state,
-      '',
-      url.pathname + url.search + url.hash
-    )
-  }, [token])
+    void navigate({
+      to: '.',
+      search: ({ token: _, ...resto }) => resto,
+      replace: true,
+      resetScroll: false
+    })
+  }, [token, navigate])
 
   return (
     <AuthShell panel={PANEL}>
