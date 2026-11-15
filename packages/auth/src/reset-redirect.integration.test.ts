@@ -26,11 +26,17 @@ integrationTest(
         })
       )
 
-    expect((await request('onside://reset-password')).status).toBe(400)
-    expect((await request('onside://x?y=1')).status).toBe(400)
+    // O esquema do app (build antigo) vira a página do site: não falha.
+    expect((await request('onside://reset-password')).status).toBe(200)
     expect((await request('/reset-password')).status).toBe(200)
+    const refusedBody = await request('https://evil.example/reset')
+    expect(refusedBody.status).toBe(400)
+    expect(((await refusedBody.json()) as { code?: string }).code).toBe(
+      'RESET_REDIRECT_NOT_ALLOWED'
+    )
 
-    // O GET do link do e-mail também recusa o esquema no callbackURL.
+    // O GET do link do e-mail (inclusive os mandados antes da regra) leva ao
+    // site, nunca ao esquema do app.
     const callback = (target: string) =>
       auth.handler(
         new Request(
@@ -38,9 +44,13 @@ integrationTest(
           { headers: { 'x-forwarded-for': clientIp } }
         )
       )
-    const refused = await callback('onside://reset-password')
-    expect(refused.status).toBe(400)
-    expect(refused.headers.get('location')).toBeNull()
+    const app = await callback('onside://reset-password')
+    expect(app.status).toBe(302)
+    expect(app.headers.get('location')).toContain(
+      '/reset-password?error=INVALID_TOKEN'
+    )
+    expect(app.headers.get('location')).not.toContain('onside:')
+    expect((await callback('https://evil.example/x')).status).toBe(400)
     const web = await callback('/reset-password')
     expect(web.status).toBe(302)
     expect(web.headers.get('location')).toContain(

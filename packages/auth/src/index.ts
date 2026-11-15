@@ -50,7 +50,7 @@ import { syncStripeEvent } from './stripe-sync'
 import {
   APP_SCHEME,
   buildTrustedOrigins,
-  isSafeResetRedirect
+  resetRedirectTarget
 } from './trusted-origins'
 import { publicEmailUrl, sendVerificationEmail } from './verification-email'
 
@@ -147,17 +147,36 @@ export function createAuth() {
           }
         }
         // O token de redefinição de senha não vai a `onside://` (qualquer app
-        // registra o esquema): só ao site. Ver `isSafeResetRedirect`.
-        const resetTarget =
-          ctx.path === '/request-password-reset'
+        // registra o esquema): só ao site. O esquema do app vira a página do
+        // site, para o build antigo do app seguir funcionando; o resto que não
+        // é do site é recusado. Ver `resetRedirectTarget`.
+        if (
+          ctx.path === '/request-password-reset' ||
+          ctx.path === '/reset-password/:token'
+        ) {
+          const fromBody = ctx.path === '/request-password-reset'
+          const target = fromBody
             ? (ctx.body as { redirectTo?: unknown } | undefined)?.redirectTo
-            : ctx.path === '/reset-password/:token'
-              ? ctx.query?.callbackURL
-              : undefined
-        if (!isSafeResetRedirect(resetTarget, ctx.context.trustedOrigins)) {
-          throw new APIError('BAD_REQUEST', {
-            message: 'Endereço de redefinição de senha não permitido.'
-          })
+            : ctx.query?.callbackURL
+          const decision = resetRedirectTarget(
+            target,
+            ctx.context.trustedOrigins
+          )
+          if (!decision) {
+            throw new APIError('BAD_REQUEST', {
+              message:
+                'Endereço de redefinição de senha não permitido. Atualize o app ou redefina pelo site.',
+              code: 'RESET_REDIRECT_NOT_ALLOWED'
+            })
+          }
+          if ('replace' in decision) {
+            return {
+              context: fromBody
+                ? { body: { ...ctx.body, redirectTo: decision.replace } }
+                : { query: { ...ctx.query, callbackURL: decision.replace } }
+            }
+          }
+          return
         }
         // WEB-383: 2FA obrigatório e rotas admin sem uso desligadas.
         if (ctx.path?.startsWith('/admin/')) {
