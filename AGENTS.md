@@ -341,7 +341,10 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   linha grava desconto 0 e o log leva `pix_founder_seat_overflow`: **a AbacatePay
   segue cobrando o preço de fundador** até o dono decidir (honrar, ou pedir uma
   autorização nova na tabela); a cada renovação a vaga é conferida de novo e o log
-  se repete. Stripe sem responder nessa conta lança, e a AbacatePay reenvia. A AbacatePay só cancela na hora: o painel
+  se repete. Stripe sem responder nessa conta lança (`pix_founder_seat_check_failed`),
+  e a AbacatePay reenvia. **Sem `STRIPE_SECRET_KEY`** a conta nunca fecha (401):
+  aí o Pix de fundador grava sem a vaga, com `pix_founder_seat_unverified`
+  (`stripe_key_missing`) no log; ambiente com Pix de fundador precisa da chave. A AbacatePay só cancela na hora: o painel
   grava `cancel_at` no fim do mês pago e `reconcileBarPlans` encerra depois. Trocar de
   plano no Pix é uma autorização nova (a anterior é cancelada). **No teste do
   cadastro o Pix espera o fim dele** (dono, 11/11/2026): a AbacatePay não agenda
