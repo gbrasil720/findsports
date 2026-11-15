@@ -53,6 +53,25 @@ const PERSON = {
 /** Gente que pode aparecer para outro torcedor: conta de torcedor, sem ban. */
 /** Convites abertos por hora, por pessoa ou IP (rodada 7). */
 const INVITE_PREVIEW_LIMIT = { max: 30, windowMs: 3_600_000 }
+/**
+ * Código lido ou digitado (`byCode`) e convite aceito (`joinByInvite`), na
+ * mesma janela: o código é curto e, sem limite, dá para varrer os torcedores.
+ */
+const FRIEND_CODE_LIMIT = { max: 30, windowMs: 3_600_000 }
+/** Hashes de contatos por dia, por pessoa: duas agendas cheias (2000 cada). */
+const CONTACTS_LIMIT = { max: 4000, windowMs: 86_400_000 }
+
+async function limitFriendCode(me: string) {
+  const attempt = await incrementWindow(
+    `friend-code:user:${me}`,
+    FRIEND_CODE_LIMIT
+  )
+  if (!attempt.allowed)
+    throw new TRPCError({
+      code: 'TOO_MANY_REQUESTS',
+      message: 'Muitas tentativas de código agora. Tente de novo mais tarde.'
+    })
+}
 
 const listable = sql`${user.role} = 'fan' AND ${user.banned} IS NOT TRUE`
 
@@ -484,6 +503,7 @@ export const friendsRouter = router({
     .input(z.object({ code: z.string().trim().min(3).max(16) }))
     .query(async ({ ctx, input }) => {
       const me = ctx.session.user.id
+      await limitFriendCode(me)
       const [person] = await db
         .select(PERSON)
         .from(user)
@@ -527,6 +547,7 @@ export const friendsRouter = router({
     .input(z.object({ code: z.string().trim().min(3).max(16) }))
     .mutation(async ({ ctx, input }) => {
       const me = ctx.session.user.id
+      await limitFriendCode(me)
       const [inviter] = await db
         .select({ id: user.id })
         .from(user)
@@ -709,6 +730,18 @@ export const friendsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const me = ctx.session.user.id
       if (!input.hashes.length) return []
+      // Conta hashes, não chamadas: sem teto, a lista de e-mails de um
+      // vazamento viraria nome e @ de quem está na Onside.
+      const attempt = await incrementWindow(
+        `match-contacts:user:${me}`,
+        CONTACTS_LIMIT,
+        input.hashes.length
+      )
+      if (!attempt.allowed)
+        throw new TRPCError({
+          code: 'TOO_MANY_REQUESTS',
+          message: 'Muitos contatos conferidos hoje. Tente de novo amanhã.'
+        })
       // ponytail: compara o hash de cada conta a cada vez (varre `user`);
       // com muitas contas, uma coluna com o hash e índice.
       // O hash que bateu volta junto (rodada 6): o app mostra o nome que a
