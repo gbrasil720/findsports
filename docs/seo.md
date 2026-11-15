@@ -74,6 +74,8 @@ das páginas legais.
 |---|---|---|
 | `/`, `/termos`, `/privacidade` | sim | `index, follow`, canônica, no sitemap |
 | `/guia`, `/guia/:slug` | sim | `index, follow`, canônica, no sitemap e no `llms.txt`; slug desconhecido é 404 |
+| `/bares/:cidade` | só com 5+ bares | abaixo do piso (`MIN_BARS_INDEXABLE_CITY`) abre, mas sai `noindex` e fora do sitemap; 404 se a cidade não tem bar no ar |
+| `/bares/:cidade/:bairro` | só com 5+ bares | abaixo do piso (`MIN_BARS_INDEXABLE_NEIGHBORHOOD`) abre, mas sai `noindex` e fora do sitemap, para não virar página fina |
 | `/login`, `/signup`, recuperação de senha, `/verify-email`, `/two-factor` | não | `noindex` |
 | `/bar/:slug` (bar no ar) | sim | `index, follow`, canônica, no sitemap; título e descrição mudam com a grade do dia |
 | `/bar/:slug` (bar fora do ar) | não | 200 com `noindex`; o dono logado vê a prévia, também `noindex` |
@@ -93,6 +95,20 @@ Jogo não tem página própria (cada bar cadastra o seu `event`): o que é
 indexável dele sai na página do bar, no título, na descrição e no `Event` do
 JSON-LD. O sitemap tem a home, as páginas legais, o guia e um `/bar/:slug` por
 bar no ar (`listLiveBarPaths`), com cache de um dia.
+
+## Listagens por cidade e bairro (`/bares/*`)
+
+Uma rota splat (`routes/bares.$.tsx`) atende `/bares/<cidade>` e
+`/bares/<cidade>/<bairro>`. Os slugs saem de `barSlug` (`packages/db/src/bar-listing.ts`),
+então "Vila assunção" e "Vila Assunção" caem na mesma página; o nome exibido é
+a grafia mais usada, com a inicial maiúscula (`properName`). O agrupamento é
+em memória sobre os bares no ar (`readListings`, `packages/api/src/lib/public-listing.ts`):
+com milhares de bares, vira consulta com `GROUP BY`. O HTML sai do servidor, os
+bares são `<a href>` comuns, e o JSON-LD leva `BreadcrumbList` e `ItemList`. O
+breadcrumb da página do bar aponta para a cidade e o bairro.
+
+Cidade (`MIN_BARS_INDEXABLE_CITY`) ou bairro (`MIN_BARS_INDEXABLE_NEIGHBORHOOD`) com menos de 5 bares fica `noindex` e fora
+do sitemap. Pendente: listagem por time e por jogo, link das listagens na home.
 
 ## Página do bar (`/bar/:slug`)
 

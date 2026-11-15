@@ -14,6 +14,14 @@ import { buildSitemap, type SitemapEntry } from '@/lib/sitemap'
  */
 const CACHE_SEGUNDOS = 60 * 60 * 24
 
+/** A edição mais recente entre os bares da listagem, como YYYY-MM-DD. */
+function lastModified(bars: { updatedAt: Date }[]): string | undefined {
+  const times = bars.map((bar) => bar.updatedAt.getTime())
+  return times.length
+    ? new Date(Math.max(...times)).toISOString().slice(0, 10)
+    : undefined
+}
+
 export const Route = createFileRoute('/sitemap.xml')({
   server: {
     handlers: {
@@ -23,7 +31,13 @@ export const Route = createFileRoute('/sitemap.xml')({
         const { listLiveBarPaths } = await import(
           '@findsports_oficial/api/lib/public-bar-page'
         )
-        const bares = await listLiveBarPaths()
+        const { readListings } = await import(
+          '@findsports_oficial/api/lib/public-listing'
+        )
+        const [bares, cidades] = await Promise.all([
+          listLiveBarPaths(),
+          readListings()
+        ])
         const entradas: SitemapEntry[] = [
           { path: '/', changeFrequency: 'daily', priority: 1 },
           { path: '/termos', changeFrequency: 'monthly', priority: 0.3 },
@@ -37,6 +51,29 @@ export const Route = createFileRoute('/sitemap.xml')({
               priority: 0.6
             })
           ),
+          // Listagens: cidade e bairro só a partir do piso
+          // (`MIN_BARS_INDEXABLE_CITY` e `MIN_BARS_INDEXABLE_NEIGHBORHOOD`),
+          // o resto sai `noindex`.
+          ...cidades
+            .filter((cidade) => cidade.indexable)
+            .flatMap((cidade): SitemapEntry[] => [
+              {
+                path: `/bares/${cidade.slug}`,
+                lastModified: lastModified(cidade.bars),
+                changeFrequency: 'daily',
+                priority: 0.8
+              },
+              ...cidade.neighborhoods
+                .filter((bairro) => bairro.indexable)
+                .map(
+                  (bairro): SitemapEntry => ({
+                    path: `/bares/${cidade.slug}/${bairro.slug}`,
+                    lastModified: lastModified(bairro.bars),
+                    changeFrequency: 'daily',
+                    priority: 0.7
+                  })
+                )
+            ]),
           ...bares.map(
             (bar): SitemapEntry => ({
               path: bar.path,
