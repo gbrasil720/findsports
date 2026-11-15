@@ -176,6 +176,8 @@ function cardSubscription(o: {
   founderCoupon?: string
   /** Primeira fatura (a da diferença): paga por padrão. */
   firstInvoice?: 'paid' | 'open'
+  /** Nasceu do `startCardFromPix` (padrão) ou de um checkout do plugin. */
+  fromPix?: boolean
 }) {
   return {
     id: o.id,
@@ -185,6 +187,7 @@ function cardSubscription(o: {
     customer: o.customerId,
     metadata: {
       userId: o.userId,
+      ...(o.fromPix === false ? {} : { cardFromPix: '1' }),
       ...(o.upgradeCents ? { pixUpgradeCents: String(o.upgradeCents) } : {}),
       ...(o.founderCoupon ? { founderCoupon: o.founderCoupon } : {})
     },
@@ -540,6 +543,7 @@ integrationTest(
       metadata: {
         pixUpgradeCents: String(charged),
         founderCoupon: 'eM7dQpMF',
+        cardFromPix: '1',
         userId: owner.id
       }
     })
@@ -570,6 +574,8 @@ integrationTest(
     expect(session.line_items).toHaveLength(1)
     expect(session.discounts).toEqual([{ coupon: 'eM7dQpMF' }])
     expect(session.subscription_data.metadata.pixUpgradeCents).toBeUndefined()
+    // Sem diferença, o marcador é o que deixa o webhook trocar o Pix.
+    expect(session.subscription_data.metadata.cardFromPix).toBe('1')
   }
 )
 
@@ -836,5 +842,42 @@ integrationTest(
       expect(stripe.calls.filter((c) => c.op === 'update')).toHaveLength(0)
       expect(await stateOf(bar.barId)).toMatchObject({ provider: 'stripe' })
     }
+  }
+)
+
+integrationTest(
+  'checkout do plugin concluído por cima de um Pix vivo: cancelado, e o Pix fica',
+  async () => {
+    const { applyStripeSubscription, createPixBar, stateOf } = ready()
+    const paidUntil = new Date(Date.now() + 15 * DAY)
+    const bar = await createPixBar({ paidUntil })
+    // Aberto no teste do cadastro, pago depois de o Pix ser autorizado.
+    const card = cardSubscription({
+      id: `sub_${bar.barId}`,
+      customerId: bar.customerId,
+      userId: bar.userId,
+      trialEnd: paidUntil,
+      fromPix: false
+    })
+    const stripe = recordingStripe()
+    const error = spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      expect(await applyStripeSubscription(card, stripe.client)).toBeNull()
+      expect(
+        error.mock.calls.some((c) => String(c[0]).includes('pix_card_over_pix'))
+      ).toBe(true)
+    } finally {
+      error.mockRestore()
+    }
+    expect(abacate.cancels).toEqual([])
+    expect(stripe.calls.filter((c) => c.op === 'cancel')[0]?.args[0]).toBe(
+      card.id
+    )
+    expect(await stateOf(bar.barId)).toMatchObject({
+      isActive: true,
+      plan: 'pro',
+      provider: 'abacatepay',
+      externalSubscriptionId: bar.pixId
+    })
   }
 )
