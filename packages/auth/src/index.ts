@@ -47,6 +47,7 @@ import { stripeClient } from './stripe-client'
 import { planForLookupKey, STRIPE_PLANS } from './stripe-plan'
 import { syncStripeEvent } from './stripe-sync'
 import { APP_SCHEME, buildTrustedOrigins } from './trusted-origins'
+import { revokeOtherSessionsOnTwoFactorEnable } from './two-factor-enable'
 import { publicEmailUrl, sendVerificationEmail } from './verification-email'
 
 function cookieDomainFor(baseUrl: string): string | undefined {
@@ -372,6 +373,7 @@ export function createAuth() {
     plugins: [
       turnstilePlugin(),
       twoFactor({ issuer: 'Onside' }),
+      revokeOtherSessionsOnTwoFactorEnable(),
       admin({
         adminRoles: ['admin'],
         defaultRole: 'fan'
