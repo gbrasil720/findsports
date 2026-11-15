@@ -14,6 +14,7 @@ import Animated, {
   withTiming
 } from 'react-native-reanimated'
 import Svg, { Defs, Mask, Rect } from 'react-native-svg'
+import { MascotStill } from '@/components/ai/mascot'
 import { haptic } from '@/components/motion'
 import { useAiButtonCenter } from '@/components/side-nav'
 import { usePalette } from '@/components/theme'
@@ -97,8 +98,9 @@ const STEPS: Step[] = [
   },
   {
     target: 'ia',
-    title: 'Pergunte do seu jeito',
-    body: 'A busca com IA entende pedidos inteiros e explica por que escolheu cada bar.',
+    // O Jules se apresenta com nome e papel juntos (WEB-547).
+    title: 'Este é o Jules',
+    body: 'A IA da Onside. Pergunte do seu jeito: ele acha o jogo, o bar e explica por que escolheu cada um.',
     radius: 39,
     pad: 0
   },
@@ -324,9 +326,16 @@ export function Tour({
           </Text>
           <Text style={[tourStyles.mono, { color: palette.muted }]}>PULAR</Text>
         </Pressable>
-        <Text style={[tourStyles.title, { color: palette.ink }]}>
-          {last && !fan ? 'Sua conta guarda tudo' : step.title}
-        </Text>
+        <View style={tourStyles.titleRow}>
+          {step.target === 'ia' ? (
+            <View style={tourStyles.jules}>
+              <MascotStill size={40} />
+            </View>
+          ) : null}
+          <Text style={[tourStyles.title, { color: palette.ink, flex: 1 }]}>
+            {last && !fan ? 'Sua conta guarda tudo' : step.title}
+          </Text>
+        </View>
         <Text
           style={[
             text(14.5, 'Regular', 1.45),
@@ -365,6 +374,16 @@ export function Tour({
 }
 
 export const tourStyles = StyleSheet.create({
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  // A taça é acid: o ladrilho de tinta a mostra nos dois temas.
+  jules: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: INK,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
   card: {
     position: 'absolute',
     left: 16,
