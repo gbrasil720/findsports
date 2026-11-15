@@ -72,6 +72,7 @@ async function setup() {
       import('./pix-sync'),
       import('./stripe-checkout')
     ])
+  const { stripeClient } = await import('./stripe-client')
   const userIds: string[] = []
 
   /** Bar no ar pagando Pix: ativo, ciclo pago até `paidUntil`. */
@@ -145,7 +146,23 @@ async function setup() {
     }
   }
 
-  return { ...sync, ...pix, ...co, createPixBar, stateOf, cleanup }
+  async function discountOf(barId: string) {
+    const row = await db.query.subscription.findFirst({
+      where: eq(subscription.barId, barId)
+    })
+    return row?.monthlyDiscountReais ?? null
+  }
+
+  return {
+    ...sync,
+    ...pix,
+    ...co,
+    stripeClient,
+    createPixBar,
+    stateOf,
+    discountOf,
+    cleanup
+  }
 }
 
 /** Assinatura do cartão como o checkout a cria: em teste até o fim do Pix. */
@@ -676,5 +693,148 @@ integrationTest(
       provider: 'stripe',
       externalSubscriptionId: card.id
     })
+  }
+)
+
+/** Cupom do Stripe com `seats` vagas no total (dublê do `coupons.retrieve`). */
+function couponWithSeats(client: Stripe, seats: number | 'down') {
+  return spyOn(client.coupons, 'retrieve').mockImplementation((async (
+    id: string
+  ) => {
+    if (seats === 'down') throw new Error('timeout')
+    // A resposta demora: dois avisos ao mesmo tempo chegam juntos à conta.
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    return id === 'fundador_anual'
+      ? { times_redeemed: 0 }
+      : { valid: true, max_redemptions: seats, times_redeemed: 0 }
+  }) as unknown as typeof client.coupons.retrieve)
+}
+
+/** O bar autoriza um Pix novo de fundador (troca de plano para o Elite). */
+function founderPix(bar: { barId: string }, paidUntil: Date) {
+  const id = `subs_f_${bar.barId.slice(0, 8)}`
+  abacate.subs.set(id, {
+    status: 'ACTIVE',
+    currentPeriodEnd: paidUntil.toISOString()
+  })
+  return { id, externalId: `onside:${bar.barId}:elite:f:abcd1234` }
+}
+
+integrationTest(
+  'vaga de fundador conferida no pagamento: dois Pix pagos ao mesmo tempo, uma vaga só',
+  async () => {
+    const {
+      applyPixSubscription,
+      createPixBar,
+      discountOf,
+      pixFounderCount,
+      stripeClient
+    } = ready()
+    const paidUntil = new Date(Date.now() + 30 * DAY)
+    const a = await createPixBar({ paidUntil })
+    const b = await createPixBar({ paidUntil })
+    // Os dois abriram o checkout de fundador com uma vaga sobrando.
+    const seats = couponWithSeats(stripeClient, (await pixFounderCount()) + 1)
+    const error = spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const pa = founderPix(a, paidUntil)
+      const pb = founderPix(b, paidUntil)
+      await Promise.all([
+        applyPixSubscription(pa.id, pa.externalId, 'subscription.completed'),
+        applyPixSubscription(pb.id, pb.externalId, 'subscription.completed')
+      ])
+      const discounts = [await discountOf(a.barId), await discountOf(b.barId)]
+      expect(discounts.sort()).toEqual([0, 28])
+      // Quem ficou sem vaga segue no ar, no plano pago, e vai ao log.
+      const overflow = error.mock.calls
+        .map((c) => JSON.parse(String(c[0])))
+        .filter((e) => e.event === 'pix_founder_seat_overflow')
+      expect(overflow).toHaveLength(1)
+      for (const bar of [a, b]) {
+        expect(await ready().stateOf(bar.barId)).toMatchObject({
+          isActive: true,
+          status: 'active',
+          plan: 'elite'
+        })
+      }
+    } finally {
+      seats.mockRestore()
+      error.mockRestore()
+    }
+  }
+)
+
+integrationTest(
+  'vaga de fundador: quem já a tem no Pix renova sem conferir; Stripe sem responder lança',
+  async () => {
+    const { applyPixSubscription, createPixBar, discountOf, stripeClient } =
+      ready()
+    const paidUntil = new Date(Date.now() + 30 * DAY)
+    const founder = await createPixBar({ founder: true, paidUntil })
+    const seats = couponWithSeats(stripeClient, 0)
+    try {
+      await applyPixSubscription(
+        founder.pixId,
+        founder.externalId,
+        'subscription.renewed'
+      )
+      expect(await discountOf(founder.barId)).toBe(28)
+      expect(seats).not.toHaveBeenCalled()
+    } finally {
+      seats.mockRestore()
+    }
+
+    const other = await createPixBar({ paidUntil })
+    const down = couponWithSeats(stripeClient, 'down')
+    try {
+      const pix = founderPix(other, paidUntil)
+      await expect(
+        applyPixSubscription(pix.id, pix.externalId, 'subscription.completed')
+      ).rejects.toThrow('Vagas de fundador sem conferir')
+      // Nada gravado: o reenvio da AbacatePay tenta de novo.
+      expect(await discountOf(other.barId)).toBe(0)
+    } finally {
+      down.mockRestore()
+    }
+  }
+)
+
+integrationTest(
+  'founderCoupon que não veio do startCardFromPix não vira desconto',
+  async () => {
+    const { applyStripeSubscription, createPixBar, stateOf } = ready()
+    const paidUntil = new Date(Date.now() + 15 * DAY)
+    for (const metadata of [
+      // Pela metadata do /subscription/upgrade, sem a diferença da subida.
+      { founderCoupon: 'fundador_anual' },
+      // O cupom anual numa assinatura mensal.
+      { upgradeCents: 7285, founderCoupon: 'fundador_anual' }
+    ]) {
+      const bar = await createPixBar({ paidUntil })
+      const card = cardSubscription({
+        id: `sub_${bar.barId}`,
+        customerId: bar.customerId,
+        userId: bar.userId,
+        trialEnd: paidUntil,
+        ...metadata
+      })
+      const stripe = recordingStripe()
+      stripe.remember(card)
+      const log = spyOn(console, 'log').mockImplementation(() => {})
+      const error = spyOn(console, 'error').mockImplementation(() => {})
+      try {
+        await applyStripeSubscription(card, stripe.client)
+        expect(
+          error.mock.calls.some((c) =>
+            String(c[0]).includes('pix_upgrade_coupon_untrusted')
+          )
+        ).toBe(true)
+      } finally {
+        log.mockRestore()
+        error.mockRestore()
+      }
+      expect(stripe.calls.filter((c) => c.op === 'update')).toHaveLength(0)
+      expect(await stateOf(bar.barId)).toMatchObject({ provider: 'stripe' })
+    }
   }
 )
