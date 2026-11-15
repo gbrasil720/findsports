@@ -21,6 +21,13 @@ jobs:
   # Tipagem e portão do deploy (WEB-330): sem Postgres — roda em paralelo com
   # `unit-test` e `e2e`. Em PR, `turbo --filter=...[origin/master]` limita ao
   # que mudou (e dependentes); no push em master, suíte completa.
+  #
+  # O alvo do deploy sai só do evento, sem ler segredo: este job não tem
+  # `environment`, então segredo lido aqui seria o de repositório, visível a
+  # qualquer PR. Os segredos ficam no job `deploy`, dentro do environment.
+  # Produção: push em `master` do repositório original. Preview: PR de um
+  # branch deste repositório que não seja do Dependabot. Fork (PR ou push no
+  # próprio fork) e Dependabot não têm alvo e pulam o deploy.
   check:
     runs-on: ubuntu-latest
     outputs:
@@ -28,15 +35,21 @@ jobs:
     steps:
       - id: gate
         env:
-          TARGET: ${{ github.event_name == 'push' && 'production' || 'preview' }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          DEPLOY_DATABASE_URL: ${{ github.event_name == 'push' && secrets.DATABASE_URL_PROD || github.event_name != 'push' && secrets.DATABASE_URL_PREVIEW || '' }}
+          TARGET: >-
+            ${{ !github.event.repository.fork
+            && ((github.event_name == 'push'
+            && github.ref == 'refs/heads/master'
+            && 'production')
+            || (github.event_name == 'pull_request'
+            && github.event.pull_request.head.repo.full_name == github.repository
+            && github.event.pull_request.user.login != 'dependabot[bot]'
+            && 'preview'))
+            || '' }}
         run: |
-          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ] && [ -n "$DEPLOY_DATABASE_URL" ]; then
+          if [ -n "$TARGET" ]; then
             echo "target=$TARGET" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::Deploy de $TARGET pulado: faltam segredos do Cloudflare ou do banco (WEB-204)."
+            echo "::notice::Deploy pulado: fork, Dependabot ou evento sem alvo (WEB-204)."
           fi
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -210,9 +223,25 @@ jobs:
       group: deploy-${{ needs.check.outputs.target }}
       cancel-in-progress: false
     env:
+      TARGET: ${{ needs.check.outputs.target }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
+      # Segredos do environment (`Production`/`Preview`) sobrepõem os de
+      # repositório de mesmo nome: o job funciona antes e depois da mudança.
+      - name: Segredos do deploy
+        env:
+          DEPLOY_DATABASE_URL: ${{ needs.check.outputs.target == 'production' && secrets.DATABASE_URL_PROD || needs.check.outputs.target == 'preview' && secrets.DATABASE_URL_PREVIEW || '' }}
+          DB_SECRET: ${{ needs.check.outputs.target == 'production' && 'DATABASE_URL_PROD' || 'DATABASE_URL_PREVIEW' }}
+        run: |
+          missing=""
+          [ -n "$CLOUDFLARE_API_TOKEN" ] || missing="$missing CLOUDFLARE_API_TOKEN"
+          [ -n "$CLOUDFLARE_ACCOUNT_ID" ] || missing="$missing CLOUDFLARE_ACCOUNT_ID"
+          [ -n "$DEPLOY_DATABASE_URL" ] || missing="$missing $DB_SECRET"
+          if [ -n "$missing" ]; then
+            echo "::error::Deploy de $TARGET sem segredos:$missing (environment ou repositório)."
+            exit 1
+          fi
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: ./.github/actions/setup-monorepo
       - name: Migrations
