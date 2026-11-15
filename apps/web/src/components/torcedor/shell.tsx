@@ -537,7 +537,7 @@ export function TorcedorShell({ aba, children, busca, onde, semAbas }: Props) {
           }}
         />
         {confirmar ? (
-          <section
+          <div
             className="fresh flutua"
             role="alertdialog"
             aria-labelledby="cf-t"
@@ -569,7 +569,7 @@ export function TorcedorShell({ aba, children, busca, onde, semAbas }: Props) {
                 Agora não
               </button>
             </span>
-          </section>
+          </div>
         ) : null}
         <div className={`toast${fase === 'entra' ? ' on' : ''}`} role="status">
           <i>
