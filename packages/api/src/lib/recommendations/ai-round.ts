@@ -2,7 +2,7 @@ import { db, sql } from '@findsports_oficial/db'
 import { aiRun } from '@findsports_oficial/db/schema/ai'
 import { assignVariant } from '../ai/limits'
 import { RECOMMENDER_MODELS } from '../ai/models'
-import { aiGate, runAi } from '../ai/run'
+import { AiBlockedError, aiGate, runAi } from '../ai/run'
 import { getAppConfig } from '../app-config'
 import { affinityCandidates, requestAffinity } from './ai-affinity'
 import type { RecommendationStyle } from './load-candidates'
@@ -200,6 +200,15 @@ async function planOrThrow(
         useful: result.affinity !== null
       }
     }
-  )
+  ).catch((error) => {
+    // A reserva recusou (teto alcançado entre o gate e a gravação).
+    if (error instanceof AiBlockedError) return null
+    throw error
+  })
+  if (!outcome)
+    return {
+      runId: await recordRun(input.userId, 'c', 'error'),
+      affinity: null
+    }
   return { runId: outcome.runId, affinity: outcome.value }
 }
