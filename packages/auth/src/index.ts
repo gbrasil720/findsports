@@ -24,6 +24,7 @@ import {
 } from './account-deletion'
 import { adminRouteRefusal } from './admin-guard'
 import { isLoggedAdminPath, logAdminAction, previousRole } from './admin-log'
+import { appSessionHandoff } from './app-session-handoff'
 import { runInBackground } from './background'
 import {
   blocksCardOverPix,
@@ -458,6 +459,9 @@ export function createAuth() {
       // O app nativo (`apps/mobile`): troca o cookie de navegador pela sessão
       // guardada no aparelho e aceita `onside://` como origem.
       expo(),
+      // Logo depois do `expo()`: tira a sessão da URL de volta ao app e põe no
+      // lugar um código de uso único (ver `app-session-handoff.ts`).
+      appSessionHandoff(),
       // Por último: o plugin repassa ao TanStack Start os cookies que os
       // `hooks.after` anteriores gravaram. Plugin depois dele que grave cookie
       // (twoFactor, admin) teria o `Set-Cookie` perdido. É o nosso, e não o
