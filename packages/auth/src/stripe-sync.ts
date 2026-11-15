@@ -10,7 +10,11 @@ import {
 import type Stripe from 'stripe'
 import { cancelSubscriptionIfActive } from './abacatepay'
 import { monthlyDiscountReaisFromStripe } from './stripe-discount'
-import { planForLookupKey } from './stripe-plan'
+import {
+  FOUNDER_ANNUAL_COUPON_ID,
+  FOUNDER_COUPON_ID,
+  planForLookupKey
+} from './stripe-plan'
 
 type LocalStatus = 'trialing' | 'active' | 'past_due' | 'inactive' | 'cancelled'
 
@@ -264,17 +268,48 @@ function upgradePaid(stripeSubscription: Stripe.Subscription): boolean {
 }
 
 /**
+ * O cupom de fundador que a subida pode levar: só o do servidor, do mesmo
+ * intervalo da assinatura (o anual tira R$ 280 por fatura e numa mensal
+ * zeraria o plano), e só numa sessão do `startCardFromPix` com diferença
+ * (`pixUpgradeCents`), a única que grava `founderCoupon`. O `/subscription/
+ * upgrade` recusa `metadata` no corpo (`index.ts`), e isto é a segunda trava.
+ */
+export function upgradeCouponFor(
+  stripeSubscription: Pick<Stripe.Subscription, 'metadata' | 'items'>
+): string | null {
+  const coupon = stripeSubscription.metadata?.founderCoupon
+  if (!coupon) return null
+  if (!(Number(stripeSubscription.metadata?.pixUpgradeCents ?? 0) > 0)) {
+    return null
+  }
+  const annual =
+    stripeSubscription.items.data[0]?.price.recurring?.interval === 'year'
+  return coupon === (annual ? FOUNDER_ANNUAL_COUPON_ID : FOUNDER_COUPON_ID)
+    ? coupon
+    : null
+}
+
+/**
  * Cupom de fundador da subida (WEB-536): a sessão com a diferença vai sem
  * cupom, que tiraria o desconto do item avulso, e o cupom entra aqui, antes da
  * primeira mensalidade. Já aplicado, não faz nada; cupom que deixou de valer
- * só vai ao log, e a assinatura segue a preço de tabela.
+ * só vai ao log, e a assinatura segue a preço de tabela. Cupom que não passa
+ * em `upgradeCouponFor` também só vai ao log.
  */
 async function applyUpgradeCoupon(
   stripeSubscription: Stripe.Subscription,
   client: StripeBilling
 ): Promise<Stripe.Subscription> {
-  const coupon = stripeSubscription.metadata?.founderCoupon
-  if (!coupon || (stripeSubscription.discounts?.length ?? 0) > 0) {
+  const requested = stripeSubscription.metadata?.founderCoupon
+  if (!requested || (stripeSubscription.discounts?.length ?? 0) > 0) {
+    return stripeSubscription
+  }
+  const coupon = upgradeCouponFor(stripeSubscription)
+  if (!coupon) {
+    logBillingError('pix_upgrade_coupon_untrusted', {
+      subscriptionId: stripeSubscription.id,
+      coupon: requested
+    })
     return stripeSubscription
   }
   try {

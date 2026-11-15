@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'bun:test'
 import type Stripe from 'stripe'
-import { localStatusFor, subscriptionIdOf } from './stripe-sync'
+import {
+  localStatusFor,
+  subscriptionIdOf,
+  upgradeCouponFor
+} from './stripe-sync'
 
 describe('tradução da situação do Stripe (WEB-31)', () => {
   it('segue a tabela', () => {
@@ -53,5 +57,55 @@ describe('assinatura de que o evento fala', () => {
       )
     ).toBeNull()
     expect(subscriptionIdOf(event('invoice.paid', { id: 'in_1' }))).toBeNull()
+  })
+})
+
+describe('cupom da subida do Pix para o cartão (WEB-536)', () => {
+  const sub = (
+    metadata: Record<string, string>,
+    interval: 'month' | 'year' = 'month'
+  ) =>
+    ({
+      metadata,
+      items: { data: [{ price: { recurring: { interval } } }] }
+    }) as unknown as Stripe.Subscription
+
+  it('aplica o cupom do servidor numa sessão com diferença', () => {
+    expect(
+      upgradeCouponFor(
+        sub({ pixUpgradeCents: '7285', founderCoupon: 'eM7dQpMF' })
+      )
+    ).toBe('eM7dQpMF')
+    expect(
+      upgradeCouponFor(
+        sub(
+          { pixUpgradeCents: '7285', founderCoupon: 'fundador_anual' },
+          'year'
+        )
+      )
+    ).toBe('fundador_anual')
+  })
+
+  it('recusa o cupom vindo do corpo do /subscription/upgrade (sem diferença)', () => {
+    expect(upgradeCouponFor(sub({ founderCoupon: 'eM7dQpMF' }))).toBeNull()
+    expect(
+      upgradeCouponFor(sub({ pixUpgradeCents: '0', founderCoupon: 'eM7dQpMF' }))
+    ).toBeNull()
+  })
+
+  it('recusa cupom fora da lista e o anual numa mensal', () => {
+    expect(
+      upgradeCouponFor(sub({ pixUpgradeCents: '100', founderCoupon: 'OUTRO' }))
+    ).toBeNull()
+    expect(
+      upgradeCouponFor(
+        sub({ pixUpgradeCents: '100', founderCoupon: 'fundador_anual' })
+      )
+    ).toBeNull()
+    expect(
+      upgradeCouponFor(
+        sub({ pixUpgradeCents: '100', founderCoupon: 'eM7dQpMF' }, 'year')
+      )
+    ).toBeNull()
   })
 })
