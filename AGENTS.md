@@ -935,18 +935,24 @@ invente layout que o projeto não tem.
   a Apple" espera a conta de desenvolvedor paga.
 - **Conta ("04 Conta"):** `profile` (torcedor ou bar, vira `role` no cadastro), `sign-up`,
   `verify-email`, `sign-in`, `forgot-password`, `reset-sent`, `two-factor`;
-  peças em `components/ui.tsx`. O link de confirmação abre no navegador; o servidor entra e
-  redireciona para o app (`verifiedCallbackURL`, `lib/verify-link.ts`: `onside://verified`
-  ou `exp://…/--/verified` com `?v=<nonce>`) com a sessão em `?cookie=`, e `app/verified.tsx`
-  a guarda (`adoptSessionCookie`): o cliente do Expo só faz isso sozinho no login social.
-  **Só adota com o nonce certo**: o cadastro e o reenvio guardam o nonce no SecureStore por
-  1 h (o `expiresIn` da confirmação), e um `?cookie=` de deep link sem ele é ignorado
-  (qualquer página pode abrir `onside://verified?cookie=…`). Com uma conta já aberta, a
-  troca pede confirmação. **A senha nova é escolhida no site**: o app manda `redirectTo:
-  '/reset-password'` (a página do web) e o servidor recusa qualquer destino de reset que
-  não seja caminho do site ou origem http(s) confiável (`isSafeResetRedirect`,
-  `packages/auth/src/trusted-origins.ts`), porque outro app pode registrar `onside://` e
-  receber o token. `onside://` segue confiável para o resto do auth (verify-email). Com
+  peças em `components/ui.tsx`. O link de confirmação abre no navegador; o servidor confirma
+  e redireciona para o app (`verifiedCallbackURL`, `lib/verify-link.ts`: `onside://verified`
+  ou `exp://…/--/verified` com `?c=<desafio>`). **A sessão nunca vai na URL**, porque
+  qualquer app pode registrar `onside://`. É um PKCE: o cadastro e o reenvio guardam um
+  verificador secreto no SecureStore (1 h, o `expiresIn` da confirmação) e mandam só o
+  SHA-256 dele. No servidor, o plugin `appSessionHandoff`
+  (`packages/auth/src/app-session-handoff.ts`, logo depois do `expo()`) tira o `?cookie=` que
+  o `expo()` acrescenta e põe um `?code=` de uso único (60 s, tabela `verification`), preso ao
+  desafio. `app/verified.tsx` (portão puro em `lib/verified-gate.ts`) troca código +
+  verificador pela sessão em `POST /api/auth/app-session/redeem` e a guarda
+  (`adoptSessionCookie`). Código errado, vencido ou reusado é recusado (e gasto na primeira
+  tentativa). Sem `?c=` (app antigo) a URL sai sem sessão e o login diz "E-mail confirmado.
+  Entre para continuar.". Com uma conta já aberta, a troca pede confirmação. **A senha nova é
+  escolhida no site**: o app manda `redirectTo: '/reset-password'` (a página do web). No
+  servidor, `resetRedirectTarget` (`packages/auth/src/trusted-origins.ts`) troca destino no
+  esquema do app pela página do site (build antigo do app e e-mails de antes da regra) e
+  recusa (400, `RESET_REDIRECT_NOT_ALLOWED`) o que não é do site, porque outro app pode
+  registrar `onside://` e receber o token. Com
   universal link (conta Apple paga) o reset pode voltar ao app. Em dev o link do e-mail sai
   com `PUBLIC_APP_URL` (senão `BETTER_AUTH_URL`, `localhost`), que não abre no celular: para
   testar no aparelho, suba o web com `PUBLIC_APP_URL=http://<ip-do-mac>:3001`.
