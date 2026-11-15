@@ -130,7 +130,7 @@ integrationTest('três imagens vão como três anexos, na ordem', async () => {
 })
 
 integrationTest(
-  'limite por usuário: o sexto envio do dia é recusado e não vira e-mail',
+  'limite por usuário: o quarto envio do dia é recusado e não vira e-mail',
   async () => {
     const sent = fakeEmailApi(cleanups)
     const { fan } = await fanCaller()
@@ -145,7 +145,7 @@ integrationTest(
 
     expect(code).toBe('TOO_MANY_REQUESTS')
     expect(reason).toBe(
-      'Você já mandou 5 mensagens nas últimas 24 horas. Tente de novo amanhã.'
+      'Você já mandou 3 mensagens nas últimas 24 horas. Tente de novo amanhã.'
     )
     expect(sent).toHaveLength(FEEDBACK_LIMIT.max)
     // O limite é de cada conta: outra pessoa envia normalmente.

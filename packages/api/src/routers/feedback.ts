@@ -36,11 +36,11 @@ import {
 export const FEEDBACK_TO = 'contato@onside.sh'
 
 // ponytail: janela fixa por usuário na tabela `rate_limit`. Na virada da
-// janela passam até 10 em sequência (5 no fim de uma, 5 no começo da outra);
-// o teto do feedback no orçamento de e-mail (`email-budget.ts`) segura o
-// total do dia, então a cota da verificação e do reset não acaba por aqui.
+// janela passam até 6 em sequência (3 no fim de uma, 3 no começo da outra);
+// o balde do feedback no orçamento de e-mail (`email-budget.ts`) segura o
+// total do dia, abaixo dele para uma pessoa só não fechar o feedback de todos.
 export const FEEDBACK_LIMIT: JanelaLimite = {
-  max: 5,
+  max: 3,
   windowMs: 24 * 60 * 60_000
 }
 
