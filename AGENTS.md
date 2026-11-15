@@ -811,8 +811,9 @@ mandado ao `/admin`.
   a folha de entrar, da casca ou da página do bar, grava a ação no `localStorage` ao
   abrir (`guardarAcao`, um dia, uma vez) e a volta só a conclui se bater
   (`tomarAcaoPendente`). Link de fora, ou e-mail confirmado em outro aparelho, mostra
-  um cartão de confirmação ("Marcar presença neste jogo?", `CONFIRMAR`) e nada grava
-  sem o toque; "Agora não" tira a `acao` da URL. Na página do bar só vale a ação dela:
+  um cartão de confirmação ("Marcar presença neste jogo?", `CONFIRMAR`, com jogo, bar
+  e hora por `pubs.actionTarget`, aberta; sem alvo marcável a ação só sai da URL) e
+  nada grava sem o toque; "Agora não" tira a `acao` da URL. Na página do bar só vale a ação dela:
   `fav` do próprio bar e `vou` de um jogo dele, o resto é ignorado.
 - **Conta nova por uma ação: a ação primeiro, as preferências depois** (protótipo
   `bem-vindo-curto`). Torcedor sem onboarding com `?acao=` no destino não vai ao
