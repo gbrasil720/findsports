@@ -128,6 +128,11 @@ describe('llms.txt (llmstxt.org)', () => {
     expect(resumo?.startsWith('> ')).toBe(true)
   })
 
+  it('não diz que as páginas de bar exigem conta', () => {
+    expect(llms).not.toContain('páginas de bar e a busca exigem conta')
+    expect(llms).toContain('/bar/')
+  })
+
   it('só aponta para páginas públicas do host canônico e para as redes', () => {
     const publicas = [
       '/',
@@ -135,6 +140,7 @@ describe('llms.txt (llmstxt.org)', () => {
       '/login',
       '/termos',
       '/privacidade',
+      '/sitemap.xml',
       GUIA_PATH,
       ...GUIA_ARTICLES.map((article) => `${GUIA_PATH}/${article.slug}`)
     ]

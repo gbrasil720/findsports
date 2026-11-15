@@ -3,6 +3,7 @@ import {
   AMENITY_GROUPS
 } from '@findsports_oficial/api/lib/amenities'
 import type { PublicGame } from '@findsports_oficial/api/lib/public-bar-page'
+import { cityPath, neighborhoodPath } from '@findsports_oficial/db/bar-listing'
 import {
   BRASILIA_TIME_ZONE,
   brasiliaDay,
@@ -257,8 +258,8 @@ const DAY_SCHEMA = [
 ]
 
 /**
- * JSON-LD da página: o bar (`BarOrPub`) e um `Event` por jogo que não
- * acabou. A nota só sai quando a página a mostra (acima do piso público).
+ * JSON-LD da página: o bar (`BarOrPub`), o `BreadcrumbList` e um
+ * `SportsEvent` por jogo que não acabou. A nota só sai quando a página a mostra (acima do piso público).
  */
 export function barJsonLd(bar: PageBar, url: string, now: Date) {
   const id = `${url}#bar`
@@ -325,7 +326,9 @@ export function barJsonLd(bar: PageBar, url: string, now: Date) {
   const events = bar.events
     .filter((game) => gameState(game, now) !== 'ended')
     .map((game) => ({
-      '@type': 'Event',
+      '@type': 'SportsEvent',
+      ...(game.sport ? { sport: game.sport } : {}),
+      ...sportsTeams(game.teams),
       name: `${game.title} no ${bar.name}`,
       startDate: brasiliaIso(game.startsAt),
       endDate: brasiliaIso(getEventEnd(game)),
@@ -339,5 +342,51 @@ export function barJsonLd(bar: PageBar, url: string, now: Date) {
         ? { description: `${game.championship}, no telão do ${bar.name}.` }
         : {})
     }))
-  return { '@context': 'https://schema.org', '@graph': [place, ...events] }
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [place, barBreadcrumb(bar, url), ...events]
+  }
+}
+
+const team = (name: string) => ({ '@type': 'SportsTeam', name })
+
+/**
+ * Dois times viram mandante e visitante, na ordem em que o bar cadastrou;
+ * outro número de times (um só, ou três ou mais) vai em `competitor`.
+ */
+function sportsTeams(teams: string[]) {
+  const names = teams.map((name) => name.trim()).filter(Boolean)
+  if (names.length === 2) {
+    return { homeTeam: team(names[0] ?? ''), awayTeam: team(names[1] ?? '') }
+  }
+  return names.length > 0 ? { competitor: names.map(team) } : {}
+}
+
+/**
+ * Onside → cidade → bairro → bar. Cidade e bairro levam `item` quando a
+ * listagem existe; o último nível fica sem `item`, como o Google aceita.
+ */
+function barBreadcrumb(bar: PageBar, url: string) {
+  const origin = new URL(url).origin
+  const levels: { name: string; item?: string }[] = [
+    { name: 'Onside', item: `${origin}/` }
+  ]
+  const city = cityPath(bar.city)
+  levels.push({ name: bar.city, ...(city ? { item: `${origin}${city}` } : {}) })
+  const hood = neighborhoodPath(bar.city, bar.neighborhood)
+  levels.push({
+    name: bar.neighborhood,
+    ...(hood ? { item: `${origin}${hood}` } : {})
+  })
+  levels.push({ name: bar.name })
+  return {
+    '@type': 'BreadcrumbList',
+    '@id': `${url}#breadcrumb`,
+    itemListElement: levels.map((level, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: level.name,
+      ...(level.item ? { item: level.item } : {})
+    }))
+  }
 }
