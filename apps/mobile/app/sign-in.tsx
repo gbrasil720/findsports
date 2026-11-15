@@ -23,7 +23,8 @@ import { queryClient } from '@/lib/trpc'
  */
 
 const NOTICES: Record<string, string> = {
-  expired: 'O link de confirmação expirou. Entre para receber outro.'
+  expired: 'O link de confirmação expirou. Entre para receber outro.',
+  confirmed: 'E-mail confirmado. Entre para continuar.'
 }
 
 export default function SignIn() {
