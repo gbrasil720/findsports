@@ -4496,6 +4496,13 @@ html[data-consent] .tc .mx {
   color: #c9c7c0;
   margin-top: 2px;
 }
+.tc .fresh .tx .cf-alvo {
+  color: #f1eee6;
+  margin-top: 4px;
+}
+.tc .fresh .tx .cf-alvo strong {
+  font-weight: 700;
+}
 .tc .fresh .ac {
   display: flex;
   gap: 8px;

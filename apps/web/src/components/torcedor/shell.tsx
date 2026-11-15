@@ -10,6 +10,7 @@ import {
   useState
 } from 'react'
 import { FeedbackDialog } from '@/components/app/feedback-dialog'
+import { clock, dayLabel } from '@/components/bar-page/bar-page-model'
 import { useSession } from '@/hooks/use-session'
 import { useSignOut } from '@/hooks/use-sign-out'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
@@ -537,39 +538,7 @@ export function TorcedorShell({ aba, children, busca, onde, semAbas }: Props) {
           }}
         />
         {confirmar ? (
-          <div
-            className="fresh flutua"
-            role="alertdialog"
-            aria-labelledby="cf-t"
-            aria-describedby="cf-d"
-          >
-            <span className="ck" aria-hidden="true">
-              <Ic n={ICONE_CONFIRMAR[confirmar.tipo]} s={22} />
-            </span>
-            <span className="tx">
-              <b id="cf-t">{CONFIRMAR[confirmar.tipo][0]}</b>
-              <span id="cf-d">
-                Este link pede para fazer isso na sua conta. Se não foi você
-                quem pediu, é só ignorar.
-              </span>
-            </span>
-            <span className="ac">
-              <button
-                className="btn b-acid sm"
-                type="button"
-                onClick={() => responder(true)}
-              >
-                {CONFIRMAR[confirmar.tipo][1]}
-              </button>
-              <button
-                className="btn sm gh2"
-                type="button"
-                onClick={() => responder(false)}
-              >
-                Agora não
-              </button>
-            </span>
-          </div>
+          <CartaoConfirmar acao={confirmar} onResponder={responder} />
         ) : null}
         <div className={`toast${fase === 'entra' ? ' on' : ''}`} role="status">
           <i>
@@ -601,5 +570,79 @@ function MenuLink({
       <Ic n={icone} s={19} />
       {children}
     </Link>
+  )
+}
+
+/**
+ * A `?acao=` que este navegador não guardou: o cartão diz o jogo, o bar e a
+ * hora (`pubs.actionTarget`) antes de pedir o toque. Jogo ou bar que não dá
+ * mais para marcar (`null`) não vira pergunta: a ação sai da URL.
+ */
+function CartaoConfirmar({
+  acao,
+  onResponder
+}: {
+  acao: Acao
+  onResponder: (sim: boolean) => void
+}) {
+  const trpc = useTRPC()
+  const alvo = useQuery({
+    ...trpc.pubs.actionTarget.queryOptions(
+      acao.tipo === 'app' ? { tipo: 'fav', id: '' } : acao
+    ),
+    enabled: acao.tipo !== 'app',
+    meta: { errorToast: false }
+  })
+  const semAlvo =
+    acao.tipo !== 'app' && (alvo.isError || (alvo.isSuccess && !alvo.data))
+  useEffect(() => {
+    if (semAlvo) onResponder(false)
+  }, [semAlvo, onResponder])
+  if (acao.tipo !== 'app' && !alvo.data) return null
+  const dados = alvo.data
+
+  return (
+    <div
+      className="fresh flutua"
+      role="alertdialog"
+      aria-labelledby="cf-t"
+      aria-describedby="cf-d"
+    >
+      <span className="ck" aria-hidden="true">
+        <Ic n={ICONE_CONFIRMAR[acao.tipo]} s={22} />
+      </span>
+      <span className="tx">
+        <b id="cf-t">{CONFIRMAR[acao.tipo][0]}</b>
+        {dados ? (
+          <span className="cf-alvo">
+            <strong>{dados.title ?? dados.barName}</strong>
+            {dados.title ? ` · ${dados.barName}` : ''}, {dados.neighborhood}
+            {dados.startsAt
+              ? ` · ${dayLabel(new Date(dados.startsAt), new Date())} ${clock(new Date(dados.startsAt))}`
+              : ''}
+          </span>
+        ) : null}
+        <span id="cf-d">
+          Este link pede para fazer isso na sua conta. Se não foi você quem
+          pediu, é só ignorar.
+        </span>
+      </span>
+      <span className="ac">
+        <button
+          className="btn b-acid sm"
+          type="button"
+          onClick={() => onResponder(true)}
+        >
+          {CONFIRMAR[acao.tipo][1]}
+        </button>
+        <button
+          className="btn sm gh2"
+          type="button"
+          onClick={() => onResponder(false)}
+        >
+          Agora não
+        </button>
+      </span>
+    </div>
   )
 }
