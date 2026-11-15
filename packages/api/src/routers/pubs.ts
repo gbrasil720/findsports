@@ -580,6 +580,7 @@ export const pubsRouter = router({
       const normalizado = {
         ...input,
         sort: porNota ? ('rating' as const) : ('relevance' as const),
+        ratingPublic: notaPublica,
         amenities: input.amenities?.length
           ? normalizeAmenityIds(input.amenities)
           : undefined,

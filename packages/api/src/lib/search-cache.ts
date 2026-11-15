@@ -32,6 +32,8 @@ export type ChaveBuscaInput = {
   amenities?: number[]
   /** Idem: sem repetido e ordenada pelo roteador. */
   teamIds?: string[]
+  /** A ordem muda com `rating.public_display`: entra na chave. */
+  ratingPublic?: boolean
   cursor?: string
   limit: number
 }
@@ -55,6 +57,7 @@ export function chaveBusca(input: ChaveBuscaInput): string {
     input.date ?? '',
     (input.amenities ?? []).join(','),
     (input.teamIds ?? []).join(','),
+    input.ratingPublic ? 'nota' : '',
     input.cursor ?? '',
     input.limit
   ].join('|')

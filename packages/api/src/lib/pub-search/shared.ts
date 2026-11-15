@@ -126,6 +126,12 @@ export type SearchInput = {
    * da frente.
    */
   sort?: SearchSort
+  /**
+   * `rating.public_display`. Desligada, a qualidade sai da ordem (vira 0):
+   * o cursor leva a chave da ordem em claro, e a nota escondida não pode
+   * ir nele.
+   */
+  ratingPublic?: boolean
   cursor?: string
   limit: number
 }
