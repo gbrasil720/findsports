@@ -31,6 +31,8 @@ export type PageBar = {
   photoUrl: string | null
   screenCount: number | null
   amenities: number[]
+  /** Gasto médio por pessoa, em centavos; só vem quando o plano libera. */
+  averageSpendCents?: number | null
   rating: {
     total: number
     percentage: number
@@ -300,6 +302,8 @@ export function barJsonLd(bar: PageBar, url: string, now: Date) {
           )
         }
       : {}),
+    ...amenityJsonLd(bar),
+    ...(priceRange(bar) ? { priceRange: priceRange(bar) } : {}),
     ...(bar.rating
       ? {
           // As estrelas (1 a 5) são a nota que o schema.org espera; sem
@@ -346,6 +350,44 @@ export function barJsonLd(bar: PageBar, url: string, now: Date) {
     '@context': 'https://schema.org',
     '@graph': [place, barBreadcrumb(bar, url), ...events]
   }
+}
+
+const PAYMENT_SLUGS = new Set(['pix', 'card', 'meal_voucher'])
+
+/**
+ * O que a página mostra na lista de características: formas de pagamento em
+ * `paymentAccepted` e o resto em `amenityFeature`. Só o que o bar declarou.
+ */
+function amenityJsonLd(bar: PageBar) {
+  const declared = AMENITIES.filter((item) => bar.amenities.includes(item.id))
+  const payments = declared.filter((item) => PAYMENT_SLUGS.has(item.slug))
+  const features = declared.filter((item) => !PAYMENT_SLUGS.has(item.slug))
+  return {
+    ...(features.length
+      ? {
+          amenityFeature: features.map((item) => ({
+            '@type': 'LocationFeatureSpecification',
+            name: item.label,
+            value: true
+          }))
+        }
+      : {}),
+    ...(payments.length
+      ? { paymentAccepted: payments.map((item) => item.label).join(', ') }
+      : {})
+  }
+}
+
+/** "R$ 60 por pessoa": o mesmo gasto médio que a página mostra, e só ele. */
+function priceRange(bar: PageBar): string | null {
+  const spend = bar.averageSpendCents
+  if (spend == null || spend <= 0) return null
+  const value = (spend / 100).toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    maximumFractionDigits: 0
+  })
+  return `${value} por pessoa`
 }
 
 const team = (name: string) => ({ '@type': 'SportsTeam', name })
