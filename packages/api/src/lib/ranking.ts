@@ -3,6 +3,7 @@ import {
   type Achievement,
   computeAchievements,
   type Review,
+  type Secret,
   type Visit
 } from './achievements'
 
@@ -40,13 +41,18 @@ export function scoreOf(
   visits: RankVisit[],
   reviews: Review[],
   from: Date,
-  to: Date
+  to: Date,
+  secrets: Secret[] = []
 ): Score {
   if (metric === 'achievements') {
     // A medalha precisa da história toda; conta a que saiu dentro do mês.
     const before = <T extends { at: Date }>(list: T[]) =>
       list.filter((item) => item.at < to)
-    const unlocked = computeAchievements(before(visits), before(reviews))
+    const unlocked = computeAchievements(
+      before(visits),
+      before(reviews),
+      before(secrets)
+    )
       .map((a: Achievement) => a.unlockedAt)
       .filter((at): at is Date => !!at && at >= from && at < to)
     return {

@@ -2,7 +2,7 @@ import { and, db, desc, eq, sql } from '@findsports_oficial/db'
 import { user } from '@findsports_oficial/db/schema/auth'
 import { monthCrown } from '@findsports_oficial/db/schema/social'
 import { computeAchievements, levelFor } from './achievements'
-import { readReviewsOf, readVisitsOf } from './achievements-read'
+import { readReviewsOf, readSecretsOf, readVisitsOf } from './achievements-read'
 import { canSeeActivity, friendIdsOf, monthStart } from './friends'
 import {
   CITY_AROUND,
@@ -52,9 +52,10 @@ export async function readFriendsRanking(
   ).filter((p) => p.id === me || canSeeActivity(p.visibility, 'friends'))
   const ids = people.map((p) => p.id)
   // As resenhas vão sempre: o nível de cada amigo (rodada 6) conta com elas.
-  const [visits, reviews] = await Promise.all([
+  const [visits, reviews, secrets] = await Promise.all([
     readVisitsOf(ids),
-    readReviewsOf(ids)
+    readReviewsOf(ids),
+    readSecretsOf(ids)
   ])
   const start = monthStart(now)
   const board = (to: Date) =>
@@ -67,7 +68,8 @@ export async function readFriendsRanking(
           visits.filter((v) => v.userId === person.id),
           reviews.filter((r) => r.userId === person.id),
           start,
-          to
+          to,
+          secrets.filter((x) => x.userId === person.id)
         )
       }))
     )
@@ -86,7 +88,8 @@ export async function readFriendsRanking(
       const theirs = visits.filter((v) => v.userId === row.id)
       const unlocked = computeAchievements(
         theirs,
-        reviews.filter((r) => r.userId === row.id)
+        reviews.filter((r) => r.userId === row.id),
+        secrets.filter((x) => x.userId === row.id)
       ).filter((a) => a.unlockedAt).length
       const times = theirs.map((v) => v.at.getTime())
       return {

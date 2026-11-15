@@ -11,7 +11,12 @@ import { brasiliaDay } from '@findsports_oficial/db/event-window'
  * do banco está em `achievements-read.ts`.
  */
 
-export type AchievementGroup = 'bares' | 'bairros' | 'esportes' | 'resenhas'
+export type AchievementGroup =
+  | 'bares'
+  | 'bairros'
+  | 'esportes'
+  | 'resenhas'
+  | 'segredos'
 
 export const ACHIEVEMENTS = [
   { id: 'bar1', group: 'bares', name: 'Primeira rodada', target: 1 },
@@ -25,13 +30,20 @@ export const ACHIEVEMENTS = [
   { id: 'ava10', group: 'resenhas', name: 'Crítico', target: 10 },
   // Fora da grade do design (2i), que mostra nove; aparece na série do
   // detalhe ("Bares novos · 2 de 4") e entra por último na estante.
-  { id: 'bar25', group: 'bares', name: 'Lenda do bairro', target: 25 }
+  { id: 'bar25', group: 'bares', name: 'Lenda do bairro', target: 25 },
+  // Secreta (WEB-558): não sai das visitas nem das avaliações, fica gravada
+  // (`secret_achievement`) quando a pessoa acha o Jules no app ou no web.
+  { id: 'jules', group: 'segredos', name: 'Achou o Jules', target: 1 }
 ] as const satisfies readonly {
   id: string
   group: AchievementGroup
   name: string
   target: number
 }[]
+
+/** As conquistas secretas e o que a pessoa já achou (`secret_achievement`). */
+export type SecretId = 'jules'
+export type Secret = { id: SecretId; at: Date }
 
 export type AchievementId = (typeof ACHIEVEMENTS)[number]['id']
 
@@ -103,15 +115,31 @@ function firsts(visits: Visit[], reviews: Review[]) {
     resenhas: [...reviews]
       .sort((a, b) => a.at.getTime() - b.at.getTime())
       .map((r) => ({ at: r.at, where: r.barName }))
-  } satisfies Record<AchievementGroup, { at: Date; where: string }[]>
+  } satisfies Record<
+    Exclude<AchievementGroup, 'segredos'>,
+    { at: Date; where: string }[]
+  >
 }
 
 export function computeAchievements(
   visits: Visit[],
-  reviews: Review[]
+  reviews: Review[],
+  secrets: Secret[] = []
 ): Achievement[] {
-  const series = firsts(visits, reviews)
+  const series = {
+    ...firsts(visits, reviews),
+    segredos: [] as { at: Date; where: string }[]
+  }
   return ACHIEVEMENTS.map((a) => {
+    if (a.group === 'segredos') {
+      const found = secrets.find((s) => s.id === a.id)
+      return {
+        ...a,
+        progress: found ? 1 : 0,
+        unlockedAt: found?.at ?? null,
+        where: null
+      }
+    }
     const done = series[a.group][a.target - 1]
     return {
       ...a,
