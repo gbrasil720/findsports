@@ -182,6 +182,14 @@ integrationTest('cidade só para amigo, e "Ninguém" fora da busca', async () =>
     const overview = await as(joana).overview()
     expect(overview.friends.map((f) => f.city)).toEqual([`Cidade ${tag}`])
 
+    // Prévia do convite: cidade só para amigo aceito.
+    const liaCode = (await as(lia).me()).friendCode
+    const kleberCode = (await as(kleber).me()).friendCode
+    expect((await as(joana).invitePreview({ code: liaCode }))?.city).toBeNull()
+    expect((await as(joana).invitePreview({ code: kleberCode }))?.city).toBe(
+      `Cidade ${tag}`
+    )
+
     // Quem escolheu "Ninguém" some da busca por nome para quem não é amigo.
     await db
       .update(user)
