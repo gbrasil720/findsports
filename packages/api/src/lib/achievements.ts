@@ -43,7 +43,7 @@ export const ACHIEVEMENTS = [
 
 /** As conquistas secretas e o que a pessoa já achou (`secret_achievement`). */
 export type SecretId = 'jules'
-export type Secret = { id: SecretId; at: Date }
+export type Secret = { id: SecretId; at: Date; via?: 'app' | 'web' }
 
 export type AchievementId = (typeof ACHIEVEMENTS)[number]['id']
 
@@ -137,7 +137,7 @@ export function computeAchievements(
         ...a,
         progress: found ? 1 : 0,
         unlockedAt: found?.at ?? null,
-        where: null
+        where: found?.via === 'web' ? 'No site' : found ? 'No app' : null
       }
     }
     const done = series[a.group][a.target - 1]

@@ -78,6 +78,7 @@ describe('computeAchievements', () => {
     )
     expect(achou?.unlockedAt).toEqual(day(7))
     expect(achou?.progress).toBe(1)
+    expect(achou?.where).toBe('No app')
     expect(levelFor(1).level).toBe(2)
   })
 })

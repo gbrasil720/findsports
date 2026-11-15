@@ -71,7 +71,8 @@ export async function readSecretsOf(
     .select({
       userId: secretAchievement.userId,
       id: secretAchievement.achievementId,
-      at: secretAchievement.foundAt
+      at: secretAchievement.foundAt,
+      via: secretAchievement.via
     })
     .from(secretAchievement)
     .where(inArray(secretAchievement.userId, userIds))
