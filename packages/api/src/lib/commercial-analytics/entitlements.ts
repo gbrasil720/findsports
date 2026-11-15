@@ -101,6 +101,10 @@ export function getAnalyticsPlan(
  * Vale o tamanho da janela e também a distância do início até hoje: o
  * Starter vê os últimos 30 dias (o dia de hoje e os 29 de antes, em
  * Brasília, como o "30d" do painel), não 30 dias quaisquer do passado.
+ *
+ * Com um dia de folga: o painel calcula o período uma vez, e aberto depois
+ * da meia-noite o refetch sai com o início de ontem. Recusar isso daria
+ * erro ao bar que só deixou a aba aberta; um dia a mais não é o histórico.
  */
 export function assertAnalyticsPeriodAllowed(
   plan: SubscriptionPlan,
@@ -116,7 +120,7 @@ export function assertAnalyticsPeriodAllowed(
       message: `Plano ${PLAN_NAMES[plan]} suporta até ${maxDays} dias`
     })
   }
-  const earliest = brasiliaDayStart(brasiliaDay(now, -(maxDays - 1)))
+  const earliest = brasiliaDayStart(brasiliaDay(now, -maxDays))
   if (from && from.getTime() < earliest.getTime()) {
     throw new TRPCError({
       code: 'FORBIDDEN',
