@@ -5,8 +5,9 @@ import { getPublicListing } from '@/functions/public-listing'
 
 /**
  * `/bares/<cidade>` e `/bares/<cidade>/<bairro>`: um splat só, porque são duas
- * profundidades da mesma página. Cidade ou bairro sem bar no ar é 404; bairro
- * com poucos bares abre, mas sai `noindex` (`MIN_BARS_INDEXABLE_NEIGHBORHOOD`).
+ * profundidades da mesma página. Cidade ou bairro sem bar no ar é 404; com
+ * poucos bares abre, mas sai `noindex` (`MIN_BARS_INDEXABLE_CITY` e
+ * `MIN_BARS_INDEXABLE_NEIGHBORHOOD`).
  */
 export const Route = createFileRoute('/bares/$')({
   loader: async ({ params }) => {

@@ -43,7 +43,7 @@ export function listingDescription(
   return `${barsLabel(total)} para assistir ao jogo em ${place(city, neighborhood)}. Veja quem passa a partida do seu time, o telão e o som, e escolha pela Onside.`
 }
 
-/** Bairro abaixo do piso de bares sai `noindex` (conteúdo fino). */
+/** Cidade ou bairro abaixo do piso de bares sai `noindex` (conteúdo fino). */
 export function listingHead(
   city: CityListing,
   neighborhood: NeighborhoodListing | null
@@ -54,7 +54,7 @@ export function listingHead(
       : cityListingPath(city),
     title: listingTitle(city, neighborhood),
     description: listingDescription(city, neighborhood),
-    indexable: neighborhood ? neighborhood.indexable : true
+    indexable: neighborhood ? neighborhood.indexable : city.indexable
   })
 }
 
