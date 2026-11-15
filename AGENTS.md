@@ -1128,7 +1128,7 @@ invente layout que o projeto não tem.
   pelo `expo-camera`), `amigo/[id]` (11d: nível, o mês lado a lado, o jogo marcado com
   "Vou também", bares em comum, tudo pela privacidade da pessoa), `contatos` (a conta não
   tem telefone: o app manda o SHA-256 dos e-mails da agenda, pelo `expo-contacts/legacy`,
-  e só aparece quem aceita pedido de todos; teto de 4000 hashes por dia por conta).
+  e só aparece quem aceita pedido de todos; teto de 6000 hashes por dia por conta).
   Sugestões só de amigos de amigos. A cidade de outra pessoa só sai na lista de amigos
   aceitos (`overview`); busca, código, pedidos, sugestões, perfil e contatos a devolvem
   nula, e a busca por nome não lista quem escolheu "Ninguém" para quem não tem nada com

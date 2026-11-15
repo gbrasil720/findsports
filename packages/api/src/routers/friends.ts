@@ -63,8 +63,12 @@ const INVITE_PREVIEW_LIMIT = { max: 30, windowMs: 3_600_000 }
  * mesma janela: o código é curto e, sem limite, dá para varrer os torcedores.
  */
 const FRIEND_CODE_LIMIT = { max: 30, windowMs: 3_600_000 }
-/** Hashes de contatos por dia, por pessoa: duas agendas cheias (2000 cada). */
-const CONTACTS_LIMIT = { max: 4000, windowMs: 86_400_000 }
+/**
+ * Hashes de contatos por dia, por pessoa: três aberturas da tela com a agenda
+ * cheia (2000 cada). ponytail: conta toda abertura, mesmo com a agenda igual;
+ * contar só hashes novos pede guardá-los (servidor) ou cachear no aparelho.
+ */
+const CONTACTS_LIMIT = { max: 6000, windowMs: 86_400_000 }
 
 async function limitFriendCode(me: string) {
   const attempt = await incrementWindow(

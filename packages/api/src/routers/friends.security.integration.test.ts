@@ -140,6 +140,7 @@ integrationTest(
       })
       expect(matched.map((m) => [m.id, m.city])).toEqual([[iris.id, null]])
       await as(hugo).matchContacts({ hashes: filler(2000) })
+      await as(hugo).matchContacts({ hashes: filler(2000) })
       // A janela do dia conta hashes, não chamadas: o próximo passa do teto.
       await expect(
         as(hugo).matchContacts({ hashes: filler(1) })
