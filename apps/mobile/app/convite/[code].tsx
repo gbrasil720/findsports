@@ -39,7 +39,7 @@ import {
 } from '@/components/ui'
 import { authClient } from '@/lib/auth-client'
 import { formatTime } from '@/lib/explore'
-import { savePendingInvite } from '@/lib/invite'
+import { clearPendingInvite, savePendingInvite } from '@/lib/invite'
 import { firstName, monthLabel } from '@/lib/ranking'
 import { trpc } from '@/lib/trpc'
 
@@ -84,13 +84,16 @@ export default function Invite() {
   const person = preview.data
   const friends = accepted || person?.relation === 'friends'
 
-  // Sem conta pronta, o código fica guardado: as abas aceitam depois.
-  useEffect(() => {
-    if (code && !session.isPending && !ready) savePendingInvite(code)
-  }, [code, session.isPending, ready])
-
-  const close = () =>
+  // Sem conta pronta, o código só fica guardado no toque de aceitar (as abas
+  // aceitam depois); fechar apaga.
+  const acceptLater = async (next: Href) => {
+    if (code) await savePendingInvite(code, user?.id)
+    router.push(next)
+  }
+  const close = () => {
+    clearPendingInvite()
     router.canGoBack() ? router.back() : router.replace('/explore')
+  }
   const first = person ? firstName(person.name) : ''
 
   return (
@@ -263,7 +266,7 @@ export default function Invite() {
                 <>
                   <PillButton
                     label="Criar conta e ser amigo"
-                    onPress={() => router.push('/profile' as Href)}
+                    onPress={() => acceptLater('/profile' as Href)}
                   />
                   <Text
                     style={[
@@ -274,7 +277,7 @@ export default function Invite() {
                     Já tem conta?{' '}
                     <Text
                       accessibilityRole="link"
-                      onPress={() => router.push('/sign-in' as Href)}
+                      onPress={() => acceptLater('/sign-in' as Href)}
                       suppressHighlighting
                       style={[
                         text(13, 'Bold', 1.4),
