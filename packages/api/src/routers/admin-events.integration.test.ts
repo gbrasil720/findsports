@@ -252,7 +252,6 @@ integrationTest(
       await ctx.db.insert(reservation).values({
         eventId: booked,
         userId: ctx.fanId,
-        partySize: 2,
         status: 'confirmed'
       })
 
@@ -402,7 +401,6 @@ integrationTest('exclusão recusa jogo com reserva e diz quantas', async () => {
     await ctx.db.insert(reservation).values({
       eventId: booked,
       userId: ctx.fanId,
-      partySize: 3,
       status: 'confirmed'
     })
     expect(

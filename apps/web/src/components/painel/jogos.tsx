@@ -46,6 +46,7 @@ import {
   useEventAnalytics,
   useEventNumbers,
   useGoing,
+  useGoingForGame,
   useInterest
 } from './dados'
 import { faixaDoJogo } from './faixa-do-jogo'
@@ -274,6 +275,14 @@ export function JogosPage({
   const shown =
     all.find((event) => event.id === selected) ??
     (wide && mode === 'lista' ? list[0] : undefined)
+  // Jogo encerrado sai de `useGoing` quando a validação fecha: lê à parte.
+  const closedGame = useGoingForGame(
+    shown?.id,
+    elite &&
+      shown !== undefined &&
+      !goingById.has(shown.id) &&
+      eventState(shown, now) === 'past'
+  )
 
   const detail = shown ? (
     <Detalhe
@@ -282,7 +291,7 @@ export function JogosPage({
       bar={bar}
       elite={elite}
       showsGoing={showsGoing}
-      game={goingById.get(shown.id)}
+      game={goingById.get(shown.id) ?? closedGame.data ?? undefined}
       row={analytics.byEvent.get(shown.id)}
       interest={interest.ratio.get(shown.id)}
       canCreate={canCreate}

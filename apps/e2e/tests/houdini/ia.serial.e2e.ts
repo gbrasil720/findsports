@@ -102,8 +102,18 @@ test('mostra os números semeados, liga e desliga a IA e muda um peso', async ({
   await expect(row('Respostas úteis')).toContainText('2 · 67%')
   await expect(row('Conversão (ação em 24 h)')).toContainText('1 de 1 · 100%')
   await expect(row('Custo por resposta útil')).toContainText('US$ 0,2500')
-  await expect(page.getByText('amostra insuficiente')).toBeVisible()
-  await expect(page.getByText('ainda não ligado')).toBeVisible()
+  const chat = page.getByRole('region', { name: 'Teste do chat' })
+  await expect(chat.getByText('amostra insuficiente')).toBeVisible()
+  // Recomendador (WEB-426, A × C): sem rodada, o teste desligado e a parada
+  // aguardando.
+  const rec = page.getByRole('region', { name: 'Teste do recomendador' })
+  await expect(rec.getByText('sem rodada no teste ainda')).toBeVisible()
+  await expect(rec).toContainText('A · só o algoritmo')
+  await expect(rec).toContainText('C · Clef-flash')
+  await expect(rec).not.toContainText('Jev')
+  await expect(
+    rec.getByRole('article', { name: 'Regra de parada' })
+  ).toContainText('aguardando')
 
   // Quem mais gasta abre a ficha da pessoa.
   const top = page.getByRole('table').filter({ hasText: 'Mais gasto no mês' })
@@ -158,6 +168,18 @@ test('mostra os números semeados, liga e desliga a IA e muda um peso', async ({
      ORDER BY created_at DESC LIMIT 1`
   )
   expect(logged?.actor_name).toBe('E2E admin')
+
+  // O teste do recomendador tem chave própria, desligada por padrão.
+  const recToggle = rec.getByRole('switch', { name: 'O teste ligado' })
+  await expect(recToggle).toHaveAttribute('aria-checked', 'false')
+  await recToggle.click()
+  await rec.getByRole('button', { name: 'Ligar o teste' }).click()
+  await expect(page.getByText('ai.recommender_enabled lançado.')).toBeVisible()
+  await expect(recToggle).toHaveAttribute('aria-checked', 'true')
+  const [recOn] = await query<{ value: unknown }>(
+    `SELECT value FROM app_config WHERE key = 'ai.recommender_enabled'`
+  )
+  expect(recOn?.value).toBe(true)
 })
 
 test('limites editam com confirmação e o servidor recusa o absurdo', async ({

@@ -8,6 +8,7 @@ import {
 import { bar } from '@findsports_oficial/db/schema/platform'
 import { TRPCError } from '@trpc/server'
 import { brasiliaWindows } from '../ai/limits'
+import { getCurrentPlan } from '../current-plan'
 import { gameTitle } from '../game-participants'
 import { utcIso } from '../utc-timestamp'
 import { buildEventComparison } from './comparison'
@@ -29,9 +30,12 @@ import { pctChange } from './types'
  * Resolve bar ID and subscription plan from user ID.
  * Single source for bar+plan resolution — used by all analytics procedures.
  */
-export async function resolveBarAndPlan(
-  userId: string
-): Promise<{ barId: string; plan: SubscriptionPlan }> {
+export async function resolveBarAndPlan(userId: string): Promise<{
+  barId: string
+  plan: SubscriptionPlan
+  /** O plano vigente, nulo no plano parado (`getCurrentPlan`). */
+  currentPlan: SubscriptionPlan | null
+}> {
   const row = await db.query.bar.findFirst({
     where: eq(bar.userId, userId),
     columns: { id: true },
@@ -49,7 +53,11 @@ export async function resolveBarAndPlan(
     })
   }
 
-  return { barId: row.id, plan: getAnalyticsPlan(row.subscription) }
+  return {
+    barId: row.id,
+    plan: getAnalyticsPlan(row.subscription),
+    currentPlan: getCurrentPlan(row.subscription ?? null)
+  }
 }
 
 /** Uma linha por dia, com os tipos já separados. */
@@ -474,7 +482,7 @@ async function getEventAnalyticsSnapshots(
       -- WEB-323: dados do próprio bar, não analytics de torcedor. Saem das
       -- tabelas de reserva, então a poda dos eventos brutos não os alcança.
       (
-        SELECT COALESCE(SUM(r.party_size), 0)
+        SELECT count(*)
         FROM reservation r
         WHERE r.event_id = e.id AND r.status = 'confirmed'
       ) AS reserved_people,

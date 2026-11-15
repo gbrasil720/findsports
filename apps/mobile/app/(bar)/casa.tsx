@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   BoardCell,
   DayBoard,
+  InkCallout,
   OkPill,
   OwnerCard,
   OwnerLabel,
@@ -43,6 +44,7 @@ import {
   dayKicker,
   delta,
   gameState,
+  nextGameWhen,
   todayGames,
   visitLine,
   weekdayName
@@ -99,6 +101,12 @@ export default function Casa() {
   const tourBoard = useTourTarget('bar-board')
 
   const games = todayGames(events.data ?? [], now)
+  // Sem jogo hoje: o próximo publicado, se houver (WEB-467).
+  const next = (events.data ?? [])
+    .filter((game) => gameState(game, now) === 'upcoming')
+    .sort(
+      (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()
+    )[0]
   const live = games.filter((game) => gameState(game, now) === 'live').length
   const goingById = new Map((going.data ?? []).map((g) => [g.id, g]))
   const goingToday = games.reduce(
@@ -323,94 +331,121 @@ export default function Casa() {
             ? `Hoje na casa · oferta: ${offer.length > 34 ? `${offer.slice(0, 33).trimEnd()}…` : offer}`
             : 'Hoje na casa'}
         </OwnerLabel>
-        <OwnerCard>
-          {events.isError ? (
-            <View style={{ paddingVertical: 12 }}>
-              <ErrorState
-                kind="block"
-                error={events.error}
-                onRetry={() => events.refetch()}
-                retrying={events.isFetching}
-              />
-            </View>
-          ) : games.length ? (
-            games.map((game, index) => {
-              const state = gameState(game, now)
-              const people = goingById.get(game.id)?.people ?? []
-              const validated = people.filter((p) => p.validatedAt).length
-              return (
-                <Pressable
-                  key={game.id}
-                  accessibilityRole="button"
-                  accessibilityHint="Abre a edição do jogo"
-                  onPress={() =>
-                    router.push({
-                      pathname: '/novo-jogo',
-                      params: { id: game.id }
-                    })
-                  }
-                >
-                  <OwnerRow first={index === 0}>
-                    <Text
-                      style={[
-                        styles.time,
-                        {
-                          color: state === 'live' ? palette.live : palette.muted
-                        }
-                      ]}
-                    >
-                      {formatTime(game.startsAt)}
-                    </Text>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text
-                        numberOfLines={2}
-                        style={[ownerText.name, { color: palette.ink }]}
-                      >
-                        {gameTitle(game)}
-                      </Text>
-                      {owner.elite ? (
-                        <Text
-                          numberOfLines={1}
-                          style={[ownerText.line, { color: palette.muted }]}
-                        >
-                          {[
-                            people.length
-                              ? `${people.length} ${people.length === 1 ? 'vai' : 'vão'}`
-                              : 'ninguém marcou ainda',
-                            validated
-                              ? `${validated} ${validated === 1 ? 'validou' : 'validaram'}`
-                              : null
-                          ]
-                            .filter(Boolean)
-                            .join(' · ')}
-                        </Text>
-                      ) : (
-                        <Text
-                          numberOfLines={1}
-                          style={[ownerText.line, { color: palette.muted }]}
-                        >
-                          {game.championship}
-                        </Text>
-                      )}
-                    </View>
-                    <StateTag state={state} />
-                  </OwnerRow>
-                </Pressable>
-              )
-            })
-          ) : (
-            <Text
-              style={[
-                text(14.5, 'Regular', 1.45),
-                { color: palette.muted, paddingVertical: 16 }
-              ]}
+        {!events.isError && !events.isPending && !games.length ? (
+          next ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityHint="Abre a aba Jogos"
+              onPress={() => router.push('/jogos')}
             >
-              {events.isPending
-                ? 'Carregando a agenda…'
-                : 'Nenhum jogo hoje. Publique um em Jogos para aparecer no Explorar.'}
-            </Text>
-          )}
-        </OwnerCard>
+              <InkCallout
+                kicker="Nenhum jogo hoje"
+                title="Seu próximo jogo é"
+                hot={nextGameWhen(next.startsAt, now)}
+                body={gameTitle(next)}
+              />
+            </Pressable>
+          ) : (
+            <InkCallout
+              kicker="Sem jogo marcado"
+              title="Nenhum jogo"
+              hot="na grade"
+              body="Quem procura onde ver o jogo só acha o seu bar com o jogo cadastrado. Leva um minuto."
+              action={{
+                label: 'Cadastrar o primeiro jogo',
+                onPress: () => router.push('/novo-jogo')
+              }}
+            />
+          )
+        ) : (
+          <OwnerCard>
+            {events.isError ? (
+              <View style={{ paddingVertical: 12 }}>
+                <ErrorState
+                  kind="block"
+                  error={events.error}
+                  onRetry={() => events.refetch()}
+                  retrying={events.isFetching}
+                />
+              </View>
+            ) : games.length ? (
+              games.map((game, index) => {
+                const state = gameState(game, now)
+                const people = goingById.get(game.id)?.people ?? []
+                const validated = people.filter((p) => p.validatedAt).length
+                return (
+                  <Pressable
+                    key={game.id}
+                    accessibilityRole="button"
+                    accessibilityHint="Abre a edição do jogo"
+                    onPress={() =>
+                      router.push({
+                        pathname: '/novo-jogo',
+                        params: { id: game.id }
+                      })
+                    }
+                  >
+                    <OwnerRow first={index === 0}>
+                      <Text
+                        style={[
+                          styles.time,
+                          {
+                            color:
+                              state === 'live' ? palette.live : palette.muted
+                          }
+                        ]}
+                      >
+                        {formatTime(game.startsAt)}
+                      </Text>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text
+                          numberOfLines={2}
+                          style={[ownerText.name, { color: palette.ink }]}
+                        >
+                          {gameTitle(game)}
+                        </Text>
+                        {owner.elite ? (
+                          <Text
+                            numberOfLines={1}
+                            style={[ownerText.line, { color: palette.muted }]}
+                          >
+                            {[
+                              people.length
+                                ? `${people.length} ${people.length === 1 ? 'vai' : 'vão'}`
+                                : 'ninguém marcou ainda',
+                              validated
+                                ? `${validated} ${validated === 1 ? 'validou' : 'validaram'}`
+                                : null
+                            ]
+                              .filter(Boolean)
+                              .join(' · ')}
+                          </Text>
+                        ) : (
+                          <Text
+                            numberOfLines={1}
+                            style={[ownerText.line, { color: palette.muted }]}
+                          >
+                            {game.championship}
+                          </Text>
+                        )}
+                      </View>
+                      <StateTag state={state} />
+                    </OwnerRow>
+                  </Pressable>
+                )
+              })
+            ) : (
+              <Text
+                style={[
+                  text(14.5, 'Regular', 1.45),
+                  { color: palette.muted, paddingVertical: 16 }
+                ]}
+              >
+                Carregando a agenda…
+              </Text>
+            )}
+          </OwnerCard>
+        )}
 
         <OwnerLabel>Últimos 7 dias · vs. os 7 anteriores</OwnerLabel>
         <View style={styles.weekRow}>

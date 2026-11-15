@@ -4,6 +4,7 @@ import {
   dayKicker,
   delta,
   gameState,
+  nextGameWhen,
   profileChecklist,
   retryableCodes,
   shortDate,
@@ -129,5 +130,15 @@ describe('comanda', () => {
         { code: 'D', status: 'limited' }
       ])
     ).toEqual(['B', 'D'])
+  })
+})
+
+describe('próximo jogo (WEB-467)', () => {
+  // Sábado, 14/11/2026, 15:00 em Brasília.
+  const now = Date.parse('2026-11-14T18:00:00Z')
+  it('amanhã, dia da semana e, mais longe, a data', () => {
+    expect(nextGameWhen('2026-11-15T19:00:00Z', now)).toBe('amanhã às 16:00')
+    expect(nextGameWhen('2026-11-18T23:30:00Z', now)).toBe('qua às 20:30')
+    expect(nextGameWhen('2026-12-02T19:00:00Z', now)).toBe('2 dez às 16:00')
   })
 })

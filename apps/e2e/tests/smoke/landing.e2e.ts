@@ -31,13 +31,15 @@ type TodayGame = { title: string; startsAt: string; bars: number }
  * Responde `pubs.todayGames` com `games`. O banco do E2E é do shard inteiro e
  * outro teste pode ter publicado jogo hoje: sem o dublê, o ramo do hero que
  * sai depende da ordem dos testes. A consulta pode vir no lote com outras;
- * só a posição dela é trocada.
+ * só a posição dela é trocada. `delayMs` segura a resposta, para o clique
+ * chegar antes dela.
  */
-async function stubTodayGames(page: Page, games: TodayGame[]) {
+async function stubTodayGames(page: Page, games: TodayGame[], delayMs = 0) {
   await page.route(/\/api\/trpc\/[^?]*pubs\.todayGames/, async (route) => {
     const url = new URL(route.request().url())
     const paths = url.pathname.replace('/api/trpc/', '').split(',')
     const response = await route.fetch()
+    if (delayMs) await new Promise((done) => setTimeout(done, delayMs))
     const body = await response.json()
     const at = paths.indexOf('pubs.todayGames')
     if (Array.isArray(body)) body[at] = { result: { data: games } }
@@ -116,6 +118,34 @@ test('com jogos hoje, o exemplo leva ao jogo escolhido no Explorar', async ({
   await expect(link).toHaveAttribute(
     'href',
     `/dashboard?jogo=${encodeURIComponent(`${startsAt}|Flamengo × Vasco`)}`
+  )
+})
+
+// Quem clica antes de os jogos de hoje chegarem: o resultado acompanha o jogo
+// que o campo passa a mostrar, em vez de ficar no da lista de exemplo.
+test('clicando antes dos jogos de hoje, o exemplo passa ao jogo real', async ({
+  page
+}) => {
+  const startsAt = soon()
+  const games = ['Flamengo × Vasco', 'Grêmio × Inter', 'Lakers × Celtics'].map(
+    (title, i) => ({ title, startsAt, bars: i + 1 })
+  )
+  await stubTodayGames(page, games, 2_000)
+  await page.goto('/')
+  // Ainda a lista de exemplo: o clique sai antes da resposta.
+  await expect(page.locator('#q-jogo')).toHaveValue('Corinthians × Palmeiras')
+  await page
+    .locator('#busca')
+    .getByRole('button', { name: 'Ver como fica' })
+    .click()
+  await expect(page.locator('#q-jogo')).toHaveValue('Flamengo × Vasco')
+  const results = page.locator('.lp3 .results')
+  await expect(results).toContainText('Flamengo × Vasco · perto de')
+  const next = page.locator('.lp3 .answer .hp-next')
+  await expect(next).toContainText('Flamengo × Vasco passa em 1 bar')
+  await expect(next.locator('[data-cta]')).toHaveAttribute(
+    'data-cta',
+    'results_game'
   )
 })
 

@@ -1,6 +1,5 @@
 import { relations, sql } from 'drizzle-orm'
 import {
-  type AnyPgColumn,
   boolean,
   check,
   customType,
@@ -27,7 +26,6 @@ import {
 } from '../bar-gallery'
 import { AVERAGE_SPEND_MAX_CENTS, MENU_URL_MAX_LENGTH } from '../bar-menu'
 import { HOUSE_OFFER_MAX_LENGTH } from '../house-offer'
-import { RESERVATION_CAP_MAX } from '../reservation-limits'
 import { user } from './auth'
 import { barRating } from './rating'
 import { reviewStatusEnum } from './review-status'
@@ -76,9 +74,6 @@ export const barPhotoCategoryEnum = pgEnum(
 )
 
 export type TeamKind = (typeof teamKindEnum.enumValues)[number]
-
-const reservationCapRange = (column: AnyPgColumn) =>
-  sql`${column} IS NULL OR ${column} BETWEEN 1 AND ${sql.raw(String(RESERVATION_CAP_MAX))}` // sql-raw-permitido: constante de limite em CHECK
 
 export const bar = pgTable(
   'bar',
@@ -152,10 +147,6 @@ export const bar = pgTable(
     // `PUBLIC_BAR_COLUMNS`. Gasto em centavos inteiros, nunca `float`.
     menuUrl: text('menu_url'),
     averageSpendCents: integer('average_spend_cents'),
-    // Teto padrão de pessoas confirmadas por jogo (WEB-152). Nulo é sem teto.
-    // `event.reservation_cap` sobrescreve por jogo; a regra vive em
-    // `packages/api/src/lib/reservation-intake.ts`.
-    reservationCap: smallint('reservation_cap'),
     // Avisos por e-mail ao dono (WEB-441), ligados e desligados em
     // Configurações → Avisos. Os padrões são os do design (2b): resumo da
     // semana e jogo lotando ligados, grade vazia desligada. Regras e envio em
@@ -258,6 +249,13 @@ export const bar = pgTable(
     index('bar_geo_starter_idx')
       .using('gist', table.geo)
       .where(sql`is_active AND plan = 'starter'`),
+    // WEB-539: a busca com texto também casa pelo nome do bar. Sem índice, o
+    // texto raro obrigava a ler todo bar do raio só para testar o nome; com
+    // ele, `texto_candidatos` (pub-search) acha esses bares direto. A
+    // expressão é a mesma da consulta.
+    index('bar_name_search_trgm_idx')
+      .using('gin', sql`search_normalize(${table.name}) gin_trgm_ops`)
+      .where(sql`is_active`),
     // Mesma regra de `normalizeHouseOffer`: vazio é `null`, nunca string
     // vazia, e o limite é o do formulário.
     check(
@@ -276,10 +274,6 @@ export const bar = pgTable(
     check(
       'bar_average_spend_cents_range',
       sql`${table.averageSpendCents} IS NULL OR ${table.averageSpendCents} BETWEEN 1 AND ${sql.raw(String(AVERAGE_SPEND_MAX_CENTS))}` // sql-raw-permitido: constante de limite em CHECK
-    ),
-    check(
-      'bar_reservation_cap_range',
-      reservationCapRange(table.reservationCap)
     ),
     check(
       'bar_description_pending_length',
@@ -425,15 +419,6 @@ export const event = pgTable(
     startsAt: timestamp('starts_at').notNull(),
     endsAt: timestamp('ends_at'),
     participantFreeText: text('participant_free_text'),
-    // Override do teto padrão do bar para este jogo (WEB-152). Nulo herda o
-    // padrão.
-    reservationCap: smallint('reservation_cap'),
-    // O bar recebe pedido de reserva para ESTE jogo. Desligado por padrão: o
-    // dono marca jogo a jogo, e só com Elite vigente. A regra vive em
-    // `packages/api/src/lib/reservation-intake.ts`.
-    acceptsReservations: boolean('accepts_reservations')
-      .default(false)
-      .notNull(),
     // Telão e som do jogo, por jogo (WEB-399). Nulo herda das características
     // do bar (`bar.amenities`); o painel grava o que o dono marcou no "Novo
     // evento". Quem resolve é `packages/api/src/lib/event-screen.ts`.
@@ -481,10 +466,6 @@ export const event = pgTable(
     check(
       'event_ends_at_after_starts_at',
       sql`${table.endsAt} IS NULL OR ${table.endsAt} > ${table.startsAt}`
-    ),
-    check(
-      'event_reservation_cap_range',
-      reservationCapRange(table.reservationCap)
     ),
     // Mesma regra de `bar_house_offer_length`.
     check(
@@ -612,49 +593,66 @@ export const barTeam = pgTable(
   ]
 )
 
-export const subscription = pgTable('subscription', {
-  id: text('id')
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  barId: text('bar_id')
-    .notNull()
-    .unique()
-    .references(() => bar.id, { onDelete: 'cascade' }),
-  plan: subscriptionPlanEnum('plan').notNull().default('starter'),
-  status: subscriptionStatusEnum('status').notNull().default('trialing'),
-  // Assinatura no provedor de cobrança. As duas nulas é o trial criado no
-  // cadastro: o bar ainda não contratou nada. Genéricas de propósito, para um
-  // segundo provedor (Pix) não pedir coluna nova.
-  provider: text('provider', { enum: ['stripe', 'abacatepay'] }),
-  externalSubscriptionId: text('external_subscription_id').unique(),
-  /** Desconto fixo mensal em reais na assinatura do Stripe; null = desconhecido. */
-  monthlyDiscountReais: integer('monthly_discount_reais'),
-  currentPeriodEnd: timestamp('current_period_end'),
-  /**
-   * Cancelamento agendado no Stripe (WEB-335): quando a assinatura acaba. Null
-   * sem cancelamento marcado, e volta a null se o dono reativar. O status
-   * segue `active` até lá.
-   */
-  cancelAt: timestamp('cancel_at'),
-  /**
-   * Quando o dono, no teste do cadastro, escolheu pagar com Pix no fim dele
-   * (`pub.schedulePixAfterTrial`). A AbacatePay não agenda o primeiro débito,
-   * então nada é criado lá: perto do fim, e-mail e painel pedem a
-   * autorização. Só vale com `trialing` e sem `external_subscription_id`.
-   */
-  pixAfterTrialAt: timestamp('pix_after_trial_at'),
-  /**
-   * O checkout de Pix aberto e ainda não pago (`bill_...`). Abrir outro o
-   * apaga na AbacatePay (`pub.startPixCheckout`), para duas abas não poderem
-   * ser autorizadas e debitar duas vezes; o pagamento o limpa.
-   */
-  pixCheckoutId: text('pix_checkout_id'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at')
-    .defaultNow()
-    .$onUpdate(() => new Date())
-    .notNull()
-})
+export const subscription = pgTable(
+  'subscription',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    barId: text('bar_id')
+      .notNull()
+      .unique()
+      .references(() => bar.id, { onDelete: 'cascade' }),
+    plan: subscriptionPlanEnum('plan').notNull().default('starter'),
+    status: subscriptionStatusEnum('status').notNull().default('trialing'),
+    // Assinatura no provedor de cobrança. As duas nulas é o trial criado no
+    // cadastro: o bar ainda não contratou nada. Genéricas de propósito, para um
+    // segundo provedor (Pix) não pedir coluna nova.
+    provider: text('provider', { enum: ['stripe', 'abacatepay'] }),
+    externalSubscriptionId: text('external_subscription_id').unique(),
+    /** Desconto fixo mensal em reais na assinatura do Stripe; null = desconhecido. */
+    monthlyDiscountReais: integer('monthly_discount_reais'),
+    currentPeriodEnd: timestamp('current_period_end'),
+    /**
+     * Cancelamento agendado no Stripe (WEB-335): quando a assinatura acaba. Null
+     * sem cancelamento marcado, e volta a null se o dono reativar. O status
+     * segue `active` até lá.
+     */
+    cancelAt: timestamp('cancel_at'),
+    /**
+     * Quando o dono, no teste do cadastro, escolheu pagar com Pix no fim dele
+     * (`pub.schedulePixAfterTrial`). A AbacatePay não agenda o primeiro débito,
+     * então nada é criado lá: perto do fim, e-mail e painel pedem a
+     * autorização. Só vale com `trialing` e sem `external_subscription_id`.
+     */
+    pixAfterTrialAt: timestamp('pix_after_trial_at'),
+    /**
+     * O checkout de Pix aberto e ainda não pago (`bill_...`). Abrir outro o
+     * apaga na AbacatePay (`pub.startPixCheckout`), para duas abas não poderem
+     * ser autorizadas e debitar duas vezes; o pagamento o limpa.
+     */
+    pixCheckoutId: text('pix_checkout_id'),
+    /**
+     * Mensal ou anual do Pix (WEB-536, Pix anual): o da assinatura paga ou o
+     * escolhido no teste do cadastro (`pixAfterTrialAt`). O do cartão é o que o
+     * plugin grava em `stripe_subscription.billing_interval`.
+     */
+    billingInterval: text('billing_interval', { enum: ['month', 'year'] })
+      .notNull()
+      .default('month'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull()
+  },
+  (table) => [
+    check(
+      'subscription_billing_interval_check',
+      sql`${table.billingInterval} in ('month', 'year')`
+    )
+  ]
+)
 
 /**
  * "Por que está cancelando?" (WEB-445, 3q): o motivo que o dono escolhe ao

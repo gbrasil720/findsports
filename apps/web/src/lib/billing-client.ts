@@ -21,10 +21,14 @@ export async function startCheckout(
   plan: SubscriptionPlan,
   // Plano vigente de quem troca: o retorno do portal leva a troca pedida, e
   // `/admin/billing` confere se ela aconteceu (WEB-351).
-  currentPlan?: SubscriptionPlan | null
+  currentPlan?: SubscriptionPlan | null,
+  // Cobrança anual no cartão (WEB-442): o plugin acha o preço pela
+  // `annualDiscountLookupKey` do plano.
+  annual = false
 ): Promise<boolean> {
   const { data, error } = await authClient.subscription.upgrade({
     plan,
+    ...(annual ? { annual: true } : {}),
     // Idioma do checkout. A confirmação de troca no portal não recebe isto do
     // plugin e segue o idioma do navegador do dono.
     locale: 'pt-BR',

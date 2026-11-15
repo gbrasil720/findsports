@@ -463,9 +463,11 @@ export function createPixTrialEndEmail(input: {
   plan: string
   trialEnd: Date
   lastDay: boolean
+  /** Pix anual escolhido no teste (`subscription.billing_interval`). */
+  annual?: boolean
 }): Email {
   const end = dateParts(input.trialEnd)
-  const plan = PLAN_NAMES[input.plan] ?? input.plan
+  const plan = `${PLAN_NAMES[input.plan] ?? input.plan}${input.annual ? ' anual' : ''}`
   const template = createOnsideEmailTemplate({
     tag: TAG,
     band: band([`TESTE GRÁTIS ATÉ ${end.dayMonth}`], {
@@ -481,7 +483,7 @@ export function createPixTrialEndEmail(input: {
     } Você escolheu pagar o ${plan} com Pix: autorize no app do banco para o bar seguir no ar.`,
     blocks: [
       paragraph(
-        'A autorização é uma vez só. O primeiro débito sai quando você autorizar, e depois todo mês na mesma data. Sem a autorização, o bar sai das buscas e do mapa quando o teste acabar.'
+        `A autorização é uma vez só. O primeiro débito sai quando você autorizar, e depois todo ${input.annual ? 'ano' : 'mês'} na mesma data. Sem a autorização, o bar sai das buscas e do mapa quando o teste acabar.`
       )
     ],
     steps: [],
@@ -779,8 +781,10 @@ export async function sendPixTrialReminders(now = new Date()) {
     email: string
     owner: string
     trial_end: string | Date
+    billing_interval: string
   }>(sql`
     SELECT b.id AS bar_id, b.name, s.plan, u.email, u.name AS owner,
+      s.billing_interval,
       (s.current_period_end AT TIME ZONE 'UTC') AS trial_end
     FROM subscription s
     JOIN bar b ON b.id = s.bar_id
@@ -810,7 +814,8 @@ export async function sendPixTrialReminders(now = new Date()) {
           barName: row.name,
           plan: row.plan,
           trialEnd,
-          lastDay
+          lastDay,
+          annual: row.billing_interval === 'year'
         })
       )
       if (ok) sent++

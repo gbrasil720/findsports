@@ -29,12 +29,11 @@ const shown = (code: string) => `${code.slice(0, 3)}·${code.slice(3)}`
 async function ticketOf(userId: string, eventId: string) {
   const [row] = await query<{
     status: string
-    party_size: number
     code: string
     max_uses: number
     retired: boolean
   }>(
-    `SELECT r.status, r.party_size, c.code, c.max_uses,
+    `SELECT r.status, c.code, c.max_uses,
             c.retired_at IS NOT NULL AS retired
        FROM reservation r JOIN reservation_code c ON c.reservation_id = r.id
       WHERE r.user_id = $1 AND r.event_id = $2`,
@@ -105,7 +104,6 @@ test('bar Elite: marcar dá o código na hora, Meus jogos o mostra e desmarcar o
     .poll(() => ticketOf(fan.id, eventId))
     .toMatchObject({
       status: 'confirmed',
-      party_size: 1,
       max_uses: 1,
       retired: false
     })

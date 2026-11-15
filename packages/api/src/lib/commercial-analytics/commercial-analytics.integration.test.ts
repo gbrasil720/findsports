@@ -307,17 +307,16 @@ integrationTest(
         .insert(eventParticipants)
         .values(teams.map(({ id }) => ({ eventId: ended.id, teamId: id })))
 
-      // Duas reservas confirmadas (4 + 2 pessoas) e uma pendente, que não
-      // conta. Três chegadas registradas na primeira.
+      // Dois códigos em vigor e um desmarcado, que não conta. Uma chegada
+      // registrada no primeiro.
       const reserve = async (
         userId: string,
-        partySize: number,
-        status: 'confirmed' | 'pending',
+        status: 'confirmed' | 'cancelled',
         arrivals = 0
       ) => {
         const [created] = await db
           .insert(reservation)
-          .values({ eventId: ended.id, userId, partySize, status })
+          .values({ eventId: ended.id, userId, status })
           .returning({ id: reservation.id })
         if (!created) throw new Error('reserva não criada')
         const [code] = await db
@@ -329,7 +328,7 @@ integrationTest(
               .slice(0, 10)
               .toUpperCase(),
             reservationId: created.id,
-            maxUses: partySize
+            maxUses: 1
           })
           .returning({ id: reservationCode.id })
         if (!code) throw new Error('código não criado')
@@ -337,9 +336,9 @@ integrationTest(
           await db.insert(reservationCodeUse).values({ codeId: code.id })
         }
       }
-      await reserve(fanId, 4, 'confirmed', 3)
-      await reserve(otherFans[0] as string, 2, 'confirmed')
-      await reserve(otherFans[1] as string, 5, 'pending')
+      await reserve(fanId, 'confirmed', 1)
+      await reserve(otherFans[0] as string, 'confirmed')
+      await reserve(otherFans[1] as string, 'cancelled')
 
       const { events } = await getMyEventAnalytics(
         barId,
@@ -350,8 +349,8 @@ integrationTest(
 
       expect(row(ended.id)).toMatchObject({
         eventName: 'Corinthians × Palmeiras',
-        reservedPeople: 6,
-        arrivals: 3
+        reservedPeople: 2,
+        arrivals: 1
       })
       expect(row(freeText.id)).toMatchObject({
         eventName: 'Final do amador',

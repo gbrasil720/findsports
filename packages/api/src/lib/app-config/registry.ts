@@ -136,12 +136,31 @@ export const APP_CONFIG_DEFINITIONS = {
         })
         .refine(somaCem, 'Os pesos do recomendador precisam somar 100.')
     }),
-    padrao: { chat: { a: 50, b: 50 }, recommender: { a: 34, b: 33, c: 33 } },
+    // O B do recomendador (Jev) saiu na fase 2 (dono, 14/11/2026): fica no
+    // esquema para o valor já gravado continuar válido, e o sorteio o ignora.
+    padrao: { chat: { a: 50, b: 50 }, recommender: { a: 50, b: 0, c: 50 } },
     publico: false,
     descricao:
       'Pesos dos braços dos testes de IA. Chat: a = Gemini 2.5 Flash, ' +
-      'b = GPT-6 Luna. Recomendador: a = só o algoritmo, b = Jev, ' +
-      'c = Clef-flash. Cada teste soma 100; peso 0 tira o braço.'
+      'b = GPT-6 Luna. Recomendador: a = só o algoritmo, c = Clef-flash ' +
+      '(b, o Jev, saiu do teste e é ignorado: deixe 0). Cada teste soma ' +
+      '100; peso 0 tira o braço.'
+  }),
+
+  /**
+   * WEB-426, fase 2: liga o teste A × C do recomendador ("Bares pra você").
+   * Nasce desligado: todo mundo no A, sem linha em `ai_run`, como antes. Com
+   * ele e `ai.enabled` ligados, cada pessoa cai num braço pelos pesos de
+   * `ai.variant_weights.recommender`.
+   */
+  'ai.recommender_enabled': definir({
+    schema: z.boolean(),
+    padrao: false,
+    publico: false,
+    descricao:
+      'Liga o teste do recomendador (Bares pra você): A = só o algoritmo, ' +
+      'C = algoritmo + Clef-flash no eixo "Seu estilo". Desligado, todo ' +
+      'mundo fica no A. Só vale com ai.enabled ligada.'
   }),
 
   /**

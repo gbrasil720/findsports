@@ -59,10 +59,10 @@ integrationTest(
         { userId: fanId, eventId: novembro }
       ])
 
-      const codeFor = async (eventId: string, partySize: number) => {
+      const codeFor = async (eventId: string, userId = fanId) => {
         const [row] = await db
           .insert(reservation)
-          .values({ eventId, userId: fanId, partySize, status: 'confirmed' })
+          .values({ eventId, userId, status: 'confirmed' })
           .returning({ id: reservation.id })
         if (!row) throw new Error('reserva não criada')
         const [code] = await db
@@ -74,15 +74,16 @@ integrationTest(
               .slice(0, 8)
               .toUpperCase(),
             reservationId: row.id,
-            maxUses: partySize
+            maxUses: 1
           })
           .returning({ id: reservationCode.id })
         if (!code) throw new Error('código não criado')
         return code.id
       }
-      const codeSetembro = await codeFor(setembro, 1)
-      const codeOutubro = await codeFor(fimDeOutubro, 4)
-      const codeNovembro = await codeFor(novembro, 1)
+      const codeSetembro = await codeFor(setembro)
+      const codeOutubro = await codeFor(fimDeOutubro)
+      const codeOutubroOutro = await codeFor(fimDeOutubro, otherFanId)
+      const codeNovembro = await codeFor(novembro)
 
       await db.insert(reservationCodeUse).values([
         // Lançado pela comanda em outubro, de jogo de setembro: setembro.
@@ -95,7 +96,7 @@ integrationTest(
         { codeId: codeOutubro, usedAt: at('2026-11-01T00:30:00Z') },
         // Lançado em novembro, de jogo de outubro: outubro.
         {
-          codeId: codeOutubro,
+          codeId: codeOutubroOutro,
           usedAt: at('2026-11-02T12:00:00Z'),
           late: true
         },
@@ -176,8 +177,9 @@ integrationTest('WEB-446: o que o plano não libera vem nulo', async () => {
       validatedCodes: expect.any(Number),
       classicsOnTop: expect.any(Number)
     })
+    // WEB-522: o Pro vê quantos marcaram presença, não os códigos.
     expect(await pro.owner.commercialAnalytics.getMyMonthNumbers()).toEqual({
-      going: null,
+      going: expect.any(Number),
       validatedCodes: null,
       classicsOnTop: null
     })
@@ -186,3 +188,71 @@ integrationTest('WEB-446: o que o plano não libera vem nulo', async () => {
     await pro.cleanup()
   }
 })
+
+integrationTest(
+  'WEB-522: presenças do mês em todo plano vigente, códigos só no Elite, nada no plano parado',
+  async () => {
+    const bars = {
+      starter: await seedBar('starter', 'active', inAMonth()),
+      pro: await seedBar('pro', 'active', inAMonth()),
+      elite: await seedBar('elite', 'active', inAMonth()),
+      // Pagamento atrasado: cai no piso do Starter, mas não vê o número.
+      parado: await seedBar('elite', 'past_due', inAMonth()),
+      // Teste do cadastro vencido.
+      vencido: await seedBar('pro', 'trialing', new Date(Date.now() - 1000))
+    }
+    try {
+      for (const bar of Object.values(bars)) {
+        // Jogo de agora: o mesmo mês de Brasília da leitura.
+        const eventId = await bar.seedGame({ startsAt: new Date() })
+        await bar.db.insert(attendance).values({ userId: bar.fanId, eventId })
+        const [created] = await bar.db
+          .insert(reservation)
+          .values({
+            eventId,
+            userId: bar.fanId,
+            status: 'confirmed'
+          })
+          .returning({ id: reservation.id })
+        const [code] = await bar.db
+          .insert(reservationCode)
+          .values({
+            code: `W${crypto.randomUUID().replace(/-/g, '').slice(0, 7).toUpperCase()}`,
+            reservationId: created?.id as string,
+            maxUses: 1
+          })
+          .returning({ id: reservationCode.id })
+        await bar.db
+          .insert(reservationCodeUse)
+          .values({ codeId: code?.id as string })
+      }
+
+      const proof = (key: keyof typeof bars) =>
+        bars[key].owner.pub.getMonthProof()
+      const month = (key: keyof typeof bars) =>
+        bars[key].owner.commercialAnalytics.getMyMonthNumbers()
+      expect(await proof('elite')).toEqual({ people: 1, codes: 1 })
+      expect(await proof('pro')).toEqual({ people: 1, codes: null })
+      expect(await proof('starter')).toEqual({ people: 1, codes: null })
+      // Parado: nulo, não zero — zero diria "ninguém marcou".
+      expect(await proof('parado')).toEqual({ people: null, codes: null })
+      expect(await proof('vencido')).toEqual({ people: null, codes: null })
+
+      // O mesmo número no web (Plano e cobrança, WEB-446).
+      expect(await month('starter')).toMatchObject({
+        going: 1,
+        validatedCodes: null
+      })
+      expect(await month('elite')).toMatchObject({
+        going: 1,
+        validatedCodes: 1
+      })
+      expect(await month('parado')).toMatchObject({
+        going: null,
+        validatedCodes: null
+      })
+    } finally {
+      for (const bar of Object.values(bars)) await bar.cleanup()
+    }
+  }
+)

@@ -13,6 +13,7 @@ import { analytics } from '@/lib/analytics'
 import { openBillingPortal } from '@/lib/billing-client'
 import { isLapsed, LAPSED_COPY } from '@/lib/lapsed-plan'
 import {
+  billedPlan,
   CONTRACTED_TRIAL_LABEL,
   formatPlanPrice,
   getPlan,
@@ -136,7 +137,10 @@ export function PlanoPage({
   // Assinatura encerrada mostra o plano contratado com o selo (WEB-60).
   const ended = standing === 'ended'
   const shownPlan = plan ?? (lapsed || ended ? subscription?.plan : null)
-  const planInfo = shownPlan ? getPlan(shownPlan) : null
+  // Com o preço do intervalo cobrado: o anual diz o valor do ano (WEB-442).
+  const planInfo = shownPlan
+    ? billedPlan(getPlan(shownPlan), subscription?.billingInterval)
+    : null
   const founderCouponAvailable = useFounderCoupon()
   const charge =
     planInfo && subscription
@@ -287,7 +291,11 @@ export function PlanoPage({
                     </s>
                   ) : null}
                   <b>{formatPlanPrice(charge.chargeReais)}</b>
-                  <span>por mês</span>
+                  <span>
+                    {subscription?.billingInterval === 'year'
+                      ? 'por ano'
+                      : 'por mês'}
+                  </span>
                 </div>
               ) : (
                 <div className="pn-price" aria-busy="true">
@@ -334,7 +342,10 @@ export function PlanoPage({
                         authorizePix.isPending || authorizePix.isSuccess
                       }
                       onClick={() =>
-                        authorizePix.mutate({ plan: subscription.plan })
+                        authorizePix.mutate({
+                          plan: subscription.plan,
+                          annual: subscription.billingInterval === 'year'
+                        })
                       }
                     >
                       {authorizePix.isPending || authorizePix.isSuccess
@@ -416,7 +427,7 @@ export function PlanoPage({
                 {pixWaiting
                   ? 'Prefere o cartão? Em “Ver todos os planos”, contrate no cartão: a primeira cobrança só sai quando o teste acabar.'
                   : onPix && canCancel
-                    ? 'Para trocar de plano, autorize o Pix do novo plano em “Ver todos os planos”: o débito dele sai na hora e o Pix atual é cancelado sozinho. “Cancelar assinatura” encerra a autorização no banco, e o plano segue até o fim do mês pago.'
+                    ? 'Para trocar de plano, autorize o Pix do novo plano em “Ver todos os planos”: o débito dele sai na hora e o Pix atual é cancelado sozinho. “Cancelar assinatura” encerra a autorização no banco, e o plano segue até o fim do período pago.'
                     : ended && hasProviderCustomer
                       ? 'As faturas e os recibos da assinatura encerrada continuam no portal de gerenciamento.'
                       : canCancel
@@ -565,8 +576,8 @@ export function PlanoPage({
                       {subscription?.cancelAt
                         ? 'Autorização encerrada no banco. Não sai mais débito.'
                         : charge
-                          ? `${formatPlanPrice(charge.chargeReais)} por mês, debitado do seu banco`
-                          : 'Débito mensal, autorizado no seu banco'}
+                          ? `${formatPlanPrice(charge.chargeReais)} por ${subscription?.billingInterval === 'year' ? 'ano' : 'mês'}, debitado do seu banco`
+                          : `Débito ${subscription?.billingInterval === 'year' ? 'anual' : 'mensal'}, autorizado no seu banco`}
                     </span>
                   </span>
                   <span />
@@ -587,7 +598,8 @@ export function PlanoPage({
                   <span>
                     <b>Pix Automático</b>
                     <span>
-                      Autorize uma vez no app do banco e o débito sai todo mês.
+                      Autorize uma vez no app do banco e o débito sai todo mês,
+                      ou todo ano no anual.
                       {onLocalTrial
                         ? ' No teste grátis, a autorização fica para o fim dele.'
                         : ' O primeiro débito sai na autorização.'}

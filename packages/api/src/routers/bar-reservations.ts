@@ -18,8 +18,10 @@ import {
   reservationCodeUse
 } from '@findsports_oficial/db/schema/reservation'
 import { TRPCError } from '@trpc/server'
+import { z } from 'zod'
 
 import { pubProcedure, router } from '../index'
+import { issuesCounterCode } from '../lib/current-plan'
 import { participantNames } from '../lib/game-participants'
 import { effectiveHouseOffer } from '../lib/house-offer'
 import {
@@ -114,130 +116,151 @@ export const barReservationsRouter = router({
    * cada um com quem vai e quando validou. Quem validou primeiro, e dentro de
    * cada grupo, quem marcou antes.
    */
-  going: ownerProcedure.query(async ({ ctx }) => {
-    // ponytail: sem paginação; o volume é o de quem marca num bar só.
-    const rows = await db
-      .select({
-        eventId: event.id,
-        championship: event.championship,
-        participantFreeText: event.participantFreeText,
-        participants: participantNames(sql`${event.id}`),
-        startsAt: event.startsAt,
-        // O fim próprio do jogo (nulo deriva pelo esporte): o "ao vivo" do app.
-        endsAt: event.endsAt,
-        houseOffer: event.houseOffer,
-        noHouseOffer: event.noHouseOffer,
-        name: user.name,
-        markedAt: attendance.createdAt,
-        validatedAt: sql<Date | null>`max(${reservationCodeUse.usedAt})`,
-        // O código levava oferta (copiada na emissão), não a oferta de agora.
-        offer: sql<boolean>`coalesce(bool_or(${reservation.offerSnapshot} IS NOT NULL), false)`,
-        visits: visitsHere(sql`true`),
-        visitsThisMonth: visitsHere(sameMonth),
-        // A chegada que vale, para o "Desfazer" do Quem vai
-        // (`reservationValidation.undoArrival`, que confere o prazo).
-        useId: sql<
-          string | null
-        >`(array_agg(${reservationCodeUse.id} ORDER BY ${reservationCodeUse.usedAt} DESC, ${reservationCodeUse.id} DESC) FILTER (WHERE ${reservationCodeUse.id} IS NOT NULL))[1]`
-      })
-      .from(attendance)
-      .innerJoin(event, eq(event.id, attendance.eventId))
-      .innerJoin(user, eq(user.id, attendance.userId))
-      .leftJoin(
-        reservation,
-        and(
-          eq(reservation.userId, attendance.userId),
-          eq(reservation.eventId, attendance.eventId),
-          inArray(reservation.status, ACTIVE_RESERVATION_STATUSES)
-        )
-      )
-      .leftJoin(
-        reservationCode,
-        and(
-          eq(reservationCode.reservationId, reservation.id),
-          isNull(reservationCode.retiredAt)
-        )
-      )
-      .leftJoin(
-        reservationCodeUse,
-        and(
-          eq(reservationCodeUse.codeId, reservationCode.id),
-          isNull(reservationCodeUse.undoneAt)
-        )
-      )
-      // Lista desligada no jogo (WEB-437): o painel não lista quem vai nele;
-      // os códigos já emitidos continuam valendo no "Validar código".
-      .where(
-        and(
-          eq(event.barId, ctx.barId),
-          eq(event.attendanceEnabled, true),
-          validationOpen
-        )
-      )
-      .groupBy(event.id, user.id, attendance.createdAt)
-      .orderBy(event.startsAt, event.id)
+  going: ownerProcedure.query(({ ctx }) =>
+    readGoingGames(ctx.barId, validationOpen)
+  ),
 
-    const games = new Map<
-      string,
-      {
-        id: string
-        championship: string
-        participantFreeText: string | null
-        participants: string[]
-        startsAt: Date
-        endsAt: Date | null
-        houseOffer: string | null
-        noHouseOffer: boolean
-        people: {
-          name: string
-          markedAt: Date
-          validatedAt: Date | null
-          useId: string | null
-          arrival: Arrival | null
-        }[]
-      }
-    >()
-    for (const {
-      eventId,
+  /**
+   * O mesmo de `going` para um jogo só, com a janela de validação já fechada:
+   * o jogo encerrado aberto em Jogos mostra quem marcou e quem validou. Só no
+   * Elite vigente; sem ele, nulo (o bar que só honra código em aberto vê os
+   * jogos de `going`).
+   */
+  goingForGame: barProcedure
+    .input(z.object({ eventId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      if (!issuesCounterCode(ctx.subscription)) return null
+      const [game] = await readGoingGames(
+        ctx.barId,
+        eq(event.id, input.eventId)
+      )
+      return game ?? null
+    })
+})
+
+/**
+ * Por jogo do bar que passa em `which`, quem vai e quando validou. Quem
+ * validou primeiro, e dentro de cada grupo, quem marcou antes.
+ */
+async function readGoingGames(barId: string, which: SQL) {
+  // ponytail: sem paginação; o volume é o de quem marca num bar só.
+  const rows = await db
+    .select({
+      eventId: event.id,
+      championship: event.championship,
+      participantFreeText: event.participantFreeText,
+      participants: participantNames(sql`${event.id}`),
+      startsAt: event.startsAt,
+      // O fim próprio do jogo (nulo deriva pelo esporte): o "ao vivo" do app.
+      endsAt: event.endsAt,
+      houseOffer: event.houseOffer,
+      noHouseOffer: event.noHouseOffer,
+      name: user.name,
+      markedAt: attendance.createdAt,
+      validatedAt: sql<Date | null>`max(${reservationCodeUse.usedAt})`,
+      // O código levava oferta (copiada na emissão), não a oferta de agora.
+      offer: sql<boolean>`coalesce(bool_or(${reservation.offerSnapshot} IS NOT NULL), false)`,
+      visits: visitsHere(sql`true`),
+      visitsThisMonth: visitsHere(sameMonth),
+      // A chegada que vale, para o "Desfazer" do Quem vai
+      // (`reservationValidation.undoArrival`, que confere o prazo).
+      useId: sql<
+        string | null
+      >`(array_agg(${reservationCodeUse.id} ORDER BY ${reservationCodeUse.usedAt} DESC, ${reservationCodeUse.id} DESC) FILTER (WHERE ${reservationCodeUse.id} IS NOT NULL))[1]`
+    })
+    .from(attendance)
+    .innerJoin(event, eq(event.id, attendance.eventId))
+    .innerJoin(user, eq(user.id, attendance.userId))
+    .leftJoin(
+      reservation,
+      and(
+        eq(reservation.userId, attendance.userId),
+        eq(reservation.eventId, attendance.eventId),
+        inArray(reservation.status, ACTIVE_RESERVATION_STATUSES)
+      )
+    )
+    .leftJoin(
+      reservationCode,
+      and(
+        eq(reservationCode.reservationId, reservation.id),
+        isNull(reservationCode.retiredAt)
+      )
+    )
+    .leftJoin(
+      reservationCodeUse,
+      and(
+        eq(reservationCodeUse.codeId, reservationCode.id),
+        isNull(reservationCodeUse.undoneAt)
+      )
+    )
+    // Lista desligada no jogo (WEB-437): o painel não lista quem vai nele;
+    // os códigos já emitidos continuam valendo no "Validar código".
+    .where(
+      and(eq(event.barId, barId), eq(event.attendanceEnabled, true), which)
+    )
+    .groupBy(event.id, user.id, attendance.createdAt)
+    .orderBy(event.startsAt, event.id)
+
+  const games = new Map<
+    string,
+    {
+      id: string
+      championship: string
+      participantFreeText: string | null
+      participants: string[]
+      startsAt: Date
+      endsAt: Date | null
+      houseOffer: string | null
+      noHouseOffer: boolean
+      people: {
+        name: string
+        markedAt: Date
+        validatedAt: Date | null
+        useId: string | null
+        arrival: Arrival | null
+      }[]
+    }
+  >()
+  for (const {
+    eventId,
+    name,
+    markedAt,
+    validatedAt,
+    offer,
+    visits,
+    visitsThisMonth,
+    useId,
+    ...game
+  } of rows) {
+    const entry = games.get(eventId) ?? { id: eventId, ...game, people: [] }
+    entry.people.push({
       name,
       markedAt,
-      validatedAt,
-      offer,
-      visits,
-      visitsThisMonth,
+      validatedAt: validatedAt ? new Date(validatedAt) : null,
       useId,
-      ...game
-    } of rows) {
-      const entry = games.get(eventId) ?? { id: eventId, ...game, people: [] }
-      entry.people.push({
-        name,
-        markedAt,
-        validatedAt: validatedAt ? new Date(validatedAt) : null,
-        useId,
-        // Só de quem validou: de quem só marcou, o bar não vê histórico.
-        arrival: validatedAt
-          ? { offer, firstVisit: visits === 1, visitsThisMonth }
-          : null
-      })
-      games.set(eventId, entry)
-    }
-    // A oferta que vale em cada jogo (WEB-422): a do jogo, senão a padrão.
-    const [own] = await db
-      .select({ houseOffer: bar.houseOffer })
-      .from(bar)
-      .where(eq(bar.id, ctx.barId))
-    return [...games.values()].map(({ noHouseOffer, ...game }) => ({
-      ...game,
-      houseOffer: effectiveHouseOffer(own?.houseOffer ?? null, {
-        houseOffer: game.houseOffer,
-        noHouseOffer
-      }),
-      people: game.people.sort(
-        (a, b) =>
-          Number(b.validatedAt !== null) - Number(a.validatedAt !== null) ||
-          a.markedAt.getTime() - b.markedAt.getTime()
-      ),
-      validated: game.people.filter(({ validatedAt }) => validatedAt).length
-    }))
-  })
-})
+      // Só de quem validou: de quem só marcou, o bar não vê histórico.
+      arrival: validatedAt
+        ? { offer, firstVisit: visits === 1, visitsThisMonth }
+        : null
+    })
+    games.set(eventId, entry)
+  }
+  // A oferta que vale em cada jogo (WEB-422): a do jogo, senão a padrão.
+  const [own] = await db
+    .select({ houseOffer: bar.houseOffer })
+    .from(bar)
+    .where(eq(bar.id, barId))
+  return [...games.values()].map(({ noHouseOffer, ...game }) => ({
+    ...game,
+    houseOffer: effectiveHouseOffer(own?.houseOffer ?? null, {
+      houseOffer: game.houseOffer,
+      noHouseOffer
+    }),
+    people: game.people.sort(
+      (a, b) =>
+        Number(b.validatedAt !== null) - Number(a.validatedAt !== null) ||
+        a.markedAt.getTime() - b.markedAt.getTime()
+    ),
+    validated: game.people.filter(({ validatedAt }) => validatedAt).length
+  }))
+}

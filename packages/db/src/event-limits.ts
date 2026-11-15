@@ -1,7 +1,7 @@
 /**
  * Limites dos textos de um jogo (WEB-265), num lugar só.
  *
- * Vive no pacote do banco pelo mesmo motivo de `reservation-limits.ts`: o
+ * Vive no pacote do banco porque o
  * procedimento que grava (`pub.createEvent`, `pub.updateEvent`) e o formulário
  * do painel precisam do mesmo número, ou o formulário aceita o que o servidor
  * recusa. Este arquivo não importa nada para poder ir ao navegador.

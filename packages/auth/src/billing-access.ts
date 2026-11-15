@@ -40,3 +40,23 @@ export function blocksNewCheckout(
     subscription.externalSubscriptionId !== null
   )
 }
+
+/**
+ * Cartão por cima de um Pix ativo pelo checkout do plugin (WEB-536): a
+ * passagem do Pix para o cartão é a sessão própria (`startCardFromPix`), que
+ * cobra a diferença da subida na hora e confere a chave da AbacatePay. Pelo
+ * plugin, o bar trocaria de plano sem pagar a diferença ou pagaria os dois.
+ */
+export function blocksCardOverPix(
+  subscription: {
+    status: string
+    externalSubscriptionId: string | null
+    provider: string | null
+  } | null
+): boolean {
+  return (
+    subscription?.provider === 'abacatepay' &&
+    subscription.status === 'active' &&
+    subscription.externalSubscriptionId !== null
+  )
+}

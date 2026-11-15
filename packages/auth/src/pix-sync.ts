@@ -2,12 +2,11 @@ import type { SubscriptionPlan } from '@findsports_oficial/db'
 import { db, eq } from '@findsports_oficial/db'
 import { bar, subscription } from '@findsports_oficial/db/schema/platform'
 import {
-  AbacatePayError,
   type AbacateSubscription,
-  cancelSubscription,
-  getSubscription,
-  isNotActiveError
+  cancelSubscriptionIfActive,
+  getSubscription
 } from './abacatepay'
+import { ANNUAL_MONTHS } from './stripe-plan'
 import { logBillingError } from './stripe-sync'
 
 /** Desconto do produto de fundador, igual ao cupom do Stripe. */
@@ -18,25 +17,46 @@ const PLANS: SubscriptionPlan[] = ['starter', 'pro', 'elite']
 /**
  * O `externalId` do checkout leva tudo o que o webhook precisa para achar o
  * bar sem consultar mais nada: `onside:<barId>:<plano>:<f|t>:<nonce>`, `f`
- * para o produto de fundador e `t` para a tabela.
+ * para o produto de fundador e `t` para a tabela, e `:y` no fim para o anual
+ * (sem ele, mensal: os checkouts de antes do anual seguem valendo).
  */
 export function pixExternalId(
   barId: string,
   plan: SubscriptionPlan,
-  founder: boolean
+  founder: boolean,
+  annual = false
 ): string {
-  return `onside:${barId}:${plan}:${founder ? 'f' : 't'}:${crypto.randomUUID().slice(0, 8)}`
+  return `onside:${barId}:${plan}:${founder ? 'f' : 't'}:${crypto.randomUUID().slice(0, 8)}${annual ? ':y' : ''}`
 }
 
-export function parsePixExternalId(
-  externalId: string | null | undefined
-): { barId: string; plan: SubscriptionPlan; founder: boolean } | null {
+export function parsePixExternalId(externalId: string | null | undefined): {
+  barId: string
+  plan: SubscriptionPlan
+  founder: boolean
+  annual: boolean
+} | null {
   const parts = externalId?.split(':')
-  if (!parts || parts.length !== 5 || parts[0] !== 'onside') return null
+  if (!parts || parts[0] !== 'onside') return null
+  if (parts.length !== 5 && !(parts.length === 6 && parts[5] === 'y')) {
+    return null
+  }
   const [, barId, plan, kind] = parts
   if (!barId || !PLANS.includes(plan as SubscriptionPlan)) return null
   if (kind !== 'f' && kind !== 't') return null
-  return { barId, plan: plan as SubscriptionPlan, founder: kind === 'f' }
+  return {
+    barId,
+    plan: plan as SubscriptionPlan,
+    founder: kind === 'f',
+    annual: parts.length === 6
+  }
+}
+
+/**
+ * Desconto de fundador da fatura, como o Stripe grava no anual (WEB-442): no
+ * mensal R$ 28, no anual `ANNUAL_MONTHS` vezes isso, a fatura do ano.
+ */
+export function pixFounderDiscountReais(annual: boolean): number {
+  return PIX_FOUNDER_DISCOUNT_REAIS * (annual ? ANNUAL_MONTHS : 1)
 }
 
 /** A API manda o fim do ciclo como data (`2026-12-11`): vale o dia inteiro. */
@@ -95,17 +115,6 @@ export function readLagsBehind(eventType: string, status: string): boolean {
     return status === 'PENDING'
   }
   return false
-}
-
-/** Cancela na AbacatePay; já cancelada ou inexistente lá conta como feito. */
-async function cancelAtProvider(id: string) {
-  try {
-    await cancelSubscription(id)
-  } catch (error) {
-    if (isNotActiveError(error)) return
-    if (error instanceof AbacatePayError && error.status === 404) return
-    throw error
-  }
 }
 
 /**
@@ -208,7 +217,7 @@ export async function applyPixSubscription(
     ) {
       // A linha já tem uma autorização mais nova: este aviso é de uma velha
       // que ficou ativa. Ela é que sai.
-      await cancelAtProvider(sub.id)
+      await cancelSubscriptionIfActive(sub.id)
       logBillingError('pix_stale_subscription_cancelled', {
         barId: ref.barId,
         subscriptionId: sub.id,
@@ -217,7 +226,7 @@ export async function applyPixSubscription(
       return null
     }
   }
-  if (previous) await cancelAtProvider(previous)
+  if (previous) await cancelSubscriptionIfActive(previous)
 
   const values = {
     status: pixStanding({ eventType, periodEnd, existing, isCurrent }),
@@ -227,7 +236,8 @@ export async function applyPixSubscription(
     currentPeriodEnd: periodEnd,
     // Débito de agora em diante: uma assinatura nova nunca nasce cancelada.
     cancelAt: isCurrent ? (existing?.cancelAt ?? null) : null,
-    monthlyDiscountReais: ref.founder ? PIX_FOUNDER_DISCOUNT_REAIS : 0,
+    monthlyDiscountReais: ref.founder ? pixFounderDiscountReais(ref.annual) : 0,
+    billingInterval: ref.annual ? ('year' as const) : ('month' as const),
     // O Pix escolhido no teste foi autorizado: não há mais o que lembrar.
     pixAfterTrialAt: null,
     // Pago: não há checkout pendente a apagar no próximo.

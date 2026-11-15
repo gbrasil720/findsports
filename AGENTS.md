@@ -242,6 +242,31 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   dono). O app não lê plano dali.
 - Planos são achados por **lookup key** (`starter_monthly`, `pro_monthly`,
   `elite_monthly`), iguais no sandbox e em produção: `packages/auth/src/stripe-plan.ts`.
+- **Plano anual no cartão** (WEB-442): preço de 10 meses (`ANNUAL_MONTHS`, "2 meses
+  grátis"), lookup keys `starter_yearly`, `pro_yearly` e `elite_yearly` (o
+  `annualDiscountLookupKey` do plugin), intervalo anual. O preço anual vira o mesmo
+  `subscription.plan` (`planForLookupKey`), então limites e recursos não mudam; o
+  Starter anual conta os jogos por mês, como o teste (`getEventCreationPeriod`).
+  **O desconto de fundador vale no anual** (dono, 14/11/2026, no lugar do "cupom só
+  no mensal" de 28/10): anual de fundador = 10 × o mensal de fundador (R$ 690, 1.190,
+  2.690). O `FOUNDER_COUPON_ID` é de valor fixo por fatura (no anual tiraria R$ 28
+  do ano), então o anual leva o segundo cupom, `FOUNDER_ANNUAL_COUPON_ID`
+  (`fundador_anual`, R$ 280 por fatura, para sempre), pelo mesmo `discounts` do
+  checkout (`checkoutParamsFor` com `annual`, vindo do
+  `subscription.upgrade({ annual })`). Mesmas 100 vagas: resgates dos dois cupons e
+  o Pix somam (`readFounderCoupon`). Sem vaga, o anual sai a preço de tabela, sem
+  código promocional. O teste do cadastro vale igual (`trial_end`). Na assinatura
+  anual, `monthly_discount_reais` é o desconto da fatura do ano (280). O Pix também
+  tem anual (ver "Pix anual" abaixo). `/plan` mostra Mensal/Anual para quem vai ao
+  checkout (teste, teste vencido, sem assinatura) e para quem paga no Pix; quem já
+  assina no cartão troca de plano no portal, no intervalo em que está. O "Anual" só liga com os três preços anuais ativos e o cupom
+  `fundador_anual` de R$ 280 para sempre na conta (`pub.getAnnualPlansAvailable`,
+  `annualPlansAvailable`); sem eles fica "em breve" e o mensal não muda. A conta da
+  tela é `annualDeal` (`apps/web/src/lib/plan-catalog.ts`): sempre economiza dois
+  meses do mensal que o bar pagaria. Mensal ou anual da assinatura vem de
+  `stripe_subscription.billing_interval`, que o plugin grava
+  (`getMySubscription().billingInterval`); `billedPlan` dá o preço e o "/ano" ao card
+  do plano, ao placar e ao recibo.
 - **Teste grátis nasce no cadastro, sem cartão**: 90 dias para todo bar novo,
   contados de quando ele vai ao ar no `completePub` (`ONBOARDING_TRIAL`, em
   `packages/api/src/lib/plan-limits.ts`), no plano que a rotina do cadastro recomenda
@@ -322,6 +347,37 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   de invalidar checkout pela listagem: o pendente fica em `subscription.pix_checkout_id`
   e o seguinte o apaga (`replacePendingPixCheckout`). A situação (`active`/`past_due`)
   sai do fim do ciclo pago, não da ordem dos avisos (`pixStanding`).
+  **Pix anual** (dono, 14/11/2026): produtos `<plano>_yearly` (R$ 970, 1.470, 2.970)
+  e `<plano>_founder_yearly` (R$ 690, 1.190, 2.690), ciclo `ANNUALLY`, achados por
+  `externalId` como os mensais; `pix:setup` cria os que faltam e `pix:check` confere
+  todos. O checkout anual marca o `externalId` com `:y` no fim (sem ele, mensal),
+  e o webhook grava `subscription.billing_interval = 'year'` e, no fundador, o
+  desconto do ano (280, `pixFounderDiscountReais`), como o cartão anual. O intervalo
+  do Pix mora em `subscription.billing_interval` (o do cartão segue em
+  `stripe_subscription`, `readBillingInterval`): `pub.schedulePixAfterTrial({ annual })`
+  o grava no teste do cadastro, e o lembrete e o "Autorizar agora" usam o do ano. No
+  `/plan`, o anual passa pela janela "Como você quer pagar?" com cartão e Pix, e quem
+  paga no Pix troca de intervalo por uma autorização nova (`startPixCheckout` com
+  `annual`; a anterior é cancelada, como na troca de plano). Na subida do Pix anual
+  para o cartão, o mensal atual é o ano em 12 (`pixMonthlyReais`).
+  **Do Pix para o cartão** (WEB-536): em `/plan`, quem paga por Pix vê o cartão na
+  janela "Como você quer pagar?" (troca de plano, ou "Passar para o cartão" no mesmo
+  plano; mensal ou anual). A sessão é nossa, não do plugin (`startCardFromPix`, via
+  `pub.startCardFromPix`; o `/subscription/upgrade` recusa Pix ativo,
+  `blocksCardOverPix`): `trial_end` = fim do ciclo pago, e na **subida** a diferença
+  (`pixUpgradeCents`, a mesma conta na tela: proporcional de mensal novo − mensal do
+  Pix, preços pagos de fato, anual = 10/12) vai como item avulso, que o Stripe cobra
+  na tela do checkout (dono, 14/11/2026: a troca só vale com a diferença paga).
+  Cartão recusado não cria assinatura; voltando sem concluir, `/plan?troca=cartao`
+  diz que nada mudou e pede outro cartão. Com a diferença na sessão, o cupom de
+  fundador vai na metadata e o webhook o aplica (`applyUpgradeCoupon`). No webhook,
+  a ordem é: primeira fatura paga (`upgradePaid`; sem ela a assinatura do cartão é
+  cancelada e o bar segue no Pix), cupom, Pix cancelado na AbacatePay, linha do
+  Stripe; falha na AbacatePay lança e o Stripe reenvia, com o bar no Pix. A
+  assinatura entra no plugin pelo `customer.subscription.created`. Sem
+  `ABACATE_PAY_API_KEY` a sessão é recusada: o Pix não seria cancelado. O fundador
+  do Pix leva a vaga, e o `cancelled` do Pix que chega depois não é da assinatura
+  atual e não derruba nada.
 
 ### Avisos por e-mail do bar (WEB-441)
 
@@ -470,10 +526,27 @@ decididos: nada de trocar por outro do catálogo sem o dono. Conjunto
 offline (só roda com autorização e teto de custo): `packages/api/scripts/ai-chat-eval.ts` (34 pedidos: filtros certos, bares
 inventados, tempo e custo).
 
-**Recomendador com IA (WEB-426, fase offline):** a afinidade da IA (`score` de 0 a 4 por bar,
+**Recomendador com IA (WEB-426):** a afinidade da IA (`score` de 0 a 4 por bar,
 15 primeiros do controle numa chamada) troca o eixo "Seu estilo" no `rankRecommendations`
 (`context.affinity`); pedido, leitura e regra de falha em
-`lib/recommendations/ai-affinity.ts`. Nada disso está em `recommendations.today`.
+`lib/recommendations/ai-affinity.ts`. **Fase 2, A × C** (dono, 14/11/2026: o B, Jev, saiu
+por perder do controle no painel às cegas): `recommendations.today` sorteia o braço na
+rodada nova do dia (`lib/recommendations/ai-round.ts`, hash do id + `recommender-2026-11`,
+pesos A e C de `ai.variant_weights.recommender`; o peso do `b` é ignorado). Só com
+`ai.enabled` **e** `ai.recommender_enabled` (nasce desligado; Houdini › IA › "O teste");
+desligado, a rodada sai como sempre e nada vai a `ai_run`. **Só o app entra no teste** (dono, 14/11/2026): o app manda `x-onside-client: app` (`apps/mobile/lib/trpc.ts`, lido por `lib/client-app.ts`), e pedido do web cria a rodada no controle, sem `ai_run`. A rodada é uma por dia: se a pessoa abrir primeiro no web, o app lê a mesma rodada, fora da comparação. Ligado, toda rodada nova tem uma
+linha em `ai_run` com o **mesmo `run_id` da rodada** (A: `assigned_model = 'control'`, sem
+chamada), e as ações dos cards (`recommendation_event`, com o `runId` da rodada) chegam ao
+braço sem coluna nova. No C a chamada vai pelo `runAi` com teto de 2,5 s por chamada
+(`AFFINITY_TIMEOUT_MS`; não os 300 ms do ADR 0001: o Clef-flash mediu 3,3 s de p95 na
+fase 1, e a espera só acontece na primeira abertura do dia, dono em 14/11/2026): erro tem uma nova tentativa no mesmo modelo,
+demora e teto (`aiGate`) caem direto na ordem do controle, com `error`/`timeout` na linha.
+Sem cache próprio: a rodada fica gravada o dia todo. O "Ampliar" (`refill`) segue só a
+regra. A tela IA do Houdini lê A × C pela rodada (`readRecommender` em
+`routers/houdini-ia.ts`): conversão por pessoa em 7 dias (Curti, rota, telefone,
+WhatsApp, "Vou assistir" num card, ou visita num bar da rodada), Passo, queda para o
+controle, custo por mil rodadas e a regra de parada (`recommenderStops` em
+`lib/ai/report.ts`: queda > 2%, Passo do C 30% acima do A, teto do mês).
 `bun packages/api/scripts/recommender-eval.ts` compara A, B e C em perfis sintéticos com
 semente (trio que muda, Kendall, tempo, custo; `--out` grava o JSON do painel) com o modelo
 dublado; o modelo de verdade só com `--live --max-usd <teto>` (autorização do dono).
@@ -938,7 +1011,13 @@ invente layout que o projeto não tem.
   dono em 16/10/2026, card da seção 08; ADR 0003 revista): "Vou assistir aqui"
   marca presença e, no bar Elite, o servidor já emite o código do balcão
   (`packages/api/src/lib/attendance-ticket.ts`; quem emite é `issuesCounterCode`, em
-  `lib/current-plan.ts`, a mesma regra da oferta, de quem vai e da validação). Toda marcação passa por `setAttendance`
+  `lib/current-plan.ts`, a mesma regra da oferta, de quem vai e da validação). **"reservation"
+  é o código de quem vai** (WEB-401): o código mora nas tabelas `reservation` (uma linha
+  `confirmed`, ou `cancelled` ao desmarcar) e `reservation_code` (um uso), e os nomes
+  ficaram, como os do roteador `barReservations`/`reservationValidation` e dos
+  componentes, para não mudar o contrato do app publicado. Pessoas, observação, teto
+  por jogo e os estados `pending`/`declined` saíram; os dois valores seguem no enum
+  `reservation_status` sem uso. Toda marcação passa por `setAttendance`
   (`packages/api/src/lib/attendance.ts`): `attendance.set`, `ai.confirm` e o "Vou também".
   O Elite desliga a lista de quem vai jogo a jogo no formulário do painel (WEB-437,
   `event.attendance_enabled`): o botão some para quem não marcou, marcação nova e

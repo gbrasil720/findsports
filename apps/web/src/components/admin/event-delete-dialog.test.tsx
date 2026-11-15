@@ -8,7 +8,6 @@ import { EventDeleteDialog } from './event-delete-dialog'
 type Deletion = NonNullable<AdminEvent['deletion']>
 
 const NOTHING: Deletion = {
-  pendingReservations: 0,
   confirmedReservations: 0,
   ratings: 0,
   closedReservations: 0,
@@ -75,7 +74,6 @@ describe('EventDeleteDialog', () => {
   test('bloqueado explica o motivo e a saída, sem botão de excluir', () => {
     const { text, buttons } = renderizar(
       {
-        pendingReservations: 1,
         confirmedReservations: 2,
         ratings: 1,
         closedReservations: 3,
@@ -84,10 +82,8 @@ describe('EventDeleteDialog', () => {
       'erro que não aparece'
     )
     expect(text).toContain('Este jogo não pode ser excluído')
-    expect(text).toContain(
-      'Este jogo tem 1 pedido antigo de reserva, 2 códigos de quem vai e 1 avaliação.'
-    )
-    expect(text).toContain('expira sozinho no fim do jogo.')
+    expect(text).toContain('Este jogo tem 2 códigos de quem vai e 1 avaliação.')
+    expect(text).not.toContain('pedido antigo')
     expect(text).toContain('só a pessoa desmarca, até o início do jogo.')
     expect(text).toContain('não podem ser apagadas.')
     expect(text).not.toContain('Também apaga')

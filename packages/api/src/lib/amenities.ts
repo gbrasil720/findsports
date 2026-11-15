@@ -161,8 +161,8 @@ export const HOUSE_OFFER_AMENITY_ID = 10
  * O que o bar declara no checklist: tudo menos "Com oferta da casa", que não
  * se marca: é o bar Elite com oferta cadastrada, e só o filtro da busca o
  * usa (`amenityFilter`). O id era "Aceita reserva" até a reserva de mesa sair
- * do produto (16/10/2026); quem o marcou antes ainda o tem gravado em
- * `bar.amenities`, e nenhuma leitura olha para ele.
+ * do produto (16/10/2026); a migration 0096 o tirou de `bar.amenities`, e o
+ * filtro aqui segura app antigo que ainda o mande.
  */
 export function declaredAmenityIds(ids: readonly number[]): number[] {
   return ids.filter((id) => id !== HOUSE_OFFER_AMENITY_ID)

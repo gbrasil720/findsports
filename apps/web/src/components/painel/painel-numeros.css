@@ -721,6 +721,54 @@ html[data-theme="dark"] .pn3 .pn-tip {
   text-align: center;
 }
 
+/* ─── Bar com pouca história (WEB-467) ─── */
+.pn3 .pn-vem {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pn3 .pn-vem li {
+  display: grid;
+  gap: 6px;
+  padding: 18px 20px;
+  border-radius: 22px;
+  background: var(--sub);
+}
+
+.pn3 .pn-vem b {
+  font-size: 16px;
+}
+
+.pn3 .pn-vem span {
+  color: var(--muted);
+  font-size: 14.5px;
+}
+
+.pn3 .pn-until {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0;
+}
+
+.pn3 .pn-until b {
+  color: #c9f135;
+  font: 400 96px / 0.85 var(--display);
+  font-variant-numeric: tabular-nums;
+}
+
+.pn3 .pn-until small {
+  font: 400 28px / 1 var(--display);
+}
+
+.pn3 .pn-cmp-note {
+  margin-top: 18px;
+}
+
 @media (max-width: 1100px) {
   .pn3 .pn-people {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -747,7 +795,8 @@ html[data-theme="dark"] .pn3 .pn-tip {
   }
 
   .pn3 .pn-big3,
-  .pn3 .pn-big3-skel {
+  .pn3 .pn-big3-skel,
+  .pn3 .pn-vem {
     grid-template-columns: 1fr;
   }
 

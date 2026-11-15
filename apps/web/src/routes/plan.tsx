@@ -1,8 +1,14 @@
 import { PLAN_NAMES } from '@findsports_oficial/api/lib/plan-limits'
+import {
+  monthlyPriceReais,
+  pixMonthlyReais,
+  pixUpgradeCents
+} from '@findsports_oficial/auth/stripe-plan'
 import type { SubscriptionPlan } from '@findsports_oficial/db'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { type ReactNode, useState } from 'react'
+import { AnnualVerdict, CycleHeader } from '@/components/billing/annual-cycle'
 import {
   PaymentChoiceDialog,
   type PaymentMethod
@@ -16,6 +22,8 @@ import { useSession } from '@/hooks/use-session'
 import { analytics } from '@/lib/analytics'
 import { startCheckout } from '@/lib/billing-client'
 import {
+  annualDeal,
+  billedPlan,
   earnsDowngradeCredit,
   formatPlanPrice,
   getCommonPlanItems,
@@ -34,6 +42,7 @@ import {
   type PlanChargeDisplay,
   type PlanOrigin,
   parsePlanOrigin,
+  planChargeForAnnual,
   planChargeForCurrentPlan,
   planChargeForShowcase
 } from '@/lib/plan-catalog'
@@ -46,9 +55,21 @@ import { useTRPC } from '@/utils/trpc'
 export const Route = createFileRoute('/plan')({
   validateSearch: (
     search: Record<string, unknown>
-  ): { origin?: PlanOrigin } => {
+  ): {
+    origin?: PlanOrigin
+    troca?: 'cartao'
+    para?: SubscriptionPlan
+    anual?: '1'
+  } => {
     const origin = parsePlanOrigin(search.origin)
-    return origin ? { origin } : {}
+    // Volta do checkout do Pix para o cartão sem concluir (WEB-536).
+    const para = PLAN_CATALOG.find((plan) => plan.id === search.para)?.id
+    return {
+      ...(origin ? { origin } : {}),
+      ...(search.troca === 'cartao' ? { troca: 'cartao' as const } : {}),
+      ...(para ? { para } : {}),
+      ...(String(search.anual) === '1' ? { anual: '1' as const } : {})
+    }
   },
   head: () => ({
     meta: [
@@ -139,7 +160,9 @@ function PlanOptionCard({
   charge,
   priceLabel,
   priceNote,
+  period,
   strike,
+  extra,
   action
 }: {
   plan: Plan
@@ -148,8 +171,12 @@ function PlanOptionCard({
   /** `null`: cupom de fundador ainda carregando. */
   charge: PlanChargeDisplay | null
   priceLabel: string
+  /** "/mês" ou "/ano" (WEB-442). */
+  period: string
   priceNote: string | null
   strike: boolean
+  /** A conta do anual, abaixo do preço (WEB-442). */
+  extra?: ReactNode
   action: CardAction | null
 }) {
   // Só o que o plano acrescenta ao anterior; o comum fica abaixo dos cartões.
@@ -167,13 +194,14 @@ function PlanOptionCard({
       />
       <h3>{plan.name}</h3>
       <p className="pd">{plan.tagline}</p>
-      <div className="price">
+      {/* A chave troca com o ciclo: o preço novo entra (WEB-442). */}
+      <div className="price" key={period}>
         <p className="ob-k">{priceLabel}</p>
         <div className="pv">
           {charge ? (
             <>
               <b>{formatPlanPrice(charge.chargeReais)}</b>
-              <span>{plan.period}</span>
+              <span>{period}</span>
               {strike && charge.listReais ? (
                 <s>{formatPlanPrice(charge.listReais)}</s>
               ) : null}
@@ -187,6 +215,7 @@ function PlanOptionCard({
           )}
         </div>
         {priceNote ? <p className="fine">{priceNote}</p> : null}
+        {extra}
       </div>
       <p className="lead">{lists.lead}</p>
       <div className="grp">
@@ -241,7 +270,7 @@ function PlanOptionCard({
 }
 
 function PlanSelection() {
-  const { origin } = Route.useSearch()
+  const { origin, troca, para, anual: trocaAnual } = Route.useSearch()
   const trpc = useTRPC()
   // Plano do checkout que está abrindo: só o botão dele diz "Redirecionando…".
   const [loading, setLoading] = useState<SubscriptionPlan | null>(null)
@@ -256,6 +285,15 @@ function PlanSelection() {
   // "Como você quer pagar?": o plano escolhido, antes do cartão ou do Pix.
   const [choosing, setChoosing] = useState<SubscriptionPlan | null>(null)
   const [payError, setPayError] = useState<string | null>(null)
+  // Mensal ou anual (WEB-442). O anual só existe no cartão e só com os
+  // preços anuais criados no Stripe; até lá o "Anual" fica "em breve".
+  const [annualChosen, setAnnualChosen] = useState(false)
+  const annualAvailable = Boolean(
+    useQuery({
+      ...trpc.pub.getAnnualPlansAvailable.queryOptions(),
+      meta: { errorToast: false }
+    }).data?.available
+  )
   const queryClient = useQueryClient()
   const pixAvailable = Boolean(
     useQuery({
@@ -279,6 +317,27 @@ function PlanSelection() {
         setPayError(
           pixError.message ||
             'Não foi possível abrir o Pix agora. Tente de novo.'
+        )
+    })
+  )
+
+  // Do Pix para o cartão (WEB-536): checkout nosso, com a diferença da subida
+  // cobrada na tela do Stripe. A URL é do Stripe: o botão segue em
+  // "Abrindo…" até a página trocar.
+  const startCard = useMutation(
+    trpc.pub.startCardFromPix.mutationOptions({
+      onMutate: ({ plan }) => {
+        setPayError(null)
+        analytics.checkoutStarted(plan)
+        markCheckoutIntent(plan)
+      },
+      onSuccess: ({ url }) => {
+        window.location.href = url
+      },
+      onError: (cardError) =>
+        setPayError(
+          cardError.message ||
+            'Não foi possível abrir o cartão agora. Tente de novo.'
         )
     })
   )
@@ -325,6 +384,13 @@ function PlanSelection() {
   const hasSubscription =
     Boolean(subscription?.externalSubscriptionId) &&
     subscription?.standing !== 'ended'
+  const onPixSubscription =
+    subscription?.provider === 'abacatepay' && hasSubscription
+  // O anual é para quem vai ao checkout: assinatura que já existe troca de
+  // plano no portal, no intervalo em que está (WEB-442). Quem paga por Pix
+  // vai ao checkout para passar ao cartão, mensal ou anual (WEB-536).
+  const showCycle = (!hasSubscription || onPixSubscription) && !regularize
+  const annual = showCycle && annualAvailable && annualChosen
   // WEB-328: o checkout não pede nome nem empresa; saem do cadastro. A tela
   // diz em nome de quem a assinatura sai antes de mandar para o Stripe.
   const ownerName = useSession()?.user.name
@@ -346,6 +412,50 @@ function PlanSelection() {
   // Sem plano vigente, o que a faixa contrata: o da assinatura, vigente ou
   // não, e o Pro só para quem nunca teve uma (WEB-249).
   const defaultPlan = getDefaultPlanSelection(subscription)
+  // A conta do anual para cada plano, contra o mensal que o bar pagaria de
+  // verdade (WEB-442). Com o cupom ainda carregando, a conta fica para depois:
+  // ela pode trocar de "economiza" para "o mensal sai mais barato".
+  const dealFor = (plan: Plan) =>
+    founderCouponAvailable === null
+      ? null
+      : annualDeal(plan, founderCouponAvailable)
+  // O preço da janela de pagamento. Fundador do Pix que passa ao cartão leva o
+  // desconto junto (WEB-536), mesmo com as vagas cheias: a vaga é dele.
+  const choiceFounder =
+    founderCouponAvailable === null
+      ? null
+      : founderCouponAvailable ||
+        (subscription?.provider === 'abacatepay' &&
+          (subscription.monthlyDiscountReais ?? 0) > 0)
+  const choiceCharge = (plan: SubscriptionPlan) => {
+    const founder = choiceFounder
+    if (founder === null) return null
+    return annual
+      ? planChargeForAnnual(annualDeal(getPlan(plan), founder))
+      : planChargeForShowcase(getPlan(plan), founder, false)
+  }
+  // Subida do Pix para o cartão: a diferença que sai hoje, a mesma conta do
+  // checkout (dono, 14/11/2026).
+  const upgradeTodayCents = (plan: SubscriptionPlan) =>
+    onPixSubscription &&
+    currentPlan &&
+    subscription?.currentPeriodEnd &&
+    choiceFounder !== null
+      ? pixUpgradeCents({
+          currentMonthlyReais: pixMonthlyReais(
+            currentPlan,
+            subscription.monthlyDiscountReais ?? 0,
+            subscription.billingInterval === 'year'
+          ),
+          newMonthlyReais: monthlyPriceReais(plan, {
+            founder: choiceFounder,
+            annual
+          }),
+          paidUntil: new Date(subscription.currentPeriodEnd)
+        })
+      : 0
+  const focusPlan = getPlan(ownPlan ?? defaultPlan)
+  const focusDeal = dealFor(focusPlan)
 
   const handleCheckout = async (plan: SubscriptionPlan) => {
     analytics.checkoutStarted(plan)
@@ -359,16 +469,20 @@ function PlanSelection() {
     try {
       // Com URL na resposta o cliente do better-auth já está navegando para
       // o Stripe; ver `startCheckout` (WEB-241).
-      if (await startCheckout(plan, currentPlan)) return
+      if (await startCheckout(plan, currentPlan, annual)) return
       setError('Não foi possível iniciar o pagamento. Tente novamente.')
     } catch (checkoutError) {
-      // Plano parado (WEB-172): a recusa do servidor já diz o que fazer.
+      // Plano parado (WEB-172) ou Pix sem como cancelar (WEB-536): a recusa
+      // do servidor já diz o que fazer. Com a janela aberta, é nela que sai.
       const refusal = checkoutError as { code?: string; message?: string }
-      setError(
-        refusal?.code === 'SUBSCRIPTION_PAST_DUE' && refusal.message
+      const message =
+        (refusal?.code === 'SUBSCRIPTION_PAST_DUE' ||
+          refusal?.code === 'PIX_SWITCH_UNAVAILABLE') &&
+        refusal.message
           ? refusal.message
           : 'Não foi possível iniciar o pagamento. Tente novamente.'
-      )
+      setError(message)
+      setPayError(message)
     } finally {
       setLoading(null)
     }
@@ -401,13 +515,13 @@ function PlanSelection() {
     })
   )
 
-  const onPixSubscription =
-    subscription?.provider === 'abacatepay' && hasSubscription
   // Contratar passa pela escolha da forma de pagamento quando o Pix está
-  // ligado: quem ainda não assina e quem já paga por Pix (a troca de plano
-  // no Pix é uma autorização nova). A troca no cartão segue no portal.
+  // ligado e para quem ainda não assina, e sempre para quem já paga por Pix:
+  // a janela explica a passagem para o cartão (WEB-536) e a troca de plano no
+  // Pix, que é uma autorização nova. A troca no cartão segue no portal.
   const contract = (plan: SubscriptionPlan) => {
-    if (pixAvailable && (!hasSubscription || onPixSubscription)) {
+    // Pix anual: o anual também passa pela janela, com o Pix do ano.
+    if (onPixSubscription || (pixAvailable && !hasSubscription)) {
       setPayError(null)
       setChoosing(plan)
       return
@@ -420,6 +534,7 @@ function PlanSelection() {
     trialPlan.isPending ||
     subscriptionQuery.isLoading ||
     startPix.isPending ||
+    startCard.isPending ||
     schedulePix.isPending
   const goingDown = (to: SubscriptionPlan) =>
     currentPlan !== null && isDowngrade(currentPlan, to)
@@ -434,7 +549,9 @@ function PlanSelection() {
   })
 
   const checkoutLabel = (plan: SubscriptionPlan) =>
-    loading === plan ? 'Redirecionando…' : `Contratar o ${PLAN_NAMES[plan]}`
+    loading === plan
+      ? 'Redirecionando…'
+      : `Contratar o ${PLAN_NAMES[plan]}${annual ? ' anual' : ''}`
 
   function cardAction(plan: Plan): CardAction | null {
     // Assinatura paga parada não passa pelo checkout: a faixa leva a
@@ -464,6 +581,24 @@ function PlanSelection() {
     }
     if (currentPlan) {
       if (plan.id === currentPlan) {
+        // Quem paga por Pix passa o mesmo plano para o cartão (WEB-536), ou
+        // para o anual (ou o mensal), no cartão ou no Pix.
+        if (onPixSubscription) {
+          const otherCycle =
+            annual !== (subscription?.billingInterval === 'year')
+          return {
+            label:
+              loading === plan.id
+                ? 'Redirecionando…'
+                : otherCycle
+                  ? `Passar para o ${annual ? 'anual' : 'mensal'}`
+                  : 'Passar para o cartão',
+            tone: 'ghost',
+            disabled: busy,
+            note: 'Seu plano atual, hoje no Pix.',
+            onClick: () => contract(plan.id)
+          }
+        }
         return { label: 'Seu plano atual', tone: 'ghost', disabled: true }
       }
       const down = goingDown(plan.id)
@@ -506,11 +641,12 @@ function PlanSelection() {
       return {
         label: 'Você paga',
         charge: planChargeForCurrentPlan(
-          plan,
+          billedPlan(plan, subscription.billingInterval),
           subscription,
           founderCouponAvailable
         ),
         strike: false,
+        period: subscription.billingInterval === 'year' ? '/ano' : plan.period,
         note:
           subscription.standing !== 'current' || !subscription.currentPeriodEnd
             ? null
@@ -519,6 +655,19 @@ function PlanSelection() {
               : contracted
                 ? `Primeira cobrança em ${ddmm(subscription.currentPeriodEnd)}.`
                 : `Renova em ${ddmm(subscription.currentPeriodEnd)}.`
+      }
+    }
+    if (annual) {
+      // 10 meses riscando os 12, do mensal que o bar pagaria (fundador,
+      // se vale). Com o cupom carregando, o preço espera.
+      const deal = dealFor(plan)
+      return {
+        label: onTrial ? 'Depois do teste' : 'Por ano',
+        charge: deal ? planChargeForAnnual(deal) : null,
+        strike: true,
+        period: '/ano',
+        note: onTrial ? 'Só se você contratar.' : null,
+        extra: deal ? <AnnualVerdict deal={deal} /> : null
       }
     }
     const charge = planChargeForShowcase(
@@ -532,6 +681,7 @@ function PlanSelection() {
         label: 'Depois do teste',
         charge,
         strike: true,
+        period: plan.period,
         note: founder
           ? 'Preço de fundador, só se você contratar.'
           : 'Só se você contratar.'
@@ -541,6 +691,7 @@ function PlanSelection() {
       label: founder ? 'Preço de fundador' : 'Por mês',
       charge,
       strike: !hasSubscription,
+      period: plan.period,
       note: null
     }
   }
@@ -552,11 +703,13 @@ function PlanSelection() {
     const name = getPlan(subscription.plan).name.toUpperCase()
     const end = subscription.currentPeriodEnd
     const charge = planChargeForCurrentPlan(
-      getPlan(subscription.plan),
+      billedPlan(getPlan(subscription.plan), subscription.billingInterval),
       subscription,
       founderCouponAvailable
     )
     const price = charge ? formatPlanPrice(charge.chargeReais) : '…'
+    const perLabel =
+      subscription.billingInterval === 'year' ? 'Por ano' : 'Por mês'
     if (subscription.standing === 'past_due') {
       return {
         label: 'Sua assinatura',
@@ -595,7 +748,7 @@ function PlanSelection() {
             ]
           : [
               ['Plano', name],
-              ['Por mês', price],
+              [perLabel, price],
               ['1ª cobrança', ddmm(end)]
             ]
       }
@@ -608,7 +761,7 @@ function PlanSelection() {
       progress: null,
       cells: [
         ['Plano', name],
-        ['Por mês', price],
+        [perLabel, price],
         cancelAt
           ? ['Cancela', ddmm(cancelAt)]
           : ['Renova', end ? ddmm(end) : '—']
@@ -814,6 +967,39 @@ function PlanSelection() {
           </section>
         ) : null}
 
+        {troca === 'cartao' && onPixSubscription && currentPlan ? (
+          <div className="pl-msg err" role="alert">
+            <p>
+              <b>A troca para o cartão não foi concluída.</b> Nada mudou: o bar
+              segue no {getPlan(currentPlan).name}, pago no Pix
+              {subscription?.currentPeriodEnd
+                ? ` até ${ddmm(subscription.currentPeriodEnd)}`
+                : ''}
+              . Se o cartão foi recusado, tente outro.
+            </p>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              disabled={busy}
+              onClick={() => {
+                setAnnualChosen(trocaAnual === '1')
+                contract(para ?? currentPlan)
+              }}
+            >
+              Tentar outro cartão
+            </button>
+          </div>
+        ) : null}
+
+        {showCycle ? (
+          <CycleHeader
+            deal={focusDeal}
+            annual={annual}
+            available={annualAvailable}
+            onChange={setAnnualChosen}
+          />
+        ) : null}
+
         <ul className="pl-plans" aria-label="Planos">
           {PLAN_CATALOG.map((plan) => {
             const price = priceFor(plan)
@@ -826,6 +1012,8 @@ function PlanSelection() {
                 charge={price.charge}
                 priceLabel={price.label}
                 priceNote={price.note}
+                period={price.period}
+                extra={'extra' in price ? price.extra : null}
                 strike={price.strike}
                 action={cardAction(plan)}
               />
@@ -864,34 +1052,25 @@ function PlanSelection() {
       {choosing ? (
         <PaymentChoiceDialog
           plan={choosing}
-          chargeReais={
-            planChargeForShowcase(
-              getPlan(choosing),
-              founderCouponAvailable,
-              false
-            )?.chargeReais ?? null
-          }
-          listReais={
-            planChargeForShowcase(
-              getPlan(choosing),
-              founderCouponAvailable,
-              false
-            )?.listReais ?? null
-          }
+          chargeReais={choiceCharge(choosing)?.chargeReais ?? null}
+          listReais={choiceCharge(choosing)?.listReais ?? null}
           trialEnd={
             onTrial && subscription?.currentPeriodEnd
               ? subscription.currentPeriodEnd
               : null
           }
-          pixPlanChange={
-            onPixSubscription && currentPlan && currentPlan !== choosing
-              ? currentPlan
-              : null
+          annual={annual}
+          offerPix={pixAvailable}
+          pixPlan={onPixSubscription ? currentPlan : null}
+          pixAnnual={subscription?.billingInterval === 'year'}
+          pixPaidUntil={
+            onPixSubscription ? (subscription?.currentPeriodEnd ?? null) : null
           }
+          upgradeTodayCents={upgradeTodayCents(choosing)}
           pending={
             startPix.isPending || startPix.isSuccess || schedulePix.isPending
               ? 'pix'
-              : loading
+              : loading || startCard.isPending || startCard.isSuccess
                 ? 'card'
                 : null
           }
@@ -899,8 +1078,11 @@ function PlanSelection() {
           onCancel={() => setChoosing(null)}
           onConfirm={(method: PaymentMethod, timing) => {
             if (method === 'pix' && timing === 'trial_end')
-              schedulePix.mutate({ plan: choosing })
-            else if (method === 'pix') startPix.mutate({ plan: choosing })
+              schedulePix.mutate({ plan: choosing, annual })
+            else if (method === 'pix')
+              startPix.mutate({ plan: choosing, annual })
+            else if (onPixSubscription)
+              startCard.mutate({ plan: choosing, annual })
             else void handleCheckout(choosing)
           }}
         />

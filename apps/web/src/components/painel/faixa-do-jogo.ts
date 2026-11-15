@@ -2,8 +2,9 @@ import type { EventNumbers } from '@findsports_oficial/api/lib/event-numbers'
 
 /*
  * A faixa de três números do jogo publicado em Jogos (WEB-433, PJ-depois e
- * PJ-estados): antes, durante e depois do jogo. Só número que existe: "primeira
- * vez no bar" e "seu horário mais cheio" das pranchas ficaram de fora.
+ * PJ-estados): antes, durante e depois do jogo. "Seu horário mais cheio" das
+ * pranchas ficou de fora. "Primeira vez no bar" (WEB-530) é do Elite: ao vivo
+ * é a terceira célula, no lugar do bairro; depois, a linha sob "viram o bar".
  */
 
 export type Celula = {
@@ -63,15 +64,23 @@ export function faixaDoJogo(input: {
             rotulo: 'chegaram com código',
             verde: true
           },
-          bairro
+          x.firstTime === null
+            ? bairro
+            : { valor: n(x.firstTime), rotulo: 'primeira vez no bar' }
         ]
       : [
           interesse,
           bairro,
           { valor: n(x.views), rotulo: 'viram o bar por ele' }
         ]
+  const vistas: Celula = { valor: n(x.views), rotulo: 'viram o bar por ele' }
   return [
-    { valor: n(x.views), rotulo: 'viram o bar por ele' },
+    x.firstTime
+      ? {
+          ...vistas,
+          extra: `${n(x.firstTime)} ${x.firstTime === 1 ? 'veio' : 'vieram'} pela primeira vez`
+        }
+      : vistas,
     interesse,
     x.vsAverage === null
       ? { valor: '—', rotulo: 'média depois de 5 jogos' }

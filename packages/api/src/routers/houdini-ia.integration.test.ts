@@ -251,7 +251,7 @@ integrationTest(
 
       // Recomendador nunca rodou: a tela mostra "ainda não ligado".
       expect(o.recommender.live).toBe(false)
-      expect(o.recommender.arms.map((r) => r.weight)).toEqual([34, 33, 33])
+      expect(o.recommender.arms.map((r) => r.weight)).toEqual([50, 50])
 
       expect(o.status.limits.chatDailyMessages).toBe(1)
       expect(o.status.hits).toEqual({
@@ -348,6 +348,112 @@ integrationTest(
       expect(c.significant).toBe(true)
       // Sem custo semeado: o custo por conversão é zero, não vazio.
       expect(o.chat.arms[1]?.costPerConversion).toBe(0)
+    } finally {
+      await users.cleanup()
+    }
+  }
+)
+
+integrationTest(
+  'recomendador A × C: conversão por pessoa, Passo, queda para o controle e parada',
+  async () => {
+    const { db, appRouter } = await load()
+    const { recommendationEvent, recommendationRound } = await import(
+      '@findsports_oficial/db/schema/recommendation'
+    )
+    await db.delete(aiRun)
+    const users = await seedUsers(4)
+    const [a1, a2, c1, c2] = users.ids as [string, string, string, string]
+    const admin = appRouter.createCaller(
+      contextFor(crypto.randomUUID(), 'admin')
+    )
+    const items = Array.from({ length: 5 }, () => ({
+      barId: crypto.randomUUID()
+    }))
+    // Cada rodada: a linha de `ai_run` e a rodada com o mesmo `run_id`.
+    const round = async (
+      userId: string,
+      variant: 'a' | 'c',
+      status: 'ok' | 'error' | 'timeout',
+      events: Array<'favorite' | 'dismiss' | 'phone_clicked'>
+    ) => {
+      const runId = crypto.randomUUID()
+      await db.insert(aiRun).values({
+        runId,
+        userId,
+        feature: 'recommender',
+        variant,
+        assignedModel: variant === 'a' ? 'control' : 'clef',
+        servedModel: variant === 'c' && status === 'ok' ? 'clef' : null,
+        status,
+        latencyMs: 200,
+        costUsd: variant === 'c' ? 0.0002 : 0
+      })
+      await db.insert(recommendationRound).values({
+        runId,
+        actorUserId: userId,
+        day: '2026-11-14',
+        radiusKm: 3,
+        items
+      })
+      if (events.length)
+        await db
+          .insert(recommendationEvent)
+          .values(events.map((type) => ({ actorUserId: userId, runId, type })))
+    }
+    try {
+      await round(a1, 'a', 'ok', ['favorite', 'dismiss'])
+      await round(a2, 'a', 'ok', [])
+      await round(c1, 'c', 'ok', ['dismiss', 'dismiss'])
+      await round(c2, 'c', 'timeout', ['phone_clicked'])
+      // Linha sem rodada (perdeu a corrida de duas aberturas): fica fora.
+      await db.insert(aiRun).values({
+        userId: c1,
+        feature: 'recommender',
+        variant: 'c',
+        assignedModel: 'clef',
+        status: 'error'
+      })
+
+      const o = await admin.houdini.ia.overview({ period: 'today' })
+      expect(o.recommender.live).toBe(true)
+      const [a, c] = o.recommender.arms
+      expect(a).toMatchObject({
+        variant: 'a',
+        model: null,
+        people: 2,
+        converted: 1,
+        conversionRate: 0.5,
+        rounds: 2,
+        fellBack: 0,
+        shown: 10,
+        passed: 1,
+        passRate: 0.1,
+        costUsd: 0
+      })
+      expect(c).toMatchObject({
+        variant: 'c',
+        people: 2,
+        converted: 1,
+        rounds: 2,
+        fellBack: 1,
+        timeouts: 1,
+        errors: 0,
+        passed: 2,
+        p50Ms: 200
+      })
+      expect(c?.costPer1000Rounds).toBeCloseTo(0.2, 6)
+      expect(o.recommender.conversion).toEqual({
+        enough: false,
+        missing: 'A tem 2 de 100 conversas'
+      })
+      expect(
+        o.recommender.stops.map((s) => [s.key, s.tripped, s.value])
+      ).toEqual([
+        ['fallback', true, 0.5],
+        ['pass', true, 2],
+        ['budget', false, null]
+      ])
     } finally {
       await users.cleanup()
     }

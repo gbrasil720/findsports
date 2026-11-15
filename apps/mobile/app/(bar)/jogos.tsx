@@ -1,10 +1,12 @@
 import { brasiliaDay } from '@findsports_oficial/db/event-window'
 import { gameTitle } from '@findsports_oficial/db/game-title'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
 import { useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import Animated, {
+  FadeIn,
+  FadeInUp,
   LinearTransition,
   useReducedMotion
 } from 'react-native-reanimated'
@@ -24,13 +26,20 @@ import { usePalette } from '@/components/theme'
 import {
   ACID,
   ErrorState,
+  errorMessage,
   Icon,
   INK,
   Text,
   text,
   useStatusBar
 } from '@/components/ui'
-import { WeekCarousel } from '@/components/week-games'
+import {
+  hasCatalog,
+  rowDay,
+  useWeekGames,
+  WeekCarousel,
+  type WeekGame
+} from '@/components/week-games'
 import {
   dayKicker,
   type GameState,
@@ -40,7 +49,7 @@ import {
 } from '@/lib/bar-owner'
 import { formatTime } from '@/lib/explore'
 import { useOwnerBar } from '@/lib/owner'
-import { trpc } from '@/lib/trpc'
+import { queryClient, trpc } from '@/lib/trpc'
 
 /*
  * Jogos (rodada 10, tela 3, 3j): a semana em sete dias com os pontos dos
@@ -112,6 +121,14 @@ export default function Jogos() {
   }
   // A barra de procura: quantos vão contra o jogo mais procurado (ou 30).
   const top = Math.max(30, ...upcoming.map((g) => count(g.id)))
+  // Sem jogo marcado: os que outros bares perto marcaram, como no web
+  // (WEB-467). Com o catálogo, os do carrossel não se repetem aqui.
+  const weekGames = useWeekGames()
+  const suggestions = (
+    hasCatalog(weekGames.data)
+      ? (weekGames.data ?? []).slice(5)
+      : (weekGames.data ?? [])
+  ).slice(0, 6)
   const edit = (id: string) =>
     router.push({ pathname: '/novo-jogo', params: { id } })
 
@@ -219,6 +236,12 @@ export default function Jogos() {
             onRetry={() => events.refetch()}
             retrying={events.isFetching}
           />
+        ) : shown.length === 0 &&
+          tab === 'next' &&
+          !day &&
+          !events.isPending &&
+          suggestions.length ? (
+          <Nearby games={suggestions} reduced={reduced} />
         ) : shown.length === 0 ? (
           <Text style={[text(15, 'Regular', 1.45), { color: palette.muted }]}>
             {events.isPending
@@ -359,6 +382,123 @@ export default function Jogos() {
   )
 }
 
+// As linhas entram em cascata de 40 ms (opacidade e 6 pt); constantes de
+// módulo, para o Reanimated não recomeçar a entrada a cada render.
+const ROW_IN = Array.from({ length: 6 }, (_, i) =>
+  FadeInUp.duration(220)
+    .delay(i * 40)
+    .easing(EASE)
+    .withInitialValues({ opacity: 0, transform: [{ translateY: 6 }] })
+)
+const ROW_FADE = Array.from({ length: 6 }, (_, i) =>
+  FadeIn.duration(220).delay(i * 40)
+)
+
+/**
+ * "Nenhum jogo marcado": os jogos que outros bares perto já marcaram, cada
+ * um com o + que publica num toque (`createEvent`, telão e som herdam das
+ * características do bar, WEB-399), como "Jogos que outros bares perto já
+ * marcaram" no painel web.
+ */
+function Nearby({
+  games,
+  reduced
+}: {
+  games: readonly WeekGame[]
+  reduced: boolean
+}) {
+  const palette = usePalette()
+  const [busy, setBusy] = useState<string | null>(null)
+  const [problem, setProblem] = useState<string | null>(null)
+  const create = useMutation(
+    trpc.pub.createEvent.mutationOptions({
+      onSuccess: () => {
+        haptic.success()
+        queryClient.invalidateQueries()
+      },
+      onError: (error) => {
+        haptic.error()
+        setProblem(errorMessage(error, 'Não deu para publicar. Tente de novo.'))
+      },
+      onSettled: () => setBusy(null)
+    })
+  )
+  return (
+    <View style={{ gap: 10 }}>
+      <OwnerLabel>
+        Nenhum jogo marcado · outros bares perto já marcaram
+      </OwnerLabel>
+      <OwnerCard>
+        {games.map((game, index) => (
+          <Animated.View
+            key={game.key}
+            entering={(reduced ? ROW_FADE : ROW_IN)[index]}
+          >
+            <OwnerRow first={index === 0}>
+              <Text style={[styles.time, { color: palette.muted }]}>
+                {formatTime(game.startsAt)}
+              </Text>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text
+                  numberOfLines={2}
+                  style={[ownerText.name, { color: palette.ink }]}
+                >
+                  {game.title}
+                </Text>
+                <Text
+                  numberOfLines={1}
+                  style={[ownerText.line, { color: palette.muted }]}
+                >
+                  {`${game.championship} · ${rowDay(game.startsAt).toLocaleLowerCase('pt-BR')}`}
+                </Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Publicar ${game.title}`}
+                accessibilityState={{ busy: busy === game.key }}
+                disabled={busy !== null}
+                hitSlop={6}
+                onPress={() => {
+                  setProblem(null)
+                  setBusy(game.key)
+                  create.mutate({
+                    sportId: game.sportId,
+                    championship: game.championship,
+                    startsAt: game.startsAt,
+                    participantIds: game.participantIds.length
+                      ? game.participantIds
+                      : undefined,
+                    participantFreeText: game.participantFreeText ?? undefined
+                  })
+                }}
+                style={[styles.add, { backgroundColor: palette.mark }]}
+              >
+                <Icon
+                  name="plus"
+                  size={20}
+                  color={busy === game.key ? palette.muted : palette.ink}
+                />
+              </Pressable>
+            </OwnerRow>
+          </Animated.View>
+        ))}
+      </OwnerCard>
+      {problem ? (
+        <Text
+          accessibilityRole="alert"
+          style={[text(13.5, 'Regular', 1.4), { color: palette.live }]}
+        >
+          {problem}
+        </Text>
+      ) : (
+        <Text style={[text(12.5, 'Regular', 1.4), { color: palette.muted }]}>
+          Um toque publica, com o telão e o som do bar. Dá para editar depois.
+        </Text>
+      )}
+    </View>
+  )
+}
+
 /** AO VIVO, LOTANDO (acid), PUBLICADO, RASCUNHO, ENCERRADO. */
 function Tag({ state, full }: { state: GameState; full: boolean }) {
   const palette = usePalette()
@@ -464,6 +604,13 @@ const styles = StyleSheet.create({
     fontFamily: 'GeistMono-SemiBold',
     fontSize: 11,
     letterSpacing: 0.77
+  },
+  add: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   newWrap: { position: 'absolute' },
   new: { height: 58 },

@@ -32,7 +32,8 @@ describe('test-only switches (WEB-174)', () => {
       'E2E_EMAIL_OUTBOX',
       'E2E_DISABLE_CACHES',
       'LOCATIONIQ_BASE_URL',
-      'STRIPE_API_BASE_URL'
+      'STRIPE_API_BASE_URL',
+      'ABACATE_PAY_API_BASE_URL'
     ]) {
       const value = key === 'E2E_DISABLE_CACHES' ? '1' : 'http://127.0.0.1:1'
       const result = loadServerEnv({ [key]: value })

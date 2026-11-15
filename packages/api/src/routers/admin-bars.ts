@@ -409,8 +409,8 @@ export const adminBarsRouter = router({
       participantFreeText: sql`${event.participantFreeText}`,
       championship: sql`${event.championship}`
     })
-    // Código do balcão em vigor (ou pedido antigo ainda aberto).
-    const seated = sql`${reservation.status} IN ('pending', 'confirmed')`
+    // Código do balcão em vigor.
+    const seated = sql`${reservation.status} = 'confirmed'`
     // ponytail: listas com teto fixo, sem paginação; paginar quando um bar passar disso.
     const [games, reservations, ratings, grimorio, [recent], [cancelReason]] =
       await Promise.all([
@@ -426,11 +426,6 @@ export const adminBarsRouter = router({
             reservations: sql<number>`(
               SELECT count(*)::int FROM ${reservation}
               WHERE ${reservation.eventId} = ${event.id} AND ${seated}
-            )`,
-            people: sql<number>`(
-              SELECT COALESCE(sum(${reservation.partySize}), 0)::int
-              FROM ${reservation}
-              WHERE ${reservation.eventId} = ${event.id} AND ${seated}
             )`
           })
           .from(event)
@@ -444,7 +439,6 @@ export const adminBarsRouter = router({
           .select({
             id: reservation.id,
             guestName: user.name,
-            partySize: reservation.partySize,
             status: reservation.status,
             createdAt: reservation.createdAt,
             gameTitle: title,
@@ -490,8 +484,7 @@ export const adminBarsRouter = router({
           .limit(50),
         db
           .select({
-            n: sql<number>`count(*)::int`,
-            people: sql<number>`COALESCE(sum(${reservation.partySize}), 0)::int`
+            n: sql<number>`count(*)::int`
           })
           .from(reservation)
           .innerJoin(event, eq(event.id, reservation.eventId))
@@ -527,7 +520,7 @@ export const adminBarsRouter = router({
           : null,
       games,
       reservations,
-      reservations30d: recent ?? { n: 0, people: 0 },
+      reservations30d: recent ?? { n: 0 },
       ratings,
       grimorio,
       cancelReason: cancelReason ?? null

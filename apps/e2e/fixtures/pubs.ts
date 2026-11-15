@@ -29,6 +29,8 @@ export type PubOptions = {
     currentPeriodEnd?: Date | null
     /** Id da assinatura no Stripe; presente, a linha é do provedor. */
     externalSubscriptionId?: string
+    /** Provedor da assinatura com id; padrão Stripe (WEB-536: `abacatepay`). */
+    provider?: 'stripe' | 'abacatepay'
     /** Desconto mensal em reais gravado pelo webhook; omitido = null. */
     monthlyDiscountReais?: number | null
   } | null
@@ -70,7 +72,7 @@ export async function createPub(options: PubOptions = {}): Promise<TestPub> {
       status: sub.status ?? 'active',
       current_period_end:
         sub.currentPeriodEnd === undefined ? inDays(30) : sub.currentPeriodEnd,
-      provider: sub.externalSubscriptionId ? 'stripe' : null,
+      provider: sub.externalSubscriptionId ? (sub.provider ?? 'stripe') : null,
       external_subscription_id: sub.externalSubscriptionId ?? null,
       monthly_discount_reais:
         sub.monthlyDiscountReais === undefined ? null : sub.monthlyDiscountReais
@@ -78,7 +80,7 @@ export async function createPub(options: PubOptions = {}): Promise<TestPub> {
     // Assinatura do provedor também existe na tabela do plugin do Stripe, como
     // em produção (ele a grava no checkout). Sem ela o webhook de mudança
     // estoura dentro do plugin e só o nosso `onEvent` roda.
-    if (sub.externalSubscriptionId) {
+    if (sub.externalSubscriptionId && sub.provider !== 'abacatepay') {
       await insert('stripe_subscription', {
         id: randomUUID(),
         plan: sub.plan ?? 'elite',

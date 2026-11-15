@@ -9,9 +9,19 @@ import {
 import { readGoing } from '../attendance'
 import { participantNames } from '../game-participants'
 import { utcIso } from '../utc-timestamp'
+import { planRoundAi } from './ai-round'
 import { loadRecommendationFacts } from './facts'
-import { loadRecommendationCandidates } from './load-candidates'
-import { RECOMMENDATION_SLOTS, rankRecommendations } from './ranking'
+import {
+  loadRecommendationCandidates,
+  loadRecommendationCandidatesWithStyle,
+  type RecommendationStyle
+} from './load-candidates'
+import {
+  type AiAffinity,
+  RECOMMENDATION_SLOTS,
+  type RecommendationCandidate,
+  rankRecommendations
+} from './ranking'
 import {
   nextRoundAt,
   ROUND_SIZE,
@@ -38,19 +48,25 @@ async function rankItems(input: {
   now: Date
   exclude: string[]
   firstPosition: number
+  /** A afinidade da IA no braço C do teste (WEB-426); sem ela, a regra. */
+  withAi?: (
+    candidates: RecommendationCandidate[],
+    style: RecommendationStyle | null
+  ) => Promise<AiAffinity | null>
 }): Promise<RoundItem[]> {
   const count = ROUND_SIZE - input.firstPosition + 1
   if (count <= 0) return []
-  const candidates = await loadRecommendationCandidates({
+  const { candidates, style } = await loadRecommendationCandidatesWithStyle({
     userId: input.userId,
     ...input.where,
     radiusKm: input.radiusKm,
     now: input.now,
     excludeBarIds: input.exclude
   })
+  const affinity = (await input.withAi?.(candidates, style)) ?? undefined
   const ranked = rankRecommendations(
     candidates,
-    { now: input.now, radiusKm: input.radiusKm },
+    { now: input.now, radiusKm: input.radiusKm, affinity },
     count
   )
   const facts = await loadRecommendationFacts({
@@ -101,11 +117,16 @@ export async function readOrCreateRound(input: {
   userRadiusKm: number | null | undefined
   where: Where | null
   now: Date
+  /** Só o app entra no teste A × C (dono, 14/11/2026); o web fica no controle. */
+  aiEligible: boolean
 }) {
   const day = roundDay(input.now)
   const existing = await readRound(input.userId, day)
   if (existing || !input.where) return existing
   const radiusKm = clampSearchRadiusKm(input.userRadiusKm, 3)
+  // Com o teste do recomendador ligado, a rodada leva o `run_id` da linha de
+  // `ai_run` do braço sorteado (`ai-round.ts`).
+  let runId: string = crypto.randomUUID()
   const items = await rankItems({
     userId: input.userId,
     where: input.where,
@@ -113,13 +134,27 @@ export async function readOrCreateRound(input: {
     userRadiusKm: radiusKm,
     now: input.now,
     exclude: [],
-    firstPosition: 1
+    firstPosition: 1,
+    withAi: async (candidates, style) => {
+      if (!input.aiEligible) return null
+      const plan = await planRoundAi({
+        userId: input.userId,
+        candidates,
+        style,
+        now: input.now,
+        radiusKm
+      })
+      if (!plan) return null
+      runId = plan.runId
+      return plan.affinity
+    }
   })
-  // Duas aberturas ao mesmo tempo: a segunda perde e lê a da primeira.
+  // Duas aberturas ao mesmo tempo: a segunda perde e lê a da primeira (a
+  // linha de `ai_run` dela fica sem rodada).
   await db
     .insert(recommendationRound)
     .values({
-      runId: crypto.randomUUID(),
+      runId,
       actorUserId: input.userId,
       day,
       radiusKm,

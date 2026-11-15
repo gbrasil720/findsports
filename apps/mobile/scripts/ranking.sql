@@ -49,8 +49,8 @@ select 'rk-' || k, (select id from "user" where email = :'fan'), 'search',
   timestamptz '2026-09-01 20:00', timestamptz '2026-09-01 21:00'
 from rk;
 
-insert into reservation (id, event_id, user_id, party_size, status, created_at)
-select 'rk-res-' || k || '-' || n, 'rk-ev-' || n, 'rk-' || k, 1, 'confirmed', timestamp '2026-09-30 12:00'
+insert into reservation (id, event_id, user_id, status, created_at)
+select 'rk-res-' || k || '-' || n, 'rk-ev-' || n, 'rk-' || k, 'confirmed', timestamp '2026-09-30 12:00'
 from rk, unnest(bars) as n;
 insert into reservation_code (id, code, reservation_id, max_uses)
 select 'rk-code-' || k || '-' || n, 'RK' || upper(left(md5(k || n), 6)), 'rk-res-' || k || '-' || n, 1

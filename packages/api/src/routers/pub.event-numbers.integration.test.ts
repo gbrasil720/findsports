@@ -67,7 +67,9 @@ integrationTest(
         interestedLastDay: 1,
         views: 2,
         barsInNeighborhood: 1,
-        vsAverage: null
+        vsAverage: null,
+        // Pro e jogo por vir: sem "primeira vez no bar".
+        firstTime: null
       })
       expect(numbers.find((n) => n.eventId === outro)).toMatchObject({
         interested: 0,

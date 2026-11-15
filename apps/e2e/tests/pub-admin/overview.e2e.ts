@@ -2,7 +2,8 @@ import { randomUUID } from 'node:crypto'
 import type { Page } from '@playwright/test'
 import { signIn } from '../../fixtures/auth'
 import { insert } from '../../fixtures/db'
-import { createPub, type Plan } from '../../fixtures/pubs'
+import { createEvent } from '../../fixtures/going'
+import { createPub, inDays, type Plan } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
 
@@ -10,9 +11,14 @@ import { createUser } from '../../fixtures/users'
 // até 30 dias; Pro ganha telefone, WhatsApp e rota em até 365 dias; Elite tem
 // todo o histórico. A atividade diária é de todos os planos (WEB-449).
 
-/** Bar do plano com uma abertura de perfil e um clique em cada canal, hoje. */
+/**
+ * Bar do plano com um jogo encerrado, uma abertura de perfil e um clique em
+ * cada canal, hoje. Sem jogo, o Desempenho é o do bar novo (WEB-467,
+ * `desempenho-vazio.e2e.ts`).
+ */
 async function openOverview(page: Page, plan: Plan) {
   const pub = await createPub({ subscription: { plan } })
+  await createEvent(pub.barId, { startsAt: inDays(-2) })
   const fan = await createUser()
   const today = new Date().toLocaleDateString('sv-SE', {
     timeZone: 'America/Sao_Paulo'

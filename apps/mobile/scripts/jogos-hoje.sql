@@ -19,8 +19,8 @@ with g(bar, sport, champ, txt, hours) as (values
   ('Bar do Largo',   'Futebol',  'Brasileirão',      'São Paulo × Santos',       3.5),
   ('Aspicuelta 40',  'Futebol',  'Copa do Brasil',   'Grêmio × Internacional',   4.0)
 )
-insert into event (id, bar_id, sport_id, championship, starts_at, participant_free_text, accepts_reservations)
+insert into event (id, bar_id, sport_id, championship, starts_at, participant_free_text)
 select gen_random_uuid()::text, b.id, s.id, g.champ,
        (now() at time zone 'utc') + make_interval(mins => (g.hours * 60)::int),
-       g.txt, false
+       g.txt
 from g join bar b on b.name = g.bar join sport s on s.name = g.sport;

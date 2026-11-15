@@ -5,7 +5,6 @@ import {
 } from './event-deletion'
 
 const NOTHING: EventDeletionImpact = {
-  pendingReservations: 0,
   confirmedReservations: 0,
   ratings: 0,
   closedReservations: 0,
@@ -17,8 +16,7 @@ describe('getEventDeletionBlock', () => {
     expect(
       getEventDeletionBlock({
         ...NOTHING,
-        pendingReservations: 1,
-        confirmedReservations: 1
+        confirmedReservations: 2
       })
     ).toBe('Este jogo tem 2 códigos de quem vai e não pode ser excluído.')
     expect(getEventDeletionBlock({ ...NOTHING, ratings: 1 })).toBe(

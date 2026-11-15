@@ -291,7 +291,6 @@ integrationTest(
       await seeded.db.insert(reservation).values({
         eventId: gameId,
         userId: seeded.fanId,
-        partySize: 4,
         status: 'confirmed'
       })
       // WEB-445: dois motivos; a ficha mostra o último.
@@ -321,21 +320,19 @@ integrationTest(
         standing: 'current',
         stripeUrl: null,
         owner: { name: 'Dono de integração' },
-        reservations30d: { n: 1, people: 4 },
+        reservations30d: { n: 1 },
         ratingCount: 0
       })
       expect(ficha.games).toEqual([
         expect.objectContaining({
           id: gameId,
           title: 'Campeonato de integração',
-          reservations: 1,
-          people: 4
+          reservations: 1
         })
       ])
       expect(ficha.reservations).toEqual([
         expect.objectContaining({
           guestName: 'Torcedor de integração',
-          partySize: 4,
           status: 'confirmed'
         })
       ])

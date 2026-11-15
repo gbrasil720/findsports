@@ -368,7 +368,15 @@ export function LandingV3() {
   const games = today.length >= MIN_REAL_GAMES ? today : EXAMPLE_GAMES
   const [game, setGame] = useState('')
   const [where, setWhere] = useState('Vila Madalena')
-  const [result, setResult] = useState<Result | null>(null)
+  // Guarda o título, não o jogo: se os jogos de hoje chegam depois do
+  // clique, o resultado passa ao que o campo mostra agora.
+  const [sent, setSent] = useState<{ title: string; where: string } | null>(
+    null
+  )
+  const sentGame =
+    sent && (games.find((g) => g.title === sent.title) ?? games[0])
+  const result: Result | null =
+    sent && sentGame ? { game: sentGame, where: sent.where } : null
   const resultRef = useRef<HTMLDivElement>(null)
   const [medal, setMedal] = useState<Medal>(MEDALS[0])
 
@@ -412,7 +420,7 @@ export function LandingV3() {
     e.preventDefault()
     const picked = games.find((g) => g.title === game) ?? games[0]
     if (!picked) return
-    setResult({ game: picked, where })
+    setSent({ title: picked.title, where })
     // No celular o resultado nasce abaixo da dobra: a página vai até ele.
     requestAnimationFrame(() => {
       const reduce = window.matchMedia(

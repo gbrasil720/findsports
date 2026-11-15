@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test'
 import { TRPCError } from '@trpc/server'
 import {
   applyEventBreakdownEntitlements,
+  applyMonthGoingEntitlements,
   applyOverviewEntitlements,
   assertAnalyticsPeriodAllowed,
   assertRecordable,
@@ -129,6 +130,30 @@ describe('commercial-analytics entitlements', () => {
     expect(e.comparison).toBe('advanced')
     expect(e.eventBreakdown).toBe('complete')
     expect(e.maxDaysRetention).toBe(null)
+  })
+
+  it('WEB-522: presenças em todo plano vigente; códigos só no Elite; parado não vê', () => {
+    const month = { people: 34, codes: 12 }
+    expect(applyMonthGoingEntitlements(month, 'elite')).toEqual({
+      people: 34,
+      codes: 12
+    })
+    expect(applyMonthGoingEntitlements(month, 'pro')).toEqual({
+      people: 34,
+      codes: null
+    })
+    expect(applyMonthGoingEntitlements(month, 'starter')).toEqual({
+      people: 34,
+      codes: null
+    })
+    // Plano parado: nulo, nunca zero ("ninguém marcou").
+    expect(applyMonthGoingEntitlements(month, null)).toEqual({
+      people: null,
+      codes: null
+    })
+    expect(
+      applyMonthGoingEntitlements({ people: 0, codes: 0 }, 'starter')
+    ).toEqual({ people: 0, codes: null })
   })
 
   it('each plan has unique entitlements', () => {

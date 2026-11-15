@@ -35,9 +35,9 @@ select 'c0c0c0c0-0000-4000-8000-00000000010' || n, 'c0c0c0c0-0000-4000-8000-0000
   (select id from sport s where s.name = cq.sport), 'Teste', at, game
 from cq;
 
-insert into reservation (id, event_id, user_id, party_size, status, created_at)
+insert into reservation (id, event_id, user_id, status, created_at)
 select 'c0c0c0c0-0000-4000-8000-00000000020' || n, 'c0c0c0c0-0000-4000-8000-00000000010' || n,
-  (select id from "user" where email = :'fan'), 1, 'confirmed', at - interval '1 day'
+  (select id from "user" where email = :'fan'), 'confirmed', at - interval '1 day'
 from cq;
 
 insert into reservation_code (id, code, reservation_id, max_uses)

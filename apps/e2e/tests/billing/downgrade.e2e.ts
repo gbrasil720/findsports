@@ -170,5 +170,10 @@ test('teste grátis: plano menor também confirma, sem prometer crédito, e depo
     page.getByRole('heading', { name: 'Você está testando o Pro' })
   ).toBeVisible()
   await page.getByRole('button', { name: 'Contratar o Pro' }).click()
+  // Com o Pix ligado, contratar passa por "Como você quer pagar?".
+  await page
+    .getByRole('dialog', { name: 'Como você quer pagar?' })
+    .getByRole('button', { name: 'Continuar no cartão' })
+    .click()
   await page.waitForURL(`${STUB_URL}/stripe/checkout/**`)
 })

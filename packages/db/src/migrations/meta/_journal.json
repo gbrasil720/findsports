@@ -659,6 +659,34 @@
       "when": 1794494253519,
       "tag": "0094_push_token",
       "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1794670717648,
+      "tag": "0095_reservation_ticket_defaults",
+      "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1794671149227,
+      "tag": "0096_drop_reservation_leftovers",
+      "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1794681897687,
+      "tag": "0097_subscription_billing_interval",
+      "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1794683721875,
+      "tag": "0098_bar_name_search_trgm",
+      "breakpoints": true
     }
   ]
 }

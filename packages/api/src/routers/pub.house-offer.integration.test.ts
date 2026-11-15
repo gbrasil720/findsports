@@ -176,8 +176,7 @@ integrationTest(
           barId: ctx.barId,
           sportId,
           championship: 'Campeonato de integração',
-          startsAt: inAMonth(),
-          acceptsReservations: true
+          startsAt: inAMonth()
         })
         .returning({ id: event.id })
       if (!createdEvent) throw new Error('evento não criado')
@@ -186,7 +185,6 @@ integrationTest(
         .values({
           eventId: createdEvent.id,
           userId: ctx.fanId,
-          partySize: 2,
           offerSnapshot: 'Chopp em dobro'
         })
         .returning({ id: reservation.id })

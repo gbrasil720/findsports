@@ -6,6 +6,7 @@ import {
   PLAN_NAMES,
   STARTER_EVENT_LIMIT
 } from '@findsports_oficial/api/lib/plan-limits'
+import { ANNUAL_MONTHS } from '@findsports_oficial/auth/stripe-plan'
 import type { SubscriptionPlan } from '@findsports_oficial/db'
 
 // ---------------------------------------------------------------------------
@@ -77,7 +78,84 @@ function pricesFor(tablePrice: number) {
 }
 
 export function formatPlanPrice(reais: number): string {
-  return `R$ ${reais}`
+  // O anual passa de mil: "R$ 1.470".
+  return `R$ ${reais.toLocaleString('pt-BR')}`
+}
+
+/** Mensal ou anual, como o Stripe chama o intervalo do preço (WEB-442). */
+export type BillingInterval = 'month' | 'year'
+
+/**
+ * O plano com o preço do intervalo cobrado (WEB-442). O anual é `ANNUAL_MONTHS`
+ * meses, da tabela e do fundador (o desconto de fundador vale no anual, dono,
+ * 14/11/2026). Quem desenha preço com o `period` do plano passa a dizer "/ano"
+ * sem saber que o anual existe. Na assinatura anual, `monthlyDiscountReais` é
+ * o desconto da fatura, do ano: R$ 1.470 − R$ 280 = R$ 1.190.
+ */
+export function billedPlan<
+  P extends Pick<Plan, 'tablePrice' | 'founderPrice' | 'period'>
+>(plan: P, interval: BillingInterval = 'month'): P {
+  if (interval !== 'year') return plan
+  return {
+    ...plan,
+    tablePrice: plan.tablePrice * ANNUAL_MONTHS,
+    founderPrice: plan.founderPrice * ANNUAL_MONTHS,
+    period: '/ano'
+  }
+}
+
+/** Reais com centavos só quando há: "R$ 122,50", "R$ 1.470". */
+export function formatReais(reais: number): string {
+  const cents = Math.round(reais * 100) % 100 !== 0
+  return `R$ ${reais.toLocaleString('pt-BR', {
+    minimumFractionDigits: cents ? 2 : 0,
+    maximumFractionDigits: 2
+  })}`
+}
+
+/**
+ * A conta do anual para um plano (WEB-442): `ANNUAL_MONTHS` meses do mensal
+ * que o bar pagaria, o de fundador quando o cupom vale, contra 12 deles. Com o
+ * fundador no anual também (dono, 14/11/2026), o anual sempre economiza dois
+ * meses do mensal.
+ */
+export type AnnualDeal = {
+  yearReais: number
+  /** O ano dividido por 12, para comparar com o mensal. */
+  perMonthReais: number
+  /** O mensal que o bar pagaria (fundador, se vale). */
+  monthlyReais: number
+  /** 12 desse mensal: a âncora riscada. */
+  monthlyYearReais: number
+  savingsReais: number
+  founder: boolean
+}
+
+export function annualDeal(
+  plan: Pick<Plan, 'tablePrice' | 'founderPrice'>,
+  founderCouponAvailable: boolean
+): AnnualDeal {
+  const monthlyReais = founderCouponAvailable
+    ? plan.founderPrice
+    : plan.tablePrice
+  const yearReais = monthlyReais * ANNUAL_MONTHS
+  return {
+    yearReais,
+    perMonthReais: Math.round((yearReais / 12) * 100) / 100,
+    monthlyReais,
+    monthlyYearReais: monthlyReais * 12,
+    savingsReais: monthlyReais * 12 - yearReais,
+    founder: founderCouponAvailable
+  }
+}
+
+/** Vitrine do anual em `/plan`: o ano, riscando 12 meses do mensal. */
+export function planChargeForAnnual(deal: AnnualDeal): PlanChargeDisplay {
+  return {
+    chargeReais: deal.yearReais,
+    listReais: deal.monthlyYearReais,
+    hint: null
+  }
 }
 
 export type PlanChargeDisplay = {
@@ -580,22 +658,29 @@ type PlanSubscription =
       currentPeriodEnd: string | Date | null
       externalSubscriptionId: string | null
       cancelAt?: string | Date | null
+      provider?: string | null
     }
   | null
   | undefined
 
 /**
  * Só assinatura paga no Stripe gera crédito proporcional na troca para um
- * plano menor (WEB-350); em teste grátis não há o que creditar.
+ * plano menor (WEB-350); em teste grátis não há o que creditar, e no Pix
+ * (WEB-536) a troca é uma autorização nova, sem proporcional.
  */
 export function earnsDowngradeCredit(
   subscription:
-    | { status: string; externalSubscriptionId?: string | null }
+    | {
+        status: string
+        externalSubscriptionId?: string | null
+        provider?: string | null
+      }
     | null
     | undefined
 ): boolean {
   return (
     subscription?.status === 'active' &&
+    subscription.provider !== 'abacatepay' &&
     Boolean(subscription.externalSubscriptionId)
   )
 }
@@ -710,6 +795,23 @@ export function getPlanHeader(subscription: PlanSubscription): {
           }
         }
       }
+      if (
+        subscription.provider === 'abacatepay' &&
+        subscription.externalSubscriptionId &&
+        subscription.currentPeriodEnd
+      ) {
+        // WEB-536: subir pelo cartão cobra a diferença até o fim do mês pago;
+        // no Pix, a troca é uma autorização nova.
+        const until = new Date(
+          subscription.currentPeriodEnd
+        ).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+        return {
+          kicker: 'Plano e cobrança',
+          title: `Seu plano é o ${name}`,
+          text: `Pago no Pix até ${until}. Para subir de plano no cartão, a diferença até ${until} sai hoje; no Pix, a troca pede uma nova autorização. Passar para o cartão sem subir não cobra nada até ${until}.`,
+          short: `Pago no Pix até ${until}.`
+        }
+      }
       return {
         kicker: 'Plano e cobrança',
         title: `Seu plano é o ${name}`,
@@ -794,6 +896,7 @@ export function getTrialNotice(
         plan?: SubscriptionPlan
         externalSubscriptionId?: string | null
         monthlyDiscountReais?: number | null
+        billingInterval?: BillingInterval
       }
     | null
     | undefined,
@@ -809,7 +912,7 @@ export function getTrialNotice(
   const end = new Date(subscription.currentPeriodEnd)
   if (isContractedTrial(subscription) && subscription.plan) {
     const { chargeReais } = planChargeFromSubscription(
-      getPlan(subscription.plan),
+      billedPlan(getPlan(subscription.plan), subscription.billingInterval),
       subscription.monthlyDiscountReais
     )
     return `Primeira cobrança de ${formatPlanPrice(chargeReais)} em ${end.toLocaleDateString('pt-BR')}`

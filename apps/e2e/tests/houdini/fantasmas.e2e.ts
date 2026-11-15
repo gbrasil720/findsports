@@ -41,7 +41,6 @@ async function barWithUnregisteredGames(games: number) {
       id: reservationId,
       event_id: eventId,
       user_id: fan.id,
-      party_size: 1,
       status: 'confirmed'
     })
     await insert('reservation_code', {
@@ -102,7 +101,6 @@ test('jogo com códigos e nenhum validado aparece sem resposta do torcedor', asy
       id: reservationId,
       event_id: eventId,
       user_id: fan.id,
-      party_size: 1,
       status: 'confirmed'
     })
     await insert('reservation_code', {

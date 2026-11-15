@@ -26,6 +26,7 @@ import { adminRouteRefusal } from './admin-guard'
 import { isLoggedAdminPath, logAdminAction, previousRole } from './admin-log'
 import { runInBackground } from './background'
 import {
+  blocksCardOverPix,
   blocksNewCheckout,
   canAccessPubBilling,
   requiresPubBillingAccess
@@ -43,7 +44,7 @@ import { sessionTokenGuard } from './session-token'
 import { startCookies } from './start-cookies'
 import { checkoutParamsFor } from './stripe-checkout'
 import { stripeClient } from './stripe-client'
-import { STRIPE_PLANS } from './stripe-plan'
+import { planForLookupKey, STRIPE_PLANS } from './stripe-plan'
 import { syncStripeEvent } from './stripe-sync'
 import { APP_SCHEME, buildTrustedOrigins } from './trusted-origins'
 import { publicEmailUrl, sendVerificationEmail } from './verification-email'
@@ -193,6 +194,13 @@ export function createAuth() {
               message:
                 'Seu plano está com pagamento pendente. Regularize a assinatura em “Assinatura e pagamentos” antes de contratar de novo.',
               code: 'SUBSCRIPTION_PAST_DUE'
+            })
+          }
+          if (blocksCardOverPix(ownerBar?.subscription ?? null)) {
+            throw new APIError('CONFLICT', {
+              message:
+                'Sua assinatura é no Pix: passe para o cartão pela tela de planos.',
+              code: 'PIX_SWITCH_UNAVAILABLE'
             })
           }
         }
@@ -410,11 +418,21 @@ export function createAuth() {
           enabled: true,
           plans: STRIPE_PLANS,
           requireEmailVerification: true,
-          getCheckoutSessionParams: async ({ user, subscription }) => ({
+          // `annual` é o do pedido (`subscription.upgrade`): o cupom de
+          // fundador é só do mensal (WEB-442).
+          getCheckoutSessionParams: async (
+            { user, subscription, plan },
+            _req,
+            ctx
+          ) => ({
             params: await checkoutParamsFor(
               user,
               subscription.stripeCustomerId,
-              stripeClient
+              stripeClient,
+              {
+                annual: ctx?.body?.annual === true,
+                plan: planForLookupKey(plan.lookupKey) ?? undefined
+              }
             )
           })
         }

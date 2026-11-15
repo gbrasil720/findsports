@@ -2,9 +2,12 @@ import { describe, expect, test } from 'bun:test'
 
 import { TERMOS_DE_USO } from '@findsports_oficial/legal/termos-de-uso'
 import {
+  annualDeal,
+  billedPlan,
   earnsDowngradeCredit,
   FOUNDER_DISCOUNT,
   formatPlanChargeLine,
+  formatReais,
   founderCouponFromQuery,
   getCommonPlanItems,
   getDefaultPlanSelection,
@@ -24,6 +27,7 @@ import {
   parsePlanChange,
   parsePlanOrigin,
   planChangeReturnUrl,
+  planChargeForAnnual,
   planChargeForCurrentPlan,
   planChargeForShowcase,
   planChargeFromSubscription
@@ -711,11 +715,27 @@ describe('getPlanHeader', () => {
   test('sem cobrança no Stripe não há crédito a prometer', () => {
     const contractedTrial = { ...liveTrial, externalSubscriptionId: 'sub_1' }
     const manual = { ...paid, externalSubscriptionId: null }
-    for (const subscription of [contractedTrial, manual]) {
+    const pix = { ...paid, provider: 'abacatepay' }
+    for (const subscription of [contractedTrial, manual, pix]) {
       expect(earnsDowngradeCredit(subscription)).toBe(false)
       expect(getPlanHeader(subscription).kicker).toBe('Plano e cobrança')
       expect(getPlanHeader(subscription).text).not.toContain('crédito')
     }
+  })
+
+  // WEB-536: no Pix não há crédito proporcional; subir no cartão cobra a
+  // diferença até o fim do mês pago, e no Pix a troca é autorização nova.
+  test('quem paga no Pix lê a regra da troca, não o proporcional', () => {
+    const pix = {
+      ...paid,
+      provider: 'abacatepay',
+      currentPeriodEnd: '2026-12-02T15:00:00.000Z'
+    }
+    const header = getPlanHeader(pix)
+    expect(header.text).toBe(
+      'Pago no Pix até 02/12. Para subir de plano no cartão, a diferença até 02/12 sai hoje; no Pix, a troca pede uma nova autorização. Passar para o cartão sem subir não cobra nada até 02/12.'
+    )
+    expect(header.text).not.toContain('proporcional')
   })
 
   // WEB-335: com data para acabar, o cabeçalho não convida a trocar de plano.
@@ -864,5 +884,103 @@ describe('getPlanCardLists', () => {
         expect(shown.has(label)).toBe(true)
       }
     }
+  })
+})
+
+// WEB-442: anual = 10 meses, com o desconto de fundador também (14/11/2026).
+describe('plano anual (WEB-442)', () => {
+  test('o anual é 10 meses da tabela e 10 do fundador, por ano', () => {
+    expect(billedPlan(getPlan('pro'), 'year')).toMatchObject({
+      tablePrice: 1470,
+      founderPrice: 1190,
+      period: '/ano'
+    })
+    expect(billedPlan(getPlan('pro'), 'month')).toBe(getPlan('pro'))
+    expect(billedPlan(getPlan('pro'))).toBe(getPlan('pro'))
+  })
+
+  test('vitrine do anual risca 12 meses do mensal', () => {
+    const charge = planChargeForAnnual(annualDeal(getPlan('elite'), false))
+    expect(charge).toEqual({ chargeReais: 2970, listReais: 3564, hint: null })
+    expect(formatPlanChargeLine(charge, '/ano')).toBe(
+      'R$ 2.970/ano (tabela cheia R$ 3.564/ano)'
+    )
+    expect(planChargeForAnnual(annualDeal(getPlan('elite'), true))).toEqual({
+      chargeReais: 2690,
+      listReais: 3228,
+      hint: null
+    })
+  })
+
+  test('anual de fundador no card do plano: o ano menos os R$ 280 da fatura', () => {
+    expect(
+      planChargeForCurrentPlan(
+        billedPlan(getPlan('pro'), 'year'),
+        { externalSubscriptionId: 'sub_1', monthlyDiscountReais: 280 },
+        true
+      )
+    ).toMatchObject({ chargeReais: 1190, listReais: 1470 })
+  })
+
+  test('assinatura anual no card do plano: o valor do ano, sem riscar', () => {
+    const plan = billedPlan(getPlan('starter'), 'year')
+    expect(
+      planChargeForCurrentPlan(
+        plan,
+        { externalSubscriptionId: 'sub_1', monthlyDiscountReais: 0 },
+        true
+      )
+    ).toEqual({ chargeReais: 970, listReais: null, hint: null })
+  })
+
+  test('contratou o anual no teste: a primeira cobrança é a do ano', () => {
+    const now = new Date('2026-10-09T12:00:00Z')
+    expect(
+      getTrialNotice(
+        {
+          status: 'trialing',
+          standing: 'current',
+          currentPeriodEnd: '2026-12-01T12:00:00Z',
+          plan: 'pro',
+          externalSubscriptionId: 'sub_1',
+          monthlyDiscountReais: 0,
+          billingInterval: 'year'
+        },
+        now
+      )
+    ).toBe('Primeira cobrança de R$ 1.470 em 01/12/2026')
+  })
+})
+
+// O anual sempre economiza dois meses do mensal que o bar pagaria (WEB-442).
+describe('conta do anual contra o mensal (WEB-442)', () => {
+  test('sem fundador: 10 meses de tabela', () => {
+    expect(
+      PLAN_CATALOG.map((plan) => annualDeal(plan, false).savingsReais)
+    ).toEqual([194, 294, 594])
+    expect(annualDeal(getPlan('pro'), false)).toEqual({
+      yearReais: 1470,
+      perMonthReais: 122.5,
+      monthlyReais: 147,
+      monthlyYearReais: 1764,
+      savingsReais: 294,
+      founder: false
+    })
+  })
+
+  test('com fundador: 10 meses do mensal de fundador', () => {
+    expect(
+      PLAN_CATALOG.map((plan) => annualDeal(plan, true).yearReais)
+    ).toEqual([690, 1190, 2690])
+    expect(
+      PLAN_CATALOG.map((plan) => annualDeal(plan, true).savingsReais)
+    ).toEqual([138, 238, 538])
+    expect(annualDeal(getPlan('pro'), true).perMonthReais).toBe(99.17)
+  })
+
+  test('reais com centavos só quando há', () => {
+    expect(formatReais(122.5)).toBe('R$ 122,50')
+    expect(formatReais(80.83)).toBe('R$ 80,83')
+    expect(formatReais(1470)).toBe('R$ 1.470')
   })
 })

@@ -4,7 +4,8 @@ import {
   brasiliaDays,
   conversionDiff,
   monthProjection,
-  periodStart
+  periodStart,
+  recommenderStops
 } from './report'
 
 describe('tela IA do Houdini', () => {
@@ -75,5 +76,56 @@ describe('tela IA do Houdini', () => {
       { conversations: 100, conversions: 22 }
     )
     expect(tie).toMatchObject({ enough: true, significant: false })
+  })
+})
+
+describe('parada do teste do recomendador', () => {
+  const arm = (
+    rounds: number,
+    fellBack: number,
+    shown: number,
+    passed: number
+  ) => ({
+    rounds,
+    fellBack,
+    shown,
+    passed
+  })
+
+  it('sem dado, nada decidido além do teto', () => {
+    const stops = recommenderStops(arm(0, 0, 0, 0), arm(0, 0, 0, 0), false)
+    expect(stops.map((s) => s.tripped)).toEqual([null, null, false])
+  })
+
+  it('queda para o controle acima de 2% para o C', () => {
+    const [fallback] = recommenderStops(
+      arm(100, 0, 500, 50),
+      arm(100, 3, 500, 50),
+      false
+    )
+    expect(fallback?.tripped).toBe(true)
+    expect(fallback?.value).toBeCloseTo(0.03)
+    expect(
+      recommenderStops(arm(100, 0, 500, 50), arm(100, 2, 500, 50), false)[0]
+        ?.tripped
+    ).toBe(false)
+  })
+
+  it('Passo 30% acima do A para o C', () => {
+    const pass = (passedC: number) =>
+      recommenderStops(
+        arm(100, 0, 500, 50),
+        arm(100, 0, 500, passedC),
+        false
+      )[1]
+    expect(pass(66)?.tripped).toBe(true)
+    expect(pass(65)?.tripped).toBe(false)
+    expect(pass(65)?.value).toBeCloseTo(1.3)
+  })
+
+  it('teto do mês estourado para o teste', () => {
+    expect(
+      recommenderStops(arm(1, 0, 5, 0), arm(1, 0, 5, 0), true)[2]?.tripped
+    ).toBe(true)
   })
 })

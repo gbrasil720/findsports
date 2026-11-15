@@ -57,8 +57,8 @@ insert into attendance (user_id, event_id)
 select 'am-rafael', event_id from friend_call where id = 'am-call-rafael';
 
 -- E teve o código validado no último jogo que já passou lá.
-insert into reservation (id, event_id, user_id, party_size, status, created_at)
-select 'am-res-marina', e.id, 'am-marina', 1, 'confirmed', e.starts_at - interval '1 day'
+insert into reservation (id, event_id, user_id, status, created_at)
+select 'am-res-marina', e.id, 'am-marina', 'confirmed', e.starts_at - interval '1 day'
 from event e
 where e.bar_id = 'b0b0b0b0-0000-4000-8000-000000000e01' and e.starts_at < now() at time zone 'UTC'
 order by e.starts_at desc limit 1;
@@ -70,8 +70,8 @@ select gen_random_uuid()::text, 'am-code-marina',
 where exists (select 1 from reservation_code where id = 'am-code-marina');
 
 -- E nos jogos de Casa 92 e Aspicuelta 40 das conquistas, se existirem.
-insert into reservation (id, event_id, user_id, party_size, status, created_at)
-select 'am-res-marina-' || e.id, e.id, 'am-marina', 1, 'confirmed', e.starts_at - interval '1 day'
+insert into reservation (id, event_id, user_id, status, created_at)
+select 'am-res-marina-' || e.id, e.id, 'am-marina', 'confirmed', e.starts_at - interval '1 day'
 from event e join bar b on b.id = e.bar_id
 where b.id like 'c0c0c0c0-%' and b.name in ('Casa 92', 'Aspicuelta 40');
 insert into reservation_code (id, code, reservation_id, max_uses)

@@ -18,9 +18,14 @@ export { queryClient }
 const url = `${env.EXPO_PUBLIC_SERVER_URL}/api/trpc`
 // A sessão do app vive no SecureStore, não em cookie do sistema: o cliente do
 // better-auth devolve o cabeçalho pronto.
+// `x-onside-client`: o servidor só põe o app no teste A × C do recomendador
+// (`packages/api/src/lib/client-app.ts`); o web fica no controle.
 const headers = () => {
   const cookie = authClient.getCookie()
-  return cookie ? { Cookie: cookie } : {}
+  return {
+    'x-onside-client': 'app',
+    ...(cookie ? { Cookie: cookie } : {})
+  }
 }
 
 export const trpcClient = createTRPCClient<AppRouter>({

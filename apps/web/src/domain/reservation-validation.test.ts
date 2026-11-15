@@ -47,7 +47,7 @@ describe('getWindowMessage', () => {
 describe('getArrivalBlocker', () => {
   const during = at('2026-09-12T20:00:00.000Z')
   const blocker = (
-    reservationStatus: 'pending' | 'confirmed' | 'declined' | 'cancelled',
+    reservationStatus: 'confirmed' | 'cancelled',
     now = during
   ) => getArrivalBlocker({ reservationStatus, window }, now)
 
@@ -55,11 +55,7 @@ describe('getArrivalBlocker', () => {
     expect(blocker('confirmed')).toBeNull()
   })
 
-  test('cada estado não confirmado tem a própria explicação', () => {
-    expect(blocker('pending')?.title).toBe('Este código é de um pedido antigo')
-    expect(blocker('declined')?.title).toBe(
-      'Este código é de um pedido recusado'
-    )
+  test('código desmarcado explica', () => {
     expect(blocker('cancelled')?.title).toBe('O torcedor desmarcou')
   })
 
@@ -73,8 +69,8 @@ describe('getArrivalBlocker', () => {
   })
 
   test('o estado da reserva vem antes da janela', () => {
-    expect(blocker('pending', at(window.closesAt) + 1)?.title).toBe(
-      'Este código é de um pedido antigo'
+    expect(blocker('cancelled', at(window.closesAt) + 1)?.title).toBe(
+      'O torcedor desmarcou'
     )
   })
 })

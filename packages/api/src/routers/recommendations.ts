@@ -12,6 +12,7 @@ import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
 import { fanProcedure, pubProcedure, router } from '../index'
+import { fromApp } from '../lib/client-app'
 import { participantNames } from '../lib/game-participants'
 import { loadRecommendationCandidates } from '../lib/recommendations/load-candidates'
 import {
@@ -232,7 +233,8 @@ export const recommendationsRouter = router({
         userId: ctx.session.user.id,
         userRadiusKm: ctx.session.user.searchRadiusKm,
         where: input.where,
-        now
+        now,
+        aiEligible: fromApp(ctx.headers)
       })
       return {
         userRadiusKm: clampSearchRadiusKm(ctx.session.user.searchRadiusKm, 3),

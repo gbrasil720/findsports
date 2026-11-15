@@ -11,9 +11,12 @@ import {
 import { liveStripeSubscriptionId } from '@findsports_oficial/auth/account-deletion-policy'
 import { pixExternalId } from '@findsports_oficial/auth/pix-sync'
 import {
+  annualPlansAvailable,
+  CardFromPixRefusal,
   founderCouponUsable,
   pixFounderSeatAvailable,
-  pushInvoiceDetails
+  pushInvoiceDetails,
+  startCardFromPix
 } from '@findsports_oficial/auth/stripe-checkout'
 import { stripeClient } from '@findsports_oficial/auth/stripe-client'
 import { logBillingError } from '@findsports_oficial/auth/stripe-sync'
@@ -34,7 +37,7 @@ import {
   getEventStartProblem
 } from '@findsports_oficial/db/event-window'
 import { HOUSE_OFFER_MAX_LENGTH } from '@findsports_oficial/db/house-offer'
-import { user } from '@findsports_oficial/db/schema/auth'
+import { stripeSubscription, user } from '@findsports_oficial/db/schema/auth'
 import {
   bar,
   barPhoto,
@@ -79,10 +82,12 @@ import {
 } from '../lib/bar-profile-validation'
 import { readBillingBalance } from '../lib/billing-balance'
 import { readInvoices } from '../lib/billing-invoices'
+import { applyMonthGoingEntitlements } from '../lib/commercial-analytics/entitlements'
 import {
   canCancelSubscription,
   getCurrentPlan,
   getSubscriptionStanding,
+  issuesCounterCode,
   type SubscriptionForPlan
 } from '../lib/current-plan'
 import { getEventCreationPolicy } from '../lib/event-creation-policy'
@@ -463,6 +468,40 @@ async function replacePendingPixCheckout(barId: string, checkoutId: string) {
       message: error instanceof Error ? error.message : String(error)
     })
   )
+}
+
+/**
+ * Mensal ou anual (WEB-442). No cartão, o que o plugin do Stripe grava em
+ * `stripe_subscription` a partir do preço; no Pix e no Pix escolhido no teste
+ * do cadastro, `subscription.billing_interval` (Pix anual). O teste sem Pix
+ * escolhido é mensal.
+ */
+async function readBillingInterval(current: {
+  provider: string | null
+  externalSubscriptionId: string | null
+  billingInterval: 'month' | 'year'
+  pixAfterTrialAt: Date | null
+}): Promise<'month' | 'year'> {
+  if (
+    current.provider === 'abacatepay' ||
+    (!current.externalSubscriptionId && current.pixAfterTrialAt)
+  ) {
+    return current.billingInterval
+  }
+  if (current.provider !== 'stripe' || !current.externalSubscriptionId) {
+    return 'month'
+  }
+  const [row] = await db
+    .select({ billingInterval: stripeSubscription.billingInterval })
+    .from(stripeSubscription)
+    .where(
+      eq(
+        stripeSubscription.stripeSubscriptionId,
+        current.externalSubscriptionId
+      )
+    )
+    .limit(1)
+  return row?.billingInterval === 'year' ? 'year' : 'month'
 }
 
 async function getOwnBar(userId: string) {
@@ -1087,7 +1126,8 @@ export const pubRouter = router({
     return readEventNumbers({
       barId: existingBar.id,
       city: existingBar.city,
-      neighborhood: existingBar.neighborhood
+      neighborhood: existingBar.neighborhood,
+      elite: issuesCounterCode(existingBar.subscription)
     })
   }),
 
@@ -1431,6 +1471,14 @@ export const pubRouter = router({
     }
   }),
 
+  /**
+   * Plano anual à venda no cartão (WEB-442): só com os três preços anuais na
+   * conta do Stripe. Consulta o Stripe: sai em requisição própria.
+   */
+  getAnnualPlansAvailable: pubProcedure.query(async () => ({
+    available: await annualPlansAvailable(stripeClient)
+  })),
+
   /** Formas de pagar além do cartão: o Pix só aparece com a chave no Worker. */
   getPaymentMethods: pubProcedure.query(() => ({ pix: pixEnabled() })),
 
@@ -1442,7 +1490,12 @@ export const pubRouter = router({
    * como em `changeTrialPlan`.
    */
   schedulePixAfterTrial: pubProcedure
-    .input(z.object({ plan: z.enum(subscriptionPlanEnum.enumValues) }))
+    .input(
+      z.object({
+        plan: z.enum(subscriptionPlanEnum.enumValues),
+        annual: z.boolean().default(false)
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       if (!pixEnabled()) {
         throw new TRPCError({
@@ -1453,7 +1506,12 @@ export const pubRouter = router({
       const existingBar = await getOwnBar(ctx.session.user.id)
       const [row] = await db
         .update(subscription)
-        .set({ plan: input.plan, pixAfterTrialAt: sql`now()` })
+        .set({
+          plan: input.plan,
+          pixAfterTrialAt: sql`now()`,
+          // Pix anual (WEB-536): a autorização pedida no fim do teste é a do ano.
+          billingInterval: input.annual ? 'year' : 'month'
+        })
         .where(
           and(
             eq(subscription.barId, existingBar.id),
@@ -1487,8 +1545,51 @@ export const pubRouter = router({
    * do produto (`*_founder_monthly`), porque o cupom não vale no Pix, e as
    * vagas são as mesmas do cartão (`founderCouponUsable`).
    */
+  /**
+   * Do Pix para o cartão (WEB-536): checkout do Stripe com a diferença da
+   * subida cobrada na hora; recusa do cartão fica na tela do Stripe e não
+   * muda nada (`startCardFromPix`).
+   */
+  startCardFromPix: pubProcedure
+    .input(
+      z.object({
+        plan: z.enum(['starter', 'pro', 'elite']),
+        annual: z.boolean().default(false)
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await startCardFromPix(
+          ctx.session.user,
+          input,
+          stripeClient,
+          getPublicAppUrl()
+        )
+      } catch (error) {
+        if (error instanceof CardFromPixRefusal) {
+          throw new TRPCError({
+            code: 'PRECONDITION_FAILED',
+            message: error.message
+          })
+        }
+        logBillingError('stripe_card_from_pix_failed', {
+          userId: ctx.session.user.id,
+          message: error instanceof Error ? error.message : String(error)
+        })
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Não foi possível abrir o cartão agora. Tente de novo.'
+        })
+      }
+    }),
+
   startPixCheckout: pubProcedure
-    .input(z.object({ plan: z.enum(['starter', 'pro', 'elite']) }))
+    .input(
+      z.object({
+        plan: z.enum(['starter', 'pro', 'elite']),
+        annual: z.boolean().default(false)
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       if (!pixEnabled()) {
         throw new TRPCError({
@@ -1514,6 +1615,7 @@ export const pubRouter = router({
         current?.provider === 'abacatepay' &&
         standing === 'current' &&
         current.plan === input.plan &&
+        current.billingInterval === (input.annual ? 'year' : 'month') &&
         !current.cancelAt
       ) {
         throw new TRPCError({
@@ -1548,7 +1650,9 @@ export const pubRouter = router({
       })
       try {
         const [productId, customerId] = await Promise.all([
-          productIdFor(`${input.plan}_${founder ? 'founder_' : ''}monthly`),
+          productIdFor(
+            `${input.plan}_${founder ? 'founder_' : ''}${input.annual ? 'yearly' : 'monthly'}`
+          ),
           upsertCustomer({
             email: ctx.session.user.email,
             name: invoice?.legalName ?? ctx.session.user.name
@@ -1557,7 +1661,12 @@ export const pubRouter = router({
         const checkout = await createPixSubscriptionCheckout({
           productId,
           customerId,
-          externalId: pixExternalId(ownBar.id, input.plan, founder),
+          externalId: pixExternalId(
+            ownBar.id,
+            input.plan,
+            founder,
+            input.annual
+          ),
           completionUrl: new URL('/plan/confirmed?pix=1', app).href,
           returnUrl: new URL('/plan', app).href
         })
@@ -1579,11 +1688,16 @@ export const pubRouter = router({
   // Retorna o plano e status atual da subscription do bar
   /**
    * O mês do bar em números, para a tela do plano no app: pessoas que
-   * marcaram presença e códigos validados (`lib/month-proof.ts`).
+   * marcaram presença e códigos validados (`lib/month-proof.ts`). O que o
+   * plano não vê vem nulo (WEB-522: presenças em todo plano vigente, códigos
+   * só no Elite, nada no plano parado).
    */
   getMonthProof: pubProcedure.query(async ({ ctx }) => {
     const existingBar = await getOwnBar(ctx.session.user.id)
-    return readMonthProof(existingBar.id)
+    return applyMonthGoingEntitlements(
+      await readMonthProof(existingBar.id),
+      getCurrentPlan(existingBar.subscription ?? null)
+    )
   }),
 
   getMySubscription: pubProcedure.query(async ({ ctx }) => {
@@ -1591,12 +1705,14 @@ export const pubRouter = router({
 
     const existingBar = await getOwnBar(userId)
     const now = new Date()
+    const current = existingBar.subscription
 
-    return existingBar.subscription
+    return current
       ? {
-          ...existingBar.subscription,
-          currentPlan: getCurrentPlan(existingBar.subscription, now),
-          standing: getSubscriptionStanding(existingBar.subscription, now)
+          ...current,
+          currentPlan: getCurrentPlan(current, now),
+          standing: getSubscriptionStanding(current, now),
+          billingInterval: await readBillingInterval(current)
         }
       : null
   }),

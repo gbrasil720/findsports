@@ -285,13 +285,12 @@ integrationTest(
         }))
       )
       .returning({ id: event.id })
-    const visit = async (userId: string, game: number, uses: number) => {
+    const visit = async (userId: string, game: number) => {
       const [res] = await db
         .insert(reservation)
         .values({
           eventId: games[game]?.id ?? '',
           userId,
-          partySize: uses,
           status: 'confirmed'
         })
         .returning({ id: reservation.id })
@@ -300,24 +299,20 @@ integrationTest(
         .values({
           code: `PF${crypto.randomUUID().replaceAll('-', '').slice(0, 6).toUpperCase()}`,
           reservationId: res?.id ?? '',
-          maxUses: uses
+          maxUses: 1
         })
         .returning({ id: reservationCode.id })
-      await db.insert(reservationCodeUse).values(
-        Array.from({ length: uses }, () => ({
-          id: crypto.randomUUID(),
-          codeId: code?.id ?? '',
-          validatedByUserId: owners[game] ?? ''
-        }))
-      )
+      await db.insert(reservationCodeUse).values({
+        codeId: code?.id ?? '',
+        validatedByUserId: owners[game] ?? ''
+      })
     }
     try {
-      // Ana levou duas pessoas no jogo do bar 1: três chegadas, um jogo.
-      await visit(fans.ana, 0, 3)
-      await visit(fans.ana, 1, 1)
-      await visit(fans.ana, 2, 1)
-      await visit(fans.beto, 0, 1)
-      await visit(fans.beto, 2, 1)
+      await visit(fans.ana, 0)
+      await visit(fans.ana, 1)
+      await visit(fans.ana, 2)
+      await visit(fans.beto, 0)
+      await visit(fans.beto, 2)
 
       const as = (id: string) => appRouter.createCaller(contextFor(id, 'fan'))
       const profile = await as(fans.beto).friends.profile({ userId: fans.ana })

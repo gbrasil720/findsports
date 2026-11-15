@@ -8,6 +8,7 @@ import {
   subscriptionCancelReason
 } from '@findsports_oficial/db/schema/platform'
 import type Stripe from 'stripe'
+import { cancelSubscriptionIfActive } from './abacatepay'
 import { monthlyDiscountReaisFromStripe } from './stripe-discount'
 import { planForLookupKey } from './stripe-plan'
 
@@ -137,7 +138,8 @@ function scheduledCancelOf(
  * o Stripe reenvia.
  */
 export async function applyStripeSubscription(
-  stripeSubscription: Stripe.Subscription
+  stripeSubscription: Stripe.Subscription,
+  client?: StripeBilling
 ): Promise<string | null> {
   const status = localStatusFor(stripeSubscription.status)
   if (!status) return null
@@ -177,6 +179,48 @@ export async function applyStripeSubscription(
     return null
   }
 
+  // Do Pix para o cartão (WEB-536), nesta ordem: a diferença da subida paga,
+  // o cupom de fundador, o Pix cancelado e só então a linha do Stripe. Sem a
+  // diferença paga nada muda: a assinatura do cartão é cancelada e o bar
+  // segue no Pix. Falha na AbacatePay lança, o Stripe reenvia, e a linha
+  // segue com o Pix (bar no ar, plano pago) e o id para tentar de novo. Já
+  // cancelado lá conta como feito: repetir não quebra. Vale para o primeiro
+  // evento que chegar, porque depois dele a linha é do Stripe.
+  if (
+    !offAir &&
+    existing?.provider === 'abacatepay' &&
+    existing.externalSubscriptionId &&
+    existing.status !== 'cancelled'
+  ) {
+    if (!upgradePaid(stripeSubscription)) {
+      logBillingError('pix_upgrade_unpaid', {
+        barId: foundBar.id,
+        subscriptionId: stripeSubscription.id
+      })
+      await client?.subscriptions
+        .cancel(stripeSubscription.id)
+        .catch((error: unknown) =>
+          logBillingError('pix_upgrade_unpaid_cancel_failed', {
+            subscriptionId: stripeSubscription.id,
+            message: error instanceof Error ? error.message : String(error)
+          })
+        )
+      return null
+    }
+    if (client) {
+      stripeSubscription = await applyUpgradeCoupon(stripeSubscription, client)
+    }
+    await cancelSubscriptionIfActive(existing.externalSubscriptionId)
+    console.log(
+      JSON.stringify({
+        evt: 'pix_replaced_by_card',
+        barId: foundBar.id,
+        pixSubscriptionId: existing.externalSubscriptionId,
+        subscriptionId: stripeSubscription.id
+      })
+    )
+  }
+
   const values = {
     status,
     plan,
@@ -184,7 +228,12 @@ export async function applyStripeSubscription(
     externalSubscriptionId: stripeSubscription.id,
     currentPeriodEnd: new Date(item.current_period_end * 1000),
     cancelAt: scheduledCancelOf(stripeSubscription, item.current_period_end),
-    monthlyDiscountReais: monthlyDiscountReaisFromStripe(stripeSubscription)
+    monthlyDiscountReais: monthlyDiscountReaisFromStripe(stripeSubscription),
+    // A tela lê o do cartão em `stripe_subscription`; aqui fica coerente.
+    billingInterval:
+      item.price.recurring?.interval === 'year'
+        ? ('year' as const)
+        : ('month' as const)
   }
   await db
     .insert(subscription)
@@ -192,6 +241,59 @@ export async function applyStripeSubscription(
     .onConflictDoUpdate({ target: subscription.barId, set: values })
   await db.update(bar).set({ isActive: !offAir }).where(eq(bar.id, foundBar.id))
   return foundBar.id
+}
+
+type StripeBilling = Pick<Stripe, 'subscriptions'>
+
+/**
+ * A diferença da subida do Pix para o cartão (WEB-536) foi paga: ela é um item
+ * avulso da sessão de checkout (`startCardFromPix`), cobrado na hora pelo
+ * próprio Stripe na primeira fatura. Pela tela do Stripe, cartão recusado não
+ * cria assinatura; isto cobre a que nascesse sem a fatura paga.
+ */
+function upgradePaid(stripeSubscription: Stripe.Subscription): boolean {
+  const cents = Number(stripeSubscription.metadata?.pixUpgradeCents ?? 0)
+  if (!(cents > 0)) return true
+  const invoice = stripeSubscription.latest_invoice
+  return (
+    typeof invoice === 'object' &&
+    invoice !== null &&
+    invoice.status === 'paid' &&
+    invoice.amount_paid >= cents
+  )
+}
+
+/**
+ * Cupom de fundador da subida (WEB-536): a sessão com a diferença vai sem
+ * cupom, que tiraria o desconto do item avulso, e o cupom entra aqui, antes da
+ * primeira mensalidade. Já aplicado, não faz nada; cupom que deixou de valer
+ * só vai ao log, e a assinatura segue a preço de tabela.
+ */
+async function applyUpgradeCoupon(
+  stripeSubscription: Stripe.Subscription,
+  client: StripeBilling
+): Promise<Stripe.Subscription> {
+  const coupon = stripeSubscription.metadata?.founderCoupon
+  if (!coupon || (stripeSubscription.discounts?.length ?? 0) > 0) {
+    return stripeSubscription
+  }
+  try {
+    return await client.subscriptions.update(
+      stripeSubscription.id,
+      { discounts: [{ coupon }], expand: ['discounts.source.coupon'] },
+      { idempotencyKey: `pix-founder-${stripeSubscription.id}` }
+    )
+  } catch (error) {
+    if ((error as { type?: string }).type !== 'StripeInvalidRequestError') {
+      throw error
+    }
+    logBillingError('pix_upgrade_coupon_refused', {
+      subscriptionId: stripeSubscription.id,
+      coupon,
+      message: error instanceof Error ? error.message : String(error)
+    })
+    return stripeSubscription
+  }
 }
 
 /** O motivo vale para o cancelamento pedido até um dia depois de escolhido. */
@@ -382,9 +484,9 @@ export async function syncStripeEvent(event: Stripe.Event, client: Stripe) {
   const subscriptionId = subscriptionIdOf(event)
   if (!subscriptionId) return
   const current = await client.subscriptions.retrieve(subscriptionId, {
-    expand: ['discounts.source.coupon']
+    expand: ['discounts.source.coupon', 'latest_invoice']
   })
-  const barId = await applyStripeSubscription(current)
+  const barId = await applyStripeSubscription(current, client)
   if (barId) await sendCancelReason(current, barId, client)
   if (event.type === 'checkout.session.completed') {
     await restoreCustomerNames(event.data.object, client)

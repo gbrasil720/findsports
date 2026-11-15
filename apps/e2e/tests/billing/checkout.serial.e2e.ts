@@ -6,6 +6,7 @@ import { query } from '../../fixtures/db'
 import { createPub, inDays } from '../../fixtures/pubs'
 import {
   sendStripeWebhook,
+  setAnnualPrices,
   setFounderCoupon,
   stripeSubscription
 } from '../../fixtures/stripe'
@@ -14,7 +15,18 @@ import { expect, test } from '../../fixtures/test'
 // Serial porque troca o que o stub do Stripe diz do cupom de fundador, que é
 // global: os testes paralelos contam com o cupom valendo.
 
-test.afterEach(({ request }) => setFounderCoupon(request, 'valid'))
+test.afterEach(async ({ request }) => {
+  await setFounderCoupon(request, 'valid')
+  await setAnnualPrices(request, false)
+})
+
+/** Com o Pix ligado, contratar passa por "Como você quer pagar?": cartão. */
+async function continueWithCard(page: Page) {
+  await page
+    .getByRole('dialog', { name: 'Como você quer pagar?' })
+    .getByRole('button', { name: 'Continuar no cartão' })
+    .click()
+}
 
 /**
  * Corpo da sessão de checkout que o app pediu ao Stripe para este dono. O
@@ -59,6 +71,7 @@ test('trial vencido sem assinatura no provedor: o botão padrão contrata o plan
 
   // O plano do teste vencido é o que o cartão escuro e a faixa contratam.
   await page.getByRole('button', { name: 'Contratar o Elite' }).last().click()
+  await continueWithCard(page)
   await page.waitForURL(`${STUB_URL}/stripe/checkout/**`)
 
   const session = await checkoutSessionOf(page, user.id)
@@ -88,6 +101,7 @@ test('o clique abre a sessão e redireciona para o Stripe, com o cupom de fundad
 
   // Cada cartão contrata o próprio plano.
   await page.getByRole('button', { name: 'Contratar o Elite' }).click()
+  await continueWithCard(page)
 
   await page.waitForURL(`${STUB_URL}/stripe/checkout/**`)
   await expect(page).toHaveTitle('Stripe (stub)')
@@ -155,6 +169,7 @@ test('teste grátis em vigor: contrata já, e a primeira cobrança fica para o f
   // No celular a versão longa do subtítulo fica oculta; o texto continua na página.
   await expect(page.getByText('O teste grátis não pede cartão.')).toBeAttached()
   await page.getByRole('button', { name: 'Contratar o Elite' }).click()
+  await continueWithCard(page)
   await page.waitForURL(`${STUB_URL}/stripe/checkout/**`)
 
   const session = await checkoutSessionOf(page, user.id)
@@ -189,6 +204,7 @@ for (const [state, caso] of [
     await expect(page.getByText('R$ 269')).toHaveCount(0)
 
     await page.getByRole('button', { name: 'Contratar o Pro' }).first().click()
+    await continueWithCard(page)
     await page.waitForURL(`${STUB_URL}/stripe/checkout/**`)
     const session = await checkoutSessionOf(page, user.id)
     expect(session).toMatchObject({
@@ -226,6 +242,7 @@ test('checkout concluído: o bar fica ativo no plano pago, e contratar de novo v
   await signIn(page, user)
   await page.goto('/plan')
   await page.getByRole('button', { name: 'Contratar o Pro' }).first().click()
+  await continueWithCard(page)
   await page.waitForURL(`${STUB_URL}/stripe/checkout/**`)
   const session = await checkoutSessionOf(page, user.id)
   if (!session) throw new Error('sessão de checkout não foi criada')
@@ -367,4 +384,143 @@ test('/admin/billing: com o Stripe sem responder ao cupom, o card do plano do tr
   const currentPlan = page.getByRole('region', { name: 'Seu plano' })
   await expect(currentPlan).toContainText('R$ 269', { timeout: 15_000 })
   await expect(currentPlan).not.toContainText('Carregando preço')
+})
+
+// WEB-442: anual = 10 meses, no cartão, com o desconto de fundador pelo cupom
+// do anual (dono, 14/11/2026); o teste do cadastro vale igual. O preço anual
+// vira o mesmo plano na nossa tabela.
+test('anual no teste grátis: checkout com o cupom de fundador do anual e a mesma primeira cobrança, e o painel diz o valor do ano (WEB-442)', async ({
+  page,
+  request
+}) => {
+  await setAnnualPrices(request, true)
+  const trialEnd = inDays(20)
+  const { user, barId } = await createPub({
+    subscription: {
+      plan: 'pro',
+      status: 'trialing',
+      currentPeriodEnd: trialEnd
+    }
+  })
+  await signIn(page, user)
+  await page.goto('/plan')
+
+  await page
+    .getByRole('group', { name: 'Cobrança' })
+    .getByRole('button', { name: /^Anual/ })
+    .click()
+  const pro = page.getByRole('listitem', { name: 'Pro' })
+  // Fundador valendo (o padrão do stub): 10 × R$ 119, riscando 12 × R$ 119.
+  await expect(pro).toContainText('R$ 1.190')
+  await expect(pro).toContainText('R$ 1.428')
+  await expect(pro).toContainText('/ano')
+  await expect(pro).toContainText('Economize R$ 238')
+  await expect(
+    page.getByText('O teste grátis e o desconto de fundador valem nos dois.')
+  ).toBeVisible()
+  await expect(page.getByRole('listitem', { name: 'Starter' })).toContainText(
+    'Economize R$ 138'
+  )
+  await page.getByRole('button', { name: 'Contratar o Pro anual' }).click()
+  await continueWithCard(page)
+  await page.waitForURL(`${STUB_URL}/stripe/checkout/**`)
+
+  const session = await checkoutSessionOf(page, user.id)
+  if (!session) throw new Error('sessão de checkout não foi criada')
+  expect(session).toMatchObject({
+    'line_items[0][price]': 'price_e2e_pro_yearly',
+    'subscription_data[trial_end]': String(
+      Math.floor(trialEnd.getTime() / 1000)
+    )
+  })
+  expect(session['discounts[0][coupon]']).toBe('fundador_anual')
+  expect(session).not.toHaveProperty('allow_promotion_codes')
+
+  // O dono conclui o checkout: a assinatura anual, ainda no teste.
+  const subscription = stripeSubscription({
+    id: `sub_e2e_${barId}`,
+    status: 'trialing',
+    plan: 'pro',
+    interval: 'year',
+    founderDiscount: true,
+    userId: user.id,
+    customerId: session.customer,
+    currentPeriodEnd: trialEnd
+  })
+  await request.post(`${STUB_URL}/stripe/subscriptions`, { data: subscription })
+  const webhook = await sendStripeWebhook(request, {
+    id: `evt_e2e_checkout_anual_${barId}`,
+    object: 'event',
+    type: 'checkout.session.completed',
+    data: {
+      object: {
+        id: 'cs_e2e_anual',
+        object: 'checkout.session',
+        mode: 'subscription',
+        customer: session.customer,
+        subscription: subscription.id,
+        client_reference_id: user.id,
+        metadata: {
+          userId: user.id,
+          referenceId: user.id,
+          subscriptionId: session['metadata[subscriptionId]']
+        }
+      }
+    }
+  })
+  expect(webhook.ok(), await webhook.text()).toBe(true)
+
+  const [state] = await query<Record<string, unknown>>(
+    `SELECT s.status, s.plan, s.monthly_discount_reais, p.billing_interval
+       FROM subscription s
+       JOIN bar b ON b.id = s.bar_id
+       JOIN stripe_subscription p ON p.reference_id = b.user_id
+      WHERE s.bar_id = $1`,
+    [barId]
+  )
+  expect(state).toEqual({
+    status: 'trialing',
+    plan: 'pro',
+    monthly_discount_reais: 280,
+    billing_interval: 'year'
+  })
+
+  await page.goto('/admin/billing')
+  const currentPlan = page.getByRole('region', { name: 'Seu plano' })
+  await expect(currentPlan).toContainText('R$ 1.190')
+  await expect(currentPlan).toContainText('por ano')
+})
+
+test('anual sem vaga de fundador: 10 meses de tabela, sem cupom no checkout (WEB-442)', async ({
+  page,
+  request
+}) => {
+  await setAnnualPrices(request, true)
+  await setFounderCoupon(request, 'exhausted')
+  const { user } = await createPub({
+    subscription: {
+      plan: 'pro',
+      status: 'trialing',
+      currentPeriodEnd: inDays(20)
+    }
+  })
+  await signIn(page, user)
+  await page.goto('/plan')
+  await page
+    .getByRole('group', { name: 'Cobrança' })
+    .getByRole('button', { name: /^Anual/ })
+    .click()
+  const pro = page.getByRole('listitem', { name: 'Pro' })
+  await expect(pro).toContainText('R$ 1.470')
+  await expect(pro).toContainText('Economize R$ 294')
+  await expect(page.getByText('O teste grátis vale nos dois.')).toBeVisible()
+  await page.getByRole('button', { name: 'Contratar o Pro anual' }).click()
+  await continueWithCard(page)
+  await page.waitForURL(`${STUB_URL}/stripe/checkout/**`)
+  const session = await checkoutSessionOf(page, user.id)
+  expect(session).toMatchObject({
+    'line_items[0][price]': 'price_e2e_pro_yearly'
+  })
+  expect(session).not.toHaveProperty('discounts[0][coupon]')
+  expect(session).not.toHaveProperty('allow_promotion_codes')
 })

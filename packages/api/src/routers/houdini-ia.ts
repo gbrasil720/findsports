@@ -14,9 +14,12 @@ import {
   MIN_CONVERSATIONS,
   MIN_OUTCOMES,
   monthProjection,
-  periodStart
+  periodStart,
+  recommenderStops
 } from '../lib/ai/report'
+import { calledModel } from '../lib/ai/run'
 import { getAppConfig } from '../lib/app-config'
+import { visit } from '../lib/visits'
 
 /*
  * A tela "IA" do Houdini: o que os testes de IA (WEB-424) gastam e rendem,
@@ -124,6 +127,112 @@ async function readVariants(
   return new Map(result.rows.map((row) => [row.variant, row]))
 }
 
+/** Conversão do recomendador: até 7 dias depois da rodada (ticket). */
+const RECOMMENDER_WINDOW = sql`interval '7 days'`
+
+type RecommenderRow = {
+  variant: string
+  people: number
+  converted: number
+  rounds: number
+  fell_back: number
+  errors: number
+  timeouts: number
+  shown: number
+  passed: number
+  p50: number | null
+  p95: number | null
+  cost: number
+}
+
+/**
+ * Números do teste A × C do recomendador (WEB-426) no período, pelo braço
+ * sorteado. Uma rodada é a linha de `ai_run` com a rodada do dia de mesmo
+ * `run_id` (a que perdeu a corrida de duas aberturas fica fora). Converte a
+ * pessoa com Curti, rota, telefone, WhatsApp ou "Vou assistir" num card da
+ * rodada, ou visita (código validado ou check-in) num bar dela, em até 7
+ * dias. Cair no controle é erro ou demora no C.
+ */
+async function readRecommender(start: Date | null) {
+  const result = await db.execute<RecommenderRow>(sql`
+    WITH rounds AS (
+      SELECT r.*, rr.items,
+        EXISTS (
+          SELECT 1 FROM recommendation_event e
+          WHERE e.run_id = r.run_id
+            AND e.type IN ('favorite', 'directions_opened', 'phone_clicked', 'whatsapp_opened', 'attend')
+            AND e.occurred_at <= r.created_at + ${RECOMMENDER_WINDOW}
+        ) OR EXISTS (
+          SELECT 1 FROM ${visit}
+          WHERE visit.user_id = r.user_id
+            AND visit.visited_at >= r.created_at
+            AND visit.visited_at <= r.created_at + ${RECOMMENDER_WINDOW}
+            AND visit.bar_id IN (
+              SELECT item->>'barId' FROM jsonb_array_elements(rr.items) item
+            )
+        ) AS converted,
+        (
+          SELECT count(*) FROM recommendation_event e
+          WHERE e.run_id = r.run_id AND e.type = 'dismiss'
+        ) AS passes
+      FROM ai_run r
+      JOIN recommendation_round rr ON rr.run_id = r.run_id
+      WHERE r.feature = 'recommender' AND ${since(start)}
+    )
+    SELECT variant,
+      count(DISTINCT user_id)::int AS people,
+      count(DISTINCT user_id) FILTER (WHERE converted)::int AS converted,
+      count(*)::int AS rounds,
+      count(*) FILTER (WHERE status IN ('error', 'timeout'))::int AS fell_back,
+      count(*) FILTER (WHERE status = 'error')::int AS errors,
+      count(*) FILTER (WHERE status = 'timeout')::int AS timeouts,
+      coalesce(sum(jsonb_array_length(items)), 0)::int AS shown,
+      coalesce(sum(passes), 0)::int AS passed,
+      percentile_cont(0.5) WITHIN GROUP (ORDER BY latency_ms)
+        FILTER (WHERE status = 'ok' AND served_model IS NOT NULL) AS p50,
+      percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms)
+        FILTER (WHERE status = 'ok' AND served_model IS NOT NULL) AS p95,
+      coalesce(sum(cost_usd), 0)::float8 AS cost
+    FROM rounds
+    GROUP BY variant
+  `)
+  return new Map(result.rows.map((row) => [row.variant, row]))
+}
+
+/** O braço do recomendador como a tela mostra, zerado sem rodada. */
+function recommenderArm(
+  variant: 'a' | 'c',
+  weight: number,
+  row: RecommenderRow | undefined
+) {
+  const share = (n: number, of: number) => (of ? n / of : null)
+  const people = row?.people ?? 0
+  const converted = row?.converted ?? 0
+  const rounds = row?.rounds ?? 0
+  const cost = row?.cost ?? 0
+  return {
+    variant,
+    model: variant === 'a' ? null : RECOMMENDER_MODELS.c,
+    weight,
+    people,
+    converted,
+    conversionRate: share(converted, people),
+    rounds,
+    fellBack: row?.fell_back ?? 0,
+    fellBackRate: share(row?.fell_back ?? 0, rounds),
+    errors: row?.errors ?? 0,
+    timeouts: row?.timeouts ?? 0,
+    shown: row?.shown ?? 0,
+    passed: row?.passed ?? 0,
+    passRate: share(row?.passed ?? 0, row?.shown ?? 0),
+    p50Ms: row?.p50 ?? null,
+    p95Ms: row?.p95 ?? null,
+    costUsd: cost,
+    costPer1000Rounds: rounds ? (cost / rounds) * 1000 : null,
+    costPerConversion: converted ? cost / converted : null
+  }
+}
+
 /** O braço com o que a tela mostra, zerado se não rodou no período. */
 function arm(
   variant: string,
@@ -184,7 +293,7 @@ async function readLimitHits(start: Date | null, limits: AiLimits) {
   const result = await db.execute<LimitHits>(sql`
     WITH days AS (
       SELECT r.user_id, ((r.created_at AT TIME ZONE ${TZ})::date) AS day,
-        count(*) AS calls,
+        count(*) FILTER (WHERE ${calledModel}) AS calls,
         count(*) FILTER (WHERE r.feature = 'chat' AND r.useful) AS chat
       FROM ai_run r
       WHERE r.user_id IS NOT NULL AND ${since(start)}
@@ -291,8 +400,9 @@ export const houdiniIaRouter = router({
       const period: AiPeriod = input.period
       const start = periodStart(period, now)
       const w = brasiliaWindows(now)
-      const [enabled, limits, weights] = await Promise.all([
+      const [enabled, recommenderOn, limits, weights] = await Promise.all([
         getAppConfig('ai.enabled'),
+        getAppConfig('ai.recommender_enabled'),
         getAppConfig('ai.limits'),
         getAppConfig('ai.variant_weights')
       ])
@@ -310,7 +420,7 @@ export const houdiniIaRouter = router({
           WHERE created_at >= ${w.monthStart} AND created_at < ${w.nextMonth}
         `),
         readVariants('chat', start),
-        readVariants('recommender', start),
+        readRecommender(start),
         db.execute<{ n: number }>(
           sql`SELECT count(*)::int AS n FROM ai_run WHERE feature = 'recommender'`
         ),
@@ -322,14 +432,17 @@ export const houdiniIaRouter = router({
       const chatArms = (['a', 'b'] as const).map((v) =>
         arm(v, CHAT_MODELS[v], weights.chat[v], chat.get(v))
       )
-      const recArms = (['a', 'b', 'c'] as const).map((v) =>
-        arm(
-          v,
-          v === 'a' ? null : RECOMMENDER_MODELS[v],
-          weights.recommender[v],
-          recommender.get(v)
-        )
+      const recA = recommenderArm(
+        'a',
+        weights.recommender.a,
+        recommender.get('a')
       )
+      const recC = recommenderArm(
+        'c',
+        weights.recommender.c,
+        recommender.get('c')
+      )
+      const blocked = monthSpent >= limits.monthlyBudgetUsd
       const [chatA, chatB] = chatArms as [
         (typeof chatArms)[number],
         (typeof chatArms)[number]
@@ -346,7 +459,7 @@ export const houdiniIaRouter = router({
             budgetUsd: limits.monthlyBudgetUsd,
             share: monthSpent / limits.monthlyBudgetUsd,
             projectionUsd: monthProjection(monthSpent, now),
-            blocked: monthSpent >= limits.monthlyBudgetUsd
+            blocked
           },
           daily,
           hits
@@ -357,8 +470,29 @@ export const houdiniIaRouter = router({
           minimum: { conversations: MIN_CONVERSATIONS, outcomes: MIN_OUTCOMES }
         },
         recommender: {
+          enabled: recommenderOn,
           live: (recommenderEver.rows[0]?.n ?? 0) > 0,
-          arms: recArms
+          arms: [recA, recC],
+          conversion: conversionDiff(
+            { conversations: recA.people, conversions: recA.converted },
+            { conversations: recC.people, conversions: recC.converted },
+            ['A', 'C']
+          ),
+          stops: recommenderStops(
+            {
+              rounds: recA.rounds,
+              fellBack: recA.fellBack,
+              shown: recA.shown,
+              passed: recA.passed
+            },
+            {
+              rounds: recC.rounds,
+              fellBack: recC.fellBack,
+              shown: recC.shown,
+              passed: recC.passed
+            },
+            blocked
+          )
         },
         top: { ...top, limits }
       }

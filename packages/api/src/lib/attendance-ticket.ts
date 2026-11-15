@@ -12,12 +12,12 @@ import { TRPCError } from '@trpc/server'
  * torcedor mostra no balcão para ganhar a oferta da casa (decisão do dono em
  * 16/10/2026, que tirou a reserva de mesa do produto).
  *
- * ponytail: o ingresso mora nas tabelas da antiga reserva — uma linha
- * `confirmed` de uma pessoa em `reservation`, com o código em
- * `reservation_code`. Assim a validação no balcão, o desfazer, a contagem de
- * chegadas e a pergunta pós-jogo seguem sem migration. Renomear as tabelas
- * (ou pôr o código direto na presença) é a limpeza quando `party_size`,
- * `note` e os estados `pending` e `declined` atrapalharem.
+ * O ingresso mora nas tabelas da antiga reserva: uma linha `confirmed` em
+ * `reservation`, com o código de um uso em `reservation_code`. No banco e no
+ * código, "reservation" quer dizer "código de quem vai". Os nomes ficaram de
+ * propósito (WEB-401): renomear tabela, roteador ou componente mudaria o
+ * contrato do app publicado sem ganho para ninguém. O que só a reserva usava
+ * (pessoas, observação, teto, pedido pendente e recusado) saiu.
  */
 
 export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
@@ -48,7 +48,6 @@ export async function issueTicket(
     .values({
       eventId,
       userId,
-      partySize: 1,
       status: 'confirmed',
       offerSnapshot: offer
     })
