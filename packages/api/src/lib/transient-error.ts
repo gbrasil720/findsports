@@ -116,6 +116,8 @@ export function retryDelay(attempt: number): number {
  *   `NOT_FOUND`; `pub.openSubscriptionCancel` abre outra sessão no Stripe.
  * - `friends.respondCall` e `ai.confirm` recusam a segunda resposta;
  *   `onboarding.*` responde `CONFLICT`.
+ * - `friends.joinByInvite` e `friends.matchContacts` contam no limite de
+ *   tentativas (o segundo, um por hash).
  * - `reservationValidation.lookup` e `logLate` contam no limite de tentativas
  *   (e `logLate` grava outro uso); `feedback.send` manda outro e-mail;
  *   `ai.action` e `recommendations.reset` gravam outra linha.
@@ -138,10 +140,8 @@ export const IDEMPOTENT_MUTATIONS = [
   'friends.request',
   'friends.respond',
   'friends.remove',
-  'friends.joinByInvite',
   'friends.updateUsername',
   'friends.updatePrivacy',
-  'friends.matchContacts',
   'pubs.favorite',
   'pubs.unfavorite',
   'pubs.updateMyPreferences',
