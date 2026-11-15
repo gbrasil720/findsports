@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { TACA_SVG, TACA_TINTA_SVG } from './taca-still'
+import { TACA_SVG } from './taca-still'
+import { TACA_TINTA_SVG } from './taca-tinta'
 
 /** As cenas do palco que o web usa (o app tem mais). */
 export type JulesEstado =

@@ -109,9 +109,17 @@ const ink = renderAvatarSvg(SHAPES.taca as never, {
   .replace(' role="img" aria-label="Taça"', ' aria-hidden="true"')
   .replace('<title>Taça</title>', '')
   .replace(/oba-[a-z0-9]+-/g, 'oba-tinta-')
+const header =
+  '// Gerado por apps/mobile/scripts/mascot/generate.ts (a taça parada do app,\n// `apps/mobile/components/ai/mascot-still.ts`): não edite à mão.\n'
 await writeFile(
   webStill,
-  `// Gerado por apps/mobile/scripts/mascot/generate.ts (a taça parada do app,\n// \`apps/mobile/components/ai/mascot-still.ts\`): não edite à mão.\nexport const TACA_SVG = ${JSON.stringify(decorative)}\n\n/** A mesma taça em tinta, com olhos acid, para fundo acid. */\nexport const TACA_TINTA_SVG = ${JSON.stringify(ink)}\n`
+  `${header}export const TACA_SVG = ${JSON.stringify(decorative)}\n`
+)
+// Um arquivo por cor: quem só usa uma não carrega as duas (~25 KB cada).
+const webInk = join(app, '../web/src/components/jules/taca-tinta.ts')
+await writeFile(
+  webInk,
+  `${header}\n/** A taça em tinta, com olhos acid, para fundo acid. */\nexport const TACA_TINTA_SVG = ${JSON.stringify(ink)}\n`
 )
 // No formato do Biome, para o arquivo gerado não mudar a cada `bun run check`.
 Bun.spawnSync([
@@ -120,7 +128,8 @@ Bun.spawnSync([
   'format',
   '--write',
   join(app, 'components/ai/mascot-still.ts'),
-  webStill
+  webStill,
+  webInk
 ])
 console.log(
   `stage.html ${Math.round(html.length / 1024)} KB, mascot-still.ts ${Math.round(still.length / 1024)} KB`
