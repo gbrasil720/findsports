@@ -336,6 +336,36 @@ export async function readNearbyGamesToday(barId: string, now = new Date()) {
 }
 
 /**
+ * "Outros bares perto daqui": até três bares no ar, a até 5 km, o mais perto
+ * primeiro, com jogo ou sem. Existe para o rastreador: todo bar no ar linka
+ * seus vizinhos, e não só o que está sem jogo.
+ */
+export async function readNeighborBars(barId: string) {
+  const rows = await db.execute(sql`
+    SELECT b.id, b.name, b.neighborhood
+    FROM bar b
+    WHERE b.is_active
+      AND b.id <> ${barId}
+      -- Prefixo repetido dá 404 (resolveBarRef): não vira link aqui.
+      AND NOT EXISTS (
+        SELECT 1 FROM bar o
+        WHERE o.id <> b.id AND left(o.id, 8) = left(b.id, 8)
+      )
+      AND ST_DWithin(b.geo, (SELECT geo FROM bar WHERE id = ${barId}), 5000)
+    ORDER BY b.geo <-> (SELECT geo FROM bar WHERE id = ${barId})
+    LIMIT 3
+  `)
+  return (
+    rows.rows as { id: string; name: string; neighborhood: string }[]
+  ).map((row) => ({
+    id: row.id,
+    name: row.name,
+    neighborhood: row.neighborhood,
+    path: barPath(row)
+  }))
+}
+
+/**
  * Os bares no ar para o sitemap. Prefixo repetido fica de fora: a página
  * responde 404 para ele (`resolveBarRef`).
  */

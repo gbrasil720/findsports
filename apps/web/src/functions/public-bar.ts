@@ -1,5 +1,6 @@
 import {
   readNearbyGamesToday,
+  readNeighborBars,
   readPublicBarPage,
   resolveBarRef
 } from '@findsports_oficial/api/lib/public-bar-page'
@@ -36,7 +37,8 @@ export const getPublicBar = createServerFn({ method: 'GET' })
       page.kind === 'live' && page.bar.events.length === 0
         ? await readNearbyGamesToday(id, now)
         : []
-    return { ...page, nearby, now }
+    const neighbors = page.kind === 'live' ? await readNeighborBars(id) : []
+    return { ...page, nearby, neighbors, now }
   })
 
 /**
