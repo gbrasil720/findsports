@@ -10,6 +10,7 @@ import {
   team,
   uniqueSpot
 } from '../../fixtures/fan'
+import { print } from '../../fixtures/prints'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
 
@@ -106,16 +107,49 @@ test('visitante salva o bar pela folha e ele fica salvo', async ({ page }) => {
   ).toBeVisible()
 })
 
-test('a ação volta pela URL depois do cadastro e sai uma vez', async ({
+test('a ação guardada pela folha volta pela URL e sai uma vez', async ({
   page
 }) => {
   const { pub, spot, dia } = await barComJogo(page)
   const fan = await signInFanAt(page, spot)
+  // O que a folha de entrar grava ao abrir (`guardarAcao`, `acao.ts`).
+  await page.goto(`/dashboard?dia=${dia}`)
+  await page.evaluate(
+    (texto) =>
+      localStorage.setItem(
+        'onside.acao-pendente',
+        JSON.stringify({ texto, em: Date.now() })
+      ),
+    `fav.${pub.barId}`
+  )
 
   await page.goto(`/dashboard?dia=${dia}&acao=fav.${pub.barId}`)
 
   await expect.poll(() => isFavorite(fan.id, pub.barId)).toBe(true)
   await expect(page).not.toHaveURL(/acao=/)
+  await expect(page.getByRole('alertdialog')).toHaveCount(0)
+})
+
+// Achado `web-acao-url-auto-executes-mutation`: link de fora com `?acao=`
+// mostra o cartão e não grava sem o toque.
+test('link com ?acao= pede confirmação e "Agora não" não grava', async ({
+  page
+}, testInfo) => {
+  const { pub, spot, dia } = await barComJogo(page)
+  const fan = await signInFanAt(page, spot)
+
+  await page.goto(`/dashboard?dia=${dia}&acao=fav.${pub.barId}`)
+  const cartaoConfirma = page.getByRole('alertdialog', {
+    name: 'Salvar este bar em Seus bares?'
+  })
+  await expect(cartaoConfirma).toBeVisible()
+  await print(page, testInfo, 'acao-confirmacao', 500)
+  expect(await isFavorite(fan.id, pub.barId)).toBe(false)
+
+  await cartaoConfirma.getByRole('button', { name: 'Agora não' }).click()
+  await expect(cartaoConfirma).toHaveCount(0)
+  await expect(page).not.toHaveURL(/acao=/)
+  expect(await isFavorite(fan.id, pub.barId)).toBe(false)
 })
 
 test('filtro e busca deixam só o bar que casa', async ({ page }) => {

@@ -11,6 +11,7 @@ import {
   signInFanAt,
   uniqueSpot
 } from '../../fixtures/fan'
+import { print } from '../../fixtures/prints'
 import { createPub } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
@@ -299,6 +300,21 @@ test.describe('ação pela URL depois do login', () => {
     await page.getByRole('button', { name: 'Entrar', exact: true }).click()
   }
 
+  // A ação veio num link, não da folha deste navegador: a página pergunta.
+  async function confirmar(
+    page: Page,
+    botao: 'Marcar presença' | 'Salvar bar'
+  ) {
+    const dialogo = page.getByRole('dialog', {
+      name:
+        botao === 'Marcar presença'
+          ? 'Marcar presença neste jogo?'
+          : 'Salvar este bar?'
+    })
+    await expect(dialogo).toBeVisible()
+    await dialogo.getByRole('button', { name: botao }).click()
+  }
+
   async function barComJogo() {
     const pub = await pubAt(uniqueSpot(), {
       bar: { neighborhood: 'Vila Madalena' }
@@ -318,11 +334,13 @@ test.describe('ação pela URL depois do login', () => {
     const fan = await createUser()
 
     await entrarPeloLogin(page, fan, `${bar.path}?jogo=${bar.eventId}&acao=vou`)
+    await confirmar(page, 'Marcar presença')
     await expect.poll(() => attendanceOf(fan.id, bar.eventId)).toBe(1)
     await expect(card(page)).toContainText('VOCÊ VAI')
     await expect(page).not.toHaveURL(/acao=/)
 
     await page.goto(`${bar.path}?acao=salvar`)
+    await confirmar(page, 'Salvar bar')
     await expect.poll(() => isFavorite(fan.id, bar.barId)).toBe(true)
     await expect(page).not.toHaveURL(/acao=/)
   })
@@ -338,11 +356,13 @@ test.describe('ação pela URL depois do login', () => {
       fan,
       `${bar.path}?jogo=${bar.eventId}&acao=vou.${bar.eventId}`
     )
+    await confirmar(page, 'Marcar presença')
     await expect.poll(() => attendanceOf(fan.id, bar.eventId)).toBe(1)
     await expect(page).not.toHaveURL(/acao=/)
 
     await page.goto(`/pub/${bar.barId}?acao=fav.${bar.barId}`)
     await expect(page).toHaveURL(new RegExp(bar.path))
+    await confirmar(page, 'Salvar bar')
     await expect.poll(() => isFavorite(fan.id, bar.barId)).toBe(true)
     await expect(page).not.toHaveURL(/acao=/)
   })
@@ -355,6 +375,7 @@ test.describe('ação pela URL depois do login', () => {
     const fan = await createUser({ onboardingCompleted: false })
 
     await entrarPeloLogin(page, fan, `${bar.path}?acao=fav.${bar.barId}`)
+    await confirmar(page, 'Salvar bar')
     await expect(page).toHaveURL(
       /\/dashboard\/seus-bares\?aba=salvos&novo=fav$/
     )
@@ -362,5 +383,59 @@ test.describe('ação pela URL depois do login', () => {
     await expect(page.locator('section.fresh')).toContainText(
       'Conta criada e bar salvo'
     )
+  })
+})
+
+// Achado `web-acao-url-auto-executes-mutation`: um link com `?acao=` não
+// grava nada sozinho para quem já está logado, e na página do bar só vale a
+// ação dela (este bar, um jogo dele).
+test.describe('link com ?acao= para quem já entrou', () => {
+  async function barComJogo() {
+    const pub = await pubAt(uniqueSpot(), {
+      bar: { neighborhood: 'Vila Madalena' }
+    })
+    const eventId = await createEvent({ barId: pub.barId, startsAt: days(2) })
+    return {
+      ...pub,
+      eventId,
+      path: barUrl(pub.name, 'Vila Madalena', pub.barId)
+    }
+  }
+
+  test('pergunta antes de marcar, e "Agora não" não grava', async ({
+    page
+  }, testInfo) => {
+    const bar = await barComJogo()
+    const fan = await createUser()
+    await signIn(page, fan)
+
+    await page.goto(`${bar.path}?jogo=${bar.eventId}&acao=vou.${bar.eventId}`)
+    const dialogo = page.getByRole('dialog', {
+      name: 'Marcar presença neste jogo?'
+    })
+    await expect(dialogo).toBeVisible()
+    await print(page, testInfo, 'acao-confirmacao-bar', 500)
+    await dialogo.getByRole('button', { name: 'Agora não' }).click()
+    await expect(dialogo).toHaveCount(0)
+    await expect(page).not.toHaveURL(/acao=/)
+    expect(await attendanceOf(fan.id, bar.eventId)).toBe(0)
+  })
+
+  test('ação de outro bar ou de jogo de outro bar é ignorada', async ({
+    page
+  }) => {
+    const bar = await barComJogo()
+    const outro = await barComJogo()
+    const fan = await createUser()
+    await signIn(page, fan)
+
+    await page.goto(`${bar.path}?acao=vou.${outro.eventId}`)
+    await expect(page).not.toHaveURL(/acao=/)
+    await page.goto(`/pub/${bar.barId}?acao=fav.${outro.barId}`)
+    await expect(page).toHaveURL(new RegExp(bar.path))
+    await expect(page).not.toHaveURL(/acao=/)
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    expect(await attendanceOf(fan.id, outro.eventId)).toBe(0)
+    expect(await isFavorite(fan.id, outro.barId)).toBe(false)
   })
 })
