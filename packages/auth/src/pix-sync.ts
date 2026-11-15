@@ -1,11 +1,13 @@
 import type { SubscriptionPlan } from '@findsports_oficial/db'
-import { db, eq } from '@findsports_oficial/db'
+import { db, eq, sql } from '@findsports_oficial/db'
 import { bar, subscription } from '@findsports_oficial/db/schema/platform'
 import {
   type AbacateSubscription,
   cancelSubscriptionIfActive,
   getSubscription
 } from './abacatepay'
+import { pixFounderCount, readFounderCoupon } from './stripe-checkout'
+import { stripeClient } from './stripe-client'
 import { ANNUAL_MONTHS } from './stripe-plan'
 import { logBillingError } from './stripe-sync'
 
@@ -74,6 +76,24 @@ export type PixEvent =
 
 type Row = typeof subscription.$inferSelect
 
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
+
+/**
+ * Sobrou vaga de fundador para o Pix que acabou de ser pago (o checkout
+ * conferiu ao abrir, mas checkout aberto não reserva vaga). Conta com `tx`,
+ * que já tem o lock das vagas. Stripe sem responder lança: o aviso volta com
+ * 500 e a AbacatePay reenvia, em vez de tirar o desconto de quem tinha vaga.
+ */
+async function founderSeatLeft(tx: Tx): Promise<boolean> {
+  const coupon = await readFounderCoupon(stripeClient, () =>
+    pixFounderCount(tx)
+  )
+  if (coupon.state === 'unknown') {
+    throw new Error(`Vagas de fundador sem conferir: ${coupon.message}`)
+  }
+  return coupon.state === 'valid'
+}
+
 /**
  * Situação de uma assinatura ativa sem confiar na ordem dos avisos (a
  * AbacatePay não garante ordem). O que avança é o fim do ciclo pago: débito
@@ -139,7 +159,11 @@ export function readLagsBehind(eventType: string, status: string): boolean {
 export async function applyPixSubscription(
   subscriptionId: string,
   externalId: string | null | undefined,
-  eventType: PixEvent | string
+  eventType: PixEvent | string,
+  // Os testes dublam a contagem; o padrão pergunta ao Stripe.
+  {
+    seatLeft = founderSeatLeft
+  }: { seatLeft?: (tx: Tx) => Promise<boolean> } = {}
 ): Promise<string | null> {
   const ref = parsePixExternalId(externalId)
   if (!ref) {
@@ -228,25 +252,51 @@ export async function applyPixSubscription(
   }
   if (previous) await cancelSubscriptionIfActive(previous)
 
-  const values = {
-    status: pixStanding({ eventType, periodEnd, existing, isCurrent }),
-    plan: ref.plan,
-    provider: 'abacatepay' as const,
-    externalSubscriptionId: sub.id,
-    currentPeriodEnd: periodEnd,
-    // Débito de agora em diante: uma assinatura nova nunca nasce cancelada.
-    cancelAt: isCurrent ? (existing?.cancelAt ?? null) : null,
-    monthlyDiscountReais: ref.founder ? pixFounderDiscountReais(ref.annual) : 0,
-    billingInterval: ref.annual ? ('year' as const) : ('month' as const),
-    // O Pix escolhido no teste foi autorizado: não há mais o que lembrar.
-    pixAfterTrialAt: null,
-    // Pago: não há checkout pendente a apagar no próximo.
-    pixCheckoutId: null
-  }
-  await db
-    .insert(subscription)
-    .values({ barId: ref.barId, ...values })
-    .onConflictDoUpdate({ target: subscription.barId, set: values })
-  await db.update(bar).set({ isActive: true }).where(eq(bar.id, ref.barId))
+  // Quem já tem a vaga no Pix (renovação, troca de plano) a mantém.
+  const holdsSeat =
+    existing?.provider === 'abacatepay' &&
+    (existing.monthlyDiscountReais ?? 0) > 0
+  await db.transaction(async (tx) => {
+    let founder = ref.founder
+    if (founder && !holdsSeat) {
+      // ponytail: um lock só para todas as vagas; os webhooks do Pix são
+      // poucos. Os resgates do cupom no cartão não passam por aqui.
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtextextended('founder-seats', 0))`
+      )
+      founder = await seatLeft(tx)
+      if (!founder) {
+        // Sem vaga: o Pix pago fica (o bar no ar, no plano pago), mas a linha
+        // não ganha a vaga. O preço de fundador continua na AbacatePay até o
+        // dono decidir (ver "Cobrança" no AGENTS.md).
+        logBillingError('pix_founder_seat_overflow', {
+          barId: ref.barId,
+          subscriptionId: sub.id,
+          plan: ref.plan,
+          annual: ref.annual
+        })
+      }
+    }
+    const values = {
+      status: pixStanding({ eventType, periodEnd, existing, isCurrent }),
+      plan: ref.plan,
+      provider: 'abacatepay' as const,
+      externalSubscriptionId: sub.id,
+      currentPeriodEnd: periodEnd,
+      // Débito de agora em diante: uma assinatura nova nunca nasce cancelada.
+      cancelAt: isCurrent ? (existing?.cancelAt ?? null) : null,
+      monthlyDiscountReais: founder ? pixFounderDiscountReais(ref.annual) : 0,
+      billingInterval: ref.annual ? ('year' as const) : ('month' as const),
+      // O Pix escolhido no teste foi autorizado: não há mais o que lembrar.
+      pixAfterTrialAt: null,
+      // Pago: não há checkout pendente a apagar no próximo.
+      pixCheckoutId: null
+    }
+    await tx
+      .insert(subscription)
+      .values({ barId: ref.barId, ...values })
+      .onConflictDoUpdate({ target: subscription.barId, set: values })
+    await tx.update(bar).set({ isActive: true }).where(eq(bar.id, ref.barId))
+  })
   return ref.barId
 }

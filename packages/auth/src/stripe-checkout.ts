@@ -84,8 +84,10 @@ export const FOUNDER_SEATS = 100
  * desconto na linha (`pix-sync.ts`). Contam enquanto a linha existir,
  * como o resgate do cupom, que não volta quando a assinatura acaba.
  */
-export async function pixFounderCount(): Promise<number> {
-  const [row] = await db
+export async function pixFounderCount(
+  executor: Pick<typeof db, 'select'> = db
+): Promise<number> {
+  const [row] = await executor
     .select({ n: count() })
     .from(subscription)
     .where(
@@ -126,7 +128,7 @@ async function annualRedemptions(client: Stripe): Promise<number> {
   }
 }
 
-async function readFounderCoupon(
+export async function readFounderCoupon(
   client: Stripe,
   countPix: CountPixFounders
 ): Promise<FounderCouponState> {
