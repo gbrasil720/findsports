@@ -1,4 +1,8 @@
 import type { SubscriptionPlan } from '@findsports_oficial/db'
+import {
+  brasiliaDay,
+  brasiliaDayStart
+} from '@findsports_oficial/db/event-window'
 import { TRPCError } from '@trpc/server'
 import { getCurrentPlan, type SubscriptionForPlan } from '../current-plan'
 import { PLAN_NAMES } from '../plan-limits'
@@ -93,16 +97,30 @@ export function getAnalyticsPlan(
 /**
  * A retenção é um limite do servidor, não uma sugestão para a UI. Mantém o
  * mesmo contrato para overview e breakdown por jogo.
+ *
+ * Vale o tamanho da janela e também a distância do início até hoje: o
+ * Starter vê os últimos 30 dias (o dia de hoje e os 29 de antes, em
+ * Brasília, como o "30d" do painel), não 30 dias quaisquer do passado.
  */
 export function assertAnalyticsPeriodAllowed(
   plan: SubscriptionPlan,
-  periodDays: number
+  periodDays: number,
+  from?: Date,
+  now = new Date()
 ): void {
   const maxDays = getAnalyticsEntitlements(plan).maxDaysRetention
-  if (maxDays !== null && periodDays > maxDays) {
+  if (maxDays === null) return
+  if (periodDays > maxDays) {
     throw new TRPCError({
       code: 'FORBIDDEN',
       message: `Plano ${PLAN_NAMES[plan]} suporta até ${maxDays} dias`
+    })
+  }
+  const earliest = brasiliaDayStart(brasiliaDay(now, -(maxDays - 1)))
+  if (from && from.getTime() < earliest.getTime()) {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: `Plano ${PLAN_NAMES[plan]} mostra só os últimos ${maxDays} dias`
     })
   }
 }
