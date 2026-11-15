@@ -148,6 +148,21 @@ export const analytics = {
     void withPosthog((posthog) => posthog.capture('cta_clicked', { cta }))
   },
 
+  /**
+   * Easter eggs do Jules (WEB-555, WEB-556): o cartão do Explorar apareceu, ou
+   * a taça atravessou o telão da landing por clique.
+   */
+  julesFound: (where: 'explorar' | 'telao') => {
+    void withPosthog((posthog) => posthog.capture('jules_found', { where }))
+  },
+
+  /** "Me avise quando o app chegar" tocado no easter egg do Jules. */
+  julesWaitlistClicked: (where: 'explorar') => {
+    void withPosthog((posthog) =>
+      posthog.capture('jules_waitlist_clicked', { where })
+    )
+  },
+
   /** Feedback enviado pelo diálogo do app. O texto e as imagens não vêm para cá. */
   feedbackSent: (images: number) => {
     void withPosthog((posthog) => posthog.capture('feedback_sent', { images }))

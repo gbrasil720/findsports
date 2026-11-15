@@ -4552,3 +4552,87 @@ html[data-consent] .tc .mx {
     flex: 1;
   }
 }
+
+/* Easter egg do Jules no Explorar (WEB-555): o painel acid da página de erro
+   em tamanho de cartão, igual nos dois temas. */
+.tc .achou-jules {
+  background: #c9f135;
+  color: #12120f;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 3px 0 #7f9a12;
+  max-width: 460px;
+}
+.tc .achou-jules-palco {
+  position: relative;
+  height: 250px;
+  overflow: hidden;
+}
+.tc .achou-jules-palco .jules-parado {
+  position: absolute;
+  left: 50%;
+  top: 56%;
+  width: 170px;
+  height: 170px;
+  transform: translate(-50%, -50%);
+}
+.tc .achou-jules-palco .jules-palco {
+  position: absolute;
+  left: 50%;
+  top: -40px;
+  width: 560px;
+  height: 300px;
+  margin-left: -280px;
+}
+.tc .achou-jules-texto {
+  padding: 0 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+.tc .achou-jules-k {
+  font: 500 12px / 1 var(--mono);
+  letter-spacing: 0.08em;
+  background: #12120f;
+  color: #c9f135;
+  padding: 7px 11px;
+  border-radius: 999px;
+}
+.tc .achou-jules-texto b {
+  font: 400 44px / 0.95 var(--display);
+  text-transform: uppercase;
+}
+.tc .achou-jules-texto p {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.4;
+  color: #2c2f1c;
+  max-width: 34ch;
+}
+.tc .achou-jules-texto .achou-jules-erro {
+  color: #a3230a;
+  font-weight: 600;
+}
+.tc .achou-jules-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 48px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 999px;
+  background: #12120f;
+  color: #f1eee6;
+  font: 700 15px / 1 var(--text);
+  box-shadow: 0 4px 0 rgba(18, 18, 15, 0.35);
+  margin-top: 4px;
+  cursor: pointer;
+}
+.tc .achou-jules-btn:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+.tc .achou-jules-btn:focus-visible {
+  outline: 3px solid #12120f;
+  outline-offset: 3px;
+}

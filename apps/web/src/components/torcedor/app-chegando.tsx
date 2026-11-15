@@ -59,8 +59,7 @@ export function useListaDoApp() {
 }
 
 export function AppChegando() {
-  const { naLista, email, erro, pendente, carregando, tocar } =
-    useListaDoApp()
+  const { naLista, email, erro, pendente, carregando, tocar } = useListaDoApp()
 
   return (
     <div className={`appc${naLista ? ' ok' : ''}`}>
