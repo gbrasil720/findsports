@@ -934,12 +934,20 @@ invente layout que o projeto não tem.
   "Sua conta guarda tudo" e os itens "com conta"; cidade, raio e termos são livres. "Entrar com
   a Apple" espera a conta de desenvolvedor paga.
 - **Conta ("04 Conta"):** `profile` (torcedor ou bar, vira `role` no cadastro), `sign-up`,
-  `verify-email`, `sign-in`, `forgot-password`, `reset-sent`, `reset-password`, `two-factor`;
+  `verify-email`, `sign-in`, `forgot-password`, `reset-sent`, `two-factor`;
   peças em `components/ui.tsx`. O link de confirmação abre no navegador; o servidor entra e
-  redireciona para o app (`callbackURL: '/verified'`, que o cliente vira `onside://` ou
-  `exp://`) com a sessão em `?cookie=`, e `app/verified.tsx` a guarda (`adoptSessionCookie`):
-  o cliente do Expo só faz isso sozinho no login social. O reset usa `redirectTo` com
-  `Linking.createURL`, porque o cliente não converte esse campo. Em dev o link do e-mail sai
+  redireciona para o app (`verifiedCallbackURL`, `lib/verify-link.ts`: `onside://verified`
+  ou `exp://…/--/verified` com `?v=<nonce>`) com a sessão em `?cookie=`, e `app/verified.tsx`
+  a guarda (`adoptSessionCookie`): o cliente do Expo só faz isso sozinho no login social.
+  **Só adota com o nonce certo**: o cadastro e o reenvio guardam o nonce no SecureStore por
+  1 h (o `expiresIn` da confirmação), e um `?cookie=` de deep link sem ele é ignorado
+  (qualquer página pode abrir `onside://verified?cookie=…`). Com uma conta já aberta, a
+  troca pede confirmação. **A senha nova é escolhida no site**: o app manda `redirectTo:
+  '/reset-password'` (a página do web) e o servidor recusa qualquer destino de reset que
+  não seja caminho do site ou origem http(s) confiável (`isSafeResetRedirect`,
+  `packages/auth/src/trusted-origins.ts`), porque outro app pode registrar `onside://` e
+  receber o token. `onside://` segue confiável para o resto do auth (verify-email). Com
+  universal link (conta Apple paga) o reset pode voltar ao app. Em dev o link do e-mail sai
   com `PUBLIC_APP_URL` (senão `BETTER_AUTH_URL`, `localhost`), que não abre no celular: para
   testar no aparelho, suba o web com `PUBLIC_APP_URL=http://<ip-do-mac>:3001`.
 - **Onboarding do torcedor ("05", 4i–4n; rodada 2 do redesign, proposta B):**
@@ -1131,7 +1139,9 @@ invente layout que o projeto não tem.
   e só aparece quem aceita pedido de todos). Sugestões só de amigos de amigos. O link de
   convite é `/convite/<código>` no web (página `noindex` que abre `onside://convite/…`):
   conta criada há menos de um dia já entra como amiga; sem conta, o app guarda o código
-  (`savePendingInvite`) e as abas do torcedor aceitam depois (`usePendingInvite`).
+  (`savePendingInvite`) só no toque de "Criar conta e ser amigo" ou "Entrar e aceitar"
+  (abrir o link não guarda, "Fechar" apaga), por 1 h e preso à conta que tocou, e as abas
+  do torcedor aceitam depois, já com sessão (`usePendingInvite`).
   "Convidar" (comunidades) avisa "em breve". Pedido respondido e
   sugestão adicionada ficam na tela com o botão trocado até ela abrir de novo
   (`useKept`): tirar a linha fazia o card pular, e `LinearTransition` não anima a
