@@ -63,8 +63,9 @@ function cookieDomainFor(baseUrl: string): string | undefined {
  * `cf-connecting-ip` no Worker). Só vale para requisição HTTP: chamada por
  * `auth.api` não passa por ele (`captcha-scope.test.ts`).
  *
- * Sem `TURNSTILE_SECRET_KEY` o plugin nem entra — o deploy pode chegar antes
- * do segredo.
+ * Sem `TURNSTILE_SECRET_KEY` o plugin nem entra. Em produção no `onside.sh`
+ * o env recusa subir sem ele (`packages/env/src/server.ts`); o aviso abaixo
+ * fica para o preview e o resto.
  */
 function turnstilePlugin() {
   if (env.TURNSTILE_SECRET_KEY) {
