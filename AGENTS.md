@@ -107,6 +107,17 @@ código e o rollback (`bunx wrangler rollback`) não a desfaz, ela tem de ser
 compatível com o código anterior (expand → contract). PR publica no Worker
 `onside-web-preview`, com o branch `preview` do Neon, depois de migrá-lo.
 
+**Segredos do deploy só no job `deploy`.** O job `check` decide o alvo pelo evento,
+sem ler segredo (`production` = push em `master` do repositório original; `preview` =
+PR de branch deste repositório que não seja do Dependabot; fork e Dependabot pulam).
+Só o `deploy`, que roda com `environment: production|preview`, lê
+`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` e `DATABASE_URL_PROD`/`_PREVIEW`, e
+falha alto se faltar algum. O lugar desses segredos é o environment (`Production` com
+política de branch `master`, `Preview` com o token do preview); secret de environment
+sobrepõe o de repositório de mesmo nome. Job novo que precise de segredo de deploy
+entra com `environment:`, nunca lendo segredo num job sem ele. Actions de terceiros
+ficam fixadas por SHA de commit, com a versão em comentário.
+
 **Preview** (`https://onside-web-preview.dev-guilhermebrasil.workers.dev`): uma URL só,
 o último PR publicado ganha. Banco = branch `preview` do Neon (cópia de produção, com
 e-mails de usuários reais) via Hyperdrive `onside-db-preview`; o CI migra pelo segredo

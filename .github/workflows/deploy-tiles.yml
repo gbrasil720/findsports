@@ -14,6 +14,9 @@ jobs:
   deploy-tiles:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Segredos do environment `Production` (sobrepõem os de repositório): o
+    # token precisa alcançar o Worker `onside-tiles`, e com política de branch
+    # `master` o disparo manual tem de partir de `master`.
     environment:
       name: production
     concurrency:
