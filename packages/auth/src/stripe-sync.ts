@@ -9,7 +9,10 @@ import {
 } from '@findsports_oficial/db/schema/platform'
 import type Stripe from 'stripe'
 import { cancelSubscriptionIfActive } from './abacatepay'
-import { couponIdsOf, monthlyDiscountReaisFromStripe } from './stripe-discount'
+import {
+  discountEntriesOf,
+  monthlyDiscountReaisFromStripe
+} from './stripe-discount'
 import {
   CARD_FROM_PIX_KEY,
   FOUNDER_ANNUAL_COUPON_ID,
@@ -359,35 +362,59 @@ async function applyUpgradeCoupon(
  * de fundador vale em todos os planos, mensais e anuais). Troca de plano fora
  * do nosso hook (o portal do Stripe deixa o anual ir para um preço mensal)
  * levaria o `fundador_anual` (R$ 280 por fatura) para cada mês, ou o mensal
- * (R$ 28) para o ano: aqui o cupom vira o do intervalo certo. Já certo, não
- * faz nada, então evento repetido não muda nada. Recusa do Stripe (cupom
- * esgotado, por exemplo) só vai ao log.
+ * (R$ 28) para o ano: aqui só o cupom de fundador errado é trocado pelo do
+ * intervalo certo, e os outros descontos ficam.
+ *
+ * - Já certo, não faz nada: evento repetido não muda nada.
+ * - A chave de idempotência leva o desconto errado: dois avisos ao mesmo
+ *   tempo não resgatam o cupom duas vezes, e uma troca nova (outro desconto)
+ *   não reaproveita a resposta da anterior.
+ * - Stripe recusa o cupom certo (esgotado, apagado): o errado sai assim
+ *   mesmo, e o bar fica sem o desconto de fundador até o dono resolver
+ *   (`stripe_founder_coupon_interval_refused` no log). O cupom do outro
+ *   intervalo nunca fica. Se nem a remoção passar, lança e o Stripe reenvia.
  */
 async function fixFounderCouponInterval(
   stripeSubscription: Stripe.Subscription,
   client: StripeBilling
 ): Promise<Stripe.Subscription> {
-  const annual =
-    stripeSubscription.items.data[0]?.price.recurring?.interval === 'year'
+  const item = stripeSubscription.items.data[0]
+  const annual = item?.price.recurring?.interval === 'year'
   const right = annual ? FOUNDER_ANNUAL_COUPON_ID : FOUNDER_COUPON_ID
   const wrong = annual ? FOUNDER_COUPON_ID : FOUNDER_ANNUAL_COUPON_ID
-  if (!couponIdsOf(stripeSubscription).includes(wrong)) {
-    return stripeSubscription
-  }
-  try {
-    const fixed = await client.subscriptions.update(stripeSubscription.id, {
-      discounts: [{ coupon: right }],
-      expand: ['discounts.source.coupon']
-    })
+  const entries = discountEntriesOf(stripeSubscription)
+  const wrongEntry = entries.find((entry) => entry.couponId === wrong)
+  if (!wrongEntry) return stripeSubscription
+
+  const kept = entries
+    .filter((entry) => entry !== wrongEntry && entry.id)
+    .map((entry) => ({ discount: entry.id as string }))
+  const hasRight = entries.some((entry) => entry.couponId === right)
+  const key = `fix-coupon:${stripeSubscription.id}:${item?.price.id}:${wrongEntry.id}`
+  const update = (
+    discounts: Stripe.SubscriptionUpdateParams.Discount[],
+    suffix: string
+  ) =>
+    client.subscriptions.update(
+      stripeSubscription.id,
+      { discounts, expand: ['discounts.source.coupon'] },
+      { idempotencyKey: `${key}${suffix}` }
+    )
+  const fixed = (subscription: Stripe.Subscription, to: string | null) => {
     console.log(
       JSON.stringify({
         evt: 'stripe_founder_coupon_interval_fixed',
         subscriptionId: stripeSubscription.id,
         from: wrong,
-        to: right
+        to
       })
     )
-    return fixed
+    return subscription
+  }
+
+  if (hasRight) return fixed(await update(kept, ''), right)
+  try {
+    return fixed(await update([...kept, { coupon: right }], ''), right)
   } catch (error) {
     if ((error as { type?: string }).type !== 'StripeInvalidRequestError') {
       throw error
@@ -398,7 +425,7 @@ async function fixFounderCouponInterval(
       to: right,
       message: error instanceof Error ? error.message : String(error)
     })
-    return stripeSubscription
+    return fixed(await update(kept, ':drop'), null)
   }
 }
 
