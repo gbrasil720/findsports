@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'bun:test'
+import { readFile, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { env } from '@findsports_oficial/env/server'
 import { EmailBudgetExceeded } from './email-budget'
 import {
@@ -11,6 +14,13 @@ import {
 const allowAll = async () => {}
 /** Sem banco: o orçamento é dublado (o de verdade está em `email-budget`). */
 const budget = { category: 'feedback' as const, reserve: allowAll }
+/** Onde o envio não chega ao provedor, o orçamento nem pode ser consultado. */
+const notCounted = {
+  category: 'feedback' as const,
+  reserve: async () => {
+    throw new Error('não deveria contar no orçamento')
+  }
+}
 
 describe('e-mail de verificação Onside', () => {
   it('move o link de autenticação para o host público do e-mail', () => {
@@ -192,7 +202,7 @@ describe('e-mail de verificação Onside', () => {
     )
     try {
       await sendEmail({
-        ...budget,
+        ...notCounted,
         apiKey: 're_real',
         fromEmail: 'contato@onside.app',
         to: 'contato@onside.sh',
@@ -224,7 +234,7 @@ describe('e-mail de verificação Onside', () => {
     }
     try {
       const result = await sendEmail({
-        ...budget,
+        ...notCounted,
         apiKey: undefined,
         fromEmail: undefined,
         to: 'ana@example.com',
@@ -251,7 +261,7 @@ describe('e-mail de verificação Onside', () => {
     try {
       await expect(
         sendEmail({
-          ...budget,
+          ...notCounted,
           apiKey: undefined,
           fromEmail: undefined,
           to: 'ana@example.com',
@@ -279,7 +289,7 @@ describe('e-mail de verificação Onside', () => {
     }
     try {
       const result = await sendEmail({
-        ...budget,
+        ...notCounted,
         apiKey: 're_real',
         fromEmail: 'contato@onside.app',
         to: 'ana@example.com',
@@ -342,6 +352,32 @@ describe('e-mail de verificação Onside', () => {
       expect(error).toMatchObject({ category: 'feedback', scope: 'provider' })
     } finally {
       console.warn = warn
+    }
+  })
+
+  it('outbox do E2E grava sem contar no orçamento', async () => {
+    const keys = env as { E2E_EMAIL_OUTBOX?: string }
+    const previous = keys.E2E_EMAIL_OUTBOX
+    const outbox = join(tmpdir(), `outbox-${crypto.randomUUID()}.jsonl`)
+    keys.E2E_EMAIL_OUTBOX = outbox
+    try {
+      const result = await sendEmail({
+        ...notCounted,
+        apiKey: 're_real',
+        fromEmail: 'contato@onside.app',
+        to: 'ana@example.com',
+        subject: 'ok',
+        html: '<p>ok</p>',
+        text: 'ok',
+        fetcher: async () => {
+          throw new Error('não deveria chamar a API de e-mail')
+        }
+      })
+      expect(result).toEqual({ delivered: true })
+      expect(await readFile(outbox, 'utf8')).toContain('"to":"ana@example.com"')
+    } finally {
+      keys.E2E_EMAIL_OUTBOX = previous
+      await rm(outbox, { force: true })
     }
   })
 })
