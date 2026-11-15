@@ -1578,6 +1578,12 @@ window.setMascot = (c) => {
 requestAnimationFrame(() => {
   apply()
   window.ReactNativeWebView?.postMessage('ready')
+  // No web (iframe do mesmo domínio): avisa a página depois do primeiro quadro
+  // pintado, para ela trocar a taça parada pelo palco sem instante translúcido.
+  if (window.parent !== window)
+    requestAnimationFrame(() =>
+      window.parent.postMessage('jules-ready', location.origin)
+    )
   // As formas de antes, uma por vez no tempo livre: na hora da troca, calcular
   // o campo de distância perdia quadros bem no impulso.
   const queue = Object.values(DEF)
