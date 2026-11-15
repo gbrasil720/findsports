@@ -2766,6 +2766,9 @@ html[data-theme="dark"] .tc .m-d {
 .tc .appc b {
   display: block;
   font-size: 17px;
+  /* O título fica dentro do span de texto apagado: sem a cor própria, herda o
+     --muted e some no escuro. */
+  color: var(--fg);
 }
 .tc .appc span {
   font-size: 14.5px;
