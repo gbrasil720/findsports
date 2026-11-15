@@ -1,11 +1,14 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, it, spyOn } from 'bun:test'
 import {
+  founderSeatLeft,
   parsePixExternalId,
   pixExternalId,
   pixFounderDiscountReais,
   pixStanding,
-  readLagsBehind
+  readLagsBehind,
+  type Tx
 } from './pix-sync'
+import { stripeClient } from './stripe-client'
 
 describe('externalId do checkout Pix', () => {
   it('volta o bar, o plano e o fundador que entraram', () => {
@@ -116,5 +119,44 @@ describe('leitura da AbacatePay atrás do aviso', () => {
 
   it('recusa de débito não depende da leitura', () => {
     expect(readLagsBehind('subscription.payment_failed', 'ACTIVE')).toBe(false)
+  })
+})
+
+describe('vaga de fundador com o Stripe sem responder', () => {
+  // O dublê responde antes da contagem: o banco não é tocado.
+  const tx = {} as Tx
+  const failing = () =>
+    spyOn(stripeClient.coupons, 'retrieve').mockImplementation((async () => {
+      throw Object.assign(new Error('Invalid API Key provided'), {
+        type: 'StripeAuthenticationError'
+      })
+    }) as unknown as typeof stripeClient.coupons.retrieve)
+
+  it('com a chave, lança para a AbacatePay reenviar', async () => {
+    const spy = failing()
+    const error = spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      await expect(founderSeatLeft(tx, { hasStripeKey: true })).rejects.toThrow(
+        'Vagas de fundador sem conferir'
+      )
+      expect(String(error.mock.calls[0]?.[0])).toContain(
+        'pix_founder_seat_check_failed'
+      )
+    } finally {
+      spy.mockRestore()
+      error.mockRestore()
+    }
+  })
+
+  it('sem a chave, é sem vaga, com o motivo no log', async () => {
+    const spy = failing()
+    const error = spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      expect(await founderSeatLeft(tx, { hasStripeKey: false })).toBe(false)
+      expect(String(error.mock.calls[0]?.[0])).toContain('stripe_key_missing')
+    } finally {
+      spy.mockRestore()
+      error.mockRestore()
+    }
   })
 })

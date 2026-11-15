@@ -773,8 +773,13 @@ integrationTest(
 integrationTest(
   'vaga de fundador: quem já a tem no Pix renova sem conferir; Stripe sem responder lança',
   async () => {
-    const { applyPixSubscription, createPixBar, discountOf, stripeClient } =
-      ready()
+    const {
+      applyPixSubscription,
+      createPixBar,
+      discountOf,
+      founderSeatLeft,
+      stripeClient
+    } = ready()
     const paidUntil = new Date(Date.now() + 30 * DAY)
     const founder = await createPixBar({ founder: true, paidUntil })
     const seats = couponWithSeats(stripeClient, 0)
@@ -795,7 +800,11 @@ integrationTest(
     try {
       const pix = founderPix(other, paidUntil)
       await expect(
-        applyPixSubscription(pix.id, pix.externalId, 'subscription.completed')
+        // O ambiente de teste não tem STRIPE_SECRET_KEY: aqui é o Stripe
+        // de produção fora do ar.
+        applyPixSubscription(pix.id, pix.externalId, 'subscription.completed', {
+          seatLeft: (tx) => founderSeatLeft(tx, { hasStripeKey: true })
+        })
       ).rejects.toThrow('Vagas de fundador sem conferir')
       // Nada gravado: o reenvio da AbacatePay tenta de novo.
       expect(await discountOf(other.barId)).toBe(0)

@@ -1,6 +1,7 @@
 import type { SubscriptionPlan } from '@findsports_oficial/db'
 import { db, eq, sql } from '@findsports_oficial/db'
 import { bar, subscription } from '@findsports_oficial/db/schema/platform'
+import { env } from '@findsports_oficial/env/server'
 import {
   type AbacateSubscription,
   cancelSubscriptionIfActive,
@@ -76,19 +77,35 @@ export type PixEvent =
 
 type Row = typeof subscription.$inferSelect
 
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
+export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
 
 /**
  * Sobrou vaga de fundador para o Pix que acabou de ser pago (o checkout
  * conferiu ao abrir, mas checkout aberto não reserva vaga). Conta com `tx`,
- * que já tem o lock das vagas. Stripe sem responder lança: o aviso volta com
- * 500 e a AbacatePay reenvia, em vez de tirar o desconto de quem tinha vaga.
+ * que já tem o lock das vagas.
+ *
+ * Stripe sem responder lança: o aviso volta com 500 e a AbacatePay reenvia,
+ * em vez de tirar o desconto de quem tinha vaga. Sem `STRIPE_SECRET_KEY` a
+ * conta nunca fecha (toda chamada volta 401) e o reenvio seria eterno: aí é
+ * "sem vaga", com o motivo no log.
  */
-async function founderSeatLeft(tx: Tx): Promise<boolean> {
+export async function founderSeatLeft(
+  tx: Tx,
+  { hasStripeKey = Boolean(env.STRIPE_SECRET_KEY) } = {}
+): Promise<boolean> {
   const coupon = await readFounderCoupon(stripeClient, () =>
     pixFounderCount(tx)
   )
   if (coupon.state === 'unknown') {
+    if (!hasStripeKey) {
+      logBillingError('pix_founder_seat_unverified', {
+        reason: 'stripe_key_missing'
+      })
+      return false
+    }
+    logBillingError('pix_founder_seat_check_failed', {
+      message: coupon.message
+    })
     throw new Error(`Vagas de fundador sem conferir: ${coupon.message}`)
   }
   return coupon.state === 'valid'
