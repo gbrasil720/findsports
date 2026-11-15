@@ -6,6 +6,7 @@ import { type ReactNode, useDeferredValue, useEffect, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import Animated, { FadeOut, LinearTransition } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useAiReady } from '@/components/ai/ready'
 import { SearchEmpty } from '@/components/empty-states'
 import { Photo } from '@/components/explore'
 import { useExploreState } from '@/components/explore-state'
@@ -23,6 +24,7 @@ import {
   text,
   useStatusBar
 } from '@/components/ui'
+import { useWithAccount } from '@/lib/account'
 import { authClient } from '@/lib/auth-client'
 import { formatKm, formatTime, searchCenter } from '@/lib/explore'
 import { gameRow, type RowGame } from '@/lib/explore-board'
@@ -59,6 +61,8 @@ const CHIP_OUT = FadeOut.duration(150)
 
 export default function Search() {
   const router = useRouter()
+  const aiReady = useAiReady()
+  const withAccount = useWithAccount()
   const insets = useSafeAreaInsets()
   const palette = usePalette()
   const state = useExploreState()
@@ -339,7 +343,19 @@ export default function Search() {
                 // O vazio do design (Rodada 14), em todo aparelho (WEB-494).
                 <SearchEmpty
                   query={query.trim()}
-                  onAi={() => router.push('/busca-ia')}
+                  onAi={
+                    aiReady
+                      ? () =>
+                          withAccount(
+                            () =>
+                              router.push({
+                                pathname: '/busca-ia',
+                                params: { pergunta: query.trim() }
+                              }),
+                            { kind: 'conta', what: 'perguntar ao Jules' }
+                          )
+                      : undefined
+                  }
                 />
               ) : (
                 <Text
