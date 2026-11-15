@@ -1,3 +1,4 @@
+import { EmailBudgetExceeded } from '@findsports_oficial/auth/email-budget'
 import {
   createOnsideEmailTemplate,
   metaTable,
@@ -36,8 +37,12 @@ export const FEEDBACK_TO = 'contato@onside.sh'
 
 // ponytail: janela fixa por usuário na tabela `rate_limit`. Na virada da
 // janela passam até 10 em sequência (5 no fim de uma, 5 no começo da outra);
-// janela deslizante se isso virar abuso.
-export const FEEDBACK_LIMIT: JanelaLimite = { max: 5, windowMs: 60 * 60_000 }
+// o teto do feedback no orçamento de e-mail (`email-budget.ts`) segura o
+// total do dia, então a cota da verificação e do reset não acaba por aqui.
+export const FEEDBACK_LIMIT: JanelaLimite = {
+  max: 5,
+  windowMs: 24 * 60 * 60_000
+}
 
 export function feedbackLimitKey(userId: string): string {
   return `feedback:user:${userId}`
@@ -209,7 +214,7 @@ export const feedbackRouter = router({
       if (!attempt.allowed) {
         throw new TRPCError({
           code: 'TOO_MANY_REQUESTS',
-          message: `Você já mandou ${FEEDBACK_LIMIT.max} mensagens na última hora. Tente de novo mais tarde.`
+          message: `Você já mandou ${FEEDBACK_LIMIT.max} mensagens nas últimas 24 horas. Tente de novo amanhã.`
         })
       }
 
@@ -224,6 +229,7 @@ export const feedbackRouter = router({
         await sendEmail({
           apiKey: env.EMAIL_API_KEY,
           fromEmail: env.EMAIL_FROM,
+          category: 'feedback',
           to: FEEDBACK_TO,
           replyTo: user.email,
           attachments,
@@ -240,6 +246,14 @@ export const feedbackRouter = router({
           })
         })
       } catch (error) {
+        // Orçamento do dia esgotado (o nosso ou o do provedor): a tentativa
+        // conta, senão repetir não custaria nada a quem quer gastar a cota.
+        if (error instanceof EmailBudgetExceeded) {
+          throw new TRPCError({
+            code: 'TOO_MANY_REQUESTS',
+            message: `Recebemos muitas mensagens hoje. Tente de novo amanhã ou escreva para ${FEEDBACK_TO}.`
+          })
+        }
         // Envio que falhou não conta: a pessoa vai tentar de novo.
         await refundWindowAttempt(key)
         console.error('[feedback] envio falhou', error)
