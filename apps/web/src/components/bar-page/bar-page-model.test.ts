@@ -212,6 +212,41 @@ describe('JSON-LD', () => {
     expect(e2).not.toHaveProperty('sport')
     expect(Object.values(e2).includes(undefined)).toBe(false)
   })
+  test('comodidades e pagamento: só o que o bar declarou', () => {
+    const full = barJsonLd(bar([], { amenities: [1, 4, 16, 17, 19] }), URL, NOW)
+    const place = full['@graph'][0] as Record<string, unknown>
+    const feature = (name: string) => ({
+      '@type': 'LocationFeatureSpecification',
+      name,
+      value: true
+    })
+    expect(place.amenityFeature).toEqual([
+      feature('Telão / projetor'),
+      feature('Área externa'),
+      feature('Couvert')
+    ])
+    expect(place.paymentAccepted).toBe('Pix, Cartão')
+    const none = barJsonLd(bar([], { amenities: [] }), URL, NOW)
+    const bare = none['@graph'][0] as Record<string, unknown>
+    expect(bare).not.toHaveProperty('amenityFeature')
+    expect(bare).not.toHaveProperty('paymentAccepted')
+    const onlyPay = barJsonLd(bar([], { amenities: [18] }), URL, NOW)
+    const pay = onlyPay['@graph'][0] as Record<string, unknown>
+    expect(pay).not.toHaveProperty('amenityFeature')
+    expect(pay.paymentAccepted).toBe('Vale-refeição')
+  })
+  test('priceRange só com gasto médio liberado', () => {
+    const priced = barJsonLd(bar([], { averageSpendCents: 6000 }), URL, NOW)
+    expect((priced['@graph'][0] as Record<string, unknown>).priceRange).toMatch(
+      /^R\$\s60 por pessoa$/
+    )
+    for (const spend of [null, undefined, 0]) {
+      const data = barJsonLd(bar([], { averageSpendCents: spend }), URL, NOW)
+      const place = data['@graph'][0] as Record<string, unknown>
+      expect(place).not.toHaveProperty('priceRange')
+      expect(Object.values(place).includes(undefined)).toBe(false)
+    }
+  })
   test('nota só quando a página a mostra', () => {
     const data = barJsonLd(
       bar([], { rating: { total: 38, percentage: 92 } }),
