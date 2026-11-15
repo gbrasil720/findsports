@@ -41,6 +41,15 @@ describe('acao', () => {
     expect(semAcao(`${com}#a`)).toBe('/bar/x?jogo=1#a')
     expect(temAcao('/dashboard')).toBe(false)
   })
+
+  test('o "Me avise" do easter egg leva a conquista do Jules (WEB-558)', () => {
+    expect(lerAcao('app.jules')).toEqual({ tipo: 'app', jules: true })
+    expect(comAcao('/dashboard', { tipo: 'app', jules: true })).toBe(
+      '/dashboard?acao=app.jules'
+    )
+    // Como o "app" de sempre, segue pelo onboarding de 5 passos.
+    expect(acaoPulaOnboarding('/dashboard?acao=app.jules')).toBe(false)
+  })
 })
 
 describe('conta nova por uma ação', () => {

@@ -1,7 +1,11 @@
+import { useMutation } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { Jules } from '@/components/jules/jules'
 import { analytics } from '@/lib/analytics'
+import { useTRPC } from '@/utils/trpc'
+import { CONQUISTA_JULES } from './acao'
 import { useListaDoApp } from './app-chegando'
+import { useTorcedor } from './shell'
 
 /** A busca que acha o Jules: "jules", sem acento, maiúsculas nem espaços. */
 export function buscouJules(busca: string) {
@@ -21,17 +25,33 @@ export function buscouJules(busca: string) {
  * nem balão. O botão é o "Me avise" da lista de espera.
  */
 export function AchouJules() {
-  const { naLista, email, erro, pendente, carregando, tocar } = useListaDoApp()
+  const { naLista, email, erro, pendente, carregando, tocar } = useListaDoApp({
+    jules: true
+  })
+  const trpc = useTRPC()
+  const { logado, avisar } = useTorcedor()
+  // Com conta, achar já grava a conquista secreta "Achou o Jules" (WEB-558);
+  // o aviso só sai na primeira vez. Sem conta, ela vai pelo "Me avise".
+  const achar = useMutation(
+    trpc.achievements.findJules.mutationOptions({
+      onSuccess: ({ isNew }) => {
+        if (isNew) avisar(CONQUISTA_JULES)
+      },
+      meta: { errorToast: false }
+    })
+  )
 
   // O Explorar monta o vazio duas vezes (folha do celular e coluna do
   // computador) e esconde uma pelo CSS: só a que está à vista carrega o palco
   // e conta o evento.
   const caixa = useRef<HTMLDivElement>(null)
   const [visivel, setVisivel] = useState(false)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: uma vez, ao aparecer
   useEffect(() => {
     if (!caixa.current?.offsetParent) return
     setVisivel(true)
     analytics.julesFound('explorar')
+    if (logado) achar.mutate({ via: 'web' })
   }, [])
 
   return (

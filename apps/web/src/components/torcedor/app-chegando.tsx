@@ -17,7 +17,7 @@ import { useTorcedor } from './shell'
  * A lista de espera do app (`appWaitlist`), dividida entre o cartão de Meus
  * jogos e do perfil e o easter egg do Jules no Explorar (WEB-555).
  */
-export function useListaDoApp() {
+export function useListaDoApp({ jules = false } = {}) {
   const trpc = useTRPC()
   const queryClient = useQueryClient()
   const { logado, agir } = useTorcedor()
@@ -41,7 +41,11 @@ export function useListaDoApp() {
 
   const tocar = () => {
     if (!logado) {
-      agir({ tipo: 'app', acao: { tipo: 'app' } })
+      // Pelo easter egg, a conquista secreta vai junto na volta (WEB-558).
+      agir({
+        tipo: 'app',
+        acao: jules ? { tipo: 'app', jules } : { tipo: 'app' }
+      })
       return
     }
     acao.reset()

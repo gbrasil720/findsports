@@ -11,14 +11,21 @@
  */
 
 export type TipoAcao = 'vou' | 'fav' | 'lembrar'
-/** `app`: entrar na lista do "Me avise quando o app chegar", sem id. */
-export type Acao = { tipo: TipoAcao; id: string } | { tipo: 'app' }
+/**
+ * `app`: entrar na lista do "Me avise quando o app chegar", sem id. `jules`:
+ * veio do easter egg do Explorar (WEB-555) e grava também a conquista secreta
+ * "Achou o Jules" (WEB-558), em `?acao=app.jules`.
+ */
+export type Acao =
+  | { tipo: TipoAcao; id: string }
+  | { tipo: 'app'; jules?: boolean }
 
 const TIPOS: readonly TipoAcao[] = ['vou', 'fav', 'lembrar']
 const UUID = /^[0-9a-f-]{36}$/i
 
 export function acaoTexto(acao: Acao): string {
-  return acao.tipo === 'app' ? 'app' : `${acao.tipo}.${acao.id}`
+  if (acao.tipo === 'app') return acao.jules ? 'app.jules' : 'app'
+  return `${acao.tipo}.${acao.id}`
 }
 
 /**
@@ -31,6 +38,7 @@ export function lerAcao(
 ): Acao | null {
   if (typeof texto !== 'string') return null
   if (texto === 'app') return { tipo: 'app' }
+  if (texto === 'app.jules') return { tipo: 'app', jules: true }
   if (texto === 'salvar' && legado?.barId)
     return { tipo: 'fav', id: legado.barId }
   if (texto === 'vou' && legado?.eventId)
@@ -79,7 +87,7 @@ export function lerNovo(texto: unknown): Novo | null {
 /** Torcedor sem onboarding com esta ação no destino pula o onboarding. */
 export function acaoPulaOnboarding(href: string): boolean {
   const texto = new URL(href, 'http://local').searchParams.get('acao')
-  return Boolean(texto) && texto !== 'app'
+  return Boolean(texto) && texto !== 'app' && texto !== 'app.jules'
 }
 
 /** As preferências curtas da conta nova, depois da ação. */
@@ -134,3 +142,7 @@ export function contaNovaPodeVer(pathname: string, href: string): boolean {
     lerNovo(new URL(href, 'http://local').searchParams.get('novo')) !== null
   )
 }
+
+/** O aviso de quem acha o Jules no web (WEB-558): a medalha é do app. */
+export const CONQUISTA_JULES =
+  'Você destravou uma conquista secreta. Ela te espera no app.'
