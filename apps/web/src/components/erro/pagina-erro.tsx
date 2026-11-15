@@ -111,7 +111,7 @@ export function PaginaErro({
   }, [tipo])
 
   return (
-    <div className="erro-pg">
+    <div className="onside-page erro-pg">
       <header className="erro-topo">
         <Link to="/" aria-label="Onside — página inicial">
           <OnsideBrand />

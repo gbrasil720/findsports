@@ -27,7 +27,9 @@ const PISCADA_MS = 160
 /** A taça em pontos: 1 corpo, 2 olho, 0 nada. */
 async function rasterizar(lado: number): Promise<Uint8Array> {
   const img = new Image()
-  img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(TACA_SVG)}`
+  // Sem largura e altura o SVG não tem tamanho natural (0 no Chromium).
+  const svg = TACA_SVG.replace('<svg ', '<svg width="400" height="400" ')
+  img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
   await img.decode()
   const canvas = document.createElement('canvas')
   canvas.width = lado
