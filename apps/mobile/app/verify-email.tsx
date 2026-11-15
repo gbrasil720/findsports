@@ -43,6 +43,7 @@ import { formatTime } from '@/lib/explore'
 import { shortTitle } from '@/lib/maintenance-ticker'
 import { type Acao, peekPending } from '@/lib/pending-action'
 import { trpc } from '@/lib/trpc'
+import { verifiedCallbackURL } from '@/lib/verify-link'
 
 /*
  * "Confirmar e-mail" (4h do design), depois do cadastro e do login de quem
@@ -87,7 +88,7 @@ export default function VerifyEmail() {
     const result = await settleAuth(
       authClient.sendVerificationEmail({
         email,
-        callbackURL: '/verified',
+        callbackURL: await verifiedCallbackURL(),
         fetchOptions: turnstile.fetchOptions
       })
     )

@@ -19,6 +19,7 @@ import {
 } from '@/components/ui'
 import { attemptPhase, retryable, settleAuth } from '@/lib/auth-attempt'
 import { authClient } from '@/lib/auth-client'
+import { verifiedCallbackURL } from '@/lib/verify-link'
 
 /*
  * "Criar conta" (4g do design). O papel vem do perfil de uso. Depois do
@@ -57,7 +58,7 @@ export default function SignUp() {
         email: email.trim(),
         password,
         role,
-        callbackURL: '/verified',
+        callbackURL: await verifiedCallbackURL(),
         fetchOptions: turnstile.fetchOptions
       })
     )

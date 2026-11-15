@@ -2,7 +2,13 @@ import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
-import { AccessibilityInfo, Pressable, StyleSheet, View } from 'react-native'
+import {
+  AccessibilityInfo,
+  Alert,
+  Pressable,
+  StyleSheet,
+  View
+} from 'react-native'
 import Animated, {
   useAnimatedStyle,
   useReducedMotion,
@@ -22,12 +28,17 @@ import {
   text,
   useStatusBar
 } from '@/components/ui'
-import { adoptSessionCookie, authClient } from '@/lib/auth-client'
+import {
+  adoptSessionCookie,
+  authClient,
+  hasStoredSession
+} from '@/lib/auth-client'
 import { formatTime } from '@/lib/explore'
 import { latestURL } from '@/lib/latest-url'
 import { type Acao, finishPending } from '@/lib/pending-action'
 import { rawParam } from '@/lib/raw-param'
 import { queryClient, trpc } from '@/lib/trpc'
+import { takeVerifyNonce } from '@/lib/verify-link'
 
 /*
  * Destino do link de confirmação de e-mail (rodada 8, tela 5). O servidor
@@ -42,6 +53,28 @@ import { queryClient, trpc } from '@/lib/trpc'
  */
 
 const FOLLOW_MS = 1200
+
+/**
+ * Já há conta no aparelho: trocar pela do link só com o sim da pessoa. Sem
+ * conta, segue direto.
+ */
+async function confirmSwitch() {
+  if (!hasStoredSession()) return true
+  const current = await authClient.getSession().catch(() => null)
+  const name = current?.data?.user?.name?.trim()
+  if (!name) return true
+  return new Promise<boolean>((resolve) =>
+    Alert.alert(
+      'Trocar de conta?',
+      `Você está na conta de ${name}. Entrar na conta do e-mail confirmado?`,
+      [
+        { text: 'Continuar', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Trocar', onPress: () => resolve(true) }
+      ],
+      { cancelable: true, onDismiss: () => resolve(false) }
+    )
+  )
+}
 
 export default function Verified() {
   const router = useRouter()
@@ -78,11 +111,20 @@ export default function Verified() {
     latestURL()
       .then(async (url) => {
         const cookie = url ? rawParam(url, 'cookie') : undefined
-        if (!cookie) {
-          router.replace({
-            pathname: '/sign-in',
-            params: { notice: 'expired' }
-          })
+        const nonce = url ? rawParam(url, 'v') : undefined
+        // Só a sessão de um e-mail que este aparelho pediu (nonce no `v`, ver
+        // `lib/verify-link.ts`); e quem já está numa conta decide se troca.
+        if (
+          !cookie ||
+          !(await takeVerifyNonce(nonce)) ||
+          !(await confirmSwitch())
+        ) {
+          if (hasStoredSession()) router.replace('/')
+          else
+            router.replace({
+              pathname: '/sign-in',
+              params: { notice: 'expired' }
+            })
           return
         }
         await adoptSessionCookie(cookie)
