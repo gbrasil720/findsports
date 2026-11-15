@@ -41,12 +41,17 @@ const userId = z.string().min(1).max(64)
 const NOTICE_DAYS = 30
 const via = z.enum(['search', 'code', 'link', 'contacts', 'suggestion'])
 
-/** O que uma pessoa mostra numa linha de lista. */
+/**
+ * O que uma pessoa mostra numa linha de lista. A cidade não sai para quem não
+ * é amigo (política de privacidade, seção 06: "e-mail, telefone e cidade",
+ * ninguém além de nós); o campo fica nulo para o app publicado não quebrar.
+ * Só a lista de amigos aceitos (`overview`) a devolve.
+ */
 const PERSON = {
   id: user.id,
   name: user.name,
   username: user.username,
-  city: user.searchCityName,
+  city: sql<string | null>`NULL`,
   image: user.image
 }
 
@@ -443,11 +448,18 @@ export const friendsRouter = router({
                 SELECT search_city_name FROM "user" WHERE id = ${me}
               )`
             : sql``
+      // Quem escolheu "Ninguém" em "Quem pode te adicionar" só aparece para
+      // quem já tem algo com a pessoa (amigo ou pedido).
       const people = await db
         .select(PERSON)
         .from(user)
         .where(
           sql`${listable} AND ${user.id} <> ${me}
+            AND (${user.friendRequestsFrom} <> 'nobody' OR EXISTS (
+              SELECT 1 FROM friendship x
+              WHERE (x.requester_id = ${me} AND x.addressee_id = ${user.id})
+                 OR (x.requester_id = ${user.id} AND x.addressee_id = ${me})
+            ))
             AND (search_normalize(${user.name}) LIKE search_normalize(${pattern})
               OR ${user.username} LIKE ${`${typed}%`})
             ${scope}`
