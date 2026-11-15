@@ -1,4 +1,4 @@
-import { afterAll, expect, test } from 'bun:test'
+import { afterAll, expect, spyOn, test } from 'bun:test'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 import type Stripe from 'stripe'
 
@@ -660,5 +660,173 @@ integrationTest(
       canceled_at: canceledAt - 60 * 60 * 24 * 10
     })
     expect(updates).toEqual([])
+  }
+)
+
+/**
+ * Dublê do Stripe com a assinatura num preço e um cupom de fundador: o
+ * `update` troca o cupom e as leituras seguintes já o veem.
+ */
+function portalSwitch(o: {
+  id: string
+  customerId: string
+  userId: string
+  interval: 'month' | 'year'
+  coupon: 'eM7dQpMF' | 'fundador_anual'
+  refuse?: boolean
+}) {
+  const couponObject = (id: string) => ({
+    id,
+    amount_off: id === 'fundador_anual' ? 28000 : 2800,
+    currency: 'brl'
+  })
+  let couponId: string = o.coupon
+  const updates: unknown[][] = []
+  const current = () =>
+    ({
+      ...stripeSubscription({
+        id: o.id,
+        status: 'active',
+        customerId: o.customerId,
+        userId: o.userId,
+        lookupKey: o.interval === 'year' ? 'elite_yearly' : 'elite_monthly'
+      }),
+      discounts: [
+        {
+          id: 'di_1',
+          source: { type: 'coupon', coupon: couponObject(couponId) }
+        }
+      ],
+      items: {
+        data: [
+          {
+            current_period_end: Math.floor(periodEnd.getTime() / 1000),
+            price: {
+              id: 'price_1',
+              lookup_key:
+                o.interval === 'year' ? 'elite_yearly' : 'elite_monthly',
+              recurring: { interval: o.interval }
+            }
+          }
+        ]
+      }
+    }) as unknown as Stripe.Subscription
+  const client = {
+    subscriptions: {
+      retrieve: async () => current(),
+      update: async (...args: unknown[]) => {
+        updates.push(args)
+        if (o.refuse) {
+          throw Object.assign(new Error('Coupon is used up'), {
+            type: 'StripeInvalidRequestError'
+          })
+        }
+        const params = args[1] as { discounts: { coupon: string }[] }
+        couponId = params.discounts[0]?.coupon ?? couponId
+        return current()
+      }
+    },
+    customers: { update: async () => ({}) }
+  } as unknown as Stripe
+  return { client, updates }
+}
+
+const updated = (id: string) =>
+  ({
+    type: 'customer.subscription.updated',
+    data: { object: { id, object: 'subscription' } }
+  }) as unknown as Stripe.Event
+
+integrationTest(
+  'anual trocado para mensal no portal: o cupom de R$ 280 vira o de fundador do mês',
+  async () => {
+    const { syncStripeEvent, createBar, stateOf } = ready()
+    const owner = await createBar(null)
+    const id = `sub_${owner.barId}`
+    const stripe = portalSwitch({
+      id,
+      customerId: owner.customerId,
+      userId: owner.userId,
+      interval: 'month',
+      coupon: 'fundador_anual'
+    })
+    const log = spyOn(console, 'log').mockImplementation(() => {})
+    try {
+      await syncStripeEvent(updated(id), stripe.client)
+      // Repetido: já certo, nada a trocar.
+      await syncStripeEvent(updated(id), stripe.client)
+    } finally {
+      log.mockRestore()
+    }
+    expect(stripe.updates).toEqual([
+      [
+        id,
+        {
+          discounts: [{ coupon: 'eM7dQpMF' }],
+          expand: ['discounts.source.coupon']
+        }
+      ]
+    ])
+    expect(await stateOf(owner.barId)).toMatchObject({
+      plan: 'elite',
+      monthlyDiscountReais: 28
+    })
+  }
+)
+
+integrationTest(
+  'mensal com cupom do mês num preço anual: vira o fundador_anual',
+  async () => {
+    const { syncStripeEvent, createBar, stateOf } = ready()
+    const owner = await createBar(null)
+    const id = `sub_${owner.barId}`
+    const stripe = portalSwitch({
+      id,
+      customerId: owner.customerId,
+      userId: owner.userId,
+      interval: 'year',
+      coupon: 'eM7dQpMF'
+    })
+    const log = spyOn(console, 'log').mockImplementation(() => {})
+    try {
+      await syncStripeEvent(updated(id), stripe.client)
+    } finally {
+      log.mockRestore()
+    }
+    expect(stripe.updates).toHaveLength(1)
+    expect(await stateOf(owner.barId)).toMatchObject({
+      monthlyDiscountReais: 280
+    })
+  }
+)
+
+integrationTest(
+  'cupom do intervalo recusado pelo Stripe: só vai ao log, e a linha grava o que está lá',
+  async () => {
+    const { syncStripeEvent, createBar, stateOf } = ready()
+    const owner = await createBar(null)
+    const id = `sub_${owner.barId}`
+    const stripe = portalSwitch({
+      id,
+      customerId: owner.customerId,
+      userId: owner.userId,
+      interval: 'month',
+      coupon: 'fundador_anual',
+      refuse: true
+    })
+    const error = spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      await syncStripeEvent(updated(id), stripe.client)
+      expect(
+        error.mock.calls.some((c) =>
+          String(c[0]).includes('stripe_founder_coupon_interval_refused')
+        )
+      ).toBe(true)
+    } finally {
+      error.mockRestore()
+    }
+    expect(await stateOf(owner.barId)).toMatchObject({
+      monthlyDiscountReais: 280
+    })
   }
 )
