@@ -143,6 +143,8 @@ test('link com ?acao= pede confirmação e "Agora não" não grava', async ({
     name: 'Salvar este bar em Seus bares?'
   })
   await expect(cartaoConfirma).toBeVisible()
+  // Diz qual bar, para a pessoa saber o que confirma.
+  await expect(cartaoConfirma).toContainText(pub.name)
   await print(page, testInfo, 'acao-confirmacao', 500)
   expect(await isFavorite(fan.id, pub.barId)).toBe(false)
 
@@ -281,4 +283,32 @@ test('sem VITE_MAP_TILES_URL o mapa mostra o erro e a lista segue', async ({
   await expect(error).toBeVisible()
   await expect(error.getByRole('button')).toHaveCount(0)
   await expect(cartao(page, pub.name)).toBeVisible()
+})
+
+test('link com ?acao= de jogo que não existe não pergunta nada', async ({
+  page
+}) => {
+  const { spot, dia } = await barComJogo(page)
+  await signInFanAt(page, spot)
+
+  await page.goto(
+    `/dashboard?dia=${dia}&acao=vou.00000000-0000-4000-8000-000000000000`
+  )
+  await expect(page).not.toHaveURL(/acao=/)
+  await expect(page.getByRole('alertdialog')).toHaveCount(0)
+})
+
+test('confirmação de presença diz o jogo e o bar', async ({
+  page
+}, testInfo) => {
+  const { pub, spot, dia, eventId } = await barComJogo(page)
+  await signInFanAt(page, spot)
+
+  await page.goto(`/dashboard?dia=${dia}&acao=vou.${eventId}`)
+  const cartaoConfirma = page.getByRole('alertdialog', {
+    name: 'Marcar presença neste jogo?'
+  })
+  await expect(cartaoConfirma).toContainText(pub.name)
+  await expect(cartaoConfirma).toContainText(`Final ${pub.name}`)
+  await print(page, testInfo, 'acao-confirmacao-vou', 500)
 })
