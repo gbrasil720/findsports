@@ -1,3 +1,4 @@
+import { MascotStill } from '@/components/ai/mascot'
 import * as SecureStore from 'expo-secure-store'
 import { type RefObject, useEffect, useRef, useState } from 'react'
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native'
@@ -97,8 +98,9 @@ const STEPS: Step[] = [
   },
   {
     target: 'ia',
-    title: 'Pergunte do seu jeito',
-    body: 'A busca com IA entende pedidos inteiros e explica por que escolheu cada bar.',
+    // PROTÓTIPO (Jules, fase 2): ele se apresenta, nome e papel juntos.
+    title: 'Este é o Jules',
+    body: 'A IA da Onside. Pergunte do seu jeito: ele acha o jogo, o bar e explica por que escolheu cada um.',
     radius: 39,
     pad: 0
   },
@@ -324,9 +326,25 @@ export function Tour({
           </Text>
           <Text style={[tourStyles.mono, { color: palette.muted }]}>PULAR</Text>
         </Pressable>
-        <Text style={[tourStyles.title, { color: palette.ink }]}>
-          {last && !fan ? 'Sua conta guarda tudo' : step.title}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          {step.target === 'ia' ? (
+            <View
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: 16,
+                backgroundColor: '#12120f',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <MascotStill size={40} />
+            </View>
+          ) : null}
+          <Text style={[tourStyles.title, { color: palette.ink, flex: 1 }]}>
+            {last && !fan ? 'Sua conta guarda tudo' : step.title}
+          </Text>
+        </View>
         <Text
           style={[
             text(14.5, 'Regular', 1.45),
