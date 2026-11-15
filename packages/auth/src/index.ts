@@ -29,6 +29,7 @@ import {
   blocksCardOverPix,
   blocksNewCheckout,
   canAccessPubBilling,
+  isUnusedBillingRoute,
   requiresPubBillingAccess
 } from './billing-access'
 import {
@@ -175,6 +176,9 @@ export function createAuth() {
           if (ctx.path === '/update-user') assertNoSelfRoleChange(ctx.body)
         }
         if (!requiresPubBillingAccess(ctx.path)) return
+        if (isUnusedBillingRoute(ctx.path)) {
+          throw new APIError('NOT_FOUND')
+        }
         const session = await getSessionFromCtx(ctx)
         if (!canAccessPubBilling(session?.user ?? null)) {
           throw new APIError('FORBIDDEN', {

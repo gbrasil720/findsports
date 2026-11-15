@@ -12,6 +12,38 @@ export function requiresPubBillingAccess(path: string): boolean {
   return path.startsWith('/subscription/')
 }
 
+/**
+ * Rotas do plugin que o app não usa e que gravam no Stripe ou no banco:
+ * `/subscription/cancel` apaga a linha de `stripe_subscription` quando a
+ * assinatura não está `active` nem `trialing`, e sem ela a troca seguinte
+ * abriria uma segunda assinatura (o cancelamento é pelo portal,
+ * `createSubscriptionCancelUrl`); `/subscription/restore` desfaz no Stripe um
+ * cancelamento agendado sem passar pelo portal. `/subscription/success` fica:
+ * é a volta do checkout do plugin.
+ */
+const UNUSED_BILLING_ROUTES = new Set([
+  '/subscription/cancel',
+  '/subscription/restore'
+])
+
+export function isUnusedBillingRoute(path: string): boolean {
+  return UNUSED_BILLING_ROUTES.has(path)
+}
+
+/**
+ * Troca de plano numa assinatura do cartão que já existe fica no intervalo
+ * dela (WEB-442): o plugin acha o preço só pelo `annual` do pedido, e uma
+ * anual trocada sem ele viraria mensal levando o cupom anual (R$ 280 por
+ * fatura) para cada mês. `current` é o intervalo da assinatura viva, ou
+ * `null` sem assinatura no cartão.
+ */
+export function changesBillingInterval(
+  current: string | null,
+  annual: boolean
+): boolean {
+  return current !== null && (current === 'year') !== annual
+}
+
 export function canAccessPubBilling(user: BillingUser | null): boolean {
   return user?.role === 'pub' && user.emailVerified === true
 }

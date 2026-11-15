@@ -1,8 +1,10 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, it, test } from 'bun:test'
 import {
   blocksCardOverPix,
   blocksNewCheckout,
   canAccessPubBilling,
+  changesBillingInterval,
+  isUnusedBillingRoute,
   requiresPubBillingAccess
 } from './billing-access'
 
@@ -59,4 +61,24 @@ describe('cartão por cima do Pix pelo plugin (WEB-536)', () => {
     expect(blocksCardOverPix(pix('active', 'stripe'))).toBe(false)
     expect(blocksCardOverPix(null)).toBe(false)
   })
+})
+
+test('rotas do plugin sem uso no app ficam desligadas', () => {
+  expect(isUnusedBillingRoute('/subscription/cancel')).toBe(true)
+  expect(isUnusedBillingRoute('/subscription/restore')).toBe(true)
+  // A volta do checkout do plugin e o que o app usa seguem.
+  expect(isUnusedBillingRoute('/subscription/success')).toBe(false)
+  expect(isUnusedBillingRoute('/subscription/upgrade')).toBe(false)
+  expect(isUnusedBillingRoute('/subscription/billing-portal')).toBe(false)
+})
+
+test('troca de plano no cartão fica no intervalo da assinatura (WEB-442)', () => {
+  // Anual sem `annual` (a /plan antiga, ou o POST direto) viraria mensal.
+  expect(changesBillingInterval('year', false)).toBe(true)
+  expect(changesBillingInterval('month', true)).toBe(true)
+  expect(changesBillingInterval('year', true)).toBe(false)
+  expect(changesBillingInterval('month', false)).toBe(false)
+  // Sem assinatura no cartão é checkout novo: escolhe o que quiser.
+  expect(changesBillingInterval(null, true)).toBe(false)
+  expect(changesBillingInterval(null, false)).toBe(false)
 })
