@@ -107,3 +107,25 @@ export function isSafeResetRedirect(
   if (url.protocol !== 'https:' && url.protocol !== 'http:') return false
   return trustedOrigins.includes(url.origin)
 }
+
+/** A página do site onde a senha nova é escolhida. */
+export const RESET_PASSWORD_PATH = '/reset-password'
+
+/**
+ * O destino do reset que vale de fato: o pedido, se é seguro; a página do
+ * site, se era o esquema do app (build antigo do app e e-mails mandados antes
+ * desta regra, que assim abrem no site em vez de falhar); `null`, recusa.
+ */
+export function resetRedirectTarget(
+  target: unknown,
+  trustedOrigins: string[]
+): { keep: true } | { replace: string } | null {
+  if (isSafeResetRedirect(target, trustedOrigins)) return { keep: true }
+  if (typeof target !== 'string') return null
+  try {
+    const { protocol } = new URL(target)
+    if (protocol !== 'http:' && protocol !== 'https:')
+      return { replace: RESET_PASSWORD_PATH }
+  } catch {}
+  return null
+}
