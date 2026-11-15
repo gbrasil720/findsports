@@ -171,7 +171,17 @@ function useAcoes(avisar: (texto: string) => void) {
         )
       }
     },
-    [avisar, marcar, salvar, lembrar, avisarApp, navigate, queryClient, trpc]
+    [
+      avisar,
+      marcar,
+      salvar,
+      lembrar,
+      avisarApp,
+      acharJules,
+      navigate,
+      queryClient,
+      trpc
+    ]
   )
 }
 
