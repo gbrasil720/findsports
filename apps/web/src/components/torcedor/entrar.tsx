@@ -9,7 +9,7 @@ import {
 } from '@/lib/two-factor-challenge'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { withCallbackUrl } from '@/utils/callback-url'
-import { type Acao, acaoPulaOnboarding, comAcao } from './acao'
+import { type Acao, acaoPulaOnboarding, comAcao, guardarAcao } from './acao'
 import { Ic, type IconName } from './icones'
 
 /*
@@ -101,6 +101,12 @@ export function FolhaEntrar({ pedido, onFechar, onEntrou }: Props) {
   const mostrado = pedido ?? ultimo
   const tipo = mostrado?.tipo ?? 'entrar'
   const destino = comAcao(href, mostrado?.acao)
+
+  // A volta do cadastro, do e-mail e do 2FA só conclui a ação guardada aqui.
+  const acaoPedida = pedido?.acao
+  useEffect(() => {
+    if (acaoPedida) guardarAcao(acaoPedida)
+  }, [acaoPedida])
 
   useEffect(() => {
     if (!aberta) return
