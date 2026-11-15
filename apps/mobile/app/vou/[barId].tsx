@@ -2,10 +2,12 @@ import { actionPhase } from '@findsports_oficial/api/lib/transient-error'
 import { gameTitle } from '@findsports_oficial/db/game-title'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
-import Animated from 'react-native-reanimated'
+import Animated, { useReducedMotion } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Mascot, MascotStill } from '@/components/ai/mascot'
+import { useAiPalette } from '@/components/ai/theme'
 import { dayLabel } from '@/components/explore'
 import { ErrorText, haptic, SWAP } from '@/components/motion'
 import { AcidButton, ObTitle } from '@/components/ob-frame'
@@ -54,6 +56,11 @@ export default function GoingSheet() {
   const insets = useSafeAreaInsets()
   const palette = usePalette()
   const queryClient = useQueryClient()
+  // O jogo cuja presença acabou de ser marcada: a comemoração do Jules.
+  const [party, setParty] = useState<string | null>(null)
+  const reduced = useReducedMotion()
+  const after = useRef<ReturnType<typeof setTimeout>>(undefined)
+  useEffect(() => () => clearTimeout(after.current), [])
   const fan = authClient.useSession().data?.user.role === 'fan'
   // Sem bar (link quebrado, amigo sem jogo), a folha fecha em vez de pedir
   // ao servidor um id vazio (erro do zod).
@@ -103,10 +110,20 @@ export default function GoingSheet() {
             queryKey: trpc.recommendations.today.queryKey()
           })
         ])
-        if (attending) haptic.success()
-        else haptic.select()
-        if (attending && data?.issuesCode) router.replace(`/codigo/${id}`)
-        else close()
+        // Presença nova: o Jules comemora (WEB-546) e a folha segue sozinha,
+        // para o código no bar Elite ou fechando nos outros. A vibração de
+        // sucesso sai no carimbo, não aqui.
+        if (attending) {
+          setParty(id)
+          after.current = setTimeout(
+            () =>
+              data?.issuesCode ? router.replace(`/codigo/${id}`) : close(),
+            reduced ? PARTY_STILL_MS : PARTY_MS
+          )
+        } else {
+          haptic.select()
+          close()
+        }
       }
     })
   )
@@ -350,7 +367,96 @@ export default function GoingSheet() {
           disabled={phase === 'idle' && mine.attending && !mine.code}
         />
       </View>
+      {/* Montada desde a abertura da folha, invisível: o Jules já está
+          carregado quando a presença é confirmada (sem tela vazia). */}
+      <Party
+        show={Boolean(party)}
+        title={gameTitle(game)}
+        bar={data.name}
+        code={Boolean(data.issuesCode)}
+      />
     </>
+  )
+}
+
+/** A comemoração dura o que a cena do ingresso dura (aprovado: ~3,6 s). */
+const PARTY_MS = 3600
+/** Com "reduzir movimento": um quadro parado e curto. */
+const PARTY_STILL_MS = 1400
+
+/**
+ * A comemoração do "Vou" (WEB-546). O Jules vira ingresso e leva o carimbo;
+ * a folha segue sozinha para o código ou fecha. Fica montada desde a
+ * abertura, invisível, para a taça já estar na tela quando a presença sai:
+ * a troca é uma fusão curta, sem instante em branco. Com "reduzir
+ * movimento", a taça parada e a vibração na hora.
+ */
+function Party({
+  show,
+  title,
+  bar,
+  code
+}: {
+  show: boolean
+  title: string
+  bar: string
+  code: boolean
+}) {
+  const palette = usePalette()
+  const ai = useAiPalette()
+  const reduced = useReducedMotion()
+  // A cena do ingresso é uma reação: só toca vindo de outro estado.
+  const [state, setState] = useState<'idle' | 'going'>('idle')
+  useEffect(() => {
+    if (!show) return
+    if (reduced) {
+      haptic.success()
+      return
+    }
+    const timer = setTimeout(() => setState('going'), 260)
+    return () => clearTimeout(timer)
+  }, [show, reduced])
+  return (
+    <Animated.View
+      pointerEvents={show ? 'auto' : 'none'}
+      accessibilityElementsHidden={!show}
+      importantForAccessibility={show ? 'auto' : 'no-hide-descendants'}
+      accessibilityLiveRegion="polite"
+      style={[
+        StyleSheet.absoluteFill,
+        {
+          opacity: show ? 1 : 0,
+          transitionProperty: 'opacity',
+          transitionDuration: 160,
+          backgroundColor: palette.bg,
+          justifyContent: 'center',
+          paddingHorizontal: 24,
+          gap: 8
+        }
+      ]}
+    >
+      {reduced ? (
+        <View style={styles.partyStill}>
+          <View style={styles.partyTile}>
+            <MascotStill size={110} />
+          </View>
+        </View>
+      ) : (
+        <Mascot
+          state={state}
+          palette={ai}
+          style={{ height: 300 }}
+          onStamp={haptic.success}
+        />
+      )}
+      <ObTitle plain="Presença" hot="confirmada" size={36} breakLine />
+      <Text style={[text(15, 'SemiBold', 1.3), { color: palette.ink }]}>
+        {title}
+      </Text>
+      <Text style={[text(14, 'Regular', 1.4), { color: palette.muted }]}>
+        {bar} · {code ? 'abrindo seu código…' : 'está em Meus jogos.'}
+      </Text>
+    </Animated.View>
   )
 }
 
@@ -583,6 +689,15 @@ function Note({
 }
 
 const styles = StyleSheet.create({
+  partyStill: { height: 300, alignItems: 'center', justifyContent: 'center' },
+  partyTile: {
+    width: 150,
+    height: 150,
+    borderRadius: 36,
+    backgroundColor: INK,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
   // `.fs`: 18 dos lados, 12 entre as peças.
   body: { paddingHorizontal: 18, gap: 12 },
   head: {
