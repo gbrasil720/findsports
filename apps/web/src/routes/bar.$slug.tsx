@@ -96,6 +96,7 @@ function BarRoute() {
         now={page.now}
         ownerPreview={page.ownerPreview}
         nearby={page.nearby}
+        neighbors={page.neighbors}
         search={search}
       />
     </>
