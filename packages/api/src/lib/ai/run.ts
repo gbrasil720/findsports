@@ -234,12 +234,15 @@ async function reserveRun(
   feature: AiFeature,
   row: typeof aiRun.$inferInsert
 ) {
+  // Lido antes da trava: dentro dela, só o `tx`. Pedir outra conexão ao
+  // pool com a trava tomada pode esperar para sempre quando as outras
+  // conexões são das reservas paradas na mesma trava.
+  const limits = await getAppConfig('ai.limits')
   const blocked = await db.transaction(async (tx) => {
     await tx.execute(
       sql`SELECT pg_advisory_xact_lock(hashtext(${`ai_run:${userId}`}))`
     )
     const now = new Date()
-    const limits = await getAppConfig('ai.limits')
     const usage = await readUserUsage(userId, now, tx)
     const block = budgetBlock(usage, limits)
     if (block) return block
