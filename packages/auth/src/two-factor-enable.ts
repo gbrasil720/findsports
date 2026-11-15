@@ -16,27 +16,34 @@ type EnablingContext = { twoFactorEnablingUserId?: string }
  * flag da conta volta a valer como garantia da sessão. Não há marca por
  * sessão (seria coluna nova e três portões mudando).
  *
- * O `before` reconhece a ativação pela mesma condição do plugin (sessão
- * aberta e `two_factor` ainda não verificado): o `verify-totp` do login não
- * tem sessão, e não pode derrubar os outros aparelhos a cada entrada.
+ * As duas rotas que ligam o 2FA no better-auth 1.6 são o `verify-totp` e o
+ * `verify-otp` (este só com `otp.sendOTP`, hoje desligado). Ambas só ligam com
+ * sessão aberta e a flag da conta ainda falsa, e só então criam sessão nova;
+ * o `before` confere isso no banco (o cookie cache pode estar velho). No
+ * login não há sessão, e entrar não derruba os outros aparelhos.
  */
+const ENABLING_PATHS = new Set([
+  '/two-factor/verify-totp',
+  '/two-factor/verify-otp'
+])
+
+export const matchesTwoFactorEnable = (ctx: { path?: string }) =>
+  ENABLING_PATHS.has(ctx.path ?? '')
+
 export const revokeOtherSessionsOnTwoFactorEnable = () =>
   ({
     id: 'two-factor-enable-revokes-sessions',
     hooks: {
       before: [
         {
-          matcher: (ctx) => ctx.path === '/two-factor/verify-totp',
+          matcher: matchesTwoFactorEnable,
           handler: createAuthMiddleware(async (ctx) => {
             const session = await getSessionFromCtx(ctx)
             if (!session) return
-            const row = await ctx.context.adapter.findOne<{
-              verified: boolean | null
-            }>({
-              model: 'twoFactor',
-              where: [{ field: 'userId', value: session.user.id }]
-            })
-            if (!row || row.verified === true) return
+            const account = (await ctx.context.internalAdapter.findUserById(
+              session.user.id
+            )) as { twoFactorEnabled?: boolean | null } | null
+            if (!account || account.twoFactorEnabled === true) return
             return {
               context: { twoFactorEnablingUserId: session.user.id }
             }
@@ -45,7 +52,7 @@ export const revokeOtherSessionsOnTwoFactorEnable = () =>
       ],
       after: [
         {
-          matcher: (ctx) => ctx.path === '/two-factor/verify-totp',
+          matcher: matchesTwoFactorEnable,
           handler: createAuthMiddleware(async (ctx) => {
             const userId = (ctx as EnablingContext).twoFactorEnablingUserId
             if (!userId) return
