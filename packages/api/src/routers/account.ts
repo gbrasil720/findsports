@@ -1,3 +1,4 @@
+import { EmailBudgetExceeded } from '@findsports_oficial/auth/email-budget'
 import {
   createOnsideEmailTemplate,
   fileCard
@@ -387,6 +388,15 @@ export const accountRouter = router({
         ...createDataExportEmail({ name: user.name, role: user.role, filename })
       })
     } catch (error) {
+      // Orçamento de e-mail do dia esgotado: tentar de novo hoje não adianta,
+      // e o pedido conta, como no feedback.
+      if (error instanceof EmailBudgetExceeded) {
+        throw new TRPCError({
+          code: 'TOO_MANY_REQUESTS',
+          message:
+            'Muitos pedidos de arquivo hoje. Peça de novo amanhã, por favor.'
+        })
+      }
       // Pedido que não saiu não conta: a pessoa vai tentar de novo.
       await refundWindowAttempt(key)
       console.error('[account] exportação falhou', error)
