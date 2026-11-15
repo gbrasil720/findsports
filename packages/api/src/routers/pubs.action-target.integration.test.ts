@@ -18,12 +18,14 @@ integrationTest('diz o jogo e o bar só do que dá para marcar', async () => {
   const { db, appRouter } = await load()
   const mark = crypto.randomUUID().slice(0, 8)
   const sportId = crypto.randomUUID()
-  const owners = ['aberto', 'fora'].map((key) => ({
+  const novo = (key: string) => ({
     key,
     userId: crypto.randomUUID(),
     barId: crypto.randomUUID()
-  }))
-  const [aberto, fora] = owners
+  })
+  const aberto = novo('aberto')
+  const fora = novo('fora')
+  const owners = [aberto, fora]
   await db.insert(user).values(
     owners.map((owner) => ({
       id: owner.userId,
