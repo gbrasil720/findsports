@@ -207,6 +207,14 @@ export function createAuth() {
               code: 'PIX_SWITCH_UNAVAILABLE'
             })
           }
+          // A metadata do corpo vai para a assinatura no Stripe, e o webhook
+          // lê dali o que o servidor grava (`founderCoupon`,
+          // `pixUpgradeCents`). O app não manda nenhuma.
+          if ((ctx.body as { metadata?: unknown })?.metadata !== undefined) {
+            throw new APIError('BAD_REQUEST', {
+              message: 'Pedido de assinatura inválido.'
+            })
+          }
         }
       }),
       // WEB-384: depois de a rota do plugin admin responder sem erro.
