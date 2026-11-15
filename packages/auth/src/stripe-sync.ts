@@ -11,6 +11,7 @@ import type Stripe from 'stripe'
 import { cancelSubscriptionIfActive } from './abacatepay'
 import { monthlyDiscountReaisFromStripe } from './stripe-discount'
 import {
+  CARD_FROM_PIX_KEY,
   FOUNDER_ANNUAL_COUPON_ID,
   FOUNDER_COUPON_ID,
   planForLookupKey
@@ -196,8 +197,12 @@ export async function applyStripeSubscription(
     existing.externalSubscriptionId &&
     existing.status !== 'cancelled'
   ) {
-    if (!upgradePaid(stripeSubscription)) {
-      logBillingError('pix_upgrade_unpaid', {
+    // Só a sessão do `startCardFromPix` troca o Pix pelo cartão: um checkout
+    // do plugin aberto antes (no teste do cadastro) e concluído com o Pix já
+    // pago levaria o plano sem a diferença e cancelaria o Pix.
+    const fromPix = cameFromCardFromPix(stripeSubscription)
+    if (!fromPix || !upgradePaid(stripeSubscription)) {
+      logBillingError(fromPix ? 'pix_upgrade_unpaid' : 'pix_card_over_pix', {
         barId: foundBar.id,
         subscriptionId: stripeSubscription.id
       })
@@ -248,6 +253,17 @@ export async function applyStripeSubscription(
 }
 
 type StripeBilling = Pick<Stripe, 'subscriptions'>
+
+/**
+ * A assinatura nasceu da sessão do `startCardFromPix`: o marcador, ou a
+ * diferença da subida (sessões abertas antes do marcador existir).
+ */
+function cameFromCardFromPix(stripeSubscription: Stripe.Subscription): boolean {
+  return (
+    stripeSubscription.metadata?.[CARD_FROM_PIX_KEY] === '1' ||
+    Number(stripeSubscription.metadata?.pixUpgradeCents ?? 0) > 0
+  )
+}
 
 /**
  * A diferença da subida do Pix para o cartão (WEB-536) foi paga: ela é um item

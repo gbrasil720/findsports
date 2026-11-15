@@ -30,6 +30,13 @@ export const FOUNDER_COUPON_ID = 'eM7dQpMF'
 export const FOUNDER_ANNUAL_COUPON_ID = 'fundador_anual'
 
 /**
+ * Marca, na metadata da assinatura, a sessão do `startCardFromPix` (WEB-536):
+ * só ela pode trocar um Pix vivo pelo cartão. O cliente não escreve metadata
+ * (o `/subscription/upgrade` a recusa no corpo).
+ */
+export const CARD_FROM_PIX_KEY = 'cardFromPix'
+
+/**
  * Fonte única dos planos vendidos no Stripe (WEB-31): o checkout vende estes
  * e o webhook só aplica estes.
  *

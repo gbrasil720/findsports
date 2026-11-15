@@ -6,6 +6,7 @@ import type Stripe from 'stripe'
 import {
   ANNUAL_LOOKUP_KEYS,
   ANNUAL_MONTHS,
+  CARD_FROM_PIX_KEY,
   FOUNDER_ANNUAL_COUPON_ID,
   FOUNDER_COUPON_ID,
   monthlyPriceReais,
@@ -573,6 +574,7 @@ export async function startCardFromPix(
       ...params.subscription_data,
       metadata: {
         ...(params.subscription_data?.metadata as Record<string, string>),
+        [CARD_FROM_PIX_KEY]: '1',
         userId: owner.id
       }
     }
