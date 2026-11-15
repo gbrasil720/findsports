@@ -6,6 +6,8 @@ import { useEffect, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Mascot } from '@/components/ai/mascot'
+import { useAiPalette } from '@/components/ai/theme'
 import { dayLabel } from '@/components/explore'
 import { ErrorText, haptic, SWAP } from '@/components/motion'
 import { AcidButton, ObTitle } from '@/components/ob-frame'
@@ -54,6 +56,8 @@ export default function GoingSheet() {
   const insets = useSafeAreaInsets()
   const palette = usePalette()
   const queryClient = useQueryClient()
+  // PROTÓTIPO (Jules, fase 2): o jogo cuja presença acabou de ser marcada.
+  const [party, setParty] = useState<string | null>(null)
   const fan = authClient.useSession().data?.user.role === 'fan'
   // Sem bar (link quebrado, amigo sem jogo), a folha fecha em vez de pedir
   // ao servidor um id vazio (erro do zod).
@@ -105,8 +109,15 @@ export default function GoingSheet() {
         ])
         if (attending) haptic.success()
         else haptic.select()
-        if (attending && data?.issuesCode) router.replace(`/codigo/${id}`)
-        else close()
+        // PROTÓTIPO (Jules, fase 2): a presença nova é comemorada antes de seguir.
+        if (attending) {
+          setParty(id)
+          setTimeout(
+            () =>
+              data?.issuesCode ? router.replace(`/codigo/${id}`) : close(),
+            3600
+          )
+        } else close()
       }
     })
   )
@@ -350,7 +361,70 @@ export default function GoingSheet() {
           disabled={phase === 'idle' && mine.attending && !mine.code}
         />
       </View>
+      {/* Montada desde a abertura da folha, invisível: o Jules já está
+          carregado quando a presença é confirmada (sem tela vazia). */}
+      <Party
+        show={Boolean(party)}
+        title={gameTitle(game)}
+        bar={data.name}
+        code={Boolean(data.issuesCode)}
+      />
     </>
+  )
+}
+
+/**
+ * PROTÓTIPO (Jules, fase 2): a comemoração do "Vou". O Jules vira ingresso e
+ * leva o carimbo; a folha segue sozinha para o código ou fecha.
+ */
+function Party({
+  show,
+  title,
+  bar,
+  code
+}: {
+  show: boolean
+  title: string
+  bar: string
+  code: boolean
+}) {
+  const palette = usePalette()
+  const ai = useAiPalette()
+  // A cena do ingresso é uma reação: só toca vindo de outro estado.
+  const [state, setState] = useState<'idle' | 'going'>('idle')
+  useEffect(() => {
+    if (!show) return
+    const timer = setTimeout(() => setState('going'), 260)
+    return () => clearTimeout(timer)
+  }, [show])
+  return (
+    <Animated.View
+      pointerEvents={show ? 'auto' : 'none'}
+      accessibilityElementsHidden={!show}
+      importantForAccessibility={show ? 'auto' : 'no-hide-descendants'}
+      accessibilityLiveRegion="polite"
+      style={[
+        StyleSheet.absoluteFill,
+        {
+          opacity: show ? 1 : 0,
+          transitionProperty: 'opacity',
+          transitionDuration: 160,
+          backgroundColor: palette.bg,
+          justifyContent: 'center',
+          paddingHorizontal: 24,
+          gap: 8
+        }
+      ]}
+    >
+      <Mascot state={state} palette={ai} style={{ height: 300 }} />
+      <ObTitle plain="Presença" hot="confirmada" size={36} breakLine />
+      <Text style={[text(15, 'SemiBold', 1.3), { color: palette.ink }]}>
+        {title}
+      </Text>
+      <Text style={[text(14, 'Regular', 1.4), { color: palette.muted }]}>
+        {bar} · {code ? 'abrindo seu código…' : 'está em Meus jogos.'}
+      </Text>
+    </Animated.View>
   )
 }
 
