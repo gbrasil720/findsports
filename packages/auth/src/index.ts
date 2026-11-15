@@ -439,6 +439,23 @@ export function createAuth() {
           })
         }
       }),
+      // Depois do stripe(): ele declara `user.stripeCustomerId` sem
+      // `input: false`, e o cadastro e o `/update-user` o aceitavam do
+      // cliente. Quem grava é o servidor (plugin, checkout, Pix → cartão).
+      {
+        id: 'server-owned-stripe-customer',
+        schema: {
+          user: {
+            fields: {
+              stripeCustomerId: {
+                type: 'string',
+                required: false,
+                input: false
+              }
+            }
+          }
+        }
+      },
       sessionTokenGuard(),
       // O app nativo (`apps/mobile`): troca o cookie de navegador pela sessão
       // guardada no aparelho e aceita `onside://` como origem.
