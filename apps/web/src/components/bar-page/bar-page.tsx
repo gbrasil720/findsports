@@ -80,6 +80,13 @@ export type Nearby = {
   endsAt: Date | null
 }
 
+export type Neighbor = {
+  id: string
+  name: string
+  neighborhood: string
+  path: string
+}
+
 export type BarPageSearch = { jogo?: string; acao?: string }
 
 type Props = {
@@ -88,6 +95,7 @@ type Props = {
   now: Date
   ownerPreview: boolean
   nearby: Nearby[]
+  neighbors?: Neighbor[]
   search: BarPageSearch
 }
 
@@ -158,6 +166,7 @@ export function BarPage({
   now,
   ownerPreview,
   nearby,
+  neighbors = [],
   search
 }: Props) {
   const session = useSession()
@@ -508,6 +517,9 @@ export function BarPage({
               />
               <Hours bar={bar} now={now} />
             </div>
+            {neighbors.length ? (
+              <NeighborsSection neighbors={neighbors} />
+            ) : null}
           </div>
           <aside className="side" aria-label="Jogo de hoje">
             {game ? (
@@ -1596,6 +1608,25 @@ function Hours({ bar, now }: { bar: LiveBar; now: Date }) {
           ) : null}
         </div>
       ) : null}
+    </section>
+  )
+}
+
+function NeighborsSection({ neighbors }: { neighbors: Neighbor[] }) {
+  return (
+    <section className="sec o-neighbors" aria-labelledby="vz-h">
+      <div className="sh">
+        <h2 id="vz-h">Outros bares perto daqui</h2>
+      </div>
+      <ul>
+        {neighbors.map((item) => (
+          <li key={item.id}>
+            <a href={item.path}>
+              {item.name}, {item.neighborhood}
+            </a>
+          </li>
+        ))}
+      </ul>
     </section>
   )
 }
