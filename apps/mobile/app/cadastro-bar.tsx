@@ -554,7 +554,12 @@ export default function CadastroBar() {
                   'Publicar o primeiro jogo',
                   '1 min · o torcedor já acha o seu bar'
                 ],
-                ['Completar o perfil', 'capa, descrição, horário e oferta'],
+                [
+                  'Completar o perfil',
+                  hoursSet
+                    ? 'capa, descrição e oferta'
+                    : 'capa, descrição, horário e oferta'
+                ],
                 ['Escolher o plano do teste', 'a gente indica pela sua rotina']
               ].map(([title, sub], i) => (
                 <View
@@ -744,7 +749,13 @@ export function Plate({
           </View>
         )}
         {hours === undefined ? null : hours ? (
-          <View style={[styles.plateLine, lit === 'hours' && styles.lit]}>
+          <View
+            style={[
+              styles.plateLine,
+              { alignSelf: 'flex-start' },
+              lit === 'hours' && styles.lit
+            ]}
+          >
             <Svg width={15} height={15} viewBox="0 0 24 24">
               <Circle
                 cx={12}
@@ -762,7 +773,7 @@ export function Plate({
               numberOfLines={1}
               style={[
                 text(14.5, lit === 'hours' ? 'SemiBold' : 'Regular', 1.3),
-                { color: lit === 'hours' ? INK : '#c9c7c0', flex: 1 }
+                { color: lit === 'hours' ? INK : '#c9c7c0', flexShrink: 1 }
               ]}
             >
               {hours}
