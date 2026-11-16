@@ -150,6 +150,8 @@ export function aplicarPino(
     gota.style.display = oco ? 'none' : ''
     ponto.style.display = oco ? 'block' : 'none'
   }
+  // O ponto tem 9 px: o CSS do torcedor dá a ele um alvo de toque maior.
+  pintura.parentElement?.toggleAttribute('data-oco', oco)
   // O nome aparece no pino em destaque (`.pino-nome` no CSS do torcedor).
   pintura.toggleAttribute('data-destaque', large)
 }
