@@ -485,9 +485,14 @@ invalidam `getProfileAlert` ao salvar.
 
 No app (`apps/mobile/components/profile-alert.tsx`, `useProfileAlert`): `view` no topo do
 conteúdo de Hoje, Jogos, Quem vai, Desempenho e Configurações do bar (não em Meu espaço),
-`toast` na raiz da tela. Cores `warn*` na `PALETTE`. Erro ao ler não mostra nada. O link
-abre Meu espaço na aba do assunto (`?aba=`; `&secao=times` rola até os times da casa);
-o app não edita oferta nem cardápio, então `oferta` abre a aba Código e `cardapio`, Dados.
+`toast` na raiz da tela. Cores `warn*` na `PALETTE`. Erro ao ler não mostra nada. **O app
+só mostra o que resolve** (dono, 16/11/2026): pede `getProfileAlert({ skip: ['whatsapp',
+'cardapio'] })`, e o servidor tira os dois só daquela leitura (o seguinte aparece no lugar;
+pulado não conta como resolvido na regra do `shown_on`, então o web segue com o dele). O
+link de horário e oferta abre `completar-perfil?passo=3`, o de descrição `?passo=2` (um
+passo só: salvar, "Depois" e voltar fecham a tela, sem a rotina; a oferta só aparece no
+Elite vigente, o mesmo de quem recebe o assunto), e o de times Meu espaço
+(`?aba=dados&secao=times`, rola até os times da casa).
 O X some na hora, avisa "Tudo bem. Lembramos de novo em <dia>." e, se o servidor recusar,
 o alerta volta. Mutation que resolve um assunto já vence o cache inteiro (`query-client.ts`).
 
