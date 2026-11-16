@@ -459,6 +459,19 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   do Pix leva a vaga, e o `cancelled` do Pix que chega depois não é da assinatura
   atual e não derruba nada.
 
+### Alerta de perfil do bar
+
+Um aviso por vez no painel (web e app) sobre o que falta no perfil, numa fila fixa:
+`horario` (sem `opening_hours`), `whatsapp` (telefone com 10+ dígitos sem "aceita
+WhatsApp"), `oferta` (só Elite vigente), `cardapio` (Pro e Elite vigentes), `descricao`
+(nem aprovada nem em revisão) e `times` (nenhum time da casa). Chaves em
+`packages/db/src/profile-alerts.ts`; regras em `packages/api/src/lib/profile-alert.ts`;
+`pub.getProfileAlert` (`{ alert }`) e `pub.dismissProfileAlert`. "Agora não" vale 3 dias
+na conta do bar (`bar_profile_alert.dismissed_until`). A leitura grava `shown_on` (dia de
+Brasília): se o assunto mostrado hoje saiu da fila (resolvido, dispensado ou fora do
+plano), nada aparece até amanhã, sem mexer nas mutations de cada campo. Bar fora do ar
+não tem alerta.
+
 ### Avisos por e-mail do bar (WEB-441)
 
 Em `/admin/configuracoes` → Avisos por e-mail o dono liga e desliga três e-mails
