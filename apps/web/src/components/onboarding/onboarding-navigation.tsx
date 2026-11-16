@@ -23,6 +23,11 @@ type Props = {
    * de `components/admin/event-form.tsx`.
    */
   blockedHint?: string | null
+  /**
+   * Passo opcional com o pular à parte do "Continuar" ("Pular por agora" do
+   * Horário): um link entre os dois botões.
+   */
+  skip?: { label: string; onSkip: () => void }
 }
 
 /**
@@ -38,7 +43,8 @@ export function OnboardingNavigation({
   onNext,
   lastLabel = 'Entrar no app',
   nextLabel,
-  blockedHint
+  blockedHint,
+  skip
 }: Props) {
   const hintId = useId()
   const label = isPending
@@ -66,6 +72,16 @@ export function OnboardingNavigation({
           >
             <ArrowLeft size={18} color="currentColor" aria-hidden="true" />
             Voltar
+          </button>
+        ) : null}
+        {skip ? (
+          <button
+            type="button"
+            onClick={skip.onSkip}
+            disabled={isPending}
+            className="ob-link"
+          >
+            {skip.label}
           </button>
         ) : null}
         <button
