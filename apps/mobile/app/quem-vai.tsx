@@ -16,6 +16,7 @@ import {
 } from '@/components/bar-owner'
 import { HardShadow } from '@/components/explore'
 import { haptic } from '@/components/motion'
+import { useProfileAlert } from '@/components/profile-alert'
 import { usePalette } from '@/components/theme'
 import {
   ACID,
@@ -50,6 +51,7 @@ export default function QuemVai() {
   const palette = usePalette()
   const insets = useSafeAreaInsets()
   useStatusBar(palette.dark ? 'light' : 'dark')
+  const profileAlert = useProfileAlert()
   const owner = useOwnerBar()
   const going = useQuery({
     ...trpc.barReservations.going.queryOptions(),
@@ -111,6 +113,7 @@ export default function QuemVai() {
         }}
       >
         <BackButton />
+        {profileAlert.view}
         <View>
           <Text style={[styles.kicker, { color: palette.muted }]}>
             {[
@@ -372,6 +375,7 @@ export default function QuemVai() {
           </>
         )}
       </ScrollView>
+      {profileAlert.toast}
     </View>
   )
 }
