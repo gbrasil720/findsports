@@ -31,6 +31,8 @@ import {
   canAccessPubBilling,
   requiresPubBillingAccess
 } from './billing-access'
+import { extrairIp } from './client-ip'
+import { EmailBudgetExceeded } from './email-budget'
 import {
   isAuthWrite,
   isReadOnlyImpersonation,
@@ -48,6 +50,27 @@ import { planForLookupKey, STRIPE_PLANS } from './stripe-plan'
 import { syncStripeEvent } from './stripe-sync'
 import { APP_SCHEME, buildTrustedOrigins } from './trusted-origins'
 import { publicEmailUrl, sendVerificationEmail } from './verification-email'
+
+/**
+ * Verificação e reset recusados pelo orçamento de e-mail (`email-budget.ts`)
+ * saem calados: o better-auth responde como sempre, sem dizer se o endereço
+ * existe, e o provedor não é chamado. A recusa já foi ao log.
+ */
+async function withinEmailBudget(send: Promise<void>): Promise<void> {
+  try {
+    await send
+  } catch (error) {
+    if (!(error instanceof EmailBudgetExceeded)) throw error
+  }
+}
+
+/**
+ * IP de quem pediu o e-mail, pela mesma regra do contexto do tRPC. Chamada
+ * do servidor (`auth.api`, como o admin) não traz requisição.
+ */
+function emailRequestIp(request: Request | undefined): string | undefined {
+  return request ? extrairIp(request.headers) : undefined
+}
 
 function cookieDomainFor(baseUrl: string): string | undefined {
   const host = new URL(baseUrl).hostname.replace(/^www\./, '')
@@ -246,17 +269,20 @@ export function createAuth() {
       // Quem redefine a senha normalmente é quem perdeu o acesso; se a conta
       // estava comprometida, as sessões do invasor precisam cair junto.
       revokeSessionsOnPasswordReset: true,
-      sendResetPassword: async ({ user, url }) => {
+      sendResetPassword: async ({ user, url }, request) => {
         const publicAppUrl = getPublicAppUrl()
-        await sendResetPasswordEmail({
-          apiKey: env.EMAIL_API_KEY,
-          fromEmail: env.EMAIL_FROM,
-          to: user.email,
-          name: user.name,
-          // `url` sai com o host de `BETTER_AUTH_URL`, que localmente é
-          // localhost e não abre na caixa de entrada de ninguém.
-          resetUrl: publicEmailUrl(url, publicAppUrl, env.BETTER_AUTH_URL)
-        })
+        await withinEmailBudget(
+          sendResetPasswordEmail({
+            apiKey: env.EMAIL_API_KEY,
+            fromEmail: env.EMAIL_FROM,
+            to: user.email,
+            name: user.name,
+            ip: emailRequestIp(request),
+            // `url` sai com o host de `BETTER_AUTH_URL`, que localmente é
+            // localhost e não abre na caixa de entrada de ninguém.
+            resetUrl: publicEmailUrl(url, publicAppUrl, env.BETTER_AUTH_URL)
+          })
+        )
       },
       customSyntheticUser: ({ coreFields, additionalFields, id }) => ({
         ...coreFields,
@@ -275,19 +301,29 @@ export function createAuth() {
       sendOnSignIn: true,
       autoSignInAfterVerification: true,
       expiresIn: 60 * 60,
-      sendVerificationEmail: async ({ user, url }) => {
+      sendVerificationEmail: async ({ user, url }, request) => {
         const publicAppUrl = getPublicAppUrl()
-        await sendVerificationEmail({
-          apiKey: env.EMAIL_API_KEY,
-          fromEmail: env.EMAIL_FROM,
-          to: user.email,
-          name: user.name,
-          verificationUrl: publicEmailUrl(
-            url,
-            publicAppUrl,
-            env.BETTER_AUTH_URL
-          )
-        })
+        await withinEmailBudget(
+          sendVerificationEmail({
+            apiKey: env.EMAIL_API_KEY,
+            fromEmail: env.EMAIL_FROM,
+            to: user.email,
+            name: user.name,
+            // Só o cadastro manda para endereço novo; reenvio, login sem
+            // verificar e admin são de conta que já existe.
+            category:
+              request &&
+              new URL(request.url).pathname.endsWith('/sign-up/email')
+                ? 'signup'
+                : 'verify',
+            ip: emailRequestIp(request),
+            verificationUrl: publicEmailUrl(
+              url,
+              publicAppUrl,
+              env.BETTER_AUTH_URL
+            )
+          })
+        )
       }
     },
     user: {

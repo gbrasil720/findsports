@@ -1,3 +1,4 @@
+import type { ReserveEmail } from './email-budget'
 import { chips, createOnsideEmailTemplate } from './email-layout'
 import { sendEmail } from './verification-email'
 
@@ -57,8 +58,10 @@ export async function sendResetPasswordEmail(input: {
   to: string
   name: string
   resetUrl: string
+  ip?: string
   fetcher?: EmailFetcher
+  reserve?: ReserveEmail
 }): Promise<void> {
   const email = createResetPasswordEmail(input)
-  await sendEmail({ ...input, ...email })
+  await sendEmail({ ...input, ...email, category: 'reset' })
 }

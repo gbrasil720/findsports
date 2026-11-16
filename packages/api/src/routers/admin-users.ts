@@ -1,4 +1,5 @@
 import { auth } from '@findsports_oficial/auth'
+import { emailCategoryExhausted } from '@findsports_oficial/auth/email-budget'
 import {
   and,
   count,
@@ -64,8 +65,17 @@ async function sendOnBehalf(
   kind: AdminActionKind,
   actor: { id: string; name: string },
   target: { id: string; email: string },
+  category: 'verify' | 'reset',
   send: () => Promise<unknown>
 ) {
+  // O better-auth engole a recusa do orçamento de e-mail e responde 200: o
+  // admin precisa saber antes que o e-mail não sairia.
+  if (await emailCategoryExhausted(category)) {
+    throw new TRPCError({
+      code: 'TOO_MANY_REQUESTS',
+      message: `A cota de e-mails de ${category === 'verify' ? 'verificação' : 'redefinição de senha'} de hoje acabou. Tente de novo amanhã.`
+    })
+  }
   await db.transaction(async (tx) => {
     await recordAdminAction(
       {
@@ -235,6 +245,7 @@ export const adminUsersRouter = router({
         'user.resend_verification',
         ctx.session.user,
         target,
+        'verify',
         () =>
           auth.api.sendVerificationEmail({
             body: { email: target.email, callbackURL: VERIFY_CALLBACK }
@@ -250,6 +261,7 @@ export const adminUsersRouter = router({
         'user.send_password_reset',
         ctx.session.user,
         target,
+        'reset',
         () =>
           auth.api.requestPasswordReset({
             body: { email: target.email, redirectTo: RESET_REDIRECT }

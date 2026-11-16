@@ -244,10 +244,19 @@ export function fakeEmailApi(cleanups: (() => unknown)[], status = 200) {
     sent.push(JSON.parse(String(init?.body)))
     return Promise.resolve(new Response('{}', { status }))
   }) as typeof fetch)
-  cleanups.push(() => {
+  cleanups.push(async () => {
     spy.mockRestore()
     keys.EMAIL_API_KEY = undefined
     keys.EMAIL_FROM = undefined
+    // O orçamento de hoje (`email-budget.ts`) começa zerado em cada teste.
+    const [{ db, sql }, { rateLimit }, { emailBudgetDay }] = await Promise.all([
+      import('@findsports_oficial/db'),
+      import('@findsports_oficial/db/schema/auth'),
+      import('@findsports_oficial/auth/email-budget')
+    ])
+    await db
+      .delete(rateLimit)
+      .where(sql`${rateLimit.key} like ${`${emailBudgetDay(new Date())}%`}`)
   })
   return sent
 }

@@ -226,6 +226,26 @@ da MillionSend (plano Free da nuvem, 100 por dia). O provedor é `EMAIL_API_URL`
 remetente `EMAIL_FROM`. A Resend saiu em 29/10/2026 (WEB-482). DNS de envio:
 `docs/email-dns.md`.
 
+**Orçamento da cota:** todos os envios dividem a mesma cota da conta, então
+`sendEmail` pede `category` e conta o envio em `rate_limit` antes de chamar o provedor
+(`packages/auth/src/email-budget.ts`, valores em `EMAIL_BUDGET`). Cada categoria tem
+um balde por dia de UTC, e a soma fica em 90: `signup` (verificação do cadastro, 25),
+`verify` (reenvio, login sem verificar e admin, 15), `reset` (15), `notices` (25),
+`feedback` (5) e `export` (5); um flood de cadastro não come o reset nem os avisos da
+segunda. As três abertas sem login contam também por IP (`extrairIp`, o mesmo do
+tRPC): 5 por IP no dia, somadas, e `verify`/`reset` 3 por hora para o mesmo endereço
+**a partir do mesmo IP** (contar só pelo endereço deixaria outra pessoa travar o reset
+da vítima; cadastrar, entrar duas vezes sem verificar e reenviar cabe). Nas chaves de
+`rate_limit`, e-mail e IP vão como HMAC com o `BETTER_AUTH_SECRET` (`emailBudgetHash`),
+sem dado pessoal; as linhas vencidas ainda não são apagadas por rotina. Passou de um
+teto, ou o provedor respondeu 429: `EmailBudgetExceeded`, sem chamar o provedor, e
+`email_budget_refused` no log. Verificação e reset recusados saem calados (a resposta
+do better-auth não muda); o admin (reenviar e reset no Houdini) é avisado antes por
+`emailCategoryExhausted`; `feedback.send` (3 por pessoa no dia) e `account.requestExport`
+respondem `TOO_MANY_REQUESTS` sem devolver a tentativa. Outbox do E2E,
+`EMAIL_DELIVERY=console` e falta de chave não contam. Testes sem banco passam `reserve`
+(dublê); o `fakeEmailApi` zera os baldes de hoje a cada teste.
+
 Client env lives in the app, not in `packages/env`: `import.meta.env` is only
 typed where Vite's types are, and the shared package needed an `any` cast to
 compile — which erased the boundary it existed to provide.

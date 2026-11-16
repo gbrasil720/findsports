@@ -520,6 +520,7 @@ async function sendOnce(notice: Notice, to: string, email: Email) {
     await sendEmail({
       apiKey: env.EMAIL_API_KEY,
       fromEmail: env.EMAIL_FROM,
+      category: 'notices',
       to,
       ...email
     })
