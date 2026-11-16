@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -27,6 +27,9 @@ import { queryClient, trpc } from '@/lib/trpc'
  * passo tem "Depois"; no fim vem a rotina, a última pergunta. O horário só é
  * pedido a quem ainda não tem (o cadastro já pergunta); sem ele e fora do
  * Elite, o terceiro passo não existe.
+ *
+ * `?passo=2` ou `?passo=3` (o alerta de perfil do painel) abre só aquele
+ * passo: salvar, "Depois" e voltar fecham a tela, sem ir à rotina.
  */
 
 type Step = 0 | 1 | 2
@@ -59,7 +62,11 @@ export default function CompletarPerfil() {
   const photos = useQuery(trpc.pub.photos.queryOptions())
   const askHours = !((bar?.openingHours ?? []) as unknown[]).some(Boolean)
   const last: Step = askHours || owner.elite ? 2 : 1
-  const [step, setStep] = useState<Step>(0)
+  const { passo } = useLocalSearchParams<{ passo?: string }>()
+  const only = passo === '2' || passo === '3'
+  const [step, setStep] = useState<Step>(
+    only ? ((Number(passo) - 1) as Step) : 0
+  )
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [cover, setCover] = useState<string | null>(null)
@@ -89,6 +96,7 @@ export default function CompletarPerfil() {
   const saveOffer = useMutation(trpc.pub.updateHouseOffer.mutationOptions())
   const next = () => {
     setProblem(null)
+    if (only) return router.back()
     if (step < last) return setStep((step + 1) as Step)
     router.replace('/rotina')
   }
@@ -170,7 +178,7 @@ export default function CompletarPerfil() {
             accessibilityLabel="Voltar"
             hitSlop={10}
             onPress={() =>
-              step > 0 ? setStep((step - 1) as Step) : router.back()
+              step > 0 && !only ? setStep((step - 1) as Step) : router.back()
             }
           >
             <Icon name="back" size={22} color={palette.ink} />
