@@ -18,8 +18,8 @@ import {
 } from '@findsports_oficial/db/bar-menu'
 import { HOUSE_OFFER_MAX_LENGTH } from '@findsports_oficial/db/house-offer'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link } from '@tanstack/react-router'
-import { type ReactNode, useState } from 'react'
+import { Link, useRouterState } from '@tanstack/react-router'
+import { type ReactNode, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import type { AdminBar } from '@/components/admin/admin-model'
 import {
@@ -47,6 +47,7 @@ import { getPlan, PLAN_TIER_ORDER } from '@/lib/plan-catalog'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { formatPhone } from '@/utils/format-phone'
 import { useTRPC } from '@/utils/trpc'
+import { irParaCampo } from './alerta-perfil'
 import { ListaDeAvaliacoes } from './avaliacao'
 import {
   FotosDoBar,
@@ -165,6 +166,10 @@ function Espaco({ bar }: { bar: AdminBar }) {
         : 'plano'
   const envio = useEnvioDeFoto()
 
+  // Vindo do alerta de perfil (`#esp-hor`, `#esp-oferta`…): rola e foca.
+  const hash = useRouterState({ select: (s) => s.location.hash })
+  useEffect(() => (hash ? irParaCampo(hash) : undefined), [hash])
+
   /* ─── Rascunho ─── */
   const [rascunho, setRascunho] = useState<Rascunho>(() => doBar(bar))
   const [base, setBase] = useState(bar)
@@ -224,7 +229,11 @@ function Espaco({ bar }: { bar: AdminBar }) {
   const invalidateBar = () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: trpc.pub.getMe.queryKey() }),
-      queryClient.invalidateQueries({ queryKey: trpc.pubs.getById.pathKey() })
+      queryClient.invalidateQueries({ queryKey: trpc.pubs.getById.pathKey() }),
+      // Horário, WhatsApp, oferta, cardápio e descrição tiram o alerta.
+      queryClient.invalidateQueries({
+        queryKey: trpc.pub.getProfileAlert.queryKey()
+      })
     ])
 
   /* ─── Mutations ─── */
@@ -583,6 +592,7 @@ function Espaco({ bar }: { bar: AdminBar }) {
                       confirmação.
                     </span>
                     <button
+                      id="esp-wpp"
                       type="button"
                       className="pn-btn pn-ghost pn-sm"
                       disabled={whatsapp.isPending}

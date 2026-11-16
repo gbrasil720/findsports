@@ -135,9 +135,14 @@ export function TimesDaCasa() {
     queryClient.setQueryData(key, value)
     try {
       await salvar.mutateAsync({ teamIds: value.map((t) => t.id) })
-      await queryClient.invalidateQueries({
-        queryKey: trpc.pub.gameSuggestions.queryKey()
-      })
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: trpc.pub.gameSuggestions.queryKey()
+        }),
+        queryClient.invalidateQueries({
+          queryKey: trpc.pub.getProfileAlert.queryKey()
+        })
+      ])
     } catch (error) {
       queryClient.setQueryData(key, antes)
       toast.error(
