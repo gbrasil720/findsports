@@ -459,7 +459,7 @@ html[data-theme="dark"] .tc {
 .tc .main {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(380px, 42%);
-  min-height: calc(100vh - 76px);
+  min-height: calc(100dvh - 76px);
 }
 .tc .list {
   padding: 30px max(28px, var(--gl)) 64px max(28px, var(--gl));
@@ -902,7 +902,7 @@ html[data-theme="dark"] .tc {
 .tc .map {
   position: sticky;
   top: 76px;
-  height: calc(100vh - 76px);
+  height: calc(100dvh - 76px);
   overflow: hidden;
   background: var(--sub);
 }
@@ -2195,7 +2195,7 @@ html[data-theme="dark"] .tc .m-d {
   color: var(--fg);
 }
 .tc .codepage {
-  min-height: calc(100vh - 76px);
+  min-height: calc(100dvh - 76px);
   background: #0b0b09;
   color: #f1eee6;
   display: grid;
@@ -3392,7 +3392,7 @@ html[data-theme="dark"] .tc .m-d {
   letter-spacing: 0.05em;
 }
 .tc .ob {
-  min-height: calc(100vh - 76px);
+  min-height: calc(100dvh - 76px);
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
@@ -3614,7 +3614,7 @@ html[data-theme="dark"] .tc .m-d {
     max-width: none;
     padding: 22px var(--gr) calc(28px + env(safe-area-inset-bottom, 0px))
       var(--gl);
-    min-height: calc(100vh - 66px);
+    min-height: calc(100dvh - 66px);
   }
   .tc .prefs {
     grid-template-columns: 1fr;
@@ -3623,6 +3623,8 @@ html[data-theme="dark"] .tc .m-d {
     position: static;
     flex-direction: row;
     overflow-x: auto;
+    /* A fileira que rola recorta: o respiro deixa a sombra sólida da aba inteira. */
+    padding-bottom: 4px;
   }
   .tc .pnav button {
     flex: none;
@@ -3809,7 +3811,8 @@ html[data-theme="dark"] .tc .m-d {
   grid-area: ph;
   position: relative;
   display: block;
-  border-radius: 18px;
+  /* Canto dentro de canto: os 26 da linha menos os 14 de respiro. */
+  border-radius: 12px;
   overflow: hidden;
   align-self: stretch;
   min-height: 150px;
@@ -4618,4 +4621,40 @@ html[data-consent] .tc .fresh.flutua {
   .tc .fresh .ac .btn {
     flex: 1;
   }
+}
+
+/*
+ * Área de toque: a peça fica do tamanho do desenho e o alvo passa dela, para o
+ * dedo acertar (36 de altura com palavra, 44 só com ícone).
+ */
+.tc :where(.secx .hdx a, .rd-src a, .logo, .days button) {
+  position: relative;
+}
+
+.tc :where(.secx .hdx a, .rd-src a, .logo, .days button)::before {
+  content: "";
+  position: absolute;
+  inset: -12px -6px;
+}
+
+/* O ponto oco do mapa (bar sem jogo) tem 9 px: o alvo é de 44. */
+.tc .maplibregl-marker[data-oco]::before {
+  content: "";
+  position: absolute;
+  inset: -18px;
+}
+
+/* Peça sem sombra sólida afunda um pouco ao toque, para o dedo sentir que pegou. */
+.tc
+:where(
+  .acct a,
+  .ava,
+  .tabsx a,
+  .rd-alert,
+  .chips2 button,
+  .pnav a,
+  .chip,
+  .days button
+):active {
+  scale: 0.97;
 }

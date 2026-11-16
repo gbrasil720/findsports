@@ -2566,3 +2566,20 @@ html:has(.onside-page) {
     }
   }
 }
+
+/* Área de toque dos links do rodapé e da marca: o alvo passa do texto. */
+.onside-page :where(.onside-footer-column a, .onside-brand-link) {
+  position: relative;
+}
+
+.onside-page :where(.onside-footer-column a, .onside-brand-link)::before {
+  content: "";
+  position: absolute;
+  inset: -8px -4px;
+}
+
+/* Peça sem sombra sólida afunda um pouco ao toque, para o dedo sentir que pegou. */
+.onside-page
+:where(.onside-nav-cta, .onside-legal-contact a, .onside-footer-cta):active {
+  scale: 0.97;
+}
