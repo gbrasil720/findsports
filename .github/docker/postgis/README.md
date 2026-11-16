@@ -4,9 +4,10 @@ O CI usa `ghcr.io/gbrasil720/findsports/ci-postgis:17-3.5-alpine` em vez de puxa
 `imresamu/postgis` do Docker Hub (rate limit anônimo no GitHub Actions).
 
 A imagem é gerada pelo workflow `.github/workflows/publish-ci-postgis.yml`, que
-compila o Dockerfile oficial do PostGIS 3.5 sobre
+roda o `build.sh` desta pasta: compila o Dockerfile oficial do PostGIS 3.5 sobre
 `public.ecr.aws/docker/library/postgres:17-alpine` (mirror público da AWS, sem
-Docker Hub).
+Docker Hub). Em PR só o build roda; o push para o GHCR, com `packages: write`, é
+um job à parte que só existe fora de PR.
 
 Localmente o `docker-compose.yml` continua com `imresamu/postgis:17-3.5-alpine`.
 
