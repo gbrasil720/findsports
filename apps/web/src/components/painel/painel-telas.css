@@ -2073,6 +2073,7 @@ html[data-theme="dark"] .pn3 {
 .pn3
 :where(
   .pn-nav a,
+  .pn-more a,
   .pn-tabs button,
   .pn-tchip,
   .pn-tg,
