@@ -3,6 +3,10 @@ import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
 import { decodeCursor, encodeCursor } from './keyset-cursor'
+import {
+  legacySearchCursorSchema,
+  searchCursorSchema
+} from './pub-search/shared'
 
 const schema = z.object({
   p: z.number(),
@@ -89,5 +93,19 @@ describe('keyset cursor', () => {
       expect(err).toBeInstanceOf(TRPCError)
       expect((err as TRPCError).code).toBe('BAD_REQUEST')
     }
+  })
+})
+
+describe('cursor de relevância da busca', () => {
+  const key = { c: 1, q: 0, p: 2, e: '2026-11-16 20:00:00', d: 2.5, i: 'x' }
+  const decode = (payload: Record<string, unknown>) =>
+    decodeCursor(encodeCursor(payload), searchCursorSchema, {
+      restartOn: legacySearchCursorSchema
+    })
+
+  it('continua o v3 e recomeça o v2, que levava a nota na chave', () => {
+    expect(decode({ v: 3, ...key })).toEqual({ v: 3, ...key })
+    expect(decode({ v: 2, ...key, q: -0.5678 })).toBeNull()
+    expect(decode({ p: 2, e: key.e, d: 2.5, i: 'x' })).toBeNull()
   })
 })

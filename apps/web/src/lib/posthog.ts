@@ -1,4 +1,5 @@
 import { analyticsConfigured, readAnalyticsConsent } from './analytics-consent'
+import { limparEvento } from './analytics-url'
 import { env } from './env'
 
 type PosthogClient = typeof import('posthog-js').default
@@ -65,7 +66,9 @@ export async function initPostHog(): Promise<boolean> {
     autocapture: false,
     persistence: 'localStorage+cookie',
     // Com isto, `opt_out_capturing` também desliga e apaga a persistência.
-    opt_out_persistence_by_default: true
+    opt_out_persistence_by_default: true,
+    // Token do reset, sessão e códigos não saem nas URLs dos eventos.
+    before_send: limparEvento
   })
   return true
 }

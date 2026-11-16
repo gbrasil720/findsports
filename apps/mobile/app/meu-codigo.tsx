@@ -1,3 +1,7 @@
+import {
+  getErrorCode,
+  getErrorText
+} from '@findsports_oficial/api/lib/transient-error'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { CameraView, useCameraPermissions } from 'expo-camera'
 import * as Clipboard from 'expo-clipboard'
@@ -71,6 +75,15 @@ export default function MyCode() {
       haptic.success()
       if (person.relation === 'self') return soon.show('Esse é o seu código')
       router.push(`/amigo/${person.id}?via=${via}` as Href)
+    } catch (error) {
+      // Limite de tentativas: a frase do servidor diz quando voltar.
+      haptic.error()
+      Alert.alert(
+        'Não deu para buscar o código',
+        getErrorCode(error) === 'TOO_MANY_REQUESTS'
+          ? getErrorText(error)
+          : 'Confira a conexão e tente de novo.'
+      )
     } finally {
       reading.current = false
     }

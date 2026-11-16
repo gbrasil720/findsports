@@ -39,7 +39,7 @@ import {
 } from '@/components/ui'
 import { authClient } from '@/lib/auth-client'
 import { formatTime } from '@/lib/explore'
-import { savePendingInvite } from '@/lib/invite'
+import { clearPendingInvite, savePendingInvite } from '@/lib/invite'
 import { firstName, monthLabel } from '@/lib/ranking'
 import { trpc } from '@/lib/trpc'
 
@@ -47,9 +47,10 @@ import { trpc } from '@/lib/trpc'
  * O convite de amizade pelo link (rodada 7, tela 4): "A Marina te chamou",
  * com a carteirinha dela inteira, quem vocês têm em comum, o que a amizade dá
  * na Onside e o jogo que ela marcou hoje (se a privacidade dela deixa). Sem
- * conta: "Criar conta e ser amigo" (conta de menos de um dia já entra como
- * amiga) ou "Entrar e aceitar", com o código guardado para depois. Com conta:
- * "Aceitar convite", e a tela vira "Vocês são amigos": os dois avatares se
+ * conta: "Criar conta e pedir amizade" ou "Entrar e pedir", com o código
+ * guardado para depois. Com conta: "Pedir amizade" manda o pedido a quem
+ * convidou (o link não dá amizade aceita: o código é permanente e curto).
+ * Se a pessoa já tinha pedido, vira "Vocês são amigos": os dois avatares se
  * aproximam e o check entra entre eles, o duelo do mês começando, o jogo
  * dela e quem ela conhece que você talvez conheça. Frases sem gênero.
  */
@@ -84,13 +85,16 @@ export default function Invite() {
   const person = preview.data
   const friends = accepted || person?.relation === 'friends'
 
-  // Sem conta pronta, o código fica guardado: as abas aceitam depois.
-  useEffect(() => {
-    if (code && !session.isPending && !ready) savePendingInvite(code)
-  }, [code, session.isPending, ready])
-
-  const close = () =>
+  // Sem conta pronta, o código só fica guardado no toque de aceitar (as abas
+  // aceitam depois); fechar apaga.
+  const acceptLater = async (next: Href) => {
+    if (code) await savePendingInvite(code, user?.id)
+    router.push(next)
+  }
+  const close = () => {
+    clearPendingInvite()
     router.canGoBack() ? router.back() : router.replace('/explore')
+  }
   const first = person ? firstName(person.name) : ''
 
   return (
@@ -252,18 +256,30 @@ export default function Invite() {
                     Pedido enviado. Quando {first} aceitar, vocês viram amigos.
                   </Text>
                 ) : (
-                  <PillButton
-                    label={join.isPending ? 'Aceitando…' : 'Aceitar convite'}
-                    onPress={() => {
-                      if (code && !join.isPending) join.mutate({ code })
-                    }}
-                  />
+                  <>
+                    <PillButton
+                      label={join.isPending ? 'Enviando…' : 'Pedir amizade'}
+                      onPress={() => {
+                        if (code && !join.isPending) join.mutate({ code })
+                      }}
+                    />
+                    {join.error ? (
+                      <Text
+                        style={[
+                          text(13, 'Regular', 1.4),
+                          { color: palette.muted, textAlign: 'center' }
+                        ]}
+                      >
+                        {join.error.message}
+                      </Text>
+                    ) : null}
+                  </>
                 )
               ) : (
                 <>
                   <PillButton
-                    label="Criar conta e ser amigo"
-                    onPress={() => router.push('/profile' as Href)}
+                    label="Criar conta e pedir amizade"
+                    onPress={() => acceptLater('/profile' as Href)}
                   />
                   <Text
                     style={[
@@ -274,14 +290,14 @@ export default function Invite() {
                     Já tem conta?{' '}
                     <Text
                       accessibilityRole="link"
-                      onPress={() => router.push('/sign-in' as Href)}
+                      onPress={() => acceptLater('/sign-in' as Href)}
                       suppressHighlighting
                       style={[
                         text(13, 'Bold', 1.4),
                         { color: palette.ink, textDecorationLine: 'underline' }
                       ]}
                     >
-                      Entrar e aceitar
+                      Entrar e pedir
                     </Text>
                   </Text>
                 </>

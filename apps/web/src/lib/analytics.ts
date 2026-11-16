@@ -1,3 +1,4 @@
+import { semDadosSensiveis } from './analytics-url'
 import { getPageSurface } from './page-surface'
 import { withPosthog } from './posthog'
 
@@ -168,7 +169,7 @@ export function capturePageview(pathname: string) {
   if (typeof window === 'undefined') return
   void withPosthog((posthog) =>
     posthog.capture('$pageview', {
-      $current_url: window.location.href,
+      $current_url: semDadosSensiveis(window.location.href),
       surface: getPageSurface(pathname)
     })
   )

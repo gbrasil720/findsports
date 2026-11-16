@@ -150,10 +150,13 @@ export async function executarBuscaEmCamadas(
       tier.rank === 1
         ? sql`CASE WHEN agg.classic_rule_id IS NULL THEN 1 ELSE 0 END`
         : sql`1`
-    const qualityRank = sql`CASE
-      WHEN b.rating_count >= ${RATING_PUBLIC_FLOOR} THEN -b.rating_score
-      ELSE 0
-    END`
+    // Nota escondida não entra na ordem: o cursor a levaria em claro.
+    const qualityRank = input.ratingPublic
+      ? sql`CASE
+          WHEN b.rating_count >= ${RATING_PUBLIC_FLOOR} THEN -b.rating_score
+          ELSE 0
+        END`
+      : sql`0::double precision`
 
     // Só a camada onde o cursor parou continua de onde parou. As seguintes
     // começam do zero, porque toda linha delas já é maior na primeira chave.

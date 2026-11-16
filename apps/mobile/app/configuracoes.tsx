@@ -1221,6 +1221,8 @@ function Privacy({
   const queryClient = useQueryClient()
   const session = authClient.useSession()
   const me = useQuery(trpc.friends.me.queryOptions())
+  // "Me encontrar pelo e-mail" nasce ligado; resposta antiga sem o campo, também.
+  const findable = me.data?.findableByEmail ?? true
   const board = useQuery(trpc.ranking.friends.queryOptions({ metric: 'bars' }))
   const monthBars = board.data?.rows.find(
     (row) => row.id === session.data?.user.id
@@ -1294,6 +1296,21 @@ function Privacy({
               save.mutate({ friendRequestsFrom: keyOf(ADDS, label) })
             }
           />
+        }
+      />
+      <Row
+        title="Me encontrar pelo e-mail"
+        sub="Quem tem seu e-mail na agenda te acha em Contatos"
+        divided
+        right={<Toggle on={findable} />}
+        checked={findable}
+        onPress={
+          me.data
+            ? () => {
+                haptic.select()
+                save.mutate({ findableByEmail: !findable })
+              }
+            : undefined
         }
       />
     </Section>
@@ -1419,6 +1436,16 @@ function Privacy({
               save.mutate({ friendRequestsFrom: key })
             )
           }
+        />
+        <MenuRow
+          icon="people"
+          title="Me encontrar pelo e-mail"
+          value={findable ? 'ligado' : 'desligado'}
+          onPress={() => {
+            if (!me.data) return
+            haptic.select()
+            save.mutate({ findableByEmail: !findable })
+          }}
         />
       </MenuBox>
       <ScalePress

@@ -104,6 +104,7 @@ integrationTest('torcedor recebe os dados por e-mail', async () => {
     const data = attached(sent[0])
     expect(data.profile?.id).toBe(me)
     expect(data.profile?.email).toBe(`${me}@integration.invalid`)
+    expect(data.profile?.findableByEmail).toBe(true)
     expect(data.favoriteBars.map((f: { bar: string }) => f.bar)).toEqual([
       'Bar de integração'
     ])
@@ -236,3 +237,24 @@ integrationTest('envio que falhou não gasta o pedido do dia', async () => {
   await ctx.fan.account.requestExport()
   expect(sent).toHaveLength(1)
 })
+
+integrationTest(
+  'cota de e-mail esgotada (429): TOO_MANY_REQUESTS e o pedido do dia conta',
+  async () => {
+    const warn = spyOn(console, 'warn').mockImplementation(() => {})
+    cleanups.push(() => warn.mockRestore())
+    const ctx = await seedBar('pro', 'active', null)
+    cleanups.push(ctx.cleanup, () => forgetLimit(ctx.fanId))
+
+    fakeEmailApi(cleanups, 429)
+    await expect(ctx.fan.account.requestExport()).rejects.toMatchObject({
+      code: 'TOO_MANY_REQUESTS',
+      message: 'Muitos pedidos de arquivo hoje. Peça de novo amanhã, por favor.'
+    })
+    // Sem reembolso: repetir não chama o provedor de novo.
+    await expect(ctx.fan.account.requestExport()).rejects.toMatchObject({
+      code: 'TOO_MANY_REQUESTS',
+      message: expect.stringContaining('últimas 24 horas')
+    })
+  }
+)

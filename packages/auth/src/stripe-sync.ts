@@ -9,8 +9,16 @@ import {
 } from '@findsports_oficial/db/schema/platform'
 import type Stripe from 'stripe'
 import { cancelSubscriptionIfActive } from './abacatepay'
-import { monthlyDiscountReaisFromStripe } from './stripe-discount'
-import { planForLookupKey } from './stripe-plan'
+import {
+  discountEntriesOf,
+  monthlyDiscountReaisFromStripe
+} from './stripe-discount'
+import {
+  CARD_FROM_PIX_KEY,
+  FOUNDER_ANNUAL_COUPON_ID,
+  FOUNDER_COUPON_ID,
+  planForLookupKey
+} from './stripe-plan'
 
 type LocalStatus = 'trialing' | 'active' | 'past_due' | 'inactive' | 'cancelled'
 
@@ -192,8 +200,12 @@ export async function applyStripeSubscription(
     existing.externalSubscriptionId &&
     existing.status !== 'cancelled'
   ) {
-    if (!upgradePaid(stripeSubscription)) {
-      logBillingError('pix_upgrade_unpaid', {
+    // Só a sessão do `startCardFromPix` troca o Pix pelo cartão: um checkout
+    // do plugin aberto antes (no teste do cadastro) e concluído com o Pix já
+    // pago levaria o plano sem a diferença e cancelaria o Pix.
+    const fromPix = cameFromCardFromPix(stripeSubscription)
+    if (!fromPix || !upgradePaid(stripeSubscription)) {
+      logBillingError(fromPix ? 'pix_upgrade_unpaid' : 'pix_card_over_pix', {
         barId: foundBar.id,
         subscriptionId: stripeSubscription.id
       })
@@ -218,6 +230,13 @@ export async function applyStripeSubscription(
         pixSubscriptionId: existing.externalSubscriptionId,
         subscriptionId: stripeSubscription.id
       })
+    )
+  }
+
+  if (!offAir && client) {
+    stripeSubscription = await fixFounderCouponInterval(
+      stripeSubscription,
+      client
     )
   }
 
@@ -246,6 +265,17 @@ export async function applyStripeSubscription(
 type StripeBilling = Pick<Stripe, 'subscriptions'>
 
 /**
+ * A assinatura nasceu da sessão do `startCardFromPix`: o marcador, ou a
+ * diferença da subida (sessões abertas antes do marcador existir).
+ */
+function cameFromCardFromPix(stripeSubscription: Stripe.Subscription): boolean {
+  return (
+    stripeSubscription.metadata?.[CARD_FROM_PIX_KEY] === '1' ||
+    Number(stripeSubscription.metadata?.pixUpgradeCents ?? 0) > 0
+  )
+}
+
+/**
  * A diferença da subida do Pix para o cartão (WEB-536) foi paga: ela é um item
  * avulso da sessão de checkout (`startCardFromPix`), cobrado na hora pelo
  * próprio Stripe na primeira fatura. Pela tela do Stripe, cartão recusado não
@@ -264,17 +294,48 @@ function upgradePaid(stripeSubscription: Stripe.Subscription): boolean {
 }
 
 /**
+ * O cupom de fundador que a subida pode levar: só o do servidor, do mesmo
+ * intervalo da assinatura (o anual tira R$ 280 por fatura e numa mensal
+ * zeraria o plano), e só numa sessão do `startCardFromPix` com diferença
+ * (`pixUpgradeCents`), a única que grava `founderCoupon`. O `/subscription/
+ * upgrade` recusa `metadata` no corpo (`index.ts`), e isto é a segunda trava.
+ */
+export function upgradeCouponFor(
+  stripeSubscription: Pick<Stripe.Subscription, 'metadata' | 'items'>
+): string | null {
+  const coupon = stripeSubscription.metadata?.founderCoupon
+  if (!coupon) return null
+  if (!(Number(stripeSubscription.metadata?.pixUpgradeCents ?? 0) > 0)) {
+    return null
+  }
+  const annual =
+    stripeSubscription.items.data[0]?.price.recurring?.interval === 'year'
+  return coupon === (annual ? FOUNDER_ANNUAL_COUPON_ID : FOUNDER_COUPON_ID)
+    ? coupon
+    : null
+}
+
+/**
  * Cupom de fundador da subida (WEB-536): a sessão com a diferença vai sem
  * cupom, que tiraria o desconto do item avulso, e o cupom entra aqui, antes da
  * primeira mensalidade. Já aplicado, não faz nada; cupom que deixou de valer
- * só vai ao log, e a assinatura segue a preço de tabela.
+ * só vai ao log, e a assinatura segue a preço de tabela. Cupom que não passa
+ * em `upgradeCouponFor` também só vai ao log.
  */
 async function applyUpgradeCoupon(
   stripeSubscription: Stripe.Subscription,
   client: StripeBilling
 ): Promise<Stripe.Subscription> {
-  const coupon = stripeSubscription.metadata?.founderCoupon
-  if (!coupon || (stripeSubscription.discounts?.length ?? 0) > 0) {
+  const requested = stripeSubscription.metadata?.founderCoupon
+  if (!requested || (stripeSubscription.discounts?.length ?? 0) > 0) {
+    return stripeSubscription
+  }
+  const coupon = upgradeCouponFor(stripeSubscription)
+  if (!coupon) {
+    logBillingError('pix_upgrade_coupon_untrusted', {
+      subscriptionId: stripeSubscription.id,
+      coupon: requested
+    })
     return stripeSubscription
   }
   try {
@@ -293,6 +354,78 @@ async function applyUpgradeCoupon(
       message: error instanceof Error ? error.message : String(error)
     })
     return stripeSubscription
+  }
+}
+
+/**
+ * Cupom de fundador do intervalo do preço atual (dono, 15/11/2026: o desconto
+ * de fundador vale em todos os planos, mensais e anuais). Troca de plano fora
+ * do nosso hook (o portal do Stripe deixa o anual ir para um preço mensal)
+ * levaria o `fundador_anual` (R$ 280 por fatura) para cada mês, ou o mensal
+ * (R$ 28) para o ano: aqui só o cupom de fundador errado é trocado pelo do
+ * intervalo certo, e os outros descontos ficam.
+ *
+ * - Já certo, não faz nada: evento repetido não muda nada.
+ * - A chave de idempotência leva o desconto errado: dois avisos ao mesmo
+ *   tempo não resgatam o cupom duas vezes, e uma troca nova (outro desconto)
+ *   não reaproveita a resposta da anterior.
+ * - Stripe recusa o cupom certo (esgotado, apagado): o errado sai assim
+ *   mesmo, e o bar fica sem o desconto de fundador até o dono resolver
+ *   (`stripe_founder_coupon_interval_refused` no log). O cupom do outro
+ *   intervalo nunca fica. Se nem a remoção passar, lança e o Stripe reenvia.
+ */
+async function fixFounderCouponInterval(
+  stripeSubscription: Stripe.Subscription,
+  client: StripeBilling
+): Promise<Stripe.Subscription> {
+  const item = stripeSubscription.items.data[0]
+  const annual = item?.price.recurring?.interval === 'year'
+  const right = annual ? FOUNDER_ANNUAL_COUPON_ID : FOUNDER_COUPON_ID
+  const wrong = annual ? FOUNDER_COUPON_ID : FOUNDER_ANNUAL_COUPON_ID
+  const entries = discountEntriesOf(stripeSubscription)
+  const wrongEntry = entries.find((entry) => entry.couponId === wrong)
+  if (!wrongEntry) return stripeSubscription
+
+  const kept = entries
+    .filter((entry) => entry !== wrongEntry && entry.id)
+    .map((entry) => ({ discount: entry.id as string }))
+  const hasRight = entries.some((entry) => entry.couponId === right)
+  const key = `fix-coupon:${stripeSubscription.id}:${item?.price.id}:${wrongEntry.id}`
+  const update = (
+    discounts: Stripe.SubscriptionUpdateParams.Discount[],
+    suffix: string
+  ) =>
+    client.subscriptions.update(
+      stripeSubscription.id,
+      { discounts, expand: ['discounts.source.coupon'] },
+      { idempotencyKey: `${key}${suffix}` }
+    )
+  const fixed = (subscription: Stripe.Subscription, to: string | null) => {
+    console.log(
+      JSON.stringify({
+        evt: 'stripe_founder_coupon_interval_fixed',
+        subscriptionId: stripeSubscription.id,
+        from: wrong,
+        to
+      })
+    )
+    return subscription
+  }
+
+  if (hasRight) return fixed(await update(kept, ''), right)
+  try {
+    return fixed(await update([...kept, { coupon: right }], ''), right)
+  } catch (error) {
+    if ((error as { type?: string }).type !== 'StripeInvalidRequestError') {
+      throw error
+    }
+    logBillingError('stripe_founder_coupon_interval_refused', {
+      subscriptionId: stripeSubscription.id,
+      from: wrong,
+      to: right,
+      message: error instanceof Error ? error.message : String(error)
+    })
+    return fixed(await update(kept, ':drop'), null)
   }
 }
 

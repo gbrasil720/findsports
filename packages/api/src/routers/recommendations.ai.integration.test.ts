@@ -1,10 +1,11 @@
-import { afterAll, beforeAll, expect, test } from 'bun:test'
+import { afterAll, beforeAll, expect, spyOn, test } from 'bun:test'
 import { eq, inArray } from '@findsports_oficial/db'
 import { aiRun } from '@findsports_oficial/db/schema/ai'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 
 import { setAiBinding } from '../lib/ai/binding'
 import { RECOMMENDER_MODELS } from '../lib/ai/models'
+import * as aiRunModule from '../lib/ai/run'
 import {
   AFFINITY_TIMEOUT_MS,
   CONTROL_MODEL
@@ -335,6 +336,45 @@ integrationTest(
         { runId: round?.runId, variant: 'c', status: 'error', costUsd: 0 }
       ])
     } finally {
+      await db.delete(aiRun).where(eq(aiRun.runId, spenderRun))
+      await testOff()
+    }
+  }
+)
+
+integrationTest(
+  'braço C com a reserva recusada depois do gate: controle sem chamar a IA',
+  async () => {
+    if (!ctx) throw new Error('sem seed')
+    const { db } = ctx
+    const calls = model(allFour)
+    await testOn({ a: 0, c: 100 })
+    // O gate leu o uso antes de outra execução gastar o resto: ele deixa
+    // passar, e a reserva, que relê o uso com a trava, recusa.
+    const real = await aiRunModule.aiGate(crypto.randomUUID())
+    if (!real.ok) throw new Error('gate fechado antes do teste')
+    const gate = spyOn(aiRunModule, 'aiGate').mockResolvedValue(real)
+    const spenderRun = crypto.randomUUID()
+    await db.insert(aiRun).values({
+      runId: spenderRun,
+      userId: null,
+      feature: 'chat',
+      variant: 'a',
+      assignedModel: 'teste',
+      status: 'ok',
+      costUsd: 1000
+    })
+    try {
+      const fan = await ctx.fan()
+      const { round } = await fan.today()
+      expect(gate).toHaveBeenCalled()
+      expect(calls).toEqual([])
+      expect(round?.items).toHaveLength(5)
+      expect(await ctx.runs(fan.id)).toMatchObject([
+        { runId: round?.runId, variant: 'c', status: 'error', costUsd: 0 }
+      ])
+    } finally {
+      gate.mockRestore()
       await db.delete(aiRun).where(eq(aiRun.runId, spenderRun))
       await testOff()
     }

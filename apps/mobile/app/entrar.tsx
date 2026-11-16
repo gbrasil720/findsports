@@ -30,6 +30,7 @@ import { authClient, refreshSession } from '@/lib/auth-client'
 import { formatTime } from '@/lib/explore'
 import { finishPending, takePending } from '@/lib/pending-action'
 import { queryClient, trpc } from '@/lib/trpc'
+import { verifiedCallbackURL } from '@/lib/verify-link'
 
 /*
  * A folha de entrar e criar conta (rodada 2 do redesign, telas 1 e 2): por
@@ -190,7 +191,7 @@ export default function Entrar() {
         password,
         // Quem chegou por um jogo é torcedor.
         role: 'fan',
-        callbackURL: '/verified',
+        callbackURL: await verifiedCallbackURL(),
         fetchOptions: turnstile.fetchOptions
       })
     )
@@ -234,7 +235,7 @@ export default function Entrar() {
     const result = await settleAuth(
       authClient.sendVerificationEmail({
         email: email.trim(),
-        callbackURL: '/verified',
+        callbackURL: await verifiedCallbackURL(),
         fetchOptions: turnstile.fetchOptions
       })
     )

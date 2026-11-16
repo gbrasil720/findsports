@@ -1,6 +1,4 @@
-import * as Linking from 'expo-linking'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import * as SecureStore from 'expo-secure-store'
 import { useState } from 'react'
 import { StyleSheet, View } from 'react-native'
 import Animated from 'react-native-reanimated'
@@ -21,12 +19,13 @@ import {
   text
 } from '@/components/ui'
 import { attemptPhase, retryable, settleAuth } from '@/lib/auth-attempt'
-import { authClient, RESET_EMAIL_KEY } from '@/lib/auth-client'
+import { authClient } from '@/lib/auth-client'
 
 /*
- * "Esqueci a senha" (11p do design). O link do e-mail abre o app em
- * `/reset-password?token=…`: o servidor redireciona para o `redirectTo`, que
- * aqui é o endereço do app (o cliente só converte `callbackURL`).
+ * "Esqueci a senha" (11p do design). A senha nova é escolhida no site
+ * (`/reset-password` do web): o token do e-mail não volta ao app por
+ * `onside://`, que outro app instalado pode registrar, e o servidor recusa
+ * esse destino (`isSafeResetRedirect`). Depois a pessoa entra no app com ela.
  */
 
 export default function ForgotPassword() {
@@ -51,7 +50,7 @@ export default function ForgotPassword() {
     const result = await settleAuth(
       authClient.requestPasswordReset({
         email: email.trim(),
-        redirectTo: Linking.createURL('/reset-password'),
+        redirectTo: '/reset-password',
         fetchOptions: turnstile.fetchOptions
       })
     )
@@ -70,7 +69,6 @@ export default function ForgotPassword() {
       return
     }
     haptic.success()
-    await SecureStore.setItemAsync(RESET_EMAIL_KEY, email.trim())
     // Rodada 8: o "Link enviado" aparece na mesma tela, abaixo do campo.
     setSent(true)
   }
@@ -128,7 +126,8 @@ export default function ForgotPassword() {
               Link enviado
             </Text>
             <Text style={[text(13, 'Regular', 1.4), { color: palette.muted }]}>
-              Vale por 30 minutos. Seus jogos e medalhas continuam na conta.
+              Abra o link: a senha nova é escolhida no site da Onside e vale
+              aqui também. O link dura 30 minutos.
             </Text>
           </View>
         </Animated.View>

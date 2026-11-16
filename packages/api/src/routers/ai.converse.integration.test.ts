@@ -798,6 +798,82 @@ integrationTest(
 )
 
 integrationTest(
+  'mensagens simultâneas: uma por vez, sem furar os limites da pessoa',
+  async () => {
+    const { db, appRouter } = await load()
+    const { setAppConfig, resetAppConfig, appConfigDefault } = await import(
+      '../lib/app-config'
+    )
+    const seeded = await seedBar('pro', 'active', null)
+    const fan = appRouter.createCaller(contextFor(seeded.fanId, 'fan'))
+    let calls = 0
+    setAiBinding({
+      run: async () => {
+        calls++
+        await new Promise((resolve) => setTimeout(resolve, 200))
+        return call('c1', 'responder', {
+          texto: 'Sem bar por aqui.',
+          bares: [],
+          sugestoes: []
+        })
+      }
+    })
+    await setAppConfig('ai.enabled', true, null)
+    await setAppConfig(
+      'ai.limits',
+      { ...appConfigDefault('ai.limits'), userDailyCalls: 3 },
+      null
+    )
+
+    try {
+      // Antes da reserva atômica, as dez passavam pelo mesmo uso zerado.
+      const streams = await Promise.all(
+        Array.from({ length: 10 }, () =>
+          fan.ai.converse({ message: 'bar pra ver jogo hoje' }).then(collect)
+        )
+      )
+      const done = streams.filter((events) => events.at(-1)?.type === 'done')
+      const blocked = streams.filter(
+        (events) => events.at(-1)?.type === 'blocked'
+      )
+      expect(done).toHaveLength(1)
+      expect(blocked).toHaveLength(9)
+      expect(calls).toBe(1)
+      const rows = await db
+        .select({ status: aiRun.status })
+        .from(aiRun)
+        .where(eq(aiRun.userId, seeded.fanId))
+      expect(rows).toEqual([{ status: 'ok' }])
+
+      // Linha `running` velha (execução que caiu) não trava a próxima.
+      await db.insert(aiRun).values({
+        userId: seeded.fanId,
+        feature: 'chat',
+        variant: 'a',
+        assignedModel: CHAT_MODELS.a,
+        status: 'running',
+        createdAt: new Date(Date.now() - 10 * 60_000)
+      })
+      const next = await collect(
+        await fan.ai.converse({ message: 'e amanhã?' })
+      )
+      expect(next.at(-1)?.type).toBe('done')
+
+      // Três execuções no dia (userDailyCalls): a quarta é barrada.
+      const fourth = await collect(
+        await fan.ai.converse({ message: 'e depois?' })
+      )
+      expect(fourth.at(-1)).toMatchObject({ type: 'blocked', reason: 'limit' })
+    } finally {
+      await resetAppConfig('ai.enabled')
+      await resetAppConfig('ai.limits')
+      await db.delete(aiRun).where(eq(aiRun.userId, seeded.fanId))
+      await seeded.cleanup()
+    }
+  }
+)
+
+integrationTest(
   'confirmar no bar que saiu do ar não marca presença e diz o porquê',
   async () => {
     const { db, appRouter } = await load()

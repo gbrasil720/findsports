@@ -1,4 +1,5 @@
 import { afterEach, expect, spyOn, test } from 'bun:test'
+import { EMAIL_BUDGET } from '@findsports_oficial/auth/email-budget'
 import { eq } from '@findsports_oficial/db'
 import { rateLimit } from '@findsports_oficial/db/schema/auth'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
@@ -129,7 +130,7 @@ integrationTest('três imagens vão como três anexos, na ordem', async () => {
 })
 
 integrationTest(
-  'limite por usuário: o sexto envio da hora é recusado e não vira e-mail',
+  'limite por usuário: o quarto envio do dia é recusado e não vira e-mail',
   async () => {
     const sent = fakeEmailApi(cleanups)
     const { fan } = await fanCaller()
@@ -144,7 +145,7 @@ integrationTest(
 
     expect(code).toBe('TOO_MANY_REQUESTS')
     expect(reason).toBe(
-      'Você já mandou 5 mensagens na última hora. Tente de novo mais tarde.'
+      'Você já mandou 3 mensagens nas últimas 24 horas. Tente de novo amanhã.'
     )
     expect(sent).toHaveLength(FEEDBACK_LIMIT.max)
     // O limite é de cada conta: outra pessoa envia normalmente.
@@ -178,5 +179,56 @@ integrationTest(
       'Não conseguimos enviar agora. Tente de novo em instantes.'
     )
     expect(await attemptsOf(db, id)).toBe(0)
+  }
+)
+
+integrationTest(
+  'cota do provedor esgotada (429): recusa sem devolver a tentativa',
+  async () => {
+    const { fan, db, id } = await fanCaller()
+    const warn = spyOn(console, 'warn').mockImplementation(() => {})
+    cleanups.push(() => warn.mockRestore())
+
+    fakeEmailApi(cleanups, 429)
+    const { code } = await refusal(fan.feedback.send({ message, pageUrl }))
+    expect(code).toBe('TOO_MANY_REQUESTS')
+    // Repetir custa: quem insiste não gasta a cota de graça.
+    expect(await attemptsOf(db, id)).toBe(1)
+  }
+)
+
+integrationTest(
+  'teto do feedback no orçamento do dia: o provedor nem é chamado',
+  async () => {
+    const sent = fakeEmailApi(cleanups)
+    const warn = spyOn(console, 'warn').mockImplementation(() => {})
+    cleanups.push(() => warn.mockRestore())
+    const feedbackMax = EMAIL_BUDGET.categoryDaily.feedback ?? 0
+    const callers = await Promise.all(
+      Array.from(
+        { length: Math.ceil(feedbackMax / FEEDBACK_LIMIT.max) + 1 },
+        () => fanCaller()
+      )
+    )
+
+    let accepted = 0
+    let refused: { code: string; message: string } | undefined
+    for (const { fan } of callers) {
+      for (let i = 0; i < FEEDBACK_LIMIT.max && !refused; i++) {
+        const outcome = await fan.feedback.send({ message, pageUrl }).then(
+          () => null,
+          (error: unknown) => error as { code: string; message: string }
+        )
+        if (outcome) refused = outcome
+        else accepted++
+      }
+    }
+
+    expect(accepted).toBe(feedbackMax)
+    expect(sent).toHaveLength(feedbackMax)
+    expect(refused?.code).toBe('TOO_MANY_REQUESTS')
+    expect(refused?.message).toBe(
+      `Recebemos muitas mensagens hoje. Tente de novo amanhã ou escreva para ${FEEDBACK_TO}.`
+    )
   }
 )

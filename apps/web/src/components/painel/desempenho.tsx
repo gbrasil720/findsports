@@ -1,3 +1,4 @@
+import { brasiliaDay } from '@findsports_oficial/db/event-window'
 import {
   comparisonStartsOn,
   performanceStage,
@@ -174,6 +175,10 @@ export function DesempenhoPage() {
   const periods = entitlements.data
     ? getAvailableAnalyticsPeriods(entitlements.data.maxDaysRetention)
     : []
+  // O servidor recusa início antes dos últimos N dias do plano.
+  const maxDays = entitlements.data?.maxDaysRetention ?? null
+  const earliest =
+    maxDays === null ? undefined : brasiliaDay(new Date(), -(maxDays - 1))
   const choose = (next: AnalyticsPeriodPreset) => {
     setCustomError(null)
     if (next === 'custom') return setAnalyticsPreset(next)
@@ -194,6 +199,8 @@ export function DesempenhoPage() {
       return setCustomError(
         'A data inicial deve ser anterior ou igual à data final.'
       )
+    if (earliest && custom.from < earliest)
+      return setCustomError(`Seu plano mostra só os últimos ${maxDays} dias.`)
     setAnalyticsRange(custom)
     setAnalyticsPreset('custom')
   }
@@ -303,6 +310,7 @@ export function DesempenhoPage() {
               type="date"
               className="pn-inp"
               aria-label="Data inicial"
+              min={earliest}
               value={custom.from}
               onChange={(event) => {
                 setCustom({ ...custom, from: event.target.value })
@@ -316,6 +324,7 @@ export function DesempenhoPage() {
               type="date"
               className="pn-inp"
               aria-label="Data final"
+              min={earliest}
               value={custom.to}
               onChange={(event) => {
                 setCustom({ ...custom, to: event.target.value })

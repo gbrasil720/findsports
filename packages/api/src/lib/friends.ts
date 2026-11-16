@@ -52,7 +52,9 @@ export function friendCodeFrom(name: string, digits: number) {
 export const normalizeFriendCode = (typed: string) =>
   typed.trim().toUpperCase().replace(/\s+/g, '')
 
-const randomDigits = (max: number) => Math.floor(Math.random() * max)
+/** CSPRNG: o código não pode ser previsível. */
+const randomDigits = (max: number) =>
+  (crypto.getRandomValues(new Uint32Array(1))[0] ?? 0) % max
 
 /**
  * O `@usuário` e o código de quem abre os amigos pela primeira vez. Tenta o

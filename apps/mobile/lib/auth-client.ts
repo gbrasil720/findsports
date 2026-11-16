@@ -65,9 +65,6 @@ export async function adoptSessionCookie(setCookie: string) {
 export const hasStoredSession = () =>
   Boolean(SecureStore.getItem(`${scheme}_cookie`))
 
-/** Onde a tela de senha nova acha o e-mail, para entrar logo depois. */
-export const RESET_EMAIL_KEY = 'onside.reset-email'
-
 /**
  * Relê a sessão do banco. O servidor guarda a sessão num cookie por 60 s, e o
  * onboarding grava `onboardingCompleted` por fora do better-auth: sem

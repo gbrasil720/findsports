@@ -33,6 +33,7 @@ import {
 import { assignVariant, chatAllowance } from '../lib/ai/limits'
 import { CHAT_MODELS, type ChatVariant } from '../lib/ai/models'
 import {
+  AiBlockedError,
   type AiCall,
   AiStoppedError,
   aiGate,
@@ -194,18 +195,20 @@ async function talk(
   const started = performance.now()
   const now = new Date()
   const userId = ctx.session.user.id
-  const result = await readGate(userId, now)
-  if (result.blocked) {
+  const emitBlocked = (blocked: Limit | Unavailable) =>
     emit(
-      result.blocked.kind === 'limit'
+      blocked.kind === 'limit'
         ? {
             type: 'blocked',
             reason: 'limit',
-            scope: result.blocked.scope,
-            resumesAt: result.blocked.resumesAt
+            scope: blocked.scope,
+            resumesAt: blocked.resumesAt
           }
         : { type: 'blocked', reason: 'unavailable' }
     )
+  const result = await readGate(userId, now)
+  if (result.blocked) {
+    emitBlocked(result.blocked)
     return
   }
 
@@ -283,7 +286,15 @@ async function talk(
         useful: true
       }
     }
-  )
+  ).catch(async (error) => {
+    // A reserva atômica recusou (outra mensagem simultânea levou o que
+    // sobrava, ou ainda está em andamento): a tela recebe a mesma trava.
+    if (!(error instanceof AiBlockedError)) throw error
+    const again = await readGate(userId, new Date())
+    emitBlocked(again.blocked ?? { kind: 'unavailable' })
+    return null
+  })
+  if (!outcome) return
   // Parada depois da última chamada: ninguém lê, nada de proposta nem `done`.
   if (outcome.status === 'stopped') return
   const reply = outcome.value

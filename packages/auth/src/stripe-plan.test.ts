@@ -76,6 +76,39 @@ describe('diferença da subida do Pix para o cartão (WEB-536)', () => {
     )
   })
 
+  // Pix anual: o cartão só cobra no fim do ano pago, então a diferença vale
+  // pelo resto do ano, não por um mês só.
+  it.each([
+    300, 360
+  ])('Pix anual com %i dias pagos: a diferença pelo resto do ano', (days) => {
+    const now = daysBefore(days)
+    const currentMonthlyReais = pixMonthlyReais('starter', 0, true)
+    const yearMs =
+      paidUntil.getTime() - new Date('2025-12-02T23:59:59Z').getTime()
+    const cents = pixUpgradeCents({
+      currentMonthlyReais,
+      newMonthlyReais: 297,
+      paidUntil,
+      annual: true,
+      now
+    })
+    const expected = Math.round(
+      (297 - currentMonthlyReais) * 12 * 100 * ((days * 86_400_000) / yearMs)
+    )
+    expect(cents).toBe(expected)
+    // 300 dias: ~R$ 2.132, não os R$ 216 de um mês.
+    if (days === 300) expect(Math.round(cents / 100)).toBe(2132)
+    // Sem o anual, o teto de um mês.
+    expect(
+      pixUpgradeCents({
+        currentMonthlyReais,
+        newMonthlyReais: 297,
+        paidUntil,
+        now
+      })
+    ).toBe(Math.round((297 - currentMonthlyReais) * 100))
+  })
+
   it('último dia: a diferença de poucas horas sai pelo proporcional', () => {
     const cents = pixUpgradeCents({
       currentMonthlyReais: 97,

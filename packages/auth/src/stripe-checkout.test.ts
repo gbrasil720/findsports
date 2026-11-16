@@ -258,14 +258,14 @@ describe('consulta do cupom de fundador com teto de tempo', () => {
     )
   })
 
-  it('vagas somam cartão e Pix, mesmo com o Pix desligado', async () => {
+  it('vagas são as do app: 100 bares com desconto de fundador, cartão e Pix', async () => {
     const { client } = stripeWith(async () => ({
       valid: true,
       max_redemptions: 100,
-      times_redeemed: 90
+      times_redeemed: 99
     }))
-    expect(await founderCouponUsable(client, async () => 9)).toBe(true)
-    expect(await founderCouponUsable(client, async () => 10)).toBe(false)
+    expect(await founderCouponUsable(client, async () => 99)).toBe(true)
+    expect(await founderCouponUsable(client, async () => 100)).toBe(false)
   })
 
   it('Pix novo só ganha fundador com a contagem conferida', async () => {
@@ -287,19 +287,17 @@ describe('consulta do cupom de fundador com teto de tempo', () => {
     }
   })
 
-  // WEB-442: o anual de fundador ocupa a mesma vaga.
-  it('vagas somam os resgates do cupom anual', async () => {
+  // A troca do cupom entre mensal e anual resgata de novo no Stripe: os
+  // resgates não contam, senão o bar ocuparia duas vagas.
+  it('resgates do Stripe não contam vaga', async () => {
     const answer = async () => ({
       valid: true,
       max_redemptions: 100,
-      times_redeemed: 90
+      times_redeemed: 150
     })
-    expect(await founderCouponUsable(stripeWith(answer, 9).client, noPix)).toBe(
-      true
-    )
     expect(
-      await founderCouponUsable(stripeWith(answer, 10).client, noPix)
-    ).toBe(false)
+      await founderCouponUsable(stripeWith(answer, 80).client, noPix)
+    ).toBe(true)
   })
 
   it('no anual, o cupom é o de fundador do anual', async () => {

@@ -1,6 +1,10 @@
 import { afterEach, expect, spyOn, test } from 'bun:test'
+import {
+  EMAIL_BUDGET,
+  emailBudgetDay
+} from '@findsports_oficial/auth/email-budget'
 import { eq, inArray } from '@findsports_oficial/db'
-import { session, user } from '@findsports_oficial/db/schema/auth'
+import { rateLimit, session, user } from '@findsports_oficial/db/schema/auth'
 import { bar } from '@findsports_oficial/db/schema/platform'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 import { contextFor, inAMonth, load, seedBar } from './integration-seed'
@@ -109,6 +113,42 @@ integrationTest(
       expect(await grimorioOf(admin, person.id)).toEqual([])
     } finally {
       send.mockRestore()
+    }
+  }
+)
+
+integrationTest(
+  'cota de verificação do dia esgotada: o admin é avisado e nada é enviado',
+  async () => {
+    const { admin, auth } = await setup()
+    const { db } = await load()
+    const person = await seedPerson(false)
+    const key = `${emailBudgetDay(new Date())}:verify`
+    const full = {
+      count: EMAIL_BUDGET.categoryDaily.verify,
+      lastRequest: Date.now()
+    }
+    await db
+      .insert(rateLimit)
+      .values({ id: crypto.randomUUID(), key, ...full })
+      .onConflictDoUpdate({ target: rateLimit.key, set: full })
+    const send = spyOn(
+      auth.options.emailVerification,
+      'sendVerificationEmail'
+    ).mockResolvedValue()
+    try {
+      await expect(
+        admin.adminUsers.resendVerification({ userId: person.id })
+      ).rejects.toMatchObject({
+        code: 'TOO_MANY_REQUESTS',
+        message:
+          'A cota de e-mails de verificação de hoje acabou. Tente de novo amanhã.'
+      })
+      expect(send).not.toHaveBeenCalled()
+      expect(await grimorioOf(admin, person.id)).toEqual([])
+    } finally {
+      send.mockRestore()
+      await db.delete(rateLimit).where(eq(rateLimit.key, key))
     }
   }
 )

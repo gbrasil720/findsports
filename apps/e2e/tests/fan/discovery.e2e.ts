@@ -10,6 +10,7 @@ import {
   team,
   uniqueSpot
 } from '../../fixtures/fan'
+import { print } from '../../fixtures/prints'
 import { expect, test } from '../../fixtures/test'
 import { createUser } from '../../fixtures/users'
 
@@ -106,16 +107,51 @@ test('visitante salva o bar pela folha e ele fica salvo', async ({ page }) => {
   ).toBeVisible()
 })
 
-test('a ação volta pela URL depois do cadastro e sai uma vez', async ({
+test('a ação guardada pela folha volta pela URL e sai uma vez', async ({
   page
 }) => {
   const { pub, spot, dia } = await barComJogo(page)
   const fan = await signInFanAt(page, spot)
+  // O que a folha de entrar grava ao abrir (`guardarAcao`, `acao.ts`).
+  await page.goto(`/dashboard?dia=${dia}`)
+  await page.evaluate(
+    (texto) =>
+      localStorage.setItem(
+        'onside.acao-pendente',
+        JSON.stringify({ texto, em: Date.now() })
+      ),
+    `fav.${pub.barId}`
+  )
 
   await page.goto(`/dashboard?dia=${dia}&acao=fav.${pub.barId}`)
 
   await expect.poll(() => isFavorite(fan.id, pub.barId)).toBe(true)
   await expect(page).not.toHaveURL(/acao=/)
+  await expect(page.getByRole('alertdialog')).toHaveCount(0)
+})
+
+// Achado `web-acao-url-auto-executes-mutation`: link de fora com `?acao=`
+// mostra o cartão e não grava sem o toque.
+test('link com ?acao= pede confirmação e "Agora não" não grava', async ({
+  page
+}, testInfo) => {
+  const { pub, spot, dia } = await barComJogo(page)
+  const fan = await signInFanAt(page, spot)
+
+  await page.goto(`/dashboard?dia=${dia}&acao=fav.${pub.barId}`)
+  const cartaoConfirma = page.getByRole('alertdialog', {
+    name: 'Salvar este bar em Seus bares?'
+  })
+  await expect(cartaoConfirma).toBeVisible()
+  // Diz qual bar, para a pessoa saber o que confirma.
+  await expect(cartaoConfirma).toContainText(pub.name)
+  await print(page, testInfo, 'acao-confirmacao', 500)
+  expect(await isFavorite(fan.id, pub.barId)).toBe(false)
+
+  await cartaoConfirma.getByRole('button', { name: 'Agora não' }).click()
+  await expect(cartaoConfirma).toHaveCount(0)
+  await expect(page).not.toHaveURL(/acao=/)
+  expect(await isFavorite(fan.id, pub.barId)).toBe(false)
 })
 
 test('filtro e busca deixam só o bar que casa', async ({ page }) => {
@@ -247,4 +283,32 @@ test('sem VITE_MAP_TILES_URL o mapa mostra o erro e a lista segue', async ({
   await expect(error).toBeVisible()
   await expect(error.getByRole('button')).toHaveCount(0)
   await expect(cartao(page, pub.name)).toBeVisible()
+})
+
+test('link com ?acao= de jogo que não existe não pergunta nada', async ({
+  page
+}) => {
+  const { spot, dia } = await barComJogo(page)
+  await signInFanAt(page, spot)
+
+  await page.goto(
+    `/dashboard?dia=${dia}&acao=vou.00000000-0000-4000-8000-000000000000`
+  )
+  await expect(page).not.toHaveURL(/acao=/)
+  await expect(page.getByRole('alertdialog')).toHaveCount(0)
+})
+
+test('confirmação de presença diz o jogo e o bar', async ({
+  page
+}, testInfo) => {
+  const { pub, spot, dia, eventId } = await barComJogo(page)
+  await signInFanAt(page, spot)
+
+  await page.goto(`/dashboard?dia=${dia}&acao=vou.${eventId}`)
+  const cartaoConfirma = page.getByRole('alertdialog', {
+    name: 'Marcar presença neste jogo?'
+  })
+  await expect(cartaoConfirma).toContainText(pub.name)
+  await expect(cartaoConfirma).toContainText(`Final ${pub.name}`)
+  await print(page, testInfo, 'acao-confirmacao-vou', 500)
 })

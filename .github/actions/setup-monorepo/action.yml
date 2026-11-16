@@ -10,12 +10,12 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: oven-sh/setup-bun@v2
+    - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
       with:
         bun-version: ${{ inputs.bun-version }}
     # PRs só leem o cache da master: salvar por PR (refs/pull/N/merge) criava
     # uma cópia de ~440 MB por PR e estourava a cota de 10 GB do repositório.
-    - uses: actions/cache/restore@v4
+    - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
       id: bun-cache
       with:
         path: |
@@ -29,7 +29,7 @@ runs:
     - shell: bash
       run: bun install --frozen-lockfile
     - if: github.ref == 'refs/heads/master' && steps.bun-cache.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
       with:
         path: |
           ~/.bun/install/cache

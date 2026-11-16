@@ -1,6 +1,6 @@
 import { useForm } from '@tanstack/react-form'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Key from 'reicon-react/icons/Key'
 import Loader from 'reicon-react/icons/Loader'
 import { toast } from 'sonner'
@@ -70,7 +70,22 @@ function validateConfirm({
 }
 
 function ResetPasswordPage() {
-  const { token, error } = Route.useSearch()
+  const search = Route.useSearch()
+  const navigate = useNavigate()
+  // O token fica só na memória da página: lido, sai da URL pelo router (que
+  // também não o guarda), do histórico e de quem lê a URL depois (análise,
+  // extensão, print).
+  const [token] = useState(search.token)
+  const { error } = search
+  useEffect(() => {
+    if (!token) return
+    void navigate({
+      to: '.',
+      search: ({ token: _, ...resto }) => resto,
+      replace: true,
+      resetScroll: false
+    })
+  }, [token, navigate])
 
   return (
     <AuthShell panel={PANEL}>
@@ -155,7 +170,9 @@ function FormularioDeNovaSenha({ token }: { token: string }) {
       }
       // `revokeSessionsOnPasswordReset` derruba as sessões abertas, então
       // entrar de novo é obrigatório — e é o que confirma que a senha pegou.
-      toast.success('Senha redefinida. Entre com a nova senha.')
+      toast.success(
+        'Senha redefinida. Entre com a nova senha aqui ou no app da Onside.'
+      )
       navigate({ to: '/login' })
     }
   })
@@ -184,6 +201,10 @@ function FormularioDeNovaSenha({ token }: { token: string }) {
         <p className="text-sm text-[var(--onside-muted)]">
           Escolha uma senha de pelo menos 8 caracteres. Ao concluir, as sessões
           abertas nesta conta são encerradas.
+        </p>
+        <p className="mt-2 text-sm text-[var(--onside-muted)]">
+          Veio pelo app? Depois de salvar, volte ao app da Onside e entre com a
+          senha nova.
         </p>
       </div>
 

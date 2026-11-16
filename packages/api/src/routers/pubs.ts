@@ -434,6 +434,72 @@ export const pubsRouter = router({
   }),
 
   /**
+   * O que o cartão de confirmação da `?acao=` do web mostra (achado de
+   * segurança `web-acao-url-auto-executes-mutation`): só o título do jogo, o
+   * bar e o horário, para a pessoa saber o que está confirmando. Jogo
+   * publicado, de bar no ar, que ainda não começou (e, para presença, com a
+   * lista de quem vai aberta); bar no ar para salvar. O resto é `null`, e a
+   * tela não pergunta nada. Aberta: nada de presença nem do dono.
+   */
+  actionTarget: publicProcedure
+    .input(
+      z.object({
+        tipo: z.enum(['vou', 'fav', 'lembrar']),
+        id: z.string().uuid()
+      })
+    )
+    .query(async ({ input }) => {
+      if (input.tipo === 'fav') {
+        const found = await db.execute<{
+          name: string
+          neighborhood: string
+        }>(sql`
+          SELECT b.name, b.neighborhood FROM bar b
+          WHERE b.id = ${input.id} AND b.is_active
+        `)
+        const row = found.rows[0]
+        return row
+          ? {
+              title: null,
+              barName: row.name,
+              neighborhood: row.neighborhood,
+              startsAt: null
+            }
+          : null
+      }
+      const found = await db.execute<{
+        title: string
+        bar_name: string
+        neighborhood: string
+        starts_at: string
+      }>(sql`
+        SELECT
+          ${gameTitle({
+            id: sql`e.id`,
+            participantFreeText: sql`e.participant_free_text`,
+            championship: sql`e.championship`
+          })} AS title,
+          b.name AS bar_name, b.neighborhood, e.starts_at
+        FROM event e
+        JOIN bar b ON b.id = e.bar_id
+        WHERE e.id = ${input.id}
+          AND b.is_active
+          AND e.published_at IS NOT NULL
+          AND e.starts_at > ${utcNowSql()}
+          ${input.tipo === 'vou' ? sql`AND e.attendance_enabled` : sql``}
+      `)
+      const row = found.rows[0]
+      return row
+        ? {
+            title: row.title,
+            barName: row.bar_name,
+            neighborhood: row.neighborhood,
+            startsAt: utcIso(row.starts_at)
+          }
+        : null
+    }),
+
+  /**
    * O que o onboarding do app mostra em cada escolha (rodada 2 do redesign):
    * por esporte, quantos jogos há nos próximos 7 dias nos bares no ar (e o
    * próximo, para a F1 dizer o GP); por time, o próximo jogo e quantos na
@@ -580,6 +646,7 @@ export const pubsRouter = router({
       const normalizado = {
         ...input,
         sort: porNota ? ('rating' as const) : ('relevance' as const),
+        ratingPublic: notaPublica,
         amenities: input.amenities?.length
           ? normalizeAmenityIds(input.amenities)
           : undefined,

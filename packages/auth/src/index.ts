@@ -24,13 +24,18 @@ import {
 } from './account-deletion'
 import { adminRouteRefusal } from './admin-guard'
 import { isLoggedAdminPath, logAdminAction, previousRole } from './admin-log'
+import { appSessionHandoff } from './app-session-handoff'
 import { runInBackground } from './background'
 import {
   blocksCardOverPix,
   blocksNewCheckout,
   canAccessPubBilling,
+  changesBillingInterval,
+  isUnusedBillingRoute,
   requiresPubBillingAccess
 } from './billing-access'
+import { extrairIp } from './client-ip'
+import { EmailBudgetExceeded } from './email-budget'
 import {
   isAuthWrite,
   isReadOnlyImpersonation,
@@ -46,8 +51,35 @@ import { checkoutParamsFor } from './stripe-checkout'
 import { stripeClient } from './stripe-client'
 import { planForLookupKey, STRIPE_PLANS } from './stripe-plan'
 import { syncStripeEvent } from './stripe-sync'
-import { APP_SCHEME, buildTrustedOrigins } from './trusted-origins'
+import {
+  APP_SCHEME,
+  buildTrustedOrigins,
+  resetRedirectTarget
+} from './trusted-origins'
+import { revokeOtherSessionsOnTwoFactorEnable } from './two-factor-enable'
 import { publicEmailUrl, sendVerificationEmail } from './verification-email'
+import { verifyEmailRespectsTwoFactor } from './verify-email-two-factor'
+
+/**
+ * Verificação e reset recusados pelo orçamento de e-mail (`email-budget.ts`)
+ * saem calados: o better-auth responde como sempre, sem dizer se o endereço
+ * existe, e o provedor não é chamado. A recusa já foi ao log.
+ */
+async function withinEmailBudget(send: Promise<void>): Promise<void> {
+  try {
+    await send
+  } catch (error) {
+    if (!(error instanceof EmailBudgetExceeded)) throw error
+  }
+}
+
+/**
+ * IP de quem pediu o e-mail, pela mesma regra do contexto do tRPC. Chamada
+ * do servidor (`auth.api`, como o admin) não traz requisição.
+ */
+function emailRequestIp(request: Request | undefined): string | undefined {
+  return request ? extrairIp(request.headers) : undefined
+}
 
 function cookieDomainFor(baseUrl: string): string | undefined {
   const host = new URL(baseUrl).hostname.replace(/^www\./, '')
@@ -62,8 +94,9 @@ function cookieDomainFor(baseUrl: string): string | undefined {
  * `cf-connecting-ip` no Worker). Só vale para requisição HTTP: chamada por
  * `auth.api` não passa por ele (`captcha-scope.test.ts`).
  *
- * Sem `TURNSTILE_SECRET_KEY` o plugin nem entra — o deploy pode chegar antes
- * do segredo.
+ * Sem `TURNSTILE_SECRET_KEY` o plugin nem entra. Em produção no `onside.sh`
+ * o env recusa subir sem ele (`packages/env/src/server.ts`); o aviso abaixo
+ * fica para o preview e o resto.
  */
 function turnstilePlugin() {
   if (env.TURNSTILE_SECRET_KEY) {
@@ -91,6 +124,19 @@ function turnstilePlugin() {
   // tira dela o tipo de tupla, e a inferência dos campos do admin se perde.
   return { id: 'captcha-disabled' }
 }
+
+/**
+ * `role` que o cadastro aceita do cliente: torcedor ou bar, nunca `admin`.
+ * Vale em `additionalFields` e no plugin que vem depois do admin(), para a
+ * recusa não depender da ordem nem da presença dos plugins.
+ */
+const SIGN_UP_ROLE_FIELD = {
+  type: 'string',
+  required: false,
+  defaultValue: 'fan',
+  input: true,
+  validator: { input: z.enum(['fan', 'pub']) }
+} as const
 
 /** WEB-390: o cookie do modo da pele, com o mesmo domínio do de sessão. */
 export function impersonationModeCookieOptions(expires: Date) {
@@ -141,6 +187,38 @@ export function createAuth() {
             })
           }
         }
+        // O token de redefinição de senha não vai a `onside://` (qualquer app
+        // registra o esquema): só ao site. O esquema do app vira a página do
+        // site, para o build antigo do app seguir funcionando; o resto que não
+        // é do site é recusado. Ver `resetRedirectTarget`.
+        if (
+          ctx.path === '/request-password-reset' ||
+          ctx.path === '/reset-password/:token'
+        ) {
+          const fromBody = ctx.path === '/request-password-reset'
+          const target = fromBody
+            ? (ctx.body as { redirectTo?: unknown } | undefined)?.redirectTo
+            : ctx.query?.callbackURL
+          const decision = resetRedirectTarget(
+            target,
+            ctx.context.trustedOrigins
+          )
+          if (!decision) {
+            throw new APIError('BAD_REQUEST', {
+              message:
+                'Endereço de redefinição de senha não permitido. Atualize o app ou redefina pelo site.',
+              code: 'RESET_REDIRECT_NOT_ALLOWED'
+            })
+          }
+          if ('replace' in decision) {
+            return {
+              context: fromBody
+                ? { body: { ...ctx.body, redirectTo: decision.replace } }
+                : { query: { ...ctx.query, callbackURL: decision.replace } }
+            }
+          }
+          return
+        }
         // WEB-383: 2FA obrigatório e rotas admin sem uso desligadas.
         if (ctx.path?.startsWith('/admin/')) {
           const refusal = adminRouteRefusal(
@@ -175,6 +253,9 @@ export function createAuth() {
           if (ctx.path === '/update-user') assertNoSelfRoleChange(ctx.body)
         }
         if (!requiresPubBillingAccess(ctx.path)) return
+        if (isUnusedBillingRoute(ctx.path)) {
+          throw new APIError('NOT_FOUND')
+        }
         const session = await getSessionFromCtx(ctx)
         if (!canAccessPubBilling(session?.user ?? null)) {
           throw new APIError('FORBIDDEN', {
@@ -202,6 +283,46 @@ export function createAuth() {
                 'Sua assinatura é no Pix: passe para o cartão pela tela de planos.',
               code: 'PIX_SWITCH_UNAVAILABLE'
             })
+          }
+          // A metadata do corpo vai para a assinatura no Stripe, e o webhook
+          // lê dali o que o servidor grava (`founderCoupon`,
+          // `pixUpgradeCents`). O app não manda nenhuma.
+          if ((ctx.body as { metadata?: unknown })?.metadata !== undefined) {
+            throw new APIError('BAD_REQUEST', {
+              message: 'Pedido de assinatura inválido.'
+            })
+          }
+          // WEB-442: a assinatura do cartão troca de plano no intervalo dela.
+          const current = ownerBar?.subscription
+          if (
+            current?.provider === 'stripe' &&
+            current.externalSubscriptionId &&
+            (current.status === 'active' || current.status === 'trialing')
+          ) {
+            const [row] = await db
+              .select({
+                billingInterval: schema.stripeSubscription.billingInterval
+              })
+              .from(schema.stripeSubscription)
+              .where(
+                eq(
+                  schema.stripeSubscription.stripeSubscriptionId,
+                  current.externalSubscriptionId
+                )
+              )
+            const annual = (ctx.body as { annual?: unknown })?.annual === true
+            if (
+              changesBillingInterval(
+                row?.billingInterval ?? current.billingInterval,
+                annual
+              )
+            ) {
+              throw new APIError('CONFLICT', {
+                message:
+                  'A troca de plano fica no intervalo da sua assinatura. Para mudar entre mensal e anual, fale com a Onside.',
+                code: 'BILLING_INTERVAL_MISMATCH'
+              })
+            }
           }
         }
       }),
@@ -246,17 +367,20 @@ export function createAuth() {
       // Quem redefine a senha normalmente é quem perdeu o acesso; se a conta
       // estava comprometida, as sessões do invasor precisam cair junto.
       revokeSessionsOnPasswordReset: true,
-      sendResetPassword: async ({ user, url }) => {
+      sendResetPassword: async ({ user, url }, request) => {
         const publicAppUrl = getPublicAppUrl()
-        await sendResetPasswordEmail({
-          apiKey: env.EMAIL_API_KEY,
-          fromEmail: env.EMAIL_FROM,
-          to: user.email,
-          name: user.name,
-          // `url` sai com o host de `BETTER_AUTH_URL`, que localmente é
-          // localhost e não abre na caixa de entrada de ninguém.
-          resetUrl: publicEmailUrl(url, publicAppUrl, env.BETTER_AUTH_URL)
-        })
+        await withinEmailBudget(
+          sendResetPasswordEmail({
+            apiKey: env.EMAIL_API_KEY,
+            fromEmail: env.EMAIL_FROM,
+            to: user.email,
+            name: user.name,
+            ip: emailRequestIp(request),
+            // `url` sai com o host de `BETTER_AUTH_URL`, que localmente é
+            // localhost e não abre na caixa de entrada de ninguém.
+            resetUrl: publicEmailUrl(url, publicAppUrl, env.BETTER_AUTH_URL)
+          })
+        )
       },
       customSyntheticUser: ({ coreFields, additionalFields, id }) => ({
         ...coreFields,
@@ -275,19 +399,29 @@ export function createAuth() {
       sendOnSignIn: true,
       autoSignInAfterVerification: true,
       expiresIn: 60 * 60,
-      sendVerificationEmail: async ({ user, url }) => {
+      sendVerificationEmail: async ({ user, url }, request) => {
         const publicAppUrl = getPublicAppUrl()
-        await sendVerificationEmail({
-          apiKey: env.EMAIL_API_KEY,
-          fromEmail: env.EMAIL_FROM,
-          to: user.email,
-          name: user.name,
-          verificationUrl: publicEmailUrl(
-            url,
-            publicAppUrl,
-            env.BETTER_AUTH_URL
-          )
-        })
+        await withinEmailBudget(
+          sendVerificationEmail({
+            apiKey: env.EMAIL_API_KEY,
+            fromEmail: env.EMAIL_FROM,
+            to: user.email,
+            name: user.name,
+            // Só o cadastro manda para endereço novo; reenvio, login sem
+            // verificar e admin são de conta que já existe.
+            category:
+              request &&
+              new URL(request.url).pathname.endsWith('/sign-up/email')
+                ? 'signup'
+                : 'verify',
+            ip: emailRequestIp(request),
+            verificationUrl: publicEmailUrl(
+              url,
+              publicAppUrl,
+              env.BETTER_AUTH_URL
+            )
+          })
+        )
       }
     },
     user: {
@@ -298,12 +432,7 @@ export function createAuth() {
         afterDelete: (accountUser) => deleteStripeSubscriptionOf(accountUser.id)
       },
       additionalFields: {
-        role: {
-          type: 'string',
-          required: false,
-          defaultValue: 'fan',
-          input: true
-        },
+        role: SIGN_UP_ROLE_FIELD,
         onboardingCompleted: {
           type: 'boolean',
           required: false,
@@ -372,31 +501,20 @@ export function createAuth() {
     plugins: [
       turnstilePlugin(),
       twoFactor({ issuer: 'Onside' }),
+      revokeOtherSessionsOnTwoFactorEnable(),
+      // Antes do expo(): o link de confirmação não entra em conta com 2FA.
+      verifyEmailRespectsTwoFactor(),
       admin({
         adminRoles: ['admin'],
         defaultRole: 'fan'
       }),
-      // The admin() plugin above redefines `role` with `input: false`, which
-      // blocks clients from setting it at signup (error: "role is not
-      // allowed to be set"). Since plugin schemas merge in array order and
-      // later entries win, this plugin re-enables input but restricts the
-      // accepted values to non-privileged roles, preventing signup from
-      // self-escalating to `admin`.
+      // O admin() acima redeclara `role` com `input: false`, e o cadastro não
+      // conseguiria escolher torcedor ou bar. Campo de plugin substitui o
+      // anterior inteiro (o último vence), então este devolve a entrada com
+      // o mesmo `SIGN_UP_ROLE_FIELD` de `additionalFields`: só `fan` ou `pub`.
       {
         id: 'allow-role-on-signup',
-        schema: {
-          user: {
-            fields: {
-              role: {
-                type: 'string',
-                required: false,
-                defaultValue: 'fan',
-                input: true,
-                validator: { input: z.enum(['fan', 'pub']) }
-              }
-            }
-          }
-        }
+        schema: { user: { fields: { role: SIGN_UP_ROLE_FIELD } } }
       },
       // Cobrança pelo Stripe (WEB-31). O plugin cuida de checkout, portal e
       // da verificação da assinatura do webhook (`/stripe/webhook`); o estado
@@ -437,10 +555,30 @@ export function createAuth() {
           })
         }
       }),
+      // Depois do stripe(): ele declara `user.stripeCustomerId` sem
+      // `input: false`, e o cadastro e o `/update-user` o aceitavam do
+      // cliente. Quem grava é o servidor (plugin, checkout, Pix → cartão).
+      {
+        id: 'server-owned-stripe-customer',
+        schema: {
+          user: {
+            fields: {
+              stripeCustomerId: {
+                type: 'string',
+                required: false,
+                input: false
+              }
+            }
+          }
+        }
+      },
       sessionTokenGuard(),
       // O app nativo (`apps/mobile`): troca o cookie de navegador pela sessão
       // guardada no aparelho e aceita `onside://` como origem.
       expo(),
+      // Logo depois do `expo()`: tira a sessão da URL de volta ao app e põe no
+      // lugar um código de uso único (ver `app-session-handoff.ts`).
+      appSessionHandoff(),
       // Por último: o plugin repassa ao TanStack Start os cookies que os
       // `hooks.after` anteriores gravaram. Plugin depois dele que grave cookie
       // (twoFactor, admin) teria o `Set-Cookie` perdido. É o nosso, e não o

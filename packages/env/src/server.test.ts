@@ -78,7 +78,8 @@ describe('preview switches', () => {
       expect(
         loadServerEnv({
           STRIPE_SECRET_KEY: key,
-          PUBLIC_APP_URL: 'https://www.onside.sh'
+          PUBLIC_APP_URL: 'https://www.onside.sh',
+          TURNSTILE_SECRET_KEY: 'segredo-do-turnstile'
         }).exitCode
       ).toBe(0)
     }
@@ -93,6 +94,30 @@ describe('preview switches', () => {
   it('recusa STRIPE_SECRET_KEY que não é chave do Stripe', () => {
     const result = loadServerEnv({ STRIPE_SECRET_KEY: 'pk_live_exemplo' })
     expect(result.exitCode).not.toBe(0)
+  })
+})
+
+describe('Turnstile em produção', () => {
+  it('é obrigatório em produção no domínio onside.sh', () => {
+    for (const url of ['https://www.onside.sh', 'https://onside.sh']) {
+      const result = loadServerEnv({ PUBLIC_APP_URL: url })
+      expect(result.exitCode).not.toBe(0)
+      expect(result.stderr.toString()).toContain('TURNSTILE_SECRET_KEY')
+      expect(
+        loadServerEnv({
+          PUBLIC_APP_URL: url,
+          TURNSTILE_SECRET_KEY: 'segredo-do-turnstile'
+        }).exitCode
+      ).toBe(0)
+    }
+  })
+
+  it('segue opcional fora do domínio de produção', () => {
+    expect(
+      loadServerEnv({
+        PUBLIC_APP_URL: 'https://onside-web-preview.example.workers.dev'
+      }).exitCode
+    ).toBe(0)
   })
 })
 

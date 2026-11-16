@@ -1,11 +1,13 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, it, spyOn } from 'bun:test'
 import {
+  founderSeatsFull,
   parsePixExternalId,
   pixExternalId,
   pixFounderDiscountReais,
   pixStanding,
   readLagsBehind
 } from './pix-sync'
+import { stripeClient } from './stripe-client'
 
 describe('externalId do checkout Pix', () => {
   it('volta o bar, o plano e o fundador que entraram', () => {
@@ -116,5 +118,28 @@ describe('leitura da AbacatePay atrás do aviso', () => {
 
   it('recusa de débito não depende da leitura', () => {
     expect(readLagsBehind('subscription.payment_failed', 'ACTIVE')).toBe(false)
+  })
+})
+
+describe('vaga de fundador com o Stripe sem responder', () => {
+  // O dublê responde antes da contagem: o banco não é tocado.
+  it('não trava o aviso: conta como não esgotou, com o motivo no log', async () => {
+    const spy = spyOn(stripeClient.coupons, 'retrieve').mockImplementation(
+      (async () => {
+        throw Object.assign(new Error('Invalid API Key provided'), {
+          type: 'StripeAuthenticationError'
+        })
+      }) as unknown as typeof stripeClient.coupons.retrieve
+    )
+    const error = spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      expect(await founderSeatsFull()).toBe(false)
+      const logged = String(error.mock.calls[0]?.[0])
+      expect(logged).toContain('pix_founder_seat_unverified')
+      expect(logged).toMatch(/stripe_key_missing|stripe_unavailable/)
+    } finally {
+      spy.mockRestore()
+      error.mockRestore()
+    }
   })
 })

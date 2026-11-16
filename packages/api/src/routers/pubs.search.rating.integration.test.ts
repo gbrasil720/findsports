@@ -270,7 +270,43 @@ integrationTest(
       expect(desligado.bars.every((achado) => achado.rating === null)).toBe(
         true
       )
+
+      // Nem o cursor leva a nota escondida: a qualidade vira 0 na chave da
+      // ordem, nos dois caminhos da busca. Com a exibição ligada, ela vai.
+      const qualidadesNoCursor = async (passo: number) => {
+        const vistas: number[] = []
+        let next: string | undefined
+        for (let i = 0; i < fixtures.length; i++) {
+          const page: Awaited<ReturnType<typeof caller.pubs.search>> =
+            await caller.pubs.search({
+              lat: ORIGIN_LAT,
+              lng: ORIGIN_LNG + passo * 0.002,
+              radiusKm: 3,
+              limit: 1,
+              cursor: next
+            })
+          if (!page.nextCursor) break
+          next = page.nextCursor
+          const chave = JSON.parse(
+            Buffer.from(next, 'base64url').toString('utf8')
+          ) as { q: number }
+          vistas.push(chave.q)
+        }
+        return vistas
+      }
+      for (const [passo, emCamadas] of [
+        [4, true],
+        [5, false]
+      ] as const) {
+        await setAppConfig('search.tiered_plan_query', emCamadas, null)
+        const vistas = await qualidadesNoCursor(passo)
+        expect(vistas.length).toBeGreaterThan(0)
+        expect(vistas.every((q) => q === 0)).toBe(true)
+      }
+      await setAppConfig('rating.public_display', true, null)
+      expect((await qualidadesNoCursor(6)).some((q) => q !== 0)).toBe(true)
     } finally {
+      await resetAppConfig('search.tiered_plan_query')
       await resetAppConfig('rating.public_display')
       await db
         .delete(user)

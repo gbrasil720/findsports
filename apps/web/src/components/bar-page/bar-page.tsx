@@ -14,7 +14,11 @@ import { GUIA_FOOTER_LINKS } from '@/components/landing/onside-landing-content'
 import { Logo } from '@/components/landing/v3/icons'
 import { ThemeSwitch } from '@/components/landing/v3/theme-switch'
 import { QRCode } from '@/components/qr-code'
-import { destinoContaNova, lerAcao } from '@/components/torcedor/acao'
+import {
+  destinoContaNova,
+  lerAcao,
+  tomarAcaoPendente
+} from '@/components/torcedor/acao'
 import { avisarNaProxima } from '@/components/torcedor/avisos'
 import { canRecordCommercialEvents } from '@/domain/viewer'
 import { analytics } from '@/lib/analytics'
@@ -40,7 +44,7 @@ import {
   shortDate,
   starsLabel
 } from './bar-page-model'
-import { type LoginKind, LoginSheet } from './login-sheet'
+import { ConfirmSheet, type LoginKind, LoginSheet } from './login-sheet'
 
 const OnsideMap = lazy(() =>
   import('@/components/app/onside-map').then((m) => ({ default: m.OnsideMap }))
@@ -87,6 +91,9 @@ export type Neighbor = {
   neighborhood: string
   path: string
 }
+
+/** O que a `?acao=` pode fazer na página do bar. */
+type AcaoDaPagina = { tipo: 'vou' | 'fav'; id: string }
 
 export type BarPageSearch = { jogo?: string; acao?: string }
 
@@ -302,27 +309,22 @@ export function BarPage({
    * A ação pedida antes de entrar (`?acao=`, `torcedor/acao.ts`): a folha de
    * login, o cadastro, o e-mail, o 2FA e o onboarding voltam para cá com ela,
    * e ela acontece uma vez só. O formato antigo (`vou`, `salvar`) vale com o
-   * bar da página e o jogo do cartão.
+   * bar da página e o jogo do cartão. Só vale o que é desta página (este bar,
+   * um jogo dele), e só sai sozinha a que este navegador guardou ao abrir a
+   * folha (`tomarAcaoPendente`); a outra pede confirmação.
    */
+  const [confirm, setConfirm] = useState<AcaoDaPagina | null>(null)
   const pending = useRef(false)
-  useEffect(() => {
-    if (!search.acao || !session || !viewer.data || pending.current) return
-    pending.current = true
-    const { acao: texto, ...rest } = search
-    const limpar = () =>
-      void navigate({
-        to: '.',
-        search: rest,
-        replace: true,
-        resetScroll: false
-      })
-    const acao = lerAcao(texto, { barId: bar.id, eventId: game?.id })
-    if (!acao || acao.tipo === 'lembrar') return limpar()
-    if (!viewer.data.fan) {
-      limpar()
-      toast.info('Marcar presença e salvar bar são para conta de torcedor.')
-      return
-    }
+  const { acao: acaoTexto, ...semAcaoNaUrl } = search
+  const limpar = () =>
+    void navigate({
+      to: '.',
+      search: semAcaoNaUrl,
+      replace: true,
+      resetScroll: false
+    })
+  const executar = (acao: AcaoDaPagina) => {
+    if (!session || !viewer.data) return
     // Conta nova (sem onboarding): depois da ação, a tela dela com o card da
     // conta nova, como no web do torcedor (`destinoContaNova`). Até lá a
     // `acao` fica na URL: sem ela a guarda manda a conta nova ao onboarding
@@ -330,7 +332,7 @@ export function BarPage({
     const nova = session.user.onboardingCompleted === false
     contaNova.current = nova
     if (!nova) limpar()
-    if (acao.tipo === 'fav' && !(acao.id === bar.id && viewer.data.favorited))
+    if (acao.tipo === 'fav' && !viewer.data.favorited)
       favorite.mutate(
         { barId: acao.id },
         {
@@ -354,7 +356,30 @@ export function BarPage({
           }
         }
       )
-  }, [search, session, viewer.data, navigate, favorite, attend, bar.id, game])
+  }
+  const executarRef = useRef(executar)
+  executarRef.current = executar
+  const limparRef = useRef(limpar)
+  limparRef.current = limpar
+  useEffect(() => {
+    if (!acaoTexto || !session || !viewer.data || pending.current) return
+    pending.current = true
+    const acao = lerAcao(acaoTexto, { barId: bar.id, eventId: game?.id })
+    const daPagina: AcaoDaPagina | null =
+      acao?.tipo === 'fav' && acao.id === bar.id
+        ? { tipo: 'fav', id: acao.id }
+        : acao?.tipo === 'vou' && bar.events.some((e) => e.id === acao.id)
+          ? { tipo: 'vou', id: acao.id }
+          : null
+    if (!daPagina) return limparRef.current()
+    if (!viewer.data.fan) {
+      limparRef.current()
+      toast.info('Marcar presença e salvar bar são para conta de torcedor.')
+      return
+    }
+    if (tomarAcaoPendente(daPagina)) executarRef.current(daPagina)
+    else setConfirm(daPagina)
+  }, [acaoTexto, session, viewer.data, bar.id, bar.events, game])
 
   const share = async () => {
     const text = shareText(bar, game, now)
@@ -665,6 +690,20 @@ export function BarPage({
         now={now}
         onClose={() => setLogin(null)}
       />
+      {confirm ? (
+        <ConfirmSheet
+          kind={confirm.tipo === 'vou' ? 'vou' : 'salvar'}
+          game={bar.events.find((e) => e.id === confirm.id) ?? null}
+          bar={bar}
+          now={now}
+          onAnswer={(yes) => {
+            const acao = confirm
+            setConfirm(null)
+            if (yes) executar(acao)
+            else limpar()
+          }}
+        />
+      ) : null}
       {modal === 'code' && game && mine?.attendance?.code ? (
         <CodeModal
           code={mine.attendance.code}

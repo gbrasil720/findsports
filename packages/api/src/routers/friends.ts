@@ -41,18 +41,46 @@ const userId = z.string().min(1).max(64)
 const NOTICE_DAYS = 30
 const via = z.enum(['search', 'code', 'link', 'contacts', 'suggestion'])
 
-/** O que uma pessoa mostra numa linha de lista. */
+/**
+ * O que uma pessoa mostra numa linha de lista. A cidade não sai para quem não
+ * é amigo (política de privacidade, seção 06: "e-mail, telefone e cidade",
+ * ninguém além de nós); o campo fica nulo para o app publicado não quebrar.
+ * Só a lista de amigos aceitos (`overview`) a devolve.
+ */
 const PERSON = {
   id: user.id,
   name: user.name,
   username: user.username,
-  city: user.searchCityName,
+  city: sql<string | null>`NULL`,
   image: user.image
 }
 
 /** Gente que pode aparecer para outro torcedor: conta de torcedor, sem ban. */
 /** Convites abertos por hora, por pessoa ou IP (rodada 7). */
 const INVITE_PREVIEW_LIMIT = { max: 30, windowMs: 3_600_000 }
+/**
+ * Código lido ou digitado (`byCode`) e convite aceito (`joinByInvite`), na
+ * mesma janela: o código é curto e, sem limite, dá para varrer os torcedores.
+ */
+const FRIEND_CODE_LIMIT = { max: 30, windowMs: 3_600_000 }
+/**
+ * Hashes de contatos por dia, por pessoa: três aberturas da tela com a agenda
+ * cheia (2000 cada). ponytail: conta toda abertura, mesmo com a agenda igual;
+ * contar só hashes novos pede guardá-los (servidor) ou cachear no aparelho.
+ */
+const CONTACTS_LIMIT = { max: 6000, windowMs: 86_400_000 }
+
+async function limitFriendCode(me: string) {
+  const attempt = await incrementWindow(
+    `friend-code:user:${me}`,
+    FRIEND_CODE_LIMIT
+  )
+  if (!attempt.allowed)
+    throw new TRPCError({
+      code: 'TOO_MANY_REQUESTS',
+      message: 'Muitas tentativas de código agora. Tente de novo mais tarde.'
+    })
+}
 
 const listable = sql`${user.role} = 'fan' AND ${user.banned} IS NOT TRUE`
 
@@ -79,8 +107,7 @@ async function withRelations<T extends { id: string }>(
 async function sendRequest(
   me: string,
   target: string,
-  how: z.infer<typeof via>,
-  acceptNow = false
+  how: z.infer<typeof via>
 ) {
   if (me === target)
     throw new TRPCError({
@@ -108,12 +135,12 @@ async function sendRequest(
     return 'friends' as const
   }
   if (row) return 'sent' as const
-  if (!acceptNow && other.from === 'nobody')
+  if (other.from === 'nobody')
     throw new TRPCError({
       code: 'FORBIDDEN',
       message: 'Essa pessoa não recebe pedidos de amizade.'
     })
-  if (!acceptNow && other.from === 'friends_of_friends') {
+  if (other.from === 'friends_of_friends') {
     const mutual = (await mutualCounts(me, [target])).get(target) ?? 0
     if (!mutual)
       throw new TRPCError({
@@ -124,13 +151,12 @@ async function sendRequest(
   await db
     .insert(friendship)
     .values({
-      requesterId: acceptNow ? target : me,
-      addresseeId: acceptNow ? me : target,
-      via: how,
-      acceptedAt: acceptNow ? new Date() : null
+      requesterId: me,
+      addresseeId: target,
+      via: how
     })
     .onConflictDoNothing()
-  return acceptNow ? ('friends' as const) : ('sent' as const)
+  return 'sent' as const
 }
 
 export const friendsRouter = router({
@@ -156,6 +182,7 @@ export const friendsRouter = router({
         activityVisibility: user.activityVisibility,
         friendRequestsFrom: user.friendRequestsFrom,
         rankingGlobal: user.rankingGlobal,
+        findableByEmail: user.findableByEmail,
         city: user.searchCityName
       })
       .from(user)
@@ -421,11 +448,18 @@ export const friendsRouter = router({
                 SELECT search_city_name FROM "user" WHERE id = ${me}
               )`
             : sql``
+      // Quem escolheu "Ninguém" em "Quem pode te adicionar" só aparece para
+      // quem já tem algo com a pessoa (amigo ou pedido).
       const people = await db
         .select(PERSON)
         .from(user)
         .where(
           sql`${listable} AND ${user.id} <> ${me}
+            AND (${user.friendRequestsFrom} <> 'nobody' OR EXISTS (
+              SELECT 1 FROM friendship x
+              WHERE (x.requester_id = ${me} AND x.addressee_id = ${user.id})
+                 OR (x.requester_id = ${user.id} AND x.addressee_id = ${me})
+            ))
             AND (search_normalize(${user.name}) LIKE search_normalize(${pattern})
               OR ${user.username} LIKE ${`${typed}%`})
             ${scope}`
@@ -481,6 +515,7 @@ export const friendsRouter = router({
     .input(z.object({ code: z.string().trim().min(3).max(16) }))
     .query(async ({ ctx, input }) => {
       const me = ctx.session.user.id
+      await limitFriendCode(me)
       const [person] = await db
         .select(PERSON)
         .from(user)
@@ -517,13 +552,16 @@ export const friendsRouter = router({
     }),
 
   /**
-   * Pelo link de convite: conta criada há menos de um dia já entra como amiga
-   * de quem convidou; conta antiga manda um pedido, como pelo código.
+   * Pelo link de convite: manda um pedido, como pelo código (ou aceita o que
+   * quem convidou já mandou). Não há aceite direto: o código é permanente e
+   * curto, não prova que o dono convidou quem chega. Ele volta quando houver
+   * um convite de uso único emitido pelo dono do código.
    */
   joinByInvite: fanProcedure
     .input(z.object({ code: z.string().trim().min(3).max(16) }))
     .mutation(async ({ ctx, input }) => {
       const me = ctx.session.user.id
+      await limitFriendCode(me)
       const [inviter] = await db
         .select({ id: user.id })
         .from(user)
@@ -535,10 +573,8 @@ export const friendsRouter = router({
           code: 'NOT_FOUND',
           message: 'Esse convite não vale mais.'
         })
-      const created = new Date(ctx.session.user.createdAt).getTime()
-      const fresh = Date.now() - created < 86_400_000
       return {
-        relation: await sendRequest(me, inviter.id, 'link', fresh),
+        relation: await sendRequest(me, inviter.id, 'link'),
         inviterId: inviter.id
       }
     }),
@@ -676,7 +712,9 @@ export const friendsRouter = router({
           .enum(['everyone', 'friends_of_friends', 'nobody'])
           .optional(),
         /** "Aparecer no ranking global" (27c, WEB-465). */
-        rankingGlobal: z.boolean().optional()
+        rankingGlobal: z.boolean().optional(),
+        /** "Me encontrar pelo e-mail": aparecer em Contatos de quem tem o e-mail. */
+        findableByEmail: z.boolean().optional()
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -686,7 +724,8 @@ export const friendsRouter = router({
       if (
         input.activityVisibility ||
         input.friendRequestsFrom ||
-        input.rankingGlobal !== undefined
+        input.rankingGlobal !== undefined ||
+        input.findableByEmail !== undefined
       )
         await db.update(user).set(input).where(eq(user.id, me))
       return input
@@ -695,7 +734,8 @@ export const friendsRouter = router({
   /**
    * Quem da agenda do celular já está na Onside. O app manda só o SHA-256 de
    * cada e-mail (minúsculo, sem espaço), nunca o e-mail. Só aparece quem
-   * aceita pedidos de qualquer pessoa: os outros não são revelados.
+   * deixou "Me encontrar pelo e-mail" ligado e aceita pedidos de qualquer
+   * pessoa: os outros não são revelados.
    */
   matchContacts: fanProcedure
     .input(
@@ -706,6 +746,18 @@ export const friendsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const me = ctx.session.user.id
       if (!input.hashes.length) return []
+      // Conta hashes, não chamadas: sem teto, a lista de e-mails de um
+      // vazamento viraria nome e @ de quem está na Onside.
+      const attempt = await incrementWindow(
+        `match-contacts:user:${me}`,
+        CONTACTS_LIMIT,
+        input.hashes.length
+      )
+      if (!attempt.allowed)
+        throw new TRPCError({
+          code: 'TOO_MANY_REQUESTS',
+          message: 'Muitos contatos conferidos hoje. Tente de novo amanhã.'
+        })
       // ponytail: compara o hash de cada conta a cada vez (varre `user`);
       // com muitas contas, uma coluna com o hash e índice.
       // O hash que bateu volta junto (rodada 6): o app mostra o nome que a
@@ -720,6 +772,7 @@ export const friendsRouter = router({
         .where(
           sql`${listable} AND ${user.id} <> ${me}
             AND ${user.friendRequestsFrom} = 'everyone'
+            AND ${user.findableByEmail}
             AND encode(sha256(convert_to(lower(trim(${user.email})), 'UTF8')), 'hex')
               IN ${input.hashes}`
         )

@@ -107,6 +107,17 @@ código e o rollback (`bunx wrangler rollback`) não a desfaz, ela tem de ser
 compatível com o código anterior (expand → contract). PR publica no Worker
 `onside-web-preview`, com o branch `preview` do Neon, depois de migrá-lo.
 
+**Segredos do deploy só no job `deploy`.** O job `check` decide o alvo pelo evento,
+sem ler segredo (`production` = push em `master` do repositório original; `preview` =
+PR de branch deste repositório que não seja do Dependabot; fork e Dependabot pulam).
+Só o `deploy`, que roda com `environment: production|preview`, lê
+`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` e `DATABASE_URL_PROD`/`_PREVIEW`, e
+falha alto se faltar algum. O lugar desses segredos é o environment (`Production` com
+política de branch `master`, `Preview` com o token do preview); secret de environment
+sobrepõe o de repositório de mesmo nome. Job novo que precise de segredo de deploy
+entra com `environment:`, nunca lendo segredo num job sem ele. Actions de terceiros
+ficam fixadas por SHA de commit, com a versão em comentário.
+
 **Preview** (`https://onside-web-preview.dev-guilhermebrasil.workers.dev`): uma URL só,
 o último PR publicado ganha. Banco = branch `preview` do Neon (cópia de produção, com
 e-mails de usuários reais) via Hyperdrive `onside-db-preview`; o CI migra pelo segredo
@@ -208,12 +219,41 @@ Split by runtime boundary:
 - `packages/env/src/server.ts` — `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `LOCATIONIQ_API_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NODE_ENV`
 - `apps/web/src/lib/env.ts` — client-safe `VITE_*` vars only
 
+`TURNSTILE_SECRET_KEY` é obrigatória em produção com `PUBLIC_APP_URL` em `onside.sh`
+(o env recusa subir sem ela); no preview e no `vite dev` segue opcional.
+
+Campos de `user` que o servidor grava (`role` além de `fan`/`pub`, `stripeCustomerId`,
+`onboardingCompleted`, `twoFactorEnabled`, `banned`) levam `input: false` ou validador,
+senão `/sign-up/email` e `/update-user` os aceitam do cliente. Campo de plugin substitui
+o anterior inteiro: para mudar um, redeclare-o num plugin depois do que o criou
+(`packages/auth/src/index.ts`).
+
 **E-mail (WEB-476):** todo envio passa por `sendEmail`
 (`packages/auth/src/verification-email.ts`), um `POST <EMAIL_API_URL>/emails` no
 da MillionSend (plano Free da nuvem, 100 por dia). O provedor é `EMAIL_API_URL` (var do
 `wrangler.jsonc`, padrão `https://api.millionsend.com`) com o segredo `EMAIL_API_KEY` e o
 remetente `EMAIL_FROM`. A Resend saiu em 29/10/2026 (WEB-482). DNS de envio:
 `docs/email-dns.md`.
+
+**Orçamento da cota:** todos os envios dividem a mesma cota da conta, então
+`sendEmail` pede `category` e conta o envio em `rate_limit` antes de chamar o provedor
+(`packages/auth/src/email-budget.ts`, valores em `EMAIL_BUDGET`). Cada categoria tem
+um balde por dia de UTC, e a soma fica em 90: `signup` (verificação do cadastro, 25),
+`verify` (reenvio, login sem verificar e admin, 15), `reset` (15), `notices` (25),
+`feedback` (5) e `export` (5); um flood de cadastro não come o reset nem os avisos da
+segunda. As três abertas sem login contam também por IP (`extrairIp`, o mesmo do
+tRPC): 5 por IP no dia, somadas, e `verify`/`reset` 3 por hora para o mesmo endereço
+**a partir do mesmo IP** (contar só pelo endereço deixaria outra pessoa travar o reset
+da vítima; cadastrar, entrar duas vezes sem verificar e reenviar cabe). Nas chaves de
+`rate_limit`, e-mail e IP vão como HMAC com o `BETTER_AUTH_SECRET` (`emailBudgetHash`),
+sem dado pessoal; as linhas vencidas ainda não são apagadas por rotina. Passou de um
+teto, ou o provedor respondeu 429: `EmailBudgetExceeded`, sem chamar o provedor, e
+`email_budget_refused` no log. Verificação e reset recusados saem calados (a resposta
+do better-auth não muda); o admin (reenviar e reset no Houdini) é avisado antes por
+`emailCategoryExhausted`; `feedback.send` (3 por pessoa no dia) e `account.requestExport`
+respondem `TOO_MANY_REQUESTS` sem devolver a tentativa. Outbox do E2E,
+`EMAIL_DELIVERY=console` e falta de chave não contam. Testes sem banco passam `reserve`
+(dublê); o `fakeEmailApi` zera os baldes de hoje a cada teste.
 
 Client env lives in the app, not in `packages/env`: `import.meta.env` is only
 typed where Vite's types are, and the shared package needed an `any` cast to
@@ -253,8 +293,8 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   do ano), então o anual leva o segundo cupom, `FOUNDER_ANNUAL_COUPON_ID`
   (`fundador_anual`, R$ 280 por fatura, para sempre), pelo mesmo `discounts` do
   checkout (`checkoutParamsFor` com `annual`, vindo do
-  `subscription.upgrade({ annual })`). Mesmas 100 vagas: resgates dos dois cupons e
-  o Pix somam (`readFounderCoupon`). Sem vaga, o anual sai a preço de tabela, sem
+  `subscription.upgrade({ annual })`). Mesmas 100 vagas, cartão e Pix
+  (`readFounderCoupon`). Sem vaga, o anual sai a preço de tabela, sem
   código promocional. O teste do cadastro vale igual (`trial_end`). Na assinatura
   anual, `monthly_discount_reais` é o desconto da fatura do ano (280). O Pix também
   tem anual (ver "Pix anual" abaixo). `/plan` mostra Mensal/Anual para quem vai ao
@@ -266,7 +306,33 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   meses do mensal que o bar pagaria. Mensal ou anual da assinatura vem de
   `stripe_subscription.billing_interval`, que o plugin grava
   (`getMySubscription().billingInterval`); `billedPlan` dá o preço e o "/ano" ao card
-  do plano, ao placar e ao recibo.
+  do plano, ao placar e ao recibo. **Troca de plano no cartão fica no intervalo da
+  assinatura**: o hook do `/subscription/upgrade` recusa `annual` diferente do
+  `stripe_subscription.billing_interval` da assinatura viva
+  (`changesBillingInterval`, `BILLING_INTERVAL_MISMATCH`), e a `/plan` manda o do
+  assinante. Sem isso a anual virava mensal com o cupom de R$ 280 em cada fatura.
+  Mudar entre mensal e anual no cartão não tem caminho no app.
+  **O cupom de fundador acompanha o intervalo do preço** (dono, 15/11/2026: os dois
+  cupons valem em todos os planos, mensais e anuais, sem `applies_to`): o portal do
+  Stripe deixa trocar de preço fora do nosso hook, então o webhook troca o cupom de
+  fundador que não bate com o intervalo pelo do intervalo certo
+  (`fixFounderCouponInterval`, `stripe_founder_coupon_interval_fixed`), mantendo os
+  outros descontos e com chave de idempotência por desconto errado. Stripe recusando
+  o cupom certo (o `eM7dQpMF` com teto esgotado, por exemplo), o errado sai assim
+  mesmo e o bar fica sem desconto de fundador até o dono resolver
+  (`stripe_founder_coupon_interval_refused` no log): o cupom do outro intervalo nunca
+  fica.
+- **Vagas de fundador são do app** (`founderSeatCount`, `FOUNDER_SEATS` = 100): linhas
+  de `subscription` com o desconto de fundador (R$ 28 ou R$ 280; cartão e Pix, uma por
+  bar), também com a assinatura encerrada. `times_redeemed` do Stripe não conta: a
+  troca de cupom acima resgata de novo e contaria o bar duas vezes. O cupom no Stripe
+  só diz se a oferta segue (`valid`); o `max_redemptions` dele, se houver, encerra a
+  oferta antes do teto do app.
+- **Rotas do plugin que o app recusa** (`billing-access.ts`): `/subscription/cancel`
+  e `/subscription/restore` (404; o cancelamento é pelo portal,
+  `createSubscriptionCancelUrl`) e `metadata` no corpo do `/subscription/upgrade`
+  (o plugin a mescla na assinatura, e o webhook lê dali `founderCoupon` e
+  `pixUpgradeCents`). `/subscription/success` fica: é a volta do checkout.
 - **Teste grátis nasce no cadastro, sem cartão**: 90 dias para todo bar novo,
   contados de quando ele vai ao ar no `completePub` (`ONBOARDING_TRIAL`, em
   `packages/api/src/lib/plan-limits.ts`), no plano que a rotina do cadastro recomenda
@@ -315,9 +381,9 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
 - **Cobrança não tem chave em `app_config`** (WEB-233): a contratação está sempre
   aberta, o teste do cadastro é a constante acima e o cupom de fundador é
   `FOUNDER_COUPON_ID` (`stripe-checkout.ts`), o mesmo id no sandbox e em produção.
-  Todo checkout novo sai com ele enquanto o Stripe o der como válido; esgotado,
-  expirado ou inexistente na conta, o checkout segue a preço de tabela
-  (`usableFounderCoupon`). A oferta acaba no painel do Stripe, não no app.
+  Todo checkout novo sai com ele enquanto o Stripe o der como válido e houver vaga
+  (`founderSeatCount`); esgotado, expirado ou inexistente na conta, o checkout segue
+  a preço de tabela (`usableFounderCoupon`). A oferta acaba no painel do Stripe, não no app.
 - **Pix Automático pela AbacatePay** (11/11/2026): `ABACATE_PAY_API_KEY` (`abc_dev_`
   é o Modo Teste; `abc_prod_` só em `onside.sh`) e `ABACATE_PAY_WEBHOOK_SECRET`; sem a
   chave o Pix some das telas. Cliente em `packages/auth/src/abacatepay.ts`, produtos
@@ -325,7 +391,15 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   vale no Pix, o preço de fundador é o produto). `subscription.provider = 'abacatepay'`.
   O webhook (`/api/abacatepay/webhook`, segredo + HMAC) relê a assinatura na AbacatePay
   (`applyPixSubscription`, `pix-sync.ts`), como no Stripe. As 100 vagas de fundador
-  somam cartão e Pix (`readFounderCoupon`). A AbacatePay só cancela na hora: o painel
+  somam cartão e Pix (`founderSeatCount`). Checkout de fundador só nasce com vaga, mas
+  checkout aberto não reserva vaga. **Pago depois de esgotar, o preço de fundador
+  é honrado** (dono, 15/11/2026: sem aviso de esgotado antes de pagar, vale o
+  preço de fundador; com aviso, preço cheio, e o Pix hoje não tem esse aviso): o
+  webhook grava o desconto mesmo passando de 100 e registra
+  `pix_founder_seat_overflow` (a conta só serve ao log, sem lock: dois pagos ao
+  mesmo tempo podem escapar dele). Conta que não fecha (Stripe sem responder, sem
+  `STRIPE_SECRET_KEY`, ou o banco) não trava o aviso: vai ao log como
+  `pix_founder_seat_unverified`, com o motivo. A AbacatePay só cancela na hora: o painel
   grava `cancel_at` no fim do mês pago e `reconcileBarPlans` encerra depois. Trocar de
   plano no Pix é uma autorização nova (a anterior é cancelada). **No teste do
   cadastro o Pix espera o fim dele** (dono, 11/11/2026): a AbacatePay não agenda
@@ -366,11 +440,17 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   `pub.startCardFromPix`; o `/subscription/upgrade` recusa Pix ativo,
   `blocksCardOverPix`): `trial_end` = fim do ciclo pago, e na **subida** a diferença
   (`pixUpgradeCents`, a mesma conta na tela: proporcional de mensal novo − mensal do
-  Pix, preços pagos de fato, anual = 10/12) vai como item avulso, que o Stripe cobra
+  Pix, preços pagos de fato, anual = 10/12, pelo resto do ciclo pago: um mês, ou
+  12 no Pix anual) vai como item avulso, que o Stripe cobra
   na tela do checkout (dono, 14/11/2026: a troca só vale com a diferença paga).
   Cartão recusado não cria assinatura; voltando sem concluir, `/plan?troca=cartao`
   diz que nada mudou e pede outro cartão. Com a diferença na sessão, o cupom de
-  fundador vai na metadata e o webhook o aplica (`applyUpgradeCoupon`). No webhook,
+  A sessão leva `cardFromPix` na metadata, e o webhook cancela a assinatura do
+  cartão que chega sobre Pix vivo sem ele (um checkout do plugin aberto no teste do
+  cadastro e pago depois do Pix; `pix_card_over_pix`), e o bar segue no Pix.
+  fundador vai na metadata e o webhook o aplica (`applyUpgradeCoupon`), só com
+  `pixUpgradeCents` e só o cupom de fundador do intervalo da assinatura
+  (`upgradeCouponFor`); outro vai ao log (`pix_upgrade_coupon_untrusted`). No webhook,
   a ordem é: primeira fatura paga (`upgradePaid`; sem ela a assinatura do cartão é
   cancelada e o bar segue no Pix), cupom, Pix cancelado na AbacatePay, linha do
   Stripe; falha na AbacatePay lança e o Stripe reenvia, com o bar no Pix. A
@@ -406,6 +486,13 @@ hoje" de Hoje é `commercialAnalytics.getMyWeekdayInterest`
 da meia-noite até agora, contra a média da mesma janela nas quatro semanas antes (cabem
 nos 30 dias do Starter; semana de antes de o bar existir não entra; com menos de duas,
 "—").
+
+A retenção do plano (`maxDaysRetention`: 30 dias no Starter, 365 no Pro) é contada a
+partir de hoje, não só pelo tamanho da janela: `assertAnalyticsPeriodAllowed` recusa
+início antes dos últimos N dias de Brasília no overview e no breakdown por jogo, com um
+dia de folga (o painel calcula o período uma vez, e a aba aberta desde antes da
+meia-noite pede o início de ontem). O período personalizado do Desempenho para nos N
+dias exatos.
 
 ### Baixar meus dados (WEB-418)
 
@@ -443,7 +530,9 @@ exige na tela), e o card do web não as pergunta.
   decisão do dono para não expor o bar com uma única negativa). Abaixo dele nada da nota
   sai na leitura pública: nem %, nem estrelas, nem "O que pesou?", nem comentários. Vale
   para `pubs.getById` (`rating`, `ratingReasons`, `reviews`), a busca e a ordenação por
-  nota, e o `app_config` `rating.public_display` continua por cima.
+  nota, e o `app_config` `rating.public_display` continua por cima. Com ela desligada, a
+  nota também sai da ordem padrão da busca (a qualidade vale 0 em `linear.ts` e
+  `tiered.ts`): o `nextCursor` leva a chave da ordem em base64 legível.
 - **Comentário passa pela revisão da Onside** (`/houdini/revisao`,
   `adminReview.decideComment`, decisão no Grimório como `bar.rating_comment_*`). Recusado
   não aparece em lugar nenhum e o torcedor não é avisado; o resto da avaliação vale.
@@ -495,7 +584,11 @@ AI com o token do login do `wrangler` e o Gateway `default` (o `getPlatformProxy
 Bun). Toda chamada passa por `runAi` (`lib/ai/run.ts`): confere `ai.enabled` (desligada por
 padrão, no `app_config`), o teto do mês somando `ai_run.cost_usd`, US$ 1,50/mês e 30
 chamadas/dia por pessoa, manda `run_id`, `variant` e `feature` como metadados do Gateway e
-grava uma linha em `ai_run` (assim como polegar e ações em `ai_action`: abrir bar, Vou assistir,
+grava uma linha em `ai_run`. A linha `running` nasce numa transação com
+`pg_advisory_xact_lock` por pessoa, que relê o uso e confere os tetos de novo, e o chat
+aceita uma mensagem por vez (linha `running` de mais de 5 min não segura): pedidos
+simultâneos não furam os limites (`AiBlockedError` volta como a trava de sempre). Polegar
+e ações vão em `ai_action` (abrir bar, Vou assistir,
 rota, Ligar e WhatsApp da página do bar vinda da IA, WEB-427). Tetos e sorteio
 (hash de usuário + teste, pesos em `ai.variant_weights`, que somam 100 em cada teste) são
 puros em `lib/ai/limits.ts`; os valores dos tetos e limites moram em `ai.limits` no
@@ -646,7 +739,11 @@ próprio o `rewrite` do router tira o prefixo (`apps/web/src/lib/houdini-host.ts
 `www` o caminho `/houdini` dá 404 (admin é mandado para o host); no preview e no
 `vite dev` o Houdini responde em `/houdini`. Quem entra é decidido no servidor por
 `lib/houdini-gate.ts`: só admin com 2FA ligado; o resto recebe o 404 de verdade (a
-"Cortina"). Telas novas entram em `routes/houdini/_app/` e no grupo delas em
+"Cortina"). O 2FA é flag da conta (`user.twoFactorEnabled`, lida também por
+`adminProcedure` e `admin-guard.ts`), não da sessão: por isso ligar o 2FA encerra as
+outras sessões da conta (`packages/auth/src/two-factor-enable.ts`), e toda sessão
+seguinte passa pelo login com TOTP. Pelo mesmo motivo, em conta com 2FA o link de
+confirmação de e-mail só confirma, sem abrir sessão (`verify-email-two-factor.ts`). Telas novas entram em `routes/houdini/_app/` e no grupo delas em
 `HOUDINI_NAV_GROUPS` (`components/houdini/shell.tsx`). O visual é o redesign na
 linguagem da Onside (WEB-480, canvas https://claude.ai/artifact/DmzHetdEyDNRP3eWaXqzHz),
 todo em `components/houdini/houdini.css`, preso a `.houdini`: Anton, Archivo e Geist
@@ -806,7 +903,15 @@ mandado ao `/admin`.
   recebe com sessão a conclui uma vez: a casca do torcedor e a página do bar
   (`/bar/$slug`; `/pub/<id>` repassa a `acao`), pelo mesmo módulo. O formato antigo da
   página do bar (`?acao=vou` com `?jogo=`, `?acao=salvar`) continua aceito na leitura
-  (`lerAcao` com o bar e o jogo da página).
+  (`lerAcao` com o bar e o jogo da página). **A `?acao=` só sai sozinha se este
+  navegador a guardou** (achado de segurança `web-acao-url-auto-executes-mutation`):
+  a folha de entrar, da casca ou da página do bar, grava a ação no `localStorage` ao
+  abrir (`guardarAcao`, um dia, uma vez) e a volta só a conclui se bater
+  (`tomarAcaoPendente`). Link de fora, ou e-mail confirmado em outro aparelho, mostra
+  um cartão de confirmação ("Marcar presença neste jogo?", `CONFIRMAR`, com jogo, bar
+  e hora por `pubs.actionTarget`, aberta; sem alvo marcável a ação só sai da URL) e
+  nada grava sem o toque; "Agora não" tira a `acao` da URL. Na página do bar só vale a ação dela:
+  `fav` do próprio bar e `vou` de um jogo dele, o resto é ignorado.
 - **Conta nova por uma ação: a ação primeiro, as preferências depois** (protótipo
   `bem-vindo-curto`). Torcedor sem onboarding com `?acao=` no destino não vai ao
   onboarding (`applyAuthGuards`, `acaoPulaOnboarding`; a confirmação do e-mail e a
@@ -934,12 +1039,27 @@ invente layout que o projeto não tem.
   "Sua conta guarda tudo" e os itens "com conta"; cidade, raio e termos são livres. "Entrar com
   a Apple" espera a conta de desenvolvedor paga.
 - **Conta ("04 Conta"):** `profile` (torcedor ou bar, vira `role` no cadastro), `sign-up`,
-  `verify-email`, `sign-in`, `forgot-password`, `reset-sent`, `reset-password`, `two-factor`;
-  peças em `components/ui.tsx`. O link de confirmação abre no navegador; o servidor entra e
-  redireciona para o app (`callbackURL: '/verified'`, que o cliente vira `onside://` ou
-  `exp://`) com a sessão em `?cookie=`, e `app/verified.tsx` a guarda (`adoptSessionCookie`):
-  o cliente do Expo só faz isso sozinho no login social. O reset usa `redirectTo` com
-  `Linking.createURL`, porque o cliente não converte esse campo. Em dev o link do e-mail sai
+  `verify-email`, `sign-in`, `forgot-password`, `reset-sent`, `two-factor`;
+  peças em `components/ui.tsx`. O link de confirmação abre no navegador; o servidor confirma
+  e redireciona para o app (`verifiedCallbackURL`, `lib/verify-link.ts`: `onside://verified`
+  ou `exp://…/--/verified` com `?c=<desafio>`). **A sessão nunca vai na URL**, porque
+  qualquer app pode registrar `onside://`. É um PKCE: o cadastro e o reenvio guardam um
+  verificador secreto no SecureStore (1 h, o `expiresIn` da confirmação) e mandam só o
+  SHA-256 dele. No servidor, o plugin `appSessionHandoff`
+  (`packages/auth/src/app-session-handoff.ts`, logo depois do `expo()`) tira o `?cookie=` que
+  o `expo()` acrescenta (em toda rota em que ele o faz: `/verify-email`, `/callback*`,
+  `/oauth2/callback*`, `/magic-link/verify`; `carriesAppCookie`) e põe um `?code=` de uso único (60 s, tabela `verification`), preso ao
+  desafio. `app/verified.tsx` (portão puro em `lib/verified-gate.ts`) troca código +
+  verificador pela sessão em `POST /api/auth/app-session/redeem` e a guarda
+  (`adoptSessionCookie`). Código errado, vencido ou reusado é recusado (e gasto na primeira
+  tentativa). Sem `?c=` (app antigo) a URL sai sem sessão e o login diz "E-mail confirmado.
+  Entre para continuar.". Com uma conta já aberta, a troca pede confirmação. **A senha nova é
+  escolhida no site**: o app manda `redirectTo: '/reset-password'` (a página do web). No
+  servidor, `resetRedirectTarget` (`packages/auth/src/trusted-origins.ts`) troca destino no
+  esquema do app pela página do site (build antigo do app e e-mails de antes da regra) e
+  recusa (400, `RESET_REDIRECT_NOT_ALLOWED`) o que não é do site, porque outro app pode
+  registrar `onside://` e receber o token. Com
+  universal link (conta Apple paga) o reset pode voltar ao app. Em dev o link do e-mail sai
   com `PUBLIC_APP_URL` (senão `BETTER_AUTH_URL`, `localhost`), que não abre no celular: para
   testar no aparelho, suba o web com `PUBLIC_APP_URL=http://<ip-do-mac>:3001`.
 - **Onboarding do torcedor ("05", 4i–4n; rodada 2 do redesign, proposta B):**
@@ -1022,7 +1142,8 @@ invente layout que o projeto não tem.
   O Elite desliga a lista de quem vai jogo a jogo no formulário do painel (WEB-437,
   `event.attendance_enabled`): o botão some para quem não marcou, marcação nova e
   chamado de amigo são recusados e Quem vai do painel deixa o jogo de fora; quem já
-  marcou fica, com o código valendo.
+  marcou fica, com o código valendo. Bar que perdeu o Elite com código em aberto
+  (WEB-341) vê em Quem vai só quem tem código a honrar, não a lista inteira.
 - **Vou assistir ("08"):** o botão da página do bar abre a folha `app/vou/[barId].tsx`
   (`formSheet` nativo com o vidro do iOS 26: fundo transparente em `contentStyle` e na
   tela; o `ScrollView` é filho direto da tela, com `flex: 1`, senão o
@@ -1108,7 +1229,7 @@ invente layout que o projeto não tem.
   senha). Ligar troca a sessão: a lista de aparelhos é relida. O `@usuário`
   dos amigos se troca na Conta. Avisos segue o desenho com os controles desligados e o
   aviso de "em breve" (o push existe, mas sem preferência por tipo: ver "Push"); em Privacidade, "Onde você foi" funciona
-  (quem vê os bares e jogos, quem pode te adicionar), "Aparecer no ranking global" grava
+  (quem vê os bares e jogos, quem pode te adicionar, "Me encontrar pelo e-mail"), "Aparecer no ranking global" grava
   `user.ranking_global` (WEB-465), comunidades seguem "em breve", e "Baixar meus dados" pede o arquivo (`account.requestExport`, WEB-418): o
   servidor monta o JSON (perfil, preferências, favoritos, jogos, avaliações, amigos e
   conquistas; de outra pessoa, só nome e `@` de amigo; para bar, `barData`) e o manda de
@@ -1128,10 +1249,20 @@ invente layout que o projeto não tem.
   pelo `expo-camera`), `amigo/[id]` (11d: nível, o mês lado a lado, o jogo marcado com
   "Vou também", bares em comum, tudo pela privacidade da pessoa), `contatos` (a conta não
   tem telefone: o app manda o SHA-256 dos e-mails da agenda, pelo `expo-contacts/legacy`,
-  e só aparece quem aceita pedido de todos). Sugestões só de amigos de amigos. O link de
+  e só aparece quem deixou "Me encontrar pelo e-mail" ligado, `user.findable_by_email`,
+  padrão ligado, interruptor em Privacidade, dono em 16/11/2026, e aceita pedido de
+  todos; teto de 6000 hashes por dia por conta).
+  Sugestões só de amigos de amigos. A cidade de outra pessoa só sai na lista de amigos
+  aceitos (`overview`); busca, código, pedidos, sugestões, perfil e contatos a devolvem
+  nula, e a busca por nome não lista quem escolheu "Ninguém" para quem não tem nada com
+  ela. `byCode` e `joinByInvite` dividem 30 tentativas por hora. O link de
   convite é `/convite/<código>` no web (página `noindex` que abre `onside://convite/…`):
-  conta criada há menos de um dia já entra como amiga; sem conta, o app guarda o código
-  (`savePendingInvite`) e as abas do torcedor aceitam depois (`usePendingInvite`).
+  o convite manda um pedido a quem convidou, como pelo código (sem aceite direto: o
+  código é permanente e curto; aceite direto só com um convite de uso único, ainda por
+  fazer), pela regra de "Quem pode te adicionar"; sem conta, o app guarda o código
+  (`savePendingInvite`) só no toque de "Criar conta e pedir amizade" ou "Entrar e
+  pedir" (abrir o link não guarda, "Fechar" apaga), por 1 h e preso à conta que
+  tocou, e as abas do torcedor mandam o pedido depois, já com sessão (`usePendingInvite`).
   "Convidar" (comunidades) avisa "em breve". Pedido respondido e
   sugestão adicionada ficam na tela com o botão trocado até ela abrir de novo
   (`useKept`): tirar a linha fazia o card pular, e `LinearTransition` não anima a
@@ -1483,7 +1614,7 @@ invente layout que o projeto não tem.
 ### Falha de rede (WEB-460)
 
 Uma regra só para o painel e o app, em `packages/api/src/lib/transient-error.ts`: falha
-passageira (sem rede, timeout, 5xx, 429, página de gateway que não é JSON) tenta de novo
+passageira (sem rede, timeout, 5xx, página de gateway que não é JSON; 429 não, que repetir gasta a cota) tenta de novo
 com espera crescente (1 s, 2 s, 4 s); recusa da regra não repete. Mutation só repete
 sozinha se estiver em `IDEMPOTENT_MUTATIONS` (mandar duas vezes dá no mesmo; o porquê das
 que ficaram de fora está no comentário): mutation nova entra lá só depois de conferir no

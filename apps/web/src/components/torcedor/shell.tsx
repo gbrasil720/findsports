@@ -10,11 +10,21 @@ import {
   useState
 } from 'react'
 import { FeedbackDialog } from '@/components/app/feedback-dialog'
+import { clock, dayLabel } from '@/components/bar-page/bar-page-model'
 import { useSession } from '@/hooks/use-session'
 import { useSignOut } from '@/hooks/use-sign-out'
 import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
-import { type Acao, destinoContaNova, lerAcao, semAcao } from './acao'
+import {
+  type Acao,
+  AVISO_LINK,
+  CONFIRMAR,
+  destinoContaNova,
+  esquecerAcao,
+  lerAcao,
+  semAcao,
+  tomarAcaoPendente
+} from './acao'
 import {
   avisarNaProxima,
   avisosPendentes,
@@ -161,6 +171,13 @@ function useAcoes(avisar: (texto: string) => void) {
   )
 }
 
+const ICONE_CONFIRMAR: Record<Acao['tipo'], IconName> = {
+  vou: 'ticket',
+  fav: 'heart',
+  lembrar: 'bell',
+  app: 'bell'
+}
+
 const ABAS: [Aba, string, IconName, string][] = [
   ['explorar', 'Bares', 'map', '/dashboard'],
   ['meus-jogos', 'Meus jogos', 'ticket', '/dashboard/games'],
@@ -224,7 +241,9 @@ export function TorcedorShell({ aba, children, busca, onde, semAbas }: Props) {
   // Conta sem onboarding: a ação primeiro, as preferências depois.
   const nova = fan && session?.user.onboardingCompleted === false
 
-  // A ação que voltou do cadastro, do 2FA ou do onboarding na URL.
+  // A ação que voltou do cadastro, do 2FA ou do onboarding na URL. Só sai
+  // sozinha se foi guardada aqui ao abrir a folha; senão, o cartão pergunta.
+  const [confirmar, setConfirmar] = useState<Acao | null>(null)
   const feita = useRef(false)
   useEffect(() => {
     if (!fan || feita.current) return
@@ -233,6 +252,12 @@ export function TorcedorShell({ aba, children, busca, onde, semAbas }: Props) {
     )
     if (!acao) return
     feita.current = true
+    if (!tomarAcaoPendente(acao)) {
+      // A `acao` fica na URL até a resposta: sem ela a guarda manda a conta
+      // nova ao onboarding (`contaNovaPodeVer`).
+      setConfirmar(acao)
+      return
+    }
     window.history.replaceState(
       window.history.state,
       '',
@@ -242,6 +267,24 @@ export function TorcedorShell({ aba, children, busca, onde, semAbas }: Props) {
     )
     void concluir(acao, nova)
   }, [fan, nova, concluir])
+
+  const responder = useCallback(
+    (sim: boolean) => {
+      const acao = confirmar
+      setConfirmar(null)
+      window.history.replaceState(
+        window.history.state,
+        '',
+        semAcao(
+          window.location.pathname +
+            window.location.search +
+            window.location.hash
+        )
+      )
+      if (sim && acao) void concluir(acao, nova)
+    },
+    [confirmar, concluir, nova]
+  )
 
   const agir = useCallback(
     (p: Pedido & { acao: Acao }) => {
@@ -487,6 +530,7 @@ export function TorcedorShell({ aba, children, busca, onde, semAbas }: Props) {
           onFechar={fechar}
           onEntrou={async (acao, novaConta) => {
             await router.invalidate()
+            esquecerAcao()
             if (acao) await concluir(acao, novaConta)
             else avisar('Você entrou.')
             // O que a sessão nova liga (favoritos, Meus jogos) pode ter lido
@@ -494,6 +538,9 @@ export function TorcedorShell({ aba, children, busca, onde, semAbas }: Props) {
             await queryClient.refetchQueries({ type: 'active' })
           }}
         />
+        {confirmar ? (
+          <CartaoConfirmar acao={confirmar} onResponder={responder} />
+        ) : null}
         <div className={`toast${fase === 'entra' ? ' on' : ''}`} role="status">
           <i>
             <Ic n="check" s={16} />
@@ -524,5 +571,76 @@ function MenuLink({
       <Ic n={icone} s={19} />
       {children}
     </Link>
+  )
+}
+
+/**
+ * A `?acao=` que este navegador não guardou: o cartão diz o jogo, o bar e a
+ * hora (`pubs.actionTarget`) antes de pedir o toque. Jogo ou bar que não dá
+ * mais para marcar (`null`) não vira pergunta: a ação sai da URL.
+ */
+function CartaoConfirmar({
+  acao,
+  onResponder
+}: {
+  acao: Acao
+  onResponder: (sim: boolean) => void
+}) {
+  const trpc = useTRPC()
+  const alvo = useQuery({
+    ...trpc.pubs.actionTarget.queryOptions(
+      acao.tipo === 'app' ? { tipo: 'fav', id: '' } : acao
+    ),
+    enabled: acao.tipo !== 'app',
+    meta: { errorToast: false }
+  })
+  const semAlvo =
+    acao.tipo !== 'app' && (alvo.isError || (alvo.isSuccess && !alvo.data))
+  useEffect(() => {
+    if (semAlvo) onResponder(false)
+  }, [semAlvo, onResponder])
+  if (acao.tipo !== 'app' && !alvo.data) return null
+  const dados = alvo.data
+
+  return (
+    <div
+      className="fresh flutua"
+      role="alertdialog"
+      aria-labelledby="cf-t"
+      aria-describedby="cf-d"
+    >
+      <span className="ck" aria-hidden="true">
+        <Ic n={ICONE_CONFIRMAR[acao.tipo]} s={22} />
+      </span>
+      <span className="tx">
+        <b id="cf-t">{CONFIRMAR[acao.tipo][0]}</b>
+        {dados ? (
+          <span className="cf-alvo">
+            <strong>{dados.title ?? dados.barName}</strong>
+            {dados.title ? ` · ${dados.barName}` : ''}, {dados.neighborhood}
+            {dados.startsAt
+              ? ` · ${dayLabel(new Date(dados.startsAt), new Date())} ${clock(new Date(dados.startsAt))}`
+              : ''}
+          </span>
+        ) : null}
+        <span id="cf-d">{AVISO_LINK}</span>
+      </span>
+      <span className="ac">
+        <button
+          className="btn b-acid sm"
+          type="button"
+          onClick={() => onResponder(true)}
+        >
+          {CONFIRMAR[acao.tipo][1]}
+        </button>
+        <button
+          className="btn sm gh2"
+          type="button"
+          onClick={() => onResponder(false)}
+        >
+          Agora não
+        </button>
+      </span>
+    </div>
   )
 }

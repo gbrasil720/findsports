@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test'
 import { eq, inArray } from '@findsports_oficial/db'
+import { attendance } from '@findsports_oficial/db/schema/attendance'
 import { rateLimit, user } from '@findsports_oficial/db/schema/auth'
 import {
   bar,
@@ -760,6 +761,78 @@ integrationTest(
       }
       expect(await counterOf(ctx)).toBe(1)
     } finally {
+      await ctx.cleanup()
+    }
+  }
+)
+
+integrationTest(
+  'sem Elite, código num jogo distante não abre a lista inteira de quem vai',
+  async () => {
+    // A reserva do seed vai para daqui a 360 dias; outro jogo, em 2 dias,
+    // tem só presença marcada, sem código.
+    const ctx = await seed({
+      plan: 'pro',
+      startsAt: new Date(Date.now() + 360 * 24 * HOUR)
+    })
+    const otherFanId = crypto.randomUUID()
+    try {
+      const [first] = await ctx.db
+        .select({ id: event.id, sportId: event.sportId })
+        .from(event)
+        .where(eq(event.barId, ctx.barId))
+      if (!first) throw new Error('evento não encontrado')
+      const [holder] = await ctx.db
+        .select({ fanId: reservation.userId })
+        .from(reservation)
+        .where(eq(reservation.id, ctx.reservationId))
+      if (!holder) throw new Error('reserva não encontrada')
+      const { fanId } = holder
+      await ctx.db.insert(user).values({
+        id: otherFanId,
+        role: 'fan',
+        name: 'Torcedor sem código',
+        email: `${otherFanId}@integration.invalid`,
+        emailVerified: true,
+        onboardingCompleted: true
+      })
+      const [near] = await ctx.db
+        .insert(event)
+        .values({
+          barId: ctx.barId,
+          sportId: first.sportId,
+          championship: 'Campeonato de integração',
+          participantFreeText: 'Time C × Time D',
+          startsAt: new Date(Date.now() + 48 * HOUR)
+        })
+        .returning({ id: event.id })
+      if (!near) throw new Error('evento não criado')
+      await ctx.db.insert(attendance).values([
+        { userId: fanId, eventId: first.id, source: 'reservation' },
+        { userId: otherFanId, eventId: near.id }
+      ])
+
+      const { appRouter } = await load()
+      const queue = appRouter.createCaller(
+        contextFor(ctx.ownerId, 'pub')
+      ).barReservations
+      const games = await queue.going()
+      expect(games.map((game) => game.id)).toEqual([first.id])
+      expect(games[0]?.people.map((person) => person.name)).toEqual([
+        'Torcedora de integração'
+      ])
+
+      // No Elite, a lista é a de sempre: os dois jogos.
+      await ctx.db
+        .update(subscription)
+        .set({ plan: 'elite' })
+        .where(eq(subscription.barId, ctx.barId))
+      expect((await queue.going()).map((game) => game.id)).toEqual([
+        near.id,
+        first.id
+      ])
+    } finally {
+      await ctx.db.delete(user).where(eq(user.id, otherFanId))
       await ctx.cleanup()
     }
   }

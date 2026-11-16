@@ -227,6 +227,11 @@ test('conta antiga sem onboarding vê o card sem "Conta criada"', async ({
   await signIn(page, fan)
 
   await page.goto(`/dashboard?acao=fav.${pub.barId}`)
+  // A ação veio num link, não da folha deste navegador: o cartão pergunta.
+  await page
+    .getByRole('alertdialog', { name: 'Salvar este bar em Seus bares?' })
+    .getByRole('button', { name: 'Salvar bar' })
+    .click()
   await expect(page).toHaveURL(/\/dashboard\/seus-bares\?aba=salvos&novo=fav$/)
   await emSequencia(page, 'Bar salvo em Seus bares.')
   await expect.poll(() => isFavorite(fan.id, pub.barId)).toBe(true)

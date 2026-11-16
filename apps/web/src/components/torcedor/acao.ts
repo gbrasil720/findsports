@@ -40,6 +40,68 @@ export function lerAcao(
   return { tipo: tipo as TipoAcao, id }
 }
 
+/*
+ * A `?acao=` é só um endereço: qualquer um monta um link com ela. Para a ação
+ * sair sozinha, este navegador tem de ter começado o login por ela (a folha de
+ * entrar, da casca ou da página do bar, a guarda aqui ao abrir). Quem chega
+ * com a ação sem esse registro (link de fora, confirmação do e-mail em outro
+ * aparelho) vê um cartão de confirmação, e nada grava sem o toque.
+ */
+const PENDENTE = 'onside.acao-pendente'
+/** O cadastro com confirmação de e-mail leva tempo; um dia basta. */
+const PENDENTE_MS = 24 * 60 * 60 * 1000
+
+/** A folha de entrar abriu por esta ação: guarda para a volta do login. */
+export function guardarAcao(acao: Acao, agora = Date.now()): void {
+  try {
+    localStorage.setItem(
+      PENDENTE,
+      JSON.stringify({ texto: acaoTexto(acao), em: agora })
+    )
+  } catch {}
+}
+
+/** Apaga o registro (a ação saiu por outro caminho). */
+export function esquecerAcao(): void {
+  try {
+    localStorage.removeItem(PENDENTE)
+  } catch {}
+}
+
+/**
+ * A ação da URL é a que este navegador guardou ao começar o login? Lê e apaga:
+ * vale uma vez. Sem armazenamento (aba privada bloqueada) devolve falso, e a
+ * tela pede a confirmação.
+ */
+export function tomarAcaoPendente(acao: Acao, agora = Date.now()): boolean {
+  try {
+    const bruto = localStorage.getItem(PENDENTE)
+    if (!bruto) return false
+    localStorage.removeItem(PENDENTE)
+    const { texto, em } = JSON.parse(bruto) as { texto?: unknown; em?: unknown }
+    return (
+      texto === acaoTexto(acao) &&
+      typeof em === 'number' &&
+      agora - em >= 0 &&
+      agora - em <= PENDENTE_MS
+    )
+  } catch {
+    return false
+  }
+}
+
+/** A frase do cartão de confirmação, na casca e na página do bar (dono, 16/11/2026). */
+export const AVISO_LINK =
+  'Este link pede para fazer isso na sua conta. Se não foi você quem pediu, é só ignorar.'
+
+/** A pergunta do cartão de confirmação, quando a ação não foi guardada aqui. */
+export const CONFIRMAR: Record<Acao['tipo'], [string, string]> = {
+  vou: ['Marcar presença neste jogo?', 'Marcar presença'],
+  fav: ['Salvar este bar em Seus bares?', 'Salvar bar'],
+  lembrar: ['Lembrar 3 h antes deste jogo?', 'Lembrar'],
+  app: ['Entrar na lista do app?', 'Me avise']
+}
+
 /** O endereço `href` (caminho + query) com a ação na query. */
 export function comAcao(href: string, acao: Acao | undefined): string {
   if (!acao) return href

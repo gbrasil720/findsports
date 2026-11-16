@@ -100,7 +100,7 @@ export const commercialAnalyticsRouter = router({
 
       const { from, to, periodDays } = parseAnalyticsRange(input)
 
-      assertAnalyticsPeriodAllowed(plan, periodDays)
+      assertAnalyticsPeriodAllowed(plan, periodDays, from)
 
       const overview = await getMyAnalyticsOverview(barId, from, to)
 
@@ -141,7 +141,7 @@ export const commercialAnalyticsRouter = router({
 
       const { from, to, periodDays } = parseAnalyticsRange(input)
 
-      assertAnalyticsPeriodAllowed(plan, periodDays)
+      assertAnalyticsPeriodAllowed(plan, periodDays, from)
 
       if (
         input.comparisonTarget &&

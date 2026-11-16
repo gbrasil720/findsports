@@ -146,7 +146,9 @@ export async function readInvitePreview(
     id: inviter.id,
     name: inviter.name,
     username: inviter.username,
-    city: inviter.city,
+    // Cidade só para amigo aceito (política, seção 06): a prévia abre sem
+    // login para quem tiver o link.
+    city: relation === 'friends' ? inviter.city : null,
     image: inviter.image,
     relation,
     // WEB-520: o GP da F1 vale para o aviso, não para "Torce para".
