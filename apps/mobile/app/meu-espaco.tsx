@@ -10,7 +10,7 @@ import {
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Pressable,
@@ -71,8 +71,14 @@ export default function MeuEspaco() {
   const owner = useOwnerBar()
   const bar = owner.bar
   const photos = useQuery(trpc.pub.photos.queryOptions())
-  // `?aba=dados` abre direto numa aba (link e navegador DEV).
-  const { aba } = useLocalSearchParams<{ aba?: Tab }>()
+  // `?aba=dados` abre direto numa aba (link e navegador DEV); `&secao=times`
+  // rola até os times da casa (o alerta de perfil, `profile-alert.tsx`).
+  const { aba, secao } = useLocalSearchParams<{
+    aba?: Tab
+    secao?: 'times'
+  }>()
+  const scroll = useRef<ScrollView>(null)
+  const scrolled = useRef(false)
   const [tab, setTab] = useState<Tab>(aba ?? 'horario')
   useEffect(() => {
     if (aba) setTab(aba)
@@ -125,6 +131,7 @@ export default function MeuEspaco() {
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
       <ScrollView
+        ref={scroll}
         // A busca dos times da casa fica no fim: o teclado empurra a tela.
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
@@ -321,7 +328,16 @@ export default function MeuEspaco() {
                 </OwnerRow>
               ))}
             </OwnerCard>
-            <HouseTeams />
+            <View
+              style={{ gap: 14 }}
+              onLayout={(event) => {
+                if (secao !== 'times' || scrolled.current) return
+                scrolled.current = true
+                scroll.current?.scrollTo({ y: event.nativeEvent.layout.y - 12 })
+              }}
+            >
+              <HouseTeams />
+            </View>
           </>
         ) : tab === 'horario' ? (
           <OwnerCard pad={14}>
