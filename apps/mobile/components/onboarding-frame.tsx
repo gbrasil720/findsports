@@ -31,6 +31,10 @@ import {
 import { coverNote, FLOW, frameOf, stepOf, twoDigits } from '@/lib/onboarding'
 import { trpc } from '@/lib/trpc'
 
+/* Constante de módulo: escrita no JSX, o Reanimated recomeça a entrada a cada renderização. */
+const STEP_IN = FadeIn.duration(200).easing(EASE)
+const STEP_OUT = FadeOut.duration(140).easing(EASE)
+
 /*
  * O entorno do onboarding fora do celular (WEB-492, Adaptativo 09): o passo
  * fica numa coluna e o caminho aparece em volta, como painel escuro à
@@ -316,11 +320,7 @@ function Cover({ step, onContinue }: { step: number; onContinue: () => void }) {
     .filter((sport) => choices.sportIds.includes(sport.id))
     .map((sport) => sport.name)
   return (
-    <Animated.View
-      entering={FadeIn.duration(200).easing(EASE)}
-      exiting={FadeOut.duration(140).easing(EASE)}
-      style={styles.cover}
-    >
+    <Animated.View entering={STEP_IN} exiting={STEP_OUT} style={styles.cover}>
       <Text style={styles.coverKicker}>
         CADASTRO · {twoDigits(step + 1)} DE {twoDigits(FLOW.length)}
       </Text>

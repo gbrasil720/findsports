@@ -11,13 +11,12 @@ import {
 import Animated, {
   type EntryAnimationsValues,
   type ExitAnimationsValues,
-  FadeIn,
   type LayoutAnimation,
   withTiming
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { FullWindowOverlay } from 'react-native-screens'
-import { EASE, haptic, usePressScale } from '@/components/motion'
+import { EASE, haptic, SWAP, usePressScale } from '@/components/motion'
 import { usePalette } from '@/components/theme'
 import {
   ACID,
@@ -165,7 +164,7 @@ export function OfflineBanner() {
           </Text>
           <Animated.View
             key={trying ? 'trying' : 'idle'}
-            entering={FadeIn.duration(150)}
+            entering={SWAP}
             style={styles.tryLabel}
           >
             <Text

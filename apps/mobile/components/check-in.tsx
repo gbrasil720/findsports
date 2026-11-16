@@ -11,6 +11,9 @@ import { useWithAccount } from '@/lib/account'
 import { formatTime } from '@/lib/explore'
 import { trpc } from '@/lib/trpc'
 
+/* Constante de módulo: escrita no JSX, o Reanimated recomeça a entrada a cada renderização. */
+const FADE_IN = FadeIn.duration(200)
+
 /*
  * "Estou aqui" (WEB-408; rodada 3 do redesign, tela 4): check-in por
  * localização na página do bar e em Meus jogos, no dia do jogo (3 h antes a
@@ -99,7 +102,7 @@ export function CheckInCard({
     return (
       <Animated.View
         key="done"
-        entering={FadeIn.duration(200)}
+        entering={FADE_IN}
         style={[
           styles.card,
           { backgroundColor: palette.ink, shadowColor: palette.drop }
