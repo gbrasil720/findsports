@@ -636,7 +636,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#2c2c27',
+    backgroundColor: '#2a2a25',
     overflow: 'hidden'
   },
   fill: { height: '100%', borderRadius: 3 },

@@ -106,7 +106,7 @@ function Option({
   // Cor calculada no quadro: a dinâmica do tema não entra no `interpolateColor`.
   const [rest, lit] =
     useColorScheme() === 'dark'
-      ? ['#1c1c18', '#24241f']
+      ? ['#1c1c18', '#26261f']
       : ['#faf8f3', '#ffffff']
   const down = useSharedValue(0)
   useEffect(() => {
