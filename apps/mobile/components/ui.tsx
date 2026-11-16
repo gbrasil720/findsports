@@ -2257,6 +2257,9 @@ export function authErrorMessage(
       return 'Código incorreto. Confira no app autenticador.'
     case 'INVALID_BACKUP_CODE':
       return 'Código de recuperação incorreto.'
+    // Destino do link de nova senha recusado pelo servidor.
+    case 'RESET_REDIRECT_NOT_ALLOWED':
+      return 'Atualize o app ou redefina a senha pelo site da Onside.'
   }
   if (error.status === 429) return 'Muitas tentativas. Espere um pouco.'
   // `status: 0`: o pedido nem chegou ao servidor (`settleAuth`, WEB-469).

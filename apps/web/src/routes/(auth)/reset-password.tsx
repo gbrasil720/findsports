@@ -170,7 +170,9 @@ function FormularioDeNovaSenha({ token }: { token: string }) {
       }
       // `revokeSessionsOnPasswordReset` derruba as sessões abertas, então
       // entrar de novo é obrigatório — e é o que confirma que a senha pegou.
-      toast.success('Senha redefinida. Entre com a nova senha.')
+      toast.success(
+        'Senha redefinida. Entre com a nova senha aqui ou no app da Onside.'
+      )
       navigate({ to: '/login' })
     }
   })
@@ -199,6 +201,10 @@ function FormularioDeNovaSenha({ token }: { token: string }) {
         <p className="text-sm text-[var(--onside-muted)]">
           Escolha uma senha de pelo menos 8 caracteres. Ao concluir, as sessões
           abertas nesta conta são encerradas.
+        </p>
+        <p className="mt-2 text-sm text-[var(--onside-muted)]">
+          Veio pelo app? Depois de salvar, volte ao app da Onside e entre com a
+          senha nova.
         </p>
       </div>
 

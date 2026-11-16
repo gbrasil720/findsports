@@ -1,5 +1,6 @@
 import { BRASILIA_TIME_ZONE as TZ } from '@findsports_oficial/db/event-window'
 import * as SecureStore from 'expo-secure-store'
+import { packMarker, unpackMarker } from './pending-marker'
 
 /*
  * O link de convite dos amigos (S1): a página do web que abre o app no
@@ -21,18 +22,27 @@ export const monthName = (now = new Date()) =>
   })
 
 /*
- * Convite aberto por quem ainda não entrou (ou não terminou o onboarding):
- * fica no aparelho até a conta chegar às abas do torcedor, que o aceitam
- * (`usePendingInvite`, em `app/(fan)/_layout.tsx`).
+ * Convite tocado ("Criar conta e pedir amizade", "Entrar e pedir") por quem
+ * ainda não entrou ou não terminou o onboarding: fica no aparelho por 1 h, até
+ * a conta chegar às abas do torcedor, que o aceitam (`usePendingInvite`, em
+ * `app/(fan)/_layout.tsx`). Tocado já com conta, só ela o aceita. Só abrir o
+ * link não guarda nada, e "Fechar" apaga.
  */
 const PENDING_INVITE = 'onside.pending-invite'
+const INVITE_TTL_MS = 60 * 60 * 1000
 
-export const savePendingInvite = (code: string) =>
-  SecureStore.setItemAsync(PENDING_INVITE, code).catch(() => {})
+export const savePendingInvite = (code: string, userId?: string) =>
+  SecureStore.setItemAsync(
+    PENDING_INVITE,
+    packMarker(code, INVITE_TTL_MS, Date.now(), userId)
+  ).catch(() => {})
 
-/** O convite guardado, que sai do aparelho ao ser lido. */
-export async function takePendingInvite() {
-  const code = await SecureStore.getItemAsync(PENDING_INVITE).catch(() => null)
-  if (code) await SecureStore.deleteItemAsync(PENDING_INVITE).catch(() => {})
-  return code
+export const clearPendingInvite = () =>
+  SecureStore.deleteItemAsync(PENDING_INVITE).catch(() => {})
+
+/** O convite guardado para esta conta; sai do aparelho ao ser lido. */
+export async function takePendingInvite(userId: string) {
+  const raw = await SecureStore.getItemAsync(PENDING_INVITE).catch(() => null)
+  if (raw) await clearPendingInvite()
+  return unpackMarker(raw, Date.now(), userId)
 }

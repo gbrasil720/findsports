@@ -24,6 +24,7 @@ import {
 } from './account-deletion'
 import { adminRouteRefusal } from './admin-guard'
 import { isLoggedAdminPath, logAdminAction, previousRole } from './admin-log'
+import { appSessionHandoff } from './app-session-handoff'
 import { runInBackground } from './background'
 import {
   blocksCardOverPix,
@@ -48,7 +49,11 @@ import { checkoutParamsFor } from './stripe-checkout'
 import { stripeClient } from './stripe-client'
 import { planForLookupKey, STRIPE_PLANS } from './stripe-plan'
 import { syncStripeEvent } from './stripe-sync'
-import { APP_SCHEME, buildTrustedOrigins } from './trusted-origins'
+import {
+  APP_SCHEME,
+  buildTrustedOrigins,
+  resetRedirectTarget
+} from './trusted-origins'
 import { revokeOtherSessionsOnTwoFactorEnable } from './two-factor-enable'
 import { publicEmailUrl, sendVerificationEmail } from './verification-email'
 import { verifyEmailRespectsTwoFactor } from './verify-email-two-factor'
@@ -179,6 +184,38 @@ export function createAuth() {
               message: READ_ONLY_IMPERSONATION_MESSAGE
             })
           }
+        }
+        // O token de redefinição de senha não vai a `onside://` (qualquer app
+        // registra o esquema): só ao site. O esquema do app vira a página do
+        // site, para o build antigo do app seguir funcionando; o resto que não
+        // é do site é recusado. Ver `resetRedirectTarget`.
+        if (
+          ctx.path === '/request-password-reset' ||
+          ctx.path === '/reset-password/:token'
+        ) {
+          const fromBody = ctx.path === '/request-password-reset'
+          const target = fromBody
+            ? (ctx.body as { redirectTo?: unknown } | undefined)?.redirectTo
+            : ctx.query?.callbackURL
+          const decision = resetRedirectTarget(
+            target,
+            ctx.context.trustedOrigins
+          )
+          if (!decision) {
+            throw new APIError('BAD_REQUEST', {
+              message:
+                'Endereço de redefinição de senha não permitido. Atualize o app ou redefina pelo site.',
+              code: 'RESET_REDIRECT_NOT_ALLOWED'
+            })
+          }
+          if ('replace' in decision) {
+            return {
+              context: fromBody
+                ? { body: { ...ctx.body, redirectTo: decision.replace } }
+                : { query: { ...ctx.query, callbackURL: decision.replace } }
+            }
+          }
+          return
         }
         // WEB-383: 2FA obrigatório e rotas admin sem uso desligadas.
         if (ctx.path?.startsWith('/admin/')) {
@@ -494,6 +531,9 @@ export function createAuth() {
       // O app nativo (`apps/mobile`): troca o cookie de navegador pela sessão
       // guardada no aparelho e aceita `onside://` como origem.
       expo(),
+      // Logo depois do `expo()`: tira a sessão da URL de volta ao app e põe no
+      // lugar um código de uso único (ver `app-session-handoff.ts`).
+      appSessionHandoff(),
       // Por último: o plugin repassa ao TanStack Start os cookies que os
       // `hooks.after` anteriores gravaram. Plugin depois dele que grave cookie
       // (twoFactor, admin) teria o `Set-Cookie` perdido. É o nosso, e não o

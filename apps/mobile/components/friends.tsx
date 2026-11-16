@@ -7,6 +7,7 @@ import { initials } from '@/components/explore'
 import { haptic, SWAP, SWAP_OUT, usePress } from '@/components/motion'
 import { type Palette, usePalette } from '@/components/theme'
 import { ACID, errorMessage, Icon, INK, Text, text } from '@/components/ui'
+import { authClient } from '@/lib/auth-client'
 import { takePendingInvite } from '@/lib/invite'
 import { trpc } from '@/lib/trpc'
 
@@ -397,9 +398,13 @@ const styles = StyleSheet.create({
 export function usePendingInvite() {
   const router = useRouter()
   const join = useMutation(trpc.friends.joinByInvite.mutationOptions())
-  // biome-ignore lint/correctness/useExhaustiveDependencies: uma vez, ao montar as abas
+  // As abas montam também sem conta: espera a sessão, e o convite preso a
+  // outra conta é descartado.
+  const userId = authClient.useSession().data?.user?.id
+  // biome-ignore lint/correctness/useExhaustiveDependencies: uma vez por conta
   useEffect(() => {
-    takePendingInvite().then((code) => {
+    if (!userId) return
+    takePendingInvite(userId).then((code) => {
       if (!code) return
       join.mutate(
         { code },
@@ -411,7 +416,7 @@ export function usePendingInvite() {
         }
       )
     })
-  }, [])
+  }, [userId])
 }
 
 /**

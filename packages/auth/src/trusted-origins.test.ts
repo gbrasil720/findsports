@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'bun:test'
-import { buildTrustedOrigins } from './trusted-origins'
+import {
+  APP_SCHEME,
+  buildTrustedOrigins,
+  isSafeResetRedirect,
+  resetRedirectTarget
+} from './trusted-origins'
 
 describe('origens confiáveis do auth', () => {
   it('confia na origem canônica e no par www em produção', () => {
@@ -81,5 +86,67 @@ describe('origens confiáveis do auth', () => {
         })
       ).toThrow()
     }
+  })
+})
+
+describe('destino do link de redefinição de senha', () => {
+  const origins = buildTrustedOrigins({
+    baseUrl: 'https://www.onside.sh/api/auth',
+    nodeEnv: 'production',
+    appScheme: APP_SCHEME
+  })
+
+  it('aceita caminho do site e origem https confiável', () => {
+    expect(isSafeResetRedirect('/reset-password', origins)).toBe(true)
+    expect(
+      isSafeResetRedirect('https://www.onside.sh/reset-password', origins)
+    ).toBe(true)
+    expect(
+      isSafeResetRedirect('https://onside.sh/reset-password', origins)
+    ).toBe(true)
+    expect(isSafeResetRedirect(undefined, origins)).toBe(true)
+  })
+
+  it('recusa o esquema do app, mesmo confiável para o resto do auth', () => {
+    expect(origins).toContain('onside://')
+    expect(isSafeResetRedirect('onside://reset-password', origins)).toBe(false)
+    expect(isSafeResetRedirect('onside://x?y=1', origins)).toBe(false)
+    expect(isSafeResetRedirect('exp://127.0.0.1:8081/--/x', origins)).toBe(
+      false
+    )
+  })
+
+  it('recusa host de fora e caminho que vira outro host', () => {
+    expect(isSafeResetRedirect('https://evil.example/reset', origins)).toBe(
+      false
+    )
+    expect(isSafeResetRedirect('//evil.example/reset', origins)).toBe(false)
+    expect(isSafeResetRedirect('/\\evil.example', origins)).toBe(false)
+    expect(isSafeResetRedirect('http://www.onside.sh/reset', origins)).toBe(
+      false
+    )
+    expect(isSafeResetRedirect(42, origins)).toBe(false)
+  })
+})
+
+describe('destino do reset que vale de fato', () => {
+  const origins = buildTrustedOrigins({
+    baseUrl: 'https://www.onside.sh/api/auth',
+    nodeEnv: 'production',
+    appScheme: APP_SCHEME
+  })
+
+  it('mantém o seguro, troca o esquema do app pelo site e recusa o resto', () => {
+    expect(resetRedirectTarget('/reset-password', origins)).toEqual({
+      keep: true
+    })
+    expect(resetRedirectTarget('onside://reset-password', origins)).toEqual({
+      replace: '/reset-password'
+    })
+    expect(resetRedirectTarget('exp://127.0.0.1:8081/--/x', origins)).toEqual({
+      replace: '/reset-password'
+    })
+    expect(resetRedirectTarget('https://evil.example/r', origins)).toBeNull()
+    expect(resetRedirectTarget('//evil.example/r', origins)).toBeNull()
   })
 })

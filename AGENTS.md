@@ -999,12 +999,27 @@ invente layout que o projeto não tem.
   "Sua conta guarda tudo" e os itens "com conta"; cidade, raio e termos são livres. "Entrar com
   a Apple" espera a conta de desenvolvedor paga.
 - **Conta ("04 Conta"):** `profile` (torcedor ou bar, vira `role` no cadastro), `sign-up`,
-  `verify-email`, `sign-in`, `forgot-password`, `reset-sent`, `reset-password`, `two-factor`;
-  peças em `components/ui.tsx`. O link de confirmação abre no navegador; o servidor entra e
-  redireciona para o app (`callbackURL: '/verified'`, que o cliente vira `onside://` ou
-  `exp://`) com a sessão em `?cookie=`, e `app/verified.tsx` a guarda (`adoptSessionCookie`):
-  o cliente do Expo só faz isso sozinho no login social. O reset usa `redirectTo` com
-  `Linking.createURL`, porque o cliente não converte esse campo. Em dev o link do e-mail sai
+  `verify-email`, `sign-in`, `forgot-password`, `reset-sent`, `two-factor`;
+  peças em `components/ui.tsx`. O link de confirmação abre no navegador; o servidor confirma
+  e redireciona para o app (`verifiedCallbackURL`, `lib/verify-link.ts`: `onside://verified`
+  ou `exp://…/--/verified` com `?c=<desafio>`). **A sessão nunca vai na URL**, porque
+  qualquer app pode registrar `onside://`. É um PKCE: o cadastro e o reenvio guardam um
+  verificador secreto no SecureStore (1 h, o `expiresIn` da confirmação) e mandam só o
+  SHA-256 dele. No servidor, o plugin `appSessionHandoff`
+  (`packages/auth/src/app-session-handoff.ts`, logo depois do `expo()`) tira o `?cookie=` que
+  o `expo()` acrescenta (em toda rota em que ele o faz: `/verify-email`, `/callback*`,
+  `/oauth2/callback*`, `/magic-link/verify`; `carriesAppCookie`) e põe um `?code=` de uso único (60 s, tabela `verification`), preso ao
+  desafio. `app/verified.tsx` (portão puro em `lib/verified-gate.ts`) troca código +
+  verificador pela sessão em `POST /api/auth/app-session/redeem` e a guarda
+  (`adoptSessionCookie`). Código errado, vencido ou reusado é recusado (e gasto na primeira
+  tentativa). Sem `?c=` (app antigo) a URL sai sem sessão e o login diz "E-mail confirmado.
+  Entre para continuar.". Com uma conta já aberta, a troca pede confirmação. **A senha nova é
+  escolhida no site**: o app manda `redirectTo: '/reset-password'` (a página do web). No
+  servidor, `resetRedirectTarget` (`packages/auth/src/trusted-origins.ts`) troca destino no
+  esquema do app pela página do site (build antigo do app e e-mails de antes da regra) e
+  recusa (400, `RESET_REDIRECT_NOT_ALLOWED`) o que não é do site, porque outro app pode
+  registrar `onside://` e receber o token. Com
+  universal link (conta Apple paga) o reset pode voltar ao app. Em dev o link do e-mail sai
   com `PUBLIC_APP_URL` (senão `BETTER_AUTH_URL`, `localhost`), que não abre no celular: para
   testar no aparelho, suba o web com `PUBLIC_APP_URL=http://<ip-do-mac>:3001`.
 - **Onboarding do torcedor ("05", 4i–4n; rodada 2 do redesign, proposta B):**
@@ -1205,7 +1220,9 @@ invente layout que o projeto não tem.
   o convite manda um pedido a quem convidou, como pelo código (sem aceite direto: o
   código é permanente e curto; aceite direto só com um convite de uso único, ainda por
   fazer), pela regra de "Quem pode te adicionar"; sem conta, o app guarda o código
-  (`savePendingInvite`) e as abas do torcedor aceitam depois (`usePendingInvite`).
+  (`savePendingInvite`) só no toque de "Criar conta e pedir amizade" ou "Entrar e
+  pedir" (abrir o link não guarda, "Fechar" apaga), por 1 h e preso à conta que
+  tocou, e as abas do torcedor mandam o pedido depois, já com sessão (`usePendingInvite`).
   "Convidar" (comunidades) avisa "em breve". Pedido respondido e
   sugestão adicionada ficam na tela com o botão trocado até ela abrir de novo
   (`useKept`): tirar a linha fazia o card pular, e `LinearTransition` não anima a
