@@ -22,7 +22,6 @@ import {
 import Animated, {
   cancelAnimation,
   Easing,
-  FadeOut,
   ReduceMotion,
   useAnimatedStyle,
   useReducedMotion,
@@ -35,7 +34,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { PlanNudge } from '@/components/bar-owner'
 import { useLocalSteps } from '@/components/bar-tour'
 import { Seal, useStamp } from '@/components/fan-card'
-import { EASE, haptic, useShake } from '@/components/motion'
+import { EASE, haptic, SWAP_OUT, useShake } from '@/components/motion'
 import {
   ACID,
   errorMessage,
@@ -626,7 +625,7 @@ function Valid({
           </Text>
         </Pressable>
         {undoing ? (
-          <Animated.View exiting={FadeOut.duration(150)} style={styles.undo}>
+          <Animated.View exiting={SWAP_OUT} style={styles.undo}>
             <Text style={[text(15, 'Regular', 1.3), { color: PAPER }]}>
               Código validado
             </Text>

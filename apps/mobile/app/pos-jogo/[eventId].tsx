@@ -44,6 +44,9 @@ import { formatTime } from '@/lib/explore'
 import type { MedalId } from '@/lib/medals'
 import { trpc, trpcClient } from '@/lib/trpc'
 
+/* Constante de módulo: escrita no JSX, o Reanimated recomeça a entrada a cada renderização. */
+const FADE_IN = FadeIn.duration(200)
+
 /*
  * "Como foi?" (rodada 4 do redesign, tela 1): uma tela só, que cresce para
  * baixo. O bar e o jogo no topo, o selo que diz se a avaliação conta (só a
@@ -773,7 +776,7 @@ function Sent({
     })
   return (
     <Animated.View
-      entering={FadeIn.duration(200)}
+      entering={FADE_IN}
       style={[
         styles.screen,
         styles.body,

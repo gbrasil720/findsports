@@ -12,7 +12,6 @@ import {
   View
 } from 'react-native'
 import Animated, {
-  FadeIn,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
@@ -22,7 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import QRCode from 'react-qr-code'
 import { dayLabel } from '@/components/explore'
 import { Seal, useStamp } from '@/components/fan-card'
-import { EASE } from '@/components/motion'
+import { EASE, SWAP } from '@/components/motion'
 import { useOnline } from '@/components/offline-banner'
 import {
   ACID,
@@ -280,7 +279,7 @@ export default function CounterCode() {
         {called.length ? (
           <Animated.View
             key={goingToo.length ? 'vai' : 'chamados'}
-            entering={FadeIn.duration(150)}
+            entering={SWAP}
             style={styles.called}
           >
             <Icon name="people" size={18} color={DIM} />
