@@ -37,6 +37,7 @@ import {
   getEventStartProblem
 } from '@findsports_oficial/db/event-window'
 import { HOUSE_OFFER_MAX_LENGTH } from '@findsports_oficial/db/house-offer'
+import { PROFILE_ALERTS } from '@findsports_oficial/db/profile-alerts'
 import { stripeSubscription, user } from '@findsports_oficial/db/schema/auth'
 import {
   bar,
@@ -122,6 +123,7 @@ import {
 import { readMonthProof } from '../lib/month-proof'
 import { normalizeOpeningHours, openingHoursSchema } from '../lib/opening-hours'
 import { PLAN_NAMES, STARTER_EVENT_LIMIT } from '../lib/plan-limits'
+import { dismissProfileAlert, readProfileAlert } from '../lib/profile-alert'
 import { recommendPlan, routineSchema } from '../lib/pub-routine'
 import {
   hasPublicRating,
@@ -1164,6 +1166,30 @@ export const pubRouter = router({
         now: new Date(),
         limit: input?.limit ?? GAME_SUGGESTION_LIMIT
       })
+    }),
+
+  /**
+   * Alerta de perfil incompleto do painel (web e app): um assunto por vez,
+   * regras em `lib/profile-alert.ts`. A leitura marca o assunto como mostrado
+   * hoje, para o servidor perceber quando ele é resolvido.
+   */
+  getProfileAlert: pubProcedure.query(async ({ ctx }) => {
+    const existingBar = await getOwnBar(ctx.session.user.id)
+    return {
+      alert: await readProfileAlert(
+        existingBar.id,
+        existingBar.subscription ?? null
+      )
+    }
+  }),
+
+  /** "Agora não": o assunto some por 3 dias, na conta do bar. */
+  dismissProfileAlert: pubProcedure
+    .input(z.object({ alert: z.enum(PROFILE_ALERTS) }))
+    .mutation(async ({ ctx, input }) => {
+      const existingBar = await getOwnBar(ctx.session.user.id)
+      await dismissProfileAlert(existingBar.id, input.alert)
+      return { success: true }
     }),
 
   // "Times da casa" (WEB-433): Meu espaço, no web e no app.
