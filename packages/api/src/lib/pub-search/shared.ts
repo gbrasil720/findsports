@@ -126,6 +126,12 @@ export type SearchInput = {
    * da frente.
    */
   sort?: SearchSort
+  /**
+   * `rating.public_display`. Desligada, a qualidade sai da ordem (vira 0):
+   * o cursor leva a chave da ordem em claro, e a nota escondida não pode
+   * ir nele.
+   */
+  ratingPublic?: boolean
   cursor?: string
   limit: number
 }
@@ -175,25 +181,37 @@ export type SearchPage = { bars: SearchBar[]; nextCursor: string | null }
  * próximo jogo, distância e id. `v` invalida cursores emitidos antes da nova
  * regra, evitando continuar uma paginação com uma ordem diferente.
  */
-export const searchCursorSchema = z.object({
-  v: z.literal(2),
+const relevanceKey = {
   c: z.number(),
   q: z.number(),
   p: z.number(),
   e: z.string(),
   d: z.number(),
   i: z.string()
-})
+}
 
-/** Cursor de relevância emitido antes da prioridade de clássico e qualidade. */
-export const legacySearchCursorSchema = z
-  .object({
-    p: z.number(),
-    e: z.string(),
-    d: z.number(),
-    i: z.string()
-  })
-  .strict()
+/**
+ * `v: 3`: a qualidade vale 0 com a nota escondida (`ratingPublic`). Cursor
+ * `v: 2` ainda leva a nota na chave e recomeça a lista em vez de continuar
+ * numa ordem que mudou.
+ */
+export const searchCursorSchema = z.object({ v: z.literal(3), ...relevanceKey })
+
+/**
+ * Cursores de relevância antigos, que recomeçam a lista: o de antes da
+ * prioridade de clássico e qualidade, e o `v: 2`.
+ */
+export const legacySearchCursorSchema = z.union([
+  z
+    .object({
+      p: z.number(),
+      e: z.string(),
+      d: z.number(),
+      i: z.string()
+    })
+    .strict(),
+  z.object({ v: z.literal(2), ...relevanceKey })
+])
 
 /**
  * Cursor do modo "melhor avaliados": grupo (com nota pública ou sem), nota
@@ -551,7 +569,7 @@ export function montarPaginaBusca(
             i: last.id
           }
         : {
-            v: 2,
+            v: 3,
             c: Number(last.cursor_classic_rank),
             q: Number(last.cursor_quality_rank),
             p: Number(last.cursor_plan_rank),

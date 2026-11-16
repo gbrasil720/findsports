@@ -3,6 +3,7 @@ import {
   db,
   eq,
   inArray,
+  isNotNull,
   isNull,
   type SQL,
   sql
@@ -117,7 +118,14 @@ export const barReservationsRouter = router({
    * cada grupo, quem marcou antes.
    */
   going: ownerProcedure.query(({ ctx }) =>
-    readGoingGames(ctx.barId, validationOpen)
+    readGoingGames(
+      ctx.barId,
+      issuesCounterCode(ctx.subscription)
+        ? validationOpen
+        : // Sem Elite, só quem tem código a honrar: a lista inteira é do
+          // Elite, e um código num jogo distante não a reabre.
+          and(validationOpen, isNotNull(reservation.id))
+    )
   ),
 
   /**
@@ -142,7 +150,7 @@ export const barReservationsRouter = router({
  * Por jogo do bar que passa em `which`, quem vai e quando validou. Quem
  * validou primeiro, e dentro de cada grupo, quem marcou antes.
  */
-async function readGoingGames(barId: string, which: SQL) {
+async function readGoingGames(barId: string, which: SQL | undefined) {
   // ponytail: sem paginação; o volume é o de quem marca num bar só.
   const rows = await db
     .select({

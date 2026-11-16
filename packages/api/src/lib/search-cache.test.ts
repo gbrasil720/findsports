@@ -23,6 +23,19 @@ describe('chave de cache da busca', () => {
     expect(a).not.toBe(b)
   })
 
+  it('separa a página com a nota pública da página com ela escondida', () => {
+    const base = {
+      modo: MODO,
+      lat: -23.55,
+      lng: -46.63,
+      radiusKm: 3,
+      limit: 20
+    }
+    expect(chaveBusca({ ...base, ratingPublic: true })).not.toBe(
+      chaveBusca({ ...base, ratingPublic: false })
+    )
+  })
+
   it('trata listas de características equivalentes como a mesma chave', () => {
     const base = {
       modo: MODO,

@@ -54,10 +54,12 @@ export async function executarBuscaLinear(
     WHEN n.plan = 'elite' AND agg.classic_rule_id IS NOT NULL THEN 0
     ELSE 1
   END`
-  const qualityRankSql = sql`CASE
-    WHEN n.rating_count >= ${RATING_PUBLIC_FLOOR} THEN -n.rating_score
-    ELSE 0
-  END`
+  const qualityRankSql = input.ratingPublic
+    ? sql`CASE
+        WHEN n.rating_count >= ${RATING_PUBLIC_FLOOR} THEN -n.rating_score
+        ELSE 0
+      END`
+    : sql`0::double precision`
   const keyset = cursor
     ? decodeCursor(cursor, searchCursorSchema, {
         restartOn: legacySearchCursorSchema
