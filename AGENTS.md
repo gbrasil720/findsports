@@ -1080,6 +1080,15 @@ invente layout que o projeto não tem.
   Depois de salvar, `refreshSession` (`lib/auth-client.ts`) expira o cache da sessão (com
   corpo `{}`, senão 415) e relê com `disableCookieCache`. O banco local nasce sem times:
   `NODE_ENV=development bun run db:catalog:sync` (o resolver fixa o Postgres local).
+- **Cadastro do bar no app (rodada 10):** `app/cadastro-bar.tsx`, cinco passos: boas-vindas,
+  estabelecimento, características, **Horário** (opcional, 4 de 5) e revisão, com a placa
+  do bar se preenchendo. O horário é `components/opening-hours.tsx`: os sete dias em lista
+  (abre, fecha e o interruptor), atalhos da semana e a folha do dia (duas rodas de meia em
+  meia hora, sem dependência nova, e "usar também em"). Só "Continuar" no passo manda
+  `openingHours` no `completePub`; "Pular e preencher depois" não manda nada e a revisão
+  diz "Não informado". Depois do primeiro jogo, `app/completar-perfil.tsx` (capa,
+  descrição, horário e oferta) só pede o horário a quem ainda não tem; sem ele e fora do
+  Elite, são dois passos.
 - **Avulsas ("06"):** `app/+not-found.tsx` (404) e `app/legal.tsx` (Termos e Privacidade).
   O texto legal vem de `packages/legal`, o mesmo do site.
 - **Manutenção (26d, 26e, WEB-466):** o Houdini liga no card "Manutenção do app" dos
