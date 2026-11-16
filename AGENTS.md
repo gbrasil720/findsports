@@ -483,6 +483,14 @@ teste, limite, plano parado; `usePlanAvisosVisiveis`) e em Jogos ao do limite. S
 pode mostrar (a leitura grava `shown_on`); erro não mostra nada. Meu espaço e Times da casa
 invalidam `getProfileAlert` ao salvar.
 
+No app (`apps/mobile/components/profile-alert.tsx`, `useProfileAlert`): `view` no topo do
+conteúdo de Hoje, Jogos, Quem vai, Desempenho e Configurações do bar (não em Meu espaço),
+`toast` na raiz da tela. Cores `warn*` na `PALETTE`. Erro ao ler não mostra nada. O link
+abre Meu espaço na aba do assunto (`?aba=`; `&secao=times` rola até os times da casa);
+o app não edita oferta nem cardápio, então `oferta` abre a aba Código e `cardapio`, Dados.
+O X some na hora, avisa "Tudo bem. Lembramos de novo em <dia>." e, se o servidor recusar,
+o alerta volta. Mutation que resolve um assunto já vence o cache inteiro (`query-client.ts`).
+
 ### Avisos por e-mail do bar (WEB-441)
 
 Em `/admin/configuracoes` → Avisos por e-mail o dono liga e desliga três e-mails
