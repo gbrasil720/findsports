@@ -22,6 +22,10 @@ import { issuesCounterCode, type SubscriptionForPlan } from './current-plan'
  * (dia de Brasília) em `bar_profile_alert`. Se o último assunto mostrado hoje
  * não está mais na fila (foi resolvido, dispensado ou saiu do plano), o dono
  * já mexeu nele hoje e nada aparece até amanhã. Amanhã, o primeiro da fila.
+ *
+ * `skip` tira assuntos só desta leitura (o app não resolve WhatsApp nem
+ * cardápio): o seguinte aparece no lugar. Pulado continua na fila para a
+ * regra acima, senão pular o que o web mostrou hoje pareceria resolvido.
  */
 
 export type ProfileFacts = {
@@ -67,7 +71,8 @@ export function pickProfileAlert(
   missing: ProfileAlert[],
   states: ProfileAlertState[],
   today: string,
-  now = new Date()
+  now = new Date(),
+  skip: readonly ProfileAlert[] = []
 ): ProfileAlert | null {
   const dismissed = new Set(
     states
@@ -77,7 +82,7 @@ export function pickProfileAlert(
   const queue = missing.filter((key) => !dismissed.has(key))
   const shownToday = states.filter((s) => s.shownOn === today)
   if (shownToday.some((s) => !queue.includes(s.alert))) return null
-  return queue[0] ?? null
+  return queue.find((key) => !skip.includes(key)) ?? null
 }
 
 export function profileAlertDismissedUntil(now = new Date()): Date {
@@ -91,6 +96,7 @@ export function profileAlertDismissedUntil(now = new Date()): Date {
 export async function readProfileAlert(
   barId: string,
   subscription: SubscriptionForPlan | null,
+  skip: readonly ProfileAlert[] = [],
   now = new Date()
 ): Promise<ProfileAlert | null> {
   const [row] = await db
@@ -122,7 +128,8 @@ export async function readProfileAlert(
     missingProfileItems(row, subscription, now),
     states,
     today,
-    now
+    now,
+    skip
   )
   if (alert && !states.some((s) => s.alert === alert && s.shownOn === today)) {
     await db

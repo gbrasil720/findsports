@@ -41,6 +41,13 @@ integrationTest(
       expect(await meu.owner.pub.getProfileAlert()).toEqual({
         alert: 'whatsapp'
       })
+      // O app pula WhatsApp e cardápio: o seguinte no lugar, e o web segue.
+      expect(
+        await meu.owner.pub.getProfileAlert({ skip: ['whatsapp', 'cardapio'] })
+      ).toEqual({ alert: 'oferta' })
+      expect(await meu.owner.pub.getProfileAlert()).toEqual({
+        alert: 'whatsapp'
+      })
       await meu.owner.pub.dismissProfileAlert({ alert: 'whatsapp' })
       await meu.owner.pub.dismissProfileAlert({ alert: 'whatsapp' })
       expect(await meu.owner.pub.getProfileAlert()).toEqual({ alert: null })

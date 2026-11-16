@@ -142,4 +142,34 @@ describe('pickProfileAlert', () => {
       'horario'
     )
   })
+
+  test('skip: o seguinte aparece, sem contar como resolvido', () => {
+    const missing = ['whatsapp', 'cardapio', 'descricao'] as const
+    const skip = ['whatsapp', 'cardapio'] as const
+    expect(pickProfileAlert([...missing], [], today, now, [...skip])).toBe(
+      'descricao'
+    )
+    // O web mostrou WhatsApp hoje: o app, que o pula, segue na descrição.
+    const shownOnWeb = [
+      { alert: 'whatsapp' as const, dismissedUntil: null, shownOn: today }
+    ]
+    expect(
+      pickProfileAlert([...missing], shownOnWeb, today, now, [...skip])
+    ).toBe('descricao')
+    // Só sobram pulados: nada no app, e o web continua com o dele.
+    expect(
+      pickProfileAlert(['whatsapp'], shownOnWeb, today, now, [...skip])
+    ).toBeNull()
+    expect(pickProfileAlert(['whatsapp'], shownOnWeb, today, now)).toBe(
+      'whatsapp'
+    )
+    // Resolvido no app hoje: nada nas duas telas até amanhã.
+    const shownOnApp = [
+      { alert: 'descricao' as const, dismissedUntil: null, shownOn: today }
+    ]
+    expect(
+      pickProfileAlert(['whatsapp'], shownOnApp, today, now, [...skip])
+    ).toBeNull()
+    expect(pickProfileAlert(['whatsapp'], shownOnApp, today, now)).toBeNull()
+  })
 })
