@@ -61,13 +61,18 @@ integrationTest('link de confirmação só entra na conta sem 2FA', async () => 
   }
 
   try {
-    for (const callbackURL of ['onside://verified', `${baseUrl}/dashboard`]) {
+    // O app manda o desafio `?c=` (#487); o código de uso único só nasce com ele.
+    const appCallback = `onside://verified?c=${'a'.repeat(64)}`
+    for (const callbackURL of [appCallback, `${baseUrl}/dashboard`]) {
       const plain = await createUser(false)
       const opened = await openLink(plain.email, callbackURL)
       expect(opened.status).toBe(302)
       expect(await state(plain.id)).toEqual({ verified: true, sessions: 1 })
       if (callbackURL.startsWith('onside:')) {
-        expect(opened.headers.get('location')).toContain('cookie=')
+        // O app recebe um código de uso único, nunca o cookie (#487).
+        const back = opened.headers.get('location') ?? ''
+        expect(back).toContain('code=')
+        expect(back).not.toContain('cookie=')
       } else {
         expect(sessionCookies(opened).length).toBeGreaterThan(0)
       }
@@ -78,6 +83,7 @@ integrationTest('link de confirmação só entra na conta sem 2FA', async () => 
       const location = refused.headers.get('location') ?? ''
       expect(location.startsWith(callbackURL)).toBe(true)
       expect(location).not.toContain('cookie=')
+      expect(location).not.toContain('code=')
       expect(sessionCookies(refused)).toEqual([])
       expect(await state(guarded.id)).toEqual({ verified: true, sessions: 0 })
     }
