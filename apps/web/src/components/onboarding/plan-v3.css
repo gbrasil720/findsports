@@ -248,7 +248,7 @@
 
 .lp3.ob3 .pl-chip.red {
   background: #e8320c;
-  color: #fff;
+  color: #12120f;
 }
 
 .lp3.ob3 .pl-chip.off {
@@ -304,7 +304,7 @@
 
 .lp3.ob3 .placar dt {
   color: #aaa9a4;
-  font: 600 10.5px / 1.2 var(--mono);
+  font: 600 11px / 1.2 var(--mono);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -417,7 +417,7 @@
   border-radius: 7px;
   background: #c9f135;
   color: #12120f;
-  font: 600 10.5px / 1 var(--mono);
+  font: 600 11px / 1 var(--mono);
   font-style: normal;
   letter-spacing: 0.06em;
 }
@@ -581,7 +581,7 @@
   border-radius: 7px;
   background: #c9f135;
   color: #12120f;
-  font: 600 10.5px / 1 var(--mono);
+  font: 600 11px / 1 var(--mono);
   letter-spacing: 0.07em;
 }
 
@@ -667,7 +667,7 @@
   border-radius: 5px;
   background: var(--sub);
   color: var(--muted);
-  font: 600 10px / 1 var(--mono);
+  font: 600 11px / 1 var(--mono);
   font-style: normal;
   letter-spacing: 0.06em;
   white-space: nowrap;
@@ -1003,7 +1003,7 @@ html[data-theme="dark"] .pl-dlg {
 
 .pl-pay .pl-pay-tag.is-no {
   background: #e8320c;
-  color: #fff;
+  color: #12120f;
 }
 
 .pl-pay .pl-pay-dot {
@@ -1236,7 +1236,7 @@ html[data-theme="dark"] .lp3.ob3 .pl-msg.ok {
   border-radius: 6px;
   background: var(--acid);
   color: #12120f;
-  font: 600 10.5px / 1 var(--mono);
+  font: 600 11px / 1 var(--mono);
   letter-spacing: 0.07em;
   text-transform: uppercase;
 }

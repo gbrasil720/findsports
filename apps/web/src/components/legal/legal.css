@@ -91,7 +91,7 @@ html:has(.onside-legal) body {
 }
 
 .onside-legal .onside-legal-intro p:first-child {
-  color: #e4e1d9;
+  color: #e7e3db;
   font-size: 20px;
 }
 
@@ -125,7 +125,7 @@ html:has(.onside-legal) body {
   margin-bottom: 6px;
   color: var(--onside-muted-on-ink);
   font-family: var(--onside-mono);
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -163,7 +163,7 @@ html:has(.onside-legal) body {
   margin-bottom: 4px;
   color: var(--onside-muted);
   font-family: var(--onside-mono);
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -198,7 +198,7 @@ html:has(.onside-legal) body {
   gap: 8px 28px;
   padding: 14px 0;
   font-family: var(--onside-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -224,7 +224,7 @@ html:has(.onside-legal) body {
   margin-bottom: 14px;
   color: var(--onside-muted);
   font-family: var(--onside-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -276,7 +276,7 @@ html:has(.onside-legal) body {
 
 .onside-legal .onside-legal-body nav a > span:first-child {
   font-family: var(--onside-mono);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.06em;
 }
 
@@ -354,7 +354,7 @@ html:has(.onside-legal) body {
 
 .onside-legal .onside-legal-p {
   margin: 0 0 18px;
-  color: #2a2a26;
+  color: #2a2a24;
   font-size: 17px;
   line-height: 1.65;
   text-wrap: pretty;
@@ -381,7 +381,7 @@ html:has(.onside-legal) body {
   /* `--onside-live-text`: o vermelho do desenho não dá contraste em 10px. */
   color: var(--onside-live-text);
   font-family: var(--onside-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
 }
 
@@ -397,7 +397,7 @@ html:has(.onside-legal) body {
   display: grid;
   grid-template-columns: 16px minmax(0, 1fr);
   gap: 12px;
-  color: #2a2a26;
+  color: #2a2a24;
   font-size: 16px;
   line-height: 1.6;
 }
@@ -428,7 +428,7 @@ html:has(.onside-legal) body {
   margin-bottom: 8px;
   color: var(--onside-live-text);
   font-family: var(--onside-mono);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -463,7 +463,7 @@ html:has(.onside-legal) body {
   background: var(--onside-ink);
   color: var(--onside-paper);
   font-family: var(--onside-mono);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -475,7 +475,7 @@ html:has(.onside-legal) body {
 
 .onside-legal .onside-legal-table td {
   padding: 14px;
-  color: #2a2a26;
+  color: #2a2a24;
   font-size: 14px;
   line-height: 1.5;
 }

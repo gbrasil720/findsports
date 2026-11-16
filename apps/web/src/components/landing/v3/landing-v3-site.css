@@ -83,7 +83,7 @@
   height: 38px;
   border-radius: 50%;
   background: var(--red);
-  color: #fff;
+  color: #12120f;
   display: grid;
   place-items: center;
   font: 700 13px / 1 var(--mono);
@@ -176,7 +176,7 @@
   padding: 9px 13px;
   border-radius: 14px 14px 4px 14px;
   background: var(--red);
-  color: #fff;
+  color: #12120f;
   font: 700 14px / 1 var(--body);
   box-shadow: 0 3px 0 #8f1f07;
 }
@@ -201,7 +201,7 @@
 }
 .lp3 .pains .ic {
   background: var(--red);
-  color: #fff;
+  color: #12120f;
   font: 700 15px / 1 var(--mono);
   box-shadow: 0 3px 0 #8f1f07;
 }

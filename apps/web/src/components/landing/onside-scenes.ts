@@ -531,7 +531,7 @@ export function mapa(
       const bz = z + S
       const isPark = PARKS.has(`${bx}:${bz}`)
       if (isPark) parkBlocks.push([bx, bz])
-      g2.fillStyle = isPark ? '#1b2313' : '#131311'
+      g2.fillStyle = isPark ? '#1b2313' : '#12120f'
       g2.fillRect(tx(bx), tz(bz), (B / W) * TEX, (B / D) * TEX)
       if (!isPark && rnd() < 0.5) {
         g2.fillStyle = '#161613'
