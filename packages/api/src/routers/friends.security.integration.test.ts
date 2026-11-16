@@ -139,7 +139,14 @@ integrationTest(
         hashes: [hash(iris.email), ...filler(1999)]
       })
       expect(matched.map((m) => [m.id, m.city])).toEqual([[iris.id, null]])
-      await as(hugo).matchContacts({ hashes: filler(2000) })
+      // "Me encontrar pelo e-mail" desligado: some dos contatos.
+      expect((await as(iris).me()).findableByEmail).toBe(true)
+      await as(iris).updatePrivacy({ findableByEmail: false })
+      expect((await as(iris).me()).findableByEmail).toBe(false)
+      expect(
+        await as(hugo).matchContacts({ hashes: [hash(iris.email)] })
+      ).toEqual([])
+      await as(hugo).matchContacts({ hashes: filler(1999) })
       await as(hugo).matchContacts({ hashes: filler(2000) })
       // A janela do dia conta hashes, não chamadas: o próximo passa do teto.
       await expect(

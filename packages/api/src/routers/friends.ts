@@ -182,6 +182,7 @@ export const friendsRouter = router({
         activityVisibility: user.activityVisibility,
         friendRequestsFrom: user.friendRequestsFrom,
         rankingGlobal: user.rankingGlobal,
+        findableByEmail: user.findableByEmail,
         city: user.searchCityName
       })
       .from(user)
@@ -711,7 +712,9 @@ export const friendsRouter = router({
           .enum(['everyone', 'friends_of_friends', 'nobody'])
           .optional(),
         /** "Aparecer no ranking global" (27c, WEB-465). */
-        rankingGlobal: z.boolean().optional()
+        rankingGlobal: z.boolean().optional(),
+        /** "Me encontrar pelo e-mail": aparecer em Contatos de quem tem o e-mail. */
+        findableByEmail: z.boolean().optional()
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -721,7 +724,8 @@ export const friendsRouter = router({
       if (
         input.activityVisibility ||
         input.friendRequestsFrom ||
-        input.rankingGlobal !== undefined
+        input.rankingGlobal !== undefined ||
+        input.findableByEmail !== undefined
       )
         await db.update(user).set(input).where(eq(user.id, me))
       return input
@@ -730,7 +734,8 @@ export const friendsRouter = router({
   /**
    * Quem da agenda do celular já está na Onside. O app manda só o SHA-256 de
    * cada e-mail (minúsculo, sem espaço), nunca o e-mail. Só aparece quem
-   * aceita pedidos de qualquer pessoa: os outros não são revelados.
+   * deixou "Me encontrar pelo e-mail" ligado e aceita pedidos de qualquer
+   * pessoa: os outros não são revelados.
    */
   matchContacts: fanProcedure
     .input(
@@ -767,6 +772,7 @@ export const friendsRouter = router({
         .where(
           sql`${listable} AND ${user.id} <> ${me}
             AND ${user.friendRequestsFrom} = 'everyone'
+            AND ${user.findableByEmail}
             AND encode(sha256(convert_to(lower(trim(${user.email})), 'UTF8')), 'hex')
               IN ${input.hashes}`
         )
