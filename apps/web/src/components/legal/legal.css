@@ -216,7 +216,7 @@ html:has(.onside-legal) body {
 .onside-legal .onside-legal-body > aside {
   position: sticky;
   top: 104px;
-  max-height: calc(100vh - 130px);
+  max-height: calc(100dvh - 130px);
   overflow: auto;
 }
 
