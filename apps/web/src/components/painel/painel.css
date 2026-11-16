@@ -23,6 +23,12 @@
   --acid-drop: #7f9a12;
   --live-text: #c92b0c;
   --spark: #e8320c;
+  /* Alerta de perfil: a única cor amarela do painel. */
+  --warn-bg: #fff4c7;
+  --warn-line: #e8c547;
+  --warn-fg: #3d3000;
+  --warn-sub: #5f4b00;
+  --warn-ic: #a87600;
   --rail: #12120f;
   --rail-fg: #f1eee6;
   --rail-mute: #aaa9a4;
@@ -56,6 +62,11 @@ html[data-theme="dark"] .pn3 {
   --field: #1c1c18;
   --live-text: #f3421d;
   --spark: #c9f135;
+  --warn-bg: #2a2410;
+  --warn-line: #6b5a1c;
+  --warn-fg: #fbe7a1;
+  --warn-sub: #d9c88a;
+  --warn-ic: #f5c84b;
   --rail: #0b0b09;
   --rail-on: #1c1c18;
   --shadow: 0 3px 0 #000, 0 24px 40px -30px rgba(0, 0, 0, 0.8);
