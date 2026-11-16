@@ -437,7 +437,7 @@ function Agora({
               <div className="pn-bar">
                 <i
                   style={{
-                    width: `${counts.going ? Math.round((counts.arrived / counts.going) * 100) : 0}%`
+                    transform: `translateX(${(counts.going ? Math.round((counts.arrived / counts.going) * 100) : 0) - 100}%)`
                   }}
                 />
               </div>
