@@ -451,7 +451,8 @@ function PlanSelection() {
             founder: choiceFounder,
             annual
           }),
-          paidUntil: new Date(subscription.currentPeriodEnd)
+          paidUntil: new Date(subscription.currentPeriodEnd),
+          annual: subscription.billingInterval === 'year'
         })
       : 0
   const focusPlan = getPlan(ownPlan ?? defaultPlan)
@@ -469,7 +470,13 @@ function PlanSelection() {
     try {
       // Com URL na resposta o cliente do better-auth já está navegando para
       // o Stripe; ver `startCheckout` (WEB-241).
-      if (await startCheckout(plan, currentPlan, annual)) return
+      // Assinatura do cartão que já existe troca de plano no intervalo dela
+      // (WEB-442): o servidor recusa outro.
+      const cardAnnual =
+        hasSubscription && !onPixSubscription
+          ? subscription?.billingInterval === 'year'
+          : annual
+      if (await startCheckout(plan, currentPlan, cardAnnual)) return
       setError('Não foi possível iniciar o pagamento. Tente novamente.')
     } catch (checkoutError) {
       // Plano parado (WEB-172) ou Pix sem como cancelar (WEB-536): a recusa
@@ -477,7 +484,8 @@ function PlanSelection() {
       const refusal = checkoutError as { code?: string; message?: string }
       const message =
         (refusal?.code === 'SUBSCRIPTION_PAST_DUE' ||
-          refusal?.code === 'PIX_SWITCH_UNAVAILABLE') &&
+          refusal?.code === 'PIX_SWITCH_UNAVAILABLE' ||
+          refusal?.code === 'BILLING_INTERVAL_MISMATCH') &&
         refusal.message
           ? refusal.message
           : 'Não foi possível iniciar o pagamento. Tente novamente.'

@@ -30,6 +30,8 @@ import {
   blocksCardOverPix,
   blocksNewCheckout,
   canAccessPubBilling,
+  changesBillingInterval,
+  isUnusedBillingRoute,
   requiresPubBillingAccess
 } from './billing-access'
 import { extrairIp } from './client-ip'
@@ -251,6 +253,9 @@ export function createAuth() {
           if (ctx.path === '/update-user') assertNoSelfRoleChange(ctx.body)
         }
         if (!requiresPubBillingAccess(ctx.path)) return
+        if (isUnusedBillingRoute(ctx.path)) {
+          throw new APIError('NOT_FOUND')
+        }
         const session = await getSessionFromCtx(ctx)
         if (!canAccessPubBilling(session?.user ?? null)) {
           throw new APIError('FORBIDDEN', {
@@ -278,6 +283,46 @@ export function createAuth() {
                 'Sua assinatura é no Pix: passe para o cartão pela tela de planos.',
               code: 'PIX_SWITCH_UNAVAILABLE'
             })
+          }
+          // A metadata do corpo vai para a assinatura no Stripe, e o webhook
+          // lê dali o que o servidor grava (`founderCoupon`,
+          // `pixUpgradeCents`). O app não manda nenhuma.
+          if ((ctx.body as { metadata?: unknown })?.metadata !== undefined) {
+            throw new APIError('BAD_REQUEST', {
+              message: 'Pedido de assinatura inválido.'
+            })
+          }
+          // WEB-442: a assinatura do cartão troca de plano no intervalo dela.
+          const current = ownerBar?.subscription
+          if (
+            current?.provider === 'stripe' &&
+            current.externalSubscriptionId &&
+            (current.status === 'active' || current.status === 'trialing')
+          ) {
+            const [row] = await db
+              .select({
+                billingInterval: schema.stripeSubscription.billingInterval
+              })
+              .from(schema.stripeSubscription)
+              .where(
+                eq(
+                  schema.stripeSubscription.stripeSubscriptionId,
+                  current.externalSubscriptionId
+                )
+              )
+            const annual = (ctx.body as { annual?: unknown })?.annual === true
+            if (
+              changesBillingInterval(
+                row?.billingInterval ?? current.billingInterval,
+                annual
+              )
+            ) {
+              throw new APIError('CONFLICT', {
+                message:
+                  'A troca de plano fica no intervalo da sua assinatura. Para mudar entre mensal e anual, fale com a Onside.',
+                code: 'BILLING_INTERVAL_MISMATCH'
+              })
+            }
           }
         }
       }),

@@ -1,11 +1,14 @@
 import type { SubscriptionPlan } from '@findsports_oficial/db'
 import { db, eq } from '@findsports_oficial/db'
 import { bar, subscription } from '@findsports_oficial/db/schema/platform'
+import { env } from '@findsports_oficial/env/server'
 import {
   type AbacateSubscription,
   cancelSubscriptionIfActive,
   getSubscription
 } from './abacatepay'
+import { founderSeatCount, readFounderCoupon } from './stripe-checkout'
+import { stripeClient } from './stripe-client'
 import { ANNUAL_MONTHS } from './stripe-plan'
 import { logBillingError } from './stripe-sync'
 
@@ -75,6 +78,33 @@ export type PixEvent =
 type Row = typeof subscription.$inferSelect
 
 /**
+ * As vagas de fundador já tinham acabado quando este Pix foi pago. Checkout
+ * aberto não reserva vaga, então um Pix de fundador pode ser pago depois de
+ * esgotar.
+ *
+ * Só serve ao log: o preço de fundador é honrado de qualquer jeito (ver
+ * `applyPixSubscription`). Por isso a conta que não fecha (Stripe sem
+ * responder, sem `STRIPE_SECRET_KEY`, ou o banco) não trava o aviso: vai ao
+ * log com o motivo e conta como "não esgotou".
+ */
+export async function founderSeatsFull(): Promise<boolean> {
+  const coupon = await readFounderCoupon(stripeClient, founderSeatCount)
+  if (coupon.state === 'unknown') {
+    logBillingError('pix_founder_seat_unverified', {
+      reason:
+        coupon.source === 'db'
+          ? 'db_unavailable'
+          : env.STRIPE_SECRET_KEY
+            ? 'stripe_unavailable'
+            : 'stripe_key_missing',
+      message: coupon.message
+    })
+    return false
+  }
+  return coupon.state === 'invalid'
+}
+
+/**
  * Situação de uma assinatura ativa sem confiar na ordem dos avisos (a
  * AbacatePay não garante ordem). O que avança é o fim do ciclo pago: débito
  * que passou o empurra para a frente, débito recusado não.
@@ -139,7 +169,9 @@ export function readLagsBehind(eventType: string, status: string): boolean {
 export async function applyPixSubscription(
   subscriptionId: string,
   externalId: string | null | undefined,
-  eventType: PixEvent | string
+  eventType: PixEvent | string,
+  // Os testes dublam a contagem; o padrão pergunta ao Stripe.
+  { seatsFull = founderSeatsFull }: { seatsFull?: () => Promise<boolean> } = {}
 ): Promise<string | null> {
   const ref = parsePixExternalId(externalId)
   if (!ref) {
@@ -228,6 +260,21 @@ export async function applyPixSubscription(
   }
   if (previous) await cancelSubscriptionIfActive(previous)
 
+  // Quem já tem a vaga no Pix (renovação, troca de plano) a mantém.
+  // Quem já tem a vaga (renovação, troca de plano, cartão que veio ao Pix)
+  // não ocupa outra.
+  const holdsSeat = (existing?.monthlyDiscountReais ?? 0) > 0
+  // Pago depois de esgotar: o checkout saiu com o preço de fundador e ninguém
+  // avisou o bar de que as vagas acabaram, então o preço é honrado (dono,
+  // 15/11/2026). O dono fica sabendo pelo log.
+  if (ref.founder && !holdsSeat && (await seatsFull())) {
+    logBillingError('pix_founder_seat_overflow', {
+      barId: ref.barId,
+      subscriptionId: sub.id,
+      plan: ref.plan,
+      annual: ref.annual
+    })
+  }
   const values = {
     status: pixStanding({ eventType, periodEnd, existing, isCurrent }),
     plan: ref.plan,

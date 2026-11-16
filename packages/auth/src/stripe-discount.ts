@@ -79,3 +79,22 @@ export function monthlyDiscountReaisFromStripe(
 
   return inferred ? Math.round(totalCents / 100) : null
 }
+
+/**
+ * Os descontos da assinatura com o cupom de cada um: `id` é o do desconto
+ * (`di_...`), que o `subscriptions.update` aceita para mantê-lo; `couponId`
+ * é `null` quando o desconto veio sem expandir.
+ */
+export function discountEntriesOf(
+  subscription: Stripe.Subscription
+): { id: string | null; couponId: string | null }[] {
+  const entries = (subscription.discounts ?? []).map((entry) => {
+    if (typeof entry === 'string') return { id: entry, couponId: null }
+    const coupon = couponFromDiscount(entry as DiscountEntry)
+    return {
+      id: (entry as { id?: string }).id ?? null,
+      couponId: !coupon ? null : typeof coupon === 'string' ? coupon : coupon.id
+    }
+  })
+  return entries
+}

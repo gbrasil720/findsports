@@ -72,6 +72,7 @@ async function setup() {
       import('./pix-sync'),
       import('./stripe-checkout')
     ])
+  const { stripeClient } = await import('./stripe-client')
   const userIds: string[] = []
 
   /** Bar no ar pagando Pix: ativo, ciclo pago até `paidUntil`. */
@@ -145,7 +146,31 @@ async function setup() {
     }
   }
 
-  return { ...sync, ...pix, ...co, createPixBar, stateOf, cleanup }
+  async function setDiscount(barId: string, reais: number) {
+    await db
+      .update(subscription)
+      .set({ monthlyDiscountReais: reais })
+      .where(eq(subscription.barId, barId))
+  }
+
+  async function discountOf(barId: string) {
+    const row = await db.query.subscription.findFirst({
+      where: eq(subscription.barId, barId)
+    })
+    return row?.monthlyDiscountReais ?? null
+  }
+
+  return {
+    ...sync,
+    ...pix,
+    ...co,
+    stripeClient,
+    createPixBar,
+    stateOf,
+    discountOf,
+    setDiscount,
+    cleanup
+  }
 }
 
 /** Assinatura do cartão como o checkout a cria: em teste até o fim do Pix. */
@@ -159,6 +184,8 @@ function cardSubscription(o: {
   founderCoupon?: string
   /** Primeira fatura (a da diferença): paga por padrão. */
   firstInvoice?: 'paid' | 'open'
+  /** Nasceu do `startCardFromPix` (padrão) ou de um checkout do plugin. */
+  fromPix?: boolean
 }) {
   return {
     id: o.id,
@@ -168,6 +195,7 @@ function cardSubscription(o: {
     customer: o.customerId,
     metadata: {
       userId: o.userId,
+      ...(o.fromPix === false ? {} : { cardFromPix: '1' }),
       ...(o.upgradeCents ? { pixUpgradeCents: String(o.upgradeCents) } : {}),
       ...(o.founderCoupon ? { founderCoupon: o.founderCoupon } : {})
     },
@@ -225,8 +253,7 @@ integrationTest(
 integrationTest(
   'checkout: fundador do Pix leva a vaga para o cartão mesmo com as vagas cheias',
   async () => {
-    const { checkoutParamsFor, createPixBar, pixFounderCount, FOUNDER_SEATS } =
-      ready()
+    const { checkoutParamsFor, createPixBar, FOUNDER_SEATS } = ready()
     const founder = await createPixBar({
       founder: true,
       paidUntil: new Date(Date.now() + 20 * DAY)
@@ -234,25 +261,20 @@ integrationTest(
     const other = await createPixBar({
       paidUntil: new Date(Date.now() + 20 * DAY)
     })
-    // Cartão + Pix fecham as 100 vagas, contando o fundador deste teste.
-    const pixFounders = await pixFounderCount()
     const client = {
-      coupons: {
-        retrieve: async (id: string) =>
-          id === 'fundador_anual'
-            ? { times_redeemed: 0 }
-            : {
-                valid: true,
-                max_redemptions: FOUNDER_SEATS,
-                times_redeemed: FOUNDER_SEATS - pixFounders
-              }
-      }
+      coupons: { retrieve: async () => ({ valid: true }) }
     } as unknown as Stripe
+    // Cartão + Pix fecham as 100 vagas, contando o fundador deste teste.
+    const countSeats = async () => FOUNDER_SEATS
     const error = spyOn(console, 'error').mockImplementation(() => {})
     try {
-      const kept = await checkoutParamsFor(founder.owner, null, client)
+      const kept = await checkoutParamsFor(founder.owner, null, client, {
+        countSeats
+      })
       expect(kept.discounts).toEqual([{ coupon: 'eM7dQpMF' }])
-      const full = await checkoutParamsFor(other.owner, null, client)
+      const full = await checkoutParamsFor(other.owner, null, client, {
+        countSeats
+      })
       expect(full.discounts).toBeUndefined()
     } finally {
       error.mockRestore()
@@ -523,6 +545,7 @@ integrationTest(
       metadata: {
         pixUpgradeCents: String(charged),
         founderCoupon: 'eM7dQpMF',
+        cardFromPix: '1',
         userId: owner.id
       }
     })
@@ -553,6 +576,8 @@ integrationTest(
     expect(session.line_items).toHaveLength(1)
     expect(session.discounts).toEqual([{ coupon: 'eM7dQpMF' }])
     expect(session.subscription_data.metadata.pixUpgradeCents).toBeUndefined()
+    // Sem diferença, o marcador é o que deixa o webhook trocar o Pix.
+    expect(session.subscription_data.metadata.cardFromPix).toBe('1')
   }
 )
 
@@ -675,6 +700,198 @@ integrationTest(
       plan: 'elite',
       provider: 'stripe',
       externalSubscriptionId: card.id
+    })
+  }
+)
+
+/** Cupom de fundador valendo no Stripe, ou o Stripe fora do ar. */
+function couponWithSeats(client: Stripe, state: 'valid' | 'down') {
+  return spyOn(client.coupons, 'retrieve').mockImplementation((async () => {
+    if (state === 'down') throw new Error('timeout')
+    return { valid: true }
+  }) as unknown as typeof client.coupons.retrieve)
+}
+
+/** O bar autoriza um Pix novo de fundador (troca de plano para o Elite). */
+function founderPix(bar: { barId: string }, paidUntil: Date) {
+  const id = `subs_f_${bar.barId.slice(0, 8)}`
+  abacate.subs.set(id, {
+    status: 'ACTIVE',
+    currentPeriodEnd: paidUntil.toISOString()
+  })
+  return { id, externalId: `onside:${bar.barId}:elite:f:abcd1234` }
+}
+
+integrationTest(
+  'vagas contadas pelo banco: Pix e cartão de fundador, mensal e anual, uma por bar',
+  async () => {
+    const { createPixBar, founderSeatCount, setDiscount } = ready()
+    const paidUntil = new Date(Date.now() + 30 * DAY)
+    const before = await founderSeatCount()
+    await createPixBar({ founder: true, paidUntil })
+    const annual = await createPixBar({ paidUntil })
+    await setDiscount(annual.barId, 280)
+    // Código promocional de outro valor não é vaga.
+    const promo = await createPixBar({ paidUntil })
+    await setDiscount(promo.barId, 15)
+    expect(await founderSeatCount()).toBe(before + 2)
+  }
+)
+
+integrationTest(
+  'Pix de fundador pago depois de esgotar: honrado, e o que passou vai ao log',
+  async () => {
+    const { applyPixSubscription, createPixBar, discountOf, founderSeatCount } =
+      ready()
+    const paidUntil = new Date(Date.now() + 30 * DAY)
+    const a = await createPixBar({ paidUntil })
+    const b = await createPixBar({ paidUntil })
+    // Os dois abriram o checkout de fundador com uma vaga sobrando; a conta
+    // é a do banco, com o teto logo acima do que já existe.
+    const limit = (await founderSeatCount()) + 1
+    const seatsFull = async () => (await founderSeatCount()) >= limit
+    const error = spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      for (const bar of [a, b]) {
+        const pix = founderPix(bar, paidUntil)
+        await applyPixSubscription(
+          pix.id,
+          pix.externalId,
+          'subscription.completed',
+          { seatsFull }
+        )
+      }
+      // Ninguém avisou que as vagas acabaram: os dois ficam com o preço de
+      // fundador (dono, 15/11/2026), e o segundo vai ao log para o dono.
+      expect([await discountOf(a.barId), await discountOf(b.barId)]).toEqual([
+        28, 28
+      ])
+      const overflow = error.mock.calls
+        .map((c) => JSON.parse(String(c[0])))
+        .filter((e) => e.event === 'pix_founder_seat_overflow')
+      expect(overflow.map((e) => e.barId)).toEqual([b.barId])
+    } finally {
+      error.mockRestore()
+    }
+  }
+)
+
+integrationTest(
+  'vaga de fundador: quem já a tem no Pix renova sem conferir; Stripe sem responder não trava o aviso',
+  async () => {
+    const { applyPixSubscription, createPixBar, discountOf, stripeClient } =
+      ready()
+    const paidUntil = new Date(Date.now() + 30 * DAY)
+    const founder = await createPixBar({ founder: true, paidUntil })
+    const seats = couponWithSeats(stripeClient, 'valid')
+    try {
+      await applyPixSubscription(
+        founder.pixId,
+        founder.externalId,
+        'subscription.renewed'
+      )
+      expect(await discountOf(founder.barId)).toBe(28)
+      expect(seats).not.toHaveBeenCalled()
+    } finally {
+      seats.mockRestore()
+    }
+
+    const other = await createPixBar({ paidUntil })
+    const down = couponWithSeats(stripeClient, 'down')
+    const error = spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const pix = founderPix(other, paidUntil)
+      await applyPixSubscription(
+        pix.id,
+        pix.externalId,
+        'subscription.completed'
+      )
+      expect(await discountOf(other.barId)).toBe(28)
+      expect(
+        error.mock.calls.some((c) =>
+          String(c[0]).includes('pix_founder_seat_unverified')
+        )
+      ).toBe(true)
+    } finally {
+      down.mockRestore()
+      error.mockRestore()
+    }
+  }
+)
+
+integrationTest(
+  'founderCoupon que não veio do startCardFromPix não vira desconto',
+  async () => {
+    const { applyStripeSubscription, createPixBar, stateOf } = ready()
+    const paidUntil = new Date(Date.now() + 15 * DAY)
+    for (const metadata of [
+      // Pela metadata do /subscription/upgrade, sem a diferença da subida.
+      { founderCoupon: 'fundador_anual' },
+      // O cupom anual numa assinatura mensal.
+      { upgradeCents: 7285, founderCoupon: 'fundador_anual' }
+    ]) {
+      const bar = await createPixBar({ paidUntil })
+      const card = cardSubscription({
+        id: `sub_${bar.barId}`,
+        customerId: bar.customerId,
+        userId: bar.userId,
+        trialEnd: paidUntil,
+        ...metadata
+      })
+      const stripe = recordingStripe()
+      stripe.remember(card)
+      const log = spyOn(console, 'log').mockImplementation(() => {})
+      const error = spyOn(console, 'error').mockImplementation(() => {})
+      try {
+        await applyStripeSubscription(card, stripe.client)
+        expect(
+          error.mock.calls.some((c) =>
+            String(c[0]).includes('pix_upgrade_coupon_untrusted')
+          )
+        ).toBe(true)
+      } finally {
+        log.mockRestore()
+        error.mockRestore()
+      }
+      expect(stripe.calls.filter((c) => c.op === 'update')).toHaveLength(0)
+      expect(await stateOf(bar.barId)).toMatchObject({ provider: 'stripe' })
+    }
+  }
+)
+
+integrationTest(
+  'checkout do plugin concluído por cima de um Pix vivo: cancelado, e o Pix fica',
+  async () => {
+    const { applyStripeSubscription, createPixBar, stateOf } = ready()
+    const paidUntil = new Date(Date.now() + 15 * DAY)
+    const bar = await createPixBar({ paidUntil })
+    // Aberto no teste do cadastro, pago depois de o Pix ser autorizado.
+    const card = cardSubscription({
+      id: `sub_${bar.barId}`,
+      customerId: bar.customerId,
+      userId: bar.userId,
+      trialEnd: paidUntil,
+      fromPix: false
+    })
+    const stripe = recordingStripe()
+    const error = spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      expect(await applyStripeSubscription(card, stripe.client)).toBeNull()
+      expect(
+        error.mock.calls.some((c) => String(c[0]).includes('pix_card_over_pix'))
+      ).toBe(true)
+    } finally {
+      error.mockRestore()
+    }
+    expect(abacate.cancels).toEqual([])
+    expect(stripe.calls.filter((c) => c.op === 'cancel')[0]?.args[0]).toBe(
+      card.id
+    )
+    expect(await stateOf(bar.barId)).toMatchObject({
+      isActive: true,
+      plan: 'pro',
+      provider: 'abacatepay',
+      externalSubscriptionId: bar.pixId
     })
   }
 )

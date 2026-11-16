@@ -8,6 +8,35 @@ export type Plan = 'starter' | 'pro' | 'elite'
 export const ANNUAL_MONTHS = 10
 
 /**
+ * Cupom de fundador (WEB-31): R$ 28,00 a menos por mês, em qualquer plano e
+ * enquanto a assinatura durar, para o bar que contratar durante o lançamento.
+ * No Stripe é o cupom `Early Bird`, com este id no sandbox e em produção e
+ * teto de 100 usos.
+ *
+ * Não há interruptor no app: a oferta acaba quando o cupom esgota ou expira
+ * no Stripe, e daí em diante o checkout segue a preço de tabela
+ * (`usableFounderCoupon`). Numa conta em que o cupom não existe é a mesma
+ * coisa.
+ */
+export const FOUNDER_COUPON_ID = 'eM7dQpMF'
+
+/**
+ * Cupom de fundador do anual (decisão do dono, 14/11/2026: o desconto de
+ * fundador vale no anual). O `FOUNDER_COUPON_ID` é de valor fixo por fatura, e
+ * no anual tiraria R$ 28 do ano; este tira `ANNUAL_MONTHS` vezes isso, e o
+ * anual do fundador sai 10 × o mensal de fundador. Mesmas vagas: os resgates
+ * dos dois cupons e o Pix somam no teto.
+ */
+export const FOUNDER_ANNUAL_COUPON_ID = 'fundador_anual'
+
+/**
+ * Marca, na metadata da assinatura, a sessão do `startCardFromPix` (WEB-536):
+ * só ela pode trocar um Pix vivo pelo cartão. O cliente não escreve metadata
+ * (o `/subscription/upgrade` a recusa no corpo).
+ */
+export const CARD_FROM_PIX_KEY = 'cardFromPix'
+
+/**
  * Fonte única dos planos vendidos no Stripe (WEB-31): o checkout vende estes
  * e o webhook só aplica estes.
  *
@@ -102,27 +131,33 @@ const STRIPE_MIN_BRL_CENTS = 50
 /**
  * Subida de plano do Pix para o cartão (dono, 14/11/2026, WEB-536): o cartão
  * cobra hoje a diferença entre o que o bar vai pagar e o que paga no Pix, pelo
- * que falta do mês já pago (`paidUntil`), em centavos. O ciclo do Pix é de um
- * mês, que acaba em `paidUntil`. Descida e mesmo preço não cobram nada, e
- * diferença abaixo do mínimo do Stripe também não.
+ * que falta do ciclo já pago (`paidUntil`), em centavos. O ciclo do Pix acaba
+ * em `paidUntil` e dura um mês, ou 12 no Pix anual (`annual`): o cartão só
+ * começa a cobrar em `paidUntil`, então a diferença vale por todo o resto do
+ * ano pago. Descida e mesmo preço não cobram nada, e diferença abaixo do
+ * mínimo do Stripe também não.
  */
 export function pixUpgradeCents({
   currentMonthlyReais,
   newMonthlyReais,
   paidUntil,
+  annual = false,
   now = new Date()
 }: {
   currentMonthlyReais: number
   newMonthlyReais: number
   paidUntil: Date
+  /** O Pix atual é anual: o ciclo pago é de 12 meses. */
+  annual?: boolean
   now?: Date
 }): number {
   const diff = newMonthlyReais - currentMonthlyReais
   const left = paidUntil.getTime() - now.getTime()
   if (diff <= 0 || left <= 0) return 0
+  const months = annual ? 12 : 1
   const start = new Date(paidUntil)
-  start.setUTCMonth(start.getUTCMonth() - 1)
+  start.setUTCMonth(start.getUTCMonth() - months)
   const fraction = Math.min(1, left / (paidUntil.getTime() - start.getTime()))
-  const cents = Math.round(diff * 100 * fraction)
+  const cents = Math.round(diff * months * 100 * fraction)
   return cents < STRIPE_MIN_BRL_CENTS ? 0 : cents
 }
