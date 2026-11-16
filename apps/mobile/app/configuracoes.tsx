@@ -1629,9 +1629,14 @@ function MenuRow({
           color={palette.ink}
           accent={palette.dark ? ACID : ACCENT}
         />
+        {/* O título cede (até duas linhas) e o valor fica inteiro: com a letra
+            grande era o valor que virava "To…" e "l…". */}
         <Text
-          numberOfLines={1}
-          style={[text(15, 'SemiBold', 1.2), { color: palette.ink }]}
+          numberOfLines={2}
+          style={[
+            text(15, 'SemiBold', 1.2),
+            { color: palette.ink, flex: 1, minWidth: 0 }
+          ]}
         >
           {title}
         </Text>
@@ -2029,7 +2034,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12
   },
-  menuValue: { flex: 1, alignItems: 'flex-end', minWidth: 0 },
+  menuValue: { flexShrink: 0, maxWidth: '55%', alignItems: 'flex-end' },
   menuMono: { fontFamily: 'GeistMono-SemiBold', fontSize: 12.5 },
   menuOn: {
     color: INK,
