@@ -283,7 +283,8 @@ html[data-theme="dark"] .onside-receipt-machine {
 
 .onside-receipt-feature span {
   flex: none;
-  color: #e8320c;
+  /* Vermelho pequeno sobre papel: o `live-text`, que passa 4,5:1. */
+  color: #c92b0c;
   font-weight: 700;
 }
 
