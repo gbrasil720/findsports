@@ -3,6 +3,7 @@ import {
   boolean,
   check,
   customType,
+  date,
   doublePrecision,
   foreignKey,
   index,
@@ -26,6 +27,7 @@ import {
 } from '../bar-gallery'
 import { AVERAGE_SPEND_MAX_CENTS, MENU_URL_MAX_LENGTH } from '../bar-menu'
 import { HOUSE_OFFER_MAX_LENGTH } from '../house-offer'
+import type { ProfileAlert } from '../profile-alerts'
 import { user } from './auth'
 import { barRating } from './rating'
 import { reviewStatusEnum } from './review-status'
@@ -591,6 +593,25 @@ export const barTeam = pgTable(
     // A PK começa por bar_id; cascatear a remoção de um time precisa deste.
     index('bar_team_teamId_idx').on(table.teamId)
   ]
+)
+
+/**
+ * Alerta de perfil incompleto (painel do bar): uma linha por bar e assunto.
+ * `dismissed_until` é o "Agora não" (3 dias); `shown_on` é o último dia de
+ * Brasília em que o assunto foi mostrado, o que deixa o servidor perceber que
+ * ele foi resolvido ou dispensado hoje sem mexer nas mutations de cada campo.
+ */
+export const barProfileAlert = pgTable(
+  'bar_profile_alert',
+  {
+    barId: text('bar_id')
+      .notNull()
+      .references(() => bar.id, { onDelete: 'cascade' }),
+    alert: text('alert').$type<ProfileAlert>().notNull(),
+    dismissedUntil: timestamp('dismissed_until', { withTimezone: true }),
+    shownOn: date('shown_on')
+  },
+  (table) => [primaryKey({ columns: [table.barId, table.alert] })]
 )
 
 export const subscription = pgTable(
