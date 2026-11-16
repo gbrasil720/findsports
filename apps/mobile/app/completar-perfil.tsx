@@ -24,7 +24,9 @@ import { queryClient, trpc } from '@/lib/trpc'
  * Completar o perfil (rodada 10, tela 6, 1 a 3): a capa (aparece no mapa, na
  * busca e no topo da página), a descrição (passa pela revisão da Onside) e
  * quando abre e o que oferece (horário da semana e a oferta da casa). Cada
- * passo tem "Depois"; no fim vem a rotina, a última pergunta.
+ * passo tem "Depois"; no fim vem a rotina, a última pergunta. O horário só é
+ * pedido a quem ainda não tem (o cadastro já pergunta); sem ele e fora do
+ * Elite, o terceiro passo não existe.
  */
 
 type Step = 0 | 1 | 2
@@ -55,6 +57,8 @@ export default function CompletarPerfil() {
   const owner = useOwnerBar()
   const bar = owner.bar
   const photos = useQuery(trpc.pub.photos.queryOptions())
+  const askHours = !((bar?.openingHours ?? []) as unknown[]).some(Boolean)
+  const last: Step = askHours || owner.elite ? 2 : 1
   const [step, setStep] = useState<Step>(0)
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
@@ -85,7 +89,7 @@ export default function CompletarPerfil() {
   const saveOffer = useMutation(trpc.pub.updateHouseOffer.mutationOptions())
   const next = () => {
     setProblem(null)
-    if (step < 2) return setStep((step + 1) as Step)
+    if (step < last) return setStep((step + 1) as Step)
     router.replace('/rotina')
   }
   const fail = (error: unknown) => {
@@ -118,7 +122,8 @@ export default function CompletarPerfil() {
       if (step === 1 && about.trim())
         await updateMe.mutateAsync({ description: about.trim() })
       if (step === 2) {
-        if (touched) await saveHours.mutateAsync({ openingHours: hours })
+        if (touched && askHours)
+          await saveHours.mutateAsync({ openingHours: hours })
         if (owner.elite && offer)
           await saveOffer.mutateAsync({ houseOffer: `${offer} ${until}` })
       }
@@ -135,7 +140,7 @@ export default function CompletarPerfil() {
   const titles: [string, string][] = [
     ['A CARA', 'DO SEU BAR'],
     ['O QUE TORNA', 'O BAR DIFERENTE?'],
-    ['QUANDO ABRE', 'E O QUE OFERECE']
+    askHours ? ['QUANDO ABRE', 'E O QUE OFERECE'] : ['O QUE', 'OFERECE']
   ]
   const [a, b] = titles[step] ?? ['', '']
   const primary =
@@ -172,14 +177,14 @@ export default function CompletarPerfil() {
           </Pressable>
           <Text
             style={[styles.mono, { color: palette.muted }]}
-          >{`COMPLETAR · ${step + 1} DE 3`}</Text>
+          >{`COMPLETAR · ${step + 1} DE ${last + 1}`}</Text>
         </View>
         <View style={[styles.progress, { backgroundColor: palette.mark }]}>
           <View
             style={[
               styles.progressFill,
               {
-                width: `${((step + 1) / 3) * 100}%`,
+                width: `${((step + 1) / (last + 1)) * 100}%`,
                 backgroundColor: palette.ink
               }
             ]}
@@ -330,94 +335,107 @@ export default function CompletarPerfil() {
           </>
         ) : (
           <>
-            <View style={styles.chips}>
-              <Pressable
-                accessibilityRole="button"
-                // Terça em todos os dias, menos a segunda (costuma fechar).
-                onPress={() =>
-                  changeHours((now) =>
-                    now.map((d, i) => (i === 1 ? d : (now[2] ?? DEFAULT)))
-                  )
-                }
-                style={[styles.chip, { backgroundColor: palette.ink }]}
-              >
-                <Text
-                  style={[text(15, 'SemiBold', 1.2), { color: palette.bg }]}
-                >
-                  Copiar terça para a semana
-                </Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                // Domingo igual ao sábado.
-                onPress={() =>
-                  changeHours((now) =>
-                    now.map((d, i) => (i === 0 ? (now[6] ?? null) : d))
-                  )
-                }
-                style={[styles.chip, { backgroundColor: palette.mark }]}
-              >
-                <Text
-                  style={[text(15, 'SemiBold', 1.2), { color: palette.ink }]}
-                >
-                  Fim de semana igual
-                </Text>
-              </Pressable>
-            </View>
-            <View>
-              <HardShadow color={palette.drop} offset={4} radius={20} />
-              <View style={[styles.week, { backgroundColor: palette.card }]}>
-                {ORDER.map((day) => {
-                  const slot = hours[day] ?? null
-                  return (
-                    <Pressable
-                      key={day}
-                      accessibilityRole="switch"
-                      accessibilityState={{ checked: Boolean(slot) }}
-                      accessibilityLabel={`${LETTERS[day]}: ${slot ? `${slot.opens} às ${slot.closes}` : 'fechado'}`}
-                      onPress={() => {
-                        haptic.select()
-                        changeHours((now) =>
-                          now.map((d, i) =>
-                            i === day ? (d ? null : DEFAULT) : d
-                          )
-                        )
-                      }}
-                      style={styles.day}
+            {askHours ? (
+              <>
+                <View style={styles.chips}>
+                  <Pressable
+                    accessibilityRole="button"
+                    // Terça em todos os dias, menos a segunda (costuma fechar).
+                    onPress={() =>
+                      changeHours((now) =>
+                        now.map((d, i) => (i === 1 ? d : (now[2] ?? DEFAULT)))
+                      )
+                    }
+                    style={[styles.chip, { backgroundColor: palette.ink }]}
+                  >
+                    <Text
+                      style={[text(15, 'SemiBold', 1.2), { color: palette.bg }]}
                     >
-                      <Text
-                        style={[styles.dayLetter, { color: palette.muted }]}
-                      >
-                        {LETTERS[day]}
-                      </Text>
-                      <View
-                        style={[
-                          styles.dayBar,
-                          {
-                            height: slot ? 64 : 6,
-                            backgroundColor: slot ? palette.ink : palette.mark
-                          }
-                        ]}
-                      />
-                      <Text style={[styles.dayHours, { color: palette.muted }]}>
-                        {slot
-                          ? `${slot.opens.slice(0, 2)}-${slot.closes.slice(0, 2)}`
-                          : 'fechado'}
-                      </Text>
-                    </Pressable>
-                  )
-                })}
-              </View>
-            </View>
-            <Text
-              style={[
-                text(13.5, 'Regular', 1.4),
-                { color: palette.muted, marginTop: -6 }
-              ]}
-            >
-              Toque num dia para abrir ou fechar. Os horários de cada dia se
-              ajustam no painel do site.
-            </Text>
+                      Copiar terça para a semana
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    // Domingo igual ao sábado.
+                    onPress={() =>
+                      changeHours((now) =>
+                        now.map((d, i) => (i === 0 ? (now[6] ?? null) : d))
+                      )
+                    }
+                    style={[styles.chip, { backgroundColor: palette.mark }]}
+                  >
+                    <Text
+                      style={[
+                        text(15, 'SemiBold', 1.2),
+                        { color: palette.ink }
+                      ]}
+                    >
+                      Fim de semana igual
+                    </Text>
+                  </Pressable>
+                </View>
+                <View>
+                  <HardShadow color={palette.drop} offset={4} radius={20} />
+                  <View
+                    style={[styles.week, { backgroundColor: palette.card }]}
+                  >
+                    {ORDER.map((day) => {
+                      const slot = hours[day] ?? null
+                      return (
+                        <Pressable
+                          key={day}
+                          accessibilityRole="switch"
+                          accessibilityState={{ checked: Boolean(slot) }}
+                          accessibilityLabel={`${LETTERS[day]}: ${slot ? `${slot.opens} às ${slot.closes}` : 'fechado'}`}
+                          onPress={() => {
+                            haptic.select()
+                            changeHours((now) =>
+                              now.map((d, i) =>
+                                i === day ? (d ? null : DEFAULT) : d
+                              )
+                            )
+                          }}
+                          style={styles.day}
+                        >
+                          <Text
+                            style={[styles.dayLetter, { color: palette.muted }]}
+                          >
+                            {LETTERS[day]}
+                          </Text>
+                          <View
+                            style={[
+                              styles.dayBar,
+                              {
+                                height: slot ? 64 : 6,
+                                backgroundColor: slot
+                                  ? palette.ink
+                                  : palette.mark
+                              }
+                            ]}
+                          />
+                          <Text
+                            style={[styles.dayHours, { color: palette.muted }]}
+                          >
+                            {slot
+                              ? `${slot.opens.slice(0, 2)}-${slot.closes.slice(0, 2)}`
+                              : 'fechado'}
+                          </Text>
+                        </Pressable>
+                      )
+                    })}
+                  </View>
+                </View>
+                <Text
+                  style={[
+                    text(13.5, 'Regular', 1.4),
+                    { color: palette.muted, marginTop: -6 }
+                  ]}
+                >
+                  Toque num dia para abrir ou fechar. Os horários de cada dia se
+                  ajustam no painel do site.
+                </Text>
+              </>
+            ) : null}
             {owner.elite ? (
               <>
                 <Text style={[styles.mono, { color: palette.muted }]}>
