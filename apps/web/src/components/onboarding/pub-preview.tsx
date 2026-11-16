@@ -22,6 +22,7 @@ export function PubPreview({
   photoUrl,
   plan,
   game,
+  opening,
   note
 }: {
   name: string
@@ -42,6 +43,8 @@ export function PubPreview({
    * enquanto não há. Ausente no cadastro, que ainda não tem jogo.
    */
   game?: { when: string; title: string } | null
+  /** "aberto agora · até 00:00", do passo Horário; sem horário, nada. */
+  opening?: string | null
   note: string
 }) {
   const where = [address.trim(), neighborhood.trim(), city.trim()]
@@ -72,10 +75,14 @@ export function PubPreview({
         </div>
         <div className="ob-pin">
           <b>{name.trim() || 'Seu bar'}</b>
-          {where ? (
+          {where || opening ? (
             <p className="ob-pwhere">
               <Pin size={14} />
-              <span>{where}</span>
+              <span>
+                {where}
+                {where && opening ? ' · ' : null}
+                {opening ? <mark>{opening}</mark> : null}
+              </span>
             </p>
           ) : null}
           {about ? <p className="ob-pabout">{about}</p> : null}

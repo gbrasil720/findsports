@@ -7,6 +7,12 @@ import {
   ehUf,
   motivoTelefoneInvalido
 } from '@findsports_oficial/api/lib/bar-profile-validation'
+import {
+  groupOpeningHours,
+  type OpeningHours,
+  openingTurn,
+  weekdayName
+} from '@findsports_oficial/api/lib/opening-hours'
 import { ONBOARDING_TRIAL } from '@findsports_oficial/api/lib/plan-limits'
 import {
   DEFAULT_ROUTINE,
@@ -19,6 +25,7 @@ import { toast } from 'sonner'
 import { Pin, Star, Tv } from '@/components/landing/v3/icons'
 import { OnboardingNavigation } from '@/components/onboarding/onboarding-navigation'
 import { PubAmenitiesStep } from '@/components/onboarding/pub-amenities-step'
+import { PubHoursStep } from '@/components/onboarding/pub-hours-step'
 import { PubInfoForm } from '@/components/onboarding/pub-info-form'
 import { PubObShell } from '@/components/onboarding/pub-ob-shell'
 import { PubPreview, PubWelcomeTv } from '@/components/onboarding/pub-preview'
@@ -28,6 +35,7 @@ import {
   useFinishPubSignup
 } from '@/components/onboarding/pub-receipt'
 import { PubRoutineStep } from '@/components/onboarding/pub-routine-step'
+import { horario } from '@/components/painel/espaco-rascunho'
 import { EscolhaTimesDaCasa } from '@/components/painel/times-da-casa'
 import type { FavoriteTeam } from '@/components/sports/team-picker'
 import { conciliarUfComCidade } from '@/components/uf-select'
@@ -77,10 +85,29 @@ const STEPS = [
   'Boas-vindas',
   'Estabelecimento',
   'Características',
+  'Horário',
   'Sua rotina',
   'Revisão'
 ] as const
-const REVIEW_STEP = 4
+const HOURS_STEP = 3
+const ROUTINE_STEP = 4
+const REVIEW_STEP = 5
+
+const semHorario = (): OpeningHours => Array.from({ length: 7 }, () => null)
+
+/** A linha da prévia, como a página do bar diz agora (Brasília). */
+function linhaDoHorario(hours: OpeningHours | null) {
+  const turn = openingTurn(hours, new Date())
+  if (!turn) return null
+  if (turn.open) return `aberto agora · até ${turn.closes}`
+  const dia =
+    turn.inDays === 0
+      ? 'hoje'
+      : turn.inDays === 1
+        ? 'amanhã'
+        : weekdayName(turn.day)
+  return `fechado agora · abre ${dia} às ${turn.opens}`
+}
 
 const WELCOME_FEATURES: [ReactNode, string, string][] = [
   [
@@ -136,6 +163,10 @@ function PubOnboarding() {
   const [routine, setRoutine] = useState<Routine>(DEFAULT_ROUTINE)
   // "Times da casa" (WEB-433), opcional, junto da rotina.
   const [houseTeams, setHouseTeams] = useState<FavoriteTeam[]>([])
+  // "Horário", opcional: a semana toda fechada é "não informado", e o
+  // `completePub` não grava nada. Validação e formato são os de Meu espaço.
+  const [hours, setHours] = useState<OpeningHours>(semHorario)
+  const hoursCheck = horario(hours, null)
   const [receipt, setReceipt] = useState<PubReceiptData | null>(null)
   const [leaving, setLeaving] = useState(false)
   const finishSignup = useFinishPubSignup()
@@ -187,6 +218,7 @@ function PubOnboarding() {
       amenities: amenities.length > 0 ? amenities : undefined,
       screenCount: screenCount ?? undefined,
       routine,
+      openingHours: hoursCheck.valor ?? undefined,
       ...(houseTeams.length
         ? { houseTeams, houseTeamIds: houseTeams.map((t) => t.id) }
         : {})
@@ -203,7 +235,8 @@ function PubOnboarding() {
       amenities,
       screenCount,
       routine,
-      houseTeams
+      houseTeams,
+      hoursCheck.valor
     ]
   )
 
@@ -306,6 +339,7 @@ function PubOnboarding() {
     setPhoneError(motivoTelefoneInvalido(salvo.phone))
     setRoutine(salvo.routine ?? DEFAULT_ROUTINE)
     setHouseTeams(salvo.houseTeams ?? [])
+    setHours(salvo.openingHours ?? semHorario())
     setDraftRestored(true)
     setStep(Math.min(salvo.step ?? 1, STEPS.length - 1))
   }, [contaEmail, setCep])
@@ -365,6 +399,7 @@ function PubOnboarding() {
     setPhoneError(null)
     setError(null)
     setRoutine(DEFAULT_ROUTINE)
+    setHours(semHorario())
     setDraftRestored(false)
   }
 
@@ -429,6 +464,7 @@ function PubOnboarding() {
     if (step === 2 && motivoTelasInvalido(screenCount) !== null) {
       return 'Para continuar, corrija o número de telas.'
     }
+    if (step === HOURS_STEP && hoursCheck.erro) return hoursCheck.erro
     return null
   })()
   const canAdvance = blockedHint === null
@@ -550,8 +586,18 @@ function PubOnboarding() {
       empty: 'Nada marcado · você marca depois no painel'
     },
     {
+      label: 'Horário',
+      to: HOURS_STEP,
+      values: hoursCheck.valor
+        ? groupOpeningHours(hoursCheck.valor).map(
+            (row) => `${row.days} ${row.hours ?? 'fechado'}`
+          )
+        : [],
+      empty: 'Não informado · você preenche depois em Meu espaço'
+    },
+    {
       label: 'Sua rotina',
-      to: 3,
+      to: ROUTINE_STEP,
       values: [
         `${routine.games} ${routine.games === 1 ? 'jogo' : 'jogos'} por mês`,
         `R$ ${routine.spend} por cliente`
@@ -563,6 +609,10 @@ function PubOnboarding() {
     <PubObShell
       steps={STEPS}
       step={step}
+      // O Horário pulado não ganha o visto; os outros, como sempre.
+      done={STEPS.map((_, i) =>
+        i === HOURS_STEP ? hoursCheck.valor !== null : i < step
+      )}
       tv={step === 0}
       aside={
         step === 0 ? (
@@ -578,10 +628,13 @@ function PubOnboarding() {
             amenities={amenities}
             screenCount={screenCount}
             photoUrl={photoUrl}
+            opening={linhaDoHorario(hoursCheck.erro ? null : hoursCheck.valor)}
             note={
               step === REVIEW_STEP
                 ? 'Logo depois de ir ao ar, você publica o primeiro jogo e vê o bar assim, com o jogo, no Explorar e na página do bar.'
-                : 'Prévia do card do seu bar. Ela muda enquanto você preenche.'
+                : step === HOURS_STEP
+                  ? 'Sem horário, a linha “aberto agora” não aparece e o painel lembra você de preencher.'
+                  : 'Prévia do card do seu bar. Ela muda enquanto você preenche.'
             }
           />
         )
@@ -687,7 +740,23 @@ function PubOnboarding() {
           </>
         )}
 
-        {step === 3 && (
+        {step === HOURS_STEP && (
+          <>
+            <span className="ob-kick">Opcional · dá pra pular</span>
+            {heading(
+              <>
+                Quando o bar <span className="hl">abre?</span>
+              </>
+            )}
+            <p className="ob-sub">
+              Com o horário, a página do bar mostra “aberto agora” para quem
+              está decidindo onde ver o jogo.
+            </p>
+            <PubHoursStep hours={hours} onChange={setHours} />
+          </>
+        )}
+
+        {step === ROUTINE_STEP && (
           <>
             {heading(
               <>
@@ -773,6 +842,18 @@ function PubOnboarding() {
             : undefined
         }
         lastLabel={revisao.botao}
+        skip={
+          step === HOURS_STEP
+            ? {
+                label: 'Pular por agora',
+                onSkip: () => {
+                  setHours(semHorario())
+                  setError(null)
+                  setStep(ROUTINE_STEP)
+                }
+              }
+            : undefined
+        }
       />
     </PubObShell>
   )
