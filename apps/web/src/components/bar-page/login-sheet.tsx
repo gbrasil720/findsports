@@ -2,7 +2,12 @@ import type { PublicGame } from '@findsports_oficial/api/lib/public-bar-page'
 import { useNavigate, useRouter } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 
-import { acaoTexto, guardarAcao, lerAcao } from '@/components/torcedor/acao'
+import {
+  AVISO_LINK,
+  acaoTexto,
+  guardarAcao,
+  lerAcao
+} from '@/components/torcedor/acao'
 import { useTurnstile } from '@/components/turnstile'
 import { authClient } from '@/lib/auth-client'
 import { PENDING_VERIFICATION_KEY } from '@/lib/pending-verification'
@@ -337,8 +342,7 @@ export function ConfirmSheet({
         </span>
       </div>
       <p className="alt" style={{ marginTop: 18 }}>
-        Este link pede para fazer isso na sua conta. Se não foi você quem pediu,
-        é só fechar.
+        {AVISO_LINK}
       </p>
       <div className="form">
         <button

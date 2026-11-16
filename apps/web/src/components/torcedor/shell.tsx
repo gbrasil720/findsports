@@ -17,6 +17,7 @@ import { getUserFacingMessage } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import {
   type Acao,
+  AVISO_LINK,
   CONFIRMAR,
   destinoContaNova,
   esquecerAcao,
@@ -622,10 +623,7 @@ function CartaoConfirmar({
               : ''}
           </span>
         ) : null}
-        <span id="cf-d">
-          Este link pede para fazer isso na sua conta. Se não foi você quem
-          pediu, é só ignorar.
-        </span>
+        <span id="cf-d">{AVISO_LINK}</span>
       </span>
       <span className="ac">
         <button

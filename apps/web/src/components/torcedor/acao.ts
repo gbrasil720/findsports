@@ -90,6 +90,10 @@ export function tomarAcaoPendente(acao: Acao, agora = Date.now()): boolean {
   }
 }
 
+/** A frase do cartão de confirmação, na casca e na página do bar (dono, 16/11/2026). */
+export const AVISO_LINK =
+  'Este link pede para fazer isso na sua conta. Se não foi você quem pediu, é só ignorar.'
+
 /** A pergunta do cartão de confirmação, quando a ação não foi guardada aqui. */
 export const CONFIRMAR: Record<Acao['tipo'], [string, string]> = {
   vou: ['Marcar presença neste jogo?', 'Marcar presença'],
