@@ -7,7 +7,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { EASE, haptic } from '@/components/motion'
 import { usePalette } from '@/components/theme'
-import { Text, text } from '@/components/ui'
+import { DISPLAY_FONT_SCALE, Text, text } from '@/components/ui'
 
 /**
  * O seletor da rodada 4 (`.seg2`): Próximos / Anteriores, Já fui / Salvos /
@@ -69,8 +69,13 @@ export function Segmented<T extends string>({
             }}
             style={styles.cell}
           >
+            {/* A célula tem largura fixa: o rótulo encolhe para caber em vez de
+                virar "Preferên…" com a letra grande. */}
             <Text
               numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+              maxFontSizeMultiplier={small ? 1.1 : DISPLAY_FONT_SCALE}
               style={[
                 text(small ? 12.5 : 14, 'SemiBold', 1.2),
                 { color: on ? palette.bg : palette.ink }
@@ -94,5 +99,11 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18
   },
-  cell: { flex: 1, height: 36, alignItems: 'center', justifyContent: 'center' }
+  cell: {
+    flex: 1,
+    height: 36,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center'
+  }
 })
