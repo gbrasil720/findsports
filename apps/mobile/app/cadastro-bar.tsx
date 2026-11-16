@@ -13,7 +13,6 @@ import { HardShadow } from '@/components/explore'
 import { DotField } from '@/components/fan-card'
 import { haptic } from '@/components/motion'
 import {
-  HOUR_PRESETS,
   HoursEditor,
   todayLine,
   type Week,
@@ -91,7 +90,11 @@ export default function CadastroBar() {
   const [screens, setScreens] = useState(1)
   // Nasce no atalho "Fim de semana diferente", como no desenho; só vai para o
   // servidor se o dono tocar em "Continuar" no passo (pular não manda nada).
-  const [hours, setHours] = useState<Week>(HOUR_PRESETS[1]?.week ?? [])
+  // Nada pré-escolhido: horário inventado viraria dado do bar. Sem nenhum dia
+  // aberto, "Continuar" vale como pular.
+  const [hours, setHours] = useState<Week>(() =>
+    Array.from({ length: 7 }, () => null)
+  )
   const [hoursSet, setHoursSet] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [done, setDone] = useState<{ at: number } | null>(
@@ -257,7 +260,7 @@ export default function CadastroBar() {
           name={name.trim() || 'Seu bar'}
           address={address ? `${address}${hood ? ` · ${hood}` : ''}` : null}
           tags={tags}
-          hours={step === 'hours' || hoursSet ? todayLine(hours) : null}
+          hours={hours.some(Boolean) ? todayLine(hours) : null}
           lit={
             step === 'place'
               ? 'address'
@@ -623,7 +626,7 @@ export default function CadastroBar() {
           onPress={() => {
             haptic.select()
             if (step === 'review') return submit()
-            if (step === 'hours') setHoursSet(true)
+            if (step === 'hours') setHoursSet(hours.some(Boolean))
             setStep(ORDER[index + 1] as Step)
           }}
         >
