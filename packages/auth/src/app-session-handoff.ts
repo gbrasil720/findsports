@@ -32,6 +32,28 @@ export async function sha256Hex(value: string) {
     .join('')
 }
 
+/**
+ * As rotas em que o `expo()` põe o cookie na URL de volta ao app (o mesmo
+ * `matcher` dele, `@better-auth/expo`). Todas passam por aqui, mesmo as que
+ * ainda não usamos (login social, "Entrar com a Apple", magic link): o cookie
+ * sai de todas, e o código só nasce onde o app mandou `?c=`.
+ */
+export const carriesAppCookie = (path: string | undefined) =>
+  !!(
+    path?.startsWith('/callback') ||
+    path?.startsWith('/oauth2/callback') ||
+    path?.startsWith('/magic-link/verify') ||
+    path?.startsWith('/verify-email')
+  )
+
+/** Igualdade sem atalho no primeiro caractere diferente (tempo constante). */
+export function sameString(a: string, b: string) {
+  if (a.length !== b.length) return false
+  let diff = 0
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  return diff === 0
+}
+
 /** O endereço de volta é do app (não http/https)? */
 function appLocation(location: string | null | undefined) {
   if (!location) return null
@@ -49,7 +71,7 @@ export const appSessionHandoff = () =>
     hooks: {
       after: [
         {
-          matcher: (ctx) => ctx.path === '/verify-email',
+          matcher: (ctx) => carriesAppCookie(ctx.path),
           handler: createAuthMiddleware(async (ctx) => {
             const headers = ctx.context.responseHeaders
             const url = appLocation(headers?.get('location'))
@@ -94,7 +116,7 @@ export const appSessionHandoff = () =>
             !row ||
             !stored ||
             row.expiresAt < new Date() ||
-            (await sha256Hex(ctx.body.verifier)) !== stored.challenge
+            !sameString(await sha256Hex(ctx.body.verifier), stored.challenge)
           ) {
             throw new APIError('BAD_REQUEST', {
               message: 'Este link já foi usado ou venceu.',
