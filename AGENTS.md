@@ -472,6 +472,17 @@ Brasília): se o assunto mostrado hoje saiu da fila (resolvido, dispensado ou fo
 plano), nada aparece até amanhã, sem mexer nas mutations de cada campo. Bar fora do ar
 não tem alerta.
 
+No web, `AlertaDePerfil` (`components/painel/alerta-perfil.tsx`, montado no layout
+`routes/admin.tsx` acima do `<Outlet />`): caixa amarela (tokens `--warn-*` do `.pn3`, a
+única cor amarela do painel), título, porquê e o link sublinhado para Meu espaço no campo
+(`/admin/meu-espaco#esp-hor`, `#esp-wpp`, `#esp-oferta`, `#esp-menu`, `#esp-desc`,
+`#esp-tdc`; `irParaCampo` rola e foca). O X é otimista, com o aviso "Lembramos de novo em
+<dia>"; falha devolve o alerta. Fica fora de Meu espaço e durante o passeio, e cede em Hoje
+ao card "Primeiros passos" (`usePrimeirosPassosVisivel`) e aos avisos do plano (fora do ar,
+teste, limite, plano parado; `usePlanAvisosVisiveis`) e em Jogos ao do limite. Só lê quando
+pode mostrar (a leitura grava `shown_on`); erro não mostra nada. Meu espaço e Times da casa
+invalidam `getProfileAlert` ao salvar.
+
 ### Avisos por e-mail do bar (WEB-441)
 
 Em `/admin/configuracoes` → Avisos por e-mail o dono liga e desliga três e-mails
