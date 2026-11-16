@@ -19,56 +19,47 @@ import { trpc } from '@/lib/trpc'
  * O alerta de perfil do bar (o `.wa` do painel web): um assunto por vez, no
  * topo das telas do dono, menos Meu espaço. A fila e o "Agora não" de 3 dias
  * são do servidor (`pub.getProfileAlert`, `pub.dismissProfileAlert`); erro ao
- * ler não mostra nada. O link abre Meu espaço na aba do assunto; o app não
- * edita oferta nem cardápio (ficam no painel do site), então esses abrem a
- * aba mais perto.
+ * ler não mostra nada. O app pede a fila sem WhatsApp e cardápio (`SKIP`,
+ * resolvidos no painel do site): horário, oferta e descrição abrem o passo
+ * de completar-perfil; os times, Meu espaço na seção deles.
  */
+
+const SKIP: ProfileAlert[] = ['whatsapp', 'cardapio']
 
 type Copy = {
   title: string
   body: string
   cta: string
-  aba: 'dados' | 'horario' | 'codigo'
-  secao?: 'times'
+  href:
+    | { pathname: '/completar-perfil'; params: { passo: '2' | '3' } }
+    | { pathname: '/meu-espaco'; params: { aba: 'dados'; secao?: 'times' } }
 }
 
-const COPY: Record<ProfileAlert, Copy> = {
+// WhatsApp e cardápio ficam de fora: o servidor não os manda ao app.
+const COPY: Partial<Record<ProfileAlert, Copy>> = {
   horario: {
     title: 'Seu bar está sem horário de funcionamento',
     body: 'Sem ele, o app não mostra se vocês estão abertos agora.',
     cta: 'Informar horário',
-    aba: 'horario'
-  },
-  whatsapp: {
-    title: 'O botão de WhatsApp não aparece no seu perfil',
-    body: 'Confirme que o telefone do bar recebe mensagem para o torcedor poder chamar.',
-    cta: 'Confirmar WhatsApp',
-    aba: 'dados'
+    href: { pathname: '/completar-perfil', params: { passo: '3' } }
   },
   oferta: {
     title: 'Seu bar está sem oferta da casa',
     body: 'Quem filtra por “Oferta da casa” na busca não encontra o seu bar.',
     cta: 'Escrever a oferta',
-    aba: 'codigo'
-  },
-  cardapio: {
-    title: 'Seu bar está sem cardápio',
-    body: 'Com o link, o torcedor confere o que tem e quanto custa antes de sair de casa.',
-    cta: 'Adicionar cardápio',
-    aba: 'dados'
+    href: { pathname: '/completar-perfil', params: { passo: '3' } }
   },
   descricao: {
     title: 'Seu perfil está sem descrição',
     body: 'Duas linhas sobre a casa em dia de jogo ajudam quem não conhece a escolher.',
     cta: 'Escrever descrição',
-    aba: 'dados'
+    href: { pathname: '/completar-perfil', params: { passo: '2' } }
   },
   times: {
     title: 'Você ainda não marcou os times da casa',
     body: 'Os jogos deles passam a vir primeiro nas sugestões da semana.',
     cta: 'Escolher os times',
-    aba: 'dados',
-    secao: 'times'
+    href: { pathname: '/meu-espaco', params: { aba: 'dados', secao: 'times' } }
   }
 }
 
@@ -98,7 +89,7 @@ export function useProfileAlert() {
   const router = useRouter()
   const reduced = useReducedMotion()
   const soon = useSoon()
-  const query = useQuery(trpc.pub.getProfileAlert.queryOptions())
+  const query = useQuery(trpc.pub.getProfileAlert.queryOptions({ skip: SKIP }))
   // Some na hora do "Agora não"; falha no servidor traz de volta.
   const [hidden, setHidden] = useState<ProfileAlert | null>(null)
   const dismiss = useMutation(
@@ -151,10 +142,7 @@ export function useProfileAlert() {
             accessibilityRole="link"
             onPress={() => {
               haptic.light()
-              router.push({
-                pathname: '/meu-espaco',
-                params: { aba: copy.aba, secao: copy.secao }
-              })
+              router.push(copy.href)
             }}
             style={[
               text(13.5, 'SemiBold', 1.4),
