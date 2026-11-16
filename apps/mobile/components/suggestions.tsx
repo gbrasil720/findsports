@@ -690,7 +690,7 @@ export function DeckButtons({
     const d = drag.get()
     return { transform: [{ scale: d > 0 ? 1 + 0.12 * d : 1 + 0.08 * d }] }
   })
-  const card = dark ? '#1c1c18' : '#fbf9f4'
+  const card = dark ? '#1c1c18' : '#faf8f3'
   const drop = dark ? '#000' : 'rgba(18,18,15,.09)'
   const ink = dark ? PAPER : INK
   return (

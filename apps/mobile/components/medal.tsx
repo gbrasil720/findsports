@@ -69,7 +69,7 @@ export function useMedalPalette() {
     drop: p.dark ? 'rgba(0,0,0,.6)' : p.shadow,
     glow: p.dark ? 'rgba(201,241,53,.22)' : 'rgba(201,241,53,.85)',
     fill: p.dark ? ACID : INK,
-    track: p.dark ? '#2c2c27' : p.mark,
+    track: p.dark ? '#2a2a25' : p.mark,
     body: p.dark ? '#d6d3cb' : '#3d3d38',
     edge: p.dark ? 'rgba(241,238,230,.10)' : 'rgba(18,18,15,.12)',
     pick: p.dark ? 'rgba(201,241,53,.1)' : 'rgba(201,241,53,.45)',

@@ -504,7 +504,7 @@ const styles = StyleSheet.create({
   coverTrack: {
     height: 5,
     borderRadius: 3,
-    backgroundColor: '#2c2c27',
+    backgroundColor: '#2a2a25',
     overflow: 'hidden',
     marginTop: 4
   },

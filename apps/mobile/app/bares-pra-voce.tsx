@@ -959,7 +959,7 @@ function ToggleRow({
           {sub}
         </Text>
       </View>
-      <Switch on={on} off={palette.dark ? '#2a2a25' : '#d9d5cc'} />
+      <Switch on={on} off={palette.dark ? '#2a2a25' : '#d6d3cb'} />
     </Pressable>
   )
 }
@@ -1627,7 +1627,7 @@ function Locate({
               styles.hood,
               {
                 borderColor: palette.line,
-                backgroundColor: dark ? '#1c1c18' : '#ebe7de'
+                backgroundColor: dark ? '#1c1c18' : '#ebe8df'
               }
             ]}
           >

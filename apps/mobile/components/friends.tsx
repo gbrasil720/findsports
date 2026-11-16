@@ -51,14 +51,14 @@ export function Avatar({
   const bg =
     tone === 'me'
       ? palette.dark
-        ? '#34342e'
+        ? '#34342d'
         : INK
       : tone === 'acid'
         ? ACID
         : tone === 'ink'
           ? palette.ink
           : palette.dark
-            ? '#34342e'
+            ? '#34342d'
             : '#e7e3db'
   const fg =
     tone === 'me'

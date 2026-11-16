@@ -1036,7 +1036,7 @@ function blockColors(
 ) {
   if (first) return { bg: ACID, fg: INK }
   // Fora do celular, no escuro, o seu degrau é o grafite do A05, não papel.
-  if (me && wide && palette.dark) return { bg: '#34342e', fg: PAPER }
+  if (me && wide && palette.dark) return { bg: '#34342d', fg: PAPER }
   if (me) return { bg: palette.ink, fg: palette.bg }
   return { bg: palette.mark, fg: palette.ink }
 }
@@ -1773,7 +1773,7 @@ const styles = StyleSheet.create({
     color: ACID,
     marginVertical: -16
   },
-  coverTrack: { height: 6, backgroundColor: '#2c2c27' },
+  coverTrack: { height: 6, backgroundColor: '#2a2a25' },
   coverPill: { position: 'absolute', right: 22, width: 160 },
 
   top: {

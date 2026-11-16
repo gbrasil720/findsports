@@ -1315,7 +1315,7 @@ function Saved({
 
 /** A barra do resumo: acid o bairro com mais bares, papel o segundo, cinza o resto. */
 const segmentColor = (palette: Palette, i: number) =>
-  i === 0 ? ACID : i === 1 ? palette.ink : palette.dark ? '#55554f' : '#c9c5bc'
+  i === 0 ? ACID : i === 1 ? palette.ink : palette.dark ? '#55554f' : '#c9c7c0'
 
 function Bars({
   all,

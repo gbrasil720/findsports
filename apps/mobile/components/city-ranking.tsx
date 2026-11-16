@@ -280,7 +280,7 @@ export function OffGlobal({ data }: { data: CityOff }) {
                 Só nome, @usuário e número
               </Text>
             </View>
-            <Toggle on={on} off="#2c2c27" track={ACID} knob={INK} />
+            <Toggle on={on} off="#2a2a25" track={ACID} knob={INK} />
           </Pressable>
         </View>
       </Card>

@@ -113,7 +113,7 @@ export function BarTitle({
               <View
                 style={[
                   styles.badge,
-                  { backgroundColor: palette.dark ? '#2c2c27' : STONE }
+                  { backgroundColor: palette.dark ? '#2a2a25' : STONE }
                 ]}
               >
                 <Text style={[text(10.5, 'Bold', 1.2), { color: palette.ink }]}>
