@@ -219,6 +219,15 @@ Split by runtime boundary:
 - `packages/env/src/server.ts` — `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `LOCATIONIQ_API_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NODE_ENV`
 - `apps/web/src/lib/env.ts` — client-safe `VITE_*` vars only
 
+`TURNSTILE_SECRET_KEY` é obrigatória em produção com `PUBLIC_APP_URL` em `onside.sh`
+(o env recusa subir sem ela); no preview e no `vite dev` segue opcional.
+
+Campos de `user` que o servidor grava (`role` além de `fan`/`pub`, `stripeCustomerId`,
+`onboardingCompleted`, `twoFactorEnabled`, `banned`) levam `input: false` ou validador,
+senão `/sign-up/email` e `/update-user` os aceitam do cliente. Campo de plugin substitui
+o anterior inteiro: para mudar um, redeclare-o num plugin depois do que o criou
+(`packages/auth/src/index.ts`).
+
 **E-mail (WEB-476):** todo envio passa por `sendEmail`
 (`packages/auth/src/verification-email.ts`), um `POST <EMAIL_API_URL>/emails` no
 da MillionSend (plano Free da nuvem, 100 por dia). O provedor é `EMAIL_API_URL` (var do
@@ -690,7 +699,11 @@ próprio o `rewrite` do router tira o prefixo (`apps/web/src/lib/houdini-host.ts
 `www` o caminho `/houdini` dá 404 (admin é mandado para o host); no preview e no
 `vite dev` o Houdini responde em `/houdini`. Quem entra é decidido no servidor por
 `lib/houdini-gate.ts`: só admin com 2FA ligado; o resto recebe o 404 de verdade (a
-"Cortina"). Telas novas entram em `routes/houdini/_app/` e no grupo delas em
+"Cortina"). O 2FA é flag da conta (`user.twoFactorEnabled`, lida também por
+`adminProcedure` e `admin-guard.ts`), não da sessão: por isso ligar o 2FA encerra as
+outras sessões da conta (`packages/auth/src/two-factor-enable.ts`), e toda sessão
+seguinte passa pelo login com TOTP. Pelo mesmo motivo, em conta com 2FA o link de
+confirmação de e-mail só confirma, sem abrir sessão (`verify-email-two-factor.ts`). Telas novas entram em `routes/houdini/_app/` e no grupo delas em
 `HOUDINI_NAV_GROUPS` (`components/houdini/shell.tsx`). O visual é o redesign na
 linguagem da Onside (WEB-480, canvas https://claude.ai/artifact/DmzHetdEyDNRP3eWaXqzHz),
 todo em `components/houdini/houdini.css`, preso a `.houdini`: Anton, Archivo e Geist

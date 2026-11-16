@@ -49,7 +49,9 @@ import { stripeClient } from './stripe-client'
 import { planForLookupKey, STRIPE_PLANS } from './stripe-plan'
 import { syncStripeEvent } from './stripe-sync'
 import { APP_SCHEME, buildTrustedOrigins } from './trusted-origins'
+import { revokeOtherSessionsOnTwoFactorEnable } from './two-factor-enable'
 import { publicEmailUrl, sendVerificationEmail } from './verification-email'
+import { verifyEmailRespectsTwoFactor } from './verify-email-two-factor'
 
 /**
  * Verificação e reset recusados pelo orçamento de e-mail (`email-budget.ts`)
@@ -85,8 +87,9 @@ function cookieDomainFor(baseUrl: string): string | undefined {
  * `cf-connecting-ip` no Worker). Só vale para requisição HTTP: chamada por
  * `auth.api` não passa por ele (`captcha-scope.test.ts`).
  *
- * Sem `TURNSTILE_SECRET_KEY` o plugin nem entra — o deploy pode chegar antes
- * do segredo.
+ * Sem `TURNSTILE_SECRET_KEY` o plugin nem entra. Em produção no `onside.sh`
+ * o env recusa subir sem ele (`packages/env/src/server.ts`); o aviso abaixo
+ * fica para o preview e o resto.
  */
 function turnstilePlugin() {
   if (env.TURNSTILE_SECRET_KEY) {
@@ -114,6 +117,19 @@ function turnstilePlugin() {
   // tira dela o tipo de tupla, e a inferência dos campos do admin se perde.
   return { id: 'captcha-disabled' }
 }
+
+/**
+ * `role` que o cadastro aceita do cliente: torcedor ou bar, nunca `admin`.
+ * Vale em `additionalFields` e no plugin que vem depois do admin(), para a
+ * recusa não depender da ordem nem da presença dos plugins.
+ */
+const SIGN_UP_ROLE_FIELD = {
+  type: 'string',
+  required: false,
+  defaultValue: 'fan',
+  input: true,
+  validator: { input: z.enum(['fan', 'pub']) }
+} as const
 
 /** WEB-390: o cookie do modo da pele, com o mesmo domínio do de sessão. */
 export function impersonationModeCookieOptions(expires: Date) {
@@ -334,12 +350,7 @@ export function createAuth() {
         afterDelete: (accountUser) => deleteStripeSubscriptionOf(accountUser.id)
       },
       additionalFields: {
-        role: {
-          type: 'string',
-          required: false,
-          defaultValue: 'fan',
-          input: true
-        },
+        role: SIGN_UP_ROLE_FIELD,
         onboardingCompleted: {
           type: 'boolean',
           required: false,
@@ -408,31 +419,20 @@ export function createAuth() {
     plugins: [
       turnstilePlugin(),
       twoFactor({ issuer: 'Onside' }),
+      revokeOtherSessionsOnTwoFactorEnable(),
+      // Antes do expo(): o link de confirmação não entra em conta com 2FA.
+      verifyEmailRespectsTwoFactor(),
       admin({
         adminRoles: ['admin'],
         defaultRole: 'fan'
       }),
-      // The admin() plugin above redefines `role` with `input: false`, which
-      // blocks clients from setting it at signup (error: "role is not
-      // allowed to be set"). Since plugin schemas merge in array order and
-      // later entries win, this plugin re-enables input but restricts the
-      // accepted values to non-privileged roles, preventing signup from
-      // self-escalating to `admin`.
+      // O admin() acima redeclara `role` com `input: false`, e o cadastro não
+      // conseguiria escolher torcedor ou bar. Campo de plugin substitui o
+      // anterior inteiro (o último vence), então este devolve a entrada com
+      // o mesmo `SIGN_UP_ROLE_FIELD` de `additionalFields`: só `fan` ou `pub`.
       {
         id: 'allow-role-on-signup',
-        schema: {
-          user: {
-            fields: {
-              role: {
-                type: 'string',
-                required: false,
-                defaultValue: 'fan',
-                input: true,
-                validator: { input: z.enum(['fan', 'pub']) }
-              }
-            }
-          }
-        }
+        schema: { user: { fields: { role: SIGN_UP_ROLE_FIELD } } }
       },
       // Cobrança pelo Stripe (WEB-31). O plugin cuida de checkout, portal e
       // da verificação da assinatura do webhook (`/stripe/webhook`); o estado
@@ -473,6 +473,23 @@ export function createAuth() {
           })
         }
       }),
+      // Depois do stripe(): ele declara `user.stripeCustomerId` sem
+      // `input: false`, e o cadastro e o `/update-user` o aceitavam do
+      // cliente. Quem grava é o servidor (plugin, checkout, Pix → cartão).
+      {
+        id: 'server-owned-stripe-customer',
+        schema: {
+          user: {
+            fields: {
+              stripeCustomerId: {
+                type: 'string',
+                required: false,
+                input: false
+              }
+            }
+          }
+        }
+      },
       sessionTokenGuard(),
       // O app nativo (`apps/mobile`): troca o cookie de navegador pela sessão
       // guardada no aparelho e aceita `onside://` como origem.

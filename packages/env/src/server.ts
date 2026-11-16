@@ -96,11 +96,12 @@ const rawEnv = createEnv({
      */
     LOCATIONIQ_API_KEY: z.string().min(1).optional(),
     /**
-     * Cloudflare Turnstile no cadastro, na recuperação de senha e no reenvio
-     * da verificação. Ausente, a verificação no servidor fica
-     * desligada (um log no boot de produção): o deploy pode chegar antes do
-     * segredo. Presente, o token passa a ser obrigatório — então a site key
-     * (`VITE_TURNSTILE_SITE_KEY`) precisa estar no build ANTES deste segredo.
+     * Cloudflare Turnstile no cadastro, no login, na recuperação de senha e
+     * no reenvio da verificação. Obrigatório em produção no domínio
+     * `onside.sh` (recusa logo abaixo). Fora dele, ausente, a verificação no
+     * servidor fica desligada (um log no boot de produção). Presente, o token
+     * passa a ser obrigatório — então a site key (`VITE_TURNSTILE_SITE_KEY`)
+     * precisa estar no build ANTES deste segredo.
      */
     TURNSTILE_SECRET_KEY: z.string().min(1).optional(),
     /**
@@ -174,6 +175,17 @@ if (
   /(^|\.)onside\.sh$/.test(new URL(rawEnv.PUBLIC_APP_URL).hostname)
 ) {
   throw new Error('EMAIL_DELIVERY=console recusada no domínio de produção.')
+}
+
+// Sem o Turnstile, cadastro, login e envios de e-mail ficam só com o limite
+// por IP. Em produção ele é obrigatório; o preview (outro domínio) segue livre.
+if (
+  rawEnv.NODE_ENV === 'production' &&
+  !rawEnv.TURNSTILE_SECRET_KEY &&
+  rawEnv.PUBLIC_APP_URL &&
+  /(^|\.)onside\.sh$/.test(new URL(rawEnv.PUBLIC_APP_URL).hostname)
+) {
+  throw new Error('TURNSTILE_SECRET_KEY é obrigatória no domínio de produção.')
 }
 
 // O preview e o `vite dev` não podem cobrar cartão de verdade: chave viva do
