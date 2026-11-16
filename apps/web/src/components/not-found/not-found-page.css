@@ -129,7 +129,8 @@
   width: max-content;
   padding-bottom: 7px;
   border-bottom: 1px solid var(--onside-live);
-  color: var(--onside-live);
+  /* Vermelho pequeno sobre papel: o `live-text`, que passa 4,5:1. */
+  color: var(--onside-live-text);
   font-family: var(--onside-body);
   font-size: 12px;
   font-weight: 700;
@@ -272,7 +273,7 @@
 }
 
 .onside-not-found-score strong {
-  color: var(--onside-live);
+  color: var(--onside-live-text);
   font-weight: 600;
 }
 
@@ -445,4 +446,15 @@
     opacity: 1;
     transform: none;
   }
+}
+
+/* Área de toque da marca: o alvo passa do desenho. */
+.onside-not-found-brand {
+  position: relative;
+}
+
+.onside-not-found-brand::before {
+  content: "";
+  position: absolute;
+  inset: -8px -4px;
 }
