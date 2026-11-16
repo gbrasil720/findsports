@@ -104,6 +104,7 @@ integrationTest('torcedor recebe os dados por e-mail', async () => {
     const data = attached(sent[0])
     expect(data.profile?.id).toBe(me)
     expect(data.profile?.email).toBe(`${me}@integration.invalid`)
+    expect(data.profile?.findableByEmail).toBe(true)
     expect(data.favoriteBars.map((f: { bar: string }) => f.bar)).toEqual([
       'Bar de integração'
     ])

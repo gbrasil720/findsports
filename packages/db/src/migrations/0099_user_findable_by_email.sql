@@ -1,0 +1,1 @@
+ALTER TABLE "user" ADD COLUMN "findable_by_email" boolean DEFAULT true NOT NULL;

@@ -1119,7 +1119,7 @@ invente layout que o projeto não tem.
   senha). Ligar troca a sessão: a lista de aparelhos é relida. O `@usuário`
   dos amigos se troca na Conta. Avisos segue o desenho com os controles desligados e o
   aviso de "em breve" (o push existe, mas sem preferência por tipo: ver "Push"); em Privacidade, "Onde você foi" funciona
-  (quem vê os bares e jogos, quem pode te adicionar), "Aparecer no ranking global" grava
+  (quem vê os bares e jogos, quem pode te adicionar, "Me encontrar pelo e-mail"), "Aparecer no ranking global" grava
   `user.ranking_global` (WEB-465), comunidades seguem "em breve", e "Baixar meus dados" pede o arquivo (`account.requestExport`, WEB-418): o
   servidor monta o JSON (perfil, preferências, favoritos, jogos, avaliações, amigos e
   conquistas; de outra pessoa, só nome e `@` de amigo; para bar, `barData`) e o manda de
@@ -1139,9 +1139,17 @@ invente layout que o projeto não tem.
   pelo `expo-camera`), `amigo/[id]` (11d: nível, o mês lado a lado, o jogo marcado com
   "Vou também", bares em comum, tudo pela privacidade da pessoa), `contatos` (a conta não
   tem telefone: o app manda o SHA-256 dos e-mails da agenda, pelo `expo-contacts/legacy`,
-  e só aparece quem aceita pedido de todos). Sugestões só de amigos de amigos. O link de
+  e só aparece quem deixou "Me encontrar pelo e-mail" ligado, `user.findable_by_email`,
+  padrão ligado, interruptor em Privacidade, dono em 16/11/2026, e aceita pedido de
+  todos; teto de 6000 hashes por dia por conta).
+  Sugestões só de amigos de amigos. A cidade de outra pessoa só sai na lista de amigos
+  aceitos (`overview`); busca, código, pedidos, sugestões, perfil e contatos a devolvem
+  nula, e a busca por nome não lista quem escolheu "Ninguém" para quem não tem nada com
+  ela. `byCode` e `joinByInvite` dividem 30 tentativas por hora. O link de
   convite é `/convite/<código>` no web (página `noindex` que abre `onside://convite/…`):
-  conta criada há menos de um dia já entra como amiga; sem conta, o app guarda o código
+  o convite manda um pedido a quem convidou, como pelo código (sem aceite direto: o
+  código é permanente e curto; aceite direto só com um convite de uso único, ainda por
+  fazer), pela regra de "Quem pode te adicionar"; sem conta, o app guarda o código
   (`savePendingInvite`) e as abas do torcedor aceitam depois (`usePendingInvite`).
   "Convidar" (comunidades) avisa "em breve". Pedido respondido e
   sugestão adicionada ficam na tela com o botão trocado até ela abrir de novo
@@ -1494,7 +1502,7 @@ invente layout que o projeto não tem.
 ### Falha de rede (WEB-460)
 
 Uma regra só para o painel e o app, em `packages/api/src/lib/transient-error.ts`: falha
-passageira (sem rede, timeout, 5xx, 429, página de gateway que não é JSON) tenta de novo
+passageira (sem rede, timeout, 5xx, página de gateway que não é JSON; 429 não, que repetir gasta a cota) tenta de novo
 com espera crescente (1 s, 2 s, 4 s); recusa da regra não repete. Mutation só repete
 sozinha se estiver em `IDEMPOTENT_MUTATIONS` (mandar duas vezes dá no mesmo; o porquê das
 que ficaram de fora está no comentário): mutation nova entra lá só depois de conferir no

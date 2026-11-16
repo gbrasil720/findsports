@@ -390,8 +390,9 @@ const styles = StyleSheet.create({
 })
 
 /**
- * O convite guardado por quem abriu o link antes de ter conta: aceito quando
- * a conta chega às abas do torcedor, com o perfil de quem convidou aberto.
+ * O convite guardado por quem abriu o link antes de ter conta: vira pedido de
+ * amizade quando a conta chega às abas do torcedor, com o perfil de quem
+ * convidou aberto.
  */
 export function usePendingInvite() {
   const router = useRouter()

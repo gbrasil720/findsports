@@ -58,7 +58,7 @@ function isRuleRefusal(
 }
 
 /**
- * Falha passageira (sem rede, timeout, 5xx, 429): a regra comum de web e app
+ * Falha passageira (sem rede, timeout, 5xx; 429 não): a regra comum de web e app
  * (WEB-460), em `@findsports_oficial/api/lib/transient-error`.
  */
 export const isRetryableError = isTransientError

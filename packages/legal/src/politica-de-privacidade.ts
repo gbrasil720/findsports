@@ -5,7 +5,7 @@ import type { LegalDocument } from './legal-types'
 export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
   kicker: 'Legal · Política de Privacidade',
   title: 'Política de privacidade',
-  updated: '7 de novembro de 2026',
+  updated: '16 de novembro de 2026',
   reading: '17 seções · ~18 min',
   intro: [
     'Privacidade não é página de rodapé para a gente. Esta Política explica, em português claro, quais dados a plataforma Onside coleta, por que coleta, com quem compartilha, por quanto tempo guarda e o que você pode exigir de nós a qualquer momento. Ela integra os nossos Termos de Uso e segue a Lei Geral de Proteção de Dados (Lei nº 13.709/2018).',
@@ -350,7 +350,17 @@ export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
               'Outros usuários, junto do seu conteúdo',
               'Sim — pode alterar nas configurações'
             ],
-            ['E-mail, telefone e cidade', 'Ninguém além de nós', '—'],
+            ['E-mail e telefone', 'Ninguém além de nós', '—'],
+            [
+              'Cidade',
+              'Só quem é seu amigo na Onside, na lista de amigos',
+              'Sim — pode alterar nas configurações'
+            ],
+            [
+              'Que você está na Onside, para quem já tem seu e-mail',
+              'Quem tem seu e-mail na agenda do celular e usa "Contatos" nos amigos do aplicativo: vê seu nome, @usuário e foto',
+              'Sim — "Me encontrar pelo e-mail", em Configurações › Privacidade, vem ligado e pode ser desligado'
+            ],
             ['Buscas, filtros e histórico', 'Ninguém além de nós', '—']
           ]
         },
@@ -359,6 +369,11 @@ export const POLITICA_DE_PRIVACIDADE: LegalDocument = {
           label: 'Atenção',
           content:
             'Avaliação é conteúdo público e permanente por natureza. Se você excluir a conta, as avaliações já publicadas podem ser mantidas de forma anonimizada, desvinculadas do seu nome, porque integram o histórico coletivo do estabelecimento. Essa retenção anonimizada tem base no legítimo interesse da comunidade de usuários em uma base de avaliações íntegra e no direito à informação do consumidor (art. 6º, III, do Código de Defesa do Consumidor), e não impede o exercício do seu direito de eliminação previsto no art. 18, VI, da LGPD quanto aos dados que a identificam. Se preferir apagá-las de vez, peça antes de excluir a conta.'
+        },
+        {
+          type: 'p',
+          content:
+            'Como funciona "Contatos": com a sua permissão, o aplicativo lê os e-mails da agenda do seu celular e manda à Onside só um código de cada um (o hash SHA-256), nunca o e-mail. Comparamos esses códigos com os das contas para sugerir amigos e não guardamos a lista. Só aparece quem deixou "Me encontrar pelo e-mail" ligado e aceita pedidos de amizade de qualquer pessoa, e cada conta tem um limite diário de contatos conferidos.'
         },
         {
           type: 'p',
