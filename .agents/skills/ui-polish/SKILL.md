@@ -104,7 +104,27 @@ App
 
 ### App (`apps/mobile`)
 
-Não há DOM para medir. `scan.ts` cobre o código; a tela se confere no simulador (seção "Ver a tela no simulador" do `AGENTS.md`): print a 3× ao lado do desenho em 390 × 844, claro e escuro, letra de acessibilidade no máximo, `idb` para toques e `recordVideo` para ver o movimento quadro a quadro. Tela nova entra no navegador DEV (`SECTIONS`).
+Não há DOM para medir, e o `idb` não devolve a árvore de acessibilidade no Expo Go. Então:
+
+1. `scan.ts apps/mobile/app apps/mobile/components` cobre o código (letra abaixo de 11 pt, `entering` no JSX, laço sem movimento reduzido, `Animated.Text` sem teto, cor fora da tabela).
+2. `app-shoot.ts` abre cada rota no simulador e tira o print no claro e no escuro, e monta folhas de contato de 8 telas:
+   ```bash
+   bun .agents/skills/ui-polish/scripts/app-shoot.ts /explore /voce/perfil /bar/<id> \
+     --metro exp://localhost:8081 --out <scratchpad>/app --label antes
+   bun .agents/skills/ui-polish/scripts/app-shoot.ts /configuracoes /bar/<id> /vou/<id> \
+     --metro exp://localhost:8081 --out <scratchpad>/app-grande --label g --themes light --large
+   ```
+   As rotas são as do navegador DEV (`apps/mobile/dev/navegador.tsx`). A sessão é a que estiver no aparelho.
+3. **`--large` é a passada que mais acha defeito**: a letra do sistema no maior tamanho fora dos de acessibilidade. Procure "…" onde não devia, palavra quebrada no meio (`21:` / `30`), peças uma por cima da outra e texto passando da borda. O conserto é na peça: `adjustsFontSizeToFit` com `numberOfLines={1}` no que tem largura fixa, o título cede (duas linhas) e o valor fica inteiro, e teto de escala (`maxFontSizeMultiplier`) no que tem altura fixa, como o cabeçalho do Explorar e o topo da página do bar.
+4. Abra na íntegra (não só na folha) toda tela que parecer estranha, e compare com o desenho em 390 × 844.
+
+Armadilhas do simulador:
+- Trocar o tamanho da letra com o app aberto deixa as telas já montadas com a medida antiga (abas viram "J…" sem estar cortadas). O `--large` reabre o app por isso. Leia só prints tirados depois da reabertura.
+- Tela aberta por link em cima de uma folha sai como folha, mais baixa: o botão do rodapé cortado nesse caso é do teste, não da tela.
+- Sessão de outro servidor guardada no aparelho mistura identidade (nome de uma conta, dados de outra, "Entrar" com conta). `xcrun simctl keychain <udid> reset` limpa, e aí é entrar de novo.
+- O web do `vite dev` escuta só em `::1`: para o simulador alcançar a API, suba com `--host ::`.
+
+Tela nova entra no navegador DEV (`SECTIONS`). Movimento se confere com `recordVideo`, quadro a quadro.
 
 ## As skills do Emil
 
