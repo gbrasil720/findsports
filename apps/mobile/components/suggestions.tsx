@@ -188,7 +188,13 @@ export function SuggestionCard({
       {behind && !reveal ? null : (
         <Reveal value={reveal}>
           <View style={styles.bottom}>
-            <Text style={styles.meta} numberOfLines={1}>
+            {/* Encolhe antes de cortar: o fim da linha é o "% voltariam". */}
+            <Text
+              style={styles.meta}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+            >
               {meta}
               {item.isExpandedRadius ? ' · FORA DO RAIO' : ''}
             </Text>

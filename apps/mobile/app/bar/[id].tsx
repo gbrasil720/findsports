@@ -89,7 +89,6 @@ import {
   DISPLAY_FONT_SCALE,
   Icon,
   INK,
-  MAX_FONT_SCALE,
   PAPER,
   Text,
   text,
@@ -110,6 +109,13 @@ import { shortTitle } from '@/lib/maintenance-ticker'
 import { MAP_STYLE } from '@/lib/map-style'
 import { formatCode } from '@/lib/my-games'
 import { trpc } from '@/lib/trpc'
+
+/*
+ * A foto do topo tem altura fixa e o texto cresce de baixo para cima: com a
+ * letra do sistema no máximo, "ELITE" subia até ficar atrás do selo "AO VIVO".
+ * O topo acompanha a letra só até aqui, como o cabeçalho do Explorar.
+ */
+const HERO_FONT_SCALE = 1.1
 
 /*
  * "Página do bar" (2g do design): a foto com o nome, o jogo de hoje no mesmo
@@ -1188,7 +1194,12 @@ export function BarDetail({
           {pinLive ? (
             <View style={[styles.liveBadge, { top: insets.top + 54 }]}>
               <View style={styles.liveBadgeDot} />
-              <Text style={styles.liveBadgeText}>AO VIVO</Text>
+              <Text
+                style={styles.liveBadgeText}
+                maxFontSizeMultiplier={HERO_FONT_SCALE}
+              >
+                AO VIVO
+              </Text>
             </View>
           ) : null}
           <View style={styles.heroText}>
@@ -1199,6 +1210,7 @@ export function BarDetail({
             {data?.plan === 'elite' ? (
               <View style={styles.eliteTag}>
                 <Text
+                  maxFontSizeMultiplier={HERO_FONT_SCALE}
                   style={{
                     fontFamily: 'GeistMono-SemiBold',
                     fontSize: 11,
@@ -1215,12 +1227,16 @@ export function BarDetail({
               numberOfLines={2}
               adjustsFontSizeToFit
               minimumFontScale={0.6}
+              maxFontSizeMultiplier={HERO_FONT_SCALE}
             >
               {(data?.name ?? name ?? '').toUpperCase()}
             </Text>
             {/* "aberto agora · até 02:00" em acid (2g); sem horário, nada. */}
             {turn ? (
-              <Text style={[styles.turn, { color: turn.open ? ACID : PAPER }]}>
+              <Text
+                style={[styles.turn, { color: turn.open ? ACID : PAPER }]}
+                maxFontSizeMultiplier={HERO_FONT_SCALE}
+              >
                 {/* Fechado em papel, não em vermelho: vermelho é só ao vivo. */}
                 {turn.open
                   ? `● aberto agora · até ${turn.closes}`
@@ -1233,7 +1249,7 @@ export function BarDetail({
               entering={SWAP}
               style={[text(15, 'Regular', 1.4), styles.info]}
               numberOfLines={2}
-              maxFontSizeMultiplier={MAX_FONT_SCALE}
+              maxFontSizeMultiplier={HERO_FONT_SCALE}
             >
               {heroInfo || ' '}
             </Animated.Text>
@@ -2186,7 +2202,7 @@ const styles = StyleSheet.create({
   },
   nxDay: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 10,
+    fontSize: 11,
     letterSpacing: 0.6,
     marginTop: 5
   },
