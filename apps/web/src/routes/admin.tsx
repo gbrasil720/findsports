@@ -17,6 +17,7 @@ import {
   getAnalyticsRange
 } from '@/components/admin/analytics-period'
 import { useMinuteNow } from '@/components/app/minute-tick'
+import { AlertaDePerfil } from '@/components/painel/alerta-perfil'
 import { PainelContext, PainelShell } from '@/components/painel/painel-shell'
 import { PasseioProvider } from '@/components/painel/passeio'
 import { getEventTemporalState } from '@/domain/events'
@@ -177,7 +178,10 @@ function AdminLayout() {
               ) : null}
             </div>
           ) : (
-            <Outlet />
+            <>
+              <AlertaDePerfil />
+              <Outlet />
+            </>
           )}
         </PainelShell>
       </PasseioProvider>

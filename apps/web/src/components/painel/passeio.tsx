@@ -676,6 +676,28 @@ function Destaque({
 
 /* ─── O card em Hoje ─── */
 
+function primeirosPassosVisivel(
+  g: ReturnType<typeof useGuia>,
+  ativo: PassoDoPasseio | null
+): boolean {
+  if (!g.bar || !g.novo || !g.pronto) return false
+  const feitos = g.itens.filter((i) => i.feito).length
+  // Escondido ou completo, some; durante o passeio fica, porque o fim aponta
+  // para ele.
+  return Boolean(ativo) || (!g.locais.oculto && feitos < g.itens.length)
+}
+
+/**
+ * O card está (ou pode estar) em Hoje: o alerta de perfil cede o lugar a ele.
+ * Bar novo ainda carregando conta como visível.
+ */
+export function usePrimeirosPassosVisivel(): boolean {
+  const g = useGuia()
+  const { ativo } = usePasseio()
+  if (g.novo && !g.pronto) return true
+  return primeirosPassosVisivel(g, ativo)
+}
+
 export function PrimeirosPassos() {
   const g = useGuia()
   const { ativo, comecar } = usePasseio()
@@ -683,11 +705,8 @@ export function PrimeirosPassos() {
   const link = useLinkDoBar(
     bar ?? ({ id: '', name: '', neighborhood: '' } as never)
   )
-  if (!bar || !g.novo || !g.pronto) return null
+  if (!bar || !primeirosPassosVisivel(g, ativo)) return null
   const feitos = itens.filter((i) => i.feito).length
-  // Escondido ou completo, some; durante o passeio fica, porque o fim aponta
-  // para ele.
-  if (!ativo && (locais.oculto || feitos === itens.length)) return null
 
   const plano = PLAN_NAMES[subscription?.plan ?? 'starter']
   const fim = fimDoTeste(subscription?.currentPeriodEnd)
