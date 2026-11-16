@@ -1171,17 +1171,26 @@ export const pubRouter = router({
   /**
    * Alerta de perfil incompleto do painel (web e app): um assunto por vez,
    * regras em `lib/profile-alert.ts`. A leitura marca o assunto como mostrado
-   * hoje, para o servidor perceber quando ele é resolvido.
+   * hoje, para o servidor perceber quando ele é resolvido. `skip` tira
+   * assuntos que a tela não resolve (o app pula WhatsApp e cardápio).
    */
-  getProfileAlert: pubProcedure.query(async ({ ctx }) => {
-    const existingBar = await getOwnBar(ctx.session.user.id)
-    return {
-      alert: await readProfileAlert(
-        existingBar.id,
-        existingBar.subscription ?? null
-      )
-    }
-  }),
+  getProfileAlert: pubProcedure
+    .input(
+      z
+        .object({ skip: z.array(z.enum(PROFILE_ALERTS)).max(6) })
+        .partial()
+        .optional()
+    )
+    .query(async ({ ctx, input }) => {
+      const existingBar = await getOwnBar(ctx.session.user.id)
+      return {
+        alert: await readProfileAlert(
+          existingBar.id,
+          existingBar.subscription ?? null,
+          input?.skip
+        )
+      }
+    }),
 
   /** "Agora não": o assunto some por 3 dias, na conta do bar. */
   dismissProfileAlert: pubProcedure
