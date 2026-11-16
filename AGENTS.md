@@ -253,8 +253,8 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   do ano), então o anual leva o segundo cupom, `FOUNDER_ANNUAL_COUPON_ID`
   (`fundador_anual`, R$ 280 por fatura, para sempre), pelo mesmo `discounts` do
   checkout (`checkoutParamsFor` com `annual`, vindo do
-  `subscription.upgrade({ annual })`). Mesmas 100 vagas: resgates dos dois cupons e
-  o Pix somam (`readFounderCoupon`). Sem vaga, o anual sai a preço de tabela, sem
+  `subscription.upgrade({ annual })`). Mesmas 100 vagas, cartão e Pix
+  (`readFounderCoupon`). Sem vaga, o anual sai a preço de tabela, sem
   código promocional. O teste do cadastro vale igual (`trial_end`). Na assinatura
   anual, `monthly_discount_reais` é o desconto da fatura do ano (280). O Pix também
   tem anual (ver "Pix anual" abaixo). `/plan` mostra Mensal/Anual para quem vai ao
@@ -276,8 +276,18 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   cupons valem em todos os planos, mensais e anuais, sem `applies_to`): o portal do
   Stripe deixa trocar de preço fora do nosso hook, então o webhook troca o cupom de
   fundador que não bate com o intervalo pelo do intervalo certo
-  (`fixFounderCouponInterval`, `stripe_founder_coupon_interval_fixed`; recusa do
-  Stripe vai ao log como `stripe_founder_coupon_interval_refused`).
+  (`fixFounderCouponInterval`, `stripe_founder_coupon_interval_fixed`), mantendo os
+  outros descontos e com chave de idempotência por desconto errado. Stripe recusando
+  o cupom certo (o `eM7dQpMF` com teto esgotado, por exemplo), o errado sai assim
+  mesmo e o bar fica sem desconto de fundador até o dono resolver
+  (`stripe_founder_coupon_interval_refused` no log): o cupom do outro intervalo nunca
+  fica.
+- **Vagas de fundador são do app** (`founderSeatCount`, `FOUNDER_SEATS` = 100): linhas
+  de `subscription` com o desconto de fundador (R$ 28 ou R$ 280; cartão e Pix, uma por
+  bar), também com a assinatura encerrada. `times_redeemed` do Stripe não conta: a
+  troca de cupom acima resgata de novo e contaria o bar duas vezes. O cupom no Stripe
+  só diz se a oferta segue (`valid`); o `max_redemptions` dele, se houver, encerra a
+  oferta antes do teto do app.
 - **Rotas do plugin que o app recusa** (`billing-access.ts`): `/subscription/cancel`
   e `/subscription/restore` (404; o cancelamento é pelo portal,
   `createSubscriptionCancelUrl`) e `metadata` no corpo do `/subscription/upgrade`
@@ -331,9 +341,9 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
 - **Cobrança não tem chave em `app_config`** (WEB-233): a contratação está sempre
   aberta, o teste do cadastro é a constante acima e o cupom de fundador é
   `FOUNDER_COUPON_ID` (`stripe-checkout.ts`), o mesmo id no sandbox e em produção.
-  Todo checkout novo sai com ele enquanto o Stripe o der como válido; esgotado,
-  expirado ou inexistente na conta, o checkout segue a preço de tabela
-  (`usableFounderCoupon`). A oferta acaba no painel do Stripe, não no app.
+  Todo checkout novo sai com ele enquanto o Stripe o der como válido e houver vaga
+  (`founderSeatCount`); esgotado, expirado ou inexistente na conta, o checkout segue
+  a preço de tabela (`usableFounderCoupon`). A oferta acaba no painel do Stripe, não no app.
 - **Pix Automático pela AbacatePay** (11/11/2026): `ABACATE_PAY_API_KEY` (`abc_dev_`
   é o Modo Teste; `abc_prod_` só em `onside.sh`) e `ABACATE_PAY_WEBHOOK_SECRET`; sem a
   chave o Pix some das telas. Cliente em `packages/auth/src/abacatepay.ts`, produtos
@@ -341,14 +351,15 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   vale no Pix, o preço de fundador é o produto). `subscription.provider = 'abacatepay'`.
   O webhook (`/api/abacatepay/webhook`, segredo + HMAC) relê a assinatura na AbacatePay
   (`applyPixSubscription`, `pix-sync.ts`), como no Stripe. As 100 vagas de fundador
-  somam cartão e Pix (`readFounderCoupon`). Checkout de fundador só nasce com vaga, mas
+  somam cartão e Pix (`founderSeatCount`). Checkout de fundador só nasce com vaga, mas
   checkout aberto não reserva vaga. **Pago depois de esgotar, o preço de fundador
   é honrado** (dono, 15/11/2026: sem aviso de esgotado antes de pagar, vale o
   preço de fundador; com aviso, preço cheio, e o Pix hoje não tem esse aviso): o
   webhook grava o desconto mesmo passando de 100 e registra
-  `pix_founder_seat_overflow` (conta sob `pg_advisory_xact_lock`, só para o log).
-  Stripe sem responder, ou sem `STRIPE_SECRET_KEY`, não trava o aviso: vai ao log
-  como `pix_founder_seat_unverified`. A AbacatePay só cancela na hora: o painel
+  `pix_founder_seat_overflow` (a conta só serve ao log, sem lock: dois pagos ao
+  mesmo tempo podem escapar dele). Conta que não fecha (Stripe sem responder, sem
+  `STRIPE_SECRET_KEY`, ou o banco) não trava o aviso: vai ao log como
+  `pix_founder_seat_unverified`, com o motivo. A AbacatePay só cancela na hora: o painel
   grava `cancel_at` no fim do mês pago e `reconcileBarPlans` encerra depois. Trocar de
   plano no Pix é uma autorização nova (a anterior é cancelada). **No teste do
   cadastro o Pix espera o fim dele** (dono, 11/11/2026): a AbacatePay não agenda
