@@ -277,7 +277,12 @@
       const cutH =
         p.scrollWidth <= p.clientWidth + 1 &&
         (r.left < b.left - 1.5 || r.right > b.right + 1.5)
+      /* Letreiro que corre: o recorte é o efeito. */
+      let runs = false
+      for (let m = el; m && m !== p; m = m.parentElement)
+        if (getComputedStyle(m).animationName !== 'none') runs = true
       if (
+        !runs &&
         (cutV || cutH) &&
         r.bottom > b.top &&
         r.top < b.bottom &&
@@ -531,7 +536,8 @@
   }
   if (phone) {
     const live = bare.filter(
-      (sel) => !/\.go\d{6,}/.test(sel) && hits(sel.replace(/:hover/g, ''))
+      (sel) =>
+        !/\.go\d{6,}|maplibregl/.test(sel) && hits(sel.replace(/:hover/g, ''))
     )
     if (live.length)
       add(
@@ -551,6 +557,9 @@
       )
 
   /* Foco: por último, porque mexe na página. */
+  /* Sem transição: com ela o estilo lido logo depois do foco ainda é o de antes. */
+  const still = document.head.appendChild(document.createElement('style'))
+  still.textContent = '*, *::before, *::after { transition: none !important; }'
   const before = document.activeElement
   const ring = (s) =>
     `${s.outlineStyle}|${s.outlineWidth}|${s.boxShadow}|${s.borderColor}|${s.backgroundColor}|${s.textDecorationLine}`
@@ -575,6 +584,7 @@
   }
   if (before?.focus) before.focus({ preventScroll: true })
   else document.activeElement?.blur()
+  still.remove()
 
   return finish()
 
