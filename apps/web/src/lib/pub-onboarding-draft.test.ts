@@ -127,6 +127,37 @@ describe('times da casa no rascunho (WEB-433)', () => {
   })
 })
 
+describe('horário no rascunho', () => {
+  const ler = (openingHours: unknown) =>
+    parsePubOnboardingDraft(
+      JSON.stringify({
+        draft: { ...DRAFT, openingHours },
+        email: 'dona',
+        expiresAt: 9_000
+      }),
+      'dona',
+      2_000
+    )?.openingHours
+
+  it('volta a semana válida; inválida ou toda fechada sai', () => {
+    const semana = [
+      { opens: '12:00', closes: '22:00' },
+      null,
+      { opens: '17:00', closes: '00:00' },
+      { opens: '17:00', closes: '00:00' },
+      { opens: '17:00', closes: '00:00' },
+      { opens: '17:00', closes: '02:00' },
+      { opens: '12:00', closes: '02:00' }
+    ]
+    expect(ler(semana)).toEqual(semana)
+    expect(ler(Array(7).fill(null))).toBeUndefined()
+    expect(ler(semana.slice(1))).toBeUndefined()
+    expect(
+      ler(semana.map(() => ({ opens: '18:00', closes: '18:00' })))
+    ).toBeUndefined()
+  })
+})
+
 describe('recusa do cadastro do bar', () => {
   const recusa = (code: string, message = 'texto do servidor') =>
     Object.assign(new Error(message), { data: { code } })
