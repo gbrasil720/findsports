@@ -149,7 +149,7 @@ export function useProfileAlert() {
               { color: palette.warnFg, textDecorationLine: 'underline' }
             ]}
           >
-            {`${copy.cta} →`}
+            {`${copy.cta}\u00a0→`}
           </Text>
         </Text>
       </View>
