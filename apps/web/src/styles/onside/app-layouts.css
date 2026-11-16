@@ -51,8 +51,9 @@
   translate: 0 calc(-100% - 4px);
   z-index: 1000;
   background: var(--onside-acid);
-  border: 2px solid var(--onside-ink);
-  color: var(--onside-ink);
+  /* Tinta fixa: no escuro `--onside-ink` vira papel, que some sobre o acid. */
+  border: 2px solid #12120f;
+  color: #12120f;
   padding: 10px 14px;
   font-weight: 700;
   font-size: 13px;
