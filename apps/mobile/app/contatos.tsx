@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
   },
   boardKicker: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 10.5,
+    fontSize: 11,
     letterSpacing: 1,
     color: ACID
   },

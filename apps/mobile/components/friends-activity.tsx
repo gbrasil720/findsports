@@ -387,7 +387,7 @@ const styles = StyleSheet.create({
   },
   kicker: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 10.5,
+    fontSize: 11,
     letterSpacing: 0.84,
     color: '#aaa9a4'
   },

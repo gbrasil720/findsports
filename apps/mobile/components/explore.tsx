@@ -1330,7 +1330,7 @@ const styles = StyleSheet.create({
     marginVertical: -4
   },
   matchState: { fontFamily: 'Anton', fontSize: 22, marginVertical: -6 },
-  mono: { fontFamily: 'GeistMono-SemiBold', fontSize: 10.5, marginTop: 2 },
+  mono: { fontFamily: 'GeistMono-SemiBold', fontSize: 11, marginTop: 2 },
   perforation: { justifyContent: 'center' },
   notch: { position: 'absolute' },
   dashed: { alignSelf: 'stretch' },

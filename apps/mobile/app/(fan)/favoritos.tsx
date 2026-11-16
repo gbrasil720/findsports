@@ -1694,7 +1694,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14
   },
   column: { alignItems: 'center', gap: 6 },
-  letter: { fontFamily: 'GeistMono-SemiBold', fontSize: 10 },
+  letter: { fontFamily: 'GeistMono-SemiBold', fontSize: 11 },
   square: { width: 22, height: 22, borderRadius: 4 },
   date: {
     width: 34,
@@ -1797,10 +1797,10 @@ const styles = StyleSheet.create({
   thumb: { width: 50, height: 50, borderRadius: 3 },
   times: { width: 40, alignItems: 'flex-end' },
   timesNumber: { fontFamily: 'Anton', fontSize: 20, marginVertical: -4 },
-  timesLabel: { fontFamily: 'GeistMono-SemiBold', fontSize: 9.5, marginTop: 2 },
+  timesLabel: { fontFamily: 'GeistMono-SemiBold', fontSize: 11, marginTop: 2 },
   never: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 10,
+    fontSize: 11,
     lineHeight: 12,
     textAlign: 'right'
   },
@@ -1827,7 +1827,7 @@ const styles = StyleSheet.create({
   dateCol: { width: 44, alignItems: 'center' },
   timeCol: { width: 52, alignItems: 'center' },
   day: { fontFamily: 'Anton', fontSize: 26, marginVertical: -5 },
-  mono: { fontFamily: 'GeistMono-SemiBold', fontSize: 10, marginTop: 2 },
+  mono: { fontFamily: 'GeistMono-SemiBold', fontSize: 11, marginTop: 2 },
   now: { fontFamily: 'Anton', fontSize: 20 },
   time: { fontFamily: 'Anton', fontSize: 22, marginVertical: -5 },
   dash: { width: 12, height: 1.5, opacity: 0.6 }

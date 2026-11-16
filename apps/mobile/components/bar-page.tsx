@@ -884,7 +884,7 @@ const styles = StyleSheet.create({
   },
   offerKicker: {
     fontFamily: MONO,
-    fontSize: 9.5,
+    fontSize: 11,
     letterSpacing: 0.76,
     color: '#3d4a06',
     marginBottom: 4
@@ -897,7 +897,7 @@ const styles = StyleSheet.create({
     shadowRadius: 0,
     shadowOffset: { width: 0, height: 3 }
   },
-  kicker: { fontFamily: MONO, fontSize: 10.5, letterSpacing: 1.05 },
+  kicker: { fontFamily: MONO, fontSize: 11, letterSpacing: 1.05 },
   nextRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   dateBig: {
     width: 70,
@@ -907,7 +907,7 @@ const styles = StyleSheet.create({
   },
   dateSmall: {
     fontFamily: MONO,
-    fontSize: 10,
+    fontSize: 11,
     letterSpacing: 1,
     opacity: 0.75
   },
@@ -958,7 +958,7 @@ const styles = StyleSheet.create({
     gap: 12
   },
   mono11: { fontFamily: MONO, fontSize: 11, letterSpacing: 0.4 },
-  mono10: { fontFamily: MONO, fontSize: 10, letterSpacing: 0.5 },
+  mono10: { fontFamily: MONO, fontSize: 11, letterSpacing: 0.5 },
   screens: { flexDirection: 'row', gap: 16 },
   screen: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   offer: {

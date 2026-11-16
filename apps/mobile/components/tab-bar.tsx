@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
   },
   guardOutline: { borderWidth: 1.5, borderColor: 'rgba(241,238,230,.3)' },
   accountTag: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 4 },
-  accountText: { fontFamily: 'GeistMono-SemiBold', fontSize: 10.5 },
+  accountText: { fontFamily: 'GeistMono-SemiBold', fontSize: 11 },
   menuHead: {
     flexDirection: 'row',
     alignItems: 'center',

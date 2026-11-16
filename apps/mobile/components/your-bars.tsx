@@ -819,7 +819,7 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 9.5
+    fontSize: 11
   },
   cell: { flex: 1 },
   cellFill: {
@@ -904,7 +904,7 @@ const styles = StyleSheet.create({
   },
   nextWhen: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 10.5,
+    fontSize: 11,
     letterSpacing: 0.63
   },
   going: {

@@ -225,6 +225,6 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(241,238,230,.1)',
     backgroundColor: '#1f1f1a'
   },
-  small: { fontFamily: 'GeistMono-SemiBold', fontSize: 10.5, color: '#aaa9a4' },
+  small: { fontFamily: 'GeistMono-SemiBold', fontSize: 11, color: '#aaa9a4' },
   cta: { alignSelf: 'stretch', marginTop: 'auto' }
 })

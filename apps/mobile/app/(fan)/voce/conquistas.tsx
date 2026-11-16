@@ -1235,7 +1235,7 @@ const styles = StyleSheet.create({
   boardTop: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   boardKicker: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 10,
+    fontSize: 11,
     letterSpacing: 1,
     color: '#aaa9a4'
   },
@@ -1279,7 +1279,7 @@ const styles = StyleSheet.create({
   },
   boardLabel: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 10.5,
+    fontSize: 11,
     color: '#aaa9a4',
     marginTop: 6
   },
@@ -1292,7 +1292,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: ACID
   },
-  newText: { fontFamily: 'GeistMono-SemiBold', fontSize: 8.5, color: INK },
+  newText: { fontFamily: 'GeistMono-SemiBold', fontSize: 11, color: INK },
   nearCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1317,7 +1317,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center'
   },
-  mono105: { fontFamily: 'GeistMono-SemiBold', fontSize: 10.5 },
+  mono105: { fontFamily: 'GeistMono-SemiBold', fontSize: 11 },
   shelf: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tile6: {
     borderRadius: 18,
@@ -1397,7 +1397,7 @@ const styles = StyleSheet.create({
   tileName: { textAlign: 'center' },
   count: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 10.5
+    fontSize: 11
   },
   // Fora do celular (A06).
   pane: { overflow: 'hidden' },

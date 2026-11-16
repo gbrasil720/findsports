@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
   photo: { width: 52, height: 52, borderRadius: 12 },
   kicker: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 10,
+    fontSize: 11,
     letterSpacing: 0.8,
     color: ACID
   },

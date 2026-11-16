@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
   statValue: { fontFamily: 'Anton', fontSize: 30, marginVertical: -7.3 },
   statLabel: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 10.5,
+    fontSize: 11,
     letterSpacing: 0.42,
     marginTop: 2
   },
@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
   times: { fontFamily: 'GeistMono-SemiBold', fontSize: 14 },
   went: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 10,
+    fontSize: 11,
     letterSpacing: 0.6
   }
 })

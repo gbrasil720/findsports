@@ -545,7 +545,7 @@ const styles = StyleSheet.create({
   cellLabel: {
     marginTop: 8,
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 10,
+    fontSize: 11,
     color: '#aaa9a4'
   },
   hoursLabel: {

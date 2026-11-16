@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent'
   },
   date: { width: 46, alignItems: 'center', gap: 4 },
-  dateTop: { fontFamily: 'GeistMono-SemiBold', fontSize: 10.5 },
+  dateTop: { fontFamily: 'GeistMono-SemiBold', fontSize: 11 },
   dateClock: { fontFamily: 'GeistMono-SemiBold', fontSize: 15 },
   dateDay: { fontFamily: 'Anton', fontSize: 20, marginVertical: -5 }
 })

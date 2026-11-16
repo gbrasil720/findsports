@@ -652,7 +652,7 @@ const styles = StyleSheet.create({
   day: { flex: 1, alignItems: 'center', gap: 6 },
   dayLetter: { fontFamily: 'GeistMono-SemiBold', fontSize: 11.5 },
   dayBar: { width: '72%', borderRadius: 8, marginTop: 'auto' },
-  dayHours: { fontFamily: 'GeistMono-SemiBold', fontSize: 10.5 },
+  dayHours: { fontFamily: 'GeistMono-SemiBold', fontSize: 11 },
   offer: {
     flexDirection: 'row',
     gap: 12,

@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
   mid: { alignItems: 'center', gap: 2 },
   small: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 9.5,
+    fontSize: 11,
     letterSpacing: 0.95,
     color: GREY
   },

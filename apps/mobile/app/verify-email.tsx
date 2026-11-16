@@ -420,7 +420,7 @@ const styles = StyleSheet.create({
   },
   notifTime: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 10,
+    fontSize: 11,
     color: '#55554f'
   },
   notifButton: {
@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
   monoSmall: { fontFamily: 'GeistMono-SemiBold', fontSize: 12.5 },
   monoTiny: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 10,
+    fontSize: 11,
     letterSpacing: 0.8
   },
   underline: { textDecorationLine: 'underline' },

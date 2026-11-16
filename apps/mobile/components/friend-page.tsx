@@ -540,7 +540,7 @@ const styles = StyleSheet.create({
   },
   storyLabel: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 10.5,
+    fontSize: 11,
     color: '#aaa9a4',
     marginTop: 6
   },
