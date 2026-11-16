@@ -438,13 +438,18 @@
   /* Canto dentro de canto: raio de dentro = raio de fora menos a folga. */
   for (const el of all) {
     const s = css.get(el)
-    const inner = px(s.borderTopLeftRadius)
     const parent = el.parentElement
     const ps = css.get(parent)
-    if (!inner || !ps) continue
-    const outer = px(ps.borderTopLeftRadius)
+    if (!ps) continue
     const r = el.getBoundingClientRect()
     const pr = parent.getBoundingClientRect()
+    /* Raio em % (a moldura do celular) vale sobre a largura da própria caixa. */
+    const radius = (v, box) =>
+      v.includes('%') ? (Number.parseFloat(v) / 100) * box.width : px(v)
+    const inner = radius(s.borderTopLeftRadius, r)
+    const outer = radius(ps.borderTopLeftRadius, pr)
+    /* Quem recorta arredonda o filho junto: sem conta. */
+    if (!inner || ps.overflowX !== 'visible') continue
     const pill = (v, box) => v >= Math.min(box.width, box.height) / 2 - 0.5
     if (!outer || pill(inner, r) || pill(outer, pr)) continue
     const gap = Math.max(r.left - pr.left, r.top - pr.top)
@@ -461,7 +466,7 @@
         'raio-aninhado',
         'aviso',
         el,
-        `raio ${inner} dentro de ${outer} com folga ${Math.round(gap)}: pede ${Math.round(want)}`
+        `raio ${Math.round(inner)} dentro de ${Math.round(outer)} com folga ${Math.round(gap)}: pede ${Math.round(want)}`
       )
   }
 

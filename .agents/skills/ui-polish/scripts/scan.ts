@@ -5,6 +5,7 @@
  *   bun .agents/skills/ui-polish/scripts/scan.ts            # web e app inteiros
  *   bun .agents/skills/ui-polish/scripts/scan.ts apps/web/src/components/painel
  *   bun .agents/skills/ui-polish/scripts/scan.ts --changed  # só o que o branch mexeu
+ *   bun .agents/skills/ui-polish/scripts/scan.ts --all      # sem cortar as listas
  *
  * Cada regra aponta arquivo:linha. É triagem: leia a linha antes de mexer.
  */
@@ -61,19 +62,32 @@ const design = await Bun.file(`${root}/DESIGN.md`).text()
 const palette = new Set([
   '#000000',
   '#ffffff',
-  ...(design.split('typography:')[0].match(/#[0-9a-f]{6}/g) ?? [])
+  ...(design.match(/#[0-9a-f]{6}/g) ?? [])
 ])
-for await (const f of new Glob('{apps/web/src,packages/ui/src}/**/*.css').scan({
-  cwd: root
-}))
-  for (const m of (await Bun.file(`${root}/${f}`).text()).matchAll(
-    /^\s*--[\w-]+:\s*(#[0-9a-fA-F]{3,6})\s*;/gm
-  ))
-    palette.add(hex6(m[1]))
+/* Um Glob por pasta: o do Bun não expande chaves com barra dentro. */
+for (const dir of ['apps/web/src', 'packages/ui/src'])
+  for await (const f of new Glob(`${dir}/**/*.css`).scan({ cwd: root }))
+    for (const m of (await Bun.file(`${root}/${f}`).text()).matchAll(
+      /^\s*--[\w-]+:\s*(#[0-9a-fA-F]{3,6})\s*;/gm
+    ))
+      palette.add(hex6(m[1]))
 for (const h of (
   await Bun.file(`${root}/apps/mobile/components/theme.tsx`).text()
 ).match(/#[0-9a-fA-F]{6}\b/g) ?? [])
   palette.add(hex6(h))
+
+/* A cor da paleta mais perto e a maior diferença num canal (0 a 255). */
+const rgb = (h: string) =>
+  [1, 3, 5].map((i) => Number.parseInt(h.slice(i, i + 2), 16))
+const nearest = (h: string) => {
+  let best = ''
+  let gap = 999
+  for (const p of palette) {
+    const d = Math.max(...rgb(h).map((v, i) => Math.abs(v - rgb(p)[i])))
+    if (d < gap) [best, gap] = [p, d]
+  }
+  return { best, gap }
+}
 
 type Hit = { file: string; line: number; text: string }
 const found = new Map<string, Hit[]>()
@@ -119,6 +133,7 @@ const APP: [string, RegExp][] = [
     /\b(entering|exiting)=\{[A-Z]\w+\.\w+\(/
   ],
   ['Easing.in em interface', /Easing\.in\(/],
+  ['letra abaixo de 11 pt', /fontSize:\s*(\d|10)(\.\d+)?\s*[,}\n]/],
   [
     'Animated do react-native (use Reanimated)',
     /import \{[^}]*\bAnimated\b[^}]*\} from 'react-native'/
@@ -173,6 +188,23 @@ for (const file of files) {
       )
   }
 
+  if (app && /withRepeat\(/.test(src) && !/[rR]educe(d)?Motion/.test(src))
+    hit(
+      'animação em laço sem useReducedMotion',
+      file,
+      src.slice(0, src.indexOf('withRepeat(')).split('\n').length,
+      'withRepeat sem conferir o movimento reduzido'
+    )
+  if (app)
+    for (const m of src.matchAll(/<Animated\.Text\b[^>]*>/g))
+      if (!/maxFontSizeMultiplier/.test(m[0]))
+        hit(
+          'Animated.Text sem maxFontSizeMultiplier (não passa pelo Text da casa)',
+          file,
+          src.slice(0, m.index).split('\n').length,
+          m[0].replace(/\s+/g, ' ')
+        )
+
   lines.forEach((text, i) => {
     if (/polish-ok/.test(text) || /^\s*(\/\/|\*|\/\*)/.test(text)) return
     const rules = css ? WEB : app ? APP : []
@@ -195,6 +227,7 @@ for (const file of files) {
   })
 }
 
+const all = args.includes('--all')
 const total = [...found.values()].reduce((n, list) => n + list.length, 0)
 console.log(`${files.length} arquivos, ${total} achados\n`)
 for (const [rule, list] of [...found].sort(
@@ -205,14 +238,22 @@ for (const [rule, list] of [...found].sort(
     const by = new Map<string, Hit[]>()
     for (const h of list)
       by.set(h.text.slice(0, 7), [...(by.get(h.text.slice(0, 7)) ?? []), h])
-    for (const [color, hits] of [...by]
-      .sort((a, b) => b[1].length - a[1].length)
-      .slice(0, 25))
-      console.log(`  ${color} ×${hits.length}  ${hits[0].file}:${hits[0].line}`)
+    /* Primeiro as quase iguais a uma cor da paleta: é deriva, troque pela da paleta. */
+    const rows = [...by]
+      .map(([color, hits]) => ({ color, hits, ...nearest(color) }))
+      .sort((a, b) => a.gap - b.gap || b.hits.length - a.hits.length)
+    for (const r of all ? rows : rows.slice(0, 25))
+      console.log(
+        `  ${r.color} ×${r.hits.length}  perto de ${r.best} (Δ${r.gap})  ${r.hits[0].file}:${r.hits[0].line}`
+      )
+    if (all)
+      for (const r of rows.filter((x) => x.gap <= 6))
+        for (const h of r.hits)
+          console.log(`  = ${r.color} ${r.best} ${h.file}:${h.line}`)
   } else {
-    for (const h of list.slice(0, 12))
+    for (const h of all ? list : list.slice(0, 12))
       console.log(`  ${h.file}:${h.line}  ${h.text}`)
-    if (list.length > 12) console.log(`  … mais ${list.length - 12}`)
+    if (!all && list.length > 12) console.log(`  … mais ${list.length - 12}`)
   }
   console.log()
 }
