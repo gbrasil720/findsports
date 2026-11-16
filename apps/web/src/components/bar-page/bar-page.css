@@ -1406,6 +1406,14 @@ dialog.bp-layer::backdrop {
   background: #12120f;
   display: block;
 }
+/* A confirmação da `?acao=` (`ConfirmSheet`): o ícone da ação no lugar da foto. */
+.bp-layer .ctx .ph.acao {
+  --spark: #e8320c;
+  background: var(--acid);
+  color: #12120f;
+  display: grid;
+  place-items: center;
+}
 .bp-layer .ctx b {
   display: block;
   font-size: 16px;

@@ -327,11 +327,10 @@ export function ConfirmSheet({
       </button>
       <h2>{title}</h2>
       <div className="ctx">
-        {bar.photoUrl ? (
-          <img className="ph" src={bar.photoUrl} alt="" />
-        ) : (
-          <span className="ph" />
-        )}
+        {/* O ícone da ação, o mesmo da casca do torcedor (`ICONE_CONFIRMAR`). */}
+        <span className="ph acao" aria-hidden="true">
+          <Icon name={kind === 'vou' ? 'ticket' : 'heart'} size={30} />
+        </span>
         <span>
           <b>{showGame ? game.title : bar.name}</b>
           <span>
