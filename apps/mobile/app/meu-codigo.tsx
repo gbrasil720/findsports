@@ -207,7 +207,14 @@ export default function MyCode() {
                 }}
                 style={styles.linkRow}
               >
-                <Text style={styles.link} numberOfLines={1}>
+                {/* O endereço encolhe para caber no cartão: com a letra grande
+                    ele passava das duas bordas. */}
+                <Text
+                  style={[styles.link, { flexShrink: 1 }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.7}
+                >
                   {inviteUrl(code).replace(/^https?:\/\/(www\.)?/, '')} ·{' '}
                 </Text>
                 <Icon name="link" size={14} color="#aaa9a4" accent={LIVE} />
@@ -339,7 +346,7 @@ const styles = StyleSheet.create({
   },
   cardKicker: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 9.5,
+    fontSize: 11,
     letterSpacing: 0.9,
     color: '#c9c7c0',
     textAlign: 'right'
@@ -351,7 +358,7 @@ const styles = StyleSheet.create({
     color: PAPER,
     marginVertical: -7.3
   },
-  linkRow: { flexDirection: 'row', alignItems: 'center' },
+  linkRow: { flexDirection: 'row', alignItems: 'center', maxWidth: '100%' },
   link: { fontFamily: 'GeistMono-SemiBold', fontSize: 12, color: '#aaa9a4' },
   screen: { flex: 1, paddingHorizontal: 16, gap: 16 },
   head: {

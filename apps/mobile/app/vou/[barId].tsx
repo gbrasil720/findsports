@@ -400,7 +400,11 @@ function GameRow({
       style={[styles.row, selected && { backgroundColor: palette.ink }]}
     >
       <View style={{ width: 62 }}>
+        {/* A coluna tem 62 pt: a hora encolhe para caber em vez de quebrar em
+            "21:" e "30" com a letra grande. */}
         <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
           style={[
             styles.time,
             { color: live ? (selected ? '#f3421d' : palette.live) : fg }
@@ -408,7 +412,9 @@ function GameRow({
         >
           {time}
         </Text>
-        <Text style={[styles.day, soft]}>{day.toLocaleUpperCase('pt-BR')}</Text>
+        <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.day, soft]}>
+          {day.toLocaleUpperCase('pt-BR')}
+        </Text>
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text
@@ -623,14 +629,14 @@ const styles = StyleSheet.create({
   },
   day: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 10,
+    fontSize: 11,
     letterSpacing: 0.6,
     marginTop: 4
   },
   tag: { paddingVertical: 5, paddingHorizontal: 7, borderRadius: 6 },
   tagText: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 10.5,
+    fontSize: 11,
     letterSpacing: 0.5
   },
   who: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -645,7 +651,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 10.5,
+    fontSize: 11,
     letterSpacing: 0.84
   },
   friend: { width: 56, alignItems: 'center', gap: 5 },
@@ -669,7 +675,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
-  goes: { fontFamily: 'GeistMono-SemiBold', fontSize: 10, letterSpacing: 0.4 },
+  goes: { fontFamily: 'GeistMono-SemiBold', fontSize: 11, letterSpacing: 0.4 },
   note: {
     flexDirection: 'row',
     alignItems: 'center',

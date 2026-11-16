@@ -146,7 +146,12 @@ export default function FiltersSheet() {
         >
           <View style={styles.pinsHead}>
             <Icon name="pin" size={15} color={ACID} accent={ACID} />
-            <Text style={[text(14, 'Bold'), { color: PAPER, flex: 1 }]}>
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.85}
+              style={[text(14, 'Bold'), { color: PAPER, flex: 1 }]}
+            >
               Atalhos no mapa · {pins.length} de {MAX_SHORTCUTS}
             </Text>
             <Pressable
