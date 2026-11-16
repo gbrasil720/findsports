@@ -658,7 +658,8 @@ próprio o `rewrite` do router tira o prefixo (`apps/web/src/lib/houdini-host.ts
 "Cortina"). O 2FA é flag da conta (`user.twoFactorEnabled`, lida também por
 `adminProcedure` e `admin-guard.ts`), não da sessão: por isso ligar o 2FA encerra as
 outras sessões da conta (`packages/auth/src/two-factor-enable.ts`), e toda sessão
-seguinte passa pelo login com TOTP. Telas novas entram em `routes/houdini/_app/` e no grupo delas em
+seguinte passa pelo login com TOTP. Pelo mesmo motivo, em conta com 2FA o link de
+confirmação de e-mail só confirma, sem abrir sessão (`verify-email-two-factor.ts`). Telas novas entram em `routes/houdini/_app/` e no grupo delas em
 `HOUDINI_NAV_GROUPS` (`components/houdini/shell.tsx`). O visual é o redesign na
 linguagem da Onside (WEB-480, canvas https://claude.ai/artifact/DmzHetdEyDNRP3eWaXqzHz),
 todo em `components/houdini/houdini.css`, preso a `.houdini`: Anton, Archivo e Geist
