@@ -232,7 +232,11 @@ function Jogo({
       {going ? (
         <>
           <div className="pn-bar pn-qbar" aria-hidden="true">
-            <i style={{ width: `${Math.round((arrived / going) * 100)}%` }} />
+            <i
+              style={{
+                transform: `translateX(${Math.round((arrived / going) * 100) - 100}%)`
+              }}
+            />
           </div>
           <div className="pn-qtools">
             <fieldset className="pn-tabs" aria-label="Mostrar">
