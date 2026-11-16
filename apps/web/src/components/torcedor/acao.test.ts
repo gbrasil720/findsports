@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test'
+import { beforeEach, describe, expect, test } from 'bun:test'
 import {
   acaoPulaOnboarding,
   BEM_VINDO_PATH,
@@ -6,11 +6,14 @@ import {
   contaNovaPodeVer,
   contaRecente,
   destinoContaNova,
+  esquecerAcao,
+  guardarAcao,
   lerAcao,
   lerNovo,
   semAcao,
   semNovo,
-  temAcao
+  temAcao,
+  tomarAcaoPendente
 } from './acao'
 
 const ID = '0b6c6f2e-9d3a-4c41-8f0e-2a6b1d7c9e10'
@@ -96,5 +99,60 @@ describe('conta nova por uma ação', () => {
     expect(contaRecente(new Date('2026-11-06T12:00:00Z'), agora)).toBe(true)
     expect(contaRecente('2026-11-06T11:59:00Z', agora)).toBe(false)
     expect(contaRecente(undefined, agora)).toBe(true)
+  })
+})
+
+// Achado `web-acao-url-auto-executes-mutation`: link de fora com `?acao=` não
+// grava sozinho; só a ação que este navegador guardou ao abrir a folha.
+describe('ação pendente deste navegador', () => {
+  const guardado = new Map<string, string>()
+  beforeEach(() => {
+    guardado.clear()
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: (k: string) => guardado.get(k) ?? null,
+        setItem: (k: string, v: string) => guardado.set(k, v),
+        removeItem: (k: string) => guardado.delete(k)
+      }
+    })
+  })
+
+  test('sem nada guardado, a ação da URL não sai sozinha', () => {
+    expect(tomarAcaoPendente({ tipo: 'vou', id: JOGO })).toBe(false)
+  })
+
+  test('a mesma ação guardada sai uma vez só', () => {
+    guardarAcao({ tipo: 'fav', id: ID })
+    expect(tomarAcaoPendente({ tipo: 'fav', id: ID })).toBe(true)
+    expect(tomarAcaoPendente({ tipo: 'fav', id: ID })).toBe(false)
+  })
+
+  test('outra ação ou outro id não vale, e apaga o registro', () => {
+    guardarAcao({ tipo: 'fav', id: ID })
+    expect(tomarAcaoPendente({ tipo: 'vou', id: ID })).toBe(false)
+    guardarAcao({ tipo: 'fav', id: ID })
+    expect(tomarAcaoPendente({ tipo: 'fav', id: JOGO })).toBe(false)
+    expect(tomarAcaoPendente({ tipo: 'fav', id: ID })).toBe(false)
+  })
+
+  test('vence em um dia', () => {
+    const agora = Date.now()
+    guardarAcao({ tipo: 'app' }, agora - 25 * 60 * 60 * 1000)
+    expect(tomarAcaoPendente({ tipo: 'app' }, agora)).toBe(false)
+  })
+
+  test('esquecer apaga; armazenamento bloqueado pede confirmação', () => {
+    guardarAcao({ tipo: 'lembrar', id: JOGO })
+    esquecerAcao()
+    expect(tomarAcaoPendente({ tipo: 'lembrar', id: JOGO })).toBe(false)
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      get: () => {
+        throw new Error('SecurityError')
+      }
+    })
+    expect(() => guardarAcao({ tipo: 'app' })).not.toThrow()
+    expect(tomarAcaoPendente({ tipo: 'app' })).toBe(false)
   })
 })

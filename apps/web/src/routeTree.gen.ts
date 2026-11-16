@@ -35,10 +35,10 @@ import { Route as AdminMeuEspacoRouteImport } from './routes/admin.meu-espaco'
 import { Route as AdminQuemVaiRouteImport } from './routes/admin.quem-vai'
 import { Route as AdminValidateRouteImport } from './routes/admin.validate'
 import { Route as BarSlugRouteImport } from './routes/bar.$slug'
+import { Route as BaresSplatRouteImport } from './routes/bares.$'
 import { Route as ConviteCodeRouteImport } from './routes/convite.$code'
 import { Route as GuiaIndexRouteImport } from './routes/guia.index'
 import { Route as GuiaSlugRouteImport } from './routes/guia.$slug'
-import { Route as BaresSplatRouteImport } from './routes/bares.$'
 import { Route as HoudiniAppRouteImport } from './routes/houdini/_app'
 import { Route as HoudiniEntrarRouteImport } from './routes/houdini/entrar'
 import { Route as PlanConfirmedRouteImport } from './routes/plan_.confirmed'
@@ -206,6 +206,11 @@ const BarSlugRoute = BarSlugRouteImport.update({
   path: '/bar/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BaresSplatRoute = BaresSplatRouteImport.update({
+  id: '/bares/$',
+  path: '/bares/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ConviteCodeRoute = ConviteCodeRouteImport.update({
   id: '/convite/$code',
   path: '/convite/$code',
@@ -219,11 +224,6 @@ const GuiaIndexRoute = GuiaIndexRouteImport.update({
 const GuiaSlugRoute = GuiaSlugRouteImport.update({
   id: '/guia/$slug',
   path: '/guia/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BaresSplatRoute = BaresSplatRouteImport.update({
-  id: '/bares/$',
-  path: '/bares/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HoudiniAppRoute = HoudiniAppRouteImport.update({
@@ -440,9 +440,9 @@ export interface FileRoutesByFullPath {
   '/admin/quem-vai': typeof AdminQuemVaiRoute
   '/admin/validate': typeof AdminValidateRoute
   '/bar/$slug': typeof BarSlugRoute
+  '/bares/$': typeof BaresSplatRoute
   '/convite/$code': typeof ConviteCodeRoute
   '/guia/$slug': typeof GuiaSlugRoute
-  '/bares/$': typeof BaresSplatRoute
   '/houdini/entrar': typeof HoudiniEntrarRoute
   '/plan/confirmed': typeof PlanConfirmedRoute
   '/admin/': typeof AdminIndexRoute
@@ -506,9 +506,9 @@ export interface FileRoutesByTo {
   '/admin/quem-vai': typeof AdminQuemVaiRoute
   '/admin/validate': typeof AdminValidateRoute
   '/bar/$slug': typeof BarSlugRoute
+  '/bares/$': typeof BaresSplatRoute
   '/convite/$code': typeof ConviteCodeRoute
   '/guia/$slug': typeof GuiaSlugRoute
-  '/bares/$': typeof BaresSplatRoute
   '/houdini/entrar': typeof HoudiniEntrarRoute
   '/plan/confirmed': typeof PlanConfirmedRoute
   '/admin': typeof AdminIndexRoute
@@ -573,9 +573,9 @@ export interface FileRoutesById {
   '/admin/quem-vai': typeof AdminQuemVaiRoute
   '/admin/validate': typeof AdminValidateRoute
   '/bar/$slug': typeof BarSlugRoute
+  '/bares/$': typeof BaresSplatRoute
   '/convite/$code': typeof ConviteCodeRoute
   '/guia/$slug': typeof GuiaSlugRoute
-  '/bares/$': typeof BaresSplatRoute
   '/houdini/_app': typeof HoudiniAppRouteWithChildren
   '/houdini/entrar': typeof HoudiniEntrarRoute
   '/plan_/confirmed': typeof PlanConfirmedRoute
@@ -643,9 +643,9 @@ export interface FileRouteTypes {
     | '/admin/quem-vai'
     | '/admin/validate'
     | '/bar/$slug'
+    | '/bares/$'
     | '/convite/$code'
     | '/guia/$slug'
-    | '/bares/$'
     | '/houdini/entrar'
     | '/plan/confirmed'
     | '/admin/'
@@ -709,9 +709,9 @@ export interface FileRouteTypes {
     | '/admin/quem-vai'
     | '/admin/validate'
     | '/bar/$slug'
+    | '/bares/$'
     | '/convite/$code'
     | '/guia/$slug'
-    | '/bares/$'
     | '/houdini/entrar'
     | '/plan/confirmed'
     | '/admin'
@@ -775,9 +775,9 @@ export interface FileRouteTypes {
     | '/admin/quem-vai'
     | '/admin/validate'
     | '/bar/$slug'
+    | '/bares/$'
     | '/convite/$code'
     | '/guia/$slug'
-    | '/bares/$'
     | '/houdini/_app'
     | '/houdini/entrar'
     | '/plan_/confirmed'
@@ -836,9 +836,9 @@ export interface RootRouteChildren {
   authVerifyEmailRoute: typeof authVerifyEmailRoute
   dashboardDashboardRoute: typeof dashboardDashboardRoute
   BarSlugRoute: typeof BarSlugRoute
+  BaresSplatRoute: typeof BaresSplatRoute
   ConviteCodeRoute: typeof ConviteCodeRoute
   GuiaSlugRoute: typeof GuiaSlugRoute
-  BaresSplatRoute: typeof BaresSplatRoute
   PlanConfirmedRoute: typeof PlanConfirmedRoute
   GuiaIndexRoute: typeof GuiaIndexRoute
   dashboardDashboardBemVindoRoute: typeof dashboardDashboardBemVindoRoute
@@ -1046,6 +1046,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BarSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/bares/$': {
+      id: '/bares/$'
+      path: '/bares/$'
+      fullPath: '/bares/$'
+      preLoaderRoute: typeof BaresSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/convite/$code': {
       id: '/convite/$code'
       path: '/convite/$code'
@@ -1065,13 +1072,6 @@ declare module '@tanstack/react-router' {
       path: '/guia/$slug'
       fullPath: '/guia/$slug'
       preLoaderRoute: typeof GuiaSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/bares/$': {
-      id: '/bares/$'
-      path: '/bares/$'
-      fullPath: '/bares/$'
-      preLoaderRoute: typeof BaresSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/houdini/_app': {
@@ -1424,9 +1424,9 @@ const rootRouteChildren: RootRouteChildren = {
   authVerifyEmailRoute: authVerifyEmailRoute,
   dashboardDashboardRoute: dashboardDashboardRoute,
   BarSlugRoute: BarSlugRoute,
+  BaresSplatRoute: BaresSplatRoute,
   ConviteCodeRoute: ConviteCodeRoute,
   GuiaSlugRoute: GuiaSlugRoute,
-  BaresSplatRoute: BaresSplatRoute,
   PlanConfirmedRoute: PlanConfirmedRoute,
   GuiaIndexRoute: GuiaIndexRoute,
   dashboardDashboardBemVindoRoute: dashboardDashboardBemVindoRoute,

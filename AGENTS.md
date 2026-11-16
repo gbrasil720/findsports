@@ -817,7 +817,15 @@ mandado ao `/admin`.
   recebe com sessão a conclui uma vez: a casca do torcedor e a página do bar
   (`/bar/$slug`; `/pub/<id>` repassa a `acao`), pelo mesmo módulo. O formato antigo da
   página do bar (`?acao=vou` com `?jogo=`, `?acao=salvar`) continua aceito na leitura
-  (`lerAcao` com o bar e o jogo da página).
+  (`lerAcao` com o bar e o jogo da página). **A `?acao=` só sai sozinha se este
+  navegador a guardou** (achado de segurança `web-acao-url-auto-executes-mutation`):
+  a folha de entrar, da casca ou da página do bar, grava a ação no `localStorage` ao
+  abrir (`guardarAcao`, um dia, uma vez) e a volta só a conclui se bater
+  (`tomarAcaoPendente`). Link de fora, ou e-mail confirmado em outro aparelho, mostra
+  um cartão de confirmação ("Marcar presença neste jogo?", `CONFIRMAR`, com jogo, bar
+  e hora por `pubs.actionTarget`, aberta; sem alvo marcável a ação só sai da URL) e
+  nada grava sem o toque; "Agora não" tira a `acao` da URL. Na página do bar só vale a ação dela:
+  `fav` do próprio bar e `vou` de um jogo dele, o resto é ignorado.
 - **Conta nova por uma ação: a ação primeiro, as preferências depois** (protótipo
   `bem-vindo-curto`). Torcedor sem onboarding com `?acao=` no destino não vai ao
   onboarding (`applyAuthGuards`, `acaoPulaOnboarding`; a confirmação do e-mail e a

@@ -1,8 +1,13 @@
 import type { PublicGame } from '@findsports_oficial/api/lib/public-bar-page'
 import { useNavigate, useRouter } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
-import { acaoTexto } from '@/components/torcedor/acao'
+import {
+  AVISO_LINK,
+  acaoTexto,
+  guardarAcao,
+  lerAcao
+} from '@/components/torcedor/acao'
 import { useTurnstile } from '@/components/turnstile'
 import { authClient } from '@/lib/auth-client'
 import { PENDING_VERIFICATION_KEY } from '@/lib/pending-verification'
@@ -140,6 +145,12 @@ function Sheet({
     search.acao = acaoTexto({ tipo: 'vou', id: game.id })
   if (kind === 'salvar') search.acao = acaoTexto({ tipo: 'fav', id: bar.id })
   const back = `${path}${Object.keys(search).length ? `?${new URLSearchParams(search)}` : ''}`
+  // A volta do cadastro, do e-mail e do 2FA só conclui a ação guardada aqui.
+  const pedida = search.acao
+  useEffect(() => {
+    const acao = lerAcao(pedida)
+    if (acao) guardarAcao(acao)
+  }, [pedida])
   const showGame = Boolean(game) && (kind === 'vou' || kind === 'amigos')
 
   const submit = async (event: React.FormEvent) => {
@@ -280,6 +291,74 @@ function Sheet({
       <p className="alt" style={{ marginTop: 8 }}>
         Depois de entrar, você volta para esta página com tudo feito.
       </p>
+    </Dialog>
+  )
+}
+
+/**
+ * A `?acao=` que este navegador não guardou ao abrir a folha (link de fora,
+ * e-mail confirmado em outro aparelho): a página pergunta antes de gravar.
+ */
+export function ConfirmSheet({
+  kind,
+  game,
+  bar,
+  now,
+  onAnswer
+}: {
+  kind: 'vou' | 'salvar'
+  game: PublicGame | null
+  bar: LiveBar
+  now: Date
+  onAnswer: (yes: boolean) => void
+}) {
+  const showGame = kind === 'vou' && game
+  const title =
+    kind === 'vou' ? 'Marcar presença neste jogo?' : 'Salvar este bar?'
+  return (
+    <Dialog className="sheet" label={title} onClose={() => onAnswer(false)}>
+      <button
+        className="btn b-ghost ic x"
+        type="button"
+        aria-label="Fechar"
+        onClick={() => onAnswer(false)}
+      >
+        <Icon name="close" size={18} />
+      </button>
+      <h2>{title}</h2>
+      <div className="ctx">
+        {/* O ícone da ação, o mesmo da casca do torcedor (`ICONE_CONFIRMAR`). */}
+        <span className="ph acao" aria-hidden="true">
+          <Icon name={kind === 'vou' ? 'ticket' : 'heart'} size={30} />
+        </span>
+        <span>
+          <b>{showGame ? game.title : bar.name}</b>
+          <span>
+            {showGame
+              ? `${bar.name} · ${dayLabel(game.startsAt, now)} ${clock(game.startsAt)}`
+              : `${bar.neighborhood}, ${bar.city}`}
+          </span>
+        </span>
+      </div>
+      <p className="alt" style={{ marginTop: 18 }}>
+        {AVISO_LINK}
+      </p>
+      <div className="form">
+        <button
+          className="btn b-acid"
+          type="button"
+          onClick={() => onAnswer(true)}
+        >
+          {kind === 'vou' ? 'Marcar presença' : 'Salvar bar'}
+        </button>
+        <button
+          className="btn b-ghost"
+          type="button"
+          onClick={() => onAnswer(false)}
+        >
+          Agora não
+        </button>
+      </div>
     </Dialog>
   )
 }
