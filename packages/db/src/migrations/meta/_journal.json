@@ -694,6 +694,13 @@
       "when": 1794840184412,
       "tag": "0099_user_findable_by_email",
       "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "7",
+      "when": 1794849272804,
+      "tag": "0100_bar_profile_alert",
+      "breakpoints": true
     }
   ]
 }
