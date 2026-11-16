@@ -6,6 +6,11 @@ import {
   type Uf
 } from '@findsports_oficial/api/lib/bar-profile-validation'
 import {
+  normalizeOpeningHours,
+  type OpeningHours,
+  openingHoursSchema
+} from '@findsports_oficial/api/lib/opening-hours'
+import {
   type Routine,
   readRoutine
 } from '@findsports_oficial/api/lib/pub-routine'
@@ -47,6 +52,11 @@ export type PubOnboardingDraft = {
    */
   houseTeams?: { id: string; name: string; sportId: string }[]
   houseTeamIds?: string[]
+  /**
+   * "Horário", opcional: a semana como o `completePub` grava (0 = domingo).
+   * Pulado ou tudo fechado não vai (`undefined`); o painel lembra depois.
+   */
+  openingHours?: OpeningHours | null
 }
 
 const mesmoEmail = (a: string, b: string) =>
@@ -81,6 +91,12 @@ function houseTeamsOf(value: unknown): Partial<PubOnboardingDraft> {
   return houseTeams.length
     ? { houseTeams, houseTeamIds: houseTeams.map((t) => t.id) }
     : {}
+}
+
+/** Horário do rascunho: só a semana que o servidor aceitaria. */
+function openingHoursOf(value: unknown): OpeningHours | undefined {
+  const parsed = openingHoursSchema.safeParse(value)
+  return (parsed.success && normalizeOpeningHours(parsed.data)) || undefined
 }
 
 /** Só devolve rascunho gravado para esse e-mail; o de outra conta não volta. */
@@ -125,7 +141,8 @@ export function parsePubOnboardingDraft(
       routine: readRoutine(parsed.draft.routine) ?? undefined,
       houseTeams: undefined,
       houseTeamIds: undefined,
-      ...houseTeamsOf(parsed.draft.houseTeams)
+      ...houseTeamsOf(parsed.draft.houseTeams),
+      openingHours: openingHoursOf(parsed.draft.openingHours)
     }
   } catch {
     return null
