@@ -55,7 +55,7 @@
 
 /* Kicker usado como etiqueta com moldura: o tamanho do `onside-badge`. */
 .onside-app .onside-kicker-sm {
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .onside-app .onside-text-muted-on-ink {
@@ -455,7 +455,7 @@
   padding-top: 6px;
   padding-bottom: 6px;
   font-family: var(--onside-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -564,7 +564,7 @@
   padding: 0 6px;
   margin-left: -6px;
   font-family: var(--onside-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -766,7 +766,7 @@
 
 .onside-app .onside-chip-note {
   font-family: var(--onside-mono);
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.1em;
   line-height: 1;
@@ -828,7 +828,7 @@
   padding: 4px 10px;
   border: 1px solid var(--onside-ink);
   font-family: var(--onside-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -838,7 +838,7 @@
 .onside-app .onside-badge-live {
   background: var(--onside-live);
   border-color: var(--onside-live);
-  color: var(--onside-paper);
+  color: #12120f;
   font-weight: 700;
 }
 

@@ -300,7 +300,7 @@ html[data-consent]:has(.houdini) body {
 .hd-brand-sub {
   display: block;
   margin-top: 5px;
-  font: 600 10.5px / 1 var(--hd-mono);
+  font: 600 11px / 1 var(--hd-mono);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--hd-muted);
@@ -318,7 +318,7 @@ html[data-consent]:has(.houdini) body {
 
 .hd-nav-label {
   padding: 14px 12px 6px;
-  font: 600 10.5px / 1 var(--hd-mono);
+  font: 600 11px / 1 var(--hd-mono);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--hd-muted);
@@ -1157,7 +1157,7 @@ a.hd-row + a.hd-row {
 
 .hd-dl dt {
   margin-bottom: 6px;
-  font: 600 10.5px / 1 var(--hd-mono);
+  font: 600 11px / 1 var(--hd-mono);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--hd-muted);

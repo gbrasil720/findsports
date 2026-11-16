@@ -103,7 +103,7 @@
 .onside-not-found-tagline {
   margin: 0;
   font-family: var(--onside-mono);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.12em;
   line-height: 1.45;
@@ -246,7 +246,7 @@
 .onside-not-found-legal {
   margin: 0;
   font-family: var(--onside-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -297,7 +297,7 @@
   }
 
   .onside-not-found-tagline {
-    font-size: 10px;
+    font-size: 11px;
     letter-spacing: 0.14em;
   }
 
