@@ -54,6 +54,7 @@ async function cadastrar(
   await page.getByLabel('Estado (UF)').selectOption('SP')
   await button(page, 'Continuar').click()
   await button(page, 'Pular').click()
+  await button(page, 'Pular por agora').click()
   for (const want of wants) await button(page, want).click()
   await button(page, 'Continuar').click()
   await expect(page.getByRole('heading', { name: 'Tudo certo?' })).toBeVisible()
