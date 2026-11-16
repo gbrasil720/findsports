@@ -1,8 +1,15 @@
+import { db, eq, sql } from '@findsports_oficial/db'
+import { brasiliaDay } from '@findsports_oficial/db/event-window'
 import {
   PROFILE_ALERT_DISMISS_DAYS,
   PROFILE_ALERTS,
   type ProfileAlert
 } from '@findsports_oficial/db/profile-alerts'
+import {
+  bar,
+  barProfileAlert,
+  barTeam
+} from '@findsports_oficial/db/schema/platform'
 import { canShowBarMenu } from './bar-menu'
 import { issuesCounterCode, type SubscriptionForPlan } from './current-plan'
 
@@ -75,4 +82,72 @@ export function pickProfileAlert(
 
 export function profileAlertDismissedUntil(now = new Date()): Date {
   return new Date(now.getTime() + PROFILE_ALERT_DISMISS_DAYS * 86_400_000)
+}
+
+/**
+ * Lê o assunto de hoje do bar e marca `shown_on`. Bar fora do ar não tem
+ * alerta. A escrita só sai quando o assunto ainda não foi marcado hoje.
+ */
+export async function readProfileAlert(
+  barId: string,
+  subscription: SubscriptionForPlan | null,
+  now = new Date()
+): Promise<ProfileAlert | null> {
+  const [row] = await db
+    .select({
+      isActive: bar.isActive,
+      openingHours: bar.openingHours,
+      phone: bar.phone,
+      phoneAcceptsWhatsapp: bar.phoneAcceptsWhatsapp,
+      houseOffer: bar.houseOffer,
+      menuUrl: bar.menuUrl,
+      description: bar.description,
+      descriptionPending: bar.descriptionPending,
+      houseTeamCount: sql<number>`(SELECT count(*)::int FROM ${barTeam} WHERE ${barTeam.barId} = ${bar.id})`
+    })
+    .from(bar)
+    .where(eq(bar.id, barId))
+  if (!row?.isActive) return null
+
+  const states = await db
+    .select({
+      alert: barProfileAlert.alert,
+      dismissedUntil: barProfileAlert.dismissedUntil,
+      shownOn: barProfileAlert.shownOn
+    })
+    .from(barProfileAlert)
+    .where(eq(barProfileAlert.barId, barId))
+  const today = brasiliaDay(now)
+  const alert = pickProfileAlert(
+    missingProfileItems(row, subscription, now),
+    states,
+    today,
+    now
+  )
+  if (alert && !states.some((s) => s.alert === alert && s.shownOn === today)) {
+    await db
+      .insert(barProfileAlert)
+      .values({ barId, alert, shownOn: today })
+      .onConflictDoUpdate({
+        target: [barProfileAlert.barId, barProfileAlert.alert],
+        set: { shownOn: today }
+      })
+  }
+  return alert
+}
+
+/** "Agora não": idempotente, cada chamada recomeça os 3 dias. */
+export async function dismissProfileAlert(
+  barId: string,
+  alert: ProfileAlert,
+  now = new Date()
+) {
+  const dismissedUntil = profileAlertDismissedUntil(now)
+  await db
+    .insert(barProfileAlert)
+    .values({ barId, alert, dismissedUntil })
+    .onConflictDoUpdate({
+      target: [barProfileAlert.barId, barProfileAlert.alert],
+      set: { dismissedUntil }
+    })
 }

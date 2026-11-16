@@ -82,7 +82,7 @@ describe('missingProfileItems', () => {
     expect(
       missingProfileItems(
         {
-          openingHours: {},
+          openingHours: [],
           phone: '11987654321',
           phoneAcceptsWhatsapp: true,
           houseOffer: 'Chopp em dobro',
