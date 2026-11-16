@@ -7,10 +7,18 @@ import { Redirect, useLocalSearchParams, useRouter } from 'expo-router'
 import { useRef, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import Svg, { Circle, Path } from 'react-native-svg'
 import { AuthField } from '@/components/auth-shell'
 import { HardShadow } from '@/components/explore'
 import { DotField } from '@/components/fan-card'
 import { haptic } from '@/components/motion'
+import {
+  HOUR_PRESETS,
+  HoursEditor,
+  todayLine,
+  type Week,
+  weekSummary
+} from '@/components/opening-hours'
 import { PubReceipt } from '@/components/pub-receipt'
 import { usePalette } from '@/components/theme'
 import {
@@ -33,7 +41,7 @@ import { queryClient, trpc } from '@/lib/trpc'
  * Cadastro do bar no app (rodada 10, tela 6): a mesma ordem do cadastro do
  * web (WEB-501) com a placa do bar se preenchendo: boas-vindas,
  * estabelecimento (o CEP acha o endereço), características (com o número de
- * telas), revisão com o teste explicado e o comprovante impresso. Depois
+ * telas), horário (opcional: a página mostra "aberto agora"), revisão com o teste explicado e o comprovante impresso. Depois
  * vêm o primeiro jogo, completar o perfil, a rotina e o plano do teste.
  *
  * Movimento: o comprovante é um momento raro, uma vez: a fita sai linha a
@@ -42,8 +50,8 @@ import { queryClient, trpc } from '@/lib/trpc'
  * reduzido: a fita pronta.
  */
 
-type Step = 'welcome' | 'place' | 'features' | 'review' | 'receipt'
-const ORDER: Step[] = ['welcome', 'place', 'features', 'review']
+type Step = 'welcome' | 'place' | 'features' | 'hours' | 'review' | 'receipt'
+const ORDER: Step[] = ['welcome', 'place', 'features', 'hours', 'review']
 const TRIAL_DAYS = 90
 const WATCH = AMENITIES.filter((a) => a.group === 'watch')
 const OTHERS = AMENITIES.filter(
@@ -81,6 +89,10 @@ export default function CadastroBar() {
   const [phone, setPhone] = useState('')
   const [amenities, setAmenities] = useState<number[]>([])
   const [screens, setScreens] = useState(1)
+  // Nasce no atalho "Fim de semana diferente", como no desenho; só vai para o
+  // servidor se o dono tocar em "Continuar" no passo (pular não manda nada).
+  const [hours, setHours] = useState<Week>(HOUR_PRESETS[1]?.week ?? [])
+  const [hoursSet, setHoursSet] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [done, setDone] = useState<{ at: number } | null>(
     preview ? { at: Date.now() } : null
@@ -131,7 +143,8 @@ export default function CadastroBar() {
         ...(cep.length === 9 ? { cep } : {}),
         ...(phone.trim() ? { phone: phone.trim() } : {}),
         amenities,
-        ...(amenities.includes(1) ? { screenCount: screens } : {})
+        ...(amenities.includes(1) ? { screenCount: screens } : {}),
+        ...(hoursSet ? { openingHours: hours } : {})
       })
       await refreshSession()
       queryClient.invalidateQueries()
@@ -213,7 +226,7 @@ export default function CadastroBar() {
           </Pressable>
           <Text
             style={[styles.mono, { color: dark ? '#aaa9a4' : palette.muted }]}
-          >{`${index + 1} DE 4`}</Text>
+          >{`${index + 1} DE ${ORDER.length}${step === 'hours' ? ' · OPCIONAL' : ''}`}</Text>
         </View>
         <View
           style={[
@@ -224,7 +237,10 @@ export default function CadastroBar() {
           <View
             style={[
               styles.progressFill,
-              { width: `${((index + 1) / 4) * 100}%`, backgroundColor: fg }
+              {
+                width: `${((index + 1) / ORDER.length) * 100}%`,
+                backgroundColor: fg
+              }
             ]}
           />
         </View>
@@ -241,8 +257,15 @@ export default function CadastroBar() {
           name={name.trim() || 'Seu bar'}
           address={address ? `${address}${hood ? ` · ${hood}` : ''}` : null}
           tags={tags}
+          hours={step === 'hours' || hoursSet ? todayLine(hours) : null}
           lit={
-            step === 'place' ? 'address' : step === 'features' ? 'tags' : null
+            step === 'place'
+              ? 'address'
+              : step === 'features'
+                ? 'tags'
+                : step === 'hours'
+                  ? 'hours'
+                  : null
           }
         />
 
@@ -453,6 +476,41 @@ export default function CadastroBar() {
               ))}
             </View>
           </>
+        ) : step === 'hours' ? (
+          <>
+            <View accessible accessibilityRole="header">
+              <Text style={[styles.title, { color: palette.ink }]}>
+                QUANDO O BAR
+              </Text>
+              <Text
+                style={[
+                  styles.title,
+                  { color: palette.dark ? ACID : palette.live }
+                ]}
+              >
+                ABRE?
+              </Text>
+            </View>
+            <Text
+              style={[
+                text(15, 'Regular', 1.45),
+                { color: palette.muted, marginTop: -4 }
+              ]}
+            >
+              Com o horário, a página do bar mostra “aberto agora” para quem
+              está decidindo onde ver o jogo.
+            </Text>
+            <HoursEditor week={hours} onChange={setHours} />
+            <Text
+              style={[
+                text(13.5, 'Regular', 1.4),
+                { color: palette.muted, marginTop: -4 }
+              ]}
+            >
+              Toque num horário para trocar. Fecha depois da meia-noite? Use a
+              hora do dia seguinte, como 02:00.
+            </Text>
+          </>
         ) : (
           <>
             <ReviewRow
@@ -466,6 +524,15 @@ export default function CadastroBar() {
                 tags.length ? tags.join(' · ').toLowerCase() : 'nenhuma ainda'
               }
               onFix={() => setStep('features')}
+            />
+            <ReviewRow
+              title="Horário"
+              sub={
+                hoursSet
+                  ? weekSummary(hours)
+                  : 'Não informado · você preenche depois'
+              }
+              onFix={() => setStep('hours')}
             />
             <View style={[styles.trial, { backgroundColor: palette.mark }]}>
               <Icon name="calendar" size={20} color={palette.ink} />
@@ -551,6 +618,7 @@ export default function CadastroBar() {
           onPress={() => {
             haptic.select()
             if (step === 'review') return submit()
+            if (step === 'hours') setHoursSet(true)
             setStep(ORDER[index + 1] as Step)
           }}
         >
@@ -574,10 +642,13 @@ export default function CadastroBar() {
             </Text>
           </View>
         </Pressable>
-        {step === 'features' ? (
+        {step === 'features' || step === 'hours' ? (
           <Pressable
             accessibilityRole="button"
-            onPress={() => setStep('review')}
+            onPress={() => {
+              if (step === 'hours') setHoursSet(false)
+              setStep(ORDER[index + 1] as Step)
+            }}
           >
             <Text
               style={[
@@ -599,6 +670,7 @@ export function Plate({
   name,
   address,
   tags,
+  hours,
   lit,
   today,
   plan
@@ -606,7 +678,9 @@ export function Plate({
   name: string
   address: string | null
   tags: string[]
-  lit?: 'address' | 'tags' | null
+  /** "Aberto hoje · …"; `null` é o tracejado, sem o prop a linha não existe. */
+  hours?: string | null
+  lit?: 'address' | 'tags' | 'hours' | null
   today?: string
   plan?: string
 }) {
@@ -667,6 +741,36 @@ export function Plate({
         ) : (
           <View style={styles.dashed}>
             <Text style={styles.dashedText}>O que tem</Text>
+          </View>
+        )}
+        {hours === undefined ? null : hours ? (
+          <View style={[styles.plateLine, lit === 'hours' && styles.lit]}>
+            <Svg width={15} height={15} viewBox="0 0 24 24">
+              <Circle
+                cx={12}
+                cy={12}
+                r={9.5}
+                fill={lit === 'hours' ? INK : '#c9c7c0'}
+                opacity={0.3}
+              />
+              <Path
+                d="M10.8 6h2.4v5.3l3.6 2.1-1.2 2.1-4.8-2.8z"
+                fill={lit === 'hours' ? INK : '#c9c7c0'}
+              />
+            </Svg>
+            <Text
+              numberOfLines={1}
+              style={[
+                text(14.5, lit === 'hours' ? 'SemiBold' : 'Regular', 1.3),
+                { color: lit === 'hours' ? INK : '#c9c7c0', flex: 1 }
+              ]}
+            >
+              {hours}
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.dashed}>
+            <Text style={styles.dashedText}>Horário</Text>
           </View>
         )}
         <View style={styles.perf} />
