@@ -47,13 +47,16 @@ function usePlanStatus() {
   const isStarter = planKnown && isStarterSubscription(subscription)
   const lapsedPlan = planKnown ? getLapsedPaidPlan(subscription) : null
   const remaining = limited?.remaining ?? null
+  const isInactive = bar ? !bar.isActive : false
   return {
     sub,
     policy,
     quality,
     subscription,
     planKnown,
-    isInactive: bar ? !bar.isActive : false,
+    isInactive,
+    showLimit:
+      (isStarter || lapsedPlan !== null) && !isInactive && remaining !== null,
     shownPlan: planKnown ? getShownPlan(subscription) : null,
     trialNotice: planKnown ? getTrialNotice(subscription) : null,
     isStarter,
@@ -136,9 +139,7 @@ export function Avisos({ only }: { only?: 'limit' }) {
     }
   }, [s.isAtLimit])
 
-  const showLimit =
-    (s.isStarter || s.lapsedPlan) && !s.isInactive && s.remaining !== null
-  const limit = showLimit ? (
+  const limit = s.showLimit ? (
     <Aviso
       key="limit"
       tone={s.isAtLimit || s.isNearLimit || s.lapsedPlan ? 'warn' : 'info'}
@@ -311,6 +312,19 @@ export function PlanoCard() {
       </Link>
     </section>
   )
+}
+
+/**
+ * Os avisos do plano que tiram o alerta de perfil da tela (fora do ar, teste,
+ * limite e plano parado): `hoje` para Hoje, que mostra todos, e `jogos` para
+ * Jogos, que só mostra o do limite. Enquanto o plano não responde, conta como
+ * visível, para o alerta não aparecer e sumir em seguida.
+ */
+export function usePlanAvisosVisiveis(): { hoje: boolean; jogos: boolean } {
+  const s = usePlanStatus()
+  const known = s.planKnown && s.policy.isFetched
+  const jogos = !known || s.showLimit
+  return { hoje: jogos || s.isInactive || s.trialNotice !== null, jogos }
 }
 
 export { usePlanStatus }
