@@ -18,6 +18,7 @@ import {
 } from '@/components/bar-owner'
 import { askBarTour } from '@/components/bar-tour'
 import { haptic } from '@/components/motion'
+import { useProfileAlert } from '@/components/profile-alert'
 import { usePalette } from '@/components/theme'
 import {
   ACID,
@@ -51,6 +52,7 @@ export default function ConfiguracoesBar() {
   const palette = usePalette()
   const insets = useSafeAreaInsets()
   useStatusBar(palette.dark ? 'light' : 'dark')
+  const profileAlert = useProfileAlert()
   const params = useLocalSearchParams<{ aba?: Tab }>()
   const [tab, setTab] = useState<Tab>(params.aba ?? 'bar')
   const owner = useOwnerBar()
@@ -98,6 +100,7 @@ export default function ConfiguracoesBar() {
           </Text>
           <View style={{ width: 44 }} />
         </View>
+        {profileAlert.view}
         <View style={styles.tabs}>
           {(
             [
@@ -353,6 +356,7 @@ export default function ConfiguracoesBar() {
           </>
         )}
       </ScrollView>
+      {profileAlert.toast}
     </View>
   )
 }

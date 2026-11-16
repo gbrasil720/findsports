@@ -27,6 +27,7 @@ import { askBarTour, FirstSteps } from '@/components/bar-tour'
 import { HardShadow, initials } from '@/components/explore'
 import { useNavInsets } from '@/components/layout'
 import { EASE, haptic } from '@/components/motion'
+import { useProfileAlert } from '@/components/profile-alert'
 import { useSoon } from '@/components/soon'
 import { usePalette } from '@/components/theme'
 import { useTourTarget } from '@/components/tour'
@@ -77,6 +78,7 @@ export default function Casa() {
   const reduced = useReducedMotion()
   const soon = useSoon()
   useStatusBar(palette.dark ? 'light' : 'dark')
+  const profileAlert = useProfileAlert()
   const now = useMinuteNow()
   const owner = useOwnerBar()
   const bar = owner.bar
@@ -169,6 +171,7 @@ export default function Casa() {
           gap: 14
         }}
       >
+        {profileAlert.view}
         <View style={styles.head}>
           <View style={{ flex: 1, minWidth: 0 }}>
             {/* Nome longo encolhe com reticências; o plano fica sempre. */}
@@ -504,6 +507,7 @@ export default function Casa() {
           </Pressable>
         ) : null}
       </ScrollView>
+      {profileAlert.toast}
       {soon.toast}
     </View>
   )

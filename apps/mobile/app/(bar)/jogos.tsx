@@ -22,6 +22,7 @@ import {
 import { HardShadow } from '@/components/explore'
 import { useNavInsets } from '@/components/layout'
 import { EASE, haptic } from '@/components/motion'
+import { useProfileAlert } from '@/components/profile-alert'
 import { usePalette } from '@/components/theme'
 import {
   ACID,
@@ -72,6 +73,7 @@ export default function Jogos() {
   const nav = useNavInsets()
   const reduced = useReducedMotion()
   useStatusBar(palette.dark ? 'light' : 'dark')
+  const profileAlert = useProfileAlert()
   const owner = useOwnerBar()
   const events = useQuery(trpc.pub.getMyEvents.queryOptions())
   const going = useQuery({
@@ -143,6 +145,7 @@ export default function Jogos() {
           gap: 14
         }}
       >
+        {profileAlert.view}
         <View style={styles.head}>
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={[styles.kicker, { color: palette.muted }]}>
@@ -353,6 +356,7 @@ export default function Jogos() {
           ))
         )}
       </ScrollView>
+      {profileAlert.toast}
       <View
         pointerEvents="box-none"
         style={[
