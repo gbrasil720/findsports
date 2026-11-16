@@ -20,8 +20,10 @@
   margin-left: auto;
 }
 
-.pn3 .pn-soon-go:hover {
-  border-color: var(--fg);
+@media (hover: hover) {
+  .pn3 .pn-soon-go:hover {
+    border-color: var(--fg);
+  }
 }
 
 /* ─── Período ─── */
@@ -421,9 +423,11 @@ html[data-theme="dark"] .pn3 .pn-tip {
   cursor: pointer;
 }
 
-.pn3 .pn-tbl-g:hover b {
-  text-decoration: underline;
-  text-underline-offset: 3px;
+@media (hover: hover) {
+  .pn3 .pn-tbl-g:hover b {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
 }
 
 .pn3 .pn-tbl-g small {

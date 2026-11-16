@@ -445,8 +445,10 @@
     transition: none;
   }
 
-  .onside-invite-cta:hover {
-    transform: none;
+  @media (hover: hover) {
+    .onside-invite-cta:hover {
+      transform: none;
+    }
   }
 }
 

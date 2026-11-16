@@ -401,8 +401,10 @@
     transition: none;
   }
 
-  .onside-not-found-cta:hover {
-    transform: none;
+  @media (hover: hover) {
+    .onside-not-found-cta:hover {
+      transform: none;
+    }
   }
 }
 

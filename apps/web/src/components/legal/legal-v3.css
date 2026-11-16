@@ -160,8 +160,10 @@
   transition: transform 0.18s var(--ease);
 }
 
-.lp3 .lg-other:hover {
-  transform: translateY(-2px);
+@media (hover: hover) {
+  .lp3 .lg-other:hover {
+    transform: translateY(-2px);
+  }
 }
 
 .lp3 .lg-other > span {
@@ -286,9 +288,11 @@
   transition: background 0.2s;
 }
 
-.lp3 .lg-index nav a:hover {
-  background: var(--stone);
-  color: var(--ink);
+@media (hover: hover) {
+  .lp3 .lg-index nav a:hover {
+    background: var(--stone);
+    color: var(--ink);
+  }
 }
 
 .lp3 .lg-index nav a span:first-child {

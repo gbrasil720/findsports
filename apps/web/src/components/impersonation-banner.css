@@ -158,8 +158,10 @@
   transition: opacity 150ms;
 }
 
-.onside-pele-stop:hover {
-  opacity: 0.9;
+@media (hover: hover) {
+  .onside-pele-stop:hover {
+    opacity: 0.9;
+  }
 }
 
 .onside-pele-stop:disabled {

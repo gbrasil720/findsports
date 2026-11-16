@@ -271,8 +271,10 @@
   box-shadow: 0 3px 0 var(--sand);
   transition: transform 0.35s var(--ease);
 }
-.lp3 .occ li:hover {
-  transform: translateY(-3px);
+@media (hover: hover) {
+  .lp3 .occ li:hover {
+    transform: translateY(-3px);
+  }
 }
 .lp3 .occ .n {
   font: 600 14px / 1 var(--mono);
@@ -299,8 +301,10 @@
   box-shadow: 0 4px 0 #7f9a12;
   transform: rotate(-1.2deg);
 }
-.lp3 .occ li.hl:hover {
-  transform: rotate(-1.2deg) translateY(-3px);
+@media (hover: hover) {
+  .lp3 .occ li.hl:hover {
+    transform: rotate(-1.2deg) translateY(-3px);
+  }
 }
 .lp3 .occ li.hl .n {
   color: var(--ink);
@@ -431,9 +435,11 @@
   cursor: pointer;
   text-align: left;
 }
-.lp3 .foot-col a:hover,
-.lp3 .foot-col button:hover {
-  color: var(--paper);
+@media (hover: hover) {
+  .lp3 .foot-col a:hover,
+  .lp3 .foot-col button:hover {
+    color: var(--paper);
+  }
 }
 .lp3 .foot-bar {
   display: flex;
@@ -867,8 +873,10 @@ html:has(.lp3) body {
   transition: color 0.3s;
 }
 
-.lp3 .theme-switch label:hover {
-  color: #f1eee6;
+@media (hover: hover) {
+  .lp3 .theme-switch label:hover {
+    color: #f1eee6;
+  }
 }
 
 .lp3 .theme-switch label[data-on="true"] {
@@ -989,9 +997,14 @@ html.vt-theme::view-transition-new(root) {
   opacity: 0.75;
 }
 
-.lp3 .theme-switch.is-compact label:hover,
 .lp3 .theme-switch.is-compact label[data-on="true"] {
   opacity: 1;
+}
+
+@media (hover: hover) {
+  .lp3 .theme-switch.is-compact label:hover {
+    opacity: 1;
+  }
 }
 
 .lp3 .theme-switch.is-compact label[data-on="true"] {

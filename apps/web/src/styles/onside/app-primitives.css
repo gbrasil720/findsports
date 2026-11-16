@@ -159,9 +159,11 @@
   border-color: var(--onside-live);
 }
 
-.onside-app .onside-btn-danger:hover:not(:disabled) {
-  background: var(--onside-live-text);
-  border-color: var(--onside-live-text);
+@media (hover: hover) {
+  .onside-app .onside-btn-danger:hover:not(:disabled) {
+    background: var(--onside-live-text);
+    border-color: var(--onside-live-text);
+  }
 }
 
 .onside-app .onside-btn-full {
@@ -464,12 +466,16 @@
 }
 
 /* O realce é da linha de dados. A de cabeçalho não é alvo e não muda. */
-.onside-app [data-slot="table-body"] [data-slot="table-row"]:hover {
-  background: rgb(18 18 15 / 5%);
+@media (hover: hover) {
+  .onside-app [data-slot="table-body"] [data-slot="table-row"]:hover {
+    background: rgb(18 18 15 / 5%);
+  }
 }
 
-.onside-app [data-slot="table-header"] [data-slot="table-row"]:hover {
-  background: transparent;
+@media (hover: hover) {
+  .onside-app [data-slot="table-header"] [data-slot="table-row"]:hover {
+    background: transparent;
+  }
 }
 
 /* ─── Checkbox e radio do shadcn ───
@@ -597,9 +603,11 @@
   transition: background-color var(--onside-motion-fast) ease;
 }
 
-.onside-app [data-slot="accordion-trigger"]:hover {
-  background: rgb(18 18 15 / 7%);
-  text-decoration: none;
+@media (hover: hover) {
+  .onside-app [data-slot="accordion-trigger"]:hover {
+    background: rgb(18 18 15 / 7%);
+    text-decoration: none;
+  }
 }
 
 .onside-app [data-slot="accordion-trigger"][data-panel-open] {
@@ -709,8 +717,10 @@
   transition: background-color var(--onside-motion-fast) ease;
 }
 
-.onside-app .onside-chip:hover:not(:disabled) {
-  background: var(--onside-stone);
+@media (hover: hover) {
+  .onside-app .onside-chip:hover:not(:disabled) {
+    background: var(--onside-stone);
+  }
 }
 
 .onside-app .onside-chip[aria-pressed="true"] {
@@ -723,12 +733,16 @@
   color: var(--onside-paper);
 }
 
-.onside-app .onside-chip-ink[aria-pressed="true"]:hover:not(:disabled) {
-  background: var(--onside-ink);
+@media (hover: hover) {
+  .onside-app .onside-chip-ink[aria-pressed="true"]:hover:not(:disabled) {
+    background: var(--onside-ink);
+  }
 }
 
-.onside-app .onside-chip[aria-pressed="true"]:hover:not(:disabled) {
-  background: var(--onside-acid);
+@media (hover: hover) {
+  .onside-app .onside-chip[aria-pressed="true"]:hover:not(:disabled) {
+    background: var(--onside-acid);
+  }
 }
 
 .onside-app .onside-chip:disabled {
@@ -794,8 +808,10 @@
     background-color var(--onside-motion-fast) ease;
 }
 
-.onside-app .onside-tablist > [role="tab"]:hover {
-  color: var(--onside-ink);
+@media (hover: hover) {
+  .onside-app .onside-tablist > [role="tab"]:hover {
+    color: var(--onside-ink);
+  }
 }
 
 .onside-app .onside-tablist > [role="tab"][aria-selected="true"] {

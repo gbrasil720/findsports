@@ -351,17 +351,19 @@
  * duas barras horizontais. Aqui a superfície é o destaque e o anel, quando
  * aparece, encosta por dentro (ver `--onside-focus-offset`).
  */
-.onside-menu
-[data-slot="dropdown-menu-item"]:is(:hover, :focus, [data-highlighted]),
-.onside-app
-  [data-slot="dropdown-menu-content"]
-  [data-slot="dropdown-menu-item"]:is(:hover, :focus, [data-highlighted]),
-.onside-app
-  [data-slot="select-content"]
-  [data-slot="select-item"]:is(:hover, :focus, [data-highlighted]) {
-  background: var(--onside-acid);
-  color: var(--onside-ink);
-  box-shadow: inset 3px 0 0 var(--onside-ink);
+@media (hover: hover) {
+  .onside-menu
+    [data-slot="dropdown-menu-item"]:is(:hover, :focus, [data-highlighted]),
+  .onside-app
+    [data-slot="dropdown-menu-content"]
+    [data-slot="dropdown-menu-item"]:is(:hover, :focus, [data-highlighted]),
+  .onside-app
+    [data-slot="select-content"]
+    [data-slot="select-item"]:is(:hover, :focus, [data-highlighted]) {
+    background: var(--onside-acid);
+    color: var(--onside-ink);
+    box-shadow: inset 3px 0 0 var(--onside-ink);
+  }
 }
 
 /*
@@ -376,20 +378,22 @@
   color: var(--onside-live-text);
 }
 
-.onside-menu .onside-menu-destructive:is(:hover, :focus, [data-highlighted]),
-.onside-app
-  [data-slot="dropdown-menu-content"]
-  .onside-menu-destructive:is(:hover, :focus, [data-highlighted]),
-.onside-app
-  [data-slot="dropdown-menu-content"]
-  [data-slot="dropdown-menu-item"][data-variant="destructive"]:is(
-    :hover,
-    :focus,
-    [data-highlighted]
-  ) {
-  background: color-mix(in srgb, var(--onside-live) 10%, var(--onside-paper));
-  color: var(--onside-ink);
-  box-shadow: inset 3px 0 0 var(--onside-live);
+@media (hover: hover) {
+  .onside-menu .onside-menu-destructive:is(:hover, :focus, [data-highlighted]),
+  .onside-app
+    [data-slot="dropdown-menu-content"]
+    .onside-menu-destructive:is(:hover, :focus, [data-highlighted]),
+  .onside-app
+    [data-slot="dropdown-menu-content"]
+    [data-slot="dropdown-menu-item"][data-variant="destructive"]:is(
+      :hover,
+      :focus,
+      [data-highlighted]
+    ) {
+    background: color-mix(in srgb, var(--onside-live) 10%, var(--onside-paper));
+    color: var(--onside-ink);
+    box-shadow: inset 3px 0 0 var(--onside-live);
+  }
 }
 
 .onside-app

@@ -34,8 +34,10 @@ html[data-theme="dark"] .pn3 {
   box-shadow: inset 0 0 0 1.5px var(--line2);
 }
 
-:is(.pn3, .dlg3) .pn-danger:hover:not(:disabled) {
-  box-shadow: inset 0 0 0 1.5px currentColor;
+@media (hover: hover) {
+  :is(.pn3, .dlg3) .pn-danger:hover:not(:disabled) {
+    box-shadow: inset 0 0 0 1.5px currentColor;
+  }
 }
 
 .pn3 .pn-lnk-b {
@@ -104,9 +106,11 @@ html[data-theme="dark"] .pn3 {
   text-decoration: none;
 }
 
-.pn3 .pn-go:hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
+@media (hover: hover) {
+  .pn3 .pn-go:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
 }
 
 .pn3 .pn-err {
@@ -676,8 +680,10 @@ html[data-theme="dark"] .pn3 {
     box-shadow 0.2s;
 }
 
-.pn3 .pn-trk:hover {
-  transform: translateY(-2px);
+@media (hover: hover) {
+  .pn3 .pn-trk:hover {
+    transform: translateY(-2px);
+  }
 }
 
 .pn3 .pn-t1 {
@@ -968,8 +974,10 @@ html[data-theme="dark"] .pn3 {
     box-shadow 0.2s;
 }
 
-.pn3 .pn-row:hover {
-  transform: translateY(-2px);
+@media (hover: hover) {
+  .pn3 .pn-row:hover {
+    transform: translateY(-2px);
+  }
 }
 
 .pn3 .pn-row.is-on {
@@ -1997,8 +2005,10 @@ html[data-theme="dark"] .pn3 {
   content: " →";
 }
 
-.pn3 .pn-wa-go:hover {
-  text-decoration-thickness: 2.5px;
+@media (hover: hover) {
+  .pn3 .pn-wa-go:hover {
+    text-decoration-thickness: 2.5px;
+  }
 }
 
 .pn3 .pn-wa-x {
@@ -2015,8 +2025,10 @@ html[data-theme="dark"] .pn3 {
   cursor: pointer;
 }
 
-.pn3 .pn-wa-x:hover {
-  background: color-mix(in srgb, var(--warn-line) 30%, transparent);
+@media (hover: hover) {
+  .pn3 .pn-wa-x:hover {
+    background: color-mix(in srgb, var(--warn-line) 30%, transparent);
+  }
 }
 
 .pn3 .pn-wa-x:focus-visible,

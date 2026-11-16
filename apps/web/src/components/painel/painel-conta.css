@@ -404,9 +404,11 @@ html:has(.pn3) body {
   cursor: pointer;
 }
 
-.pn3 button.pn-addph:hover:not(:disabled) {
-  border-color: var(--fg);
-  color: var(--fg);
+@media (hover: hover) {
+  .pn3 button.pn-addph:hover:not(:disabled) {
+    border-color: var(--fg);
+    color: var(--fg);
+  }
 }
 
 .pn3 .pn-addph.is-soon {
@@ -1272,8 +1274,10 @@ html[data-theme="dark"] .pn3 .pn-savebar {
   box-shadow: inset 0 0 0 1.5px rgba(241, 238, 230, 0.35);
 }
 
-.pn3 .pn-planhero .pn-ghost:hover {
-  box-shadow: inset 0 0 0 1.5px #f1eee6;
+@media (hover: hover) {
+  .pn3 .pn-planhero .pn-ghost:hover {
+    box-shadow: inset 0 0 0 1.5px #f1eee6;
+  }
 }
 
 .pn3 .pn-ph-cancel {
@@ -1540,8 +1544,10 @@ html[data-theme="dark"] .pn3 .pn-savebar {
   cursor: pointer;
 }
 
-.pn3 .pn-subnav button:hover {
-  background: var(--sub);
+@media (hover: hover) {
+  .pn3 .pn-subnav button:hover {
+    background: var(--sub);
+  }
 }
 
 .pn3 .pn-subnav .is-dz {

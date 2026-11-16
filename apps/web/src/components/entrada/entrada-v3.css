@@ -170,9 +170,11 @@
   box-shadow: inset 0 0 0 1.5px rgba(18, 18, 15, 0.25);
 }
 
-.lp3.ent .onside-btn-outline:hover,
-.lp3.ent .onside-btn-ghost:hover {
-  box-shadow: inset 0 0 0 1.5px var(--ink);
+@media (hover: hover) {
+  .lp3.ent .onside-btn-outline:hover,
+  .lp3.ent .onside-btn-ghost:hover {
+    box-shadow: inset 0 0 0 1.5px var(--ink);
+  }
 }
 
 .lp3.ent .btn.btn-ghost {
@@ -180,8 +182,10 @@
   box-shadow: inset 0 0 0 1.5px rgba(18, 18, 15, 0.25);
 }
 
-.lp3.ent .btn.btn-ghost:hover {
-  box-shadow: inset 0 0 0 1.5px var(--ink);
+@media (hover: hover) {
+  .lp3.ent .btn.btn-ghost:hover {
+    box-shadow: inset 0 0 0 1.5px var(--ink);
+  }
 }
 
 /* ─── Campos ─── */

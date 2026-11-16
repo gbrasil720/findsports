@@ -182,12 +182,18 @@
     animation: none !important;
   }
 
-  .onside-app .onside-btn:hover:not(:disabled),
-  .onside-app .onside-choice:hover:not(:disabled),
   .onside-app .onside-btn:active:not(:disabled),
   .onside-app .onside-choice:active:not(:disabled) {
     transform: none !important;
     box-shadow: none !important;
+  }
+
+  @media (hover: hover) {
+    .onside-app .onside-btn:hover:not(:disabled),
+    .onside-app .onside-choice:hover:not(:disabled) {
+      transform: none !important;
+      box-shadow: none !important;
+    }
   }
 
   .onside-app > main,

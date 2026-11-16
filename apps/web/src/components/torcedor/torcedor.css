@@ -144,9 +144,11 @@ html[data-theme="dark"] .tc {
   color: var(--ink);
   box-shadow: 0 4px 0 var(--acid-drop);
 }
-.tc .b-acid:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 0 var(--acid-drop);
+@media (hover: hover) {
+  .tc .b-acid:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 0 var(--acid-drop);
+  }
 }
 .tc .b-acid:active {
   box-shadow: 0 1px 0 var(--acid-drop);
@@ -156,16 +158,20 @@ html[data-theme="dark"] .tc {
   color: var(--bg);
   box-shadow: 0 4px 0 #000;
 }
-.tc .b-ink:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 0 #000;
+@media (hover: hover) {
+  .tc .b-ink:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 0 #000;
+  }
 }
 .tc .b-ghost {
   background: transparent;
   box-shadow: inset 0 0 0 1.5px var(--line2);
 }
-.tc .b-ghost:hover {
-  box-shadow: inset 0 0 0 1.5px var(--fg);
+@media (hover: hover) {
+  .tc .b-ghost:hover {
+    box-shadow: inset 0 0 0 1.5px var(--fg);
+  }
 }
 .tc .sm {
   height: 42px;
@@ -267,8 +273,10 @@ html[data-theme="dark"] .tc {
   padding: 10px 12px;
   border-radius: 999px;
 }
-.tc .hdr nav .lnk:hover {
-  background: var(--sub);
+@media (hover: hover) {
+  .tc .hdr nav .lnk:hover {
+    background: var(--sub);
+  }
 }
 .tc .night {
   padding: 26px max(28px, var(--gr)) 22px max(28px, var(--gl));
@@ -382,9 +390,11 @@ html[data-theme="dark"] .tc {
   overflow: hidden;
   z-index: 1;
 }
-.tc .gm:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 0 var(--drop);
+@media (hover: hover) {
+  .tc .gm:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 0 var(--drop);
+  }
 }
 .tc .gm .t1 {
   display: flex;
@@ -494,8 +504,10 @@ html[data-theme="dark"] .tc {
   gap: 7px;
   transition: background 0.2s;
 }
-.tc .chip:hover {
-  background: var(--line2);
+@media (hover: hover) {
+  .tc .chip:hover {
+    background: var(--line2);
+  }
 }
 .tc .chip.on {
   background: var(--fg);
@@ -596,12 +608,19 @@ html[data-theme="dark"] .tc {
     transform: none;
   }
 }
-.tc .bc:hover,
 .tc .bc.hot {
   transform: translateY(-3px);
   box-shadow:
     0 5px 0 var(--drop),
     0 30px 50px -30px rgba(18, 18, 15, 0.5);
+}
+@media (hover: hover) {
+  .tc .bc:hover {
+    transform: translateY(-3px);
+    box-shadow:
+      0 5px 0 var(--drop),
+      0 30px 50px -30px rgba(18, 18, 15, 0.5);
+  }
 }
 .tc .ph {
   position: relative;
@@ -616,8 +635,10 @@ html[data-theme="dark"] .tc {
   object-fit: cover;
   transition: transform 0.8s var(--ease);
 }
-.tc .bc:hover .ph img {
-  transform: scale(1.04);
+@media (hover: hover) {
+  .tc .bc:hover .ph img {
+    transform: scale(1.04);
+  }
 }
 .tc .ph .when {
   position: absolute;
@@ -686,8 +707,10 @@ html[data-theme="dark"] .tc {
     transform 0.2s var(--ease),
     background 0.2s;
 }
-.tc .fav:hover {
-  transform: scale(1.08);
+@media (hover: hover) {
+  .tc .fav:hover {
+    transform: scale(1.08);
+  }
 }
 .tc .tags {
   display: flex;
@@ -813,10 +836,15 @@ html[data-theme="dark"] .tc {
     box-shadow 0.2s;
   animation: tc-in 0.45s var(--ease) both;
 }
-.tc .bq:hover,
 .tc .bq.hot {
   background: var(--card);
   box-shadow: inset 0 0 0 1.5px var(--fg);
+}
+@media (hover: hover) {
+  .tc .bq:hover {
+    background: var(--card);
+    box-shadow: inset 0 0 0 1.5px var(--fg);
+  }
 }
 .tc .bq a {
   display: grid;
@@ -1948,9 +1976,13 @@ html[data-theme="dark"] .tc .m-d {
   align-items: center;
   gap: 8px;
 }
-.tc .acct a:hover,
 .tc .acct a.cur {
   background: var(--sub);
+}
+@media (hover: hover) {
+  .tc .acct a:hover {
+    background: var(--sub);
+  }
 }
 .tc .acct a .n {
   font: 600 12px var(--mono);
@@ -2522,8 +2554,10 @@ html[data-theme="dark"] .tc .m-d {
   background: var(--acid);
   --spark: #12120f;
 }
-.tc .stars button:hover {
-  transform: translateY(-2px);
+@media (hover: hover) {
+  .tc .stars button:hover {
+    transform: translateY(-2px);
+  }
 }
 .tc .why2 {
   display: flex;
@@ -2817,9 +2851,11 @@ html[data-theme="dark"] .tc .m-d {
   cursor: pointer;
   text-align: left;
 }
-.tc .umenu a:hover,
-.tc .umenu button:hover {
-  background: var(--sub);
+@media (hover: hover) {
+  .tc .umenu a:hover,
+  .tc .umenu button:hover {
+    background: var(--sub);
+  }
 }
 .tc .umenu .sep {
   height: 1px;
@@ -3787,8 +3823,10 @@ html[data-theme="dark"] .tc .m-d {
   object-fit: cover;
   transition: transform 0.5s var(--ease);
 }
-.tc .rd-row:hover .rd-ph img {
-  transform: scale(1.04);
+@media (hover: hover) {
+  .tc .rd-row:hover .rd-ph img {
+    transform: scale(1.04);
+  }
 }
 .tc .rd-match {
   position: absolute;
@@ -3829,9 +3867,11 @@ html[data-theme="dark"] .tc .m-d {
 .tc .rd-hd h3 a {
   text-decoration: none;
 }
-.tc .rd-hd h3 a:hover {
-  text-decoration: underline;
-  text-decoration-thickness: 2px;
+@media (hover: hover) {
+  .tc .rd-hd h3 a:hover {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+  }
 }
 .tc .rd-m {
   display: inline-flex;
@@ -3950,8 +3990,10 @@ html[data-theme="dark"] .tc .m-d {
 .tc .rd-skip {
   opacity: 0.55;
 }
-.tc .rd-skip:hover {
-  opacity: 0.85;
+@media (hover: hover) {
+  .tc .rd-skip:hover {
+    opacity: 0.85;
+  }
 }
 .tc .rd-map {
   position: sticky;
