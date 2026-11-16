@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
   },
   day: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 10,
+    fontSize: 11,
     letterSpacing: 0.6,
     marginTop: 4
   },

@@ -479,7 +479,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.22,
     marginVertical: -5
   },
-  gpDate: { fontFamily: 'GeistMono-SemiBold', fontSize: 10.5 },
+  gpDate: { fontFamily: 'GeistMono-SemiBold', fontSize: 11 },
   gpCheck: {
     position: 'absolute',
     right: 8,

@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
   },
   when: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 10.5,
+    fontSize: 11,
     letterSpacing: 0.6,
     marginTop: 2
   },

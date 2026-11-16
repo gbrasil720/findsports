@@ -1021,7 +1021,7 @@ const styles = StyleSheet.create({
   screens: { flexDirection: 'row', gap: 6, marginTop: 7 },
   screen: { flexDirection: 'row', gap: 4, alignItems: 'center' },
   mono11: { fontFamily: MONO, fontSize: 11 },
-  mono10: { fontFamily: MONO, fontSize: 10, letterSpacing: 0.5 },
+  mono10: { fontFamily: MONO, fontSize: 11, letterSpacing: 0.5 },
   goingNumber: {
     fontFamily: MONO,
     fontSize: 14,
@@ -1030,7 +1030,7 @@ const styles = StyleSheet.create({
   },
   goingLabel: {
     fontFamily: MONO,
-    fontSize: 10.5,
+    fontSize: 11,
     letterSpacing: 0.63,
     marginVertical: -1.6
   },
@@ -1145,7 +1145,7 @@ const styles = StyleSheet.create({
   },
   liveLabel: {
     fontFamily: MONO,
-    fontSize: 9.5,
+    fontSize: 11,
     letterSpacing: 0.57,
     color: '#aaa9a4'
   },

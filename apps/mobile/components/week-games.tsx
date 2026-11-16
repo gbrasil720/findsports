@@ -500,7 +500,7 @@ const styles = StyleSheet.create({
   },
   when: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 10.5,
+    fontSize: 11,
     letterSpacing: 1.05,
     color: ACID
   },
@@ -513,7 +513,7 @@ const styles = StyleSheet.create({
   },
   tagText: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 9.5,
+    fontSize: 11,
     letterSpacing: 0.95,
     color: INK
   },
@@ -563,7 +563,7 @@ const styles = StyleSheet.create({
   },
   cellLabel: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 8.5,
+    fontSize: 11,
     lineHeight: 11.5,
     letterSpacing: 0.85,
     textTransform: 'uppercase',
@@ -607,7 +607,7 @@ const styles = StyleSheet.create({
   rowDay: { width: 58 },
   rowWeekday: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 10.5,
+    fontSize: 11,
     letterSpacing: 0.84
   },
   rowTime: { fontFamily: 'GeistMono-SemiBold', fontSize: 17 }

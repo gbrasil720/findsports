@@ -570,7 +570,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 2
   },
-  dayName: { fontFamily: 'GeistMono-SemiBold', fontSize: 10.5 },
+  dayName: { fontFamily: 'GeistMono-SemiBold', fontSize: 11 },
   dayNumber: { fontFamily: 'Anton', fontSize: 26, marginVertical: -4 },
   dots: { flexDirection: 'row', gap: 3, height: 8, alignItems: 'center' },
   dotMark: { width: 6, height: 6, borderRadius: 3 },

@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
   rungName: { ...text(10.5, 'SemiBold', 1.15), maxWidth: '96%' },
   rungFrom: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 9.5,
+    fontSize: 11,
     color: '#6b6a63'
   }
 })

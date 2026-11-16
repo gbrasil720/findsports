@@ -753,7 +753,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10
   },
   day: { width: 44, paddingVertical: 6, borderRadius: 4, alignItems: 'center' },
-  dayTop: { fontFamily: 'GeistMono-SemiBold', fontSize: 9.5 },
+  dayTop: { fontFamily: 'GeistMono-SemiBold', fontSize: 11 },
   dayNum: { fontFamily: 'Anton', fontSize: 18, marginTop: 3, marginBottom: -4 },
   time: { fontFamily: 'Anton', fontSize: 20, marginVertical: -5 },
   map: { height: 150, borderRadius: 6, overflow: 'hidden' },

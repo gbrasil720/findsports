@@ -780,7 +780,7 @@ const styles = StyleSheet.create({
   },
   ghostAside: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 10.5,
+    fontSize: 11,
     letterSpacing: 0.6
   },
   first: {

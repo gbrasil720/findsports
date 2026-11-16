@@ -954,7 +954,7 @@ const styles = StyleSheet.create({
   brand: { fontFamily: 'Anton', fontSize: 22, color: PAPER },
   season: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 10,
+    fontSize: 11,
     letterSpacing: 1,
     color: '#aaa9a4',
     textAlign: 'right'
@@ -1013,7 +1013,7 @@ const styles = StyleSheet.create({
   plateFoot: { flexDirection: 'row', justifyContent: 'space-between' },
   footLabel: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 10,
+    fontSize: 11,
     letterSpacing: 1,
     color: '#aaa9a4'
   },

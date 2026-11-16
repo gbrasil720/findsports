@@ -442,6 +442,7 @@ const styles = StyleSheet.create({
     color: ACID,
     marginHorizontal: 7
   },
+  // polish-ok: é o ponto que separa os itens do letreiro, não texto.
   tickDot: { fontSize: 8, color: '#f3421d', marginHorizontal: 7 },
   eyebrow: {
     fontFamily: 'GeistMono-SemiBold',
@@ -526,7 +527,7 @@ const styles = StyleSheet.create({
   ticketLogo: { fontFamily: 'Anton', fontSize: 14, color: INK },
   ticketKicker: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 9.5,
+    fontSize: 11,
     letterSpacing: 0.95,
     color: '#55554f'
   },
@@ -536,7 +537,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: INK
   },
-  savedText: { fontFamily: 'GeistMono-SemiBold', fontSize: 10.5, color: ACID },
+  savedText: { fontFamily: 'GeistMono-SemiBold', fontSize: 11, color: ACID },
   ticketBottom: {
     flexDirection: 'row',
     alignItems: 'center',

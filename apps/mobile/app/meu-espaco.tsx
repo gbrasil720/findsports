@@ -635,7 +635,7 @@ const styles = StyleSheet.create({
   weekBar: { width: '86%', borderRadius: 8 },
   weekHours: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 10.5,
+    fontSize: 11,
     textAlign: 'center'
   },
   center: {

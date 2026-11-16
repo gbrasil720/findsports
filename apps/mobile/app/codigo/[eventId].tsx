@@ -589,7 +589,7 @@ const styles = StyleSheet.create({
   },
   brandLabel: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 10,
+    fontSize: 11,
     letterSpacing: 1.2,
     color: MUTED_INK
   },
@@ -674,7 +674,7 @@ const styles = StyleSheet.create({
   },
   offerLabel: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 10,
+    fontSize: 11,
     letterSpacing: 0.8,
     color: MUTED_INK,
     marginBottom: 4

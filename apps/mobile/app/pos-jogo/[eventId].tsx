@@ -978,7 +978,7 @@ const styles = StyleSheet.create({
   },
   medalLabel: {
     fontFamily: 'GeistMono-SemiBold',
-    fontSize: 10,
+    fontSize: 11,
     letterSpacing: 0.8,
     color: ACID,
     marginBottom: 2
