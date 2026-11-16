@@ -71,25 +71,15 @@ export default function CompletarPerfil() {
   const [problem, setProblem] = useState<string | null>(null)
   const [cover, setCover] = useState<string | null>(null)
   const [about, setAbout] = useState('')
-  // Domingo a sábado (0 = domingo): a segunda nasce fechada, como no desenho.
-  const [hours, setHours] = useState<Day[]>(() => [
-    DEFAULT,
-    null,
-    DEFAULT,
-    DEFAULT,
-    DEFAULT,
-    DEFAULT,
-    DEFAULT
-  ])
+  // Domingo a sábado (0 = domingo). A semana nasce vazia: horário de exemplo
+  // pareceria salvo sem ser. Só vai ao servidor com algum dia aberto.
+  const [hours, setHours] = useState<Day[]>(() =>
+    Array.from({ length: 7 }, () => null)
+  )
   // Nada pré-escolhido: oferta e horário são compromissos do bar.
   const [offer, setOffer] = useState<string | null>(null)
-  const [touched, setTouched] = useState(false)
   const [until, setUntil] = useState<string>(UNTIL[0] ?? '')
-  // Mexer num dia marca que o horário é do dono: só então ele é gravado.
-  const changeHours = (next: (now: Day[]) => Day[]) => {
-    setTouched(true)
-    setHours(next)
-  }
+  const changeHours = (next: (now: Day[]) => Day[]) => setHours(next)
   const add = useMutation(trpc.pub.addPhoto.mutationOptions())
   const updateMe = useMutation(trpc.pub.updateMe.mutationOptions())
   const saveHours = useMutation(trpc.pub.updateOpeningHours.mutationOptions())
@@ -130,7 +120,7 @@ export default function CompletarPerfil() {
       if (step === 1 && about.trim())
         await updateMe.mutateAsync({ description: about.trim() })
       if (step === 2) {
-        if (touched && askHours)
+        if (askHours && hours.some(Boolean))
           await saveHours.mutateAsync({ openingHours: hours })
         if (owner.elite && offer)
           await saveOffer.mutateAsync({ houseOffer: `${offer} ${until}` })
