@@ -167,7 +167,7 @@ export function HoursEditor({
                         j === day
                           ? d
                             ? null
-                            : (week.find(Boolean) ?? {
+                            : (ORDER.map((i) => week[i]).find(Boolean) ?? {
                                 opens: '17:00',
                                 closes: '00:00'
                               })
