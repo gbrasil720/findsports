@@ -74,7 +74,7 @@ export function AuthPasswordField({
             type="button"
             aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
             onClick={onToggle}
-            className="grid min-h-11 min-w-11 place-items-center text-[var(--onside-muted)] transition-colors hover:text-[var(--onside-ink)]"
+            className="grid min-h-11 min-w-11 place-items-center rounded-full text-[var(--onside-muted)] transition-colors hover:text-[var(--onside-ink)] focus-visible:outline-3! focus-visible:outline-solid! focus-visible:outline-[var(--onside-acid)]!"
           >
             {showPassword ? (
               <EyeSlash size={16} color="currentColor" aria-hidden="true" />
