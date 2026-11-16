@@ -60,6 +60,10 @@ export const user = pgTable(
     // número na lista da cidade. Nasce desligado; quem tem "Ninguém" em
     // `activityVisibility` fica de fora mesmo ligado.
     rankingGlobal: boolean('ranking_global').default(false).notNull(),
+    // "Me encontrar pelo e-mail" (Privacidade; dono, 16/11/2026): quem tem seu
+    // e-mail na agenda te acha em Contatos (`friends.matchContacts`). Nasce
+    // ligado; vale junto com `friendRequestsFrom` = 'everyone'.
+    findableByEmail: boolean('findable_by_email').default(true).notNull(),
     // better-auth admin plugin fields
     banned: boolean('banned').default(false),
     banReason: text('ban_reason'),
