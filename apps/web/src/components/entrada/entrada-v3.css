@@ -9,14 +9,14 @@
  */
 
 .lp3.ent {
-  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--paper);
 }
 
 .lp3 .ent-split {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .lp3 .ent-left {
@@ -356,7 +356,7 @@
   position: sticky;
   top: 0;
   align-self: start;
-  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   background: var(--ink);
   color: var(--paper);

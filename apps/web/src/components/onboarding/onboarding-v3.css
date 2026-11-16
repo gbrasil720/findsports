@@ -559,7 +559,7 @@
 .lp3.ob3.obb {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--paper);
 }
 
@@ -1830,7 +1830,7 @@
   align-items: center;
   justify-content: center;
   gap: 22px;
-  min-height: calc(100vh - 77px);
+  min-height: calc(100dvh - 77px);
   padding: 40px 34px;
   color: #f4efe6;
   text-align: center;
