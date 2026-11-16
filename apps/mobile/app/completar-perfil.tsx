@@ -158,7 +158,9 @@ export default function CompletarPerfil() {
         : null
       : step === 1
         ? 'Salvar descrição'
-        : 'Salvar e continuar'
+        : only
+          ? 'Salvar'
+          : 'Salvar e continuar'
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
