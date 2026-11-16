@@ -1037,3 +1037,45 @@ html.vt-theme::view-transition-new(root) {
     display: grid;
   }
 }
+
+/*
+ * Área de toque: a peça fica do tamanho do desenho e o alvo passa dela, para o
+ * dedo acertar (36 de altura com palavra, 44 só com ícone).
+ */
+.lp3
+:where(
+  .foot-col a,
+  .foot-col button,
+  .lg-meta a,
+  .ent-link,
+  .logo,
+  .dock .acts .btn-ghost
+) {
+  position: relative;
+}
+
+.lp3
+  :where(
+    .foot-col a,
+    .foot-col button,
+    .lg-meta a,
+    .ent-link,
+    .logo,
+    .dock .acts .btn-ghost
+  )::before {
+  content: "";
+  position: absolute;
+  inset: -11px -4px;
+}
+
+/* Peça sem sombra sólida afunda um pouco ao toque, para o dedo sentir que pegou. */
+.lp3
+:where(
+  .mpick button,
+  .theme-flip,
+  .lg-index a,
+  .lg-index-toggle,
+  .pl-cyc button
+):active {
+  scale: 0.97;
+}

@@ -1964,3 +1964,17 @@ dialog.bp-layer::backdrop {
     scroll-behavior: auto !important;
   }
 }
+
+/*
+ * Área de toque: a peça fica do tamanho do desenho e o alvo passa dela, para o
+ * dedo acertar (36 de altura com palavra, 44 só com ícone).
+ */
+.bp :where(.linkish, .crumbs a, .bp-foot a, .o-neighbors a, .logo) {
+  position: relative;
+}
+
+.bp :where(.linkish, .crumbs a, .bp-foot a, .o-neighbors a, .logo)::before {
+  content: "";
+  position: absolute;
+  inset: -12px -6px;
+}
