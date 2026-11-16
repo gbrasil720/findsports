@@ -721,6 +721,12 @@ Add app-specific blocks: run shadcn CLI from `apps/web`.
 
 Import shared components: `import { Button } from "@findsports_oficial/ui/components/button"`
 
+**Acabamento de interface:** antes de mexer em tela, CSS, texto de tela ou animação (web
+e app), e em todo pedido de revisão de design, use a skill `ui-polish`
+(`.agents/skills/ui-polish/`): as regras da casa, a varredura do código (`scripts/scan.ts`),
+a medição da tela renderizada em 1280 e 390, claro e escuro (`scripts/shoot.ts`), e a
+passagem pelas skills de animação.
+
 ### Mapa
 
 MapLibre GL JS com basemap Protomaps: archive `.pmtiles` no R2, tiles ZXY via
