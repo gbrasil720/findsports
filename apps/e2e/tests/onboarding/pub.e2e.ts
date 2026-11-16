@@ -15,7 +15,7 @@ const DRAFT_KEY = 'onside:pub-onboarding-draft'
 
 const button = (page: Page, name: string | RegExp) =>
   page.getByRole('button', { name, exact: typeof name === 'string' })
-const progress = (page: Page) => page.getByText(/^Passo \d de 5 · /)
+const progress = (page: Page) => page.getByText(/^Passo \d de 6 · /)
 
 /** Endereço único: a rua vai para o stub e para o cache do geocoding. */
 const street = (tag = '') => `Rua E2E ${tag}${randomUUID().slice(0, 8)}, 100`
@@ -57,10 +57,11 @@ async function fillEstablishment(page: Page, data: Establishment) {
 const CONCLUIR = /Colocar meu bar no ar|Confirmar meu e-mail/
 
 /**
- * Da rotina à revisão (WEB-501). O plano não é deste cadastro: o dono
- * escolhe depois do primeiro jogo (`pub-primeiro-valor.e2e.ts`).
+ * Do horário, pulado, à revisão (WEB-501). O plano não é deste cadastro: o
+ * dono escolhe depois do primeiro jogo (`pub-primeiro-valor.e2e.ts`).
  */
 async function throughRoutine(page: Page) {
+  await button(page, 'Pular por agora').click()
   await button(page, 'Continuar').click()
 }
 
@@ -132,7 +133,7 @@ test('com sessão verificada: passos, completePub e a tela "no ar", bar nasce no
   const address = street()
 
   // Boas-vindas
-  await expect(progress(page)).toHaveText(/^Passo 1 de 5/)
+  await expect(progress(page)).toHaveText(/^Passo 1 de 6/)
   await button(page, 'Começar').click()
 
   // Estabelecimento
@@ -165,17 +166,42 @@ test('com sessão verificada: passos, completePub e a tela "no ar", bar nasce no
   await expect(button(page, 'Com oferta da casa')).toHaveCount(0)
   await page.getByLabel('Quantas telas?').fill('4')
   await button(page, 'Continuar').click()
-  await throughRoutine(page)
+
+  // Horário: atalho, um dia fechado e um horário trocado à mão
+  await expect(
+    page.getByRole('heading', { name: 'Quando o bar abre?' })
+  ).toBeVisible()
+  await button(page, 'Fim de semana diferente').click()
+  await page.getByRole('switch', { name: 'Aberto na segunda' }).click()
+  await expect(page.getByLabel('Segunda abre')).toHaveCount(0)
+  await page.getByLabel('Domingo fecha').fill('23:00')
+  await expect(button(page, 'Fim de semana diferente')).toHaveAttribute(
+    'aria-pressed',
+    'false'
+  )
+  // Abre e fecha na mesma hora segura o botão, com a regra do painel.
+  await page.getByLabel('Terça fecha').fill('17:00')
+  await expect(button(page, 'Continuar')).toBeDisabled()
+  await page.getByLabel('Terça fecha').fill('00:00')
+  await button(page, 'Continuar').click()
+  await button(page, 'Continuar').click()
 
   // Revisão
-  await expect(progress(page)).toHaveText(/^Passo 5 de 5/)
+  await expect(progress(page)).toHaveText(/^Passo 6 de 6/)
+  // Todo passo feito ganha o visto, o Horário também.
+  await expect(page.locator('.ob-steps li.ok')).toHaveCount(5)
   for (const dado of [
     'Bar do Teste',
     'Pinheiros',
     'Telão / projetor',
     address,
     '(11) 98765-4321',
-    'Sinuca no fundo'
+    'Sinuca no fundo',
+    'Segunda fechado',
+    'Ter a qui 17:00 – 00:00',
+    'Sexta 17:00 – 02:00',
+    'Sábado 12:00 – 02:00',
+    'Domingo 12:00 – 23:00'
   ]) {
     await expect(
       page.getByRole('main').getByText(dado, { exact: true })
@@ -206,6 +232,63 @@ test('com sessão verificada: passos, completePub e a tela "no ar", bar nasce no
     [owner.id]
   )
   expect(user?.onboarding_completed).toBe(true)
+  // A semana vai de domingo (0) a sábado, como Meu espaço grava.
+  const [horario] = await query<{ opening_hours: unknown }>(
+    'SELECT opening_hours FROM bar WHERE user_id = $1',
+    [owner.id]
+  )
+  expect(horario?.opening_hours).toEqual([
+    { opens: '12:00', closes: '23:00' },
+    null,
+    { opens: '17:00', closes: '00:00' },
+    { opens: '17:00', closes: '00:00' },
+    { opens: '17:00', closes: '00:00' },
+    { opens: '17:00', closes: '02:00' },
+    { opens: '12:00', closes: '02:00' }
+  ])
+})
+
+test('horário pulado: sem visto no passo, "Não informado" na revisão e nada gravado', async ({
+  page
+}) => {
+  const owner = await signInPendingPub(page)
+  await button(page, 'Começar').click()
+  await fillEstablishment(page, {
+    name: 'Bar Sem Horário',
+    address: street(),
+    neighborhood: 'Centro'
+  })
+  await button(page, 'Continuar').click()
+  await button(page, 'Pular').click()
+  // Preencher e pular descarta o que foi marcado.
+  await button(page, 'Só à noite, 18:00 às 02:00').click()
+  await button(page, 'Pular por agora').click()
+  await expect(
+    page.getByRole('heading', { name: 'Como é a sua rotina de jogo?' })
+  ).toBeVisible()
+  await button(page, 'Continuar').click()
+
+  await expect(
+    page
+      .getByRole('main')
+      .getByText('Não informado · você preenche depois em Meu espaço')
+  ).toBeVisible()
+  // Boas-vindas, estabelecimento, características e rotina; o Horário não.
+  await expect(page.locator('.ob-steps li.ok')).toHaveCount(4)
+  await button(page, 'Corrigir horário').click()
+  await expect(button(page, 'Só à noite, 18:00 às 02:00')).toHaveAttribute(
+    'aria-pressed',
+    'false'
+  )
+  await button(page, 'Pular por agora').click()
+  await button(page, 'Continuar').click()
+  await concluir(page)
+  await expect(page).toHaveURL(/\/onboarding\/pub\/no-ar$/)
+  const [bar] = await query<{ opening_hours: unknown }>(
+    'SELECT opening_hours FROM bar WHERE user_id = $1',
+    [owner.id]
+  )
+  expect(bar?.opening_hours).toBeNull()
 })
 
 test('validações do estabelecimento: nome, bairro, endereço e telefone', async ({
@@ -540,7 +623,7 @@ test('recarregar no meio do wizard volta ao passo e aos dados, e concluir apaga 
 
   // `goto`, e não `reload`: só o `goto` da suíte espera a hidratação.
   await page.goto(page.url())
-  await expect(progress(page)).toHaveText(/^Passo 3 de 5/)
+  await expect(progress(page)).toHaveText(/^Passo 3 de 6/)
   await expect(telao).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByLabel('Quantas telas?')).toHaveValue('3')
   await button(page, 'Voltar').click()
@@ -599,7 +682,7 @@ test('rascunho parado no meio do wizard, de outra conta, não aparece (WEB-262)'
 
   await page.goto('/onboarding/pub')
   await expect.poll(() => storedDraft(page)).toBeNull()
-  await expect(progress(page)).toHaveText(/^Passo 1 de 5/)
+  await expect(progress(page)).toHaveText(/^Passo 1 de 6/)
   await button(page, 'Começar').click()
   await expect(page.getByLabel('Nome do estabelecimento')).toHaveValue('')
 })
@@ -662,7 +745,7 @@ test('rascunho parado no meio do wizard não é enviado pela confirmação do e-
   const verification = await lastEmailTo(email)
   await page.goto(verification.link)
   await expect(page).toHaveURL(/\/onboarding\/pub$/)
-  await expect(progress(page)).toHaveText(/^Passo 3 de 5/)
+  await expect(progress(page)).toHaveText(/^Passo 3 de 6/)
   expect(
     await query(
       'SELECT 1 FROM bar JOIN "user" u ON u.id = bar.user_id WHERE u.email = $1',
