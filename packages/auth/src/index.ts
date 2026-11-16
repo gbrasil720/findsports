@@ -49,6 +49,7 @@ import { syncStripeEvent } from './stripe-sync'
 import { APP_SCHEME, buildTrustedOrigins } from './trusted-origins'
 import { revokeOtherSessionsOnTwoFactorEnable } from './two-factor-enable'
 import { publicEmailUrl, sendVerificationEmail } from './verification-email'
+import { verifyEmailRespectsTwoFactor } from './verify-email-two-factor'
 
 function cookieDomainFor(baseUrl: string): string | undefined {
   const host = new URL(baseUrl).hostname.replace(/^www\./, '')
@@ -383,6 +384,8 @@ export function createAuth() {
       turnstilePlugin(),
       twoFactor({ issuer: 'Onside' }),
       revokeOtherSessionsOnTwoFactorEnable(),
+      // Antes do expo(): o link de confirmação não entra em conta com 2FA.
+      verifyEmailRespectsTwoFactor(),
       admin({
         adminRoles: ['admin'],
         defaultRole: 'fan'
