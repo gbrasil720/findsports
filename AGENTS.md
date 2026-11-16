@@ -771,7 +771,11 @@ Protótipo `docs/design/redesign-2026-11/painel/index.src.html` (branch do guia
 navegável). Duas partes:
 
 - **Cadastro** (`routes/(onboarding)/onboarding.pub.tsx`): Boas-vindas,
-  Estabelecimento, Características, Sua rotina e Revisão, sem passo de plano. A rotina
+  Estabelecimento, Características, Horário, Sua rotina e Revisão, sem passo de
+  plano. Horário é opcional ("Pular por agora", e o passo pulado não ganha o
+  visto no topo): a mesma semana e a mesma validação de Meu espaço (`horario` em
+  `components/painel/espaco-rascunho.ts`), com atalhos (`pub-hours-step.tsx`); vai
+  no rascunho e no `completePub` (`openingHours`), e pulado não manda nada. A rotina
   (jogos por mês, gasto por cliente, o que o dono espera; `routineSchema`) vai no
   rascunho e no `completePub`, que a grava em `bar.routine` e começa o teste no plano
   que ela recomenda, com `bar.trial_plan_chosen_at` nulo. O comprovante não tem plano
