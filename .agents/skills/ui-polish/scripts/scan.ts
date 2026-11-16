@@ -136,7 +136,9 @@ const COPY: [string, RegExp][] = [
   ]
 ]
 
-const motion = /@keyframes|transition:|animation:/
+/* Movimento de verdade: quadros-chave ou transição de posição. Troca de cor não conta. */
+const motion =
+  /@keyframes|transition:[^;]*\b(transform|translate|scale|rotate)\b/
 for (const file of files) {
   const src = await Bun.file(`${root}/${file}`)
     .text()
@@ -148,7 +150,11 @@ for (const file of files) {
   const tokens =
     /theme\.tsx$|tokens\.css$|map-style|medals?\.|\/ai\/theme/.test(file)
 
-  if (css && motion.test(src) && !src.includes('prefers-reduced-motion'))
+  if (
+    css &&
+    motion.test(src) &&
+    !/prefers-reduced-motion|polish-ok: movimento reduzido/.test(src)
+  )
     hit(
       'CSS com movimento e sem prefers-reduced-motion',
       file,

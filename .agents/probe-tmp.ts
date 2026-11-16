@@ -1,0 +1,10 @@
+import { chromium } from 'playwright'
+const [url, theme, width, ...sels] = process.argv.slice(2)
+const b = await chromium.launch()
+const c = await b.newContext({ viewport: { width: +width, height: 844 }, colorScheme: theme as 'dark' })
+await c.addInitScript((t) => { try { localStorage.setItem('onside-tema', t) } catch {} }, theme)
+if (process.env.COOKIE) await c.addCookies(JSON.parse(process.env.COOKIE))
+const p = await c.newPage()
+await p.goto(url, { waitUntil: 'load' }); await p.waitForTimeout(2500)
+for (const sel of sels) console.log(sel, await p.evaluate((s) => { const el = document.querySelector(s); if (!el) return 'x'; const out = []; for (let e = el; e && out.length < 4; e = e.parentElement) { const cs = getComputedStyle(e); out.push(`${e.className?.toString().slice(0,30)} c=${cs.color} bg=${cs.backgroundColor} fs=${cs.fontSize}`) } return out.join('\n   ') }, sel))
+await b.close()
