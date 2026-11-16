@@ -133,8 +133,10 @@ html[data-theme="dark"]
 html[data-theme="dark"] .lp3.ent .btn.btn-ghost {
   box-shadow: inset 0 0 0 1.5px rgba(241, 238, 230, 0.25);
 }
-html[data-theme="dark"] .lp3.ent .btn.btn-ghost:hover {
-  box-shadow: inset 0 0 0 1.5px #f1eee6;
+@media (hover: hover) {
+  html[data-theme="dark"] .lp3.ent .btn.btn-ghost:hover {
+    box-shadow: inset 0 0 0 1.5px #f1eee6;
+  }
 }
 html[data-theme="dark"] .lp3.ent .ent-seg {
   background: #26261f;

@@ -235,8 +235,10 @@ html:has(.onside-page) {
   transition: transform var(--onside-motion-base) var(--onside-ease-out);
 }
 
-.onside-page .onside-nav-links a:hover::after {
-  transform: scaleX(1);
+@media (hover: hover) {
+  .onside-page .onside-nav-links a:hover::after {
+    transform: scaleX(1);
+  }
 }
 
 .onside-page .onside-nav-cta {
