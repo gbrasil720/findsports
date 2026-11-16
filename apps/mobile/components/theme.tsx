@@ -43,7 +43,13 @@ export const PALETTE = {
     /** A sombra dura dos botões acid: tinta some no fundo de tinta, vira preto. */
     edge: INK,
     /** A sombra dura dos cards das telas de conta ("4px 4px 0"). */
-    drop: 'rgba(18,18,15,.09)'
+    drop: 'rgba(18,18,15,.09)',
+    /** Alerta amarelo do painel do bar (`.wa` do web): fundo, borda, texto, apoio, ícone. */
+    warnBg: '#fff4c7',
+    warnLine: '#e8c547',
+    warnFg: '#3d3000',
+    warnSub: '#5f4b00',
+    warnIcon: '#a87600'
   },
   dark: {
     dark: true,
@@ -67,7 +73,12 @@ export const PALETTE = {
     cardLine: 'rgba(241,238,230,.1)',
     fieldLine: 'rgba(241,238,230,.16)',
     edge: '#000',
-    drop: '#000'
+    drop: '#000',
+    warnBg: '#2a2410',
+    warnLine: '#6b5a1c',
+    warnFg: '#fbe7a1',
+    warnSub: '#d9c88a',
+    warnIcon: '#f5c84b'
   }
 }
 export type Palette = (typeof PALETTE)['light'] | (typeof PALETTE)['dark']
