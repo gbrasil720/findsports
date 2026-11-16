@@ -942,7 +942,8 @@ invente layout que o projeto não tem.
   verificador secreto no SecureStore (1 h, o `expiresIn` da confirmação) e mandam só o
   SHA-256 dele. No servidor, o plugin `appSessionHandoff`
   (`packages/auth/src/app-session-handoff.ts`, logo depois do `expo()`) tira o `?cookie=` que
-  o `expo()` acrescenta e põe um `?code=` de uso único (60 s, tabela `verification`), preso ao
+  o `expo()` acrescenta (em toda rota em que ele o faz: `/verify-email`, `/callback*`,
+  `/oauth2/callback*`, `/magic-link/verify`; `carriesAppCookie`) e põe um `?code=` de uso único (60 s, tabela `verification`), preso ao
   desafio. `app/verified.tsx` (portão puro em `lib/verified-gate.ts`) troca código +
   verificador pela sessão em `POST /api/auth/app-session/redeem` e a guarda
   (`adoptSessionCookie`). Código errado, vencido ou reusado é recusado (e gasto na primeira
