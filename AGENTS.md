@@ -40,7 +40,7 @@ O CI confere ainda, além de lint, tipos, testes e E2E: migration nova com `DROP
 TABLE`/`DROP COLUMN`, `RENAME`, `SET NOT NULL` ou `SET DATA TYPE` falha sem a linha
 `-- contract: <motivo>` no arquivo (`scripts/check-migrations.sh`, também no pre-push);
 schema mudado sem `db:generate` (job `unit-test`); o JavaScript de entrada do web acima
-de 310 kB com gzip (job `e2e-worker`); o app empacotando no Metro (job `mobile`); e,
+de 215 kB com gzip (job `e2e-worker`); o app empacotando no Metro (job `mobile`); e,
 depois do deploy, `/` e `/api/app/status` respondendo (passo `Smoke`). O repositório tem
 secret scanning com push protection e alertas do Dependabot ligados; o
 `.github/dependabot.yml` só atualiza as actions.
