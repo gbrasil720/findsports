@@ -11,6 +11,7 @@ files=$(git diff --name-only --diff-filter=d "$base" --)
 [ -n "$files" ] && echo "$files" |
   xargs bunx biome check --no-errors-on-unmatched --files-ignore-unknown=true
 bun scripts/check-onside-classes.ts
+scripts/check-migrations.sh "$base"
 
 bunx turbo run check-types --filter="...[$base]" --output-logs=errors-only
 bun run test
