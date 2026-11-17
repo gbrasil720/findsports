@@ -1899,3 +1899,10 @@ html[data-theme="dark"] .pn3 .pn-savebar {
 .pn3 .pn-av-mais {
   margin-top: 6px;
 }
+
+/* No toque, campo abaixo de 16 px faz o iOS dar zoom e não voltar. */
+@media (pointer: coarse) {
+  .pn3 .pn-hr-t .pn-inp {
+    font-size: 16px;
+  }
+}

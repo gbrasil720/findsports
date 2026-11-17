@@ -2085,3 +2085,10 @@ html[data-theme="dark"] .pn3 {
 ):active {
   scale: 0.97;
 }
+
+/* No toque, campo abaixo de 16 px faz o iOS dar zoom e não voltar. */
+@media (pointer: coarse) {
+  .pn3 .pn-q input {
+    font-size: 16px;
+  }
+}

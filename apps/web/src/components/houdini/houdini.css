@@ -1766,3 +1766,11 @@ a.hd-row + a.hd-row {
 a.hd-row:active {
   background: var(--hd-hover);
 }
+
+/* No toque, campo abaixo de 16 px faz o iOS dar zoom e não voltar. */
+@media (pointer: coarse) {
+  .hd-input,
+  .hd-select {
+    font-size: 16px;
+  }
+}

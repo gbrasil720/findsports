@@ -4670,3 +4670,14 @@ html[data-consent] .tc .fresh.flutua {
 ):active {
   scale: 0.97;
 }
+
+/* No toque, campo abaixo de 16 px faz o iOS dar zoom e não voltar. */
+@media (pointer: coarse) {
+  .tc .chip.rad select,
+  .tc .sort select,
+  .tc .tc-picker .onside-input,
+  .tc .tc-cidade .onside-input,
+  .tc .tc-cidade input {
+    font-size: 16px;
+  }
+}
