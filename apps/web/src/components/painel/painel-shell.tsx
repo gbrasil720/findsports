@@ -264,7 +264,7 @@ export function PainelShell({
                       }
                       onClick={() => trilho.alternar(false)}
                     >
-                      <IconeTrilho aberta={trilho.expandida} />
+                      <IconeTrilho />
                     </button>
                   }
                 />
@@ -401,7 +401,7 @@ export function PainelShell({
 }
 
 /** O ícone do botão de recolher: a sidebar com a seta para onde ela vai. */
-function IconeTrilho({ aberta }: { aberta: boolean }) {
+function IconeTrilho() {
   return (
     <svg
       width="22"
@@ -416,7 +416,8 @@ function IconeTrilho({ aberta }: { aberta: boolean }) {
     >
       <rect x="3" y="4" width="18" height="16" rx="3.5" />
       <path d="M9 4v16" />
-      <path d={aberta ? 'M15.5 10l-2 2 2 2' : 'M13.5 10l2 2-2 2'} />
+      {/* Uma seta só, que o CSS gira: aberta aponta para a esquerda. */}
+      <path className="pn-tgl-seta" d="M13.5 10l2 2-2 2" />
     </svg>
   )
 }
