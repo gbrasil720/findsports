@@ -872,7 +872,7 @@ html:has(.pn3) body {
   border-radius: 6px;
   background: #12120f;
   color: #c9f135;
-  font: 600 10.5px / 1 var(--mono);
+  font: 600 11px / 1 var(--mono);
   font-style: normal;
   letter-spacing: 0.05em;
 }
