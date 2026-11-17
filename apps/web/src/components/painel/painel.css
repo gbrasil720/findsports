@@ -923,6 +923,34 @@ html[data-theme="dark"]:has(.pn3) body {
   transform: rotate(180deg);
 }
 
+/* Recolher e abrir (`animarTrilho`, em `trilho.ts`). O conteúdo tem fundo
+   próprio e não passa da janela enquanto anda, e a placa é a tinta da
+   sidebar inteira atrás dos ícones: em repouso fica em `scaleX(0)`, e só
+   encolhe de onde a borda estava até o trilho. */
+@media (min-width: 861px) {
+  .pn3 .pn-shell {
+    overflow-x: clip;
+  }
+
+  .pn3 .pn-col {
+    background: var(--bg);
+  }
+
+  .pn3 .pn-rail::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 256px;
+    background: var(--rail);
+    transform: scaleX(0);
+    transform-origin: left;
+    pointer-events: none;
+  }
+}
+
 /* Trilho de ícones: o padrão entre 861 e 1180 px e a sidebar recolhida no
    desktop (`data-pn-trilho`, em `trilho.ts`). */
 @media (min-width: 861px) {
