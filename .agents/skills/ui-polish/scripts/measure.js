@@ -104,6 +104,17 @@
   })
   const buttons = controls.filter((el) => !el.matches('input, select'))
 
+  /* Fora da caixa de um pai que rola (coluna de tabela larga): está escondido pela rolagem, não por uma barra. */
+  const clipped = (el, x, y) => {
+    for (let p = el.parentElement; p; p = p.parentElement) {
+      const s = css.get(p) ?? getComputedStyle(p)
+      if (s.overflowX === 'visible' && s.overflowY === 'visible') continue
+      const r = p.getBoundingClientRect()
+      if (x < r.left || x > r.right || y < r.top || y > r.bottom) return true
+    }
+    return false
+  }
+
   /* Atrás de barra fixa: no topo ou no fim da rolagem não há como trazer à vista. */
   const covered = (els, sev, what) => {
     for (const el of els) {
@@ -112,6 +123,7 @@
       const y = r.top + r.height / 2
       if (x < 0 || x > vw || y < 0 || y > vh) continue
       if (edge === 'bottom' ? y < vh / 2 : y > vh / 2) continue
+      if (clipped(el, x, y)) continue
       const top = document.elementFromPoint(x, y)
       if (!top || el.contains(top) || top.contains(el)) continue
       const host = fixedHost(top)
