@@ -688,6 +688,15 @@ html[data-theme="dark"] .tc {
   margin: 0;
   font: 700 21px / 1.2 var(--text);
 }
+/* O nome é o link do cartão: a linha tem 22 a 25 px, o toque ganha 38+. */
+.tc .r1 h3 a {
+  position: relative;
+}
+.tc .r1 h3 a::before {
+  content: "";
+  position: absolute;
+  inset: -8px 0;
+}
 .tc .r1 .meta {
   margin: 5px 0 0;
   color: var(--muted);
@@ -711,6 +720,9 @@ html[data-theme="dark"] .tc {
   .tc .fav:hover {
     transform: scale(1.08);
   }
+}
+.tc .fav:active {
+  transform: scale(0.94);
 }
 .tc .tags {
   display: flex;
