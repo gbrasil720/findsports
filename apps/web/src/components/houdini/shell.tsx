@@ -531,6 +531,10 @@ function Abracadabra({ onClose }: { onClose: () => void }) {
           id="hd-abra"
           className="hd-palette-input"
           placeholder="Nome, e-mail, id ou cus_…"
+          enterKeyHint="search"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           autoComplete="off"
           value={query}
           onChange={(event) => {

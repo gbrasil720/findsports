@@ -96,6 +96,11 @@ function PessoasPage() {
               type="search"
               className="hd-input"
               placeholder="Nome, e-mail ou id"
+              enterKeyHint="search"
+              autoComplete="off"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />

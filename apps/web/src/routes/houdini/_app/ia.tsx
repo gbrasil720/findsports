@@ -1358,6 +1358,7 @@ function LimitsEditor({
             <input
               className="hd-input hd-mono"
               inputMode="decimal"
+              autoComplete="off"
               value={draft[f.key]}
               onChange={(event) =>
                 setDraft({ ...draft, [f.key]: event.target.value })

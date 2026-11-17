@@ -370,6 +370,7 @@ export function TorcedorShell({ aba, children, busca, onde, semAbas }: Props) {
                 <input
                   type="search"
                   placeholder="Time, bar ou bairro"
+                  enterKeyHint="search"
                   autoComplete="off"
                   value={busca.valor}
                   onChange={(e) => busca.onMudar(e.target.value)}

@@ -175,6 +175,9 @@ export function DeleteAccountDialog({
             </FieldLabel>
             <Input
               id="delete-account-confirmation"
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
               autoComplete="off"
               aria-invalid={Boolean(error)}
               aria-describedby={error ? 'delete-account-error' : undefined}

@@ -269,6 +269,8 @@ function Jogo({
                 type="text"
                 inputMode="search"
                 placeholder="Buscar pelo nome"
+                enterKeyHint="search"
+                autoComplete="off"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
               />

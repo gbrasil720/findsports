@@ -413,6 +413,8 @@ export function JogosPage({
               type="text"
               inputMode="search"
               placeholder="Buscar jogo ou time"
+              enterKeyHint="search"
+              autoComplete="off"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />

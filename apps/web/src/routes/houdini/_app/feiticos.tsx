@@ -450,6 +450,9 @@ function SpellRow({
               <textarea
                 id={fieldId}
                 className="hd-input hd-textarea hd-mono"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 aria-invalid={error ? true : undefined}

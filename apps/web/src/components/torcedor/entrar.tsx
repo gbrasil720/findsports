@@ -242,6 +242,9 @@ export function FolhaEntrar({ pedido, onFechar, onEntrou }: Props) {
             <input
               ref={emailRef}
               id="sh-e"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               type="email"
               autoComplete="email"
               inputMode="email"
@@ -255,6 +258,7 @@ export function FolhaEntrar({ pedido, onFechar, onEntrou }: Props) {
             Senha
             <input
               id="sh-p"
+              enterKeyHint="go"
               type="password"
               autoComplete="current-password"
               required

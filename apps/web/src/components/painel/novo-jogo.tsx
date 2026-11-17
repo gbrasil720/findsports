@@ -635,6 +635,7 @@ function Formulario({
                 if (event.target.value) setParticipantIds([])
               }}
               aria-label="Times ou participantes em texto livre"
+              autoComplete="off"
               placeholder={
                 featured.length
                   ? 'Ou escreva o jogo (ex.: classificatória)'
@@ -663,6 +664,7 @@ function Formulario({
             className="pn-inp"
             value={championship}
             onChange={(event) => setChampionship(event.target.value)}
+            autoComplete="off"
             placeholder="Ex.: Brasileirão, Copa do Brasil…"
             aria-invalid={championshipTooLong || undefined}
           />

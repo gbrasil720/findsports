@@ -256,6 +256,9 @@ function Sheet({
           E-mail
           <input
             id="bp-email"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             type="email"
             autoComplete="email"
             inputMode="email"
@@ -269,6 +272,7 @@ function Sheet({
           Senha
           <input
             id="bp-password"
+            enterKeyHint="go"
             type="password"
             autoComplete="current-password"
             placeholder="Sua senha"
