@@ -195,6 +195,19 @@ for (const file of files) {
       src.slice(0, src.indexOf('withRepeat(')).split('\n').length,
       'withRepeat sem conferir o movimento reduzido'
     )
+  /* O import em várias linhas escapa da regra por linha. `text.tsx` é a peça da casa. */
+  if (app && !file.endsWith('components/text.tsx'))
+    for (const m of src.matchAll(/import \{([^}]*)\} from 'react-native'/g))
+      if (
+        m[0].includes('\n') &&
+        /\b(Text|TextInput)\b/.test(m[1].replace(/type \w+/g, ''))
+      )
+        hit(
+          "Text/TextInput do react-native (use os de '@/components/ui')",
+          file,
+          src.slice(0, m.index).split('\n').length,
+          m[0].replace(/\s+/g, ' ')
+        )
   if (app)
     for (const m of src.matchAll(/<Animated\.Text\b[^>]*>/g))
       if (!/maxFontSizeMultiplier/.test(m[0]))
