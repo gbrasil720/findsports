@@ -380,8 +380,10 @@
         ? around
         : el
     const r = box.getBoundingClientRect()
-    let w = r.width
-    let h = r.height
+    /* Campo que passa da caixa em volta (margem negativa): vale o maior dos dois. */
+    const own = el.getBoundingClientRect()
+    let w = Math.max(r.width, own.width)
+    let h = Math.max(r.height, own.height)
     for (const pseudo of ['::before', '::after']) {
       const p = getComputedStyle(el, pseudo)
       if (p.content === 'none' || p.position !== 'absolute') continue
