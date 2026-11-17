@@ -856,18 +856,71 @@ html[data-theme="dark"]:has(.pn3) body {
   display: none;
 }
 
-/* Trilho de ícones até 1180 px (como o painel antigo). */
-@media (max-width: 1180px) and (min-width: 861px) {
-  .pn3 .pn-shell {
+/* Topo da sidebar: a marca e o botão de recolher (canvas "Sidebar
+   recolhível do painel"). */
+.pn3 .pn-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pn3 .pn-tgl {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--rail-mute);
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+
+/* No tablet a sidebar é tocada: sem o flash cinza, sem a espera do toque
+   duplo e sem selecionar o rótulo ao segurar (skill mobile-native). */
+.pn3 .pn-rail :is(a, button) {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .pn3 .pn-tgl:hover {
+    background: rgba(241, 238, 230, 0.08);
+    color: var(--rail-fg);
+  }
+}
+
+.pn3 .pn-tgl:active {
+  background: rgba(241, 238, 230, 0.12);
+}
+
+.pn3 .pn-veu {
+  display: none;
+}
+
+/* Trilho de ícones: o padrão entre 861 e 1180 px e a sidebar recolhida no
+   desktop (`data-pn-trilho`, em `trilho.ts`). */
+@media (min-width: 861px) {
+  html[data-pn-trilho="1"] .pn3 .pn-shell {
     --rail-w: 84px;
   }
 
-  .pn3 .pn-rail {
+  html[data-pn-trilho="1"] .pn3 .pn-rail {
     align-items: center;
     padding: 22px 12px 18px;
   }
 
-  .pn3 .pn-rail .pn-l {
+  html[data-pn-trilho="1"] .pn3 .pn-rail .pn-l {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -876,47 +929,148 @@ html[data-theme="dark"]:has(.pn3) body {
     white-space: nowrap;
   }
 
-  .pn3 .pn-logo {
+  html[data-pn-trilho="1"] .pn3 .pn-top {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  html[data-pn-trilho="1"] .pn3 .pn-tgl {
+    margin-left: 0;
+  }
+
+  html[data-pn-trilho="1"] .pn3 .pn-logo {
     padding: 0;
   }
 
-  .pn3 .pn-logo b,
-  .pn3 .pn-barcard em {
+  html[data-pn-trilho="1"] .pn3 .pn-logo b,
+  html[data-pn-trilho="1"] .pn3 .pn-barcard em {
     display: none;
   }
 
-  .pn3 .pn-barcard {
+  html[data-pn-trilho="1"] .pn3 .pn-barcard {
     padding: 6px;
     background: none;
   }
 
-  .pn3 .pn-nav a {
+  html[data-pn-trilho="1"] .pn3 .pn-nav a {
     position: relative;
     justify-content: center;
     width: 52px;
     padding: 0;
   }
 
-  .pn3 .pn-nav .pn-n {
+  /* O número vira a pílula acid no canto do ícone. */
+  html[data-pn-trilho="1"] .pn3 .pn-nav .pn-n {
     position: absolute;
     top: 4px;
-    right: 2px;
+    right: 3px;
+    display: grid;
+    place-items: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    border-radius: 9px;
+    background: #c9f135;
+    color: #12120f;
     font-size: 11px;
+    line-height: 1;
   }
 
-  .pn3 .pn-vbtn {
+  html[data-pn-trilho="1"] .pn3 .pn-vbtn {
+    position: relative;
     width: 54px;
     padding: 0;
     border-radius: 50%;
   }
 
-  .pn3 .pn-me {
+  html[data-pn-trilho="1"] .pn3 .pn-me {
     justify-content: center;
     padding: 6px;
   }
 
+  /* Sem o rótulo, o nome aparece ao lado do ícone. Fica sobre o conteúdo,
+     então segue o tema dele: tinta no claro, papel no escuro. Entra em
+     150 ms e sai seco. */
+  html[data-pn-trilho="1"] .pn3 .pn-rail [data-tip]::after {
+    content: attr(data-tip) / "";
+    position: absolute;
+    z-index: 70;
+    top: 50%;
+    /* Passa da borda do trilho (84 px) com 10 px de folga. */
+    left: calc(100% + 26px);
+    padding: 8px 11px;
+    border-radius: 9px;
+    background: var(--fg);
+    color: var(--bg);
+    font: 600 13.5px / 1 var(--text);
+    white-space: pre;
+    box-shadow: 0 3px 0 var(--drop);
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-4px, -50%) scale(0.97);
+    transform-origin: left center;
+    pointer-events: none;
+  }
+
+  html[data-pn-trilho="1"] .pn3 .pn-rail [data-tip]:focus-visible::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(0, -50%);
+    transition:
+      opacity 0.15s var(--ease),
+      transform 0.15s var(--ease);
+  }
+}
+
+@media (min-width: 861px) and (hover: hover) and (pointer: fine) {
+  html[data-pn-trilho="1"] .pn3 .pn-rail [data-tip]:hover::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(0, -50%);
+    transition:
+      opacity 0.15s var(--ease),
+      transform 0.15s var(--ease);
+  }
+}
+
+@media (max-width: 1180px) and (min-width: 861px) {
   .pn3 .pn-main {
     padding: 28px 28px 80px;
+  }
+
+  /* Aberta no tablet: a sidebar inteira por cima, com véu. */
+  html[data-pn-trilho="sobre"] .pn3 .pn-shell {
+    --rail-w: 84px;
+  }
+
+  html[data-pn-trilho="sobre"] .pn3 .pn-rail {
+    position: fixed;
+    z-index: 45;
+    top: 0;
+    left: 0;
+    width: 256px;
+    box-shadow: 24px 0 60px -24px rgba(0, 0, 0, 0.55);
+  }
+
+  html[data-pn-trilho="sobre"] .pn3 .pn-col {
+    grid-column: 2;
+  }
+
+  .pn3 .pn-veu {
+    position: fixed;
+    z-index: 44;
+    inset: 0;
+    display: block;
+    padding: 0;
+    border: 0;
+    background: rgba(18, 18, 15, 0.45);
+    transition: opacity 0.2s var(--ease);
+  }
+
+  @starting-style {
+    .pn3 .pn-veu {
+      opacity: 0;
+    }
   }
 }
 
@@ -1084,5 +1238,10 @@ html[data-theme="dark"]:has(.pn3) body {
 
   :is(.pn3, .dlg3) .pn-btn {
     transition: none;
+  }
+
+  /* O nome do trilho e o véu só esmaecem. */
+  html[data-pn-trilho="1"] .pn3 .pn-rail [data-tip]::after {
+    transform: translate(0, -50%);
   }
 }
