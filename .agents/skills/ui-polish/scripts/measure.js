@@ -1,13 +1,13 @@
 /*
  * Mede a tela renderizada e devolve os defeitos de acabamento que o olho e a
- * leitura do código não pegam. É uma expressão: cole no console, passe a
- * `page.evaluate` ou a qualquer ferramenta de navegador. `shoot.ts` a roda em
- * 1280 e 390, claro e escuro.
+ * leitura do código não pegam. É uma expressão que dá uma Promise: cole no
+ * console, passe a `page.evaluate` ou a qualquer ferramenta de navegador que
+ * espere a resposta. `shoot.ts` a roda em 1280 e 390, claro e escuro.
  *
  * `window.__polishEdge = 'bottom'` antes de rodar: só confere o que ficou
  * atrás de barra fixa no fim da rolagem.
  */
-;(() => {
+;(async () => {
   const vw = innerWidth
   const vh = innerHeight
   const phone = vw <= 480
@@ -622,6 +622,11 @@
     if (document.activeElement !== el) continue
     const on = look()
     if (on === off) add('sem-foco', 'erro', el, 'nada muda no foco do teclado')
+    /* Solta e dá uma volta ao navegador antes do próximo: pular de foco em
+       foco sem pausa deixa aberto o que abre no foco (os Tooltips do Base UI
+       num mesmo Provider ficavam todos abertos depois da medição). */
+    el.blur()
+    await new Promise((done) => setTimeout(done, 0))
   }
   if (before?.focus) before.focus({ preventScroll: true })
   else document.activeElement?.blur()
