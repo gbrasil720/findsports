@@ -210,8 +210,7 @@ export default function NovoJogo() {
         contentContainerStyle={{
           padding: 18,
           // No iOS a modal é um cartão abaixo da barra de status; no Android é a tela inteira.
-          paddingTop:
-            first || Platform.OS === 'android' ? insets.top + 12 : 22,
+          paddingTop: first || Platform.OS === 'android' ? insets.top + 12 : 22,
           paddingBottom: (footHeight ?? insets.bottom + 86) + 24,
           gap: 12
         }}
