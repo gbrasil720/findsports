@@ -332,7 +332,7 @@ servidor e o seu Postgres. Num job só, com auth e onboarding, a
 suíte já levava 12 min com 2 workers. O artifact de falha sai por parte
 (`playwright-report-N`). Se um shard passar de ~10 min, aumente a matriz — e
 atualize os checks obrigatórios da branch protection de `master`, que lista
-`check`, `unit-test` e cada `e2e (N)` pelo nome: job renomeado ou
+`lint, tipos e migrations` (o `name` do job `check`) e cada `e2e (N)` pelo nome: job renomeado ou
 removido deixa toda PR
 esperando um check que nunca chega.
 
