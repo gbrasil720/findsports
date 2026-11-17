@@ -167,6 +167,9 @@ function TwoFactorPage() {
                     id="two-factor-login-code"
                     className="onside-input-control w-full bg-transparent font-[family-name:var(--mono)] outline-none"
                     placeholder="xxxx-xxxx"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    enterKeyHint="go"
                     inputMode="text"
                     autoComplete="one-time-code"
                     spellCheck={false}

@@ -402,6 +402,7 @@ function Conteudo({ onClose }: { onClose: () => void }) {
                 inputMode="text"
                 autoComplete="off"
                 autoCapitalize="characters"
+                autoCorrect="off"
                 spellCheck={false}
                 aria-label={`Letra ${i + 1}`}
                 aria-invalid={message ? true : undefined}

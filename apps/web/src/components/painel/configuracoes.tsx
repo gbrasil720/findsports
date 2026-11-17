@@ -468,6 +468,7 @@ export function Responsavel({
         <span className="pn-fl-l">{rotulo}</span>
         <input
           id="cfg-nome"
+          enterKeyHint="done"
           className="pn-inp"
           value={valor}
           maxLength={100}

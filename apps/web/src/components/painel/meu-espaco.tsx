@@ -1068,6 +1068,9 @@ function Espaco({ bar }: { bar: AdminBar }) {
                     type="url"
                     inputMode="url"
                     autoComplete="url"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     placeholder="https://"
                     value={rascunho.cardapio.url}
                     aria-invalid={tentou && cd.erroUrl ? true : undefined}
@@ -1094,6 +1097,7 @@ function Espaco({ bar }: { bar: AdminBar }) {
                     className="pn-inp"
                     inputMode="decimal"
                     placeholder="0,00"
+                    autoComplete="off"
                     value={rascunho.cardapio.gasto}
                     aria-invalid={tentou && cd.erroGasto ? true : undefined}
                     onChange={(e) =>

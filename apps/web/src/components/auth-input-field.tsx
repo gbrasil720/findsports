@@ -68,6 +68,9 @@ export function AuthInputField({
           required={required}
           inputMode={inputMode}
           spellCheck={spellCheck}
+          // E-mail não leva maiúscula nem correção automática no teclado.
+          autoCapitalize={type === 'email' ? 'none' : undefined}
+          autoCorrect={type === 'email' ? 'off' : undefined}
           value={field.state.value}
           onBlur={field.handleBlur}
           onChange={(e) => changeAuthField(field, e.target.value)}

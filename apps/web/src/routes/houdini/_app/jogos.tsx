@@ -134,6 +134,8 @@ function JogosPage() {
               type="search"
               className="hd-input"
               placeholder="Buscar por time, campeonato ou bar..."
+              enterKeyHint="search"
+              autoComplete="off"
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value)
@@ -483,6 +485,7 @@ function GamePanel({ game }: { game: Game }) {
             className="hd-input"
             required
             minLength={EVENT_CHAMPIONSHIP_MIN_LENGTH}
+            autoComplete="off"
             maxLength={EVENT_CHAMPIONSHIP_MAX_LENGTH}
             value={championship}
             onChange={(event) => setChampionship(event.target.value)}

@@ -75,6 +75,11 @@ function BaresPage() {
             type="search"
             className="hd-input"
             placeholder="Buscar por nome do bar, e-mail do dono ou id..."
+            enterKeyHint="search"
+            autoComplete="off"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             value={search}
             onChange={(event) => {
               setSearch(event.target.value)

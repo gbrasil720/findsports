@@ -31,6 +31,7 @@ const NOTA = {
     campo: {
       autoComplete: 'off',
       autoCapitalize: 'characters',
+      autoCorrect: 'off',
       spellCheck: false,
       maxLength: 18,
       placeholder: '00.000.000/0000-00'
@@ -42,6 +43,8 @@ const NOTA = {
     campo: {
       type: 'email',
       autoComplete: 'email',
+      autoCapitalize: 'none',
+      autoCorrect: 'off',
       spellCheck: false,
       maxLength: 254
     }

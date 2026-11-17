@@ -109,6 +109,8 @@ export function Comanda({ logLate, missing = [], onLogged, today }: Props) {
           placeholder={'K7M·R4P\nH3X·W9T'}
           spellCheck={false}
           autoCapitalize="characters"
+          autoCorrect="off"
+          autoComplete="off"
           aria-describedby={`${id}-h`}
           aria-invalid={overLimit || undefined}
         />
