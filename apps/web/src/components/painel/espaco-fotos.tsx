@@ -9,6 +9,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { type ReactNode, useEffect, useRef, useState } from 'react'
+import { Foto } from '@/components/foto'
 import { Camera, Close, Lock, Plus } from '@/components/landing/v3/icons'
 import { UploadRecusado, uploadMedia } from '@/lib/upload-media'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
@@ -223,8 +224,7 @@ export function FotosDoBar({
               className="pn-ph-rec"
               onClick={() => envio.abrir(recusadas[0]?.id ?? '')}
             >
-              {/* biome-ignore lint/performance/noImgElement: foto do armazenamento do bar, sem otimizador. */}
-              <img src={recusadas[0]?.url} alt="" />
+              <Foto src={recusadas[0]?.url} alt="" />
               <span>
                 <b>
                   {recusadas.length === 1
@@ -293,8 +293,7 @@ export function FotosDoBar({
                             : ''
                     }. Abrir`}
                   >
-                    {/* biome-ignore lint/performance/noImgElement: foto do armazenamento do bar, sem otimizador. */}
-                    <img src={f.url} alt="" draggable={false} />
+                    <Foto src={f.url} alt="" draggable={false} />
                   </button>
                   <Selo foto={f} />
                   {capa ? <span className="pn-photo-cap">CAPA</span> : null}
@@ -740,8 +739,7 @@ function FotoAberta({
     <>
       <div className="pn-sheet-body">
         <div className="pn-ph-big" data-status={foto.status}>
-          {/* biome-ignore lint/performance/noImgElement: foto do armazenamento do bar, sem otimizador. */}
-          <img src={foto.url} alt={`Foto de ${nome}`} />
+          <Foto src={foto.url} alt={`Foto de ${nome}`} />
           <Selo foto={foto} />
           {capa ? <span className="pn-photo-cap">CAPA</span> : null}
         </div>

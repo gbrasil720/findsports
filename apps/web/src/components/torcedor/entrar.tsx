@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
+import { Foto } from '@/components/foto'
 import { useTurnstile } from '@/components/turnstile'
 import { authClient } from '@/lib/auth-client'
 import { PENDING_VERIFICATION_KEY } from '@/lib/pending-verification'
@@ -205,12 +206,16 @@ export function FolhaEntrar({ pedido, onFechar, onEntrou }: Props) {
           <div className="ctx">
             {mostrado.contexto.hora ? (
               <span className="ctx-h">{mostrado.contexto.hora}</span>
-            ) : mostrado.contexto.foto ? (
-              <img src={mostrado.contexto.foto} alt="" />
             ) : (
-              <span className="ctx-h">
-                <Ic n="beer" s={26} />
-              </span>
+              <Foto
+                src={mostrado.contexto.foto ?? undefined}
+                alt=""
+                fallback={
+                  <span className="ctx-h">
+                    <Ic n="beer" s={26} />
+                  </span>
+                }
+              />
             )}
             <span>
               <b>{mostrado.contexto.titulo}</b>
