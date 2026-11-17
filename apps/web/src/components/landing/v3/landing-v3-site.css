@@ -615,6 +615,7 @@
     flex-direction: row;
     gap: 14px;
     overflow-x: auto;
+    overscroll-behavior-x: contain;
     scroll-snap-type: x mandatory;
     margin: 0 calc(var(--gut) * -1) 0 calc(var(--gut) * -1);
     margin-right: calc(var(--gut-r) * -1);
@@ -703,6 +704,7 @@
   .lp3 .occ {
     flex-direction: row;
     overflow-x: auto;
+    overscroll-behavior-x: contain;
     scroll-snap-type: x mandatory;
     margin: 0 calc(var(--gut-r) * -1) 0 calc(var(--gut) * -1);
     padding: 6px var(--gut-r) 10px var(--gut);

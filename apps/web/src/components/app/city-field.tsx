@@ -139,7 +139,7 @@ export function CityField({ value, onChange, label, hint, disabled }: Props) {
             id={listaId}
             role="listbox"
             aria-label="Cidades encontradas"
-            className="absolute top-full right-0 left-0 z-10 mt-1 max-h-64 overflow-y-auto border border-[var(--onside-ink)] bg-[var(--onside-paper)] text-[var(--onside-ink)]"
+            className="absolute top-full right-0 left-0 z-10 mt-1 max-h-64 overflow-y-auto overscroll-contain border border-[var(--onside-ink)] bg-[var(--onside-paper)] text-[var(--onside-ink)]"
           >
             {sugestoes.map((municipio, indice) => (
               <button

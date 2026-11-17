@@ -151,6 +151,7 @@
   display: flex;
   gap: 8px;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   padding-bottom: 4px;
   -webkit-overflow-scrolling: touch;
 }

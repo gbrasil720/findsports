@@ -106,7 +106,7 @@ export function PaymentChoiceDialog({
     >
       <DialogContent
         initialFocus={backRef}
-        className="pl-dlg pl-pay flex max-h-[min(92dvh,900px)] max-w-[calc(100vw-2rem)] flex-col gap-4 overflow-y-auto rounded-[26px] p-[26px] sm:max-w-[580px]"
+        className="pl-dlg pl-pay flex max-h-[min(92dvh,900px)] max-w-[calc(100vw-2rem)] flex-col gap-4 overflow-y-auto overscroll-contain rounded-[26px] p-[26px] sm:max-w-[580px]"
       >
         <p className="pl-dlg-k">
           {pixPlanChange

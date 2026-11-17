@@ -218,6 +218,7 @@ html:has(.onside-legal) body {
   top: 104px;
   max-height: calc(100dvh - 130px);
   overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .onside-legal .onside-legal-body > aside > p {
@@ -444,6 +445,7 @@ html:has(.onside-legal) body {
   margin: 26px 0 30px;
   border: 1.5px solid var(--onside-ink);
   overflow-x: auto;
+  overscroll-behavior-x: contain;
 }
 
 .onside-legal .onside-legal-table table {

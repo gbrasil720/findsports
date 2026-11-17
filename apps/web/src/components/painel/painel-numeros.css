@@ -37,6 +37,7 @@
 
 .pn3 .pn-per .pn-tabs {
   overflow-x: auto;
+  overscroll-behavior-x: contain;
 }
 
 .pn3 .pn-per .pn-hint {
@@ -362,6 +363,7 @@ html[data-theme="dark"] .pn3 .pn-tip {
 /* ─── Como cada jogo foi ─── */
 .pn3 .pn-scroll {
   overflow-x: auto;
+  overscroll-behavior-x: contain;
 }
 
 .pn3 .pn-tbl {
