@@ -213,15 +213,16 @@ jobs:
         working-directory: apps/web
         run: bun run build:cf
       # docs/perf-home.md: o chunk de entrada vai em toda página. Medido em
-      # 17/11/2026: 286 kB com gzip. Passou do teto, ache o que entrou (import
+      # 17/11/2026, neste job: 193 kB com gzip (o build local em
+      # `development` sai maior, 286 kB). Passou do teto, ache o que entrou (import
       # estático de algo pesado) antes de subir o número.
       - name: Tamanho do JavaScript de entrada
         if: steps.scope.outputs.web == 'true'
         working-directory: apps/web
         run: |
           size=$(cat dist/client/assets/index-*.js | gzip -9c | wc -c)
-          echo "Entrada: $size bytes com gzip (teto 310000)"
-          [ "$size" -gt 0 ] && [ "$size" -le 310000 ]
+          echo "Entrada: $size bytes com gzip (teto 215000)"
+          [ "$size" -gt 0 ] && [ "$size" -le 215000 ]
       - if: steps.scope.outputs.web == 'true'
         run: bunx playwright test -c playwright.worker.config.ts
         working-directory: apps/e2e
