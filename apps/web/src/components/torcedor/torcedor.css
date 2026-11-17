@@ -364,7 +364,7 @@ html[data-theme="dark"] .tc {
   left: 50%;
   transform: translate(-50%, -100%);
   background: var(--live);
-  color: #12120f;
+  color: #000;
   font: 600 11px / 1 var(--mono);
   letter-spacing: 0.06em;
   padding: 4px 6px;
@@ -657,7 +657,7 @@ html[data-theme="dark"] .tc {
 }
 .tc .ph .when.lv {
   background: var(--live);
-  color: #12120f;
+  color: #000;
 }
 .tc .ph .elite {
   position: absolute;
@@ -2008,7 +2008,7 @@ html[data-theme="dark"] .tc .m-d {
   height: 40px;
   border-radius: 50%;
   background: #e8320c;
-  color: #12120f;
+  color: #000;
   display: grid;
   place-items: center;
   font: 700 14px var(--text);
@@ -2895,7 +2895,7 @@ html[data-theme="dark"] .tc .m-d {
   height: 104px;
   border-radius: 30px;
   background: #e8320c;
-  color: #12120f;
+  color: #000;
   display: grid;
   place-items: center;
   font: 400 44px / 1 var(--display);

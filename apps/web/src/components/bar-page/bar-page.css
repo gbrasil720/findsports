@@ -1012,7 +1012,7 @@ html[data-theme="dark"]:has(.bp) body {
 }
 .bp .tg.lv {
   background: var(--live);
-  color: #12120f;
+  color: #000;
 }
 .bp .nextl .go {
   color: var(--muted);
@@ -1219,7 +1219,7 @@ html[data-theme="dark"]:has(.bp) body {
 }
 .bp .nc .ph .w.lv {
   background: var(--live);
-  color: #12120f;
+  color: #000;
 }
 .bp .nc .bd {
   padding: 14px 16px 16px;

@@ -248,7 +248,7 @@
 
 .lp3.ob3 .pl-chip.red {
   background: #e8320c;
-  color: #12120f;
+  color: #000;
 }
 
 .lp3.ob3 .pl-chip.off {
@@ -1003,7 +1003,7 @@ html[data-theme="dark"] .pl-dlg {
 
 .pl-pay .pl-pay-tag.is-no {
   background: #e8320c;
-  color: #12120f;
+  color: #000;
 }
 
 .pl-pay .pl-pay-dot {

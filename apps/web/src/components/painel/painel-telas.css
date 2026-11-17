@@ -180,7 +180,7 @@ html[data-theme="dark"] .pn3 {
 
 .pn3 .pn-badge.is-live {
   background: var(--live);
-  color: #12120f;
+  color: #000;
 }
 
 .pn3 .pn-chip {
@@ -658,7 +658,7 @@ html[data-theme="dark"] .pn3 {
   padding: 4px 6px;
   border-radius: 5px;
   background: var(--live);
-  color: #12120f;
+  color: #000;
   font: 600 11px / 1 var(--mono);
   letter-spacing: 0.06em;
   transform: translate(-50%, -100%);

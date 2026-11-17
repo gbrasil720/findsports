@@ -203,7 +203,7 @@
   padding: 0 20px;
   border: 0;
   background: var(--onside-live);
-  color: #fff;
+  color: #000;
   font-family: inherit;
   font-size: 12px;
   font-weight: 700;
@@ -215,6 +215,11 @@
   transition:
     background 180ms ease,
     transform 180ms ease;
+}
+
+/* Como link, o `color: inherit` dos `a` da página ganhava: sobre o vermelho, preto (4,5:1). */
+.onside-invite-state a.onside-invite-cta:not(.onside-invite-cta-acid) {
+  color: #000;
 }
 
 /**
@@ -420,7 +425,7 @@
 
 @media (hover: hover) and (pointer: fine) {
   .onside-invite-cta:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--onside-live) 88%, var(--onside-ink));
+    background: color-mix(in srgb, var(--onside-live) 88%, #fff);
     transform: translateY(-1px);
   }
 

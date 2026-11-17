@@ -838,7 +838,7 @@
 .onside-app .onside-badge-live {
   background: var(--onside-live);
   border-color: var(--onside-live);
-  color: #12120f;
+  color: #000;
   font-weight: 700;
 }
 
