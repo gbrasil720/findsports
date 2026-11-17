@@ -912,6 +912,17 @@ html[data-theme="dark"]:has(.pn3) body {
   display: none;
 }
 
+/* A seta do botão gira para o lado em que a sidebar vai. */
+.pn3 .pn-tgl-seta {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 0.2s var(--ease);
+}
+
+.pn3 .pn-tgl[aria-expanded="true"] .pn-tgl-seta {
+  transform: rotate(180deg);
+}
+
 /* Trilho de ícones: o padrão entre 861 e 1180 px e a sidebar recolhida no
    desktop (`data-pn-trilho`, em `trilho.ts`). */
 @media (min-width: 861px) {
@@ -1233,8 +1244,12 @@ html[data-theme="dark"]:has(.pn3) body {
     transition: none;
   }
 
-  /* O nome do trilho e o véu só esmaecem. */
+  /* O nome do trilho e o véu só esmaecem; a seta troca sem girar. */
   .pn3 .pn-dica[data-starting-style] {
     transform: none;
+  }
+
+  .pn3 .pn-tgl-seta {
+    transition: none;
   }
 }
