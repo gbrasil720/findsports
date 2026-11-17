@@ -595,7 +595,7 @@ export function LandingV3() {
               <div className="float f1">
                 <span
                   className="av"
-                  style={{ background: '#e8320c', color: '#fff' }}
+                  style={{ background: '#e8320c', color: '#000' }}
                 >
                   M
                 </span>
