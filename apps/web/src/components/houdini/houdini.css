@@ -1399,6 +1399,10 @@ a.hd-row + a.hd-row {
   cursor: pointer;
 }
 
+.hd-palette-item:active {
+  background: var(--hd-hover);
+}
+
 .hd-palette-item[aria-selected="true"] {
   background: var(--hd-sel);
   box-shadow: inset 3px 0 0 var(--hd-mark);
