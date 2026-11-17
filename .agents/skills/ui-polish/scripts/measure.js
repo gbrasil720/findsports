@@ -380,10 +380,27 @@
         ? around
         : el
     const r = box.getBoundingClientRect()
-    /* Campo que passa da caixa em volta (margem negativa): vale o maior dos dois. */
+    /*
+     * Campo que passa da caixa em volta (margem negativa): vale o maior dos dois,
+     * sem a parte que um pai com overflow corta (ali o toque não chega).
+     */
     const own = el.getBoundingClientRect()
-    let w = Math.max(r.width, own.width)
-    let h = Math.max(r.height, own.height)
+    let [left, top, right, bottom] = [own.left, own.top, own.right, own.bottom]
+    for (
+      let p = el.parentElement;
+      p && p !== document.body;
+      p = p.parentElement
+    ) {
+      const o = getComputedStyle(p)
+      if (o.overflowX === 'visible' && o.overflowY === 'visible') continue
+      const b = p.getBoundingClientRect()
+      left = Math.max(left, b.left)
+      top = Math.max(top, b.top)
+      right = Math.min(right, b.right)
+      bottom = Math.min(bottom, b.bottom)
+    }
+    let w = Math.max(r.width, right - left)
+    let h = Math.max(r.height, bottom - top)
     for (const pseudo of ['::before', '::after']) {
       const p = getComputedStyle(el, pseudo)
       if (p.content === 'none' || p.position !== 'absolute') continue
