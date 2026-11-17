@@ -5,6 +5,7 @@ import {
   type ReactNode,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState
 } from 'react'
@@ -28,6 +29,15 @@ import {
 import { ThemeSwitch } from '@/components/landing/v3/theme-switch'
 import { useSession } from '@/hooks/use-session'
 import { useSignOut } from '@/hooks/use-sign-out'
+import {
+  aplicarTrilho,
+  ehAtalhoTrilho,
+  gravarRecolhida,
+  LARGO,
+  lerRecolhida,
+  TRILHO_SCRIPT,
+  valorTrilho
+} from './trilho'
 import { ValidarCodigo } from './validar-codigo'
 
 /*
@@ -132,6 +142,7 @@ export function PainelShell({
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const feedbackReturn = useRef<HTMLElement | null>(null)
+  const trilho = useTrilho(pathname)
 
   const nav: NavItem[] = [
     { to: '/admin', label: 'Hoje', icon: <Tv size={20} /> },
@@ -192,14 +203,48 @@ export function PainelShell({
         <a className="pn-skip" href="#painel-main">
           Ir para o conteúdo
         </a>
+        <script
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: texto fixo do próprio app, sem dado de fora
+          dangerouslySetInnerHTML={{ __html: TRILHO_SCRIPT }}
+        />
         <div className="pn-shell">
-          <aside className="pn-rail" aria-label="Painel do bar">
-            <Link to="/admin" className="pn-logo" aria-label="Onside, painel">
-              <Logo size={26} />
-              <b>
-                ONSIDE<i></i>
-              </b>
-            </Link>
+          {trilho.sobre ? (
+            <button
+              type="button"
+              className="pn-veu"
+              tabIndex={-1}
+              aria-label="Fechar menu"
+              onClick={trilho.fechar}
+            />
+          ) : null}
+          <aside
+            className="pn-rail"
+            aria-label="Painel do bar"
+            ref={trilho.rail}
+          >
+            <div className="pn-top">
+              <Link to="/admin" className="pn-logo" aria-label="Onside, painel">
+                <Logo size={26} />
+                <b>
+                  ONSIDE<i></i>
+                </b>
+              </Link>
+              <button
+                ref={trilho.botao}
+                type="button"
+                className="pn-tgl"
+                aria-expanded={trilho.expandida}
+                aria-controls="painel-secoes"
+                aria-keyshortcuts="["
+                aria-label={trilho.expandida ? 'Recolher menu' : 'Abrir menu'}
+                data-tip={
+                  trilho.expandida ? 'Recolher menu  [' : 'Abrir menu  ['
+                }
+                onClick={() => trilho.alternar(false)}
+              >
+                <IconeTrilho aberta={trilho.expandida} />
+              </button>
+            </div>
             <div className="pn-barcard">
               {avatar}
               <span className="pn-l">
@@ -212,13 +257,19 @@ export function PainelShell({
                 </span>
               </span>
             </div>
-            <nav className="pn-nav" aria-label="Seções do painel">
+            <nav
+              id="painel-secoes"
+              className="pn-nav"
+              aria-label="Seções do painel"
+            >
               {nav.map((item) => (
                 <Link
                   key={item.to}
                   to={item.to}
                   activeOptions={{ exact: true }}
-                  title={item.label}
+                  data-tip={
+                    item.count ? `${item.label} · ${item.count}` : item.label
+                  }
                 >
                   {item.icon}
                   <span className="pn-l">{item.label}</span>
@@ -233,7 +284,7 @@ export function PainelShell({
               type="button"
               className="pn-btn pn-acid pn-vbtn"
               onClick={onValidate}
-              title="Validar código"
+              data-tip="Validar código"
             >
               <Qr size={20} />
               <span className="pn-l">Validar código</span>
@@ -304,6 +355,122 @@ export function PainelShell({
       </div>
     </PortalProvider>
   )
+}
+
+/** O ícone do botão de recolher: a sidebar com a seta para onde ela vai. */
+function IconeTrilho({ aberta }: { aberta: boolean }) {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="3" y="4" width="18" height="16" rx="3.5" />
+      <path d="M9 4v16" />
+      <path d={aberta ? 'M15.5 10l-2 2 2 2' : 'M13.5 10l2 2-2 2'} />
+    </svg>
+  )
+}
+
+/**
+ * Estado da sidebar recolhível (`trilho.ts`). Sem animação de largura: o
+ * conteúdo inteiro refaria o layout a cada quadro, e o atalho de teclado não
+ * anima. Só a abertura por cima, no tablet e pelo clique, se revela da
+ * esquerda.
+ */
+function useTrilho(pathname: string) {
+  const [pronto, setPronto] = useState(false)
+  const [largo, setLargo] = useState(true)
+  const [recolhida, setRecolhida] = useState(false)
+  const [sobre, setSobre] = useState(false)
+  const rail = useRef<HTMLElement>(null)
+  const botao = useRef<HTMLButtonElement>(null)
+  const revelar = useRef(false)
+
+  useLayoutEffect(() => {
+    const mq = matchMedia(LARGO)
+    setLargo(mq.matches)
+    setRecolhida(lerRecolhida())
+    setPronto(true)
+    const onChange = () => {
+      setLargo(mq.matches)
+      setSobre(false)
+    }
+    mq.addEventListener('change', onChange)
+    return () => {
+      mq.removeEventListener('change', onChange)
+      aplicarTrilho(null)
+    }
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!pronto) return
+    aplicarTrilho(valorTrilho(largo, recolhida, sobre))
+    if (!sobre || !revelar.current) return
+    revelar.current = false
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    rail.current?.animate(
+      [{ clipPath: 'inset(0 172px 0 0)' }, { clipPath: 'inset(0 0 0 0)' }],
+      { duration: 200, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' }
+    )
+  }, [pronto, largo, recolhida, sobre])
+
+  // Trocar de tela fecha a sidebar aberta por cima.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `pathname` é o gatilho
+  useEffect(() => {
+    setSobre(false)
+  }, [pathname])
+
+  const alternar = (porTeclado: boolean) => {
+    if (largo) {
+      const proxima = !recolhida
+      setRecolhida(proxima)
+      gravarRecolhida(proxima)
+      return
+    }
+    revelar.current = !porTeclado && !sobre
+    setSobre(!sobre)
+  }
+
+  const fechar = () => {
+    setSobre(false)
+    botao.current?.focus()
+  }
+
+  const alternarRef = useRef(alternar)
+  alternarRef.current = alternar
+  const sobreRef = useRef(sobre)
+  sobreRef.current = sobre
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && sobreRef.current) {
+        setSobre(false)
+        botao.current?.focus()
+        return
+      }
+      if (!ehAtalhoTrilho(event)) return
+      event.preventDefault()
+      alternarRef.current(true)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
+
+  return {
+    rail,
+    botao,
+    sobre: sobre && !largo,
+    expandida: largo ? !recolhida : sobre,
+    alternar,
+    fechar
+  }
 }
 
 /**
