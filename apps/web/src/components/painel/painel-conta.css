@@ -1551,7 +1551,7 @@ html[data-theme="dark"] .pn3 .pn-savebar {
 }
 
 .pn3 .pn-subnav .is-dz {
-  color: var(--live-text);
+  color: var(--live-on-sub);
 }
 
 .pn3 .pn-ln-ed {

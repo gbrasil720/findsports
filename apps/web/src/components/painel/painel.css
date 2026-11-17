@@ -22,6 +22,8 @@
   --acid: #c9f135;
   --acid-drop: #7f9a12;
   --live-text: #c92b0c;
+  /* Vermelho de texto sobre `--sub` (4,5:1 lá também). */
+  --live-on-sub: #b3260a;
   --spark: #e8320c;
   /* Alerta de perfil: a única cor amarela do painel. */
   --warn-bg: #fff4c7;
@@ -61,6 +63,7 @@ html[data-theme="dark"] .pn3 {
   --drop: #000;
   --field: #1c1c18;
   --live-text: #f3421d;
+  --live-on-sub: #ff6242;
   --spark: #c9f135;
   --warn-bg: #2a2410;
   --warn-line: #6b5a1c;
