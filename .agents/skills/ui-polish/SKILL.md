@@ -121,6 +121,8 @@ Não há DOM para medir, e o `idb` não devolve a árvore de acessibilidade no E
 Armadilhas do simulador:
 - Trocar o tamanho da letra com o app aberto deixa as telas já montadas com a medida antiga (abas viram "J…" sem estar cortadas). O `--large` reabre o app por isso. Leia só prints tirados depois da reabertura.
 - Tela aberta por link em cima de uma folha sai como folha, mais baixa: o botão do rodapé cortado nesse caso é do teste, não da tela.
+- Campo de texto: digite um e-mail pelo `idb ui text` e olhe o campo. Sublinhado vermelho do corretor é `TextInput` do `react-native` no lugar do da casa.
+- Android (Expo Go num AVD): `adb reverse tcp:<metro> tcp:<metro>` e `tcp:<web>`, `adb shell am start -a android.intent.action.VIEW -d exp://localhost:<metro>/--/<rota>`. Print preto é tela dormindo (`adb shell input keyevent KEYCODE_WAKEUP`); em dobrável o `screencap` pede a tela (`-d <id>` de `dumpsys SurfaceFlinger --display-id`). O mapa sai vazio sem a chave do Maps.
 - Sessão de outro servidor guardada no aparelho mistura identidade (nome de uma conta, dados de outra, "Entrar" com conta). `xcrun simctl keychain <udid> reset` limpa, e aí é entrar de novo.
 - O web do `vite dev` escuta só em `::1`: para o simulador alcançar a API, suba com `--host ::`.
 
