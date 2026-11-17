@@ -476,6 +476,11 @@
   cursor: pointer;
   text-overflow: ellipsis;
 }
+/* Alvo de 36 sem mexer no desenho: o que cresce para fora volta pela margem. */
+.lp3 .field select {
+  padding-block: 9px;
+  margin-block: -9px;
+}
 .lp3 .field .sel {
   position: relative;
 }
