@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import {
   Linking,
   Switch as NativeSwitch,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -208,7 +209,9 @@ export default function NovoJogo() {
         automaticallyAdjustKeyboardInsets
         contentContainerStyle={{
           padding: 18,
-          paddingTop: first ? insets.top + 12 : 22,
+          // No iOS a modal é um cartão abaixo da barra de status; no Android é a tela inteira.
+          paddingTop:
+            first || Platform.OS === 'android' ? insets.top + 12 : 22,
           paddingBottom: (footHeight ?? insets.bottom + 86) + 24,
           gap: 12
         }}
