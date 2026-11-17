@@ -987,50 +987,39 @@ html[data-theme="dark"]:has(.pn3) body {
     justify-content: center;
     padding: 6px;
   }
-
-  /* Sem o rótulo, o nome aparece ao lado do ícone. Fica sobre o conteúdo,
-     então segue o tema dele: tinta no claro, papel no escuro. Entra em
-     150 ms e sai seco. */
-  html[data-pn-trilho="1"] .pn3 .pn-rail [data-tip]::after {
-    content: attr(data-tip) / "";
-    position: absolute;
-    z-index: 70;
-    top: 50%;
-    /* Passa da borda do trilho (84 px) com 10 px de folga. */
-    left: calc(100% + 26px);
-    padding: 8px 11px;
-    border-radius: 9px;
-    background: var(--fg);
-    color: var(--bg);
-    font: 600 13.5px / 1 var(--text);
-    white-space: pre;
-    box-shadow: 0 3px 0 var(--drop);
-    opacity: 0;
-    visibility: hidden;
-    transform: translate(-4px, -50%) scale(0.97);
-    transform-origin: left center;
-    pointer-events: none;
-  }
-
-  html[data-pn-trilho="1"] .pn3 .pn-rail [data-tip]:focus-visible::after {
-    opacity: 1;
-    visibility: visible;
-    transform: translate(0, -50%);
-    transition:
-      opacity 0.15s var(--ease),
-      transform 0.15s var(--ease);
-  }
 }
 
-@media (min-width: 861px) and (hover: hover) and (pointer: fine) {
-  html[data-pn-trilho="1"] .pn3 .pn-rail [data-tip]:hover::after {
-    opacity: 1;
-    visibility: visible;
-    transform: translate(0, -50%);
-    transition:
-      opacity 0.15s var(--ease),
-      transform 0.15s var(--ease);
-  }
+/* O nome de cada peça do trilho (`DicaTrilho`, Tooltip da `packages/ui`):
+   abre no portal da casca, dentro do `.pn3`. Fica sobre o conteúdo, então
+   segue o tema dele: tinta no claro, papel no escuro. Entra em 150 ms e sai
+   seco; passando de uma peça à vizinha, troca sem animar. */
+.pn3 .pn-dica-pos {
+  z-index: 70;
+}
+
+.pn3 .pn-dica {
+  padding: 8px 11px;
+  border-radius: 9px;
+  background: var(--fg);
+  color: var(--bg);
+  font: 600 13.5px / 1 var(--text);
+  white-space: pre;
+  box-shadow: 0 3px 0 var(--drop);
+  transform-origin: left center;
+  pointer-events: none;
+  transition:
+    opacity 0.15s var(--ease),
+    transform 0.15s var(--ease);
+}
+
+.pn3 .pn-dica[data-starting-style] {
+  opacity: 0;
+  transform: translateX(-4px) scale(0.97);
+}
+
+.pn3 .pn-dica[data-ending-style],
+.pn3 .pn-dica[data-instant="delay"] {
+  transition: none;
 }
 
 @media (max-width: 1180px) and (min-width: 861px) {
@@ -1241,7 +1230,7 @@ html[data-theme="dark"]:has(.pn3) body {
   }
 
   /* O nome do trilho e o véu só esmaecem. */
-  html[data-pn-trilho="1"] .pn3 .pn-rail [data-tip]::after {
-    transform: translate(0, -50%);
+  .pn3 .pn-dica[data-starting-style] {
+    transform: none;
   }
 }
