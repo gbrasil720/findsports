@@ -386,6 +386,7 @@ function FichaBody({ ficha, isSelf }: { ficha: Ficha; isSelf: boolean }) {
               </h2>
               <Link
                 to="/houdini/grimorio"
+                className="hd-link"
                 style={{
                   fontSize: 12,
                   fontWeight: 600,

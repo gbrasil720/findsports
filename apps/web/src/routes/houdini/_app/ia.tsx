@@ -888,7 +888,7 @@ function DailyBars({
               {marked ? (
                 <span
                   className="hd-mono"
-                  style={{ fontSize: 10.5, color: 'var(--hd-muted)' }}
+                  style={{ fontSize: 11, color: 'var(--hd-muted)' }}
                 >
                   {d.costUsd.toLocaleString('pt-BR', {
                     minimumFractionDigits: 2,

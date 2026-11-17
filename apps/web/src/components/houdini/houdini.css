@@ -1710,3 +1710,55 @@ a.hd-row + a.hd-row {
     animation: none;
   }
 }
+
+/* ---------- alvo de toque e pressionado ---------- */
+
+/* Link de texto, interruptor e botão de 34 px: a área de toque passa da peça
+   sem mexer no desenho. :where() não pesa na especificidade. */
+.houdini
+:where(
+  .hd-help,
+  .hd-link,
+  .hd-crumbs a,
+  .hd-card-hd a,
+  summary.hd-small,
+  .hd-switch,
+  .hd-btn.is-sm,
+  .hd-btn-soft,
+  .hd-seg button
+) {
+  position: relative;
+}
+
+.houdini
+  :where(
+    .hd-help,
+    .hd-link,
+    .hd-crumbs a,
+    .hd-card-hd a,
+    summary.hd-small
+  )::before {
+  content: "";
+  position: absolute;
+  inset: -11px -6px;
+}
+
+.houdini .hd-switch::before {
+  content: "";
+  position: absolute;
+  inset: -8px 0;
+}
+
+.houdini :where(.hd-btn.is-sm, .hd-btn-soft, .hd-seg button)::before {
+  content: "";
+  position: absolute;
+  inset: -1px 0;
+}
+
+.hd-switch:active:not(:disabled) {
+  scale: 0.97;
+}
+
+a.hd-row:active {
+  background: var(--hd-hover);
+}
