@@ -1104,6 +1104,9 @@
 .lp3 .stick .phone {
   height: calc(100% - 64px);
   width: auto;
+  /* `%` de padding vale sobre a coluna, mais larga que o celular: a moldura saía
+     com o dobro da do topo. Aqui, 2,6% da largura do próprio celular. */
+  padding: calc((min(86vh, 820px) - 64px) * 448 / 976 * 0.026);
 }
 .lp3 .board {
   display: flex;
@@ -1306,7 +1309,7 @@
   color: var(--acid);
   display: grid;
   place-items: center;
-  font: 700 10px / 1 var(--mono);
+  font: 700 11px / 1 var(--mono);
   z-index: 1;
 }
 .lp3 .sports {
