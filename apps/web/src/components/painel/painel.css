@@ -369,7 +369,8 @@ html[data-theme="dark"]:has(.pn3) body {
   text-decoration: none;
   transition:
     background 0.2s,
-    color 0.2s;
+    color 0.2s,
+    scale 0.16s var(--ease);
 }
 
 @media (hover: hover) and (pointer: fine) {
