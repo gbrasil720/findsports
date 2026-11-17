@@ -1060,6 +1060,8 @@ html[data-theme="dark"]:has(.pn3) body {
     grid-column: 2;
   }
 
+  /* O véu fica na página e esmaece nos dois sentidos: fechar no meio da
+     abertura volta de onde estava. */
   .pn3 .pn-veu {
     position: fixed;
     z-index: 44;
@@ -1068,13 +1070,15 @@ html[data-theme="dark"]:has(.pn3) body {
     padding: 0;
     border: 0;
     background: rgba(18, 18, 15, 0.45);
-    transition: opacity 0.2s var(--ease);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s var(--ease);
   }
 
-  @starting-style {
-    .pn3 .pn-veu {
-      opacity: 0;
-    }
+  html[data-pn-trilho="sobre"] .pn3 .pn-veu {
+    opacity: 1;
+    pointer-events: auto;
+    transition-duration: 0.24s;
   }
 }
 

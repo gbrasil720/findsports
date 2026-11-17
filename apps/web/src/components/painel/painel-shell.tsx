@@ -220,15 +220,16 @@ export function PainelShell({
           dangerouslySetInnerHTML={{ __html: TRILHO_SCRIPT }}
         />
         <div className="pn-shell">
-          {trilho.sobre ? (
-            <button
-              type="button"
-              className="pn-veu"
-              tabIndex={-1}
-              aria-label="Fechar menu"
-              onClick={trilho.fechar}
-            />
-          ) : null}
+          {/* Sempre na página, para esmaecer ao abrir e ao fechar; o CSS só
+              o mostra com a sidebar aberta por cima (`sobre`). */}
+          <button
+            type="button"
+            className="pn-veu"
+            tabIndex={-1}
+            aria-hidden={!trilho.sobre}
+            aria-label="Fechar menu"
+            onClick={trilho.fechar}
+          />
           <TooltipProvider>
             <aside
               className="pn-rail"
