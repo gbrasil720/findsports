@@ -48,46 +48,52 @@ mkdirSync(out, { recursive: true })
 
 const shots: { route: string; theme: string; file: string }[] = []
 const sizes = large ? ['large', 'extra-extra-extra-large'] : ['large']
-for (const size of sizes) {
+try {
+  for (const size of sizes) {
+    if (!sheetsOnly) {
+      await $`xcrun simctl ui ${udid} content_size ${size}`.quiet()
+      /*
+       * Reabre o app: tela já montada guarda a medida do texto no tamanho antigo
+       * e sai cortada sem estar (quem troca a letra com o app aberto vê o mesmo).
+       */
+      if (large) {
+        await $`xcrun simctl terminate ${udid} host.exp.Exponent`
+          .quiet()
+          .nothrow()
+        await $`xcrun simctl openurl ${udid} ${metro}`.quiet()
+        await Bun.sleep(12000)
+      }
+    }
+    for (const theme of themes) {
+      if (!sheetsOnly)
+        await $`xcrun simctl ui ${udid} appearance ${theme}`.quiet()
+      for (const route of args) {
+        const sep = route.includes('?') ? '&' : '?'
+        const name = `${label}-${route.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'inicio'}-${theme}${size === 'large' ? '' : '-grande'}.png`
+        if (!sheetsOnly) {
+          /* `_r` muda a cada abertura: a tela monta de novo em vez de reaproveitar a anterior. */
+          await $`xcrun simctl openurl ${udid} ${`${metro}/--${route}${sep}_r=${Date.now()}`}`.quiet()
+          await Bun.sleep(wait)
+          await $`xcrun simctl io ${udid} screenshot ${join(out, name)}`.quiet()
+        }
+        shots.push({
+          route,
+          theme: size === 'large' ? theme : `${theme} · letra grande`,
+          file: name
+        })
+      }
+    }
+  }
+} finally {
+  /* Falhou no meio? O simulador volta à letra e ao tema de antes mesmo assim. */
   if (!sheetsOnly) {
-    await $`xcrun simctl ui ${udid} content_size ${size}`.quiet()
-    /*
-     * Reabre o app: tela já montada guarda a medida do texto no tamanho antigo
-     * e sai cortada sem estar (quem troca a letra com o app aberto vê o mesmo).
-     */
-    if (large) {
+    if (large)
       await $`xcrun simctl terminate ${udid} host.exp.Exponent`
         .quiet()
         .nothrow()
-      await $`xcrun simctl openurl ${udid} ${metro}`.quiet()
-      await Bun.sleep(12000)
-    }
+    await $`xcrun simctl ui ${udid} content_size large`.quiet().nothrow()
+    await $`xcrun simctl ui ${udid} appearance light`.quiet().nothrow()
   }
-  for (const theme of themes) {
-    if (!sheetsOnly)
-      await $`xcrun simctl ui ${udid} appearance ${theme}`.quiet()
-    for (const route of args) {
-      const sep = route.includes('?') ? '&' : '?'
-      const name = `${label}-${route.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'inicio'}-${theme}${size === 'large' ? '' : '-grande'}.png`
-      if (!sheetsOnly) {
-        /* `_r` muda a cada abertura: a tela monta de novo em vez de reaproveitar a anterior. */
-        await $`xcrun simctl openurl ${udid} ${`${metro}/--${route}${sep}_r=${Date.now()}`}`.quiet()
-        await Bun.sleep(wait)
-        await $`xcrun simctl io ${udid} screenshot ${join(out, name)}`.quiet()
-      }
-      shots.push({
-        route,
-        theme: size === 'large' ? theme : `${theme} · letra grande`,
-        file: name
-      })
-    }
-  }
-}
-if (!sheetsOnly) {
-  if (large)
-    await $`xcrun simctl terminate ${udid} host.exp.Exponent`.quiet().nothrow()
-  await $`xcrun simctl ui ${udid} content_size large`.quiet()
-  await $`xcrun simctl ui ${udid} appearance light`.quiet()
 }
 
 /* Folhas de contato: 8 telas por folha, para ler muitas de uma vez. */
