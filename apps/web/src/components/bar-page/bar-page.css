@@ -1535,6 +1535,7 @@ dialog.bp-layer::backdrop {
   width: min(440px, calc(100% - 32px));
   max-height: calc(100% - 48px);
   overflow-y: auto;
+  overscroll-behavior: contain;
   border-radius: 28px;
   box-shadow:
     0 4px 0 rgba(0, 0, 0, 0.55),
@@ -1756,6 +1757,7 @@ dialog.bp-layer::backdrop {
   .bp .gal {
     display: flex;
     overflow-x: auto;
+    overscroll-behavior-x: contain;
     scroll-snap-type: x mandatory;
     margin: 14px calc(-1 * var(--gr)) 0 calc(-1 * var(--gl));
     padding: 0 var(--gr) 4px var(--gl);
@@ -1773,6 +1775,7 @@ dialog.bp-layer::backdrop {
   .bp .chips {
     flex-wrap: nowrap;
     overflow-x: auto;
+    overscroll-behavior-x: contain;
     margin: 0 calc(-1 * var(--gr)) 0 calc(-1 * var(--gl));
     padding: 0 var(--gr) 2px var(--gl);
     scrollbar-width: none;
@@ -1814,6 +1817,7 @@ dialog.bp-layer::backdrop {
   .bp .quotes {
     display: flex;
     overflow-x: auto;
+    overscroll-behavior-x: contain;
     scroll-snap-type: x mandatory;
     margin: 20px calc(-1 * var(--gr)) 0 calc(-1 * var(--gl));
     padding: 0 var(--gr) 6px var(--gl);

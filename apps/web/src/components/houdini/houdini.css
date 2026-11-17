@@ -1251,6 +1251,7 @@ a.hd-row + a.hd-row {
   display: flex;
   gap: 4px;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   border-bottom: 1px solid var(--hd-line);
 }
 

@@ -463,6 +463,7 @@
 
 .lp3 .lg-table {
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   border-radius: 22px;
   background: var(--white);
   box-shadow:

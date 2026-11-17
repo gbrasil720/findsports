@@ -320,6 +320,7 @@ html[data-theme="dark"] .tc {
   margin: 18px -16px 0;
   padding: 0 16px;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   scrollbar-width: none;
   scroll-behavior: smooth;
 }
@@ -1375,6 +1376,7 @@ html[data-theme="dark"] .tc .m-d {
   padding: calc(22px + env(safe-area-inset-top, 0px)) max(28px, var(--gr))
     calc(28px + env(safe-area-inset-bottom, 0px)) 28px;
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .tc.open .scrim {
   opacity: 1;
@@ -1570,6 +1572,7 @@ html[data-theme="dark"] .tc .m-d {
   .tc .chips {
     flex-wrap: nowrap;
     overflow-x: auto;
+    overscroll-behavior-x: contain;
     margin-left: calc(-1 * var(--gl));
     margin-right: calc(-1 * var(--gr));
     padding: 0 var(--gr) 4px var(--gl);
@@ -1671,6 +1674,7 @@ html[data-theme="dark"] .tc .m-d {
   display: flex;
   gap: 10px;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory;
   padding: 12px var(--gr) 6px var(--gl);
   scrollbar-width: none;
@@ -1842,6 +1846,7 @@ html[data-theme="dark"] .tc .m-d {
   .tc .gal {
     display: flex;
     overflow-x: auto;
+    overscroll-behavior-x: contain;
     scroll-snap-type: x mandatory;
     gap: 10px;
     margin: 0 calc(-1 * var(--gr)) 0 calc(-1 * var(--gl));
@@ -1877,6 +1882,7 @@ html[data-theme="dark"] .tc .m-d {
   .tc .quotes {
     display: flex;
     overflow-x: auto;
+    overscroll-behavior-x: contain;
     scroll-snap-type: x mandatory;
     margin: 22px calc(-1 * var(--gr)) 0 calc(-1 * var(--gl));
     padding: 0 var(--gr) 6px var(--gl);
@@ -2044,6 +2050,7 @@ html[data-theme="dark"] .tc .m-d {
   width: max-content;
   max-width: 100%;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   margin-top: 24px;
 }
 .tc .tabsx button {
@@ -2711,6 +2718,7 @@ html[data-theme="dark"] .tc .m-d {
   .tc .wk {
     grid-template-columns: repeat(7, minmax(130px, 1fr));
     overflow-x: auto;
+    overscroll-behavior-x: contain;
   }
 }
 @media (max-width: 760px) {
@@ -3635,6 +3643,7 @@ html[data-theme="dark"] .tc .m-d {
     position: static;
     flex-direction: row;
     overflow-x: auto;
+    overscroll-behavior-x: contain;
     /* A fileira que rola recorta: o respiro deixa a sombra sólida da aba inteira. */
     padding-bottom: 4px;
   }

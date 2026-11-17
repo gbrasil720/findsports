@@ -789,6 +789,7 @@
   width: fit-content;
   max-width: 100%;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   border: 1px solid var(--onside-ink);
   background: var(--onside-paper);
 }

@@ -601,6 +601,7 @@ html[data-theme="dark"] .pn3 {
 .pn3 .pn-rule-wrap {
   margin-top: 16px;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   scrollbar-width: none;
 }
 
@@ -1197,6 +1198,7 @@ html[data-theme="dark"] .pn3 {
   max-height: calc(100dvh - 48px);
   padding: 24px;
   overflow: auto;
+  overscroll-behavior: contain;
   border-radius: 26px;
   background: var(--card);
   box-shadow: var(--shadow);
@@ -1688,6 +1690,7 @@ html[data-theme="dark"] .pn3 {
   .pn3 .pn-week {
     grid-template-columns: repeat(7, minmax(150px, 1fr));
     overflow-x: auto;
+    overscroll-behavior-x: contain;
   }
 }
 

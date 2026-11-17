@@ -1647,6 +1647,7 @@ html[data-theme="dark"] .pn3 .pn-savebar {
     position: static;
     flex-direction: row;
     overflow-x: auto;
+    overscroll-behavior-x: contain;
     scrollbar-width: none;
   }
 
