@@ -46,6 +46,12 @@ type Busca = { dia?: string; jogo?: string; raio?: number }
 
 /** Os raios da busca (o protótipo vai de 0,5 a 5 km; os bares estão mais espalhados). */
 const RAIOS = [1, 3, 5, 10, 25]
+const ORDEM_ROTULO: Record<Ordem, string> = {
+  perto: 'Mais perto',
+  gente: 'Mais gente indo',
+  nota: 'Melhor nota'
+}
+const ORDENS: Ordem[] = ['perto', 'gente', 'nota']
 
 export const Route = createFileRoute('/(dashboard)/dashboard')({
   head: () => ({
@@ -364,6 +370,18 @@ function ExplorarConteudo({ busca }: { busca: string }) {
       <label className="chip rad" htmlFor={id}>
         <Ic n="pin" s={16} />
         <span className="sr">Raio</span>
+        {/* O que se vê é este texto, de 14 px como os chips vizinhos. O
+            select vai por cima, transparente e com 16 px, para o iOS não dar
+            zoom ao tocar. */}
+        <span className="sel-v" aria-hidden="true">
+          <span>Até {raio} km</span>
+          {/* Larga como a opção mais longa, como o select nativo era. */}
+          {RAIOS.map((r) => (
+            <span key={r} data-fantasma="">
+              Até {r} km
+            </span>
+          ))}
+        </span>
         <select
           id={id}
           value={raio}
@@ -397,14 +415,26 @@ function ExplorarConteudo({ busca }: { busca: string }) {
       {/* No celular o protótipo não tem ordem; aqui ela vai no fim da fileira. */}
       <label className="sort">
         <span>Ordenar</span>
-        <select
-          value={ordem}
-          onChange={(e) => setOrdem(e.target.value as Ordem)}
-        >
-          <option value="perto">Mais perto</option>
-          <option value="gente">Mais gente indo</option>
-          {notaPublica ? <option value="nota">Melhor nota</option> : null}
-        </select>
+        <span className="sort-v">
+          <span className="sel-v" aria-hidden="true">
+            <span>{ORDEM_ROTULO[ordem]}</span>
+            {(notaPublica ? ORDENS : ORDENS.slice(0, 2)).map((o) => (
+              <span key={o} data-fantasma="">
+                {ORDEM_ROTULO[o]}
+              </span>
+            ))}
+          </span>
+          <select
+            value={ordem}
+            onChange={(e) => setOrdem(e.target.value as Ordem)}
+          >
+            <option value="perto">{ORDEM_ROTULO.perto}</option>
+            <option value="gente">{ORDEM_ROTULO.gente}</option>
+            {notaPublica ? (
+              <option value="nota">{ORDEM_ROTULO.nota}</option>
+            ) : null}
+          </select>
+        </span>
       </label>
     </fieldset>
   )
