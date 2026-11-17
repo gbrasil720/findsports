@@ -1865,7 +1865,9 @@ html[data-theme="dark"] .pn3 {
   border-radius: 999px;
   background: var(--line2);
   cursor: pointer;
-  transition: background 0.2s;
+  transition:
+    background 0.2s,
+    scale 0.16s var(--ease);
 }
 
 .pn3 .pn-tg::after {
@@ -2074,7 +2076,11 @@ html[data-theme="dark"] .pn3 {
   inset: -7px -5px;
 }
 
-/* Peça sem sombra sólida afunda um pouco ao toque, para o dedo sentir que pegou. */
+/* Peça sem sombra sólida afunda um pouco ao toque, para o dedo sentir que pegou.
+   O `scale` anima: sem transição, a peça encolhia seca ao apertar e voltava
+   seca ao soltar, e no menu isso parecia o ícone pular e voltar. A peça que
+   tem `transition` própria (`.pn-nav a`, `.pn-tg`) põe o `scale` na lista
+   dela, que vence esta. */
 .pn3
 :where(
   .pn-nav a,
@@ -2085,8 +2091,39 @@ html[data-theme="dark"] .pn3 {
   .pn-step button,
   .pn-subnav button,
   .pn-me
-):active {
+) {
+  transition: scale 0.16s var(--ease);
+}
+
+.pn3
+  :where(
+    .pn-nav a,
+    .pn-more a,
+    .pn-tabs button,
+    .pn-tchip,
+    .pn-tg,
+    .pn-step button,
+    .pn-subnav button,
+    .pn-me
+  ):active {
   scale: 0.97;
+}
+
+/* Com movimento reduzido, a peça não encolhe. */
+@media (prefers-reduced-motion: reduce) {
+  .pn3
+    :where(
+      .pn-nav a,
+      .pn-more a,
+      .pn-tabs button,
+      .pn-tchip,
+      .pn-tg,
+      .pn-step button,
+      .pn-subnav button,
+      .pn-me
+    ):active {
+    scale: none;
+  }
 }
 
 /* No toque, campo abaixo de 16 px faz o iOS dar zoom e não voltar. */
