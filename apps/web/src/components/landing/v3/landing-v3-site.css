@@ -83,7 +83,7 @@
   height: 38px;
   border-radius: 50%;
   background: var(--red);
-  color: #12120f;
+  color: #000;
   display: grid;
   place-items: center;
   font: 700 13px / 1 var(--mono);
@@ -176,7 +176,7 @@
   padding: 9px 13px;
   border-radius: 14px 14px 4px 14px;
   background: var(--red);
-  color: #12120f;
+  color: #000;
   font: 700 14px / 1 var(--body);
   box-shadow: 0 3px 0 #8f1f07;
 }
@@ -201,7 +201,7 @@
 }
 .lp3 .pains .ic {
   background: var(--red);
-  color: #12120f;
+  color: #000;
   font: 700 15px / 1 var(--mono);
   box-shadow: 0 3px 0 #8f1f07;
 }
@@ -416,7 +416,7 @@
   font-size: inherit;
 }
 .lp3 .foot-col p {
-  margin: 0 0 14px;
+  margin: 0 0 6px;
   font: 600 12px / 1 var(--mono);
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -425,8 +425,9 @@
 .lp3 .foot-col a,
 .lp3 .foot-col button {
   display: block;
-  margin: 0 0 10px;
-  padding: 0;
+  margin: 0;
+  /* 36 de altura no próprio link: alvo que passa da peça cobriria o link vizinho. */
+  padding: calc((36px - 1.4em) / 2) 0;
   border: 0;
   background: none;
   color: var(--muted-ink);
@@ -770,7 +771,6 @@
   }
   .lp3 .foot-col a,
   .lp3 .foot-col button {
-    margin-bottom: 7px;
     font-size: 14px;
   }
 }
@@ -1042,27 +1042,11 @@ html.vt-theme::view-transition-new(root) {
  * Área de toque: a peça fica do tamanho do desenho e o alvo passa dela, para o
  * dedo acertar (36 de altura com palavra, 44 só com ícone).
  */
-.lp3
-:where(
-  .foot-col a,
-  .foot-col button,
-  .lg-meta a,
-  .ent-link,
-  .logo,
-  .dock .acts .btn-ghost
-) {
+.lp3 :where(.lg-meta a, .ent-link, .logo, .dock .acts .btn-ghost) {
   position: relative;
 }
 
-.lp3
-  :where(
-    .foot-col a,
-    .foot-col button,
-    .lg-meta a,
-    .ent-link,
-    .logo,
-    .dock .acts .btn-ghost
-  )::before {
+.lp3 :where(.lg-meta a, .ent-link, .logo, .dock .acts .btn-ghost)::before {
   content: "";
   position: absolute;
   inset: -11px -4px;
