@@ -1421,7 +1421,8 @@ dialog.bp-layer::backdrop {
 .bp-layer .ctx .ph {
   width: 64px;
   height: 64px;
-  border-radius: 12px;
+  /* Canto dentro de canto: os 18 da caixa menos os 12 de respiro. */
+  border-radius: 6px;
   object-fit: cover;
   background: #12120f;
   display: block;

@@ -2080,7 +2080,8 @@ html[data-theme="dark"] .pn3 {
   .pn-tchip,
   .pn-tg,
   .pn-step button,
-  .pn-subnav button
+  .pn-subnav button,
+  .pn-me
 ):active {
   scale: 0.97;
 }
