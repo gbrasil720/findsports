@@ -8,8 +8,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useRouteContext } from '@tanstack/react-router'
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-
 import { pinDoPlano } from '@/components/app/map-icons'
+import { Foto } from '@/components/foto'
 import { GUIA_FOOTER_LINKS } from '@/components/landing/onside-landing-content'
 import { Logo } from '@/components/landing/v3/icons'
 import { ThemeSwitch } from '@/components/landing/v3/theme-switch'
@@ -412,14 +412,12 @@ export function BarPage({
       ) : null}
       <main>
         <section className="hero">
-          {bar.photoUrl ? (
-            <img
-              src={bar.photoUrl}
-              alt={`Foto do ${bar.name}`}
-              width={1800}
-              height={900}
-            />
-          ) : null}
+          <Foto
+            src={bar.photoUrl ?? undefined}
+            alt={`Foto do ${bar.name}`}
+            width={1800}
+            height={900}
+          />
           <div className="wrap">
             <div className="hacts">
               <button
@@ -1330,7 +1328,7 @@ function Gallery({ bar }: { bar: LiveBar }) {
         <div className="gal">
           {shown.map((photo) => (
             <figure key={photo.id}>
-              <img
+              <Foto
                 src={photo.url}
                 alt={photo.caption ?? photoCategoryLabel(photo.category)}
                 loading="lazy"
@@ -1702,9 +1700,7 @@ function NearSection({ nearby, now }: { nearby: Nearby[]; now: Date }) {
           return (
             <a className="nc" href={item.path} key={item.id}>
               <span className="ph">
-                {item.photoUrl ? (
-                  <img src={item.photoUrl} alt="" loading="lazy" />
-                ) : null}
+                <Foto src={item.photoUrl ?? undefined} alt="" loading="lazy" />
                 <span className={`w${live ? ' lv' : ''}`}>
                   {live ? '● AO VIVO' : clock(item.startsAt)}
                 </span>
@@ -1816,7 +1812,11 @@ function ShareModal({
       </button>
       <h2>Mandar pro grupo</h2>
       <div className="preview">
-        <img src={bar.photoUrl ?? '/og-image.jpg'} alt="" />
+        <Foto
+          src={bar.photoUrl ?? '/og-image.jpg'}
+          alt=""
+          fallback={<img src="/og-image.jpg" alt="" />}
+        />
         <div className="t">
           <b>
             {bar.name} · {bar.neighborhood}

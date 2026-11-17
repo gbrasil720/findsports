@@ -6,6 +6,7 @@ import {
 } from '@findsports_oficial/db/bar-menu'
 import { toast } from 'sonner'
 import type { AdminBar, EventsState } from '@/components/admin/admin-model'
+import { Foto } from '@/components/foto'
 import { Beer, Pin } from '@/components/landing/v3/icons'
 import { compareEventStartsAscending } from '@/domain/events'
 import { juntarEndereco } from '@/lib/cep'
@@ -80,12 +81,11 @@ export function EspacoPrevia({
       <div className="pn-phone">
         <div className="pn-phone-s">
           <div className={`pn-pv-img${bar.photoUrl ? '' : ' is-empty'}`}>
-            {bar.photoUrl ? (
-              // biome-ignore lint/performance/noImgElement: foto do armazenamento do bar, sem otimizador.
-              <img src={bar.photoUrl} alt="" />
-            ) : (
-              <span>A foto de capa entra aqui.</span>
-            )}
+            <Foto
+              src={bar.photoUrl ?? undefined}
+              alt=""
+              fallback={<span>A foto de capa entra aqui.</span>}
+            />
             {plano !== 'starter' ? (
               <em className={`pn-pv-pl is-${plano}`}>
                 {getPlan(plano).name.toUpperCase()}

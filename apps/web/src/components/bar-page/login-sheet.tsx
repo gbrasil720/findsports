@@ -1,6 +1,7 @@
 import type { PublicGame } from '@findsports_oficial/api/lib/public-bar-page'
 import { useNavigate, useRouter } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
+import { Foto } from '@/components/foto'
 
 import {
   AVISO_LINK,
@@ -213,11 +214,12 @@ function Sheet({
       </button>
       <h2>{TITLE[kind]}</h2>
       <div className="ctx">
-        {bar.photoUrl ? (
-          <img className="ph" src={bar.photoUrl} alt="" />
-        ) : (
-          <span className="ph" />
-        )}
+        <Foto
+          className="ph"
+          src={bar.photoUrl ?? undefined}
+          alt=""
+          fallback={<span className="ph" />}
+        />
         <span>
           <b>{showGame && game ? game.title : bar.name}</b>
           <span>
