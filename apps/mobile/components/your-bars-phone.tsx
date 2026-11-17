@@ -150,7 +150,8 @@ function MonthCard({
   const palette = usePalette()
   // Sete colunas com 5 entre elas, na largura medida da grade.
   const [width, setWidth] = useState(0)
-  const size = width ? (width - 6 * 5) / 7 : 0
+  // Inteiro: com fração, o arredondamento de pixel do Android passava da largura e a 7ª célula caía.
+  const size = width ? Math.floor((width - 6 * 5) / 7) : 0
   const [y, m] = month.split('-').map(Number) as [number, number]
   const total = new Date(Date.UTC(y, m, 0)).getUTCDate()
   const lead = new Date(Date.UTC(y, m - 1, 1)).getUTCDay()
