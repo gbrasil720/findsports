@@ -187,7 +187,6 @@
   min-width: min(100%, 248px);
   padding: 0 20px;
   background: var(--onside-live);
-  color: #fff;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -197,6 +196,12 @@
   transition:
     background 180ms ease,
     transform 180ms ease;
+}
+
+/* Preto, não branco nem tinta: sobre o vermelho só ele passa de 4,5:1. Com o
+   `a` no seletor para ganhar do `color: inherit` dos links da página. */
+.onside-not-found a.onside-not-found-cta {
+  color: #000;
 }
 
 .onside-not-found-cta-icon {
@@ -382,7 +387,7 @@
 
 @media (hover: hover) and (pointer: fine) {
   .onside-not-found-cta:hover {
-    background: color-mix(in srgb, var(--onside-live) 88%, var(--onside-ink));
+    background: color-mix(in srgb, var(--onside-live) 88%, #fff);
     transform: translateY(-1px);
   }
 

@@ -230,7 +230,7 @@ html:has(.pn3) body {
 
 .pn3 .pn-photo-st.is-rec {
   background: var(--live);
-  color: #12120f;
+  color: #000;
 }
 
 .pn3 .pn-photo-cap {

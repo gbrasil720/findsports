@@ -486,7 +486,7 @@ html[data-theme="dark"] .sem {
 /* "Clássico" (WEB-529): vermelho do ao vivo; o card é escuro nos dois temas. */
 .sem-tag.is-classic {
   background: #e8320c;
-  color: #12120f;
+  color: #000;
 }
 
 .sem-tags {
