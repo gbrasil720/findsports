@@ -48,8 +48,18 @@ export function Text(props: TextProps) {
   )
 }
 
-/** O `TextInput` do app, com o teto do texto corrido (o `ref` passa junto). */
+/**
+ * O `TextInput` do app, com o teto do texto corrido (o `ref` passa junto).
+ * Campo de e-mail não corrige nem sublinha: o corretor marcava o domínio de vermelho.
+ */
 export type TextInput = RNTextInput
 export function TextInput(props: ComponentPropsWithRef<typeof RNTextInput>) {
-  return <RNTextInput maxFontSizeMultiplier={MAX_FONT_SCALE} {...props} />
+  const email = props.keyboardType === 'email-address'
+  return (
+    <RNTextInput
+      maxFontSizeMultiplier={MAX_FONT_SCALE}
+      {...(email && { autoCorrect: false, spellCheck: false })}
+      {...props}
+    />
+  )
 }

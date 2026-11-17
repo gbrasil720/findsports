@@ -1,11 +1,5 @@
 import { type ComponentProps, type ReactNode, useState } from 'react'
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  View
-} from 'react-native'
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { DotField } from '@/components/fan-card'
 import { usePalette } from '@/components/theme'
@@ -15,6 +9,7 @@ import {
   INK,
   PAPER,
   Text,
+  TextInput,
   text,
   useStatusBar
 } from '@/components/ui'
