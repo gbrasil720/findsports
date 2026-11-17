@@ -366,8 +366,8 @@ function Linha({
   return (
     <li
       className={`rd-row${topo ? ' rd-top' : ''}${item.decision === 'liked' ? ' rd-save' : item.decision === 'passed' ? ' rd-skip' : ''}${quente ? ' hot' : ''}`}
-      onMouseEnter={() => onQuente(item.barId)}
-      onMouseLeave={() => onQuente(null)}
+      onPointerEnter={(e) => e.pointerType === 'mouse' && onQuente(item.barId)}
+      onPointerLeave={() => onQuente(null)}
     >
       <span className="rd-n" aria-hidden="true">
         {k + 1}

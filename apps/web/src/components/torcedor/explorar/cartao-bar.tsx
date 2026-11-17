@@ -94,8 +94,8 @@ export function CartaoBar({
       className={`bc${quente ? ' hot' : ''}`}
       data-bar={bar.barId}
       style={{ animationDelay: `${atraso}ms` } as CSSProperties}
-      onMouseEnter={() => onQuente?.(bar.barId)}
-      onMouseLeave={() => onQuente?.(null)}
+      onPointerEnter={(e) => e.pointerType === 'mouse' && onQuente?.(bar.barId)}
+      onPointerLeave={() => onQuente?.(null)}
     >
       <Link className="ph" {...linkDoBar} aria-label={`Abrir ${bar.name}`}>
         <Foto
@@ -237,8 +237,8 @@ export function CartaoSemJogo({
     <article
       className={`bq${quente ? ' hot' : ''}`}
       data-bar={bar.barId}
-      onMouseEnter={() => onQuente?.(bar.barId)}
-      onMouseLeave={() => onQuente?.(null)}
+      onPointerEnter={(e) => e.pointerType === 'mouse' && onQuente?.(bar.barId)}
+      onPointerLeave={() => onQuente?.(null)}
     >
       <Link to="/pub/$pubId" params={{ pubId: bar.barId }}>
         <Foto
