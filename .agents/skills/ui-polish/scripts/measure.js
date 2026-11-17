@@ -261,9 +261,10 @@
     const cutY =
       s.overflowY !== 'visible' && el.scrollHeight > el.clientHeight + 2
     const scrolls = /auto|scroll/.test(s.overflowX + s.overflowY)
-    if ((cutX || cutY) && !scrolls) {
-      const meant =
-        s.textOverflow === 'ellipsis' || s.webkitLineClamp !== 'none'
+    const meant = s.textOverflow === 'ellipsis' || s.webkitLineClamp !== 'none'
+    /* `data-polish-inteiro`: o texto inteiro está em outro lugar (regra 12). */
+    const whole = meant && el.closest('[data-polish-inteiro]')
+    if ((cutX || cutY) && !scrolls && !whole) {
       add(
         meant ? 'reticências' : 'texto-cortado',
         meant ? 'aviso' : 'erro',
