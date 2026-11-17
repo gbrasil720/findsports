@@ -109,6 +109,14 @@ for (const width of widths) {
       const landed = new URL(page.url()).pathname
       const name = `${label}-${path.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'home'}-${width}-${theme}`
       await page.screenshot({ path: join(out, `${name}.png`), fullPage: true })
+      /* O print da página inteira desliga a emulação de toque do Chromium até o
+         fim da sessão: sem isto, `(pointer: coarse)` vira `fine` e a medida
+         (e toda tela seguinte) sai como desktop. */
+      if (phone)
+        await (await context.newCDPSession(page)).send(
+          'Emulation.setTouchEmulationEnabled',
+          { enabled: true, maxTouchPoints: 5 }
+        )
 
       const top = await page.evaluate(measure)
       await page.evaluate(() => {
