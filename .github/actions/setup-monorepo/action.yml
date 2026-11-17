@@ -15,7 +15,7 @@ runs:
         bun-version: ${{ inputs.bun-version }}
     # PRs só leem o cache da master: salvar por PR (refs/pull/N/merge) criava
     # uma cópia de ~440 MB por PR e estourava a cota de 10 GB do repositório.
-    - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+    - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       id: bun-cache
       with:
         path: |
@@ -29,7 +29,7 @@ runs:
     - shell: bash
       run: bun install --frozen-lockfile
     - if: github.ref == 'refs/heads/master' && steps.bun-cache.outputs.cache-hit != 'true'
-      uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: |
           ~/.bun/install/cache
