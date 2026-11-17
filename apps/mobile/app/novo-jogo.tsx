@@ -322,7 +322,11 @@ export default function NovoJogo() {
                                 ' '
                               )[0]}
                         </Text>
-                        <Text style={[styles.gameTime, { color: palette.ink }]}>
+                        <Text
+                          numberOfLines={1}
+                          adjustsFontSizeToFit
+                          style={[styles.gameTime, { color: palette.ink }]}
+                        >
                           {formatTime(game.startsAt)}
                         </Text>
                       </View>

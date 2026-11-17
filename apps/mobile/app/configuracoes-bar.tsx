@@ -183,6 +183,9 @@ export default function ConfiguracoesBar() {
                     ]}
                   >
                     <Text
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.7}
                       style={[
                         text(15, 'SemiBold', 1.2),
                         { color: on ? palette.bg : palette.muted }
@@ -514,6 +517,7 @@ const styles = StyleSheet.create({
   segmentItem: {
     flex: 1,
     height: 42,
+    paddingHorizontal: 8,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center'
