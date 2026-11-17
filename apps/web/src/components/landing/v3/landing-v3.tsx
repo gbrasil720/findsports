@@ -812,7 +812,7 @@ export function LandingV3() {
           id="como-funciona"
           aria-labelledby="h-how"
         >
-          <div className="wrap sec" style={{ paddingBottom: '12vh' }}>
+          <div className="wrap sec" style={{ paddingBottom: '12svh' }}>
             <p className="kick rv">{LANDING_COPY.journey.kicker}</p>
             <h2 id="h-how" className="disp rv">
               Tudo isso seguindo apenas{' '}

@@ -1059,7 +1059,7 @@ html[data-theme="dark"] .tc .m-d {
 }
 .tc .hero {
   position: relative;
-  height: min(52vh, 520px);
+  height: min(52svh, 520px);
   overflow: hidden;
   background: #12120f;
 }
@@ -1817,7 +1817,7 @@ html[data-theme="dark"] .tc .m-d {
 }
 @media (max-width: 760px) {
   .tc .hero {
-    height: 62vh;
+    height: 62svh;
     min-height: 420px;
   }
   .tc .hero h1 {

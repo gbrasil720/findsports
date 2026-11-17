@@ -1871,7 +1871,7 @@
 
 .lp3.ob3 .ob-tv .phone {
   width: auto;
-  height: min(545px, 62vh);
+  height: min(545px, 62svh);
 }
 
 .lp3.ob3 .ob-tv-cap {
