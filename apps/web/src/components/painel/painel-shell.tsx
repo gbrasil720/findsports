@@ -1,8 +1,18 @@
 import { PortalProvider } from '@findsports_oficial/ui/components/portal'
+import {
+  Tooltip,
+  TooltipPopup,
+  TooltipPortal,
+  TooltipPositioner,
+  TooltipProvider,
+  TooltipTrigger
+} from '@findsports_oficial/ui/components/tooltip'
 import { Link, useRouterState } from '@tanstack/react-router'
 import {
   createContext,
+  type ReactElement,
   type ReactNode,
+  type RefObject,
   useContext,
   useEffect,
   useLayoutEffect,
@@ -196,6 +206,8 @@ export function PainelShell({
   // estilos delas (o `ProductFrame` fazia isso).
   const portal = useRef<HTMLDivElement>(null)
   const avatar = <span className="pn-av">{initials(barName)}</span>
+  // O nome de cada peça do trilho, só com a sidebar recolhida.
+  const dica = { rail: trilho.rail, ativa: !trilho.expandida }
 
   return (
     <PortalProvider container={portal}>
@@ -217,80 +229,111 @@ export function PainelShell({
               onClick={trilho.fechar}
             />
           ) : null}
-          <aside
-            className="pn-rail"
-            aria-label="Painel do bar"
-            ref={trilho.rail}
-          >
-            <div className="pn-top">
-              <Link to="/admin" className="pn-logo" aria-label="Onside, painel">
-                <Logo size={26} />
-                <b>
-                  ONSIDE<i></i>
-                </b>
-              </Link>
-              <button
-                ref={trilho.botao}
-                type="button"
-                className="pn-tgl"
-                aria-expanded={trilho.expandida}
-                aria-controls="painel-secoes"
-                aria-keyshortcuts="["
-                aria-label={trilho.expandida ? 'Recolher menu' : 'Abrir menu'}
-                data-tip={
-                  trilho.expandida ? 'Recolher menu  [' : 'Abrir menu  ['
-                }
-                onClick={() => trilho.alternar(false)}
-              >
-                <IconeTrilho aberta={trilho.expandida} />
-              </button>
-            </div>
-            <div className="pn-barcard">
-              {avatar}
-              <span className="pn-l">
-                <b>{barName}</b>
-                {/* O selo vai na linha do bairro: ao lado do nome ele
-                    cortava os dois, e o "Starter" é o mais largo. */}
-                <span className="pn-bc-sub">
-                  <span>{neighborhood}</span>
-                  {planName ? <em>{planName}</em> : null}
-                </span>
-              </span>
-            </div>
-            <nav
-              id="painel-secoes"
-              className="pn-nav"
-              aria-label="Seções do painel"
+          <TooltipProvider>
+            <aside
+              className="pn-rail"
+              aria-label="Painel do bar"
+              ref={trilho.rail}
             >
-              {nav.map((item) => (
+              <div className="pn-top">
                 <Link
-                  key={item.to}
-                  to={item.to}
-                  activeOptions={{ exact: true }}
-                  data-tip={
-                    item.count ? `${item.label} · ${item.count}` : item.label
-                  }
+                  to="/admin"
+                  className="pn-logo"
+                  aria-label="Onside, painel"
                 >
-                  {item.icon}
-                  <span className="pn-l">{item.label}</span>
-                  {item.count ? (
-                    <span className="pn-n">{item.count}</span>
-                  ) : null}
+                  <Logo size={26} />
+                  <b>
+                    ONSIDE<i></i>
+                  </b>
                 </Link>
-              ))}
-            </nav>
-            <span className="pn-sp" />
-            <button
-              type="button"
-              className="pn-btn pn-acid pn-vbtn"
-              onClick={onValidate}
-              data-tip="Validar código"
-            >
-              <Qr size={20} />
-              <span className="pn-l">Validar código</span>
-            </button>
-            <DonoMenu placement="up" onFeedback={openFeedback} />
-          </aside>
+                <DicaTrilho
+                  {...dica}
+                  texto={
+                    trilho.expandida ? 'Recolher menu  [' : 'Abrir menu  ['
+                  }
+                  render={
+                    <button
+                      ref={trilho.botao}
+                      type="button"
+                      className="pn-tgl"
+                      aria-expanded={trilho.expandida}
+                      aria-controls="painel-secoes"
+                      aria-keyshortcuts="["
+                      aria-label={
+                        trilho.expandida ? 'Recolher menu' : 'Abrir menu'
+                      }
+                      onClick={() => trilho.alternar(false)}
+                    >
+                      <IconeTrilho aberta={trilho.expandida} />
+                    </button>
+                  }
+                />
+              </div>
+              <DicaTrilho
+                {...dica}
+                texto={[barName, planName].filter(Boolean).join(' · ')}
+                render={
+                  // No trilho só o avatar aparece: o foco é o que mostra o
+                  // nome a quem navega pelo teclado.
+                  <div
+                    className="pn-barcard"
+                    tabIndex={trilho.expandida ? undefined : 0}
+                  >
+                    {avatar}
+                    <span className="pn-l">
+                      <b>{barName}</b>
+                      {/* O selo vai na linha do bairro: ao lado do nome ele
+                        cortava os dois, e o "Starter" é o mais largo. */}
+                      <span className="pn-bc-sub">
+                        <span>{neighborhood}</span>
+                        {planName ? <em>{planName}</em> : null}
+                      </span>
+                    </span>
+                  </div>
+                }
+              />
+              <nav
+                id="painel-secoes"
+                className="pn-nav"
+                aria-label="Seções do painel"
+              >
+                {nav.map((item) => (
+                  <DicaTrilho
+                    key={item.to}
+                    {...dica}
+                    texto={
+                      item.count ? `${item.label} · ${item.count}` : item.label
+                    }
+                    render={
+                      <Link to={item.to} activeOptions={{ exact: true }}>
+                        {item.icon}
+                        <span className="pn-l">{item.label}</span>
+                        {item.count ? (
+                          <span className="pn-n">{item.count}</span>
+                        ) : null}
+                      </Link>
+                    }
+                  />
+                ))}
+              </nav>
+              <span className="pn-sp" />
+              <DicaTrilho
+                {...dica}
+                texto="Validar código"
+                render={
+                  <button
+                    type="button"
+                    className="pn-btn pn-acid pn-vbtn"
+                    onClick={onValidate}
+                  >
+                    <Qr size={20} />
+                    <span className="pn-l">Validar código</span>
+                  </button>
+                }
+              />
+              <DonoMenu placement="up" onFeedback={openFeedback} dica={dica} />
+            </aside>
+          </TooltipProvider>
 
           <div className="pn-col">
             <header className="pn-mtop">
@@ -473,6 +516,44 @@ function useTrilho(pathname: string) {
   }
 }
 
+type Dica = { rail?: RefObject<HTMLElement | null>; ativa: boolean }
+
+/**
+ * O nome de uma peça do trilho, à direita dele. Abre no hover do mouse e no
+ * foco do teclado (o Base UI não abre no toque nem no clique), sai da borda
+ * do trilho com 10 px de folga qualquer que seja a largura da peça, e fica
+ * fora do texto acessível: a peça já tem o rótulo escondido.
+ */
+function DicaTrilho({
+  rail,
+  ativa,
+  texto,
+  render
+}: Dica & { texto: string; render: ReactElement }) {
+  const alvo = useRef<HTMLButtonElement>(null)
+  const folga = () => {
+    const borda = rail?.current?.getBoundingClientRect().right
+    const peca = alvo.current?.getBoundingClientRect().right
+    return borda && peca ? borda - peca + 10 : 10
+  }
+  return (
+    <Tooltip disabled={!ativa}>
+      <TooltipTrigger ref={alvo} render={render} />
+      <TooltipPortal>
+        <TooltipPositioner
+          className="pn-dica-pos"
+          side="right"
+          sideOffset={folga}
+        >
+          <TooltipPopup className="pn-dica" aria-hidden>
+            {texto}
+          </TooltipPopup>
+        </TooltipPositioner>
+      </TooltipPortal>
+    </Tooltip>
+  )
+}
+
 /**
  * Menu do dono: nome e e-mail, tema, plano, landing, feedback e sair. Um
  * painel simples em vez do menu do Radix: a troca de tema é um grupo de
@@ -480,10 +561,12 @@ function useTrilho(pathname: string) {
  */
 function DonoMenu({
   placement,
-  onFeedback
+  onFeedback,
+  dica
 }: {
   placement: 'up' | 'down'
   onFeedback: (from: HTMLElement | null) => void
+  dica?: Dica
 }) {
   const session = useSession()
   const signOut = useSignOut()
@@ -513,20 +596,27 @@ function DonoMenu({
 
   return (
     <div className={`pn-dono is-${placement}`} ref={root}>
-      <button
-        ref={trigger}
-        type="button"
-        className="pn-me"
-        aria-expanded={open}
-        aria-label={name ? `Menu da conta de ${name}` : 'Menu da conta'}
-        onClick={() => setOpen((v) => !v)}
-      >
-        <span className="pn-a">{initials(name)}</span>
-        <span className="pn-l">
-          <b>{name || '…'}</b>
-          {session?.user?.email}
-        </span>
-      </button>
+      <DicaTrilho
+        rail={dica?.rail}
+        ativa={Boolean(dica?.ativa) && !open && Boolean(name)}
+        texto={name}
+        render={
+          <button
+            ref={trigger}
+            type="button"
+            className="pn-me"
+            aria-expanded={open}
+            aria-label={name ? `Menu da conta de ${name}` : 'Menu da conta'}
+            onClick={() => setOpen((v) => !v)}
+          >
+            <span className="pn-a">{initials(name)}</span>
+            <span className="pn-l">
+              <b>{name || '…'}</b>
+              {session?.user?.email}
+            </span>
+          </button>
+        }
+      />
       {open ? (
         <nav className="pn-pop" aria-label="Conta">
           <div className="pn-pop-h">
