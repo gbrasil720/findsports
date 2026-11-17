@@ -53,11 +53,12 @@ for (const width of [1280, 390]) {
       (named) => {
         const re = new RegExp(named.source, named.flags)
         const seen = new Set<string>()
-        return [
+        const all = [
           ...document.querySelectorAll<HTMLElement>(
             'button, summary, [role=button]'
           )
         ]
+        return all
           .filter((el) => {
             const r = el.getBoundingClientRect()
             if (!r.width || r.top > innerHeight * 3) return false
@@ -76,22 +77,22 @@ for (const width of [1280, 390]) {
             return true
           })
           .slice(0, 8)
-          .map((el) =>
-            (el.getAttribute('aria-label') || el.innerText || '')
+          .map((el) => ({
+            /* Posição na lista: rótulo vazio, cortado ou repetido acha a peça errada. */
+            index: all.indexOf(el),
+            label: (el.getAttribute('aria-label') || el.innerText || '')
               .trim()
               .slice(0, 40)
-          )
+          }))
       },
       { source: NAMED.source, flags: NAMED.flags }
     )
-    console.log(`\n${path}  ${width}  abre: ${triggers.join(' | ') || 'nada'}`)
-    for (const [i, label] of triggers.entries()) {
+    console.log(
+      `\n${path}  ${width}  abre: ${triggers.map((t) => t.label).join(' | ') || 'nada'}`
+    )
+    for (const [i, { index, label }] of triggers.entries()) {
       await open()
-      const el = page
-        .locator('button, summary, [role=button]')
-        .filter({ hasText: label })
-        .or(page.locator(`[aria-label="${label.replace(/"/g, '\\"')}"]`))
-        .first()
+      const el = page.locator('button, summary, [role=button]').nth(index)
       try {
         await el.click({ timeout: 3000 })
       } catch {
