@@ -144,6 +144,42 @@
   }
   html {
     scroll-padding-top: 5rem;
+    /* Sem a letra inflada ao deitar o celular. O flash cinza do toque já
+       sai no preflight do Tailwind (`-webkit-tap-highlight-color`); o
+       retorno vem do :active de cada controle. */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  /* Toque sem esperar o duplo toque (o zoom de dois toques fica no resto da
+     página). */
+  :where(
+    a[href],
+    button,
+    [role="button"],
+    [role="tab"],
+    summary,
+    label,
+    input,
+    select,
+    textarea
+  ) {
+    touch-action: manipulation;
+  }
+  /* Segurar o dedo num controle não seleciona o rótulo. Texto de conteúdo
+     segue selecionável: nada disso vai no body. */
+  :where(button, [role="button"], [role="tab"], summary) {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  /* Abaixo de 16 px o iOS dá zoom no campo e não volta. A pele que fixar
+     outro tamanho cuida do dela (ver ui-polish, regra 20). Sem `:where`
+     para vencer o `font: inherit` do preflight. */
+  @media (pointer: coarse) {
+    input,
+    select,
+    textarea {
+      font-size: max(16px, 1em);
+    }
   }
   body {
     @apply bg-background text-foreground;
