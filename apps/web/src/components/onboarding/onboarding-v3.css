@@ -2246,3 +2246,10 @@
     transition: none;
   }
 }
+
+/* No toque, campo abaixo de 16 px faz o iOS dar zoom e não voltar. */
+@media (pointer: coarse) {
+  .lp3.ob3 .ob-hrs input[type="time"] {
+    font-size: 16px;
+  }
+}
