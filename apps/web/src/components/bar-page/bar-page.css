@@ -1970,12 +1970,34 @@ dialog.bp-layer::backdrop {
  * Área de toque: a peça fica do tamanho do desenho e o alvo passa dela, para o
  * dedo acertar (36 de altura com palavra, 44 só com ícone).
  */
-.bp :where(.linkish, .crumbs a, .bp-foot a, .o-neighbors a, .logo) {
+.bp :where(.linkish, .crumbs a, .bp-foot a, .logo) {
   position: relative;
 }
 
-.bp :where(.linkish, .crumbs a, .bp-foot a, .o-neighbors a, .logo)::before {
+.bp :where(.linkish, .crumbs a, .bp-foot a, .logo)::before {
   content: "";
   position: absolute;
-  inset: -12px -6px;
+  /* 10, não 12: no rodapé quebrado em duas linhas (folga de 20) um alvo cobriria o outro. */
+  inset: -10px -6px;
+}
+
+/* Listas de links (outros bares, guias): o link é o alvo, com 36 de altura, e
+   no celular vão para o fim (sem `order` subiam para cima do jogo de hoje). */
+.bp .o-neighbors {
+  order: 99;
+}
+.bp .o-neighbors ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.bp .o-neighbors a {
+  display: block;
+  padding: calc((36px - 1lh) / 2) 0;
+}
+.bp .o-neighbors a:active {
+  opacity: 0.6;
+}
+.bp .ava:active {
+  transform: scale(0.94);
 }
