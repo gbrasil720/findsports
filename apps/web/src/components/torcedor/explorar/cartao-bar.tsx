@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
-import { type CSSProperties, useState } from 'react'
+import type { CSSProperties } from 'react'
+import { Foto } from '@/components/foto'
 import { brasiliaTime } from '@/components/painel/noite'
 import {
   abertoAgora,
@@ -16,39 +17,6 @@ import { Ic, type IconName } from '../icones'
  * hora do jogo, o nome, o que tem para ver o jogo, a oferta do Elite, quem
  * vai e a nota de quem foi. "Vou assistir aqui" e o coração pedem conta.
  */
-
-/** A foto do bar. Sem foto, ou com a foto que não carregou, o copo no lugar. */
-function Foto({
-  url,
-  largura,
-  altura,
-  icone
-}: {
-  url: string | null | undefined
-  largura: number
-  altura: number
-  icone: number
-}) {
-  const [falhou, setFalhou] = useState<string | null>(null)
-  return url && falhou !== url ? (
-    <img
-      src={url}
-      alt=""
-      loading="lazy"
-      width={largura}
-      height={altura}
-      /* Foto do HTML do servidor pode falhar antes de o React ligar o `onError`. */
-      ref={(el) => {
-        if (el?.complete && !el.naturalWidth) setFalhou(url)
-      }}
-      onError={() => setFalhou(url)}
-    />
-  ) : (
-    <span className="ph-vazio">
-      <Ic n="beer" s={icone} />
-    </span>
-  )
-}
 
 const ETIQUETAS: [number, string, IconName | null][] = [
   [3, 'Premiere', 'premiere'],
@@ -130,7 +98,18 @@ export function CartaoBar({
       onMouseLeave={() => onQuente?.(null)}
     >
       <Link className="ph" {...linkDoBar} aria-label={`Abrir ${bar.name}`}>
-        <Foto url={bar.photoUrl} largura={480} altura={360} icone={40} />
+        <Foto
+          src={bar.photoUrl ?? undefined}
+          alt=""
+          loading="lazy"
+          width={480}
+          height={360}
+          fallback={
+            <span className="ph-vazio">
+              <Ic n="beer" s={40} />
+            </span>
+          }
+        />
         <span className={`when${estado === 'live' ? ' lv' : ''}`}>
           {quando(jogo, estado, rotuloDoDia)}
         </span>
@@ -262,7 +241,18 @@ export function CartaoSemJogo({
       onMouseLeave={() => onQuente?.(null)}
     >
       <Link to="/pub/$pubId" params={{ pubId: bar.barId }}>
-        <Foto url={bar.photoUrl} largura={72} altura={72} icone={26} />
+        <Foto
+          src={bar.photoUrl ?? undefined}
+          alt=""
+          loading="lazy"
+          width={72}
+          height={72}
+          fallback={
+            <span className="ph-vazio">
+              <Ic n="beer" s={26} />
+            </span>
+          }
+        />
         <div className="bq-bd">
           <h3>{bar.name}</h3>
           <p className="meta">
