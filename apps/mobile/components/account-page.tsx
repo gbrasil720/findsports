@@ -5,12 +5,19 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  TextInput,
   View
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { usePalette } from '@/components/theme'
-import { ACID, Icon, INK, Text, text, useStatusBar } from '@/components/ui'
+import {
+  ACID,
+  Icon,
+  INK,
+  Text,
+  TextInput,
+  text,
+  useStatusBar
+} from '@/components/ui'
 
 /*
  * As telas de segurança dentro da Conta (rodada 8, telas 6b e 6c): voltar

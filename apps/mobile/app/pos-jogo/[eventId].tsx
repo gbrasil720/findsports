@@ -12,7 +12,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  TextInput,
   View
 } from 'react-native'
 import Animated, {
@@ -35,6 +34,7 @@ import {
   INK,
   PAPER,
   Text,
+  TextInput,
   text,
   useStatusBar
 } from '@/components/ui'
