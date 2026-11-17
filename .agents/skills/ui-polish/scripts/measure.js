@@ -373,7 +373,12 @@
     const field = el.matches('input, select, textarea')
     const around = field && (el.closest('label') || el.parentElement)
     const box =
-      around && around.getBoundingClientRect().height <= 72 ? around : el
+      around &&
+      (around.getBoundingClientRect().height <= 72 ||
+        /* Rádio escondido dentro do cartão que é o rótulo: o alvo é o cartão. */
+        (el.getBoundingClientRect().width <= 2 && el.closest('label')))
+        ? around
+        : el
     const r = box.getBoundingClientRect()
     let w = r.width
     let h = r.height
