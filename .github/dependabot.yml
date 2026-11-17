@@ -1,0 +1,14 @@
+# Só as actions: estão fixadas por SHA no workflow, e sem isto ninguém as
+# atualiza. Pacotes do bun ficam de fora de propósito: o lock é gerado com o
+# bun 1.3.1 do CI, e o Dependabot o reescreveria com outra versão.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directories:
+      - /
+      - /.github/actions/*
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ['*']
