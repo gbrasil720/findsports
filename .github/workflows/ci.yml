@@ -60,6 +60,9 @@ jobs:
       - name: Fetch base branch (affected)
         if: github.event_name == 'pull_request'
         run: git fetch origin master --no-tags
+      - name: Migrations compatíveis com o código no ar
+        if: github.event_name == 'pull_request'
+        run: scripts/check-migrations.sh origin/master
       - name: Check types (affected packages)
         if: github.event_name == 'pull_request'
         run: bunx turbo run check-types --filter=...[origin/master]
@@ -100,6 +103,16 @@ jobs:
       - uses: ./.github/actions/setup-monorepo
       - run: bun run db:migrate
         working-directory: packages/db
+      # Schema mudou e ninguém rodou `db:generate`: o arquivo nasceria aqui.
+      - name: Schema sem migration
+        working-directory: packages/db
+        run: |
+          bun run db:generate
+          if [ -n "$(git status --porcelain src/migrations)" ]; then
+            git status --short src/migrations
+            echo "::error::O schema mudou sem migration. Rode bun run db:generate e comite o arquivo."
+            exit 1
+          fi
       - run: bun run test
 
   e2e:
@@ -199,9 +212,31 @@ jobs:
         if: steps.scope.outputs.web == 'true'
         working-directory: apps/web
         run: bun run build:cf
+      # docs/perf-home.md: o chunk de entrada vai em toda página. Medido em
+      # 17/11/2026: 286 kB com gzip. Passou do teto, ache o que entrou (import
+      # estático de algo pesado) antes de subir o número.
+      - name: Tamanho do JavaScript de entrada
+        if: steps.scope.outputs.web == 'true'
+        working-directory: apps/web
+        run: |
+          size=$(cat dist/client/assets/index-*.js | gzip -9c | wc -c)
+          echo "Entrada: $size bytes com gzip (teto 310000)"
+          [ "$size" -gt 0 ] && [ "$size" -le 310000 ]
       - if: steps.scope.outputs.web == 'true'
         run: bunx playwright test -c playwright.worker.config.ts
         working-directory: apps/e2e
+
+  # O app só tinha `tsc`. O Metro empacotando pega import que não resolve,
+  # asset que falta e módulo de servidor que entrou no bundle (~20 s).
+  mobile:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: ./.github/actions/setup-monorepo
+      - run: bunx expo export --platform ios --output-dir "$RUNNER_TEMP/export"
+        working-directory: apps/mobile
 
   # WEB-204: deploy no Cloudflare Workers (produção = Worker `onside-web`, preview =
   # `onside-web-preview`). Não há deploy Vercel neste repositório — só Workers.
@@ -269,3 +304,14 @@ jobs:
         working-directory: apps/web
         # WEB-389: a tag (commit curto) é o que o Bastidores do Houdini mostra.
         run: bunx wrangler deploy --message "${{ github.event_name }} ${{ github.sha }}" --tag "${GITHUB_SHA::7}"
+      # O que acabou de subir responde? `/api/app/status` dá 503 sem banco.
+      # Falhou em produção: `bunx wrangler rollback` em apps/web volta o
+      # código (não a migration).
+      - name: Smoke
+        env:
+          URL: ${{ needs.check.outputs.target == 'production' && 'https://www.onside.sh' || 'https://onside-web-preview.dev-guilhermebrasil.workers.dev' }}
+        run: |
+          for path in / /api/app/status; do
+            curl --fail --silent --show-error --output /dev/null \
+              --retry 5 --retry-delay 5 --retry-all-errors --max-time 20 "$URL$path"
+          done
