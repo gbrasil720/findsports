@@ -3,7 +3,7 @@ import { Skeleton } from '@findsports_oficial/ui/components/skeleton'
 export function Loader() {
   return (
     <div
-      className="grid min-h-[50vh] place-items-center px-4 py-8"
+      className="grid min-h-[50svh] place-items-center px-4 py-8"
       role="status"
       aria-busy="true"
       aria-live="polite"

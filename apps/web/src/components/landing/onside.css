@@ -1523,7 +1523,7 @@ html:has(.onside-page) {
 /* O bar girando: imagem parada fora do desktop, canvas por cima no desktop. */
 .onside-page .onside-final-stage {
   position: relative;
-  height: clamp(460px, 58vh, 620px);
+  height: clamp(460px, 58svh, 620px);
 }
 
 .onside-page .onside-final-stage > img {

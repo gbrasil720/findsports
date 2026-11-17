@@ -1019,7 +1019,7 @@
   flex-direction: column;
 }
 .lp3 .step {
-  min-height: max(340px, 44vh);
+  min-height: max(340px, 44svh);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -1094,8 +1094,8 @@
 }
 .lp3 .stick {
   position: sticky;
-  top: calc(50vh - min(43vh, 410px));
-  height: min(86vh, 820px);
+  top: calc(50svh - min(43svh, 410px));
+  height: min(86svh, 820px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1106,7 +1106,7 @@
   width: auto;
   /* `%` de padding vale sobre a coluna, mais larga que o celular: a moldura saía
      com o dobro da do topo. Aqui, 2,6% da largura do próprio celular. */
-  padding: calc((min(86vh, 820px) - 64px) * 448 / 976 * 0.026);
+  padding: calc((min(86svh, 820px) - 64px) * 448 / 976 * 0.026);
 }
 .lp3 .board {
   display: flex;

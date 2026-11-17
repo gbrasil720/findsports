@@ -487,8 +487,8 @@
 }
 /* celular dos três passos menor: cabe na tela com folga */
 .lp3 .stick {
-  top: calc(50vh - min(34vh, 320px));
-  height: min(68vh, 640px);
+  top: calc(50svh - min(34svh, 320px));
+  height: min(68svh, 640px);
 }
 @media (max-width: 900px) {
   .lp3 .step .mphone {

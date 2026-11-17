@@ -277,7 +277,7 @@
 .onside-invite-visual img {
   display: block;
   width: min(100%, 420px);
-  max-height: 46vh;
+  max-height: 46svh;
   object-fit: contain;
   object-position: center 38%;
   filter: drop-shadow(0 18px 22px rgb(18 18 15 / 14%));
@@ -403,7 +403,7 @@
 
   .onside-invite-visual img {
     width: min(100%, 640px);
-    max-height: min(62vh, 580px);
+    max-height: min(62svh, 580px);
     transform: translateY(-4%);
   }
 }
@@ -419,7 +419,7 @@
 
   .onside-invite-visual img {
     width: min(100%, 700px);
-    max-height: min(64vh, 620px);
+    max-height: min(64svh, 620px);
   }
 }
 
