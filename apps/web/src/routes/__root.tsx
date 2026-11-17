@@ -23,7 +23,12 @@ import {
   useState,
   useSyncExternalStore
 } from 'react'
-import { THEME_HEAD_SCRIPT } from '@/lib/theme'
+import {
+  syncThemeColor,
+  THEME_COLOR,
+  THEME_COLOR_SCRIPT,
+  THEME_HEAD_SCRIPT
+} from '@/lib/theme'
 import { MinuteTickProvider } from '../components/app/minute-tick'
 import { CookieConsent } from '../components/consent/cookie-consent'
 import { NOT_FOUND_META } from '../components/not-found/not-found-head'
@@ -100,6 +105,23 @@ const ONSIDE_ICONS = [
   }
 ]
 
+/*
+ * `viewport-fit=cover` desenha sob o notch e a ilha; quem encosta na borda
+ * desconta `env(safe-area-inset-*)`. Só nas peles que já descontam (landing,
+ * torcedor, painel, página do bar; o Houdini põe o dele): nas outras o
+ * navegador segue deixando a faixa da área segura. Nunca `maximum-scale` nem
+ * `user-scalable=no`: o zoom no campo se resolve com 16 px no campo.
+ * `resizes-content`: no Android o teclado encolhe a tela, como no iOS.
+ */
+const COVER_ROUTES = /^\/(admin|\(dashboard\)\/|bar\/)|^\/$/
+
+function viewportFor(matches: Array<{ routeId: string }>) {
+  const leaf = matches[matches.length - 1]?.routeId ?? ''
+  return COVER_ROUTES.test(leaf)
+    ? 'width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content'
+    : 'width=device-width, initial-scale=1, interactive-widget=resizes-content'
+}
+
 export const Route = createRootRouteWithContext<RouterAppContext>()({
   beforeLoad: async ({ location, context }) => {
     const last = context.lastSessionCheck.current
@@ -123,7 +145,7 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
   head: ({ matches }) => ({
     meta: [
       { charSet: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+      { name: 'viewport', content: viewportFor(matches) },
       ...(matches.some((m) => m.status === 'notFound' || isNotFound(m.error))
         ? NOT_FOUND_META
         : [
@@ -131,7 +153,9 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
             { name: 'description', content: ONSIDE_DESCRIPTION }
           ]),
       { name: 'author', content: 'Onside' },
-      { name: 'theme-color', content: '#12120F' },
+      // A cor certa entra pelo `THEME_COLOR_SCRIPT` antes da pintura e
+      // acompanha a troca de tema (`syncThemeColor`).
+      { name: 'theme-color', content: THEME_COLOR.light, 'data-tema': 'site' },
       { property: 'og:site_name', content: 'Onside' },
       { property: 'og:locale', content: 'pt_BR' },
       { property: 'og:type', content: 'website' },
@@ -257,6 +281,29 @@ function RootDocument() {
     document.documentElement.dataset.hydrated = ''
   }, [])
 
+  // A barra do navegador acompanha o tema escolhido, o do sistema e a meta
+  // que a rota nova trouxer.
+  useEffect(() => {
+    syncThemeColor()
+    const observer = new MutationObserver(syncThemeColor)
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme']
+    })
+    observer.observe(document.head, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ['content', 'data-tema']
+    })
+    const system = matchMedia('(prefers-color-scheme: dark)')
+    system.addEventListener('change', syncThemeColor)
+    return () => {
+      observer.disconnect()
+      system.removeEventListener('change', syncThemeColor)
+    }
+  }, [])
+
   return (
     <>
       <MinuteTickProvider>
@@ -335,6 +382,10 @@ function RootShell({ children }: { children: React.ReactNode }) {
           />
         ) : null}
         <HeadContent />
+        <script
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: texto fixo do próprio app, sem dado de fora
+          dangerouslySetInnerHTML={{ __html: THEME_COLOR_SCRIPT }}
+        />
       </head>
       <body>
         {children}

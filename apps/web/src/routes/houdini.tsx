@@ -73,17 +73,9 @@ export const Route = createFileRoute('/houdini')({
           content:
             'width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content'
         },
-        // O tema segue o sistema (`houdini.css`); a barra do navegador junto.
-        {
-          name: 'theme-color',
-          content: '#12120F',
-          media: '(prefers-color-scheme: dark)'
-        },
-        {
-          name: 'theme-color',
-          content: '#F1EEE6',
-          media: '(prefers-color-scheme: light)'
-        },
+        // O tema segue o sistema (`houdini.css`); a barra do navegador junto,
+        // por `syncThemeColor` (o TanStack só guarda uma `theme-color`).
+        { name: 'theme-color', content: '#12120F', 'data-tema': 'sistema' },
         { name: 'color-scheme', content: 'dark light' },
         ...(app ? HOUDINI_APP_META : [])
       ],

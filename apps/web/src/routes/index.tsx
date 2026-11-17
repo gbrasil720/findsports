@@ -24,10 +24,8 @@ export const Route = createFileRoute('/')({
   head: () => ({
     meta: [
       ...HOME_HEAD.meta,
-      {
-        name: 'theme-color',
-        content: '#C9F135'
-      }
+      // O topo da landing é o telão, tinta nos dois temas.
+      { name: 'theme-color', content: '#12120F' }
     ],
 
     links: [
