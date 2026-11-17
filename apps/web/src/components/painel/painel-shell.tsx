@@ -40,11 +40,14 @@ import { ThemeSwitch } from '@/components/landing/v3/theme-switch'
 import { useSession } from '@/hooks/use-session'
 import { useSignOut } from '@/hooks/use-sign-out'
 import {
+  animarTrilho,
   aplicarTrilho,
+  type Borda,
   ehAtalhoTrilho,
   gravarRecolhida,
   LARGO,
   lerRecolhida,
+  medirBorda,
   TRILHO_SCRIPT,
   valorTrilho
 } from './trilho'
@@ -336,7 +339,7 @@ export function PainelShell({
             </aside>
           </TooltipProvider>
 
-          <div className="pn-col">
+          <div className="pn-col" ref={trilho.col}>
             <header className="pn-mtop">
               {avatar}
               <span className="pn-mtop-t">
@@ -424,10 +427,10 @@ function IconeTrilho() {
 }
 
 /**
- * Estado da sidebar recolhível (`trilho.ts`). Sem animação de largura: o
- * conteúdo inteiro refaria o layout a cada quadro, e o atalho de teclado não
- * anima. Só a abertura por cima, no tablet e pelo clique, se revela da
- * esquerda.
+ * Estado da sidebar recolhível (`trilho.ts`). Recolher e abrir pelo clique
+ * animam sem animar largura: o layout muda uma vez, no primeiro quadro, e a
+ * borda da sidebar e o conteúdo partem de onde estavam (`animarTrilho`). O
+ * atalho `[` e o Esc trocam seco.
  */
 function useTrilho(pathname: string) {
   const [pronto, setPronto] = useState(false)
@@ -435,8 +438,10 @@ function useTrilho(pathname: string) {
   const [recolhida, setRecolhida] = useState(false)
   const [sobre, setSobre] = useState(false)
   const rail = useRef<HTMLElement>(null)
+  const col = useRef<HTMLDivElement>(null)
   const botao = useRef<HTMLButtonElement>(null)
-  const revelar = useRef(false)
+  // Onde a borda e o conteúdo estavam antes da troca; nulo = sem animação.
+  const antes = useRef<Borda | null>(null)
 
   useLayoutEffect(() => {
     const mq = matchMedia(LARGO)
@@ -456,34 +461,60 @@ function useTrilho(pathname: string) {
 
   useLayoutEffect(() => {
     if (!pronto) return
+    const de = antes.current
+    antes.current = null
+    // Troca no meio de outra parte de onde a anterior estava (`de`, medido
+    // com ela rodando) e a cancela antes de medir o destino.
+    // Só o que é da troca: a sidebar, o deslocamento do conteúdo e o véu.
+    // `@keyframes` (esqueleto, avisos) ficam, que cancelados não voltam.
+    const parar = () => {
+      const veu = col.current?.parentElement?.querySelector('.pn-veu')
+      for (const a of [
+        ...(rail.current?.getAnimations({ subtree: true }) ?? []),
+        ...(col.current?.getAnimations() ?? []),
+        ...(veu?.getAnimations() ?? [])
+      ]) {
+        if (!(a instanceof CSSAnimation)) a.cancel()
+      }
+    }
+    parar()
     aplicarTrilho(valorTrilho(largo, recolhida, sobre))
-    if (!sobre || !revelar.current) return
-    revelar.current = false
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    rail.current?.animate(
-      [{ clipPath: 'inset(0 172px 0 0)' }, { clipPath: 'inset(0 0 0 0)' }],
-      { duration: 200, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' }
-    )
+    if (de && rail.current && col.current) {
+      animarTrilho(rail.current, col.current, de)
+    } else {
+      // Atalho, Esc e largura nova: seco, sem o véu esmaecer nem a seta
+      // girar. Ler o estilo cria as transições do CSS, que então param.
+      getComputedStyle(document.documentElement).opacity
+      parar()
+    }
   }, [pronto, largo, recolhida, sobre])
+
+  const medirAntes = () => {
+    antes.current =
+      rail.current && col.current ? medirBorda(rail.current, col.current) : null
+  }
 
   // Trocar de tela fecha a sidebar aberta por cima.
   // biome-ignore lint/correctness/useExhaustiveDependencies: `pathname` é o gatilho
   useEffect(() => {
+    if (!sobreRef.current) return
+    medirAntes()
     setSobre(false)
   }, [pathname])
 
   const alternar = (porTeclado: boolean) => {
+    if (!porTeclado) medirAntes()
     if (largo) {
       const proxima = !recolhida
       setRecolhida(proxima)
       gravarRecolhida(proxima)
       return
     }
-    revelar.current = !porTeclado && !sobre
     setSobre(!sobre)
   }
 
   const fechar = () => {
+    medirAntes()
     setSobre(false)
     botao.current?.focus()
   }
@@ -510,6 +541,7 @@ function useTrilho(pathname: string) {
 
   return {
     rail,
+    col,
     botao,
     sobre: sobre && !largo,
     expandida: largo ? !recolhida : sobre,
