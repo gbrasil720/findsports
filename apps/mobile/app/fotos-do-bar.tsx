@@ -385,7 +385,11 @@ function Count({ value, label }: { value: number; label: string }) {
       <HardShadow color={palette.drop} offset={4} radius={20} />
       <View style={[styles.count, { backgroundColor: palette.card }]}>
         <Text style={[styles.countValue, { color: palette.ink }]}>{value}</Text>
-        <Text style={[styles.countLabel, { color: palette.muted }]}>
+        {/* Célula estreita: acima de 1,15× "recusadas" quebrava no meio da palavra. */}
+        <Text
+          maxFontSizeMultiplier={1.15}
+          style={[styles.countLabel, { color: palette.muted }]}
+        >
           {label}
         </Text>
       </View>

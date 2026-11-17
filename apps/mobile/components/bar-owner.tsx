@@ -263,7 +263,10 @@ export function BoardCell({
       >
         {value}
       </Text>
-      <Text style={[styles.cellLabel]}>{label}</Text>
+      {/* Célula estreita: acima de 1,15× "assistir" quebrava no meio da palavra. */}
+      <Text maxFontSizeMultiplier={1.15} style={[styles.cellLabel]}>
+        {label}
+      </Text>
     </View>
   )
 }
