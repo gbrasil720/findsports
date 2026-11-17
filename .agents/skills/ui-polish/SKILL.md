@@ -136,6 +136,7 @@ Regra do dono: toda tela nova ou mexida, no app e no web, passa por elas antes d
 |---|---|
 | Construir movimento no web | `animate` (e o `RECIPES.md` dela) |
 | Construir movimento no app | `animate-expo` |
+| Web no celular ou tablet: hover que gruda, flash do toque, toque lento, zoom no campo, área segura, `100vh` | `mobile-native` |
 | Arrastar, deslizar, folha, segurar | `gestures` |
 | Engasgo, quadro perdido, `will-change` | `animation-performance` |
 | Os princípios por trás da decisão | `emil-design-eng`, `apple-design` |
