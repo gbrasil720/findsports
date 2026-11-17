@@ -548,7 +548,10 @@
   const pressed = []
   const walk = (rules, hoverOk, parent = '') => {
     for (const rule of rules) {
-      const ok = hoverOk || /hover:\s*hover/.test(rule.conditionText || '')
+      /* Só `(hover: hover)` deixa passar o Android de toque que diz ter hover. */
+      const cond = rule.conditionText || ''
+      const ok =
+        hoverOk || (/hover:\s*hover/.test(cond) && /pointer:\s*fine/.test(cond))
       const own = rule.selectorText
       const sel =
         own && parent
@@ -586,8 +589,58 @@
         'hover-solto',
         'aviso',
         null,
-        `${live.length} regras :hover fora de @media (hover: hover) pegam esta tela (no toque o hover gruda): ${live.slice(0, 6).join(' | ')}`
+        `${live.length} regras :hover fora de @media (hover: hover) and (pointer: fine) pegam esta tela (no toque o hover gruda): ${live.slice(0, 6).join(' | ')}`
       )
+
+    /* A camada da plataforma (skill mobile-native): zoom no campo, flash e
+       demora do toque, rótulo que o dedo seleciona, zoom travado. */
+    const viewport =
+      document.querySelector('meta[name=viewport]')?.content ?? ''
+    if (/user-scalable\s*=\s*(no|0)|maximum-scale/.test(viewport))
+      add('zoom-travado', 'erro', null, `viewport trava o zoom: ${viewport}`)
+    const tap = getComputedStyle(
+      document.documentElement
+    ).webkitTapHighlightColor
+    if (tap && !/rgba\(0, 0, 0, 0\)|transparent/.test(tap))
+      add(
+        'flash-do-toque',
+        'aviso',
+        null,
+        `-webkit-tap-highlight-color ${tap} no <html>`
+      )
+    for (const el of interactive) {
+      const s = css.get(el)
+      if (
+        el.matches(
+          'input:not([type=checkbox], [type=radio], [type=range], [type=file], [type=submit], [type=button]), textarea, select'
+        ) &&
+        px(s.fontSize) < 16
+      )
+        add(
+          'campo-zoom',
+          'erro',
+          el,
+          `campo com ${s.fontSize}: o iOS dá zoom no foco`
+        )
+      else if (!/manipulation|none|pan-/.test(s.touchAction))
+        add(
+          'toque-lento',
+          'aviso',
+          el,
+          `touch-action ${s.touchAction}: sem manipulation o toque pode esperar o duplo toque`
+        )
+      if (
+        el.matches('button, [role=button], [role=tab]') &&
+        s.userSelect !== 'none' &&
+        s.webkitUserSelect !== 'none'
+      )
+        add(
+          'rotulo-selecionavel',
+          'aviso',
+          el,
+          'segurar o dedo seleciona o rótulo do botão'
+        )
+    }
   }
   for (const el of buttons)
     if (!el.disabled && !pressed.some((sel) => hits(sel, el)))

@@ -57,8 +57,8 @@ Texto
 Estados
 17. Todo bloco tem carregando, vazio e erro. Bloco que falhou vira `ErroBloco` (painel) ou `ErrorState` (app) com "Tentar de novo", nunca some. Mudança que falha avisa, nunca falha calada.
 18. O próprio botão conta a fase (salvando, tentando de novo, salvo). Sem spinner solto ao lado.
-19. Peça clicável tem os quatro estados: hover dentro de `@media (hover: hover)` (no toque o hover gruda), `:active` que desce, foco de teclado com o anel acid de 3 px afastado 3 px, e desligado. (`hover-solto`, `sem-pressionado`, `sem-foco`)
-20. Alvo de toque: 44 × 44 para ícone, 36 de altura para pílula com palavra. No app, `hitSlop` completa. (`alvo-de-toque`)
+19. Peça clicável tem os quatro estados: hover dentro de `@media (hover: hover) and (pointer: fine)` (no toque o hover gruda; só `(hover: hover)` deixa passar Android de toque), `:active` que desce, foco de teclado com o anel acid de 3 px afastado 3 px, e desligado. (`hover-solto`, `sem-pressionado`, `sem-foco`)
+20. Alvo de toque: 44 × 44 para ícone, 36 de altura para pílula com palavra. No app, `hitSlop` completa. (`alvo-de-toque`) No toque, campo de texto tem 16 px no mínimo (abaixo disso o iOS dá zoom e não volta), com `inputmode`, `autocomplete` e `enterkeyhint` certos. Nunca `user-scalable=no` nem `maximum-scale`. A base global (`packages/ui` globals) tira o flash do toque e põe `touch-action: manipulation` e `user-select: none` nos controles: não desfaça na peça. (`campo-zoom`, `zoom-travado`, `flash-do-toque`, `toque-lento`, `rotulo-selecionavel`)
 21. Todo controle tem nome para o leitor de tela. Erro de campo fica abaixo dele, em `live-text`, ligado por `aria-describedby`. (`sem-nome`)
 22. Imagem tem `width` e `height` ou `aspect-ratio`, e não estica. No app, `Image` com `width` e `height` explícitos. (`imagem`)
 
