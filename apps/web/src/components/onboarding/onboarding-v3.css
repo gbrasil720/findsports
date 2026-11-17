@@ -740,6 +740,17 @@
   text-transform: none;
 }
 
+/* O link ao lado do rótulo tem 24 px de altura: o toque ganha 36 sem mexer no desenho. */
+.lp3.ob3 .ob-fl-head > a {
+  position: relative;
+}
+
+.lp3.ob3 .ob-fl-head > a::before {
+  content: "";
+  position: absolute;
+  inset: -6px -4px;
+}
+
 .lp3.ob3 .ob-fl.auto :is(.onside-input, .onside-select) {
   background: rgba(201, 241, 53, 0.16);
   box-shadow: inset 0 0 0 1px rgba(127, 154, 18, 0.45);
@@ -2146,6 +2157,17 @@
 .lp3.ob3 .ob-tg[aria-checked="true"]::after {
   background: #12120f;
   transform: translateX(22px);
+}
+
+/* 30 px de altura: o toque ganha 44 sem mexer no desenho. */
+.lp3.ob3 .ob-tg::before {
+  content: "";
+  position: absolute;
+  inset: -7px 0;
+}
+
+.lp3.ob3 .ob-tg:active {
+  scale: 0.97;
 }
 
 .lp3.ob3 .ob-tg:focus-visible {
