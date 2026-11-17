@@ -610,7 +610,8 @@ function DonoMenu({
             onClick={() => setOpen((v) => !v)}
           >
             <span className="pn-a">{initials(name)}</span>
-            <span className="pn-l">
+            {/* Nome e e-mail cortados com "…": inteiros no topo do menu. */}
+            <span className="pn-l" data-polish-inteiro>
               <b>{name || '…'}</b>
               {session?.user?.email}
             </span>
