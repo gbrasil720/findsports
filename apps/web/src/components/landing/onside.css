@@ -2575,7 +2575,15 @@ html:has(.onside-page) {
 .onside-page :where(.onside-footer-column a, .onside-brand-link)::before {
   content: "";
   position: absolute;
-  inset: -8px -4px;
+  /* 7 de cada lado fecha a folga de 14 entre os links sem um cobrir o outro. */
+  inset: -7px -4px;
+}
+
+/* No toque o link já tem 44 e a folga é zero: o alvo não passa para cima nem para baixo. */
+@media (pointer: coarse) {
+  .onside-page .onside-footer-column a::before {
+    inset-block: 0;
+  }
 }
 
 /* Peça sem sombra sólida afunda um pouco ao toque, para o dedo sentir que pegou. */
