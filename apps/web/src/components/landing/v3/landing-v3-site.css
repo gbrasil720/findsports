@@ -271,7 +271,7 @@
   box-shadow: 0 3px 0 var(--sand);
   transition: transform 0.35s var(--ease);
 }
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .lp3 .occ li:hover {
     transform: translateY(-3px);
   }
@@ -301,7 +301,7 @@
   box-shadow: 0 4px 0 #7f9a12;
   transform: rotate(-1.2deg);
 }
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .lp3 .occ li.hl:hover {
     transform: rotate(-1.2deg) translateY(-3px);
   }
@@ -436,7 +436,7 @@
   cursor: pointer;
   text-align: left;
 }
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .lp3 .foot-col a:hover,
   .lp3 .foot-col button:hover {
     color: var(--paper);
@@ -873,7 +873,7 @@ html:has(.lp3) body {
   transition: color 0.3s;
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .lp3 .theme-switch label:hover {
     color: #f1eee6;
   }
@@ -1001,7 +1001,7 @@ html.vt-theme::view-transition-new(root) {
   opacity: 1;
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .lp3 .theme-switch.is-compact label:hover {
     opacity: 1;
   }

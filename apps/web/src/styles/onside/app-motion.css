@@ -188,7 +188,7 @@
     box-shadow: none !important;
   }
 
-  @media (hover: hover) {
+  @media (hover: hover) and (pointer: fine) {
     .onside-app .onside-btn:hover:not(:disabled),
     .onside-app .onside-choice:hover:not(:disabled) {
       transform: none !important;

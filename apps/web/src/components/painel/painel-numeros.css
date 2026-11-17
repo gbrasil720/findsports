@@ -20,7 +20,7 @@
   margin-left: auto;
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .pn3 .pn-soon-go:hover {
     border-color: var(--fg);
   }
@@ -423,7 +423,7 @@ html[data-theme="dark"] .pn3 .pn-tip {
   cursor: pointer;
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .pn3 .pn-tbl-g:hover b {
     text-decoration: underline;
     text-underline-offset: 3px;

@@ -160,7 +160,7 @@
   transition: transform 0.18s var(--ease);
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .lp3 .lg-other:hover {
     transform: translateY(-2px);
   }
@@ -288,7 +288,7 @@
   transition: background 0.2s;
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .lp3 .lg-index nav a:hover {
     background: var(--stone);
     color: var(--ink);

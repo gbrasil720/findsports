@@ -404,7 +404,7 @@ html:has(.pn3) body {
   cursor: pointer;
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .pn3 button.pn-addph:hover:not(:disabled) {
     border-color: var(--fg);
     color: var(--fg);
@@ -1274,7 +1274,7 @@ html[data-theme="dark"] .pn3 .pn-savebar {
   box-shadow: inset 0 0 0 1.5px rgba(241, 238, 230, 0.35);
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .pn3 .pn-planhero .pn-ghost:hover {
     box-shadow: inset 0 0 0 1.5px #f1eee6;
   }
@@ -1544,7 +1544,7 @@ html[data-theme="dark"] .pn3 .pn-savebar {
   cursor: pointer;
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .pn3 .pn-subnav button:hover {
     background: var(--sub);
   }
