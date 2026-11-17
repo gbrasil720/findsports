@@ -37,6 +37,7 @@ import { Seal, useStamp } from '@/components/fan-card'
 import { EASE, haptic, SWAP_OUT, useShake } from '@/components/motion'
 import {
   ACID,
+  DISPLAY_FONT_SCALE,
   errorMessage,
   Icon,
   INK,
@@ -907,7 +908,15 @@ function Outline({
       style={styles.outline}
     >
       <Icon name={icon} size={20} color={PAPER} accent={ACID} />
-      <Text style={[text(16, 'Bold', 1.2), { color: PAPER }]}>{label}</Text>
+      {/* Letra grande: o rótulo encolhe para caber, em vez de empurrar o ícone para fora da pílula. */}
+      <Text
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        maxFontSizeMultiplier={DISPLAY_FONT_SCALE}
+        style={[text(16, 'Bold', 1.2), { color: PAPER, flexShrink: 1 }]}
+      >
+        {label}
+      </Text>
     </Pressable>
   )
 }
@@ -1050,7 +1059,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8
+    gap: 8,
+    paddingHorizontal: 14
   },
   recent: { borderRadius: 22, backgroundColor: '#1c1c18', padding: 14, gap: 4 },
   recentHead: { flexDirection: 'row', justifyContent: 'space-between' },
