@@ -45,6 +45,11 @@ depois do deploy, `/` e `/api/app/status` respondendo (passo `Smoke`). O reposit
 secret scanning com push protection e alertas do Dependabot ligados; o
 `.github/dependabot.yml` só atualiza as actions.
 
+Na lista de checks do PR os jobs aparecem pelo `name`, que diz o que rodam: `check` é
+"lint, tipos e migrations", `unit-test` "testes e schema", `e2e-worker` "bundle do
+Worker e tamanho", `mobile` "bundle do app" e `deploy` "deploy e smoke". A proteção de
+`master` exige os checks por esse nome: mudou o `name`, mude a proteção junto.
+
 Turbo filter syntax: `turbo -F <package-name> <task>` — use the `name` field from that package's `package.json`.
 
 Testes de integração (`*.integration.test.ts`) são pulados sem banco descartável. Eles
