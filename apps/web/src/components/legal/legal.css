@@ -284,7 +284,7 @@ html:has(.onside-legal) body {
   color: var(--onside-ink);
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .onside-legal .onside-legal-body nav a:hover {
     color: var(--onside-ink);
   }

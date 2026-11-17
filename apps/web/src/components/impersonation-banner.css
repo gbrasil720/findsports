@@ -158,7 +158,7 @@
   transition: opacity 150ms;
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .onside-pele-stop:hover {
     opacity: 0.9;
   }

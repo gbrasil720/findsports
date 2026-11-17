@@ -5,6 +5,15 @@
 @source "../**/*.{ts,tsx}";
 
 @custom-variant dark (&:is(.dark *));
+/* O `hover:` do Tailwind pede só `(hover: hover)`, e há Android de toque que
+   diz ter hover: lá o hover gruda depois do toque. Só com mouse de verdade. */
+@custom-variant hover {
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      @slot;
+    }
+  }
+}
 
 :root {
   --background: oklch(1 0 0);

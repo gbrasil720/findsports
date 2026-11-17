@@ -352,7 +352,7 @@
  * duas barras horizontais. Aqui a superfície é o destaque e o anel, quando
  * aparece, encosta por dentro (ver `--onside-focus-offset`).
  */
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .onside-menu
     [data-slot="dropdown-menu-item"]:is(:hover, :focus, [data-highlighted]),
   .onside-app
@@ -379,7 +379,7 @@
   color: var(--onside-live-text);
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .onside-menu .onside-menu-destructive:is(:hover, :focus, [data-highlighted]),
   .onside-app
     [data-slot="dropdown-menu-content"]

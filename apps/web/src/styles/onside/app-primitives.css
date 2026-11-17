@@ -160,7 +160,7 @@
   border-color: var(--onside-live);
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .onside-app .onside-btn-danger:hover:not(:disabled) {
     background: var(--onside-live-text);
     border-color: var(--onside-live-text);
@@ -467,13 +467,13 @@
 }
 
 /* O realce é da linha de dados. A de cabeçalho não é alvo e não muda. */
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .onside-app [data-slot="table-body"] [data-slot="table-row"]:hover {
     background: rgb(18 18 15 / 5%);
   }
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .onside-app [data-slot="table-header"] [data-slot="table-row"]:hover {
     background: transparent;
   }
@@ -604,7 +604,7 @@
   transition: background-color var(--onside-motion-fast) ease;
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .onside-app [data-slot="accordion-trigger"]:hover {
     background: rgb(18 18 15 / 7%);
     text-decoration: none;
@@ -718,7 +718,7 @@
   transition: background-color var(--onside-motion-fast) ease;
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .onside-app .onside-chip:hover:not(:disabled) {
     background: var(--onside-stone);
   }
@@ -734,13 +734,13 @@
   color: var(--onside-paper);
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .onside-app .onside-chip-ink[aria-pressed="true"]:hover:not(:disabled) {
     background: var(--onside-ink);
   }
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .onside-app .onside-chip[aria-pressed="true"]:hover:not(:disabled) {
     background: var(--onside-acid);
   }
@@ -809,7 +809,7 @@
     background-color var(--onside-motion-fast) ease;
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .onside-app .onside-tablist > [role="tab"]:hover {
     color: var(--onside-ink);
   }

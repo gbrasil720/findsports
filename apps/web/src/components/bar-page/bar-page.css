@@ -164,7 +164,7 @@ html[data-theme="dark"]:has(.bp) body {
   color: var(--ink);
   box-shadow: 0 4px 0 var(--acid-drop);
 }
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .bp .b-acid:hover,
   .bp-layer .b-acid:hover {
     transform: translateY(-2px);
@@ -182,7 +182,7 @@ html[data-theme="dark"]:has(.bp) body {
   color: var(--bg);
   box-shadow: 0 4px 0 #000;
 }
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .bp .b-ink:hover,
   .bp-layer .b-ink:hover {
     transform: translateY(-2px);
@@ -200,7 +200,7 @@ html[data-theme="dark"]:has(.bp) body {
   background: transparent;
   box-shadow: inset 0 0 0 1.5px var(--line2);
 }
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .bp .b-ghost:hover,
   .bp-layer .b-ghost:hover {
     box-shadow: inset 0 0 0 1.5px var(--fg);
@@ -211,7 +211,7 @@ html[data-theme="dark"]:has(.bp) body {
   box-shadow: inset 0 0 0 1.5px rgba(241, 238, 230, 0.28);
   color: #f1eee6;
 }
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .bp .on-ink .b-ghost:hover,
   .bp-layer .on-ink .b-ghost:hover {
     box-shadow: inset 0 0 0 1.5px #f1eee6;
@@ -284,7 +284,7 @@ html[data-theme="dark"]:has(.bp) body {
   gap: 7px;
   align-items: center;
 }
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .bp .lnk:hover {
     background: var(--sub);
   }
@@ -721,7 +721,7 @@ html[data-theme="dark"]:has(.bp) body {
   padding: 6px;
   align-self: center;
 }
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .bp .txtbtn:hover {
     color: #f1eee6;
   }
@@ -963,7 +963,7 @@ html[data-theme="dark"]:has(.bp) body {
   cursor: pointer;
   transition: background 0.2s;
 }
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .bp .nextl button:hover {
     background: var(--card);
   }
@@ -1191,7 +1191,7 @@ html[data-theme="dark"]:has(.bp) body {
   flex-direction: column;
   transition: transform 0.2s var(--ease);
 }
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .bp .nc:hover {
     transform: translateY(-3px);
   }
@@ -1257,7 +1257,7 @@ html[data-theme="dark"]:has(.bp) body {
 .bp .crumbs a {
   text-decoration: none;
 }
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .bp .crumbs a:hover {
     text-decoration: underline;
   }
@@ -1289,7 +1289,7 @@ footer.bp-foot {
 .bp .bp-foot nav a {
   text-decoration: none;
 }
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .bp .bp-foot nav a:hover {
     color: #f1eee6;
   }
