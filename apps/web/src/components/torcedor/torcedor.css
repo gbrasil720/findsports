@@ -522,16 +522,13 @@ html[data-theme="dark"] .tc {
   padding: 0 12px 0 13px;
   --spark: var(--acid);
 }
-.tc .chip.rad select {
-  appearance: none;
-  -webkit-appearance: none;
-  border: 0;
-  background: transparent;
-  color: inherit;
+/* Rótulo à vista (14 px, com a seta) e select nativo transparente por cima,
+   com 16 px: tocar abre o seletor do sistema e o iOS não dá zoom. */
+.tc .sel-v {
+  display: inline-grid;
+  padding-right: 18px;
   font: 600 14px / 1 var(--text);
-  padding: 0 18px 0 0;
-  cursor: pointer;
-  outline: none;
+  white-space: nowrap;
   background-image:
     linear-gradient(45deg, transparent 50%, currentColor 50%),
     linear-gradient(135deg, currentColor 50%, transparent 50%);
@@ -541,10 +538,31 @@ html[data-theme="dark"] .tc {
   background-size: 5px 5px;
   background-repeat: no-repeat;
 }
-.tc .chip.rad select option {
+.tc .sel-v > * {
+  grid-area: 1 / 1;
+}
+.tc .sel-v > [data-fantasma] {
+  visibility: hidden;
+}
+.tc .chip.rad select,
+.tc .sort-v select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  font-size: 16px;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  cursor: pointer;
+}
+.tc .chip.rad select option,
+.tc .sort-v select option {
   color: #12120f;
 }
-.tc .chip.rad:focus-within {
+.tc .chip.rad:has(select:focus-visible),
+.tc .sort-v:has(select:focus-visible) {
   outline: 3px solid var(--acid);
   outline-offset: 2px;
 }
@@ -561,25 +579,18 @@ html[data-theme="dark"] .tc {
   font: 500 14px var(--text);
   color: var(--muted);
 }
-.tc .sort select {
+.tc .sort-v {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
   height: 40px;
   border-radius: 999px;
-  border: 0;
   background: var(--sub);
-  padding: 0 34px 0 14px;
-  font: 600 14px var(--text);
+  padding: 0 11px 0 14px;
   color: var(--fg);
-  appearance: none;
-  -webkit-appearance: none;
-  background-image:
-    linear-gradient(45deg, transparent 50%, currentColor 50%),
-    linear-gradient(135deg, currentColor 50%, transparent 50%);
-  background-position:
-    calc(100% - 18px) 18px,
-    calc(100% - 13px) 18px;
-  background-size: 5px 5px;
-  background-repeat: no-repeat;
-  cursor: pointer;
+}
+.tc .sort-v .sel-v {
+  padding-right: 23px;
 }
 .tc .cards {
   display: grid;
@@ -4682,8 +4693,6 @@ html[data-consent] .tc .fresh.flutua {
 
 /* No toque, campo abaixo de 16 px faz o iOS dar zoom e não voltar. */
 @media (pointer: coarse) {
-  .tc .chip.rad select,
-  .tc .sort select,
   .tc .tc-picker .onside-input,
   .tc .tc-cidade .onside-input,
   .tc .tc-cidade input {
