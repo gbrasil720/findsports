@@ -244,8 +244,12 @@
   color: #f1eee6;
   font: 500 12.5px / 1.5 var(--mono);
   white-space: nowrap;
-  transform: translateX(-50%);
+  transform: translateX(12px);
   pointer-events: none;
+}
+
+.pn3 .pn-tip.is-l {
+  transform: translateX(calc(-100% - 12px));
 }
 
 html[data-theme="dark"] .pn3 .pn-tip {
