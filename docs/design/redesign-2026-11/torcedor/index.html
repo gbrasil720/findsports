@@ -78,14 +78,14 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .days button.on{background:var(--fg);color:var(--bg)}
 .now{font:500 13.5px var(--mono);color:var(--muted)}
 .now b{color:var(--fg)}
-.rule-wrap{margin:18px -16px 0;padding:0 16px;overflow-x:auto;scrollbar-width:none;scroll-behavior:smooth}
+.rule-wrap{margin:8px -16px 0;padding:10px 16px 0;overflow-x:auto;scrollbar-width:none;scroll-behavior:smooth}
 .rule-wrap::-webkit-scrollbar{display:none}
-.rule{position:relative;min-width:980px;height:226px}
+.rule{position:relative;min-width:980px;height:226px;container-type:inline-size}
 .hours{position:absolute;inset:0 0 auto;height:22px}
 .hours span{position:absolute;transform:translateX(-50%);font:500 12px var(--mono);color:var(--muted)}
 .grid{position:absolute;inset:26px 0 0;background-image:linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:10% 100%;border-top:1.5px solid var(--fg)}
 .nowline{position:absolute;top:18px;bottom:0;width:2px;background:var(--live);z-index:2}
-.nowline::before{content:"AGORA";position:absolute;top:-6px;left:50%;transform:translate(-50%,-100%);background:var(--live);color:#12120f;font:600 10.5px/1 var(--mono);letter-spacing:.06em;padding:4px 6px;border-radius:5px}
+.nowline::before{content:"AGORA";position:absolute;top:-6px;left:50%;transform:translate(clamp(calc(var(--at,50)*-1cqw),-50%,calc((100 - var(--at,50))*1cqw - 100%)),-100%);background:var(--live);color:#12120f;font:600 10.5px/1 var(--mono);letter-spacing:.06em;padding:4px 6px;border-radius:5px}
 .gm{position:absolute;height:56px;border:0;border-radius:16px;padding:10px 14px;text-align:left;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between;background:var(--card);box-shadow:0 3px 0 var(--drop);transition:transform .2s var(--ease),box-shadow .2s var(--ease),background .2s;overflow:hidden;z-index:1}
 .gm:hover{transform:translateY(-2px);box-shadow:0 5px 0 var(--drop)}
 .gm .t1{display:flex;justify-content:space-between;gap:8px;font:500 11.5px/1 var(--mono);color:var(--muted)}
@@ -813,7 +813,7 @@ function explorar(){
     '</div><span class="now">quinta, 5 nov · agora <b>19:42</b> · '+games().length+' jogos com bar perto</span></div>'+
     '<div class="rule-wrap"><div class="rule"><div class="hours">';
   for(var i=0;i<=10;i++){var hh=(16+i)%24;h+='<span style="left:'+(i*10)+'%">'+(hh<10?'0':'')+hh+'h</span>'}
-  h+='</div><div class="grid"></div>'+(S.day==='hoje'?'<div class="nowline" style="left:37%"></div>':'');
+  h+='</div><div class="grid"></div>'+(S.day==='hoje'?'<div class="nowline" style="left:37%;--at:37"></div>':'');
   games().forEach(function(x){
     var n=BARS.filter(function(b){return b.g[x.id]}).length;
     var cls='gm'+(x.st?' '+x.st:'')+(x.id===g.id?' sel':'');
