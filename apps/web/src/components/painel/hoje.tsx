@@ -25,6 +25,7 @@ import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import { ListaDeAvaliacoes } from './avaliacao'
 import { Avisos, PlanoCard } from './avisos'
+import { smooth } from './curva'
 import {
   barScreen,
   type GoingGame,
@@ -755,22 +756,6 @@ function sumDaily(series: Daily[]): number[] {
   return [...byDate.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([, value]) => value)
-}
-
-/** Curva do protótipo (`smooth`, `avg3`): média de três dias, suavizada. */
-function smooth(points: [number, number][]): string {
-  const [first] = points
-  if (!first) return ''
-  let d = `M${first[0].toFixed(1)} ${first[1].toFixed(1)}`
-  for (let i = 0; i < points.length - 1; i++) {
-    const p1 = points[i] as [number, number]
-    const p0 = points[i - 1] ?? p1
-    const p2 = points[i + 1] as [number, number]
-    const p3 = points[i + 2] ?? p2
-    const t = 0.18
-    d += ` C${(p1[0] + (p2[0] - p0[0]) * t).toFixed(1)} ${(p1[1] + (p2[1] - p0[1]) * t).toFixed(1)} ${(p2[0] - (p3[0] - p1[0]) * t).toFixed(1)} ${(p2[1] - (p3[1] - p1[1]) * t).toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`
-  }
-  return d
 }
 
 function Chart({ points: raw }: { points: number[] }) {
