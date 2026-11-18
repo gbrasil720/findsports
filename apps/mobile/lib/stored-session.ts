@@ -142,16 +142,36 @@ function hasSessionCookie(raw: string | null, now: number) {
 /** Teto da leitura da sessão: acima disso, conta como sem rede. */
 export const SESSION_TIMEOUT_MS = 8000
 
-/** `true` se o corpo de um 200 de `/get-session` veio mesmo da API. */
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const isId = (value: unknown) => typeof value === 'string' && value !== ''
+
+/**
+ * `true` se o corpo de um 200 de `/get-session` veio mesmo da API: `null`
+ * (sem sessão) ou a sessão do better-auth, com `session.id`, `userId` igual a
+ * `user.id` e `expiresAt` em data. O servidor não manda o `token`.
+ */
 export function isSessionBody(text: string): boolean {
   // Sem corpo, o cliente lê `null` (sem sessão).
   if (!text) return true
+  let body: unknown
   try {
-    const body = JSON.parse(text)
-    return body === null || (typeof body === 'object' && 'session' in body)
+    body = JSON.parse(text)
   } catch {
     return false
   }
+  if (body === null) return true
+  if (!isRecord(body) || !isRecord(body.session) || !isRecord(body.user))
+    return false
+  const { session, user } = body
+  return (
+    isId(session.id) &&
+    isId(user.id) &&
+    session.userId === user.id &&
+    typeof session.expiresAt === 'string' &&
+    !Number.isNaN(Date.parse(session.expiresAt))
+  )
 }
 
 type Fetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
