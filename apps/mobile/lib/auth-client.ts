@@ -11,6 +11,7 @@ import { createAuthClient } from 'better-auth/react'
 import Constants from 'expo-constants'
 import * as SecureStore from 'expo-secure-store'
 import { useRef } from 'react'
+import { roleToStore } from './account-role'
 import { env } from './env'
 import { queryClient } from './query-client'
 import {
@@ -62,6 +63,22 @@ sessionAtom.listen((state) => {
   if (step.clearCache) storage.setItem(sessionKey, '{}')
   if (step.set !== undefined) sessionAtom.set({ ...state, data: step.set })
 })
+
+// O papel da última sessão boa (torcedor ou bar), para a conta sem dados
+// saber de quem são as telas (WEB-538, `lib/account-role.ts`). Sai com a
+// conta: 401, ou o servidor sem sessão.
+const ROLE_KEY = 'onside.papel'
+sessionAtom.subscribe((state) => {
+  const role = roleToStore(state)
+  if (role === undefined || role === SecureStore.getItem(ROLE_KEY)) return
+  ;(role
+    ? SecureStore.setItemAsync(ROLE_KEY, role)
+    : SecureStore.deleteItemAsync(ROLE_KEY)
+  ).catch(() => {})
+})
+
+/** O papel guardado da última sessão boa (`fan`, `pub`) ou `null`. */
+export const readStoredRole = () => SecureStore.getItem(ROLE_KEY)
 
 /**
  * Adota a sessão que volta pelo link do e-mail de confirmação. O link abre no
