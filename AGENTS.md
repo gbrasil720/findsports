@@ -1079,11 +1079,19 @@ invente layout que o projeto não tem.
   noutra, o resto é do torcedor), com a sessão ou sem dados; papel desconhecido só fica
   nas telas dos dois. A abertura mostra o "Sinal caiu" até a sessão chegar (fora do
   torcedor sem a frase dos favoritos e do código) e então leva à área certa. Tela nova
-  do dono entra em `OWNER`, senão a conta de bar é mandada de volta dela. Rede que mente também é queda: o `fetch` do cliente passa
-  por `sessionFetch` (`fetchOptions.customFetchImpl`), e em `/get-session` um 200 que
-  não é sessão nem `null` (portal de Wi-Fi, que o plugin gravaria por cima do
-  `onside_session_data`) ou sem resposta em 8 s (`SESSION_TIMEOUT_MS`; o iOS esperaria
-  ~60 s) vira erro de rede antes de o plugin gravar.
+  do dono entra em `OWNER`, senão a conta de bar é mandada de volta dela.
+  Rede que mente também é queda: todo `fetch` do cliente passa
+  por `authFetch` (`fetchOptions.customFetchImpl`). Em `/get-session`, um 200 que não é
+  `null` nem a sessão do better-auth (`session.id`, `userId` igual a `user.id`,
+  `expiresAt` em data; `isSessionBody`) vira erro de rede antes de o plugin gravar por
+  cima do `onside_session_data` (portal de Wi-Fi). Nas outras rotas, 2xx que não é JSON
+  também. E nenhuma espera os ~60 s do iOS: sem resposta em 8 s na sessão
+  (`SESSION_TIMEOUT_MS`) ou 15 s no resto (`AUTH_TIMEOUT_MS`: login, cadastro, e-mail,
+  duas etapas, `/app-session/redeem`), o mesmo erro de rede. Nas telas de conta,
+  `settleAuth` o devolve com `status: 0` (frase de sem conexão, "Tentar de novo"); nada
+  é repetido sozinho, porque login, cadastro e envio de e-mail não são idempotentes.
+  Chamada do `authClient` fora de `settleAuth` lança sem rede: trate (`.catch` ou
+  `settleAuth`), como `refreshSession` e as Configurações.
 - **Turnstile no app:** o servidor exige o desafio em `sign-in`, `sign-up` e nos envios de
   e-mail sempre que tem `TURNSTILE_SECRET_KEY` (o `.env` local tem). O app resolve numa WebView
   (`apps/mobile/components/turnstile.tsx`, mesmo contrato do `useTurnstile` do web) com a
