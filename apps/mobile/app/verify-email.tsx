@@ -1,4 +1,5 @@
 import { gameTitle } from '@findsports_oficial/db/game-title'
+import { isMicrosoftConsumerEmail } from '@findsports_oficial/db/microsoft-mail'
 import { useQuery } from '@tanstack/react-query'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
@@ -62,6 +63,7 @@ export default function VerifyEmail() {
   const framed = useBrandFrame()
   const insets = useSafeAreaInsets()
   const palette = usePalette()
+  const junk = isMicrosoftConsumerEmail(email)
   // O que a pessoa tentava fazer quando a conta foi pedida (rodada 2): a
   // espera ganha rumo ("Guardado pra você").
   const [saved, setSaved] = useState<Acao | null>(null)
@@ -189,6 +191,7 @@ export default function VerifyEmail() {
           </Text>
           . Abra no celular em que começou o cadastro e você entra direto.
         </Text>
+        {junk ? <JunkNotice /> : null}
         <View style={styles.steps}>
           <Step n="1">
             Abra o e-mail “Confirme seu e-mail para entrar em campo”
@@ -266,6 +269,7 @@ export default function VerifyEmail() {
         Mandamos para <Text style={text(15, 'Bold', 1.45)}>{email}</Text>. O
         link vale por 1 hora.
       </Text>
+      {junk ? <JunkNotice /> : null}
       <PillButton
         label="Abrir o Mail"
         leading="mail"
@@ -374,6 +378,39 @@ export default function VerifyEmail() {
 
 const MAIL = Platform.OS === 'ios' ? 'message://' : 'mailto:'
 
+/**
+ * Hotmail e Outlook mandam a confirmação para o lixo eletrônico (WEB-526):
+ * quem usa um deles fica sabendo onde olhar e como tirar a Onside de lá.
+ */
+function JunkNotice() {
+  const palette = usePalette()
+  return (
+    <View
+      accessible
+      style={[
+        styles.junk,
+        {
+          backgroundColor: palette.card,
+          borderColor: palette.cardLine,
+          shadowColor: palette.drop
+        }
+      ]}
+    >
+      <Icon name="mail" size={20} color={palette.ink} />
+      <View style={styles.junkBody}>
+        <Text style={[text(14.5, 'Bold', 1.3), { color: palette.ink }]}>
+          Olhe também o lixo eletrônico
+        </Text>
+        <Text style={[text(13.5, 'Regular', 1.4), { color: palette.ink }]}>
+          O Hotmail e o Outlook às vezes mandam a mensagem da Onside para lá.
+          Achou? Marque como “Não é lixo eletrônico” (ou “Não é spam”) para as
+          próximas chegarem na caixa de entrada.
+        </Text>
+      </View>
+    </View>
+  )
+}
+
 /** Um passo numerado do quadro de confirmação (a08). */
 function Step({ n, children }: { n: string; children: string }) {
   return (
@@ -452,6 +489,17 @@ const styles = StyleSheet.create({
     shadowRadius: 0,
     shadowOffset: { width: 0, height: 3 }
   },
+  junk: {
+    flexDirection: 'row',
+    gap: 10,
+    padding: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 3 }
+  },
+  junkBody: { flex: 1, minWidth: 0, gap: 3 },
   savedPhoto: { width: 52, height: 52, borderRadius: 12 },
   stepRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   stepDot: {
