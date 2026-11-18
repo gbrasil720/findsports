@@ -1,6 +1,8 @@
+import { isMicrosoftConsumerEmail } from '@findsports_oficial/db/microsoft-mail'
 import { useMutation } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import AlertCircle from 'reicon-react/icons/AlertCircle'
 import Check from 'reicon-react/icons/Check'
 import Envelope from 'reicon-react/icons/Envelope'
 import Loader from 'reicon-react/icons/Loader'
@@ -235,6 +237,19 @@ function VerifyEmailPage() {
             {email ? <strong>{email}</strong> : 'o endereço cadastrado'}. Ele
             confirma que a conta é realmente sua e libera o próximo passo.
           </p>
+          {isMicrosoftConsumerEmail(email) ? (
+            <div className="ent-spam" role="note">
+              <AlertCircle size={22} color="currentColor" aria-hidden="true" />
+              <div>
+                <p className="ent-spam-t">Olhe também o lixo eletrônico</p>
+                <p>
+                  O Hotmail e o Outlook às vezes mandam a mensagem da Onside
+                  para lá. Achou? Marque como “Não é lixo eletrônico” (ou “Não é
+                  spam”) para as próximas chegarem na caixa de entrada.
+                </p>
+              </div>
+            </div>
+          ) : null}
           <ol className="my-7 grid gap-3 text-sm">
             <li className="flex items-center gap-3">
               <Check size={18} color="currentColor" aria-hidden="true" /> Abra o
