@@ -132,9 +132,11 @@ export default function Verified() {
         if (!cookie) return exit('confirmed')
         await adoptSessionCookie(cookie)
         // Busca a sessão antes de sair daqui, para a tela inicial já a ver.
-        const session = await authClient.getSession()
+        // A sessão já está no aparelho: sem resposta aqui, a confirmação
+        // segue sem o nome nem a ação, em vez de mandar entrar de novo.
+        const session = await authClient.getSession().catch(() => null)
         await queryClient.invalidateQueries()
-        const user = session.data?.user
+        const user = session?.data?.user
         // A ação que pediu a conta (rodada 2): sai feita, e a pessoa volta ao
         // bar dela, sem o onboarding na frente (a ação primeiro).
         const done = user ? await finishPending(user) : null
