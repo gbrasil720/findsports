@@ -305,7 +305,8 @@ function VerifyEmailPage() {
                 <span>
                   Reenviar em{' '}
                   <span className="tabular-nums">
-                    0:{String(cooldown).padStart(2, '0')}
+                    {Math.floor(cooldown / 60)}:
+                    {String(cooldown % 60).padStart(2, '0')}
                   </span>
                 </span>
               ) : (
