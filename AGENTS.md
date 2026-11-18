@@ -1057,7 +1057,11 @@ invente layout que o projeto não tem.
 - **Sessão:** `@better-auth/expo` guarda a sessão no SecureStore e a manda como cabeçalho
   `Cookie`. No servidor, o plugin `expo()` e o esquema `onside://` em
   `packages/auth/src/trusted-origins.ts` (`APP_SCHEME`, igual ao `scheme` do `app.json`).
-  `exp://` e `localhost:8081` só valem em `development`.
+  `exp://` e `localhost:8081` só valem em `development`. **Só o servidor tira da
+  conta** (WEB-538): o plugin guarda a última `/get-session` em `onside_session_data`,
+  mas só a usa na partida se não venceu; a leitura que falha sem resposta (sem rede,
+  timeout, 5xx) adota a guardada mesmo vencida (`sessionToKeep`, `lib/stored-session.ts`,
+  ligado ao átomo da sessão em `lib/auth-client.ts`), e 401 ou 200 sem sessão saem.
 - **Turnstile no app:** o servidor exige o desafio em `sign-in`, `sign-up` e nos envios de
   e-mail sempre que tem `TURNSTILE_SECRET_KEY` (o `.env` local tem). O app resolve numa WebView
   (`apps/mobile/components/turnstile.tsx`, mesmo contrato do `useTurnstile` do web) com a
