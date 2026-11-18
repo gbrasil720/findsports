@@ -580,20 +580,23 @@ function Atividade({
   const x = (i: number) => (count === 1 ? W / 2 : (i / (count - 1)) * W)
   const y = (v: number) => H - BASE - (v / top) * (H - BASE - TOP)
   const floor = H - BASE
+  // O arredondado entre dois dias iguais no topo sobe acima deles: o teto
+  // deixa a curva (e o ponto do cursor) dentro do SVG.
+  const bounds: [number, number] = [4, floor]
   const viewsPts = days.map((day, i): [number, number] => [x(i), y(day.views)])
   const actionsPts = days.map((day, i): [number, number] => [
     x(i),
     y(day.actions)
   ])
-  const views = smooth(viewsPts, floor)
-  const actions = smooth(actionsPts, floor)
+  const views = smooth(viewsPts, bounds)
+  const actions = smooth(actionsPts, bounds)
   const at = hover ?? (count === 1 ? 0 : null)
   const active = at === null ? null : Math.round(at)
   const day = active === null ? undefined : days[active]
   const clamp = (i: number) => Math.min(count - 1, Math.max(0, i))
   const cx = at === null ? 0 : count === 1 ? W / 2 : (at / (count - 1)) * W
   const dotTop = (pts: [number, number][]) =>
-    `${((count === 1 ? (pts[0]?.[1] ?? floor) : curveY(pts, floor, cx)) / H) * 100}%`
+    `${((count === 1 ? (pts[0]?.[1] ?? floor) : curveY(pts, bounds, cx)) / H) * 100}%`
   const pick = (event: PointerEvent<HTMLDivElement>) => {
     const box = event.currentTarget.getBoundingClientRect()
     const f = (event.clientX - box.left) / box.width
