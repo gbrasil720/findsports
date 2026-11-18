@@ -37,7 +37,7 @@ import { getPlan } from '@/lib/plan-catalog'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import { ComoCadaJogo } from './como-cada-jogo'
-import { smooth } from './curva'
+import { curveY, smooth } from './curva'
 import {
   isDraft,
   useEventAnalytics,
@@ -564,6 +564,8 @@ function Atividade({
   since?: string | Date
 }) {
   const [show, setShow] = useState({ views: true, actions: true })
+  // Onde o cursor está, em dias (fracionário: o ponto anda por cima da curva
+  // e encosta no topo, que pode cair entre dois dias). O dia é o mais perto.
   const [hover, setHover] = useState<number | null>(null)
   const all = dailySeries(d)
   const live = since ? sinceLive(all, since) : all
@@ -577,15 +579,25 @@ function Atividade({
   )
   const x = (i: number) => (count === 1 ? W / 2 : (i / (count - 1)) * W)
   const y = (v: number) => H - BASE - (v / top) * (H - BASE - TOP)
-  const views = smooth(days.map((day, i) => [x(i), y(day.views)]))
-  const actions = smooth(days.map((day, i) => [x(i), y(day.actions)]))
-  const active = hover ?? (count === 1 ? 0 : null)
+  const floor = H - BASE
+  const viewsPts = days.map((day, i): [number, number] => [x(i), y(day.views)])
+  const actionsPts = days.map((day, i): [number, number] => [
+    x(i),
+    y(day.actions)
+  ])
+  const views = smooth(viewsPts, floor)
+  const actions = smooth(actionsPts, floor)
+  const at = hover ?? (count === 1 ? 0 : null)
+  const active = at === null ? null : Math.round(at)
   const day = active === null ? undefined : days[active]
   const clamp = (i: number) => Math.min(count - 1, Math.max(0, i))
+  const cx = at === null ? 0 : count === 1 ? W / 2 : (at / (count - 1)) * W
+  const dotTop = (pts: [number, number][]) =>
+    `${((count === 1 ? (pts[0]?.[1] ?? floor) : curveY(pts, floor, cx)) / H) * 100}%`
   const pick = (event: PointerEvent<HTMLDivElement>) => {
     const box = event.currentTarget.getBoundingClientRect()
     const f = (event.clientX - box.left) / box.width
-    setHover(clamp(Math.round(f * (count - 1))))
+    setHover(clamp(f * (count - 1)))
   }
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Escape') return setHover(null)
@@ -593,12 +605,13 @@ function Atividade({
       event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0
     if (!step) return
     event.preventDefault()
-    setHover((current) => clamp((current ?? (step > 0 ? -1 : count)) + step))
+    setHover((current) =>
+      clamp(Math.round(current ?? (step > 0 ? -1 : count)) + step)
+    )
   }
   const ticks = [
     ...new Set([0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(f * (count - 1))))
   ]
-  const pct = (i: number) => (count === 1 ? 50 : (i / (count - 1)) * 100)
   const viewsChange = vs ? changeText(d.profileViewsChange) : null
   const actionsChange = vs ? changeText(d.highIntentActionsChange) : null
 
@@ -709,10 +722,10 @@ function Atividade({
               vectorEffect="non-scaling-stroke"
             />
           ) : null}
-          {active !== null ? (
+          {at !== null ? (
             <line
-              x1={x(active)}
-              x2={x(active)}
+              x1={cx}
+              x2={cx}
               y1={10}
               y2={H - BASE}
               stroke="var(--fg)"
@@ -730,10 +743,7 @@ function Atividade({
             {show.views ? (
               <span
                 className="pn-dot"
-                style={{
-                  left: `${pct(active)}%`,
-                  top: `${(y(day.views) / H) * 100}%`
-                }}
+                style={{ left: `${(cx / W) * 100}%`, top: dotTop(viewsPts) }}
                 aria-hidden="true"
               />
             ) : null}
@@ -741,17 +751,17 @@ function Atividade({
               <span
                 className="pn-dot is-d"
                 style={{
-                  left: `${pct(active)}%`,
-                  top: `${(y(day.actions) / H) * 100}%`
+                  left: `${(cx / W) * 100}%`,
+                  top: dotTop(actionsPts)
                 }}
                 aria-hidden="true"
               />
             ) : null}
-            {/* Ao lado da linha do dia, do lado com mais espaço: em cima dela
-                cobria o ponto do pico. */}
+            {/* Ao lado da linha do cursor, do lado com mais espaço: em cima
+                dela cobria o ponto do pico. */}
             <div
-              className={`pn-tip${pct(active) > 50 ? ' is-l' : ''}`}
-              style={{ left: `${pct(active)}%` }}
+              className={`pn-tip${cx > W / 2 ? ' is-l' : ''}`}
+              style={{ left: `${(cx / W) * 100}%` }}
               aria-hidden="true"
             >
               {longDay(day.date)}
