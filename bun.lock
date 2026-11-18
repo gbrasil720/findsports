@@ -264,6 +264,9 @@
       },
     },
   },
+  "patchedDependencies": {
+    "expo-router@57.0.26": "patches/expo-router@57.0.26.patch",
+  },
   "overrides": {
     "drizzle-orm": "0.45.2",
     "srvx": "0.11.19",
