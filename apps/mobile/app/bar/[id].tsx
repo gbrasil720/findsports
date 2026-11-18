@@ -94,9 +94,8 @@ import {
   text,
   useStatusBar
 } from '@/components/ui'
-import { useWithAccount } from '@/lib/account'
+import { useFan, useWithAccount } from '@/lib/account'
 import { clock } from '@/lib/ai-chat'
-import { authClient } from '@/lib/auth-client'
 import { barPhone, phoneLabel, telUrl, whatsappUrl } from '@/lib/bar-contact'
 import { closedNote } from '@/lib/bar-states'
 import { trackCommercialEvent } from '@/lib/commercial'
@@ -331,7 +330,8 @@ export function BarDetail({
   const router = useRouter()
   const palette = usePalette()
   const clockNow = useClockNow()
-  const session = authClient.useSession()
+  // A regra única do papel (`useFan`): a conta sem dados segue como conta.
+  const fan = useFan()
   const soon = useSoon()
   const attendPress = usePress(0, 3)
   const goPress = usePressScale()
@@ -353,14 +353,13 @@ export function BarDetail({
   const favorite = favorites.ids.has(id)
   // "Avisar quando marcar" (rodada 8): o aviso que já existe, do bar com os
   // seus times (ou o seu esporte, sem time), e o bar salvo junto.
-  const fanAccount = session.data?.user.role === 'fan'
   const myTeams = useQuery({
     ...trpc.pubs.getMyTeams.queryOptions(),
-    enabled: fanAccount
+    enabled: fan
   })
   const mySports = useQuery({
     ...trpc.pubs.getMyPreferences.queryOptions(),
-    enabled: fanAccount
+    enabled: fan
   })
   const alert = useMutation(trpc.recommendations.setAlert.mutationOptions())
   const [alertOn, setAlertOn] = useState(false)
@@ -417,7 +416,6 @@ export function BarDetail({
 
   // Uma visita por abertura da página, só depois de ela existir.
   const loaded = bar.isSuccess
-  const fan = session.data?.user.role === 'fan'
   // "Como chegar" conta para o bar como no web (só torcedor) e, vindo da IA,
   // como ação da resposta.
   const onRoute = () => {
