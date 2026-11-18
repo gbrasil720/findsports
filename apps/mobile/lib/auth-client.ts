@@ -136,7 +136,12 @@ export async function refreshSession() {
   await authClient
     .$fetch('/expire-session-cache', { method: 'POST', body: {} })
     .catch(() => {})
-  await authClient.getSession({ query: { disableCookieCache: true } })
+  // Sem rede o cliente lança: quem chamou já gravou o que queria, e a
+  // releitura do `useSession` (sinal abaixo, primeiro plano, rede de volta)
+  // traz a sessão nova quando o servidor responder.
+  await authClient
+    .getSession({ query: { disableCookieCache: true } })
+    .catch(() => {})
   authClient.$store.notify('$sessionSignal')
   // Nome, foto e raio mudam por aqui, fora das mutations do tRPC: o cache
   // vence do mesmo jeito (ver `lib/query-client.ts`).

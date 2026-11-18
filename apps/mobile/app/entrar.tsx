@@ -132,9 +132,10 @@ export default function Entrar() {
     // de sair e entrar de novo, as telas seguintes ficavam sem o usuário
     // (carteirinha sem nome nem número) até reabrir o app.
     await refreshSession()
-    const session = await authClient.getSession()
+    // Já entrou: sem resposta aqui, a folha fecha sem concluir a ação.
+    const session = await authClient.getSession().catch(() => null)
     if (router.canGoBack()) router.back()
-    const user = session.data?.user
+    const user = session?.data?.user
     if (!user) return
     const acao = await finishPending(user)
     // Sem bar nem jogo na mão (o "Entrar" do topo, "Já tenho conta"), o
