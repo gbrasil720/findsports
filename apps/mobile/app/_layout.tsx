@@ -21,6 +21,7 @@ import { OfflineBanner } from '@/components/offline-banner'
 import { Splash, SplashDone, type TodayGames } from '@/components/splash'
 import { PaletteProvider } from '@/components/theme'
 import { useAccountSheet } from '@/components/ui'
+import { useOfflineRouteGuard } from '@/lib/account'
 import { PushResponder } from '@/lib/push'
 import { queryClient, trpc } from '@/lib/trpc'
 
@@ -62,6 +63,11 @@ function useTodayGames() {
     return () => clearTimeout(timer)
   }, [])
   return today
+}
+
+function OfflineRouteGuard() {
+  useOfflineRouteGuard()
+  return null
 }
 
 export default function Layout() {
@@ -313,6 +319,8 @@ export default function Layout() {
           <ActionDone />
           {/* Registra o aparelho e abre a tela da notificação tocada (WEB-416). */}
           <PushResponder />
+          {/* Conta sem dados em tela de outro papel volta à abertura (WEB-538). */}
+          <OfflineRouteGuard />
           <DevTab />
           {splashDone ? null : (
             <Splash today={today ?? undefined} onDone={endSplash} />
