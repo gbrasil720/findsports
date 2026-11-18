@@ -50,6 +50,12 @@ Na lista de checks do PR os jobs aparecem pelo `name`, que diz o que rodam: `che
 Worker e tamanho", `mobile` "bundle do app" e `deploy` "deploy e smoke". A proteção de
 `master` exige os checks por esse nome: mudou o `name`, mude a proteção junto.
 
+Em PR, todos esses jobs esperam o `coderabbit` ("revisão do CodeRabbit"), que lê o
+status `CodeRabbit` do commit e só libera quando a revisão termina ou ele avisa que não
+vai revisar (cota de revisões acabou, bot): achado dele se corrige antes de gastar uma
+rodada de CI. Sem status em 3 min, ou em pending por 15, segue sem ele. No push em
+`master` não espera.
+
 Turbo filter syntax: `turbo -F <package-name> <task>` — use the `name` field from that package's `package.json`.
 
 Testes de integração (`*.integration.test.ts`) são pulados sem banco descartável. Eles
