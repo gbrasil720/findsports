@@ -64,9 +64,16 @@ test.describe('verificação de e-mail', () => {
   })
 
   test('reenviar link manda um e-mail novo', async ({ page }) => {
+    // O reenvio espera 60 s (WEB-526): o relógio da página anda sozinho e é
+    // adiantado depois do cadastro, sem esperar de verdade.
+    await page.clock.install()
     const email = await signupFan(page)
     const first = await lastEmailTo(email, { subject: VERIFICATION_SUBJECT })
 
+    await expect(
+      page.getByRole('button', { name: /Reenviar em 1:00|Reenviar em 0:5/ })
+    ).toBeDisabled()
+    await page.clock.fastForward('01:01')
     await page.getByRole('button', { name: 'Reenviar link' }).click()
 
     await expect(
