@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router'
-import { authClient } from './auth-client'
+import { Alert } from 'react-native'
+import { authClient, useAccountWithoutData } from './auth-client'
 import { type Acao, savePending } from './pending-action'
 
 /**
@@ -18,9 +19,17 @@ export function useFan() {
  */
 export function useWithAccount() {
   const fan = useFan()
+  const offline = useAccountWithoutData()
   const router = useRouter()
   return (action: () => void, acao: Acao = { kind: 'conta', what: '' }) => {
     if (fan) return action()
+    // A conta está no aparelho, só o servidor não respondeu (WEB-538): pedir
+    // para entrar diria que ela saiu.
+    if (offline)
+      return Alert.alert(
+        'Sem conexão',
+        'Sua conta continua aqui. Tente de novo quando a rede voltar.'
+      )
     savePending(acao)
     router.push({
       pathname: '/entrar',
