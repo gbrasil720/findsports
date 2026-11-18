@@ -8,10 +8,11 @@ import {
   sessionToKeep
 } from './stored-session'
 
-// Vencida há dias: o plugin do Expo não a usa na partida.
+// Vencida há dias: o plugin do Expo não a usa na partida. O formato é o do
+// `/get-session` do better-auth (sem `token`).
 const stored = JSON.stringify({
   user: { id: 'u1', name: 'Ana' },
-  session: { id: 's1', expiresAt: '2026-11-01T00:00:00.000Z' }
+  session: { id: 's1', userId: 'u1', expiresAt: '2026-11-01T00:00:00.000Z' }
 })
 const failed = (error: unknown) => ({ data: null, error, isPending: false })
 
@@ -209,14 +210,36 @@ test('portal de Wi-Fi: 200 com HTML na sessão é falha passageira', async () =>
   expect(sessionToKeep(failed(error), stored)?.user.id).toBe('u1')
 })
 
-test('JSON que não é sessão também não passa; null e sessão passam', async () => {
-  expect(isSessionBody('{"ok":true}')).toBe(false)
-  expect(isSessionBody('"texto"')).toBe(false)
+test('só passa null, vazio ou a sessão inteira do better-auth', async () => {
   expect(isSessionBody('null')).toBe(true)
   expect(isSessionBody('')).toBe(true)
   expect(isSessionBody(stored)).toBe(true)
+  const session = { id: 's1', userId: 'u1', expiresAt: '2026-11-25T00:00:00Z' }
+  for (const body of [
+    { ok: true },
+    'texto',
+    [],
+    { session: {}, foo: 1 },
+    { session: null, user: null },
+    { session, user: null },
+    { session, user: [] },
+    { session, user: { id: '' } },
+    { session, user: { id: 7 } },
+    { session: { ...session, id: undefined }, user: { id: 'u1' } },
+    { session: { ...session, userId: 'u2' }, user: { id: 'u1' } },
+    { session: { ...session, expiresAt: undefined }, user: { id: 'u1' } },
+    { session: { ...session, expiresAt: 'amanhã' }, user: { id: 'u1' } }
+  ])
+    expect(isSessionBody(JSON.stringify(body))).toBe(false)
   const response = await get(reply('null'))
   expect(await response.text()).toBe('null')
+})
+
+test('corpo fora do formato vira falha passageira e mantém a guardada', async () => {
+  const error = await get(reply('{"session":{},"foo":1}')).catch((e) => e)
+  expect(error).toBeInstanceOf(TypeError)
+  expect(isTransientError(error)).toBe(true)
+  expect(sessionToKeep(failed(error), stored)?.user.id).toBe('u1')
 })
 
 test('erro do servidor segue como resposta (401 tira da conta)', async () => {
