@@ -37,7 +37,7 @@ import { getPlan } from '@/lib/plan-catalog'
 import { getUserFacingMessage, isRetryableError } from '@/lib/user-facing-error'
 import { useTRPC } from '@/utils/trpc'
 import { ComoCadaJogo } from './como-cada-jogo'
-import { curveY, smooth } from './curva'
+import { curveY, fitTop, smooth } from './curva'
 import {
   isDraft,
   useEventAnalytics,
@@ -578,25 +578,25 @@ function Atividade({
     Math.max(...days.flatMap((day) => [day.views, day.actions]))
   )
   const x = (i: number) => (count === 1 ? W / 2 : (i / (count - 1)) * W)
-  const y = (v: number) => H - BASE - (v / top) * (H - BASE - TOP)
   const floor = H - BASE
-  // O arredondado entre dois dias iguais no topo sobe acima deles: o teto
-  // deixa a curva (e o ponto do cursor) dentro do SVG.
-  const bounds: [number, number] = [4, floor]
-  const viewsPts = days.map((day, i): [number, number] => [x(i), y(day.views)])
-  const actionsPts = days.map((day, i): [number, number] => [
-    x(i),
-    y(day.actions)
-  ])
-  const views = smooth(viewsPts, bounds)
-  const actions = smooth(actionsPts, bounds)
+  const scale = (v: number, t: number) => floor - (v / top) * (floor - t)
+  const series = (t: number) =>
+    [days.map((d) => d.views), days.map((d) => d.actions)].map((vs) =>
+      vs.map((v, i): [number, number] => [x(i), scale(v, t)])
+    )
+  // O arredondado entre dois dias iguais no alto sobe acima deles: a escala
+  // desce até ele caber no SVG, sem cortar nem achatar o pico.
+  const plotTop = fitTop(series(TOP), floor, TOP, 4)
+  const [viewsPts = [], actionsPts = []] = series(plotTop)
+  const views = smooth(viewsPts, floor)
+  const actions = smooth(actionsPts, floor)
   const at = hover ?? (count === 1 ? 0 : null)
   const active = at === null ? null : Math.round(at)
   const day = active === null ? undefined : days[active]
   const clamp = (i: number) => Math.min(count - 1, Math.max(0, i))
   const cx = at === null ? 0 : count === 1 ? W / 2 : (at / (count - 1)) * W
   const dotTop = (pts: [number, number][]) =>
-    `${((count === 1 ? (pts[0]?.[1] ?? floor) : curveY(pts, bounds, cx)) / H) * 100}%`
+    `${((count === 1 ? (pts[0]?.[1] ?? floor) : curveY(pts, floor, cx)) / H) * 100}%`
   const pick = (event: PointerEvent<HTMLDivElement>) => {
     const box = event.currentTarget.getBoundingClientRect()
     const f = (event.clientX - box.left) / box.width
@@ -690,8 +690,8 @@ function Atividade({
               key={f}
               x1="0"
               x2={W}
-              y1={H - BASE - f * (H - BASE - TOP)}
-              y2={H - BASE - f * (H - BASE - TOP)}
+              y1={floor - f * (floor - plotTop)}
+              y2={floor - f * (floor - plotTop)}
               stroke="var(--line)"
               strokeWidth="1"
               vectorEffect="non-scaling-stroke"
@@ -738,7 +738,11 @@ function Atividade({
             />
           ) : null}
         </svg>
-        <span className="pn-ytop" aria-hidden="true">
+        <span
+          className="pn-ytop"
+          style={{ top: `calc(${(plotTop / H) * 100}% - 16px)` }}
+          aria-hidden="true"
+        >
           {fmt(top)}
         </span>
         {day && active !== null ? (

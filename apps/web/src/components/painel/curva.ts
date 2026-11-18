@@ -1,17 +1,14 @@
 type Pt = [number, number]
 
-/** Faixa de y em que a curva fica: `[teto, chão]` (o SVG cresce para baixo). */
-type Bounds = [number, number]
-
 /**
  * Trechos da curva dos gráficos do painel (Hoje e Desempenho): a curva
- * redonda do protótipo (Catmull-Rom), com os pontos de controle presos entre
- * o teto do gráfico e a linha de base. A curva fica dentro dos controles,
- * então não afunda abaixo do zero antes de subir e depois de descer, e o
- * arredondado entre dois dias iguais no topo não sai do SVG (seria cortado).
+ * redonda do protótipo (Catmull-Rom), com os pontos de controle presos acima
+ * do `floor` (o y da linha de base no SVG, que cresce para baixo). A curva
+ * fica dentro dos controles, então não afunda abaixo do zero antes de subir
+ * nem depois de descer.
  */
-function segments(points: Pt[], [ceil, floor]: Bounds): [Pt, Pt, Pt, Pt][] {
-  const cap = (y: number) => Math.min(floor, Math.max(ceil, y))
+function segments(points: Pt[], floor: number): [Pt, Pt, Pt, Pt][] {
+  const cap = (y: number) => Math.min(floor, y)
   const t = 0.18
   return points.slice(0, -1).map((p1, i) => {
     const p0 = points[i - 1] ?? p1
@@ -27,12 +24,12 @@ function segments(points: Pt[], [ceil, floor]: Bounds): [Pt, Pt, Pt, Pt][] {
 }
 
 /** Caminho SVG que passa por todos os pontos. */
-export function smooth(points: Pt[], bounds: Bounds): string {
+export function smooth(points: Pt[], floor: number): string {
   const [first] = points
   if (!first) return ''
   const f = (v: number) => v.toFixed(1)
   let d = `M${f(first[0])} ${f(first[1])}`
-  for (const [, c1, c2, p2] of segments(points, bounds)) {
+  for (const [, c1, c2, p2] of segments(points, floor)) {
     d += ` C${f(c1[0])} ${f(c1[1])} ${f(c2[0])} ${f(c2[1])} ${f(p2[0])} ${f(p2[1])}`
   }
   return d
@@ -48,10 +45,10 @@ const bez = (a: number, b: number, c: number, d: number, t: number) => {
  * no topo, que pode cair entre dois dias). O x de cada trecho cresce com o
  * parâmetro, então a busca binária acha o ponto.
  */
-export function curveY(points: Pt[], bounds: Bounds, x: number): number {
-  const segs = segments(points, bounds)
+export function curveY(points: Pt[], floor: number, x: number): number {
+  const segs = segments(points, floor)
   const seg = segs.find(([, , , p2]) => x <= p2[0]) ?? segs.at(-1)
-  if (!seg) return points[0]?.[1] ?? bounds[1]
+  if (!seg) return points[0]?.[1] ?? floor
   const [p1, c1, c2, p2] = seg
   let lo = 0
   let hi = 1
@@ -61,4 +58,32 @@ export function curveY(points: Pt[], bounds: Bounds, x: number): number {
     else hi = mid
   }
   return bez(p1[1], c1[1], c2[1], p2[1], (lo + hi) / 2)
+}
+
+/** O y mais alto (menor) da curva. */
+function curveTop(points: Pt[], floor: number): number {
+  let top = Math.min(...points.map((p) => p[1]))
+  for (const [p1, c1, c2, p2] of segments(points, floor)) {
+    for (let i = 1; i < 32; i++)
+      top = Math.min(top, bez(p1[1], c1[1], c2[1], p2[1], i / 32))
+  }
+  return top
+}
+
+/**
+ * Onde fica o topo da escala (o y do maior valor) para a curva caber no SVG.
+ * Entre dois dias iguais no alto o arredondado sobe acima deles; prender a
+ * curva num teto deixava uma ponta reta. Em vez disso a escala desce até o
+ * arredondado parar no `ceil`. A curva acompanha a escala (escalar os pontos a
+ * partir da base escala a curva igual), então uma conta basta.
+ */
+export function fitTop(
+  series: Pt[][],
+  floor: number,
+  top: number,
+  ceil: number
+): number {
+  const peak = Math.min(...series.map((pts) => curveTop(pts, floor)))
+  if (peak >= ceil) return top
+  return floor - ((floor - top) * (floor - ceil)) / (floor - peak)
 }
