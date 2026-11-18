@@ -16,6 +16,7 @@ import { env } from './env'
 import { queryClient } from './query-client'
 import {
   accountWithoutData,
+  sessionFetch,
   sessionStep,
   type sessionToKeep
 } from './stored-session'
@@ -27,6 +28,9 @@ const scheme = Constants.expoConfig?.scheme as string
 
 export const authClient = createAuthClient({
   baseURL: env.EXPO_PUBLIC_SERVER_URL,
+  // Portal de Wi-Fi e servidor mudo na leitura da sessão viram falha de rede
+  // (`sessionFetch`, em `lib/stored-session.ts`).
+  fetchOptions: { customFetchImpl: sessionFetch() },
   plugins: [
     expoClient({
       scheme,
