@@ -598,8 +598,11 @@ html[data-theme="dark"] .pn3 {
   margin-top: 22px;
 }
 
+/* A rolagem de lado recorta também em cima: o espaço do selo "AGORA", que
+   sobe 7px acima da régua, fica dentro da caixa que rola. */
 .pn3 .pn-rule-wrap {
-  margin-top: 16px;
+  margin-top: 6px;
+  padding-top: 10px;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scrollbar-width: none;
