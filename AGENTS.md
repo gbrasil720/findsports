@@ -1079,7 +1079,11 @@ invente layout que o projeto não tem.
   noutra, o resto é do torcedor), com a sessão ou sem dados; papel desconhecido só fica
   nas telas dos dois. A abertura mostra o "Sinal caiu" até a sessão chegar (fora do
   torcedor sem a frase dos favoritos e do código) e então leva à área certa. Tela nova
-  do dono entra em `OWNER`, senão a conta de bar é mandada de volta dela.
+  do dono entra em `OWNER`, senão a conta de bar é mandada de volta dela. Rede que mente também é queda: o `fetch` do cliente passa
+  por `sessionFetch` (`fetchOptions.customFetchImpl`), e em `/get-session` um 200 que
+  não é sessão nem `null` (portal de Wi-Fi, que o plugin gravaria por cima do
+  `onside_session_data`) ou sem resposta em 8 s (`SESSION_TIMEOUT_MS`; o iOS esperaria
+  ~60 s) vira erro de rede antes de o plugin gravar.
 - **Turnstile no app:** o servidor exige o desafio em `sign-in`, `sign-up` e nos envios de
   e-mail sempre que tem `TURNSTILE_SECRET_KEY` (o `.env` local tem). O app resolve numa WebView
   (`apps/mobile/components/turnstile.tsx`, mesmo contrato do `useTurnstile` do web) com a
