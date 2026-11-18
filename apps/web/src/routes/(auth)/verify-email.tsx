@@ -68,8 +68,11 @@ function VerifyEmailPage() {
   const [checking, setChecking] = useState(false)
   const [resending, setResending] = useState(false)
   // Segundos até liberar o reenvio (WEB-526), os mesmos 60 do app: o link
-  // acabou de sair, e repetir em seguida só gasta a cota do dia.
-  const [cooldown, setCooldown] = useState(0)
+  // acabou de sair, e repetir em seguida só gasta a cota do dia. Conta pelo
+  // relógio, não por tique: aba suspensa ou timer atrasado não estica a espera.
+  const [resendAt, setResendAt] = useState(0)
+  const [now, setNow] = useState(() => Date.now())
+  const cooldown = Math.max(0, Math.ceil((resendAt - now) / 1000))
   const [pubError, setPubError] = useState<string | null>(null)
   // WEB-248: sem sessão neste navegador (confirmou em outro aparelho) nenhum
   // dos dois botões resolve; o caminho é o login.
@@ -159,16 +162,25 @@ function VerifyEmailPage() {
   }, [callbackUrl, completePub, finishSignup, navigate])
 
   useEffect(() => {
-    if (cooldown <= 0) return
-    const timer = setTimeout(() => setCooldown(cooldown - 1), 1000)
+    if (now >= resendAt) return
+    const timer = setTimeout(
+      () => setNow(Date.now()),
+      Math.min(1000, resendAt - now)
+    )
     return () => clearTimeout(timer)
-  }, [cooldown])
+  }, [now, resendAt])
+
+  const startCooldown = useCallback(() => {
+    const t = Date.now()
+    setNow(t)
+    setResendAt(t + RESEND_COOLDOWN * 1000)
+  }, [])
 
   useEffect(() => {
     const pending = readPendingEmail()
     setEmail(pending)
-    if (pending) setCooldown(RESEND_COOLDOWN)
-  }, [])
+    if (pending) startCooldown()
+  }, [startCooldown])
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('confirmed') === '1') {
@@ -199,7 +211,7 @@ function VerifyEmailPage() {
       )
       return
     }
-    setCooldown(RESEND_COOLDOWN)
+    startCooldown()
     toast.success('Se o endereço estiver cadastrado, um novo link foi enviado.')
   }
 
