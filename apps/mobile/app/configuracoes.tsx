@@ -38,6 +38,7 @@ import { usePalette } from '@/components/theme'
 import {
   ACCENT,
   ACID,
+  authErrorMessage,
   Icon,
   INK,
   LIVE,
@@ -47,6 +48,7 @@ import {
   text,
   useStatusBar
 } from '@/components/ui'
+import { settleAuth } from '@/lib/auth-attempt'
 import { authClient, refreshSession } from '@/lib/auth-client'
 import {
   AvatarError,
@@ -221,7 +223,10 @@ function Preferences({
     if (km === radiusKm) return
     haptic.select()
     setPicked(km)
-    const result = await authClient.updateUser({ searchRadiusKm: km })
+    // Sem rede o cliente lança: o raio volta e o aviso aparece.
+    const result = await settleAuth(
+      authClient.updateUser({ searchRadiusKm: km })
+    )
     if (result.error) {
       setPicked(null)
       Alert.alert('Não foi possível salvar o raio', 'Tente de novo.')
@@ -834,7 +839,9 @@ function Account({ leave = true }: { leave?: boolean }) {
       async (name) => {
         const trimmed = name?.trim()
         if (!trimmed || trimmed === user?.name) return
-        const result = await authClient.updateUser({ name: trimmed })
+        const result = await settleAuth(
+          authClient.updateUser({ name: trimmed })
+        )
         if (result.error)
           return Alert.alert('Não foi possível salvar o nome', 'Tente de novo.')
         haptic.success()
@@ -1070,7 +1077,7 @@ export function Sessions() {
               accessibilityRole="button"
               onPress={async () => {
                 const email = user?.email
-                await authClient.signOut()
+                if (await signOutFailed()) return
                 router.replace({ pathname: '/sign-in', params: { email } })
               }}
               suppressHighlighting
@@ -1122,6 +1129,20 @@ export function Sessions() {
   )
 }
 
+/**
+ * Sai da conta; `true` se o servidor não respondeu. Sem rede o cliente lança
+ * e a sessão fica: a pessoa continua na tela, com a frase de conexão.
+ */
+async function signOutFailed() {
+  const result = await settleAuth(authClient.signOut())
+  if (!result.error) return false
+  Alert.alert(
+    'Não foi possível sair',
+    authErrorMessage(result.error, 'Tente de novo.')
+  )
+  return true
+}
+
 /** "Sair da conta" e "Excluir conta", no fim da Conta e à esquerda do "Você" deitado. */
 function useLeaveActions() {
   const router = useRouter()
@@ -1132,7 +1153,7 @@ function useLeaveActions() {
         text: 'Sair',
         style: 'destructive',
         onPress: async () => {
-          await authClient.signOut()
+          if (await signOutFailed()) return
           router.replace('/explore')
         }
       }
@@ -1152,11 +1173,17 @@ function useLeaveActions() {
               undefined,
               async (password) => {
                 if (!password) return
-                const result = await authClient.deleteUser({ password })
+                const result = await settleAuth(
+                  authClient.deleteUser({ password })
+                )
+                // Sem rede, a frase de conexão; recusa, a do servidor.
                 if (result.error)
                   return Alert.alert(
                     'Não foi possível excluir',
-                    result.error.message ?? 'Confira a senha e tente de novo.'
+                    authErrorMessage(
+                      result.error,
+                      result.error.message ?? 'Confira a senha e tente de novo.'
+                    )
                   )
                 router.replace('/explore')
               },
