@@ -1779,6 +1779,11 @@ type ErrorStateProps = {
        * `false` tira a frase.
        */
       fanNote?: boolean
+      /**
+       * A lista apagada embaixo do cartão. Só faz sentido no lugar de uma
+       * lista (o Explorar); sozinha, parece carregamento travado.
+       */
+      ghosts?: boolean
     }
 )
 
@@ -1887,6 +1892,7 @@ function SignalLost({
   retrying,
   onCode,
   fanNote = true,
+  ghosts = true,
   style
 }: Extract<ErrorStateProps, { kind: 'signal' }>) {
   // A sombra do iOS não troca sozinha com o tema: vem da paleta.
@@ -1963,9 +1969,9 @@ function SignalLost({
           ) : null}
         </View>
       </View>
-      {GHOSTS.map((key) => (
-        <View key={key} style={styles.signalGhost} />
-      ))}
+      {ghosts
+        ? GHOSTS.map((key) => <View key={key} style={styles.signalGhost} />)
+        : null}
     </View>
   )
 }
