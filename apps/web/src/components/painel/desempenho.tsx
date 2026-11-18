@@ -747,11 +747,11 @@ function Atividade({
                 aria-hidden="true"
               />
             ) : null}
+            {/* Ao lado da linha do dia, do lado com mais espaço: em cima dela
+                cobria o ponto do pico. */}
             <div
-              className="pn-tip"
-              style={{
-                left: `${Math.min(88, Math.max(12, pct(active)))}%`
-              }}
+              className={`pn-tip${pct(active) > 50 ? ' is-l' : ''}`}
+              style={{ left: `${pct(active)}%` }}
               aria-hidden="true"
             >
               {longDay(day.date)}
