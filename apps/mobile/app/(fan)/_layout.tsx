@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useGlobalSearchParams, usePathname, useRouter } from 'expo-router'
 import { NativeTabs } from 'expo-router/unstable-native-tabs'
 import { useEffect, useRef, useState } from 'react'
-import { View } from 'react-native'
+import { Pressable, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNewAchievement } from '@/components/achievement-watcher'
 import { initials } from '@/components/explore'
@@ -14,7 +14,7 @@ import { useSoon } from '@/components/soon'
 import { type MenuItem, YouMenu } from '@/components/tab-bar'
 import { usePalette } from '@/components/theme'
 import { Tour, TourInvite } from '@/components/tour'
-import { ErrorState } from '@/components/ui'
+import { ACID, INK, Text, text } from '@/components/ui'
 import { YouPanel } from '@/components/you-panel'
 import { useFan, useWithAccount } from '@/lib/account'
 import { authClient, useAccountWithoutData } from '@/lib/auth-client'
@@ -466,11 +466,9 @@ export default function FanTabs() {
           level={medals.data?.level}
           head={
             offline ? (
-              <ErrorState
-                kind="block"
-                error={session.error}
-                onRetry={() => session.refetch()}
+              <OfflineHead
                 retrying={session.isRefetching}
+                onRetry={() => session.refetch()}
               />
             ) : undefined
           }
@@ -521,5 +519,59 @@ export default function FanTabs() {
       ) : null}
       {soon.toast}
     </View>
+  )
+}
+
+/**
+ * O topo do menu Você da conta sem dados (WEB-538): o nome só vem do
+ * servidor. As frases são as da abertura e da faixa sem conexão.
+ */
+function OfflineHead({
+  retrying,
+  onRetry
+}: {
+  retrying: boolean
+  onRetry: () => unknown
+}) {
+  const palette = usePalette()
+  return (
+    <>
+      <View accessibilityRole="alert" style={{ flex: 1, minWidth: 0, gap: 2 }}>
+        <Text style={[text(15, 'Bold', 1.2), { color: palette.ink }]}>
+          Sua conta continua aqui.
+        </Text>
+        <Text style={[text(12.5, 'Regular', 1.35), { color: palette.muted }]}>
+          Sem conexão
+        </Text>
+      </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ busy: retrying }}
+        disabled={retrying}
+        hitSlop={6}
+        onPress={() => void onRetry()}
+        style={({ pressed }) => ({
+          minHeight: 36,
+          paddingHorizontal: 14,
+          borderRadius: 18,
+          justifyContent: 'center',
+          backgroundColor: ACID,
+          transform: [{ scale: pressed ? 0.97 : 1 }]
+        })}
+      >
+        {/* A largura é a do rótulo maior: trocar não empurra o texto. */}
+        <Text aria-hidden style={[text(14, 'Bold', 1.2), { opacity: 0 }]}>
+          Tentando…
+        </Text>
+        <Text
+          style={[
+            text(14, 'Bold', 1.2),
+            { color: INK, position: 'absolute', alignSelf: 'center' }
+          ]}
+        >
+          {retrying ? 'Tentando…' : 'Tentar'}
+        </Text>
+      </Pressable>
+    </>
   )
 }
