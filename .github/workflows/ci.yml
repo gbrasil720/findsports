@@ -18,6 +18,47 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Portão do CodeRabbit: os outros jobs só começam quando ele termina a revisão
+  # deste commit ("Review completed") ou avisa que não vai revisar ("Review rate
+  # limited", bot, pulado). Assim um achado dele não custa uma rodada inteira de
+  # CI que seria refeita depois da correção. Lê o status `CodeRabbit` do commit
+  # (pending -> success). Sem status em 3 min (CodeRabbit fora, PR que ele não
+  # olha) ou preso em pending por 15 min, segue assim mesmo: o portão atrasa, não
+  # bloqueia. No push em `master` não espera nada.
+  coderabbit:
+    name: revisão do CodeRabbit
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: read
+    timeout-minutes: 20
+    steps:
+      - if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          start=$(date +%s)
+          while :; do
+            line=$(gh api "repos/$REPO/commits/$SHA/statuses" \
+              --jq '[.[] | select(.context == "CodeRabbit")][0] | select(.) | "\(.state)\t\(.description)"' || true)
+            state=${line%%$'\t'*}
+            elapsed=$(( $(date +%s) - start ))
+            if [ -n "$line" ] && [ "$state" != pending ]; then
+              echo "CodeRabbit: ${line#*$'\t'} ($state)"
+              exit 0
+            fi
+            if [ -z "$line" ] && [ "$elapsed" -ge 180 ]; then
+              echo "::notice::CodeRabbit não marcou este commit em 3 min; seguindo sem ele."
+              exit 0
+            fi
+            if [ "$elapsed" -ge 900 ]; then
+              echo "::warning::CodeRabbit em pending há 15 min; seguindo sem ele."
+              exit 0
+            fi
+            sleep 15
+          done
+
   # Tipagem e portão do deploy (WEB-330): sem Postgres — roda em paralelo com
   # `unit-test` e `e2e`. Em PR, `turbo --filter=...[origin/master]` limita ao
   # que mudou (e dependentes); no push em master, suíte completa.
@@ -30,6 +71,7 @@ jobs:
   # próprio fork) e Dependabot não têm alvo e pulam o deploy.
   check:
     name: lint, tipos e migrations
+    needs: coderabbit
     runs-on: ubuntu-latest
     outputs:
       target: ${{ steps.gate.outputs.target }}
@@ -73,6 +115,7 @@ jobs:
 
   unit-test:
     name: testes e schema
+    needs: coderabbit
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -130,6 +173,7 @@ jobs:
     # aqui, e rodar de novo dobrava os minutos e atrasava o deploy (WEB-236).
     # PR só de `apps/mobile`, `docs` ou `*.md` pula os passos (`web-scope`).
     if: github.event_name == 'pull_request'
+    needs: coderabbit
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -194,6 +238,7 @@ jobs:
 
   e2e-worker:
     name: bundle do Worker e tamanho
+    needs: coderabbit
     # Bundle real do Worker em workerd (docs/e2e.md, "Suíte do Worker"). A
     # suíte `e2e` roda em `vite dev`, que serve `public/` de outro jeito: foi
     # essa diferença que escondeu a WEB-269. Sem banco: só arquivo estático.
@@ -234,6 +279,7 @@ jobs:
   # asset que falta e módulo de servidor que entrou no bundle (~20 s).
   mobile:
     name: bundle do app
+    needs: coderabbit
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
