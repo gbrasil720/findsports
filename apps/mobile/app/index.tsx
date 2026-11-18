@@ -79,6 +79,7 @@ export default function Home() {
           kind="signal"
           title="Sua conta continua aqui."
           fanNote={fanNote}
+          ghosts={false}
           error={session.error}
           onRetry={() => refetch()}
           retrying={session.isRefetching}
