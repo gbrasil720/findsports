@@ -585,8 +585,9 @@ function Atividade({
       vs.map((v, i): [number, number] => [x(i), scale(v, t)])
     )
   // O arredondado entre dois dias iguais no alto sobe acima deles: a escala
-  // desce até ele caber no SVG, sem cortar nem achatar o pico.
-  const plotTop = fitTop(series(TOP), floor, TOP, 4)
+  // desce até ele caber no SVG, sem cortar nem achatar o pico. A folga de 8
+  // cabe o raio do ponto do cursor (6px) até na altura de 200px do celular.
+  const plotTop = fitTop(series(TOP), floor, TOP, 8)
   const [viewsPts = [], actionsPts = []] = series(plotTop)
   const views = smooth(viewsPts, floor)
   const actions = smooth(actionsPts, floor)
