@@ -76,6 +76,8 @@ export function sessionStep<T extends StoredSession>(
   return kept
     ? { set: kept, restored: kept, clearCache }
     : { restored: null, clearCache }
+}
+
 /*
  * Sem nada no `onside_session_data` (instalação de antes do cache do plugin,
  * ou cache apagado) não há sessão para manter: só o cookie, que o plugin
@@ -84,7 +86,6 @@ export function sessionStep<T extends StoredSession>(
  * aparelho, só sem os dados: a tela diz que o sinal caiu em vez de tratar a
  * pessoa como visitante. Nome, papel e o resto só vêm do servidor.
  */
-
 
 /**
  * A conta está no aparelho, mas a leitura falhou sem o servidor responder?
