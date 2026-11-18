@@ -14,9 +14,10 @@ import { useSoon } from '@/components/soon'
 import { type MenuItem, YouMenu } from '@/components/tab-bar'
 import { usePalette } from '@/components/theme'
 import { Tour, TourInvite } from '@/components/tour'
+import { ErrorState } from '@/components/ui'
 import { YouPanel } from '@/components/you-panel'
 import { useFan, useWithAccount } from '@/lib/account'
-import { authClient } from '@/lib/auth-client'
+import { authClient, useAccountWithoutData } from '@/lib/auth-client'
 import { freshCount } from '@/lib/suggestions'
 import { trpc } from '@/lib/trpc'
 import type { SettingsTab } from '../configuracoes'
@@ -93,6 +94,9 @@ export default function FanTabs() {
   // Sem conta (o app abre no Explorar): Bares, Você e a IA levam ao
   // "Entrar", e nada só do torcedor é consultado.
   const fan = useFan()
+  // Conta no aparelho sem resposta do servidor (WEB-538): o menu da conta,
+  // com o erro no lugar do nome, que só o servidor dá.
+  const offline = useAccountWithoutData()
   const withAccount = useWithAccount()
   const pending = useQuery({
     ...trpc.postGame.pending.queryOptions(),
@@ -136,7 +140,7 @@ export default function FanTabs() {
   // Tablet deitado e dobrável aberto: o "Você" é uma tela (menu e seção lado
   // a lado, `YouPanel`), não o menu de vidro; tocar de novo não fecha.
   // Sem conta, o menu (com o cartão da conta), também no tablet.
-  const panel = layout.kind === 'split' && fan
+  const panel = layout.kind === 'split' && fan && !offline
   const panelOpen = panel && (menuOpen || (!inTabs && tabPath === '/voce'))
   // O mesmo toque da aba "Você" na barra nativa.
   const pressYou = () => {
@@ -460,6 +464,16 @@ export default function FanTabs() {
           initials={initials(user?.name ?? '')}
           image={user?.image}
           level={medals.data?.level}
+          head={
+            offline ? (
+              <ErrorState
+                kind="block"
+                error={session.error}
+                onRetry={() => session.refetch()}
+                retrying={session.isRefetching}
+              />
+            ) : undefined
+          }
           items={fan ? items : visitorItems}
           visitor={
             fan
