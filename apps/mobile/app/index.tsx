@@ -1,11 +1,17 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link, Redirect } from 'expo-router'
+import { Link, Redirect, useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
 import { Pressable, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Text, useStatusBar } from '@/components/ui'
-import { authClient, hasStoredSession } from '@/lib/auth-client'
+import { usePalette } from '@/components/theme'
+import { BG, ErrorState, Text, useStatusBar } from '@/components/ui'
+import {
+  authClient,
+  hasStoredSession,
+  useAccountWithoutData
+} from '@/lib/auth-client'
 import { firstOpenSeen } from '@/lib/first-open'
+import { readTodayCode } from '@/lib/maintenance'
 import { trpc } from '@/lib/trpc'
 
 // Tela de partida do app: prova que as duas pontas estão ligadas — a API
@@ -13,8 +19,13 @@ import { trpc } from '@/lib/trpc'
 // lugar desta.
 export default function Home() {
   const insets = useSafeAreaInsets()
+  const router = useRouter()
   const session = authClient.useSession()
-  useStatusBar('light')
+  // Conta no aparelho sem resposta do servidor (WEB-538): nem visitante nem
+  // tela de conta, o "Sinal caiu" até a sessão chegar.
+  const offline = useAccountWithoutData()
+  const palette = usePalette()
+  useStatusBar(offline && !palette.dark ? 'dark' : 'light')
   const api = useQuery(trpc.appConfig.getPublic.queryOptions())
   const [seen, setSeen] = useState<boolean>()
   useEffect(() => {
@@ -33,13 +44,46 @@ export default function Home() {
   const retried = tries >= 3
   const { refetch } = session
   useEffect(() => {
-    if (!empty || !stored || retried) return
+    if (!empty || !stored || retried || offline) return
     const timer = setTimeout(
       () => Promise.resolve(refetch()).finally(() => setTries((n) => n + 1)),
       400 * (tries + 1)
     )
     return () => clearTimeout(timer)
-  }, [empty, stored, retried, tries, refetch])
+  }, [empty, stored, retried, offline, tries, refetch])
+
+  if (offline) {
+    // O código de hoje fica no aparelho e é apagado ao sair da conta: sem o
+    // id da pessoa, o guardado é o desta conta.
+    const saved = readTodayCode(undefined)
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: BG,
+          paddingTop: insets.top + 24,
+          paddingHorizontal: 22
+        }}
+      >
+        <ErrorState
+          kind="signal"
+          title="Sua conta continua aqui."
+          error={session.error}
+          onRetry={() => refetch()}
+          retrying={session.isRefetching}
+          onCode={
+            saved
+              ? () =>
+                  router.push({
+                    pathname: '/codigo/[eventId]',
+                    params: { eventId: saved.eventId }
+                  })
+              : undefined
+          }
+        />
+      </View>
+    )
+  }
 
   // Sem sessão, o app abre aberto (rodada 1 do redesign): O jogo de hoje na
   // primeira vez, depois o Explorar. Só sem sessão de fato: logo depois de
