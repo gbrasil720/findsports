@@ -9,7 +9,11 @@ import { type Acao, savePending } from './pending-action'
  * torcedor esperam por `useFan()`; o que grava passa por `useWithAccount()`.
  */
 export function useFan() {
-  return authClient.useSession().data?.user.role === 'fan'
+  const role = authClient.useSession().data?.user.role
+  // Conta no aparelho sem resposta do servidor (WEB-538) conta como conta: as
+  // leituras dela rodam e caem no erro de cada tela, e nada chama para entrar.
+  // O papel só vem do servidor; a sessão relida corrige se for um bar.
+  return useAccountWithoutData() || role === 'fan'
 }
 
 /**
@@ -22,7 +26,6 @@ export function useWithAccount() {
   const offline = useAccountWithoutData()
   const router = useRouter()
   return (action: () => void, acao: Acao = { kind: 'conta', what: '' }) => {
-    if (fan) return action()
     // A conta está no aparelho, só o servidor não respondeu (WEB-538): pedir
     // para entrar diria que ela saiu.
     if (offline)
@@ -30,6 +33,7 @@ export function useWithAccount() {
         'Sem conexão',
         'Sua conta continua aqui. Tente de novo quando a rede voltar.'
       )
+    if (fan) return action()
     savePending(acao)
     router.push({
       pathname: '/entrar',
