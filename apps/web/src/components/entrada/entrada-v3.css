@@ -637,3 +637,52 @@
     font-size: 24px;
   }
 }
+
+/* Aviso do lixo eletrônico para Hotmail e Outlook (WEB-526). Entra depois do
+   resto: o e-mail vem do `sessionStorage`, só depois da hidratação. */
+.lp3.ent .ent-spam {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: var(--white);
+  box-shadow: 0 3px 0 var(--sand);
+  color: var(--ink);
+  font-size: 14.5px;
+  line-height: 1.45;
+  animation: ent-spam-in 240ms var(--ease) both;
+}
+
+.lp3.ent .ent-spam svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.lp3.ent .ent-spam p {
+  margin: 0;
+}
+
+.lp3.ent .ent-spam .ent-spam-t {
+  margin-bottom: 4px;
+  font-weight: 700;
+}
+
+@keyframes ent-spam-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp3.ent .ent-spam {
+    animation-name: ent-spam-fade;
+  }
+
+  @keyframes ent-spam-fade {
+    from {
+      opacity: 0;
+    }
+  }
+}
