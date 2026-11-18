@@ -1065,7 +1065,11 @@ invente layout que o projeto não tem.
   Sem nada guardado, mas com o cookie de sessão válido em `onside_cookie`, a conta
   fica sem dados (`accountWithoutData`, lido por `useAccountWithoutData`): a abertura
   mostra o "Sinal caiu" até a sessão chegar, e `useWithAccount` avisa sem conexão em
-  vez de abrir o "Entrar".
+  vez de abrir o "Entrar". `useFan()` conta essa conta como conta, então link direto
+  (bar, Explorar, Seus bares, Você) não mostra nada de visitante: as leituras da conta
+  rodam e caem no erro da tela, e o menu Você troca o nome por "Sua conta continua
+  aqui." e "Tentar". Sessão revogada sai na releitura, até 60 s depois (o cache do
+  cookie no servidor).
 - **Turnstile no app:** o servidor exige o desafio em `sign-in`, `sign-up` e nos envios de
   e-mail sempre que tem `TURNSTILE_SECRET_KEY` (o `.env` local tem). O app resolve numa WebView
   (`apps/mobile/components/turnstile.tsx`, mesmo contrato do `useTurnstile` do web) com a
