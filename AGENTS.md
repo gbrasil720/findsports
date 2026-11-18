@@ -1105,6 +1105,12 @@ invente layout que o projeto não tem.
   `.env`, então nenhum arquivo muda.
 - **Login por e-mail sem `callbackURL`:** com ele o servidor responde `redirect: true` e o
   plugin do Expo abre a janela de login social do iOS ("deseja usar … para iniciar sessão").
+- **Patch do expo-router** (`patches/expo-router@57.0.26.patch`, WEB-496): o
+  `NavigationContainer` do 57 cria a promessa do link inicial na renderização e chamava o
+  `setState` mesmo com a renderização descartada ("state update on a component that hasn't
+  mounted yet"); o patch guarda o link até a montagem. Ele vale só para essa versão exata:
+  ao subir o expo-router, refaça com `bunx bun@1.3.1 patch expo-router` ou apague (o 58
+  já lê o estado inicial sem promessa).
 - **React próprio:** o app usa o React que o Expo exige (19.2.3), separado do web. Não suba a
   versão à mão: `bunx expo install --check` diz o que o SDK aceita.
 - `EXPO_PUBLIC_*` vai embutida no bundle: nunca é lugar de segredo.
