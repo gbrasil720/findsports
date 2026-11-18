@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { type CSSProperties, useEffect, useRef } from 'react'
 import { brasiliaTime, longDayLabel } from '@/components/painel/noite'
 import { estadoDoJogo, type JogoDaRegua, regua } from '@/domain/explorar'
 
@@ -130,7 +130,10 @@ export function Regua({
             style={{ backgroundSize: `${100 / (horas.length - 1)}% 100%` }}
           />
           {agora !== null ? (
-            <div className="nowline" style={{ left: `${agora}%` }} />
+            <div
+              className="nowline"
+              style={{ left: `${agora}%`, '--at': agora } as CSSProperties}
+            />
           ) : null}
           {faixas.map(({ jogo, left, width, lane }) => {
             const estado = estadoDoJogo(jogo, now)

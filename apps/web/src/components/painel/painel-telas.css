@@ -614,6 +614,7 @@ html[data-theme="dark"] .pn3 {
 
 .pn3 .pn-rule {
   position: relative;
+  container-type: inline-size;
 }
 
 .pn3 .pn-hours {
@@ -665,7 +666,16 @@ html[data-theme="dark"] .pn3 {
   color: #000;
   font: 600 11px / 1 var(--mono);
   letter-spacing: 0.06em;
-  transform: translate(-50%, -100%);
+  /* Perto das 18h e das 2h o selo encostaria fora da régua e sairia cortado:
+     fica preso dentro dela (--at é a posição da linha, em % da régua). */
+  transform: translate(
+    clamp(
+      calc(var(--at, 50) * -1cqw),
+      -50%,
+      calc((100 - var(--at, 50)) * 1cqw - 100%)
+    ),
+    -100%
+  );
 }
 
 .pn3 .pn-trk {

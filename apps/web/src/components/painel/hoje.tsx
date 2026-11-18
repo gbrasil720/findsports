@@ -1,7 +1,7 @@
 import { getEventEnd } from '@findsports_oficial/db/event-window'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { useEffect, useRef, useState } from 'react'
+import { type CSSProperties, useEffect, useRef, useState } from 'react'
 import type { AdminEvent } from '@/components/admin/admin-model'
 import {
   useMyBar,
@@ -518,7 +518,9 @@ function Noite({
           {rule.nowAt !== null ? (
             <div
               className="pn-nowline"
-              style={{ left: `${rule.nowAt}%` }}
+              style={
+                { left: `${rule.nowAt}%`, '--at': rule.nowAt } as CSSProperties
+              }
               aria-hidden="true"
             />
           ) : null}
