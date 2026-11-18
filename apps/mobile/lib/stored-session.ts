@@ -76,4 +76,46 @@ export function sessionStep<T extends StoredSession>(
   return kept
     ? { set: kept, restored: kept, clearCache }
     : { restored: null, clearCache }
+/*
+ * Sem nada no `onside_session_data` (instalação de antes do cache do plugin,
+ * ou cache apagado) não há sessão para manter: só o cookie, que o plugin
+ * guarda em `onside_cookie` como `{ "<nome>": { value, expires } }`. Com o
+ * cookie da sessão ainda válido e uma falha passageira, a conta continua no
+ * aparelho, só sem os dados: a tela diz que o sinal caiu em vez de tratar a
+ * pessoa como visitante. Nome, papel e o resto só vêm do servidor.
+ */
+
+
+/**
+ * A conta está no aparelho, mas a leitura falhou sem o servidor responder?
+ * `before` é a resposta anterior: durante a releitura o erro some do estado
+ * (`isRefetching`), e a tela não pode piscar para visitante a cada tentativa.
+ */
+export function accountWithoutData(
+  state: ReadState,
+  rawCookie: string | null,
+  before = false,
+  now = Date.now()
+): boolean {
+  if (state.data) return false
+  if (state.isRefetching || state.isPending) return before
+  if (!state.error || getErrorStatus(state.error) === 401) return false
+  if (!isTransientError(state.error)) return false
+  return hasSessionCookie(rawCookie, now)
+}
+
+function hasSessionCookie(raw: string | null, now: number) {
+  if (!raw) return false
+  try {
+    const cookies: Record<string, { value?: string; expires?: string | null }> =
+      JSON.parse(raw) ?? {}
+    return Object.entries(cookies).some(
+      ([name, cookie]) =>
+        name.endsWith('.session_token') &&
+        Boolean(cookie?.value) &&
+        (!cookie.expires || new Date(cookie.expires).getTime() > now)
+    )
+  } catch {
+    return false
+  }
 }

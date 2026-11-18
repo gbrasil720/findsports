@@ -1,5 +1,9 @@
 import { expect, test } from 'bun:test'
-import { sessionStep, sessionToKeep } from './stored-session'
+import {
+  accountWithoutData,
+  sessionStep,
+  sessionToKeep
+} from './stored-session'
 
 // Vencida há dias: o plugin do Expo não a usa na partida.
 const stored = JSON.stringify({
@@ -117,4 +121,62 @@ test('passo: outra queda mantém a restaurada; sessão do servidor zera', () => 
       restored
     ).restored
   ).toBeNull()
+const NOW = Date.parse('2026-11-18T12:00:00.000Z')
+const cookie = (expires: string | null, name = 'better-auth.session_token') =>
+  JSON.stringify({ [name]: { value: 'tok.sig', expires } })
+const offline = failed(new TypeError('Network request failed'))
+
+test('cookie válido e falha passageira: conta sem dados, não visitante', () => {
+  const valid = cookie('2026-11-25T00:00:00.000Z')
+  for (const error of [
+    new TypeError('Network request failed'),
+    { status: 502, statusText: 'Bad Gateway' },
+    { status: 0, statusText: '' }
+  ])
+    expect(accountWithoutData(failed(error), valid, false, NOW)).toBe(true)
+  // Em https o cookie leva o prefixo `__Secure-`; sem `expires`, de sessão.
+  expect(
+    accountWithoutData(
+      offline,
+      cookie(null, '__Secure-better-auth.session_token'),
+      false,
+      NOW
+    )
+  ).toBe(true)
+})
+
+test('o servidor respondeu: 401, 200 sem sessão ou recusa tiram da conta', () => {
+  const valid = cookie('2026-11-25T00:00:00.000Z')
+  const no401 = failed({ status: 401, statusText: 'Unauthorized' })
+  expect(accountWithoutData(no401, valid, true, NOW)).toBe(false)
+  const empty = { data: null, error: null, isPending: false }
+  expect(accountWithoutData(empty, valid, true, NOW)).toBe(false)
+  const no403 = failed({ status: 403, statusText: 'Forbidden' })
+  expect(accountWithoutData(no403, valid, false, NOW)).toBe(false)
+})
+
+test('sem cookie de sessão válido segue visitante', () => {
+  for (const raw of [
+    null,
+    '{}',
+    'null',
+    '{quebrado',
+    cookie('2026-11-17T00:00:00.000Z'),
+    cookie('2026-11-25T00:00:00.000Z', 'better-auth.dont_remember'),
+    JSON.stringify({ 'better-auth.session_token': { value: '' } })
+  ])
+    expect(accountWithoutData(offline, raw, false, NOW)).toBe(false)
+})
+
+test('relendo, mantém a resposta anterior; com sessão, não é o caso', () => {
+  const valid = cookie(null)
+  const reading = { data: null, error: null, isPending: true }
+  expect(accountWithoutData(reading, valid, true, NOW)).toBe(true)
+  expect(accountWithoutData(reading, valid, false, NOW)).toBe(false)
+  const withData = {
+    data: { user: {} },
+    error: offline.error,
+    isPending: false
+  }
+  expect(accountWithoutData(withData, valid, true, NOW)).toBe(false)
 })
