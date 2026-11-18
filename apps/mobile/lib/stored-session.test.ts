@@ -1,9 +1,10 @@
 import { expect, test } from 'bun:test'
 import { isTransientError } from '@findsports_oficial/api/lib/transient-error'
+import { retryable, settleAuth } from './auth-attempt'
 import {
   accountWithoutData,
+  authFetch,
   isSessionBody,
-  sessionFetch,
   sessionStep,
   sessionToKeep
 } from './stored-session'
@@ -196,8 +197,18 @@ const silent = (_: unknown, init?: RequestInit) =>
       reject(new DOMException('Aborted', 'AbortError'))
     )
   )
-const get = (impl: Parameters<typeof sessionFetch>[0], ms?: number) =>
-  sessionFetch(impl, ms)('http://api/api/auth/get-session')
+const call = (
+  impl: Parameters<typeof authFetch>[0],
+  path: string,
+  ms = 1000,
+  init?: RequestInit
+) =>
+  authFetch(impl, { session: ms, other: ms })(
+    `http://api/api/auth${path}`,
+    init
+  )
+const get = (impl: Parameters<typeof authFetch>[0], ms?: number) =>
+  call(impl, '/get-session', ms)
 
 test('portal de Wi-Fi: 200 com HTML na sessão é falha passageira', async () => {
   const error = await get(
@@ -253,20 +264,70 @@ test('servidor que não responde: estoura no teto como falha passageira', async 
   expect(sessionToKeep(failed(error), stored)?.user.id).toBe('u1')
 })
 
-test('cancelada por quem chamou não vira timeout', async () => {
-  const outer = new AbortController()
-  const pending = sessionFetch(silent, 1000)(
-    'http://api/api/auth/get-session',
-    {
-      signal: outer.signal
-    }
-  ).catch((e) => e)
-  outer.abort()
-  expect((await pending).name).toBe('AbortError')
+test('cancelada por quem chamou não vira timeout, em toda rota', async () => {
+  for (const path of ['/get-session', '/sign-in/email']) {
+    const outer = new AbortController()
+    const pending = call(silent, path, 1000, { signal: outer.signal }).catch(
+      (e) => e
+    )
+    outer.abort()
+    expect((await pending).name).toBe('AbortError')
+  }
 })
 
-test('outras rotas passam direto', async () => {
-  const html = reply('<html/>')
-  const response = await sessionFetch(html, 1)('http://api/api/auth/sign-in')
-  expect(await response.text()).toBe('<html/>')
+test('login, cadastro e o resto também têm teto, sem repetir', async () => {
+  for (const path of [
+    '/sign-in/email',
+    '/sign-up/email',
+    '/send-verification-email',
+    '/request-password-reset',
+    '/two-factor/verify-totp',
+    '/app-session/redeem'
+  ]) {
+    let calls = 0
+    const counted = (input: unknown, init?: RequestInit) => {
+      calls++
+      return silent(input, init)
+    }
+    const error = await call(counted, path, 20, { method: 'POST' }).catch(
+      (e) => e
+    )
+    expect(error).toBeInstanceOf(TypeError)
+    expect(error.message).toBe('Network request timed out')
+    expect(isTransientError(error)).toBe(true)
+    expect(calls).toBe(1)
+  }
+})
+
+test('as outras rotas usam o teto delas, não o da sessão', async () => {
+  const slow = (ms: number) => async () => {
+    await new Promise((r) => setTimeout(r, ms))
+    return new Response('{"ok":true}')
+  }
+  const fetchWith = authFetch(slow(40), { session: 10, other: 200 })
+  const ok = await fetchWith('http://api/api/auth/sign-in/email')
+  expect(await ok.json()).toEqual({ ok: true })
+  const late = await fetchWith('http://api/api/auth/get-session').catch(
+    (e) => e
+  )
+  expect(late.message).toBe('Network request timed out')
+})
+
+test('outras rotas: JSON passa, portal com HTML vira falha passageira', async () => {
+  const json = await call(reply('{"redirect":false}'), '/sign-in/email')
+  expect(await json.json()).toEqual({ redirect: false })
+  const empty = await call(reply(''), '/sign-out')
+  expect(await empty.text()).toBe('')
+  const error = await call(reply('<html/>'), '/sign-in/email').catch((e) => e)
+  expect(error).toBeInstanceOf(TypeError)
+  expect(isTransientError(error)).toBe(true)
+  // Erro do servidor (a página de 502 da borda) segue como resposta.
+  const bad = await call(reply('<html/>', { status: 502 }), '/sign-in/email')
+  expect(bad.status).toBe(502)
+})
+
+test('na tela de conta, o teto vira a falha de sem conexão e "Tentar de novo"', async () => {
+  const result = await settleAuth(call(silent, '/sign-in/email', 20))
+  expect('error' in result && result.error.status).toBe(0)
+  expect(retryable('error' in result ? result.error : null)).toBe(true)
 })
