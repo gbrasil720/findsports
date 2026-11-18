@@ -42,6 +42,8 @@ const PANEL: AuthPanel = {
   items: ['Confirme o e-mail e siga para o próximo passo']
 }
 
+const RESEND_COOLDOWN = 60
+
 export const Route = createFileRoute('/(auth)/verify-email')({
   head: () =>
     pageHead({
@@ -63,6 +65,9 @@ function VerifyEmailPage() {
   const [email, setEmail] = useState('')
   const [checking, setChecking] = useState(false)
   const [resending, setResending] = useState(false)
+  // Segundos até liberar o reenvio (WEB-526), os mesmos 60 do app: o link
+  // acabou de sair, e repetir em seguida só gasta a cota do dia.
+  const [cooldown, setCooldown] = useState(0)
   const [pubError, setPubError] = useState<string | null>(null)
   // WEB-248: sem sessão neste navegador (confirmou em outro aparelho) nenhum
   // dos dois botões resolve; o caminho é o login.
@@ -152,7 +157,18 @@ function VerifyEmailPage() {
   }, [callbackUrl, completePub, finishSignup, navigate])
 
   useEffect(() => {
-    setEmail(readPendingEmail())
+    if (cooldown <= 0) return
+    const timer = setTimeout(() => setCooldown(cooldown - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [cooldown])
+
+  useEffect(() => {
+    const pending = readPendingEmail()
+    setEmail(pending)
+    if (pending) setCooldown(RESEND_COOLDOWN)
+  }, [])
+
+  useEffect(() => {
     if (new URLSearchParams(window.location.search).get('confirmed') === '1') {
       void continueVerified()
     }
@@ -181,6 +197,7 @@ function VerifyEmailPage() {
       )
       return
     }
+    setCooldown(RESEND_COOLDOWN)
     toast.success('Se o endereço estiver cadastrado, um novo link foi enviado.')
   }
 
@@ -252,10 +269,21 @@ function VerifyEmailPage() {
             <button
               type="button"
               onClick={resend}
-              disabled={resending}
+              disabled={resending || cooldown > 0}
               className="onside-btn onside-btn-outline ent-full"
             >
-              {resending ? 'Reenviando…' : 'Reenviar link'}
+              {resending ? (
+                'Reenviando…'
+              ) : cooldown > 0 ? (
+                <span>
+                  Reenviar em{' '}
+                  <span className="tabular-nums">
+                    0:{String(cooldown).padStart(2, '0')}
+                  </span>
+                </span>
+              ) : (
+                'Reenviar link'
+              )}
             </button>
           </div>
           {captchaOn ? captcha.widget : null}
