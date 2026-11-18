@@ -121,6 +121,8 @@ test('passo: outra queda mantém a restaurada; sessão do servidor zera', () => 
       restored
     ).restored
   ).toBeNull()
+})
+
 const NOW = Date.parse('2026-11-18T12:00:00.000Z')
 const cookie = (expires: string | null, name = 'better-auth.session_token') =>
   JSON.stringify({ [name]: { value: 'tok.sig', expires } })

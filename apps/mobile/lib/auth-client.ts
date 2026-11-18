@@ -10,9 +10,14 @@ import {
 import { createAuthClient } from 'better-auth/react'
 import Constants from 'expo-constants'
 import * as SecureStore from 'expo-secure-store'
+import { useRef } from 'react'
 import { env } from './env'
 import { queryClient } from './query-client'
-import { sessionStep, type sessionToKeep } from './stored-session'
+import {
+  accountWithoutData,
+  sessionStep,
+  type sessionToKeep
+} from './stored-session'
 
 // O mesmo better-auth do web, em `<servidor>/api/auth`. No app não há cookie
 // de navegador: o plugin do Expo guarda a sessão no SecureStore e a repassa
@@ -80,6 +85,24 @@ export async function adoptSessionCookie(setCookie: string) {
  */
 export const hasStoredSession = () =>
   Boolean(SecureStore.getItem(`${scheme}_cookie`))
+
+/**
+ * A conta está no aparelho (cookie de sessão válido), mas a sessão não veio
+ * porque o servidor não respondeu e não há dados guardados para mostrar. As
+ * telas tratam como conta sem dados ("Sinal caiu"), nunca como visitante;
+ * a regra está em `lib/stored-session.ts`. A biblioteca relê a sessão no
+ * primeiro plano e com a rede de volta.
+ */
+export function useAccountWithoutData() {
+  const state = authClient.useSession()
+  const before = useRef(false)
+  before.current = accountWithoutData(
+    state,
+    storage.getItem(`${scheme}_cookie`),
+    before.current
+  )
+  return before.current
+}
 
 /**
  * Relê a sessão do banco. O servidor guarda a sessão num cookie por 60 s, e o
