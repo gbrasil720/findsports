@@ -776,7 +776,7 @@ function Chart({ points: raw }: { points: number[] }) {
         number
       ]
   )
-  const line = smooth(pts)
+  const line = smooth(pts, H - 14)
   const last = pts.at(-1) as [number, number]
   return (
     <svg
