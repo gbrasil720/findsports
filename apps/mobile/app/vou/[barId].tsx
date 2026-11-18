@@ -24,7 +24,7 @@ import {
   TextLink,
   text
 } from '@/components/ui'
-import { authClient } from '@/lib/auth-client'
+import { useFan } from '@/lib/account'
 import { formatTime, goingSummary, isLive } from '@/lib/explore'
 import { trpc } from '@/lib/trpc'
 
@@ -54,7 +54,7 @@ export default function GoingSheet() {
   const insets = useSafeAreaInsets()
   const palette = usePalette()
   const queryClient = useQueryClient()
-  const fan = authClient.useSession().data?.user.role === 'fan'
+  const fan = useFan()
   // Sem bar (link quebrado, amigo sem jogo), a folha fecha em vez de pedir
   // ao servidor um id vazio (erro do zod).
   const bar = useQuery({
