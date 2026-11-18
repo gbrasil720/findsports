@@ -1773,6 +1773,12 @@ type ErrorStateProps = {
       kind: 'signal'
       title: string
       onCode?: () => void
+      /**
+       * "Seus favoritos e o código do jogo de hoje continuam no aparelho":
+       * só do torcedor. Fora dele (o bar, o papel desconhecido na abertura),
+       * `false` tira a frase.
+       */
+      fanNote?: boolean
     }
 )
 
@@ -1880,6 +1886,7 @@ function SignalLost({
   onRetry,
   retrying,
   onCode,
+  fanNote = true,
   style
 }: Extract<ErrorStateProps, { kind: 'signal' }>) {
   // A sombra do iOS não troca sozinha com o tema: vem da paleta.
@@ -1915,8 +1922,10 @@ function SignalLost({
             { color: SIGNAL_FG, opacity: 0.75 }
           ]}
         >
-          Pode ser a conexão ou o nosso servidor. Seus favoritos e o código do
-          jogo de hoje continuam no aparelho.
+          Pode ser a conexão ou o nosso servidor.
+          {fanNote
+            ? ' Seus favoritos e o código do jogo de hoje continuam no aparelho.'
+            : ''}
         </Text>
         <View style={styles.signalButtons}>
           <Pressable
