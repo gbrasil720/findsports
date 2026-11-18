@@ -12,6 +12,7 @@ import Constants from 'expo-constants'
 import * as SecureStore from 'expo-secure-store'
 import { env } from './env'
 import { queryClient } from './query-client'
+import { sessionToKeep } from './stored-session'
 
 // O mesmo better-auth do web, em `<servidor>/api/auth`. No app não há cookie
 // de navegador: o plugin do Expo guarda a sessão no SecureStore e a repassa
@@ -38,6 +39,19 @@ export const authClient = createAuthClient({
     }),
     twoFactorClient()
   ]
+})
+
+// Leitura da sessão que falhou sem o servidor responder (sem rede, 5xx): fica
+// a guardada no aparelho, mesmo vencida, em vez de virar visitante. A regra e
+// o porquê estão em `lib/stored-session.ts`; todas as telas leem por aqui, pelo
+// `useSession` (`app/index.tsx`, a aba Você, `useFan`, `useWithAccount`).
+const sessionAtom = authClient.$store.atoms.session
+sessionAtom.listen((state) => {
+  const kept = sessionToKeep(
+    state,
+    SecureStore.getItem(`${scheme}_session_data`)
+  )
+  if (kept) sessionAtom.set({ ...state, data: kept })
 })
 
 const storage = storageAdapter(SecureStore)
