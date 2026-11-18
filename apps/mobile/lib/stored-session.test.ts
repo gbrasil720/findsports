@@ -1,6 +1,9 @@
 import { expect, test } from 'bun:test'
+import { isTransientError } from '@findsports_oficial/api/lib/transient-error'
 import {
   accountWithoutData,
+  isSessionBody,
+  sessionFetch,
   sessionStep,
   sessionToKeep
 } from './stored-session'
@@ -181,4 +184,66 @@ test('relendo, mantém a resposta anterior; com sessão, não é o caso', () => 
     isPending: false
   }
   expect(accountWithoutData(withData, valid, true, NOW)).toBe(false)
+})
+
+const reply = (body: string, init?: ResponseInit) => async () =>
+  new Response(body, init)
+// Aceita a conexão e não responde: só para quando cancelam.
+const silent = (_: unknown, init?: RequestInit) =>
+  new Promise<Response>((_, reject) =>
+    init?.signal?.addEventListener('abort', () =>
+      reject(new DOMException('Aborted', 'AbortError'))
+    )
+  )
+const get = (impl: Parameters<typeof sessionFetch>[0], ms?: number) =>
+  sessionFetch(impl, ms)('http://api/api/auth/get-session')
+
+test('portal de Wi-Fi: 200 com HTML na sessão é falha passageira', async () => {
+  const error = await get(
+    reply('<html>Entre no Wi-Fi</html>', {
+      headers: { 'content-type': 'text/html' }
+    })
+  ).catch((e) => e)
+  expect(error).toBeInstanceOf(TypeError)
+  expect(isTransientError(error)).toBe(true)
+  expect(sessionToKeep(failed(error), stored)?.user.id).toBe('u1')
+})
+
+test('JSON que não é sessão também não passa; null e sessão passam', async () => {
+  expect(isSessionBody('{"ok":true}')).toBe(false)
+  expect(isSessionBody('"texto"')).toBe(false)
+  expect(isSessionBody('null')).toBe(true)
+  expect(isSessionBody('')).toBe(true)
+  expect(isSessionBody(stored)).toBe(true)
+  const response = await get(reply('null'))
+  expect(await response.text()).toBe('null')
+})
+
+test('erro do servidor segue como resposta (401 tira da conta)', async () => {
+  const response = await get(reply('{}', { status: 401 }))
+  expect(response.status).toBe(401)
+})
+
+test('servidor que não responde: estoura no teto como falha passageira', async () => {
+  const error = await get(silent, 20).catch((e) => e)
+  expect(isTransientError(error)).toBe(true)
+  expect(sessionToKeep(failed(error), stored)?.user.id).toBe('u1')
+})
+
+test('cancelada por quem chamou não vira timeout', async () => {
+  const outer = new AbortController()
+  const pending = sessionFetch(silent, 1000)(
+    'http://api/api/auth/get-session',
+    {
+      signal: outer.signal
+    }
+  ).catch((e) => e)
+  outer.abort()
+  expect((await pending).name).toBe('AbortError')
+})
+
+test('outras rotas passam direto', async () => {
+  const html = reply('<html/>')
+  const response = await sessionFetch(html, 1)('http://api/api/auth/sign-in')
+  expect(await response.text()).toBe('<html/>')
 })

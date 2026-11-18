@@ -120,3 +120,84 @@ function hasSessionCookie(raw: string | null, now: number) {
     return false
   }
 }
+
+/*
+ * A leitura da sessão só vale se veio da API. Duas redes enganam o cliente:
+ *
+ * - Portal de Wi-Fi (hotel, aeroporto) responde 200 com a página dele. O
+ *   cliente lê o HTML como dado, e o plugin do Expo o grava por cima do
+ *   `onside_session_data` antes de qualquer regra nossa: a pessoa saía da
+ *   conta sem o servidor ter dito nada.
+ * - Servidor que aceita a conexão e não responde: o iOS só desiste depois de
+ *   ~60 s, e a abertura fica vazia esse tempo todo.
+ *
+ * O `fetch` do cliente passa por aqui (`fetchOptions.customFetchImpl` em
+ * `lib/auth-client.ts`): em `/get-session`, resposta 200 que não é sessão nem
+ * `null`, ou sem resposta em `SESSION_TIMEOUT_MS`, vira erro de rede, que
+ * `isTransientError` lê como passageiro. O plugin não grava nada (só grava no
+ * sucesso) e `sessionToKeep`/`accountWithoutData` decidem como em qualquer
+ * queda. As outras rotas seguem sem mudança.
+ */
+
+/** Teto da leitura da sessão: acima disso, conta como sem rede. */
+export const SESSION_TIMEOUT_MS = 8000
+
+/** `true` se o corpo de um 200 de `/get-session` veio mesmo da API. */
+export function isSessionBody(text: string): boolean {
+  // Sem corpo, o cliente lê `null` (sem sessão).
+  if (!text) return true
+  try {
+    const body = JSON.parse(text)
+    return body === null || (typeof body === 'object' && 'session' in body)
+  } catch {
+    return false
+  }
+}
+
+type Fetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
+
+export function sessionFetch(
+  fetchImpl: Fetch = fetch,
+  timeoutMs = SESSION_TIMEOUT_MS
+) {
+  return async (
+    input: RequestInfo | URL,
+    init?: RequestInit
+  ): Promise<Response> => {
+    const url = input instanceof Request ? input.url : String(input)
+    if (!url.includes('/get-session')) return fetchImpl(input, init)
+
+    const controller = new AbortController()
+    const outer = init?.signal
+    const abort = () => controller.abort()
+    if (outer?.aborted) abort()
+    outer?.addEventListener('abort', abort)
+    let timedOut = false
+    const timer = setTimeout(() => {
+      timedOut = true
+      abort()
+    }, timeoutMs)
+    try {
+      const response = await fetchImpl(input, {
+        ...init,
+        signal: controller.signal
+      })
+      if (!response.ok) return response
+      // O corpo também conta no teto: o portal pode mandar o cabeçalho e parar.
+      const text = await response.text()
+      if (!isSessionBody(text))
+        throw new TypeError('Network request failed: resposta fora da API')
+      return new Response(text, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers
+      })
+    } catch (error) {
+      if (timedOut) throw new TypeError('Network request timed out')
+      throw error
+    } finally {
+      clearTimeout(timer)
+      outer?.removeEventListener('abort', abort)
+    }
+  }
+}
