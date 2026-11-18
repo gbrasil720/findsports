@@ -122,25 +122,38 @@ function hasSessionCookie(raw: string | null, now: number) {
 }
 
 /*
- * A leitura da sessão só vale se veio da API. Duas redes enganam o cliente:
+ * A resposta do better-auth só vale se veio da API, e nenhuma chamada espera
+ * para sempre. Duas redes enganam o cliente:
  *
  * - Portal de Wi-Fi (hotel, aeroporto) responde 200 com a página dele. O
- *   cliente lê o HTML como dado, e o plugin do Expo o grava por cima do
- *   `onside_session_data` antes de qualquer regra nossa: a pessoa saía da
- *   conta sem o servidor ter dito nada.
+ *   cliente lê o HTML como dado: em `/get-session` o plugin do Expo o grava
+ *   por cima do `onside_session_data` antes de qualquer regra nossa (a pessoa
+ *   saía da conta sem o servidor ter dito nada), e no login a tela lia a
+ *   página como resposta.
  * - Servidor que aceita a conexão e não responde: o iOS só desiste depois de
- *   ~60 s, e a abertura fica vazia esse tempo todo.
+ *   ~60 s, com a abertura vazia ou o botão em "Entrando…" esse tempo todo.
  *
- * O `fetch` do cliente passa por aqui (`fetchOptions.customFetchImpl` em
- * `lib/auth-client.ts`): em `/get-session`, resposta 200 que não é sessão nem
- * `null`, ou sem resposta em `SESSION_TIMEOUT_MS`, vira erro de rede, que
+ * Todo `fetch` do cliente passa por aqui (`fetchOptions.customFetchImpl` em
+ * `lib/auth-client.ts`). Resposta 2xx que não é JSON (em `/get-session`, que
+ * não é sessão nem `null`), ou sem resposta no teto, vira erro de rede, que
  * `isTransientError` lê como passageiro. O plugin não grava nada (só grava no
- * sucesso) e `sessionToKeep`/`accountWithoutData` decidem como em qualquer
- * queda. As outras rotas seguem sem mudança.
+ * sucesso); na sessão, `sessionToKeep`/`accountWithoutData` decidem como em
+ * qualquer queda, e nas telas de conta `settleAuth` devolve `status: 0`, a
+ * frase de sem conexão e o botão "Tentar de novo". Nada é repetido sozinho:
+ * login, cadastro e envio de e-mail não são idempotentes (o cliente do
+ * better-auth não repete sem `retry`, e o app não o liga).
  */
 
 /** Teto da leitura da sessão: acima disso, conta como sem rede. */
 export const SESSION_TIMEOUT_MS = 8000
+
+/**
+ * Teto das outras rotas (login, cadastro, reenvio, senha, duas etapas, troca
+ * do código do e-mail). Maior que o da sessão: elas mandam dado e o servidor
+ * trabalha antes de responder (hash da senha, envio de e-mail pelo provedor,
+ * banco acordando), mas ainda muito abaixo dos ~60 s do iOS.
+ */
+export const AUTH_TIMEOUT_MS = 15_000
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -174,18 +187,29 @@ export function isSessionBody(text: string): boolean {
   )
 }
 
+/** `true` se o corpo de um 2xx das outras rotas é JSON (ou vazio). */
+function isApiBody(text: string): boolean {
+  if (!text) return true
+  try {
+    JSON.parse(text)
+    return true
+  } catch {
+    return false
+  }
+}
+
 type Fetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
 
-export function sessionFetch(
+export function authFetch(
   fetchImpl: Fetch = fetch,
-  timeoutMs = SESSION_TIMEOUT_MS
+  timeouts = { session: SESSION_TIMEOUT_MS, other: AUTH_TIMEOUT_MS }
 ) {
   return async (
     input: RequestInfo | URL,
     init?: RequestInit
   ): Promise<Response> => {
     const url = input instanceof Request ? input.url : String(input)
-    if (!url.includes('/get-session')) return fetchImpl(input, init)
+    const isSession = url.includes('/get-session')
 
     const controller = new AbortController()
     const outer = init?.signal
@@ -193,10 +217,13 @@ export function sessionFetch(
     if (outer?.aborted) abort()
     outer?.addEventListener('abort', abort)
     let timedOut = false
-    const timer = setTimeout(() => {
-      timedOut = true
-      abort()
-    }, timeoutMs)
+    const timer = setTimeout(
+      () => {
+        timedOut = true
+        abort()
+      },
+      isSession ? timeouts.session : timeouts.other
+    )
     try {
       const response = await fetchImpl(input, {
         ...init,
@@ -205,7 +232,7 @@ export function sessionFetch(
       if (!response.ok) return response
       // O corpo também conta no teto: o portal pode mandar o cabeçalho e parar.
       const text = await response.text()
-      if (!isSessionBody(text))
+      if (!(isSession ? isSessionBody(text) : isApiBody(text)))
         throw new TypeError('Network request failed: resposta fora da API')
       return new Response(text, {
         status: response.status,
