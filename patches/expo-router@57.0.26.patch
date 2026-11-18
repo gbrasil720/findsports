@@ -1,0 +1,42 @@
+diff --git a/build/fork/NavigationContainer.js b/build/fork/NavigationContainer.js
+index 3db5ea4f3106bff3b3bd5799e41914be47ae5052..badc733d4837e4c80586875eed2baa2b6b400572 100644
+--- a/build/fork/NavigationContainer.js
++++ b/build/fork/NavigationContainer.js
+@@ -41,11 +41,36 @@ function NavigationContainerInner({ direction = react_native_1.I18nManager.getCo
+     (0, useDocumentTitle_1.useDocumentTitle)(refContainer, documentTitle);
+     (0, imperative_api_1.useImperativeApiEmitter)(refContainer);
+     const [lastUnhandledLink, setLastUnhandledLink] = react_1.default.useState();
++    // `useThenable` calls `getInitialState` during render, and its promise
++    // reports the unhandled link before this component commits ("Can't perform
++    // a React state update on a component that hasn't mounted yet"). Hold the
++    // link until mount; the layout effect runs before `onReady` (a passive
++    // effect of the child), which clears it when the route matches.
++    const mountedRef = react_1.default.useRef(false);
++    const pendingLinkRef = react_1.default.useRef(undefined);
++    const onUnhandledLinking = react_1.default.useCallback((path) => {
++        if (mountedRef.current) {
++            setLastUnhandledLink(path);
++        }
++        else {
++            pendingLinkRef.current = { path };
++        }
++    }, []);
++    react_1.default.useLayoutEffect(() => {
++        mountedRef.current = true;
++        if (pendingLinkRef.current) {
++            setLastUnhandledLink(pendingLinkRef.current.path);
++            pendingLinkRef.current = undefined;
++        }
++        return () => {
++            mountedRef.current = false;
++        };
++    }, []);
+     const { getInitialState } = (0, useLinking_1.useLinking)(refContainer, {
+         enabled: isLinkingEnabled,
+         prefixes: [],
+         ...linking,
+-    }, setLastUnhandledLink);
++    }, onUnhandledLinking);
+     const linkingContext = react_1.default.useMemo(() => ({ options: linking }), [linking]);
+     const unhandledLinkingContext = react_1.default.useMemo(() => ({ lastUnhandledLink, setLastUnhandledLink }), [lastUnhandledLink, setLastUnhandledLink]);
+     const onReadyForLinkingHandling = (0, useLatestCallback_1.default)(() => {
