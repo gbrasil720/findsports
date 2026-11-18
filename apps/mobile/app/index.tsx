@@ -5,6 +5,7 @@ import { Pressable, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { usePalette } from '@/components/theme'
 import { BG, ErrorState, Text, useStatusBar } from '@/components/ui'
+import { useAccountKind } from '@/lib/account'
 import {
   authClient,
   hasStoredSession,
@@ -24,6 +25,8 @@ export default function Home() {
   // Conta no aparelho sem resposta do servidor (WEB-538): nem visitante nem
   // tela de conta, o "Sinal caiu" até a sessão chegar.
   const offline = useAccountWithoutData()
+  // O papel da última sessão boa: o bar não tem favoritos nem código.
+  const fanNote = useAccountKind() === 'fan'
   const palette = usePalette()
   useStatusBar(offline && !palette.dark ? 'dark' : 'light')
   const api = useQuery(trpc.appConfig.getPublic.queryOptions())
@@ -68,11 +71,12 @@ export default function Home() {
         <ErrorState
           kind="signal"
           title="Sua conta continua aqui."
+          fanNote={fanNote}
           error={session.error}
           onRetry={() => refetch()}
           retrying={session.isRefetching}
           onCode={
-            saved
+            saved && fanNote
               ? () =>
                   router.push({
                     pathname: '/codigo/[eventId]',
