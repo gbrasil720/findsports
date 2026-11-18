@@ -265,7 +265,7 @@ function VerifyEmailPage() {
           <ol className="my-7 grid gap-3 text-sm">
             <li className="flex items-center gap-3">
               <Check size={18} color="currentColor" aria-hidden="true" /> Abra o
-              e-mail do Onside.
+              e-mail da Onside.
             </li>
             <li className="flex items-center gap-3">
               <Check size={18} color="currentColor" aria-hidden="true" />
