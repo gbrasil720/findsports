@@ -32,9 +32,9 @@ export function useAccountKind() {
 }
 
 /**
- * A conta sem dados abriu uma tela que não é do papel dela (link direto,
- * recarga): volta à abertura, que mostra o "Sinal caiu" e leva à área certa
- * quando a sessão chegar. Montado uma vez, na raiz.
+ * A conta abriu uma tela que não é do papel dela (link direto, recarga): volta
+ * à abertura, que leva à área certa, ou mostra o "Sinal caiu" na conta sem
+ * dados até a sessão chegar. Montado uma vez, na raiz.
  */
 export function useOfflineRouteGuard() {
   const kind = useAccountKind()

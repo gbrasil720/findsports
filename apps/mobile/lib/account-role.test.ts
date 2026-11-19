@@ -94,7 +94,14 @@ test('papel desconhecido só fica na abertura e nas telas dos dois', () => {
   expect(leavesRoute(null, true, 'bar')).toBe(false)
 })
 
-test('com sessão ou visitante, a guarda não mexe', () => {
-  expect(leavesRoute('pub', false, '(fan)')).toBe(false)
-  expect(leavesRoute(null, false, '(bar)')).toBe(false)
+test('com a sessão, cada papel também volta das telas do outro', () => {
+  expect(leavesRoute('pub', false, '(fan)')).toBe(true)
+  expect(leavesRoute('fan', false, 'quem-vai')).toBe(true)
+  expect(leavesRoute('fan', false, '(fan)')).toBe(false)
+  expect(leavesRoute('pub', false, 'bar')).toBe(false)
+})
+
+test('visitante fica nas telas do torcedor', () => {
+  expect(leavesRoute(null, false, '(fan)')).toBe(false)
+  expect(leavesRoute(null, false, 'hoje')).toBe(false)
 })
