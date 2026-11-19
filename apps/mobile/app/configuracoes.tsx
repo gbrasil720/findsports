@@ -1,3 +1,4 @@
+import { isTransientError } from '@findsports_oficial/api/lib/transient-error'
 import {
   keepPreviousData,
   useMutation,
@@ -869,7 +870,10 @@ function Account({ leave = true }: { leave?: boolean }) {
         'Foto do perfil',
         error instanceof AvatarError
           ? error.message
-          : 'Não foi possível trocar a foto. Tente de novo.'
+          : // Sem rede ou sem resposta (WEB-538): a frase de conexão.
+            isTransientError(error)
+            ? authErrorMessage({ status: 0 }, '')
+            : 'Não foi possível trocar a foto. Tente de novo.'
       )
     }
     setPhotoBusy(false)

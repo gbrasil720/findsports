@@ -1,3 +1,4 @@
+import { isTransientError } from '@findsports_oficial/api/lib/transient-error'
 import { File } from 'expo-file-system'
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator'
 import * as ImagePicker from 'expo-image-picker'
@@ -78,7 +79,10 @@ export async function uploadAvatar(uri: string) {
   })
   if (!put.ok) throw new AvatarError('Não foi possível enviar a foto.')
   const update = await authClient.updateUser({ image: body.url })
-  if (update.error) throw new AvatarError('Não foi possível salvar a foto.')
+  if (update.error)
+    throw isTransientError(update.error)
+      ? update.error
+      : new AvatarError('Não foi possível salvar a foto.')
   await refreshSession()
   return body.url
 }
@@ -96,6 +100,9 @@ export async function removeAvatar() {
     throw new AvatarError(body.error ?? 'Não foi possível remover a foto.')
   }
   const update = await authClient.updateUser({ image: null })
-  if (update.error) throw new AvatarError('Não foi possível remover a foto.')
+  if (update.error)
+    throw isTransientError(update.error)
+      ? update.error
+      : new AvatarError('Não foi possível remover a foto.')
   await refreshSession()
 }
