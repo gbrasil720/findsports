@@ -48,3 +48,32 @@ function parseStored<T extends StoredSession>(raw: string | null): T | null {
     return null
   }
 }
+
+type ReadState = SessionState & { isRefetching?: boolean }
+
+/**
+ * O passo do `listen` da sessão. `restored` é a sessão que o app pôs no lugar
+ * numa falha passageira: só ela some depois, quando o servidor recusa sem ser
+ * passageiro (o better-auth mantém `data` num 403). Sessão que o servidor
+ * mandou zera `restored`. Um 401 também apaga o cache (`clearCache`), senão a
+ * próxima queda traria de volta a sessão recusada.
+ */
+export function sessionStep<T extends StoredSession>(
+  state: ReadState,
+  raw: string | null,
+  restored: T | null
+): { set?: T | null; restored: T | null; clearCache: boolean } {
+  if (state.isPending || state.isRefetching)
+    return { restored, clearCache: false }
+  const clearCache = Boolean(state.error) && getErrorStatus(state.error) === 401
+  if (restored && state.data === restored) {
+    if (state.error && !isTransientError(state.error))
+      return { set: null, restored: null, clearCache }
+    return { restored, clearCache }
+  }
+  if (state.data) return { restored: null, clearCache }
+  const kept = sessionToKeep<T>(state, clearCache ? null : raw)
+  return kept
+    ? { set: kept, restored: kept, clearCache }
+    : { restored: null, clearCache }
+}
