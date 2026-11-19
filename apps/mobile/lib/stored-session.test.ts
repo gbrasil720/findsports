@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test'
-import { sessionToKeep } from './stored-session'
+import { sessionStep, sessionToKeep } from './stored-session'
 
 // Vencida há dias: o plugin do Expo não a usa na partida.
 const stored = JSON.stringify({
@@ -52,5 +52,69 @@ test('lendo, ou já com sessão, não mexe', () => {
       { data: { user: {} }, error: offline, isPending: false },
       stored
     )
+  ).toBeNull()
+})
+
+test('passo: falha passageira põe a guardada no lugar', () => {
+  const step = sessionStep(
+    failed(new TypeError('Network request failed')),
+    stored,
+    null
+  )
+  expect(step.set?.user.id).toBe('u1')
+  expect(step.restored).toBe(step.set ?? null)
+  expect(step.clearCache).toBe(false)
+})
+
+test('passo: 401 apaga o cache e não ressuscita', () => {
+  const step = sessionStep(
+    failed({ status: 401, statusText: 'Unauthorized' }),
+    stored,
+    null
+  )
+  expect(step).toEqual({ restored: null, clearCache: true })
+})
+
+test('passo: 403 depois de restaurar tira a restaurada', () => {
+  const restored = sessionToKeep(
+    failed({ status: 502, statusText: '' }),
+    stored
+  )
+  const step = sessionStep(
+    {
+      data: restored,
+      error: { status: 403, statusText: 'Forbidden' },
+      isPending: false
+    },
+    stored,
+    restored
+  )
+  expect(step.set).toBeNull()
+  expect(step.restored).toBeNull()
+})
+
+test('passo: outra queda mantém a restaurada; sessão do servidor zera', () => {
+  const restored = sessionToKeep(
+    failed({ status: 502, statusText: '' }),
+    stored
+  )
+  const again = sessionStep(
+    {
+      data: restored,
+      error: { status: 503, statusText: '' },
+      isPending: false
+    },
+    stored,
+    restored
+  )
+  expect(again.set).toBeUndefined()
+  expect(again.restored).toBe(restored)
+  const fresh = { user: { id: 'u1' }, session: { id: 's2' } }
+  expect(
+    sessionStep(
+      { data: fresh, error: null, isPending: false },
+      stored,
+      restored
+    ).restored
   ).toBeNull()
 })
