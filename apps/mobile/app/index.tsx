@@ -1,11 +1,18 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, Redirect, useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
-import { Pressable, View } from 'react-native'
+import { Alert, Pressable, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { usePalette } from '@/components/theme'
-import { BG, ErrorState, Text, useStatusBar } from '@/components/ui'
+import {
+  authErrorMessage,
+  BG,
+  ErrorState,
+  Text,
+  useStatusBar
+} from '@/components/ui'
 import { useAccountKind } from '@/lib/account'
+import { settleAuth } from '@/lib/auth-attempt'
 import {
   authClient,
   hasStoredSession,
@@ -146,7 +153,15 @@ export default function Home() {
           <Pressable
             accessibilityRole="button"
             className="items-center border-2 border-paper px-5 py-4"
-            onPress={() => authClient.signOut()}
+            onPress={async () => {
+              // Sem rede o cliente lança: avisa como Configurações › Sair.
+              const result = await settleAuth(authClient.signOut())
+              if (result.error)
+                Alert.alert(
+                  'Não foi possível sair',
+                  authErrorMessage(result.error, 'Tente de novo.')
+                )
+            }}
           >
             <Text className="font-bold text-paper">Sair</Text>
           </Pressable>
