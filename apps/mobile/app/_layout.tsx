@@ -319,7 +319,7 @@ export default function Layout() {
           <ActionDone />
           {/* Registra o aparelho e abre a tela da notificação tocada (WEB-416). */}
           <PushResponder />
-          {/* Conta sem dados em tela de outro papel volta à abertura (WEB-538). */}
+          {/* Conta em tela de outro papel volta à abertura (WEB-538). */}
           <OfflineRouteGuard />
           <DevTab />
           {splashDone ? null : (

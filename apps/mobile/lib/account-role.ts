@@ -97,15 +97,17 @@ const SHARED = new Set([
 ])
 
 /**
- * A conta sem dados abriu (link direto, recarga) uma tela que não é do papel
- * dela? Ela volta à abertura, que mostra o "Sinal caiu" e leva à área certa
- * quando a sessão chegar. `segment` é o primeiro de `useSegments()`.
+ * A conta abriu (link direto, recarga, notificação) uma tela que não é do
+ * papel dela? Volta à abertura, que leva à área certa (com a sessão) ou mostra
+ * o "Sinal caiu" até ela chegar (conta sem dados). Visitante vê as telas do
+ * torcedor, como sempre. `segment` é o primeiro de `useSegments()`.
  */
 export function leavesRoute(
   kind: AccountKind | null,
   withoutData: boolean,
   segment: string | undefined
 ): boolean {
-  if (!withoutData || !segment || SHARED.has(segment)) return false
+  if (!segment || SHARED.has(segment)) return false
+  if (!kind && !withoutData) return false
   return (OWNER.has(segment) ? 'pub' : 'fan') !== kind
 }
