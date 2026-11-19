@@ -12,7 +12,7 @@ import Constants from 'expo-constants'
 import * as SecureStore from 'expo-secure-store'
 import { env } from './env'
 import { queryClient } from './query-client'
-import { sessionToKeep } from './stored-session'
+import { sessionStep, type sessionToKeep } from './stored-session'
 
 // O mesmo better-auth do web, em `<servidor>/api/auth`. No app não há cookie
 // de navegador: o plugin do Expo guarda a sessão no SecureStore e a repassa
@@ -45,16 +45,18 @@ export const authClient = createAuthClient({
 // a guardada no aparelho, mesmo vencida, em vez de virar visitante. A regra e
 // o porquê estão em `lib/stored-session.ts`; todas as telas leem por aqui, pelo
 // `useSession` (`app/index.tsx`, a aba Você, `useFan`, `useWithAccount`).
-const sessionAtom = authClient.$store.atoms.session
-sessionAtom.listen((state) => {
-  const kept = sessionToKeep(
-    state,
-    SecureStore.getItem(`${scheme}_session_data`)
-  )
-  if (kept) sessionAtom.set({ ...state, data: kept })
-})
-
+// Pelo `storageAdapter`, como o plugin: sessão grande vai em pedaços.
 const storage = storageAdapter(SecureStore)
+const sessionKey = `${scheme}_session_data`
+const sessionAtom = authClient.$store.atoms.session
+let restored: ReturnType<typeof sessionToKeep> = null
+sessionAtom.listen((state) => {
+  const step = sessionStep(state, storage.getItem(sessionKey), restored)
+  restored = step.restored
+  // O mesmo que o plugin grava ao sair (`clearSessionCache`).
+  if (step.clearCache) storage.setItem(sessionKey, '{}')
+  if (step.set !== undefined) sessionAtom.set({ ...state, data: step.set })
+})
 
 /**
  * Adota a sessão que volta pelo link do e-mail de confirmação. O link abre no
