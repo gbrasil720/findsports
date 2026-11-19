@@ -1069,7 +1069,17 @@ invente layout que o projeto não tem.
   (bar, Explorar, Seus bares, Você) não mostra nada de visitante: as leituras da conta
   rodam e caem no erro da tela, e o menu Você troca o nome por "Sua conta continua
   aqui." e "Tentar". Sessão revogada sai na releitura, até 60 s depois (o cache do
-  cookie no servidor).
+  cookie no servidor). O papel (torcedor ou bar) só vem do servidor: a última sessão
+  boa o grava em `onside.papel` no SecureStore, e 401 ou 200 sem sessão o apagam
+  (`roleToStore`). `useAccountKind()` (`lib/account.ts`, regra em `accountKind`,
+  `lib/account-role.ts`) é o papel da sessão ou, na conta sem dados, o guardado; sem
+  papel guardado não chuta. `useFan()` sai dele, então o bar sem dados não vira
+  torcedor. Na raiz, `useOfflineRouteGuard` manda à abertura a conta que abre tela do
+  outro papel (`leavesRoute`: grupo `(bar)` e as telas do dono numa lista, as dos dois
+  noutra, o resto é do torcedor), com a sessão ou sem dados; papel desconhecido só fica
+  nas telas dos dois. A abertura mostra o "Sinal caiu" até a sessão chegar (fora do
+  torcedor sem a frase dos favoritos e do código) e então leva à área certa. Tela nova
+  do dono entra em `OWNER`, senão a conta de bar é mandada de volta dela.
 - **Turnstile no app:** o servidor exige o desafio em `sign-in`, `sign-up` e nos envios de
   e-mail sempre que tem `TURNSTILE_SECRET_KEY` (o `.env` local tem). O app resolve numa WebView
   (`apps/mobile/components/turnstile.tsx`, mesmo contrato do `useTurnstile` do web) com a
