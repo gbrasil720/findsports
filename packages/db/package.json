@@ -20,6 +20,7 @@
     "db:studio": "drizzle-kit studio",
     "db:migrate": "drizzle-kit migrate",
     "db:journal": "bun run scripts/reconcile-journal.ts",
+    "db:anonymize:preview": "bun run scripts/anonymize-preview.ts",
     "db:seed:analytics": "bun run src/seed/analytics.ts",
     "db:seed:analytics:clean": "bun run src/seed/analytics.ts --clean",
     "db:seed:load-test": "bun run src/seed/load-test.ts",
