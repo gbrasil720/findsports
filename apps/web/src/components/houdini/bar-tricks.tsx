@@ -139,6 +139,51 @@ export function SearchDriftAlert({ bar }: { bar: TrickBar }) {
   )
 }
 
+/**
+ * O bar foi ao ar sem teste porque o e-mail do dono já tinha usado o seu
+ * (`trial_grant`). "Liberar teste" dá os 90 dias do cadastro e fica no
+ * Grimório.
+ */
+export function StartTrialAlert({ bar }: { bar: { id: string } }) {
+  const trpc = useTRPC()
+  const refresh = useRefresh()
+  const start = useMutation(
+    trpc.adminBars.startTrial.mutationOptions({
+      onSuccess: async (result) => {
+        toast.success(
+          `Teste até ${result.currentPeriodEnd ? formatDateTime(result.currentPeriodEnd) : '—'}.`
+        )
+        await refresh()
+      },
+      onError: (error) =>
+        toast.error(
+          getUserFacingMessage(error, 'Não foi possível liberar o teste.')
+        )
+    })
+  )
+  return (
+    <div className="hd-alert" role="alert">
+      <span className="hd-alert-title">
+        <Icon name="warn" size={18} />
+        Sem teste grátis
+      </span>
+      <p>
+        O e-mail do dono já usou o teste do cadastro em outra conta, e o bar
+        ficou fora do ar até contratar.
+      </p>
+      <button
+        type="button"
+        className="hd-btn hd-btn-primary"
+        disabled={start.isPending}
+        onClick={() => start.mutate({ barId: bar.id })}
+        style={{ alignSelf: 'flex-start' }}
+      >
+        {start.isPending ? 'Liberando…' : 'Liberar teste'}
+      </button>
+    </div>
+  )
+}
+
 /** Entrar na pele do dono: a sessão vira a dele e a página recarrega. */
 function useEnterOwner(bar: TrickBar) {
   const [entering, setEntering] = useState(false)
