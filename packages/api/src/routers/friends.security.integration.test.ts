@@ -109,8 +109,8 @@ integrationTest('código de amigo tem limite de tentativas', async () => {
   const { people, as, cleanup } = await seed(['Gil'])
   const [gil] = people as [(typeof people)[0]]
   try {
-    // byCode e joinByInvite dividem a mesma janela: 30 por hora.
-    for (let i = 0; i < 29; i++) await as(gil).byCode({ code: `ZZ-${i}` })
+    // byCode e joinByInvite dividem a mesma janela: 10 por hora.
+    for (let i = 0; i < 9; i++) await as(gil).byCode({ code: `ZZ-${i}` })
     await expect(as(gil).joinByInvite({ code: 'ZZ-0000' })).rejects.toThrow(
       'Esse convite não vale mais'
     )
@@ -126,7 +126,7 @@ integrationTest('código de amigo tem limite de tentativas', async () => {
 })
 
 integrationTest(
-  'contatos: limite por quantidade de hashes e sem cidade',
+  'contatos: 500 hashes por dia, conta de mais de um dia e sem cidade',
   async () => {
     const { people, as, cleanup } = await seed(['Hugo', 'Iris'])
     const [hugo, iris] = people as [(typeof people)[0], (typeof people)[0]]
@@ -134,9 +134,15 @@ integrationTest(
       createHash('sha256').update(email.toLowerCase()).digest('hex')
     const filler = (n: number) =>
       Array.from({ length: n }, () => randomBytes(32).toString('hex'))
+    // A idade vem do createdAt da sessão.
+    const old = new Date(Date.now() - 2 * 86_400_000)
+    const young = new Date(Date.now() - 23 * 3_600_000)
     try {
-      const matched = await as(hugo).matchContacts({
-        hashes: [hash(iris.email), ...filler(1999)]
+      await expect(
+        as(hugo, young).matchContacts({ hashes: [hash(iris.email)] })
+      ).rejects.toThrow('Conta nova')
+      const matched = await as(hugo, old).matchContacts({
+        hashes: [hash(iris.email), ...filler(199)]
       })
       expect(matched.map((m) => [m.id, m.city])).toEqual([[iris.id, null]])
       // "Me encontrar pelo e-mail" desligado: some dos contatos.
@@ -144,13 +150,38 @@ integrationTest(
       await as(iris).updatePrivacy({ findableByEmail: false })
       expect((await as(iris).me()).findableByEmail).toBe(false)
       expect(
-        await as(hugo).matchContacts({ hashes: [hash(iris.email)] })
+        await as(hugo, old).matchContacts({ hashes: [hash(iris.email)] })
       ).toEqual([])
-      await as(hugo).matchContacts({ hashes: filler(1999) })
-      await as(hugo).matchContacts({ hashes: filler(2000) })
+      await as(hugo, old).matchContacts({ hashes: filler(299) })
       // A janela do dia conta hashes, não chamadas: o próximo passa do teto.
       await expect(
-        as(hugo).matchContacts({ hashes: filler(1) })
+        as(hugo, old).matchContacts({ hashes: filler(1) })
+      ).rejects.toThrow('Muitos contatos')
+    } finally {
+      await cleanup()
+    }
+  }
+)
+
+integrationTest(
+  'contatos: chamada com mais de 500 conta só os 500 primeiros',
+  async () => {
+    const { people, as, cleanup } = await seed(['Ivo', 'Jade'])
+    const [ivo, jade] = people as [(typeof people)[0], (typeof people)[0]]
+    const hash = (email: string) =>
+      createHash('sha256').update(email.toLowerCase()).digest('hex')
+    const filler = (n: number) =>
+      Array.from({ length: n }, () => randomBytes(32).toString('hex'))
+    const old = new Date(Date.now() - 2 * 86_400_000)
+    try {
+      // App publicado manda até 2000: o hash depois do 500º não é conferido.
+      expect(
+        await as(ivo, old).matchContacts({
+          hashes: [...filler(500), hash(jade.email)]
+        })
+      ).toEqual([])
+      await expect(
+        as(ivo, old).matchContacts({ hashes: filler(1) })
       ).rejects.toThrow('Muitos contatos')
     } finally {
       await cleanup()
