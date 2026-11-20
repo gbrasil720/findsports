@@ -1,11 +1,14 @@
-import { describe, expect, it, spyOn } from 'bun:test'
+import { afterEach, describe, expect, it, spyOn } from 'bun:test'
+import type { AbacateSubscription } from './abacatepay'
 import {
   founderSeatsFull,
   parsePixExternalId,
   pixExternalId,
   pixFounderDiscountReais,
+  pixProductExternalId,
   pixStanding,
-  readLagsBehind
+  readLagsBehind,
+  trustedPixRef
 } from './pix-sync'
 import { stripeClient } from './stripe-client'
 
@@ -141,5 +144,107 @@ describe('vaga de fundador com o Stripe sem responder', () => {
       spy.mockRestore()
       error.mockRestore()
     }
+  })
+})
+
+describe('bar e plano do aviso Pix vêm da AbacatePay, não do corpo', () => {
+  // Dublê da AbacatePay: o produto é `prod_<externalId>`, e o checkout da
+  // assinatura é o que o teste puser em `checkout`.
+  let checkout: { externalId: string | null; items: { id: string }[] }
+  const realFetch = globalThis.fetch
+  const fetchSpy = () =>
+    spyOn(globalThis, 'fetch').mockImplementation((async (
+      input: string | URL | Request
+    ) => {
+      const url = new URL(String(input instanceof Request ? input.url : input))
+      const data = url.pathname.endsWith('/products/get')
+        ? { id: `prod_${url.searchParams.get('externalId')}` }
+        : url.pathname.endsWith('/subscriptions/checkouts/get')
+          ? {
+              id: url.searchParams.get('id'),
+              url: '',
+              status: 'PAID',
+              ...checkout
+            }
+          : null
+      return Response.json({ data, error: data ? null : 'não dublada' })
+    }) as typeof fetch)
+  afterEach(() => {
+    globalThis.fetch = realFetch
+  })
+  const sub = (checkoutId: string | null) =>
+    ({ id: 'subs_1', checkoutId, status: 'ACTIVE' }) as AbacateSubscription
+  const starter = pixExternalId('bar-1', 'starter', false)
+  const eliteFounderAnnual = pixExternalId('bar-2', 'elite', true, true)
+
+  async function refusalOf(run: () => Promise<unknown>) {
+    const error = spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      expect(await run()).toBeNull()
+      return JSON.parse(String(error.mock.calls[0]?.[0])) as {
+        event: string
+        reason: string
+      }
+    } finally {
+      error.mockRestore()
+    }
+  }
+
+  it('o produto pedido no checkout é o do externalId', () => {
+    expect(
+      pixProductExternalId({ plan: 'elite', founder: true, annual: true })
+    ).toBe('elite_founder_yearly')
+    expect(
+      pixProductExternalId({ plan: 'starter', founder: false, annual: false })
+    ).toBe('starter_monthly')
+  })
+
+  it('checkout que bate: o bar e o plano dele', async () => {
+    fetchSpy()
+    checkout = {
+      externalId: eliteFounderAnnual,
+      items: [{ id: 'prod_elite_founder_yearly' }]
+    }
+    expect(await trustedPixRef(sub('bill_1'), eliteFounderAnnual)).toEqual({
+      barId: 'bar-2',
+      plan: 'elite',
+      founder: true,
+      annual: true
+    })
+    // Corpo sem o externalId: vale o do checkout.
+    expect((await trustedPixRef(sub('bill_1'), null))?.plan).toBe('elite')
+  })
+
+  it('pagou o Starter e mandou um Elite de fundador anual no corpo: recusado', async () => {
+    fetchSpy()
+    checkout = { externalId: starter, items: [{ id: 'prod_starter_monthly' }] }
+    expect(
+      await refusalOf(() => trustedPixRef(sub('bill_1'), eliteFounderAnnual))
+    ).toMatchObject({
+      event: 'pix_webhook_untrusted',
+      reason: 'external_id_mismatch'
+    })
+  })
+
+  it('produto do checkout diferente do que o externalId diz: recusado', async () => {
+    fetchSpy()
+    checkout = {
+      externalId: eliteFounderAnnual,
+      items: [{ id: 'prod_starter_monthly' }]
+    }
+    expect(
+      await refusalOf(() => trustedPixRef(sub('bill_1'), eliteFounderAnnual))
+    ).toMatchObject({ reason: 'product_mismatch' })
+  })
+
+  it('sem checkout, ou checkout que não é do app: recusado', async () => {
+    fetchSpy()
+    expect(
+      await refusalOf(() => trustedPixRef(sub(null), starter))
+    ).toMatchObject({ reason: 'no_checkout' })
+    checkout = { externalId: 'outro-sistema', items: [] }
+    expect(
+      await refusalOf(() => trustedPixRef(sub('bill_1'), null))
+    ).toMatchObject({ reason: 'unknown_external_id' })
   })
 })

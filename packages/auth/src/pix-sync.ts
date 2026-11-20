@@ -5,7 +5,9 @@ import { env } from '@findsports_oficial/env/server'
 import {
   type AbacateSubscription,
   cancelSubscriptionIfActive,
-  getSubscription
+  getSubscription,
+  getSubscriptionCheckout,
+  productIdFor
 } from './abacatepay'
 import { founderSeatCount, readFounderCoupon } from './stripe-checkout'
 import { stripeClient } from './stripe-client'
@@ -18,10 +20,11 @@ export const PIX_FOUNDER_DISCOUNT_REAIS = 28
 const PLANS: SubscriptionPlan[] = ['starter', 'pro', 'elite']
 
 /**
- * O `externalId` do checkout leva tudo o que o webhook precisa para achar o
- * bar sem consultar mais nada: `onside:<barId>:<plano>:<f|t>:<nonce>`, `f`
+ * O `externalId` do checkout leva o que o webhook precisa para achar o bar:
+ * `onside:<barId>:<plano>:<f|t>:<nonce>`, `f`
  * para o produto de fundador e `t` para a tabela, e `:y` no fim para o anual
- * (sem ele, mensal: os checkouts de antes do anual seguem valendo).
+ * (sem ele, mensal: os checkouts de antes do anual seguem valendo). O
+ * webhook o lê do checkout na AbacatePay, não do corpo (`trustedPixRef`).
  */
 export function pixExternalId(
   barId: string,
@@ -52,6 +55,18 @@ export function parsePixExternalId(externalId: string | null | undefined): {
     founder: kind === 'f',
     annual: parts.length === 6
   }
+}
+
+/**
+ * `externalId` do produto na AbacatePay (`pix:setup`): `<plano>_monthly`,
+ * `<plano>_founder_yearly` etc. O checkout pede este; o webhook confere.
+ */
+export function pixProductExternalId(ref: {
+  plan: SubscriptionPlan
+  founder: boolean
+  annual: boolean
+}): string {
+  return `${ref.plan}_${ref.founder ? 'founder_' : ''}${ref.annual ? 'yearly' : 'monthly'}`
 }
 
 /**
@@ -148,6 +163,52 @@ export function readLagsBehind(eventType: string, status: string): boolean {
 }
 
 /**
+ * Bar, plano, fundador e intervalo da assinatura, lidos da AbacatePay e não
+ * do corpo do aviso: quem tivesse o segredo do webhook mandaria o
+ * `externalId` de um Elite de fundador anual para qualquer bar pagando um
+ * Starter. O checkout da assinatura (`checkoutId`) só nasce com a nossa
+ * chave (`startPixCheckout`), e traz o `externalId` e o produto que ele
+ * cobrou: os dois têm de bater com o corpo e entre si.
+ *
+ * Recusa vai ao log e volta nula (o aviso responde 200, sem reenvio: repetir
+ * não muda a resposta). Falha de rede lança e vira 500, como o resto.
+ */
+export async function trustedPixRef(
+  sub: AbacateSubscription,
+  bodyExternalId: string | null | undefined
+): Promise<NonNullable<ReturnType<typeof parsePixExternalId>> | null> {
+  const refuse = (reason: string, details: Record<string, unknown> = {}) => {
+    logBillingError('pix_webhook_untrusted', {
+      reason,
+      subscriptionId: sub.id,
+      checkoutId: sub.checkoutId,
+      bodyExternalId: bodyExternalId ?? null,
+      ...details
+    })
+    return null
+  }
+  if (!sub.checkoutId) return refuse('no_checkout')
+  const checkout = await getSubscriptionCheckout(sub.checkoutId)
+  const ref = parsePixExternalId(checkout.externalId)
+  if (!ref) {
+    return refuse('unknown_external_id', { externalId: checkout.externalId })
+  }
+  if (bodyExternalId && bodyExternalId !== checkout.externalId) {
+    return refuse('external_id_mismatch', { externalId: checkout.externalId })
+  }
+  const expected = await productIdFor(pixProductExternalId(ref))
+  const items = checkout.items ?? []
+  if (items.length !== 1 || items[0]?.id !== expected) {
+    return refuse('product_mismatch', {
+      externalId: checkout.externalId,
+      expected,
+      items: items.map((item) => item.id)
+    })
+  }
+  return ref
+}
+
+/**
  * Grava o estado ATUAL de uma assinatura Pix, como `applyStripeSubscription`:
  * relê a assinatura na AbacatePay em vez de confiar no corpo do evento.
  *
@@ -173,14 +234,6 @@ export async function applyPixSubscription(
   // Os testes dublam a contagem; o padrão pergunta ao Stripe.
   { seatsFull = founderSeatsFull }: { seatsFull?: () => Promise<boolean> } = {}
 ): Promise<string | null> {
-  const ref = parsePixExternalId(externalId)
-  if (!ref) {
-    logBillingError('pix_webhook_unknown_external_id', {
-      subscriptionId,
-      externalId: externalId ?? null
-    })
-    return null
-  }
   const sub = await getSubscription(subscriptionId)
   if (readLagsBehind(eventType, sub.status)) {
     // A leitura da AbacatePay demora a refletir a escrita (visto ~1 min no
@@ -191,6 +244,9 @@ export async function applyPixSubscription(
     )
   }
   if (sub.status === 'PENDING') return null
+
+  const ref = await trustedPixRef(sub, externalId)
+  if (!ref) return null
 
   const foundBar = await db.query.bar.findFirst({
     where: eq(bar.id, ref.barId),
