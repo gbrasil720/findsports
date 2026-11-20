@@ -8,6 +8,8 @@ const productionEnv = {
   BETTER_AUTH_URL: 'https://onside.sh'
 }
 
+const webhook = { STRIPE_WEBHOOK_SECRET: 'whsec_exemplo' }
+
 function loadServerEnv(extra: Record<string, string>) {
   // Processo novo: o módulo valida na carga, e o cache de import do bun
   // devolveria a primeira avaliação.
@@ -69,6 +71,7 @@ describe('preview switches', () => {
     // Padrão (`sk_`) e restrita (`rk_`): as duas cobram de verdade.
     for (const key of ['sk_live_exemplo', 'rk_live_exemplo']) {
       const recusada = loadServerEnv({
+        ...webhook,
         STRIPE_SECRET_KEY: key,
         PUBLIC_APP_URL: preview
       })
@@ -77,6 +80,7 @@ describe('preview switches', () => {
 
       expect(
         loadServerEnv({
+          ...webhook,
           STRIPE_SECRET_KEY: key,
           PUBLIC_APP_URL: 'https://www.onside.sh',
           TURNSTILE_SECRET_KEY: 'segredo-do-turnstile'
@@ -85,8 +89,11 @@ describe('preview switches', () => {
     }
     for (const key of ['sk_test_exemplo', 'rk_test_exemplo']) {
       expect(
-        loadServerEnv({ STRIPE_SECRET_KEY: key, PUBLIC_APP_URL: preview })
-          .exitCode
+        loadServerEnv({
+          ...webhook,
+          STRIPE_SECRET_KEY: key,
+          PUBLIC_APP_URL: preview
+        }).exitCode
       ).toBe(0)
     }
   })
@@ -94,6 +101,39 @@ describe('preview switches', () => {
   it('recusa STRIPE_SECRET_KEY que não é chave do Stripe', () => {
     const result = loadServerEnv({ STRIPE_SECRET_KEY: 'pk_live_exemplo' })
     expect(result.exitCode).not.toBe(0)
+  })
+})
+
+describe('webhook do Stripe em produção', () => {
+  const preview = 'https://onside-web-preview.example.workers.dev'
+
+  it('recusa STRIPE_SECRET_KEY sem STRIPE_WEBHOOK_SECRET', () => {
+    const result = loadServerEnv({
+      STRIPE_SECRET_KEY: 'sk_test_exemplo',
+      PUBLIC_APP_URL: preview
+    })
+    expect(result.exitCode).not.toBe(0)
+    expect(result.stderr.toString()).toContain('STRIPE_WEBHOOK_SECRET')
+  })
+
+  it('sobe com os dois, ou sem Stripe nenhum', () => {
+    expect(
+      loadServerEnv({
+        ...webhook,
+        STRIPE_SECRET_KEY: 'sk_test_exemplo',
+        PUBLIC_APP_URL: preview
+      }).exitCode
+    ).toBe(0)
+    expect(loadServerEnv({ PUBLIC_APP_URL: preview }).exitCode).toBe(0)
+  })
+
+  it('segue opcional fora de produção', () => {
+    expect(
+      loadServerEnv({
+        NODE_ENV: 'development',
+        STRIPE_SECRET_KEY: 'sk_test_exemplo'
+      }).exitCode
+    ).toBe(0)
   })
 })
 
