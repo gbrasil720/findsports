@@ -1,3 +1,4 @@
+import { USER_NAME_MAX } from '@findsports_oficial/db/user-name'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -471,7 +472,7 @@ export function Responsavel({
           enterKeyHint="done"
           className="pn-inp"
           value={valor}
-          maxLength={100}
+          maxLength={USER_NAME_MAX}
           autoComplete="name"
           aria-invalid={erro ? true : undefined}
           // biome-ignore lint/a11y/noAutofocus: abriu para editar este campo.

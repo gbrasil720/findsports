@@ -6,6 +6,22 @@ import {
   shouldRetryQuery
 } from './user-facing-error'
 
+test('nome recusado pelo better-auth mostra a frase do servidor', () => {
+  expect(
+    getUserFacingError(
+      {
+        status: 400,
+        code: 'INVALID_NAME',
+        message: 'O nome não pode ter endereço de site.'
+      },
+      'Não foi possível criar sua conta.'
+    )
+  ).toEqual({
+    message: 'O nome não pode ter endereço de site.',
+    retryable: false
+  })
+})
+
 test('converte erros técnicos sem expor a mensagem original', () => {
   const error = Object.assign(new Error('database connection refused'), {
     data: { code: 'INTERNAL_SERVER_ERROR' }
