@@ -202,6 +202,18 @@ if (
   }
 }
 
+// Sem o segredo, o webhook do Stripe responde 500 a todo aviso e a assinatura
+// paga não chega à `subscription`. Em produção (e no preview), não sobe.
+if (
+  rawEnv.NODE_ENV === 'production' &&
+  rawEnv.STRIPE_SECRET_KEY &&
+  !rawEnv.STRIPE_WEBHOOK_SECRET
+) {
+  throw new Error(
+    'STRIPE_WEBHOOK_SECRET é obrigatória em produção junto com STRIPE_SECRET_KEY.'
+  )
+}
+
 // Mesma regra para o Pix: chave de produção da AbacatePay só em onside.sh.
 if (rawEnv.ABACATE_PAY_API_KEY?.startsWith('abc_prod_')) {
   const host = new URL(rawEnv.PUBLIC_APP_URL ?? rawEnv.BETTER_AUTH_URL).hostname
