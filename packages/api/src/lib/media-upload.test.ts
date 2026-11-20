@@ -1,11 +1,34 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import { PHOTO_MAX_BYTES, photoPathname } from './blob-photo'
 import {
+  assertUploadQuota,
   deleteAvatar,
   deleteBarGalleryPhoto,
   MediaUploadError,
-  signMediaUpload
+  signMediaUpload,
+  UPLOAD_LIMIT,
+  UPLOAD_LIMIT_MESSAGE
 } from './media-upload'
+
+describe('teto de URLs de upload por conta', () => {
+  it('libera até o teto e recusa com 429 depois', async () => {
+    const contagem = new Map<string, number>()
+    const increment = (async (key: string) => {
+      const count = (contagem.get(key) ?? 0) + 1
+      contagem.set(key, count)
+      return { allowed: count <= UPLOAD_LIMIT.max, retryAfterMs: 0, count }
+    }) as Parameters<typeof assertUploadQuota>[1]
+
+    for (let i = 0; i < UPLOAD_LIMIT.max; i++) {
+      await assertUploadQuota('u1', increment)
+    }
+    const err = await assertUploadQuota('u1', increment).catch((e) => e)
+    expect(err).toBeInstanceOf(MediaUploadError)
+    expect(err.status).toBe(429)
+    expect(err.message).toBe(UPLOAD_LIMIT_MESSAGE)
+    expect([...contagem.keys()]).toEqual(['media-upload:user:u1'])
+  })
+})
 
 const CONFIG = {
   R2_MEDIA_ACCESS_KEY_ID: 'chave-falsa',
