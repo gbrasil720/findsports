@@ -106,7 +106,7 @@ test('sem assinatura: Pix anual pelo seletor, com o produto do ano e o webhook g
 
   const subId = `subs_e2e_${barId.slice(0, 8)}`
   const paidUntil = inDays(365)
-  await seedPixSubscription(request, subId, paidUntil)
+  await seedPixSubscription(request, subId, paidUntil, externalId)
   const delivered = await deliverPixWebhook(
     request,
     'subscription.completed',
