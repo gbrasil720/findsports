@@ -414,7 +414,11 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   achados por `externalId` (`<plano>_monthly` e `<plano>_founder_monthly`: o cupom não
   vale no Pix, o preço de fundador é o produto). `subscription.provider = 'abacatepay'`.
   O webhook (`/api/abacatepay/webhook`, segredo + HMAC) relê a assinatura na AbacatePay
-  (`applyPixSubscription`, `pix-sync.ts`), como no Stripe. As 100 vagas de fundador
+  (`applyPixSubscription`, `pix-sync.ts`), como no Stripe. O segredo vale só pelo
+  cabeçalho `X-Webhook-Secret` (a AbacatePay o manda também na query, que vai ao log).
+  Bar, plano, fundador e intervalo saem do checkout da assinatura lido na AbacatePay
+  (`checkoutId`: `externalId` e produto, `trustedPixRef`), nunca do corpo; corpo ou
+  produto que não bate vai ao log (`pix_webhook_untrusted`) e responde 200, sem reenvio. As 100 vagas de fundador
   somam cartão e Pix (`founderSeatCount`). Checkout de fundador só nasce com vaga, mas
   checkout aberto não reserva vaga. **Pago depois de esgotar, o preço de fundador
   é honrado** (dono, 15/11/2026: sem aviso de esgotado antes de pagar, vale o
