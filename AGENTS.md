@@ -364,6 +364,14 @@ e webhook (`/api/auth/stripe/webhook`, com assinatura conferida) são rotas do p
   primeiro valor"). Cliente anterior, sem rotina, nasce no Elite. Quem contrata antes
   do fim herda a data: o checkout manda `trial_end` e o Stripe só cobra quando o teste
   acabaria (`packages/auth/src/stripe-checkout.ts`).
+- **Um teste por e-mail** (dono, 20/11/2026): `trial_grant` guarda o HMAC do e-mail
+  normalizado (sem `+etiqueta`, sem os pontos do Gmail) e do endereço, sem FK para a
+  conta, e sobrevive à exclusão (`lib/trial-grant.ts`). E-mail que já ganhou o teste:
+  o `completePub` cria o bar sem assinatura e fora do ar, responde `trial: false`, e
+  web e app vão ao plano sem prometer teste (`onboarding.trialAvailable`). No Houdini,
+  a ficha do bar tem "Liberar teste" (`adminBars.startTrial`, Grimório
+  `bar.start_trial`) e o aviso "Mesmo endereço de um bar anterior", que não bloqueia.
+  Vale a partir do deploy: contas anteriores não têm linha.
 - **O teste do cadastro vale para qualquer plano** (WEB-358): o dono escolhe o do teste
   depois do primeiro jogo e troca em `/plan` ("Testar o X grátis"), sem cartão e
   quantas vezes quiser, por `pub.changeTrialPlan`. Só `subscription.plan` muda (e
