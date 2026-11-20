@@ -1,3 +1,4 @@
+import { USER_NAME_MAX } from '@findsports_oficial/db/user-name'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useState } from 'react'
 import { StyleSheet, View } from 'react-native'
@@ -107,6 +108,7 @@ export default function SignUp() {
         placeholder="Como você aparece na Onside"
         autoComplete="name"
         textContentType="name"
+        maxLength={USER_NAME_MAX}
         value={name}
         onChangeText={setName}
       />
