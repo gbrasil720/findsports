@@ -9,6 +9,7 @@ import { attendanceReport } from '@findsports_oficial/db/schema/attendance'
 import { barRating } from '@findsports_oficial/db/schema/rating'
 import { TRPCError } from '@trpc/server'
 import { readAttendanceQuestions } from './attendance'
+import { checkInVerifiesSql } from './check-in'
 import { participantNames } from './game-participants'
 import { RATING_WINDOW_DAYS } from './rating'
 import type { RatingReasonId } from './rating-reasons'
@@ -246,8 +247,8 @@ export type PostGameItem = {
   rating: boolean
   /**
    * Como a visita foi confirmada (o selo do topo, rodada 4): código
-   * validado no balcão, check-in, ou nenhuma (a avaliação é gravada e não
-   * entra na nota, WEB-408).
+   * validado no balcão, check-in (de conta com 7 dias, `checkInVerifies`), ou
+   * nenhuma (a avaliação é gravada e não entra na nota, WEB-408).
    */
   verified: 'code' | 'checkin' | null
 }
@@ -302,9 +303,11 @@ export async function readPostGame(userId: string): Promise<PostGameItem[]> {
       WHERE r.user_id = ${userId} AND u.undone_at IS NULL
         AND r.event_id IN ${ids}
       UNION ALL
-      SELECT event_id, 'checkin' AS kind
-      FROM attendance_checkin
-      WHERE user_id = ${userId} AND event_id IN ${ids}
+      SELECT c.event_id, 'checkin' AS kind
+      FROM attendance_checkin c
+      JOIN "user" a ON a.id = c.user_id
+      WHERE c.user_id = ${userId} AND c.event_id IN ${ids}
+        AND ${checkInVerifiesSql}
     `)
     // O código vem antes do check-in quando há os dois.
     for (const row of proofs.rows) {
