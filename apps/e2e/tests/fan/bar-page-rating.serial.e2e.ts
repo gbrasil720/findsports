@@ -3,7 +3,7 @@ import { insert, query, resetAppConfig, setAppConfig } from '../../fixtures/db'
 import { createEvent, days } from '../../fixtures/fan'
 import { createPub } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
-import { createUser } from '../../fixtures/users'
+import { ageAccount, createUser } from '../../fixtures/users'
 
 // "O que dizem" da página pública do bar (WEB-408, WEB-451): só com 5
 // avaliações verificadas, e então a média das estrelas, as etiquetas e os
@@ -24,6 +24,7 @@ async function rate(barId: string, eventId: string, name: string, r: Rating) {
   const fan = await createUser({ name })
   // Verificada: check-in no jogo. O banco marca pela trigger da avaliação.
   if (r.verified !== false) {
+    await ageAccount(fan.id)
     await insert('attendance_checkin', {
       user_id: fan.id,
       event_id: eventId,
