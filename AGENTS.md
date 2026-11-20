@@ -153,6 +153,10 @@ Aceitável por ser ambiente de teste; o env recusa `EMAIL_DELIVERY=console` com
 `PUBLIC_APP_URL` em `onside.sh`, e produção sem `EMAIL_API_KEY` continua falhando alto.
 Sem chaves R2: upload de foto desligado. Para atualizar os dados, Neon → branch
 `preview` → **Reset from parent** (mesma conexão; Hyperdrive e segredo não mudam).
+O deploy do preview anonimiza o banco depois de migrar (`db:anonymize:preview`,
+`packages/db/scripts/anonymize-preview.ts`): quem não é admin nem conta de teste
+(`+qa`, `*.test`, `@onside.local`) perde o login e fica com nome e e-mail
+inventados. Até o PR seguinte ao reset, os dados reais voltam; o Grimório fica.
 
 `db:push` continua existindo para experimentar schema sem gerar arquivo, mas **não use
 para pôr um banco em dia**: ele cria os objetos sem escrever em
