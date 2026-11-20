@@ -586,11 +586,16 @@ exige na tela), e o card do web não as pergunta.
 
 - **Só a verificada entra na nota** (WEB-408): código validado no balcão (e não desfeito)
   ou check-in "Estou aqui" (`attendance.checkIn`, `lib/check-in.ts`: até 150 m do bar, na
-  janela do código, um por jogo; o web não tem tela, quem chama é o app).
-  `bar_rating.verified` é do banco (triggers da migration 0083, a mesma regra de
-  `lib/visits.ts`); `rating_count`, `rating_positive` e `rating_stars_*` do bar contam só
-  as verificadas. A 0083 recontou os bares: quem só tinha avaliação sem código validado
-  ficou sem nota pública.
+  janela do código, um por jogo, dois por dia de Brasília, `TOO_MANY_REQUESTS` acima;
+  o web não tem tela, quem chama é o app). **Check-in só verifica com a conta de 7 dias
+  ou mais na hora dele** (relatório de vulnerabilidades, dono em 20/11/2026: GPS se
+  falsifica; `checkInVerifies`, migration 0101); o de conta nova segue como visita
+  (conquistas, ranking). `bar_rating.verified` é do banco (triggers das migrations 0083 e
+  0101: a regra de `lib/visits.ts` menos esse check-in); `rating_count`, `rating_positive`
+  e `rating_stars_*` do bar contam só as verificadas. A 0083 recontou os bares: quem só
+  tinha avaliação sem código validado ficou sem nota pública; a 0101 recontou de novo.
+  A ficha do bar no Houdini avisa a semana com 3+ verificadas de contas com menos de 30
+  dias (`adminBars.ficha().youngRaterWeeks`).
 - **Piso público: 5 avaliações verificadas** (`RATING_PUBLIC_FLOOR`, `lib/rating.ts`,
   decisão do dono para não expor o bar com uma única negativa). Abaixo dele nada da nota
   sai na leitura pública: nem %, nem estrelas, nem "O que pesou?", nem comentários. Vale
