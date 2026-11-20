@@ -7,7 +7,7 @@ const integrationTest = isDisposableTestDatabase() ? test : test.skip
 // Stripe o declara sem `input: false`, e o cliente prendia a própria conta a
 // um cliente do Stripe qualquer, no cadastro e no `/update-user`.
 integrationTest(
-  'cadastro e /update-user recusam stripeCustomerId e papel admin',
+  'cadastro e /update-user recusam stripeCustomerId, papel admin e nome inválido',
   async () => {
     const [{ db, eq, sql }, { account, rateLimit, user }, { auth }] =
       await Promise.all([
@@ -57,7 +57,9 @@ integrationTest(
     try {
       for (const extra of [
         { stripeCustomerId: 'cus_escolhido_pelo_cliente' },
-        { role: 'admin' }
+        { role: 'admin' },
+        // O nome vai no e-mail de confirmação: link não passa.
+        { name: 'Ana https://golpe.example/entrar' }
       ]) {
         const signUp = await post('/sign-up/email', '', {
           name: 'Cadastro',
@@ -84,6 +86,14 @@ integrationTest(
       expect(update.status).toBe(400)
       const [row] = await db.select().from(user).where(eq(user.id, id))
       expect(row?.stripeCustomerId).toBeNull()
+
+      for (const name of ['a'.repeat(81), 'Ana\nClique aqui', 'www.golpe.com'])
+        expect((await post('/update-user', cookie, { name })).status).toBe(400)
+      expect(
+        (await post('/update-user', cookie, { name: '  Ana Souza  ' })).status
+      ).toBe(200)
+      const [renamed] = await db.select().from(user).where(eq(user.id, id))
+      expect(renamed?.name).toBe('Ana Souza')
     } finally {
       await db.delete(user).where(eq(user.id, id))
       await db.delete(user).where(eq(user.email, signUpEmail))
