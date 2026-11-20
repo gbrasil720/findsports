@@ -1,7 +1,12 @@
 import { describe, expect, test } from 'bun:test'
 import { getEventEnd } from '@findsports_oficial/db/event-window'
 import { CHECK_IN_RADIUS_M } from '@findsports_oficial/db/rating-limits'
-import { checkInRefusal, formatDistance } from './check-in'
+import {
+  CHECK_IN_DAILY_LIMIT_MESSAGE,
+  checkInRefusal,
+  checkInVerifies,
+  formatDistance
+} from './check-in'
 
 const HOUR = 3_600_000
 const startsAt = new Date('2026-10-28T23:30:00Z')
@@ -58,4 +63,17 @@ test('formatDistance arredonda para cima, de 10 em 10 m, e passa a km em 1000', 
   expect(formatDistance(151)).toBe('160 m')
   expect(formatDistance(997)).toBe('1 km')
   expect(formatDistance(2430)).toBe('2,4 km')
+})
+
+test('checkInVerifies: conta com 7 dias na hora do check-in, nem 1 ms a menos', () => {
+  const createdAt = new Date('2026-11-01T12:00:00Z')
+  const week = createdAt.getTime() + 7 * 24 * HOUR
+  expect(checkInVerifies(createdAt, at(week))).toBe(true)
+  expect(checkInVerifies(createdAt, at(week - 1))).toBe(false)
+})
+
+test('a frase do teto diário', () => {
+  expect(CHECK_IN_DAILY_LIMIT_MESSAGE).toBe(
+    'Você já fez 2 check-ins hoje. Volte amanhã.'
+  )
 })
