@@ -16,7 +16,8 @@ import {
   bar,
   event,
   subscription,
-  subscriptionCancelReason
+  subscriptionCancelReason,
+  trialGrant
 } from '@findsports_oficial/db/schema/platform'
 import { barRating } from '@findsports_oficial/db/schema/rating'
 import { reservation } from '@findsports_oficial/db/schema/reservation'
@@ -28,6 +29,9 @@ import { adminProcedure, router } from '../index'
 import { getCurrentPlan, getSubscriptionStanding } from '../lib/current-plan'
 import { escapeLike } from '../lib/escape-like'
 import { gameTitle } from '../lib/game-participants'
+import { ONBOARDING_TRIAL } from '../lib/plan-limits'
+import { readRoutine, recommendPlan } from '../lib/pub-routine'
+import { readTrialSignals } from '../lib/trial-grant'
 
 const PAGE_SIZE = 25
 
@@ -316,6 +320,61 @@ export const adminBarsRouter = router({
     ),
 
   /**
+   * "Liberar teste": o bar que foi ao ar sem teste porque o e-mail já tinha
+   * usado o seu (`trial_grant`) ganha os 90 dias do cadastro, como no
+   * `completePub`: plano da rotina, a escolher no painel.
+   */
+  startTrial: adminProcedure.input(barInput).mutation(({ ctx, input }) =>
+    db.transaction(async (tx) => {
+      const found = await lockBar(tx, input.barId)
+      if (found.status) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'Este bar já tem assinatura ou teste.'
+        })
+      }
+      const [own] = await tx
+        .select({ routine: bar.routine })
+        .from(bar)
+        .where(eq(bar.id, input.barId))
+      const routine = readRoutine(own?.routine)
+      const plan = routine ? recommendPlan(routine).plan : ONBOARDING_TRIAL.plan
+      const [created] = await tx
+        .insert(subscription)
+        .values({
+          barId: input.barId,
+          plan,
+          status: 'trialing',
+          currentPeriodEnd: sql`now() + make_interval(days => ${ONBOARDING_TRIAL.days}::int)`
+        })
+        .returning({ currentPeriodEnd: subscription.currentPeriodEnd })
+      const isActive =
+        found.isActive || !(await takenOffAirByAdmin(tx, input.barId))
+      await tx
+        .update(bar)
+        .set({ isActive, ...(routine && { trialPlanChosenAt: null }) })
+        .where(eq(bar.id, input.barId))
+      await tx
+        .update(trialGrant)
+        .set({ granted: true })
+        .where(eq(trialGrant.barId, input.barId))
+      await recordAdminAction(
+        {
+          kind: 'bar.start_trial',
+          ...actor(ctx),
+          targetType: 'bar',
+          targetId: input.barId,
+          targetLabel: found.name,
+          before: { isActive: found.isActive },
+          after: { currentPeriodEnd: created?.currentPeriodEnd, isActive, plan }
+        },
+        tx
+      )
+      return { currentPeriodEnd: created?.currentPeriodEnd ?? null, isActive }
+    })
+  ),
+
+  /**
    * Tirar do ar e religar. Religar com o teste do cadastro vencido seria
    * desfeito pela reconciliação do dia seguinte: o caminho é estender.
    */
@@ -420,7 +479,8 @@ export const adminBarsRouter = router({
       grimorio,
       [recent],
       [cancelReason],
-      youngRaterWeeks
+      youngRaterWeeks,
+      trialSignals
     ] = await Promise.all([
       db
         .select({
@@ -536,7 +596,9 @@ export const adminBarsRouter = router({
         .groupBy(sql`1`)
         .having(sql`count(*) >= 3`)
         .orderBy(sql`1 DESC`)
-        .limit(5)
+        .limit(5),
+      // Sem teste por e-mail repetido e endereço de cadastro anterior.
+      readTrialSignals(input.barId)
     ])
 
     const sub = row.subscription
@@ -555,7 +617,8 @@ export const adminBarsRouter = router({
       ratings,
       grimorio,
       cancelReason: cancelReason ?? null,
-      youngRaterWeeks
+      youngRaterWeeks,
+      ...trialSignals
     }
   })
 })

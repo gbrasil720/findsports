@@ -244,6 +244,18 @@ export function describe(entry: GrimorioEntry): {
             .join(' · ') || null
       }
     }
+    case 'bar.start_trial': {
+      const after = asRecord(entry.after)
+      return {
+        icon: 'hourglass',
+        tone: 'stone',
+        text: `liberou o teste de ${label}`,
+        detail:
+          typeof after.currentPeriodEnd === 'string'
+            ? `até ${formatDateTime(after.currentPeriodEnd)}`
+            : null
+      }
+    }
     case 'bar.take_off_air':
       return {
         icon: 'vanish',
