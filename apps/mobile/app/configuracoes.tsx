@@ -844,7 +844,10 @@ function Account({ leave = true }: { leave?: boolean }) {
           authClient.updateUser({ name: trimmed })
         )
         if (result.error)
-          return Alert.alert('Não foi possível salvar o nome', 'Tente de novo.')
+          return Alert.alert(
+            'Não foi possível salvar o nome',
+            authErrorMessage(result.error, 'Tente de novo.')
+          )
         haptic.success()
         await refreshSession()
       },

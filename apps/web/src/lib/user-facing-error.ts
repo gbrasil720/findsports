@@ -80,6 +80,11 @@ export function getUserFacingError(
   const text = getErrorText(error)
   const normalizedText = text.toLowerCase()
 
+  // Nome recusado pelo better-auth (`user-name.ts`): a frase já é a da tela.
+  if (code === 'INVALID_NAME' && text) {
+    return { message: text, retryable: false }
+  }
+
   if (
     code === 'INVALID_CREDENTIALS' ||
     code === 'INVALID_EMAIL_OR_PASSWORD' ||

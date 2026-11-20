@@ -1,4 +1,5 @@
 import { gameTitle } from '@findsports_oficial/db/game-title'
+import { USER_NAME_MAX } from '@findsports_oficial/db/user-name'
 import { useQuery } from '@tanstack/react-query'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { type ComponentProps, useEffect, useRef, useState } from 'react'
@@ -414,6 +415,7 @@ export default function Entrar() {
               label="Nome"
               autoComplete="name"
               textContentType="name"
+              maxLength={USER_NAME_MAX}
               value={name}
               onChangeText={setName}
             />

@@ -2275,6 +2275,9 @@ export function authErrorMessage(
     // Destino do link de nova senha recusado pelo servidor.
     case 'RESET_REDIRECT_NOT_ALLOWED':
       return 'Atualize o app ou redefina a senha pelo site da Onside.'
+    // Nome recusado (`user-name.ts`): a frase do servidor diz o que corrigir.
+    case 'INVALID_NAME':
+      return error.message || fallback
   }
   if (error.status === 429) return 'Muitas tentativas. Espere um pouco.'
   // `status: 0`: o pedido nem chegou ao servidor (`settleAuth`, WEB-469).
