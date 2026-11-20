@@ -1,7 +1,8 @@
 import { describe, expect, it, test } from 'bun:test'
 import {
   EVENT_CHAMPIONSHIP_MAX_LENGTH,
-  EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH
+  EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH,
+  EVENT_PARTICIPANTS_MAX
 } from '@findsports_oficial/db/event-limits'
 import { TRPCError } from '@trpc/server'
 import { getCurrentPlan, getSubscriptionStanding } from '../lib/current-plan'
@@ -358,6 +359,14 @@ describe('limites de texto do jogo', () => {
         ...valid,
         participantFreeText: `${valid.participantFreeText}t`
       })
+    ).toBe(false)
+    const teams = (n: number) =>
+      Array.from({ length: n }, () => crypto.randomUUID())
+    expect(
+      accepts({ ...valid, participantIds: teams(EVENT_PARTICIPANTS_MAX) })
+    ).toBe(true)
+    expect(
+      accepts({ ...valid, participantIds: teams(EVENT_PARTICIPANTS_MAX + 1) })
     ).toBe(false)
   })
 })

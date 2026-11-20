@@ -30,7 +30,8 @@ import { cancelReasonSchema } from '@findsports_oficial/db/cancel-reasons'
 import {
   EVENT_CHAMPIONSHIP_MAX_LENGTH,
   EVENT_CHAMPIONSHIP_MIN_LENGTH,
-  EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH
+  EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH,
+  EVENT_PARTICIPANTS_MAX
 } from '@findsports_oficial/db/event-limits'
 import {
   EVENT_START_PROBLEM_MESSAGE,
@@ -1249,7 +1250,10 @@ export const pubRouter = router({
           .max(EVENT_CHAMPIONSHIP_MAX_LENGTH),
         startsAt: z.string().datetime(),
         endsAt: z.string().datetime().optional(),
-        participantIds: z.array(z.string().uuid()).optional(),
+        participantIds: z
+          .array(z.string().uuid())
+          .max(EVENT_PARTICIPANTS_MAX)
+          .optional(),
         participantFreeText: z
           .string()
           .max(EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH)
@@ -1344,7 +1348,10 @@ export const pubRouter = router({
           .optional(),
         startsAt: z.string().datetime().optional(),
         endsAt: z.string().datetime().nullable().optional(),
-        participantIds: z.array(z.string().uuid()).optional(),
+        participantIds: z
+          .array(z.string().uuid())
+          .max(EVENT_PARTICIPANTS_MAX)
+          .optional(),
         participantFreeText: z
           .string()
           .max(EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH)
