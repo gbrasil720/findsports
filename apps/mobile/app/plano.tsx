@@ -145,6 +145,7 @@ export default function Plano() {
             address={owner.bar?.address ?? ''}
             people={proof.data?.people ?? 0}
             trialEnded={standing !== 'ended'}
+            noTrial={!s}
             choice={choice}
             indicated={indicated}
             onPick={(id) => {
@@ -539,6 +540,7 @@ function Ended({
   address,
   people,
   trialEnded,
+  noTrial,
   choice,
   indicated,
   onPick
@@ -548,6 +550,8 @@ function Ended({
   people: number
   /** O teste do cadastro acabou; `false` é assinatura que terminou. */
   trialEnded: boolean
+  /** Sem assinatura: o e-mail já tinha usado o teste do cadastro. */
+  noTrial: boolean
   choice: Plan
   indicated: Plan
   onPick: (plan: Plan) => void
@@ -582,14 +586,15 @@ function Ended({
         accessibilityRole="header"
         style={[styles.endedTitle, { color: palette.ink }]}
       >
-        {trialEnded ? 'O TESTE ' : 'A ASSINATURA '}
+        {noTrial ? 'ESCOLHA O ' : trialEnded ? 'O TESTE ' : 'A ASSINATURA '}
         <Text style={{ color: palette.dark ? ACID : palette.live }}>
-          {trialEnded ? 'ACABOU' : 'TERMINOU'}
+          {noTrial ? 'PLANO' : trialEnded ? 'ACABOU' : 'TERMINOU'}
         </Text>
       </Text>
       <Text style={[text(15.5, 'Regular', 1.45), { color: palette.muted }]}>
-        O bar saiu do mapa. Jogos, fotos e avaliações continuam guardados e
-        voltam junto com ele.
+        {noTrial
+          ? 'O teste grátis já foi usado neste e-mail. O bar entra no mapa quando você contratar um plano.'
+          : 'O bar saiu do mapa. Jogos, fotos e avaliações continuam guardados e voltam junto com ele.'}
       </Text>
       <View style={styles.plansRow}>
         {(['starter', 'pro', 'elite'] as Plan[]).map((id) => (

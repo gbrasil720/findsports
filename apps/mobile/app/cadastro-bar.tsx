@@ -2,7 +2,7 @@ import {
   AMENITIES,
   HIDDEN_AMENITY_IDS
 } from '@findsports_oficial/api/lib/amenities'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router'
 import { useRef, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
@@ -101,6 +101,11 @@ export default function CadastroBar() {
     preview ? { at: Date.now() } : null
   )
   const complete = useMutation(trpc.onboarding.completePub.mutationOptions())
+  // Um teste por e-mail: sem ele a tela não o promete (quem decide é o
+  // `completePub`; sem resposta vale a promessa de sempre).
+  const trial =
+    useQuery(trpc.onboarding.trialAvailable.queryOptions()).data?.trial !==
+    false
   const owner = useOwnerBar()
 
   const address = [street, number].filter(Boolean).join(', ')
@@ -137,7 +142,7 @@ export default function CadastroBar() {
   const submit = async () => {
     setProblem(null)
     try {
-      await complete.mutateAsync({
+      const result = await complete.mutateAsync({
         name: name.trim(),
         address,
         neighborhood: hood.trim(),
@@ -151,6 +156,8 @@ export default function CadastroBar() {
       })
       await refreshSession()
       queryClient.invalidateQueries()
+      // Sem teste o bar fica fora do ar até contratar: sem comprovante.
+      if (!result.trial) return router.replace('/plano')
       setDone({ at: Date.now() })
       setStep('receipt')
     } catch (error) {
@@ -290,7 +297,9 @@ export default function CadastroBar() {
                 { color: '#aaa9a4', textAlign: 'center' }
               ]}
             >
-              2 minutos · teste grátis de 90 dias, sem cartão
+              {trial
+                ? '2 minutos · teste grátis de 90 dias, sem cartão'
+                : '2 minutos'}
             </Text>
           </>
         ) : step === 'place' ? (
@@ -540,13 +549,15 @@ export default function CadastroBar() {
             <View style={[styles.trial, { backgroundColor: palette.mark }]}>
               <Icon name="calendar" size={20} color={palette.ink} />
               <View style={{ flex: 1 }}>
-                <Text
-                  style={[text(16, 'Bold', 1.3), { color: palette.ink }]}
-                >{`Teste grátis · ${TRIAL_DAYS} dias`}</Text>
+                <Text style={[text(16, 'Bold', 1.3), { color: palette.ink }]}>
+                  {trial ? `Teste grátis · ${TRIAL_DAYS} dias` : 'Plano'}
+                </Text>
                 <Text
                   style={[text(14, 'Regular', 1.4), { color: palette.muted }]}
                 >
-                  {`até ${dayMonth(new Date(Date.now() + TRIAL_DAYS * 86_400_000))}, sem cartão. O plano você escolhe depois do primeiro jogo.`}
+                  {trial
+                    ? `até ${dayMonth(new Date(Date.now() + TRIAL_DAYS * 86_400_000))}, sem cartão. O plano você escolhe depois do primeiro jogo.`
+                    : 'O teste grátis já foi usado neste e-mail. O bar entra no ar quando você contratar um plano, no painel do site.'}
                 </Text>
               </View>
             </View>
@@ -644,8 +655,12 @@ export default function CadastroBar() {
                 ? 'Começar'
                 : step === 'review'
                   ? complete.isPending
-                    ? 'Colocando no ar…'
-                    : 'Colocar meu bar no ar'
+                    ? trial
+                      ? 'Colocando no ar…'
+                      : 'Salvando…'
+                    : trial
+                      ? 'Colocar meu bar no ar'
+                      : 'Salvar e escolher o plano'
                   : 'Continuar'}
             </Text>
           </View>
