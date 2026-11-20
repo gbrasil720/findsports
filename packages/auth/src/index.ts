@@ -536,7 +536,8 @@ export function createAuth() {
       // fim do período em `subscription` — quem grava é o `onEvent`.
       stripe({
         stripeClient,
-        // Sem o segredo o webhook responde 500 em vez de aceitar sem conferir.
+        // Sem o segredo o webhook responde 500 em vez de aceitar sem conferir;
+        // em produção o env nem sobe sem ele (`packages/env/src/server.ts`).
         stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET ?? '',
         // O cliente no Stripe nasce no primeiro checkout, com o e-mail do
         // dono do bar: é para lá que o Stripe manda recibo e aviso (PRO-5).
