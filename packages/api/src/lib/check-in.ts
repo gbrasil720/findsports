@@ -43,9 +43,7 @@ export function checkInVerifies(accountCreatedAt: Date, checkedInAt: Date) {
 }
 
 /** Mesma regra em SQL, para leituras com `c` = check-in e `a` = conta. */
-export const checkInVerifiesSql = sql.raw(
-  `c.created_at >= (a.created_at AT TIME ZONE 'UTC') + interval '${CHECK_IN_MIN_ACCOUNT_AGE_DAYS} days'`
-)
+export const checkInVerifiesSql = sql`c.created_at >= (a.created_at AT TIME ZONE 'UTC') + make_interval(days => ${CHECK_IN_MIN_ACCOUNT_AGE_DAYS})`
 
 export const CHECK_IN_DAILY_LIMIT_MESSAGE = `Você já fez ${CHECK_INS_PER_DAY} check-ins hoje. Volte amanhã.`
 
