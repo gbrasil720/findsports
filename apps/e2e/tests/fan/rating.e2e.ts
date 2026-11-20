@@ -9,6 +9,7 @@ import {
   uniqueSpot
 } from '../../fixtures/fan'
 import { expect, test } from '../../fixtures/test'
+import { ageAccount } from '../../fixtures/users'
 
 // "Como foi?" (`/dashboard/avaliar/$eventId`, WEB-178, WEB-451, WEB-501): você
 // foi, voltaria, estrelas, o que pesou, comentário, nome e a visita verificada.
@@ -100,6 +101,7 @@ test('check-in mostra a visita verificada e a nota entra no bar', async ({
   const eventId = await pastGame(pub.barId, 1)
   const fan = await signInFanAt(page, spot)
   await insert('attendance', { user_id: fan.id, event_id: eventId })
+  await ageAccount(fan.id)
   await insert('attendance_checkin', {
     user_id: fan.id,
     event_id: eventId,

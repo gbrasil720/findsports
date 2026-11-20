@@ -7,7 +7,7 @@ import { createEvent } from '../../fixtures/going'
 import { interceptMediaUploads } from '../../fixtures/media'
 import { createPub } from '../../fixtures/pubs'
 import { expect, test } from '../../fixtures/test'
-import { createUser } from '../../fixtures/users'
+import { ageAccount, createUser } from '../../fixtures/users'
 
 // "Meu espaço": rascunho com a barra de salvar, geocoding só quando o
 // endereço muda (WEB-146), foto pelo upload direto para o R2, recursos pagos
@@ -677,6 +677,7 @@ test('painel de avaliações e prévia de como o torcedor vê', async ({
   for (const r of avaliacoes) {
     const fan = await createUser({ name: r.name })
     if (r.verified) {
+      await ageAccount(fan.id)
       await insert('attendance_checkin', {
         user_id: fan.id,
         event_id: eventId,
