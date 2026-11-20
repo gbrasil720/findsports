@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test'
 import {
   APP_SCHEME,
   buildTrustedOrigins,
+  isForeignPost,
   isSafeResetRedirect,
   resetRedirectTarget
 } from './trusted-origins'
@@ -148,5 +149,63 @@ describe('destino do reset que vale de fato', () => {
     })
     expect(resetRedirectTarget('https://evil.example/r', origins)).toBeNull()
     expect(resetRedirectTarget('//evil.example/r', origins)).toBeNull()
+  })
+})
+
+describe('origem do POST no tRPC', () => {
+  const trusted = buildTrustedOrigins({
+    baseUrl: 'https://www.onside.sh',
+    nodeEnv: 'production',
+    appScheme: APP_SCHEME
+  })
+
+  it('recusa POST de outro site, inclusive Origin null', () => {
+    expect(isForeignPost('POST', 'https://evil.example', trusted)).toBe(true)
+    expect(
+      isForeignPost('post', 'https://onside.sh.evil.example', trusted)
+    ).toBe(true)
+    expect(isForeignPost('POST', 'null', trusted)).toBe(true)
+  })
+
+  it('aceita o site, o apex, o Houdini e o POST sem Origin (app, servidor)', () => {
+    expect(isForeignPost('POST', 'https://www.onside.sh', trusted)).toBe(false)
+    expect(isForeignPost('POST', 'https://onside.sh', trusted)).toBe(false)
+    expect(isForeignPost('POST', 'https://houdini.onside.sh', trusted)).toBe(
+      false
+    )
+    expect(isForeignPost('POST', null, trusted)).toBe(false)
+  })
+
+  it('não mexe no GET (consultas)', () => {
+    expect(isForeignPost('GET', 'https://evil.example', trusted)).toBe(false)
+  })
+
+  it('aceita preview, dev local e E2E pela própria base', () => {
+    const preview = 'https://onside-web-preview.x.workers.dev'
+    expect(
+      isForeignPost(
+        'POST',
+        preview,
+        buildTrustedOrigins({ baseUrl: preview, nodeEnv: 'production' })
+      )
+    ).toBe(false)
+    const dev = buildTrustedOrigins({
+      baseUrl: 'http://localhost:3001',
+      nodeEnv: 'development',
+      appScheme: APP_SCHEME
+    })
+    expect(isForeignPost('POST', 'http://localhost:3001', dev)).toBe(false)
+    expect(isForeignPost('POST', 'http://houdini.localhost:3001', dev)).toBe(
+      false
+    )
+    expect(isForeignPost('POST', 'http://localhost:8081', dev)).toBe(false)
+    const e2e = 'http://127.0.0.1:3201'
+    expect(
+      isForeignPost(
+        'POST',
+        e2e,
+        buildTrustedOrigins({ baseUrl: e2e, nodeEnv: 'production' })
+      )
+    ).toBe(false)
   })
 })

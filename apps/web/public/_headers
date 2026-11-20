@@ -1,9 +1,12 @@
 # Só os arquivos de public/ (Workers assets) passam por aqui. O que o Worker
-# responde (SSR, /api) recebe o HSTS em src/worker.ts; hsts.test.ts mantém
-# os dois valores iguais. Sem includeSubDomains: mail, media e tiles não
-# passam por este Worker.
+# responde (SSR, /api) recebe os mesmos headers em src/worker.ts
+# (lib/security-headers.ts); security-headers.test.ts mantém os dois iguais.
+# Sem includeSubDomains: mail, media e tiles não passam por este Worker.
 /*
   Strict-Transport-Security: max-age=63072000
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(self), payment=(), usb=(), browsing-topics=()
 
 # Fontes versionadas pela URL (`?v=N` em tokens.css e nos preloads). Sem isto o
 # Workers assets manda `max-age=0, must-revalidate` e cada visita revalida.

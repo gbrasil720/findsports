@@ -12,8 +12,11 @@
     { "pattern": "www.onside.sh", "custom_domain": true },
     { "pattern": "houdini.onside.sh", "custom_domain": true }
   ],
-  // Fica para depuração, mas sem login: BETTER_AUTH_URL é o www.
-  "workers_dev": true,
+  // Desligado (relatório de vulnerabilidades 20/11/2026): no workers.dev o
+  // Worker de produção respondia fora da zona onside.sh, sem WAF nem rate
+  // limit dela, e com o Houdini em /houdini. Herdado pelos `env`: o preview
+  // o liga de volta.
+  "workers_dev": false,
   // URL de versão usaria o banco e os segredos de produção (épico WEB-198,
   // risco 6). Preview por PR é outro Worker (WEB-204).
   "preview_urls": false,
@@ -37,7 +40,6 @@
   //
   // WEB-205: as três URLs são o domínio público. O better-auth confia nessa
   // origem e na irmã sem www., e o cookie vale em onside.sh.
-  // O workers.dev deixa de logar.
   //
   // WEB-476: o provedor de e-mail é `EMAIL_API_URL` mais o segredo
   // `EMAIL_API_KEY`, que trocam juntos. MillionSend desde 29/10/2026 (chave
@@ -93,6 +95,8 @@
       // herdados do topo, e herdar o www roubaria o domínio de produção.
       "triggers": { "crons": [] },
       "routes": [],
+      // O preview só existe no workers.dev; o topo o desliga.
+      "workers_dev": true,
       "version_metadata": { "binding": "CF_VERSION_METADATA" },
       "ai": { "binding": "AI" },
       "queues": {

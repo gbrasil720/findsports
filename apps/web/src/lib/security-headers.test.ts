@@ -1,28 +1,37 @@
 import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 
-import { FRAME_ANCESTORS, HSTS, withHsts } from './hsts'
+import {
+  FRAME_ANCESTORS,
+  HSTS,
+  SECURITY_HEADERS,
+  withSecurityHeaders
+} from './security-headers'
 
-describe('HSTS no Worker', () => {
+describe('Headers de segurança no Worker', () => {
   test('resposta dinâmica sai com HSTS e mantém status, headers e corpo', async () => {
     const original = Response.redirect('https://www.onside.sh/login', 307)
-    const response = withHsts(original)
+    const response = withSecurityHeaders(original)
     expect(response.status).toBe(307)
     expect(response.headers.get('Location')).toBe('https://www.onside.sh/login')
     expect(response.headers.get('Strict-Transport-Security')).toBe(HSTS)
+    for (const [name, value] of Object.entries(SECURITY_HEADERS))
+      expect(response.headers.get(name)).toBe(value)
 
-    const page = withHsts(new Response('ok', { headers: { 'X-A': '1' } }))
+    const page = withSecurityHeaders(
+      new Response('ok', { headers: { 'X-A': '1' } })
+    )
     expect(page.headers.get('X-A')).toBe('1')
     expect(await page.text()).toBe('ok')
   })
 
   // REPORT.md §6: sem trava de iframe, outro site podia emoldurar o web.
   test('resposta dinâmica só abre em iframe da própria origem', () => {
-    const page = withHsts(new Response('ok'))
+    const page = withSecurityHeaders(new Response('ok'))
     expect(page.headers.get('Content-Security-Policy')).toBe(FRAME_ANCESTORS)
     expect(page.headers.get('X-Frame-Options')).toBe('SAMEORIGIN')
 
-    const comCsp = withHsts(
+    const comCsp = withSecurityHeaders(
       new Response('ok', {
         headers: { 'Content-Security-Policy': "default-src 'self'" }
       })
@@ -31,7 +40,7 @@ describe('HSTS no Worker', () => {
       "default-src 'self'; frame-ancestors 'self'"
     )
 
-    const comTrava = withHsts(
+    const comTrava = withSecurityHeaders(
       new Response('ok', {
         headers: { 'Content-Security-Policy': "frame-ancestors 'none'" }
       })
@@ -41,11 +50,16 @@ describe('HSTS no Worker', () => {
     )
   })
 
-  test('public/_headers manda o mesmo HSTS para todo arquivo estático', () => {
+  test('public/_headers manda os mesmos headers para todo arquivo estático', () => {
     const headers = readFileSync(
       new URL('../../public/_headers', import.meta.url),
       'utf8'
     )
-    expect(headers).toContain(`/*\n  Strict-Transport-Security: ${HSTS}\n`)
+    const lines = Object.entries(SECURITY_HEADERS)
+      .map(([name, value]) => `  ${name}: ${value}\n`)
+      .join('')
+    expect(headers).toContain(
+      `/*\n  Strict-Transport-Security: ${HSTS}\n${lines}`
+    )
   })
 })
