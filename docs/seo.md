@@ -86,8 +86,8 @@ das páginas legais.
 | `/llms.txt` | — | texto para assistentes de IA; não é página |
 | `/dashboard`, `/admin`, `/plan`, `/onboarding`, `/app`, `/houdini`, `/api` | não | `Disallow` no `robots.txt` (redirecionam para o login ou dão 404) |
 
-Fora de `www.onside.sh` (o `workers.dev` do `onside-web`, o preview por PR e
-`houdini.onside.sh`) o Worker manda `X-Robots-Tag: noindex, nofollow`
+Fora de `www.onside.sh` (o preview por PR e `houdini.onside.sh`; o `workers.dev`
+do `onside-web` de produção está desligado, `workers_dev: false`) o Worker manda `X-Robots-Tag: noindex, nofollow`
 (`applyHostIndexing`, em `apps/web/src/start.ts`): a mesma home em dois hosts seria conteúdo
 duplicado.
 

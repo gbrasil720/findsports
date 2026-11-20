@@ -46,9 +46,9 @@ export function applyHoudiniHeaders(request: Request, headers: Headers) {
 const CANONICAL_HOST = new URL(SITE_URL).hostname
 
 /**
- * SEO: só `www.onside.sh` entra no índice. O mesmo Worker responde no
- * `workers.dev` dele (depuração), e o preview por PR é uma cópia em outro
- * `workers.dev`: sem isto, as duas são a home duplicada com `index, follow`.
+ * SEO: só `www.onside.sh` entra no índice. O preview por PR é uma cópia no
+ * `workers.dev` e o Houdini responde no mesmo Worker: sem isto, são a home
+ * duplicada com `index, follow`.
  */
 export function applyHostIndexing(request: Request, headers: Headers) {
   if (new URL(request.url).hostname === CANONICAL_HOST) return
