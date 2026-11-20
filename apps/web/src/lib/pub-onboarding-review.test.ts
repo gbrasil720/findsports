@@ -21,4 +21,15 @@ describe('revisão do cadastro de bar (WEB-238)', () => {
     })
     expect(review.botao).not.toContain('no ar')
   })
+
+  test('sem teste: não promete os 90 dias e o botão leva ao plano', () => {
+    expect(
+      getPubOnboardingReview({ emailVerified: true, trial: false })
+    ).toEqual({
+      titulo: 'Tudo certo?',
+      texto:
+        'Confira antes de colocar no ar. Ao continuar, salvamos o cadastro e você escolhe o plano para o bar entrar no ar. O teste grátis já foi usado neste e-mail.',
+      botao: 'Salvar e escolher o plano'
+    })
+  })
 })

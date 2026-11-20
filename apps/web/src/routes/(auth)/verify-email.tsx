@@ -126,8 +126,9 @@ function VerifyEmailPage() {
         // inteiro, com a rotina.
         const { step: _step, ...payload } = draft
         let created = false
+        let trial = true
         try {
-          await completePub(payload)
+          trial = (await completePub(payload)).trial
           created = true
         } catch (err) {
           const concluido = mensagemOnboardingJaConcluido(err)
@@ -141,6 +142,12 @@ function VerifyEmailPage() {
         }
         localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)
         await refreshSessionCache()
+        // Sem teste (o e-mail já usou o seu) o bar fica fora do ar até
+        // contratar: sem comprovante, direto ao plano.
+        if (!trial) {
+          navigate({ to: '/plan' })
+          return
+        }
         const comprovante = created ? await finishSignup(payload) : null
         if (comprovante) setReceipt(comprovante)
         else navigate({ to: PUB_LIVE_PATH })
