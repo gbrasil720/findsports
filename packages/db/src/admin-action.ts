@@ -20,6 +20,7 @@ export const ADMIN_ACTION_KINDS = [
   'event.fix',
   'bar.sync_search',
   'bar.extend_trial',
+  'bar.start_trial',
   'bar.take_off_air',
   'bar.put_on_air',
   'bar.photo_approve',
