@@ -26,7 +26,7 @@ import {
   favoriteTeamIdsSchema,
   replaceFavoriteTeams
 } from '../lib/favorite-teams'
-import { geocodeAddress } from '../lib/geocode-address'
+import { cotaDeGeocode, geocodeAddress } from '../lib/geocode-address'
 import {
   assertCanConfigureHouseOffer,
   parseHouseOfferInput
@@ -175,7 +175,9 @@ export const onboardingRouter = router({
           uf: input.uf,
           cep: input.cep
         },
-        apiKey
+        apiKey,
+        fetch,
+        cotaDeGeocode(userId)
       )
 
       await db.transaction(async (tx) => {

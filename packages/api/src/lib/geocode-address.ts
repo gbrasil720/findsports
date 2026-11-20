@@ -9,6 +9,7 @@ import {
   type Uf
 } from './bar-profile-validation'
 import { normalizarCidade } from './city-match'
+import { incrementWindow, type JanelaLimite } from './rate-limit-store'
 import { createTtlCache } from './ttl-cache'
 
 /**
@@ -550,11 +551,41 @@ async function consultarProvedor(
   return { latitude: latitude.toString(), longitude: longitude.toString() }
 }
 
+/**
+ * Cota por conta das consultas pagas (relatório de vulnerabilidades de
+ * 20/11/2026): sem ela, uma conta de bar trocando o endereço em laço gastava
+ * as 5.000 consultas do dia e travava o cadastro de todos os bares. Conta só o
+ * que vai ao provedor (cache não gasta), uma vez por endereço, não por
+ * tentativa.
+ */
+export const GEOCODE_LIMIT: JanelaLimite = { max: 10, windowMs: 60 * 60_000 }
+
+export const GEOCODE_LIMIT_MESSAGE =
+  'Muitas buscas de endereço na última hora. Tente de novo mais tarde.'
+
+export function cotaDeGeocode(
+  userId: string,
+  increment: typeof incrementWindow = incrementWindow
+) {
+  return async () => {
+    const { allowed } = await increment(`geocode:user:${userId}`, GEOCODE_LIMIT)
+    if (!allowed) {
+      throw new TRPCError({
+        code: 'TOO_MANY_REQUESTS',
+        message: GEOCODE_LIMIT_MESSAGE
+      })
+    }
+  }
+}
+
 export async function geocodeAddress(
   endereco: EnderecoEstruturado,
   apiKey: string,
   // Injetável para teste; em produção é sempre o `fetch` global.
-  fetchImpl: typeof fetch = fetch
+  fetchImpl: typeof fetch = fetch,
+  // `cotaDeGeocode` da conta; roda antes de ir ao provedor. O script de
+  // regeocodificação não passa.
+  cobrar?: () => Promise<void>
 ): Promise<Coordenadas> {
   // O bairro entra na chave porque muda a escolha entre ruas homônimas: sem
   // ele, dois bares na mesma rua de bairros diferentes leriam a mesma entrada.
@@ -570,6 +601,7 @@ export async function geocodeAddress(
     .join('|')
 
   return cache.get(chave, async () => {
+    await cobrar?.()
     let ultimaFalha: FalhaTransitoria | null = null
 
     for (let tentativa = 1; tentativa <= TENTATIVAS; tentativa++) {
