@@ -71,12 +71,13 @@ export async function readTrialSignals(barId: string) {
   const [own] = await db
     .select({
       granted: trialGrant.granted,
-      // Linha de bar excluído tem `bar_id` nulo: daí o `IS DISTINCT FROM`.
+      // Linha de bar excluído tem `bar_id` nulo: daí o `IS DISTINCT FROM`. A
+      // coluna de fora vai qualificada à mão: o Drizzle a escreveria sem tabela.
       sameAddress: sql<boolean>`EXISTS (
         SELECT 1 FROM trial_grant o
-        WHERE o.address_hash = ${trialGrant.addressHash}
-          AND o.created_at < ${trialGrant.createdAt}
-          AND o.bar_id IS DISTINCT FROM ${trialGrant.barId}
+        WHERE o.address_hash = trial_grant.address_hash
+          AND o.created_at < trial_grant.created_at
+          AND o.bar_id IS DISTINCT FROM trial_grant.bar_id
       )`
     })
     .from(trialGrant)
