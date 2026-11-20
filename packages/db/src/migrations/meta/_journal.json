@@ -701,6 +701,13 @@
       "when": 1794849272804,
       "tag": "0100_bar_profile_alert",
       "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1795208379625,
+      "tag": "0101_trial_grant",
+      "breakpoints": true
     }
   ]
 }

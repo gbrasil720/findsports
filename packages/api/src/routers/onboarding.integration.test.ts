@@ -393,3 +393,116 @@ integrationTest(
     }
   }
 )
+
+/**
+ * Um teste do cadastro por e-mail (relatório de vulnerabilidades, 20/11/2026):
+ * excluir a conta e cadastrar de novo, com o e-mail escrito de outro jeito,
+ * dá um bar sem assinatura e fora do ar. O Houdini libera o teste.
+ */
+integrationTest(
+  'completePub com e-mail que já ganhou o teste: sem teste, aviso de endereço, e o Houdini libera',
+  async () => {
+    const { db, appRouter } = await load()
+    const { trialGrant } = await import(
+      '@findsports_oficial/db/schema/platform'
+    )
+    const { trialEmailHash } = await import('../lib/trial-grant')
+    const local = `dono${crypto.randomUUID().slice(0, 8)}`
+    const address = `Rua da Repetição ${local}, 10`
+    const signup = async (email: string) => {
+      const id = crypto.randomUUID()
+      await db.insert(user).values({
+        id,
+        name: 'Dono repetido',
+        email,
+        emailVerified: true,
+        role: 'pub',
+        onboardingCompleted: false
+      })
+      const base = contextFor(id, 'pub', new Date(), {
+        onboardingCompleted: false
+      })
+      const caller = appRouter.createCaller({
+        ...base,
+        session: { ...base.session, user: { ...base.session.user, email } }
+      })
+      const result = await withFakeGeocoding(() =>
+        caller.onboarding.completePub({
+          name: 'Bar repetido',
+          neighborhood: 'Centro',
+          city: 'São Paulo',
+          address,
+          houseOffer: 'Chopp em dobro'
+        })
+      )
+      const [row] = await db
+        .select({ id: bar.id, isActive: bar.isActive, offer: bar.houseOffer })
+        .from(bar)
+        .where(eq(bar.userId, id))
+      return { id, caller, result, bar: row }
+    }
+    const hash = trialEmailHash(`${local}@gmail.com`)
+    let second: Awaited<ReturnType<typeof signup>> | undefined
+    try {
+      const first = await signup(`${local}@gmail.com`)
+      expect(first.result).toEqual({ success: true, trial: true })
+      expect(first.bar?.isActive).toBe(true)
+      // Excluir a conta leva o bar, mas não a linha do teste.
+      await db.delete(user).where(eq(user.id, first.id))
+
+      second = await signup(
+        `${local.slice(0, 2)}.${local.slice(2)}+novo@googlemail.com`
+      )
+      expect(second.result).toEqual({ success: true, trial: false })
+      expect(second.bar).toMatchObject({ isActive: false, offer: null })
+      expect(await second.caller.onboarding.trialAvailable()).toEqual({
+        trial: false
+      })
+      const barId = second.bar?.id ?? ''
+      const { rows } = await db.execute(
+        sql`SELECT 1 FROM subscription WHERE bar_id = ${barId}`
+      )
+      expect(rows).toEqual([])
+
+      const admin = appRouter.createCaller(
+        contextFor(crypto.randomUUID(), 'admin')
+      )
+      expect(await admin.adminBars.ficha({ barId })).toMatchObject({
+        deniedTrial: true,
+        sameAddress: true
+      })
+
+      const started = await admin.adminBars.startTrial({ barId })
+      expect(started.isActive).toBe(true)
+      const { rows: sub } = await db.execute(sql`
+        SELECT s.status, s.plan, b.is_active,
+               s.current_period_end BETWEEN now() + interval '90 days' - interval '5 minutes'
+                                        AND now() + interval '90 days' AS vence_em_90_dias
+        FROM subscription s JOIN bar b ON b.id = s.bar_id
+        WHERE s.bar_id = ${barId}
+      `)
+      expect(sub).toEqual([
+        {
+          status: 'trialing',
+          plan: 'elite',
+          is_active: true,
+          vence_em_90_dias: true
+        }
+      ])
+      expect(await admin.adminBars.ficha({ barId })).toMatchObject({
+        deniedTrial: false
+      })
+      // De novo: já tem teste, recusa sem escrever.
+      await expect(admin.adminBars.startTrial({ barId })).rejects.toMatchObject(
+        { code: 'PRECONDITION_FAILED' }
+      )
+      const { rows: grimorio } = await db.execute(
+        sql`SELECT kind FROM admin_action WHERE target_id = ${barId}`
+      )
+      expect(grimorio).toEqual([{ kind: 'bar.start_trial' }])
+    } finally {
+      if (second) await db.delete(user).where(eq(user.id, second.id))
+      await db.delete(trialGrant).where(eq(trialGrant.emailHash, hash))
+    }
+  }
+)

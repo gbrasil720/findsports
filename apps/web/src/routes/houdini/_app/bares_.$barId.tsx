@@ -11,6 +11,7 @@ import {
   BarTricks,
   SearchDriftAlert,
   STANDING_LABELS,
+  StartTrialAlert,
   searchDrift
 } from '@/components/houdini/bar-tricks'
 import {
@@ -128,6 +129,11 @@ function FichaBody({ ficha }: { ficha: Ficha }) {
               ? STANDING_LABELS[ficha.standing]
               : 'sem assinatura'}
           </span>
+          {ficha.sameAddress ? (
+            <span className="hd-pill" data-tone="live">
+              Mesmo endereço de um bar anterior
+            </span>
+          ) : null}
           <span className="hd-lead" style={{ fontSize: 14 }}>
             {ficha.neighborhood}, {ficha.city}
             {ficha.uf ? `/${ficha.uf}` : ''} · desde{' '}
@@ -382,6 +388,7 @@ function Resumo({ ficha }: { ficha: Ficha }) {
                 </div>
               ) : null}
             </dl>
+            {ficha.deniedTrial && !sub ? <StartTrialAlert bar={ficha} /> : null}
             {searchDrift(ficha) ? (
               <SearchDriftAlert key={ficha.id} bar={ficha} />
             ) : (

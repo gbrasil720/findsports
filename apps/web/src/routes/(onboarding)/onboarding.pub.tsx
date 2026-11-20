@@ -18,7 +18,7 @@ import {
   DEFAULT_ROUTINE,
   type Routine
 } from '@findsports_oficial/api/lib/pub-routine'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -57,7 +57,7 @@ import {
   parsePubOnboardingDraft,
   serializePubOnboardingDraft
 } from '@/lib/pub-onboarding-draft'
-import { getPubOnboardingReview } from '@/lib/pub-onboarding-review'
+import { getPubOnboardingReview, TRIAL_USED } from '@/lib/pub-onboarding-review'
 import { uploadMedia } from '@/lib/upload-media'
 import { PUB_LIVE_PATH } from '@/utils/auth-guards'
 import { useCallbackUrl } from '@/utils/callback-url'
@@ -141,7 +141,17 @@ function PubOnboarding() {
   // seguia "sem sessão", e o rascunho de B saía no nome de A — na volta era
   // descartado. Havendo sessão o dono é o e-mail dela; o e-mail pendente do
   // cadastro só vale sem sessão.
-  const conta = useSession()?.user ?? user
+  const sessao = useSession()?.user
+  const conta = sessao ?? user
+  // Um teste por e-mail: sem ele a tela não o promete. Sem sessão (e-mail a
+  // confirmar) ou sem resposta, vale a promessa de sempre; quem decide é o
+  // `completePub`.
+  const trialQuery = useQuery({
+    ...trpc.onboarding.trialAvailable.queryOptions(),
+    enabled: Boolean(sessao),
+    meta: { errorToast: false }
+  })
+  const trial = trialQuery.data?.trial !== false
 
   const [step, setStep] = useState(0)
   const [name, setName] = useState('')
@@ -243,10 +253,12 @@ function PubOnboarding() {
   // WEB-238: a revisão diz o que acontece de fato ao continuar. Quem decide o
   // teste é o `completePub`.
   const revisao = getPubOnboardingReview({
-    emailVerified: conta?.emailVerified === true
+    emailVerified: conta?.emailVerified === true,
+    trial
   })
 
-  const seguirParaNoAr = async () => {
+  // Sem teste o bar fica fora do ar até contratar: o destino é o plano.
+  const seguirParaNoAr = async (comTeste = true) => {
     localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)
     // `onboardingCompleted` mudou no banco por fora do better-auth; sem
     // regravar o cache de sessão o guard da rota devolveria o usuário
@@ -256,13 +268,17 @@ function PubOnboarding() {
     // "no ar". `await`: o botão segue em "salvando" até a próxima tela abrir,
     // em vez de voltar ao normal com a revisão ainda na tela (WEB-286).
     await navigate(
-      callbackUrl === '/dashboard' ? { to: PUB_LIVE_PATH } : { to: callbackUrl }
+      !comTeste
+        ? { to: '/plan' }
+        : callbackUrl === '/dashboard'
+          ? { to: PUB_LIVE_PATH }
+          : { to: callbackUrl }
     )
   }
 
   const completeMutation = useMutation(
     trpc.onboarding.completePub.mutationOptions({
-      onSuccess: async (_, sent) => {
+      onSuccess: async (result, sent) => {
         analytics.onboardingCompleted({ role: 'pub' })
         localStorage.removeItem(PUB_ONBOARDING_DRAFT_KEY)
         if (photo) {
@@ -282,6 +298,10 @@ function PubOnboarding() {
         }
         // O bar já existe: o comprovante vem agora. Sem a assinatura para
         // ele, segue direto, como antes.
+        if (!result.trial) {
+          await seguirParaNoAr(false)
+          return
+        }
         const data = await finishSignup(sent)
         if (data) setReceipt(data)
         else await seguirParaNoAr()
@@ -655,8 +675,10 @@ function PubOnboarding() {
             <p className="ob-sub">
               Coloque seu bar no radar dos torcedores. Leva 2 minutos: você
               cadastra o bar, publica o primeiro jogo e vê como o torcedor
-              encontra. Teste grátis de {ONBOARDING_TRIAL.days} dias, sem
-              cartão.
+              encontra.
+              {trial
+                ? ` Teste grátis de ${ONBOARDING_TRIAL.days} dias, sem cartão.`
+                : ''}
             </p>
             <ul className="ob-ben">
               {WELCOME_FEATURES.map(([icon, title, text]) => (
@@ -808,14 +830,24 @@ function PubOnboarding() {
                 </div>
               ))}
               <div className="ob-ln">
-                <span>
-                  <b>Teste grátis</b>
+                {trial ? (
                   <span>
-                    {ONBOARDING_TRIAL.days} dias, até {trialEnd}, sem cartão. O
-                    plano você escolhe logo depois do primeiro jogo, antes de
-                    entrar no painel.
+                    <b>Teste grátis</b>
+                    <span>
+                      {ONBOARDING_TRIAL.days} dias, até {trialEnd}, sem cartão.
+                      O plano você escolhe logo depois do primeiro jogo, antes
+                      de entrar no painel.
+                    </span>
                   </span>
-                </span>
+                ) : (
+                  <span>
+                    <b>Plano</b>
+                    <span>
+                      {TRIAL_USED} Você escolhe o plano em seguida, e o bar
+                      entra no ar quando você contratar.
+                    </span>
+                  </span>
+                )}
               </div>
             </div>
           </>
