@@ -5,6 +5,7 @@ import { user } from '@findsports_oficial/db/schema/auth'
 import {
   bar,
   subscription,
+  trialGrant,
   userPreferenceSports
 } from '@findsports_oficial/db/schema/platform'
 import { env } from '@findsports_oficial/env/server'
@@ -41,6 +42,11 @@ import {
   searchCitySchema
 } from '../lib/search-city'
 import { searchRadiusKmSchema } from '../lib/search-radius'
+import {
+  trialAddressHash,
+  trialAlreadyGranted,
+  trialEmailHash
+} from '../lib/trial-grant'
 
 /**
  * WEB-324: lê o banco, não `ctx.session` — a sessão pode vir do cookie cache,
@@ -84,6 +90,11 @@ async function expireSessionCache(headers: Headers | undefined) {
 }
 
 export const onboardingRouter = router({
+  // A revisão do cadastro só promete o teste a quem vai ganhá-lo.
+  trialAvailable: pubProcedure.query(async ({ ctx }) => ({
+    trial: !(await trialAlreadyGranted(trialEmailHash(ctx.session.user.email)))
+  })),
+
   completePub: pubProcedure
     .input(
       z.object({
@@ -131,13 +142,21 @@ export const onboardingRouter = router({
       const userId = ctx.session.user.id
 
       await assertOnboardingPending(userId)
+      // Um teste por e-mail, também depois de excluir a conta (decisão do
+      // dono, 20/11/2026). Sem ele o bar nasce sem assinatura e fora do ar,
+      // como o teste vencido: o painel leva a contratar.
+      const emailHash = trialEmailHash(ctx.session.user.email)
+      const trial = !(await trialAlreadyGranted(emailHash))
       const trialPlan = input.routine
         ? recommendPlan(input.routine).plan
         : ONBOARDING_TRIAL.plan
 
       // A oferta é do Elite: confere contra a assinatura que este envio cria
       // (o teste do cadastro), antes do geocoding pago.
-      const houseOffer = parseHouseOfferInput(input.houseOffer ?? null)
+      // Sem teste não há Elite: a oferta fica de fora, sem recusar o cadastro.
+      const houseOffer = trial
+        ? parseHouseOfferInput(input.houseOffer ?? null)
+        : null
       if (houseOffer) {
         assertCanConfigureHouseOffer({
           plan: trialPlan,
@@ -201,11 +220,11 @@ export const onboardingRouter = router({
             latitude,
             longitude,
             // WEB-113: o bar nasce publicado, com o teste grátis abaixo.
-            isActive: true,
+            isActive: trial,
             routine: input.routine ?? null,
             // Nulo: o painel leva à escolha do plano do teste. Sem a rotina
             // vale o padrão do banco (já escolhido), como no código anterior.
-            ...(input.routine && { trialPlanChosenAt: null })
+            ...(input.routine && trial && { trialPlanChosenAt: null })
           })
           .returning({ id: bar.id })
 
@@ -219,11 +238,19 @@ export const onboardingRouter = router({
         // `bar.plan` acompanha pela trigger `subscription_bar_plan_sync`.
         // O vencimento usa o `now()` do banco: a coluna é `timestamp` sem
         // fuso, e um `Date` do JS entraria no fuso do processo que grava.
-        await tx.insert(subscription).values({
+        if (trial)
+          await tx.insert(subscription).values({
+            barId: newBar.id,
+            plan: trialPlan,
+            status: 'trialing',
+            currentPeriodEnd: sql`now() + make_interval(days => ${ONBOARDING_TRIAL.days}::int)`
+          })
+
+        await tx.insert(trialGrant).values({
+          emailHash,
+          addressHash: trialAddressHash(input),
           barId: newBar.id,
-          plan: trialPlan,
-          status: 'trialing',
-          currentPeriodEnd: sql`now() + make_interval(days => ${ONBOARDING_TRIAL.days}::int)`
+          granted: trial
         })
 
         if (input.houseTeamIds?.length)
@@ -236,7 +263,7 @@ export const onboardingRouter = router({
       })
 
       await expireSessionCache(ctx.headers)
-      return { success: true }
+      return { success: true, trial }
     }),
 
   completeFan: fanProcedure
