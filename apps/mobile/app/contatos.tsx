@@ -40,8 +40,8 @@ import {
 import { inviteMessage } from '@/lib/invite'
 import { trpc } from '@/lib/trpc'
 
-/** Teto do que vai ao servidor; agenda maior manda os primeiros. */
-const MAX_EMAILS = 2000
+/** Teto do servidor por chamada e por dia; agenda maior manda os primeiros. */
+const MAX_EMAILS = 500
 
 /**
  * Quem da agenda já está na Onside ("Contatos" da 11a). A conta tem e-mail,
