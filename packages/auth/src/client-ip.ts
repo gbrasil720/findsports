@@ -1,13 +1,20 @@
 import { isCloudflareWorkers } from './runtime'
 
+/**
+ * IP do cliente como chave de limite (cota de e-mail por IP, convite aberto),
+ * já pelo `chaveDeIp`. Todo chamador hoje é limite; quem precisar do IP exato
+ * (log, Turnstile) lê o cabeçalho, como o `advanced.ipAddress` do better-auth.
+ */
 export function extrairIp(
   headers: Headers,
   onWorkers = isCloudflareWorkers
 ): string {
   // No Workers, só o `cf-connecting-ip` não vem do cliente (WEB-199). Fora
   // dele (dev, testes) não há proxy: o E2E manda um `x-forwarded-for` por teste.
-  if (onWorkers) return headers.get('cf-connecting-ip')?.trim() || 'unknown'
-  return headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+  const ip = onWorkers
+    ? headers.get('cf-connecting-ip')
+    : headers.get('x-forwarded-for')?.split(',')[0]
+  return chaveDeIp(ip?.trim() || 'unknown')
 }
 
 /**

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import { chaveDeIp } from './client-ip'
+import { chaveDeIp, extrairIp } from './client-ip'
 
 describe('chaveDeIp', () => {
   it('mantém IPv4 e unknown', () => {
@@ -33,5 +33,13 @@ describe('chaveDeIp', () => {
     expect(chaveDeIp('1:2:3:4:5:6:7:8:9')).toBe('1:2:3:4:5:6:7:8:9')
     expect(chaveDeIp('::ffff:1.2.3.999')).toBe('::ffff:1.2.3.999')
     expect(chaveDeIp('zz::1')).toBe('zz::1')
+  })
+})
+
+describe('extrairIp', () => {
+  it('devolve o /64 do cf-connecting-ip no Workers', () => {
+    const headers = new Headers({ 'cf-connecting-ip': ' 2001:db8:1:2::99 ' })
+    expect(extrairIp(headers, true)).toBe('2001:db8:1:2::/64')
+    expect(extrairIp(new Headers(), true)).toBe('unknown')
   })
 })
