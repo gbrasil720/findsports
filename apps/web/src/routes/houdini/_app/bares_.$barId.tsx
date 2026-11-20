@@ -283,6 +283,25 @@ function Resumo({ ficha }: { ficha: Ficha }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {ficha.youngRaterWeeks.length ? (
+        <div className="hd-alert" role="alert">
+          <span className="hd-alert-title">
+            <Icon name="warn" size={18} />
+            Nota com contas novas
+          </span>
+          <p>
+            Semanas com 3 ou mais avaliações verificadas de contas com menos de
+            30 dias:{' '}
+            {ficha.youngRaterWeeks
+              .map(
+                (w) =>
+                  `semana de ${w.week.split('-').reverse().join('/')} (${countLabel(w.n, 'avaliação', 'avaliações')})`
+              )
+              .join(', ')}
+            . Confira na aba Avaliações.
+          </p>
+        </div>
+      ) : null}
       <section className="hd-grid" aria-label="Números do bar">
         {stats.map((s, i) => (
           <div

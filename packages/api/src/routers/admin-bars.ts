@@ -9,6 +9,7 @@ import {
   sql
 } from '@findsports_oficial/db'
 import { recordAdminAction } from '@findsports_oficial/db/admin-action'
+import { brasiliaDaySql } from '@findsports_oficial/db/event-window-sql'
 import { stripeSubscription, user } from '@findsports_oficial/db/schema/auth'
 import { adminAction } from '@findsports_oficial/db/schema/houdini'
 import {
@@ -412,101 +413,131 @@ export const adminBarsRouter = router({
     // Código do balcão em vigor.
     const seated = sql`${reservation.status} = 'confirmed'`
     // ponytail: listas com teto fixo, sem paginação; paginar quando um bar passar disso.
-    const [games, reservations, ratings, grimorio, [recent], [cancelReason]] =
-      await Promise.all([
-        db
-          .select({
-            id: event.id,
-            title,
-            championship: event.championship,
-            startsAt: event.startsAt,
-            // Rascunho (WEB-436) aparece na aba Jogos, marcado, para o
-            // suporte achar o "publiquei e não aparece"; fora das contagens.
-            draft: sql<boolean>`${event.publishedAt} IS NULL`,
-            reservations: sql<number>`(
+    const [
+      games,
+      reservations,
+      ratings,
+      grimorio,
+      [recent],
+      [cancelReason],
+      youngRaterWeeks
+    ] = await Promise.all([
+      db
+        .select({
+          id: event.id,
+          title,
+          championship: event.championship,
+          startsAt: event.startsAt,
+          // Rascunho (WEB-436) aparece na aba Jogos, marcado, para o
+          // suporte achar o "publiquei e não aparece"; fora das contagens.
+          draft: sql<boolean>`${event.publishedAt} IS NULL`,
+          reservations: sql<number>`(
               SELECT count(*)::int FROM ${reservation}
               WHERE ${reservation.eventId} = ${event.id} AND ${seated}
             )`
-          })
-          .from(event)
-          .innerJoin(bar, eq(bar.id, event.barId))
-          .where(
-            and(eq(event.barId, input.barId), sql`${event.startsAt} > now()`)
-          )
-          .orderBy(event.startsAt)
-          .limit(100),
-        db
-          .select({
-            id: reservation.id,
-            guestName: user.name,
-            status: reservation.status,
-            createdAt: reservation.createdAt,
-            gameTitle: title,
-            startsAt: event.startsAt
-          })
-          .from(reservation)
-          .innerJoin(event, eq(event.id, reservation.eventId))
-          .innerJoin(user, eq(user.id, reservation.userId))
-          .where(eq(event.barId, input.barId))
-          .orderBy(sql`${reservation.createdAt} DESC`)
-          .limit(50),
-        db
-          .select({
-            id: barRating.id,
-            wouldReturn: barRating.wouldReturn,
-            createdAt: barRating.createdAt,
-            fanName: user.name,
-            gameTitle: title
-          })
-          .from(barRating)
-          .innerJoin(event, eq(event.id, barRating.eventId))
-          .innerJoin(user, eq(user.id, barRating.actorUserId))
-          .where(eq(barRating.barId, input.barId))
-          .orderBy(sql`${barRating.createdAt} DESC`)
-          .limit(50),
-        // O bar e o dono: entrar na pele do dono também é truque sobre o bar.
-        db
-          .select()
-          .from(adminAction)
-          .where(
-            or(
-              and(
-                eq(adminAction.targetType, 'bar'),
-                eq(adminAction.targetId, input.barId)
-              ),
-              and(
-                eq(adminAction.targetType, 'user'),
-                eq(adminAction.targetId, row.owner.id)
-              )
-            )
-          )
-          .orderBy(sql`${adminAction.createdAt} DESC, ${adminAction.id} DESC`)
-          .limit(50),
-        db
-          .select({
-            n: sql<number>`count(*)::int`
-          })
-          .from(reservation)
-          .innerJoin(event, eq(event.id, reservation.eventId))
-          .where(
+        })
+        .from(event)
+        .innerJoin(bar, eq(bar.id, event.barId))
+        .where(
+          and(eq(event.barId, input.barId), sql`${event.startsAt} > now()`)
+        )
+        .orderBy(event.startsAt)
+        .limit(100),
+      db
+        .select({
+          id: reservation.id,
+          guestName: user.name,
+          status: reservation.status,
+          createdAt: reservation.createdAt,
+          gameTitle: title,
+          startsAt: event.startsAt
+        })
+        .from(reservation)
+        .innerJoin(event, eq(event.id, reservation.eventId))
+        .innerJoin(user, eq(user.id, reservation.userId))
+        .where(eq(event.barId, input.barId))
+        .orderBy(sql`${reservation.createdAt} DESC`)
+        .limit(50),
+      db
+        .select({
+          id: barRating.id,
+          wouldReturn: barRating.wouldReturn,
+          createdAt: barRating.createdAt,
+          fanName: user.name,
+          gameTitle: title
+        })
+        .from(barRating)
+        .innerJoin(event, eq(event.id, barRating.eventId))
+        .innerJoin(user, eq(user.id, barRating.actorUserId))
+        .where(eq(barRating.barId, input.barId))
+        .orderBy(sql`${barRating.createdAt} DESC`)
+        .limit(50),
+      // O bar e o dono: entrar na pele do dono também é truque sobre o bar.
+      db
+        .select()
+        .from(adminAction)
+        .where(
+          or(
             and(
-              eq(event.barId, input.barId),
-              seated,
-              sql`${reservation.createdAt} > now() - interval '30 days'`
+              eq(adminAction.targetType, 'bar'),
+              eq(adminAction.targetId, input.barId)
+            ),
+            and(
+              eq(adminAction.targetType, 'user'),
+              eq(adminAction.targetId, row.owner.id)
             )
-          ),
-        // O último "Por que está cancelando?" (WEB-445).
-        db
-          .select({
-            reason: subscriptionCancelReason.reason,
-            plan: subscriptionCancelReason.plan,
-            createdAt: subscriptionCancelReason.createdAt
-          })
-          .from(subscriptionCancelReason)
-          .where(eq(subscriptionCancelReason.barId, input.barId))
-          .orderBy(sql`${subscriptionCancelReason.createdAt} DESC`)
-          .limit(1)
-      ])
+          )
+        )
+        .orderBy(sql`${adminAction.createdAt} DESC, ${adminAction.id} DESC`)
+        .limit(50),
+      db
+        .select({
+          n: sql<number>`count(*)::int`
+        })
+        .from(reservation)
+        .innerJoin(event, eq(event.id, reservation.eventId))
+        .where(
+          and(
+            eq(event.barId, input.barId),
+            seated,
+            sql`${reservation.createdAt} > now() - interval '30 days'`
+          )
+        ),
+      // O último "Por que está cancelando?" (WEB-445).
+      db
+        .select({
+          reason: subscriptionCancelReason.reason,
+          plan: subscriptionCancelReason.plan,
+          createdAt: subscriptionCancelReason.createdAt
+        })
+        .from(subscriptionCancelReason)
+        .where(eq(subscriptionCancelReason.barId, input.barId))
+        .orderBy(sql`${subscriptionCancelReason.createdAt} DESC`)
+        .limit(1),
+      // Sinal de nota fabricada (relatório de vulnerabilidades, 20/11/2026):
+      // semanas (segunda de Brasília) com 3+ avaliações verificadas de
+      // contas com menos de 30 dias na hora de avaliar. Só leitura.
+      db
+        .select({
+          week: sql<string>`date_trunc('week', ${brasiliaDaySql(
+            sql`(${barRating.createdAt} AT TIME ZONE 'UTC')`
+          )})::date::text`,
+          n: sql<number>`count(*)::int`
+        })
+        .from(barRating)
+        .innerJoin(user, eq(user.id, barRating.actorUserId))
+        .where(
+          and(
+            eq(barRating.barId, input.barId),
+            eq(barRating.verified, true),
+            sql`${barRating.createdAt} < (${user.createdAt} AT TIME ZONE 'UTC') + interval '30 days'`
+          )
+        )
+        .groupBy(sql`1`)
+        .having(sql`count(*) >= 3`)
+        .orderBy(sql`1 DESC`)
+        .limit(5)
+    ])
 
     const sub = row.subscription
     const now = new Date()
@@ -523,7 +554,8 @@ export const adminBarsRouter = router({
       reservations30d: recent ?? { n: 0 },
       ratings,
       grimorio,
-      cancelReason: cancelReason ?? null
+      cancelReason: cancelReason ?? null,
+      youngRaterWeeks
     }
   })
 })
