@@ -64,11 +64,15 @@ const INVITE_PREVIEW_LIMIT = { max: 30, windowMs: 3_600_000 }
  */
 const FRIEND_CODE_LIMIT = { max: 10, windowMs: 3_600_000 }
 /**
- * Hashes de contatos por dia, por pessoa: três aberturas da tela com a agenda
- * cheia (2000 cada). ponytail: conta toda abertura, mesmo com a agenda igual;
- * contar só hashes novos pede guardá-los (servidor) ou cachear no aparelho.
+ * Hashes de contatos por dia, por pessoa: uma abertura com a agenda cheia
+ * (500, o teto da chamada). ponytail: conta toda abertura, mesmo com a agenda
+ * igual; contar só hashes novos pede guardá-los (servidor) ou cachear no
+ * aparelho.
  */
-const CONTACTS_LIMIT = { max: 6000, windowMs: 86_400_000 }
+const CONTACTS_PER_CALL = 500
+const CONTACTS_LIMIT = { max: CONTACTS_PER_CALL, windowMs: 86_400_000 }
+/** Conta com menos de um dia não confere contatos: criar contas furaria o teto. */
+const CONTACTS_MIN_ACCOUNT_AGE_MS = 86_400_000
 
 async function limitFriendCode(me: string) {
   const attempt = await incrementWindow(
@@ -740,18 +744,28 @@ export const friendsRouter = router({
   matchContacts: fanProcedure
     .input(
       z.object({
+        // 2000: o app publicado manda até isso; só os 500 primeiros contam.
         hashes: z.array(z.string().regex(/^[0-9a-f]{64}$/)).max(2000)
       })
     )
     .mutation(async ({ ctx, input }) => {
       const me = ctx.session.user.id
-      if (!input.hashes.length) return []
+      const hashes = input.hashes.slice(0, CONTACTS_PER_CALL)
+      if (!hashes.length) return []
+      // TOO_MANY_REQUESTS, não FORBIDDEN: o app publicado já mostra a frase
+      // do servidor para esse código.
+      const age = Date.now() - new Date(ctx.session.user.createdAt).getTime()
+      if (age < CONTACTS_MIN_ACCOUNT_AGE_MS)
+        throw new TRPCError({
+          code: 'TOO_MANY_REQUESTS',
+          message: 'Conta nova. A agenda libera um dia depois do cadastro.'
+        })
       // Conta hashes, não chamadas: sem teto, a lista de e-mails de um
       // vazamento viraria nome e @ de quem está na Onside.
       const attempt = await incrementWindow(
         `match-contacts:user:${me}`,
         CONTACTS_LIMIT,
-        input.hashes.length
+        hashes.length
       )
       if (!attempt.allowed)
         throw new TRPCError({
@@ -774,7 +788,7 @@ export const friendsRouter = router({
             AND ${user.friendRequestsFrom} = 'everyone'
             AND ${user.findableByEmail}
             AND encode(sha256(convert_to(lower(trim(${user.email})), 'UTF8')), 'hex')
-              IN ${input.hashes}`
+              IN ${hashes}`
         )
         .limit(50)
       return withRelations(me, people)
