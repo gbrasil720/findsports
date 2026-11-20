@@ -100,6 +100,8 @@ export type AbacateCheckout = {
   url: string
   externalId: string | null
   status: string
+  /** Os produtos (`id` da AbacatePay); a leitura traz, a criação nem sempre. */
+  items?: { id: string; quantity: number }[]
 }
 
 // O id do produto não muda; um isolate do Worker só o busca uma vez.
