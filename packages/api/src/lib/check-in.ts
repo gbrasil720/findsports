@@ -1,11 +1,14 @@
 import { and, db, eq, sql } from '@findsports_oficial/db'
 import {
+  brasiliaDay,
   getValidationWindow,
   isWithinValidationWindow
 } from '@findsports_oficial/db/event-window'
+import { onBrasiliaDaysSql } from '@findsports_oficial/db/event-window-sql'
 import {
   CHECK_IN_MIN_ACCOUNT_AGE_DAYS,
-  CHECK_IN_RADIUS_M
+  CHECK_IN_RADIUS_M,
+  CHECK_INS_PER_DAY
 } from '@findsports_oficial/db/rating-limits'
 import { attendanceCheckin } from '@findsports_oficial/db/schema/attendance'
 import { TRPCError } from '@trpc/server'
@@ -18,7 +21,7 @@ type EventTimes = Parameters<typeof getValidationWindow>[0]
  * Check-in "Estou aqui" (WEB-408): o torcedor, com o app aberto, manda a
  * posição; quem decide é o servidor. Vale dentro da janela do jogo (a mesma
  * do código do balcão, 3 h antes a 3 h depois) e até `CHECK_IN_RADIUS_M` do
- * bar. Um por jogo. Conta como visita
+ * bar. Um por jogo, dois por dia de Brasília. Conta como visita
  * (`visits.ts`) e torna verificada a avaliação daquele jogo (o banco cuida,
  * `bar_rating.verified`) só se a conta já tinha 7 dias (`checkInVerifies`).
  *
@@ -43,6 +46,8 @@ export function checkInVerifies(accountCreatedAt: Date, checkedInAt: Date) {
 export const checkInVerifiesSql = sql.raw(
   `c.created_at >= (a.created_at AT TIME ZONE 'UTC') + interval '${CHECK_IN_MIN_ACCOUNT_AGE_DAYS} days'`
 )
+
+export const CHECK_IN_DAILY_LIMIT_MESSAGE = `Você já fez ${CHECK_INS_PER_DAY} check-ins hoje. Volte amanhã.`
 
 /** Por que o check-in não vale, ou `null` se vale. Regra pura, testada. */
 export function checkInRefusal(input: {
@@ -106,11 +111,34 @@ export async function checkIn(
   if (refusal) {
     throw new TRPCError({ code: 'PRECONDITION_FAILED', message: refusal })
   }
-  // Repetido não é erro: o primeiro check-in vale e o segundo só o confirma.
-  await db
-    .insert(attendanceCheckin)
-    .values({ userId, ...input, distanceM })
-    .onConflictDoNothing()
+  await db.transaction(async (tx) => {
+    // Enfileira os check-ins da conta: pedidos ao mesmo tempo não furam o teto.
+    await tx.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtext(${`checkin:${userId}`}))`
+    )
+    const counted = await tx.execute<{ today: number; here: boolean }>(sql`
+      SELECT
+        count(*) FILTER (WHERE ${onBrasiliaDaysSql(
+          sql`(created_at AT TIME ZONE 'UTC')`,
+          brasiliaDay(now)
+        )})::int AS today,
+        bool_or(event_id = ${input.eventId}) AS here
+      FROM attendance_checkin WHERE user_id = ${userId}
+    `)
+    const { today = 0, here = false } = counted.rows[0] ?? {}
+    // Repetido não é erro: o primeiro check-in vale e o segundo só o confirma.
+    if (here) return
+    if (today >= CHECK_INS_PER_DAY) {
+      throw new TRPCError({
+        code: 'TOO_MANY_REQUESTS',
+        message: CHECK_IN_DAILY_LIMIT_MESSAGE
+      })
+    }
+    await tx
+      .insert(attendanceCheckin)
+      .values({ userId, ...input, distanceM, createdAt: now })
+      .onConflictDoNothing()
+  })
   return { checkedIn: true }
 }
 
