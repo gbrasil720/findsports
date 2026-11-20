@@ -1,4 +1,5 @@
 import {
+  assertUploadQuota,
   deleteAvatar,
   MediaUploadError,
   signMediaUpload
@@ -40,6 +41,7 @@ export const Route = createFileRoute('/api/user/avatar')({
             )
           }
 
+          await assertUploadQuota(session.user.id)
           return Response.json(
             await signMediaUpload(avatarPathname(session.user.id), body)
           )
