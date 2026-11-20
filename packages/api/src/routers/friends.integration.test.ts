@@ -106,7 +106,7 @@ integrationTest('amizade de ponta a ponta', async () => {
     // Contatos: só pelo hash do e-mail, e só quem aceita pedidos de todos.
     const hash = (email: string) =>
       createHash('sha256').update(email.toLowerCase()).digest('hex')
-    const matched = await as(caio).matchContacts({
+    const matched = await as(caio, old).matchContacts({
       hashes: [hash(ana.email), hash(dora.email.toUpperCase())]
     })
     expect(matched.map((m) => m.id)).toEqual([ana.id])
