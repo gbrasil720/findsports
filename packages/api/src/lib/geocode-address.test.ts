@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
 import { TRPCError } from '@trpc/server'
 
-import { geocodeAddress, limparCacheDeGeocoding } from './geocode-address'
+import {
+  cotaDeGeocode,
+  GEOCODE_LIMIT,
+  GEOCODE_LIMIT_MESSAGE,
+  geocodeAddress,
+  limparCacheDeGeocoding
+} from './geocode-address'
 
 function resposta(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -658,5 +664,52 @@ describe('geocoding de endereço (ESC-14, WEB-73)', () => {
     // A segunda chamada precisa tentar de novo, não repetir a recusa.
     const coords = await geocodeAddress(rua('Rua S'), 'k', f.impl)
     expect(coords.latitude).toBe('-23.5505')
+  })
+})
+
+describe('cota de geocode por conta', () => {
+  beforeEach(() => limparCacheDeGeocoding())
+
+  it('cobra só o que vai ao provedor, uma vez por endereço', async () => {
+    let cobrancas = 0
+    const cobrar = async () => {
+      cobrancas++
+    }
+    const f = fetchFalso(new Error('rede'), resposta(achou('Rua Augusta')))
+    await geocodeAddress(rua('Rua Augusta 1'), 'k', f.impl, cobrar)
+    await geocodeAddress(rua('Rua Augusta 1'), 'k', f.impl, cobrar)
+    expect(f.chamadas()).toBe(2)
+    expect(cobrancas).toBe(1)
+  })
+
+  it('acima do teto recusa sem consultar o provedor', async () => {
+    const contagem = new Map<string, number>()
+    const increment = (async (key: string) => {
+      const count = (contagem.get(key) ?? 0) + 1
+      contagem.set(key, count)
+      return { allowed: count <= GEOCODE_LIMIT.max, retryAfterMs: 0, count }
+    }) as Parameters<typeof cotaDeGeocode>[1]
+    const f = fetchFalso(resposta(achou('Rua Augusta')))
+
+    for (let i = 0; i < GEOCODE_LIMIT.max; i++) {
+      await geocodeAddress(
+        rua(`Rua Augusta ${i}`),
+        'k',
+        f.impl,
+        cotaDeGeocode('u1', increment)
+      )
+    }
+    const err = await capturar(
+      geocodeAddress(
+        rua('Rua Augusta 999'),
+        'k',
+        f.impl,
+        cotaDeGeocode('u1', increment)
+      )
+    )
+    expect(err.code).toBe('TOO_MANY_REQUESTS')
+    expect(err.message).toBe(GEOCODE_LIMIT_MESSAGE)
+    expect(f.chamadas()).toBe(GEOCODE_LIMIT.max)
+    expect([...contagem.keys()]).toEqual(['geocode:user:u1'])
   })
 })
