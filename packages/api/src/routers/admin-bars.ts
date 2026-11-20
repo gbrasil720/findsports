@@ -15,7 +15,8 @@ import {
   bar,
   event,
   subscription,
-  subscriptionCancelReason
+  subscriptionCancelReason,
+  trialGrant
 } from '@findsports_oficial/db/schema/platform'
 import { barRating } from '@findsports_oficial/db/schema/rating'
 import { reservation } from '@findsports_oficial/db/schema/reservation'
@@ -27,6 +28,9 @@ import { adminProcedure, router } from '../index'
 import { getCurrentPlan, getSubscriptionStanding } from '../lib/current-plan'
 import { escapeLike } from '../lib/escape-like'
 import { gameTitle } from '../lib/game-participants'
+import { ONBOARDING_TRIAL } from '../lib/plan-limits'
+import { readRoutine, recommendPlan } from '../lib/pub-routine'
+import { readTrialSignals } from '../lib/trial-grant'
 
 const PAGE_SIZE = 25
 
@@ -315,6 +319,61 @@ export const adminBarsRouter = router({
     ),
 
   /**
+   * "Liberar teste": o bar que foi ao ar sem teste porque o e-mail já tinha
+   * usado o seu (`trial_grant`) ganha os 90 dias do cadastro, como no
+   * `completePub`: plano da rotina, a escolher no painel.
+   */
+  startTrial: adminProcedure.input(barInput).mutation(({ ctx, input }) =>
+    db.transaction(async (tx) => {
+      const found = await lockBar(tx, input.barId)
+      if (found.status) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: 'Este bar já tem assinatura ou teste.'
+        })
+      }
+      const [own] = await tx
+        .select({ routine: bar.routine })
+        .from(bar)
+        .where(eq(bar.id, input.barId))
+      const routine = readRoutine(own?.routine)
+      const plan = routine ? recommendPlan(routine).plan : ONBOARDING_TRIAL.plan
+      const [created] = await tx
+        .insert(subscription)
+        .values({
+          barId: input.barId,
+          plan,
+          status: 'trialing',
+          currentPeriodEnd: sql`now() + make_interval(days => ${ONBOARDING_TRIAL.days}::int)`
+        })
+        .returning({ currentPeriodEnd: subscription.currentPeriodEnd })
+      const isActive =
+        found.isActive || !(await takenOffAirByAdmin(tx, input.barId))
+      await tx
+        .update(bar)
+        .set({ isActive, ...(routine && { trialPlanChosenAt: null }) })
+        .where(eq(bar.id, input.barId))
+      await tx
+        .update(trialGrant)
+        .set({ granted: true })
+        .where(eq(trialGrant.barId, input.barId))
+      await recordAdminAction(
+        {
+          kind: 'bar.start_trial',
+          ...actor(ctx),
+          targetType: 'bar',
+          targetId: input.barId,
+          targetLabel: found.name,
+          before: { isActive: found.isActive },
+          after: { currentPeriodEnd: created?.currentPeriodEnd, isActive, plan }
+        },
+        tx
+      )
+      return { currentPeriodEnd: created?.currentPeriodEnd ?? null, isActive }
+    })
+  ),
+
+  /**
    * Tirar do ar e religar. Religar com o teste do cadastro vencido seria
    * desfeito pela reconciliação do dia seguinte: o caminho é estender.
    */
@@ -412,101 +471,110 @@ export const adminBarsRouter = router({
     // Código do balcão em vigor.
     const seated = sql`${reservation.status} = 'confirmed'`
     // ponytail: listas com teto fixo, sem paginação; paginar quando um bar passar disso.
-    const [games, reservations, ratings, grimorio, [recent], [cancelReason]] =
-      await Promise.all([
-        db
-          .select({
-            id: event.id,
-            title,
-            championship: event.championship,
-            startsAt: event.startsAt,
-            // Rascunho (WEB-436) aparece na aba Jogos, marcado, para o
-            // suporte achar o "publiquei e não aparece"; fora das contagens.
-            draft: sql<boolean>`${event.publishedAt} IS NULL`,
-            reservations: sql<number>`(
+    const [
+      games,
+      reservations,
+      ratings,
+      grimorio,
+      [recent],
+      [cancelReason],
+      trialSignals
+    ] = await Promise.all([
+      db
+        .select({
+          id: event.id,
+          title,
+          championship: event.championship,
+          startsAt: event.startsAt,
+          // Rascunho (WEB-436) aparece na aba Jogos, marcado, para o
+          // suporte achar o "publiquei e não aparece"; fora das contagens.
+          draft: sql<boolean>`${event.publishedAt} IS NULL`,
+          reservations: sql<number>`(
               SELECT count(*)::int FROM ${reservation}
               WHERE ${reservation.eventId} = ${event.id} AND ${seated}
             )`
-          })
-          .from(event)
-          .innerJoin(bar, eq(bar.id, event.barId))
-          .where(
-            and(eq(event.barId, input.barId), sql`${event.startsAt} > now()`)
-          )
-          .orderBy(event.startsAt)
-          .limit(100),
-        db
-          .select({
-            id: reservation.id,
-            guestName: user.name,
-            status: reservation.status,
-            createdAt: reservation.createdAt,
-            gameTitle: title,
-            startsAt: event.startsAt
-          })
-          .from(reservation)
-          .innerJoin(event, eq(event.id, reservation.eventId))
-          .innerJoin(user, eq(user.id, reservation.userId))
-          .where(eq(event.barId, input.barId))
-          .orderBy(sql`${reservation.createdAt} DESC`)
-          .limit(50),
-        db
-          .select({
-            id: barRating.id,
-            wouldReturn: barRating.wouldReturn,
-            createdAt: barRating.createdAt,
-            fanName: user.name,
-            gameTitle: title
-          })
-          .from(barRating)
-          .innerJoin(event, eq(event.id, barRating.eventId))
-          .innerJoin(user, eq(user.id, barRating.actorUserId))
-          .where(eq(barRating.barId, input.barId))
-          .orderBy(sql`${barRating.createdAt} DESC`)
-          .limit(50),
-        // O bar e o dono: entrar na pele do dono também é truque sobre o bar.
-        db
-          .select()
-          .from(adminAction)
-          .where(
-            or(
-              and(
-                eq(adminAction.targetType, 'bar'),
-                eq(adminAction.targetId, input.barId)
-              ),
-              and(
-                eq(adminAction.targetType, 'user'),
-                eq(adminAction.targetId, row.owner.id)
-              )
-            )
-          )
-          .orderBy(sql`${adminAction.createdAt} DESC, ${adminAction.id} DESC`)
-          .limit(50),
-        db
-          .select({
-            n: sql<number>`count(*)::int`
-          })
-          .from(reservation)
-          .innerJoin(event, eq(event.id, reservation.eventId))
-          .where(
+        })
+        .from(event)
+        .innerJoin(bar, eq(bar.id, event.barId))
+        .where(
+          and(eq(event.barId, input.barId), sql`${event.startsAt} > now()`)
+        )
+        .orderBy(event.startsAt)
+        .limit(100),
+      db
+        .select({
+          id: reservation.id,
+          guestName: user.name,
+          status: reservation.status,
+          createdAt: reservation.createdAt,
+          gameTitle: title,
+          startsAt: event.startsAt
+        })
+        .from(reservation)
+        .innerJoin(event, eq(event.id, reservation.eventId))
+        .innerJoin(user, eq(user.id, reservation.userId))
+        .where(eq(event.barId, input.barId))
+        .orderBy(sql`${reservation.createdAt} DESC`)
+        .limit(50),
+      db
+        .select({
+          id: barRating.id,
+          wouldReturn: barRating.wouldReturn,
+          createdAt: barRating.createdAt,
+          fanName: user.name,
+          gameTitle: title
+        })
+        .from(barRating)
+        .innerJoin(event, eq(event.id, barRating.eventId))
+        .innerJoin(user, eq(user.id, barRating.actorUserId))
+        .where(eq(barRating.barId, input.barId))
+        .orderBy(sql`${barRating.createdAt} DESC`)
+        .limit(50),
+      // O bar e o dono: entrar na pele do dono também é truque sobre o bar.
+      db
+        .select()
+        .from(adminAction)
+        .where(
+          or(
             and(
-              eq(event.barId, input.barId),
-              seated,
-              sql`${reservation.createdAt} > now() - interval '30 days'`
+              eq(adminAction.targetType, 'bar'),
+              eq(adminAction.targetId, input.barId)
+            ),
+            and(
+              eq(adminAction.targetType, 'user'),
+              eq(adminAction.targetId, row.owner.id)
             )
-          ),
-        // O último "Por que está cancelando?" (WEB-445).
-        db
-          .select({
-            reason: subscriptionCancelReason.reason,
-            plan: subscriptionCancelReason.plan,
-            createdAt: subscriptionCancelReason.createdAt
-          })
-          .from(subscriptionCancelReason)
-          .where(eq(subscriptionCancelReason.barId, input.barId))
-          .orderBy(sql`${subscriptionCancelReason.createdAt} DESC`)
-          .limit(1)
-      ])
+          )
+        )
+        .orderBy(sql`${adminAction.createdAt} DESC, ${adminAction.id} DESC`)
+        .limit(50),
+      db
+        .select({
+          n: sql<number>`count(*)::int`
+        })
+        .from(reservation)
+        .innerJoin(event, eq(event.id, reservation.eventId))
+        .where(
+          and(
+            eq(event.barId, input.barId),
+            seated,
+            sql`${reservation.createdAt} > now() - interval '30 days'`
+          )
+        ),
+      // O último "Por que está cancelando?" (WEB-445).
+      db
+        .select({
+          reason: subscriptionCancelReason.reason,
+          plan: subscriptionCancelReason.plan,
+          createdAt: subscriptionCancelReason.createdAt
+        })
+        .from(subscriptionCancelReason)
+        .where(eq(subscriptionCancelReason.barId, input.barId))
+        .orderBy(sql`${subscriptionCancelReason.createdAt} DESC`)
+        .limit(1),
+      // Sem teste por e-mail repetido e endereço de cadastro anterior.
+      readTrialSignals(input.barId)
+    ])
 
     const sub = row.subscription
     const now = new Date()
@@ -523,7 +591,8 @@ export const adminBarsRouter = router({
       reservations30d: recent ?? { n: 0 },
       ratings,
       grimorio,
-      cancelReason: cancelReason ?? null
+      cancelReason: cancelReason ?? null,
+      ...trialSignals
     }
   })
 })
