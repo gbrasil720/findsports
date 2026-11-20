@@ -15,8 +15,10 @@ import {
  *
  * Duas fontes: o código validado no balcão e não desfeito (o ingresso mora
  * em `reservation`/`reservation_code`, `attendance-ticket.ts`) e o check-in
- * por localização (WEB-408, `attendance_checkin`). A mesma regra, em SQL, é
- * a da avaliação verificada (`bar_rating_is_verified`, migration 0083).
+ * por localização (WEB-408, `attendance_checkin`). A avaliação verificada
+ * (`bar_rating_is_verified`, migrations 0083 e 0101) é esta regra menos o
+ * check-in de conta com menos de 7 dias (`checkInVerifies`): esse conta como
+ * visita, mas não entra na nota.
  *
  * Não é visita: a validação vista pelo bar ("Quem vai", o alerta "diz que foi
  * e o bar não registrou", as chegadas da análise comercial). Essas leem o
