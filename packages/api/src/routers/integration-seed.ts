@@ -260,3 +260,15 @@ export function fakeEmailApi(cleanups: (() => unknown)[], status = 200) {
   })
   return sent
 }
+
+/**
+ * Envelhece contas para o check-in verificar a avaliação (7 dias na hora do
+ * check-in, `checkInVerifies`). Chame antes de gravar o check-in.
+ */
+export async function ageAccounts(ids: string[], days = 8) {
+  const { db } = await load()
+  await db
+    .update(user)
+    .set({ createdAt: new Date(Date.now() - days * 86_400_000) })
+    .where(inArray(user.id, ids))
+}

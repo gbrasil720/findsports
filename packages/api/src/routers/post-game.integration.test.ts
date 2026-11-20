@@ -7,7 +7,13 @@ import {
 } from '@findsports_oficial/db/schema/attendance'
 import { barRating } from '@findsports_oficial/db/schema/rating'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
-import { contextFor, load, refusal, seedBar } from './integration-seed'
+import {
+  ageAccounts,
+  contextFor,
+  load,
+  refusal,
+  seedBar
+} from './integration-seed'
 
 /**
  * Pós-jogo numa fila só (`lib/post-game.ts`): um item por jogo com as duas
@@ -81,7 +87,9 @@ integrationTest('pós-jogo: fila, resposta única e desfazer', async () => {
       null,
       null
     ])
-    // Com check-in, o item diz como a visita foi confirmada.
+    // Check-in de conta com menos de 7 dias não verifica (relatório de
+    // 20/11/2026); com a conta mais velha na hora dele, o item diz como a
+    // visita foi confirmada.
     await db.insert(attendanceCheckin).values({
       userId: seeded.fanId,
       eventId: went,
@@ -89,6 +97,8 @@ integrationTest('pós-jogo: fila, resposta única e desfazer', async () => {
       longitude: 0,
       distanceM: 40
     })
+    expect((await api.pending())[0]?.verified).toBeNull()
+    await ageAccounts([seeded.fanId])
     expect((await api.pending())[0]?.verified).toBe('checkin')
     await db
       .delete(attendanceCheckin)
