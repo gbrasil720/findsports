@@ -13,7 +13,13 @@ import {
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 
 import { wilsonLowerBound } from '../lib/rating'
-import { contextFor, load, refusal, seedBar } from './integration-seed'
+import {
+  ageAccounts,
+  contextFor,
+  load,
+  refusal,
+  seedBar
+} from './integration-seed'
 
 /**
  * O que este teste trava, e por que cada coisa precisa de banco de verdade:
@@ -191,6 +197,7 @@ integrationTest(
 
       // Só a avaliação verificada conta (WEB-408): estes três fizeram
       // check-in no jogo. `vaiAssistir`, mais abaixo, não fez.
+      await ageAccounts([comIntencao, extra1, extra2])
       for (const fanId of [comIntencao, extra1, extra2]) {
         await db.execute(sql`
           INSERT INTO attendance_checkin

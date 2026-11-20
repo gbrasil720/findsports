@@ -8,7 +8,7 @@ import { user } from '@findsports_oficial/db/schema/auth'
 import { barRating } from '@findsports_oficial/db/schema/rating'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
 import { RATING_PUBLIC_FLOOR } from '../lib/rating'
-import { contextFor, load, seedBar } from './integration-seed'
+import { ageAccounts, contextFor, load, seedBar } from './integration-seed'
 
 /**
  * "O que pesou?" (WEB-398): as etiquetas vão junto do "voltaria" em
@@ -48,6 +48,7 @@ integrationTest(
         .insert(attendance)
         .values([seeded.fanId, ...fans].map((userId) => ({ userId, eventId })))
       // E com check-in: só a avaliação verificada entra na nota (WEB-408).
+      await ageAccounts(fans)
       await db.insert(attendanceCheckin).values(
         fans.map((userId) => ({
           userId,

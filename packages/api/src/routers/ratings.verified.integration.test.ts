@@ -16,7 +16,13 @@ import {
   reservationCodeUse
 } from '@findsports_oficial/db/schema/reservation'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
-import { contextFor, load, refusal, seedBar } from './integration-seed'
+import {
+  ageAccounts,
+  contextFor,
+  load,
+  refusal,
+  seedBar
+} from './integration-seed'
 
 /**
  * WEB-408 e WEB-451 contra o banco de verdade:
@@ -65,6 +71,8 @@ integrationTest(
       }))
     )
     const a = seeded.fanId
+    // Contas de mais de 7 dias: o check-in delas verifica a avaliação.
+    await ageAccounts([a, ...others])
     const fan = (id: string) => appRouter.createCaller(contextFor(id, 'fan'))
     const admin = appRouter.createCaller(
       contextFor(crypto.randomUUID(), 'admin')
