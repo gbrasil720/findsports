@@ -55,7 +55,6 @@ async function read(
   return readPixWebhook({
     raw,
     secretHeader: SECRET,
-    secretQuery: null,
     signature: await signatureFor(raw),
     secret: SECRET,
     ...overrides
@@ -73,12 +72,11 @@ describe('webhook do Pix', () => {
     })
   })
 
-  it('aceita o segredo pela query, como a AbacatePay também manda', async () => {
-    const result = await read(completed, {
-      secretHeader: null,
-      secretQuery: SECRET
+  it('sem o cabeçalho recusa: o segredo da query (que vai ao log) não vale', async () => {
+    expect(await read(completed, { secretHeader: null })).toEqual({
+      status: 401,
+      reason: 'secret'
     })
-    expect(result.status).toBe(200)
   })
 
   it('recusa segredo diferente do Worker, com o motivo', async () => {

@@ -70,11 +70,13 @@ export type PixWebhookRead =
 export async function readPixWebhook(input: {
   raw: string
   secretHeader: string | null
-  secretQuery: string | null
   signature: string | null
   secret: string
 }): Promise<PixWebhookRead> {
-  if (!safeEqual(input.secretHeader ?? input.secretQuery ?? '', input.secret)) {
+  // Só o cabeçalho: a AbacatePay manda o segredo também em `?webhookSecret=`,
+  // mas a URL vai inteira ao log do Worker (docs, "Segurança dos webhooks",
+  // recomendam o cabeçalho por isso).
+  if (!safeEqual(input.secretHeader ?? '', input.secret)) {
     return { status: 401, reason: 'secret' }
   }
   if (!safeEqual(input.signature ?? '', await signatureFor(input.raw))) {
@@ -120,7 +122,6 @@ export async function handlePixWebhook(request: Request): Promise<Response> {
   const read = await readPixWebhook({
     raw: await request.text(),
     secretHeader: request.headers.get('x-webhook-secret'),
-    secretQuery: new URL(request.url).searchParams.get('webhookSecret'),
     signature: request.headers.get('x-webhook-signature'),
     secret
   })
