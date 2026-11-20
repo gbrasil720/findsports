@@ -2,14 +2,19 @@ import { createHmac } from 'node:crypto'
 import type { APIRequestContext } from '@playwright/test'
 import { ABACATE_PAY_WEBHOOK_SECRET, STUB_URL } from '../env'
 
-/** Põe uma assinatura Pix ativa na "AbacatePay" (o stub), paga até `paidUntil`. */
+/**
+ * Põe uma assinatura Pix ativa na "AbacatePay" (o stub), paga até `paidUntil`.
+ * Com `externalId`, ela nasce do checkout que o app criou com ele: é de lá
+ * que o webhook lê o bar e o plano.
+ */
 export async function seedPixSubscription(
   request: APIRequestContext,
   id: string,
-  paidUntil: Date
+  paidUntil: Date,
+  externalId?: string
 ) {
   const seeded = await request.post(`${STUB_URL}/abacatepay/subscriptions`, {
-    data: { id, currentPeriodEnd: paidUntil.toISOString() }
+    data: { id, currentPeriodEnd: paidUntil.toISOString(), externalId }
   })
   if (!seeded.ok()) throw new Error('stub da AbacatePay recusou a assinatura')
 }
