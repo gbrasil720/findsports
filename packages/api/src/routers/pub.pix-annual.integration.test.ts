@@ -22,7 +22,10 @@ const abacate = {
     externalId: string
     items: { id: string; quantity: number }[]
   }[],
-  subs: new Map<string, { status: string; currentPeriodEnd: string }>()
+  subs: new Map<
+    string,
+    { status: string; currentPeriodEnd: string; checkoutId: string }
+  >()
 }
 const realFetch = globalThis.fetch
 const reply = (data: unknown, status = 200, error: string | null = null) =>
@@ -57,6 +60,14 @@ beforeAll(() => {
       })
     }
     if (path === '/subscriptions/checkouts/delete') return reply({})
+    if (path === '/subscriptions/checkouts/get') {
+      // `bill_<n>` é o n-ésimo checkout criado, com o produto que ele pediu.
+      const n = Number(url.searchParams.get('id')?.replace('bill_', ''))
+      const checkout = abacate.checkouts[n - 1]
+      return checkout
+        ? reply({ id: `bill_${n}`, ...checkout })
+        : reply(null, 404, 'Checkout not found')
+    }
     if (path === '/subscriptions/get') {
       const id = url.searchParams.get('id') ?? ''
       const sub = abacate.subs.get(id)
@@ -132,7 +143,8 @@ integrationTest(
       const paidUntil = new Date(Date.now() + 365 * DAY)
       abacate.subs.set('subs_anual', {
         status: 'ACTIVE',
-        currentPeriodEnd: paidUntil.toISOString()
+        currentPeriodEnd: paidUntil.toISOString(),
+        checkoutId: `bill_${abacate.checkouts.length}`
       })
       await applyPixSubscription(
         'subs_anual',
