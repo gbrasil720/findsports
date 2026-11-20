@@ -3,7 +3,10 @@ import {
   getValidationWindow,
   isWithinValidationWindow
 } from '@findsports_oficial/db/event-window'
-import { CHECK_IN_RADIUS_M } from '@findsports_oficial/db/rating-limits'
+import {
+  CHECK_IN_MIN_ACCOUNT_AGE_DAYS,
+  CHECK_IN_RADIUS_M
+} from '@findsports_oficial/db/rating-limits'
 import { attendanceCheckin } from '@findsports_oficial/db/schema/attendance'
 import { TRPCError } from '@trpc/server'
 import { utcIso } from './utc-timestamp'
@@ -15,12 +18,31 @@ type EventTimes = Parameters<typeof getValidationWindow>[0]
  * Check-in "Estou aqui" (WEB-408): o torcedor, com o app aberto, manda a
  * posição; quem decide é o servidor. Vale dentro da janela do jogo (a mesma
  * do código do balcão, 3 h antes a 3 h depois) e até `CHECK_IN_RADIUS_M` do
- * bar. Um por jogo. Torna verificada a avaliação daquele jogo (o banco
- * cuida, `bar_rating.verified`) e conta como visita (`visits.ts`).
+ * bar. Um por jogo. Conta como visita
+ * (`visits.ts`) e torna verificada a avaliação daquele jogo (o banco cuida,
+ * `bar_rating.verified`) só se a conta já tinha 7 dias (`checkInVerifies`).
  *
  * Localização falsa no celular passa: o ganho é deixar o ataque à nota caro,
  * não impossível.
  */
+
+const DAY_MS = 86_400_000
+
+/**
+ * O check-in verifica a avaliação: a conta tinha `CHECK_IN_MIN_ACCOUNT_AGE_DAYS`
+ * na hora dele. Mesma regra de `bar_rating_is_verified` (migration 0101).
+ */
+export function checkInVerifies(accountCreatedAt: Date, checkedInAt: Date) {
+  return (
+    checkedInAt.getTime() - accountCreatedAt.getTime() >=
+    CHECK_IN_MIN_ACCOUNT_AGE_DAYS * DAY_MS
+  )
+}
+
+/** Mesma regra em SQL, para leituras com `c` = check-in e `a` = conta. */
+export const checkInVerifiesSql = sql.raw(
+  `c.created_at >= (a.created_at AT TIME ZONE 'UTC') + interval '${CHECK_IN_MIN_ACCOUNT_AGE_DAYS} days'`
+)
 
 /** Por que o check-in não vale, ou `null` se vale. Regra pura, testada. */
 export function checkInRefusal(input: {
