@@ -62,7 +62,7 @@ const INVITE_PREVIEW_LIMIT = { max: 30, windowMs: 3_600_000 }
  * Código lido ou digitado (`byCode`) e convite aceito (`joinByInvite`), na
  * mesma janela: o código é curto e, sem limite, dá para varrer os torcedores.
  */
-const FRIEND_CODE_LIMIT = { max: 30, windowMs: 3_600_000 }
+const FRIEND_CODE_LIMIT = { max: 10, windowMs: 3_600_000 }
 /**
  * Hashes de contatos por dia, por pessoa: três aberturas da tela com a agenda
  * cheia (2000 cada). ponytail: conta toda abertura, mesmo com a agenda igual;
