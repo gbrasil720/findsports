@@ -15,3 +15,9 @@ export const EVENT_CHAMPIONSHIP_MAX_LENGTH = 150
 
 /** Times ou participantes escritos à mão, quando não há time cadastrado. */
 export const EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH = 200
+
+/**
+ * Times escolhidos num jogo. Confronto usa dois; o teto só barra lista
+ * gigante (cada id é uma consulta e uma linha em `event_participant`).
+ */
+export const EVENT_PARTICIPANTS_MAX = 30

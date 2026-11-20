@@ -1,4 +1,5 @@
 import { ONBOARDING_TRIAL } from '@findsports_oficial/api/lib/plan-limits'
+import { USER_NAME_MAX } from '@findsports_oficial/db/user-name'
 import { useForm } from '@tanstack/react-form'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useRef, useState } from 'react'
@@ -276,7 +277,7 @@ function SignupPage() {
                 type="text"
                 placeholder="Seu nome completo"
                 autoComplete="name"
-                maxLength={100}
+                maxLength={USER_NAME_MAX}
                 required
               />
             )}

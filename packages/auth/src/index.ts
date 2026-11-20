@@ -7,6 +7,7 @@ import {
   SEARCH_RADIUS_MAX_KM,
   SEARCH_RADIUS_MIN_KM
 } from '@findsports_oficial/db/search-radius'
+import { userNameRefusal } from '@findsports_oficial/db/user-name'
 import { env, getPublicAppUrl } from '@findsports_oficial/env/server'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
@@ -251,6 +252,19 @@ export function createAuth() {
             }
           }
           if (ctx.path === '/update-user') assertNoSelfRoleChange(ctx.body)
+          // O nome vai no e-mail de confirmação: teto e nada de link ou
+          // quebra de linha (`user-name.ts`). Segue sem os espaços das pontas.
+          const name = (ctx.body as { name?: unknown } | undefined)?.name
+          if (typeof name === 'string') {
+            const refusal = userNameRefusal(name)
+            if (refusal) {
+              throw new APIError('BAD_REQUEST', {
+                message: refusal,
+                code: 'INVALID_NAME'
+              })
+            }
+            return { context: { body: { ...ctx.body, name: name.trim() } } }
+          }
         }
         if (!requiresPubBillingAccess(ctx.path)) return
         if (isUnusedBillingRoute(ctx.path)) {
@@ -522,7 +536,8 @@ export function createAuth() {
       // fim do período em `subscription` — quem grava é o `onEvent`.
       stripe({
         stripeClient,
-        // Sem o segredo o webhook responde 500 em vez de aceitar sem conferir.
+        // Sem o segredo o webhook responde 500 em vez de aceitar sem conferir;
+        // em produção o env nem sobe sem ele (`packages/env/src/server.ts`).
         stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET ?? '',
         // O cliente no Stripe nasce no primeiro checkout, com o e-mail do
         // dono do bar: é para lá que o Stripe manda recibo e aviso (PRO-5).
