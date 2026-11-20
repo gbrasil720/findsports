@@ -129,3 +129,18 @@ export function resetRedirectTarget(
   } catch {}
   return null
 }
+
+/**
+ * CSRF do tRPC: POST com `Origin` de fora das origens confiáveis é recusado.
+ * Sem `Origin` passa: o app nativo (cookie no header) e chamada de servidor
+ * não mandam, e navegador sempre manda em POST de outro site. `null`
+ * (iframe com sandbox, redirect entre origens) conta como de fora.
+ */
+export function isForeignPost(
+  method: string,
+  origin: string | null,
+  trustedOrigins: readonly string[]
+): boolean {
+  if (method.toUpperCase() !== 'POST' || origin === null) return false
+  return !trustedOrigins.includes(origin)
+}
