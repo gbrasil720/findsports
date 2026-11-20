@@ -676,6 +676,33 @@ export const subscription = pgTable(
 )
 
 /**
+ * Teste grátis do cadastro, um por e-mail (relatório de vulnerabilidades,
+ * 20/11/2026). Uma linha por `completePub`: `granted` diz se aquele bar ganhou
+ * o teste. Sem FK para `user` e com `bar_id` anulado na exclusão: a linha
+ * sobrevive à conta, senão excluir e cadastrar de novo daria outro teste.
+ * E-mail e endereço vão como HMAC com o `BETTER_AUTH_SECRET`
+ * (`packages/api/src/lib/trial-grant.ts`), sem dado pessoal.
+ */
+export const trialGrant = pgTable(
+  'trial_grant',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    emailHash: text('email_hash').notNull(),
+    addressHash: text('address_hash'),
+    barId: text('bar_id').references(() => bar.id, { onDelete: 'set null' }),
+    granted: boolean('granted').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull()
+  },
+  (table) => [
+    index('trial_grant_email_hash_idx').on(table.emailHash),
+    index('trial_grant_address_hash_idx').on(table.addressHash),
+    index('trial_grant_bar_id_idx').on(table.barId)
+  ]
+)
+
+/**
  * "Por que está cancelando?" (WEB-445, 3q): o motivo que o dono escolhe ao
  * confirmar "Cancelar mesmo assim", antes de o portal do Stripe abrir. É
  * intenção, não cancelamento feito: quem desiste no portal fica registrado
