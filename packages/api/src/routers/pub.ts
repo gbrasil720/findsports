@@ -9,7 +9,10 @@ import {
   upsertCustomer
 } from '@findsports_oficial/auth/abacatepay'
 import { liveStripeSubscriptionId } from '@findsports_oficial/auth/account-deletion-policy'
-import { pixExternalId } from '@findsports_oficial/auth/pix-sync'
+import {
+  pixExternalId,
+  pixProductExternalId
+} from '@findsports_oficial/auth/pix-sync'
 import {
   annualPlansAvailable,
   CardFromPixRefusal,
@@ -1686,7 +1689,11 @@ export const pubRouter = router({
       try {
         const [productId, customerId] = await Promise.all([
           productIdFor(
-            `${input.plan}_${founder ? 'founder_' : ''}${input.annual ? 'yearly' : 'monthly'}`
+            pixProductExternalId({
+              plan: input.plan,
+              founder,
+              annual: input.annual
+            })
           ),
           upsertCustomer({
             email: ctx.session.user.email,

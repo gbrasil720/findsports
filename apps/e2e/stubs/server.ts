@@ -106,7 +106,18 @@ const stripeTaxIds = new Map<
  */
 const abacateSubscriptions = new Map<
   string,
-  { id: string; status: string; currentPeriodEnd: string; createdAt: string }
+  {
+    id: string
+    status: string
+    currentPeriodEnd: string
+    createdAt: string
+    checkoutId?: string | null
+  }
+>()
+/** Checkouts de assinatura criados pelo app, lidos pelo webhook. */
+const abacateCheckouts = new Map<
+  string,
+  { externalId: string | null; items: unknown }
 >()
 const abacateCalls: { method: string; path: string; body: unknown }[] = []
 
@@ -124,6 +135,11 @@ function abacatepay(path: string, body: unknown, url: URL) {
   }
   if (path === '/subscriptions/create') {
     const id = `bill_e2e_${crypto.randomUUID().slice(0, 8)}`
+    const { externalId = null, items = [] } = (body ?? {}) as {
+      externalId?: string
+      items?: unknown
+    }
+    abacateCheckouts.set(id, { externalId, items })
     return reply(200, {
       id,
       url: `${STUB_URL}/abacatepay/checkout/${id}`,
@@ -132,6 +148,13 @@ function abacatepay(path: string, body: unknown, url: URL) {
     })
   }
   if (path === '/subscriptions/checkouts/delete') return reply(200, {})
+  if (path === '/subscriptions/checkouts/get') {
+    const id = url.searchParams.get('id') ?? ''
+    const checkout = abacateCheckouts.get(id)
+    return checkout
+      ? reply(200, { id, status: 'PAID', ...checkout })
+      : reply(404, null, 'Checkout not found')
+  }
   if (path === '/subscriptions/get') {
     const sub = abacateSubscriptions.get(url.searchParams.get('id') ?? '')
     return sub ? reply(200, sub) : reply(404, null, 'Subscription not found')
@@ -220,13 +243,20 @@ Bun.serve({
       url.pathname === '/abacatepay/subscriptions' &&
       request.method === 'POST'
     ) {
-      const sub = (await request.json()) as {
+      const { externalId, ...sub } = (await request.json()) as {
         id: string
         currentPeriodEnd: string
+        externalId?: string
       }
+      // A assinatura nasce do checkout que o app criou com esse externalId.
+      const checkoutId =
+        [...abacateCheckouts].find(
+          ([, checkout]) => externalId && checkout.externalId === externalId
+        )?.[0] ?? null
       abacateSubscriptions.set(sub.id, {
         status: 'ACTIVE',
         createdAt: new Date().toISOString(),
+        checkoutId,
         ...sub
       })
       return Response.json({ ok: true })
