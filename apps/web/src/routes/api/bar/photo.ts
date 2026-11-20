@@ -6,6 +6,7 @@ import {
   occupiedSlots
 } from '@findsports_oficial/api/lib/bar-gallery'
 import {
+  assertUploadQuota,
   deleteBarGalleryPhoto,
   MediaUploadError,
   signMediaUpload
@@ -89,6 +90,7 @@ export const Route = createFileRoute('/api/bar/photo')({
           if (occupiedSlots(existingBar.photos) >= GALLERY_MAX_PHOTOS) {
             throw new MediaUploadError(409, GALLERY_FULL_MESSAGE)
           }
+          await assertUploadQuota(session.user.id)
           return Response.json(
             await signMediaUpload(
               galleryPhotoPathname(existingBar.id, crypto.randomUUID()),

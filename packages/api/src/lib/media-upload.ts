@@ -3,6 +3,7 @@ import { env } from '@findsports_oficial/env/server'
 import { AwsClient } from 'aws4fetch'
 import { barPhotoKey } from './bar-gallery'
 import { PHOTO_CONTENT_TYPES, PHOTO_MAX_BYTES } from './blob-photo'
+import { incrementWindow, type JanelaLimite } from './rate-limit-store'
 
 /**
  * Upload de foto de bar e avatar direto do navegador para o R2 (WEB-202).
@@ -35,6 +36,29 @@ export class MediaUploadError extends Error {
   ) {
     super(message)
   }
+}
+
+/**
+ * Teto de URLs assinadas por conta (relatório de vulnerabilidades de
+ * 20/11/2026). A vaga da galeria só é conferida contra `bar_photo`, que nasce
+ * depois do upload, então sem teto um bar enchia o bucket de arquivos sem
+ * linha. 30 por hora cobre a galeria inteira (12) com folga para repetir.
+ * Foto do bar e avatar dividem o contador.
+ */
+export const UPLOAD_LIMIT: JanelaLimite = { max: 30, windowMs: 60 * 60_000 }
+
+export const UPLOAD_LIMIT_MESSAGE =
+  'Muitos envios de foto na última hora. Tente de novo mais tarde.'
+
+export async function assertUploadQuota(
+  userId: string,
+  increment: typeof incrementWindow = incrementWindow
+): Promise<void> {
+  const { allowed } = await increment(
+    `media-upload:user:${userId}`,
+    UPLOAD_LIMIT
+  )
+  if (!allowed) throw new MediaUploadError(429, UPLOAD_LIMIT_MESSAGE)
 }
 
 /** Cliente S3 do bucket, ou `null` se alguma das quatro variáveis faltar. */
