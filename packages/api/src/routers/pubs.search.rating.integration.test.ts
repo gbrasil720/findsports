@@ -8,7 +8,7 @@ import {
   subscription
 } from '@findsports_oficial/db/schema/platform'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
-import { contextFor, load } from './integration-seed'
+import { ageAccounts, contextFor, load } from './integration-seed'
 
 /**
  * O modo "melhor avaliados" tem três decisões que quebram em silêncio:
@@ -137,6 +137,7 @@ integrationTest(
         // contadores continua sendo exercitada, que é o que importa para o
         // Wilson da coluna gerada. O check-in antes torna a avaliação
         // verificada (WEB-408), a única que entra na nota.
+        await ageAccounts(raterIds.slice(0, fixture.total))
         for (let i = 0; i < fixture.total; i++) {
           await db.execute(sql`
             INSERT INTO attendance_checkin

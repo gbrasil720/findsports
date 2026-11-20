@@ -18,7 +18,7 @@ import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolv
 import { recordCommercialEvent } from '../lib/commercial-analytics/recorder'
 import { encodeCursor } from '../lib/keyset-cursor'
 import { RATING_PUBLIC_FLOOR } from '../lib/rating'
-import { contextFor, load } from './integration-seed'
+import { ageAccounts, contextFor, load } from './integration-seed'
 
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
 
@@ -196,6 +196,7 @@ integrationTest(
         ])
       }
 
+      await ageAccounts(raterIds)
       for (const raterId of raterIds) {
         // Check-in antes: só a avaliação verificada entra na nota (WEB-408).
         await db.execute(sql`
