@@ -12,9 +12,15 @@ const integrationTest = isDisposableTestDatabase() ? test : test.skip
 const ABACATE = 'https://api.abacatepay.com/v2'
 const DAY = 24 * 3_600_000
 
-/** Dublê da AbacatePay: só as assinaturas e o cancelamento. */
+/**
+ * Dublê da AbacatePay: as assinaturas, o checkout de cada uma (`bill_<id>`,
+ * com o `externalId` e o produto dele), o produto e o cancelamento.
+ */
 const abacate = {
-  subs: new Map<string, { status: string; currentPeriodEnd: string }>(),
+  subs: new Map<
+    string,
+    { status: string; currentPeriodEnd: string; externalId: string }
+  >(),
   cancels: [] as string[],
   down: false,
   reset() {
@@ -42,10 +48,28 @@ globalThis.fetch = (async (
     if (!sub) return reply(404, null, 'Subscription not found')
     return reply(200, {
       id,
+      checkoutId: `bill_${id}`,
       status: sub.status,
       currentPeriodEnd: sub.currentPeriodEnd,
       createdAt: '2026-10-01T00:00:00Z'
     })
+  }
+  if (path.startsWith('/subscriptions/checkouts/get')) {
+    const id = new URL(url).searchParams.get('id') ?? ''
+    const sub = abacate.subs.get(id.replace(/^bill_/, ''))
+    if (!sub) return reply(404, null, 'Checkout not found')
+    // `onside:<bar>:<plano>:<f|t>:<nonce>[:y]` → `<plano>_[founder_]<ciclo>`
+    const [, , plan, kind, , year] = sub.externalId.split(':')
+    const product = `${plan}_${kind === 'f' ? 'founder_' : ''}${year ? 'yearly' : 'monthly'}`
+    return reply(200, {
+      id,
+      externalId: sub.externalId,
+      items: [{ id: `prod_${product}`, quantity: 1 }]
+    })
+  }
+  if (path.startsWith('/products/get')) {
+    const ext = new URL(url).searchParams.get('externalId')
+    return reply(200, { id: `prod_${ext}` })
   }
   if (path === '/subscriptions/cancel') {
     const { id } = JSON.parse(String(init?.body)) as { id: string }
@@ -110,9 +134,11 @@ async function setup() {
       currentPeriodEnd: opts.paidUntil,
       monthlyDiscountReais: opts.founder ? 28 : 0
     })
+    const externalId = `onside:${barId}:pro:${opts.founder ? 'f' : 't'}:abcd1234`
     abacate.subs.set(pixId, {
       status: 'ACTIVE',
-      currentPeriodEnd: opts.paidUntil.toISOString()
+      currentPeriodEnd: opts.paidUntil.toISOString(),
+      externalId
     })
     return {
       owner: { id: userId, name: 'Dono WEB-536' },
@@ -120,7 +146,7 @@ async function setup() {
       barId,
       customerId,
       pixId,
-      externalId: `onside:${barId}:pro:${opts.founder ? 'f' : 't'}:abcd1234`
+      externalId
     }
   }
 
@@ -715,11 +741,13 @@ function couponWithSeats(client: Stripe, state: 'valid' | 'down') {
 /** O bar autoriza um Pix novo de fundador (troca de plano para o Elite). */
 function founderPix(bar: { barId: string }, paidUntil: Date) {
   const id = `subs_f_${bar.barId.slice(0, 8)}`
+  const externalId = `onside:${bar.barId}:elite:f:abcd1234`
   abacate.subs.set(id, {
     status: 'ACTIVE',
-    currentPeriodEnd: paidUntil.toISOString()
+    currentPeriodEnd: paidUntil.toISOString(),
+    externalId
   })
-  return { id, externalId: `onside:${bar.barId}:elite:f:abcd1234` }
+  return { id, externalId }
 }
 
 integrationTest(
