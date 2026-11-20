@@ -9,7 +9,13 @@ import { bar } from '@findsports_oficial/db/schema/platform'
 import { barRating } from '@findsports_oficial/db/schema/rating'
 import { friendship } from '@findsports_oficial/db/schema/social'
 import { isDisposableTestDatabase } from '@findsports_oficial/db/utils/db-resolver'
-import { contextFor, load, refusal, seedBar } from './integration-seed'
+import {
+  ageAccounts,
+  contextFor,
+  load,
+  refusal,
+  seedBar
+} from './integration-seed'
 
 /**
  * A página pública do bar (`/bar/<slug>-<prefixo>`): o que sai sem sessão
@@ -145,14 +151,16 @@ integrationTest(
       })
       // Verificada é quem fez check-in (ou teve o código validado): o banco
       // decide pelo trigger, na gravação da avaliação.
-      const verify = (id: string) =>
-        ctx.db.insert(attendanceCheckin).values({
+      const verify = async (id: string) => {
+        await ageAccounts([id])
+        await ctx.db.insert(attendanceCheckin).values({
           userId: id,
           eventId: gameId,
           latitude: -23.55,
           longitude: -46.63,
           distanceM: 10
         })
+      }
       const rate = (
         id: string,
         fields: Partial<typeof barRating.$inferInsert> = {}

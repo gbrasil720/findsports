@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { hashPassword } from 'better-auth/crypto'
-import { insert } from './db'
+import { insert, query } from './db'
 
 export type Role = 'fan' | 'pub' | 'admin'
 
@@ -58,4 +58,15 @@ export async function createUser(options: UserOptions = {}): Promise<TestUser> {
     updated_at: new Date()
   })
   return user
+}
+
+/**
+ * Conta de mais de 7 dias: só assim o check-in verifica a avaliação
+ * (`checkInVerifies`, migration 0101). Chame antes do check-in.
+ */
+export async function ageAccount(id: string, days = 8): Promise<void> {
+  await query(
+    `UPDATE "user" SET created_at = now() - make_interval(days => $2) WHERE id = $1`,
+    [id, days]
+  )
 }
