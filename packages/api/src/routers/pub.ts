@@ -103,7 +103,7 @@ import {
   GAME_SUGGESTION_MAX,
   gameSuggestionSource
 } from '../lib/game-suggestions'
-import { geocodeAddress } from '../lib/geocode-address'
+import { cotaDeGeocode, geocodeAddress } from '../lib/geocode-address'
 import {
   assertCanConfigureHouseOffer,
   type GameHouseOffer,
@@ -620,7 +620,9 @@ export const pubRouter = router({
             uf: input.uf ?? existingBar.uf,
             cep: input.cep
           },
-          apiKey
+          apiKey,
+          fetch,
+          cotaDeGeocode(userId)
         )
       }
 
