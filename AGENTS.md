@@ -1371,11 +1371,12 @@ invente layout que o projeto não tem.
   tem telefone: o app manda o SHA-256 dos e-mails da agenda, pelo `expo-contacts/legacy`,
   e só aparece quem deixou "Me encontrar pelo e-mail" ligado, `user.findable_by_email`,
   padrão ligado, interruptor em Privacidade, dono em 16/11/2026, e aceita pedido de
-  todos; teto de 6000 hashes por dia por conta).
+  todos; teto de 500 hashes por dia por conta, os primeiros 500 de cada chamada, e
+  recusa em conta com menos de um dia, dono em 20/11/2026).
   Sugestões só de amigos de amigos. A cidade de outra pessoa só sai na lista de amigos
   aceitos (`overview`); busca, código, pedidos, sugestões, perfil e contatos a devolvem
   nula, e a busca por nome não lista quem escolheu "Ninguém" para quem não tem nada com
-  ela. `byCode` e `joinByInvite` dividem 30 tentativas por hora. O link de
+  ela. `byCode` e `joinByInvite` dividem 10 tentativas por hora. O link de
   convite é `/convite/<código>` no web (página `noindex` que abre `onside://convite/…`):
   o convite manda um pedido a quem convidou, como pelo código (sem aceite direto: o
   código é permanente e curto; aceite direto só com um convite de uso único, ainda por
