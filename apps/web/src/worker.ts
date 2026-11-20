@@ -19,7 +19,7 @@ import { setBackgroundTaskHandler } from '@findsports_oficial/auth/background'
 import { runWithDb } from '@findsports_oficial/db'
 import handler from '@tanstack/react-start/server-entry'
 
-import { withHsts } from './lib/hsts'
+import { withSecurityHeaders } from './lib/security-headers'
 
 setBackgroundTaskHandler(waitUntil)
 
@@ -34,7 +34,7 @@ export default {
     const response = await runWithDb(env.HYPERDRIVE.connectionString, () =>
       handler.fetch(request)
     )
-    return withHsts(response)
+    return withSecurityHeaders(response)
   },
   // WEB-203: retenção diária de analytics pelo Cron Trigger, sem rota HTTP
   // nem segredo. A agenda está em `triggers.crons` no wrangler.jsonc. A
