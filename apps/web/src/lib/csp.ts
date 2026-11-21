@@ -46,6 +46,8 @@ export function contentSecurityPolicy(
     // PostHog pelo proxy próprio (`VITE_POSTHOG_HOST`) e o painel dele.
     'https://a.onside.sh',
     'https://*.posthog.com',
+    // Endereço pelo CEP (`lib/cep.ts`).
+    'https://viacep.com.br',
     'https://challenges.cloudflare.com',
     'https://cloudflareinsights.com'
   ]
