@@ -1,6 +1,6 @@
 import { expect, spyOn, test } from 'bun:test'
 import { setBackgroundTaskHandler } from '@findsports_oficial/auth/background'
-import { and, eq } from '@findsports_oficial/db'
+import { and, eq, inArray } from '@findsports_oficial/db'
 import { session, user } from '@findsports_oficial/db/schema/auth'
 import { pushToken } from '@findsports_oficial/db/schema/push'
 import { gameReminder } from '@findsports_oficial/db/schema/recommendation'
@@ -226,3 +226,92 @@ integrationTest('push de ponta a ponta', async () => {
     await elite.cleanup()
   }
 })
+
+integrationTest(
+  'token de outra conta só muda de dono com a sessão dela vencida',
+  async () => {
+    const { db, appRouter } = await load()
+    const tag = crypto.randomUUID().slice(0, 8)
+    const person = (who: string) => ({
+      id: crypto.randomUUID(),
+      name: `${who} ${tag}`,
+      email: `${who}-${tag}@integration.invalid`,
+      emailVerified: true,
+      role: 'fan' as const,
+      onboardingCompleted: true
+    })
+    const victim = person('vitima')
+    const attacker = person('atacante')
+    const token = `ExponentPushToken[alvo-${tag}]`
+    const sessionOf = async (userId: string) => {
+      const base = contextFor(userId, 'fan')
+      await db.insert(session).values(base.session.session)
+      return base
+    }
+    const ownerOf = async () =>
+      (
+        await db
+          .select({ userId: pushToken.userId, sessionId: pushToken.sessionId })
+          .from(pushToken)
+          .where(eq(pushToken.token, token))
+      )[0]
+    const warn = spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      await db.insert(user).values([victim, attacker])
+      const victimCtx = await sessionOf(victim.id)
+      const attackerCtx = await sessionOf(attacker.id)
+      const register = (ctx: typeof victimCtx) =>
+        appRouter.createCaller(ctx).push.register({ token, platform: 'ios' })
+
+      // Mesma conta, outra sessão: o token acompanha a sessão nova.
+      await register(await sessionOf(victim.id))
+      await register(victimCtx)
+      expect(await ownerOf()).toEqual({
+        userId: victim.id,
+        sessionId: victimCtx.session.session.id
+      })
+
+      // Outra conta com a sessão da vítima viva: responde normal, não muda e
+      // vai ao log sem o token inteiro.
+      expect(await register(attackerCtx)).toEqual({ success: true })
+      expect(await ownerOf()).toEqual({
+        userId: victim.id,
+        sessionId: victimCtx.session.session.id
+      })
+      const logged = warn.mock.calls.map((c) => String(c[0]))
+      expect(logged).toHaveLength(1)
+      expect(JSON.parse(logged[0] ?? '{}')).toMatchObject({
+        evt: 'push_token_rebind_refused',
+        userId: attacker.id
+      })
+      expect(logged[0]).not.toContain(token)
+
+      // Sessão da vítima vencida: o token passa para a outra conta.
+      await db
+        .update(session)
+        .set({ expiresAt: new Date(Date.now() - 60_000) })
+        .where(eq(session.id, victimCtx.session.session.id))
+      await register(attackerCtx)
+      expect(await ownerOf()).toEqual({
+        userId: attacker.id,
+        sessionId: attackerCtx.session.session.id
+      })
+
+      // Sessão apagada (sair da conta): a linha some e o próximo é um INSERT.
+      await db
+        .delete(session)
+        .where(eq(session.id, attackerCtx.session.session.id))
+      expect(await ownerOf()).toBeUndefined()
+      const victimNew = await sessionOf(victim.id)
+      await register(victimNew)
+      expect(await ownerOf()).toEqual({
+        userId: victim.id,
+        sessionId: victimNew.session.session.id
+      })
+      expect(warn).toHaveBeenCalledTimes(1)
+    } finally {
+      warn.mockRestore()
+      await db.delete(user).where(inArray(user.id, [victim.id, attacker.id]))
+    }
+  }
+)
