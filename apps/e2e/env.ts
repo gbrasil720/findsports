@@ -61,6 +61,9 @@ export const SERVER_ENV: Record<string, string> = {
   R2_MEDIA_ACCESS_KEY_ID: 'e2e-fake-key',
   R2_MEDIA_SECRET_ACCESS_KEY: 'e2e-fake-secret',
   MEDIA_PUBLIC_ORIGIN,
+  // Leitura e remoção do servidor no bucket vão ao stub (`/r2/*`), que
+  // guarda o que o `fixtures/media.ts` repassou do `PUT`.
+  R2_MEDIA_API_BASE_URL: `${STUB_URL}/r2`,
   STRIPE_SECRET_KEY: 'sk_test_e2e_fake_key',
   STRIPE_WEBHOOK_SECRET,
   // O SDK do Stripe fala com o stub (`/v1/*` em `stubs/server.ts`).
