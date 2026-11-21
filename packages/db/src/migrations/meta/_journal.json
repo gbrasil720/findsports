@@ -708,6 +708,13 @@
       "when": 1795208240216,
       "tag": "0101_checkin_account_age_verified",
       "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "7",
+      "when": 1795302088087,
+      "tag": "0102_trial_grant",
+      "breakpoints": true
     }
   ]
 }
