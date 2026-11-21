@@ -140,22 +140,22 @@ test('upload para o R2 é interceptado no navegador', async ({ page }) => {
   const uploads = await interceptMediaUploads(page)
   await page.goto('/')
 
-  const result = await page.evaluate(async (origin) => {
-    const put = await fetch(
+  const put = await page.evaluate(async () => {
+    const res = await fetch(
       'https://e2e.r2.cloudflarestorage.com/onside-media/bars/x/photo?X-Amz-Signature=x',
       { method: 'PUT', headers: { 'content-type': 'image/png' }, body: 'x' }
     )
-    // Como o app lê: `<img>`. A CSP não deixa `fetch` no domínio das fotos.
-    const image = new Image()
-    image.src = `${origin}/bars/x/photo?v=1`
-    await image.decode()
-    return { put: put.status, width: image.naturalWidth }
-  }, MEDIA_PUBLIC_ORIGIN)
+    return res.status
+  })
+  // Como o app lê: `<img>`. A CSP não deixa `fetch` no domínio das fotos.
+  const width = await page.evaluate<number>(
+    `(async () => { const i = new Image(); i.src = '${MEDIA_PUBLIC_ORIGIN}/bars/x/photo?v=1'; await i.decode(); return i.naturalWidth })()`
+  )
 
   expect(uploads).toEqual([
     { pathname: 'bars/x/photo', contentType: 'image/png' }
   ])
-  expect(result).toEqual({ put: 200, width: 1 })
+  expect({ put, width }).toEqual({ put: 200, width: 1 })
 })
 
 test.describe('mapa', () => {
