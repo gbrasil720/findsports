@@ -10,6 +10,7 @@ import {
   isNotFound,
   Outlet,
   Scripts,
+  useRouter,
   useRouterState
 } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
@@ -365,24 +366,37 @@ function RootDocument() {
 }
 
 function RootShell({ children }: { children: React.ReactNode }) {
+  // CSP (`lib/csp.ts`): nonce desta resposta, nulo no `vite dev`.
+  const nonce = useRouter().options.ssr?.nonce
   return (
     // `suppressHydrationWarning`: os scripts abaixo põem `data-theme` e
     // `data-consent` no `<html>` antes da hidratação, e o React não conhece
     // esses atributos.
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
+        {/*
+         * Primeira `csp-nonce` da página: o carregador do Vite lê o nonce do
+         * atributo (`.nonce`) para os `modulepreload` dos chunks, e o do
+         * TanStack (no `HeadContent`) só escreve `content`.
+         */}
+        {nonce ? (
+          <meta property="csp-nonce" content={nonce} nonce={nonce} />
+        ) : null}
         <script
+          nonce={nonce}
           // biome-ignore lint/security/noDangerouslySetInnerHtml: texto fixo do próprio app, sem dado de fora
           dangerouslySetInnerHTML={{ __html: THEME_HEAD_SCRIPT }}
         />
         {consentBannerEnabled() ? (
           <script
+            nonce={nonce}
             // biome-ignore lint/security/noDangerouslySetInnerHtml: texto fixo do próprio app, sem dado de fora
             dangerouslySetInnerHTML={{ __html: CONSENT_HEAD_SCRIPT }}
           />
         ) : null}
         <HeadContent />
         <script
+          nonce={nonce}
           // biome-ignore lint/security/noDangerouslySetInnerHtml: texto fixo do próprio app, sem dado de fora
           dangerouslySetInnerHTML={{ __html: THEME_COLOR_SCRIPT }}
         />
