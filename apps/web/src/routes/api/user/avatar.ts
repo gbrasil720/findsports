@@ -9,6 +9,7 @@ import {
   isReadOnlyImpersonation,
   READ_ONLY_IMPERSONATION_MESSAGE
 } from '@findsports_oficial/auth/impersonation-mode'
+import { recordMediaUpload } from '@findsports_oficial/auth/media-upload-record'
 import { avatarPathname } from '@findsports_oficial/auth/session-image'
 import { createFileRoute } from '@tanstack/react-router'
 
@@ -42,9 +43,16 @@ export const Route = createFileRoute('/api/user/avatar')({
           }
 
           await assertUploadQuota(session.user.id)
-          return Response.json(
-            await signMediaUpload(avatarPathname(session.user.id), body)
-          )
+          const key = avatarPathname(session.user.id)
+          const signed = await signMediaUpload(key, body)
+          // A chave é fixa, mas o `/update-user` só aceita a foto com um
+          // envio aberto desta conta, e confere os bytes antes.
+          await recordMediaUpload({
+            userId: session.user.id,
+            key,
+            kind: 'avatar'
+          })
+          return Response.json(signed)
         } catch (err) {
           if (err instanceof MediaUploadError) {
             return Response.json({ error: err.message }, { status: err.status })
