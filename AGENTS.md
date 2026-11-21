@@ -849,6 +849,15 @@ Elite (`lib/bar-gallery.ts`). Upload por `/api/bar/photo?galeria` (`&capa` deixa
 Starter mandar a capa) e `pub.addPhoto`; `bar.gallery_photos` é a coluna antiga, sem
 leitura. Painel: `components/painel/espaco-fotos.tsx`.
 
+**Chave assinada fica registrada** (`media_upload`, `packages/auth/src/media-upload-record.ts`):
+`/api/bar/photo` e `/api/user/avatar` gravam a chave ao assinar o `PUT`. `pub.addPhoto`
+e o `image` do `/update-user` (avatar novo, outro `?v=`) só aceitam chave assinada para
+aquela conta e ainda sem confirmar, e leem os primeiros bytes no R2: JPG, PNG ou WebP
+iguais ao `content-type` guardado, senão o arquivo sai do bucket na hora e a resposta
+recusa. A rotina `media_cleanup` (cron diário, 100 por execução) apaga do bucket o que
+ficou 24 h sem confirmar, menos o avatar em uso e a chave que já está em `bar_photo`.
+Testes dublam o bucket com `setMediaStore`; o E2E, pelo stub (`R2_MEDIA_API_BASE_URL`).
+
 ### Cadastro do bar e primeiro valor (WEB-501)
 
 Protótipo `docs/design/redesign-2026-11/painel/index.src.html` (branch do guia
