@@ -19,6 +19,7 @@
     "@findsports_oficial/db": "workspace:*",
     "@findsports_oficial/env": "workspace:*",
     "@tanstack/react-start": "^1.168.60",
+    "aws4fetch": "^1.0.20",
     "better-auth": "catalog:",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
