@@ -10,6 +10,11 @@ import {
 } from '@findsports_oficial/auth/abacatepay'
 import { liveStripeSubscriptionId } from '@findsports_oficial/auth/account-deletion-policy'
 import {
+  checkMediaUpload,
+  confirmMediaUpload,
+  MediaCheckError
+} from '@findsports_oficial/auth/media-upload-record'
+import {
   pixExternalId,
   pixProductExternalId
 } from '@findsports_oficial/auth/pix-sync'
@@ -895,6 +900,21 @@ export const pubRouter = router({
           message: `A legenda aceita até ${PHOTO_CAPTION_MAX} caracteres.`
         })
       }
+      // Só a chave que `/api/bar/photo` assinou para esta conta, com bytes
+      // de imagem (o que não for sai do bucket na hora).
+      const upload = {
+        userId: ctx.session.user.id,
+        key: new URL(input.url).pathname.slice(1),
+        kind: 'bar_photo' as const
+      }
+      try {
+        await checkMediaUpload(upload)
+      } catch (err) {
+        if (err instanceof MediaCheckError) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: err.message })
+        }
+        throw err
+      }
 
       return db.transaction(async (tx) => {
         await tx
@@ -910,6 +930,12 @@ export const pubRouter = router({
           throw new TRPCError({
             code: 'CONFLICT',
             message: GALLERY_FULL_MESSAGE
+          })
+        }
+        if (!(await confirmMediaUpload(upload, tx))) {
+          throw new TRPCError({
+            code: 'CONFLICT',
+            message: 'Esta foto já foi enviada.'
           })
         }
         if (input.cover) {

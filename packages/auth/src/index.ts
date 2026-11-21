@@ -42,10 +42,15 @@ import {
   isReadOnlyImpersonation,
   READ_ONLY_IMPERSONATION_MESSAGE
 } from './impersonation-mode'
+import {
+  checkMediaUpload,
+  confirmMediaUpload,
+  MediaCheckError
+} from './media-upload-record'
 import { sendResetPasswordEmail } from './reset-password-email'
 import { isCloudflareWorkers } from './runtime'
 import { assertNoSelfRoleChange } from './self-role-change'
-import { isSafeUserImage } from './session-image'
+import { avatarPathname, isSafeUserImage } from './session-image'
 import { sessionTokenGuard } from './session-token'
 import { startCookies } from './start-cookies'
 import { checkoutParamsFor } from './stripe-checkout'
@@ -241,14 +246,33 @@ export function createAuth() {
         if (ctx.path === '/update-user' || ctx.path === '/sign-up/email') {
           const image = (ctx.body as { image?: unknown } | undefined)?.image
           if (image !== undefined && image !== null && image !== '') {
-            const userId =
+            const sessionUser =
               ctx.path === '/update-user'
-                ? (await getSessionFromCtx(ctx))?.user.id
+                ? (await getSessionFromCtx(ctx))?.user
                 : undefined
+            const userId = sessionUser?.id
             if (!isSafeUserImage(image, userId, env)) {
               throw new APIError('BAD_REQUEST', {
                 message: 'A foto precisa ser enviada pelo upload do perfil.'
               })
+            }
+            // Foto nova (o `?v=` muda a cada envio): só com um envio aberto
+            // desta conta e bytes de imagem. A mesma URL de volta não confere.
+            if (userId && image !== sessionUser?.image) {
+              const upload = {
+                userId,
+                key: avatarPathname(userId),
+                kind: 'avatar' as const
+              }
+              try {
+                await checkMediaUpload(upload)
+              } catch (err) {
+                if (err instanceof MediaCheckError) {
+                  throw new APIError('BAD_REQUEST', { message: err.message })
+                }
+                throw err
+              }
+              await confirmMediaUpload(upload)
             }
           }
           if (ctx.path === '/update-user') assertNoSelfRoleChange(ctx.body)
