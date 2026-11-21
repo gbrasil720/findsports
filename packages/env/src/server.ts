@@ -133,12 +133,15 @@ const rawEnv = createEnv({
      * (TTL e cookie de sessão). `LOCATIONIQ_BASE_URL`: stub do geocoding.
      * `STRIPE_API_BASE_URL`: stub da API do Stripe.
      * `ABACATE_PAY_API_BASE_URL`: stub da API da AbacatePay (WEB-536).
+     * `R2_MEDIA_API_BASE_URL`: stub do R2 para o que o servidor lê e apaga
+     * no bucket (o `PUT` assinado continua no host do R2).
      */
     E2E_EMAIL_OUTBOX: z.string().min(1).optional(),
     E2E_DISABLE_CACHES: z.literal('1').optional(),
     LOCATIONIQ_BASE_URL: z.url().optional(),
     STRIPE_API_BASE_URL: z.url().optional(),
     ABACATE_PAY_API_BASE_URL: z.url().optional(),
+    R2_MEDIA_API_BASE_URL: z.url().optional(),
     NODE_ENV: z
       .enum(['development', 'production', 'test'])
       .default('development')
@@ -155,7 +158,8 @@ const TEST_ONLY_ENV_KEYS = [
   'E2E_DISABLE_CACHES',
   'LOCATIONIQ_BASE_URL',
   'STRIPE_API_BASE_URL',
-  'ABACATE_PAY_API_BASE_URL'
+  'ABACATE_PAY_API_BASE_URL',
+  'R2_MEDIA_API_BASE_URL'
 ]
 
 if (rawEnv.NODE_ENV === 'production') {

@@ -1,6 +1,9 @@
+import {
+  type MediaConfig,
+  mediaBucket
+} from '@findsports_oficial/auth/media-upload-record'
 import { avatarPathname } from '@findsports_oficial/auth/session-image'
 import { env } from '@findsports_oficial/env/server'
-import { AwsClient } from 'aws4fetch'
 import { barPhotoKey } from './bar-gallery'
 import { PHOTO_CONTENT_TYPES, PHOTO_MAX_BYTES } from './blob-photo'
 import { incrementWindow, type JanelaLimite } from './rate-limit-store'
@@ -18,16 +21,6 @@ import { incrementWindow, type JanelaLimite } from './rate-limit-store'
  * vários `PUT` durante 5 minutos, então um segundo envio maior passaria
  * depois da conferência.
  */
-
-const MEDIA_BUCKET = 'onside-media'
-
-type MediaConfig = Pick<
-  typeof env,
-  | 'R2_MEDIA_ACCESS_KEY_ID'
-  | 'R2_MEDIA_SECRET_ACCESS_KEY'
-  | 'CF_ACCOUNT_ID'
-  | 'MEDIA_PUBLIC_ORIGIN'
->
 
 export class MediaUploadError extends Error {
   constructor(
@@ -59,30 +52,6 @@ export async function assertUploadQuota(
     UPLOAD_LIMIT
   )
   if (!allowed) throw new MediaUploadError(429, UPLOAD_LIMIT_MESSAGE)
-}
-
-/** Cliente S3 do bucket, ou `null` se alguma das quatro variáveis faltar. */
-export function mediaBucket(config: MediaConfig = env) {
-  const {
-    R2_MEDIA_ACCESS_KEY_ID: accessKeyId,
-    R2_MEDIA_SECRET_ACCESS_KEY: secretAccessKey,
-    CF_ACCOUNT_ID: accountId,
-    MEDIA_PUBLIC_ORIGIN: publicOrigin
-  } = config
-  if (!accessKeyId || !secretAccessKey || !accountId || !publicOrigin) {
-    return null
-  }
-  return {
-    client: new AwsClient({
-      accessKeyId,
-      secretAccessKey,
-      service: 's3',
-      region: 'auto'
-    }),
-    objectUrl: (key: string) =>
-      `https://${accountId}.r2.cloudflarestorage.com/${MEDIA_BUCKET}/${key}`,
-    publicUrl: (key: string) => `${new URL(publicOrigin).origin}/${key}`
-  }
 }
 
 /**
@@ -187,7 +156,7 @@ async function deleteMediaObject(
   // `sign` + `fetch`, e não `client.fetch`: este repete 10 vezes com espera
   // crescente em 5xx, e a requisição ficaria presa junto.
   const response = await fetch(
-    await bucket.client.sign(bucket.objectUrl(key), { method: 'DELETE' })
+    await bucket.client.sign(bucket.apiUrl(key), { method: 'DELETE' })
   )
   if (!response.ok) {
     console.error(
