@@ -7,7 +7,7 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from '@findsports_oficial/ui/components/tooltip'
-import { Link, useRouterState } from '@tanstack/react-router'
+import { Link, useRouter, useRouterState } from '@tanstack/react-router'
 import {
   createContext,
   type ReactElement,
@@ -153,6 +153,7 @@ export function PainelShell({
 }) {
   const { showsGoing } = usePainel()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
+  const nonce = useRouter().options.ssr?.nonce
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const feedbackReturn = useRef<HTMLElement | null>(null)
   const trilho = useTrilho(pathname)
@@ -219,6 +220,7 @@ export function PainelShell({
           Ir para o conteúdo
         </a>
         <script
+          nonce={nonce}
           // biome-ignore lint/security/noDangerouslySetInnerHtml: texto fixo do próprio app, sem dado de fora
           dangerouslySetInnerHTML={{ __html: TRILHO_SCRIPT }}
         />

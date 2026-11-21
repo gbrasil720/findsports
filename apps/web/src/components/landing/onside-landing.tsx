@@ -1,4 +1,4 @@
-import { Link, useRouteContext } from '@tanstack/react-router'
+import { Link, useRouteContext, useRouter } from '@tanstack/react-router'
 import {
   type CSSProperties,
   Fragment,
@@ -701,6 +701,7 @@ function SectionKicker({ children }: { children: ReactNode }) {
 export function OnsideLanding() {
   const pageRef = useRef<HTMLDivElement>(null)
   const sticky = useStickyCta()
+  const nonce = useRouter().options.ssr?.nonce
   useLandingMotion(pageRef)
 
   // Aviso de cookies pendente: o hero cede o espaço da barra. No primeiro
@@ -775,6 +776,7 @@ export function OnsideLanding() {
          */}
         <script
           suppressHydrationWarning
+          nonce={nonce}
           // biome-ignore lint/security/noDangerouslySetInnerHtml: texto fixo do próprio app, sem dado de fora
           dangerouslySetInnerHTML={{ __html: HERO_CONSENT_FIT_SCRIPT }}
         />
