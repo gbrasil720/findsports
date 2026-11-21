@@ -56,6 +56,9 @@ export const test = base.extend<Options>({
    * HTML do servidor diferente do primeiro render do cliente. Atributo
    * diferente (um `href`, uma classe) não derruba a hidratação, e o React só
    * avisa no console sem corrigir o HTML: conta também (WEB-472).
+   *
+   * Também falha com violação da CSP (`apps/web/src/lib/csp.ts`): o build
+   * da suíte sai com a mesma política da produção.
    */
   page: async ({ page }, use) => {
     const goto = page.goto.bind(page)
@@ -65,13 +68,16 @@ export const test = base.extend<Options>({
       return response
     }
     const hydrationErrors: string[] = []
+    const cspViolations: string[] = []
     const record = (text: string) => {
       if (HYDRATION_MISMATCH.test(text)) hydrationErrors.push(text)
+      if (/Content Security Policy/i.test(text)) cspViolations.push(text)
     }
     page.on('console', (msg) => record(msg.text()))
     page.on('pageerror', (error) => record(error.message))
     await use(page)
     expect(hydrationErrors, 'erro de hidratação no navegador').toEqual([])
+    expect(cspViolations, 'violação da CSP no navegador').toEqual([])
   }
 })
 
