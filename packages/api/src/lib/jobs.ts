@@ -14,7 +14,8 @@ export const JOB_NAMES = [
   'analytics_retention',
   'ai_stale_runs',
   'bar_notices',
-  'weekly_games'
+  'weekly_games',
+  'media_cleanup'
 ] as const
 export type JobName = (typeof JOB_NAMES)[number]
 export type JobTrigger = 'cron' | 'houdini'
@@ -58,7 +59,13 @@ const JOBS: Record<JobName, (trigger: JobTrigger) => Promise<unknown>> = {
   weekly_games: async (trigger) =>
     (await import('./weekly-games/catalog')).runWeeklyGames(
       trigger === 'cron' ? 'cron' : 'houdini'
-    )
+    ),
+  // Arquivo assinado há mais de 24 h que nunca virou foto do bar nem avatar
+  // sai do bucket. Importado aqui dentro pelo mesmo motivo do `bar_notices`.
+  media_cleanup: async () =>
+    (
+      await import('@findsports_oficial/auth/media-upload-record')
+    ).cleanupPendingMedia()
 }
 
 /**
@@ -123,7 +130,11 @@ export async function runScheduledJobs() {
         try {
           await runJob('weekly_games', 'cron')
         } finally {
-          await runJob('bar_notices', 'cron')
+          try {
+            await runJob('bar_notices', 'cron')
+          } finally {
+            await runJob('media_cleanup', 'cron')
+          }
         }
       }
     }

@@ -72,7 +72,8 @@ const JOB_TITLES: Record<string, string> = {
   analytics_retention: 'Limpeza dos analytics',
   ai_stale_runs: 'Execuções presas da IA',
   bar_notices: 'Avisos da semana dos bares',
-  weekly_games: 'Jogos da semana'
+  weekly_games: 'Jogos da semana',
+  media_cleanup: 'Uploads abandonados'
 }
 
 /** "2 fotos e 1 descrição", só o que tem. */
