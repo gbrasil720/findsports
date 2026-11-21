@@ -5,6 +5,7 @@ import {
 } from '@tanstack/react-start'
 import { getSessionCookie } from 'better-auth/cookies'
 
+import { contentSecurityPolicy, createNonce } from './lib/csp'
 import { HOUDINI_PREFIX, isHoudiniHost } from './lib/houdini-host'
 import { SITE_URL } from './lib/site'
 import { requiresAuthentication } from './utils/auth-guards'
@@ -55,6 +56,21 @@ export function applyHostIndexing(request: Request, headers: Headers) {
   headers.set('X-Robots-Tag', 'noindex, nofollow')
 }
 
+/**
+ * CSP com nonce no HTML do SSR (`lib/csp.ts`). O nonce vai no contexto da
+ * requisição, de onde o router o lê (`ssr.nonce` em `router.tsx`). No
+ * `vite dev` não: ele escreve scripts inline sem nonce (HMR, React Refresh).
+ * `TSS_DEV_SERVER`, e não `DEV`: o E2E builda com `NODE_ENV=development`, que
+ * liga o `DEV` no build, e precisa da mesma política da produção.
+ */
+export function applyContentSecurityPolicy(headers: Headers, nonce: string) {
+  if (!headers.get('Content-Type')?.includes('text/html')) return
+  headers.set(
+    'Content-Security-Policy',
+    contentSecurityPolicy(nonce, import.meta.env.VITE_MAP_TILES_URL)
+  )
+}
+
 export const startInstance = createStart(() => ({
   requestMiddleware: [
     // O padrão do Start quando não há `start.ts`; declará-lo aqui o mantém.
@@ -62,7 +78,10 @@ export const startInstance = createStart(() => ({
     // Na `Response` final: `setResponseHeader` não chega aos redirects, que o
     // h3 devolve sem mesclar os headers do evento.
     createMiddleware().server(async ({ next, request }) => {
-      const result = await next()
+      const nonce =
+        import.meta.env.TSS_DEV_SERVER === 'true' ? undefined : createNonce()
+      const result = await next({ context: { nonce } })
+      if (nonce) applyContentSecurityPolicy(result.response.headers, nonce)
       applyHostIndexing(request, result.response.headers)
       applyHoudiniHeaders(request, result.response.headers)
       applyPrivateCache(request, result.response.headers)

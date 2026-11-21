@@ -8,6 +8,7 @@ import { onlineManager, QueryCache, QueryClient } from '@tanstack/react-query'
 
 import { createRouter as createTanStackRouter } from '@tanstack/react-router'
 import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
+import { getGlobalStartContext } from '@tanstack/react-start'
 import {
   createTRPCClient,
   httpBatchLink,
@@ -37,6 +38,19 @@ import { TRPCProvider } from './utils/trpc'
 declare module '@tanstack/react-query' {
   interface Register {
     queryMeta: { errorToast?: boolean }
+  }
+}
+
+/**
+ * Nonce da CSP desta resposta, posto no contexto pelo middleware de
+ * `start.ts`. No cliente o router o lê da `<meta property="csp-nonce">`.
+ */
+function ssrNonce(): string | undefined {
+  try {
+    return getGlobalStartContext()?.nonce
+  } catch {
+    // Fora de uma requisição (o router criado antes do middleware).
+    return undefined
   }
 }
 
@@ -128,6 +142,7 @@ export const getRouter = () => {
     },
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
+    ssr: { nonce: ssrNonce() },
     context: {
       trpc,
       queryClient,
