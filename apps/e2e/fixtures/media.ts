@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { MEDIA_PUBLIC_ORIGIN } from '../env'
+import { MEDIA_PUBLIC_ORIGIN, STUB_URL } from '../env'
 
 /** PNG 1x1 transparente: o que toda URL de mídia devolve no E2E. */
 const PIXEL = Buffer.from(
@@ -13,7 +13,8 @@ export type InterceptedUpload = { pathname: string; contentType: string }
  * O upload de foto/avatar sai do navegador direto para o R2, numa URL que a
  * rota real do app assina (WEB-202). Aqui o `PUT` é respondido como o R2
  * responderia, sem rede, e qualquer leitura em `MEDIA_PUBLIC_ORIGIN` devolve
- * um pixel.
+ * um pixel. Os bytes do `PUT` vão ao stub (`/r2/*`), onde o servidor os lê
+ * para conferir que são imagem.
  *
  * Chame antes de navegar. Devolve a lista de uploads recebidos, com a chave
  * dentro do bucket e o `content-type` enviado.
@@ -28,12 +29,18 @@ export async function interceptMediaUploads(
     async (route) => {
       const request = route.request()
       if (request.method() === 'PUT') {
+        const pathname = new URL(request.url()).pathname
+        const contentType = request.headers()['content-type'] ?? ''
         uploads.push({
-          pathname: new URL(request.url()).pathname.replace(
-            /^\/onside-media\//,
-            ''
-          ),
-          contentType: request.headers()['content-type'] ?? ''
+          pathname: pathname.replace(/^\/onside-media\//, ''),
+          contentType
+        })
+        // O servidor confere os bytes antes de aceitar a foto: o stub guarda
+        // o que o R2 guardaria.
+        await fetch(`${STUB_URL}/r2${pathname}`, {
+          method: 'PUT',
+          headers: { 'content-type': contentType },
+          body: request.postDataBuffer() ?? undefined
         })
       }
       // Nada segue para a rede; o preflight leva o mesmo CORS do bucket.

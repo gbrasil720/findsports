@@ -187,6 +187,11 @@ const cors = {
   'access-control-expose-headers': '*'
 }
 
+const mediaObjects = new Map<
+  string,
+  { bytes: Uint8Array; contentType: string }
+>()
+
 Bun.serve({
   port: STUB_PORT,
   hostname: '127.0.0.1',
@@ -303,6 +308,36 @@ Bun.serve({
     ) {
       return new Response('<!doctype html><title>Stripe (stub)</title>', {
         headers: { 'content-type': 'text/html' }
+      })
+    }
+
+    // Bucket de mídia (`R2_MEDIA_API_BASE_URL`): o `PUT` chega pelo
+    // `fixtures/media.ts`, que o repassa do navegador; o servidor lê o começo
+    // (Range) para conferir os bytes e apaga o que não é imagem.
+    if (url.pathname.startsWith('/r2/')) {
+      const key = url.pathname.slice('/r2/'.length)
+      if (request.method === 'PUT') {
+        mediaObjects.set(key, {
+          bytes: new Uint8Array(await request.arrayBuffer()),
+          contentType: request.headers.get('content-type') ?? ''
+        })
+        return new Response(null, { status: 200 })
+      }
+      if (request.method === 'DELETE') {
+        mediaObjects.delete(key)
+        return new Response(null, { status: 204 })
+      }
+      const object = mediaObjects.get(key)
+      if (!object) return new Response('NoSuchKey', { status: 404 })
+      const range = /^bytes=(\d+)-(\d+)$/.exec(
+        request.headers.get('range') ?? ''
+      )
+      const body = range
+        ? object.bytes.slice(Number(range[1]), Number(range[2]) + 1)
+        : object.bytes
+      return new Response(body, {
+        status: range ? 206 : 200,
+        headers: { 'content-type': object.contentType }
       })
     }
 
