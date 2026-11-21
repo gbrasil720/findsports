@@ -5,7 +5,8 @@ import { session, user } from './auth'
  * O token de push do Expo de cada aparelho (WEB-416). Preso à sessão: sair da
  * conta, revogar o aparelho em "Sessões" ou trocar a sessão (duas etapas)
  * apaga a linha em cascata, e o app registra de novo com a sessão nova. O
- * mesmo aparelho em outra conta move o token (a chave é o token).
+ * mesmo aparelho em outra conta move o token (a chave é o token), só com a
+ * sessão anterior vencida ou apagada (`push.register`).
  */
 export const pushToken = pgTable(
   'push_token',
