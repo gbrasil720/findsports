@@ -49,7 +49,8 @@ const JOB_LABELS: Record<string, string> = {
   analytics_retention: 'a limpeza dos analytics',
   ai_stale_runs: 'o encerramento das execuções presas da IA',
   bar_notices: 'os avisos da semana dos bares',
-  weekly_games: 'os jogos da semana'
+  weekly_games: 'os jogos da semana',
+  media_cleanup: 'a limpeza dos uploads abandonados'
 }
 
 const EVENT_FIELDS: Record<string, string> = {
