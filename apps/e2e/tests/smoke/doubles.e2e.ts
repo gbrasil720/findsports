@@ -145,14 +145,17 @@ test('upload para o R2 é interceptado no navegador', async ({ page }) => {
       'https://e2e.r2.cloudflarestorage.com/onside-media/bars/x/photo?X-Amz-Signature=x',
       { method: 'PUT', headers: { 'content-type': 'image/png' }, body: 'x' }
     )
-    const image = await fetch(`${origin}/bars/x/photo?v=1`)
-    return { put: put.status, type: image.headers.get('content-type') }
+    // Como o app lê: `<img>`. A CSP não deixa `fetch` no domínio das fotos.
+    const image = new Image()
+    image.src = `${origin}/bars/x/photo?v=1`
+    await image.decode()
+    return { put: put.status, width: image.naturalWidth }
   }, MEDIA_PUBLIC_ORIGIN)
 
   expect(uploads).toEqual([
     { pathname: 'bars/x/photo', contentType: 'image/png' }
   ])
-  expect(result).toEqual({ put: 200, type: 'image/png' })
+  expect(result).toEqual({ put: 200, width: 1 })
 })
 
 test.describe('mapa', () => {
