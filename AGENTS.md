@@ -1779,6 +1779,15 @@ código" só quando há código de hoje guardado no aparelho, `readTodayCode`). 
 o que estava salvo", vidro escuro, "Tentar"), por cima de folhas e modais
 (`components/offline-banner.tsx`); ao reconectar, a tela é relida. No app, "Simular sem rede" no navegador DEV liga e desliga o `onlineManager`.
 
+### Content-Security-Policy
+
+O HTML do SSR sai com CSP de nonce (`apps/web/src/lib/csp.ts`, posta pelo middleware
+de `start.ts`; no `vite dev` não): `script-src 'nonce-…' 'strict-dynamic'`, sem
+`'unsafe-eval'`. Script inline novo leva `nonce={useRouter().options.ssr?.nonce}`, e
+origem nova de `fetch`, iframe ou worker entra na diretiva dela em `csp.ts`, senão o
+navegador recusa calado. O E2E roda com a política e falha com violação no console
+(`fixtures/test.ts`). Arquivos de `public/` não passam pelo Worker e ficam sem CSP.
+
 ### Routing
 
 TanStack Router file-based routing — `routeTree.gen.ts` is auto-generated, never edit manually. Route context carries `trpc` (TRPCOptionsProxy) and `queryClient`.
