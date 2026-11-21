@@ -1,6 +1,8 @@
-import { expect, test } from 'bun:test'
+import { afterAll, beforeAll, expect, test } from 'bun:test'
+import { setMediaStore } from '@findsports_oficial/auth/media-upload-record'
 import { and, eq } from '@findsports_oficial/db'
 import { adminAction } from '@findsports_oficial/db/schema/houdini'
+import { mediaUpload } from '@findsports_oficial/db/schema/media'
 import {
   bar,
   barPhoto,
@@ -31,8 +33,25 @@ import {
 
 const integrationTest = isDisposableTestDatabase() ? test : test.skip
 
-const foto = (barId: string) =>
-  `${env.MEDIA_PUBLIC_ORIGIN}/${galleryPhotoPathname(barId, crypto.randomUUID())}?v=1`
+// O bucket é um dublê que tem um PNG em toda chave; a chave precisa ter
+// sido assinada para o dono, como faz `/api/bar/photo`.
+const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+beforeAll(() =>
+  setMediaStore({
+    head: async () => ({ bytes: PNG, contentType: 'image/png' }),
+    remove: async () => {}
+  })
+)
+afterAll(() => setMediaStore(null))
+
+async function foto(ctx: { barId: string; ownerId: string }) {
+  const key = galleryPhotoPathname(ctx.barId, crypto.randomUUID())
+  const { db } = await load()
+  await db
+    .insert(mediaUpload)
+    .values({ userId: ctx.ownerId, key, kind: 'bar_photo' })
+  return `${env.MEDIA_PUBLIC_ORIGIN}/${key}?v=1`
+}
 
 async function admin() {
   const { appRouter } = await load()
@@ -65,12 +84,12 @@ integrationTest(
     const houdini = await admin()
     try {
       const comida = await ctx.owner.pub.addPhoto({
-        url: foto(ctx.barId),
+        url: await foto(ctx),
         category: 'comida',
         caption: '  Porção de fritas  '
       })
       const telao = await ctx.owner.pub.addPhoto({
-        url: foto(ctx.barId),
+        url: await foto(ctx),
         category: 'telao',
         caption: 'O telão de 120" do salão principal'
       })
@@ -125,7 +144,7 @@ integrationTest(
     const houdini = await admin()
     try {
       const photo = await ctx.owner.pub.addPhoto({
-        url: foto(ctx.barId),
+        url: await foto(ctx),
         category: 'balcao'
       })
       // Sem motivo não recusa.
@@ -176,12 +195,12 @@ integrationTest(
       expect(
         (
           await refusal(
-            ctx.owner.pub.addPhoto({ url: foto(ctx.barId), category: 'telao' })
+            ctx.owner.pub.addPhoto({ url: await foto(ctx), category: 'telao' })
           )
         ).code
       ).toBe('FORBIDDEN')
       const capa = await ctx.owner.pub.addPhoto({
-        url: foto(ctx.barId),
+        url: await foto(ctx),
         category: 'fachada',
         cover: true
       })
@@ -201,7 +220,7 @@ integrationTest(
 
       // Nova capa em revisão: a antiga segue no ar até a aprovação.
       const nova = await ctx.owner.pub.addPhoto({
-        url: foto(ctx.barId),
+        url: await foto(ctx),
         category: 'salao',
         cover: true
       })
@@ -229,7 +248,7 @@ integrationTest(
     const houdini = await admin()
     try {
       const a = await ctx.owner.pub.addPhoto({
-        url: foto(ctx.barId),
+        url: await foto(ctx),
         category: 'telao'
       })
       await houdini.adminReview.decidePhoto({ photoId: a.id, approve: true })
@@ -239,7 +258,7 @@ integrationTest(
       expect(await coverOf(ctx.barId)).toBe(a.url)
 
       const b = await ctx.owner.pub.addPhoto({
-        url: foto(ctx.barId),
+        url: await foto(ctx),
         category: 'telao'
       })
       expect(await ctx.owner.pub.setPhotoCover({ id: b.id })).toEqual({
@@ -261,11 +280,11 @@ integrationTest(
     const houdini = await admin()
     try {
       const a = await ctx.owner.pub.addPhoto({
-        url: foto(ctx.barId),
+        url: await foto(ctx),
         category: 'telao'
       })
       const b = await ctx.owner.pub.addPhoto({
-        url: foto(ctx.barId),
+        url: await foto(ctx),
         category: 'telao'
       })
       for (const p of [a, b]) {
@@ -302,15 +321,15 @@ integrationTest(
     const ctx = await seedBar('elite', 'active', inAMonth())
     try {
       const results = await Promise.allSettled(
-        Array.from({ length: GALLERY_MAX_PHOTOS + 3 }, () =>
-          ctx.owner.pub.addPhoto({ url: foto(ctx.barId), category: 'salao' })
+        Array.from({ length: GALLERY_MAX_PHOTOS + 3 }, async () =>
+          ctx.owner.pub.addPhoto({ url: await foto(ctx), category: 'salao' })
         )
       )
       expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(
         GALLERY_MAX_PHOTOS
       )
       const extra = await refusal(
-        ctx.owner.pub.addPhoto({ url: foto(ctx.barId), category: 'salao' })
+        ctx.owner.pub.addPhoto({ url: await foto(ctx), category: 'salao' })
       )
       expect(extra.code).toBe('CONFLICT')
       expect(extra.message).toBe(GALLERY_FULL_MESSAGE)
@@ -322,7 +341,7 @@ integrationTest(
         approve: false,
         reason: 'Imagem de banco.'
       })
-      await ctx.owner.pub.addPhoto({ url: foto(ctx.barId), category: 'salao' })
+      await ctx.owner.pub.addPhoto({ url: await foto(ctx), category: 'salao' })
     } finally {
       await ctx.cleanup()
     }
@@ -336,7 +355,7 @@ integrationTest(
     const other = await seedBar('pro', 'active', inAMonth())
     try {
       const theirs = await other.owner.pub.addPhoto({
-        url: foto(other.barId),
+        url: await foto(other),
         category: 'telao'
       })
 
@@ -352,7 +371,7 @@ integrationTest(
         ).toBe('BAD_REQUEST')
       }
       const own = await mine.owner.pub.addPhoto({
-        url: foto(mine.barId),
+        url: await foto(mine),
         category: 'telao'
       })
       expect(
@@ -361,13 +380,13 @@ integrationTest(
             mine.owner.pub.addPhoto({ url: own.url, category: 'telao' })
           )
         ).code
-      ).toBe('CONFLICT')
+      ).toBe('BAD_REQUEST')
       // Legenda acima de 80 caracteres.
       expect(
         (
           await refusal(
             mine.owner.pub.addPhoto({
-              url: foto(mine.barId),
+              url: await foto(mine),
               category: 'telao',
               caption: 'x'.repeat(81)
             })
