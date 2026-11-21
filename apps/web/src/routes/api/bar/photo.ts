@@ -16,6 +16,7 @@ import {
   isReadOnlyImpersonation,
   READ_ONLY_IMPERSONATION_MESSAGE
 } from '@findsports_oficial/auth/impersonation-mode'
+import { recordMediaUpload } from '@findsports_oficial/auth/media-upload-record'
 import { and, db, eq } from '@findsports_oficial/db'
 import { bar, barPhoto } from '@findsports_oficial/db/schema/platform'
 import { createFileRoute } from '@tanstack/react-router'
@@ -91,12 +92,16 @@ export const Route = createFileRoute('/api/bar/photo')({
             throw new MediaUploadError(409, GALLERY_FULL_MESSAGE)
           }
           await assertUploadQuota(session.user.id)
-          return Response.json(
-            await signMediaUpload(
-              galleryPhotoPathname(existingBar.id, crypto.randomUUID()),
-              body
-            )
-          )
+          const key = galleryPhotoPathname(existingBar.id, crypto.randomUUID())
+          const signed = await signMediaUpload(key, body)
+          // `pub.addPhoto` só aceita chave gravada aqui, e o que nunca chegar
+          // lá sai do bucket em 24 h (`media_cleanup`).
+          await recordMediaUpload({
+            userId: session.user.id,
+            key,
+            kind: 'bar_photo'
+          })
+          return Response.json(signed)
         } catch (err) {
           if (err instanceof MediaUploadError) {
             return Response.json({ error: err.message }, { status: err.status })
