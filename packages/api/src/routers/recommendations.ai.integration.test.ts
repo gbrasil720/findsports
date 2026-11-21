@@ -147,8 +147,11 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
+  // Sem banco descartável o seed não rodou: nada a desfazer, e o reset do
+  // app_config iria a outro banco (ou falharia sem nenhum).
+  if (!ctx) return
   await testOff()
-  await ctx?.cleanup()
+  await ctx.cleanup()
 })
 
 const experience = (round: {
