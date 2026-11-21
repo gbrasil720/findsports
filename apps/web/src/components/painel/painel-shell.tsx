@@ -221,6 +221,8 @@ export function PainelShell({
         </a>
         <script
           nonce={nonce}
+          // O navegador esconde o `nonce` do HTML; sem isto o React acusa diferença.
+          suppressHydrationWarning
           // biome-ignore lint/security/noDangerouslySetInnerHtml: texto fixo do próprio app, sem dado de fora
           dangerouslySetInnerHTML={{ __html: TRILHO_SCRIPT }}
         />

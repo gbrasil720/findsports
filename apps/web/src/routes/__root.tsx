@@ -384,12 +384,15 @@ function RootShell({ children }: { children: React.ReactNode }) {
         ) : null}
         <script
           nonce={nonce}
+          // O navegador esconde o `nonce` do HTML; sem isto o React acusa diferença.
+          suppressHydrationWarning
           // biome-ignore lint/security/noDangerouslySetInnerHtml: texto fixo do próprio app, sem dado de fora
           dangerouslySetInnerHTML={{ __html: THEME_HEAD_SCRIPT }}
         />
         {consentBannerEnabled() ? (
           <script
             nonce={nonce}
+            suppressHydrationWarning
             // biome-ignore lint/security/noDangerouslySetInnerHtml: texto fixo do próprio app, sem dado de fora
             dangerouslySetInnerHTML={{ __html: CONSENT_HEAD_SCRIPT }}
           />
@@ -397,6 +400,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
         <HeadContent />
         <script
           nonce={nonce}
+          suppressHydrationWarning
           // biome-ignore lint/security/noDangerouslySetInnerHtml: texto fixo do próprio app, sem dado de fora
           dangerouslySetInnerHTML={{ __html: THEME_COLOR_SCRIPT }}
         />
