@@ -1468,6 +1468,8 @@ invente layout que o projeto não tem.
   (tabela `push_token`, chave o token, **presa à sessão**: sair da conta, revogar o aparelho
   em Sessões ou trocar a sessão no 2FA apaga a linha em cascata, e o app registra de novo
   quando a sessão muda; permissão negada nos ajustes do celular chama `push.unregister`). Token
+  de outra conta com a sessão dela viva não muda de dono (resposta normal, só
+  `push_token_rebind_refused` no log); com ela vencida, passa para quem registrou. Token
   que a Expo dá como `DeviceNotRegistered` sai no envio; os recibos não são lidos. Gatilhos
   hoje: o chamado de amigo (24g, em `createFriendCall`, com a categoria `friend_call`), "Marina
   vai também" (`friends.respondCall` com "Vou também", depois do commit; "Agora não" não avisa
