@@ -237,11 +237,24 @@ describe('bar e plano do aviso Pix vêm da AbacatePay, não do corpo', () => {
     ).toMatchObject({ reason: 'product_mismatch' })
   })
 
-  it('sem checkout, ou checkout que não é do app: recusado', async () => {
+  it('sem checkout: vai ao log e lança, para a AbacatePay reenviar', async () => {
     fetchSpy()
-    expect(
-      await refusalOf(() => trustedPixRef(sub(null), starter))
-    ).toMatchObject({ reason: 'no_checkout' })
+    const error = spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      await expect(trustedPixRef(sub(null), starter)).rejects.toThrow(
+        'sem checkoutId'
+      )
+      expect(JSON.parse(String(error.mock.calls[0]?.[0]))).toMatchObject({
+        event: 'pix_webhook_untrusted',
+        reason: 'no_checkout'
+      })
+    } finally {
+      error.mockRestore()
+    }
+  })
+
+  it('checkout que não é do app: recusado', async () => {
+    fetchSpy()
     checkout = { externalId: 'outro-sistema', items: [] }
     expect(
       await refusalOf(() => trustedPixRef(sub('bill_1'), null))
