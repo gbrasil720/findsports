@@ -6,6 +6,7 @@ describe('userNameRefusal', () => {
     expect(userNameRefusal('  João da Silva  ')).toBeNull()
     expect(userNameRefusal('Ana Luíza D’Ávila')).toBeNull()
     expect(userNameRefusal('a'.repeat(USER_NAME_MAX))).toBeNull()
+    expect(userNameRefusal('Sr. João J. R. Souza')).toBeNull()
   })
 
   test('recusa vazio e longo demais', () => {
@@ -30,7 +31,9 @@ describe('userNameRefusal', () => {
     for (const name of [
       'Ana https://golpe.com',
       'Ana WWW.golpe.com',
-      'hxxp://x'
+      'hxxp://x',
+      'Confirme sua conta em golpe.com',
+      'Ana //golpe.com.br'
     ])
       expect(userNameRefusal(name)).toBe(
         'O nome não pode ter endereço de site.'

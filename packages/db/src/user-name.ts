@@ -10,7 +10,9 @@ export const USER_NAME_MAX = 80
 
 // Quebra de linha, controle e os que viram o texto de lado (bidi).
 const CONTROL = /[\p{Cc}\p{Zl}\p{Zp}\p{Bidi_Control}]/u
-const LINK = /:\/\/|www\./i
+// URL, `www.` e domínio solto (`golpe.com`, que o cliente de e-mail vira
+// link). Abreviação com ponto e espaço ("Sr. João", "J. R.") passa.
+const LINK = /:\/\/|www\.|[\p{L}\p{N}-]\.[a-z]{2,}\b/iu
 
 /** Frase da recusa, ou `null` quando o nome (já sem espaço nas pontas) vale. */
 export function userNameRefusal(name: string): string | null {
