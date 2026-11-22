@@ -36,15 +36,17 @@ function origin(url: string | undefined): string | undefined {
 export function contentSecurityPolicy(
   nonce: string,
   // Tiles do mapa: `tiles.onside.sh` em produção, o stub no E2E.
-  tilesUrl?: string
+  tilesUrl?: string,
+  // PostHog: `VITE_POSTHOG_HOST`, o proxy próprio por padrão.
+  posthogHost?: string
 ): string {
   const connect = [
     "'self'",
     origin(tilesUrl) ?? 'https://tiles.onside.sh',
     // Upload de foto direto para o R2 (URL assinada, `upload-media.ts`).
     'https://*.r2.cloudflarestorage.com',
-    // PostHog pelo proxy próprio (`VITE_POSTHOG_HOST`) e o painel dele.
-    'https://a.onside.sh',
+    // PostHog pelo host configurado e o painel dele.
+    origin(posthogHost) ?? 'https://a.onside.sh',
     'https://*.posthog.com',
     // Endereço pelo CEP (`lib/cep.ts`).
     'https://viacep.com.br',
