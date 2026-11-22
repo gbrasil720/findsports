@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { BASE_URL, MEDIA_PUBLIC_ORIGIN } from '../../env'
+import { BASE_URL, MEDIA_PUBLIC_ORIGIN, STUB_URL } from '../../env'
 import { query } from '../../fixtures/db'
 import {
   createEvent,
@@ -185,6 +185,26 @@ test('avatar: a API recusa foto fora do nosso host', async ({ page }) => {
   }
   expect((await userRow(fan.id))?.image).toBeNull()
 
+  // No nosso host, mas sem upload assinado para esta conta: recusada.
+  expect((await updateImage(own)).status()).toBe(400)
+  expect((await userRow(fan.id))?.image).toBeNull()
+
+  // O caminho de verdade: a rota assina a chave e o arquivo chega ao bucket
+  // (o stub, onde o `fixtures/media.ts` poria o PUT do navegador).
+  const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46])
+  const signed = await page.request.post('/api/user/avatar', {
+    data: { contentType: 'image/jpeg', size: jpeg.length },
+    headers: { origin: BASE_URL }
+  })
+  expect(signed.ok()).toBe(true)
+  const put = await page.request.put(
+    `${STUB_URL}/r2/onside-media/users/${fan.id}/avatar`,
+    { data: jpeg, headers: { 'content-type': 'image/jpeg' } }
+  )
+  expect(put.ok()).toBe(true)
+
   expect((await updateImage(own)).ok()).toBe(true)
   expect((await userRow(fan.id))?.image).toBe(own)
+  // O envio vale uma vez: outro `?v=` pede upload novo.
+  expect((await updateImage(own.replace('?v=1', '?v=2'))).status()).toBe(400)
 })
