@@ -6,7 +6,8 @@ import {
 import {
   EVENT_CHAMPIONSHIP_MAX_LENGTH,
   EVENT_CHAMPIONSHIP_MIN_LENGTH,
-  EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH
+  EVENT_PARTICIPANT_FREE_TEXT_MAX_LENGTH,
+  EVENT_PARTICIPANTS_MAX
 } from '@findsports_oficial/db/event-limits'
 import {
   brasiliaDay,
@@ -331,7 +332,9 @@ function Formulario({
   const chip = (team: { id: string; name: string }) => {
     const selected = participantIds.includes(team.id)
     const disabled =
-      hasFreeText || (hasLimit && participantIds.length >= 2 && !selected)
+      hasFreeText ||
+      (!selected &&
+        participantIds.length >= (hasLimit ? 2 : EVENT_PARTICIPANTS_MAX))
     return (
       <button
         key={team.id}
