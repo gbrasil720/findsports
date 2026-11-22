@@ -172,6 +172,9 @@ export function readLagsBehind(eventType: string, status: string): boolean {
  *
  * Recusa vai ao log e volta nula (o aviso responde 200, sem reenvio: repetir
  * não muda a resposta). Falha de rede lança e vira 500, como o resto.
+ * Assinatura sem `checkoutId` também lança: a API o marca como anulável, e
+ * responder 200 perderia um pagamento de verdade se ele chegar depois, como
+ * a leitura atrasada de `readLagsBehind`.
  */
 export async function trustedPixRef(
   sub: AbacateSubscription,
@@ -187,7 +190,10 @@ export async function trustedPixRef(
     })
     return null
   }
-  if (!sub.checkoutId) return refuse('no_checkout')
+  if (!sub.checkoutId) {
+    refuse('no_checkout')
+    throw new Error(`Assinatura Pix ${sub.id} sem checkoutId: aviso reenviado.`)
+  }
   const checkout = await getSubscriptionCheckout(sub.checkoutId)
   const ref = parsePixExternalId(checkout.externalId)
   if (!ref) {
