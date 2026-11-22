@@ -132,7 +132,8 @@ integrationTest(
     const seats = founderSeats()
     try {
       await ctx.owner.pub.startPixCheckout({ plan: 'elite', annual: true })
-      expect(abacate.products.at(-1)).toBe('elite_founder_yearly')
+      // O produto vem dos itens do checkout: `productIdFor` guarda o id por
+      // processo, e outro teste pode já ter buscado este.
       const checkout = abacate.checkouts.at(-1)
       expect(checkout?.items).toEqual([
         { id: 'prod_elite_founder_yearly', quantity: 1 }
@@ -181,7 +182,9 @@ integrationTest(
       )
       expect(same.message).toBe('Você já paga este plano pelo Pix.')
       await ctx.owner.pub.startPixCheckout({ plan: 'elite', annual: false })
-      expect(abacate.products.at(-1)).toBe('elite_founder_monthly')
+      expect(abacate.checkouts.at(-1)?.items).toEqual([
+        { id: 'prod_elite_founder_monthly', quantity: 1 }
+      ])
       expect(abacate.checkouts.at(-1)?.externalId.endsWith(':y')).toBe(false)
     } finally {
       seats.mockRestore()
