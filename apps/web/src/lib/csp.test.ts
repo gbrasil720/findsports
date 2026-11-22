@@ -43,6 +43,21 @@ describe('CSP do SSR', () => {
     )
   })
 
+  test('connect-src leva o host do PostHog configurado', () => {
+    expect(directive(contentSecurityPolicy('n'), 'connect-src')).toContain(
+      'https://a.onside.sh'
+    )
+    const outro = contentSecurityPolicy(
+      'n',
+      undefined,
+      'https://analytics.example.net/ingest'
+    )
+    expect(directive(outro, 'connect-src')).toContain(
+      'https://analytics.example.net'
+    )
+    expect(directive(outro, 'connect-src')).not.toContain('https://a.onside.sh')
+  })
+
   test('só o HTML recebe a política', () => {
     const html = new Headers({ 'Content-Type': 'text/html; charset=utf-8' })
     applyContentSecurityPolicy(html, 'n1')

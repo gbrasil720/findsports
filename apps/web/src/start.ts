@@ -67,7 +67,11 @@ export function applyContentSecurityPolicy(headers: Headers, nonce: string) {
   if (!headers.get('Content-Type')?.includes('text/html')) return
   headers.set(
     'Content-Security-Policy',
-    contentSecurityPolicy(nonce, import.meta.env.VITE_MAP_TILES_URL)
+    contentSecurityPolicy(
+      nonce,
+      import.meta.env.VITE_MAP_TILES_URL,
+      import.meta.env.VITE_POSTHOG_HOST
+    )
   )
 }
 
