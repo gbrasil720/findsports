@@ -1,6 +1,6 @@
 import { db, sql } from '@findsports_oficial/db'
 import { utcNowSql } from '@findsports_oficial/db/event-window-sql'
-import { gameTitle } from '../game-participants'
+import { gameMatchKey, gameTitle } from '../game-participants'
 import { utcIso } from '../utc-timestamp'
 import type {
   GameSuggestion,
@@ -26,10 +26,12 @@ export type SuggestionRow = {
   participant_free_text: string | null
   participant_ids: string[] | null
   title: string
+  /** `gameMatchKey`: o mesmo jogo com os times em qualquer ordem. */
+  match_key: string
 }
 
 /**
- * Junta as linhas por jogo (início + título), tira os que o bar já tem e fica
+ * Junta as linhas por jogo (início + times em qualquer ordem), tira os que o bar já tem e fica
  * com os `limit` que mais bares marcaram, na ordem do início.
  */
 export function groupSuggestions(
@@ -40,7 +42,7 @@ export function groupSuggestions(
   const own = new Set<string>()
   for (const row of rows) {
     const startsAt = utcIso(row.starts_at)
-    const key = `${startsAt}|${row.title}`
+    const key = `${startsAt}|${row.match_key}`
     if (row.bar_id === barId) {
       own.add(key)
       continue
@@ -81,7 +83,12 @@ export const nearbyBarsSource: GameSuggestionSource = {
                id: sql`e.id`,
                participantFreeText: sql`e.participant_free_text`,
                championship: sql`e.championship`
-             })} AS title
+             })} AS title,
+             ${gameMatchKey({
+               id: sql`e.id`,
+               participantFreeText: sql`e.participant_free_text`,
+               championship: sql`e.championship`
+             })} AS match_key
       FROM event e
       JOIN bar b ON b.id = e.bar_id
       WHERE e.published_at IS NOT NULL
