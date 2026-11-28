@@ -10,7 +10,7 @@ import { readGoing } from './attendance'
 import { classicRuleLateral, currentClassicRulesCte } from './classics'
 import { getCurrentPlan, type SubscriptionForPlan } from './current-plan'
 import { resolveEventScreen } from './event-screen'
-import { gameTitle } from './game-participants'
+import { gameMatchKey, gameTitle } from './game-participants'
 import { effectiveHouseOffer } from './house-offer'
 import { normalizeOpeningHours, type OpeningHours } from './opening-hours'
 import { hasPublicRating, RATING_PUBLIC_FLOOR } from './rating'
@@ -50,6 +50,7 @@ type BoardRow = {
   sport_slug: string
   sport_name: string
   title: string
+  match_key: string
   on_big_screen: boolean | null
   with_sound: boolean | null
   event_offer: string | null
@@ -96,6 +97,11 @@ function readRows(input: BoardInput) {
           participantFreeText: sql`e.participant_free_text`,
           championship: sql`e.championship`
         })} AS title,
+        ${gameMatchKey({
+          id: sql`e.id`,
+          participantFreeText: sql`e.participant_free_text`,
+          championship: sql`e.championship`
+        })} AS match_key,
         e.on_big_screen, e.with_sound,
         e.house_offer AS event_offer, e.no_house_offer, e.attendance_enabled,
         b.name, b.neighborhood, b.photo_url, b.latitude, b.longitude,
@@ -219,7 +225,8 @@ export async function readGameBoard(input: BoardInput, now = new Date()) {
 
   for (const row of rows) {
     const startsAt = utcIso(row.starts_at)
-    const key = `${startsAt}|${row.title}`
+    // "A × B" e "B × A" no mesmo horário são o mesmo jogo.
+    const key = `${startsAt}|${row.match_key}`
     let game = games.get(key)
     if (!game) {
       game = {
