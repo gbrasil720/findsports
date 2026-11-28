@@ -28,13 +28,13 @@ export type LoginKind = 'vou' | 'salvar' | 'amigos' | 'entrar'
 const TITLE: Record<LoginKind, string> = {
   vou: 'Entre para marcar presença',
   salvar: 'Entre para salvar o bar',
-  amigos: 'Entre para ver seus amigos',
+  amigos: 'Entre para saber quando o app chegar',
   entrar: 'Entre na Onside'
 }
 const GO: Record<LoginKind, string> = {
   vou: 'Entrar e marcar presença',
   salvar: 'Entrar e salvar',
-  amigos: 'Entrar',
+  amigos: 'Entrar e me avisar',
   entrar: 'Entrar'
 }
 
@@ -68,7 +68,11 @@ function why(kind: LoginKind, bar: LiveBar): [IconName, string, string][] {
     ]
   if (kind === 'amigos')
     return [
-      ['people', 'Amigos que vão', 'Só quem é seu amigo e deixa aparecer.'],
+      [
+        'people',
+        'Amigos que vão',
+        'Chegam com o app: só quem é seu amigo e deixa aparecer.'
+      ],
       code,
       ['heart', 'Seus bares', 'A semana de jogos dos bares salvos.']
     ]
@@ -145,6 +149,7 @@ function Sheet({
   if (kind === 'vou' && game)
     search.acao = acaoTexto({ tipo: 'vou', id: game.id })
   if (kind === 'salvar') search.acao = acaoTexto({ tipo: 'fav', id: bar.id })
+  if (kind === 'amigos') search.acao = acaoTexto({ tipo: 'app' })
   const back = `${path}${Object.keys(search).length ? `?${new URLSearchParams(search)}` : ''}`
   // A volta do cadastro, do e-mail e do 2FA só conclui a ação guardada aqui.
   const pedida = search.acao
@@ -152,7 +157,7 @@ function Sheet({
     const acao = lerAcao(pedida)
     if (acao) guardarAcao(acao)
   }, [pedida])
-  const showGame = Boolean(game) && (kind === 'vou' || kind === 'amigos')
+  const showGame = Boolean(game) && kind === 'vou'
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
