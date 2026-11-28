@@ -74,7 +74,7 @@ import {
   replaceFavoriteTeams
 } from '../lib/favorite-teams'
 import { readGameBoard } from '../lib/game-board'
-import { byMatchOrder, gameTitle } from '../lib/game-participants'
+import { byMatchOrder, gameMatchKey, gameTitle } from '../lib/game-participants'
 import { type HereNow, readHereNow } from '../lib/here-now'
 import { effectiveHouseOffer } from '../lib/house-offer'
 import { decodeCursor, encodeCursor } from '../lib/keyset-cursor'
@@ -403,8 +403,8 @@ export const pubsRouter = router({
       bars: number
       live: boolean
     }>(sql`
-      SELECT g.title, g.starts_at, count(DISTINCT g.bar_id)::int AS bars,
-        bool_or(g.live) AS live
+      SELECT min(g.title) AS title, g.starts_at,
+        count(DISTINCT g.bar_id)::int AS bars, bool_or(g.live) AS live
       FROM (
         SELECT
           ${gameTitle({
@@ -412,6 +412,11 @@ export const pubsRouter = router({
             participantFreeText: sql`e.participant_free_text`,
             championship: sql`e.championship`
           })} AS title,
+          ${gameMatchKey({
+            id: sql`e.id`,
+            participantFreeText: sql`e.participant_free_text`,
+            championship: sql`e.championship`
+          })} AS match_key,
           e.starts_at,
           e.bar_id,
           e.starts_at <= ${utcNowSql()} AND ${eventNotEndedSql('e')} AS live
@@ -421,8 +426,9 @@ export const pubsRouter = router({
           AND e.published_at IS NOT NULL
           AND ${onBrasiliaDaysSql(sql`e.starts_at`, brasiliaTodaySql())}
       ) g
-      GROUP BY g.title, g.starts_at
-      ORDER BY g.starts_at, g.title
+      -- "A × B" e "B × A" no mesmo horário são o mesmo jogo.
+      GROUP BY g.match_key, g.starts_at
+      ORDER BY g.starts_at, min(g.title)
       LIMIT ${TODAY_GAMES_LIMIT}
     `)
     return games.rows.map((game) => ({

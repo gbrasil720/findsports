@@ -80,7 +80,8 @@ integrationTest(
         championship: `Campeonato ${mark}`,
         startsAt
       })
-      // O mesmo jogo, na mesma hora, em dois bares no ar.
+      // O mesmo jogo, na mesma hora, em dois bares no ar (times em ordens
+      // diferentes).
       const shared = [match(byKey('aberto'), now), match(byKey('outro'), now)]
       // Amanhã (26 h à frente é sempre outro dia), e o do bar fora do ar.
       const tomorrow = match(
@@ -98,10 +99,14 @@ integrationTest(
       }
       await db.insert(event).values([...shared, tomorrow, offAir, freeText])
       await db.insert(eventParticipants).values(
-        [...shared, tomorrow].flatMap((game) => [
-          { eventId: game.id, teamId: home, position: 0 },
-          { eventId: game.id, teamId: away, position: 1 }
-        ])
+        [...shared, tomorrow].flatMap((game) => {
+          // O segundo bar cadastrou os times na ordem inversa: mesmo jogo.
+          const flip = game === shared[1]
+          return [
+            { eventId: game.id, teamId: home, position: flip ? 1 : 0 },
+            { eventId: game.id, teamId: away, position: flip ? 0 : 1 }
+          ]
+        })
       )
 
       // Sem sessão: a splash roda antes do login.
