@@ -53,6 +53,36 @@ describe('sugestões de jogos dos bares perto', () => {
     expect(got.map((g) => g.title)).toEqual(['Corinthians × Palmeiras'])
   })
 
+  test('vale a ordem dos times que mais bares usaram', () => {
+    const inverted = {
+      match_key: 'Corinthians × Palmeiras',
+      participant_ids: ['b', 'a']
+    }
+    const got = groupSuggestions(
+      [
+        row('outro-1', '2026-11-08 22:00:00', 'Corinthians × Palmeiras'),
+        row(
+          'outro-2',
+          '2026-11-08 22:00:00',
+          'Palmeiras × Corinthians',
+          inverted
+        ),
+        row(
+          'outro-3',
+          '2026-11-08 22:00:00',
+          'Palmeiras × Corinthians',
+          inverted
+        )
+      ],
+      { barId: 'meu', limit: 6 }
+    )
+    expect(got).toHaveLength(1)
+    expect(got[0]).toMatchObject({
+      title: 'Palmeiras × Corinthians',
+      participantIds: ['b', 'a']
+    })
+  })
+
   test('o jogo que o bar já tem não volta', () => {
     const got = groupSuggestions(
       [

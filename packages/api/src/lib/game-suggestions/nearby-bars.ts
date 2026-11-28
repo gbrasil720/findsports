@@ -1,6 +1,11 @@
 import { db, sql } from '@findsports_oficial/db'
 import { utcNowSql } from '@findsports_oficial/db/event-window-sql'
-import { gameMatchKey, gameTitle } from '../game-participants'
+import {
+  gameMatchKey,
+  gameTitle,
+  majorityTitle,
+  voteTitle
+} from '../game-participants'
 import { utcIso } from '../utc-timestamp'
 import type {
   GameSuggestion,
@@ -39,6 +44,10 @@ export function groupSuggestions(
   { barId, limit }: Pick<SuggestionRequest, 'barId' | 'limit'>
 ): GameSuggestion[] {
   const games = new Map<string, GameSuggestion & { bars: Set<string> }>()
+  // Por jogo: título → bares, e a ordem dos times de cada título. Com os
+  // times em ordens diferentes, vale a da maioria (`majorityTitle`).
+  const titles = new Map<string, Map<string, Set<string>>>()
+  const orders = new Map<string, string[]>()
   const own = new Set<string>()
   for (const row of rows) {
     const startsAt = utcIso(row.starts_at)
@@ -59,6 +68,16 @@ export function groupSuggestions(
     }
     game.bars.add(row.bar_id)
     games.set(key, game)
+    const votes = titles.get(key) ?? new Map<string, Set<string>>()
+    voteTitle(votes, row.title, row.bar_id)
+    titles.set(key, votes)
+    if (!orders.has(`${key}|${row.title}`)) {
+      orders.set(`${key}|${row.title}`, row.participant_ids ?? [])
+    }
+  }
+  for (const game of games.values()) {
+    game.title = majorityTitle(titles.get(game.key) as Map<string, Set<string>>)
+    game.participantIds = orders.get(`${game.key}|${game.title}`) ?? []
   }
   return [...games.values()]
     .filter((game) => !own.has(game.key))
