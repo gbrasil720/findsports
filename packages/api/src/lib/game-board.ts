@@ -10,7 +10,12 @@ import { readGoing } from './attendance'
 import { classicRuleLateral, currentClassicRulesCte } from './classics'
 import { getCurrentPlan, type SubscriptionForPlan } from './current-plan'
 import { resolveEventScreen } from './event-screen'
-import { gameMatchKey, gameTitle } from './game-participants'
+import {
+  gameMatchKey,
+  gameTitle,
+  majorityTitle,
+  voteTitle
+} from './game-participants'
 import { effectiveHouseOffer } from './house-offer'
 import { normalizeOpeningHours, type OpeningHours } from './opening-hours'
 import { hasPublicRating, RATING_PUBLIC_FLOOR } from './rating'
@@ -223,10 +228,17 @@ export async function readGameBoard(input: BoardInput, now = new Date()) {
     }
   }
 
+  // Título → bares, por jogo: com os times em ordens diferentes, vale a
+  // ordem da maioria.
+  const titles = new Map<string, Map<string, Set<string>>>()
+
   for (const row of rows) {
     const startsAt = utcIso(row.starts_at)
     // "A × B" e "B × A" no mesmo horário são o mesmo jogo.
     const key = `${startsAt}|${row.match_key}`
+    const votes = titles.get(key) ?? new Map<string, Set<string>>()
+    voteTitle(votes, row.title, row.bar_id)
+    titles.set(key, votes)
     let game = games.get(key)
     if (!game) {
       game = {
@@ -244,6 +256,10 @@ export async function readGameBoard(input: BoardInput, now = new Date()) {
     if (!game.bars.some((bar) => bar.barId === row.bar_id)) {
       game.bars.push(toBar(row))
     }
+  }
+
+  for (const game of games.values()) {
+    game.title = majorityTitle(titles.get(game.key) as Map<string, Set<string>>)
   }
 
   return { day: input.day, games: [...games.values()] }
