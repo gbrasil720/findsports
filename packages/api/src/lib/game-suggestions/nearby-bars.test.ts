@@ -14,6 +14,7 @@ const row = (
   participant_free_text: null,
   participant_ids: ['a', 'b'],
   title,
+  match_key: title,
   ...extra
 })
 
@@ -37,6 +38,19 @@ describe('sugestões de jogos dos bares perto', () => {
         participantFreeText: null
       }
     ])
+  })
+
+  test('os times em outra ordem são o mesmo jogo', () => {
+    const got = groupSuggestions(
+      [
+        row('outro-1', '2026-11-08 22:00:00', 'Corinthians × Palmeiras'),
+        row('outro-2', '2026-11-08 22:00:00', 'Palmeiras × Corinthians', {
+          match_key: 'Corinthians × Palmeiras'
+        })
+      ],
+      { barId: 'meu', limit: 6 }
+    )
+    expect(got.map((g) => g.title)).toEqual(['Corinthians × Palmeiras'])
   })
 
   test('o jogo que o bar já tem não volta', () => {
