@@ -65,3 +65,20 @@ export const gameTitle = (game: {
     NULLIF(btrim(${game.participantFreeText}), ''),
     ${game.championship}
   )`
+
+/**
+ * O mesmo jogo, seja qual for a ordem em que o bar pôs os times: com dois
+ * times, os nomes em ordem alfabética; senão o título. Junta "A × B" e
+ * "B × A" do mesmo horário num jogo só (Explorar, splash, sugestões). Só para
+ * agrupar: o que a tela mostra é o `gameTitle`.
+ */
+export const gameMatchKey = (game: {
+  id: SQL
+  participantFreeText: SQL
+  championship: SQL
+}) =>
+  sql<string>`COALESCE(
+    ${teams(game.id, sql`CASE WHEN count(*) = 2 THEN string_agg(t.name, ' × ' ORDER BY t.name, t.id) END`)},
+    NULLIF(btrim(${game.participantFreeText}), ''),
+    ${game.championship}
+  )`
