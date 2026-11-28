@@ -82,7 +82,11 @@ integrationTest(
       })
       // O mesmo jogo, na mesma hora, em dois bares no ar (times em ordens
       // diferentes).
-      const shared = [match(byKey('aberto'), now), match(byKey('outro'), now)]
+      const shared = [
+        match(byKey('aberto'), now),
+        match(byKey('outro'), now),
+        match(byKey('aberto'), now)
+      ]
       // Amanhã (26 h à frente é sempre outro dia), e o do bar fora do ar.
       const tomorrow = match(
         byKey('aberto'),
@@ -101,6 +105,8 @@ integrationTest(
       await db.insert(eventParticipants).values(
         [...shared, tomorrow].flatMap((game) => {
           // O segundo bar cadastrou os times na ordem inversa: mesmo jogo.
+          // O primeiro bar duas vezes na ordem certa conta um voto só, e o
+          // empate fica com o primeiro título na ordem dos códigos.
           const flip = game === shared[1]
           return [
             { eventId: game.id, teamId: home, position: flip ? 1 : 0 },
