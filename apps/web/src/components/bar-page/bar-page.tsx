@@ -93,7 +93,7 @@ export type Neighbor = {
 }
 
 /** O que a `?acao=` pode fazer na página do bar. */
-type AcaoDaPagina = { tipo: 'vou' | 'fav'; id: string }
+type AcaoDaPagina = { tipo: 'vou' | 'fav'; id: string } | { tipo: 'app' }
 
 export type BarPageSearch = { jogo?: string; acao?: string }
 
@@ -253,6 +253,14 @@ export function BarPage({
   const contaNova = useRef(false)
   const sucesso = (texto: string) =>
     contaNova.current ? avisarNaProxima(texto) : toast.success(texto)
+  const joinApp = useMutation(
+    trpc.appWaitlist.join.mutationOptions({
+      onSuccess: ({ email }) =>
+        toast.success(`Combinado. Avisamos ${email} no dia em que o app sair.`),
+      onError: (error) =>
+        toast.error(getUserFacingMessage(error, 'Não deu para salvar agora.'))
+    })
+  )
   const attend = useMutation(
     trpc.attendance.set.mutationOptions({
       onSuccess: async (result) => {
@@ -325,6 +333,12 @@ export function BarPage({
     })
   const executar = (acao: AcaoDaPagina) => {
     if (!session || !viewer.data) return
+    // "Me avise" da linha dos amigos: amigos só existem no app.
+    if (acao.tipo === 'app') {
+      limpar()
+      joinApp.mutate()
+      return
+    }
     // Conta nova (sem onboarding): depois da ação, a tela dela com o card da
     // conta nova, como no web do torcedor (`destinoContaNova`). Até lá a
     // `acao` fica na URL: sem ela a guarda manda a conta nova ao onboarding
@@ -366,12 +380,21 @@ export function BarPage({
     pending.current = true
     const acao = lerAcao(acaoTexto, { barId: bar.id, eventId: game?.id })
     const daPagina: AcaoDaPagina | null =
-      acao?.tipo === 'fav' && acao.id === bar.id
-        ? { tipo: 'fav', id: acao.id }
-        : acao?.tipo === 'vou' && bar.events.some((e) => e.id === acao.id)
-          ? { tipo: 'vou', id: acao.id }
-          : null
+      acao?.tipo === 'app'
+        ? acao
+        : acao?.tipo === 'fav' && acao.id === bar.id
+          ? { tipo: 'fav', id: acao.id }
+          : acao?.tipo === 'vou' && bar.events.some((e) => e.id === acao.id)
+            ? { tipo: 'vou', id: acao.id }
+            : null
     if (!daPagina) return limparRef.current()
+    if (daPagina.tipo === 'app') {
+      // Sem cartão de confirmação próprio: a que este navegador não guardou
+      // só sai da URL.
+      if (tomarAcaoPendente(daPagina)) executarRef.current(daPagina)
+      else limparRef.current()
+      return
+    }
     if (!viewer.data.fan) {
       limparRef.current()
       toast.info('Marcar presença e salvar bar são para conta de torcedor.')
@@ -688,7 +711,7 @@ export function BarPage({
         now={now}
         onClose={() => setLogin(null)}
       />
-      {confirm ? (
+      {confirm && confirm.tipo !== 'app' ? (
         <ConfirmSheet
           kind={confirm.tipo === 'vou' ? 'vou' : 'salvar'}
           game={bar.events.find((e) => e.id === confirm.id) ?? null}
@@ -984,10 +1007,10 @@ function TodayCard({
             ) : null}
             {!session ? (
               <small>
+                Amigos que vão aparecem aqui quando o app chegar.{' '}
                 <button className="linkish" type="button" onClick={onFriends}>
-                  Entre
-                </button>{' '}
-                para ver se algum amigo vai.
+                  Me avise
+                </button>
               </small>
             ) : null}
           </span>
