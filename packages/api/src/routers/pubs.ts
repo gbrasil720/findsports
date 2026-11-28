@@ -403,9 +403,7 @@ export const pubsRouter = router({
       bars: number
       live: boolean
     }>(sql`
-      SELECT min(g.title) AS title, g.starts_at,
-        count(DISTINCT g.bar_id)::int AS bars, bool_or(g.live) AS live
-      FROM (
+      WITH g AS (
         SELECT
           ${gameTitle({
             id: sql`e.id`,
@@ -425,10 +423,24 @@ export const pubsRouter = router({
         WHERE b.is_active
           AND e.published_at IS NOT NULL
           AND ${onBrasiliaDaysSql(sql`e.starts_at`, brasiliaTodaySql())}
-      ) g
+      ),
+      -- Com os times em ordens diferentes, vale o título que mais bares
+      -- usaram; no empate, o primeiro na ordem dos códigos (majorityTitle).
+      titled AS (
+        SELECT DISTINCT ON (match_key, starts_at) match_key, starts_at, title
+        FROM (
+          SELECT match_key, starts_at, title, count(DISTINCT bar_id) AS n
+          FROM g GROUP BY match_key, starts_at, title
+        ) votes
+        ORDER BY match_key, starts_at, n DESC, title COLLATE "C"
+      )
+      SELECT t.title, g.starts_at,
+        count(DISTINCT g.bar_id)::int AS bars, bool_or(g.live) AS live
+      FROM g
+      JOIN titled t USING (match_key, starts_at)
       -- "A × B" e "B × A" no mesmo horário são o mesmo jogo.
-      GROUP BY g.match_key, g.starts_at
-      ORDER BY g.starts_at, min(g.title)
+      GROUP BY g.match_key, g.starts_at, t.title
+      ORDER BY g.starts_at, t.title
       LIMIT ${TODAY_GAMES_LIMIT}
     `)
     return games.rows.map((game) => ({
