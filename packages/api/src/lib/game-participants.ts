@@ -82,3 +82,28 @@ export const gameMatchKey = (game: {
     NULLIF(btrim(${game.participantFreeText}), ''),
     ${game.championship}
   )`
+
+/**
+ * Qual título fica quando o mesmo jogo (`gameMatchKey`) veio de bares com os
+ * times em ordens diferentes: o que mais bares usaram e, no empate, o primeiro
+ * na ordem dos códigos (a mesma do `COLLATE "C"` de `pubs.todayGames`).
+ * `votes` é título → bares que o usaram.
+ */
+export function majorityTitle(votes: Map<string, Set<string>>): string {
+  const [title] = [...votes].sort(
+    ([a, barsA], [b, barsB]) =>
+      barsB.size - barsA.size || (a < b ? -1 : a > b ? 1 : 0)
+  )[0] as [string, Set<string>]
+  return title
+}
+
+/** Anota que `barId` chamou o jogo de `title`, para o `majorityTitle`. */
+export function voteTitle(
+  votes: Map<string, Set<string>>,
+  title: string,
+  barId: string
+) {
+  const bars = votes.get(title) ?? new Set<string>()
+  bars.add(barId)
+  votes.set(title, bars)
+}
